@@ -1,6 +1,6 @@
 const VERIFY_TOKEN = "leadbot_verify_token";
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
@@ -14,7 +14,6 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     const body = req.body;
-
     const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
     if (!message) {
@@ -32,7 +31,7 @@ export default async function handler(req, res) {
   }
 
   return res.status(405).send("Method Not Allowed");
-}
+};
 
 async function sendReply(to, message) {
   const url = `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`;
