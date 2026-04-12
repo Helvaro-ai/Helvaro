@@ -32,11 +32,16 @@ module.exports = async function handler(req, res) {
     const text = message.text.body;
 
     console.log(`Bericht van ${phone}: ${text}`);
+    console.log("ENV CHECK - AIRTABLE_TOKEN:", AIRTABLE_TOKEN ? "aanwezig" : "ONTBREEKT");
+    console.log("ENV CHECK - AIRTABLE_BASE:", AIRTABLE_BASE ? "aanwezig" : "ONTBREEKT");
+    console.log("ENV CHECK - ANTHROPIC_KEY:", ANTHROPIC_KEY ? "aanwezig" : "ONTBREEKT");
+    console.log("ENV CHECK - WHATSAPP_TOKEN:", WHATSAPP_TOKEN ? "aanwezig" : "ONTBREEKT");
+    console.log("ENV CHECK - PHONE_NUMBER_ID:", PHONE_NUMBER_ID ? "aanwezig" : "ONTBREEKT");
 
     try {
       await processMessage(phone, text);
     } catch (err) {
-      console.error("Fout bij verwerken bericht:", err);
+      console.error("FOUT in processMessage:", err.message, err.stack);
     }
 
     return res.status(200).send("OK");
@@ -48,20 +53,29 @@ module.exports = async function handler(req, res) {
 // ─── MAIN LOGIC ─────────────────────────────────────────────────────────────
 
 async function processMessage(phone, text) {
+  console.log("Stap 1: client ophalen...");
   const client = await getClient();
   if (!client) {
+    console.error("FOUT: geen client gevonden in Airtable");
     await sendWhatsApp(phone, "Systeem is nog niet geconfigureerd.");
     return;
   }
+  console.log("Client gevonden:", client.fields["Client Name"]);
 
+  console.log("Stap 2: lead ophalen of aanmaken...");
   let lead = await getLead(phone);
   if (!lead) {
+    console.log("Nieuwe lead aanmaken...");
     lead = await createLead(phone, client.id);
   }
+  console.log("Lead ID:", lead.id);
 
+  console.log("Stap 3: AI aanroepen...");
   const history = buildHistory(lead, text);
-  const aiResponse = await runAI(history, client.fields["AI Instructions"], lead);
+  const aiResponse = await runAI(history, client.fields["AI Instructions"]);
+  console.log("AI antwoord:", aiResponse.message?.substring(0, 100));
 
+  console.log("Stap 4: lead updaten in Airtable...");
   await updateLead(lead.id, {
     "Last Message": text,
     "Conversation State": aiResponse.done ? "completed" : "in_progress",
@@ -75,6 +89,7 @@ async function processMessage(phone, text) {
     }),
   });
 
+  console.log("Stap 5: WhatsApp antwoord sturen...");
   await sendWhatsApp(phone, aiResponse.message);
 
   if (aiResponse.qualified && !lead.fields["Booking Link Sent"]) {
@@ -84,11 +99,13 @@ async function processMessage(phone, text) {
       await updateLead(lead.id, { "Booking Link Sent": true });
     }
   }
+
+  console.log("Klaar!");
 }
 
 // ─── AI ─────────────────────────────────────────────────────────────────────
 
-async function runAI(history, instructions, lead) {
+async function runAI(history, instructions) {
   const systemPrompt = `
 Je bent een AI-assistent die leads kwalificeert via WhatsApp.
 
@@ -102,7 +119,7 @@ Instructies van de klant:
 ${instructions}
 
 Wanneer je genoeg informatie hebt om een beslissing te nemen, eindig je bericht met dit JSON-blok (op een nieuwe regel):
-DECISION:{"qualified":true/false,"reason":"korte reden in het Nederlands","summary":"1-2 zinnen samenvatting van de lead in het Nederlands","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong"}
+DECISION:{"qualified":true/false,"reason":"korte reden in het Nederlands","summary":"1-2 zinnen samenvatting in het Nederlands","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong"}
 
 Voeg het DECISION-blok ALLEEN toe als je genoeg informatie hebt. Anders antwoord je gewoon natuurlijk in het Nederlands.
 `.trim();
@@ -115,7 +132,7 @@ Voeg het DECISION-blok ALLEEN toe als je genoeg informatie hebt. Anders antwoord
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1000,
       system: systemPrompt,
       messages: history,
@@ -123,6 +140,13 @@ Voeg het DECISION-blok ALLEEN toe als je genoeg informatie hebt. Anders antwoord
   });
 
   const data = await response.json();
+  console.log("Anthropic status:", response.status);
+
+  if (data.error) {
+    console.error("Anthropic fout:", JSON.stringify(data.error));
+    return { done: false, message: "Sorry, er is een technische fout opgetreden." };
+  }
+
   const raw = data.content?.[0]?.text || "";
 
   const decisionMatch = raw.match(/DECISION:(\{.*\})/s);
@@ -141,12 +165,10 @@ Voeg het DECISION-blok ALLEEN toe als je genoeg informatie hebt. Anders antwoord
 
 function buildHistory(lead, newMessage) {
   const history = [];
-
   if (lead.fields["Last Message"]) {
     history.push({ role: "assistant", content: "Hallo! Hoe kan ik u helpen?" });
     history.push({ role: "user", content: lead.fields["Last Message"] });
   }
-
   history.push({ role: "user", content: newMessage });
   return history;
 }
@@ -157,6 +179,8 @@ async function getClient() {
   const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?maxRecords=1`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data = await res.json();
+  console.log("Airtable client response status:", res.status);
+  if (data.error) console.error("Airtable client fout:", JSON.stringify(data.error));
   return data.records?.[0] || null;
 }
 
@@ -165,6 +189,8 @@ async function getLead(phone) {
   const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data = await res.json();
+  console.log("Airtable lead response status:", res.status);
+  if (data.error) console.error("Airtable lead fout:", JSON.stringify(data.error));
   return data.records?.[0] || null;
 }
 
@@ -184,12 +210,14 @@ async function createLead(phone, clientId) {
       },
     }),
   });
-  return await res.json();
+  const data = await res.json();
+  if (data.error) console.error("Airtable aanmaken fout:", JSON.stringify(data.error));
+  return data;
 }
 
 async function updateLead(recordId, fields) {
   const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${recordId}`;
-  await fetch(url, {
+  const res = await fetch(url, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${AIRTABLE_TOKEN}`,
@@ -197,13 +225,15 @@ async function updateLead(recordId, fields) {
     },
     body: JSON.stringify({ fields }),
   });
+  const data = await res.json();
+  if (data.error) console.error("Airtable update fout:", JSON.stringify(data.error));
 }
 
 // ─── WHATSAPP ────────────────────────────────────────────────────────────────
 
 async function sendWhatsApp(to, message) {
   const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
-  await fetch(url, {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${WHATSAPP_TOKEN}`,
@@ -216,4 +246,7 @@ async function sendWhatsApp(to, message) {
       text: { body: message },
     }),
   });
+  const data = await res.json();
+  console.log("WhatsApp send status:", res.status);
+  if (data.error) console.error("WhatsApp fout:", JSON.stringify(data.error));
 }
