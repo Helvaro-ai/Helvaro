@@ -1,0 +1,91 @@
+const AIRTABLE_TOKEN = process.env.API_Airtable;
+const AIRTABLE_BASE = process.env.BASE_AIRTABLE;
+
+const LEADS_TABLE = "tbliukTnDAbEDcZmt";
+const CLIENTS_TABLE = "tblPidTrwGRzRt4LZ";
+
+module.exports = async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-api-key");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
+
+  // ─── AUTH ───────────────────────────────────────────────────────────────────
+  const apiKey = req.headers["x-api-key"];
+  if (!apiKey) {
+    return res.status(401).json({ error: "API key ontbreekt" });
+  }
+
+  // Find client by API key
+  const client = await getClientByApiKey(apiKey);
+  if (!client) {
+    return res.status(403).json({ error: "Ongeldige API key" });
+  }
+
+  const projectCode = client.fields["Project Code"];
+  console.log(`Dashboard verzoek voor client: ${client.fields["Client Name"]}`);
+
+  // ─── FETCH LEADS ────────────────────────────────────────────────────────────
+  try {
+    const leads = await getLeadsByProjectCode(projectCode);
+
+    // Calculate stats
+    const total = leads.length;
+    const qualified = leads.filter(l => l.fields["Qualified"]).length;
+    const booked = leads.filter(l => l.fields["Appointment Booked"]).length;
+    const conversionRate = total > 0 ? Math.round((qualified / total) * 100) : 0;
+
+    return res.status(200).json({
+      client: {
+        name: client.fields["Client Name"],
+        niche: client.fields["Niche"],
+      },
+      stats: {
+        total,
+        qualified,
+        booked,
+        conversionRate,
+      },
+      leads: leads.map(l => ({
+        id: l.id,
+        name: l.fields["Name"] || "Onbekend",
+        phone: l.fields["Phone"],
+        state: l.fields["Conversation State"]?.name || l.fields["Conversation State"],
+        qualified: l.fields["Qualified"] || false,
+        reason: l.fields["Reason"] || "",
+        summary: l.fields["AI Summary"] || "",
+        ability: l.fields["Ability"]?.name || l.fields["Ability"] || "",
+        urgency: l.fields["Urgency"]?.name || l.fields["Urgency"] || "",
+        fit: l.fields["Fit"]?.name || l.fields["Fit"] || "",
+        bookingLinkSent: l.fields["Booking Link Sent"] || false,
+        appointmentBooked: l.fields["Appointment Booked"] || false,
+        createdAt: l.fields["Created At"] || l.createdTime,
+      })),
+    });
+  } catch (err) {
+    console.error("Fout bij ophalen leads:", err.message);
+    return res.status(500).json({ error: "Interne serverfout" });
+  }
+};
+
+// ─── AIRTABLE ────────────────────────────────────────────────────────────────
+
+async function getClientByApiKey(apiKey) {
+  const filter = encodeURIComponent(`{API Key}="${apiKey}"`);
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  const data = await res.json();
+  if (data.error) console.error("Airtable fout:", JSON.stringify(data.error));
+  return data.records?.[0] || null;
+}
+
+async function getLeadsByProjectCode(projectCode) {
+  const filter = encodeURIComponent(`{Project Code}="${projectCode}"`);
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&sort[0][field]=Created At&sort[0][direction]=desc`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  const data = await res.json();
+  if (data.error) console.error("Airtable fout:", JSON.stringify(data.error));
+  return data.records || [];
+}
