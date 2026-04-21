@@ -1,7 +1,10 @@
 {
   "functions": {
-    "api/whatsapp.js": {
-      "maxDuration": 30
-    }
-  }
+    "api/whatsapp.js": { "maxDuration": 30 },
+    "api/leads.js": { "maxDuration": 10 },
+    "api/form.js": { "maxDuration": 10 }
+  },
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/public/dashboard.html" }
+  ]
 }
