@@ -31,7 +31,7 @@ async function airtable(path, opts = {}) {
   return res.json();
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -49,6 +49,7 @@ export default async function handler(req, res) {
   }
 
   try {
+<<<<<<< HEAD
     const safe    = (s) => s.replace(/"/g, '\\"');
     const formula = encodeURIComponent(
       `AND({${UF.email}}="${safe(email)}",{${UF.password}}="${safe(password)}",{${UF.active}}=1)`
@@ -56,6 +57,15 @@ export default async function handler(req, res) {
     const data = await airtable(`/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`);
     const user = data.records?.[0];
 
+=======
+    // ── REGISTRATION DISABLED — accounts are created by Helvaro ─────────
+    if (register === true) {
+      return res.status(403).json({ error: 'Registratie is niet beschikbaar. Neem contact op met Helvaro.' });
+    }
+
+    // ── LOGIN ─────────────────────────────────────────────────────────────
+    const user = await findActiveUser(email, password);
+>>>>>>> 5856e07fb2e4dd444c7fa0e0459a42dfcca9f4d9
     if (!user) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord.' });
     }

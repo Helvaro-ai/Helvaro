@@ -2,6 +2,9 @@
   "functions": {
     "api/**/*.js": { "maxDuration": 30 }
   },
+  "redirects": [
+    { "source": "/", "destination": "/dashboard", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/dashboard",      "destination": "/api/dashboard" },
     { "source": "/form-widget.js", "destination": "/public/form-widget.js" }
