@@ -1,5 +1,5 @@
 module.exports = async function handler(req, res) {
-  const html = `<!DOCTYPE html>
+  const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
 <meta charset="UTF-8">
@@ -2601,5 +2601,5 @@ async function handleLogin() {
 </html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=300');
-  res.status(200).send(html);
+  res.status(200).send(HTML);
 };

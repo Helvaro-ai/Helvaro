@@ -1,129 +1,131 @@
-const AIRTABLE_TOKEN = process.env.API_Airtable;
-const AIRTABLE_BASE = process.env.BASE_AIRTABLE;
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const BASE             = process.env.BASE_AIRTABLE;
+const TOKEN            = process.env.API_Airtable;
+const WHATSAPP_TOKEN   = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID  = process.env.PHONE_NUMBER_ID;
 
-const LEADS_TABLE = "tbliukTnDAbEDcZmt";
-const CLIENTS_TABLE = "tblPidTrwGRzRt4LZ";
+const LEADS_TABLE  = 'tbliukTnDAbEDcZmt';
+const CLIENT_TABLE = 'tblPidTrwGRzRt4LZ';
 
-module.exports = async function handler(req, res) {
-  // Allow CORS for Bubble
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
-
-  const { name, phone, project_code } = req.body;
-
-  console.log(`Formulier ontvangen: naam=${name}, telefoon=${phone}, code=${project_code}`);
-
-  if (!phone || !project_code) {
-    return res.status(400).json({ error: "Telefoon en projectcode zijn verplicht" });
-  }
-
-  // Clean phone number — remove spaces, dashes, leading 0, add country code if needed
-  let cleanPhone = phone.replace(/[\s\-\(\)]/g, "");
-  if (cleanPhone.startsWith("0")) cleanPhone = "32" + cleanPhone.slice(1);
-  if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.slice(1);
-
-  try {
-    // 1. Find client by project code
-    const client = await getClientByCode(project_code);
-    if (!client) {
-      console.error(`Geen client gevonden voor code: ${project_code}`);
-      return res.status(404).json({ error: "Ongeldige projectcode" });
-    }
-    console.log(`Client gevonden: ${client.fields["Client Name"]}`);
-
-    // 2. Check if lead already exists
-    let lead = await getLeadByPhone(cleanPhone);
-    if (lead) {
-      console.log(`Lead bestaat al: ${lead.id}`);
-      return res.status(200).json({ success: true, message: "Lead bestaat al" });
-    }
-
-    // 3. Create new lead
-    lead = await createLead(cleanPhone, name, project_code, client.id);
-    console.log(`Lead aangemaakt: ${lead.id}`);
-
-    // 4. Send first WhatsApp message
-    const clientName = client.fields["Client Name"] || "ons team";
-    const welcomeMessage = `Hallo${name ? " " + name : ""}! 👋\n\nBedankt voor uw interesse. Ik ben een AI-assistent van ${clientName}.\n\nIk stel u graag een paar korte vragen om u zo goed mogelijk te helpen. Mag ik beginnen?`;
-
-    await sendWhatsApp(cleanPhone, welcomeMessage);
-    console.log("Welkomstbericht verstuurd");
-
-    return res.status(200).json({ success: true, message: "Lead aangemaakt en bericht verstuurd" });
-
-  } catch (err) {
-    console.error("Fout in form handler:", err.message);
-    return res.status(500).json({ error: "Interne serverfout" });
-  }
+const LF = {
+  name:        'fldbk0LVNckOU0bqA',
+  phone:       'fld6YaitW0lMqHUrd',
+  projectCode: 'fldSmczuyUJd26HLe',
+  status:      'fld8mkrEWcyq7mUip',
+  bron:        'fldGoerozqdea4BfU',
+  createdAt:   'fldR0r13EU4RwrtvH',
 };
 
-// ─── AIRTABLE ────────────────────────────────────────────────────────────────
+const CF = {
+  clientName:  'fldAnB848Sr5jl6dq',
+  projectCode: 'fldN4dL0bGgfBOXwM',
+  aiName:      'fldRvoe1JMPOtPWC7',
+};
 
-async function getClientByCode(code) {
-  const filter = encodeURIComponent(`{Project Code}="${code.toUpperCase()}"`);
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-  const data = await res.json();
-  if (data.error) console.error("Airtable fout (client):", JSON.stringify(data.error));
-  return data.records?.[0] || null;
+function setCors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-async function getLeadByPhone(phone) {
-  const filter = encodeURIComponent(`{Phone}="${phone}"`);
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-  const data = await res.json();
-  if (data.error) console.error("Airtable fout (lead):", JSON.stringify(data.error));
-  return data.records?.[0] || null;
-}
-
-async function createLead(phone, name, projectCode, clientId) {
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}`;
-  const res = await fetch(url, {
-    method: "POST",
+async function airtable(path, opts = {}) {
+  const res = await fetch(`https://api.airtable.com/v0/${BASE}${path}`, {
+    ...opts,
     headers: {
-      Authorization: `Bearer ${AIRTABLE_TOKEN}`,
-      "Content-Type": "application/json",
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
     },
-    body: JSON.stringify({
-      fields: {
-        Phone: phone,
-        Name: name || "",
-        "Project Code": projectCode.toUpperCase(),
-        "Conversation State": "new",
-        Client: [clientId],
+  });
+  if (!res.ok) throw new Error(`Airtable ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+function normalisePhone(raw) {
+  let p = String(raw).replace(/[\s\-().]/g, '');
+  if (p.startsWith('+')) return p;
+  if (p.startsWith('00')) return '+' + p.slice(2);
+  if (p.startsWith('0'))  return '+32' + p.slice(1);
+  if (p.startsWith('32')) return '+' + p;
+  return p;
+}
+
+export default async function handler(req, res) {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const body         = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  const { name, phone } = body;
+  const project_code = body.project_code || 'HELVARO';
+  const bron         = body.bron         || 'Website';
+
+  if (!name || !phone) {
+    return res.status(400).json({ error: 'Naam en telefoonnummer zijn verplicht.' });
+  }
+
+  // Look up Client Config
+  let client;
+  try {
+    const formula = encodeURIComponent(`{${CF.projectCode}}="${project_code}"`);
+    const data    = await airtable(`/${CLIENT_TABLE}?filterByFormula=${formula}&maxRecords=1`);
+    client        = data.records?.[0];
+  } catch (err) {
+    console.error('[form] client lookup:', err.message);
+    return res.status(500).json({ error: 'Fout bij ophalen clientgegevens.' });
+  }
+
+  if (!client) {
+    return res.status(404).json({ error: 'Ongeldige projectcode.' });
+  }
+
+  const clientName = client.fields[CF.clientName] || 'Helvaro';
+  const aiName     = client.fields[CF.aiName]     || 'Mathis';
+
+  // Create lead record
+  let recordId;
+  try {
+    const result = await airtable(`/${LEADS_TABLE}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        records: [{
+          fields: {
+            [LF.name]:        name,
+            [LF.phone]:       phone,
+            [LF.projectCode]: project_code,
+            [LF.status]:      'new',
+            [LF.bron]:        bron,
+            [LF.createdAt]:   new Date().toISOString(),
+          },
+        }],
+      }),
+    });
+    recordId = result.records?.[0]?.id;
+  } catch (err) {
+    console.error('[form] create lead:', err.message);
+    return res.status(500).json({ error: 'Kon lead niet aanmaken.' });
+  }
+
+  // Send WhatsApp message (non-blocking — don't fail the response if WA fails)
+  try {
+    const waPhone  = normalisePhone(phone);
+    const message  = `Hallo ${name}! 👋 Ik ben ${aiName} van ${clientName}. Ik zag dat je interesse hebt — top! Mag ik je even een paar snelle vragen stellen om te zien hoe we je het beste kunnen helpen?`;
+    await fetch(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization:  `Bearer ${WHATSAPP_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-    }),
-  });
-  const data = await res.json();
-  if (data.error) console.error("Airtable fout (aanmaken):", JSON.stringify(data.error));
-  return data;
-}
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to:   waPhone,
+        type: 'text',
+        text: { body: message },
+      }),
+    });
+  } catch (err) {
+    console.error('[form] WhatsApp:', err.message);
+    // Continue — lead is already created
+  }
 
-// ─── WHATSAPP ────────────────────────────────────────────────────────────────
-
-async function sendWhatsApp(to, message) {
-  const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to,
-      type: "text",
-      text: { body: message },
-    }),
-  });
-  const data = await res.json();
-  if (data.error) console.error("WhatsApp fout:", JSON.stringify(data.error));
-  return data;
+  return res.status(200).json({ success: true, id: recordId });
 }

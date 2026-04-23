@@ -1,196 +1,219 @@
-const AIRTABLE_TOKEN = process.env.API_Airtable;
-const AIRTABLE_BASE = process.env.BASE_AIRTABLE;
+const BASE  = process.env.BASE_AIRTABLE;
+const TOKEN = process.env.API_Airtable;
 
-const LEADS_TABLE = "tbliukTnDAbEDcZmt";
-const CLIENTS_TABLE = "tblPidTrwGRzRt4LZ";
+const LEADS_TABLE  = 'tbliukTnDAbEDcZmt';
+const CLIENT_TABLE = 'tblPidTrwGRzRt4LZ';
 
-module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-api-key");
-
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
-
-  // ─── AUTH ───────────────────────────────────────────────────────────────────
-  const apiKey = req.headers["x-api-key"];
-  if (!apiKey) return res.status(401).json({ error: "API key ontbreekt" });
-
-  const client = await getClientByApiKey(apiKey);
-  if (!client) return res.status(403).json({ error: "Ongeldige API key" });
-
-  const projectCode = client.fields["Project Code"];
-  console.log(`Dashboard verzoek voor: ${client.fields["Client Name"]}`);
-
-  // ─── QUERY PARAMS (filters) ──────────────────────────────────────────────────
-  const { status, qualified, bron, export: exportCsv, rapport } = req.query;
-
-  try {
-    const allLeads = await getLeadsByProjectCode(projectCode);
-
-    // ─── STATS ────────────────────────────────────────────────────────────────
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    const total = allLeads.length;
-    const qualifiedLeads = allLeads.filter(l => l.fields["Qualified"]);
-    const bookedLeads = allLeads.filter(l => l.fields["Appointment Booked"]);
-    const thisMonthLeads = allLeads.filter(l => {
-      const created = new Date(l.fields["Created At"] || l.createdTime);
-      return created >= startOfMonth;
-    });
-    const lastWeekLeads = allLeads.filter(l => {
-      const created = new Date(l.fields["Created At"] || l.createdTime);
-      return created >= sevenDaysAgo;
-    });
-
-    const responseTimes = allLeads
-      .map(l => l.fields["Response Time (sec)"])
-      .filter(t => t && t > 0);
-    const avgResponseTime = responseTimes.length > 0
-      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
-      : 0;
-
-    const conversionRate = total > 0
-      ? Math.round((qualifiedLeads.length / total) * 100)
-      : 0;
-
-    const leadLimiet = client.fields["Lead Limiet"] || 300;
-    const limietGebruikt = Math.round((thisMonthLeads.length / leadLimiet) * 100);
-
-    // ─── WEEKRAPPORT ──────────────────────────────────────────────────────────
-    if (rapport === "week") {
-      const weekQualified = lastWeekLeads.filter(l => l.fields["Qualified"]);
-      const weekBooked = lastWeekLeads.filter(l => l.fields["Appointment Booked"]);
-      return res.status(200).json({
-        rapport: {
-          periode: `${sevenDaysAgo.toLocaleDateString("nl-BE")} - ${now.toLocaleDateString("nl-BE")}`,
-          totaalLeads: lastWeekLeads.length,
-          gekwalificeerd: weekQualified.length,
-          afspraken: weekBooked.length,
-          conversie: lastWeekLeads.length > 0
-            ? Math.round((weekQualified.length / lastWeekLeads.length) * 100)
-            : 0,
-          gekwalificeerdeLijst: weekQualified.map(l => ({
-            naam: l.fields["Name"] || "Onbekend",
-            telefoon: l.fields["Phone"],
-            samenvatting: l.fields["AI Summary"] || "",
-            datum: l.fields["Created At"] || l.createdTime,
-          })),
-        },
-      });
-    }
-
-    // ─── CSV EXPORT ───────────────────────────────────────────────────────────
-    if (exportCsv === "true") {
-      const headers = ["Naam", "Telefoon", "Status", "Gekwalificeerd", "Reden", "Samenvatting", "Capaciteit", "Urgentie", "Fit", "Bron", "Boekingslink Verstuurd", "Afspraak Geboekt", "Datum"];
-      const rows = allLeads.map(l => [
-        l.fields["Name"] || "",
-        l.fields["Phone"] || "",
-        l.fields["Conversation State"]?.name || l.fields["Conversation State"] || "",
-        l.fields["Qualified"] ? "Ja" : "Nee",
-        l.fields["Reason"] || "",
-        l.fields["AI Summary"] || "",
-        l.fields["Ability"]?.name || l.fields["Ability"] || "",
-        l.fields["Urgency"]?.name || l.fields["Urgency"] || "",
-        l.fields["Fit"]?.name || l.fields["Fit"] || "",
-        l.fields["Bron"]?.name || l.fields["Bron"] || "",
-        l.fields["Booking Link Sent"] ? "Ja" : "Nee",
-        l.fields["Appointment Booked"] ? "Ja" : "Nee",
-        l.fields["Created At"] || l.createdTime || "",
-      ]);
-
-      const csv = [headers, ...rows]
-        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="leads-${projectCode}-${now.toISOString().split("T")[0]}.csv"`);
-      return res.status(200).send(csv);
-    }
-
-    // ─── FILTER LEADS ─────────────────────────────────────────────────────────
-    let filtered = [...allLeads];
-
-    if (status && status !== "alle") {
-      filtered = filtered.filter(l => {
-        const state = l.fields["Conversation State"]?.name || l.fields["Conversation State"];
-        return state === status;
-      });
-    }
-
-    if (qualified && qualified !== "alle") {
-      const wantQualified = qualified === "ja";
-      filtered = filtered.filter(l => l.fields["Qualified"] === wantQualified);
-    }
-
-    if (bron && bron !== "alle") {
-      filtered = filtered.filter(l => {
-        const source = l.fields["Bron"]?.name || l.fields["Bron"];
-        return source === bron;
-      });
-    }
-
-    // ─── RESPONSE ─────────────────────────────────────────────────────────────
-    return res.status(200).json({
-      client: {
-        naam: client.fields["Client Name"],
-        niche: client.fields["Niche"]?.name || client.fields["Niche"],
-        plan: client.fields["Plan"]?.name || client.fields["Plan"] || "Pro",
-      },
-      stats: {
-        total,
-        qualified: qualifiedLeads.length,
-        booked: bookedLeads.length,
-        conversionRate,
-        thisMonth: thisMonthLeads.length,
-        avgResponseTime,
-        leadLimiet,
-        limietGebruikt,
-      },
-      leads: filtered.map(l => ({
-        id: l.id,
-        naam: l.fields["Name"] || "Onbekend",
-        telefoon: l.fields["Phone"] || "",
-        status: l.fields["Conversation State"]?.name || l.fields["Conversation State"] || "",
-        qualified: l.fields["Qualified"] || false,
-        reden: l.fields["Reason"] || "",
-        samenvatting: l.fields["AI Summary"] || "",
-        capaciteit: l.fields["Ability"]?.name || l.fields["Ability"] || "",
-        urgentie: l.fields["Urgency"]?.name || l.fields["Urgency"] || "",
-        fit: l.fields["Fit"]?.name || l.fields["Fit"] || "",
-        bron: l.fields["Bron"]?.name || l.fields["Bron"] || "",
-        boekingslinkVerstuurd: l.fields["Booking Link Sent"] || false,
-        afspraakGeboekt: l.fields["Appointment Booked"] || false,
-        notities: l.fields["Notities"] || "",
-        reactietijd: l.fields["Response Time (sec)"] || 0,
-        datum: l.fields["Created At"] || l.createdTime,
-      })),
-    });
-
-  } catch (err) {
-    console.error("Fout bij ophalen leads:", err.message);
-    return res.status(500).json({ error: "Interne serverfout" });
-  }
+const F = {
+  name:             'fldbk0LVNckOU0bqA',
+  phone:            'fld6YaitW0lMqHUrd',
+  status:           'fld8mkrEWcyq7mUip',
+  summary:          'fldqerIiw5qyQjXHr',
+  qualified:        'fld0hAZJ5wgaXrNTn',
+  reason:           'fld3NhSENma0okbT7',
+  bookingLinkSent:  'fldLeEqwNefdglLis',
+  appointmentBooked:'fldyIGNetqcSEkoaK',
+  ability:          'fldrfbTopJvZEYSKP',
+  urgency:          'fldlyLH1DKrWyG3Tr',
+  fit:              'fldqNxsPshvZEBeLr',
+  createdAt:        'fldR0r13EU4RwrtvH',
+  projectCode:      'fldSmczuyUJd26HLe',
+  responseTime:     'fldUJJ8oSmAMQ9wB3',
+  bron:             'fldGoerozqdea4BfU',
+  notities:         'fldoLRI5W12ThTls7',
+  leadScore:        'fldpzQgMuWJLjogiD',
+  opgepikt:         'fld86JQHB6dbuutA7',
+  verwachteWaarde:  'fldv7qOYvCN1xJfiR',
 };
 
-// ─── AIRTABLE ────────────────────────────────────────────────────────────────
+const CF = {
+  clientName:  'fldAnB848Sr5jl6dq',
+  projectCode: 'fldN4dL0bGgfBOXwM',
+  apiKey:      'fldhmnzVjrb2AyqJr',
+};
 
-async function getClientByApiKey(apiKey) {
-  const filter = encodeURIComponent(`{API Key}="${apiKey}"`);
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-  const data = await res.json();
-  if (data.error) console.error("Airtable fout (client):", JSON.stringify(data.error));
+function setCors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+}
+
+async function airtable(path, opts = {}) {
+  const res = await fetch(`https://api.airtable.com/v0/${BASE}${path}`, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(`Airtable ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function fetchAllPages(table, qs = '') {
+  const records = [];
+  let offset = '';
+  do {
+    const base = `/${table}?${qs}`;
+    const url  = offset ? `${base}&offset=${encodeURIComponent(offset)}` : base;
+    const data = await airtable(url);
+    records.push(...(data.records || []));
+    offset = data.offset || '';
+  } while (offset);
+  return records;
+}
+
+async function getClient(apiKey) {
+  const formula = encodeURIComponent(`{${CF.apiKey}}="${apiKey}"`);
+  const data    = await airtable(`/${CLIENT_TABLE}?filterByFormula=${formula}&maxRecords=1`);
   return data.records?.[0] || null;
 }
 
-async function getLeadsByProjectCode(projectCode) {
-  const filter = encodeURIComponent(`{Project Code}="${projectCode}"`);
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&sort[0][field]=Created%20At&sort[0][direction]=desc`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-  const data = await res.json();
-  if (data.error) console.error("Airtable fout (leads):", JSON.stringify(data.error));
-  return data.records || [];
+function strVal(v) {
+  if (v == null) return '';
+  if (typeof v === 'object' && v.name) return v.name;
+  return String(v);
+}
+
+function csvEsc(v) {
+  return `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+}
+
+function mapLead(r) {
+  const f = r.fields;
+  return {
+    id:                    r.id,
+    naam:                  f[F.name]               || '',
+    telefoon:              f[F.phone]              || '',
+    status:                strVal(f[F.status])     || 'new',
+    qualified:             Boolean(f[F.qualified]),
+    reden:                 f[F.reason]             || '',
+    samenvatting:          f[F.summary]            || '',
+    capaciteit:            strVal(f[F.ability]),
+    urgentie:              strVal(f[F.urgency]),
+    fit:                   strVal(f[F.fit]),
+    bron:                  strVal(f[F.bron]),
+    boekingslinkVerstuurd: Boolean(f[F.bookingLinkSent]),
+    afspraakGeboekt:       Boolean(f[F.appointmentBooked]),
+    notities:              f[F.notities]           || '',
+    leadScore:             Number(f[F.leadScore])  || 0,
+    opgepikt:              Boolean(f[F.opgepikt]),
+    verwachteWaarde:       f[F.verwachteWaarde]    || '',
+    reactietijd:           Number(f[F.responseTime]) || 0,
+    datum:                 f[F.createdAt]          || '',
+  };
+}
+
+function calcStats(leads) {
+  const total      = leads.length;
+  const qualified  = leads.filter(l => l.qualified).length;
+  const booked     = leads.filter(l => l.afspraakGeboekt).length;
+  const conversionRate = total ? Math.round((booked / total) * 1000) / 10 : 0;
+  const now        = new Date();
+  const thisMonth  = leads.filter(l => {
+    if (!l.datum) return false;
+    const d = new Date(l.datum);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  const times = leads.map(l => l.reactietijd).filter(t => t > 0);
+  const avgResponseTime = times.length
+    ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
+    : 0;
+  return { total, qualified, booked, conversionRate, thisMonth, avgResponseTime };
+}
+
+function dutchDate(d) {
+  return new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export default async function handler(req, res) {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Geen API-sleutel opgegeven.' });
+
+  let client;
+  try {
+    client = await getClient(apiKey);
+  } catch (err) {
+    console.error('[leads] getClient:', err.message);
+    return res.status(500).json({ error: 'Fout bij ophalen clientgegevens.' });
+  }
+  if (!client) return res.status(401).json({ error: 'Ongeldige API-sleutel.' });
+
+  const projectCode = client.fields[CF.projectCode];
+  const clientName  = client.fields[CF.clientName];
+
+  if (req.method === 'PATCH') {
+    try {
+      const parts    = (req.url || '').split('/').filter(Boolean);
+      const recordId = parts[parts.length - 1];
+      const body     = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+      const result   = await airtable(`/${LEADS_TABLE}/${recordId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fields: { [F.notities]: body.notities || '' } }),
+      });
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  let leads;
+  try {
+    const formula = encodeURIComponent(`{${F.projectCode}}="${projectCode}"`);
+    const sort    = `sort[0][field]=${F.createdAt}&sort[0][direction]=desc`;
+    const records = await fetchAllPages(LEADS_TABLE, `filterByFormula=${formula}&${sort}`);
+    leads = records.map(mapLead);
+  } catch (err) {
+    console.error('[leads] fetch:', err.message);
+    return res.status(500).json({ error: 'Kon leads niet ophalen.' });
+  }
+
+  const qs     = (req.url || '').split('?')[1] || '';
+  const params = new URLSearchParams(qs);
+
+  if (params.get('export') === 'true') {
+    const header = 'Naam;Telefoon;Status;Gekwalificeerd;Bron;Score;Urgentie;Capaciteit;Fit;Verwachte Waarde;Datum;Samenvatting';
+    const rows   = leads.map(l => [
+      l.naam, l.telefoon, l.status,
+      l.qualified ? 'Ja' : 'Nee',
+      l.bron, l.leadScore, l.urgentie, l.capaciteit, l.fit,
+      l.verwachteWaarde,
+      l.datum ? new Date(l.datum).toLocaleDateString('nl-NL') : '',
+      l.samenvatting,
+    ].map(csvEsc).join(';'));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=helvaro-leads.csv');
+    return res.status(200).send([header, ...rows].join('\r\n'));
+  }
+
+  if (params.get('rapport') === 'week') {
+    const sevenDaysAgo   = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const weekLeads      = leads.filter(l => l.datum && new Date(l.datum) >= sevenDaysAgo);
+    const totaalLeads    = weekLeads.length;
+    const gekwalificeerd = weekLeads.filter(l => l.qualified).length;
+    const afspraken      = weekLeads.filter(l => l.afspraakGeboekt).length;
+    const conversie      = totaalLeads ? Math.round((gekwalificeerd / totaalLeads) * 1000) / 10 : 0;
+    const periode        = `${dutchDate(sevenDaysAgo)} \u2013 ${dutchDate(new Date())}`;
+    const gekwalificeerdeLijst = weekLeads
+      .filter(l => l.qualified)
+      .map(l => ({ naam: l.naam, telefoon: l.telefoon, samenvatting: l.samenvatting }));
+    return res.status(200).json({
+      rapport: { periode, totaalLeads, gekwalificeerd, afspraken, conversie, gekwalificeerdeLijst },
+      leads,
+      stats: calcStats(leads),
+      client: { naam: clientName },
+    });
+  }
+
+  return res.status(200).json({
+    leads,
+    stats: calcStats(leads),
+    client: { naam: clientName },
+  });
 }

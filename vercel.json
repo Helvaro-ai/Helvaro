@@ -3,6 +3,7 @@
     "api/**/*.js": { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/dashboard", "destination": "/api/dashboard" }
+    { "source": "/dashboard",      "destination": "/api/dashboard" },
+    { "source": "/form-widget.js", "destination": "/public/form-widget.js" }
   ]
 }
