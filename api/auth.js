@@ -91,44 +91,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ── REGISTRATION ──────────────────────────────────────────────────────
+    // ── REGISTRATION DISABLED — accounts are created by Helvaro ─────────
     if (register === true) {
-      if (!projectCode) {
-        return res.status(400).json({ error: 'Projectcode is verplicht.' });
-      }
-
-      const existing = await findUser(email);
-      if (existing) {
-        return res.status(409).json({ error: 'E-mailadres al in gebruik.' });
-      }
-
-      const clientConfig = await findClientConfig(projectCode);
-      if (!clientConfig) {
-        return res.status(404).json({ error: 'Ongeldige projectcode.' });
-      }
-
-      const configFields = clientConfig.fields;
-      const clientName = name || configFields['Client Name'] || email.split('@')[0];
-      const apiKey = configFields['API Key'] || configFields[FIELDS.apiKey];
-
-      if (!apiKey) {
-        return res.status(500).json({ error: 'Geen API-sleutel gevonden voor dit project.' });
-      }
-
-      await createUser({
-        email,
-        password,
-        clientName,
-        projectCode,
-        apiKey,
-      });
-
-      return res.status(201).json({
-        success: true,
-        apiKey,
-        clientName,
-        projectCode,
-      });
+      return res.status(403).json({ error: 'Registratie is niet beschikbaar. Neem contact op met Helvaro.' });
     }
 
     // ── LOGIN ─────────────────────────────────────────────────────────────
