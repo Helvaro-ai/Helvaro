@@ -1452,42 +1452,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="btn-login" id="btn-login"><span>INLOGGEN</span></button>
-    <div style="text-align:center;margin-top:4px">
-      <span style="font-size:12px;color:var(--text-muted)">Nog geen account? </span>
-      <button onclick="showView('register')" style="background:none;border:none;color:var(--cyan);font-size:12px;cursor:pointer;font-family:inherit">Registreren →</button>
-    </div>
-    <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
-  </div>
-</div>
-
-<!-- REGISTRATION VIEW -->
-<div id="register-page" style="display:none;position:fixed;inset:0;background:var(--bg-primary);display:none;align-items:center;justify-content:center;z-index:200;flex-direction:column">
-  <div class="login-card" style="max-width:440px">
-    <div class="login-logo" style="margin-bottom:8px">
-      <p class="login-subtitle" style="font-size:13px;margin-top:6px">Nieuw account aanmaken</p>
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="reg-email">E-mailadres</label>
-      <input class="form-input" type="email" id="reg-email" placeholder="naam@bedrijf.nl" autocomplete="email">
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="reg-password">Wachtwoord</label>
-      <input class="form-input" type="password" id="reg-password" placeholder="Kies een wachtwoord" autocomplete="new-password">
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="reg-name">Uw naam <span style="color:var(--text-muted);font-weight:400">(optioneel)</span></label>
-      <input class="form-input" type="text" id="reg-name" placeholder="Uw volledige naam">
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="reg-code">Projectcode <span style="color:var(--cyan);font-size:10px">— ontvangen van Helvaro</span></label>
-      <input class="form-input" type="text" id="reg-code" placeholder="bijv. HLV-2024-001" autocomplete="off">
-    </div>
-    <button class="btn-login" id="btn-register" onclick="doRegister()"><span>ACCOUNT AANMAKEN</span></button>
-    <div class="login-error" id="reg-error"></div>
-    <div style="text-align:center;margin-top:16px">
-      <span style="font-size:12px;color:var(--text-muted)">Al een account? </span>
-      <button onclick="showView('login')" style="background:none;border:none;color:var(--cyan);font-size:12px;cursor:pointer;font-family:inherit">Inloggen →</button>
-    </div>
+        <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
   </div>
 </div>
 
@@ -1823,8 +1788,6 @@ const AUTH_URL = 'https://helvaro.vercel.app/api/auth';
 
 function showView(view) {
   document.getElementById('login-page').style.display = view === 'login' ? 'flex' : 'none';
-  const regEl = document.getElementById('register-page');
-  if (regEl) regEl.style.display = view === 'register' ? 'flex' : 'none';
 }
 
 function saveSession(apiKey, clientName, projectCode) {
@@ -1856,7 +1819,7 @@ function logout() {
   state.leads = [];
   state.stats = null;
   document.getElementById('dashboard-app').classList.remove('visible');
-  showView('login');
+  document.getElementById('login-page').style.display = 'flex';
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').classList.remove('visible');
@@ -2611,66 +2574,11 @@ async function handleLogin() {
 }
 
 /* ============================================================
-   REGISTRATION
-   ============================================================ */
-async function doRegister() {
-  const email = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  const name = document.getElementById('reg-name').value.trim();
-  const projectCode = document.getElementById('reg-code').value.trim();
-  const errEl = document.getElementById('reg-error');
-  errEl.classList.remove('visible');
-
-  if (!email || !password || !projectCode) {
-    errEl.textContent = 'Vul alle verplichte velden in.';
-    errEl.classList.add('visible');
-    return;
-  }
-
-  const btn = document.getElementById('btn-register');
-  btn.querySelector('span').textContent = 'BEZIG...';
-  btn.disabled = true;
-
-  try {
-    const authResp = await fetch(AUTH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, projectCode, register: true }),
-    });
-    const authData = await authResp.json();
-    if (!authResp.ok) {
-      errEl.textContent = authData.error || 'Registratie mislukt.';
-      errEl.classList.add('visible');
-      return;
-    }
-    saveSession(authData.apiKey, authData.clientName, authData.projectCode);
-    const data = await fetchLeads();
-    state.leads = data.leads || [];
-    state.stats = data.stats || {};
-    state.clientName = authData.clientName || email.split('@')[0];
-    state.lastFetch = Date.now();
-    toast('Account aangemaakt! Welkom bij Helvaro.', 'success');
-    await startDashboard();
-  } catch (err) {
-    errEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
-    errEl.classList.add('visible');
-  } finally {
-    btn.querySelector('span').textContent = 'ACCOUNT AANMAKEN';
-    btn.disabled = false;
-  }
-}
-
-/* ============================================================
    INIT
    ============================================================ */
 (async function init() {
   initTheme();
-
-  // Register enter key on reg fields
-  ['reg-email','reg-password','reg-name','reg-code'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
-  });
+    });
 
   if (tryAutoLogin()) {
     try {
@@ -2682,10 +2590,10 @@ async function doRegister() {
       await startDashboard();
     } catch {
       clearSession();
-      showView('login');
+      document.getElementById('login-page').style.display = 'flex';
     }
   } else {
-    showView('login');
+    document.getElementById('login-page').style.display = 'flex';
   }
 })();
 </script>
