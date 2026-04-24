@@ -36,10 +36,22 @@ module.exports = async function handler(req, res) {
   // PATCH — update notities
   if (req.method === 'PATCH') {
     try {
-      const parts    = req.url.split('/').filter(Boolean);
-      const recordId = parts[parts.length - 1];
+      // Record ID comes as ?id=recXXX (query param) — path-based routing doesn't work on Vercel
+      const pqs      = (req.url || '').split('?')[1] || '';
+      const pParams  = new URLSearchParams(pqs);
+      let recordId   = pParams.get('id');
+      // Fallback: last segment of URL path (e.g. /api/leads/recXXX)
+      if (!recordId) {
+        const parts = (req.url || '').split('?')[0].split('/').filter(Boolean);
+        const last  = parts[parts.length - 1];
+        if (last && last.startsWith('rec')) recordId = last;
+      }
+      if (!recordId) return res.status(400).json({ error: 'Record ID ontbreekt' });
+
       let body = req.body;
       if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+      if (!body || typeof body !== 'object') body = {};
+
       const pRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
@@ -48,7 +60,9 @@ module.exports = async function handler(req, res) {
           body: JSON.stringify({ fields: { fldoLRI5W12ThTls7: body.notities || '' } })
         }
       );
-      return res.status(200).json(await pRes.json());
+      const pData = await pRes.json();
+      if (!pRes.ok) return res.status(500).json({ error: 'Airtable PATCH mislukt', details: pData });
+      return res.status(200).json(pData);
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }

@@ -1845,7 +1845,7 @@ async function fetchRapport() {
 }
 
 async function patchNotes(id, notities) {
-  const resp = await fetch(\`\${API_BASE}/leads/\${id}\`, {
+  const resp = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(id)}\`, {
     method: 'PATCH',
     headers: {
       'x-api-key': state.apiKey,
@@ -2578,7 +2578,6 @@ async function handleLogin() {
    ============================================================ */
 (async function init() {
   initTheme();
-    });
 
   if (tryAutoLogin()) {
     try {
