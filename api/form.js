@@ -16,16 +16,27 @@ module.exports = async function handler(req, res) {
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     if (!body || typeof body !== 'object') body = {};
 
-    const name         = (body.name         || '').trim();
-    const phone        = (body.phone        || '').trim();
-    const project_code = (body.project_code || 'HELVARO').trim();
-    const bron         = (body.bron         || 'Website').trim();
+    // Extract project_code: URL path (/api/form/CODE) takes priority over body
+    let project_code = '';
+    const urlPath = (req.url || '').split('?')[0];
+    const pathParts = urlPath.split('/').filter(Boolean);
+    // pathParts looks like ['api','form','PROJECTCODE'] or ['form','PROJECTCODE']
+    const formIdx = pathParts.indexOf('form');
+    if (formIdx !== -1 && pathParts[formIdx + 1]) {
+      project_code = decodeURIComponent(pathParts[formIdx + 1]).trim();
+    }
+    if (!project_code) project_code = (body.project_code || '').trim();
+    if (!project_code) project_code = 'HELVARO';
+
+    const name  = (body.name  || '').trim();
+    const phone = (body.phone || '').trim();
+    const bron  = (body.bron  || 'Website').trim();
 
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
 
-    // Look up client config
-    const formula = encodeURIComponent(`{Project Code}="${project_code}"`);
+    // Look up client config by project code
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${project_code}"`);
     const cRes = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
@@ -39,7 +50,7 @@ module.exports = async function handler(req, res) {
     const aiName     = cfg.fldRvoe1JMPOtPWC7 || cfg['AI Name']      || 'Mathis';
     const clientName = cfg.fldAnB848Sr5jl6dq  || cfg['Client Name'] || 'Helvaro';
 
-    // Create lead record
+    // Create lead record in Airtable
     const createRes = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}`,
       {
@@ -60,13 +71,13 @@ module.exports = async function handler(req, res) {
     const createData = await createRes.json();
     if (!createRes.ok) return res.status(500).json({ error: 'Lead aanmaken mislukt', details: createData });
 
-    // Normalise phone number for WhatsApp (Belgian format)
+    // Normalise phone for WhatsApp (Belgian format)
     let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
-    if (waPhone.startsWith('00'))       waPhone = '+' + waPhone.slice(2);
-    else if (waPhone.startsWith('0'))   waPhone = '+32' + waPhone.slice(1);
-    else if (!waPhone.startsWith('+'))  waPhone = '+32' + waPhone;
+    if (waPhone.startsWith('00'))      waPhone = '+' + waPhone.slice(2);
+    else if (waPhone.startsWith('0'))  waPhone = '+32' + waPhone.slice(1);
+    else if (!waPhone.startsWith('+')) waPhone = '+32' + waPhone;
 
-    // Send WhatsApp message (non-blocking — lead is already saved even if this fails)
+    // Send WhatsApp message — non-blocking (lead is already saved even if this fails)
     const waMsg = `Hallo ${name}! 👋 Ik ben ${aiName} van ${clientName}. Ik zag dat je interesse hebt — top! Mag ik je even een paar snelle vragen stellen om te zien hoe we je het beste kunnen helpen?`;
     fetch(
       `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,

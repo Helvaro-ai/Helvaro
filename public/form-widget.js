@@ -5,8 +5,13 @@
     [].slice.call(document.querySelectorAll('script')).find(function (s) {
       return s.src && s.src.indexOf('form-widget') !== -1;
     });
-  var PROJECT_CODE = (script && script.getAttribute('data-project')) || 'HELVARO';
-  var API = 'https://helvaro.vercel.app/api/form';
+
+  var PROJECT_CODE    = (script && script.getAttribute('data-project'))  || 'HELVARO';
+  var CUSTOM_ENDPOINT = (script && script.getAttribute('data-endpoint'))  || '';
+
+  // Build the API endpoint: custom takes priority, otherwise use URL-path format
+  var API_ENDPOINT = CUSTOM_ENDPOINT ||
+    ('https://helvaro-helvaros-projects.vercel.app/api/form/' + encodeURIComponent(PROJECT_CODE));
 
   /* ── Styles ───────────────────────────────────────────────────────────── */
   var css = document.createElement('style');
@@ -114,10 +119,12 @@
     }
     sendBtn.textContent = 'VERSTUREN\u2026';
     sendBtn.disabled    = true;
-    fetch(API, {
+
+    // POST to endpoint — project code is in the URL path, not in the body
+    fetch(API_ENDPOINT, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name: name, phone: phone, project_code: PROJECT_CODE, bron: 'Website' })
+      body:    JSON.stringify({ name: name, phone: phone, bron: 'Website' })
     })
     .then(function (r) {
       if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Serverfout'); });
