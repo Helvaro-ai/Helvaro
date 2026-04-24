@@ -1683,7 +1683,7 @@ const state = {
   stats: null,
 };
 
-const API_BASE = 'https://helvaro.vercel.app/api';
+const API_BASE = '/api';
 
 /* ============================================================
    UTILITY FUNCTIONS
@@ -1784,7 +1784,7 @@ function toggleTheme() {
 /* ============================================================
    AUTH
    ============================================================ */
-const AUTH_URL = 'https://helvaro.vercel.app/api/auth';
+const AUTH_URL = '/api/auth';
 
 function showView(view) {
   document.getElementById('login-page').style.display = view === 'login' ? 'flex' : 'none';
