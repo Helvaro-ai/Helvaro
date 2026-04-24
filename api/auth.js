@@ -36,36 +36,31 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const body     = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  let body;
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  } catch {
+    return res.status(400).json({ error: 'Ongeldige JSON.' });
+  }
+
   const { email, password, register } = body;
 
   if (!email || !password) {
     return res.status(400).json({ error: 'E-mailadres en wachtwoord zijn verplicht.' });
   }
 
-  // Registration is disabled — accounts are created by Helvaro
   if (register === true) {
     return res.status(403).json({ error: 'Registratie is niet beschikbaar. Neem contact op met Helvaro.' });
   }
 
   try {
-<<<<<<< HEAD
-    const safe    = (s) => s.replace(/"/g, '\\"');
+    const safe    = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     const formula = encodeURIComponent(
       `AND({${UF.email}}="${safe(email)}",{${UF.password}}="${safe(password)}",{${UF.active}}=1)`
     );
     const data = await airtable(`/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`);
     const user = data.records?.[0];
 
-=======
-    // ── REGISTRATION DISABLED — accounts are created by Helvaro ─────────
-    if (register === true) {
-      return res.status(403).json({ error: 'Registratie is niet beschikbaar. Neem contact op met Helvaro.' });
-    }
-
-    // ── LOGIN ─────────────────────────────────────────────────────────────
-    const user = await findActiveUser(email, password);
->>>>>>> 5856e07fb2e4dd444c7fa0e0459a42dfcca9f4d9
     if (!user) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord.' });
     }
@@ -81,4 +76,4 @@ module.exports = async function handler(req, res) {
     console.error('[auth]', err.message);
     return res.status(500).json({ error: 'Serverfout. Probeer later opnieuw.' });
   }
-}
+};
