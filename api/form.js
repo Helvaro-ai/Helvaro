@@ -18,14 +18,13 @@ module.exports = async function handler(req, res) {
 
     // Extract project_code: URL path (/api/form/CODE) takes priority over body
     let project_code = '';
-    const urlPath = (req.url || '').split('?')[0];
-    const pathParts = urlPath.split('/').filter(Boolean);
-    // pathParts looks like ['api','form','PROJECTCODE'] or ['form','PROJECTCODE']
-    const formIdx = pathParts.indexOf('form');
-    if (formIdx !== -1 && pathParts[formIdx + 1]) {
-      project_code = decodeURIComponent(pathParts[formIdx + 1]).trim();
+    const urlPath  = (req.url || '').split('?')[0];
+    const parts    = urlPath.split('/').filter(Boolean);
+    const formIdx  = parts.indexOf('form');
+    if (formIdx !== -1 && parts[formIdx + 1]) {
+      project_code = decodeURIComponent(parts[formIdx + 1]).trim().toUpperCase();
     }
-    if (!project_code) project_code = (body.project_code || '').trim();
+    if (!project_code) project_code = (body.project_code || '').trim().toUpperCase();
     if (!project_code) project_code = 'HELVARO';
 
     const name  = (body.name  || '').trim();
@@ -37,7 +36,7 @@ module.exports = async function handler(req, res) {
 
     // Look up client config by project code
     const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${project_code}"`);
-    const cRes = await fetch(
+    const cRes  = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );
@@ -50,6 +49,12 @@ module.exports = async function handler(req, res) {
     const aiName     = cfg.fldRvoe1JMPOtPWC7 || cfg['AI Name']      || 'Mathis';
     const clientName = cfg.fldAnB848Sr5jl6dq  || cfg['Client Name'] || 'Helvaro';
 
+    // Normalise phone for WhatsApp
+    let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+    if      (waPhone.startsWith('00'))     waPhone = '+' + waPhone.slice(2);
+    else if (waPhone.startsWith('0'))      waPhone = '+32' + waPhone.slice(1);
+    else if (!waPhone.startsWith('+'))     waPhone = '+32' + waPhone;
+
     // Create lead record in Airtable
     const createRes = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}`,
@@ -59,7 +64,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           fields: {
             fldbk0LVNckOU0bqA: name,
-            fld6YaitW0lMqHUrd: phone,
+            fld6YaitW0lMqHUrd: waPhone,
             fldSmczuyUJd26HLe: project_code,
             fld8mkrEWcyq7mUip: 'new',
             fldGoerozqdea4BfU: bron,
@@ -69,24 +74,29 @@ module.exports = async function handler(req, res) {
       }
     );
     const createData = await createRes.json();
-    if (!createRes.ok) return res.status(500).json({ error: 'Lead aanmaken mislukt', details: createData });
+    if (!createRes.ok) {
+      console.error('Airtable create error:', JSON.stringify(createData));
+      return res.status(500).json({ error: 'Lead aanmaken mislukt' });
+    }
 
-    // Normalise phone for WhatsApp (Belgian format)
-    let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
-    if (waPhone.startsWith('00'))      waPhone = '+' + waPhone.slice(2);
-    else if (waPhone.startsWith('0'))  waPhone = '+32' + waPhone.slice(1);
-    else if (!waPhone.startsWith('+')) waPhone = '+32' + waPhone;
+    // ── Non-blocking side effects ────────────────────────────────────────────
 
-    // Send WhatsApp message — non-blocking (lead is already saved even if this fails)
-    const waMsg = `Hallo ${name}! 👋 Ik ben ${aiName} van ${clientName}. Ik zag dat je interesse hebt — top! Mag ik je even een paar snelle vragen stellen om te zien hoe we je het beste kunnen helpen?`;
-    fetch(
-      `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
-      {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messaging_product: 'whatsapp', to: waPhone, type: 'text', text: { body: waMsg } })
-      }
-    ).catch(err => console.error('WhatsApp send failed:', err.message));
+    // 1. WhatsApp greeting to the lead
+    const waGreeting = `Hallo ${name}! 👋 Ik ben ${aiName} van ${clientName}. Ik zag dat je interesse hebt — top! Mag ik je even een paar snelle vragen stellen om te zien hoe we je het beste kunnen helpen?`;
+    sendWA(waPhone, waGreeting);
+
+    // 2. WhatsApp notification to the Helvaro owner
+    const notifyPhone = process.env.NOTIFY_PHONE;
+    if (notifyPhone) {
+      const notifyMsg =
+        `🔔 *Nieuwe lead!*\n\n` +
+        `👤 Naam: ${name}\n` +
+        `📱 Tel: ${waPhone}\n` +
+        `🏢 Project: ${project_code}\n` +
+        `📍 Bron: ${bron}\n\n` +
+        `Open het dashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`;
+      sendWA(notifyPhone, notifyMsg);
+    }
 
     return res.status(200).json({ success: true, id: createData.id });
 
@@ -95,3 +105,24 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Serverfout: ' + err.message });
   }
 };
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function sendWA(to, message) {
+  fetch(
+    `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
+    {
+      method:  'POST',
+      headers: {
+        Authorization:  `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: message }
+      })
+    }
+  ).catch(err => console.error(`WhatsApp naar ${to} mislukt:`, err.message));
+}

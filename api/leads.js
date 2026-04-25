@@ -6,18 +6,18 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const AIRTABLE_TOKEN = process.env.API_Airtable;
-  const BASE_ID = process.env.BASE_AIRTABLE;
-  const LEADS_TABLE = 'tbliukTnDAbEDcZmt';
-  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  const BASE_ID        = process.env.BASE_AIRTABLE;
+  const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
+  const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
+  // ── Auth ────────────────────────────────────────────────────────────────────
   const apiKey = req.headers['x-api-key'];
   if (!apiKey) return res.status(401).json({ error: 'API key ontbreekt' });
 
-  // Find client by API key
   let client;
   try {
     const formula = encodeURIComponent(`{API Key}="${apiKey}"`);
-    const cRes = await fetch(
+    const cRes    = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );
@@ -31,19 +31,17 @@ module.exports = async function handler(req, res) {
   }
 
   const projectCode = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code'] || '';
-  const clientName  = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name'] || '';
+  const clientName  = client.fields['fldAnB848Sr5jl6dq']  || client.fields['Client Name']  || '';
 
-  // PATCH — update notities
+  // ── PATCH — save notes ──────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
     try {
-      // Record ID comes as ?id=recXXX (query param) — path-based routing doesn't work on Vercel
       const pqs      = (req.url || '').split('?')[1] || '';
       const pParams  = new URLSearchParams(pqs);
       let recordId   = pParams.get('id');
-      // Fallback: last segment of URL path (e.g. /api/leads/recXXX)
       if (!recordId) {
-        const parts = (req.url || '').split('?')[0].split('/').filter(Boolean);
-        const last  = parts[parts.length - 1];
+        const p   = (req.url || '').split('?')[0].split('/').filter(Boolean);
+        const last = p[p.length - 1];
         if (last && last.startsWith('rec')) recordId = last;
       }
       if (!recordId) return res.status(400).json({ error: 'Record ID ontbreekt' });
@@ -52,12 +50,12 @@ module.exports = async function handler(req, res) {
       if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
       if (!body || typeof body !== 'object') body = {};
 
-      const pRes = await fetch(
+      const pRes  = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
-          method: 'PATCH',
+          method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: { fldoLRI5W12ThTls7: body.notities || '' } })
+          body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: body.notities || '' } })
         }
       );
       const pData = await pRes.json();
@@ -70,15 +68,16 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Fetch all leads for this client (paginated)
+  // ── GET — fetch all leads (paginated) ───────────────────────────────────────
   let allLeads = [];
   try {
     const formula = encodeURIComponent(`{Project Code}="${projectCode}"`);
-    let offset = '';
+    let offset    = '';
     do {
-      const url = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
-      const lRes  = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
+      const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       const lData = await lRes.json();
+      if (!lRes.ok) throw new Error(JSON.stringify(lData));
       allLeads = allLeads.concat(lData.records || []);
       offset   = lData.offset || '';
     } while (offset);
@@ -86,6 +85,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Leads ophalen mislukt: ' + err.message });
   }
 
+  // ── Field helpers ───────────────────────────────────────────────────────────
   function str(v)  { if (!v) return ''; if (typeof v === 'object' && v.name) return v.name; return String(v); }
   function bool(v) { return v === true || v === 1; }
   function num(v)  { return typeof v === 'number' ? v : parseFloat(v) || 0; }
@@ -106,32 +106,36 @@ module.exports = async function handler(req, res) {
       bron:                  str(f.fldGoerozqdea4BfU        || f.Bron),
       boekingslinkVerstuurd: bool(f.fldLeEqwNefdglLis       || f['Booking Link Sent']),
       afspraakGeboekt:       bool(f.fldyIGNetqcSEkoaK       || f['Appointment Booked']),
-      notities:              f.fldoLRI5W12ThTls7            || f.Notities                || '',
+      notities:              f.fldoLRI5W12ThTls7            || f.Notities               || '',
       leadScore:             num(f.fldpzQgMuWJLjogiD        || f['Lead Score']),
       opgepikt:              bool(f.fld86JQHB6dbuutA7       || f.Opgepikt),
-      verwachteWaarde:       f.fldv7qOYvCN1xJfiR           || f['Verwachte Waarde']     || '',
+      verwachteWaarde:       f.fldv7qOYvCN1xJfiR            || f['Verwachte Waarde']    || '',
       reactietijd:           num(f.fldUJJ8oSmAMQ9wB3        || f['Response Time (sec)']),
-      datum:                 f.fldR0r13EU4RwrtvH            || f['Created At']           || r.createdTime || ''
+      datum:                 f.fldR0r13EU4RwrtvH            || f['Created At']          || r.createdTime || ''
     };
   });
 
-  // Stats
+  // ── Stats ───────────────────────────────────────────────────────────────────
   const now   = new Date();
   const total = leads.length;
-  const qualified   = leads.filter(l => l.qualified).length;
-  const booked      = leads.filter(l => l.afspraakGeboekt).length;
+  const qualified      = leads.filter(l => l.qualified).length;
+  const booked         = leads.filter(l => l.afspraakGeboekt).length;
   const conversionRate = total > 0 ? Math.round((booked / total) * 1000) / 10 : 0;
-  const thisMonth   = leads.filter(l => {
+  const thisMonth      = leads.filter(l => {
     const d = new Date(l.datum);
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   }).length;
-  const times = leads.map(l => l.reactietijd).filter(v => v > 0);
+  const times          = leads.map(l => l.reactietijd).filter(v => v > 0);
   const avgResponseTime = times.length > 0
     ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
     : 0;
-  const stats = { total, qualified, booked, conversionRate, thisMonth, avgResponseTime };
+  const avgLeadScore   = leads.length > 0
+    ? Math.round(leads.reduce((a, l) => a + (l.leadScore || 0), 0) / leads.length)
+    : 0;
+  const stats = { total, qualified, booked, conversionRate, thisMonth, avgResponseTime, avgLeadScore };
 
-  const qs = (req.url || '').split('?')[1] || '';
+  // ── Query params ────────────────────────────────────────────────────────────
+  const qs     = (req.url || '').split('?')[1] || '';
   const params = new URLSearchParams(qs);
 
   // CSV export
@@ -158,18 +162,18 @@ module.exports = async function handler(req, res) {
     const wQual   = wLeads.filter(l => l.qualified).length;
     const wBooked = wLeads.filter(l => l.afspraakGeboekt).length;
     const wConv   = wTotal > 0 ? Math.round((wBooked / wTotal) * 1000) / 10 : 0;
-    const mn = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    const mn  = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
     const van = `${sevenDaysAgo.getDate()} ${mn[sevenDaysAgo.getMonth()]}`;
     const tot = `${now.getDate()} ${mn[now.getMonth()]} ${now.getFullYear()}`;
     return res.status(200).json({
       rapport: {
-        periode:             `${van} - ${tot}`,
-        totaalLeads:         wTotal,
-        gekwalificeerd:      wQual,
-        afspraken:           wBooked,
-        conversie:           wConv,
+        periode:              `${van} - ${tot}`,
+        totaalLeads:          wTotal,
+        gekwalificeerd:       wQual,
+        afspraken:            wBooked,
+        conversie:            wConv,
         gekwalificeerdeLijst: wLeads.filter(l => l.qualified)
-          .map(l => ({ naam: l.naam, telefoon: l.telefoon, samenvatting: l.samenvatting }))
+          .map(l => ({ naam: l.naam, telefoon: l.telefoon, samenvatting: l.samenvatting, leadScore: l.leadScore }))
       },
       leads, stats, client: { naam: clientName }
     });
