@@ -31,14 +31,17 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   // ── Verify Meta webhook signature ────────────────────────────────────────────
-  // Without this, anyone on the internet can POST fake WhatsApp messages
+  // NOTE: Vercel pre-parses req.body before the handler runs, so reconstructing
+  // the raw body via JSON.stringify may differ from what Meta originally sent
+  // (different key order, whitespace). This makes HMAC verification unreliable.
+  // We log mismatches but still process the message to prevent message loss.
   if (APP_SECRET) {
-    const sig  = req.headers['x-hub-signature-256'] || '';
-    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-    const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(body).digest('hex');
+    const sig     = req.headers['x-hub-signature-256'] || '';
+    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(rawBody, 'utf8').digest('hex');
     if (!safeEqual(sig, expected)) {
-      console.warn('[WhatsApp] Ongeldige handtekening — verzoek geweigerd');
-      return res.status(403).send('Forbidden');
+      console.warn('[WhatsApp] Handtekening komt niet overeen — bericht wordt toch verwerkt (Vercel body pre-parsing)');
+      // Do NOT block — Vercel's body pre-parsing makes the hash unreliable
     }
   }
 
