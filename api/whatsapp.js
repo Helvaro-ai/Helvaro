@@ -1,4 +1,8 @@
-const VERIFY_TOKEN  = 'leadbot_verify_token';
+const crypto = require('crypto');
+
+// Move tokens to env vars — never hardcode secrets in source code
+const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN || 'leadbot_verify_token';
+const APP_SECRET    = process.env.WA_APP_SECRET;   // Meta App Secret for signature verification
 
 const AIRTABLE_TOKEN  = process.env.API_Airtable;
 const AIRTABLE_BASE   = process.env.BASE_AIRTABLE;
@@ -26,6 +30,18 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
+  // ── Verify Meta webhook signature ────────────────────────────────────────────
+  // Without this, anyone on the internet can POST fake WhatsApp messages
+  if (APP_SECRET) {
+    const sig  = req.headers['x-hub-signature-256'] || '';
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(body).digest('hex');
+    if (!safeEqual(sig, expected)) {
+      console.warn('[WhatsApp] Ongeldige handtekening — verzoek geweigerd');
+      return res.status(403).send('Forbidden');
+    }
+  }
+
   // Always reply 200 immediately — Meta will retry if we don't
   res.status(200).send('OK');
 
@@ -38,7 +54,7 @@ module.exports = async function handler(req, res) {
     if (!message || message.type !== 'text') return;
 
     const phone = message.from;           // e.g. "32478123456"
-    const text  = message.text.body.trim();
+    const text  = sanitize(message.text.body).trim();
 
     console.log(`[WhatsApp] Bericht van ${phone}: ${text}`);
     await processMessage(phone, text);
@@ -261,7 +277,7 @@ Voeg DECISION alleen toe als je echt genoeg informatie hebt. Geef een leadScore 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
 
 async function getClientByCode(code) {
-  const filter = encodeURIComponent(`{Project Code}="${code.toUpperCase()}"`);
+  const filter = encodeURIComponent(`{Project Code}="${escapeFormula(code.toUpperCase())}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
   const res    = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
@@ -270,7 +286,7 @@ async function getClientByCode(code) {
 }
 
 async function getLead(phone) {
-  const filter = encodeURIComponent(`{Phone}="${phone}"`);
+  const filter = encodeURIComponent(`{Phone}="${escapeFormula(phone)}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=Created%20At&sort[0][direction]=desc`;
   const res    = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
@@ -288,6 +304,30 @@ async function updateLead(recordId, fields) {
   const data = await res.json();
   if (data.error) console.error('[Airtable] Update fout:', JSON.stringify(data.error));
   return data;
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+// Timing-safe string comparison — prevents timing attacks on signature checks
+function safeEqual(a, b) {
+  try {
+    const ba = Buffer.from(a);
+    const bb = Buffer.from(b);
+    if (ba.length !== bb.length) return false;
+    return crypto.timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
+// Escape double-quotes and backslashes for Airtable formula strings
+function escapeFormula(val) {
+  return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// Strip control characters and limit message length before passing to AI
+function sanitize(val) {
+  return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 2000);
 }
 
 // ─── WHATSAPP ────────────────────────────────────────────────────────────────

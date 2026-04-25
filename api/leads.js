@@ -11,12 +11,17 @@ module.exports = async function handler(req, res) {
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const apiKey = req.headers['x-api-key'];
+  const apiKey = String(req.headers['x-api-key'] || '').trim().slice(0, 100);
   if (!apiKey) return res.status(401).json({ error: 'API key ontbreekt' });
+
+  // Basic sanity — API keys should only be alphanumeric/dashes
+  if (!/^[A-Za-z0-9\-_]{8,100}$/.test(apiKey)) {
+    return res.status(401).json({ error: 'Ongeldige API key' });
+  }
 
   let client;
   try {
-    const formula = encodeURIComponent(`{API Key}="${apiKey}"`);
+    const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
     const cRes    = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
@@ -27,7 +32,8 @@ module.exports = async function handler(req, res) {
     }
     client = cData.records[0];
   } catch (err) {
-    return res.status(500).json({ error: 'Database fout: ' + err.message });
+    console.error('Leads auth error:', err.message);
+    return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
   }
 
   const projectCode = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code'] || '';
@@ -36,33 +42,44 @@ module.exports = async function handler(req, res) {
   // ── PATCH — save notes ──────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
     try {
-      const pqs      = (req.url || '').split('?')[1] || '';
-      const pParams  = new URLSearchParams(pqs);
-      let recordId   = pParams.get('id');
+      const pqs     = (req.url || '').split('?')[1] || '';
+      const pParams = new URLSearchParams(pqs);
+      let recordId  = pParams.get('id') || '';
+
+      // Fallback: last URL segment
       if (!recordId) {
-        const p   = (req.url || '').split('?')[0].split('/').filter(Boolean);
-        const last = p[p.length - 1];
-        if (last && last.startsWith('rec')) recordId = last;
+        const p    = (req.url || '').split('?')[0].split('/').filter(Boolean);
+        recordId   = p[p.length - 1] || '';
       }
-      if (!recordId) return res.status(400).json({ error: 'Record ID ontbreekt' });
+
+      // Strict Airtable record ID format: rec + 14 alphanumeric chars
+      if (!/^rec[A-Za-z0-9]{14}$/.test(recordId)) {
+        return res.status(400).json({ error: 'Ongeldig record ID' });
+      }
 
       let body = req.body;
       if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
       if (!body || typeof body !== 'object') body = {};
+
+      const notities = String(body.notities || '').slice(0, 5000);
 
       const pRes  = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: body.notities || '' } })
+          body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: notities } })
         }
       );
       const pData = await pRes.json();
-      if (!pRes.ok) return res.status(500).json({ error: 'Airtable PATCH mislukt', details: pData });
+      if (!pRes.ok) {
+        console.error('Airtable PATCH error:', pRes.status);
+        return res.status(500).json({ error: 'Opslaan mislukt. Probeer later opnieuw.' });
+      }
       return res.status(200).json(pData);
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      console.error('PATCH error:', err.message);
+      return res.status(500).json({ error: 'Serverfout. Probeer later opnieuw.' });
     }
   }
 
@@ -71,18 +88,19 @@ module.exports = async function handler(req, res) {
   // ── GET — fetch all leads (paginated) ───────────────────────────────────────
   let allLeads = [];
   try {
-    const formula = encodeURIComponent(`{Project Code}="${projectCode}"`);
+    const formula = encodeURIComponent(`{Project Code}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
       const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       const lData = await lRes.json();
-      if (!lRes.ok) throw new Error(JSON.stringify(lData));
+      if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
       allLeads = allLeads.concat(lData.records || []);
       offset   = lData.offset || '';
     } while (offset);
   } catch (err) {
-    return res.status(500).json({ error: 'Leads ophalen mislukt: ' + err.message });
+    console.error('Leads fetch error:', err.message);
+    return res.status(500).json({ error: 'Leads ophalen mislukt. Probeer later opnieuw.' });
   }
 
   // ── Field helpers ───────────────────────────────────────────────────────────
@@ -116,8 +134,8 @@ module.exports = async function handler(req, res) {
   });
 
   // ── Stats ───────────────────────────────────────────────────────────────────
-  const now   = new Date();
-  const total = leads.length;
+  const now            = new Date();
+  const total          = leads.length;
   const qualified      = leads.filter(l => l.qualified).length;
   const booked         = leads.filter(l => l.afspraakGeboekt).length;
   const conversionRate = total > 0 ? Math.round((booked / total) * 1000) / 10 : 0;
@@ -181,3 +199,8 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({ leads, stats, client: { naam: clientName } });
 };
+
+// Escape double-quotes and backslashes for Airtable formula strings
+function escapeFormula(val) {
+  return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
