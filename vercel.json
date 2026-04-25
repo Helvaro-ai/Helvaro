@@ -2,10 +2,13 @@
   "functions": {
     "api/**/*.js": { "maxDuration": 30 }
   },
+  "redirects": [
+    { "source": "/", "destination": "/dashboard", "permanent": false }
+  ],
   "rewrites": [
-    { "source": "/dashboard", "destination": "/api/dashboard" },
-    { "source": "/demo",      "destination": "/api/demo" },
-    { "source": "/form-widget.js", "destination": "/public/form-widget.js" },
-    { "source": "/api/form/:code", "destination": "/api/form" }
+    { "source": "/dashboard",       "destination": "/api/dashboard" },
+    { "source": "/demo",            "destination": "/api/demo" },
+    { "source": "/form-widget.js",  "destination": "/public/form-widget.js" },
+    { "source": "/api/form/:code",  "destination": "/api/form" }
   ]
 }
