@@ -55,7 +55,8 @@ module.exports = async function handler(req, res) {
     const aiName     = cfg.fldRvoe1JMPOtPWC7 || cfg['AI Name']      || 'Mathis';
     const clientName = cfg.fldAnB848Sr5jl6dq  || cfg['Client Name'] || 'Helvaro';
 
-    // ── Normalise phone for WhatsApp (Airtable gets original) ──────────────────
+    // ── Normalise phone — stored in Airtable in international digits-only format
+    // so it matches what WhatsApp sends as message.from (e.g. "32466358427")
     let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
     if      (waPhone.startsWith('00')) waPhone = waPhone.slice(2);
     else if (waPhone.startsWith('+'))  waPhone = waPhone.slice(1);
@@ -70,7 +71,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           fields: {
             fldbk0LVNckOU0bqA: name,
-            fld6YaitW0lMqHUrd: phone,
+            fld6YaitW0lMqHUrd: waPhone,   // normalized — must match WhatsApp's message.from
             fldSmczuyUJd26HLe: project_code,
             fld8mkrEWcyq7mUip: 'new',
             fldGoerozqdea4BfU: bron,
