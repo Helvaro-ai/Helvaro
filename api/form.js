@@ -49,13 +49,13 @@ module.exports = async function handler(req, res) {
     const aiName     = cfg.fldRvoe1JMPOtPWC7 || cfg['AI Name']      || 'Mathis';
     const clientName = cfg.fldAnB848Sr5jl6dq  || cfg['Client Name'] || 'Helvaro';
 
-    // Normalise phone for WhatsApp
+    // Normalise phone for WhatsApp only — Airtable gets the original
     let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
-    if      (waPhone.startsWith('00'))     waPhone = '+' + waPhone.slice(2);
-    else if (waPhone.startsWith('0'))      waPhone = '+32' + waPhone.slice(1);
-    else if (!waPhone.startsWith('+'))     waPhone = '+32' + waPhone;
+    if      (waPhone.startsWith('00')) waPhone = waPhone.slice(2);
+    else if (waPhone.startsWith('+'))  waPhone = waPhone.slice(1);
+    else if (waPhone.startsWith('0'))  waPhone = '32' + waPhone.slice(1);
 
-    // Create lead record in Airtable
+    // Create lead record in Airtable (original phone, unmodified)
     const createRes = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}`,
       {
@@ -64,7 +64,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           fields: {
             fldbk0LVNckOU0bqA: name,
-            fld6YaitW0lMqHUrd: waPhone,
+            fld6YaitW0lMqHUrd: phone,
             fldSmczuyUJd26HLe: project_code,
             fld8mkrEWcyq7mUip: 'new',
             fldGoerozqdea4BfU: bron,
@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
       const notifyMsg =
         `🔔 *Nieuwe lead!*\n\n` +
         `👤 Naam: ${name}\n` +
-        `📱 Tel: ${waPhone}\n` +
+        `📱 Tel: ${phone}\n` +
         `🏢 Project: ${project_code}\n` +
         `📍 Bron: ${bron}\n\n` +
         `Open het dashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`;
