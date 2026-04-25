@@ -128,7 +128,7 @@ function sanitize(val) {
 
 function sendWA(to, message) {
   fetch(
-    `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
+    `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
     {
       method:  'POST',
       headers: {
