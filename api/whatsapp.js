@@ -114,7 +114,7 @@ async function processMessage(phone, text) {
   }
 
   // 6. Determine AI identity
-  const aiName     = client.fields['AI Name']      || client.fields['fldRvoe1JMPOtPWC7'] || 'Mathis Willems';
+  const aiName     = 'Mathis Willems';
   const clientName = client.fields['Client Name']  || client.fields['fldAnB848Sr5jl6dq'] || 'Helvaro';
   const leadName   = lead.fields['Name']           || lead.fields['fldbk0LVNckOU0bqA']   || '';
 
