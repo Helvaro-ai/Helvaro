@@ -88,10 +88,9 @@ module.exports = async function handler(req, res) {
 
     // ── Send WhatsApp messages (awaited — Vercel kills the function on response) ──
 
-    // 1. WhatsApp greeting to the lead
-    const waGreeting =
-      `Hallo ${sanitize(name)}! 👋 Ik ben ${sanitize(aiName)} van ${sanitize(clientName)}. ` +
-      `Ik zag dat je interesse hebt — top! Mag ik je even een paar snelle vragen stellen om te zien hoe we je het beste kunnen helpen?`;
+    // 1. WhatsApp greeting to the lead — short, casual, human
+    const firstName   = sanitize(name).split(' ')[0];
+    const waGreeting  = `Hey ${firstName}! ${sanitize(aiName)} hier van ${sanitize(clientName)} 👋\n\nZag dat je je gegevens achterliet — wat bracht je bij ons?`;
     await sendWA(waPhone, waGreeting);
 
     // 2. WhatsApp notification to the Helvaro owner
