@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
     }
 
     const cfg        = cData.records[0].fields;
-    const aiName     = cfg.fldRvoe1JMPOtPWC7 || cfg['AI Name']      || 'Mathis';
+    const aiName     = cfg.fldRvoe1JMPOtPWC7 || cfg['AI Name']      || 'Mathis Willems';
     const clientName = cfg.fldAnB848Sr5jl6dq  || cfg['Client Name'] || 'Helvaro';
 
     // ── Normalise phone — stored in Airtable in international digits-only format
