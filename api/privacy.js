@@ -6,6 +6,7 @@ module.exports = function handler(req, res) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacybeleid — Helvaro</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 60px auto; padding: 0 24px; color: #111; line-height: 1.7; }
     h1 { font-size: 2rem; margin-bottom: 8px; }
