@@ -113,14 +113,15 @@ async function processMessage(phone, text) {
     if (website) websiteContent = await fetchWebsite(website);
   }
 
-  // 6. Determine AI identity
+  // 6. Determine AI identity and client config
   const aiName     = 'Mathis Willems';
   const clientName = client.fields['Client Name']  || client.fields['fldAnB848Sr5jl6dq'] || 'Helvaro';
   const leadName   = lead.fields['Name']           || lead.fields['fldbk0LVNckOU0bqA']   || '';
+  const address    = client.fields['fldTvMSdTZOyNgWod'] || '';
 
   // 7. Run AI
   const aiInstructions = client.fields['AI Instructions'] || '';
-  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent);
+  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address);
 
   // 8. Trim and push AI reply to history
   const replyText = aiResponse.message.trim();
@@ -149,28 +150,31 @@ async function processMessage(phone, text) {
   // 10. Send AI reply to lead
   await sendWA(phone, replyText);
 
-  // 11. If qualified → send Calendly link + notify owner
+  // 11. If qualified → send Calendly link + address + notify owner
   if (aiResponse.done && aiResponse.qualified) {
-    const calendly = client.fields['Calendly Link'] || client.fields['fldCalendly'];
+    const calendly    = client.fields['Calendly Link'] || client.fields['fldCalendly'];
     const bookingSent = lead.fields['Booking Link Sent'] || lead.fields['fldLeEqwNefdglLis'];
 
     if (calendly && !bookingSent) {
-      const bookingMsg = `Top! Dan plannen we even een kennismakingsgesprek in. Kies hier een moment dat je past 👇\n\n${calendly}`;
-      await sendWA(phone, bookingMsg);
+      await sendWA(phone, `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`);
+      if (address) {
+        await sendWA(phone, `Ons adres: ${address}`);
+      }
+      await sendWA(phone, 'Heb je de afspraak ingepland? Laat het me weten.');
       await updateLead(lead.id, { 'Booking Link Sent': true });
     }
 
     // Notify owner when a lead is qualified
     if (NOTIFY_PHONE) {
-      const score = aiResponse.leadScore ? ` · Score: ${aiResponse.leadScore}/100` : '';
+      const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/100` : '';
       const notifyMsg =
-        `⭐ *Gekwalificeerde lead!*\n\n` +
-        `👤 ${leadName}\n` +
-        `📱 ${phone}\n` +
-        `🏢 ${projectCode}${score}\n` +
-        `💬 ${aiResponse.summary || ''}\n\n` +
+        `Gekwalificeerde lead!\n\n` +
+        `Naam: ${leadName}\n` +
+        `Tel: ${phone}\n` +
+        `Project: ${projectCode}${score}\n` +
+        `${aiResponse.summary || ''}\n\n` +
         `Dashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`;
-      sendWA(NOTIFY_PHONE, notifyMsg);
+      await sendWA(NOTIFY_PHONE, notifyMsg);
     }
   }
 }
@@ -201,25 +205,26 @@ async function fetchWebsite(url) {
 
 // ─── AI ─────────────────────────────────────────────────────────────────────
 
-async function runAI(history, instructions, leadName, aiName, clientName, websiteContent) {
+async function runAI(history, instructions, leadName, aiName, clientName, websiteContent, address) {
   const firstName = leadName ? leadName.split(' ')[0] : '';
 
   const websiteSection = websiteContent
     ? `\nWEBSITE-INHOUD VAN DE KLANT (gebruik dit om vragen te beantwoorden):\n${websiteContent}\n`
     : '';
+  const addressSection = address ? `\nOns adres: ${address}\n` : '';
 
   const systemPrompt = `
 Je bent ${aiName}, sales bij ${clientName}. Je appt met iemand die net hun contactgegevens achterliet op de website.${firstName ? ` Je spreekt met ${firstName}.` : ''}
-${websiteSection}
+${websiteSection}${addressSection}
 HOE JE SCHRIJFT:
 Je schrijft zoals een echte sales persoon die snel even iemand appt tussen meetings door. Dat betekent:
 - Korte zinnen. Soms maar een halve. Dat is normaal op WhatsApp.
 - Altijd "je" en "jij", nooit "u".
 - Geen opsommingstekens, geen asterisken, geen lange uitleg.
-- Maximaal 2 zinnen per bericht — bij meer, splits het op in aparte berichten.
-- Emojis spaarzaam — max één per bericht, alleen als het écht past.
+- Geen emojis. Geen streepjes of gedachtestreepjes (geen "-" of "--" midden in een zin).
+- Maximaal 2 zinnen per bericht.
 - Begin NOOIT met "Zeker!", "Absoluut!", "Geweldig!" of andere neppe enthousiaste openers.
-- Je mag af en toe een informele zin of uitdrukking gebruiken — dat klinkt menselijker.
+- Je mag af en toe een informele zin of uitdrukking gebruiken.
 - Reageer altijd eerst op wat ze zeggen. Dan pas jouw volgende vraag.
 - Stel nooit meer dan 1 vraag per bericht.
 

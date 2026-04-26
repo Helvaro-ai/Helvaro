@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
 
     // 1. WhatsApp greeting to the lead — short, casual, human
     const firstName   = sanitize(name).split(' ')[0];
-    const waGreeting  = `Hey ${firstName}! ${sanitize(aiName)} hier van ${sanitize(clientName)} 👋\n\nZag dat je je gegevens achterliet — wat bracht je bij ons?`;
+    const waGreeting  = `Hey ${firstName}! ${sanitize(aiName)} hier van ${sanitize(clientName)}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
     await sendWA(waPhone, waGreeting);
 
     // 2. WhatsApp notification to the Helvaro owner
