@@ -310,23 +310,34 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   gap: 12px;
 }
 
+.sidebar-logo > img {
+  width: 64px !important;
+  height: 64px !important;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .sidebar-icon {
-  width: 38px;
-  height: 38px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue-primary), var(--cyan));
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  color: white;
   flex-shrink: 0;
-  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.sidebar-icon img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
 .sidebar-brand {
   font-family: 'Orbitron', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: 2px;
 }
