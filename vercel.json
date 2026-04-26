@@ -7,6 +7,7 @@
   ],
   "rewrites": [
     { "source": "/dashboard",       "destination": "/api/dashboard" },
+    { "source": "/privacy",         "destination": "/api/privacy" },
     { "source": "/demo",            "destination": "/api/demo" },
     { "source": "/form-widget.js",  "destination": "/public/form-widget.js" },
     { "source": "/api/form/:code",  "destination": "/api/form" }
