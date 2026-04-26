@@ -11,6 +11,8 @@
     { "source": "/demo",            "destination": "/api/demo" },
     { "source": "/form-widget.js",  "destination": "/public/form-widget.js" },
     { "source": "/favicon.png",     "destination": "/public/favicon.png" },
-    { "source": "/api/form/:code",  "destination": "/api/form" }
+    { "source": "/api/form/:code",  "destination": "/api/form" },
+    { "source": "/start/:code",     "destination": "/api/form-page" },
+    { "source": "/start",           "destination": "/api/form-page" }
   ]
 }
