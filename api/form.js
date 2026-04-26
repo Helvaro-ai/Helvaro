@@ -86,13 +86,13 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Lead aanmaken mislukt' });
     }
 
-    // ── Non-blocking side effects ───────────────────────────────────────────────
+    // ── Send WhatsApp messages (awaited — Vercel kills the function on response) ──
 
     // 1. WhatsApp greeting to the lead
     const waGreeting =
       `Hallo ${sanitize(name)}! 👋 Ik ben ${sanitize(aiName)} van ${sanitize(clientName)}. ` +
       `Ik zag dat je interesse hebt — top! Mag ik je even een paar snelle vragen stellen om te zien hoe we je het beste kunnen helpen?`;
-    sendWA(waPhone, waGreeting);
+    await sendWA(waPhone, waGreeting);
 
     // 2. WhatsApp notification to the Helvaro owner
     const notifyPhone = process.env.NOTIFY_PHONE;
@@ -104,7 +104,7 @@ module.exports = async function handler(req, res) {
         `🏢 Project: ${project_code}\n` +
         `📍 Bron: ${sanitize(bron)}\n\n` +
         `Dashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`;
-      sendWA(notifyPhone, notifyMsg);
+      await sendWA(notifyPhone, notifyMsg);
     }
 
     return res.status(200).json({ success: true, id: createData.id });
@@ -127,7 +127,7 @@ function sanitize(val) {
 }
 
 function sendWA(to, message) {
-  fetch(
+  return fetch(
     `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
     {
       method:  'POST',
