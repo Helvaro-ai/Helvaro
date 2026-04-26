@@ -147,7 +147,8 @@ async function processMessage(phone, text) {
   }
   await updateLead(lead.id, updateFields);
 
-  // 10. Send AI reply to lead
+  // 10. Wait 30 seconds before replying — feels like a real person typing
+  await new Promise(resolve => setTimeout(resolve, 30000));
   await sendWA(phone, replyText);
 
   // 11. If qualified → send Calendly link + address + notify owner

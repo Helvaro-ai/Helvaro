@@ -86,25 +86,19 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Lead aanmaken mislukt' });
     }
 
-    // ── Send WhatsApp messages (awaited — Vercel kills the function on response) ──
-
-    // 1. WhatsApp greeting to the lead — short, casual, human
+    // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
     const waGreeting  = `Hey ${firstName}! ${sanitize(aiName)} hier van ${sanitize(clientName)}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
-    await sendWA(waPhone, waGreeting);
-
-    // 2. WhatsApp notification to the Helvaro owner
     const notifyPhone = process.env.NOTIFY_PHONE;
-    if (notifyPhone) {
-      const notifyMsg =
-        `🔔 *Nieuwe lead!*\n\n` +
-        `👤 Naam: ${sanitize(name)}\n` +
-        `📱 Tel: ${phone}\n` +
-        `🏢 Project: ${project_code}\n` +
-        `📍 Bron: ${sanitize(bron)}\n\n` +
-        `Dashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`;
-      await sendWA(notifyPhone, notifyMsg);
-    }
+    const notifyMsg   = notifyPhone
+      ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`
+      : null;
+
+    // Fire after 60 seconds — feels like a real person picking up the form
+    setTimeout(async () => {
+      await sendWA(waPhone, waGreeting);
+      if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
+    }, 60000);
 
     return res.status(200).json({ success: true, id: createData.id });
 
