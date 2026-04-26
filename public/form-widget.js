@@ -7,6 +7,7 @@
     });
 
   var PROJECT_CODE    = (script && script.getAttribute('data-project'))  || 'HELVARO';
+  var CLIENT_NAME     = (script && script.getAttribute('data-name'))     || 'Helvaro';
   var CUSTOM_ENDPOINT = (script && script.getAttribute('data-endpoint'))  || '';
 
   // Build the API endpoint: custom takes priority, otherwise use URL-path format
@@ -69,7 +70,7 @@
     '<div id="hv-overlay" role="dialog" aria-modal="true">' +
     '<div id="hv-card">' +
     '<button id="hv-x" aria-label="Sluiten">\u2715</button>' +
-    '<div class="hv-logo">HELVARO</div>' +
+    '<div class="hv-logo">' + CLIENT_NAME + '</div>' +
     '<p class="hv-sub">Vul je gegevens in en wij nemen<br>contact op via WhatsApp</p>' +
     '<div id="hv-form">' +
     '<label class="hv-lbl" for="hv-naam">Naam</label>' +
