@@ -142,5 +142,12 @@ function sendWA(to, message) {
         text: { body: message }
       })
     }
-  ).catch(err => console.error(`WhatsApp naar ${to} mislukt:`, err.message));
+  ).then(async r => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.error) {
+      console.error(`[form] WhatsApp naar ${to} mislukt (${r.status}):`, JSON.stringify(data.error || data));
+    } else {
+      console.log(`[form] WhatsApp gestuurd naar ${to}`);
+    }
+  }).catch(err => console.error(`[form] WhatsApp netwerk fout naar ${to}:`, err.message));
 }
