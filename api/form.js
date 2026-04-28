@@ -100,6 +100,9 @@ module.exports = async function handler(req, res) {
       if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
     }, 60000);
 
+    // Email notification (fire-and-forget)
+    sendEmailNotification({ name, phone, project_code, bron, clientName }).catch(() => {});
+
     return res.status(200).json({ success: true, id: createData.id });
 
   } catch (err) {
@@ -117,6 +120,33 @@ function escapeFormula(val) {
 // Strip control characters and limit length before embedding in messages
 function sanitize(val) {
   return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 100);
+}
+
+async function sendEmailNotification({ name, phone, project_code, bron, clientName }) {
+  const RESEND_KEY   = process.env.RESEND_API_KEY;
+  const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL;
+  if (!RESEND_KEY || !NOTIFY_EMAIL) return;
+
+  await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from:    'Helvaro <noreply@helvaro.pro>',
+      to:      [NOTIFY_EMAIL],
+      subject: `Nieuwe lead — ${name} (${project_code})`,
+      html:    `
+        <div style="font-family:sans-serif;max-width:480px;margin:auto">
+          <h2 style="color:#1e6fd9">Nieuwe lead voor ${clientName}</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px;color:#666">Naam</td><td style="padding:8px;font-weight:600">${name}</td></tr>
+            <tr><td style="padding:8px;color:#666">Telefoon</td><td style="padding:8px;font-weight:600">${phone}</td></tr>
+            <tr><td style="padding:8px;color:#666">Project</td><td style="padding:8px">${project_code}</td></tr>
+            <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${bron}</td></tr>
+          </table>
+          <a href="https://helvaro-helvaros-projects.vercel.app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
+        </div>`
+    })
+  }).catch(err => console.error('[form] E-mail notificatie mislukt:', err.message));
 }
 
 function sendWA(to, message) {

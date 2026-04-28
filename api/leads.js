@@ -36,8 +36,9 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
   }
 
-  const projectCode = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code'] || '';
-  const clientName  = client.fields['fldAnB848Sr5jl6dq']  || client.fields['Client Name']  || '';
+  const projectCode  = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code']  || '';
+  const clientName   = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']   || '';
+  const calendlyLink = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'] || '';
 
   // ── PATCH — save notes ──────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
@@ -61,14 +62,20 @@ module.exports = async function handler(req, res) {
       if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
       if (!body || typeof body !== 'object') body = {};
 
-      const notities = String(body.notities || '').slice(0, 5000);
+      const fields = {};
+      if (body.notities !== undefined) fields['fldoLRI5W12ThTls7'] = String(body.notities).slice(0, 5000);
+      if (body.status   !== undefined) {
+        const allowed = ['new', 'in_progress', 'completed'];
+        if (allowed.includes(body.status)) fields['fld8mkrEWcyq7mUip'] = body.status;
+      }
+      if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
       const pRes  = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: notities } })
+          body:    JSON.stringify({ fields })
         }
       );
       const pData = await pRes.json();
@@ -125,6 +132,7 @@ module.exports = async function handler(req, res) {
       boekingslinkVerstuurd: bool(f.fldLeEqwNefdglLis       || f['Booking Link Sent']),
       afspraakGeboekt:       bool(f.fldyIGNetqcSEkoaK       || f['Appointment Booked']),
       notities:              f.fldoLRI5W12ThTls7            || f.Notities               || '',
+      gesprek:               f['Conversation History']       || '',
       leadScore:             num(f.fldpzQgMuWJLjogiD        || f['Lead Score']),
       opgepikt:              bool(f.fld86JQHB6dbuutA7       || f.Opgepikt),
       verwachteWaarde:       f.fldv7qOYvCN1xJfiR            || f['Verwachte Waarde']    || '',
@@ -193,11 +201,11 @@ module.exports = async function handler(req, res) {
         gekwalificeerdeLijst: wLeads.filter(l => l.qualified)
           .map(l => ({ naam: l.naam, telefoon: l.telefoon, samenvatting: l.samenvatting, leadScore: l.leadScore }))
       },
-      leads, stats, client: { naam: clientName }
+      leads, stats, client: { naam: clientName, calendly: calendlyLink }
     });
   }
 
-  return res.status(200).json({ leads, stats, client: { naam: clientName } });
+  return res.status(200).json({ leads, stats, client: { naam: clientName, calendly: calendlyLink } });
 };
 
 // Escape double-quotes and backslashes for Airtable formula strings

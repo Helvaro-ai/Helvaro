@@ -9,6 +9,7 @@ module.exports = async function handler(req, res) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ============================================================
    CSS CUSTOM PROPERTIES
@@ -303,58 +304,33 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .sidebar-logo {
-  padding: 24px 20px 20px;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .sidebar-logo > img {
-  height: 44px;
+  height: 52px;
   width: auto;
   flex-shrink: 0;
 }
 
-.sidebar-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue-primary), var(--cyan));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  color: white;
-  flex-shrink: 0;
-  animation: pulse-glow 2.5s ease-in-out infinite;
-}
-
-.sidebar-icon img {
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-  border-radius: 50%;
-}
-
 .sidebar-brand {
   font-family: 'Orbitron', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, #fff, #00d4ff);
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, #fff 40%, #00d4ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .sidebar-brand span {
-  display: block;
-  font-size: 9px;
-  font-weight: 400;
-  color: var(--text-muted);
-  letter-spacing: 1.5px;
-  margin-top: 2px;
+  display: none;
 }
 
 .sidebar-nav {
@@ -1191,6 +1167,117 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(43,143,255,0.3); }
 
+/* ── Nav badge (new-lead notification) ── */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 4px;
+  margin-left: auto;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* ── Status select in detail panel ── */
+.status-select {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+}
+.status-select:focus { border-color: var(--blue-bright); }
+
+/* ── WhatsApp conversation bubbles ── */
+.chat-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.chat-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.chat-bubble.user {
+  align-self: flex-start;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+  color: var(--text-primary);
+}
+.chat-bubble.ai {
+  align-self: flex-end;
+  background: rgba(30,111,217,0.18);
+  border: 1px solid rgba(30,111,217,0.3);
+  border-bottom-right-radius: 3px;
+  color: var(--text-primary);
+}
+.chat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+
+/* ── Chart container ── */
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.chart-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ── Admin client cards ── */
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.admin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color .2s, transform .15s;
+}
+.admin-card:hover { border-color: var(--blue-primary); transform: translateY(-2px); }
+.admin-card-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.admin-card-code { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 14px; }
+.admin-card-stats { display: flex; gap: 16px; }
+.admin-stat { text-align: center; }
+.admin-stat-val { font-size: 22px; font-weight: 700; color: var(--blue-bright); }
+.admin-stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
 .check-item {
   display: flex;
   align-items: center;
@@ -1493,9 +1580,17 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon">◈</span>
         Dashboard
       </button>
+      <button class="nav-item" data-page="calendly" id="nav-calendly">
+        <span class="nav-icon">📅</span>
+        Kalender
+      </button>
       <button class="nav-item" data-page="exports" id="nav-exports">
         <span class="nav-icon">⇓</span>
         Exports
+      </button>
+      <button class="nav-item" data-page="admin" id="nav-admin" style="display:none">
+        <span class="nav-icon">⚙</span>
+        Klanten
       </button>
     </nav>
     <div class="sidebar-bottom">
@@ -1548,6 +1643,12 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
         <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
         <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Leads per week (laatste 8 weken)</div>
+        <canvas id="leads-chart" height="80"></canvas>
       </div>
 
       <!-- Filters Bar -->
@@ -1659,6 +1760,36 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
       </div>
     </main>
+
+    <main class="page-content page" id="page-admin">
+      <div id="admin-content">
+        <div class="admin-grid" id="admin-grid">
+          <div style="color:var(--text-muted);font-size:14px">Klanten laden...</div>
+        </div>
+      </div>
+    </main>
+
+    <main class="page-content page" id="page-calendly">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;height:calc(100vh - 120px);display:flex;flex-direction:column;">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;flex-shrink:0;">
+          <div>
+            <div class="orbitron gradient-text" style="font-size:16px;font-weight:700;letter-spacing:1px;">Kalender</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Beheer uw afspraken via Calendly</div>
+          </div>
+          <a id="calendly-open-link" href="#" target="_blank" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px;font-weight:500;text-decoration:none;">
+            ↗ Openen in Calendly
+          </a>
+        </div>
+        <div style="flex:1;position:relative;">
+          <iframe
+            id="calendly-iframe"
+            src="about:blank"
+            style="width:100%;height:100%;border:none;display:block;"
+            allow="payment"
+          ></iframe>
+        </div>
+      </div>
+    </main>
   </div>
 </div>
 
@@ -1699,7 +1830,12 @@ const state = {
   currentPage: 'dashboard',
   activeLead: null,
   clientName: '',
+  calendlyUrl: '',
   stats: null,
+  knownLeadIds: null,
+  newLeadCount: 0,
+  adminLoaded: false,
+  leadsChart: null,
 };
 
 const API_BASE = '/api';
@@ -1866,13 +2002,20 @@ async function fetchRapport() {
 async function patchNotes(id, notities) {
   const resp = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(id)}\`, {
     method: 'PATCH',
-    headers: {
-      'x-api-key': state.apiKey,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'x-api-key': state.apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({ notities })
   });
   if (!resp.ok) throw new Error(\`Opslaan mislukt: \${resp.status}\`);
+  return resp.json();
+}
+
+async function patchStatus(id, status) {
+  const resp = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(id)}\`, {
+    method: 'PATCH',
+    headers: { 'x-api-key': state.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  if (!resp.ok) throw new Error(\`Status opslaan mislukt: \${resp.status}\`);
   return resp.json();
 }
 
@@ -1913,12 +2056,15 @@ async function refreshData() {
     state.leads = data.leads || [];
     state.stats = data.stats || {};
     state.clientName = data.client?.naam || 'Gebruiker';
+    state.calendlyUrl = data.client?.calendly || '';
     state.lastFetch = Date.now();
 
     updateUserInfo();
     renderStats();
     applyFilters();
     updateTimestamp();
+    renderChart();
+    detectNewLeads(state.leads);
   } catch (err) {
     toast('Kon geen gegevens ophalen: ' + err.message, 'error');
   } finally {
@@ -1937,9 +2083,144 @@ function updateTimestamp() {
 }
 
 setInterval(updateTimestamp, 60000);
+// Poll for new leads every 30 seconds
+setInterval(() => { if (state.apiKey) refreshData(); }, 30000);
 
 /* ============================================================
-   UPDATE USER INFO
+   NEW LEAD NOTIFICATIONS (Feature 1)
+   ============================================================ */
+function detectNewLeads(leads) {
+  const ids = new Set(leads.map(l => l.id));
+  if (state.knownLeadIds === null) {
+    // First load — just store IDs, no notification
+    state.knownLeadIds = ids;
+    return;
+  }
+  const fresh = leads.filter(l => !state.knownLeadIds.has(l.id));
+  state.knownLeadIds = ids;
+  if (fresh.length === 0) return;
+
+  state.newLeadCount += fresh.length;
+  updateNavBadge();
+
+  // Browser notification
+  if (Notification.permission === 'granted') {
+    fresh.forEach(l => {
+      new Notification('Nieuwe lead — ' + (l.naam || 'Onbekend'), {
+        body: 'Telefoon: ' + (l.telefoon || '—'),
+        icon: '/favicon.png'
+      });
+    });
+  }
+  toast(\`\${fresh.length} nieuwe lead\${fresh.length > 1 ? 's' : ''} binnengekomen!\`, 'info');
+}
+
+function updateNavBadge() {
+  const nav = document.getElementById('nav-dashboard');
+  if (!nav) return;
+  let badge = nav.querySelector('.nav-badge');
+  if (state.newLeadCount === 0) { if (badge) badge.remove(); return; }
+  if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; nav.appendChild(badge); }
+  badge.textContent = state.newLeadCount;
+}
+
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+/* ============================================================
+   LEADS CHART (Feature 7)
+   ============================================================ */
+function renderChart() {
+  const canvas = document.getElementById('leads-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  // Build weekly buckets for last 8 weeks
+  const weeks = [];
+  const counts = [];
+  const now = new Date();
+  for (let i = 7; i >= 0; i--) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - (i + 1) * 7);
+    const end = new Date(now);
+    end.setDate(end.getDate() - i * 7);
+    const label = \`W\${8 - i}\`;
+    const count = state.leads.filter(l => {
+      const d = new Date(l.datum);
+      return d >= start && d < end;
+    }).length;
+    weeks.push(label);
+    counts.push(count);
+  }
+
+  if (state.leadsChart) state.leadsChart.destroy();
+  state.leadsChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: weeks,
+      datasets: [{
+        label: 'Leads',
+        data: counts,
+        backgroundColor: 'rgba(30,111,217,0.5)',
+        borderColor: '#1e6fd9',
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: 'rgba(0,212,255,0.4)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6a85b0' } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6a85b0', stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   ADMIN — MULTI-CLIENT (Feature 4)
+   ============================================================ */
+async function loadAdminClients() {
+  const grid = document.getElementById('admin-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--text-muted);font-size:14px">Klanten laden...</div>';
+  try {
+    const resp = await fetch(\`\${API_BASE}/admin\`, { headers: { 'x-api-key': state.apiKey } });
+    if (!resp.ok) throw new Error('Geen toegang');
+    const data = await resp.json();
+    const clients = data.clients || [];
+    if (clients.length === 0) { grid.innerHTML = '<div style="color:var(--text-muted)">Geen klanten gevonden.</div>'; return; }
+    grid.innerHTML = clients.map(c => \`
+      <div class="admin-card" onclick="switchToClient('\${c.apiKey}')">
+        <div class="admin-card-name">\${c.naam}</div>
+        <div class="admin-card-code">\${c.projectCode}</div>
+        <div class="admin-card-stats">
+          <div class="admin-stat"><div class="admin-stat-val">\${c.totalLeads}</div><div class="admin-stat-lbl">Leads</div></div>
+          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--red)">\${c.newLeads}</div><div class="admin-stat-lbl">Nieuw</div></div>
+          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--green)">\${c.qualified}</div><div class="admin-stat-lbl">Gekwal.</div></div>
+        </div>
+      </div>
+    \`).join('');
+  } catch (err) {
+    grid.innerHTML = \`<div style="color:var(--red);font-size:14px">\${err.message}</div>\`;
+  }
+}
+
+function switchToClient(apiKey) {
+  if (!apiKey) return;
+  state.apiKey = apiKey;
+  state.knownLeadIds = null;
+  state.adminLoaded = false;
+  navigateTo('dashboard');
+  refreshData();
+}
+
+/* ============================================================
+   UPDATE TIMESTAMP
    ============================================================ */
 function updateUserInfo() {
   const nameEl = document.getElementById('user-name');
@@ -2288,7 +2569,13 @@ function openPanel(lead) {
       <div class="panel-section-title">Kwalificatie</div>
       <div class="panel-row">
         <span class="panel-row-label">Status</span>
-        <span class="panel-row-value">\${statusBadge(lead.status)}</span>
+        <span class="panel-row-value">
+          <select class="status-select" id="panel-status-select">
+            <option value="new"         \${lead.status === 'new'         ? 'selected' : ''}>Nieuw</option>
+            <option value="in_progress" \${lead.status === 'in_progress' ? 'selected' : ''}>Bezig</option>
+            <option value="completed"   \${lead.status === 'completed'   ? 'selected' : ''}>Klaar</option>
+          </select>
+        </span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">Gekwalificeerd</span>
@@ -2357,6 +2644,27 @@ function openPanel(lead) {
     </div>
   \`;
 
+  // Conversation replay section
+  if (lead.gesprek) {
+    try {
+      const msgs = JSON.parse(lead.gesprek);
+      if (msgs.length > 0) {
+        const bubbles = msgs.map(m => \`
+          <div>
+            <div class="chat-label">\${m.role === 'user' ? '👤 Lead' : '🤖 AI'}</div>
+            <div class="chat-bubble \${m.role === 'user' ? 'user' : 'ai'}">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div>
+          </div>
+        \`).join('');
+        bodyHTML += \`
+          <div class="panel-section">
+            <div class="panel-section-title">WhatsApp Gesprek</div>
+            <div class="chat-wrap">\${bubbles}</div>
+          </div>
+        \`;
+      }
+    } catch { /* invalid JSON, skip */ }
+  }
+
   // Notes section
   bodyHTML += \`
     <div class="panel-section">
@@ -2367,6 +2675,25 @@ function openPanel(lead) {
   \`;
 
   document.getElementById('panel-body').innerHTML = bodyHTML;
+
+  // Status change handler
+  const statusSelect = document.getElementById('panel-status-select');
+  if (statusSelect) {
+    statusSelect.addEventListener('change', async () => {
+      const newStatus = statusSelect.value;
+      try {
+        await patchStatus(lead.id, newStatus);
+        const idx = state.leads.findIndex(l => l.id === lead.id);
+        if (idx !== -1) state.leads[idx].status = newStatus;
+        state.activeLead.status = newStatus;
+        applyFilters();
+        toast('Status bijgewerkt', 'success');
+      } catch (err) {
+        toast(err.message, 'error');
+        statusSelect.value = lead.status; // revert on error
+      }
+    });
+  }
 
   // Save notes handler
   document.getElementById('btn-save-notes').addEventListener('click', async () => {
@@ -2422,12 +2749,31 @@ function navigateTo(page) {
 
   const titles = {
     dashboard: { title: 'Dashboard', sub: 'Overzicht van uw gekwalificeerde leads' },
-    exports: { title: 'Exports', sub: 'Rapporten en data-export' }
+    exports:   { title: 'Exports',   sub: 'Rapporten en data-export' },
+    calendly:  { title: 'Kalender',  sub: 'Uw afspraken en beschikbaarheid' },
+    admin:     { title: 'Klanten',   sub: 'Overzicht van alle klanten' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
   document.getElementById('topbar-title').textContent = t.title;
   document.getElementById('topbar-subtitle').textContent = t.sub;
+
+  // Load admin page on first visit
+  if (page === 'admin' && !state.adminLoaded) {
+    state.adminLoaded = true;
+    loadAdminClients();
+  }
+
+  // Load Calendly iframe on first visit
+  if (page === 'calendly') {
+    const iframe = document.getElementById('calendly-iframe');
+    const openLink = document.getElementById('calendly-open-link');
+    const calendlyUrl = state.calendlyUrl || 'https://calendly.com';
+    if (iframe && iframe.src === 'about:blank') {
+      iframe.src = calendlyUrl;
+    }
+    if (openLink) openLink.href = calendlyUrl;
+  }
 
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -2537,6 +2883,15 @@ document.getElementById('btn-download-csv').addEventListener('click', exportCSV)
 async function startDashboard() {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
+  requestNotificationPermission();
+  // Detect admin key by trying the admin endpoint
+  try {
+    const r = await fetch(\`\${API_BASE}/admin\`, { headers: { 'x-api-key': state.apiKey } });
+    if (r.ok) {
+      const adminNav = document.getElementById('nav-admin');
+      if (adminNav) adminNav.style.display = '';
+    }
+  } catch { /* not admin */ }
   await refreshData();
 }
 

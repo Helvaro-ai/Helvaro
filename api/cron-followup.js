@@ -1,0 +1,98 @@
+// Vercel cron — runs daily at 09:00 UTC
+// Sends a follow-up WhatsApp to leads that:
+//   - Status is still 'new'
+//   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
+//   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
+
+module.exports = async function handler(req, res) {
+  // Vercel calls cron endpoints with GET; block other methods
+  if (req.method !== 'GET') return res.status(405).end();
+
+  // Protect with CRON_SECRET so only Vercel can trigger this
+  const secret = process.env.CRON_SECRET;
+  if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const AIRTABLE_TOKEN = process.env.API_Airtable;
+  const BASE_ID        = process.env.BASE_AIRTABLE;
+  const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
+  const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+  const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
+
+  const now    = new Date();
+  const ago24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  const ago48h = new Date(now - 48 * 60 * 60 * 1000).toISOString();
+
+  try {
+    // Fetch leads created between 24h and 48h ago that are still 'new'
+    const formula = encodeURIComponent(
+      `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago48h}")`
+    );
+    const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=50`;
+    const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const lData = await lRes.json();
+
+    if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
+
+    const leads = lData.records || [];
+    let sent = 0;
+
+    for (const lead of leads) {
+      const phone = lead.fields['fld6YaitW0lMqHUrd'] || lead.fields['Phone'] || '';
+      const name  = lead.fields['fldbk0LVNckOU0bqA']  || lead.fields['Name']  || '';
+      if (!phone) continue;
+
+      // Only send if conversation has ≤1 AI message (lead never replied)
+      let history = [];
+      try { history = JSON.parse(lead.fields['Conversation History'] || '[]'); } catch { history = []; }
+      const userReplies = history.filter(m => m.role === 'user').length;
+      if (userReplies > 0) continue; // They replied — no follow-up needed
+
+      const firstName = name.split(' ')[0] || name;
+      const msg = `Hé ${firstName}, we hebben je bericht gekregen maar nog niks teruggehoord. Is er iets waarmee ik je kan helpen?`;
+
+      await sendWA(phone, msg, PHONE_NUMBER_ID, WHATSAPP_TOKEN);
+
+      // Mark follow-up sent by updating Conversation State to 'in_progress'
+      await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${lead.id}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { fld8mkrEWcyq7mUip: 'in_progress' } })
+        }
+      );
+
+      sent++;
+      // Slight delay to avoid WhatsApp rate limits
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    console.log(`[cron-followup] Checked ${leads.length} leads, sent ${sent} follow-ups`);
+    return res.status(200).json({ checked: leads.length, sent });
+
+  } catch (err) {
+    console.error('[cron-followup] Error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+function sendWA(to, message, phoneNumberId, token) {
+  return fetch(
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+    {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: message }
+      })
+    }
+  ).then(async r => {
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) console.error(`[cron-followup] WA fout naar ${to}:`, JSON.stringify(d.error || d));
+  }).catch(err => console.error(`[cron-followup] WA netwerk fout naar ${to}:`, err.message));
+}
