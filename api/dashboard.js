@@ -15,26 +15,29 @@ module.exports = async function handler(req, res) {
    CSS CUSTOM PROPERTIES
    ============================================================ */
 :root {
-  --bg-primary: #030812;
-  --bg-card: #060e1f;
-  --bg-card-alt: #0a1628;
-  --bg-card-hover: #0d1e38;
-  --blue-primary: #1e6fd9;
-  --blue-bright: #2b8fff;
-  --cyan: #00d4ff;
-  --green: #00e5a0;
-  --red: #ff4560;
-  --orange: #ff9500;
-  --text-primary: #e8edf5;
-  --text-secondary: #8899aa;
-  --text-muted: #4a5a70;
-  --border: #0f2040;
-  --border-bright: #1a3060;
-  --scrollbar-bg: #060e1f;
-  --scrollbar-thumb: #1e6fd9;
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.15);
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --bg-primary:    #05050f;
+  --bg-card:       #0c0c1e;
+  --bg-card-alt:   #11112a;
+  --bg-card-hover: #171736;
+  --blue-primary:  #7c3aed;
+  --blue-bright:   #8b5cf6;
+  --cyan:          #a78bfa;
+  --green:         #10b981;
+  --red:           #ef4444;
+  --orange:        #f59e0b;
+  --text-primary:  #f4f0ff;
+  --text-secondary:#94a3b8;
+  --text-muted:    #3d3a6b;
+  --border:        #1a1a3a;
+  --border-bright: #2d2a6e;
+  --scrollbar-bg:  #0c0c1e;
+  --scrollbar-thumb: #7c3aed;
+  --shadow:        0 8px 32px rgba(0,0,0,0.7);
+  --shadow-card:   0 2px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow-glow:   0 0 40px rgba(124,58,237,0.15);
+  --transition:    all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius:        14px;
+  --radius-sm:     8px;
 }
 
 [data-theme="light"] {
@@ -73,18 +76,33 @@ body::before {
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(30, 111, 217, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 111, 217, 0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(124, 58, 237, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ambient glow orbs */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(124, 58, 237, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 85% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 30% at 10% 70%, rgba(167, 139, 250, 0.05) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
 
 [data-theme="light"] body::before {
   background-image:
-    linear-gradient(rgba(30, 111, 217, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 111, 217, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(124, 58, 237, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.07) 1px, transparent 1px);
 }
+
+[data-theme="light"] body::after { display: none; }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -153,20 +171,26 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(30, 111, 217, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 70% 60%, rgba(0, 212, 255, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(124, 58, 237, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 70% 60%, rgba(167, 139, 250, 0.06) 0%, transparent 60%);
   pointer-events: none;
 }
 
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  background: rgba(7, 16, 31, 0.88);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 24px;
   padding: 48px 40px;
   position: relative;
-  box-shadow: var(--shadow), 0 0 60px rgba(30, 111, 217, 0.08);
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(37,99,235,0.12),
+    0 0 60px rgba(37,99,235,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 .login-logo {
@@ -181,17 +205,17 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue-primary), var(--cyan));
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
   font-size: 28px;
   color: white;
   margin-bottom: 16px;
   animation: pulse-glow 2.5s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.5);
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(0, 212, 255, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.5); }
+  50% { box-shadow: 0 0 0 14px rgba(124, 58, 237, 0); }
 }
 
 .login-title {
@@ -235,7 +259,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .form-input:focus {
   border-color: var(--blue-bright);
-  box-shadow: 0 0 0 3px rgba(43, 143, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 .form-input::placeholder { color: var(--text-muted); }
@@ -268,7 +292,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .btn-login:hover::before { opacity: 1; }
-.btn-login:hover { box-shadow: 0 0 30px rgba(43, 143, 255, 0.4); transform: translateY(-1px); }
+.btn-login:hover { box-shadow: 0 0 30px rgba(139, 92, 246, 0.4); transform: translateY(-1px); }
 .btn-login:active { transform: translateY(0); }
 .btn-login span { position: relative; z-index: 1; }
 
@@ -295,12 +319,21 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   position: fixed;
   left: 0;
   top: 0;
-  background: var(--bg-card);
-  border-right: 1px solid var(--border);
+  background: rgba(5, 5, 15, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid rgba(167, 139, 250, 0.08);
+  box-shadow: 1px 0 0 rgba(167,139,250,0.04), 4px 0 40px rgba(0,0,0,0.6);
   display: flex;
   flex-direction: column;
   z-index: 100;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .sidebar {
+  background: rgba(255,255,255,0.92);
+  border-right: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 1px 0 0 rgba(0,0,0,0.04);
 }
 
 .sidebar-logo {
@@ -323,7 +356,8 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 3px;
-  background: linear-gradient(135deg, #fff 40%, #00d4ff);
+  background: linear-gradient(135deg, #fff 40%, #a78bfa);
+
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -359,29 +393,27 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .nav-item:hover {
-  background: var(--bg-card-alt);
+  background: rgba(255,255,255,0.05);
   color: var(--text-primary);
 }
 
 .nav-item.active {
-  background: rgba(30, 111, 217, 0.12);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(167, 139, 250, 0.1));
   color: var(--cyan);
-  border-left: 2px solid var(--cyan);
-  padding-left: 12px;
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(6,182,212,0.18), 0 2px 12px rgba(37,99,235,0.15);
 }
 
-.nav-item.active::after {
+.nav-item.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--cyan);
+  top: 20%;
+  height: 60%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--blue-bright), var(--cyan));
   box-shadow: 0 0 8px var(--cyan);
-  left: 7px;
 }
 
 .nav-icon { font-size: 16px; }
@@ -469,12 +501,21 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 28px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
+  padding: 14px 28px;
+  background: rgba(5, 5, 15, 0.75);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.08);
+  box-shadow: 0 1px 0 rgba(167,139,250,0.04), 0 4px 24px rgba(0,0,0,0.5);
   position: sticky;
   top: 0;
   z-index: 50;
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(240, 244, 250, 0.82);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 4px 16px rgba(0,0,0,0.06);
 }
 
 .topbar-left {
@@ -498,15 +539,20 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .hamburger:hover { background: var(--bg-card-alt); }
 
 .page-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--text-primary) 60%, var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .page-subtitle {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 2px;
+  -webkit-text-fill-color: var(--text-muted);
 }
 
 .topbar-right {
@@ -526,11 +572,11 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: var(--bg-card-alt);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
+  padding: 7px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -539,9 +585,10 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .btn-icon:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-bright);
+  background: rgba(37,99,235,0.12);
+  border-color: rgba(6,182,212,0.25);
   color: var(--cyan);
+  box-shadow: 0 0 12px rgba(6,182,212,0.08);
 }
 
 .btn-icon .icon { font-size: 14px; }
@@ -551,13 +598,13 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .btn-primary-sm {
-  background: linear-gradient(135deg, rgba(30, 111, 217, 0.2), rgba(43, 143, 255, 0.2));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(139, 92, 246, 0.2));
   border-color: var(--blue-primary);
   color: var(--blue-bright);
 }
 
 .btn-primary-sm:hover {
-  background: linear-gradient(135deg, rgba(30, 111, 217, 0.35), rgba(43, 143, 255, 0.35));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(139, 92, 246, 0.35));
   color: var(--cyan);
 }
 
@@ -574,36 +621,51 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .stat-card {
-  background: var(--bg-card);
+  background: linear-gradient(160deg, var(--bg-card) 0%, rgba(7,16,31,0.8) 100%);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius);
   padding: 20px 18px 16px;
   position: relative;
   overflow: hidden;
   transition: var(--transition);
   cursor: default;
+  box-shadow: var(--shadow-card);
 }
 
+/* Always-visible subtle top glow line */
 .stat-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--blue-primary), var(--cyan));
-  opacity: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.5), rgba(6,182,212,0.5), transparent);
   transition: opacity 0.3s ease;
+}
+
+/* Corner shimmer accent */
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle at top right, rgba(6,182,212,0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .stat-card:hover {
   border-color: var(--border-bright);
-  background: var(--bg-card-hover);
+  background: linear-gradient(160deg, var(--bg-card-hover) 0%, var(--bg-card) 100%);
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(6,182,212,0.1);
 }
 
-.stat-card:hover::before { opacity: 1; }
+.stat-card:hover::before {
+  background: linear-gradient(90deg, transparent, var(--blue-bright), var(--cyan), transparent);
+}
 
 .stat-label {
   font-size: 11px;
@@ -616,17 +678,19 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .stat-value {
   font-family: 'Orbitron', sans-serif;
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   color: var(--text-primary);
   line-height: 1;
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
+  text-shadow: 0 0 20px rgba(255,255,255,0.08);
 }
 
-.stat-value.cyan { color: var(--cyan); }
-.stat-value.green { color: var(--green); }
-.stat-value.orange { color: var(--orange); }
-.stat-value.blue { color: var(--blue-bright); }
+.stat-value.cyan  { color: var(--cyan);        text-shadow: 0 0 20px rgba(6,182,212,0.35); }
+.stat-value.green { color: var(--green);        text-shadow: 0 0 20px rgba(16,185,129,0.35); }
+.stat-value.orange{ color: var(--orange);       text-shadow: 0 0 20px rgba(245,158,11,0.3); }
+.stat-value.blue  { color: var(--blue-bright);  text-shadow: 0 0 20px rgba(59,130,246,0.35); }
 
 .stat-desc {
   font-size: 11px;
@@ -653,15 +717,18 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
    FILTERS BAR
    ============================================================ */
 .filters-bar {
-  background: var(--bg-card);
+  background: rgba(7,16,31,0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 20px;
+  box-shadow: var(--shadow-card);
 }
 
 .search-wrapper {
@@ -695,7 +762,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .search-input:focus {
   border-color: var(--blue-bright);
-  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.12);
 }
 
 .search-input::placeholder { color: var(--text-muted); }
@@ -771,8 +838,20 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .table-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+
+.table-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 10%, rgba(37,99,235,0.35) 40%, rgba(6,182,212,0.35) 60%, transparent 90%);
+  z-index: 1;
+  pointer-events: none;
 }
 
 .table-wrapper {
@@ -786,17 +865,17 @@ table {
 
 thead tr {
   border-bottom: 1px solid var(--border);
-  background: rgba(30, 111, 217, 0.04);
+  background: linear-gradient(90deg, rgba(37,99,235,0.05) 0%, rgba(6,182,212,0.02) 100%);
 }
 
 th {
-  padding: 13px 14px;
+  padding: 12px 14px;
   text-align: left;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -812,18 +891,19 @@ th.sort-active { color: var(--cyan); }
 .sort-indicator { margin-left: 4px; font-size: 10px; }
 
 tbody tr {
-  border-bottom: 1px solid rgba(15, 32, 64, 0.6);
-  transition: background 0.15s ease;
+  border-bottom: 1px solid rgba(15, 32, 64, 0.5);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
-  animation: rowFadeUp 0.4s ease both;
+  animation: rowFadeUp 0.35s ease both;
 }
 
 @keyframes rowFadeUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-tbody tr:hover { background: rgba(30, 111, 217, 0.06); }
+tbody tr:nth-child(even) { background: rgba(255,255,255,0.012); }
+tbody tr:hover { background: rgba(124, 58, 237, 0.07); box-shadow: inset 3px 0 0 var(--blue-bright); }
 tbody tr:last-child { border-bottom: none; }
 
 td {
@@ -857,7 +937,7 @@ td {
 }
 
 tr:hover .copy-btn { opacity: 1; }
-.copy-btn:hover { color: var(--cyan); background: rgba(0, 212, 255, 0.1); }
+.copy-btn:hover { color: var(--cyan); background: rgba(167, 139, 250, 0.1); }
 
 .copy-tooltip {
   position: absolute;
@@ -891,10 +971,10 @@ tr:hover .copy-btn { opacity: 1; }
 
 .badge-new { background: rgba(138, 150, 170, 0.15); color: #8a96aa; border: 1px solid rgba(138,150,170,0.25); }
 .badge-inprogress { background: rgba(255, 149, 0, 0.12); color: var(--orange); border: 1px solid rgba(255,149,0,0.25); }
-.badge-done { background: rgba(43, 143, 255, 0.12); color: var(--blue-bright); border: 1px solid rgba(43,143,255,0.25); }
+.badge-done { background: rgba(139, 92, 246, 0.12); color: var(--blue-bright); border: 1px solid rgba(43,143,255,0.25); }
 .badge-yes { background: rgba(0, 229, 160, 0.12); color: var(--green); border: 1px solid rgba(0,229,160,0.25); }
 .badge-no { background: rgba(255, 69, 96, 0.12); color: var(--red); border: 1px solid rgba(255,69,96,0.25); }
-.badge-bron { background: rgba(30, 111, 217, 0.1); color: var(--blue-bright); border: 1px solid rgba(30,111,217,0.2); font-size: 10px; }
+.badge-bron { background: rgba(124, 58, 237, 0.1); color: var(--blue-bright); border: 1px solid rgba(30,111,217,0.2); font-size: 10px; }
 
 /* Score pill */
 .score-pill {
@@ -974,8 +1054,11 @@ tr:hover .td-arrow { color: var(--cyan); }
   top: 0;
   height: 100vh;
   width: 480px;
-  background: var(--bg-card);
-  border-left: 1px solid var(--border);
+  background: rgba(5, 5, 14, 0.97);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border-left: 1px solid rgba(167, 139, 250, 0.1);
+  box-shadow: -8px 0 48px rgba(0,0,0,0.7), -1px 0 0 rgba(167,139,250,0.05);
   z-index: 201;
   display: flex;
   flex-direction: column;
@@ -1295,7 +1378,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-secondary);
   line-height: 1.6;
   padding: 12px;
-  background: rgba(30, 111, 217, 0.06);
+  background: rgba(124, 58, 237, 0.06);
   border-left: 3px solid var(--blue-primary);
   border-radius: 0 8px 8px 0;
 }
@@ -1835,6 +1918,7 @@ const state = {
   knownLeadIds: null,
   newLeadCount: 0,
   adminLoaded: false,
+  adminClients: [],
   leadsChart: null,
 };
 
@@ -1843,6 +1927,16 @@ const API_BASE = '/api';
 /* ============================================================
    UTILITY FUNCTIONS
    ============================================================ */
+// Escape user data before inserting into innerHTML — prevents XSS
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getInitials(name) {
   if (!name) return '?';
   return name.trim().split(/\\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('');
@@ -2163,11 +2257,11 @@ function renderChart() {
       datasets: [{
         label: 'Leads',
         data: counts,
-        backgroundColor: 'rgba(30,111,217,0.5)',
-        borderColor: '#1e6fd9',
+        backgroundColor: 'rgba(124,58,237,0.45)',
+        borderColor: '#8b5cf6',
         borderWidth: 2,
         borderRadius: 6,
-        hoverBackgroundColor: 'rgba(0,212,255,0.4)'
+        hoverBackgroundColor: 'rgba(167,139,250,0.35)'
       }]
     },
     options: {
@@ -2194,10 +2288,12 @@ async function loadAdminClients() {
     const data = await resp.json();
     const clients = data.clients || [];
     if (clients.length === 0) { grid.innerHTML = '<div style="color:var(--text-muted)">Geen klanten gevonden.</div>'; return; }
-    grid.innerHTML = clients.map(c => \`
-      <div class="admin-card" onclick="switchToClient('\${c.apiKey}')">
-        <div class="admin-card-name">\${c.naam}</div>
-        <div class="admin-card-code">\${c.projectCode}</div>
+    // Store clients in state so we can look up by index (never expose apiKey in DOM)
+    state.adminClients = clients;
+    grid.innerHTML = clients.map((c, i) => \`
+      <div class="admin-card" onclick="switchToClient(\${i})">
+        <div class="admin-card-name">\${escHtml(c.naam)}</div>
+        <div class="admin-card-code">\${escHtml(c.projectCode)}</div>
         <div class="admin-card-stats">
           <div class="admin-stat"><div class="admin-stat-val">\${c.totalLeads}</div><div class="admin-stat-lbl">Leads</div></div>
           <div class="admin-stat"><div class="admin-stat-val" style="color:var(--red)">\${c.newLeads}</div><div class="admin-stat-lbl">Nieuw</div></div>
@@ -2210,9 +2306,10 @@ async function loadAdminClients() {
   }
 }
 
-function switchToClient(apiKey) {
-  if (!apiKey) return;
-  state.apiKey = apiKey;
+function switchToClient(index) {
+  const client = state.adminClients && state.adminClients[index];
+  if (!client || !client.apiKey) return;
+  state.apiKey = client.apiKey;
   state.knownLeadIds = null;
   state.adminLoaded = false;
   navigateTo('dashboard');
@@ -2460,20 +2557,20 @@ function renderTable() {
     const delay = i < 10 ? \`style="animation-delay:\${i * 40}ms"\` : '';
     return \`
       <tr data-id="\${lead.id}" \${delay}>
-        <td class="td-naam">\${lead.naam || '—'}</td>
+        <td class="td-naam">\${escHtml(lead.naam) || '—'}</td>
         <td>
           <div class="td-phone">
-            \${lead.telefoon || '—'}
+            \${escHtml(lead.telefoon) || '—'}
             \${lead.telefoon ? \`
-              <button class="copy-btn" data-phone="\${lead.telefoon}" title="Kopieer">⧉
+              <button class="copy-btn" data-phone="\${escHtml(lead.telefoon)}" title="Kopieer">⧉
                 <span class="copy-tooltip">Gekopieerd!</span>
               </button>\` : ''}
           </div>
         </td>
         <td>\${statusBadge(lead.status)}</td>
         <td>\${qualBadge(lead)}</td>
-        <td>\${lead.bron ? \`<span class="badge badge-bron">\${lead.bron}</span>\` : '—'}</td>
-        <td class="td-samenvatting" title="\${(lead.samenvatting || '').replace(/"/g, '&quot;')}">\${lead.samenvatting || '—'}</td>
+        <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
+        <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
         <td>\${scorePill(lead.leadScore)}</td>
         <td>\${lead.opgepikt ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
@@ -2544,7 +2641,7 @@ function openPanel(lead) {
   document.getElementById('panel-phone').textContent = lead.telefoon || '—';
 
   const bronBadge = document.getElementById('panel-bron-badge');
-  bronBadge.innerHTML = lead.bron ? \`<span class="badge badge-bron">\${lead.bron}</span>\` : '';
+  bronBadge.innerHTML = lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '';
 
   // Copy phone
   const copyPhoneBtn = document.getElementById('panel-copy-phone');
@@ -2593,7 +2690,7 @@ function openPanel(lead) {
       \${lead.fit !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Fit</span><span class="panel-row-value">\${lead.fit || '—'}</span></div>\` : ''}
       \${lead.capaciteit !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Capaciteit</span><span class="panel-row-value">\${lead.capaciteit || '—'}</span></div>\` : ''}
       \${lead.urgentie !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Urgentie</span><span class="panel-row-value">\${lead.urgentie || '—'}</span></div>\` : ''}
-      \${lead.verwachteWaarde !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Verwachte waarde</span><span class="panel-row-value">\${lead.verwachteWaarde || '—'}</span></div>\` : ''}
+      \${lead.verwachteWaarde !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Verwachte waarde</span><span class="panel-row-value">\${escHtml(lead.verwachteWaarde) || '—'}</span></div>\` : ''}
     </div>
   \`;
 
@@ -2612,7 +2709,7 @@ function openPanel(lead) {
     bodyHTML += \`
       <div class="panel-section">
         <div class="panel-section-title">AI Samenvatting</div>
-        <div class="ai-summary">\${lead.samenvatting}</div>
+        <div class="ai-summary">\${escHtml(lead.samenvatting)}</div>
       </div>
     \`;
   }
@@ -2627,7 +2724,7 @@ function openPanel(lead) {
       </div>
       <div class="panel-row">
         <span class="panel-row-label">Bron</span>
-        <span class="panel-row-value">\${lead.bron || '—'}</span>
+        <span class="panel-row-value">\${escHtml(lead.bron) || '—'}</span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">Opgepikt</span>

@@ -1,3 +1,14 @@
+// Rate limit — max 5 form submissions per IP per 10 minutes
+const formAttempts = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const window = 10 * 60 * 1000;
+  const attempts = (formAttempts.get(ip) || []).filter(t => now - t < window);
+  attempts.push(now);
+  formAttempts.set(ip, attempts);
+  return attempts.length > 5;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -5,6 +16,11 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: 'Te veel aanvragen. Probeer later opnieuw.' });
+  }
 
   const AIRTABLE_TOKEN = process.env.API_Airtable;
   const BASE_ID        = process.env.BASE_AIRTABLE;

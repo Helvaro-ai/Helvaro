@@ -1,3 +1,21 @@
+// Simple in-memory rate limiter — max 10 login attempts per IP per 15 minutes
+const loginAttempts = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const window = 15 * 60 * 1000; // 15 min
+  const max = 10;
+  const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < window);
+  attempts.push(now);
+  loginAttempts.set(ip, attempts);
+  // Clean old IPs occasionally
+  if (loginAttempts.size > 1000) {
+    for (const [k, v] of loginAttempts) {
+      if (v.every(t => now - t > window)) loginAttempts.delete(k);
+    }
+  }
+  return attempts.length > max;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -5,6 +23,12 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Rate limit by IP
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: 'Te veel pogingen. Probeer over 15 minuten opnieuw.' });
+  }
 
   const AIRTABLE_TOKEN = process.env.API_Airtable;
   const BASE_ID        = process.env.BASE_AIRTABLE;
@@ -20,6 +44,17 @@ module.exports = async function handler(req, res) {
 
     if (!email)    return res.status(400).json({ error: 'E-mailadres is verplicht' });
     if (!password) return res.status(400).json({ error: 'Wachtwoord is verplicht' });
+
+    // Admin shortcut — if password matches ADMIN_KEY, grant admin access directly
+    const ADMIN_KEY = process.env.ADMIN_KEY;
+    if (ADMIN_KEY && password === ADMIN_KEY) {
+      return res.status(200).json({
+        success:     true,
+        apiKey:      ADMIN_KEY,
+        clientName:  'Admin',
+        projectCode: ''
+      });
+    }
 
     // Basic email shape check — reject obvious injections early
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
