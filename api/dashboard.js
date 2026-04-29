@@ -1710,7 +1710,6 @@ tr:hover .td-arrow { color: var(--cyan); }
           <span class="icon">⇓</span>
           CSV Export
         </button>
-        <button class="btn-icon theme-toggle" id="btn-theme" title="Thema wisselen">🌙</button>
       </div>
     </header>
 
@@ -2011,23 +2010,11 @@ function dismissToast(el) {
 }
 
 /* ============================================================
-   THEME
+   THEME — locked dark to match helvaro.pro brand
    ============================================================ */
 function initTheme() {
-  const saved = localStorage.getItem('hv-theme') || 'dark';
-  applyTheme(saved);
-}
-
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('btn-theme');
-  if (btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
-  localStorage.setItem('hv-theme', theme);
-}
-
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  applyTheme(current === 'dark' ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', 'dark');
+  localStorage.removeItem('hv-theme');
 }
 
 /* ============================================================
@@ -2915,7 +2902,6 @@ document.getElementById('btn-reset-filters').addEventListener('click', resetFilt
    ============================================================ */
 document.getElementById('btn-refresh').addEventListener('click', refreshData);
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
-document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-logout').addEventListener('click', logout);
 
 /* ============================================================
