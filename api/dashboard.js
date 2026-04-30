@@ -224,8 +224,8 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .login-logo-top img {
-  width: 36px;
-  height: 36px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
 }
 
@@ -268,9 +268,10 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 40px;
+  padding: 40px 36px;
   position: relative;
   overflow: hidden;
+  gap: 0;
 }
 
 /* Dot grid on brand side */
@@ -402,7 +403,149 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   line-height: 1.5;
 }
 
-/* Pagination dots */
+/* ── Slides wrapper ── */
+.brand-slides-wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-slide {
+  position: absolute;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+}
+
+.brand-slide.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  position: relative;
+}
+
+/* ── Score ring (slide 2) ── */
+.brand-score-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+.brand-score-ring {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.brand-score-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.brand-score-items {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brand-score-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.brand-score-item span {
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.brand-score-bar-wrap {
+  height: 5px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.brand-score-bar-fill {
+  height: 100%;
+  background: rgba(255,255,255,0.8);
+  border-radius: 3px;
+}
+
+/* ── Agenda (slide 3) ── */
+.brand-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.brand-agenda-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.brand-agenda-time {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  min-width: 38px;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+
+.brand-agenda-content { flex: 1; }
+
+.brand-agenda-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.brand-agenda-tag {
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.brand-agenda-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.brand-agenda-dot.hot  { background: #f43f5e; box-shadow: 0 0 8px rgba(244,63,94,0.6); }
+.brand-agenda-dot.warm { background: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+
+/* ── Pagination dots ── */
 .brand-dots {
   display: flex;
   gap: 6px;
@@ -417,11 +560,13 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   height: 4px;
   border-radius: 2px;
   background: rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .brand-dot.active {
   background: rgba(255,255,255,0.9);
-  width: 28px;
+  width: 32px;
 }
 
 /* Login footer */
@@ -2105,7 +2250,6 @@ tr:hover .td-arrow { color: var(--cyan); }
     <div class="login-form-side">
       <div class="login-logo-top">
         <img src="/logo.png" alt="Helvaro">
-        <span class="brand-name">HELVARO</span>
       </div>
 
       <h1 class="login-welcome">Welkom terug!</h1>
@@ -2125,50 +2269,140 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
     </div>
 
-    <!-- RIGHT: Brand side -->
+    <!-- RIGHT: Brand side with 3 slides -->
     <div class="login-brand-side">
-      <!-- Floating glass dashboard card -->
-      <div class="brand-card-mock">
-        <div class="brand-card-header">
-          <div class="brand-card-dot"></div>
-          <div class="brand-card-dot"></div>
-          <div class="brand-card-dot"></div>
-          <span class="brand-card-title">Lead Overzicht</span>
-        </div>
-        <div class="brand-stats">
-          <div class="brand-stat">
-            <div class="brand-stat-num">24</div>
-            <div class="brand-stat-label">Leads</div>
+      <div class="brand-slides-wrap">
+
+        <!-- Slide 1: Lead Overzicht -->
+        <div class="brand-slide active" data-slide="0">
+          <div class="brand-card-mock">
+            <div class="brand-card-header">
+              <div class="brand-card-dot"></div>
+              <div class="brand-card-dot"></div>
+              <div class="brand-card-dot"></div>
+              <span class="brand-card-title">Lead Overzicht</span>
+            </div>
+            <div class="brand-stats">
+              <div class="brand-stat">
+                <div class="brand-stat-num">24</div>
+                <div class="brand-stat-label">Leads</div>
+              </div>
+              <div class="brand-stat">
+                <div class="brand-stat-num">68%</div>
+                <div class="brand-stat-label">Conversie</div>
+              </div>
+              <div class="brand-stat">
+                <div class="brand-stat-num">12</div>
+                <div class="brand-stat-label">Afspraken</div>
+              </div>
+            </div>
+            <div class="brand-bars">
+              <div class="brand-bar" style="height:30%"></div>
+              <div class="brand-bar" style="height:55%"></div>
+              <div class="brand-bar" style="height:40%"></div>
+              <div class="brand-bar" style="height:70%"></div>
+              <div class="brand-bar active" style="height:100%"></div>
+              <div class="brand-bar" style="height:85%"></div>
+              <div class="brand-bar" style="height:60%"></div>
+              <div class="brand-bar" style="height:90%"></div>
+            </div>
           </div>
-          <div class="brand-stat">
-            <div class="brand-stat-num">68%</div>
-            <div class="brand-stat-label">Conversie</div>
-          </div>
-          <div class="brand-stat">
-            <div class="brand-stat-num">12</div>
-            <div class="brand-stat-label">Afspraken</div>
+          <div class="brand-tagline">
+            <h2>Naadloze werkomgeving</h2>
+            <p>Alles wat u nodig heeft in één krachtig AI-platform</p>
           </div>
         </div>
-        <div class="brand-bars">
-          <div class="brand-bar" style="height:30%"></div>
-          <div class="brand-bar" style="height:55%"></div>
-          <div class="brand-bar" style="height:40%"></div>
-          <div class="brand-bar" style="height:70%"></div>
-          <div class="brand-bar active" style="height:100%"></div>
-          <div class="brand-bar" style="height:85%"></div>
-          <div class="brand-bar" style="height:60%"></div>
-          <div class="brand-bar" style="height:90%"></div>
+
+        <!-- Slide 2: AI Kwalificatie -->
+        <div class="brand-slide" data-slide="1">
+          <div class="brand-card-mock">
+            <div class="brand-card-header">
+              <div class="brand-card-dot"></div>
+              <div class="brand-card-dot"></div>
+              <div class="brand-card-dot"></div>
+              <span class="brand-card-title">AI Kwalificatie</span>
+            </div>
+            <div class="brand-score-row">
+              <div class="brand-score-ring">
+                <svg viewBox="0 0 80 80" width="80" height="80">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="8"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="8"
+                    stroke-dasharray="134" stroke-dashoffset="40" stroke-linecap="round"
+                    transform="rotate(-90 40 40)"/>
+                </svg>
+                <div class="brand-score-label">70%</div>
+              </div>
+              <div class="brand-score-items">
+                <div class="brand-score-item">
+                  <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:85%"></div></div>
+                  <span>Budget fit</span>
+                </div>
+                <div class="brand-score-item">
+                  <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:60%"></div></div>
+                  <span>Urgentie</span>
+                </div>
+                <div class="brand-score-item">
+                  <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:72%"></div></div>
+                  <span>Beslisser</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tagline">
+            <h2>Slimme AI-scoring</h2>
+            <p>Elke lead automatisch gekwalificeerd en gescoord</p>
+          </div>
         </div>
+
+        <!-- Slide 3: Afspraken -->
+        <div class="brand-slide" data-slide="2">
+          <div class="brand-card-mock">
+            <div class="brand-card-header">
+              <div class="brand-card-dot"></div>
+              <div class="brand-card-dot"></div>
+              <div class="brand-card-dot"></div>
+              <span class="brand-card-title">Aankomende Afspraken</span>
+            </div>
+            <div class="brand-agenda">
+              <div class="brand-agenda-item">
+                <div class="brand-agenda-time">09:00</div>
+                <div class="brand-agenda-content">
+                  <div class="brand-agenda-name">Thomas B.</div>
+                  <div class="brand-agenda-tag">Kennismaking</div>
+                </div>
+                <div class="brand-agenda-dot hot"></div>
+              </div>
+              <div class="brand-agenda-item">
+                <div class="brand-agenda-time">11:30</div>
+                <div class="brand-agenda-content">
+                  <div class="brand-agenda-name">Laura V.</div>
+                  <div class="brand-agenda-tag">Demo call</div>
+                </div>
+                <div class="brand-agenda-dot warm"></div>
+              </div>
+              <div class="brand-agenda-item">
+                <div class="brand-agenda-time">14:00</div>
+                <div class="brand-agenda-content">
+                  <div class="brand-agenda-name">Marco S.</div>
+                  <div class="brand-agenda-tag">Follow-up</div>
+                </div>
+                <div class="brand-agenda-dot warm"></div>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tagline">
+            <h2>Altijd overzicht</h2>
+            <p>Uw agenda en leads op één plek, altijd up-to-date</p>
+          </div>
+        </div>
+
       </div>
 
-      <div class="brand-tagline">
-        <h2>Naadloze werkomgeving</h2>
-        <p>Alles wat u nodig heeft in één krachtig AI-platform</p>
-      </div>
-      <div class="brand-dots">
-        <div class="brand-dot active"></div>
-        <div class="brand-dot"></div>
-        <div class="brand-dot"></div>
+      <!-- Dots -->
+      <div class="brand-dots" id="brand-dots">
+        <div class="brand-dot active" data-target="0"></div>
+        <div class="brand-dot" data-target="1"></div>
+        <div class="brand-dot" data-target="2"></div>
       </div>
     </div>
 
@@ -3619,11 +3853,49 @@ async function handleLogin() {
     } catch {
       clearSession();
       document.getElementById('login-page').style.display = 'flex';
+      initLoginSlideshow();
     }
   } else {
     document.getElementById('login-page').style.display = 'flex';
+    initLoginSlideshow();
   }
 })();
+
+/* ============================================================
+   LOGIN SLIDESHOW
+   ============================================================ */
+function initLoginSlideshow() {
+  const slides = document.querySelectorAll('.brand-slide');
+  const dots   = document.querySelectorAll('#brand-dots .brand-dot');
+  if (!slides.length) return;
+
+  let current = 0;
+  let timer = null;
+
+  function goTo(idx) {
+    slides[current].classList.remove('active');
+    dots[current].classList.remove('active');
+    current = (idx + slides.length) % slides.length;
+    slides[current].classList.add('active');
+    dots[current].classList.add('active');
+  }
+
+  function start() {
+    timer = setInterval(() => goTo(current + 1), 5000);
+  }
+
+  function restart() {
+    clearInterval(timer);
+    start();
+  }
+
+  // Dot click
+  dots.forEach((dot, i) => {
+    dot.addEventListener('click', () => { goTo(i); restart(); });
+  });
+
+  start();
+}
 </script>
 </body>
 </html>`;
