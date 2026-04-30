@@ -276,16 +276,16 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   background-size: 32px 32px;
 }
 
-/* Electric glow orbs */
+/* Electric glow orbs — indigo (button) + cyan (logo) */
 .login-brand-side::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 50% at 60% 20%, rgba(14,165,233,0.18) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(59,130,246,0.2) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 35% at 90% 90%, rgba(6,182,212,0.12) 0%, transparent 50%),
-    radial-gradient(ellipse 30% 25% at 80% 10%, rgba(99,102,241,0.1) 0%, transparent 50%);
+    radial-gradient(ellipse 65% 45% at 65% 15%, rgba(99,102,241,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 55% at 10% 80%, rgba(14,165,233,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 88% 88%, rgba(56,189,248,0.14) 0%, transparent 50%),
+    radial-gradient(ellipse 35% 30% at 20% 15%, rgba(79,70,229,0.14) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -295,13 +295,17 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   z-index: 1;
   width: 100%;
   max-width: 440px;
-  background: rgba(14,165,233,0.06);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(14,165,233,0.2);
+  background: linear-gradient(145deg, rgba(79,70,229,0.1) 0%, rgba(14,165,233,0.07) 100%);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(99,102,241,0.28);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(14,165,233,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow:
+    0 24px 80px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(56,189,248,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.09),
+    0 0 48px rgba(99,102,241,0.12);
 }
 
 .brand-card-header {
@@ -315,15 +319,19 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(14,165,233,0.4);
+  background: rgba(99,102,241,0.35);
 }
 
-.brand-card-dot:first-child { background: #38bdf8; box-shadow: 0 0 8px rgba(14,165,233,0.6); }
+.brand-card-dot:first-child  { background: #6366f1; box-shadow: 0 0 8px rgba(99,102,241,0.7); }
+.brand-card-dot:nth-child(2) { background: #38bdf8; box-shadow: 0 0 6px rgba(14,165,233,0.5); }
 
 .brand-card-title {
   font-size: 11.5px;
   font-weight: 700;
-  color: rgba(56,189,248,0.75);
+  background: linear-gradient(90deg, #818cf8, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   text-transform: uppercase;
   letter-spacing: 1.5px;
 }
@@ -337,25 +345,29 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .brand-stat {
   flex: 1;
-  background: rgba(14,165,233,0.08);
-  border: 1px solid rgba(14,165,233,0.15);
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.2);
   border-radius: 16px;
   padding: 16px 12px;
   text-align: center;
+  transition: border-color 0.3s;
 }
 
 .brand-stat-num {
   font-family: 'Orbitron', sans-serif;
   font-size: 26px;
   font-weight: 800;
-  color: #fff;
+  background: linear-gradient(135deg, #a5b4fc, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   line-height: 1;
   margin-bottom: 4px;
 }
 
 .brand-stat-label {
   font-size: 10px;
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.5);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-top: 4px;
@@ -372,14 +384,18 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .brand-bar {
   flex: 1;
   border-radius: 6px 6px 0 0;
-  background: rgba(14,165,233,0.22);
+  background: rgba(99,102,241,0.18);
   transition: background 0.3s;
 }
 
 .brand-bar.active {
-  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
-  box-shadow: 0 0 16px rgba(14,165,233,0.5);
+  background: linear-gradient(180deg, #818cf8, #4f46e5);
+  box-shadow: 0 0 18px rgba(99,102,241,0.55), 0 0 6px rgba(56,189,248,0.3);
 }
+
+.brand-bar:nth-child(2) { background: rgba(56,189,248,0.15); }
+.brand-bar:nth-child(6) { background: linear-gradient(180deg, #38bdf8, #0ea5e9); box-shadow: 0 0 12px rgba(14,165,233,0.4); }
+.brand-bar:nth-child(8) { background: rgba(56,189,248,0.22); }
 
 /* Brand tagline */
 .brand-tagline {
@@ -392,7 +408,10 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .brand-tagline h2 {
   font-size: 24px;
   font-weight: 800;
-  color: #fff;
+  background: linear-gradient(120deg, #c7d2fe 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 10px;
   font-family: 'Inter', sans-serif;
   letter-spacing: -0.3px;
@@ -400,7 +419,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .brand-tagline p {
   font-size: 15px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.58);
   line-height: 1.6;
 }
 
@@ -489,9 +508,9 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .brand-score-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
   border-radius: 3px;
-  box-shadow: 0 0 8px rgba(14,165,233,0.4);
+  box-shadow: 0 0 8px rgba(99,102,241,0.45);
 }
 
 /* ── Agenda (slide 3) ── */
@@ -506,20 +525,19 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(14,165,233,0.07);
-  border: 1px solid rgba(14,165,233,0.12);
+  background: rgba(99,102,241,0.09);
+  border: 1px solid rgba(99,102,241,0.2);
   border-radius: 10px;
   padding: 10px 14px;
 }
 
 .brand-agenda-time {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  color: rgba(255,255,255,0.9);
+  color: #a5b4fc;
   min-width: 38px;
   font-family: 'Orbitron', sans-serif;
   letter-spacing: 0;
-  font-size: 11px;
 }
 
 .brand-agenda-content { flex: 1; }
@@ -562,14 +580,15 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   width: 20px;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.3);
+  background: rgba(99,102,241,0.3);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
 }
 
 .brand-dot.active {
-  background: rgba(255,255,255,0.9);
-  width: 32px;
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
+  width: 36px;
+  box-shadow: 0 0 10px rgba(99,102,241,0.5);
 }
 
 /* Login footer */
@@ -2332,10 +2351,16 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="brand-score-row">
               <div class="brand-score-ring">
                 <svg viewBox="0 0 80 80" width="80" height="80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="8"/>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="8"
+                  <defs>
+                    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#6366f1"/>
+                      <stop offset="100%" stop-color="#38bdf8"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(99,102,241,0.18)" stroke-width="8"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="url(#ringGrad)" stroke-width="8"
                     stroke-dasharray="134" stroke-dashoffset="40" stroke-linecap="round"
-                    transform="rotate(-90 40 40)"/>
+                    transform="rotate(-90 40 40)" filter="drop-shadow(0 0 4px rgba(99,102,241,0.6))"/>
                 </svg>
                 <div class="brand-score-label">70%</div>
               </div>
