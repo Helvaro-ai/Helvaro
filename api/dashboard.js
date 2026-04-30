@@ -3691,7 +3691,7 @@ function navigateTo(page) {
 
       if (!rawUrl) {
         // No URL configured — friendly empty state
-        container.innerHTML = `
+        container.innerHTML = \`
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
                       height:100%;gap:14px;color:var(--text-muted);padding:40px;text-align:center;">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -3699,7 +3699,7 @@ function navigateTo(page) {
             </svg>
             <p style="font-size:15px;font-weight:600;color:var(--text-primary);">Geen Calendly URL ingesteld</p>
             <p style="font-size:13px;max-width:300px;">Voeg uw Calendly-link toe in de instellingen om afspraken hier te tonen.</p>
-          </div>`;
+          </div>\`;
         return;
       }
 
