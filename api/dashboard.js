@@ -3028,13 +3028,18 @@ tr:hover .td-arrow { color: var(--cyan); }
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Calendly
             </div>
+            <div class="profile-row"><span>Status</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(107,114,128,0.15);color:#9ca3af;">Niet gekoppeld</span></div>
             <div class="profile-row"><span>Booking link</span>
-              <a id="pf-calendly" href="#" target="_blank" style="color:#818cf8;font-size:13px;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">—</a>
+              <a id="pf-calendly" href="#" target="_blank" style="color:#818cf8;font-size:13px;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">—</a>
             </div>
-            <div class="profile-row" style="margin-top:12px;">
-              <a id="pf-calendly-btn" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:8px;color:#fff;font-size:12px;font-weight:600;text-decoration:none;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                Openen in Calendly
+            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+              <a id="pf-connect-btn" href="#" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:10px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 14px rgba(99,102,241,0.4);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                Koppel Calendly
+              </a>
+              <a id="pf-calendly-open" href="#" target="_blank" style="display:none;align-items:center;gap:6px;padding:9px 14px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);font-size:13px;font-weight:600;text-decoration:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Openen
               </a>
             </div>
           </div>
@@ -4200,12 +4205,46 @@ function renderProfile() {
   if (nameEl)  nameEl.textContent = s.clientName || '—';
   if (emailEl) emailEl.textContent = s.userEmail || localStorage.getItem('hv-email') || '—';
 
-  // Calendly
+  // Calendly — wire connect button
+  const connectBtn = document.getElementById('pf-connect-btn');
+  if (connectBtn) connectBtn.href = \`/api/calendly-oauth-start?key=\${s.apiKey}\`;
+
   const calLink = s.calendlyUrl || '';
   const pfCal   = document.getElementById('pf-calendly');
   const pfBtn   = document.getElementById('pf-calendly-btn');
   if (pfCal) { pfCal.textContent = calLink || '—'; pfCal.href = calLink || '#'; }
   if (pfBtn) pfBtn.href = calLink || '#';
+
+  // Check if Calendly is connected via API
+  if (s.apiKey) {
+    fetch(\`/api/calendly-events?min=\${new Date().toISOString()}&max=\${new Date(Date.now()+86400000).toISOString()}\`, {
+      headers: { 'x-api-key': s.apiKey }
+    }).then(r => r.json()).then(data => {
+      const statusEl = document.getElementById('pf-cal-status');
+      const btnEl    = document.getElementById('pf-connect-btn');
+      const openEl   = document.getElementById('pf-calendly-open');
+      if (data.connected) {
+        if (statusEl) {
+          statusEl.textContent = 'Verbonden';
+          statusEl.style.background = 'rgba(16,185,129,0.15)';
+          statusEl.style.color = '#10b981';
+        }
+        if (btnEl)  btnEl.style.display = 'none';
+        if (openEl) {
+          openEl.style.display = 'inline-flex';
+          if (calLink) openEl.href = calLink;
+        }
+      } else {
+        if (statusEl) {
+          statusEl.textContent = 'Niet gekoppeld';
+          statusEl.style.background = 'rgba(107,114,128,0.15)';
+          statusEl.style.color = '#9ca3af';
+        }
+        if (btnEl)  btnEl.style.display = 'inline-flex';
+        if (openEl) openEl.style.display = 'none';
+      }
+    }).catch(() => {});
+  }
 
   // Info rows
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -4374,6 +4413,25 @@ async function startDashboard() {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
+
+  // Handle Calendly OAuth redirect params
+  const urlParams = new URLSearchParams(window.location.search);
+  const calResult = urlParams.get('calendly');
+  if (calResult) {
+    // Clean up URL without reload
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+    if (calResult === 'connected') {
+      setTimeout(() => toast('Calendly succesvol gekoppeld! Je afspraken worden nu automatisch gesynchroniseerd.', 'success', 'Calendly gekoppeld'), 600);
+      // Navigate to profile so user sees the updated status
+      setTimeout(() => navigateTo('profile'), 800);
+    } else if (calResult === 'denied') {
+      setTimeout(() => toast('Calendly koppeling geannuleerd.', 'info', 'Geannuleerd'), 600);
+    } else if (calResult === 'error' || calResult === 'save_error') {
+      setTimeout(() => toast('Er is iets misgegaan bij het koppelen van Calendly. Probeer het opnieuw.', 'error', 'Fout'), 600);
+    }
+  }
+
   // Detect admin key by trying the admin endpoint
   try {
     const r = await fetch(\`\${API_BASE}/admin\`, { headers: { 'x-api-key': state.apiKey } });

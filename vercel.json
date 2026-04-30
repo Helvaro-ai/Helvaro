@@ -9,7 +9,9 @@
     { "source": "/", "destination": "/dashboard", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/dashboard",       "destination": "/api/dashboard" },
+    { "source": "/dashboard",                        "destination": "/api/dashboard" },
+    { "source": "/api/calendly-oauth-callback",      "destination": "/api/calendly-oauth-callback" },
+    { "source": "/api/calendly-oauth-start",         "destination": "/api/calendly-oauth-start" },
     { "source": "/privacy",         "destination": "/api/privacy" },
     { "source": "/demo",            "destination": "/api/demo" },
     { "source": "/form-widget.js",  "destination": "/public/form-widget.js" },
