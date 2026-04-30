@@ -159,7 +159,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 /* ============================================================
-   LOGIN PAGE
+   LOGIN PAGE — SPLIT PANEL
    ============================================================ */
 #login-page {
   position: fixed;
@@ -167,111 +167,296 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
+  background: #0a0d16;
   z-index: 1000;
   padding: 20px;
 }
 
+/* Subtle dot grid behind the whole page */
 #login-page::before {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 70% 55% at 20% 30%, rgba(99, 102, 241, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(165, 180, 252, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 35% at 50% 100%, rgba(99, 102, 241, 0.06) 0%, transparent 50%);
+  background-image: radial-gradient(circle, rgba(99,102,241,0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
   pointer-events: none;
 }
 
-/* Animated dots on login bg */
 #login-page::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(99,102,241,0.1) 1px, transparent 1px);
-  background-size: 36px 36px;
+  background:
+    radial-gradient(ellipse 60% 50% at 70% 50%, rgba(99,102,241,0.12) 0%, transparent 60%);
   pointer-events: none;
-  opacity: 0.5;
 }
 
-.login-card {
+/* The split container */
+.login-split {
+  display: flex;
   width: 100%;
-  max-width: 440px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 52px 44px 40px;
+  max-width: 900px;
+  height: min(580px, 90vh);
+  border-radius: 24px;
+  overflow: hidden;
   position: relative;
   z-index: 1;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.12);
+  box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.15);
 }
 
-/* Top accent line on card */
-.login-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.6), transparent);
-  border-radius: 1px;
+/* ── Left: form side ── */
+.login-form-side {
+  flex: 0 0 380px;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  padding: 48px 44px;
+  position: relative;
+  overflow-y: auto;
 }
 
-.login-logo {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.login-icon {
+/* Small logo + brand mark at top */
+.login-logo-top {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 18px;
-  filter: drop-shadow(0 4px 16px rgba(99,102,241,0.3));
+  gap: 10px;
+  margin-bottom: 48px;
 }
 
-.login-icon img {
-  width: 76px;
-  height: 76px;
+.login-logo-top img {
+  width: 36px;
+  height: 36px;
   object-fit: contain;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { filter: drop-shadow(0 4px 16px rgba(99,102,241,0.3)); }
-  50% { filter: drop-shadow(0 4px 28px rgba(99,102,241,0.55)); }
-}
-
-.login-icon { animation: pulse-glow 3s ease-in-out infinite; }
-
-.login-title {
+.login-logo-top .brand-name {
   font-family: 'Orbitron', sans-serif;
-  font-size: 22px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   background: linear-gradient(135deg, var(--text-primary) 40%, var(--blue-bright));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.login-welcome {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
   margin-bottom: 6px;
+  letter-spacing: -0.3px;
+  font-family: 'Inter', sans-serif;
 }
 
 .login-subtitle {
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: 13.5px;
+  margin-bottom: 36px;
+}
+
+.login-divider { display: none; }
+.login-logo { display: none; }
+.login-title { display: none; }
+.login-icon { display: none; }
+
+/* ── Right: brand side ── */
+.login-brand-side {
+  flex: 1;
+  background: linear-gradient(145deg, #4338ca 0%, #5b21b6 40%, #6d28d9 70%, #7c3aed 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dot grid on brand side */
+.login-brand-side::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Ambient glow blobs */
+.login-brand-side::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 100%, rgba(99,102,241,0.3) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Floating mock dashboard card */
+.brand-card-mock {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 320px;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+}
+
+.brand-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.brand-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+}
+
+.brand-card-dot:first-child { background: rgba(255,255,255,0.9); }
+
+.brand-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Mini stat row */
+.brand-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.brand-stat {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+.brand-stat-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.brand-stat-label {
+  font-size: 9px;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* Mini bar chart */
+.brand-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 52px;
+}
+
+.brand-bar {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: rgba(255,255,255,0.2);
+  transition: background 0.3s;
+}
+
+.brand-bar.active { background: rgba(255,255,255,0.85); }
+
+/* Brand tagline below card */
+.brand-tagline {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.brand-tagline h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+  font-family: 'Inter', sans-serif;
+}
+
+.brand-tagline p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.5;
+}
+
+/* Pagination dots */
+.brand-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-dot {
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.3);
+}
+
+.brand-dot.active {
+  background: rgba(255,255,255,0.9);
+  width: 28px;
+}
+
+/* Login footer */
+.login-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  color: var(--text-muted);
+  font-size: 11.5px;
   letter-spacing: 0.3px;
 }
 
-/* Divider below logo */
-.login-divider {
-  width: 40px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--blue-primary), var(--blue-bright));
-  border-radius: 2px;
-  margin: 18px auto 0;
-  opacity: 0.6;
+.login-footer span {
+  color: var(--blue-primary);
+  font-weight: 600;
+}
+
+/* Responsive: stack on mobile */
+@media (max-width: 700px) {
+  .login-split { flex-direction: column; height: auto; max-width: 420px; }
+  .login-form-side { flex: none; padding: 40px 32px; }
+  .login-brand-side { flex: none; min-height: 220px; padding: 32px; }
+  .brand-card-mock { display: none; }
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .login-form-side {
+  background: #ffffff;
+}
+
+[data-theme="light"] #login-page {
+  background: #e8eaf4;
+}
+
+[data-theme="light"] #login-page::before {
+  background-image: radial-gradient(circle, rgba(99,102,241,0.1) 1px, transparent 1px);
 }
 
 .form-group {
@@ -1669,7 +1854,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .login-card { padding: 32px 24px; }
+  .login-form-side { padding: 32px 24px; }
 }
 
 /* ============================================================
@@ -1813,15 +1998,9 @@ tr:hover .td-arrow { color: var(--cyan); }
   box-shadow: -4px 0 20px rgba(15,17,40,0.08);
 }
 
-/* Login card in light mode */
-[data-theme="light"] .login-card {
-  box-shadow: 0 8px 32px rgba(15,17,40,0.1), 0 0 0 1px rgba(99,102,241,0.08);
-}
-
-[data-theme="light"] #login-page::before {
-  background:
-    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(99,102,241,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 70% 60%, rgba(129,140,248,0.05) 0%, transparent 60%);
+/* Login split in light mode */
+[data-theme="light"] .login-split {
+  box-shadow: 0 8px 40px rgba(15,17,40,0.14), 0 0 0 1px rgba(99,102,241,0.1);
 }
 
 /* User info bottom of sidebar */
@@ -1920,24 +2099,79 @@ tr:hover .td-arrow { color: var(--cyan); }
      LOGIN PAGE
      ============================================================ -->
 <div id="login-page">
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="login-icon"><img src="/logo.png" alt="Helvaro"></div>
-      <h1 class="login-title">HELVARO</h1>
-      <p class="login-subtitle">AI Lead Kwalificatie Platform</p>
-      <div class="login-divider"></div>
+  <div class="login-split">
+
+    <!-- LEFT: Form side -->
+    <div class="login-form-side">
+      <div class="login-logo-top">
+        <img src="/logo.png" alt="Helvaro">
+        <span class="brand-name">HELVARO</span>
+      </div>
+
+      <h1 class="login-welcome">Welkom terug!</h1>
+      <p class="login-subtitle">Voer uw gegevens in om in te loggen</p>
+
+      <div class="form-group">
+        <label class="form-label" for="login-email">E-mailadres</label>
+        <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.nl" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-password">Wachtwoord</label>
+        <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-login" id="btn-login"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
+      <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
+
+      <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
     </div>
-    <div class="form-group">
-      <label class="form-label" for="login-email">E-mailadres</label>
-      <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.nl" autocomplete="username">
+
+    <!-- RIGHT: Brand side -->
+    <div class="login-brand-side">
+      <!-- Floating glass dashboard card -->
+      <div class="brand-card-mock">
+        <div class="brand-card-header">
+          <div class="brand-card-dot"></div>
+          <div class="brand-card-dot"></div>
+          <div class="brand-card-dot"></div>
+          <span class="brand-card-title">Lead Overzicht</span>
+        </div>
+        <div class="brand-stats">
+          <div class="brand-stat">
+            <div class="brand-stat-num">24</div>
+            <div class="brand-stat-label">Leads</div>
+          </div>
+          <div class="brand-stat">
+            <div class="brand-stat-num">68%</div>
+            <div class="brand-stat-label">Conversie</div>
+          </div>
+          <div class="brand-stat">
+            <div class="brand-stat-num">12</div>
+            <div class="brand-stat-label">Afspraken</div>
+          </div>
+        </div>
+        <div class="brand-bars">
+          <div class="brand-bar" style="height:30%"></div>
+          <div class="brand-bar" style="height:55%"></div>
+          <div class="brand-bar" style="height:40%"></div>
+          <div class="brand-bar" style="height:70%"></div>
+          <div class="brand-bar active" style="height:100%"></div>
+          <div class="brand-bar" style="height:85%"></div>
+          <div class="brand-bar" style="height:60%"></div>
+          <div class="brand-bar" style="height:90%"></div>
+        </div>
+      </div>
+
+      <div class="brand-tagline">
+        <h2>Naadloze werkomgeving</h2>
+        <p>Alles wat u nodig heeft in één krachtig AI-platform</p>
+      </div>
+      <div class="brand-dots">
+        <div class="brand-dot active"></div>
+        <div class="brand-dot"></div>
+        <div class="brand-dot"></div>
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label" for="login-password">Wachtwoord</label>
-      <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn-login" id="btn-login"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
-    <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
-    <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
+
   </div>
 </div>
 
