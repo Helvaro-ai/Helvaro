@@ -390,16 +390,16 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .sidebar-logo {
-  padding: 20px 20px 16px;
+  padding: 18px 20px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 0;
 }
 
 .sidebar-logo > img {
-  height: 52px;
+  height: 78px;
   width: auto;
   flex-shrink: 0;
 }
@@ -1820,6 +1820,78 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: rgba(244,63,94,0.12);
   border-color: rgba(244,63,94,0.3);
 }
+
+/* ── Stat cards: colorful top line + corner glow in light ── */
+[data-theme="light"] .stat-card::before {
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.6), rgba(129,140,248,0.6), transparent);
+  opacity: 0.8;
+}
+
+[data-theme="light"] .stat-card::after {
+  background: radial-gradient(circle at top right, rgba(99,102,241,0.07) 0%, transparent 70%);
+}
+
+[data-theme="light"] .stat-card:hover {
+  border-color: rgba(99,102,241,0.25);
+  background: linear-gradient(160deg, #f5f6ff 0%, #ffffff 100%);
+  box-shadow: 0 8px 28px rgba(99,102,241,0.12), 0 0 0 1px rgba(99,102,241,0.14);
+}
+
+[data-theme="light"] .stat-card:hover::before {
+  background: linear-gradient(90deg, transparent, #6366f1, #818cf8, transparent);
+  opacity: 1;
+}
+
+/* Colored stat values — keep glow but lighter */
+[data-theme="light"] .stat-value { text-shadow: none; color: #0f1117; }
+[data-theme="light"] .stat-value.cyan   { color: #4f46e5; text-shadow: none; }
+[data-theme="light"] .stat-value.green  { color: #16a34a; text-shadow: none; }
+[data-theme="light"] .stat-value.orange { color: #d97706; text-shadow: none; }
+[data-theme="light"] .stat-value.blue   { color: #4f46e5; text-shadow: none; }
+
+/* Stat bar in light */
+[data-theme="light"] .stat-bar { background: #e9ebf6; }
+[data-theme="light"] .stat-bar-fill { background: linear-gradient(90deg, #6366f1, #818cf8); }
+
+/* Chart card */
+[data-theme="light"] .chart-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="light"] .chart-title {
+  color: var(--text-secondary);
+}
+
+/* Filters bar stronger presence */
+[data-theme="light"] .filters-bar {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 6px rgba(15,17,40,0.05);
+}
+
+/* Table header row */
+[data-theme="light"] .leads-table thead tr {
+  background: #f5f6fb;
+}
+
+/* Nav item — cleaner active indicator */
+[data-theme="light"] .nav-item.active {
+  background: linear-gradient(90deg, rgba(99,102,241,0.1), rgba(99,102,241,0.04));
+}
+
+/* Sidebar logo glow in light */
+[data-theme="light"] .sidebar-logo {
+  background: linear-gradient(180deg, rgba(99,102,241,0.04) 0%, transparent 100%);
+}
+
+/* Badge coloring stays vibrant in light */
+[data-theme="light"] .badge-bron {
+  background: rgba(99,102,241,0.1);
+  color: #4f46e5;
+  border-color: rgba(99,102,241,0.2);
+}
 </style>
 </head>
 <body>
@@ -1861,7 +1933,6 @@ tr:hover .td-arrow { color: var(--cyan); }
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="/logo.png" alt="Helvaro">
-      <div class="sidebar-brand">HELVARO<span>AI SALES PLATFORM</span></div>
     </div>
     <nav class="sidebar-nav">
       <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
@@ -2235,6 +2306,8 @@ function applyTheme(theme) {
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   applyTheme(current === 'dark' ? 'light' : 'dark');
+  // Re-render chart with correct theme colors
+  setTimeout(renderChart, 50);
 }
 
 /* ============================================================
@@ -2456,6 +2529,8 @@ function renderChart() {
     counts.push(count);
   }
 
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
   if (state.leadsChart) state.leadsChart.destroy();
   state.leadsChart = new Chart(canvas, {
     type: 'bar',
@@ -2464,19 +2539,26 @@ function renderChart() {
       datasets: [{
         label: 'Leads',
         data: counts,
-        backgroundColor: 'rgba(124,58,237,0.45)',
-        borderColor: '#818cf8',
-        borderWidth: 2,
-        borderRadius: 6,
-        hoverBackgroundColor: 'rgba(167,139,250,0.35)'
+        backgroundColor: isLight ? 'rgba(99,102,241,0.55)' : 'rgba(99,102,241,0.4)',
+        borderColor: isLight ? '#6366f1' : '#818cf8',
+        borderWidth: isLight ? 0 : 2,
+        borderRadius: 8,
+        hoverBackgroundColor: isLight ? 'rgba(99,102,241,0.75)' : 'rgba(129,140,248,0.5)'
       }]
     },
     options: {
       responsive: true,
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6a85b0' } },
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6a85b0', stepSize: 1 }, beginAtZero: true }
+        x: {
+          grid: { color: isLight ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.05)' },
+          ticks: { color: isLight ? '#5c6478' : '#6a85b0' }
+        },
+        y: {
+          grid: { color: isLight ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.05)' },
+          ticks: { color: isLight ? '#5c6478' : '#6a85b0', stepSize: 1 },
+          beginAtZero: true
+        }
       }
     }
   });
