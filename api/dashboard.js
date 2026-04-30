@@ -222,8 +222,8 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .login-logo-top img {
-  width: 56px;
-  height: 56px;
+  width: 96px;
+  height: 96px;
   object-fit: cover;
   object-position: left center;
 }
@@ -255,7 +255,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 /* ── RIGHT: brand panel (58%) ── */
 .login-brand-side {
   flex: 1;
-  background: linear-gradient(160deg, #312e81 0%, #4c1d95 30%, #5b21b6 60%, #6d28d9 100%);
+  background: #040811;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -271,19 +271,20 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(14,165,233,0.12) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
-/* Ambient glow layers */
+/* Electric glow orbs */
 .login-brand-side::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255,255,255,0.1) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(99,102,241,0.4) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 30% at 100% 0%, rgba(167,139,250,0.2) 0%, transparent 50%);
+    radial-gradient(ellipse 70% 50% at 60% 20%, rgba(14,165,233,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(59,130,246,0.2) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 90% 90%, rgba(6,182,212,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 25% at 80% 10%, rgba(99,102,241,0.1) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -293,13 +294,13 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   z-index: 1;
   width: 100%;
   max-width: 440px;
-  background: rgba(255,255,255,0.09);
+  background: rgba(14,165,233,0.06);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,0.16);
+  border: 1px solid rgba(14,165,233,0.2);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(14,165,233,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .brand-card-header {
@@ -313,15 +314,15 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.4);
+  background: rgba(14,165,233,0.4);
 }
 
-.brand-card-dot:first-child { background: rgba(255,255,255,0.9); }
+.brand-card-dot:first-child { background: #38bdf8; box-shadow: 0 0 8px rgba(14,165,233,0.6); }
 
 .brand-card-title {
   font-size: 11.5px;
   font-weight: 700;
-  color: rgba(255,255,255,0.65);
+  color: rgba(56,189,248,0.75);
   text-transform: uppercase;
   letter-spacing: 1.5px;
 }
@@ -335,8 +336,8 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .brand-stat {
   flex: 1;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(14,165,233,0.08);
+  border: 1px solid rgba(14,165,233,0.15);
   border-radius: 16px;
   padding: 16px 12px;
   text-align: center;
@@ -370,11 +371,14 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .brand-bar {
   flex: 1;
   border-radius: 6px 6px 0 0;
-  background: rgba(255,255,255,0.18);
+  background: rgba(14,165,233,0.22);
   transition: background 0.3s;
 }
 
-.brand-bar.active { background: rgba(255,255,255,0.88); }
+.brand-bar.active {
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+  box-shadow: 0 0 16px rgba(14,165,233,0.5);
+}
 
 /* Brand tagline */
 .brand-tagline {
@@ -484,8 +488,9 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .brand-score-bar-fill {
   height: 100%;
-  background: rgba(255,255,255,0.8);
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
   border-radius: 3px;
+  box-shadow: 0 0 8px rgba(14,165,233,0.4);
 }
 
 /* ── Agenda (slide 3) ── */
@@ -500,7 +505,8 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(14,165,233,0.07);
+  border: 1px solid rgba(14,165,233,0.12);
   border-radius: 10px;
   padding: 10px 14px;
 }
