@@ -724,6 +724,202 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .login-error.visible { display: block; }
 
 /* ============================================================
+   CALENDAR (WEEK VIEW)
+   ============================================================ */
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+}
+.cal-today-btn {
+  padding: 7px 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s;
+}
+.cal-today-btn:hover { border-color: rgba(99,102,241,0.5); color: #818cf8; }
+.cal-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+.cal-nav-btn:hover { border-color: rgba(99,102,241,0.5); color: #818cf8; }
+.cal-range-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-left: 4px;
+  font-family: 'Inter', sans-serif;
+}
+.cal-book-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.cal-book-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.5); }
+
+/* Day header row */
+.cal-day-headers {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+}
+.cal-gutter { width: 54px; flex-shrink: 0; }
+.cal-day-cols-header {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.cal-day-header-cell {
+  padding: 10px 8px;
+  text-align: center;
+  border-left: 1px solid var(--border);
+}
+.cal-day-header-cell .cal-day-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.cal-day-header-cell .cal-day-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+.cal-day-header-cell.cal-today .cal-day-num {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+}
+.cal-day-header-cell.cal-today .cal-day-name { color: #818cf8; }
+
+/* Scrollable grid */
+.cal-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.cal-scroll-area::-webkit-scrollbar { width: 6px; }
+.cal-scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+.cal-time-grid {
+  display: flex;
+  min-height: 660px;
+}
+.cal-time-labels {
+  width: 54px;
+  flex-shrink: 0;
+  position: relative;
+}
+.cal-time-label {
+  height: 60px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-right: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding-top: 2px;
+  box-sizing: border-box;
+}
+.cal-day-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  position: relative;
+}
+.cal-day-col {
+  border-left: 1px solid var(--border);
+  position: relative;
+}
+.cal-hour-row {
+  height: 60px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  box-sizing: border-box;
+}
+.cal-day-col.cal-today-col { background: rgba(99,102,241,0.03); }
+
+/* Now line */
+.cal-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #f43f5e;
+  z-index: 10;
+  pointer-events: none;
+}
+.cal-now-line::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  background: #f43f5e;
+  border-radius: 50%;
+}
+
+/* Event blocks */
+.cal-event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 5;
+  transition: filter 0.15s, transform 0.15s;
+  min-height: 24px;
+  line-height: 1.3;
+}
+.cal-event:hover { filter: brightness(1.15); transform: scale(1.02); }
+.cal-event .cal-event-time { font-size: 10px; font-weight: 500; opacity: 0.85; }
+
+/* ============================================================
    SIDEBAR
    ============================================================ */
 .sidebar {
@@ -2648,35 +2844,38 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
-    <main class="page-content page" id="page-calendly">
-      <!-- Appointments header -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-        <div>
-          <div class="orbitron gradient-text" style="font-size:18px;font-weight:700;letter-spacing:0.5px;">Afspraken</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Leads met een geboekte afspraak</div>
-        </div>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-          <span id="cal-count-badge" style="display:none;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;"></span>
-          <a id="calendly-open-link" href="#" target="_blank" style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:linear-gradient(135deg,#4f46e5,#6366f1);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Boek gesprek
-          </a>
+    <main class="page-content page" id="page-calendly" style="padding:0;display:flex;flex-direction:column;height:calc(100vh - 56px);overflow:hidden;">
+
+      <!-- Calendar toolbar -->
+      <div class="cal-toolbar">
+        <button class="cal-today-btn" onclick="calToday()">Vandaag</button>
+        <button class="cal-nav-btn" onclick="calPrev()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="cal-nav-btn" onclick="calNext()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <span id="cal-range-label" class="cal-range-label"></span>
+        <a id="calendly-open-link" href="#" target="_blank" class="cal-book-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Boek gesprek
+        </a>
+      </div>
+
+      <!-- Day headers -->
+      <div class="cal-day-headers">
+        <div class="cal-gutter"></div>
+        <div id="cal-day-cols-header" class="cal-day-cols-header"></div>
+      </div>
+
+      <!-- Scrollable time grid -->
+      <div class="cal-scroll-area" id="cal-scroll-area">
+        <div class="cal-time-grid">
+          <div class="cal-time-labels" id="cal-time-labels"></div>
+          <div class="cal-day-cols" id="cal-day-cols"></div>
         </div>
       </div>
 
-      <!-- Appointments list -->
-      <div id="cal-appointments-wrap">
-        <div id="cal-appointments-list" style="display:grid;gap:12px;"></div>
-        <div id="cal-empty" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:60px 32px;text-align:center;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin:0 auto 16px;display:block;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Nog geen afspraken</p>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Afspraken verschijnen hier zodra een lead een gesprek heeft ingepland.</p>
-          <a id="cal-empty-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:10px;color:#fff;font-size:13px;font-weight:600;text-decoration:none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Deel uw Calendly-link
-          </a>
-        </div>
-      </div>
     </main>
   </div>
 </div>
@@ -3669,76 +3868,133 @@ document.addEventListener('keydown', e => {
    NAVIGATION
    ============================================================ */
 
-/* ── Appointments view ── */
+/* ── Week Calendar ── */
+const CAL_START_HOUR = 8;   // 8 AM
+const CAL_HOURS      = 12;  // 8 AM – 8 PM
+const CAL_ROW_H      = 60;  // px per hour
+
+const calState = { weekStart: null };
+
+function calGetMonday(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  dt.setDate(dt.getDate() + diff);
+  dt.setHours(0, 0, 0, 0);
+  return dt;
+}
+
+function calToday()  { calState.weekStart = calGetMonday(new Date()); renderCalendar(); }
+function calPrev()   { calState.weekStart.setDate(calState.weekStart.getDate() - 7); renderCalendar(); }
+function calNext()   { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
+
 function renderAppointments() {
-  const rawUrl  = state.calendlyUrl || '';
-  const openEl  = document.getElementById('calendly-open-link');
-  const emptyEl = document.getElementById('cal-empty');
-  const listEl  = document.getElementById('cal-appointments-list');
-  const badge   = document.getElementById('cal-count-badge');
-  const emptyLnk = document.getElementById('cal-empty-link');
+  if (!calState.weekStart) calState.weekStart = calGetMonday(new Date());
+  const openEl = document.getElementById('calendly-open-link');
+  if (openEl) openEl.href = state.calendlyUrl || 'https://calendly.com';
+  renderCalendar();
+}
 
-  if (openEl)   openEl.href   = rawUrl || 'https://calendly.com';
-  if (emptyLnk) emptyLnk.href = rawUrl || 'https://calendly.com';
+function renderCalendar() {
+  const ws = calState.weekStart;
+  if (!ws) return;
 
-  const booked = (state.leads || []).filter(l => l.afspraakGeboekt);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
 
-  if (badge) {
-    if (booked.length > 0) {
-      badge.textContent = booked.length + ' afspraak' + (booked.length !== 1 ? 'en' : '');
-      badge.style.display = 'inline-block';
-    } else {
-      badge.style.display = 'none';
+  // Range label
+  const monthFmt = { month: 'long', year: 'numeric' };
+  const startM = days[0].toLocaleDateString('nl-NL', monthFmt);
+  const endM   = days[6].toLocaleDateString('nl-NL', monthFmt);
+  const label  = startM === endM ? startM : days[0].toLocaleDateString('nl-NL', { month: 'short' }) + ' – ' + endM;
+  const rangeEl = document.getElementById('cal-range-label');
+  if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dayNames = ['ZO','MA','DI','WO','DO','VR','ZA'];
+
+  // Day header cells
+  const headerEl = document.getElementById('cal-day-cols-header');
+  if (headerEl) {
+    headerEl.innerHTML = days.map(d => {
+      const isToday = d.getTime() === today.getTime();
+      return \`<div class="cal-day-header-cell\${isToday ? ' cal-today' : ''}">
+        <div class="cal-day-name">\${dayNames[d.getDay()]}</div>
+        <div class="cal-day-num">\${d.getDate()}</div>
+      </div>\`;
+    }).join('');
+  }
+
+  // Time labels
+  const timeLabels = document.getElementById('cal-time-labels');
+  if (timeLabels) {
+    let html = '';
+    for (let h = CAL_START_HOUR; h < CAL_START_HOUR + CAL_HOURS; h++) {
+      const label = h < 12 ? h + ' AM' : (h === 12 ? '12 PM' : (h - 12) + ' PM');
+      html += \`<div class="cal-time-label">\${label}</div>\`;
     }
+    timeLabels.innerHTML = html;
   }
 
-  if (!listEl || !emptyEl) return;
+  // Booked leads — placed on their creation date at 9 AM default
+  const booked = (state.leads || []).filter(l => l.afspraakGeboekt);
+  const eventColors = ['#6366f1','#0ea5e9','#8b5cf6','#06b6d4','#4f46e5'];
 
-  if (booked.length === 0) {
-    listEl.style.display   = 'none';
-    emptyEl.style.display  = 'block';
-    return;
-  }
+  // Day columns with events
+  const colsEl = document.getElementById('cal-day-cols');
+  if (!colsEl) return;
 
-  listEl.style.display  = 'grid';
-  emptyEl.style.display = 'none';
+  const cols = days.map((d, idx) => {
+    const isToday = d.getTime() === today.getTime();
+    // Hour rows
+    let rows = '';
+    for (let h = 0; h < CAL_HOURS; h++) rows += \`<div class="cal-hour-row"></div>\`;
 
-  const statusColors = {
-    'Gekwalificeerd': '#22c55e', 'Niet gekwalificeerd': '#f43f5e',
-    'Follow-up': '#f59e0b', 'Nieuw': '#6366f1', 'In behandeling': '#38bdf8'
-  };
+    // Now line
+    let nowLine = '';
+    if (isToday) {
+      const now = new Date();
+      const mins = (now.getHours() - CAL_START_HOUR) * 60 + now.getMinutes();
+      if (mins >= 0 && mins < CAL_HOURS * 60) {
+        const top = Math.round((mins / 60) * CAL_ROW_H);
+        nowLine = \`<div class="cal-now-line" style="top:\${top}px"></div>\`;
+      }
+    }
 
-  listEl.innerHTML = booked.map(lead => {
-    const initials = (lead.naam || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    const colors   = ['#6366f1','#0ea5e9','#8b5cf6','#06b6d4','#3b82f6'];
-    const color    = colors[(lead.naam || '').charCodeAt(0) % colors.length];
-    const date     = lead.datum ? new Date(lead.datum).toLocaleDateString('nl-NL', { day:'numeric', month:'long', year:'numeric' }) : '—';
-    const statusColor = statusColors[lead.status] || '#6b7280';
-    const score    = lead.leadScore ? lead.leadScore + '%' : '—';
+    // Events for this day
+    const dayKey = d.toDateString();
+    const dayEvents = booked.filter(l => l.datum && new Date(l.datum).toDateString() === dayKey);
+    const eventHtml = dayEvents.map((lead, i) => {
+      const color = eventColors[(lead.naam || '').charCodeAt(0) % eventColors.length];
+      // Default time: 9 AM + 30min per slot to avoid overlap
+      const startH = 9 + Math.floor(i * 0.5);
+      const startMin = (i % 2) * 30;
+      const offsetMins = (startH - CAL_START_HOUR) * 60 + startMin;
+      const top = Math.round((offsetMins / 60) * CAL_ROW_H);
+      const height = CAL_ROW_H - 4; // 60min block
+      const timeStr = startH + ':' + (startMin === 0 ? '00' : '30');
+      return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:\${color};"
+                   onclick="event.stopPropagation();openPanel('\${escHtml(lead.id||'')}')">
+        <div class="cal-event-time">\${timeStr}</div>
+        <div>\${escHtml((lead.naam||'Lead').split(' ')[0])}</div>
+      </div>\`;
+    }).join('');
 
-    return \`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;
-                       display:flex;align-items:center;gap:16px;transition:border-color 0.2s;"
-                  onmouseover="this.style.borderColor='rgba(99,102,241,0.4)'"
-                  onmouseout="this.style.borderColor='var(--border)'"
-                  onclick="openPanel('\${escHtml(lead.id || '')}')">
-      <div style="width:48px;height:48px;border-radius:50%;background:\${color};display:flex;align-items:center;
-                  justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0;font-family:'Inter',sans-serif;">
-        \${initials}
-      </div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;font-size:15px;color:var(--text-primary);margin-bottom:3px;">\${escHtml(lead.naam || '—')}</div>
-        <div style="font-size:13px;color:var(--text-muted);">\${escHtml(lead.telefoon || '—')}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
-        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;
-                     background:\${statusColor}22;color:\${statusColor};border:1px solid \${statusColor}44;">
-          \${escHtml(lead.status || 'Nieuw')}
-        </span>
-        <span style="font-size:11px;color:var(--text-muted);">\${date}</span>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
-    </div>\`;
+    return \`<div class="cal-day-col\${isToday ? ' cal-today-col' : ''}">\${rows}\${nowLine}\${eventHtml}</div>\`;
   }).join('');
+
+  colsEl.innerHTML = cols;
+
+  // Scroll to 8 AM (first row visible)
+  const scrollEl = document.getElementById('cal-scroll-area');
+  if (scrollEl && scrollEl.dataset.scrolled !== '1') {
+    scrollEl.dataset.scrolled = '1';
+    scrollEl.scrollTop = CAL_ROW_H; // show from 9 AM
+  }
 }
 
 function navigateTo(page) {
