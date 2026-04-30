@@ -226,7 +226,9 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .login-logo-top img {
   width: 52px;
   height: 52px;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 4px;
 }
 
 .login-logo-top .brand-name {
@@ -729,8 +731,10 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .sidebar-logo > img {
+  width: 78px;
   height: 78px;
-  width: auto;
+  object-fit: cover;
+  object-position: left center;
   flex-shrink: 0;
 }
 
