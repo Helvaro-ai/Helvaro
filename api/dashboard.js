@@ -159,102 +159,92 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 /* ============================================================
-   LOGIN PAGE — SPLIT PANEL
+   LOGIN PAGE — FULL VIEWPORT SPLIT
    ============================================================ */
 #login-page {
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0a0d16;
   z-index: 1000;
-  padding: 20px;
+  padding: 0;
+  background: #0d0f1a;
 }
 
-/* Subtle dot grid behind the whole page */
-#login-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(99,102,241,0.08) 1px, transparent 1px);
-  background-size: 32px 32px;
-  pointer-events: none;
-}
+#login-page::before { display: none; }
+#login-page::after  { display: none; }
 
-#login-page::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 60% 50% at 70% 50%, rgba(99,102,241,0.12) 0%, transparent 60%);
-  pointer-events: none;
-}
-
-/* The split container */
+/* Full-screen two-panel split — no card, no border-radius */
 .login-split {
   display: flex;
   width: 100%;
-  max-width: 900px;
-  height: min(580px, 90vh);
-  border-radius: 24px;
-  overflow: hidden;
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.15);
+  height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none;
 }
 
-/* ── Left: form side ── */
+/* ── LEFT: form panel (42%) ── */
 .login-form-side {
-  flex: 0 0 380px;
-  background: var(--bg-card);
+  flex: 0 0 42%;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
-  padding: 48px 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 72px;
   position: relative;
   overflow-y: auto;
 }
 
-/* Small logo + brand mark at top */
+/* Subtle vertical line separator */
+.login-form-side::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(99,102,241,0.15) 30%, rgba(99,102,241,0.15) 70%, transparent);
+}
+
+/* Form content constrained for readability */
+.login-form-inner {
+  width: 100%;
+  max-width: 380px;
+}
+
+/* Logo top-left of panel */
 .login-logo-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 48px;
+  gap: 0;
+  margin-bottom: 56px;
 }
 
 .login-logo-top img {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   object-fit: cover;
   object-position: left center;
-  border-radius: 4px;
 }
 
-.login-logo-top .brand-name {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  background: linear-gradient(135deg, var(--text-primary) 40%, var(--blue-bright));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+.login-logo-top .brand-name { display: none; }
 
 .login-welcome {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-  letter-spacing: -0.3px;
+  font-size: 34px;
+  font-weight: 800;
+  color: #0f1117;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
   font-family: 'Inter', sans-serif;
+  line-height: 1.15;
 }
 
 .login-subtitle {
-  color: var(--text-secondary);
-  font-size: 13.5px;
-  margin-bottom: 36px;
+  color: #6b7280;
+  font-size: 15px;
+  margin-bottom: 40px;
+  line-height: 1.5;
 }
 
 .login-divider { display: none; }
@@ -262,98 +252,99 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .login-title { display: none; }
 .login-icon { display: none; }
 
-/* ── Right: brand side ── */
+/* ── RIGHT: brand panel (58%) ── */
 .login-brand-side {
   flex: 1;
-  background: linear-gradient(145deg, #4338ca 0%, #5b21b6 40%, #6d28d9 70%, #7c3aed 100%);
+  background: linear-gradient(160deg, #312e81 0%, #4c1d95 30%, #5b21b6 60%, #6d28d9 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 36px;
+  padding: 80px 72px;
   position: relative;
   overflow: hidden;
   gap: 0;
 }
 
-/* Dot grid on brand side */
+/* Fine dot grid */
 .login-brand-side::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-/* Ambient glow blobs */
+/* Ambient glow layers */
 .login-brand-side::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 20% 100%, rgba(99,102,241,0.3) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255,255,255,0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(99,102,241,0.4) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 100% 0%, rgba(167,139,250,0.2) 0%, transparent 50%);
   pointer-events: none;
 }
 
-/* Floating mock dashboard card */
+/* Large floating mock card */
 .brand-card-mock {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 320px;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 32px;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+  max-width: 440px;
+  background: rgba(255,255,255,0.09);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .brand-card-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 
 .brand-card-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.4);
 }
 
 .brand-card-dot:first-child { background: rgba(255,255,255,0.9); }
 
 .brand-card-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.7);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
-/* Mini stat row */
+/* Stat row */
 .brand-stats {
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 14px;
+  margin-bottom: 28px;
 }
 
 .brand-stat {
   flex: 1;
-  background: rgba(255,255,255,0.08);
-  border-radius: 12px;
-  padding: 12px 10px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 16px 12px;
   text-align: center;
 }
 
 .brand-stat-num {
   font-family: 'Orbitron', sans-serif;
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 800;
   color: #fff;
   line-height: 1;
@@ -361,48 +352,51 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .brand-stat-label {
-  font-size: 9px;
-  color: rgba(255,255,255,0.6);
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
+  margin-top: 4px;
 }
 
-/* Mini bar chart */
+/* Bar chart */
 .brand-bars {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  height: 52px;
+  gap: 8px;
+  height: 72px;
 }
 
 .brand-bar {
   flex: 1;
-  border-radius: 4px 4px 0 0;
-  background: rgba(255,255,255,0.2);
+  border-radius: 6px 6px 0 0;
+  background: rgba(255,255,255,0.18);
   transition: background 0.3s;
 }
 
-.brand-bar.active { background: rgba(255,255,255,0.85); }
+.brand-bar.active { background: rgba(255,255,255,0.88); }
 
-/* Brand tagline below card */
+/* Brand tagline */
 .brand-tagline {
   position: relative;
   z-index: 1;
   text-align: center;
+  padding: 0 20px;
 }
 
 .brand-tagline h2 {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-family: 'Inter', sans-serif;
+  letter-spacing: -0.3px;
 }
 
 .brand-tagline p {
-  font-size: 13px;
-  color: rgba(255,255,255,0.65);
-  line-height: 1.5;
+  font-size: 15px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.6;
 }
 
 /* ── Slides wrapper ── */
@@ -586,11 +580,12 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 /* Responsive: stack on mobile */
-@media (max-width: 700px) {
-  .login-split { flex-direction: column; height: auto; max-width: 420px; }
-  .login-form-side { flex: none; padding: 40px 32px; }
-  .login-brand-side { flex: none; min-height: 220px; padding: 32px; }
-  .brand-card-mock { display: none; }
+@media (max-width: 860px) {
+  .login-split { flex-direction: column; height: auto; }
+  .login-form-side { flex: none; padding: 52px 40px; align-items: center; }
+  .login-form-inner { max-width: 420px; }
+  .login-brand-side { flex: none; min-height: 300px; padding: 48px 40px; }
+  .brand-card-mock { max-width: 380px; }
 }
 
 /* Light mode adjustments */
@@ -599,11 +594,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 [data-theme="light"] #login-page {
-  background: #e8eaf4;
-}
-
-[data-theme="light"] #login-page::before {
-  background-image: radial-gradient(circle, rgba(99,102,241,0.1) 1px, transparent 1px);
+  background: #0d0f1a;
 }
 
 .form-group {
@@ -622,24 +613,25 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .form-input {
   width: 100%;
-  padding: 13px 16px;
-  background: var(--bg-card-alt);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text-primary);
-  font-size: 14px;
+  padding: 15px 18px;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  color: #0f1117;
+  font-size: 15px;
   font-family: 'Inter', sans-serif;
   transition: var(--transition);
   outline: none;
+  min-height: 52px;
 }
 
 .form-input:focus {
-  border-color: var(--blue-primary);
-  background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: #6366f1;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
 }
 
-.form-input::placeholder { color: var(--text-muted); }
+.form-input::placeholder { color: #9ca3af; }
 
 /* Login footer */
 .login-footer {
@@ -659,21 +651,22 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 
 .btn-login {
   width: 100%;
-  padding: 15px;
+  padding: 17px;
   background: linear-gradient(135deg, #4f46e5, #6366f1 50%, #818cf8);
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   color: white;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 12px;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+  box-shadow: 0 6px 24px rgba(99,102,241,0.4);
+  min-height: 56px;
 }
 
 .btn-login::before {
@@ -2252,25 +2245,27 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- LEFT: Form side -->
     <div class="login-form-side">
-      <div class="login-logo-top">
-        <img src="/logo.png" alt="Helvaro">
-      </div>
+      <div class="login-form-inner">
+        <div class="login-logo-top">
+          <img src="/logo.png" alt="Helvaro">
+        </div>
 
-      <h1 class="login-welcome">Welkom terug!</h1>
-      <p class="login-subtitle">Voer uw gegevens in om in te loggen</p>
+        <h1 class="login-welcome">Welkom terug!</h1>
+        <p class="login-subtitle">Voer uw gegevens in om toegang te krijgen tot uw dashboard</p>
 
-      <div class="form-group">
-        <label class="form-label" for="login-email">E-mailadres</label>
-        <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.nl" autocomplete="username">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="login-password">Wachtwoord</label>
-        <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <button class="btn-login" id="btn-login"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
-      <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
+        <div class="form-group">
+          <label class="form-label" for="login-email">E-mailadres</label>
+          <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.nl" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="login-password">Wachtwoord</label>
+          <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn-login" id="btn-login"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
+        <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
 
-      <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
+        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
+      </div>
     </div>
 
     <!-- RIGHT: Brand side with 3 slides -->
