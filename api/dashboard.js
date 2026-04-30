@@ -2649,17 +2649,33 @@ tr:hover .td-arrow { color: var(--cyan); }
     </main>
 
     <main class="page-content page" id="page-calendly">
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;height:calc(100vh - 120px);display:flex;flex-direction:column;">
-        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;flex-shrink:0;">
-          <div>
-            <div class="orbitron gradient-text" style="font-size:16px;font-weight:700;letter-spacing:1px;">Kalender</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Beheer uw afspraken via Calendly</div>
-          </div>
-          <a id="calendly-open-link" href="#" target="_blank" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px;font-weight:500;text-decoration:none;">
-            ↗ Openen in Calendly
+      <!-- Appointments header -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <div>
+          <div class="orbitron gradient-text" style="font-size:18px;font-weight:700;letter-spacing:0.5px;">Afspraken</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Leads met een geboekte afspraak</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <span id="cal-count-badge" style="display:none;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;"></span>
+          <a id="calendly-open-link" href="#" target="_blank" style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:linear-gradient(135deg,#4f46e5,#6366f1);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Boek gesprek
           </a>
         </div>
-        <div id="calendly-container" style="flex:1;position:relative;overflow:hidden;min-height:500px;"></div>
+      </div>
+
+      <!-- Appointments list -->
+      <div id="cal-appointments-wrap">
+        <div id="cal-appointments-list" style="display:grid;gap:12px;"></div>
+        <div id="cal-empty" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:60px 32px;text-align:center;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin:0 auto 16px;display:block;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <p style="font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Nog geen afspraken</p>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Afspraken verschijnen hier zodra een lead een gesprek heeft ingepland.</p>
+          <a id="cal-empty-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:10px;color:#fff;font-size:13px;font-weight:600;text-decoration:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Deel uw Calendly-link
+          </a>
+        </div>
       </div>
     </main>
   </div>
@@ -3271,6 +3287,7 @@ function applyFilters() {
   renderTable();
   updateFilterUI();
   populateBronFilter();
+  if (state.currentPage === 'calendly') renderAppointments();
 }
 
 function sortLeads() {
@@ -3651,6 +3668,79 @@ document.addEventListener('keydown', e => {
 /* ============================================================
    NAVIGATION
    ============================================================ */
+
+/* ── Appointments view ── */
+function renderAppointments() {
+  const rawUrl  = state.calendlyUrl || '';
+  const openEl  = document.getElementById('calendly-open-link');
+  const emptyEl = document.getElementById('cal-empty');
+  const listEl  = document.getElementById('cal-appointments-list');
+  const badge   = document.getElementById('cal-count-badge');
+  const emptyLnk = document.getElementById('cal-empty-link');
+
+  if (openEl)   openEl.href   = rawUrl || 'https://calendly.com';
+  if (emptyLnk) emptyLnk.href = rawUrl || 'https://calendly.com';
+
+  const booked = (state.leads || []).filter(l => l.afspraakGeboekt);
+
+  if (badge) {
+    if (booked.length > 0) {
+      badge.textContent = booked.length + ' afspraak' + (booked.length !== 1 ? 'en' : '');
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  if (!listEl || !emptyEl) return;
+
+  if (booked.length === 0) {
+    listEl.style.display   = 'none';
+    emptyEl.style.display  = 'block';
+    return;
+  }
+
+  listEl.style.display  = 'grid';
+  emptyEl.style.display = 'none';
+
+  const statusColors = {
+    'Gekwalificeerd': '#22c55e', 'Niet gekwalificeerd': '#f43f5e',
+    'Follow-up': '#f59e0b', 'Nieuw': '#6366f1', 'In behandeling': '#38bdf8'
+  };
+
+  listEl.innerHTML = booked.map(lead => {
+    const initials = (lead.naam || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const colors   = ['#6366f1','#0ea5e9','#8b5cf6','#06b6d4','#3b82f6'];
+    const color    = colors[(lead.naam || '').charCodeAt(0) % colors.length];
+    const date     = lead.datum ? new Date(lead.datum).toLocaleDateString('nl-NL', { day:'numeric', month:'long', year:'numeric' }) : '—';
+    const statusColor = statusColors[lead.status] || '#6b7280';
+    const score    = lead.leadScore ? lead.leadScore + '%' : '—';
+
+    return \`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;
+                       display:flex;align-items:center;gap:16px;transition:border-color 0.2s;"
+                  onmouseover="this.style.borderColor='rgba(99,102,241,0.4)'"
+                  onmouseout="this.style.borderColor='var(--border)'"
+                  onclick="openPanel('\${escHtml(lead.id || '')}')">
+      <div style="width:48px;height:48px;border-radius:50%;background:\${color};display:flex;align-items:center;
+                  justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0;font-family:'Inter',sans-serif;">
+        \${initials}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:15px;color:var(--text-primary);margin-bottom:3px;">\${escHtml(lead.naam || '—')}</div>
+        <div style="font-size:13px;color:var(--text-muted);">\${escHtml(lead.telefoon || '—')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;
+                     background:\${statusColor}22;color:\${statusColor};border:1px solid \${statusColor}44;">
+          \${escHtml(lead.status || 'Nieuw')}
+        </span>
+        <span style="font-size:11px;color:var(--text-muted);">\${date}</span>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
+    </div>\`;
+  }).join('');
+}
+
 function navigateTo(page) {
   state.currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -3678,70 +3768,9 @@ function navigateTo(page) {
     loadAdminClients();
   }
 
-  // Load Calendly inline widget on first visit
+  // Render appointments page from leads data
   if (page === 'calendly') {
-    const container = document.getElementById('calendly-container');
-    const openLink  = document.getElementById('calendly-open-link');
-    const rawUrl    = state.calendlyUrl || '';
-
-    if (openLink) openLink.href = rawUrl || 'https://calendly.com';
-
-    if (container && !container.dataset.loaded) {
-      container.dataset.loaded = '1';
-
-      if (!rawUrl) {
-        // No URL configured — friendly empty state
-        container.innerHTML = \`
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-                      height:100%;gap:14px;color:var(--text-muted);padding:40px;text-align:center;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-            </svg>
-            <p style="font-size:15px;font-weight:600;color:var(--text-primary);">Geen Calendly URL ingesteld</p>
-            <p style="font-size:13px;max-width:300px;">Voeg uw Calendly-link toe in de instellingen om afspraken hier te tonen.</p>
-          </div>\`;
-        return;
-      }
-
-      // Append Calendly inline-embed + dark-theme params
-      const sep    = rawUrl.includes('?') ? '&' : '?';
-      const themed = rawUrl + sep + 'embed_type=Inline&hide_gdpr_banner=1&background_color=040811&text_color=e2e8f0&primary_color=6366f1';
-
-      function mountWidget() {
-        window.Calendly.initInlineWidget({
-          url: themed,
-          parentElement: container,
-          prefill: {},
-          utm: {}
-        });
-      }
-
-      if (window.Calendly && window.Calendly.initInlineWidget) {
-        mountWidget();
-      } else {
-        // Load Calendly widget.js once
-        if (!document.getElementById('calendly-widget-js')) {
-          const s    = document.createElement('script');
-          s.id       = 'calendly-widget-js';
-          s.src      = 'https://assets.calendly.com/assets/external/widget.js';
-          s.async    = true;
-          s.onload   = mountWidget;
-          document.head.appendChild(s);
-
-          // Calendly CSS
-          if (!document.getElementById('calendly-widget-css')) {
-            const l  = document.createElement('link');
-            l.id     = 'calendly-widget-css';
-            l.rel    = 'stylesheet';
-            l.href   = 'https://assets.calendly.com/assets/external/widget.css';
-            document.head.appendChild(l);
-          }
-        } else {
-          // Script tag exists but Calendly not ready yet — retry
-          setTimeout(mountWidget, 500);
-        }
-      }
-    }
+    renderAppointments();
   }
 
   // Close mobile sidebar
