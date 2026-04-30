@@ -218,14 +218,15 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   gap: 0;
-  margin-bottom: 56px;
+  margin-bottom: 48px;
 }
 
 .login-logo-top img {
-  width: 96px;
-  height: 96px;
-  object-fit: cover;
-  object-position: left center;
+  height: 88px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 18px rgba(14, 165, 233, 0.35)) drop-shadow(0 0 6px rgba(99, 102, 241, 0.2));
 }
 
 .login-logo-top .brand-name { display: none; }
@@ -730,11 +731,12 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .sidebar-logo > img {
-  width: 78px;
-  height: 78px;
-  object-fit: cover;
-  object-position: left center;
+  height: 52px;
+  width: auto;
+  object-fit: contain;
+  display: block;
   flex-shrink: 0;
+  filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.3));
 }
 
 .sidebar-brand {
