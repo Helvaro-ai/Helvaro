@@ -41,17 +41,19 @@ module.exports = async function handler(req, res) {
 }
 
 [data-theme="light"] {
-  --bg-primary: #f0f4fa;
-  --bg-card: #ffffff;
-  --bg-card-alt: #e8eef8;
-  --bg-card-hover: #dde5f5;
-  --text-primary: #0a1628;
-  --text-secondary: #4a5a70;
-  --text-muted: #8899aa;
-  --border: #c8d8ee;
-  --border-bright: #a0b8d8;
-  --scrollbar-bg: #e0e8f4;
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  --bg-primary:    #f4f6f9;
+  --bg-card:       #ffffff;
+  --bg-card-alt:   #f0f2f7;
+  --bg-card-hover: #e8ecf5;
+  --text-primary:  #0d1117;
+  --text-secondary:#4b5563;
+  --text-muted:    #9ca3af;
+  --border:        #e5e8ef;
+  --border-bright: #d1d5e0;
+  --scrollbar-bg:  #f0f2f7;
+  --scrollbar-thumb: #6366f1;
+  --shadow:        0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-card:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
 }
 
 /* ============================================================
@@ -191,18 +193,22 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .login-icon {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 64px;
   height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #a5b4fc);
-  font-size: 28px;
-  color: white;
-  margin-bottom: 16px;
-  animation: pulse-glow 2.5s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5);
+  border-radius: 16px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.login-icon img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
 }
 
 @keyframes pulse-glow {
@@ -1634,7 +1640,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         Dashboard
       </button>
       <button class="nav-item" data-page="calendly" id="nav-calendly">
-        <span class="nav-icon">📅</span>
+        <span class="nav-icon">▦</span>
         Kalender
       </button>
       <button class="nav-item" data-page="exports" id="nav-exports">
@@ -1680,6 +1686,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <span class="icon">⇓</span>
           CSV Export
         </button>
+        <button class="btn-icon theme-toggle" id="btn-theme" title="Wissel thema" style="padding:8px 10px"></button>
       </div>
     </header>
 
@@ -1776,7 +1783,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="export-card-title orbitron gradient-text">Weekrapport</div>
           <p class="export-card-desc">Genereer een gedetailleerd weekoverzicht met statistieken en gekwalificeerde leads.</p>
           <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:12px">
-            <span class="icon">📊</span>
+            <span class="icon">↻</span>
             Rapport laden
           </button>
           <div id="rapport-content" style="display:none;margin-top:20px">
@@ -1983,8 +1990,22 @@ function dismissToast(el) {
    THEME — locked dark to match helvaro.pro brand
    ============================================================ */
 function initTheme() {
-  document.documentElement.setAttribute('data-theme', 'dark');
-  localStorage.removeItem('hv-theme');
+  const saved = localStorage.getItem('hv-theme') || 'light';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.innerHTML = theme === 'dark'
+    ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
+    : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  localStorage.setItem('hv-theme', theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
 /* ============================================================
@@ -2872,6 +2893,7 @@ document.getElementById('btn-reset-filters').addEventListener('click', resetFilt
    ============================================================ */
 document.getElementById('btn-refresh').addEventListener('click', refreshData);
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-logout').addEventListener('click', logout);
 
 /* ============================================================
@@ -2924,7 +2946,7 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
     toast('Rapport laden mislukt: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span class="icon">📊</span> Rapport opnieuw laden';
+    btn.innerHTML = '<span class="icon">↻</span> Rapport opnieuw laden';
   }
 });
 
