@@ -920,6 +920,122 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .cal-event .cal-event-time { font-size: 10px; font-weight: 500; opacity: 0.85; }
 
 /* ============================================================
+   PROFILE PAGE
+   ============================================================ */
+.profile-wrap { max-width: 860px; display: flex; flex-direction: column; gap: 20px; }
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(14,165,233,0.07) 100%);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 20px;
+  padding: 28px 32px;
+}
+.profile-avatar-lg {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+}
+.profile-name-lg {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  font-family: 'Inter', sans-serif;
+}
+.profile-email-lg { font-size: 14px; color: var(--text-muted); margin-bottom: 10px; }
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.3);
+  color: #818cf8;
+}
+
+.profile-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.profile-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: center;
+}
+.profile-stat-card .psv {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #a5b4fc, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'Orbitron', sans-serif;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.profile-stat-card .psl {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+
+.profile-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+.profile-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+}
+.profile-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.profile-row:last-child { border-bottom: none; }
+.profile-row strong { color: var(--text-primary); font-weight: 600; }
+
+/* ============================================================
    SIDEBAR
    ============================================================ */
 .sidebar {
@@ -2669,12 +2785,13 @@ tr:hover .td-arrow { color: var(--cyan); }
       </button>
     </nav>
     <div class="sidebar-bottom">
-      <div class="user-info">
+      <div class="user-info" id="user-info-btn" onclick="navigateTo('profile')" style="cursor:pointer;" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
           <div class="user-name" id="user-name">Gebruiker</div>
           <div class="user-role">Client Account</div>
         </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen</button>
     </div>
@@ -2877,6 +2994,65 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
 
     </main>
+
+    <!-- Profile page -->
+    <main class="page-content page" id="page-profile">
+      <div class="profile-wrap">
+        <!-- Hero card -->
+        <div class="profile-hero">
+          <div class="profile-avatar-lg" id="profile-avatar-lg">HV</div>
+          <div>
+            <div class="profile-name-lg" id="profile-name-lg">Gebruiker</div>
+            <div class="profile-email-lg" id="profile-email-lg">—</div>
+            <span class="profile-badge">Client Account</span>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="profile-stats-row" id="profile-stats-row"></div>
+
+        <!-- Info cards -->
+        <div class="profile-cards">
+          <div class="profile-card">
+            <div class="profile-card-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Account
+            </div>
+            <div class="profile-row"><span>Naam</span><strong id="pf-naam">—</strong></div>
+            <div class="profile-row"><span>E-mail</span><strong id="pf-email">—</strong></div>
+            <div class="profile-row"><span>Type</span><strong>Client Account</strong></div>
+          </div>
+
+          <div class="profile-card">
+            <div class="profile-card-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Calendly
+            </div>
+            <div class="profile-row"><span>Booking link</span>
+              <a id="pf-calendly" href="#" target="_blank" style="color:#818cf8;font-size:13px;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">—</a>
+            </div>
+            <div class="profile-row" style="margin-top:12px;">
+              <a id="pf-calendly-btn" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:8px;color:#fff;font-size:12px;font-weight:600;text-decoration:none;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Openen in Calendly
+              </a>
+            </div>
+          </div>
+
+          <div class="profile-card">
+            <div class="profile-card-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Activiteit
+            </div>
+            <div class="profile-row"><span>Totaal leads</span><strong id="pf-total">—</strong></div>
+            <div class="profile-row"><span>Gekwalificeerd</span><strong id="pf-qual">—</strong></div>
+            <div class="profile-row"><span>Afspraken</span><strong id="pf-booked">—</strong></div>
+            <div class="profile-row"><span>Conversie</span><strong id="pf-conv">—</strong></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
   </div>
 </div>
 
@@ -2918,6 +3094,7 @@ const state = {
   activeLead: null,
   clientName: '',
   calendlyUrl: '',
+  userEmail:   '',
   stats: null,
   knownLeadIds: null,
   newLeadCount: 0,
@@ -3062,12 +3239,14 @@ function showView(view) {
   document.getElementById('login-page').style.display = view === 'login' ? 'flex' : 'none';
 }
 
-function saveSession(apiKey, clientName, projectCode) {
+function saveSession(apiKey, clientName, projectCode, email) {
   localStorage.setItem('hvk', apiKey);
   localStorage.setItem('hv-client', clientName || '');
   localStorage.setItem('hv-project', projectCode || '');
-  state.apiKey = apiKey;
+  if (email) localStorage.setItem('hv-email', email);
+  state.apiKey    = apiKey;
   state.clientName = clientName || '';
+  state.userEmail  = email || localStorage.getItem('hv-email') || '';
 }
 
 function clearSession() {
@@ -3081,8 +3260,9 @@ function clearSession() {
 function tryAutoLogin() {
   const key = localStorage.getItem('hvk');
   if (!key) return false;
-  state.apiKey = key;
+  state.apiKey    = key;
   state.clientName = localStorage.getItem('hv-client') || '';
+  state.userEmail  = localStorage.getItem('hv-email')  || '';
   return true;
 }
 
@@ -3869,24 +4049,23 @@ document.addEventListener('keydown', e => {
    ============================================================ */
 
 /* ── Week Calendar ── */
-const CAL_START_HOUR = 8;   // 8 AM
-const CAL_HOURS      = 12;  // 8 AM – 8 PM
-const CAL_ROW_H      = 60;  // px per hour
+const CAL_START_HOUR = 8;
+const CAL_HOURS      = 13;   // 8 AM – 9 PM
+const CAL_ROW_H      = 60;
 
-const calState = { weekStart: null };
+const calState = { weekStart: null, cache: {} };
 
 function calGetMonday(d) {
   const dt = new Date(d);
-  const day = dt.getDay();
-  const diff = (day === 0 ? -6 : 1 - day);
+  const diff = dt.getDay() === 0 ? -6 : 1 - dt.getDay();
   dt.setDate(dt.getDate() + diff);
   dt.setHours(0, 0, 0, 0);
   return dt;
 }
 
-function calToday()  { calState.weekStart = calGetMonday(new Date()); renderCalendar(); }
-function calPrev()   { calState.weekStart.setDate(calState.weekStart.getDate() - 7); renderCalendar(); }
-function calNext()   { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
+function calToday() { calState.weekStart = calGetMonday(new Date()); renderCalendar(); }
+function calPrev()  { calState.weekStart.setDate(calState.weekStart.getDate() - 7); renderCalendar(); }
+function calNext()  { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
 
 function renderAppointments() {
   if (!calState.weekStart) calState.weekStart = calGetMonday(new Date());
@@ -3895,29 +4074,27 @@ function renderAppointments() {
   renderCalendar();
 }
 
-function renderCalendar() {
+async function renderCalendar() {
   const ws = calState.weekStart;
   if (!ws) return;
 
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(ws);
-    d.setDate(d.getDate() + i);
-    days.push(d);
-  }
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(ws); d.setDate(d.getDate() + i); return d;
+  });
 
   // Range label
-  const monthFmt = { month: 'long', year: 'numeric' };
-  const startM = days[0].toLocaleDateString('nl-NL', monthFmt);
-  const endM   = days[6].toLocaleDateString('nl-NL', monthFmt);
-  const label  = startM === endM ? startM : days[0].toLocaleDateString('nl-NL', { month: 'short' }) + ' – ' + endM;
+  const startM = days[0].toLocaleDateString('nl-NL', { month: 'short' });
+  const endM   = days[6].toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+  const label  = startM === days[6].toLocaleDateString('nl-NL', { month: 'short' })
+    ? days[0].toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })
+    : startM + ' – ' + endM;
   const rangeEl = document.getElementById('cal-range-label');
   if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
 
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today    = new Date(); today.setHours(0,0,0,0);
   const dayNames = ['ZO','MA','DI','WO','DO','VR','ZA'];
 
-  // Day header cells
+  // Day headers
   const headerEl = document.getElementById('cal-day-cols-header');
   if (headerEl) {
     headerEl.innerHTML = days.map(d => {
@@ -3932,68 +4109,128 @@ function renderCalendar() {
   // Time labels
   const timeLabels = document.getElementById('cal-time-labels');
   if (timeLabels) {
-    let html = '';
-    for (let h = CAL_START_HOUR; h < CAL_START_HOUR + CAL_HOURS; h++) {
-      const label = h < 12 ? h + ' AM' : (h === 12 ? '12 PM' : (h - 12) + ' PM');
-      html += \`<div class="cal-time-label">\${label}</div>\`;
-    }
-    timeLabels.innerHTML = html;
+    timeLabels.innerHTML = Array.from({ length: CAL_HOURS }, (_, i) => {
+      const h = CAL_START_HOUR + i;
+      const lbl = h < 12 ? h + ' AM' : (h === 12 ? '12 PM' : (h - 12) + ' PM');
+      return \`<div class="cal-time-label">\${lbl}</div>\`;
+    }).join('');
   }
 
-  // Booked leads — placed on their creation date at 9 AM default
-  const booked = (state.leads || []).filter(l => l.afspraakGeboekt);
-  const eventColors = ['#6366f1','#0ea5e9','#8b5cf6','#06b6d4','#4f46e5'];
-
-  // Day columns with events
+  // Render skeleton columns immediately, then fill events
   const colsEl = document.getElementById('cal-day-cols');
   if (!colsEl) return;
 
-  const cols = days.map((d, idx) => {
-    const isToday = d.getTime() === today.getTime();
-    // Hour rows
-    let rows = '';
-    for (let h = 0; h < CAL_HOURS; h++) rows += \`<div class="cal-hour-row"></div>\`;
+  const renderCols = (events) => {
+    const eventColors = ['#6366f1','#4f46e5','#8b5cf6','#0ea5e9','#06b6d4'];
 
-    // Now line
-    let nowLine = '';
-    if (isToday) {
-      const now = new Date();
-      const mins = (now.getHours() - CAL_START_HOUR) * 60 + now.getMinutes();
-      if (mins >= 0 && mins < CAL_HOURS * 60) {
-        const top = Math.round((mins / 60) * CAL_ROW_H);
-        nowLine = \`<div class="cal-now-line" style="top:\${top}px"></div>\`;
+    colsEl.innerHTML = days.map(d => {
+      const isToday = d.getTime() === today.getTime();
+      const rows = Array.from({ length: CAL_HOURS }, () => \`<div class="cal-hour-row"></div>\`).join('');
+
+      let nowLine = '';
+      if (isToday) {
+        const now = new Date();
+        const mins = (now.getHours() - CAL_START_HOUR) * 60 + now.getMinutes();
+        if (mins >= 0 && mins < CAL_HOURS * 60)
+          nowLine = \`<div class="cal-now-line" style="top:\${Math.round((mins / 60) * CAL_ROW_H)}px"></div>\`;
       }
-    }
 
-    // Events for this day
-    const dayKey = d.toDateString();
-    const dayEvents = booked.filter(l => l.datum && new Date(l.datum).toDateString() === dayKey);
-    const eventHtml = dayEvents.map((lead, i) => {
-      const color = eventColors[(lead.naam || '').charCodeAt(0) % eventColors.length];
-      // Default time: 9 AM + 30min per slot to avoid overlap
-      const startH = 9 + Math.floor(i * 0.5);
-      const startMin = (i % 2) * 30;
-      const offsetMins = (startH - CAL_START_HOUR) * 60 + startMin;
-      const top = Math.round((offsetMins / 60) * CAL_ROW_H);
-      const height = CAL_ROW_H - 4; // 60min block
-      const timeStr = startH + ':' + (startMin === 0 ? '00' : '30');
-      return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:\${color};"
-                   onclick="event.stopPropagation();openPanel('\${escHtml(lead.id||'')}')">
-        <div class="cal-event-time">\${timeStr}</div>
-        <div>\${escHtml((lead.naam||'Lead').split(' ')[0])}</div>
-      </div>\`;
+      // Events for this day
+      const dayDate   = d.toDateString();
+      const dayEvents = events.filter(ev => new Date(ev.startTime).toDateString() === dayDate);
+
+      const evHtml = dayEvents.map(ev => {
+        const start    = new Date(ev.startTime);
+        const end      = new Date(ev.endTime);
+        const startMin = (start.getHours() - CAL_START_HOUR) * 60 + start.getMinutes();
+        const durMin   = Math.round((end - start) / 60000) || 30;
+        const top      = Math.round((startMin / 60) * CAL_ROW_H);
+        const height   = Math.max(Math.round((durMin / 60) * CAL_ROW_H) - 3, 22);
+        const color    = eventColors[(ev.name || '').charCodeAt(0) % eventColors.length];
+        const hh       = String(start.getHours()).padStart(2,'0');
+        const mm       = String(start.getMinutes()).padStart(2,'0');
+        const firstName = (ev.name || 'Afspraak').split(' ')[0];
+        return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:\${color};">
+          <div class="cal-event-time">\${hh}:\${mm}</div>
+          <div>\${escHtml(firstName)}</div>
+        </div>\`;
+      }).join('');
+
+      return \`<div class="cal-day-col\${isToday ? ' cal-today-col' : ''}">\${rows}\${nowLine}\${evHtml}</div>\`;
     }).join('');
 
-    return \`<div class="cal-day-col\${isToday ? ' cal-today-col' : ''}">\${rows}\${nowLine}\${eventHtml}</div>\`;
-  }).join('');
+    // Scroll to 8 AM on first load
+    const scrollEl = document.getElementById('cal-scroll-area');
+    if (scrollEl && scrollEl.dataset.scrolled !== '1') {
+      scrollEl.dataset.scrolled = '1';
+      scrollEl.scrollTop = CAL_ROW_H;
+    }
+  };
 
-  colsEl.innerHTML = cols;
+  // Draw skeleton first
+  renderCols([]);
 
-  // Scroll to 8 AM (first row visible)
-  const scrollEl = document.getElementById('cal-scroll-area');
-  if (scrollEl && scrollEl.dataset.scrolled !== '1') {
-    scrollEl.dataset.scrolled = '1';
-    scrollEl.scrollTop = CAL_ROW_H; // show from 9 AM
+  // Fetch real events from Calendly API
+  const weekKey = ws.toISOString().slice(0, 10);
+  if (calState.cache[weekKey]) return renderCols(calState.cache[weekKey]);
+
+  try {
+    const minISO = days[0].toISOString();
+    const end    = new Date(days[6]); end.setHours(23, 59, 59, 999);
+    const maxISO = end.toISOString();
+    const resp   = await fetch(\`\${API_BASE}/calendly-events?min=\${encodeURIComponent(minISO)}&max=\${encodeURIComponent(maxISO)}\`,
+      { headers: { 'x-api-key': state.apiKey } });
+    if (resp.ok) {
+      const data = await resp.json();
+      calState.cache[weekKey] = data.events || [];
+      renderCols(calState.cache[weekKey]);
+    }
+  } catch (e) { /* stay with empty */ }
+}
+
+/* ── Profile page ── */
+function renderProfile() {
+  const s = state;
+  // Avatar
+  const initials = (s.clientName || 'HV').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const avEl = document.getElementById('profile-avatar-lg');
+  const nameEl = document.getElementById('profile-name-lg');
+  const emailEl = document.getElementById('profile-email-lg');
+  if (avEl)    avEl.textContent   = initials;
+  if (nameEl)  nameEl.textContent = s.clientName || '—';
+  if (emailEl) emailEl.textContent = s.userEmail || localStorage.getItem('hv-email') || '—';
+
+  // Calendly
+  const calLink = s.calendlyUrl || '';
+  const pfCal   = document.getElementById('pf-calendly');
+  const pfBtn   = document.getElementById('pf-calendly-btn');
+  if (pfCal) { pfCal.textContent = calLink || '—'; pfCal.href = calLink || '#'; }
+  if (pfBtn) pfBtn.href = calLink || '#';
+
+  // Info rows
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('pf-naam',   s.clientName || '—');
+  set('pf-email',  s.userEmail  || localStorage.getItem('hv-email') || '—');
+
+  // Stats
+  const st = s.stats || {};
+  set('pf-total',  st.total          || (s.leads||[]).length || '0');
+  set('pf-qual',   st.qualified      || (s.leads||[]).filter(l=>l.qualified).length || '0');
+  set('pf-booked', st.booked         || (s.leads||[]).filter(l=>l.afspraakGeboekt).length || '0');
+  set('pf-conv',   (st.conversionRate||0) + '%');
+
+  // Stats row
+  const statsRow = document.getElementById('profile-stats-row');
+  if (statsRow) {
+    const items = [
+      { v: st.total     || (s.leads||[]).length || 0, l: 'Leads' },
+      { v: st.qualified || (s.leads||[]).filter(l=>l.qualified).length || 0, l: 'Gekwalificeerd' },
+      { v: st.booked    || (s.leads||[]).filter(l=>l.afspraakGeboekt).length || 0, l: 'Afspraken' },
+      { v: (st.conversionRate||0) + '%', l: 'Conversie' }
+    ];
+    statsRow.innerHTML = items.map(i =>
+      \`<div class="profile-stat-card"><div class="psv">\${i.v}</div><div class="psl">\${i.l}</div></div>\`
+    ).join('');
   }
 }
 
@@ -4011,7 +4248,8 @@ function navigateTo(page) {
     dashboard: { title: 'Dashboard', sub: 'Overzicht van uw gekwalificeerde leads' },
     exports:   { title: 'Exports',   sub: 'Rapporten en data-export' },
     calendly:  { title: 'Kalender',  sub: 'Uw afspraken en beschikbaarheid' },
-    admin:     { title: 'Klanten',   sub: 'Overzicht van alle klanten' }
+    admin:     { title: 'Klanten',   sub: 'Overzicht van alle klanten' },
+    profile:   { title: 'Profiel',   sub: 'Uw accountgegevens en statistieken' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -4024,10 +4262,8 @@ function navigateTo(page) {
     loadAdminClients();
   }
 
-  // Render appointments page from leads data
-  if (page === 'calendly') {
-    renderAppointments();
-  }
+  if (page === 'calendly') renderAppointments();
+  if (page === 'profile')  renderProfile();
 
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -4185,7 +4421,7 @@ async function handleLogin() {
       errEl.classList.add('visible');
       return;
     }
-    saveSession(authData.apiKey, authData.clientName, authData.projectCode);
+    saveSession(authData.apiKey, authData.clientName, authData.projectCode, email);
     const data = await fetchLeads();
     state.leads = data.leads || [];
     state.stats = data.stats || {};
