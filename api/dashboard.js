@@ -2659,14 +2659,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             ↗ Openen in Calendly
           </a>
         </div>
-        <div style="flex:1;position:relative;">
-          <iframe
-            id="calendly-iframe"
-            src="about:blank"
-            style="width:100%;height:100%;border:none;display:block;"
-            allow="payment"
-          ></iframe>
-        </div>
+        <div id="calendly-container" style="flex:1;position:relative;overflow:hidden;min-height:500px;"></div>
       </div>
     </main>
   </div>
@@ -3685,15 +3678,70 @@ function navigateTo(page) {
     loadAdminClients();
   }
 
-  // Load Calendly iframe on first visit
+  // Load Calendly inline widget on first visit
   if (page === 'calendly') {
-    const iframe = document.getElementById('calendly-iframe');
-    const openLink = document.getElementById('calendly-open-link');
-    const calendlyUrl = state.calendlyUrl || 'https://calendly.com';
-    if (iframe && iframe.src === 'about:blank') {
-      iframe.src = calendlyUrl;
+    const container = document.getElementById('calendly-container');
+    const openLink  = document.getElementById('calendly-open-link');
+    const rawUrl    = state.calendlyUrl || '';
+
+    if (openLink) openLink.href = rawUrl || 'https://calendly.com';
+
+    if (container && !container.dataset.loaded) {
+      container.dataset.loaded = '1';
+
+      if (!rawUrl) {
+        // No URL configured — friendly empty state
+        container.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                      height:100%;gap:14px;color:var(--text-muted);padding:40px;text-align:center;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+            <p style="font-size:15px;font-weight:600;color:var(--text-primary);">Geen Calendly URL ingesteld</p>
+            <p style="font-size:13px;max-width:300px;">Voeg uw Calendly-link toe in de instellingen om afspraken hier te tonen.</p>
+          </div>`;
+        return;
+      }
+
+      // Append Calendly inline-embed + dark-theme params
+      const sep    = rawUrl.includes('?') ? '&' : '?';
+      const themed = rawUrl + sep + 'embed_type=Inline&hide_gdpr_banner=1&background_color=040811&text_color=e2e8f0&primary_color=6366f1';
+
+      function mountWidget() {
+        window.Calendly.initInlineWidget({
+          url: themed,
+          parentElement: container,
+          prefill: {},
+          utm: {}
+        });
+      }
+
+      if (window.Calendly && window.Calendly.initInlineWidget) {
+        mountWidget();
+      } else {
+        // Load Calendly widget.js once
+        if (!document.getElementById('calendly-widget-js')) {
+          const s    = document.createElement('script');
+          s.id       = 'calendly-widget-js';
+          s.src      = 'https://assets.calendly.com/assets/external/widget.js';
+          s.async    = true;
+          s.onload   = mountWidget;
+          document.head.appendChild(s);
+
+          // Calendly CSS
+          if (!document.getElementById('calendly-widget-css')) {
+            const l  = document.createElement('link');
+            l.id     = 'calendly-widget-css';
+            l.rel    = 'stylesheet';
+            l.href   = 'https://assets.calendly.com/assets/external/widget.css';
+            document.head.appendChild(l);
+          }
+        } else {
+          // Script tag exists but Calendly not ready yet — retry
+          setTimeout(mountWidget, 500);
+        }
+      }
     }
-    if (openLink) openLink.href = calendlyUrl;
   }
 
   // Close mobile sidebar
