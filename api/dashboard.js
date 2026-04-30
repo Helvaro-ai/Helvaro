@@ -41,19 +41,20 @@ module.exports = async function handler(req, res) {
 }
 
 [data-theme="light"] {
-  --bg-primary:    #f4f6f9;
+  --bg-primary:    #eef0f6;
   --bg-card:       #ffffff;
-  --bg-card-alt:   #f0f2f7;
-  --bg-card-hover: #e8ecf5;
-  --text-primary:  #0d1117;
-  --text-secondary:#4b5563;
-  --text-muted:    #9ca3af;
-  --border:        #e5e8ef;
-  --border-bright: #d1d5e0;
+  --bg-card-alt:   #f5f6fb;
+  --bg-card-hover: #eff1f8;
+  --text-primary:  #0f1117;
+  --text-secondary:#5c6478;
+  --text-muted:    #a0aab8;
+  --border:        #dde1ed;
+  --border-bright: #c8cede;
   --scrollbar-bg:  #f0f2f7;
   --scrollbar-thumb: #6366f1;
-  --shadow:        0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
-  --shadow-card:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow:        0 1px 3px rgba(15,17,40,0.06), 0 6px 20px rgba(15,17,40,0.08);
+  --shadow-card:   0 1px 2px rgba(15,17,40,0.05), 0 0 0 1px rgba(99,102,241,0.06);
+  --shadow-glow:   0 0 40px rgba(99,102,241,0.08);
 }
 
 /* ============================================================
@@ -97,12 +98,17 @@ body::after {
 }
 
 [data-theme="light"] body::before {
-  background-image:
-    linear-gradient(rgba(99, 102, 241, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99, 102, 241, 0.07) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(99,102,241,0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.6;
 }
 
-[data-theme="light"] body::after { display: none; }
+[data-theme="light"] body::after {
+  display: block;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(99,102,241,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 100% 100%, rgba(129,140,248,0.05) 0%, transparent 50%);
+}
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -171,61 +177,101 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 70% 60%, rgba(165, 180, 252, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 70% 55% at 20% 30%, rgba(99, 102, 241, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(165, 180, 252, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 35% at 50% 100%, rgba(99, 102, 241, 0.06) 0%, transparent 50%);
   pointer-events: none;
+}
+
+/* Animated dots on login bg */
+#login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(99,102,241,0.1) 1px, transparent 1px);
+  background-size: 36px 36px;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .login-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 44px 36px;
+  border-radius: 20px;
+  padding: 52px 44px 40px;
   position: relative;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.1);
+  z-index: 1;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.12);
+}
+
+/* Top accent line on card */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.6), transparent);
+  border-radius: 1px;
 }
 
 .login-logo {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 40px;
 }
 
 .login-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  margin-bottom: 20px;
-  overflow: hidden;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 4px 16px rgba(99,102,241,0.3));
 }
 
 .login-icon img {
-  width: 46px;
-  height: 46px;
+  width: 76px;
+  height: 76px;
   object-fit: contain;
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
-  50% { box-shadow: 0 0 0 14px rgba(99, 102, 241, 0); }
+  0%, 100% { filter: drop-shadow(0 4px 16px rgba(99,102,241,0.3)); }
+  50% { filter: drop-shadow(0 4px 28px rgba(99,102,241,0.55)); }
 }
 
+.login-icon { animation: pulse-glow 3s ease-in-out infinite; }
+
 .login-title {
-  font-size: 26px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, var(--text-primary) 40%, var(--blue-bright));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
 }
 
 .login-subtitle {
   color: var(--text-secondary);
-  font-size: 13px;
-  margin-top: 6px;
+  font-size: 12.5px;
+  letter-spacing: 0.3px;
+}
+
+/* Divider below logo */
+.login-divider {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue-primary), var(--blue-bright));
+  border-radius: 2px;
+  margin: 18px auto 0;
+  opacity: 0.6;
 }
 
 .form-group {
@@ -256,42 +302,60 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .form-input:focus {
-  border-color: var(--blue-bright);
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+  border-color: var(--blue-primary);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .form-input::placeholder { color: var(--text-muted); }
 
+/* Login footer */
+.login-footer {
+  text-align: center;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+}
+
+.login-footer span {
+  color: var(--blue-primary);
+  font-weight: 600;
+}
+
 .btn-login {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--blue-primary), var(--blue-bright));
+  padding: 15px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1 50%, #818cf8);
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   color: white;
   font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 10px;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.35);
 }
 
 .btn-login::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+  background: linear-gradient(135deg, #6366f1, #818cf8 50%, #a5b4fc);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .btn-login:hover::before { opacity: 1; }
-.btn-login:hover { box-shadow: 0 0 30px rgba(129, 140, 248, 0.4); transform: translateY(-1px); }
-.btn-login:active { transform: translateY(0); }
+.btn-login:hover { box-shadow: 0 6px 32px rgba(99,102,241,0.5); transform: translateY(-1px); }
+.btn-login:active { transform: translateY(0); box-shadow: 0 2px 12px rgba(99,102,241,0.3); }
 .btn-login span { position: relative; z-index: 1; }
 
 .login-error {
@@ -1594,6 +1658,168 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 #dashboard-app { display: none; }
 #dashboard-app.visible { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ============================================================
+   LIGHT MODE COMPONENT OVERRIDES
+   ============================================================ */
+
+/* Sidebar gets a white surface with left accent border */
+[data-theme="light"] .sidebar {
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  box-shadow: 2px 0 12px rgba(15,17,40,0.06);
+}
+
+/* Sidebar brand gradient stays readable */
+[data-theme="light"] .sidebar-brand {
+  background: linear-gradient(135deg, #1e2035 40%, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Nav items in light mode */
+[data-theme="light"] .nav-item:hover {
+  background: rgba(99,102,241,0.06);
+  color: #4f46e5;
+}
+
+[data-theme="light"] .nav-item.active {
+  background: rgba(99,102,241,0.09);
+  color: #4f46e5;
+}
+
+[data-theme="light"] .nav-item.active::before {
+  background: #6366f1;
+}
+
+/* Topbar — crisp white with soft shadow */
+[data-theme="light"] .topbar {
+  background: rgba(255,255,255,0.92);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(15,17,40,0.05), 0 2px 12px rgba(15,17,40,0.04);
+}
+
+/* Topbar page title gradient in light */
+[data-theme="light"] .page-title {
+  background: linear-gradient(135deg, #0f1117 60%, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Topbar buttons — dark on white */
+[data-theme="light"] .btn-icon {
+  background: rgba(15,17,40,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .btn-icon:hover {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.25);
+  color: #4f46e5;
+  box-shadow: none;
+}
+
+[data-theme="light"] .btn-primary-sm {
+  background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(129,140,248,0.12));
+  border-color: rgba(99,102,241,0.4);
+  color: #4f46e5;
+}
+
+[data-theme="light"] .btn-primary-sm:hover {
+  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(129,140,248,0.2));
+}
+
+/* Stat cards — white with real depth */
+[data-theme="light"] .stat-card {
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+}
+
+[data-theme="light"] .stat-card:hover {
+  box-shadow: 0 4px 16px rgba(15,17,40,0.1), 0 0 0 1px rgba(99,102,241,0.12);
+  border-color: rgba(99,102,241,0.2);
+}
+
+/* Stat value color */
+[data-theme="light"] .stat-value {
+  color: #0f1117;
+}
+
+/* Filters bar */
+[data-theme="light"] .filters-bar {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(15,17,40,0.04);
+}
+
+/* Selects & search */
+[data-theme="light"] .filter-select,
+[data-theme="light"] .search-input {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .filter-select:focus,
+[data-theme="light"] .search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+/* Lead table */
+[data-theme="light"] .leads-table thead th {
+  background: var(--bg-card-alt);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="light"] .leads-table tbody tr:hover {
+  background: rgba(99,102,241,0.04);
+}
+
+/* Badge overrides for light */
+[data-theme="light"] .badge {
+  font-weight: 600;
+}
+
+/* Detail panel */
+[data-theme="light"] .detail-panel {
+  background: #ffffff;
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 20px rgba(15,17,40,0.08);
+}
+
+/* Login card in light mode */
+[data-theme="light"] .login-card {
+  box-shadow: 0 8px 32px rgba(15,17,40,0.1), 0 0 0 1px rgba(99,102,241,0.08);
+}
+
+[data-theme="light"] #login-page::before {
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(99,102,241,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 70% 60%, rgba(129,140,248,0.05) 0%, transparent 60%);
+}
+
+/* User info bottom of sidebar */
+[data-theme="light"] .user-info {
+  background: var(--bg-card-alt);
+  border-radius: 10px;
+}
+
+/* Sidebar bottom button */
+[data-theme="light"] .btn-logout {
+  background: rgba(244,63,94,0.06);
+  border-color: rgba(244,63,94,0.15);
+}
+
+[data-theme="light"] .btn-logout:hover {
+  background: rgba(244,63,94,0.12);
+  border-color: rgba(244,63,94,0.3);
+}
 </style>
 </head>
 <body>
@@ -1604,8 +1830,10 @@ tr:hover .td-arrow { color: var(--cyan); }
 <div id="login-page">
   <div class="login-card">
     <div class="login-logo">
-      <div class="login-icon" style="background:none;box-shadow:none;padding:0"><img src="/logo.png" alt="Helvaro"></div>
+      <div class="login-icon"><img src="/logo.png" alt="Helvaro"></div>
+      <h1 class="login-title">HELVARO</h1>
       <p class="login-subtitle">AI Lead Kwalificatie Platform</p>
+      <div class="login-divider"></div>
     </div>
     <div class="form-group">
       <label class="form-label" for="login-email">E-mailadres</label>
@@ -1615,8 +1843,9 @@ tr:hover .td-arrow { color: var(--cyan); }
       <label class="form-label" for="login-password">Wachtwoord</label>
       <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="btn-login" id="btn-login"><span>INLOGGEN</span></button>
-        <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
+    <button class="btn-login" id="btn-login"><span>TOEGANG VERLENEN</span></button>
+    <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
+    <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
   </div>
 </div>
 
