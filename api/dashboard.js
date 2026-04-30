@@ -332,10 +332,10 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   border: none;
   border-radius: 12px;
   color: white;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
   cursor: pointer;
   margin-top: 10px;
   transition: var(--transition);
@@ -467,7 +467,18 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   background: var(--blue-primary);
 }
 
-.nav-icon { font-size: 16px; }
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.active .nav-icon { opacity: 1; }
 
 .sidebar-bottom {
   padding: 16px 12px;
@@ -736,6 +747,14 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .stat-value.green { color: var(--green);        text-shadow: 0 0 20px rgba(16,185,129,0.35); }
 .stat-value.orange{ color: var(--orange);       text-shadow: 0 0 20px rgba(245,158,11,0.3); }
 .stat-value.blue  { color: var(--blue-bright);  text-shadow: 0 0 20px rgba(59,130,246,0.35); }
+
+.stat-unit {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.45;
+  margin-left: 2px;
+  letter-spacing: 0;
+}
 
 .stat-desc {
   font-size: 11px;
@@ -1779,6 +1798,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 [data-theme="light"] .leads-table tbody tr:hover {
   background: rgba(99,102,241,0.04);
+  box-shadow: inset 3px 0 0 #6366f1;
 }
 
 /* Badge overrides for light */
@@ -1915,7 +1935,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <label class="form-label" for="login-password">Wachtwoord</label>
       <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="btn-login" id="btn-login"><span>TOEGANG VERLENEN</span></button>
+    <button class="btn-login" id="btn-login"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
     <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
     <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
   </div>
@@ -1936,19 +1956,19 @@ tr:hover .td-arrow { color: var(--cyan); }
     </div>
     <nav class="sidebar-nav">
       <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
-        <span class="nav-icon">◈</span>
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         Dashboard
       </button>
       <button class="nav-item" data-page="calendly" id="nav-calendly">
-        <span class="nav-icon">▦</span>
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
         Kalender
       </button>
       <button class="nav-item" data-page="exports" id="nav-exports">
-        <span class="nav-icon">⇓</span>
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         Exports
       </button>
       <button class="nav-item" data-page="admin" id="nav-admin" style="display:none">
-        <span class="nav-icon">⚙</span>
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         Klanten
       </button>
     </nav>
@@ -1960,7 +1980,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="user-role">Client Account</div>
         </div>
       </div>
-      <button class="btn-logout" id="btn-logout">⇤ Uitloggen</button>
+      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen</button>
     </div>
   </aside>
 
@@ -2246,13 +2266,28 @@ function animateCounter(el, target, suffix = '') {
   const decimals = isFloat ? (String(target).split('.')[1] || '').length : 0;
   const duration = 1000;
   const start = performance.now();
+  // Preserve inner suffix span if present
+  const unitSpan = el.querySelector('.stat-unit');
+  function setNum(val) {
+    const formatted = decimals > 0 ? val.toFixed(decimals) : Math.floor(val);
+    if (unitSpan) {
+      el.firstChild.textContent = formatted;
+    } else {
+      el.textContent = formatted + suffix;
+    }
+  }
+  // Set initial node if unitSpan exists
+  if (unitSpan && !el.firstChild.nodeType === Node.TEXT_NODE) {
+    el.insertBefore(document.createTextNode('0'), unitSpan);
+  } else if (unitSpan) {
+    el.firstChild.textContent = '0';
+  }
   function step(now) {
     const progress = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
-    const current = num * eased;
-    el.textContent = (decimals > 0 ? current.toFixed(decimals) : Math.floor(current)) + suffix;
+    setNum(num * eased);
     if (progress < 1) requestAnimationFrame(step);
-    else el.textContent = (decimals > 0 ? num.toFixed(decimals) : num) + suffix;
+    else setNum(num);
   }
   requestAnimationFrame(step);
 }
@@ -2678,7 +2713,7 @@ function renderStats() {
   grid.innerHTML = cards.map(c => \`
     <div class="stat-card">
       <div class="stat-label">\${c.label}</div>
-      <div class="stat-value \${c.color}" data-target="\${c.value}" data-suffix="\${c.suffix}">0\${c.suffix}</div>
+      <div class="stat-value \${c.color}" data-target="\${c.value}" data-suffix="\${c.suffix}">0\${c.suffix ? \`<span class="stat-unit">\${c.suffix}</span>\` : ''}</div>
       <div class="stat-desc">\${c.desc}</div>
       <div class="stat-bar">
         <div class="stat-bar-fill" data-fill="\${c.fill}"></div>
