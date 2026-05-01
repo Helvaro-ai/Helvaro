@@ -2501,6 +2501,503 @@ tr:hover .td-arrow { color: var(--cyan); }
 .rapport-lead-item:last-child { border-bottom: none; }
 
 /* ============================================================
+   PIPELINE (KANBAN)
+   ============================================================ */
+.pipeline-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+  min-height: calc(100vh - 180px);
+  align-items: flex-start;
+}
+.pipeline-board::-webkit-scrollbar { height: 6px; }
+.pipeline-board::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.35); border-radius: 3px; }
+.pipeline-col {
+  flex: 0 0 260px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pipeline-col-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+.pipeline-col-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0 5px;
+}
+.pipeline-col-body {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 80px;
+}
+.pipeline-card {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.pipeline-card:hover {
+  border-color: var(--blue-primary);
+  transform: translateY(-1px);
+}
+.pipeline-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pipeline-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pipeline-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+}
+.pipeline-card-phone {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+.pipeline-card-date {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.pipeline-col-header.col-new    { border-top: 2px solid #8b949e; }
+.pipeline-col-header.col-qual   { border-top: 2px solid var(--cyan); }
+.pipeline-col-header.col-apt    { border-top: 2px solid var(--green); }
+.pipeline-col-header.col-won    { border-top: 2px solid #6366f1; }
+.pipeline-col-header.col-lost   { border-top: 2px solid var(--red); }
+
+/* ============================================================
+   GESPREKKEN (CONVERSATIONS)
+   ============================================================ */
+.conv-layout {
+  display: flex;
+  gap: 0;
+  height: calc(100vh - 130px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.conv-list {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.conv-list-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.conv-list-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.conv-list-item:hover { background: var(--bg-card-alt); }
+.conv-list-item.active { background: rgba(99,102,241,0.08); }
+.conv-list-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.conv-list-item-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conv-list-item-date {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.conv-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.conv-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.conv-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.conv-bubble {
+  max-width: 72%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.conv-bubble.user {
+  align-self: flex-start;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+  color: var(--text-primary);
+}
+.conv-bubble.assistant {
+  align-self: flex-end;
+  background: rgba(99,102,241,0.18);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-bottom-right-radius: 3px;
+  color: var(--text-primary);
+}
+.conv-bubble-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.conv-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.conv-empty-icon { font-size: 40px; opacity: 0.3; }
+
+/* ============================================================
+   ANALYSE (ANALYTICS)
+   ============================================================ */
+.analyse-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.analyse-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+}
+.analyse-card-full { grid-column: 1 / -1; }
+.analyse-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.funnel-step {
+  margin-bottom: 12px;
+}
+.funnel-step-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.funnel-step-label strong { color: var(--text-primary); font-weight: 700; }
+.funnel-step-pct {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.funnel-bar {
+  height: 10px;
+  background: var(--bg-card-alt);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.funnel-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--blue-primary), var(--cyan));
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+.source-table { width: 100%; border-collapse: collapse; }
+.source-table th {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 6px 10px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.source-table td {
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.source-table tr:last-child td { border-bottom: none; }
+.analyse-stat-big {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--cyan);
+  line-height: 1;
+  margin-bottom: 6px;
+  text-shadow: 0 0 20px rgba(6,182,212,0.35);
+}
+.analyse-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   INSTELLINGEN (SETTINGS)
+   ============================================================ */
+.settings-wrap { max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
+.settings-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.settings-section-title {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 20px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-label {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.settings-label-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.settings-value {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+.settings-input {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  padding: 7px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 220px;
+}
+.settings-input:focus { border-color: var(--blue-bright); }
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.settings-coming-soon {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.25);
+  color: var(--orange);
+  letter-spacing: 0.5px;
+}
+.settings-danger .settings-label { color: var(--red); }
+.settings-info-box {
+  margin: 0 20px 16px;
+  padding: 14px;
+  background: rgba(99,102,241,0.06);
+  border-left: 3px solid var(--blue-primary);
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.settings-apikey {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+.btn-show-key {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-left: 8px;
+}
+.btn-show-key:hover { border-color: var(--blue-bright); color: var(--blue-bright); }
+
+/* ============================================================
+   ACTIVITEIT (ACTIVITY FEED)
+   ============================================================ */
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 720px;
+}
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  animation: rowFadeUp 0.3s ease both;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.activity-dot-new       { background: #8b949e; }
+.activity-dot-qualified { background: var(--cyan); box-shadow: 0 0 8px rgba(6,182,212,0.5); }
+.activity-dot-booked    { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+.activity-dot-won       { background: var(--blue-bright); box-shadow: 0 0 8px rgba(129,140,248,0.5); }
+.activity-content { flex: 1; }
+.activity-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.activity-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.activity-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.activity-feed-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  max-width: 720px;
+}
+.activity-feed-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ============================================================
    PAGES VISIBILITY
    ============================================================ */
 .page { display: none !important; }
@@ -3020,6 +3517,26 @@ tr:hover .td-arrow { color: var(--cyan); }
         Kalender
         <span class="nav-badge" id="cal-nav-badge" style="display:none">0</span>
       </button>
+      <button class="nav-item" data-page="pipeline" id="nav-pipeline">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span>
+        Pipeline
+      </button>
+      <button class="nav-item" data-page="gesprekken" id="nav-gesprekken">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        Gesprekken
+      </button>
+      <button class="nav-item" data-page="analyse" id="nav-analyse">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>
+        Analyse
+      </button>
+      <button class="nav-item" data-page="instellingen" id="nav-instellingen">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        Instellingen
+      </button>
+      <button class="nav-item" data-page="activiteit" id="nav-activiteit">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+        Activiteit
+      </button>
       <button class="nav-item" data-page="exports" id="nav-exports">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         Exports
@@ -3252,6 +3769,186 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     </main>
 
+    <!-- Pipeline Page -->
+    <main class="page-content page" id="page-pipeline">
+      <div class="pipeline-board" id="pipeline-board">
+        <div style="color:var(--text-muted);font-size:14px">Pipeline laden...</div>
+      </div>
+    </main>
+
+    <!-- Gesprekken Page -->
+    <main class="page-content page" id="page-gesprekken" style="padding:0">
+      <div class="conv-layout">
+        <div class="conv-list" id="conv-list">
+          <div class="conv-list-header">Gesprekken</div>
+          <div id="conv-list-body">
+            <div style="padding:20px;color:var(--text-muted);font-size:13px">Laden...</div>
+          </div>
+        </div>
+        <div class="conv-detail" id="conv-detail">
+          <div class="conv-empty">
+            <div class="conv-empty-icon">💬</div>
+            <div>Selecteer een gesprek</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Analyse Page -->
+    <main class="page-content page" id="page-analyse">
+      <div class="analyse-grid" id="analyse-grid">
+        <!-- Funnel -->
+        <div class="analyse-card">
+          <div class="analyse-card-title">Conversie Funnel</div>
+          <div id="funnel-content"><div style="color:var(--text-muted);font-size:13px">Laden...</div></div>
+        </div>
+        <!-- Source Performance -->
+        <div class="analyse-card">
+          <div class="analyse-card-title">Prestaties per Bron</div>
+          <div id="source-table-wrap"><div style="color:var(--text-muted);font-size:13px">Laden...</div></div>
+        </div>
+        <!-- Days of week chart -->
+        <div class="analyse-card">
+          <div class="analyse-card-title">Leads per Weekdag</div>
+          <canvas id="analyse-days-chart" height="120"></canvas>
+        </div>
+        <!-- Lead score distribution -->
+        <div class="analyse-card">
+          <div class="analyse-card-title">Score Verdeling</div>
+          <canvas id="analyse-score-chart" height="120"></canvas>
+        </div>
+        <!-- Hours chart (full width) -->
+        <div class="analyse-card analyse-card-full">
+          <div class="analyse-card-title">Leads per Uur van de Dag</div>
+          <canvas id="analyse-hours-chart" height="80"></canvas>
+        </div>
+        <!-- Avg response time -->
+        <div class="analyse-card">
+          <div class="analyse-card-title">Gemiddelde Reactietijd</div>
+          <div id="analyse-response-wrap">
+            <div class="analyse-stat-big" id="analyse-response-val">—</div>
+            <div class="analyse-stat-label">seconden gemiddeld</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Instellingen Page -->
+    <main class="page-content page" id="page-instellingen">
+      <div class="settings-wrap">
+        <!-- AI Instellingen -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            AI Instellingen
+          </div>
+          <div class="settings-info-box">
+            Instellingen zoals de AI-naam en Calendly-link worden beheerd door het Helvaro-team. Neem contact op via <strong>support@helvaro.pro</strong> om wijzigingen door te voeren.
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">AI Naam</div>
+              <div class="settings-label-sub">De naam die uw AI-assistent gebruikt</div>
+            </div>
+            <div class="settings-value" id="set-ai-name">Helvaro AI</div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Calendly Link</div>
+              <div class="settings-label-sub">Uw boekingspagina URL</div>
+            </div>
+            <div class="settings-value" id="set-calendly-url" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+          </div>
+        </div>
+
+        <!-- Notificaties -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notificaties
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Wekelijks rapport e-mail</div>
+              <div class="settings-label-sub">Ontvang elke maandag een samenvattingsmail</div>
+            </div>
+            <div class="settings-toggle">
+              <span class="settings-coming-soon">Binnenkort beschikbaar</span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Browser notificaties</div>
+              <div class="settings-label-sub">Meldingen bij nieuwe leads</div>
+            </div>
+            <div class="settings-toggle">
+              <span class="settings-coming-soon">Binnenkort beschikbaar</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Account
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">Naam</div>
+            <div class="settings-value" id="set-naam">—</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">E-mail</div>
+            <div class="settings-value" id="set-email">—</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">Plan</div>
+            <div class="settings-value">
+              <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8">Pro</span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">API Sleutel</div>
+              <div class="settings-label-sub">Gebruik dit voor directe API-toegang</div>
+            </div>
+            <div>
+              <span class="settings-apikey" id="set-apikey-display">••••••••</span>
+              <button class="btn-show-key" id="btn-toggle-apikey">Toon</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gevaar zone -->
+        <div class="settings-section">
+          <div class="settings-section-title" style="color:var(--red)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Gevaar zone
+          </div>
+          <div class="settings-row settings-danger">
+            <div>
+              <div class="settings-label">Uitloggen</div>
+              <div class="settings-label-sub">Beëindig uw huidige sessie</div>
+            </div>
+            <button class="btn-icon" onclick="logout()" style="border-color:rgba(244,63,94,0.35);color:var(--red);background:rgba(244,63,94,0.08)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Uitloggen
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Activiteit Page -->
+    <main class="page-content page" id="page-activiteit">
+      <div class="activity-feed-wrap">
+        <div class="activity-feed-header">Recente Activiteit</div>
+        <div class="activity-feed" id="activity-feed">
+          <div style="padding:20px 0;color:var(--text-muted);font-size:13px">Laden...</div>
+        </div>
+      </div>
+    </main>
+
     <!-- Profile page -->
     <main class="page-content page" id="page-profile">
       <div class="profile-wrap">
@@ -3375,6 +4072,9 @@ const state = {
   adminClients: [],
   leadsChart: null,
   bronChart: null,
+  analyseDaysChart: null,
+  analyseScoreChart: null,
+  analyseHoursChart: null,
 };
 
 const API_BASE = '/api';
@@ -4712,11 +5412,16 @@ function navigateTo(page) {
   if (navEl) navEl.classList.add('active');
 
   const titles = {
-    dashboard: { title: 'Dashboard', sub: 'Overzicht van uw gekwalificeerde leads' },
-    exports:   { title: 'Exports',   sub: 'Rapporten en data-export' },
-    calendly:  { title: 'Kalender',  sub: 'Uw afspraken en beschikbaarheid' },
-    admin:     { title: 'Klanten',   sub: 'Overzicht van alle klanten' },
-    profile:   { title: 'Profiel',   sub: 'Uw accountgegevens en statistieken' }
+    dashboard:    { title: 'Dashboard',     sub: 'Overzicht van uw gekwalificeerde leads' },
+    exports:      { title: 'Exports',       sub: 'Rapporten en data-export' },
+    calendly:     { title: 'Kalender',      sub: 'Uw afspraken en beschikbaarheid' },
+    admin:        { title: 'Klanten',       sub: 'Overzicht van alle klanten' },
+    profile:      { title: 'Profiel',       sub: 'Uw accountgegevens en statistieken' },
+    pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van uw leads' },
+    gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met uw leads' },
+    analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
+    instellingen: { title: 'Instellingen',  sub: 'Beheer uw accountinstellingen' },
+    activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -4738,8 +5443,13 @@ function navigateTo(page) {
     loadAdminClients();
   }
 
-  if (page === 'calendly') renderAppointments();
-  if (page === 'profile')  renderProfile();
+  if (page === 'calendly')     renderAppointments();
+  if (page === 'profile')      renderProfile();
+  if (page === 'pipeline')     renderPipeline();
+  if (page === 'gesprekken')   renderGesprekken();
+  if (page === 'analyse')      renderAnalyse();
+  if (page === 'instellingen') renderInstellingen();
+  if (page === 'activiteit')   renderActiviteit();
 
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -4930,6 +5640,394 @@ async function handleLogin() {
     btn.querySelector('span').textContent = 'INLOGGEN';
     btn.disabled = false;
   }
+}
+
+/* ============================================================
+   PIPELINE (KANBAN)
+   ============================================================ */
+function renderPipeline() {
+  const board = document.getElementById('pipeline-board');
+  if (!board) return;
+
+  const leads = state.leads;
+  const cols = [
+    {
+      id: 'new',
+      label: 'Nieuw',
+      cls: 'col-new',
+      leads: leads.filter(l => !l.qualified && !l.afspraakGeboekt && !l.opgepikt && !(l.qualified === false && l.status === 'completed'))
+    },
+    {
+      id: 'qualified',
+      label: 'Gekwalificeerd',
+      cls: 'col-qual',
+      leads: leads.filter(l => l.qualified === true && !l.afspraakGeboekt && !l.opgepikt)
+    },
+    {
+      id: 'afspraak',
+      label: 'Afspraak',
+      cls: 'col-apt',
+      leads: leads.filter(l => l.afspraakGeboekt === true && !l.opgepikt)
+    },
+    {
+      id: 'won',
+      label: 'Gewonnen',
+      cls: 'col-won',
+      leads: leads.filter(l => l.opgepikt === true)
+    },
+    {
+      id: 'lost',
+      label: 'Verloren',
+      cls: 'col-lost',
+      leads: leads.filter(l => l.qualified === false && l.status === 'completed')
+    }
+  ];
+
+  board.innerHTML = cols.map(col => {
+    const cards = col.leads.map(l => {
+      const sc = l.leadScore || 0;
+      const scCls = sc >= 8 ? 'score-green' : sc >= 5 ? 'score-orange' : sc > 0 ? 'score-red' : 'score-gray';
+      const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
+      return \`<div class="pipeline-card" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+        <div class="pipeline-card-name">\${escHtml(l.naam) || '—'}</div>
+        <div class="pipeline-card-meta">
+          \${sc > 0 ? \`<span class="pipeline-score \${scCls}">\${sc}</span>\` : ''}
+          \${l.bron ? \`<span class="badge badge-bron" style="font-size:10px">\${escHtml(l.bron)}</span>\` : ''}
+          <span class="pipeline-card-date">\${dateStr}</span>
+        </div>
+        \${l.telefoon ? \`<div class="pipeline-card-phone">📞 \${escHtml(l.telefoon)}</div>\` : ''}
+      </div>\`;
+    }).join('');
+
+    return \`<div class="pipeline-col">
+      <div class="pipeline-col-header \${col.cls}">
+        \${col.label}
+        <span class="pipeline-col-count">\${col.leads.length}</span>
+      </div>
+      <div class="pipeline-col-body">\${cards || \`<div style="color:var(--text-muted);font-size:12px;padding:8px 4px">Geen leads</div>\`}</div>
+    </div>\`;
+  }).join('');
+}
+
+/* ============================================================
+   GESPREKKEN (CONVERSATIONS)
+   ============================================================ */
+function renderGesprekken() {
+  const listBody = document.getElementById('conv-list-body');
+  if (!listBody) return;
+
+  const withConvs = state.leads.filter(l => {
+    if (!l.conversatieGeschiedenis) return false;
+    try { const p = JSON.parse(l.conversatieGeschiedenis); return Array.isArray(p) && p.length > 0; }
+    catch { return false; }
+  }).sort((a, b) => new Date(b.datum || 0) - new Date(a.datum || 0));
+
+  if (withConvs.length === 0) {
+    listBody.innerHTML = \`<div style="padding:20px;color:var(--text-muted);font-size:13px">Geen gesprekken gevonden</div>\`;
+    return;
+  }
+
+  listBody.innerHTML = withConvs.map(l => {
+    let preview = '';
+    try {
+      const msgs = JSON.parse(l.conversatieGeschiedenis);
+      const last = msgs[msgs.length - 1];
+      preview = last ? (last.content || '').slice(0, 50) + ((last.content || '').length > 50 ? '...' : '') : '';
+    } catch {}
+    const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
+    return \`<div class="conv-list-item" id="conv-item-\${escHtml(String(l.id))}" onclick="openConversation('\${escHtml(String(l.id))}')" >
+      <div class="conv-list-item-name">
+        <span>\${escHtml(l.naam) || '—'}</span>
+        <span class="conv-list-item-date">\${dateStr}</span>
+      </div>
+      <div class="conv-list-item-preview">\${escHtml(preview)}</div>
+    </div>\`;
+  }).join('');
+}
+
+function openConversation(leadId) {
+  const lead = state.leads.find(l => String(l.id) === String(leadId));
+  if (!lead) return;
+
+  // Mark active
+  document.querySelectorAll('.conv-list-item').forEach(el => el.classList.remove('active'));
+  const activeItem = document.getElementById(\`conv-item-\${leadId}\`);
+  if (activeItem) activeItem.classList.add('active');
+
+  const detail = document.getElementById('conv-detail');
+  if (!detail) return;
+
+  let msgs = [];
+  try { msgs = JSON.parse(lead.conversatieGeschiedenis || '[]'); } catch {}
+
+  const bubbles = msgs.map(m => {
+    const isUser = m.role === 'user';
+    const label = isUser ? '👤 Lead' : '🤖 AI';
+    const content = (m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+    return \`<div>
+      <div class="conv-bubble-label">\${label}</div>
+      <div class="conv-bubble \${isUser ? 'user' : 'assistant'}">\${content}</div>
+    </div>\`;
+  }).join('');
+
+  const scoreNum = lead.leadScore || 0;
+  const scCls = scoreNum >= 8 ? 'score-green' : scoreNum >= 5 ? 'score-orange' : scoreNum > 0 ? 'score-red' : 'score-gray';
+
+  detail.innerHTML = \`
+    <div class="conv-header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      \${escHtml(lead.naam) || '—'}
+      \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
+    </div>
+    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon">💬</div><div>Geen berichten</div></div>\`}</div>
+  \`;
+
+  // Scroll to bottom
+  const msgs_el = detail.querySelector('.conv-messages');
+  if (msgs_el) setTimeout(() => { msgs_el.scrollTop = msgs_el.scrollHeight; }, 50);
+}
+
+/* ============================================================
+   ANALYSE (ANALYTICS)
+   ============================================================ */
+function renderAnalyse() {
+  const leads = state.leads;
+
+  // Funnel
+  const total = leads.length;
+  const qualified = leads.filter(l => l.qualified).length;
+  const booked = leads.filter(l => l.afspraakGeboekt).length;
+  const won = leads.filter(l => l.opgepikt).length;
+
+  const funnelSteps = [
+    { label: 'Totaal leads', count: total, pct: 100 },
+    { label: 'Gekwalificeerd', count: qualified, pct: total ? Math.round((qualified / total) * 100) : 0 },
+    { label: 'Afspraak geboekt', count: booked, pct: total ? Math.round((booked / total) * 100) : 0 },
+    { label: 'Gewonnen', count: won, pct: total ? Math.round((won / total) * 100) : 0 }
+  ];
+
+  const funnelEl = document.getElementById('funnel-content');
+  if (funnelEl) {
+    funnelEl.innerHTML = funnelSteps.map(s => \`
+      <div class="funnel-step">
+        <div class="funnel-step-label">
+          <span>\${s.label} <strong>\${s.count}</strong></span>
+          <span class="funnel-step-pct">\${s.pct}%</span>
+        </div>
+        <div class="funnel-bar"><div class="funnel-bar-fill" style="width:\${s.pct}%"></div></div>
+      </div>
+    \`).join('');
+  }
+
+  // Source performance table
+  const sourceMap = {};
+  leads.forEach(l => {
+    const src = l.bron || 'Onbekend';
+    if (!sourceMap[src]) sourceMap[src] = { total: 0, qual: 0, scores: [] };
+    sourceMap[src].total++;
+    if (l.qualified) sourceMap[src].qual++;
+    if (l.leadScore) sourceMap[src].scores.push(l.leadScore);
+  });
+
+  const sourceEl = document.getElementById('source-table-wrap');
+  if (sourceEl) {
+    const rows = Object.entries(sourceMap).sort((a,b) => b[1].total - a[1].total).map(([src, d]) => {
+      const conv = d.total ? Math.round((d.qual / d.total) * 100) : 0;
+      const avg = d.scores.length ? (d.scores.reduce((a,b) => a+b, 0) / d.scores.length).toFixed(1) : '—';
+      return \`<tr>
+        <td>\${escHtml(src)}</td>
+        <td style="text-align:center">\${d.total}</td>
+        <td style="text-align:center">\${d.qual}</td>
+        <td style="text-align:center">\${conv}%</td>
+        <td style="text-align:center">\${avg}</td>
+      </tr>\`;
+    }).join('');
+    sourceEl.innerHTML = \`<table class="source-table">
+      <thead><tr>
+        <th>Bron</th><th>Totaal</th><th>Gekwal.</th><th>Conversie</th><th>Gem. Score</th>
+      </tr></thead>
+      <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">Geen data</td></tr>\`}</tbody>
+    </table>\`;
+  }
+
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const gridColor = isLight ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.05)';
+  const tickColor = isLight ? '#5c6478' : '#6a85b0';
+
+  // Days of week chart
+  const dayCanvas = document.getElementById('analyse-days-chart');
+  if (dayCanvas && typeof Chart !== 'undefined') {
+    const dayLabels = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+    const dayCounts = [0,0,0,0,0,0,0];
+    leads.forEach(l => {
+      if (!l.datum) return;
+      const d = new Date(l.datum);
+      if (isNaN(d)) return;
+      const dow = (d.getDay() + 6) % 7; // 0=Mon
+      dayCounts[dow]++;
+    });
+    if (state.analyseDaysChart) state.analyseDaysChart.destroy();
+    state.analyseDaysChart = new Chart(dayCanvas, {
+      type: 'bar',
+      data: {
+        labels: dayLabels,
+        datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(99,102,241,0.45)', borderColor: '#818cf8', borderWidth: 1, borderRadius: 6 }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } },
+        scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
+      }
+    });
+  }
+
+  // Score distribution chart
+  const scoreCanvas = document.getElementById('analyse-score-chart');
+  if (scoreCanvas && typeof Chart !== 'undefined') {
+    const scoreLabels = ['1','2','3','4','5','6','7','8','9','10'];
+    const scoreCounts = [0,0,0,0,0,0,0,0,0,0];
+    leads.forEach(l => { if (l.leadScore && l.leadScore >= 1 && l.leadScore <= 10) scoreCounts[l.leadScore - 1]++; });
+    const scoreColors = scoreLabels.map((_, i) => i >= 7 ? 'rgba(34,197,94,0.5)' : i >= 4 ? 'rgba(245,158,11,0.5)' : 'rgba(244,63,94,0.45)');
+    if (state.analyseScoreChart) state.analyseScoreChart.destroy();
+    state.analyseScoreChart = new Chart(scoreCanvas, {
+      type: 'bar',
+      data: {
+        labels: scoreLabels,
+        datasets: [{ label: 'Leads', data: scoreCounts, backgroundColor: scoreColors, borderRadius: 5 }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } },
+        scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
+      }
+    });
+  }
+
+  // Hours chart
+  const hoursCanvas = document.getElementById('analyse-hours-chart');
+  if (hoursCanvas && typeof Chart !== 'undefined') {
+    const hourBuckets = ['0-4u','4-8u','8-12u','12-16u','16-20u','20-24u'];
+    const hourCounts = [0,0,0,0,0,0];
+    leads.forEach(l => {
+      if (!l.datum) return;
+      const d = new Date(l.datum);
+      if (isNaN(d)) return;
+      const bucket = Math.min(Math.floor(d.getHours() / 4), 5);
+      hourCounts[bucket]++;
+    });
+    if (state.analyseHoursChart) state.analyseHoursChart.destroy();
+    state.analyseHoursChart = new Chart(hoursCanvas, {
+      type: 'bar',
+      data: {
+        labels: hourBuckets,
+        datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(6,182,212,0.4)', borderColor: '#06b6d4', borderWidth: 1, borderRadius: 6 }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } },
+        scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
+      }
+    });
+  }
+
+  // Avg response time
+  const rtEl = document.getElementById('analyse-response-val');
+  if (rtEl) {
+    const rts = leads.map(l => Number(l.responseTime)).filter(n => n > 0);
+    const avg = rts.length ? Math.round(rts.reduce((a,b) => a+b, 0) / rts.length) : 0;
+    if (avg > 3600) {
+      rtEl.textContent = (avg / 3600).toFixed(1) + 'u';
+      const lbl = document.querySelector('#analyse-response-wrap .analyse-stat-label');
+      if (lbl) lbl.textContent = 'uur gemiddeld';
+    } else if (avg > 0) {
+      rtEl.textContent = avg;
+    } else {
+      rtEl.textContent = '—';
+    }
+  }
+}
+
+/* ============================================================
+   INSTELLINGEN (SETTINGS)
+   ============================================================ */
+function renderInstellingen() {
+  const s = state;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('set-naam', s.clientName || '—');
+  set('set-email', s.userEmail || localStorage.getItem('hv-email') || '—');
+  set('set-calendly-url', s.calendlyUrl || '—');
+
+  // API key masked display
+  const keyEl = document.getElementById('set-apikey-display');
+  const toggleBtn = document.getElementById('btn-toggle-apikey');
+  if (keyEl && toggleBtn) {
+    const key = s.apiKey || '';
+    const masked = key.length > 8 ? key.slice(0, 8) + '••••••••' : '••••••••';
+    keyEl.textContent = masked;
+    let showing = false;
+    toggleBtn.onclick = () => {
+      showing = !showing;
+      keyEl.textContent = showing ? key : masked;
+      toggleBtn.textContent = showing ? 'Verberg' : 'Toon';
+    };
+  }
+}
+
+/* ============================================================
+   ACTIVITEIT (ACTIVITY FEED)
+   ============================================================ */
+function renderActiviteit() {
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+
+  const events = [];
+
+  state.leads.forEach(l => {
+    const baseDate = l.datum ? new Date(l.datum) : null;
+    if (baseDate && !isNaN(baseDate)) {
+      events.push({ type: 'new', date: baseDate, lead: l });
+    }
+    if (l.qualified === true && baseDate) {
+      events.push({ type: 'qualified', date: new Date(baseDate.getTime() + 1000), lead: l });
+    }
+    if (l.afspraakGeboekt === true && baseDate) {
+      events.push({ type: 'booked', date: new Date(baseDate.getTime() + 2000), lead: l });
+    }
+    if (l.opgepikt === true && baseDate) {
+      events.push({ type: 'won', date: new Date(baseDate.getTime() + 3000), lead: l });
+    }
+  });
+
+  events.sort((a, b) => b.date - a.date);
+  const recent = events.slice(0, 50);
+
+  if (recent.length === 0) {
+    feed.innerHTML = \`<div class="activity-item"><div style="color:var(--text-muted);font-size:13px">Nog geen activiteit</div></div>\`;
+    return;
+  }
+
+  function relTime(date) {
+    const diff = Math.floor((Date.now() - date) / 1000);
+    if (diff < 60) return 'zojuist';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm geleden';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'u geleden';
+    if (diff < 172800) return 'gisteren';
+    return date.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' });
+  }
+
+  const typeMap = {
+    new:       { dotCls: 'activity-dot-new',       title: l => \`Nieuwe lead: \${escHtml(l.naam) || '—'}\`,       sub: l => l.telefoon ? \`📞 \${l.telefoon}\` : '' },
+    qualified: { dotCls: 'activity-dot-qualified',  title: l => \`Lead gekwalificeerd: \${escHtml(l.naam) || '—'}\`, sub: l => l.leadScore ? \`Score: \${l.leadScore}\` : '' },
+    booked:    { dotCls: 'activity-dot-booked',     title: l => \`Afspraak geboekt: \${escHtml(l.naam) || '—'}\`, sub: () => 'Afspraak ingepland via Calendly' },
+    won:       { dotCls: 'activity-dot-won',        title: l => \`Lead opgevolgd: \${escHtml(l.naam) || '—'}\`,    sub: l => l.verwachteWaarde ? \`Waarde: \${escHtml(l.verwachteWaarde)}\` : '' }
+  };
+
+  feed.innerHTML = recent.map(ev => {
+    const tm = typeMap[ev.type];
+    if (!tm) return '';
+    return \`<div class="activity-item">
+      <div class="activity-dot \${tm.dotCls}"></div>
+      <div class="activity-content">
+        <div class="activity-title">\${tm.title(ev.lead)}</div>
+        \${tm.sub(ev.lead) ? \`<div class="activity-sub">\${tm.sub(ev.lead)}</div>\` : ''}
+      </div>
+      <div class="activity-time">\${relTime(ev.date)}</div>
+    </div>\`;
+  }).join('');
 }
 
 /* ============================================================
