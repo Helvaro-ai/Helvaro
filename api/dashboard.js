@@ -1404,6 +1404,102 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   box-shadow: 0 0 12px rgba(6,182,212,0.08);
 }
 
+    .search-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 9000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+    }
+    .search-overlay.open { display: flex; }
+    .search-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: min(640px, 90vw);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+    .search-modal-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-modal-bar svg { color: var(--text-muted); flex-shrink:0; }
+    .search-modal-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .search-modal-input::placeholder { color: var(--text-muted); }
+    .search-kbd {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .search-results {
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .search-hint {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .search-result-item:hover { background: var(--bg-card-alt); }
+    .search-result-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight:700; color:#fff; flex-shrink:0;
+    }
+    .search-result-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .search-result-meta { font-size: 11px; color: var(--text-muted); }
+    .search-result-score { font-size: 12px; font-weight:700; font-family:'Orbitron',monospace; color:var(--accent); margin-left:auto; }
+    .search-no-results { padding:20px; text-align:center; color:var(--text-muted); font-size:13px; }
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 2px solid var(--bg-topbar, var(--bg));
+  pointer-events: none;
+}
+
 .btn-icon .icon { font-size: 14px; }
 
 .btn-icon.spin .icon { animation: spin 1s linear infinite; }
@@ -1517,6 +1613,11 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   font-size: 11px;
   color: var(--text-secondary);
   margin-bottom: 10px;
+}
+
+.stat-trend {
+  margin-top: 4px;
+  min-height: 16px;
 }
 
 .stat-bar {
@@ -2170,6 +2271,75 @@ tr:hover .td-arrow { color: var(--cyan); }
   margin-bottom: 16px;
 }
 
+/* ── Follow-up Queue ── */
+    .followup-widget {
+      background: var(--bg-card);
+      border: 1px solid rgba(245,158,11,0.35);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .followup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .followup-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f59e0b;
+    }
+    .followup-count {
+      background: rgba(245,158,11,0.15);
+      color: #f59e0b;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      border: 1px solid rgba(245,158,11,0.3);
+    }
+    .followup-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .followup-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .followup-item:hover { border-color: #f59e0b; }
+    .followup-item-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+    .followup-item-meta { font-size: 11px; color: var(--text-muted); }
+    .followup-item-score { font-size: 12px; font-weight: 700; font-family: 'Orbitron',monospace; color: #f59e0b; }
+    .followup-call-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 7px;
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: #f59e0b;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .followup-call-btn:hover { background: rgba(245,158,11,0.22); }
+
 /* ── Top Leads Strip ── */
     .top-leads-strip {
       background: var(--bg-card);
@@ -2819,6 +2989,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-color: var(--blue-primary);
   transform: translateY(-1px);
 }
+    .pipeline-card[draggable="true"] { cursor: grab; }
+    .pipeline-card[draggable="true"]:active { cursor: grabbing; opacity: 0.7; }
+    .pipeline-col.drag-over {
+      background: rgba(99,102,241,0.08);
+      border-color: rgba(99,102,241,0.4) !important;
+      outline: 2px dashed rgba(99,102,241,0.4);
+      outline-offset: -4px;
+    }
 .pipeline-card-name {
   font-size: 13px;
   font-weight: 600;
@@ -2892,87 +3070,75 @@ tr:hover .td-arrow { color: var(--cyan); }
   flex-shrink: 0;
 }
 .conv-list-item {
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.12s;
 }
 .conv-list-item:hover { background: var(--bg-card-alt); }
-.conv-list-item.active { background: rgba(99,102,241,0.08); }
+.conv-list-item.active { background: rgba(99,102,241,0.08); border-left: 3px solid var(--accent); }
 .conv-list-item-name {
+  display: flex;
+  justify-content: space-between;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  color: var(--text);
+  margin-bottom: 4px;
 }
-.conv-list-item-preview {
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.conv-list-item-date {
-  font-size: 10px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
+.conv-list-item-date { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+.conv-list-item-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conv-detail {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.conv-header {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.conv-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 80%;
+  word-break: break-word;
+  margin-bottom: 4px;
+}
+.conv-bubble.user {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+.conv-bubble.assistant {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.conv-bubble-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .conv-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+.conv-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
   gap: 10px;
-}
-.conv-bubble {
-  max-width: 72%;
-  padding: 9px 13px;
-  border-radius: 14px;
-  font-size: 13px;
-  line-height: 1.55;
-  word-break: break-word;
-}
-.conv-bubble.user {
-  align-self: flex-start;
-  background: var(--bg-card-alt);
-  border: 1px solid var(--border);
-  border-bottom-left-radius: 3px;
-  color: var(--text-primary);
-}
-.conv-bubble.assistant {
-  align-self: flex-end;
-  background: rgba(99,102,241,0.18);
-  border: 1px solid rgba(99,102,241,0.3);
-  border-bottom-right-radius: 3px;
-  color: var(--text-primary);
-}
-.conv-bubble-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
+  background: var(--bg-card);
 }
 .conv-empty {
   flex: 1;
@@ -3570,6 +3736,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-color: rgba(99,102,241,0.2);
 }
 </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -3837,6 +4004,13 @@ tr:hover .td-arrow { color: var(--cyan); }
           <span class="icon">⇓</span>
           CSV Export
         </button>
+            <button class="topbar-btn" id="btn-search" title="Zoeken (Ctrl+K)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            </button>
+            <button class="btn-icon" id="btn-notif" title="Notificaties" style="position:relative">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+              <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+            </button>
         <button class="btn-icon theme-toggle" id="btn-theme" title="Wissel thema" style="padding:8px 10px"></button>
       </div>
     </header>
@@ -3871,6 +4045,18 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="today-widget" id="today-widget" style="display:none">
         <div class="today-widget-title">Vandaag</div>
         <div id="today-widget-body"><span class="today-empty">Geen afspraken vandaag</span></div>
+      </div>
+
+      <!-- Follow-up Queue -->
+      <div class="followup-widget" id="followup-widget" style="display:none">
+        <div class="followup-header">
+          <div class="followup-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92"/></svg>
+            Opvolging Nodig
+          </div>
+          <span class="followup-count" id="followup-count">0</span>
+        </div>
+        <div class="followup-list" id="followup-list"></div>
       </div>
 
       <!-- Top Leads Strip -->
@@ -4012,6 +4198,10 @@ tr:hover .td-arrow { color: var(--cyan); }
             Rapport laden
           </button>
           <div id="rapport-content" style="display:none;margin-top:20px">
+            <button class="btn-icon btn-primary-sm" id="btn-download-pdf" style="width:100%;justify-content:center;padding:10px;margin-bottom:16px;background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.3);color:#f43f5e" onclick="exportPDF()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Downloaden als PDF
+            </button>
             <div class="rapport-stats" id="rapport-stats"></div>
             <div id="rapport-leads-section"></div>
           </div>
@@ -4402,6 +4592,20 @@ tr:hover .td-arrow { color: var(--cyan); }
   </div>
 </div>
 
+<!-- Global Search Overlay -->
+<div class="search-overlay" id="search-overlay" onclick="closeSearch(event)">
+  <div class="search-modal">
+    <div class="search-modal-bar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="search-modal-input" id="search-modal-input" type="text" placeholder="Zoek leads, namen, telefoonnummers..." autocomplete="off">
+      <kbd class="search-kbd" onclick="closeSearch()">Esc</kbd>
+    </div>
+    <div class="search-results" id="search-results">
+      <div class="search-hint">Begin met typen om te zoeken...</div>
+    </div>
+  </div>
+</div>
+
 <!-- Detail Panel -->
 <div class="panel-backdrop" id="panel-backdrop"></div>
 <div class="detail-panel" id="detail-panel">
@@ -4748,6 +4952,46 @@ async function refreshData() {
         }).join('');
       }
     }
+    // Follow-up queue
+    const followupWidget = document.getElementById('followup-widget');
+    const followupList   = document.getElementById('followup-list');
+    const followupCount  = document.getElementById('followup-count');
+    if (followupWidget && followupList) {
+      const needsFollowup = (state.leads || [])
+        .filter(l => l.qualified === true && !l.afspraakGeboekt)
+        .sort((a,b) => (b.leadScore||0) - (a.leadScore||0))
+        .slice(0, 5);
+      if (needsFollowup.length > 0) {
+        followupWidget.style.display = 'block';
+        if (followupCount) followupCount.textContent = needsFollowup.length;
+        followupList.innerHTML = needsFollowup.map(l => {
+          const name = l.naam || 'Onbekend';
+          const score = l.leadScore ?? '—';
+          const bron  = l.bron || 'Onbekende bron';
+          return \`<div class="followup-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+            <div style="flex:1;min-width:0">
+              <div class="followup-item-name">\${escHtml(name)}</div>
+              <div class="followup-item-meta">\${escHtml(bron)}</div>
+            </div>
+            <span class="followup-item-score">\${score}</span>
+            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escHtml(l.telefoon||'')}').then(()=>toast('Nummer gekopieerd','success'))">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/><path d="M1 1l22 22"/></svg>
+              Kopieer
+            </button>
+          </div>\`;
+        }).join('');
+      } else {
+        followupWidget.style.display = 'none';
+      }
+    }
+
+    // Bell: count leads from last 24h as "new"
+    const bell = document.getElementById('notif-badge');
+    if (bell) {
+      const fresh = (state.leads||[]).filter(l => l.datum && new Date(l.datum) > new Date(Date.now()-86400000)).length;
+      if (fresh > 0) { bell.style.display='flex'; bell.textContent=fresh>9?'9+':fresh; bell.dataset.count=fresh; }
+      else { bell.style.display='none'; }
+    }
   } catch (err) {
     toast('Kon geen gegevens ophalen: ' + err.message, 'error');
   } finally {
@@ -4796,6 +5040,17 @@ function detectNewLeads(leads) {
     });
   }
   toast(\`\${fresh.length} nieuwe lead\${fresh.length > 1 ? 's' : ''} binnengekomen!\`, 'info');
+
+  // Update notification bell
+  const badge = document.getElementById('notif-badge');
+  if (badge) {
+    const unread = parseInt(badge.dataset.count || '0') + fresh.length;
+    if (unread > 0) {
+      badge.style.display = 'flex';
+      badge.textContent = unread > 9 ? '9+' : unread;
+      badge.dataset.count = unread;
+    }
+  }
 }
 
 function updateNavBadge() {
@@ -4981,6 +5236,23 @@ function renderStats() {
   const grid = document.getElementById('stats-grid');
   if (!grid) return;
 
+  // Trend: compare this week vs last week
+  const now = Date.now();
+  const weekMs = 7 * 86400000;
+  const thisWeekLeads = (state.leads || []).filter(l => l.datum && new Date(l.datum) > new Date(now - weekMs));
+  const lastWeekLeads = (state.leads || []).filter(l => l.datum && new Date(l.datum) > new Date(now - 2*weekMs) && new Date(l.datum) <= new Date(now - weekMs));
+  const thisWeekQual  = thisWeekLeads.filter(l => l.qualified).length;
+  const lastWeekQual  = lastWeekLeads.filter(l => l.qualified).length;
+  const thisWeekBooked = thisWeekLeads.filter(l => l.afspraakGeboekt).length;
+  const lastWeekBooked = lastWeekLeads.filter(l => l.afspraakGeboekt).length;
+  const trendDiff = (a, b) => {
+    const d = a - b;
+    if (d === 0) return '<span style="color:var(--text-muted);font-size:11px">— zelfde</span>';
+    const arrow = d > 0 ? '↑' : '↓';
+    const col = d > 0 ? 'var(--green)' : 'var(--red)';
+    return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${Math.abs(d)} vs vorige week</span>\`;
+  };
+
   const cards = [
     {
       label: 'Totaal Leads',
@@ -4988,7 +5260,8 @@ function renderStats() {
       suffix: '',
       desc: 'Alle ontvangen leads',
       color: '',
-      fill: 100
+      fill: 100,
+      trend: trendDiff(thisWeekLeads.length, lastWeekLeads.length)
     },
     {
       label: 'Gekwalificeerd',
@@ -4996,7 +5269,8 @@ function renderStats() {
       suffix: '',
       desc: 'Door AI gekwalificeerd',
       color: 'cyan',
-      fill: total ? Math.round((s.qualified / total) * 100) : 0
+      fill: total ? Math.round((s.qualified / total) * 100) : 0,
+      trend: trendDiff(thisWeekQual, lastWeekQual)
     },
     {
       label: 'Afspraken',
@@ -5004,7 +5278,8 @@ function renderStats() {
       suffix: '',
       desc: 'Geboekte afspraken',
       color: 'green',
-      fill: total ? Math.round((s.booked / total) * 100) : 0
+      fill: total ? Math.round((s.booked / total) * 100) : 0,
+      trend: trendDiff(thisWeekBooked, lastWeekBooked)
     },
     {
       label: 'Conversie',
@@ -5012,7 +5287,8 @@ function renderStats() {
       suffix: '%',
       desc: 'Van lead naar afspraak',
       color: 'orange',
-      fill: s.conversionRate || 0
+      fill: s.conversionRate || 0,
+      trend: ''
     },
     {
       label: 'Deze Maand',
@@ -5020,7 +5296,8 @@ function renderStats() {
       suffix: '',
       desc: 'Nieuwe leads deze maand',
       color: 'blue',
-      fill: total ? Math.round(((s.thisMonth || 0) / total) * 100) : 0
+      fill: total ? Math.round(((s.thisMonth || 0) / total) * 100) : 0,
+      trend: ''
     },
     {
       label: 'Gem. Reactie',
@@ -5028,7 +5305,8 @@ function renderStats() {
       suffix: 'u',
       desc: 'Gemiddelde reactietijd',
       color: '',
-      fill: 60
+      fill: 60,
+      trend: ''
     }
   ];
 
@@ -5037,6 +5315,7 @@ function renderStats() {
       <div class="stat-label">\${c.label}</div>
       <div class="stat-value \${c.color}" data-target="\${c.value}" data-suffix="\${c.suffix}">0\${c.suffix ? \`<span class="stat-unit">\${c.suffix}</span>\` : ''}</div>
       <div class="stat-desc">\${c.desc}</div>
+      <div class="stat-trend">\${c.trend || ''}</div>
       <div class="stat-bar">
         <div class="stat-bar-fill" data-fill="\${c.fill}"></div>
       </div>
@@ -5179,9 +5458,39 @@ function scorePill(score) {
   return \`<span class="score-pill \${cls}" title="\${title}">\${score}</span>\`;
 }
 
+function scoreBar(score) {
+  if (score == null || score === '') return '<span style="color:var(--text-muted)">—</span>';
+  const n = parseInt(score) || 0;
+  const color = n >= 8 ? '#10b981' : n >= 5 ? '#f59e0b' : '#f43f5e';
+  const pct = Math.round(n / 10 * 100);
+  return \`<div style="display:flex;align-items:center;gap:6px">
+    <div style="width:40px;height:5px;background:var(--bg-card-alt);border-radius:3px;overflow:hidden">
+      <div style="width:\${pct}%;height:100%;background:\${color};border-radius:3px"></div>
+    </div>
+    <span style="font-size:12px;font-weight:700;color:\${color};font-family:'Orbitron',monospace">\${n}</span>
+  </div>\`;
+}
+
 function renderTable() {
   const tbody = document.getElementById('leads-tbody');
   if (!tbody) return;
+
+  if (state.leads.length === 0) {
+    tbody.innerHTML = \`<tr><td colspan="10" style="padding:60px 20px;text-align:center">
+      <div style="max-width:400px;margin:0 auto">
+        <div style="font-size:48px;margin-bottom:16px">🚀</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
+        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Uw AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
+        <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel uw WhatsApp-nummer of website link met potentiële klanten</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
+        </div>
+        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent)">sindi.s@usehelvaro.pro</a></div>
+      </div>
+    </td></tr>\`;
+    return;
+  }
 
   if (state.filteredLeads.length === 0) {
     const hasFilters = getActiveFilterCount() > 0;
@@ -5218,7 +5527,7 @@ function renderTable() {
         <td>\${qualBadge(lead)}</td>
         <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
         <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
-        <td>\${scorePill(lead.leadScore)}</td>
+        <td>\${scoreBar(lead.leadScore)}</td>
         <td>\${lead.opgepikt ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
         <td class="td-arrow">›</td>
@@ -5935,6 +6244,27 @@ document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-logout').addEventListener('click', logout);
 
+const bellBtn = document.getElementById('btn-notif');
+if (bellBtn) {
+  bellBtn.addEventListener('click', () => {
+    const badge = document.getElementById('notif-badge');
+    if (badge) { badge.style.display='none'; badge.dataset.count='0'; }
+    navigateTo('activiteit');
+  });
+}
+
+  // Global search
+  const searchBtn = document.getElementById('btn-search');
+  if (searchBtn) searchBtn.addEventListener('click', openSearch);
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+    if (e.key === 'Escape') closeSearch();
+  });
+
+  const searchInput = document.getElementById('search-modal-input');
+  if (searchInput) searchInput.addEventListener('input', runGlobalSearch);
+
 /* ============================================================
    EXPORTS PAGE
    ============================================================ */
@@ -6083,6 +6413,89 @@ async function handleLogin() {
 /* ============================================================
    PIPELINE (KANBAN)
    ============================================================ */
+function openSearch() {
+  const overlay = document.getElementById('search-overlay');
+  if (overlay) {
+    overlay.classList.add('open');
+    setTimeout(() => { document.getElementById('search-modal-input')?.focus(); }, 50);
+  }
+}
+
+function closeSearch(e) {
+  if (e && e.target !== document.getElementById('search-overlay')) return;
+  const overlay = document.getElementById('search-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function runGlobalSearch() {
+  const q = (document.getElementById('search-modal-input')?.value || '').toLowerCase().trim();
+  const resultsEl = document.getElementById('search-results');
+  if (!resultsEl) return;
+
+  if (!q) {
+    resultsEl.innerHTML = \`<div class="search-hint">Begin met typen om te zoeken...</div>\`;
+    return;
+  }
+
+  const matches = (state.leads || []).filter(l =>
+    (l.naam || '').toLowerCase().includes(q) ||
+    (l.telefoon || '').toLowerCase().includes(q) ||
+    (l.bron || '').toLowerCase().includes(q) ||
+    (l.samenvatting || '').toLowerCase().includes(q)
+  ).slice(0, 10);
+
+  if (matches.length === 0) {
+    resultsEl.innerHTML = \`<div class="search-no-results">Geen resultaten gevonden</div>\`;
+    return;
+  }
+
+  resultsEl.innerHTML = matches.map(l => {
+    const name = l.naam || 'Onbekend';
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const score = l.leadScore ?? '';
+    const meta = [l.bron, l.telefoon].filter(Boolean).join(' · ');
+    return \`<div class="search-result-item" onclick="closeSearch();navigateTo('dashboard');setTimeout(()=>{var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);},100)">
+      <div class="search-result-avatar">\${escHtml(initials)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="search-result-name">\${escHtml(name)}</div>
+        <div class="search-result-meta">\${escHtml(meta)}</div>
+      </div>
+      \${score !== '' ? \`<span class="search-result-score">\${score}</span>\` : ''}
+    </div>\`;
+  }).join('');
+}
+
+let _pipelineDragId = null;
+
+function pipelineDragStart(event, leadId) {
+  _pipelineDragId = String(leadId);
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', String(leadId));
+}
+
+async function pipelineDrop(event, newStatus) {
+  event.preventDefault();
+  document.querySelectorAll('.pipeline-col').forEach(c => c.classList.remove('drag-over'));
+  const leadId = _pipelineDragId || event.dataTransfer.getData('text/plain');
+  if (!leadId) return;
+  _pipelineDragId = null;
+
+  const lead = state.leads.find(l => String(l.id) === String(leadId));
+  if (!lead || lead.status === newStatus) return;
+
+  // Optimistic update
+  lead.status = newStatus;
+  renderPipeline();
+  toast('Lead verplaatst naar ' + newStatus, 'success');
+
+  // Persist
+  try {
+    await patchStatus(lead.id, newStatus);
+  } catch (e) {
+    toast('Kon status niet opslaan', 'error');
+  }
+}
+
 function renderPipeline() {
   const board = document.getElementById('pipeline-board');
   if (!board) return;
@@ -6126,7 +6539,7 @@ function renderPipeline() {
       const sc = l.leadScore || 0;
       const scCls = sc >= 8 ? 'score-green' : sc >= 5 ? 'score-orange' : sc > 0 ? 'score-red' : 'score-gray';
       const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
-      return \`<div class="pipeline-card" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+      return \`<div class="pipeline-card" draggable="true" ondragstart="pipelineDragStart(event,'\${escHtml(String(l.id))}')" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
         <div class="pipeline-card-name">\${escHtml(l.naam) || '—'}</div>
         <div class="pipeline-card-meta">
           \${sc > 0 ? \`<span class="pipeline-score \${scCls}">\${sc}</span>\` : ''}
@@ -6137,7 +6550,7 @@ function renderPipeline() {
       </div>\`;
     }).join('');
 
-    return \`<div class="pipeline-col">
+    return \`<div class="pipeline-col" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="pipelineDrop(event,'\${col.id}')">
       <div class="pipeline-col-header \${col.cls}">
         \${col.label}
         <span class="pipeline-col-count">\${col.leads.length}</span>
@@ -6410,6 +6823,109 @@ function renderAnalyse() {
         <span style="font-weight:700;color:var(--text);min-width:28px;text-align:right">\${it.val}</span>
       </div>\`).join('');
   }
+}
+
+function exportPDF() {
+  if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+    toast('PDF bibliotheek nog niet geladen, probeer opnieuw', 'error');
+    return;
+  }
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const leads = state.leads || [];
+  const qualified = leads.filter(l => l.qualified);
+  const total = leads.length;
+  const now = new Date().toLocaleDateString('nl-NL', { day:'2-digit', month:'long', year:'numeric' });
+  const clientName = state.clientName || 'Client';
+
+  // Header
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Helvaro — Lead Rapport', 14, 12);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(clientName + ' · ' + now, 14, 20);
+
+  // Stats row
+  doc.setTextColor(30, 30, 40);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  let y = 38;
+  const stats = [
+    { label: 'Totaal leads', val: total },
+    { label: 'Gekwalificeerd', val: qualified.length },
+    { label: 'Afspraken', val: leads.filter(l=>l.afspraakGeboekt).length },
+    { label: 'Conversie', val: total ? Math.round(qualified.length/total*100)+'%' : '0%' },
+  ];
+  stats.forEach((st, i) => {
+    const x = 14 + i * 46;
+    doc.setFillColor(245, 246, 255);
+    doc.roundedRect(x, y, 44, 18, 3, 3, 'F');
+    doc.setFontSize(16);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(79,70,229);
+    doc.text(String(st.val), x + 22, y + 10, { align:'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(100,100,120);
+    doc.text(st.label, x + 22, y + 15, { align:'center' });
+  });
+
+  // Qualified leads table
+  y = 68;
+  doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(30,30,40);
+  doc.text('Gekwalificeerde Leads', 14, y);
+  y += 6;
+
+  // Table header
+  doc.setFillColor(79,70,229);
+  doc.rect(14, y, 182, 7, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','bold');
+  doc.text('Naam', 16, y+5);
+  doc.text('Telefoon', 66, y+5);
+  doc.text('Bron', 106, y+5);
+  doc.text('Score', 146, y+5);
+  doc.text('Datum', 166, y+5);
+  y += 7;
+
+  qualified.slice(0, 25).forEach((l, i) => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    if (i % 2 === 0) { doc.setFillColor(248,248,252); doc.rect(14, y, 182, 7, 'F'); }
+    doc.setTextColor(30,30,40);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    const naam = (l.naam || '—').slice(0,28);
+    const tel  = (l.telefoon || '—').slice(0,18);
+    const bron = (l.bron || '—').slice(0,18);
+    const sc   = String(l.leadScore || '—');
+    const dat  = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    doc.text(naam, 16, y+5);
+    doc.text(tel,  66, y+5);
+    doc.text(bron, 106, y+5);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(79,70,229);
+    doc.text(sc, 152, y+5, { align:'center' });
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(30,30,40);
+    doc.text(dat, 166, y+5);
+    y += 7;
+  });
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150,150,160);
+  doc.text('Gegenereerd door Helvaro · sindi.s@usehelvaro.pro', 14, 287);
+
+  doc.save('helvaro-rapport-' + new Date().toISOString().slice(0,10) + '.pdf');
+  toast('PDF gedownload', 'success');
 }
 
 /* ============================================================
