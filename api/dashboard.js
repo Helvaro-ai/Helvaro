@@ -2279,8 +2279,10 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    PAGES VISIBILITY
    ============================================================ */
-.page { display: none; }
-.page.active { display: block; }
+.page { display: none !important; }
+.page.active { display: block !important; }
+#page-calendly.active { display: flex !important; flex-direction: column; }
+#page-profile.active { display: block !important; }
 
 /* ============================================================
    RESPONSIVE - MOBILE
@@ -2961,7 +2963,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
-    <main class="page-content page" id="page-calendly" style="padding:0;display:flex;flex-direction:column;height:calc(100vh - 56px);overflow:hidden;">
+    <main class="page-content page" id="page-calendly" style="padding:0;height:calc(100vh - 56px);overflow:hidden;">
 
       <!-- Calendar toolbar -->
       <div class="cal-toolbar">
@@ -4294,6 +4296,15 @@ function navigateTo(page) {
   const t = titles[page] || { title: page, sub: '' };
   document.getElementById('topbar-title').textContent = t.title;
   document.getElementById('topbar-subtitle').textContent = t.sub;
+
+  // Show refresh + CSV export only on dashboard
+  const isDash = page === 'dashboard';
+  const btnRefresh = document.getElementById('btn-refresh');
+  const btnExport  = document.getElementById('btn-export-csv');
+  const tsInfo     = document.getElementById('timestamp-info');
+  if (btnRefresh) btnRefresh.style.display = isDash ? '' : 'none';
+  if (btnExport)  btnExport.style.display  = isDash ? '' : 'none';
+  if (tsInfo)     tsInfo.style.display     = isDash ? '' : 'none';
 
   // Load admin page on first visit
   if (page === 'admin' && !state.adminLoaded) {
