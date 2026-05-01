@@ -2444,6 +2444,117 @@ tr:hover .td-arrow { color: var(--cyan); }
   padding: 28px;
 }
 
+.export-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.export-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.export-filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.export-select {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 28px 7px 10px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+.export-select:focus { border-color: var(--accent); }
+.export-preview-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--bg-card-alt);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.export-preview-count #export-count-num {
+  font-weight: 700;
+  color: var(--accent);
+}
+.export-card-featured {
+  border-color: rgba(99,102,241,0.3) !important;
+  background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, var(--bg-card) 100%) !important;
+}
+.export-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+.export-includes {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 14px 0 18px;
+}
+.export-include-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.export-include-item svg { color: var(--green); flex-shrink: 0; }
+.export-card { display: flex; flex-direction: column; }
+.export-snapshot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.export-snap-item {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.export-snap-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'Orbitron', monospace;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.export-snap-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.export-card-stats {
+  grid-column: span 1;
+}
 .export-card-title {
   font-size: 15px;
   font-weight: 700;
@@ -3684,13 +3795,61 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- Exports Page -->
     <main class="page-content page" id="page-exports">
+
+      <!-- Export filter bar -->
+      <div class="export-filter-bar">
+        <div class="export-filter-group">
+          <label class="export-filter-label">Periode</label>
+          <select class="export-select" id="export-period" onchange="updateExportPreview()">
+            <option value="7">Afgelopen 7 dagen</option>
+            <option value="30" selected>Afgelopen 30 dagen</option>
+            <option value="90">Afgelopen 90 dagen</option>
+            <option value="all">Alle tijd</option>
+          </select>
+        </div>
+        <div class="export-filter-group">
+          <label class="export-filter-label">Status</label>
+          <select class="export-select" id="export-status" onchange="updateExportPreview()">
+            <option value="all">Alle leads</option>
+            <option value="qualified">Alleen gekwalificeerd</option>
+            <option value="unqualified">Niet gekwalificeerd</option>
+          </select>
+        </div>
+        <div class="export-preview-count" id="export-preview-count">
+          <span id="export-count-num">—</span> leads geselecteerd
+        </div>
+      </div>
+
       <div class="exports-grid">
+
+        <!-- CSV Export Card -->
+        <div class="export-card export-card-featured">
+          <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="export-card-title orbitron gradient-text">CSV Export</div>
+          <p class="export-card-desc">Download gefilterde leads als CSV voor Excel, Google Sheets of uw CRM.</p>
+          <div class="export-includes">
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Naam &amp; contactgegevens</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Kwalificatiescores</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI samenvattingen</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Bronnaam &amp; datum</div>
+          </div>
+          <button class="btn-icon btn-primary-sm export-btn" id="btn-download-csv" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV downloaden
+          </button>
+        </div>
+
         <!-- Weekly Rapport Card -->
         <div class="export-card">
+          <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
           <div class="export-card-title orbitron gradient-text">Weekrapport</div>
-          <p class="export-card-desc">Genereer een gedetailleerd weekoverzicht met statistieken en gekwalificeerde leads.</p>
-          <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:12px">
-            <span class="icon">↻</span>
+          <p class="export-card-desc">Genereer een gedetailleerd overzicht met statistieken en gekwalificeerde leads.</p>
+          <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
             Rapport laden
           </button>
           <div id="rapport-content" style="display:none;margin-top:20px">
@@ -3707,23 +3866,33 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
         </div>
 
-        <!-- CSV Export Card -->
-        <div class="export-card">
-          <div class="export-card-title orbitron gradient-text">CSV Export</div>
-          <p class="export-card-desc">Download al uw leads als CSV-bestand voor gebruik in Excel of andere tools.</p>
-          <button class="btn-icon btn-primary-sm" id="btn-download-csv" style="width:100%;justify-content:center;padding:12px">
-            <span class="icon">⇓</span>
-            CSV downloaden
-          </button>
-          <div style="margin-top:20px;padding:16px;background:var(--bg-card-alt);border-radius:10px;border:1px solid var(--border)">
-            <div style="font-size:12px;color:var(--text-muted);line-height:1.6">
-              <div style="margin-bottom:6px;display:flex;gap:6px;align-items:center"><span style="color:var(--green)">✓</span> Alle leadgegevens</div>
-              <div style="margin-bottom:6px;display:flex;gap:6px;align-items:center"><span style="color:var(--green)">✓</span> Contactgegevens</div>
-              <div style="margin-bottom:6px;display:flex;gap:6px;align-items:center"><span style="color:var(--green)">✓</span> Kwalificatiescores</div>
-              <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--green)">✓</span> AI samenvattingen</div>
+        <!-- Quick Stats Card -->
+        <div class="export-card export-card-stats">
+          <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div class="export-card-title orbitron gradient-text">Snapshot</div>
+          <p class="export-card-desc">Live overzicht van uw geselecteerde periode.</p>
+          <div class="export-snapshot" id="export-snapshot">
+            <div class="export-snap-item">
+              <div class="export-snap-val" id="snap-total">—</div>
+              <div class="export-snap-label">Totaal leads</div>
+            </div>
+            <div class="export-snap-item">
+              <div class="export-snap-val" id="snap-qualified">—</div>
+              <div class="export-snap-label">Gekwalificeerd</div>
+            </div>
+            <div class="export-snap-item">
+              <div class="export-snap-val" id="snap-rate">—</div>
+              <div class="export-snap-label">Conversie %</div>
+            </div>
+            <div class="export-snap-item">
+              <div class="export-snap-val" id="snap-avg-score">—</div>
+              <div class="export-snap-label">Gem. score</div>
             </div>
           </div>
         </div>
+
       </div>
     </main>
 
@@ -3843,7 +4012,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             AI Instellingen
           </div>
           <div class="settings-info-box">
-            Instellingen zoals de AI-naam en Calendly-link worden beheerd door het Helvaro-team. Neem contact op via <strong>support@helvaro.pro</strong> om wijzigingen door te voeren.
+            Instellingen zoals de AI-naam en Calendly-link worden beheerd door het Helvaro-team. Neem contact op via <a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a> om wijzigingen door te voeren.
           </div>
           <div class="settings-row">
             <div>
@@ -3916,6 +4085,31 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span class="settings-apikey" id="set-apikey-display">••••••••</span>
               <button class="btn-show-key" id="btn-toggle-apikey">Toon</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Support -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Support
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Hulp nodig?</div>
+              <div class="settings-label-sub">Ons team helpt u graag verder</div>
+            </div>
+            <a href="mailto:sindi.s@usehelvaro.pro" class="btn-icon" style="text-decoration:none;border-color:rgba(99,102,241,0.35);color:var(--accent);background:rgba(99,102,241,0.08)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Mail sturen
+            </a>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">E-mailadres support</div>
+              <div class="settings-label-sub">Bereikbaar op werkdagen</div>
+            </div>
+            <div class="settings-value"><a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a></div>
           </div>
         </div>
 
@@ -5449,6 +5643,7 @@ function navigateTo(page) {
   if (page === 'gesprekken')   renderGesprekken();
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
+  if (page === 'exports')      updateExportPreview();
   if (page === 'activiteit')   renderActiviteit();
 
   // Close mobile sidebar
@@ -5939,6 +6134,41 @@ function renderAnalyse() {
       rtEl.textContent = '—';
     }
   }
+}
+
+/* ============================================================
+   EXPORTS
+   ============================================================ */
+function updateExportPreview() {
+  const period = parseInt(document.getElementById('export-period')?.value || '30');
+  const statusFilter = document.getElementById('export-status')?.value || 'all';
+  const leads = state.leads || [];
+  const cutoff = period === 'all' || isNaN(period) ? null : new Date(Date.now() - period * 86400000);
+
+  const filtered = leads.filter(l => {
+    if (cutoff) {
+      const created = l.fields?.['Created'] ? new Date(l.fields['Created']) : null;
+      if (!created || created < cutoff) return false;
+    }
+    if (statusFilter === 'qualified') return l.fields?.['Qualified'] === true || l.fields?.['Score'] >= 7;
+    if (statusFilter === 'unqualified') return !(l.fields?.['Qualified'] === true || l.fields?.['Score'] >= 7);
+    return true;
+  });
+
+  const countEl = document.getElementById('export-count-num');
+  if (countEl) countEl.textContent = filtered.length;
+
+  const total = filtered.length;
+  const qualified = filtered.filter(l => l.fields?.['Qualified'] === true || l.fields?.['Score'] >= 7).length;
+  const rate = total > 0 ? Math.round(qualified / total * 100) : 0;
+  const scores = filtered.map(l => l.fields?.['Score']).filter(s => typeof s === 'number');
+  const avgScore = scores.length > 0 ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1) : '—';
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('snap-total', total);
+  set('snap-qualified', qualified);
+  set('snap-rate', rate + '%');
+  set('snap-avg-score', avgScore);
 }
 
 /* ============================================================
