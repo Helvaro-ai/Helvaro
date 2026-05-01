@@ -2076,12 +2076,27 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 /* ── Chart container ── */
+.charts-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
 .chart-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 20px 24px;
-  margin-bottom: 20px;
+  flex: 1;
+  min-width: 0;
+}
+.chart-card-sm {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  width: 260px;
+  flex-shrink: 0;
 }
 .chart-title {
   font-family: 'Orbitron', sans-serif;
@@ -2092,6 +2107,186 @@ tr:hover .td-arrow { color: var(--cyan); }
   text-transform: uppercase;
   margin-bottom: 16px;
 }
+
+/* ── Today widget ── */
+.today-widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.today-widget-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.today-apt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.today-apt:last-child { border-bottom: none; }
+.today-apt-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue-bright);
+  min-width: 48px;
+  flex-shrink: 0;
+}
+.today-apt-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.today-apt-type {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.today-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+/* ── Nav badge ── */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blue-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Calendar weekend columns ── */
+.cal-day-col.cal-weekend-col { background: rgba(0,0,0,0.06); }
+[data-theme="light"] .cal-day-col.cal-weekend-col { background: rgba(0,0,0,0.03); }
+
+/* ── Calendar event modal ── */
+.cal-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.cal-modal-overlay.open { display: flex; }
+.cal-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.12);
+  overflow: hidden;
+  animation: modal-in 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.cal-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cal-modal-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.cal-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+.cal-modal-close:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.cal-modal-body { padding: 16px 20px 20px; }
+.cal-modal-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.cal-modal-row:last-of-type { border-bottom: none; }
+.cal-modal-row-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  min-width: 64px;
+  padding-top: 1px;
+}
+.cal-modal-row-val { color: var(--text-primary); flex: 1; }
+.cal-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.cal-modal-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cal-modal-btn-primary {
+  background: var(--blue-primary);
+  color: #fff;
+}
+.cal-modal-btn-primary:hover { background: var(--blue-bright); }
+.cal-modal-btn-secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-bright);
+}
+.cal-modal-btn-secondary:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.cal-modal-btn-danger {
+  background: rgba(244,63,94,0.1);
+  color: var(--red);
+  border: 1px solid rgba(244,63,94,0.25);
+}
+.cal-modal-btn-danger:hover { background: rgba(244,63,94,0.2); }
 
 /* ── Admin client cards ── */
 .admin-grid {
@@ -2565,7 +2760,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .stat-bar-fill { background: linear-gradient(90deg, #6366f1, #818cf8); }
 
 /* Chart card */
-[data-theme="light"] .chart-card {
+[data-theme="light"] .chart-card,
+[data-theme="light"] .chart-card-sm {
   background: #ffffff;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
@@ -2574,6 +2770,23 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .chart-title {
   color: var(--text-secondary);
 }
+
+/* Today widget */
+[data-theme="light"] .today-widget {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Cal modal */
+[data-theme="light"] .cal-modal {
+  background: #ffffff;
+}
+[data-theme="light"] .cal-modal-btn-secondary {
+  background: rgba(0,0,0,0.04);
+  color: var(--text-secondary);
+}
+[data-theme="light"] .cal-modal-close:hover { background: rgba(0,0,0,0.06); }
 
 /* Filters bar stronger presence */
 [data-theme="light"] .filters-bar {
@@ -2805,6 +3018,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <button class="nav-item" data-page="calendly" id="nav-calendly">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
         Kalender
+        <span class="nav-badge" id="cal-nav-badge" style="display:none">0</span>
       </button>
       <button class="nav-item" data-page="exports" id="nav-exports">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
@@ -2868,10 +3082,22 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
       </div>
 
-      <!-- Chart -->
-      <div class="chart-card">
-        <div class="chart-title">Leads per week (laatste 8 weken)</div>
-        <canvas id="leads-chart" height="80"></canvas>
+      <!-- Charts row -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Leads per week (laatste 8 weken)</div>
+          <canvas id="leads-chart" height="80"></canvas>
+        </div>
+        <div class="chart-card-sm" id="bron-chart-wrap" style="display:none">
+          <div class="chart-title">Leads per bron</div>
+          <canvas id="bron-chart" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- Vandaag widget -->
+      <div class="today-widget" id="today-widget" style="display:none">
+        <div class="today-widget-title">Vandaag</div>
+        <div id="today-widget-body"><span class="today-empty">Geen afspraken vandaag</span></div>
       </div>
 
       <!-- Filters Bar -->
@@ -3111,6 +3337,17 @@ tr:hover .td-arrow { color: var(--cyan); }
   <div class="panel-body" id="panel-body"></div>
 </div>
 
+<!-- Calendar Event Modal -->
+<div class="cal-modal-overlay" id="cal-event-modal" onclick="closeCalModal(event)">
+  <div class="cal-modal" id="cal-modal-inner">
+    <div class="cal-modal-header">
+      <div class="cal-modal-header-title" id="cal-modal-title">Afspraak</div>
+      <button class="cal-modal-close" onclick="closeCalModal()">&times;</button>
+    </div>
+    <div class="cal-modal-body" id="cal-modal-body"></div>
+  </div>
+</div>
+
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
@@ -3137,6 +3374,7 @@ const state = {
   adminLoaded: false,
   adminClients: [],
   leadsChart: null,
+  bronChart: null,
 };
 
 const API_BASE = '/api';
@@ -3397,6 +3635,7 @@ async function refreshData() {
     applyFilters();
     updateTimestamp();
     renderChart();
+    renderBronChart();
     detectNewLeads(state.leads);
   } catch (err) {
     toast('Kon geen gegevens ophalen: ' + err.message, 'error');
@@ -3517,6 +3756,54 @@ function renderChart() {
           grid: { color: isLight ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.05)' },
           ticks: { color: isLight ? '#5c6478' : '#6a85b0', stepSize: 1 },
           beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   BRON DONUT CHART
+   ============================================================ */
+function renderBronChart() {
+  const wrap   = document.getElementById('bron-chart-wrap');
+  const canvas = document.getElementById('bron-chart');
+  if (!wrap || !canvas || typeof Chart === 'undefined') return;
+
+  // Count leads by bron
+  const counts = {};
+  state.leads.forEach(l => {
+    if (l.bron) counts[l.bron] = (counts[l.bron] || 0) + 1;
+  });
+  const labels = Object.keys(counts);
+  if (labels.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  const palette = ['#6366f1','#06b6d4','#8b5cf6','#22c55e','#f59e0b','#8b949e'];
+  const data    = labels.map(k => counts[k]);
+  const colors  = labels.map((_, i) => palette[i % palette.length]);
+
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+  if (state.bronChart) state.bronChart.destroy();
+  state.bronChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: isLight ? '#5c6478' : '#8b949e',
+            font: { size: 11 },
+            boxWidth: 10,
+            padding: 8
+          }
         }
       }
     }
@@ -4084,12 +4371,100 @@ document.addEventListener('keydown', e => {
    NAVIGATION
    ============================================================ */
 
+/* ── Calendar event modal ── */
+function openCalEvent(idx) {
+  const ev = calState.lastEvents && calState.lastEvents[idx];
+  if (!ev) return;
+  const overlay = document.getElementById('cal-event-modal');
+  const body    = document.getElementById('cal-modal-body');
+  const title   = document.getElementById('cal-modal-title');
+  if (!overlay || !body) return;
+
+  const start  = new Date(ev.startTime);
+  const end    = new Date(ev.endTime);
+  const fmtT   = d => String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  const fmtD   = d => d.toLocaleDateString('nl-NL', { weekday:'long', day:'numeric', month:'long' });
+
+  title.textContent = escHtml(ev.name || 'Afspraak');
+
+  const rows = [
+    { label: 'Datum',   val: fmtD(start) },
+    { label: 'Tijd',    val: fmtT(start) + ' – ' + fmtT(end) },
+    { label: 'Type',    val: ev.eventType || '—' },
+    { label: 'E-mail',  val: ev.email     || '—' },
+  ].map(r => \`<div class="cal-modal-row"><span class="cal-modal-row-label">\${r.label}</span><span class="cal-modal-row-val">\${escHtml(String(r.val))}</span></div>\`).join('');
+
+  const joinBtn = ev.joinUrl
+    ? \`<a href="\${escHtml(ev.joinUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-primary">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        Deelnemen
+      </a>\`
+    : '';
+  const rescheduleBtn = ev.rescheduleUrl
+    ? \`<a href="\${escHtml(ev.rescheduleUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-secondary">Verzetten</a>\`
+    : '';
+  const cancelBtn = ev.cancelUrl
+    ? \`<a href="\${escHtml(ev.cancelUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-danger">Annuleren</a>\`
+    : '';
+
+  body.innerHTML = rows + \`<div class="cal-modal-actions">\${joinBtn}\${rescheduleBtn}\${cancelBtn}</div>\`;
+  overlay.classList.add('open');
+}
+
+function closeCalModal(e) {
+  if (e && e.target !== document.getElementById('cal-event-modal')) return;
+  const overlay = document.getElementById('cal-event-modal');
+  if (overlay) overlay.classList.remove('open');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const o = document.getElementById('cal-event-modal'); if (o) o.classList.remove('open'); } });
+
+/* ── Today widget ── */
+function renderTodayWidget(events) {
+  const widget = document.getElementById('today-widget');
+  const body   = document.getElementById('today-widget-body');
+  if (!widget || !body) return;
+
+  if (!state.calendlyUrl) { widget.style.display = 'none'; return; }
+  widget.style.display = '';
+
+  const todayStr = new Date().toDateString();
+  const todayEvs = (events || []).filter(ev => new Date(ev.startTime).toDateString() === todayStr)
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+  if (todayEvs.length === 0) {
+    body.innerHTML = '<span class="today-empty">Geen afspraken vandaag</span>';
+    return;
+  }
+  body.innerHTML = todayEvs.map(ev => {
+    const s    = new Date(ev.startTime);
+    const e    = new Date(ev.endTime);
+    const fmtT = d => String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    return \`<div class="today-apt">
+      <span class="today-apt-time">\${fmtT(s)}</span>
+      <span class="today-apt-name">\${escHtml(ev.name || 'Afspraak')}</span>
+      <span class="today-apt-type">\${escHtml(ev.eventType || '')}</span>
+    </div>\`;
+  }).join('');
+}
+
+/* ── Cal nav badge ── */
+function updateCalBadge(events) {
+  const badge  = document.getElementById('cal-nav-badge');
+  if (!badge) return;
+  const todayStr = new Date().toDateString();
+  const count    = (events || []).filter(ev => new Date(ev.startTime).toDateString() === todayStr).length;
+  if (count === 0) { badge.style.display = 'none'; return; }
+  badge.textContent = count;
+  badge.style.display = 'inline-flex';
+}
+
 /* ── Week Calendar ── */
 const CAL_START_HOUR = 8;
 const CAL_HOURS      = 13;   // 8 AM – 9 PM
 const CAL_ROW_H      = 60;
 
-const calState = { weekStart: null, cache: {} };
+const calState = { weekStart: null, cache: {}, lastEvents: [] };
 
 function calGetMonday(d) {
   const dt = new Date(d);
@@ -4159,8 +4534,17 @@ async function renderCalendar() {
   const renderCols = (events) => {
     const eventColors = ['#6366f1','#4f46e5','#8b5cf6','#0ea5e9','#06b6d4'];
 
+    // Store events for modal lookup
+    calState.lastEvents = events;
+
+    // Update today widget and nav badge
+    renderTodayWidget(events);
+    updateCalBadge(events);
+
     colsEl.innerHTML = days.map(d => {
-      const isToday = d.getTime() === today.getTime();
+      const isToday   = d.getTime() === today.getTime();
+      const dow       = d.getDay();
+      const isWeekend = dow === 0 || dow === 6;
       const rows = Array.from({ length: CAL_HOURS }, () => \`<div class="cal-hour-row"></div>\`).join('');
 
       let nowLine = '';
@@ -4176,6 +4560,7 @@ async function renderCalendar() {
       const dayEvents = events.filter(ev => new Date(ev.startTime).toDateString() === dayDate);
 
       const evHtml = dayEvents.map(ev => {
+        const evIdx    = events.indexOf(ev);
         const start    = new Date(ev.startTime);
         const end      = new Date(ev.endTime);
         const startMin = (start.getHours() - CAL_START_HOUR) * 60 + start.getMinutes();
@@ -4185,7 +4570,6 @@ async function renderCalendar() {
         const color    = eventColors[(ev.name || '').charCodeAt(0) % eventColors.length];
         const hh       = String(start.getHours()).padStart(2,'0');
         const mm       = String(start.getMinutes()).padStart(2,'0');
-        const firstName = (ev.name || 'Afspraak').split(' ')[0];
         const endHH = String(end.getHours()).padStart(2,'0');
         const endMM = String(end.getMinutes()).padStart(2,'0');
         const fullName = escHtml(ev.name || 'Afspraak');
@@ -4196,17 +4580,23 @@ async function renderCalendar() {
           : height < 52
           ? \`<div class="cal-event-time">\${hh}:\${mm}</div><div class="cal-event-name">\${fullName}</div>\`
           : \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}\`;
-        return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM}">\${bodyHtml}</div>\`;
+        return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM}" onclick="openCalEvent(\${evIdx})">\${bodyHtml}</div>\`;
       }).join('');
 
-      return \`<div class="cal-day-col\${isToday ? ' cal-today-col' : ''}">\${rows}\${nowLine}\${evHtml}</div>\`;
+      const colClass = \`cal-day-col\${isToday ? ' cal-today-col' : ''}\${isWeekend ? ' cal-weekend-col' : ''}\`;
+      return \`<div class="\${colClass}">\${rows}\${nowLine}\${evHtml}</div>\`;
     }).join('');
 
-    // Scroll to 8 AM on first load
+    // Scroll to current hour on first load (1 hour context above, clamped to 0)
     const scrollEl = document.getElementById('cal-scroll-area');
     if (scrollEl && scrollEl.dataset.scrolled !== '1') {
       scrollEl.dataset.scrolled = '1';
-      scrollEl.scrollTop = CAL_ROW_H;
+      const curHour = new Date().getHours();
+      if (curHour >= CAL_START_HOUR && curHour < CAL_START_HOUR + CAL_HOURS) {
+        scrollEl.scrollTop = Math.max(0, (curHour - CAL_START_HOUR - 1) * CAL_ROW_H);
+      } else {
+        scrollEl.scrollTop = 0;
+      }
     }
   };
 
