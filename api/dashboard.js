@@ -912,12 +912,41 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   cursor: pointer;
   overflow: hidden;
   z-index: 5;
-  transition: filter 0.15s, transform 0.15s;
+  transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
   min-height: 24px;
   line-height: 1.3;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
-.cal-event:hover { filter: brightness(1.15); transform: scale(1.02); }
-.cal-event .cal-event-time { font-size: 10px; font-weight: 500; opacity: 0.85; }
+.cal-event:hover {
+  filter: brightness(1.12);
+  transform: translateX(-1px) scale(1.015);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  z-index: 10;
+}
+.cal-event .cal-event-time {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.9;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.cal-event .cal-event-name {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-event .cal-event-type {
+  font-size: 9px;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ============================================================
    PROFILE PAGE
@@ -4152,15 +4181,22 @@ async function renderCalendar() {
         const startMin = (start.getHours() - CAL_START_HOUR) * 60 + start.getMinutes();
         const durMin   = Math.round((end - start) / 60000) || 30;
         const top      = Math.round((startMin / 60) * CAL_ROW_H);
-        const height   = Math.max(Math.round((durMin / 60) * CAL_ROW_H) - 3, 22);
+        const height   = Math.max(Math.round((durMin / 60) * CAL_ROW_H) - 3, 28);
         const color    = eventColors[(ev.name || '').charCodeAt(0) % eventColors.length];
         const hh       = String(start.getHours()).padStart(2,'0');
         const mm       = String(start.getMinutes()).padStart(2,'0');
         const firstName = (ev.name || 'Afspraak').split(' ')[0];
-        return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:\${color};">
-          <div class="cal-event-time">\${hh}:\${mm}</div>
-          <div>\${escHtml(firstName)}</div>
-        </div>\`;
+        const endHH = String(end.getHours()).padStart(2,'0');
+        const endMM = String(end.getMinutes()).padStart(2,'0');
+        const fullName = escHtml(ev.name || 'Afspraak');
+        const eventTypeTxt = escHtml(ev.eventType || '');
+        // For short blocks (< 40px) show only time, for medium show time+name, for tall show all
+        const bodyHtml = height < 32
+          ? \`<div class="cal-event-time">\${hh}:\${mm}</div>\`
+          : height < 52
+          ? \`<div class="cal-event-time">\${hh}:\${mm}</div><div class="cal-event-name">\${fullName}</div>\`
+          : \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}\`;
+        return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM}">\${bodyHtml}</div>\`;
       }).join('');
 
       return \`<div class="cal-day-col\${isToday ? ' cal-today-col' : ''}">\${rows}\${nowLine}\${evHtml}</div>\`;
