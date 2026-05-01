@@ -3002,7 +3002,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 14px;
   padding: 22px 24px;
 }
-.analyse-card-full { grid-column: 1 / -1; }
+.analyse-card-full  { grid-column: 1 / -1; }
+.analyse-card-span2 { grid-column: span 2; }
 .analyse-card-title {
   font-size: 12px;
   font-weight: 700;
@@ -4000,7 +4001,12 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           </div>
           <div class="export-card-title orbitron gradient-text">Weekrapport</div>
-          <p class="export-card-desc">Genereer een gedetailleerd overzicht met statistieken en gekwalificeerde leads.</p>
+          <p class="export-card-desc">Gedetailleerd overzicht met statistieken en gekwalificeerde leads van de afgelopen 7 dagen.</p>
+          <div class="export-includes">
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Leads &amp; conversie stats</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Gekwalificeerde leads lijst</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI scores &amp; samenvattingen</div>
+          </div>
           <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
             Rapport laden
@@ -4137,23 +4143,27 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="analyse-card-title">Leads per Weekdag</div>
           <canvas id="analyse-days-chart" height="120"></canvas>
         </div>
-        <!-- Lead score distribution -->
-        <div class="analyse-card">
+        <!-- Lead score distribution — spans 2 cols -->
+        <div class="analyse-card analyse-card-span2">
           <div class="analyse-card-title">Score Verdeling</div>
-          <canvas id="analyse-score-chart" height="120"></canvas>
+          <canvas id="analyse-score-chart" height="100"></canvas>
+        </div>
+        <!-- Avg response time — col 3 beside score chart -->
+        <div class="analyse-card">
+          <div class="analyse-card-title">Gemiddelde Reactietijd</div>
+          <div id="analyse-response-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding-top:16px">
+            <div class="analyse-stat-big" id="analyse-response-val">—</div>
+            <div class="analyse-stat-label">seconden gemiddeld</div>
+            <div style="margin-top:20px;width:100%">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Conversie samenvatting</div>
+              <div id="analyse-conv-summary" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+          </div>
         </div>
         <!-- Hours chart (full width) -->
         <div class="analyse-card analyse-card-full">
           <div class="analyse-card-title">Leads per Uur van de Dag</div>
-          <canvas id="analyse-hours-chart" height="80"></canvas>
-        </div>
-        <!-- Avg response time -->
-        <div class="analyse-card">
-          <div class="analyse-card-title">Gemiddelde Reactietijd</div>
-          <div id="analyse-response-wrap">
-            <div class="analyse-stat-big" id="analyse-response-val">—</div>
-            <div class="analyse-stat-label">seconden gemiddeld</div>
-          </div>
+          <canvas id="analyse-hours-chart" height="70"></canvas>
         </div>
       </div>
     </main>
@@ -4714,6 +4724,7 @@ async function refreshData() {
     renderChart();
     renderBronChart();
     detectNewLeads(state.leads);
+    if (state.currentPage === 'exports') updateExportPreview();
 
     // Top leads strip
     const topStrip = document.getElementById('top-leads-strip');
@@ -6377,40 +6388,64 @@ function renderAnalyse() {
       rtEl.textContent = '—';
     }
   }
+
+  // Conversion summary mini-rows
+  const convSummary = document.getElementById('analyse-conv-summary');
+  if (convSummary && leads.length > 0) {
+    const total   = leads.length;
+    const qual    = leads.filter(l => l.qualified).length;
+    const booked  = leads.filter(l => l.afspraakGeboekt).length;
+    const won     = leads.filter(l => l.status === 'completed' && l.qualified).length;
+    const items   = [
+      { label: 'Gekwalificeerd', val: qual,   pct: Math.round(qual/total*100),   color: '#6366f1' },
+      { label: 'Afspraak',       val: booked, pct: Math.round(booked/total*100), color: '#10b981' },
+      { label: 'Gewonnen',       val: won,    pct: Math.round(won/total*100),    color: '#f59e0b' },
+    ];
+    convSummary.innerHTML = items.map(it => \`
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+        <span style="color:var(--text-muted);flex:1">\${it.label}</span>
+        <div style="flex:2;background:var(--bg-card-alt);border-radius:4px;height:6px;overflow:hidden">
+          <div style="width:\${it.pct}%;height:100%;background:\${it.color};border-radius:4px;transition:width 0.4s"></div>
+        </div>
+        <span style="font-weight:700;color:var(--text);min-width:28px;text-align:right">\${it.val}</span>
+      </div>\`).join('');
+  }
 }
 
 /* ============================================================
    EXPORTS
    ============================================================ */
 function updateExportPreview() {
-  const period = parseInt(document.getElementById('export-period')?.value || '30');
+  const periodVal = document.getElementById('export-period')?.value || '30';
+  const period = parseInt(periodVal);
   const statusFilter = document.getElementById('export-status')?.value || 'all';
   const leads = state.leads || [];
-  const cutoff = period === 'all' || isNaN(period) ? null : new Date(Date.now() - period * 86400000);
+  const cutoff = periodVal === 'all' || isNaN(period) ? null : new Date(Date.now() - period * 86400000);
 
   const filtered = leads.filter(l => {
     if (cutoff) {
-      const created = l.fields?.['Created'] ? new Date(l.fields['Created']) : null;
+      const created = l.datum ? new Date(l.datum) : null;
       if (!created || created < cutoff) return false;
     }
-    if (statusFilter === 'qualified') return l.fields?.['Qualified'] === true || l.fields?.['Score'] >= 7;
-    if (statusFilter === 'unqualified') return !(l.fields?.['Qualified'] === true || l.fields?.['Score'] >= 7);
+    const isQual = l.qualified === true || l.leadScore >= 7;
+    if (statusFilter === 'qualified')   return isQual;
+    if (statusFilter === 'unqualified') return !isQual;
     return true;
   });
 
   const countEl = document.getElementById('export-count-num');
   if (countEl) countEl.textContent = filtered.length;
 
-  const total = filtered.length;
-  const qualified = filtered.filter(l => l.fields?.['Qualified'] === true || l.fields?.['Score'] >= 7).length;
-  const rate = total > 0 ? Math.round(qualified / total * 100) : 0;
-  const scores = filtered.map(l => l.fields?.['Score']).filter(s => typeof s === 'number');
-  const avgScore = scores.length > 0 ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1) : '—';
+  const total     = filtered.length;
+  const qualified = filtered.filter(l => l.qualified === true || l.leadScore >= 7).length;
+  const rate      = total > 0 ? Math.round(qualified / total * 100) : 0;
+  const scores    = filtered.map(l => l.leadScore).filter(s => typeof s === 'number');
+  const avgScore  = scores.length > 0 ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1) : '—';
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('snap-total', total);
+  set('snap-total',     total);
   set('snap-qualified', qualified);
-  set('snap-rate', rate + '%');
+  set('snap-rate',      rate + '%');
   set('snap-avg-score', avgScore);
 }
 
