@@ -156,6 +156,8 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .page-content {
   flex: 1;
   padding: 24px 28px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ============================================================
@@ -951,7 +953,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 /* ============================================================
    PROFILE PAGE
    ============================================================ */
-.profile-wrap { max-width: 860px; display: flex; flex-direction: column; gap: 20px; }
+.profile-wrap { max-width: 1100px; display: flex; flex-direction: column; gap: 20px; }
 
 .profile-hero {
   display: flex;
@@ -1063,6 +1065,66 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 .profile-row:last-child { border-bottom: none; }
 .profile-row strong { color: var(--text-primary); font-weight: 600; }
+
+    .profile-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      margin-top: 4px;
+    }
+    .profile-recent-leads {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .profile-recent-lead-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .profile-recent-lead-row:hover { border-color: var(--accent); }
+    .profile-recent-lead-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .profile-recent-lead-name { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+    .profile-recent-lead-meta { font-size: 12px; color: var(--text-muted); }
+    .profile-recent-lead-score {
+      font-size: 13px; font-weight: 700; color: var(--accent);
+      font-family: 'Orbitron', monospace;
+    }
+    .profile-quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .profile-action-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      text-align: left;
+    }
+    .profile-action-btn:hover { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+    .profile-action-btn svg { color: var(--accent); flex-shrink: 0; }
 
 /* ============================================================
    SIDEBAR
@@ -2108,6 +2170,53 @@ tr:hover .td-arrow { color: var(--cyan); }
   margin-bottom: 16px;
 }
 
+/* ── Top Leads Strip ── */
+    .top-leads-strip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .top-leads-strip-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .top-leads-strip-title svg { color: #f59e0b; }
+    .top-leads-list {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .top-lead-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      font-size: 13px;
+    }
+    .top-lead-chip:hover { border-color: var(--accent); }
+    .top-lead-chip-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+    .top-lead-chip-name { font-weight: 600; color: var(--text); }
+    .top-lead-chip-score { font-weight: 700; color: var(--accent); font-family:'Orbitron',monospace; font-size:12px; }
+
 /* ── Today widget ── */
 .today-widget {
   background: var(--bg-card);
@@ -2614,6 +2723,35 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    PIPELINE (KANBAN)
    ============================================================ */
+    .pipeline-header-bar {
+      padding: 0 24px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pipeline-summary-chips {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .pipeline-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .pipeline-chip-count {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
 .pipeline-board {
   display: flex;
   gap: 16px;
@@ -2855,6 +2993,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+  width: 100%;
+  overflow: visible;
 }
 .analyse-card {
   background: var(--bg-card);
@@ -2937,7 +3077,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    INSTELLINGEN (SETTINGS)
    ============================================================ */
-.settings-wrap { max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
+.settings-wrap { max-width: 900px; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -3716,7 +3856,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="chart-title">Leads per week (laatste 8 weken)</div>
           <canvas id="leads-chart" height="80"></canvas>
         </div>
-        <div class="chart-card-sm" id="bron-chart-wrap" style="display:none">
+        <div class="chart-card-sm" id="bron-chart-wrap">
           <div class="chart-title">Leads per bron</div>
           <canvas id="bron-chart" height="160"></canvas>
         </div>
@@ -3726,6 +3866,15 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="today-widget" id="today-widget" style="display:none">
         <div class="today-widget-title">Vandaag</div>
         <div id="today-widget-body"><span class="today-empty">Geen afspraken vandaag</span></div>
+      </div>
+
+      <!-- Top Leads Strip -->
+      <div class="top-leads-strip" id="top-leads-strip" style="display:none">
+        <div class="top-leads-strip-title">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Top Leads
+        </div>
+        <div class="top-leads-list" id="top-leads-list"></div>
       </div>
 
       <!-- Filters Bar -->
@@ -3940,6 +4089,9 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- Pipeline Page -->
     <main class="page-content page" id="page-pipeline">
+      <div class="pipeline-header-bar">
+        <div id="pipeline-summary" class="pipeline-summary-chips"></div>
+      </div>
       <div class="pipeline-board" id="pipeline-board">
         <div style="color:var(--text-muted);font-size:14px">Pipeline laden...</div>
       </div>
@@ -4202,6 +4354,33 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="profile-row"><span>Afspraken</span><strong id="pf-booked">—</strong></div>
             <div class="profile-row"><span>Conversie</span><strong id="pf-conv">—</strong></div>
           </div>
+        </div>
+
+        <!-- Recent Leads on Profile -->
+        <div class="profile-section-title">Recente Leads</div>
+        <div class="profile-recent-leads" id="profile-recent-leads">
+          <div style="color:var(--text-muted);font-size:13px">Laden...</div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="profile-section-title">Snelle Acties</div>
+        <div class="profile-quick-actions">
+          <button class="profile-action-btn" onclick="navigateTo('dashboard')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Naar Dashboard
+          </button>
+          <button class="profile-action-btn" onclick="navigateTo('calendly')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Kalender Bekijken
+          </button>
+          <button class="profile-action-btn" onclick="navigateTo('gesprekken')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Gesprekken
+          </button>
+          <button class="profile-action-btn" onclick="navigateTo('exports')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Data Exporteren
+          </button>
         </div>
       </div>
     </main>
@@ -4531,6 +4710,29 @@ async function refreshData() {
     renderChart();
     renderBronChart();
     detectNewLeads(state.leads);
+
+    // Top leads strip
+    const topStrip = document.getElementById('top-leads-strip');
+    const topList  = document.getElementById('top-leads-list');
+    if (topStrip && topList && state.leads && state.leads.length > 0) {
+      const top5 = [...state.leads]
+        .filter(l => l.leadScore != null)
+        .sort((a,b) => (b.leadScore || 0) - (a.leadScore || 0))
+        .slice(0, 6);
+      if (top5.length > 0) {
+        topStrip.style.display = 'block';
+        topList.innerHTML = top5.map(l => {
+          const name = l.naam || 'Onbekend';
+          const score = l.leadScore ?? '—';
+          const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+          return \`<div class="top-lead-chip" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+            <div class="top-lead-chip-avatar">\${initials}</div>
+            <span class="top-lead-chip-name">\${escHtml(name.split(' ')[0])}</span>
+            <span class="top-lead-chip-score">\${score}</span>
+          </div>\`;
+        }).join('');
+      }
+    }
   } catch (err) {
     toast('Kon geen gegevens ophalen: ' + err.message, 'error');
   } finally {
@@ -5580,6 +5782,32 @@ function renderProfile() {
   set('pf-booked', st.booked         || (s.leads||[]).filter(l=>l.afspraakGeboekt).length || '0');
   set('pf-conv',   (st.conversionRate||0) + '%');
 
+  // Recent leads on profile
+  const recentEl = document.getElementById('profile-recent-leads');
+  if (recentEl) {
+    const recents = (state.leads || []).slice(0, 5);
+    if (recents.length === 0) {
+      recentEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Geen leads gevonden</div>';
+    } else {
+      recentEl.innerHTML = recents.map(l => {
+        const name  = l.fields?.['Naam'] || l.naam || 'Onbekend';
+        const score = l.fields?.['Score'] ?? l.leadScore ?? '—';
+        const bron  = l.fields?.['Bron'] || l.bron || '';
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+        const qual = l.fields?.['Qualified'] === true || l.qualified === true || (l.fields?.['Score'] >= 7) || l.leadScore >= 7;
+        return \`<div class="profile-recent-lead-row" onclick="openLead('\${l.id}')">
+          <div class="profile-recent-lead-avatar">\${initials}</div>
+          <div style="flex:1;min-width:0">
+            <div class="profile-recent-lead-name">\${escHtml(name)}</div>
+            <div class="profile-recent-lead-meta">\${escHtml(bron || 'Onbekende bron')}</div>
+          </div>
+          \${qual ? '<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(16,185,129,0.15);color:#10b981;font-weight:700">&#10003; Gekw.</span>' : ''}
+          <div class="profile-recent-lead-score">\${score}</div>
+        </div>\`;
+      }).join('');
+    }
+  }
+
   // Stats row
   const statsRow = document.getElementById('profile-stats-row');
   if (statsRow) {
@@ -5902,6 +6130,17 @@ function renderPipeline() {
       <div class="pipeline-col-body">\${cards || \`<div style="color:var(--text-muted);font-size:12px;padding:8px 4px">Geen leads</div>\`}</div>
     </div>\`;
   }).join('');
+
+  // Summary chips
+  const summaryEl = document.getElementById('pipeline-summary');
+  if (summaryEl) {
+    const colNames = ['Nieuw', 'Gekwalificeerd', 'Afspraak', 'Gewonnen', 'Verloren'];
+    const colCounts = {};
+    cols.forEach(c => { colCounts[c.label] = c.leads.length; });
+    const total = (state.leads || []).length;
+    summaryEl.innerHTML = \`<div class="pipeline-chip"><span>Totaal</span><span class="pipeline-chip-count">\${total}</span></div>\`
+      + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('');
+  }
 }
 
 /* ============================================================
