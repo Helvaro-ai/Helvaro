@@ -953,7 +953,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 /* ============================================================
    PROFILE PAGE
    ============================================================ */
-.profile-wrap { max-width: 1100px; display: flex; flex-direction: column; gap: 20px; }
+.profile-wrap { width: 100%; display: flex; flex-direction: column; gap: 20px; }
 
 .profile-hero {
   display: flex;
@@ -2542,7 +2542,7 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .exports-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
@@ -2991,7 +2991,7 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .analyse-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   width: 100%;
   overflow: visible;
@@ -3077,7 +3077,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    INSTELLINGEN (SETTINGS)
    ============================================================ */
-.settings-wrap { max-width: 900px; display: flex; flex-direction: column; gap: 20px; }
+.settings-wrap { width: 100%; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -3190,7 +3190,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-width: 720px;
+  width: 100%;
 }
 .activity-item {
   display: flex;
@@ -3235,7 +3235,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 20px 24px;
-  max-width: 720px;
+  width: 100%;
 }
 .activity-feed-header {
   font-size: 12px;
@@ -3259,6 +3259,10 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    RESPONSIVE - MOBILE
    ============================================================ */
+@media (max-width: 1200px) {
+  .analyse-grid { grid-template-columns: repeat(2, 1fr); }
+  .exports-grid  { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 1100px) {
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
 }
