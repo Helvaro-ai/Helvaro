@@ -1407,80 +1407,192 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
     .search-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       z-index: 9000;
       display: none;
       align-items: flex-start;
       justify-content: center;
       padding-top: 80px;
     }
-    .search-overlay.open { display: flex; }
+    .search-overlay.open { display: flex; animation: searchBgIn 0.15s ease; }
+    @keyframes searchBgIn { from { opacity:0; } to { opacity:1; } }
     .search-modal {
       background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      width: min(640px, 90vw);
-      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      width: min(680px, 92vw);
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
       overflow: hidden;
+      animation: searchModalIn 0.18s cubic-bezier(0.16,1,0.3,1);
     }
+    @keyframes searchModalIn { from { transform: translateY(-16px) scale(0.97); opacity:0; } to { transform: none; opacity:1; } }
     .search-modal-bar {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 16px 20px;
+      gap: 14px;
+      padding: 18px 22px;
       border-bottom: 1px solid var(--border);
     }
-    .search-modal-bar svg { color: var(--text-muted); flex-shrink:0; }
+    .search-modal-bar svg { color: var(--accent); flex-shrink:0; }
     .search-modal-input {
       flex: 1;
       background: none;
       border: none;
       outline: none;
-      font-size: 16px;
+      font-size: 17px;
       color: var(--text);
+      font-family: inherit;
     }
-    .search-modal-input::placeholder { color: var(--text-muted); }
+    .search-modal-input::placeholder { color: var(--text-muted); opacity: 0.7; }
     .search-kbd {
       background: var(--bg-card-alt);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 2px 8px;
+      padding: 3px 10px;
       font-size: 11px;
       color: var(--text-muted);
       cursor: pointer;
       font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .search-results {
-      max-height: 400px;
+      max-height: 440px;
       overflow-y: auto;
-      padding: 8px 0;
+      padding: 6px 0;
     }
+    .search-results::-webkit-scrollbar { width: 4px; }
+    .search-results::-webkit-scrollbar-track { background: transparent; }
+    .search-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
     .search-hint {
-      padding: 20px;
+      padding: 36px 20px;
       text-align: center;
       color: var(--text-muted);
       font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .search-hint-icon { font-size: 32px; opacity: 0.35; line-height: 1; }
+    .search-hint-text { font-size: 13px; color: var(--text-muted); }
+    .search-hint-shortcuts { display: flex; gap: 18px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+    .search-hint-shortcut { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; opacity: 0.8; }
+    .search-hint-shortcut kbd {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-family: inherit;
+    }
+    .search-section-label {
+      padding: 10px 22px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      opacity: 0.7;
     }
     .search-result-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
+      gap: 14px;
+      padding: 11px 22px;
       cursor: pointer;
-      transition: background 0.12s;
+      transition: background 0.1s;
+      border-left: 3px solid transparent;
+      user-select: none;
     }
-    .search-result-item:hover { background: var(--bg-card-alt); }
+    .search-result-item:hover,
+    .search-result-item.active {
+      background: var(--bg-card-alt);
+      border-left-color: var(--accent);
+    }
     .search-result-avatar {
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 38px; height: 38px; border-radius: 10px;
       background: linear-gradient(135deg,#4f46e5,#7c3aed);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight:700; color:#fff; flex-shrink:0;
+      font-size: 12px; font-weight:700; color:#fff; flex-shrink:0;
+      letter-spacing: 0.03em;
     }
-    .search-result-name { font-size: 13px; font-weight: 600; color: var(--text); }
-    .search-result-meta { font-size: 11px; color: var(--text-muted); }
-    .search-result-score { font-size: 12px; font-weight:700; font-family:'Orbitron',monospace; color:var(--accent); margin-left:auto; }
-    .search-no-results { padding:20px; text-align:center; color:var(--text-muted); font-size:13px; }
+    .search-result-body { flex: 1; min-width: 0; }
+    .search-result-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-result-name mark { background: rgba(79,70,229,0.2); color: var(--accent); font-weight: 700; border-radius: 3px; padding: 0 1px; }
+    .search-result-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-result-tags { display: flex; gap: 6px; align-items: center; margin-left: auto; flex-shrink: 0; padding-left: 8px; }
+    .search-result-badge {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 2px 8px; border-radius: 20px;
+      background: rgba(79,70,229,0.15); color: var(--accent);
+    }
+    .search-result-badge.qualified { background: rgba(16,185,129,0.15); color: #10b981; }
+    .search-result-score {
+      font-size: 12px; font-weight:700; font-family:'Orbitron',monospace;
+      color: var(--accent);
+      background: rgba(79,70,229,0.12);
+      padding: 2px 9px; border-radius: 8px;
+      white-space: nowrap;
+    }
+    .search-no-results {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-no-results-icon { font-size: 28px; opacity: 0.3; }
+    .search-footer {
+      padding: 10px 22px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      background: var(--bg-card-alt);
+    }
+    .search-footer-hint { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; opacity: 0.8; }
+    .search-footer-hint kbd {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-family: inherit;
+    }
+    .search-footer-count { margin-left: auto; font-size: 11px; color: var(--text-muted); opacity: 0.6; }
+    .search-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      min-width: 180px;
+      font-family: inherit;
+    }
+    .search-pill:hover { border-color: var(--accent); color: var(--text); }
+    .search-pill svg { flex-shrink: 0; }
+    .search-pill-label { flex: 1; text-align: left; }
+    .search-pill-kbd {
+      font-size: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: inherit;
+      flex-shrink: 0;
+    }
 .notif-badge {
   position: absolute;
   top: 2px;
@@ -4004,8 +4116,10 @@ tr:hover .td-arrow { color: var(--cyan); }
           <span class="icon">⇓</span>
           CSV Export
         </button>
-            <button class="topbar-btn" id="btn-search" title="Zoeken (Ctrl+K)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <button class="search-pill" id="btn-search" title="Zoeken (Ctrl+K)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <span class="search-pill-label">Zoeken...</span>
+              <kbd class="search-pill-kbd">⌘K</kbd>
             </button>
             <button class="btn-icon" id="btn-notif" title="Notificaties" style="position:relative">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -4593,15 +4707,29 @@ tr:hover .td-arrow { color: var(--cyan); }
 </div>
 
 <!-- Global Search Overlay -->
-<div class="search-overlay" id="search-overlay" onclick="closeSearch(event)">
-  <div class="search-modal">
+<div class="search-overlay" id="search-overlay">
+  <div class="search-modal" id="search-modal">
     <div class="search-modal-bar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input class="search-modal-input" id="search-modal-input" type="text" placeholder="Zoek leads, namen, telefoonnummers..." autocomplete="off">
-      <kbd class="search-kbd" onclick="closeSearch()">Esc</kbd>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="search-modal-input" id="search-modal-input" type="text" placeholder="Zoek op naam, telefoon, bron of samenvatting..." autocomplete="off" spellcheck="false">
+      <kbd class="search-kbd" id="search-esc-btn">Esc</kbd>
     </div>
     <div class="search-results" id="search-results">
-      <div class="search-hint">Begin met typen om te zoeken...</div>
+      <div class="search-hint">
+        <div class="search-hint-icon">🔍</div>
+        <div class="search-hint-text">Begin met typen om leads te zoeken</div>
+        <div class="search-hint-shortcuts">
+          <span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span>
+          <span class="search-hint-shortcut"><kbd>↵</kbd> openen</span>
+          <span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span>
+        </div>
+      </div>
+    </div>
+    <div class="search-footer" id="search-footer" style="display:none">
+      <span class="search-footer-hint"><kbd>↑↓</kbd> navigeren</span>
+      <span class="search-footer-hint"><kbd>↵</kbd> openen</span>
+      <span class="search-footer-hint"><kbd>Esc</kbd> sluiten</span>
+      <span class="search-footer-count" id="search-footer-count"></span>
     </div>
   </div>
 </div>
@@ -6257,13 +6385,49 @@ if (bellBtn) {
   const searchBtn = document.getElementById('btn-search');
   if (searchBtn) searchBtn.addEventListener('click', openSearch);
 
+  // Close when clicking outside the modal
+  const searchOverlay = document.getElementById('search-overlay');
+  if (searchOverlay) {
+    searchOverlay.addEventListener('mousedown', e => {
+      const modal = document.getElementById('search-modal');
+      if (modal && !modal.contains(e.target)) closeSearch();
+    });
+  }
+
+  // Esc button in modal
+  const searchEscBtn = document.getElementById('search-esc-btn');
+  if (searchEscBtn) searchEscBtn.addEventListener('click', closeSearch);
+
   document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
-    if (e.key === 'Escape') closeSearch();
+    const overlay = document.getElementById('search-overlay');
+    const isOpen = overlay && overlay.classList.contains('open');
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); isOpen ? closeSearch() : openSearch(); return; }
+    if (e.key === 'Escape' && isOpen) { e.stopPropagation(); closeSearch(); return; }
+    if (!isOpen) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = document.querySelectorAll('#search-results .search-result-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') _searchActiveIndex = (_searchActiveIndex + 1) % items.length;
+      else _searchActiveIndex = (_searchActiveIndex - 1 + items.length) % items.length;
+      _searchUpdateActive();
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const items = document.querySelectorAll('#search-results .search-result-item');
+      const idx = _searchActiveIndex >= 0 ? _searchActiveIndex : 0;
+      if (items[idx]) items[idx].click();
+    }
   });
 
   const searchInput = document.getElementById('search-modal-input');
-  if (searchInput) searchInput.addEventListener('input', runGlobalSearch);
+  if (searchInput) {
+    searchInput.addEventListener('input', runGlobalSearch);
+    // Reset active index on new input
+    searchInput.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') _searchActiveIndex = -1;
+    });
+  }
 
 /* ============================================================
    EXPORTS PAGE
@@ -6413,56 +6577,116 @@ async function handleLogin() {
 /* ============================================================
    PIPELINE (KANBAN)
    ============================================================ */
-function openSearch() {
-  const overlay = document.getElementById('search-overlay');
-  if (overlay) {
-    overlay.classList.add('open');
-    setTimeout(() => { document.getElementById('search-modal-input')?.focus(); }, 50);
-  }
+let _searchActiveIndex = -1;
+
+function _highlightMatch(text, q) {
+  if (!q || !text) return escHtml(text || '');
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx < 0) return escHtml(text);
+  return escHtml(text.slice(0, idx)) + \`<mark>\${escHtml(text.slice(idx, idx + q.length))}</mark>\` + escHtml(text.slice(idx + q.length));
 }
 
-function closeSearch(e) {
-  if (e && e.target !== document.getElementById('search-overlay')) return;
+function openSearch() {
+  const overlay = document.getElementById('search-overlay');
+  if (!overlay) return;
+  _searchActiveIndex = -1;
+  overlay.classList.add('open');
+  document.getElementById('search-footer')?.style && (document.getElementById('search-footer').style.display = 'none');
+  setTimeout(() => {
+    const inp = document.getElementById('search-modal-input');
+    if (inp) { inp.focus(); inp.select(); }
+  }, 40);
+}
+
+function closeSearch() {
   const overlay = document.getElementById('search-overlay');
   if (overlay) overlay.classList.remove('open');
+  const inp = document.getElementById('search-modal-input');
+  if (inp) inp.value = '';
+  const resultsEl = document.getElementById('search-results');
+  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon">🔍</div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+  const footer = document.getElementById('search-footer');
+  if (footer) footer.style.display = 'none';
+  _searchActiveIndex = -1;
+}
+
+function _searchOpenLead(leadId) {
+  closeSearch();
+  const lead = state.leads.find(x => String(x.id) === String(leadId));
+  if (!lead) return;
+  navigateTo('dashboard');
+  setTimeout(() => openPanel(lead), 120);
+}
+
+function _searchUpdateActive() {
+  const items = document.querySelectorAll('#search-results .search-result-item');
+  items.forEach((el, i) => {
+    el.classList.toggle('active', i === _searchActiveIndex);
+    if (i === _searchActiveIndex) el.scrollIntoView({ block: 'nearest' });
+  });
 }
 
 function runGlobalSearch() {
-  const q = (document.getElementById('search-modal-input')?.value || '').toLowerCase().trim();
+  const q = (document.getElementById('search-modal-input')?.value || '').trim();
   const resultsEl = document.getElementById('search-results');
+  const footer = document.getElementById('search-footer');
+  const countEl = document.getElementById('search-footer-count');
   if (!resultsEl) return;
+  _searchActiveIndex = -1;
 
   if (!q) {
-    resultsEl.innerHTML = \`<div class="search-hint">Begin met typen om te zoeken...</div>\`;
+    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon">🔍</div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+    if (footer) footer.style.display = 'none';
     return;
   }
 
+  const ql = q.toLowerCase();
   const matches = (state.leads || []).filter(l =>
-    (l.naam || '').toLowerCase().includes(q) ||
-    (l.telefoon || '').toLowerCase().includes(q) ||
-    (l.bron || '').toLowerCase().includes(q) ||
-    (l.samenvatting || '').toLowerCase().includes(q)
-  ).slice(0, 10);
+    (l.naam || '').toLowerCase().includes(ql) ||
+    (l.telefoon || '').toLowerCase().includes(ql) ||
+    (l.bron || '').toLowerCase().includes(ql) ||
+    (l.samenvatting || '').toLowerCase().includes(ql) ||
+    (l.status || '').toLowerCase().includes(ql)
+  ).slice(0, 12);
 
   if (matches.length === 0) {
-    resultsEl.innerHTML = \`<div class="search-no-results">Geen resultaten gevonden</div>\`;
+    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon">🔭</div><div>Geen leads gevonden voor "<strong>\${escHtml(q)}</strong>"</div></div>\`;
+    if (footer) footer.style.display = 'none';
     return;
   }
 
-  resultsEl.innerHTML = matches.map(l => {
+  const html = [\`<div class="search-section-label">Leads (\${matches.length})</div>\`];
+  matches.forEach((l, i) => {
     const name = l.naam || 'Onbekend';
-    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const score = l.leadScore ?? '';
-    const meta = [l.bron, l.telefoon].filter(Boolean).join(' · ');
-    return \`<div class="search-result-item" onclick="closeSearch();navigateTo('dashboard');setTimeout(()=>{var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);},100)">
+    const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || 'HV';
+    const score = l.leadScore !== null && l.leadScore !== undefined ? l.leadScore : '';
+    const phonePart = l.telefoon ? \`📞 \${l.telefoon}\` : '';
+    const bronPart = l.bron ? \`· \${l.bron}\` : '';
+    const datePart = l.datum ? \`· \${new Date(l.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}\` : '';
+    const meta = [phonePart, bronPart, datePart].filter(Boolean).join(' ');
+    const isQualified = l.qualified === true || l.qualified === 'true' || l.qualified === 1;
+    const hasAppointment = l.afspraakGeboekt === true || l.afspraakGeboekt === 'true' || l.afspraakGeboekt === 1;
+    const namePart = _highlightMatch(name, ql !== q ? q : ql);
+    const idStr = escHtml(String(l.id));
+    html.push(\`<div class="search-result-item" data-lead-id="\${idStr}" onclick="_searchOpenLead('\${idStr}')">
       <div class="search-result-avatar">\${escHtml(initials)}</div>
-      <div style="flex:1;min-width:0">
-        <div class="search-result-name">\${escHtml(name)}</div>
+      <div class="search-result-body">
+        <div class="search-result-name">\${namePart}</div>
         <div class="search-result-meta">\${escHtml(meta)}</div>
       </div>
-      \${score !== '' ? \`<span class="search-result-score">\${score}</span>\` : ''}
-    </div>\`;
-  }).join('');
+      <div class="search-result-tags">
+        \${isQualified ? \`<span class="search-result-badge qualified">✓ Qualified</span>\` : ''}
+        \${hasAppointment ? \`<span class="search-result-badge">📅 Afspraak</span>\` : ''}
+        \${score !== '' ? \`<span class="search-result-score">\${score}</span>\` : ''}
+      </div>
+    </div>\`);
+  });
+
+  resultsEl.innerHTML = html.join('');
+  if (footer) {
+    footer.style.display = 'flex';
+    if (countEl) countEl.textContent = matches.length + ' resultaat' + (matches.length !== 1 ? 'en' : '');
+  }
 }
 
 let _pipelineDragId = null;
