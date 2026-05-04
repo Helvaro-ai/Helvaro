@@ -3532,6 +3532,129 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 12px;
   color: var(--text-muted);
 }
+.analyse-revenue-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.analyse-revenue-card {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.analyse-revenue-val {
+  font-family: 'Orbitron', monospace;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.analyse-revenue-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.analyse-revenue-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.analyse-verlies-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.analyse-verlies-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.analyse-verlies-count {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   ROW QUICK ACTIONS (Feature 2)
+   ============================================================ */
+.row-actions { display: flex; gap: 4px; align-items: center; opacity: 0; transition: opacity 0.15s; }
+.leads-table tr:hover .row-actions { opacity: 1; }
+.row-action-btn {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg-card-alt); cursor: pointer; display: flex;
+  align-items: center; justify-content: center; font-size: 13px;
+  text-decoration: none; color: var(--text-secondary); transition: var(--transition);
+}
+.row-action-btn:hover { border-color: var(--accent); background: rgba(99,102,241,0.1); }
+
+/* ============================================================
+   PANEL QUICK ACTIONS (Feature 3)
+   ============================================================ */
+.panel-quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.panel-quick-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-card-alt);
+  color: var(--text-primary); font-size: 12px; font-weight: 500;
+  text-decoration: none; cursor: pointer; transition: var(--transition);
+  font-family: 'Inter', sans-serif;
+}
+.panel-quick-btn:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); color: var(--accent); }
+
+/* ============================================================
+   LEAD AGE BADGES (Feature 4)
+   ============================================================ */
+.age-chip {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  border: 1px solid var(--border);
+}
+.age-chip.fresh { display: none; }
+.age-chip.warm { background: rgba(34,197,94,0.1); color: var(--green); border-color: rgba(34,197,94,0.2); }
+.age-chip.cooling { background: rgba(245,158,11,0.1); color: var(--orange); border-color: rgba(245,158,11,0.2); }
+.age-chip.cold { background: rgba(244,63,94,0.1); color: var(--red); border-color: rgba(244,63,94,0.2); }
+.age-badge-table {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 10px; margin-left: 6px; vertical-align: middle;
+}
+.age-badge-warm { background: rgba(34,197,94,0.12); color: var(--green); }
+.age-badge-cooling { background: rgba(245,158,11,0.12); color: var(--orange); }
+.age-badge-cold { background: rgba(244,63,94,0.12); color: var(--red); }
+
+/* ============================================================
+   REVENUE GOAL CARD (Feature 5)
+   ============================================================ */
+.revenue-goal-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.revenue-goal-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);
+}
+.revenue-goal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.revenue-goal-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.revenue-goal-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.revenue-goal-edit { background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.5; transition: opacity 0.15s; }
+.revenue-goal-edit:hover { opacity: 1; }
+.revenue-goal-amounts { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
+.revenue-goal-current { font-size: 28px; font-weight: 800; color: var(--text-primary); font-family: 'Orbitron', monospace; }
+.revenue-goal-slash { font-size: 18px; color: var(--text-muted); }
+.revenue-goal-target { font-size: 16px; color: var(--text-secondary); font-family: 'Orbitron', monospace; }
+.revenue-goal-bar-wrap { height: 6px; background: var(--bg-card-alt); border-radius: 3px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--border); }
+.revenue-goal-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--blue-bright)); transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.revenue-goal-pct { font-size: 12px; color: var(--text-secondary); }
 
 /* ============================================================
    INSTELLINGEN (SETTINGS)
@@ -4341,6 +4464,26 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div id="today-widget-body"><span class="today-empty">Geen afspraken vandaag</span></div>
       </div>
 
+      <!-- Revenue Goal Card -->
+      <div class="revenue-goal-card" id="revenue-goal-card">
+        <div class="revenue-goal-header">
+          <div>
+            <div class="revenue-goal-label">Omzet Doel</div>
+            <div class="revenue-goal-sub" id="revenue-goal-sub">deze maand</div>
+          </div>
+          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen">✏️</button>
+        </div>
+        <div class="revenue-goal-amounts">
+          <span class="revenue-goal-current" id="revenue-goal-current">€0</span>
+          <span class="revenue-goal-slash">/</span>
+          <span class="revenue-goal-target" id="revenue-goal-target">€5.000</span>
+        </div>
+        <div class="revenue-goal-bar-wrap">
+          <div class="revenue-goal-bar" id="revenue-goal-bar" style="width:0%"></div>
+        </div>
+        <div class="revenue-goal-pct" id="revenue-goal-pct">0% van doel bereikt</div>
+      </div>
+
       <!-- Follow-up Queue -->
       <div class="followup-widget" id="followup-widget" style="display:none">
         <div class="followup-header">
@@ -4407,7 +4550,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <!-- Table -->
       <div class="table-card">
         <div class="table-wrapper">
-          <table>
+          <table class="leads-table">
             <thead>
               <tr>
                 <th class="sortable" data-col="naam">Naam <span class="sort-indicator" data-col="naam"></span></th>
@@ -4420,6 +4563,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <th>Opgepikt</th>
                 <th class="sortable" data-col="datum">Datum <span class="sort-indicator" data-col="datum"></span></th>
                 <th></th>
+                <th>Acties</th>
               </tr>
             </thead>
             <tbody id="leads-tbody">
@@ -4620,6 +4764,25 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- Analyse Page -->
     <main class="page-content page" id="page-analyse">
+      <!-- Revenue Analytics Row -->
+      <div class="analyse-revenue-row" id="analyse-revenue-row">
+        <div class="analyse-revenue-card">
+          <div class="analyse-revenue-val" id="analyse-omzet-val">€0</div>
+          <div class="analyse-revenue-label">Totale Omzet</div>
+          <div class="analyse-revenue-sub">gekwalificeerde deals</div>
+        </div>
+        <div class="analyse-revenue-card">
+          <div class="analyse-revenue-val" id="analyse-gem-val">€0</div>
+          <div class="analyse-revenue-label">Gem. Deal Waarde</div>
+          <div class="analyse-revenue-sub" id="analyse-gem-sub">0 deals met waarde</div>
+        </div>
+        <div class="analyse-revenue-card">
+          <div class="analyse-revenue-val" id="analyse-winrate-val" style="color:var(--green)">0%</div>
+          <div class="analyse-revenue-label">Win Rate</div>
+          <div class="analyse-revenue-sub">verloren vs totaal</div>
+          <div class="analyse-verlies-list" id="analyse-verlies-list"></div>
+        </div>
+      </div>
       <div class="analyse-grid" id="analyse-grid">
         <!-- Funnel -->
         <div class="analyse-card">
@@ -5345,6 +5508,9 @@ async function refreshData() {
     // Taken widget
     renderTakenWidget();
 
+    // Revenue goal card
+    renderRevenueGoal();
+
     // Bell: count leads from last 24h as "new"
     const bell = document.getElementById('notif-badge');
     if (bell) {
@@ -5836,7 +6002,7 @@ function renderTable() {
   if (!tbody) return;
 
   if (state.leads.length === 0) {
-    tbody.innerHTML = \`<tr><td colspan="10" style="padding:60px 20px;text-align:center">
+    tbody.innerHTML = \`<tr><td colspan="11" style="padding:60px 20px;text-align:center">
       <div style="max-width:400px;margin:0 auto">
         <div style="font-size:48px;margin-bottom:16px">🚀</div>
         <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
@@ -5856,7 +6022,7 @@ function renderTable() {
     const hasFilters = getActiveFilterCount() > 0;
     tbody.innerHTML = \`
       <tr>
-        <td colspan="10">
+        <td colspan="11">
           <div class="empty-state">
             <div class="empty-icon">◎</div>
             <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
@@ -5871,9 +6037,21 @@ function renderTable() {
 
   tbody.innerHTML = state.filteredLeads.map((lead, i) => {
     const delay = i < 10 ? \`style="animation-delay:\${i * 40}ms"\` : '';
+    // Age badge for table
+    const ageDays = leadAgeDays(lead);
+    const ageClass = leadAgeClass(ageDays);
+    const ageBadge = ageClass === 'fresh' ? '' :
+      ageClass === 'warm' ? \`<span class="age-badge-table age-badge-warm">\${ageDays}d</span>\` :
+      ageClass === 'cooling' ? \`<span class="age-badge-table age-badge-cooling">\${ageDays}d</span>\` :
+      \`<span class="age-badge-table age-badge-cold">🔥 \${ageDays}d</span>\`;
+    // Quick action buttons
+    const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
+    const waPhone = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
+    const waLink = waPhone ? 'https://wa.me/' + waPhone : '#';
+    const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     return \`
       <tr data-id="\${lead.id}" \${delay}>
-        <td class="td-naam">\${escHtml(lead.naam) || '—'}</td>
+        <td class="td-naam">\${escHtml(lead.naam) || '—'}\${ageBadge}</td>
         <td>
           <div class="td-phone">
             \${escHtml(lead.telefoon) || '—'}
@@ -5891,6 +6069,12 @@ function renderTable() {
         <td>\${lead.opgepikt ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
         <td class="td-arrow">›</td>
+        <td onclick="event.stopPropagation()">
+          <div class="row-actions">
+            <a class="row-action-btn" href="\${telLink}" title="Bellen">📞</a>
+            <a class="row-action-btn" href="\${waLink}" target="_blank" rel="noopener" title="WhatsApp">💬</a>
+          </div>
+        </td>
       </tr>
     \`;
   }).join('');
@@ -5957,7 +6141,10 @@ function openPanel(lead) {
   document.getElementById('panel-phone').textContent = lead.telefoon || '—';
 
   const bronBadge = document.getElementById('panel-bron-badge');
-  bronBadge.innerHTML = lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '';
+  const panelAgeDays = leadAgeDays(lead);
+  const panelAgeClass = leadAgeClass(panelAgeDays);
+  bronBadge.innerHTML = (lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '') +
+    \`<span class="age-chip age-\${panelAgeClass}">\${panelAgeDays}d oud</span>\`;
 
   // Copy phone
   const copyPhoneBtn = document.getElementById('panel-copy-phone');
@@ -6076,6 +6263,33 @@ function openPanel(lead) {
       </div>
     </div>
   \`;
+
+  // Snelle Acties section (Feature 3)
+  (function() {
+    const naam = encodeURIComponent(lead.naam || '');
+    const naamRaw = lead.naam || '';
+    const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
+    const waPhone = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
+    const waLink = waPhone
+      ? 'https://wa.me/' + waPhone + '?text=Hallo%20' + naam + '%2C%20bedankt%20voor%20uw%20interesse.'
+      : '#';
+    const opvolgingBody = encodeURIComponent('Hallo ' + naamRaw + ', bedankt voor uw interesse. Ik wilde even opvolgen over ons gesprek. Wanneer schikt het u voor een korte call?');
+    const offerteBody = encodeURIComponent('Hallo ' + naamRaw + ', zoals besproken stuur ik u hierbij meer informatie over onze diensten. Heeft u nog vragen?');
+    const mailtoOpvolging = 'mailto:?subject=Opvolging%20' + naam + '&body=' + opvolgingBody;
+    const mailtoOfferte = 'mailto:?subject=Offerte%20' + naam + '&body=' + offerteBody;
+    const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
+    bodyHTML += \`
+      <div class="panel-section">
+        <div class="panel-section-title">Snelle Acties</div>
+        <div class="panel-quick-actions">
+          <a class="panel-quick-btn" href="\${telLink}">📞 Bellen</a>
+          <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">✉️ Opvolging</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">📄 Offerte</a>
+        </div>
+      </div>
+    \`;
+  })();
 
   // Conversation replay section
   if (lead.gesprek) {
@@ -7377,10 +7591,121 @@ function openConversation(leadId) {
 }
 
 /* ============================================================
+   HELPER: PARSE DEAL VALUE
+   ============================================================ */
+function parseDealValue(v) {
+  if (!v) return 0;
+  const s = String(v).replace(/[€\s]/g, '').replace(',', '.');
+  return parseFloat(s) || 0;
+}
+
+/* ============================================================
+   HELPER: LEAD AGE
+   ============================================================ */
+function leadAgeDays(lead) {
+  if (!lead.datum) return 0;
+  return Math.floor((Date.now() - new Date(lead.datum).getTime()) / 86400000);
+}
+function leadAgeClass(days) {
+  if (days < 1) return 'fresh';
+  if (days <= 3) return 'warm';
+  if (days <= 7) return 'cooling';
+  return 'cold';
+}
+
+/* ============================================================
+   FEATURE 5: REVENUE GOAL
+   ============================================================ */
+function renderRevenueGoal() {
+  const goal = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
+  const current = (state.leads || []).reduce((sum, l) => {
+    if (l.qualified || l.afspraakGeboekt) sum += parseDealValue(l.verwachteWaarde);
+    return sum;
+  }, 0);
+  const pct = Math.min(100, Math.round(current / goal * 100));
+  const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
+
+  const el = document.getElementById('revenue-goal-current');
+  const tgt = document.getElementById('revenue-goal-target');
+  const bar = document.getElementById('revenue-goal-bar');
+  const pctEl = document.getElementById('revenue-goal-pct');
+  if (el) el.textContent = fmt(current);
+  if (tgt) tgt.textContent = fmt(goal);
+  if (bar) {
+    bar.style.width = pct + '%';
+    bar.style.background = pct >= 100
+      ? 'linear-gradient(90deg, var(--green), #16a34a)'
+      : pct >= 50
+        ? 'linear-gradient(90deg, var(--accent), var(--blue-bright))'
+        : 'linear-gradient(90deg, var(--orange), #d97706)';
+  }
+  if (pctEl) pctEl.textContent = pct + '% van doel bereikt';
+}
+
+(function setupRevenueGoalEdit() {
+  const editBtn = document.getElementById('revenue-goal-edit');
+  if (!editBtn) return;
+  editBtn.addEventListener('click', function() {
+    const current = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
+    const input = prompt('Nieuw omzetdoel (€):', current);
+    if (input === null) return;
+    const val = parseFloat(input.replace(/[^0-9.]/g, ''));
+    if (!isNaN(val) && val > 0) {
+      localStorage.setItem('helvaro_revenue_goal', String(val));
+      renderRevenueGoal();
+    }
+  });
+})();
+
+/* ============================================================
    ANALYSE (ANALYTICS)
    ============================================================ */
 function renderAnalyse() {
   const leads = state.leads;
+
+  // Feature 1: Revenue Analytics
+  (function() {
+    const wonLeads = leads.filter(l => l.qualified || l.afspraakGeboekt);
+    const totalOmzet = wonLeads.reduce((s, l) => s + parseDealValue(l.verwachteWaarde), 0);
+    const leadsMetWaarde = leads.filter(l => parseDealValue(l.verwachteWaarde) > 0);
+    const gemDeal = leadsMetWaarde.length
+      ? leadsMetWaarde.reduce((s, l) => s + parseDealValue(l.verwachteWaarde), 0) / leadsMetWaarde.length
+      : 0;
+    const verlorenCount = leads.filter(l => l.status === 'verloren').length;
+    const totalCount = leads.length;
+    const winRate = totalCount > 0 ? Math.round(100 - (verlorenCount / totalCount * 100)) : 100;
+    const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
+
+    const omzetEl = document.getElementById('analyse-omzet-val');
+    if (omzetEl) omzetEl.textContent = fmt(totalOmzet);
+
+    const gemEl = document.getElementById('analyse-gem-val');
+    if (gemEl) gemEl.textContent = fmt(gemDeal);
+    const gemSubEl = document.getElementById('analyse-gem-sub');
+    if (gemSubEl) gemSubEl.textContent = leadsMetWaarde.length + ' deals met waarde';
+
+    const wrEl = document.getElementById('analyse-winrate-val');
+    if (wrEl) {
+      wrEl.textContent = winRate + '%';
+      wrEl.style.color = winRate >= 70 ? 'var(--green)' : winRate >= 40 ? 'var(--orange)' : 'var(--red)';
+    }
+
+    // Verlies redenen top 3
+    const redenMap = {};
+    leads.filter(l => l.status === 'verloren' && l.reden).forEach(l => {
+      redenMap[l.reden] = (redenMap[l.reden] || 0) + 1;
+    });
+    const top3 = Object.entries(redenMap).sort((a,b) => b[1]-a[1]).slice(0,3);
+    const verliesEl = document.getElementById('analyse-verlies-list');
+    if (verliesEl) {
+      verliesEl.innerHTML = top3.length ? top3.map(([r, c]) => \`
+        <div class="analyse-verlies-row">
+          <span>\${escHtml(r)}</span>
+          <span class="analyse-verlies-count">\${c}</span>
+        </div>
+      \`).join('') : '<div style="font-size:11px;color:var(--text-muted)">Geen verliesdata</div>';
+    }
+  })();
 
   // Funnel
   const total = leads.length;
