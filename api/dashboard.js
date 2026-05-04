@@ -3835,7 +3835,75 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .page { display: none !important; }
 .page.active { display: block !important; }
-#page-calendly.active { display: flex !important; flex-direction: column; }
+#page-calendly.active { display: flex !important; flex-direction: row; }
+.cal-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.cal-right-sidebar {
+  width: 272px; flex-shrink: 0; border-left: 1px solid var(--border);
+  background: var(--bg-card); display: flex; flex-direction: column; overflow: hidden;
+}
+.cal-sidebar-header {
+  padding: 14px 14px 0; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.cal-sidebar-title {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-primary); flex: 1;
+}
+.cal-sidebar-count {
+  font-size: 11px; font-weight: 700; padding: 2px 8px;
+  border-radius: 20px; background: rgba(244,63,94,0.15); color: var(--red);
+}
+.cal-sidebar-desc {
+  padding: 4px 14px 10px; font-size: 11px; color: var(--text-muted);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.cal-sidebar-scroll {
+  flex: 1; overflow-y: auto; padding: 10px 10px; display: flex;
+  flex-direction: column; gap: 8px;
+}
+.cal-sidebar-empty {
+  padding: 28px 14px; text-align: center; color: var(--text-muted); font-size: 13px; line-height: 1.6;
+}
+.cal-call-item {
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 12px; transition: border-color 0.15s;
+  cursor: pointer;
+}
+.cal-call-item:hover { border-color: var(--accent); }
+.cal-call-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cal-call-avatar {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: linear-gradient(135deg,#4f46e5,#7c3aed);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.cal-call-name {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-call-score { font-size: 11px; font-weight: 700; font-family:'Orbitron',monospace; color: var(--accent); }
+.cal-call-phone-link {
+  display: flex; align-items: center; gap: 7px; padding: 8px 10px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 7px;
+  text-decoration: none; color: var(--text-primary);
+  font-size: 13px; font-weight: 700; transition: border-color 0.15s, color 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.cal-call-phone-link:hover { border-color: var(--green); color: var(--green); }
+.cal-call-actions { display: flex; gap: 6px; }
+.cal-call-btn {
+  flex: 1; padding: 6px 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-secondary); font-size: 11px; font-weight: 600;
+  cursor: pointer; text-align: center; text-decoration: none;
+  transition: var(--transition); font-family: 'Inter', sans-serif;
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+}
+.cal-call-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.08); }
+.cal-call-btn.primary { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); color: var(--accent); }
+.cal-call-btn.primary:hover { background: rgba(99,102,241,0.2); }
+.cal-hour-row { cursor: pointer; transition: background 0.1s; }
+.cal-hour-row:hover { background: rgba(99,102,241,0.05); }
 #page-profile.active { display: block !important; }
 
 /* ============================================================
@@ -4702,33 +4770,48 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <main class="page-content page" id="page-calendly" style="padding:0;height:calc(100vh - 56px);overflow:hidden;">
 
-      <!-- Calendar toolbar -->
-      <div class="cal-toolbar">
-        <button class="cal-today-btn" onclick="calToday()">Vandaag</button>
-        <button class="cal-nav-btn" onclick="calPrev()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <button class="cal-nav-btn" onclick="calNext()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-        <span id="cal-range-label" class="cal-range-label"></span>
-        <a id="calendly-open-link" href="#" target="_blank" class="cal-book-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-          Boek gesprek
-        </a>
+      <!-- Calendar main area -->
+      <div class="cal-main">
+        <!-- Calendar toolbar -->
+        <div class="cal-toolbar">
+          <button class="cal-today-btn" onclick="calToday()">Vandaag</button>
+          <button class="cal-nav-btn" onclick="calPrev()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button class="cal-nav-btn" onclick="calNext()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <span id="cal-range-label" class="cal-range-label"></span>
+          <a id="calendly-open-link" href="#" target="_blank" class="cal-book-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Boek afspraak
+          </a>
+        </div>
+
+        <!-- Day headers -->
+        <div class="cal-day-headers">
+          <div class="cal-gutter"></div>
+          <div id="cal-day-cols-header" class="cal-day-cols-header"></div>
+        </div>
+
+        <!-- Scrollable time grid -->
+        <div class="cal-scroll-area" id="cal-scroll-area">
+          <div class="cal-time-grid">
+            <div class="cal-time-labels" id="cal-time-labels"></div>
+            <div class="cal-day-cols" id="cal-day-cols"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- Day headers -->
-      <div class="cal-day-headers">
-        <div class="cal-gutter"></div>
-        <div id="cal-day-cols-header" class="cal-day-cols-header"></div>
-      </div>
-
-      <!-- Scrollable time grid -->
-      <div class="cal-scroll-area" id="cal-scroll-area">
-        <div class="cal-time-grid">
-          <div class="cal-time-labels" id="cal-time-labels"></div>
-          <div class="cal-day-cols" id="cal-day-cols"></div>
+      <!-- Te Bellen sidebar -->
+      <div class="cal-right-sidebar">
+        <div class="cal-sidebar-header">
+          <span class="cal-sidebar-title">Te Bellen</span>
+          <span class="cal-sidebar-count" id="cal-sidebar-count">0</span>
+        </div>
+        <div class="cal-sidebar-desc">Gekwalificeerd · nog geen afspraak</div>
+        <div class="cal-sidebar-scroll" id="cal-sidebar-list">
+          <div class="cal-sidebar-empty">Laden...</div>
         </div>
       </div>
 
@@ -5905,6 +5988,7 @@ function applyFilters() {
   renderTable();
   updateFilterUI();
   populateBronFilter();
+  renderCalSidebar();
   if (state.currentPage === 'calendly') renderAppointments();
 }
 
@@ -6732,10 +6816,61 @@ function calToday() { calState.weekStart = calGetMonday(new Date()); renderCalen
 function calPrev()  { calState.weekStart.setDate(calState.weekStart.getDate() - 7); renderCalendar(); }
 function calNext()  { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
 
+function bookSlot(dateStr, hour) {
+  const base = state.calendlyUrl || 'https://calendly.com';
+  const month = dateStr.slice(0, 7);
+  const sep = base.includes('?') ? '&' : '?';
+  window.open(base + sep + 'month=' + month + '&date=' + dateStr, '_blank');
+}
+
+function renderCalSidebar() {
+  const listEl  = document.getElementById('cal-sidebar-list');
+  const countEl = document.getElementById('cal-sidebar-count');
+  if (!listEl) return;
+
+  const leads = (state.leads || []).filter(l => l.qualified && !l.afspraakGeboekt)
+    .sort((a, b) => (b.leadScore || 0) - (a.leadScore || 0));
+
+  if (countEl) countEl.textContent = leads.length;
+
+  if (leads.length === 0) {
+    listEl.innerHTML = \`<div class="cal-sidebar-empty">✅ Alle gekwalificeerde leads hebben een afspraak!</div>\`;
+    return;
+  }
+
+  listEl.innerHTML = leads.map(l => {
+    const name     = l.naam || 'Onbekend';
+    const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0,2).toUpperCase() || 'HV';
+    const phone    = l.telefoon || '';
+    const score    = l.leadScore || '';
+    const rawPhone = phone.replace(/\D/g,'');
+    const waPhone  = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
+    const waLink   = \`https://wa.me/\${waPhone}?text=\${encodeURIComponent('Hallo ' + name + ', ik wilde graag een afspraak inplannen. Wanneer schikt het u?')}\`;
+    const calUrl   = state.calendlyUrl || 'https://calendly.com';
+    const idStr    = escHtml(String(l.id));
+    return \`<div class="cal-call-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${idStr}');if(lead)openPanel(lead);})()">
+      <div class="cal-call-header">
+        <div class="cal-call-avatar">\${escHtml(initials)}</div>
+        <span class="cal-call-name">\${escHtml(name)}</span>
+        \${score !== '' ? \`<span class="cal-call-score">\${score}</span>\` : ''}
+      </div>
+      \${phone ? \`<a class="cal-call-phone-link" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">
+        <span>📞</span> \${escHtml(phone)}
+      </a>\` : '<div style="font-size:11px;color:var(--text-muted);margin-bottom:7px">Geen telefoonnummer</div>'}
+      <div class="cal-call-actions">
+        \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">📞 Bellen</a>\` : ''}
+        \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">💬 WA</a>\` : ''}
+        <a class="cal-call-btn primary" href="\${escHtml(calUrl)}" target="_blank" onclick="event.stopPropagation()">📅 Boeken</a>
+      </div>
+    </div>\`;
+  }).join('');
+}
+
 function renderAppointments() {
   if (!calState.weekStart) calState.weekStart = calGetMonday(new Date());
   const openEl = document.getElementById('calendly-open-link');
   if (openEl) openEl.href = state.calendlyUrl || 'https://calendly.com';
+  renderCalSidebar();
   renderCalendar();
 }
 
@@ -6799,7 +6934,11 @@ async function renderCalendar() {
       const isToday   = d.getTime() === today.getTime();
       const dow       = d.getDay();
       const isWeekend = dow === 0 || dow === 6;
-      const rows = Array.from({ length: CAL_HOURS }, () => \`<div class="cal-hour-row"></div>\`).join('');
+      const dateStr = d.toISOString().slice(0, 10);
+      const rows = Array.from({ length: CAL_HOURS }, (_, hIdx) => {
+        const h = CAL_START_HOUR + hIdx;
+        return \`<div class="cal-hour-row" onclick="bookSlot('\${dateStr}',\${h})" title="Boek afspraak \${h}:00"></div>\`;
+      }).join('');
 
       let nowLine = '';
       if (isToday) {
