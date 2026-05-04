@@ -3932,7 +3932,67 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-call-btn.primary { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); color: var(--accent); }
 .cal-call-btn.primary:hover { background: rgba(99,102,241,0.2); }
 .cal-hour-row { cursor: pointer; transition: background 0.1s; }
-.cal-hour-row:hover { background: rgba(99,102,241,0.05); }
+.cal-hour-row:hover { background: rgba(99,102,241,0.08); }
+
+/* ── Inline booking modal ─────────────────────────────────────── */
+#cal-book-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+}
+#cal-book-overlay.open { display: flex; }
+#cal-book-modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); width: min(860px, 96vw); height: min(700px, 92vh);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 28px 70px rgba(0,0,0,0.55);
+  animation: modalIn 0.18s ease;
+}
+#cal-book-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 15px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.cal-book-icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg,#6366f1,#4f46e5);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+#cal-book-title {
+  flex: 1; font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.2;
+}
+#cal-book-subtitle {
+  font-size: 12px; color: var(--text-muted); font-weight: 400; margin-top: 2px;
+}
+#cal-book-external {
+  font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 600;
+  padding: 5px 11px; border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 7px; transition: background 0.15s; white-space: nowrap;
+}
+#cal-book-external:hover { background: rgba(99,102,241,0.12); }
+#cal-book-close {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: var(--text-muted); transition: var(--transition);
+  flex-shrink: 0;
+}
+#cal-book-close:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+#cal-book-iframe-wrap {
+  flex: 1; position: relative; overflow: hidden;
+}
+#cal-book-iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  border: none; background: #fff;
+}
+.cal-book-spinner {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  color: var(--text-muted); font-size: 13px; pointer-events: none;
+}
+.cal-book-spinner-ring {
+  width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
 #page-profile.active { display: block !important; }
 
 /* ============================================================
@@ -4811,10 +4871,10 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
-          <a id="calendly-open-link" href="#" target="_blank" class="cal-book-btn">
+          <button id="calendly-open-btn" class="cal-book-btn" onclick="openCalBookModal(state.calendlyUrl||'')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Boek afspraak
-          </a>
+          </button>
         </div>
 
         <!-- Day headers -->
@@ -5199,6 +5259,32 @@ tr:hover .td-arrow { color: var(--cyan); }
       <span class="search-footer-hint"><kbd>↵</kbd> openen</span>
       <span class="search-footer-hint"><kbd>Esc</kbd> sluiten</span>
       <span class="search-footer-count" id="search-footer-count"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Inline Calendly Booking Modal -->
+<div id="cal-book-overlay" onclick="if(event.target===this)closeCalBookModal()">
+  <div id="cal-book-modal">
+    <div id="cal-book-header">
+      <div class="cal-book-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div id="cal-book-title">Afspraak inplannen</div>
+        <div id="cal-book-subtitle"></div>
+      </div>
+      <a id="cal-book-external" href="#" target="_blank">↗ Nieuw venster</a>
+      <button id="cal-book-close" onclick="closeCalBookModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="cal-book-iframe-wrap">
+      <div class="cal-book-spinner" id="cal-book-spinner">
+        <div class="cal-book-spinner-ring"></div>
+        <span>Calendly laden...</span>
+      </div>
+      <iframe id="cal-book-iframe" src="" allow="camera; microphone; autoplay" loading="lazy" onload="document.getElementById('cal-book-spinner').style.display='none'"></iframe>
     </div>
   </div>
 </div>
@@ -6812,7 +6898,11 @@ document.getElementById('panel-close').addEventListener('click', closePanel);
 document.getElementById('panel-backdrop').addEventListener('click', closePanel);
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closePanel();
+  if (e.key === 'Escape') {
+    const bookOverlay = document.getElementById('cal-book-overlay');
+    if (bookOverlay && bookOverlay.classList.contains('open')) { closeCalBookModal(); return; }
+    closePanel();
+  }
 });
 
 /* ============================================================
@@ -6927,10 +7017,53 @@ function calPrev()  { calState.weekStart.setDate(calState.weekStart.getDate() - 
 function calNext()  { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
 
 function bookSlot(dateStr, hour) {
-  const base = state.calendlyUrl || 'https://calendly.com';
+  const base = state.calendlyUrl || '';
+  if (!base) {
+    showToast('Stel eerst uw Calendly-link in via Instellingen.', 'warn');
+    return;
+  }
   const month = dateStr.slice(0, 7);
-  const sep = base.includes('?') ? '&' : '?';
-  window.open(base + sep + 'month=' + month + '&date=' + dateStr, '_blank');
+  const sep   = base.includes('?') ? '&' : '?';
+  const url   = base + sep + 'month=' + month + '&date=' + dateStr + '&hide_gdpr_banner=1';
+  openCalBookModal(url, dateStr, hour);
+}
+
+function openCalBookModal(url, dateStr, hour) {
+  const overlay  = document.getElementById('cal-book-overlay');
+  const iframe   = document.getElementById('cal-book-iframe');
+  const extLink  = document.getElementById('cal-book-external');
+  const subtitle = document.getElementById('cal-book-subtitle');
+  const spinner  = document.getElementById('cal-book-spinner');
+  if (!overlay || !iframe) { window.open(url, '_blank'); return; }
+
+  if (dateStr) {
+    const nl  = ['zo','ma','di','wo','do','vr','za'];
+    const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    const d   = new Date(dateStr + 'T12:00:00');
+    const day = nl[d.getDay()];
+    const lbl = day.charAt(0).toUpperCase() + day.slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
+    if (subtitle) subtitle.textContent = hour !== undefined
+      ? lbl + ' · ' + String(hour).padStart(2,'0') + ':00'
+      : lbl;
+  } else {
+    if (subtitle) subtitle.textContent = 'Kies een tijdslot in Calendly';
+  }
+
+  if (extLink) extLink.href = url;
+  if (spinner) spinner.style.display = 'flex';
+  iframe.src = url;
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCalBookModal() {
+  const overlay = document.getElementById('cal-book-overlay');
+  const iframe  = document.getElementById('cal-book-iframe');
+  const spinner = document.getElementById('cal-book-spinner');
+  if (overlay) overlay.classList.remove('open');
+  if (iframe)  { iframe.src = ''; }
+  if (spinner) spinner.style.display = 'flex';
+  document.body.style.overflow = '';
 }
 
 function renderCalSidebar() {
@@ -6956,7 +7089,7 @@ function renderCalSidebar() {
     const rawPhone = phone.replace(/\D/g,'');
     const waPhone  = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
     const waLink   = \`https://wa.me/\${waPhone}?text=\${encodeURIComponent('Hallo ' + name + ', ik wilde graag een afspraak inplannen. Wanneer schikt het u?')}\`;
-    const calUrl   = state.calendlyUrl || 'https://calendly.com';
+    const calUrl   = state.calendlyUrl || '';
     const idStr    = escHtml(String(l.id));
     return \`<div class="cal-call-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${idStr}');if(lead)openPanel(lead);})()">
       <div class="cal-call-header">
@@ -6970,7 +7103,7 @@ function renderCalSidebar() {
       <div class="cal-call-actions">
         \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">📞 Bellen</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">💬 WA</a>\` : ''}
-        <a class="cal-call-btn primary" href="\${escHtml(calUrl)}" target="_blank" onclick="event.stopPropagation()">📅 Boeken</a>
+        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal('\${escHtml(calUrl)}')">📅 Boeken</button>
       </div>
     </div>\`;
   }).join('');
@@ -6978,8 +7111,6 @@ function renderCalSidebar() {
 
 function renderAppointments() {
   if (!calState.weekStart) calState.weekStart = calGetMonday(new Date());
-  const openEl = document.getElementById('calendly-open-link');
-  if (openEl) openEl.href = state.calendlyUrl || 'https://calendly.com';
   renderCalSidebar();
   renderCalendar();
 }
