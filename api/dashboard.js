@@ -2437,6 +2437,35 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .btn-log-call:hover { background: rgba(34,197,94,0.2); }
 
+/* Afspraak Resultaat */
+.afspraak-result { display: flex; flex-direction: column; gap: 10px; }
+.afspraak-toggle-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.afspraak-toggle-row { display: flex; gap: 8px; }
+.afspraak-btn {
+  flex: 1; padding: 9px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-card-alt);
+  color: var(--text-secondary); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: 'Inter', sans-serif; transition: var(--transition);
+  text-align: center;
+}
+.afspraak-btn:hover { border-color: var(--border-bright); color: var(--text-primary); }
+.afspraak-btn.active-yes { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.4); color: var(--green); }
+.afspraak-btn.active-no  { background: rgba(244,63,94,0.1);  border-color: rgba(244,63,94,0.35); color: var(--red); }
+.afspraak-value-row { display: flex; flex-direction: column; gap: 4px; }
+.afspraak-value-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.afspraak-notitie {
+  width: 100%; background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-family: 'Inter', sans-serif;
+  font-size: 13px; padding: 8px 10px; resize: vertical; min-height: 56px; transition: border-color 0.15s;
+}
+.afspraak-notitie:focus { outline: none; border-color: var(--accent); }
+.afspraak-status-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+}
+.afspraak-status-chip.yes { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
+.afspraak-status-chip.no  { background: rgba(244,63,94,0.1);  color: var(--red);   border: 1px solid rgba(244,63,94,0.2); }
+
 /* Taken widget */
 .taken-widget { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
 .taken-widget-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -4851,13 +4880,18 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="analyse-revenue-row" id="analyse-revenue-row">
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-omzet-val">€0</div>
-          <div class="analyse-revenue-label">Totale Omzet</div>
-          <div class="analyse-revenue-sub">gekwalificeerde deals</div>
+          <div class="analyse-revenue-label">Gesloten Omzet</div>
+          <div class="analyse-revenue-sub">afspraken die kwamen</div>
         </div>
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-gem-val">€0</div>
           <div class="analyse-revenue-label">Gem. Deal Waarde</div>
           <div class="analyse-revenue-sub" id="analyse-gem-sub">0 deals met waarde</div>
+        </div>
+        <div class="analyse-revenue-card">
+          <div class="analyse-revenue-val" id="analyse-showup-val" style="color:var(--green)">—</div>
+          <div class="analyse-revenue-label">Show-up Rate</div>
+          <div class="analyse-revenue-sub" id="analyse-showup-sub">van geboekte afspraken</div>
         </div>
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-winrate-val" style="color:var(--green)">0%</div>
@@ -5436,17 +5470,25 @@ async function patchLead(id, fields) {
 
 function parseNotities(lead) {
   const raw = (lead.notities || '').trim();
+  const empty = { notes: [], tasks: [], calls: [], afspraak: null };
   if (!raw || !raw.startsWith('{')) {
-    return { notes: raw ? [{ id: 'legacy', text: raw, ts: lead.datum || new Date().toISOString() }] : [], tasks: [], calls: [] };
+    return { ...empty, notes: raw ? [{ id: 'legacy', text: raw, ts: lead.datum || new Date().toISOString() }] : [] };
   }
   try {
     const d = JSON.parse(raw);
-    return { notes: Array.isArray(d.notes) ? d.notes : [], tasks: Array.isArray(d.tasks) ? d.tasks : [], calls: Array.isArray(d.calls) ? d.calls : [] };
-  } catch { return { notes: [], tasks: [], calls: [] }; }
+    return {
+      notes:    Array.isArray(d.notes) ? d.notes : [],
+      tasks:    Array.isArray(d.tasks) ? d.tasks : [],
+      calls:    Array.isArray(d.calls) ? d.calls : [],
+      afspraak: d.afspraak || null
+    };
+  } catch { return empty; }
 }
 
 function serializeNotities(data) {
-  return JSON.stringify({ _v: 1, notes: data.notes || [], tasks: data.tasks || [], calls: data.calls || [] });
+  const obj = { _v: 1, notes: data.notes || [], tasks: data.tasks || [], calls: data.calls || [] };
+  if (data.afspraak !== undefined) obj.afspraak = data.afspraak;
+  return JSON.stringify(obj);
 }
 
 async function saveNotitiesData(leadId, data) {
@@ -6429,6 +6471,35 @@ function openPanel(lead) {
     </div>\`).join('');
   }
 
+  // Afspraak Resultaat — only show when appointment is booked
+  if (lead.afspraakGeboekt) {
+    const af = nData.afspraak || {};
+    const isYes = af.verschenen === true;
+    const isNo  = af.verschenen === false;
+    bodyHTML += \`
+    <div class="panel-section" id="afspraak-result-section">
+      <div class="panel-section-title">Afspraak Resultaat</div>
+      <div class="afspraak-result">
+        <div>
+          <div class="afspraak-toggle-label">Verschenen?</div>
+          <div class="afspraak-toggle-row" style="margin-top:6px">
+            <button class="afspraak-btn\${isYes ? ' active-yes' : ''}" id="btn-afspraak-ja">✓ Ja, verschenen</button>
+            <button class="afspraak-btn\${isNo  ? ' active-no'  : ''}" id="btn-afspraak-nee">✗ No-show</button>
+          </div>
+        </div>
+        <div class="afspraak-value-row">
+          <div class="afspraak-value-label">Gesloten waarde</div>
+          <input type="text" class="panel-inline-input" id="afspraak-waarde" placeholder="€0" value="\${escHtml(af.gesloten || '')}">
+        </div>
+        <div>
+          <div class="afspraak-value-label" style="margin-bottom:4px">Resultaat notitie</div>
+          <textarea class="afspraak-notitie" id="afspraak-notitie" placeholder="Hoe ging het gesprek?">\${escHtml(af.notitie || '')}</textarea>
+        </div>
+        <button class="btn-add-note" id="btn-save-afspraak">Opslaan</button>
+      </div>
+    </div>\`;
+  }
+
   bodyHTML += \`
     <div class="panel-section">
       <div class="panel-section-title">Notities</div>
@@ -6489,6 +6560,45 @@ function openPanel(lead) {
         statusSelect.value = lead.status; // revert on error
       }
     });
+  }
+
+  // Afspraak Resultaat handlers
+  if (lead.afspraakGeboekt) {
+    async function saveAfspraak() {
+      const data = parseNotities(state.activeLead);
+      data.afspraak = data.afspraak || {};
+      const waarde = (document.getElementById('afspraak-waarde')?.value || '').trim();
+      const notitie = (document.getElementById('afspraak-notitie')?.value || '').trim();
+      if (waarde) data.afspraak.gesloten = waarde;
+      if (notitie) data.afspraak.notitie = notitie;
+      await persistNotities(data);
+      // Also update verwachteWaarde if closed value entered
+      if (waarde) {
+        await patchLead(lead.id, { dealWaarde: waarde });
+        const idx = state.leads.findIndex(l => l.id === lead.id);
+        if (idx !== -1) state.leads[idx].verwachteWaarde = waarde;
+        state.activeLead.verwachteWaarde = waarde;
+      }
+      toast('Afspraak resultaat opgeslagen', 'success');
+    }
+
+    function setVerschenen(val) {
+      const data = parseNotities(state.activeLead);
+      data.afspraak = { ...(data.afspraak || {}), verschenen: val };
+      persistNotities(data).then(() => toast(val ? '✓ Verschenen opgeslagen' : '✗ No-show opgeslagen', 'success'));
+      // Update button styles immediately
+      const jaBtn  = document.getElementById('btn-afspraak-ja');
+      const neeBtn = document.getElementById('btn-afspraak-nee');
+      if (jaBtn)  { jaBtn.classList.toggle('active-yes', val === true);  jaBtn.classList.remove('active-no'); }
+      if (neeBtn) { neeBtn.classList.toggle('active-no', val === false); neeBtn.classList.remove('active-yes'); }
+    }
+
+    const jaBtn  = document.getElementById('btn-afspraak-ja');
+    const neeBtn = document.getElementById('btn-afspraak-nee');
+    const saveBtn = document.getElementById('btn-save-afspraak');
+    if (jaBtn)   jaBtn.addEventListener('click', () => setVerschenen(true));
+    if (neeBtn)  neeBtn.addEventListener('click', () => setVerschenen(false));
+    if (saveBtn) saveBtn.addEventListener('click', saveAfspraak);
   }
 
   // Verlies reden handler
@@ -7802,27 +7912,61 @@ function renderRevenueGoal() {
 function renderAnalyse() {
   const leads = state.leads;
 
-  // Feature 1: Revenue Analytics
+  // Revenue & Afspraak Analytics
   (function() {
-    const wonLeads = leads.filter(l => l.qualified || l.afspraakGeboekt);
-    const totalOmzet = wonLeads.reduce((s, l) => s + parseDealValue(l.verwachteWaarde), 0);
+    const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
+
+    // Gesloten omzet: sum from afspraak.gesloten for leads that showed up
+    let geslotenOmzet = 0;
+    let verschenenCount = 0;
+    let noShowCount = 0;
+    const bookedLeads = leads.filter(l => l.afspraakGeboekt);
+    bookedLeads.forEach(l => {
+      const nd = parseNotities(l);
+      if (nd.afspraak) {
+        if (nd.afspraak.verschenen === true) {
+          verschenenCount++;
+          geslotenOmzet += parseDealValue(nd.afspraak.gesloten || l.verwachteWaarde);
+        } else if (nd.afspraak.verschenen === false) {
+          noShowCount++;
+        }
+      }
+    });
+
+    // Fallback: if no attendance tracked yet, use qualified/booked deal values
+    const trackedTotal = verschenenCount + noShowCount;
+    const omzetEl = document.getElementById('analyse-omzet-val');
+    if (omzetEl) omzetEl.textContent = fmt(geslotenOmzet);
+
+    // Show-up rate
+    const showupEl = document.getElementById('analyse-showup-val');
+    const showupSubEl = document.getElementById('analyse-showup-sub');
+    if (showupEl) {
+      if (trackedTotal === 0) {
+        showupEl.textContent = '—';
+        showupEl.style.color = 'var(--text-muted)';
+        if (showupSubEl) showupSubEl.textContent = 'nog geen bijgehouden';
+      } else {
+        const rate = Math.round(verschenenCount / trackedTotal * 100);
+        showupEl.textContent = rate + '%';
+        showupEl.style.color = rate >= 70 ? 'var(--green)' : rate >= 40 ? 'var(--orange)' : 'var(--red)';
+        if (showupSubEl) showupSubEl.textContent = verschenenCount + ' van ' + trackedTotal + ' geboekt';
+      }
+    }
+
+    // Gem deal waarde
     const leadsMetWaarde = leads.filter(l => parseDealValue(l.verwachteWaarde) > 0);
     const gemDeal = leadsMetWaarde.length
       ? leadsMetWaarde.reduce((s, l) => s + parseDealValue(l.verwachteWaarde), 0) / leadsMetWaarde.length
       : 0;
-    const verlorenCount = leads.filter(l => l.status === 'verloren').length;
-    const totalCount = leads.length;
-    const winRate = totalCount > 0 ? Math.round(100 - (verlorenCount / totalCount * 100)) : 100;
-    const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
-
-    const omzetEl = document.getElementById('analyse-omzet-val');
-    if (omzetEl) omzetEl.textContent = fmt(totalOmzet);
-
     const gemEl = document.getElementById('analyse-gem-val');
     if (gemEl) gemEl.textContent = fmt(gemDeal);
     const gemSubEl = document.getElementById('analyse-gem-sub');
     if (gemSubEl) gemSubEl.textContent = leadsMetWaarde.length + ' deals met waarde';
 
+    // Win rate
+    const verlorenCount = leads.filter(l => l.status === 'verloren').length;
+    const winRate = leads.length > 0 ? Math.round(100 - (verlorenCount / leads.length * 100)) : 100;
     const wrEl = document.getElementById('analyse-winrate-val');
     if (wrEl) {
       wrEl.textContent = winRate + '%';
@@ -7844,19 +7988,30 @@ function renderAnalyse() {
         </div>
       \`).join('') : '<div style="font-size:11px;color:var(--text-muted)">Geen verliesdata</div>';
     }
+
+    // Update funnel with verschenen step
+    const funnelBooked = bookedLeads.length;
+    const funnelVerschenen = verschenenCount;
+    const total = leads.length;
   })();
 
-  // Funnel
+  // Funnel — includes verschenen step
   const total = leads.length;
   const qualified = leads.filter(l => l.qualified).length;
   const booked = leads.filter(l => l.afspraakGeboekt).length;
   const won = leads.filter(l => l.opgepikt).length;
+  // Count verschenen from notities
+  const verschenenFunnel = leads.filter(l => {
+    if (!l.afspraakGeboekt) return false;
+    try { const nd = parseNotities(l); return nd.afspraak && nd.afspraak.verschenen === true; } catch { return false; }
+  }).length;
 
   const funnelSteps = [
-    { label: 'Totaal leads', count: total, pct: 100 },
-    { label: 'Gekwalificeerd', count: qualified, pct: total ? Math.round((qualified / total) * 100) : 0 },
-    { label: 'Afspraak geboekt', count: booked, pct: total ? Math.round((booked / total) * 100) : 0 },
-    { label: 'Gewonnen', count: won, pct: total ? Math.round((won / total) * 100) : 0 }
+    { label: 'Totaal leads',      count: total,             pct: 100 },
+    { label: 'Gekwalificeerd',    count: qualified,          pct: total   ? Math.round((qualified / total) * 100) : 0 },
+    { label: 'Afspraak geboekt',  count: booked,             pct: total   ? Math.round((booked    / total) * 100) : 0 },
+    { label: 'Verschenen',        count: verschenenFunnel,   pct: booked  ? Math.round((verschenenFunnel / booked) * 100) : 0, note: 'van geboekt' },
+    { label: 'Gewonnen',          count: won,                pct: total   ? Math.round((won / total) * 100) : 0 }
   ];
 
   const funnelEl = document.getElementById('funnel-content');
@@ -7864,7 +8019,7 @@ function renderAnalyse() {
     funnelEl.innerHTML = funnelSteps.map(s => \`
       <div class="funnel-step">
         <div class="funnel-step-label">
-          <span>\${s.label} <strong>\${s.count}</strong></span>
+          <span>\${s.label} <strong>\${s.count}</strong>\${s.note ? \`<span style="font-size:10px;color:var(--text-muted);margin-left:4px">(\${s.note})</span>\` : ''}</span>
           <span class="funnel-step-pct">\${s.pct}%</span>
         </div>
         <div class="funnel-bar"><div class="funnel-bar-fill" style="width:\${s.pct}%"></div></div>
