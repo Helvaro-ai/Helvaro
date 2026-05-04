@@ -72,11 +72,13 @@ module.exports = async function handler(req, res) {
       if (!body || typeof body !== 'object') body = {};
 
       const fields = {};
-      if (body.notities !== undefined) fields['fldoLRI5W12ThTls7'] = String(body.notities).slice(0, 5000);
+      if (body.notities !== undefined) fields['fldoLRI5W12ThTls7'] = String(body.notities).slice(0, 8000);
       if (body.status   !== undefined) {
-        const allowed = ['new', 'in_progress', 'completed'];
+        const allowed = ['new', 'in_progress', 'completed', 'verloren'];
         if (allowed.includes(body.status)) fields['fld8mkrEWcyq7mUip'] = body.status;
       }
+      if (body.dealWaarde   !== undefined) fields['fldv7qOYvCN1xJfiR'] = String(body.dealWaarde).slice(0, 200);
+      if (body.verliesReden !== undefined) fields['fld3NhSENma0okbT7'] = String(body.verliesReden).slice(0, 500);
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
       const pRes  = await fetch(

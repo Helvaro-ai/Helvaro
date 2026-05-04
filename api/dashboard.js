@@ -2317,6 +2317,148 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(43,143,255,0.3); }
 
+/* ── CRM feature styles ── */
+.panel-inline-input {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 4px 10px;
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s;
+}
+.panel-inline-input:focus { outline: none; border-color: var(--accent); }
+
+/* Notes */
+.panel-notes-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.panel-note-item {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  position: relative;
+}
+.panel-note-text { font-size: 13px; color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; }
+.panel-note-ts { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.panel-note-delete {
+  position: absolute; top: 8px; right: 8px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 12px; padding: 2px 5px;
+  border-radius: 4px; transition: color 0.1s, background 0.1s;
+}
+.panel-note-delete:hover { color: var(--red); background: rgba(244,63,94,0.08); }
+.panel-add-note textarea {
+  width: 100%; background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-family: 'Inter',sans-serif;
+  font-size: 13px; padding: 8px 10px; resize: vertical; min-height: 60px;
+  transition: border-color 0.15s;
+}
+.panel-add-note textarea:focus { outline: none; border-color: var(--accent); }
+.btn-add-note {
+  margin-top: 6px; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+  color: var(--accent); border-radius: var(--radius-sm); padding: 6px 14px;
+  font-size: 12px; cursor: pointer; font-family: 'Inter',sans-serif; transition: var(--transition);
+}
+.btn-add-note:hover { background: rgba(99,102,241,0.2); }
+
+/* Tasks */
+.panel-tasks-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.panel-task-item {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.panel-task-item.done { opacity: 0.55; }
+.panel-task-check { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+.panel-task-text { flex: 1; font-size: 13px; color: var(--text-primary); }
+.panel-task-item.done .panel-task-text { text-decoration: line-through; color: var(--text-muted); }
+.panel-task-due {
+  font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
+  background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border);
+  white-space: nowrap; flex-shrink: 0;
+}
+.panel-task-due.overdue { background: rgba(244,63,94,0.1); color: var(--red); border-color: rgba(244,63,94,0.25); }
+.panel-task-due.today { background: rgba(245,158,11,0.1); color: var(--orange); border-color: rgba(245,158,11,0.25); }
+.panel-task-delete {
+  background: none; border: none; cursor: pointer; color: var(--text-muted);
+  font-size: 12px; padding: 2px 5px; border-radius: 4px; transition: color 0.1s;
+}
+.panel-task-delete:hover { color: var(--red); }
+.panel-add-task { display: flex; gap: 6px; align-items: center; }
+.panel-add-task input[type="text"] {
+  flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-family: 'Inter',sans-serif;
+  font-size: 13px; padding: 7px 10px; transition: border-color 0.15s;
+}
+.panel-add-task input[type="text"]:focus { outline: none; border-color: var(--accent); }
+.panel-add-task input[type="date"] {
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-secondary); font-family: 'Inter',sans-serif;
+  font-size: 12px; padding: 7px 8px; width: 130px; transition: border-color 0.15s;
+}
+.panel-add-task input[type="date"]:focus { outline: none; border-color: var(--accent); }
+.btn-add-task {
+  background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+  color: var(--accent); border-radius: var(--radius-sm); padding: 7px 14px;
+  font-size: 14px; cursor: pointer; font-family: 'Inter',sans-serif; transition: var(--transition);
+}
+.btn-add-task:hover { background: rgba(99,102,241,0.22); }
+
+/* Calls */
+.panel-calls-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.panel-call-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+}
+.panel-call-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+.panel-call-body { flex: 1; min-width: 0; }
+.panel-call-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+.panel-call-note { font-size: 13px; color: var(--text-primary); line-height: 1.4; }
+.panel-log-call { display: flex; gap: 6px; align-items: center; }
+.panel-log-call input[type="number"] {
+  width: 70px; background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-family: 'Inter',sans-serif;
+  font-size: 13px; padding: 7px 8px; transition: border-color 0.15s;
+}
+.panel-log-call input[type="text"] {
+  flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-family: 'Inter',sans-serif;
+  font-size: 13px; padding: 7px 10px; transition: border-color 0.15s;
+}
+.panel-log-call input:focus { outline: none; border-color: var(--accent); }
+.btn-log-call {
+  background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25);
+  color: var(--green); border-radius: var(--radius-sm); padding: 7px 14px;
+  font-size: 12px; cursor: pointer; font-family: 'Inter',sans-serif;
+  white-space: nowrap; transition: var(--transition);
+}
+.btn-log-call:hover { background: rgba(34,197,94,0.2); }
+
+/* Taken widget */
+.taken-widget { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+.taken-widget-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.taken-widget-title { font-size: 13px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em; }
+.taken-widget-count { font-size: 11px; font-weight: 700; background: rgba(244,63,94,0.15); color: var(--red); padding: 2px 8px; border-radius: 20px; }
+.taken-widget-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 12px 0; }
+.taken-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  cursor: pointer; margin-bottom: 6px; transition: border-color 0.15s;
+}
+.taken-item:hover { border-color: var(--accent); }
+.taken-item.overdue { border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.04); }
+.taken-item-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+.taken-item.overdue .taken-item-dot { background: var(--red); }
+.taken-item-body { flex: 1; min-width: 0; }
+.taken-item-text { font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.taken-item-lead { font-size: 11px; color: var(--text-muted); }
+.taken-item-due { font-size: 11px; font-weight: 600; color: var(--orange); white-space: nowrap; flex-shrink: 0; }
+.taken-item.overdue .taken-item-due { color: var(--red); }
+
 /* ── Nav badge (new-lead notification) ── */
 .nav-badge {
   display: inline-flex;
@@ -4211,6 +4353,15 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="followup-list" id="followup-list"></div>
       </div>
 
+      <!-- Taken Widget -->
+      <div class="taken-widget" id="taken-widget" style="display:none">
+        <div class="taken-widget-header">
+          <span class="taken-widget-title">Openstaande Taken</span>
+          <span class="taken-widget-count" id="taken-widget-count">0</span>
+        </div>
+        <div id="taken-widget-list"></div>
+      </div>
+
       <!-- Top Leads Strip -->
       <div class="top-leads-strip" id="top-leads-strip" style="display:none">
         <div class="top-leads-strip-title">
@@ -5027,14 +5178,54 @@ async function fetchRapport() {
   return resp.json();
 }
 
-async function patchNotes(id, notities) {
+async function patchLead(id, fields) {
   const resp = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(id)}\`, {
     method: 'PATCH',
     headers: { 'x-api-key': state.apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ notities })
+    body: JSON.stringify(fields)
   });
   if (!resp.ok) throw new Error(\`Opslaan mislukt: \${resp.status}\`);
   return resp.json();
+}
+
+function parseNotities(lead) {
+  const raw = (lead.notities || '').trim();
+  if (!raw || !raw.startsWith('{')) {
+    return { notes: raw ? [{ id: 'legacy', text: raw, ts: lead.datum || new Date().toISOString() }] : [], tasks: [], calls: [] };
+  }
+  try {
+    const d = JSON.parse(raw);
+    return { notes: Array.isArray(d.notes) ? d.notes : [], tasks: Array.isArray(d.tasks) ? d.tasks : [], calls: Array.isArray(d.calls) ? d.calls : [] };
+  } catch { return { notes: [], tasks: [], calls: [] }; }
+}
+
+function serializeNotities(data) {
+  return JSON.stringify({ _v: 1, notes: data.notes || [], tasks: data.tasks || [], calls: data.calls || [] });
+}
+
+async function saveNotitiesData(leadId, data) {
+  const json = serializeNotities(data);
+  return patchLead(leadId, { notities: json });
+}
+
+function relativeTime(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'zojuist';
+  if (mins < 60) return mins + 'm geleden';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'u geleden';
+  return Math.floor(hrs / 24) + 'd geleden';
+}
+
+function taskDueLabel(due) {
+  if (!due) return { label: '', cls: '' };
+  const today = new Date().toISOString().slice(0, 10);
+  if (due < today) return { label: 'Verlopen', cls: 'overdue' };
+  if (due === today) return { label: 'Vandaag', cls: 'today' };
+  const d = new Date(due);
+  return { label: d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }), cls: '' };
 }
 
 async function patchStatus(id, status) {
@@ -5150,6 +5341,9 @@ async function refreshData() {
         followupWidget.style.display = 'none';
       }
     }
+
+    // Taken widget
+    renderTakenWidget();
 
     // Bell: count leads from last 24h as "new"
     const bell = document.getElementById('notif-badge');
@@ -5793,6 +5987,21 @@ function openPanel(lead) {
             <option value="new"         \${lead.status === 'new'         ? 'selected' : ''}>Nieuw</option>
             <option value="in_progress" \${lead.status === 'in_progress' ? 'selected' : ''}>Bezig</option>
             <option value="completed"   \${lead.status === 'completed'   ? 'selected' : ''}>Klaar</option>
+            <option value="verloren"    \${lead.status === 'verloren'    ? 'selected' : ''}>Verloren</option>
+          </select>
+        </span>
+      </div>
+      <div class="panel-row" id="verloren-reden-row" style="display:\${lead.status === 'verloren' ? 'flex' : 'none'}">
+        <span class="panel-row-label">Verlies reden</span>
+        <span class="panel-row-value">
+          <select class="status-select" id="panel-verlies-reden">
+            <option value="">— Kies reden —</option>
+            <option value="Prijs te hoog"       \${lead.reden === 'Prijs te hoog'       ? 'selected' : ''}>Prijs te hoog</option>
+            <option value="Geen timing"          \${lead.reden === 'Geen timing'          ? 'selected' : ''}>Geen timing</option>
+            <option value="Concurrent gekozen"   \${lead.reden === 'Concurrent gekozen'   ? 'selected' : ''}>Concurrent gekozen</option>
+            <option value="Geen interesse"       \${lead.reden === 'Geen interesse'       ? 'selected' : ''}>Geen interesse</option>
+            <option value="Geen reactie"         \${lead.reden === 'Geen reactie'         ? 'selected' : ''}>Geen reactie</option>
+            <option value="Andere reden"         \${lead.reden === 'Andere reden'         ? 'selected' : ''}>Andere reden</option>
           </select>
         </span>
       </div>
@@ -5812,7 +6021,12 @@ function openPanel(lead) {
       \${lead.fit !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Fit</span><span class="panel-row-value">\${lead.fit || '—'}</span></div>\` : ''}
       \${lead.capaciteit !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Capaciteit</span><span class="panel-row-value">\${lead.capaciteit || '—'}</span></div>\` : ''}
       \${lead.urgentie !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Urgentie</span><span class="panel-row-value">\${lead.urgentie || '—'}</span></div>\` : ''}
-      \${lead.verwachteWaarde !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Verwachte waarde</span><span class="panel-row-value">\${escHtml(lead.verwachteWaarde) || '—'}</span></div>\` : ''}
+      <div class="panel-row">
+        <span class="panel-row-label">Deal waarde (€)</span>
+        <span class="panel-row-value" style="flex:1;max-width:160px">
+          <input type="text" class="panel-inline-input" id="panel-deal-input" placeholder="€0" value="\${escHtml(lead.verwachteWaarde || '')}">
+        </span>
+      </div>
     </div>
   \`;
 
@@ -5884,22 +6098,87 @@ function openPanel(lead) {
     } catch { /* invalid JSON, skip */ }
   }
 
-  // Notes section
+  // Notes section (timestamped)
+  const nData = parseNotities(lead);
+  function renderNotesList(notes) {
+    if (!notes.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Nog geen notities</div>';
+    return notes.map(n => \`<div class="panel-note-item">
+      <div class="panel-note-text">\${escHtml(n.text)}</div>
+      <div class="panel-note-ts">\${relativeTime(n.ts)}</div>
+      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}">✕</button>
+    </div>\`).join('');
+  }
+  function renderTasksList(tasks) {
+    if (!tasks.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Geen taken</div>';
+    return tasks.map(t => {
+      const dl = taskDueLabel(t.due);
+      return \`<div class="panel-task-item\${t.done ? ' done' : ''}" data-task-id="\${escHtml(t.id)}">
+        <input type="checkbox" class="panel-task-check" \${t.done ? 'checked' : ''}>
+        <span class="panel-task-text">\${escHtml(t.text)}</span>
+        \${dl.label ? \`<span class="panel-task-due \${dl.cls}">\${dl.label}</span>\` : ''}
+        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}">✕</button>
+      </div>\`;
+    }).join('');
+  }
+  function renderCallsList(calls) {
+    if (!calls.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Geen gesprekken gelogd</div>';
+    return calls.map(c => \`<div class="panel-call-item">
+      <div class="panel-call-icon">📞</div>
+      <div class="panel-call-body">
+        <div class="panel-call-meta">\${c.duur} min &bull; \${relativeTime(c.ts)}</div>
+        \${c.notitie ? \`<div class="panel-call-note">\${escHtml(c.notitie)}</div>\` : ''}
+      </div>
+    </div>\`).join('');
+  }
+
   bodyHTML += \`
     <div class="panel-section">
       <div class="panel-section-title">Notities</div>
-      <textarea class="notes-textarea" id="panel-notes" placeholder="Voeg notities toe...">\${lead.notities || ''}</textarea>
-      <button class="btn-save" id="btn-save-notes">Opslaan</button>
+      <div class="panel-notes-list" id="panel-notes-list">\${renderNotesList(nData.notes)}</div>
+      <div class="panel-add-note">
+        <textarea id="panel-note-input" placeholder="Notitie toevoegen..." rows="2"></textarea>
+        <button class="btn-add-note" id="btn-add-note">+ Toevoegen</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Taken</div>
+      <div class="panel-tasks-list" id="panel-tasks-list">\${renderTasksList(nData.tasks)}</div>
+      <div class="panel-add-task">
+        <input type="text" id="panel-task-input" placeholder="Nieuwe taak...">
+        <input type="date" id="panel-task-date">
+        <button class="btn-add-task" id="btn-add-task">+</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Belgeschiedenis</div>
+      <div class="panel-calls-list" id="panel-calls-list">\${renderCallsList(nData.calls)}</div>
+      <div class="panel-log-call">
+        <input type="number" id="panel-call-duur" placeholder="Min." min="1">
+        <input type="text" id="panel-call-note" placeholder="Aantekeningen...">
+        <button class="btn-log-call" id="btn-log-call">📞 Loggen</button>
+      </div>
     </div>
   \`;
 
   document.getElementById('panel-body').innerHTML = bodyHTML;
+
+  // Helper to persist and re-render notities
+  async function persistNotities(data) {
+    const json = serializeNotities(data);
+    const idx = state.leads.findIndex(l => l.id === lead.id);
+    if (idx !== -1) state.leads[idx].notities = json;
+    state.activeLead.notities = json;
+    await saveNotitiesData(lead.id, data);
+    renderTakenWidget();
+  }
 
   // Status change handler
   const statusSelect = document.getElementById('panel-status-select');
   if (statusSelect) {
     statusSelect.addEventListener('change', async () => {
       const newStatus = statusSelect.value;
+      const redenRow = document.getElementById('verloren-reden-row');
+      if (redenRow) redenRow.style.display = newStatus === 'verloren' ? 'flex' : 'none';
       try {
         await patchStatus(lead.id, newStatus);
         const idx = state.leads.findIndex(l => l.id === lead.id);
@@ -5914,26 +6193,149 @@ function openPanel(lead) {
     });
   }
 
-  // Save notes handler
-  document.getElementById('btn-save-notes').addEventListener('click', async () => {
-    const notities = document.getElementById('panel-notes').value;
-    const btn = document.getElementById('btn-save-notes');
-    btn.textContent = 'Opslaan...';
-    btn.disabled = true;
-    try {
-      await patchNotes(lead.id, notities);
-      // Update local state
-      const idx = state.leads.findIndex(l => l.id === lead.id);
-      if (idx !== -1) state.leads[idx].notities = notities;
-      state.activeLead.notities = notities;
-      toast('Notities opgeslagen', 'success');
-    } catch (err) {
-      toast(err.message, 'error');
-    } finally {
-      btn.textContent = 'Opslaan';
-      btn.disabled = false;
-    }
-  });
+  // Verlies reden handler
+  const verliesRedenSelect = document.getElementById('panel-verlies-reden');
+  if (verliesRedenSelect) {
+    verliesRedenSelect.addEventListener('change', async () => {
+      const reden = verliesRedenSelect.value;
+      try {
+        await patchLead(lead.id, { verliesReden: reden });
+        const idx = state.leads.findIndex(l => l.id === lead.id);
+        if (idx !== -1) state.leads[idx].reden = reden;
+        state.activeLead.reden = reden;
+        toast('Verliesreden opgeslagen', 'success');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  }
+
+  // Deal waarde handler
+  const dealInput = document.getElementById('panel-deal-input');
+  if (dealInput) {
+    dealInput.addEventListener('blur', async () => {
+      const val = dealInput.value.trim();
+      try {
+        await patchLead(lead.id, { dealWaarde: val });
+        const idx = state.leads.findIndex(l => l.id === lead.id);
+        if (idx !== -1) state.leads[idx].verwachteWaarde = val;
+        state.activeLead.verwachteWaarde = val;
+        toast('Deal waarde opgeslagen', 'success');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  }
+
+  // Notes: add note
+  const btnAddNote = document.getElementById('btn-add-note');
+  if (btnAddNote) {
+    btnAddNote.addEventListener('click', async () => {
+      const inp = document.getElementById('panel-note-input');
+      const text = inp ? inp.value.trim() : '';
+      if (!text) return;
+      const data = parseNotities(state.activeLead);
+      const note = { id: 'n_' + Date.now(), text, ts: new Date().toISOString() };
+      data.notes = [note, ...data.notes];
+      try {
+        await persistNotities(data);
+        if (inp) inp.value = '';
+        const list = document.getElementById('panel-notes-list');
+        if (list) list.innerHTML = renderNotesList(data.notes);
+        toast('Notitie toegevoegd', 'success');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+
+  // Notes: delete note (event delegation)
+  const notesList = document.getElementById('panel-notes-list');
+  if (notesList) {
+    notesList.addEventListener('click', async e => {
+      const btn = e.target.closest('.panel-note-delete');
+      if (!btn) return;
+      const nid = btn.dataset.noteId;
+      const data = parseNotities(state.activeLead);
+      data.notes = data.notes.filter(n => n.id !== nid);
+      try {
+        await persistNotities(data);
+        notesList.innerHTML = renderNotesList(data.notes);
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+
+  // Tasks: add task
+  const btnAddTask = document.getElementById('btn-add-task');
+  if (btnAddTask) {
+    btnAddTask.addEventListener('click', async () => {
+      const inp = document.getElementById('panel-task-input');
+      const dateInp = document.getElementById('panel-task-date');
+      const text = inp ? inp.value.trim() : '';
+      if (!text) return;
+      const data = parseNotities(state.activeLead);
+      const task = { id: 't_' + Date.now(), text, due: dateInp ? dateInp.value : '', done: false, ts: new Date().toISOString() };
+      data.tasks = [task, ...data.tasks];
+      try {
+        await persistNotities(data);
+        if (inp) inp.value = '';
+        if (dateInp) dateInp.value = '';
+        const list = document.getElementById('panel-tasks-list');
+        if (list) list.innerHTML = renderTasksList(data.tasks);
+        toast('Taak toegevoegd', 'success');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+
+  // Tasks: toggle done + delete (event delegation)
+  const tasksList = document.getElementById('panel-tasks-list');
+  if (tasksList) {
+    tasksList.addEventListener('change', async e => {
+      const cb = e.target.closest('.panel-task-check');
+      if (!cb) return;
+      const item = cb.closest('.panel-task-item');
+      const tid = item ? item.dataset.taskId : null;
+      if (!tid) return;
+      const data = parseNotities(state.activeLead);
+      const task = data.tasks.find(t => t.id === tid);
+      if (task) task.done = cb.checked;
+      try {
+        await persistNotities(data);
+        tasksList.innerHTML = renderTasksList(data.tasks);
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    tasksList.addEventListener('click', async e => {
+      const btn = e.target.closest('.panel-task-delete');
+      if (!btn) return;
+      const tid = btn.dataset.taskId;
+      const data = parseNotities(state.activeLead);
+      data.tasks = data.tasks.filter(t => t.id !== tid);
+      try {
+        await persistNotities(data);
+        tasksList.innerHTML = renderTasksList(data.tasks);
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+
+  // Calls: log call
+  const btnLogCall = document.getElementById('btn-log-call');
+  if (btnLogCall) {
+    btnLogCall.addEventListener('click', async () => {
+      const duurInp = document.getElementById('panel-call-duur');
+      const noteInp = document.getElementById('panel-call-note');
+      const duur = duurInp ? parseInt(duurInp.value) || 0 : 0;
+      const notitie = noteInp ? noteInp.value.trim() : '';
+      const data = parseNotities(state.activeLead);
+      const call = { id: 'c_' + Date.now(), duur, notitie, ts: new Date().toISOString() };
+      data.calls = [call, ...data.calls];
+      try {
+        await persistNotities(data);
+        if (duurInp) duurInp.value = '';
+        if (noteInp) noteInp.value = '';
+        const list = document.getElementById('panel-calls-list');
+        if (list) list.innerHTML = renderCallsList(data.calls);
+        toast('Gesprek gelogd', 'success');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
 
   // Show panel
   document.getElementById('panel-backdrop').classList.add('visible');
@@ -5944,6 +6346,58 @@ function closePanel() {
   document.getElementById('panel-backdrop').classList.remove('visible');
   document.getElementById('detail-panel').classList.remove('visible');
   state.activeLead = null;
+}
+
+/* ============================================================
+   TAKEN WIDGET
+   ============================================================ */
+function renderTakenWidget() {
+  const widget = document.getElementById('taken-widget');
+  const listEl = document.getElementById('taken-widget-list');
+  const countEl = document.getElementById('taken-widget-count');
+  if (!widget || !listEl) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const items = [];
+  (state.leads || []).forEach(lead => {
+    const data = parseNotities(lead);
+    (data.tasks || []).forEach(t => {
+      if (t.done) return;
+      if (!t.due || t.due > today) {
+        // include today and overdue only
+        if (t.due !== today && t.due > today) return;
+      }
+      items.push({ lead, task: t });
+    });
+  });
+
+  // Sort: overdue first, then today
+  items.sort((a, b) => {
+    if (a.task.due < b.task.due) return -1;
+    if (a.task.due > b.task.due) return 1;
+    return 0;
+  });
+
+  if (items.length === 0) {
+    widget.style.display = 'none';
+    return;
+  }
+
+  widget.style.display = 'block';
+  if (countEl) countEl.textContent = items.length;
+
+  listEl.innerHTML = items.map(({ lead, task }) => {
+    const isOverdue = task.due < today;
+    const dueLbl = isOverdue ? 'Verlopen' : 'Vandaag';
+    return \`<div class="taken-item\${isOverdue ? ' overdue' : ''}" onclick="(function(){navigateTo('dashboard');setTimeout(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escHtml(String(lead.id))}';});if(l)openPanel(l);},120);})()">
+      <div class="taken-item-dot"></div>
+      <div class="taken-item-body">
+        <div class="taken-item-text">\${escHtml(task.text)}</div>
+        <div class="taken-item-lead">\${escHtml(lead.naam || '—')}</div>
+      </div>
+      <div class="taken-item-due">\${dueLbl}</div>
+    </div>\`;
+  }).join('');
 }
 
 document.getElementById('panel-close').addEventListener('click', closePanel);
@@ -6828,8 +7282,19 @@ function renderPipeline() {
     const colCounts = {};
     cols.forEach(c => { colCounts[c.label] = c.leads.length; });
     const total = (state.leads || []).length;
+    // Pipeline deal value: sum verwachteWaarde of non-verloren leads
+    const pipelineValue = (state.leads || [])
+      .filter(l => l.status !== 'verloren')
+      .reduce((sum, l) => {
+        const raw = String(l.verwachteWaarde || '').replace(/[^0-9.,]/g, '').replace(',', '.');
+        return sum + (parseFloat(raw) || 0);
+      }, 0);
+    const valueFormatted = pipelineValue > 0
+      ? '€' + pipelineValue.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+      : null;
     summaryEl.innerHTML = \`<div class="pipeline-chip"><span>Totaal</span><span class="pipeline-chip-count">\${total}</span></div>\`
-      + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('');
+      + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('')
+      + (valueFormatted ? \`<div class="pipeline-chip"><span>Pipeline waarde</span><span class="pipeline-chip-count" style="color:var(--green)">\${valueFormatted}</span></div>\` : '');
   }
 }
 
