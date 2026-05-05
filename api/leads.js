@@ -94,6 +94,25 @@ module.exports = async function handler(req, res) {
         console.error('Airtable PATCH error:', pRes.status);
         return res.status(500).json({ error: 'Opslaan mislukt. Probeer later opnieuw.' });
       }
+
+      // ── Deal-closed email notification ──────────────────────────────────────
+      if (body.dealWaarde) {
+        const leadName = pData.fields?.['fldbk0LVNckOU0bqA'] || pData.fields?.['Name'] || '(onbekend)';
+        sendResendEmail({
+          subject: `💰 Deal gesloten — ${leadName} (${body.dealWaarde})`,
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:auto">
+              <h2 style="color:#16a34a">Deal gesloten 🎉</h2>
+              <table style="width:100%;border-collapse:collapse">
+                <tr><td style="padding:8px;color:#666">Lead</td><td style="padding:8px;font-weight:600">${leadName}</td></tr>
+                <tr><td style="padding:8px;color:#666">Waarde</td><td style="padding:8px;font-weight:700;color:#16a34a">${body.dealWaarde}</td></tr>
+                <tr><td style="padding:8px;color:#666">Client</td><td style="padding:8px">${clientName}</td></tr>
+              </table>
+              <a href="https://helvaro-helvaros-projects.vercel.app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
+            </div>`
+        }).catch(() => {});
+      }
+
       return res.status(200).json(pData);
     } catch (err) {
       console.error('PATCH error:', err.message);
@@ -222,4 +241,16 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ── Resend email helper ──────────────────────────────────────────────────────
+async function sendResendEmail({ subject, html }) {
+  const key  = process.env.RESEND_API_KEY;
+  const to   = process.env.NOTIFY_EMAIL;
+  if (!key || !to) return;
+  await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ from: 'Helvaro <noreply@helvaro.pro>', to: [to], subject, html })
+  });
 }

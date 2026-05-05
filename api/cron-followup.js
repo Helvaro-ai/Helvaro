@@ -37,6 +37,7 @@ module.exports = async function handler(req, res) {
 
     const leads = lData.records || [];
     let sent = 0;
+    const followedUp = [];
 
     for (const lead of leads) {
       const phone = lead.fields['fld6YaitW0lMqHUrd'] || lead.fields['Phone'] || '';
@@ -65,11 +66,33 @@ module.exports = async function handler(req, res) {
       );
 
       sent++;
+      followedUp.push(name || phone);
       // Slight delay to avoid WhatsApp rate limits
       await new Promise(r => setTimeout(r, 500));
     }
 
     console.log(`[cron-followup] Checked ${leads.length} leads, sent ${sent} follow-ups`);
+
+    // ── Daily summary email ──────────────────────────────────────────────────
+    if (sent > 0) {
+      const rows = followedUp.map(n =>
+        `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${n}</td></tr>`
+      ).join('');
+      sendResendEmail({
+        subject: `📋 Helvaro — ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:auto">
+            <h2 style="color:#1e6fd9">Dagelijkse follow-up update</h2>
+            <p style="color:#444">${sent} van ${leads.length} onderzochte leads ontvingen vandaag een WhatsApp follow-up:</p>
+            <table style="width:100%;border-collapse:collapse;margin-top:8px">
+              <thead><tr><th style="text-align:left;padding:6px 10px;background:#f5f5f5;color:#666;font-size:12px">Lead naam</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <a href="https://helvaro-helvaros-projects.vercel.app/dashboard" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
+          </div>`
+      }).catch(() => {});
+    }
+
     return res.status(200).json({ checked: leads.length, sent });
 
   } catch (err) {
@@ -77,6 +100,18 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 };
+
+// ── Resend email helper ──────────────────────────────────────────────────────
+async function sendResendEmail({ subject, html }) {
+  const key = process.env.RESEND_API_KEY;
+  const addr = process.env.NOTIFY_EMAIL;
+  if (!key || !addr) return;
+  await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ from: 'Helvaro <noreply@helvaro.pro>', to: [addr], subject, html })
+  });
+}
 
 function sendWA(to, message, phoneNumberId, token) {
   return fetch(
