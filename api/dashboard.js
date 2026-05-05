@@ -3962,8 +3962,16 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-call-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.08); }
 .cal-call-btn.primary { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); color: var(--accent); }
 .cal-call-btn.primary:hover { background: rgba(99,102,241,0.2); }
-.cal-hour-row { cursor: pointer; transition: background 0.1s; }
-.cal-hour-row:hover { background: rgba(99,102,241,0.08); }
+.cal-hour-row { cursor: default; }
+.cal-hour-add {
+  display: none; position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(99,102,241,0.35);
+  background: rgba(99,102,241,0.12); color: #6366f1; font-size: 16px; font-weight: 300;
+  cursor: pointer; align-items: center; justify-content: center; line-height: 1;
+  transition: background 0.15s;
+}
+.cal-hour-add:hover { background: rgba(99,102,241,0.25); }
+.cal-hour-row:hover .cal-hour-add { display: flex; }
 
 /* ── Attendance banner ────────────────────────────────────────── */
 .cal-attendance-banner {
@@ -4168,6 +4176,13 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-family: 'Inter',sans-serif; transition: border-color 0.15s; outline: none;
 }
 .cb-lead-input:focus { border-color: var(--accent); }
+.cb-field-input {
+  width: 100%; box-sizing: border-box; padding: 9px 12px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text-primary); font-size: 13px;
+  font-family: 'Inter',sans-serif; transition: border-color 0.15s; outline: none;
+}
+.cb-field-input:focus { border-color: var(--accent); }
 .cb-lead-dropdown {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10;
   background: var(--bg-card); border: 1px solid var(--border);
@@ -7393,6 +7408,8 @@ const calBookState = {
   selectedLead:  null,      // lead object
   slots:         [],
   loading:       false,
+  bookName:      '',        // pre-fill for Calendly
+  bookEmail:     '',        // pre-fill for Calendly
 };
 
 function bookSlot(dateStr, hour) {
@@ -7410,6 +7427,8 @@ function openCalBookModal(dateStr, prefillLead) {
   calBookState.slots        = [];
   calBookState.eventTypes   = [];
   calBookState.selectedType = null;
+  calBookState.bookName     = prefillLead ? (prefillLead.naam || '') : '';
+  calBookState.bookEmail    = prefillLead ? (prefillLead.email || '') : '';
 
   // Update subtitle
   const subtitle = document.getElementById('cal-book-subtitle');
@@ -7487,14 +7506,13 @@ function renderCalBookBody() {
     }).join('')}</div>\`;
   }
 
-  // Lead picker (shown when slot selected)
+  // Lead picker + name/email (shown when slot selected)
   let leadHtml = '';
   if (calBookState.selectedSlot) {
     const qualified = (state.leads || [])
       .filter(l => l.qualified)
       .sort((a, b) => (b.leadScore || 0) - (a.leadScore || 0))
       .slice(0, 30);
-    const selId = calBookState.selectedLead ? String(calBookState.selectedLead.id) : '';
     leadHtml = \`<div>
       <div class="cb-label">Koppel aan lead <span style="font-weight:400;text-transform:none;letter-spacing:0">(optioneel)</span></div>
       <div class="cb-lead-search">
@@ -7516,6 +7534,20 @@ function renderCalBookBody() {
           }).join('')}
         </div>
       </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px">
+      <div>
+        <div class="cb-label">Naam</div>
+        <input class="cb-field-input" id="cb-book-name" type="text" placeholder="Volledige naam"
+          value="\${escHtml(calBookState.bookName)}"
+          oninput="calBookState.bookName=this.value" />
+      </div>
+      <div>
+        <div class="cb-label">E-mailadres</div>
+        <input class="cb-field-input" id="cb-book-email" type="email" placeholder="naam@bedrijf.nl"
+          value="\${escHtml(calBookState.bookEmail)}"
+          oninput="calBookState.bookEmail=this.value" />
+      </div>
     </div>\`;
   }
 
@@ -7527,14 +7559,15 @@ function renderCalBookBody() {
     const t       = new Date(calBookState.selectedSlot);
     const hh      = String(t.getHours()).padStart(2,'0');
     const mm      = String(t.getMinutes()).padStart(2,'0');
-    const dateParam = calBookState.date;
-    const fullUrl = bookUrl + (bookUrl.includes('?') ? '&' : '?') + 'date=' + dateParam;
+    let fullUrl = bookUrl + (bookUrl.includes('?') ? '&' : '?') + 'date=' + calBookState.date;
+    if (calBookState.bookName)  fullUrl += '&name='  + encodeURIComponent(calBookState.bookName);
+    if (calBookState.bookEmail) fullUrl += '&email=' + encodeURIComponent(calBookState.bookEmail);
     confirmHtml = \`<div class="cb-confirm-wrap">
-      <a class="cb-confirm-btn" href="\${escHtml(fullUrl)}" target="_blank" onclick="closeCalBookModal()">
+      <a class="cb-confirm-btn" href="\${escHtml(fullUrl)}" target="_blank" onclick="calBookBeforeConfirm(this)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         Bevestig \${hh}:\${mm} in Calendly
       </a>
-      <div class="cb-confirm-note">Calendly opent in een nieuw venster — datum is al geselecteerd</div>
+      <div class="cb-confirm-note">Calendly opent in een nieuw venster — naam &amp; e-mail zijn alvast ingevuld</div>
     </div>\`;
   }
 
@@ -7629,10 +7662,35 @@ function calBookFilterLeads(q) {
 function calBookPickLead(leadId) {
   const lead = (state.leads || []).find(l => String(l.id) === leadId);
   calBookState.selectedLead = lead || null;
+  if (lead) {
+    calBookState.bookName  = lead.naam  || calBookState.bookName;
+    calBookState.bookEmail = lead.email || calBookState.bookEmail;
+  }
   const input    = document.getElementById('cb-lead-input');
   const dropdown = document.getElementById('cb-lead-dropdown');
   if (input)    input.value = lead ? (lead.naam || '') : '';
   if (dropdown) dropdown.style.display = 'none';
+  // Update name/email inputs if already rendered
+  const nameInput  = document.getElementById('cb-book-name');
+  const emailInput = document.getElementById('cb-book-email');
+  if (nameInput  && lead && lead.naam)  nameInput.value  = lead.naam;
+  if (emailInput && lead && lead.email) emailInput.value = lead.email;
+}
+
+function calBookBeforeConfirm(el) {
+  // Read latest values from inputs before navigating (href is set on render, refresh it)
+  const nameEl  = document.getElementById('cb-book-name');
+  const emailEl = document.getElementById('cb-book-email');
+  if (nameEl)  calBookState.bookName  = nameEl.value;
+  if (emailEl) calBookState.bookEmail = emailEl.value;
+
+  const selType = calBookState.eventTypes.find(e => e.uri === calBookState.selectedType);
+  const bookUrl = selType ? selType.bookingUrl : (state.calendlyUrl || '');
+  let url = bookUrl + (bookUrl.includes('?') ? '&' : '?') + 'date=' + calBookState.date;
+  if (calBookState.bookName)  url += '&name='  + encodeURIComponent(calBookState.bookName);
+  if (calBookState.bookEmail) url += '&email=' + encodeURIComponent(calBookState.bookEmail);
+  el.href = url;
+  closeCalBookModal();
 }
 
 // Hide lead dropdown when clicking outside
@@ -7752,20 +7810,27 @@ async function markAttendance(leadId, verschenen, gesloten, notitie) {
   if (!lead) return;
 
   const nData = parseNotities(lead);
+  const geslotenClean = String(gesloten || '').trim();
+  const notitieClean  = String(notitie  || '').trim();
   nData.afspraak = Object.assign({}, nData.afspraak || {}, {
     verschenen,
-    ...(gesloten  !== undefined ? { gesloten:  String(gesloten  || '').trim() } : {}),
-    ...(notitie   !== undefined ? { notitie:   String(notitie   || '').trim() } : {}),
+    ...(gesloten !== undefined ? { gesloten: geslotenClean } : {}),
+    ...(notitie  !== undefined ? { notitie:  notitieClean  } : {}),
   });
   const notitiesStr = serializeNotities(nData);
 
-  // Optimistic update
+  // Optimistic update in state
   lead.notities = notitiesStr;
+  // If deal value entered → also update verwachteWaarde so revenue goal updates immediately
+  if (geslotenClean) lead.verwachteWaarde = geslotenClean;
+
   const card = document.getElementById('cal-att-card-' + leadId);
   if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
 
   try {
-    await patchLead(leadId, { notities: notitiesStr });
+    const fields = { notities: notitiesStr };
+    if (geslotenClean) fields.dealWaarde = geslotenClean;
+    await patchLead(leadId, fields);
     showToast(verschenen ? '✅ Opgeslagen — gekomen' : '❌ Opgeslagen — niet gekomen', 'success');
   } catch(e) {
     showToast('Opslaan mislukt', 'error');
@@ -7773,6 +7838,8 @@ async function markAttendance(leadId, verschenen, gesloten, notitie) {
     return;
   }
 
+  // Auto-update revenue goal tracker
+  renderRevenueGoal();
   renderAttendanceBanner();
   if (calState.lastEvents) renderAttendanceDots();
 }
@@ -7892,7 +7959,7 @@ async function renderCalendar() {
       const dateStr = d.toISOString().slice(0, 10);
       const rows = Array.from({ length: CAL_HOURS }, (_, hIdx) => {
         const h = CAL_START_HOUR + hIdx;
-        return \`<div class="cal-hour-row" onclick="bookSlot('\${dateStr}',\${h})" title="Boek afspraak \${h}:00"></div>\`;
+        return \`<div class="cal-hour-row"><button class="cal-hour-add" onclick="bookSlot('\${dateStr}',\${h})" title="Boek afspraak \${h}:00">+</button></div>\`;
       }).join('');
 
       let nowLine = '';
