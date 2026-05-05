@@ -4018,7 +4018,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-modal-att-result.yes { background:rgba(16,185,129,0.1); color:var(--green); }
 .cal-modal-att-result.no  { background:rgba(244,63,94,0.1);  color:var(--red);   }
 
-/* ── Inline booking modal ─────────────────────────────────────── */
+/* ── Custom booking modal ─────────────────────────────────────── */
 #cal-book-overlay {
   position: fixed; inset: 0; z-index: 1200;
   background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
@@ -4027,53 +4027,152 @@ tr:hover .td-arrow { color: var(--cyan); }
 #cal-book-overlay.open { display: flex; }
 #cal-book-modal {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius); width: min(860px, 96vw); height: min(700px, 92vh);
+  border-radius: var(--radius); width: min(520px, 96vw); max-height: 90vh;
   display: flex; flex-direction: column; overflow: hidden;
   box-shadow: 0 28px 70px rgba(0,0,0,0.55);
   animation: modalIn 0.18s ease;
 }
 #cal-book-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 15px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 .cal-book-icon {
-  width: 34px; height: 34px; border-radius: 9px;
+  width: 36px; height: 36px; border-radius: 10px;
   background: linear-gradient(135deg,#6366f1,#4f46e5);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 #cal-book-title {
   flex: 1; font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.2;
 }
-#cal-book-subtitle {
-  font-size: 12px; color: var(--text-muted); font-weight: 400; margin-top: 2px;
-}
-#cal-book-external {
-  font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 600;
-  padding: 5px 11px; border: 1px solid rgba(99,102,241,0.3);
-  border-radius: 7px; transition: background 0.15s; white-space: nowrap;
-}
-#cal-book-external:hover { background: rgba(99,102,241,0.12); }
+#cal-book-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 #cal-book-close {
   width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
   background: transparent; cursor: pointer; display: flex; align-items: center;
-  justify-content: center; color: var(--text-muted); transition: var(--transition);
-  flex-shrink: 0;
+  justify-content: center; color: var(--text-muted); transition: var(--transition); flex-shrink: 0;
 }
 #cal-book-close:hover { background: var(--bg-card-alt); color: var(--text-primary); }
-#cal-book-iframe-wrap {
-  flex: 1; position: relative; overflow: hidden;
+/* Scrollable body */
+#cal-book-body {
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 18px;
 }
-#cal-book-iframe {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  border: none; background: #fff;
+#cal-book-body::-webkit-scrollbar { width: 5px; }
+#cal-book-body::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+/* Section label */
+.cb-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 8px;
 }
-.cal-book-spinner {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 12px;
-  color: var(--text-muted); font-size: 13px; pointer-events: none;
+/* Event type tabs */
+.cb-types { display: flex; gap: 7px; flex-wrap: wrap; }
+.cb-type-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg-card-alt); color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition);
+  font-family: 'Inter',sans-serif; white-space: nowrap;
+}
+.cb-type-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cb-type-btn.active {
+  background: rgba(99,102,241,0.12); border-color: var(--accent); color: var(--accent);
+}
+.cb-type-dur {
+  font-size: 10px; opacity: 0.7; margin-left: 4px;
+}
+/* Date nav */
+.cb-date-nav {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 12px;
+}
+.cb-date-label {
+  flex: 1; font-size: 14px; font-weight: 700; color: var(--text-primary); text-align: center;
+}
+.cb-date-btn {
+  width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border);
+  background: transparent; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: var(--text-muted); transition: var(--transition);
+  font-family: 'Inter',sans-serif;
+}
+.cb-date-btn:hover { background: var(--bg-card); color: var(--text-primary); border-color: var(--accent); }
+/* Slot grid */
+.cb-slots {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.cb-slot {
+  padding: 10px 8px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--bg-card-alt); color: var(--text-primary);
+  font-size: 13px; font-weight: 700; cursor: pointer; text-align: center;
+  transition: var(--transition); font-family: 'Inter',sans-serif;
+}
+.cb-slot:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); color: var(--accent); }
+.cb-slot.selected {
+  background: rgba(99,102,241,0.15); border-color: var(--accent);
+  color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+}
+.cb-slots-empty {
+  grid-column: 1/-1; text-align: center; padding: 24px;
+  color: var(--text-muted); font-size: 13px; line-height: 1.6;
+}
+/* Lead search */
+.cb-lead-search {
+  position: relative;
+}
+.cb-lead-input {
+  width: 100%; box-sizing: border-box; padding: 9px 12px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text-primary); font-size: 13px;
+  font-family: 'Inter',sans-serif; transition: border-color 0.15s; outline: none;
+}
+.cb-lead-input:focus { border-color: var(--accent); }
+.cb-lead-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 9px; max-height: 160px; overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.cb-lead-opt {
+  padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--text-primary);
+  border-bottom: 1px solid var(--border); transition: background 0.1s;
+  display: flex; align-items: center; gap: 8px;
+}
+.cb-lead-opt:last-child { border-bottom: none; }
+.cb-lead-opt:hover { background: rgba(99,102,241,0.07); }
+.cb-lead-opt-score { font-size: 10px; color: var(--accent); font-weight: 700; margin-left: auto; }
+/* Confirm button */
+.cb-confirm-wrap { padding-top: 4px; }
+.cb-confirm-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 13px; border-radius: 10px;
+  background: linear-gradient(135deg,#6366f1,#4f46e5); color: #fff;
+  font-size: 14px; font-weight: 700; cursor: pointer; border: none;
+  font-family: 'Inter',sans-serif; transition: filter 0.15s, transform 0.12s;
+  text-decoration: none;
+}
+.cb-confirm-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.cb-confirm-btn:disabled { opacity: 0.4; pointer-events: none; }
+.cb-confirm-note { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 7px; }
+/* Loading / empty states */
+.cb-loading {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; padding: 32px;
+  color: var(--text-muted); font-size: 13px;
+}
+.cb-spinner-ring {
+  width: 28px; height: 28px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.cb-no-connection {
+  padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; line-height: 1.7;
+}
+.cb-no-connection a { color: var(--accent); font-weight: 600; }
+/* Loading spinner for slots refresh */
+.cb-slots-loading {
+  grid-column: 1/-1; display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 20px; color: var(--text-muted); font-size: 12px;
 }
 .cal-book-spinner-ring {
-  width: 32px; height: 32px; border: 3px solid var(--border);
+  width: 16px; height: 16px; border: 2px solid var(--border);
   border-top-color: var(--accent); border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -4955,7 +5054,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
-          <button id="calendly-open-btn" class="cal-book-btn" onclick="openCalBookModal(state.calendlyUrl||'')">
+          <button id="calendly-open-btn" class="cal-book-btn" onclick="openCalBookModal(new Date().toISOString().slice(0,10),null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Boek afspraak
           </button>
@@ -5356,7 +5455,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   </div>
 </div>
 
-<!-- Inline Calendly Booking Modal -->
+<!-- Custom Calendly Booking Modal -->
 <div id="cal-book-overlay" onclick="if(event.target===this)closeCalBookModal()">
   <div id="cal-book-modal">
     <div id="cal-book-header">
@@ -5367,18 +5466,12 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div id="cal-book-title">Afspraak inplannen</div>
         <div id="cal-book-subtitle"></div>
       </div>
-      <a id="cal-book-external" href="#" target="_blank">↗ Nieuw venster</a>
       <button id="cal-book-close" onclick="closeCalBookModal()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <div id="cal-book-iframe-wrap">
-      <div class="cal-book-spinner" id="cal-book-spinner">
-        <div class="cal-book-spinner-ring"></div>
-        <span>Calendly laden...</span>
-      </div>
-      <iframe id="cal-book-iframe" src="" allow="camera; microphone; autoplay" loading="lazy" onload="document.getElementById('cal-book-spinner').style.display='none'"></iframe>
-    </div>
+    <!-- Body is rendered dynamically by JS -->
+    <div id="cal-book-body"></div>
   </div>
 </div>
 
@@ -7139,55 +7232,265 @@ function calToday() { calState.weekStart = calGetMonday(new Date()); renderCalen
 function calPrev()  { calState.weekStart.setDate(calState.weekStart.getDate() - 7); renderCalendar(); }
 function calNext()  { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
 
+/* ── Custom Calendly booking modal ──────────────────────────── */
+const calBookState = {
+  date:          '',        // YYYY-MM-DD
+  eventTypes:    [],
+  selectedType:  null,      // uri string
+  selectedSlot:  null,      // ISO string
+  selectedLead:  null,      // lead object
+  slots:         [],
+  loading:       false,
+};
+
 function bookSlot(dateStr, hour) {
-  const base = state.calendlyUrl || '';
-  if (!base) {
-    showToast('Stel eerst uw Calendly-link in via Instellingen.', 'warn');
-    return;
-  }
-  const month = dateStr.slice(0, 7);
-  const sep   = base.includes('?') ? '&' : '?';
-  const url   = base + sep + 'month=' + month + '&date=' + dateStr + '&hide_gdpr_banner=1';
-  openCalBookModal(url, dateStr, hour);
+  openCalBookModal(dateStr, null);
 }
 
-function openCalBookModal(url, dateStr, hour) {
-  const overlay  = document.getElementById('cal-book-overlay');
-  const iframe   = document.getElementById('cal-book-iframe');
-  const extLink  = document.getElementById('cal-book-external');
-  const subtitle = document.getElementById('cal-book-subtitle');
-  const spinner  = document.getElementById('cal-book-spinner');
-  if (!overlay || !iframe) { window.open(url, '_blank'); return; }
+function openCalBookModal(dateStr, prefillLead) {
+  const overlay = document.getElementById('cal-book-overlay');
+  if (!overlay) return;
 
-  if (dateStr) {
+  // Set initial state
+  calBookState.date         = dateStr || new Date().toISOString().slice(0, 10);
+  calBookState.selectedSlot = null;
+  calBookState.selectedLead = prefillLead || null;
+  calBookState.slots        = [];
+  calBookState.eventTypes   = [];
+  calBookState.selectedType = null;
+
+  // Update subtitle
+  const subtitle = document.getElementById('cal-book-subtitle');
+  if (subtitle) {
     const nl  = ['zo','ma','di','wo','do','vr','za'];
     const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-    const d   = new Date(dateStr + 'T12:00:00');
+    const d   = new Date(calBookState.date + 'T12:00:00');
     const day = nl[d.getDay()];
-    const lbl = day.charAt(0).toUpperCase() + day.slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
-    if (subtitle) subtitle.textContent = hour !== undefined
-      ? lbl + ' · ' + String(hour).padStart(2,'0') + ':00'
-      : lbl;
-  } else {
-    if (subtitle) subtitle.textContent = 'Kies een tijdslot in Calendly';
+    subtitle.textContent = day.charAt(0).toUpperCase() + day.slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
   }
 
-  if (extLink) extLink.href = url;
-  if (spinner) spinner.style.display = 'flex';
-  iframe.src = url;
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  renderCalBookBody();
+  fetchCalSlots();
 }
 
 function closeCalBookModal() {
   const overlay = document.getElementById('cal-book-overlay');
-  const iframe  = document.getElementById('cal-book-iframe');
-  const spinner = document.getElementById('cal-book-spinner');
   if (overlay) overlay.classList.remove('open');
-  if (iframe)  { iframe.src = ''; }
-  if (spinner) spinner.style.display = 'flex';
   document.body.style.overflow = '';
 }
+
+function renderCalBookBody() {
+  const body = document.getElementById('cal-book-body');
+  if (!body) return;
+
+  const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  const nl  = ['zo','ma','di','wo','do','vr','za'];
+  const d   = new Date(calBookState.date + 'T12:00:00');
+  const dateLbl = nl[d.getDay()].charAt(0).toUpperCase() + nl[d.getDay()].slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
+
+  // Event type tabs
+  const typesHtml = calBookState.eventTypes.length > 1
+    ? \`<div>
+        <div class="cb-label">Type afspraak</div>
+        <div class="cb-types">
+          \${calBookState.eventTypes.map(et => {
+            const active = et.uri === calBookState.selectedType ? ' active' : '';
+            const dur    = et.duration ? \`<span class="cb-type-dur">(\${et.duration}min)</span>\` : '';
+            return \`<button class="cb-type-btn\${active}" onclick="calBookSelectType('\${escHtml(et.uri)}')">\${escHtml(et.name)}\${dur}</button>\`;
+          }).join('')}
+        </div>
+      </div>\`
+    : '';
+
+  // Date nav
+  const dateNavHtml = \`<div>
+    <div class="cb-label">Datum</div>
+    <div class="cb-date-nav">
+      <button class="cb-date-btn" onclick="calBookNavDate(-1)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="cb-date-label">\${dateLbl}</div>
+      <button class="cb-date-btn" onclick="calBookNavDate(1)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>\`;
+
+  // Slots
+  let slotsHtml;
+  if (calBookState.loading) {
+    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-loading"><div class="cal-book-spinner-ring"></div> Beschikbare tijden laden...</div></div>\`;
+  } else if (calBookState.slots.length === 0) {
+    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">Geen beschikbare tijden op \${dateLbl}.<br>Kies een andere datum.</div></div>\`;
+  } else {
+    slotsHtml = \`<div class="cb-slots">\${calBookState.slots.map(slot => {
+      const t     = new Date(slot.startTime);
+      const hh    = String(t.getHours()).padStart(2,'0');
+      const mm    = String(t.getMinutes()).padStart(2,'0');
+      const sel   = slot.startTime === calBookState.selectedSlot ? ' selected' : '';
+      const isoEsc = escHtml(slot.startTime);
+      return \`<button class="cb-slot\${sel}" onclick="calBookSelectSlot('\${isoEsc}')">\${hh}:\${mm}</button>\`;
+    }).join('')}</div>\`;
+  }
+
+  // Lead picker (shown when slot selected)
+  let leadHtml = '';
+  if (calBookState.selectedSlot) {
+    const qualified = (state.leads || [])
+      .filter(l => l.qualified)
+      .sort((a, b) => (b.leadScore || 0) - (a.leadScore || 0))
+      .slice(0, 30);
+    const selId = calBookState.selectedLead ? String(calBookState.selectedLead.id) : '';
+    leadHtml = \`<div>
+      <div class="cb-label">Koppel aan lead <span style="font-weight:400;text-transform:none;letter-spacing:0">(optioneel)</span></div>
+      <div class="cb-lead-search">
+        <input class="cb-lead-input" id="cb-lead-input" type="text"
+          placeholder="Zoek op naam..."
+          value="\${escHtml(calBookState.selectedLead ? (calBookState.selectedLead.naam || '') : '')}"
+          oninput="calBookFilterLeads(this.value)"
+          onfocus="calBookFilterLeads(this.value)"
+        />
+        <div class="cb-lead-dropdown" id="cb-lead-dropdown" style="display:none">
+          \${qualified.map(l => {
+            const lid    = escHtml(String(l.id));
+            const name   = escHtml(l.naam || 'Onbekend');
+            const score  = l.leadScore || '';
+            return \`<div class="cb-lead-opt" onclick="calBookPickLead('\${lid}')">
+              <span>\${name}</span>
+              \${score ? \`<span class="cb-lead-opt-score">\${score}</span>\` : ''}
+            </div>\`;
+          }).join('')}
+        </div>
+      </div>
+    </div>\`;
+  }
+
+  // Confirm button
+  let confirmHtml = '';
+  if (calBookState.selectedSlot) {
+    const selType = calBookState.eventTypes.find(e => e.uri === calBookState.selectedType);
+    const bookUrl = selType ? selType.bookingUrl : (state.calendlyUrl || '');
+    const t       = new Date(calBookState.selectedSlot);
+    const hh      = String(t.getHours()).padStart(2,'0');
+    const mm      = String(t.getMinutes()).padStart(2,'0');
+    const dateParam = calBookState.date;
+    const fullUrl = bookUrl + (bookUrl.includes('?') ? '&' : '?') + 'date=' + dateParam;
+    confirmHtml = \`<div class="cb-confirm-wrap">
+      <a class="cb-confirm-btn" href="\${escHtml(fullUrl)}" target="_blank" onclick="closeCalBookModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Bevestig \${hh}:\${mm} in Calendly
+      </a>
+      <div class="cb-confirm-note">Calendly opent in een nieuw venster — datum is al geselecteerd</div>
+    </div>\`;
+  }
+
+  body.innerHTML = typesHtml + dateNavHtml +
+    \`<div><div class="cb-label">Beschikbare tijden</div>\${slotsHtml}</div>\` +
+    leadHtml + confirmHtml;
+}
+
+async function fetchCalSlots() {
+  calBookState.loading = true;
+  calBookState.slots   = [];
+  renderCalBookBody();
+
+  try {
+    const typeParam = calBookState.selectedType
+      ? '&event_type=' + encodeURIComponent(calBookState.selectedType)
+      : '';
+    const resp = await fetch(
+      \`\${API_BASE}/calendly-slots?date=\${calBookState.date}\${typeParam}\`,
+      { headers: { 'x-api-key': state.apiKey } }
+    );
+    const data = await resp.json();
+
+    if (!data.connected) {
+      calBookState.loading = false;
+      const body = document.getElementById('cal-book-body');
+      if (body) body.innerHTML = \`<div class="cb-no-connection">
+        Calendly is niet verbonden.<br>
+        Ga naar <a href="#" onclick="closeCalBookModal();navigateTo('instellingen')">Instellingen</a> om te verbinden.
+      </div>\`;
+      return;
+    }
+
+    calBookState.eventTypes = data.eventTypes || [];
+    if (!calBookState.selectedType && calBookState.eventTypes.length) {
+      calBookState.selectedType = data.selectedEventType || calBookState.eventTypes[0].uri;
+    }
+    calBookState.slots   = data.slots || [];
+    calBookState.loading = false;
+    renderCalBookBody();
+
+  } catch (e) {
+    calBookState.loading = false;
+    calBookState.slots   = [];
+    renderCalBookBody();
+  }
+}
+
+function calBookSelectType(uri) {
+  if (calBookState.selectedType === uri) return;
+  calBookState.selectedType = uri;
+  calBookState.selectedSlot = null;
+  fetchCalSlots();
+}
+
+function calBookSelectSlot(iso) {
+  calBookState.selectedSlot = calBookState.selectedSlot === iso ? null : iso;
+  renderCalBookBody();
+}
+
+function calBookNavDate(delta) {
+  const d = new Date(calBookState.date + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  calBookState.date         = d.toISOString().slice(0, 10);
+  calBookState.selectedSlot = null;
+
+  // Update subtitle
+  const nl  = ['zo','ma','di','wo','do','vr','za'];
+  const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  const day = nl[d.getDay()];
+  const subtitle = document.getElementById('cal-book-subtitle');
+  if (subtitle) subtitle.textContent = day.charAt(0).toUpperCase() + day.slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
+
+  fetchCalSlots();
+}
+
+function calBookFilterLeads(q) {
+  const dropdown = document.getElementById('cb-lead-dropdown');
+  if (!dropdown) return;
+  const lower = (q || '').toLowerCase();
+  const opts   = dropdown.querySelectorAll('.cb-lead-opt');
+  let visible  = 0;
+  opts.forEach(opt => {
+    const name = opt.querySelector('span') ? opt.querySelector('span').textContent.toLowerCase() : '';
+    const show  = !lower || name.includes(lower);
+    opt.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  dropdown.style.display = visible > 0 ? 'block' : 'none';
+}
+
+function calBookPickLead(leadId) {
+  const lead = (state.leads || []).find(l => String(l.id) === leadId);
+  calBookState.selectedLead = lead || null;
+  const input    = document.getElementById('cb-lead-input');
+  const dropdown = document.getElementById('cb-lead-dropdown');
+  if (input)    input.value = lead ? (lead.naam || '') : '';
+  if (dropdown) dropdown.style.display = 'none';
+}
+
+// Hide lead dropdown when clicking outside
+document.addEventListener('click', e => {
+  const dd = document.getElementById('cb-lead-dropdown');
+  const inp = document.getElementById('cb-lead-input');
+  if (dd && inp && !dd.contains(e.target) && e.target !== inp) {
+    dd.style.display = 'none';
+  }
+});
 
 function renderCalSidebar() {
   const listEl  = document.getElementById('cal-sidebar-list');
@@ -7226,7 +7529,7 @@ function renderCalSidebar() {
       <div class="cal-call-actions">
         \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">📞 Bellen</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">💬 WA</a>\` : ''}
-        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal('\${escHtml(calUrl)}')">📅 Boeken</button>
+        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(new Date().toISOString().slice(0,10),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">📅 Boeken</button>
       </div>
     </div>\`;
   }).join('');
