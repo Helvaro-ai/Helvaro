@@ -3997,26 +3997,70 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-att-btn.yes:hover { background:rgba(16,185,129,0.2); }
 .cal-att-btn.no  { background:rgba(244,63,94,0.1); border-color:rgba(244,63,94,0.3); color:var(--red); }
 .cal-att-btn.no:hover  { background:rgba(244,63,94,0.2); }
+.cal-att-followup-input, .cal-att-followup-textarea {
+  width:100%; box-sizing:border-box; padding:7px 10px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:7px; color:var(--text-primary); font-size:12px;
+  font-family:'Inter',sans-serif; outline:none; transition:border-color 0.15s;
+}
+.cal-att-followup-input:focus, .cal-att-followup-textarea:focus { border-color:var(--accent); }
+.cal-att-followup-textarea { resize:vertical; min-height:52px; }
 /* Orange pulse dot on calendar events needing attendance */
 .cal-event-needs-att {
   position:absolute; top:5px; right:5px; width:8px; height:8px;
   border-radius:50%; background:var(--orange); animation:pulse 1.5s infinite;
 }
-/* Result badge in cal event modal */
+/* Attendance section in cal event modal */
 .cal-modal-att-section {
   margin-top:14px; padding-top:14px; border-top:1px solid var(--border);
 }
 .cal-modal-att-label {
-  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em;
   color:var(--text-muted); margin-bottom:9px;
 }
 .cal-modal-att-btns { display:flex; gap:8px; }
 .cal-modal-att-result {
-  margin-top:14px; padding:8px 14px; border-radius:8px;
-  font-size:13px; font-weight:700; text-align:center;
+  margin-top:14px; padding:9px 14px; border-radius:9px;
+  font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;
 }
 .cal-modal-att-result.yes { background:rgba(16,185,129,0.1); color:var(--green); }
 .cal-modal-att-result.no  { background:rgba(244,63,94,0.1);  color:var(--red);   }
+.cal-modal-att-result-edit {
+  margin-left:auto; font-size:11px; font-weight:600; cursor:pointer;
+  color:var(--text-muted); text-decoration:underline;
+}
+/* Follow-up form after marking attendance */
+.cal-att-followup {
+  margin-top:12px; display:flex; flex-direction:column; gap:10px;
+  padding:12px; background:var(--bg-card-alt); border-radius:10px;
+  border:1px solid var(--border); animation:modalIn 0.15s ease;
+}
+.cal-att-followup-label {
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted);
+}
+.cal-att-followup-input {
+  width:100%; box-sizing:border-box; padding:8px 11px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:8px; color:var(--text-primary); font-size:13px;
+  font-family:'Inter',sans-serif; transition:border-color 0.15s; outline:none;
+}
+.cal-att-followup-input:focus { border-color:var(--accent); }
+.cal-att-followup-textarea {
+  width:100%; box-sizing:border-box; padding:8px 11px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:8px; color:var(--text-primary); font-size:13px;
+  font-family:'Inter',sans-serif; transition:border-color 0.15s; outline:none;
+  resize:vertical; min-height:72px;
+}
+.cal-att-followup-textarea:focus { border-color:var(--accent); }
+.cal-att-save-btn {
+  padding:9px 16px; border-radius:8px; border:none; cursor:pointer;
+  background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff;
+  font-size:13px; font-weight:700; font-family:'Inter',sans-serif;
+  transition:filter 0.15s; text-align:center;
+}
+.cal-att-save-btn:hover { filter:brightness(1.1); }
+.cal-att-save-btn:disabled { opacity:0.5; pointer-events:none; }
 
 /* ── Custom booking modal ─────────────────────────────────────── */
 #cal-book-overlay {
@@ -7145,16 +7189,37 @@ function openCalEvent(idx) {
       const nd  = parseNotities(ml);
       const v   = nd.afspraak ? nd.afspraak.verschenen : undefined;
       const lid = escHtml(String(ml.id));
+      const gesloten = nd.afspraak?.gesloten || '';
+      const notitie  = escHtml(nd.afspraak?.notitie || '');
+
       if (v === true) {
-        attSection = \`<div class="cal-modal-att-result yes">✅ Gekomen</div>\`;
-      } else if (v === false) {
-        attSection = \`<div class="cal-modal-att-result no">❌ Niet gekomen</div>\`;
-      } else {
+        // Already marked as came — show result + stored deal info
         attSection = \`<div class="cal-modal-att-section">
+          <div class="cal-modal-att-label">Afspraak resultaat</div>
+          <div class="cal-modal-att-result yes">
+            ✅ Gekomen
+            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lid}',true)">Bewerken</span>
+          </div>
+          \${gesloten ? \`<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px;">💰 Deal: \${escHtml(gesloten)}</div>\` : ''}
+          \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
+        </div>\`;
+      } else if (v === false) {
+        // Already marked as no-show — show result + reason
+        attSection = \`<div class="cal-modal-att-section">
+          <div class="cal-modal-att-label">Afspraak resultaat</div>
+          <div class="cal-modal-att-result no">
+            ❌ Niet gekomen
+            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lid}',false)">Bewerken</span>
+          </div>
+          \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
+        </div>\`;
+      } else {
+        // Not yet marked — show buttons
+        attSection = \`<div class="cal-modal-att-section" id="cal-att-section-\${lid}">
           <div class="cal-modal-att-label">Kwam deze persoon?</div>
           <div class="cal-modal-att-btns">
-            <button class="cal-att-btn yes" onclick="markAttendance('\${lid}',true);document.getElementById('cal-event-modal').classList.remove('open')">✅ Gekomen</button>
-            <button class="cal-att-btn no"  onclick="markAttendance('\${lid}',false);document.getElementById('cal-event-modal').classList.remove('open')">❌ Niet gekomen</button>
+            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lid}',true)">✅ Gekomen</button>
+            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lid}',false)">❌ Niet gekomen</button>
           </div>
         </div>\`;
       }
@@ -7163,6 +7228,93 @@ function openCalEvent(idx) {
 
   body.innerHTML = rows + \`<div class="cal-modal-actions">\${joinBtn}\${rescheduleBtn}\${cancelBtn}</div>\` + attSection;
   overlay.classList.add('open');
+}
+
+/* Show follow-up form inside the calendar event modal */
+function calAttShowForm(leadId, verschenen) {
+  const section = document.getElementById('cal-att-section-' + leadId);
+  if (!section) return;
+
+  if (verschenen) {
+    section.innerHTML = \`
+      <div class="cal-modal-att-label">Afspraak resultaat — ✅ Gekomen</div>
+      <div class="cal-att-followup" id="cal-att-followup">
+        <div>
+          <div class="cal-att-followup-label">Hebben ze iets gekocht? (optioneel)</div>
+          <input id="cal-att-deal" class="cal-att-followup-input" type="text" placeholder="bijv. €1.500 of Pakket Pro" />
+        </div>
+        <div>
+          <div class="cal-att-followup-label">Notities over het gesprek</div>
+          <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="Wat is er besproken? Volgende stap?"></textarea>
+        </div>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">
+          💾 Opslaan
+        </button>
+      </div>\`;
+  } else {
+    section.innerHTML = \`
+      <div class="cal-modal-att-label">Afspraak resultaat — ❌ Niet gekomen</div>
+      <div class="cal-att-followup" id="cal-att-followup">
+        <div>
+          <div class="cal-att-followup-label">Reden / notitie (optioneel)</div>
+          <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="bijv. geen antwoord, verkeerd nummer, wil herplannen..."></textarea>
+        </div>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">
+          💾 Opslaan
+        </button>
+      </div>\`;
+  }
+}
+
+/* Re-open form for editing already-saved attendance */
+function calAttStartEdit(leadId, verschenen) {
+  const section = document.querySelector('.cal-modal-att-section');
+  if (!section) return;
+  section.id = 'cal-att-section-' + leadId;
+  const lead = (state.leads || []).find(l => String(l.id) === leadId);
+  const nd = lead ? parseNotities(lead) : {};
+
+  if (verschenen) {
+    section.innerHTML = \`
+      <div class="cal-modal-att-label">Afspraak resultaat — ✅ Gekomen</div>
+      <div class="cal-att-followup">
+        <div>
+          <div class="cal-att-followup-label">Deal waarde</div>
+          <input id="cal-att-deal" class="cal-att-followup-input" type="text" value="\${escHtml(nd.afspraak?.gesloten||'')}" placeholder="bijv. €1.500" />
+        </div>
+        <div>
+          <div class="cal-att-followup-label">Notities</div>
+          <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
+        </div>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">💾 Opslaan</button>
+      </div>\`;
+  } else {
+    section.innerHTML = \`
+      <div class="cal-modal-att-label">Afspraak resultaat — ❌ Niet gekomen</div>
+      <div class="cal-att-followup">
+        <div>
+          <div class="cal-att-followup-label">Notitie</div>
+          <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
+        </div>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">💾 Opslaan</button>
+      </div>\`;
+  }
+}
+
+async function calAttSave(leadId, verschenen) {
+  const dealEl = document.getElementById('cal-att-deal');
+  const noteEl = document.getElementById('cal-att-note');
+  const btn    = document.querySelector('.cal-att-save-btn');
+  const deal   = dealEl ? dealEl.value.trim() : '';
+  const note   = noteEl ? noteEl.value.trim() : '';
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Opslaan...'; }
+
+  await markAttendance(leadId, verschenen, deal, note);
+
+  // Close modal
+  const overlay = document.getElementById('cal-event-modal');
+  if (overlay) overlay.classList.remove('open');
 }
 
 function closeCalModal(e) {
@@ -7587,20 +7739,24 @@ function renderAttendanceBanner() {
         <div class="cal-att-name">\${escHtml(lead.naam || ev.name || '?')}</div>
         <div class="cal-att-time">\${dayLbl} · \${timeLbl}</div>
       </div>
-      <div class="cal-att-btns">
-        <button class="cal-att-btn yes" onclick="markAttendance('\${idStr}',true)">✅ Gekomen</button>
-        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false)">❌ Niet gekomen</button>
+      <div class="cal-att-btns" id="cal-att-btns-\${idStr}">
+        <button class="cal-att-btn yes" onclick="bannerAttYes('\${idStr}')">✅ Gekomen</button>
+        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false,'','');renderAttendanceBanner()">❌ Niet</button>
       </div>
     </div>\`;
   }).join('');
 }
 
-async function markAttendance(leadId, verschenen) {
+async function markAttendance(leadId, verschenen, gesloten, notitie) {
   const lead = (state.leads || []).find(l => String(l.id) === String(leadId));
   if (!lead) return;
 
   const nData = parseNotities(lead);
-  nData.afspraak = Object.assign({}, nData.afspraak || {}, { verschenen });
+  nData.afspraak = Object.assign({}, nData.afspraak || {}, {
+    verschenen,
+    ...(gesloten  !== undefined ? { gesloten:  String(gesloten  || '').trim() } : {}),
+    ...(notitie   !== undefined ? { notitie:   String(notitie   || '').trim() } : {}),
+  });
   const notitiesStr = serializeNotities(nData);
 
   // Optimistic update
@@ -7610,17 +7766,37 @@ async function markAttendance(leadId, verschenen) {
 
   try {
     await patchLead(leadId, { notities: notitiesStr });
-    showToast(verschenen ? '✅ Gemarkeerd als gekomen' : '❌ Gemarkeerd als niet gekomen', 'success');
+    showToast(verschenen ? '✅ Opgeslagen — gekomen' : '❌ Opgeslagen — niet gekomen', 'success');
   } catch(e) {
     showToast('Opslaan mislukt', 'error');
-    lead.notities = lead.notities;
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
     return;
   }
 
   renderAttendanceBanner();
-  // Refresh calendar to remove dot
   if (calState.lastEvents) renderAttendanceDots();
+}
+
+/* Expand banner card to ask deal + note when "Gekomen" clicked */
+function bannerAttYes(leadId) {
+  const btnsEl = document.getElementById('cal-att-btns-' + leadId);
+  if (!btnsEl) return;
+  btnsEl.outerHTML = \`<div id="cal-att-form-\${escHtml(leadId)}" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;width:100%">
+    <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="💰 Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
+    <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="📝 Notities over het gesprek..." style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
+    <div style="display:flex;gap:6px">
+      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escHtml(leadId)}')">💾 Opslaan</button>
+      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escHtml(leadId)}',false,'','');renderAttendanceBanner()">❌ Niet</button>
+    </div>
+  </div>\`;
+}
+
+async function bannerAttSave(leadId) {
+  const dealEl = document.getElementById('cal-att-deal-' + leadId);
+  const noteEl = document.getElementById('cal-att-note-' + leadId);
+  const deal   = dealEl ? dealEl.value.trim() : '';
+  const note   = noteEl ? noteEl.value.trim() : '';
+  await markAttendance(leadId, true, deal, note);
 }
 
 function renderAttendanceDots() {
