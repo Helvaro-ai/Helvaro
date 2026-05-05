@@ -850,24 +850,34 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 .cal-scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
 .cal-time-grid {
   display: flex;
-  min-height: 660px;
+  min-height: 880px;
 }
 .cal-time-labels {
-  width: 54px;
+  width: 58px;
   flex-shrink: 0;
   position: relative;
 }
 .cal-time-label {
-  height: 60px;
+  height: 80px;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
   padding-right: 10px;
   font-size: 11px;
   color: var(--text-muted);
-  font-weight: 500;
-  padding-top: 2px;
+  font-weight: 600;
+  padding-top: 4px;
   box-sizing: border-box;
+  position: relative;
+}
+.cal-time-label-half {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-weight: 500;
 }
 .cal-day-cols {
   flex: 1;
@@ -880,9 +890,21 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   position: relative;
 }
 .cal-hour-row {
-  height: 60px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  height: 80px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
   box-sizing: border-box;
+  position: relative;
+}
+.cal-hour-row::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 40px;
+  border-bottom: 1px dashed rgba(255,255,255,0.035);
+  pointer-events: none;
+}
+[data-theme="light"] .cal-hour-row::after {
+  border-bottom-color: rgba(0,0,0,0.06);
 }
 .cal-day-col.cal-today-col { background: rgba(99,102,241,0.03); }
 
@@ -910,50 +932,59 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 /* Event blocks */
 .cal-event {
   position: absolute;
-  left: 4px;
-  right: 4px;
-  border-radius: 8px;
-  padding: 5px 8px;
+  left: 3px;
+  right: 3px;
+  border-radius: 9px;
+  padding: 6px 9px;
   font-size: 12px;
   font-weight: 600;
   color: #fff;
   cursor: pointer;
   overflow: hidden;
   z-index: 5;
-  transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
-  min-height: 24px;
+  transition: filter 0.15s, transform 0.12s, box-shadow 0.15s;
+  min-height: 28px;
   line-height: 1.3;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.28);
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  border-left: 3px solid rgba(255,255,255,0.35);
 }
 .cal-event:hover {
-  filter: brightness(1.12);
-  transform: translateX(-1px) scale(1.015);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  filter: brightness(1.1);
+  transform: translateX(-1px) scale(1.018);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.38);
   z-index: 10;
 }
 .cal-event .cal-event-time {
   font-size: 10px;
-  font-weight: 700;
-  opacity: 0.9;
-  letter-spacing: 0.3px;
+  font-weight: 800;
+  opacity: 1;
+  letter-spacing: 0.2px;
   white-space: nowrap;
 }
 .cal-event .cal-event-name {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cal-event .cal-event-type {
   font-size: 9px;
-  opacity: 0.75;
+  opacity: 0.7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.cal-event .cal-event-dur {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.75;
+  white-space: nowrap;
+  margin-top: auto;
+  padding-top: 2px;
 }
 
 /* ============================================================
@@ -6987,9 +7018,14 @@ function openCalEvent(idx) {
 
   title.textContent = escHtml(ev.name || 'Afspraak');
 
+  const durMin  = Math.round((end - start) / 60000) || 30;
+  const durH    = Math.floor(durMin / 60);
+  const durM    = durMin % 60;
+  const durLbl  = durH > 0 ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`) : \`\${durMin}min\`;
   const rows = [
     { label: 'Datum',   val: fmtD(start) },
     { label: 'Tijd',    val: fmtT(start) + ' – ' + fmtT(end) },
+    { label: 'Duur',    val: durLbl },
     { label: 'Type',    val: ev.eventType || '—' },
     { label: 'E-mail',  val: ev.email     || '—' },
   ].map(r => \`<div class="cal-modal-row"><span class="cal-modal-row-label">\${r.label}</span><span class="cal-modal-row-val">\${escHtml(String(r.val))}</span></div>\`).join('');
@@ -7087,7 +7123,7 @@ function updateCalBadge(events) {
 /* ── Week Calendar ── */
 const CAL_START_HOUR = 8;
 const CAL_HOURS      = 13;   // 8 AM – 9 PM
-const CAL_ROW_H      = 60;
+const CAL_ROW_H      = 80;
 
 const calState = { weekStart: null, cache: {}, lastEvents: [] };
 
@@ -7344,13 +7380,14 @@ async function renderCalendar() {
     }).join('');
   }
 
-  // Time labels
+  // Time labels (with half-hour ticks)
   const timeLabels = document.getElementById('cal-time-labels');
   if (timeLabels) {
     timeLabels.innerHTML = Array.from({ length: CAL_HOURS }, (_, i) => {
-      const h = CAL_START_HOUR + i;
-      const lbl = h < 12 ? h + ' AM' : (h === 12 ? '12 PM' : (h - 12) + ' PM');
-      return \`<div class="cal-time-label">\${lbl}</div>\`;
+      const h   = CAL_START_HOUR + i;
+      const lbl = h < 12 ? h + ':00' : (h === 12 ? '12:00' : (h - 12) + ':00');
+      const halfLbl = h < 11 ? (h) + ':30' : (h === 11 ? '11:30' : (h === 12 ? '12:30' : (h - 12) + ':30'));
+      return \`<div class="cal-time-label">\${lbl}<span class="cal-time-label-half">\${halfLbl}</span></div>\`;
     }).join('');
   }
 
@@ -7407,6 +7444,12 @@ async function renderCalendar() {
         const endMM    = String(end.getMinutes()).padStart(2,'0');
         const fullName = escHtml(ev.name || 'Afspraak');
         const eventTypeTxt = escHtml(ev.eventType || '');
+        // Duration label
+        const durH   = Math.floor(durMin / 60);
+        const durM   = durMin % 60;
+        const durLbl = durH > 0
+          ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`)
+          : \`\${durMin}min\`;
         // Orange dot: past event where matched lead has no attendance marked
         let attDot = '';
         if (start.getTime() < fiveHoursAgo) {
@@ -7417,12 +7460,22 @@ async function renderCalendar() {
             if (v !== true && v !== false) attDot = '<div class="cal-event-needs-att"></div>';
           }
         }
-        const bodyHtml = height < 32
-          ? \`<div class="cal-event-time">\${hh}:\${mm}</div>\`
-          : height < 52
-          ? \`<div class="cal-event-time">\${hh}:\${mm}</div><div class="cal-event-name">\${fullName}</div>\`
-          : \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}\`;
-        return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM}" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
+        // Adaptive body based on available height
+        let bodyHtml;
+        if (height < 30) {
+          // Tiny: just start time
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}</div>\`;
+        } else if (height < 50) {
+          // Small: time + name
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\`;
+        } else if (height < 72) {
+          // Medium: time range + name + duration
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div><div class="cal-event-dur">⏱ \${durLbl}</div>\`;
+        } else {
+          // Tall: full info
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}<div class="cal-event-dur">⏱ \${durLbl}</div>\`;
+        }
+        return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${durLbl})" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
       }).join('');
 
       const colClass = \`cal-day-col\${isToday ? ' cal-today-col' : ''}\${isWeekend ? ' cal-weekend-col' : ''}\`;
