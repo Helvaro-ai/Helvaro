@@ -174,7 +174,7 @@ async function processMessage(phone, text) {
         `Tel: ${phone}\n` +
         `Project: ${projectCode}${score}\n` +
         `${aiResponse.summary || ''}\n\n` +
-        `Dashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`;
+        `Dashboard: https://app.helvaro.pro/dashboard`;
       await sendWA(NOTIFY_PHONE, notifyMsg);
     }
   }

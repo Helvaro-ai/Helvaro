@@ -203,7 +203,7 @@ module.exports = function handler(req, res) {
 
 <script>
 var PROJECT = '${project}';
-var API     = 'https://helvaro-helvaros-projects.vercel.app/api/form/' + encodeURIComponent(PROJECT);
+var API     = 'https://app.helvaro.pro/api/form/' + encodeURIComponent(PROJECT);
 
 var btn  = document.getElementById('btn');
 var err  = document.getElementById('err');

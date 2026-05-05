@@ -107,7 +107,7 @@ module.exports = async function handler(req, res) {
     const waGreeting  = `Hey ${firstName}! ${sanitize(aiName)} hier van ${sanitize(clientName)}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
     const notifyPhone = process.env.NOTIFY_PHONE;
     const notifyMsg   = notifyPhone
-      ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://helvaro-helvaros-projects.vercel.app/dashboard`
+      ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
       : null;
 
     // Fire after 60 seconds — feels like a real person picking up the form
@@ -159,7 +159,7 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
             <tr><td style="padding:8px;color:#666">Project</td><td style="padding:8px">${project_code}</td></tr>
             <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${bron}</td></tr>
           </table>
-          <a href="https://helvaro-helvaros-projects.vercel.app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
+          <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
         </div>`
     })
   }).catch(err => console.error('[form] E-mail notificatie mislukt:', err.message));

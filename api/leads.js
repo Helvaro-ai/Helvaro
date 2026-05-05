@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
                 <tr><td style="padding:8px;color:#666">Waarde</td><td style="padding:8px;font-weight:700;color:#16a34a">${body.dealWaarde}</td></tr>
                 <tr><td style="padding:8px;color:#666">Client</td><td style="padding:8px">${clientName}</td></tr>
               </table>
-              <a href="https://helvaro-helvaros-projects.vercel.app/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
+              <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
             </div>`
         }).catch(() => {});
       }
