@@ -15,6 +15,7 @@
     { "source": "/api/calendly-oauth-callback",     "destination": "/api/calendly" },
     { "source": "/api/calendly-slots",              "destination": "/api/calendly" },
     { "source": "/privacy",        "destination": "/api/privacy" },
+    { "source": "/terms",          "destination": "/api/privacy" },
     { "source": "/demo",           "destination": "/api/demo" },
     { "source": "/form-widget.js", "destination": "/public/form-widget.js" },
     { "source": "/favicon.png",    "destination": "/public/favicon.png" },
