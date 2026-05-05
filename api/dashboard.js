@@ -3934,6 +3934,59 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-hour-row { cursor: pointer; transition: background 0.1s; }
 .cal-hour-row:hover { background: rgba(99,102,241,0.08); }
 
+/* ── Attendance banner ────────────────────────────────────────── */
+.cal-attendance-banner {
+  display: none; flex-shrink: 0;
+  background: linear-gradient(135deg,rgba(245,158,11,0.08),rgba(245,158,11,0.03));
+  border-bottom: 1px solid rgba(245,158,11,0.2);
+  padding: 10px 16px 12px;
+}
+.cal-attendance-banner.visible { display: block; }
+.cal-att-banner-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--orange); margin-bottom: 9px; display: flex; align-items: center; gap: 6px;
+}
+.cal-att-cards { display: flex; gap: 9px; flex-wrap: wrap; }
+.cal-att-card {
+  background: var(--bg-card); border: 1px solid rgba(245,158,11,0.22);
+  border-radius: 10px; padding: 10px 12px;
+  display: flex; align-items: center; gap: 12px;
+  transition: border-color 0.15s;
+}
+.cal-att-card:hover { border-color: rgba(245,158,11,0.4); }
+.cal-att-info { min-width: 0; }
+.cal-att-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.cal-att-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.cal-att-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.cal-att-btn {
+  padding: 5px 13px; border-radius: 7px; font-size: 12px; font-weight: 700;
+  border: 1px solid; cursor: pointer; transition: var(--transition); font-family:'Inter',sans-serif;
+}
+.cal-att-btn.yes { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:var(--green); }
+.cal-att-btn.yes:hover { background:rgba(16,185,129,0.2); }
+.cal-att-btn.no  { background:rgba(244,63,94,0.1); border-color:rgba(244,63,94,0.3); color:var(--red); }
+.cal-att-btn.no:hover  { background:rgba(244,63,94,0.2); }
+/* Orange pulse dot on calendar events needing attendance */
+.cal-event-needs-att {
+  position:absolute; top:5px; right:5px; width:8px; height:8px;
+  border-radius:50%; background:var(--orange); animation:pulse 1.5s infinite;
+}
+/* Result badge in cal event modal */
+.cal-modal-att-section {
+  margin-top:14px; padding-top:14px; border-top:1px solid var(--border);
+}
+.cal-modal-att-label {
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--text-muted); margin-bottom:9px;
+}
+.cal-modal-att-btns { display:flex; gap:8px; }
+.cal-modal-att-result {
+  margin-top:14px; padding:8px 14px; border-radius:8px;
+  font-size:13px; font-weight:700; text-align:center;
+}
+.cal-modal-att-result.yes { background:rgba(16,185,129,0.1); color:var(--green); }
+.cal-modal-att-result.no  { background:rgba(244,63,94,0.1);  color:var(--red);   }
+
 /* ── Inline booking modal ─────────────────────────────────────── */
 #cal-book-overlay {
   position: fixed; inset: 0; z-index: 1200;
@@ -4875,6 +4928,15 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Boek afspraak
           </button>
+        </div>
+
+        <!-- Attendance banner — appears 5h after appointment -->
+        <div class="cal-attendance-banner" id="cal-attendance-banner">
+          <div class="cal-att-banner-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Afspraken zonder resultaat
+          </div>
+          <div class="cal-att-cards" id="cal-att-cards"></div>
         </div>
 
         <!-- Day headers -->
@@ -6945,7 +7007,32 @@ function openCalEvent(idx) {
     ? \`<a href="\${escHtml(ev.cancelUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-danger">Annuleren</a>\`
     : '';
 
-  body.innerHTML = rows + \`<div class="cal-modal-actions">\${joinBtn}\${rescheduleBtn}\${cancelBtn}</div>\`;
+  // Attendance section for past events (>5h ago)
+  let attSection = '';
+  const fiveHoursAgo = Date.now() - 5 * 60 * 60 * 1000;
+  if (start.getTime() < fiveHoursAgo) {
+    const ml = matchLeadToEvent(ev.name);
+    if (ml) {
+      const nd  = parseNotities(ml);
+      const v   = nd.afspraak ? nd.afspraak.verschenen : undefined;
+      const lid = escHtml(String(ml.id));
+      if (v === true) {
+        attSection = \`<div class="cal-modal-att-result yes">✅ Gekomen</div>\`;
+      } else if (v === false) {
+        attSection = \`<div class="cal-modal-att-result no">❌ Niet gekomen</div>\`;
+      } else {
+        attSection = \`<div class="cal-modal-att-section">
+          <div class="cal-modal-att-label">Kwam deze persoon?</div>
+          <div class="cal-modal-att-btns">
+            <button class="cal-att-btn yes" onclick="markAttendance('\${lid}',true);document.getElementById('cal-event-modal').classList.remove('open')">✅ Gekomen</button>
+            <button class="cal-att-btn no"  onclick="markAttendance('\${lid}',false);document.getElementById('cal-event-modal').classList.remove('open')">❌ Niet gekomen</button>
+          </div>
+        </div>\`;
+      }
+    }
+  }
+
+  body.innerHTML = rows + \`<div class="cal-modal-actions">\${joinBtn}\${rescheduleBtn}\${cancelBtn}</div>\` + attSection;
   overlay.classList.add('open');
 }
 
@@ -7109,6 +7196,116 @@ function renderCalSidebar() {
   }).join('');
 }
 
+/* ── Attendance tracking ─────────────────────────────────────── */
+function matchLeadToEvent(evName) {
+  const n = (evName || '').toLowerCase().replace(/\s+/g,' ').trim();
+  if (!n) return null;
+  const leads = state.leads || [];
+  // Exact match first
+  let found = leads.find(l => (l.naam||'').toLowerCase().replace(/\s+/g,' ').trim() === n);
+  if (found) return found;
+  // Partial: every word of event name appears in lead name (or vice versa)
+  const evWords = n.split(' ').filter(w => w.length > 2);
+  found = leads.find(l => {
+    const ln = (l.naam||'').toLowerCase();
+    return evWords.length > 0 && evWords.every(w => ln.includes(w));
+  });
+  return found || null;
+}
+
+function renderAttendanceBanner() {
+  const banner = document.getElementById('cal-attendance-banner');
+  const cards  = document.getElementById('cal-att-cards');
+  if (!banner || !cards) return;
+
+  const fiveHoursAgo = Date.now() - 5 * 60 * 60 * 1000;
+  const events = calState.lastEvents || [];
+
+  const pending = [];
+  events.forEach(ev => {
+    if (new Date(ev.startTime).getTime() > fiveHoursAgo) return;
+    const lead = matchLeadToEvent(ev.name);
+    if (!lead) return;
+    const nData = parseNotities(lead);
+    const v = nData.afspraak ? nData.afspraak.verschenen : undefined;
+    if (v === true || v === false) return; // already marked
+    pending.push({ ev, lead });
+  });
+
+  if (pending.length === 0) { banner.classList.remove('visible'); return; }
+  banner.classList.add('visible');
+
+  const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  const nl  = ['zo','ma','di','wo','do','vr','za'];
+
+  cards.innerHTML = pending.map(({ ev, lead }) => {
+    const start   = new Date(ev.startTime);
+    const dayLbl  = nl[start.getDay()] + ' ' + start.getDate() + ' ' + mns[start.getMonth()];
+    const timeLbl = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
+    const idStr   = escHtml(String(lead.id));
+    return \`<div class="cal-att-card" id="cal-att-card-\${idStr}">
+      <div class="cal-att-info">
+        <div class="cal-att-name">\${escHtml(lead.naam || ev.name || '?')}</div>
+        <div class="cal-att-time">\${dayLbl} · \${timeLbl}</div>
+      </div>
+      <div class="cal-att-btns">
+        <button class="cal-att-btn yes" onclick="markAttendance('\${idStr}',true)">✅ Gekomen</button>
+        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false)">❌ Niet gekomen</button>
+      </div>
+    </div>\`;
+  }).join('');
+}
+
+async function markAttendance(leadId, verschenen) {
+  const lead = (state.leads || []).find(l => String(l.id) === String(leadId));
+  if (!lead) return;
+
+  const nData = parseNotities(lead);
+  nData.afspraak = Object.assign({}, nData.afspraak || {}, { verschenen });
+  const notitiesStr = serializeNotities(nData);
+
+  // Optimistic update
+  lead.notities = notitiesStr;
+  const card = document.getElementById('cal-att-card-' + leadId);
+  if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
+
+  try {
+    await patchLead(leadId, { notities: notitiesStr });
+    showToast(verschenen ? '✅ Gemarkeerd als gekomen' : '❌ Gemarkeerd als niet gekomen', 'success');
+  } catch(e) {
+    showToast('Opslaan mislukt', 'error');
+    lead.notities = lead.notities;
+    if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
+    return;
+  }
+
+  renderAttendanceBanner();
+  // Refresh calendar to remove dot
+  if (calState.lastEvents) renderAttendanceDots();
+}
+
+function renderAttendanceDots() {
+  // Re-render just the event dots without full calendar refresh
+  const fiveHoursAgo = Date.now() - 5 * 60 * 60 * 1000;
+  (calState.lastEvents || []).forEach((ev, idx) => {
+    const el = document.querySelector(\`[data-ev-idx="\${idx}"]\`);
+    if (!el) return;
+    const dot = el.querySelector('.cal-event-needs-att');
+    if (new Date(ev.startTime).getTime() < fiveHoursAgo) {
+      const lead = matchLeadToEvent(ev.name);
+      if (lead) {
+        const nData = parseNotities(lead);
+        const v = nData.afspraak ? nData.afspraak.verschenen : undefined;
+        if (v !== true && v !== false) {
+          if (!dot) { const d = document.createElement('div'); d.className='cal-event-needs-att'; el.appendChild(d); }
+          return;
+        }
+      }
+    }
+    if (dot) dot.remove();
+  });
+}
+
 function renderAppointments() {
   if (!calState.weekStart) calState.weekStart = calGetMonday(new Date());
   renderCalSidebar();
@@ -7170,6 +7367,7 @@ async function renderCalendar() {
     // Update today widget and nav badge
     renderTodayWidget(events);
     updateCalBadge(events);
+    renderAttendanceBanner();
 
     colsEl.innerHTML = days.map(d => {
       const isToday   = d.getTime() === today.getTime();
@@ -7193,6 +7391,7 @@ async function renderCalendar() {
       const dayDate   = d.toDateString();
       const dayEvents = events.filter(ev => new Date(ev.startTime).toDateString() === dayDate);
 
+      const fiveHoursAgo = Date.now() - 5 * 60 * 60 * 1000;
       const evHtml = dayEvents.map(ev => {
         const evIdx    = events.indexOf(ev);
         const start    = new Date(ev.startTime);
@@ -7204,17 +7403,26 @@ async function renderCalendar() {
         const color    = eventColors[(ev.name || '').charCodeAt(0) % eventColors.length];
         const hh       = String(start.getHours()).padStart(2,'0');
         const mm       = String(start.getMinutes()).padStart(2,'0');
-        const endHH = String(end.getHours()).padStart(2,'0');
-        const endMM = String(end.getMinutes()).padStart(2,'0');
+        const endHH    = String(end.getHours()).padStart(2,'0');
+        const endMM    = String(end.getMinutes()).padStart(2,'0');
         const fullName = escHtml(ev.name || 'Afspraak');
         const eventTypeTxt = escHtml(ev.eventType || '');
-        // For short blocks (< 40px) show only time, for medium show time+name, for tall show all
+        // Orange dot: past event where matched lead has no attendance marked
+        let attDot = '';
+        if (start.getTime() < fiveHoursAgo) {
+          const ml = matchLeadToEvent(ev.name);
+          if (ml) {
+            const nd = parseNotities(ml);
+            const v  = nd.afspraak ? nd.afspraak.verschenen : undefined;
+            if (v !== true && v !== false) attDot = '<div class="cal-event-needs-att"></div>';
+          }
+        }
         const bodyHtml = height < 32
           ? \`<div class="cal-event-time">\${hh}:\${mm}</div>\`
           : height < 52
           ? \`<div class="cal-event-time">\${hh}:\${mm}</div><div class="cal-event-name">\${fullName}</div>\`
           : \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}\`;
-        return \`<div class="cal-event" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM}" onclick="openCalEvent(\${evIdx})">\${bodyHtml}</div>\`;
+        return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM}" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
       }).join('');
 
       const colClass = \`cal-day-col\${isToday ? ' cal-today-col' : ''}\${isWeekend ? ' cal-weekend-col' : ''}\`;
