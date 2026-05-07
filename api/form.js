@@ -111,8 +111,13 @@ module.exports = async function handler(req, res) {
       : null;
 
     // Fire after 60 seconds — feels like a real person picking up the form
+    const leadId = createData.id;
     setTimeout(async () => {
-      await sendWA(waPhone, waGreeting);
+      const waOk = await sendWA(waPhone, waGreeting);
+      if (!waOk) {
+        // WhatsApp failed — flag lead so dashboard shows it in "Niet bereikbaar"
+        await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+      }
       if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
     }, 60000);
 
@@ -165,28 +170,37 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
   }).catch(err => console.error('[form] E-mail notificatie mislukt:', err.message));
 }
 
-function sendWA(to, message) {
-  return fetch(
-    `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
-    {
-      method:  'POST',
-      headers: {
-        Authorization:  `Bearer ${process.env.WHATSAPP_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'text',
-        text: { body: message }
-      })
-    }
-  ).then(async r => {
+async function sendWA(to, message) {
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
+      {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: message } })
+      }
+    );
     const data = await r.json().catch(() => ({}));
     if (!r.ok || data.error) {
       console.error(`[form] WhatsApp naar ${to} mislukt (${r.status}):`, JSON.stringify(data.error || data));
-    } else {
-      console.log(`[form] WhatsApp gestuurd naar ${to}`);
+      return false;
     }
-  }).catch(err => console.error(`[form] WhatsApp netwerk fout naar ${to}:`, err.message));
+    console.log(`[form] WhatsApp gestuurd naar ${to}`);
+    return true;
+  } catch (err) {
+    console.error(`[form] WhatsApp netwerk fout naar ${to}:`, err.message);
+    return false;
+  }
+}
+
+async function flagWaFailed(leadId, token, baseId, tableId) {
+  const notities = JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], waFailed: true });
+  await fetch(
+    `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`,
+    {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: notities } })
+    }
+  ).catch(err => console.error('[form] flagWaFailed error:', err.message));
 }

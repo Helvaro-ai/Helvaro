@@ -2624,6 +2624,43 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 /* ── Follow-up Queue ── */
+    .nb-widget {
+      background: var(--bg-card);
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+    .nb-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+    }
+    .nb-title {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #ef4444;
+    }
+    .nb-count {
+      background: rgba(239,68,68,0.15); color: #ef4444;
+      font-size: 11px; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; border: 1px solid rgba(239,68,68,0.3);
+    }
+    .nb-list { display: flex; flex-direction: column; gap: 8px; }
+    .nb-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-card-alt); border-radius: 10px;
+      padding: 10px 12px; cursor: default;
+    }
+    .nb-item-info { flex: 1; min-width: 0; }
+    .nb-item-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .nb-item-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .nb-call-btn {
+      display: flex; align-items: center; gap: 5px; padding: 6px 12px;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px; color: #ef4444; font-size: 12px; font-weight: 600;
+      text-decoration: none; white-space: nowrap; transition: background 0.15s;
+    }
+    .nb-call-btn:hover { background: rgba(239,68,68,0.2); }
+
     .followup-widget {
       background: var(--bg-card);
       border: 1px solid rgba(245,158,11,0.35);
@@ -4895,6 +4932,18 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="followup-list" id="followup-list"></div>
       </div>
 
+      <!-- Niet Bereikbaar Widget -->
+      <div class="nb-widget" id="nb-widget" style="display:none">
+        <div class="nb-header">
+          <div class="nb-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 5a10.94 10.94 0 0114.06 14.06M10.71 5.05A16 16 0 0122.56 9M1.42 9a16 16 0 0114.26 2.26M5.33 14a16 16 0 006.39 6.6M9 5a8 8 0 017.94 7"/></svg>
+            Niet bereikbaar via WhatsApp
+          </div>
+          <span class="nb-count" id="nb-count">0</span>
+        </div>
+        <div class="nb-list" id="nb-list"></div>
+      </div>
+
       <!-- Taken Widget -->
       <div class="taken-widget" id="taken-widget" style="display:none">
         <div class="taken-widget-header">
@@ -5960,6 +6009,9 @@ async function refreshData() {
         followupWidget.style.display = 'none';
       }
     }
+
+    // Niet bereikbaar widget
+    renderNietBereikbaar();
 
     // Taken widget
     renderTakenWidget();
@@ -7085,6 +7137,46 @@ function closePanel() {
   document.getElementById('panel-backdrop').classList.remove('visible');
   document.getElementById('detail-panel').classList.remove('visible');
   state.activeLead = null;
+}
+
+/* ============================================================
+   NIET BEREIKBAAR WIDGET
+   ============================================================ */
+function renderNietBereikbaar() {
+  const widget  = document.getElementById('nb-widget');
+  const listEl  = document.getElementById('nb-list');
+  const countEl = document.getElementById('nb-count');
+  if (!widget || !listEl) return;
+
+  const failed = (state.leads || []).filter(lead => {
+    const data = parseNotities(lead);
+    return data.waFailed === true;
+  });
+
+  if (failed.length === 0) {
+    widget.style.display = 'none';
+    return;
+  }
+
+  widget.style.display = '';
+  if (countEl) countEl.textContent = failed.length;
+
+  listEl.innerHTML = failed.map(lead => {
+    const f    = lead.fields || {};
+    const name = f['fldbk0LVNckOU0bqA'] || f['Name']  || '(onbekend)';
+    const rawPhone = f['fld6YaitW0lMqHUrd'] || f['Phone'] || '';
+    // Convert stored international digits-only number back to callable format
+    const telHref  = rawPhone ? 'tel:+' + rawPhone : '#';
+    const dateRaw  = f['fldR0r13EU4RwrtvH'] || '';
+    const dateStr  = dateRaw ? new Date(dateRaw).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) : '';
+    return \`<div class="nb-item">
+      <div class="nb-item-info">
+        <span class="nb-item-name">\${escHtml(name)}</span>
+        \${dateStr ? \`<span class="nb-item-sub">\${dateStr}</span>\` : ''}
+      </div>
+      <a class="nb-call-btn" href="\${telHref}">📞 Bellen</a>
+    </div>\`;
+  }).join('');
 }
 
 /* ============================================================
