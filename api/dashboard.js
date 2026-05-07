@@ -6237,7 +6237,7 @@ async function loadAdminClients() {
       </div>
     \`).join('');
   } catch (err) {
-    grid.innerHTML = \`<div style="color:var(--red);font-size:14px">\${err.message}</div>\`;
+    grid.innerHTML = \`<div style="color:var(--red);font-size:14px">\${escHtml(err.message)}</div>\`;
   }
 }
 

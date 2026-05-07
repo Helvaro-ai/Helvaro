@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 // Move tokens to env vars — never hardcode secrets in source code
-const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN || 'leadbot_verify_token';
+const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
 const APP_SECRET    = process.env.WA_APP_SECRET;   // Meta App Secret for signature verification
 
 const AIRTABLE_TOKEN  = process.env.API_Airtable;
@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     const mode      = req.query['hub.mode'];
     const token     = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    if (VERIFY_TOKEN && mode === 'subscribe' && token === VERIFY_TOKEN) {
       return res.status(200).send(challenge);
     }
     return res.status(403).send('Forbidden');
@@ -31,18 +31,29 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   // ── Verify Meta webhook signature ────────────────────────────────────────────
-  // NOTE: Vercel pre-parses req.body before the handler runs, so reconstructing
-  // the raw body via JSON.stringify may differ from what Meta originally sent
-  // (different key order, whitespace). This makes HMAC verification unreliable.
-  // We log mismatches but still process the message to prevent message loss.
+  // Vercel may pre-parse req.body; if so, JSON.stringify may differ from Meta's
+  // original bytes (key order, whitespace). We block only when req.body is still
+  // a raw string (reliable). When it has been parsed to an object we warn and
+  // continue — a blocking false-positive would cause Meta to retry indefinitely.
   if (APP_SECRET) {
-    const sig     = req.headers['x-hub-signature-256'] || '';
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-    const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(rawBody, 'utf8').digest('hex');
-    if (!safeEqual(sig, expected)) {
-      console.warn('[WhatsApp] Handtekening komt niet overeen — bericht wordt toch verwerkt (Vercel body pre-parsing)');
-      // Do NOT block — Vercel's body pre-parsing makes the hash unreliable
+    const sig = req.headers['x-hub-signature-256'] || '';
+    if (typeof req.body === 'string') {
+      // Raw body available — full verification, block on mismatch
+      const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(req.body, 'utf8').digest('hex');
+      if (!safeEqual(sig, expected)) {
+        console.warn('[WhatsApp] Handtekening ongeldig — verzoek geblokkeerd');
+        return res.status(403).send('Forbidden');
+      }
+    } else {
+      // Body already parsed — best-effort check, warn only
+      const rawBody  = JSON.stringify(req.body || {});
+      const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(rawBody, 'utf8').digest('hex');
+      if (!safeEqual(sig, expected)) {
+        console.warn('[WhatsApp] Handtekening kon niet worden geverifieerd (body al geparsed door Vercel)');
+      }
     }
+  } else {
+    console.warn('[WhatsApp] WA_APP_SECRET niet ingesteld — handtekening verificatie uitgeschakeld');
   }
 
   // Always reply 200 immediately — Meta will retry if we don't

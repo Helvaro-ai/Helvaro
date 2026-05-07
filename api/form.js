@@ -143,6 +143,10 @@ function sanitize(val) {
   return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 100);
 }
 
+function escEmail(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 async function sendEmailNotification({ name, phone, project_code, bron, clientName }) {
   const RESEND_KEY   = process.env.RESEND_API_KEY;
   const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL;
@@ -157,12 +161,12 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
       subject: `Nieuwe lead — ${name} (${project_code})`,
       html:    `
         <div style="font-family:sans-serif;max-width:480px;margin:auto">
-          <h2 style="color:#1e6fd9">Nieuwe lead voor ${clientName}</h2>
+          <h2 style="color:#1e6fd9">Nieuwe lead voor ${escEmail(clientName)}</h2>
           <table style="width:100%;border-collapse:collapse">
-            <tr><td style="padding:8px;color:#666">Naam</td><td style="padding:8px;font-weight:600">${name}</td></tr>
-            <tr><td style="padding:8px;color:#666">Telefoon</td><td style="padding:8px;font-weight:600">${phone}</td></tr>
-            <tr><td style="padding:8px;color:#666">Project</td><td style="padding:8px">${project_code}</td></tr>
-            <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${bron}</td></tr>
+            <tr><td style="padding:8px;color:#666">Naam</td><td style="padding:8px;font-weight:600">${escEmail(name)}</td></tr>
+            <tr><td style="padding:8px;color:#666">Telefoon</td><td style="padding:8px;font-weight:600">${escEmail(phone)}</td></tr>
+            <tr><td style="padding:8px;color:#666">Project</td><td style="padding:8px">${escEmail(project_code)}</td></tr>
+            <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${escEmail(bron)}</td></tr>
           </table>
           <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
         </div>`

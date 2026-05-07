@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
 
   // Protect with CRON_SECRET so only Vercel can trigger this
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
+  if (!secret || req.headers['authorization'] !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -75,8 +75,9 @@ module.exports = async function handler(req, res) {
 
     // ── Daily summary email ──────────────────────────────────────────────────
     if (sent > 0) {
+      const escE = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const rows = followedUp.map(n =>
-        `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${n}</td></tr>`
+        `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${escE(n)}</td></tr>`
       ).join('');
       sendResendEmail({
         subject: `📋 Helvaro — ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
