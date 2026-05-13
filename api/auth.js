@@ -1,5 +1,13 @@
 const crypto = require('crypto');
 
+// Retry once on Airtable 429 after 1 second
+async function atFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status !== 429) return r;
+  await new Promise(res => setTimeout(res, 1000));
+  return fetch(url, opts);
+}
+
 // Simple in-memory rate limiter — max 10 login attempts per IP per 15 minutes
 const loginAttempts = new Map();
 function isRateLimited(ip) {
@@ -90,16 +98,12 @@ module.exports = async function handler(req, res) {
     );
     const url = `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`;
 
-    const atRes = await fetch(url, {
+    const atRes = await atFetch(url, {
       headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
     });
 
     if (!atRes.ok) {
       console.error('Airtable auth error:', atRes.status);
-      if (atRes.status === 429) {
-        res.setHeader('Retry-After', '30');
-        return res.status(503).json({ error: 'Even wachten — systeem is druk. Probeer over 30 seconden opnieuw.' });
-      }
       return res.status(500).json({ error: 'Database fout. Probeer opnieuw.' });
     }
 
