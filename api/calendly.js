@@ -6,9 +6,25 @@
 //   /api/calendly-oauth-callback  → oauthCallback()
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 
-module.exports = async function handler(req, res) {
-  const path = (req.url || '').split('?')[0];
+// Rate limiter — 30 req / 60s per IP (calendar ops, not a hot path)
+const _rl = new Map();
+function isRateLimited(ip) {
+  const now = Date.now(), w = 60_000, max = 30;
+  const hits = (_rl.get(ip) || []).filter(t => now - t < w);
+  hits.push(now);
+  _rl.set(ip, hits);
+  if (_rl.size > 1000) { for (const [k, v] of _rl) if (!v.some(t => now - t < w)) _rl.delete(k); }
+  return hits.length > max;
+}
 
+module.exports = async function handler(req, res) {
+  const ip   = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) {
+    res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
+    return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
+  }
+
+  const path = (req.url || '').split('?')[0];
   if (path.endsWith('calendly-oauth-start'))    return oauthStart(req, res);
   if (path.endsWith('calendly-oauth-callback')) return oauthCallback(req, res);
   if (path.endsWith('calendly-slots'))          return fetchSlots(req, res);

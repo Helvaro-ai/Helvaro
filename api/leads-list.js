@@ -1,4 +1,16 @@
 const crypto        = require('crypto');
+
+// Rate limiter — 60 req / 60s per IP
+const _rl = new Map();
+function isRateLimited(ip) {
+  const now = Date.now(), w = 60_000, max = 60;
+  const hits = (_rl.get(ip) || []).filter(t => now - t < w);
+  hits.push(now);
+  _rl.set(ip, hits);
+  if (_rl.size > 1000) { for (const [k, v] of _rl) if (!v.some(t => now - t < w)) _rl.delete(k); }
+  return hits.length > max;
+}
+
 const AIRTABLE_TOKEN = process.env.API_Airtable;
 const AIRTABLE_BASE  = process.env.BASE_AIRTABLE;
 const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
@@ -19,6 +31,9 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method Not Allowed' });
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
 
   const apiKey = String(req.headers['x-api-key'] || '').trim().slice(0, 100);
   if (!apiKey)             return res.status(401).json({ error: 'API key ontbreekt' });

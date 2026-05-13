@@ -1,5 +1,16 @@
 const crypto = require('crypto');
 
+// Rate limiter — 120 req / 60s per IP (allows normal polling, blocks hammering)
+const _rl = new Map();
+function isRateLimited(ip, max = 120, windowMs = 60_000) {
+  const now  = Date.now();
+  const hits = (_rl.get(ip) || []).filter(t => now - t < windowMs);
+  hits.push(now);
+  _rl.set(ip, hits);
+  if (_rl.size > 2000) { for (const [k, v] of _rl) if (!v.some(t => now - t < windowMs)) _rl.delete(k); }
+  return hits.length > max;
+}
+
 function safeEqual(a, b) {
   try {
     const ba = Buffer.from(String(a));
@@ -21,6 +32,9 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
 
   const AIRTABLE_TOKEN = process.env.API_Airtable;
   const BASE_ID        = process.env.BASE_AIRTABLE;
