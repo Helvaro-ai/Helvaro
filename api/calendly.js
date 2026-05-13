@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
 // 1. FETCH EVENTS
 // ─────────────────────────────────────────────────────────────
 async function fetchEvents(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -139,7 +139,7 @@ async function fetchEvents(req, res) {
 // 2. OAUTH START — redirect client to Calendly consent page
 // ─────────────────────────────────────────────────────────────
 async function oauthStart(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const qs     = new URLSearchParams((req.url || '').split('?')[1] || '');
@@ -270,7 +270,7 @@ function escapeFormula(val) {
 // GET /api/calendly-slots?date=YYYY-MM-DD[&event_type=uri]
 // ─────────────────────────────────────────────────────────────
 async function fetchSlots(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   if (req.method === 'OPTIONS') return res.status(200).end();

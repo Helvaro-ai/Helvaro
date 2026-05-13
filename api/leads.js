@@ -1,5 +1,22 @@
+const crypto = require('crypto');
+
+function safeEqual(a, b) {
+  try {
+    const ba = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    if (ba.length !== bb.length) return false;
+    return crypto.timingSafeEqual(ba, bb);
+  } catch { return false; }
+}
+
+function isAdminToken(provided, adminKey) {
+  if (!adminKey || !provided) return false;
+  const expected = crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
+  return safeEqual(provided, expected);
+}
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 
@@ -19,8 +36,8 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Ongeldige API key' });
   }
 
-  // Admin key — return empty dashboard data so admin can navigate to Klanten tab
-  if (process.env.ADMIN_KEY && apiKey === process.env.ADMIN_KEY) {
+  // Admin token — timing-safe check against the derived token (not the raw key)
+  if (isAdminToken(apiKey, process.env.ADMIN_KEY)) {
     return res.status(200).json({
       leads: [],
       stats: { total: 0, qualified: 0, booked: 0, conversionRate: 0, thisMonth: 0, avgResponseTime: 0 },

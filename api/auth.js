@@ -1,13 +1,14 @@
+const crypto = require('crypto');
+
 // Simple in-memory rate limiter — max 10 login attempts per IP per 15 minutes
 const loginAttempts = new Map();
 function isRateLimited(ip) {
-  const now = Date.now();
-  const window = 15 * 60 * 1000; // 15 min
-  const max = 10;
+  const now    = Date.now();
+  const window = 15 * 60 * 1000;
+  const max    = 10;
   const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < window);
   attempts.push(now);
   loginAttempts.set(ip, attempts);
-  // Clean old IPs occasionally
   if (loginAttempts.size > 1000) {
     for (const [k, v] of loginAttempts) {
       if (v.every(t => now - t > window)) loginAttempts.delete(k);
@@ -16,15 +17,33 @@ function isRateLimited(ip) {
   return attempts.length > max;
 }
 
+// Derive a stable admin session token from ADMIN_KEY so the raw secret
+// never leaves the server. The token is deterministic (no DB needed) but
+// cannot be reversed to obtain the original key.
+function deriveAdminToken(adminKey) {
+  return crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
+}
+
+// Timing-safe string compare — prevents timing-based brute force
+function safeEqual(a, b) {
+  try {
+    const ba = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    if (ba.length !== bb.length) return false;
+    return crypto.timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Rate limit by IP
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   if (isRateLimited(ip)) {
     return res.status(429).json({ error: 'Te veel pogingen. Probeer over 15 minuten opnieuw.' });
@@ -45,12 +64,14 @@ module.exports = async function handler(req, res) {
     if (!email)    return res.status(400).json({ error: 'E-mailadres is verplicht' });
     if (!password) return res.status(400).json({ error: 'Wachtwoord is verplicht' });
 
-    // Admin shortcut — if password matches ADMIN_KEY, grant admin access directly
+    // ── Admin shortcut ────────────────────────────────────────────────────────
+    // Use timing-safe compare so attackers can't learn the key length/prefix.
+    // Return a DERIVED token — the raw ADMIN_KEY never leaves the server.
     const ADMIN_KEY = process.env.ADMIN_KEY;
-    if (ADMIN_KEY && password === ADMIN_KEY) {
+    if (ADMIN_KEY && safeEqual(password, ADMIN_KEY)) {
       return res.status(200).json({
         success:     true,
-        apiKey:      ADMIN_KEY,
+        apiKey:      deriveAdminToken(ADMIN_KEY),  // derived, not the raw secret
         clientName:  'Admin',
         projectCode: ''
       });
@@ -61,11 +82,11 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
 
-    // Escape values before embedding in Airtable formula
-    const safeEmail    = escapeFormula(email);
-    const safePassword = escapeFormula(password);
+    // ── Fetch user by email only — password compared server-side ─────────────
+    // Never embed the password in the Airtable formula; it would appear in
+    // Airtable's audit logs and API request logs in plaintext.
     const formula = encodeURIComponent(
-      `AND({Email}="${safeEmail}",{Password Hash}="${safePassword}",{Active}=1)`
+      `AND({Email}="${escapeFormula(email)}",{Active}=1)`
     );
     const url = `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`;
 
@@ -81,16 +102,21 @@ module.exports = async function handler(req, res) {
     const data = await atRes.json();
 
     if (!data.records || data.records.length === 0) {
-      // Same message for wrong email or wrong password — don't reveal which one
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
 
-    const user = data.records[0].fields;
+    const user       = data.records[0].fields;
+    const storedHash = String(user['Password Hash'] || user['fldPasswordHash'] || '');
+
+    // Timing-safe server-side compare — never query Airtable with the password
+    if (!storedHash || !safeEqual(password, storedHash)) {
+      return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
+    }
 
     return res.status(200).json({
       success:     true,
-      apiKey:      user['fldxZMgVXSy7EShDL'] || user['API Key']      || '',
-      clientName:  user['fldmKwegSUj1joru3']  || user['Client Name'] || '',
+      apiKey:      user['fldxZMgVXSy7EShDL'] || user['API Key']       || '',
+      clientName:  user['fldmKwegSUj1joru3']  || user['Client Name']  || '',
       projectCode: user['fldbrCpBuQjJBfZsv']  || user['Project Code'] || ''
     });
 

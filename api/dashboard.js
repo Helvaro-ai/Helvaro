@@ -5781,28 +5781,33 @@ function showView(view) {
   document.getElementById('login-page').style.display = view === 'login' ? 'flex' : 'none';
 }
 
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
 function saveSession(apiKey, clientName, projectCode, email) {
   localStorage.setItem('hvk', apiKey);
   localStorage.setItem('hv-client', clientName || '');
   localStorage.setItem('hv-project', projectCode || '');
+  localStorage.setItem('hv-exp', String(Date.now() + SESSION_TTL));
   if (email) localStorage.setItem('hv-email', email);
-  state.apiKey    = apiKey;
+  state.apiKey     = apiKey;
   state.clientName = clientName || '';
   state.userEmail  = email || localStorage.getItem('hv-email') || '';
 }
 
 function clearSession() {
-  localStorage.removeItem('hvk');
-  localStorage.removeItem('hv-client');
-  localStorage.removeItem('hv-project');
-  state.apiKey = '';
+  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email'].forEach(k => localStorage.removeItem(k));
+  state.apiKey     = '';
   state.clientName = '';
+  state.userEmail  = '';
 }
 
 function tryAutoLogin() {
   const key = localStorage.getItem('hvk');
+  const exp = parseInt(localStorage.getItem('hv-exp') || '0', 10);
   if (!key) return false;
-  state.apiKey    = key;
+  // Expire after 24 hours — clear stale session
+  if (Date.now() > exp) { clearSession(); return false; }
+  state.apiKey     = key;
   state.clientName = localStorage.getItem('hv-client') || '';
   state.userEmail  = localStorage.getItem('hv-email')  || '';
   return true;
@@ -9495,5 +9500,9 @@ function initLoginSlideshow() {
 </html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=300');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.status(200).send(HTML);
 };
