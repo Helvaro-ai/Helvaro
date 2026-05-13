@@ -1,5 +1,13 @@
 const crypto = require('crypto');
 
+// Airtable fetch with one automatic retry on 429 (wait 1s then retry once)
+async function atFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status !== 429) return r;
+  await new Promise(res => setTimeout(res, 1000));
+  return fetch(url, opts);
+}
+
 // Rate limiter — 120 req / 60s per IP (allows normal polling, blocks hammering)
 const _rl = new Map();
 function isRateLimited(ip, max = 120, windowMs = 60_000) {
@@ -62,10 +70,14 @@ module.exports = async function handler(req, res) {
   let client;
   try {
     const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes    = await fetch(
+    const cRes  = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );
+    if (cRes.status === 429) {
+      res.setHeader('Retry-After', '30');
+      return res.status(503).json({ error: 'Even wachten — systeem is druk. Probeer over 30 seconden opnieuw.' });
+    }
     const cData = await cRes.json();
     if (!cData.records || cData.records.length === 0) {
       return res.status(401).json({ error: 'Ongeldige API key' });
@@ -112,7 +124,7 @@ module.exports = async function handler(req, res) {
       if (body.verliesReden !== undefined) fields['fld3NhSENma0okbT7'] = String(body.verliesReden).slice(0, 500);
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
-      const pRes  = await fetch(
+      const pRes  = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
           method:  'PATCH',
@@ -160,7 +172,8 @@ module.exports = async function handler(req, res) {
     let offset    = '';
     do {
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
-      const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      const lRes = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      if (lRes.status === 429) throw new Error('Airtable 429');
       const lData = await lRes.json();
       if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
       allLeads = allLeads.concat(lData.records || []);

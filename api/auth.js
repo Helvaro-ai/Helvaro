@@ -96,6 +96,10 @@ module.exports = async function handler(req, res) {
 
     if (!atRes.ok) {
       console.error('Airtable auth error:', atRes.status);
+      if (atRes.status === 429) {
+        res.setHeader('Retry-After', '30');
+        return res.status(503).json({ error: 'Even wachten — systeem is druk. Probeer over 30 seconden opnieuw.' });
+      }
       return res.status(500).json({ error: 'Database fout. Probeer opnieuw.' });
     }
 

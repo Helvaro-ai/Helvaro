@@ -312,10 +312,19 @@ Voeg DECISION alleen toe als je écht genoeg weet. De leadScore is 0-100 op basi
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
 
+// Retry once on Airtable 429 — waits 1 second before the retry
+async function atFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status !== 429) return r;
+  console.warn('[Airtable] 429 ontvangen — wacht 1s en probeer opnieuw');
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return fetch(url, opts);
+}
+
 async function getClientByCode(code) {
   const filter = encodeURIComponent(`{Project Code}="${escapeFormula(code.toUpperCase())}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
-  const res    = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
   if (data.error) console.error('[Airtable] Client fout:', JSON.stringify(data.error));
   return data.records?.[0] || null;
@@ -324,7 +333,7 @@ async function getClientByCode(code) {
 async function getLead(phone) {
   const filter = encodeURIComponent(`{Phone}="${escapeFormula(phone)}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=Created%20At&sort[0][direction]=desc`;
-  const res    = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
   if (data.error) console.error('[Airtable] Lead fout:', JSON.stringify(data.error));
   return data.records?.[0] || null;
@@ -332,7 +341,7 @@ async function getLead(phone) {
 
 async function updateLead(recordId, fields) {
   const url  = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${recordId}`;
-  const res  = await fetch(url, {
+  const res  = await atFetch(url, {
     method:  'PATCH',
     headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify({ fields }),
