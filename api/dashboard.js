@@ -6373,8 +6373,8 @@ function updateTimestamp() {
 }
 
 setInterval(updateTimestamp, 60000);
-// Poll for new leads every 30 seconds
-setInterval(() => { if (state.apiKey) refreshData(); }, 30000);
+// Poll for new leads every 90 seconds — reduced to stay under Airtable 5 req/sec limit
+setInterval(() => { if (state.apiKey) refreshData(); }, 90000);
 
 /* ============================================================
    NEW LEAD NOTIFICATIONS (Feature 1)

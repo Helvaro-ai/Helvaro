@@ -347,12 +347,16 @@ function getCachedClient(code) {
 }
 function setCachedClient(code, record) { _clientCache.set(code, { record, ts: Date.now() }); }
 
-// Retry once on Airtable 429 — waits 1 second before the retry
+// Exponential backoff retry for Airtable 429 — up to 3 attempts (1s, 2s, 4s)
 async function atFetch(url, opts) {
-  const r = await fetch(url, opts);
-  if (r.status !== 429) return r;
-  console.warn('[Airtable] 429 ontvangen — wacht 1s en probeer opnieuw');
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  let delay = 1000;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const r = await fetch(url, opts);
+    if (r.status !== 429) return r;
+    console.warn(`[Airtable] 429 — wacht ${delay}ms en probeer opnieuw (poging ${attempt + 1}/3)`);
+    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, delay));
+    delay *= 2;
+  }
   return fetch(url, opts);
 }
 
