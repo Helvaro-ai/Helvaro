@@ -78,6 +78,11 @@ module.exports = async function handler(req, res) {
     else if (waPhone.startsWith('+'))  waPhone = waPhone.slice(1);
     else if (waPhone.startsWith('0'))  waPhone = '32' + waPhone.slice(1);
 
+    // Validate: digits only, 8-15 chars (standard E.164 range)
+    if (!/^\d{8,15}$/.test(waPhone)) {
+      return res.status(400).json({ error: 'Ongeldig telefoonnummer — gebruik cijfers' });
+    }
+
     // ── Create lead in Airtable ────────────────────────────────────────────────
     const createRes = await fetch(
       `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}`,
@@ -110,7 +115,8 @@ module.exports = async function handler(req, res) {
       ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
       : null;
 
-    // Fire after 60 seconds — feels like a real person picking up the form
+    // Fire after 45 seconds — feels like a real person picking up the form
+    // Note: Vercel maxDuration is 60s, so 45s delay + processing leaves ~15s buffer
     const leadId = createData.id;
     setTimeout(async () => {
       const waOk = await sendWA(waPhone, waGreeting);
@@ -119,7 +125,7 @@ module.exports = async function handler(req, res) {
         await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
       }
       if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
-    }, 60000);
+    }, 45000);
 
     // Email notification (fire-and-forget)
     sendEmailNotification({ name, phone, project_code, bron, clientName }).catch(() => {});

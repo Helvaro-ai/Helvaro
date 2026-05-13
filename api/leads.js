@@ -142,14 +142,14 @@ module.exports = async function handler(req, res) {
       if (body.dealWaarde) {
         const leadName = pData.fields?.['fldbk0LVNckOU0bqA'] || pData.fields?.['Name'] || '(onbekend)';
         sendResendEmail({
-          subject: `💰 Deal gesloten — ${leadName} (${body.dealWaarde})`,
+          subject: `Deal gesloten - ${escHtml(leadName)} (${escHtml(body.dealWaarde)})`,
           html: `
             <div style="font-family:sans-serif;max-width:480px;margin:auto">
-              <h2 style="color:#16a34a">Deal gesloten 🎉</h2>
+              <h2 style="color:#16a34a">Deal gesloten</h2>
               <table style="width:100%;border-collapse:collapse">
-                <tr><td style="padding:8px;color:#666">Lead</td><td style="padding:8px;font-weight:600">${leadName}</td></tr>
-                <tr><td style="padding:8px;color:#666">Waarde</td><td style="padding:8px;font-weight:700;color:#16a34a">${body.dealWaarde}</td></tr>
-                <tr><td style="padding:8px;color:#666">Client</td><td style="padding:8px">${clientName}</td></tr>
+                <tr><td style="padding:8px;color:#666">Lead</td><td style="padding:8px;font-weight:600">${escHtml(leadName)}</td></tr>
+                <tr><td style="padding:8px;color:#666">Waarde</td><td style="padding:8px;font-weight:700;color:#16a34a">${escHtml(body.dealWaarde)}</td></tr>
+                <tr><td style="padding:8px;color:#666">Client</td><td style="padding:8px">${escHtml(clientName)}</td></tr>
               </table>
               <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
             </div>`
@@ -285,6 +285,11 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// Escape HTML entities for safe embedding in email HTML
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ── Resend email helper ──────────────────────────────────────────────────────

@@ -195,8 +195,32 @@ async function processMessage(phone, text) {
 
 async function fetchWebsite(url) {
   try {
+    // SSRF protection — only allow http/https and block internal IPs
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      console.warn('[WhatsApp] Blocked non-HTTP URL:', url);
+      return null;
+    }
+    const host = parsed.hostname.toLowerCase();
+    // Block localhost, private IPs, link-local, metadata endpoints
+    if (
+      host === 'localhost' ||
+      host.endsWith('.local') ||
+      host === '169.254.169.254' ||                     // AWS/GCP metadata
+      /^127\./.test(host) ||                            // 127.0.0.0/8
+      /^10\./.test(host) ||                             // 10.0.0.0/8
+      /^192\.168\./.test(host) ||                       // 192.168.0.0/16
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||        // 172.16.0.0/12
+      /^\[?::1\]?$/.test(host) ||                       // IPv6 localhost
+      /^\[?fe80:/i.test(host)                           // IPv6 link-local
+    ) {
+      console.warn('[WhatsApp] Blocked internal URL:', url);
+      return null;
+    }
+
     const res  = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
+      redirect: 'manual',                               // Don't follow redirects to internal IPs
       signal:  AbortSignal.timeout(5000),
     });
     const html = await res.text();

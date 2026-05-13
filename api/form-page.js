@@ -1,6 +1,11 @@
 module.exports = function handler(req, res) {
   const code = (req.url || '').split('/').filter(Boolean).pop() || 'HELVARO';
-  const project = decodeURIComponent(code).toUpperCase();
+  let project = decodeURIComponent(code).toUpperCase();
+
+  // Strict validation — only alphanumeric + underscore, prevents XSS in JS context
+  if (!/^[A-Z0-9_]{1,50}$/.test(project)) {
+    project = 'HELVARO';
+  }
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.status(200).send(`<!DOCTYPE html>

@@ -31,6 +31,11 @@ function isValidAdminToken(provided, adminKey) {
   return safeEqual(provided, expected);
 }
 
+// Escape double-quotes and backslashes for Airtable formula strings
+function escapeFormula(val) {
+  return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Headers', 'x-api-key, Content-Type');
@@ -71,7 +76,7 @@ module.exports = async function handler(req, res) {
     const withStats = await Promise.all(clients.map(async c => {
       if (!c.projectCode) return { ...c, totalLeads: 0, newLeads: 0, qualified: 0 };
       try {
-        const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${c.projectCode.replace(/"/g, '\\"')}"`);
+        const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(c.projectCode)}"`);
         const lRes = await fetch(
           `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&fields[]=fld8mkrEWcyq7mUip&fields[]=fld0hAZJ5wgaXrNTn&pageSize=100`,
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
