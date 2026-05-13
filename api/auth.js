@@ -109,6 +109,24 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
 
+    // ── Owner bypass ──────────────────────────────────────────────────────────
+    // Eliminates ALL Airtable calls for the primary owner account.
+    // Set OWNER_EMAIL, OWNER_PASSWORD_HASH, OWNER_API_KEY, OWNER_CLIENT_NAME,
+    // and OWNER_PROJECT_CODE in Vercel env vars to activate.
+    // OWNER_PASSWORD_HASH = the same password value stored in Airtable "Password Hash".
+    const OWNER_EMAIL = process.env.OWNER_EMAIL;
+    const OWNER_PASS  = process.env.OWNER_PASSWORD_HASH;
+    if (OWNER_EMAIL && OWNER_PASS &&
+        safeEqual(email, OWNER_EMAIL) &&
+        safeEqual(password, OWNER_PASS)) {
+      return res.status(200).json({
+        success:     true,
+        apiKey:      process.env.OWNER_API_KEY      || '',
+        clientName:  process.env.OWNER_CLIENT_NAME  || 'Owner',
+        projectCode: process.env.OWNER_PROJECT_CODE || ''
+      });
+    }
+
     // ── Fetch user by email only — password compared server-side ─────────────
     // Cached 5 min so repeated login attempts don't hammer Airtable.
     let userRecord = getCachedUser(email);

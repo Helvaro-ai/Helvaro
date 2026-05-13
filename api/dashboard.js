@@ -6105,7 +6105,7 @@ function showView(view) {
   document.getElementById('login-page').style.display = view === 'login' ? 'flex' : 'none';
 }
 
-const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function saveSession(apiKey, clientName, projectCode, email) {
   localStorage.setItem('hvk', apiKey);
