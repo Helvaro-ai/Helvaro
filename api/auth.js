@@ -8,6 +8,20 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
+// TTL cache — user records by email, 5 min TTL
+// Avoids an Airtable call on every login attempt (hot path)
+const _userCache = new Map();
+const USER_TTL   = 5 * 60 * 1000;
+function getCachedUser(email) {
+  const entry = _userCache.get(email);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > USER_TTL) { _userCache.delete(email); return null; }
+  return entry.record;
+}
+function setCachedUser(email, record) {
+  _userCache.set(email, { record, ts: Date.now() });
+}
+
 // Simple in-memory rate limiter — max 10 login attempts per IP per 15 minutes
 const loginAttempts = new Map();
 function isRateLimited(ip) {
@@ -91,29 +105,30 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Fetch user by email only — password compared server-side ─────────────
-    // Never embed the password in the Airtable formula; it would appear in
-    // Airtable's audit logs and API request logs in plaintext.
-    const formula = encodeURIComponent(
-      `AND({Email}="${escapeFormula(email)}",{Active}=1)`
-    );
-    const url = `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`;
+    // Cached 5 min so repeated login attempts don't hammer Airtable.
+    let userRecord = getCachedUser(email);
+    if (!userRecord) {
+      const formula = encodeURIComponent(
+        `AND({Email}="${escapeFormula(email)}",{Active}=1)`
+      );
+      const url   = `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`;
+      const atRes = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
 
-    const atRes = await atFetch(url, {
-      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
-    });
+      if (!atRes.ok) {
+        console.error('Airtable auth error:', atRes.status);
+        return res.status(500).json({ error: 'Database fout. Probeer opnieuw.' });
+      }
 
-    if (!atRes.ok) {
-      console.error('Airtable auth error:', atRes.status);
-      return res.status(500).json({ error: 'Database fout. Probeer opnieuw.' });
+      const data = await atRes.json();
+      userRecord = data.records?.[0] || null;
+      if (userRecord) setCachedUser(email, userRecord);
     }
 
-    const data = await atRes.json();
-
-    if (!data.records || data.records.length === 0) {
+    if (!userRecord) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
 
-    const user       = data.records[0].fields;
+    const user       = userRecord.fields;
     const storedHash = String(user['Password Hash'] || user['fldPasswordHash'] || '');
 
     // Timing-safe server-side compare — never query Airtable with the password

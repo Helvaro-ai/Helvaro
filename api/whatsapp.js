@@ -336,6 +336,17 @@ Voeg DECISION alleen toe als je écht genoeg weet. De leadScore is 0-100 op basi
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
 
+// Client config cache by project code — 5 min TTL
+const _clientCache = new Map();
+const CLIENT_TTL   = 5 * 60 * 1000;
+function getCachedClient(code) {
+  const e = _clientCache.get(code);
+  if (!e) return null;
+  if (Date.now() - e.ts > CLIENT_TTL) { _clientCache.delete(code); return null; }
+  return e.record;
+}
+function setCachedClient(code, record) { _clientCache.set(code, { record, ts: Date.now() }); }
+
 // Retry once on Airtable 429 — waits 1 second before the retry
 async function atFetch(url, opts) {
   const r = await fetch(url, opts);
@@ -346,12 +357,17 @@ async function atFetch(url, opts) {
 }
 
 async function getClientByCode(code) {
-  const filter = encodeURIComponent(`{Project Code}="${escapeFormula(code.toUpperCase())}"`);
+  const key    = code.toUpperCase();
+  const cached = getCachedClient(key);
+  if (cached) return cached;
+  const filter = encodeURIComponent(`{Project Code}="${escapeFormula(key)}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
   const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
   if (data.error) console.error('[Airtable] Client fout:', JSON.stringify(data.error));
-  return data.records?.[0] || null;
+  const record = data.records?.[0] || null;
+  if (record) setCachedClient(key, record);
+  return record;
 }
 
 async function getLead(phone) {

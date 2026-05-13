@@ -8,6 +8,20 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
+// Client config cache by API key — 5 min TTL
+// Saves 1 Airtable call per request on the hot GET/PATCH path
+const _clientCache = new Map();
+const CLIENT_TTL   = 5 * 60 * 1000;
+function getCachedClient(key) {
+  const e = _clientCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > CLIENT_TTL) { _clientCache.delete(key); return null; }
+  return e.record;
+}
+function setCachedClient(key, record) {
+  _clientCache.set(key, { record, ts: Date.now() });
+}
+
 // Rate limiter — 120 req / 60s per IP (allows normal polling, blocks hammering)
 const _rl = new Map();
 function isRateLimited(ip, max = 120, windowMs = 60_000) {
@@ -69,20 +83,23 @@ module.exports = async function handler(req, res) {
 
   let client;
   try {
-    const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes  = await atFetch(
-      `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
-      { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-    );
-    if (cRes.status === 429) {
-      res.setHeader('Retry-After', '30');
-      return res.status(503).json({ error: 'Even wachten — systeem is druk. Probeer over 30 seconden opnieuw.' });
+    client = getCachedClient(apiKey);
+    if (!client) {
+      const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
+      const cRes    = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+      );
+      if (cRes.status === 429) {
+        return res.status(503).json({ error: 'Systeem is druk. Probeer over 30 seconden opnieuw.' });
+      }
+      const cData = await cRes.json();
+      if (!cData.records || cData.records.length === 0) {
+        return res.status(401).json({ error: 'Ongeldige API key' });
+      }
+      client = cData.records[0];
+      setCachedClient(apiKey, client);
     }
-    const cData = await cRes.json();
-    if (!cData.records || cData.records.length === 0) {
-      return res.status(401).json({ error: 'Ongeldige API key' });
-    }
-    client = cData.records[0];
   } catch (err) {
     console.error('Leads auth error:', err.message);
     return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
