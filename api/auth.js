@@ -51,6 +51,21 @@ function deriveAdminToken(adminKey) {
   return crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
 }
 
+// ── Signed session tokens ──────────────────────────────────────────────────────
+// Embed client data in a signed token so downstream API handlers (leads, calendly)
+// can verify identity locally — zero Airtable calls after login, for every client.
+// Secret derived from ADMIN_KEY so no additional env var is required.
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — matches dashboard TTL
+function sessionSecret() {
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
+  return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
+}
+function signSession(data) {
+  const payload = Buffer.from(JSON.stringify({ ...data, exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
+  const sig     = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+  return `hvs1.${payload}.${sig}`;
+}
+
 // Timing-safe string compare — prevents timing-based brute force
 function safeEqual(a, b) {
   try {
@@ -96,9 +111,11 @@ module.exports = async function handler(req, res) {
     // Return a DERIVED token — the raw ADMIN_KEY never leaves the server.
     const ADMIN_KEY = process.env.ADMIN_KEY;
     if (ADMIN_KEY && safeEqual(password, ADMIN_KEY)) {
+      // Admin gets the derived HMAC token — NOT a session token.
+      // leads.js recognises it via isAdminToken() before session verification.
       return res.status(200).json({
         success:     true,
-        apiKey:      deriveAdminToken(ADMIN_KEY),  // derived, not the raw secret
+        apiKey:      deriveAdminToken(ADMIN_KEY),
         clientName:  'Admin',
         projectCode: ''
       });
@@ -119,12 +136,12 @@ module.exports = async function handler(req, res) {
     if (OWNER_EMAIL && OWNER_PASS &&
         safeEqual(email, OWNER_EMAIL) &&
         safeEqual(password, OWNER_PASS)) {
-      return res.status(200).json({
-        success:     true,
+      const ownerData = {
         apiKey:      process.env.OWNER_API_KEY      || '',
         clientName:  process.env.OWNER_CLIENT_NAME  || 'Owner',
         projectCode: process.env.OWNER_PROJECT_CODE || ''
-      });
+      };
+      return res.status(200).json({ success: true, ...ownerData, apiKey: signSession(ownerData) });
     }
 
     // ── Fetch user by email only — password compared server-side ─────────────
@@ -159,12 +176,12 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
 
-    return res.status(200).json({
-      success:     true,
+    const userData = {
       apiKey:      user['fldxZMgVXSy7EShDL'] || user['API Key']       || '',
       clientName:  user['fldmKwegSUj1joru3']  || user['Client Name']  || '',
       projectCode: user['fldbrCpBuQjJBfZsv']  || user['Project Code'] || ''
-    });
+    };
+    return res.status(200).json({ success: true, ...userData, apiKey: signSession(userData) });
 
   } catch (err) {
     console.error('Auth error:', err.message);

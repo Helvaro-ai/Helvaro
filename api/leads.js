@@ -52,6 +52,31 @@ function isAdminToken(provided, adminKey) {
   return safeEqual(provided, expected);
 }
 
+// ── Session token verification ─────────────────────────────────────────────────
+// Tokens are signed by auth.js; verifying locally saves one Airtable call per
+// request for every client — no env vars needed, works at any scale.
+function sessionSecret() {
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
+  return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
+}
+function verifySession(token) {
+  try {
+    if (typeof token !== 'string' || !token.startsWith('hvs1.')) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [, payload, sig] = parts;
+    if (!payload || !sig) return null;
+    const secret   = sessionSecret();
+    const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+    const a = Buffer.from(sig,      'base64url');
+    const b = Buffer.from(expected, 'base64url');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (data.exp && Date.now() > data.exp) return null;
+    return data;
+  } catch { return null; }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
@@ -68,50 +93,60 @@ module.exports = async function handler(req, res) {
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const apiKey = String(req.headers['x-api-key'] || '').trim().slice(0, 100);
-  if (!apiKey) return res.status(401).json({ error: 'API key ontbreekt' });
+  // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
+  const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+  if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
 
-  // Basic sanity — API keys should only be alphanumeric/dashes
-  if (!/^[A-Za-z0-9\-_]{8,100}$/.test(apiKey)) {
-    return res.status(401).json({ error: 'Ongeldige API key' });
-  }
+  let projectCode = '', clientName = '', calendlyLink = '';
 
-  // Admin token — timing-safe check against the derived token (not the raw key)
-  if (isAdminToken(apiKey, process.env.ADMIN_KEY)) {
-    return res.status(200).json({
-      leads: [],
-      stats: { total: 0, qualified: 0, booked: 0, conversionRate: 0, thisMonth: 0, avgResponseTime: 0 },
-      client: { naam: 'Admin', calendly: '' }
-    });
-  }
-
-  let client;
-  try {
-    client = getCachedClient(apiKey);
-    if (!client) {
-      const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-      const cRes    = await atFetch(
-        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
-        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-      );
-      if (cRes.status === 429) {
-        return res.status(503).json({ error: 'Systeem is druk. Probeer over 30 seconden opnieuw.' });
-      }
-      const cData = await cRes.json();
-      if (!cData.records || cData.records.length === 0) {
-        return res.status(401).json({ error: 'Ongeldige API key' });
-      }
-      client = cData.records[0];
-      setCachedClient(apiKey, client);
+  // Path A: signed session token — verify locally, zero Airtable calls
+  const session = verifySession(raw);
+  if (session) {
+    projectCode  = session.projectCode  || '';
+    clientName   = session.clientName   || '';
+    calendlyLink = session.calendlyLink || '';
+  } else {
+    // Path B: legacy API key (admin derived token or old sessions before this deploy)
+    if (!/^[A-Za-z0-9\-_]{8,100}$/.test(raw)) {
+      return res.status(401).json({ error: 'Ongeldige API key' });
     }
-  } catch (err) {
-    console.error('Leads auth error:', err.message);
-    return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
-  }
 
-  const projectCode  = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code']  || '';
-  const clientName   = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']   || '';
-  const calendlyLink = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'] || '';
+    // Admin token — timing-safe check against the derived token (not the raw key)
+    if (isAdminToken(raw, process.env.ADMIN_KEY)) {
+      return res.status(200).json({
+        leads: [],
+        stats: { total: 0, qualified: 0, booked: 0, conversionRate: 0, thisMonth: 0, avgResponseTime: 0 },
+        client: { naam: 'Admin', calendly: '' }
+      });
+    }
+
+    // Airtable Clients table lookup (with 5-min in-memory cache as last resort)
+    try {
+      let client = getCachedClient(raw);
+      if (!client) {
+        const formula = encodeURIComponent(`{API Key}="${escapeFormula(raw)}"`);
+        const cRes    = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (cRes.status === 429) {
+          return res.status(503).json({ error: 'Systeem is druk. Probeer over 30 seconden opnieuw.' });
+        }
+        const cData = await cRes.json();
+        if (!cData.records || cData.records.length === 0) {
+          return res.status(401).json({ error: 'Ongeldige API key' });
+        }
+        client = cData.records[0];
+        setCachedClient(raw, client);
+      }
+      projectCode  = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code']  || '';
+      clientName   = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']   || '';
+      calendlyLink = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'] || '';
+    } catch (err) {
+      console.error('Leads auth error:', err.message);
+      return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
+    }
+  }
 
   // ── PATCH — save notes ──────────────────────────────────────────────────────
   if (req.method === 'PATCH') {

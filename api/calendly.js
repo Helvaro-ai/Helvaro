@@ -4,7 +4,54 @@
 //   /api/calendly-slots           → fetchSlots()
 //   /api/calendly-oauth-start     → oauthStart()
 //   /api/calendly-oauth-callback  → oauthCallback()
+const crypto        = require('crypto');
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+
+// ── Session token verification (same logic as leads.js) ────────────────────────
+function sessionSecret() {
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
+  return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
+}
+function verifySession(token) {
+  try {
+    if (typeof token !== 'string' || !token.startsWith('hvs1.')) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [, payload, sig] = parts;
+    if (!payload || !sig) return null;
+    const secret   = sessionSecret();
+    const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+    const a = Buffer.from(sig,      'base64url');
+    const b = Buffer.from(expected, 'base64url');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (data.exp && Date.now() > data.exp) return null;
+    return data;
+  } catch { return null; }
+}
+
+// Resolve the raw Airtable API key from either a signed session token or a
+// legacy plaintext key.  Returns null when the input is invalid.
+function resolveApiKey(raw) {
+  if (typeof raw !== 'string' || !raw) return null;
+  if (raw.startsWith('hvs1.')) {
+    const session = verifySession(raw);
+    return (session && session.apiKey) ? session.apiKey : null;
+  }
+  return /^[A-Za-z0-9\-_]{8,100}$/.test(raw) ? raw : null;
+}
+
+// Timing-safe admin token check (derived HMAC, not the raw key)
+function isAdminKey(apiKey) {
+  const key = process.env.ADMIN_KEY;
+  if (!key || !apiKey) return false;
+  const expected = crypto.createHmac('sha256', key).update('helvaro-admin-v1').digest('hex');
+  try {
+    const a = Buffer.from(apiKey,   'hex');
+    const b = Buffer.from(expected, 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch { return false; }
+}
 
 // Rate limiter — 30 req / 60s per IP (calendar ops, not a hot path)
 const _rl = new Map();
@@ -45,12 +92,11 @@ async function fetchEvents(req, res) {
   const CLIENT_ID      = process.env.CALENDLY_CLIENT_ID;
   const CLIENT_SECRET  = process.env.CALENDLY_CLIENT_SECRET;
 
-  const apiKey = String(req.headers['x-api-key'] || '').trim().slice(0, 100);
-  if (!apiKey) return res.status(401).json({ error: 'API key ontbreekt' });
-  if (!/^[A-Za-z0-9\-_]{8,100}$/.test(apiKey)) return res.status(401).json({ error: 'Ongeldige API key' });
-  if (process.env.ADMIN_KEY && apiKey === process.env.ADMIN_KEY) {
-    return res.status(200).json({ events: [], connected: false });
-  }
+  const raw    = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+  if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
+  const apiKey = resolveApiKey(raw);
+  if (!apiKey) return res.status(401).json({ error: 'Ongeldige API key' });
+  if (isAdminKey(apiKey)) return res.status(200).json({ events: [], connected: false });
 
   let recordId, accessToken, refreshToken, tokenExpiry;
   try {
@@ -159,11 +205,10 @@ async function oauthStart(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const qs     = new URLSearchParams((req.url || '').split('?')[1] || '');
-  const apiKey = String(qs.get('key') || '').trim().slice(0, 100);
+  const raw    = String(qs.get('key') || '').trim().slice(0, 2048);
+  const apiKey = resolveApiKey(raw);  // handles both session tokens and legacy keys
 
-  if (!apiKey || !/^[A-Za-z0-9\-_]{8,100}$/.test(apiKey)) {
-    return res.status(400).send('Ongeldige API key');
-  }
+  if (!apiKey) return res.status(400).send('Ongeldige API key');
 
   const CLIENT_ID    = process.env.CALENDLY_CLIENT_ID;
   const REDIRECT_URI = process.env.CALENDLY_REDIRECT_URI;
@@ -297,13 +342,10 @@ async function fetchSlots(req, res) {
   const CLIENT_ID      = process.env.CALENDLY_CLIENT_ID;
   const CLIENT_SECRET  = process.env.CALENDLY_CLIENT_SECRET;
 
-  const apiKey = String(req.headers['x-api-key'] || '').trim().slice(0, 100);
-  if (!apiKey || !/^[A-Za-z0-9\-_]{8,100}$/.test(apiKey)) {
-    return res.status(401).json({ error: 'Ongeldige API key' });
-  }
-  if (process.env.ADMIN_KEY && apiKey === process.env.ADMIN_KEY) {
-    return res.status(200).json({ connected: false, eventTypes: [], slots: [] });
-  }
+  const raw    = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+  const apiKey = resolveApiKey(raw);
+  if (!apiKey) return res.status(401).json({ error: 'Ongeldige API key' });
+  if (isAdminKey(apiKey)) return res.status(200).json({ connected: false, eventTypes: [], slots: [] });
 
   let accessToken, refreshToken, tokenExpiry, recordId;
   try {
