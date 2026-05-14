@@ -110,27 +110,31 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Ongeldig telefoonnummer — gebruik cijfers' });
     }
 
-    // ── Create lead in Airtable ────────────────────────────────────────────────
-    const createRes = await fetch(
+    // ── Create lead in Airtable (with retry on 429) ───────────────────────────
+    const createOpts = {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          fldbk0LVNckOU0bqA: name,
+          fld6YaitW0lMqHUrd: waPhone,   // normalized — must match WhatsApp's message.from
+          fldSmczuyUJd26HLe: project_code,
+          fld8mkrEWcyq7mUip: 'new',
+          fldGoerozqdea4BfU: bron,
+          fldR0r13EU4RwrtvH: new Date().toISOString()
+        }
+      })
+    };
+    const createRes = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}`,
-      {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            fldbk0LVNckOU0bqA: name,
-            fld6YaitW0lMqHUrd: waPhone,   // normalized — must match WhatsApp's message.from
-            fldSmczuyUJd26HLe: project_code,
-            fld8mkrEWcyq7mUip: 'new',
-            fldGoerozqdea4BfU: bron,
-            fldR0r13EU4RwrtvH: new Date().toISOString()
-          }
-        })
-      }
+      createOpts
     );
     const createData = await createRes.json();
     if (!createRes.ok) {
-      console.error('Airtable create error:', createRes.status);
+      console.error('Airtable create error:', createRes.status, JSON.stringify(createData));
+      if (createRes.status === 429) {
+        return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
+      }
       return res.status(500).json({ error: 'Lead aanmaken mislukt' });
     }
 
