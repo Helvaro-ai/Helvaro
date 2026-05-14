@@ -21,6 +21,19 @@ async function atFetch(url, opts) {
 // needing to refresh, reducing Airtable noise that competes with auth.js.
 const _clientCache = new Map();
 const CLIENT_TTL   = 30 * 60 * 1000;
+
+// Leads response cache by projectCode — 90 s TTL (matches poll interval)
+// On Airtable 429, serves the last-known-good response so the dashboard
+// stays populated instead of showing an error.  Stale flag is included
+// so the UI can optionally display a "cached" badge.
+const _leadsCache = new Map();
+const LEADS_TTL   = 90 * 1000;
+function getCachedLeads(code) {
+  return _leadsCache.get(code) || null; // { payload, ts } — caller checks freshness
+}
+function setCachedLeads(code, payload) {
+  _leadsCache.set(code, { payload, ts: Date.now() });
+}
 function getCachedClient(key) {
   const e = _clientCache.get(key);
   if (!e) return null;
@@ -227,14 +240,26 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── GET — fetch all leads (paginated) ───────────────────────────────────────
+  // Try cache first — on 429 we return stale payload so the dashboard stays alive.
+  const leadsCache = getCachedLeads(projectCode);
+  const cacheAge   = leadsCache ? Date.now() - leadsCache.ts : Infinity;
+
   let allLeads = [];
+  let usedStale = false;
   try {
     const formula = encodeURIComponent(`{Project Code}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
       const lRes = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-      if (lRes.status === 429) throw new Error('Airtable 429');
+      if (lRes.status === 429) {
+        if (leadsCache) {
+          console.warn('Leads 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
+          usedStale = true;
+          break; // jump to stale-return below
+        }
+        throw new Error('Airtable 429');
+      }
       const lData = await lRes.json();
       if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
       allLeads = allLeads.concat(lData.records || []);
@@ -242,7 +267,16 @@ module.exports = async function handler(req, res) {
     } while (offset);
   } catch (err) {
     console.error('Leads fetch error:', err.message);
+    if (leadsCache) {
+      console.warn('Leads error — serving stale cache as fallback');
+      return res.status(200).json({ ...leadsCache.payload, stale: true });
+    }
     return res.status(500).json({ error: 'Leads ophalen mislukt. Probeer later opnieuw.' });
+  }
+
+  // Serve stale cache when 429 was hit mid-pagination
+  if (usedStale) {
+    return res.status(200).json({ ...leadsCache.payload, stale: true });
   }
 
   // ── Field helpers ───────────────────────────────────────────────────────────
@@ -340,7 +374,9 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  return res.status(200).json({ leads, stats, client: { naam: clientName, calendly: calendlyLink } });
+  const responsePayload = { leads, stats, client: { naam: clientName, calendly: calendlyLink } };
+  setCachedLeads(projectCode, responsePayload); // warm cache for 429 fallback
+  return res.status(200).json(responsePayload);
 };
 
 // Escape double-quotes and backslashes for Airtable formula strings
