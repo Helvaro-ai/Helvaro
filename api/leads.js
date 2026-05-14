@@ -124,10 +124,6 @@ module.exports = async function handler(req, res) {
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
-  // Diagnostic — log env var presence (never the value) to confirm config
-  if (!AIRTABLE_TOKEN) console.error('[leads] API_AIRTABLE env var is missing!');
-  if (!BASE_ID)        console.error('[leads] BASE_AIRTABLE env var is missing!');
-
   // ── Auth ────────────────────────────────────────────────────────────────────
   // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
   const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
@@ -280,21 +276,16 @@ module.exports = async function handler(req, res) {
       // On 429 we fall through to the stale cache immediately.
       const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       if (lRes.status === 429) {
-        // Log the response body so we can see what Airtable says
-        const body429 = await lRes.text().catch(() => '');
-        console.warn(`[leads] Airtable 429 body: ${body429.slice(0, 300)}`);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
-          console.warn('Leads 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
+          console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
           break; // jump to stale-return below
         }
-        // No cache (or cache too old) — return empty payload so dashboard shows
-        // blank state instead of an error toast. The 90s poll retries automatically.
-        console.warn('Leads 429 — no usable cache, returning empty payload');
+        // No cache (or too old) — return empty payload; dashboard retries on next poll.
+        console.warn('[leads] 429 — no usable cache, returning empty payload');
         return res.status(200).json({
           leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
-          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true,
-          _debug429: body429  // TEMP: expose Airtable error body for diagnosis
+          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true
         });
       }
       const lData = await lRes.json();
