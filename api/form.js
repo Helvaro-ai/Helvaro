@@ -71,26 +71,32 @@ module.exports = async function handler(req, res) {
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
 
-    // ── Look up client config ───────────────────────────────────────────────────
-    // Use field name {Project Code} (more reliable than field ID in formulas).
-    // atFetch retries on 429 so a brief rate-limit spike doesn't surface as
-    // "Ongeldige projectcode" to the user.
-    const formula = encodeURIComponent(`{Project Code}="${escapeFormula(project_code)}"`);
-    const cRes  = await atFetch(
-      `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
-      { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-    );
-    if (cRes.status === 429) {
-      return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
-    }
-    const cData = await cRes.json();
-    if (!cData.records || cData.records.length === 0) {
-      return res.status(404).json({ error: 'Ongeldige projectcode' });
-    }
-
-    const cfg        = cData.records[0].fields;
+    // ── Look up client config (non-blocking) ───────────────────────────────────
+    // Fetch all client records and match by field ID so the formula field-name
+    // issue can never block a submission.  On any failure (429, network, no
+    // match) we fall back to safe defaults — the lead is always created.
     const aiName     = 'Mathis Willems';
-    const clientName = cfg.fldAnB848Sr5jl6dq  || cfg['Client Name'] || 'Helvaro';
+    let   clientName = project_code; // safe default — overwritten below if found
+
+    try {
+      const cRes = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?maxRecords=100&returnFieldsByFieldId=true`,
+        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+      );
+      if (cRes.ok) {
+        const cData = await cRes.json();
+        const match = (cData.records || []).find(r => {
+          // fldN4dL0bGgfBOXwM is the Project Code field ID in the Clients table
+          const code = String(r.fields['fldN4dL0bGgfBOXwM'] || '').trim().toUpperCase();
+          return code === project_code;
+        });
+        if (match) {
+          clientName = match.fields['fldAnB848Sr5jl6dq'] || match.fields['Client Name'] || clientName;
+        }
+        // No match → unknown project code; still proceed (leads table records it)
+      }
+      // 429 / error → use defaults, don't block the form submission
+    } catch { /* network error — use defaults */ }
 
     // ── Normalise phone — stored in Airtable in international digits-only format
     // so it matches what WhatsApp sends as message.from (e.g. "32466358427")
