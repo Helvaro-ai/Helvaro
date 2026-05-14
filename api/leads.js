@@ -276,6 +276,10 @@ module.exports = async function handler(req, res) {
       // On 429 we fall through to the stale cache immediately.
       const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       if (lRes.status === 429) {
+        // Log headers + body so we can identify the exact rate-limit type
+        const retryAfter = lRes.headers.get('retry-after') || lRes.headers.get('Retry-After') || '?';
+        const body429    = await lRes.text().catch(() => '');
+        console.warn(`[leads] 429 retryAfter=${retryAfter} body=${body429.slice(0, 400)}`);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
