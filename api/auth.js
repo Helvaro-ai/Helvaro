@@ -1,19 +1,21 @@
 const crypto = require('crypto');
 
-// Exponential backoff + jitter retry for Airtable 429.
-// 6 attempts: ~1 s, ~2 s, ~4 s, ~8 s, ~16 s, ~32 s  (≤ ~63 s total).
-// Jitter (±25 %) prevents synchronized retries from concurrent serverless instances
-// hammering Airtable at the same millisecond after a shared rate-limit window.
+// Exponential backoff + jitter for Airtable 429 — auth path only.
+// 4 attempts: ~1 s, ~2 s, ~4 s, final.  Max ~7 s server wait.
+// Auth is the critical path so it retries more than polling endpoints,
+// but we keep it short so the 429 error surfaces quickly to the client
+// where a 30-second auto-retry countdown takes over (much less wasteful
+// than holding a serverless function open for 60 s under rate pressure).
 async function atFetch(url, opts) {
   let delay = 1000;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     const r = await fetch(url, opts);
     if (r.status !== 429) return r;
-    if (attempt < 5) {
+    if (attempt < 3) {
       const jitter = delay * 0.25 * (Math.random() * 2 - 1); // ±25 %
-      await new Promise(res => setTimeout(res, Math.max(500, delay + jitter)));
+      await new Promise(res => setTimeout(res, Math.max(300, delay + jitter)));
     }
-    delay = Math.min(delay * 2, 32_000);
+    delay = Math.min(delay * 2, 8_000);
   }
   return fetch(url, opts); // final attempt — caller handles non-200
 }
@@ -161,6 +163,10 @@ module.exports = async function handler(req, res) {
 
       if (!atRes.ok) {
         console.error('Airtable auth error:', atRes.status);
+        if (atRes.status === 429) {
+          res.setHeader('Retry-After', '30');
+          return res.status(503).json({ error: 'Systeem is tijdelijk bezet. Even geduld...', retryAfter: 30 });
+        }
         return res.status(500).json({ error: 'Database fout. Probeer opnieuw.' });
       }
 

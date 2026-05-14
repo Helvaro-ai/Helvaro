@@ -8867,9 +8867,31 @@ async function handleLogin() {
       body: JSON.stringify({ email, password }),
     });
     const authData = await authResp.json();
+
+    // 503 = Airtable temporarily rate-limited — auto-retry with countdown so the
+    // user never has to click INLOGGEN again and can't accidentally spam requests.
+    if (authResp.status === 503) {
+      let remaining = authData.retryAfter || 30;
+      errEl.textContent = \`Even geduld — opnieuw proberen in \${remaining}s...\`;
+      errEl.classList.add('visible');
+      const tick = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(tick);
+          btn.querySelector('span').textContent = 'INLOGGEN...';
+          handleLogin();
+        } else {
+          errEl.textContent = \`Even geduld — opnieuw proberen in \${remaining}s...\`;
+        }
+      }, 1000);
+      return; // btn stays disabled during countdown
+    }
+
     if (!authResp.ok) {
       errEl.textContent = authData.error || 'Inloggen mislukt.';
       errEl.classList.add('visible');
+      btn.querySelector('span').textContent = 'INLOGGEN';
+      btn.disabled = false;
       return;
     }
     saveSession(authData.apiKey, authData.clientName, authData.projectCode, email);
@@ -8882,7 +8904,6 @@ async function handleLogin() {
   } catch (err) {
     errEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
     errEl.classList.add('visible');
-  } finally {
     btn.querySelector('span').textContent = 'INLOGGEN';
     btn.disabled = false;
   }
