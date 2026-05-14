@@ -276,6 +276,9 @@ module.exports = async function handler(req, res) {
       // On 429 we fall through to the stale cache immediately.
       const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       if (lRes.status === 429) {
+        // Log the response body so we can see what Airtable says
+        const body429 = await lRes.text().catch(() => '');
+        console.warn(`[leads] Airtable 429 body: ${body429.slice(0, 300)}`);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('Leads 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
@@ -290,7 +293,10 @@ module.exports = async function handler(req, res) {
         });
       }
       const lData = await lRes.json();
-      if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
+      if (!lRes.ok) {
+        console.error(`[leads] Airtable ${lRes.status}:`, JSON.stringify(lData).slice(0, 300));
+        throw new Error('Airtable ' + lRes.status);
+      }
       allLeads = allLeads.concat(lData.records || []);
       offset   = lData.offset || '';
     } while (offset);
