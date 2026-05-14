@@ -1,8 +1,20 @@
 const crypto = require('crypto');
 
-// Fast-fail retry for Airtable 429 on polling endpoints — 2 retries, ~3 s max.
-// Polling is resilient: if it fails the dashboard shows stale data and retries
-// in 90 s.  Keeping this short prevents a retry storm that would starve auth.js.
+// Single-shot Airtable fetch for polling — NO retries on 429.
+//
+// Root-cause analysis (2026-05-14): with multiple dashboard tabs open, each
+// session polls leads every 90 s.  Under a 429 storm, atFetch was retrying
+// 2 extra times (1 s + 2 s delays) per call.  With 4+ sessions, those retry
+// bursts overlapped and generated 4–5+ simultaneous Airtable calls — enough
+// to keep Airtable permanently rate-limited in a self-reinforcing cycle.
+//
+// Fix: one attempt only.  On 429 → return immediately → serve stale cache
+// or empty payload → wait the full 90 s before trying again naturally.
+// This gives Airtable's bucket time to refill between polls.
+//
+// atFetch is still used for the CLIENT lookup (legacy API-key path only,
+// cold-start infrequent) and PATCH writes (infrequent, can tolerate brief
+// wait).  The hot leads-GET loop uses plain fetch() below.
 async function atFetch(url, opts) {
   let delay = 1000;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -253,7 +265,10 @@ module.exports = async function handler(req, res) {
     let offset    = '';
     do {
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
-      const lRes = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      // Single-shot fetch — NO retries.  Retrying on 429 causes overlapping
+      // bursts from multiple sessions that keep Airtable permanently limited.
+      // On 429 we fall through to the stale cache immediately.
+      const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       if (lRes.status === 429) {
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('Leads 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
