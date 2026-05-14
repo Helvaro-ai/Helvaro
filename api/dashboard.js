@@ -8838,7 +8838,8 @@ async function startDashboard() {
 
 document.getElementById('btn-login').addEventListener('click', handleLogin);
 document.getElementById('login-password').addEventListener('keydown', e => {
-  if (e.key === 'Enter') handleLogin();
+  // Guard: don't fire a second request while a countdown is in progress
+  if (e.key === 'Enter' && !document.getElementById('btn-login').disabled) handleLogin();
 });
 document.getElementById('login-email').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('login-password').focus();

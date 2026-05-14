@@ -133,11 +133,27 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
 
-    // ── Owner bypass ──────────────────────────────────────────────────────────
-    // Eliminates ALL Airtable calls for the primary owner account.
-    // Set OWNER_EMAIL, OWNER_PASSWORD_HASH, OWNER_API_KEY, OWNER_CLIENT_NAME,
-    // and OWNER_PROJECT_CODE in Vercel env vars to activate.
-    // OWNER_PASSWORD_HASH = the same password value stored in Airtable "Password Hash".
+    // ── Env-var user store (USERS_CONFIG) ────────────────────────────────────
+    // Single JSON env var that eliminates ALL Airtable calls for listed users.
+    // Format (set in Vercel → Settings → Environment Variables):
+    //   USERS_CONFIG = {"email@example.com":{"password":"...","apiKey":"...","clientName":"...","projectCode":"..."}}
+    // Use the EXACT same password that is stored in Airtable "Password Hash".
+    // Supports multiple accounts — just add more keys to the JSON object.
+    try {
+      const raw = process.env.USERS_CONFIG;
+      if (raw) {
+        const store = JSON.parse(raw);
+        // Find by email (case-insensitive)
+        const key  = Object.keys(store).find(k => k.toLowerCase() === email.toLowerCase());
+        const user = key ? store[key] : null;
+        if (user && safeEqual(password, String(user.password || ''))) {
+          const ud = { apiKey: user.apiKey || '', clientName: user.clientName || '', projectCode: user.projectCode || '' };
+          return res.status(200).json({ success: true, ...ud, apiKey: signSession(ud) });
+        }
+      }
+    } catch { /* malformed JSON — fall through to Airtable */ }
+
+    // ── Owner bypass (legacy — superseded by USERS_CONFIG) ───────────────────
     const OWNER_EMAIL = process.env.OWNER_EMAIL;
     const OWNER_PASS  = process.env.OWNER_PASSWORD_HASH;
     if (OWNER_EMAIL && OWNER_PASS &&
