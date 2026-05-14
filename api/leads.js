@@ -266,9 +266,11 @@ module.exports = async function handler(req, res) {
     const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
-      // returnFieldsByFieldId=true → response keys are field IDs, matching the
-      // field-ID-first lookups in the leads map below (e.g. f.fldbk0LVNckOU0bqA).
-      const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100&returnFieldsByFieldId=true${offset ? '&offset=' + offset : ''}`;
+      // Do NOT use returnFieldsByFieldId=true here — Airtable returns field names
+      // as response keys by default, and two fields (Conversation History, Last
+      // Message) have no known field IDs.  Filter formula and sort still use field
+      // IDs — those work regardless of this parameter.
+      const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
       // Single-shot fetch — NO retries.  Retrying on 429 causes overlapping
       // bursts from multiple sessions that keep Airtable permanently limited.
       // On 429 we fall through to the stale cache immediately.
