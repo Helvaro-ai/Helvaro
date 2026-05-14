@@ -123,7 +123,7 @@ async function fetchEvents(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const AIRTABLE_TOKEN = process.env.API_Airtable;
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const CLIENT_ID      = process.env.CALENDLY_CLIENT_ID;
   const CLIENT_SECRET  = process.env.CALENDLY_CLIENT_SECRET;
@@ -295,7 +295,7 @@ async function oauthCallback(req, res) {
   const CLIENT_ID      = process.env.CALENDLY_CLIENT_ID;
   const CLIENT_SECRET  = process.env.CALENDLY_CLIENT_SECRET;
   const REDIRECT_URI   = process.env.CALENDLY_REDIRECT_URI;
-  const AIRTABLE_TOKEN = process.env.API_Airtable;
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
 
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
@@ -379,7 +379,7 @@ async function fetchSlots(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const AIRTABLE_TOKEN = process.env.API_Airtable;
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const CLIENT_ID      = process.env.CALENDLY_CLIENT_ID;
   const CLIENT_SECRET  = process.env.CALENDLY_CLIENT_SECRET;

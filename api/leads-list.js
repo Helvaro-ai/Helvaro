@@ -11,7 +11,7 @@ function isRateLimited(ip) {
   return hits.length > max;
 }
 
-const AIRTABLE_TOKEN = process.env.API_Airtable;
+const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
 const AIRTABLE_BASE  = process.env.BASE_AIRTABLE;
 const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
 const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';

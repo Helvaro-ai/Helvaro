@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
 const APP_SECRET    = process.env.WA_APP_SECRET;   // Meta App Secret for signature verification
 
-const AIRTABLE_TOKEN  = process.env.API_Airtable;
+const AIRTABLE_TOKEN  = process.env.API_AIRTABLE;
 const AIRTABLE_BASE   = process.env.BASE_AIRTABLE;
 const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY;
 const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;

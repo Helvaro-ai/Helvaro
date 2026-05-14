@@ -119,7 +119,7 @@ module.exports = async function handler(req, res) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
 
-  const AIRTABLE_TOKEN = process.env.API_Airtable;
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';

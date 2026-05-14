@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const AIRTABLE_TOKEN = process.env.API_Airtable;
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
   const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
