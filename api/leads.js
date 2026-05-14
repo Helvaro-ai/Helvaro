@@ -22,12 +22,14 @@ async function atFetch(url, opts) {
 const _clientCache = new Map();
 const CLIENT_TTL   = 30 * 60 * 1000;
 
-// Leads response cache by projectCode — 90 s TTL (matches poll interval)
+// Leads response cache by projectCode.
 // On Airtable 429, serves the last-known-good response so the dashboard
-// stays populated instead of showing an error.  Stale flag is included
-// so the UI can optionally display a "cached" badge.
+// stays populated instead of showing an error.  We always try Airtable
+// first; the cache is only used when Airtable refuses (429) or errors.
+// MAX_STALE_MS caps how old the stale data can be — after 1 hour we'd
+// rather show an empty state than leads from yesterday.
 const _leadsCache = new Map();
-const LEADS_TTL   = 90 * 1000;
+const MAX_STALE_MS = 60 * 60 * 1000; // 1 hour
 function getCachedLeads(code) {
   return _leadsCache.get(code) || null; // { payload, ts } — caller checks freshness
 }
@@ -253,14 +255,14 @@ module.exports = async function handler(req, res) {
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
       const lRes = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       if (lRes.status === 429) {
-        if (leadsCache) {
+        if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('Leads 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
           break; // jump to stale-return below
         }
-        // No cache yet — return empty payload so dashboard shows blank state
-        // instead of an error toast. The 90s poll will retry automatically.
-        console.warn('Leads 429 — no cache, returning empty payload');
+        // No cache (or cache too old) — return empty payload so dashboard shows
+        // blank state instead of an error toast. The 90s poll retries automatically.
+        console.warn('Leads 429 — no usable cache, returning empty payload');
         return res.status(200).json({
           leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
           client: { naam: clientName, calendly: calendlyLink }, rateLimited: true
@@ -273,13 +275,13 @@ module.exports = async function handler(req, res) {
     } while (offset);
   } catch (err) {
     console.error('Leads fetch error:', err.message);
-    if (leadsCache) {
-      console.warn('Leads error — serving stale cache as fallback');
+    if (leadsCache && cacheAge < MAX_STALE_MS) {
+      console.warn('Leads error — serving stale cache as fallback (age ' + Math.round(cacheAge / 1000) + 's)');
       return res.status(200).json({ ...leadsCache.payload, stale: true });
     }
-    // Unknown error, no cache — return empty rather than 500 so the dashboard
+    // Unknown error, no usable cache — return empty rather than 500 so the dashboard
     // stays alive and retries on the next poll cycle.
-    console.warn('Leads error, no cache — returning empty payload');
+    console.warn('Leads error, no usable cache — returning empty payload');
     return res.status(200).json({
       leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
       client: { naam: clientName, calendly: calendlyLink }, error: err.message

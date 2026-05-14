@@ -66,6 +66,29 @@ function isAdminKey(apiKey) {
   } catch { return false; }
 }
 
+// Client record cache keyed by resolved API key — 10 min TTL.
+// fetchEvents and fetchSlots both look up the Clients table on every call;
+// with the dashboard polling every 90 s this adds a steady Airtable drain.
+// The cache eliminates that drain: token refresh (PATCH) still always hits
+// Airtable because it writes, not reads.
+const _clientTokenCache = new Map();
+const CLIENT_CACHE_TTL  = 10 * 60 * 1000;
+function getCachedClientRecord(apiKey) {
+  const e = _clientTokenCache.get(apiKey);
+  if (!e) return null;
+  if (Date.now() - e.ts > CLIENT_CACHE_TTL) { _clientTokenCache.delete(apiKey); return null; }
+  return e.record;
+}
+function setCachedClientRecord(apiKey, record) {
+  _clientTokenCache.set(apiKey, { record, ts: Date.now() });
+}
+// Call after a token refresh PATCH so the cache reflects the new tokens.
+function patchCachedClientRecord(apiKey, fields) {
+  const e = _clientTokenCache.get(apiKey);
+  if (!e) return;
+  e.record = { ...e.record, fields: { ...e.record.fields, ...fields } };
+}
+
 // Rate limiter — 30 req / 60s per IP (calendar ops, not a hot path)
 const _rl = new Map();
 function isRateLimited(ip) {
@@ -113,15 +136,18 @@ async function fetchEvents(req, res) {
 
   let recordId, accessToken, refreshToken, tokenExpiry;
   try {
-    const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes    = await atFetch(
-      `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
-      { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-    );
-    const cData = await cRes.json();
-    if (!cData.records || cData.records.length === 0) return res.status(401).json({ error: 'Ongeldige API key' });
-
-    const client  = cData.records[0];
+    let client = getCachedClientRecord(apiKey);
+    if (!client) {
+      const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
+      const cRes    = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+      );
+      const cData = await cRes.json();
+      if (!cData.records || cData.records.length === 0) return res.status(401).json({ error: 'Ongeldige API key' });
+      client = cData.records[0];
+      setCachedClientRecord(apiKey, client);
+    }
     recordId      = client.id;
     accessToken   = client.fields['Calendly Access Token']  || '';
     refreshToken  = client.fields['Calendly Refresh Token'] || '';
@@ -151,14 +177,17 @@ async function fetchEvents(req, res) {
         const tok       = await tokRes.json();
         accessToken     = tok.access_token;
         const newExpiry = new Date(Date.now() + (tok.expires_in || 7200) * 1000).toISOString();
+        const newFields = {
+          'Calendly Access Token': accessToken,
+          'Calendly Token Expiry': newExpiry,
+          ...(tok.refresh_token ? { 'Calendly Refresh Token': tok.refresh_token } : {}),
+        };
+        // Keep in-memory cache current so the next poll doesn't hit Airtable
+        patchCachedClientRecord(apiKey, newFields);
         fetch(`https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${recordId}`, {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields: {
-            'Calendly Access Token': accessToken,
-            'Calendly Token Expiry': newExpiry,
-            ...(tok.refresh_token ? { 'Calendly Refresh Token': tok.refresh_token } : {}),
-          }}),
+          body:    JSON.stringify({ fields: newFields }),
         }).catch(() => {});
       }
     } catch (e) { console.error('Token refresh error:', e.message); }
@@ -362,14 +391,18 @@ async function fetchSlots(req, res) {
 
   let accessToken, refreshToken, tokenExpiry, recordId;
   try {
-    const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes    = await atFetch(
-      `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
-      { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-    );
-    const cData = await cRes.json();
-    if (!cData.records?.length) return res.status(401).json({ error: 'Ongeldige API key' });
-    const client  = cData.records[0];
+    let client = getCachedClientRecord(apiKey);
+    if (!client) {
+      const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
+      const cRes    = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+      );
+      const cData = await cRes.json();
+      if (!cData.records?.length) return res.status(401).json({ error: 'Ongeldige API key' });
+      client = cData.records[0];
+      setCachedClientRecord(apiKey, client);
+    }
     recordId      = client.id;
     accessToken   = client.fields['Calendly Access Token']  || '';
     refreshToken  = client.fields['Calendly Refresh Token'] || '';
@@ -401,14 +434,16 @@ async function fetchSlots(req, res) {
         const tok       = await tokRes.json();
         accessToken     = tok.access_token;
         const newExpiry = new Date(Date.now() + (tok.expires_in || 7200) * 1000).toISOString();
+        const newFields = {
+          'Calendly Access Token':  accessToken,
+          'Calendly Token Expiry':  newExpiry,
+          ...(tok.refresh_token ? { 'Calendly Refresh Token': tok.refresh_token } : {}),
+        };
+        patchCachedClientRecord(apiKey, newFields);
         fetch(`https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${recordId}`, {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields: {
-            'Calendly Access Token':  accessToken,
-            'Calendly Token Expiry':  newExpiry,
-            ...(tok.refresh_token ? { 'Calendly Refresh Token': tok.refresh_token } : {}),
-          }}),
+          body:    JSON.stringify({ fields: newFields }),
         }).catch(() => {});
       }
     } catch (e) { console.error('Token refresh:', e.message); }

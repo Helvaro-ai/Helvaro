@@ -156,7 +156,7 @@ async function processMessage(phone, text) {
       'Lead Score': aiResponse.leadScore || 0,
     });
   }
-  await updateLead(lead.id, updateFields);
+  await updateLead(lead.id, updateFields, phone);
 
   // 10. Wait 30 seconds before replying — feels like a real person typing
   await new Promise(resolve => setTimeout(resolve, 30000));
@@ -173,7 +173,7 @@ async function processMessage(phone, text) {
         await sendWA(phone, `Ons adres: ${address}`);
       }
       await sendWA(phone, 'Heb je de afspraak ingepland? Laat het me weten.');
-      await updateLead(lead.id, { 'Booking Link Sent': true });
+      await updateLead(lead.id, { 'Booking Link Sent': true }, phone);
     }
 
     // Notify owner when a lead is qualified
@@ -347,6 +347,28 @@ function getCachedClient(code) {
 }
 function setCachedClient(code, record) { _clientCache.set(code, { record, ts: Date.now() }); }
 
+// Lead cache by phone — 3 min TTL.
+// getLead() is called on EVERY incoming message with no caching, making it the
+// single biggest Airtable drain (one GET per message, uncached).  Conversations
+// involve multiple messages from the same phone so the cache hit rate is high.
+// After updateLead() we merge the new fields into the cached record so the next
+// message sees the latest conversation state without a fresh Airtable call.
+const _leadCache = new Map();
+const LEAD_TTL   = 3 * 60 * 1000;
+function getCachedLead(phone) {
+  const e = _leadCache.get(phone);
+  if (!e) return null;
+  if (Date.now() - e.ts > LEAD_TTL) { _leadCache.delete(phone); return null; }
+  return e.record;
+}
+function setCachedLead(phone, record) { _leadCache.set(phone, { record, ts: Date.now() }); }
+function patchCachedLead(phone, fields) {
+  const e = _leadCache.get(phone);
+  if (!e) return;
+  e.record = { ...e.record, fields: { ...e.record.fields, ...fields } };
+  // Keep original timestamp so TTL still expires at the right time
+}
+
 // Fast-fail retry for Airtable 429 — 2 retries, ~3 s max.
 async function atFetch(url, opts) {
   let delay = 1000;
@@ -377,15 +399,20 @@ async function getClientByCode(code) {
 }
 
 async function getLead(phone) {
+  const cached = getCachedLead(phone);
+  if (cached) return cached;
+
   const filter = encodeURIComponent(`{Phone}="${escapeFormula(phone)}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=Created%20At&sort[0][direction]=desc`;
   const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
   if (data.error) console.error('[Airtable] Lead fout:', JSON.stringify(data.error));
-  return data.records?.[0] || null;
+  const record = data.records?.[0] || null;
+  if (record) setCachedLead(phone, record);
+  return record;
 }
 
-async function updateLead(recordId, fields) {
+async function updateLead(recordId, fields, phone) {
   const url  = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${recordId}`;
   const res  = await atFetch(url, {
     method:  'PATCH',
@@ -394,6 +421,9 @@ async function updateLead(recordId, fields) {
   });
   const data = await res.json();
   if (data.error) console.error('[Airtable] Update fout:', JSON.stringify(data.error));
+  // Keep in-memory lead cache in sync so the next message from this phone
+  // sees the updated Conversation History / State without a fresh Airtable call.
+  if (phone && !data.error) patchCachedLead(phone, fields);
   return data;
 }
 
