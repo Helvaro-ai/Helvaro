@@ -1,3 +1,18 @@
+// Fast-fail retry for Airtable 429 — 2 retries, ~3 s max.
+// form.js previously had no retry logic so a single 429 response
+// caused "Ongeldige projectcode" even when the code was correct.
+async function atFetch(url, opts) {
+  let delay = 1000;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await fetch(url, opts);
+    if (r.status !== 429) return r;
+    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+    await new Promise(res => setTimeout(res, Math.max(300, delay + jitter)));
+    delay *= 2;
+  }
+  return fetch(url, opts);
+}
+
 // Rate limit — max 5 form submissions per IP per 10 minutes
 const formAttempts = new Map();
 function isRateLimited(ip) {
@@ -57,11 +72,17 @@ module.exports = async function handler(req, res) {
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
 
     // ── Look up client config ───────────────────────────────────────────────────
-    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
-    const cRes  = await fetch(
+    // Use field name {Project Code} (more reliable than field ID in formulas).
+    // atFetch retries on 429 so a brief rate-limit spike doesn't surface as
+    // "Ongeldige projectcode" to the user.
+    const formula = encodeURIComponent(`{Project Code}="${escapeFormula(project_code)}"`);
+    const cRes  = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );
+    if (cRes.status === 429) {
+      return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
+    }
     const cData = await cRes.json();
     if (!cData.records || cData.records.length === 0) {
       return res.status(404).json({ error: 'Ongeldige projectcode' });
