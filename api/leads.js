@@ -261,7 +261,9 @@ module.exports = async function handler(req, res) {
   let allLeads = [];
   let usedStale = false;
   try {
-    const formula = encodeURIComponent(`{Project Code}="${escapeFormula(projectCode)}"`);
+    // Use field ID (fldSmczuyUJd26HLe = Project Code) — field IDs are stable,
+    // field names can be renamed in Airtable without breaking the query.
+    const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
