@@ -8896,11 +8896,24 @@ async function handleLogin() {
       return;
     }
     saveSession(authData.apiKey, authData.clientName, authData.projectCode, email);
-    const data = await fetchLeads();
-    state.leads = data.leads || [];
-    state.stats = data.stats || {};
-    state.clientName = authData.clientName || data.client?.naam || email.split('@')[0];
-    state.lastFetch = Date.now();
+    state.clientName = authData.clientName || email.split('@')[0];
+
+    // Auth succeeded — load leads separately so a transient 429 on the
+    // first data fetch doesn't look like a login failure.
+    try {
+      const data = await fetchLeads();
+      state.leads = data.leads || [];
+      state.stats = data.stats || {};
+      state.clientName = authData.clientName || data.client?.naam || state.clientName;
+      state.lastFetch = Date.now();
+    } catch (_) {
+      // Leads fetch failed (Airtable busy) — proceed with empty state.
+      // The 90-second polling loop will populate the dashboard automatically.
+      state.leads = [];
+      state.stats = {};
+      state.lastFetch = 0;
+    }
+
     await startDashboard();
   } catch (err) {
     errEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
