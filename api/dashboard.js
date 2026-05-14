@@ -6395,8 +6395,15 @@ function updateTimestamp() {
 }
 
 setInterval(updateTimestamp, 60000);
-// Poll for new leads every 90 seconds — reduced to stay under Airtable 5 req/sec limit
-setInterval(() => { if (state.apiKey) refreshData(); }, 90000);
+// Poll for new leads every 5 minutes with random startup jitter (30–90s) so
+// multiple dashboard sessions never fire simultaneously and stay well below
+// Airtable's 5 req/s base-level rate limit.
+const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const pollJitter    = Math.random() * 60000 + 30000; // 30–90s startup offset
+setTimeout(() => {
+  if (state.apiKey) refreshData();
+  setInterval(() => { if (state.apiKey) refreshData(); }, POLL_INTERVAL);
+}, pollJitter);
 
 /* ============================================================
    NEW LEAD NOTIFICATIONS (Feature 1)

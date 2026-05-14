@@ -124,6 +124,10 @@ module.exports = async function handler(req, res) {
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
+  // Diagnostic — log env var presence (never the value) to confirm config
+  if (!AIRTABLE_TOKEN) console.error('[leads] API_AIRTABLE env var is missing!');
+  if (!BASE_ID)        console.error('[leads] BASE_AIRTABLE env var is missing!');
+
   // ── Auth ────────────────────────────────────────────────────────────────────
   // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
   const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
