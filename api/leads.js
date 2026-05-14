@@ -1,13 +1,16 @@
 const crypto = require('crypto');
 
-// Exponential backoff retry for Airtable 429 — up to 3 attempts (1s, 2s, 4s)
+// Exponential backoff + jitter retry for Airtable 429 — 6 attempts, ≤ ~63 s total.
 async function atFetch(url, opts) {
   let delay = 1000;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 6; attempt++) {
     const r = await fetch(url, opts);
     if (r.status !== 429) return r;
-    if (attempt < 2) await new Promise(res => setTimeout(res, delay));
-    delay *= 2;
+    if (attempt < 5) {
+      const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+      await new Promise(res => setTimeout(res, Math.max(500, delay + jitter)));
+    }
+    delay = Math.min(delay * 2, 32_000);
   }
   return fetch(url, opts);
 }

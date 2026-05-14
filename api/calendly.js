@@ -7,6 +7,21 @@
 const crypto        = require('crypto');
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 
+// Exponential backoff + jitter retry for Airtable 429 — 6 attempts, ≤ ~63 s total.
+async function atFetch(url, opts) {
+  let delay = 1000;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const r = await fetch(url, opts);
+    if (r.status !== 429) return r;
+    if (attempt < 5) {
+      const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+      await new Promise(res => setTimeout(res, Math.max(500, delay + jitter)));
+    }
+    delay = Math.min(delay * 2, 32_000);
+  }
+  return fetch(url, opts);
+}
+
 // ── Session token verification (same logic as leads.js) ────────────────────────
 function sessionSecret() {
   const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
@@ -101,7 +116,7 @@ async function fetchEvents(req, res) {
   let recordId, accessToken, refreshToken, tokenExpiry;
   try {
     const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes    = await fetch(
+    const cRes    = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );
@@ -286,7 +301,7 @@ async function oauthCallback(req, res) {
 
     // Find client record
     const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes    = await fetch(
+    const cRes    = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );
@@ -350,7 +365,7 @@ async function fetchSlots(req, res) {
   let accessToken, refreshToken, tokenExpiry, recordId;
   try {
     const formula = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
-    const cRes    = await fetch(
+    const cRes    = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
     );

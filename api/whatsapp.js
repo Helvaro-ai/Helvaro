@@ -347,15 +347,19 @@ function getCachedClient(code) {
 }
 function setCachedClient(code, record) { _clientCache.set(code, { record, ts: Date.now() }); }
 
-// Exponential backoff retry for Airtable 429 — up to 3 attempts (1s, 2s, 4s)
+// Exponential backoff + jitter retry for Airtable 429 — 6 attempts, ≤ ~63 s total.
 async function atFetch(url, opts) {
   let delay = 1000;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 6; attempt++) {
     const r = await fetch(url, opts);
     if (r.status !== 429) return r;
-    console.warn(`[Airtable] 429 — wacht ${delay}ms en probeer opnieuw (poging ${attempt + 1}/3)`);
-    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, delay));
-    delay *= 2;
+    if (attempt < 5) {
+      const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+      const wait   = Math.max(500, delay + jitter);
+      console.warn(`[Airtable] 429 — wacht ${Math.round(wait)}ms (poging ${attempt + 1}/6)`);
+      await new Promise(res => setTimeout(res, wait));
+    }
+    delay = Math.min(delay * 2, 32_000);
   }
   return fetch(url, opts);
 }
