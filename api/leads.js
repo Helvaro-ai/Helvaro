@@ -276,20 +276,20 @@ module.exports = async function handler(req, res) {
       // On 429 we fall through to the stale cache immediately.
       const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
       if (lRes.status === 429) {
-        // Log headers + body so we can identify the exact rate-limit type
-        const retryAfter = lRes.headers.get('retry-after') || lRes.headers.get('Retry-After') || '?';
+        const retryAfter = lRes.headers.get('retry-after') || '?';
         const body429    = await lRes.text().catch(() => '');
-        console.warn(`[leads] 429 retryAfter=${retryAfter} body=${body429.slice(0, 400)}`);
+        console.warn(`[leads] 429 retryAfter=${retryAfter} body=${body429.slice(0, 500)}`);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
-          break; // jump to stale-return below
+          break;
         }
-        // No cache (or too old) — return empty payload; dashboard retries on next poll.
         console.warn('[leads] 429 — no usable cache, returning empty payload');
+        // TEMP: expose error body so we can read it in browser Network tab
         return res.status(200).json({
           leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
-          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true
+          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true,
+          _debug: { error: body429, retryAfter, token: AIRTABLE_TOKEN ? 'present' : 'MISSING', base: BASE_ID || 'MISSING' }
         });
       }
       const lData = await lRes.json();
