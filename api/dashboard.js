@@ -6278,21 +6278,50 @@ function exportCSV() {
 /* ============================================================
    REFRESH DATA
    ============================================================ */
+// ── LocalStorage lead cache ────────────────────────────────────────────────
+// Persists the last successful Airtable response so the dashboard stays
+// populated across page reloads even when Airtable is temporarily rate-limited.
+const LS_LEADS_KEY = 'hvk_leads_cache';
+const LS_LEADS_TTL = 24 * 60 * 60 * 1000; // 24 hours
+function saveLeadsToLS(leads, stats) {
+  try { localStorage.setItem(LS_LEADS_KEY, JSON.stringify({ leads, stats, ts: Date.now() })); } catch {}
+}
+function loadLeadsFromLS() {
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_LEADS_KEY) || '{}');
+    if (c.leads && c.leads.length > 0 && Date.now() - (c.ts || 0) < LS_LEADS_TTL) return c;
+  } catch {}
+  return null;
+}
+
 async function refreshData() {
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.classList.add('spin');
 
   try {
     const data = await fetchLeads();
-    state.leads = data.leads || [];
-    state.stats = data.stats || {};
-    state.clientName = data.client?.naam || 'Gebruiker';
-    state.calendlyUrl = data.client?.calendly || '';
-    state.lastFetch = Date.now();
 
-    if (data.stale || data.rateLimited) {
+    if (data.rateLimited || data.stale) {
+      // Airtable is busy — keep whatever data we already have in state.
+      // Fall back to localStorage if state is empty (e.g. first load after reload).
+      if (!state.leads || state.leads.length === 0) {
+        const lsCache = loadLeadsFromLS();
+        if (lsCache) {
+          state.leads = lsCache.leads;
+          state.stats = lsCache.stats || {};
+        }
+      }
       const ts = document.getElementById('timestamp-info');
-      if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet — data wordt geladen...';
+      if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet — vorige data weergegeven';
+      // Still re-render with whatever we have (so UI shows cached data)
+    } else {
+      // Fresh successful response — update state and persist to localStorage
+      state.leads    = data.leads || [];
+      state.stats    = data.stats || {};
+      state.clientName  = data.client?.naam    || 'Gebruiker';
+      state.calendlyUrl = data.client?.calendly || '';
+      state.lastFetch   = Date.now();
+      if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
     }
 
     updateUserInfo();
@@ -9834,17 +9863,28 @@ function renderActiviteit() {
   initTheme();
 
   if (tryAutoLogin()) {
-    // fetchLeads isolated: if Airtable is busy, proceed to dashboard with empty
-    // state — the 90-second polling loop will populate it automatically.
+    // Fetch leads — on rate-limit or error fall back to localStorage so the
+    // dashboard shows cached data immediately instead of blank zeros.
     try {
       const data = await fetchLeads();
-      state.leads = data.leads || [];
-      state.stats = data.stats || {};
-      state.clientName = state.clientName || data.client?.naam || 'Gebruiker';
-      state.lastFetch = Date.now();
+      if (!data.rateLimited && !data.stale) {
+        state.leads    = data.leads || [];
+        state.stats    = data.stats || {};
+        state.clientName  = state.clientName || data.client?.naam || 'Gebruiker';
+        state.lastFetch   = Date.now();
+        if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
+      } else {
+        // Rate-limited — try localStorage first, then accept empty state
+        const lsCache = loadLeadsFromLS();
+        if (lsCache) { state.leads = lsCache.leads; state.stats = lsCache.stats || {}; }
+        else { state.leads = []; state.stats = {}; }
+        state.lastFetch = 0;
+      }
     } catch {
-      state.leads = [];
-      state.stats = {};
+      // Network error — same localStorage fallback
+      const lsCache = loadLeadsFromLS();
+      if (lsCache) { state.leads = lsCache.leads; state.stats = lsCache.stats || {}; }
+      else { state.leads = []; state.stats = {}; }
       state.lastFetch = 0;
     }
     await startDashboard();
