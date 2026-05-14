@@ -589,9 +589,11 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   height: 4px;
   border-radius: 2px;
   background: rgba(99,102,241,0.3);
+  border: none;
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
 }
+button.brand-dot { border: none; padding: 0; }
 
 .brand-dot.active {
   background: linear-gradient(90deg, #6366f1, #38bdf8);
@@ -657,6 +659,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
   min-height: 52px;
+  touch-action: manipulation;
 }
 
 .form-input:hover {
@@ -719,6 +722,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   overflow: hidden;
   box-shadow: 0 6px 24px rgba(99,102,241,0.35), 0 0 0 0 rgba(99,102,241,0);
   min-height: 56px;
+  touch-action: manipulation;
 }
 
 .btn-login::before {
@@ -813,6 +817,12 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   40% { transform: translateX(8px); }
   60% { transform: translateX(-6px); }
   80% { transform: translateX(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton, .skeleton::after { animation: none; }
+  .login-error { animation: none; }
+  .btn-login.loading::after { animation: spin 1.5s linear infinite; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
 /* ============================================================
@@ -4937,12 +4947,17 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
         <div class="form-group">
           <label class="form-label" for="login-password">Wachtwoord</label>
-          <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+          <div style="position:relative">
+            <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px" aria-describedby="login-error">
+            <button type="button" id="btn-toggle-pw" aria-label="Wachtwoord tonen" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#6b7280;display:flex;align-items:center" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label','Wachtwoord verbergen');b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label','Wachtwoord tonen');b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
         </div>
-        <button class="btn-login" id="btn-login"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
-        <div class="login-error" id="login-error">Ongeldige inloggegevens. Probeer opnieuw.</div>
+        <button class="btn-login" id="btn-login" aria-label="Inloggen"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
+        <div class="login-error" id="login-error" role="alert" aria-live="assertive"></div>
 
-        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2025</div>
+        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2026</div>
       </div>
     </div>
 
@@ -5082,10 +5097,10 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
 
       <!-- Dots -->
-      <div class="brand-dots" id="brand-dots">
-        <div class="brand-dot active" data-target="0"></div>
-        <div class="brand-dot" data-target="1"></div>
-        <div class="brand-dot" data-target="2"></div>
+      <div class="brand-dots" id="brand-dots" role="tablist" aria-label="Slideshow navigatie">
+        <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="Slide 1"></button>
+        <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="Slide 2"></button>
+        <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="Slide 3"></button>
       </div>
     </div>
 
@@ -6274,6 +6289,11 @@ async function refreshData() {
     state.clientName = data.client?.naam || 'Gebruiker';
     state.calendlyUrl = data.client?.calendly || '';
     state.lastFetch = Date.now();
+
+    if (data.stale) {
+      const ts = document.getElementById('timestamp-info');
+      if (ts) ts.textContent = 'Gecachte data (Airtable bezet)';
+    }
 
     updateUserInfo();
     renderStats();
@@ -8858,7 +8878,8 @@ async function handleLogin() {
   }
 
   const btn = document.getElementById('btn-login');
-  btn.querySelector('span').textContent = 'INLOGGEN...';
+  btn.querySelector('span').textContent = 'Inloggen...';
+  btn.classList.add('loading');
   btn.disabled = true;
 
   try {
@@ -8879,7 +8900,8 @@ async function handleLogin() {
         remaining--;
         if (remaining <= 0) {
           clearInterval(tick);
-          btn.querySelector('span').textContent = 'INLOGGEN...';
+          btn.querySelector('span').textContent = 'Inloggen...';
+          btn.classList.add('loading');
           handleLogin();
         } else {
           errEl.textContent = \`Even geduld — opnieuw proberen in \${remaining}s...\`;
@@ -8891,7 +8913,8 @@ async function handleLogin() {
     if (!authResp.ok) {
       errEl.textContent = authData.error || 'Inloggen mislukt.';
       errEl.classList.add('visible');
-      btn.querySelector('span').textContent = 'INLOGGEN';
+      btn.querySelector('span').textContent = 'Inloggen';
+      btn.classList.remove('loading');
       btn.disabled = false;
       return;
     }
@@ -8918,7 +8941,8 @@ async function handleLogin() {
   } catch (err) {
     errEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
     errEl.classList.add('visible');
-    btn.querySelector('span').textContent = 'INLOGGEN';
+    btn.querySelector('span').textContent = 'Inloggen';
+    btn.classList.remove('loading');
     btn.disabled = false;
   }
 }
@@ -9801,18 +9825,20 @@ function renderActiviteit() {
   initTheme();
 
   if (tryAutoLogin()) {
+    // fetchLeads isolated: if Airtable is busy, proceed to dashboard with empty
+    // state — the 90-second polling loop will populate it automatically.
     try {
       const data = await fetchLeads();
       state.leads = data.leads || [];
       state.stats = data.stats || {};
       state.clientName = state.clientName || data.client?.naam || 'Gebruiker';
       state.lastFetch = Date.now();
-      await startDashboard();
     } catch {
-      clearSession();
-      document.getElementById('login-page').style.display = 'flex';
-      initLoginSlideshow();
+      state.leads = [];
+      state.stats = {};
+      state.lastFetch = 0;
     }
+    await startDashboard();
   } else {
     document.getElementById('login-page').style.display = 'flex';
     initLoginSlideshow();
@@ -9833,9 +9859,11 @@ function initLoginSlideshow() {
   function goTo(idx) {
     slides[current].classList.remove('active');
     dots[current].classList.remove('active');
+    if (dots[current].getAttribute('aria-selected') !== null) dots[current].setAttribute('aria-selected', 'false');
     current = (idx + slides.length) % slides.length;
     slides[current].classList.add('active');
     dots[current].classList.add('active');
+    if (dots[current].getAttribute('aria-selected') !== null) dots[current].setAttribute('aria-selected', 'true');
   }
 
   function start() {
