@@ -89,7 +89,8 @@ async function processMessage(phone, text) {
   }
 
   // 2. Load client config
-  const projectCode = lead.fields['Project Code'] || lead.fields['fldSmczuyUJd26HLe'];
+  // fldSmczuyUJd26HLe = Project Code field ID; field name fallback for safety
+  const projectCode = lead.fields['fldSmczuyUJd26HLe'] || lead.fields['Project Code'];
   if (!projectCode) {
     console.error('[WhatsApp] Lead heeft geen projectcode:', lead.id);
     return;
@@ -102,7 +103,8 @@ async function processMessage(phone, text) {
   }
 
   // 3. Check if conversation already finished
-  const rawState = lead.fields['Conversation State'];
+  // fld8mkrEWcyq7mUip = Conversation State (ID); field name as fallback
+  const rawState = lead.fields['fld8mkrEWcyq7mUip'] || lead.fields['Conversation State'];
   const state    = (typeof rawState === 'object' ? rawState?.name : rawState) || '';
   if (state === 'completed') {
     await sendWA(phone, 'Bedankt voor je interesse! We nemen spoedig contact met je op. 🤝');
@@ -120,18 +122,20 @@ async function processMessage(phone, text) {
   // 5. Fetch client website on first user message
   let websiteContent = null;
   if (history.length <= 2) {
-    const website = client.fields['Website'] || client.fields['fldWebsite'];
+    // 'Website' is the field name; no field ID is mapped for this field
+    const website = client.fields['fldWebsiteUrl'] || client.fields['Website'];
     if (website) websiteContent = await fetchWebsite(website);
   }
 
   // 6. Determine AI identity and client config
+  // Field IDs take priority; field names as fallback in case of no returnFieldsByFieldId
   const aiName     = 'Mathis Willems';
-  const clientName = client.fields['Client Name']  || client.fields['fldAnB848Sr5jl6dq'] || 'Helvaro';
-  const leadName   = lead.fields['Name']           || lead.fields['fldbk0LVNckOU0bqA']   || '';
-  const address    = client.fields['fldTvMSdTZOyNgWod'] || '';
+  const clientName = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']    || 'Helvaro';
+  const leadName   = lead.fields['fldbk0LVNckOU0bqA']   || lead.fields['Name']             || '';
+  const address    = client.fields['fldTvMSdTZOyNgWod'] || client.fields['Address']        || '';
 
   // 7. Run AI
-  const aiInstructions = client.fields['AI Instructions'] || '';
+  const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address);
 
   // 8. Trim and push AI reply to history
@@ -140,20 +144,22 @@ async function processMessage(phone, text) {
   if (history.length > 20) history = history.slice(-20);
 
   // 9. Update lead in Airtable
+  // All fields use field IDs where known — immune to Airtable field renames.
+  // 'Conversation History' and 'Last Message' have no known field ID; kept by name.
   const updateFields = {
-    'Last Message':          text,
-    'Conversation History':  JSON.stringify(history),
-    'Conversation State':    aiResponse.done ? 'completed' : 'in_progress',
+    'Last Message':           text,
+    'Conversation History':   JSON.stringify(history),
+    fld8mkrEWcyq7mUip:       aiResponse.done ? 'completed' : 'in_progress',  // Conversation State
   };
   if (aiResponse.done) {
     Object.assign(updateFields, {
-      Qualified:    aiResponse.qualified,
-      Reason:       aiResponse.reason    || '',
-      'AI Summary': aiResponse.summary   || '',
-      Ability:      aiResponse.ability   || '',
-      Urgency:      aiResponse.urgency   || '',
-      Fit:          aiResponse.fit       || '',
-      'Lead Score': aiResponse.leadScore || 0,
+      fld0hAZJ5wgaXrNTn: aiResponse.qualified,         // Qualified
+      fld3NhSENma0okbT7: aiResponse.reason    || '',   // Reason
+      fldqerIiw5qyQjXHr: aiResponse.summary   || '',   // AI Summary
+      fldrfbTopJvZEYSKP: aiResponse.ability   || '',   // Ability
+      fldlyLH1DKrWyG3Tr: aiResponse.urgency   || '',   // Urgency
+      fldqNxsPshvZEBeLr: aiResponse.fit       || '',   // Fit
+      fldpzQgMuWJLjogiD: aiResponse.leadScore || 0,    // Lead Score
     });
   }
   await updateLead(lead.id, updateFields, phone);
@@ -164,8 +170,9 @@ async function processMessage(phone, text) {
 
   // 11. If qualified → send Calendly link + address + notify owner
   if (aiResponse.done && aiResponse.qualified) {
-    const calendly    = client.fields['Calendly Link'] || client.fields['fldCalendly'];
-    const bookingSent = lead.fields['Booking Link Sent'] || lead.fields['fldLeEqwNefdglLis'];
+    // fldNEj1ysRgINOOtr = Calendly Link field ID; fldLeEqwNefdglLis = Booking Link Sent
+    const calendly    = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'];
+    const bookingSent = lead.fields['fldLeEqwNefdglLis']   || lead.fields['Booking Link Sent'];
 
     if (calendly && !bookingSent) {
       await sendWA(phone, `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`);
@@ -173,7 +180,7 @@ async function processMessage(phone, text) {
         await sendWA(phone, `Ons adres: ${address}`);
       }
       await sendWA(phone, 'Heb je de afspraak ingepland? Laat het me weten.');
-      await updateLead(lead.id, { 'Booking Link Sent': true }, phone);
+      await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);  // Booking Link Sent
     }
 
     // Notify owner when a lead is qualified
@@ -388,8 +395,9 @@ async function getClientByCode(code) {
   const key    = code.toUpperCase();
   const cached = getCachedClient(key);
   if (cached) return cached;
-  const filter = encodeURIComponent(`{Project Code}="${escapeFormula(key)}"`);
-  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
+  // fldN4dL0bGgfBOXwM = Project Code field ID in Clients table — stable across renames
+  const filter = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(key)}"`);
+  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1&returnFieldsByFieldId=true`;
   const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
   if (data.error) console.error('[Airtable] Client fout:', JSON.stringify(data.error));
@@ -402,8 +410,10 @@ async function getLead(phone) {
   const cached = getCachedLead(phone);
   if (cached) return cached;
 
-  const filter = encodeURIComponent(`{Phone}="${escapeFormula(phone)}"`);
-  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=Created%20At&sort[0][direction]=desc`;
+  // fld6YaitW0lMqHUrd = Phone field ID; fldR0r13EU4RwrtvH = Created At field ID
+  // Using field IDs in formula and sort so renames never break lookups.
+  const filter = encodeURIComponent(`{fld6YaitW0lMqHUrd}="${escapeFormula(phone)}"`);
+  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc`;
   const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
   if (data.error) console.error('[Airtable] Lead fout:', JSON.stringify(data.error));

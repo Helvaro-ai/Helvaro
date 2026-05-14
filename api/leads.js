@@ -266,7 +266,9 @@ module.exports = async function handler(req, res) {
     const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
-      const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
+      // returnFieldsByFieldId=true → response keys are field IDs, matching the
+      // field-ID-first lookups in the leads map below (e.g. f.fldbk0LVNckOU0bqA).
+      const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100&returnFieldsByFieldId=true${offset ? '&offset=' + offset : ''}`;
       // Single-shot fetch — NO retries.  Retrying on 429 causes overlapping
       // bursts from multiple sessions that keep Airtable permanently limited.
       // On 429 we fall through to the stale cache immediately.
@@ -391,6 +393,9 @@ module.exports = async function handler(req, res) {
     const mn  = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
     const van = `${sevenDaysAgo.getDate()} ${mn[sevenDaysAgo.getMonth()]}`;
     const tot = `${now.getDate()} ${mn[now.getMonth()]} ${now.getFullYear()}`;
+    // Warm the 429-fallback cache so the regular dashboard view benefits
+    // even when the most recent request to leads.js was a rapport request.
+    setCachedLeads(projectCode, { leads, stats, client: { naam: clientName, calendly: calendlyLink } });
     return res.status(200).json({
       rapport: {
         periode:              `${van} - ${tot}`,

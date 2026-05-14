@@ -147,7 +147,12 @@ module.exports = async function handler(req, res) {
         const key  = Object.keys(store).find(k => k.toLowerCase() === email.toLowerCase());
         const user = key ? store[key] : null;
         if (user && safeEqual(password, String(user.password || ''))) {
-          const ud = { apiKey: user.apiKey || '', clientName: user.clientName || '', projectCode: user.projectCode || '' };
+          const ud = {
+            apiKey:       user.apiKey       || '',
+            clientName:   user.clientName   || '',
+            projectCode:  user.projectCode  || '',
+            calendlyLink: user.calendlyLink || '',  // included in token so leads.js can serve it without Airtable
+          };
           return res.status(200).json({ success: true, ...ud, apiKey: signSession(ud) });
         }
       }
@@ -160,9 +165,10 @@ module.exports = async function handler(req, res) {
         safeEqual(email, OWNER_EMAIL) &&
         safeEqual(password, OWNER_PASS)) {
       const ownerData = {
-        apiKey:      process.env.OWNER_API_KEY      || '',
-        clientName:  process.env.OWNER_CLIENT_NAME  || 'Owner',
-        projectCode: process.env.OWNER_PROJECT_CODE || ''
+        apiKey:       process.env.OWNER_API_KEY       || '',
+        clientName:   process.env.OWNER_CLIENT_NAME   || 'Owner',
+        projectCode:  process.env.OWNER_PROJECT_CODE  || '',
+        calendlyLink: process.env.OWNER_CALENDLY_LINK || '',
       };
       return res.status(200).json({ success: true, ...ownerData, apiKey: signSession(ownerData) });
     }
@@ -204,9 +210,10 @@ module.exports = async function handler(req, res) {
     }
 
     const userData = {
-      apiKey:      user['fldxZMgVXSy7EShDL'] || user['API Key']       || '',
-      clientName:  user['fldmKwegSUj1joru3']  || user['Client Name']  || '',
-      projectCode: user['fldbrCpBuQjJBfZsv']  || user['Project Code'] || ''
+      apiKey:       user['fldxZMgVXSy7EShDL'] || user['API Key']        || '',
+      clientName:   user['fldmKwegSUj1joru3']  || user['Client Name']   || '',
+      projectCode:  user['fldbrCpBuQjJBfZsv']  || user['Project Code']  || '',
+      calendlyLink: user['fldCalendlyLink']     || user['Calendly Link'] || '',
     };
     return res.status(200).json({ success: true, ...userData, apiKey: signSession(userData) });
 

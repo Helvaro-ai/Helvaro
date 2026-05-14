@@ -26,13 +26,18 @@ module.exports = async function handler(req, res) {
 
   try {
     // Fetch leads created between 24h and 48h ago that are still 'new'
+    // Use field IDs in formula — immune to field renames in Airtable
     const formula = encodeURIComponent(
       `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago48h}")`
     );
     const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=50`;
     const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-    const lData = await lRes.json();
 
+    if (lRes.status === 429) {
+      console.warn('[cron-followup] Airtable 429 — follow-ups uitgesteld tot morgen');
+      return res.status(200).json({ checked: 0, sent: 0, skipped: 'rate_limited' });
+    }
+    const lData = await lRes.json();
     if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
 
     const leads = lData.records || [];
@@ -55,8 +60,8 @@ module.exports = async function handler(req, res) {
 
       await sendWA(phone, msg, PHONE_NUMBER_ID, WHATSAPP_TOKEN);
 
-      // Mark follow-up sent by updating Conversation State to 'in_progress'
-      await fetch(
+      // Mark follow-up sent — prevents duplicate follow-ups on next cron run
+      const pRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${lead.id}`,
         {
           method:  'PATCH',
@@ -64,6 +69,9 @@ module.exports = async function handler(req, res) {
           body:    JSON.stringify({ fields: { fld8mkrEWcyq7mUip: 'in_progress' } })
         }
       );
+      if (!pRes.ok) {
+        console.error(`[cron-followup] PATCH mislukt voor ${lead.id} (${pRes.status}) — lead wordt morgen opnieuw geprobeerd`);
+      }
 
       sent++;
       followedUp.push(name || phone);
