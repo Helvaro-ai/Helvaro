@@ -15,10 +15,12 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
-// Client config cache by API key — 5 min TTL
-// Saves 1 Airtable call per request on the hot GET/PATCH path
+// Client config cache by API key — 30 min TTL
+// Legacy (pre-session-token) keys still hit Airtable on a cold instance;
+// longer TTL means the warm-instance path covers far more polls before
+// needing to refresh, reducing Airtable noise that competes with auth.js.
 const _clientCache = new Map();
-const CLIENT_TTL   = 5 * 60 * 1000;
+const CLIENT_TTL   = 30 * 60 * 1000;
 function getCachedClient(key) {
   const e = _clientCache.get(key);
   if (!e) return null;
