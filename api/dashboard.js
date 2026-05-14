@@ -6290,9 +6290,9 @@ async function refreshData() {
     state.calendlyUrl = data.client?.calendly || '';
     state.lastFetch = Date.now();
 
-    if (data.stale) {
+    if (data.stale || data.rateLimited) {
       const ts = document.getElementById('timestamp-info');
-      if (ts) ts.textContent = 'Gecachte data (Airtable bezet)';
+      if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet — data wordt geladen...';
     }
 
     updateUserInfo();
@@ -6376,7 +6376,9 @@ async function refreshData() {
       else { bell.style.display='none'; }
     }
   } catch (err) {
-    toast('Kon geen gegevens ophalen: ' + err.message, 'error');
+    const ts = document.getElementById('timestamp-info');
+    if (ts) ts.textContent = 'Verbinding mislukt — opnieuw proberen over 90s';
+    console.warn('refreshData error:', err.message);
   } finally {
     if (btn) btn.classList.remove('spin');
   }

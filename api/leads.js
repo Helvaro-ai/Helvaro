@@ -258,7 +258,13 @@ module.exports = async function handler(req, res) {
           usedStale = true;
           break; // jump to stale-return below
         }
-        throw new Error('Airtable 429');
+        // No cache yet — return empty payload so dashboard shows blank state
+        // instead of an error toast. The 90s poll will retry automatically.
+        console.warn('Leads 429 — no cache, returning empty payload');
+        return res.status(200).json({
+          leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
+          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true
+        });
       }
       const lData = await lRes.json();
       if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
@@ -271,7 +277,13 @@ module.exports = async function handler(req, res) {
       console.warn('Leads error — serving stale cache as fallback');
       return res.status(200).json({ ...leadsCache.payload, stale: true });
     }
-    return res.status(500).json({ error: 'Leads ophalen mislukt. Probeer later opnieuw.' });
+    // Unknown error, no cache — return empty rather than 500 so the dashboard
+    // stays alive and retries on the next poll cycle.
+    console.warn('Leads error, no cache — returning empty payload');
+    return res.status(200).json({
+      leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
+      client: { naam: clientName, calendly: calendlyLink }, error: err.message
+    });
   }
 
   // Serve stale cache when 429 was hit mid-pagination
