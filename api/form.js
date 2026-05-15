@@ -66,12 +66,12 @@ module.exports = async function handler(req, res) {
     // ── Extract & validate name / phone ────────────────────────────────────────
     const name  = String(body.name  || '').trim().slice(0, 100);
     const phone = String(body.phone || '').trim().slice(0, 30);
-    // Only pass bron values that already exist as Airtable select options.
-    // Sending an unknown value → 422 INVALID_MULTIPLE_CHOICE_OPTIONS because
-    // the API token lacks permission to create new select options on the fly.
+    // Only pass bron if it matches a confirmed Airtable select option.
+    // Unknown values → empty string → field omitted from create payload.
+    // Add values here as you add them to the Bron field in Airtable.
     const VALID_BRON = new Set(['Website', 'Facebook', 'Google', 'Instagram', 'LinkedIn', 'TikTok', 'Advertentie', 'Advertenties', 'Doorverwijzing', 'Cold call', 'Overig', 'Anders']);
     const bronRaw = String(body.bron || '').trim().slice(0, 50);
-    const bron    = VALID_BRON.has(bronRaw) ? bronRaw : 'Website';
+    const bron    = VALID_BRON.has(bronRaw) ? bronRaw : '';
 
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
@@ -121,8 +121,12 @@ module.exports = async function handler(req, res) {
           fldbk0LVNckOU0bqA: name,
           fld6YaitW0lMqHUrd: waPhone,   // normalized — must match WhatsApp's message.from
           fldSmczuyUJd26HLe: project_code,
-          // fld8mkrEWcyq7mUip: 'new',  // DEBUG: omitted — diagnosing 422 select error
-          // fldGoerozqdea4BfU: bron,    // DEBUG: omitted — diagnosing 422 select error
+          fld8mkrEWcyq7mUip: 'new',
+          // Only include bron if it matches a known Airtable select option.
+          // Sending an unknown value → 422 because the API token cannot create
+          // new select options on the fly.  Omit rather than silently map to a
+          // wrong value — the field stays empty and can be set manually later.
+          ...(bron ? { fldGoerozqdea4BfU: bron } : {}),
           fldR0r13EU4RwrtvH: new Date().toISOString()
         }
       })
