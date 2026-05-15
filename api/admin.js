@@ -57,22 +57,33 @@ module.exports = async function handler(req, res) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken.' });
 
-  const ADMIN_KEY = process.env.ADMIN_KEY;
-  const provided  = String(req.headers['x-api-key'] || '').trim();
-  if (!isValidAdminToken(provided, ADMIN_KEY)) {
-    return res.status(401).json({ error: 'Ongeldige admin key' });
-  }
-
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
 
-  // ── POST — create new client ──────────────────────────────────────────────
+  // ── POST — create new client (admin OR invite-code onboarding) ────────────
   if (req.method === 'POST') {
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     if (!body || typeof body !== 'object') body = {};
+
+    // Invite-code path — used by the public /onboard form
+    const ONBOARD_CODE = process.env.ONBOARD_CODE;
+    const isOnboard = body.mode === 'onboard';
+    if (isOnboard) {
+      const provided = String(body.inviteCode || '').trim();
+      if (!ONBOARD_CODE || !safeEqual(provided, ONBOARD_CODE)) {
+        return res.status(401).json({ error: 'Ongeldige uitnodigingscode' });
+      }
+    } else {
+      // Regular admin path
+      const ADMIN_KEY = process.env.ADMIN_KEY;
+      const provided  = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+    }
 
     const clientName   = String(body.clientName   || '').trim().slice(0, 100);
     const projectCode  = String(body.projectCode  || '').trim().toUpperCase().slice(0, 50);
@@ -133,7 +144,13 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── GET — all clients + lead stats ───────────────────────────────────────
+  // ── GET — all clients + lead stats (admin only) ──────────────────────────
+  const ADMIN_KEY = process.env.ADMIN_KEY;
+  const provided  = String(req.headers['x-api-key'] || '').trim();
+  if (!isValidAdminToken(provided, ADMIN_KEY)) {
+    return res.status(401).json({ error: 'Ongeldige admin key' });
+  }
+
   try {
     const cRes  = await atFetch(
       `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?pageSize=100`,

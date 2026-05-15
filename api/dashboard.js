@@ -5501,8 +5501,23 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- New client modal -->
     <div id="new-client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:440px;margin:16px">
-        <h3 style="margin-bottom:4px;font-size:17px">Nieuwe klant aanmaken</h3>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px">Vul de gegevens in — API key en formulier-URL worden automatisch gegenereerd.</p>
+        <h3 style="margin-bottom:4px;font-size:17px">Nieuwe klant toevoegen</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Stuur de klant een link om zichzelf te registreren, of vul de gegevens zelf in.</p>
+
+        <!-- Invite link -->
+        <div id="nc-invite-row" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:12px 14px;margin-bottom:20px">
+          <div style="font-size:11px;font-weight:600;color:var(--accent-bright);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Uitnodigingslink — stuur naar klant</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <code id="nc-invite-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:5px 8px;border-radius:6px;word-break:break-all;color:var(--text-primary);border:1px solid var(--border)"></code>
+            <button onclick="copyInviteLink()" id="nc-invite-copy" style="flex-shrink:0;padding:5px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">De klant vult zelf naam, projectcode en e-mail in.</div>
+        </div>
+        <div id="nc-invite-missing" style="display:none;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.2);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:#f43f5e">
+          Stel eerst <code>ONBOARD_CODE</code> in als omgevingsvariabele op Vercel om uitnodigingslinks te activeren.
+        </div>
+
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Of maak direct aan</div>
         <div style="display:flex;flex-direction:column;gap:14px">
           <div>
             <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">NAAM KLANT *</label>
@@ -6013,6 +6028,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
+<script>window.__hOnboard = '${(process.env.ONBOARD_CODE || '').replace(/['"\\<>]/g, '')}';</script>
 <script>
 /* ============================================================
    STATE
@@ -6701,9 +6717,33 @@ function openNewClientModal() {
   document.getElementById('nc-success').style.display = 'none';
   document.getElementById('nc-submit').disabled = false;
   document.getElementById('nc-submit').textContent = 'Aanmaken';
+
+  // Show invite link if ONBOARD_CODE is set
+  const code = window.__hOnboard || '';
+  if (code) {
+    const link = 'https://app.helvaro.pro/onboard?invite=' + encodeURIComponent(code);
+    document.getElementById('nc-invite-link').textContent = link;
+    document.getElementById('nc-invite-link').dataset.link = link;
+    document.getElementById('nc-invite-row').style.display = 'block';
+    document.getElementById('nc-invite-missing').style.display = 'none';
+  } else {
+    document.getElementById('nc-invite-row').style.display = 'none';
+    document.getElementById('nc-invite-missing').style.display = 'block';
+  }
+
   const modal = document.getElementById('new-client-modal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('nc-name').focus(), 50);
+}
+
+function copyInviteLink() {
+  const link = document.getElementById('nc-invite-link')?.dataset.link;
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById('nc-invite-copy');
+    btn.textContent = '✓ Gekopieerd';
+    setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
+  }).catch(() => {});
 }
 
 function closeNewClientModal() {
@@ -6754,7 +6794,7 @@ async function submitNewClient() {
     const urlEl = document.getElementById('nc-result-url');
     urlEl.textContent = data.formUrl;
     urlEl.href = data.formUrl;
-    const onboardLink = 'https://app.helvaro.pro/onboard?key=' + encodeURIComponent(data.apiKey) + '&name=' + encodeURIComponent(data.clientName) + '&project=' + encodeURIComponent(data.projectCode);
+    const onboardLink = 'https://app.helvaro.pro/onboard?invite=' + encodeURIComponent(window.__hOnboard || '');
     document.getElementById('nc-result-link').textContent = onboardLink;
     document.getElementById('nc-result-link').dataset.link = onboardLink;
     succEl.style.display = 'block';

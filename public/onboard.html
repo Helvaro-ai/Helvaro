@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welkom bij Helvaro</title>
+  <title>Account aanmaken — Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --bg:        #080c14;
       --card:      #0f1520;
@@ -18,10 +17,11 @@
       --accent:    #6366f1;
       --accent-hi: #818cf8;
       --green:     #22c55e;
+      --red:       #f43f5e;
       --text:      #e2e8f0;
       --muted:     #64748b;
+      --input-bg:  #0a1018;
     }
-
     html, body {
       min-height: 100vh;
       background: var(--bg);
@@ -32,13 +32,11 @@
       justify-content: center;
       padding: 24px;
     }
-
-    /* Background glow */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,.18) 0%, transparent 70%);
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,.15) 0%, transparent 65%);
       pointer-events: none;
     }
 
@@ -46,174 +44,158 @@
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 48px 40px;
-      max-width: 520px;
+      padding: 40px 36px;
+      max-width: 480px;
       width: 100%;
-      text-align: center;
       box-shadow: 0 32px 80px rgba(0,0,0,.5);
-      position: relative;
     }
 
     .logo {
       font-family: 'Orbitron', sans-serif;
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 900;
-      letter-spacing: 6px;
+      letter-spacing: 5px;
       color: var(--accent-hi);
-      margin-bottom: 32px;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 10px;
+      margin-bottom: 28px;
     }
+    .logo img { height: 28px; }
 
-    .logo img {
-      height: 32px;
-      width: auto;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
+    .step-indicator {
+      display: flex;
       gap: 6px;
-      background: rgba(34,197,94,.12);
-      color: var(--green);
-      border: 1px solid rgba(34,197,94,.25);
-      border-radius: 999px;
-      padding: 5px 14px;
-      font-size: 12px;
+      margin-bottom: 28px;
+    }
+    .step-dot {
+      height: 3px;
+      border-radius: 99px;
+      flex: 1;
+      background: var(--border);
+      transition: background .3s;
+    }
+    .step-dot.active { background: var(--accent); }
+    .step-dot.done   { background: var(--green); }
+
+    h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+
+    .field { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 11px;
       font-weight: 600;
-      letter-spacing: .5px;
-      margin-bottom: 24px;
-    }
-
-    .badge::before { content: '●'; font-size: 8px; }
-
-    h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      line-height: 1.25;
-    }
-
-    h1 span { color: var(--accent-hi); }
-
-    .subtitle {
+      text-transform: uppercase;
+      letter-spacing: .6px;
       color: var(--muted);
-      font-size: 15px;
-      line-height: 1.6;
-      margin-bottom: 36px;
+      margin-bottom: 6px;
     }
-
-    .features {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 36px;
-      text-align: left;
-    }
-
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255,255,255,.03);
+    label span { color: var(--accent-hi); margin-left: 2px; }
+    input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--input-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 14px;
-    }
-
-    .feature-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: rgba(99,102,241,.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      color: var(--text);
       font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
     }
+    input:focus { border-color: var(--accent); }
+    input.error { border-color: var(--red); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+    .hint.code { font-family: monospace; letter-spacing: .5px; }
 
-    .feature-text { color: var(--text); }
-    .feature-sub  { color: var(--muted); font-size: 12px; margin-top: 2px; }
-
-    .btn-primary {
+    .btn {
       display: block;
       width: 100%;
-      padding: 16px;
+      padding: 14px;
       background: var(--accent);
       color: #fff;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
       transition: all .15s;
-      text-decoration: none;
-      margin-bottom: 12px;
-      letter-spacing: .3px;
+      margin-top: 8px;
+      letter-spacing: .2px;
     }
+    .btn:hover:not(:disabled) { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,.3); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
-    .btn-primary:hover { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,.35); }
-    .btn-primary:active { transform: translateY(0); }
-
-    .btn-primary.loading { opacity: .7; pointer-events: none; }
-
-    .note {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 24px 0;
-    }
-
-    .form-link-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(255,255,255,.03);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 12px;
-    }
-
-    .form-link-label { color: var(--muted); white-space: nowrap; }
-    .form-link-url   { color: var(--accent-hi); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
-    .form-link-url:hover { text-decoration: underline; }
-    .copy-btn {
-      background: var(--accent);
-      border: none;
-      color: #fff;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    #error-msg {
+    .err-box {
       display: none;
-      color: #f43f5e;
+      color: var(--red);
       font-size: 13px;
-      background: rgba(244,63,94,.1);
+      background: rgba(244,63,94,.08);
       border: 1px solid rgba(244,63,94,.2);
       border-radius: 8px;
       padding: 10px 14px;
       margin-top: 12px;
     }
 
+    /* Success state */
+    .success-panel {
+      display: none;
+      text-align: center;
+    }
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(34,197,94,.12);
+      border: 1px solid rgba(34,197,94,.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 20px;
+    }
+    .success-panel h2 { text-align: center; margin-bottom: 8px; }
+    .success-panel .sub { text-align: center; margin-bottom: 24px; }
+
+    .cred-box {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: left;
+      margin-bottom: 20px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .cred-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .cred-label { color: var(--muted); white-space: nowrap; }
+    .cred-val { font-family: monospace; font-size: 12px; color: var(--accent-hi); word-break: break-all; }
+
+    .btn-enter {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      text-decoration: none;
+      text-align: center;
+    }
+    .btn-enter:hover { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,.3); }
+
+    .form-panel { transition: opacity .2s; }
+
     @media (max-width: 480px) {
-      .card { padding: 32px 24px; }
-      h1    { font-size: 22px; }
+      .card { padding: 28px 20px; border-radius: 16px; }
+      h2 { font-size: 18px; }
     }
   </style>
 </head>
@@ -223,104 +205,196 @@
     <img src="/favicon.png" alt=""> HELVARO
   </div>
 
-  <div class="badge">Account actief</div>
+  <!-- ─── Form panel ─── -->
+  <div class="form-panel" id="form-panel">
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+    </div>
 
-  <h1>Welkom, <span id="client-name">bij Helvaro</span>!</h1>
-  <p class="subtitle">Uw account is aangemaakt en klaar voor gebruik. Klik hieronder om uw persoonlijk dashboard te openen.</p>
+    <h2>Maak uw account aan</h2>
+    <p class="sub">Vul uw gegevens in. Na het aanmaken heeft u direct toegang tot uw persoonlijk dashboard.</p>
 
-  <div class="features">
-    <div class="feature">
-      <div class="feature-icon">⚡</div>
-      <div>
-        <div class="feature-text">Leads in realtime</div>
-        <div class="feature-sub">Bekijk nieuwe leads zodra ze binnenkomen</div>
-      </div>
+    <div class="field">
+      <label>Uw naam <span>*</span></label>
+      <input id="f-name" type="text" placeholder="Jan Janssen" autocomplete="name">
     </div>
-    <div class="feature">
-      <div class="feature-icon">💬</div>
-      <div>
-        <div class="feature-text">WhatsApp opvolging</div>
-        <div class="feature-sub">Automatisch contact met elke nieuwe lead</div>
-      </div>
+
+    <div class="field">
+      <label>Projectcode <span>*</span></label>
+      <input id="f-code" type="text" placeholder="JAN_JANSSEN" autocomplete="off" style="font-family:monospace;letter-spacing:.5px">
+      <div class="hint code">Alleen letters, cijfers en _ — wordt uw unieke ID</div>
     </div>
-    <div class="feature">
-      <div class="feature-icon">📊</div>
-      <div>
-        <div class="feature-text">Analyses & statistieken</div>
-        <div class="feature-sub">Inzicht in uw leadkwaliteit en prestaties</div>
-      </div>
+
+    <div class="field">
+      <label>E-mailadres <span>*</span></label>
+      <input id="f-email" type="email" placeholder="jan@bedrijf.nl" autocomplete="email">
     </div>
+
+    <div class="field">
+      <label>Calendly link <span style="color:var(--muted);font-weight:400">(optioneel)</span></label>
+      <input id="f-calendly" type="url" placeholder="https://calendly.com/jan-janssen" autocomplete="off">
+    </div>
+
+    <div class="err-box" id="err-box"></div>
+
+    <button class="btn" id="btn-submit" onclick="submitForm()">Account aanmaken →</button>
   </div>
 
-  <button class="btn-primary" id="btn-enter" onclick="enterDashboard()">
-    Open mijn dashboard →
-  </button>
-  <p class="note">U wordt direct ingelogd — geen wachtwoord nodig.</p>
-
-  <div id="error-msg"></div>
-
-  <div id="form-section" style="display:none">
-    <div class="divider"></div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:left">Uw leadformulier (deel met potentiële klanten)</p>
-    <div class="form-link-row">
-      <span class="form-link-label">Formulier</span>
-      <a id="form-link-url" class="form-link-url" href="#" target="_blank"></a>
-      <button class="copy-btn" onclick="copyFormUrl()">Kopieer</button>
-    </div>
+  <!-- ─── Success panel ─── -->
+  <div class="success-panel" id="success-panel">
+    <div class="success-icon">✓</div>
+    <h2>Account aangemaakt!</h2>
+    <p class="sub">Uw account is klaar. Hieronder ziet u uw gegevens — sla ze op voor uw administratie.</p>
+    <div class="cred-box" id="cred-box"></div>
+    <button class="btn-enter" onclick="enterDashboard()">Open mijn dashboard →</button>
   </div>
 </div>
 
 <script>
-(function() {
-  var params  = new URLSearchParams(window.location.search);
-  var key     = params.get('key')     || '';
-  var name    = decodeURIComponent(params.get('name')    || '');
-  var project = decodeURIComponent(params.get('project') || '');
+(function () {
+  var params     = new URLSearchParams(window.location.search);
+  var inviteCode = params.get('invite') || '';
 
-  if (name) {
-    document.getElementById('client-name').textContent = name;
+  // Auto-fill project code from name
+  var nameEl = document.getElementById('f-name');
+  var codeEl = document.getElementById('f-code');
+  nameEl.addEventListener('input', function () {
+    if (!codeEl._edited) {
+      codeEl.value = nameEl.value.toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 30);
+    }
+  });
+  codeEl.addEventListener('input', function () { codeEl._edited = true; });
+
+  // Step dots
+  var dots = [
+    document.getElementById('dot-1'),
+    document.getElementById('dot-2'),
+    document.getElementById('dot-3'),
+  ];
+  function setStep(n) {
+    dots.forEach(function (d, i) {
+      d.className = 'step-dot' + (i < n - 1 ? ' done' : i === n - 1 ? ' active' : '');
+    });
+  }
+  nameEl.addEventListener('focus', function () { setStep(1); });
+  codeEl.addEventListener('focus', function () { setStep(2); });
+  document.getElementById('f-email').addEventListener('focus', function () { setStep(3); });
+
+  var _savedSession = null;
+
+  window.submitForm = function () {
+    var name     = nameEl.value.trim();
+    var code     = codeEl.value.trim().toUpperCase();
+    var email    = document.getElementById('f-email').value.trim();
+    var calendly = document.getElementById('f-calendly').value.trim();
+    var errBox   = document.getElementById('err-box');
+    var btn      = document.getElementById('btn-submit');
+
+    errBox.style.display = 'none';
+    [nameEl, codeEl, document.getElementById('f-email')].forEach(function (el) {
+      el.classList.remove('error');
+    });
+
+    // Validate
+    var errs = [];
+    if (!name)                                    { errs.push('Naam is verplicht.'); nameEl.classList.add('error'); }
+    if (!code)                                    { errs.push('Projectcode is verplicht.'); codeEl.classList.add('error'); }
+    else if (!/^[A-Z0-9_]{2,50}$/.test(code))    { errs.push('Projectcode mag alleen letters, cijfers en _ bevatten (min 2 tekens).'); codeEl.classList.add('error'); }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.push('Geldig e-mailadres is verplicht.');
+      document.getElementById('f-email').classList.add('error');
+    }
+    if (errs.length) { errBox.textContent = errs[0]; errBox.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Aanmaken...';
+
+    fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode:        'onboard',
+        inviteCode:  inviteCode,
+        clientName:  name,
+        projectCode: code,
+        email:       email,
+        calendlyLink: calendly
+      })
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+    .then(function (res) {
+      if (!res.ok) {
+        errBox.textContent = res.data.error || 'Er is iets misgegaan. Probeer opnieuw.';
+        errBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Account aanmaken →';
+        return;
+      }
+
+      var d = res.data;
+      _savedSession = { key: d.apiKey, name: d.clientName, project: d.projectCode };
+
+      // Build credential box
+      var box = document.getElementById('cred-box');
+      box.innerHTML = [
+        row('Naam',        d.clientName,  false),
+        row('Projectcode', d.projectCode, true),
+        row('API Key',     d.apiKey,      true),
+        row('Formulier',   d.formUrl,     false, true),
+      ].join('');
+
+      document.getElementById('form-panel').style.display = 'none';
+      document.getElementById('success-panel').style.display = 'block';
+    })
+    .catch(function () {
+      errBox.textContent = 'Netwerkfout. Controleer uw verbinding en probeer opnieuw.';
+      errBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Account aanmaken →';
+    });
+  };
+
+  function row(label, value, mono, isLink) {
+    var valHtml = isLink
+      ? '<a href="' + escHtml(value) + '" target="_blank" class="cred-val" style="color:var(--accent-hi)">' + escHtml(value) + '</a>'
+      : '<span class="cred-val' + (mono ? '' : '') + '">' + escHtml(value) + '</span>';
+    return '<div class="cred-row"><span class="cred-label">' + escHtml(label) + '</span>' + valHtml + '</div>';
   }
 
-  if (project) {
-    var formUrl = 'https://app.helvaro.pro/start/' + encodeURIComponent(project);
-    var section = document.getElementById('form-section');
-    var linkEl  = document.getElementById('form-link-url');
-    linkEl.textContent = formUrl;
-    linkEl.href = formUrl;
-    section.style.display = '';
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  if (!key) {
-    document.getElementById('btn-enter').style.display = 'none';
-    var err = document.getElementById('error-msg');
-    err.textContent = 'Ongeldige link. Vraag uw contactpersoon om een nieuwe link.';
-    err.style.display = 'block';
-  }
-
-  window.enterDashboard = function() {
-    if (!key) return;
-    var btn = document.getElementById('btn-enter');
-    btn.textContent = 'Laden...';
-    btn.classList.add('loading');
-
-    // Store session in localStorage — dashboard picks it up via tryAutoLogin()
+  window.enterDashboard = function () {
+    if (!_savedSession) return;
     var exp = String(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    localStorage.setItem('hvk',       key);
-    localStorage.setItem('hv-client', name);
-    localStorage.setItem('hv-project', project);
-    localStorage.setItem('hv-exp',    exp);
-
+    localStorage.setItem('hvk',        _savedSession.key);
+    localStorage.setItem('hv-client',  _savedSession.name);
+    localStorage.setItem('hv-project', _savedSession.project);
+    localStorage.setItem('hv-exp',     exp);
     window.location.href = '/dashboard';
   };
 
-  window.copyFormUrl = function() {
-    var url = document.getElementById('form-link-url').href;
-    navigator.clipboard.writeText(url).then(function() {
-      var btn = document.querySelector('.copy-btn');
-      btn.textContent = '✓';
-      setTimeout(function() { btn.textContent = 'Kopieer'; }, 1800);
-    }).catch(function() {});
-  };
+  // Handle Enter key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && document.getElementById('form-panel').style.display !== 'none') {
+      var active = document.activeElement;
+      if (active && active.tagName === 'INPUT') submitForm();
+    }
+  });
+
+  // Show error if no invite code
+  if (!inviteCode) {
+    var err = document.getElementById('err-box');
+    err.textContent = 'Ongeldige uitnodigingslink. Vraag uw contactpersoon om een nieuwe link.';
+    err.style.display = 'block';
+    document.getElementById('btn-submit').disabled = true;
+  }
 })();
 </script>
 </body>
