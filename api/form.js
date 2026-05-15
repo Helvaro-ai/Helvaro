@@ -66,7 +66,12 @@ module.exports = async function handler(req, res) {
     // ── Extract & validate name / phone ────────────────────────────────────────
     const name  = String(body.name  || '').trim().slice(0, 100);
     const phone = String(body.phone || '').trim().slice(0, 30);
-    const bron  = String(body.bron  || 'Website').trim().slice(0, 50);
+    // Only pass bron values that already exist as Airtable select options.
+    // Sending an unknown value → 422 INVALID_MULTIPLE_CHOICE_OPTIONS because
+    // the API token lacks permission to create new select options on the fly.
+    const VALID_BRON = new Set(['Website', 'Facebook', 'Google', 'Instagram', 'LinkedIn', 'TikTok', 'Advertentie', 'Advertenties', 'Doorverwijzing', 'Cold call', 'Overig', 'Anders']);
+    const bronRaw = String(body.bron || '').trim().slice(0, 50);
+    const bron    = VALID_BRON.has(bronRaw) ? bronRaw : 'Website';
 
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
@@ -131,8 +136,7 @@ module.exports = async function handler(req, res) {
     try { createData = JSON.parse(createRaw); } catch {}
     if (!createRes.ok) {
       let _eb = {}; try { _eb = JSON.parse(createRaw); } catch {}
-      const _em = (_eb?.error?.message || _eb?.errors?.[0]?.message || '?').slice(0, 80);
-      console.error('422msg=' + _em);
+      console.error('[form] AT' + createRes.status + ' ' + (_eb?.error?.type || _eb?.errors?.[0]?.error || '?'));
       if (createRes.status === 429) {
         return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
       }
