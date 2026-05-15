@@ -6294,35 +6294,38 @@ function loadLeadsFromLS() {
   return null;
 }
 
-async function refreshData() {
+async function refreshData(skipFetch = false) {
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.classList.add('spin');
 
   try {
-    const data = await fetchLeads();
+    if (!skipFetch) {
+      const data = await fetchLeads();
 
-    if (data.rateLimited || data.stale) {
-      // Airtable is busy — keep whatever data we already have in state.
-      // Fall back to localStorage if state is empty (e.g. first load after reload).
-      if (!state.leads || state.leads.length === 0) {
-        const lsCache = loadLeadsFromLS();
-        if (lsCache) {
-          state.leads = lsCache.leads;
-          state.stats = lsCache.stats || {};
+      if (data.rateLimited || data.stale) {
+        // Airtable is busy — keep whatever data we already have in state.
+        // Fall back to localStorage if state is empty (e.g. first load after reload).
+        if (!state.leads || state.leads.length === 0) {
+          const lsCache = loadLeadsFromLS();
+          if (lsCache) {
+            state.leads = lsCache.leads;
+            state.stats = lsCache.stats || {};
+          }
         }
+        const ts = document.getElementById('timestamp-info');
+        if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet — vorige data weergegeven';
+        // Still re-render with whatever we have (so UI shows cached data)
+      } else {
+        // Fresh successful response — update state and persist to localStorage
+        state.leads    = data.leads || [];
+        state.stats    = data.stats || {};
+        state.clientName  = data.client?.naam    || 'Gebruiker';
+        state.calendlyUrl = data.client?.calendly || '';
+        state.lastFetch   = Date.now();
+        if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
       }
-      const ts = document.getElementById('timestamp-info');
-      if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet — vorige data weergegeven';
-      // Still re-render with whatever we have (so UI shows cached data)
-    } else {
-      // Fresh successful response — update state and persist to localStorage
-      state.leads    = data.leads || [];
-      state.stats    = data.stats || {};
-      state.clientName  = data.client?.naam    || 'Gebruiker';
-      state.calendlyUrl = data.client?.calendly || '';
-      state.lastFetch   = Date.now();
-      if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
     }
+    // When skipFetch=true, state is already populated by init() — go straight to render
 
     updateUserInfo();
     renderStats();
@@ -8860,7 +8863,7 @@ document.getElementById('btn-download-csv').addEventListener('click', exportCSV)
 /* ============================================================
    LOGIN LOGIC
    ============================================================ */
-async function startDashboard() {
+async function startDashboard(skipRefresh = false) {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
@@ -8891,7 +8894,8 @@ async function startDashboard() {
       if (adminNav) adminNav.style.display = '';
     }
   } catch { /* not admin */ }
-  await refreshData();
+  // skipRefresh=true when init() already fetched leads — avoid a second Airtable call
+  await refreshData(skipRefresh);
 }
 
 document.getElementById('btn-login').addEventListener('click', handleLogin);
@@ -9887,7 +9891,8 @@ function renderActiviteit() {
       else { state.leads = []; state.stats = {}; }
       state.lastFetch = 0;
     }
-    await startDashboard();
+    // Pass skipRefresh=true — state already populated above, no second Airtable call needed
+    await startDashboard(true);
   } else {
     document.getElementById('login-page').style.display = 'flex';
     initLoginSlideshow();
