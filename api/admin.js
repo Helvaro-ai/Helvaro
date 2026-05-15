@@ -68,8 +68,29 @@ module.exports = async function handler(req, res) {
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     if (!body || typeof body !== 'object') body = {};
 
-    // Invite-code path — used by the public /onboard form
     const ONBOARD_CODE = process.env.ONBOARD_CODE;
+    const ADMIN_KEY    = process.env.ADMIN_KEY;
+
+    // ── mode=invite: admin sends an invite email to a client ─────────────────
+    if (body.mode === 'invite') {
+      const provided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      if (!ONBOARD_CODE) {
+        return res.status(500).json({ error: 'ONBOARD_CODE niet ingesteld op Vercel' });
+      }
+      const toEmail = String(body.email || '').trim().slice(0, 200);
+      const toName  = String(body.name  || '').trim().slice(0, 100);
+      if (!toEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) {
+        return res.status(400).json({ error: 'Geldig e-mailadres is verplicht' });
+      }
+      const inviteLink = `https://app.helvaro.pro/onboard?invite=${encodeURIComponent(ONBOARD_CODE)}`;
+      await sendInviteEmail({ toEmail, toName, inviteLink });
+      return res.status(200).json({ success: true });
+    }
+
+    // ── mode=onboard: client self-registration via invite code ────────────────
     const isOnboard = body.mode === 'onboard';
     if (isOnboard) {
       const provided = String(body.inviteCode || '').trim();
@@ -78,8 +99,7 @@ module.exports = async function handler(req, res) {
       }
     } else {
       // Regular admin path
-      const ADMIN_KEY = process.env.ADMIN_KEY;
-      const provided  = String(req.headers['x-api-key'] || '').trim();
+      const provided = String(req.headers['x-api-key'] || '').trim();
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -228,6 +248,41 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
           </table>
           <a href="${escHtml(dashboardUrl)}" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
           <p style="margin-top:32px;font-size:13px;color:#a0aab8">Vragen? Stuur ons een bericht. — Team Helvaro</p>
+        </div>`
+    })
+  });
+}
+
+async function sendInviteEmail({ toEmail, toName, inviteLink }) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY) return;
+  const greeting = toName ? `Hallo ${escHtml(toName)}` : 'Hallo';
+  await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from:    'Helvaro <noreply@helvaro.pro>',
+      to:      [toEmail],
+      subject: 'U bent uitgenodigd voor Helvaro',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:auto;color:#0f1117">
+          <div style="background:#080c14;padding:32px;border-radius:12px;text-align:center;margin-bottom:24px">
+            <h1 style="color:#818cf8;font-family:monospace;letter-spacing:4px;margin:0">HELVARO</h1>
+          </div>
+          <h2 style="margin-bottom:8px">${greeting}!</h2>
+          <p style="color:#5c6478;margin-bottom:24px;line-height:1.6">
+            U bent uitgenodigd om uw Helvaro account aan te maken.<br>
+            Klik op de knop hieronder om uw gegevens in te vullen en direct toegang te krijgen tot uw persoonlijk dashboard.
+          </p>
+          <div style="text-align:center;margin-bottom:28px">
+            <a href="${escHtml(inviteLink)}" style="display:inline-block;padding:14px 32px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">
+              Account aanmaken →
+            </a>
+          </div>
+          <p style="font-size:13px;color:#a0aab8;margin-bottom:8px">Of kopieer deze link in uw browser:</p>
+          <p style="font-size:12px;color:#6366f1;word-break:break-all;margin-bottom:32px">${escHtml(inviteLink)}</p>
+          <hr style="border:none;border-top:1px solid #eee;margin-bottom:24px">
+          <p style="font-size:12px;color:#a0aab8">Vragen? Neem contact op met uw contactpersoon. — Team Helvaro</p>
         </div>`
     })
   });

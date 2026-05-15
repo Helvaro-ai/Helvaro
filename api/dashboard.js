@@ -5499,64 +5499,98 @@ tr:hover .td-arrow { color: var(--cyan); }
     </main>
 
     <!-- New client modal -->
-    <div id="new-client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:440px;margin:16px">
-        <h3 style="margin-bottom:4px;font-size:17px">Nieuwe klant toevoegen</h3>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Stuur de klant een link om zichzelf te registreren, of vul de gegevens zelf in.</p>
+    <div id="new-client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;padding:16px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto">
 
-        <!-- Invite link -->
-        <div id="nc-invite-row" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:12px 14px;margin-bottom:20px">
-          <div style="font-size:11px;font-weight:600;color:var(--accent-bright);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Uitnodigingslink — stuur naar klant</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <code id="nc-invite-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:5px 8px;border-radius:6px;word-break:break-all;color:var(--text-primary);border:1px solid var(--border)"></code>
-            <button onclick="copyInviteLink()" id="nc-invite-copy" style="flex-shrink:0;padding:5px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h3 style="font-size:17px;margin-bottom:2px">Nieuwe klant uitnodigen</h3>
+            <p style="color:var(--text-muted);font-size:13px">De klant ontvangt een e-mail en maakt zelf zijn account aan.</p>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">De klant vult zelf naam, projectcode en e-mail in.</div>
-        </div>
-        <div id="nc-invite-missing" style="display:none;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.2);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:#f43f5e">
-          Stel eerst <code>ONBOARD_CODE</code> in als omgevingsvariabele op Vercel om uitnodigingslinks te activeren.
+          <button onclick="closeNewClientModal()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px;line-height:1">✕</button>
         </div>
 
-        <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Of maak direct aan</div>
-        <div style="display:flex;flex-direction:column;gap:14px">
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">NAAM KLANT *</label>
-            <input id="nc-name" type="text" placeholder="bijv. Immo Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">PROJECTCODE * <span style="color:var(--text-muted);font-weight:400">(alleen letters, cijfers, _)</span></label>
-            <input id="nc-code" type="text" placeholder="bijv. IMMO_JANSSEN" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none;font-family:monospace;text-transform:uppercase">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">E-MAIL <span style="font-weight:400">(welkomstmail)</span></label>
-            <input id="nc-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">CALENDLY LINK <span style="font-weight:400">(optioneel)</span></label>
-            <input id="nc-calendly" type="url" placeholder="https://calendly.com/..." style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
-          </div>
-          <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
-          <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:16px">
-            <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt</div>
-            <div style="font-size:13px;display:flex;flex-direction:column;gap:10px">
-              <div>
-                <div style="color:var(--text-muted);margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Onboarding link (stuur naar klant)</div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <code id="nc-result-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:6px 8px;border-radius:6px;word-break:break-all;border:1px solid var(--border);color:var(--accent-bright)"></code>
-                  <button onclick="copyOnboardingLink()" style="flex-shrink:0;padding:6px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer" id="nc-copy-btn">Kopieer</button>
-                </div>
-              </div>
-              <div style="display:flex;gap:16px;flex-wrap:wrap">
-                <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="font-size:12px;background:var(--bg-primary);padding:2px 6px;border-radius:4px"></code></div>
-                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright);font-size:12px"></a></div>
-              </div>
+        <!-- ── INVITE BY EMAIL (primary) ── -->
+        <div id="nc-invite-panel">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">E-mailadres klant *</label>
+              <input id="nc-inv-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Naam <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
+              <input id="nc-inv-name" type="text" placeholder="Jan Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
           </div>
+
+          <div id="nc-inv-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px;margin-top:12px"></div>
+          <div id="nc-inv-success" style="display:none;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:12px 14px;margin-top:12px;font-size:13px;color:var(--green)">
+            ✓ Uitnodiging verzonden! De klant ontvangt een e-mail met de registratielink.
+          </div>
+
+          <button id="nc-inv-btn" onclick="sendClientInvite()" style="width:100%;margin-top:14px;padding:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">
+            Stuur uitnodigingsmail
+          </button>
+
+          <!-- Fallback: copy link -->
+          <div id="nc-invite-link-row" style="display:none;margin-top:14px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Of kopieer de link handmatig:</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <code id="nc-invite-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:6px 8px;border-radius:6px;word-break:break-all;color:var(--accent-bright);border:1px solid var(--border)"></code>
+              <button onclick="copyInviteLink()" id="nc-invite-copy" style="flex-shrink:0;padding:5px 10px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
+            </div>
+          </div>
+          <div id="nc-invite-missing" style="display:none;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.2);border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12px;color:#f43f5e">
+            Stel <code>ONBOARD_CODE</code> in als omgevingsvariabele op Vercel om uitnodigingen te activeren.
+          </div>
         </div>
-        <div style="display:flex;gap:10px;margin-top:20px">
-          <button onclick="closeNewClientModal()" style="flex:1;padding:10px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;cursor:pointer">Annuleren</button>
-          <button id="nc-submit" onclick="submitNewClient()" style="flex:2;padding:10px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Aanmaken</button>
+
+        <!-- ── DIVIDER + MANUAL TOGGLE ── -->
+        <div style="display:flex;align-items:center;gap:12px;margin:20px 0">
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+          <button onclick="toggleManualCreate()" id="nc-manual-toggle" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;white-space:nowrap;padding:0">Zelf aanmaken ▾</button>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
         </div>
+
+        <!-- ── MANUAL CREATE (secondary, collapsed) ── -->
+        <div id="nc-manual-panel" style="display:none">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Naam klant *</label>
+              <input id="nc-name" type="text" placeholder="bijv. Immo Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Projectcode * <span style="font-weight:400;text-transform:none">(letters, cijfers, _)</span></label>
+              <input id="nc-code" type="text" placeholder="IMMO_JANSSEN" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none;font-family:monospace;text-transform:uppercase">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">E-mail <span style="font-weight:400;text-transform:none">(welkomstmail)</span></label>
+              <input id="nc-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Calendly link <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
+              <input id="nc-calendly" type="url" placeholder="https://calendly.com/..." style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+            </div>
+            <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
+            <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
+              <div style="font-weight:600;margin-bottom:8px;color:var(--green)">✓ Klant aangemaakt</div>
+              <div style="font-size:12px;display:flex;flex-direction:column;gap:6px">
+                <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="background:var(--bg-primary);padding:2px 6px;border-radius:4px"></code></div>
+                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright)"></a></div>
+                <div style="margin-top:4px">
+                  <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Onboarding link:</div>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <code id="nc-result-link" style="flex:1;font-size:10px;background:var(--bg-primary);padding:4px 6px;border-radius:4px;word-break:break-all;color:var(--accent-bright);border:1px solid var(--border)"></code>
+                    <button onclick="copyOnboardingLink()" id="nc-copy-btn" style="flex-shrink:0;padding:4px 8px;background:var(--accent);border:none;border-radius:5px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button id="nc-submit" onclick="submitNewClient()" style="width:100%;padding:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Aanmaken</button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -6709,31 +6743,93 @@ async function loadAdminClients() {
 }
 
 function openNewClientModal() {
+  // Reset invite panel
+  document.getElementById('nc-inv-email').value = '';
+  document.getElementById('nc-inv-name').value  = '';
+  document.getElementById('nc-inv-error').style.display   = 'none';
+  document.getElementById('nc-inv-success').style.display = 'none';
+  document.getElementById('nc-inv-btn').disabled    = false;
+  document.getElementById('nc-inv-btn').textContent = 'Stuur uitnodigingsmail';
+
+  // Reset manual panel
   document.getElementById('nc-name').value     = '';
   document.getElementById('nc-code').value     = '';
   document.getElementById('nc-email').value    = '';
   document.getElementById('nc-calendly').value = '';
   document.getElementById('nc-error').style.display   = 'none';
   document.getElementById('nc-success').style.display = 'none';
-  document.getElementById('nc-submit').disabled = false;
+  document.getElementById('nc-submit').disabled    = false;
   document.getElementById('nc-submit').textContent = 'Aanmaken';
+  document.getElementById('nc-manual-panel').style.display = 'none';
+  document.getElementById('nc-manual-toggle').textContent  = 'Zelf aanmaken ▾';
 
-  // Show invite link if ONBOARD_CODE is set
+  // Show/hide invite link fallback based on ONBOARD_CODE
   const code = window.__hOnboard || '';
   if (code) {
     const link = 'https://app.helvaro.pro/onboard?invite=' + encodeURIComponent(code);
-    document.getElementById('nc-invite-link').textContent = link;
+    document.getElementById('nc-invite-link').textContent  = link;
     document.getElementById('nc-invite-link').dataset.link = link;
-    document.getElementById('nc-invite-row').style.display = 'block';
-    document.getElementById('nc-invite-missing').style.display = 'none';
+    document.getElementById('nc-invite-link-row').style.display  = 'block';
+    document.getElementById('nc-invite-missing').style.display   = 'none';
   } else {
-    document.getElementById('nc-invite-row').style.display = 'none';
-    document.getElementById('nc-invite-missing').style.display = 'block';
+    document.getElementById('nc-invite-link-row').style.display  = 'none';
+    document.getElementById('nc-invite-missing').style.display   = 'block';
   }
 
-  const modal = document.getElementById('new-client-modal');
-  modal.style.display = 'flex';
-  setTimeout(() => document.getElementById('nc-name').focus(), 50);
+  document.getElementById('new-client-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('nc-inv-email').focus(), 50);
+}
+
+function toggleManualCreate() {
+  const panel  = document.getElementById('nc-manual-panel');
+  const toggle = document.getElementById('nc-manual-toggle');
+  const open   = panel.style.display !== 'none';
+  panel.style.display  = open ? 'none' : 'block';
+  toggle.textContent   = open ? 'Zelf aanmaken ▾' : 'Zelf aanmaken ▴';
+}
+
+async function sendClientInvite() {
+  const email = document.getElementById('nc-inv-email').value.trim();
+  const name  = document.getElementById('nc-inv-name').value.trim();
+  const errEl = document.getElementById('nc-inv-error');
+  const sucEl = document.getElementById('nc-inv-success');
+  const btn   = document.getElementById('nc-inv-btn');
+
+  errEl.style.display = 'none';
+  sucEl.style.display = 'none';
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Vul een geldig e-mailadres in.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Versturen...';
+
+  try {
+    const resp = await fetch('/api/admin', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'invite', email, name })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      errEl.textContent = data.error || 'Verzenden mislukt. Probeer opnieuw.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Stuur uitnodigingsmail';
+    } else {
+      sucEl.style.display = 'block';
+      btn.textContent = '✓ Verzonden';
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Nog een sturen'; }, 3000);
+    }
+  } catch {
+    errEl.textContent = 'Netwerkfout. Controleer uw verbinding.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Stuur uitnodigingsmail';
+  }
 }
 
 function copyInviteLink() {
@@ -6741,7 +6837,7 @@ function copyInviteLink() {
   if (!link) return;
   navigator.clipboard.writeText(link).then(() => {
     const btn = document.getElementById('nc-invite-copy');
-    btn.textContent = '✓ Gekopieerd';
+    btn.textContent = '✓';
     setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
   }).catch(() => {});
 }
