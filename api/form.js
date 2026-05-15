@@ -130,8 +130,11 @@ module.exports = async function handler(req, res) {
     let createData = {};
     try { createData = JSON.parse(createRaw); } catch {}
     if (!createRes.ok) {
-      console.error('[form] AT' + createRes.status + ':' + createRaw.slice(0, 80).replace(/\s+/g, ' '));
-      console.error('[form] AT' + createRes.status + '+:' + createRaw.slice(80, 200).replace(/\s+/g, ' '));
+      let _eb = {}; try { _eb = JSON.parse(createRaw); } catch {}
+      const _et = _eb?.error?.type || _eb?.errors?.[0]?.error || '?';
+      const _em = (_eb?.error?.message || _eb?.errors?.[0]?.message || '?').slice(0, 60);
+      console.error('422type=' + _et);
+      console.error('422msg=' + _em);
       if (createRes.status === 429) {
         return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
       }
