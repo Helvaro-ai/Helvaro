@@ -283,6 +283,7 @@ module.exports = async function handler(req, res) {
         try { const p = JSON.parse(body429); errType = p?.error?.type || p?.type || '?'; errMsg = p?.error?.message || p?.message || '?'; } catch {}
         console.warn('[AT429] retryAfter=' + retryAfter + ' type=' + errType);
         console.warn('[AT429] msg=' + errMsg);
+        console.warn('[AT429] raw=' + body429.slice(0, 120).replace(/\s+/g, ' '));
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
