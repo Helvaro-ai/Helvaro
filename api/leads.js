@@ -278,7 +278,8 @@ module.exports = async function handler(req, res) {
       if (lRes.status === 429) {
         const retryAfter = lRes.headers.get('retry-after') || '?';
         const body429    = await lRes.text().catch(() => '');
-        console.warn(`[leads] 429 retryAfter=${retryAfter} body=${body429.slice(0, 500)}`);
+        // Log full body (no slice) so we can see the exact Airtable error type
+        console.warn('[leads] 429 FULL:', retryAfter, body429);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
