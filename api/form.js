@@ -130,6 +130,7 @@ module.exports = async function handler(req, res) {
     let createData = {};
     try { createData = JSON.parse(createRaw); } catch {}
     if (!createRes.ok) {
+      console.error('[form] AT ' + createRes.status + ': ' + createRaw.slice(0, 120).replace(/\s+/g, ' '));
       if (createRes.status === 429) {
         return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
       }
