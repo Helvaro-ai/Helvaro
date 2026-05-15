@@ -6732,7 +6732,7 @@ async function submitNewClient() {
   btn.disabled = true;
   btn.textContent = 'Aanmaken...';
   try {
-    const resp = await fetch('/api/admin-create-client', {
+    const resp = await fetch('/api/admin', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({ clientName: name, projectCode: code, email, calendlyLink: calendly })
