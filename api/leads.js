@@ -285,11 +285,9 @@ module.exports = async function handler(req, res) {
           break;
         }
         console.warn('[leads] 429 — no usable cache, returning empty payload');
-        // TEMP: expose error body so we can read it in browser Network tab
         return res.status(200).json({
           leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
-          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true,
-          _debug: { error: body429, retryAfter, token: AIRTABLE_TOKEN ? 'present' : 'MISSING', base: BASE_ID || 'MISSING' }
+          client: { naam: clientName, calendly: calendlyLink }, rateLimited: true
         });
       }
       const lData = await lRes.json();
