@@ -418,6 +418,12 @@ module.exports = async function handler(req, res) {
 
   const responsePayload = { leads, stats, client: { naam: clientName, calendly: calendlyLink } };
   setCachedLeads(projectCode, responsePayload); // warm cache for 429 fallback
+
+  // Cache the response at the browser level so all open tabs share one response
+  // for 2 minutes instead of each hitting Airtable independently.
+  // Vary: x-api-key ensures different users never share each other's cached data.
+  res.setHeader('Cache-Control', 'private, max-age=120');
+  res.setHeader('Vary', 'x-api-key');
   return res.status(200).json(responsePayload);
 };
 

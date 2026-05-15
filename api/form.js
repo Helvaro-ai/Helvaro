@@ -1,9 +1,10 @@
-// Fast-fail retry for Airtable 429 — 2 retries, ~3 s max.
-// form.js previously had no retry logic so a single 429 response
-// caused "Ongeldige projectcode" even when the code was correct.
+// Retry for Airtable 429 — 4 retries, ~15 s max (1 s, 2 s, 4 s, 8 s delays).
+// Lead creation is critical; we absorb up to 15 s of retries so a brief rate-limit
+// window (caused by simultaneous dashboard refreshes) doesn't permanently fail the form.
+// Total time well within the 60 s Vercel function limit — response is sent before WA delay.
 async function atFetch(url, opts) {
   let delay = 1000;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     const r = await fetch(url, opts);
     if (r.status !== 429) return r;
     const jitter = delay * 0.25 * (Math.random() * 2 - 1);

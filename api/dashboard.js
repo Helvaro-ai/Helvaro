@@ -6430,7 +6430,7 @@ setInterval(updateTimestamp, 60000);
 // Poll for new leads every 5 minutes with random startup jitter (30–90s) so
 // multiple dashboard sessions never fire simultaneously and stay well below
 // Airtable's 5 req/s base-level rate limit.
-const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes — halved Airtable polling load
 const pollJitter    = Math.random() * 60000 + 30000; // 30–90s startup offset
 setTimeout(() => {
   if (state.apiKey) refreshData();
