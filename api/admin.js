@@ -29,8 +29,9 @@ function safeEqual(a, b) {
 
 function isValidAdminToken(provided, adminKey) {
   if (!adminKey || !provided) return false;
-  const expected = crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
-  return safeEqual(provided, expected);
+  // Accept the derived HMAC token (current) or the raw key (legacy sessions)
+  const derived = crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
+  return safeEqual(provided, derived) || safeEqual(provided, adminKey);
 }
 
 function escapeFormula(val) {
@@ -59,8 +60,6 @@ module.exports = async function handler(req, res) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   const provided  = String(req.headers['x-api-key'] || '').trim();
   if (!isValidAdminToken(provided, ADMIN_KEY)) {
-    const expected = ADMIN_KEY ? crypto.createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex') : '(no key)';
-    console.error(`[admin] 401 provided=${provided.slice(0,8)}… expected=${expected.slice(0,8)}… keySet=${!!ADMIN_KEY}`);
     return res.status(401).json({ error: 'Ongeldige admin key' });
   }
 
