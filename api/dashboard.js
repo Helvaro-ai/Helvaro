@@ -5168,6 +5168,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
       </div>
+      <button id="btn-back-admin" onclick="backToAdmin()" style="display:none;width:100%;padding:9px 12px;margin-bottom:6px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#818cf8;font-size:12px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:7px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Klantenoverzicht
+      </button>
       <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen</button>
     </div>
   </aside>
@@ -6758,8 +6762,17 @@ function switchToClient(index) {
   state.apiKey = client.apiKey;
   state.knownLeadIds = null;
   state.adminLoaded = false;
+  const backBtn = document.getElementById('btn-back-admin');
+  if (backBtn) { backBtn.style.display = 'flex'; }
   navigateTo('dashboard');
   refreshData();
+}
+
+function backToAdmin() {
+  navigateTo('admin');
+  loadAdminClients();
+  const backBtn = document.getElementById('btn-back-admin');
+  if (backBtn) backBtn.style.display = 'none';
 }
 
 /* ============================================================
