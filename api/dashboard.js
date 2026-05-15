@@ -6754,7 +6754,7 @@ async function submitNewClient() {
     const urlEl = document.getElementById('nc-result-url');
     urlEl.textContent = data.formUrl;
     urlEl.href = data.formUrl;
-    const onboardLink = 'https://app.helvaro.pro/dashboard?welcome=' + encodeURIComponent(data.apiKey) + '&name=' + encodeURIComponent(data.clientName) + '&project=' + encodeURIComponent(data.projectCode);
+    const onboardLink = 'https://app.helvaro.pro/onboard?key=' + encodeURIComponent(data.apiKey) + '&name=' + encodeURIComponent(data.clientName) + '&project=' + encodeURIComponent(data.projectCode);
     document.getElementById('nc-result-link').textContent = onboardLink;
     document.getElementById('nc-result-link').dataset.link = onboardLink;
     succEl.style.display = 'block';

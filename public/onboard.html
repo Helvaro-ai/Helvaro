@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welkom bij Helvaro</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080c14;
+      --card:      #0f1520;
+      --border:    #1e2a3a;
+      --accent:    #6366f1;
+      --accent-hi: #818cf8;
+      --green:     #22c55e;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* Background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,.5);
+      position: relative;
+    }
+
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: var(--accent-hi);
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .logo img {
+      height: 32px;
+      width: auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34,197,94,.12);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,.25);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      margin-bottom: 24px;
+    }
+
+    .badge::before { content: '●'; font-size: 8px; }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+
+    h1 span { color: var(--accent-hi); }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 36px;
+      text-align: left;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+
+    .feature-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(99,102,241,.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 15px;
+    }
+
+    .feature-text { color: var(--text); }
+    .feature-sub  { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      text-decoration: none;
+      margin-bottom: 12px;
+      letter-spacing: .3px;
+    }
+
+    .btn-primary:hover { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,.35); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-primary.loading { opacity: .7; pointer-events: none; }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    .form-link-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+    }
+
+    .form-link-label { color: var(--muted); white-space: nowrap; }
+    .form-link-url   { color: var(--accent-hi); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+    .form-link-url:hover { text-decoration: underline; }
+    .copy-btn {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #error-msg {
+      display: none;
+      color: #f43f5e;
+      font-size: 13px;
+      background: rgba(244,63,94,.1);
+      border: 1px solid rgba(244,63,94,.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 32px 24px; }
+      h1    { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/favicon.png" alt=""> HELVARO
+  </div>
+
+  <div class="badge">Account actief</div>
+
+  <h1>Welkom, <span id="client-name">bij Helvaro</span>!</h1>
+  <p class="subtitle">Uw account is aangemaakt en klaar voor gebruik. Klik hieronder om uw persoonlijk dashboard te openen.</p>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <div>
+        <div class="feature-text">Leads in realtime</div>
+        <div class="feature-sub">Bekijk nieuwe leads zodra ze binnenkomen</div>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">💬</div>
+      <div>
+        <div class="feature-text">WhatsApp opvolging</div>
+        <div class="feature-sub">Automatisch contact met elke nieuwe lead</div>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📊</div>
+      <div>
+        <div class="feature-text">Analyses & statistieken</div>
+        <div class="feature-sub">Inzicht in uw leadkwaliteit en prestaties</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="btn-enter" onclick="enterDashboard()">
+    Open mijn dashboard →
+  </button>
+  <p class="note">U wordt direct ingelogd — geen wachtwoord nodig.</p>
+
+  <div id="error-msg"></div>
+
+  <div id="form-section" style="display:none">
+    <div class="divider"></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:left">Uw leadformulier (deel met potentiële klanten)</p>
+    <div class="form-link-row">
+      <span class="form-link-label">Formulier</span>
+      <a id="form-link-url" class="form-link-url" href="#" target="_blank"></a>
+      <button class="copy-btn" onclick="copyFormUrl()">Kopieer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var params  = new URLSearchParams(window.location.search);
+  var key     = params.get('key')     || '';
+  var name    = decodeURIComponent(params.get('name')    || '');
+  var project = decodeURIComponent(params.get('project') || '');
+
+  if (name) {
+    document.getElementById('client-name').textContent = name;
+  }
+
+  if (project) {
+    var formUrl = 'https://app.helvaro.pro/start/' + encodeURIComponent(project);
+    var section = document.getElementById('form-section');
+    var linkEl  = document.getElementById('form-link-url');
+    linkEl.textContent = formUrl;
+    linkEl.href = formUrl;
+    section.style.display = '';
+  }
+
+  if (!key) {
+    document.getElementById('btn-enter').style.display = 'none';
+    var err = document.getElementById('error-msg');
+    err.textContent = 'Ongeldige link. Vraag uw contactpersoon om een nieuwe link.';
+    err.style.display = 'block';
+  }
+
+  window.enterDashboard = function() {
+    if (!key) return;
+    var btn = document.getElementById('btn-enter');
+    btn.textContent = 'Laden...';
+    btn.classList.add('loading');
+
+    // Store session in localStorage — dashboard picks it up via tryAutoLogin()
+    var exp = String(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    localStorage.setItem('hvk',       key);
+    localStorage.setItem('hv-client', name);
+    localStorage.setItem('hv-project', project);
+    localStorage.setItem('hv-exp',    exp);
+
+    window.location.href = '/dashboard';
+  };
+
+  window.copyFormUrl = function() {
+    var url = document.getElementById('form-link-url').href;
+    navigator.clipboard.writeText(url).then(function() {
+      var btn = document.querySelector('.copy-btn');
+      btn.textContent = '✓';
+      setTimeout(function() { btn.textContent = 'Kopieer'; }, 1800);
+    }).catch(function() {});
+  };
+})();
+</script>
+</body>
+</html>
