@@ -278,12 +278,10 @@ module.exports = async function handler(req, res) {
       if (lRes.status === 429) {
         const retryAfter = lRes.headers.get('retry-after') || '?';
         const body429    = await lRes.text().catch(() => '');
-        // Parse and log key fields separately so Vercel doesn't truncate them
-        let errType = '?', errMsg = '?';
-        try { const p = JSON.parse(body429); errType = p?.error?.type || p?.type || '?'; errMsg = p?.error?.message || p?.message || '?'; } catch {}
-        console.warn('[AT429] retryAfter=' + retryAfter + ' type=' + errType);
-        console.warn('[AT429] msg=' + errMsg);
-        console.warn('AT429raw:' + body429.slice(0, 60).replace(/\s+/g, ' '));
+        // Airtable now returns {"errors":[{"error":"RATE_LIMIT_REACHED",...}]}
+        let errType = '?';
+        try { const p = JSON.parse(body429); errType = p?.errors?.[0]?.error || p?.error?.type || p?.type || '?'; } catch {}
+        console.warn('[leads] 429 retryAfter=' + retryAfter + ' type=' + errType);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;

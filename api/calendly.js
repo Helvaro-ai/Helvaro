@@ -7,16 +7,13 @@
 const crypto        = require('crypto');
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 
-// Fast-fail retry for Airtable 429 — 2 retries, ~3 s max.
+// Single 30-second retry for Airtable 429 — matches form.js backoff strategy.
+// Rapid retries extend Airtable's sustained throttle ban; one 30s wait gives
+// the rate-limit window a real chance to clear before the final attempt.
 async function atFetch(url, opts) {
-  let delay = 1000;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const r = await fetch(url, opts);
-    if (r.status !== 429) return r;
-    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
-    await new Promise(res => setTimeout(res, Math.max(300, delay + jitter)));
-    delay *= 2;
-  }
+  const r1 = await fetch(url, opts);
+  if (r1.status !== 429) return r1;
+  await new Promise(res => setTimeout(res, 30000));
   return fetch(url, opts);
 }
 
@@ -232,6 +229,10 @@ async function fetchEvents(req, res) {
       };
     }));
 
+    // Cache events for 5 min in the browser — reduces Airtable pressure from
+    // repeated dashboard opens within a short window (cold-start instances).
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('Vary', 'x-api-key');
     return res.status(200).json({ events, connected: true });
   } catch (err) {
     console.error('Calendly fetch error:', err.message);
@@ -499,6 +500,9 @@ async function fetchSlots(req, res) {
       .filter(s => s.status === 'available')
       .map(s => ({ startTime: s.start_time, inviteesRemaining: s.invitees_remaining ?? 1 }));
 
+    // Cache slots for 2 min — available times change infrequently within a day.
+    res.setHeader('Cache-Control', 'private, max-age=120');
+    res.setHeader('Vary', 'x-api-key');
     return res.status(200).json({ connected: true, eventTypes, selectedEventType: targetUri, slots });
   } catch (err) {
     console.error('calendly-slots fetch:', err.message);
