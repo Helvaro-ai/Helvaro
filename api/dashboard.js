@@ -5481,11 +5481,56 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <main class="page-content page" id="page-admin">
       <div id="admin-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <span style="font-size:13px;color:var(--text-muted)" id="admin-client-count"></span>
+          <button class="btn-icon btn-primary-sm" onclick="openNewClientModal()" style="display:flex;align-items:center;gap:6px;padding:9px 16px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Nieuwe klant
+          </button>
+        </div>
         <div class="admin-grid" id="admin-grid">
           <div style="color:var(--text-muted);font-size:14px">Klanten laden...</div>
         </div>
       </div>
     </main>
+
+    <!-- New client modal -->
+    <div id="new-client-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:440px;margin:16px">
+        <h3 style="margin-bottom:4px;font-size:17px">Nieuwe klant aanmaken</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px">Vul de gegevens in — API key en formulier-URL worden automatisch gegenereerd.</p>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">NAAM KLANT *</label>
+            <input id="nc-name" type="text" placeholder="bijv. Immo Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">PROJECTCODE * <span style="color:var(--text-muted);font-weight:400">(alleen letters, cijfers, _)</span></label>
+            <input id="nc-code" type="text" placeholder="bijv. IMMO_JANSSEN" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none;font-family:monospace;text-transform:uppercase">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">E-MAIL <span style="font-weight:400">(welkomstmail)</span></label>
+            <input id="nc-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">CALENDLY LINK <span style="font-weight:400">(optioneel)</span></label>
+            <input id="nc-calendly" type="url" placeholder="https://calendly.com/..." style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+          </div>
+          <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
+          <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt</div>
+            <div style="font-size:13px;display:flex;flex-direction:column;gap:6px">
+              <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="font-size:12px;background:var(--bg-primary);padding:2px 6px;border-radius:4px"></code></div>
+              <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright);font-size:12px"></a></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button onclick="closeNewClientModal()" style="flex:1;padding:10px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;cursor:pointer">Annuleren</button>
+          <button id="nc-submit" onclick="submitNewClient()" style="flex:2;padding:10px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Aanmaken</button>
+        </div>
+      </div>
+    </div>
 
     <main class="page-content page" id="page-calendly" style="padding:0;height:calc(100vh - 56px);overflow:hidden;">
 
@@ -6615,6 +6660,8 @@ async function loadAdminClients() {
     if (clients.length === 0) { grid.innerHTML = '<div style="color:var(--text-muted)">Geen klanten gevonden.</div>'; return; }
     // Store clients in state so we can look up by index (never expose apiKey in DOM)
     state.adminClients = clients;
+    const countEl = document.getElementById('admin-client-count');
+    if (countEl) countEl.textContent = clients.length + ' klant' + (clients.length !== 1 ? 'en' : '');
     grid.innerHTML = clients.map((c, i) => \`
       <div class="admin-card" onclick="switchToClient(\${i})">
         <div class="admin-card-name">\${escHtml(c.naam)}</div>
@@ -6628,6 +6675,80 @@ async function loadAdminClients() {
     \`).join('');
   } catch (err) {
     grid.innerHTML = \`<div style="color:var(--red);font-size:14px">\${escHtml(err.message)}</div>\`;
+  }
+}
+
+function openNewClientModal() {
+  document.getElementById('nc-name').value     = '';
+  document.getElementById('nc-code').value     = '';
+  document.getElementById('nc-email').value    = '';
+  document.getElementById('nc-calendly').value = '';
+  document.getElementById('nc-error').style.display   = 'none';
+  document.getElementById('nc-success').style.display = 'none';
+  document.getElementById('nc-submit').disabled = false;
+  document.getElementById('nc-submit').textContent = 'Aanmaken';
+  const modal = document.getElementById('new-client-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('nc-name').focus(), 50);
+}
+
+function closeNewClientModal() {
+  document.getElementById('new-client-modal').style.display = 'none';
+}
+
+// Auto-fill project code from client name
+document.addEventListener('DOMContentLoaded', () => {
+  const nameEl = document.getElementById('nc-name');
+  const codeEl = document.getElementById('nc-code');
+  if (nameEl && codeEl) {
+    nameEl.addEventListener('input', () => {
+      if (!codeEl._edited) {
+        codeEl.value = nameEl.value.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30);
+      }
+    });
+    codeEl.addEventListener('input', () => { codeEl._edited = true; });
+  }
+  document.getElementById('new-client-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('new-client-modal')) closeNewClientModal();
+  });
+});
+
+async function submitNewClient() {
+  const btn     = document.getElementById('nc-submit');
+  const errEl   = document.getElementById('nc-error');
+  const succEl  = document.getElementById('nc-success');
+  const name     = document.getElementById('nc-name').value.trim();
+  const code     = document.getElementById('nc-code').value.trim().toUpperCase();
+  const email    = document.getElementById('nc-email').value.trim();
+  const calendly = document.getElementById('nc-calendly').value.trim();
+
+  errEl.style.display = 'none';
+  if (!name || !code) { errEl.textContent = 'Naam en projectcode zijn verplicht.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Aanmaken...';
+  try {
+    const resp = await fetch('/api/admin-create-client', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ clientName: name, projectCode: code, email, calendlyLink: calendly })
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.error || 'Aanmaken mislukt.'; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Aanmaken'; return; }
+
+    document.getElementById('nc-result-key').textContent = data.apiKey;
+    const urlEl = document.getElementById('nc-result-url');
+    urlEl.textContent = data.formUrl;
+    urlEl.href = data.formUrl;
+    succEl.style.display = 'block';
+    btn.textContent = 'Sluiten';
+    btn.disabled = false;
+    btn.onclick = () => { closeNewClientModal(); state.adminLoaded = false; loadAdminClients(); };
+  } catch {
+    errEl.textContent = 'Netwerkfout. Probeer opnieuw.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Aanmaken';
   }
 }
 
