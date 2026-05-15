@@ -6026,6 +6026,7 @@ const state = {
   newLeadCount: 0,
   adminLoaded: false,
   adminClients: [],
+  adminApiKey: '',
   leadsChart: null,
   bronChart: null,
   analyseDaysChart: null,
@@ -6759,6 +6760,7 @@ async function submitNewClient() {
 function switchToClient(index) {
   const client = state.adminClients && state.adminClients[index];
   if (!client || !client.apiKey) return;
+  state.adminApiKey = state.adminApiKey || state.apiKey; // save admin token before overwriting
   state.apiKey = client.apiKey;
   state.knownLeadIds = null;
   state.adminLoaded = false;
@@ -6769,8 +6771,9 @@ function switchToClient(index) {
 }
 
 function backToAdmin() {
+  if (state.adminApiKey) state.apiKey = state.adminApiKey; // restore admin token
+  state.adminLoaded = false;
   navigateTo('admin');
-  loadAdminClients();
   const backBtn = document.getElementById('btn-back-admin');
   if (backBtn) backBtn.style.display = 'none';
 }
