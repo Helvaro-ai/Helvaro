@@ -1,16 +1,15 @@
-// Retry for Airtable 429 — 4 retries, ~15 s max (1 s, 2 s, 4 s, 8 s delays).
-// Lead creation is critical; we absorb up to 15 s of retries so a brief rate-limit
-// window (caused by simultaneous dashboard refreshes) doesn't permanently fail the form.
-// Total time well within the 60 s Vercel function limit — response is sent before WA delay.
+// Single 30-second retry for Airtable 429 on the lead-creation critical path.
+//
+// Previous design (4 retries, 1/2/4/8 s delays) kept pounding Airtable every
+// few seconds, extending its sustained throttle ban instead of letting it recover.
+// Airtable's own Retry-After guidance is 30 s — one wait of that length gives
+// the rate-limit window a real chance to clear before the final attempt.
+// Total worst-case time: ~31 s — well within the 60 s Vercel function limit.
 async function atFetch(url, opts) {
-  let delay = 1000;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const r = await fetch(url, opts);
-    if (r.status !== 429) return r;
-    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
-    await new Promise(res => setTimeout(res, Math.max(300, delay + jitter)));
-    delay *= 2;
-  }
+  const r1 = await fetch(url, opts);
+  if (r1.status !== 429) return r1;
+  // Wait 30 s (Airtable's recommended backoff) then try once more
+  await new Promise(res => setTimeout(res, 30000));
   return fetch(url, opts);
 }
 
