@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helvaro — Uw AI-assistent voor leadopvolging</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #080c14;
+      --card: #0f1520;
+      --border: #1e2a3a;
+      --accent: #6366f1;
+      --accent-hi: #818cf8;
+      --green: #22c55e;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --font-heading: 'Orbitron', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.6;
+    }
+
+    /* Background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 150%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Slideshow container */
+    .slideshow {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    /* Individual slides */
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4rem 6rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Slide counter */
+    .slide-counter {
+      position: fixed;
+      top: 1.5rem;
+      right: 2rem;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--muted);
+      z-index: 100;
+    }
+
+    /* Navigation arrows */
+    .nav-arrow {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 100;
+      font-size: 1.25rem;
+    }
+
+    .nav-arrow:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .nav-arrow.prev { left: 1.5rem; }
+    .nav-arrow.next { right: 1.5rem; }
+
+    .nav-arrow:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Slide dots */
+    .slide-dots {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.5rem;
+      z-index: 100;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dot.active {
+      background: var(--accent);
+      transform: scale(1.2);
+    }
+
+    .dot:hover {
+      background: var(--accent-hi);
+    }
+
+    /* Typography */
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    h2 {
+      font-family: var(--font-heading);
+      font-size: 2.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+
+    h3 {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--muted);
+      text-align: center;
+      max-width: 700px;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.375rem 0.875rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-indigo {
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--accent-hi);
+      border: 1px solid var(--accent);
+    }
+
+    .badge-green {
+      background: rgba(34, 197, 94, 0.2);
+      color: var(--green);
+      border: 1px solid var(--green);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+
+    /* Flow diagram */
+    .flow-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 1200px;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 180px;
+    }
+
+    .flow-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hi));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .flow-step h4 {
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+
+    .flow-step p {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .flow-arrow {
+      color: var(--accent);
+      font-size: 1.5rem;
+      margin-top: 1.25rem;
+    }
+
+    /* Two column layout */
+    .two-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Form mockup */
+    .form-mockup {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .form-field {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .form-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    /* Code block */
+    .code-block {
+      background: #0a0e17;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-hi);
+      overflow-x: auto;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .code-block .tag { color: #f472b6; }
+    .code-block .attr { color: #fbbf24; }
+    .code-block .val { color: var(--green); }
+
+    /* Phone mockup */
+    .phone-mockup {
+      background: #1a1a1a;
+      border-radius: 2rem;
+      padding: 0.5rem;
+      width: 280px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .phone-screen {
+      background: #0b141a;
+      border-radius: 1.5rem;
+      padding: 1rem;
+      min-height: 300px;
+    }
+
+    .phone-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #1e2a3a;
+      margin-bottom: 1rem;
+    }
+
+    .phone-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hi));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .phone-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .chat-bubble {
+      background: #075e54;
+      border-radius: 0.75rem 0.75rem 0.75rem 0;
+      padding: 0.75rem 1rem;
+      max-width: 90%;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      position: relative;
+    }
+
+    .chat-meta {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.25rem;
+      margin-top: 0.25rem;
+      font-size: 0.625rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* Feature grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      max-width: 900px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      transition: border-color 0.3s ease;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-card h4 {
+      font-family: var(--font-body);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    /* Steps */
+    .steps-row {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      max-width: 1000px;
+    }
+
+    .step-item {
+      flex: 1;
+      text-align: center;
+      max-width: 280px;
+    }
+
+    .step-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hi));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 auto 1rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .step-item h4 {
+      font-family: var(--font-body);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-item p {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    /* Bar chart */
+    .bar-chart {
+      width: 100%;
+      max-width: 600px;
+      margin: 2rem auto;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .bar-label {
+      width: 100px;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 28px;
+      background: var(--card);
+      border-radius: 0.25rem;
+      overflow: hidden;
+      margin-right: 1rem;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      padding-left: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .bar-fill.indigo { background: linear-gradient(90deg, var(--accent), var(--accent-hi)); }
+    .bar-fill.purple { background: linear-gradient(90deg, #a855f7, #c084fc); }
+    .bar-fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .bar-fill.pink { background: linear-gradient(90deg, #ec4899, #f472b6); }
+
+    .bar-percent {
+      font-size: 0.875rem;
+      color: var(--muted);
+      width: 40px;
+    }
+
+    /* Tip box */
+    .tip-box {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid var(--green);
+      border-radius: 0.75rem;
+      padding: 1rem 1.5rem;
+      max-width: 700px;
+      margin-top: 2rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .tip-box span:first-child {
+      font-size: 1.25rem;
+    }
+
+    /* Contact cards */
+    .contact-cards {
+      display: flex;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .contact-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem 3rem;
+      text-align: center;
+      transition: border-color 0.3s ease;
+    }
+
+    .contact-card:hover {
+      border-color: var(--accent);
+    }
+
+    .contact-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .contact-card h4 {
+      font-family: var(--font-body);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .contact-card p {
+      color: var(--accent-hi);
+      font-size: 0.875rem;
+    }
+
+    /* Checkmarks list */
+    .check-list {
+      list-style: none;
+      text-align: left;
+    }
+
+    .check-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .check-list li::before {
+      content: '✓';
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    /* Numbered list */
+    .numbered-list {
+      list-style: none;
+      counter-reset: item;
+      text-align: left;
+      max-width: 500px;
+    }
+
+    .numbered-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .numbered-list li::before {
+      counter-increment: item;
+      content: counter(item);
+      background: var(--accent);
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    /* WhatsApp slide layout */
+    .whatsapp-layout {
+      display: flex;
+      gap: 4rem;
+      align-items: center;
+      max-width: 1000px;
+    }
+
+    /* Logo footer */
+    .logo-footer {
+      margin-top: 3rem;
+      text-align: center;
+    }
+
+    .logo-footer .logo {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-footer p {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    /* URL display */
+    .url-display {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.875rem;
+      color: var(--accent-hi);
+      margin: 0.75rem 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .slide {
+        padding: 3rem 2rem;
+      }
+
+      h1 { font-size: 2.5rem; }
+      h2 { font-size: 1.75rem; }
+
+      .two-columns {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .flow-container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .flow-arrow {
+        transform: rotate(90deg);
+        margin: 0;
+      }
+
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .steps-row {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .whatsapp-layout {
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .contact-cards {
+        flex-direction: column;
+      }
+
+      .nav-arrow {
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    /* Print styles */
+    @media print {
+      body::before {
+        display: none;
+      }
+
+      .slide {
+        position: relative;
+        page-break-after: always;
+        opacity: 1;
+        visibility: visible;
+        height: auto;
+        min-height: 100vh;
+        padding: 2rem;
+      }
+
+      .nav-arrow,
+      .slide-dots,
+      .slide-counter {
+        display: none;
+      }
+
+      .slideshow {
+        height: auto;
+      }
+
+      h1, h2 { color: #333; }
+      .card, .feature-card, .contact-card {
+        border: 1px solid #ddd;
+        background: #f9f9f9;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="slideshow">
+    <!-- Slide 1: Cover -->
+    <div class="slide active" data-slide="1">
+      <span class="badge badge-indigo" style="margin-bottom: 2rem;">Uw persoonlijke onboarding</span>
+      <h1>HELVARO</h1>
+      <h2 style="color: var(--text); margin-bottom: 1.5rem;">Welkom bij Helvaro</h2>
+      <p class="subtitle">Uw AI-assistent voor leadopvolging — automatisch, snel en persoonlijk.</p>
+    </div>
+
+    <!-- Slide 2: Hoe het werkt -->
+    <div class="slide" data-slide="2">
+      <h2>Van bezoeker naar afspraak — automatisch</h2>
+      <p class="subtitle" style="margin-bottom: 3rem;">Ontdek hoe Helvaro elke stap automatiseert</p>
+      <div class="flow-container">
+        <div class="flow-step">
+          <div class="flow-icon">🌐</div>
+          <h4>Bezoeker vult formulier in</h4>
+          <p>Website of landingspagina</p>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <div class="flow-icon">⚡</div>
+          <h4>Lead wordt opgeslagen</h4>
+          <p>Direct in uw dashboard</p>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <div class="flow-icon">💬</div>
+          <h4>AI stuurt WhatsApp</h4>
+          <p>Binnen 45 seconden</p>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <div class="flow-icon">📊</div>
+          <h4>U volgt op via dashboard</h4>
+          <p>Alle leads op één plek</p>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <div class="flow-icon">📅</div>
+          <h4>Afspraak ingepland</h4>
+          <p>Via Calendly integratie</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: Het leadformulier -->
+    <div class="slide" data-slide="3">
+      <h2>Uw leadformulier</h2>
+      <p class="subtitle" style="margin-bottom: 2rem;">Twee manieren om leads te verzamelen</p>
+      <div class="two-columns">
+        <div class="column">
+          <span class="badge badge-green">Klaar om te delen</span>
+          <h3 style="margin-top: 1rem;">Hosted pagina</h3>
+          <div class="url-display">app.helvaro.pro/start/UW_CODE</div>
+          <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem;">
+            Direct deelbaar via e-mail, social media of advertenties. Klant klikt, vult in, klaar.
+          </p>
+          <div class="form-mockup">
+            <div class="form-field">Naam</div>
+            <div class="form-field">Telefoonnummer</div>
+            <button class="form-btn">Verstuur</button>
+          </div>
+        </div>
+        <div class="column">
+          <span class="badge badge-indigo">1 regel code</span>
+          <h3 style="margin-top: 1rem;">Inbedden op website</h3>
+          <div class="code-block"><span class="tag">&lt;script</span>
+  <span class="attr">src</span>=<span class="val">"https://app.helvaro.pro/form-widget.js"</span>
+  <span class="attr">data-project</span>=<span class="val">"UW_CODE"</span>
+  <span class="attr">data-name</span>=<span class="val">"Uw Bedrijf"</span><span class="tag">&gt;</span>
+<span class="tag">&lt;/script&gt;</span></div>
+          <p style="font-size: 0.9rem; color: var(--muted); margin-top: 1rem;">
+            Plak dit in uw website. Er verschijnt een zweefknop rechtsonder waarmee bezoekers een formulier kunnen invullen.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: WhatsApp opvolging -->
+    <div class="slide" data-slide="4">
+      <h2>Automatische WhatsApp opvolging</h2>
+      <p class="subtitle">Binnen 45 seconden na een nieuwe lead stuurt uw AI-assistent automatisch een WhatsApp bericht.</p>
+      <div class="whatsapp-layout">
+        <div class="phone-mockup">
+          <div class="phone-screen">
+            <div class="phone-header">
+              <div class="phone-avatar">MW</div>
+              <div>
+                <div class="phone-name">Mathis Willems</div>
+                <div style="font-size: 0.75rem; color: var(--muted);">online</div>
+              </div>
+            </div>
+            <div class="chat-bubble">
+              Hey Sarah! Mathis Willems hier van [Uw Bedrijf]. Zag dat je je gegevens achterliet. Wat bracht je bij ons? 😊
+              <div class="chat-meta">
+                <span>09:42</span>
+                <span>✓✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <ul class="check-list">
+            <li>Naam van AI-assistent: <strong>Mathis Willems</strong> (aanpasbaar)</li>
+            <li>Verstuurd vanuit uw WhatsApp Business nummer</li>
+            <li>Voelt persoonlijk aan — geen spam-gevoel</li>
+            <li>Reageert 24/7, ook buiten kantooruren</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: Dashboard -->
+    <div class="slide" data-slide="5">
+      <h2>Uw persoonlijk dashboard</h2>
+      <p class="subtitle">Alles op één plek — leads, statistieken en gesprekken.</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h4>Leadoverzicht</h4>
+          <p>Alle leads met naam, telefoon, bron en status. Klik om details te bekijken.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h4>Statistieken</h4>
+          <p>Totaal leads, nieuwe leads, gekwalificeerd. Grafiek per week.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h4>Pipeline</h4>
+          <p>Kanban-bord: Nieuw → Contact → Gekwalificeerd → Afspraak → Klant</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h4>Gesprekken</h4>
+          <p>Bekijk alle WhatsApp-conversaties per lead.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 6: Kalender -->
+    <div class="slide" data-slide="6">
+      <h2>Afspraken via Calendly</h2>
+      <p class="subtitle">Koppel uw Calendly account en laat leads direct een afspraak inplannen — alles zichtbaar in uw dashboard.</p>
+      <div style="display: flex; gap: 4rem; align-items: flex-start; max-width: 900px;">
+        <ol class="numbered-list">
+          <li>Koppel uw Calendly in Instellingen</li>
+          <li>Uw beschikbaarheid wordt automatisch gesynchroniseerd</li>
+          <li>Leads kunnen direct een slot kiezen</li>
+          <li>Afspraken verschijnen in uw Helvaro kalender</li>
+        </ol>
+        <div>
+          <span class="badge badge-green">Geen dubbele boekingen — altijd up-to-date</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 7: Bron tracking -->
+    <div class="slide" data-slide="7">
+      <h2>Weet waar uw leads vandaan komen</h2>
+      <p class="subtitle">Helvaro registreert automatisch de bron van elke lead.</p>
+      <div class="bar-chart">
+        <div class="bar-row">
+          <span class="bar-label">Website</span>
+          <div class="bar-track">
+            <div class="bar-fill indigo" style="width: 45%;">45%</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Facebook</span>
+          <div class="bar-track">
+            <div class="bar-fill purple" style="width: 25%;">25%</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Google</span>
+          <div class="bar-track">
+            <div class="bar-fill blue" style="width: 20%;">20%</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Instagram</span>
+          <div class="bar-track">
+            <div class="bar-fill pink" style="width: 10%;">10%</div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 0.9rem; color: var(--muted); max-width: 600px; text-align: center;">
+        Voeg <code style="background: var(--card); padding: 0.125rem 0.375rem; border-radius: 0.25rem; color: var(--accent-hi);">bron=Facebook</code> toe aan uw formulier-URL of widget om automatisch bij te houden welke campagne werkt.
+      </p>
+    </div>
+
+    <!-- Slide 8: Aan de slag -->
+    <div class="slide" data-slide="8">
+      <h2>In 3 stappen live</h2>
+      <p class="subtitle" style="margin-bottom: 3rem;">Start vandaag nog met Helvaro</p>
+      <div class="steps-row">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <h4>Formulier plaatsen</h4>
+          <p>Deel uw link of plak de widget-code op uw website</p>
+        </div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <h4>Eerste lead</h4>
+          <p>Vul zelf het formulier in als test — u ontvangt binnen 45s een WhatsApp</p>
+        </div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <h4>Dashboard</h4>
+          <p>Volg uw leads op via app.helvaro.pro/dashboard</p>
+        </div>
+      </div>
+      <div class="tip-box">
+        <span>💡</span>
+        <span><strong>Tip:</strong> Test het formulier met uw eigen naam en telefoonnummer — zo ervaart u exact wat uw klanten zien.</span>
+      </div>
+    </div>
+
+    <!-- Slide 9: Contact -->
+    <div class="slide" data-slide="9">
+      <h2>Vragen of hulp nodig?</h2>
+      <p class="subtitle">Wij staan voor u klaar</p>
+      <div class="contact-cards">
+        <div class="contact-card">
+          <div class="contact-icon">📧</div>
+          <h4>E-mail</h4>
+          <p>hello@helvaro.pro</p>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon">💬</div>
+          <h4>WhatsApp</h4>
+          <p>Direct bereikbaar</p>
+        </div>
+      </div>
+      <div class="logo-footer">
+        <div class="logo">HELVARO</div>
+        <p>Bedankt voor uw vertrouwen.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="slide-counter"><span id="currentSlide">1</span> / <span id="totalSlides">9</span></div>
+  <button class="nav-arrow prev" id="prevBtn">←</button>
+  <button class="nav-arrow next" id="nextBtn">→</button>
+  <div class="slide-dots" id="dots"></div>
+
+  <script>
+    (function() {
+      const slides = document.querySelectorAll('.slide');
+      const totalSlides = slides.length;
+      let currentSlide = 0;
+
+      const dotsContainer = document.getElementById('dots');
+      const currentSlideEl = document.getElementById('currentSlide');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+
+      // Create dots
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i === 0 ? ' active' : '');
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+      }
+
+      const dots = document.querySelectorAll('.dot');
+
+      function updateSlide() {
+        slides.forEach((slide, index) => {
+          slide.classList.toggle('active', index === currentSlide);
+        });
+        dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index === currentSlide);
+        });
+        currentSlideEl.textContent = currentSlide + 1;
+        prevBtn.disabled = currentSlide === 0;
+        nextBtn.disabled = currentSlide === totalSlides - 1;
+      }
+
+      function goToSlide(index) {
+        currentSlide = Math.max(0, Math.min(totalSlides - 1, index));
+        updateSlide();
+      }
+
+      function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+          currentSlide++;
+          updateSlide();
+        }
+      }
+
+      function prevSlide() {
+        if (currentSlide > 0) {
+          currentSlide--;
+          updateSlide();
+        }
+      }
+
+      // Event listeners
+      prevBtn.addEventListener('click', prevSlide);
+      nextBtn.addEventListener('click', nextSlide);
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          e.preventDefault();
+          nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          prevSlide();
+        }
+      });
+
+      // Touch support
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      });
+
+      document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) nextSlide();
+          else prevSlide();
+        }
+      });
+
+      // Initialize
+      updateSlide();
+    })();
+  </script>
+</body>
+</html>
