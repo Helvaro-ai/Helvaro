@@ -9,7 +9,7 @@
     { "source": "/", "destination": "/dashboard", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/onboard", "destination": "/public/onboard.html" },
+    { "source": "/onboard", "destination": "/onboard.html" },
     { "source": "/dashboard",                       "destination": "/api/dashboard" },
     { "source": "/api/calendly-events",             "destination": "/api/calendly" },
     { "source": "/api/calendly-oauth-start",        "destination": "/api/calendly" },
