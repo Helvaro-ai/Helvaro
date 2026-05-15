@@ -278,8 +278,11 @@ module.exports = async function handler(req, res) {
       if (lRes.status === 429) {
         const retryAfter = lRes.headers.get('retry-after') || '?';
         const body429    = await lRes.text().catch(() => '');
-        // Log full body (no slice) so we can see the exact Airtable error type
-        console.warn('[leads] 429 FULL:', retryAfter, body429);
+        // Parse and log key fields separately so Vercel doesn't truncate them
+        let errType = '?', errMsg = '?';
+        try { const p = JSON.parse(body429); errType = p?.error?.type || p?.type || '?'; errMsg = p?.error?.message || p?.message || '?'; } catch {}
+        console.warn('[AT429] retryAfter=' + retryAfter + ' type=' + errType);
+        console.warn('[AT429] msg=' + errMsg);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
           console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
