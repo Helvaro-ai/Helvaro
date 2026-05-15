@@ -9867,6 +9867,16 @@ function renderActiviteit() {
   initTheme();
 
   if (tryAutoLogin()) {
+    // Small random delay (0–4s) so multiple tabs opened at once don't all hit
+    // Airtable in the same second.  localStorage data renders immediately; the
+    // fetch just refreshes it a moment later.
+    const lsImmediate = loadLeadsFromLS();
+    if (lsImmediate) {
+      state.leads = lsImmediate.leads;
+      state.stats = lsImmediate.stats || {};
+    }
+    await new Promise(r => setTimeout(r, Math.random() * 4000));
+
     // Fetch leads — on rate-limit or error fall back to localStorage so the
     // dashboard shows cached data immediately instead of blank zeros.
     try {

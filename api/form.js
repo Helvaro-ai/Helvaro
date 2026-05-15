@@ -72,28 +72,25 @@ module.exports = async function handler(req, res) {
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
 
     // ── Look up client config (non-blocking) ───────────────────────────────────
-    // Fetch all client records and match by field ID so the formula field-name
-    // issue can never block a submission.  On any failure (429, network, no
-    // match) we fall back to safe defaults — the lead is always created.
+    // Single-shot fetch (no retries) — this is non-critical; on any failure we
+    // fall back to safe defaults and always proceed with lead creation.
+    // Uses a formula filter on the field ID so only 1 record is returned instead
+    // of fetching all 100 clients and filtering client-side.
     const aiName     = 'Mathis Willems';
     let   clientName = project_code; // safe default — overwritten below if found
 
     try {
-      const cRes = await atFetch(
-        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?maxRecords=100&returnFieldsByFieldId=true`,
+      const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
+      const cRes = await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&maxRecords=1&fields[]=fldAnB848Sr5jl6dq&fields[]=fldN4dL0bGgfBOXwM`,
         { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
       );
       if (cRes.ok) {
         const cData = await cRes.json();
-        const match = (cData.records || []).find(r => {
-          // fldN4dL0bGgfBOXwM is the Project Code field ID in the Clients table
-          const code = String(r.fields['fldN4dL0bGgfBOXwM'] || '').trim().toUpperCase();
-          return code === project_code;
-        });
+        const match = (cData.records || [])[0];
         if (match) {
           clientName = match.fields['fldAnB848Sr5jl6dq'] || match.fields['Client Name'] || clientName;
         }
-        // No match → unknown project code; still proceed (leads table records it)
       }
       // 429 / error → use defaults, don't block the form submission
     } catch { /* network error — use defaults */ }
