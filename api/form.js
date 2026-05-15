@@ -121,8 +121,8 @@ module.exports = async function handler(req, res) {
           fldbk0LVNckOU0bqA: name,
           fld6YaitW0lMqHUrd: waPhone,   // normalized — must match WhatsApp's message.from
           fldSmczuyUJd26HLe: project_code,
-          fld8mkrEWcyq7mUip: 'new',
-          fldGoerozqdea4BfU: bron,
+          // fld8mkrEWcyq7mUip: 'new',  // DEBUG: omitted — diagnosing 422 select error
+          // fldGoerozqdea4BfU: bron,    // DEBUG: omitted — diagnosing 422 select error
           fldR0r13EU4RwrtvH: new Date().toISOString()
         }
       })
