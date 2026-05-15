@@ -5523,9 +5523,18 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
           <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:16px">
             <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt</div>
-            <div style="font-size:13px;display:flex;flex-direction:column;gap:6px">
-              <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="font-size:12px;background:var(--bg-primary);padding:2px 6px;border-radius:4px"></code></div>
-              <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright);font-size:12px"></a></div>
+            <div style="font-size:13px;display:flex;flex-direction:column;gap:10px">
+              <div>
+                <div style="color:var(--text-muted);margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Onboarding link (stuur naar klant)</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <code id="nc-result-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:6px 8px;border-radius:6px;word-break:break-all;border:1px solid var(--border);color:var(--accent-bright)"></code>
+                  <button onclick="copyOnboardingLink()" style="flex-shrink:0;padding:6px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer" id="nc-copy-btn">Kopieer</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:16px;flex-wrap:wrap">
+                <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="font-size:12px;background:var(--bg-primary);padding:2px 6px;border-radius:4px"></code></div>
+                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright);font-size:12px"></a></div>
+              </div>
             </div>
           </div>
         </div>
@@ -6745,6 +6754,9 @@ async function submitNewClient() {
     const urlEl = document.getElementById('nc-result-url');
     urlEl.textContent = data.formUrl;
     urlEl.href = data.formUrl;
+    const onboardLink = `https://app.helvaro.pro/dashboard?welcome=${encodeURIComponent(data.apiKey)}&name=${encodeURIComponent(data.clientName)}&project=${encodeURIComponent(data.projectCode)}`;
+    document.getElementById('nc-result-link').textContent = onboardLink;
+    document.getElementById('nc-result-link').dataset.link = onboardLink;
     succEl.style.display = 'block';
     btn.textContent = 'Sluiten';
     btn.disabled = false;
@@ -6755,6 +6767,23 @@ async function submitNewClient() {
     btn.disabled = false;
     btn.textContent = 'Aanmaken';
   }
+}
+
+function copyOnboardingLink() {
+  const link = document.getElementById('nc-result-link')?.dataset.link;
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById('nc-copy-btn');
+    btn.textContent = '✓ Gekopieerd';
+    setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
+  }).catch(() => {
+    // Fallback: select the text
+    const el = document.getElementById('nc-result-link');
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  });
 }
 
 function switchToClient(index) {
@@ -10002,6 +10031,28 @@ function renderActiviteit() {
    ============================================================ */
 (async function init() {
   initTheme();
+
+  // Auto-login from onboarding link: ?welcome=APIKEY&name=NAME&project=CODE
+  const _initParams = new URLSearchParams(window.location.search);
+  const _welcomeKey = _initParams.get('welcome');
+  if (_welcomeKey) {
+    const _wName    = decodeURIComponent(_initParams.get('name')    || '');
+    const _wProject = decodeURIComponent(_initParams.get('project') || '');
+    window.history.replaceState({}, document.title, window.location.pathname); // clean URL
+    saveSession(_welcomeKey, _wName, _wProject, '');
+    try {
+      const data = await fetchLeads();
+      if (!data.rateLimited && !data.stale) {
+        state.leads    = data.leads || [];
+        state.stats    = data.stats || {};
+        state.clientName = _wName || data.client?.naam || 'Gebruiker';
+        state.lastFetch  = Date.now();
+        if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
+      }
+    } catch { state.leads = []; state.stats = {}; }
+    await startDashboard(true);
+    return;
+  }
 
   if (tryAutoLogin()) {
     // Small random delay (0–4s) so multiple tabs opened at once don't all hit
