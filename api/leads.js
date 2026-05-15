@@ -1,29 +1,15 @@
 const crypto = require('crypto');
 
-// Single-shot Airtable fetch for polling — NO retries on 429.
+// Single-shot Airtable fetch — no retries on 429.
 //
-// Root-cause analysis (2026-05-14): with multiple dashboard tabs open, each
-// session polls leads every 90 s.  Under a 429 storm, atFetch was retrying
-// 2 extra times (1 s + 2 s delays) per call.  With 4+ sessions, those retry
-// bursts overlapped and generated 4–5+ simultaneous Airtable calls — enough
-// to keep Airtable permanently rate-limited in a self-reinforcing cycle.
+// Root-cause (2026-05-14): multiple dashboard tabs each polling every 90 s,
+// with 2-retry atFetch, generated 4–5 simultaneous Airtable calls and kept
+// Airtable permanently rate-limited in a self-reinforcing cycle.
 //
-// Fix: one attempt only.  On 429 → return immediately → serve stale cache
-// or empty payload → wait the full 90 s before trying again naturally.
-// This gives Airtable's bucket time to refill between polls.
-//
-// atFetch is still used for the CLIENT lookup (legacy API-key path only,
-// cold-start infrequent) and PATCH writes (infrequent, can tolerate brief
-// wait).  The hot leads-GET loop uses plain fetch() below.
+// Fix: one attempt only for everything.  On 429 → return immediately →
+// serve stale cache (polling) or surface error (PATCH) → wait the natural
+// interval before trying again.  No rapid retries that extend the ban.
 async function atFetch(url, opts) {
-  let delay = 1000;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const r = await fetch(url, opts);
-    if (r.status !== 429) return r;
-    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
-    await new Promise(res => setTimeout(res, Math.max(300, delay + jitter)));
-    delay *= 2;
-  }
   return fetch(url, opts);
 }
 

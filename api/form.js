@@ -71,7 +71,8 @@ module.exports = async function handler(req, res) {
     // Add values here as you add them to the Bron field in Airtable.
     const VALID_BRON = new Set(['Website', 'Facebook', 'Google', 'Instagram', 'LinkedIn', 'TikTok', 'Advertentie', 'Advertenties', 'Doorverwijzing', 'Cold call', 'Overig', 'Anders']);
     const bronRaw = String(body.bron || '').trim().slice(0, 50);
-    const bron    = VALID_BRON.has(bronRaw) ? bronRaw : '';
+    // Unknown values fall back to 'Website' — always set so analytics stay clean.
+    const bron    = VALID_BRON.has(bronRaw) ? bronRaw : 'Website';
 
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
@@ -122,11 +123,7 @@ module.exports = async function handler(req, res) {
           fld6YaitW0lMqHUrd: waPhone,   // normalized — must match WhatsApp's message.from
           fldSmczuyUJd26HLe: project_code,
           fld8mkrEWcyq7mUip: 'new',
-          // Only include bron if it matches a known Airtable select option.
-          // Sending an unknown value → 422 because the API token cannot create
-          // new select options on the fly.  Omit rather than silently map to a
-          // wrong value — the field stays empty and can be set manually later.
-          ...(bron ? { fldGoerozqdea4BfU: bron } : {}),
+          fldGoerozqdea4BfU: bron,
           fldR0r13EU4RwrtvH: new Date().toISOString()
         }
       })
