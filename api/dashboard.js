@@ -1258,32 +1258,89 @@ button.brand-dot { border: none; padding: 0; }
     .profile-action-btn svg { color: var(--accent); flex-shrink: 0; }
 
 /* ============================================================
-   FOUNDER DASHBOARD
+   FOUNDER DASHBOARD — cofounder-style layout
    ============================================================ */
-.founder-wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
-.founder-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.founder-section-hdr h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-secondary); }
+.fdr-wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.fdr-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.fdr-section-hdr h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-secondary); }
 .founder-btn-sm { padding: 6px 14px; background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
 .founder-btn-sm:hover { background: rgba(99,102,241,.22); }
 
-/* Stats pulse row */
-.founder-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.founder-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px; }
-.founder-stat-val { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-.founder-stat-lbl { font-size: 12px; color: var(--text-secondary); }
-.founder-stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+/* Hero header */
+.fdr-hero { background: linear-gradient(135deg, rgba(79,70,229,.18) 0%, rgba(99,102,241,.08) 100%); border: 1px solid rgba(99,102,241,.2); border-radius: 18px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; }
+.fdr-hero-left {}
+.fdr-day { font-size: 28px; font-weight: 800; letter-spacing: -.5px; color: var(--text-primary); line-height: 1; }
+.fdr-date { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+.fdr-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+.fdr-hero-right { text-align: right; }
+.fdr-deadline-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); }
+.fdr-deadline-val { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 2px; }
+.fdr-deadline-days { font-size: 12px; color: var(--accent-bright); margin-top: 2px; font-weight: 600; }
 
-/* Today's focus */
-.founder-focus { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.founder-task { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); transition: background .12s; }
-.founder-task:last-child { border-bottom: none; }
-.founder-task:hover { background: var(--bg-card-hover); }
-.founder-task input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
-.founder-task-text { flex: 1; font-size: 14px; outline: none; background: transparent; border: none; color: var(--text-primary); cursor: text; }
-.founder-task-text:empty::before { content: attr(data-placeholder); color: var(--text-muted); }
-.founder-task.done .founder-task-text { text-decoration: line-through; color: var(--text-muted); }
+/* Two-column main grid */
+.fdr-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 18px; align-items: start; }
+.fdr-right-col { display: flex; flex-direction: column; gap: 14px; }
 
-/* Pipeline kanban */
+/* Generic panel */
+.fdr-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); }
+.fdr-panel-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-panel-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.fdr-task-progress { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.fdr-refresh-btn { background: none; border: none; color: var(--text-muted); font-size: 15px; cursor: pointer; line-height: 1; padding: 2px 4px; border-radius: 5px; }
+.fdr-refresh-btn:hover { color: var(--text-primary); }
+
+/* Checklist */
+.fdr-checklist { display: flex; flex-direction: column; }
+.fdr-task-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; user-select: none; }
+.fdr-task-row:last-child { border-bottom: none; }
+.fdr-task-row:hover { background: var(--bg-card-hover); }
+.fdr-task-row input[type=checkbox] { display: none; }
+.fdr-task-check-icon { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-bright); flex-shrink: 0; margin-top: 2px; transition: all .15s; display: flex; align-items: center; justify-content: center; }
+.fdr-task-row.fdr-task-done .fdr-task-check-icon { background: var(--accent); border-color: var(--accent); }
+.fdr-task-row.fdr-task-done .fdr-task-check-icon::after { content: ''; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); display: block; }
+.fdr-task-body { flex: 1; min-width: 0; }
+.fdr-task-name { font-size: 14px; font-weight: 500; color: var(--text-primary); line-height: 1.3; }
+.fdr-task-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.fdr-task-row.fdr-task-done .fdr-task-name { text-decoration: line-through; color: var(--text-muted); }
+.fdr-wie-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-top: 2px; }
+.fdr-badge-frade { background: rgba(99,102,241,.15); color: #818cf8; border: 1px solid rgba(99,102,241,.25); }
+.fdr-badge-teljo { background: rgba(245,158,11,.12); color: #f59e0b; border: 1px solid rgba(245,158,11,.2); }
+.fdr-badge-beiden { background: rgba(34,197,94,.1); color: #22c55e; border: 1px solid rgba(34,197,94,.2); }
+.fdr-progress-bar-wrap { height: 3px; background: var(--bg-card-alt); border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
+.fdr-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-bright)); transition: width .4s ease; border-radius: 99px; }
+.fdr-weekend-msg { padding: 32px 18px; text-align: center; }
+.fdr-weekend-icon { font-size: 32px; margin-bottom: 10px; }
+.fdr-weekend-txt { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.fdr-weekend-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+/* Stats 2x2 grid (right col) */
+.fdr-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-stat { background: var(--bg-card); padding: 14px 12px; }
+.fdr-stat-val { font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 3px; }
+.fdr-stat-lbl { font-size: 11px; color: var(--text-secondary); }
+
+/* Goal panel */
+.fdr-goal-panel { padding: 16px 18px; }
+.fdr-goal-hdr { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; }
+.fdr-goal-big { display: flex; align-items: baseline; gap: 4px; margin-bottom: 10px; }
+.fdr-goal-current { font-size: 40px; font-weight: 900; color: var(--accent-bright); line-height: 1; }
+.fdr-goal-sep { font-size: 22px; color: var(--text-muted); }
+.fdr-goal-target { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.fdr-goal-unit { font-size: 13px; color: var(--text-secondary); margin-left: 4px; }
+.fdr-goal-bar-wrap { height: 6px; background: var(--bg-card-alt); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+.fdr-goal-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4f46e5, #818cf8); transition: width .6s ease; }
+.fdr-goal-pct { font-size: 11px; color: var(--text-muted); }
+
+/* Pipeline mini */
+.fdr-pipe-mini { padding: 14px 18px; }
+.fdr-pipe-mini-cols { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.fdr-pipe-mini-item { display: flex; align-items: center; gap: 10px; }
+.fdr-pipe-mini-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.fdr-pipe-mini-name { flex: 1; font-size: 12px; color: var(--text-secondary); }
+.fdr-pipe-mini-count { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.fdr-won-lost-row { display: flex; gap: 8px; }
+
+/* Full-width pipeline kanban */
 .founder-pipeline-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .founder-col { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .founder-col-hdr { padding: 10px 14px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -1296,7 +1353,6 @@ button.brand-dot { border: none; padding: 0; }
 .founder-col-add { padding: 8px 10px; border-top: 1px solid var(--border); }
 .founder-col-add button { width: 100%; padding: 7px; background: none; border: 1px dashed var(--border-bright); border-radius: 7px; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: var(--transition); }
 .founder-col-add button:hover { border-color: var(--accent); color: var(--accent); }
-.founder-col-won-lost { display: flex; gap: 8px; margin-top: 4px; }
 .founder-badge-won  { background: rgba(34,197,94,.12); color: #22c55e; border: 1px solid rgba(34,197,94,.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
 .founder-badge-lost { background: rgba(244,63,94,.1); color: #f43f5e; border: 1px solid rgba(244,63,94,.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
 
@@ -1338,12 +1394,16 @@ button.brand-dot { border: none; padding: 0; }
 .founder-modal-save { padding: 9px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .founder-modal-delete { padding: 9px 18px; background: rgba(244,63,94,.12); border: 1px solid rgba(244,63,94,.25); border-radius: 8px; color: #f43f5e; font-size: 13px; font-weight: 600; cursor: pointer; margin-right: auto; }
 
-@media (max-width: 900px) {
-  .founder-stats-row { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 960px) {
+  .fdr-main-grid { grid-template-columns: 1fr; }
+  .fdr-right-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .founder-pipeline-cols { grid-template-columns: 1fr; }
 }
-@media (max-width: 480px) {
-  .founder-stats-row { grid-template-columns: 1fr 1fr; }
+@media (max-width: 600px) {
+  .fdr-hero { flex-direction: column; gap: 16px; }
+  .fdr-hero-right { text-align: left; }
+  .fdr-right-col { grid-template-columns: 1fr; }
+  .fdr-stats-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* ============================================================
@@ -6073,84 +6133,108 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- ─── Founder Dashboard ─── -->
     <main class="page-content page" id="page-founder">
-      <div class="founder-wrap">
+      <div class="fdr-wrap">
 
-        <!-- Business Pulse -->
-        <div>
-          <div class="founder-section-hdr">
-            <h3>Business Pulse</h3>
-            <button class="founder-btn-sm" onclick="loadFounderData(true)">↻ Vernieuwen</button>
+        <!-- Hero header: day + deadline -->
+        <div class="fdr-hero">
+          <div class="fdr-hero-left">
+            <div class="fdr-day" id="fdr-dayname">—</div>
+            <div class="fdr-date" id="fdr-date">—</div>
+            <div class="fdr-subtitle">Helvaro — Roadmap naar 5 klanten</div>
           </div>
-          <div class="founder-stats-row" id="founder-stats-row">
-            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--accent-bright)" id="f-stat-clients">—</div><div class="founder-stat-lbl">Actieve Klanten</div></div>
-            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--green)" id="f-stat-leads">—</div><div class="founder-stat-lbl">Leads deze maand</div><div class="founder-stat-sub" id="f-stat-leads-sub"></div></div>
-            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--orange)" id="f-stat-qual">—%</div><div class="founder-stat-lbl">Gekwalificeerd</div></div>
-            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--red)" id="f-stat-new">—</div><div class="founder-stat-lbl">Nieuw ongelezen</div></div>
+          <div class="fdr-hero-right">
+            <div class="fdr-deadline-label">Deadline</div>
+            <div class="fdr-deadline-val">16 aug 2026</div>
+            <div class="fdr-deadline-days" id="fdr-days-left">— dagen</div>
           </div>
         </div>
 
-        <!-- Today's Focus -->
-        <div>
-          <div class="founder-section-hdr">
-            <h3>Focus van Vandaag</h3>
-            <button class="founder-btn-sm" onclick="clearFounderTasks()">Wissen</button>
+        <!-- Main two-column grid -->
+        <div class="fdr-main-grid">
+
+          <!-- LEFT: daily checklist -->
+          <div class="fdr-panel fdr-panel-checklist">
+            <div class="fdr-panel-hdr">
+              <span class="fdr-panel-title">Checklist van Vandaag</span>
+              <span class="fdr-task-progress" id="fdr-task-progress">0 / 0 voltooid</span>
+            </div>
+            <div class="fdr-checklist" id="fdr-checklist">
+              <div style="padding:24px 18px;color:var(--text-muted);font-size:13px">Laden...</div>
+            </div>
+            <div class="fdr-progress-bar-wrap">
+              <div class="fdr-progress-bar" id="fdr-progress-bar" style="width:0%"></div>
+            </div>
           </div>
-          <div class="founder-focus" id="founder-focus">
-            <div class="founder-task" id="founder-task-0">
-              <input type="checkbox" id="founder-cb-0" onchange="toggleFounderTask(0)">
-              <div class="founder-task-text" id="founder-tt-0" contenteditable="true" data-placeholder="Taak 1..." oninput="saveFounderTask(0)" onblur="saveFounderTask(0)"></div>
+
+          <!-- RIGHT: stats + goal + pipeline mini -->
+          <div class="fdr-right-col">
+
+            <!-- Stats 2x2 -->
+            <div class="fdr-stats-grid fdr-panel">
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-clients" style="color:var(--accent-bright)">—</div><div class="fdr-stat-lbl">Klanten</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-leads" style="color:var(--green)">—</div><div class="fdr-stat-lbl">Leads/mnd</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-qual" style="color:var(--orange)">—%</div><div class="fdr-stat-lbl">Gekwalificeerd</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-new" style="color:var(--red)">—</div><div class="fdr-stat-lbl">Ongelezen</div></div>
             </div>
-            <div class="founder-task" id="founder-task-1">
-              <input type="checkbox" id="founder-cb-1" onchange="toggleFounderTask(1)">
-              <div class="founder-task-text" id="founder-tt-1" contenteditable="true" data-placeholder="Taak 2..." oninput="saveFounderTask(1)" onblur="saveFounderTask(1)"></div>
+
+            <!-- Goal: 5 clients -->
+            <div class="fdr-panel fdr-goal-panel">
+              <div class="fdr-goal-hdr">
+                <span>🎯 Doel — 5 klanten</span>
+                <button class="fdr-refresh-btn" onclick="loadFounderData(true)">↻</button>
+              </div>
+              <div class="fdr-goal-big">
+                <span class="fdr-goal-current" id="fdr-goal-current">0</span>
+                <span class="fdr-goal-sep">/</span>
+                <span class="fdr-goal-target">5</span>
+                <span class="fdr-goal-unit">klanten</span>
+              </div>
+              <div class="fdr-goal-bar-wrap">
+                <div class="fdr-goal-bar-fill" id="fdr-goal-bar" style="width:0%"></div>
+              </div>
+              <div class="fdr-goal-pct" id="fdr-goal-pct">0% bereikt</div>
             </div>
-            <div class="founder-task" id="founder-task-2">
-              <input type="checkbox" id="founder-cb-2" onchange="toggleFounderTask(2)">
-              <div class="founder-task-text" id="founder-tt-2" contenteditable="true" data-placeholder="Taak 3..." oninput="saveFounderTask(2)" onblur="saveFounderTask(2)"></div>
+
+            <!-- Pipeline mini summary -->
+            <div class="fdr-panel fdr-pipe-mini">
+              <div class="fdr-panel-title" style="margin-bottom:12px">Pipeline</div>
+              <div class="fdr-pipe-mini-cols" id="fdr-pipe-mini-cols"></div>
+              <div class="fdr-won-lost-row">
+                <span class="founder-badge-won" id="pipe-won-badge">✓ 0 Gewonnen</span>
+                <span class="founder-badge-lost" id="pipe-lost-badge">✗ 0 Verloren</span>
+              </div>
             </div>
+
           </div>
         </div>
 
-        <!-- Pipeline -->
+        <!-- Full-width Pipeline kanban -->
         <div>
-          <div class="founder-section-hdr">
+          <div class="fdr-section-hdr">
             <h3>Sales Pipeline</h3>
-            <div class="founder-col-won-lost">
-              <span class="founder-badge-won" id="pipe-won-badge">✓ 0 Gewonnen</span>
-              <span class="founder-badge-lost" id="pipe-lost-badge">✗ 0 Verloren</span>
-            </div>
           </div>
           <div class="founder-pipeline-cols">
             <div class="founder-col">
-              <div class="founder-col-hdr" style="border-top:3px solid #60a5fa">
-                Gecontacteerd
-                <span class="founder-col-badge" id="pipe-count-0">0</span>
-              </div>
+              <div class="founder-col-hdr" style="border-top:3px solid #60a5fa">Gecontacteerd<span class="founder-col-badge" id="pipe-count-0">0</span></div>
               <div class="founder-col-body" id="pipe-col-0"></div>
               <div class="founder-col-add"><button onclick="openPipeModal(null,'Gecontacteerd')">+ Toevoegen</button></div>
             </div>
             <div class="founder-col">
-              <div class="founder-col-hdr" style="border-top:3px solid #fbbf24">
-                Geïnteresseerd
-                <span class="founder-col-badge" id="pipe-count-1">0</span>
-              </div>
+              <div class="founder-col-hdr" style="border-top:3px solid #fbbf24">Geïnteresseerd<span class="founder-col-badge" id="pipe-count-1">0</span></div>
               <div class="founder-col-body" id="pipe-col-1"></div>
               <div class="founder-col-add"><button onclick="openPipeModal(null,'Geïnteresseerd')">+ Toevoegen</button></div>
             </div>
             <div class="founder-col">
-              <div class="founder-col-hdr" style="border-top:3px solid #f97316">
-                Beslissing
-                <span class="founder-col-badge" id="pipe-count-2">0</span>
-              </div>
+              <div class="founder-col-hdr" style="border-top:3px solid #f97316">Beslissing<span class="founder-col-badge" id="pipe-count-2">0</span></div>
               <div class="founder-col-body" id="pipe-col-2"></div>
               <div class="founder-col-add"><button onclick="openPipeModal(null,'Beslissing')">+ Toevoegen</button></div>
             </div>
           </div>
         </div>
 
-        <!-- Goals -->
+        <!-- Doelen -->
         <div>
-          <div class="founder-section-hdr">
+          <div class="fdr-section-hdr">
             <h3>Doelen</h3>
             <button class="founder-btn-sm" onclick="openGoalModal(null)">+ Doel</button>
           </div>
@@ -10443,10 +10527,10 @@ async function loadFounderData(force) {
       const qualPct = totalLeads > 0 ? Math.round(qualLeads / totalLeads * 100) : 0;
       document.getElementById('f-stat-clients').textContent = founderState.clients;
       document.getElementById('f-stat-leads').textContent   = totalLeads;
-      document.getElementById('f-stat-leads-sub').textContent = qualLeads + ' gekwal.';
       document.getElementById('f-stat-qual').textContent    = qualPct + '%';
       document.getElementById('f-stat-new').textContent     = newLeads;
       founderState._metrics = { clients: founderState.clients, leadsMonth: totalLeads, qualified: qualPct, newLeads };
+      updateGoalPanel();
     }
   } catch (e) { /* ignore */ }
 
@@ -10470,8 +10554,10 @@ async function loadFounderData(force) {
     }
   } catch (e) { /* ignore */ }
 
-  // Tasks (localStorage, daily reset)
-  loadFounderTasks();
+  // Header + checklist + goal panel
+  initFounderHeader();
+  renderDailyChecklist();
+  updateGoalPanel();
 }
 
 function renderFounderPipeline() {
@@ -10492,6 +10578,7 @@ function renderFounderPipeline() {
   const lost = founderState.pipeline.filter(p => p.fase === 'Verloren').length;
   document.getElementById('pipe-won-badge').textContent  = '✓ ' + won  + ' Gewonnen';
   document.getElementById('pipe-lost-badge').textContent = '✗ ' + lost + ' Verloren';
+  renderPipeMini();
 }
 
 function renderFounderGoals() {
@@ -10519,62 +10606,158 @@ function renderFounderGoals() {
   }).join('');
 }
 
-// ── Today's Focus (localStorage, daily reset) ─────────────────────────────
-function loadFounderTasks() {
-  const today = new Date().toISOString().slice(0, 10);
-  const raw = localStorage.getItem('hv-focus-tasks');
-  let tasks = [];
-  try { tasks = JSON.parse(raw) || []; } catch { tasks = []; }
-  // Reset if stored day is not today
-  if (tasks.length && tasks[0]?.date !== today) tasks = [];
-  for (let i = 0; i < 3; i++) {
-    const t = tasks[i] || { text: '', done: false, date: today };
-    const cb = document.getElementById('founder-cb-' + i);
-    const tt = document.getElementById('founder-tt-' + i);
-    const row = document.getElementById('founder-task-' + i);
-    if (cb) cb.checked = t.done;
-    if (tt) tt.textContent = t.text;
-    if (row) row.classList.toggle('done', t.done);
+// ── Daily Checklist (auto-populated per day of week, localStorage, daily reset) ──
+var DAILY_TASKS = {
+  1: [
+    { wie: 'Teljo', taak: '10 LinkedIn DMs sturen', detail: 'Template 1 — bureaus: CNIP, Ants Agency, Bureau 9000, Nouchka Design, SilverLine Studio, Magelaan' },
+    { wie: 'Teljo', taak: 'Pipeline updaten', detail: 'Verplaats wie gereageerd heeft naar Geïnteresseerd in Founder Dashboard' },
+    { wie: 'Frade', taak: 'Dashboard checken', detail: 'Login als elke klant — controleer of leads binnenkomen en correct verwerkt worden' },
+    { wie: 'Frade', taak: 'Bugs / verbeteringen fixen', detail: 'Fix eventuele fouten die klanten meldden vorige week' },
+    { wie: 'Frade', taak: 'Nieuwe klant voorbereiden', detail: 'Als iemand ja zei vrijdag: account aanmaken via /onboard, formulier instellen' }
+  ],
+  2: [
+    { wie: 'Teljo', taak: '10 LinkedIn DMs sturen', detail: 'Template 2 — vastgoed: VICUS Vastgoed (0498 12 37 08), Agence Rosseel, Concordia' },
+    { wie: 'Teljo', taak: 'Follow-up maandag', detail: 'Stuur Template 5 naar wie maandag niet gereageerd heeft' },
+    { wie: 'Teljo', taak: '5 cold emails sturen', detail: 'info@cnip.be, info@vicusvastgoed.be, info@concordia.be, hello@antsconnect.be, info@bureau9000.be' },
+    { wie: 'Frade', taak: 'Calendly integratie testen', detail: 'Test volledige flow: lead → WhatsApp → kwalificatie → Calendly boeking' },
+    { wie: 'Frade', taak: 'WhatsApp response testen', detail: 'Stuur test lead via formulier, controleer WhatsApp response tijd' }
+  ],
+  3: [
+    { wie: 'Teljo', taak: 'Demo calls (geboekte afspraken)', detail: 'Gebruik 15-min demo script — doel: afsluiten op gratis proefperiode' },
+    { wie: 'Teljo', taak: 'LinkedIn post publiceren', detail: '"Hoe wij [sector] helpen met AI leadkwalificatie via WhatsApp" — vraag Frade voor screenshot' },
+    { wie: 'Teljo', taak: '5 extra DMs coaches/consultants', detail: 'Opex Consulting (info@opex.be) en gelijkaardige bedrijven' },
+    { wie: 'Frade', taak: 'Screenshot/video demo flow maken', detail: 'Schermopname van de demo flow voor Teljos LinkedIn post' },
+    { wie: 'Frade', taak: 'App performance controleren', detail: 'Vercel logs checken, WhatsApp webhook response times controleren' },
+    { wie: 'Frade', taak: 'Onboarding flow testen', detail: 'Ga naar app.helvaro.pro/onboard — test het volledige proces als nieuwe klant' }
+  ],
+  4: [
+    { wie: 'Teljo', taak: 'Follow-up alle openstaande contacten', detail: 'Template 5 naar iedereen zonder definitief antwoord deze week' },
+    { wie: 'Teljo', taak: '10 nieuwe DMs sturen', detail: 'Nieuwe bedrijven zoeken via LinkedIn regio Gent/Antwerpen' },
+    { wie: 'Teljo', taak: 'Demo calls', detail: 'Geboekte afspraken van eerder deze week' },
+    { wie: 'Frade', taak: 'Airtable opruimen', detail: 'Leads controleren, verouderde leads archiveren, kwaliteitscheck' },
+    { wie: 'Frade', taak: 'Klant support', detail: 'Beantwoord technische vragen van bestaande klanten via WhatsApp/email' },
+    { wie: 'Frade', taak: 'Nieuwe feature / verbetering', detail: '1 concrete verbetering van dashboard, formulier of WhatsApp flow' }
+  ],
+  5: [
+    { wie: 'Frade', taak: 'Founder Dashboard openen', detail: 'Open /founder tab → klik Genereer advies → lees wat AI aanbeveelt' },
+    { wie: 'Frade', taak: 'Pipeline updaten', detail: 'Verplaats prospects naar juiste fase, verwijder wie definitief nee zei' },
+    { wie: 'Frade', taak: 'Week samenvatting noteren', detail: 'Hoeveel DMs gestuurd, hoeveel demos gehad, hoeveel geïnteresseerd' },
+    { wie: 'Teljo', taak: 'Deals afsluiten', detail: 'Bel iedereen die geïnteresseerd is → push naar contract' },
+    { wie: 'Teljo', taak: 'Volgende week plannen', detail: 'Bespreek: wie benaderen we maandag, welke sectoren' },
+    { wie: 'Beiden', taak: 'Weekly standup (15 min)', detail: 'Wat werkte? Wat niet? Wat aanpassen volgende week?' }
+  ]
+};
+
+function initFounderHeader() {
+  var days   = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+  var months = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  var now = new Date();
+  var dn = document.getElementById('fdr-dayname');
+  var dt = document.getElementById('fdr-date');
+  var dl = document.getElementById('fdr-days-left');
+  if (dn) dn.textContent = days[now.getDay()];
+  if (dt) dt.textContent = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+  var deadline = new Date('2026-08-16');
+  var daysLeft = Math.ceil((deadline - now) / 86400000);
+  if (dl) dl.textContent = daysLeft > 0 ? daysLeft + ' dagen resterend' : 'Deadline voorbij';
+}
+
+function renderDailyChecklist() {
+  var day = new Date().getDay();
+  var tasks = DAILY_TASKS[day];
+  var el = document.getElementById('fdr-checklist');
+  if (!el) return;
+
+  if (!tasks || !tasks.length) {
+    el.innerHTML = '<div class="fdr-weekend-msg"><div class="fdr-weekend-icon">🎉</div><div class="fdr-weekend-txt">Weekend — geniet ervan!</div><div class="fdr-weekend-sub">Maandag: 10 LinkedIn DMs + dashboard checken + pipeline updaten</div></div>';
+    updateChecklistProgress(0, 0);
+    return;
   }
+
+  var today = new Date().toISOString().slice(0, 10);
+  var raw = localStorage.getItem('hv-daily-tasks-v2');
+  var stored = {};
+  try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
+  if (stored._date !== today) stored = { _date: today };
+
+  el.innerHTML = tasks.map(function(t, i) {
+    var done = stored['task-' + i] || false;
+    var wieClass = t.wie === 'Frade' ? 'fdr-badge-frade' : (t.wie === 'Teljo' ? 'fdr-badge-teljo' : 'fdr-badge-beiden');
+    return '<label class="fdr-task-row' + (done ? ' fdr-task-done' : '') + '" for="fdr-cb-' + i + '">' +
+      '<input type="checkbox" id="fdr-cb-' + i + '"' + (done ? ' checked' : '') + ' onchange="toggleDailyTask(' + i + ')">' +
+      '<div class="fdr-task-check-icon"></div>' +
+      '<div class="fdr-task-body">' +
+        '<div class="fdr-task-name">' + escHtml(t.taak) + '</div>' +
+        '<div class="fdr-task-detail">' + escHtml(t.detail) + '</div>' +
+      '</div>' +
+      '<span class="fdr-wie-badge ' + wieClass + '">' + escHtml(t.wie) + '</span>' +
+    '</label>';
+  }).join('');
+
+  var doneCount = tasks.filter(function(_, i) { return stored['task-' + i]; }).length;
+  updateChecklistProgress(doneCount, tasks.length);
 }
 
-function saveFounderTask(idx) {
-  const today = new Date().toISOString().slice(0, 10);
-  const raw = localStorage.getItem('hv-focus-tasks');
-  let tasks = [];
-  try { tasks = JSON.parse(raw) || []; } catch { tasks = []; }
-  if (!tasks[idx]) tasks[idx] = { text: '', done: false, date: today };
-  const tt = document.getElementById('founder-tt-' + idx);
-  tasks[idx].text = tt ? tt.textContent.trim() : '';
-  tasks[idx].date = today;
-  localStorage.setItem('hv-focus-tasks', JSON.stringify(tasks));
+function toggleDailyTask(idx) {
+  var today = new Date().toISOString().slice(0, 10);
+  var raw = localStorage.getItem('hv-daily-tasks-v2');
+  var stored = {};
+  try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
+  if (stored._date !== today) stored = { _date: today };
+  var cb = document.getElementById('fdr-cb-' + idx);
+  stored['task-' + idx] = cb ? cb.checked : false;
+  localStorage.setItem('hv-daily-tasks-v2', JSON.stringify(stored));
+  var row = cb ? cb.closest('.fdr-task-row') : null;
+  if (row) row.classList.toggle('fdr-task-done', stored['task-' + idx]);
+  var day = new Date().getDay();
+  var tasks = DAILY_TASKS[day] || [];
+  var doneCount = tasks.filter(function(_, i) { return stored['task-' + i]; }).length;
+  updateChecklistProgress(doneCount, tasks.length);
 }
 
-function toggleFounderTask(idx) {
-  const today = new Date().toISOString().slice(0, 10);
-  const raw = localStorage.getItem('hv-focus-tasks');
-  let tasks = [];
-  try { tasks = JSON.parse(raw) || []; } catch { tasks = []; }
-  if (!tasks[idx]) tasks[idx] = { text: '', done: false, date: today };
-  const cb = document.getElementById('founder-cb-' + idx);
-  tasks[idx].done = cb ? cb.checked : false;
-  tasks[idx].date = today;
-  localStorage.setItem('hv-focus-tasks', JSON.stringify(tasks));
-  const row = document.getElementById('founder-task-' + idx);
-  if (row) row.classList.toggle('done', tasks[idx].done);
+function updateChecklistProgress(done, total) {
+  var pEl = document.getElementById('fdr-task-progress');
+  var bEl = document.getElementById('fdr-progress-bar');
+  if (pEl) pEl.textContent = done + ' / ' + total + ' voltooid';
+  var pct = total > 0 ? Math.round(done / total * 100) : 0;
+  if (bEl) bEl.style.width = pct + '%';
 }
 
-function clearFounderTasks() {
-  localStorage.removeItem('hv-focus-tasks');
-  for (let i = 0; i < 3; i++) {
-    const cb = document.getElementById('founder-cb-' + i);
-    const tt = document.getElementById('founder-tt-' + i);
-    const row = document.getElementById('founder-task-' + i);
-    if (cb) cb.checked = false;
-    if (tt) tt.textContent = '';
-    if (row) row.classList.remove('done');
-  }
+function renderPipeMini() {
+  var el = document.getElementById('fdr-pipe-mini-cols');
+  if (!el) return;
+  var stages = [
+    { name: 'Gecontacteerd', color: '#60a5fa' },
+    { name: 'Geinteresseerd', color: '#fbbf24' },
+    { name: 'Beslissing', color: '#f97316' }
+  ];
+  el.innerHTML = stages.map(function(s) {
+    var count = founderState.pipeline.filter(function(p) {
+      return p.fase === s.name || p.fase === 'Geïnteresseerd' && s.name === 'Geinteresseerd';
+    }).length;
+    return '<div class="fdr-pipe-mini-item">' +
+      '<div class="fdr-pipe-mini-dot" style="background:' + s.color + '"></div>' +
+      '<div class="fdr-pipe-mini-name">' + escHtml(s.name) + '</div>' +
+      '<div class="fdr-pipe-mini-count">' + count + '</div>' +
+    '</div>';
+  }).join('');
 }
+
+function updateGoalPanel() {
+  var current = founderState.clients;
+  var target = 5;
+  var pct = Math.min(100, Math.round(current / target * 100));
+  var gcEl = document.getElementById('fdr-goal-current');
+  var gbEl = document.getElementById('fdr-goal-bar');
+  var gpEl = document.getElementById('fdr-goal-pct');
+  if (gcEl) gcEl.textContent = current;
+  if (gbEl) gbEl.style.width = pct + '%';
+  if (gpEl) gpEl.textContent = pct + '% bereikt';
+}
+
+// Legacy stubs kept for safety (old references in dev tools etc.)
+function loadFounderTasks() { initFounderHeader(); renderDailyChecklist(); }
+function clearFounderTasks() { localStorage.removeItem('hv-daily-tasks-v2'); renderDailyChecklist(); }
 
 // ── Pipeline Modal ────────────────────────────────────────────────────────
 function openPipeModal(id, defaultFase) {
