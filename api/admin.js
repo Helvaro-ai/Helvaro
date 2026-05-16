@@ -71,6 +71,162 @@ module.exports = async function handler(req, res) {
     const ONBOARD_CODE = process.env.ONBOARD_CODE;
     const ADMIN_KEY    = process.env.ADMIN_KEY;
 
+    // ── founder modes: pipeline + goals + AI advice (admin only) ────────────
+    const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice'];
+    if (FOUNDER_MODES.includes(body.mode)) {
+      const fProvided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(fProvided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const MYSTARTUP_BASE = 'appjJW396QWRaNOVi';
+      const PIPELINE_TABLE = 'tblihBS81FqGUZoY1';
+      const GOALS_TABLE    = 'tblAFVa64xoHmp942';
+
+      try {
+        // ── pipeline-create ──────────────────────────────────────────────────
+        if (body.mode === 'pipeline-create') {
+          const naam     = String(body.naam     || '').trim().slice(0, 100);
+          const bedrijf  = String(body.bedrijf  || '').trim().slice(0, 100);
+          const email    = String(body.email    || '').trim().slice(0, 200);
+          const fase     = String(body.fase     || 'Gecontacteerd').trim();
+          const notities = String(body.notities || '').trim().slice(0, 2000);
+          if (!naam) return res.status(400).json({ error: 'Naam is verplicht' });
+          const r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${PIPELINE_TABLE}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields: {
+              'Naam': naam, 'Bedrijf': bedrijf, 'Email': email,
+              'Fase': fase, 'Notities': notities,
+              'Aangemaakt': new Date().toISOString().slice(0, 10)
+            }})
+          });
+          const d = await r.json();
+          if (!r.ok) return res.status(500).json({ error: d?.error?.message || 'Aanmaken mislukt' });
+          return res.status(200).json({ id: d.id, success: true });
+        }
+
+        // ── pipeline-update ──────────────────────────────────────────────────
+        if (body.mode === 'pipeline-update') {
+          const recId = String(body.id || '').trim();
+          if (!recId) return res.status(400).json({ error: 'ID verplicht' });
+          const fields = {};
+          if (body.naam     !== undefined) fields['Naam']      = String(body.naam).trim().slice(0, 100);
+          if (body.bedrijf  !== undefined) fields['Bedrijf']   = String(body.bedrijf).trim().slice(0, 100);
+          if (body.email    !== undefined) fields['Email']     = String(body.email).trim().slice(0, 200);
+          if (body.fase     !== undefined) fields['Fase']      = String(body.fase).trim();
+          if (body.notities !== undefined) fields['Notities']  = String(body.notities).trim().slice(0, 2000);
+          const r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${PIPELINE_TABLE}/${recId}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields })
+          });
+          const d = await r.json();
+          if (!r.ok) return res.status(500).json({ error: d?.error?.message || 'Update mislukt' });
+          return res.status(200).json({ success: true });
+        }
+
+        // ── pipeline-delete ──────────────────────────────────────────────────
+        if (body.mode === 'pipeline-delete') {
+          const recId = String(body.id || '').trim();
+          if (!recId) return res.status(400).json({ error: 'ID verplicht' });
+          const r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${PIPELINE_TABLE}/${recId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
+          });
+          if (!r.ok) return res.status(500).json({ error: 'Verwijderen mislukt' });
+          return res.status(200).json({ success: true });
+        }
+
+        // ── goal-save (create or update) ─────────────────────────────────────
+        if (body.mode === 'goal-save') {
+          const doel     = String(body.doel     || '').trim().slice(0, 200);
+          const target   = Number(body.target)  || 0;
+          const eenheid  = String(body.eenheid  || '').trim().slice(0, 50);
+          const deadline = String(body.deadline || '').trim();
+          const actief   = body.actief !== false;
+          if (!doel) return res.status(400).json({ error: 'Doel is verplicht' });
+          const fields = { 'Doel': doel, 'Target': target, 'Eenheid': eenheid, 'Actief': actief };
+          if (deadline) fields['Deadline'] = deadline;
+          let r, d;
+          if (body.id) {
+            r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}/${body.id}`, {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fields })
+            });
+          } else {
+            r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fields })
+            });
+          }
+          d = await r.json();
+          if (!r.ok) return res.status(500).json({ error: d?.error?.message || 'Opslaan mislukt' });
+          return res.status(200).json({ id: d.id, success: true });
+        }
+
+        // ── goal-delete ──────────────────────────────────────────────────────
+        if (body.mode === 'goal-delete') {
+          const recId = String(body.id || '').trim();
+          if (!recId) return res.status(400).json({ error: 'ID verplicht' });
+          const r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}/${recId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
+          });
+          if (!r.ok) return res.status(500).json({ error: 'Verwijderen mislukt' });
+          return res.status(200).json({ success: true });
+        }
+
+        // ── ai-advice ────────────────────────────────────────────────────────
+        if (body.mode === 'ai-advice') {
+          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const ctx = body.context || {};
+          const prompt = [
+            'Je bent een strategische startup-adviseur voor Helvaro, een Belgische AI-aangedreven leadkwalificatie SaaS.',
+            '',
+            'Huidige status:',
+            '- Actieve klanten: ' + (ctx.clients || 0),
+            '- Leads deze maand: ' + (ctx.leadsMonth || 0),
+            '- Gekwalificeerd: ' + (ctx.qualified || 0) + '%',
+            '- Nieuwe ongelezen leads: ' + (ctx.newLeads || 0),
+            '',
+            'Sales pipeline:',
+            '- Gecontacteerd: ' + (ctx.pipeContacted || 0) + ' prospects',
+            '- Geïnteresseerd: ' + (ctx.pipeInterested || 0) + ' prospects',
+            '- Beslissing: ' + (ctx.pipeDecision || 0) + ' prospects',
+            '- Gewonnen: ' + (ctx.pipeWon || 0),
+            '',
+            (ctx.goals && ctx.goals.length ? 'Doelen:\n' + ctx.goals.map(g => '- ' + g.doel + ': target ' + g.target + ' ' + g.eenheid + (g.deadline ? ' (deadline ' + g.deadline + ')' : '')).join('\n') : ''),
+            '',
+            'Geef de 3 meest impactvolle acties voor deze week. Wees concreet, kort en direct. Antwoord in het Nederlands.'
+          ].filter(Boolean).join('\n');
+
+          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key':         ANTHROPIC_KEY,
+              'anthropic-version': '2023-06-01',
+              'Content-Type':      'application/json'
+            },
+            body: JSON.stringify({
+              model:      'claude-haiku-4-5',
+              max_tokens: 600,
+              messages:   [{ role: 'user', content: prompt }]
+            })
+          });
+          const aiData = await aiRes.json();
+          if (!aiRes.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData?.error?.message || aiRes.status) });
+          const advice = aiData.content?.[0]?.text || 'Geen advies beschikbaar.';
+          return res.status(200).json({ advice });
+        }
+      } catch (err) {
+        console.error('[admin] founder POST error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── mode=invite: admin sends an invite email to a client ─────────────────
     if (body.mode === 'invite') {
       const provided = String(req.headers['x-api-key'] || '').trim();
@@ -169,6 +325,54 @@ module.exports = async function handler(req, res) {
   const provided  = String(req.headers['x-api-key'] || '').trim();
   if (!isValidAdminToken(provided, ADMIN_KEY)) {
     return res.status(401).json({ error: 'Ongeldige admin key' });
+  }
+
+  // ── GET founder routes (/api/admin?section=founder&type=...) ────────────
+  const MYSTARTUP_BASE  = 'appjJW396QWRaNOVi';
+  const PIPELINE_TABLE  = 'tblihBS81FqGUZoY1';
+  const GOALS_TABLE     = 'tblAFVa64xoHmp942';
+
+  if (req.query && req.query.section === 'founder') {
+    const type = req.query.type || 'all';
+    try {
+      if (type === 'pipeline') {
+        const r = await fetch(
+          `https://api.airtable.com/v0/${MYSTARTUP_BASE}/${PIPELINE_TABLE}?pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        const d = await r.json();
+        const pipeline = (d.records || []).map(rec => ({
+          id:          rec.id,
+          naam:        rec.fields['Naam']       || '',
+          bedrijf:     rec.fields['Bedrijf']    || '',
+          email:       rec.fields['Email']      || '',
+          fase:        rec.fields['Fase']       || 'Gecontacteerd',
+          notities:    rec.fields['Notities']   || '',
+          aangemaakt:  rec.fields['Aangemaakt'] || ''
+        }));
+        return res.status(200).json({ pipeline });
+      }
+      if (type === 'goals') {
+        const r = await fetch(
+          `https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}?pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        const d = await r.json();
+        const goals = (d.records || []).map(rec => ({
+          id:       rec.id,
+          doel:     rec.fields['Doel']     || '',
+          target:   rec.fields['Target']   || 0,
+          eenheid:  rec.fields['Eenheid']  || '',
+          deadline: rec.fields['Deadline'] || '',
+          actief:   rec.fields['Actief']   || false
+        }));
+        return res.status(200).json({ goals });
+      }
+      return res.status(400).json({ error: 'Onbekend type' });
+    } catch (err) {
+      console.error('[admin] founder GET error:', err.message);
+      return res.status(500).json({ error: 'Serverfout' });
+    }
   }
 
   try {

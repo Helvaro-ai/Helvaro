@@ -1258,6 +1258,95 @@ button.brand-dot { border: none; padding: 0; }
     .profile-action-btn svg { color: var(--accent); flex-shrink: 0; }
 
 /* ============================================================
+   FOUNDER DASHBOARD
+   ============================================================ */
+.founder-wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+.founder-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.founder-section-hdr h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-secondary); }
+.founder-btn-sm { padding: 6px 14px; background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.founder-btn-sm:hover { background: rgba(99,102,241,.22); }
+
+/* Stats pulse row */
+.founder-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.founder-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px; }
+.founder-stat-val { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.founder-stat-lbl { font-size: 12px; color: var(--text-secondary); }
+.founder-stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Today's focus */
+.founder-focus { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.founder-task { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); transition: background .12s; }
+.founder-task:last-child { border-bottom: none; }
+.founder-task:hover { background: var(--bg-card-hover); }
+.founder-task input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+.founder-task-text { flex: 1; font-size: 14px; outline: none; background: transparent; border: none; color: var(--text-primary); cursor: text; }
+.founder-task-text:empty::before { content: attr(data-placeholder); color: var(--text-muted); }
+.founder-task.done .founder-task-text { text-decoration: line-through; color: var(--text-muted); }
+
+/* Pipeline kanban */
+.founder-pipeline-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.founder-col { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.founder-col-hdr { padding: 10px 14px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.founder-col-badge { background: var(--bg-card-alt); border-radius: 20px; padding: 2px 8px; font-size: 11px; }
+.founder-col-body { padding: 10px; min-height: 80px; display: flex; flex-direction: column; gap: 8px; }
+.founder-card { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; transition: border-color .15s; }
+.founder-card:hover { border-color: rgba(99,102,241,.4); }
+.founder-card-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.founder-card-meta { font-size: 11px; color: var(--text-secondary); }
+.founder-col-add { padding: 8px 10px; border-top: 1px solid var(--border); }
+.founder-col-add button { width: 100%; padding: 7px; background: none; border: 1px dashed var(--border-bright); border-radius: 7px; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: var(--transition); }
+.founder-col-add button:hover { border-color: var(--accent); color: var(--accent); }
+.founder-col-won-lost { display: flex; gap: 8px; margin-top: 4px; }
+.founder-badge-won  { background: rgba(34,197,94,.12); color: #22c55e; border: 1px solid rgba(34,197,94,.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+.founder-badge-lost { background: rgba(244,63,94,.1); color: #f43f5e; border: 1px solid rgba(244,63,94,.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+
+/* Goals */
+.founder-goals-list { display: flex; flex-direction: column; gap: 12px; }
+.founder-goal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.founder-goal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.founder-goal-name { font-size: 14px; font-weight: 600; }
+.founder-goal-nums { font-size: 13px; color: var(--text-secondary); }
+.founder-goal-bar { height: 6px; background: var(--bg-card-alt); border-radius: 99px; overflow: hidden; }
+.founder-goal-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-bright)); transition: width .6s ease; }
+.founder-goal-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-muted); }
+
+/* AI Advice */
+.founder-ai-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.founder-ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.founder-ai-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #4f46e5, #818cf8); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.founder-ai-title { font-size: 15px; font-weight: 700; }
+.founder-ai-sub { font-size: 12px; color: var(--text-secondary); }
+.founder-ai-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--text-primary); white-space: pre-wrap; min-height: 60px; display: none; margin-bottom: 14px; }
+.founder-ai-output.visible { display: block; }
+.founder-ai-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #4f46e5, #6366f1); border: none; border-radius: 9px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+.founder-ai-btn:hover:not(:disabled) { background: linear-gradient(135deg, #4338ca, #818cf8); transform: translateY(-1px); }
+.founder-ai-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Modal */
+.founder-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 20px; display: none; }
+.founder-modal-overlay.open { display: flex; }
+.founder-modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 420px; }
+.founder-modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.founder-modal-field { margin-bottom: 14px; }
+.founder-modal-field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); margin-bottom: 6px; }
+.founder-modal-field input, .founder-modal-field select, .founder-modal-field textarea { width: 100%; padding: 10px 12px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s; }
+.founder-modal-field input:focus, .founder-modal-field select:focus, .founder-modal-field textarea:focus { border-color: var(--accent); }
+.founder-modal-field textarea { resize: vertical; min-height: 80px; }
+.founder-modal-field select option { background: var(--bg-card); }
+.founder-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.founder-modal-cancel { padding: 9px 18px; background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.founder-modal-save { padding: 9px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.founder-modal-delete { padding: 9px 18px; background: rgba(244,63,94,.12); border: 1px solid rgba(244,63,94,.25); border-radius: 8px; color: #f43f5e; font-size: 13px; font-weight: 600; cursor: pointer; margin-right: auto; }
+
+@media (max-width: 900px) {
+  .founder-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .founder-pipeline-cols { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .founder-stats-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* ============================================================
    SIDEBAR
    ============================================================ */
 .sidebar {
@@ -5154,6 +5243,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         Klanten
       </button>
+      <button class="nav-item" data-page="founder" id="nav-founder" style="display:none">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+        Founder
+      </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         Instellingen
@@ -5977,6 +6070,156 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
       </div>
     </main>
+
+    <!-- ─── Founder Dashboard ─── -->
+    <main class="page-content page" id="page-founder">
+      <div class="founder-wrap">
+
+        <!-- Business Pulse -->
+        <div>
+          <div class="founder-section-hdr">
+            <h3>Business Pulse</h3>
+            <button class="founder-btn-sm" onclick="loadFounderData(true)">↻ Vernieuwen</button>
+          </div>
+          <div class="founder-stats-row" id="founder-stats-row">
+            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--accent-bright)" id="f-stat-clients">—</div><div class="founder-stat-lbl">Actieve Klanten</div></div>
+            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--green)" id="f-stat-leads">—</div><div class="founder-stat-lbl">Leads deze maand</div><div class="founder-stat-sub" id="f-stat-leads-sub"></div></div>
+            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--orange)" id="f-stat-qual">—%</div><div class="founder-stat-lbl">Gekwalificeerd</div></div>
+            <div class="founder-stat"><div class="founder-stat-val" style="color:var(--red)" id="f-stat-new">—</div><div class="founder-stat-lbl">Nieuw ongelezen</div></div>
+          </div>
+        </div>
+
+        <!-- Today's Focus -->
+        <div>
+          <div class="founder-section-hdr">
+            <h3>Focus van Vandaag</h3>
+            <button class="founder-btn-sm" onclick="clearFounderTasks()">Wissen</button>
+          </div>
+          <div class="founder-focus" id="founder-focus">
+            <div class="founder-task" id="founder-task-0">
+              <input type="checkbox" id="founder-cb-0" onchange="toggleFounderTask(0)">
+              <div class="founder-task-text" id="founder-tt-0" contenteditable="true" data-placeholder="Taak 1..." oninput="saveFounderTask(0)" onblur="saveFounderTask(0)"></div>
+            </div>
+            <div class="founder-task" id="founder-task-1">
+              <input type="checkbox" id="founder-cb-1" onchange="toggleFounderTask(1)">
+              <div class="founder-task-text" id="founder-tt-1" contenteditable="true" data-placeholder="Taak 2..." oninput="saveFounderTask(1)" onblur="saveFounderTask(1)"></div>
+            </div>
+            <div class="founder-task" id="founder-task-2">
+              <input type="checkbox" id="founder-cb-2" onchange="toggleFounderTask(2)">
+              <div class="founder-task-text" id="founder-tt-2" contenteditable="true" data-placeholder="Taak 3..." oninput="saveFounderTask(2)" onblur="saveFounderTask(2)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline -->
+        <div>
+          <div class="founder-section-hdr">
+            <h3>Sales Pipeline</h3>
+            <div class="founder-col-won-lost">
+              <span class="founder-badge-won" id="pipe-won-badge">✓ 0 Gewonnen</span>
+              <span class="founder-badge-lost" id="pipe-lost-badge">✗ 0 Verloren</span>
+            </div>
+          </div>
+          <div class="founder-pipeline-cols">
+            <div class="founder-col">
+              <div class="founder-col-hdr" style="border-top:3px solid #60a5fa">
+                Gecontacteerd
+                <span class="founder-col-badge" id="pipe-count-0">0</span>
+              </div>
+              <div class="founder-col-body" id="pipe-col-0"></div>
+              <div class="founder-col-add"><button onclick="openPipeModal(null,'Gecontacteerd')">+ Toevoegen</button></div>
+            </div>
+            <div class="founder-col">
+              <div class="founder-col-hdr" style="border-top:3px solid #fbbf24">
+                Geïnteresseerd
+                <span class="founder-col-badge" id="pipe-count-1">0</span>
+              </div>
+              <div class="founder-col-body" id="pipe-col-1"></div>
+              <div class="founder-col-add"><button onclick="openPipeModal(null,'Geïnteresseerd')">+ Toevoegen</button></div>
+            </div>
+            <div class="founder-col">
+              <div class="founder-col-hdr" style="border-top:3px solid #f97316">
+                Beslissing
+                <span class="founder-col-badge" id="pipe-count-2">0</span>
+              </div>
+              <div class="founder-col-body" id="pipe-col-2"></div>
+              <div class="founder-col-add"><button onclick="openPipeModal(null,'Beslissing')">+ Toevoegen</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Goals -->
+        <div>
+          <div class="founder-section-hdr">
+            <h3>Doelen</h3>
+            <button class="founder-btn-sm" onclick="openGoalModal(null)">+ Doel</button>
+          </div>
+          <div class="founder-goals-list" id="founder-goals-list">
+            <div style="color:var(--text-muted);font-size:13px">Laden...</div>
+          </div>
+        </div>
+
+        <!-- AI Advice -->
+        <div class="founder-ai-box">
+          <div class="founder-ai-header">
+            <div class="founder-ai-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <div>
+              <div class="founder-ai-title">Wat moet ik nu doen?</div>
+              <div class="founder-ai-sub">AI-advies op basis van uw huidige metrics</div>
+            </div>
+          </div>
+          <div class="founder-ai-output" id="founder-ai-output"></div>
+          <button class="founder-ai-btn" id="founder-ai-btn" onclick="getFounderAdvice()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Genereer advies
+          </button>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Pipeline Modal -->
+    <div class="founder-modal-overlay" id="pipe-modal-overlay">
+      <div class="founder-modal">
+        <h3 id="pipe-modal-title">Prospect toevoegen</h3>
+        <div class="founder-modal-field"><label>Naam *</label><input id="pm-naam" type="text" placeholder="Jan Janssen"></div>
+        <div class="founder-modal-field"><label>Bedrijf</label><input id="pm-bedrijf" type="text" placeholder="Acme BV"></div>
+        <div class="founder-modal-field"><label>E-mail</label><input id="pm-email" type="email" placeholder="jan@acme.be"></div>
+        <div class="founder-modal-field"><label>Fase</label>
+          <select id="pm-fase">
+            <option>Gecontacteerd</option>
+            <option>Geïnteresseerd</option>
+            <option>Beslissing</option>
+            <option>Gewonnen</option>
+            <option>Verloren</option>
+          </select>
+        </div>
+        <div class="founder-modal-field"><label>Notities</label><textarea id="pm-notities" placeholder="Aantekeningen..."></textarea></div>
+        <div class="founder-modal-actions">
+          <button class="founder-modal-delete" id="pm-delete-btn" style="display:none" onclick="deletePipeRecord()">Verwijderen</button>
+          <button class="founder-modal-cancel" onclick="closePipeModal()">Annuleren</button>
+          <button class="founder-modal-save" onclick="savePipeRecord()">Opslaan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Goal Modal -->
+    <div class="founder-modal-overlay" id="goal-modal-overlay">
+      <div class="founder-modal">
+        <h3 id="goal-modal-title">Doel toevoegen</h3>
+        <div class="founder-modal-field"><label>Doel *</label><input id="gm-doel" type="text" placeholder="5 betalende klanten"></div>
+        <div class="founder-modal-field"><label>Target (getal)</label><input id="gm-target" type="number" placeholder="5" min="0"></div>
+        <div class="founder-modal-field"><label>Eenheid</label><input id="gm-eenheid" type="text" placeholder="klanten / € MRR / leads"></div>
+        <div class="founder-modal-field"><label>Deadline</label><input id="gm-deadline" type="date"></div>
+        <div class="founder-modal-actions">
+          <button class="founder-modal-delete" id="gm-delete-btn" style="display:none" onclick="deleteGoalRecord()">Verwijderen</button>
+          <button class="founder-modal-cancel" onclick="closeGoalModal()">Annuleren</button>
+          <button class="founder-modal-save" onclick="saveGoalRecord()">Opslaan</button>
+        </div>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -8972,7 +9215,8 @@ function navigateTo(page) {
     gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met uw leads' },
     analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
     instellingen: { title: 'Instellingen',  sub: 'Beheer uw accountinstellingen' },
-    activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' }
+    activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
+    founder:      { title: 'Founder',       sub: 'Jouw startup — alles in één oogopslag' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -9002,6 +9246,7 @@ function navigateTo(page) {
   if (page === 'instellingen') renderInstellingen();
   if (page === 'exports')      updateExportPreview();
   if (page === 'activiteit')   renderActiviteit();
+  if (page === 'founder')      loadFounderData();
 
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -9194,6 +9439,8 @@ async function startDashboard(skipRefresh = false) {
     if (r.ok) {
       const adminNav = document.getElementById('nav-admin');
       if (adminNav) adminNav.style.display = '';
+      const founderNav = document.getElementById('nav-founder');
+      if (founderNav) founderNav.style.display = '';
     }
   } catch { /* not admin */ }
   // skipRefresh=true when init() already fetched leads — avoid a second Airtable call
@@ -10161,6 +10408,341 @@ function renderActiviteit() {
     </div>\`;
   }).join('');
 }
+
+/* ============================================================
+   FOUNDER DASHBOARD
+   ============================================================ */
+const founderState = {
+  pipeline: [],
+  goals:    [],
+  clients:  0,
+  loaded:   false,
+  _pipeEditId: null,
+  _goalEditId: null
+};
+
+async function loadFounderData(force) {
+  if (founderState.loaded && !force) return;
+  founderState.loaded = true;
+
+  // Metrics from admin endpoint (clients + lead stats)
+  try {
+    const r = await fetch('/api/admin', { headers: { 'x-api-key': state.apiKey } });
+    if (r.ok) {
+      const d = await r.json();
+      const clients = d.clients || [];
+      founderState.clients = clients.length;
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      let totalLeads = 0, newLeads = 0, qualLeads = 0;
+      clients.forEach(c => {
+        totalLeads += (c.totalLeads || 0);
+        newLeads   += (c.newLeads   || 0);
+        qualLeads  += (c.qualified  || 0);
+      });
+      const qualPct = totalLeads > 0 ? Math.round(qualLeads / totalLeads * 100) : 0;
+      document.getElementById('f-stat-clients').textContent = founderState.clients;
+      document.getElementById('f-stat-leads').textContent   = totalLeads;
+      document.getElementById('f-stat-leads-sub').textContent = qualLeads + ' gekwal.';
+      document.getElementById('f-stat-qual').textContent    = qualPct + '%';
+      document.getElementById('f-stat-new').textContent     = newLeads;
+      founderState._metrics = { clients: founderState.clients, leadsMonth: totalLeads, qualified: qualPct, newLeads };
+    }
+  } catch (e) { /* ignore */ }
+
+  // Pipeline
+  try {
+    const r = await fetch('/api/admin?section=founder&type=pipeline', { headers: { 'x-api-key': state.apiKey } });
+    if (r.ok) {
+      const d = await r.json();
+      founderState.pipeline = d.pipeline || [];
+      renderFounderPipeline();
+    }
+  } catch (e) { /* ignore */ }
+
+  // Goals
+  try {
+    const r = await fetch('/api/admin?section=founder&type=goals', { headers: { 'x-api-key': state.apiKey } });
+    if (r.ok) {
+      const d = await r.json();
+      founderState.goals = d.goals || [];
+      renderFounderGoals();
+    }
+  } catch (e) { /* ignore */ }
+
+  // Tasks (localStorage, daily reset)
+  loadFounderTasks();
+}
+
+function renderFounderPipeline() {
+  const stages = ['Gecontacteerd', 'Geïnteresseerd', 'Beslissing'];
+  stages.forEach((stage, idx) => {
+    const cards = founderState.pipeline.filter(p => p.fase === stage);
+    document.getElementById('pipe-count-' + idx).textContent = cards.length;
+    const body = document.getElementById('pipe-col-' + idx);
+    body.innerHTML = cards.map(p =>
+      '<div class="founder-card" onclick="openPipeModal(\'' + escHtml(p.id) + '\')">' +
+      '<div class="founder-card-name">' + escHtml(p.naam || p.bedrijf || '—') + '</div>' +
+      (p.bedrijf && p.naam ? '<div class="founder-card-meta">' + escHtml(p.bedrijf) + '</div>' : '') +
+      (p.email ? '<div class="founder-card-meta">' + escHtml(p.email) + '</div>' : '') +
+      '</div>'
+    ).join('');
+  });
+  const won  = founderState.pipeline.filter(p => p.fase === 'Gewonnen').length;
+  const lost = founderState.pipeline.filter(p => p.fase === 'Verloren').length;
+  document.getElementById('pipe-won-badge').textContent  = '✓ ' + won  + ' Gewonnen';
+  document.getElementById('pipe-lost-badge').textContent = '✗ ' + lost + ' Verloren';
+}
+
+function renderFounderGoals() {
+  const el = document.getElementById('founder-goals-list');
+  if (!founderState.goals.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Geen doelen ingesteld. Klik op "+ Doel" om te beginnen.</div>';
+    return;
+  }
+  const today = new Date();
+  el.innerHTML = founderState.goals.map(g => {
+    const current = g.eenheid.toLowerCase().includes('klant') ? founderState.clients : 0;
+    const pct     = g.target > 0 ? Math.min(100, Math.round(current / g.target * 100)) : 0;
+    const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - today) / 86400000) : null;
+    return '<div class="founder-goal" onclick="openGoalModal(\'' + escHtml(g.id) + '\')" style="cursor:pointer">' +
+      '<div class="founder-goal-top">' +
+        '<div class="founder-goal-name">' + escHtml(g.doel) + '</div>' +
+        '<div class="founder-goal-nums">' + current + ' / ' + g.target + ' ' + escHtml(g.eenheid) + '</div>' +
+      '</div>' +
+      '<div class="founder-goal-bar"><div class="founder-goal-fill" style="width:' + pct + '%"></div></div>' +
+      '<div class="founder-goal-meta">' +
+        '<span>' + pct + '%</span>' +
+        (daysLeft !== null ? '<span>' + (daysLeft >= 0 ? daysLeft + ' dagen' : 'Verlopen') + '</span>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Today's Focus (localStorage, daily reset) ─────────────────────────────
+function loadFounderTasks() {
+  const today = new Date().toISOString().slice(0, 10);
+  const raw = localStorage.getItem('hv-focus-tasks');
+  let tasks = [];
+  try { tasks = JSON.parse(raw) || []; } catch { tasks = []; }
+  // Reset if stored day is not today
+  if (tasks.length && tasks[0]?.date !== today) tasks = [];
+  for (let i = 0; i < 3; i++) {
+    const t = tasks[i] || { text: '', done: false, date: today };
+    const cb = document.getElementById('founder-cb-' + i);
+    const tt = document.getElementById('founder-tt-' + i);
+    const row = document.getElementById('founder-task-' + i);
+    if (cb) cb.checked = t.done;
+    if (tt) tt.textContent = t.text;
+    if (row) row.classList.toggle('done', t.done);
+  }
+}
+
+function saveFounderTask(idx) {
+  const today = new Date().toISOString().slice(0, 10);
+  const raw = localStorage.getItem('hv-focus-tasks');
+  let tasks = [];
+  try { tasks = JSON.parse(raw) || []; } catch { tasks = []; }
+  if (!tasks[idx]) tasks[idx] = { text: '', done: false, date: today };
+  const tt = document.getElementById('founder-tt-' + idx);
+  tasks[idx].text = tt ? tt.textContent.trim() : '';
+  tasks[idx].date = today;
+  localStorage.setItem('hv-focus-tasks', JSON.stringify(tasks));
+}
+
+function toggleFounderTask(idx) {
+  const today = new Date().toISOString().slice(0, 10);
+  const raw = localStorage.getItem('hv-focus-tasks');
+  let tasks = [];
+  try { tasks = JSON.parse(raw) || []; } catch { tasks = []; }
+  if (!tasks[idx]) tasks[idx] = { text: '', done: false, date: today };
+  const cb = document.getElementById('founder-cb-' + idx);
+  tasks[idx].done = cb ? cb.checked : false;
+  tasks[idx].date = today;
+  localStorage.setItem('hv-focus-tasks', JSON.stringify(tasks));
+  const row = document.getElementById('founder-task-' + idx);
+  if (row) row.classList.toggle('done', tasks[idx].done);
+}
+
+function clearFounderTasks() {
+  localStorage.removeItem('hv-focus-tasks');
+  for (let i = 0; i < 3; i++) {
+    const cb = document.getElementById('founder-cb-' + i);
+    const tt = document.getElementById('founder-tt-' + i);
+    const row = document.getElementById('founder-task-' + i);
+    if (cb) cb.checked = false;
+    if (tt) tt.textContent = '';
+    if (row) row.classList.remove('done');
+  }
+}
+
+// ── Pipeline Modal ────────────────────────────────────────────────────────
+function openPipeModal(id, defaultFase) {
+  founderState._pipeEditId = id;
+  const overlay = document.getElementById('pipe-modal-overlay');
+  const title   = document.getElementById('pipe-modal-title');
+  const delBtn  = document.getElementById('pm-delete-btn');
+  if (id) {
+    const rec = founderState.pipeline.find(p => p.id === id);
+    title.textContent = 'Prospect bewerken';
+    document.getElementById('pm-naam').value     = rec ? rec.naam     : '';
+    document.getElementById('pm-bedrijf').value  = rec ? rec.bedrijf  : '';
+    document.getElementById('pm-email').value    = rec ? rec.email    : '';
+    document.getElementById('pm-fase').value     = rec ? rec.fase     : 'Gecontacteerd';
+    document.getElementById('pm-notities').value = rec ? rec.notities : '';
+    delBtn.style.display = '';
+  } else {
+    title.textContent = 'Prospect toevoegen';
+    document.getElementById('pm-naam').value     = '';
+    document.getElementById('pm-bedrijf').value  = '';
+    document.getElementById('pm-email').value    = '';
+    document.getElementById('pm-fase').value     = defaultFase || 'Gecontacteerd';
+    document.getElementById('pm-notities').value = '';
+    delBtn.style.display = 'none';
+  }
+  overlay.classList.add('open');
+}
+
+function closePipeModal() {
+  document.getElementById('pipe-modal-overlay').classList.remove('open');
+}
+
+async function savePipeRecord() {
+  const naam     = document.getElementById('pm-naam').value.trim();
+  const bedrijf  = document.getElementById('pm-bedrijf').value.trim();
+  const email    = document.getElementById('pm-email').value.trim();
+  const fase     = document.getElementById('pm-fase').value;
+  const notities = document.getElementById('pm-notities').value.trim();
+  if (!naam) { toast('Naam is verplicht', 'error'); return; }
+  const mode = founderState._pipeEditId ? 'pipeline-update' : 'pipeline-create';
+  const body  = { mode, naam, bedrijf, email, fase, notities };
+  if (founderState._pipeEditId) body.id = founderState._pipeEditId;
+  try {
+    const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Fout', 'error'); return; }
+    closePipeModal();
+    founderState.loaded = false;
+    await loadFounderData(true);
+    toast(mode === 'pipeline-create' ? 'Prospect toegevoegd' : 'Bijgewerkt', 'success');
+  } catch { toast('Netwerkfout', 'error'); }
+}
+
+async function deletePipeRecord() {
+  if (!founderState._pipeEditId) return;
+  if (!confirm('Prospect verwijderen?')) return;
+  try {
+    const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify({ mode: 'pipeline-delete', id: founderState._pipeEditId }) });
+    if (!r.ok) { toast('Verwijderen mislukt', 'error'); return; }
+    closePipeModal();
+    founderState.loaded = false;
+    await loadFounderData(true);
+    toast('Verwijderd', 'success');
+  } catch { toast('Netwerkfout', 'error'); }
+}
+
+// ── Goal Modal ────────────────────────────────────────────────────────────
+function openGoalModal(id) {
+  founderState._goalEditId = id;
+  const overlay = document.getElementById('goal-modal-overlay');
+  const title   = document.getElementById('goal-modal-title');
+  const delBtn  = document.getElementById('gm-delete-btn');
+  if (id) {
+    const g = founderState.goals.find(x => x.id === id);
+    title.textContent = 'Doel bewerken';
+    document.getElementById('gm-doel').value     = g ? g.doel     : '';
+    document.getElementById('gm-target').value   = g ? g.target   : '';
+    document.getElementById('gm-eenheid').value  = g ? g.eenheid  : '';
+    document.getElementById('gm-deadline').value = g ? g.deadline : '';
+    delBtn.style.display = '';
+  } else {
+    title.textContent = 'Doel toevoegen';
+    document.getElementById('gm-doel').value     = '';
+    document.getElementById('gm-target').value   = '';
+    document.getElementById('gm-eenheid').value  = '';
+    document.getElementById('gm-deadline').value = '';
+    delBtn.style.display = 'none';
+  }
+  overlay.classList.add('open');
+}
+
+function closeGoalModal() {
+  document.getElementById('goal-modal-overlay').classList.remove('open');
+}
+
+async function saveGoalRecord() {
+  const doel     = document.getElementById('gm-doel').value.trim();
+  const target   = Number(document.getElementById('gm-target').value) || 0;
+  const eenheid  = document.getElementById('gm-eenheid').value.trim();
+  const deadline = document.getElementById('gm-deadline').value;
+  if (!doel) { toast('Doel is verplicht', 'error'); return; }
+  const body = { mode: 'goal-save', doel, target, eenheid, deadline, actief: true };
+  if (founderState._goalEditId) body.id = founderState._goalEditId;
+  try {
+    const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Fout', 'error'); return; }
+    closeGoalModal();
+    founderState.loaded = false;
+    await loadFounderData(true);
+    toast('Doel opgeslagen', 'success');
+  } catch { toast('Netwerkfout', 'error'); }
+}
+
+async function deleteGoalRecord() {
+  if (!founderState._goalEditId) return;
+  if (!confirm('Doel verwijderen?')) return;
+  try {
+    const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify({ mode: 'goal-delete', id: founderState._goalEditId }) });
+    if (!r.ok) { toast('Verwijderen mislukt', 'error'); return; }
+    closeGoalModal();
+    founderState.loaded = false;
+    await loadFounderData(true);
+    toast('Verwijderd', 'success');
+  } catch { toast('Netwerkfout', 'error'); }
+}
+
+// ── AI Advice ─────────────────────────────────────────────────────────────
+async function getFounderAdvice() {
+  const btn = document.getElementById('founder-ai-btn');
+  const out = document.getElementById('founder-ai-output');
+  btn.disabled = true;
+  btn.textContent = 'Genereren...';
+  out.classList.remove('visible');
+
+  const stages = founderState.pipeline.reduce((acc, p) => {
+    acc[p.fase] = (acc[p.fase] || 0) + 1;
+    return acc;
+  }, {});
+
+  const context = Object.assign({}, founderState._metrics || {}, {
+    pipeContacted:  stages['Gecontacteerd']  || 0,
+    pipeInterested: stages['Geïnteresseerd'] || 0,
+    pipeDecision:   stages['Beslissing']     || 0,
+    pipeWon:        stages['Gewonnen']       || 0,
+    goals: founderState.goals
+  });
+
+  try {
+    const r = await fetch('/api/admin', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'ai-advice', context })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'AI fout', 'error'); } else {
+      out.textContent = d.advice;
+      out.classList.add('visible');
+    }
+  } catch { toast('Netwerkfout', 'error'); }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Genereer advies';
+}
+
+// Close modals on overlay click
+document.getElementById('pipe-modal-overlay').addEventListener('click', function(e) { if (e.target === this) closePipeModal(); });
+document.getElementById('goal-modal-overlay').addEventListener('click', function(e) { if (e.target === this) closeGoalModal(); });
 
 /* ============================================================
    INIT
