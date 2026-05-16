@@ -257,43 +257,98 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ reply });
         }
 
-        // ── linkedin-post ──────────────────────────────────────────────────────
-        if (body.mode === 'linkedin-post') {
+        // ── content-post (linkedin + instagram, all types) ─────────────────────
+        if (body.mode === 'linkedin-post' || body.mode === 'content-post') {
           const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
           if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+
+          const platform   = String(body.platform   || 'linkedin');
+          const contentType = String(body.contentType || 'pijnpunt');
           const day = new Date().getDay();
-          const sectors = {
+          const daySectors = {
             1: 'marketingbureaus en digitale agencies',
             2: 'vastgoedkantoren en immobureaus',
             3: 'business coaches en consultants',
             4: 'KMO\'s en ondernemers in Gent/Antwerpen',
-            5: 'ondernemers die meer willen halen uit hun leads'
+            5: 'salesteams die groeien via leadgeneratie'
           };
-          const sector = sectors[day] || 'ondernemers die groeien via leadgeneratie';
-          const ctx = body.context || {};
+          const sector = String(body.sector || daySectors[day] || 'ondernemers die groeien via leadgeneratie');
 
-          const liPrompt = [
-            'Schrijf een LinkedIn post voor Helvaro gericht op ' + sector + '.',
-            '',
-            'Helvaro = Belgische AI die automatisch WhatsApp-gesprekken voert met leads: kwalificeert elke aanvraag, stelt de juiste vragen en plant alleen de serieuze prospects in de agenda. Installatie: 30 minuten.',
-            '',
-            'Eisen:',
-            '- 150-200 woorden',
-            '- Geen "Ik ben trots" of "Excited to announce" opening',
-            '- Begin met een concreet pijnpunt of scherpe vraag voor ' + sector,
-            '- Leg in 1-2 zinnen uit hoe Helvaro helpt',
-            '- Zachte CTA op het einde (stuur een DM, link in comments...)',
-            '- 3 relevante hashtags',
-            '- Menselijke, directe toon — geen buzzwords',
-            '- In het Nederlands',
-            '',
-            'Schrijf alleen de post zelf.'
+          // Brand context (scraped from helvaro.pro)
+          const brandContext = [
+            'Helvaro = Belgische AI startup voor automatische WhatsApp leadopvolging.',
+            'Tagline: "AI-gedreven Sales Opvolging. Helvaro volgt elke lead automatisch op via WhatsApp en AI, binnen 30 seconden, zodat jouw salesteam alleen nog praat met mensen die klaar zijn."',
+            'Key messages:',
+            '- Reageert binnen 30 seconden, 24/7, ook buiten kantooruren',
+            '- Alleen gekwalificeerde, warme leads in je agenda',
+            '- Geen extra salesmedewerkers nodig',
+            '- Bespaar 20+ uur per week',
+            '- Installatie in 30 minuten, geen technische kennis',
+            '- "Jouw leads verdienen een betere opvolging dan een mail die nooit beantwoord wordt"',
+            'Sectoren: vastgoed, coaching, B2B SaaS, verzekeringen, recruitment, automotive',
+            'Prijzen: Starter (100 leads/mnd), Growth (300 leads/mnd), Scale (onbeperkt)'
           ].join('\n');
+
+          // Build prompt per platform + type
+          const typePrompts = {
+            pijnpunt: 'Schrijf vanuit het perspectief van het pijnpunt: leads die binnenkomen maar niet snel genoeg worden opgevolgd. Bedrijven verliezen dagelijks warme leads door trage opvolging. Begin met dit pijnpunt.',
+            feature:  'Spotlight de WhatsApp AI functie: reageert binnen 30 seconden, 24/7, stelt de juiste kwalificatievragen en plant alleen warme afspraken. Toon het als een gamechanger voor het salesproces.',
+            resultaat: 'Focus op concrete resultaten: 20+ uur bespaard per week, alleen warme leads in de agenda, geen gemiste aanvragen buiten kantooruren. Gebruik cijfers en vergelijkingen.',
+            vergelijking: 'Maak een contrast tussen de oude manier (manueel bellen, mails sturen, leads laten liggen) en Helvaro (30 sec reactie, AI kwalificeert, agenda vult automatisch). Gebruik een voor/na structuur.',
+            founder: 'Schrijf vanuit het founders-perspectief: twee jonge Belgische ondernemers (Frade bouwt de technologie, Teljo doet sales) die een echt probleem oplossen dat ze zelf zagen bij bedrijven. Authentiek, persoonlijk.',
+            update:  'Schrijf een "what we\'re building" update: Helvaro is live, eerste klanten, WhatsApp AI werkt 24/7. Geef een kijkje achter de schermen van een B2B SaaS startup in Gent.'
+          };
+          const typeInstruction = typePrompts[contentType] || typePrompts.pijnpunt;
+
+          let contentPrompt;
+          if (platform === 'instagram') {
+            contentPrompt = [
+              'Schrijf een Instagram caption voor Helvaro gericht op ' + sector + '.',
+              '',
+              brandContext,
+              '',
+              'Content focus: ' + typeInstruction,
+              '',
+              'Format EXACT zo:',
+              '— Eerste zin: korte hook met emoji (max 12 woorden, dit is wat mensen zien vóór "meer lezen")',
+              '— 2-3 korte alinea\'s (totaal max 90 woorden)',
+              '— 1 bullet list met 3 voordelen (elk max 8 woorden, begin met emoji)',
+              '— Zachte CTA (1 zin)',
+              '— Lege regel',
+              '— 15 hashtags: mix van niche (#leadgeneratie #salesautomation #whatsappmarketing) en breed (#ondernemen #salesteam #startup)',
+              '',
+              '🖼️ Visuele tip: (beschrijf in 1 zin welk beeld/reel het best bij deze post past)',
+              '',
+              'Schrijf in het Nederlands. Menselijke toon, geen corporate taal.'
+            ].join('\n');
+          } else {
+            // LinkedIn
+            contentPrompt = [
+              'Schrijf een LinkedIn post voor Helvaro gericht op ' + sector + '.',
+              '',
+              brandContext,
+              '',
+              'Content focus: ' + typeInstruction,
+              '',
+              'Eisen:',
+              '- 160-220 woorden',
+              '- Geen "Ik ben trots" of "Excited to announce" opening',
+              '- Eerste zin is direct en pakkend — trekt mensen die scrollen',
+              '- Gebruik white space (korte alinea\'s van max 3 regels)',
+              '- Concreet voorbeeld of stat in het midden',
+              '- Zachte CTA (DM sturen, reactie vragen, link in comments)',
+              '- 3-5 relevante hashtags op het einde',
+              '- Directe, menselijke toon — geen buzzwords',
+              '- In het Nederlands',
+              '',
+              'Schrijf alleen de post zelf, geen uitleg.'
+            ].join('\n');
+          }
 
           const aiRes2 = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 500, messages: [{ role: 'user', content: liPrompt }] })
+            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 700, messages: [{ role: 'user', content: contentPrompt }] })
           });
           const aiData3 = await aiRes2.json();
           if (!aiRes2.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData3?.error?.message || aiRes2.status) });

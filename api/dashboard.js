@@ -1406,24 +1406,37 @@ button.brand-dot { border: none; padding: 0; }
   .fdr-stats-grid { grid-template-columns: 1fr 1fr; }
 }
 
-/* LinkedIn post generator */
-.fdr-li-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.fdr-li-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
-.fdr-li-hdr-left { display: flex; align-items: center; gap: 10px; }
-.fdr-li-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0077b5, #00a0dc); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.fdr-li-title { font-size: 14px; font-weight: 700; }
-.fdr-li-sector { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
-.fdr-li-actions { display: flex; gap: 8px; }
-.fdr-li-gen-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: linear-gradient(135deg, #0077b5, #00a0dc); border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
-.fdr-li-gen-btn:hover:not(:disabled) { opacity: .88; }
-.fdr-li-gen-btn:disabled { opacity: .5; cursor: not-allowed; }
-.fdr-li-body { padding: 16px 18px; }
-.fdr-li-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.75; color: var(--text-primary); white-space: pre-wrap; min-height: 80px; display: none; margin-bottom: 12px; }
-.fdr-li-output.visible { display: block; }
-.fdr-li-copy-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); display: none; }
-.fdr-li-copy-btn.visible { display: inline-flex; }
-.fdr-li-copy-btn:hover { background: rgba(99,102,241,.2); }
-.fdr-li-empty { padding: 20px 0; color: var(--text-muted); font-size: 13px; text-align: center; }
+/* Content Hub */
+.fdr-hub-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-hub-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-hub-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #7c3aed, #a78bfa); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fdr-hub-title { font-size: 14px; font-weight: 700; }
+.fdr-hub-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.fdr-hub-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--bg-card-alt); }
+.fdr-platform-tabs { display: flex; gap: 4px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.fdr-platform-tab { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; background: none; color: var(--text-secondary); transition: var(--transition); white-space: nowrap; }
+.fdr-platform-tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.fdr-platform-tab.li-active { color: #0077b5; }
+.fdr-platform-tab.ig-active { color: #e1306c; }
+.fdr-hub-select { padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; cursor: pointer; }
+.fdr-hub-select option { background: var(--bg-card); }
+.fdr-hub-gen-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: linear-gradient(135deg, #7c3aed, #6366f1); border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); margin-left: auto; white-space: nowrap; }
+.fdr-hub-gen-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+.fdr-hub-gen-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fdr-hub-body { padding: 16px 18px; }
+.fdr-hub-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.8; color: var(--text-primary); white-space: pre-wrap; min-height: 80px; display: none; margin-bottom: 12px; max-height: 420px; overflow-y: auto; }
+.fdr-hub-output.visible { display: block; }
+.fdr-hub-footer { display: flex; align-items: center; gap: 10px; }
+.fdr-hub-copy-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.fdr-hub-copy-btn.visible { display: inline-flex; }
+.fdr-hub-copy-btn:hover { background: rgba(99,102,241,.2); }
+.fdr-hub-regen-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.fdr-hub-regen-btn.visible { display: inline-flex; }
+.fdr-hub-regen-btn:hover { color: var(--text-primary); border-color: var(--border-bright); }
+.fdr-hub-empty { padding: 24px 0; color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6; }
+.fdr-hub-platform-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.fdr-hub-platform-badge.li { background: rgba(0,119,181,.12); color: #0077b5; border: 1px solid rgba(0,119,181,.2); }
+.fdr-hub-platform-badge.ig { background: rgba(225,48,108,.1); color: #e1306c; border: 1px solid rgba(225,48,108,.2); }
 
 /* AI Coach chat */
 .fdr-chat-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -6301,32 +6314,75 @@ tr:hover .td-arrow { color: var(--cyan); }
           </button>
         </div>
 
-        <!-- LinkedIn Post Generator -->
-        <div class="fdr-li-box">
-          <div class="fdr-li-hdr">
-            <div class="fdr-li-hdr-left">
-              <div class="fdr-li-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-              </div>
-              <div>
-                <div class="fdr-li-title">LinkedIn Post van Vandaag</div>
-                <div class="fdr-li-sector" id="fdr-li-sector">—</div>
-              </div>
+        <!-- Content Hub: LinkedIn + Instagram -->
+        <div class="fdr-hub-box">
+          <div class="fdr-hub-hdr">
+            <div class="fdr-hub-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </div>
-            <div class="fdr-li-actions">
-              <button class="fdr-li-gen-btn" id="fdr-li-btn" onclick="generateLinkedInPost()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-                Genereer post
-              </button>
+            <div>
+              <div class="fdr-hub-title">Content Hub</div>
+              <div class="fdr-hub-sub" id="fdr-hub-sub">LinkedIn & Instagram posts — klaar om te plaatsen</div>
             </div>
           </div>
-          <div class="fdr-li-body">
-            <div class="fdr-li-output" id="fdr-li-output"></div>
-            <div class="fdr-li-empty" id="fdr-li-empty">Klik op "Genereer post" om een LinkedIn post voor vandaag te maken — klaar om te kopiëren en te plaatsen.</div>
-            <button class="fdr-li-copy-btn" id="fdr-li-copy" onclick="copyLinkedInPost()">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Kopieer naar klembord
+
+          <!-- Controls: platform + type + sector + generate -->
+          <div class="fdr-hub-controls">
+            <div class="fdr-platform-tabs">
+              <button class="fdr-platform-tab active li-active" id="fdr-tab-li" onclick="setHubPlatform('linkedin')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                LinkedIn
+              </button>
+              <button class="fdr-platform-tab" id="fdr-tab-ig" onclick="setHubPlatform('instagram')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                Instagram
+              </button>
+            </div>
+
+            <select class="fdr-hub-select" id="fdr-hub-type">
+              <option value="pijnpunt">😤 Pijnpunt</option>
+              <option value="feature">⚡ Feature highlight</option>
+              <option value="resultaat">📊 Resultaten & cijfers</option>
+              <option value="vergelijking">🥊 Oud vs Helvaro</option>
+              <option value="founder">👥 Founder story</option>
+              <option value="update">🔄 Week update</option>
+            </select>
+
+            <select class="fdr-hub-select" id="fdr-hub-sector">
+              <option value="">Sector van vandaag</option>
+              <option value="marketingbureaus en digitale agencies">Marketingbureaus</option>
+              <option value="vastgoedkantoren en immobureaus">Vastgoed</option>
+              <option value="business coaches en consultants">Coaches & Consultants</option>
+              <option value="KMO's en ondernemers in Gent/Antwerpen">KMO's Gent/Antwerpen</option>
+              <option value="verzekeringskantoren">Verzekeringen</option>
+              <option value="recruitmentbureaus">Recruitment</option>
+              <option value="automotive dealers">Automotive</option>
+            </select>
+
+            <button class="fdr-hub-gen-btn" id="fdr-hub-btn" onclick="generateContentPost()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Genereer
             </button>
+          </div>
+
+          <!-- Output -->
+          <div class="fdr-hub-body">
+            <div class="fdr-hub-output" id="fdr-hub-output"></div>
+            <div class="fdr-hub-empty" id="fdr-hub-empty">
+              Kies een platform, type en sector — klik op Genereer.<br>
+              De post wordt gecached en staat morgen automatisch klaar met nieuwe content.
+            </div>
+            <div class="fdr-hub-footer">
+              <button class="fdr-hub-copy-btn" id="fdr-hub-copy" onclick="copyContentPost()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Kopieer
+              </button>
+              <button class="fdr-hub-regen-btn" id="fdr-hub-regen" onclick="generateContentPost(true)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                Nieuwe versie
+              </button>
+              <span class="fdr-hub-platform-badge li" id="fdr-hub-badge" style="display:none"></span>
+            </div>
           </div>
         </div>
 
@@ -10977,78 +11033,124 @@ async function deleteGoalRecord() {
   } catch { toast('Netwerkfout', 'error'); }
 }
 
-// ── LinkedIn Post Generator ────────────────────────────────────────────────
-var LI_SECTOR_LABELS = {
+// ── Content Hub (LinkedIn + Instagram) ────────────────────────────────────
+var hubState = { platform: 'linkedin' };
+
+var HUB_DAY_LABELS = {
   1: 'Maandag — Marketingbureaus',
-  2: 'Dinsdag — Vastgoedkantoren',
+  2: 'Dinsdag — Vastgoed',
   3: 'Woensdag — Coaches & Consultants',
   4: 'Donderdag — KMO\'s Gent/Antwerpen',
-  5: 'Vrijdag — Leadgeneratie'
+  5: 'Vrijdag — Leadgeneratie',
+  0: 'Weekend — Post voor maandag',
+  6: 'Weekend — Post voor maandag'
 };
 
 function initLinkedInSection() {
+  // Set day label in subtitle
   var day = new Date().getDay();
-  var label = LI_SECTOR_LABELS[day] || 'Weekend';
-  var el = document.getElementById('fdr-li-sector');
-  if (el) el.textContent = label;
+  var sub = document.getElementById('fdr-hub-sub');
+  if (sub) sub.textContent = HUB_DAY_LABELS[day] || 'LinkedIn & Instagram';
 
-  // Show cached post for today if available
+  // Restore cached post for today
   var today = new Date().toISOString().slice(0, 10);
+  var cacheKey = 'hv-hub-post-' + hubState.platform + '-' + today;
   var cached = null;
-  try { cached = JSON.parse(localStorage.getItem('hv-li-post') || 'null'); } catch (e) {}
-  if (cached && cached.date === today && cached.post) {
-    showLinkedInPost(cached.post);
-  }
+  try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
+  if (cached && cached.post) showContentPost(cached.post);
 }
 
-function showLinkedInPost(text) {
-  var out = document.getElementById('fdr-li-output');
-  var empty = document.getElementById('fdr-li-empty');
-  var copy = document.getElementById('fdr-li-copy');
+function setHubPlatform(platform) {
+  hubState.platform = platform;
+  var liTab = document.getElementById('fdr-tab-li');
+  var igTab = document.getElementById('fdr-tab-ig');
+  if (liTab) liTab.classList.toggle('active', platform === 'linkedin');
+  if (liTab) liTab.classList.toggle('li-active', platform === 'linkedin');
+  if (igTab) igTab.classList.toggle('active', platform === 'instagram');
+  if (igTab) igTab.classList.toggle('ig-active', platform === 'instagram');
+  // Try load cached post for this platform
+  var today = new Date().toISOString().slice(0, 10);
+  var out = document.getElementById('fdr-hub-output');
+  var empty = document.getElementById('fdr-hub-empty');
+  var copy = document.getElementById('fdr-hub-copy');
+  var regen = document.getElementById('fdr-hub-regen');
+  var badge = document.getElementById('fdr-hub-badge');
+  if (out) out.classList.remove('visible');
+  if (empty) empty.style.display = '';
+  if (copy) copy.classList.remove('visible');
+  if (regen) regen.classList.remove('visible');
+  if (badge) badge.style.display = 'none';
+  var cacheKey = 'hv-hub-post-' + platform + '-' + today;
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
+  if (cached && cached.post) showContentPost(cached.post);
+}
+
+function showContentPost(text) {
+  var out = document.getElementById('fdr-hub-output');
+  var empty = document.getElementById('fdr-hub-empty');
+  var copy = document.getElementById('fdr-hub-copy');
+  var regen = document.getElementById('fdr-hub-regen');
+  var badge = document.getElementById('fdr-hub-badge');
   if (out) { out.textContent = text; out.classList.add('visible'); }
   if (empty) empty.style.display = 'none';
   if (copy) copy.classList.add('visible');
+  if (regen) regen.classList.add('visible');
+  if (badge) {
+    badge.style.display = '';
+    badge.className = 'fdr-hub-platform-badge ' + (hubState.platform === 'instagram' ? 'ig' : 'li');
+    badge.textContent = hubState.platform === 'instagram' ? 'Instagram' : 'LinkedIn';
+  }
 }
 
-async function generateLinkedInPost() {
-  var btn = document.getElementById('fdr-li-btn');
-  var out = document.getElementById('fdr-li-output');
-  if (btn) { btn.disabled = true; btn.childNodes[btn.childNodes.length - 1].textContent = ' Genereren...'; }
+async function generateContentPost(forceNew) {
+  var btn = document.getElementById('fdr-hub-btn');
+  var out = document.getElementById('fdr-hub-output');
+  var typeEl = document.getElementById('fdr-hub-type');
+  var sectorEl = document.getElementById('fdr-hub-sector');
+  var contentType = typeEl ? typeEl.value : 'pijnpunt';
+  var sector = sectorEl ? sectorEl.value : '';
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Genereren...'; }
   if (out) out.classList.remove('visible');
-  var copy = document.getElementById('fdr-li-copy');
-  if (copy) copy.classList.remove('visible');
 
   try {
-    var ctx = founderState._metrics || {};
+    var payload = { mode: 'content-post', platform: hubState.platform, contentType: contentType };
+    if (sector) payload.sector = sector;
     var r = await fetch('/api/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'linkedin-post', context: ctx })
+      body: JSON.stringify(payload)
     });
     var d = await r.json();
     if (!r.ok) { toast(d.error || 'Genereren mislukt', 'error'); }
     else {
-      showLinkedInPost(d.post);
-      var today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem('hv-li-post', JSON.stringify({ date: today, post: d.post }));
+      showContentPost(d.post);
+      if (!forceNew) {
+        var today = new Date().toISOString().slice(0, 10);
+        var cacheKey = 'hv-hub-post-' + hubState.platform + '-' + today;
+        localStorage.setItem(cacheKey, JSON.stringify({ post: d.post, type: contentType }));
+      }
     }
   } catch (e) { toast('Netwerkfout', 'error'); }
 
   if (btn) {
     btn.disabled = false;
-    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Nieuwe versie';
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Genereer';
   }
 }
 
-function copyLinkedInPost() {
-  var out = document.getElementById('fdr-li-output');
+function copyContentPost() {
+  var out = document.getElementById('fdr-hub-output');
   if (!out || !out.textContent) return;
   navigator.clipboard.writeText(out.textContent).then(function() {
-    toast('Post gekopieerd!', 'success');
-  }).catch(function() {
-    toast('Kopiëren mislukt', 'error');
-  });
+    toast('Gekopieerd! 🎉', 'success');
+  }).catch(function() { toast('Kopiëren mislukt', 'error'); });
 }
+
+// Legacy stubs
+function generateLinkedInPost() { generateContentPost(); }
+function copyLinkedInPost() { copyContentPost(); }
 
 // ── AI Coach Chat ──────────────────────────────────────────────────────────
 var chatHistory = [];
