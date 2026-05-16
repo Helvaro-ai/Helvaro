@@ -1549,6 +1549,40 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-dm-copy-btn:hover { background: rgba(20,184,166,.2); }
 .fdr-dm-empty { padding: 20px 0; color: var(--text-muted); font-size: 13px; text-align: center; }
 
+/* Documenten Hub */
+.fdr-docs-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-docs-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); justify-content: space-between; }
+.fdr-docs-hdr-left { display: flex; align-items: center; gap: 10px; }
+.fdr-docs-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0369a1, #38bdf8); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fdr-docs-title { font-size: 14px; font-weight: 700; }
+.fdr-docs-sub { font-size: 11px; color: var(--text-muted); }
+.fdr-docs-edit-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
+.fdr-docs-edit-btn:hover { color: var(--text-primary); border-color: var(--border-bright); }
+.fdr-docs-body { padding: 16px 18px; }
+.fdr-docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.fdr-doc-card { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: var(--transition); text-decoration: none; position: relative; }
+.fdr-doc-card:hover { border-color: #38bdf855; background: rgba(56,189,248,.05); transform: translateY(-1px); }
+.fdr-doc-card-icon { font-size: 22px; }
+.fdr-doc-card-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.fdr-doc-card-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.fdr-doc-card-badge { position: absolute; top: 10px; right: 10px; font-size: 9px; padding: 2px 6px; border-radius: 99px; font-weight: 700; }
+.fdr-doc-card-badge.pdf { background: rgba(239,68,68,.12); color: var(--red); }
+.fdr-doc-card-badge.slides { background: rgba(245,158,11,.12); color: var(--orange); }
+.fdr-doc-card-badge.drive { background: rgba(34,197,94,.12); color: #22c55e; }
+.fdr-doc-card-badge.link { background: rgba(99,102,241,.12); color: var(--accent-bright); }
+.fdr-doc-card-nolink { opacity: .5; cursor: default; }
+.fdr-doc-card-nolink:hover { transform: none; background: var(--bg-card-alt); border-color: var(--border); }
+.fdr-docs-embed-wrap { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; position: relative; background: var(--bg-card-alt); }
+.fdr-docs-embed-placeholder { padding: 32px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.fdr-docs-embed-placeholder a { color: var(--accent-bright); text-decoration: underline; cursor: pointer; }
+.fdr-docs-cfg { display: none; padding: 14px 18px; border-top: 1px solid var(--border); background: var(--bg-card-alt); }
+.fdr-docs-cfg.open { display: block; }
+.fdr-docs-cfg-title { font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+.fdr-docs-cfg-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.fdr-docs-cfg-lbl { font-size: 11px; color: var(--text-muted); width: 100px; flex-shrink: 0; }
+.fdr-docs-cfg-input { flex: 1; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 7px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
+.fdr-docs-cfg-save { padding: 6px 14px; background: linear-gradient(135deg, #0369a1, #38bdf8); border: none; border-radius: 7px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+
 /* AI Coach chat */
 .fdr-chat-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .fdr-chat-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
@@ -6645,6 +6679,84 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
         </div>
 
+        <!-- Documenten Hub -->
+        <div class="fdr-docs-box">
+          <div class="fdr-docs-hdr">
+            <div class="fdr-docs-hdr-left">
+              <div class="fdr-docs-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <div class="fdr-docs-title">Documenten & Presentaties</div>
+                <div class="fdr-docs-sub">Gedeeld tussen Frade &amp; Teljo — altijd online bereikbaar</div>
+              </div>
+            </div>
+            <button class="fdr-docs-edit-btn" onclick="toggleDocsConfig()">⚙ Links instellen</button>
+          </div>
+          <div class="fdr-docs-body">
+            <!-- Embedded presentation -->
+            <div class="fdr-docs-embed-wrap" id="fdr-docs-embed-wrap">
+              <div class="fdr-docs-embed-placeholder" id="fdr-docs-embed-placeholder">
+                📊 Plak een Google Slides of Canva embed-link via <a onclick="toggleDocsConfig()">⚙ Links instellen</a> om de presentatie hier te tonen.
+              </div>
+            </div>
+            <!-- Document cards -->
+            <div class="fdr-docs-grid" id="fdr-docs-grid">
+              <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-pitch" target="_blank" rel="noopener">
+                <span class="fdr-doc-card-badge slides">Slides</span>
+                <div class="fdr-doc-card-icon">📊</div>
+                <div class="fdr-doc-card-name">Pitch Deck</div>
+                <div class="fdr-doc-card-desc">Presentatie voor investeerders & klanten</div>
+              </a>
+              <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-contract" target="_blank" rel="noopener">
+                <span class="fdr-doc-card-badge pdf">PDF</span>
+                <div class="fdr-doc-card-icon">📝</div>
+                <div class="fdr-doc-card-name">Contracten</div>
+                <div class="fdr-doc-card-desc">Klantcontracten — 3 maanden + maandelijks</div>
+              </a>
+              <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-prijslijst" target="_blank" rel="noopener">
+                <span class="fdr-doc-card-badge pdf">PDF</span>
+                <div class="fdr-doc-card-icon">💰</div>
+                <div class="fdr-doc-card-name">Prijslijst</div>
+                <div class="fdr-doc-card-desc">Starter €149 · Groei €249 · Agency €399</div>
+              </a>
+              <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-drive" target="_blank" rel="noopener">
+                <span class="fdr-doc-card-badge drive">Drive</span>
+                <div class="fdr-doc-card-icon">📁</div>
+                <div class="fdr-doc-card-name">Google Drive</div>
+                <div class="fdr-doc-card-desc">Alle bestanden, sjablonen en assets</div>
+              </a>
+            </div>
+          </div>
+          <!-- Config panel (hidden by default) -->
+          <div class="fdr-docs-cfg" id="fdr-docs-cfg">
+            <div class="fdr-docs-cfg-title">🔗 Links instellen (opgeslagen voor Frade &amp; Teljo)</div>
+            <div class="fdr-docs-cfg-row">
+              <span class="fdr-docs-cfg-lbl">Presentatie embed</span>
+              <input class="fdr-docs-cfg-input" id="cfg-embed" placeholder="Google Slides of Canva embed URL (iframe src=...)">
+            </div>
+            <div class="fdr-docs-cfg-row">
+              <span class="fdr-docs-cfg-lbl">Pitch Deck link</span>
+              <input class="fdr-docs-cfg-input" id="cfg-pitch" placeholder="https://docs.google.com/presentation/...">
+            </div>
+            <div class="fdr-docs-cfg-row">
+              <span class="fdr-docs-cfg-lbl">Contracten link</span>
+              <input class="fdr-docs-cfg-input" id="cfg-contract" placeholder="https://drive.google.com/...">
+            </div>
+            <div class="fdr-docs-cfg-row">
+              <span class="fdr-docs-cfg-lbl">Prijslijst link</span>
+              <input class="fdr-docs-cfg-input" id="cfg-prijslijst" placeholder="https://drive.google.com/...">
+            </div>
+            <div class="fdr-docs-cfg-row">
+              <span class="fdr-docs-cfg-lbl">Google Drive</span>
+              <input class="fdr-docs-cfg-input" id="cfg-drive" placeholder="https://drive.google.com/drive/folders/...">
+            </div>
+            <div class="fdr-docs-cfg-row" style="justify-content:flex-end">
+              <button class="fdr-docs-cfg-save" onclick="saveDocsConfig()">Opslaan</button>
+            </div>
+          </div>
+        </div>
+
         <!-- AI Coach Chat -->
         <div class="fdr-chat-box">
           <div class="fdr-chat-hdr">
@@ -10967,6 +11079,7 @@ async function loadFounderData(force) {
   loadChatHistory();
   initOutreachTracker();
   initBouwTracker();
+  initDocsHub();
 }
 
 function cardAgeDays(aangemaakt) {
@@ -11817,6 +11930,77 @@ function initLoginSlideshow() {
   });
 
   start();
+}
+
+// ── Documenten Hub ────────────────────────────────────────────────────────
+var DOCS_KEY = 'hv-docs-config-v1';
+
+function loadDocsConfig() {
+  try { return JSON.parse(localStorage.getItem(DOCS_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function initDocsHub() {
+  var cfg = loadDocsConfig();
+  // Fill config inputs
+  ['embed','pitch','contract','prijslijst','drive'].forEach(function(k) {
+    var el = document.getElementById('cfg-' + k);
+    if (el && cfg[k]) el.value = cfg[k];
+  });
+  renderDocsHub(cfg);
+}
+
+function renderDocsHub(cfg) {
+  cfg = cfg || loadDocsConfig();
+  // Embed
+  var wrap = document.getElementById('fdr-docs-embed-wrap');
+  var placeholder = document.getElementById('fdr-docs-embed-placeholder');
+  if (wrap && cfg.embed) {
+    placeholder.style.display = 'none';
+    var existing = wrap.querySelector('iframe');
+    if (!existing) {
+      var iframe = document.createElement('iframe');
+      iframe.src = cfg.embed;
+      iframe.style.cssText = 'width:100%;height:480px;border:none;display:block;';
+      iframe.allowFullscreen = true;
+      wrap.appendChild(iframe);
+    } else {
+      existing.src = cfg.embed;
+    }
+  } else if (placeholder) {
+    placeholder.style.display = '';
+    var old = wrap ? wrap.querySelector('iframe') : null;
+    if (old) old.remove();
+  }
+  // Cards
+  var cardMap = { pitch: 'fdr-doc-pitch', contract: 'fdr-doc-contract', prijslijst: 'fdr-doc-prijslijst', drive: 'fdr-doc-drive' };
+  Object.keys(cardMap).forEach(function(k) {
+    var card = document.getElementById(cardMap[k]);
+    if (!card) return;
+    if (cfg[k]) {
+      card.href = cfg[k];
+      card.classList.remove('fdr-doc-card-nolink');
+    } else {
+      card.removeAttribute('href');
+      card.classList.add('fdr-doc-card-nolink');
+    }
+  });
+}
+
+function toggleDocsConfig() {
+  var panel = document.getElementById('fdr-docs-cfg');
+  if (panel) panel.classList.toggle('open');
+}
+
+function saveDocsConfig() {
+  var cfg = {};
+  ['embed','pitch','contract','prijslijst','drive'].forEach(function(k) {
+    var el = document.getElementById('cfg-' + k);
+    if (el && el.value.trim()) cfg[k] = el.value.trim();
+  });
+  try { localStorage.setItem(DOCS_KEY, JSON.stringify(cfg)); } catch(e) {}
+  renderDocsHub(cfg);
+  toggleDocsConfig();
+  toast('Links opgeslagen', 'success');
 }
 
 // ── Outreach Tracker ───────────────────────────────────────────────────────
