@@ -1,5 +1,5 @@
 # Helvaro — Outreach Templates
-Doel: 5 klanten met 3 maanden contract voor 16 augustus 2026.
+Doel: 5 klanten met 3 maanden contract voor 20 juni 2026.
 
 ---
 

@@ -6144,7 +6144,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <div class="fdr-hero-right">
             <div class="fdr-deadline-label">Deadline</div>
-            <div class="fdr-deadline-val">16 aug 2026</div>
+            <div class="fdr-deadline-val">20 jun 2026</div>
             <div class="fdr-deadline-days" id="fdr-days-left">— dagen</div>
           </div>
         </div>
@@ -6180,7 +6180,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <!-- Goal: 5 clients -->
             <div class="fdr-panel fdr-goal-panel">
               <div class="fdr-goal-hdr">
-                <span>🎯 Doel — 5 klanten</span>
+                <span>🎯 Doel — 5 klanten voor 20 jun</span>
                 <button class="fdr-refresh-btn" onclick="loadFounderData(true)">↻</button>
               </div>
               <div class="fdr-goal-big">
@@ -10657,7 +10657,7 @@ function initFounderHeader() {
   var dl = document.getElementById('fdr-days-left');
   if (dn) dn.textContent = days[now.getDay()];
   if (dt) dt.textContent = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
-  var deadline = new Date('2026-08-16');
+  var deadline = new Date('2026-06-20');
   var daysLeft = Math.ceil((deadline - now) / 86400000);
   if (dl) dl.textContent = daysLeft > 0 ? daysLeft + ' dagen resterend' : 'Deadline voorbij';
 }
