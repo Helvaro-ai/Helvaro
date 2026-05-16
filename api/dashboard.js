@@ -1433,6 +1433,15 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-hub-regen-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
 .fdr-hub-regen-btn.visible { display: inline-flex; }
 .fdr-hub-regen-btn:hover { color: var(--text-primary); border-color: var(--border-bright); }
+.fdr-hub-open-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); text-decoration: none; }
+.fdr-hub-open-btn.visible { display: inline-flex; }
+.fdr-hub-open-btn.li { background: rgba(10,102,194,.12); border: 1px solid rgba(10,102,194,.3); color: #0a66c2; }
+.fdr-hub-open-btn.li:hover { background: rgba(10,102,194,.22); }
+.fdr-hub-open-btn.ig { background: rgba(225,48,108,.12); border: 1px solid rgba(225,48,108,.3); color: #e1306c; }
+.fdr-hub-open-btn.ig:hover { background: rgba(225,48,108,.22); }
+.fdr-dm-open-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(10,102,194,.1); border: 1px solid rgba(10,102,194,.25); border-radius: 8px; color: #0a66c2; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.fdr-dm-open-btn.visible { display: inline-flex; }
+.fdr-dm-open-btn:hover { background: rgba(10,102,194,.2); }
 .fdr-hub-empty { padding: 24px 0; color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6; }
 .fdr-hub-platform-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
 .fdr-hub-platform-badge.li { background: rgba(0,119,181,.12); color: #0077b5; border: 1px solid rgba(0,119,181,.2); }
@@ -6448,6 +6457,14 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Nieuwe versie
               </button>
               <span class="fdr-hub-platform-badge li" id="fdr-hub-badge" style="display:none"></span>
+              <a class="fdr-hub-open-btn li" id="fdr-hub-open-li" href="https://www.linkedin.com/post/new/" target="_blank" rel="noopener">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                Open LinkedIn
+              </a>
+              <a class="fdr-hub-open-btn ig" id="fdr-hub-open-ig" href="https://www.instagram.com/" target="_blank" rel="noopener">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                Open Instagram
+              </a>
             </div>
           </div>
         </div>
@@ -6483,6 +6500,10 @@ tr:hover .td-arrow { color: var(--cyan); }
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
               Kopieer
             </button>
+            <a class="fdr-dm-open-btn" id="fdr-dm-open-li" href="https://www.linkedin.com/messaging/" target="_blank" rel="noopener">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              Open LinkedIn
+            </a>
           </div>
         </div>
 
@@ -10913,17 +10934,20 @@ async function generateDm() {
   var sel  = document.getElementById('fdr-dm-prospect');
   var plt  = document.getElementById('fdr-dm-platform');
   var btn  = document.getElementById('fdr-dm-btn');
-  var out  = document.getElementById('fdr-dm-output');
-  var emp  = document.getElementById('fdr-dm-empty');
-  var copy = document.getElementById('fdr-dm-copy');
+  var out    = document.getElementById('fdr-dm-output');
+  var emp    = document.getElementById('fdr-dm-empty');
+  var copy   = document.getElementById('fdr-dm-copy');
+  var openLi = document.getElementById('fdr-dm-open-li');
   if (!sel || !sel.value) { toast('Kies eerst een prospect', 'error'); return; }
 
   var rec = founderState.pipeline.find(function(p) { return p.id === sel.value; });
   if (!rec) return;
 
+  var platform = plt ? plt.value : 'linkedin';
   if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Genereren...'; }
   if (out) out.classList.remove('visible');
   if (copy) copy.classList.remove('visible');
+  if (openLi) openLi.classList.remove('visible');
 
   try {
     var r = await fetch('/api/admin', {
@@ -10934,7 +10958,7 @@ async function generateDm() {
         bedrijf:  rec.bedrijf || rec.naam,
         sector:   rec.sector  || '',
         fase:     rec.fase,
-        platform: plt ? plt.value : 'linkedin',
+        platform: platform,
         notities: rec.notities || '',
         dagen:    cardAgeDays(rec.aangemaakt)
       })
@@ -10945,6 +10969,16 @@ async function generateDm() {
       if (out) { out.textContent = d.message; out.classList.add('visible'); }
       if (emp) emp.style.display = 'none';
       if (copy) copy.classList.add('visible');
+      if (openLi) {
+        if (platform === 'email') {
+          openLi.href = 'mailto:';
+          openLi.innerHTML = 'Open E-mail';
+        } else {
+          openLi.href = 'https://www.linkedin.com/messaging/';
+          openLi.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> Open LinkedIn';
+        }
+        openLi.classList.add('visible');
+      }
     }
   } catch (e) { toast('Netwerkfout', 'error'); }
 
@@ -11308,11 +11342,15 @@ function setHubPlatform(platform) {
   var copy = document.getElementById('fdr-hub-copy');
   var regen = document.getElementById('fdr-hub-regen');
   var badge = document.getElementById('fdr-hub-badge');
+  var openLi = document.getElementById('fdr-hub-open-li');
+  var openIg = document.getElementById('fdr-hub-open-ig');
   if (out) out.classList.remove('visible');
   if (empty) empty.style.display = '';
   if (copy) copy.classList.remove('visible');
   if (regen) regen.classList.remove('visible');
   if (badge) badge.style.display = 'none';
+  if (openLi) openLi.classList.remove('visible');
+  if (openIg) openIg.classList.remove('visible');
   var cacheKey = 'hv-hub-post-' + platform + '-' + today;
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
@@ -11325,6 +11363,8 @@ function showContentPost(text) {
   var copy = document.getElementById('fdr-hub-copy');
   var regen = document.getElementById('fdr-hub-regen');
   var badge = document.getElementById('fdr-hub-badge');
+  var openLi = document.getElementById('fdr-hub-open-li');
+  var openIg = document.getElementById('fdr-hub-open-ig');
   if (out) { out.textContent = text; out.classList.add('visible'); }
   if (empty) empty.style.display = 'none';
   if (copy) copy.classList.add('visible');
@@ -11333,6 +11373,13 @@ function showContentPost(text) {
     badge.style.display = '';
     badge.className = 'fdr-hub-platform-badge ' + (hubState.platform === 'instagram' ? 'ig' : 'li');
     badge.textContent = hubState.platform === 'instagram' ? 'Instagram' : 'LinkedIn';
+  }
+  if (hubState.platform === 'instagram') {
+    if (openIg) openIg.classList.add('visible');
+    if (openLi) openLi.classList.remove('visible');
+  } else {
+    if (openLi) openLi.classList.add('visible');
+    if (openIg) openIg.classList.remove('visible');
   }
 }
 
