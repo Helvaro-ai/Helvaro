@@ -1473,6 +1473,62 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-mrr-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 .fdr-mrr-target { font-size: 12px; color: var(--text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
 .fdr-mrr-arrow { color: var(--text-muted); }
+.fdr-profit-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.fdr-profit-rows { display: flex; flex-direction: column; gap: 5px; }
+.fdr-profit-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.fdr-profit-row .lbl { color: var(--text-muted); }
+.fdr-profit-row .val { font-weight: 600; color: var(--text-primary); }
+.fdr-profit-row .val.neg { color: var(--red); }
+.fdr-profit-row.total { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
+.fdr-profit-row.total .lbl { font-weight: 700; color: var(--text-primary); font-size: 13px; }
+.fdr-profit-row.total .val { font-size: 16px; font-weight: 900; color: #22c55e; }
+.fdr-profit-marge { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Outreach tracker */
+.fdr-outreach-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-outreach-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-outreach-title { font-size: 14px; font-weight: 700; }
+.fdr-outreach-week { font-size: 11px; color: var(--text-muted); }
+.fdr-outreach-body { padding: 16px 18px; }
+.fdr-outreach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.fdr-outreach-card { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+.fdr-outreach-num { font-size: 26px; font-weight: 900; line-height: 1; min-width: 32px; }
+.fdr-outreach-info { flex: 1; }
+.fdr-outreach-name { font-size: 12px; font-weight: 600; }
+.fdr-outreach-target { font-size: 11px; color: var(--text-muted); }
+.fdr-outreach-plus { background: none; border: 1px solid var(--border); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; font-weight: 700; color: var(--text-secondary); transition: var(--transition); flex-shrink: 0; }
+.fdr-outreach-plus:hover { background: var(--border); color: var(--text-primary); }
+.fdr-outreach-bar-wrap { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.fdr-outreach-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4f46e5, #818cf8); transition: width .4s; }
+.fdr-outreach-footer { display: flex; justify-content: space-between; align-items: center; }
+.fdr-outreach-pct { font-size: 12px; color: var(--text-muted); }
+.fdr-outreach-reset { background: none; border: none; font-size: 11px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
+.fdr-outreach-reset:hover { color: var(--red); }
+
+/* Bouw tracker */
+.fdr-bouw-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-bouw-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-bouw-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #7c3aed, #a78bfa); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fdr-bouw-title { font-size: 14px; font-weight: 700; }
+.fdr-bouw-sub { font-size: 11px; color: var(--text-muted); }
+.fdr-bouw-body { padding: 12px 18px; }
+.fdr-bouw-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.fdr-bouw-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); }
+.fdr-bouw-item:hover { border-color: #a78bfa44; }
+.fdr-bouw-item.done { opacity: .5; }
+.fdr-bouw-item.done .fdr-bouw-item-text { text-decoration: line-through; }
+.fdr-bouw-cb { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-bright); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: var(--transition); }
+.fdr-bouw-item.done .fdr-bouw-cb { background: #7c3aed; border-color: #7c3aed; }
+.fdr-bouw-item-text { font-size: 13px; flex: 1; }
+.fdr-bouw-tag { font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 600; flex-shrink: 0; }
+.fdr-bouw-tag.fix { background: rgba(239,68,68,.12); color: var(--red); }
+.fdr-bouw-tag.feat { background: rgba(79,70,229,.12); color: var(--accent-bright); }
+.fdr-bouw-tag.test { background: rgba(245,158,11,.12); color: var(--orange); }
+.fdr-bouw-add-row { display: flex; gap: 8px; }
+.fdr-bouw-add-input { flex: 1; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
+.fdr-bouw-add-btn { padding: 7px 14px; background: linear-gradient(135deg, #7c3aed, #a78bfa); border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+.fdr-bouw-add-btn:hover { opacity: .88; }
+.fdr-bouw-progress { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
 
 /* Personalized DM generator */
 .fdr-dm-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -6303,7 +6359,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fdr-goal-pct" id="fdr-goal-pct">0% bereikt</div>
             </div>
 
-            <!-- MRR -->
+            <!-- MRR + Profit -->
             <div class="fdr-panel fdr-mrr-panel">
               <div class="fdr-mrr-hdr">Maandelijks Inkomen (MRR)</div>
               <div class="fdr-mrr-val" id="fdr-mrr-val">€0</div>
@@ -6312,6 +6368,13 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="fdr-mrr-arrow">→</span>
                 <span id="fdr-mrr-target">Doel: €1.245/mnd bij 5 klanten</span>
               </div>
+              <hr class="fdr-profit-divider">
+              <div class="fdr-profit-rows">
+                <div class="fdr-profit-row"><span class="lbl">Vaste kosten</span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Variabele kosten</span><span class="val neg" id="fdr-cost-var">-€0</span></div>
+                <div class="fdr-profit-row total"><span class="lbl">Nettowinst</span><span class="val" id="fdr-profit-val">€0</span></div>
+              </div>
+              <div class="fdr-profit-marge" id="fdr-profit-marge">Marge: —%</div>
             </div>
 
             <!-- Pipeline mini summary -->
@@ -6504,6 +6567,81 @@ tr:hover .td-arrow { color: var(--cyan); }
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
               Open LinkedIn
             </a>
+          </div>
+        </div>
+
+        <!-- Outreach Tracker (Teljo) -->
+        <div class="fdr-outreach-box">
+          <div class="fdr-outreach-hdr">
+            <div>
+              <div class="fdr-outreach-title">📣 Outreach Teller — Teljo</div>
+              <div class="fdr-outreach-week" id="fdr-outreach-week">Week van —</div>
+            </div>
+            <button class="fdr-outreach-reset" onclick="resetOutreach()">Week resetten</button>
+          </div>
+          <div class="fdr-outreach-body">
+            <div class="fdr-outreach-grid" id="fdr-outreach-grid">
+              <div class="fdr-outreach-card">
+                <div class="fdr-outreach-num" id="or-dms" style="color:#4f46e5">0</div>
+                <div class="fdr-outreach-info">
+                  <div class="fdr-outreach-name">LinkedIn DMs</div>
+                  <div class="fdr-outreach-target">Doel: 20/week</div>
+                </div>
+                <button class="fdr-outreach-plus" onclick="logOutreach('dms')">+</button>
+              </div>
+              <div class="fdr-outreach-card">
+                <div class="fdr-outreach-num" id="or-emails" style="color:#0a66c2">0</div>
+                <div class="fdr-outreach-info">
+                  <div class="fdr-outreach-name">Cold Emails</div>
+                  <div class="fdr-outreach-target">Doel: 10/week</div>
+                </div>
+                <button class="fdr-outreach-plus" onclick="logOutreach('emails')">+</button>
+              </div>
+              <div class="fdr-outreach-card">
+                <div class="fdr-outreach-num" id="or-demos" style="color:#22c55e">0</div>
+                <div class="fdr-outreach-info">
+                  <div class="fdr-outreach-name">Demo's gehad</div>
+                  <div class="fdr-outreach-target">Doel: 3/week</div>
+                </div>
+                <button class="fdr-outreach-plus" onclick="logOutreach('demos')">+</button>
+              </div>
+              <div class="fdr-outreach-card">
+                <div class="fdr-outreach-num" id="or-follows" style="color:#f97316">0</div>
+                <div class="fdr-outreach-info">
+                  <div class="fdr-outreach-name">Follow-ups</div>
+                  <div class="fdr-outreach-target">Doel: 10/week</div>
+                </div>
+                <button class="fdr-outreach-plus" onclick="logOutreach('follows')">+</button>
+              </div>
+            </div>
+            <div class="fdr-outreach-footer">
+              <span class="fdr-outreach-pct" id="or-total-pct">Totaal: 0 acties — 0% van weekdoel (43)</span>
+              <span></span>
+            </div>
+            <div class="fdr-outreach-bar-wrap" style="margin-top:10px">
+              <div class="fdr-outreach-bar-fill" id="or-bar" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bouw Tracker (Frade) -->
+        <div class="fdr-bouw-box">
+          <div class="fdr-bouw-hdr">
+            <div class="fdr-bouw-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <div>
+              <div class="fdr-bouw-title">Bouw Tracker — Frade</div>
+              <div class="fdr-bouw-sub">Technische taken — vink af wat klaar is</div>
+            </div>
+          </div>
+          <div class="fdr-bouw-body">
+            <div class="fdr-bouw-progress" id="fdr-bouw-progress">0/0 taken afgewerkt</div>
+            <div class="fdr-bouw-list" id="fdr-bouw-list"></div>
+            <div class="fdr-bouw-add-row">
+              <input class="fdr-bouw-add-input" id="fdr-bouw-input" type="text" placeholder="Nieuwe taak toevoegen..." onkeydown="if(event.key==='Enter')addBouwItem()">
+              <button class="fdr-bouw-add-btn" onclick="addBouwItem()">+ Toevoegen</button>
+            </div>
           </div>
         </div>
 
@@ -10827,6 +10965,8 @@ async function loadFounderData(force) {
   updateGoalPanel();
   initLinkedInSection();
   loadChatHistory();
+  initOutreachTracker();
+  initBouwTracker();
 }
 
 function cardAgeDays(aangemaakt) {
@@ -10899,15 +11039,31 @@ function renderFollowUpAlerts() {
 }
 
 function updateMrrWidget() {
-  var avgMrr = 249;
-  var won = founderState.pipeline.filter(function(p) { return p.fase === 'Gewonnen'; }).length;
-  var clients = founderState.clients || 0;
-  var total   = Math.max(won, clients);
-  var mrr     = total * avgMrr;
-  var valEl   = document.getElementById('fdr-mrr-val');
-  var subEl   = document.getElementById('fdr-mrr-sub');
-  if (valEl) valEl.textContent = '€' + mrr.toLocaleString('nl-BE');
-  if (subEl) subEl.textContent = total + ' betalende klant' + (total === 1 ? '' : 'en');
+  var avgMrr   = 249;
+  var fixedCost = 58;   // Vercel €18 + Airtable €20 + Resend €18 + domein €2
+  var varPerClient = 34; // WhatsApp API ~€30 + Anthropic API ~€4
+  var won      = founderState.pipeline.filter(function(p) { return p.fase === 'Gewonnen'; }).length;
+  var clients  = founderState.clients || 0;
+  var total    = Math.max(won, clients);
+  var mrr      = total * avgMrr;
+  var varCost  = total * varPerClient;
+  var profit   = mrr - fixedCost - varCost;
+  var marge    = mrr > 0 ? Math.round((profit / mrr) * 100) : 0;
+
+  var valEl    = document.getElementById('fdr-mrr-val');
+  var subEl    = document.getElementById('fdr-mrr-sub');
+  var varEl    = document.getElementById('fdr-cost-var');
+  var profEl   = document.getElementById('fdr-profit-val');
+  var margeEl  = document.getElementById('fdr-profit-marge');
+
+  if (valEl)  valEl.textContent  = '€' + mrr.toLocaleString('nl-BE');
+  if (subEl)  subEl.textContent  = total + ' betalende klant' + (total === 1 ? '' : 'en');
+  if (varEl)  varEl.textContent  = '-€' + varCost.toLocaleString('nl-BE');
+  if (profEl) {
+    profEl.textContent = (profit >= 0 ? '€' : '-€') + Math.abs(profit).toLocaleString('nl-BE');
+    profEl.style.color = profit >= 0 ? '#22c55e' : 'var(--red)';
+  }
+  if (margeEl) margeEl.textContent = 'Marge: ' + (mrr > 0 ? marge + '%' : '—%') + ' • variabel €' + varPerClient + '/klant';
 }
 
 function populateDmDropdown() {
@@ -11661,6 +11817,122 @@ function initLoginSlideshow() {
   });
 
   start();
+}
+
+// ── Outreach Tracker ───────────────────────────────────────────────────────
+var OUTREACH_TARGETS = { dms: 20, emails: 10, demos: 3, follows: 10 };
+var OUTREACH_TOTAL_TARGET = 43;
+
+function getOutreachKey() {
+  var d = new Date();
+  var jan1 = new Date(d.getFullYear(), 0, 1);
+  var week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return 'hv-outreach-w' + d.getFullYear() + '-' + week;
+}
+
+function loadOutreachData() {
+  try { return JSON.parse(localStorage.getItem(getOutreachKey()) || 'null') || { dms:0, emails:0, demos:0, follows:0 }; }
+  catch(e) { return { dms:0, emails:0, demos:0, follows:0 }; }
+}
+
+function saveOutreachData(data) {
+  try { localStorage.setItem(getOutreachKey(), JSON.stringify(data)); } catch(e) {}
+}
+
+function initOutreachTracker() {
+  var d = new Date();
+  var weekEl = document.getElementById('fdr-outreach-week');
+  if (weekEl) {
+    var monOffset = (d.getDay() + 6) % 7;
+    var mon = new Date(d); mon.setDate(d.getDate() - monOffset);
+    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var fmt = function(dt) { return dt.getDate() + '/' + (dt.getMonth()+1); };
+    weekEl.textContent = 'Week van ' + fmt(mon) + ' → ' + fmt(sun);
+  }
+  renderOutreach();
+}
+
+function renderOutreach() {
+  var data = loadOutreachData();
+  var total = data.dms + data.emails + data.demos + data.follows;
+  var pct   = Math.min(100, Math.round((total / OUTREACH_TOTAL_TARGET) * 100));
+  ['dms','emails','demos','follows'].forEach(function(k) {
+    var el = document.getElementById('or-' + k);
+    if (el) el.textContent = data[k];
+  });
+  var pctEl = document.getElementById('or-total-pct');
+  if (pctEl) pctEl.textContent = 'Totaal: ' + total + ' acties — ' + pct + '% van weekdoel (' + OUTREACH_TOTAL_TARGET + ')';
+  var bar = document.getElementById('or-bar');
+  if (bar) bar.style.width = pct + '%';
+}
+
+function logOutreach(type) {
+  var data = loadOutreachData();
+  data[type] = (data[type] || 0) + 1;
+  saveOutreachData(data);
+  renderOutreach();
+  toast('+1 ' + { dms:'LinkedIn DM', emails:'Cold Email', demos:"Demo", follows:'Follow-up' }[type], 'success');
+}
+
+function resetOutreach() {
+  try { localStorage.removeItem(getOutreachKey()); } catch(e) {}
+  renderOutreach();
+  toast('Week gereset', 'success');
+}
+
+// ── Bouw Tracker ──────────────────────────────────────────────────────────
+var BOUW_DEFAULT = [
+  { text: 'Calendly integratie end-to-end testen', tag: 'test', done: false },
+  { text: 'WhatsApp webhook response tijd checken', tag: 'test', done: false },
+  { text: 'Onboarding flow testen als nieuwe klant', tag: 'test', done: false },
+  { text: 'Vercel logs — errors controleren', tag: 'fix', done: false },
+  { text: 'Airtable leads opruimen & archiveren', tag: 'fix', done: false },
+  { text: 'Dashboard performance optimaliseren', tag: 'feat', done: false },
+  { text: 'Nieuwe feature implementeren (sprint)', tag: 'feat', done: false }
+];
+
+function loadBouwItems() {
+  try { return JSON.parse(localStorage.getItem('hv-bouw-items') || 'null') || JSON.parse(JSON.stringify(BOUW_DEFAULT)); }
+  catch(e) { return JSON.parse(JSON.stringify(BOUW_DEFAULT)); }
+}
+
+function saveBouwItems(items) {
+  try { localStorage.setItem('hv-bouw-items', JSON.stringify(items)); } catch(e) {}
+}
+
+function initBouwTracker() { renderBouwList(); }
+
+function renderBouwList() {
+  var items = loadBouwItems();
+  var list  = document.getElementById('fdr-bouw-list');
+  var prog  = document.getElementById('fdr-bouw-progress');
+  if (!list) return;
+  var done  = items.filter(function(i) { return i.done; }).length;
+  if (prog) prog.textContent = done + '/' + items.length + ' taken afgewerkt';
+  list.innerHTML = items.map(function(item, idx) {
+    return '<div class="fdr-bouw-item' + (item.done ? ' done' : '') + '" onclick="toggleBouwItem(' + idx + ')">' +
+      '<div class="fdr-bouw-cb">' + (item.done ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
+      '<span class="fdr-bouw-item-text">' + escHtml(item.text) + '</span>' +
+      '<span class="fdr-bouw-tag ' + item.tag + '">' + item.tag + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleBouwItem(idx) {
+  var items = loadBouwItems();
+  if (items[idx]) items[idx].done = !items[idx].done;
+  saveBouwItems(items);
+  renderBouwList();
+}
+
+function addBouwItem() {
+  var input = document.getElementById('fdr-bouw-input');
+  if (!input || !input.value.trim()) return;
+  var items = loadBouwItems();
+  items.push({ text: input.value.trim(), tag: 'feat', done: false });
+  saveBouwItems(items);
+  input.value = '';
+  renderBouwList();
 }
 </script>
 </body>
