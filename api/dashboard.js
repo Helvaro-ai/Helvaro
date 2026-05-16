@@ -1438,6 +1438,52 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-hub-platform-badge.li { background: rgba(0,119,181,.12); color: #0077b5; border: 1px solid rgba(0,119,181,.2); }
 .fdr-hub-platform-badge.ig { background: rgba(225,48,108,.1); color: #e1306c; border: 1px solid rgba(225,48,108,.2); }
 
+/* Follow-up urgency */
+.founder-card-age { display: inline-block; margin-top: 5px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.founder-card-age.age-ok       { background: rgba(34,197,94,.1);  color: #22c55e; }
+.founder-card-age.age-warning  { background: rgba(245,158,11,.12); color: #f59e0b; }
+.founder-card-age.age-critical { background: rgba(244,63,94,.12);  color: #f43f5e; }
+.founder-card.has-urgent       { border-color: rgba(244,63,94,.35); }
+.fdr-followup-wrap { display: flex; flex-direction: column; gap: 8px; }
+.fdr-followup-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: border-color .15s; }
+.fdr-followup-item:hover { border-color: rgba(244,63,94,.4); }
+.fdr-followup-item.critical { border-left: 3px solid #f43f5e; }
+.fdr-followup-item.warning  { border-left: 3px solid #f59e0b; }
+.fdr-followup-name { flex: 1; font-size: 13px; font-weight: 600; }
+.fdr-followup-fase { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 700; }
+.fdr-followup-fase.f0 { background: rgba(96,165,250,.12);  color: #60a5fa; }
+.fdr-followup-fase.f1 { background: rgba(251,191,36,.12);  color: #fbbf24; }
+.fdr-followup-fase.f2 { background: rgba(249,115,22,.12);  color: #f97316; }
+.fdr-followup-days { font-size: 11px; font-weight: 700; color: #f43f5e; flex-shrink: 0; }
+.fdr-followup-empty { padding: 14px 0; color: var(--text-muted); font-size: 13px; }
+
+/* MRR panel */
+.fdr-mrr-panel { padding: 14px 18px; }
+.fdr-mrr-hdr { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); margin-bottom: 8px; }
+.fdr-mrr-val { font-size: 34px; font-weight: 900; color: #22c55e; line-height: 1; }
+.fdr-mrr-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.fdr-mrr-target { font-size: 12px; color: var(--text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+.fdr-mrr-arrow { color: var(--text-muted); }
+
+/* Personalized DM generator */
+.fdr-dm-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-dm-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-dm-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0f766e, #14b8a6); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fdr-dm-title { font-size: 14px; font-weight: 700; }
+.fdr-dm-sub { font-size: 11px; color: var(--text-muted); }
+.fdr-dm-controls { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--bg-card-alt); align-items: center; }
+.fdr-dm-select { padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; flex: 1; min-width: 140px; }
+.fdr-dm-gen-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: linear-gradient(135deg, #0f766e, #14b8a6); border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); white-space: nowrap; flex-shrink: 0; }
+.fdr-dm-gen-btn:hover:not(:disabled) { opacity: .88; }
+.fdr-dm-gen-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fdr-dm-body { padding: 16px 18px; }
+.fdr-dm-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.75; color: var(--text-primary); white-space: pre-wrap; min-height: 60px; display: none; margin-bottom: 12px; }
+.fdr-dm-output.visible { display: block; }
+.fdr-dm-copy-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(20,184,166,.1); border: 1px solid rgba(20,184,166,.25); border-radius: 8px; color: #14b8a6; font-size: 12px; font-weight: 600; cursor: pointer; }
+.fdr-dm-copy-btn.visible { display: inline-flex; }
+.fdr-dm-copy-btn:hover { background: rgba(20,184,166,.2); }
+.fdr-dm-empty { padding: 20px 0; color: var(--text-muted); font-size: 13px; text-align: center; }
+
 /* AI Coach chat */
 .fdr-chat-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .fdr-chat-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
@@ -6248,6 +6294,17 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fdr-goal-pct" id="fdr-goal-pct">0% bereikt</div>
             </div>
 
+            <!-- MRR -->
+            <div class="fdr-panel fdr-mrr-panel">
+              <div class="fdr-mrr-hdr">Maandelijks Inkomen (MRR)</div>
+              <div class="fdr-mrr-val" id="fdr-mrr-val">€0</div>
+              <div class="fdr-mrr-sub" id="fdr-mrr-sub">0 betalende klanten</div>
+              <div class="fdr-mrr-target">
+                <span class="fdr-mrr-arrow">→</span>
+                <span id="fdr-mrr-target">Doel: €1.245/mnd bij 5 klanten</span>
+              </div>
+            </div>
+
             <!-- Pipeline mini summary -->
             <div class="fdr-panel fdr-pipe-mini">
               <div class="fdr-panel-title" style="margin-bottom:12px">Pipeline</div>
@@ -6259,6 +6316,15 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
 
           </div>
+        </div>
+
+        <!-- Follow-up alerts -->
+        <div id="fdr-followup-section" style="display:none">
+          <div class="fdr-section-hdr">
+            <h3>⚠️ Vandaag opvolgen</h3>
+            <span style="font-size:11px;color:var(--text-muted)" id="fdr-followup-count"></span>
+          </div>
+          <div class="fdr-followup-wrap" id="fdr-followup-list"></div>
         </div>
 
         <!-- Full-width Pipeline kanban -->
@@ -6383,6 +6449,40 @@ tr:hover .td-arrow { color: var(--cyan); }
               </button>
               <span class="fdr-hub-platform-badge li" id="fdr-hub-badge" style="display:none"></span>
             </div>
+          </div>
+        </div>
+
+        <!-- Personalized DM Generator -->
+        <div class="fdr-dm-box">
+          <div class="fdr-dm-hdr">
+            <div class="fdr-dm-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <div>
+              <div class="fdr-dm-title">Gepersonaliseerde DM / Email</div>
+              <div class="fdr-dm-sub">Kies een prospect — AI schrijft een bericht op maat</div>
+            </div>
+          </div>
+          <div class="fdr-dm-controls">
+            <select class="fdr-dm-select" id="fdr-dm-prospect" style="flex:2">
+              <option value="">Kies een prospect uit de pipeline...</option>
+            </select>
+            <select class="fdr-dm-select" id="fdr-dm-platform" style="flex:1;min-width:110px">
+              <option value="linkedin">LinkedIn DM</option>
+              <option value="email">Cold Email</option>
+            </select>
+            <button class="fdr-dm-gen-btn" id="fdr-dm-btn" onclick="generateDm()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Genereer
+            </button>
+          </div>
+          <div class="fdr-dm-body">
+            <div class="fdr-dm-output" id="fdr-dm-output"></div>
+            <div class="fdr-dm-empty" id="fdr-dm-empty">Selecteer een bedrijf hierboven — de DM wordt geschreven op basis van hun sector, fase en eventuele notities.</div>
+            <button class="fdr-dm-copy-btn" id="fdr-dm-copy" onclick="copyDm()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Kopieer
+            </button>
           </div>
         </div>
 
@@ -10708,25 +10808,158 @@ async function loadFounderData(force) {
   loadChatHistory();
 }
 
+function cardAgeDays(aangemaakt) {
+  if (!aangemaakt) return 0;
+  return Math.floor((Date.now() - new Date(aangemaakt).getTime()) / 86400000);
+}
+
 function renderFounderPipeline() {
   const stages = ['Gecontacteerd', 'Geïnteresseerd', 'Beslissing'];
+  // urgency thresholds per stage (days)
+  const thresholds = { 'Gecontacteerd': 5, 'Geïnteresseerd': 3, 'Beslissing': 2 };
   stages.forEach((stage, idx) => {
     const cards = founderState.pipeline.filter(p => p.fase === stage);
     document.getElementById('pipe-count-' + idx).textContent = cards.length;
     const body = document.getElementById('pipe-col-' + idx);
-    body.innerHTML = cards.map(p =>
-      '<div class="founder-card" onclick="openPipeModal(\'' + escHtml(p.id) + '\')">' +
-      '<div class="founder-card-name">' + escHtml(p.naam || p.bedrijf || '—') + '</div>' +
-      (p.bedrijf && p.naam ? '<div class="founder-card-meta">' + escHtml(p.bedrijf) + '</div>' : '') +
-      (p.email ? '<div class="founder-card-meta">' + escHtml(p.email) + '</div>' : '') +
-      '</div>'
-    ).join('');
+    body.innerHTML = cards.map(p => {
+      const days = cardAgeDays(p.aangemaakt);
+      const thresh = thresholds[stage] || 5;
+      var ageClass = days >= thresh * 2 ? 'age-critical' : days >= thresh ? 'age-warning' : 'age-ok';
+      var ageLabel = days === 0 ? 'Vandaag' : days + (days === 1 ? ' dag' : ' dagen');
+      var urgent = days >= thresh ? ' has-urgent' : '';
+      return '<div class="founder-card' + urgent + '" onclick="openPipeModal(\'' + escHtml(p.id) + '\')">' +
+        '<div class="founder-card-name">' + escHtml(p.naam || p.bedrijf || '—') + '</div>' +
+        (p.bedrijf && p.naam ? '<div class="founder-card-meta">' + escHtml(p.bedrijf) + '</div>' : '') +
+        (p.email ? '<div class="founder-card-meta">' + escHtml(p.email) + '</div>' : '') +
+        '<span class="founder-card-age ' + ageClass + '">' + ageLabel + '</span>' +
+      '</div>';
+    }).join('');
   });
   const won  = founderState.pipeline.filter(p => p.fase === 'Gewonnen').length;
   const lost = founderState.pipeline.filter(p => p.fase === 'Verloren').length;
   document.getElementById('pipe-won-badge').textContent  = '✓ ' + won  + ' Gewonnen';
   document.getElementById('pipe-lost-badge').textContent = '✗ ' + lost + ' Verloren';
   renderPipeMini();
+  renderFollowUpAlerts();
+  updateMrrWidget();
+  populateDmDropdown();
+}
+
+function renderFollowUpAlerts() {
+  var thresholds = { 'Gecontacteerd': 5, 'Geïnteresseerd': 3, 'Beslissing': 2 };
+  var faseIdx    = { 'Gecontacteerd': 'f0', 'Geïnteresseerd': 'f1', 'Beslissing': 'f2' };
+  var urgent = founderState.pipeline
+    .filter(function(p) { return thresholds[p.fase] && cardAgeDays(p.aangemaakt) >= thresholds[p.fase]; })
+    .sort(function(a, b) {
+      var ta = thresholds[a.fase] || 99, tb = thresholds[b.fase] || 99;
+      return ta - tb || cardAgeDays(b.aangemaakt) - cardAgeDays(a.aangemaakt);
+    });
+
+  var section = document.getElementById('fdr-followup-section');
+  var list    = document.getElementById('fdr-followup-list');
+  var count   = document.getElementById('fdr-followup-count');
+  if (!section || !list) return;
+
+  if (!urgent.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  if (count) count.textContent = urgent.length + ' prospect' + (urgent.length > 1 ? 's' : '') + ' wachten op actie';
+
+  list.innerHTML = urgent.map(function(p) {
+    var days   = cardAgeDays(p.aangemaakt);
+    var thresh = thresholds[p.fase] || 5;
+    var cls    = days >= thresh * 2 ? 'critical' : 'warning';
+    var fi     = faseIdx[p.fase] || 'f0';
+    return '<div class="fdr-followup-item ' + cls + '" onclick="openPipeModal(\'' + escHtml(p.id) + '\')">' +
+      '<div class="fdr-followup-name">' + escHtml(p.naam || p.bedrijf || '—') + (p.bedrijf && p.naam ? ' <span style="font-weight:400;color:var(--text-muted)">— ' + escHtml(p.bedrijf) + '</span>' : '') + '</div>' +
+      '<span class="fdr-followup-fase ' + fi + '">' + escHtml(p.fase) + '</span>' +
+      '<span class="fdr-followup-days">' + days + 'd</span>' +
+    '</div>';
+  }).join('');
+}
+
+function updateMrrWidget() {
+  var avgMrr = 249;
+  var won = founderState.pipeline.filter(function(p) { return p.fase === 'Gewonnen'; }).length;
+  var clients = founderState.clients || 0;
+  var total   = Math.max(won, clients);
+  var mrr     = total * avgMrr;
+  var valEl   = document.getElementById('fdr-mrr-val');
+  var subEl   = document.getElementById('fdr-mrr-sub');
+  if (valEl) valEl.textContent = '€' + mrr.toLocaleString('nl-BE');
+  if (subEl) subEl.textContent = total + ' betalende klant' + (total === 1 ? '' : 'en');
+}
+
+function populateDmDropdown() {
+  var sel = document.getElementById('fdr-dm-prospect');
+  if (!sel) return;
+  var active = founderState.pipeline.filter(function(p) {
+    return p.fase !== 'Gewonnen' && p.fase !== 'Verloren';
+  }).sort(function(a, b) {
+    // sort by urgency: Beslissing first, then Geïnteresseerd, then Gecontacteerd
+    var order = { 'Beslissing': 0, 'Geïnteresseerd': 1, 'Gecontacteerd': 2 };
+    return (order[a.fase] || 9) - (order[b.fase] || 9);
+  });
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">Kies een prospect uit de pipeline...</option>' +
+    active.map(function(p) {
+      var label = escHtml((p.bedrijf || p.naam || '—') + ' — ' + p.fase);
+      return '<option value="' + escHtml(p.id) + '">' + label + '</option>';
+    }).join('');
+  if (cur) sel.value = cur;
+}
+
+// ── Personalized DM Generator ──────────────────────────────────────────────
+async function generateDm() {
+  var sel  = document.getElementById('fdr-dm-prospect');
+  var plt  = document.getElementById('fdr-dm-platform');
+  var btn  = document.getElementById('fdr-dm-btn');
+  var out  = document.getElementById('fdr-dm-output');
+  var emp  = document.getElementById('fdr-dm-empty');
+  var copy = document.getElementById('fdr-dm-copy');
+  if (!sel || !sel.value) { toast('Kies eerst een prospect', 'error'); return; }
+
+  var rec = founderState.pipeline.find(function(p) { return p.id === sel.value; });
+  if (!rec) return;
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Genereren...'; }
+  if (out) out.classList.remove('visible');
+  if (copy) copy.classList.remove('visible');
+
+  try {
+    var r = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({
+        mode: 'personalized-dm',
+        bedrijf:  rec.bedrijf || rec.naam,
+        sector:   rec.sector  || '',
+        fase:     rec.fase,
+        platform: plt ? plt.value : 'linkedin',
+        notities: rec.notities || '',
+        dagen:    cardAgeDays(rec.aangemaakt)
+      })
+    });
+    var d = await r.json();
+    if (!r.ok) { toast(d.error || 'Genereren mislukt', 'error'); }
+    else {
+      if (out) { out.textContent = d.message; out.classList.add('visible'); }
+      if (emp) emp.style.display = 'none';
+      if (copy) copy.classList.add('visible');
+    }
+  } catch (e) { toast('Netwerkfout', 'error'); }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Genereer';
+  }
+}
+
+function copyDm() {
+  var out = document.getElementById('fdr-dm-output');
+  if (!out || !out.textContent) return;
+  navigator.clipboard.writeText(out.textContent).then(function() {
+    toast('Bericht gekopieerd! 🎉', 'success');
+  }).catch(function() { toast('Kopiëren mislukt', 'error'); });
 }
 
 function renderFounderGoals() {

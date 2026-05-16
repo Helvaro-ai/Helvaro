@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
     const ADMIN_KEY    = process.env.ADMIN_KEY;
 
     // ── founder modes: pipeline + goals + AI advice (admin only) ────────────
-    const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice','ai-chat','linkedin-post'];
+    const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice','ai-chat','linkedin-post','content-post','personalized-dm'];
     if (FOUNDER_MODES.includes(body.mode)) {
       const fProvided = String(req.headers['x-api-key'] || '').trim();
       if (!isValidAdminToken(fProvided, ADMIN_KEY)) {
@@ -354,6 +354,60 @@ module.exports = async function handler(req, res) {
           if (!aiRes2.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData3?.error?.message || aiRes2.status) });
           const post = aiData3.content?.[0]?.text || '';
           return res.status(200).json({ post });
+        }
+
+        // ── personalized-dm ────────────────────────────────────────────────────
+        if (body.mode === 'personalized-dm') {
+          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const bedrijf  = String(body.bedrijf  || '').trim().slice(0, 100);
+          const sector   = String(body.sector   || '').trim().slice(0, 100);
+          const fase     = String(body.fase     || 'Gecontacteerd').trim();
+          const platform = String(body.platform || 'linkedin');
+          const notities = String(body.notities || '').trim().slice(0, 400);
+          const dagen    = Number(body.dagen    || 0);
+          if (!bedrijf) return res.status(400).json({ error: 'Bedrijfsnaam verplicht' });
+
+          const phaseCtx = {
+            'Gecontacteerd':  'Dit is de eerste outreach — wek nieuwsgierigheid zonder te pushen.',
+            'Geinteresseerd': 'Ze hebben interesse getoond. Leid naar een demo of gesprek.',
+            'Geïnteresseerd': 'Ze hebben interesse getoond. Leid naar een demo of gesprek.',
+            'Beslissing':     'Ze overwegen het actief. Neem de laatste twijfel weg en sluit af.'
+          };
+          const dayNote = dagen > 0 ? ' Ze zijn al ' + dagen + ' dag(en) in deze fase zonder update.' : '';
+
+          const emailPrompt = [
+            'Schrijf een cold email voor Helvaro aan ' + bedrijf + (sector ? ' (' + sector + ')' : '') + '.',
+            'Fase: ' + fase + '. ' + (phaseCtx[fase] || '') + dayNote,
+            (notities ? 'Extra info: ' + notities : ''),
+            '',
+            'Helvaro = Belgische AI: volgt leads op via WhatsApp binnen 30 sec, 24/7. Alleen warme afspraken in de agenda. Installatie 30 min.',
+            '',
+            'Schrijf EXACT in dit format:',
+            'Onderwerp: [max 8 woorden]',
+            '',
+            '[body — max 110 woorden, persoonlijk, 1 CTA, Nederlands]'
+          ].filter(Boolean).join('\n');
+
+          const linkedinPrompt = [
+            'Schrijf een LinkedIn DM voor Helvaro aan ' + bedrijf + (sector ? ' (' + sector + ')' : '') + '.',
+            'Fase: ' + fase + '. ' + (phaseCtx[fase] || '') + dayNote,
+            (notities ? 'Extra info: ' + notities : ''),
+            '',
+            'Helvaro = Belgische AI: volgt leads op via WhatsApp binnen 30 sec, 24/7. Alleen warme afspraken in de agenda.',
+            '',
+            'Eisen: max 5 zinnen, noem ' + bedrijf + ' bij naam, geen sales-pitch gevoel, eindig met 1 simpele vraag, Nederlands.'
+          ].filter(Boolean).join('\n');
+
+          const dmPrompt = platform === 'email' ? emailPrompt : linkedinPrompt;
+          const aiResDm = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 350, messages: [{ role: 'user', content: dmPrompt }] })
+          });
+          const aiDmData = await aiResDm.json();
+          if (!aiResDm.ok) return res.status(500).json({ error: 'AI fout: ' + (aiDmData?.error?.message || aiResDm.status) });
+          return res.status(200).json({ message: aiDmData.content?.[0]?.text || '' });
         }
 
       } catch (err) {
