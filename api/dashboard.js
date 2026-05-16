@@ -1406,6 +1406,46 @@ button.brand-dot { border: none; padding: 0; }
   .fdr-stats-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* LinkedIn post generator */
+.fdr-li-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-li-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-li-hdr-left { display: flex; align-items: center; gap: 10px; }
+.fdr-li-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0077b5, #00a0dc); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fdr-li-title { font-size: 14px; font-weight: 700; }
+.fdr-li-sector { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.fdr-li-actions { display: flex; gap: 8px; }
+.fdr-li-gen-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: linear-gradient(135deg, #0077b5, #00a0dc); border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+.fdr-li-gen-btn:hover:not(:disabled) { opacity: .88; }
+.fdr-li-gen-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fdr-li-body { padding: 16px 18px; }
+.fdr-li-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.75; color: var(--text-primary); white-space: pre-wrap; min-height: 80px; display: none; margin-bottom: 12px; }
+.fdr-li-output.visible { display: block; }
+.fdr-li-copy-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); display: none; }
+.fdr-li-copy-btn.visible { display: inline-flex; }
+.fdr-li-copy-btn:hover { background: rgba(99,102,241,.2); }
+.fdr-li-empty { padding: 20px 0; color: var(--text-muted); font-size: 13px; text-align: center; }
+
+/* AI Coach chat */
+.fdr-chat-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.fdr-chat-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.fdr-chat-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #818cf8); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+.fdr-chat-hdr-info {}
+.fdr-chat-hdr-name { font-size: 14px; font-weight: 700; }
+.fdr-chat-hdr-sub { font-size: 11px; color: var(--text-muted); }
+.fdr-chat-clear { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.fdr-chat-clear:hover { color: var(--text-primary); background: var(--bg-card-alt); }
+.fdr-chat-msgs { height: 280px; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.fdr-chat-bubble { max-width: 82%; padding: 9px 13px; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+.fdr-chat-bubble.assistant { background: var(--bg-card-alt); border: 1px solid var(--border); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 3px; }
+.fdr-chat-bubble.user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
+.fdr-chat-bubble.typing { opacity: .55; font-style: italic; }
+.fdr-chat-input-row { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); }
+.fdr-chat-input { flex: 1; padding: 9px 13px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; resize: none; height: 38px; overflow: hidden; }
+.fdr-chat-input:focus { border-color: var(--accent); }
+.fdr-chat-send { padding: 9px 16px; background: var(--accent); border: none; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: var(--transition); flex-shrink: 0; }
+.fdr-chat-send:hover:not(:disabled) { background: var(--accent-bright); }
+.fdr-chat-send:disabled { opacity: .5; cursor: not-allowed; }
+
 /* ============================================================
    SIDEBAR
    ============================================================ */
@@ -6261,6 +6301,56 @@ tr:hover .td-arrow { color: var(--cyan); }
           </button>
         </div>
 
+        <!-- LinkedIn Post Generator -->
+        <div class="fdr-li-box">
+          <div class="fdr-li-hdr">
+            <div class="fdr-li-hdr-left">
+              <div class="fdr-li-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+              </div>
+              <div>
+                <div class="fdr-li-title">LinkedIn Post van Vandaag</div>
+                <div class="fdr-li-sector" id="fdr-li-sector">—</div>
+              </div>
+            </div>
+            <div class="fdr-li-actions">
+              <button class="fdr-li-gen-btn" id="fdr-li-btn" onclick="generateLinkedInPost()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                Genereer post
+              </button>
+            </div>
+          </div>
+          <div class="fdr-li-body">
+            <div class="fdr-li-output" id="fdr-li-output"></div>
+            <div class="fdr-li-empty" id="fdr-li-empty">Klik op "Genereer post" om een LinkedIn post voor vandaag te maken — klaar om te kopiëren en te plaatsen.</div>
+            <button class="fdr-li-copy-btn" id="fdr-li-copy" onclick="copyLinkedInPost()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Kopieer naar klembord
+            </button>
+          </div>
+        </div>
+
+        <!-- AI Coach Chat -->
+        <div class="fdr-chat-box">
+          <div class="fdr-chat-hdr">
+            <div class="fdr-chat-avatar">🧠</div>
+            <div class="fdr-chat-hdr-info">
+              <div class="fdr-chat-hdr-name">Helvaro Coach</div>
+              <div class="fdr-chat-hdr-sub">Vraag me alles over strategie, sales of outreach</div>
+            </div>
+            <button class="fdr-chat-clear" onclick="clearCoachChat()">Wis chat</button>
+          </div>
+          <div class="fdr-chat-msgs" id="fdr-chat-msgs">
+            <div class="fdr-chat-bubble assistant">Dag! Ik ben je Helvaro business coach. Stel me een vraag over sales, outreach, demo's of strategie — ik geef je direct concrete stappen.</div>
+          </div>
+          <div class="fdr-chat-input-row">
+            <textarea class="fdr-chat-input" id="fdr-chat-input" placeholder="Stel een vraag..." rows="1" onkeydown="chatInputKeydown(event)"></textarea>
+            <button class="fdr-chat-send" id="fdr-chat-send" onclick="sendCoachMessage()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+
       </div>
     </main>
 
@@ -10554,10 +10644,12 @@ async function loadFounderData(force) {
     }
   } catch (e) { /* ignore */ }
 
-  // Header + checklist + goal panel
+  // Header + checklist + goal panel + chat + linkedin
   initFounderHeader();
   renderDailyChecklist();
   updateGoalPanel();
+  initLinkedInSection();
+  loadChatHistory();
 }
 
 function renderFounderPipeline() {
@@ -10883,6 +10975,159 @@ async function deleteGoalRecord() {
     await loadFounderData(true);
     toast('Verwijderd', 'success');
   } catch { toast('Netwerkfout', 'error'); }
+}
+
+// ── LinkedIn Post Generator ────────────────────────────────────────────────
+var LI_SECTOR_LABELS = {
+  1: 'Maandag — Marketingbureaus',
+  2: 'Dinsdag — Vastgoedkantoren',
+  3: 'Woensdag — Coaches & Consultants',
+  4: 'Donderdag — KMO\'s Gent/Antwerpen',
+  5: 'Vrijdag — Leadgeneratie'
+};
+
+function initLinkedInSection() {
+  var day = new Date().getDay();
+  var label = LI_SECTOR_LABELS[day] || 'Weekend';
+  var el = document.getElementById('fdr-li-sector');
+  if (el) el.textContent = label;
+
+  // Show cached post for today if available
+  var today = new Date().toISOString().slice(0, 10);
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem('hv-li-post') || 'null'); } catch (e) {}
+  if (cached && cached.date === today && cached.post) {
+    showLinkedInPost(cached.post);
+  }
+}
+
+function showLinkedInPost(text) {
+  var out = document.getElementById('fdr-li-output');
+  var empty = document.getElementById('fdr-li-empty');
+  var copy = document.getElementById('fdr-li-copy');
+  if (out) { out.textContent = text; out.classList.add('visible'); }
+  if (empty) empty.style.display = 'none';
+  if (copy) copy.classList.add('visible');
+}
+
+async function generateLinkedInPost() {
+  var btn = document.getElementById('fdr-li-btn');
+  var out = document.getElementById('fdr-li-output');
+  if (btn) { btn.disabled = true; btn.childNodes[btn.childNodes.length - 1].textContent = ' Genereren...'; }
+  if (out) out.classList.remove('visible');
+  var copy = document.getElementById('fdr-li-copy');
+  if (copy) copy.classList.remove('visible');
+
+  try {
+    var ctx = founderState._metrics || {};
+    var r = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'linkedin-post', context: ctx })
+    });
+    var d = await r.json();
+    if (!r.ok) { toast(d.error || 'Genereren mislukt', 'error'); }
+    else {
+      showLinkedInPost(d.post);
+      var today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('hv-li-post', JSON.stringify({ date: today, post: d.post }));
+    }
+  } catch (e) { toast('Netwerkfout', 'error'); }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Nieuwe versie';
+  }
+}
+
+function copyLinkedInPost() {
+  var out = document.getElementById('fdr-li-output');
+  if (!out || !out.textContent) return;
+  navigator.clipboard.writeText(out.textContent).then(function() {
+    toast('Post gekopieerd!', 'success');
+  }).catch(function() {
+    toast('Kopiëren mislukt', 'error');
+  });
+}
+
+// ── AI Coach Chat ──────────────────────────────────────────────────────────
+var chatHistory = [];
+
+function loadChatHistory() {
+  try {
+    var raw = sessionStorage.getItem('hv-coach-chat');
+    if (raw) {
+      chatHistory = JSON.parse(raw) || [];
+      var msgsEl = document.getElementById('fdr-chat-msgs');
+      if (msgsEl && chatHistory.length) {
+        // Clear default welcome bubble only if we have real history
+        msgsEl.innerHTML = '';
+        chatHistory.forEach(function(m) { appendChatBubble(m.role, m.content, false); });
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      }
+    }
+  } catch (e) {}
+}
+
+function appendChatBubble(role, text, scroll) {
+  var msgsEl = document.getElementById('fdr-chat-msgs');
+  if (!msgsEl) return;
+  var div = document.createElement('div');
+  div.className = 'fdr-chat-bubble ' + role;
+  div.textContent = text;
+  msgsEl.appendChild(div);
+  if (scroll !== false) msgsEl.scrollTop = msgsEl.scrollHeight;
+  return div;
+}
+
+function chatInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCoachMessage(); }
+}
+
+async function sendCoachMessage() {
+  var input = document.getElementById('fdr-chat-input');
+  var sendBtn = document.getElementById('fdr-chat-send');
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  chatHistory.push({ role: 'user', content: text });
+  appendChatBubble('user', text);
+
+  var typingBubble = appendChatBubble('assistant', 'Aan het denken...', true);
+  if (typingBubble) typingBubble.classList.add('typing');
+  if (sendBtn) sendBtn.disabled = true;
+
+  try {
+    var r = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'ai-chat', messages: chatHistory.slice(-20) })
+    });
+    var d = await r.json();
+    if (typingBubble) typingBubble.remove();
+    if (!r.ok) {
+      appendChatBubble('assistant', 'Fout: ' + (d.error || 'Onbekende fout'));
+    } else {
+      chatHistory.push({ role: 'assistant', content: d.reply });
+      appendChatBubble('assistant', d.reply);
+      try { sessionStorage.setItem('hv-coach-chat', JSON.stringify(chatHistory.slice(-40))); } catch (e) {}
+    }
+  } catch (e) {
+    if (typingBubble) typingBubble.remove();
+    appendChatBubble('assistant', 'Netwerkfout — probeer opnieuw.');
+  }
+
+  if (sendBtn) sendBtn.disabled = false;
+  input.focus();
+}
+
+function clearCoachChat() {
+  chatHistory = [];
+  sessionStorage.removeItem('hv-coach-chat');
+  var msgsEl = document.getElementById('fdr-chat-msgs');
+  if (msgsEl) msgsEl.innerHTML = '<div class="fdr-chat-bubble assistant">Chat gewist. Hoe kan ik je helpen?</div>';
 }
 
 // ── AI Advice ─────────────────────────────────────────────────────────────

@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
     const ADMIN_KEY    = process.env.ADMIN_KEY;
 
     // ── founder modes: pipeline + goals + AI advice (admin only) ────────────
-    const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice'];
+    const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice','ai-chat','linkedin-post'];
     if (FOUNDER_MODES.includes(body.mode)) {
       const fProvided = String(req.headers['x-api-key'] || '').trim();
       if (!isValidAdminToken(fProvided, ADMIN_KEY)) {
@@ -221,6 +221,86 @@ module.exports = async function handler(req, res) {
           const advice = aiData.content?.[0]?.text || 'Geen advies beschikbaar.';
           return res.status(200).json({ advice });
         }
+
+        // ── ai-chat ────────────────────────────────────────────────────────────
+        if (body.mode === 'ai-chat') {
+          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const rawMsgs = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
+          const validMessages = rawMsgs
+            .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+            .map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) }));
+          if (!validMessages.length) return res.status(400).json({ error: 'Geen berichten' });
+
+          const systemPrompt = [
+            'Je bent een concrete business coach voor Helvaro, een Belgische AI-startup.',
+            '',
+            'Helvaro context:',
+            '- Product: AI qualificeert leads automatisch via WhatsApp en plant serieuze prospects in de Calendly agenda',
+            '- Founders: Frade (technisch) + Teljo (marketing/sales)',
+            '- Doel: 5 klanten met 3-maands contract voor 20 juni 2026 (35 dagen resterend)',
+            '- Doelgroep: marketingbureaus, vastgoedkantoren, coaches in Gent/Antwerpen',
+            '- Prospects: CNIP, Ants Agency, VICUS Vastgoed, Opex Consulting, Bureau 9000, Concordia, Nouchka Design, SilverLine Studio, Magelaan',
+            '- Prijzen: Starter €149/mnd, Groei €249/mnd, Agency €399/mnd (3 mnd contract)',
+            '',
+            'Geef altijd concrete, korte antwoorden in het Nederlands. Max 3 paragrafen. Doe aan actie, niet theorie.'
+          ].join('\n');
+
+          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 500, system: systemPrompt, messages: validMessages })
+          });
+          const aiData2 = await aiRes.json();
+          if (!aiRes.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData2?.error?.message || aiRes.status) });
+          const reply = aiData2.content?.[0]?.text || 'Geen antwoord beschikbaar.';
+          return res.status(200).json({ reply });
+        }
+
+        // ── linkedin-post ──────────────────────────────────────────────────────
+        if (body.mode === 'linkedin-post') {
+          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const day = new Date().getDay();
+          const sectors = {
+            1: 'marketingbureaus en digitale agencies',
+            2: 'vastgoedkantoren en immobureaus',
+            3: 'business coaches en consultants',
+            4: 'KMO\'s en ondernemers in Gent/Antwerpen',
+            5: 'ondernemers die meer willen halen uit hun leads'
+          };
+          const sector = sectors[day] || 'ondernemers die groeien via leadgeneratie';
+          const ctx = body.context || {};
+
+          const liPrompt = [
+            'Schrijf een LinkedIn post voor Helvaro gericht op ' + sector + '.',
+            '',
+            'Helvaro = Belgische AI die automatisch WhatsApp-gesprekken voert met leads: kwalificeert elke aanvraag, stelt de juiste vragen en plant alleen de serieuze prospects in de agenda. Installatie: 30 minuten.',
+            '',
+            'Eisen:',
+            '- 150-200 woorden',
+            '- Geen "Ik ben trots" of "Excited to announce" opening',
+            '- Begin met een concreet pijnpunt of scherpe vraag voor ' + sector,
+            '- Leg in 1-2 zinnen uit hoe Helvaro helpt',
+            '- Zachte CTA op het einde (stuur een DM, link in comments...)',
+            '- 3 relevante hashtags',
+            '- Menselijke, directe toon — geen buzzwords',
+            '- In het Nederlands',
+            '',
+            'Schrijf alleen de post zelf.'
+          ].join('\n');
+
+          const aiRes2 = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 500, messages: [{ role: 'user', content: liPrompt }] })
+          });
+          const aiData3 = await aiRes2.json();
+          if (!aiRes2.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData3?.error?.message || aiRes2.status) });
+          const post = aiData3.content?.[0]?.text || '';
+          return res.status(200).json({ post });
+        }
+
       } catch (err) {
         console.error('[admin] founder POST error:', err.message);
         return res.status(500).json({ error: 'Serverfout' });
