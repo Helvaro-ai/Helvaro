@@ -10169,30 +10169,13 @@ async function startDashboard(skipRefresh = false) {
     }
   }
 
-  // Start presence heartbeat — so YOU show up online on the Founder dashboard too
+  // Start presence heartbeat — so the standalone Founder dashboard can show
+  // who's currently logged in on app.helvaro.pro.
   startPresencePing();
 
-  // Detect admin key by trying the admin endpoint
-  let isAdmin = false;
-  try {
-    const r = await fetch(\`\${API_BASE}/admin\`, { headers: { 'x-api-key': state.apiKey } });
-    if (r.ok) {
-      isAdmin = true;
-      // Admin nav stays HIDDEN — admin functionality moved to Founder dashboard.
-      const founderNav = document.getElementById('nav-founder');
-      if (founderNav) founderNav.style.display = '';
-    }
-  } catch { /* not admin */ }
-
-  // Admin/founder users: ask "Wie ben je?" (once), then land on Founder page
-  if (isAdmin) {
-    if (!getPersona()) showPersonaPicker();
-    // Auto-navigate to founder on first load (only if user hasn't navigated yet)
-    if (!state._navigatedOnce) {
-      state._navigatedOnce = true;
-      setTimeout(() => navigateTo('founder'), 50);
-    }
-  }
+  // app.helvaro.pro is now CLIENT-ONLY: admin & founder nav stay hidden,
+  // even for admin-key logins. Admin/founder workflows live on the separate
+  // founderyou.pages.dev dashboard.
   // skipRefresh=true when init() already fetched leads — avoid a second Airtable call
   await refreshData(skipRefresh);
 }
