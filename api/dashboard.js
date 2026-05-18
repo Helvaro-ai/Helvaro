@@ -11829,8 +11829,14 @@ document.getElementById('goal-modal-overlay').addEventListener('click', function
 (async function init() {
   initTheme();
 
-  // Auto-login from onboarding link: ?welcome=APIKEY&name=NAME&project=CODE
+  // ?reset — wis sessie en toon login (escape hatch voor geblokkeerde sessies)
   const _initParams = new URLSearchParams(window.location.search);
+  if (_initParams.get('reset') !== null) {
+    clearSession();
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // Auto-login from onboarding link: ?welcome=APIKEY&name=NAME&project=CODE
   const _welcomeKey = _initParams.get('welcome');
   if (_welcomeKey) {
     const _wName    = decodeURIComponent(_initParams.get('name')    || '');
@@ -12122,7 +12128,7 @@ function addBouwItem() {
 </body>
 </html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
