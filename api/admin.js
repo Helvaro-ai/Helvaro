@@ -57,6 +57,35 @@ function generateApiKey() {
   return crypto.randomBytes(24).toString('base64url').slice(0, 32);
 }
 
+// Strip dashes (em/en/regular as zin-verbinder) and any euro pricing that
+// leaked past the prompt's "no prices, no dashes" instruction. Last-line
+// defense — the AI usually obeys but this guarantees the contract.
+function scrubPost(text) {
+  if (!text) return '';
+  let t = String(text);
+
+  // 1. Dashes as zinsverbinder: " — ", " – ", " - " between words/phrases
+  //    Replace with ". " or ", " depending on what follows.
+  //    Keep dashes inside hashtags, URLs, and dates (1-2 digits-1-2 digits).
+  t = t.replace(/\s+[—–]\s+/g, '. ');                  // em/en dash with spaces
+  t = t.replace(/([a-zà-ÿ])\s-\s([a-zà-ÿ])/gi, '$1, $2'); // " - " between words
+  t = t.replace(/^[—–-]\s+/gm, '');                    // leading dash on a line
+
+  // 2. Euro prices anywhere: €149, € 149, 149€, 149 euro, "vanaf X euro/maand",
+  //    "€X per maand", any number followed by "/mnd" or "/maand" if it follows €.
+  //    Replace whole sentences that contain pricing with an empty string and
+  //    collapse double newlines.
+  t = t.split('\n').filter(line => {
+    const hasEuroPrice = /(€\s?\d|[\d.,]+\s?€|\b\d{2,4}\s?(?:euro|eur)\b|vanaf\s?€?\s?\d|\b\d+\s?\/\s?(?:mnd|maand|month))/i.test(line);
+    return !hasEuroPrice;
+  }).join('\n');
+
+  // 3. Collapse triple+ blank lines that the filter might create.
+  t = t.replace(/\n{3,}/g, '\n\n').trim();
+
+  return t;
+}
+
 module.exports = async function handler(req, res) {
   // Allow the Helvaro app, the legacy Netlify Founder site, and any Cloudflare
   // Pages (*.pages.dev) or Workers (*.workers.dev) preview the founder team
@@ -349,40 +378,52 @@ module.exports = async function handler(req, res) {
           };
           const sector = String(body.sector || daySectors[day] || 'ondernemers die groeien via leadgeneratie');
 
-          // Helvaro brand facts — concrete, no fluff
+          // Helvaro brand facts — concrete, no fluff, NO PRICING.
+          // Pricing on social posts attracts the wrong buyer and weakens the
+          // pain hook. We sell on outcome (deals saved), not on a price tag.
           const brandFacts = [
             'Helvaro: Belgische AI startup, Gent. Opgericht door Frade (tech) en Teljo (sales).',
             'Wat het doet: AI reageert automatisch op leads via WhatsApp, stelt kwalificatievragen, boekt alleen warme afspraken in de agenda.',
             'Cijfers die kloppen: binnen 30 seconden reactie, 24/7, klanten besparen gemiddeld 20+ uur per week, installatie in 30 minuten.',
-            'Prijs: vanaf €149/maand. 3 maanden contract, dan maandelijks opzegbaar.',
-            'Klantproblemen die we oplossen: leads die binnenkomen maar te laat worden opgebeld — concurrent is sneller. Salesperson verspilt tijd aan slechte leads. Geen reactie buiten kantooruren.',
-            'Sectoren: vastgoed, coaching, marketing bureaus, KMO\'s, consultants.'
+            'De pijn die we oplossen — dit moet centraal staan:',
+            '  • Lead komt binnen om 22u. Niemand belt. De volgende dag is hij al klant bij de concurrent. Deal weg.',
+            '  • Sales belt 50 leads per dag. 45 zijn rommel. De 5 echte? Op slechte momenten gemiste call, voicemail, geen reactie. Deal weg.',
+            '  • Hot lead vult formulier in. Reactie volgt 4 uur later. Lead is intussen afgeleid, op vakantie, of bij iemand anders. Deal weg.',
+            '  • Weekend: 12 formulieren ingevuld. Maandag 9u: 3 van die mensen al elders een afspraak. Deal weg.',
+            '  • Een gemiste deal van €5.000 betaalt een jaar Helvaro. Eén. Per. Jaar.',
+            'Sectoren: vastgoed, coaching, marketing bureaus, KMO\'s, consultants.',
+            'NOOIT vermelden in een post: prijs, bedrag, euro per maand, "vanaf X euro". Geld komt pas ter sprake in DMs.'
           ].join('\n');
 
-          // Type-specific angle
+          // Type-specific angle — every angle leans on a missed-deal moment.
           const typeAngles = {
-            pijnpunt:    'Vertel over het moment dat een lead verloren gaat omdat niemand snel genoeg reageerde. Maak het concreet — een specifiek scenario. Geen abstracte taal.',
-            feature:     'Toon hoe de WhatsApp AI werkt in de praktijk: lead vult formulier in → 30 seconden later krijgt hij WhatsApp → AI stelt vragen → warme afspraak boekt zichzelf. Stap voor stap.',
-            resultaat:   'Focus op één concreet resultaat dat een klant of prospect herkent: minder tijdverlies, meer kwalitatieve gesprekken, nooit meer een lead missen buiten kantooruren. Gebruik een voor/na of een specifiek getal.',
-            vergelijking:'Klassieke aanpak vs Helvaro — geen buzzwords, gewoon eerlijk vergelijken. Wat kost het de oude manier? Wat levert de nieuwe op? Mensen, tijd, kansen.',
-            founder:     'Schrijf als Teljo — je bent 20-iets, Gent, je zag dit probleem bij bedrijven en besloot er iets aan te doen samen met je compagnon Frade die de tech bouwt. Eerlijk, licht kwetsbaar, geen hype.',
-            update:      'Kort kijkje achter de schermen: wat er deze week gebouwd/geleerd/gefaald is bij Helvaro. Eerlijk startup-update, niet een persbericht. Mag kort zijn.'
+            pijnpunt:    'Vertel concreet over een gemiste deal. Een echte situatie: tijdstip, klant, sector, bedrag. Niet abstract. "Vrijdag 21:47, een vastgoedlead voor een appartement van 280k. Niemand belde. Maandag was hij al ergens anders aan het tekenen." Maak de lezer zenuwachtig over hoeveel van die deals door ZIJN handen glippen.',
+            feature:     'Toon hoe de WhatsApp AI in de praktijk werkt zonder dat een lead ooit door de mazen valt. Lead vult formulier in, 30 seconden later krijgt hij WhatsApp, AI stelt 4 kwalificatievragen, warme afspraak boekt zichzelf. Stap voor stap, in concrete tijdstippen.',
+            resultaat:   'Eén concrete, herkenbare uitkomst: nooit meer een lead missen buiten kantooruren, zelfs niet om 23u op zondag. Gebruik een voor/na of een specifiek getal van een klant. Verwijs naar de pijn die WEG is, niet naar features.',
+            vergelijking:'Klassieke aanpak versus Helvaro. Geen buzzwords, eerlijk de cijfers naast elkaar leggen: leads per maand binnen, reactiesnelheid, conversie, gemiste deals, uren per week verloren. Verlies van deals is de cruciale rij.',
+            founder:     'Schrijf als Teljo. 20-iets, Gent. Je zag bedrijven keer op keer dezelfde fout maken: leads kwamen binnen en niemand belde op tijd. Je was die persoon zelf ook. Frade bouwt de tech, jij verkoopt het. Eerlijk, licht kwetsbaar, geen hype, geen prijslijst.',
+            update:      'Kort kijkje achter de schermen: wat er deze week is gebouwd, geleerd of mislukt bij Helvaro. Eerlijke startup update. Geen persbericht.'
           };
           const typeAngle = typeAngles[contentType] || typeAngles.pijnpunt;
 
           // SYSTEM: persona + strict format rules
           const liSystemPrompt = [
-            'Je bent Teljo, 22 jaar, co-founder van Helvaro in Gent. Je schrijft LinkedIn posts zoals een echte ondernemer — direct, concreet, geen AI-taal.',
+            'Je bent Teljo, 22 jaar, co-founder van Helvaro in Gent. Je schrijft LinkedIn posts zoals een echte ondernemer. Direct, concreet, geen AI-taal.',
             '',
-            'ABSOLUTE VERBODEN (gebruik ze nooit):',
-            '"In de snel veranderende wereld", "Excited to announce", "Trots om te delen", "Game-changer", "Revolutionair", "Naadloos", "Robuust", "Innovatief", "Leverage", "In het digitale tijdperk", "Als we eerlijk zijn" als opener, "The future of", "Disruptief".',
+            'ABSOLUTE VERBODEN — gebruik deze NOOIT:',
+            'Woorden: "In de snel veranderende wereld", "Excited to announce", "Trots om te delen", "Game-changer", "Revolutionair", "Naadloos", "Robuust", "Innovatief", "Leverage", "In het digitale tijdperk", "Als we eerlijk zijn" als opener, "The future of", "Disruptief".',
+            'Leestekens: GEEN em-dashes (—), GEEN en-dashes (–), GEEN gewone "-" dashes als zinsverbinder. Gebruik in plaats daarvan een komma, een punt, of een nieuwe lijn. Dashes maken een post AI-achtig.',
+            'Prijzen: NOOIT een prijs, bedrag, "vanaf X euro", "€X/maand", maandelijkse kost, of welk getal dan ook gevolgd door €. Geen pricing in posts. Punt.',
             'Geen opsomming van 5+ punten achter elkaar. Geen alinea\'s langer dan 2 zinnen.',
             '',
+            'CONTENT-EIS — DE POST MOET PIJN VOELBAAR MAKEN:',
+            'Werk altijd met een concreet voorbeeld van een GEMISTE DEAL. Tijdstip, sector, bedrag van de deal, wat er fout ging. De lezer moet denken: "shit, dat gebeurt bij mij ook." Vermijd algemeenheden.',
+            '',
             'VERPLICHT FORMAT voor LinkedIn:',
-            'Lijn 1: de haak. Max 10 woorden. Dit is alles wat mensen zien vóór "...meer weergeven". Maak het raak — een statement, een getal, een vraag die doet nadenken.',
+            'Lijn 1: de haak. Max 10 woorden. Dit is alles wat mensen zien voor "...meer weergeven". Maak het raak: een statement, een getal, een vraag die doet nadenken.',
             '[lege lijn]',
             'Dan: 4-6 blokken van max 2 zinnen, telkens gescheiden door een lege lijn.',
-            'Gebruik → voor lijsten (max 3-4 items). Nooit •.',
+            'Gebruik > voor lijsten (max 3-4 items). Nooit • en nooit ─.',
             'Eindig met 1 concrete vraag OF een zachte CTA (DM sturen, reageer hieronder).',
             '[lege lijn]',
             'Max 3 hashtags. Punt.',
@@ -391,12 +432,17 @@ module.exports = async function handler(req, res) {
           ].join('\n');
 
           const igSystemPrompt = [
-            'Je bent Teljo, co-founder van Helvaro. Je schrijft Instagram captions die klinken als een echte jonge Belgische ondernemer — niet als een social media manager.',
+            'Je bent Teljo, co-founder van Helvaro. Je schrijft Instagram captions die klinken als een echte jonge Belgische ondernemer. Niet als een social media manager.',
             '',
-            'VERBODEN: corporate taal, emoji-spam (max 5 totaal), lange alinea\'s, AI-zinnen.',
+            'ABSOLUTE VERBODEN:',
+            'Corporate taal. Emoji-spam (max 5 totaal). Lange alinea\'s. AI-zinnen.',
+            'GEEN dashes: geen em-dash (—), geen en-dash (–), geen "-" als zinsverbinder. Vervang door komma, punt of nieuwe lijn.',
+            'GEEN prijzen, bedragen, "€X/maand" of welke kost dan ook. Pricing hoort niet in een post.',
+            '',
+            'CONTENT-EIS: maak de pijn van een gemiste deal voelbaar in concrete termen. Tijdstip, sector, bedrag van de deal die verdween. Niet abstract.',
             '',
             'FORMAT:',
-            'Lijn 1: hook met 1 emoji (max 10 woorden, wat mensen zien vóór "...meer")',
+            'Lijn 1: hook met 1 emoji (max 10 woorden, wat mensen zien voor "...meer")',
             '[lege lijn]',
             '2-3 korte blokken (telkens max 2 zinnen, lege lijn ertussen)',
             '3 voordelen als lijst: elk met emoji en max 7 woorden',
@@ -444,7 +490,8 @@ module.exports = async function handler(req, res) {
           });
           const aiData3 = await aiRes2.json();
           if (!aiRes2.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData3?.error?.message || aiRes2.status) });
-          const post = aiData3.content?.[0]?.text || '';
+          let post = aiData3.content?.[0]?.text || '';
+          post = scrubPost(post);
           return res.status(200).json({ post });
         }
 
