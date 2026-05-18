@@ -59,12 +59,12 @@ function generateApiKey() {
 
 module.exports = async function handler(req, res) {
   // Allow the Helvaro app, the legacy Netlify Founder site, and any Cloudflare
-  // Pages / pages.dev preview the founder team spins up — exact-match only,
-  // never reflect arbitrary origins.
+  // Pages (*.pages.dev) or Workers (*.workers.dev) preview the founder team
+  // spins up — strict pattern match, never reflect arbitrary origins.
   const allowedOrigins = ['https://app.helvaro.pro', 'https://founderyou.netlify.app'];
   const origin = req.headers.origin || '';
-  const okCfPages = /^https:\/\/[a-z0-9-]+\.pages\.dev$/.test(origin);
-  const ok = allowedOrigins.includes(origin) || okCfPages;
+  const okCf = /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(pages|workers)\.dev$/.test(origin);
+  const ok = allowedOrigins.includes(origin) || okCf;
   res.setHeader('Access-Control-Allow-Origin', ok ? origin : 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');

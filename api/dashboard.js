@@ -6905,12 +6905,12 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="persona-choice" onclick="setPersona('Frade')">
             <div class="persona-avatar frade">F</div>
             <div class="persona-name">Frade</div>
-            <div class="persona-role">Sales &amp; outreach</div>
+            <div class="persona-role">Tech &amp; product</div>
           </div>
           <div class="persona-choice" onclick="setPersona('Teljo')">
             <div class="persona-avatar teljo">T</div>
             <div class="persona-name">Teljo</div>
-            <div class="persona-role">Tech &amp; product</div>
+            <div class="persona-role">Sales &amp; outreach</div>
           </div>
         </div>
       </div>
