@@ -11101,7 +11101,7 @@ function renderFounderPipeline() {
       var ageClass = days >= thresh * 2 ? 'age-critical' : days >= thresh ? 'age-warning' : 'age-ok';
       var ageLabel = days === 0 ? 'Vandaag' : days + (days === 1 ? ' dag' : ' dagen');
       var urgent = days >= thresh ? ' has-urgent' : '';
-      return '<div class="founder-card' + urgent + '" onclick="openPipeModal(\'' + escHtml(p.id) + '\')">' +
+      return '<div class="founder-card' + urgent + '" onclick="openPipeModal(\\'' + escHtml(p.id) + '\\')">' +
         '<div class="founder-card-name">' + escHtml(p.naam || p.bedrijf || '—') + '</div>' +
         (p.bedrijf && p.naam ? '<div class="founder-card-meta">' + escHtml(p.bedrijf) + '</div>' : '') +
         (p.email ? '<div class="founder-card-meta">' + escHtml(p.email) + '</div>' : '') +
@@ -11143,7 +11143,7 @@ function renderFollowUpAlerts() {
     var thresh = thresholds[p.fase] || 5;
     var cls    = days >= thresh * 2 ? 'critical' : 'warning';
     var fi     = faseIdx[p.fase] || 'f0';
-    return '<div class="fdr-followup-item ' + cls + '" onclick="openPipeModal(\'' + escHtml(p.id) + '\')">' +
+    return '<div class="fdr-followup-item ' + cls + '" onclick="openPipeModal(\\'' + escHtml(p.id) + '\\')">' +
       '<div class="fdr-followup-name">' + escHtml(p.naam || p.bedrijf || '—') + (p.bedrijf && p.naam ? ' <span style="font-weight:400;color:var(--text-muted)">— ' + escHtml(p.bedrijf) + '</span>' : '') + '</div>' +
       '<span class="fdr-followup-fase ' + fi + '">' + escHtml(p.fase) + '</span>' +
       '<span class="fdr-followup-days">' + days + 'd</span>' +
@@ -11276,7 +11276,7 @@ function renderFounderGoals() {
     const current = g.eenheid.toLowerCase().includes('klant') ? founderState.clients : 0;
     const pct     = g.target > 0 ? Math.min(100, Math.round(current / g.target * 100)) : 0;
     const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - today) / 86400000) : null;
-    return '<div class="founder-goal" onclick="openGoalModal(\'' + escHtml(g.id) + '\')" style="cursor:pointer">' +
+    return '<div class="founder-goal" onclick="openGoalModal(\\'' + escHtml(g.id) + '\\')" style="cursor:pointer">' +
       '<div class="founder-goal-top">' +
         '<div class="founder-goal-name">' + escHtml(g.doel) + '</div>' +
         '<div class="founder-goal-nums">' + current + ' / ' + g.target + ' ' + escHtml(g.eenheid) + '</div>' +
@@ -11576,7 +11576,7 @@ var HUB_DAY_LABELS = {
   1: 'Maandag — Marketingbureaus',
   2: 'Dinsdag — Vastgoed',
   3: 'Woensdag — Coaches & Consultants',
-  4: 'Donderdag — KMO\'s Gent/Antwerpen',
+  4: 'Donderdag — KMO\\'s Gent/Antwerpen',
   5: 'Vrijdag — Leadgeneratie',
   0: 'Weekend — Post voor maandag',
   6: 'Weekend — Post voor maandag'
