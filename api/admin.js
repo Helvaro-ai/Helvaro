@@ -90,6 +90,50 @@ module.exports = async function handler(req, res) {
     const ONBOARD_CODE = process.env.ONBOARD_CODE;
     const ADMIN_KEY    = process.env.ADMIN_KEY;
 
+    // ── test-email (admin only) ─────────────────────────────────────────────
+    // POST { mode: 'test-email', to?: 'address@x.com' }
+    // Sends a tiny test through Resend and returns the FULL Resend response
+    // (status + body) so you can see exactly why a send fails (e.g. domain
+    // not verified, invalid key, etc.) without digging through logs.
+    if (body.mode === 'test-email') {
+      const tProvided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(tProvided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const RESEND_KEY = process.env.RESEND_API_KEY;
+      if (!RESEND_KEY) return res.status(200).json({ ok: false, reason: 'RESEND_API_KEY env var not set on Vercel' });
+      const to   = String(body.to || process.env.NOTIFY_EMAIL || '').trim();
+      if (!to)   return res.status(200).json({ ok: false, reason: 'No "to" address — pass {"to":"..."} or set NOTIFY_EMAIL env var' });
+      const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+      try {
+        const r = await fetch('https://api.resend.com/emails', {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            from, to: [to],
+            subject: 'Helvaro Resend test — ' + new Date().toISOString().slice(0, 16),
+            html:    '<p>If you can read this, Resend works. From: <code>' + escHtml(from) + '</code></p>'
+          })
+        });
+        const txt = await r.text().catch(() => '');
+        let data; try { data = JSON.parse(txt); } catch { data = txt; }
+        return res.status(200).json({
+          ok:           r.ok,
+          status:       r.status,
+          from,
+          to,
+          resendBody:   data,
+          envSet: {
+            RESEND_API_KEY: !!process.env.RESEND_API_KEY,
+            RESEND_FROM:    !!process.env.RESEND_FROM,
+            NOTIFY_EMAIL:   !!process.env.NOTIFY_EMAIL
+          }
+        });
+      } catch (err) {
+        return res.status(200).json({ ok: false, reason: 'network error', error: err && err.message });
+      }
+    }
+
     // ── presence-ping (any logged-in user) ──────────────────────────────────
     // Lightweight heartbeat: stores apiKey hash + clientName in module map.
     // Used by founder dashboard to show "online now" dots for each client.
@@ -668,12 +712,15 @@ module.exports = async function handler(req, res) {
 
 async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) return;
-  await fetch('https://api.resend.com/emails', {
+  if (!RESEND_KEY) { console.warn('[resend welcome] skipped: RESEND_API_KEY missing'); return; }
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  let r;
+  try {
+  r = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from:    'Helvaro <noreply@helvaro.pro>',
+      from:    FROM,
       to:      [email],
       subject: `Welkom bij Helvaro — uw account is klaar`,
       html: `
@@ -702,17 +749,27 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
         </div>`
     })
   });
+  if (!r.ok) {
+    const body = await r.text().catch(() => '');
+    console.error('[resend welcome] failed', r.status, body.slice(0, 400));
+  }
+  } catch (err) {
+    console.error('[resend welcome] network error:', err && err.message);
+  }
 }
 
 async function sendInviteEmail({ toEmail, toName, inviteLink }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) return;
+  if (!RESEND_KEY) { console.warn('[resend invite] skipped: RESEND_API_KEY missing'); return; }
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
   const greeting = toName ? `Hallo ${escHtml(toName)}` : 'Hallo';
-  await fetch('https://api.resend.com/emails', {
+  let r;
+  try {
+  r = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from:    'Helvaro <noreply@helvaro.pro>',
+      from:    FROM,
       to:      [toEmail],
       subject: 'U bent uitgenodigd voor Helvaro',
       html: `
@@ -737,4 +794,11 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
         </div>`
     })
   });
+  if (!r.ok) {
+    const body = await r.text().catch(() => '');
+    console.error('[resend invite] failed', r.status, body.slice(0, 400));
+  }
+  } catch (err) {
+    console.error('[resend invite] network error:', err && err.message);
+  }
 }

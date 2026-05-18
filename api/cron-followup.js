@@ -114,12 +114,22 @@ module.exports = async function handler(req, res) {
 async function sendResendEmail({ subject, html }) {
   const key = process.env.RESEND_API_KEY;
   const addr = process.env.NOTIFY_EMAIL;
-  if (!key || !addr) return;
-  await fetch('https://api.resend.com/emails', {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ from: 'Helvaro <noreply@helvaro.pro>', to: [addr], subject, html })
-  });
+  if (!key)  { console.warn('[resend cron] skipped: RESEND_API_KEY missing'); return; }
+  if (!addr) { console.warn('[resend cron] skipped: NOTIFY_EMAIL missing');   return; }
+  const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ from, to: [addr], subject, html })
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      console.error('[resend cron] failed', r.status, body.slice(0, 400));
+    }
+  } catch (err) {
+    console.error('[resend cron] network error:', err && err.message);
+  }
 }
 
 function sendWA(to, message, phoneNumberId, token) {

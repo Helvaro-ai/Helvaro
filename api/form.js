@@ -193,13 +193,15 @@ function escEmail(s) {
 async function sendEmailNotification({ name, phone, project_code, bron, clientName }) {
   const RESEND_KEY   = process.env.RESEND_API_KEY;
   const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL;
-  if (!RESEND_KEY || !NOTIFY_EMAIL) return;
-
-  await fetch('https://api.resend.com/emails', {
+  if (!RESEND_KEY)   { console.warn('[resend form] skipped: RESEND_API_KEY missing'); return; }
+  if (!NOTIFY_EMAIL) { console.warn('[resend form] skipped: NOTIFY_EMAIL missing');   return; }
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  try {
+  const r = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from:    'Helvaro <noreply@helvaro.pro>',
+      from:    FROM,
       to:      [NOTIFY_EMAIL],
       subject: `Nieuwe lead — ${name} (${project_code})`,
       html:    `
@@ -214,7 +216,14 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
           <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
         </div>`
     })
-  }).catch(err => console.error('[form] E-mail notificatie mislukt:', err.message));
+  });
+  if (!r.ok) {
+    const body = await r.text().catch(() => '');
+    console.error('[resend form] failed', r.status, body.slice(0, 400));
+  }
+  } catch (err) {
+    console.error('[resend form] network error:', err && err.message);
+  }
 }
 
 async function sendWA(to, message) {

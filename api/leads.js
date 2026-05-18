@@ -430,10 +430,20 @@ function escHtml(s) {
 async function sendResendEmail({ subject, html }) {
   const key  = process.env.RESEND_API_KEY;
   const to   = process.env.NOTIFY_EMAIL;
-  if (!key || !to) return;
-  await fetch('https://api.resend.com/emails', {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ from: 'Helvaro <noreply@helvaro.pro>', to: [to], subject, html })
-  });
+  if (!key) { console.warn('[resend leads] skipped: RESEND_API_KEY missing'); return; }
+  if (!to)  { console.warn('[resend leads] skipped: NOTIFY_EMAIL missing');   return; }
+  const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ from, to: [to], subject, html })
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      console.error('[resend leads] failed', r.status, body.slice(0, 400));
+    }
+  } catch (err) {
+    console.error('[resend leads] network error:', err && err.message);
+  }
 }
