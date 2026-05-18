@@ -369,30 +369,58 @@ module.exports = async function handler(req, res) {
           const platform   = String(body.platform   || 'linkedin');
           const contentType = String(body.contentType || 'pijnpunt');
           const day = new Date().getDay();
+          // Day-sector rotation, aligned with the actual target sectors on
+          // helvaro.pro (insurance, real estate, recruitment, B2B SaaS,
+          // coaching, automotive).
           const daySectors = {
-            1: 'marketingbureaus en digitale agencies',
-            2: 'vastgoedkantoren en immobureaus',
-            3: 'business coaches en consultants',
-            4: 'KMO\'s en ondernemers in Gent/Antwerpen',
-            5: 'salesteams die groeien via leadgeneratie'
+            1: 'verzekeringskantoren en independent makelaars',
+            2: 'vastgoedkantoren en immo-makelaars',
+            3: 'recruitment- en wervingsbureaus',
+            4: 'B2B SaaS bedrijven met inkomende demo-aanvragen',
+            5: 'business coaches en consultants',
+            6: 'autoverkopers en automotive bedrijven',
+            0: 'ondernemers die groeien via leadgeneratie'
           };
-          const sector = String(body.sector || daySectors[day] || 'ondernemers die groeien via leadgeneratie');
+          const sector = String(body.sector || daySectors[day] || 'B2B bedrijven met veel inkomende leads');
 
           // Helvaro brand facts — concrete, no fluff, NO PRICING.
           // Pricing on social posts attracts the wrong buyer and weakens the
-          // pain hook. We sell on outcome (deals saved), not on a price tag.
+          // pain hook. Sell on outcome (deals saved), not on a tag.
+          // Source for the product facts: helvaro.pro
           const brandFacts = [
-            'Helvaro: Belgische AI startup, Gent. Opgericht door Frade (tech) en Teljo (sales).',
-            'Wat het doet: AI reageert automatisch op leads via WhatsApp, stelt kwalificatievragen, boekt alleen warme afspraken in de agenda.',
-            'Cijfers die kloppen: binnen 30 seconden reactie, 24/7, klanten besparen gemiddeld 20+ uur per week, installatie in 30 minuten.',
-            'De pijn die we oplossen — dit moet centraal staan:',
-            '  • Lead komt binnen om 22u. Niemand belt. De volgende dag is hij al klant bij de concurrent. Deal weg.',
-            '  • Sales belt 50 leads per dag. 45 zijn rommel. De 5 echte? Op slechte momenten gemiste call, voicemail, geen reactie. Deal weg.',
-            '  • Hot lead vult formulier in. Reactie volgt 4 uur later. Lead is intussen afgeleid, op vakantie, of bij iemand anders. Deal weg.',
-            '  • Weekend: 12 formulieren ingevuld. Maandag 9u: 3 van die mensen al elders een afspraak. Deal weg.',
-            '  • Een gemiste deal van €5.000 betaalt een jaar Helvaro. Eén. Per. Jaar.',
-            'Sectoren: vastgoed, coaching, marketing bureaus, KMO\'s, consultants.',
-            'NOOIT vermelden in een post: prijs, bedrag, euro per maand, "vanaf X euro". Geld komt pas ter sprake in DMs.'
+            'Helvaro: Belgische AI startup. Co-founders: Frade (tech) en Teljo (sales).',
+            '',
+            'Wat het doet (helvaro.pro):',
+            '  > AI-gestuurde sales follow-up via WhatsApp voor salesteams.',
+            '  > Kwalificeert leads automatisch (warm vs koud) en boekt afspraken zonder menselijke tussenkomst.',
+            '  > Integreert met elk bestaand CRM-systeem.',
+            '  > Real-time dashboard en wekelijkse e-mailrapporten met de cijfers die ertoe doen.',
+            '  > Aanpasbare workflows per klant.',
+            '',
+            'Cijfers die kloppen:',
+            '  > Reactie binnen 30 seconden, 24/7.',
+            '  > Klanten besparen gemiddeld 20+ uur per week op manuele opvolging.',
+            '  > SLA: response binnen 4 uur gegarandeerd.',
+            '  > Implementatie binnen 72 uur, niet maanden.',
+            '',
+            'Doelsectoren: verzekeringen, recruitment, automotive, B2B SaaS, vastgoed, coaching.',
+            '',
+            'De pijn die we oplossen, dit moet centraal staan in de post:',
+            '  > Leads die binnenkomen en in een onbeantwoorde inbox verdwijnen. Te laat opgevolgd is hetzelfde als nooit opgevolgd.',
+            '  > Sales spendeert dagen aan manuele follow-up via telefoon en mail. De echte gesprekken die opbrengen worden gemist.',
+            '  > 95% van de leads is koud. Tijd verspild aan rommel terwijl warme leads afkoelen.',
+            '  > Aanvragen \'s avonds, in het weekend, tijdens vakanties. Niemand reageert. Concurrent wel.',
+            '  > Geen zicht op welke prospects warm zijn. Geen rapportage, geen scoring, gewoon hopen.',
+            '  > Extra salesmensen aannemen om dat op te lossen kost handenvol geld en lost het niet op.',
+            '',
+            'Concrete gemiste-deal scenarios om uit te putten:',
+            '  > Vrijdag 22u, lead voor een woning van 280k komt binnen. Niemand belt. Maandag is hij elders aan het tekenen.',
+            '  > Recruiter krijgt 14 sollicitanten op een vacature. Tegen dat hij ze opbelt zijn de 3 sterke profielen al ergens anders in gesprek.',
+            '  > Verzekeringsmakelaar mist een aanvraag voor een hospitalisatieverzekering omdat het mailtje in spam belandde. Klant tekent online bij de eerste die wel reageerde.',
+            '  > Weekend: 12 demo-aanvragen op de B2B SaaS website. Maandag 9u: 3 zijn al in trial bij de concurrent.',
+            '  > Eén gemiste deal betaalt het Helvaro-budget van een heel jaar. Eén.',
+            '',
+            'NOOIT vermelden in een post: prijs, bedrag, euro per maand, "vanaf X". Geld hoort thuis in een DM, niet in een post.'
           ].join('\n');
 
           // Type-specific angle — every angle leans on a missed-deal moment.

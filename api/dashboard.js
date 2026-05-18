@@ -11713,13 +11713,13 @@ async function deleteGoalRecord() {
 var hubState = { platform: 'linkedin' };
 
 var HUB_DAY_LABELS = {
-  1: 'Maandag — Marketingbureaus',
-  2: 'Dinsdag — Vastgoed',
-  3: 'Woensdag — Coaches & Consultants',
-  4: 'Donderdag — KMO\\'s Gent/Antwerpen',
-  5: 'Vrijdag — Leadgeneratie',
-  0: 'Weekend — Post voor maandag',
-  6: 'Weekend — Post voor maandag'
+  1: 'Maandag · Verzekeringen',
+  2: 'Dinsdag · Vastgoed',
+  3: 'Woensdag · Recruitment',
+  4: 'Donderdag · B2B SaaS',
+  5: 'Vrijdag · Coaching',
+  6: 'Zaterdag · Automotive',
+  0: 'Zondag · Leadgeneratie'
 };
 
 function initLinkedInSection() {
