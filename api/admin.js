@@ -9,6 +9,17 @@ async function atFetch(url, opts) {
 
 // Rate limiter — 20 req / 60s per IP
 const _rl = new Map();
+
+// Presence map — apiKey (sha256 prefix) -> { ts, clientName }
+// Cleared on cold start; that's OK for "online now" semantics.
+const _presence = new Map();
+function _presenceKey(apiKey) {
+  return crypto.createHash('sha256').update(String(apiKey)).digest('hex').slice(0, 16);
+}
+function _gcPresence() {
+  const cutoff = Date.now() - 30 * 60_000; // 30 min — twice the "online" window
+  for (const [k, v] of _presence) if (v.ts < cutoff) _presence.delete(k);
+}
 function isRateLimited(ip) {
   const now = Date.now(), w = 60_000, max = 20;
   const hits = (_rl.get(ip) || []).filter(t => now - t < w);
@@ -73,6 +84,18 @@ module.exports = async function handler(req, res) {
 
     const ONBOARD_CODE = process.env.ONBOARD_CODE;
     const ADMIN_KEY    = process.env.ADMIN_KEY;
+
+    // ── presence-ping (any logged-in user) ──────────────────────────────────
+    // Lightweight heartbeat: stores apiKey hash + clientName in module map.
+    // Used by founder dashboard to show "online now" dots for each client.
+    if (body.mode === 'presence-ping') {
+      const ak = String(req.headers['x-api-key'] || '').trim();
+      if (!ak) return res.status(401).json({ error: 'apiKey required' });
+      const cn = String(body.clientName || '').trim().slice(0, 80);
+      _presence.set(_presenceKey(ak), { ts: Date.now(), clientName: cn });
+      if (_presence.size > 500) _gcPresence();
+      return res.status(200).json({ ok: true });
+    }
 
     // ── founder modes: pipeline + goals + AI advice (admin only) ────────────
     const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice','ai-chat','linkedin-post','content-post','personalized-dm'];
@@ -601,23 +624,33 @@ module.exports = async function handler(req, res) {
     }));
 
     const withStats = await Promise.all(clients.map(async c => {
-      if (!c.projectCode) return { ...c, totalLeads: 0, newLeads: 0, qualified: 0 };
+      const lastSeen = c.apiKey ? (_presence.get(_presenceKey(c.apiKey))?.ts || 0) : 0;
+      if (!c.projectCode) return { ...c, totalLeads: 0, newLeads: 0, qualified: 0, appointments: 0, firstLeadDate: '', lastSeen };
       try {
         const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(c.projectCode)}"`);
         const lRes = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&fields[]=fld8mkrEWcyq7mUip&fields[]=fld0hAZJ5wgaXrNTn&pageSize=100`,
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&fields[]=fld8mkrEWcyq7mUip&fields[]=fld0hAZJ5wgaXrNTn&fields[]=fldyIGNetqcSEkoaK&fields[]=fldR0r13EU4RwrtvH&pageSize=100`,
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
         );
         const lData   = await lRes.json();
         const records = lData.records || [];
+        // Oldest lead date = client's "first lead" timestamp (proxy for tenure start)
+        let firstLeadDate = '';
+        for (const rec of records) {
+          const d = rec.fields['fldR0r13EU4RwrtvH'] || '';
+          if (d && (!firstLeadDate || d < firstLeadDate)) firstLeadDate = d;
+        }
         return {
           ...c,
-          totalLeads: records.length,
-          newLeads:   records.filter(r => r.fields['fld8mkrEWcyq7mUip'] === 'new').length,
-          qualified:  records.filter(r => r.fields['fld0hAZJ5wgaXrNTn'] === true).length
+          totalLeads:    records.length,
+          newLeads:      records.filter(r => r.fields['fld8mkrEWcyq7mUip'] === 'new').length,
+          qualified:     records.filter(r => r.fields['fld0hAZJ5wgaXrNTn'] === true).length,
+          appointments:  records.filter(r => r.fields['fldyIGNetqcSEkoaK'] === true).length,
+          firstLeadDate,
+          lastSeen
         };
       } catch {
-        return { ...c, totalLeads: 0, newLeads: 0, qualified: 0 };
+        return { ...c, totalLeads: 0, newLeads: 0, qualified: 0, appointments: 0, firstLeadDate: '', lastSeen };
       }
     }));
 

@@ -1583,6 +1583,70 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-docs-cfg-input { flex: 1; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 7px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
 .fdr-docs-cfg-save { padding: 6px 14px; background: linear-gradient(135deg, #0369a1, #38bdf8); border: none; border-radius: 7px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
 
+/* ── Persona picker (Frade / Teljo) ─────────────────────────────────────── */
+#persona-overlay { position: fixed; inset: 0; background: rgba(8,12,20,.92); backdrop-filter: blur(10px); z-index: 1500; display: none; align-items: center; justify-content: center; }
+#persona-overlay.open { display: flex; }
+.persona-modal { width: min(440px, 92vw); background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.persona-modal h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.persona-modal p { margin: 0 0 22px; font-size: 13px; color: var(--text-muted); }
+.persona-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.persona-choice { cursor: pointer; background: var(--bg-card-alt); border: 2px solid var(--border); border-radius: 12px; padding: 18px 12px; transition: var(--transition); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.persona-choice:hover { border-color: var(--accent-bright); transform: translateY(-2px); background: rgba(99,102,241,.08); }
+.persona-avatar { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; }
+.persona-avatar.frade { background: linear-gradient(135deg, #6366f1, #818cf8); }
+.persona-avatar.teljo { background: linear-gradient(135deg, #14b8a6, #5eead4); }
+.persona-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.persona-role { font-size: 11px; color: var(--text-muted); }
+
+/* ── Live Klanten panel ─────────────────────────────────────────────────── */
+.fdr-live-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+.fdr-live-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); justify-content: space-between; }
+.fdr-live-hdr-left { display: flex; align-items: center; gap: 10px; }
+.fdr-live-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #4ade80); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fdr-live-title { font-size: 14px; font-weight: 700; }
+.fdr-live-sub { font-size: 11px; color: var(--text-muted); }
+.fdr-live-count { font-size: 11px; color: var(--text-muted); }
+.fdr-live-count .online-num { color: var(--green); font-weight: 700; }
+.fdr-live-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fdr-live-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); background: var(--bg-card-alt); }
+.fdr-live-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.fdr-live-table tr:last-child td { border-bottom: none; }
+.fdr-live-table tr:hover td { background: rgba(99,102,241,.04); }
+.fdr-live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.fdr-live-dot.online { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.7); animation: pulseDot 1.6s ease-in-out infinite; }
+.fdr-live-dot.offline { background: #4b5563; }
+@keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+.fdr-live-name { font-weight: 600; color: var(--text-primary); }
+.fdr-live-meta { font-size: 11px; color: var(--text-muted); }
+.fdr-live-stat { font-weight: 600; font-variant-numeric: tabular-nums; }
+.fdr-live-mrr { color: var(--green); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fdr-live-empty { padding: 32px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.fdr-live-mrr-input { width: 70px; padding: 4px 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.fdr-live-mrr-input:focus { outline: none; border-color: var(--accent-bright); }
+
+/* ── Meeting widget ─────────────────────────────────────────────────────── */
+.fdr-meeting-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px; }
+.fdr-meeting-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.fdr-meeting-icon { font-size: 16px; }
+.fdr-meeting-title { font-size: 13px; font-weight: 700; }
+.fdr-meeting-when { font-size: 18px; font-weight: 700; color: var(--accent-bright); margin: 4px 0; }
+.fdr-meeting-agenda { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.fdr-meeting-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.fdr-meeting-row input { flex: 1; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 7px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
+.fdr-meeting-row button { padding: 7px 12px; background: var(--accent-bright); border: none; border-radius: 7px; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+.fdr-meeting-empty { color: var(--text-muted); font-size: 12px; font-style: italic; }
+
+/* ── Persona greeting in hero ───────────────────────────────────────────── */
+.fdr-persona-greeting { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.fdr-persona-greeting strong { color: var(--accent-bright); }
+.fdr-persona-switch { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-left: 8px; }
+.fdr-persona-switch:hover { color: var(--text-primary); border-color: var(--border-bright); }
+
+/* ── Editable cost panel ────────────────────────────────────────────────── */
+.fdr-cost-edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; }
+.fdr-cost-edit-btn:hover { color: var(--accent-bright); }
+.fdr-cost-edit-input { width: 60px; padding: 2px 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 5px; color: var(--text-primary); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+
 /* AI Coach chat */
 .fdr-chat-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .fdr-chat-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
@@ -6339,6 +6403,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="fdr-day" id="fdr-dayname">—</div>
             <div class="fdr-date" id="fdr-date">—</div>
             <div class="fdr-subtitle">Helvaro — Roadmap naar 5 klanten</div>
+            <div class="fdr-persona-greeting" id="fdr-persona-greeting"></div>
           </div>
           <div class="fdr-hero-right">
             <div class="fdr-deadline-label">Deadline</div>
@@ -6404,8 +6469,8 @@ tr:hover .td-arrow { color: var(--cyan); }
               </div>
               <hr class="fdr-profit-divider">
               <div class="fdr-profit-rows">
-                <div class="fdr-profit-row"><span class="lbl">Vaste kosten</span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
-                <div class="fdr-profit-row"><span class="lbl">Variabele kosten</span><span class="val neg" id="fdr-cost-var">-€0</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Vaste kosten <button class="fdr-cost-edit-btn" onclick="editCost('fixed')" title="Bewerk">✎</button></span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Variabele kosten <button class="fdr-cost-edit-btn" onclick="editCost('variable')" title="Bewerk">✎</button></span><span class="val neg" id="fdr-cost-var">-€0</span></div>
                 <div class="fdr-profit-row total"><span class="lbl">Nettowinst</span><span class="val" id="fdr-profit-val">€0</span></div>
               </div>
               <div class="fdr-profit-marge" id="fdr-profit-marge">Marge: —%</div>
@@ -6757,6 +6822,56 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
         </div>
 
+        <!-- Live Klanten -->
+        <div class="fdr-live-box">
+          <div class="fdr-live-hdr">
+            <div class="fdr-live-hdr-left">
+              <div class="fdr-live-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+              </div>
+              <div>
+                <div class="fdr-live-title">Live Klanten</div>
+                <div class="fdr-live-sub">Online status, ancienniteit, leads &amp; afspraken per klant</div>
+              </div>
+            </div>
+            <div class="fdr-live-count" id="fdr-live-count">—</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="fdr-live-table" id="fdr-live-table">
+              <thead>
+                <tr>
+                  <th>Klant</th>
+                  <th>Status</th>
+                  <th>Bij ons</th>
+                  <th style="text-align:right">Leads</th>
+                  <th style="text-align:right">Afspraken</th>
+                  <th style="text-align:right">MRR</th>
+                </tr>
+              </thead>
+              <tbody id="fdr-live-tbody">
+                <tr><td colspan="6" class="fdr-live-empty">Laden...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Meeting met partner -->
+        <div class="fdr-meeting-box">
+          <div class="fdr-meeting-hdr">
+            <span class="fdr-meeting-icon">🤝</span>
+            <span class="fdr-meeting-title">Volgende meeting met partner</span>
+          </div>
+          <div id="fdr-meeting-display">
+            <div class="fdr-meeting-when" id="fdr-meeting-when">—</div>
+            <div class="fdr-meeting-agenda" id="fdr-meeting-agenda">Geen meeting gepland</div>
+          </div>
+          <div class="fdr-meeting-row">
+            <input type="datetime-local" id="fdr-meeting-date">
+            <input type="text" id="fdr-meeting-topic" placeholder="Agenda (bv. cijfers + sales review)">
+            <button onclick="saveMeeting()">Opslaan</button>
+          </div>
+        </div>
+
         <!-- AI Coach Chat -->
         <div class="fdr-chat-box">
           <div class="fdr-chat-hdr">
@@ -6780,6 +6895,26 @@ tr:hover .td-arrow { color: var(--cyan); }
 
       </div>
     </main>
+
+    <!-- Persona picker (Frade / Teljo) — shown right after login -->
+    <div id="persona-overlay">
+      <div class="persona-modal">
+        <h2>Wie ben je?</h2>
+        <p>Kies je profiel om je persoonlijke taken &amp; overzicht te zien.</p>
+        <div class="persona-choices">
+          <div class="persona-choice" onclick="setPersona('Frade')">
+            <div class="persona-avatar frade">F</div>
+            <div class="persona-name">Frade</div>
+            <div class="persona-role">Sales &amp; outreach</div>
+          </div>
+          <div class="persona-choice" onclick="setPersona('Teljo')">
+            <div class="persona-avatar teljo">T</div>
+            <div class="persona-name">Teljo</div>
+            <div class="persona-role">Tech &amp; product</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Pipeline Modal -->
     <div class="founder-modal-overlay" id="pipe-modal-overlay">
@@ -10034,16 +10169,30 @@ async function startDashboard(skipRefresh = false) {
     }
   }
 
+  // Start presence heartbeat — so YOU show up online on the Founder dashboard too
+  startPresencePing();
+
   // Detect admin key by trying the admin endpoint
+  let isAdmin = false;
   try {
     const r = await fetch(\`\${API_BASE}/admin\`, { headers: { 'x-api-key': state.apiKey } });
     if (r.ok) {
-      const adminNav = document.getElementById('nav-admin');
-      if (adminNav) adminNav.style.display = '';
+      isAdmin = true;
+      // Admin nav stays HIDDEN — admin functionality moved to Founder dashboard.
       const founderNav = document.getElementById('nav-founder');
       if (founderNav) founderNav.style.display = '';
     }
   } catch { /* not admin */ }
+
+  // Admin/founder users: ask "Wie ben je?" (once), then land on Founder page
+  if (isAdmin) {
+    if (!getPersona()) showPersonaPicker();
+    // Auto-navigate to founder on first load (only if user hasn't navigated yet)
+    if (!state._navigatedOnce) {
+      state._navigatedOnce = true;
+      setTimeout(() => navigateTo('founder'), 50);
+    }
+  }
   // skipRefresh=true when init() already fetched leads — avoid a second Airtable call
   await refreshData(skipRefresh);
 }
@@ -11047,6 +11196,8 @@ async function loadFounderData(force) {
       document.getElementById('f-stat-qual').textContent    = qualPct + '%';
       document.getElementById('f-stat-new').textContent     = newLeads;
       founderState._metrics = { clients: founderState.clients, leadsMonth: totalLeads, qualified: qualPct, newLeads };
+      founderState._clientList = clients;
+      renderLiveClients(clients);  // populate Live Klanten table + recompute MRR/profit
       updateGoalPanel();
     }
   } catch (e) { /* ignore */ }
@@ -11080,6 +11231,8 @@ async function loadFounderData(force) {
   initOutreachTracker();
   initBouwTracker();
   initDocsHub();
+  renderMeeting();
+  updatePersonaGreeting();
 }
 
 function cardAgeDays(aangemaakt) {
@@ -11364,10 +11517,14 @@ function renderDailyChecklist() {
   try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
   if (stored._date !== today) stored = { _date: today };
 
+  var persona = (typeof getPersona === 'function') ? getPersona() : '';
   el.innerHTML = tasks.map(function(t, i) {
     var done = stored['task-' + i] || false;
     var wieClass = t.wie === 'Frade' ? 'fdr-badge-frade' : (t.wie === 'Teljo' ? 'fdr-badge-teljo' : 'fdr-badge-beiden');
-    return '<label class="fdr-task-row' + (done ? ' fdr-task-done' : '') + '" for="fdr-cb-' + i + '">' +
+    // Dim tasks that aren't for the current persona (and aren't "beiden")
+    var mine = !persona || t.wie === 'Beiden' || t.wie === persona;
+    var dimStyle = mine ? '' : ' style="opacity:.45"';
+    return '<label class="fdr-task-row' + (done ? ' fdr-task-done' : '') + '"' + dimStyle + ' for="fdr-cb-' + i + '">' +
       '<input type="checkbox" id="fdr-cb-' + i + '"' + (done ? ' checked' : '') + ' onchange="toggleDailyTask(' + i + ')">' +
       '<div class="fdr-task-check-icon"></div>' +
       '<div class="fdr-task-body">' +
@@ -12123,6 +12280,212 @@ function addBouwItem() {
   saveBouwItems(items);
   input.value = '';
   renderBouwList();
+}
+
+// ── Persona (Frade / Teljo) ───────────────────────────────────────────────
+var PERSONA_KEY = 'hv-founder-user';
+function getPersona() {
+  try { return localStorage.getItem(PERSONA_KEY) || ''; } catch (e) { return ''; }
+}
+function setPersona(name) {
+  try { localStorage.setItem(PERSONA_KEY, name); } catch (e) {}
+  var ov = document.getElementById('persona-overlay');
+  if (ov) ov.classList.remove('open');
+  updatePersonaGreeting();
+  // Re-render checklist with personalized filter
+  if (typeof renderDailyChecklist === 'function') renderDailyChecklist();
+}
+function showPersonaPicker() {
+  var ov = document.getElementById('persona-overlay');
+  if (ov) ov.classList.add('open');
+}
+function clearPersona() {
+  try { localStorage.removeItem(PERSONA_KEY); } catch (e) {}
+  showPersonaPicker();
+}
+function updatePersonaGreeting() {
+  var el = document.getElementById('fdr-persona-greeting');
+  if (!el) return;
+  var p = getPersona();
+  if (!p) { el.innerHTML = ''; return; }
+  el.innerHTML = 'Welkom <strong>' + escHtml(p) + '</strong> — jouw taken zijn gemarkeerd. <button class="fdr-persona-switch" onclick="clearPersona()">wissel</button>';
+}
+
+// ── Live Klanten ──────────────────────────────────────────────────────────
+var MRR_KEY = 'hv-client-mrr-v1';
+function loadMrrMap() {
+  try { return JSON.parse(localStorage.getItem(MRR_KEY) || '{}'); } catch (e) { return {}; }
+}
+function saveMrrMap(map) {
+  try { localStorage.setItem(MRR_KEY, JSON.stringify(map)); } catch (e) {}
+}
+function setClientMrr(id, amount) {
+  var map = loadMrrMap();
+  var n = Number(amount) || 0;
+  if (n <= 0) delete map[id]; else map[id] = n;
+  saveMrrMap(map);
+  renderMrrTotalsFromMap();
+}
+function fmtEuro(n) {
+  return '€' + Math.round(n).toLocaleString('nl-BE');
+}
+function fmtTenure(firstLeadDate) {
+  if (!firstLeadDate) return '—';
+  var then = new Date(firstLeadDate);
+  if (isNaN(then.getTime())) return '—';
+  var months = Math.max(0, Math.floor((Date.now() - then.getTime()) / (30 * 86400000)));
+  if (months < 1) {
+    var days = Math.floor((Date.now() - then.getTime()) / 86400000);
+    return days + (days === 1 ? ' dag' : ' dagen');
+  }
+  return months + (months === 1 ? ' maand' : ' maanden');
+}
+function renderLiveClients(clients) {
+  var tbody = document.getElementById('fdr-live-tbody');
+  var count = document.getElementById('fdr-live-count');
+  if (!tbody) return;
+  if (!clients || !clients.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="fdr-live-empty">Nog geen klanten.</td></tr>';
+    if (count) count.textContent = '';
+    return;
+  }
+  var ONLINE_WINDOW = 5 * 60 * 1000; // 5 min
+  var now = Date.now();
+  var mrrMap = loadMrrMap();
+  var onlineCount = 0;
+  var rows = clients.map(function(c) {
+    var isOnline = c.lastSeen && (now - c.lastSeen) < ONLINE_WINDOW;
+    if (isOnline) onlineCount++;
+    var statusTxt = isOnline ? 'Online' :
+      (c.lastSeen ? 'Laatst ' + relTime(c.lastSeen) : 'Nooit ingelogd');
+    var mrr = mrrMap[c.id] || 0;
+    return '<tr>' +
+      '<td><div class="fdr-live-name">' + escHtml(c.naam || '—') + '</div>' +
+        '<div class="fdr-live-meta">' + escHtml(c.projectCode || '') + '</div></td>' +
+      '<td><span class="fdr-live-dot ' + (isOnline ? 'online' : 'offline') + '"></span>' +
+        '<span style="font-size:12px;color:' + (isOnline ? 'var(--green)' : 'var(--text-muted)') + '">' + statusTxt + '</span></td>' +
+      '<td class="fdr-live-stat">' + fmtTenure(c.firstLeadDate) + '</td>' +
+      '<td class="fdr-live-stat" style="text-align:right">' + (c.totalLeads || 0) + '</td>' +
+      '<td class="fdr-live-stat" style="text-align:right">' + (c.appointments || 0) + '</td>' +
+      '<td style="text-align:right"><input class="fdr-live-mrr-input" type="number" min="0" step="1" value="' + mrr + '" onchange="setClientMrr(\\'' + escHtml(c.id) + '\\', this.value)" placeholder="€"></td>' +
+    '</tr>';
+  }).join('');
+  tbody.innerHTML = rows;
+  if (count) count.innerHTML = '<span class="online-num">' + onlineCount + '</span> / ' + clients.length + ' online';
+  renderMrrTotalsFromMap();
+}
+function relTime(ts) {
+  var diff = Date.now() - ts;
+  if (diff < 60_000) return 'net';
+  if (diff < 3600_000) return Math.floor(diff / 60_000) + ' min';
+  if (diff < 86400_000) return Math.floor(diff / 3600_000) + ' u';
+  return Math.floor(diff / 86400_000) + ' d';
+}
+function renderMrrTotalsFromMap() {
+  var map = loadMrrMap();
+  var total = 0, count = 0;
+  Object.keys(map).forEach(function(k) { if (map[k] > 0) { total += map[k]; count++; } });
+  var v = document.getElementById('fdr-mrr-val');
+  var s = document.getElementById('fdr-mrr-sub');
+  if (v) v.textContent = fmtEuro(total);
+  if (s) s.textContent = count + ' betalende ' + (count === 1 ? 'klant' : 'klanten');
+  renderProfit(total);
+}
+function renderProfit(mrr) {
+  var costs = loadCosts();
+  var fixed = costs.fixed || 0;
+  var variable = costs.variable || 0;
+  var profit = mrr - fixed - variable;
+  var fEl = document.getElementById('fdr-cost-fixed');
+  var vEl = document.getElementById('fdr-cost-var');
+  var pEl = document.getElementById('fdr-profit-val');
+  var mEl = document.getElementById('fdr-profit-marge');
+  if (fEl) fEl.textContent = '-' + fmtEuro(fixed);
+  if (vEl) vEl.textContent = '-' + fmtEuro(variable);
+  if (pEl) {
+    pEl.textContent = (profit >= 0 ? '' : '-') + fmtEuro(Math.abs(profit));
+    pEl.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+  if (mEl) {
+    var margin = mrr > 0 ? Math.round((profit / mrr) * 100) : 0;
+    mEl.textContent = 'Marge: ' + margin + '%';
+  }
+}
+
+// ── Costs (editable on click) ─────────────────────────────────────────────
+var COSTS_KEY = 'hv-costs-v1';
+function loadCosts() {
+  try { return JSON.parse(localStorage.getItem(COSTS_KEY) || '{"fixed":58,"variable":0}'); }
+  catch (e) { return { fixed: 58, variable: 0 }; }
+}
+function saveCosts(c) { try { localStorage.setItem(COSTS_KEY, JSON.stringify(c)); } catch (e) {} }
+function editCost(kind) {
+  var current = loadCosts();
+  var label = kind === 'fixed' ? 'Vaste kosten' : 'Variabele kosten';
+  var v = prompt(label + ' per maand (€):', current[kind] || 0);
+  if (v === null) return;
+  var n = Math.max(0, Math.round(Number(v) || 0));
+  current[kind] = n;
+  saveCosts(current);
+  renderMrrTotalsFromMap();
+}
+
+// ── Meeting widget ────────────────────────────────────────────────────────
+var MEETING_KEY = 'hv-meeting-v1';
+function loadMeeting() {
+  try { return JSON.parse(localStorage.getItem(MEETING_KEY) || 'null'); } catch (e) { return null; }
+}
+function saveMeeting() {
+  var dt = document.getElementById('fdr-meeting-date');
+  var tp = document.getElementById('fdr-meeting-topic');
+  if (!dt || !dt.value) { toast('Kies een datum', 'warning'); return; }
+  var m = { when: dt.value, topic: (tp && tp.value || '').trim() };
+  try { localStorage.setItem(MEETING_KEY, JSON.stringify(m)); } catch (e) {}
+  renderMeeting();
+  toast('Meeting opgeslagen', 'success');
+}
+function renderMeeting() {
+  var m = loadMeeting();
+  var w = document.getElementById('fdr-meeting-when');
+  var a = document.getElementById('fdr-meeting-agenda');
+  var dt = document.getElementById('fdr-meeting-date');
+  var tp = document.getElementById('fdr-meeting-topic');
+  if (!w) return;
+  if (!m || !m.when) {
+    w.textContent = '—';
+    if (a) { a.textContent = 'Geen meeting gepland'; a.className = 'fdr-meeting-empty'; }
+    return;
+  }
+  var when = new Date(m.when);
+  if (isNaN(when.getTime())) { w.textContent = '—'; return; }
+  var diffMs = when.getTime() - Date.now();
+  var inDays = Math.ceil(diffMs / 86400000);
+  var datePart = when.toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+  var timePart = when.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+  var rel = inDays < 0 ? '(voorbij)' : inDays === 0 ? '(vandaag)' : inDays === 1 ? '(morgen)' : '(over ' + inDays + ' dagen)';
+  w.textContent = datePart + ' • ' + timePart + ' ' + rel;
+  if (a) {
+    a.className = 'fdr-meeting-agenda';
+    a.textContent = m.topic ? 'Agenda: ' + m.topic : 'Geen agenda ingesteld';
+  }
+  if (dt) dt.value = m.when;
+  if (tp) tp.value = m.topic || '';
+}
+
+// ── Presence ping (every 60s while logged in) ─────────────────────────────
+var _presenceTimer = null;
+function startPresencePing() {
+  if (_presenceTimer) return;
+  function ping() {
+    if (!state.apiKey) return;
+    fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'presence-ping', clientName: state.clientName || '' })
+    }).catch(function() { /* silent */ });
+  }
+  ping();                              // fire immediately
+  _presenceTimer = setInterval(ping, 60_000);
 }
 </script>
 </body>
