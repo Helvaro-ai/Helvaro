@@ -649,22 +649,34 @@ module.exports = async function handler(req, res) {
       }
 
       const apiKey = generateApiKey();
-      // Build the Airtable fields payload — only include fields that have values
-      // so we don't blow up Airtable's typecheck on optional fields.
+      // Build the Airtable fields payload using FIELD IDs (immune to renames).
+      // Klanten / "Client Config" table: tblPidTrwGRzRt4LZ
+      //   fldAnB848Sr5jl6dq  Client Name
+      //   fldN4dL0bGgfBOXwM  Project Code
+      //   fldhmnzVjrb2AyqJr  API Key
+      //   fldNEj1ysRgINOOtr  Calendly Link
+      //   fld2GjRvjpsxI8XD0  Email
+      //   fldecVolseGXtQaAN  Phone
+      //   fldRvoe1JMPOtPWC7  AI Name
+      //   fldOGdVq6T54xEo6W  Auto-Reply Template
+      //   fldzBclLhryWQ1veO  Website
+      //   fldTvMSdTZOyNgWod  Adres
+      //   fld1lqHctRbqFGQf5  AI Instructions
+      //   fld0BsPnDbBOkTHzr  Niche  (singleSelect — typecast:true auto-creates new options)
       const fields = {
-        'fldAnB848Sr5jl6dq': clientName,
-        'fldN4dL0bGgfBOXwM': projectCode,
-        'API Key':           apiKey
+        fldAnB848Sr5jl6dq: clientName,
+        fldN4dL0bGgfBOXwM: projectCode,
+        fldhmnzVjrb2AyqJr: apiKey
       };
-      if (calendlyLink)   fields['fldNEj1ysRgINOOtr']    = calendlyLink;
-      if (email)          fields['Email']                = email;
-      if (aiName)         fields['AI Name']              = aiName;
-      if (autoReplyTpl)   fields['Auto-Reply Template']  = autoReplyTpl;
-      if (website)        fields['Website']              = website;
-      if (address)        fields['fldTvMSdTZOyNgWod']    = address;        // Address
-      if (aiInstructions) fields['AI Instructions']      = aiInstructions;
-      if (sector)         fields['Sector']               = sector;
-      if (phone)          fields['Phone']                = phone;
+      if (calendlyLink)   fields.fldNEj1ysRgINOOtr = calendlyLink;
+      if (email)          fields.fld2GjRvjpsxI8XD0 = email;
+      if (phone)          fields.fldecVolseGXtQaAN = phone;
+      if (aiName)         fields.fldRvoe1JMPOtPWC7 = aiName;
+      if (autoReplyTpl)   fields.fldOGdVq6T54xEo6W = autoReplyTpl;
+      if (website)        fields.fldzBclLhryWQ1veO = website;
+      if (address)        fields.fldTvMSdTZOyNgWod = address;
+      if (aiInstructions) fields.fld1lqHctRbqFGQf5 = aiInstructions;
+      if (sector)         fields.fld0BsPnDbBOkTHzr = sector;
 
       const createRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}`,

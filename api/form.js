@@ -96,12 +96,14 @@ module.exports = async function handler(req, res) {
         const cData = await cRes.json();
         const match = (cData.records || [])[0];
         if (match) {
-          clientName   = match.fields['fldAnB848Sr5jl6dq'] || match.fields['Client Name']         || clientName;
-          autoReplyTpl = match.fields['Auto-Reply Template'] || match.fields['Auto Reply Template'] || '';
+          // Field IDs (immune to renames): fldAnB848Sr5jl6dq=Client Name,
+          // fldOGdVq6T54xEo6W=Auto-Reply Template, fldRvoe1JMPOtPWC7=AI Name
+          clientName   = match.fields['fldAnB848Sr5jl6dq']   || match.fields['Client Name']         || clientName;
+          autoReplyTpl = match.fields['fldOGdVq6T54xEo6W']   || match.fields['Auto-Reply Template'] || '';
           // "AI Name" = the persona that signs WhatsApp messages.
           // Tip for clients: use an actual employee name ("Sara", "Tim Janssen")
           // so leads feel they're chatting with a real human, not a bot.
-          const customAiName = match.fields['AI Name'] || match.fields['AI Naam'] || '';
+          const customAiName = match.fields['fldRvoe1JMPOtPWC7'] || match.fields['AI Name'] || '';
           if (customAiName && String(customAiName).trim()) aiName = String(customAiName).trim().slice(0, 60);
         }
       }

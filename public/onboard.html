@@ -167,18 +167,12 @@
         <label>Sector / branche <span class="opt">(optioneel)</span></label>
         <select id="f-sector">
           <option value="">— Kies branche —</option>
-          <option>Renovatie</option>
-          <option>Bouw</option>
-          <option>Vastgoed</option>
-          <option>Marketing</option>
-          <option>Coaching &amp; Consulting</option>
-          <option>IT &amp; software</option>
-          <option>Schoonmaak &amp; onderhoud</option>
-          <option>Tuin &amp; landschap</option>
-          <option>Beauty &amp; wellness</option>
-          <option>Auto &amp; transport</option>
-          <option>Restaurant &amp; horeca</option>
-          <option>Anders</option>
+          <!-- Values match the Niche singleSelect on the Klanten table -->
+          <option value="real_estate">Vastgoed / Real Estate</option>
+          <option value="dentist">Tandarts</option>
+          <option value="lawyer">Advocaat / Juridisch</option>
+          <option value="finance">Financieel / Boekhouding</option>
+          <option value="other">Anders</option>
         </select>
         <div class="hint">Helpt de AI om je leads beter te kwalificeren.</div>
       </div>

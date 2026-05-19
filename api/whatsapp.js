@@ -128,14 +128,14 @@ async function processMessage(phone, text) {
   }
 
   // 6. Determine AI identity and client config
-  // Field IDs take priority; field names as fallback in case of no returnFieldsByFieldId.
-  // "AI Name" is the persona that signs every WhatsApp reply — clients pick an
-  // employee name (or made-up name) so leads feel they're chatting with a human.
-  const customAiName = client.fields['AI Name'] || client.fields['AI Naam'] || '';
+  // Field IDs take priority (immune to renames); field-name fallback for safety.
+  // "AI Name" (fldRvoe1JMPOtPWC7) is the persona that signs every WhatsApp reply —
+  // clients pick an employee name so leads feel they're chatting with a human.
+  const customAiName = client.fields['fldRvoe1JMPOtPWC7'] || client.fields['AI Name'] || '';
   const aiName     = (customAiName && String(customAiName).trim()) ? String(customAiName).trim().slice(0, 60) : 'Mathis Willems';
-  const clientName = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']    || 'Helvaro';
-  const leadName   = lead.fields['fldbk0LVNckOU0bqA']   || lead.fields['Name']             || '';
-  const address    = client.fields['fldTvMSdTZOyNgWod'] || client.fields['Address']        || '';
+  const clientName = client.fields['fldAnB848Sr5jl6dq']    || client.fields['Client Name'] || 'Helvaro';
+  const leadName   = lead.fields['fldbk0LVNckOU0bqA']      || lead.fields['Name']          || '';
+  const address    = client.fields['fldTvMSdTZOyNgWod']    || client.fields['Adres'] || client.fields['Address'] || '';
 
   // 7. Run AI
   const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
