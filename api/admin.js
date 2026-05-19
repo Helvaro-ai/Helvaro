@@ -617,10 +617,18 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const clientName   = String(body.clientName   || '').trim().slice(0, 100);
-    const projectCode  = String(body.projectCode  || '').trim().toUpperCase().slice(0, 50);
-    const email        = String(body.email        || '').trim().slice(0, 200);
-    const calendlyLink = String(body.calendlyLink || '').trim().slice(0, 500);
+    const clientName     = String(body.clientName     || '').trim().slice(0, 100);
+    const projectCode    = String(body.projectCode    || '').trim().toUpperCase().slice(0, 50);
+    const email          = String(body.email          || '').trim().slice(0, 200);
+    const calendlyLink   = String(body.calendlyLink   || '').trim().slice(0, 500);
+    // Extended onboarding fields (all optional — graceful fallback if not provided)
+    const aiName         = String(body.aiName         || '').trim().slice(0, 60);
+    const autoReplyTpl   = String(body.autoReplyTpl   || '').trim().slice(0, 1000);
+    const website        = String(body.website        || '').trim().slice(0, 500);
+    const address        = String(body.address        || '').trim().slice(0, 300);
+    const aiInstructions = String(body.aiInstructions || '').trim().slice(0, 3000);
+    const sector         = String(body.sector         || '').trim().slice(0, 100);
+    const phone          = String(body.phone          || '').trim().slice(0, 50);
 
     if (!clientName)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!projectCode) return res.status(400).json({ error: 'Projectcode is verplicht' });
@@ -641,19 +649,30 @@ module.exports = async function handler(req, res) {
       }
 
       const apiKey = generateApiKey();
+      // Build the Airtable fields payload — only include fields that have values
+      // so we don't blow up Airtable's typecheck on optional fields.
+      const fields = {
+        'fldAnB848Sr5jl6dq': clientName,
+        'fldN4dL0bGgfBOXwM': projectCode,
+        'API Key':           apiKey
+      };
+      if (calendlyLink)   fields['fldNEj1ysRgINOOtr']    = calendlyLink;
+      if (email)          fields['Email']                = email;
+      if (aiName)         fields['AI Name']              = aiName;
+      if (autoReplyTpl)   fields['Auto-Reply Template']  = autoReplyTpl;
+      if (website)        fields['Website']              = website;
+      if (address)        fields['fldTvMSdTZOyNgWod']    = address;        // Address
+      if (aiInstructions) fields['AI Instructions']      = aiInstructions;
+      if (sector)         fields['Sector']               = sector;
+      if (phone)          fields['Phone']                = phone;
+
       const createRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}`,
         {
           method:  'POST',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fields: {
-              'fldAnB848Sr5jl6dq': clientName,
-              'fldN4dL0bGgfBOXwM': projectCode,
-              'API Key':           apiKey,
-              ...(calendlyLink ? { 'fldNEj1ysRgINOOtr': calendlyLink } : {})
-            }
-          })
+          // typecast:true lets Airtable auto-create select options + relaxes type coercion
+          body: JSON.stringify({ fields, typecast: true })
         }
       );
       const createData = await createRes.json();

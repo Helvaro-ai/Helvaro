@@ -1,203 +1,142 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account aanmaken — Helvaro</title>
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:        #080c14;
-      --card:      #0f1520;
-      --border:    #1e2a3a;
-      --accent:    #6366f1;
-      --accent-hi: #818cf8;
-      --green:     #22c55e;
-      --red:       #f43f5e;
-      --text:      #e2e8f0;
-      --muted:     #64748b;
-      --input-bg:  #0a1018;
-    }
-    html, body {
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,.15) 0%, transparent 65%);
-      pointer-events: none;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Welkom bij Helvaro — onboarding</title>
+<link rel="icon" href="/favicon.png">
+<style>
+  :root {
+    --bg:        #050810;
+    --bg-card:   #0c1220;
+    --bg-card-2: #0a0f1a;
+    --input-bg:  #0a1018;
+    --border:    #1c2430;
+    --text:      #e7ecf3;
+    --muted:     #7c8a9e;
+    --accent:    #6366f1;
+    --accent-hi: #818cf8;
+    --green:     #22c55e;
+    --red:       #ef4444;
+  }
+  *,*::before,*::after { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    background: radial-gradient(circle at 30% 0%, #1a1e3a 0%, var(--bg) 60%);
+    color: var(--text); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    width: 100%; max-width: 560px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    padding: 36px 32px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 24px; font-weight: 800; letter-spacing: 4px; font-size: 14px;
+  }
+  .logo img { width: 22px; height: 22px; }
+  h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+  .sub { margin: 0 0 22px; font-size: 13px; color: var(--muted); line-height: 1.5; }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 40px 36px;
-      max-width: 480px;
-      width: 100%;
-      box-shadow: 0 32px 80px rgba(0,0,0,.5);
-    }
+  /* Step indicator */
+  .step-indicator { display: flex; gap: 6px; margin-bottom: 20px; }
+  .step-dot {
+    flex: 1; height: 4px; background: var(--border); border-radius: 99px;
+    transition: background .2s ease;
+  }
+  .step-dot.active { background: var(--accent); }
+  .step-dot.done   { background: var(--accent-hi); }
+  .step-label { font-size: 11px; color: var(--accent-hi); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
-    .logo {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 18px;
-      font-weight: 900;
-      letter-spacing: 5px;
-      color: var(--accent-hi);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 28px;
-    }
-    .logo img { height: 28px; }
+  /* Fields */
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 600; color: var(--text);
+    margin-bottom: 6px;
+  }
+  .field label .opt { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .field label .req { color: var(--accent-hi); }
+  input, textarea, select {
+    width: 100%; padding: 11px 14px;
+    background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color .15s ease;
+  }
+  textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  input.error, textarea.error { border-color: var(--red); }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .hint.code { font-family: monospace; }
+  .hint b { color: var(--accent-hi); font-weight: 600; }
 
-    .step-indicator {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 28px;
-    }
-    .step-dot {
-      height: 3px;
-      border-radius: 99px;
-      flex: 1;
-      background: var(--border);
-      transition: background .3s;
-    }
-    .step-dot.active { background: var(--accent); }
-    .step-dot.done   { background: var(--green); }
+  /* Buttons row */
+  .btn-row {
+    display: flex; gap: 10px; margin-top: 26px;
+  }
+  .btn {
+    flex: 1; padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hi));
+    border: none; border-radius: 10px;
+    color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: opacity .15s ease;
+  }
+  .btn:hover { opacity: .9; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-back {
+    flex: 0 0 auto; padding: 13px 18px;
+    background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .btn-back:hover { color: var(--text); }
 
-    h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-    .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  /* Error box */
+  .err-box {
+    display: none;
+    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
+    color: var(--red); font-size: 13px; padding: 10px 14px; border-radius: 8px;
+    margin-top: 14px;
+  }
 
-    .field { margin-bottom: 16px; }
-    label {
-      display: block;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    label span { color: var(--accent-hi); margin-left: 2px; }
-    input {
-      width: 100%;
-      padding: 11px 14px;
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-size: 15px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color .15s;
-    }
-    input:focus { border-color: var(--accent); }
-    input.error { border-color: var(--red); }
-    .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
-    .hint.code { font-family: monospace; letter-spacing: .5px; }
+  /* Review step */
+  .review-row {
+    display: flex; justify-content: space-between; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .review-row:last-child { border-bottom: none; }
+  .review-label { color: var(--muted); }
+  .review-val { color: var(--text); text-align: right; font-weight: 600; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .review-val.long { white-space: normal; max-width: 60%; font-weight: 400; font-size: 12px; line-height: 1.5; color: var(--text); }
 
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all .15s;
-      margin-top: 8px;
-      letter-spacing: .2px;
-    }
-    .btn:hover:not(:disabled) { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,.3); }
-    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  /* Success */
+  .success-panel { display: none; text-align: center; }
+  .success-icon {
+    width: 56px; height: 56px; margin: 0 auto 18px;
+    border-radius: 50%; background: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 28px; font-weight: 800;
+  }
+  .cred-box {
+    background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin: 20px 0;
+    text-align: left;
+  }
+  .cred-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; gap: 10px; }
+  .cred-label { color: var(--muted); }
+  .cred-val { font-family: monospace; color: var(--accent-hi); word-break: break-all; text-align: right; font-size: 12px; }
+  .btn-enter {
+    width: 100%; padding: 14px;
+    background: var(--accent); border: none; border-radius: 10px;
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
 
-    .err-box {
-      display: none;
-      color: var(--red);
-      font-size: 13px;
-      background: rgba(244,63,94,.08);
-      border: 1px solid rgba(244,63,94,.2);
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-top: 12px;
-    }
-
-    /* Success state */
-    .success-panel {
-      display: none;
-      text-align: center;
-    }
-    .success-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: rgba(34,197,94,.12);
-      border: 1px solid rgba(34,197,94,.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      margin: 0 auto 20px;
-    }
-    .success-panel h2 { text-align: center; margin-bottom: 8px; }
-    .success-panel .sub { text-align: center; margin-bottom: 24px; }
-
-    .cred-box {
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
-      text-align: left;
-      margin-bottom: 20px;
-      font-size: 13px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .cred-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .cred-label { color: var(--muted); white-space: nowrap; }
-    .cred-val { font-family: monospace; font-size: 12px; color: var(--accent-hi); word-break: break-all; }
-
-    .btn-enter {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all .15s;
-      text-decoration: none;
-      text-align: center;
-    }
-    .btn-enter:hover { background: var(--accent-hi); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,.3); }
-
-    .form-panel { transition: opacity .2s; }
-
-    @media (max-width: 480px) {
-      .card { padding: 28px 20px; border-radius: 16px; }
-      h2 { font-size: 18px; }
-    }
-  </style>
+  /* Step body — hide/show via class */
+  .step { display: none; }
+  .step.active { display: block; animation: stepIn .25s ease; }
+  @keyframes stepIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 </head>
 <body>
 <div class="card">
@@ -205,48 +144,136 @@
     <img src="/favicon.png" alt=""> HELVARO
   </div>
 
-  <!-- ─── Form panel ─── -->
-  <div class="form-panel" id="form-panel">
+  <!-- Form panel ─────────────────────────────────────────────────────────── -->
+  <div id="form-panel">
     <div class="step-indicator">
       <div class="step-dot active" id="dot-1"></div>
-      <div class="step-dot" id="dot-2"></div>
-      <div class="step-dot" id="dot-3"></div>
+      <div class="step-dot"        id="dot-2"></div>
+      <div class="step-dot"        id="dot-3"></div>
     </div>
 
-    <h2>Maak uw account aan</h2>
-    <p class="sub">Vul uw gegevens in. Na het aanmaken heeft u direct toegang tot uw persoonlijk dashboard.</p>
+    <!-- STEP 1 — Bedrijf ─────────────────────────────────────────────────── -->
+    <div class="step active" id="step-1">
+      <div class="step-label">Stap 1 van 3</div>
+      <h2>Jouw bedrijf</h2>
+      <p class="sub">We hebben deze info nodig om je dashboard, leadformulier en WhatsApp-flow klaar te zetten.</p>
 
-    <div class="field">
-      <label>Uw naam <span>*</span></label>
-      <input id="f-name" type="text" placeholder="Jan Janssen" autocomplete="name">
+      <div class="field">
+        <label>Bedrijfsnaam <span class="req">*</span></label>
+        <input id="f-name" type="text" placeholder="Acme Renovaties BV" autocomplete="organization">
+      </div>
+
+      <div class="field">
+        <label>Sector / branche <span class="opt">(optioneel)</span></label>
+        <select id="f-sector">
+          <option value="">— Kies branche —</option>
+          <option>Renovatie</option>
+          <option>Bouw</option>
+          <option>Vastgoed</option>
+          <option>Marketing</option>
+          <option>Coaching &amp; Consulting</option>
+          <option>IT &amp; software</option>
+          <option>Schoonmaak &amp; onderhoud</option>
+          <option>Tuin &amp; landschap</option>
+          <option>Beauty &amp; wellness</option>
+          <option>Auto &amp; transport</option>
+          <option>Restaurant &amp; horeca</option>
+          <option>Anders</option>
+        </select>
+        <div class="hint">Helpt de AI om je leads beter te kwalificeren.</div>
+      </div>
+
+      <div class="field">
+        <label>Website <span class="opt">(optioneel — sterk aangeraden)</span></label>
+        <input id="f-website" type="url" placeholder="https://www.acme.be" autocomplete="url">
+        <div class="hint">De AI leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
+      </div>
+
+      <div class="field">
+        <label>Adres <span class="opt">(optioneel)</span></label>
+        <input id="f-address" type="text" placeholder="Kerkstraat 12, 9000 Gent">
+        <div class="hint">Wordt mee gestuurd bij afspraakbevestigingen.</div>
+      </div>
+
+      <div class="field">
+        <label>E-mailadres <span class="req">*</span></label>
+        <input id="f-email" type="email" placeholder="contact@acme.be" autocomplete="email">
+        <div class="hint">Hierop ontvang je je inloggegevens.</div>
+      </div>
+
+      <div class="field">
+        <label>Calendly link <span class="opt">(optioneel)</span></label>
+        <input id="f-calendly" type="url" placeholder="https://calendly.com/acme/intake" autocomplete="off">
+        <div class="hint">Wordt automatisch verstuurd zodra een lead gekwalificeerd is.</div>
+      </div>
+
+      <div class="err-box" id="err-1"></div>
+      <div class="btn-row">
+        <button class="btn" onclick="goStep(2)">Volgende →</button>
+      </div>
     </div>
 
-    <div class="field">
-      <label>Projectcode <span>*</span></label>
-      <input id="f-code" type="text" placeholder="JAN_JANSSEN" autocomplete="off" style="font-family:monospace;letter-spacing:.5px">
-      <div class="hint code">Alleen letters, cijfers en _ — wordt uw unieke ID</div>
+    <!-- STEP 2 — AI persona ──────────────────────────────────────────────── -->
+    <div class="step" id="step-2">
+      <div class="step-label">Stap 2 van 3</div>
+      <h2>Jouw WhatsApp-persoonlijkheid</h2>
+      <p class="sub">Dit is de "stem" waarmee je AI met leads praat op WhatsApp. Tip: kies een echte medewerkersnaam — leads voelen dat ze met een mens chatten.</p>
+
+      <div class="field">
+        <label>AI naam <span class="opt">(optioneel)</span></label>
+        <input id="f-aiName" type="text" placeholder="Sara De Vos" maxlength="60">
+        <div class="hint">Voorbeeld: <b>Sara</b>, <b>Tim Janssen</b>, <b>Lisa</b>. Leeg = "Mathis Willems" (standaard).</div>
+      </div>
+
+      <div class="field">
+        <label>Welkomstbericht op WhatsApp <span class="opt">(optioneel)</span></label>
+        <textarea id="f-autoReply" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?"></textarea>
+        <div class="hint">
+          Eerste bericht dat een lead krijgt na het invullen van je formulier.<br>
+          Beschikbare placeholders: <b>{naam}</b> (voornaam), <b>{bedrijf}</b>, <b>{ai}</b>, <b>{project}</b>, <b>{bron}</b>.
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Extra AI-instructies <span class="opt">(optioneel)</span></label>
+        <textarea id="f-aiInstr" placeholder="Bv: Praat informeel. Stuur nooit prijzen in WhatsApp. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon."></textarea>
+        <div class="hint">Tone-of-voice, do's &amp; don'ts, sales-aanpak. De AI volgt deze regels in elk gesprek.</div>
+      </div>
+
+      <div class="err-box" id="err-2"></div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goStep(1)">← Terug</button>
+        <button class="btn" onclick="goStep(3)">Volgende →</button>
+      </div>
     </div>
 
-    <div class="field">
-      <label>E-mailadres <span>*</span></label>
-      <input id="f-email" type="email" placeholder="jan@bedrijf.nl" autocomplete="email">
+    <!-- STEP 3 — Review + create ─────────────────────────────────────────── -->
+    <div class="step" id="step-3">
+      <div class="step-label">Stap 3 van 3</div>
+      <h2>Bevestig &amp; activeer</h2>
+      <p class="sub">Even nakijken — je kunt later alles aanpassen in je dashboard.</p>
+
+      <div class="field">
+        <label>Projectcode <span class="req">*</span></label>
+        <input id="f-code" type="text" placeholder="ACME_BV" autocomplete="off" style="font-family:monospace;letter-spacing:.5px">
+        <div class="hint code">Je unieke ID — alleen letters, cijfers en _. Wordt automatisch ingevuld op basis van je bedrijfsnaam.</div>
+      </div>
+
+      <div id="review-list" style="margin-top:18px"></div>
+
+      <div class="err-box" id="err-3"></div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goStep(2)">← Terug</button>
+        <button class="btn" id="btn-submit" onclick="submitForm()">Account aanmaken →</button>
+      </div>
     </div>
-
-    <div class="field">
-      <label>Calendly link <span style="color:var(--muted);font-weight:400">(optioneel)</span></label>
-      <input id="f-calendly" type="url" placeholder="https://calendly.com/jan-janssen" autocomplete="off">
-    </div>
-
-    <div class="err-box" id="err-box"></div>
-
-    <button class="btn" id="btn-submit" onclick="submitForm()">Account aanmaken →</button>
   </div>
 
-  <!-- ─── Success panel ─── -->
+  <!-- Success panel ───────────────────────────────────────────────────────── -->
   <div class="success-panel" id="success-panel">
     <div class="success-icon">✓</div>
     <h2>Account aangemaakt!</h2>
-    <p class="sub">Uw account is klaar. Hieronder ziet u uw gegevens — sla ze op voor uw administratie.</p>
+    <p class="sub">Bewaar deze gegevens — je hebt ze nodig om in te loggen.</p>
     <div class="cred-box" id="cred-box"></div>
     <button class="btn-enter" onclick="enterDashboard()">Open mijn dashboard →</button>
   </div>
@@ -257,9 +284,13 @@
   var params     = new URLSearchParams(window.location.search);
   var inviteCode = params.get('invite') || '';
 
-  // Auto-fill project code from name
-  var nameEl = document.getElementById('f-name');
-  var codeEl = document.getElementById('f-code');
+  // ── Element refs ────────────────────────────────────────────────────────
+  var $ = function (id) { return document.getElementById(id); };
+  var dots = [$('dot-1'), $('dot-2'), $('dot-3')];
+  var steps = [$('step-1'), $('step-2'), $('step-3')];
+
+  // ── Auto-fill project code from name on Step 1 ──────────────────────────
+  var nameEl = $('f-name'), codeEl = $('f-code');
   nameEl.addEventListener('input', function () {
     if (!codeEl._edited) {
       codeEl.value = nameEl.value.toUpperCase()
@@ -270,104 +301,147 @@
   });
   codeEl.addEventListener('input', function () { codeEl._edited = true; });
 
-  // Step dots
-  var dots = [
-    document.getElementById('dot-1'),
-    document.getElementById('dot-2'),
-    document.getElementById('dot-3'),
-  ];
-  function setStep(n) {
+  // ── Step navigation ─────────────────────────────────────────────────────
+  window.goStep = function (n) {
+    // Validate the CURRENT step before moving forward
+    var cur = steps.findIndex(function (s) { return s.classList.contains('active'); });
+    if (n > cur + 1) { // moving forward
+      if (cur === 0 && !validateStep1()) return;
+      if (cur === 1 && !validateStep2()) return;
+    }
+    steps.forEach(function (s, i) { s.classList.toggle('active', i === n - 1); });
     dots.forEach(function (d, i) {
       d.className = 'step-dot' + (i < n - 1 ? ' done' : i === n - 1 ? ' active' : '');
     });
-  }
-  nameEl.addEventListener('focus', function () { setStep(1); });
-  codeEl.addEventListener('focus', function () { setStep(2); });
-  document.getElementById('f-email').addEventListener('focus', function () { setStep(3); });
-
-  var _savedSession = null;
-
-  window.submitForm = function () {
-    var name     = nameEl.value.trim();
-    var code     = codeEl.value.trim().toUpperCase();
-    var email    = document.getElementById('f-email').value.trim();
-    var calendly = document.getElementById('f-calendly').value.trim();
-    var errBox   = document.getElementById('err-box');
-    var btn      = document.getElementById('btn-submit');
-
-    errBox.style.display = 'none';
-    [nameEl, codeEl, document.getElementById('f-email')].forEach(function (el) {
-      el.classList.remove('error');
-    });
-
-    // Validate
-    var errs = [];
-    if (!name)                                    { errs.push('Naam is verplicht.'); nameEl.classList.add('error'); }
-    if (!code)                                    { errs.push('Projectcode is verplicht.'); codeEl.classList.add('error'); }
-    else if (!/^[A-Z0-9_]{2,50}$/.test(code))    { errs.push('Projectcode mag alleen letters, cijfers en _ bevatten (min 2 tekens).'); codeEl.classList.add('error'); }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errs.push('Geldig e-mailadres is verplicht.');
-      document.getElementById('f-email').classList.add('error');
-    }
-    if (errs.length) { errBox.textContent = errs[0]; errBox.style.display = 'block'; return; }
-
-    btn.disabled = true;
-    btn.textContent = 'Aanmaken...';
-
-    fetch('/api/admin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode:        'onboard',
-        inviteCode:  inviteCode,
-        clientName:  name,
-        projectCode: code,
-        email:       email,
-        calendlyLink: calendly
-      })
-    })
-    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
-    .then(function (res) {
-      if (!res.ok) {
-        errBox.textContent = res.data.error || 'Er is iets misgegaan. Probeer opnieuw.';
-        errBox.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = 'Account aanmaken →';
-        return;
-      }
-
-      var d = res.data;
-      _savedSession = { key: d.apiKey, name: d.clientName, project: d.projectCode };
-
-      // Build credential box
-      var box = document.getElementById('cred-box');
-      box.innerHTML = [
-        row('Naam',        d.clientName,  false),
-        row('Projectcode', d.projectCode, true),
-        row('API Key',     d.apiKey,      true),
-        row('Formulier',   d.formUrl,     false, true),
-      ].join('');
-
-      document.getElementById('form-panel').style.display = 'none';
-      document.getElementById('success-panel').style.display = 'block';
-    })
-    .catch(function () {
-      errBox.textContent = 'Netwerkfout. Controleer uw verbinding en probeer opnieuw.';
-      errBox.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Account aanmaken →';
-    });
+    if (n === 3) renderReview();
+    window.scrollTo(0, 0);
   };
 
-  function row(label, value, mono, isLink) {
-    var valHtml = isLink
-      ? '<a href="' + escHtml(value) + '" target="_blank" class="cred-val" style="color:var(--accent-hi)">' + escHtml(value) + '</a>'
-      : '<span class="cred-val' + (mono ? '' : '') + '">' + escHtml(value) + '</span>';
-    return '<div class="cred-row"><span class="cred-label">' + escHtml(label) + '</span>' + valHtml + '</div>';
+  function setError(boxId, msg) {
+    var box = $(boxId);
+    box.textContent = msg || '';
+    box.style.display = msg ? 'block' : 'none';
+  }
+
+  function validateStep1() {
+    setError('err-1', '');
+    var name  = nameEl.value.trim();
+    var email = $('f-email').value.trim();
+    var web   = $('f-website').value.trim();
+    var cal   = $('f-calendly').value.trim();
+    var errs = [];
+    if (!name) { errs.push('Bedrijfsnaam is verplicht.'); nameEl.classList.add('error'); }
+    else nameEl.classList.remove('error');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.push('Geldig e-mailadres is verplicht.'); $('f-email').classList.add('error');
+    } else $('f-email').classList.remove('error');
+    if (web && !/^https?:\/\/.+\..+/.test(web)) {
+      errs.push('Website moet beginnen met http:// of https://'); $('f-website').classList.add('error');
+    } else $('f-website').classList.remove('error');
+    if (cal && !/^https?:\/\/.*calendly\.com/.test(cal)) {
+      errs.push('Calendly link moet beginnen met https://calendly.com/...'); $('f-calendly').classList.add('error');
+    } else $('f-calendly').classList.remove('error');
+    if (errs.length) { setError('err-1', errs[0]); return false; }
+    return true;
+  }
+
+  function validateStep2() {
+    setError('err-2', '');
+    // All fields on step 2 are optional — only check lengths sensibly.
+    var aiName = $('f-aiName').value.trim();
+    if (aiName.length > 60) { setError('err-2', 'AI naam mag maximaal 60 tekens zijn.'); return false; }
+    var tpl    = $('f-autoReply').value.trim();
+    if (tpl.length > 1000) { setError('err-2', 'Welkomstbericht mag maximaal 1000 tekens zijn.'); return false; }
+    var instr  = $('f-aiInstr').value.trim();
+    if (instr.length > 3000) { setError('err-2', 'Instructies mogen maximaal 3000 tekens zijn.'); return false; }
+    return true;
   }
 
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderReview() {
+    var rows = [
+      ['Bedrijfsnaam',  nameEl.value.trim()],
+      ['Sector',        $('f-sector').value],
+      ['Website',       $('f-website').value.trim()],
+      ['Adres',         $('f-address').value.trim()],
+      ['E-mailadres',   $('f-email').value.trim()],
+      ['Calendly',      $('f-calendly').value.trim()],
+      ['AI naam',       $('f-aiName').value.trim() || '(standaard — Mathis Willems)'],
+      ['Welkomstbericht', $('f-autoReply').value.trim() || '(standaard opener)'],
+      ['Instructies',   $('f-aiInstr').value.trim() || '(geen extra)']
+    ];
+    var html = rows.filter(function (r) { return r[1]; }).map(function (r) {
+      var isLong = r[1].length > 40;
+      return '<div class="review-row">'
+          + '<span class="review-label">' + escHtml(r[0]) + '</span>'
+          + '<span class="review-val' + (isLong ? ' long' : '') + '">' + escHtml(r[1]) + '</span>'
+        + '</div>';
+    }).join('');
+    $('review-list').innerHTML = html;
+  }
+
+  // ── Submit ──────────────────────────────────────────────────────────────
+  var _savedSession = null;
+  window.submitForm = function () {
+    setError('err-3', '');
+    var code = codeEl.value.trim().toUpperCase();
+    if (!code)                           { setError('err-3', 'Projectcode is verplicht.'); codeEl.classList.add('error'); return; }
+    if (!/^[A-Z0-9_]{2,50}$/.test(code)) { setError('err-3', 'Projectcode mag alleen letters, cijfers en _ bevatten (min 2 tekens).'); codeEl.classList.add('error'); return; }
+    codeEl.classList.remove('error');
+
+    var btn = $('btn-submit');
+    btn.disabled = true; btn.textContent = 'Aanmaken...';
+
+    var body = {
+      mode:           'onboard',
+      inviteCode:     inviteCode,
+      clientName:     nameEl.value.trim(),
+      projectCode:    code,
+      email:          $('f-email').value.trim(),
+      calendlyLink:   $('f-calendly').value.trim(),
+      aiName:         $('f-aiName').value.trim(),
+      autoReplyTpl:   $('f-autoReply').value.trim(),
+      website:        $('f-website').value.trim(),
+      address:        $('f-address').value.trim(),
+      aiInstructions: $('f-aiInstr').value.trim(),
+      sector:         $('f-sector').value
+    };
+
+    fetch('/api/admin', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body)
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+    .then(function (res) {
+      if (!res.ok) {
+        setError('err-3', res.data.error || 'Er is iets misgegaan. Probeer opnieuw.');
+        btn.disabled = false; btn.textContent = 'Account aanmaken →';
+        return;
+      }
+      var d = res.data;
+      _savedSession = { key: d.apiKey, name: d.clientName, project: d.projectCode };
+      $('cred-box').innerHTML = [
+        credRow('Bedrijf',     d.clientName),
+        credRow('Projectcode', d.projectCode),
+        credRow('API Key',     d.apiKey),
+        credRow('Formulier',   d.formUrl)
+      ].join('');
+      $('form-panel').style.display = 'none';
+      $('success-panel').style.display = 'block';
+    })
+    .catch(function () {
+      setError('err-3', 'Netwerkfout. Controleer uw verbinding en probeer opnieuw.');
+      btn.disabled = false; btn.textContent = 'Account aanmaken →';
+    });
+  };
+
+  function credRow(label, value) {
+    return '<div class="cred-row"><span class="cred-label">' + escHtml(label) + '</span>'
+         + '<span class="cred-val">' + escHtml(value) + '</span></div>';
   }
 
   window.enterDashboard = function () {
@@ -380,20 +454,10 @@
     window.location.href = '/dashboard';
   };
 
-  // Handle Enter key
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && document.getElementById('form-panel').style.display !== 'none') {
-      var active = document.activeElement;
-      if (active && active.tagName === 'INPUT') submitForm();
-    }
-  });
-
   // Show error if no invite code
   if (!inviteCode) {
-    var err = document.getElementById('err-box');
-    err.textContent = 'Ongeldige uitnodigingslink. Vraag uw contactpersoon om een nieuwe link.';
-    err.style.display = 'block';
-    document.getElementById('btn-submit').disabled = true;
+    setError('err-1', 'Ongeldige uitnodigingslink. Vraag je contactpersoon om een nieuwe link.');
+    document.querySelectorAll('.btn').forEach(function (b) { b.disabled = true; });
   }
 })();
 </script>
