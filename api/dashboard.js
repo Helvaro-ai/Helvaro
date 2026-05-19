@@ -4502,6 +4502,41 @@ tr:hover .td-arrow { color: var(--cyan); }
   transition: all .15s ease;
 }
 .ap-chip:hover { background: rgba(99,102,241,.25); color: #fff; }
+
+/* Template inspiration library */
+.ap-tpl-wrap { margin-bottom: 12px; }
+.ap-tpl-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.ap-tpl-title { font-size: 11px; font-weight: 700; color: var(--accent-bright); text-transform: uppercase; letter-spacing: .06em; }
+.ap-tpl-sub { font-size: 11px; color: var(--text-muted); }
+.ap-tpl-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.ap-tpl-card {
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: 9px; padding: 10px 12px; cursor: pointer;
+  transition: all .15s ease; text-align: left; font-family: inherit;
+  display: flex; flex-direction: column; gap: 4px; min-height: 72px;
+}
+.ap-tpl-card:hover {
+  border-color: var(--accent-bright);
+  background: rgba(99,102,241,.06);
+  transform: translateY(-1px);
+}
+.ap-tpl-card.active {
+  border-color: var(--accent-bright);
+  background: rgba(99,102,241,.12);
+}
+.ap-tpl-card-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; color: var(--text-primary);
+}
+.ap-tpl-card-emoji { font-size: 13px; }
+.ap-tpl-card-preview {
+  font-size: 11px; color: var(--text-muted); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .ap-actions { display: flex; align-items: center; gap: 12px; padding-top: 4px; }
 .ap-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -6298,6 +6333,16 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Welkomstbericht
                 <span class="ap-label-hint">eerste WhatsApp dat een lead ontvangt</span>
               </label>
+
+              <!-- Inspiration library: clickable templates -->
+              <div class="ap-tpl-wrap">
+                <div class="ap-tpl-header">
+                  <span class="ap-tpl-title">💡 Inspiratie</span>
+                  <span class="ap-tpl-sub">klik een sjabloon om in te vullen</span>
+                </div>
+                <div class="ap-tpl-grid" id="ap-tpl-grid"></div>
+              </div>
+
               <textarea id="ap-template" class="ap-textarea" rows="3" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?" maxlength="1000"></textarea>
               <div class="ap-hint">
                 Beschikbare placeholders:
@@ -11343,12 +11388,95 @@ function updateExportPreview() {
 // ── AI Persoonlijkheid page ─────────────────────────────────────────────────
 const AP_STATE = { loaded: false, saving: false };
 
+// Pre-built welkomstbericht templates — clients click to inspire/apply.
+// Each item: { emoji, label, sub (1-line tone), text (with placeholders) }
+const AP_TEMPLATES = [
+  {
+    emoji: '👋', label: 'Vriendelijk',
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse — wat bracht je naar ons?'
+  },
+  {
+    emoji: '🤝', label: 'Professioneel',
+    text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. Bedankt voor uw aanvraag. Mag ik u enkele korte vragen stellen om u beter te kunnen helpen?'
+  },
+  {
+    emoji: '⚡', label: 'Kort & krachtig',
+    text: 'Hey {naam}! {ai} hier. Heb je 2 minuten voor 3 snelle vragen?'
+  },
+  {
+    emoji: '❓', label: 'Vraaggericht',
+    text: 'Hey {naam}! Ik zag je interesse in {bedrijf} via {bron}. Waar mag ik je het beste mee helpen vandaag?'
+  },
+  {
+    emoji: '🏗️', label: 'Voor renovatie/bouw',
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je aanvraag. Om je goed te kunnen helpen: kan je kort vertellen wat het project is en wanneer je het wil starten?'
+  },
+  {
+    emoji: '🦷', label: 'Voor zorg/medisch',
+    text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. We helpen u graag verder. Voor welke behandeling of vraag heeft u contact opgenomen?'
+  },
+  {
+    emoji: '🏠', label: 'Voor vastgoed',
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wil u er één verkopen?'
+  },
+  {
+    emoji: '⚖️', label: 'Voor advocaten',
+    text: 'Goeiedag {naam}, met {ai} van {bedrijf}. Bedankt voor uw contactopname. Kan u in een paar zinnen schetsen waarover u advies zoekt?'
+  },
+  {
+    emoji: '💰', label: 'Vertrouwen + sociaal',
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Leuk dat je ons gevonden hebt — we hielpen deze maand al 12 klanten met hetzelfde. Wat is jouw situatie?'
+  },
+  {
+    emoji: '🎯', label: 'Direct kwalificeren',
+    text: 'Hallo {naam}, met {ai} van {bedrijf}. Voor we verder gaan: heb je al een budget in gedachten en wanneer wil je beginnen?'
+  }
+];
+
+function renderApTemplates() {
+  const wrap = document.getElementById('ap-tpl-grid');
+  if (!wrap) return;
+  wrap.innerHTML = AP_TEMPLATES.map((t, i) => {
+    const preview = t.text.replace(/\\{naam\\}/g, 'Jan').replace(/\\{bedrijf\\}/g, 'jouw bedrijf')
+      .replace(/\\{ai\\}/g, 'Sara').replace(/\\{project\\}/g, '...').replace(/\\{bron\\}/g, 'website');
+    return '<button type="button" class="ap-tpl-card" data-tpl-idx="' + i + '" onclick="applyApTemplate(' + i + ')">' +
+      '<span class="ap-tpl-card-label"><span class="ap-tpl-card-emoji">' + t.emoji + '</span>' + escHtml(t.label) + '</span>' +
+      '<span class="ap-tpl-card-preview">' + escHtml(preview) + '</span>' +
+    '</button>';
+  }).join('');
+  highlightActiveTemplate();
+}
+
+function applyApTemplate(idx) {
+  const t = AP_TEMPLATES[idx];
+  if (!t) return;
+  const ta = document.getElementById('ap-template');
+  if (!ta) return;
+  ta.value = t.text;
+  ta.focus();
+  highlightActiveTemplate();
+  renderPersonaPreview();
+}
+
+function highlightActiveTemplate() {
+  const ta = document.getElementById('ap-template');
+  if (!ta) return;
+  const current = ta.value.trim();
+  document.querySelectorAll('#ap-tpl-grid .ap-tpl-card').forEach(card => {
+    const idx = Number(card.getAttribute('data-tpl-idx'));
+    const match = AP_TEMPLATES[idx] && AP_TEMPLATES[idx].text === current;
+    card.classList.toggle('active', !!match);
+  });
+}
+
 async function loadAiPersona() {
-  // Wire up live preview once (idempotent)
+  // Render template library once (idempotent)
+  if (!AP_STATE.tplRendered) { renderApTemplates(); AP_STATE.tplRendered = true; }
+  // Wire up live preview + active-template highlight once (idempotent)
   if (!AP_STATE.wired) {
     ['ap-name', 'ap-template'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.addEventListener('input', renderPersonaPreview);
+      if (el) el.addEventListener('input', () => { renderPersonaPreview(); if (id === 'ap-template') highlightActiveTemplate(); });
     });
     AP_STATE.wired = true;
   }
@@ -11370,6 +11498,7 @@ async function loadAiPersona() {
     document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
     AP_STATE.loaded = true;
     renderPersonaPreview();
+    highlightActiveTemplate();
   } catch (err) {
     toast('Netwerkfout — probeer later opnieuw', 'error');
   }
