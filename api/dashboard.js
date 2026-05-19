@@ -4554,6 +4554,65 @@ tr:hover .td-arrow { color: var(--cyan); }
   padding: 1px 5px; border-radius: 4px; font-size: 11px;
 }
 
+/* Installation guide accordion */
+.fm-guide-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 22px 24px;
+}
+.fm-guide-hdr { margin-bottom: 12px; }
+.fm-guide-item {
+  border-top: 1px solid var(--border);
+  margin: 0 -24px;
+}
+.fm-guide-item:last-of-type { border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.fm-guide-item summary {
+  cursor: pointer; list-style: none;
+  padding: 14px 24px;
+  display: flex; align-items: center; gap: 10px;
+  user-select: none;
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  transition: background .15s ease;
+}
+.fm-guide-item summary::-webkit-details-marker { display: none; }
+.fm-guide-item summary::after {
+  content: ''; margin-left: auto;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
+  transform: rotate(-45deg); transition: transform .2s ease;
+}
+.fm-guide-item[open] summary::after { transform: rotate(45deg); }
+.fm-guide-item summary:hover { background: var(--bg-card-alt); }
+.fm-guide-item[open] summary { background: rgba(99,102,241,.06); color: var(--accent-bright); }
+.fm-guide-emoji { font-size: 18px; line-height: 1; }
+.fm-guide-label { flex: 1; }
+.fm-guide-meta { font-size: 11px; font-weight: 500; color: var(--text-muted); font-style: italic; }
+.fm-guide-body {
+  padding: 4px 24px 20px;
+  font-size: 13px; color: var(--text-primary); line-height: 1.65;
+}
+.fm-guide-body p { margin: 8px 0; }
+.fm-guide-body p strong { color: var(--text-primary); }
+.fm-guide-body ol { padding-left: 22px; margin: 8px 0; }
+.fm-guide-body ol li { margin-bottom: 6px; color: var(--text-primary); }
+.fm-guide-body ol li strong { color: var(--accent-bright); font-weight: 600; }
+.fm-guide-body code {
+  background: var(--bg-card-alt); color: var(--accent-bright);
+  padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace;
+}
+.fm-guide-tip {
+  margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+  background: rgba(245,158,11,.08); border-left: 3px solid #f59e0b;
+  font-size: 12px; color: var(--text-primary); line-height: 1.55;
+}
+.fm-guide-tip strong { color: #f59e0b; font-weight: 700; }
+.fm-guide-test {
+  margin-top: 14px; padding: 14px 16px;
+  background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.25);
+  border-radius: 10px;
+  font-size: 13px; color: var(--text-primary); line-height: 1.6;
+}
+.fm-guide-test strong { display: block; color: var(--green); margin-bottom: 4px; font-weight: 700; }
+
 .fm-bottom-grid {
   display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start;
 }
@@ -6796,6 +6855,184 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="fm-instructions">
               <strong>Gebruik in:</strong> Facebook / Google Ads, e-mail handtekening, Instagram bio, LinkedIn berichten, visitekaartjes (samen met de QR-code hieronder).
             </div>
+          </div>
+        </div>
+
+        <!-- Installation guide — platform-specific step-by-step -->
+        <div class="fm-guide-card">
+          <div class="fm-guide-hdr">
+            <div class="fm-option-title">🛠️ Installatie-handleiding per platform</div>
+            <p class="fm-option-sub">Klik op het platform dat je gebruikt voor een stap-voor-stap uitleg. Werkt op ALLE moderne websites.</p>
+          </div>
+
+          <!-- WordPress -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">📝</span>
+              <span class="fm-guide-label">WordPress</span>
+              <span class="fm-guide-meta">2 manieren</span>
+            </summary>
+            <div class="fm-guide-body">
+              <p><strong>Optie A — Via plugin (makkelijkst, géén code in je theme):</strong></p>
+              <ol>
+                <li>In WP dashboard → <strong>Plugins</strong> → <strong>Nieuwe plugin</strong></li>
+                <li>Zoek naar <em>"Insert Headers and Footers"</em> (door WPBeginner) → <strong>Installeer</strong> → <strong>Activeer</strong></li>
+                <li>Ga naar <strong>Instellingen</strong> → <strong>Insert Headers and Footers</strong></li>
+                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Scripts in Footer"</strong></li>
+                <li>Klik <strong>Save</strong> — klaar! Ververs je site, je ziet de knop rechtsonder.</li>
+              </ol>
+              <p><strong>Optie B — Direct in theme (voor developers):</strong></p>
+              <ol>
+                <li>WP dashboard → <strong>Uiterlijk</strong> → <strong>Theme Editor</strong></li>
+                <li>Open <code>footer.php</code> in de rechter kolom</li>
+                <li>Plak de code <em>vlak voor</em> de <code>&lt;/body&gt;</code> tag</li>
+                <li>Klik <strong>Bestand bijwerken</strong></li>
+              </ol>
+              <div class="fm-guide-tip">💡 <strong>Tip:</strong> Optie A overleeft theme-updates. Optie B niet — kies daarom A tenzij je weet wat je doet.</div>
+            </div>
+          </details>
+
+          <!-- Shopify -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">🛒</span>
+              <span class="fm-guide-label">Shopify</span>
+              <span class="fm-guide-meta">~2 min</span>
+            </summary>
+            <div class="fm-guide-body">
+              <ol>
+                <li>Shopify admin → <strong>Online Store</strong> → <strong>Themes</strong></li>
+                <li>Bij je actieve thema, klik <strong>...</strong> → <strong>Edit code</strong></li>
+                <li>In de linker kolom onder <strong>Layout</strong>, open <code>theme.liquid</code></li>
+                <li>Scroll naar beneden tot je de <code>&lt;/body&gt;</code> tag vindt</li>
+                <li>Plak de Drijvende WhatsApp-knop code op de regel <em>vlak boven</em> <code>&lt;/body&gt;</code></li>
+                <li>Klik <strong>Save</strong> rechtsboven</li>
+              </ol>
+              <div class="fm-guide-tip">💡 De knop verschijnt op élke pagina van je winkel — productpagina's, collectiepagina's, blog, alles.</div>
+            </div>
+          </details>
+
+          <!-- Wix -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">🌐</span>
+              <span class="fm-guide-label">Wix</span>
+              <span class="fm-guide-meta">~3 min</span>
+            </summary>
+            <div class="fm-guide-body">
+              <ol>
+                <li>Open je Wix editor of dashboard</li>
+                <li>Ga naar <strong>Settings</strong> (Instellingen) → <strong>Custom Code</strong> (Aangepaste code)</li>
+                <li>Klik <strong>+ Add Custom Code</strong> (Voeg code toe)</li>
+                <li>Plak de Drijvende WhatsApp-knop code in het tekstvak</li>
+                <li>Geef het een naam: bv. <em>"Helvaro Lead Form"</em></li>
+                <li>Bij <strong>Add Code to Pages</strong>: kies <strong>All Pages</strong> + <strong>Load code once</strong></li>
+                <li>Bij <strong>Place Code in</strong>: kies <strong>Body — end</strong></li>
+                <li>Klik <strong>Apply</strong> → publiceer je site</li>
+              </ol>
+              <div class="fm-guide-tip">⚠️ Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code — gebruik dan de directe link of QR-code.</div>
+            </div>
+          </details>
+
+          <!-- Squarespace -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">⬛</span>
+              <span class="fm-guide-label">Squarespace</span>
+              <span class="fm-guide-meta">~2 min</span>
+            </summary>
+            <div class="fm-guide-body">
+              <ol>
+                <li>Squarespace dashboard → kies je site</li>
+                <li>Ga naar <strong>Settings</strong> → <strong>Advanced</strong> → <strong>Code Injection</strong></li>
+                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Footer"</strong></li>
+                <li>Klik <strong>Save</strong> bovenaan</li>
+              </ol>
+              <div class="fm-guide-tip">⚠️ Code Injection is beschikbaar vanaf het <strong>Business</strong> plan. Op Personal plan: gebruik een <em>Code Block</em> in een sectie, of gebruik enkel de directe link.</div>
+            </div>
+          </details>
+
+          <!-- Webflow -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">🎨</span>
+              <span class="fm-guide-label">Webflow</span>
+              <span class="fm-guide-meta">~2 min</span>
+            </summary>
+            <div class="fm-guide-body">
+              <ol>
+                <li>Open je Webflow project</li>
+                <li>Klik op het <strong>Settings</strong> (tandwiel) icoon links</li>
+                <li>Ga naar tabblad <strong>Custom Code</strong></li>
+                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Footer Code"</strong></li>
+                <li>Klik <strong>Save Changes</strong></li>
+                <li>Klik <strong>Publish</strong> rechtsboven om live te zetten</li>
+              </ol>
+              <div class="fm-guide-tip">💡 Footer Code wordt op élke pagina ingeladen. Voor een test: publiceer eerst naar je <code>.webflow.io</code> subdomain.</div>
+            </div>
+          </details>
+
+          <!-- Framer -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">⚡</span>
+              <span class="fm-guide-label">Framer</span>
+              <span class="fm-guide-meta">~2 min</span>
+            </summary>
+            <div class="fm-guide-body">
+              <ol>
+                <li>Open je Framer site</li>
+                <li>Klik op <strong>Site Settings</strong> (de drie streepjes linksboven → Settings)</li>
+                <li>Ga naar <strong>General</strong> → scroll naar <strong>Custom Code</strong></li>
+                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"End of &lt;body&gt; tag"</strong></li>
+                <li>Klik <strong>Save</strong> en daarna <strong>Publish</strong></li>
+              </ol>
+            </div>
+          </details>
+
+          <!-- Google Sites -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">📄</span>
+              <span class="fm-guide-label">Google Sites</span>
+              <span class="fm-guide-meta">enkel iframe</span>
+            </summary>
+            <div class="fm-guide-body">
+              <p>Google Sites ondersteunt geen <code>&lt;script&gt;</code> tags — daarom werkt de drijvende WhatsApp-knop niet. Gebruik in plaats daarvan de <strong>iframe embed</strong>:</p>
+              <ol>
+                <li>Open je Google Sites pagina</li>
+                <li>Klik <strong>Insert</strong> → <strong>Embed</strong></li>
+                <li>Kies tabblad <strong>Embed code</strong></li>
+                <li>Plak de iframe-code (de tweede optie hierboven)</li>
+                <li>Klik <strong>Next</strong> → <strong>Insert</strong></li>
+                <li>Pas de grootte aan zoals gewenst → <strong>Publish</strong></li>
+              </ol>
+              <div class="fm-guide-tip">💡 Alternatief: deel gewoon de <strong>directe link</strong> in een knop of menu-item.</div>
+            </div>
+          </details>
+
+          <!-- Generic HTML -->
+          <details class="fm-guide-item">
+            <summary>
+              <span class="fm-guide-emoji">💻</span>
+              <span class="fm-guide-label">Custom HTML / eigen code</span>
+              <span class="fm-guide-meta">developers</span>
+            </summary>
+            <div class="fm-guide-body">
+              <ol>
+                <li>Open het HTML-bestand van je site (meestal <code>index.html</code> of een gedeelde footer template)</li>
+                <li>Plak de Drijvende WhatsApp-knop code <em>vlak vóór</em> de <code>&lt;/body&gt;</code> tag</li>
+                <li>Deploy/upload naar je hosting (FTP, Vercel, Netlify, GitHub Pages, …)</li>
+              </ol>
+              <p>Voor frameworks zoals <strong>Next.js / React / Vue</strong>: voeg het toe in de root layout file (<code>_app.tsx</code>, <code>App.vue</code>, …) met een <code>useEffect</code> die de script-tag dynamisch invoegt, of via <code>next/script</code> met <code>strategy="afterInteractive"</code>.</p>
+              <div class="fm-guide-tip">💡 Voor Next.js: <code>&lt;Script src="https://app.helvaro.pro/form-widget.js" data-project="..." data-name="..." strategy="afterInteractive" /&gt;</code></div>
+            </div>
+          </details>
+
+          <!-- Test instructions -->
+          <div class="fm-guide-test">
+            <strong>✓ Hoe weet ik of het werkt?</strong>
+            Open je site in een privé/incognito venster. Wacht 2 seconden. Je moet een ronde blauwe chat-knop rechtsonder zien staan. Klik erop — het Helvaro formulier opent als pop-up. Vul een test-aanvraag in om te checken of het lead in je dashboard verschijnt.
           </div>
         </div>
 
