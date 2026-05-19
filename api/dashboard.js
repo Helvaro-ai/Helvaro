@@ -4477,6 +4477,34 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ── Formulier page ───────────────────────────────────────────────────── */
 .fm-wrap { width: 100%; padding: 24px 0; display: flex; flex-direction: column; gap: 18px; }
 
+/* Form stats */
+.fm-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.fm-stat-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.fm-stat-num {
+  font-size: 28px; font-weight: 700; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.fm-stat-lbl {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.fm-stat-delta {
+  font-size: 11px; color: var(--text-muted); margin-top: 4px; min-height: 14px;
+}
+.fm-stat-delta.up   { color: var(--green); }
+.fm-stat-delta.down { color: var(--red); }
+
+/* Code actions row (Kopieer + Stuur naar developer side by side) */
+.fm-code-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.fm-code-actions .fm-btn { flex: 1; min-width: 130px; }
+
 .fm-hero {
   background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(99,102,241,.02));
   border: 1px solid var(--border); border-radius: 16px; padding: 24px 26px;
@@ -6763,6 +6791,30 @@ tr:hover .td-arrow { color: var(--cyan); }
     <main class="page-content page" id="page-formulier">
       <div class="fm-wrap">
 
+        <!-- Form submission stats — what's the form actually delivering -->
+        <div class="fm-stats">
+          <div class="fm-stat-card">
+            <div class="fm-stat-num" id="fm-stat-week">—</div>
+            <div class="fm-stat-lbl">Aanvragen deze week</div>
+            <div class="fm-stat-delta" id="fm-stat-week-delta"></div>
+          </div>
+          <div class="fm-stat-card">
+            <div class="fm-stat-num" id="fm-stat-month">—</div>
+            <div class="fm-stat-lbl">Aanvragen deze maand</div>
+            <div class="fm-stat-delta" id="fm-stat-month-delta"></div>
+          </div>
+          <div class="fm-stat-card">
+            <div class="fm-stat-num" id="fm-stat-total">—</div>
+            <div class="fm-stat-lbl">Totaal aanvragen</div>
+            <div class="fm-stat-delta" id="fm-stat-total-sub"></div>
+          </div>
+          <div class="fm-stat-card">
+            <div class="fm-stat-num" id="fm-stat-conv">—%</div>
+            <div class="fm-stat-lbl">Gekwalificeerd</div>
+            <div class="fm-stat-delta" id="fm-stat-conv-sub"></div>
+          </div>
+        </div>
+
         <!-- Hero card with the URL itself -->
         <div class="fm-hero">
           <div class="fm-hero-top">
@@ -6816,10 +6868,16 @@ tr:hover .td-arrow { color: var(--cyan); }
               <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
             </div>
             <textarea class="fm-code" id="fm-code-widget" readonly rows="3"></textarea>
-            <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-widget')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              Kopieer code
-            </button>
+            <div class="fm-code-actions">
+              <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-widget')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Kopieer code
+              </button>
+              <button class="fm-btn fm-btn-full" onclick="fmEmailDev('widget')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Stuur naar developer
+              </button>
+            </div>
             <div class="fm-instructions">
               <strong>Hoe te plakken:</strong> open de HTML van je website, plak deze regel net vóór de afsluitende <code>&lt;/body&gt;</code> tag. Werkt op WordPress, Shopify, Wix, Squarespace en elke andere site.
             </div>
@@ -6832,10 +6890,16 @@ tr:hover .td-arrow { color: var(--cyan); }
               <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
             </div>
             <textarea class="fm-code" id="fm-code-iframe" readonly rows="3"></textarea>
-            <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-iframe')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              Kopieer code
-            </button>
+            <div class="fm-code-actions">
+              <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-iframe')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Kopieer code
+              </button>
+              <button class="fm-btn fm-btn-full" onclick="fmEmailDev('iframe')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Stuur naar developer
+              </button>
+            </div>
             <div class="fm-instructions">
               <strong>Hoe te plakken:</strong> plak op de plek waar je het formulier wil tonen — meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
             </div>
@@ -12423,6 +12487,9 @@ function loadFormulier() {
   const preview = document.getElementById('fm-preview-iframe');
   if (preview && preview.src !== url) preview.src = url;
 
+  // Stats from already-fetched leads
+  populateFormStats();
+
   // Share buttons
   const shareText = encodeURIComponent('Hey! Vul je gegevens hier in dan kom ik snel bij je terug: ' + url);
   const wa  = document.getElementById('fm-share-wa');
@@ -12433,6 +12500,92 @@ function loadFormulier() {
   if (em)  em.href  = 'mailto:?subject=' + encodeURIComponent('Vul snel dit formulier in') + '&body=' + shareText;
   if (sms) sms.href = 'sms:?&body=' + shareText;
   if (li)  li.href  = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url);
+}
+
+function populateFormStats() {
+  // Read from the already-fetched leads array on state — same data as the
+  // dashboard. No new API call needed.
+  const leads = (state && state.leads) || [];
+  const total = leads.length;
+
+  const now = new Date();
+  const weekStart = new Date(); weekStart.setDate(now.getDate() - 7);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevWeekStart = new Date(); prevWeekStart.setDate(now.getDate() - 14);
+  const prevWeekEnd   = new Date(); prevWeekEnd.setDate(now.getDate() - 7);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthEnd   = monthStart;
+
+  const cntInRange = (a, b) => leads.filter(l => {
+    if (!l.datum) return false;
+    const d = new Date(l.datum);
+    return d >= a && d < b;
+  }).length;
+
+  const week        = cntInRange(weekStart, new Date(now.getTime() + 86400000));
+  const prevWeek    = cntInRange(prevWeekStart, prevWeekEnd);
+  const month       = cntInRange(monthStart, new Date(now.getTime() + 86400000));
+  const prevMonth   = cntInRange(prevMonthStart, prevMonthEnd);
+  const qualified   = leads.filter(l => l.qualified).length;
+  const convPct     = total > 0 ? Math.round((qualified / total) * 100) : 0;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setDelta = (id, cur, prev) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'fm-stat-delta';
+    if (prev === 0 && cur === 0) { el.textContent = 'Nog geen historiek'; return; }
+    if (prev === 0) { el.textContent = '↑ Eerste deze periode'; el.classList.add('up'); return; }
+    const diff = cur - prev;
+    const pct  = Math.round((diff / prev) * 100);
+    if (diff > 0)      { el.textContent = '↑ ' + Math.abs(pct) + '% vs vorige';   el.classList.add('up');  }
+    else if (diff < 0) { el.textContent = '↓ ' + Math.abs(pct) + '% vs vorige';   el.classList.add('down'); }
+    else               { el.textContent = '— gelijk aan vorige'; }
+  };
+
+  set('fm-stat-week',  week);
+  set('fm-stat-month', month);
+  set('fm-stat-total', total);
+  set('fm-stat-conv',  convPct + '%');
+  setDelta('fm-stat-week-delta',  week,  prevWeek);
+  setDelta('fm-stat-month-delta', month, prevMonth);
+
+  const totalSub = document.getElementById('fm-stat-total-sub');
+  if (totalSub) totalSub.textContent = total === 0 ? 'Nog geen aanvragen ontvangen' : qualified + ' gekwalificeerd';
+  const convSub = document.getElementById('fm-stat-conv-sub');
+  if (convSub) convSub.textContent = total === 0 ? '—' : qualified + ' van ' + total;
+}
+
+// Email handoff — opens the user's mail client with a pre-filled message to
+// forward to their web developer. Includes the snippet + per-platform tips.
+function fmEmailDev(kind) {
+  const url   = getFormUrl();
+  const code  = getProjectCode();
+  const cname = state.clientName || code || 'Helvaro';
+  let codeText = '';
+  let subject  = '';
+  let intro    = '';
+  let tips     = '';
+
+  if (kind === 'widget') {
+    codeText = '<script src="https://app.helvaro.pro/form-widget.js" data-project="' + code + '" data-name="' + cname + '"><\\/script>';
+    subject  = 'Helvaro lead-formulier — drijvende WhatsApp-knop installeren';
+    intro    = 'Hallo,\\n\\nWil je deze script-tag op onze website plakken? Het is een drijvende WhatsApp-knop die rechtsonder op elke pagina verschijnt. Bezoekers klikken erop en vullen het formulier in.\\n\\n';
+    tips     = '\\n\\nWaar plakken: vlak vóór de afsluitende </body> tag, op alle pagina\\'s.\\n\\nWordPress: gebruik plugin "Insert Headers and Footers" → veld "Scripts in Footer".\\nShopify: theme.liquid net voor </body>.\\nWebflow: Site Settings → Custom Code → Footer Code.\\nCustom site: in de gedeelde footer/layout template.\\n\\nAls je een test wil doen voor live-zetten: vul een fake aanvraag in, dan zie ik die direct in mijn dashboard.\\n\\nBedankt!';
+  } else if (kind === 'iframe') {
+    codeText = '<iframe src="' + url + '" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:560px"></iframe>';
+    subject  = 'Helvaro lead-formulier — iframe embed installeren';
+    intro    = 'Hallo,\\n\\nWil je deze iframe op onze website plakken? Het toont het Helvaro lead-formulier direct in de pagina (bijvoorbeeld op de Contact-pagina).\\n\\n';
+    tips     = '\\n\\nWaar plakken: op de plek waar je het formulier wil tonen (Contact-sectie, landingspagina, …).\\nHoogte aanpasbaar via height="640".\\nWidth 100% past zich aan de container aan.\\n\\nAls je een test wil doen voor live-zetten: vul een fake aanvraag in, dan zie ik die direct in mijn dashboard.\\n\\nBedankt!';
+  } else {
+    return;
+  }
+
+  const body    = intro + codeText + tips;
+  // mailto: requires URL-encoded subject + body; %0A for newlines
+  const mailto  = 'mailto:?subject=' + encodeURIComponent(subject) +
+                  '&body=' + encodeURIComponent(body);
+  window.location.href = mailto;
 }
 
 function fmCopy(id) {
