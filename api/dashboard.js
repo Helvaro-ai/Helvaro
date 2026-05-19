@@ -3281,6 +3281,47 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: rgba(20,184,166,0.18);
   border-color: rgba(20,184,166,0.4);
 }
+.panel-score-pills {
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;
+  max-width: 65%;
+}
+.score-pill {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px;
+  white-space: nowrap;
+}
+.score-pill.sp-strong { background: rgba(34,197,94,.14); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+.score-pill.sp-medium { background: rgba(245,158,11,.14); color: #f59e0b;     border: 1px solid rgba(245,158,11,.3); }
+.score-pill.sp-weak   { background: rgba(239,68,68,.14); color: var(--red);   border: 1px solid rgba(239,68,68,.3); }
+.score-pill.sp-neutral{ background: var(--bg-card-alt); color: var(--text-muted); border: 1px solid var(--border); }
+
+.panel-suggest-row {
+  margin-top: 10px; display: flex; flex-direction: column; gap: 8px;
+}
+.panel-suggest-btn {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.3);
+  color: var(--accent-bright); padding: 6px 12px; border-radius: 7px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all .15s ease; font-family: inherit;
+}
+.panel-suggest-btn:hover { background: rgba(99,102,241,.22); }
+.panel-suggest-btn:disabled { opacity: .55; cursor: wait; }
+.panel-suggest-chips {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.panel-suggest-chip {
+  text-align: left; cursor: pointer;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-bright);
+  border-radius: 8px; padding: 9px 12px;
+  font-size: 12px; line-height: 1.5; color: var(--text-primary);
+  font-family: inherit; transition: all .15s ease;
+}
+.panel-suggest-chip:hover {
+  background: rgba(99,102,241,.08); border-color: var(--accent-bright);
+  transform: translateX(2px);
+}
 .panel-reply-row {
   display: flex; gap: 8px; margin-top: 10px; align-items: flex-end;
 }
@@ -4662,6 +4703,80 @@ tr:hover .td-arrow { color: var(--cyan); }
   border: 1px solid var(--border); background: var(--bg-card-alt);
 }
 .fm-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* ── Onboarding "Klaar!" celebration overlay ──────────────────────────── */
+#onb-done-overlay {
+  position: fixed; inset: 0;
+  background: rgba(8,12,20,.92); backdrop-filter: blur(10px);
+  z-index: 2500;
+  display: none; align-items: center; justify-content: center;
+  padding: 24px;
+}
+#onb-done-overlay.open { display: flex; animation: onbFade .35s ease; }
+@keyframes onbFade { from { opacity: 0; } to { opacity: 1; } }
+.onb-done-card {
+  width: 100%; max-width: 520px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
+  padding: 36px 32px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  animation: onbPop .45s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes onbPop { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.onb-done-icon { font-size: 56px; margin-bottom: 12px; animation: onbBounce .8s ease infinite alternate; }
+@keyframes onbBounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+.onb-done-title { margin: 0 0 6px; font-size: 24px; font-weight: 700; color: var(--text-primary); }
+.onb-done-sub { margin: 0 0 22px; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+.onb-done-url-card {
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;
+  text-align: left;
+}
+.onb-done-url-lbl {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px;
+}
+.onb-done-url {
+  display: block; font-family: monospace; font-size: 13px; color: var(--accent-bright);
+  background: var(--bg-primary); padding: 8px 11px; border-radius: 7px;
+  margin-bottom: 10px; word-break: break-all;
+}
+.onb-done-copy {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-bright); border: none; border-radius: 7px;
+  padding: 7px 12px; color: #fff; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.onb-done-copy:hover { opacity: .9; }
+.onb-done-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; text-align: left; }
+.onb-done-step {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(99,102,241,.06); border-radius: 8px; padding: 10px 14px;
+  font-size: 13px; color: var(--text-primary);
+}
+.onb-done-step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent-bright); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.onb-done-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.onb-done-btn {
+  flex: 1; min-width: 180px; padding: 12px 16px;
+  border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: all .15s ease;
+}
+.onb-done-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+  border: none; color: #fff;
+}
+.onb-done-btn-primary:hover { opacity: .9; }
+.onb-done-btn-secondary {
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.onb-done-btn-secondary:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
 
 /* ── Dashboard form-link banner ───────────────────────────────────────── */
 .dash-formlink {
@@ -7883,6 +7998,36 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </div>
 
+    <!-- Onboarding "Klaar!" celebration overlay (shown once after first setup) -->
+    <div id="onb-done-overlay">
+      <div class="onb-done-card">
+        <div class="onb-done-icon">🎉</div>
+        <h2 class="onb-done-title">Je AI is live!</h2>
+        <p class="onb-done-sub">Vanaf nu krijgt elke lead die jouw formulier invult direct een persoonlijk WhatsApp-bericht — automatisch gekwalificeerd.</p>
+        <div class="onb-done-url-card">
+          <div class="onb-done-url-lbl">DEEL DEZE LINK</div>
+          <code class="onb-done-url" id="onb-done-url">—</code>
+          <button class="onb-done-copy" onclick="copyFormLink()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Kopieer
+          </button>
+        </div>
+        <div class="onb-done-steps">
+          <div class="onb-done-step"><span class="onb-done-step-num">1</span> Plak de link in je website, advertentie of bio</div>
+          <div class="onb-done-step"><span class="onb-done-step-num">2</span> Stuur jezelf een test-aanvraag</div>
+          <div class="onb-done-step"><span class="onb-done-step-num">3</span> Je leads verschijnen automatisch in je Dashboard</div>
+        </div>
+        <div class="onb-done-actions">
+          <button class="onb-done-btn onb-done-btn-secondary" onclick="closeOnboardingDone(); navigateTo('formulier');">
+            Formulier &amp; installatie →
+          </button>
+          <button class="onb-done-btn onb-done-btn-primary" onclick="closeOnboardingDone(); navigateTo('dashboard');">
+            Naar mijn Dashboard →
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Pipeline Modal -->
     <div class="founder-modal-overlay" id="pipe-modal-overlay">
       <div class="founder-modal">
@@ -8052,6 +8197,15 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// Map AI qualification rating (Dutch + English variants) to a color class
+function scorePillCls(v) {
+  const s = String(v || '').toLowerCase();
+  if (/(strong|hoog|high|goed|sterk)/.test(s))          return 'sp-strong';
+  if (/(medium|gemiddeld|moderate|gemiddel)/.test(s))   return 'sp-medium';
+  if (/(weak|laag|low|poor|zwak)/.test(s))              return 'sp-weak';
+  return 'sp-neutral';
 }
 
 function getInitials(name) {
@@ -9367,9 +9521,16 @@ function openPanel(lead) {
           </div>
         </span>
       </div>
-      \${lead.fit !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Fit</span><span class="panel-row-value">\${lead.fit || '—'}</span></div>\` : ''}
-      \${lead.capaciteit !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Capaciteit</span><span class="panel-row-value">\${lead.capaciteit || '—'}</span></div>\` : ''}
-      \${lead.urgentie !== undefined ? \`<div class="panel-row"><span class="panel-row-label">Urgentie</span><span class="panel-row-value">\${lead.urgentie || '—'}</span></div>\` : ''}
+      \${(lead.fit || lead.capaciteit || lead.urgentie) ? \`
+        <div class="panel-row">
+          <span class="panel-row-label">Waarom \${scoreNum}/10</span>
+          <span class="panel-row-value panel-score-pills">
+            \${lead.fit        ? \`<span class="score-pill \${scorePillCls(lead.fit)}"        title="Fit met je doelgroep">Fit: \${escHtml(lead.fit)}</span>\` : ''}
+            \${lead.capaciteit ? \`<span class="score-pill \${scorePillCls(lead.capaciteit)}" title="Budget / koopkracht">Capaciteit: \${escHtml(lead.capaciteit)}</span>\` : ''}
+            \${lead.urgentie   ? \`<span class="score-pill \${scorePillCls(lead.urgentie)}"   title="Hoe snel ze beslissen">Urgentie: \${escHtml(lead.urgentie)}</span>\` : ''}
+          </span>
+        </div>
+      \` : ''}
       <div class="panel-row">
         <span class="panel-row-label">Deal waarde (€)</span>
         <span class="panel-row-value" style="flex:1;max-width:160px">
@@ -9471,6 +9632,13 @@ function openPanel(lead) {
       <div class="panel-section">
         <div class="panel-section-title">WhatsApp Gesprek</div>
         <div class="chat-wrap" id="panel-chat-wrap">\${bubbles}</div>
+        <div class="panel-suggest-row" id="panel-suggest-row">
+          <button class="panel-suggest-btn" id="panel-suggest-btn" onclick="loadReplySuggestions()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            AI suggesties voor antwoord
+          </button>
+          <div class="panel-suggest-chips" id="panel-suggest-chips"></div>
+        </div>
         <div class="panel-reply-row">
           <textarea class="panel-reply-input" id="panel-reply-input" rows="2" placeholder="Antwoord aan \${escHtml(lead.naam || 'de lead')} via WhatsApp..." maxlength="2000"></textarea>
           <button class="panel-reply-send" id="panel-reply-send" onclick="sendWhatsAppReply()">
@@ -9801,6 +9969,66 @@ function closePanel() {
 }
 
 // ── Send a manual WhatsApp reply from the lead panel ─────────────────────────
+// ── Onboarding "Klaar!" celebration overlay ──────────────────────────────
+function showOnboardingDone() {
+  const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
+  const urlEl = document.getElementById('onb-done-url');
+  if (urlEl) urlEl.textContent = url || '(geen link beschikbaar)';
+  const ov = document.getElementById('onb-done-overlay');
+  if (ov) ov.classList.add('open');
+}
+function closeOnboardingDone() {
+  const ov = document.getElementById('onb-done-overlay');
+  if (ov) ov.classList.remove('open');
+}
+
+// ── AI reply suggestions for the WhatsApp chat ──────────────────────────────
+async function loadReplySuggestions() {
+  const lead    = state.activeLead;
+  const btn     = document.getElementById('panel-suggest-btn');
+  const chips   = document.getElementById('panel-suggest-chips');
+  if (!lead || !btn || !chips) return;
+  // Disable while loading
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg> AI denkt na...';
+  chips.innerHTML = '';
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'suggest-replies', leadId: lead.id })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      toast(d.error || 'Suggesties opvragen mislukt', 'error');
+      return;
+    }
+    const replies = Array.isArray(d.replies) ? d.replies : [];
+    if (!replies.length) { toast('Geen suggesties beschikbaar', 'info'); return; }
+    chips.innerHTML = replies.map(text =>
+      '<button type="button" class="panel-suggest-chip" onclick="useSuggestedReply(this)" data-text="' +
+      escHtml(text).replace(/"/g, '&quot;') + '">' + escHtml(text) + '</button>'
+    ).join('');
+  } catch (err) {
+    toast('Netwerkfout — probeer opnieuw', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+function useSuggestedReply(chipEl) {
+  const text = chipEl.getAttribute('data-text') || chipEl.textContent || '';
+  const ta = document.getElementById('panel-reply-input');
+  if (!ta) return;
+  ta.value = text;
+  ta.focus();
+  // Clear chips so the row is clean once they picked one
+  const chips = document.getElementById('panel-suggest-chips');
+  if (chips) chips.innerHTML = '';
+}
+
 async function sendWhatsAppReply() {
   const input = document.getElementById('panel-reply-input');
   const btn   = document.getElementById('panel-reply-send');
@@ -12426,14 +12654,15 @@ async function saveAiPersona() {
       setTimeout(() => mark.classList.remove('visible'), 2500);
     }
     toast('Instellingen opgeslagen — live in elk volgend gesprek', 'success');
-    // First-time setup? Fade the welcome banner.
+    // First-time setup? Show celebration screen + clear the banner.
     if (sessionStorage.getItem('hv-setup-pending') === '1') {
       sessionStorage.removeItem('hv-setup-pending');
       const banner = document.getElementById('ap-welcome-banner');
-      if (banner) { banner.style.transition = 'opacity .4s ease'; banner.style.opacity = '0'; setTimeout(() => { banner.style.display = 'none'; }, 400); }
+      if (banner) banner.style.display = 'none';
+      showOnboardingDone();
+      return;
     }
-    // After a successful save, take the client to their dashboard so they see
-    // the actual product. Small delay so the green ✓ animation is visible first.
+    // Returning user: just take them back to the dashboard.
     setTimeout(() => navigateTo('dashboard'), 900);
   } catch (err) {
     toast('Netwerkfout — probeer opnieuw', 'error');

@@ -342,6 +342,90 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ── B2. suggest-replies — AI generates 3 short WhatsApp reply ideas ─────
+    // POST { mode: 'suggest-replies', leadId: 'recXXX' }
+    // Reads the lead's Conversation History, sends to Claude with the client's
+    // AI Name + Client Name + AI Instructions, returns 3 short Dutch replies.
+    if (body.mode === 'suggest-replies') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const leadId = String(body.leadId || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(leadId)) return res.status(400).json({ error: 'Ongeldig lead ID' });
+      const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+      if (!ANTHROPIC_KEY) return res.status(503).json({ error: 'AI niet beschikbaar' });
+      try {
+        // Fetch the lead — verify ownership + read history
+        const lRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!lRes.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        const lead = await lRes.json();
+        if ((lead.fields?.['fldSmczuyUJd26HLe'] || lead.fields?.['Project Code']) !== projectCode) {
+          return res.status(403).json({ error: 'Geen toegang' });
+        }
+        let history = [];
+        const stored = lead.fields?.['Conversation History'];
+        if (stored) { try { history = JSON.parse(stored); } catch {} }
+        const leadName = lead.fields?.['fldbk0LVNckOU0bqA'] || lead.fields?.['Name'] || '';
+        // Look up the client's AI config (cached client may already have it)
+        let aiName = 'Mathis', clientName2 = clientName || 'het bedrijf', aiInstr = '';
+        try {
+          const formula2 = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+          const cRes2 = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula2}&maxRecords=1`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          if (cRes2.ok) {
+            const cd = await cRes2.json();
+            const rec = (cd.records || [])[0];
+            if (rec) {
+              aiName      = rec.fields['fldRvoe1JMPOtPWC7'] || rec.fields['AI Name']         || aiName;
+              clientName2 = rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name']     || clientName2;
+              aiInstr     = rec.fields['fld1lqHctRbqFGQf5'] || rec.fields['AI Instructions'] || '';
+            }
+          }
+        } catch {}
+        // Build the prompt
+        const convText = history.slice(-12).map(m => {
+          const role = m.role === 'user' ? 'Klant' : (m.manual ? 'Jij eerder' : 'AI eerder');
+          return role + ': ' + String(m.content || '').slice(0, 500);
+        }).join('\n');
+        const sysPrompt =
+          'Je bent ' + aiName + ' van ' + clientName2 + '. Je helpt de salesmedewerker met 3 verschillende, korte WhatsApp-antwoorden die ze nu naar de lead "' + (leadName || 'de lead') + '" zou kunnen sturen. ' +
+          (aiInstr ? 'Volg deze stijl-regels: ' + aiInstr.slice(0, 800) + ' ' : '') +
+          'Antwoord ALLEEN met geldig JSON: {"replies":["...","...","..."]}. Elk antwoord max 200 tekens. Antwoorden zijn verschillend van toon (bv. vriendelijk / direct / vraag-stellend). Geen uitleg buiten de JSON.';
+        const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method:  'POST',
+          headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 600,
+            system:     sysPrompt,
+            messages:   [{ role: 'user', content: 'Recente gespreksgeschiedenis:\n\n' + (convText || '(nog geen berichten)') }]
+          })
+        });
+        if (!aiRes.ok) {
+          const t = await aiRes.text().catch(() => '');
+          console.error('[suggest-replies] anthropic failed', aiRes.status, t.slice(0, 300));
+          return res.status(502).json({ error: 'AI niet bereikbaar' });
+        }
+        const ad = await aiRes.json();
+        const txt = ad.content?.[0]?.text || '';
+        let parsed = null;
+        try { parsed = JSON.parse(txt); } catch {
+          // Tolerant: extract first {...} block
+          const m = txt.match(/\{[\s\S]*\}/);
+          if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+        }
+        const replies = (parsed && Array.isArray(parsed.replies)) ? parsed.replies.filter(s => typeof s === 'string').slice(0, 3) : [];
+        if (!replies.length) return res.status(502).json({ error: 'AI gaf geen suggesties terug' });
+        return res.status(200).json({ replies });
+      } catch (err) {
+        console.error('[suggest-replies] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── C. existing: send a WhatsApp reply on an existing lead (2-way chat) ─
     // POST /api/leads?id=recXXX  body: { message: "text" }
     try {
