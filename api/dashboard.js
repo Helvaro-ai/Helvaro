@@ -4474,6 +4474,32 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    INSTELLINGEN (SETTINGS)
    ============================================================ */
+/* ── Dashboard form-link banner ───────────────────────────────────────── */
+.dash-formlink {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 16px; margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dash-formlink-icon { font-size: 20px; line-height: 1; }
+.dash-formlink-body { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+.dash-formlink-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-formlink-url {
+  font-family: monospace; font-size: 12px; color: var(--accent-bright);
+  background: var(--bg-card-alt); padding: 5px 9px; border-radius: 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-block; max-width: 100%;
+}
+.dash-formlink-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.dash-formlink-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 7px;
+  padding: 6px 10px; font-size: 12px; font-weight: 600;
+  color: var(--text-muted); text-decoration: none; cursor: pointer; font-family: inherit;
+  transition: all .15s ease;
+}
+.dash-formlink-btn:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+
 /* ── AI Persoonlijkheid page ──────────────────────────────────────────── */
 .ap-wrap { width: 100%; padding: 24px 0; }
 .ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
@@ -4616,6 +4642,33 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .ap-msg-them { align-self: flex-start; background: #1f2c2a; border-bottom-left-radius: 2px; }
 
+.ap-formlink-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.ap-formlink-url-row { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
+.ap-formlink-url {
+  flex: 1; min-width: 0; padding: 9px 12px;
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--accent-bright); font-size: 12px; font-family: monospace;
+  display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ap-formlink-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ap-formlink-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: 1px solid var(--border); border-radius: 7px;
+  padding: 6px 10px; font-size: 12px; font-weight: 600;
+  color: var(--text-muted); text-decoration: none; cursor: pointer; font-family: inherit;
+  transition: all .15s ease;
+}
+.ap-formlink-link:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+.ap-formlink-qr {
+  margin-top: 12px; padding: 14px; background: #fff; border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.ap-formlink-qr img { display: block; }
+.ap-formlink-embed { margin-top: 12px; }
+.ap-formlink-embed-code {
+  font-family: monospace; font-size: 11px; line-height: 1.5;
+  resize: none; white-space: pre; min-height: auto;
+}
 .ap-test-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
 .ap-test-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
 .ap-test-sub { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.5; }
@@ -5807,6 +5860,29 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- Dashboard Page -->
     <main class="page-content page active" id="page-dashboard">
 
+      <!-- Form Link banner — quick access to the lead form URL -->
+      <div class="dash-formlink" id="dash-formlink">
+        <div class="dash-formlink-icon">📋</div>
+        <div class="dash-formlink-body">
+          <div class="dash-formlink-label">Jouw lead-formulier</div>
+          <code class="dash-formlink-url" id="dash-formlink-url">—</code>
+        </div>
+        <div class="dash-formlink-actions">
+          <button class="dash-formlink-btn" onclick="copyFormLink()" title="Kopieer link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Kopieer
+          </button>
+          <a class="dash-formlink-btn" id="dash-formlink-open" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open
+          </a>
+          <button class="dash-formlink-btn" onclick="navigateTo('ai-persona')" title="Meer opties">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Meer
+          </button>
+        </div>
+      </div>
+
       <!-- Stats Grid -->
       <div class="stats-grid" id="stats-grid">
         <!-- Skeleton stats -->
@@ -6492,6 +6568,44 @@ tr:hover .td-arrow { color: var(--cyan); }
                   </button>
                 </div>
                 <div class="ap-test-result" id="ap-test-result"></div>
+              </div>
+
+              <!-- Form Link card -->
+              <div class="ap-formlink-card">
+                <div class="ap-test-title">📋 Jouw lead-formulier</div>
+                <p class="ap-test-sub">Deel deze link via je website, advertenties of socials. Iedereen die het invult komt direct in je dashboard.</p>
+                <div class="ap-formlink-url-row">
+                  <code class="ap-formlink-url" id="ap-formlink-url">—</code>
+                  <button class="ap-btn" onclick="copyFormLink()" title="Kopieer link">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Kopieer
+                  </button>
+                </div>
+                <div class="ap-formlink-actions">
+                  <a class="ap-formlink-link" id="ap-formlink-open" target="_blank" rel="noopener">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Open formulier
+                  </a>
+                  <button class="ap-formlink-link" onclick="toggleFormQr()" id="ap-formlink-qr-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="21"/><line x1="18" y1="14" x2="18" y2="17"/><line x1="21" y1="18" x2="18" y2="18"/><line x1="21" y1="21" x2="14" y2="21"/></svg>
+                    QR-code
+                  </button>
+                  <button class="ap-formlink-link" onclick="toggleFormEmbed()" id="ap-formlink-embed-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    Embed-code
+                  </button>
+                </div>
+                <!-- QR code (toggled) -->
+                <div class="ap-formlink-qr" id="ap-formlink-qr" style="display:none">
+                  <img id="ap-formlink-qr-img" alt="QR-code naar formulier" width="180" height="180">
+                  <div class="ap-test-sub" style="text-align:center;margin-top:6px">Scan met je telefoon — print op flyers, beurzen of in je etalage.</div>
+                </div>
+                <!-- Embed snippet (toggled) -->
+                <div class="ap-formlink-embed" id="ap-formlink-embed" style="display:none">
+                  <div class="ap-test-sub" style="margin-bottom:6px">Plak deze code in de HTML van je website:</div>
+                  <textarea class="ap-input ap-formlink-embed-code" id="ap-formlink-embed-code" readonly rows="3"></textarea>
+                  <button class="ap-btn" style="margin-top:6px" onclick="copyFormEmbed()">Kopieer embed-code</button>
+                </div>
               </div>
             </div>
           </div>
@@ -7719,7 +7833,22 @@ function loadLeadsFromLS() {
   return null;
 }
 
+// Populate the small Form Link banner above the dashboard stats grid.
+// Idempotent — safe to call from refreshData() every cycle.
+function populateDashFormLink() {
+  const urlEl  = document.getElementById('dash-formlink-url');
+  const openEl = document.getElementById('dash-formlink-open');
+  const wrap   = document.getElementById('dash-formlink');
+  if (!urlEl || !openEl) return;
+  const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
+  if (!url) { if (wrap) wrap.style.display = 'none'; return; }
+  if (wrap) wrap.style.display = '';
+  urlEl.textContent = url;
+  openEl.href = url;
+}
+
 async function refreshData(skipFetch = false) {
+  populateDashFormLink();
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.classList.add('spin');
 
@@ -11645,8 +11774,14 @@ async function loadAiPersona() {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', updateWelcomeBannerChecks);
     });
+    // Live-validate Opslaan availability
+    ['ap-name', 'ap-template'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', refreshSaveButton);
+    });
     AP_STATE.wired = true;
   }
+  populateFormLink();   // builds URL + QR + embed snippet from localStorage
   // Always re-fetch — config may have changed elsewhere
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
@@ -11670,6 +11805,7 @@ async function loadAiPersona() {
     renderPersonaPreview();
     highlightActiveTemplate();
     showFirstTimeBannerIfNeeded();
+    refreshSaveButton();
   } catch (err) {
     toast('Netwerkfout — probeer later opnieuw', 'error');
   }
@@ -11788,6 +11924,81 @@ async function saveAiPersona() {
     AP_STATE.saving = false;
     if (btn) { btn.disabled = false; btn.innerHTML = original; }
   }
+}
+
+// ── Form link helpers ────────────────────────────────────────────────────
+function getProjectCode() {
+  // Read from localStorage (saved on login). Fallback to API_BASE-relative blank.
+  try { return localStorage.getItem('hv-project') || ''; } catch (e) { return ''; }
+}
+function getFormUrl() {
+  const code = getProjectCode();
+  if (!code) return '';
+  return 'https://app.helvaro.pro/start/' + encodeURIComponent(code);
+}
+function populateFormLink() {
+  const url = getFormUrl();
+  const urlEl = document.getElementById('ap-formlink-url');
+  const openEl = document.getElementById('ap-formlink-open');
+  const qrImg = document.getElementById('ap-formlink-qr-img');
+  const embed = document.getElementById('ap-formlink-embed-code');
+  if (!url) {
+    if (urlEl) urlEl.textContent = '(geen project code beschikbaar — log opnieuw in)';
+    return;
+  }
+  if (urlEl)  urlEl.textContent = url;
+  if (openEl) openEl.href       = url;
+  if (qrImg)  qrImg.src         = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=' + encodeURIComponent(url);
+  if (embed) {
+    // Simple iframe embed — works on any HTML site
+    embed.value = '<iframe src="' + url + '" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:560px"></iframe>';
+  }
+}
+function copyFormLink() {
+  const url = getFormUrl();
+  if (!url) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url)
+      .then(() => toast('Link gekopieerd ✓', 'success'))
+      .catch(() => toast('Kopiëren mislukt — selecteer handmatig', 'error'));
+  }
+}
+function copyFormEmbed() {
+  const ta = document.getElementById('ap-formlink-embed-code');
+  if (!ta || !ta.value) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(ta.value)
+      .then(() => toast('Embed-code gekopieerd ✓', 'success'))
+      .catch(() => toast('Kopiëren mislukt', 'error'));
+  }
+}
+function toggleFormQr() {
+  const qr    = document.getElementById('ap-formlink-qr');
+  const embed = document.getElementById('ap-formlink-embed');
+  if (!qr) return;
+  const open = qr.style.display === 'none';
+  qr.style.display = open ? 'flex' : 'none';
+  if (open && embed) embed.style.display = 'none';
+}
+function toggleFormEmbed() {
+  const qr    = document.getElementById('ap-formlink-qr');
+  const embed = document.getElementById('ap-formlink-embed');
+  if (!embed) return;
+  const open = embed.style.display === 'none';
+  embed.style.display = open ? 'block' : 'none';
+  if (open && qr) qr.style.display = 'none';
+}
+
+// Disable Opslaan button when essentials are empty
+function refreshSaveButton() {
+  const btn  = document.getElementById('ap-save-btn');
+  if (!btn) return;
+  const name = (document.getElementById('ap-name').value || '').trim();
+  const tpl  = (document.getElementById('ap-template').value || '').trim();
+  // Require at least AI naam + welkomstbericht
+  const ok = name.length > 0 && tpl.length > 0;
+  btn.disabled = !ok;
+  btn.title = ok ? '' : 'Vul minstens AI naam en welkomstbericht in';
 }
 
 async function sendTestMessage() {
