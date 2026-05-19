@@ -11773,12 +11773,15 @@ async function saveAiPersona() {
       setTimeout(() => mark.classList.remove('visible'), 2500);
     }
     toast('Instellingen opgeslagen — live in elk volgend gesprek', 'success');
-    // If this was a first-time setup, fade the welcome banner out after save
+    // First-time setup? Fade the welcome banner.
     if (sessionStorage.getItem('hv-setup-pending') === '1') {
       sessionStorage.removeItem('hv-setup-pending');
       const banner = document.getElementById('ap-welcome-banner');
       if (banner) { banner.style.transition = 'opacity .4s ease'; banner.style.opacity = '0'; setTimeout(() => { banner.style.display = 'none'; }, 400); }
     }
+    // After a successful save, take the client to their dashboard so they see
+    // the actual product. Small delay so the green ✓ animation is visible first.
+    setTimeout(() => navigateTo('dashboard'), 900);
   } catch (err) {
     toast('Netwerkfout — probeer opnieuw', 'error');
   } finally {
