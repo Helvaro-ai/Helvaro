@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
     // fall back to safe defaults and always proceed with lead creation.
     // Uses a formula filter on the field ID so only 1 record is returned instead
     // of fetching all 100 clients and filtering client-side.
-    const aiName     = 'Mathis Willems';
+    let   aiName     = 'Mathis Willems';      // safe default — overwritten by client's "AI Name" field if set
     let   clientName = project_code;          // safe default — overwritten below if found
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
 
@@ -98,6 +98,11 @@ module.exports = async function handler(req, res) {
         if (match) {
           clientName   = match.fields['fldAnB848Sr5jl6dq'] || match.fields['Client Name']         || clientName;
           autoReplyTpl = match.fields['Auto-Reply Template'] || match.fields['Auto Reply Template'] || '';
+          // "AI Name" = the persona that signs WhatsApp messages.
+          // Tip for clients: use an actual employee name ("Sara", "Tim Janssen")
+          // so leads feel they're chatting with a real human, not a bot.
+          const customAiName = match.fields['AI Name'] || match.fields['AI Naam'] || '';
+          if (customAiName && String(customAiName).trim()) aiName = String(customAiName).trim().slice(0, 60);
         }
       }
       // 429 / error → use defaults, don't block the form submission
@@ -148,15 +153,16 @@ module.exports = async function handler(req, res) {
 
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
-    // Per-client custom template (with {naam} / {bedrijf} / {project} / {bron} placeholders)
+    // Per-client custom template (placeholders: {naam} {bedrijf} {project} {bron} {ai})
     // falls back to the default opener so existing clients without the field keep working.
-    const defaultTpl  = `Hey {naam}! ${sanitize(aiName)} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
+    const defaultTpl  = `Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
     const tpl         = (autoReplyTpl && autoReplyTpl.trim()) || defaultTpl;
     const waGreeting  = tpl
       .replace(/\{naam\}/g,    firstName)
       .replace(/\{bedrijf\}/g, sanitize(clientName))
       .replace(/\{project\}/g, sanitize(project_code))
-      .replace(/\{bron\}/g,    sanitize(bron));
+      .replace(/\{bron\}/g,    sanitize(bron))
+      .replace(/\{ai\}/g,      sanitize(aiName));
     const notifyPhone = process.env.NOTIFY_PHONE;
     const notifyMsg   = notifyPhone
       ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
