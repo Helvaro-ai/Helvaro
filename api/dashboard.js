@@ -4479,6 +4479,30 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
 @media (max-width: 1100px) { .ap-grid { grid-template-columns: 1fr; } }
 .ap-form-col { display: flex; flex-direction: column; gap: 18px; }
+.ap-welcome-banner {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: linear-gradient(135deg, rgba(34,197,94,.10), rgba(34,197,94,.02));
+  border: 1px solid rgba(34,197,94,.3); border-radius: 14px;
+  padding: 18px 22px; margin-bottom: 18px;
+  animation: apWelcomePop .35s ease;
+}
+@keyframes apWelcomePop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.ap-welcome-icon { font-size: 28px; line-height: 1; }
+.ap-welcome-body { flex: 1; min-width: 0; }
+.ap-welcome-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.ap-welcome-sub { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
+.ap-welcome-sub b { color: var(--text-primary); font-weight: 600; }
+.ap-welcome-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ap-welcome-chk {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 9px;
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  transition: all .15s ease;
+}
+.ap-welcome-chk.done { color: var(--green); border-color: rgba(34,197,94,.4); }
+.ap-welcome-chk.done .ap-welcome-chk-icon { color: var(--green); }
+.ap-welcome-chk-icon { font-size: 12px; }
 .ap-hero { background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(99,102,241,.02)); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
 .ap-hero-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; color: var(--text-primary); }
 .ap-hero-sub { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
@@ -4526,6 +4550,16 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-tpl-card.active {
   border-color: var(--accent-bright);
   background: rgba(99,102,241,.12);
+}
+.ap-tpl-card.recommended {
+  border-color: rgba(34,197,94,.5);
+  background: rgba(34,197,94,.05);
+  position: relative; padding-top: 22px;
+}
+.ap-tpl-card-rec {
+  position: absolute; top: 4px; left: 8px; right: 8px;
+  font-size: 9px; font-weight: 700; color: var(--green);
+  text-transform: uppercase; letter-spacing: .04em;
 }
 .ap-tpl-card-label {
   display: flex; align-items: center; gap: 6px;
@@ -6309,6 +6343,20 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- AI Persoonlijkheid Page -->
     <main class="page-content page" id="page-ai-persona">
       <div class="ap-wrap">
+
+        <!-- First-time setup banner (only shown when essential fields are empty) -->
+        <div class="ap-welcome-banner" id="ap-welcome-banner" style="display:none">
+          <div class="ap-welcome-icon">🚀</div>
+          <div class="ap-welcome-body">
+            <div class="ap-welcome-title">Welkom bij Helvaro! Eerst even dit invullen.</div>
+            <div class="ap-welcome-sub">
+              Vul minimaal je <b>AI naam</b>, een <b>welkomstbericht</b> en je <b>website</b> of <b>AI-instructies</b> in.
+              Daarna werkt je AI vanaf de eerste lead — je kan alles later nog aanpassen.
+            </div>
+            <div class="ap-welcome-checks" id="ap-welcome-checks"></div>
+          </div>
+        </div>
+
         <div class="ap-grid">
           <!-- LEFT: form -->
           <div class="ap-form-col">
@@ -6360,6 +6408,16 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Extra instructies voor de AI
                 <span class="ap-label-hint">tone of voice + do's & don'ts</span>
               </label>
+
+              <!-- Inspiration library for instructions -->
+              <div class="ap-tpl-wrap">
+                <div class="ap-tpl-header">
+                  <span class="ap-tpl-title">💡 Inspiratie</span>
+                  <span class="ap-tpl-sub">klik om aan je instructies toe te voegen</span>
+                </div>
+                <div class="ap-tpl-grid" id="ap-instr-grid"></div>
+              </div>
+
               <textarea id="ap-instructions" class="ap-textarea" rows="5" placeholder="Bv: Praat informeel. Stuur nooit prijzen via WhatsApp. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon." maxlength="3000"></textarea>
               <div class="ap-hint">De AI volgt deze regels in elk gesprek. Werkt het beste in korte zinnen.</div>
             </div>
@@ -10507,6 +10565,40 @@ async function startDashboard(skipRefresh = false) {
   // founderyou.pages.dev dashboard.
   // skipRefresh=true when init() already fetched leads — avoid a second Airtable call
   await refreshData(skipRefresh);
+
+  // First-time setup check: if essential AI config is missing, route to the
+  // AI Persoonlijkheid page with a welcome banner so they finish onboarding.
+  // Runs after refreshData so leads load in the background while they fill it in.
+  if (!sessionStorage.getItem('hv-setup-checked')) {
+    sessionStorage.setItem('hv-setup-checked', '1');
+    checkFirstTimeSetup();
+  }
+}
+
+// Fire a config-get; if essential fields are empty, force-navigate to the
+// AI Persoonlijkheid page and show a "welkom!" banner explaining what to fill.
+async function checkFirstTimeSetup() {
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'config-get' })
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    // What "essential" means: AI Name, welcome template, and either website or
+    // AI instructions (so the AI has SOMETHING to ground itself on).
+    const missing = [];
+    if (!d.aiName)         missing.push('aiName');
+    if (!d.autoReplyTpl)   missing.push('autoReplyTpl');
+    if (!d.website && !d.aiInstructions) missing.push('grounding');
+    if (missing.length === 0) return;
+
+    // Remember which fields were missing so the page can prioritize them
+    sessionStorage.setItem('hv-setup-missing', JSON.stringify(missing));
+    sessionStorage.setItem('hv-setup-pending', '1');
+    setTimeout(() => navigateTo('ai-persona'), 300);
+  } catch { /* silent — not critical */ }
 }
 
 document.getElementById('btn-login').addEventListener('click', handleLogin);
@@ -11433,13 +11525,83 @@ const AP_TEMPLATES = [
   }
 ];
 
+// AI Instructions starter snippets — clients click one or more to APPEND to
+// their instructions (combinable, unlike welcome which replaces).
+const AP_INSTRUCTION_SNIPPETS = [
+  {
+    emoji: '💬', label: 'Praat informeel',
+    text: 'Praat informeel met "je/jij" — geen "u". Houd zinnen kort en gebruik geen jargon.'
+  },
+  {
+    emoji: '🎩', label: 'Praat formeel',
+    text: 'Praat in u-vorm. Wees beleefd, zakelijk en gestructureerd in elk antwoord.'
+  },
+  {
+    emoji: '🚫', label: 'Geen prijzen via WhatsApp',
+    text: 'Stuur NOOIT exacte prijzen of offertes via WhatsApp. Verwijs altijd door naar een telefoongesprek of demo voor pricing.'
+  },
+  {
+    emoji: '📋', label: 'Vraag altijd 3 dingen',
+    text: 'Vraag in elk gesprek expliciet naar: (1) het project of de behoefte, (2) de timing/urgentie, (3) het budget. Stel maximaal één vraag per bericht.'
+  },
+  {
+    emoji: '🎯', label: 'Sluit altijd af met een actie',
+    text: 'Sluit ELK gesprek af met een concrete vervolgactie: een afspraak voorstellen, een offerte beloven, of een terugbeltijd vragen.'
+  },
+  {
+    emoji: '🚦', label: 'Diskwalificeer snel',
+    text: 'Als het duidelijk geen fit is (geen budget, geen interesse, verkeerde regio), wees vriendelijk maar stop het gesprek snel. Geen tijd verspillen.'
+  }
+];
+
+function renderApInstructionSnippets() {
+  const wrap = document.getElementById('ap-instr-grid');
+  if (!wrap) return;
+  wrap.innerHTML = AP_INSTRUCTION_SNIPPETS.map((s, i) => {
+    return '<button type="button" class="ap-tpl-card" onclick="appendApInstruction(' + i + ')">' +
+      '<span class="ap-tpl-card-label"><span class="ap-tpl-card-emoji">' + s.emoji + '</span>' + escHtml(s.label) + '</span>' +
+      '<span class="ap-tpl-card-preview">' + escHtml(s.text) + '</span>' +
+    '</button>';
+  }).join('');
+}
+
+function appendApInstruction(idx) {
+  const s = AP_INSTRUCTION_SNIPPETS[idx];
+  if (!s) return;
+  const ta = document.getElementById('ap-instructions');
+  if (!ta) return;
+  const cur = ta.value.trim();
+  // De-dup: don't add the same snippet twice
+  if (cur.includes(s.text)) {
+    toast('Deze regel staat er al in', 'info');
+    return;
+  }
+  ta.value = cur ? (cur + '\\n' + s.text) : s.text;
+  ta.focus();
+  ta.scrollTop = ta.scrollHeight;
+}
+
+// Suggest the best welcome template based on the client's Niche.
+const AP_NICHE_TO_TEMPLATE = {
+  real_estate: 6,   // 🏠 Voor vastgoed
+  dentist:     5,   // 🦷 Voor zorg/medisch
+  lawyer:      7,   // ⚖️ Voor advocaten
+  finance:     1,   // 🤝 Professioneel
+  // 'other' / unknown → no suggestion
+};
+
 function renderApTemplates() {
   const wrap = document.getElementById('ap-tpl-grid');
   if (!wrap) return;
+  // Sort so the niche-recommended template is first if applicable
+  const niche = AP_STATE.niche || '';
+  const recommendedIdx = AP_NICHE_TO_TEMPLATE[niche];
   wrap.innerHTML = AP_TEMPLATES.map((t, i) => {
     const preview = t.text.replace(/\\{naam\\}/g, 'Jan').replace(/\\{bedrijf\\}/g, 'jouw bedrijf')
       .replace(/\\{ai\\}/g, 'Sara').replace(/\\{project\\}/g, '...').replace(/\\{bron\\}/g, 'website');
-    return '<button type="button" class="ap-tpl-card" data-tpl-idx="' + i + '" onclick="applyApTemplate(' + i + ')">' +
+    const isRec = (recommendedIdx === i);
+    return '<button type="button" class="ap-tpl-card' + (isRec ? ' recommended' : '') + '" data-tpl-idx="' + i + '" onclick="applyApTemplate(' + i + ')">' +
+      (isRec ? '<span class="ap-tpl-card-rec">Aanbevolen voor jouw sector</span>' : '') +
       '<span class="ap-tpl-card-label"><span class="ap-tpl-card-emoji">' + t.emoji + '</span>' + escHtml(t.label) + '</span>' +
       '<span class="ap-tpl-card-preview">' + escHtml(preview) + '</span>' +
     '</button>';
@@ -11470,13 +11632,18 @@ function highlightActiveTemplate() {
 }
 
 async function loadAiPersona() {
-  // Render template library once (idempotent)
-  if (!AP_STATE.tplRendered) { renderApTemplates(); AP_STATE.tplRendered = true; }
+  // Render the instructions library (doesn't depend on server data)
+  if (!AP_STATE.instrRendered) { renderApInstructionSnippets(); AP_STATE.instrRendered = true; }
   // Wire up live preview + active-template highlight once (idempotent)
   if (!AP_STATE.wired) {
     ['ap-name', 'ap-template'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', () => { renderPersonaPreview(); if (id === 'ap-template') highlightActiveTemplate(); });
+    });
+    // Also re-render the welcome-checks banner as the user fills in fields
+    ['ap-name', 'ap-template', 'ap-instructions', 'ap-website'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateWelcomeBannerChecks);
     });
     AP_STATE.wired = true;
   }
@@ -11490,6 +11657,7 @@ async function loadAiPersona() {
     if (!r.ok) { toast('Kan instellingen niet laden', 'error'); return; }
     const d = await r.json();
     AP_STATE.clientName = d.clientName || state.clientName || 'Bedrijf';
+    AP_STATE.niche      = d.sector || '';
     document.getElementById('ap-name').value         = d.aiName         || '';
     document.getElementById('ap-template').value     = d.autoReplyTpl   || '';
     document.getElementById('ap-instructions').value = d.aiInstructions || '';
@@ -11497,10 +11665,55 @@ async function loadAiPersona() {
     document.getElementById('ap-address').value      = d.address        || '';
     document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
     AP_STATE.loaded = true;
+    // Re-render templates now that we know the niche (for the "Aanbevolen" badge)
+    renderApTemplates();
     renderPersonaPreview();
     highlightActiveTemplate();
+    showFirstTimeBannerIfNeeded();
   } catch (err) {
     toast('Netwerkfout — probeer later opnieuw', 'error');
+  }
+}
+
+// Show the welcome banner when this is the first-time setup path
+function showFirstTimeBannerIfNeeded() {
+  const banner = document.getElementById('ap-welcome-banner');
+  if (!banner) return;
+  const pending = sessionStorage.getItem('hv-setup-pending') === '1';
+  if (!pending) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  updateWelcomeBannerChecks();
+}
+
+function updateWelcomeBannerChecks() {
+  const banner = document.getElementById('ap-welcome-banner');
+  const checks = document.getElementById('ap-welcome-checks');
+  if (!banner || !checks || banner.style.display === 'none') return;
+  const name = document.getElementById('ap-name').value.trim();
+  const tpl  = document.getElementById('ap-template').value.trim();
+  const web  = document.getElementById('ap-website').value.trim();
+  const instr= document.getElementById('ap-instructions').value.trim();
+  const items = [
+    { k: 'AI naam',          done: !!name },
+    { k: 'Welkomstbericht',  done: !!tpl },
+    { k: 'Website OF instructies', done: !!web || !!instr }
+  ];
+  checks.innerHTML = items.map(it =>
+    '<span class="ap-welcome-chk' + (it.done ? ' done' : '') + '">' +
+      '<span class="ap-welcome-chk-icon">' + (it.done ? '✓' : '○') + '</span>' +
+      escHtml(it.k) +
+    '</span>'
+  ).join('');
+  // When all 3 are done, hide the banner after save (so it disappears
+  // gracefully when they hit Opslaan and re-validate)
+  if (items.every(i => i.done)) {
+    setTimeout(() => {
+      // only hide if still all done at hide-time
+      const stillDone = items.every(i => i.done);
+      if (stillDone && sessionStorage.getItem('hv-setup-pending') === '1') {
+        sessionStorage.removeItem('hv-setup-pending');
+      }
+    }, 800);
   }
 }
 
@@ -11560,6 +11773,12 @@ async function saveAiPersona() {
       setTimeout(() => mark.classList.remove('visible'), 2500);
     }
     toast('Instellingen opgeslagen — live in elk volgend gesprek', 'success');
+    // If this was a first-time setup, fade the welcome banner out after save
+    if (sessionStorage.getItem('hv-setup-pending') === '1') {
+      sessionStorage.removeItem('hv-setup-pending');
+      const banner = document.getElementById('ap-welcome-banner');
+      if (banner) { banner.style.transition = 'opacity .4s ease'; banner.style.opacity = '0'; setTimeout(() => { banner.style.display = 'none'; }, 400); }
+    }
   } catch (err) {
     toast('Netwerkfout — probeer opnieuw', 'error');
   } finally {
