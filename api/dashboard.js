@@ -4474,6 +4474,108 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    INSTELLINGEN (SETTINGS)
    ============================================================ */
+/* ── Formulier page ───────────────────────────────────────────────────── */
+.fm-wrap { width: 100%; padding: 24px 0; display: flex; flex-direction: column; gap: 18px; }
+
+.fm-hero {
+  background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(99,102,241,.02));
+  border: 1px solid var(--border); border-radius: 16px; padding: 24px 26px;
+}
+.fm-hero-top { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+.fm-hero-icon { font-size: 32px; line-height: 1; }
+.fm-hero-text { flex: 1; min-width: 0; }
+.fm-hero-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.fm-hero-sub { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+.fm-url-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; margin-bottom: 12px; }
+.fm-url {
+  flex: 1; min-width: 220px; padding: 11px 14px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--accent-bright); font-family: monospace; font-size: 13px;
+  display: flex; align-items: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.fm-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text-primary); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s ease; font-family: inherit; text-decoration: none;
+}
+.fm-btn:hover { border-color: var(--accent-bright); }
+.fm-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-bright)); border-color: transparent; color: #fff; }
+.fm-btn-primary:hover { opacity: .9; }
+.fm-btn-full { width: 100%; justify-content: center; margin-top: 8px; }
+
+.fm-share-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fm-share-lbl { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+.fm-share-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 11px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--text-muted); font-size: 12px; font-weight: 600;
+  text-decoration: none; cursor: pointer; font-family: inherit; transition: all .15s ease;
+}
+.fm-share-btn:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+.fm-share-btn[id="fm-share-wa"]:hover     { color: #25d366; border-color: #25d366; }
+.fm-share-btn[id="fm-share-linkedin"]:hover { color: #0a66c2; border-color: #0a66c2; }
+
+.fm-options-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 16px;
+}
+.fm-option-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px 22px; display: flex; flex-direction: column;
+}
+.fm-option-hdr { margin-bottom: 12px; position: relative; }
+.fm-option-rec {
+  position: absolute; top: -6px; right: -6px;
+  background: rgba(34,197,94,.15); color: var(--green);
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px;
+  text-transform: uppercase; letter-spacing: .04em;
+  border: 1px solid rgba(34,197,94,.3);
+}
+.fm-option-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.fm-option-sub { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin: 0; }
+.fm-code {
+  width: 100%; padding: 11px 12px; background: var(--bg-card-alt);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-primary); font-family: monospace; font-size: 12px; line-height: 1.5;
+  resize: none; outline: none; white-space: pre;
+}
+.fm-code:focus { border-color: var(--accent-bright); }
+.fm-instructions {
+  margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.55;
+  padding: 10px 12px; background: var(--bg-card-alt); border-radius: 8px;
+  border-left: 3px solid var(--accent-bright);
+}
+.fm-instructions strong { color: var(--text-primary); }
+.fm-instructions code {
+  background: rgba(99,102,241,.12); color: var(--accent-bright);
+  padding: 1px 5px; border-radius: 4px; font-size: 11px;
+}
+
+.fm-bottom-grid {
+  display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start;
+}
+@media (max-width: 900px) { .fm-bottom-grid { grid-template-columns: 1fr; } }
+.fm-qr-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; display: flex; flex-direction: column; align-items: stretch;
+}
+.fm-qr-frame {
+  background: #fff; padding: 16px; border-radius: 12px; margin: 14px 0 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.fm-preview-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; display: flex; flex-direction: column;
+}
+.fm-iframe-wrap {
+  margin-top: 12px; height: 560px; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--bg-card-alt);
+}
+.fm-iframe-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
 /* ── Dashboard form-link banner ───────────────────────────────────────── */
 .dash-formlink {
   display: flex; align-items: center; gap: 12px;
@@ -5800,6 +5902,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
         AI Persoonlijkheid
       </button>
+      <button class="nav-item" data-page="formulier" id="nav-formulier">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
+        Formulier
+      </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         Instellingen
@@ -5876,9 +5982,9 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             Open
           </a>
-          <button class="dash-formlink-btn" onclick="navigateTo('ai-persona')" title="Meer opties">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Meer
+          <button class="dash-formlink-btn" onclick="navigateTo('formulier')" title="QR-code, embed-code, deel-opties">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Meer opties
           </button>
         </div>
       </div>
@@ -6570,10 +6676,10 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <div class="ap-test-result" id="ap-test-result"></div>
               </div>
 
-              <!-- Form Link card -->
+              <!-- Form Link compact card — points to dedicated Formulier page -->
               <div class="ap-formlink-card">
                 <div class="ap-test-title">📋 Jouw lead-formulier</div>
-                <p class="ap-test-sub">Deel deze link via je website, advertenties of socials. Iedereen die het invult komt direct in je dashboard.</p>
+                <p class="ap-test-sub">Deel deze link via je website, advertenties of socials.</p>
                 <div class="ap-formlink-url-row">
                   <code class="ap-formlink-url" id="ap-formlink-url">—</code>
                   <button class="ap-btn" onclick="copyFormLink()" title="Kopieer link">
@@ -6582,31 +6688,140 @@ tr:hover .td-arrow { color: var(--cyan); }
                   </button>
                 </div>
                 <div class="ap-formlink-actions">
-                  <a class="ap-formlink-link" id="ap-formlink-open" target="_blank" rel="noopener">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    Open formulier
-                  </a>
-                  <button class="ap-formlink-link" onclick="toggleFormQr()" id="ap-formlink-qr-btn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="21"/><line x1="18" y1="14" x2="18" y2="17"/><line x1="21" y1="18" x2="18" y2="18"/><line x1="21" y1="21" x2="14" y2="21"/></svg>
-                    QR-code
+                  <button class="ap-formlink-link" onclick="navigateTo('formulier')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    QR, embed-code &amp; meer →
                   </button>
-                  <button class="ap-formlink-link" onclick="toggleFormEmbed()" id="ap-formlink-embed-btn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                    Embed-code
-                  </button>
-                </div>
-                <!-- QR code (toggled) -->
-                <div class="ap-formlink-qr" id="ap-formlink-qr" style="display:none">
-                  <img id="ap-formlink-qr-img" alt="QR-code naar formulier" width="180" height="180">
-                  <div class="ap-test-sub" style="text-align:center;margin-top:6px">Scan met je telefoon — print op flyers, beurzen of in je etalage.</div>
-                </div>
-                <!-- Embed snippet (toggled) -->
-                <div class="ap-formlink-embed" id="ap-formlink-embed" style="display:none">
-                  <div class="ap-test-sub" style="margin-bottom:6px">Plak deze code in de HTML van je website:</div>
-                  <textarea class="ap-input ap-formlink-embed-code" id="ap-formlink-embed-code" readonly rows="3"></textarea>
-                  <button class="ap-btn" style="margin-top:6px" onclick="copyFormEmbed()">Kopieer embed-code</button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Formulier Page — share your lead form link in 3 ways -->
+    <main class="page-content page" id="page-formulier">
+      <div class="fm-wrap">
+
+        <!-- Hero card with the URL itself -->
+        <div class="fm-hero">
+          <div class="fm-hero-top">
+            <div class="fm-hero-icon">📋</div>
+            <div class="fm-hero-text">
+              <h2 class="fm-hero-title">Jouw lead-formulier</h2>
+              <p class="fm-hero-sub">Iedereen die dit formulier invult krijgt automatisch een WhatsApp van je AI en verschijnt in je Dashboard.</p>
+            </div>
+          </div>
+          <div class="fm-url-row">
+            <code class="fm-url" id="fm-url">—</code>
+            <button class="fm-btn fm-btn-primary" onclick="copyFormLink()" title="Kopieer link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Kopieer link
+            </button>
+            <a class="fm-btn" id="fm-open" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open in nieuw tabblad
+            </a>
+          </div>
+          <!-- Quick share -->
+          <div class="fm-share-row">
+            <span class="fm-share-lbl">Snel delen:</span>
+            <a class="fm-share-btn" id="fm-share-wa"     target="_blank" rel="noopener" title="Deel via WhatsApp">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.4 0-.6.1-.2.3-.7.9-.9 1.1-.1.1-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4 0-.7.3-.3.3-.9.9-.9 2.2 0 1.3.9 2.5 1 2.7.1.1 1.8 2.7 4.3 3.7.6.2 1.1.4 1.4.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.6 1.4 5.1L2 22l5-1.3c1.4.8 3.1 1.3 5 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18c-1.7 0-3.3-.5-4.6-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.8 14.9 3.2 13.5 3.2 12c0-4.8 4-8.8 8.8-8.8s8.8 4 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
+              WhatsApp
+            </a>
+            <a class="fm-share-btn" id="fm-share-email"   title="Deel via e-mail">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              E-mail
+            </a>
+            <a class="fm-share-btn" id="fm-share-sms"     title="Deel via SMS">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              SMS
+            </a>
+            <a class="fm-share-btn" id="fm-share-linkedin" target="_blank" rel="noopener" title="Deel op LinkedIn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+              LinkedIn
+            </a>
+          </div>
+        </div>
+
+        <!-- Three integration options as cards -->
+        <div class="fm-options-grid">
+
+          <!-- Option 1: Widget script (recommended) -->
+          <div class="fm-option-card">
+            <div class="fm-option-hdr">
+              <span class="fm-option-rec">Aanbevolen</span>
+              <div class="fm-option-title">💬 Drijvende WhatsApp-knop op je site</div>
+              <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
+            </div>
+            <textarea class="fm-code" id="fm-code-widget" readonly rows="3"></textarea>
+            <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-widget')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Kopieer code
+            </button>
+            <div class="fm-instructions">
+              <strong>Hoe te plakken:</strong> open de HTML van je website, plak deze regel net vóór de afsluitende <code>&lt;/body&gt;</code> tag. Werkt op WordPress, Shopify, Wix, Squarespace en elke andere site.
+            </div>
+          </div>
+
+          <!-- Option 2: Iframe embed -->
+          <div class="fm-option-card">
+            <div class="fm-option-hdr">
+              <div class="fm-option-title">🖼️ Inbouwen als pagina-onderdeel</div>
+              <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
+            </div>
+            <textarea class="fm-code" id="fm-code-iframe" readonly rows="3"></textarea>
+            <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-iframe')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Kopieer code
+            </button>
+            <div class="fm-instructions">
+              <strong>Hoe te plakken:</strong> plak op de plek waar je het formulier wil tonen — meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
+            </div>
+          </div>
+
+          <!-- Option 3: Direct link -->
+          <div class="fm-option-card">
+            <div class="fm-option-hdr">
+              <div class="fm-option-title">🔗 Alleen de link</div>
+              <p class="fm-option-sub">Voor advertenties, e-mail handtekening, socials of WhatsApp-bio. Klant opent een eigen pagina met enkel het formulier.</p>
+            </div>
+            <textarea class="fm-code" id="fm-code-link" readonly rows="1"></textarea>
+            <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-link')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Kopieer link
+            </button>
+            <div class="fm-instructions">
+              <strong>Gebruik in:</strong> Facebook / Google Ads, e-mail handtekening, Instagram bio, LinkedIn berichten, visitekaartjes (samen met de QR-code hieronder).
+            </div>
+          </div>
+        </div>
+
+        <!-- QR + preview side by side -->
+        <div class="fm-bottom-grid">
+          <div class="fm-qr-card">
+            <div class="fm-option-hdr">
+              <div class="fm-option-title">📱 QR-code</div>
+              <p class="fm-option-sub">Scanbaar met elke smartphone-camera. Print op flyers, beursstanden, etalage-stickers, visitekaartjes.</p>
+            </div>
+            <div class="fm-qr-frame">
+              <img id="fm-qr-img" alt="QR-code naar formulier" width="240" height="240">
+            </div>
+            <a class="fm-btn fm-btn-full" id="fm-qr-download" download="lead-formulier-qr.png">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download als PNG
+            </a>
+          </div>
+
+          <div class="fm-preview-card">
+            <div class="fm-option-hdr">
+              <div class="fm-option-title">👁️ Voorbeeld</div>
+              <p class="fm-option-sub">Zo ziet je formulier eruit voor een lead.</p>
+            </div>
+            <div class="fm-iframe-wrap">
+              <iframe id="fm-preview-iframe" loading="lazy" title="Voorbeeld van het formulier"></iframe>
             </div>
           </div>
         </div>
@@ -10496,6 +10711,7 @@ function navigateTo(page) {
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
   if (page === 'ai-persona')   loadAiPersona();
+  if (page === 'formulier')    loadFormulier();
   if (page === 'exports')      updateExportPreview();
   if (page === 'activiteit')   renderActiviteit();
   if (page === 'founder')      loadFounderData();
@@ -11936,6 +12152,65 @@ function getFormUrl() {
   if (!code) return '';
   return 'https://app.helvaro.pro/start/' + encodeURIComponent(code);
 }
+// ── Formulier page ────────────────────────────────────────────────────────
+function loadFormulier() {
+  const url      = getFormUrl();
+  const code     = getProjectCode();
+  const cname    = state.clientName || code || 'Helvaro';
+  const urlEl    = document.getElementById('fm-url');
+  const openEl   = document.getElementById('fm-open');
+  if (!urlEl) return;
+  if (!url) {
+    urlEl.textContent = '(geen project code beschikbaar — log opnieuw in)';
+    return;
+  }
+  urlEl.textContent = url;
+  if (openEl) openEl.href = url;
+
+  // Code snippets
+  const widget = '<script src="https://app.helvaro.pro/form-widget.js" data-project="' + code + '" data-name="' + cname.replace(/"/g, '&quot;') + '"><\\/script>';
+  const iframe = '<iframe src="' + url + '" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:560px"></iframe>';
+  const setCode = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setCode('fm-code-widget', widget);
+  setCode('fm-code-iframe', iframe);
+  setCode('fm-code-link',   url);
+
+  // QR code
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=2&data=' + encodeURIComponent(url);
+  const qrImg = document.getElementById('fm-qr-img');
+  const qrDl  = document.getElementById('fm-qr-download');
+  if (qrImg) qrImg.src = qrUrl;
+  if (qrDl)  qrDl.href = qrUrl;
+
+  // Iframe preview
+  const preview = document.getElementById('fm-preview-iframe');
+  if (preview && preview.src !== url) preview.src = url;
+
+  // Share buttons
+  const shareText = encodeURIComponent('Hey! Vul je gegevens hier in dan kom ik snel bij je terug: ' + url);
+  const wa  = document.getElementById('fm-share-wa');
+  const em  = document.getElementById('fm-share-email');
+  const sms = document.getElementById('fm-share-sms');
+  const li  = document.getElementById('fm-share-linkedin');
+  if (wa)  wa.href  = 'https://wa.me/?text=' + shareText;
+  if (em)  em.href  = 'mailto:?subject=' + encodeURIComponent('Vul snel dit formulier in') + '&body=' + shareText;
+  if (sms) sms.href = 'sms:?&body=' + shareText;
+  if (li)  li.href  = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url);
+}
+
+function fmCopy(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.value) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(el.value)
+      .then(() => toast('Code gekopieerd ✓', 'success'))
+      .catch(() => { el.select(); document.execCommand('copy'); toast('Code gekopieerd', 'success'); });
+  } else {
+    el.select(); document.execCommand('copy');
+    toast('Code gekopieerd', 'success');
+  }
+}
+
 function populateFormLink() {
   const url = getFormUrl();
   const urlEl = document.getElementById('ap-formlink-url');
