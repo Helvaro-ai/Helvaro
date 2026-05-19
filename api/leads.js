@@ -97,7 +97,7 @@ function verifySession(token) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -234,6 +234,83 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       console.error('PATCH error:', err.message);
       return res.status(500).json({ error: 'Serverfout. Probeer later opnieuw.' });
+    }
+  }
+
+  // ── POST — send a WhatsApp reply from the dashboard (2-way chat) ───────────
+  // POST /api/leads?id=recXXX  body: { message: "text" }
+  // Sends a WhatsApp message via the Meta Graph API and appends it to the lead's
+  // Conversation History so the dashboard renders it immediately as a 'manual' bubble.
+  if (req.method === 'POST') {
+    try {
+      const qs     = (req.url || '').split('?')[1] || '';
+      const params = new URLSearchParams(qs);
+      const recordId = params.get('id') || '';
+
+      if (!/^rec[A-Za-z0-9]{14}$/.test(recordId)) {
+        return res.status(400).json({ error: 'Ongeldig record ID' });
+      }
+
+      let body = req.body;
+      if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+      if (!body || typeof body !== 'object') body = {};
+      const message = String(body.message || '').trim().slice(0, 2000);
+      if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
+
+      // Fetch the lead — verify it belongs to the authenticated client (security)
+      const lRes = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
+        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+      );
+      if (!lRes.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+      const lead = await lRes.json();
+      const leadProject = lead.fields?.['fldSmczuyUJd26HLe'] || lead.fields?.['Project Code'] || '';
+      if (!projectCode || leadProject !== projectCode) {
+        return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+      }
+      const phone = lead.fields?.['fld6YaitW0lMqHUrd'] || lead.fields?.['Phone'] || '';
+      if (!phone) return res.status(400).json({ error: 'Lead heeft geen telefoonnummer' });
+
+      // Send WhatsApp via Meta Graph API
+      const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+      const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
+      if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
+        return res.status(500).json({ error: 'WhatsApp configuratie ontbreekt op de server' });
+      }
+      const waRes = await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: message } })
+      });
+      const waData = await waRes.json().catch(() => ({}));
+      if (!waRes.ok || waData.error) {
+        console.error('[leads reply] WhatsApp send failed:', JSON.stringify(waData.error || waData));
+        return res.status(502).json({ error: 'WhatsApp versturen mislukt', details: waData.error?.message || 'onbekend' });
+      }
+
+      // Append to Conversation History so dashboard shows it immediately.
+      // Use role 'assistant' with a 'manual:true' marker so we can style it differently.
+      let history = [];
+      const stored = lead.fields?.['Conversation History'];
+      if (stored) { try { history = JSON.parse(stored); } catch {} }
+      history.push({ role: 'assistant', content: message, manual: true, ts: Date.now() });
+      if (history.length > 50) history = history.slice(-50);
+
+      const updateRes = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { 'Conversation History': JSON.stringify(history) } })
+        }
+      );
+      if (!updateRes.ok) {
+        console.warn('[leads reply] history update failed (message was sent)', updateRes.status);
+      }
+      return res.status(200).json({ ok: true, history });
+    } catch (err) {
+      console.error('POST reply error:', err.message);
+      return res.status(500).json({ error: 'Serverfout — probeer opnieuw' });
     }
   }
 

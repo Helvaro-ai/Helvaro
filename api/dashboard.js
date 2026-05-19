@@ -3277,6 +3277,29 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-bottom-right-radius: 3px;
   color: var(--text-primary);
 }
+.chat-bubble.ai.manual {
+  background: rgba(20,184,166,0.18);
+  border-color: rgba(20,184,166,0.4);
+}
+.panel-reply-row {
+  display: flex; gap: 8px; margin-top: 10px; align-items: flex-end;
+}
+.panel-reply-input {
+  flex: 1; padding: 10px 12px; background: var(--bg-card-alt);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text-primary); font-size: 13px; font-family: inherit;
+  resize: vertical; min-height: 44px; max-height: 160px; outline: none;
+}
+.panel-reply-input:focus { border-color: var(--accent-bright); }
+.panel-reply-send {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  border: none; border-radius: 10px; padding: 10px 16px;
+  color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+.panel-reply-send:hover { opacity: 0.9; }
+.panel-reply-send:disabled { opacity: 0.5; cursor: not-allowed; }
 .chat-label {
   font-size: 10px;
   color: var(--text-muted);
@@ -8471,25 +8494,33 @@ function openPanel(lead) {
     \`;
   })();
 
-  // Conversation replay section
-  if (lead.gesprek) {
+  // Conversation replay section + 2-way reply box
+  if (lead.gesprek || lead.telefoon) {
+    let bubbles = '';
     try {
-      const msgs = JSON.parse(lead.gesprek);
-      if (msgs.length > 0) {
-        const bubbles = msgs.map(m => \`
-          <div>
-            <div class="chat-label">\${m.role === 'user' ? '👤 Lead' : '🤖 AI'}</div>
-            <div class="chat-bubble \${m.role === 'user' ? 'user' : 'ai'}">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div>
-          </div>
-        \`).join('');
-        bodyHTML += \`
-          <div class="panel-section">
-            <div class="panel-section-title">WhatsApp Gesprek</div>
-            <div class="chat-wrap">\${bubbles}</div>
-          </div>
-        \`;
-      }
+      const msgs = JSON.parse(lead.gesprek || '[]');
+      bubbles = msgs.map(m => {
+        const isUser = m.role === 'user';
+        const tag    = isUser ? '👤 Lead' : (m.manual ? '✋ Jij' : '🤖 AI');
+        const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
+        return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
+      }).join('');
     } catch { /* invalid JSON, skip */ }
+    if (!bubbles) bubbles = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">Nog geen gesprek.</div>';
+
+    bodyHTML += \`
+      <div class="panel-section">
+        <div class="panel-section-title">WhatsApp Gesprek</div>
+        <div class="chat-wrap" id="panel-chat-wrap">\${bubbles}</div>
+        <div class="panel-reply-row">
+          <textarea class="panel-reply-input" id="panel-reply-input" rows="2" placeholder="Antwoord aan \${escHtml(lead.naam || 'de lead')} via WhatsApp..." maxlength="2000"></textarea>
+          <button class="panel-reply-send" id="panel-reply-send" onclick="sendWhatsAppReply()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Verstuur
+          </button>
+        </div>
+      </div>
+    \`;
   }
 
   // Notes section (timestamped)
@@ -8808,6 +8839,47 @@ function closePanel() {
   document.getElementById('panel-backdrop').classList.remove('visible');
   document.getElementById('detail-panel').classList.remove('visible');
   state.activeLead = null;
+}
+
+// ── Send a manual WhatsApp reply from the lead panel ─────────────────────────
+async function sendWhatsAppReply() {
+  const input = document.getElementById('panel-reply-input');
+  const btn   = document.getElementById('panel-reply-send');
+  const wrap  = document.getElementById('panel-chat-wrap');
+  const lead  = state.activeLead;
+  if (!input || !btn || !lead) return;
+  const text = input.value.trim();
+  if (!text) return;
+  if (!lead.telefoon) { toast('Lead heeft geen telefoonnummer', 'error'); return; }
+
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg> Versturen...';
+  try {
+    const r = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(lead.id)}\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ message: text })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      toast(d.error || 'Versturen mislukt', 'error');
+      return;
+    }
+    // Optimistic: render the just-sent bubble right away
+    const html = '<div><div class="chat-label">✋ Jij</div><div class="chat-bubble ai manual">' +
+      text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
+    if (wrap) wrap.insertAdjacentHTML('beforeend', html);
+    // Keep the lead object's gesprek in sync so re-opening the panel still shows it
+    lead.gesprek = JSON.stringify(d.history || []);
+    input.value = '';
+    toast('Verzonden via WhatsApp', 'success');
+  } catch (err) {
+    toast('Netwerkfout — probeer opnieuw', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
 }
 
 /* ============================================================

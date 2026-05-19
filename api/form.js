@@ -83,19 +83,21 @@ module.exports = async function handler(req, res) {
     // Uses a formula filter on the field ID so only 1 record is returned instead
     // of fetching all 100 clients and filtering client-side.
     const aiName     = 'Mathis Willems';
-    let   clientName = project_code; // safe default — overwritten below if found
+    let   clientName = project_code;          // safe default — overwritten below if found
+    let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
 
     try {
       const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
       const cRes = await fetch(
-        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&maxRecords=1&fields[]=fldAnB848Sr5jl6dq&fields[]=fldN4dL0bGgfBOXwM`,
+        `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&maxRecords=1`,
         { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
       );
       if (cRes.ok) {
         const cData = await cRes.json();
         const match = (cData.records || [])[0];
         if (match) {
-          clientName = match.fields['fldAnB848Sr5jl6dq'] || match.fields['Client Name'] || clientName;
+          clientName   = match.fields['fldAnB848Sr5jl6dq'] || match.fields['Client Name']         || clientName;
+          autoReplyTpl = match.fields['Auto-Reply Template'] || match.fields['Auto Reply Template'] || '';
         }
       }
       // 429 / error → use defaults, don't block the form submission
@@ -146,7 +148,15 @@ module.exports = async function handler(req, res) {
 
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
-    const waGreeting  = `Hey ${firstName}! ${sanitize(aiName)} hier van ${sanitize(clientName)}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
+    // Per-client custom template (with {naam} / {bedrijf} / {project} / {bron} placeholders)
+    // falls back to the default opener so existing clients without the field keep working.
+    const defaultTpl  = `Hey {naam}! ${sanitize(aiName)} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
+    const tpl         = (autoReplyTpl && autoReplyTpl.trim()) || defaultTpl;
+    const waGreeting  = tpl
+      .replace(/\{naam\}/g,    firstName)
+      .replace(/\{bedrijf\}/g, sanitize(clientName))
+      .replace(/\{project\}/g, sanitize(project_code))
+      .replace(/\{bron\}/g,    sanitize(bron));
     const notifyPhone = process.env.NOTIFY_PHONE;
     const notifyMsg   = notifyPhone
       ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
