@@ -4474,6 +4474,88 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* ============================================================
    INSTELLINGEN (SETTINGS)
    ============================================================ */
+/* ── AI Persoonlijkheid page ──────────────────────────────────────────── */
+.ap-wrap { width: 100%; padding: 24px 0; }
+.ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
+@media (max-width: 1100px) { .ap-grid { grid-template-columns: 1fr; } }
+.ap-form-col { display: flex; flex-direction: column; gap: 18px; }
+.ap-hero { background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(99,102,241,.02)); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
+.ap-hero-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.ap-hero-sub { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+.ap-field { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.ap-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.ap-label-hint { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.ap-input, .ap-textarea {
+  width: 100%; padding: 10px 12px; background: var(--bg-card-alt);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;
+  transition: border-color .15s ease;
+}
+.ap-input:focus, .ap-textarea:focus { border-color: var(--accent-bright); }
+.ap-textarea { resize: vertical; min-height: 70px; line-height: 1.55; }
+.ap-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ap-hint em { color: var(--text-primary); font-style: normal; font-weight: 600; }
+.ap-chip {
+  background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.25);
+  color: var(--accent-bright); padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; cursor: pointer; font-family: monospace;
+  transition: all .15s ease;
+}
+.ap-chip:hover { background: rgba(99,102,241,.25); color: #fff; }
+.ap-actions { display: flex; align-items: center; gap: 12px; padding-top: 4px; }
+.ap-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text-primary); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s ease; font-family: inherit;
+}
+.ap-btn:hover { border-color: var(--accent-bright); }
+.ap-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-bright)); border-color: transparent; color: #fff; }
+.ap-btn-primary:hover { opacity: .9; }
+.ap-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ap-saved-mark { font-size: 12px; color: var(--green); opacity: 0; transition: opacity .25s ease; }
+.ap-saved-mark.visible { opacity: 1; }
+
+.ap-preview-col { position: relative; }
+.ap-preview-sticky { position: sticky; top: 80px; display: flex; flex-direction: column; gap: 16px; }
+.ap-preview-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.ap-phone-mock {
+  background: #0a1a17; border-radius: 12px; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex; flex-direction: column; max-height: 520px;
+}
+.ap-phone-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #1f2c2a; border-bottom: 1px solid rgba(255,255,255,.05); }
+.ap-phone-back { color: #8b9a98; font-size: 22px; line-height: 1; }
+.ap-phone-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #14b8a6, #5eead4); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+}
+.ap-phone-info { flex: 1; min-width: 0; }
+.ap-phone-name { font-size: 14px; font-weight: 600; color: #fff; }
+.ap-phone-status { font-size: 11px; color: #8b9a98; }
+.ap-phone-msgs {
+  flex: 1; padding: 16px;
+  background: #0e1d1b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M0 0h40v40H0z' fill='none'/%3E%3Cpath d='M20 20h.01' stroke='%23ffffff09' stroke-width='2'/%3E%3C/svg%3E");
+  display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+}
+.ap-msg-day-divider { align-self: center; background: rgba(255,255,255,.06); color: #8b9a98; font-size: 11px; padding: 3px 10px; border-radius: 99px; margin-bottom: 4px; }
+.ap-msg {
+  max-width: 80%; padding: 8px 12px; border-radius: 8px;
+  font-size: 14px; line-height: 1.4; color: #e8edec;
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.ap-msg-them { align-self: flex-start; background: #1f2c2a; border-bottom-left-radius: 2px; }
+
+.ap-test-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.ap-test-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.ap-test-sub { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.5; }
+.ap-test-row { display: flex; gap: 8px; }
+.ap-test-row .ap-input { flex: 1; }
+.ap-test-result { font-size: 12px; margin-top: 10px; min-height: 16px; }
+.ap-test-result.ok  { color: var(--green); }
+.ap-test-result.err { color: var(--red); }
+
 .settings-wrap { width: 100%; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
   background: var(--bg-card);
@@ -5592,6 +5674,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
         Founder
       </button>
+      <button class="nav-item" data-page="ai-persona" id="nav-ai-persona">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
+        AI Persoonlijkheid
+      </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         Instellingen
@@ -6181,6 +6267,131 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="analyse-card analyse-card-full">
           <div class="analyse-card-title">Leads per Uur van de Dag</div>
           <canvas id="analyse-hours-chart" height="70"></canvas>
+        </div>
+      </div>
+    </main>
+
+    <!-- AI Persoonlijkheid Page -->
+    <main class="page-content page" id="page-ai-persona">
+      <div class="ap-wrap">
+        <div class="ap-grid">
+          <!-- LEFT: form -->
+          <div class="ap-form-col">
+            <div class="ap-hero">
+              <h2 class="ap-hero-title">Jouw AI Persoonlijkheid</h2>
+              <p class="ap-hero-sub">Hier bepaal je hoe jouw AI communiceert met leads op WhatsApp. Wijzigingen zijn meteen actief.</p>
+            </div>
+
+            <!-- AI Name -->
+            <div class="ap-field">
+              <label class="ap-label">
+                AI naam
+                <span class="ap-label-hint">de naam die leads zien in elk bericht</span>
+              </label>
+              <input id="ap-name" type="text" class="ap-input" placeholder="Sara De Vos" maxlength="60">
+              <div class="ap-hint">Tip: gebruik de naam van een echte medewerker — leads voelen dat ze met een mens chatten. Laat leeg voor standaard <em>Mathis Willems</em>.</div>
+            </div>
+
+            <!-- Auto-Reply Template -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Welkomstbericht
+                <span class="ap-label-hint">eerste WhatsApp dat een lead ontvangt</span>
+              </label>
+              <textarea id="ap-template" class="ap-textarea" rows="3" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?" maxlength="1000"></textarea>
+              <div class="ap-hint">
+                Beschikbare placeholders:
+                <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{naam}')">{naam}</button>
+                <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{bedrijf}')">{bedrijf}</button>
+                <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{ai}')">{ai}</button>
+                <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{project}')">{project}</button>
+                <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{bron}')">{bron}</button>
+              </div>
+            </div>
+
+            <!-- AI Instructions -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Extra instructies voor de AI
+                <span class="ap-label-hint">tone of voice + do's & don'ts</span>
+              </label>
+              <textarea id="ap-instructions" class="ap-textarea" rows="5" placeholder="Bv: Praat informeel. Stuur nooit prijzen via WhatsApp. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon." maxlength="3000"></textarea>
+              <div class="ap-hint">De AI volgt deze regels in elk gesprek. Werkt het beste in korte zinnen.</div>
+            </div>
+
+            <!-- Website -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Website
+                <span class="ap-label-hint">de AI gebruikt deze als context</span>
+              </label>
+              <input id="ap-website" type="url" class="ap-input" placeholder="https://www.bedrijf.be">
+              <div class="ap-hint">De AI leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
+            </div>
+
+            <!-- Address -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Adres
+                <span class="ap-label-hint">wordt mee gestuurd bij afspraakbevestiging</span>
+              </label>
+              <input id="ap-address" type="text" class="ap-input" placeholder="Kerkstraat 12, 9000 Gent">
+            </div>
+
+            <!-- Calendly -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Calendly link
+                <span class="ap-label-hint">verzonden zodra een lead gekwalificeerd is</span>
+              </label>
+              <input id="ap-calendly" type="url" class="ap-input" placeholder="https://calendly.com/bedrijf/intake">
+            </div>
+
+            <!-- Save button row -->
+            <div class="ap-actions">
+              <button class="ap-btn ap-btn-primary" id="ap-save-btn" onclick="saveAiPersona()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Opslaan
+              </button>
+              <span class="ap-saved-mark" id="ap-saved-mark">✓ Opgeslagen</span>
+            </div>
+          </div>
+
+          <!-- RIGHT: live preview + test send -->
+          <div class="ap-preview-col">
+            <div class="ap-preview-sticky">
+              <div class="ap-preview-card">
+                <div class="ap-phone-mock">
+                  <div class="ap-phone-hdr">
+                    <div class="ap-phone-back">‹</div>
+                    <div class="ap-phone-avatar" id="ap-preview-avatar">M</div>
+                    <div class="ap-phone-info">
+                      <div class="ap-phone-name" id="ap-preview-name">Mathis Willems</div>
+                      <div class="ap-phone-status">online</div>
+                    </div>
+                  </div>
+                  <div class="ap-phone-msgs">
+                    <div class="ap-msg-day-divider">Vandaag</div>
+                    <div class="ap-msg ap-msg-them" id="ap-preview-bubble">Hey Jan! Mathis hier van Bedrijf. Zag dat je je gegevens achterliet. Wat bracht je bij ons?</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Test send -->
+              <div class="ap-test-card">
+                <div class="ap-test-title">Stuur jezelf een test</div>
+                <p class="ap-test-sub">Voer je telefoonnummer in — je krijgt het welkomstbericht via WhatsApp.</p>
+                <div class="ap-test-row">
+                  <input id="ap-test-phone" type="tel" class="ap-input" placeholder="0466 35 84 27">
+                  <button class="ap-btn" id="ap-test-btn" onclick="sendTestMessage()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Test
+                  </button>
+                </div>
+                <div class="ap-test-result" id="ap-test-result"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -10052,6 +10263,7 @@ function navigateTo(page) {
   if (page === 'gesprekken')   renderGesprekken();
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
+  if (page === 'ai-persona')   loadAiPersona();
   if (page === 'exports')      updateExportPreview();
   if (page === 'activiteit')   renderActiviteit();
   if (page === 'founder')      loadFounderData();
@@ -11128,6 +11340,142 @@ function updateExportPreview() {
 /* ============================================================
    INSTELLINGEN (SETTINGS)
    ============================================================ */
+// ── AI Persoonlijkheid page ─────────────────────────────────────────────────
+const AP_STATE = { loaded: false, saving: false };
+
+async function loadAiPersona() {
+  // Wire up live preview once (idempotent)
+  if (!AP_STATE.wired) {
+    ['ap-name', 'ap-template'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', renderPersonaPreview);
+    });
+    AP_STATE.wired = true;
+  }
+  // Always re-fetch — config may have changed elsewhere
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'config-get' })
+    });
+    if (!r.ok) { toast('Kan instellingen niet laden', 'error'); return; }
+    const d = await r.json();
+    AP_STATE.clientName = d.clientName || state.clientName || 'Bedrijf';
+    document.getElementById('ap-name').value         = d.aiName         || '';
+    document.getElementById('ap-template').value     = d.autoReplyTpl   || '';
+    document.getElementById('ap-instructions').value = d.aiInstructions || '';
+    document.getElementById('ap-website').value      = d.website        || '';
+    document.getElementById('ap-address').value      = d.address        || '';
+    document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
+    AP_STATE.loaded = true;
+    renderPersonaPreview();
+  } catch (err) {
+    toast('Netwerkfout — probeer later opnieuw', 'error');
+  }
+}
+
+function apInsertPlaceholder(token) {
+  const ta = document.getElementById('ap-template');
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = start + token.length;
+  renderPersonaPreview();
+}
+
+function renderPersonaPreview() {
+  const aiName = (document.getElementById('ap-name').value.trim() || 'Mathis Willems');
+  const tpl    = (document.getElementById('ap-template').value.trim() ||
+                  'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?');
+  const company = AP_STATE.clientName || 'Bedrijf';
+  const filled = tpl
+    .replace(/\\{naam\\}/g,    'Jan')
+    .replace(/\\{bedrijf\\}/g, company)
+    .replace(/\\{ai\\}/g,      aiName)
+    .replace(/\\{project\\}/g, 'PROJ_CODE')
+    .replace(/\\{bron\\}/g,    'Website');
+  document.getElementById('ap-preview-name').textContent   = aiName;
+  document.getElementById('ap-preview-avatar').textContent = (aiName[0] || 'M').toUpperCase();
+  document.getElementById('ap-preview-bubble').textContent = filled;
+}
+
+async function saveAiPersona() {
+  if (AP_STATE.saving) return;
+  AP_STATE.saving = true;
+  const btn = document.getElementById('ap-save-btn');
+  const mark = document.getElementById('ap-saved-mark');
+  const original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Opslaan...'; }
+  if (mark) mark.classList.remove('visible');
+  try {
+    const body = {
+      mode:           'config-save',
+      aiName:         document.getElementById('ap-name').value.trim(),
+      autoReplyTpl:   document.getElementById('ap-template').value.trim(),
+      aiInstructions: document.getElementById('ap-instructions').value.trim(),
+      website:        document.getElementById('ap-website').value.trim(),
+      address:        document.getElementById('ap-address').value.trim(),
+      calendlyLink:   document.getElementById('ap-calendly').value.trim()
+    };
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify(body)
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(d.error || 'Opslaan mislukt', 'error'); return; }
+    if (mark) {
+      mark.classList.add('visible');
+      setTimeout(() => mark.classList.remove('visible'), 2500);
+    }
+    toast('Instellingen opgeslagen — live in elk volgend gesprek', 'success');
+  } catch (err) {
+    toast('Netwerkfout — probeer opnieuw', 'error');
+  } finally {
+    AP_STATE.saving = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = original; }
+  }
+}
+
+async function sendTestMessage() {
+  const phoneEl = document.getElementById('ap-test-phone');
+  const btn     = document.getElementById('ap-test-btn');
+  const result  = document.getElementById('ap-test-result');
+  const phone   = phoneEl.value.trim();
+  if (!phone) { result.className = 'ap-test-result err'; result.textContent = 'Voer een telefoonnummer in.'; return; }
+
+  // Use the live-rendered preview bubble text — already has placeholders substituted
+  const message = document.getElementById('ap-preview-bubble').textContent;
+  if (!message) { result.className = 'ap-test-result err'; result.textContent = 'Bericht is leeg.'; return; }
+
+  const original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Versturen...'; }
+  result.className = 'ap-test-result';
+  result.textContent = '';
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'test-message', phone, message })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      result.className = 'ap-test-result err';
+      result.textContent = '✗ ' + (d.error || 'Versturen mislukt');
+      return;
+    }
+    result.className = 'ap-test-result ok';
+    result.textContent = '✓ Verzonden naar +' + d.sentTo + ' — check je WhatsApp!';
+  } catch (err) {
+    result.className = 'ap-test-result err';
+    result.textContent = '✗ Netwerkfout — probeer opnieuw';
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = original; }
+  }
+}
+
 function renderInstellingen() {
   const s = state;
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };

@@ -237,11 +237,113 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── POST — send a WhatsApp reply from the dashboard (2-way chat) ───────────
-  // POST /api/leads?id=recXXX  body: { message: "text" }
-  // Sends a WhatsApp message via the Meta Graph API and appends it to the lead's
-  // Conversation History so the dashboard renders it immediately as a 'manual' bubble.
+  // ── POST handlers ──────────────────────────────────────────────────────────
   if (req.method === 'POST') {
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+    if (!body || typeof body !== 'object') body = {};
+
+    // ── A. config-get / config-save (AI Persona settings page) ───────────────
+    // Authenticated by the same session/api-key flow; only allows the client
+    // to read/write THEIR own Klanten record. Whitelisted fields only.
+    if (body.mode === 'config-get' || body.mode === 'config-save') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        // Look up the client's Klanten record by Project Code (field ID fldN4dL0bGgfBOXwM)
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!cRes.ok) return res.status(500).json({ error: 'Klant niet gevonden' });
+        const cData = await cRes.json();
+        const rec   = (cData.records || [])[0];
+        if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
+
+        // ── GET current config ──
+        if (body.mode === 'config-get') {
+          return res.status(200).json({
+            aiName:         rec.fields['fldRvoe1JMPOtPWC7'] || rec.fields['AI Name']             || '',
+            autoReplyTpl:   rec.fields['fldOGdVq6T54xEo6W'] || rec.fields['Auto-Reply Template'] || '',
+            aiInstructions: rec.fields['fld1lqHctRbqFGQf5'] || rec.fields['AI Instructions']     || '',
+            website:        rec.fields['fldzBclLhryWQ1veO'] || rec.fields['Website']             || '',
+            address:        rec.fields['fldTvMSdTZOyNgWod'] || rec.fields['Adres']               || '',
+            sector:         rec.fields['fld0BsPnDbBOkTHzr'] || rec.fields['Niche']               || '',
+            calendlyLink:   rec.fields['fldNEj1ysRgINOOtr'] || rec.fields['Calendly Link']       || '',
+            clientName:     rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name']         || ''
+          });
+        }
+
+        // ── SAVE config (PATCH whitelisted fields only) ──
+        const u = {};
+        if (body.aiName         !== undefined) u.fldRvoe1JMPOtPWC7 = String(body.aiName).trim().slice(0, 60);
+        if (body.autoReplyTpl   !== undefined) u.fldOGdVq6T54xEo6W = String(body.autoReplyTpl).trim().slice(0, 1000);
+        if (body.aiInstructions !== undefined) u.fld1lqHctRbqFGQf5 = String(body.aiInstructions).trim().slice(0, 3000);
+        if (body.website        !== undefined) u.fldzBclLhryWQ1veO = String(body.website).trim().slice(0, 500);
+        if (body.address        !== undefined) u.fldTvMSdTZOyNgWod = String(body.address).trim().slice(0, 300);
+        if (body.calendlyLink   !== undefined) u.fldNEj1ysRgINOOtr = String(body.calendlyLink).trim().slice(0, 500);
+        // sector goes to Niche (singleSelect) — typecast:true lets unknown values pass
+        if (body.sector         !== undefined) u.fld0BsPnDbBOkTHzr = String(body.sector).trim().slice(0, 100);
+        if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
+
+        const upRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: u, typecast: true })
+          }
+        );
+        if (!upRes.ok) {
+          const txt = await upRes.text().catch(() => '');
+          console.error('[config-save] update failed', upRes.status, txt.slice(0, 300));
+          return res.status(500).json({ error: 'Opslaan mislukt' });
+        }
+        // Invalidate the client cache so the next leads fetch sees fresh values
+        try { setCachedClient(raw, { ...rec, fields: { ...rec.fields, ...u } }); } catch {}
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error('[config] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── B. test-message — send a one-off WhatsApp to a phone number ─────────
+    // body: { mode: 'test-message', phone: '32466358427', message: '...' }
+    if (body.mode === 'test-message') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      let phone = String(body.phone || '').replace(/[\s\-\(\)\.]/g, '');
+      if      (phone.startsWith('00')) phone = phone.slice(2);
+      else if (phone.startsWith('+'))  phone = phone.slice(1);
+      else if (phone.startsWith('0'))  phone = '32' + phone.slice(1);
+      if (!/^\d{8,15}$/.test(phone))   return res.status(400).json({ error: 'Ongeldig telefoonnummer' });
+      const message = String(body.message || '').trim().slice(0, 2000);
+      if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
+
+      const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+      const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
+      if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
+        return res.status(500).json({ error: 'WhatsApp configuratie ontbreekt op de server' });
+      }
+      try {
+        const waRes = await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: message } })
+        });
+        const waData = await waRes.json().catch(() => ({}));
+        if (!waRes.ok || waData.error) {
+          console.error('[test-message] WA failed:', JSON.stringify(waData.error || waData).slice(0, 300));
+          return res.status(502).json({ error: waData.error?.message || 'WhatsApp versturen mislukt' });
+        }
+        return res.status(200).json({ ok: true, sentTo: phone });
+      } catch (err) {
+        return res.status(500).json({ error: 'Netwerkfout — probeer opnieuw' });
+      }
+    }
+
+    // ── C. existing: send a WhatsApp reply on an existing lead (2-way chat) ─
+    // POST /api/leads?id=recXXX  body: { message: "text" }
     try {
       const qs     = (req.url || '').split('?')[1] || '';
       const params = new URLSearchParams(qs);
@@ -251,9 +353,6 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Ongeldig record ID' });
       }
 
-      let body = req.body;
-      if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-      if (!body || typeof body !== 'object') body = {};
       const message = String(body.message || '').trim().slice(0, 2000);
       if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
 
