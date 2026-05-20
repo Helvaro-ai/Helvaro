@@ -14,10 +14,15 @@ module.exports = async function handler(req, res) {
   let aiName       = 'Mathis';
   let clientName   = 'Helvaro';
   let niche        = '';
+  let aiPhotoUrl   = '';
+  let brandColor   = '#6366f1';
+  let formIntro    = '';
+  let leadsThisWeek = 0;
   try {
     const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
     const BASE_ID        = process.env.BASE_AIRTABLE;
     const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
+    const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
     if (AIRTABLE_TOKEN && BASE_ID) {
       const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${project.replace(/"/g, '\\"')}"`);
       // 3-second hard cap so a slow Airtable can't slow down the form-page render
@@ -35,10 +40,45 @@ module.exports = async function handler(req, res) {
           aiName     = (rec.fields['fldRvoe1JMPOtPWC7'] || rec.fields['AI Name']     || aiName).toString().trim().slice(0, 60) || aiName;
           clientName = (rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || clientName).toString().trim().slice(0, 100) || clientName;
           niche      = (rec.fields['fld0BsPnDbBOkTHzr'] || rec.fields['Niche']        || '').toString().trim();
+          aiPhotoUrl = (rec.fields['fld7L0Iijq7ti6A6w'] || rec.fields['AI Photo URL'] || '').toString().trim();
+          const bc   = (rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']  || '').toString().trim();
+          if (/^#?[0-9a-fA-F]{6}$/.test(bc)) brandColor = bc.startsWith('#') ? bc : ('#' + bc);
+          formIntro  = (rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message'] || '').toString().trim();
         }
       }
+
+      // Social proof — count leads in last 7 days for this project (best-effort)
+      try {
+        const ctrl2 = new AbortController();
+        const t2 = setTimeout(() => ctrl2.abort(), 2500);
+        const since = new Date(Date.now() - 7*86400000).toISOString();
+        const leadFormula = encodeURIComponent(
+          `AND({fldSmczuyUJd26HLe}="${project.replace(/"/g, '\\"')}",IS_AFTER({fldR0r13EU4RwrtvH},"${since}"))`
+        );
+        const lRes = await fetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${leadFormula}&fields[]=fldR0r13EU4RwrtvH&pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }, signal: ctrl2.signal }
+        ).catch(() => null);
+        clearTimeout(t2);
+        if (lRes && lRes.ok) {
+          const ld = await lRes.json().catch(() => ({}));
+          leadsThisWeek = (ld.records || []).length;
+        }
+      } catch { /* silent */ }
     }
   } catch { /* silent — fallback to defaults */ }
+
+  // Compute a contrasting darker shade for the gradient end-stop
+  function shadeHex(hex, percent) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    const adj = c => Math.max(0, Math.min(255, Math.round(c * (1 + percent / 100))));
+    const toHex = c => c.toString(16).padStart(2, '0');
+    return '#' + toHex(adj(r)) + toHex(adj(g)) + toHex(adj(b));
+  }
+  const brandDark = shadeHex(brandColor, -25);
+  // Validate aiPhotoUrl — only allow https URLs to prevent injection
+  if (aiPhotoUrl && !/^https:\/\//.test(aiPhotoUrl)) aiPhotoUrl = '';
 
   // Strip control chars + escape for HTML / JS string contexts (defense in depth)
   function escHtml(s) {
@@ -52,14 +92,19 @@ module.exports = async function handler(req, res) {
   const safeFirstName   = escHtml(firstName);
   const safeClientName  = escHtml(clientName);
 
-  // Sector-specific small touches in the chat-bubble intro
+  // Sector-specific small touches in the chat-bubble intro (only used if no custom Form Intro)
   const nicheHooks = {
     dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
     real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
     lawyer:      'Ik help je graag verder met juridisch advies of een dossier.',
     finance:     'Ik help je graag met je financiële vraag.'
   };
-  const nicheIntro = nicheHooks[niche] || 'Ik help je graag verder — laat hieronder je gegevens achter en je hoort meteen van me.';
+  // Custom Form Intro Message overrides the sector default; supports {naam}/{bedrijf}/{ai} placeholders
+  let introText = formIntro || nicheHooks[niche] || 'Ik help je graag verder — laat hieronder je gegevens achter en je hoort meteen van me.';
+  introText = introText
+    .replace(/\{ai\}/g,      aiName)
+    .replace(/\{bedrijf\}/g, clientName)
+    .replace(/\{firstname\}/g, aiName.split(/\s+/)[0]);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');     // always render fresh — client just changed AI Name
@@ -75,6 +120,12 @@ module.exports = async function handler(req, res) {
 <link rel="icon" href="/favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --brand: ${brandColor};
+    --brand-dark: ${brandDark};
+    --brand-soft: ${brandColor}1a;
+    --brand-faint: ${brandColor}0d;
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -85,7 +136,7 @@ module.exports = async function handler(req, res) {
     color: #e8eef7;
   }
   .card {
-    background: #0b1224; border: 1px solid rgba(99,102,241,.28);
+    background: #0b1224; border: 1px solid var(--brand-soft);
     border-radius: 20px;
     width: 100%; max-width: 460px;
     box-shadow: 0 20px 60px rgba(0,0,0,.5);
@@ -97,14 +148,18 @@ module.exports = async function handler(req, res) {
     background: #14233f;
     padding: 18px 22px;
     display: flex; align-items: center; gap: 14px;
-    border-bottom: 1px solid rgba(99,102,241,.18);
+    border-bottom: 1px solid var(--brand-soft);
   }
   .avatar {
     width: 48px; height: 48px; border-radius: 50%;
-    background: linear-gradient(135deg, #14b8a6, #5eead4);
+    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-weight: 700; font-size: 19px;
-    flex-shrink: 0; position: relative;
+    flex-shrink: 0; position: relative; overflow: visible;
+  }
+  .avatar img {
+    width: 48px; height: 48px; border-radius: 50%;
+    object-fit: cover; display: block;
   }
   .online-dot {
     position: absolute; right: 0; bottom: 1px;
@@ -123,47 +178,76 @@ module.exports = async function handler(req, res) {
   .chat-area {
     padding: 22px 22px 8px;
     background:
-      radial-gradient(circle at 10% 90%, rgba(99,102,241,.04) 0%, transparent 60%),
+      radial-gradient(circle at 10% 90%, var(--brand-faint) 0%, transparent 60%),
       #0b1224;
   }
   .bubble {
-    background: rgba(99,102,241,.10); border: 1px solid rgba(99,102,241,.18);
+    background: var(--brand-soft); border: 1px solid var(--brand-soft);
     border-bottom-left-radius: 4px; border-radius: 14px;
     padding: 12px 14px; font-size: 14px; line-height: 1.5;
     color: #e8eef7; max-width: 88%; margin-bottom: 6px;
     animation: bubbleIn .35s ease;
   }
   @keyframes bubbleIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-  .bubble-meta { font-size: 11px; color: #6a85b0; margin-bottom: 14px; padding-left: 4px; }
+  .bubble-meta {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #6a85b0; margin-bottom: 14px; padding-left: 4px;
+  }
+  .typing-dots { display: inline-flex; gap: 3px; align-items: center; margin-left: 2px; }
+  .typing-dots span {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #6a85b0;
+    animation: typingDot 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: .15s; }
+  .typing-dots span:nth-child(3) { animation-delay: .30s; }
+  @keyframes typingDot {
+    0%, 60%, 100% { transform: scale(.7); opacity: .3; }
+    30%           { transform: scale(1);  opacity: 1; }
+  }
   .bubble strong { color: #fff; font-weight: 600; }
+
+  .social-proof {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.18);
+    color: #c5d4e8; padding: 6px 11px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .social-proof .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,.6);
+  }
+  .social-proof b { color: #22c55e; font-weight: 700; }
 
   /* Form */
   .form-area { padding: 6px 22px 24px; }
   label {
     display: block; font-size: 11px; font-weight: 700;
-    color: #818cf8; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--brand); letter-spacing: .08em; text-transform: uppercase;
     margin-bottom: 7px; margin-top: 14px;
+    filter: brightness(1.4);
   }
   input {
     width: 100%; background: #0a1320;
-    border: 1px solid rgba(99,102,241,.22); border-radius: 11px;
+    border: 1px solid var(--brand-soft); border-radius: 11px;
     padding: 13px 15px; color: #e8eef7; font-size: 15px;
     font-family: inherit; outline: none;
     transition: border-color .15s, box-shadow .15s;
   }
-  input:focus { border-color: rgba(129,140,248,.6); box-shadow: 0 0 0 3px rgba(99,102,241,.10); }
+  input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-faint); }
   input::placeholder { color: #3d5070; }
 
   button {
     width: 100%; margin-top: 18px;
-    background: linear-gradient(135deg, #6366f1, #818cf8);
+    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
     color: #fff; border: none; border-radius: 11px;
     padding: 14px; font-weight: 700; font-size: 15px;
     font-family: inherit; cursor: pointer; letter-spacing: .2px;
     transition: opacity .15s, box-shadow .2s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  button:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(99,102,241,.45); }
+  button:hover:not(:disabled) { box-shadow: 0 6px 24px var(--brand-soft); filter: brightness(1.08); }
   button:disabled { opacity: .55; cursor: not-allowed; }
   .btn-icon { display: inline-flex; }
 
@@ -201,7 +285,7 @@ module.exports = async function handler(req, res) {
   .trust {
     display: flex; align-items: center; justify-content: center;
     gap: 14px; padding: 14px 22px 22px;
-    flex-wrap: wrap; border-top: 1px solid rgba(99,102,241,.12);
+    flex-wrap: wrap; border-top: 1px solid var(--brand-faint);
   }
   .trust-item {
     display: inline-flex; align-items: center; gap: 5px;
@@ -227,7 +311,10 @@ module.exports = async function handler(req, res) {
   <!-- WhatsApp-style header with the AI persona -->
   <div class="chat-hdr">
     <div class="avatar">
-      ${escHtml(initial)}
+      ${aiPhotoUrl
+        ? `<img src="${escHtml(aiPhotoUrl)}" alt="${safeAiName}" onerror="this.style.display='none';this.parentNode.insertAdjacentText('afterbegin','${escJs(initial)}')">`
+        : escHtml(initial)
+      }
       <span class="online-dot" title="${safeFirstName} is online"></span>
     </div>
     <div class="hdr-text">
@@ -239,11 +326,18 @@ module.exports = async function handler(req, res) {
 
   <!-- Chat-bubble intro -->
   <div class="chat-area" id="chat-area">
+    ${leadsThisWeek >= 3
+      ? `<div class="social-proof"><span class="dot"></span> <b>${leadsThisWeek}</b> mensen vroegen ${safeFirstName} deze week om advies</div>`
+      : ''
+    }
     <div class="bubble">
       Hey 👋 ik ben <strong>${safeFirstName}</strong> van <strong>${safeClientName}</strong>.<br>
-      ${escHtml(nicheIntro)}
+      ${escHtml(introText)}
     </div>
-    <div class="bubble-meta">${safeFirstName} typt nu...</div>
+    <div class="bubble-meta">
+      ${safeFirstName} typt
+      <span class="typing-dots"><span></span><span></span><span></span></span>
+    </div>
   </div>
 
   <!-- Form (default visible) -->

@@ -270,7 +270,10 @@ module.exports = async function handler(req, res) {
             address:        rec.fields['fldTvMSdTZOyNgWod'] || rec.fields['Adres']               || '',
             sector:         rec.fields['fld0BsPnDbBOkTHzr'] || rec.fields['Niche']               || '',
             calendlyLink:   rec.fields['fldNEj1ysRgINOOtr'] || rec.fields['Calendly Link']       || '',
-            clientName:     rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name']         || ''
+            clientName:     rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name']         || '',
+            aiPhotoUrl:     rec.fields['fld7L0Iijq7ti6A6w'] || rec.fields['AI Photo URL']        || '',
+            brandColor:     rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']         || '',
+            formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || ''
           });
         }
 
@@ -284,6 +287,17 @@ module.exports = async function handler(req, res) {
         if (body.calendlyLink   !== undefined) u.fldNEj1ysRgINOOtr = String(body.calendlyLink).trim().slice(0, 500);
         // sector goes to Niche (singleSelect) — typecast:true lets unknown values pass
         if (body.sector         !== undefined) u.fld0BsPnDbBOkTHzr = String(body.sector).trim().slice(0, 100);
+        // Form personalization fields (shown on the lead form page)
+        if (body.aiPhotoUrl     !== undefined) {
+          const v = String(body.aiPhotoUrl).trim().slice(0, 500);
+          // Only accept HTTPS URLs (defense-in-depth — same check is repeated server-side on the form-page render)
+          u.fld7L0Iijq7ti6A6w = (v === '' || /^https:\/\//.test(v)) ? v : '';
+        }
+        if (body.brandColor     !== undefined) {
+          const v = String(body.brandColor).trim().slice(0, 8);
+          u.fldJAf4aTNlIQVL2q = (v === '' || /^#?[0-9a-fA-F]{6}$/.test(v)) ? v : '';
+        }
+        if (body.formIntro      !== undefined) u.fldxZ5spOeIb5omPr = String(body.formIntro).trim().slice(0, 600);
         if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
 
         const upRes = await atFetch(

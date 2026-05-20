@@ -4845,6 +4845,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;
   transition: border-color .15s ease;
 }
+.ap-color-row { display: flex; gap: 8px; align-items: stretch; }
+.ap-color-input { flex: 1; font-family: monospace; text-transform: uppercase; }
+.ap-color-swatch {
+  width: 44px; padding: 0; border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+.ap-color-swatch::-webkit-color-swatch-wrapper { padding: 4px; }
+.ap-color-swatch::-webkit-color-swatch { border: none; border-radius: 5px; }
 .ap-input:focus, .ap-textarea:focus { border-color: var(--accent-bright); }
 .ap-textarea { resize: vertical; min-height: 70px; line-height: 1.55; }
 .ap-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -6832,6 +6840,39 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">verzonden zodra een lead gekwalificeerd is</span>
               </label>
               <input id="ap-calendly" type="url" class="ap-input" placeholder="https://calendly.com/bedrijf/intake">
+            </div>
+
+            <!-- AI Photo URL -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Foto van je AI-persoon
+                <span class="ap-label-hint">leeg = letter-avatar</span>
+              </label>
+              <input id="ap-photo" type="url" class="ap-input" placeholder="https://...">
+              <div class="ap-hint">URL naar een foto (vierkant, 200×200+ aanbevolen). Verschijnt als avatar op je lead-formulier — leads voelen direct dat ze met een echt persoon chatten.</div>
+            </div>
+
+            <!-- Brand Color -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Brand-kleur
+                <span class="ap-label-hint">accenten op je lead-formulier</span>
+              </label>
+              <div class="ap-color-row">
+                <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#6366f1" maxlength="7">
+                <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#6366f1">
+              </div>
+              <div class="ap-hint">Hex-code (bv. <code>#16a34a</code>). Vertegenwoordigt jouw bedrijfskleur op de lead-form knoppen + accenten. Leeg = standaard paars.</div>
+            </div>
+
+            <!-- Form Intro Message -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Tekst op de lead-form (optioneel)
+                <span class="ap-label-hint">eigen welkomstboodschap</span>
+              </label>
+              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey 👋 ik help je graag — laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
+              <div class="ap-hint">Verschijnt als chat-bubbel bovenaan je lead-form (onder de avatar). Leeg = automatische sector-tekst. Placeholders: <code>{ai}</code>, <code>{bedrijf}</code>.</div>
             </div>
 
             <!-- Save button row -->
@@ -12524,6 +12565,18 @@ async function loadAiPersona() {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', refreshSaveButton);
     });
+    // Sync color picker <-> text input
+    const apColor = document.getElementById('ap-color');
+    const apPick  = document.getElementById('ap-color-pick');
+    if (apColor && apPick) {
+      apColor.addEventListener('input', () => {
+        const v = apColor.value.trim();
+        if (/^#?[0-9a-fA-F]{6}$/.test(v)) {
+          apPick.value = (v.startsWith('#') ? v : '#' + v).toLowerCase();
+        }
+      });
+      apPick.addEventListener('input', () => { apColor.value = apPick.value.toUpperCase(); });
+    }
     AP_STATE.wired = true;
   }
   populateFormLink();   // builds URL + QR + embed snippet from localStorage
@@ -12544,6 +12597,14 @@ async function loadAiPersona() {
     document.getElementById('ap-website').value      = d.website        || '';
     document.getElementById('ap-address').value      = d.address        || '';
     document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
+    document.getElementById('ap-photo').value        = d.aiPhotoUrl     || '';
+    const apColor = document.getElementById('ap-color');
+    const apPick  = document.getElementById('ap-color-pick');
+    if (apColor) apColor.value = d.brandColor || '';
+    if (apPick && /^#?[0-9a-fA-F]{6}$/.test(d.brandColor || '')) {
+      apPick.value = (d.brandColor.startsWith('#') ? d.brandColor : ('#' + d.brandColor)).toLowerCase();
+    }
+    document.getElementById('ap-form-intro').value   = d.formIntro      || '';
     AP_STATE.loaded = true;
     // Re-render templates now that we know the niche (for the "Aanbevolen" badge)
     renderApTemplates();
@@ -12640,7 +12701,10 @@ async function saveAiPersona() {
       aiInstructions: document.getElementById('ap-instructions').value.trim(),
       website:        document.getElementById('ap-website').value.trim(),
       address:        document.getElementById('ap-address').value.trim(),
-      calendlyLink:   document.getElementById('ap-calendly').value.trim()
+      calendlyLink:   document.getElementById('ap-calendly').value.trim(),
+      aiPhotoUrl:     document.getElementById('ap-photo').value.trim(),
+      brandColor:     document.getElementById('ap-color').value.trim(),
+      formIntro:      document.getElementById('ap-form-intro').value.trim()
     };
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
