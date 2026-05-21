@@ -85,6 +85,7 @@ module.exports = async function handler(req, res) {
     let   aiName     = 'Mathis Willems';      // safe default — overwritten by client's "AI Name" field if set
     let   clientName = project_code;          // safe default — overwritten below if found
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
+    let   lang       = 'nl';                   // nl / fr / en — language for the welcome WhatsApp
 
     try {
       const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
@@ -105,6 +106,9 @@ module.exports = async function handler(req, res) {
           // so leads feel they're chatting with a real human, not a bot.
           const customAiName = match.fields['fldRvoe1JMPOtPWC7'] || match.fields['AI Name'] || '';
           if (customAiName && String(customAiName).trim()) aiName = String(customAiName).trim().slice(0, 60);
+          // Language (nl/fr/en) controls the default welcome message
+          const lg = (match.fields['fld1iiV9XwSbgAACZ'] || match.fields['Language'] || '').toString().trim().toLowerCase();
+          if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
         }
       }
       // 429 / error → use defaults, don't block the form submission
@@ -156,8 +160,13 @@ module.exports = async function handler(req, res) {
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
     // Per-client custom template (placeholders: {naam} {bedrijf} {project} {bron} {ai})
-    // falls back to the default opener so existing clients without the field keep working.
-    const defaultTpl  = `Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?`;
+    // falls back to the language-specific default opener so existing clients without the field keep working.
+    const defaultTpls = {
+      nl: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
+      fr: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
+      en: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details — what brought you to us?'
+    };
+    const defaultTpl  = defaultTpls[lang] || defaultTpls.nl;
     const tpl         = (autoReplyTpl && autoReplyTpl.trim()) || defaultTpl;
     const waGreeting  = tpl
       .replace(/\{naam\}/g,    firstName)

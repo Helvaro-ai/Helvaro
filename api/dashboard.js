@@ -4845,6 +4845,21 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;
   transition: border-color .15s ease;
 }
+.ap-lang-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ap-lang-opt {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: 9px; padding: 9px 13px;
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  cursor: pointer; transition: all .15s ease;
+}
+.ap-lang-opt:hover { border-color: var(--accent-bright); }
+.ap-lang-opt input[type="radio"] { margin: 0; cursor: pointer; accent-color: var(--accent); }
+.ap-lang-opt:has(input:checked) {
+  background: rgba(99,102,241,.15);
+  border-color: var(--accent-bright);
+  color: var(--accent-bright);
+}
 .ap-color-row { display: flex; gap: 8px; align-items: stretch; }
 .ap-color-input { flex: 1; font-family: monospace; text-transform: uppercase; }
 .ap-color-swatch {
@@ -6840,6 +6855,20 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">verzonden zodra een lead gekwalificeerd is</span>
               </label>
               <input id="ap-calendly" type="url" class="ap-input" placeholder="https://calendly.com/bedrijf/intake">
+            </div>
+
+            <!-- Language -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Taal van je leads
+                <span class="ap-label-hint">bepaalt taal van lead-form + WhatsApp gesprek</span>
+              </label>
+              <div class="ap-lang-row">
+                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-nl" value="nl"> <span>🇳🇱 Nederlands</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-fr" value="fr"> <span>🇫🇷 Français</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-en" value="en"> <span>🇬🇧 English</span></label>
+              </div>
+              <div class="ap-hint">Selecteer de taal waarin je leads communiceren. De AI antwoordt automatisch in deze taal, ongeacht wat de lead schrijft. Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
             </div>
 
             <!-- AI Photo URL -->
@@ -12598,6 +12627,9 @@ async function loadAiPersona() {
     document.getElementById('ap-address').value      = d.address        || '';
     document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
     document.getElementById('ap-photo').value        = d.aiPhotoUrl     || '';
+    const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
+    const apLangRadio = document.getElementById('ap-lang-' + apLangVal);
+    if (apLangRadio) apLangRadio.checked = true;
     const apColor = document.getElementById('ap-color');
     const apPick  = document.getElementById('ap-color-pick');
     if (apColor) apColor.value = d.brandColor || '';
@@ -12704,7 +12736,8 @@ async function saveAiPersona() {
       calendlyLink:   document.getElementById('ap-calendly').value.trim(),
       aiPhotoUrl:     document.getElementById('ap-photo').value.trim(),
       brandColor:     document.getElementById('ap-color').value.trim(),
-      formIntro:      document.getElementById('ap-form-intro').value.trim()
+      formIntro:      document.getElementById('ap-form-intro').value.trim(),
+      language:       (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl'
     };
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',

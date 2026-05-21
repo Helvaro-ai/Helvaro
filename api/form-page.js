@@ -18,6 +18,7 @@ module.exports = async function handler(req, res) {
   let brandColor   = '#6366f1';
   let formIntro    = '';
   let leadsThisWeek = 0;
+  let lang          = 'nl';   // nl / fr / en — controls form-page + AI conversation language
   try {
     const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
     const BASE_ID        = process.env.BASE_AIRTABLE;
@@ -44,6 +45,8 @@ module.exports = async function handler(req, res) {
           const bc   = (rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']  || '').toString().trim();
           if (/^#?[0-9a-fA-F]{6}$/.test(bc)) brandColor = bc.startsWith('#') ? bc : ('#' + bc);
           formIntro  = (rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message'] || '').toString().trim();
+          const lg   = (rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language'] || '').toString().trim().toLowerCase();
+          if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
         }
       }
 
@@ -92,15 +95,127 @@ module.exports = async function handler(req, res) {
   const safeFirstName   = escHtml(firstName);
   const safeClientName  = escHtml(clientName);
 
-  // Sector-specific small touches in the chat-bubble intro (only used if no custom Form Intro)
-  const nicheHooks = {
-    dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
-    real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
-    lawyer:      'Ik help je graag verder met juridisch advies of een dossier.',
-    finance:     'Ik help je graag met je financiële vraag.'
+  // ── i18n: all UI strings per language ──────────────────────────────────────
+  const i18n = {
+    nl: {
+      title:           safeFirstName + ' van ' + safeClientName + ' — neem contact op',
+      meta:            safeFirstName + ' reageert binnen 1 minuut via WhatsApp.',
+      status:          '● Online — reageert binnen 1 min',
+      intro:           'Hey 👋 ik ben',
+      introMid:        'van',
+      typing:          'typt',
+      labelName:       'Hoe mag ik je noemen?',
+      labelPhone:      'Je WhatsApp nummer',
+      placeholderName: 'Jouw naam',
+      placeholderPhone:'0478 12 34 56',
+      btn:             'Stuur',
+      btnSuffix:       'mijn gegevens',
+      errMissing:      'Vul je naam en telefoonnummer in zodat',
+      errMissingTail:  'contact kan opnemen.',
+      errGeneric:      'Er ging iets mis. Probeer opnieuw.',
+      loading:         'Een momentje...',
+      thanks:          'Bedankt,',
+      friend:          'vriend',
+      successText:     'stuurt je nu een persoonlijk bericht via WhatsApp.',
+      step1:           'Check je WhatsApp binnen 1 min',
+      step2:           'Beantwoord',
+      step2Tail:       "'s vraag",
+      step3:           'We plannen een afspraak als jij wil',
+      trust1:          'Geen spam, ooit',
+      trust2:          'Reactie binnen 1 min',
+      trust3:          'Vrijblijvend',
+      poweredBy:       'Powered by',
+      socialPre:       'mensen vroegen',
+      socialPost:      'deze week om advies',
+      nicheHooks: {
+        dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
+        real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
+        lawyer:      'Ik help je graag verder met juridisch advies of een dossier.',
+        finance:     'Ik help je graag met je financiële vraag.',
+        default:     'Ik help je graag verder — laat hieronder je gegevens achter en je hoort meteen van me.'
+      }
+    },
+    fr: {
+      title:           safeFirstName + ' de ' + safeClientName + ' — prenez contact',
+      meta:            safeFirstName + ' répond en 1 minute via WhatsApp.',
+      status:          '● En ligne — réponse en 1 min',
+      intro:           'Salut 👋 je suis',
+      introMid:        'de',
+      typing:          'écrit',
+      labelName:       'Comment puis-je vous appeler ?',
+      labelPhone:      'Votre numéro WhatsApp',
+      placeholderName: 'Votre nom',
+      placeholderPhone:'0478 12 34 56',
+      btn:             'Envoyer mes coordonnées à',
+      btnSuffix:       '',
+      errMissing:      'Saisissez votre nom et votre numéro pour que',
+      errMissingTail:  'puisse vous contacter.',
+      errGeneric:      "Une erreur s'est produite. Réessayez.",
+      loading:         'Un instant...',
+      thanks:          'Merci,',
+      friend:          'à vous',
+      successText:     'vous envoie un message personnel via WhatsApp.',
+      step1:           'Vérifiez WhatsApp dans 1 minute',
+      step2:           'Répondez à la question de',
+      step2Tail:       '',
+      step3:           'Nous planifions un rendez-vous si vous voulez',
+      trust1:          'Pas de spam, jamais',
+      trust2:          'Réponse en 1 min',
+      trust3:          'Sans engagement',
+      poweredBy:       'Propulsé par',
+      socialPre:       'personnes ont demandé conseil à',
+      socialPost:      'cette semaine',
+      nicheHooks: {
+        dentist:     "Je vous aide volontiers avec vos questions sur vos dents ou un traitement.",
+        real_estate: "Je vous aide volontiers, que vous cherchiez une maison ou que vous souhaitiez en vendre une.",
+        lawyer:      "Je vous aide volontiers avec un conseil juridique ou un dossier.",
+        finance:     "Je vous aide volontiers avec votre question financière.",
+        default:     "Je vous aide volontiers — laissez vos coordonnées ci-dessous et je vous contacte tout de suite."
+      }
+    },
+    en: {
+      title:           safeFirstName + ' from ' + safeClientName + ' — get in touch',
+      meta:            safeFirstName + ' replies within 1 minute on WhatsApp.',
+      status:          '● Online — replies in 1 min',
+      intro:           "Hey 👋 I'm",
+      introMid:        'from',
+      typing:          'typing',
+      labelName:       'What should I call you?',
+      labelPhone:      'Your WhatsApp number',
+      placeholderName: 'Your name',
+      placeholderPhone:'+32 478 12 34 56',
+      btn:             'Send my details to',
+      btnSuffix:       '',
+      errMissing:      'Please fill in your name and phone number so',
+      errMissingTail:  'can reach you.',
+      errGeneric:      'Something went wrong. Please try again.',
+      loading:         'One moment...',
+      thanks:          'Thanks,',
+      friend:          'friend',
+      successText:     "is sending you a personal WhatsApp message now.",
+      step1:           'Check WhatsApp within 1 minute',
+      step2:           "Answer",
+      step2Tail:       "'s question",
+      step3:           "We'll plan a meeting if you want",
+      trust1:          'No spam, ever',
+      trust2:          'Reply within 1 min',
+      trust3:          'No commitment',
+      poweredBy:       'Powered by',
+      socialPre:       'people asked',
+      socialPost:      'for advice this week',
+      nicheHooks: {
+        dentist:     'I’m happy to help you with any dental questions or treatments.',
+        real_estate: 'I’m happy to help, whether you’re looking to buy or sell a property.',
+        lawyer:      'I’m happy to help you with legal advice or a case.',
+        finance:     'I’m happy to help with your financial question.',
+        default:     'I’m happy to help — drop your details below and you’ll hear from me right away.'
+      }
+    }
   };
-  // Custom Form Intro Message overrides the sector default; supports {naam}/{bedrijf}/{ai} placeholders
-  let introText = formIntro || nicheHooks[niche] || 'Ik help je graag verder — laat hieronder je gegevens achter en je hoort meteen van me.';
+  const t = i18n[lang] || i18n.nl;
+
+  // Custom Form Intro Message overrides the language default; supports {naam}/{bedrijf}/{ai} placeholders
+  let introText = formIntro || t.nicheHooks[niche] || t.nicheHooks.default;
   introText = introText
     .replace(/\{ai\}/g,      aiName)
     .replace(/\{bedrijf\}/g, clientName)
@@ -111,12 +226,12 @@ module.exports = async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.status(200).send(`<!DOCTYPE html>
-<html lang="nl">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${safeFirstName} van ${safeClientName} — neem contact op</title>
-<meta name="description" content="${safeFirstName} reageert binnen 1 minuut via WhatsApp.">
+<title>${t.title}</title>
+<meta name="description" content="${t.meta}">
 <link rel="icon" href="/favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -319,7 +434,7 @@ module.exports = async function handler(req, res) {
     </div>
     <div class="hdr-text">
       <div class="hdr-name">${safeAiName}</div>
-      <div class="hdr-status">● Online — reageert binnen 1 min</div>
+      <div class="hdr-status">${escHtml(t.status)}</div>
       <div class="hdr-brand">${safeClientName}</div>
     </div>
   </div>
@@ -327,32 +442,32 @@ module.exports = async function handler(req, res) {
   <!-- Chat-bubble intro -->
   <div class="chat-area" id="chat-area">
     ${leadsThisWeek >= 3
-      ? `<div class="social-proof"><span class="dot"></span> <b>${leadsThisWeek}</b> mensen vroegen ${safeFirstName} deze week om advies</div>`
+      ? `<div class="social-proof"><span class="dot"></span> <b>${leadsThisWeek}</b> ${escHtml(t.socialPre)} ${safeFirstName} ${escHtml(t.socialPost)}</div>`
       : ''
     }
     <div class="bubble">
-      Hey 👋 ik ben <strong>${safeFirstName}</strong> van <strong>${safeClientName}</strong>.<br>
+      ${escHtml(t.intro)} <strong>${safeFirstName}</strong> ${escHtml(t.introMid)} <strong>${safeClientName}</strong>.<br>
       ${escHtml(introText)}
     </div>
     <div class="bubble-meta">
-      ${safeFirstName} typt
+      ${safeFirstName} ${escHtml(t.typing)}
       <span class="typing-dots"><span></span><span></span><span></span></span>
     </div>
   </div>
 
   <!-- Form (default visible) -->
   <div class="form-area" id="form">
-    <label for="naam">Hoe mag ik je noemen?</label>
-    <input id="naam" type="text" placeholder="Jouw naam" autocomplete="name">
+    <label for="naam">${escHtml(t.labelName)}</label>
+    <input id="naam" type="text" placeholder="${escHtml(t.placeholderName)}" autocomplete="name">
 
-    <label for="tel">Je WhatsApp nummer</label>
-    <input id="tel" type="tel" placeholder="0478 12 34 56" autocomplete="tel" inputmode="tel">
+    <label for="tel">${escHtml(t.labelPhone)}</label>
+    <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel" inputmode="tel">
 
     <button id="btn">
       <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.4 0-.6.1-.2.3-.7.9-.9 1.1-.1.1-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4 0-.7.3-.3.3-.9.9-.9 2.2 0 1.3.9 2.5 1 2.7.1.1 1.8 2.7 4.3 3.7.6.2 1.1.4 1.4.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3z"/>
       </svg>
-      Stuur ${safeFirstName} mijn gegevens
+      ${escHtml(t.btn)} ${safeFirstName}${t.btnSuffix ? ' ' + escHtml(t.btnSuffix) : ''}
     </button>
     <div class="error" id="err"></div>
   </div>
@@ -360,33 +475,46 @@ module.exports = async function handler(req, res) {
   <!-- Success -->
   <div class="success" id="ok">
     <div class="tick">✓</div>
-    <h3>Bedankt, <span id="ok-name">vriend</span>!</h3>
-    <p><strong>${safeFirstName}</strong> stuurt je nu een persoonlijk bericht via WhatsApp.</p>
+    <h3>${escHtml(t.thanks)} <span id="ok-name">${escHtml(t.friend)}</span>!</h3>
+    <p><strong>${safeFirstName}</strong> ${escHtml(t.successText)}</p>
     <div class="success-steps">
-      <div class="success-step"><span class="num">1</span> Check je WhatsApp binnen 1 min</div>
-      <div class="success-step"><span class="num">2</span> Beantwoord ${safeFirstName}'s vraag</div>
-      <div class="success-step"><span class="num">3</span> We plannen een afspraak als jij wil</div>
+      <div class="success-step"><span class="num">1</span> ${escHtml(t.step1)}</div>
+      <div class="success-step"><span class="num">2</span> ${escHtml(t.step2)} ${safeFirstName}${escHtml(t.step2Tail)}</div>
+      <div class="success-step"><span class="num">3</span> ${escHtml(t.step3)}</div>
     </div>
   </div>
 
   <!-- Trust strip -->
   <div class="trust">
-    <div class="trust-item"><span>🔒</span> Geen spam, ooit</div>
-    <div class="trust-item"><span>⚡</span> Reactie binnen 1 min</div>
-    <div class="trust-item"><span>🤝</span> Vrijblijvend</div>
+    <div class="trust-item"><span>🔒</span> ${escHtml(t.trust1)}</div>
+    <div class="trust-item"><span>⚡</span> ${escHtml(t.trust2)}</div>
+    <div class="trust-item"><span>🤝</span> ${escHtml(t.trust3)}</div>
   </div>
-  <div class="powered">Powered by <a href="https://app.helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
+  <div class="powered">${escHtml(t.poweredBy)} <a href="https://app.helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
 </div>
 
 <script>
 var PROJECT  = '${escJs(project)}';
 var AI_FIRST = '${escJs(firstName)}';
-var API      = 'https://app.helvaro.pro/api/form/' + encodeURIComponent(PROJECT);
+var FALLBACK_NAME = '${escJs(t.friend)}';
+var I18N = {
+  errMissing:     '${escJs(t.errMissing)}',
+  errMissingTail: '${escJs(t.errMissingTail)}',
+  errGeneric:     '${escJs(t.errGeneric)}',
+  loading:        '${escJs(t.loading)}',
+  btn:            '${escJs(t.btn)}',
+  btnSuffix:      '${escJs(t.btnSuffix)}'
+};
+var API = 'https://app.helvaro.pro/api/form/' + encodeURIComponent(PROJECT);
 
 var btn  = document.getElementById('btn');
 var err  = document.getElementById('err');
 var form = document.getElementById('form');
 var ok   = document.getElementById('ok');
+
+function btnDefault() {
+  return I18N.btn + ' ' + AI_FIRST + (I18N.btnSuffix ? ' ' + I18N.btnSuffix : '');
+}
 
 btn.addEventListener('click', function() {
   var name  = document.getElementById('naam').value.trim();
@@ -394,12 +522,12 @@ btn.addEventListener('click', function() {
 
   err.style.display = 'none';
   if (!name || !phone) {
-    err.textContent   = 'Vul je naam en telefoonnummer in zodat ' + AI_FIRST + ' contact kan opnemen.';
+    err.textContent   = I18N.errMissing + ' ' + AI_FIRST + ' ' + I18N.errMissingTail;
     err.style.display = 'block';
     return;
   }
 
-  btn.innerHTML  = 'Een momentje...';
+  btn.innerHTML  = I18N.loading;
   btn.disabled   = true;
 
   fetch(API, {
@@ -408,18 +536,18 @@ btn.addEventListener('click', function() {
     body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie' })
   })
   .then(function(r) {
-    if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Fout'); });
+    if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || I18N.errGeneric); });
     var firstName = name.split(' ')[0];
     var okName = document.getElementById('ok-name');
-    if (okName) okName.textContent = firstName || 'vriend';
+    if (okName) okName.textContent = firstName || FALLBACK_NAME;
     form.style.display = 'none';
     document.getElementById('chat-area').style.display = 'none';
     ok.style.display   = 'block';
   })
   .catch(function(e) {
-    err.textContent   = e.message || 'Er ging iets mis. Probeer opnieuw.';
+    err.textContent   = e.message || I18N.errGeneric;
     err.style.display = 'block';
-    btn.innerHTML     = 'Stuur ' + AI_FIRST + ' mijn gegevens';
+    btn.innerHTML     = btnDefault();
     btn.disabled      = false;
   });
 });

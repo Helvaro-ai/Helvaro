@@ -84,7 +84,8 @@ async function processMessage(phone, text) {
   // 1. Find lead by phone
   const lead = await getLead(phone);
   if (!lead) {
-    await sendWA(phone, 'Dag! Stuur eerst het contactformulier in zodat ik je verder kan helpen. 🙏');
+    // Pre-form fallback — try to honour client's saved language if we can find the project from phone (best-effort)
+    await sendWA(phone, 'Hi! Please fill in the contact form first so I can help you. 🙏 / Bonjour ! Remplissez d’abord le formulaire de contact pour que je puisse vous aider. 🙏 / Dag! Stuur eerst het contactformulier in zodat ik je verder kan helpen. 🙏');
     return;
   }
 
@@ -107,7 +108,14 @@ async function processMessage(phone, text) {
   const rawState = lead.fields['fld8mkrEWcyq7mUip'] || lead.fields['Conversation State'];
   const state    = (typeof rawState === 'object' ? rawState?.name : rawState) || '';
   if (state === 'completed') {
-    await sendWA(phone, 'Bedankt voor je interesse! We nemen spoedig contact met je op. 🤝');
+    // Use client's language for this short fallback (lang is set later, fall back to NL here)
+    const completedMsgs = {
+      nl: 'Bedankt voor je interesse! We nemen spoedig contact met je op. 🤝',
+      fr: 'Merci pour votre intérêt ! Nous vous recontactons bientôt. 🤝',
+      en: 'Thanks for your interest! We’ll be in touch soon. 🤝'
+    };
+    const earlyLang = ((client && client.fields && (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'])) || 'nl').toString().toLowerCase();
+    await sendWA(phone, completedMsgs[earlyLang] || completedMsgs.nl);
     return;
   }
 
@@ -136,10 +144,13 @@ async function processMessage(phone, text) {
   const clientName = client.fields['fldAnB848Sr5jl6dq']    || client.fields['Client Name'] || 'Helvaro';
   const leadName   = lead.fields['fldbk0LVNckOU0bqA']      || lead.fields['Name']          || '';
   const address    = client.fields['fldTvMSdTZOyNgWod']    || client.fields['Adres'] || client.fields['Address'] || '';
+  // Language for the conversation: nl (default) / fr / en
+  const rawLang = (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'] || 'nl').toString().toLowerCase();
+  const lang    = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
 
   // 7. Run AI
   const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
-  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address);
+  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang);
 
   // 8. Trim and push AI reply to history
   const replyText = aiResponse.message.trim();
@@ -178,11 +189,28 @@ async function processMessage(phone, text) {
     const bookingSent = lead.fields['fldLeEqwNefdglLis']   || lead.fields['Booking Link Sent'];
 
     if (calendly && !bookingSent) {
-      await sendWA(phone, `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`);
-      if (address) {
-        await sendWA(phone, `Ons adres: ${address}`);
-      }
-      await sendWA(phone, 'Heb je de afspraak ingepland? Laat het me weten.');
+      // Localized post-qualification messages
+      const postMsgs = {
+        nl: {
+          slot:    `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`,
+          addr:    `Ons adres: ${address}`,
+          confirm: 'Heb je de afspraak ingepland? Laat het me weten.'
+        },
+        fr: {
+          slot:    `Super. Planifions un premier appel — choisis un moment ici :\n\n${calendly}`,
+          addr:    `Notre adresse : ${address}`,
+          confirm: 'As-tu réservé le créneau ? Dis-le moi.'
+        },
+        en: {
+          slot:    `Great. Let's set up an intro call — pick a slot here:\n\n${calendly}`,
+          addr:    `Our address: ${address}`,
+          confirm: 'Did you book the slot? Let me know.'
+        }
+      };
+      const pm = postMsgs[lang] || postMsgs.nl;
+      await sendWA(phone, pm.slot);
+      if (address) await sendWA(phone, pm.addr);
+      await sendWA(phone, pm.confirm);
       await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);  // Booking Link Sent
     }
 
@@ -251,15 +279,37 @@ async function fetchWebsite(url) {
 
 // ─── AI ─────────────────────────────────────────────────────────────────────
 
-async function runAI(history, instructions, leadName, aiName, clientName, websiteContent, address) {
+async function runAI(history, instructions, leadName, aiName, clientName, websiteContent, address, lang) {
   const firstName = leadName ? leadName.split(' ')[0] : '';
+  lang = (lang === 'fr' || lang === 'en') ? lang : 'nl';
+
+  // Language-specific block injected near the top of the system prompt.
+  // Forces Claude to ALWAYS reply in the chosen language regardless of what
+  // the lead writes. This is the strongest possible language lock — Claude
+  // sometimes mirrors the user's language without an explicit override.
+  const langDirective = {
+    nl: 'BELANGRIJK — Antwoord ALTIJD in het Nederlands (België). Gebruik "je" en "jij", nooit "u". Negeer de taal die de lead gebruikt — antwoord altijd in het Nederlands.',
+    fr: 'IMPORTANT — Réponds TOUJOURS en français (Belgique). Utilise "tu" et "toi" pour rester décontracté. Ignore la langue que le lead utilise — réponds toujours en français.',
+    en: 'IMPORTANT — Reply ALWAYS in English. Use casual "you", contractions OK. Ignore whatever language the lead uses — always reply in English.'
+  }[lang];
 
   const websiteSection = websiteContent
     ? `\nWEBSITE-INHOUD VAN DE KLANT (gebruik dit om vragen te beantwoorden):\n${websiteContent}\n`
     : '';
   const addressSection = address ? `\nOns adres: ${address}\n` : '';
 
+  // Reason field language directive — the qualified/reason JSON should also be
+  // in the chosen language so the dashboard summary reads naturally.
+  const reasonLangNote = {
+    nl: 'in het Nederlands',
+    fr: 'en français',
+    en: 'in English'
+  }[lang];
+
   const systemPrompt = `
+${langDirective}
+
+
 Je bent ${aiName}, sales bij ${clientName}. Je appt met iemand die net hun contactgegevens achterliet op de website.${firstName ? ` Je spreekt met ${firstName}.` : ''}
 ${websiteSection}${addressSection}
 HOE JE SCHRIJFT:
@@ -300,7 +350,7 @@ ${instructions || 'Kwalificeer de lead op basis van interesse, budget en urgenti
 
 BESLISSING:
 Na 3 tot 5 berichten weet je genoeg. Voeg dan op een aparte regel toe:
-DECISION:{"qualified":true/false,"reason":"korte reden in het Nederlands","summary":"1-2 zinnen samenvatting","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100}
+DECISION:{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100}
 
 Voeg DECISION alleen toe als je écht genoeg weet. De leadScore is 0-100 op basis van alle drie factoren samen.
 `.trim();

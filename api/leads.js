@@ -273,7 +273,8 @@ module.exports = async function handler(req, res) {
             clientName:     rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name']         || '',
             aiPhotoUrl:     rec.fields['fld7L0Iijq7ti6A6w'] || rec.fields['AI Photo URL']        || '',
             brandColor:     rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']         || '',
-            formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || ''
+            formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || '',
+            language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl'
           });
         }
 
@@ -298,6 +299,10 @@ module.exports = async function handler(req, res) {
           u.fldJAf4aTNlIQVL2q = (v === '' || /^#?[0-9a-fA-F]{6}$/.test(v)) ? v : '';
         }
         if (body.formIntro      !== undefined) u.fldxZ5spOeIb5omPr = String(body.formIntro).trim().slice(0, 600);
+        if (body.language       !== undefined) {
+          const v = String(body.language).trim().toLowerCase();
+          if (v === 'nl' || v === 'fr' || v === 'en') u.fld1iiV9XwSbgAACZ = v;
+        }
         if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
 
         const upRes = await atFetch(
