@@ -10,6 +10,7 @@
   ],
   "rewrites": [
     { "source": "/onboard", "destination": "/onboard.html" },
+    { "source": "/promo",   "destination": "/promo.html"   },
     { "source": "/dashboard",                       "destination": "/api/dashboard" },
     { "source": "/api/calendly-events",             "destination": "/api/calendly" },
     { "source": "/api/calendly-oauth-start",        "destination": "/api/calendly" },
