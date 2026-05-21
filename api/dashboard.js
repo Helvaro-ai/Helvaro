@@ -7588,7 +7588,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fdr-mrr-sub" id="fdr-mrr-sub">0 betalende klanten</div>
               <div class="fdr-mrr-target">
                 <span class="fdr-mrr-arrow">→</span>
-                <span id="fdr-mrr-target">Doel: €1.245/mnd bij 5 klanten</span>
+                <span id="fdr-mrr-target">Doel: €5.000/mnd bij 5 klanten</span>
               </div>
               <hr class="fdr-profit-divider">
               <div class="fdr-profit-rows">
@@ -7906,7 +7906,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="fdr-doc-card-badge pdf">PDF</span>
                 <div class="fdr-doc-card-icon">💰</div>
                 <div class="fdr-doc-card-name">Prijslijst</div>
-                <div class="fdr-doc-card-desc">Starter €149 · Groei €249 · Agency €399</div>
+                <div class="fdr-doc-card-desc">Helvaro €1.000/maand · alles inbegrepen</div>
               </a>
               <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-drive" target="_blank" rel="noopener">
                 <span class="fdr-doc-card-badge drive">Drive</span>
@@ -13228,7 +13228,7 @@ function renderFollowUpAlerts() {
 }
 
 function updateMrrWidget() {
-  var avgMrr   = 249;
+  var avgMrr   = 1000;  // Helvaro single tier — €1.000/maand alles inbegrepen
   var fixedCost = 58;   // Vercel €18 + Airtable €20 + Resend €18 + domein €2
   var varPerClient = 34; // WhatsApp API ~€30 + Anthropic API ~€4
   var won      = founderState.pipeline.filter(function(p) { return p.fase === 'Gewonnen'; }).length;

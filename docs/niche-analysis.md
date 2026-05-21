@@ -6,7 +6,7 @@ gerangschikt op de kans om binnen 30 dagen een betalende klant binnen te halen.
 **Scoring-criteria (1-10):**
 1. **Lead-volume** — krijgen ze genoeg inbound leads om kwalificering nuttig te maken?
 2. **Reactietijd-gevoeligheid** — verliest een trage reactie écht geld?
-3. **Dealwaarde** — is 1 extra deal/mnd genoeg om €249/mnd terug te verdienen?
+3. **Dealwaarde** — is 1 extra deal/mnd genoeg om €1.000/mnd terug te verdienen? (vuistregel: dealwaarde moet ≥ €2.000 zijn)
 4. **WhatsApp-fit** — gebruiken ze al WhatsApp voor klantcontact?
 5. **AI-saturatie** — concurreren we al met andere tools?
 6. **Solo/duo-business** — is het beslissingsproces snel? (groot bedrijf = veel sales)
@@ -19,7 +19,7 @@ gerangschikt op de kans om binnen 30 dagen een betalende klant binnen te halen.
 ### 1. Renovatie & aannemers (10/10) ★★★★★
 **Waarom de #1 fit:**
 - Lange salescyclus = veel kwalificatie nodig
-- Dealwaarde **€10k-€100k** per project — €249/mnd is verwaarloosbaar
+- Dealwaarde **€10k-€100k** per project — €1.000/mnd is 1% van een gemiddelde deal
 - Aannemers gebruiken WhatsApp dagelijks (foto's van werven sturen)
 - Geen chatbot-saturatie in deze sector
 - 95% van bedrijven zijn solo of klein duo
@@ -207,7 +207,7 @@ Veel leads maar lage waarde (€50-€200/tafel). OpenTable / Resengo al gevesti
 *Skip voor nu.*
 
 ### 19. Kapsalons & barbieren (5/10)
-Veel afspraken, lage waarde **€20-€80** per knip. €249/mnd is moeilijk te verkopen tegen marge.
+Veel afspraken, lage waarde **€20-€80** per knip. €1.000/mnd is onmogelijk te verkopen tegen marge — ze zouden 25-50 extra knippen per maand moeten genereren alleen om het terug te verdienen.
 *Werkt alleen voor luxe segmenten (haartransplantatie, specialty salons).*
 
 ### 20. Hotels & B&B (5/10)
@@ -227,6 +227,21 @@ Booking platforms domineren. Direct contact is laag-volume. Skip.
 | **Non-profits** | Geen budget |
 | **Apotheken** | Sterk gereglementeerd (FAGG), AI-comm risky |
 | **Telecom / energieleveranciers** | Te grote spelers, geen SMB-fit |
+
+---
+
+## ⚠️ Belangrijk: prijs-impact op niche-keuze
+
+Helvaro kost **€1.000/maand**. Daar volgt uit:
+
+- Een niche met **gemiddelde dealwaarde < €2.000** → **DOE NIET** (1 deal/mnd net break-even, te grote risico voor de klant)
+- Gemiddelde dealwaarde **€2.000-€10.000** → mogelijk, maar de klant moet *minstens* 1 extra deal/mnd halen om ROI te zien
+- Gemiddelde dealwaarde **> €10.000** → ideaal (1 deal = 10× ROI, geen discussie)
+
+**Dat betekent praktisch:**
+- ✅ **TIER S blijft TIER S** — renovatie (€10k+), vastgoed (€5k+), esthetiek (€500-€5k maar high volume)
+- ⚠️ **TIER C wordt TIER D** voor €1000/mnd: kapsalons / restaurants / hotels — onmogelijke ROI-pitch
+- ⚠️ **Tandartsen** (TIER S) blijven goed bij esthetiek + ortho, maar niet bij standaard controles (te lage marge)
 
 ---
 

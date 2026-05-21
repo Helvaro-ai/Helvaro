@@ -94,16 +94,18 @@ Doel: 5 klanten met 3 maanden contract voor 20 juni 2026.
 
 ---
 
-## PRICING SUGGESTIE (3 maanden contract)
+## PRICING
 
-| Pakket | Prijs/maand | Wat je geeft |
+| Pakket | Prijs/maand | Wat zit erin |
 |--------|-------------|--------------|
-| Starter | €149/maand | 1 formulier, 100 leads/maand, WhatsApp kwalificatie |
-| Groei | €249/maand | 1 formulier, 500 leads/maand, Calendly integratie |
-| Agency | €399/maand | Onbeperkt, white-label mogelijk, prioriteit support |
+| **Helvaro** | **€1.000 / maand** | Alles inbegrepen — onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly integratie, dashboard, AI antwoord-suggesties, premium support |
+| Trial | €1 voor 14 dagen | Volledige toegang om te testen — geen contract |
 
-**3 maanden contract = 10% korting**
-**Eerste maand gratis voor early adopters**
+**Geen plannen-doolhof. Eén prijs. Eén beslissing.**
+
+**Anchoring:** een fulltime sales-medewerker kost €4.000-€5.000/maand + sociale lasten. Helvaro doet de eerste reactie + kwalificatie 24/7 voor 1/5 van die kost.
+
+**ROI vuistregel:** als jouw gemiddelde dealwaarde > €2.000 → 1 extra deal/mnd = ROI. Wij targeten sectoren met dealwaarde > €10k zodat 1 deal = 10× ROI.
 
 ---
 

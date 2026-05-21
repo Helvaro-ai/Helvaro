@@ -55,9 +55,20 @@ Drie triggers:
 ## 💰 Prijzen & contract
 
 ### Wat kost het?
-- **Starter** — €149/mnd · solo-ondernemers, tot 50 leads/mnd
-- **Pro** — €249/mnd · KMO's, 50-200 leads/mnd *(aanbevolen)*
-- **Agency** — €399/mnd · marketingbureaus voor 5+ klanten
+**€1.000/maand** — alles inbegrepen. Eén prijs, geen plannen-doolhof.
+
+Wat zit erin:
+- AI lead-kwalificatie via WhatsApp (24/7)
+- Onbeperkt aantal leads
+- Per-klant AI personage (naam, foto, brand-kleur, instructies)
+- Calendly integratie + automatische booking
+- Volledig dashboard (leads, gesprekken, analyse, exports)
+- WhatsApp 2-way chat vanuit dashboard
+- AI antwoord-suggesties
+- Premium support — directe lijn naar het Helvaro-team
+
+### Waarom €1.000/maand?
+Een fulltime sales-medewerker kost je €4.000-€5.000/maand. Helvaro doet de eerste reactie + kwalificatie van 100% van je leads, 24/7, voor een vierde van de prijs — en wordt nooit ziek.
 
 ### Is er een gratis trial?
 Ja, **14 dagen voor €1**. Geen contract. Geen automatische verlenging — je beslist actief om door te gaan.

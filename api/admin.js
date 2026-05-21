@@ -345,7 +345,7 @@ module.exports = async function handler(req, res) {
             '- Doel: 5 klanten met 3-maands contract voor 20 juni 2026 (35 dagen resterend)',
             '- Doelgroep: marketingbureaus, vastgoedkantoren, coaches in Gent/Antwerpen',
             '- Prospects: CNIP, Ants Agency, VICUS Vastgoed, Opex Consulting, Bureau 9000, Concordia, Nouchka Design, SilverLine Studio, Magelaan',
-            '- Prijzen: Starter €149/mnd, Groei €249/mnd, Agency €399/mnd (3 mnd contract)',
+            '- Prijs: €1.000/maand · alles inbegrepen · 14 dagen trial voor €1',
             '',
             'Geef altijd concrete, korte antwoorden in het Nederlands. Max 3 paragrafen. Doe aan actie, niet theorie.'
           ].join('\n');

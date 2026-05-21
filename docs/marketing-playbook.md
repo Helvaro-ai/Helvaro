@@ -248,8 +248,10 @@ Open `app.helvaro.pro/start/DEMO` op je telefoon. Zeg: "Ik ga nu doen alsof ik e
 → Personaliseer LIVE in je AI Persoonlijkheid editor (laat ze zien).
 
 ### 10-13 min: Prijs + objectie-handling
-"Drie plans: Starter €149, Pro €249, Agency €399. De meeste {sector}-klanten zitten op Pro. Geen setup-kost, eerste maand €99."
+"De prijs is **€1.000 per maand** — alles inbegrepen, onbeperkt aantal leads, premium support. Geen setup-kost, eerste 14 dagen voor €1 zodat je het volledig kan testen."
 → **Wachten.** Laat ze de eerste objectie geven.
+
+**Anchoring techniek:** *"Vergelijking: een fulltime sales-medewerker is €4.000-€5.000/maand. Helvaro doet hetzelfde werk voor de eerste reactie + kwalificatie, 24/7, voor een vierde van de prijs — en kan niet ziek worden."*
 
 ### 13-15 min: Close
 "Wil je het 14 dagen testen met je eigen WhatsApp-nummer? Ik stuur je vanmiddag de toegang."
@@ -259,28 +261,29 @@ Open `app.helvaro.pro/start/DEMO` op je telefoon. Zeg: "Ik ga nu doen alsof ik e
 
 ## 6. Pricing presentatie
 
-**Drie plans, altijd in deze volgorde tonen:**
+**Eén prijs. Eén beslissing. Geen plannen-doolhof.**
 
-| Plan | Prijs | Voor wie |
-|---|---|---|
-| **Starter** | **€149/mnd** | Solo-ondernemers, max 50 leads/mnd |
-| **Pro** ⭐ | **€249/mnd** | KMO's met 50-200 leads/mnd. Standaard advies. |
-| **Agency** | **€399/mnd** | Marketingbureaus die voor 5+ klanten werken |
+| Prijs | Wat zit erin |
+|---|---|
+| **€1.000 / maand** | Alles inbegrepen — onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly, dashboard, AI suggesties, premium support |
 
-**Anchoring-techniek:** Toon altijd Pro IN HET MIDDEN, met een groen "Aanbevolen" badge. Dat is je doel-plan.
+**De positionering:** Helvaro is **premium**. Geen goedkoper alternatief — een echte AI sales-medewerker.
 
-**Trial-aanbod:** *"Eerste 14 dagen €1. Geen contract — stop wanneer je wil."*
-→ Lage drempel om "ja" te zeggen, je weet binnen 14 dagen of ze waarde zien.
+**Anchoring:** *"Een fulltime sales-medewerker is €4.000-€5.000/maand. Helvaro doet de eerste reactie + kwalificatie van 100% van je leads, 24/7, voor een vierde van de prijs."*
+
+**Trial-aanbod:** *"Eerste 14 dagen voor €1. Geen contract — stop wanneer je wil."*
+→ Lage drempel om "ja" te zeggen, ze ervaren de waarde, daarna betalen ze volle prijs of stoppen.
 
 **Anti-objection responses:**
 
 | Bezwaar | Antwoord |
 |---|---|
-| "Te duur" | "€249 = 1 extra klant per maand. Verlies je nu meer dan dat aan trage leads?" |
-| "We hebben al een chatbot" | "Onze AI praat OP WhatsApp, niet op je site. Leads zien een persoon, niet een bot." |
-| "Wat als de AI iets verkeerd zegt?" | "Je leest elk gesprek mee in je dashboard. Je hebt op elk moment de controle om over te nemen — wij detecteren wanneer het gesprek 'hot' wordt en pingen je." |
-| "Te ingewikkeld op te zetten" | "10 minuten setup. Letterlijk — ik laat je nu zien." |
-| "Ik wil eerst nadenken" | "Begrijp ik. Wat zou je over 2 weken anders maken in je beslissing? *[luister]* Goed, kunnen we dat NU oplossen?" |
+| "€1.000 is veel" | "Vergelijk: een sales-medewerker = €5.000/mnd + sociale lasten. Wij doen 24/7 wat zij in werkuren doen voor 1/5 van de prijs. Hoeveel deals heb je nodig per maand om het terug te verdienen? *[luister]* Eén. Eén extra deal. Lukt dat?" |
+| "We hebben al een chatbot" | "Onze AI praat OP WhatsApp, niet op je site. Je leads zien een echte persoon, niet een bot. Chatbots zijn voor support — wij zijn voor sales." |
+| "Wat als de AI iets verkeerd zegt?" | "Je leest elk gesprek mee in je dashboard. Je kan op elk moment overnemen — wij detecteren wanneer het 'hot' wordt en pingen je." |
+| "Te ingewikkeld op te zetten" | "10 minuten setup. Letterlijk — ik toon het je nu live." |
+| "Ik wil eerst nadenken" | "Begrijp ik. Wat zou je over 2 weken anders maken in je beslissing? *[luister]* Kunnen we dat NU oplossen?" |
+| "Te duur voor mijn marge" | "Helvaro is niet voor iedereen. Hoeveel is een nieuwe klant waard voor jou gemiddeld? *[luister]* Oké, dan is dit niet de juiste fit nu — maar kom terug als je marge stijgt." (= eerlijke disqualificatie) |
 
 ---
 

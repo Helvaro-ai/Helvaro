@@ -211,7 +211,7 @@ Airtable Leads → Conversation State = "completed"
 | Metric | Maand 1 | Maand 3 | Maand 6 | Maand 12 |
 |---|---|---|---|---|
 | Betalende klanten | 5 | 15 | 40 | 100 |
-| MRR | €1.245 | €3.500 | €9.000 | €22.000 |
+| MRR | €5.000 | €15.000 | €40.000 | €100.000 |
 | Avg leads per klant/mnd | 20 | 30 | 40 | 50 |
 | Kwalificatie-% | 60% | 70% | 75% | 78% |
 | Churn maandelijks | <10% | <7% | <5% | <3% |

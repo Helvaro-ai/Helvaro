@@ -36,11 +36,10 @@ module.exports = function handler(req, res) {
   <p>Helvaro biedt een B2B SaaS-platform voor geautomatiseerde leadkwalificatie via WhatsApp en een bijhorend dashboard. De exacte diensten worden vastgelegd in een apart voorstel of offerte.</p>
 
   <h2>3. Abonnementen en prijzen</h2>
-  <p>Helvaro werkt met verschillende plannen, afhankelijk van de wensen van de Klant:</p>
+  <p>Helvaro werkt met één standaardabonnement:</p>
   <ul>
-    <li><strong>Starter</strong> — vanaf €500 per maand</li>
-    <li><strong>Groei</strong> — vanaf €1.000 per maand</li>
-    <li><strong>Op maat</strong> — prijs op aanvraag, afhankelijk van personalisatie en volume</li>
+    <li><strong>Helvaro</strong> — €1.000 per maand · alles inbegrepen (onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly integratie, dashboard, premium support)</li>
+    <li><strong>Op maat</strong> — voor enterprise of high-volume klanten: prijs op aanvraag</li>
   </ul>
   <p>De exacte prijs wordt schriftelijk bevestigd vóór aanvang van de samenwerking. Alle bedragen zijn excl. btw, tenzij anders vermeld.</p>
 
