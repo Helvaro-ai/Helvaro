@@ -2212,6 +2212,8 @@ button.brand-dot { border: none; padding: 0; }
 .btn-icon.spin .icon { animation: spin 1s linear infinite; }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes modalIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pulse-glow { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: .9; } 50% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
 
 .btn-primary-sm {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(129, 140, 248, 0.2));
@@ -6601,10 +6603,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Calendar toolbar -->
         <div class="cal-toolbar">
           <button class="cal-today-btn" onclick="calToday()">Vandaag</button>
-          <button class="cal-nav-btn" onclick="calPrev()">
+          <button class="cal-nav-btn" onclick="calPrev()" aria-label="Vorige week" title="Vorige week">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button class="cal-nav-btn" onclick="calNext()">
+          <button class="cal-nav-btn" onclick="calNext()" aria-label="Volgende week" title="Volgende week">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
@@ -10571,11 +10573,11 @@ function renderCalBookBody() {
   const dateNavHtml = \`<div>
     <div class="cb-label">Datum</div>
     <div class="cb-date-nav">
-      <button class="cb-date-btn" onclick="calBookNavDate(-1)">
+      <button class="cb-date-btn" onclick="calBookNavDate(-1)" aria-label="Vorige dag" title="Vorige dag">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <div class="cb-date-label">\${dateLbl}</div>
-      <button class="cb-date-btn" onclick="calBookNavDate(1)">
+      <button class="cb-date-btn" onclick="calBookNavDate(1)" aria-label="Volgende dag" title="Volgende dag">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
