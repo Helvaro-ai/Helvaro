@@ -6941,7 +6941,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <div class="ap-test-title">Stuur jezelf een test</div>
                 <p class="ap-test-sub">Voer je telefoonnummer in — je krijgt het welkomstbericht via WhatsApp.</p>
                 <div class="ap-test-row">
-                  <input id="ap-test-phone" type="tel" class="ap-input" placeholder="0466 35 84 27">
+                  <input id="ap-test-phone" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0466 35 84 27">
                   <button class="ap-btn" id="ap-test-btn" onclick="sendTestMessage()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     Test
