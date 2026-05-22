@@ -8451,14 +8451,36 @@ async function fetchLeads() {
   const resp = await fetch(\`\${API_BASE}/leads\`, {
     headers: { 'x-api-key': state.apiKey }
   });
+  if (resp.status === 401) { handleAuthExpired(); throw new Error('Sessie verlopen'); }
   if (!resp.ok) throw new Error(\`API fout: \${resp.status}\`);
   return resp.json();
+}
+
+// Called when any authenticated fetch returns 401 — token expired or invalidated.
+// Wipes the session and shows the login screen so the user can re-auth.
+let _authExpiredHandled = false;
+function handleAuthExpired() {
+  if (_authExpiredHandled) return;
+  _authExpiredHandled = true;
+  try { toast('Je sessie is verlopen — log opnieuw in', 'info'); } catch (e) {}
+  setTimeout(() => {
+    try { clearSession(); } catch (e) {}
+    try { sessionStorage.removeItem('hv-setup-checked'); } catch (e) {}
+    const dashEl = document.getElementById('dashboard-app');
+    const loginEl = document.getElementById('login-page');
+    if (dashEl) dashEl.classList.remove('visible');
+    if (loginEl) loginEl.style.display = 'flex';
+    const emailEl = document.getElementById('login-email');
+    if (emailEl) emailEl.focus();
+    _authExpiredHandled = false;
+  }, 600);
 }
 
 async function fetchRapport() {
   const resp = await fetch(\`\${API_BASE}/leads?rapport=week\`, {
     headers: { 'x-api-key': state.apiKey }
   });
+  if (resp.status === 401) { handleAuthExpired(); throw new Error('Sessie verlopen'); }
   if (!resp.ok) throw new Error(\`API fout: \${resp.status}\`);
   return resp.json();
 }

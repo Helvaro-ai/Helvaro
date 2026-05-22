@@ -187,6 +187,26 @@ module.exports = async function handler(req, res) {
       if (!waOk) {
         // WhatsApp failed — flag lead so dashboard shows it in "Niet bereikbaar"
         await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+      } else {
+        // Persist the opening message into Conversation History so the dashboard
+        // shows the very first bubble of the conversation (otherwise it looks
+        // like the lead started the chat unprompted).
+        //
+        // IMPORTANT: keep Conversation State = 'new' here. State only flips to
+        // 'in_progress' when the LEAD replies — the cron-followup job relies on
+        // this signal to know which leads still need a re-engagement message.
+        try {
+          await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+            {
+              method:  'PATCH',
+              headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ fields: {
+                'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
+              }})
+            }
+          ).catch(() => {});
+        } catch { /* non-critical */ }
       }
       if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
     }, 45000);
