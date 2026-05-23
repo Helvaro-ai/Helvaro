@@ -198,6 +198,27 @@ module.exports = async function handler(req, res) {
       if (body.verliesReden !== undefined) fields['fld3NhSENma0okbT7'] = String(body.verliesReden).slice(0, 500);
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
+      // SECURITY: verify the lead belongs to the authenticated client BEFORE
+      // mutating. Without this, anyone with a valid session token could PATCH
+      // any lead in the system as long as they knew/guessed the record ID.
+      // Admin tokens bypass (already short-circuited earlier with empty leads).
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const ownCheck = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!ownCheck.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        const ownData = await ownCheck.json();
+        const ownProject = ownData.fields?.['fldSmczuyUJd26HLe'] || ownData.fields?.['Project Code'] || '';
+        if (ownProject !== projectCode) {
+          return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+        }
+      } catch (err) {
+        console.error('[leads PATCH] ownership check failed:', err.message);
+        return res.status(500).json({ error: 'Server fout' });
+      }
+
       const pRes  = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {

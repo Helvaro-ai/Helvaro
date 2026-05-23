@@ -67,6 +67,15 @@ module.exports = async function handler(req, res) {
     // Only handle incoming text messages
     if (!message || message.type !== 'text') return;
 
+    // Webhook deduplication — Meta sends duplicate webhooks when our reply is
+    // slow or times out. Each WhatsApp message has a unique id; we track seen
+    // ids in a module-scoped Set with a 60-second TTL via timestamp pairs.
+    // Without dedup the AI would reply twice to the same lead message.
+    if (message.id && _dedupSeen(message.id)) {
+      console.log(`[WhatsApp] Duplicate webhook voor message ${message.id} — overgeslagen`);
+      return;
+    }
+
     const phone = message.from;           // e.g. "32478123456"
     const text  = sanitize(message.text.body).trim();
 
@@ -77,6 +86,20 @@ module.exports = async function handler(req, res) {
     console.error('[WhatsApp] Fout in handler:', err.message);
   }
 };
+
+// Module-scoped dedup cache — survives warm function invocations on Vercel.
+// Cleared on cold start (acceptable: Meta retries within seconds, not minutes).
+const _dedupCache = new Map();   // messageId -> timestamp
+function _dedupSeen(id) {
+  const now = Date.now();
+  // GC entries older than 5 minutes
+  if (_dedupCache.size > 500) {
+    for (const [k, t] of _dedupCache) if (now - t > 300_000) _dedupCache.delete(k);
+  }
+  if (_dedupCache.has(id)) return true;
+  _dedupCache.set(id, now);
+  return false;
+}
 
 // ─── MAIN LOGIC ─────────────────────────────────────────────────────────────
 
