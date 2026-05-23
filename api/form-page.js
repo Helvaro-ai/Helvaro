@@ -19,6 +19,8 @@ module.exports = async function handler(req, res) {
   let formIntro    = '';
   let leadsThisWeek = 0;
   let lang          = 'nl';   // nl / fr / en — controls form-page + AI conversation language
+  let trustBadges   = '';     // custom 'a | b | c' string, overrides defaults
+  let workingHours  = '';     // 'mon-fri 9-18' style; informational for the form-page
   try {
     const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
     const BASE_ID        = process.env.BASE_AIRTABLE;
@@ -47,6 +49,8 @@ module.exports = async function handler(req, res) {
           formIntro  = (rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message'] || '').toString().trim();
           const lg   = (rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language'] || '').toString().trim().toLowerCase();
           if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
+          trustBadges  = (rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges'] || '').toString().trim();
+          workingHours = (rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours'] || '').toString().trim();
         }
       }
 
@@ -484,11 +488,22 @@ module.exports = async function handler(req, res) {
     </div>
   </div>
 
-  <!-- Trust strip -->
+  <!-- Trust strip — custom badges from Klanten or fall back to localized defaults -->
   <div class="trust">
-    <div class="trust-item"><span>🔒</span> ${escHtml(t.trust1)}</div>
-    <div class="trust-item"><span>⚡</span> ${escHtml(t.trust2)}</div>
-    <div class="trust-item"><span>🤝</span> ${escHtml(t.trust3)}</div>
+    ${trustBadges
+      ? trustBadges.split('|').slice(0, 3).map(b => {
+          const txt = b.trim();
+          if (!txt) return '';
+          // First emoji-looking char becomes the icon, rest is the text
+          const m = txt.match(/^(\S+)\s+(.+)$/);
+          const icon = m ? m[1] : '✓';
+          const text = m ? m[2] : txt;
+          return `<div class="trust-item"><span>${escHtml(icon)}</span> ${escHtml(text)}</div>`;
+        }).join('')
+      : `<div class="trust-item"><span>🔒</span> ${escHtml(t.trust1)}</div>
+         <div class="trust-item"><span>⚡</span> ${escHtml(t.trust2)}</div>
+         <div class="trust-item"><span>🤝</span> ${escHtml(t.trust3)}</div>`
+    }
   </div>
   <div class="powered">${escHtml(t.poweredBy)} <a href="https://app.helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
 </div>

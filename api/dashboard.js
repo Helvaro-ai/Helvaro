@@ -6873,6 +6873,34 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="ap-hint">Selecteer de taal waarin je leads communiceren. De AI antwoordt automatisch in deze taal, ongeacht wat de lead schrijft. Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
             </div>
 
+            <!-- Working Hours -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Werkuren
+                <span class="ap-label-hint">buiten deze uren stuurt de AI een 'we zijn gesloten' bericht</span>
+              </label>
+              <input id="ap-hours" type="text" class="ap-input" placeholder="mon-fri 9-18">
+              <div class="ap-hint">
+                Format: <code>mon-fri 9-18</code>, <code>mon-sat 8-20</code>, <code>tue-sat 10-18</code>. Leeg = AI antwoordt 24/7.
+                Voorbeelden:
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='mon-fri 9-18'">mon-fri 9-18</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='mon-sat 8-20'">mon-sat 8-20</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='tue-sat 10-18'">tue-sat 10-18</button>
+              </div>
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Trust badges onderaan formulier
+                <span class="ap-label-hint">max 3, gescheiden met |</span>
+              </label>
+              <input id="ap-badges" type="text" class="ap-input" placeholder="🏆 15 jaar ervaring | ✓ ISO-gecertificeerd | 📍 Lokaal Gent" maxlength="300">
+              <div class="ap-hint">
+                Vervang de standaard badges (Geen spam / Reactie binnen 1 min / Vrijblijvend) met eigen sociaal bewijs. Eerste emoji is het icoon, rest is de tekst.
+              </div>
+            </div>
+
             <!-- AI Photo URL -->
             <div class="ap-field">
               <label class="ap-label">
@@ -12651,6 +12679,8 @@ async function loadAiPersona() {
     document.getElementById('ap-address').value      = d.address        || '';
     document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
     document.getElementById('ap-photo').value        = d.aiPhotoUrl     || '';
+    document.getElementById('ap-hours').value        = d.workingHours   || '';
+    document.getElementById('ap-badges').value       = d.trustBadges    || '';
     const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
     const apLangRadio = document.getElementById('ap-lang-' + apLangVal);
     if (apLangRadio) apLangRadio.checked = true;
@@ -12761,7 +12791,9 @@ async function saveAiPersona() {
       aiPhotoUrl:     document.getElementById('ap-photo').value.trim(),
       brandColor:     document.getElementById('ap-color').value.trim(),
       formIntro:      document.getElementById('ap-form-intro').value.trim(),
-      language:       (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl'
+      language:       (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl',
+      workingHours:   document.getElementById('ap-hours').value.trim().toLowerCase(),
+      trustBadges:    document.getElementById('ap-badges').value.trim()
     };
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',

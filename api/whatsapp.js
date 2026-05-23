@@ -171,6 +171,29 @@ async function processMessage(phone, text) {
   const rawLang = (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'] || 'nl').toString().toLowerCase();
   const lang    = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
 
+  // Working hours guard — if client has 'Working Hours' set and we're outside
+  // that window in Brussels timezone, send a localized "we're closed, back soon"
+  // message instead of running the AI. Saves Claude credits + keeps response
+  // feel honest (people understand businesses aren't 24/7).
+  const workingHours = (client.fields['fldq5oIqw5MG8fKhc'] || client.fields['Working Hours'] || '').toString().trim();
+  if (workingHours && !isWithinWorkingHours(workingHours)) {
+    const outsideMsgs = {
+      nl: 'Bedankt voor je bericht 👋 We zijn nu gesloten, maar we komen morgen vroeg bij je terug. Tot snel!',
+      fr: 'Merci pour ton message 👋 Nous sommes fermés pour le moment, mais nous revenons vers toi demain matin. À très vite !',
+      en: 'Thanks for your message 👋 We are closed right now but we will get back to you tomorrow morning. Talk soon!'
+    };
+    // Save the lead's incoming message so we don't lose it
+    history.push({ role: 'user', content: text });
+    history.push({ role: 'assistant', content: outsideMsgs[lang] || outsideMsgs.nl });
+    await updateLead(lead.id, {
+      'Last Message':         text,
+      'Conversation History': JSON.stringify(history),
+      fld8mkrEWcyq7mUip:      'in_progress'
+    }, phone);
+    await sendWA(phone, outsideMsgs[lang] || outsideMsgs.nl);
+    return;
+  }
+
   // 7. Run AI
   const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang);
@@ -538,6 +561,47 @@ function sanitize(val) {
 }
 
 // ─── WHATSAPP ────────────────────────────────────────────────────────────────
+
+// Check whether the current Brussels-time falls inside a client's Working Hours.
+// Format examples:
+//   'mon-fri 9-18'    → Mon to Fri, 09:00-18:00
+//   'mon-sat 8-20'    → Mon to Sat, 08:00-20:00
+//   'tue-sat 10-18'   → Tue to Sat, 10:00-18:00 (gesloten op maandag + zondag)
+// Empty → always within hours (24/7).
+function isWithinWorkingHours(spec) {
+  if (!spec) return true;
+  const m = String(spec).toLowerCase().trim().match(/^([a-z]+)\s*[-–]\s*([a-z]+)\s+(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?$/);
+  if (!m) { console.warn('[workingHours] kan format niet parsen:', spec); return true; }
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const fromDay = days.indexOf(m[1].slice(0, 3));
+  const toDay   = days.indexOf(m[2].slice(0, 3));
+  if (fromDay < 0 || toDay < 0) return true;
+  const hStart  = parseInt(m[3], 10) + (m[4] ? parseInt(m[4], 10) / 60 : 0);
+  const hEnd    = parseInt(m[5], 10) + (m[6] ? parseInt(m[6], 10) / 60 : 0);
+  // Brussels time (Europe/Brussels, handles DST automatically)
+  const parts = new Intl.DateTimeFormat('nl-BE', {
+    timeZone: 'Europe/Brussels',
+    weekday:  'short',
+    hour:     'numeric',
+    minute:   'numeric',
+    hour12:   false
+  }).formatToParts(new Date());
+  let wdShort = (parts.find(p => p.type === 'weekday')?.value || '').toLowerCase().slice(0, 3);
+  // nl-BE weekday short ('ma', 'di', ...) → map back to en-3-letter
+  const nlMap = { ma: 'mon', di: 'tue', wo: 'wed', do: 'thu', vr: 'fri', za: 'sat', zo: 'sun' };
+  if (nlMap[wdShort]) wdShort = nlMap[wdShort];
+  const wd = days.indexOf(wdShort);
+  if (wd < 0) return true;
+  // Day-range check (wraps over week boundary if needed)
+  const dayInRange = (fromDay <= toDay)
+    ? (wd >= fromDay && wd <= toDay)
+    : (wd >= fromDay || wd <= toDay);
+  if (!dayInRange) return false;
+  const hourNum = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minNum  = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const now = hourNum + minNum / 60;
+  return now >= hStart && now < hEnd;
+}
 
 async function sendWA(to, message) {
   const url  = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;

@@ -295,7 +295,9 @@ module.exports = async function handler(req, res) {
             aiPhotoUrl:     rec.fields['fld7L0Iijq7ti6A6w'] || rec.fields['AI Photo URL']        || '',
             brandColor:     rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']         || '',
             formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || '',
-            language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl'
+            language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl',
+            workingHours:   rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours']       || '',
+            trustBadges:    rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges']        || ''
           });
         }
 
@@ -324,6 +326,14 @@ module.exports = async function handler(req, res) {
           const v = String(body.language).trim().toLowerCase();
           if (v === 'nl' || v === 'fr' || v === 'en') u.fld1iiV9XwSbgAACZ = v;
         }
+        if (body.workingHours   !== undefined) {
+          // Lightweight format validation — must match 'days hours' or be empty
+          const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
+          if (v === '' || /^[a-z]{3,9}\s*[-–]\s*[a-z]{3,9}\s+\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?$/.test(v)) {
+            u.fldq5oIqw5MG8fKhc = v;
+          }
+        }
+        if (body.trustBadges    !== undefined) u.fld4nzMbnQseuGhnN = String(body.trustBadges).trim().slice(0, 300);
         if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
 
         const upRes = await atFetch(
