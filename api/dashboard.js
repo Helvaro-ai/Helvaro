@@ -6859,6 +6859,25 @@ tr:hover .td-arrow { color: var(--cyan); }
               <input id="ap-calendly" type="url" class="ap-input" placeholder="https://calendly.com/bedrijf/intake">
             </div>
 
+            <!-- Notifications: WhatsApp number + Email -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Notificatie WhatsApp-nummer
+                <span class="ap-label-hint">krijgt een ping bij nieuwe + gekwalificeerde leads</span>
+              </label>
+              <input id="ap-notify-phone" type="tel" class="ap-input" placeholder="+32 466 35 84 27" inputmode="tel" autocomplete="tel" maxlength="30">
+              <div class="ap-hint">Internationaal formaat (begint met <code>+32</code> voor België). Leeg = geen WhatsApp ping.</div>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label">
+                Notificatie e-mail
+                <span class="ap-label-hint">e-mail bij elke gekwalificeerde lead + escalatie</span>
+              </label>
+              <input id="ap-report-email" type="email" class="ap-input" placeholder="jij@bedrijf.be" inputmode="email" autocomplete="email" maxlength="100">
+              <div class="ap-hint">Krijgt direct e-mail wanneer de AI een gekwalificeerde lead doorgeeft of hulp nodig heeft. Leeg = geen e-mail.</div>
+            </div>
+
             <!-- Booking Method -->
             <div class="ap-field">
               <label class="ap-label">
@@ -12756,6 +12775,8 @@ async function loadAiPersona() {
     const apBookingRadio = document.getElementById('ap-booking-' + apBookingVal);
     if (apBookingRadio) apBookingRadio.checked = true;
     document.getElementById('ap-callback-window').value = d.callbackWindow || '';
+    document.getElementById('ap-notify-phone').value    = d.notifyPhone    || '';
+    document.getElementById('ap-report-email').value    = d.reportEmail    || '';
     syncBookingMethodUI();
     const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
     const apLangRadio = document.getElementById('ap-lang-' + apLangVal);
@@ -12871,7 +12892,9 @@ async function saveAiPersona() {
       workingHours:   document.getElementById('ap-hours').value.trim().toLowerCase(),
       trustBadges:    document.getElementById('ap-badges').value.trim(),
       bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'calendly',
-      callbackWindow: document.getElementById('ap-callback-window').value.trim()
+      callbackWindow: document.getElementById('ap-callback-window').value.trim(),
+      notifyPhone:    document.getElementById('ap-notify-phone').value.trim(),
+      reportEmail:    document.getElementById('ap-report-email').value.trim()
     };
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',

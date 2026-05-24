@@ -85,6 +85,8 @@ module.exports = async function handler(req, res) {
     let   aiName     = 'Mathis Willems';      // safe default — overwritten by client's "AI Name" field if set
     let   clientName = project_code;          // safe default — overwritten below if found
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
+    let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
+    let   ownerEmail = '';                    // per-client notify email (overrides NOTIFY_EMAIL env)
     let   lang       = 'nl';                   // nl / fr / en — language for the welcome WhatsApp
 
     try {
@@ -109,6 +111,9 @@ module.exports = async function handler(req, res) {
           // Language (nl/fr/en) controls the default welcome message
           const lg = (match.fields['fld1iiV9XwSbgAACZ'] || match.fields['Language'] || '').toString().trim().toLowerCase();
           if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
+          // Per-client owner contacts (override the env-var defaults)
+          ownerPhone = (match.fields['fldZEApe0gfse07AU'] || match.fields['Notify Phone']  || '').toString().trim();
+          ownerEmail = (match.fields['fldDBJCN6dVMA8jax'] || match.fields['Rapport Email'] || '').toString().trim();
         }
       }
       // 429 / error → use defaults, don't block the form submission
@@ -174,7 +179,8 @@ module.exports = async function handler(req, res) {
       .replace(/\{project\}/g, sanitize(project_code))
       .replace(/\{bron\}/g,    sanitize(bron))
       .replace(/\{ai\}/g,      sanitize(aiName));
-    const notifyPhone = process.env.NOTIFY_PHONE;
+    // Prefer per-client notify-phone over global env-var fallback
+    const notifyPhone = ownerPhone || process.env.NOTIFY_PHONE;
     const notifyMsg   = notifyPhone
       ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
       : null;
@@ -211,8 +217,8 @@ module.exports = async function handler(req, res) {
       if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
     }, 45000);
 
-    // Email notification (fire-and-forget)
-    sendEmailNotification({ name, phone, project_code, bron, clientName }).catch(() => {});
+    // Email notification (fire-and-forget) — prefer per-client Rapport Email
+    sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});
 
     return res.status(200).json({ success: true, id: createData.id });
 
@@ -237,11 +243,12 @@ function escEmail(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-async function sendEmailNotification({ name, phone, project_code, bron, clientName }) {
-  const RESEND_KEY   = process.env.RESEND_API_KEY;
-  const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL;
+async function sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail }) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  // Prefer per-client Rapport Email; fall back to global NOTIFY_EMAIL for legacy setups
+  const NOTIFY_EMAIL = (toEmail && toEmail.trim()) || process.env.NOTIFY_EMAIL;
   if (!RESEND_KEY)   { console.warn('[resend form] skipped: RESEND_API_KEY missing'); return; }
-  if (!NOTIFY_EMAIL) { console.warn('[resend form] skipped: NOTIFY_EMAIL missing');   return; }
+  if (!NOTIFY_EMAIL) { console.warn('[resend form] skipped: no per-client Rapport Email + no NOTIFY_EMAIL env'); return; }
   const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
   try {
   const r = await fetch('https://api.resend.com/emails', {

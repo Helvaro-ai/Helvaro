@@ -131,6 +131,11 @@ module.exports = async function handler(req, res) {
       poweredBy:       'Powered by',
       socialPre:       'mensen vroegen',
       socialPost:      'deze week om advies',
+      consentPre:      'Ik ga akkoord dat',
+      consentMid:      'mij via WhatsApp contacteert. Zie het',
+      consentLink:     'privacybeleid',
+      consentSuffix:   '.',
+      errConsent:      'Vink het privacy-vakje aan om verder te gaan.',
       nicheHooks: {
         dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
         real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
@@ -169,6 +174,11 @@ module.exports = async function handler(req, res) {
       poweredBy:       'Propulsé par',
       socialPre:       'personnes ont demandé conseil à',
       socialPost:      'cette semaine',
+      consentPre:      "J'accepte que",
+      consentMid:      'me contacte via WhatsApp. Voir la',
+      consentLink:     'politique de confidentialité',
+      consentSuffix:   '.',
+      errConsent:      'Cochez la case de confidentialité pour continuer.',
       nicheHooks: {
         dentist:     "Je vous aide volontiers avec vos questions sur vos dents ou un traitement.",
         real_estate: "Je vous aide volontiers, que vous cherchiez une maison ou que vous souhaitiez en vendre une.",
@@ -207,6 +217,11 @@ module.exports = async function handler(req, res) {
       poweredBy:       'Powered by',
       socialPre:       'people asked',
       socialPost:      'for advice this week',
+      consentPre:      'I agree that',
+      consentMid:      'may contact me via WhatsApp. See the',
+      consentLink:     'privacy policy',
+      consentSuffix:   '.',
+      errConsent:      'Tick the privacy box to continue.',
       nicheHooks: {
         dentist:     'I’m happy to help you with any dental questions or treatments.',
         real_estate: 'I’m happy to help, whether you’re looking to buy or sell a property.',
@@ -400,6 +415,24 @@ module.exports = async function handler(req, res) {
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
 
+  /* GDPR consent checkbox row */
+  .consent-row {
+    display: flex; align-items: flex-start; gap: 9px;
+    margin: 14px 0 6px; padding: 10px 12px;
+    background: var(--brand-faint); border-radius: 10px;
+    cursor: pointer; user-select: none;
+  }
+  .consent-row input[type="checkbox"] {
+    flex-shrink: 0; margin-top: 2px;
+    width: 18px; height: 18px; cursor: pointer;
+    accent-color: var(--brand);
+  }
+  .consent-text {
+    font-size: 12px; line-height: 1.5; color: #3d5070;
+  }
+  .consent-text a { color: var(--brand); text-decoration: underline; }
+  .consent-text a:hover { opacity: .8; }
+
   /* Footer trust strip */
   .trust {
     display: flex; align-items: center; justify-content: center;
@@ -467,6 +500,11 @@ module.exports = async function handler(req, res) {
     <label for="tel">${escHtml(t.labelPhone)}</label>
     <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel" inputmode="tel">
 
+    <label class="consent-row" for="consent">
+      <input id="consent" type="checkbox">
+      <span class="consent-text">${escHtml(t.consentPre)} <strong>${escHtml(clientName)}</strong> ${escHtml(t.consentMid)} <a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">${escHtml(t.consentLink)}</a>${escHtml(t.consentSuffix)}</span>
+    </label>
+
     <button id="btn">
       <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.4 0-.6.1-.2.3-.7.9-.9 1.1-.1.1-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4 0-.7.3-.3.3-.9.9-.9 2.2 0 1.3.9 2.5 1 2.7.1.1 1.8 2.7 4.3 3.7.6.2 1.1.4 1.4.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3z"/>
@@ -516,6 +554,7 @@ var I18N = {
   errMissing:     '${escJs(t.errMissing)}',
   errMissingTail: '${escJs(t.errMissingTail)}',
   errGeneric:     '${escJs(t.errGeneric)}',
+  errConsent:     '${escJs(t.errConsent)}',
   loading:        '${escJs(t.loading)}',
   btn:            '${escJs(t.btn)}',
   btnSuffix:      '${escJs(t.btnSuffix)}'
@@ -532,12 +571,18 @@ function btnDefault() {
 }
 
 btn.addEventListener('click', function() {
-  var name  = document.getElementById('naam').value.trim();
-  var phone = document.getElementById('tel').value.trim();
+  var name    = document.getElementById('naam').value.trim();
+  var phone   = document.getElementById('tel').value.trim();
+  var consent = document.getElementById('consent');
 
   err.style.display = 'none';
   if (!name || !phone) {
     err.textContent   = I18N.errMissing + ' ' + AI_FIRST + ' ' + I18N.errMissingTail;
+    err.style.display = 'block';
+    return;
+  }
+  if (consent && !consent.checked) {
+    err.textContent   = I18N.errConsent;
     err.style.display = 'block';
     return;
   }

@@ -183,6 +183,11 @@ async function processMessage(phone, text) {
   const bookingMethod = rawBooking === 'callback' ? 'callback' : 'calendly';
   const callbackWindow = (client.fields['fldKvMVBalSBRQE7H'] || client.fields['Callback Window'] || '').toString().trim() || 'binnen 30 minuten';
 
+  // Per-client owner contacts (with env-var fallback for backwards-compat).
+  // The phone gets WhatsApp pings; the email gets a richer summary.
+  const ownerPhone = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone']  || '').toString().trim() || NOTIFY_PHONE;
+  const ownerEmail = (client.fields['fldDBJCN6dVMA8jax'] || client.fields['Rapport Email'] || '').toString().trim();
+
   // 7. Run AI
   const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
@@ -234,7 +239,7 @@ async function processMessage(phone, text) {
   // 10b. ESCALATION — when the AI explicitly says "I don't know, let me check",
   // ping the owner immediately so they can take over within the 30 min the AI
   // promised the lead.
-  if (isEscalation && NOTIFY_PHONE) {
+  if (isEscalation) {
     const lastUserMsg = (text || '').slice(0, 280);
     const escalateNotice =
       `🆘 Lead heeft een vraag die de AI niet kan beantwoorden\n\n` +
@@ -244,7 +249,14 @@ async function processMessage(phone, text) {
       `Hun vraag:\n"${lastUserMsg}"\n\n` +
       `De AI heeft beloofd dat iemand binnen 30 min terugkomt. Open de lead:\n` +
       `https://app.helvaro.pro/dashboard`;
-    await sendWA(NOTIFY_PHONE, escalateNotice).catch(() => {});
+    if (ownerPhone) await sendWA(ownerPhone, escalateNotice).catch(() => {});
+    if (ownerEmail) sendOwnerEmail({
+      to: ownerEmail,
+      subject: `🆘 AI heeft hulp nodig — ${leadName || phone}`,
+      heading: `Lead-vraag die de AI niet kan beantwoorden`,
+      leadName, phone, projectCode, clientName,
+      body: `<p style="background:#fef3c7;padding:12px;border-radius:8px"><strong>Hun vraag:</strong><br>"${escEmail(lastUserMsg)}"</p><p>De AI heeft beloofd dat iemand binnen 30 min terugkomt.</p>`
+    }).catch(() => {});
   }
 
   // 11. If qualified → either send Calendly link OR promise a human callback,
@@ -302,18 +314,73 @@ async function processMessage(phone, text) {
       }
     }
 
-    // Notify owner when a lead is qualified
-    if (NOTIFY_PHONE) {
-      const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/100` : '';
+    // Notify owner when a lead is qualified — WhatsApp + Email parallel
+    const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/100` : '';
+    if (ownerPhone) {
       const notifyMsg =
-        `Gekwalificeerde lead!\n\n` +
+        `🔥 Gekwalificeerde lead!\n\n` +
         `Naam: ${leadName}\n` +
         `Tel: ${phone}\n` +
         `Project: ${projectCode}${score}\n` +
         `${aiResponse.summary || ''}\n\n` +
         `Dashboard: https://app.helvaro.pro/dashboard`;
-      await sendWA(NOTIFY_PHONE, notifyMsg);
+      await sendWA(ownerPhone, notifyMsg).catch(() => {});
     }
+    if (ownerEmail) {
+      sendOwnerEmail({
+        to: ownerEmail,
+        subject: `🔥 Nieuwe gekwalificeerde lead — ${leadName}`,
+        heading: `Gekwalificeerde lead!`,
+        leadName, phone, projectCode, clientName,
+        body:
+          `${aiResponse.leadScore ? `<p><strong>Lead score:</strong> ${aiResponse.leadScore}/100</p>` : ''}` +
+          `${aiResponse.summary ? `<p style="background:#ecfdf5;padding:12px;border-radius:8px"><strong>Samenvatting:</strong><br>${escEmail(aiResponse.summary)}</p>` : ''}` +
+          `${aiResponse.reason  ? `<p><strong>Waarom gekwalificeerd:</strong> ${escEmail(aiResponse.reason)}</p>` : ''}`
+      }).catch(() => {});
+    }
+  }
+}
+
+// ─── EMAIL NOTIFICATIONS (owner alerts) ──────────────────────────────────────
+// Centraal helper voor klant-facing e-mails wanneer de AI iets meldwaardigs doet
+// (escalatie, gekwalificeerde lead). Stuurt naar het Rapport Email veld van de
+// klant. Faalt stil — e-mail mag de WhatsApp-flow nooit blokkeren.
+
+function escEmail(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCode, clientName, body }) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY || !to) return;
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        from: FROM, to: [to], subject,
+        html: `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px;color:#111">
+            <h2 style="color:#1e6fd9;margin:0 0 16px">${escEmail(heading)}</h2>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="padding:8px 0;color:#666;width:90px">Naam</td><td style="padding:8px 0;font-weight:600">${escEmail(leadName || '—')}</td></tr>
+              <tr><td style="padding:8px 0;color:#666">Telefoon</td><td style="padding:8px 0;font-weight:600">${escEmail(phone)}</td></tr>
+              <tr><td style="padding:8px 0;color:#666">Project</td><td style="padding:8px 0">${escEmail(projectCode)}</td></tr>
+              <tr><td style="padding:8px 0;color:#666">Klant</td><td style="padding:8px 0">${escEmail(clientName || '')}</td></tr>
+            </table>
+            ${body || ''}
+            <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
+            <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
+          </div>`
+      })
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('[resend owner] failed', r.status, txt.slice(0, 300));
+    }
+  } catch (err) {
+    console.error('[resend owner] network error:', err && err.message);
   }
 }
 
