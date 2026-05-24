@@ -376,6 +376,54 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ── A2. csv-export — download all leads for this client as CSV ──────────
+    // body: { mode: 'csv-export' }
+    // Returns text/csv with UTF-8 BOM (so Excel renders accents correctly).
+    if (body.mode === 'csv-export') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        // Fetch all leads for this project — paginate manually if >100
+        const all = [];
+        let offset = '';
+        for (let page = 0; page < 20; page++) {  // hard cap 2000 leads
+          const formula = encodeURIComponent(`{Project Code}="${projectCode.replace(/"/g, '\\"')}"`);
+          const url = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=100&sort%5B0%5D%5Bfield%5D=Created%20At&sort%5B0%5D%5Bdirection%5D=desc${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
+          const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+          if (!r.ok) break;
+          const d = await r.json();
+          all.push(...(d.records || []));
+          if (!d.offset) break;
+          offset = d.offset;
+        }
+        // Build CSV — quote fields, escape internal quotes by doubling them
+        const csvEscape = (v) => {
+          const s = String(v == null ? '' : v).replace(/\r?\n/g, ' ').replace(/"/g, '""');
+          return `"${s}"`;
+        };
+        const headers = ['Datum', 'Naam', 'Telefoon', 'Bron', 'Status', 'Gekwalificeerd', 'Lead Score', 'Ability', 'Urgency', 'Fit', 'Samenvatting', 'Reden', 'Booking Sent', 'Opgepikt', 'Verwachte Waarde', 'Notities'];
+        const rows = [headers.map(csvEscape).join(',')];
+        for (const rec of all) {
+          const f = rec.fields || {};
+          rows.push([
+            f['Created At'] || '', f['Name'] || '', f['Phone'] || '', f['Bron'] || '',
+            f['Conversation State'] || '', f['Qualified'] ? 'ja' : 'nee',
+            f['Lead Score'] || '', f['Ability'] || '', f['Urgency'] || '', f['Fit'] || '',
+            f['AI Summary'] || '', f['Reason'] || '',
+            f['Booking Link Sent'] ? 'ja' : 'nee', f['Opgepikt'] ? 'ja' : 'nee',
+            f['Verwachte Waarde'] || '', f['Notities'] || ''
+          ].map(csvEscape).join(','));
+        }
+        const csv = '﻿' + rows.join('\r\n');  // BOM for Excel
+        const ts  = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="helvaro-leads-${projectCode}-${ts}.csv"`);
+        return res.status(200).send(csv);
+      } catch (err) {
+        console.error('[csv-export] error:', err.message);
+        return res.status(500).json({ error: 'Export mislukt' });
+      }
+    }
+
     // ── B. test-message — send a one-off WhatsApp to a phone number ─────────
     // body: { mode: 'test-message', phone: '32466358427', message: '...' }
     if (body.mode === 'test-message') {

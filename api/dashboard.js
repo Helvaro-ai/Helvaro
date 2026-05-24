@@ -5924,6 +5924,8 @@ tr:hover .td-arrow { color: var(--cyan); }
         <button class="btn-login" id="btn-login" aria-label="Inloggen"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
         <div class="login-error" id="login-error" role="alert" aria-live="assertive"></div>
 
+        <div style="text-align:center;margin-top:14px"><a href="/forgot-password" style="font-size:13px;color:#6b7280;text-decoration:none">Wachtwoord vergeten?</a></div>
+
         <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2026</div>
       </div>
     </div>
@@ -8631,28 +8633,34 @@ async function patchStatus(id, status) {
 }
 
 function exportCSV() {
-  const url = \`\${API_BASE}/leads?export=true\`;
-  const a = document.createElement('a');
-  a.href = url;
-  a.setAttribute('download', 'helvaro-leads.csv');
-  // Add auth via fetch then blob
-  fetch(url, { headers: { 'x-api-key': state.apiKey } })
+  const btn = document.getElementById('btn-download-csv');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  fetch(\`\${API_BASE}/leads\`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+    body:    JSON.stringify({ mode: 'csv-export' })
+  })
     .then(r => {
+      if (r.status === 401) { handleAuthExpired && handleAuthExpired(); throw new Error('Sessie verlopen'); }
       if (!r.ok) throw new Error('Export mislukt');
-      return r.blob();
+      const ts = new Date().toISOString().slice(0, 10);
+      const cd = r.headers.get('Content-Disposition') || '';
+      const m  = cd.match(/filename="([^"]+)"/);
+      return r.blob().then(blob => ({ blob, fname: (m && m[1]) || ('helvaro-leads-' + ts + '.csv') }));
     })
-    .then(blob => {
+    .then(({ blob, fname }) => {
       const burl = URL.createObjectURL(blob);
-      const a2 = document.createElement('a');
-      a2.href = burl;
-      a2.download = 'helvaro-leads.csv';
-      document.body.appendChild(a2);
-      a2.click();
-      a2.remove();
+      const a    = document.createElement('a');
+      a.href     = burl;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       URL.revokeObjectURL(burl);
       toast('CSV-bestand is gedownload', 'success');
     })
-    .catch(err => toast(err.message, 'error'));
+    .catch(err => toast(err.message || 'Export mislukt', 'error'))
+    .finally(() => { if (btn) { btn.disabled = false; btn.style.opacity = ''; } });
 }
 
 /* ============================================================

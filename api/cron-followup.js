@@ -58,7 +58,20 @@ module.exports = async function handler(req, res) {
       const firstName = name.split(' ')[0] || name;
       const msg = `Hé ${firstName}, we hebben je bericht gekregen maar nog niks teruggehoord. Is er iets waarmee ik je kan helpen?`;
 
-      await sendWA(phone, msg, PHONE_NUMBER_ID, WHATSAPP_TOKEN);
+      // ── 24-uurs venster: na 24u STIL mag je geen freeform meer sturen ─────
+      // (Meta-policy: account-bans bij overtreding). Stuur een goedgekeurde
+      // template als die geconfigureerd is. Anders: skip de follow-up — beter
+      // geen follow-up dan een account-ban.
+      // Template moet vooraf in WhatsApp Manager → Message Templates worden
+      // aangemaakt en goedgekeurd. Variabele {{1}} = de voornaam.
+      const TEMPLATE_NAME = process.env.FOLLOWUP_TEMPLATE_NAME;
+      const TEMPLATE_LANG = process.env.FOLLOWUP_TEMPLATE_LANG || 'nl';
+      if (TEMPLATE_NAME) {
+        await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
+      } else {
+        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd — skip ${phone} (freeform >24u zou ban riskeren)`);
+        continue;  // skip — don't risk a Meta ban
+      }
 
       // Mark follow-up sent — prevents duplicate follow-ups on next cron run
       const pRes = await fetch(
@@ -102,13 +115,64 @@ module.exports = async function handler(req, res) {
       }).catch(() => {});
     }
 
-    return res.status(200).json({ checked: leads.length, sent });
+    // ── Quality rating check (daily) ──────────────────────────────────────────
+    // Pulls the current WhatsApp quality rating for our phone number. If it's
+    // YELLOW or RED, fire an email alert so Helvaro support can act before Meta
+    // throttles or bans the number.
+    const qualityResult = await checkQualityRating(PHONE_NUMBER_ID, WHATSAPP_TOKEN).catch(e => {
+      console.error('[cron-followup] quality check failed:', e.message);
+      return null;
+    });
+
+    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 };
+
+// ── Quality rating check ─────────────────────────────────────────────────────
+// Calls the Meta Graph API to fetch this phone number's current quality rating.
+// Meta returns "GREEN" / "YELLOW" / "RED" / "UNKNOWN". RED = throttling imminent
+// or already happening; YELLOW = warning. Fires an email so support can act.
+async function checkQualityRating(phoneNumberId, token) {
+  if (!phoneNumberId || !token) return null;
+  const url = `https://graph.facebook.com/v19.0/${phoneNumberId}?fields=quality_rating,name_status,verified_name`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    console.error('[quality] Meta fout', r.status, txt.slice(0, 200));
+    return null;
+  }
+  const d = await r.json();
+  const quality = d.quality_rating || 'UNKNOWN';
+  console.log('[quality] rating =', quality, '| name_status =', d.name_status);
+
+  if (quality === 'RED' || quality === 'YELLOW') {
+    const icon = quality === 'RED' ? '🔴' : '🟡';
+    sendResendEmail({
+      subject: `${icon} WhatsApp quality rating ${quality} — actie nodig`,
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px">
+          <h2 style="color:${quality === 'RED' ? '#dc2626' : '#d97706'}">${icon} WhatsApp Quality: ${quality}</h2>
+          <p>De WhatsApp Business phone number quality is gezakt naar <strong>${quality}</strong>.</p>
+          ${quality === 'RED'
+            ? '<p style="background:#fef2f2;padding:12px;border-radius:8px;color:#b91c1c"><strong>RED = throttling actief.</strong> Meta beperkt het aantal berichten dat je per dag mag sturen. Bij meerdere RED-dagen riskeer je een permanente ban.</p>'
+            : '<p style="background:#fffbeb;padding:12px;border-radius:8px;color:#92400e"><strong>YELLOW = waarschuwing.</strong> Te veel blocks of spam-reports — quality zakt verder als je niks doet.</p>'}
+          <h3 style="margin-top:24px">Wat nu doen</h3>
+          <ul style="line-height:1.7">
+            <li>Check welke klanten templates gebruiken die spammy zijn</li>
+            <li>Verifieer dat alle leads echt opt-in zijn (formulier gecheckt)</li>
+            <li>Pauzeer eventueel outbound campagnes voor 48u tot quality herstelt</li>
+            <li>Open <a href="https://business.facebook.com/wa/manage/phone-numbers" style="color:#1e6fd9">WhatsApp Manager → Phone Numbers</a> voor details</li>
+          </ul>
+          <p style="font-size:12px;color:#999;margin-top:24px">Phone Number ID: ${phoneNumberId}<br>Verified name: ${d.verified_name || '—'} (status: ${d.name_status || '—'})</p>
+        </div>`
+    }).catch(() => {});
+  }
+  return { quality, name_status: d.name_status };
+}
 
 // ── Resend email helper ──────────────────────────────────────────────────────
 async function sendResendEmail({ subject, html }) {
@@ -130,6 +194,30 @@ async function sendResendEmail({ subject, html }) {
   } catch (err) {
     console.error('[resend cron] network error:', err && err.message);
   }
+}
+
+// Stuur een goedgekeurde Meta-template (verplicht buiten het 24u customer-service venster).
+// `params` = de body-variabelen die in de template als {{1}}, {{2}}, ... staan.
+function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
+  const components = (params && params.length)
+    ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) }]
+    : [];
+  return fetch(
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+    {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: { name: templateName, language: { code: lang }, components }
+      })
+    }
+  ).then(async r => {
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) console.error(`[cron-followup] template "${templateName}" naar ${to} mislukt:`, JSON.stringify(d.error || d));
+  }).catch(err => console.error(`[cron-followup] template netwerk fout naar ${to}:`, err.message));
 }
 
 function sendWA(to, message, phoneNumberId, token) {

@@ -85,12 +85,52 @@ function safeEqual(a, b) {
   }
 }
 
+// ── Password reset tokens ─────────────────────────────────────────────────────
+// HMAC-signed, time-limited tokens carry email + issuedAt; no DB needed.
+// Token rotates whenever the user's password changes because the secret hashes
+// the current Password Hash into the signing key — so a leaked token is dead
+// the moment the password is updated.
+const RESET_TTL_MS = 60 * 60 * 1000;  // 1 hour
+function resetSecret(passwordHash) {
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
+  // Mixing in the current hash invalidates old tokens after each reset.
+  return crypto.createHmac('sha256', base).update('helvaro-reset-v1:' + (passwordHash || '')).digest('hex');
+}
+function signResetToken(email, passwordHash) {
+  const payload = Buffer.from(JSON.stringify({ e: email, iat: Date.now() })).toString('base64url');
+  const sig     = crypto.createHmac('sha256', resetSecret(passwordHash)).update(payload).digest('base64url');
+  return `hvr1.${payload}.${sig}`;
+}
+function verifyResetToken(token, passwordHash) {
+  if (typeof token !== 'string' || !token.startsWith('hvr1.')) return null;
+  const [, payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = crypto.createHmac('sha256', resetSecret(passwordHash)).update(payload).digest('base64url');
+  if (!safeEqual(sig, expected)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.e || !data.iat) return null;
+    if (Date.now() - data.iat > RESET_TTL_MS) return null;  // expired
+    return data;
+  } catch { return null; }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // ── GET /forgot-password — render the request-reset HTML page ─────────────
+  // ── GET /reset-password?token=... — render the new-password HTML page ─────
+  if (req.method === 'GET') {
+    const path = (req.url || '').split('?')[0];
+    if (path.endsWith('/forgot-password')) return renderForgotPage(res);
+    if (path.endsWith('/reset-password'))  return renderResetPage(req, res);
+    return res.status(404).send('Not found');
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
@@ -109,6 +149,58 @@ module.exports = async function handler(req, res) {
 
     const email    = String(body.email    || '').trim().slice(0, 254);
     const password = String(body.password || '').trim().slice(0, 200);
+
+    // ── MODE: request-reset — email the user a reset link ────────────────────
+    // Always returns 200 (info-leak protection) — never reveal if email exists.
+    if (body.mode === 'request-reset') {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Ongeldig e-mailadres' });
+      }
+      // Fire-and-forget: look up the user; if found, mail the link.
+      // We don't await the look-up's success to keep timing constant.
+      sendResetEmailIfUserExists(email).catch(() => {});
+      return res.status(200).json({
+        ok: true,
+        message: 'Als dit e-mailadres bij ons bekend is, sturen we een resetlink. Check je inbox (en spam).'
+      });
+    }
+
+    // ── MODE: reset-password — verify token + set new password ───────────────
+    if (body.mode === 'reset-password') {
+      const token       = String(body.token       || '').slice(0, 1024);
+      const newPassword = String(body.newPassword || '').trim().slice(0, 200);
+      if (!token)              return res.status(400).json({ error: 'Token ontbreekt' });
+      if (newPassword.length < 8) return res.status(400).json({ error: 'Wachtwoord moet minstens 8 tekens zijn' });
+      // Decode payload first (without verifying — need email to look up current hash)
+      const [, payload] = token.split('.');
+      let emailFromToken = '';
+      try { emailFromToken = String(JSON.parse(Buffer.from(payload || '', 'base64url').toString('utf8')).e || '').toLowerCase(); }
+      catch { return res.status(400).json({ error: 'Ongeldige token' }); }
+      if (!emailFromToken) return res.status(400).json({ error: 'Ongeldige token' });
+      // Fetch user + verify token against CURRENT password hash (rotates after reset)
+      const userRec = await fetchUserByEmail(emailFromToken);
+      if (!userRec) return res.status(400).json({ error: 'Token verlopen of ongeldig' });
+      const currentHash = String(userRec.fields['Password Hash'] || userRec.fields['fldPasswordHash'] || '');
+      const verified    = verifyResetToken(token, currentHash);
+      if (!verified) return res.status(400).json({ error: 'Token verlopen of ongeldig' });
+      // Update Password Hash in Airtable
+      const updRes = await atFetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}/${userRec.id}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { 'Password Hash': newPassword } })
+        }
+      );
+      if (!updRes.ok) {
+        const txt = await updRes.text().catch(() => '');
+        console.error('[reset-password] update failed', updRes.status, txt.slice(0, 200));
+        return res.status(500).json({ error: 'Wachtwoord updaten mislukt' });
+      }
+      // Invalidate the user cache so the next login uses the new hash
+      _userCache.delete(emailFromToken);
+      return res.status(200).json({ ok: true, message: 'Wachtwoord aangepast — je kan nu inloggen.' });
+    }
 
     if (!email)    return res.status(400).json({ error: 'E-mailadres is verplicht' });
     if (!password) return res.status(400).json({ error: 'Wachtwoord is verplicht' });
@@ -226,4 +318,185 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return val.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ─── PASSWORD RESET HELPERS ──────────────────────────────────────────────────
+
+// Look up a user record by email — used by reset-password.
+// Honors the same cache as the login flow so we don't double-hit Airtable.
+async function fetchUserByEmail(email) {
+  const cached = getCachedUser(email);
+  if (cached) return cached;
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
+  const BASE_ID        = process.env.BASE_AIRTABLE;
+  const USERS_TABLE    = 'tbl2hrPW7gIx5XF4S';
+  const formula = encodeURIComponent(`AND({Email}="${escapeFormula(email)}",{Active}=1)`);
+  const url     = `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}?filterByFormula=${formula}&maxRecords=1`;
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const rec = d.records?.[0] || null;
+  if (rec) setCachedUser(email, rec);
+  return rec;
+}
+
+// Send the reset link to the user via Resend.
+// Silently no-ops if the email doesn't match any user (info-leak protection).
+async function sendResetEmailIfUserExists(email) {
+  const user = await fetchUserByEmail(email);
+  if (!user) return;
+  const currentHash = String(user.fields['Password Hash'] || user.fields['fldPasswordHash'] || '');
+  const token = signResetToken(email.toLowerCase(), currentHash);
+  const link  = `https://app.helvaro.pro/reset-password?token=${encodeURIComponent(token)}`;
+
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY) { console.warn('[reset] RESEND_API_KEY missing — cannot send email'); return; }
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        from: FROM, to: [email], subject: 'Helvaro — Wachtwoord opnieuw instellen',
+        html: `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:auto;padding:24px;color:#111">
+            <h2 style="color:#1e6fd9;margin:0 0 16px">Wachtwoord opnieuw instellen</h2>
+            <p>Iemand (hopelijk jij) heeft gevraagd om je Helvaro wachtwoord opnieuw in te stellen. Klik op de knop hieronder — de link is <strong>1 uur geldig</strong>.</p>
+            <p style="text-align:center;margin:28px 0">
+              <a href="${link}" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Wachtwoord resetten</a>
+            </p>
+            <p style="font-size:13px;color:#666">Werkt de knop niet? Kopieer deze link in je browser:<br><span style="color:#1e6fd9;word-break:break-all">${link}</span></p>
+            <p style="font-size:13px;color:#999;margin-top:24px">Heb je dit niet aangevraagd? Negeer deze mail — er gebeurt niets met je account.</p>
+            <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
+          </div>`
+      })
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('[reset] resend failed', r.status, txt.slice(0, 300));
+    }
+  } catch (err) {
+    console.error('[reset] network error:', err && err.message);
+  }
+}
+
+// ─── PASSWORD RESET HTML PAGES ───────────────────────────────────────────────
+
+const RESET_CSS = `
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f6f8fb; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { background: #fff; max-width: 420px; width: 100%; padding: 36px 32px; border-radius: 16px; box-shadow: 0 12px 40px rgba(20,40,80,.08); }
+  h1 { margin: 0 0 8px; font-size: 1.5rem; color: #111; }
+  p.sub { margin: 0 0 28px; color: #6a7890; font-size: 14px; line-height: 1.55; }
+  label { display: block; font-size: 13px; font-weight: 600; color: #2a3a55; margin-bottom: 6px; }
+  input { width: 100%; padding: 12px 14px; border: 1.5px solid #dde3ee; border-radius: 10px; font-size: 15px; box-sizing: border-box; transition: border-color .15s; }
+  input:focus { outline: none; border-color: #1e6fd9; }
+  button { width: 100%; padding: 13px; background: #1e6fd9; color: #fff; border: 0; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 18px; transition: opacity .15s; }
+  button:hover { opacity: .92; }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .msg { margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 14px; }
+  .msg.ok { background: #ecfdf5; color: #065f46; }
+  .msg.err { background: #fef2f2; color: #b91c1c; }
+  .back { display: block; text-align: center; margin-top: 22px; font-size: 13px; color: #1e6fd9; text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+`;
+
+function renderForgotPage(res) {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="nl"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Wachtwoord vergeten — Helvaro</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>${RESET_CSS}</style>
+</head><body>
+  <div class="card">
+    <h1>Wachtwoord vergeten?</h1>
+    <p class="sub">Geen probleem. Vul je e-mailadres in en we sturen je een link om een nieuw wachtwoord in te stellen. De link is 1 uur geldig.</p>
+    <form id="f" onsubmit="return false">
+      <label for="email">E-mailadres</label>
+      <input id="email" type="email" autocomplete="email" required placeholder="jij@bedrijf.be">
+      <button id="btn" type="submit">Reset-link versturen</button>
+    </form>
+    <div id="m" class="msg" style="display:none"></div>
+    <a class="back" href="/dashboard">← Terug naar inloggen</a>
+  </div>
+<script>
+const f = document.getElementById('f'), btn = document.getElementById('btn'), m = document.getElementById('m');
+f.addEventListener('submit', async () => {
+  const email = document.getElementById('email').value.trim();
+  if (!email) return;
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  m.style.display = 'none';
+  try {
+    const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode:'request-reset', email }) });
+    const d = await r.json().catch(() => ({}));
+    m.textContent = d.message || (r.ok ? 'Mail verstuurd.' : (d.error || 'Er ging iets mis.'));
+    m.className = 'msg ' + (r.ok ? 'ok' : 'err');
+    m.style.display = 'block';
+    if (r.ok) { btn.textContent = 'Verstuurd ✓'; }
+    else      { btn.disabled = false; btn.textContent = 'Reset-link versturen'; }
+  } catch (e) {
+    m.textContent = 'Netwerkfout. Probeer opnieuw.'; m.className = 'msg err'; m.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Reset-link versturen';
+  }
+});
+</script>
+</body></html>`);
+}
+
+function renderResetPage(req, res) {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  const q = (req.url || '').split('?')[1] || '';
+  const params = new URLSearchParams(q);
+  const token = params.get('token') || '';
+  const safeToken = token.replace(/[^A-Za-z0-9._\-]/g, '').slice(0, 1024);
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="nl"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nieuw wachtwoord — Helvaro</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>${RESET_CSS}</style>
+</head><body>
+  <div class="card">
+    <h1>Kies een nieuw wachtwoord</h1>
+    <p class="sub">Vul hieronder je nieuwe wachtwoord in (minstens 8 tekens). Daarna kan je inloggen.</p>
+    <form id="f" onsubmit="return false">
+      <label for="p1">Nieuw wachtwoord</label>
+      <input id="p1" type="password" autocomplete="new-password" required minlength="8" placeholder="Minstens 8 tekens">
+      <label for="p2" style="margin-top:12px">Bevestig wachtwoord</label>
+      <input id="p2" type="password" autocomplete="new-password" required minlength="8" placeholder="Herhaal je wachtwoord">
+      <button id="btn" type="submit">Wachtwoord opslaan</button>
+    </form>
+    <div id="m" class="msg" style="display:none"></div>
+    <a class="back" href="/dashboard">← Terug naar inloggen</a>
+  </div>
+<script>
+const TOKEN = ${JSON.stringify(safeToken)};
+const f = document.getElementById('f'), btn = document.getElementById('btn'), m = document.getElementById('m');
+if (!TOKEN) { m.textContent = 'Geen geldige reset-link. Vraag een nieuwe aan.'; m.className = 'msg err'; m.style.display = 'block'; btn.disabled = true; }
+f.addEventListener('submit', async () => {
+  const p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+  m.style.display = 'none';
+  if (p1.length < 8) { m.textContent = 'Wachtwoord moet minstens 8 tekens zijn.'; m.className = 'msg err'; m.style.display = 'block'; return; }
+  if (p1 !== p2)     { m.textContent = 'De twee wachtwoorden komen niet overeen.'; m.className = 'msg err'; m.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  try {
+    const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode:'reset-password', token: TOKEN, newPassword: p1 }) });
+    const d = await r.json().catch(() => ({}));
+    m.textContent = d.message || (r.ok ? 'Wachtwoord aangepast.' : (d.error || 'Er ging iets mis.'));
+    m.className = 'msg ' + (r.ok ? 'ok' : 'err');
+    m.style.display = 'block';
+    if (r.ok) {
+      btn.textContent = 'Klaar ✓';
+      setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+    } else {
+      btn.disabled = false; btn.textContent = 'Wachtwoord opslaan';
+    }
+  } catch (e) {
+    m.textContent = 'Netwerkfout. Probeer opnieuw.'; m.className = 'msg err'; m.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Wachtwoord opslaan';
+  }
+});
+</script>
+</body></html>`);
 }
