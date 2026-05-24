@@ -297,7 +297,9 @@ module.exports = async function handler(req, res) {
             formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || '',
             language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl',
             workingHours:   rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours']       || '',
-            trustBadges:    rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges']        || ''
+            trustBadges:    rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges']        || '',
+            bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'calendly').toString().toLowerCase(),
+            callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || ''
           });
         }
 
@@ -334,6 +336,11 @@ module.exports = async function handler(req, res) {
           }
         }
         if (body.trustBadges    !== undefined) u.fld4nzMbnQseuGhnN = String(body.trustBadges).trim().slice(0, 300);
+        if (body.bookingMethod  !== undefined) {
+          const v = String(body.bookingMethod).trim().toLowerCase();
+          if (v === 'calendly' || v === 'callback') u.fldUI9BYO0TplgYlm = v;
+        }
+        if (body.callbackWindow !== undefined) u.fldKvMVBalSBRQE7H = String(body.callbackWindow).trim().slice(0, 100);
         if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
 
         const upRes = await atFetch(

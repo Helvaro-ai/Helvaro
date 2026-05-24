@@ -6854,9 +6854,39 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="ap-field">
               <label class="ap-label">
                 Calendly link
-                <span class="ap-label-hint">verzonden zodra een lead gekwalificeerd is</span>
+                <span class="ap-label-hint">verzonden bij 'calendly' booking-modus</span>
               </label>
               <input id="ap-calendly" type="url" class="ap-input" placeholder="https://calendly.com/bedrijf/intake">
+            </div>
+
+            <!-- Booking Method -->
+            <div class="ap-field">
+              <label class="ap-label">
+                Wat moet er gebeuren als een lead gekwalificeerd is?
+                <span class="ap-label-hint">kies hoe je de overdracht doet</span>
+              </label>
+              <div class="ap-lang-row">
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-calendly" value="calendly"> <span>📅 Stuur Calendly link</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>📞 Een collega contacteert ze</span></label>
+              </div>
+              <div class="ap-hint" id="ap-booking-hint-calendly" style="display:none;">Lead krijgt automatisch je Calendly link om zelf een moment te kiezen. Vul hierboven de Calendly link in.</div>
+              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen Calendly nodig — jij krijgt een melding op je notificatie-nummer.</div>
+            </div>
+
+            <!-- Callback Window (only shown if callback selected) -->
+            <div class="ap-field" id="ap-callback-window-wrap" style="display:none;">
+              <label class="ap-label">
+                Wanneer contacteer je terug?
+                <span class="ap-label-hint">deze tekst wordt naar de lead gestuurd</span>
+              </label>
+              <input id="ap-callback-window" type="text" class="ap-input" placeholder="binnen 30 minuten" maxlength="100">
+              <div class="ap-hint">
+                Voorbeelden:
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 30 minuten'">binnen 30 minuten</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 1 uur'">binnen 1 uur</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='vandaag nog'">vandaag nog</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 24 uur'">binnen 24 uur</button>
+              </div>
             </div>
 
             <!-- Language -->
@@ -6877,11 +6907,11 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="ap-field">
               <label class="ap-label">
                 Werkuren
-                <span class="ap-label-hint">buiten deze uren stuurt de AI een 'we zijn gesloten' bericht</span>
+                <span class="ap-label-hint">context voor de AI — gesprek loopt altijd door</span>
               </label>
               <input id="ap-hours" type="text" class="ap-input" placeholder="mon-fri 9-18">
               <div class="ap-hint">
-                Format: <code>mon-fri 9-18</code>, <code>mon-sat 8-20</code>, <code>tue-sat 10-18</code>. Leeg = AI antwoordt 24/7.
+                Format: <code>mon-fri 9-18</code>, <code>mon-sat 8-20</code>, <code>tue-sat 10-18</code>. De AI is 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
                 Voorbeelden:
                 <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='mon-fri 9-18'">mon-fri 9-18</button>
                 <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='mon-sat 8-20'">mon-sat 8-20</button>
@@ -12518,6 +12548,18 @@ const AP_TEMPLATES = [
   {
     emoji: '🎯', label: 'Direct kwalificeren',
     text: 'Hallo {naam}, met {ai} van {bedrijf}. Voor we verder gaan: heb je al een budget in gedachten en wanneer wil je beginnen?'
+  },
+  {
+    emoji: '🚗', label: 'Voor autohandel',
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. Welke wagen had je in gedachten — en zoek je benzine, diesel, hybride of elektrisch?'
+  },
+  {
+    emoji: '🔧', label: 'Voor garage/onderhoud',
+    text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. Wat is er aan de hand met de wagen, en welk merk/model is het? Dan plannen we snel iets in.'
+  },
+  {
+    emoji: '💥', label: 'Voor carrosserie',
+    text: 'Hey {naam}! {ai} van {bedrijf}. Bedankt voor je bericht. Wat is er gebeurd met de wagen, en gaat het via de verzekering of betaal je zelf?'
   }
 ];
 
@@ -12547,8 +12589,31 @@ const AP_INSTRUCTION_SNIPPETS = [
   {
     emoji: '🚦', label: 'Diskwalificeer snel',
     text: 'Als het duidelijk geen fit is (geen budget, geen interesse, verkeerde regio), wees vriendelijk maar stop het gesprek snel. Geen tijd verspillen.'
+  },
+  {
+    emoji: '🚗', label: 'Auto: vraag merk + model',
+    text: 'Vraag altijd naar (1) merk en model van de wagen, (2) bouwjaar of kilometerstand, (3) brandstof (benzine/diesel/hybride/elektrisch). Deze 3 dingen heb je nodig vóór elk vervolg.'
+  },
+  {
+    emoji: '💳', label: 'Auto: financiering & inruil',
+    text: 'Vraag actief of de lead financiering nodig heeft (lening/leasing) en of er een wagen ter inruil is. Geef nooit zelf prijzen — verwijs naar showroom of telefoongesprek.'
+  },
+  {
+    emoji: '🛠️', label: 'Auto: keuring & onderhoud',
+    text: 'Bij onderhoud/garage-vragen: vraag naar (1) symptomen of foutmelding, (2) wanneer het probleem begon, (3) laatste keuring of grote beurt. Stel afspraak binnen 1 week voor.'
   }
 ];
+
+// Show/hide the callback-window input + the right hint, based on radio selection
+function syncBookingMethodUI() {
+  const callbackChecked = document.getElementById('ap-booking-callback')?.checked;
+  const wrap = document.getElementById('ap-callback-window-wrap');
+  const hintCal = document.getElementById('ap-booking-hint-calendly');
+  const hintCb  = document.getElementById('ap-booking-hint-callback');
+  if (wrap)    wrap.style.display    = callbackChecked ? '' : 'none';
+  if (hintCal) hintCal.style.display = callbackChecked ? 'none' : '';
+  if (hintCb)  hintCb.style.display  = callbackChecked ? '' : 'none';
+}
 
 function renderApInstructionSnippets() {
   const wrap = document.getElementById('ap-instr-grid');
@@ -12646,6 +12711,11 @@ async function loadAiPersona() {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', refreshSaveButton);
     });
+    // Booking-method radio toggles the callback-window field + hint visibility
+    ['ap-booking-calendly', 'ap-booking-callback'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', syncBookingMethodUI);
+    });
     // Sync color picker <-> text input
     const apColor = document.getElementById('ap-color');
     const apPick  = document.getElementById('ap-color-pick');
@@ -12681,6 +12751,12 @@ async function loadAiPersona() {
     document.getElementById('ap-photo').value        = d.aiPhotoUrl     || '';
     document.getElementById('ap-hours').value        = d.workingHours   || '';
     document.getElementById('ap-badges').value       = d.trustBadges    || '';
+    // Booking method + callback window
+    const apBookingVal = (d.bookingMethod === 'callback') ? 'callback' : 'calendly';
+    const apBookingRadio = document.getElementById('ap-booking-' + apBookingVal);
+    if (apBookingRadio) apBookingRadio.checked = true;
+    document.getElementById('ap-callback-window').value = d.callbackWindow || '';
+    syncBookingMethodUI();
     const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
     const apLangRadio = document.getElementById('ap-lang-' + apLangVal);
     if (apLangRadio) apLangRadio.checked = true;
@@ -12793,7 +12869,9 @@ async function saveAiPersona() {
       formIntro:      document.getElementById('ap-form-intro').value.trim(),
       language:       (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl',
       workingHours:   document.getElementById('ap-hours').value.trim().toLowerCase(),
-      trustBadges:    document.getElementById('ap-badges').value.trim()
+      trustBadges:    document.getElementById('ap-badges').value.trim(),
+      bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'calendly',
+      callbackWindow: document.getElementById('ap-callback-window').value.trim()
     };
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',

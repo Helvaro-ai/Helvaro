@@ -178,9 +178,16 @@ async function processMessage(phone, text) {
   const workingHours = (client.fields['fldq5oIqw5MG8fKhc'] || client.fields['Working Hours'] || '').toString().trim();
   const outsideHours = workingHours && !isWithinWorkingHours(workingHours);
 
+  // Booking method: 'calendly' (send link) or 'callback' (promise human contact)
+  const rawBooking   = (client.fields['fldUI9BYO0TplgYlm'] || client.fields['Booking Method'] || 'calendly').toString().toLowerCase();
+  const bookingMethod = rawBooking === 'callback' ? 'callback' : 'calendly';
+  const callbackWindow = (client.fields['fldKvMVBalSBRQE7H'] || client.fields['Callback Window'] || '').toString().trim() || 'binnen 30 minuten';
+
   // 7. Run AI
   const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
-  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, { workingHours, outsideHours });
+  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
+    workingHours, outsideHours, bookingMethod, callbackWindow
+  });
 
   // 8. Trim and push AI reply to history
   const replyText = aiResponse.message.trim();
@@ -198,11 +205,17 @@ async function processMessage(phone, text) {
     'Conversation History':   JSON.stringify(history),
     fld8mkrEWcyq7mUip:       (aiResponse.done && !isEscalation) ? 'completed' : 'in_progress',
   };
+  // ALWAYS update AI Summary if the AI provided one — even mid-conversation.
+  // This way the dashboard's lead-panel always shows the latest understanding
+  // of what the lead wants, instead of having to wait until 'done:true'.
+  if (aiResponse.summary) {
+    updateFields.fldqerIiw5qyQjXHr = String(aiResponse.summary).slice(0, 600);
+  }
   if (aiResponse.done && !isEscalation) {
     Object.assign(updateFields, {
       fld0hAZJ5wgaXrNTn: aiResponse.qualified,         // Qualified
       fld3NhSENma0okbT7: aiResponse.reason    || '',   // Reason
-      fldqerIiw5qyQjXHr: aiResponse.summary   || '',   // AI Summary
+      // summary already set above (every turn), don't overwrite
       fldrfbTopJvZEYSKP: aiResponse.ability   || '',   // Ability
       fldlyLH1DKrWyG3Tr: aiResponse.urgency   || '',   // Urgency
       fldqNxsPshvZEBeLr: aiResponse.fit       || '',   // Fit
@@ -234,37 +247,59 @@ async function processMessage(phone, text) {
     await sendWA(NOTIFY_PHONE, escalateNotice).catch(() => {});
   }
 
-  // 11. If qualified → send Calendly link + address + notify owner
-  //     (skip when AI escalated — wait for the human to handle)
+  // 11. If qualified → either send Calendly link OR promise a human callback,
+  //     based on the client's Booking Method preference.
+  //     Skip when AI escalated — wait for the human to handle.
   if (aiResponse.done && aiResponse.qualified && !isEscalation) {
-    // fldNEj1ysRgINOOtr = Calendly Link field ID; fldLeEqwNefdglLis = Booking Link Sent
     const calendly    = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'];
     const bookingSent = lead.fields['fldLeEqwNefdglLis']   || lead.fields['Booking Link Sent'];
 
-    if (calendly && !bookingSent) {
-      // Localized post-qualification messages
-      const postMsgs = {
-        nl: {
-          slot:    `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`,
-          addr:    `Ons adres: ${address}`,
-          confirm: 'Heb je de afspraak ingepland? Laat het me weten.'
-        },
-        fr: {
-          slot:    `Super. Planifions un premier appel — choisis un moment ici :\n\n${calendly}`,
-          addr:    `Notre adresse : ${address}`,
-          confirm: 'As-tu réservé le créneau ? Dis-le moi.'
-        },
-        en: {
-          slot:    `Great. Let's set up an intro call — pick a slot here:\n\n${calendly}`,
-          addr:    `Our address: ${address}`,
-          confirm: 'Did you book the slot? Let me know.'
-        }
-      };
-      const pm = postMsgs[lang] || postMsgs.nl;
-      await sendWA(phone, pm.slot);
-      if (address) await sendWA(phone, pm.addr);
-      await sendWA(phone, pm.confirm);
-      await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);  // Booking Link Sent
+    if (!bookingSent) {
+      // ── CALENDLY mode: send the self-service booking link ──────────────────
+      if (bookingMethod === 'calendly' && calendly) {
+        const postMsgs = {
+          nl: {
+            slot:    `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`,
+            addr:    `Ons adres: ${address}`,
+            confirm: 'Heb je de afspraak ingepland? Laat het me weten.'
+          },
+          fr: {
+            slot:    `Super. Planifions un premier appel — choisis un moment ici :\n\n${calendly}`,
+            addr:    `Notre adresse : ${address}`,
+            confirm: 'As-tu réservé le créneau ? Dis-le moi.'
+          },
+          en: {
+            slot:    `Great. Let's set up an intro call — pick a slot here:\n\n${calendly}`,
+            addr:    `Our address: ${address}`,
+            confirm: 'Did you book the slot? Let me know.'
+          }
+        };
+        const pm = postMsgs[lang] || postMsgs.nl;
+        await sendWA(phone, pm.slot);
+        if (address) await sendWA(phone, pm.addr);
+        await sendWA(phone, pm.confirm);
+        await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);
+      }
+      // ── CALLBACK mode: promise a human will reach out ──────────────────────
+      else if (bookingMethod === 'callback') {
+        const callbackMsgs = {
+          nl: `Top, dan zit het goed. Een collega van mij belt of appt je ${callbackWindow}. Je hoeft niets meer te doen — wij komen naar jou toe 🙌`,
+          fr: `Parfait. Un collègue te contactera ${callbackWindow}. Tu n'as plus rien à faire — on revient vers toi 🙌`,
+          en: `Perfect. A colleague will reach out to you ${callbackWindow}. You don't need to do anything else — we'll come to you 🙌`
+        };
+        await sendWA(phone, callbackMsgs[lang] || callbackMsgs.nl);
+        await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);  // mark "handoff sent"
+      }
+      // Edge case: 'calendly' selected but no Calendly link configured — graceful fallback to callback
+      else if (bookingMethod === 'calendly' && !calendly) {
+        const fallback = {
+          nl: `Top, een collega belt of appt je ${callbackWindow}. Je hoort van ons 🙌`,
+          fr: `Parfait, un collègue te contactera ${callbackWindow}. À très vite 🙌`,
+          en: `Perfect, a colleague will reach out ${callbackWindow}. Talk soon 🙌`
+        };
+        await sendWA(phone, fallback[lang] || fallback.nl);
+        await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);
+      }
     }
 
     // Notify owner when a lead is qualified
@@ -437,8 +472,13 @@ VEILIGHEIDSREGELS:
 EXTRA INSTRUCTIES VAN DE KLANT:
 ${instructions || 'Kwalificeer de lead op basis van interesse, budget en urgentie.'}
 
+RUNNING SAMENVATTING (ELKE BEURT):
+Voeg ALTIJD aan het EIND van élke reactie op een nieuwe regel toe:
+SUMMARY:{korte 1-zin samenvatting van wat we tot nu toe over deze lead weten ${reasonLangNote}}
+Dit blok komt na je gewone antwoord. Het wordt niet aan de lead getoond — alleen het team ziet dit in het dashboard. Houd het kort, feitelijk en actueel (wie, wat zoeken ze, signalen).
+
 BESLISSING:
-Na 3 tot 5 berichten weet je genoeg. Voeg dan op een aparte regel toe:
+Na 3 tot 5 berichten weet je genoeg. Voeg dan op een EXTRA aparte regel toe:
 DECISION:{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false}
 
 Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escalate:true). De leadScore is 0-100 op basis van alle drie factoren samen. Als escalate:true → qualified mag null zijn, het systeem wacht op de mens.
@@ -468,19 +508,30 @@ Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escal
 
   const raw = data.content?.[0]?.text || '';
 
-  // Parse DECISION block if present
-  const match = raw.match(/DECISION:\s*(\{[\s\S]*?\})/);
+  // 1. Pull out the running SUMMARY:{...} line (present on every turn).
+  //    Stored in Airtable so the dashboard always shows fresh context.
+  let runningSummary = '';
+  let cleaned = raw;
+  const sumMatch = cleaned.match(/SUMMARY:\s*\{([\s\S]*?)\}\s*$/m);
+  if (sumMatch) {
+    runningSummary = sumMatch[1].trim();
+    cleaned = cleaned.replace(sumMatch[0], '').trim();
+  }
+
+  // 2. Parse DECISION block if present (only on final turn / escalation)
+  const match = cleaned.match(/DECISION:\s*(\{[\s\S]*?\})/);
   if (match) {
     try {
       const decision = JSON.parse(match[1]);
-      const message  = raw.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
-      return { done: true, message: message || '...', ...decision };
+      const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
+      // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
+      return { done: true, message: message || '...', ...decision, summary: decision.summary || runningSummary };
     } catch (e) {
       console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
     }
   }
 
-  return { done: false, message: raw };
+  return { done: false, message: cleaned, summary: runningSummary };
 }
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
