@@ -734,8 +734,24 @@ function isWithinWorkingHours(spec) {
   const m = String(spec).toLowerCase().trim().match(/^([a-z]+)\s*[-–]\s*([a-z]+)\s+(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?$/);
   if (!m) { console.warn('[workingHours] kan format niet parsen:', spec); return true; }
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  const fromDay = days.indexOf(m[1].slice(0, 3));
-  const toDay   = days.indexOf(m[2].slice(0, 3));
+  // Accept Dutch + French day abbreviations so klanten kunnen 'ma-vr 9-18'
+  // of 'lun-ven 9-18' invoeren — niet enkel het Engelse 'mon-fri'.
+  const dayAliases = {
+    // Nederlands
+    ma: 'mon', di: 'tue', wo: 'wed', do: 'thu', vr: 'fri', za: 'sat', zo: 'sun',
+    maa: 'mon', din: 'tue', woe: 'wed', don: 'thu', vri: 'fri', zat: 'sat', zon: 'sun',
+    // Français
+    lun: 'mon', mar: 'tue', mer: 'wed', jeu: 'thu', ven: 'fri', sam: 'sat', dim: 'sun'
+  };
+  const normalizeDay = (d) => {
+    const lower = d.toLowerCase();
+    if (dayAliases[lower]) return dayAliases[lower];
+    const head3 = lower.slice(0, 3);
+    if (dayAliases[head3]) return dayAliases[head3];
+    return head3;  // assume already english (mon/tue/...)
+  };
+  const fromDay = days.indexOf(normalizeDay(m[1]));
+  const toDay   = days.indexOf(normalizeDay(m[2]));
   if (fromDay < 0 || toDay < 0) return true;
   const hStart  = parseInt(m[3], 10) + (m[4] ? parseInt(m[4], 10) / 60 : 0);
   const hEnd    = parseInt(m[5], 10) + (m[6] ? parseInt(m[6], 10) / 60 : 0);

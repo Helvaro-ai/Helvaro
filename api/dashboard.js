@@ -6917,9 +6917,9 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">bepaalt taal van lead-form + WhatsApp gesprek</span>
               </label>
               <div class="ap-lang-row">
-                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-nl" value="nl"> <span>🇳🇱 Nederlands</span></label>
-                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-fr" value="fr"> <span>🇫🇷 Français</span></label>
-                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-en" value="en"> <span>🇬🇧 English</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-nl" value="nl"> <span>Nederlands</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-fr" value="fr"> <span>Français</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-en" value="en"> <span>English</span></label>
               </div>
               <div class="ap-hint">Selecteer de taal waarin je leads communiceren. De AI antwoordt automatisch in deze taal, ongeacht wat de lead schrijft. Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
             </div>
@@ -6930,13 +6930,11 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Werkuren
                 <span class="ap-label-hint">context voor de AI — gesprek loopt altijd door</span>
               </label>
-              <input id="ap-hours" type="text" class="ap-input" placeholder="mon-fri 9-18">
+              <input id="ap-hours" type="text" class="ap-input" placeholder="ma-vr 9-18">
               <div class="ap-hint">
-                Format: <code>mon-fri 9-18</code>, <code>mon-sat 8-20</code>, <code>tue-sat 10-18</code>. De AI is 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
+                Format: <span id="ap-hours-format-list"><code>ma-vr 9-18</code>, <code>ma-za 8-20</code>, <code>di-za 10-18</code></span>. De AI is 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
                 Voorbeelden:
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='mon-fri 9-18'">mon-fri 9-18</button>
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='mon-sat 8-20'">mon-sat 8-20</button>
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-hours').value='tue-sat 10-18'">tue-sat 10-18</button>
+                <span id="ap-hours-chips"></span>
               </div>
             </div>
 
@@ -12631,6 +12629,30 @@ const AP_INSTRUCTION_SNIPPETS = [
   }
 ];
 
+// Localized work-hours preset examples — adapt to the client's chosen lead language.
+// IMPORTANT: any of these (NL ma/di/wo/do/vr/za/zo, FR lun/mar/mer/jeu/ven/sam/dim,
+// EN mon/tue/wed/thu/fri/sat/sun) is parsed correctly by the backend.
+const AP_HOURS_PRESETS = {
+  nl: { placeholder: 'ma-vr 9-18', chips: ['ma-vr 9-18', 'ma-za 8-20', 'di-za 10-18'] },
+  fr: { placeholder: 'lun-ven 9-18', chips: ['lun-ven 9-18', 'lun-sam 8-20', 'mar-sam 10-18'] },
+  en: { placeholder: 'mon-fri 9-18', chips: ['mon-fri 9-18', 'mon-sat 8-20', 'tue-sat 10-18'] }
+};
+
+function syncHoursLocaleUI() {
+  const lang = (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl';
+  const preset = AP_HOURS_PRESETS[lang] || AP_HOURS_PRESETS.nl;
+  const input = document.getElementById('ap-hours');
+  if (input) input.setAttribute('placeholder', preset.placeholder);
+  const fmt = document.getElementById('ap-hours-format-list');
+  if (fmt) fmt.innerHTML = preset.chips.map(c => '<code>' + c + '</code>').join(', ');
+  const chips = document.getElementById('ap-hours-chips');
+  if (chips) {
+    chips.innerHTML = preset.chips.map(c =>
+      '<button type="button" class="ap-chip" onclick="document.getElementById(\\'ap-hours\\').value=\\'' + c + '\\'">' + c + '</button>'
+    ).join(' ');
+  }
+}
+
 // Show/hide the callback-window input + the right hint, based on radio selection
 function syncBookingMethodUI() {
   const callbackChecked = document.getElementById('ap-booking-callback')?.checked;
@@ -12743,6 +12765,11 @@ async function loadAiPersona() {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', syncBookingMethodUI);
     });
+    // Language radio re-localizes the work-hours presets (chips + placeholder)
+    ['ap-lang-nl', 'ap-lang-fr', 'ap-lang-en'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', syncHoursLocaleUI);
+    });
     // Sync color picker <-> text input
     const apColor = document.getElementById('ap-color');
     const apPick  = document.getElementById('ap-color-pick');
@@ -12786,6 +12813,7 @@ async function loadAiPersona() {
     document.getElementById('ap-notify-phone').value    = d.notifyPhone    || '';
     document.getElementById('ap-report-email').value    = d.reportEmail    || '';
     syncBookingMethodUI();
+    syncHoursLocaleUI();
     const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
     const apLangRadio = document.getElementById('ap-lang-' + apLangVal);
     if (apLangRadio) apLangRadio.checked = true;
