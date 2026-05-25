@@ -543,7 +543,7 @@ module.exports = async function handler(req, res) {
          <div class="trust-item"><span>🤝</span> ${escHtml(t.trust3)}</div>`
     }
   </div>
-  <div class="powered">${escHtml(t.poweredBy)} <a href="https://app.helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
+  <div class="powered">${escHtml(t.poweredBy)} <a href="https://helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
 </div>
 
 <script>
