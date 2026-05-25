@@ -151,17 +151,28 @@ module.exports = async function handler(req, res) {
     const password = String(body.password || '').trim().slice(0, 200);
 
     // ── MODE: request-reset — email the user a reset link ────────────────────
-    // Always returns 200 (info-leak protection) — never reveal if email exists.
+    // We verify the user exists before sending so the form gives clear feedback
+    // (B2B context: ~10-100 known clients, account enumeration risk is low and
+    // the UX clarity wins).
     if (body.mode === 'request-reset') {
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(400).json({ error: 'Ongeldig e-mailadres' });
       }
-      // Fire-and-forget: look up the user; if found, mail the link.
-      // We don't await the look-up's success to keep timing constant.
-      sendResetEmailIfUserExists(email).catch(() => {});
+      // 1. Verify the user actually exists + is active
+      const user = await fetchUserByEmail(email);
+      if (!user) {
+        console.warn('[reset] no user for', email);
+        return res.status(404).json({ error: 'Dit e-mailadres is bij ons niet bekend. Controleer het adres of neem contact op.' });
+      }
+      // 2. Try to send the email — surface real errors back
+      const sendResult = await sendResetEmailToUser(email, user).catch(err => ({ ok: false, error: err.message }));
+      if (!sendResult.ok) {
+        console.error('[reset] send failed for', email, sendResult.error);
+        return res.status(500).json({ error: 'Mail kon niet verstuurd worden — neem contact op met support.' });
+      }
       return res.status(200).json({
         ok: true,
-        message: 'Als dit e-mailadres bij ons bekend is, sturen we een resetlink. Check je inbox (en spam).'
+        message: 'Resetlink verstuurd naar ' + email + '. Check je inbox (en spam) — de link werkt 1 uur.'
       });
     }
 
@@ -340,17 +351,16 @@ async function fetchUserByEmail(email) {
   return rec;
 }
 
-// Send the reset link to the user via Resend.
-// Silently no-ops if the email doesn't match any user (info-leak protection).
-async function sendResetEmailIfUserExists(email) {
-  const user = await fetchUserByEmail(email);
-  if (!user) return;
+// Send the reset link to a user we already verified exists.
+// Returns { ok: true } on success, or { ok: false, error: '...' } so the caller
+// can surface a precise error message to the user (no info-leak — user is known).
+async function sendResetEmailToUser(email, user) {
   const currentHash = String(user.fields['Password Hash'] || user.fields['fldPasswordHash'] || '');
   const token = signResetToken(email.toLowerCase(), currentHash);
   const link  = `https://app.helvaro.pro/reset-password?token=${encodeURIComponent(token)}`;
 
   const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) { console.warn('[reset] RESEND_API_KEY missing — cannot send email'); return; }
+  if (!RESEND_KEY) return { ok: false, error: 'RESEND_API_KEY env var ontbreekt op de server' };
   const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -374,9 +384,12 @@ async function sendResetEmailIfUserExists(email) {
     if (!r.ok) {
       const txt = await r.text().catch(() => '');
       console.error('[reset] resend failed', r.status, txt.slice(0, 300));
+      return { ok: false, error: `Resend API gaf ${r.status}: ${txt.slice(0, 150)}` };
     }
+    return { ok: true };
   } catch (err) {
     console.error('[reset] network error:', err && err.message);
+    return { ok: false, error: 'Netwerkfout bij Resend: ' + (err && err.message) };
   }
 }
 
