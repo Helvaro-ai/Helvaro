@@ -12738,7 +12738,7 @@ function setPhotoPreview(dataUrlOrHttps) {
 function handlePhotoFile(input) {
   const file = input.files && input.files[0];
   if (!file) return;
-  if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+  if (!/^image\\/(png|jpe?g|webp)$/i.test(file.type)) {
     toast('Alleen PNG, JPG of WebP toegestaan', 'error');
     return;
   }
@@ -12784,7 +12784,7 @@ function handlePhotoFile(input) {
 
 function handlePhotoUrlInput(input) {
   const v = (input.value || '').trim();
-  if (v && /^https:\/\//.test(v)) {
+  if (v && /^https:\\/\\//.test(v)) {
     setPhotoPreview(v);
   } else if (!v) {
     setPhotoPreview('');
@@ -12976,7 +12976,7 @@ async function loadAiPersona() {
     // Photo preview: show the current avatar; also fill the URL textbox when it's an external link
     setPhotoPreview(d.aiPhotoUrl || '');
     const apPhotoUrlField = document.getElementById('ap-photo-url');
-    if (apPhotoUrlField) apPhotoUrlField.value = (d.aiPhotoUrl && /^https:\/\//.test(d.aiPhotoUrl)) ? d.aiPhotoUrl : '';
+    if (apPhotoUrlField) apPhotoUrlField.value = (d.aiPhotoUrl && /^https:\\/\\//.test(d.aiPhotoUrl)) ? d.aiPhotoUrl : '';
     document.getElementById('ap-hours').value        = d.workingHours   || '';
     document.getElementById('ap-badges').value       = d.trustBadges    || '';
     // Booking method + callback window
