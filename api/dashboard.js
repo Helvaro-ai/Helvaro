@@ -7430,19 +7430,13 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="settings-row">
             <div>
               <div class="settings-label">Wekelijks rapport e-mail</div>
-              <div class="settings-label-sub">Ontvang elke maandag een samenvattingsmail</div>
+              <div class="settings-label-sub">Elke maandag een samenvatting van leads + conversie naar je notificatie-mail</div>
             </div>
             <div class="settings-toggle">
-              <span class="settings-coming-soon">Binnenkort beschikbaar</span>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Browser notificaties</div>
-              <div class="settings-label-sub">Meldingen bij nieuwe leads</div>
-            </div>
-            <div class="settings-toggle">
-              <span class="settings-coming-soon">Binnenkort beschikbaar</span>
+              <span style="font-size:12px;color:var(--green);font-weight:600;display:inline-flex;align-items:center;gap:6px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Actief
+              </span>
             </div>
           </div>
         </div>
@@ -11628,8 +11622,12 @@ async function startDashboard(skipRefresh = false) {
 
 // Fire a config-get; if essential fields are empty, force-navigate to the
 // AI Persoonlijkheid page and show a "welkom!" banner explaining what to fill.
+// Once the user clicks "Opslaan" on AI Persoonlijkheid we set hv-onboarded in
+// localStorage so we never auto-redirect them again — even if some 'essential'
+// field is still empty (they made a conscious choice to leave it blank).
 async function checkFirstTimeSetup() {
   try {
+    if (localStorage.getItem('hv-onboarded') === '1') return;
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
@@ -11643,7 +11641,12 @@ async function checkFirstTimeSetup() {
     if (!d.aiName)         missing.push('aiName');
     if (!d.autoReplyTpl)   missing.push('autoReplyTpl');
     if (!d.website && !d.aiInstructions) missing.push('grounding');
-    if (missing.length === 0) return;
+    if (missing.length === 0) {
+      // Config is already complete on this device too — promote them to "onboarded"
+      // so future logins on this browser skip the check entirely.
+      localStorage.setItem('hv-onboarded', '1');
+      return;
+    }
 
     // Remember which fields were missing so the page can prioritize them
     sessionStorage.setItem('hv-setup-missing', JSON.stringify(missing));
@@ -12939,6 +12942,9 @@ async function saveAiPersona() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { toast(d.error || 'Opslaan mislukt', 'error'); return; }
+    // Mark them as onboarded — future logins skip the auto-redirect to this page,
+    // regardless of which fields are still empty (their conscious choice).
+    try { localStorage.setItem('hv-onboarded', '1'); } catch {}
     if (mark) {
       mark.classList.add('visible');
       setTimeout(() => mark.classList.remove('visible'), 2500);

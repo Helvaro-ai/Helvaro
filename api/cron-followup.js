@@ -124,7 +124,18 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult });
+    // ── Weekly client report (Mondays) ───────────────────────────────────────
+    // Stuurt elke maandag (UTC) een overzichts-email naar elke klant met hun
+    // Rapport Email ingesteld. Per-klant: leads/week, qualified, conversie, top 5.
+    let weeklyResult = null;
+    if (now.getUTCDay() === 1) {   // 0=Sun, 1=Mon
+      weeklyResult = await sendWeeklyClientReports(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
+        console.error('[cron-followup] weekly report failed:', e.message);
+        return null;
+      });
+    }
+
+    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -193,6 +204,151 @@ async function sendResendEmail({ subject, html }) {
     }
   } catch (err) {
     console.error('[resend cron] network error:', err && err.message);
+  }
+}
+
+// ── Weekly per-client report ─────────────────────────────────────────────────
+// Op maandag (UTC) bouwt deze functie voor elke klant met een Rapport Email een
+// samenvatting van de afgelopen 7 dagen en mailt die naar de klant zelf.
+// Fail-soft: een mislukte klant blokkeert de andere niet.
+async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
+  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // 1. Haal alle actieve klanten met een Rapport Email op
+  const cFormula = encodeURIComponent(`AND({Active}=1, NOT({Rapport Email}=""))`);
+  const cRes = await fetch(
+    `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&pageSize=100`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  );
+  if (!cRes.ok) { console.error('[weekly] clients fetch failed', cRes.status); return null; }
+  const clients = (await cRes.json()).records || [];
+  console.log(`[weekly] ${clients.length} clients with Rapport Email`);
+
+  let sent = 0, skipped = 0;
+  for (const client of clients) {
+    const projectCode  = client.fields['fldN4dL0bGgfBOXwM']  || client.fields['Project Code']  || '';
+    const clientName   = client.fields['fldAnB848Sr5jl6dq']  || client.fields['Client Name']   || '';
+    const reportEmail  = client.fields['fldDBJCN6dVMA8jax']  || client.fields['Rapport Email'] || '';
+    if (!projectCode || !reportEmail) { skipped++; continue; }
+
+    // 2. Haal alle leads van deze klant uit de afgelopen 7 dagen
+    const lFormula = encodeURIComponent(`AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", {Created At}>"${weekAgoIso}")`);
+    const lRes = await fetch(
+      `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${lFormula}&pageSize=100`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (!lRes.ok) { console.error('[weekly] leads fetch failed for', projectCode, lRes.status); skipped++; continue; }
+    const leads = (await lRes.json()).records || [];
+
+    // 3. Stats berekenen
+    const total = leads.length;
+    const qualified  = leads.filter(l => l.fields['Qualified'] === true);
+    const responseTimes = leads.map(l => l.fields['Response Time (sec)']).filter(t => typeof t === 'number' && t > 0);
+    const avgResponse = responseTimes.length
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+      : null;
+    const conversionPct = total > 0 ? Math.round((qualified.length / total) * 100) : 0;
+
+    // Top 5 gekwalificeerde leads gesorteerd op score
+    const top5 = [...qualified]
+      .sort((a, b) => (b.fields['Lead Score'] || 0) - (a.fields['Lead Score'] || 0))
+      .slice(0, 5);
+
+    // 4. Email versturen
+    const ok = await sendWeeklyReportEmail({
+      to: reportEmail, clientName, projectCode,
+      stats: { total, qualified: qualified.length, conversionPct, avgResponse },
+      top5
+    });
+    if (ok) sent++; else skipped++;
+    // Spread rate-limit pressure on Resend
+    await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`[weekly] sent ${sent}, skipped ${skipped}`);
+  return { sent, skipped, total: clients.length };
+}
+
+async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 }) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY) { console.warn('[weekly] RESEND_API_KEY missing'); return false; }
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const fmtTime = s => s == null ? '—' : (s < 60 ? `${s}s` : `${Math.round(s/60)}m`);
+  const topRows = top5.length
+    ? top5.map(l => {
+        const f = l.fields || {};
+        return `<tr>
+          <td style="padding:10px 8px;border-bottom:1px solid #eee;font-weight:600">${esc(f['Name'] || '—')}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;font-size:13px">${esc(f['AI Summary'] || '—')}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;color:#1e6fd9">${f['Lead Score'] || 0}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">Nog geen gekwalificeerde leads deze week — komt nog!</td></tr>`;
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:auto;padding:24px;color:#111;background:#fff">
+      <h2 style="color:#1e6fd9;margin:0 0 4px">Weekrapport — ${esc(clientName)}</h2>
+      <p style="color:#666;margin:0 0 28px;font-size:14px">Overzicht van de afgelopen 7 dagen op je Helvaro account.</p>
+
+      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
+        <tr>
+          <td style="background:#f0f6ff;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#1e6fd9">${stats.total}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Nieuwe leads</div>
+          </td>
+          <td style="background:#ecfdf5;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#059669">${stats.qualified}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Gekwalificeerd</div>
+          </td>
+          <td style="background:#fef3c7;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#d97706">${stats.conversionPct}%</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Conversie</div>
+          </td>
+          <td style="background:#f3e8ff;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#7c3aed">${fmtTime(stats.avgResponse)}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Gem. responstijd</div>
+          </td>
+        </tr>
+      </table>
+
+      <h3 style="margin:0 0 12px;font-size:16px">🔥 Top 5 gekwalificeerde leads</h3>
+      <table style="width:100%;border-collapse:collapse;background:#fafbfc;border-radius:10px;overflow:hidden">
+        <thead>
+          <tr style="background:#f3f4f6">
+            <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">Naam</th>
+            <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">Samenvatting</th>
+            <th style="text-align:right;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">Score</th>
+          </tr>
+        </thead>
+        <tbody>${topRows}</tbody>
+      </table>
+
+      <p style="text-align:center;margin:28px 0 8px">
+        <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
+      </p>
+
+      <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;text-align:center">
+        Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp · <a href="https://helvaro.pro" style="color:#999">helvaro.pro</a>
+      </p>
+    </div>`;
+
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ from: FROM, to: [to], subject: `📊 Helvaro weekrapport — ${clientName}`, html })
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      console.error('[weekly] resend fail', r.status, txt.slice(0, 200));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[weekly] network error:', err && err.message);
+    return false;
   }
 }
 
