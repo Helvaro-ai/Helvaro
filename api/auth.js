@@ -34,12 +34,14 @@ function setCachedUser(email, record) {
   _userCache.set(email, { record, ts: Date.now() });
 }
 
-// Simple in-memory rate limiter — max 10 login attempts per IP per 15 minutes
+// In-memory rate limiter — max 40 login attempts per IP per 15 minutes.
+// (Was 10 — too aggressive during setup/testing when users type wrong passwords
+// a few times. 40 still blocks credential-stuffing while not annoying real users.)
 const loginAttempts = new Map();
 function isRateLimited(ip) {
   const now    = Date.now();
   const window = 15 * 60 * 1000;
-  const max    = 10;
+  const max    = 40;
   const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < window);
   attempts.push(now);
   loginAttempts.set(ip, attempts);
@@ -50,6 +52,10 @@ function isRateLimited(ip) {
   }
   return attempts.length > max;
 }
+
+// Manual reset for support — wipes the in-memory attempts for a given IP.
+// Triggered via mode='reset-rate-limit' with the admin key.
+function clearRateLimit(ip) { loginAttempts.delete(ip); }
 
 // Derive a stable admin session token from ADMIN_KEY so the raw secret
 // never leaves the server. The token is deterministic (no DB needed) but
@@ -134,8 +140,18 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+
+  // ── Special unauthenticated mode: reset-rate-limit (requires admin key) ────
+  // Useful when an admin locked themselves out by testing logins.
+  if (req.body && (req.body.mode === 'reset-rate-limit' || req.body?.mode === 'reset-rate-limit')) {
+    const provided = String((req.body || {}).adminKey || '').trim();
+    if (!provided || provided !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Ongeldige admin key' });
+    clearRateLimit(ip);
+    return res.status(200).json({ ok: true, message: 'Rate limit gewist voor jouw IP.' });
+  }
+
   if (isRateLimited(ip)) {
-    return res.status(429).json({ error: 'Te veel pogingen. Probeer over 15 minuten opnieuw.' });
+    return res.status(429).json({ error: 'Te veel pogingen — wacht 15 minuten of probeer vanaf een ander IP. Tip: open een privé/incognito venster.' });
   }
 
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
