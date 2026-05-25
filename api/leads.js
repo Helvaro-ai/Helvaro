@@ -317,9 +317,22 @@ module.exports = async function handler(req, res) {
         if (body.sector         !== undefined) u.fld0BsPnDbBOkTHzr = String(body.sector).trim().slice(0, 100);
         // Form personalization fields (shown on the lead form page)
         if (body.aiPhotoUrl     !== undefined) {
-          const v = String(body.aiPhotoUrl).trim().slice(0, 500);
-          // Only accept HTTPS URLs (defense-in-depth — same check is repeated server-side on the form-page render)
-          u.fld7L0Iijq7ti6A6w = (v === '' || /^https:\/\//.test(v)) ? v : '';
+          // Allow EITHER an external https URL OR a self-hosted base64 data URL
+          // (uploaded via the file picker in dashboard). Data URLs are capped at
+          // 200 KB to keep Airtable cells reasonable and form-page HTML lean.
+          const raw = String(body.aiPhotoUrl).trim();
+          const isHttps = /^https:\/\//.test(raw);
+          const isData  = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(raw);
+          if (raw === '') {
+            u.fld7L0Iijq7ti6A6w = '';
+          } else if (isHttps && raw.length <= 500) {
+            u.fld7L0Iijq7ti6A6w = raw;
+          } else if (isData && raw.length <= 200 * 1024) {
+            u.fld7L0Iijq7ti6A6w = raw;
+          } else {
+            // Unknown format / too big — silently drop (don't error, just don't update)
+            console.warn('[config-save] aiPhotoUrl rejected: invalid format or >200KB');
+          }
         }
         if (body.brandColor     !== undefined) {
           const v = String(body.brandColor).trim().slice(0, 8);

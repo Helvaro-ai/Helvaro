@@ -84,8 +84,14 @@ module.exports = async function handler(req, res) {
     return '#' + toHex(adj(r)) + toHex(adj(g)) + toHex(adj(b));
   }
   const brandDark = shadeHex(brandColor, -25);
-  // Validate aiPhotoUrl — only allow https URLs to prevent injection
-  if (aiPhotoUrl && !/^https:\/\//.test(aiPhotoUrl)) aiPhotoUrl = '';
+  // Validate aiPhotoUrl — accept https URLs OR self-hosted base64 image data URLs
+  // (uploaded via dashboard's file picker). Anything else is dropped to prevent
+  // injection (no javascript:, no data:text/html, no relative paths).
+  if (aiPhotoUrl) {
+    const isHttps = /^https:\/\//.test(aiPhotoUrl);
+    const isData  = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(aiPhotoUrl);
+    if (!isHttps && !isData) aiPhotoUrl = '';
+  }
 
   // Strip control chars + escape for HTML / JS string contexts (defense in depth)
   function escHtml(s) {

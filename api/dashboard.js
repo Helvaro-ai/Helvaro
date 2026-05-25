@@ -1725,6 +1725,13 @@ button.brand-dot { border: none; padding: 0; }
   overflow-y: auto;
 }
 
+.nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 10px 6px;
+  opacity: 0.55;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -4882,6 +4889,51 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .ap-chip:hover { background: rgba(99,102,241,.25); color: #fff; }
 
+/* AI photo file picker */
+.ap-photo-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 4px 0;
+}
+.ap-photo-preview {
+  width: 84px; height: 84px; border-radius: 50%;
+  background: var(--bg-card-alt); border: 2px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0;
+  position: relative;
+  transition: border-color .15s ease;
+}
+.ap-photo-preview.has-photo { border-style: solid; border-color: var(--accent); }
+.ap-photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.ap-photo-placeholder {
+  font-size: 28px; font-weight: 300; color: var(--text-muted);
+}
+.ap-photo-controls {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+}
+.ap-btn-secondary {
+  background: rgba(99,102,241,.10); color: var(--accent-bright);
+  border: 1px solid rgba(99,102,241,.30); padding: 8px 14px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all .15s ease; font-family: inherit;
+}
+.ap-btn-secondary:hover { background: rgba(99,102,241,.20); }
+.ap-btn-link {
+  background: transparent; color: var(--text-muted); border: 0;
+  font-size: 12px; cursor: pointer; padding: 4px 0;
+  text-decoration: underline; font-family: inherit;
+}
+.ap-btn-link:hover { color: var(--red, #ef4444); }
+.ap-photo-advanced {
+  margin-top: 10px; font-size: 12px;
+}
+.ap-photo-advanced summary {
+  cursor: pointer; color: var(--text-muted); padding: 4px 0;
+  user-select: none;
+}
+.ap-photo-advanced summary:hover { color: var(--accent-bright); }
+.ap-photo-advanced[open] summary { margin-bottom: 8px; }
+
 /* Template inspiration library */
 .ap-tpl-wrap { margin-bottom: 12px; }
 .ap-tpl-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
@@ -6090,6 +6142,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <img src="/logo.png" alt="Helvaro">
     </div>
     <nav class="sidebar-nav">
+      <!-- ── Werk (dagelijks) ── -->
       <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         Dashboard
@@ -6098,15 +6151,18 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span>
         Pipeline
       </button>
+      <button class="nav-item" data-page="gesprekken" id="nav-gesprekken">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        Gesprekken
+      </button>
       <button class="nav-item" data-page="calendly" id="nav-calendly">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
         Kalender
         <span class="nav-badge" id="cal-nav-badge" style="display:none">0</span>
       </button>
-      <button class="nav-item" data-page="gesprekken" id="nav-gesprekken">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-        Gesprekken
-      </button>
+
+      <!-- ── Inzicht ── -->
+      <div class="nav-divider"></div>
       <button class="nav-item" data-page="analyse" id="nav-analyse">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>
         Analyse
@@ -6119,6 +6175,23 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         Exports
       </button>
+
+      <!-- ── Setup (zelden) ── -->
+      <div class="nav-divider"></div>
+      <button class="nav-item" data-page="formulier" id="nav-formulier">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
+        Formulier
+      </button>
+      <button class="nav-item" data-page="ai-persona" id="nav-ai-persona">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
+        AI Persoonlijkheid
+      </button>
+      <button class="nav-item" data-page="instellingen" id="nav-instellingen">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        Instellingen
+      </button>
+
+      <!-- ── Admin-only (verborgen voor gewone klanten) ── -->
       <button class="nav-item" data-page="admin" id="nav-admin" style="display:none">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         Klanten
@@ -6126,18 +6199,6 @@ tr:hover .td-arrow { color: var(--cyan); }
       <button class="nav-item" data-page="founder" id="nav-founder" style="display:none">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
         Founder
-      </button>
-      <button class="nav-item" data-page="ai-persona" id="nav-ai-persona">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
-        AI Persoonlijkheid
-      </button>
-      <button class="nav-item" data-page="formulier" id="nav-formulier">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
-        Formulier
-      </button>
-      <button class="nav-item" data-page="instellingen" id="nav-instellingen">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-        Instellingen
       </button>
     </nav>
     <div class="sidebar-bottom">
@@ -6950,14 +7011,31 @@ tr:hover .td-arrow { color: var(--cyan); }
               </div>
             </div>
 
-            <!-- AI Photo URL -->
+            <!-- AI Photo: file picker (with URL fallback) -->
             <div class="ap-field">
               <label class="ap-label">
                 Foto van je AI-persoon
-                <span class="ap-label-hint">leeg = letter-avatar</span>
+                <span class="ap-label-hint">PNG / JPG / WebP — wordt automatisch bijgeknipt</span>
               </label>
-              <input id="ap-photo" type="url" class="ap-input" placeholder="https://...">
-              <div class="ap-hint">URL naar een foto (vierkant, 200×200+ aanbevolen). Verschijnt als avatar op je lead-formulier — leads voelen direct dat ze met een echt persoon chatten.</div>
+              <div class="ap-photo-row">
+                <div class="ap-photo-preview" id="ap-photo-preview" aria-label="Voorbeeld AI foto">
+                  <span class="ap-photo-placeholder">+</span>
+                </div>
+                <div class="ap-photo-controls">
+                  <input type="file" id="ap-photo-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePhotoFile(this)">
+                  <button type="button" class="ap-btn ap-btn-secondary" onclick="document.getElementById('ap-photo-file').click()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Foto kiezen
+                  </button>
+                  <button type="button" class="ap-btn ap-btn-link" id="ap-photo-remove" onclick="removePhoto()" style="display:none">Verwijderen</button>
+                </div>
+              </div>
+              <input id="ap-photo" type="hidden">
+              <details class="ap-photo-advanced">
+                <summary>Geavanceerd: externe URL plakken</summary>
+                <input id="ap-photo-url" type="url" class="ap-input" placeholder="https://..." oninput="handlePhotoUrlInput(this)">
+                <div class="ap-hint">Optioneel — link naar een foto die je elders host (bv. CDN). Wordt overschreven zodra je een bestand kiest.</div>
+              </details>
             </div>
 
             <!-- Brand Color -->
@@ -12632,6 +12710,95 @@ const AP_INSTRUCTION_SNIPPETS = [
   }
 ];
 
+// ── AI Photo file picker ──────────────────────────────────────────────────────
+// Klant kiest een lokale PNG/JPG/WebP → canvas resize naar 256x256 (center-crop) →
+// JPEG quality 0.85 → base64 data URL → opgeslagen in het bestaande ap-photo veld.
+// Resultaat: ~25-50 KB, past makkelijk in Airtable cell limit + form-page HTML.
+const AP_PHOTO_MAX_SIZE = 256;       // px (avatar is 84-200px max, 256 = retina-safe)
+const AP_PHOTO_MAX_BYTES = 200 * 1024;  // matches the server-side cap
+
+function setPhotoPreview(dataUrlOrHttps) {
+  const prev   = document.getElementById('ap-photo-preview');
+  const remove = document.getElementById('ap-photo-remove');
+  const hidden = document.getElementById('ap-photo');
+  if (!prev) return;
+  if (dataUrlOrHttps) {
+    prev.innerHTML = '<img src="' + dataUrlOrHttps.replace(/"/g, '&quot;') + '" alt="AI foto">';
+    prev.classList.add('has-photo');
+    if (remove) remove.style.display = '';
+    if (hidden) hidden.value = dataUrlOrHttps;
+  } else {
+    prev.innerHTML = '<span class="ap-photo-placeholder">+</span>';
+    prev.classList.remove('has-photo');
+    if (remove) remove.style.display = 'none';
+    if (hidden) hidden.value = '';
+  }
+}
+
+function handlePhotoFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+    toast('Alleen PNG, JPG of WebP toegestaan', 'error');
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    toast('Bestand te groot (max 8 MB) — kies een kleinere foto', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        // Center-crop to a square, then scale down to AP_PHOTO_MAX_SIZE
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width  - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        const target = Math.min(AP_PHOTO_MAX_SIZE, minSide);
+        const canvas = document.createElement('canvas');
+        canvas.width  = target;
+        canvas.height = target;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, target, target);
+        // Try JPEG quality 0.85 first; bump down if too big
+        let dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        if (dataUrl.length > AP_PHOTO_MAX_BYTES) dataUrl = canvas.toDataURL('image/jpeg', 0.70);
+        if (dataUrl.length > AP_PHOTO_MAX_BYTES) dataUrl = canvas.toDataURL('image/jpeg', 0.55);
+        if (dataUrl.length > AP_PHOTO_MAX_BYTES) { toast('Foto te complex om te comprimeren — kies een kleinere', 'error'); return; }
+        setPhotoPreview(dataUrl);
+        const urlField = document.getElementById('ap-photo-url');
+        if (urlField) urlField.value = '';  // file wins over external URL
+        toast('Foto klaar — vergeet niet op te slaan', 'success');
+      } catch (err) {
+        console.error(err);
+        toast('Kon de foto niet verwerken', 'error');
+      }
+    };
+    img.onerror = () => toast('Kon de foto niet laden', 'error');
+    img.src = e.target.result;
+  };
+  reader.onerror = () => toast('Bestand kon niet gelezen worden', 'error');
+  reader.readAsDataURL(file);
+}
+
+function handlePhotoUrlInput(input) {
+  const v = (input.value || '').trim();
+  if (v && /^https:\/\//.test(v)) {
+    setPhotoPreview(v);
+  } else if (!v) {
+    setPhotoPreview('');
+  }
+}
+
+function removePhoto() {
+  setPhotoPreview('');
+  const file    = document.getElementById('ap-photo-file');
+  const urlField = document.getElementById('ap-photo-url');
+  if (file) file.value = '';
+  if (urlField) urlField.value = '';
+}
+
 // Localized work-hours preset examples — adapt to the client's chosen lead language.
 // IMPORTANT: any of these (NL ma/di/wo/do/vr/za/zo, FR lun/mar/mer/jeu/ven/sam/dim,
 // EN mon/tue/wed/thu/fri/sat/sun) is parsed correctly by the backend.
@@ -12806,6 +12973,10 @@ async function loadAiPersona() {
     document.getElementById('ap-address').value      = d.address        || '';
     document.getElementById('ap-calendly').value     = d.calendlyLink   || '';
     document.getElementById('ap-photo').value        = d.aiPhotoUrl     || '';
+    // Photo preview: show the current avatar; also fill the URL textbox when it's an external link
+    setPhotoPreview(d.aiPhotoUrl || '');
+    const apPhotoUrlField = document.getElementById('ap-photo-url');
+    if (apPhotoUrlField) apPhotoUrlField.value = (d.aiPhotoUrl && /^https:\/\//.test(d.aiPhotoUrl)) ? d.aiPhotoUrl : '';
     document.getElementById('ap-hours').value        = d.workingHours   || '';
     document.getElementById('ap-badges').value       = d.trustBadges    || '';
     // Booking method + callback window
