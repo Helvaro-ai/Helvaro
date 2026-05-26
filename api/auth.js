@@ -377,7 +377,7 @@ async function sendResetEmailToUser(email, user) {
 
   const RESEND_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_KEY) return { ok: false, error: 'RESEND_API_KEY env var ontbreekt op de server' };
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  const FROM = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method:  'POST',

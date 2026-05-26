@@ -191,7 +191,7 @@ async function sendResendEmail({ subject, html }) {
   const addr = process.env.NOTIFY_EMAIL;
   if (!key)  { console.warn('[resend cron] skipped: RESEND_API_KEY missing'); return; }
   if (!addr) { console.warn('[resend cron] skipped: NOTIFY_EMAIL missing');   return; }
-  const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  const from = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method:  'POST',
@@ -272,7 +272,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
 async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_KEY) { console.warn('[weekly] RESEND_API_KEY missing'); return false; }
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  const FROM = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const fmtTime = s => s == null ? '—' : (s < 60 ? `${s}s` : `${Math.round(s/60)}m`);

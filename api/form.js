@@ -249,7 +249,7 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
   const NOTIFY_EMAIL = (toEmail && toEmail.trim()) || process.env.NOTIFY_EMAIL;
   if (!RESEND_KEY)   { console.warn('[resend form] skipped: RESEND_API_KEY missing'); return; }
   if (!NOTIFY_EMAIL) { console.warn('[resend form] skipped: no per-client Rapport Email + no NOTIFY_EMAIL env'); return; }
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  const FROM = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   try {
   const r = await fetch('https://api.resend.com/emails', {
     method:  'POST',

@@ -821,7 +821,7 @@ async function sendResendEmail({ subject, html }) {
   const to   = process.env.NOTIFY_EMAIL;
   if (!key) { console.warn('[resend leads] skipped: RESEND_API_KEY missing'); return; }
   if (!to)  { console.warn('[resend leads] skipped: NOTIFY_EMAIL missing');   return; }
-  const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  const from = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method:  'POST',
