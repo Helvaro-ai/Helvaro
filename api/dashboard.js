@@ -4,7 +4,7 @@ module.exports = async function handler(req, res) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helvaro — AI Lead Kwalificatie</title>
+<title>Helvaro. AI Lead Kwalificatie</title>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,7 +79,7 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Subtle dot grid — barely visible */
+/* Subtle dot grid. barely visible */
 body::before {
   content: '';
   position: fixed;
@@ -91,7 +91,7 @@ body::before {
   opacity: 0.4;
 }
 
-/* Ambient glow — subtle indigo bloom from top, like Linear */
+/* Ambient glow. subtle indigo bloom from top, like Linear */
 body::after {
   content: '';
   position: fixed;
@@ -167,7 +167,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 /* ============================================================
-   LOGIN PAGE — FULL VIEWPORT SPLIT
+   LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
 #login-page {
   position: fixed;
@@ -181,7 +181,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 #login-page::before { display: none; }
 #login-page::after  { display: none; }
 
-/* Full-screen two-panel split — no card, no border-radius */
+/* Full-screen two-panel split. no card, no border-radius */
 .login-split {
   display: flex;
   width: 100%;
@@ -284,7 +284,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   background-size: 32px 32px;
 }
 
-/* Electric glow orbs — indigo (button) + cyan (logo) */
+/* Electric glow orbs. indigo (button) + cyan (logo) */
 .login-brand-side::after {
   content: '';
   position: absolute;
@@ -1258,7 +1258,7 @@ button.brand-dot { border: none; padding: 0; }
     .profile-action-btn svg { color: var(--accent); flex-shrink: 0; }
 
 /* ============================================================
-   FOUNDER DASHBOARD — cofounder-style layout
+   FOUNDER DASHBOARD. cofounder-style layout
    ============================================================ */
 .fdr-wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
 .fdr-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -5728,7 +5728,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: #6366f1;
 }
 
-/* Topbar — crisp white with soft shadow */
+/* Topbar. crisp white with soft shadow */
 [data-theme="light"] .topbar {
   background: rgba(255,255,255,0.92);
   border-bottom: 1px solid var(--border);
@@ -5743,7 +5743,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background-clip: text;
 }
 
-/* Topbar buttons — dark on white */
+/* Topbar buttons. dark on white */
 [data-theme="light"] .btn-icon {
   background: rgba(15,17,40,0.04);
   border: 1px solid var(--border);
@@ -5767,7 +5767,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(129,140,248,0.2));
 }
 
-/* Stat cards — white with real depth */
+/* Stat cards. white with real depth */
 [data-theme="light"] .stat-card {
   background: #ffffff;
   box-shadow: var(--shadow-card);
@@ -5872,7 +5872,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   opacity: 1;
 }
 
-/* Colored stat values — keep glow but lighter */
+/* Colored stat values. keep glow but lighter */
 [data-theme="light"] .stat-value { text-shadow: none; color: #0f1117; }
 [data-theme="light"] .stat-value.cyan   { color: #4f46e5; text-shadow: none; }
 [data-theme="light"] .stat-value.green  { color: #16a34a; text-shadow: none; }
@@ -5924,7 +5924,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: #f5f6fb;
 }
 
-/* Nav item — cleaner active indicator */
+/* Nav item. cleaner active indicator */
 [data-theme="light"] .nav-item.active {
   background: linear-gradient(90deg, rgba(99,102,241,0.1), rgba(99,102,241,0.04));
 }
@@ -6257,7 +6257,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- Dashboard Page -->
     <main class="page-content page active" id="page-dashboard">
 
-      <!-- Form Link banner — quick access to the lead form URL -->
+      <!-- Form Link banner. quick access to the lead form URL -->
       <div class="dash-formlink" id="dash-formlink">
         <div class="dash-formlink-icon"></div>
         <div class="dash-formlink-body">
@@ -6641,9 +6641,9 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
             <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
               <div style="font-weight:600;margin-bottom:10px;color:var(--green)">Klant aangemaakt</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Stuur zelf de welkomstmail vanuit je eigen mailbox — klik op de knop hieronder om een kant-en-klare tekst te kopiëren.</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Stuur zelf de welkomstmail vanuit je eigen mailbox. klik op de knop hieronder om een kant-en-klare tekst te kopiëren.</div>
 
-              <!-- Login credentials (only shown when user record was created — primary action!) -->
+              <!-- Login credentials (only shown when user record was created. primary action!) -->
               <div id="nc-result-login-block" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:10px 12px;margin-bottom:10px">
                 <div style="font-size:11px;color:var(--accent-bright);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Login credentials</div>
                 <div style="font-size:12px;display:flex;flex-direction:column;gap:4px">
@@ -6700,7 +6700,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </button>
         </div>
 
-        <!-- Attendance banner — appears 5h after appointment -->
+        <!-- Attendance banner. appears 5h after appointment -->
         <div class="cal-attendance-banner" id="cal-attendance-banner">
           <div class="cal-att-banner-title">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -6808,12 +6808,12 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="analyse-card-title">Leads per Weekdag</div>
           <canvas id="analyse-days-chart" height="120"></canvas>
         </div>
-        <!-- Lead score distribution — spans 2 cols -->
+        <!-- Lead score distribution. spans 2 cols -->
         <div class="analyse-card analyse-card-span2">
           <div class="analyse-card-title">Score Verdeling</div>
           <canvas id="analyse-score-chart" height="100"></canvas>
         </div>
-        <!-- Avg response time — col 3 beside score chart -->
+        <!-- Avg response time. col 3 beside score chart -->
         <div class="analyse-card">
           <div class="analyse-card-title">Gemiddelde Reactietijd</div>
           <div id="analyse-response-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding-top:16px">
@@ -6844,7 +6844,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="ap-welcome-title">Welkom bij Helvaro! Eerst even dit invullen.</div>
             <div class="ap-welcome-sub">
               Vul minimaal je <b>AI naam</b>, een <b>welkomstbericht</b> en je <b>website</b> of <b>AI-instructies</b> in.
-              Daarna werkt je AI vanaf de eerste lead — je kan alles later nog aanpassen.
+              Daarna werkt je AI vanaf de eerste lead. je kan alles later nog aanpassen.
             </div>
             <div class="ap-welcome-checks" id="ap-welcome-checks"></div>
           </div>
@@ -6865,7 +6865,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">de naam die leads zien in elk bericht</span>
               </label>
               <input id="ap-name" type="text" class="ap-input" placeholder="Sara De Vos" maxlength="60">
-              <div class="ap-hint">Tip: gebruik de naam van een echte medewerker — leads voelen dat ze met een mens chatten. Laat leeg voor standaard <em>Mathis Willems</em>.</div>
+              <div class="ap-hint">Tip: gebruik de naam van een echte medewerker. leads voelen dat ze met een mens chatten. Laat leeg voor standaard <em>Mathis Willems</em>.</div>
             </div>
 
             <!-- Auto-Reply Template -->
@@ -6973,7 +6973,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>Een collega contacteert ze</span></label>
               </div>
               <div class="ap-hint" id="ap-booking-hint-calendly" style="display:none;">Lead krijgt automatisch je Calendly link om zelf een moment te kiezen. Vul hierboven de Calendly link in.</div>
-              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen Calendly nodig — jij krijgt een melding op je notificatie-nummer.</div>
+              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen Calendly nodig. jij krijgt een melding op je notificatie-nummer.</div>
             </div>
 
             <!-- Callback Window (only shown if callback selected) -->
@@ -7010,11 +7010,11 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="ap-field">
               <label class="ap-label">
                 Werkuren
-                <span class="ap-label-hint">context voor de AI — gesprek loopt altijd door</span>
+                <span class="ap-label-hint">context voor de AI. gesprek loopt altijd door</span>
               </label>
               <input id="ap-hours" type="text" class="ap-input" placeholder="ma-vr 9-18">
               <div class="ap-hint">
-                Format: <span id="ap-hours-format-list"><code>ma-vr 9-18</code>, <code>ma-za 8-20</code>, <code>di-za 10-18</code></span>. De AI is 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
+                Format: <span id="ap-hours-format-list"><code>ma-vr 9-18</code>, <code>ma-za 8-20</code>, <code>di-za 10-18</code></span>. De AI is 24/7 actief. werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
                 Voorbeelden:
                 <span id="ap-hours-chips"></span>
               </div>
@@ -7036,7 +7036,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="ap-field">
               <label class="ap-label">
                 Foto van je AI-persoon
-                <span class="ap-label-hint">PNG / JPG / WebP — wordt automatisch bijgeknipt</span>
+                <span class="ap-label-hint">PNG / JPG / WebP. wordt automatisch bijgeknipt</span>
               </label>
               <div class="ap-photo-row">
                 <div class="ap-photo-preview" id="ap-photo-preview" aria-label="Voorbeeld AI foto">
@@ -7055,7 +7055,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <details class="ap-photo-advanced">
                 <summary>Geavanceerd: externe URL plakken</summary>
                 <input id="ap-photo-url" type="url" class="ap-input" placeholder="https://..." oninput="handlePhotoUrlInput(this)">
-                <div class="ap-hint">Optioneel — link naar een foto die je elders host (bv. CDN). Wordt overschreven zodra je een bestand kiest.</div>
+                <div class="ap-hint">Optioneel. link naar een foto die je elders host (bv. CDN). Wordt overschreven zodra je een bestand kiest.</div>
               </details>
             </div>
 
@@ -7078,7 +7078,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Tekst op de lead-form (optioneel)
                 <span class="ap-label-hint">eigen welkomstboodschap</span>
               </label>
-              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey ik help je graag — laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
+              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey ik help je graag. laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
               <div class="ap-hint">Verschijnt als chat-bubbel bovenaan je lead-form (onder de avatar). Leeg = automatische sector-tekst. Placeholders: <code>{ai}</code>, <code>{bedrijf}</code>.</div>
             </div>
 
@@ -7115,7 +7115,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <!-- Test send -->
               <div class="ap-test-card">
                 <div class="ap-test-title">Stuur jezelf een test</div>
-                <p class="ap-test-sub">Voer je telefoonnummer in — je krijgt het welkomstbericht via WhatsApp.</p>
+                <p class="ap-test-sub">Voer je telefoonnummer in. je krijgt het welkomstbericht via WhatsApp.</p>
                 <div class="ap-test-row">
                   <input id="ap-test-phone" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0466 35 84 27">
                   <button class="ap-btn" id="ap-test-btn" onclick="sendTestMessage()">
@@ -7126,7 +7126,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <div class="ap-test-result" id="ap-test-result"></div>
               </div>
 
-              <!-- Form Link compact card — points to dedicated Formulier page -->
+              <!-- Form Link compact card. points to dedicated Formulier page -->
               <div class="ap-formlink-card">
                 <div class="ap-test-title">Jouw lead-formulier</div>
                 <p class="ap-test-sub">Deel deze link via je website, advertenties of socials.</p>
@@ -7150,11 +7150,11 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
-    <!-- Formulier Page — share your lead form link in 3 ways -->
+    <!-- Formulier Page. share your lead form link in 3 ways -->
     <main class="page-content page" id="page-formulier">
       <div class="fm-wrap">
 
-        <!-- Form submission stats — what's the form actually delivering -->
+        <!-- Form submission stats. what's the form actually delivering -->
         <div class="fm-stats">
           <div class="fm-stat-card">
             <div class="fm-stat-num" id="fm-stat-week">—</div>
@@ -7264,7 +7264,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               </button>
             </div>
             <div class="fm-instructions">
-              <strong>Hoe te plakken:</strong> plak op de plek waar je het formulier wil tonen — meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
+              <strong>Hoe te plakken:</strong> plak op de plek waar je het formulier wil tonen. meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
             </div>
           </div>
 
@@ -7285,7 +7285,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
         </div>
 
-        <!-- Installation guide — platform-specific step-by-step -->
+        <!-- Installation guide. platform-specific step-by-step -->
         <div class="fm-guide-card">
           <div class="fm-guide-hdr">
             <div class="fm-option-title">️ Installatie-handleiding per platform</div>
@@ -7300,22 +7300,22 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span class="fm-guide-meta">2 manieren</span>
             </summary>
             <div class="fm-guide-body">
-              <p><strong>Optie A — Via plugin (makkelijkst, géén code in je theme):</strong></p>
+              <p><strong>Optie A. Via plugin (makkelijkst, géén code in je theme):</strong></p>
               <ol>
                 <li>In WP dashboard → <strong>Plugins</strong> → <strong>Nieuwe plugin</strong></li>
                 <li>Zoek naar <em>"Insert Headers and Footers"</em> (door WPBeginner) → <strong>Installeer</strong> → <strong>Activeer</strong></li>
                 <li>Ga naar <strong>Instellingen</strong> → <strong>Insert Headers and Footers</strong></li>
                 <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Scripts in Footer"</strong></li>
-                <li>Klik <strong>Save</strong> — klaar! Ververs je site, je ziet de knop rechtsonder.</li>
+                <li>Klik <strong>Save</strong>. klaar! Ververs je site, je ziet de knop rechtsonder.</li>
               </ol>
-              <p><strong>Optie B — Direct in theme (voor developers):</strong></p>
+              <p><strong>Optie B. Direct in theme (voor developers):</strong></p>
               <ol>
                 <li>WP dashboard → <strong>Uiterlijk</strong> → <strong>Theme Editor</strong></li>
                 <li>Open <code>footer.php</code> in de rechter kolom</li>
                 <li>Plak de code <em>vlak voor</em> de <code>&lt;/body&gt;</code> tag</li>
                 <li>Klik <strong>Bestand bijwerken</strong></li>
               </ol>
-              <div class="fm-guide-tip"><strong>Tip:</strong> Optie A overleeft theme-updates. Optie B niet — kies daarom A tenzij je weet wat je doet.</div>
+              <div class="fm-guide-tip"><strong>Tip:</strong> Optie A overleeft theme-updates. Optie B niet. kies daarom A tenzij je weet wat je doet.</div>
             </div>
           </details>
 
@@ -7335,7 +7335,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Plak de Drijvende WhatsApp-knop code op de regel <em>vlak boven</em> <code>&lt;/body&gt;</code></li>
                 <li>Klik <strong>Save</strong> rechtsboven</li>
               </ol>
-              <div class="fm-guide-tip">De knop verschijnt op élke pagina van je winkel — productpagina's, collectiepagina's, blog, alles.</div>
+              <div class="fm-guide-tip">De knop verschijnt op élke pagina van je winkel. productpagina's, collectiepagina's, blog, alles.</div>
             </div>
           </details>
 
@@ -7354,10 +7354,10 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Plak de Drijvende WhatsApp-knop code in het tekstvak</li>
                 <li>Geef het een naam: bv. <em>"Helvaro Lead Form"</em></li>
                 <li>Bij <strong>Add Code to Pages</strong>: kies <strong>All Pages</strong> + <strong>Load code once</strong></li>
-                <li>Bij <strong>Place Code in</strong>: kies <strong>Body — end</strong></li>
+                <li>Bij <strong>Place Code in</strong>: kies <strong>Body. end</strong></li>
                 <li>Klik <strong>Apply</strong> → publiceer je site</li>
               </ol>
-              <div class="fm-guide-tip">️ Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code — gebruik dan de directe link of QR-code.</div>
+              <div class="fm-guide-tip">️ Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code. gebruik dan de directe link of QR-code.</div>
             </div>
           </details>
 
@@ -7425,7 +7425,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span class="fm-guide-meta">enkel iframe</span>
             </summary>
             <div class="fm-guide-body">
-              <p>Google Sites ondersteunt geen <code>&lt;script&gt;</code> tags — daarom werkt de drijvende WhatsApp-knop niet. Gebruik in plaats daarvan de <strong>iframe embed</strong>:</p>
+              <p>Google Sites ondersteunt geen <code>&lt;script&gt;</code> tags. daarom werkt de drijvende WhatsApp-knop niet. Gebruik in plaats daarvan de <strong>iframe embed</strong>:</p>
               <ol>
                 <li>Open je Google Sites pagina</li>
                 <li>Klik <strong>Insert</strong> → <strong>Embed</strong></li>
@@ -7459,7 +7459,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <!-- Test instructions -->
           <div class="fm-guide-test">
             <strong>Hoe weet ik of het werkt?</strong>
-            Open je site in een privé/incognito venster. Wacht 2 seconden. Je moet een ronde blauwe chat-knop rechtsonder zien staan. Klik erop — het Helvaro formulier opent als pop-up. Vul een test-aanvraag in om te checken of het lead in je dashboard verschijnt.
+            Open je site in een privé/incognito venster. Wacht 2 seconden. Je moet een ronde blauwe chat-knop rechtsonder zien staan. Klik erop. het Helvaro formulier opent als pop-up. Vul een test-aanvraag in om te checken of het lead in je dashboard verschijnt.
           </div>
         </div>
 
@@ -7726,7 +7726,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="fdr-hero-left">
             <div class="fdr-day" id="fdr-dayname">—</div>
             <div class="fdr-date" id="fdr-date">—</div>
-            <div class="fdr-subtitle">Helvaro — Roadmap naar 5 klanten</div>
+            <div class="fdr-subtitle">Helvaro. Roadmap naar 5 klanten</div>
             <div class="fdr-persona-greeting" id="fdr-persona-greeting"></div>
           </div>
           <div class="fdr-hero-right">
@@ -7767,7 +7767,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <!-- Goal: 5 clients -->
             <div class="fdr-panel fdr-goal-panel">
               <div class="fdr-goal-hdr">
-                <span>Doel — 5 klanten voor 20 jun</span>
+                <span>Doel. 5 klanten voor 20 jun</span>
                 <button class="fdr-refresh-btn" onclick="loadFounderData(true)">↻</button>
               </div>
               <div class="fdr-goal-big">
@@ -7883,7 +7883,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <div>
               <div class="fdr-hub-title">Content Hub</div>
-              <div class="fdr-hub-sub" id="fdr-hub-sub">LinkedIn & Instagram posts — klaar om te plaatsen</div>
+              <div class="fdr-hub-sub" id="fdr-hub-sub">LinkedIn & Instagram posts. klaar om te plaatsen</div>
             </div>
           </div>
 
@@ -7930,7 +7930,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="fdr-hub-body">
             <div class="fdr-hub-output" id="fdr-hub-output"></div>
             <div class="fdr-hub-empty" id="fdr-hub-empty">
-              Kies een platform, type en sector — klik op Genereer.<br>
+              Kies een platform, type en sector. klik op Genereer.<br>
               De post wordt gecached en staat morgen automatisch klaar met nieuwe content.
             </div>
             <div class="fdr-hub-footer">
@@ -7963,7 +7963,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <div>
               <div class="fdr-dm-title">Gepersonaliseerde DM / Email</div>
-              <div class="fdr-dm-sub">Kies een prospect — AI schrijft een bericht op maat</div>
+              <div class="fdr-dm-sub">Kies een prospect. AI schrijft een bericht op maat</div>
             </div>
           </div>
           <div class="fdr-dm-controls">
@@ -7981,7 +7981,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <div class="fdr-dm-body">
             <div class="fdr-dm-output" id="fdr-dm-output"></div>
-            <div class="fdr-dm-empty" id="fdr-dm-empty">Selecteer een bedrijf hierboven — de DM wordt geschreven op basis van hun sector, fase en eventuele notities.</div>
+            <div class="fdr-dm-empty" id="fdr-dm-empty">Selecteer een bedrijf hierboven. de DM wordt geschreven op basis van hun sector, fase en eventuele notities.</div>
             <button class="fdr-dm-copy-btn" id="fdr-dm-copy" onclick="copyDm()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
               Kopieer
@@ -7997,7 +7997,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="fdr-outreach-box">
           <div class="fdr-outreach-hdr">
             <div>
-              <div class="fdr-outreach-title">Outreach Teller — Teljo</div>
+              <div class="fdr-outreach-title">Outreach Teller. Teljo</div>
               <div class="fdr-outreach-week" id="fdr-outreach-week">Week van —</div>
             </div>
             <button class="fdr-outreach-reset" onclick="resetOutreach()">Week resetten</button>
@@ -8038,7 +8038,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               </div>
             </div>
             <div class="fdr-outreach-footer">
-              <span class="fdr-outreach-pct" id="or-total-pct">Totaal: 0 acties — 0% van weekdoel (43)</span>
+              <span class="fdr-outreach-pct" id="or-total-pct">Totaal: 0 acties. 0% van weekdoel (43)</span>
               <span></span>
             </div>
             <div class="fdr-outreach-bar-wrap" style="margin-top:10px">
@@ -8054,8 +8054,8 @@ tr:hover .td-arrow { color: var(--cyan); }
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             </div>
             <div>
-              <div class="fdr-bouw-title">Bouw Tracker — Frade</div>
-              <div class="fdr-bouw-sub">Technische taken — vink af wat klaar is</div>
+              <div class="fdr-bouw-title">Bouw Tracker. Frade</div>
+              <div class="fdr-bouw-sub">Technische taken. vink af wat klaar is</div>
             </div>
           </div>
           <div class="fdr-bouw-body">
@@ -8077,7 +8077,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               </div>
               <div>
                 <div class="fdr-docs-title">Documenten & Presentaties</div>
-                <div class="fdr-docs-sub">Gedeeld tussen Frade &amp; Teljo — altijd online bereikbaar</div>
+                <div class="fdr-docs-sub">Gedeeld tussen Frade &amp; Teljo. altijd online bereikbaar</div>
               </div>
             </div>
             <button class="fdr-docs-edit-btn" onclick="toggleDocsConfig()">Links instellen</button>
@@ -8101,7 +8101,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="fdr-doc-card-badge pdf">PDF</span>
                 <div class="fdr-doc-card-icon"></div>
                 <div class="fdr-doc-card-name">Contracten</div>
-                <div class="fdr-doc-card-desc">Klantcontracten — 3 maanden + maandelijks</div>
+                <div class="fdr-doc-card-desc">Klantcontracten. 3 maanden + maandelijks</div>
               </a>
               <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-prijslijst" target="_blank" rel="noopener">
                 <span class="fdr-doc-card-badge pdf">PDF</span>
@@ -8207,7 +8207,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <button class="fdr-chat-clear" onclick="clearCoachChat()">Wis chat</button>
           </div>
           <div class="fdr-chat-msgs" id="fdr-chat-msgs">
-            <div class="fdr-chat-bubble assistant">Dag! Ik ben je Helvaro business coach. Stel me een vraag over sales, outreach, demo's of strategie — ik geef je direct concrete stappen.</div>
+            <div class="fdr-chat-bubble assistant">Dag! Ik ben je Helvaro business coach. Stel me een vraag over sales, outreach, demo's of strategie. ik geef je direct concrete stappen.</div>
           </div>
           <div class="fdr-chat-input-row">
             <textarea class="fdr-chat-input" id="fdr-chat-input" placeholder="Stel een vraag..." rows="1" onkeydown="chatInputKeydown(event)"></textarea>
@@ -8220,7 +8220,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
-    <!-- Persona picker (Frade / Teljo) — shown right after login -->
+    <!-- Persona picker (Frade / Teljo). shown right after login -->
     <div id="persona-overlay">
       <div class="persona-modal">
         <h2>Wie ben je?</h2>
@@ -8245,7 +8245,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="onb-done-card">
         <div class="onb-done-icon"></div>
         <h2 class="onb-done-title">Je AI is live!</h2>
-        <p class="onb-done-sub">Vanaf nu krijgt elke lead die jouw formulier invult direct een persoonlijk WhatsApp-bericht — automatisch gekwalificeerd.</p>
+        <p class="onb-done-sub">Vanaf nu krijgt elke lead die jouw formulier invult direct een persoonlijk WhatsApp-bericht. automatisch gekwalificeerd.</p>
         <div class="onb-done-url-card">
           <div class="onb-done-url-lbl">DEEL DEZE LINK</div>
           <code class="onb-done-url" id="onb-done-url">—</code>
@@ -8431,7 +8431,7 @@ const API_BASE = '/api';
 /* ============================================================
    UTILITY FUNCTIONS
    ============================================================ */
-// Escape user data before inserting into innerHTML — prevents XSS
+// Escape user data before inserting into innerHTML. prevents XSS
 function escHtml(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -8539,7 +8539,7 @@ function dismissToast(el) {
 }
 
 /* ============================================================
-   THEME — locked dark to match helvaro.pro brand
+   THEME. locked dark to match helvaro.pro brand
    ============================================================ */
 function initTheme() {
   const saved = localStorage.getItem('hv-theme') || 'light';
@@ -8595,7 +8595,7 @@ function tryAutoLogin() {
   const key = localStorage.getItem('hvk');
   const exp = parseInt(localStorage.getItem('hv-exp') || '0', 10);
   if (!key) return false;
-  // Expire after 24 hours — clear stale session
+  // Expire after 24 hours. clear stale session
   if (Date.now() > exp) { clearSession(); return false; }
   state.apiKey     = key;
   state.clientName = localStorage.getItem('hv-client') || '';
@@ -8603,7 +8603,7 @@ function tryAutoLogin() {
   return true;
 }
 
-// Ask for confirmation before logging out — voorkomt accidental clicks
+// Ask for confirmation before logging out. voorkomt accidental clicks
 // (vooral op mobile waar de Uitloggen-knop dicht bij andere navigatie zit).
 function logout() {
   showConfirmModal({
@@ -8627,9 +8627,9 @@ function performLogout() {
   document.getElementById('login-error').classList.remove('visible');
 }
 
-// Generic confirmation modal — injected dynamically so it doesn't pollute HTML.
+// Generic confirmation modal. injected dynamically so it doesn't pollute HTML.
 // Matches the project's modal style (dark overlay, rounded card, gap-12).
-// Esc/click-outside cancels; Enter confirms. Returns nothing — uses callbacks.
+// Esc/click-outside cancels; Enter confirms. Returns nothing. uses callbacks.
 function showConfirmModal({ title, message, confirmText, cancelText, danger, onConfirm, onCancel }) {
   // Remove any existing instance first (defensive)
   const existing = document.getElementById('confirm-modal');
@@ -8698,13 +8698,13 @@ async function fetchLeads() {
   return resp.json();
 }
 
-// Called when any authenticated fetch returns 401 — token expired or invalidated.
+// Called when any authenticated fetch returns 401. token expired or invalidated.
 // Wipes the session and shows the login screen so the user can re-auth.
 let _authExpiredHandled = false;
 function handleAuthExpired() {
   if (_authExpiredHandled) return;
   _authExpiredHandled = true;
-  try { toast('Je sessie is verlopen — log opnieuw in', 'info'); } catch (e) {}
+  try { toast('Je sessie is verlopen. log opnieuw in', 'info'); } catch (e) {}
   setTimeout(() => {
     try { clearSession(); } catch (e) {}
     try { sessionStorage.removeItem('hv-setup-checked'); } catch (e) {}
@@ -8846,7 +8846,7 @@ function loadLeadsFromLS() {
 }
 
 // Populate the small Form Link banner above the dashboard stats grid.
-// Idempotent — safe to call from refreshData() every cycle.
+// Idempotent. safe to call from refreshData() every cycle.
 function populateDashFormLink() {
   const urlEl  = document.getElementById('dash-formlink-url');
   const openEl = document.getElementById('dash-formlink-open');
@@ -8869,7 +8869,7 @@ async function refreshData(skipFetch = false) {
       const data = await fetchLeads();
 
       if (data.rateLimited || data.stale) {
-        // Airtable is busy — keep whatever data we already have in state.
+        // Airtable is busy. keep whatever data we already have in state.
         // Fall back to localStorage if state is empty (e.g. first load after reload).
         if (!state.leads || state.leads.length === 0) {
           const lsCache = loadLeadsFromLS();
@@ -8879,10 +8879,10 @@ async function refreshData(skipFetch = false) {
           }
         }
         const ts = document.getElementById('timestamp-info');
-        if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet — vorige data weergegeven';
+        if (ts) ts.textContent = data.stale ? 'Gecachte data (Airtable bezet)' : 'Tijdelijk bezet. vorige data weergegeven';
         // Still re-render with whatever we have (so UI shows cached data)
       } else {
-        // Fresh successful response — update state and persist to localStorage
+        // Fresh successful response. update state and persist to localStorage
         state.leads    = data.leads || [];
         state.stats    = data.stats || {};
         state.clientName  = data.client?.naam    || 'Gebruiker';
@@ -8891,7 +8891,7 @@ async function refreshData(skipFetch = false) {
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
       }
     }
-    // When skipFetch=true, state is already populated by init() — go straight to render
+    // When skipFetch=true, state is already populated by init(). go straight to render
 
     updateUserInfo();
     renderStats();
@@ -8975,7 +8975,7 @@ async function refreshData(skipFetch = false) {
     }
   } catch (err) {
     const ts = document.getElementById('timestamp-info');
-    if (ts) ts.textContent = 'Verbinding mislukt — opnieuw proberen over 90s';
+    if (ts) ts.textContent = 'Verbinding mislukt. opnieuw proberen over 90s';
     console.warn('refreshData error:', err.message);
   } finally {
     if (btn) btn.classList.remove('spin');
@@ -8996,7 +8996,7 @@ setInterval(updateTimestamp, 60000);
 // Poll for new leads every 5 minutes with random startup jitter (30–90s) so
 // multiple dashboard sessions never fire simultaneously and stay well below
 // Airtable's 5 req/s base-level rate limit.
-const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes — halved Airtable polling load
+const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes. halved Airtable polling load
 const pollJitter    = Math.random() * 60000 + 30000; // 30–90s startup offset
 setTimeout(() => {
   if (state.apiKey) refreshData();
@@ -9009,7 +9009,7 @@ setTimeout(() => {
 function detectNewLeads(leads) {
   const ids = new Set(leads.map(l => l.id));
   if (state.knownLeadIds === null) {
-    // First load — just store IDs, no notification
+    // First load. just store IDs, no notification
     state.knownLeadIds = ids;
     return;
   }
@@ -9023,7 +9023,7 @@ function detectNewLeads(leads) {
   // Browser notification
   if (Notification.permission === 'granted') {
     fresh.forEach(l => {
-      new Notification('Nieuwe lead — ' + (l.naam || 'Onbekend'), {
+      new Notification('Nieuwe lead. ' + (l.naam || 'Onbekend'), {
         body: 'Telefoon: ' + (l.telefoon || '—'),
         icon: '/favicon.png'
       });
@@ -9167,7 +9167,7 @@ function renderBronChart() {
 }
 
 /* ============================================================
-   ADMIN — MULTI-CLIENT (Feature 4)
+   ADMIN. MULTI-CLIENT (Feature 4)
    ============================================================ */
 async function loadAdminClients() {
   const grid = document.getElementById('admin-grid');
@@ -9376,13 +9376,13 @@ async function submitNewClient() {
   }
 }
 
-// Build the ready-to-paste welcome email text (plain text, no HTML — fits any mailbox)
+// Build the ready-to-paste welcome email text (plain text, no HTML. fits any mailbox)
 function buildWelcomeEmailText(d) {
   if (!d || !d.clientName) return '';
   const lines = [
     'Hé ' + d.clientName + ',',
     '',
-    'Welkom bij Helvaro — je account staat klaar.',
+    'Welkom bij Helvaro. je account staat klaar.',
     '',
     'Dashboard: https://app.helvaro.pro/dashboard'
   ];
@@ -9399,7 +9399,7 @@ function buildWelcomeEmailText(d) {
   lines.push('Eerste 3 stappen:');
   lines.push('   1. Log in op je dashboard');
   lines.push('   2. Open AI Persoonlijkheid en pas de AI-naam + welkomstbericht aan');
-  lines.push('   3. Test zelf je formulier — je krijgt direct WhatsApp van je AI');
+  lines.push('   3. Test zelf je formulier. je krijgt direct WhatsApp van je AI');
   lines.push('');
   lines.push('Vragen? Antwoord gewoon op deze mail.');
   lines.push('');
@@ -9409,7 +9409,7 @@ function buildWelcomeEmailText(d) {
 
 function buildWelcomeMailto(d) {
   if (!d || !d.email) return '#';
-  const subject = encodeURIComponent('Welkom bij Helvaro — je account is klaar');
+  const subject = encodeURIComponent('Welkom bij Helvaro. je account is klaar');
   const body    = encodeURIComponent(buildWelcomeEmailText(d).replace(/\\\\n/g, '\\n'));
   return 'mailto:' + encodeURIComponent(d.email) + '?subject=' + subject + '&body=' + body;
 }
@@ -9422,9 +9422,9 @@ function copyWelcomeEmail() {
     const btn = document.getElementById('nc-copy-mail-btn');
     if (!btn) return;
     const orig = btn.innerHTML;
-    btn.innerHTML = 'Gekopieerd — plak in je mail';
+    btn.innerHTML = 'Gekopieerd. plak in je mail';
     setTimeout(() => { btn.innerHTML = orig; }, 2500);
-  }).catch(() => toast('Kopiëren mislukt — kopieer handmatig', 'error'));
+  }).catch(() => toast('Kopiëren mislukt. kopieer handmatig', 'error'));
 }
 
 function copyNcField(srcId, btnId) {
@@ -10102,7 +10102,7 @@ function openPanel(lead) {
     </div>\`).join('');
   }
 
-  // Afspraak Resultaat — only show when appointment is booked
+  // Afspraak Resultaat. only show when appointment is booked
   if (lead.afspraakGeboekt) {
     const af = nData.afspraak || {};
     const isYes = af.verschenen === true;
@@ -10430,7 +10430,7 @@ async function loadReplySuggestions() {
       escHtml(text).replace(/"/g, '&quot;') + '">' + escHtml(text) + '</button>'
     ).join('');
   } catch (err) {
-    toast('Netwerkfout — probeer opnieuw', 'error');
+    toast('Netwerkfout. probeer opnieuw', 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -10481,7 +10481,7 @@ async function sendWhatsAppReply() {
     input.value = '';
     toast('Verzonden via WhatsApp', 'success');
   } catch (err) {
-    toast('Netwerkfout — probeer opnieuw', 'error');
+    toast('Netwerkfout. probeer opnieuw', 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -10617,7 +10617,7 @@ function openCalEvent(idx) {
   const durLbl  = durH > 0 ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`) : \`\${durMin}min\`;
   const rows = [
     { label: 'Datum',   val: fmtD(start) },
-    { label: 'Tijd',    val: fmtT(start) + ' – ' + fmtT(end) },
+    { label: 'Tijd',    val: fmtT(start) + '. ' + fmtT(end) },
     { label: 'Duur',    val: durLbl },
     { label: 'Type',    val: ev.eventType || '—' },
     { label: 'E-mail',  val: ev.email     || '—' },
@@ -10649,7 +10649,7 @@ function openCalEvent(idx) {
       const notitie  = escHtml(nd.afspraak?.notitie || '');
 
       if (v === true) {
-        // Already marked as came — show result + stored deal info
+        // Already marked as came. show result + stored deal info
         attSection = \`<div class="cal-modal-att-section">
           <div class="cal-modal-att-label">Afspraak resultaat</div>
           <div class="cal-modal-att-result yes">
@@ -10660,7 +10660,7 @@ function openCalEvent(idx) {
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
         </div>\`;
       } else if (v === false) {
-        // Already marked as no-show — show result + reason
+        // Already marked as no-show. show result + reason
         attSection = \`<div class="cal-modal-att-section">
           <div class="cal-modal-att-label">Afspraak resultaat</div>
           <div class="cal-modal-att-result no">
@@ -10670,7 +10670,7 @@ function openCalEvent(idx) {
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
         </div>\`;
       } else {
-        // Not yet marked — show buttons
+        // Not yet marked. show buttons
         attSection = \`<div class="cal-modal-att-section" id="cal-att-section-\${lid}">
           <div class="cal-modal-att-label">Kwam deze persoon?</div>
           <div class="cal-modal-att-btns">
@@ -10693,7 +10693,7 @@ function calAttShowForm(leadId, verschenen) {
 
   if (verschenen) {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — Gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat. Gekomen</div>
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Hebben ze iets gekocht? (optioneel)</div>
@@ -10709,7 +10709,7 @@ function calAttShowForm(leadId, verschenen) {
       </div>\`;
   } else {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — Niet gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat. Niet gekomen</div>
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Reden / notitie (optioneel)</div>
@@ -10732,7 +10732,7 @@ function calAttStartEdit(leadId, verschenen) {
 
   if (verschenen) {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — Gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat. Gekomen</div>
       <div class="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Deal waarde</div>
@@ -10746,7 +10746,7 @@ function calAttStartEdit(leadId, verschenen) {
       </div>\`;
   } else {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — Niet gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat. Niet gekomen</div>
       <div class="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Notitie</div>
@@ -10823,7 +10823,7 @@ function updateCalBadge(events) {
 
 /* ── Week Calendar ── */
 const CAL_START_HOUR = 8;
-const CAL_HOURS      = 13;   // 8 AM – 9 PM
+const CAL_HOURS      = 13;   // 8 AM. 9 PM
 const CAL_ROW_H      = 80;
 
 const calState = { weekStart: null, cache: {}, lastEvents: [] };
@@ -11008,7 +11008,7 @@ function renderCalBookBody() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         Bevestig \${hh}:\${mm} in Calendly
       </a>
-      <div class="cb-confirm-note">Calendly opent in een nieuw venster — naam &amp; e-mail zijn alvast ingevuld</div>
+      <div class="cb-confirm-note">Calendly opent in een nieuw venster. naam &amp; e-mail zijn alvast ingevuld</div>
     </div>\`;
   }
 
@@ -11272,7 +11272,7 @@ async function markAttendance(leadId, verschenen, gesloten, notitie) {
     const fields = { notities: notitiesStr };
     if (geslotenClean) fields.dealWaarde = geslotenClean;
     await patchLead(leadId, fields);
-    toast(verschenen ? 'Opgeslagen — gekomen' : 'Opgeslagen — niet gekomen', 'success');
+    toast(verschenen ? 'Opgeslagen. gekomen' : 'Opgeslagen. niet gekomen', 'success');
   } catch(e) {
     toast('Opslaan mislukt', 'error');
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
@@ -11348,7 +11348,7 @@ async function renderCalendar() {
   const endM   = days[6].toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
   const label  = startM === days[6].toLocaleDateString('nl-NL', { month: 'short' })
     ? days[0].toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })
-    : startM + ' – ' + endM;
+    : startM + '. ' + endM;
   const rangeEl = document.getElementById('cal-range-label');
   if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
 
@@ -11454,13 +11454,13 @@ async function renderCalendar() {
           bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}</div>\`;
         } else if (height < 50) {
           // Small: time + name
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\`;
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\`;
         } else if (height < 72) {
           // Medium: time range + name + duration
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div><div class="cal-event-dur">⏱ \${durLbl}</div>\`;
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div><div class="cal-event-dur">⏱ \${durLbl}</div>\`;
         } else {
           // Tall: full info
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm} – \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}<div class="cal-event-dur">⏱ \${durLbl}</div>\`;
+          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}<div class="cal-event-dur">⏱ \${durLbl}</div>\`;
         }
         return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${durLbl})" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
       }).join('');
@@ -11515,7 +11515,7 @@ function renderProfile() {
   if (nameEl)  nameEl.textContent = s.clientName || '—';
   if (emailEl) emailEl.textContent = s.userEmail || localStorage.getItem('hv-email') || '—';
 
-  // Calendly — wire connect button
+  // Calendly. wire connect button
   const connectBtn = document.getElementById('pf-connect-btn');
   if (connectBtn) connectBtn.href = \`/api/calendly-oauth-start?key=\${s.apiKey}\`;
 
@@ -11630,7 +11630,7 @@ function navigateTo(page) {
     analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
     instellingen: { title: 'Instellingen',  sub: 'Beheer uw accountinstellingen' },
     activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
-    founder:      { title: 'Founder',       sub: 'Jouw startup — alles in één oogopslag' }
+    founder:      { title: 'Founder',       sub: 'Jouw startup. alles in één oogopslag' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -11849,14 +11849,14 @@ async function startDashboard(skipRefresh = false) {
     }
   }
 
-  // Start presence heartbeat — so the standalone Founder dashboard can show
+  // Start presence heartbeat. so the standalone Founder dashboard can show
   // who's currently logged in on app.helvaro.pro.
   startPresencePing();
 
   // app.helvaro.pro is now CLIENT-ONLY: admin & founder nav stay hidden,
   // even for admin-key logins. Admin/founder workflows live on the separate
   // founderyou.pages.dev dashboard.
-  // skipRefresh=true when init() already fetched leads — avoid a second Airtable call
+  // skipRefresh=true when init() already fetched leads. avoid a second Airtable call
   await refreshData(skipRefresh);
 
   // First-time setup check: if essential AI config is missing, route to the
@@ -11871,7 +11871,7 @@ async function startDashboard(skipRefresh = false) {
 // Fire a config-get; if essential fields are empty, force-navigate to the
 // AI Persoonlijkheid page and show a "welkom!" banner explaining what to fill.
 // Once the user clicks "Opslaan" on AI Persoonlijkheid we set hv-onboarded in
-// localStorage so we never auto-redirect them again — even if some 'essential'
+// localStorage so we never auto-redirect them again. even if some 'essential'
 // field is still empty (they made a conscious choice to leave it blank).
 async function checkFirstTimeSetup() {
   try {
@@ -11890,7 +11890,7 @@ async function checkFirstTimeSetup() {
     if (!d.autoReplyTpl)   missing.push('autoReplyTpl');
     if (!d.website && !d.aiInstructions) missing.push('grounding');
     if (missing.length === 0) {
-      // Config is already complete on this device too — promote them to "onboarded"
+      // Config is already complete on this device too. promote them to "onboarded"
       // so future logins on this browser skip the check entirely.
       localStorage.setItem('hv-onboarded', '1');
       return;
@@ -11900,7 +11900,7 @@ async function checkFirstTimeSetup() {
     sessionStorage.setItem('hv-setup-missing', JSON.stringify(missing));
     sessionStorage.setItem('hv-setup-pending', '1');
     setTimeout(() => navigateTo('ai-persona'), 300);
-  } catch { /* silent — not critical */ }
+  } catch { /* silent. not critical */ }
 }
 
 document.getElementById('btn-login').addEventListener('click', handleLogin);
@@ -11937,11 +11937,11 @@ async function handleLogin() {
     });
     const authData = await authResp.json();
 
-    // 503 = Airtable temporarily rate-limited — auto-retry with countdown so the
+    // 503 = Airtable temporarily rate-limited. auto-retry with countdown so the
     // user never has to click INLOGGEN again and can't accidentally spam requests.
     if (authResp.status === 503) {
       let remaining = authData.retryAfter || 30;
-      errEl.textContent = \`Even geduld — opnieuw proberen in \${remaining}s...\`;
+      errEl.textContent = \`Even geduld. opnieuw proberen in \${remaining}s...\`;
       errEl.classList.add('visible');
       const tick = setInterval(() => {
         remaining--;
@@ -11951,7 +11951,7 @@ async function handleLogin() {
           btn.classList.add('loading');
           handleLogin();
         } else {
-          errEl.textContent = \`Even geduld — opnieuw proberen in \${remaining}s...\`;
+          errEl.textContent = \`Even geduld. opnieuw proberen in \${remaining}s...\`;
         }
       }, 1000);
       return; // btn stays disabled during countdown
@@ -11968,7 +11968,7 @@ async function handleLogin() {
     saveSession(authData.apiKey, authData.clientName, authData.projectCode, email);
     state.clientName = authData.clientName || email.split('@')[0];
 
-    // Auth succeeded — load leads separately so a transient 429 on the
+    // Auth succeeded. load leads separately so a transient 429 on the
     // first data fetch doesn't look like a login failure.
     try {
       const data = await fetchLeads();
@@ -11977,7 +11977,7 @@ async function handleLogin() {
       state.clientName = authData.clientName || data.client?.naam || state.clientName;
       state.lastFetch = Date.now();
     } catch (_) {
-      // Leads fetch failed (Airtable busy) — proceed with empty state.
+      // Leads fetch failed (Airtable busy). proceed with empty state.
       // The 90-second polling loop will populate the dashboard automatically.
       state.leads = [];
       state.stats = {};
@@ -12460,7 +12460,7 @@ function renderAnalyse() {
     const total = leads.length;
   })();
 
-  // Funnel — includes verschenen step
+  // Funnel. includes verschenen step
   const total = leads.length;
   const qualified = leads.filter(l => l.qualified).length;
   const booked = leads.filter(l => l.afspraakGeboekt).length;
@@ -12656,7 +12656,7 @@ function exportPDF() {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('Helvaro — Lead Rapport', 14, 12);
+  doc.text('Helvaro. Lead Rapport', 14, 12);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(clientName + ' · ' + now, 14, 20);
@@ -12782,12 +12782,12 @@ function updateExportPreview() {
 // ── AI Persoonlijkheid page ─────────────────────────────────────────────────
 const AP_STATE = { loaded: false, saving: false };
 
-// Pre-built welkomstbericht templates — clients click to inspire/apply.
+// Pre-built welkomstbericht templates. clients click to inspire/apply.
 // Each item: { emoji, label, sub (1-line tone), text (with placeholders) }
 const AP_TEMPLATES = [
   {
     emoji: '', label: 'Vriendelijk',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse — wat bracht je naar ons?'
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. wat bracht je naar ons?'
   },
   {
     emoji: '', label: 'Professioneel',
@@ -12819,7 +12819,7 @@ const AP_TEMPLATES = [
   },
   {
     emoji: '', label: 'Vertrouwen + sociaal',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Leuk dat je ons gevonden hebt — we hielpen deze maand al 12 klanten met hetzelfde. Wat is jouw situatie?'
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Leuk dat je ons gevonden hebt. we hielpen deze maand al 12 klanten met hetzelfde. Wat is jouw situatie?'
   },
   {
     emoji: '', label: 'Direct kwalificeren',
@@ -12827,7 +12827,7 @@ const AP_TEMPLATES = [
   },
   {
     emoji: '', label: 'Voor autohandel',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. Welke wagen had je in gedachten — en zoek je benzine, diesel, hybride of elektrisch?'
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. Welke wagen had je in gedachten. en zoek je benzine, diesel, hybride of elektrisch?'
   },
   {
     emoji: '', label: 'Voor garage/onderhoud',
@@ -12839,12 +12839,12 @@ const AP_TEMPLATES = [
   }
 ];
 
-// AI Instructions starter snippets — clients click one or more to APPEND to
+// AI Instructions starter snippets. clients click one or more to APPEND to
 // their instructions (combinable, unlike welcome which replaces).
 const AP_INSTRUCTION_SNIPPETS = [
   {
     emoji: '', label: 'Praat informeel',
-    text: 'Praat informeel met "je/jij" — geen "u". Houd zinnen kort en gebruik geen jargon.'
+    text: 'Praat informeel met "je/jij". geen "u". Houd zinnen kort en gebruik geen jargon.'
   },
   {
     emoji: '', label: 'Praat formeel',
@@ -12872,7 +12872,7 @@ const AP_INSTRUCTION_SNIPPETS = [
   },
   {
     emoji: '', label: 'Auto: financiering & inruil',
-    text: 'Vraag actief of de lead financiering nodig heeft (lening/leasing) en of er een wagen ter inruil is. Geef nooit zelf prijzen — verwijs naar showroom of telefoongesprek.'
+    text: 'Vraag actief of de lead financiering nodig heeft (lening/leasing) en of er een wagen ter inruil is. Geef nooit zelf prijzen. verwijs naar showroom of telefoongesprek.'
   },
   {
     emoji: '', label: 'Auto: keuring & onderhoud',
@@ -12913,7 +12913,7 @@ function handlePhotoFile(input) {
     return;
   }
   if (file.size > 8 * 1024 * 1024) {
-    toast('Bestand te groot (max 8 MB) — kies een kleinere foto', 'error');
+    toast('Bestand te groot (max 8 MB). kies een kleinere foto', 'error');
     return;
   }
   const reader = new FileReader();
@@ -12935,11 +12935,11 @@ function handlePhotoFile(input) {
         let dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         if (dataUrl.length > AP_PHOTO_MAX_BYTES) dataUrl = canvas.toDataURL('image/jpeg', 0.70);
         if (dataUrl.length > AP_PHOTO_MAX_BYTES) dataUrl = canvas.toDataURL('image/jpeg', 0.55);
-        if (dataUrl.length > AP_PHOTO_MAX_BYTES) { toast('Foto te complex om te comprimeren — kies een kleinere', 'error'); return; }
+        if (dataUrl.length > AP_PHOTO_MAX_BYTES) { toast('Foto te complex om te comprimeren. kies een kleinere', 'error'); return; }
         setPhotoPreview(dataUrl);
         const urlField = document.getElementById('ap-photo-url');
         if (urlField) urlField.value = '';  // file wins over external URL
-        toast('Foto klaar — vergeet niet op te slaan', 'success');
+        toast('Foto klaar. vergeet niet op te slaan', 'success');
       } catch (err) {
         console.error(err);
         toast('Kon de foto niet verwerken', 'error');
@@ -12969,7 +12969,7 @@ function removePhoto() {
   if (urlField) urlField.value = '';
 }
 
-// Localized work-hours preset examples — adapt to the client's chosen lead language.
+// Localized work-hours preset examples. adapt to the client's chosen lead language.
 // IMPORTANT: any of these (NL ma/di/wo/do/vr/za/zo, FR lun/mar/mer/jeu/ven/sam/dim,
 // EN mon/tue/wed/thu/fri/sat/sun) is parsed correctly by the backend.
 const AP_HOURS_PRESETS = {
@@ -13125,7 +13125,7 @@ async function loadAiPersona() {
     AP_STATE.wired = true;
   }
   populateFormLink();   // builds URL + QR + embed snippet from localStorage
-  // Always re-fetch — config may have changed elsewhere
+  // Always re-fetch. config may have changed elsewhere
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
@@ -13176,7 +13176,7 @@ async function loadAiPersona() {
     showFirstTimeBannerIfNeeded();
     refreshSaveButton();
   } catch (err) {
-    toast('Netwerkfout — probeer later opnieuw', 'error');
+    toast('Netwerkfout. probeer later opnieuw', 'error');
   }
 }
 
@@ -13283,14 +13283,14 @@ async function saveAiPersona() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { toast(d.error || 'Opslaan mislukt', 'error'); return; }
-    // Mark them as onboarded — future logins skip the auto-redirect to this page,
+    // Mark them as onboarded. future logins skip the auto-redirect to this page,
     // regardless of which fields are still empty (their conscious choice).
     try { localStorage.setItem('hv-onboarded', '1'); } catch {}
     if (mark) {
       mark.classList.add('visible');
       setTimeout(() => mark.classList.remove('visible'), 2500);
     }
-    toast('Instellingen opgeslagen — live in elk volgend gesprek', 'success');
+    toast('Instellingen opgeslagen. live in elk volgend gesprek', 'success');
     // First-time setup? Show celebration screen + clear the banner.
     if (sessionStorage.getItem('hv-setup-pending') === '1') {
       sessionStorage.removeItem('hv-setup-pending');
@@ -13302,7 +13302,7 @@ async function saveAiPersona() {
     // Returning user: just take them back to the dashboard.
     setTimeout(() => navigateTo('dashboard'), 900);
   } catch (err) {
-    toast('Netwerkfout — probeer opnieuw', 'error');
+    toast('Netwerkfout. probeer opnieuw', 'error');
   } finally {
     AP_STATE.saving = false;
     if (btn) { btn.disabled = false; btn.innerHTML = original; }
@@ -13328,7 +13328,7 @@ function loadFormulier() {
   const openEl   = document.getElementById('fm-open');
   if (!urlEl) return;
   if (!url) {
-    urlEl.textContent = '(geen project code beschikbaar — log opnieuw in)';
+    urlEl.textContent = '(geen project code beschikbaar. log opnieuw in)';
     return;
   }
   urlEl.textContent = url;
@@ -13369,7 +13369,7 @@ function loadFormulier() {
 }
 
 function populateFormStats() {
-  // Read from the already-fetched leads array on state — same data as the
+  // Read from the already-fetched leads array on state. same data as the
   // dashboard. No new API call needed.
   const leads = (state && state.leads) || [];
   const total = leads.length;
@@ -13422,7 +13422,7 @@ function populateFormStats() {
   if (convSub) convSub.textContent = total === 0 ? '—' : qualified + ' van ' + total;
 }
 
-// Email handoff — opens the user's mail client with a pre-filled message to
+// Email handoff. opens the user's mail client with a pre-filled message to
 // forward to their web developer. Includes the snippet + per-platform tips.
 function fmEmailDev(kind) {
   const url   = getFormUrl();
@@ -13435,12 +13435,12 @@ function fmEmailDev(kind) {
 
   if (kind === 'widget') {
     codeText = '<script src="https://app.helvaro.pro/form-widget.js" data-project="' + code + '" data-name="' + cname + '"><\\/script>';
-    subject  = 'Helvaro lead-formulier — drijvende WhatsApp-knop installeren';
+    subject  = 'Helvaro lead-formulier. drijvende WhatsApp-knop installeren';
     intro    = 'Hallo,\\n\\nWil je deze script-tag op onze website plakken? Het is een drijvende WhatsApp-knop die rechtsonder op elke pagina verschijnt. Bezoekers klikken erop en vullen het formulier in.\\n\\n';
     tips     = '\\n\\nWaar plakken: vlak vóór de afsluitende </body> tag, op alle pagina\\'s.\\n\\nWordPress: gebruik plugin "Insert Headers and Footers" → veld "Scripts in Footer".\\nShopify: theme.liquid net voor </body>.\\nWebflow: Site Settings → Custom Code → Footer Code.\\nCustom site: in de gedeelde footer/layout template.\\n\\nAls je een test wil doen voor live-zetten: vul een fake aanvraag in, dan zie ik die direct in mijn dashboard.\\n\\nBedankt!';
   } else if (kind === 'iframe') {
     codeText = '<iframe src="' + url + '" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:560px"></iframe>';
-    subject  = 'Helvaro lead-formulier — iframe embed installeren';
+    subject  = 'Helvaro lead-formulier. iframe embed installeren';
     intro    = 'Hallo,\\n\\nWil je deze iframe op onze website plakken? Het toont het Helvaro lead-formulier direct in de pagina (bijvoorbeeld op de Contact-pagina).\\n\\n';
     tips     = '\\n\\nWaar plakken: op de plek waar je het formulier wil tonen (Contact-sectie, landingspagina, …).\\nHoogte aanpasbaar via height="640".\\nWidth 100% past zich aan de container aan.\\n\\nAls je een test wil doen voor live-zetten: vul een fake aanvraag in, dan zie ik die direct in mijn dashboard.\\n\\nBedankt!';
   } else {
@@ -13474,14 +13474,14 @@ function populateFormLink() {
   const qrImg = document.getElementById('ap-formlink-qr-img');
   const embed = document.getElementById('ap-formlink-embed-code');
   if (!url) {
-    if (urlEl) urlEl.textContent = '(geen project code beschikbaar — log opnieuw in)';
+    if (urlEl) urlEl.textContent = '(geen project code beschikbaar. log opnieuw in)';
     return;
   }
   if (urlEl)  urlEl.textContent = url;
   if (openEl) openEl.href       = url;
   if (qrImg)  qrImg.src         = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=' + encodeURIComponent(url);
   if (embed) {
-    // Simple iframe embed — works on any HTML site
+    // Simple iframe embed. works on any HTML site
     embed.value = '<iframe src="' + url + '" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:560px"></iframe>';
   }
 }
@@ -13491,7 +13491,7 @@ function copyFormLink() {
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url)
       .then(() => toast('Link gekopieerd ', 'success'))
-      .catch(() => toast('Kopiëren mislukt — selecteer handmatig', 'error'));
+      .catch(() => toast('Kopiëren mislukt. selecteer handmatig', 'error'));
   }
 }
 function copyFormEmbed() {
@@ -13539,7 +13539,7 @@ async function sendTestMessage() {
   const phone   = phoneEl.value.trim();
   if (!phone) { result.className = 'ap-test-result err'; result.textContent = 'Voer een telefoonnummer in.'; return; }
 
-  // Use the live-rendered preview bubble text — already has placeholders substituted
+  // Use the live-rendered preview bubble text. already has placeholders substituted
   const message = document.getElementById('ap-preview-bubble').textContent;
   if (!message) { result.className = 'ap-test-result err'; result.textContent = 'Bericht is leeg.'; return; }
 
@@ -13560,10 +13560,10 @@ async function sendTestMessage() {
       return;
     }
     result.className = 'ap-test-result ok';
-    result.textContent = 'Verzonden naar +' + d.sentTo + ' — check je WhatsApp!';
+    result.textContent = 'Verzonden naar +' + d.sentTo + '. check je WhatsApp!';
   } catch (err) {
     result.className = 'ap-test-result err';
-    result.textContent = 'Netwerkfout — probeer opnieuw';
+    result.textContent = 'Netwerkfout. probeer opnieuw';
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = original; }
   }
@@ -13801,7 +13801,7 @@ function renderFollowUpAlerts() {
 }
 
 function updateMrrWidget() {
-  var avgMrr   = 1000;  // Helvaro single tier — €1.000/maand alles inbegrepen
+  var avgMrr   = 1000;  // Helvaro single tier. €1.000/maand alles inbegrepen
   var fixedCost = 58;   // Vercel €18 + Airtable €20 + Resend €18 + domein €2
   var varPerClient = 34; // WhatsApp API ~€30 + Anthropic API ~€4
   var won      = founderState.pipeline.filter(function(p) { return p.fase === 'Gewonnen'; }).length;
@@ -13841,7 +13841,7 @@ function populateDmDropdown() {
   var cur = sel.value;
   sel.innerHTML = '<option value="">Kies een prospect uit de pipeline...</option>' +
     active.map(function(p) {
-      var label = escHtml((p.bedrijf || p.naam || '—') + ' — ' + p.fase);
+      var label = escHtml((p.bedrijf || p.naam || '—') + '. ' + p.fase);
       return '<option value="' + escHtml(p.id) + '">' + label + '</option>';
     }).join('');
   if (cur) sel.value = cur;
@@ -13942,26 +13942,26 @@ function renderFounderGoals() {
 // ── Daily Checklist (auto-populated per day of week, localStorage, daily reset) ──
 var DAILY_TASKS = {
   1: [
-    { wie: 'Teljo', taak: '10 LinkedIn DMs sturen', detail: 'Template 1 — bureaus: CNIP, Ants Agency, Bureau 9000, Nouchka Design, SilverLine Studio, Magelaan' },
+    { wie: 'Teljo', taak: '10 LinkedIn DMs sturen', detail: 'Template 1. bureaus: CNIP, Ants Agency, Bureau 9000, Nouchka Design, SilverLine Studio, Magelaan' },
     { wie: 'Teljo', taak: 'Pipeline updaten', detail: 'Verplaats wie gereageerd heeft naar Geïnteresseerd in Founder Dashboard' },
-    { wie: 'Frade', taak: 'Dashboard checken', detail: 'Login als elke klant — controleer of leads binnenkomen en correct verwerkt worden' },
+    { wie: 'Frade', taak: 'Dashboard checken', detail: 'Login als elke klant. controleer of leads binnenkomen en correct verwerkt worden' },
     { wie: 'Frade', taak: 'Bugs / verbeteringen fixen', detail: 'Fix eventuele fouten die klanten meldden vorige week' },
     { wie: 'Frade', taak: 'Nieuwe klant voorbereiden', detail: 'Als iemand ja zei vrijdag: account aanmaken via /onboard, formulier instellen' }
   ],
   2: [
-    { wie: 'Teljo', taak: '10 LinkedIn DMs sturen', detail: 'Template 2 — vastgoed: VICUS Vastgoed (0498 12 37 08), Agence Rosseel, Concordia' },
+    { wie: 'Teljo', taak: '10 LinkedIn DMs sturen', detail: 'Template 2. vastgoed: VICUS Vastgoed (0498 12 37 08), Agence Rosseel, Concordia' },
     { wie: 'Teljo', taak: 'Follow-up maandag', detail: 'Stuur Template 5 naar wie maandag niet gereageerd heeft' },
     { wie: 'Teljo', taak: '5 cold emails sturen', detail: 'info@cnip.be, info@vicusvastgoed.be, info@concordia.be, hello@antsconnect.be, info@bureau9000.be' },
     { wie: 'Frade', taak: 'Calendly integratie testen', detail: 'Test volledige flow: lead → WhatsApp → kwalificatie → Calendly boeking' },
     { wie: 'Frade', taak: 'WhatsApp response testen', detail: 'Stuur test lead via formulier, controleer WhatsApp response tijd' }
   ],
   3: [
-    { wie: 'Teljo', taak: 'Demo calls (geboekte afspraken)', detail: 'Gebruik 15-min demo script — doel: afsluiten op gratis proefperiode' },
-    { wie: 'Teljo', taak: 'LinkedIn post publiceren', detail: '"Hoe wij [sector] helpen met AI leadkwalificatie via WhatsApp" — vraag Frade voor screenshot' },
+    { wie: 'Teljo', taak: 'Demo calls (geboekte afspraken)', detail: 'Gebruik 15-min demo script. doel: afsluiten op gratis proefperiode' },
+    { wie: 'Teljo', taak: 'LinkedIn post publiceren', detail: '"Hoe wij [sector] helpen met AI leadkwalificatie via WhatsApp". vraag Frade voor screenshot' },
     { wie: 'Teljo', taak: '5 extra DMs coaches/consultants', detail: 'Opex Consulting (info@opex.be) en gelijkaardige bedrijven' },
     { wie: 'Frade', taak: 'Screenshot/video demo flow maken', detail: 'Schermopname van de demo flow voor Teljos LinkedIn post' },
     { wie: 'Frade', taak: 'App performance controleren', detail: 'Vercel logs checken, WhatsApp webhook response times controleren' },
-    { wie: 'Frade', taak: 'Onboarding flow testen', detail: 'Ga naar app.helvaro.pro/onboard — test het volledige proces als nieuwe klant' }
+    { wie: 'Frade', taak: 'Onboarding flow testen', detail: 'Ga naar app.helvaro.pro/onboard. test het volledige proces als nieuwe klant' }
   ],
   4: [
     { wie: 'Teljo', taak: 'Follow-up alle openstaande contacten', detail: 'Template 5 naar iedereen zonder definitief antwoord deze week' },
@@ -14002,7 +14002,7 @@ function renderDailyChecklist() {
   if (!el) return;
 
   if (!tasks || !tasks.length) {
-    el.innerHTML = '<div class="fdr-weekend-msg"><div class="fdr-weekend-icon"></div><div class="fdr-weekend-txt">Weekend — geniet ervan!</div><div class="fdr-weekend-sub">Maandag: 10 LinkedIn DMs + dashboard checken + pipeline updaten</div></div>';
+    el.innerHTML = '<div class="fdr-weekend-msg"><div class="fdr-weekend-icon"></div><div class="fdr-weekend-txt">Weekend. geniet ervan!</div><div class="fdr-weekend-sub">Maandag: 10 LinkedIn DMs + dashboard checken + pipeline updaten</div></div>';
     updateChecklistProgress(0, 0);
     return;
   }
@@ -14420,7 +14420,7 @@ async function sendCoachMessage() {
     }
   } catch (e) {
     if (typingBubble) typingBubble.remove();
-    appendChatBubble('assistant', 'Netwerkfout — probeer opnieuw.');
+    appendChatBubble('assistant', 'Netwerkfout. probeer opnieuw.');
   }
 
   if (sendBtn) sendBtn.disabled = false;
@@ -14482,7 +14482,7 @@ document.getElementById('goal-modal-overlay').addEventListener('click', function
 (async function init() {
   initTheme();
 
-  // ?reset — wis sessie en toon login (escape hatch voor geblokkeerde sessies)
+  // ?reset. wis sessie en toon login (escape hatch voor geblokkeerde sessies)
   const _initParams = new URLSearchParams(window.location.search);
   if (_initParams.get('reset') !== null) {
     clearSession();
@@ -14521,7 +14521,7 @@ document.getElementById('goal-modal-overlay').addEventListener('click', function
     }
     await new Promise(r => setTimeout(r, Math.random() * 4000));
 
-    // Fetch leads — on rate-limit or error fall back to localStorage so the
+    // Fetch leads. on rate-limit or error fall back to localStorage so the
     // dashboard shows cached data immediately instead of blank zeros.
     try {
       const data = await fetchLeads();
@@ -14532,20 +14532,20 @@ document.getElementById('goal-modal-overlay').addEventListener('click', function
         state.lastFetch   = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
       } else {
-        // Rate-limited — try localStorage first, then accept empty state
+        // Rate-limited. try localStorage first, then accept empty state
         const lsCache = loadLeadsFromLS();
         if (lsCache) { state.leads = lsCache.leads; state.stats = lsCache.stats || {}; }
         else { state.leads = []; state.stats = {}; }
         state.lastFetch = 0;
       }
     } catch {
-      // Network error — same localStorage fallback
+      // Network error. same localStorage fallback
       const lsCache = loadLeadsFromLS();
       if (lsCache) { state.leads = lsCache.leads; state.stats = lsCache.stats || {}; }
       else { state.leads = []; state.stats = {}; }
       state.lastFetch = 0;
     }
-    // Pass skipRefresh=true — state already populated above, no second Airtable call needed
+    // Pass skipRefresh=true. state already populated above, no second Airtable call needed
     await startDashboard(true);
   } else {
     document.getElementById('login-page').style.display = 'flex';
@@ -14704,7 +14704,7 @@ function renderOutreach() {
     if (el) el.textContent = data[k];
   });
   var pctEl = document.getElementById('or-total-pct');
-  if (pctEl) pctEl.textContent = 'Totaal: ' + total + ' acties — ' + pct + '% van weekdoel (' + OUTREACH_TOTAL_TARGET + ')';
+  if (pctEl) pctEl.textContent = 'Totaal: ' + total + ' acties. ' + pct + '% van weekdoel (' + OUTREACH_TOTAL_TARGET + ')';
   var bar = document.getElementById('or-bar');
   if (bar) bar.style.width = pct + '%';
 }
@@ -14728,7 +14728,7 @@ var BOUW_DEFAULT = [
   { text: 'Calendly integratie end-to-end testen', tag: 'test', done: false },
   { text: 'WhatsApp webhook response tijd checken', tag: 'test', done: false },
   { text: 'Onboarding flow testen als nieuwe klant', tag: 'test', done: false },
-  { text: 'Vercel logs — errors controleren', tag: 'fix', done: false },
+  { text: 'Vercel logs. errors controleren', tag: 'fix', done: false },
   { text: 'Airtable leads opruimen & archiveren', tag: 'fix', done: false },
   { text: 'Dashboard performance optimaliseren', tag: 'feat', done: false },
   { text: 'Nieuwe feature implementeren (sprint)', tag: 'feat', done: false }
@@ -14804,7 +14804,7 @@ function updatePersonaGreeting() {
   if (!el) return;
   var p = getPersona();
   if (!p) { el.innerHTML = ''; return; }
-  el.innerHTML = 'Welkom <strong>' + escHtml(p) + '</strong> — jouw taken zijn gemarkeerd. <button class="fdr-persona-switch" onclick="clearPersona()">wissel</button>';
+  el.innerHTML = 'Welkom <strong>' + escHtml(p) + '</strong>. jouw taken zijn gemarkeerd. <button class="fdr-persona-switch" onclick="clearPersona()">wissel</button>';
 }
 
 // ── Live Klanten ──────────────────────────────────────────────────────────

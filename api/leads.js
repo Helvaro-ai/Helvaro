@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-// Single-shot Airtable fetch — no retries on 429.
+// Single-shot Airtable fetch. no retries on 429.
 //
 // Root-cause (2026-05-14): multiple dashboard tabs each polling every 90 s,
 // with 2-retry atFetch, generated 4–5 simultaneous Airtable calls and kept
@@ -13,7 +13,7 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
-// Client config cache by API key — 30 min TTL
+// Client config cache by API key. 30 min TTL
 // Legacy (pre-session-token) keys still hit Airtable on a cold instance;
 // longer TTL means the warm-instance path covers far more polls before
 // needing to refresh, reducing Airtable noise that competes with auth.js.
@@ -24,12 +24,12 @@ const CLIENT_TTL   = 30 * 60 * 1000;
 // On Airtable 429, serves the last-known-good response so the dashboard
 // stays populated instead of showing an error.  We always try Airtable
 // first; the cache is only used when Airtable refuses (429) or errors.
-// MAX_STALE_MS caps how old the stale data can be — after 1 hour we'd
+// MAX_STALE_MS caps how old the stale data can be. after 1 hour we'd
 // rather show an empty state than leads from yesterday.
 const _leadsCache = new Map();
 const MAX_STALE_MS = 60 * 60 * 1000; // 1 hour
 function getCachedLeads(code) {
-  return _leadsCache.get(code) || null; // { payload, ts } — caller checks freshness
+  return _leadsCache.get(code) || null; // { payload, ts }. caller checks freshness
 }
 function setCachedLeads(code, payload) {
   _leadsCache.set(code, { payload, ts: Date.now() });
@@ -44,7 +44,7 @@ function setCachedClient(key, record) {
   _clientCache.set(key, { record, ts: Date.now() });
 }
 
-// Rate limiter — 120 req / 60s per IP (allows normal polling, blocks hammering)
+// Rate limiter. 120 req / 60s per IP (allows normal polling, blocks hammering)
 const _rl = new Map();
 function isRateLimited(ip, max = 120, windowMs = 60_000) {
   const now  = Date.now();
@@ -72,7 +72,7 @@ function isAdminToken(provided, adminKey) {
 
 // ── Session token verification ─────────────────────────────────────────────────
 // Tokens are signed by auth.js; verifying locally saves one Airtable call per
-// request for every client — no env vars needed, works at any scale.
+// request for every client. no env vars needed, works at any scale.
 function sessionSecret() {
   const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
   return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
@@ -117,7 +117,7 @@ module.exports = async function handler(req, res) {
 
   let projectCode = '', clientName = '', calendlyLink = '';
 
-  // Path A: signed session token — verify locally, zero Airtable calls
+  // Path A: signed session token. verify locally, zero Airtable calls
   const session = verifySession(raw);
   if (session) {
     projectCode  = session.projectCode  || '';
@@ -129,7 +129,7 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ error: 'Ongeldige API key' });
     }
 
-    // Admin token — timing-safe check against the derived token (not the raw key)
+    // Admin token. timing-safe check against the derived token (not the raw key)
     if (isAdminToken(raw, process.env.ADMIN_KEY)) {
       return res.status(200).json({
         leads: [],
@@ -166,7 +166,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── PATCH — save notes ──────────────────────────────────────────────────────
+  // ── PATCH. save notes ──────────────────────────────────────────────────────
   if (req.method === 'PATCH') {
     try {
       const pqs     = (req.url || '').split('?')[1] || '';
@@ -313,7 +313,7 @@ module.exports = async function handler(req, res) {
         if (body.website        !== undefined) u.fldzBclLhryWQ1veO = String(body.website).trim().slice(0, 500);
         if (body.address        !== undefined) u.fldTvMSdTZOyNgWod = String(body.address).trim().slice(0, 300);
         if (body.calendlyLink   !== undefined) u.fldNEj1ysRgINOOtr = String(body.calendlyLink).trim().slice(0, 500);
-        // sector goes to Niche (singleSelect) — typecast:true lets unknown values pass
+        // sector goes to Niche (singleSelect). typecast:true lets unknown values pass
         if (body.sector         !== undefined) u.fld0BsPnDbBOkTHzr = String(body.sector).trim().slice(0, 100);
         // Form personalization fields (shown on the lead form page)
         if (body.aiPhotoUrl     !== undefined) {
@@ -330,7 +330,7 @@ module.exports = async function handler(req, res) {
           } else if (isData && raw.length <= 200 * 1024) {
             u.fld7L0Iijq7ti6A6w = raw;
           } else {
-            // Unknown format / too big — silently drop (don't error, just don't update)
+            // Unknown format / too big. silently drop (don't error, just don't update)
             console.warn('[config-save] aiPhotoUrl rejected: invalid format or >200KB');
           }
         }
@@ -344,7 +344,7 @@ module.exports = async function handler(req, res) {
           if (v === 'nl' || v === 'fr' || v === 'en') u.fld1iiV9XwSbgAACZ = v;
         }
         if (body.workingHours   !== undefined) {
-          // Lightweight format validation — must match 'days hours' or be empty
+          // Lightweight format validation. must match 'days hours' or be empty
           const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
           if (v === '' || /^[a-z]{3,9}\s*[-–]\s*[a-z]{3,9}\s+\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?$/.test(v)) {
             u.fldq5oIqw5MG8fKhc = v;
@@ -357,7 +357,7 @@ module.exports = async function handler(req, res) {
         }
         if (body.callbackWindow !== undefined) u.fldKvMVBalSBRQE7H = String(body.callbackWindow).trim().slice(0, 100);
         if (body.notifyPhone    !== undefined) {
-          // Light phone validation — must start with + or digits, allow spaces / dashes
+          // Light phone validation. must start with + or digits, allow spaces / dashes
           const v = String(body.notifyPhone).trim().slice(0, 30);
           if (v === '' || /^[+]?[0-9][0-9\s\-().]{6,29}$/.test(v)) u.fldZEApe0gfse07AU = v;
         }
@@ -389,13 +389,13 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // ── A2. csv-export — download all leads for this client as CSV ──────────
+    // ── A2. csv-export. download all leads for this client as CSV ──────────
     // body: { mode: 'csv-export' }
     // Returns text/csv with UTF-8 BOM (so Excel renders accents correctly).
     if (body.mode === 'csv-export') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {
-        // Fetch all leads for this project — paginate manually if >100
+        // Fetch all leads for this project. paginate manually if >100
         const all = [];
         let offset = '';
         for (let page = 0; page < 20; page++) {  // hard cap 2000 leads
@@ -408,7 +408,7 @@ module.exports = async function handler(req, res) {
           if (!d.offset) break;
           offset = d.offset;
         }
-        // Build CSV — quote fields, escape internal quotes by doubling them
+        // Build CSV. quote fields, escape internal quotes by doubling them
         const csvEscape = (v) => {
           const s = String(v == null ? '' : v).replace(/\r?\n/g, ' ').replace(/"/g, '""');
           return `"${s}"`;
@@ -437,7 +437,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // ── B. test-message — send a one-off WhatsApp to a phone number ─────────
+    // ── B. test-message. send a one-off WhatsApp to a phone number ─────────
     // body: { mode: 'test-message', phone: '32466358427', message: '...' }
     if (body.mode === 'test-message') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
@@ -467,11 +467,11 @@ module.exports = async function handler(req, res) {
         }
         return res.status(200).json({ ok: true, sentTo: phone });
       } catch (err) {
-        return res.status(500).json({ error: 'Netwerkfout — probeer opnieuw' });
+        return res.status(500).json({ error: 'Netwerkfout. probeer opnieuw' });
       }
     }
 
-    // ── B2. suggest-replies — AI generates 3 short WhatsApp reply ideas ─────
+    // ── B2. suggest-replies. AI generates 3 short WhatsApp reply ideas ─────
     // POST { mode: 'suggest-replies', leadId: 'recXXX' }
     // Reads the lead's Conversation History, sends to Claude with the client's
     // AI Name + Client Name + AI Instructions, returns 3 short Dutch replies.
@@ -482,7 +482,7 @@ module.exports = async function handler(req, res) {
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
       if (!ANTHROPIC_KEY) return res.status(503).json({ error: 'AI niet beschikbaar' });
       try {
-        // Fetch the lead — verify ownership + read history
+        // Fetch the lead. verify ownership + read history
         const lRes = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
@@ -569,7 +569,7 @@ module.exports = async function handler(req, res) {
       const message = String(body.message || '').trim().slice(0, 2000);
       if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
 
-      // Fetch the lead — verify it belongs to the authenticated client (security)
+      // Fetch the lead. verify it belongs to the authenticated client (security)
       const lRes = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
@@ -622,31 +622,31 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, history });
     } catch (err) {
       console.error('POST reply error:', err.message);
-      return res.status(500).json({ error: 'Serverfout — probeer opnieuw' });
+      return res.status(500).json({ error: 'Serverfout. probeer opnieuw' });
     }
   }
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  // ── GET — fetch all leads (paginated) ───────────────────────────────────────
-  // Try cache first — on 429 we return stale payload so the dashboard stays alive.
+  // ── GET. fetch all leads (paginated) ───────────────────────────────────────
+  // Try cache first. on 429 we return stale payload so the dashboard stays alive.
   const leadsCache = getCachedLeads(projectCode);
   const cacheAge   = leadsCache ? Date.now() - leadsCache.ts : Infinity;
 
   let allLeads = [];
   let usedStale = false;
   try {
-    // Use field ID (fldSmczuyUJd26HLe = Project Code) — field IDs are stable,
+    // Use field ID (fldSmczuyUJd26HLe = Project Code). field IDs are stable,
     // field names can be renamed in Airtable without breaking the query.
     const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
-      // Do NOT use returnFieldsByFieldId=true here — Airtable returns field names
+      // Do NOT use returnFieldsByFieldId=true here. Airtable returns field names
       // as response keys by default, and two fields (Conversation History, Last
       // Message) have no known field IDs.  Filter formula and sort still use field
-      // IDs — those work regardless of this parameter.
+      // IDs. those work regardless of this parameter.
       const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
-      // Single-shot fetch — NO retries.  Retrying on 429 causes overlapping
+      // Single-shot fetch. NO retries.  Retrying on 429 causes overlapping
       // bursts from multiple sessions that keep Airtable permanently limited.
       // On 429 we fall through to the stale cache immediately.
       const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
@@ -658,11 +658,11 @@ module.exports = async function handler(req, res) {
         try { const p = JSON.parse(body429); errType = p?.errors?.[0]?.error || p?.error?.type || p?.type || '?'; } catch {}
         console.warn('[leads] 429 retryAfter=' + retryAfter + ' type=' + errType);
         if (leadsCache && cacheAge < MAX_STALE_MS) {
-          console.warn('[leads] 429 — serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
+          console.warn('[leads] 429. serving stale cache (age ' + Math.round(cacheAge / 1000) + 's)');
           usedStale = true;
           break;
         }
-        console.warn('[leads] 429 — no usable cache, returning empty payload');
+        console.warn('[leads] 429. no usable cache, returning empty payload');
         return res.status(200).json({
           leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
           client: { naam: clientName, calendly: calendlyLink }, rateLimited: true
@@ -679,12 +679,12 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     console.error('Leads fetch error:', err.message);
     if (leadsCache && cacheAge < MAX_STALE_MS) {
-      console.warn('Leads error — serving stale cache as fallback (age ' + Math.round(cacheAge / 1000) + 's)');
+      console.warn('Leads error. serving stale cache as fallback (age ' + Math.round(cacheAge / 1000) + 's)');
       return res.status(200).json({ ...leadsCache.payload, stale: true });
     }
-    // Unknown error, no usable cache — return empty rather than 500 so the dashboard
+    // Unknown error, no usable cache. return empty rather than 500 so the dashboard
     // stays alive and retries on the next poll cycle.
-    console.warn('Leads error, no usable cache — returning empty payload');
+    console.warn('Leads error, no usable cache. returning empty payload');
     return res.status(200).json({
       leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
       client: { naam: clientName, calendly: calendlyLink }, error: err.message

@@ -20,14 +20,14 @@ module.exports = function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Algemene Voorwaarden — Helvaro</title>
+  <title>Algemene Voorwaarden. Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${CSS}</style>
 </head>
 <body>
   <a class="back" href="/">← Terug naar Helvaro</a>
   <h1>Algemene Voorwaarden</h1>
-  <p><strong>Helvaro BV</strong> — Laatst bijgewerkt: mei 2026</p>
+  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: mei 2026</p>
 
   <h2>1. Partijen</h2>
   <p>Deze algemene voorwaarden zijn van toepassing op alle overeenkomsten tussen <strong>Helvaro BV</strong> (hierna "Helvaro") en de opdrachtgever (hierna "Klant"). Door gebruik te maken van de diensten van Helvaro, accepteert de Klant deze voorwaarden.</p>
@@ -38,8 +38,8 @@ module.exports = function handler(req, res) {
   <h2>3. Abonnementen en prijzen</h2>
   <p>Helvaro werkt met één standaardabonnement:</p>
   <ul>
-    <li><strong>Helvaro</strong> — €1.000 per maand · alles inbegrepen (onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly integratie, dashboard, premium support)</li>
-    <li><strong>Op maat</strong> — voor enterprise of high-volume klanten: prijs op aanvraag</li>
+    <li><strong>Helvaro</strong>. €1.000 per maand · alles inbegrepen (onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly integratie, dashboard, premium support)</li>
+    <li><strong>Op maat</strong>. voor enterprise of high-volume klanten: prijs op aanvraag</li>
   </ul>
   <p>De exacte prijs wordt schriftelijk bevestigd vóór aanvang van de samenwerking. Alle bedragen zijn excl. btw, tenzij anders vermeld.</p>
 
@@ -64,7 +64,7 @@ module.exports = function handler(req, res) {
   <p>Alle leaddata die via het Helvaro-platform wordt verzameld, blijft eigendom van de Klant. Helvaro verwerkt deze data uitsluitend ten behoeve van de dienstverlening en deelt deze nooit met derden.</p>
 
   <h2>9. Aansprakelijkheid</h2>
-  <p>Helvaro is niet aansprakelijk voor indirecte schade, gederfde inkomsten of het niet converteren van leads. Helvaro levert een platform en AI-tool — het resultaat hangt mede af van de kwaliteit van het aanbod van de Klant.</p>
+  <p>Helvaro is niet aansprakelijk voor indirecte schade, gederfde inkomsten of het niet converteren van leads. Helvaro levert een platform en AI-tool. het resultaat hangt mede af van de kwaliteit van het aanbod van de Klant.</p>
   <p>De totale aansprakelijkheid van Helvaro is in alle gevallen beperkt tot het bedrag dat de Klant in de afgelopen 3 maanden heeft betaald.</p>
 
   <h2>10. Beschikbaarheid</h2>
@@ -95,14 +95,14 @@ module.exports = function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacybeleid — Helvaro</title>
+  <title>Privacybeleid. Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${CSS}</style>
 </head>
 <body>
   <a class="back" href="/">← Terug naar Helvaro</a>
   <h1>Privacybeleid</h1>
-  <p><strong>Helvaro BV</strong> — Laatst bijgewerkt: mei 2026</p>
+  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: mei 2026</p>
 
   <h2>1. Wie zijn wij?</h2>
   <p>Helvaro BV is een B2B SaaS-platform dat bedrijven helpt met geautomatiseerde leadkwalificatie via WhatsApp. Contacteer ons via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>

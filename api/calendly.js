@@ -7,7 +7,7 @@
 const crypto        = require('crypto');
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 
-// Single 30-second retry for Airtable 429 — matches form.js backoff strategy.
+// Single 30-second retry for Airtable 429. matches form.js backoff strategy.
 // Rapid retries extend Airtable's sustained throttle ban; one 30s wait gives
 // the rate-limit window a real chance to clear before the final attempt.
 async function atFetch(url, opts) {
@@ -63,7 +63,7 @@ function isAdminKey(apiKey) {
   } catch { return false; }
 }
 
-// Client record cache keyed by resolved API key — 10 min TTL.
+// Client record cache keyed by resolved API key. 10 min TTL.
 // fetchEvents and fetchSlots both look up the Clients table on every call;
 // with the dashboard polling every 90 s this adds a steady Airtable drain.
 // The cache eliminates that drain: token refresh (PATCH) still always hits
@@ -86,7 +86,7 @@ function patchCachedClientRecord(apiKey, fields) {
   e.record = { ...e.record, fields: { ...e.record.fields, ...fields } };
 }
 
-// Rate limiter — 30 req / 60s per IP (calendar ops, not a hot path)
+// Rate limiter. 30 req / 60s per IP (calendar ops, not a hot path)
 const _rl = new Map();
 function isRateLimited(ip) {
   const now = Date.now(), w = 60_000, max = 30;
@@ -229,7 +229,7 @@ async function fetchEvents(req, res) {
       };
     }));
 
-    // Cache events for 5 min in the browser — reduces Airtable pressure from
+    // Cache events for 5 min in the browser. reduces Airtable pressure from
     // repeated dashboard opens within a short window (cold-start instances).
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('Vary', 'x-api-key');
@@ -241,7 +241,7 @@ async function fetchEvents(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 2. OAUTH START — redirect client to Calendly consent page
+// 2. OAUTH START. redirect client to Calendly consent page
 // ─────────────────────────────────────────────────────────────
 async function oauthStart(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
@@ -271,7 +271,7 @@ async function oauthStart(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 3. OAUTH CALLBACK — exchange code, store tokens in Airtable
+// 3. OAUTH CALLBACK. exchange code, store tokens in Airtable
 // ─────────────────────────────────────────────────────────────
 async function oauthCallback(req, res) {
   const qs         = new URLSearchParams((req.url || '').split('?')[1] || '');
@@ -283,7 +283,7 @@ async function oauthCallback(req, res) {
     console.error('Calendly OAuth denied:', oauthError);
     return res.redirect(302, '/dashboard?calendly=denied');
   }
-  if (!code || !state) return res.status(400).send('Ongeldige OAuth callback — code of state ontbreekt.');
+  if (!code || !state) return res.status(400).send('Ongeldige OAuth callback. code of state ontbreekt.');
 
   let apiKey;
   try {
@@ -370,7 +370,7 @@ function escapeFormula(val) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4. FETCH SLOTS — available times for a given date
+// 4. FETCH SLOTS. available times for a given date
 // GET /api/calendly-slots?date=YYYY-MM-DD[&event_type=uri]
 // ─────────────────────────────────────────────────────────────
 async function fetchSlots(req, res) {
@@ -500,7 +500,7 @@ async function fetchSlots(req, res) {
       .filter(s => s.status === 'available')
       .map(s => ({ startTime: s.start_time, inviteesRemaining: s.invitees_remaining ?? 1 }));
 
-    // Cache slots for 2 min — available times change infrequently within a day.
+    // Cache slots for 2 min. available times change infrequently within a day.
     res.setHeader('Cache-Control', 'private, max-age=120');
     res.setHeader('Vary', 'x-api-key');
     return res.status(200).json({ connected: true, eventTypes, selectedEventType: targetUri, slots });

@@ -1,11 +1,11 @@
-// Client-facing lead form page — personalized per client (AI Name + Client Name)
+// Client-facing lead form page. personalized per client (AI Name + Client Name)
 // served from the Klanten / Client Config Airtable table.
 
 module.exports = async function handler(req, res) {
   const code = (req.url || '').split('/').filter(Boolean).pop() || 'HELVARO';
   let project = decodeURIComponent(code).toUpperCase();
 
-  // Strict validation — only alphanumeric + underscore, prevents XSS in JS context
+  // Strict validation. only alphanumeric + underscore, prevents XSS in JS context
   if (!/^[A-Z0-9_]{1,50}$/.test(project)) {
     project = 'HELVARO';
   }
@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
   let brandColor   = '#6366f1';
   let formIntro    = '';
   let leadsThisWeek = 0;
-  let lang          = 'nl';   // nl / fr / en — controls form-page + AI conversation language
+  let lang          = 'nl';   // nl / fr / en. controls form-page + AI conversation language
   let trustBadges   = '';     // custom 'a | b | c' string, overrides defaults
   let workingHours  = '';     // 'mon-fri 9-18' style; informational for the form-page
   try {
@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Social proof — count leads in last 7 days for this project (best-effort)
+      // Social proof. count leads in last 7 days for this project (best-effort)
       try {
         const ctrl2 = new AbortController();
         const t2 = setTimeout(() => ctrl2.abort(), 2500);
@@ -73,7 +73,7 @@ module.exports = async function handler(req, res) {
         }
       } catch { /* silent */ }
     }
-  } catch { /* silent — fallback to defaults */ }
+  } catch { /* silent. fallback to defaults */ }
 
   // Compute a contrasting darker shade for the gradient end-stop
   function shadeHex(hex, percent) {
@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
     return '#' + toHex(adj(r)) + toHex(adj(g)) + toHex(adj(b));
   }
   const brandDark = shadeHex(brandColor, -25);
-  // Validate aiPhotoUrl — accept https URLs OR self-hosted base64 image data URLs
+  // Validate aiPhotoUrl. accept https URLs OR self-hosted base64 image data URLs
   // (uploaded via dashboard's file picker). Anything else is dropped to prevent
   // injection (no javascript:, no data:text/html, no relative paths).
   if (aiPhotoUrl) {
@@ -108,9 +108,9 @@ module.exports = async function handler(req, res) {
   // ── i18n: all UI strings per language ──────────────────────────────────────
   const i18n = {
     nl: {
-      title:           safeFirstName + ' van ' + safeClientName + ' — neem contact op',
+      title:           safeFirstName + ' van ' + safeClientName + '. neem contact op',
       meta:            safeFirstName + ' reageert binnen 1 minuut via WhatsApp.',
-      status:          '● Online — reageert binnen 1 min',
+      status:          '● Online. reageert binnen 1 min',
       intro:           'Hallo, ik ben',
       introMid:        'van',
       typing:          'typt',
@@ -147,13 +147,13 @@ module.exports = async function handler(req, res) {
         real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
         lawyer:      'Ik help je graag verder met juridisch advies of een dossier.',
         finance:     'Ik help je graag met je financiële vraag.',
-        default:     'Ik help je graag verder — laat hieronder je gegevens achter en je hoort meteen van me.'
+        default:     'Ik help je graag verder. laat hieronder je gegevens achter en je hoort meteen van me.'
       }
     },
     fr: {
-      title:           safeFirstName + ' de ' + safeClientName + ' — prenez contact',
+      title:           safeFirstName + ' de ' + safeClientName + '. prenez contact',
       meta:            safeFirstName + ' répond en 1 minute via WhatsApp.',
-      status:          '● En ligne — réponse en 1 min',
+      status:          '● En ligne. réponse en 1 min',
       intro:           'Bonjour, je suis',
       introMid:        'de',
       typing:          'écrit',
@@ -190,13 +190,13 @@ module.exports = async function handler(req, res) {
         real_estate: "Je vous aide volontiers, que vous cherchiez une maison ou que vous souhaitiez en vendre une.",
         lawyer:      "Je vous aide volontiers avec un conseil juridique ou un dossier.",
         finance:     "Je vous aide volontiers avec votre question financière.",
-        default:     "Je vous aide volontiers — laissez vos coordonnées ci-dessous et je vous contacte tout de suite."
+        default:     "Je vous aide volontiers. laissez vos coordonnées ci-dessous et je vous contacte tout de suite."
       }
     },
     en: {
-      title:           safeFirstName + ' from ' + safeClientName + ' — get in touch',
+      title:           safeFirstName + ' from ' + safeClientName + '. get in touch',
       meta:            safeFirstName + ' replies within 1 minute on WhatsApp.',
-      status:          '● Online — replies in 1 min',
+      status:          '● Online. replies in 1 min',
       intro:           "Hello, I'm",
       introMid:        'from',
       typing:          'typing',
@@ -233,7 +233,7 @@ module.exports = async function handler(req, res) {
         real_estate: 'I’m happy to help, whether you’re looking to buy or sell a property.',
         lawyer:      'I’m happy to help you with legal advice or a case.',
         finance:     'I’m happy to help with your financial question.',
-        default:     'I’m happy to help — drop your details below and you’ll hear from me right away.'
+        default:     'I’m happy to help. drop your details below and you’ll hear from me right away.'
       }
     }
   };
@@ -247,7 +247,7 @@ module.exports = async function handler(req, res) {
     .replace(/\{firstname\}/g, aiName.split(/\s+/)[0]);
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');     // always render fresh — client just changed AI Name
+  res.setHeader('Cache-Control', 'no-store');     // always render fresh. client just changed AI Name
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.status(200).send(`<!DOCTYPE html>
@@ -532,7 +532,7 @@ module.exports = async function handler(req, res) {
     </div>
   </div>
 
-  <!-- Trust strip — custom badges from Klanten or fall back to localized defaults -->
+  <!-- Trust strip. custom badges from Klanten or fall back to localized defaults -->
   <div class="trust">
     ${trustBadges
       ? trustBadges.split('|').slice(0, 3).map(b => {

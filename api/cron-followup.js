@@ -1,4 +1,4 @@
-// Vercel cron — runs daily at 09:00 UTC
+// Vercel cron. runs daily at 09:00 UTC
 // Sends a follow-up WhatsApp to leads that:
 //   - Status is still 'new'
 //   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
 
   try {
     // Fetch leads created between 24h and 48h ago that are still 'new'
-    // Use field IDs in formula — immune to field renames in Airtable
+    // Use field IDs in formula. immune to field renames in Airtable
     const formula = encodeURIComponent(
       `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago48h}")`
     );
@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
     const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
 
     if (lRes.status === 429) {
-      console.warn('[cron-followup] Airtable 429 — follow-ups uitgesteld tot morgen');
+      console.warn('[cron-followup] Airtable 429. follow-ups uitgesteld tot morgen');
       return res.status(200).json({ checked: 0, sent: 0, skipped: 'rate_limited' });
     }
     const lData = await lRes.json();
@@ -53,14 +53,14 @@ module.exports = async function handler(req, res) {
       let history = [];
       try { history = JSON.parse(lead.fields['Conversation History'] || '[]'); } catch { history = []; }
       const userReplies = history.filter(m => m.role === 'user').length;
-      if (userReplies > 0) continue; // They replied — no follow-up needed
+      if (userReplies > 0) continue; // They replied. no follow-up needed
 
       const firstName = name.split(' ')[0] || name;
       const msg = `Hé ${firstName}, we hebben je bericht gekregen maar nog niks teruggehoord. Is er iets waarmee ik je kan helpen?`;
 
       // ── 24-uurs venster: na 24u STIL mag je geen freeform meer sturen ─────
       // (Meta-policy: account-bans bij overtreding). Stuur een goedgekeurde
-      // template als die geconfigureerd is. Anders: skip de follow-up — beter
+      // template als die geconfigureerd is. Anders: skip de follow-up. beter
       // geen follow-up dan een account-ban.
       // Template moet vooraf in WhatsApp Manager → Message Templates worden
       // aangemaakt en goedgekeurd. Variabele {{1}} = de voornaam.
@@ -69,11 +69,11 @@ module.exports = async function handler(req, res) {
       if (TEMPLATE_NAME) {
         await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
       } else {
-        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd — skip ${phone} (freeform >24u zou ban riskeren)`);
-        continue;  // skip — don't risk a Meta ban
+        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. skip ${phone} (freeform >24u zou ban riskeren)`);
+        continue;  // skip. don't risk a Meta ban
       }
 
-      // Mark follow-up sent — prevents duplicate follow-ups on next cron run
+      // Mark follow-up sent. prevents duplicate follow-ups on next cron run
       const pRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${lead.id}`,
         {
@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
         }
       );
       if (!pRes.ok) {
-        console.error(`[cron-followup] PATCH mislukt voor ${lead.id} (${pRes.status}) — lead wordt morgen opnieuw geprobeerd`);
+        console.error(`[cron-followup] PATCH mislukt voor ${lead.id} (${pRes.status}). lead wordt morgen opnieuw geprobeerd`);
       }
 
       sent++;
@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
         `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${escE(n)}</td></tr>`
       ).join('');
       sendResendEmail({
-        subject: `Helvaro — ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
+        subject: `Helvaro. ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:auto">
             <h2 style="color:#1e6fd9">Dagelijkse follow-up update</h2>
@@ -163,14 +163,14 @@ async function checkQualityRating(phoneNumberId, token) {
   if (quality === 'RED' || quality === 'YELLOW') {
     const severity = quality === 'RED' ? '[KRITIEK]' : '[Waarschuwing]';
     sendResendEmail({
-      subject: `${severity} WhatsApp quality rating ${quality} — actie nodig`,
+      subject: `${severity} WhatsApp quality rating ${quality}. actie nodig`,
       html: `
         <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px">
           <h2 style="color:${quality === 'RED' ? '#dc2626' : '#d97706'}">WhatsApp Quality: ${quality}</h2>
           <p>De WhatsApp Business phone number quality is gezakt naar <strong>${quality}</strong>.</p>
           ${quality === 'RED'
             ? '<p style="background:#fef2f2;padding:12px;border-radius:8px;color:#b91c1c"><strong>RED = throttling actief.</strong> Meta beperkt het aantal berichten dat je per dag mag sturen. Bij meerdere RED-dagen riskeer je een permanente ban.</p>'
-            : '<p style="background:#fffbeb;padding:12px;border-radius:8px;color:#92400e"><strong>YELLOW = waarschuwing.</strong> Te veel blocks of spam-reports — quality zakt verder als je niks doet.</p>'}
+            : '<p style="background:#fffbeb;padding:12px;border-radius:8px;color:#92400e"><strong>YELLOW = waarschuwing.</strong> Te veel blocks of spam-reports. quality zakt verder als je niks doet.</p>'}
           <h3 style="margin-top:24px">Wat nu doen</h3>
           <ul style="line-height:1.7">
             <li>Check welke klanten templates gebruiken die spammy zijn</li>
@@ -285,11 +285,11 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
           <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;color:#1e6fd9">${f['Lead Score'] || 0}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">Nog geen gekwalificeerde leads deze week — komt nog!</td></tr>`;
+    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">Nog geen gekwalificeerde leads deze week. komt nog!</td></tr>`;
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:auto;padding:24px;color:#111;background:#fff">
-      <h2 style="color:#1e6fd9;margin:0 0 4px">Weekrapport — ${esc(clientName)}</h2>
+      <h2 style="color:#1e6fd9;margin:0 0 4px">Weekrapport. ${esc(clientName)}</h2>
       <p style="color:#666;margin:0 0 28px;font-size:14px">Overzicht van de afgelopen 7 dagen op je Helvaro account.</p>
 
       <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
@@ -338,7 +338,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
     const r = await fetch('https://api.resend.com/emails', {
       method:  'POST',
       headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ from: FROM, to: [to], subject: `Helvaro weekrapport — ${clientName}`, html })
+      body:    JSON.stringify({ from: FROM, to: [to], subject: `Helvaro weekrapport. ${clientName}`, html })
     });
     if (!r.ok) {
       const txt = await r.text().catch(() => '');

@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-// Exponential backoff + jitter for Airtable 429 — auth path only.
+// Exponential backoff + jitter for Airtable 429. auth path only.
 // 4 attempts: ~1 s, ~2 s, ~4 s, final.  Max ~7 s server wait.
 // Auth is the critical path so it retries more than polling endpoints,
 // but we keep it short so the 429 error surfaces quickly to the client
@@ -17,10 +17,10 @@ async function atFetch(url, opts) {
     }
     delay = Math.min(delay * 2, 8_000);
   }
-  return fetch(url, opts); // final attempt — caller handles non-200
+  return fetch(url, opts); // final attempt. caller handles non-200
 }
 
-// TTL cache — user records by email, 5 min TTL
+// TTL cache. user records by email, 5 min TTL
 // Avoids an Airtable call on every login attempt (hot path)
 const _userCache = new Map();
 const USER_TTL   = 5 * 60 * 1000;
@@ -34,8 +34,8 @@ function setCachedUser(email, record) {
   _userCache.set(email, { record, ts: Date.now() });
 }
 
-// In-memory rate limiter — max 40 login attempts per IP per 15 minutes.
-// (Was 10 — too aggressive during setup/testing when users type wrong passwords
+// In-memory rate limiter. max 40 login attempts per IP per 15 minutes.
+// (Was 10. too aggressive during setup/testing when users type wrong passwords
 // a few times. 40 still blocks credential-stuffing while not annoying real users.)
 const loginAttempts = new Map();
 function isRateLimited(ip) {
@@ -53,7 +53,7 @@ function isRateLimited(ip) {
   return attempts.length > max;
 }
 
-// Manual reset for support — wipes the in-memory attempts for a given IP.
+// Manual reset for support. wipes the in-memory attempts for a given IP.
 // Triggered via mode='reset-rate-limit' with the admin key.
 function clearRateLimit(ip) { loginAttempts.delete(ip); }
 
@@ -66,9 +66,9 @@ function deriveAdminToken(adminKey) {
 
 // ── Signed session tokens ──────────────────────────────────────────────────────
 // Embed client data in a signed token so downstream API handlers (leads, calendly)
-// can verify identity locally — zero Airtable calls after login, for every client.
+// can verify identity locally. zero Airtable calls after login, for every client.
 // Secret derived from ADMIN_KEY so no additional env var is required.
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — matches dashboard TTL
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days. matches dashboard TTL
 function sessionSecret() {
   const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
   return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
@@ -79,7 +79,7 @@ function signSession(data) {
   return `hvs1.${payload}.${sig}`;
 }
 
-// Timing-safe string compare — prevents timing-based brute force
+// Timing-safe string compare. prevents timing-based brute force
 function safeEqual(a, b) {
   try {
     const ba = Buffer.from(String(a));
@@ -94,7 +94,7 @@ function safeEqual(a, b) {
 // ── Password reset tokens ─────────────────────────────────────────────────────
 // HMAC-signed, time-limited tokens carry email + issuedAt; no DB needed.
 // Token rotates whenever the user's password changes because the secret hashes
-// the current Password Hash into the signing key — so a leaked token is dead
+// the current Password Hash into the signing key. so a leaked token is dead
 // the moment the password is updated.
 const RESET_TTL_MS = 60 * 60 * 1000;  // 1 hour
 function resetSecret(passwordHash) {
@@ -128,8 +128,8 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── GET /forgot-password — render the request-reset HTML page ─────────────
-  // ── GET /reset-password?token=... — render the new-password HTML page ─────
+  // ── GET /forgot-password. render the request-reset HTML page ─────────────
+  // ── GET /reset-password?token=.... render the new-password HTML page ─────
   if (req.method === 'GET') {
     const path = (req.url || '').split('?')[0];
     if (path.endsWith('/forgot-password')) return renderForgotPage(res);
@@ -151,7 +151,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (isRateLimited(ip)) {
-    return res.status(429).json({ error: 'Te veel pogingen — wacht 15 minuten of probeer vanaf een ander IP. Tip: open een privé/incognito venster.' });
+    return res.status(429).json({ error: 'Te veel pogingen. wacht 15 minuten of probeer vanaf een ander IP. Tip: open een privé/incognito venster.' });
   }
 
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
@@ -166,7 +166,7 @@ module.exports = async function handler(req, res) {
     const email    = String(body.email    || '').trim().slice(0, 254);
     const password = String(body.password || '').trim().slice(0, 200);
 
-    // ── MODE: request-reset — email the user a reset link ────────────────────
+    // ── MODE: request-reset. email the user a reset link ────────────────────
     // We verify the user exists before sending so the form gives clear feedback
     // (B2B context: ~10-100 known clients, account enumeration risk is low and
     // the UX clarity wins).
@@ -180,25 +180,25 @@ module.exports = async function handler(req, res) {
         console.warn('[reset] no user for', email);
         return res.status(404).json({ error: 'Dit e-mailadres is bij ons niet bekend. Controleer het adres of neem contact op.' });
       }
-      // 2. Try to send the email — surface real errors back
+      // 2. Try to send the email. surface real errors back
       const sendResult = await sendResetEmailToUser(email, user).catch(err => ({ ok: false, error: err.message }));
       if (!sendResult.ok) {
         console.error('[reset] send failed for', email, sendResult.error);
-        return res.status(500).json({ error: 'Mail kon niet verstuurd worden — neem contact op met support.' });
+        return res.status(500).json({ error: 'Mail kon niet verstuurd worden. neem contact op met support.' });
       }
       return res.status(200).json({
         ok: true,
-        message: 'Resetlink verstuurd naar ' + email + '. Check je inbox (en spam) — de link werkt 1 uur.'
+        message: 'Resetlink verstuurd naar ' + email + '. Check je inbox (en spam). de link werkt 1 uur.'
       });
     }
 
-    // ── MODE: reset-password — verify token + set new password ───────────────
+    // ── MODE: reset-password. verify token + set new password ───────────────
     if (body.mode === 'reset-password') {
       const token       = String(body.token       || '').slice(0, 1024);
       const newPassword = String(body.newPassword || '').trim().slice(0, 200);
       if (!token)              return res.status(400).json({ error: 'Token ontbreekt' });
       if (newPassword.length < 8) return res.status(400).json({ error: 'Wachtwoord moet minstens 8 tekens zijn' });
-      // Decode payload first (without verifying — need email to look up current hash)
+      // Decode payload first (without verifying. need email to look up current hash)
       const [, payload] = token.split('.');
       let emailFromToken = '';
       try { emailFromToken = String(JSON.parse(Buffer.from(payload || '', 'base64url').toString('utf8')).e || '').toLowerCase(); }
@@ -226,7 +226,7 @@ module.exports = async function handler(req, res) {
       }
       // Invalidate the user cache so the next login uses the new hash
       _userCache.delete(emailFromToken);
-      return res.status(200).json({ ok: true, message: 'Wachtwoord aangepast — je kan nu inloggen.' });
+      return res.status(200).json({ ok: true, message: 'Wachtwoord aangepast. je kan nu inloggen.' });
     }
 
     if (!email)    return res.status(400).json({ error: 'E-mailadres is verplicht' });
@@ -234,10 +234,10 @@ module.exports = async function handler(req, res) {
 
     // ── Admin shortcut ────────────────────────────────────────────────────────
     // Use timing-safe compare so attackers can't learn the key length/prefix.
-    // Return a DERIVED token — the raw ADMIN_KEY never leaves the server.
+    // Return a DERIVED token. the raw ADMIN_KEY never leaves the server.
     const ADMIN_KEY = process.env.ADMIN_KEY;
     if (ADMIN_KEY && safeEqual(password, ADMIN_KEY)) {
-      // Admin gets the derived HMAC token — NOT a session token.
+      // Admin gets the derived HMAC token. NOT a session token.
       // leads.js recognises it via isAdminToken() before session verification.
       return res.status(200).json({
         success:     true,
@@ -247,7 +247,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Basic email shape check — reject obvious injections early
+    // Basic email shape check. reject obvious injections early
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
@@ -257,7 +257,7 @@ module.exports = async function handler(req, res) {
     // Format (set in Vercel → Settings → Environment Variables):
     //   USERS_CONFIG = {"email@example.com":{"password":"...","apiKey":"...","clientName":"...","projectCode":"..."}}
     // Use the EXACT same password that is stored in Airtable "Password Hash".
-    // Supports multiple accounts — just add more keys to the JSON object.
+    // Supports multiple accounts. just add more keys to the JSON object.
     try {
       const raw = process.env.USERS_CONFIG;
       if (raw) {
@@ -275,9 +275,9 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ success: true, ...ud, apiKey: signSession(ud) });
         }
       }
-    } catch { /* malformed JSON — fall through to Airtable */ }
+    } catch { /* malformed JSON. fall through to Airtable */ }
 
-    // ── Owner bypass (legacy — superseded by USERS_CONFIG) ───────────────────
+    // ── Owner bypass (legacy. superseded by USERS_CONFIG) ───────────────────
     const OWNER_EMAIL = process.env.OWNER_EMAIL;
     const OWNER_PASS  = process.env.OWNER_PASSWORD_HASH;
     if (OWNER_EMAIL && OWNER_PASS &&
@@ -292,7 +292,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, ...ownerData, apiKey: signSession(ownerData) });
     }
 
-    // ── Fetch user by email only — password compared server-side ─────────────
+    // ── Fetch user by email only. password compared server-side ─────────────
     // Cached 5 min so repeated login attempts don't hammer Airtable.
     let userRecord = getCachedUser(email);
     if (!userRecord) {
@@ -323,7 +323,7 @@ module.exports = async function handler(req, res) {
     const user       = userRecord.fields;
     const storedHash = String(user['Password Hash'] || user['fldPasswordHash'] || '');
 
-    // Timing-safe server-side compare — never query Airtable with the password
+    // Timing-safe server-side compare. never query Airtable with the password
     if (!storedHash || !safeEqual(password, storedHash)) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
@@ -349,7 +349,7 @@ function escapeFormula(val) {
 
 // ─── PASSWORD RESET HELPERS ──────────────────────────────────────────────────
 
-// Look up a user record by email — used by reset-password.
+// Look up a user record by email. used by reset-password.
 // Honors the same cache as the login flow so we don't double-hit Airtable.
 async function fetchUserByEmail(email) {
   const cached = getCachedUser(email);
@@ -369,7 +369,7 @@ async function fetchUserByEmail(email) {
 
 // Send the reset link to a user we already verified exists.
 // Returns { ok: true } on success, or { ok: false, error: '...' } so the caller
-// can surface a precise error message to the user (no info-leak — user is known).
+// can surface a precise error message to the user (no info-leak. user is known).
 async function sendResetEmailToUser(email, user) {
   const currentHash = String(user.fields['Password Hash'] || user.fields['fldPasswordHash'] || '');
   const token = signResetToken(email.toLowerCase(), currentHash);
@@ -383,16 +383,16 @@ async function sendResetEmailToUser(email, user) {
       method:  'POST',
       headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        from: FROM, to: [email], subject: 'Helvaro — Wachtwoord opnieuw instellen',
+        from: FROM, to: [email], subject: 'Helvaro. Wachtwoord opnieuw instellen',
         html: `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:auto;padding:24px;color:#111">
             <h2 style="color:#1e6fd9;margin:0 0 16px">Wachtwoord opnieuw instellen</h2>
-            <p>Iemand (hopelijk jij) heeft gevraagd om je Helvaro wachtwoord opnieuw in te stellen. Klik op de knop hieronder — de link is <strong>1 uur geldig</strong>.</p>
+            <p>Iemand (hopelijk jij) heeft gevraagd om je Helvaro wachtwoord opnieuw in te stellen. Klik op de knop hieronder. de link is <strong>1 uur geldig</strong>.</p>
             <p style="text-align:center;margin:28px 0">
               <a href="${link}" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Wachtwoord resetten</a>
             </p>
             <p style="font-size:13px;color:#666">Werkt de knop niet? Kopieer deze link in je browser:<br><span style="color:#1e6fd9;word-break:break-all">${link}</span></p>
-            <p style="font-size:13px;color:#999;margin-top:24px">Heb je dit niet aangevraagd? Negeer deze mail — er gebeurt niets met je account.</p>
+            <p style="font-size:13px;color:#999;margin-top:24px">Heb je dit niet aangevraagd? Negeer deze mail. er gebeurt niets met je account.</p>
             <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
           </div>`
       })
@@ -434,7 +434,7 @@ function renderForgotPage(res) {
   res.status(200).send(`<!DOCTYPE html>
 <html lang="nl"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Wachtwoord vergeten — Helvaro</title>
+  <title>Wachtwoord vergeten. Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${RESET_CSS}</style>
 </head><body>
@@ -482,7 +482,7 @@ function renderResetPage(req, res) {
   res.status(200).send(`<!DOCTYPE html>
 <html lang="nl"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Nieuw wachtwoord — Helvaro</title>
+  <title>Nieuw wachtwoord. Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${RESET_CSS}</style>
 </head><body>
