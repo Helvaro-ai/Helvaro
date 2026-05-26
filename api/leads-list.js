@@ -16,7 +16,7 @@ const AIRTABLE_BASE  = process.env.BASE_AIRTABLE;
 const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
 const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
-// Validate API key format. alphanumeric + dash/underscore, 8-100 chars
+// Validate API key format. Alphanumeric + dash/underscore, 8-100 chars
 const API_KEY_RE = /^[A-Za-z0-9\-_]{8,100}$/;
 
 // Escape values embedded in Airtable formula strings
@@ -69,7 +69,7 @@ module.exports = async function handler(req, res) {
 };
 
 async function getClientByApiKey(apiKey) {
-  // Formula-escape the key before embedding. prevents Airtable formula injection
+  // Formula-escape the key before embedding. Prevents Airtable formula injection
   const filter = encodeURIComponent(`{API Key}="${escapeFormula(apiKey)}"`);
   const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=1`;
   const res    = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });

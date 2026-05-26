@@ -2,9 +2,9 @@
 //
 // Previous design (4 retries, 1/2/4/8 s delays) kept pounding Airtable every
 // few seconds, extending its sustained throttle ban instead of letting it recover.
-// Airtable's own Retry-After guidance is 30 s. one wait of that length gives
+// Airtable's own Retry-After guidance is 30 s. One wait of that length gives
 // the rate-limit window a real chance to clear before the final attempt.
-// Total worst-case time: ~31 s. well within the 60 s Vercel function limit.
+// Total worst-case time: ~31 s. Well within the 60 s Vercel function limit.
 async function atFetch(url, opts) {
   const r1 = await fetch(url, opts);
   if (r1.status !== 429) return r1;
@@ -13,7 +13,7 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
-// Rate limit. max 5 form submissions per IP per 10 minutes
+// Rate limit. Max 5 form submissions per IP per 10 minutes
 const formAttempts = new Map();
 function isRateLimited(ip) {
   const now = Date.now();
@@ -82,12 +82,12 @@ module.exports = async function handler(req, res) {
     // fall back to safe defaults and always proceed with lead creation.
     // Uses a formula filter on the field ID so only 1 record is returned instead
     // of fetching all 100 clients and filtering client-side.
-    let   aiName     = 'Mathis Willems';      // safe default. overwritten by client's "AI Name" field if set
-    let   clientName = project_code;          // safe default. overwritten below if found
+    let   aiName     = 'Mathis Willems';      // safe default. Overwritten by client's "AI Name" field if set
+    let   clientName = project_code;          // safe default. Overwritten below if found
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
     let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
     let   ownerEmail = '';                    // per-client notify email (overrides NOTIFY_EMAIL env)
-    let   lang       = 'nl';                   // nl / fr / en. language for the welcome WhatsApp
+    let   lang       = 'nl';                   // nl / fr / en. Language for the welcome WhatsApp
 
     try {
       const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
@@ -117,9 +117,9 @@ module.exports = async function handler(req, res) {
         }
       }
       // 429 / error → use defaults, don't block the form submission
-    } catch { /* network error. use defaults */ }
+    } catch { /* network error. Use defaults */ }
 
-    // ── Normalise phone. stored in Airtable in international digits-only format
+    // ── Normalise phone. Stored in Airtable in international digits-only format
     // so it matches what WhatsApp sends as message.from (e.g. "32466358427")
     let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
     if      (waPhone.startsWith('00')) waPhone = waPhone.slice(2);
@@ -128,7 +128,7 @@ module.exports = async function handler(req, res) {
 
     // Validate: digits only, 8-15 chars (standard E.164 range)
     if (!/^\d{8,15}$/.test(waPhone)) {
-      return res.status(400).json({ error: 'Ongeldig telefoonnummer. gebruik cijfers' });
+      return res.status(400).json({ error: 'Ongeldig telefoonnummer. Gebruik cijfers' });
     }
 
     // ── Create lead in Airtable (with retry on 429) ───────────────────────────
@@ -138,7 +138,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         fields: {
           fldbk0LVNckOU0bqA: name,
-          fld6YaitW0lMqHUrd: waPhone,   // normalized. must match WhatsApp's message.from
+          fld6YaitW0lMqHUrd: waPhone,   // normalized. Must match WhatsApp's message.from
           fldSmczuyUJd26HLe: project_code,
           fld8mkrEWcyq7mUip: 'new',
           fldGoerozqdea4BfU: bron,
@@ -169,7 +169,7 @@ module.exports = async function handler(req, res) {
     const defaultTpls = {
       nl: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
       fr: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
-      en: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. what brought you to us?'
+      en: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?'
     };
     const defaultTpl  = defaultTpls[lang] || defaultTpls.nl;
     const tpl         = (autoReplyTpl && autoReplyTpl.trim()) || defaultTpl;
@@ -185,13 +185,13 @@ module.exports = async function handler(req, res) {
       ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
       : null;
 
-    // Fire after 45 seconds. feels like a real person picking up the form
+    // Fire after 45 seconds. Feels like a real person picking up the form
     // Note: Vercel maxDuration is 60s, so 45s delay + processing leaves ~15s buffer
     const leadId = createData.id;
     setTimeout(async () => {
       const waOk = await sendWA(waPhone, waGreeting);
       if (!waOk) {
-        // WhatsApp failed. flag lead so dashboard shows it in "Niet bereikbaar"
+        // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
         await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
       } else {
         // Persist the opening message into Conversation History so the dashboard
@@ -199,7 +199,7 @@ module.exports = async function handler(req, res) {
         // like the lead started the chat unprompted).
         //
         // IMPORTANT: keep Conversation State = 'new' here. State only flips to
-        // 'in_progress' when the LEAD replies. the cron-followup job relies on
+        // 'in_progress' when the LEAD replies. The cron-followup job relies on
         // this signal to know which leads still need a re-engagement message.
         try {
           await atFetch(

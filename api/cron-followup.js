@@ -1,4 +1,4 @@
-// Vercel cron. runs daily at 09:00 UTC
+// Vercel cron. Runs daily at 09:00 UTC
 // Sends a follow-up WhatsApp to leads that:
 //   - Status is still 'new'
 //   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
 
   try {
     // Fetch leads created between 24h and 48h ago that are still 'new'
-    // Use field IDs in formula. immune to field renames in Airtable
+    // Use field IDs in formula. Immune to field renames in Airtable
     const formula = encodeURIComponent(
       `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago48h}")`
     );
@@ -53,14 +53,14 @@ module.exports = async function handler(req, res) {
       let history = [];
       try { history = JSON.parse(lead.fields['Conversation History'] || '[]'); } catch { history = []; }
       const userReplies = history.filter(m => m.role === 'user').length;
-      if (userReplies > 0) continue; // They replied. no follow-up needed
+      if (userReplies > 0) continue; // They replied. No follow-up needed
 
       const firstName = name.split(' ')[0] || name;
       const msg = `Hé ${firstName}, we hebben je bericht gekregen maar nog niks teruggehoord. Is er iets waarmee ik je kan helpen?`;
 
       // ── 24-uurs venster: na 24u STIL mag je geen freeform meer sturen ─────
       // (Meta-policy: account-bans bij overtreding). Stuur een goedgekeurde
-      // template als die geconfigureerd is. Anders: skip de follow-up. beter
+      // template als die geconfigureerd is. Anders: skip de follow-up. Beter
       // geen follow-up dan een account-ban.
       // Template moet vooraf in WhatsApp Manager → Message Templates worden
       // aangemaakt en goedgekeurd. Variabele {{1}} = de voornaam.
@@ -69,11 +69,11 @@ module.exports = async function handler(req, res) {
       if (TEMPLATE_NAME) {
         await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
       } else {
-        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. skip ${phone} (freeform >24u zou ban riskeren)`);
-        continue;  // skip. don't risk a Meta ban
+        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. Skip ${phone} (freeform >24u zou ban riskeren)`);
+        continue;  // skip. Don't risk a Meta ban
       }
 
-      // Mark follow-up sent. prevents duplicate follow-ups on next cron run
+      // Mark follow-up sent. Prevents duplicate follow-ups on next cron run
       const pRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${lead.id}`,
         {
@@ -170,7 +170,7 @@ async function checkQualityRating(phoneNumberId, token) {
           <p>De WhatsApp Business phone number quality is gezakt naar <strong>${quality}</strong>.</p>
           ${quality === 'RED'
             ? '<p style="background:#fef2f2;padding:12px;border-radius:8px;color:#b91c1c"><strong>RED = throttling actief.</strong> Meta beperkt het aantal berichten dat je per dag mag sturen. Bij meerdere RED-dagen riskeer je een permanente ban.</p>'
-            : '<p style="background:#fffbeb;padding:12px;border-radius:8px;color:#92400e"><strong>YELLOW = waarschuwing.</strong> Te veel blocks of spam-reports. quality zakt verder als je niks doet.</p>'}
+            : '<p style="background:#fffbeb;padding:12px;border-radius:8px;color:#92400e"><strong>YELLOW = waarschuwing.</strong> Te veel blocks of spam-reports. Quality zakt verder als je niks doet.</p>'}
           <h3 style="margin-top:24px">Wat nu doen</h3>
           <ul style="line-height:1.7">
             <li>Check welke klanten templates gebruiken die spammy zijn</li>
@@ -285,7 +285,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
           <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;color:#1e6fd9">${f['Lead Score'] || 0}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">Nog geen gekwalificeerde leads deze week. komt nog!</td></tr>`;
+    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">Nog geen gekwalificeerde leads deze week. Komt nog!</td></tr>`;
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:auto;padding:24px;color:#111;background:#fff">
@@ -308,7 +308,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
           </td>
           <td style="background:#f3e8ff;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#7c3aed">${fmtTime(stats.avgResponse)}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Gem. responstijd</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Gem. Responstijd</div>
           </td>
         </tr>
       </table>

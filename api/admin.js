@@ -2,7 +2,7 @@
 // Protected by ADMIN_KEY env var (timing-safe comparison)
 const crypto = require('crypto');
 
-// Single-shot Airtable fetch. no retries (admin is low-frequency)
+// Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
   return fetch(url, opts);
 }
@@ -10,14 +10,14 @@ async function atFetch(url, opts) {
 // Rate limiter. 20 req / 60s per IP
 const _rl = new Map();
 
-// Presence map. apiKey (sha256 prefix) -> { ts, clientName }
+// Presence map. ApiKey (sha256 prefix) -> { ts, clientName }
 // Cleared on cold start; that's OK for "online now" semantics.
 const _presence = new Map();
 function _presenceKey(apiKey) {
   return crypto.createHash('sha256').update(String(apiKey)).digest('hex').slice(0, 16);
 }
 function _gcPresence() {
-  const cutoff = Date.now() - 30 * 60_000; // 30 min. twice the "online" window
+  const cutoff = Date.now() - 30 * 60_000; // 30 min. Twice the "online" window
   for (const [k, v] of _presence) if (v.ts < cutoff) _presence.delete(k);
 }
 function isRateLimited(ip) {
@@ -80,7 +80,7 @@ function generateFriendlyPassword() {
 
 // Strip dashes (em/en/regular as zin-verbinder) and any euro pricing that
 // leaked past the prompt's "no prices, no dashes" instruction. Last-line
-// defense. the AI usually obeys but this guarantees the contract.
+// defense. The AI usually obeys but this guarantees the contract.
 function scrubPost(text) {
   if (!text) return '';
   let t = String(text);
@@ -110,7 +110,7 @@ function scrubPost(text) {
 module.exports = async function handler(req, res) {
   // Allow the Helvaro app, the legacy Netlify Founder site, and any Cloudflare
   // Pages (*.pages.dev) or Workers (*.workers.dev) preview the founder team
-  // spins up. strict pattern match, never reflect arbitrary origins.
+  // spins up. Strict pattern match, never reflect arbitrary origins.
   const allowedOrigins = ['https://app.helvaro.pro', 'https://founderyou.netlify.app'];
   const origin = req.headers.origin || '';
   const okCf = /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(pages|workers)\.dev$/.test(origin);
@@ -131,7 +131,7 @@ module.exports = async function handler(req, res) {
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
 
-  // ── POST. create new client (admin OR invite-code onboarding) ────────────
+  // ── POST. Create new client (admin OR invite-code onboarding) ────────────
   if (req.method === 'POST') {
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -143,7 +143,7 @@ module.exports = async function handler(req, res) {
     // ── test-email (admin only) ─────────────────────────────────────────────
     // POST { mode: 'test-email', to?: 'address@x.com' }
     // Sends a tiny test through Resend and returns the FULL Resend response
-    // (status + body) so you can see exactly why a send fails (e.g. domain
+    // (status + body) so you can see exactly why a send fails (e.g. Domain
     // not verified, invalid key, etc.) without digging through logs.
     if (body.mode === 'test-email') {
       const tProvided = String(req.headers['x-api-key'] || '').trim();
@@ -153,7 +153,7 @@ module.exports = async function handler(req, res) {
       const RESEND_KEY = process.env.RESEND_API_KEY;
       if (!RESEND_KEY) return res.status(200).json({ ok: false, reason: 'RESEND_API_KEY env var not set on Vercel' });
       const to   = String(body.to || process.env.NOTIFY_EMAIL || '').trim();
-      if (!to)   return res.status(200).json({ ok: false, reason: 'No "to" address. pass {"to":"..."} or set NOTIFY_EMAIL env var' });
+      if (!to)   return res.status(200).json({ ok: false, reason: 'No "to" address. Pass {"to":"..."} or set NOTIFY_EMAIL env var' });
       const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
       try {
         const r = await fetch('https://api.resend.com/emails', {
@@ -404,7 +404,7 @@ module.exports = async function handler(req, res) {
           };
           const sector = String(body.sector || daySectors[day] || 'B2B bedrijven met veel inkomende leads');
 
-          // Helvaro brand facts. concrete, no fluff, NO PRICING.
+          // Helvaro brand facts. Concrete, no fluff, NO PRICING.
           // Pricing on social posts attracts the wrong buyer and weakens the
           // pain hook. Sell on outcome (deals saved), not on a tag.
           // Source for the product facts: helvaro.pro
@@ -444,7 +444,7 @@ module.exports = async function handler(req, res) {
             'NOOIT vermelden in een post: prijs, bedrag, euro per maand, "vanaf X". Geld hoort thuis in een DM, niet in een post.'
           ].join('\n');
 
-          // Type-specific angle. every angle leans on a missed-deal moment.
+          // Type-specific angle. Every angle leans on a missed-deal moment.
           const typeAngles = {
             pijnpunt:    'Vertel concreet over een gemiste deal. Een echte situatie: tijdstip, klant, sector, bedrag. Niet abstract. "Vrijdag 21:47, een vastgoedlead voor een appartement van 280k. Niemand belde. Maandag was hij al ergens anders aan het tekenen." Maak de lezer zenuwachtig over hoeveel van die deals door ZIJN handen glippen.',
             feature:     'Toon hoe de WhatsApp AI in de praktijk werkt zonder dat een lead ooit door de mazen valt. Lead vult formulier in, 30 seconden later krijgt hij WhatsApp, AI stelt 4 kwalificatievragen, warme afspraak boekt zichzelf. Stap voor stap, in concrete tijdstippen.',
@@ -459,7 +459,7 @@ module.exports = async function handler(req, res) {
           const liSystemPrompt = [
             'Je bent Teljo, 22 jaar, co-founder van Helvaro in Gent. Je schrijft LinkedIn posts zoals een echte ondernemer. Direct, concreet, geen AI-taal.',
             '',
-            'ABSOLUTE VERBODEN. gebruik deze NOOIT:',
+            'ABSOLUTE VERBODEN. Gebruik deze NOOIT:',
             'Woorden: "In de snel veranderende wereld", "Excited to announce", "Trots om te delen", "Game-changer", "Revolutionair", "Naadloos", "Robuust", "Innovatief", "Leverage", "In het digitale tijdperk", "Als we eerlijk zijn" als opener, "The future of", "Disruptief".',
             'Leestekens: GEEN em-dashes (—), GEEN en-dashes (–), GEEN gewone "-" dashes als zinsverbinder. Gebruik in plaats daarvan een komma, een punt, of een nieuwe lijn. Dashes maken een post AI-achtig.',
             'Prijzen: NOOIT een prijs, bedrag, "vanaf X euro", "€X/maand", maandelijkse kost, of welk getal dan ook gevolgd door €. Geen pricing in posts. Punt.',
@@ -557,7 +557,7 @@ module.exports = async function handler(req, res) {
           if (!bedrijf) return res.status(400).json({ error: 'Bedrijfsnaam verplicht' });
 
           const phaseCtx = {
-            'Gecontacteerd':  'Dit is de eerste outreach. wek nieuwsgierigheid zonder te pushen.',
+            'Gecontacteerd':  'Dit is de eerste outreach. Wek nieuwsgierigheid zonder te pushen.',
             'Geinteresseerd': 'Ze hebben interesse getoond. Leid naar een demo of gesprek.',
             'Geïnteresseerd': 'Ze hebben interesse getoond. Leid naar een demo of gesprek.',
             'Beslissing':     'Ze overwegen het actief. Neem de laatste twijfel weg en sluit af.'
@@ -574,7 +574,7 @@ module.exports = async function handler(req, res) {
             'Schrijf EXACT in dit format:',
             'Onderwerp: [max 8 woorden]',
             '',
-            '[body. max 110 woorden, persoonlijk, 1 CTA, Nederlands]'
+            '[body. Max 110 woorden, persoonlijk, 1 CTA, Nederlands]'
           ].filter(Boolean).join('\n');
 
           const linkedinPrompt = [
@@ -642,7 +642,7 @@ module.exports = async function handler(req, res) {
     const projectCode    = String(body.projectCode    || '').trim().toUpperCase().slice(0, 50);
     const email          = String(body.email          || '').trim().slice(0, 200);
     const calendlyLink   = String(body.calendlyLink   || '').trim().slice(0, 500);
-    // Extended onboarding fields (all optional. graceful fallback if not provided)
+    // Extended onboarding fields (all optional. Graceful fallback if not provided)
     const aiName         = String(body.aiName         || '').trim().slice(0, 60);
     const autoReplyTpl   = String(body.autoReplyTpl   || '').trim().slice(0, 1000);
     const website        = String(body.website        || '').trim().slice(0, 500);
@@ -683,7 +683,7 @@ module.exports = async function handler(req, res) {
       //   fldzBclLhryWQ1veO  Website
       //   fldTvMSdTZOyNgWod  Adres
       //   fld1lqHctRbqFGQf5  AI Instructions
-      //   fld0BsPnDbBOkTHzr  Niche  (singleSelect. typecast:true auto-creates new options)
+      //   fld0BsPnDbBOkTHzr  Niche  (singleSelect. Typecast:true auto-creates new options)
       const fields = {
         fldAnB848Sr5jl6dq: clientName,
         fldN4dL0bGgfBOXwM: projectCode,
@@ -719,7 +719,7 @@ module.exports = async function handler(req, res) {
 
       // ── Also create the matching User record so the klant can actually log in.
       //    Generate a friendly random password (caller can override via body.password).
-      //    USERS_TABLE = tbl2hrPW7gIx5XF4S. same field IDs as in auth.js.
+      //    USERS_TABLE = tbl2hrPW7gIx5XF4S. Same field IDs as in auth.js.
       let loginPassword = String(body.password || '').trim();
       if (!loginPassword || loginPassword.length < 8) loginPassword = generateFriendlyPassword();
       let userCreated = false;
@@ -742,7 +742,7 @@ module.exports = async function handler(req, res) {
                 body: JSON.stringify({
                   fields: {
                     fldsqiSy41CCDickr: email,           // Email
-                    fldqi8JWgFgJF4X4R: loginPassword,   // Password Hash (raw. auth does timing-safe compare)
+                    fldqi8JWgFgJF4X4R: loginPassword,   // Password Hash (raw. Auth does timing-safe compare)
                     fldmKwegSUj1joru3: clientName,      // Client Name
                     fldbrCpBuQjJBfZsv: projectCode,     // Project Code
                     fldxZMgVXSy7EShDL: apiKey,          // API Key
@@ -762,7 +762,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Welkomstmail bewust NIET geautomatiseerd. admin kopieert de
+      // Welkomstmail bewust NIET geautomatiseerd. Admin kopieert de
       // ready-to-paste mailtekst uit de dashboard en stuurt zelf (vanuit
       // eigen mailbox sindi.s@usehelvaro.pro). Dit voorkomt Resend domain-
       // verification gedoe en geeft de eerste klant-interactie een echte
@@ -780,7 +780,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── GET. all clients + lead stats (admin only) ──────────────────────────
+  // ── GET. All clients + lead stats (admin only) ──────────────────────────
   const ADMIN_KEY = process.env.ADMIN_KEY;
   const provided  = String(req.headers['x-api-key'] || '').trim();
   if (!isValidAdminToken(provided, ADMIN_KEY)) {
@@ -892,9 +892,9 @@ module.exports = async function handler(req, res) {
 async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl, loginPassword }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_KEY) { console.warn('[resend welcome] skipped: RESEND_API_KEY missing'); return; }
-  // Welkomstmail komt persoonlijk van Sindi. voelt menselijker dan een no-reply.
-  // RESEND_WELCOME_FROM env var kan dit alsnog overrulen (bv. team@usehelvaro.pro later).
-  // NOTE: usehelvaro.pro moet als Resend-domain geverifieerd zijn. anders 403.
+  // Welkomstmail komt persoonlijk van Sindi. Voelt menselijker dan een no-reply.
+  // RESEND_WELCOME_FROM env var kan dit alsnog overrulen (bv. Team@usehelvaro.pro later).
+  // NOTE: usehelvaro.pro moet als Resend-domain geverifieerd zijn. Anders 403.
   const FROM = process.env.RESEND_WELCOME_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   let r;
   try {
@@ -921,14 +921,14 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
     body: JSON.stringify({
       from:    FROM,
       to:      [email],
-      subject: `Welkom bij Helvaro. je account is klaar`,
+      subject: `Welkom bij Helvaro. Je account is klaar`,
       html: `
         <div style="font-family:sans-serif;max-width:520px;margin:auto;color:#0f1117">
           <div style="background:#080c14;padding:32px;border-radius:12px;text-align:center;margin-bottom:24px">
             <h1 style="color:#818cf8;font-family:monospace;letter-spacing:4px;margin:0">HELVARO</h1>
           </div>
           <h2 style="margin-bottom:8px">Welkom, ${escHtml(clientName)}</h2>
-          <p style="color:#5c6478;margin-bottom:24px">Je Helvaro account staat klaar. hieronder vind je alles om vandaag nog je eerste lead binnen te halen.</p>
+          <p style="color:#5c6478;margin-bottom:24px">Je Helvaro account staat klaar. Hieronder vind je alles om vandaag nog je eerste lead binnen te halen.</p>
           ${loginBlock}
           <h3 style="margin:24px 0 8px;color:#0f1117">Jouw lead-formulier</h3>
           <p style="color:#5c6478;margin:0 0 8px;font-size:13px">Plak deze URL in je advertenties, op je website of in je e-mail handtekening:</p>
@@ -939,7 +939,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
           <ol style="color:#374151;line-height:1.7;padding-left:20px;margin-bottom:24px">
             <li>Log in op <a href="${escHtml(dashboardUrl)}" style="color:#6366f1">je dashboard</a></li>
             <li>Open <strong>AI Persoonlijkheid</strong> en pas de AI-naam + welkomstbericht aan</li>
-            <li>Test zelf je formulier. je krijgt direct WhatsApp van je AI</li>
+            <li>Test zelf je formulier. Je krijgt direct WhatsApp van je AI</li>
           </ol>
           <p style="text-align:center">
             <a href="${escHtml(dashboardUrl)}" style="display:inline-block;padding:14px 28px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>

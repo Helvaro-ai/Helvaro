@@ -41,7 +41,7 @@ module.exports = function handler(req, res) {
     <li><strong>Helvaro</strong>. €1.000 per maand · alles inbegrepen (onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly integratie, dashboard, premium support)</li>
     <li><strong>Op maat</strong>. voor enterprise of high-volume klanten: prijs op aanvraag</li>
   </ul>
-  <p>De exacte prijs wordt schriftelijk bevestigd vóór aanvang van de samenwerking. Alle bedragen zijn excl. btw, tenzij anders vermeld.</p>
+  <p>De exacte prijs wordt schriftelijk bevestigd vóór aanvang van de samenwerking. Alle bedragen zijn excl. Btw, tenzij anders vermeld.</p>
 
   <h2>4. Proefperiode</h2>
   <p>Nieuwe klanten ontvangen een gratis proefperiode van <strong>14 kalenderdagen</strong>. Na afloop van de proefperiode gaat de Klant automatisch over naar het afgesproken abonnement, tenzij schriftelijk anders overeengekomen.</p>
@@ -64,11 +64,11 @@ module.exports = function handler(req, res) {
   <p>Alle leaddata die via het Helvaro-platform wordt verzameld, blijft eigendom van de Klant. Helvaro verwerkt deze data uitsluitend ten behoeve van de dienstverlening en deelt deze nooit met derden.</p>
 
   <h2>9. Aansprakelijkheid</h2>
-  <p>Helvaro is niet aansprakelijk voor indirecte schade, gederfde inkomsten of het niet converteren van leads. Helvaro levert een platform en AI-tool. het resultaat hangt mede af van de kwaliteit van het aanbod van de Klant.</p>
+  <p>Helvaro is niet aansprakelijk voor indirecte schade, gederfde inkomsten of het niet converteren van leads. Helvaro levert een platform en AI-tool. Het resultaat hangt mede af van de kwaliteit van het aanbod van de Klant.</p>
   <p>De totale aansprakelijkheid van Helvaro is in alle gevallen beperkt tot het bedrag dat de Klant in de afgelopen 3 maanden heeft betaald.</p>
 
   <h2>10. Beschikbaarheid</h2>
-  <p>Helvaro streeft naar een uptime van minimaal 99%. Geplande onderhoudsmomenten worden zo mogelijk vooraf gecommuniceerd. Helvaro is niet aansprakelijk voor onderbrekingen buiten haar controle (bijv. storing bij Meta, Airtable of Vercel).</p>
+  <p>Helvaro streeft naar een uptime van minimaal 99%. Geplande onderhoudsmomenten worden zo mogelijk vooraf gecommuniceerd. Helvaro is niet aansprakelijk voor onderbrekingen buiten haar controle (bijv. Storing bij Meta, Airtable of Vercel).</p>
 
   <h2>11. Vertrouwelijkheid</h2>
   <p>Beide partijen behandelen informatie die in het kader van de samenwerking wordt uitgewisseld als vertrouwelijk en delen deze niet met derden zonder schriftelijke toestemming.</p>

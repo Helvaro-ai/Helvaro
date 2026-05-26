@@ -229,7 +229,7 @@ async function fetchEvents(req, res) {
       };
     }));
 
-    // Cache events for 5 min in the browser. reduces Airtable pressure from
+    // Cache events for 5 min in the browser. Reduces Airtable pressure from
     // repeated dashboard opens within a short window (cold-start instances).
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('Vary', 'x-api-key');
@@ -241,7 +241,7 @@ async function fetchEvents(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 2. OAUTH START. redirect client to Calendly consent page
+// 2. OAUTH START. Redirect client to Calendly consent page
 // ─────────────────────────────────────────────────────────────
 async function oauthStart(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
@@ -271,7 +271,7 @@ async function oauthStart(req, res) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 3. OAUTH CALLBACK. exchange code, store tokens in Airtable
+// 3. OAUTH CALLBACK. Exchange code, store tokens in Airtable
 // ─────────────────────────────────────────────────────────────
 async function oauthCallback(req, res) {
   const qs         = new URLSearchParams((req.url || '').split('?')[1] || '');
@@ -283,7 +283,7 @@ async function oauthCallback(req, res) {
     console.error('Calendly OAuth denied:', oauthError);
     return res.redirect(302, '/dashboard?calendly=denied');
   }
-  if (!code || !state) return res.status(400).send('Ongeldige OAuth callback. code of state ontbreekt.');
+  if (!code || !state) return res.status(400).send('Ongeldige OAuth callback. Code of state ontbreekt.');
 
   let apiKey;
   try {
@@ -370,7 +370,7 @@ function escapeFormula(val) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4. FETCH SLOTS. available times for a given date
+// 4. FETCH SLOTS. Available times for a given date
 // GET /api/calendly-slots?date=YYYY-MM-DD[&event_type=uri]
 // ─────────────────────────────────────────────────────────────
 async function fetchSlots(req, res) {
@@ -500,7 +500,7 @@ async function fetchSlots(req, res) {
       .filter(s => s.status === 'available')
       .map(s => ({ startTime: s.start_time, inviteesRemaining: s.invitees_remaining ?? 1 }));
 
-    // Cache slots for 2 min. available times change infrequently within a day.
+    // Cache slots for 2 min. Available times change infrequently within a day.
     res.setHeader('Cache-Control', 'private, max-age=120');
     res.setHeader('Vary', 'x-api-key');
     return res.status(200).json({ connected: true, eventTypes, selectedEventType: targetUri, slots });
