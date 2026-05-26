@@ -57,6 +57,27 @@ function generateApiKey() {
   return crypto.randomBytes(24).toString('base64url').slice(0, 32);
 }
 
+// Friendly initial password: easy to read aloud + retype, still strong enough
+// for 12-char entropy. We avoid look-alikes (0/O, 1/l/I) so the klant can
+// reliably type it from the welcome mail before resetting via /forgot-password.
+function generateFriendlyPassword() {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I, O
+  const lower = 'abcdefghjkmnpqrstuvwxyz';    // no i, l, o
+  const digit = '23456789';                   // no 0, 1
+  const all   = upper + lower + digit;
+  const pick = (set) => set[crypto.randomBytes(1)[0] % set.length];
+  // Guarantee at least one of each class, then fill to 12 chars
+  let out = pick(upper) + pick(lower) + pick(digit);
+  for (let i = 0; i < 9; i++) out += pick(all);
+  // Shuffle (Fisher-Yates with crypto bytes)
+  const arr = out.split('');
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.randomBytes(1)[0] % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
+}
+
 // Strip dashes (em/en/regular as zin-verbinder) and any euro pricing that
 // leaked past the prompt's "no prices, no dashes" instruction. Last-line
 // defense — the AI usually obeys but this guarantees the contract.
@@ -696,11 +717,64 @@ module.exports = async function handler(req, res) {
       const formUrl      = `https://app.helvaro.pro/start/${projectCode}`;
       const dashboardUrl = `https://app.helvaro.pro/dashboard`;
 
+      // ── Also create the matching User record so the klant can actually log in.
+      //    Generate a friendly random password (caller can override via body.password).
+      //    USERS_TABLE = tbl2hrPW7gIx5XF4S — same field IDs as in auth.js.
+      let loginPassword = String(body.password || '').trim();
+      if (!loginPassword || loginPassword.length < 8) loginPassword = generateFriendlyPassword();
+      let userCreated = false;
       if (email) {
-        sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl }).catch(() => {});
+        try {
+          // Look up by email first so we don't create duplicates on retry
+          const USERS_TABLE = 'tbl2hrPW7gIx5XF4S';
+          const uFormula = encodeURIComponent(`{Email}="${escapeFormula(email)}"`);
+          const lookup = await fetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}?filterByFormula=${uFormula}&maxRecords=1`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          const lookupData = await lookup.json();
+          if (lookup.ok && (lookupData.records || []).length === 0) {
+            const userRes = await fetch(
+              `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}`,
+              {
+                method:  'POST',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fields: {
+                    fldsqiSy41CCDickr: email,           // Email
+                    fldqi8JWgFgJF4X4R: loginPassword,   // Password Hash (raw — auth does timing-safe compare)
+                    fldmKwegSUj1joru3: clientName,      // Client Name
+                    fldbrCpBuQjJBfZsv: projectCode,     // Project Code
+                    fldxZMgVXSy7EShDL: apiKey,          // API Key
+                    fldb8sGE3Bslch8f8: true             // Active
+                  },
+                  typecast: true
+                })
+              }
+            );
+            if (userRes.ok) userCreated = true;
+            else console.error('[admin] user create failed:', await userRes.text().catch(() => ''));
+          } else if (lookup.ok) {
+            console.warn('[admin] user already exists for', email, '— skipping user create');
+          }
+        } catch (err) {
+          console.error('[admin] user create error:', err.message);
+        }
       }
 
-      return res.status(200).json({ id: createData.id, apiKey, projectCode, clientName, formUrl, dashboardUrl });
+      if (email) {
+        // Welkomstmail bevat nu ook de login-credentials (als we de user net hebben aangemaakt)
+        sendWelcomeEmail({
+          clientName, projectCode, apiKey, email, formUrl, dashboardUrl,
+          loginPassword: userCreated ? loginPassword : null
+        }).catch(() => {});
+      }
+
+      return res.status(200).json({
+        id: createData.id, apiKey, projectCode, clientName, formUrl, dashboardUrl,
+        userCreated,
+        loginPassword: userCreated ? loginPassword : undefined  // surfaced once to the admin caller; not persisted in response logs
+      });
     } catch (err) {
       console.error('[admin] create error:', err.message);
       return res.status(500).json({ error: 'Serverfout' });
@@ -816,42 +890,59 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl }) {
+async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl, loginPassword }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_KEY) { console.warn('[resend welcome] skipped: RESEND_API_KEY missing'); return; }
   const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
   let r;
   try {
+  // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
+  const loginBlock = loginPassword ? `
+            <h3 style="margin:24px 0 8px;color:#0f1117">🔑 Login gegevens</h3>
+            <div style="background:#f3f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:18px;margin-bottom:8px">
+              <table style="width:100%;border-collapse:collapse">
+                <tr>
+                  <td style="padding:6px 0;color:#5c6478;width:110px;font-size:13px">E-mail</td>
+                  <td style="padding:6px 0;font-weight:600;font-family:monospace;font-size:14px">${escHtml(email)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#5c6478;font-size:13px">Wachtwoord</td>
+                  <td style="padding:6px 0;font-weight:600;font-family:monospace;font-size:15px;color:#3730a3;letter-spacing:1px">${escHtml(loginPassword)}</td>
+                </tr>
+              </table>
+            </div>
+            <p style="font-size:12px;color:#5c6478;margin:6px 0 18px">⚠️ Wijzig je wachtwoord na de eerste login via <a href="https://app.helvaro.pro/forgot-password" style="color:#6366f1">Wachtwoord vergeten</a>.</p>
+          ` : '';
   r = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from:    FROM,
       to:      [email],
-      subject: `Welkom bij Helvaro — uw account is klaar`,
+      subject: `Welkom bij Helvaro — je account is klaar`,
       html: `
         <div style="font-family:sans-serif;max-width:520px;margin:auto;color:#0f1117">
           <div style="background:#080c14;padding:32px;border-radius:12px;text-align:center;margin-bottom:24px">
             <h1 style="color:#818cf8;font-family:monospace;letter-spacing:4px;margin:0">HELVARO</h1>
           </div>
-          <h2 style="margin-bottom:8px">Welkom, ${escHtml(clientName)}!</h2>
-          <p style="color:#5c6478;margin-bottom:24px">Uw account is aangemaakt. Hieronder vindt u uw inloggegevens.</p>
-          <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-            <tr style="border-bottom:1px solid #eee">
-              <td style="padding:12px 0;color:#5c6478;width:140px">Projectcode</td>
-              <td style="padding:12px 0;font-weight:600;font-family:monospace">${escHtml(projectCode)}</td>
-            </tr>
-            <tr style="border-bottom:1px solid #eee">
-              <td style="padding:12px 0;color:#5c6478">API Key</td>
-              <td style="padding:12px 0;font-weight:600;font-family:monospace;font-size:13px">${escHtml(apiKey)}</td>
-            </tr>
-            <tr style="border-bottom:1px solid #eee">
-              <td style="padding:12px 0;color:#5c6478">Leadformulier</td>
-              <td style="padding:12px 0"><a href="${escHtml(formUrl)}" style="color:#6366f1">${escHtml(formUrl)}</a></td>
-            </tr>
-          </table>
-          <a href="${escHtml(dashboardUrl)}" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
-          <p style="margin-top:32px;font-size:13px;color:#a0aab8">Vragen? Stuur ons een bericht. — Team Helvaro</p>
+          <h2 style="margin-bottom:8px">Welkom, ${escHtml(clientName)}! 🎉</h2>
+          <p style="color:#5c6478;margin-bottom:24px">Je Helvaro account staat klaar — hieronder vind je alles om vandaag nog je eerste lead binnen te halen.</p>
+          ${loginBlock}
+          <h3 style="margin:24px 0 8px;color:#0f1117">📋 Jouw lead-formulier</h3>
+          <p style="color:#5c6478;margin:0 0 8px;font-size:13px">Plak deze URL in je advertenties, op je website of in je e-mail handtekening:</p>
+          <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:18px;font-family:monospace;font-size:13px;word-break:break-all">
+            <a href="${escHtml(formUrl)}" style="color:#6366f1;text-decoration:none">${escHtml(formUrl)}</a>
+          </div>
+          <h3 style="margin:24px 0 8px;color:#0f1117">⚡ Eerste 3 stappen</h3>
+          <ol style="color:#374151;line-height:1.7;padding-left:20px;margin-bottom:24px">
+            <li>Log in op <a href="${escHtml(dashboardUrl)}" style="color:#6366f1">je dashboard</a></li>
+            <li>Open <strong>AI Persoonlijkheid</strong> en pas de AI-naam + welkomstbericht aan</li>
+            <li>Test zelf je formulier — je krijgt direct WhatsApp van je AI</li>
+          </ol>
+          <p style="text-align:center">
+            <a href="${escHtml(dashboardUrl)}" style="display:inline-block;padding:14px 28px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
+          </p>
+          <p style="margin-top:32px;font-size:13px;color:#a0aab8;border-top:1px solid #eee;padding-top:16px">Vragen? Antwoord op deze mail. — Team Helvaro</p>
         </div>`
     })
   });

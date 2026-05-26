@@ -6639,17 +6639,21 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
             <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
-              <div style="font-weight:600;margin-bottom:8px;color:var(--green)">✓ Klant aangemaakt</div>
-              <div style="font-size:12px;display:flex;flex-direction:column;gap:6px">
-                <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="background:var(--bg-primary);padding:2px 6px;border-radius:4px"></code></div>
-                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright)"></a></div>
-                <div style="margin-top:4px">
-                  <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Onboarding link:</div>
-                  <div style="display:flex;gap:6px;align-items:center">
-                    <code id="nc-result-link" style="flex:1;font-size:10px;background:var(--bg-primary);padding:4px 6px;border-radius:4px;word-break:break-all;color:var(--accent-bright);border:1px solid var(--border)"></code>
-                    <button onclick="copyOnboardingLink()" id="nc-copy-btn" style="flex-shrink:0;padding:4px 8px;background:var(--accent);border:none;border-radius:5px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
-                  </div>
+              <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt — welkomstmail verstuurd</div>
+
+              <!-- Login credentials (only shown when user record was created — primary action!) -->
+              <div id="nc-result-login-block" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+                <div style="font-size:11px;color:var(--accent-bright);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔑 Login credentials</div>
+                <div style="font-size:12px;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">E-mail:</span><code id="nc-result-email" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:11px"></code><button onclick="copyNcField('nc-result-email','nc-copy-email')" id="nc-copy-email" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
+                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">Wachtwoord:</span><code id="nc-result-pw" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:12px;color:var(--accent-bright);font-weight:600;letter-spacing:.5px"></code><button onclick="copyNcField('nc-result-pw','nc-copy-pw')" id="nc-copy-pw" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
                 </div>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:6px">Klant moet wijzigen via <em>Wachtwoord vergeten</em> na 1ste login.</div>
+              </div>
+
+              <div style="font-size:12px;display:flex;flex-direction:column;gap:6px">
+                <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="background:var(--bg-primary);padding:2px 6px;border-radius:4px;font-size:11px"></code></div>
+                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright)"></a></div>
               </div>
             </div>
             <button id="nc-submit" onclick="submitNewClient()" style="width:100%;padding:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Aanmaken</button>
@@ -9254,9 +9258,12 @@ async function submitNewClient() {
     const urlEl = document.getElementById('nc-result-url');
     urlEl.textContent = data.formUrl;
     urlEl.href = data.formUrl;
-    const onboardLink = 'https://app.helvaro.pro/onboard?invite=' + encodeURIComponent(window.__hOnboard || '');
-    document.getElementById('nc-result-link').textContent = onboardLink;
-    document.getElementById('nc-result-link').dataset.link = onboardLink;
+    // Show login credentials block if a User record was also created
+    if (data.userCreated && data.loginPassword) {
+      document.getElementById('nc-result-email').textContent = email;
+      document.getElementById('nc-result-pw').textContent    = data.loginPassword;
+      document.getElementById('nc-result-login-block').style.display = '';
+    }
     succEl.style.display = 'block';
     btn.textContent = 'Sluiten';
     btn.disabled = false;
@@ -9267,6 +9274,18 @@ async function submitNewClient() {
     btn.disabled = false;
     btn.textContent = 'Aanmaken';
   }
+}
+
+function copyNcField(srcId, btnId) {
+  const txt = document.getElementById(srcId)?.textContent || '';
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  }).catch(() => {});
 }
 
 function copyOnboardingLink() {
