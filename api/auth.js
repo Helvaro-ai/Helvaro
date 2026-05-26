@@ -462,7 +462,7 @@ f.addEventListener('submit', async () => {
     m.textContent = d.message || (r.ok ? 'Mail verstuurd.' : (d.error || 'Er ging iets mis.'));
     m.className = 'msg ' + (r.ok ? 'ok' : 'err');
     m.style.display = 'block';
-    if (r.ok) { btn.textContent = 'Verstuurd ✓'; }
+    if (r.ok) { btn.textContent = 'Verstuurd'; }
     else      { btn.disabled = false; btn.textContent = 'Reset-link versturen'; }
   } catch (e) {
     m.textContent = 'Netwerkfout. Probeer opnieuw.'; m.className = 'msg err'; m.style.display = 'block';
@@ -516,7 +516,7 @@ f.addEventListener('submit', async () => {
     m.className = 'msg ' + (r.ok ? 'ok' : 'err');
     m.style.display = 'block';
     if (r.ok) {
-      btn.textContent = 'Klaar ✓';
+      btn.textContent = 'Klaar';
       setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
     } else {
       btn.disabled = false; btn.textContent = 'Wachtwoord opslaan';

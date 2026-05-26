@@ -499,7 +499,7 @@ module.exports = async function handler(req, res) {
             '[lege lijn]',
             '12-15 hashtags (mix niche + breed)',
             '[lege lijn]',
-            '📸 Visuele tip: 1 zin wat voor beeld/reel erbij past',
+            'Visuele tip: 1 zin wat voor beeld/reel erbij past',
             '',
             'Schrijf alleen de caption. Geen uitleg.'
           ].join('\n');
@@ -894,13 +894,13 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
   if (!RESEND_KEY) { console.warn('[resend welcome] skipped: RESEND_API_KEY missing'); return; }
   // Welkomstmail komt persoonlijk van Sindi — voelt menselijker dan een no-reply.
   // RESEND_WELCOME_FROM env var kan dit alsnog overrulen (bv. team@usehelvaro.pro later).
-  // ⚠️ usehelvaro.pro moet als Resend-domain geverifieerd zijn — anders 403.
+  // NOTE: usehelvaro.pro moet als Resend-domain geverifieerd zijn — anders 403.
   const FROM = process.env.RESEND_WELCOME_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   let r;
   try {
   // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
   const loginBlock = loginPassword ? `
-            <h3 style="margin:24px 0 8px;color:#0f1117">🔑 Login gegevens</h3>
+            <h3 style="margin:24px 0 8px;color:#0f1117">Login gegevens</h3>
             <div style="background:#f3f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:18px;margin-bottom:8px">
               <table style="width:100%;border-collapse:collapse">
                 <tr>
@@ -913,7 +913,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
                 </tr>
               </table>
             </div>
-            <p style="font-size:12px;color:#5c6478;margin:6px 0 18px">⚠️ Wijzig je wachtwoord na de eerste login via <a href="https://app.helvaro.pro/forgot-password" style="color:#6366f1">Wachtwoord vergeten</a>.</p>
+            <p style="font-size:12px;color:#5c6478;margin:6px 0 18px">Wijzig je wachtwoord na de eerste login via <a href="https://app.helvaro.pro/forgot-password" style="color:#6366f1">Wachtwoord vergeten</a>.</p>
           ` : '';
   r = await fetch('https://api.resend.com/emails', {
     method:  'POST',
@@ -927,15 +927,15 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
           <div style="background:#080c14;padding:32px;border-radius:12px;text-align:center;margin-bottom:24px">
             <h1 style="color:#818cf8;font-family:monospace;letter-spacing:4px;margin:0">HELVARO</h1>
           </div>
-          <h2 style="margin-bottom:8px">Welkom, ${escHtml(clientName)}! 🎉</h2>
+          <h2 style="margin-bottom:8px">Welkom, ${escHtml(clientName)}</h2>
           <p style="color:#5c6478;margin-bottom:24px">Je Helvaro account staat klaar — hieronder vind je alles om vandaag nog je eerste lead binnen te halen.</p>
           ${loginBlock}
-          <h3 style="margin:24px 0 8px;color:#0f1117">📋 Jouw lead-formulier</h3>
+          <h3 style="margin:24px 0 8px;color:#0f1117">Jouw lead-formulier</h3>
           <p style="color:#5c6478;margin:0 0 8px;font-size:13px">Plak deze URL in je advertenties, op je website of in je e-mail handtekening:</p>
           <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:18px;font-family:monospace;font-size:13px;word-break:break-all">
             <a href="${escHtml(formUrl)}" style="color:#6366f1;text-decoration:none">${escHtml(formUrl)}</a>
           </div>
-          <h3 style="margin:24px 0 8px;color:#0f1117">⚡ Eerste 3 stappen</h3>
+          <h3 style="margin:24px 0 8px;color:#0f1117">Eerste 3 stappen</h3>
           <ol style="color:#374151;line-height:1.7;padding-left:20px;margin-bottom:24px">
             <li>Log in op <a href="${escHtml(dashboardUrl)}" style="color:#6366f1">je dashboard</a></li>
             <li>Open <strong>AI Persoonlijkheid</strong> en pas de AI-naam + welkomstbericht aan</li>

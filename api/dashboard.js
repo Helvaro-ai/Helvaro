@@ -6225,7 +6225,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
-        <button class="hamburger" id="hamburger">☰</button>
+        <button class="hamburger" id="hamburger"></button>
         <div>
           <div class="page-title orbitron gradient-text" id="topbar-title">Dashboard</div>
           <div class="page-subtitle" id="topbar-subtitle">Overzicht van uw gekwalificeerde leads</div>
@@ -6259,7 +6259,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
       <!-- Form Link banner — quick access to the lead form URL -->
       <div class="dash-formlink" id="dash-formlink">
-        <div class="dash-formlink-icon">📋</div>
+        <div class="dash-formlink-icon"></div>
         <div class="dash-formlink-body">
           <div class="dash-formlink-label">Jouw lead-formulier</div>
           <code class="dash-formlink-url" id="dash-formlink-url">—</code>
@@ -6316,7 +6316,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="revenue-goal-label">Omzet Doel</div>
             <div class="revenue-goal-sub" id="revenue-goal-sub">deze maand</div>
           </div>
-          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen">✏️</button>
+          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen">️</button>
         </div>
         <div class="revenue-goal-amounts">
           <span class="revenue-goal-current" id="revenue-goal-current">€0</span>
@@ -6374,7 +6374,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <!-- Filters Bar -->
       <div class="filters-bar">
         <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon"></span>
           <input class="search-input" id="search-input" type="text" placeholder="Zoek op naam of telefoonnummer...">
         </div>
         <select class="filter-select" id="filter-status">
@@ -6400,7 +6400,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           Filters
           <span class="filter-badge" id="filter-badge" style="display:none">0</span>
         </span>
-        <button class="btn-reset" id="btn-reset-filters">✕ Reset</button>
+        <button class="btn-reset" id="btn-reset-filters">Reset</button>
         <span class="leads-count" id="leads-count"></span>
       </div>
 
@@ -6574,7 +6574,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <h3 style="font-size:17px;margin-bottom:2px">Nieuwe klant uitnodigen</h3>
             <p style="color:var(--text-muted);font-size:13px">De klant ontvangt een e-mail en maakt zelf zijn account aan.</p>
           </div>
-          <button onclick="closeNewClientModal()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px;line-height:1">✕</button>
+          <button onclick="closeNewClientModal()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px;line-height:1"></button>
         </div>
 
         <!-- ── INVITE BY EMAIL (primary) ── -->
@@ -6592,7 +6592,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
           <div id="nc-inv-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px;margin-top:12px"></div>
           <div id="nc-inv-success" style="display:none;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:12px 14px;margin-top:12px;font-size:13px;color:var(--green)">
-            ✓ Uitnodiging verzonden! De klant ontvangt een e-mail met de registratielink.
+            Uitnodiging verzonden! De klant ontvangt een e-mail met de registratielink.
           </div>
 
           <button id="nc-inv-btn" onclick="sendClientInvite()" style="width:100%;margin-top:14px;padding:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">
@@ -6640,12 +6640,12 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
             <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
-              <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt</div>
+              <div style="font-weight:600;margin-bottom:10px;color:var(--green)">Klant aangemaakt</div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Stuur zelf de welkomstmail vanuit je eigen mailbox — klik op de knop hieronder om een kant-en-klare tekst te kopiëren.</div>
 
               <!-- Login credentials (only shown when user record was created — primary action!) -->
               <div id="nc-result-login-block" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-                <div style="font-size:11px;color:var(--accent-bright);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔑 Login credentials</div>
+                <div style="font-size:11px;color:var(--accent-bright);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Login credentials</div>
                 <div style="font-size:12px;display:flex;flex-direction:column;gap:4px">
                   <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">E-mail:</span><code id="nc-result-email" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:11px"></code><button onclick="copyNcField('nc-result-email','nc-copy-email')" id="nc-copy-email" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
                   <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">Wachtwoord:</span><code id="nc-result-pw" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:12px;color:var(--accent-bright);font-weight:600;letter-spacing:.5px"></code><button onclick="copyNcField('nc-result-pw','nc-copy-pw')" id="nc-copy-pw" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
@@ -6660,7 +6660,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
               <!-- Manual welcome-email helpers -->
               <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-                <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">✉️ Welkomstmail (zelf versturen)</div>
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">️ Welkomstmail (zelf versturen)</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <button id="nc-copy-mail-btn" onclick="copyWelcomeEmail()" style="flex:1;min-width:140px;padding:9px 12px;background:var(--accent);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -6759,7 +6759,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
         <div class="conv-detail" id="conv-detail">
           <div class="conv-empty">
-            <div class="conv-empty-icon">💬</div>
+            <div class="conv-empty-icon"></div>
             <div>Selecteer een gesprek</div>
           </div>
         </div>
@@ -6839,7 +6839,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
         <!-- First-time setup banner (only shown when essential fields are empty) -->
         <div class="ap-welcome-banner" id="ap-welcome-banner" style="display:none">
-          <div class="ap-welcome-icon">🚀</div>
+          <div class="ap-welcome-icon"></div>
           <div class="ap-welcome-body">
             <div class="ap-welcome-title">Welkom bij Helvaro! Eerst even dit invullen.</div>
             <div class="ap-welcome-sub">
@@ -6878,7 +6878,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <!-- Inspiration library: clickable templates -->
               <div class="ap-tpl-wrap">
                 <div class="ap-tpl-header">
-                  <span class="ap-tpl-title">💡 Inspiratie</span>
+                  <span class="ap-tpl-title">Inspiratie</span>
                   <span class="ap-tpl-sub">klik een sjabloon om in te vullen</span>
                 </div>
                 <div class="ap-tpl-grid" id="ap-tpl-grid"></div>
@@ -6905,7 +6905,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <!-- Inspiration library for instructions -->
               <div class="ap-tpl-wrap">
                 <div class="ap-tpl-header">
-                  <span class="ap-tpl-title">💡 Inspiratie</span>
+                  <span class="ap-tpl-title">Inspiratie</span>
                   <span class="ap-tpl-sub">klik om aan je instructies toe te voegen</span>
                 </div>
                 <div class="ap-tpl-grid" id="ap-instr-grid"></div>
@@ -6969,8 +6969,8 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">kies hoe je de overdracht doet</span>
               </label>
               <div class="ap-lang-row">
-                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-calendly" value="calendly"> <span>📅 Stuur Calendly link</span></label>
-                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>📞 Een collega contacteert ze</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-calendly" value="calendly"> <span>Stuur Calendly link</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>Een collega contacteert ze</span></label>
               </div>
               <div class="ap-hint" id="ap-booking-hint-calendly" style="display:none;">Lead krijgt automatisch je Calendly link om zelf een moment te kiezen. Vul hierboven de Calendly link in.</div>
               <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen Calendly nodig — jij krijgt een melding op je notificatie-nummer.</div>
@@ -7026,7 +7026,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Trust badges onderaan formulier
                 <span class="ap-label-hint">max 3, gescheiden met |</span>
               </label>
-              <input id="ap-badges" type="text" class="ap-input" placeholder="🏆 15 jaar ervaring | ✓ ISO-gecertificeerd | 📍 Lokaal Gent" maxlength="300">
+              <input id="ap-badges" type="text" class="ap-input" placeholder="15 jaar ervaring | ISO-gecertificeerd | Lokaal Gent" maxlength="300">
               <div class="ap-hint">
                 Vervang de standaard badges (Geen spam / Reactie binnen 1 min / Vrijblijvend) met eigen sociaal bewijs. Eerste emoji is het icoon, rest is de tekst.
               </div>
@@ -7078,7 +7078,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Tekst op de lead-form (optioneel)
                 <span class="ap-label-hint">eigen welkomstboodschap</span>
               </label>
-              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey 👋 ik help je graag — laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
+              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey ik help je graag — laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
               <div class="ap-hint">Verschijnt als chat-bubbel bovenaan je lead-form (onder de avatar). Leeg = automatische sector-tekst. Placeholders: <code>{ai}</code>, <code>{bedrijf}</code>.</div>
             </div>
 
@@ -7088,7 +7088,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Opslaan
               </button>
-              <span class="ap-saved-mark" id="ap-saved-mark">✓ Opgeslagen</span>
+              <span class="ap-saved-mark" id="ap-saved-mark">Opgeslagen</span>
             </div>
           </div>
 
@@ -7128,7 +7128,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
               <!-- Form Link compact card — points to dedicated Formulier page -->
               <div class="ap-formlink-card">
-                <div class="ap-test-title">📋 Jouw lead-formulier</div>
+                <div class="ap-test-title">Jouw lead-formulier</div>
                 <p class="ap-test-sub">Deel deze link via je website, advertenties of socials.</p>
                 <div class="ap-formlink-url-row">
                   <code class="ap-formlink-url" id="ap-formlink-url">—</code>
@@ -7181,7 +7181,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Hero card with the URL itself -->
         <div class="fm-hero">
           <div class="fm-hero-top">
-            <div class="fm-hero-icon">📋</div>
+            <div class="fm-hero-icon"></div>
             <div class="fm-hero-text">
               <h2 class="fm-hero-title">Jouw lead-formulier</h2>
               <p class="fm-hero-sub">Iedereen die dit formulier invult krijgt automatisch een WhatsApp van je AI en verschijnt in je Dashboard.</p>
@@ -7227,7 +7227,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="fm-option-card">
             <div class="fm-option-hdr">
               <span class="fm-option-rec">Aanbevolen</span>
-              <div class="fm-option-title">💬 Drijvende WhatsApp-knop op je site</div>
+              <div class="fm-option-title">Drijvende WhatsApp-knop op je site</div>
               <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
             </div>
             <textarea class="fm-code" id="fm-code-widget" readonly rows="3"></textarea>
@@ -7249,7 +7249,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <!-- Option 2: Iframe embed -->
           <div class="fm-option-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">🖼️ Inbouwen als pagina-onderdeel</div>
+              <div class="fm-option-title">️ Inbouwen als pagina-onderdeel</div>
               <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
             </div>
             <textarea class="fm-code" id="fm-code-iframe" readonly rows="3"></textarea>
@@ -7271,7 +7271,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <!-- Option 3: Direct link -->
           <div class="fm-option-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">🔗 Alleen de link</div>
+              <div class="fm-option-title">Alleen de link</div>
               <p class="fm-option-sub">Voor advertenties, e-mail handtekening, socials of WhatsApp-bio. Klant opent een eigen pagina met enkel het formulier.</p>
             </div>
             <textarea class="fm-code" id="fm-code-link" readonly rows="1"></textarea>
@@ -7288,14 +7288,14 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Installation guide — platform-specific step-by-step -->
         <div class="fm-guide-card">
           <div class="fm-guide-hdr">
-            <div class="fm-option-title">🛠️ Installatie-handleiding per platform</div>
+            <div class="fm-option-title">️ Installatie-handleiding per platform</div>
             <p class="fm-option-sub">Klik op het platform dat je gebruikt voor een stap-voor-stap uitleg. Werkt op ALLE moderne websites.</p>
           </div>
 
           <!-- WordPress -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">📝</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">WordPress</span>
               <span class="fm-guide-meta">2 manieren</span>
             </summary>
@@ -7315,14 +7315,14 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Plak de code <em>vlak voor</em> de <code>&lt;/body&gt;</code> tag</li>
                 <li>Klik <strong>Bestand bijwerken</strong></li>
               </ol>
-              <div class="fm-guide-tip">💡 <strong>Tip:</strong> Optie A overleeft theme-updates. Optie B niet — kies daarom A tenzij je weet wat je doet.</div>
+              <div class="fm-guide-tip"><strong>Tip:</strong> Optie A overleeft theme-updates. Optie B niet — kies daarom A tenzij je weet wat je doet.</div>
             </div>
           </details>
 
           <!-- Shopify -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">🛒</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Shopify</span>
               <span class="fm-guide-meta">~2 min</span>
             </summary>
@@ -7335,14 +7335,14 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Plak de Drijvende WhatsApp-knop code op de regel <em>vlak boven</em> <code>&lt;/body&gt;</code></li>
                 <li>Klik <strong>Save</strong> rechtsboven</li>
               </ol>
-              <div class="fm-guide-tip">💡 De knop verschijnt op élke pagina van je winkel — productpagina's, collectiepagina's, blog, alles.</div>
+              <div class="fm-guide-tip">De knop verschijnt op élke pagina van je winkel — productpagina's, collectiepagina's, blog, alles.</div>
             </div>
           </details>
 
           <!-- Wix -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">🌐</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Wix</span>
               <span class="fm-guide-meta">~3 min</span>
             </summary>
@@ -7357,7 +7357,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Bij <strong>Place Code in</strong>: kies <strong>Body — end</strong></li>
                 <li>Klik <strong>Apply</strong> → publiceer je site</li>
               </ol>
-              <div class="fm-guide-tip">⚠️ Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code — gebruik dan de directe link of QR-code.</div>
+              <div class="fm-guide-tip">️ Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code — gebruik dan de directe link of QR-code.</div>
             </div>
           </details>
 
@@ -7375,14 +7375,14 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Footer"</strong></li>
                 <li>Klik <strong>Save</strong> bovenaan</li>
               </ol>
-              <div class="fm-guide-tip">⚠️ Code Injection is beschikbaar vanaf het <strong>Business</strong> plan. Op Personal plan: gebruik een <em>Code Block</em> in een sectie, of gebruik enkel de directe link.</div>
+              <div class="fm-guide-tip">️ Code Injection is beschikbaar vanaf het <strong>Business</strong> plan. Op Personal plan: gebruik een <em>Code Block</em> in een sectie, of gebruik enkel de directe link.</div>
             </div>
           </details>
 
           <!-- Webflow -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">🎨</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Webflow</span>
               <span class="fm-guide-meta">~2 min</span>
             </summary>
@@ -7395,14 +7395,14 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Klik <strong>Save Changes</strong></li>
                 <li>Klik <strong>Publish</strong> rechtsboven om live te zetten</li>
               </ol>
-              <div class="fm-guide-tip">💡 Footer Code wordt op élke pagina ingeladen. Voor een test: publiceer eerst naar je <code>.webflow.io</code> subdomain.</div>
+              <div class="fm-guide-tip">Footer Code wordt op élke pagina ingeladen. Voor een test: publiceer eerst naar je <code>.webflow.io</code> subdomain.</div>
             </div>
           </details>
 
           <!-- Framer -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">⚡</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Framer</span>
               <span class="fm-guide-meta">~2 min</span>
             </summary>
@@ -7420,7 +7420,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <!-- Google Sites -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">📄</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Google Sites</span>
               <span class="fm-guide-meta">enkel iframe</span>
             </summary>
@@ -7434,14 +7434,14 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Klik <strong>Next</strong> → <strong>Insert</strong></li>
                 <li>Pas de grootte aan zoals gewenst → <strong>Publish</strong></li>
               </ol>
-              <div class="fm-guide-tip">💡 Alternatief: deel gewoon de <strong>directe link</strong> in een knop of menu-item.</div>
+              <div class="fm-guide-tip">Alternatief: deel gewoon de <strong>directe link</strong> in een knop of menu-item.</div>
             </div>
           </details>
 
           <!-- Generic HTML -->
           <details class="fm-guide-item">
             <summary>
-              <span class="fm-guide-emoji">💻</span>
+              <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Custom HTML / eigen code</span>
               <span class="fm-guide-meta">developers</span>
             </summary>
@@ -7452,13 +7452,13 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Deploy/upload naar je hosting (FTP, Vercel, Netlify, GitHub Pages, …)</li>
               </ol>
               <p>Voor frameworks zoals <strong>Next.js / React / Vue</strong>: voeg het toe in de root layout file (<code>_app.tsx</code>, <code>App.vue</code>, …) met een <code>useEffect</code> die de script-tag dynamisch invoegt, of via <code>next/script</code> met <code>strategy="afterInteractive"</code>.</p>
-              <div class="fm-guide-tip">💡 Voor Next.js: <code>&lt;Script src="https://app.helvaro.pro/form-widget.js" data-project="..." data-name="..." strategy="afterInteractive" /&gt;</code></div>
+              <div class="fm-guide-tip">Voor Next.js: <code>&lt;Script src="https://app.helvaro.pro/form-widget.js" data-project="..." data-name="..." strategy="afterInteractive" /&gt;</code></div>
             </div>
           </details>
 
           <!-- Test instructions -->
           <div class="fm-guide-test">
-            <strong>✓ Hoe weet ik of het werkt?</strong>
+            <strong>Hoe weet ik of het werkt?</strong>
             Open je site in een privé/incognito venster. Wacht 2 seconden. Je moet een ronde blauwe chat-knop rechtsonder zien staan. Klik erop — het Helvaro formulier opent als pop-up. Vul een test-aanvraag in om te checken of het lead in je dashboard verschijnt.
           </div>
         </div>
@@ -7467,7 +7467,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="fm-bottom-grid">
           <div class="fm-qr-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">📱 QR-code</div>
+              <div class="fm-option-title">QR-code</div>
               <p class="fm-option-sub">Scanbaar met elke smartphone-camera. Print op flyers, beursstanden, etalage-stickers, visitekaartjes.</p>
             </div>
             <div class="fm-qr-frame">
@@ -7481,7 +7481,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
           <div class="fm-preview-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">👁️ Voorbeeld</div>
+              <div class="fm-option-title">️ Voorbeeld</div>
               <p class="fm-option-sub">Zo ziet je formulier eruit voor een lead.</p>
             </div>
             <div class="fm-iframe-wrap">
@@ -7767,7 +7767,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <!-- Goal: 5 clients -->
             <div class="fdr-panel fdr-goal-panel">
               <div class="fdr-goal-hdr">
-                <span>🎯 Doel — 5 klanten voor 20 jun</span>
+                <span>Doel — 5 klanten voor 20 jun</span>
                 <button class="fdr-refresh-btn" onclick="loadFounderData(true)">↻</button>
               </div>
               <div class="fdr-goal-big">
@@ -7793,8 +7793,8 @@ tr:hover .td-arrow { color: var(--cyan); }
               </div>
               <hr class="fdr-profit-divider">
               <div class="fdr-profit-rows">
-                <div class="fdr-profit-row"><span class="lbl">Vaste kosten <button class="fdr-cost-edit-btn" onclick="editCost('fixed')" title="Bewerk">✎</button></span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
-                <div class="fdr-profit-row"><span class="lbl">Variabele kosten <button class="fdr-cost-edit-btn" onclick="editCost('variable')" title="Bewerk">✎</button></span><span class="val neg" id="fdr-cost-var">-€0</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Vaste kosten <button class="fdr-cost-edit-btn" onclick="editCost('fixed')" title="Bewerk"></button></span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Variabele kosten <button class="fdr-cost-edit-btn" onclick="editCost('variable')" title="Bewerk"></button></span><span class="val neg" id="fdr-cost-var">-€0</span></div>
                 <div class="fdr-profit-row total"><span class="lbl">Nettowinst</span><span class="val" id="fdr-profit-val">€0</span></div>
               </div>
               <div class="fdr-profit-marge" id="fdr-profit-marge">Marge: —%</div>
@@ -7805,8 +7805,8 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fdr-panel-title" style="margin-bottom:12px">Pipeline</div>
               <div class="fdr-pipe-mini-cols" id="fdr-pipe-mini-cols"></div>
               <div class="fdr-won-lost-row">
-                <span class="founder-badge-won" id="pipe-won-badge">✓ 0 Gewonnen</span>
-                <span class="founder-badge-lost" id="pipe-lost-badge">✗ 0 Verloren</span>
+                <span class="founder-badge-won" id="pipe-won-badge">0 Gewonnen</span>
+                <span class="founder-badge-lost" id="pipe-lost-badge">0 Verloren</span>
               </div>
             </div>
 
@@ -7816,7 +7816,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Follow-up alerts -->
         <div id="fdr-followup-section" style="display:none">
           <div class="fdr-section-hdr">
-            <h3>⚠️ Vandaag opvolgen</h3>
+            <h3>️ Vandaag opvolgen</h3>
             <span style="font-size:11px;color:var(--text-muted)" id="fdr-followup-count"></span>
           </div>
           <div class="fdr-followup-wrap" id="fdr-followup-list"></div>
@@ -7901,12 +7901,12 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
 
             <select class="fdr-hub-select" id="fdr-hub-type">
-              <option value="pijnpunt">😤 Pijnpunt</option>
-              <option value="feature">⚡ Feature highlight</option>
-              <option value="resultaat">📊 Resultaten & cijfers</option>
-              <option value="vergelijking">🥊 Oud vs Helvaro</option>
-              <option value="founder">👥 Founder story</option>
-              <option value="update">🔄 Week update</option>
+              <option value="pijnpunt">Pijnpunt</option>
+              <option value="feature">Feature highlight</option>
+              <option value="resultaat">Resultaten & cijfers</option>
+              <option value="vergelijking">Oud vs Helvaro</option>
+              <option value="founder">Founder story</option>
+              <option value="update">Week update</option>
             </select>
 
             <select class="fdr-hub-select" id="fdr-hub-sector">
@@ -7997,7 +7997,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="fdr-outreach-box">
           <div class="fdr-outreach-hdr">
             <div>
-              <div class="fdr-outreach-title">📣 Outreach Teller — Teljo</div>
+              <div class="fdr-outreach-title">Outreach Teller — Teljo</div>
               <div class="fdr-outreach-week" id="fdr-outreach-week">Week van —</div>
             </div>
             <button class="fdr-outreach-reset" onclick="resetOutreach()">Week resetten</button>
@@ -8080,38 +8080,38 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <div class="fdr-docs-sub">Gedeeld tussen Frade &amp; Teljo — altijd online bereikbaar</div>
               </div>
             </div>
-            <button class="fdr-docs-edit-btn" onclick="toggleDocsConfig()">⚙ Links instellen</button>
+            <button class="fdr-docs-edit-btn" onclick="toggleDocsConfig()">Links instellen</button>
           </div>
           <div class="fdr-docs-body">
             <!-- Embedded presentation -->
             <div class="fdr-docs-embed-wrap" id="fdr-docs-embed-wrap">
               <div class="fdr-docs-embed-placeholder" id="fdr-docs-embed-placeholder">
-                📊 Plak een Google Slides of Canva embed-link via <a onclick="toggleDocsConfig()">⚙ Links instellen</a> om de presentatie hier te tonen.
+                Plak een Google Slides of Canva embed-link via <a onclick="toggleDocsConfig()">Links instellen</a> om de presentatie hier te tonen.
               </div>
             </div>
             <!-- Document cards -->
             <div class="fdr-docs-grid" id="fdr-docs-grid">
               <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-pitch" target="_blank" rel="noopener">
                 <span class="fdr-doc-card-badge slides">Slides</span>
-                <div class="fdr-doc-card-icon">📊</div>
+                <div class="fdr-doc-card-icon"></div>
                 <div class="fdr-doc-card-name">Pitch Deck</div>
                 <div class="fdr-doc-card-desc">Presentatie voor investeerders & klanten</div>
               </a>
               <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-contract" target="_blank" rel="noopener">
                 <span class="fdr-doc-card-badge pdf">PDF</span>
-                <div class="fdr-doc-card-icon">📝</div>
+                <div class="fdr-doc-card-icon"></div>
                 <div class="fdr-doc-card-name">Contracten</div>
                 <div class="fdr-doc-card-desc">Klantcontracten — 3 maanden + maandelijks</div>
               </a>
               <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-prijslijst" target="_blank" rel="noopener">
                 <span class="fdr-doc-card-badge pdf">PDF</span>
-                <div class="fdr-doc-card-icon">💰</div>
+                <div class="fdr-doc-card-icon"></div>
                 <div class="fdr-doc-card-name">Prijslijst</div>
                 <div class="fdr-doc-card-desc">Helvaro €1.000/maand · alles inbegrepen</div>
               </a>
               <a class="fdr-doc-card fdr-doc-card-nolink" id="fdr-doc-drive" target="_blank" rel="noopener">
                 <span class="fdr-doc-card-badge drive">Drive</span>
-                <div class="fdr-doc-card-icon">📁</div>
+                <div class="fdr-doc-card-icon"></div>
                 <div class="fdr-doc-card-name">Google Drive</div>
                 <div class="fdr-doc-card-desc">Alle bestanden, sjablonen en assets</div>
               </a>
@@ -8119,7 +8119,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <!-- Config panel (hidden by default) -->
           <div class="fdr-docs-cfg" id="fdr-docs-cfg">
-            <div class="fdr-docs-cfg-title">🔗 Links instellen (opgeslagen voor Frade &amp; Teljo)</div>
+            <div class="fdr-docs-cfg-title">Links instellen (opgeslagen voor Frade &amp; Teljo)</div>
             <div class="fdr-docs-cfg-row">
               <span class="fdr-docs-cfg-lbl">Presentatie embed</span>
               <input class="fdr-docs-cfg-input" id="cfg-embed" placeholder="Google Slides of Canva embed URL (iframe src=...)">
@@ -8182,7 +8182,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Meeting met partner -->
         <div class="fdr-meeting-box">
           <div class="fdr-meeting-hdr">
-            <span class="fdr-meeting-icon">🤝</span>
+            <span class="fdr-meeting-icon"></span>
             <span class="fdr-meeting-title">Volgende meeting met partner</span>
           </div>
           <div id="fdr-meeting-display">
@@ -8199,7 +8199,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- AI Coach Chat -->
         <div class="fdr-chat-box">
           <div class="fdr-chat-hdr">
-            <div class="fdr-chat-avatar">🧠</div>
+            <div class="fdr-chat-avatar"></div>
             <div class="fdr-chat-hdr-info">
               <div class="fdr-chat-hdr-name">Helvaro Coach</div>
               <div class="fdr-chat-hdr-sub">Vraag me alles over strategie, sales of outreach</div>
@@ -8243,7 +8243,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- Onboarding "Klaar!" celebration overlay (shown once after first setup) -->
     <div id="onb-done-overlay">
       <div class="onb-done-card">
-        <div class="onb-done-icon">🎉</div>
+        <div class="onb-done-icon"></div>
         <h2 class="onb-done-title">Je AI is live!</h2>
         <p class="onb-done-sub">Vanaf nu krijgt elke lead die jouw formulier invult direct een persoonlijk WhatsApp-bericht — automatisch gekwalificeerd.</p>
         <div class="onb-done-url-card">
@@ -8324,7 +8324,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     </div>
     <div class="search-results" id="search-results">
       <div class="search-hint">
-        <div class="search-hint-icon">🔍</div>
+        <div class="search-hint-icon"></div>
         <div class="search-hint-text">Begin met typen om leads te zoeken</div>
         <div class="search-hint-shortcuts">
           <span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span>
@@ -8366,12 +8366,12 @@ tr:hover .td-arrow { color: var(--cyan); }
 <div class="panel-backdrop" id="panel-backdrop"></div>
 <div class="detail-panel" id="detail-panel">
   <div class="panel-header">
-    <button class="panel-close" id="panel-close">✕</button>
+    <button class="panel-close" id="panel-close"></button>
     <div class="panel-avatar" id="panel-avatar">HV</div>
     <div class="panel-name orbitron" id="panel-name">Lead naam</div>
     <div class="panel-meta">
       <div class="panel-phone">
-        <span>📞</span>
+        <span></span>
         <span id="panel-phone">—</span>
         <button class="panel-copy-btn" id="panel-copy-phone" title="Kopieer nummer">⧉</button>
       </div>
@@ -8514,14 +8514,14 @@ function animateCounter(el, target, suffix = '') {
    ============================================================ */
 function toast(message, type = 'info', title = null) {
   const container = document.getElementById('toast-container');
-  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  const icons = { success: '', error: '', info: 'ℹ' };
   const titles = { success: 'Gelukt', error: 'Fout', info: 'Info' };
   const el = document.createElement('div');
   el.className = \`toast toast-\${type}\`;
   el.innerHTML = \`
     <div class="toast-header">
       <span class="toast-title">\${icons[type]} \${title || titles[type]}</span>
-      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))">✕</button>
+      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))"></button>
     </div>
     <div class="toast-message">\${message}</div>
     <div class="toast-progress"></div>
@@ -9278,7 +9278,7 @@ async function sendClientInvite() {
       btn.textContent = 'Stuur uitnodigingsmail';
     } else {
       sucEl.style.display = 'block';
-      btn.textContent = '✓ Verzonden';
+      btn.textContent = 'Verzonden';
       setTimeout(() => { btn.disabled = false; btn.textContent = 'Nog een sturen'; }, 3000);
     }
   } catch {
@@ -9294,7 +9294,7 @@ function copyInviteLink() {
   if (!link) return;
   navigator.clipboard.writeText(link).then(() => {
     const btn = document.getElementById('nc-invite-copy');
-    btn.textContent = '✓';
+    btn.textContent = '';
     setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
   }).catch(() => {});
 }
@@ -9382,21 +9382,21 @@ function buildWelcomeEmailText(d) {
   const lines = [
     'Hé ' + d.clientName + ',',
     '',
-    'Welkom bij Helvaro 🎉 — je account staat klaar.',
+    'Welkom bij Helvaro — je account staat klaar.',
     '',
-    '🔗 Dashboard: https://app.helvaro.pro/dashboard'
+    'Dashboard: https://app.helvaro.pro/dashboard'
   ];
   if (d.loginPassword) {
-    lines.push('📧 Login: ' + d.email);
-    lines.push('🔑 Wachtwoord: ' + d.loginPassword);
+    lines.push('Login: ' + d.email);
+    lines.push('Wachtwoord: ' + d.loginPassword);
     lines.push('   (wijzig dit via "Wachtwoord vergeten" na de eerste login)');
   }
   lines.push('');
-  lines.push('📝 Jouw lead-formulier:');
+  lines.push('Jouw lead-formulier:');
   lines.push('   ' + d.formUrl);
   lines.push('   Plak deze URL in je Facebook/Google ads, op je website, of in je e-mail handtekening.');
   lines.push('');
-  lines.push('⚡ Eerste 3 stappen:');
+  lines.push('Eerste 3 stappen:');
   lines.push('   1. Log in op je dashboard');
   lines.push('   2. Open AI Persoonlijkheid en pas de AI-naam + welkomstbericht aan');
   lines.push('   3. Test zelf je formulier — je krijgt direct WhatsApp van je AI');
@@ -9422,7 +9422,7 @@ function copyWelcomeEmail() {
     const btn = document.getElementById('nc-copy-mail-btn');
     if (!btn) return;
     const orig = btn.innerHTML;
-    btn.innerHTML = '✓ Gekopieerd — plak in je mail';
+    btn.innerHTML = 'Gekopieerd — plak in je mail';
     setTimeout(() => { btn.innerHTML = orig; }, 2500);
   }).catch(() => toast('Kopiëren mislukt — kopieer handmatig', 'error'));
 }
@@ -9434,7 +9434,7 @@ function copyNcField(srcId, btnId) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     const orig = btn.textContent;
-    btn.textContent = '✓';
+    btn.textContent = '';
     setTimeout(() => { btn.textContent = orig; }, 1500);
   }).catch(() => {});
 }
@@ -9444,7 +9444,7 @@ function copyOnboardingLink() {
   if (!link) return;
   navigator.clipboard.writeText(link).then(() => {
     const btn = document.getElementById('nc-copy-btn');
-    btn.textContent = '✓ Gekopieerd';
+    btn.textContent = 'Gekopieerd';
     setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
   }).catch(() => {
     // Fallback: select the text
@@ -9739,7 +9739,7 @@ function renderTable() {
   if (state.leads.length === 0) {
     tbody.innerHTML = \`<tr><td colspan="11" style="padding:60px 20px;text-align:center">
       <div style="max-width:400px;margin:0 auto">
-        <div style="font-size:48px;margin-bottom:16px">🚀</div>
+        <div style="font-size:48px;margin-bottom:16px"></div>
         <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
         <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Uw AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
@@ -9762,7 +9762,7 @@ function renderTable() {
             <div class="empty-icon">◎</div>
             <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
             <div class="empty-desc">\${hasFilters ? 'Pas uw filters aan of reset ze.' : 'Er zijn nog geen leads in het systeem.'}</div>
-            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">✕ Reset filters</button>' : ''}
+            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : ''}
           </div>
         </td>
       </tr>
@@ -9778,7 +9778,7 @@ function renderTable() {
     const ageBadge = ageClass === 'fresh' ? '' :
       ageClass === 'warm' ? \`<span class="age-badge-table age-badge-warm">\${ageDays}d</span>\` :
       ageClass === 'cooling' ? \`<span class="age-badge-table age-badge-cooling">\${ageDays}d</span>\` :
-      \`<span class="age-badge-table age-badge-cold">🔥 \${ageDays}d</span>\`;
+      \`<span class="age-badge-table age-badge-cold">\${ageDays}d</span>\`;
     // Quick action buttons
     const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
     const waPhone = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
@@ -9801,13 +9801,13 @@ function renderTable() {
         <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
         <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
         <td>\${scoreBar(lead.leadScore)}</td>
-        <td>\${lead.opgepikt ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td>\${lead.opgepikt ? '<span style="color:var(--green)"></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
         <td class="td-arrow">›</td>
         <td onclick="event.stopPropagation()">
           <div class="row-actions">
-            <a class="row-action-btn" href="\${telLink}" title="Bellen">📞</a>
-            <a class="row-action-btn" href="\${waLink}" target="_blank" rel="noopener" title="WhatsApp">💬</a>
+            <a class="row-action-btn" href="\${telLink}" title="Bellen"></a>
+            <a class="row-action-btn" href="\${waLink}" target="_blank" rel="noopener" title="WhatsApp"></a>
           </div>
         </td>
       </tr>
@@ -9993,15 +9993,15 @@ function openPanel(lead) {
       </div>
       <div class="panel-row">
         <span class="panel-row-label">Opgepikt</span>
-        <span class="panel-row-value \${lead.opgepikt ? 'check-yes' : 'check-no'}">\${lead.opgepikt ? '✓ Ja' : '✗ Nee'}</span>
+        <span class="panel-row-value \${lead.opgepikt ? 'check-yes' : 'check-no'}">\${lead.opgepikt ? 'Ja' : 'Nee'}</span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">Boekingslink verstuurd</span>
-        <span class="panel-row-value \${lead.boekingslinkVerstuurd ? 'check-yes' : 'check-no'}">\${lead.boekingslinkVerstuurd ? '✓ Ja' : '✗ Nee'}</span>
+        <span class="panel-row-value \${lead.boekingslinkVerstuurd ? 'check-yes' : 'check-no'}">\${lead.boekingslinkVerstuurd ? 'Ja' : 'Nee'}</span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">Afspraak geboekt</span>
-        <span class="panel-row-value \${lead.afspraakGeboekt ? 'check-yes' : 'check-no'}">\${lead.afspraakGeboekt ? '✓ Ja' : '✗ Nee'}</span>
+        <span class="panel-row-value \${lead.afspraakGeboekt ? 'check-yes' : 'check-no'}">\${lead.afspraakGeboekt ? 'Ja' : 'Nee'}</span>
       </div>
     </div>
   \`;
@@ -10024,10 +10024,10 @@ function openPanel(lead) {
       <div class="panel-section">
         <div class="panel-section-title">Snelle Acties</div>
         <div class="panel-quick-actions">
-          <a class="panel-quick-btn" href="\${telLink}">📞 Bellen</a>
-          <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">✉️ Opvolging</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">📄 Offerte</a>
+          <a class="panel-quick-btn" href="\${telLink}">Bellen</a>
+          <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">WhatsApp</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">️ Opvolging</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">Offerte</a>
         </div>
       </div>
     \`;
@@ -10040,7 +10040,7 @@ function openPanel(lead) {
       const msgs = JSON.parse(lead.gesprek || '[]');
       bubbles = msgs.map(m => {
         const isUser = m.role === 'user';
-        const tag    = isUser ? '👤 Lead' : (m.manual ? '✋ Jij' : '🤖 AI');
+        const tag    = isUser ? 'Lead' : (m.manual ? 'Jij' : 'AI');
         const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
         return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
@@ -10076,7 +10076,7 @@ function openPanel(lead) {
     return notes.map(n => \`<div class="panel-note-item">
       <div class="panel-note-text">\${escHtml(n.text)}</div>
       <div class="panel-note-ts">\${relativeTime(n.ts)}</div>
-      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}">✕</button>
+      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}"></button>
     </div>\`).join('');
   }
   function renderTasksList(tasks) {
@@ -10087,14 +10087,14 @@ function openPanel(lead) {
         <input type="checkbox" class="panel-task-check" \${t.done ? 'checked' : ''}>
         <span class="panel-task-text">\${escHtml(t.text)}</span>
         \${dl.label ? \`<span class="panel-task-due \${dl.cls}">\${dl.label}</span>\` : ''}
-        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}">✕</button>
+        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}"></button>
       </div>\`;
     }).join('');
   }
   function renderCallsList(calls) {
     if (!calls.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Geen gesprekken gelogd</div>';
     return calls.map(c => \`<div class="panel-call-item">
-      <div class="panel-call-icon">📞</div>
+      <div class="panel-call-icon"></div>
       <div class="panel-call-body">
         <div class="panel-call-meta">\${c.duur} min &bull; \${relativeTime(c.ts)}</div>
         \${c.notitie ? \`<div class="panel-call-note">\${escHtml(c.notitie)}</div>\` : ''}
@@ -10114,8 +10114,8 @@ function openPanel(lead) {
         <div>
           <div class="afspraak-toggle-label">Verschenen?</div>
           <div class="afspraak-toggle-row" style="margin-top:6px">
-            <button class="afspraak-btn\${isYes ? ' active-yes' : ''}" id="btn-afspraak-ja">✓ Ja, verschenen</button>
-            <button class="afspraak-btn\${isNo  ? ' active-no'  : ''}" id="btn-afspraak-nee">✗ No-show</button>
+            <button class="afspraak-btn\${isYes ? ' active-yes' : ''}" id="btn-afspraak-ja">Ja, verschenen</button>
+            <button class="afspraak-btn\${isNo  ? ' active-no'  : ''}" id="btn-afspraak-nee">No-show</button>
           </div>
         </div>
         <div class="afspraak-value-row">
@@ -10155,7 +10155,7 @@ function openPanel(lead) {
       <div class="panel-log-call">
         <input type="number" id="panel-call-duur" placeholder="Min." min="1">
         <input type="text" id="panel-call-note" placeholder="Aantekeningen...">
-        <button class="btn-log-call" id="btn-log-call">📞 Loggen</button>
+        <button class="btn-log-call" id="btn-log-call">Loggen</button>
       </div>
     </div>
   \`;
@@ -10216,7 +10216,7 @@ function openPanel(lead) {
     function setVerschenen(val) {
       const data = parseNotities(state.activeLead);
       data.afspraak = { ...(data.afspraak || {}), verschenen: val };
-      persistNotities(data).then(() => toast(val ? '✓ Verschenen opgeslagen' : '✗ No-show opgeslagen', 'success'));
+      persistNotities(data).then(() => toast(val ? 'Verschenen opgeslagen' : 'No-show opgeslagen', 'success'));
       // Update button styles immediately
       const jaBtn  = document.getElementById('btn-afspraak-ja');
       const neeBtn = document.getElementById('btn-afspraak-nee');
@@ -10473,7 +10473,7 @@ async function sendWhatsAppReply() {
       return;
     }
     // Optimistic: render the just-sent bubble right away
-    const html = '<div><div class="chat-label">✋ Jij</div><div class="chat-bubble ai manual">' +
+    const html = '<div><div class="chat-label">Jij</div><div class="chat-bubble ai manual">' +
       text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
     if (wrap) wrap.insertAdjacentHTML('beforeend', html);
     // Keep the lead object's gesprek in sync so re-opening the panel still shows it
@@ -10523,7 +10523,7 @@ function renderNietBereikbaar() {
         <span class="nb-item-name">\${escHtml(name)}</span>
         \${dateStr ? \`<span class="nb-item-sub">\${dateStr}</span>\` : ''}
       </div>
-      <a class="nb-call-btn" href="\${telHref}">📞 Bellen</a>
+      <a class="nb-call-btn" href="\${telHref}">Bellen</a>
     </div>\`;
   }).join('');
 }
@@ -10653,10 +10653,10 @@ function openCalEvent(idx) {
         attSection = \`<div class="cal-modal-att-section">
           <div class="cal-modal-att-label">Afspraak resultaat</div>
           <div class="cal-modal-att-result yes">
-            ✅ Gekomen
+            Gekomen
             <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lid}',true)">Bewerken</span>
           </div>
-          \${gesloten ? \`<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px;">💰 Deal: \${escHtml(gesloten)}</div>\` : ''}
+          \${gesloten ? \`<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px;">Deal: \${escHtml(gesloten)}</div>\` : ''}
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
         </div>\`;
       } else if (v === false) {
@@ -10664,7 +10664,7 @@ function openCalEvent(idx) {
         attSection = \`<div class="cal-modal-att-section">
           <div class="cal-modal-att-label">Afspraak resultaat</div>
           <div class="cal-modal-att-result no">
-            ❌ Niet gekomen
+            Niet gekomen
             <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lid}',false)">Bewerken</span>
           </div>
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
@@ -10674,8 +10674,8 @@ function openCalEvent(idx) {
         attSection = \`<div class="cal-modal-att-section" id="cal-att-section-\${lid}">
           <div class="cal-modal-att-label">Kwam deze persoon?</div>
           <div class="cal-modal-att-btns">
-            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lid}',true)">✅ Gekomen</button>
-            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lid}',false)">❌ Niet gekomen</button>
+            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lid}',true)">Gekomen</button>
+            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lid}',false)">Niet gekomen</button>
           </div>
         </div>\`;
       }
@@ -10693,7 +10693,7 @@ function calAttShowForm(leadId, verschenen) {
 
   if (verschenen) {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — ✅ Gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat — Gekomen</div>
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Hebben ze iets gekocht? (optioneel)</div>
@@ -10704,19 +10704,19 @@ function calAttShowForm(leadId, verschenen) {
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="Wat is er besproken? Volgende stap?"></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">
-          💾 Opslaan
+          Opslaan
         </button>
       </div>\`;
   } else {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — ❌ Niet gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat — Niet gekomen</div>
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Reden / notitie (optioneel)</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="bijv. geen antwoord, verkeerd nummer, wil herplannen..."></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">
-          💾 Opslaan
+          Opslaan
         </button>
       </div>\`;
   }
@@ -10732,7 +10732,7 @@ function calAttStartEdit(leadId, verschenen) {
 
   if (verschenen) {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — ✅ Gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat — Gekomen</div>
       <div class="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Deal waarde</div>
@@ -10742,17 +10742,17 @@ function calAttStartEdit(leadId, verschenen) {
           <div class="cal-att-followup-label">Notities</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">💾 Opslaan</button>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">Opslaan</button>
       </div>\`;
   } else {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat — ❌ Niet gekomen</div>
+      <div class="cal-modal-att-label">Afspraak resultaat — Niet gekomen</div>
       <div class="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Notitie</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">💾 Opslaan</button>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">Opslaan</button>
       </div>\`;
   }
 }
@@ -11154,7 +11154,7 @@ function renderCalSidebar() {
   if (countEl) countEl.textContent = leads.length;
 
   if (leads.length === 0) {
-    listEl.innerHTML = \`<div class="cal-sidebar-empty">✅ Alle gekwalificeerde leads hebben een afspraak!</div>\`;
+    listEl.innerHTML = \`<div class="cal-sidebar-empty">Alle gekwalificeerde leads hebben een afspraak!</div>\`;
     return;
   }
 
@@ -11175,12 +11175,12 @@ function renderCalSidebar() {
         \${score !== '' ? \`<span class="cal-call-score">\${score}</span>\` : ''}
       </div>
       \${phone ? \`<a class="cal-call-phone-link" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">
-        <span>📞</span> \${escHtml(phone)}
+        <span></span> \${escHtml(phone)}
       </a>\` : '<div style="font-size:11px;color:var(--text-muted);margin-bottom:7px">Geen telefoonnummer</div>'}
       <div class="cal-call-actions">
-        \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">📞 Bellen</a>\` : ''}
-        \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">💬 WA</a>\` : ''}
-        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(new Date().toISOString().slice(0,10),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">📅 Boeken</button>
+        \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">Bellen</a>\` : ''}
+        \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">WA</a>\` : ''}
+        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(new Date().toISOString().slice(0,10),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
       </div>
     </div>\`;
   }).join('');
@@ -11239,8 +11239,8 @@ function renderAttendanceBanner() {
         <div class="cal-att-time">\${dayLbl} · \${timeLbl}</div>
       </div>
       <div class="cal-att-btns" id="cal-att-btns-\${idStr}">
-        <button class="cal-att-btn yes" onclick="bannerAttYes('\${idStr}')">✅ Gekomen</button>
-        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false,'','');renderAttendanceBanner()">❌ Niet</button>
+        <button class="cal-att-btn yes" onclick="bannerAttYes('\${idStr}')">Gekomen</button>
+        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false,'','');renderAttendanceBanner()">Niet</button>
       </div>
     </div>\`;
   }).join('');
@@ -11272,7 +11272,7 @@ async function markAttendance(leadId, verschenen, gesloten, notitie) {
     const fields = { notities: notitiesStr };
     if (geslotenClean) fields.dealWaarde = geslotenClean;
     await patchLead(leadId, fields);
-    toast(verschenen ? '✅ Opgeslagen — gekomen' : '❌ Opgeslagen — niet gekomen', 'success');
+    toast(verschenen ? 'Opgeslagen — gekomen' : 'Opgeslagen — niet gekomen', 'success');
   } catch(e) {
     toast('Opslaan mislukt', 'error');
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
@@ -11290,11 +11290,11 @@ function bannerAttYes(leadId) {
   const btnsEl = document.getElementById('cal-att-btns-' + leadId);
   if (!btnsEl) return;
   btnsEl.outerHTML = \`<div id="cal-att-form-\${escHtml(leadId)}" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;width:100%">
-    <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="💰 Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
-    <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="📝 Notities over het gesprek..." style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
+    <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
+    <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="Notities over het gesprek..." style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
     <div style="display:flex;gap:6px">
-      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escHtml(leadId)}')">💾 Opslaan</button>
-      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escHtml(leadId)}',false,'','');renderAttendanceBanner()">❌ Niet</button>
+      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escHtml(leadId)}')">Opslaan</button>
+      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escHtml(leadId)}',false,'','');renderAttendanceBanner()">Niet</button>
     </div>
   </div>\`;
 }
@@ -12024,7 +12024,7 @@ function closeSearch() {
   const inp = document.getElementById('search-modal-input');
   if (inp) inp.value = '';
   const resultsEl = document.getElementById('search-results');
-  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon">🔍</div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
   const footer = document.getElementById('search-footer');
   if (footer) footer.style.display = 'none';
   _searchActiveIndex = -1;
@@ -12055,7 +12055,7 @@ function runGlobalSearch() {
   _searchActiveIndex = -1;
 
   if (!q) {
-    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon">🔍</div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }
@@ -12070,7 +12070,7 @@ function runGlobalSearch() {
   ).slice(0, 12);
 
   if (matches.length === 0) {
-    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon">🔭</div><div>Geen leads gevonden voor "<strong>\${escHtml(q)}</strong>"</div></div>\`;
+    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon"></div><div>Geen leads gevonden voor "<strong>\${escHtml(q)}</strong>"</div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }
@@ -12080,7 +12080,7 @@ function runGlobalSearch() {
     const name = l.naam || 'Onbekend';
     const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || 'HV';
     const score = l.leadScore !== null && l.leadScore !== undefined ? l.leadScore : '';
-    const phonePart = l.telefoon ? \`📞 \${l.telefoon}\` : '';
+    const phonePart = l.telefoon ? \`\${l.telefoon}\` : '';
     const bronPart = l.bron ? \`· \${l.bron}\` : '';
     const datePart = l.datum ? \`· \${new Date(l.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}\` : '';
     const meta = [phonePart, bronPart, datePart].filter(Boolean).join(' ');
@@ -12095,8 +12095,8 @@ function runGlobalSearch() {
         <div class="search-result-meta">\${escHtml(meta)}</div>
       </div>
       <div class="search-result-tags">
-        \${isQualified ? \`<span class="search-result-badge qualified">✓ Qualified</span>\` : ''}
-        \${hasAppointment ? \`<span class="search-result-badge">📅 Afspraak</span>\` : ''}
+        \${isQualified ? \`<span class="search-result-badge qualified">Qualified</span>\` : ''}
+        \${hasAppointment ? \`<span class="search-result-badge">Afspraak</span>\` : ''}
         \${score !== '' ? \`<span class="search-result-score">\${score}</span>\` : ''}
       </div>
     </div>\`);
@@ -12190,7 +12190,7 @@ function renderPipeline() {
           \${l.bron ? \`<span class="badge badge-bron" style="font-size:10px">\${escHtml(l.bron)}</span>\` : ''}
           <span class="pipeline-card-date">\${dateStr}</span>
         </div>
-        \${l.telefoon ? \`<div class="pipeline-card-phone">📞 \${escHtml(l.telefoon)}</div>\` : ''}
+        \${l.telefoon ? \`<div class="pipeline-card-phone">\${escHtml(l.telefoon)}</div>\` : ''}
       </div>\`;
     }).join('');
 
@@ -12279,7 +12279,7 @@ function openConversation(leadId) {
 
   const bubbles = msgs.map(m => {
     const isUser = m.role === 'user';
-    const label = isUser ? '👤 Lead' : '🤖 AI';
+    const label = isUser ? 'Lead' : 'AI';
     const content = (m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
     return \`<div>
       <div class="conv-bubble-label">\${label}</div>
@@ -12296,7 +12296,7 @@ function openConversation(leadId) {
       \${escHtml(lead.naam) || '—'}
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
     </div>
-    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon">💬</div><div>Geen berichten</div></div>\`}</div>
+    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"></div><div>Geen berichten</div></div>\`}</div>
   \`;
 
   // Scroll to bottom
@@ -12786,55 +12786,55 @@ const AP_STATE = { loaded: false, saving: false };
 // Each item: { emoji, label, sub (1-line tone), text (with placeholders) }
 const AP_TEMPLATES = [
   {
-    emoji: '👋', label: 'Vriendelijk',
+    emoji: '', label: 'Vriendelijk',
     text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse — wat bracht je naar ons?'
   },
   {
-    emoji: '🤝', label: 'Professioneel',
+    emoji: '', label: 'Professioneel',
     text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. Bedankt voor uw aanvraag. Mag ik u enkele korte vragen stellen om u beter te kunnen helpen?'
   },
   {
-    emoji: '⚡', label: 'Kort & krachtig',
+    emoji: '', label: 'Kort & krachtig',
     text: 'Hey {naam}! {ai} hier. Heb je 2 minuten voor 3 snelle vragen?'
   },
   {
-    emoji: '❓', label: 'Vraaggericht',
+    emoji: '', label: 'Vraaggericht',
     text: 'Hey {naam}! Ik zag je interesse in {bedrijf} via {bron}. Waar mag ik je het beste mee helpen vandaag?'
   },
   {
-    emoji: '🏗️', label: 'Voor renovatie/bouw',
+    emoji: '', label: 'Voor renovatie/bouw',
     text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je aanvraag. Om je goed te kunnen helpen: kan je kort vertellen wat het project is en wanneer je het wil starten?'
   },
   {
-    emoji: '🦷', label: 'Voor zorg/medisch',
+    emoji: '', label: 'Voor zorg/medisch',
     text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. We helpen u graag verder. Voor welke behandeling of vraag heeft u contact opgenomen?'
   },
   {
-    emoji: '🏠', label: 'Voor vastgoed',
+    emoji: '', label: 'Voor vastgoed',
     text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wil u er één verkopen?'
   },
   {
-    emoji: '⚖️', label: 'Voor advocaten',
+    emoji: '', label: 'Voor advocaten',
     text: 'Goeiedag {naam}, met {ai} van {bedrijf}. Bedankt voor uw contactopname. Kan u in een paar zinnen schetsen waarover u advies zoekt?'
   },
   {
-    emoji: '💰', label: 'Vertrouwen + sociaal',
+    emoji: '', label: 'Vertrouwen + sociaal',
     text: 'Hey {naam}! {ai} hier van {bedrijf}. Leuk dat je ons gevonden hebt — we hielpen deze maand al 12 klanten met hetzelfde. Wat is jouw situatie?'
   },
   {
-    emoji: '🎯', label: 'Direct kwalificeren',
+    emoji: '', label: 'Direct kwalificeren',
     text: 'Hallo {naam}, met {ai} van {bedrijf}. Voor we verder gaan: heb je al een budget in gedachten en wanneer wil je beginnen?'
   },
   {
-    emoji: '🚗', label: 'Voor autohandel',
+    emoji: '', label: 'Voor autohandel',
     text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. Welke wagen had je in gedachten — en zoek je benzine, diesel, hybride of elektrisch?'
   },
   {
-    emoji: '🔧', label: 'Voor garage/onderhoud',
+    emoji: '', label: 'Voor garage/onderhoud',
     text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. Wat is er aan de hand met de wagen, en welk merk/model is het? Dan plannen we snel iets in.'
   },
   {
-    emoji: '💥', label: 'Voor carrosserie',
+    emoji: '', label: 'Voor carrosserie',
     text: 'Hey {naam}! {ai} van {bedrijf}. Bedankt voor je bericht. Wat is er gebeurd met de wagen, en gaat het via de verzekering of betaal je zelf?'
   }
 ];
@@ -12843,39 +12843,39 @@ const AP_TEMPLATES = [
 // their instructions (combinable, unlike welcome which replaces).
 const AP_INSTRUCTION_SNIPPETS = [
   {
-    emoji: '💬', label: 'Praat informeel',
+    emoji: '', label: 'Praat informeel',
     text: 'Praat informeel met "je/jij" — geen "u". Houd zinnen kort en gebruik geen jargon.'
   },
   {
-    emoji: '🎩', label: 'Praat formeel',
+    emoji: '', label: 'Praat formeel',
     text: 'Praat in u-vorm. Wees beleefd, zakelijk en gestructureerd in elk antwoord.'
   },
   {
-    emoji: '🚫', label: 'Geen prijzen via WhatsApp',
+    emoji: '', label: 'Geen prijzen via WhatsApp',
     text: 'Stuur NOOIT exacte prijzen of offertes via WhatsApp. Verwijs altijd door naar een telefoongesprek of demo voor pricing.'
   },
   {
-    emoji: '📋', label: 'Vraag altijd 3 dingen',
+    emoji: '', label: 'Vraag altijd 3 dingen',
     text: 'Vraag in elk gesprek expliciet naar: (1) het project of de behoefte, (2) de timing/urgentie, (3) het budget. Stel maximaal één vraag per bericht.'
   },
   {
-    emoji: '🎯', label: 'Sluit altijd af met een actie',
+    emoji: '', label: 'Sluit altijd af met een actie',
     text: 'Sluit ELK gesprek af met een concrete vervolgactie: een afspraak voorstellen, een offerte beloven, of een terugbeltijd vragen.'
   },
   {
-    emoji: '🚦', label: 'Diskwalificeer snel',
+    emoji: '', label: 'Diskwalificeer snel',
     text: 'Als het duidelijk geen fit is (geen budget, geen interesse, verkeerde regio), wees vriendelijk maar stop het gesprek snel. Geen tijd verspillen.'
   },
   {
-    emoji: '🚗', label: 'Auto: vraag merk + model',
+    emoji: '', label: 'Auto: vraag merk + model',
     text: 'Vraag altijd naar (1) merk en model van de wagen, (2) bouwjaar of kilometerstand, (3) brandstof (benzine/diesel/hybride/elektrisch). Deze 3 dingen heb je nodig vóór elk vervolg.'
   },
   {
-    emoji: '💳', label: 'Auto: financiering & inruil',
+    emoji: '', label: 'Auto: financiering & inruil',
     text: 'Vraag actief of de lead financiering nodig heeft (lening/leasing) en of er een wagen ter inruil is. Geef nooit zelf prijzen — verwijs naar showroom of telefoongesprek.'
   },
   {
-    emoji: '🛠️', label: 'Auto: keuring & onderhoud',
+    emoji: '', label: 'Auto: keuring & onderhoud',
     text: 'Bij onderhoud/garage-vragen: vraag naar (1) symptomen of foutmelding, (2) wanneer het probleem begon, (3) laatste keuring of grote beurt. Stel afspraak binnen 1 week voor.'
   }
 ];
@@ -13033,10 +13033,10 @@ function appendApInstruction(idx) {
 
 // Suggest the best welcome template based on the client's Niche.
 const AP_NICHE_TO_TEMPLATE = {
-  real_estate: 6,   // 🏠 Voor vastgoed
-  dentist:     5,   // 🦷 Voor zorg/medisch
-  lawyer:      7,   // ⚖️ Voor advocaten
-  finance:     1,   // 🤝 Professioneel
+  real_estate: 6,   // Voor vastgoed
+  dentist:     5,   // Voor zorg/medisch
+  lawyer:      7,   // ️ Voor advocaten
+  finance:     1,   // Professioneel
   // 'other' / unknown → no suggestion
 };
 
@@ -13205,7 +13205,7 @@ function updateWelcomeBannerChecks() {
   ];
   checks.innerHTML = items.map(it =>
     '<span class="ap-welcome-chk' + (it.done ? ' done' : '') + '">' +
-      '<span class="ap-welcome-chk-icon">' + (it.done ? '✓' : '○') + '</span>' +
+      '<span class="ap-welcome-chk-icon">' + (it.done ? '' : '○') + '</span>' +
       escHtml(it.k) +
     '</span>'
   ).join('');
@@ -13459,7 +13459,7 @@ function fmCopy(id) {
   if (!el || !el.value) return;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(el.value)
-      .then(() => toast('Code gekopieerd ✓', 'success'))
+      .then(() => toast('Code gekopieerd ', 'success'))
       .catch(() => { el.select(); document.execCommand('copy'); toast('Code gekopieerd', 'success'); });
   } else {
     el.select(); document.execCommand('copy');
@@ -13490,7 +13490,7 @@ function copyFormLink() {
   if (!url) return;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url)
-      .then(() => toast('Link gekopieerd ✓', 'success'))
+      .then(() => toast('Link gekopieerd ', 'success'))
       .catch(() => toast('Kopiëren mislukt — selecteer handmatig', 'error'));
   }
 }
@@ -13499,7 +13499,7 @@ function copyFormEmbed() {
   if (!ta || !ta.value) return;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(ta.value)
-      .then(() => toast('Embed-code gekopieerd ✓', 'success'))
+      .then(() => toast('Embed-code gekopieerd ', 'success'))
       .catch(() => toast('Kopiëren mislukt', 'error'));
   }
 }
@@ -13556,14 +13556,14 @@ async function sendTestMessage() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
       result.className = 'ap-test-result err';
-      result.textContent = '✗ ' + (d.error || 'Versturen mislukt');
+      result.textContent = '' + (d.error || 'Versturen mislukt');
       return;
     }
     result.className = 'ap-test-result ok';
-    result.textContent = '✓ Verzonden naar +' + d.sentTo + ' — check je WhatsApp!';
+    result.textContent = 'Verzonden naar +' + d.sentTo + ' — check je WhatsApp!';
   } catch (err) {
     result.className = 'ap-test-result err';
-    result.textContent = '✗ Netwerkfout — probeer opnieuw';
+    result.textContent = 'Netwerkfout — probeer opnieuw';
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = original; }
   }
@@ -13635,7 +13635,7 @@ function renderActiviteit() {
   }
 
   const typeMap = {
-    new:       { dotCls: 'activity-dot-new',       title: l => \`Nieuwe lead: \${escHtml(l.naam) || '—'}\`,       sub: l => l.telefoon ? \`📞 \${l.telefoon}\` : '' },
+    new:       { dotCls: 'activity-dot-new',       title: l => \`Nieuwe lead: \${escHtml(l.naam) || '—'}\`,       sub: l => l.telefoon ? \`\${l.telefoon}\` : '' },
     qualified: { dotCls: 'activity-dot-qualified',  title: l => \`Lead gekwalificeerd: \${escHtml(l.naam) || '—'}\`, sub: l => l.leadScore ? \`Score: \${l.leadScore}\` : '' },
     booked:    { dotCls: 'activity-dot-booked',     title: l => \`Afspraak geboekt: \${escHtml(l.naam) || '—'}\`, sub: () => 'Afspraak ingepland via Calendly' },
     won:       { dotCls: 'activity-dot-won',        title: l => \`Lead opgevolgd: \${escHtml(l.naam) || '—'}\`,    sub: l => l.verwachteWaarde ? \`Waarde: \${escHtml(l.verwachteWaarde)}\` : '' }
@@ -13760,8 +13760,8 @@ function renderFounderPipeline() {
   });
   const won  = founderState.pipeline.filter(p => p.fase === 'Gewonnen').length;
   const lost = founderState.pipeline.filter(p => p.fase === 'Verloren').length;
-  document.getElementById('pipe-won-badge').textContent  = '✓ ' + won  + ' Gewonnen';
-  document.getElementById('pipe-lost-badge').textContent = '✗ ' + lost + ' Verloren';
+  document.getElementById('pipe-won-badge').textContent  = '' + won  + ' Gewonnen';
+  document.getElementById('pipe-lost-badge').textContent = '' + lost + ' Verloren';
   renderPipeMini();
   renderFollowUpAlerts();
   updateMrrWidget();
@@ -13910,7 +13910,7 @@ function copyDm() {
   var out = document.getElementById('fdr-dm-output');
   if (!out || !out.textContent) return;
   navigator.clipboard.writeText(out.textContent).then(function() {
-    toast('Bericht gekopieerd! 🎉', 'success');
+    toast('Bericht gekopieerd! ', 'success');
   }).catch(function() { toast('Kopiëren mislukt', 'error'); });
 }
 
@@ -14002,7 +14002,7 @@ function renderDailyChecklist() {
   if (!el) return;
 
   if (!tasks || !tasks.length) {
-    el.innerHTML = '<div class="fdr-weekend-msg"><div class="fdr-weekend-icon">🎉</div><div class="fdr-weekend-txt">Weekend — geniet ervan!</div><div class="fdr-weekend-sub">Maandag: 10 LinkedIn DMs + dashboard checken + pipeline updaten</div></div>';
+    el.innerHTML = '<div class="fdr-weekend-msg"><div class="fdr-weekend-icon"></div><div class="fdr-weekend-txt">Weekend — geniet ervan!</div><div class="fdr-weekend-sub">Maandag: 10 LinkedIn DMs + dashboard checken + pipeline updaten</div></div>';
     updateChecklistProgress(0, 0);
     return;
   }
@@ -14346,7 +14346,7 @@ function copyContentPost() {
   var out = document.getElementById('fdr-hub-output');
   if (!out || !out.textContent) return;
   navigator.clipboard.writeText(out.textContent).then(function() {
-    toast('Gekopieerd! 🎉', 'success');
+    toast('Gekopieerd! ', 'success');
   }).catch(function() { toast('Kopiëren mislukt', 'error'); });
 }
 

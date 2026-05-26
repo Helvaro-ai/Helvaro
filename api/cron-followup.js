@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
         `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${escE(n)}</td></tr>`
       ).join('');
       sendResendEmail({
-        subject: `📋 Helvaro — ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
+        subject: `Helvaro — ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:auto">
             <h2 style="color:#1e6fd9">Dagelijkse follow-up update</h2>
@@ -161,12 +161,12 @@ async function checkQualityRating(phoneNumberId, token) {
   console.log('[quality] rating =', quality, '| name_status =', d.name_status);
 
   if (quality === 'RED' || quality === 'YELLOW') {
-    const icon = quality === 'RED' ? '🔴' : '🟡';
+    const severity = quality === 'RED' ? '[KRITIEK]' : '[Waarschuwing]';
     sendResendEmail({
-      subject: `${icon} WhatsApp quality rating ${quality} — actie nodig`,
+      subject: `${severity} WhatsApp quality rating ${quality} — actie nodig`,
       html: `
         <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px">
-          <h2 style="color:${quality === 'RED' ? '#dc2626' : '#d97706'}">${icon} WhatsApp Quality: ${quality}</h2>
+          <h2 style="color:${quality === 'RED' ? '#dc2626' : '#d97706'}">WhatsApp Quality: ${quality}</h2>
           <p>De WhatsApp Business phone number quality is gezakt naar <strong>${quality}</strong>.</p>
           ${quality === 'RED'
             ? '<p style="background:#fef2f2;padding:12px;border-radius:8px;color:#b91c1c"><strong>RED = throttling actief.</strong> Meta beperkt het aantal berichten dat je per dag mag sturen. Bij meerdere RED-dagen riskeer je een permanente ban.</p>'
@@ -313,7 +313,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
         </tr>
       </table>
 
-      <h3 style="margin:0 0 12px;font-size:16px">🔥 Top 5 gekwalificeerde leads</h3>
+      <h3 style="margin:0 0 12px;font-size:16px">Top 5 gekwalificeerde leads</h3>
       <table style="width:100%;border-collapse:collapse;background:#fafbfc;border-radius:10px;overflow:hidden">
         <thead>
           <tr style="background:#f3f4f6">
@@ -338,7 +338,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
     const r = await fetch('https://api.resend.com/emails', {
       method:  'POST',
       headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ from: FROM, to: [to], subject: `📊 Helvaro weekrapport — ${clientName}`, html })
+      body:    JSON.stringify({ from: FROM, to: [to], subject: `Helvaro weekrapport — ${clientName}`, html })
     });
     if (!r.ok) {
       const txt = await r.text().catch(() => '');

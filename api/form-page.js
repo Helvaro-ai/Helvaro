@@ -111,7 +111,7 @@ module.exports = async function handler(req, res) {
       title:           safeFirstName + ' van ' + safeClientName + ' — neem contact op',
       meta:            safeFirstName + ' reageert binnen 1 minuut via WhatsApp.',
       status:          '● Online — reageert binnen 1 min',
-      intro:           'Hey 👋 ik ben',
+      intro:           'Hallo, ik ben',
       introMid:        'van',
       typing:          'typt',
       labelName:       'Hoe mag ik je noemen?',
@@ -154,7 +154,7 @@ module.exports = async function handler(req, res) {
       title:           safeFirstName + ' de ' + safeClientName + ' — prenez contact',
       meta:            safeFirstName + ' répond en 1 minute via WhatsApp.',
       status:          '● En ligne — réponse en 1 min',
-      intro:           'Salut 👋 je suis',
+      intro:           'Bonjour, je suis',
       introMid:        'de',
       typing:          'écrit',
       labelName:       'Comment puis-je vous appeler ?',
@@ -197,7 +197,7 @@ module.exports = async function handler(req, res) {
       title:           safeFirstName + ' from ' + safeClientName + ' — get in touch',
       meta:            safeFirstName + ' replies within 1 minute on WhatsApp.',
       status:          '● Online — replies in 1 min',
-      intro:           "Hey 👋 I'm",
+      intro:           "Hello, I'm",
       introMid:        'from',
       typing:          'typing',
       labelName:       'What should I call you?',
@@ -522,7 +522,7 @@ module.exports = async function handler(req, res) {
 
   <!-- Success -->
   <div class="success" id="ok">
-    <div class="tick">✓</div>
+    <div class="tick"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h3>${escHtml(t.thanks)} <span id="ok-name">${escHtml(t.friend)}</span>!</h3>
     <p><strong>${safeFirstName}</strong> ${escHtml(t.successText)}</p>
     <div class="success-steps">
@@ -540,13 +540,13 @@ module.exports = async function handler(req, res) {
           if (!txt) return '';
           // First emoji-looking char becomes the icon, rest is the text
           const m = txt.match(/^(\S+)\s+(.+)$/);
-          const icon = m ? m[1] : '✓';
+          const icon = m ? m[1] : '';
           const text = m ? m[2] : txt;
           return `<div class="trust-item"><span>${escHtml(icon)}</span> ${escHtml(text)}</div>`;
         }).join('')
-      : `<div class="trust-item"><span>🔒</span> ${escHtml(t.trust1)}</div>
-         <div class="trust-item"><span>⚡</span> ${escHtml(t.trust2)}</div>
-         <div class="trust-item"><span>🤝</span> ${escHtml(t.trust3)}</div>`
+      : `<div class="trust-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> ${escHtml(t.trust1)}</div>
+         <div class="trust-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> ${escHtml(t.trust2)}</div>
+         <div class="trust-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${escHtml(t.trust3)}</div>`
     }
   </div>
   <div class="powered">${escHtml(t.poweredBy)} <a href="https://helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
