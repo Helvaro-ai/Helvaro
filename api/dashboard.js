@@ -2219,6 +2219,7 @@ button.brand-dot { border: none; padding: 0; }
 .btn-icon.spin .icon { animation: spin 1s linear infinite; }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes cmFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: .9; } 50% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
 
@@ -8602,7 +8603,20 @@ function tryAutoLogin() {
   return true;
 }
 
+// Ask for confirmation before logging out — voorkomt accidental clicks
+// (vooral op mobile waar de Uitloggen-knop dicht bij andere navigatie zit).
 function logout() {
+  showConfirmModal({
+    title:   'Uitloggen?',
+    message: 'Je wordt teruggebracht naar het loginscherm. Je leads en instellingen blijven bewaard.',
+    confirmText: 'Ja, uitloggen',
+    cancelText:  'Annuleren',
+    danger: true,
+    onConfirm: performLogout
+  });
+}
+
+function performLogout() {
   clearSession();
   state.leads = [];
   state.stats = null;
@@ -8611,6 +8625,65 @@ function logout() {
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').classList.remove('visible');
+}
+
+// Generic confirmation modal — injected dynamically so it doesn't pollute HTML.
+// Matches the project's modal style (dark overlay, rounded card, gap-12).
+// Esc/click-outside cancels; Enter confirms. Returns nothing — uses callbacks.
+function showConfirmModal({ title, message, confirmText, cancelText, danger, onConfirm, onCancel }) {
+  // Remove any existing instance first (defensive)
+  const existing = document.getElementById('confirm-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'confirm-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;animation:cmFadeIn .15s ease-out';
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:var(--bg-card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+
+  const titleEl = document.createElement('h3');
+  titleEl.textContent = title || 'Weet je het zeker?';
+  titleEl.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text-primary,#111)';
+
+  const msgEl = document.createElement('p');
+  msgEl.textContent = message || '';
+  msgEl.style.cssText = 'margin:0 0 22px;font-size:13px;color:var(--text-muted,#6b7280);line-height:1.5';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = cancelText || 'Annuleren';
+  cancelBtn.style.cssText = 'padding:9px 16px;background:var(--bg-card-alt,#f3f4f6);border:1px solid var(--border,#e5e7eb);border-radius:8px;color:var(--text-primary,#111);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.textContent = confirmText || 'Ja, ga door';
+  const confirmBg = danger ? '#dc2626' : 'var(--accent,#6366f1)';
+  confirmBtn.style.cssText = 'padding:9px 16px;background:' + confirmBg + ';border:0;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+  function close() {
+    overlay.remove();
+    document.removeEventListener('keydown', keyHandler);
+  }
+  function keyHandler(e) {
+    if (e.key === 'Escape') { close(); if (onCancel) onCancel(); }
+    if (e.key === 'Enter')  { close(); if (onConfirm) onConfirm(); }
+  }
+  cancelBtn.addEventListener('click', () => { close(); if (onCancel) onCancel(); });
+  confirmBtn.addEventListener('click', () => { close(); if (onConfirm) onConfirm(); });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) { close(); if (onCancel) onCancel(); } });
+  document.addEventListener('keydown', keyHandler);
+
+  row.appendChild(cancelBtn);
+  row.appendChild(confirmBtn);
+  card.appendChild(titleEl);
+  card.appendChild(msgEl);
+  card.appendChild(row);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  // Auto-focus the confirm button so Enter works without clicking
+  setTimeout(() => confirmBtn.focus(), 50);
 }
 
 /* ============================================================
