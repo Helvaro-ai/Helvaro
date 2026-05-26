@@ -762,13 +762,12 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      if (email) {
-        // Welkomstmail bevat nu ook de login-credentials (als we de user net hebben aangemaakt)
-        sendWelcomeEmail({
-          clientName, projectCode, apiKey, email, formUrl, dashboardUrl,
-          loginPassword: userCreated ? loginPassword : null
-        }).catch(() => {});
-      }
+      // Welkomstmail bewust NIET geautomatiseerd — admin kopieert de
+      // ready-to-paste mailtekst uit de dashboard en stuurt zelf (vanuit
+      // eigen mailbox sindi.s@usehelvaro.pro). Dit voorkomt Resend domain-
+      // verification gedoe en geeft de eerste klant-interactie een echte
+      // persoonlijke uitstraling (van een echt persoon, niet van een
+      // noreply adres).
 
       return res.status(200).json({
         id: createData.id, apiKey, projectCode, clientName, formUrl, dashboardUrl,

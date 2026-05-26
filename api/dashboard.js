@@ -6639,7 +6639,8 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
             <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
-              <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt — welkomstmail verstuurd</div>
+              <div style="font-weight:600;margin-bottom:10px;color:var(--green)">✓ Klant aangemaakt</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Stuur zelf de welkomstmail vanuit je eigen mailbox — klik op de knop hieronder om een kant-en-klare tekst te kopiëren.</div>
 
               <!-- Login credentials (only shown when user record was created — primary action!) -->
               <div id="nc-result-login-block" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:10px 12px;margin-bottom:10px">
@@ -6651,9 +6652,24 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <div style="font-size:10px;color:var(--text-muted);margin-top:6px">Klant moet wijzigen via <em>Wachtwoord vergeten</em> na 1ste login.</div>
               </div>
 
-              <div style="font-size:12px;display:flex;flex-direction:column;gap:6px">
+              <div style="font-size:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
                 <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="background:var(--bg-primary);padding:2px 6px;border-radius:4px;font-size:11px"></code></div>
                 <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright)"></a></div>
+              </div>
+
+              <!-- Manual welcome-email helpers -->
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">✉️ Welkomstmail (zelf versturen)</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button id="nc-copy-mail-btn" onclick="copyWelcomeEmail()" style="flex:1;min-width:140px;padding:9px 12px;background:var(--accent);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Kopieer mailtekst
+                  </button>
+                  <a id="nc-open-mail-btn" href="#" style="flex:1;min-width:140px;padding:9px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:7px;color:var(--text-primary);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    Open in mail-app
+                  </a>
+                </div>
               </div>
             </div>
             <button id="nc-submit" onclick="submitNewClient()" style="width:100%;padding:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Aanmaken</button>
@@ -9264,6 +9280,17 @@ async function submitNewClient() {
       document.getElementById('nc-result-pw').textContent    = data.loginPassword;
       document.getElementById('nc-result-login-block').style.display = '';
     }
+    // Stash the data the manual-mail helpers need (kept off-DOM so closeNewClientModal can clear it)
+    state.ncWelcome = {
+      clientName: name,
+      projectCode: code,
+      email,
+      formUrl: data.formUrl,
+      loginPassword: data.userCreated ? data.loginPassword : ''
+    };
+    // Pre-fill the mailto: link's href so 1-klik opens the user's mail app
+    const openBtn = document.getElementById('nc-open-mail-btn');
+    if (openBtn) openBtn.href = buildWelcomeMailto(state.ncWelcome);
     succEl.style.display = 'block';
     btn.textContent = 'Sluiten';
     btn.disabled = false;
@@ -9274,6 +9301,57 @@ async function submitNewClient() {
     btn.disabled = false;
     btn.textContent = 'Aanmaken';
   }
+}
+
+// Build the ready-to-paste welcome email text (plain text, no HTML — fits any mailbox)
+function buildWelcomeEmailText(d) {
+  if (!d || !d.clientName) return '';
+  const lines = [
+    'Hé ' + d.clientName + ',',
+    '',
+    'Welkom bij Helvaro 🎉 — je account staat klaar.',
+    '',
+    '🔗 Dashboard: https://app.helvaro.pro/dashboard'
+  ];
+  if (d.loginPassword) {
+    lines.push('📧 Login: ' + d.email);
+    lines.push('🔑 Wachtwoord: ' + d.loginPassword);
+    lines.push('   (wijzig dit via "Wachtwoord vergeten" na de eerste login)');
+  }
+  lines.push('');
+  lines.push('📝 Jouw lead-formulier:');
+  lines.push('   ' + d.formUrl);
+  lines.push('   Plak deze URL in je Facebook/Google ads, op je website, of in je e-mail handtekening.');
+  lines.push('');
+  lines.push('⚡ Eerste 3 stappen:');
+  lines.push('   1. Log in op je dashboard');
+  lines.push('   2. Open AI Persoonlijkheid en pas de AI-naam + welkomstbericht aan');
+  lines.push('   3. Test zelf je formulier — je krijgt direct WhatsApp van je AI');
+  lines.push('');
+  lines.push('Vragen? Antwoord gewoon op deze mail.');
+  lines.push('');
+  lines.push('— Sindi @ Helvaro');
+  return lines.join('\\n');
+}
+
+function buildWelcomeMailto(d) {
+  if (!d || !d.email) return '#';
+  const subject = encodeURIComponent('Welkom bij Helvaro — je account is klaar');
+  const body    = encodeURIComponent(buildWelcomeEmailText(d).replace(/\\\\n/g, '\\n'));
+  return 'mailto:' + encodeURIComponent(d.email) + '?subject=' + subject + '&body=' + body;
+}
+
+function copyWelcomeEmail() {
+  const d = state.ncWelcome;
+  if (!d) return;
+  const txt = buildWelcomeEmailText(d).replace(/\\\\n/g, '\\n');
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.getElementById('nc-copy-mail-btn');
+    if (!btn) return;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Gekopieerd — plak in je mail';
+    setTimeout(() => { btn.innerHTML = orig; }, 2500);
+  }).catch(() => toast('Kopiëren mislukt — kopieer handmatig', 'error'));
 }
 
 function copyNcField(srcId, btnId) {
