@@ -154,7 +154,7 @@ module.exports = async function handler(req, res) {
       if (!RESEND_KEY) return res.status(200).json({ ok: false, reason: 'RESEND_API_KEY env var not set on Vercel' });
       const to   = String(body.to || process.env.NOTIFY_EMAIL || '').trim();
       if (!to)   return res.status(200).json({ ok: false, reason: 'No "to" address — pass {"to":"..."} or set NOTIFY_EMAIL env var' });
-      const from = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
+      const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
       try {
         const r = await fetch('https://api.resend.com/emails', {
           method:  'POST',
@@ -893,7 +893,10 @@ module.exports = async function handler(req, res) {
 async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl, loginPassword }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_KEY) { console.warn('[resend welcome] skipped: RESEND_API_KEY missing'); return; }
-  const FROM = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
+  // Welkomstmail komt persoonlijk van Sindi — voelt menselijker dan een no-reply.
+  // RESEND_WELCOME_FROM env var kan dit alsnog overrulen (bv. team@usehelvaro.pro later).
+  // ⚠️ usehelvaro.pro moet als Resend-domain geverifieerd zijn — anders 403.
+  const FROM = process.env.RESEND_WELCOME_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
   let r;
   try {
   // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
@@ -958,7 +961,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
 async function sendInviteEmail({ toEmail, toName, inviteLink }) {
   const RESEND_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_KEY) { console.warn('[resend invite] skipped: RESEND_API_KEY missing'); return; }
-  const FROM = process.env.RESEND_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
+  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
   const greeting = toName ? `Hallo ${escHtml(toName)}` : 'Hallo';
   let r;
   try {
