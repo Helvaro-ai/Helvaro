@@ -8617,14 +8617,39 @@ function logout() {
 }
 
 function performLogout() {
+  // Wis ALLE state. Vorige versie liet onboarding-flags en pagina-caches
+  // staan, waardoor de volgende user (op zelfde computer) soms in een
+  // half-vorige-sessie staat kon belanden.
   clearSession();
   state.leads = [];
   state.stats = null;
+  state.userEmail = '';
+  state.lastFetch = 0;
+  state.adminLoaded = false;
+  // Sessie-flags wissen (one-time triggers per login)
+  try {
+    sessionStorage.removeItem('hv-setup-checked');
+    sessionStorage.removeItem('hv-setup-pending');
+    sessionStorage.removeItem('hv-setup-missing');
+  } catch {}
+  // Cached page-state objects resetten (AP_STATE.loaded zorgt voor refetch)
+  try { if (typeof AP_STATE !== 'undefined') AP_STATE.loaded = false; } catch {}
+  // Stop polling/heartbeats. Voorkomt 401-spam tijdens login pagina
+  try { stopPresencePing && stopPresencePing(); } catch {}
+  // UI terug naar login
   document.getElementById('dashboard-app').classList.remove('visible');
   document.getElementById('login-page').style.display = 'flex';
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').classList.remove('visible');
+  // Reset login knop state (voor het geval de spinner nog draait)
+  const btn = document.getElementById('btn-login');
+  if (btn) {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    const span = btn.querySelector('span');
+    if (span) span.textContent = 'Inloggen';
+  }
 }
 
 // Generic confirmation modal. Injected dynamically so it doesn't pollute HTML.
@@ -8690,12 +8715,22 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
    API CALLS
    ============================================================ */
 async function fetchLeads() {
-  const resp = await fetch(\`\${API_BASE}/leads\`, {
-    headers: { 'x-api-key': state.apiKey }
-  });
-  if (resp.status === 401) { handleAuthExpired(); throw new Error('Sessie verlopen'); }
-  if (!resp.ok) throw new Error(\`API fout: \${resp.status}\`);
-  return resp.json();
+  // Hard 10s timeout. zonder dit kan een trage Airtable de login-spinner
+  // eindeloos laten draaien. We tonen liever een lege dashboard met retry
+  // dan een knop die nooit antwoord geeft.
+  const ctrl = new AbortController();
+  const timeoutId = setTimeout(() => ctrl.abort(), 10_000);
+  try {
+    const resp = await fetch(\`\${API_BASE}/leads\`, {
+      headers: { 'x-api-key': state.apiKey },
+      signal: ctrl.signal
+    });
+    if (resp.status === 401) { handleAuthExpired(); throw new Error('Sessie verlopen'); }
+    if (!resp.ok) throw new Error(\`API fout: \${resp.status}\`);
+    return resp.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 // Called when any authenticated fetch returns 401. token expired or invalidated.
@@ -11867,11 +11902,11 @@ async function startDashboard(skipRefresh = false) {
   // who's currently logged in on app.helvaro.pro.
   startPresencePing();
 
-  // app.helvaro.pro is now CLIENT-ONLY: admin & founder nav stay hidden,
-  // even for admin-key logins. Admin/founder workflows live on the separate
-  // founderyou.pages.dev dashboard.
-  // skipRefresh=true when init() already fetched leads. Avoid a second Airtable call
-  await refreshData(skipRefresh);
+  // Refresh leads — NIET awaiten. Dashboard is al zichtbaar; data laadt
+  // in achtergrond zodat trage Airtable de UI niet blokkeert. Polling loop
+  // (90s) blijft draaien als de eerste fetch faalt.
+  // skipRefresh=true zegt: init() heeft al geladen, sla deze sla over.
+  if (!skipRefresh) refreshData(skipRefresh).catch(() => {});
 
   // First-time setup check: if essential AI config is missing, route to the
   // AI Persoonlijkheid page with a welcome banner so they finish onboarding.
@@ -11981,23 +12016,14 @@ async function handleLogin() {
     }
     saveSession(authData.apiKey, authData.clientName, authData.projectCode, email);
     state.clientName = authData.clientName || email.split('@')[0];
+    state.leads      = [];
+    state.stats      = {};
+    state.lastFetch  = 0;
 
-    // Auth succeeded. Load leads separately so a transient 429 on the
-    // first data fetch doesn't look like a login failure.
-    try {
-      const data = await fetchLeads();
-      state.leads = data.leads || [];
-      state.stats = data.stats || {};
-      state.clientName = authData.clientName || data.client?.naam || state.clientName;
-      state.lastFetch = Date.now();
-    } catch (_) {
-      // Leads fetch failed (Airtable busy). proceed with empty state.
-      // The 90-second polling loop will populate the dashboard automatically.
-      state.leads = [];
-      state.stats = {};
-      state.lastFetch = 0;
-    }
-
+    // Login is geslaagd — toon dashboard ONMIDDELLIJK. Leads worden async
+    // geladen in startDashboard(skipRefresh=false) → refreshData(). Vroeger
+    // wachtten we tot fetchLeads klaar was (kon 1–10s extra zijn op trage
+    // Airtable). Spinner blijft dus alleen tijdens auth zelf (~0.5s).
     await startDashboard();
   } catch (err) {
     errEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
@@ -14996,6 +15022,10 @@ function startPresencePing() {
   }
   ping();                              // fire immediately
   _presenceTimer = setInterval(ping, 60_000);
+}
+
+function stopPresencePing() {
+  if (_presenceTimer) { clearInterval(_presenceTimer); _presenceTimer = null; }
 }
 </script>
 </body>
