@@ -11831,6 +11831,20 @@ async function startDashboard(skipRefresh = false) {
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
 
+  // Admin reveal. Sidebar's 'Klanten' (and Founder) tabs only show when the
+  // user logged in with the ADMIN_KEY. We detect this from the session payload:
+  // admin sessions have clientName='Admin' AND an empty projectCode.
+  const isAdmin = (state.clientName === 'Admin') && !localStorage.getItem('hv-project');
+  const adminBtn   = document.getElementById('nav-admin');
+  const founderBtn = document.getElementById('nav-founder');
+  if (isAdmin) {
+    if (adminBtn)   adminBtn.style.display   = '';
+    if (founderBtn) founderBtn.style.display = '';
+  } else {
+    if (adminBtn)   adminBtn.style.display   = 'none';
+    if (founderBtn) founderBtn.style.display = 'none';
+  }
+
   // Handle Calendly OAuth redirect params
   const urlParams = new URLSearchParams(window.location.search);
   const calResult = urlParams.get('calendly');
