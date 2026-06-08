@@ -6915,6 +6915,19 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="ap-hint">De AI volgt deze regels in elk gesprek. Werkt het beste in korte zinnen.</div>
             </div>
 
+            <!-- AI Learned Patterns — wekelijks automatisch ge-update -->
+            <div class="ap-field" id="ap-learned-field" style="display:none">
+              <label class="ap-label">
+                Geleerde patronen
+                <span class="ap-label-hint">automatisch ge-update elke maandag o.b.v. afgelopen 7 dagen</span>
+              </label>
+              <textarea id="ap-learned" class="ap-textarea" rows="6" maxlength="1500" style="background:rgba(99,102,241,0.04);border-color:rgba(99,102,241,0.25)"></textarea>
+              <div class="ap-hint">
+                De AI analyseert wekelijks welke gesprekken het beste werkten en past z'n vragen aan. Je kan dit veld zelf wissen of bewerken.
+                <button type="button" class="ap-chip" onclick="clearLearnedPatterns()" style="margin-left:auto">Wissen</button>
+              </div>
+            </div>
+
             <!-- Website -->
             <div class="ap-field">
               <label class="ap-label">
@@ -13018,6 +13031,14 @@ const AP_HOURS_PRESETS = {
   en: { placeholder: 'mon-fri 9-18', chips: ['mon-fri 9-18', 'mon-sat 8-20', 'tue-sat 10-18'] }
 };
 
+// Klant wist 'Geleerde patronen' veld. Volgende maandag wordt 't opnieuw
+// gegenereerd. Reset niet direct opgeslagen — klant moet nog op Opslaan klikken.
+function clearLearnedPatterns() {
+  const ta = document.getElementById('ap-learned');
+  if (ta) ta.value = '';
+  toast('Wijziging geladen — klik Opslaan om te bevestigen', 'info');
+}
+
 function syncHoursLocaleUI() {
   const lang = (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl';
   const preset = AP_HOURS_PRESETS[lang] || AP_HOURS_PRESETS.nl;
@@ -13196,6 +13217,15 @@ async function loadAiPersona() {
     document.getElementById('ap-callback-window').value = d.callbackWindow || '';
     document.getElementById('ap-notify-phone').value    = d.notifyPhone    || '';
     document.getElementById('ap-report-email').value    = d.reportEmail    || '';
+    // Learned patterns: alleen tonen als er iets te tonen valt (na eerste maandag)
+    const learnedField = document.getElementById('ap-learned-field');
+    const learnedTa    = document.getElementById('ap-learned');
+    if (d.learnedPatterns && d.learnedPatterns.trim()) {
+      if (learnedTa)    learnedTa.value = d.learnedPatterns;
+      if (learnedField) learnedField.style.display = '';
+    } else {
+      if (learnedField) learnedField.style.display = 'none';
+    }
     syncBookingMethodUI();
     syncHoursLocaleUI();
     const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
@@ -13314,7 +13344,8 @@ async function saveAiPersona() {
       bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'calendly',
       callbackWindow: document.getElementById('ap-callback-window').value.trim(),
       notifyPhone:    document.getElementById('ap-notify-phone').value.trim(),
-      reportEmail:    document.getElementById('ap-report-email').value.trim()
+      reportEmail:    document.getElementById('ap-report-email').value.trim(),
+      learnedPatterns: (document.getElementById('ap-learned') || {}).value || ''
     };
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',

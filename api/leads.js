@@ -301,7 +301,8 @@ module.exports = async function handler(req, res) {
             bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'calendly').toString().toLowerCase(),
             callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || '',
             notifyPhone:    rec.fields['fldZEApe0gfse07AU'] || rec.fields['Notify Phone']        || '',
-            reportEmail:    rec.fields['fldDBJCN6dVMA8jax'] || rec.fields['Rapport Email']       || ''
+            reportEmail:    rec.fields['fldDBJCN6dVMA8jax'] || rec.fields['Rapport Email']       || '',
+            learnedPatterns: rec.fields['fldnbM5YKh274ISAl'] || rec.fields['AI Learned Patterns'] || ''
           });
         }
 
@@ -364,6 +365,10 @@ module.exports = async function handler(req, res) {
         if (body.reportEmail    !== undefined) {
           const v = String(body.reportEmail).trim().slice(0, 100);
           if (v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) u.fldDBJCN6dVMA8jax = v;
+        }
+        // Klant kan zelf geleerde patronen wissen of bewerken (max 1500 chars)
+        if (body.learnedPatterns !== undefined) {
+          u.fldnbM5YKh274ISAl = String(body.learnedPatterns).slice(0, 1500);
         }
         if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
 

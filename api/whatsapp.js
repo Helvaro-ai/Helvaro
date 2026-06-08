@@ -190,8 +190,11 @@ async function processMessage(phone, text) {
 
   // 7. Run AI
   const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
+  // Geleerde patronen — wekelijks bijgewerkt door cron-followup, geeft de AI
+  // accumulatieve kennis over wat werkt voor deze specifieke klant.
+  const learnedPatterns = (client.fields['fldnbM5YKh274ISAl'] || client.fields['AI Learned Patterns'] || '').toString().trim();
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
-    workingHours, outsideHours, bookingMethod, callbackWindow
+    workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns
   });
 
   // 8. Trim and push AI reply to history
@@ -539,6 +542,11 @@ VEILIGHEIDSREGELS:
 
 EXTRA INSTRUCTIES VAN DE KLANT:
 ${instructions || 'Kwalificeer de lead op basis van interesse, budget en urgentie.'}
+${ctx && ctx.learnedPatterns ? `
+GELEERDE PATRONEN (uit afgelopen weken aan gesprekken voor deze klant):
+${ctx.learnedPatterns}
+Pas deze inzichten toe waar relevant. Stel vragen die in het verleden goed bleken te werken.
+` : ''}
 
 RUNNING SAMENVATTING (ELKE BEURT):
 Voeg ALTIJD aan het EIND van élke reactie op een nieuwe regel toe:

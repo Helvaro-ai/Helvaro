@@ -128,14 +128,22 @@ module.exports = async function handler(req, res) {
     // Stuurt elke maandag (UTC) een overzichts-email naar elke klant met hun
     // Rapport Email ingesteld. Per-klant: leads/week, qualified, conversie, top 5.
     let weeklyResult = null;
+    let learningResult = null;
     if (now.getUTCDay() === 1) {   // 0=Sun, 1=Mon
       weeklyResult = await sendWeeklyClientReports(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
         console.error('[cron-followup] weekly report failed:', e.message);
         return null;
       });
+      // Wekelijkse AI learning loop — analyseert per klant de afgelopen 7 dagen
+      // en update 'AI Learned Patterns' veld. AI wordt elke maandag iets
+      // slimmer per klant op basis van wat in praktijk werkte.
+      learningResult = await runWeeklyLearning(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
+        console.error('[cron-followup] learning loop failed:', e.message);
+        return null;
+      });
     }
 
-    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult });
+    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -350,6 +358,136 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
     console.error('[weekly] network error:', err && err.message);
     return false;
   }
+}
+
+// ── Weekly AI learning loop ─────────────────────────────────────────────────
+// Elke maandag (UTC) analyseert de AI per klant de afgelopen 7 dagen aan
+// gesprekken. Output: korte 'geleerde patronen' notitie die in het
+// 'AI Learned Patterns' veld komt en automatisch wordt geïnjecteerd in de
+// system prompt van de AI bij elk volgend gesprek.
+//
+// Werkt cumulatief: vorige learnings worden meegegeven aan de AI zodat ze
+// geconsolideerd worden, niet vervangen. Verlies van inzicht over tijd
+// (catastrophic forgetting) wordt zo vermeden.
+//
+// Drempel: klant moet ≥3 leads hebben gehad in afgelopen 7 dagen anders
+// is er te weinig signaal en wordt de oude learning behouden.
+async function runWeeklyLearning(airtableToken, baseId, leadsTable) {
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
+  if (!ANTHROPIC_KEY) { console.warn('[learning] ANTHROPIC_KEY missing'); return null; }
+  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // 1. Haal alle actieve klanten op
+  const cFormula = encodeURIComponent('{Active}=1');
+  const cRes = await fetch(
+    `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&pageSize=100`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  );
+  if (!cRes.ok) { console.error('[learning] clients fetch failed', cRes.status); return null; }
+  const clients = (await cRes.json()).records || [];
+  console.log(`[learning] analyzing ${clients.length} clients`);
+
+  let updated = 0, skipped = 0;
+  for (const client of clients) {
+    const projectCode    = client.fields['fldN4dL0bGgfBOXwM']  || client.fields['Project Code']  || '';
+    const clientName     = client.fields['fldAnB848Sr5jl6dq']  || client.fields['Client Name']   || '';
+    const oldPatterns    = (client.fields['fldnbM5YKh274ISAl'] || client.fields['AI Learned Patterns'] || '').toString().trim();
+    if (!projectCode) { skipped++; continue; }
+
+    // 2. Haal leads van afgelopen 7 dagen voor deze klant
+    const lFormula = encodeURIComponent(`AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", {Created At}>"${weekAgoIso}")`);
+    const lRes = await fetch(
+      `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${lFormula}&pageSize=100`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (!lRes.ok) { skipped++; continue; }
+    const leads = (await lRes.json()).records || [];
+
+    // 3. Drempel: minstens 3 leads voor zinvolle analyse
+    if (leads.length < 3) { skipped++; continue; }
+
+    // 4. Bouw compact context — alleen relevante velden om tokens te besparen
+    const summary = leads.map(l => {
+      const f = l.fields || {};
+      let history = [];
+      try { history = JSON.parse(f['Conversation History'] || '[]'); } catch {}
+      return {
+        qualified: f['Qualified'] === true,
+        score:     f['Lead Score'] || null,
+        reason:    f['Reason'] || '',
+        aiSummary: f['AI Summary'] || '',
+        ability:   f['Ability'] || '',
+        urgency:   f['Urgency'] || '',
+        fit:       f['Fit'] || '',
+        bron:      f['Bron'] || '',
+        turns:     history.length,
+        firstUser: (history.find(m => m.role === 'user') || {}).content || ''
+      };
+    });
+    const qualified = summary.filter(s => s.qualified).length;
+    const rejected  = summary.filter(s => s.qualified === false).length;
+
+    // 5. Vraag Claude om patronen te distilleren
+    const prompt = `Je analyseert ${leads.length} WhatsApp lead-gesprekken van afgelopen week voor "${clientName}".
+
+Stats: ${qualified} gekwalificeerd, ${rejected} afgewezen, gem. ${(summary.reduce((a,s)=>a+s.turns,0)/leads.length).toFixed(1)} berichten per gesprek.
+
+DATA:
+${JSON.stringify(summary, null, 2).slice(0, 6000)}
+
+${oldPatterns ? `VORIGE GELEERDE PATRONEN (consolideer, niet vervangen):
+${oldPatterns}
+
+` : ''}TAAK: Schrijf maximum 6 bullet points met concrete, ACTIONABLE patronen die de AI volgende week beter doen kwalificeren. Focus op:
+- Welke vragen werken om snel te kwalificeren
+- Welke type lead converteert het beste (bron, profiel, signalen)
+- Welke red flags er waren bij afgewezen leads
+- Vaak voorkomende lead-vragen die de AI moet kunnen beantwoorden
+
+Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maximaal 600 tekens totaal.`;
+
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) {
+        console.error(`[learning] ${projectCode} Anthropic err:`, JSON.stringify(data.error || data).slice(0, 200));
+        skipped++; continue;
+      }
+      const newPatterns = (data.content?.[0]?.text || '').trim().slice(0, 1500);
+      if (!newPatterns) { skipped++; continue; }
+
+      // 6. Schrijf terug naar Airtable
+      const up = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}/${client.id}`,
+        {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: { fldnbM5YKh274ISAl: newPatterns } })
+        }
+      );
+      if (up.ok) updated++; else skipped++;
+      // Spread token usage so we don't burst Anthropic rate limits
+      await new Promise(res => setTimeout(res, 500));
+    } catch (err) {
+      console.error(`[learning] ${projectCode} exception:`, err.message);
+      skipped++;
+    }
+  }
+  console.log(`[learning] updated ${updated}, skipped ${skipped}`);
+  return { analyzed: clients.length, updated, skipped };
 }
 
 // Stuur een goedgekeurde Meta-template (verplicht buiten het 24u customer-service venster).
