@@ -11629,7 +11629,7 @@ function renderProfile() {
         const bron  = l.fields?.['Bron'] || l.bron || '';
         const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
         const qual = l.fields?.['Qualified'] === true || l.qualified === true || (l.fields?.['Score'] >= 7) || l.leadScore >= 7;
-        return \`<div class="profile-recent-lead-row" onclick="openLead('\${l.id}')">
+        return \`<div class="profile-recent-lead-row" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead){navigateTo('dashboard');setTimeout(function(){openPanel(lead);},120);}})()">
           <div class="profile-recent-lead-avatar">\${initials}</div>
           <div style="flex:1;min-width:0">
             <div class="profile-recent-lead-name">\${escHtml(name)}</div>
