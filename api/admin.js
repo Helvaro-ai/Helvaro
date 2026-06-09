@@ -604,6 +604,68 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ── mode=generate-content: AI genereert week aan social posts ───────────
+    // body: { mode: 'generate-content', startDate?: 'YYYY-MM-DD', days?: 7 }
+    // Default: 7 dagen vanaf morgen, 3 posts per dag (LinkedIn, Instagram, Facebook).
+    // Schrijft alles als status=draft naar Marketing Posts tabel. Klant approved
+    // daarna manueel via dashboard of Airtable.
+    if (body.mode === 'generate-content') {
+      const provided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const days = Math.min(14, Math.max(1, parseInt(body.days || 7, 10)));
+      const startDate = body.startDate ? new Date(body.startDate) : new Date(Date.now() + 24*60*60*1000);
+      const result = await generateContentWeek(AIRTABLE_TOKEN, BASE_ID, days, startDate);
+      return res.status(200).json(result);
+    }
+
+    // ── mode=list-content: haal de drafts/approved/posted op ────────────────
+    // body: { mode: 'list-content', status?: 'draft'|'approved'|'posted', limit?: 50 }
+    if (body.mode === 'list-content') {
+      const provided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const status = String(body.status || '').trim();
+      const limit  = Math.min(100, Math.max(1, parseInt(body.limit || 50, 10)));
+      const formula = status ? encodeURIComponent(`{Status}="${status}"`) : '';
+      const url = `https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA?pageSize=${limit}${formula ? `&filterByFormula=${formula}` : ''}&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`;
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      const d = await r.json();
+      return res.status(200).json({ posts: d.records || [] });
+    }
+
+    // ── mode=update-content: approve/edit/skip een specifieke post ──────────
+    // body: { mode: 'update-content', id: 'rec...', status?, content?, scheduledFor? }
+    if (body.mode === 'update-content') {
+      const provided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const id = String(body.id || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
+      const fields = {};
+      if (body.status !== undefined && ['draft','approved','posted','failed','skipped'].includes(body.status)) {
+        fields.Status = body.status;
+      }
+      if (body.content !== undefined)      fields.Content      = String(body.content).slice(0, 3000);
+      if (body.scheduledFor !== undefined) fields['Scheduled For'] = body.scheduledFor;
+      if (body.imageUrl !== undefined)     fields['Image URL'] = String(body.imageUrl).slice(0, 500);
+      if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
+      const r = await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`,
+        {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields })
+        }
+      );
+      const d = await r.json();
+      if (!r.ok) return res.status(500).json({ error: d.error?.message || 'Update failed' });
+      return res.status(200).json({ ok: true, record: d });
+    }
+
     // ── mode=invite: admin sends an invite email to a client ─────────────────
     if (body.mode === 'invite') {
       const provided = String(req.headers['x-api-key'] || '').trim();
@@ -1000,4 +1062,166 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
   } catch (err) {
     console.error('[resend invite] network error:', err && err.message);
   }
+}
+
+// ─── CONTENT GENERATOR ────────────────────────────────────────────────────────
+// Wekelijkse 21-posts batch (7 dagen × 3 platforms) of partial run via admin
+// mode='generate-content'. Per platform-dag combo: pick een content pillar,
+// vraag Claude Haiku 4.5 om een post + hashtags, schrijf naar Airtable als draft.
+
+const CONTENT_PILLARS = [
+  { name: 'pain-point',       weight: 20, focus: 'Schets een herkenbaar probleem dat KMO-eigenaren met leads hebben. Concreet voorbeeld (auto-handel, kapper, advocaat). Eindig met een vraag of hint naar de oplossing.' },
+  { name: 'solution',         weight: 20, focus: 'Hoe Helvaro een specifiek probleem oplost. AI WhatsApp die in 30 seconden kwalificeert. Geen sales pitch, maar concreet "zo werkt het".' },
+  { name: 'industry-insight', weight: 15, focus: 'Inzicht uit B2B lead-data. Cijfers, percentages, trends. "80% van leads loopt weg binnen 5 min" stijl. Maak het scrollwaardig.' },
+  { name: 'founder-pov',      weight: 15, focus: 'Eerlijke observatie als oprichter van een SaaS. Iets dat je deze week geleerd, vroeg, of besefte. Mens-achtig, niet corporate.' },
+  { name: 'educational',      weight: 15, focus: 'Concrete tip die KMO-eigenaars zelf kunnen toepassen om hun lead-flow te verbeteren. 3 vragen, 5 stappen, etc.' },
+  { name: 'behind-scenes',    focus: 'Wat er deze week is gebouwd of veranderd in Helvaro. Klein product moment. Maakt het tastbaar dat er een mens achter zit.' },
+  { name: 'customer-win',     focus: 'Hypothetische klant-story OF echte cijfers van een klant (met permissie). Resultaat-gedreven.' }
+];
+
+const PLATFORM_TONES = {
+  linkedin:  { tone: 'Professioneel B2B, founder POV. 150-300 woorden. Geen emojis. Hooks, korte alineas, eindigen met een vraag.', maxLength: 2900, hashtagCount: 3 },
+  instagram: { tone: 'Conversational, kort en visueel. 50-120 woorden. Geen emojis. Begin met een hook van 1 zin. Eindig met een vraag of insight.', maxLength: 2200, hashtagCount: 7 },
+  facebook:  { tone: 'Community-tone, mid-lengte. 100-180 woorden. Geen emojis. Iets meer ruimte voor verhaal. Eindig met een vraag.', maxLength: 5000, hashtagCount: 4 }
+};
+
+function pickWeightedPillar() {
+  const weighted = CONTENT_PILLARS.flatMap(p => Array(p.weight || 5).fill(p));
+  return weighted[Math.floor(Math.random() * weighted.length)];
+}
+
+async function generateOnePost(platform, pillar, dateIso) {
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
+  if (!ANTHROPIC_KEY) return null;
+  const tone = PLATFORM_TONES[platform];
+  const prompt = `Je schrijft een social media post voor Helvaro op ${platform}.
+
+OVER HELVARO:
+Helvaro is een Belgische B2B SaaS. KMOs (auto-handel, kappers, advocaten, vastgoed, dentists, ...) krijgen een AI die hun WhatsApp leads in 30 seconden kwalificeert. €1.000/maand. NL/FR/EN. Lead vult formulier in op de website van de klant -> AI van Helvaro stuurt direct WhatsApp -> voert natuurlijk gesprek -> markeert qualified -> klant krijgt notif. Zonder Helvaro: lead loopt weg na 5-10 min.
+
+CONTENT PIJLER VOOR DEZE POST: ${pillar.name}
+${pillar.focus}
+
+PLATFORM TONE:
+${tone.tone}
+
+KRITIEKE REGELS:
+- GEEN emojis (Helvaro policy)
+- GEEN em-dashes ( - ), gebruik gewone punten
+- GEEN AI-cliches ("Did you know", "Stel je voor", "In een wereld waar...")
+- WEL: concrete situaties, getallen, zinsbouw als een echte ondernemer
+- Schrijf in het Nederlands
+- Geen vermelding van prijs (€1.000/maand) tenzij pillar=pain-point of customer-win
+
+OUTPUT FORMAT (strikt):
+TITLE: <korte interne titel max 60 chars>
+CONTENT: <de post tekst>
+HASHTAGS: <${tone.hashtagCount} hashtags gescheiden door spaties, lowercase, beginnen met #>
+
+Schrijf nu de post.`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) {
+      console.error('[content-gen] Anthropic err:', JSON.stringify(d.error || d).slice(0, 200));
+      return null;
+    }
+    const raw = (d.content?.[0]?.text || '').trim();
+    // Parse the structured output
+    const titleM    = raw.match(/TITLE:\s*(.+?)(?:\n|$)/i);
+    const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\nHASHTAGS:|$)/i);
+    const hashtagsM = raw.match(/HASHTAGS:\s*(.+?)(?:\n|$)/i);
+    if (!contentM) return null;
+    // Strip dashes/emojis as defense in depth
+    let content = contentM[1].trim().replace(/[—–]/g, '.').slice(0, tone.maxLength);
+    // Remove emojis using same regex policy as elsewhere
+    content = content.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '');
+    return {
+      title:    (titleM ? titleM[1] : `${platform} ${pillar.name}`).trim().slice(0, 60),
+      content,
+      hashtags: (hashtagsM ? hashtagsM[1] : '').trim().slice(0, 200)
+    };
+  } catch (err) {
+    console.error('[content-gen] exception:', err.message);
+    return null;
+  }
+}
+
+// Genereer N dagen aan content. Per dag: 3 posts (LinkedIn 08:30, IG 12:00, FB 18:00 Brussels-tijd).
+async function generateContentWeek(airtableToken, baseId, days, startDate) {
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const platforms = [
+    { name: 'linkedin',  hour: 8,  minute: 30 },
+    { name: 'instagram', hour: 12, minute: 0 },
+    { name: 'facebook',  hour: 18, minute: 0 }
+  ];
+
+  let created = 0, failed = 0;
+  const summary = [];
+
+  for (let day = 0; day < days; day++) {
+    const date = new Date(startDate);
+    date.setUTCDate(date.getUTCDate() + day);
+    // Skip weekends voor LinkedIn (B2B algoritme bias)
+    const dayOfWeek = date.getUTCDay();   // 0=Sun, 6=Sat
+    for (const platform of platforms) {
+      if (platform.name === 'linkedin' && (dayOfWeek === 0 || dayOfWeek === 6)) {
+        continue;   // LinkedIn rust in weekend
+      }
+      const pillar = pickWeightedPillar();
+      const post = await generateOnePost(platform.name, pillar, date.toISOString());
+      if (!post) { failed++; continue; }
+      // Bouw scheduled-for tijd (UTC). Brussels CET = UTC+1, CEST = UTC+2.
+      // Voor simplicity gebruiken we UTC met +1 uur correctie (CET fallback).
+      const scheduledUtc = new Date(Date.UTC(
+        date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
+        platform.hour - 1, platform.minute  // -1 = CET to UTC
+      ));
+
+      // Schrijf naar Airtable
+      const fields = {
+        Title:           post.title,
+        Platform:        platform.name,
+        Content:         post.content,
+        'Scheduled For': scheduledUtc.toISOString(),
+        Status:          'draft',
+        Pillar:          pillar.name,
+        'AI Generated':  true,
+        Hashtags:        post.hashtags,
+        'Created At':    new Date().toISOString()
+      };
+      const r = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields, typecast: true })
+        }
+      );
+      if (r.ok) {
+        created++;
+        summary.push({ date: scheduledUtc.toISOString(), platform: platform.name, pillar: pillar.name, preview: post.content.slice(0, 80) });
+      } else {
+        failed++;
+        const errBody = await r.text().catch(() => '');
+        console.error('[content-gen] Airtable err:', errBody.slice(0, 200));
+      }
+      // Verspreid Anthropic load (3 posts per dag x 7 dagen = 21 calls)
+      await new Promise(res => setTimeout(res, 400));
+    }
+  }
+  return { ok: true, created, failed, summary };
 }

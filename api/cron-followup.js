@@ -143,7 +143,28 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult });
+    // ── Content generation (Sundays) ────────────────────────────────────────
+    // Zondag avond genereert AI 7 dagen aan social media posts voor de
+    // komende week. Drafts gaan naar Airtable Marketing Posts tabel.
+    // Klant approved op maandagochtend en cron post via Buffer.
+    let contentResult = null;
+    if (now.getUTCDay() === 0) {   // 0=Sun
+      contentResult = await runWeeklyContentGen(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+        console.error('[cron-followup] content gen failed:', e.message);
+        return null;
+      });
+    }
+
+    // ── Buffer posting (every cron run) ─────────────────────────────────────
+    // Check elk uur of er approved posts zijn waarvan Scheduled For nu is.
+    // Stuurt naar Buffer voor publicatie op LinkedIn/Instagram/Facebook.
+    let posterResult = null;
+    posterResult = await runBufferPoster(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+      console.error('[cron-followup] buffer poster failed:', e.message);
+      return null;
+    });
+
+    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, posted: posterResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -531,4 +552,124 @@ function sendWA(to, message, phoneNumberId, token) {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) console.error(`[cron-followup] WA fout naar ${to}:`, JSON.stringify(d.error || d));
   }).catch(err => console.error(`[cron-followup] WA netwerk fout naar ${to}:`, err.message));
+}
+
+// ─── CONTENT GENERATION (zondag avond) ────────────────────────────────────────
+// Roept de generator in admin.js intern aan via een interne call. Simpeler:
+// duplicate de generator hier? Nee. We doen interne HTTP call naar zelf.
+async function runWeeklyContentGen(airtableToken, baseId) {
+  const ADMIN_KEY = process.env.ADMIN_KEY;
+  if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  const startDate = new Date(Date.now() + 24*60*60*1000).toISOString().slice(0, 10);   // morgen
+  try {
+    const crypto = require('crypto');
+    const derived = crypto.createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
+    const r = await fetch(`${baseUrl}/api/admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': derived },
+      body: JSON.stringify({ mode: 'generate-content', startDate, days: 7 })
+    });
+    const d = await r.json().catch(() => ({}));
+    return d;
+  } catch (err) {
+    console.error('[content-gen] internal call failed:', err.message);
+    return { error: err.message };
+  }
+}
+
+// ─── BUFFER POSTER ────────────────────────────────────────────────────────────
+// Elk cron-run (1x per dag): pakt approved posts waarvan Scheduled For binnen
+// het laatste uur valt en stuurt ze naar Buffer voor publicatie.
+async function runBufferPoster(airtableToken, baseId) {
+  const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
+  if (!BUFFER_TOKEN) return { skipped: 'no BUFFER_ACCESS_TOKEN' };
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const nowIso = new Date().toISOString();
+  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+
+  // Buffer profile IDs per platform (env vars).
+  // BUFFER_PROFILE_LINKEDIN, BUFFER_PROFILE_INSTAGRAM, BUFFER_PROFILE_FACEBOOK
+  const profiles = {
+    linkedin:  process.env.BUFFER_PROFILE_LINKEDIN,
+    instagram: process.env.BUFFER_PROFILE_INSTAGRAM,
+    facebook:  process.env.BUFFER_PROFILE_FACEBOOK
+  };
+
+  // Haal approved posts op waarvan Scheduled For ≤ nu en > 1u geleden
+  const formula = encodeURIComponent(
+    `AND({Status}="approved", IS_BEFORE({Scheduled For}, NOW()), IS_AFTER({Scheduled For}, "${oneHourAgo}"))`
+  );
+  const lr = await fetch(
+    `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=20`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  );
+  if (!lr.ok) return { error: 'airtable list failed' };
+  const list = (await lr.json()).records || [];
+  if (list.length === 0) return { checked: 0, posted: 0 };
+
+  let posted = 0, failed = 0;
+  for (const post of list) {
+    const platform   = post.fields.Platform;
+    const content    = post.fields.Content || '';
+    const hashtags   = post.fields.Hashtags || '';
+    const imageUrl   = post.fields['Image URL'] || '';
+    const profileId  = profiles[platform];
+    if (!profileId) {
+      // Markeer skipped — geen profile gekoppeld
+      await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { Status: 'skipped', Error: `Geen BUFFER_PROFILE_${platform.toUpperCase()} env var` } })
+      });
+      failed++;
+      continue;
+    }
+
+    // Buffer API: POST /1/updates/create.json
+    // Vereist: text, profile_ids[], optioneel media[photo]
+    const body = new URLSearchParams();
+    body.append('text', (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000));
+    body.append('profile_ids[]', profileId);
+    if (imageUrl) body.append('media[photo]', imageUrl);
+    body.append('now', 'true');   // direct posten, niet Buffer-queue
+
+    try {
+      const br = await fetch('https://api.bufferapp.com/1/updates/create.json', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${BUFFER_TOKEN}`,
+          'Content-Type':  'application/x-www-form-urlencoded'
+        },
+        body: body.toString()
+      });
+      const bd = await br.json().catch(() => ({}));
+      if (br.ok && bd.success) {
+        const bufferId = (bd.updates?.[0]?.id) || '';
+        await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: {
+            Status: 'posted',
+            'Posted At': new Date().toISOString(),
+            'Buffer ID': bufferId
+          }})
+        });
+        posted++;
+      } else {
+        await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: { Status: 'failed', Error: JSON.stringify(bd).slice(0, 500) } })
+        });
+        failed++;
+      }
+    } catch (err) {
+      failed++;
+      console.error('[buffer] post failed:', err.message);
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`[buffer-poster] posted=${posted} failed=${failed} checked=${list.length}`);
+  return { checked: list.length, posted, failed };
 }
