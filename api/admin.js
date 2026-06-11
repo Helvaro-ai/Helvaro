@@ -1117,6 +1117,7 @@ OUTPUT FORMAT (strikt):
 TITLE: <korte interne titel max 60 chars>
 CONTENT: <de post tekst>
 HASHTAGS: <${tone.hashtagCount} hashtags gescheiden door spaties, lowercase, beginnen met #>
+VISUAL_QUERY: <2-4 Engelse zoekwoorden voor een passende stockfoto, bv "business woman phone office" of "car dealership belgium" — moet visueel ondersteunen wat het topic is>
 
 Schrijf nu de post.`;
 
@@ -1142,21 +1143,60 @@ Schrijf nu de post.`;
     const raw = (d.content?.[0]?.text || '').trim();
     // Parse the structured output
     const titleM    = raw.match(/TITLE:\s*(.+?)(?:\n|$)/i);
-    const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\nHASHTAGS:|$)/i);
+    const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\n(?:HASHTAGS|VISUAL_QUERY):|$)/i);
     const hashtagsM = raw.match(/HASHTAGS:\s*(.+?)(?:\n|$)/i);
+    const visualM   = raw.match(/VISUAL_QUERY:\s*(.+?)(?:\n|$)/i);
     if (!contentM) return null;
     // Strip dashes/emojis as defense in depth
     let content = contentM[1].trim().replace(/[—–]/g, '.').slice(0, tone.maxLength);
     // Remove emojis using same regex policy as elsewhere
     content = content.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '');
+
+    // Voor Facebook + Instagram: haal een passende foto via Pexels
+    // LinkedIn blijft tekst-only (B2B norm, foto's leiden af van content)
+    let imageUrl = '';
+    if (platform === 'instagram' || platform === 'facebook') {
+      const query = (visualM ? visualM[1] : '').trim().slice(0, 100) || `${platform} business professional`;
+      imageUrl = await fetchPexelsImage(query).catch(() => '');
+    }
+
     return {
       title:    (titleM ? titleM[1] : `${platform} ${pillar.name}`).trim().slice(0, 60),
       content,
-      hashtags: (hashtagsM ? hashtagsM[1] : '').trim().slice(0, 200)
+      hashtags: (hashtagsM ? hashtagsM[1] : '').trim().slice(0, 200),
+      imageUrl
     };
   } catch (err) {
     console.error('[content-gen] exception:', err.message);
     return null;
+  }
+}
+
+// Pexels API. Gratis 200 req/uur. Vraagt 1 random foto die matcht met query.
+// Faalt stil (lege string) als geen PEXELS_API_KEY ingesteld of geen result.
+async function fetchPexelsImage(query) {
+  const PEXELS_KEY = process.env.PEXELS_API_KEY;
+  if (!PEXELS_KEY) {
+    console.warn('[pexels] PEXELS_API_KEY niet ingesteld. Posts krijgen geen foto.');
+    return '';
+  }
+  try {
+    // per_page=15 + random pick zorgt voor variatie als zelfde query meerdere keren
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape`;
+    const r = await fetch(url, { headers: { Authorization: PEXELS_KEY } });
+    if (!r.ok) {
+      console.error('[pexels] err', r.status, query);
+      return '';
+    }
+    const d = await r.json();
+    const photos = d.photos || [];
+    if (photos.length === 0) return '';
+    const photo = photos[Math.floor(Math.random() * photos.length)];
+    // src.large is ~940px wide. Goed voor Instagram + Facebook feed.
+    return (photo.src?.large || photo.src?.original || '').slice(0, 500);
+  } catch (err) {
+    console.error('[pexels] exception:', err.message);
+    return '';
   }
 }
 
@@ -1203,6 +1243,8 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
         Hashtags:        post.hashtags,
         'Created At':    new Date().toISOString()
       };
+      // Afbeelding alleen voor Instagram + Facebook (LinkedIn blijft text-only)
+      if (post.imageUrl) fields['Image URL'] = post.imageUrl;
       const r = await fetch(
         `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}`,
         {
