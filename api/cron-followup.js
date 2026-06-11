@@ -1,4 +1,5 @@
-// Vercel cron. Runs daily at 09:00 UTC
+// Vercel cron. Runs daily at 05:00 UTC (06:00 CET) - vroeg genoeg dat
+// Buffer queue klaar staat voor de 08:30 CET LinkedIn slot.
 // Sends a follow-up WhatsApp to leads that:
 //   - Status is still 'new'
 //   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
@@ -585,38 +586,46 @@ async function runBufferPoster(airtableToken, baseId) {
   const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
   if (!BUFFER_TOKEN) return { skipped: 'no BUFFER_ACCESS_TOKEN' };
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
-  const nowIso = new Date().toISOString();
-  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+
+  // STRATEGIE: 1× per dag fetch alle approved posts voor de komende 26 uur
+  // en queue ze in Buffer met scheduled_at parameter. Buffer publiceert ze
+  // dan zelf op de juiste tijd. Voordeel: cron hoeft NIET 3× per dag te
+  // draaien (Vercel Hobby kan dat niet zonder Pro plan).
+  //
+  // Tijd-venster: NOW tot NOW+26h.
+  // - 26 uur (niet 24) geeft overlap-buffer als cron iets later draait
+  // - Skip posts die al een Buffer ID hebben (anti-duplicate guard)
 
   // Buffer profile IDs per platform (env vars).
-  // BUFFER_PROFILE_LINKEDIN, BUFFER_PROFILE_INSTAGRAM, BUFFER_PROFILE_FACEBOOK
   const profiles = {
     linkedin:  process.env.BUFFER_PROFILE_LINKEDIN,
     instagram: process.env.BUFFER_PROFILE_INSTAGRAM,
     facebook:  process.env.BUFFER_PROFILE_FACEBOOK
   };
 
-  // Haal approved posts op waarvan Scheduled For ≤ nu en > 1u geleden
+  const inOneDay = new Date(Date.now() + 26*60*60*1000).toISOString();
+  // Approved + binnen 26h + nog niet in Buffer-queue (Buffer ID leeg)
   const formula = encodeURIComponent(
-    `AND({Status}="approved", IS_BEFORE({Scheduled For}, NOW()), IS_AFTER({Scheduled For}, "${oneHourAgo}"))`
+    `AND({Status}="approved", IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
   );
   const lr = await fetch(
-    `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=20`,
+    `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
     { headers: { Authorization: `Bearer ${airtableToken}` } }
   );
   if (!lr.ok) return { error: 'airtable list failed' };
   const list = (await lr.json()).records || [];
-  if (list.length === 0) return { checked: 0, posted: 0 };
+  if (list.length === 0) return { checked: 0, queued: 0 };
 
-  let posted = 0, failed = 0;
+  let queued = 0, failed = 0;
   for (const post of list) {
     const platform   = post.fields.Platform;
     const content    = post.fields.Content || '';
     const hashtags   = post.fields.Hashtags || '';
     const imageUrl   = post.fields['Image URL'] || '';
+    const scheduled  = post.fields['Scheduled For'];
     const profileId  = profiles[platform];
+
     if (!profileId) {
-      // Markeer skipped — geen profile gekoppeld
       await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
@@ -625,14 +634,19 @@ async function runBufferPoster(airtableToken, baseId) {
       failed++;
       continue;
     }
+    if (!scheduled) {
+      failed++;
+      continue;
+    }
 
-    // Buffer API: POST /1/updates/create.json
-    // Vereist: text, profile_ids[], optioneel media[photo]
+    // Buffer API verwacht scheduled_at als Unix timestamp in seconden
+    const scheduledUnix = Math.floor(new Date(scheduled).getTime() / 1000);
+
     const body = new URLSearchParams();
     body.append('text', (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000));
     body.append('profile_ids[]', profileId);
     if (imageUrl) body.append('media[photo]', imageUrl);
-    body.append('now', 'true');   // direct posten, niet Buffer-queue
+    body.append('scheduled_at', String(scheduledUnix));   // Buffer queue't zelf
 
     try {
       const br = await fetch('https://api.bufferapp.com/1/updates/create.json', {
@@ -646,6 +660,9 @@ async function runBufferPoster(airtableToken, baseId) {
       const bd = await br.json().catch(() => ({}));
       if (br.ok && bd.success) {
         const bufferId = (bd.updates?.[0]?.id) || '';
+        // Status='posted' = vanuit ons systeem 'klaar overgedragen aan Buffer'
+        // (Buffer publiceert later op scheduled_at). Posted At = wanneer wij
+        // 'm in de queue stopten.
         await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
@@ -655,7 +672,7 @@ async function runBufferPoster(airtableToken, baseId) {
             'Buffer ID': bufferId
           }})
         });
-        posted++;
+        queued++;
       } else {
         await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
           method: 'PATCH',
@@ -666,10 +683,10 @@ async function runBufferPoster(airtableToken, baseId) {
       }
     } catch (err) {
       failed++;
-      console.error('[buffer] post failed:', err.message);
+      console.error('[buffer] queue failed:', err.message);
     }
     await new Promise(r => setTimeout(r, 300));
   }
-  console.log(`[buffer-poster] posted=${posted} failed=${failed} checked=${list.length}`);
-  return { checked: list.length, posted, failed };
+  console.log(`[buffer-poster] queued=${queued} failed=${failed} checked=${list.length}`);
+  return { checked: list.length, queued, failed };
 }
