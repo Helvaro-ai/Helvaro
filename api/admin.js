@@ -361,7 +361,7 @@ module.exports = async function handler(req, res) {
             'Je bent een concrete business coach voor Helvaro, een Belgische AI-startup.',
             '',
             'Helvaro context:',
-            '- Product: AI qualificeert leads automatisch via WhatsApp en plant serieuze prospects in de Calendly agenda',
+            '- Product: AI qualificeert leads automatisch via WhatsApp en boekt serieuze prospects direct in een afspraak',
             '- Founders: Frade (technisch) + Teljo (marketing/sales)',
             '- Doel: 5 klanten met 3-maands contract voor 20 juni 2026 (35 dagen resterend)',
             '- Doelgroep: marketingbureaus, vastgoedkantoren, coaches in Gent/Antwerpen',

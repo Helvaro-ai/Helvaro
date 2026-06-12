@@ -7509,7 +7509,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             AI Instellingen
           </div>
           <div class="settings-info-box">
-            Instellingen zoals de AI-naam en Calendly-link worden beheerd door het Helvaro-team. Neem contact op via <a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a> om wijzigingen door te voeren.
+            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a>
           </div>
           <div class="settings-row">
             <div>
@@ -7520,10 +7520,10 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">Calendly Link</div>
-              <div class="settings-label-sub">Uw boekingspagina URL</div>
+              <div class="settings-label">Boekingsmodus</div>
+              <div class="settings-label-sub">Hoe afspraken worden ingepland</div>
             </div>
-            <div class="settings-value" id="set-calendly-url" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+            <div class="settings-value" id="set-calendly-url" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">AI boekt in WhatsApp</div>
           </div>
         </div>
 
@@ -7672,14 +7672,13 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">AI boekt direct in WhatsApp gesprek</span>
             </div>
             <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-              <a id="pf-connect-btn" href="#" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:10px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 14px rgba(99,102,241,0.4);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                Koppel Calendly
-              </a>
-              <a id="pf-calendly-open" href="#" target="_blank" style="display:none;align-items:center;gap:6px;padding:9px 14px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);font-size:13px;font-weight:600;text-decoration:none;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                Openen
-              </a>
+              <button onclick="navigateTo('calendly')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#4f46e5,#6366f1);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);font-family:inherit;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Open agenda
+              </button>
+              <!-- Hidden elementen voor backwards compat. Oude JS in renderProfile() refereert ze nog. -->
+              <a id="pf-connect-btn" href="#" style="display:none"></a>
+              <a id="pf-calendly-open" href="#" style="display:none"></a>
             </div>
           </div>
 
@@ -8349,7 +8348,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   </div>
 </div>
 
-<!-- Custom Calendly Booking Modal -->
+<!-- Booking Modal (handmatig afspraak inplannen vanuit kalender) -->
 <div id="cal-book-overlay" onclick="if(event.target===this)closeCalBookModal()">
   <div id="cal-book-modal">
     <div id="cal-book-header">
@@ -10658,11 +10657,12 @@ function openCalEvent(idx) {
   const durM    = durMin % 60;
   const durLbl  = durH > 0 ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`) : \`\${durMin}min\`;
   const rows = [
-    { label: 'Datum',   val: fmtD(start) },
-    { label: 'Tijd',    val: fmtT(start) + '. ' + fmtT(end) },
-    { label: 'Duur',    val: durLbl },
-    { label: 'Type',    val: ev.eventType || '—' },
-    { label: 'E-mail',  val: ev.email     || '—' },
+    { label: 'Datum',    val: fmtD(start) },
+    { label: 'Tijd',     val: fmtT(start) + ' – ' + fmtT(end) },
+    { label: 'Duur',     val: durLbl },
+    { label: 'Type',     val: ev.eventType || '—' },
+    { label: 'Telefoon', val: ev.phone     || '—' },
+    ...(ev.notes ? [{ label: 'Notities', val: ev.notes }] : [])
   ].map(r => \`<div class="cal-modal-row"><span class="cal-modal-row-label">\${r.label}</span><span class="cal-modal-row-val">\${escHtml(String(r.val))}</span></div>\`).join('');
 
   const joinBtn = ev.joinUrl
@@ -11026,31 +11026,26 @@ function renderCalBookBody() {
           oninput="calBookState.bookName=this.value" />
       </div>
       <div>
-        <div class="cb-label">E-mailadres</div>
-        <input class="cb-field-input" id="cb-book-email" type="email" placeholder="naam@bedrijf.nl"
-          value="\${escHtml(calBookState.bookEmail)}"
-          oninput="calBookState.bookEmail=this.value" />
+        <div class="cb-label">Telefoon</div>
+        <input class="cb-field-input" id="cb-book-phone" type="tel" placeholder="+32 466 35 84 27"
+          value="\${escHtml(calBookState.bookPhone || '')}"
+          oninput="calBookState.bookPhone=this.value" />
       </div>
     </div>\`;
   }
 
-  // Confirm button
+  // Confirm button — boekt direct in Airtable Appointments tabel
   let confirmHtml = '';
   if (calBookState.selectedSlot) {
-    const selType = calBookState.eventTypes.find(e => e.uri === calBookState.selectedType);
-    const bookUrl = selType ? selType.bookingUrl : (state.calendlyUrl || '');
-    const t       = new Date(calBookState.selectedSlot);
-    const hh      = String(t.getHours()).padStart(2,'0');
-    const mm      = String(t.getMinutes()).padStart(2,'0');
-    let fullUrl = bookUrl + (bookUrl.includes('?') ? '&' : '?') + 'date=' + calBookState.date;
-    if (calBookState.bookName)  fullUrl += '&name='  + encodeURIComponent(calBookState.bookName);
-    if (calBookState.bookEmail) fullUrl += '&email=' + encodeURIComponent(calBookState.bookEmail);
+    const t  = new Date(calBookState.selectedSlot);
+    const hh = String(t.getHours()).padStart(2,'0');
+    const mm = String(t.getMinutes()).padStart(2,'0');
     confirmHtml = \`<div class="cb-confirm-wrap">
-      <a class="cb-confirm-btn" href="\${escHtml(fullUrl)}" target="_blank" onclick="calBookBeforeConfirm(this)">
+      <button id="cb-confirm-btn" class="cb-confirm-btn" onclick="calBookConfirm()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Bevestig \${hh}:\${mm} in Calendly
-      </a>
-      <div class="cb-confirm-note">Calendly opent in een nieuw venster. Naam &amp; e-mail zijn alvast ingevuld</div>
+        Boek afspraak om \${hh}:\${mm}
+      </button>
+      <div class="cb-confirm-note">Afspraak wordt direct opgeslagen in je agenda</div>
     </div>\`;
   }
 
@@ -11060,39 +11055,57 @@ function renderCalBookBody() {
 }
 
 async function fetchCalSlots() {
+  // Geen Calendly meer. Genereer slots client-side op basis van werkuren
+  // (default 9-18 elke 30 min) en markeer welke al bezet zijn obv bestaande
+  // appointments uit dezelfde dag.
   calBookState.loading = true;
   calBookState.slots   = [];
   renderCalBookBody();
 
   try {
-    const typeParam = calBookState.selectedType
-      ? '&event_type=' + encodeURIComponent(calBookState.selectedType)
-      : '';
-    const resp = await fetch(
-      \`\${API_BASE}/calendly-slots?date=\${calBookState.date}\${typeParam}\`,
-      { headers: { 'x-api-key': state.apiKey } }
-    );
+    // 1. Haal afspraken voor deze dag op
+    const dayStart = new Date(calBookState.date + 'T00:00:00');
+    const dayEnd   = new Date(calBookState.date + 'T23:59:59');
+    const resp = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'appointments-list', from: dayStart.toISOString(), to: dayEnd.toISOString() })
+    });
     const data = await resp.json();
+    const existing = (data.appointments || []).map(r => {
+      const f = r.fields || {};
+      const start = new Date(f['Start Time']);
+      const durMin = parseInt(f['Duration']) || 30;
+      return { start: start.getTime(), end: start.getTime() + durMin*60*1000 };
+    });
 
-    if (!data.connected) {
-      calBookState.loading = false;
-      const body = document.getElementById('cal-book-body');
-      if (body) body.innerHTML = \`<div class="cb-no-connection">
-        Calendly is niet verbonden.<br>
-        Ga naar <a href="#" onclick="closeCalBookModal();navigateTo('instellingen')">Instellingen</a> om te verbinden.
-      </div>\`;
-      return;
+    // 2. Genereer kandidaat-slots (9:00 tot 18:00 elke 30 min)
+    // TODO: respecteer Werkuren uit klantconfig (later)
+    const slots = [];
+    const SLOT_DURATION_MIN = 30;
+    for (let h = 9; h < 18; h++) {
+      for (let m = 0; m < 60; m += SLOT_DURATION_MIN) {
+        const slotStart = new Date(calBookState.date + 'T' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00');
+        const slotEnd   = slotStart.getTime() + SLOT_DURATION_MIN*60*1000;
+        // Filter: overlap met bestaande afspraak = niet beschikbaar
+        const overlap = existing.some(e => slotStart.getTime() < e.end && slotEnd > e.start);
+        // Filter: tijd in het verleden = niet beschikbaar
+        const past = slotStart.getTime() < Date.now();
+        if (overlap || past) continue;
+        slots.push({
+          start_time: slotStart.toISOString(),
+          duration:   SLOT_DURATION_MIN
+        });
+      }
     }
 
-    calBookState.eventTypes = data.eventTypes || [];
-    if (!calBookState.selectedType && calBookState.eventTypes.length) {
-      calBookState.selectedType = data.selectedEventType || calBookState.eventTypes[0].uri;
-    }
-    calBookState.slots   = data.slots || [];
-    calBookState.loading = false;
+    calBookState.eventTypes   = [];
+    calBookState.selectedType = null;
+    calBookState.slots        = slots;
+    calBookState.loading      = false;
     renderCalBookBody();
-
   } catch (e) {
+    console.error('[fetchCalSlots]', e);
     calBookState.loading = false;
     calBookState.slots   = [];
     renderCalBookBody();
@@ -11109,6 +11122,48 @@ function calBookSelectType(uri) {
 function calBookSelectSlot(iso) {
   calBookState.selectedSlot = calBookState.selectedSlot === iso ? null : iso;
   renderCalBookBody();
+}
+
+// Bevestig handmatige boeking. Roept appointment-create endpoint aan.
+async function calBookConfirm() {
+  if (!calBookState.selectedSlot) return;
+  const name  = (calBookState.bookName  || '').trim();
+  const phone = (calBookState.bookPhone || '').trim();
+  if (!name) {
+    toast('Vul een naam in', 'error');
+    return;
+  }
+  const btn = document.getElementById('cb-confirm-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerText = 'Bezig...'; }
+  try {
+    const resp = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({
+        mode:      'appointment-create',
+        startTime: calBookState.selectedSlot,
+        duration:  30,
+        leadId:    calBookState.selectedLead ? calBookState.selectedLead.id : null,
+        leadName:  name,
+        leadPhone: phone,
+        notes:     'Handmatig geboekt vanuit dashboard'
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      toast(data.error || 'Boeken mislukt', 'error');
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
+      return;
+    }
+    toast('Afspraak geboekt', 'success');
+    closeCalBookModal();
+    // Refresh calendar view
+    calState.cache = {};   // invalideer cache
+    if (typeof renderAppointments === 'function') renderAppointments();
+  } catch (err) {
+    toast('Boeken mislukt. ' + (err.message || ''), 'error');
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
+  }
 }
 
 function calBookNavDate(delta) {
@@ -11549,15 +11604,22 @@ async function renderCalendar() {
         const start = new Date(f['Start Time']);
         const durMin = parseInt(f['Duration']) || 30;
         const end = new Date(start.getTime() + durMin*60*1000);
+        const status = f['Status'] || 'booked';
+        const source = f['Source'] || 'manual';
+        // FIELD NAMES MOETEN MATCH met renderCols (gebruikt startTime/endTime).
+        // Plus 'eventType' tag (status/source) zodat user ziet "AI geboekt" of "Geannuleerd".
+        const sourceLabel = source === 'ai_chat' ? 'AI geboekt' : (source === 'manual' ? 'Handmatig' : 'Import');
+        const eventType   = status === 'cancelled' ? 'Geannuleerd' : (status === 'no_show' ? 'No-show' : sourceLabel);
         return {
-          id:     r.id,
-          name:   f['Lead Name'] || '—',
-          phone:  f['Lead Phone'] || '',
-          start:  start.toISOString(),
-          end:    end.toISOString(),
-          status: f['Status'] || 'booked',
-          source: f['Source'] || 'manual',
-          notes:  f['Notes'] || ''
+          id:        r.id,
+          name:      f['Lead Name'] || 'Afspraak',
+          phone:     f['Lead Phone'] || '',
+          startTime: start.toISOString(),
+          endTime:   end.toISOString(),
+          eventType,
+          status,
+          source,
+          notes:     f['Notes'] || ''
         };
       });
       calState.cache[weekKey] = events;
