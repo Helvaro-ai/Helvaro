@@ -298,7 +298,7 @@ module.exports = async function handler(req, res) {
             language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl',
             workingHours:   rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours']       || '',
             trustBadges:    rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges']        || '',
-            bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'calendly').toString().toLowerCase(),
+            bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'in_chat').toString().toLowerCase(),
             callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || '',
             notifyPhone:    rec.fields['fldZEApe0gfse07AU'] || rec.fields['Notify Phone']        || '',
             reportEmail:    rec.fields['fldDBJCN6dVMA8jax'] || rec.fields['Rapport Email']       || '',
@@ -354,7 +354,8 @@ module.exports = async function handler(req, res) {
         if (body.trustBadges    !== undefined) u.fld4nzMbnQseuGhnN = String(body.trustBadges).trim().slice(0, 300);
         if (body.bookingMethod  !== undefined) {
           const v = String(body.bookingMethod).trim().toLowerCase();
-          if (v === 'calendly' || v === 'callback') u.fldUI9BYO0TplgYlm = v;
+          // 'calendly' is deprecated. Behoud 'callback', accepteer nieuwe 'in_chat'
+          if (v === 'in_chat' || v === 'callback' || v === 'calendly') u.fldUI9BYO0TplgYlm = v;
         }
         if (body.callbackWindow !== undefined) u.fldKvMVBalSBRQE7H = String(body.callbackWindow).trim().slice(0, 100);
         if (body.notifyPhone    !== undefined) {
@@ -439,6 +440,115 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         console.error('[csv-export] error:', err.message);
         return res.status(500).json({ error: 'Export mislukt' });
+      }
+    }
+
+    // ── APPOINTMENTS — custom calendar (vervangt Calendly) ────────────────
+    // body: { mode: 'appointments-list', from?: ISO, to?: ISO }
+    // Returnt alle afspraken voor deze klant binnen het bereik (default = volgende 30 dagen).
+    if (body.mode === 'appointments-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
+      const from = body.from || new Date(Date.now() - 7*24*60*60*1000).toISOString();
+      const to   = body.to   || new Date(Date.now() + 30*24*60*60*1000).toISOString();
+      const formula = encodeURIComponent(
+        `AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", IS_AFTER({Start Time}, "${from}"), IS_BEFORE({Start Time}, "${to}"))`
+      );
+      try {
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=100&sort%5B0%5D%5Bfield%5D=Start+Time&sort%5B0%5D%5Bdirection%5D=asc`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!r.ok) return res.status(500).json({ error: 'Airtable fout' });
+        const d = await r.json();
+        return res.status(200).json({ appointments: d.records || [] });
+      } catch (err) {
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // body: { mode: 'appointment-create', startTime, duration?, leadId?, leadName?, leadPhone?, notes? }
+    if (body.mode === 'appointment-create') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
+      if (!body.startTime) return res.status(400).json({ error: 'startTime ontbreekt' });
+      const dt = new Date(body.startTime);
+      if (isNaN(dt.getTime())) return res.status(400).json({ error: 'Ongeldige startTime' });
+      const apptId = `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
+      const fields = {
+        'Appointment ID': apptId,
+        'Start Time':     body.startTime,
+        'Duration':       parseInt(body.duration) || 30,
+        'Project Code':   projectCode,
+        'Lead Name':      String(body.leadName || '').slice(0, 100),
+        'Lead Phone':     String(body.leadPhone || '').slice(0, 30),
+        'Status':         'booked',
+        'Source':         'manual',
+        'Notes':          String(body.notes || '').slice(0, 2000),
+        'Created At':     new Date().toISOString()
+      };
+      if (body.leadId && /^rec[A-Za-z0-9]{14}$/.test(body.leadId)) {
+        fields['Lead'] = [body.leadId];
+      }
+      try {
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}`,
+          {
+            method:  'POST',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields, typecast: true })
+          }
+        );
+        const d = await r.json();
+        if (!r.ok) return res.status(500).json({ error: d.error?.message || 'Aanmaken mislukt' });
+        return res.status(200).json({ ok: true, id: d.id, apptId });
+      } catch (err) {
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // body: { mode: 'appointment-update', id, status?, startTime?, duration?, notes? }
+    if (body.mode === 'appointment-update') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
+      const id = String(body.id || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
+      // Cross-tenant security check. Haal eerst record op en verifieer Project Code
+      try {
+        const chkR = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!chkR.ok) return res.status(404).json({ error: 'Afspraak niet gevonden' });
+        const existing = await chkR.json();
+        if ((existing.fields || {})['Project Code'] !== projectCode) {
+          return res.status(403).json({ error: 'Geen toegang tot deze afspraak' });
+        }
+      } catch (err) {
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+      const updateFields = {};
+      if (body.status !== undefined && ['booked', 'completed', 'no_show', 'cancelled', 'rescheduled'].includes(body.status)) {
+        updateFields['Status'] = body.status;
+      }
+      if (body.startTime !== undefined) updateFields['Start Time'] = body.startTime;
+      if (body.duration  !== undefined) updateFields['Duration']   = parseInt(body.duration) || 30;
+      if (body.notes     !== undefined) updateFields['Notes']      = String(body.notes).slice(0, 2000);
+      if (Object.keys(updateFields).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
+      try {
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: updateFields, typecast: true })
+          }
+        );
+        if (!r.ok) return res.status(500).json({ error: 'Update mislukt' });
+        const d = await r.json();
+        return res.status(200).json({ ok: true, record: d });
+      } catch (err) {
+        return res.status(500).json({ error: 'Serverfout' });
       }
     }
 

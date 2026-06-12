@@ -6634,10 +6634,8 @@ tr:hover .td-arrow { color: var(--cyan); }
               <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">E-mail <span style="font-weight:400;text-transform:none">(welkomstmail)</span></label>
               <input id="nc-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
-            <div>
-              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Calendly link <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
-              <input id="nc-calendly" type="url" placeholder="https://calendly.com/..." style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
-            </div>
+            <!-- Calendly veld DEPRECATED. Hidden input voor backwards compat. -->
+            <input id="nc-calendly" type="hidden" value="">
             <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(244,63,94,0.1);border-radius:8px"></div>
             <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
               <div style="font-weight:600;margin-bottom:10px;color:var(--green)">Klant aangemaakt</div>
@@ -6947,14 +6945,10 @@ tr:hover .td-arrow { color: var(--cyan); }
               <input id="ap-address" type="text" class="ap-input" placeholder="Kerkstraat 12, 9000 Gent">
             </div>
 
-            <!-- Calendly -->
-            <div class="ap-field">
-              <label class="ap-label">
-                Calendly link
-                <span class="ap-label-hint">verzonden bij 'calendly' booking-modus</span>
-              </label>
-              <input id="ap-calendly" type="url" class="ap-input" placeholder="https://calendly.com/bedrijf/intake">
-            </div>
+            <!-- Calendly veld DEPRECATED. Sinds in_chat booking is dit niet meer
+                 actief gebruikt. Hidden input behouden voor backwards-compat zodat
+                 oude config-save calls niet crashen. -->
+            <input id="ap-calendly" type="hidden" value="">
 
             <!-- Notifications: WhatsApp number + Email -->
             <div class="ap-field">
@@ -6982,11 +6976,11 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">kies hoe je de overdracht doet</span>
               </label>
               <div class="ap-lang-row">
-                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-calendly" value="calendly"> <span>Stuur Calendly link</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-in_chat" value="in_chat"> <span>AI boekt direct in WhatsApp</span></label>
                 <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>Een collega contacteert ze</span></label>
               </div>
-              <div class="ap-hint" id="ap-booking-hint-calendly" style="display:none;">Lead krijgt automatisch je Calendly link om zelf een moment te kiezen. Vul hierboven de Calendly link in.</div>
-              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen Calendly nodig. Jij krijgt een melding op je notificatie-nummer.</div>
+              <div class="ap-hint" id="ap-booking-hint-in_chat" style="display:none;">De AI vraagt aan de lead welk moment past, stelt een concrete tijd voor, en boekt het na bevestiging direct in je agenda. Geen externe tool nodig. Zorg dat je werkuren ingevuld zijn.</div>
+              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen agenda nodig. Jij krijgt een melding op je notificatie-nummer.</div>
             </div>
 
             <!-- Callback Window (only shown if callback selected) -->
@@ -7671,11 +7665,11 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="profile-card">
             <div class="profile-card-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Calendly
+              Boekingssysteem
             </div>
-            <div class="profile-row"><span>Status</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(107,114,128,0.15);color:#9ca3af;">Niet gekoppeld</span></div>
-            <div class="profile-row"><span>Booking link</span>
-              <a id="pf-calendly" href="#" target="_blank" style="color:#818cf8;font-size:13px;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">—</a>
+            <div class="profile-row"><span>Status</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,0.15);color:#10b981;">Actief</span></div>
+            <div class="profile-row"><span>Modus</span>
+              <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">AI boekt direct in WhatsApp gesprek</span>
             </div>
             <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
               <a id="pf-connect-btn" href="#" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:10px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 14px rgba(99,102,241,0.4);">
@@ -11541,12 +11535,33 @@ async function renderCalendar() {
     const minISO = days[0].toISOString();
     const end    = new Date(days[6]); end.setHours(23, 59, 59, 999);
     const maxISO = end.toISOString();
-    const resp   = await fetch(\`\${API_BASE}/calendly-events?min=\${encodeURIComponent(minISO)}&max=\${encodeURIComponent(maxISO)}\`,
-      { headers: { 'x-api-key': state.apiKey } });
+    // Lees uit nieuwe custom Appointments tabel (Calendly is verwijderd).
+    // Convert Airtable records naar het formaat dat renderCols() verwacht.
+    const resp = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'appointments-list', from: minISO, to: maxISO })
+    });
     if (resp.ok) {
       const data = await resp.json();
-      calState.cache[weekKey] = data.events || [];
-      renderCols(calState.cache[weekKey]);
+      const events = (data.appointments || []).map(r => {
+        const f = r.fields || {};
+        const start = new Date(f['Start Time']);
+        const durMin = parseInt(f['Duration']) || 30;
+        const end = new Date(start.getTime() + durMin*60*1000);
+        return {
+          id:     r.id,
+          name:   f['Lead Name'] || '—',
+          phone:  f['Lead Phone'] || '',
+          start:  start.toISOString(),
+          end:    end.toISOString(),
+          status: f['Status'] || 'booked',
+          source: f['Source'] || 'manual',
+          notes:  f['Notes'] || ''
+        };
+      });
+      calState.cache[weekKey] = events;
+      renderCols(events);
     }
   } catch (e) { /* stay with empty */ }
 }
@@ -11563,46 +11578,19 @@ function renderProfile() {
   if (nameEl)  nameEl.textContent = s.clientName || '—';
   if (emailEl) emailEl.textContent = s.userEmail || localStorage.getItem('hv-email') || '—';
 
-  // Calendly. Wire connect button
-  const connectBtn = document.getElementById('pf-connect-btn');
-  if (connectBtn) connectBtn.href = \`/api/calendly-oauth-start?key=\${s.apiKey}\`;
-
-  const calLink = s.calendlyUrl || '';
-  const pfCal   = document.getElementById('pf-calendly');
-  const pfBtn   = document.getElementById('pf-calendly-btn');
-  if (pfCal) { pfCal.textContent = calLink || '—'; pfCal.href = calLink || '#'; }
-  if (pfBtn) pfBtn.href = calLink || '#';
-
-  // Check if Calendly is connected via API
-  if (s.apiKey) {
-    fetch(\`/api/calendly-events?min=\${new Date().toISOString()}&max=\${new Date(Date.now()+86400000).toISOString()}\`, {
-      headers: { 'x-api-key': s.apiKey }
-    }).then(r => r.json()).then(data => {
-      const statusEl = document.getElementById('pf-cal-status');
-      const btnEl    = document.getElementById('pf-connect-btn');
-      const openEl   = document.getElementById('pf-calendly-open');
-      if (data.connected) {
-        if (statusEl) {
-          statusEl.textContent = 'Verbonden';
-          statusEl.style.background = 'rgba(16,185,129,0.15)';
-          statusEl.style.color = '#10b981';
-        }
-        if (btnEl)  btnEl.style.display = 'none';
-        if (openEl) {
-          openEl.style.display = 'inline-flex';
-          if (calLink) openEl.href = calLink;
-        }
-      } else {
-        if (statusEl) {
-          statusEl.textContent = 'Niet gekoppeld';
-          statusEl.style.background = 'rgba(107,114,128,0.15)';
-          statusEl.style.color = '#9ca3af';
-        }
-        if (btnEl)  btnEl.style.display = 'inline-flex';
-        if (openEl) openEl.style.display = 'none';
-      }
-    }).catch(() => {});
+  // Booking systeem: nu ingebouwd (in-chat), geen externe service meer.
+  const statusEl = document.getElementById('pf-cal-status');
+  const btnEl    = document.getElementById('pf-connect-btn');
+  const openEl   = document.getElementById('pf-calendly-open');
+  const pfCal    = document.getElementById('pf-calendly');
+  if (statusEl) {
+    statusEl.textContent = 'Actief';
+    statusEl.style.background = 'rgba(16,185,129,0.15)';
+    statusEl.style.color = '#10b981';
   }
+  if (btnEl)  btnEl.style.display  = 'none';   // connect-knop verbergen
+  if (openEl) openEl.style.display = 'none';   // externe link verbergen
+  if (pfCal)  pfCal.textContent = 'AI boekt direct in WhatsApp gesprek';
 
   // Info rows
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -13054,15 +13042,17 @@ function syncHoursLocaleUI() {
   }
 }
 
-// Show/hide the callback-window input + the right hint, based on radio selection
+// Show/hide the callback-window input + de juiste hint, op basis van radio keuze.
+// In-chat = AI vraagt + boekt direct in WhatsApp (geen callback window nodig).
+// Callback = collega belt terug binnen X tijd (callback window veld zichtbaar).
 function syncBookingMethodUI() {
   const callbackChecked = document.getElementById('ap-booking-callback')?.checked;
-  const wrap = document.getElementById('ap-callback-window-wrap');
-  const hintCal = document.getElementById('ap-booking-hint-calendly');
-  const hintCb  = document.getElementById('ap-booking-hint-callback');
-  if (wrap)    wrap.style.display    = callbackChecked ? '' : 'none';
-  if (hintCal) hintCal.style.display = callbackChecked ? 'none' : '';
-  if (hintCb)  hintCb.style.display  = callbackChecked ? '' : 'none';
+  const wrap   = document.getElementById('ap-callback-window-wrap');
+  const hintCh = document.getElementById('ap-booking-hint-in_chat');
+  const hintCb = document.getElementById('ap-booking-hint-callback');
+  if (wrap)   wrap.style.display   = callbackChecked ? '' : 'none';
+  if (hintCh) hintCh.style.display = callbackChecked ? 'none' : '';
+  if (hintCb) hintCb.style.display = callbackChecked ? '' : 'none';
 }
 
 function renderApInstructionSnippets() {
@@ -13162,7 +13152,7 @@ async function loadAiPersona() {
       if (el) el.addEventListener('input', refreshSaveButton);
     });
     // Booking-method radio toggles the callback-window field + hint visibility
-    ['ap-booking-calendly', 'ap-booking-callback'].forEach(id => {
+    ['ap-booking-in_chat', 'ap-booking-callback'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', syncBookingMethodUI);
     });
@@ -13211,7 +13201,8 @@ async function loadAiPersona() {
     document.getElementById('ap-hours').value        = d.workingHours   || '';
     document.getElementById('ap-badges').value       = d.trustBadges    || '';
     // Booking method + callback window
-    const apBookingVal = (d.bookingMethod === 'callback') ? 'callback' : 'calendly';
+    // 'calendly' is deprecated. Wordt nu naar in_chat geremapped voor backwards compat.
+    const apBookingVal = (d.bookingMethod === 'callback') ? 'callback' : 'in_chat';
     const apBookingRadio = document.getElementById('ap-booking-' + apBookingVal);
     if (apBookingRadio) apBookingRadio.checked = true;
     document.getElementById('ap-callback-window').value = d.callbackWindow || '';
@@ -13341,7 +13332,7 @@ async function saveAiPersona() {
       language:       (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl',
       workingHours:   document.getElementById('ap-hours').value.trim().toLowerCase(),
       trustBadges:    document.getElementById('ap-badges').value.trim(),
-      bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'calendly',
+      bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'in_chat',
       callbackWindow: document.getElementById('ap-callback-window').value.trim(),
       notifyPhone:    document.getElementById('ap-notify-phone').value.trim(),
       reportEmail:    document.getElementById('ap-report-email').value.trim(),

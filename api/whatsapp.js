@@ -178,10 +178,13 @@ async function processMessage(phone, text) {
   const workingHours = (client.fields['fldq5oIqw5MG8fKhc'] || client.fields['Working Hours'] || '').toString().trim();
   const outsideHours = workingHours && !isWithinWorkingHours(workingHours);
 
-  // Booking method: 'calendly' (send link) or 'callback' (promise human contact)
-  const rawBooking   = (client.fields['fldUI9BYO0TplgYlm'] || client.fields['Booking Method'] || 'calendly').toString().toLowerCase();
-  const bookingMethod = rawBooking === 'callback' ? 'callback' : 'calendly';
+  // Booking method: 'in_chat' (AI vraagt + boekt direct) of 'callback' (collega belt terug)
+  // 'calendly' is deprecated — bestaande klanten met 'calendly' krijgen automatisch 'in_chat' gedrag.
+  const rawBooking = (client.fields['fldUI9BYO0TplgYlm'] || client.fields['Booking Method'] || 'in_chat').toString().toLowerCase();
+  const bookingMethod = rawBooking === 'callback' ? 'callback' : 'in_chat';
   const callbackWindow = (client.fields['fldKvMVBalSBRQE7H'] || client.fields['Callback Window'] || '').toString().trim() || 'binnen 30 minuten';
+  // Werkuren parsen voor in-chat booking availability checking
+  const appointmentDuration = parseInt(client.fields['Appointment Duration']) || 30;
 
   // Per-client owner contacts (with env-var fallback for backwards-compat).
   // The phone gets WhatsApp pings; the email gets a richer summary.
@@ -193,8 +196,16 @@ async function processMessage(phone, text) {
   // Geleerde patronen — wekelijks bijgewerkt door cron-followup, geeft de AI
   // accumulatieve kennis over wat werkt voor deze specifieke klant.
   const learnedPatterns = (client.fields['fldnbM5YKh274ISAl'] || client.fields['AI Learned Patterns'] || '').toString().trim();
+  // Voor in-chat booking: haal bestaande afspraken voor deze klant op zodat
+  // AI dubbele boekingen kan vermijden. Range = vandaag + 14 dagen.
+  let existingAppointments = [];
+  if (bookingMethod === 'in_chat') {
+    existingAppointments = await getUpcomingAppointments(projectCode).catch(() => []);
+  }
+
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
-    workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns
+    workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
+    appointmentDuration, existingAppointments
   });
 
   // 8. Trim and push AI reply to history
@@ -262,60 +273,54 @@ async function processMessage(phone, text) {
     }).catch(() => {});
   }
 
-  // 11. If qualified → either send Calendly link OR promise a human callback,
-  //     based on the client's Booking Method preference.
-  //     Skip when AI escalated. Wait for the human to handle.
-  if (aiResponse.done && aiResponse.qualified && !isEscalation) {
-    const calendly    = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'];
-    const bookingSent = lead.fields['fldLeEqwNefdglLis']   || lead.fields['Booking Link Sent'];
-
+  // 11. CALLBACK booking flow — alleen als klant 'callback' kiest. In-chat
+  //     booking wordt afgehandeld via BOOK:{...} block dat de AI uitstuurt
+  //     (zie sectie 10b hieronder). Skip bij escalatie.
+  if (aiResponse.done && aiResponse.qualified && !isEscalation && bookingMethod === 'callback') {
+    const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
     if (!bookingSent) {
-      // ── CALENDLY mode: send the self-service booking link ──────────────────
-      if (bookingMethod === 'calendly' && calendly) {
-        const postMsgs = {
-          nl: {
-            slot:    `Goed. Dan plannen we een kennismakingsgesprek in. Kies hier een moment:\n\n${calendly}`,
-            addr:    `Ons adres: ${address}`,
-            confirm: 'Heb je de afspraak ingepland? Laat het me weten.'
-          },
-          fr: {
-            slot:    `Super. Planifions un premier appel. Choisis un moment ici :\n\n${calendly}`,
-            addr:    `Notre adresse : ${address}`,
-            confirm: 'As-tu réservé le créneau ? Dis-le moi.'
-          },
-          en: {
-            slot:    `Great. Let's set up an intro call. Pick a slot here:\n\n${calendly}`,
-            addr:    `Our address: ${address}`,
-            confirm: 'Did you book the slot? Let me know.'
-          }
-        };
-        const pm = postMsgs[lang] || postMsgs.nl;
-        await sendWA(phone, pm.slot);
-        if (address) await sendWA(phone, pm.addr);
-        await sendWA(phone, pm.confirm);
-        await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);
-      }
-      // ── CALLBACK mode: promise a human will reach out ──────────────────────
-      else if (bookingMethod === 'callback') {
-        const callbackMsgs = {
-          nl: `Goed, dan zit het in orde. Een collega van mij belt of appt je ${callbackWindow}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
-          fr: `Parfait. Un collègue te contactera ${callbackWindow}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
-          en: `Perfect. A colleague will reach out to you ${callbackWindow}. You don't need to do anything else. We will come back to you.`
-        };
-        await sendWA(phone, callbackMsgs[lang] || callbackMsgs.nl);
-        await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);  // mark "handoff sent"
-      }
-      // Edge case: 'calendly' selected but no Calendly link configured. Graceful fallback to callback
-      else if (bookingMethod === 'calendly' && !calendly) {
-        const fallback = {
-          nl: `Goed, een collega belt of appt je ${callbackWindow}. Je hoort van ons.`,
-          fr: `Parfait, un collègue te contactera ${callbackWindow}. À très vite.`,
-          en: `Perfect, a colleague will reach out ${callbackWindow}. Talk soon.`
-        };
-        await sendWA(phone, fallback[lang] || fallback.nl);
-        await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);
+      const callbackMsgs = {
+        nl: `Goed, dan zit het in orde. Een collega van mij belt of appt je ${callbackWindow}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
+        fr: `Parfait. Un collègue te contactera ${callbackWindow}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
+        en: `Perfect. A colleague will reach out to you ${callbackWindow}. You don't need to do anything else. We will come back to you.`
+      };
+      await sendWA(phone, callbackMsgs[lang] || callbackMsgs.nl);
+      await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);
+    }
+  }
+
+  // 11b. IN-CHAT booking — AI heeft BOOK:{...} block uitgegeven in z'n antwoord.
+  //      Verwerk de booking: maak Appointment record + bevestig naar lead +
+  //      notify owner. AI handelt de natuurlijke conversatie zelf af (parseert
+  //      lead's tijdvoorstel + stelt slot voor + wacht op bevestiging).
+  if (aiResponse.appointment && bookingMethod === 'in_chat' && !isEscalation) {
+    const appt = aiResponse.appointment;
+    const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
+    if (!bookingSent && appt.start) {
+      try {
+        const apptResult = await createAppointment({
+          startTime:     appt.start,
+          duration:      appt.duration || appointmentDuration,
+          projectCode,
+          leadId:        lead.id,
+          leadName,
+          leadPhone:     phone,
+          notes:         aiResponse.summary || ''
+        });
+        if (apptResult.ok) {
+          await updateLead(lead.id, {
+            fldLeEqwNefdglLis: true,
+            fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
+          }, phone);
+        }
+      } catch (err) {
+        console.error('[whatsapp] appointment creation failed:', err.message);
       }
     }
+  }
+
+  // 11c. Owner notificaties bij qualified (zowel in_chat als callback). Skip bij escalatie.
+  if (aiResponse.done && aiResponse.qualified && !isEscalation) {
 
     // Notify owner when a lead is qualified. WhatsApp + Email parallel
     const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/100` : '';
@@ -558,6 +563,37 @@ Na 3 tot 5 berichten weet je genoeg. Voeg dan op een EXTRA aparte regel toe:
 DECISION:{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false}
 
 Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escalate:true). De leadScore is 0-100 op basis van alle drie factoren samen. Als escalate:true → qualified mag null zijn, het systeem wacht op de mens.
+
+${ctx && ctx.bookingMethod === 'in_chat' ? `
+AFSPRAAK IN GESPREK BOEKEN:
+Wanneer je een lead hebt gekwalificeerd (qualified:true), STUUR GEEN LINK. In plaats daarvan boek je de afspraak rechtstreeks in dit gesprek:
+
+1. STEL EEN AFSPRAAK VOOR:
+   "Goed, dan plannen we een kennismaking in. Welk moment past je deze week? Ik kijk in onze agenda${ctx.workingHours ? ` (we werken ${ctx.workingHours})` : ''}."
+
+2. WACHT OP TIJDVOORSTEL VAN LEAD:
+   Lead zegt iets als "donderdag 14u", "morgenochtend", "vrijdag namiddag".
+   Vertaal dit naar een CONCREET tijdstip in jouw hoofd op basis van vandaag (${new Date().toISOString().slice(0, 10)}).
+   ${ctx.workingHours ? `Werkuren: ${ctx.workingHours}. Stel geen tijden buiten deze werkuren voor.` : ''}
+   ${ctx.existingAppointments && ctx.existingAppointments.length > 0 ? `BEZETTE SLOTS (mag je NIET dubbel boeken): ${ctx.existingAppointments.join(', ')}` : ''}
+
+3. BEVESTIG MET EXACTE TIJD:
+   "Top, dan zien we elkaar donderdag 12 juni om 14u. Klopt dat?"
+
+4. ALS LEAD JA ZEGT, BOEK DE AFSPRAAK:
+   Voeg op aparte regel toe:
+   BOOK:{"start":"2026-06-12T14:00:00+02:00","duration":${ctx.appointmentDuration || 30},"confirmed":true}
+   Het systeem maakt dan de afspraak aan. Daarna stuur je: "Ingepland. Tot dan."
+
+5. ALS DE LEAD ANDERE TIJD VOORSTELT, herhaal vanaf stap 2.
+
+Belangrijke regels:
+- Stel ALTIJD een SPECIFIEK tijdstip voor (datum + uur), geen vaag "morgen ergens"
+- Default afspraak duurt ${ctx.appointmentDuration || 30} minuten
+- ALLEEN BOOK:{...} uitsturen na expliciete bevestiging van de lead ("ja", "klopt", "perfect", etc.)
+- Tijdformaat in BOOK: ISO 8601 met Brussels timezone +02:00 (zomer) of +01:00 (winter)
+- BOOK gaat samen met de qualified DECISION
+` : ''}
 `.trim();
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -594,20 +630,36 @@ Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escal
     cleaned = cleaned.replace(sumMatch[0], '').trim();
   }
 
-  // 2. Parse DECISION block if present (only on final turn / escalation)
+  // 2. Pull out BOOK:{...} block (in-chat appointment booking)
+  //    AI outputs this when lead has CONFIRMED a specific time slot.
+  let appointment = null;
+  const bookMatch = cleaned.match(/BOOK:\s*(\{[\s\S]*?\})/);
+  if (bookMatch) {
+    try {
+      const bookData = JSON.parse(bookMatch[1]);
+      if (bookData.confirmed && bookData.start) {
+        appointment = { start: bookData.start, duration: bookData.duration || 30 };
+      }
+      cleaned = cleaned.replace(/BOOK:\s*\{[\s\S]*?\}/, '').trim();
+    } catch (e) {
+      console.error('[WhatsApp] BOOK parse fout:', e.message, bookMatch[1]);
+    }
+  }
+
+  // 3. Parse DECISION block if present (only on final turn / escalation)
   const match = cleaned.match(/DECISION:\s*(\{[\s\S]*?\})/);
   if (match) {
     try {
       const decision = JSON.parse(match[1]);
       const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
       // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
-      return { done: true, message: message || '...', ...decision, summary: decision.summary || runningSummary };
+      return { done: true, message: message || '...', appointment, ...decision, summary: decision.summary || runningSummary };
     } catch (e) {
       console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
     }
   }
 
-  return { done: false, message: cleaned, summary: runningSummary };
+  return { done: false, message: cleaned, summary: runningSummary, appointment };
 }
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
@@ -704,6 +756,78 @@ async function updateLead(recordId, fields, phone) {
   // sees the updated Conversation History / State without a fresh Airtable call.
   if (phone && !data.error) patchCachedLead(phone, fields);
   return data;
+}
+
+const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
+
+// Maak een Appointment record aan. Geretourneerd { ok, id } of { ok:false, error }.
+// Per-klant isolatie via Project Code veld.
+async function createAppointment({ startTime, duration, projectCode, leadId, leadName, leadPhone, notes }) {
+  if (!startTime || !projectCode) return { ok: false, error: 'missing required fields' };
+  // Format appointment ID: PROJECTCODE-YYMMDDHHMM
+  const dt = new Date(startTime);
+  const apptId = `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
+
+  const fields = {
+    'Appointment ID': apptId,
+    'Start Time':     startTime,
+    'Duration':       duration || 30,
+    'Project Code':   projectCode,
+    'Lead':           leadId ? [leadId] : undefined,
+    'Lead Name':      leadName || '',
+    'Lead Phone':     leadPhone || '',
+    'Status':         'booked',
+    'Source':         'ai_chat',
+    'Notes':          notes || '',
+    'Created At':     new Date().toISOString()
+  };
+  // Remove undefined values
+  Object.keys(fields).forEach(k => fields[k] === undefined && delete fields[k]);
+
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}`;
+  try {
+    const res = await atFetch(url, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ fields, typecast: true })
+    });
+    const data = await res.json();
+    if (data.error) {
+      console.error('[Appointment] create fout:', JSON.stringify(data.error));
+      return { ok: false, error: data.error.message };
+    }
+    return { ok: true, id: data.id, apptId };
+  } catch (err) {
+    console.error('[Appointment] create exception:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+// Haal upcoming appointments op voor een klant (komende 14 dagen) — als string
+// lijst voor de AI prompt context. AI gebruikt dit om dubbele boekingen te voorkomen.
+async function getUpcomingAppointments(projectCode) {
+  if (!projectCode) return [];
+  const now = new Date().toISOString();
+  const twoWeeksLater = new Date(Date.now() + 14*24*60*60*1000).toISOString();
+  const formula = encodeURIComponent(
+    `AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", {Status}="booked", IS_AFTER({Start Time}, "${now}"), IS_BEFORE({Start Time}, "${twoWeeksLater}"))`
+  );
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50&fields%5B%5D=Start+Time&fields%5B%5D=Duration`;
+  try {
+    const res = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.records || []).map(r => {
+      const dt = new Date(r.fields['Start Time']);
+      const dur = r.fields['Duration'] || 30;
+      // Format voor AI: "do 12 juni 14:00 (30 min)"
+      const opts = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+      return `${dt.toLocaleString('nl-BE', opts)} (${dur} min)`;
+    });
+  } catch (err) {
+    console.error('[Appointment] list exception:', err.message);
+    return [];
+  }
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
