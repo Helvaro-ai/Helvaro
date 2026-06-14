@@ -5505,7 +5505,15 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cb-slots-empty {
   grid-column: 1/-1; text-align: center; padding: 24px;
   color: var(--text-muted); font-size: 13px; line-height: 1.6;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
+.cb-empty-next {
+  background: var(--accent); color: #fff; border: none;
+  padding: 9px 18px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: var(--transition); font-family: inherit;
+}
+.cb-empty-next:hover { filter: brightness(1.1); transform: translateY(-1px); }
 /* Lead search */
 .cb-lead-search {
   position: relative;
@@ -10883,9 +10891,14 @@ function openCalBookModal(dateStr, prefillLead) {
   const overlay = document.getElementById('cal-book-overlay');
   if (!overlay) return;
 
-  // Set initial state
-  calBookState.date         = dateStr || new Date().toISOString().slice(0, 10);
+  // Set initial state. Je kan geen afspraak in het verleden boeken, dus snap
+  // een datum die al voorbij is naar vandaag.
+  const today = new Date().toISOString().slice(0, 10);
+  let initialDate = dateStr || today;
+  if (initialDate < today) initialDate = today;
+  calBookState.date         = initialDate;
   calBookState.selectedSlot = null;
+  calBookState.bookPhone    = prefillLead ? (prefillLead.telefoon || '') : '';
   calBookState.selectedLead = prefillLead || null;
   calBookState.slots        = [];
   calBookState.eventTypes   = [];
@@ -10957,7 +10970,10 @@ function renderCalBookBody() {
   if (calBookState.loading) {
     slotsHtml = \`<div class="cb-slots"><div class="cb-slots-loading"><div class="cal-book-spinner-ring"></div> Beschikbare tijden laden...</div></div>\`;
   } else if (calBookState.slots.length === 0) {
-    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">Geen beschikbare tijden op \${dateLbl}.<br>Kies een andere datum.</div></div>\`;
+    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">
+      Geen vrije tijden op \${dateLbl}.
+      <button class="cb-empty-next" onclick="calBookNavDate(1)">Probeer volgende dag →</button>
+    </div></div>\`;
   } else {
     slotsHtml = \`<div class="cb-slots">\${calBookState.slots.map(slot => {
       const t     = new Date(slot.startTime);
@@ -11059,11 +11075,13 @@ async function fetchCalSlots() {
       return { start: start.getTime(), end: start.getTime() + durMin*60*1000 };
     });
 
-    // 2. Genereer kandidaat-slots (9:00 tot 18:00 elke 30 min)
-    // TODO: respecteer Werkuren uit klantconfig (later)
+    // 2. Genereer kandidaat-slots binnen de werkuren van de klant.
+    //    state.workHours = { startHour, endHour } afgeleid uit klantconfig,
+    //    valt terug op 9-18 als niet bekend.
+    const wh = state.workHours || { startHour: 9, endHour: 18 };
     const slots = [];
     const SLOT_DURATION_MIN = 30;
-    for (let h = 9; h < 18; h++) {
+    for (let h = wh.startHour; h < wh.endHour; h++) {
       for (let m = 0; m < 60; m += SLOT_DURATION_MIN) {
         const slotStart = new Date(calBookState.date + 'T' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00');
         const slotEnd   = slotStart.getTime() + SLOT_DURATION_MIN*60*1000;
@@ -11072,9 +11090,10 @@ async function fetchCalSlots() {
         // Filter: tijd in het verleden = niet beschikbaar
         const past = slotStart.getTime() < Date.now();
         if (overlap || past) continue;
+        // VELD-NAAM moet 'startTime' zijn (renderCalBookBody leest slot.startTime)
         slots.push({
-          start_time: slotStart.toISOString(),
-          duration:   SLOT_DURATION_MIN
+          startTime: slotStart.toISOString(),
+          duration:  SLOT_DURATION_MIN
         });
       }
     }
@@ -11149,7 +11168,11 @@ async function calBookConfirm() {
 function calBookNavDate(delta) {
   const d = new Date(calBookState.date + 'T12:00:00');
   d.setDate(d.getDate() + delta);
-  calBookState.date         = d.toISOString().slice(0, 10);
+  const newDate = d.toISOString().slice(0, 10);
+  // Niet terug in het verleden navigeren.
+  const today = new Date().toISOString().slice(0, 10);
+  if (newDate < today) return;
+  calBookState.date         = newDate;
   calBookState.selectedSlot = null;
 
   // Update subtitle
@@ -13228,6 +13251,15 @@ async function loadAiPersona() {
     if (apPhotoUrlField) apPhotoUrlField.value = (d.aiPhotoUrl && /^https:\\/\\//.test(d.aiPhotoUrl)) ? d.aiPhotoUrl : '';
     document.getElementById('ap-hours').value        = d.workingHours   || '';
     document.getElementById('ap-badges').value       = d.trustBadges    || '';
+    // Parse werkuren naar { startHour, endHour } voor de boeking-modal slots.
+    // Format bv 'ma-vr 9-18' of 'mon-sat 8-20'. We pakken de twee getallen.
+    if (d.workingHours) {
+      const hm = String(d.workingHours).match(/(\\d{1,2})\\s*[-–]\\s*(\\d{1,2})\\s*\$/);
+      if (hm) {
+        const sh = parseInt(hm[1]), eh = parseInt(hm[2]);
+        if (sh >= 0 && eh <= 24 && sh < eh) state.workHours = { startHour: sh, endHour: eh };
+      }
+    }
     // Booking method + callback window
     // 'calendly' is deprecated. Wordt nu naar in_chat geremapped voor backwards compat.
     const apBookingVal = (d.bookingMethod === 'callback') ? 'callback' : 'in_chat';
