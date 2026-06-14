@@ -11050,6 +11050,22 @@ function renderCalBookBody() {
     leadHtml + confirmHtml;
 }
 
+// Parse een werkuren-string ('ma-vr 9-18', 'mon-sat 8-20', '9-18') naar
+// { startHour, endHour }. Pakt het LAATSTE getal-streepje-getal paar (de
+// uren komen na de dagen, die ook een streepje hebben). null = onbekend.
+function parseWorkHours(str) {
+  if (!str) return null;
+  const all = String(str).match(/(\\d{1,2})\\s*[-–]\\s*(\\d{1,2})/g);
+  if (!all || !all.length) return null;
+  const m = all[all.length - 1].match(/(\\d{1,2})\\s*[-–]\\s*(\\d{1,2})/);
+  const sh = parseInt(m[1], 10), eh = parseInt(m[2], 10);
+  if (sh >= 0 && eh <= 24 && sh < eh) return { startHour: sh, endHour: eh };
+  return null;
+}
+// Werkuren toepassen op state (null = fallback 9-18 in fetchCalSlots).
+// workHoursLoaded markeert dat we de config al gezien hebben.
+function applyWorkHours(str) { state.workHours = parseWorkHours(str); state.workHoursLoaded = true; }
+
 async function fetchCalSlots() {
   // Geen Calendly meer. Genereer slots client-side op basis van werkuren
   // (default 9-18 elke 30 min) en markeer welke al bezet zijn obv bestaande
@@ -11059,6 +11075,20 @@ async function fetchCalSlots() {
   renderCalBookBody();
 
   try {
+    // Werkuren nog niet geladen? Haal de config één keer op zodat de slots
+    // de openingsuren respecteren, ook als de gebruiker AI Persoonlijkheid
+    // deze sessie nog niet bezocht heeft. workHoursLoaded voorkomt herhaalde
+    // fetches wanneer er bewust geen werkuren zijn ingesteld.
+    if (!state.workHoursLoaded) {
+      try {
+        const cr = await fetch(\`\${API_BASE}/leads\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+          body: JSON.stringify({ mode: 'config-get' })
+        });
+        if (cr.ok) { const cd = await cr.json(); applyWorkHours(cd.workingHours); }
+      } catch {}
+    }
     // 1. Haal afspraken voor deze dag op
     const dayStart = new Date(calBookState.date + 'T00:00:00');
     const dayEnd   = new Date(calBookState.date + 'T23:59:59');
@@ -13251,15 +13281,8 @@ async function loadAiPersona() {
     if (apPhotoUrlField) apPhotoUrlField.value = (d.aiPhotoUrl && /^https:\\/\\//.test(d.aiPhotoUrl)) ? d.aiPhotoUrl : '';
     document.getElementById('ap-hours').value        = d.workingHours   || '';
     document.getElementById('ap-badges').value       = d.trustBadges    || '';
-    // Parse werkuren naar { startHour, endHour } voor de boeking-modal slots.
-    // Format bv 'ma-vr 9-18' of 'mon-sat 8-20'. We pakken de twee getallen.
-    if (d.workingHours) {
-      const hm = String(d.workingHours).match(/(\\d{1,2})\\s*[-–]\\s*(\\d{1,2})\\s*\$/);
-      if (hm) {
-        const sh = parseInt(hm[1]), eh = parseInt(hm[2]);
-        if (sh >= 0 && eh <= 24 && sh < eh) state.workHours = { startHour: sh, endHour: eh };
-      }
-    }
+    // Werkuren toepassen op de boeking-slots (gedeelde helper).
+    applyWorkHours(d.workingHours);
     // Booking method + callback window
     // 'calendly' is deprecated. Wordt nu naar in_chat geremapped voor backwards compat.
     const apBookingVal = (d.bookingMethod === 'callback') ? 'callback' : 'in_chat';
@@ -13405,6 +13428,8 @@ async function saveAiPersona() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { toast(d.error || 'Opslaan mislukt', 'error'); return; }
+    // Werkuren meteen toepassen op de boeking-slots, zonder paginavernieuwing.
+    applyWorkHours(body.workingHours);
     // Mark them as onboarded. Future logins skip the auto-redirect to this page,
     // regardless of which fields are still empty (their conscious choice).
     try { localStorage.setItem('hv-onboarded', '1'); } catch {}
