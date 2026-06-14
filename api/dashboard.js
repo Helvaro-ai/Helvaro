@@ -8548,7 +8548,10 @@ function dismissToast(el) {
    THEME. Locked dark to match helvaro.pro brand
    ============================================================ */
 function initTheme() {
-  const saved = localStorage.getItem('hv-theme') || 'light';
+  // Dark is de default. Alleen als de gebruiker zelf bewust naar light is
+  // geswitcht (opgeslagen 'light') tonen we light. Nieuwe/onbekende
+  // bezoekers krijgen dark.
+  const saved = localStorage.getItem('hv-theme') === 'light' ? 'light' : 'dark';
   applyTheme(saved);
 }
 
