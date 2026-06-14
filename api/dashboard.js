@@ -8573,10 +8573,6 @@ function toggleTheme() {
    ============================================================ */
 const AUTH_URL = '/api/auth';
 
-function showView(view) {
-  document.getElementById('login-page').style.display = view === 'login' ? 'flex' : 'none';
-}
-
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function saveSession(apiKey, clientName, projectCode, email) {
@@ -9478,23 +9474,6 @@ function copyNcField(srcId, btnId) {
     btn.textContent = '';
     setTimeout(() => { btn.textContent = orig; }, 1500);
   }).catch(() => {});
-}
-
-function copyOnboardingLink() {
-  const link = document.getElementById('nc-result-link')?.dataset.link;
-  if (!link) return;
-  navigator.clipboard.writeText(link).then(() => {
-    const btn = document.getElementById('nc-copy-btn');
-    btn.textContent = 'Gekopieerd';
-    setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
-  }).catch(() => {
-    // Fallback: select the text
-    const el = document.getElementById('nc-result-link');
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
-  });
 }
 
 function switchToClient(index) {
@@ -10828,8 +10807,6 @@ function renderTodayWidget(events) {
   const widget = document.getElementById('today-widget');
   const body   = document.getElementById('today-widget-body');
   if (!widget || !body) return;
-
-  if (!state.calendlyUrl) { widget.style.display = 'none'; return; }
   widget.style.display = '';
 
   const todayStr = new Date().toDateString();
@@ -11215,21 +11192,6 @@ function calBookPickLead(leadId) {
   if (emailInput && lead && lead.email) emailInput.value = lead.email;
 }
 
-function calBookBeforeConfirm(el) {
-  // Read latest values from inputs before navigating (href is set on render, refresh it)
-  const nameEl  = document.getElementById('cb-book-name');
-  const emailEl = document.getElementById('cb-book-email');
-  if (nameEl)  calBookState.bookName  = nameEl.value;
-  if (emailEl) calBookState.bookEmail = emailEl.value;
-
-  const selType = calBookState.eventTypes.find(e => e.uri === calBookState.selectedType);
-  const bookUrl = selType ? selType.bookingUrl : (state.calendlyUrl || '');
-  let url = bookUrl + (bookUrl.includes('?') ? '&' : '?') + 'date=' + calBookState.date;
-  if (calBookState.bookName)  url += '&name='  + encodeURIComponent(calBookState.bookName);
-  if (calBookState.bookEmail) url += '&email=' + encodeURIComponent(calBookState.bookEmail);
-  el.href = url;
-  closeCalBookModal();
-}
 
 // Hide lead dropdown when clicking outside
 document.addEventListener('click', e => {
@@ -11263,7 +11225,6 @@ function renderCalSidebar() {
     const rawPhone = phone.replace(/\D/g,'');
     const waPhone  = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
     const waLink   = \`https://wa.me/\${waPhone}?text=\${encodeURIComponent('Hallo ' + name + ', ik wilde graag een afspraak inplannen. Wanneer schikt het u?')}\`;
-    const calUrl   = state.calendlyUrl || '';
     const idStr    = escHtml(String(l.id));
     return \`<div class="cal-call-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${idStr}');if(lead)openPanel(lead);})()">
       <div class="cal-call-header">
@@ -13618,32 +13579,6 @@ function copyFormLink() {
       .catch(() => toast('Kopiëren mislukt. Selecteer handmatig', 'error'));
   }
 }
-function copyFormEmbed() {
-  const ta = document.getElementById('ap-formlink-embed-code');
-  if (!ta || !ta.value) return;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(ta.value)
-      .then(() => toast('Embed-code gekopieerd ', 'success'))
-      .catch(() => toast('Kopiëren mislukt', 'error'));
-  }
-}
-function toggleFormQr() {
-  const qr    = document.getElementById('ap-formlink-qr');
-  const embed = document.getElementById('ap-formlink-embed');
-  if (!qr) return;
-  const open = qr.style.display === 'none';
-  qr.style.display = open ? 'flex' : 'none';
-  if (open && embed) embed.style.display = 'none';
-}
-function toggleFormEmbed() {
-  const qr    = document.getElementById('ap-formlink-qr');
-  const embed = document.getElementById('ap-formlink-embed');
-  if (!embed) return;
-  const open = embed.style.display === 'none';
-  embed.style.display = open ? 'block' : 'none';
-  if (open && qr) qr.style.display = 'none';
-}
-
 // Disable Opslaan button when essentials are empty
 function refreshSaveButton() {
   const btn  = document.getElementById('ap-save-btn');
@@ -13698,7 +13633,7 @@ function renderInstellingen() {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('set-naam', s.clientName || '—');
   set('set-email', s.userEmail || localStorage.getItem('hv-email') || '—');
-  set('set-calendly-url', s.calendlyUrl || '—');
+  // Boekingsmodus is statisch (AI boekt in WhatsApp). Niet overschrijven met '—'.
 
   // API key masked display
   const keyEl = document.getElementById('set-apikey-display');
@@ -14216,10 +14151,6 @@ function updateGoalPanel() {
   if (gpEl) gpEl.textContent = pct + '% bereikt';
 }
 
-// Legacy stubs kept for safety (old references in dev tools etc.)
-function loadFounderTasks() { initFounderHeader(); renderDailyChecklist(); }
-function clearFounderTasks() { localStorage.removeItem('hv-daily-tasks-v2'); renderDailyChecklist(); }
-
 // ── Pipeline Modal ────────────────────────────────────────────────────────
 function openPipeModal(id, defaultFase) {
   founderState._pipeEditId = id;
@@ -14473,10 +14404,6 @@ function copyContentPost() {
     toast('Gekopieerd! ', 'success');
   }).catch(function() { toast('Kopiëren mislukt', 'error'); });
 }
-
-// Legacy stubs
-function generateLinkedInPost() { generateContentPost(); }
-function copyLinkedInPost() { copyContentPost(); }
 
 // ── AI Coach Chat ──────────────────────────────────────────────────────────
 var chatHistory = [];
