@@ -29,8 +29,8 @@ module.exports = async function handler(req, res) {
   --accent-bright: #818cf8;
   --text:          #e6edf3;
   --text-primary:  #e6edf3;
-  --text-secondary:#8b949e;
-  --text-muted:    #3d444d;
+  --text-secondary:#9ba3af;
+  --text-muted:    #6e7681;
   --border:        #21262d;
   --border-bright: #30363d;
   --scrollbar-bg:  #0d1117;
@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
   --text:          #0f1117;
   --text-primary:  #0f1117;
   --text-secondary:#5c6478;
-  --text-muted:    #a0aab8;
+  --text-muted:    #6b7280;
   --border:        #dde1ed;
   --border-bright: #c8cede;
   --scrollbar-bg:  #f0f2f7;
