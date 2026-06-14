@@ -11929,11 +11929,13 @@ async function startDashboard(skipRefresh = false) {
   // who's currently logged in on app.helvaro.pro.
   startPresencePing();
 
-  // Refresh leads — NIET awaiten. Dashboard is al zichtbaar; data laadt
-  // in achtergrond zodat trage Airtable de UI niet blokkeert. Polling loop
-  // (90s) blijft draaien als de eerste fetch faalt.
-  // skipRefresh=true zegt: init() heeft al geladen, sla deze sla over.
-  if (!skipRefresh) refreshData(skipRefresh).catch(() => {});
+  // Render altijd. refreshData(skipFetch) skipt alléén de netwerk-call wanneer
+  // skipFetch=true (state is dan al door init() gevuld), maar rendert ALTIJD
+  // (renderStats, charts, lijst). Vroeger sloegen we refreshData hier helemaal
+  // over bij skipRefresh=true → skeletons bleven op 'LADEN...' tot je handmatig
+  // op Vernieuwen klikte. Nu rendert hij meteen met de al-geladen data.
+  // Niet awaiten zodat trage Airtable de UI niet blokkeert.
+  refreshData(skipRefresh).catch(() => {});
 
   // First-time setup check: if essential AI config is missing, route to the
   // AI Persoonlijkheid page with a welcome banner so they finish onboarding.
