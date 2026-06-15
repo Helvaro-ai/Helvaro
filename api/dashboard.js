@@ -2214,6 +2214,60 @@ button.brand-dot { border: none; padding: 0; }
   pointer-events: none;
 }
 
+/* Notification dropdown */
+.notif-wrap { position: relative; display: inline-flex; }
+.notif-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 340px; max-width: calc(100vw - 32px);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  z-index: 200; overflow: hidden;
+  animation: notifDdIn 0.14s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes notifDdIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.notif-dd-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+}
+.notif-dd-clear {
+  background: none; border: none; color: var(--accent-bright);
+  font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.notif-dd-clear:hover { text-decoration: underline; }
+.notif-dd-body { max-height: 360px; overflow-y: auto; }
+.notif-dd-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background 0.12s ease;
+}
+.notif-dd-item:hover { background: var(--bg-card-hover); }
+.notif-dd-item.unread { background: rgba(99,102,241,0.06); }
+.notif-dd-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent); opacity: 0;
+}
+.notif-dd-item.unread .notif-dd-dot { opacity: 1; }
+.notif-dd-icon {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card-alt); color: var(--accent-bright);
+}
+.notif-dd-icon.hot { background: rgba(34,197,94,0.12); color: var(--green); }
+.notif-dd-main { flex: 1; min-width: 0; }
+.notif-dd-title {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.notif-dd-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.notif-dd-empty { padding: 28px 14px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.notif-dd-foot {
+  width: 100%; padding: 11px; background: var(--bg-card-alt); border: none;
+  border-top: 1px solid var(--border); color: var(--accent-bright);
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.notif-dd-foot:hover { background: var(--bg-card-hover); }
+
 .btn-icon .icon { font-size: 14px; }
 
 .btn-icon.spin .icon { animation: spin 1s linear infinite; }
@@ -6254,10 +6308,20 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span class="search-pill-label">Zoeken...</span>
               <kbd class="search-pill-kbd">⌘K</kbd>
             </button>
-            <button class="btn-icon" id="btn-notif" title="Notificaties" style="position:relative">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-              <span class="notif-badge" id="notif-badge" style="display:none">0</span>
-            </button>
+            <div class="notif-wrap">
+              <button class="btn-icon" id="btn-notif" title="Notificaties" style="position:relative">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+              </button>
+              <div class="notif-dropdown" id="notif-dropdown" style="display:none">
+                <div class="notif-dd-head">
+                  <span>Meldingen</span>
+                  <button class="notif-dd-clear" id="notif-dd-clear" onclick="clearNotifs()">Alles gelezen</button>
+                </div>
+                <div class="notif-dd-body" id="notif-dd-body"></div>
+                <button class="notif-dd-foot" onclick="closeNotifDropdown();navigateTo('activiteit')">Alle activiteit bekijken</button>
+              </div>
+            </div>
         <button class="btn-icon theme-toggle" id="btn-theme" title="Wissel thema" style="padding:8px 10px"></button>
       </div>
     </header>
@@ -11827,11 +11891,103 @@ document.getElementById('btn-logout').addEventListener('click', logout);
 
 const bellBtn = document.getElementById('btn-notif');
 if (bellBtn) {
-  bellBtn.addEventListener('click', () => {
-    const badge = document.getElementById('notif-badge');
-    if (badge) { badge.style.display='none'; badge.dataset.count='0'; }
-    navigateTo('activiteit');
+  bellBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const dd = document.getElementById('notif-dropdown');
+    if (!dd) { navigateTo('activiteit'); return; }
+    if (dd.style.display === 'none') openNotifDropdown();
+    else closeNotifDropdown();
   });
+  // Klik buiten de dropdown sluit hem
+  document.addEventListener('click', (e) => {
+    const dd = document.getElementById('notif-dropdown');
+    const wrap = document.querySelector('.notif-wrap');
+    if (dd && dd.style.display !== 'none' && wrap && !wrap.contains(e.target)) closeNotifDropdown();
+  });
+}
+
+function openNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown');
+  if (!dd) return;
+  renderNotifDropdown();
+  dd.style.display = 'block';
+}
+function closeNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown');
+  if (dd) dd.style.display = 'none';
+}
+function clearNotifs() {
+  const badge = document.getElementById('notif-badge');
+  if (badge) { badge.style.display = 'none'; badge.dataset.count = '0'; }
+  state.newLeadCount = 0;
+  // Markeer alle huidige lead-ids als 'gezien' zodat ze niet meer als unread tonen
+  try { localStorage.setItem('hv-notif-seen', JSON.stringify([...(state.knownLeadIds || [])])); } catch {}
+  renderNotifDropdown();
+  updateNavBadge && updateNavBadge();
+}
+
+// Rendert de meldingen-dropdown: recente leads, gekwalificeerde bovenaan
+// gemarkeerd. Werkt volledig in-app, onafhankelijk van e-mail/DNS.
+function renderNotifDropdown() {
+  const body = document.getElementById('notif-dd-body');
+  if (!body) return;
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem('hv-notif-seen') || '[]'); } catch {}
+  const seenSet = new Set(seen);
+
+  const leads = [...(state.leads || [])]
+    .sort((a, b) => new Date(b.datum || 0) - new Date(a.datum || 0))
+    .slice(0, 10);
+
+  if (leads.length === 0) {
+    body.innerHTML = '<div class="notif-dd-empty">Nog geen meldingen.<br>Nieuwe leads verschijnen hier.</div>';
+    return;
+  }
+
+  body.innerHTML = leads.map(l => {
+    const id     = escHtml(String(l.id));
+    const name   = escHtml(l.naam || 'Onbekende lead');
+    const qual   = l.qualified === true || (l.leadScore || 0) >= 7;
+    const unread = !seenSet.has(l.id);
+    const score  = l.leadScore != null ? l.leadScore : '';
+    const phone  = escHtml(l.telefoon || '');
+    const when   = notifTimeAgo(l.datum);
+    const sub    = qual
+      ? ('Gekwalificeerd' + (score !== '' ? ' · score ' + score : '') + (when ? ' · ' + when : ''))
+      : ((phone || 'Nieuwe lead') + (when ? ' · ' + when : ''));
+    const icon = qual
+      ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
+      : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    return \`<div class="notif-dd-item\${unread ? ' unread' : ''}" onclick="notifOpenLead('\${id}')">
+      <span class="notif-dd-dot"></span>
+      <span class="notif-dd-icon\${qual ? ' hot' : ''}">\${icon}</span>
+      <span class="notif-dd-main">
+        <span class="notif-dd-title">\${name}</span>
+        <span class="notif-dd-sub">\${sub}</span>
+      </span>
+    </div>\`;
+  }).join('');
+}
+
+function notifOpenLead(id) {
+  closeNotifDropdown();
+  const lead = (state.leads || []).find(x => String(x.id) === String(id));
+  if (lead) { navigateTo('dashboard'); setTimeout(() => { try { openPanel(lead); } catch {} }, 120); }
+}
+
+// Relatieve tijd uit een ISO/date string (de bestaande timeAgo() verwacht een
+// numerieke timestamp; deze accepteert strings veilig).
+function notifTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'net nu';
+  if (mins < 60) return mins + ' min geleden';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + ' uur geleden';
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'gisteren' : days + ' dagen geleden';
 }
 
   // Global search
