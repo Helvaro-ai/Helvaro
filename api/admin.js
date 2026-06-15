@@ -150,38 +150,28 @@ module.exports = async function handler(req, res) {
       if (!isValidAdminToken(tProvided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
-      const RESEND_KEY = process.env.RESEND_API_KEY;
-      if (!RESEND_KEY) return res.status(200).json({ ok: false, reason: 'RESEND_API_KEY env var not set on Vercel' });
-      const to   = String(body.to || process.env.NOTIFY_EMAIL || '').trim();
-      if (!to)   return res.status(200).json({ ok: false, reason: 'No "to" address. Pass {"to":"..."} or set NOTIFY_EMAIL env var' });
-      const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
-      try {
-        const r = await fetch('https://api.resend.com/emails', {
-          method:  'POST',
-          headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            from, to: [to],
-            subject: 'Helvaro Resend test. ' + new Date().toISOString().slice(0, 16),
-            html:    '<p>If you can read this, Resend works. From: <code>' + escHtml(from) + '</code></p>'
-          })
-        });
-        const txt = await r.text().catch(() => '');
-        let data; try { data = JSON.parse(txt); } catch { data = txt; }
-        return res.status(200).json({
-          ok:           r.ok,
-          status:       r.status,
-          from,
-          to,
-          resendBody:   data,
-          envSet: {
-            RESEND_API_KEY: !!process.env.RESEND_API_KEY,
-            RESEND_FROM:    !!process.env.RESEND_FROM,
-            NOTIFY_EMAIL:   !!process.env.NOTIFY_EMAIL
-          }
-        });
-      } catch (err) {
-        return res.status(200).json({ ok: false, reason: 'network error', error: err && err.message });
-      }
+      const to = String(body.to || process.env.NOTIFY_EMAIL || '').trim();
+      if (!to) return res.status(200).json({ ok: false, reason: 'No "to" address. Pass {"to":"..."} or set NOTIFY_EMAIL env var' });
+      const { sendMail } = require('./_mailer');
+      const result = await sendMail({
+        to,
+        subject: 'Helvaro mailtest — ' + new Date().toISOString().slice(0, 16),
+        html:    '<p>Als je dit leest, werkt de e-mailbezorging van Helvaro.</p>'
+      }).catch(err => ({ ok: false, error: err && err.message }));
+      return res.status(200).json({
+        ok:     result.ok,
+        via:    result.via || null,        // 'smtp' of 'resend'
+        error:  result.error || null,
+        to,
+        envSet: {
+          SMTP_HOST:      !!process.env.SMTP_HOST,
+          SMTP_USER:      !!process.env.SMTP_USER,
+          SMTP_PASS:      !!process.env.SMTP_PASS,
+          RESEND_API_KEY: !!process.env.RESEND_API_KEY,
+          RESEND_FROM:    !!process.env.RESEND_FROM,
+          NOTIFY_EMAIL:   !!process.env.NOTIFY_EMAIL
+        }
+      });
     }
 
     // ── presence-ping (any logged-in user) ──────────────────────────────────
@@ -952,14 +942,9 @@ module.exports = async function handler(req, res) {
 };
 
 async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl, loginPassword }) {
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) { console.warn('[resend welcome] skipped: RESEND_API_KEY missing'); return; }
-  // Welkomstmail komt persoonlijk van Sindi. Voelt menselijker dan een no-reply.
-  // RESEND_WELCOME_FROM env var kan dit alsnog overrulen (bv. Team@usehelvaro.pro later).
-  // NOTE: usehelvaro.pro moet als Resend-domain geverifieerd zijn. Anders 403.
+  // Welkomstmail komt persoonlijk van Sindi (RESEND_WELCOME_FROM kan dit overrulen).
+  // Bij SMTP-transport wint SMTP_FROM tenzij we expliciet 'from' meegeven.
   const FROM = process.env.RESEND_WELCOME_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
-  let r;
-  try {
   // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
   const loginBlock = loginPassword ? `
             <h3 style="margin:24px 0 8px;color:#0f1117">Login gegevens</h3>
@@ -977,14 +962,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
             </div>
             <p style="font-size:12px;color:#5c6478;margin:6px 0 18px">Wijzig je wachtwoord na de eerste login via <a href="https://app.helvaro.pro/forgot-password" style="color:#6366f1">Wachtwoord vergeten</a>.</p>
           ` : '';
-  r = await fetch('https://api.resend.com/emails', {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from:    FROM,
-      to:      [email],
-      subject: `Welkom bij Helvaro. Je account is klaar`,
-      html: `
+  const html = `
         <div style="font-family:sans-serif;max-width:520px;margin:auto;color:#0f1117">
           <div style="background:#080c14;padding:32px;border-radius:12px;text-align:center;margin-bottom:24px">
             <h1 style="color:#818cf8;font-family:monospace;letter-spacing:4px;margin:0">HELVARO</h1>
@@ -1006,34 +984,16 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
           <p style="text-align:center">
             <a href="${escHtml(dashboardUrl)}" style="display:inline-block;padding:14px 28px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
           </p>
-          <p style="margin-top:32px;font-size:13px;color:#a0aab8;border-top:1px solid #eee;padding-top:16px">Vragen? Antwoord op deze mail.. Team Helvaro</p>
-        </div>`
-    })
-  });
-  if (!r.ok) {
-    const body = await r.text().catch(() => '');
-    console.error('[resend welcome] failed', r.status, body.slice(0, 400));
-  }
-  } catch (err) {
-    console.error('[resend welcome] network error:', err && err.message);
-  }
+          <p style="margin-top:32px;font-size:13px;color:#a0aab8;border-top:1px solid #eee;padding-top:16px">Vragen? Antwoord op deze mail. Team Helvaro</p>
+        </div>`;
+  const { sendMail } = require('./_mailer');
+  await sendMail({ to: email, from: FROM, subject: 'Welkom bij Helvaro — je account is klaar', html })
+    .catch(err => console.error('[welcome mail]', err && err.message));
 }
 
 async function sendInviteEmail({ toEmail, toName, inviteLink }) {
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) { console.warn('[resend invite] skipped: RESEND_API_KEY missing'); return; }
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
   const greeting = toName ? `Hallo ${escHtml(toName)}` : 'Hallo';
-  let r;
-  try {
-  r = await fetch('https://api.resend.com/emails', {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from:    FROM,
-      to:      [toEmail],
-      subject: 'U bent uitgenodigd voor Helvaro',
-      html: `
+  const html = `
         <div style="font-family:sans-serif;max-width:520px;margin:auto;color:#0f1117">
           <div style="background:#080c14;padding:32px;border-radius:12px;text-align:center;margin-bottom:24px">
             <h1 style="color:#818cf8;font-family:monospace;letter-spacing:4px;margin:0">HELVARO</h1>
@@ -1051,17 +1011,11 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
           <p style="font-size:13px;color:#a0aab8;margin-bottom:8px">Of kopieer deze link in uw browser:</p>
           <p style="font-size:12px;color:#6366f1;word-break:break-all;margin-bottom:32px">${escHtml(inviteLink)}</p>
           <hr style="border:none;border-top:1px solid #eee;margin-bottom:24px">
-          <p style="font-size:12px;color:#a0aab8">Vragen? Neem contact op met uw contactpersoon.. Team Helvaro</p>
-        </div>`
-    })
-  });
-  if (!r.ok) {
-    const body = await r.text().catch(() => '');
-    console.error('[resend invite] failed', r.status, body.slice(0, 400));
-  }
-  } catch (err) {
-    console.error('[resend invite] network error:', err && err.message);
-  }
+          <p style="font-size:12px;color:#a0aab8">Vragen? Neem contact op met uw contactpersoon. Team Helvaro</p>
+        </div>`;
+  const { sendMail } = require('./_mailer');
+  await sendMail({ to: toEmail, subject: 'U bent uitgenodigd voor Helvaro', html })
+    .catch(err => console.error('[invite mail]', err && err.message));
 }
 
 // ─── CONTENT GENERATOR ────────────────────────────────────────────────────────

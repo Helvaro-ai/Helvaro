@@ -359,16 +359,9 @@ function escEmail(s) {
 }
 
 async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCode, clientName, body }) {
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY || !to) return;
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        from: FROM, to: [to], subject,
-        html: `
+  if (!to) return;
+  const { sendMail } = require('./_mailer');
+  const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px;color:#111">
             <h2 style="color:#1e6fd9;margin:0 0 16px">${escEmail(heading)}</h2>
             <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
@@ -380,16 +373,8 @@ async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCo
             ${body || ''}
             <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
             <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
-          </div>`
-      })
-    });
-    if (!r.ok) {
-      const txt = await r.text().catch(() => '');
-      console.error('[resend owner] failed', r.status, txt.slice(0, 300));
-    }
-  } catch (err) {
-    console.error('[resend owner] network error:', err && err.message);
-  }
+          </div>`;
+  await sendMail({ to, subject, html }).catch(err => console.error('[owner mail]', err && err.message));
 }
 
 // ─── WEBSITE SCRAPER ─────────────────────────────────────────────────────────

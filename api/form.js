@@ -244,21 +244,11 @@ function escEmail(s) {
 }
 
 async function sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail }) {
-  const RESEND_KEY = process.env.RESEND_API_KEY;
   // Prefer per-client Rapport Email; fall back to global NOTIFY_EMAIL for legacy setups
   const NOTIFY_EMAIL = (toEmail && toEmail.trim()) || process.env.NOTIFY_EMAIL;
-  if (!RESEND_KEY)   { console.warn('[resend form] skipped: RESEND_API_KEY missing'); return; }
-  if (!NOTIFY_EMAIL) { console.warn('[resend form] skipped: no per-client Rapport Email + no NOTIFY_EMAIL env'); return; }
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
-  try {
-  const r = await fetch('https://api.resend.com/emails', {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from:    FROM,
-      to:      [NOTIFY_EMAIL],
-      subject: `Nieuwe lead. ${name} (${project_code})`,
-      html:    `
+  if (!NOTIFY_EMAIL) { console.warn('[form mail] geen ontvanger (Rapport Email / NOTIFY_EMAIL)'); return; }
+  const { sendMail } = require('./_mailer');
+  const html = `
         <div style="font-family:sans-serif;max-width:480px;margin:auto">
           <h2 style="color:#1e6fd9">Nieuwe lead voor ${escEmail(clientName)}</h2>
           <table style="width:100%;border-collapse:collapse">
@@ -268,16 +258,9 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
             <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${escEmail(bron)}</td></tr>
           </table>
           <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
-        </div>`
-    })
-  });
-  if (!r.ok) {
-    const body = await r.text().catch(() => '');
-    console.error('[resend form] failed', r.status, body.slice(0, 400));
-  }
-  } catch (err) {
-    console.error('[resend form] network error:', err && err.message);
-  }
+        </div>`;
+  await sendMail({ to: NOTIFY_EMAIL, subject: `Nieuwe lead — ${name} (${project_code})`, html })
+    .catch(err => console.error('[form mail]', err && err.message));
 }
 
 async function sendWA(to, message) {

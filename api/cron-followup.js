@@ -215,26 +215,13 @@ async function checkQualityRating(phoneNumberId, token) {
   return { quality, name_status: d.name_status };
 }
 
-// ── Resend email helper ──────────────────────────────────────────────────────
-async function sendResendEmail({ subject, html }) {
-  const key = process.env.RESEND_API_KEY;
-  const addr = process.env.NOTIFY_EMAIL;
-  if (!key)  { console.warn('[resend cron] skipped: RESEND_API_KEY missing'); return; }
-  if (!addr) { console.warn('[resend cron] skipped: NOTIFY_EMAIL missing');   return; }
-  const from = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ from, to: [addr], subject, html })
-    });
-    if (!r.ok) {
-      const body = await r.text().catch(() => '');
-      console.error('[resend cron] failed', r.status, body.slice(0, 400));
-    }
-  } catch (err) {
-    console.error('[resend cron] network error:', err && err.message);
-  }
+// ── Email helper (SMTP primary, Resend fallback via _mailer) ─────────────────
+async function sendResendEmail({ subject, html, to }) {
+  const addr = to || process.env.NOTIFY_EMAIL;
+  if (!addr) { console.warn('[cron mail] geen ontvanger'); return; }
+  const { sendMail } = require('./_mailer');
+  await sendMail({ to: addr, subject, html })
+    .catch(err => console.error('[cron mail]', err && err.message));
 }
 
 // ── Weekly per-client report ─────────────────────────────────────────────────
@@ -300,9 +287,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
 }
 
 async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 }) {
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) { console.warn('[weekly] RESEND_API_KEY missing'); return false; }
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
+  if (!to) return false;
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const fmtTime = s => s == null ? '—' : (s < 60 ? `${s}s` : `${Math.round(s/60)}m`);
@@ -364,22 +349,10 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
       </p>
     </div>`;
 
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ from: FROM, to: [to], subject: `Helvaro weekrapport. ${clientName}`, html })
-    });
-    if (!r.ok) {
-      const txt = await r.text().catch(() => '');
-      console.error('[weekly] resend fail', r.status, txt.slice(0, 200));
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error('[weekly] network error:', err && err.message);
-    return false;
-  }
+  const { sendMail } = require('./_mailer');
+  const sent = await sendMail({ to, subject: `Helvaro weekrapport — ${clientName}`, html })
+    .catch(err => { console.error('[weekly]', err && err.message); return { ok: false }; });
+  return !!(sent && sent.ok);
 }
 
 // ── Weekly AI learning loop ─────────────────────────────────────────────────

@@ -1,0 +1,9 @@
+{
+  "name": "helvaro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Helvaro — AI WhatsApp lead-kwalificatie SaaS",
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}

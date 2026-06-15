@@ -375,16 +375,8 @@ async function sendResetEmailToUser(email, user) {
   const token = signResetToken(email.toLowerCase(), currentHash);
   const link  = `https://app.helvaro.pro/reset-password?token=${encodeURIComponent(token)}`;
 
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) return { ok: false, error: 'RESEND_API_KEY env var ontbreekt op de server' };
-  const FROM = process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        from: FROM, to: [email], subject: 'Helvaro. Wachtwoord opnieuw instellen',
-        html: `
+  const { sendMail } = require('./_mailer');
+  const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:auto;padding:24px;color:#111">
             <h2 style="color:#1e6fd9;margin:0 0 16px">Wachtwoord opnieuw instellen</h2>
             <p>Iemand (hopelijk jij) heeft gevraagd om je Helvaro wachtwoord opnieuw in te stellen. Klik op de knop hieronder. De link is <strong>1 uur geldig</strong>.</p>
@@ -394,19 +386,10 @@ async function sendResetEmailToUser(email, user) {
             <p style="font-size:13px;color:#666">Werkt de knop niet? Kopieer deze link in je browser:<br><span style="color:#1e6fd9;word-break:break-all">${link}</span></p>
             <p style="font-size:13px;color:#999;margin-top:24px">Heb je dit niet aangevraagd? Negeer deze mail. Er gebeurt niets met je account.</p>
             <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
-          </div>`
-      })
-    });
-    if (!r.ok) {
-      const txt = await r.text().catch(() => '');
-      console.error('[reset] resend failed', r.status, txt.slice(0, 300));
-      return { ok: false, error: `Resend API gaf ${r.status}: ${txt.slice(0, 150)}` };
-    }
-    return { ok: true };
-  } catch (err) {
-    console.error('[reset] network error:', err && err.message);
-    return { ok: false, error: 'Netwerkfout bij Resend: ' + (err && err.message) };
-  }
+          </div>`;
+  const sent = await sendMail({ to: email, subject: 'Helvaro — Wachtwoord opnieuw instellen', html });
+  if (!sent.ok) return { ok: false, error: 'Mail versturen mislukt: ' + (sent.error || 'onbekend') };
+  return { ok: true };
 }
 
 // ─── PASSWORD RESET HTML PAGES ───────────────────────────────────────────────
