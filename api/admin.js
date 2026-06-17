@@ -945,7 +945,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
   // De welkomstmail gaat via het standaard verzendadres (SMTP_FROM = noreply@helvaro.pro),
   // betrouwbaar bezorgd. Maar met een Reply-To naar een echt postvak kan de klant
   // gewoon antwoorden en komt dat bij een mens terecht. Zo: deliverability + persoonlijk.
-  const replyTo = process.env.REPLY_TO || 'hello@helvaro.pro';
+  const replyTo = process.env.REPLY_TO || 'sindi.s@usehelvaro.pro';
   // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
   const loginBlock = loginPassword ? `
             <h3 style="margin:24px 0 8px;color:#0f1117">Login gegevens</h3>
