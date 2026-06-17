@@ -1137,9 +1137,9 @@ Schrijf nu de post.`;
 // geeft die URL terug. Faalt stil (lege string) zodat de Pexels-fallback kan inspringen.
 // Vereist: OPENAI_API_KEY en een gekoppelde Vercel Blob store (BLOB_READ_WRITE_TOKEN).
 async function generateAIImage(prompt, platform) {
-  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  const OPENAI_KEY = process.env.OPENAI_API_KEY || process.env.OPENAI;
   if (!OPENAI_KEY) {
-    console.warn('[ai-image] OPENAI_API_KEY niet ingesteld. Val terug op Pexels.');
+    console.warn('[ai-image] OPENAI_API_KEY/OPENAI niet ingesteld. Val terug op Pexels.');
     return '';
   }
   try {
