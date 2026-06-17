@@ -1180,6 +1180,16 @@ async function generateAIImage(prompt, platform) {
     const headers = {};
     if (process.env.POLLINATIONS_TOKEN) headers.Authorization = `Bearer ${process.env.POLLINATIONS_TOKEN}`;
 
+    // Zonder Vercel Blob kunnen we niet hosten. Fallback: geef een compacte,
+    // deterministische Pollinations-URL terug die de browser/Buffer rechtstreeks laadt.
+    // (Beeld laadt iets trager maar werkt zonder extra setup.)
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.warn('[ai-image] geen BLOB_READ_WRITE_TOKEN -> directe Pollinations-URL als fallback');
+      const shortParams = new URLSearchParams({ width: String(width), height: String(height), seed: String(seed), model: 'flux', nologo: 'true' });
+      const direct = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 120))}?${shortParams}`;
+      return direct.length <= 500 ? direct : (`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 60))}?${shortParams}`).slice(0, 500);
+    }
+
     // Pollinations rendert het beeld on-the-fly; geef het ruim de tijd.
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 45000);
