@@ -942,9 +942,10 @@ module.exports = async function handler(req, res) {
 };
 
 async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl, loginPassword }) {
-  // Welkomstmail komt persoonlijk van Sindi (RESEND_WELCOME_FROM kan dit overrulen).
-  // Bij SMTP-transport wint SMTP_FROM tenzij we expliciet 'from' meegeven.
-  const FROM = process.env.RESEND_WELCOME_FROM || 'Sindi @ Helvaro <sindi.s@usehelvaro.pro>';
+  // De welkomstmail gaat via het standaard verzendadres (SMTP_FROM = noreply@helvaro.pro),
+  // betrouwbaar bezorgd. Maar met een Reply-To naar een echt postvak kan de klant
+  // gewoon antwoorden en komt dat bij een mens terecht. Zo: deliverability + persoonlijk.
+  const replyTo = process.env.REPLY_TO || 'hello@helvaro.pro';
   // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
   const loginBlock = loginPassword ? `
             <h3 style="margin:24px 0 8px;color:#0f1117">Login gegevens</h3>
@@ -987,7 +988,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
           <p style="margin-top:32px;font-size:13px;color:#a0aab8;border-top:1px solid #eee;padding-top:16px">Vragen? Antwoord op deze mail. Team Helvaro</p>
         </div>`;
   const { sendMail } = require('./_mailer');
-  await sendMail({ to: email, from: FROM, subject: 'Welkom bij Helvaro — je account is klaar', html })
+  await sendMail({ to: email, replyTo, subject: 'Welkom bij Helvaro — je account is klaar', html })
     .catch(err => console.error('[welcome mail]', err && err.message));
 }
 
