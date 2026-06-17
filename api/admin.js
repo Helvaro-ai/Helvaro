@@ -1072,7 +1072,7 @@ OUTPUT FORMAT (strikt):
 TITLE: <korte interne titel max 60 chars>
 CONTENT: <de post tekst>
 HASHTAGS: <${tone.hashtagCount} hashtags gescheiden door spaties, lowercase, beginnen met #>
-VISUAL_QUERY: <2-4 Engelse zoekwoorden voor een passende stockfoto, bv "business woman phone office" of "car dealership belgium" — moet visueel ondersteunen wat het topic is>
+IMAGE_PROMPT: <Engelse beschrijving voor een AI-beeldgenerator. Een professionele, moderne, fotorealistische scene die het topic visueel ondersteunt. Clean, brand-safe, geen tekst of letters in beeld, geen logos. Bv "modern Belgian car dealership showroom, salesperson checking smartphone, warm natural light, professional photography, no text". Beschrijf scene, sfeer en stijl in 1-2 zinnen.>
 
 Schrijf nu de post.`;
 
@@ -1100,19 +1100,24 @@ Schrijf nu de post.`;
     const titleM    = raw.match(/TITLE:\s*(.+?)(?:\n|$)/i);
     const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\n(?:HASHTAGS|VISUAL_QUERY):|$)/i);
     const hashtagsM = raw.match(/HASHTAGS:\s*(.+?)(?:\n|$)/i);
-    const visualM   = raw.match(/VISUAL_QUERY:\s*(.+?)(?:\n|$)/i);
+    const imgPromptM = raw.match(/IMAGE_PROMPT:\s*([\s\S]+?)(?:\n[A-Z_]+:|$)/i);
     if (!contentM) return null;
     // Strip dashes/emojis as defense in depth
     let content = contentM[1].trim().replace(/[—–]/g, '.').slice(0, tone.maxLength);
     // Remove emojis using same regex policy as elsewhere
     content = content.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '');
 
-    // Voor Facebook + Instagram: haal een passende foto via Pexels
-    // LinkedIn blijft tekst-only (B2B norm, foto's leiden af van content)
+    // Voor Facebook + Instagram: genereer een AI-afbeelding (OpenAI gpt-image-1).
+    // LinkedIn blijft tekst-only (B2B norm, foto's leiden af van content).
+    // Fallback naar Pexels-stockfoto als er geen OpenAI key is of de generatie faalt.
     let imageUrl = '';
     if (platform === 'instagram' || platform === 'facebook') {
-      const query = (visualM ? visualM[1] : '').trim().slice(0, 100) || `${platform} business professional`;
-      imageUrl = await fetchPexelsImage(query).catch(() => '');
+      const imgPrompt = (imgPromptM ? imgPromptM[1] : '').trim().replace(/\s+/g, ' ').slice(0, 500)
+        || `modern professional ${platform} business scene, clean photography, no text`;
+      imageUrl = await generateAIImage(imgPrompt, platform).catch(() => '');
+      if (!imageUrl) {
+        imageUrl = await fetchPexelsImage(imgPrompt.split(' ').slice(0, 6).join(' ')).catch(() => '');
+      }
     }
 
     return {
@@ -1127,8 +1132,62 @@ Schrijf nu de post.`;
   }
 }
 
+// AI-beeldgeneratie via OpenAI gpt-image-1. Genereert een unieke afbeelding op
+// basis van een prompt, uploadt die naar Vercel Blob (permanente publieke URL) en
+// geeft die URL terug. Faalt stil (lege string) zodat de Pexels-fallback kan inspringen.
+// Vereist: OPENAI_API_KEY en een gekoppelde Vercel Blob store (BLOB_READ_WRITE_TOKEN).
+async function generateAIImage(prompt, platform) {
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_KEY) {
+    console.warn('[ai-image] OPENAI_API_KEY niet ingesteld. Val terug op Pexels.');
+    return '';
+  }
+  try {
+    // Instagram = vierkant (1024x1024), Facebook = landscape (1536x1024).
+    const size = platform === 'instagram' ? '1024x1024' : '1536x1024';
+    const r = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
+      body: JSON.stringify({
+        model: 'gpt-image-1',
+        prompt: prompt.slice(0, 900),
+        size,
+        quality: 'medium',
+        n: 1
+      })
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) {
+      console.error('[ai-image] OpenAI err:', JSON.stringify(d.error || d).slice(0, 200));
+      return '';
+    }
+    const b64 = d.data?.[0]?.b64_json;
+    if (!b64) return '';
+
+    // Upload naar Vercel Blob voor een blijvende publieke URL.
+    let put;
+    try { ({ put } = require('@vercel/blob')); }
+    catch (e) { console.error('[ai-image] @vercel/blob niet beschikbaar:', e.message); return ''; }
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.warn('[ai-image] BLOB_READ_WRITE_TOKEN niet ingesteld. Val terug op Pexels.');
+      return '';
+    }
+    const buffer = Buffer.from(b64, 'base64');
+    const filename = `social/${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    const blob = await put(filename, buffer, {
+      access: 'public',
+      contentType: 'image/png',
+      token: process.env.BLOB_READ_WRITE_TOKEN
+    });
+    return (blob.url || '').slice(0, 500);
+  } catch (err) {
+    console.error('[ai-image] exception:', err.message);
+    return '';
+  }
+}
+
 // Pexels API. Gratis 200 req/uur. Vraagt 1 random foto die matcht met query.
-// Faalt stil (lege string) als geen PEXELS_API_KEY ingesteld of geen result.
+// Fallback wanneer AI-beeldgeneratie niet beschikbaar is of faalt.
 async function fetchPexelsImage(query) {
   const PEXELS_KEY = process.env.PEXELS_API_KEY;
   if (!PEXELS_KEY) {
