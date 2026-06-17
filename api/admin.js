@@ -1046,8 +1046,8 @@ function pickWeightedPillar() {
 }
 
 async function generateOnePost(platform, pillar, dateIso) {
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
-  if (!ANTHROPIC_KEY) return null;
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
+  if (!ANTHROPIC_KEY) { console.error('[content-gen] ANTHROPIC_API_KEY niet ingesteld'); return null; }
   const tone = PLATFORM_TONES[platform];
   const prompt = `Je schrijft een social media post voor Helvaro op ${platform}.
 
