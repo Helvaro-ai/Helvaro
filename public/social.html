@@ -243,6 +243,7 @@ function render(){
         ${tags?`<div class="hashtags">${esc(tags)}</div>`:''}
         <div class="actions">
           <button class="sm" onclick="copyPost('${r.id}')">Kopieer tekst</button>
+          ${(['instagram','facebook'].includes((f.Platform||'').toLowerCase())) ? `<button class="ghost sm" onclick="genImage('${r.id}')">${img?'Nieuw beeld':'Genereer afbeelding'}</button>` : ''}
           <a href="${composerUrl(f.Platform)}" target="_blank" rel="noopener"><button class="ghost sm">Open ${esc((f.Platform||'platform'))}</button></a>
           <button class="ghost sm" onclick="saveEdit('${r.id}')">Tekst opslaan</button>
           ${CURRENT==='draft'?`<button class="green sm" onclick="setStatus('${r.id}','approved')">Goedkeuren</button>`:''}
@@ -288,14 +289,51 @@ window.setStatus = async function(id, status){
   }catch(e){ toast('Fout: '+e.message); }
 };
 
+// Genereer 1 afbeelding voor 1 post. Werkt het thumbnail bij zonder reload.
+window.genImage = async function(id){
+  const card = cardEl(id); if(!card) return;
+  const thumb = card.querySelector('.thumb');
+  const prev = thumb.innerHTML;
+  thumb.innerHTML = '<div class="noimg"><span class="spin"></span><br>genereren</div>';
+  try{
+    const d = await api({mode:'generate-image', id});
+    if(d.skipped){ thumb.innerHTML = '<div class="noimg">geen afbeelding<br>(LinkedIn = tekst)</div>'; return; }
+    if(d.imageUrl){
+      const r = findRec(id); if(r) r.fields['Image URL'] = d.imageUrl;
+      thumb.innerHTML = '<img src="'+esc(d.imageUrl)+'" alt="" loading="lazy">';
+      toast('Afbeelding klaar');
+    } else { thumb.innerHTML = prev; toast('Geen afbeelding terug'); }
+  }catch(e){ thumb.innerHTML = prev; toast('Beeld fout: '+e.message); }
+};
+
+// Genereer beelden voor alle IG/FB concept-posts zonder afbeelding, 1 voor 1.
+async function autoGenerateImages(){
+  const recs = (CACHE['draft']||[]).filter(r=>{
+    const f=r.fields||{}; const p=(f.Platform||'').toLowerCase();
+    return (p==='instagram'||p==='facebook') && !f['Image URL'];
+  });
+  if(!recs.length) return;
+  const btn=document.getElementById('genBtn');
+  for(let i=0;i<recs.length;i++){
+    if(btn) btn.innerHTML='<span class="spin"></span>Beelden '+(i+1)+'/'+recs.length;
+    try{
+      const d = await api({mode:'generate-image', id:recs[i].id});
+      if(d && d.imageUrl){ recs[i].fields['Image URL']=d.imageUrl; }
+    }catch(e){ /* ga door met de rest */ }
+  }
+  if(CURRENT==='draft') render();
+}
+
 document.getElementById('genBtn').onclick = async function(){
   const btn=this; const days=document.getElementById('days').value;
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>Genereren (kan ~1 min duren)';
   try{
     const d = await api({mode:'generate-content', days:parseInt(days,10)});
-    toast('Klaar: '+(d.created||0)+' posts aangemaakt'+(d.failed?(', '+d.failed+' mislukt'):''));
+    toast('Tekst klaar: '+(d.created||0)+' posts'+(d.failed?(', '+d.failed+' mislukt'):'')+'. Beelden volgen.');
     document.querySelector('.tab[data-status="draft"]').click();
     await loadAll();
+    await autoGenerateImages();   // beelden 1 voor 1, eigen request elk
+    toast('Alles klaar: tekst + beelden gegenereerd');
   }catch(e){ toast('Fout: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='Genereer posts'; }
 };

@@ -656,6 +656,39 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, record: d });
     }
 
+    // ── mode=generate-image: genereer 1 afbeelding voor 1 post (per record) ──
+    // body: { mode: 'generate-image', id: 'rec...' }
+    // Apart per post zodat we nooit de 60s functie-timeout raken.
+    if (body.mode === 'generate-image') {
+      const provided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const id = String(body.id || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
+      // Haal de post op
+      const gr = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`, {
+        headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
+      });
+      const grec = await gr.json();
+      if (!gr.ok) return res.status(404).json({ error: 'Post niet gevonden' });
+      const f = grec.fields || {};
+      const platform = String(f.Platform || '').toLowerCase();
+      if (platform === 'linkedin') return res.status(200).json({ ok: true, skipped: true, reason: 'LinkedIn = tekst-only' });
+      const imgPrompt = String(f['Image Prompt'] || '').trim()
+        || `modern professional ${platform || 'business'} scene, clean photography, no text`;
+      let imageUrl = await generateAIImage(imgPrompt, platform).catch(() => '');
+      if (!imageUrl) imageUrl = await fetchPexelsImage(imgPrompt.split(' ').slice(0, 6).join(' ')).catch(() => '');
+      if (!imageUrl) return res.status(502).json({ error: 'Beeldgeneratie mislukt (zie logs)' });
+      const pr = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { 'Image URL': imageUrl } })
+      });
+      if (!pr.ok) { const pd = await pr.json().catch(() => ({})); return res.status(500).json({ error: pd.error?.message || 'Opslaan mislukt' }); }
+      return res.status(200).json({ ok: true, imageUrl });
+    }
+
     // ── mode=invite: admin sends an invite email to a client ─────────────────
     if (body.mode === 'invite') {
       const provided = String(req.headers['x-api-key'] || '').trim();
@@ -1107,24 +1140,20 @@ Schrijf nu de post.`;
     // Remove emojis using same regex policy as elsewhere
     content = content.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '');
 
-    // Voor Facebook + Instagram: genereer een AI-afbeelding (OpenAI gpt-image-1).
-    // LinkedIn blijft tekst-only (B2B norm, foto's leiden af van content).
-    // Fallback naar Pexels-stockfoto als er geen OpenAI key is of de generatie faalt.
-    let imageUrl = '';
+    // Beeld wordt NIET hier gegenereerd (zou 504-timeout geven bij 14 beelden in
+    // een request). We bewaren alleen de beeld-prompt; de afbeelding wordt later
+    // per post apart gegenereerd via mode=generate-image. LinkedIn = tekst-only.
+    let imagePrompt = '';
     if (platform === 'instagram' || platform === 'facebook') {
-      const imgPrompt = (imgPromptM ? imgPromptM[1] : '').trim().replace(/\s+/g, ' ').slice(0, 500)
+      imagePrompt = (imgPromptM ? imgPromptM[1] : '').trim().replace(/\s+/g, ' ').slice(0, 800)
         || `modern professional ${platform} business scene, clean photography, no text`;
-      imageUrl = await generateAIImage(imgPrompt, platform).catch(() => '');
-      if (!imageUrl) {
-        imageUrl = await fetchPexelsImage(imgPrompt.split(' ').slice(0, 6).join(' ')).catch(() => '');
-      }
     }
 
     return {
       title:    (titleM ? titleM[1] : `${platform} ${pillar.name}`).trim().slice(0, 60),
       content,
       hashtags: (hashtagsM ? hashtagsM[1] : '').trim().slice(0, 200),
-      imageUrl
+      imagePrompt
     };
   } catch (err) {
     console.error('[content-gen] exception:', err.message);
@@ -1143,26 +1172,28 @@ async function generateAIImage(prompt, platform) {
     return '';
   }
   try {
-    // Instagram = vierkant (1024x1024), Facebook = landscape (1536x1024).
-    const size = platform === 'instagram' ? '1024x1024' : '1536x1024';
+    // dall-e-3: beschikbaar zonder org-verificatie. IG = vierkant (1024x1024),
+    // Facebook = landscape (1792x1024). response_format b64_json zodat we naar Blob kunnen uploaden.
+    const size = platform === 'instagram' ? '1024x1024' : '1792x1024';
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
       body: JSON.stringify({
-        model: 'gpt-image-1',
-        prompt: prompt.slice(0, 900),
+        model: 'dall-e-3',
+        prompt: prompt.slice(0, 3900),
         size,
-        quality: 'medium',
+        quality: 'standard',
+        response_format: 'b64_json',
         n: 1
       })
     });
     const d = await r.json();
     if (!r.ok || d.error) {
-      console.error('[ai-image] OpenAI err:', JSON.stringify(d.error || d).slice(0, 200));
+      console.error('[ai-image] OpenAI err:', JSON.stringify(d.error || d).slice(0, 300));
       return '';
     }
     const b64 = d.data?.[0]?.b64_json;
-    if (!b64) return '';
+    if (!b64) { console.error('[ai-image] geen b64 in response'); return ''; }
 
     // Upload naar Vercel Blob voor een blijvende publieke URL.
     let put;
@@ -1257,8 +1288,9 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
         Hashtags:        post.hashtags,
         'Created At':    new Date().toISOString()
       };
-      // Afbeelding alleen voor Instagram + Facebook (LinkedIn blijft text-only)
-      if (post.imageUrl) fields['Image URL'] = post.imageUrl;
+      // Beeld-prompt bewaren voor IG + FB; de afbeelding zelf wordt later apart
+      // gegenereerd via mode=generate-image (voorkomt 504-timeout). LinkedIn = tekst.
+      if (post.imagePrompt) fields['Image Prompt'] = post.imagePrompt;
       const r = await fetch(
         `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}`,
         {
