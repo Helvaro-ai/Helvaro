@@ -11,6 +11,7 @@
   "rewrites": [
     { "source": "/onboard", "destination": "/onboard.html" },
     { "source": "/promo",   "destination": "/promo.html"   },
+    { "source": "/social",  "destination": "/social.html"  },
     { "source": "/dashboard",                       "destination": "/api/dashboard" },
     { "source": "/privacy",        "destination": "/api/privacy" },
     { "source": "/terms",          "destination": "/api/privacy" },

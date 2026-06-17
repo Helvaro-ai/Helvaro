@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Helvaro Social Studio</title>
+<link rel="icon" href="/favicon.png">
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --panel2:#1d212c; --border:#2a2f3c;
+    --text:#e7e9ee; --muted:#8b93a7; --brand:#6366f1; --brand2:#818cf8;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);font-size:15px;line-height:1.5}
+  a{color:var(--brand2);text-decoration:none}
+  header{position:sticky;top:0;z-index:10;background:rgba(15,17,23,.85);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header img{height:30px}
+  header h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px}
+  .badge{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:4px 10px}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .grow{flex:1}
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;padding:10px 16px;font-weight:600;
+    background:var(--brand);color:#fff;transition:filter .15s,transform .05s}
+  button:hover{filter:brightness(1.1)} button:active{transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+  button.sm{padding:7px 12px;font-size:13px;border-radius:8px}
+  button.green{background:var(--green);color:#06281d}
+  button.amber{background:transparent;color:var(--amber);border:1px solid var(--amber)}
+  input,textarea,select{font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px;width:100%}
+  textarea{resize:vertical;min-height:96px;line-height:1.55}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+  .gate{max-width:420px;margin:14vh auto;padding:32px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius)}
+  .gate h2{margin:0 0 6px} .gate p{color:var(--muted);margin:0 0 20px;font-size:14px}
+  .tabs{display:flex;gap:6px;margin:8px 0 22px;flex-wrap:wrap}
+  .tab{padding:9px 16px;border-radius:999px;background:var(--panel);border:1px solid var(--border);color:var(--muted);font-weight:600;font-size:14px;cursor:pointer}
+  .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .tab .n{opacity:.7;font-weight:500;margin-left:4px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;display:flex;gap:18px}
+  .card .thumb{width:150px;flex-shrink:0}
+  .card .thumb img{width:150px;height:150px;object-fit:cover;border-radius:10px;border:1px solid var(--border);background:var(--panel2)}
+  .card .thumb .noimg{width:150px;height:150px;border-radius:10px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;text-align:center;padding:8px}
+  .card .body{flex:1;min-width:0}
+  .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .pill{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:4px 9px;border-radius:6px}
+  .pill.fb{background:#1d3a6e;color:#9cc0ff} .pill.ig{background:#5a1f4d;color:#ffadd6}
+  .pill.li{background:#13344a;color:#8fd0ff} .pill.pillar{background:var(--panel2);color:var(--muted)}
+  .when{font-size:13px;color:var(--muted)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .hashtags{color:var(--brand2);font-size:13px;margin-top:8px;word-break:break-word}
+  .empty{text-align:center;color:var(--muted);padding:50px 20px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border);
+    color:var(--text);padding:12px 20px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.4);opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:-3px;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .note{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--muted);margin-bottom:20px}
+  @media(max-width:640px){.card{flex-direction:column}.card .thumb,.card .thumb img,.card .thumb .noimg{width:100%}.card .thumb img,.card .thumb .noimg{height:200px}}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <h2>Social Studio</h2>
+  <p>Interne tool. Voer je admin key in om door te gaan.</p>
+  <label for="key">Admin key</label>
+  <input id="key" type="password" placeholder="ADMIN_KEY" autocomplete="off">
+  <div style="height:14px"></div>
+  <button id="gateBtn" style="width:100%">Ontgrendelen</button>
+  <p id="gateErr" style="color:var(--red);margin-top:14px;display:none"></p>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <img src="/logo.png" alt="Helvaro" onerror="this.style.display='none'">
+    <h1>Social Studio</h1>
+    <span class="badge">interne tool</span>
+    <div class="grow"></div>
+    <button class="ghost sm" id="lockBtn">Vergrendelen</button>
+  </header>
+
+  <div class="wrap">
+    <div class="note">
+      Werkwijze: genereer de week, bekijk en bewerk elke post, keur goed. Kopieer dan de tekst,
+      open het platform, plak en plaats. Markeer daarna als geplaatst. Niets gaat automatisch live,
+      jij houdt volledige controle.
+    </div>
+
+    <div class="row" style="margin-bottom:8px">
+      <div style="min-width:120px">
+        <label for="days">Aantal dagen</label>
+        <select id="days">
+          <option value="7" selected>7 dagen</option>
+          <option value="3">3 dagen</option>
+          <option value="14">14 dagen</option>
+        </select>
+      </div>
+      <div style="align-self:flex-end">
+        <button id="genBtn">Genereer posts</button>
+      </div>
+      <div class="grow"></div>
+      <div style="align-self:flex-end">
+        <button class="ghost" id="reloadBtn">Vernieuwen</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-status="draft">Concept<span class="n" id="n-draft"></span></div>
+      <div class="tab" data-status="approved">Goedgekeurd<span class="n" id="n-approved"></span></div>
+      <div class="tab" data-status="posted">Geplaatst<span class="n" id="n-posted"></span></div>
+      <div class="tab" data-status="skipped">Overgeslagen<span class="n" id="n-skipped"></span></div>
+    </div>
+
+    <div id="list"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '/api/admin';
+let KEY = '';
+let CURRENT = 'draft';
+const CACHE = {}; // status -> records
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function api(body){
+  const r = await fetch(API, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':KEY},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error || ('HTTP '+r.status));
+  return d;
+}
+
+// ---- gate ----
+async function unlock(){
+  const k = document.getElementById('key').value.trim();
+  if(!k) return;
+  const err = document.getElementById('gateErr');
+  err.style.display='none';
+  const btn = document.getElementById('gateBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Controleren';
+  try{
+    KEY = k;
+    await api({mode:'list-content', status:'draft', limit:1}); // validate key
+    localStorage.setItem('helvaro_admin_key', k);
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='block';
+    loadAll();
+  }catch(e){
+    KEY='';
+    err.textContent = 'Ongeldige key of serverfout: '+e.message;
+    err.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='Ontgrendelen';
+  }
+}
+document.getElementById('gateBtn').onclick = unlock;
+document.getElementById('key').addEventListener('keydown',e=>{if(e.key==='Enter')unlock();});
+document.getElementById('lockBtn').onclick = ()=>{ localStorage.removeItem('helvaro_admin_key'); location.reload(); };
+
+// ---- tabs ----
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    CURRENT = t.dataset.status;
+    render();
+  };
+});
+
+// ---- data ----
+async function loadAll(){
+  const statuses = ['draft','approved','posted','skipped'];
+  document.getElementById('list').innerHTML = '<div class="empty"><span class="spin"></span> Laden</div>';
+  await Promise.all(statuses.map(async s=>{
+    try{ const d = await api({mode:'list-content', status:s, limit:100}); CACHE[s] = d.posts||[]; }
+    catch(e){ CACHE[s] = []; }
+  }));
+  statuses.forEach(s=>{ document.getElementById('n-'+s).textContent = ' ('+(CACHE[s]?CACHE[s].length:0)+')'; });
+  render();
+}
+
+function platformPill(p){
+  p = (p||'').toLowerCase();
+  if(p==='facebook') return '<span class="pill fb">Facebook</span>';
+  if(p==='instagram') return '<span class="pill ig">Instagram</span>';
+  if(p==='linkedin') return '<span class="pill li">LinkedIn</span>';
+  return '<span class="pill pillar">'+esc(p)+'</span>';
+}
+function fmtDate(iso){
+  if(!iso) return 'geen datum';
+  try{ return new Date(iso).toLocaleString('nl-BE',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return iso; }
+}
+function composerUrl(platform){
+  const p=(platform||'').toLowerCase();
+  if(p==='facebook') return 'https://www.facebook.com/';
+  if(p==='instagram') return 'https://www.instagram.com/';
+  if(p==='linkedin') return 'https://www.linkedin.com/feed/';
+  return '#';
+}
+
+function render(){
+  const list = document.getElementById('list');
+  const recs = CACHE[CURRENT] || [];
+  if(!recs.length){
+    list.innerHTML = '<div class="empty">Geen posts in "'+CURRENT+'". '+(CURRENT==='draft'?'Klik op <b>Genereer posts</b> om te starten.':'')+'</div>';
+    return;
+  }
+  list.innerHTML = recs.map(r=>{
+    const f = r.fields||{};
+    const img = f['Image URL'];
+    const tags = f.Hashtags || '';
+    return `
+    <div class="card" data-id="${r.id}">
+      <div class="thumb">
+        ${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'noimg\\'>afbeelding niet geladen</div>'">`
+              : `<div class="noimg">geen afbeelding<br>(LinkedIn = tekst)</div>`}
+      </div>
+      <div class="body">
+        <div class="meta">
+          ${platformPill(f.Platform)}
+          ${f.Pillar?`<span class="pill pillar">${esc(f.Pillar)}</span>`:''}
+          <span class="when">${esc(fmtDate(f['Scheduled For']))}</span>
+        </div>
+        <textarea class="content">${esc(f.Content||'')}</textarea>
+        ${tags?`<div class="hashtags">${esc(tags)}</div>`:''}
+        <div class="actions">
+          <button class="sm" onclick="copyPost('${r.id}')">Kopieer tekst</button>
+          <a href="${composerUrl(f.Platform)}" target="_blank" rel="noopener"><button class="ghost sm">Open ${esc((f.Platform||'platform'))}</button></a>
+          <button class="ghost sm" onclick="saveEdit('${r.id}')">Tekst opslaan</button>
+          ${CURRENT==='draft'?`<button class="green sm" onclick="setStatus('${r.id}','approved')">Goedkeuren</button>`:''}
+          ${(CURRENT==='draft'||CURRENT==='approved')?`<button class="green sm" onclick="setStatus('${r.id}','posted')">Markeer geplaatst</button>`:''}
+          ${CURRENT!=='skipped'?`<button class="amber sm" onclick="setStatus('${r.id}','skipped')">Overslaan</button>`:''}
+          ${CURRENT==='skipped'?`<button class="ghost sm" onclick="setStatus('${r.id}','draft')">Terug naar concept</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cardEl(id){ return document.querySelector('.card[data-id="'+id+'"]'); }
+function findRec(id){ const r=(CACHE[CURRENT]||[]).find(x=>x.id===id); return r; }
+
+window.copyPost = function(id){
+  const r = findRec(id); if(!r) return;
+  const txt = (cardEl(id).querySelector('.content').value||'').trim();
+  const tags = r.fields.Hashtags||'';
+  const full = tags ? (txt+'\n\n'+tags) : txt;
+  navigator.clipboard.writeText(full).then(()=>toast('Tekst gekopieerd. Plak op het platform.'),
+    ()=>toast('Kopiëren mislukt'));
+};
+
+window.saveEdit = async function(id){
+  const content = cardEl(id).querySelector('.content').value;
+  try{ await api({mode:'update-content', id, content});
+    const r=findRec(id); if(r) r.fields.Content=content;
+    toast('Tekst opgeslagen'); }
+  catch(e){ toast('Fout: '+e.message); }
+};
+
+window.setStatus = async function(id, status){
+  const content = cardEl(id) ? cardEl(id).querySelector('.content').value : undefined;
+  try{
+    await api({mode:'update-content', id, status, ...(content!==undefined?{content}:{})});
+    // move between caches
+    const idx=(CACHE[CURRENT]||[]).findIndex(x=>x.id===id);
+    if(idx>-1){ const [rec]=CACHE[CURRENT].splice(idx,1); rec.fields.Status=status; if(content!==undefined)rec.fields.Content=content; (CACHE[status]=CACHE[status]||[]).push(rec); }
+    ['draft','approved','posted','skipped'].forEach(s=>{document.getElementById('n-'+s).textContent=' ('+((CACHE[s]||[]).length)+')';});
+    render();
+    toast('Verplaatst naar "'+status+'"');
+  }catch(e){ toast('Fout: '+e.message); }
+};
+
+document.getElementById('genBtn').onclick = async function(){
+  const btn=this; const days=document.getElementById('days').value;
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Genereren (kan ~1 min duren)';
+  try{
+    const d = await api({mode:'generate-content', days:parseInt(days,10)});
+    toast('Klaar: '+(d.created||0)+' posts aangemaakt'+(d.failed?(', '+d.failed+' mislukt'):''));
+    document.querySelector('.tab[data-status="draft"]').click();
+    await loadAll();
+  }catch(e){ toast('Fout: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='Genereer posts'; }
+};
+document.getElementById('reloadBtn').onclick = loadAll;
+
+// auto-unlock if key stored
+(function(){
+  const saved = localStorage.getItem('helvaro_admin_key');
+  if(saved){ document.getElementById('key').value=saved; unlock(); }
+})();
+</script>
+</body>
+</html>
