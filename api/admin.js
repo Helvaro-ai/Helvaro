@@ -1161,39 +1161,36 @@ Schrijf nu de post.`;
   }
 }
 
-// AI-beeldgeneratie via OpenAI gpt-image-1. Genereert een unieke afbeelding op
-// basis van een prompt, uploadt die naar Vercel Blob (permanente publieke URL) en
-// geeft die URL terug. Faalt stil (lege string) zodat de Pexels-fallback kan inspringen.
-// Vereist: OPENAI_API_KEY en een gekoppelde Vercel Blob store (BLOB_READ_WRITE_TOKEN).
+// AI-beeldgeneratie via Pollinations.ai (gratis, geen API key, geen tegoed).
+// Genereert een uniek beeld uit de prompt, downloadt het en uploadt naar Vercel
+// Blob (permanente publieke URL). Faalt stil (lege string) zodat de Pexels-fallback
+// kan inspringen. Optioneel: POLLINATIONS_TOKEN env voor hogere rate-limits.
 async function generateAIImage(prompt, platform) {
-  const OPENAI_KEY = process.env.OPENAI_API_KEY || process.env.OPENAI;
-  if (!OPENAI_KEY) {
-    console.warn('[ai-image] OPENAI_API_KEY/OPENAI niet ingesteld. Val terug op Pexels.');
-    return '';
-  }
   try {
-    // dall-e-3: beschikbaar zonder org-verificatie. IG = vierkant (1024x1024),
-    // Facebook = landscape (1792x1024). response_format b64_json zodat we naar Blob kunnen uploaden.
-    const size = platform === 'instagram' ? '1024x1024' : '1792x1024';
-    const r = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: prompt.slice(0, 3900),
-        size,
-        quality: 'standard',
-        response_format: 'b64_json',
-        n: 1
-      })
+    // IG = vierkant (1024x1024), Facebook = landscape (1280x720).
+    const width  = platform === 'instagram' ? 1024 : 1280;
+    const height = platform === 'instagram' ? 1024 : 720;
+    const seed = Math.floor(Math.random() * 1e9);
+    const enriched = `${prompt}. Professional photography, clean, brand-safe, no text, no watermark, no letters.`;
+    const params = new URLSearchParams({
+      width: String(width), height: String(height),
+      seed: String(seed), model: 'flux', nologo: 'true', enhance: 'true'
     });
-    const d = await r.json();
-    if (!r.ok || d.error) {
-      console.error('[ai-image] OpenAI err:', JSON.stringify(d.error || d).slice(0, 300));
-      return '';
-    }
-    const b64 = d.data?.[0]?.b64_json;
-    if (!b64) { console.error('[ai-image] geen b64 in response'); return ''; }
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(enriched.slice(0, 1500))}?${params}`;
+    const headers = {};
+    if (process.env.POLLINATIONS_TOKEN) headers.Authorization = `Bearer ${process.env.POLLINATIONS_TOKEN}`;
+
+    // Pollinations rendert het beeld on-the-fly; geef het ruim de tijd.
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 45000);
+    let r;
+    try { r = await fetch(url, { headers, signal: ctrl.signal }); }
+    finally { clearTimeout(t); }
+    if (!r.ok) { console.error('[ai-image] Pollinations err', r.status); return ''; }
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.startsWith('image/')) { console.error('[ai-image] Pollinations gaf geen beeld:', ct); return ''; }
+    const buffer = Buffer.from(await r.arrayBuffer());
+    if (buffer.length < 1000) { console.error('[ai-image] Pollinations beeld te klein'); return ''; }
 
     // Upload naar Vercel Blob voor een blijvende publieke URL.
     let put;
@@ -1203,11 +1200,11 @@ async function generateAIImage(prompt, platform) {
       console.warn('[ai-image] BLOB_READ_WRITE_TOKEN niet ingesteld. Val terug op Pexels.');
       return '';
     }
-    const buffer = Buffer.from(b64, 'base64');
-    const filename = `social/${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    const ext = ct.includes('png') ? 'png' : 'jpg';
+    const filename = `social/${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const blob = await put(filename, buffer, {
       access: 'public',
-      contentType: 'image/png',
+      contentType: ct || 'image/jpeg',
       token: process.env.BLOB_READ_WRITE_TOKEN
     });
     return (blob.url || '').slice(0, 500);
