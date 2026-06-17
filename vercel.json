@@ -3,7 +3,7 @@
     "api/**/*.js": { "maxDuration": 60 }
   },
   "crons": [
-    { "path": "/api/cron-followup", "schedule": "0 5 * * *" }
+    { "path": "/api/cron-followup", "schedule": "0 9 * * *" }
   ],
   "redirects": [
     { "source": "/", "destination": "/dashboard", "permanent": false }

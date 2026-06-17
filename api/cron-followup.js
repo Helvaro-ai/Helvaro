@@ -1,5 +1,6 @@
-// Vercel cron. Runs daily at 05:00 UTC (06:00 CET) - vroeg genoeg dat
-// Buffer queue klaar staat voor de 08:30 CET LinkedIn slot.
+// Vercel cron. Runs daily at 09:00 UTC (10:00-11:00 CET). Facebook posts
+// schedulen zichzelf naar hun exacte slot; Instagram (geen Graph-scheduling)
+// publiceert op deze cron-tijd = late ochtend CET = goede engagement.
 // Sends a follow-up WhatsApp to leads that:
 //   - Status is still 'new'
 //   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
@@ -156,12 +157,12 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ── Buffer posting (every cron run) ─────────────────────────────────────
-    // Check elk uur of er approved posts zijn waarvan Scheduled For nu is.
-    // Stuurt naar Buffer voor publicatie op LinkedIn/Instagram/Facebook.
+    // ── Meta Graph posting (elke cron-run) ──────────────────────────────────
+    // Publiceert approved posts via Meta Graph: Facebook (gepland op het slot),
+    // Instagram (direct), LinkedIn (gemarkeerd voor handmatig plaatsen).
     let posterResult = null;
-    posterResult = await runBufferPoster(AIRTABLE_TOKEN, BASE_ID).catch(e => {
-      console.error('[cron-followup] buffer poster failed:', e.message);
+    posterResult = await runMetaPoster(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+      console.error('[cron-followup] meta poster failed:', e.message);
       return null;
     });
 
@@ -552,32 +553,31 @@ async function runWeeklyContentGen(airtableToken, baseId) {
   }
 }
 
-// ─── BUFFER POSTER ────────────────────────────────────────────────────────────
-// Elk cron-run (1x per dag): pakt approved posts waarvan Scheduled For binnen
-// het laatste uur valt en stuurt ze naar Buffer voor publicatie.
-async function runBufferPoster(airtableToken, baseId) {
-  const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
-  if (!BUFFER_TOKEN) return { skipped: 'no BUFFER_ACCESS_TOKEN' };
+// ─── META GRAPH POSTER (Facebook + Instagram) ───────────────────────────────
+// Publiceert approved posts via de Meta Graph API. Hergebruikt het bestaande
+// geverifieerde Meta Business account (zelfde als WhatsApp).
+//
+// Env vars:
+//   META_PAGE_ID     Facebook Page ID
+//   META_PAGE_TOKEN  Page access token met pages_manage_posts (+ instagram_content_publish)
+//   META_IG_USER_ID  Instagram Business account ID (gekoppeld aan de Page)
+//
+// Timing-strategie (Vercel Hobby = 1 cron/dag):
+//   Facebook  -> native scheduled_publish_time -> publiceert exact op het slot.
+//   Instagram -> Graph API kan NIET schedulen -> publiceert op cron-tijd (nu).
+//   LinkedIn  -> geen Meta-kanaal -> gemarkeerd 'manual' (handmatig plaatsen).
+//
+// 'Buffer ID' veld wordt hergebruikt als externe post-ID (anti-duplicate).
+async function runMetaPoster(airtableToken, baseId) {
+  const PAGE_ID    = process.env.META_PAGE_ID;
+  const PAGE_TOKEN = process.env.META_PAGE_TOKEN;
+  const IG_USER_ID = process.env.META_IG_USER_ID;
+  if (!PAGE_TOKEN) return { skipped: 'no META_PAGE_TOKEN' };
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const GRAPH = 'https://graph.facebook.com/v19.0';
 
-  // STRATEGIE: 1× per dag fetch alle approved posts voor de komende 26 uur
-  // en queue ze in Buffer met scheduled_at parameter. Buffer publiceert ze
-  // dan zelf op de juiste tijd. Voordeel: cron hoeft NIET 3× per dag te
-  // draaien (Vercel Hobby kan dat niet zonder Pro plan).
-  //
-  // Tijd-venster: NOW tot NOW+26h.
-  // - 26 uur (niet 24) geeft overlap-buffer als cron iets later draait
-  // - Skip posts die al een Buffer ID hebben (anti-duplicate guard)
-
-  // Buffer profile IDs per platform (env vars).
-  const profiles = {
-    linkedin:  process.env.BUFFER_PROFILE_LINKEDIN,
-    instagram: process.env.BUFFER_PROFILE_INSTAGRAM,
-    facebook:  process.env.BUFFER_PROFILE_FACEBOOK
-  };
-
-  const inOneDay = new Date(Date.now() + 26*60*60*1000).toISOString();
-  // Approved + binnen 26h + nog niet in Buffer-queue (Buffer ID leeg)
+  const inOneDay = new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString();
+  // Approved + binnen 26h + nog niet gepubliceerd (externe ID leeg)
   const formula = encodeURIComponent(
     `AND({Status}="approved", IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
   );
@@ -587,79 +587,109 @@ async function runBufferPoster(airtableToken, baseId) {
   );
   if (!lr.ok) return { error: 'airtable list failed' };
   const list = (await lr.json()).records || [];
-  if (list.length === 0) return { checked: 0, queued: 0 };
+  if (list.length === 0) return { checked: 0, posted: 0 };
 
-  let queued = 0, failed = 0;
+  // typecast:true zodat nieuwe Status-opties ('manual') automatisch aangemaakt worden
+  const patch = (id, fields) => fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true })
+  });
+
+  let posted = 0, scheduled = 0, manual = 0, failed = 0;
   for (const post of list) {
-    const platform   = post.fields.Platform;
-    const content    = post.fields.Content || '';
-    const hashtags   = post.fields.Hashtags || '';
-    const imageUrl   = post.fields['Image URL'] || '';
-    const scheduled  = post.fields['Scheduled For'];
-    const profileId  = profiles[platform];
-
-    if (!profileId) {
-      await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: { Status: 'skipped', Error: `Geen BUFFER_PROFILE_${platform.toUpperCase()} env var` } })
-      });
-      failed++;
-      continue;
-    }
-    if (!scheduled) {
-      failed++;
-      continue;
-    }
-
-    // Buffer API verwacht scheduled_at als Unix timestamp in seconden
-    const scheduledUnix = Math.floor(new Date(scheduled).getTime() / 1000);
-
-    const body = new URLSearchParams();
-    body.append('text', (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000));
-    body.append('profile_ids[]', profileId);
-    if (imageUrl) body.append('media[photo]', imageUrl);
-    body.append('scheduled_at', String(scheduledUnix));   // Buffer queue't zelf
+    const platform  = post.fields.Platform;
+    const content   = post.fields.Content || '';
+    const hashtags  = post.fields.Hashtags || '';
+    const imageUrl  = post.fields['Image URL'] || '';
+    const schedTime = post.fields['Scheduled For'];
+    const text      = (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000);
+    const schedUnix = schedTime ? Math.floor(new Date(schedTime).getTime() / 1000) : 0;
 
     try {
-      const br = await fetch('https://api.bufferapp.com/1/updates/create.json', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${BUFFER_TOKEN}`,
-          'Content-Type':  'application/x-www-form-urlencoded'
-        },
-        body: body.toString()
-      });
-      const bd = await br.json().catch(() => ({}));
-      if (br.ok && bd.success) {
-        const bufferId = (bd.updates?.[0]?.id) || '';
-        // Status='posted' = vanuit ons systeem 'klaar overgedragen aan Buffer'
-        // (Buffer publiceert later op scheduled_at). Posted At = wanneer wij
-        // 'm in de queue stopten.
-        await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: {
+      // ── LINKEDIN: geen Meta-kanaal → markeer voor handmatig plaatsen ──────
+      if (platform === 'linkedin') {
+        await patch(post.id, { Status: 'manual', Error: 'LinkedIn: handmatig plaatsen (kopieer de tekst).' });
+        manual++;
+        continue;
+      }
+
+      // ── FACEBOOK: native scheduled publish ────────────────────────────────
+      if (platform === 'facebook') {
+        if (!PAGE_ID) { await patch(post.id, { Status: 'skipped', Error: 'META_PAGE_ID ontbreekt' }); failed++; continue; }
+        const nowSec = Math.floor(Date.now() / 1000);
+        // FB vereist scheduled_publish_time minstens 10 min in de toekomst.
+        const canSchedule = schedUnix > nowSec + 600;
+        const params = new URLSearchParams();
+        params.append('access_token', PAGE_TOKEN);
+        let endpoint;
+        if (imageUrl) {
+          endpoint = `${GRAPH}/${PAGE_ID}/photos`;
+          params.append('url', imageUrl);
+          params.append('caption', text);
+        } else {
+          endpoint = `${GRAPH}/${PAGE_ID}/feed`;
+          params.append('message', text);
+        }
+        if (canSchedule) { params.append('published', 'false'); params.append('scheduled_publish_time', String(schedUnix)); }
+        const r = await fetch(endpoint, { method: 'POST', body: params });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.id) {
+          await patch(post.id, {
             Status: 'posted',
             'Posted At': new Date().toISOString(),
-            'Buffer ID': bufferId
-          }})
-        });
-        queued++;
-      } else {
-        await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${post.id}`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: { Status: 'failed', Error: JSON.stringify(bd).slice(0, 500) } })
-        });
-        failed++;
+            'Buffer ID': 'fb_' + d.id
+          });
+          if (canSchedule) scheduled++; else posted++;
+        } else {
+          await patch(post.id, { Status: 'failed', Error: ('FB: ' + JSON.stringify(d.error || d)).slice(0, 500) });
+          failed++;
+        }
+        await new Promise(res => setTimeout(res, 400));
+        continue;
       }
-    } catch (err) {
+
+      // ── INSTAGRAM: 2-staps publish (vereist afbeelding, geen scheduling) ──
+      if (platform === 'instagram') {
+        if (!IG_USER_ID) { await patch(post.id, { Status: 'skipped', Error: 'META_IG_USER_ID ontbreekt' }); failed++; continue; }
+        if (!imageUrl)   { await patch(post.id, { Status: 'failed', Error: 'Instagram vereist een afbeelding' }); failed++; continue; }
+        // 1. Container aanmaken
+        const cParams = new URLSearchParams();
+        cParams.append('access_token', PAGE_TOKEN);
+        cParams.append('image_url', imageUrl);
+        cParams.append('caption', text);
+        const cr = await fetch(`${GRAPH}/${IG_USER_ID}/media`, { method: 'POST', body: cParams });
+        const cd = await cr.json().catch(() => ({}));
+        if (!cr.ok || !cd.id) {
+          await patch(post.id, { Status: 'failed', Error: ('IG container: ' + JSON.stringify(cd.error || cd)).slice(0, 500) });
+          failed++; continue;
+        }
+        // 2. Publiceren
+        const pParams = new URLSearchParams();
+        pParams.append('access_token', PAGE_TOKEN);
+        pParams.append('creation_id', cd.id);
+        const pr = await fetch(`${GRAPH}/${IG_USER_ID}/media_publish`, { method: 'POST', body: pParams });
+        const pd = await pr.json().catch(() => ({}));
+        if (pr.ok && pd.id) {
+          await patch(post.id, { Status: 'posted', 'Posted At': new Date().toISOString(), 'Buffer ID': 'ig_' + pd.id });
+          posted++;
+        } else {
+          await patch(post.id, { Status: 'failed', Error: ('IG publish: ' + JSON.stringify(pd.error || pd)).slice(0, 500) });
+          failed++;
+        }
+        await new Promise(res => setTimeout(res, 800));
+        continue;
+      }
+
+      // Onbekend platform
+      await patch(post.id, { Status: 'skipped', Error: 'Onbekend platform: ' + platform });
       failed++;
-      console.error('[buffer] queue failed:', err.message);
+    } catch (err) {
+      console.error('[meta-poster] fout:', err.message);
+      await patch(post.id, { Status: 'failed', Error: ('Exception: ' + err.message).slice(0, 500) }).catch(() => {});
+      failed++;
     }
-    await new Promise(r => setTimeout(r, 300));
   }
-  console.log(`[buffer-poster] queued=${queued} failed=${failed} checked=${list.length}`);
-  return { checked: list.length, queued, failed };
+  console.log(`[meta-poster] posted=${posted} scheduled=${scheduled} manual=${manual} failed=${failed} checked=${list.length}`);
+  return { checked: list.length, posted, scheduled, manual, failed };
 }
