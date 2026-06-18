@@ -827,7 +827,7 @@ module.exports = async function handler(req, res) {
                 body: JSON.stringify({
                   fields: {
                     fldsqiSy41CCDickr: email,           // Email
-                    fldqi8JWgFgJF4X4R: loginPassword,   // Password Hash (raw. Auth does timing-safe compare)
+                    fldqi8JWgFgJF4X4R: require('bcryptjs').hashSync(loginPassword, 10),   // Password Hash (bcrypt; auth.js verifieert)
                     fldmKwegSUj1joru3: clientName,      // Client Name
                     fldbrCpBuQjJBfZsv: projectCode,     // Project Code
                     fldxZMgVXSy7EShDL: apiKey,          // API Key

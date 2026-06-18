@@ -1,4 +1,20 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+
+// ── Wachtwoord-hashing (bcrypt) ────────────────────────────────────────────────
+// Wachtwoorden werden vroeger als plaintext in "Password Hash" bewaard. Nu hashen
+// we met bcrypt. Backward-compatible: bestaande plaintext-wachtwoorden blijven
+// werken (legacy-pad) en worden bij de eerstvolgende succesvolle login stil omgezet
+// naar bcrypt. Niemand wordt buitengesloten.
+const BCRYPT_ROUNDS = 10;
+function isHashed(s) { return /^\$2[aby]\$/.test(String(s || '')); }
+function hashPassword(pw) { return bcrypt.hashSync(String(pw), BCRYPT_ROUNDS); }
+function verifyPassword(pw, stored) {
+  stored = String(stored || '');
+  if (!stored) return false;
+  if (isHashed(stored)) { try { return bcrypt.compareSync(String(pw), stored); } catch { return false; } }
+  return safeEqual(pw, stored);   // legacy plaintext
+}
 
 // Exponential backoff + jitter for Airtable 429. auth path only.
 // 4 attempts: ~1 s, ~2 s, ~4 s, final.  Max ~7 s server wait.
@@ -216,7 +232,7 @@ module.exports = async function handler(req, res) {
         {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields: { 'Password Hash': newPassword } })
+          body:    JSON.stringify({ fields: { 'Password Hash': hashPassword(newPassword) } })
         }
       );
       if (!updRes.ok) {
@@ -323,9 +339,24 @@ module.exports = async function handler(req, res) {
     const user       = userRecord.fields;
     const storedHash = String(user['Password Hash'] || user['fldPasswordHash'] || '');
 
-    // Timing-safe server-side compare. Never query Airtable with the password
-    if (!storedHash || !safeEqual(password, storedHash)) {
+    // Verifieer wachtwoord. bcrypt voor nieuwe hashes, timing-safe plaintext voor legacy.
+    if (!storedHash || !verifyPassword(password, storedHash)) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
+    }
+    // Transparante upgrade: oude plaintext-wachtwoorden eenmalig omzetten naar bcrypt.
+    // Best-effort: faalt dit, dan blijft de login gewoon werken (legacy-pad blijft geldig).
+    if (!isHashed(storedHash)) {
+      try {
+        await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}/${userRecord.id}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: { 'Password Hash': hashPassword(password) } })
+          }
+        );
+        _userCache.delete(email);
+      } catch (e) { /* upgrade nooit de login laten blokkeren */ }
     }
 
     const userData = {
