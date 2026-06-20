@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
     const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
     if (AIRTABLE_TOKEN && BASE_ID) {
-      const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${project.replace(/"/g, '\\"')}"`);
+      const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${project.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
       // 3-second hard cap so a slow Airtable can't slow down the form-page render
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 3000);
@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
         const t2 = setTimeout(() => ctrl2.abort(), 2500);
         const since = new Date(Date.now() - 7*86400000).toISOString();
         const leadFormula = encodeURIComponent(
-          `AND({fldSmczuyUJd26HLe}="${project.replace(/"/g, '\\"')}",IS_AFTER({fldR0r13EU4RwrtvH},"${since}"))`
+          `AND({fldSmczuyUJd26HLe}="${project.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",IS_AFTER({fldR0r13EU4RwrtvH},"${since}"))`
         );
         const lRes = await fetch(
           `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${leadFormula}&fields[]=fldR0r13EU4RwrtvH&pageSize=100`,
@@ -249,6 +249,8 @@ module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');     // always render fresh. Client just changed AI Name
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.status(200).send(`<!DOCTYPE html>
 <html lang="${lang}">
