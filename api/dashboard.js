@@ -9358,7 +9358,13 @@ function toggleManualCreate() {
 }
 
 async function sendClientInvite() {
-  const email = document.getElementById('nc-inv-email').value.trim();
+  // Normaliseer het adres: strip zero-width tekens, nbsp en ALLE whitespace
+  // (autofill- en plak-artefacten die de validatie onterecht lieten falen),
+  // en lowercase. Een geldig e-mailadres bevat nooit spaties, dus dit is veilig.
+  const email = (document.getElementById('nc-inv-email').value || '')
+    .replace(/[​-‍﻿ ]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
   const name  = document.getElementById('nc-inv-name').value.trim();
   const errEl = document.getElementById('nc-inv-error');
   const sucEl = document.getElementById('nc-inv-success');
