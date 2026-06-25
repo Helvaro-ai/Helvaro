@@ -1068,16 +1068,27 @@ const CONTENT_PILLARS = [
   { name: 'founder-pov',      weight: 15, focus: 'Eerlijke observatie als oprichter van een SaaS. Iets dat je deze week geleerd, vroeg, of besefte. Mens-achtig, niet corporate.' },
   { name: 'educational',      weight: 15, focus: 'Concrete tip die KMO-eigenaars zelf kunnen toepassen om hun lead-flow te verbeteren. 3 vragen, 5 stappen, etc.' },
   { name: 'behind-scenes',    focus: 'Wat er deze week is gebouwd of veranderd in Helvaro. Klein product moment. Maakt het tastbaar dat er een mens achter zit.' },
-  { name: 'customer-win',     focus: 'Hypothetische klant-story OF echte cijfers van een klant (met permissie). Resultaat-gedreven.' }
+  { name: 'customer-win',     focus: 'Hypothetische klant-story OF echte cijfers van een klant (met permissie). Resultaat-gedreven.' },
+  { name: 'personal-struggle', focus: 'Een eerlijk persoonlijk probleem of worsteling als solo-oprichter die Helvaro bouwt: twijfel, een tegenslag, een fout en de les eruit, of iets moeilijks van deze week. Kwetsbaar en echt, geen humblebrag. Ik-vorm. Eindig met een reflectie of vraag.' },
+  { name: 'company-story',     focus: 'Waarom Helvaro bestaat en waar het naartoe gaat. De missie: KMOs helpen geen leads meer te verliezen. Persoonlijke "waarom ik dit bouw" hoek, het verhaal achter het bedrijf. Geen verkooppraatje.' }
 ];
 
+// LinkedIn leunt op persoonlijke + bedrijfsverhalen (founder-stem), niet op product-pitch.
+const LINKEDIN_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'industry-insight'];
+
 const PLATFORM_TONES = {
-  linkedin:  { tone: 'Professioneel B2B, founder POV. 150-300 woorden. Geen emojis. Hooks, korte alineas, eindigen met een vraag.', maxLength: 2900, hashtagCount: 3 },
+  linkedin:  { tone: 'Persoonlijke founder-stem in de ik-vorm: schrijf over het bouwen van Helvaro, je eigen worstelingen en lessen, en waar het bedrijf naartoe gaat. Professioneel maar menselijk en kwetsbaar, geen corporate sales-taal. 150-300 woorden. Geen emojis. Sterke hook in zin 1, korte alineas, eindig met een vraag of reflectie.', maxLength: 2900, hashtagCount: 3 },
   instagram: { tone: 'Conversational, kort en visueel. 50-120 woorden. Geen emojis. Begin met een hook van 1 zin. Eindig met een vraag of insight.', maxLength: 2200, hashtagCount: 7 },
   facebook:  { tone: 'Community-tone, mid-lengte. 100-180 woorden. Geen emojis. Iets meer ruimte voor verhaal. Eindig met een vraag.', maxLength: 5000, hashtagCount: 4 }
 };
 
-function pickWeightedPillar() {
+function pickWeightedPillar(platform) {
+  // LinkedIn: kies uit de persoonlijke/bedrijfs-pijlers (founder-stem).
+  if (platform === 'linkedin') {
+    const pool = CONTENT_PILLARS.filter(p => LINKEDIN_PILLARS.includes(p.name));
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  // IG/FB: gewogen mix van alle product- + verhaalpijlers.
   const weighted = CONTENT_PILLARS.flatMap(p => Array(p.weight || 5).fill(p));
   return weighted[Math.floor(Math.random() * weighted.length)];
 }
@@ -1277,7 +1288,7 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
       if (platform.name === 'linkedin' && (dayOfWeek === 0 || dayOfWeek === 6)) {
         continue;   // LinkedIn rust in weekend
       }
-      const pillar = pickWeightedPillar();
+      const pillar = pickWeightedPillar(platform.name);
       const post = await generateOnePost(platform.name, pillar, date.toISOString());
       if (!post) { failed++; continue; }
       // Bouw scheduled-for tijd (UTC). Brussels CET = UTC+1, CEST = UTC+2.
