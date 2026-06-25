@@ -1075,6 +1075,8 @@ const CONTENT_PILLARS = [
 
 // LinkedIn leunt op persoonlijke + bedrijfsverhalen (founder-stem), niet op product-pitch.
 const LINKEDIN_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'industry-insight'];
+// Instagram/Facebook: alleen marketing-pijlers, geen persoonlijke founder-content.
+const MARKETING_PILLARS = ['pain-point', 'solution', 'industry-insight', 'educational', 'customer-win'];
 
 // Echte momenten uit de bouwreis van Helvaro, BEWUST geabstraheerd tot de menselijke
 // les. Voeden de persoonlijke/founder-posts zodat ze authentiek aanvoelen. Hier staat
@@ -1106,8 +1108,9 @@ function pickWeightedPillar(platform) {
     const pool = CONTENT_PILLARS.filter(p => LINKEDIN_PILLARS.includes(p.name));
     return pool[Math.floor(Math.random() * pool.length)];
   }
-  // IG/FB: gewogen mix van alle product- + verhaalpijlers.
-  const weighted = CONTENT_PILLARS.flatMap(p => Array(p.weight || 5).fill(p));
+  // Instagram/Facebook: ALLEEN marketing-pijlers (geen persoonlijke founder-content).
+  const pool = CONTENT_PILLARS.filter(p => MARKETING_PILLARS.includes(p.name));
+  const weighted = pool.flatMap(p => Array(p.weight || 5).fill(p));
   return weighted[Math.floor(Math.random() * weighted.length)];
 }
 
