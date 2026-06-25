@@ -704,8 +704,11 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Geldig e-mailadres is verplicht' });
       }
       const inviteLink = `https://app.helvaro.pro/onboard?invite=${encodeURIComponent(ONBOARD_CODE)}`;
-      await sendInviteEmail({ toEmail, toName, inviteLink });
-      return res.status(200).json({ success: true });
+      const inviteResult = await sendInviteEmail({ toEmail, toName, inviteLink });
+      if (!inviteResult || !inviteResult.ok) {
+        return res.status(502).json({ error: 'E-mail versturen mislukt (' + ((inviteResult && inviteResult.error) || 'onbekend') + '). Gebruik de handmatige link hieronder.' });
+      }
+      return res.status(200).json({ success: true, via: inviteResult.via });
     }
 
     // ── mode=onboard: client self-registration via invite code ────────────────
@@ -1048,8 +1051,9 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
           <p style="font-size:12px;color:#a0aab8">Vragen? Neem contact op met uw contactpersoon. Team Helvaro</p>
         </div>`;
   const { sendMail } = require('./_mailer');
-  await sendMail({ to: toEmail, subject: 'U bent uitgenodigd voor Helvaro', html })
-    .catch(err => console.error('[invite mail]', err && err.message));
+  const replyTo = process.env.REPLY_TO || 'sindi.s@usehelvaro.pro';
+  return sendMail({ to: toEmail, subject: 'U bent uitgenodigd voor Helvaro', html, replyTo })
+    .catch(err => { console.error('[invite mail]', err && err.message); return { ok: false, error: err && err.message }; });
 }
 
 // ─── CONTENT GENERATOR ────────────────────────────────────────────────────────
