@@ -223,7 +223,11 @@ function render(){
     list.innerHTML = '<div class="empty">Geen posts in "'+CURRENT+'". '+(CURRENT==='draft'?'Klik op <b>Genereer posts</b> om te starten.':'')+'</div>';
     return;
   }
-  list.innerHTML = recs.map(r=>{
+  // Push-wachtrij banner op het Goedgekeurd-tabblad.
+  const pushBanner = (CURRENT==='approved')
+    ? '<div class="note" style="border-left-color:var(--green)"><b>Klaar voor Buffer.</b> Dit zijn je goedgekeurde posts. Vraag Atlas <i>"push naar Buffer"</i> en ik zet ze met beeld in je Buffer-wachtrij (Buffer plaatst ze dan automatisch op je schema). Zet een post daarna op <b>Markeer geplaatst</b>.</div>'
+    : '';
+  list.innerHTML = pushBanner + recs.map(r=>{
     const f = r.fields||{};
     const img = f['Image URL'];
     const tags = f.Hashtags || '';
