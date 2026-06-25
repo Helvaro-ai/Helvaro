@@ -1076,6 +1076,24 @@ const CONTENT_PILLARS = [
 // LinkedIn leunt op persoonlijke + bedrijfsverhalen (founder-stem), niet op product-pitch.
 const LINKEDIN_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'industry-insight'];
 
+// Echte momenten uit de bouwreis van Helvaro, BEWUST geabstraheerd tot de menselijke
+// les. Voeden de persoonlijke/founder-posts zodat ze authentiek aanvoelen. Hier staat
+// met opzet NIETS gevoeligs in: geen security, geen tools bij naam, geen kapotte zaken.
+// De NOOIT-LEKKEN regel in de prompt bewaakt dat de AI er ook niets bij verzint.
+const FOUNDER_JOURNEY = [
+  'De keuze om een externe tool te schrappen en het zelf, geintegreerd te bouwen: minder afhankelijkheid, meer grip op de klantervaring.',
+  'Bewust een mens-in-de-loop houden in plaats van alles meteen automatiseren, zolang er nog maar weinig klanten zijn.',
+  'Als bootstrapper kiezen voor simpele, betaalbare oplossingen in plaats van een dure, indrukwekkende stack.',
+  'De discipline om niets te bouwen wat je niet echt gaat gebruiken.',
+  'Het geduld dat het kost om met grote platformen te integreren.',
+  'De afweging tussen snel willen lanceren en het zorgvuldig en goed doen.',
+  'Solo bouwen: prioriteren wat klanten binnenhaalt boven wat technisch indrukwekkend is.',
+  'Een feature volledig herzien nadat de eerste aanpak niet bleek te passen.',
+  'Leren dat saai en betrouwbaar vaak wint van slim en fragiel.',
+  'Eerlijk durven zeggen dat een eerdere aanpak niet werkte, en opnieuw beginnen.'
+];
+const JOURNEY_PILLARS = ['personal-struggle', 'company-story', 'behind-scenes', 'founder-pov'];
+
 const PLATFORM_TONES = {
   linkedin:  { tone: 'Persoonlijke founder-stem in de ik-vorm: schrijf over het bouwen van Helvaro, je eigen worstelingen en lessen, en waar het bedrijf naartoe gaat. Professioneel maar menselijk en kwetsbaar, geen corporate sales-taal. 150-300 woorden. Geen emojis. Sterke hook in zin 1, korte alineas, eindig met een vraag of reflectie.', maxLength: 2900, hashtagCount: 3 },
   instagram: { tone: 'Conversational, kort en visueel. 50-120 woorden. Geen emojis. Begin met een hook van 1 zin. Eindig met een vraag of insight.', maxLength: 2200, hashtagCount: 7 },
@@ -1097,6 +1115,11 @@ async function generateOnePost(platform, pillar, dateIso) {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
   if (!ANTHROPIC_KEY) { console.error('[content-gen] ANTHROPIC_API_KEY niet ingesteld'); return null; }
   const tone = PLATFORM_TONES[platform];
+  let journeyContext = '';
+  if (JOURNEY_PILLARS.includes(pillar.name)) {
+    const theme = FOUNDER_JOURNEY[Math.floor(Math.random() * FOUNDER_JOURNEY.length)];
+    journeyContext = `\nECHT MOMENT UIT DE REIS (bouw de post hierrond, maak de les universeel en herkenbaar, verzin geen details):\n${theme}\n`;
+  }
   const prompt = `Je schrijft een social media post voor Helvaro op ${platform}.
 
 OVER HELVARO:
@@ -1104,7 +1127,7 @@ Helvaro is een Belgische B2B SaaS. KMOs (auto-handel, kappers, advocaten, vastgo
 
 CONTENT PIJLER VOOR DEZE POST: ${pillar.name}
 ${pillar.focus}
-
+${journeyContext}
 PLATFORM TONE:
 ${tone.tone}
 
@@ -1115,6 +1138,7 @@ KRITIEKE REGELS:
 - WEL: concrete situaties, getallen, zinsbouw als een echte ondernemer
 - Schrijf in het Nederlands
 - Geen vermelding van prijs (€1.000/maand) tenzij pillar=pain-point of customer-win
+- NOOIT LEKKEN: noem geen technische details, geen security-, wachtwoord- of datalek-onderwerpen, geen specifieke tools/leveranciers bij naam (positief noch negatief), geen klantnamen of klantdata, geen interne werking of infrastructuur. Suggereer NOOIT dat iets in het product kapot, onveilig of onaf is. Abstraheer altijd naar de menselijke les. Bij twijfel: laat het weg.
 
 OUTPUT FORMAT (strikt):
 TITLE: <korte interne titel max 60 chars>
