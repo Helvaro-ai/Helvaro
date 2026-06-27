@@ -1203,36 +1203,66 @@ Schrijf nu de post.`;
   }
 }
 
-// AI-beeldgeneratie via Pollinations.ai (gratis, geen API key, geen tegoed).
-// Genereert een uniek beeld uit de prompt, downloadt het en uploadt naar Vercel
-// Blob (permanente publieke URL). Faalt stil (lege string) zodat de Pexels-fallback
-// kan inspringen. Optioneel: POLLINATIONS_TOKEN env voor hogere rate-limits.
-async function generateAIImage(prompt, platform) {
+// Upload een buffer naar Vercel Blob -> permanente publieke URL (of '' als niet kan).
+async function uploadToBlob(buffer, contentType, platform) {
+  let put;
+  try { ({ put } = require('@vercel/blob')); }
+  catch (e) { console.error('[ai-image] @vercel/blob niet beschikbaar:', e.message); return ''; }
+  if (!process.env.BLOB_READ_WRITE_TOKEN) { console.warn('[ai-image] geen BLOB_READ_WRITE_TOKEN'); return ''; }
+  const ext = (contentType || '').includes('png') ? 'png' : 'jpg';
+  const filename = `social/${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const blob = await put(filename, buffer, {
+    access: 'public', contentType: contentType || 'image/png', token: process.env.BLOB_READ_WRITE_TOKEN
+  });
+  return (blob.url || '').slice(0, 500);
+}
+
+// OpenAI gpt-image-1-mini: goedkoop (~$0.005-0.015/beeld), actueel model (dall-e-3 is
+// uit de API sinds mei 2026). Vereist een GEVERIFIEERDE org; anders 403 en GEEN credit
+// verbruikt (we vallen dan stil terug op Pollinations). Geeft b64 terug -> upload Blob.
+async function generateOpenAIImage(prompt, platform) {
+  const KEY = process.env.OPENAI_API_KEY || process.env.OPENAI;
+  if (!KEY) return '';
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return '';   // zonder hosting geen zin
   try {
-    // IG = vierkant (1024x1024), Facebook = landscape (1280x720).
+    const size = platform === 'instagram' ? '1024x1024' : '1536x1024';   // IG vierkant, FB landscape
+    const enriched = `${prompt}. Professional photography, clean, brand-safe, no text, no letters, no watermark.`;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 55000);
+    let r;
+    try {
+      r = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY}` },
+        body: JSON.stringify({ model: 'gpt-image-1-mini', prompt: enriched.slice(0, 3000), size, quality: 'medium', n: 1 }),
+        signal: ctrl.signal
+      });
+    } finally { clearTimeout(t); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { console.error('[ai-image] OpenAI err', r.status, JSON.stringify(d.error || '').slice(0, 220)); return ''; }
+    const b64 = d.data && d.data[0] && d.data[0].b64_json;
+    if (!b64) { console.error('[ai-image] OpenAI gaf geen b64'); return ''; }
+    return await uploadToBlob(Buffer.from(b64, 'base64'), 'image/png', platform);
+  } catch (err) { console.error('[ai-image] OpenAI exception:', err.message); return ''; }
+}
+
+// Pollinations.ai: gratis, geen key, geen tegoed. Vangnet als OpenAI niet kan.
+async function generatePollinationsImage(prompt, platform) {
+  try {
     const width  = platform === 'instagram' ? 1024 : 1280;
     const height = platform === 'instagram' ? 1024 : 720;
     const seed = Math.floor(Math.random() * 1e9);
     const enriched = `${prompt}. Professional photography, clean, brand-safe, no text, no watermark, no letters.`;
-    const params = new URLSearchParams({
-      width: String(width), height: String(height),
-      seed: String(seed), model: 'flux', nologo: 'true', enhance: 'true'
-    });
+    const params = new URLSearchParams({ width: String(width), height: String(height), seed: String(seed), model: 'flux', nologo: 'true', enhance: 'true' });
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(enriched.slice(0, 1500))}?${params}`;
     const headers = {};
     if (process.env.POLLINATIONS_TOKEN) headers.Authorization = `Bearer ${process.env.POLLINATIONS_TOKEN}`;
-
-    // Zonder Vercel Blob kunnen we niet hosten. Fallback: geef een compacte,
-    // deterministische Pollinations-URL terug die de browser/Buffer rechtstreeks laadt.
-    // (Beeld laadt iets trager maar werkt zonder extra setup.)
+    // Zonder Blob: geef een compacte directe Pollinations-URL terug (browser laadt rechtstreeks).
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.warn('[ai-image] geen BLOB_READ_WRITE_TOKEN -> directe Pollinations-URL als fallback');
-      const shortParams = new URLSearchParams({ width: String(width), height: String(height), seed: String(seed), model: 'flux', nologo: 'true' });
-      const direct = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 120))}?${shortParams}`;
-      return direct.length <= 500 ? direct : (`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 60))}?${shortParams}`).slice(0, 500);
+      const sp = new URLSearchParams({ width: String(width), height: String(height), seed: String(seed), model: 'flux', nologo: 'true' });
+      const direct = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 120))}?${sp}`;
+      return direct.length <= 500 ? direct : (`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 60))}?${sp}`).slice(0, 500);
     }
-
-    // Pollinations rendert het beeld on-the-fly; geef het ruim de tijd.
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 45000);
     let r;
@@ -1242,28 +1272,16 @@ async function generateAIImage(prompt, platform) {
     const ct = r.headers.get('content-type') || '';
     if (!ct.startsWith('image/')) { console.error('[ai-image] Pollinations gaf geen beeld:', ct); return ''; }
     const buffer = Buffer.from(await r.arrayBuffer());
-    if (buffer.length < 1000) { console.error('[ai-image] Pollinations beeld te klein'); return ''; }
+    if (buffer.length < 1000) return '';
+    return await uploadToBlob(buffer, ct, platform);
+  } catch (err) { console.error('[ai-image] Pollinations exception:', err.message); return ''; }
+}
 
-    // Upload naar Vercel Blob voor een blijvende publieke URL.
-    let put;
-    try { ({ put } = require('@vercel/blob')); }
-    catch (e) { console.error('[ai-image] @vercel/blob niet beschikbaar:', e.message); return ''; }
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.warn('[ai-image] BLOB_READ_WRITE_TOKEN niet ingesteld. Val terug op Pexels.');
-      return '';
-    }
-    const ext = ct.includes('png') ? 'png' : 'jpg';
-    const filename = `social/${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const blob = await put(filename, buffer, {
-      access: 'public',
-      contentType: ct || 'image/jpeg',
-      token: process.env.BLOB_READ_WRITE_TOKEN
-    });
-    return (blob.url || '').slice(0, 500);
-  } catch (err) {
-    console.error('[ai-image] exception:', err.message);
-    return '';
-  }
+// Orchestrator: OpenAI gpt-image-1-mini primair, Pollinations als gratis vangnet.
+async function generateAIImage(prompt, platform) {
+  let url = await generateOpenAIImage(prompt, platform).catch(() => '');
+  if (!url) url = await generatePollinationsImage(prompt, platform).catch(() => '');
+  return url;
 }
 
 // Pexels API. Gratis 200 req/uur. Vraagt 1 random foto die matcht met query.
