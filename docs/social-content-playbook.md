@@ -98,6 +98,8 @@ Roadmap additions (not yet built, prioritized):
 - Volume: ~19 posts/week (LinkedIn 5, IG 7, FB 7). Research says 2-4 quality posts/week/platform beats volume, so quality-filter hard at approval.
 - Pipeline: Social Studio (`/social`) generates drafts -> Sindi reviews/edits/approves -> approved posts collect in the Goedgekeurd tab -> Atlas pushes to Buffer via the connector -> Buffer auto-posts on schedule. See `[[helvaro-buffer-social]]`.
 
+**Learning loop (live):** before each weekly generation, `fetchLearningExamples` (in `api/admin.js`) pulls recent posts bucketed per platform: `approved`/`posted` = positive examples (follow this tone), `skipped` = negative (avoid). These are injected into every generation prompt, so the generator drifts toward what Sindi actually approves. Her edits are learned automatically because approved posts hold the edited text. The more she reviews, the better it gets. Next step once posting starts: also feed back real engagement (Buffer/Meta metrics) to reweight `CONTENT_PILLARS`.
+
 ---
 
 ## 8. Quality bar (approve / reject checklist)
