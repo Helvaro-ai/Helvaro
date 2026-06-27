@@ -1114,7 +1114,7 @@ function pickWeightedPillar(platform) {
   return weighted[Math.floor(Math.random() * weighted.length)];
 }
 
-async function generateOnePost(platform, pillar, dateIso) {
+async function generateOnePost(platform, pillar, dateIso, learn) {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
   if (!ANTHROPIC_KEY) { console.error('[content-gen] ANTHROPIC_API_KEY niet ingesteld'); return null; }
   const tone = PLATFORM_TONES[platform];
@@ -1123,6 +1123,14 @@ async function generateOnePost(platform, pillar, dateIso) {
     const theme = FOUNDER_JOURNEY[Math.floor(Math.random() * FOUNDER_JOURNEY.length)];
     journeyContext = `\nECHT MOMENT UIT DE REIS (bouw de post hierrond, maak de les universeel en herkenbaar, verzin geen details):\n${theme}\n`;
   }
+  // Leer-loop: voed eerdere keuzes van Sindi terug. Goedgekeurd/geplaatst = volg de
+  // toon; overgeslagen = vermijd die stijl. Nooit letterlijk kopieren.
+  let learnContext = '';
+  if (learn && ((learn.good && learn.good.length) || (learn.bad && learn.bad.length))) {
+    const g = (learn.good || []).slice(0, 2).map(s => `- "${s}"`).join('\n');
+    const b = (learn.bad  || []).slice(0, 1).map(s => `- "${s}"`).join('\n');
+    learnContext = `\nLEER VAN SINDI'S KEUZES (neem de TOON over, kopieer niet letterlijk):\n${g ? `Goedgekeurd, dit werkt:\n${g}\n` : ''}${b ? `Overgeslagen, vermijd deze stijl/onderwerp:\n${b}\n` : ''}`;
+  }
   const prompt = `Je schrijft een social media post voor Helvaro op ${platform}.
 
 OVER HELVARO:
@@ -1130,7 +1138,7 @@ Helvaro is een Belgische B2B SaaS. KMOs (auto-handel, kappers, advocaten, vastgo
 
 CONTENT PIJLER VOOR DEZE POST: ${pillar.name}
 ${pillar.focus}
-${journeyContext}
+${journeyContext}${learnContext}
 PLATFORM TONE:
 ${tone.tone}
 
@@ -1312,6 +1320,32 @@ async function fetchPexelsImage(query) {
   }
 }
 
+// Leer-loop: haal recente posts op en bucket per platform in goed (approved/posted)
+// en slecht (skipped). Geeft { instagram:{good:[],bad:[]}, facebook:{...}, linkedin:{...} }.
+// Snippets ingekort; het model neemt de TOON over, kopieert niet letterlijk.
+async function fetchLearningExamples(airtableToken, baseId) {
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const out = {};
+  try {
+    const url = `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?pageSize=80&sort%5B0%5D%5Bfield%5D=Created%20At&sort%5B0%5D%5Bdirection%5D=desc`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    if (!r.ok) return out;
+    const d = await r.json();
+    for (const rec of (d.records || [])) {
+      const f = rec.fields || {};
+      const platform = String(f.Platform || '').toLowerCase();
+      const status   = String(f.Status   || '').toLowerCase();
+      const content  = String(f.Content  || '').trim();
+      if (!platform || !content) continue;
+      const bucket = out[platform] || (out[platform] = { good: [], bad: [] });
+      const snippet = content.replace(/\s+/g, ' ').slice(0, 220);
+      if ((status === 'approved' || status === 'posted') && bucket.good.length < 4) bucket.good.push(snippet);
+      else if (status === 'skipped' && bucket.bad.length < 3) bucket.bad.push(snippet);
+    }
+  } catch (err) { console.error('[content-gen] leer-loop ophalen mislukt:', err.message); }
+  return out;
+}
+
 // Genereer N dagen aan content. Per dag: 3 posts (LinkedIn 08:30, IG 12:00, FB 18:00 Brussels-tijd).
 async function generateContentWeek(airtableToken, baseId, days, startDate) {
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
@@ -1324,6 +1358,10 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
   let created = 0, failed = 0;
   const summary = [];
 
+  // Leer-loop: haal 1x de recente keuzes van Sindi op (goedgekeurd vs overgeslagen),
+  // per platform. Wordt aan elke generatie meegegeven zodat het model meebeweegt.
+  const learnAll = await fetchLearningExamples(airtableToken, baseId).catch(() => ({}));
+
   for (let day = 0; day < days; day++) {
     const date = new Date(startDate);
     date.setUTCDate(date.getUTCDate() + day);
@@ -1334,7 +1372,7 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
         continue;   // LinkedIn rust in weekend
       }
       const pillar = pickWeightedPillar(platform.name);
-      const post = await generateOnePost(platform.name, pillar, date.toISOString());
+      const post = await generateOnePost(platform.name, pillar, date.toISOString(), learnAll[platform.name]);
       if (!post) { failed++; continue; }
       // Bouw scheduled-for tijd (UTC). Brussels CET = UTC+1, CEST = UTC+2.
       // Voor simplicity gebruiken we UTC met +1 uur correctie (CET fallback).
