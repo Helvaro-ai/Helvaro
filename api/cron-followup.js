@@ -160,9 +160,13 @@ module.exports = async function handler(req, res) {
     // ── Meta Graph posting (elke cron-run) ──────────────────────────────────
     // Publiceert approved posts via Meta Graph: Facebook (gepland op het slot),
     // Instagram (direct), LinkedIn (gemarkeerd voor handmatig plaatsen).
+    // Ayrshare (autonoom, IG+FB+LinkedIn) zodra AYRSHARE_API_KEY gezet is; anders Meta Graph.
     let posterResult = null;
-    posterResult = await runMetaPoster(AIRTABLE_TOKEN, BASE_ID).catch(e => {
-      console.error('[cron-followup] meta poster failed:', e.message);
+    const poster = process.env.AYRSHARE_API_KEY
+      ? runAyrsharePoster(AIRTABLE_TOKEN, BASE_ID)
+      : runMetaPoster(AIRTABLE_TOKEN, BASE_ID);
+    posterResult = await poster.catch(e => {
+      console.error('[cron-followup] poster failed:', e.message);
       return null;
     });
 
@@ -692,4 +696,88 @@ async function runMetaPoster(airtableToken, baseId) {
   }
   console.log(`[meta-poster] posted=${posted} scheduled=${scheduled} manual=${manual} failed=${failed} checked=${list.length}`);
   return { checked: list.length, posted, scheduled, manual, failed };
+}
+
+// Volledig autonoom posten via Ayrshare (1 key -> IG + FB + LinkedIn). Actief zodra
+// AYRSHARE_API_KEY gezet is (anders draait de Meta-poster). Genereert ook automatisch
+// het ontbrekende beeld voor IG/FB via een interne generate-image call.
+// Voor 100% hands-off: zet ook AUTO_PUBLISH=true zodat gegenereerde posts meteen
+// 'approved' zijn (geen handmatige goedkeuring). Anders blijven ze 'draft' voor review.
+async function runAyrsharePoster(airtableToken, baseId) {
+  const KEY = process.env.AYRSHARE_API_KEY;
+  if (!KEY) return { skipped: 'no AYRSHARE_API_KEY' };
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const ADMIN_KEY = process.env.ADMIN_KEY;
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  const derived = ADMIN_KEY ? require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex') : '';
+
+  const inOneDay = new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString();
+  const formula = encodeURIComponent(
+    `AND({Status}="approved", IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
+  );
+  const lr = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } });
+  if (!lr.ok) return { error: 'airtable list failed' };
+  const list = (await lr.json()).records || [];
+  if (list.length === 0) return { checked: 0, posted: 0 };
+
+  const patch = (id, fields) => fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true })
+  });
+
+  // Genereer ontbrekend beeld voor IG/FB via interne generate-image call.
+  async function ensureImage(post) {
+    let imageUrl = post.fields['Image URL'] || '';
+    const platform = String(post.fields.Platform || '').toLowerCase();
+    if (imageUrl || platform === 'linkedin' || !derived) return imageUrl;
+    try {
+      const r = await fetch(`${baseUrl}/api/admin`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': derived },
+        body: JSON.stringify({ mode: 'generate-image', id: post.id })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d && d.imageUrl) imageUrl = d.imageUrl;
+    } catch {}
+    return imageUrl;
+  }
+
+  let posted = 0, scheduled = 0, failed = 0;
+  for (const post of list) {
+    const platform  = String(post.fields.Platform || '').toLowerCase();
+    const content   = post.fields.Content || '';
+    const hashtags  = post.fields.Hashtags || '';
+    const schedTime = post.fields['Scheduled For'];
+    const text = (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000);
+    try {
+      const imageUrl = await ensureImage(post);
+      if (platform === 'instagram' && !imageUrl) {
+        await patch(post.id, { Status: 'failed', Error: 'Instagram vereist een afbeelding' }); failed++; continue;
+      }
+      const body = { post: text, platforms: [platform] };
+      if (imageUrl) body.mediaUrls = [imageUrl];
+      const willSchedule = schedTime && new Date(schedTime).getTime() > Date.now() + 60000;
+      if (willSchedule) body.scheduleDate = new Date(schedTime).toISOString();
+      const r = await fetch('https://app.ayrshare.com/api/post', {
+        method: 'POST', headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.status !== 'error') {
+        const id = d.id || (d.postIds && d.postIds[0] && d.postIds[0].id) || 'ok';
+        await patch(post.id, { Status: 'posted', 'Posted At': new Date().toISOString(), 'Buffer ID': 'ay_' + id });
+        if (willSchedule) scheduled++; else posted++;
+      } else {
+        await patch(post.id, { Status: 'failed', Error: ('Ayrshare: ' + JSON.stringify(d.errors || d.error || d)).slice(0, 500) });
+        failed++;
+      }
+      await new Promise(res => setTimeout(res, 400));
+    } catch (e) {
+      await patch(post.id, { Status: 'failed', Error: ('Ayrshare exc: ' + e.message).slice(0, 500) }).catch(() => {});
+      failed++;
+    }
+  }
+  console.log(`[ayrshare-poster] posted=${posted} scheduled=${scheduled} failed=${failed} checked=${list.length}`);
+  return { checked: list.length, posted, scheduled, failed, via: 'ayrshare' };
 }
