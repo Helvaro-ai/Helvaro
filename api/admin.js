@@ -1077,6 +1077,8 @@ const CONTENT_PILLARS = [
 const LINKEDIN_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'industry-insight'];
 // Instagram/Facebook: alleen marketing-pijlers, geen persoonlijke founder-content.
 const MARKETING_PILLARS = ['pain-point', 'solution', 'industry-insight', 'educational', 'customer-win'];
+// Persoonlijke groei (founder-stem) voor de persoonlijke LinkedIn-slot.
+const PERSONAL_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes'];
 
 // Echte momenten uit de bouwreis van Helvaro, BEWUST geabstraheerd tot de menselijke
 // les. Voeden de persoonlijke/founder-posts zodat ze authentiek aanvoelen. Hier staat
@@ -1102,13 +1104,12 @@ const PLATFORM_TONES = {
   facebook:  { tone: 'Community-tone, mid-lengte. 100-180 woorden. Geen emojis. Iets meer ruimte voor verhaal. Eindig met een vraag.', maxLength: 5000, hashtagCount: 4 }
 };
 
-function pickWeightedPillar(platform) {
-  // LinkedIn: kies uit de persoonlijke/bedrijfs-pijlers (founder-stem).
-  if (platform === 'linkedin') {
-    const pool = CONTENT_PILLARS.filter(p => LINKEDIN_PILLARS.includes(p.name));
+function pickPillarByMode(mode) {
+  // 'personal' = persoonlijke groei (founder-stem). Anders = marketing (gewogen).
+  if (mode === 'personal') {
+    const pool = CONTENT_PILLARS.filter(p => PERSONAL_PILLARS.includes(p.name));
     return pool[Math.floor(Math.random() * pool.length)];
   }
-  // Instagram/Facebook: ALLEEN marketing-pijlers (geen persoonlijke founder-content).
   const pool = CONTENT_PILLARS.filter(p => MARKETING_PILLARS.includes(p.name));
   const weighted = pool.flatMap(p => Array(p.weight || 5).fill(p));
   return weighted[Math.floor(Math.random() * weighted.length)];
@@ -1349,10 +1350,15 @@ async function fetchLearningExamples(airtableToken, baseId) {
 // Genereer N dagen aan content. Per dag: 3 posts (LinkedIn 08:30, IG 12:00, FB 18:00 Brussels-tijd).
 async function generateContentWeek(airtableToken, baseId, days, startDate) {
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
-  const platforms = [
-    { name: 'linkedin',  hour: 8,  minute: 30 },
-    { name: 'instagram', hour: 12, minute: 0 },
-    { name: 'facebook',  hour: 18, minute: 0 }
+  // 6 posts per dag: 2 Instagram + 2 Facebook (marketing) + 2 LinkedIn
+  // (1 persoonlijke groei + 1 Helvaro-marketing). Tijden in Brussel.
+  const slots = [
+    { name: 'linkedin',  hour: 8,  minute: 30, mode: 'personal'  },
+    { name: 'instagram', hour: 11, minute: 0,  mode: 'marketing' },
+    { name: 'facebook',  hour: 12, minute: 30, mode: 'marketing' },
+    { name: 'linkedin',  hour: 13, minute: 30, mode: 'marketing' },
+    { name: 'instagram', hour: 17, minute: 0,  mode: 'marketing' },
+    { name: 'facebook',  hour: 18, minute: 30, mode: 'marketing' }
   ];
 
   let created = 0, failed = 0;
@@ -1365,26 +1371,25 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
   for (let day = 0; day < days; day++) {
     const date = new Date(startDate);
     date.setUTCDate(date.getUTCDate() + day);
-    // Skip weekends voor LinkedIn (B2B algoritme bias)
-    const dayOfWeek = date.getUTCDay();   // 0=Sun, 6=Sat
-    for (const platform of platforms) {
-      if (platform.name === 'linkedin' && (dayOfWeek === 0 || dayOfWeek === 6)) {
-        continue;   // LinkedIn rust in weekend
-      }
-      const pillar = pickWeightedPillar(platform.name);
-      const post = await generateOnePost(platform.name, pillar, date.toISOString(), learnAll[platform.name]);
+
+    // Genereer de 6 posts van deze dag PARALLEL (1 ronde i.p.v. 6 sequentiele
+    // calls). Zo blijft 6 x 7 = 42 posts ruim binnen de 60s functie-limiet.
+    const dayPosts = await Promise.all(slots.map(async (slot) => {
+      const pillar = pickPillarByMode(slot.mode);
+      const post = await generateOnePost(slot.name, pillar, date.toISOString(), learnAll[slot.name]).catch(() => null);
+      return { slot, pillar, post };
+    }));
+
+    for (const { slot, pillar, post } of dayPosts) {
       if (!post) { failed++; continue; }
-      // Bouw scheduled-for tijd (UTC). Brussels CET = UTC+1, CEST = UTC+2.
-      // Voor simplicity gebruiken we UTC met +1 uur correctie (CET fallback).
+      // Brussels CET = UTC+1 (CEST = UTC+2); -1u correctie als CET-fallback.
       const scheduledUtc = new Date(Date.UTC(
         date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(),
-        platform.hour - 1, platform.minute  // -1 = CET to UTC
+        slot.hour - 1, slot.minute
       ));
-
-      // Schrijf naar Airtable
       const fields = {
         Title:           post.title,
-        Platform:        platform.name,
+        Platform:        slot.name,
         Content:         post.content,
         'Scheduled For': scheduledUtc.toISOString(),
         Status:          'draft',
@@ -1393,8 +1398,8 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
         Hashtags:        post.hashtags,
         'Created At':    new Date().toISOString()
       };
-      // Beeld-prompt bewaren voor IG + FB; de afbeelding zelf wordt later apart
-      // gegenereerd via mode=generate-image (voorkomt 504-timeout). LinkedIn = tekst.
+      // Beeld-prompt bewaren voor IG + FB; afbeelding wordt later apart gegenereerd
+      // via mode=generate-image (voorkomt timeout). LinkedIn = tekst-only.
       if (post.imagePrompt) fields['Image Prompt'] = post.imagePrompt;
       const r = await fetch(
         `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}`,
@@ -1406,14 +1411,12 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
       );
       if (r.ok) {
         created++;
-        summary.push({ date: scheduledUtc.toISOString(), platform: platform.name, pillar: pillar.name, preview: post.content.slice(0, 80) });
+        summary.push({ date: scheduledUtc.toISOString(), platform: slot.name, pillar: pillar.name, preview: post.content.slice(0, 80) });
       } else {
         failed++;
         const errBody = await r.text().catch(() => '');
         console.error('[content-gen] Airtable err:', errBody.slice(0, 200));
       }
-      // Verspreid Anthropic load (3 posts per dag x 7 dagen = 21 calls)
-      await new Promise(res => setTimeout(res, 400));
     }
   }
   return { ok: true, created, failed, summary };
