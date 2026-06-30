@@ -157,9 +157,16 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ── Meta Graph posting (elke cron-run) ──────────────────────────────────
-    // Publiceert approved posts via Meta Graph: Facebook (gepland op het slot),
-    // Instagram (direct), LinkedIn (gemarkeerd voor handmatig plaatsen).
+    // ── Beeld-backfill (server-side, betrouwbaar) ───────────────────────────
+    // Genereert ontbrekende beelden voor aankomende IG/FB posts. Vervangt de
+    // fragiele browser-generatie: draait elke cron, los van of de pagina open is.
+    let imageResult = null;
+    imageResult = await runImageBackfill(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+      console.error('[cron-followup] image backfill failed:', e.message);
+      return null;
+    });
+
+    // ── Posting (elke cron-run) ─────────────────────────────────────────────
     // Ayrshare (autonoom, IG+FB+LinkedIn) zodra AYRSHARE_API_KEY gezet is; anders Meta Graph.
     let posterResult = null;
     const poster = process.env.AYRSHARE_API_KEY
@@ -170,7 +177,7 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, posted: posterResult });
+    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, images: imageResult, posted: posterResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -780,4 +787,44 @@ async function runAyrsharePoster(airtableToken, baseId) {
   }
   console.log(`[ayrshare-poster] posted=${posted} scheduled=${scheduled} failed=${failed} checked=${list.length}`);
   return { checked: list.length, posted, scheduled, failed, via: 'ayrshare' };
+}
+
+// Genereert server-side de ontbrekende beelden voor aankomende IG/FB posts.
+// Vervangt de fragiele browser-generatie. Roept de bestaande generate-image mode
+// intern aan (OpenAI gpt-image-1-mini -> Pollinations -> Pexels -> Vercel Blob).
+// PARALLEL en gecapt zodat de cron binnen de 60s blijft (elke call is een eigen
+// serverless-invocatie met eigen timeout).
+async function runImageBackfill(airtableToken, baseId) {
+  const ADMIN_KEY = process.env.ADMIN_KEY;
+  if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  const derived = require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
+
+  const soon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+  // IG/FB met beeld-prompt, zonder Image URL, gepland binnen 3 dagen, niet overgeslagen/geplaatst.
+  const formula = encodeURIComponent(
+    `AND(OR({Platform}="instagram",{Platform}="facebook"), {Image Prompt}!="", {Image URL}="", {Status}!="skipped", {Status}!="posted", IS_BEFORE({Scheduled For}, "${soon}"))`
+  );
+  const lr = await fetch(
+    `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=6&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  );
+  if (!lr.ok) return { error: 'airtable list failed' };
+  const list = (await lr.json()).records || [];
+  if (list.length === 0) return { checked: 0, made: 0 };
+
+  const results = await Promise.all(list.map(async (post) => {
+    try {
+      const r = await fetch(`${baseUrl}/api/admin`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': derived },
+        body: JSON.stringify({ mode: 'generate-image', id: post.id })
+      });
+      const d = await r.json().catch(() => ({}));
+      return d && d.imageUrl ? 'ok' : 'fail';
+    } catch { return 'fail'; }
+  }));
+  const made = results.filter(x => x === 'ok').length;
+  console.log(`[image-backfill] made=${made} failed=${results.length - made} checked=${list.length}`);
+  return { checked: list.length, made, failed: results.length - made };
 }
