@@ -169,9 +169,11 @@ module.exports = async function handler(req, res) {
     // ── Posting (elke cron-run) ─────────────────────────────────────────────
     // Ayrshare (autonoom, IG+FB+LinkedIn) zodra AYRSHARE_API_KEY gezet is; anders Meta Graph.
     let posterResult = null;
-    const poster = process.env.AYRSHARE_API_KEY
-      ? runAyrsharePoster(AIRTABLE_TOKEN, BASE_ID)
-      : runMetaPoster(AIRTABLE_TOKEN, BASE_ID);
+    const poster = process.env.MAKE_WEBHOOK_URL
+      ? runMakePoster(AIRTABLE_TOKEN, BASE_ID)
+      : process.env.AYRSHARE_API_KEY
+        ? runAyrsharePoster(AIRTABLE_TOKEN, BASE_ID)
+        : runMetaPoster(AIRTABLE_TOKEN, BASE_ID);
     posterResult = await poster.catch(e => {
       console.error('[cron-followup] poster failed:', e.message);
       return null;
@@ -787,6 +789,83 @@ async function runAyrsharePoster(airtableToken, baseId) {
   }
   console.log(`[ayrshare-poster] posted=${posted} scheduled=${scheduled} failed=${failed} checked=${list.length}`);
   return { checked: list.length, posted, scheduled, failed, via: 'ayrshare' };
+}
+
+// Volledig autonoom posten via Make.com (webhook -> router -> Facebook + LinkedIn).
+// Actief zodra MAKE_WEBHOOK_URL gezet is. Instagram draait hier NIET mee: de IG
+// Business-account moet eerst op pagina-niveau aan de Helvaro Facebook-page hangen
+// (Account Center "Delen in meerdere profielen" is niet genoeg voor de Graph API).
+// Genereert ontbrekend beeld voor Facebook via een interne generate-image call.
+async function runMakePoster(airtableToken, baseId) {
+  const HOOK = process.env.MAKE_WEBHOOK_URL;
+  if (!HOOK) return { skipped: 'no MAKE_WEBHOOK_URL' };
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const ADMIN_KEY = process.env.ADMIN_KEY;
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  const derived = ADMIN_KEY ? require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex') : '';
+
+  const inOneDay = new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString();
+  const formula = encodeURIComponent(
+    `AND({Status}="approved", OR({Platform}="facebook",{Platform}="linkedin"), IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
+  );
+  const lr = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } });
+  if (!lr.ok) return { error: 'airtable list failed' };
+  const list = (await lr.json()).records || [];
+  if (list.length === 0) return { checked: 0, posted: 0 };
+
+  const patch = (id, fields) => fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true })
+  });
+
+  async function ensureImage(post) {
+    let imageUrl = post.fields['Image URL'] || '';
+    const platform = String(post.fields.Platform || '').toLowerCase();
+    if (imageUrl || platform === 'linkedin' || !derived) return imageUrl;
+    try {
+      const r = await fetch(`${baseUrl}/api/admin`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': derived },
+        body: JSON.stringify({ mode: 'generate-image', id: post.id })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d && d.imageUrl) imageUrl = d.imageUrl;
+    } catch {}
+    return imageUrl;
+  }
+
+  let posted = 0, failed = 0;
+  for (const post of list) {
+    const platform = String(post.fields.Platform || '').toLowerCase();
+    const content  = post.fields.Content || '';
+    const hashtags = post.fields.Hashtags || '';
+    const text = (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000);
+    try {
+      const imageUrl = await ensureImage(post);
+      if (platform === 'facebook' && !imageUrl) {
+        await patch(post.id, { Status: 'failed', Error: 'Facebook-post vereist een afbeelding' }); failed++; continue;
+      }
+      const r = await fetch(HOOK, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, text, imageUrl })
+      });
+      const txt = await r.text().catch(() => '');
+      if (r.ok) {
+        await patch(post.id, { Status: 'posted', 'Posted At': new Date().toISOString(), 'Buffer ID': 'make_' + post.id });
+        posted++;
+      } else {
+        await patch(post.id, { Status: 'failed', Error: ('Make: ' + txt).slice(0, 500) });
+        failed++;
+      }
+      await new Promise(res => setTimeout(res, 400));
+    } catch (e) {
+      await patch(post.id, { Status: 'failed', Error: ('Make exc: ' + e.message).slice(0, 500) }).catch(() => {});
+      failed++;
+    }
+  }
+  console.log(`[make-poster] posted=${posted} failed=${failed} checked=${list.length}`);
+  return { checked: list.length, posted, failed, via: 'make' };
 }
 
 // Genereert server-side de ontbrekende beelden voor aankomende IG/FB posts.
