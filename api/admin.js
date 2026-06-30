@@ -1099,9 +1099,9 @@ const FOUNDER_JOURNEY = [
 const JOURNEY_PILLARS = ['personal-struggle', 'company-story', 'behind-scenes', 'founder-pov'];
 
 const PLATFORM_TONES = {
-  linkedin:  { tone: 'Persoonlijke founder-stem in de ik-vorm: schrijf over het bouwen van Helvaro, je eigen worstelingen en lessen, en waar het bedrijf naartoe gaat. Professioneel maar menselijk en kwetsbaar, geen corporate sales-taal. 150-300 woorden. Geen emojis. Sterke hook in zin 1, korte alineas, eindig met een vraag of reflectie.', maxLength: 2900, hashtagCount: 3 },
-  instagram: { tone: 'Conversational, kort en visueel. 50-120 woorden. Geen emojis. Begin met een hook van 1 zin. Eindig met een vraag of insight.', maxLength: 2200, hashtagCount: 7 },
-  facebook:  { tone: 'Community-tone, mid-lengte. 100-180 woorden. Geen emojis. Iets meer ruimte voor verhaal. Eindig met een vraag.', maxLength: 5000, hashtagCount: 4 }
+  linkedin:  { tone: 'Persoonlijke founder-stem in de ik-vorm. Een concreet, echt moment met EEN duidelijke les. Reflectief alleen als het moment dat echt was, geen corporate inspiratie-cadans, geen fake-les framing. 150-300 woorden, kort genoeg uitgelegd voor mensen buiten de niche. Sterke hook in zin 1 (geen opwarmzin). Eindig met een concrete les, niet met een vraag om reacties te farmen.', maxLength: 2900, hashtagCount: 3 },
+  instagram: { tone: 'Kort en visueel, 50-120 woorden. EEN claim. Hook in zin 1, geen opwarmzin. De caption scherpt het beeld aan, herhaalt het niet. Eindig met een concreet inzicht (een vraag alleen als die echt past, nooit om reacties te farmen).', maxLength: 2200, hashtagCount: 7 },
+  facebook:  { tone: 'Community-toon, 100-180 woorden, ruimte voor een klein verhaal maar EEN claim. Hook in zin 1, geen opwarmzin. Specifiek, niet vaag. Eindig met een concreet inzicht of het verhaal, niet met een reactie-farm vraag.', maxLength: 5000, hashtagCount: 4 }
 };
 
 function pickPillarByMode(mode) {
@@ -1144,11 +1144,14 @@ PLATFORM TONE:
 ${tone.tone}
 
 KRITIEKE REGELS:
+- EEN claim per post. Argumenteert de post twee dingen, kies er een.
+- SPECIFIEK boven bijvoeglijk: een concrete situatie, een echt getal of een moment ("een autohandelaar verloor een lead van 30.000 euro door 12 minuten te laat te antwoorden"), nooit vage adjectieven.
+- STERKE eerste zin, geen opwarmzin. Schrap zin 1 als die alleen opbouwt.
+- GEEN reactie-farm vraag op het einde. Een vraag mag alleen als die echt uit de post volgt.
 - GEEN emojis (Helvaro policy)
 - GEEN em-dashes ( - ), gebruik gewone punten
-- GEEN AI-cliches ("Did you know", "Stel je voor", "In een wereld waar...")
-- WEL: concrete situaties, getallen, zinsbouw als een echte ondernemer
-- Schrijf in het Nederlands
+- GEEN hype/cliches: "Did you know", "Stel je voor", "In een wereld waar", "game-changer", "revolutionair", "naadloos", "ontketen", "the future of"
+- Schrijf in het Nederlands, zoals een echte ondernemer praat
 - Geen vermelding van prijs (€1.000/maand) tenzij pillar=pain-point of customer-win
 - NOOIT LEKKEN: noem geen technische details, geen security-, wachtwoord- of datalek-onderwerpen, geen specifieke tools/leveranciers bij naam (positief noch negatief), geen klantnamen of klantdata, geen interne werking of infrastructuur. Suggereer NOOIT dat iets in het product kapot, onveilig of onaf is. Abstraheer altijd naar de menselijke les. Bij twijfel: laat het weg.
 
