@@ -804,9 +804,13 @@ async function runMakePoster(airtableToken, baseId) {
   const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
   const derived = ADMIN_KEY ? require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex') : '';
 
-  const inOneDay = new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString();
+  // Venster rond nu: posts van vandaag (ook de morgen-slots die al voorbij zijn op
+  // het cron-moment) worden geplaatst, zonder oude backlog of verre toekomst te pakken.
+  // De cron draait 1x/dag (09:00 UTC = 11:00 Belgie), dus de dag-posts gaan gebatcht.
+  const winStart = new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString();
+  const winEnd   = new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString();
   const formula = encodeURIComponent(
-    `AND({Status}="approved", OR({Platform}="facebook",{Platform}="linkedin"), IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
+    `AND({Status}="approved", OR({Platform}="facebook",{Platform}="linkedin",{Platform}="instagram"), IS_AFTER({Scheduled For}, "${winStart}"), IS_BEFORE({Scheduled For}, "${winEnd}"), {Buffer ID}="")`
   );
   const lr = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
     { headers: { Authorization: `Bearer ${airtableToken}` } });
@@ -843,8 +847,8 @@ async function runMakePoster(airtableToken, baseId) {
     const text = (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000);
     try {
       const imageUrl = await ensureImage(post);
-      if (platform === 'facebook' && !imageUrl) {
-        await patch(post.id, { Status: 'failed', Error: 'Facebook-post vereist een afbeelding' }); failed++; continue;
+      if ((platform === 'facebook' || platform === 'instagram') && !imageUrl) {
+        await patch(post.id, { Status: 'failed', Error: platform + '-post vereist een afbeelding' }); failed++; continue;
       }
       const r = await fetch(HOOK, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
