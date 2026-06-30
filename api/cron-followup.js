@@ -145,12 +145,14 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ── Content generation (Sundays) ────────────────────────────────────────
-    // Zondag avond genereert AI 7 dagen aan social media posts voor de
-    // komende week. Drafts gaan naar Airtable Marketing Posts tabel.
-    // Klant approved op maandagochtend en cron post via Buffer.
+    // ── Content generation (wekelijks + self-heal) ──────────────────────────
+    // Genereert 7 dagen aan posts. Draait zondags EN zodra de voorraad laag is
+    // (minder dan ~1 dag vooruit), zodat het systeem nooit zonder content valt.
+    // Met auto-approve (standaard, zie admin.js) gaan posts meteen live, geen
+    // handmatige goedkeuring meer nodig.
     let contentResult = null;
-    if (now.getUTCDay() === 0) {   // 0=Sun
+    const lowBuffer = await upcomingPostsLow(AIRTABLE_TOKEN, BASE_ID).catch(() => false);
+    if (now.getUTCDay() === 0 || lowBuffer) {
       contentResult = await runWeeklyContentGen(AIRTABLE_TOKEN, BASE_ID).catch(e => {
         console.error('[cron-followup] content gen failed:', e.message);
         return null;
@@ -796,6 +798,22 @@ async function runAyrsharePoster(airtableToken, baseId) {
 // Business-account moet eerst op pagina-niveau aan de Helvaro Facebook-page hangen
 // (Account Center "Delen in meerdere profielen" is niet genoeg voor de Graph API).
 // Genereert ontbrekend beeld voor Facebook via een interne generate-image call.
+// True als er minder dan ~1 dag aan toekomstige posts klaarstaat -> bijgenereren.
+async function upcomingPostsLow(airtableToken, baseId) {
+  const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
+  const in2d = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  const formula = encodeURIComponent(
+    `AND(OR({Status}="approved",{Status}="draft"), IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${in2d}"))`
+  );
+  try {
+    const r = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=12`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } });
+    if (!r.ok) return false;
+    const n = ((await r.json()).records || []).length;
+    return n < 4;
+  } catch { return false; }
+}
+
 async function runMakePoster(airtableToken, baseId) {
   const HOOK = process.env.MAKE_WEBHOOK_URL;
   if (!HOOK) return { skipped: 'no MAKE_WEBHOOK_URL' };

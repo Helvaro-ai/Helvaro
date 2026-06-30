@@ -1395,9 +1395,9 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
         Platform:        slot.name,
         Content:         post.content,
         'Scheduled For': scheduledUtc.toISOString(),
-        // AUTO_PUBLISH=true -> direct 'approved' (volledig autonoom, geen review).
-        // Standaard 'draft' zodat je in Social Studio reviewt voor het live gaat.
-        Status:          process.env.AUTO_PUBLISH === 'true' ? 'approved' : 'draft',
+        // Volledig autonoom: posts gaan standaard direct 'approved' en worden door
+        // de cron gepost. Zet AUTO_PUBLISH=false als je weer handmatig wil reviewen.
+        Status:          process.env.AUTO_PUBLISH === 'false' ? 'draft' : 'approved',
         Pillar:          pillar.name,
         'AI Generated':  true,
         Hashtags:        post.hashtags,
