@@ -1440,9 +1440,25 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
   // per platform. Wordt aan elke generatie meegegeven zodat het model meebeweegt.
   const learnAll = await fetchLearningExamples(airtableToken, baseId).catch(() => ({}));
 
+  // Dedup-guard: sla dagen over die al posts hebben, zodat de zondag-run en de
+  // self-heal-run elkaar niet overlappen (geen dubbele dagen/content).
+  const existingDates = new Set();
+  try {
+    const rStart = new Date(new Date(startDate).getTime() - 12 * 60 * 60 * 1000).toISOString();
+    const rEnd   = new Date(new Date(startDate).getTime() + (days + 1) * 24 * 60 * 60 * 1000).toISOString();
+    const ef = encodeURIComponent(`AND(IS_AFTER({Scheduled For}, "${rStart}"), IS_BEFORE({Scheduled For}, "${rEnd}"))`);
+    const er = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${ef}&pageSize=100`, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    if (er.ok) for (const rec of ((await er.json()).records || [])) {
+      const sf = rec.fields && rec.fields['Scheduled For'];
+      if (sf) existingDates.add(String(sf).slice(0, 10));
+    }
+  } catch {}
+
   for (let day = 0; day < days; day++) {
     const date = new Date(startDate);
     date.setUTCDate(date.getUTCDate() + day);
+    const dayKey = date.toISOString().slice(0, 10);
+    if (existingDates.has(dayKey)) { summary.push(`${dayKey}: overgeslagen (al posts)`); continue; }
 
     // Genereer de 6 posts van deze dag PARALLEL (1 ronde i.p.v. 6 sequentiele
     // calls). Zo blijft 6 x 7 = 42 posts ruim binnen de 60s functie-limiet.
