@@ -1091,13 +1091,19 @@ const CONTENT_PILLARS = [
   { name: 'company-story',     focus: 'Waarom Helvaro bestaat en waar het naartoe gaat. De missie: KMOs helpen geen leads meer te verliezen. Persoonlijke "waarom ik dit bouw" hoek, het verhaal achter het bedrijf. Geen verkooppraatje.' },
   { name: 'ai-usage',          focus: 'Hoe jij als founder AI concreet gebruikt om je bedrijf te bouwen en runnen: een echte workflow, tool of prompt-aanpak die deze week hielp, met het concrete resultaat. Deel het als iemand die het echt doet, niet als hype. Een concreet voorbeeld, geen algemeenheden.' },
   { name: 'practical-tips',    focus: 'Een concrete, direct toepasbare tip voor andere ondernemers of makers: iets over AI, marketing, verkoop, productiviteit of bouwen dat jij zelf hebt geleerd. Kort, bruikbaar, uit eigen ervaring. Geen open deuren.' },
-  { name: 'marketing-struggle', focus: 'Een eerlijke marketing-worsteling: iets dat niet werkte, een kanaal dat floppte, hoe moeilijk het is om gezien te worden, wat je nu anders probeert. Kwetsbaar en concreet, ik-vorm. De les of het experiment, geen humblebrag.' }
+  { name: 'marketing-struggle', focus: 'Een eerlijke marketing-worsteling: iets dat niet werkte, een kanaal dat floppte, hoe moeilijk het is om gezien te worden, wat je nu anders probeert. Kwetsbaar en concreet, ik-vorm. De les of het experiment, geen humblebrag.' },
+  { name: 'quick-tip',        weight: 20, focus: 'Een concrete, direct toepasbare tip voor KMO-eigenaren om meer leads te winnen of sneller op te volgen. Educatief (dit is het best presterende format op Instagram). De CARD_HEADLINE is de tip in 4-7 woorden, de 3 bullets zijn de mini-stappen. Bruikbaar, niet vaag.' },
+  { name: 'big-stat',         weight: 16, focus: 'Een scroll-stoppend cijfer over reactietijd, gemiste leads of AI-opvolging. De CARD_HEADLINE = het cijfer als statement (bv "78% kiest wie eerst antwoordt"). Bullets = korte duiding en wat het betekent. Scrollwaardig, geen verzonnen cijfers: gebruik bekende, realistische orders van grootte.' },
+  { name: 'myth-buster',      weight: 12, focus: 'Ontkracht een hardnekkige aanname over leads, WhatsApp of AI-opvolging. CARD_HEADLINE in "Mythe -> waarheid" stijl (bv "Meer leads is niet het probleem"). Bullets leggen de echte oorzaak en oplossing uit. Contra-intuitief maar waar.' },
+  { name: 'hot-take',         weight: 12, focus: 'Een scherpe, licht contra-intuitieve mening over lead-opvolging of marketing voor KMOs, vanuit de founder. CARD_HEADLINE = de stelling, kort en gedurfd. Bullets onderbouwen kort. Prikkelt zonder clickbait, geen ruzie zoeken.' }
 ];
 
 // LinkedIn leunt op persoonlijke + bedrijfsverhalen (founder-stem), niet op product-pitch.
 const LINKEDIN_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'industry-insight'];
 // Instagram/Facebook: alleen marketing-pijlers, geen persoonlijke founder-content.
-const MARKETING_PILLARS = ['pain-point', 'solution', 'industry-insight', 'educational', 'customer-win'];
+// IG/FB: trending, card-native formats. Educatief/tips + stats scoren het best
+// (Buffer 2026: educatieve carousels/graphics winnen), dus die wegen zwaarder.
+const MARKETING_PILLARS = ['quick-tip', 'big-stat', 'myth-buster', 'hot-take', 'educational', 'pain-point', 'solution', 'customer-win', 'industry-insight'];
 // LinkedIn = Sindi's persoonlijke founder-account: hoe ze AI gebruikt, tips,
 // marketing-worstelingen, lessen uit het bouwen. Owner-stem, geen bedrijfs-advertentie.
 const PERSONAL_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'ai-usage', 'practical-tips', 'marketing-struggle'];
