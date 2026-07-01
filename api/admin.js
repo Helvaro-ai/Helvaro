@@ -131,6 +131,31 @@ module.exports = async function handler(req, res) {
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
 
+  // ── GET ?mode=social-health: publieke, niet-gevoelige dag-status (alleen aantallen)
+  // voor de lokale iMessage-alert. Geen post-content. ─────────────────────────
+  const healthWanted = (req.query && (req.query.mode === 'social-health' || req.query.health === '1'))
+    || /[?&](mode=social-health|health=1)/.test(req.url || '');
+  if (req.method === 'GET' && healthWanted) {
+    res.setHeader('Cache-Control', 'no-store');
+    if (!AIRTABLE_TOKEN) return res.status(200).json({ ok: false, error: 'no token' });
+    const today = new Date().toISOString().slice(0, 10);
+    const start = today + 'T00:00:00.000Z';
+    const end = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10) + 'T00:00:00.000Z';
+    const f = encodeURIComponent(`AND(IS_AFTER({Scheduled For}, "${start}"), IS_BEFORE({Scheduled For}, "${end}"))`);
+    try {
+      const r = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA?filterByFormula=${f}&pageSize=100`,
+        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      if (!r.ok) return res.status(200).json({ ok: false, error: 'airtable ' + r.status });
+      const recs = ((await r.json()).records) || [];
+      let posted = 0, failed = 0, pending = 0;
+      for (const rec of recs) {
+        const s = String((rec.fields && rec.fields.Status) || '').toLowerCase();
+        if (s === 'posted') posted++; else if (s === 'failed') failed++; else if (s === 'approved') pending++;
+      }
+      return res.status(200).json({ date: today, expected: 6, total: recs.length, posted, failed, pending, ok: failed === 0 && recs.length >= 6 });
+    } catch (e) { return res.status(200).json({ ok: false, error: 'fetch failed' }); }
+  }
+
   // ── POST. Create new client (admin OR invite-code onboarding) ────────────
   if (req.method === 'POST') {
     let body = req.body;
