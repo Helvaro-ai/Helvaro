@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/**/*.js": { "maxDuration": 60 }
+    "api/**/*.js": { "maxDuration": 60, "includeFiles": "api/lib/fonts/**" }
   },
   "crons": [
     { "path": "/api/cron-followup", "schedule": "0 9 * * *" }

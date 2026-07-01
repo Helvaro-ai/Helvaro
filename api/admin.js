@@ -675,10 +675,28 @@ module.exports = async function handler(req, res) {
       const f = grec.fields || {};
       const platform = String(f.Platform || '').toLowerCase();
       if (platform === 'linkedin') return res.status(200).json({ ok: true, skipped: true, reason: 'LinkedIn = tekst-only' });
-      const imgPrompt = String(f['Image Prompt'] || '').trim()
-        || `modern professional ${platform || 'business'} scene, clean photography, no text`;
-      let imageUrl = await generateAIImage(imgPrompt, platform).catch(() => '');
-      if (!imageUrl) imageUrl = await fetchPexelsImage(imgPrompt.split(' ').slice(0, 6).join(' ')).catch(() => '');
+      const rawPrompt = String(f['Image Prompt'] || '').trim();
+      let imageUrl = '';
+      // Branded tekst-card is de nieuwe standaard voor IG/FB (geen foto's, geen mensen).
+      let cardSpec = null;
+      try { const p = JSON.parse(rawPrompt); if (p && p.card) cardSpec = p; } catch {}
+      if (!cardSpec && (platform === 'instagram' || platform === 'facebook')) {
+        // Oudere posts zonder card-spec: maak toch een card (headline uit content/titel).
+        const head = String(f.Content || '').split(/[.\n]/)[0].trim().slice(0, 70) || 'Je klant wacht niet. *Jij ook niet.*';
+        cardSpec = { card: true, headline: head, bullets: [], tagline: 'Mis nooit meer een *klant.*' };
+      }
+      if (cardSpec) {
+        try {
+          const { renderCard } = require('./lib/card');
+          const buf = await renderCard({ headline: cardSpec.headline, bullets: cardSpec.bullets || [], tagline: cardSpec.tagline });
+          imageUrl = await uploadToBlob(buf, 'image/jpeg', platform).catch(() => '');
+        } catch (e) { console.error('[card] render failed:', e.message); }
+      }
+      // Laatste redmiddel (alleen als card renderen faalt): geen slop, wel een beeld.
+      if (!imageUrl) {
+        const fb = cardSpec ? `abstract dark blue tech background, glowing gradient, no people, no text` : (rawPrompt || `abstract dark blue tech background, no text`);
+        imageUrl = await generateAIImage(fb, platform).catch(() => '');
+      }
       if (!imageUrl) return res.status(502).json({ error: 'Beeldgeneratie mislukt (zie logs)' });
       const pr = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`, {
         method: 'PATCH',
@@ -1159,7 +1177,11 @@ OUTPUT FORMAT (strikt):
 TITLE: <korte interne titel max 60 chars>
 CONTENT: <de post tekst>
 HASHTAGS: <${tone.hashtagCount} hashtags gescheiden door spaties, lowercase, beginnen met #>
-IMAGE_PROMPT: <Engelse beschrijving voor een AI-beeldgenerator. Een professionele, moderne, fotorealistische scene die het topic visueel ondersteunt. Clean, brand-safe, geen tekst of letters in beeld, geen logos. Bv "modern Belgian car dealership showroom, salesperson checking smartphone, warm natural light, professional photography, no text". Beschrijf scene, sfeer en stijl in 1-2 zinnen.>
+CARD_HEADLINE: <Korte, krachtige statement voor de post-afbeelding. 4 tot 9 woorden, in het Nederlands, geen emoji. Zet de 1 tot 3 kernwoorden tussen *sterren* voor blauw accent. Bv "Je klant wacht niet. *Jij ook niet.*">
+CARD_BULLETS: <Precies 3 hele korte voordelen, max 5 woorden elk, gescheiden door | (pipe). Geen emoji. Bv "Direct antwoord op elk bericht | De juiste vragen, automatisch | Alleen leads die klaar zijn">
+CARD_TAGLINE: <1 korte slotzin, 1 tot 2 woorden tussen *sterren*. Bv "Mis nooit meer een *klant.*">
+
+De CARD-velden worden een strak branded tekst-beeld (donker met electric-blue accent), GEEN foto. Schrijf ze als affiche-tekst, niet als fotobeschrijving.
 
 Schrijf nu de post.`;
 
@@ -1185,22 +1207,26 @@ Schrijf nu de post.`;
     const raw = (d.content?.[0]?.text || '').trim();
     // Parse the structured output
     const titleM    = raw.match(/TITLE:\s*(.+?)(?:\n|$)/i);
-    const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\n(?:HASHTAGS|VISUAL_QUERY):|$)/i);
+    const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\n(?:HASHTAGS|CARD_HEADLINE|VISUAL_QUERY):|$)/i);
     const hashtagsM = raw.match(/HASHTAGS:\s*(.+?)(?:\n|$)/i);
-    const imgPromptM = raw.match(/IMAGE_PROMPT:\s*([\s\S]+?)(?:\n[A-Z_]+:|$)/i);
+    const cardHeadM = raw.match(/CARD_HEADLINE:\s*(.+?)(?:\n|$)/i);
+    const cardBullM = raw.match(/CARD_BULLETS:\s*(.+?)(?:\n|$)/i);
+    const cardTagM  = raw.match(/CARD_TAGLINE:\s*(.+?)(?:\n|$)/i);
     if (!contentM) return null;
+    const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
     // Strip dashes/emojis as defense in depth
-    let content = contentM[1].trim().replace(/[—–]/g, '.').slice(0, tone.maxLength);
-    // Remove emojis using same regex policy as elsewhere
-    content = content.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '');
+    let content = contentM[1].trim().replace(/[—–]/g, '.').slice(0, tone.maxLength).replace(emoji, '');
 
-    // Beeld wordt NIET hier gegenereerd (zou 504-timeout geven bij 14 beelden in
-    // een request). We bewaren alleen de beeld-prompt; de afbeelding wordt later
-    // per post apart gegenereerd via mode=generate-image. LinkedIn = tekst-only.
+    // IG/FB krijgen een branded tekst-card (geen foto's, geen mensen). We bewaren de
+    // card-spec als JSON in het 'Image Prompt' veld; mode=generate-image rendert de
+    // card apart per post. LinkedIn = tekst-only, geen beeld.
     let imagePrompt = '';
     if (platform === 'instagram' || platform === 'facebook') {
-      imagePrompt = (imgPromptM ? imgPromptM[1] : '').trim().replace(/\s+/g, ' ').slice(0, 800)
-        || `modern professional ${platform} business scene, clean photography, no text`;
+      const clean = s => String(s || '').replace(emoji, '').replace(/\s+/g, ' ').trim();
+      const headline = clean(cardHeadM ? cardHeadM[1] : '') || clean((titleM ? titleM[1] : '')) || 'Je klant wacht niet. *Jij ook niet.*';
+      const bullets = clean(cardBullM ? cardBullM[1] : '').split('|').map(b => b.trim()).filter(Boolean).slice(0, 3);
+      const tagline = clean(cardTagM ? cardTagM[1] : '') || 'Mis nooit meer een *klant.*';
+      imagePrompt = JSON.stringify({ card: true, headline, bullets, tagline });
     }
 
     return {
