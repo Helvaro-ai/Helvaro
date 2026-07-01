@@ -868,12 +868,14 @@ async function runMakePoster(airtableToken, baseId) {
       // Carousel-posts bewaren meerdere slide-URLs newline-gescheiden in Image URL.
       const imageUrls = String(rawImg || '').split('\n').map(u => u.trim()).filter(Boolean);
       const imageUrl = imageUrls[0] || '';
+      const carousel = platform === 'instagram' && imageUrls.length > 1;
+      const files = imageUrls.map(u => ({ media_type: 'IMAGE', image_url: u }));
       if ((platform === 'facebook' || platform === 'instagram') && !imageUrl) {
         await patch(post.id, { Status: 'failed', Error: platform + '-post vereist een afbeelding' }); failed++; continue;
       }
       const r = await fetch(HOOK, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform, text, imageUrl, imageUrls })
+        body: JSON.stringify({ platform, text, imageUrl, imageUrls, files, carousel })
       });
       const txt = await r.text().catch(() => '');
       if (r.ok) {
