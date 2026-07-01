@@ -551,7 +551,7 @@ async function runWeeklyContentGen(airtableToken, baseId) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
   const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
-  const startDate = new Date(Date.now() + 24*60*60*1000).toISOString().slice(0, 10);   // morgen
+  const startDate = new Date().toISOString().slice(0, 10);   // vandaag (self-heal kan zo dezelfde run nog posten; Buffer ID voorkomt dubbels)
   try {
     const crypto = require('crypto');
     const derived = crypto.createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex');

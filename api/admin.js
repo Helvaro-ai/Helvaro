@@ -1088,15 +1088,19 @@ const CONTENT_PILLARS = [
   { name: 'behind-scenes',    focus: 'Wat er deze week is gebouwd of veranderd in Helvaro. Klein product moment. Maakt het tastbaar dat er een mens achter zit.' },
   { name: 'customer-win',     focus: 'Hypothetische klant-story OF echte cijfers van een klant (met permissie). Resultaat-gedreven.' },
   { name: 'personal-struggle', focus: 'Een eerlijk persoonlijk probleem of worsteling als solo-oprichter die Helvaro bouwt: twijfel, een tegenslag, een fout en de les eruit, of iets moeilijks van deze week. Kwetsbaar en echt, geen humblebrag. Ik-vorm. Eindig met een reflectie of vraag.' },
-  { name: 'company-story',     focus: 'Waarom Helvaro bestaat en waar het naartoe gaat. De missie: KMOs helpen geen leads meer te verliezen. Persoonlijke "waarom ik dit bouw" hoek, het verhaal achter het bedrijf. Geen verkooppraatje.' }
+  { name: 'company-story',     focus: 'Waarom Helvaro bestaat en waar het naartoe gaat. De missie: KMOs helpen geen leads meer te verliezen. Persoonlijke "waarom ik dit bouw" hoek, het verhaal achter het bedrijf. Geen verkooppraatje.' },
+  { name: 'ai-usage',          focus: 'Hoe jij als founder AI concreet gebruikt om je bedrijf te bouwen en runnen: een echte workflow, tool of prompt-aanpak die deze week hielp, met het concrete resultaat. Deel het als iemand die het echt doet, niet als hype. Een concreet voorbeeld, geen algemeenheden.' },
+  { name: 'practical-tips',    focus: 'Een concrete, direct toepasbare tip voor andere ondernemers of makers: iets over AI, marketing, verkoop, productiviteit of bouwen dat jij zelf hebt geleerd. Kort, bruikbaar, uit eigen ervaring. Geen open deuren.' },
+  { name: 'marketing-struggle', focus: 'Een eerlijke marketing-worsteling: iets dat niet werkte, een kanaal dat floppte, hoe moeilijk het is om gezien te worden, wat je nu anders probeert. Kwetsbaar en concreet, ik-vorm. De les of het experiment, geen humblebrag.' }
 ];
 
 // LinkedIn leunt op persoonlijke + bedrijfsverhalen (founder-stem), niet op product-pitch.
 const LINKEDIN_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'industry-insight'];
 // Instagram/Facebook: alleen marketing-pijlers, geen persoonlijke founder-content.
 const MARKETING_PILLARS = ['pain-point', 'solution', 'industry-insight', 'educational', 'customer-win'];
-// Persoonlijke groei (founder-stem) voor de persoonlijke LinkedIn-slot.
-const PERSONAL_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes'];
+// LinkedIn = Sindi's persoonlijke founder-account: hoe ze AI gebruikt, tips,
+// marketing-worstelingen, lessen uit het bouwen. Owner-stem, geen bedrijfs-advertentie.
+const PERSONAL_PILLARS = ['founder-pov', 'personal-struggle', 'company-story', 'behind-scenes', 'ai-usage', 'practical-tips', 'marketing-struggle'];
 
 // Echte momenten uit de bouwreis van Helvaro, BEWUST geabstraheerd tot de menselijke
 // les. Voeden de persoonlijke/founder-posts zodat ze authentiek aanvoelen. Hier staat
@@ -1114,10 +1118,10 @@ const FOUNDER_JOURNEY = [
   'Leren dat saai en betrouwbaar vaak wint van slim en fragiel.',
   'Eerlijk durven zeggen dat een eerdere aanpak niet werkte, en opnieuw beginnen.'
 ];
-const JOURNEY_PILLARS = ['personal-struggle', 'company-story', 'behind-scenes', 'founder-pov'];
+const JOURNEY_PILLARS = ['personal-struggle', 'company-story', 'behind-scenes', 'founder-pov', 'ai-usage', 'marketing-struggle'];
 
 const PLATFORM_TONES = {
-  linkedin:  { tone: 'Persoonlijke founder-stem in de ik-vorm. Een concreet, echt moment met EEN duidelijke les. Reflectief alleen als het moment dat echt was, geen corporate inspiratie-cadans, geen fake-les framing. 150-300 woorden, kort genoeg uitgelegd voor mensen buiten de niche. Sterke hook in zin 1 (geen opwarmzin). Eindig met een concrete les, niet met een vraag om reacties te farmen.', maxLength: 2900, hashtagCount: 3 },
+  linkedin:  { tone: 'Dit is JOUW persoonlijke LinkedIn-account als founder (schrijf alsof jij, de eigenaar, het zelf post, in de ik-vorm). Onderwerpen: hoe je AI gebruikt om je bedrijf te bouwen, concrete tips, marketing-worstelingen, lessen uit het ondernemen, en het bouwen van Helvaro. Persoonlijk en authentiek, geen bedrijfs-advertentie. Een concreet, echt moment met EEN duidelijke les. Reflectief alleen als het moment dat echt was, geen corporate inspiratie-cadans, geen fake-les framing. 150-300 woorden, kort genoeg uitgelegd voor mensen buiten de niche. Sterke hook in zin 1 (geen opwarmzin). Eindig met een concrete les of inzicht, niet met een vraag om reacties te farmen.', maxLength: 2900, hashtagCount: 3 },
   instagram: { tone: 'Kort en visueel, 50-120 woorden. EEN claim. Hook in zin 1, geen opwarmzin. De caption scherpt het beeld aan, herhaalt het niet. Eindig met een concreet inzicht (een vraag alleen als die echt past, nooit om reacties te farmen).', maxLength: 2200, hashtagCount: 7 },
   facebook:  { tone: 'Community-toon, 100-180 woorden, ruimte voor een klein verhaal maar EEN claim. Hook in zin 1, geen opwarmzin. Specifiek, niet vaag. Eindig met een concreet inzicht of het verhaal, niet met een reactie-farm vraag.', maxLength: 5000, hashtagCount: 4 }
 };
@@ -1385,7 +1389,7 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
     { name: 'linkedin',  hour: 8,  minute: 30, mode: 'personal'  },
     { name: 'instagram', hour: 11, minute: 0,  mode: 'marketing' },
     { name: 'facebook',  hour: 12, minute: 30, mode: 'marketing' },
-    { name: 'linkedin',  hour: 13, minute: 30, mode: 'marketing' },
+    { name: 'linkedin',  hour: 13, minute: 30, mode: 'personal'   },
     { name: 'instagram', hour: 17, minute: 0,  mode: 'marketing' },
     { name: 'facebook',  hour: 18, minute: 30, mode: 'marketing' }
   ];
