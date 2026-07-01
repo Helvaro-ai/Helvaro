@@ -864,13 +864,16 @@ async function runMakePoster(airtableToken, baseId) {
     const hashtags = post.fields.Hashtags || '';
     const text = (content + (hashtags ? '\n\n' + hashtags : '')).slice(0, 5000);
     try {
-      const imageUrl = await ensureImage(post);
+      const rawImg = await ensureImage(post);
+      // Carousel-posts bewaren meerdere slide-URLs newline-gescheiden in Image URL.
+      const imageUrls = String(rawImg || '').split('\n').map(u => u.trim()).filter(Boolean);
+      const imageUrl = imageUrls[0] || '';
       if ((platform === 'facebook' || platform === 'instagram') && !imageUrl) {
         await patch(post.id, { Status: 'failed', Error: platform + '-post vereist een afbeelding' }); failed++; continue;
       }
       const r = await fetch(HOOK, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform, text, imageUrl })
+        body: JSON.stringify({ platform, text, imageUrl, imageUrls })
       });
       const txt = await r.text().catch(() => '');
       if (r.ok) {

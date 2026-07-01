@@ -677,24 +677,37 @@ module.exports = async function handler(req, res) {
       if (platform === 'linkedin') return res.status(200).json({ ok: true, skipped: true, reason: 'LinkedIn = tekst-only' });
       const rawPrompt = String(f['Image Prompt'] || '').trim();
       let imageUrl = '';
-      // Branded tekst-card is de nieuwe standaard voor IG/FB (geen foto's, geen mensen).
-      let cardSpec = null;
-      try { const p = JSON.parse(rawPrompt); if (p && p.card) cardSpec = p; } catch {}
-      if (!cardSpec && (platform === 'instagram' || platform === 'facebook')) {
-        // Oudere posts zonder card-spec: maak toch een card (headline uit content/titel).
+      let spec = null;
+      try { const p = JSON.parse(rawPrompt); if (p && (p.card || p.carousel)) spec = p; } catch {}
+
+      // Carousel (Instagram, meerdere slides): render alle slides, upload elk,
+      // bewaar de URLs newline-gescheiden in Image URL.
+      if (spec && spec.carousel) {
+        try {
+          const { renderCarousel } = require('./lib/card');
+          const bufs = await renderCarousel({ cover: spec.cover, slides: spec.slides || [], cta: spec.cta });
+          const urls = [];
+          for (const b of bufs) { const u = await uploadToBlob(b, 'image/jpeg', platform).catch(() => ''); if (u) urls.push(u); }
+          if (urls.length) imageUrl = urls.join('\n');
+        } catch (e) { console.error('[carousel] render failed:', e.message); }
+      }
+
+      // Enkele branded tekst-card (standaard voor IG/FB, geen foto's/mensen).
+      let cardSpec = (spec && spec.card) ? spec : null;
+      if (!imageUrl && !cardSpec && (platform === 'instagram' || platform === 'facebook')) {
         const head = String(f.Content || '').split(/[.\n]/)[0].trim().slice(0, 70) || 'Je klant wacht niet. *Jij ook niet.*';
         cardSpec = { card: true, headline: head, bullets: [], tagline: 'Mis nooit meer een *klant.*' };
       }
-      if (cardSpec) {
+      if (!imageUrl && cardSpec) {
         try {
           const { renderCard } = require('./lib/card');
           const buf = await renderCard({ headline: cardSpec.headline, bullets: cardSpec.bullets || [], tagline: cardSpec.tagline });
           imageUrl = await uploadToBlob(buf, 'image/jpeg', platform).catch(() => '');
         } catch (e) { console.error('[card] render failed:', e.message); }
       }
-      // Laatste redmiddel (alleen als card renderen faalt): geen slop, wel een beeld.
+      // Laatste redmiddel (alleen als renderen faalt): geen slop, wel een beeld.
       if (!imageUrl) {
-        const fb = cardSpec ? `abstract dark blue tech background, glowing gradient, no people, no text` : (rawPrompt || `abstract dark blue tech background, no text`);
+        const fb = spec ? `abstract dark blue tech background, glowing gradient, no people, no text` : (rawPrompt || `abstract dark blue tech background, no text`);
         imageUrl = await generateAIImage(fb, platform).catch(() => '');
       }
       if (!imageUrl) return res.status(502).json({ error: 'Beeldgeneratie mislukt (zie logs)' });
@@ -1147,6 +1160,18 @@ async function generateOnePost(platform, pillar, dateIso, learn) {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
   if (!ANTHROPIC_KEY) { console.error('[content-gen] ANTHROPIC_API_KEY niet ingesteld'); return null; }
   const tone = PLATFORM_TONES[platform];
+  // Instagram educatieve pijlers worden een CAROUSEL (topformat voor SaaS: saves + shares).
+  const isCarousel = platform === 'instagram' && ['quick-tip', 'myth-buster'].includes(pillar.name);
+  const visualBlock = isCarousel
+    ? `CAROUSEL_COVER: <Korte krachtige hook voor slide 1. 4 tot 8 woorden, *sterren* rond 1-2 kernwoorden. Bv "3 manieren om nooit meer een *lead te missen*">
+CAROUSEL_SLIDES: <Precies 3 slides, gescheiden door | (pipe). Elke slide = "TITEL :: uitleg". Titel 2 tot 5 woorden met *sterren* rond een kernwoord, uitleg 1 tot 2 korte zinnen, geen emoji. Bv "Antwoord *binnen 5 min* :: Wie eerst reageert, wint de klant. Zorg dat elk bericht direct opgevolgd wordt. | Stel *de juiste vragen* :: Kwalificeer meteen zodat je tijd naar de juiste leads gaat. | Automatiseer *de opvolging* :: Jij kan niet 24/7 antwoorden, een systeem wel.">
+
+Dit wordt een Instagram CAROUSEL van branded tekst-slides (donker, electric-blue). Educatief en concreet, geen fotobeschrijving.`
+    : `CARD_HEADLINE: <Korte, krachtige statement voor de post-afbeelding. 4 tot 9 woorden, in het Nederlands, geen emoji. Zet de 1 tot 3 kernwoorden tussen *sterren* voor blauw accent. Bv "Je klant wacht niet. *Jij ook niet.*">
+CARD_BULLETS: <Precies 3 hele korte voordelen, max 5 woorden elk, gescheiden door | (pipe). Geen emoji. Bv "Direct antwoord op elk bericht | De juiste vragen, automatisch | Alleen leads die klaar zijn">
+CARD_TAGLINE: <1 korte slotzin, 1 tot 2 woorden tussen *sterren*. Bv "Mis nooit meer een *klant.*">
+
+De CARD-velden worden een strak branded tekst-beeld (donker met electric-blue accent), GEEN foto. Schrijf ze als affiche-tekst, niet als fotobeschrijving.`;
   let journeyContext = '';
   if (JOURNEY_PILLARS.includes(pillar.name)) {
     const theme = FOUNDER_JOURNEY[Math.floor(Math.random() * FOUNDER_JOURNEY.length)];
@@ -1187,11 +1212,7 @@ OUTPUT FORMAT (strikt):
 TITLE: <korte interne titel max 60 chars>
 CONTENT: <de post tekst>
 HASHTAGS: <${tone.hashtagCount} hashtags gescheiden door spaties, lowercase, beginnen met #>
-CARD_HEADLINE: <Korte, krachtige statement voor de post-afbeelding. 4 tot 9 woorden, in het Nederlands, geen emoji. Zet de 1 tot 3 kernwoorden tussen *sterren* voor blauw accent. Bv "Je klant wacht niet. *Jij ook niet.*">
-CARD_BULLETS: <Precies 3 hele korte voordelen, max 5 woorden elk, gescheiden door | (pipe). Geen emoji. Bv "Direct antwoord op elk bericht | De juiste vragen, automatisch | Alleen leads die klaar zijn">
-CARD_TAGLINE: <1 korte slotzin, 1 tot 2 woorden tussen *sterren*. Bv "Mis nooit meer een *klant.*">
-
-De CARD-velden worden een strak branded tekst-beeld (donker met electric-blue accent), GEEN foto. Schrijf ze als affiche-tekst, niet als fotobeschrijving.
+${visualBlock}
 
 Schrijf nu de post.`;
 
@@ -1230,9 +1251,21 @@ Schrijf nu de post.`;
     // IG/FB krijgen een branded tekst-card (geen foto's, geen mensen). We bewaren de
     // card-spec als JSON in het 'Image Prompt' veld; mode=generate-image rendert de
     // card apart per post. LinkedIn = tekst-only, geen beeld.
+    const clean = s => String(s || '').replace(emoji, '').replace(/\s+/g, ' ').trim();
     let imagePrompt = '';
-    if (platform === 'instagram' || platform === 'facebook') {
-      const clean = s => String(s || '').replace(emoji, '').replace(/\s+/g, ' ').trim();
+    if (isCarousel) {
+      const coverM  = raw.match(/CAROUSEL_COVER:\s*(.+?)(?:\n|$)/i);
+      const slidesM = raw.match(/CAROUSEL_SLIDES:\s*([\s\S]+?)(?:\n[A-Z_]+:|$)/i);
+      const cover = clean(coverM ? coverM[1] : '') || 'Nooit meer een *lead missen*';
+      const slides = clean(slidesM ? slidesM[1] : '').split('|').map(s => {
+        const parts = s.split('::');
+        return { title: clean(parts[0]), body: clean(parts.slice(1).join('::')) };
+      }).filter(s => s.title).slice(0, 4);
+      imagePrompt = JSON.stringify({
+        carousel: true, cover: { headline: cover }, slides,
+        cta: { headline: 'Vragen over *AI?*', sub: 'Stuur me een DM. Ik help je graag op weg.' }
+      });
+    } else if (platform === 'instagram' || platform === 'facebook') {
       const headline = clean(cardHeadM ? cardHeadM[1] : '') || clean((titleM ? titleM[1] : '')) || 'Je klant wacht niet. *Jij ook niet.*';
       const bullets = clean(cardBullM ? cardBullM[1] : '').split('|').map(b => b.trim()).filter(Boolean).slice(0, 3);
       const tagline = clean(cardTagM ? cardTagM[1] : '') || 'Mis nooit meer een *klant.*';
