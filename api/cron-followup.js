@@ -181,7 +181,13 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, images: imageResult, posted: posterResult });
+    // ── Envoy: gepersonaliseerde outreach naar verse Apify-leads (server-side) ──
+    const outreachResult = await runOutreach(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+      console.error('[cron-followup] outreach failed:', e.message);
+      return null;
+    });
+
+    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, images: imageResult, posted: posterResult, outreach: outreachResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -814,6 +820,101 @@ async function upcomingPostsLow(airtableToken, baseId) {
     const n = ((await r.json()).records || []).length;
     return n < 4;
   } catch { return false; }
+}
+
+// ── Envoy: server-side gepersonaliseerde outreach (Vercel, geen laptop) ───────
+// Pakt de laatste Apify-leads, haalt per lead de website op, laat Claude een
+// concreet pijnpunt + korte gepersonaliseerde koude mail schrijven, en verstuurt
+// via SMTP (jouw usehelvaro.pro-mailbox). Laag volume, dedup via de Outreach-tabel.
+async function runOutreach(airtableToken, baseId) {
+  const APIFY = process.env.APIFY_TOKEN;
+  const ANTHROPIC = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
+  if (!APIFY || !ANTHROPIC || !process.env.SMTP_HOST) return { skipped: 'missing APIFY_TOKEN / ANTHROPIC / SMTP' };
+  const OUTREACH_TABLE = 'tbl2LpuY9bj3I4pqS';
+  const APIFY_TASK = 'zg6tVjgqm9qfcdwvL';
+  const MAX_PER_RUN = 2;
+
+  // 1) laatste Apify-leads ophalen
+  let leads = [];
+  try {
+    const lr = await fetch(`https://api.apify.com/v2/actor-tasks/${APIFY_TASK}/runs/last?token=${APIFY}&status=SUCCEEDED`);
+    const ds = (await lr.json())?.data?.defaultDatasetId;
+    if (ds) {
+      const dr = await fetch(`https://api.apify.com/v2/datasets/${ds}/items?token=${APIFY}&clean=true&fields=title,city,address,phone,website,emails,categoryName`);
+      leads = await dr.json();
+    }
+  } catch (e) { return { error: 'apify: ' + e.message }; }
+  if (!Array.isArray(leads) || !leads.length) return { checked: 0, sent: 0 };
+
+  // 2) dedup: bestaande e-mails uit de Outreach-tabel
+  const seen = new Set();
+  try {
+    const er = await fetch(`https://api.airtable.com/v0/${baseId}/${OUTREACH_TABLE}?pageSize=100&fields%5B%5D=Email`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } });
+    for (const rec of ((await er.json()).records || [])) {
+      const e = String(rec.fields?.Email || '').toLowerCase().trim(); if (e) seen.add(e);
+    }
+  } catch {}
+
+  // 3) kies nieuwe leads met bruikbaar zakelijk e-mailadres
+  const fresh = [];
+  for (const l of leads) {
+    const email = String((l.emails || [])[0] || '').toLowerCase().trim();
+    if (!email || seen.has(email) || /noreply|no-reply/.test(email)) continue;
+    seen.add(email); fresh.push({ ...l, email });
+    if (fresh.length >= MAX_PER_RUN) break;
+  }
+  if (!fresh.length) return { checked: leads.length, sent: 0, note: 'geen nieuwe leads' };
+
+  const transport = require('nodemailer').createTransport({
+    host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 465),
+    secure: String(process.env.SMTP_SECURE) !== 'false',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  });
+  const createRow = (fields) => fetch(`https://api.airtable.com/v0/${baseId}/${OUTREACH_TABLE}`, {
+    method: 'POST', headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true })
+  });
+
+  let sent = 0, failed = 0;
+  for (const l of fresh) {
+    try {
+      let site = '';
+      if (l.website) { try { const wr = await fetch(l.website, { redirect: 'follow' }); site = (await wr.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 3500); } catch {} }
+      const prompt = `Je schrijft namens Sindi (founder van Helvaro) een korte KOUDE B2B-outreachmail in het NEDERLANDS aan een Belgische KMO.
+
+BEDRIJF: ${l.title} (${l.categoryName || ''}, ${l.city || ''})
+WEBSITE-FRAGMENT: ${site || '(geen website)'}
+
+Helvaro = een AI die binnenkomende WhatsApp/website-leads binnen 30 seconden opvolgt en kwalificeert, zodat een KMO geen klanten verliest door trage of gemiste opvolging. EUR 1.000/maand.
+
+1. Vind 1 CONCREET pijnpunt rond leadopvolging bij dit bedrijf (bv. enkel een contactformulier, geen chat, beperkte uren, hoog-ticket offertes die snelheid vragen). Baseer op de website, anders op de sector.
+2. Schrijf een mail: 60-100 woorden, persoonlijk, verwijst naar dat pijnpunt, 1 zachte vraag (kort gesprek van 15 min). Geen hype, geen emoji, geen em-dashes. Sluit af met een opt-out ("Niet interessant? 1 woord terug en ik laat je met rust.") en ondertekend Sindi, Helvaro.
+
+OUTPUT (strikt):
+PAINPOINT: <1 zin>
+SUBJECT: <korte concrete onderwerpregel>
+BODY: <de mailtekst>`;
+      const cr = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: prompt }] })
+      });
+      const raw = (await cr.json())?.content?.[0]?.text || '';
+      const pain = (raw.match(/PAINPOINT:\s*(.+)/i) || [])[1]?.trim() || '';
+      const subject = ((raw.match(/SUBJECT:\s*(.+)/i) || [])[1] || `Snellere leadopvolging voor ${l.title}`).trim().slice(0, 150);
+      const body = (raw.match(/BODY:\s*([\s\S]+)$/i) || [])[1]?.trim();
+      if (!body) { failed++; continue; }
+      await transport.sendMail({ from: process.env.SMTP_FROM, to: l.email, subject, text: body, replyTo: process.env.REPLY_TO || undefined });
+      await createRow({ Business: l.title, Email: l.email, City: l.city || '', Website: l.website || '', Category: l.categoryName || '', Painpoint: pain, Subject: subject, Message: body, Status: 'sent', 'Sent At': new Date().toISOString() });
+      sent++;
+      await new Promise(r => setTimeout(r, 800));
+    } catch (e) {
+      await createRow({ Business: l.title, Email: l.email, Status: 'failed', Painpoint: ('err: ' + e.message).slice(0, 400) }).catch(() => {});
+      failed++;
+    }
+  }
+  console.log(`[outreach] sent=${sent} failed=${failed} checked=${leads.length}`);
+  return { checked: leads.length, sent, failed };
 }
 
 async function runMakePoster(airtableToken, baseId) {
