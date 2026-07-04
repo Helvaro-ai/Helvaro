@@ -551,14 +551,16 @@ async function runWeeklyContentGen(airtableToken, baseId) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
   const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
-  const startDate = new Date().toISOString().slice(0, 10);   // vandaag (self-heal kan zo dezelfde run nog posten; Buffer ID voorkomt dubbels)
+  // Genereer per run 2 dagen (12 posts) i.p.v. 7 -> ruim binnen de 60s functie-limiet.
+  // Start over 2 dagen: Buffer dekt vandaag+morgen al, zo geen dubbele posts.
+  const startDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   try {
     const crypto = require('crypto');
     const derived = crypto.createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
     const r = await fetch(`${baseUrl}/api/admin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': derived },
-      body: JSON.stringify({ mode: 'generate-content', startDate, days: 7 })
+      body: JSON.stringify({ mode: 'generate-content', startDate, days: 2 })
     });
     const d = await r.json().catch(() => ({}));
     return d;
