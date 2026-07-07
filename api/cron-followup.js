@@ -558,8 +558,12 @@ async function runWeeklyContentGen(airtableToken, baseId) {
   if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
   const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
   // Genereer per run 2 dagen (12 posts) i.p.v. 7 -> ruim binnen de 60s functie-limiet.
-  // Start over 2 dagen: Buffer dekt vandaag+morgen al, zo geen dubbele posts.
-  const startDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Start VANDAAG: er is geen Buffer meer in de loop (volledig autonoom sinds
+  // 2026-07-01, Make-webhook post rechtstreeks), en generateContentWeek slaat
+  // dagen die al posts hebben toch over (dedup-guard). Met startDate = +2 dagen
+  // werden vandaag/morgen nooit meer bijgevuld zodra hun voorraad opraakte -> een
+  // permanent gat van 2 dagen zonder posts (gevonden 2026-07-08, sinds 2026-07-04).
+  const startDate = new Date().toISOString().slice(0, 10);
   try {
     const crypto = require('crypto');
     const derived = crypto.createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
