@@ -1,6 +1,8 @@
 // Admin endpoint. GET: all clients + lead stats | POST: create new client
 // Protected by ADMIN_KEY env var (timing-safe comparison)
 const crypto = require('crypto');
+// Marketing Posts moved off Airtable to the VPS Postgres API (Airtable-shaped facade).
+const { pgFetch } = require('./_pgapi');
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
@@ -143,9 +145,8 @@ module.exports = async function handler(req, res) {
     const end = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10) + 'T00:00:00.000Z';
     const f = encodeURIComponent(`AND(IS_AFTER({Scheduled For}, "${start}"), IS_BEFORE({Scheduled For}, "${end}"))`);
     try {
-      const r = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA?filterByFormula=${f}&pageSize=100`,
-        { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-      if (!r.ok) return res.status(200).json({ ok: false, error: 'airtable ' + r.status });
+      const r = await pgFetch(`tblPxnfb5MThgsnaA?filterByFormula=${f}&pageSize=100`);
+      if (!r.ok) return res.status(200).json({ ok: false, error: 'db ' + r.status });
       const recs = ((await r.json()).records) || [];
       let posted = 0, failed = 0, pending = 0;
       for (const rec of recs) {
@@ -645,8 +646,8 @@ module.exports = async function handler(req, res) {
       const status = String(body.status || '').trim();
       const limit  = Math.min(100, Math.max(1, parseInt(body.limit || 50, 10)));
       const formula = status ? encodeURIComponent(`{Status}="${status}"`) : '';
-      const url = `https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA?pageSize=${limit}${formula ? `&filterByFormula=${formula}` : ''}&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`;
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      const url = `tblPxnfb5MThgsnaA?pageSize=${limit}${formula ? `&filterByFormula=${formula}` : ''}&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`;
+      const r = await pgFetch(url);
       const d = await r.json();
       return res.status(200).json({ posts: d.records || [] });
     }
@@ -668,11 +669,10 @@ module.exports = async function handler(req, res) {
       if (body.scheduledFor !== undefined) fields['Scheduled For'] = body.scheduledFor;
       if (body.imageUrl !== undefined)     fields['Image URL'] = String(body.imageUrl).slice(0, 500);
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
-      const r = await fetch(
-        `https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`,
+      const r = await pgFetch(
+        `tblPxnfb5MThgsnaA/${id}`,
         {
           method: 'PATCH',
-          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ fields })
         }
       );
@@ -692,9 +692,7 @@ module.exports = async function handler(req, res) {
       const id = String(body.id || '').trim();
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
       // Haal de post op
-      const gr = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`, {
-        headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
-      });
+      const gr = await pgFetch(`tblPxnfb5MThgsnaA/${id}`);
       const grec = await gr.json();
       if (!gr.ok) return res.status(404).json({ error: 'Post niet gevonden' });
       const f = grec.fields || {};
@@ -736,9 +734,8 @@ module.exports = async function handler(req, res) {
         imageUrl = await generateAIImage(fb, platform).catch(() => '');
       }
       if (!imageUrl) return res.status(502).json({ error: 'Beeldgeneratie mislukt (zie logs)' });
-      const pr = await fetch(`https://api.airtable.com/v0/${BASE_ID}/tblPxnfb5MThgsnaA/${id}`, {
+      const pr = await pgFetch(`tblPxnfb5MThgsnaA/${id}`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: { 'Image URL': imageUrl } })
       });
       if (!pr.ok) { const pd = await pr.json().catch(() => ({})); return res.status(500).json({ error: pd.error?.message || 'Opslaan mislukt' }); }
@@ -1425,8 +1422,8 @@ async function fetchLearningExamples(airtableToken, baseId) {
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
   const out = {};
   try {
-    const url = `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?pageSize=80&sort%5B0%5D%5Bfield%5D=Created%20At&sort%5B0%5D%5Bdirection%5D=desc`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    const url = `${POSTS_TABLE}?pageSize=80&sort%5B0%5D%5Bfield%5D=Created%20At&sort%5B0%5D%5Bdirection%5D=desc`;
+    const r = await pgFetch(url);
     if (!r.ok) return out;
     const d = await r.json();
     for (const rec of (d.records || [])) {
@@ -1472,7 +1469,7 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
     const rStart = new Date(new Date(startDate).getTime() - 12 * 60 * 60 * 1000).toISOString();
     const rEnd   = new Date(new Date(startDate).getTime() + (days + 1) * 24 * 60 * 60 * 1000).toISOString();
     const ef = encodeURIComponent(`AND(IS_AFTER({Scheduled For}, "${rStart}"), IS_BEFORE({Scheduled For}, "${rEnd}"))`);
-    const er = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${ef}&pageSize=100`, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    const er = await pgFetch(`${POSTS_TABLE}?filterByFormula=${ef}&pageSize=100`);
     if (er.ok) for (const rec of ((await er.json()).records || [])) {
       const sf = rec.fields && rec.fields['Scheduled For'];
       if (sf) existingDates.add(String(sf).slice(0, 10));
@@ -1516,11 +1513,10 @@ async function generateContentWeek(airtableToken, baseId, days, startDate) {
       // Beeld-prompt bewaren voor IG + FB; afbeelding wordt later apart gegenereerd
       // via mode=generate-image (voorkomt timeout). LinkedIn = tekst-only.
       if (post.imagePrompt) fields['Image Prompt'] = post.imagePrompt;
-      const r = await fetch(
-        `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}`,
+      const r = await pgFetch(
+        `${POSTS_TABLE}`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ fields, typecast: true })
         }
       );
