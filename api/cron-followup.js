@@ -6,6 +6,10 @@
 //   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
+// Marketing Posts + Outreach moved off Airtable to the VPS Postgres API
+// (Airtable-shaped facade). Leads/Client Config etc. stay in Airtable.
+const { pgFetch } = require('./_pgapi');
+
 module.exports = async function handler(req, res) {
   // Vercel calls cron endpoints with GET; block other methods
   if (req.method !== 'GET') return res.status(405).end();
@@ -608,18 +612,16 @@ async function runMetaPoster(airtableToken, baseId) {
   const formula = encodeURIComponent(
     `AND({Status}="approved", IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
   );
-  const lr = await fetch(
-    `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
-    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  const lr = await pgFetch(
+    `${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`
   );
-  if (!lr.ok) return { error: 'airtable list failed' };
+  if (!lr.ok) return { error: 'db list failed' };
   const list = (await lr.json()).records || [];
   if (list.length === 0) return { checked: 0, posted: 0 };
 
   // typecast:true zodat nieuwe Status-opties ('manual') automatisch aangemaakt worden
-  const patch = (id, fields) => fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${id}`, {
+  const patch = (id, fields) => pgFetch(`${POSTS_TABLE}/${id}`, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields, typecast: true })
   });
 
@@ -738,15 +740,13 @@ async function runAyrsharePoster(airtableToken, baseId) {
   const formula = encodeURIComponent(
     `AND({Status}="approved", IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${inOneDay}"), {Buffer ID}="")`
   );
-  const lr = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
-    { headers: { Authorization: `Bearer ${airtableToken}` } });
-  if (!lr.ok) return { error: 'airtable list failed' };
+  const lr = await pgFetch(`${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`);
+  if (!lr.ok) return { error: 'db list failed' };
   const list = (await lr.json()).records || [];
   if (list.length === 0) return { checked: 0, posted: 0 };
 
-  const patch = (id, fields) => fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${id}`, {
+  const patch = (id, fields) => pgFetch(`${POSTS_TABLE}/${id}`, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields, typecast: true })
   });
 
@@ -818,8 +818,7 @@ async function upcomingPostsLow(airtableToken, baseId) {
     `AND(OR({Status}="approved",{Status}="draft"), IS_AFTER({Scheduled For}, NOW()), IS_BEFORE({Scheduled For}, "${in2d}"))`
   );
   try {
-    const r = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=12`,
-      { headers: { Authorization: `Bearer ${airtableToken}` } });
+    const r = await pgFetch(`${POSTS_TABLE}?filterByFormula=${formula}&pageSize=12`);
     if (!r.ok) return false;
     const n = ((await r.json()).records || []).length;
     return n < 4;
@@ -853,8 +852,7 @@ async function runOutreach(airtableToken, baseId) {
   // 2) dedup: bestaande e-mails uit de Outreach-tabel
   const seen = new Set();
   try {
-    const er = await fetch(`https://api.airtable.com/v0/${baseId}/${OUTREACH_TABLE}?pageSize=100&fields%5B%5D=Email`,
-      { headers: { Authorization: `Bearer ${airtableToken}` } });
+    const er = await pgFetch(`${OUTREACH_TABLE}?pageSize=100&fields%5B%5D=Email`);
     for (const rec of ((await er.json()).records || [])) {
       const e = String(rec.fields?.Email || '').toLowerCase().trim(); if (e) seen.add(e);
     }
@@ -875,8 +873,8 @@ async function runOutreach(airtableToken, baseId) {
     secure: String(process.env.SMTP_SECURE) !== 'false',
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
   });
-  const createRow = (fields) => fetch(`https://api.airtable.com/v0/${baseId}/${OUTREACH_TABLE}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+  const createRow = (fields) => pgFetch(`${OUTREACH_TABLE}`, {
+    method: 'POST',
     body: JSON.stringify({ fields, typecast: true })
   });
 
@@ -937,15 +935,13 @@ async function runMakePoster(airtableToken, baseId) {
   const formula = encodeURIComponent(
     `AND({Status}="approved", OR({Platform}="facebook",{Platform}="linkedin",{Platform}="instagram"), IS_AFTER({Scheduled For}, "${winStart}"), IS_BEFORE({Scheduled For}, "${winEnd}"), {Buffer ID}="")`
   );
-  const lr = await fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`,
-    { headers: { Authorization: `Bearer ${airtableToken}` } });
-  if (!lr.ok) return { error: 'airtable list failed' };
+  const lr = await pgFetch(`${POSTS_TABLE}?filterByFormula=${formula}&pageSize=50`);
+  if (!lr.ok) return { error: 'db list failed' };
   const list = (await lr.json()).records || [];
   if (list.length === 0) return { checked: 0, posted: 0 };
 
-  const patch = (id, fields) => fetch(`https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}/${id}`, {
+  const patch = (id, fields) => pgFetch(`${POSTS_TABLE}/${id}`, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields, typecast: true })
   });
 
@@ -1019,11 +1015,10 @@ async function runImageBackfill(airtableToken, baseId) {
   const formula = encodeURIComponent(
     `AND(OR({Platform}="instagram",{Platform}="facebook"), {Image Prompt}!="", {Image URL}="", {Status}!="skipped", {Status}!="posted", IS_BEFORE({Scheduled For}, "${soon}"))`
   );
-  const lr = await fetch(
-    `https://api.airtable.com/v0/${baseId}/${POSTS_TABLE}?filterByFormula=${formula}&pageSize=6&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`,
-    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  const lr = await pgFetch(
+    `${POSTS_TABLE}?filterByFormula=${formula}&pageSize=6&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`
   );
-  if (!lr.ok) return { error: 'airtable list failed' };
+  if (!lr.ok) return { error: 'db list failed' };
   const list = (await lr.json()).records || [];
   if (list.length === 0) return { checked: 0, made: 0 };
 

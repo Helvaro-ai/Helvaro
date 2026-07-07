@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+// Appointments moved off Airtable to the VPS Postgres API (Airtable-shaped facade).
+const { pgFetch } = require('./_pgapi');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -769,11 +771,9 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
   // Remove undefined values
   Object.keys(fields).forEach(k => fields[k] === undefined && delete fields[k]);
 
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}`;
   try {
-    const res = await atFetch(url, {
+    const res = await pgFetch(`${APPOINTMENTS_TABLE}`, {
       method:  'POST',
-      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify({ fields, typecast: true })
     });
     const data = await res.json();
@@ -797,9 +797,9 @@ async function getUpcomingAppointments(projectCode) {
   const formula = encodeURIComponent(
     `AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", {Status}="booked", IS_AFTER({Start Time}, "${now}"), IS_BEFORE({Start Time}, "${twoWeeksLater}"))`
   );
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50&fields%5B%5D=Start+Time&fields%5B%5D=Duration`;
+  const url = `${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50&fields%5B%5D=Start+Time&fields%5B%5D=Duration`;
   try {
-    const res = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const res = await pgFetch(url);
     if (!res.ok) return [];
     const data = await res.json();
     return (data.records || []).map(r => {
