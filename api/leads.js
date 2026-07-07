@@ -1,7 +1,4 @@
 const crypto = require('crypto');
-// Appointments moved off Airtable to the VPS Postgres API (Airtable-shaped facade).
-// Leads/Client Config etc. stay in Airtable and keep using atFetch below.
-const { pgFetch } = require('./_pgapi');
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -458,10 +455,11 @@ module.exports = async function handler(req, res) {
         `AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", IS_AFTER({Start Time}, "${from}"), IS_BEFORE({Start Time}, "${to}"))`
       );
       try {
-        const r = await pgFetch(
-          `${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=100&sort%5B0%5D%5Bfield%5D=Start+Time&sort%5B0%5D%5Bdirection%5D=asc`
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=100&sort%5B0%5D%5Bfield%5D=Start+Time&sort%5B0%5D%5Bdirection%5D=asc`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
         );
-        if (!r.ok) return res.status(500).json({ error: 'Database fout' });
+        if (!r.ok) return res.status(500).json({ error: 'Airtable fout' });
         const d = await r.json();
         return res.status(200).json({ appointments: d.records || [] });
       } catch (err) {
@@ -493,10 +491,11 @@ module.exports = async function handler(req, res) {
         fields['Lead'] = [body.leadId];
       }
       try {
-        const r = await pgFetch(
-          `${APPOINTMENTS_TABLE}`,
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}`,
           {
             method:  'POST',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
             body:    JSON.stringify({ fields, typecast: true })
           }
         );
@@ -516,8 +515,9 @@ module.exports = async function handler(req, res) {
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
       // Cross-tenant security check. Haal eerst record op en verifieer Project Code
       try {
-        const chkR = await pgFetch(
-          `${APPOINTMENTS_TABLE}/${id}`
+        const chkR = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
         );
         if (!chkR.ok) return res.status(404).json({ error: 'Afspraak niet gevonden' });
         const existing = await chkR.json();
@@ -536,10 +536,11 @@ module.exports = async function handler(req, res) {
       if (body.notes     !== undefined) updateFields['Notes']      = String(body.notes).slice(0, 2000);
       if (Object.keys(updateFields).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
       try {
-        const r = await pgFetch(
-          `${APPOINTMENTS_TABLE}/${id}`,
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,
           {
             method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
             body:    JSON.stringify({ fields: updateFields, typecast: true })
           }
         );
