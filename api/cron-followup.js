@@ -563,7 +563,10 @@ function sendWA(to, message, phoneNumberId, token) {
 async function runWeeklyContentGen(airtableToken, baseId) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  // Altijd het custom domain gebruiken, nooit process.env.VERCEL_URL: die per-deployment
+  // *.vercel.app URL zit achter Vercel Deployment Protection (SSO), waardoor interne
+  // self-calls altijd 401'den.
+  const baseUrl = 'https://app.helvaro.pro';
   // Genereer per run 2 dagen (12 posts) i.p.v. 7 -> ruim binnen de 60s functie-limiet.
   // Start VANDAAG: er is geen Buffer meer in de loop (volledig autonoom sinds
   // 2026-07-01, Make-webhook post rechtstreeks), en generateContentWeek slaat
@@ -736,7 +739,10 @@ async function runAyrsharePoster(airtableToken, baseId) {
   if (!KEY) return { skipped: 'no AYRSHARE_API_KEY' };
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
   const ADMIN_KEY = process.env.ADMIN_KEY;
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  // Altijd het custom domain gebruiken, nooit process.env.VERCEL_URL: die per-deployment
+  // *.vercel.app URL zit achter Vercel Deployment Protection (SSO), waardoor interne
+  // self-calls altijd 401'den.
+  const baseUrl = 'https://app.helvaro.pro';
   const derived = ADMIN_KEY ? require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex') : '';
 
   const inOneDay = new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString();
@@ -927,7 +933,10 @@ async function runMakePoster(airtableToken, baseId) {
   if (!HOOK) return { skipped: 'no MAKE_WEBHOOK_URL' };
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
   const ADMIN_KEY = process.env.ADMIN_KEY;
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  // Altijd het custom domain gebruiken, nooit process.env.VERCEL_URL: die per-deployment
+  // *.vercel.app URL zit achter Vercel Deployment Protection (SSO), waardoor interne
+  // self-calls altijd 401'den.
+  const baseUrl = 'https://app.helvaro.pro';
   const derived = ADMIN_KEY ? require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex') : '';
 
   // Venster rond nu: posts van vandaag (ook de morgen-slots die al voorbij zijn op
@@ -1010,7 +1019,10 @@ async function runImageBackfill(airtableToken, baseId) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) return { skipped: 'no ADMIN_KEY' };
   const POSTS_TABLE = 'tblPxnfb5MThgsnaA';
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.helvaro.pro';
+  // Altijd het custom domain gebruiken, nooit process.env.VERCEL_URL: die per-deployment
+  // *.vercel.app URL zit achter Vercel Deployment Protection (SSO), waardoor interne
+  // self-calls altijd 401'den.
+  const baseUrl = 'https://app.helvaro.pro';
   const derived = require('crypto').createHmac('sha256', ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
 
   const soon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
