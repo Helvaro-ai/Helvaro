@@ -161,6 +161,9 @@ module.exports = async function handler(req, res) {
         console.error('[cron-followup] content gen failed:', e.message);
         return null;
       });
+      console.log('[content-gen] lowBuffer=' + lowBuffer + ' result=' + JSON.stringify(contentResult));
+    } else {
+      console.log('[content-gen] skipped, lowBuffer=' + lowBuffer + ' day=' + now.getUTCDay());
     }
 
     // ── Beeld-backfill (server-side, betrouwbaar) ───────────────────────────
