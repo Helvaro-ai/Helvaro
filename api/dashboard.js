@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/vendor/chart.umd.min.js"></script>
 <style>
 /* ============================================================
    CSS CUSTOM PROPERTIES
@@ -6003,7 +6003,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-color: rgba(99,102,241,0.2);
 }
 </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="/vendor/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -7676,6 +7676,24 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
         </div>
 
+        <!-- Google Agenda -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Google Agenda
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Koppel je Google Agenda</div>
+              <div class="settings-label-sub" id="gcal-status-sub">Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.</div>
+            </div>
+            <div id="gcal-actions">
+              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(99,102,241,0.35);color:var(--accent);background:rgba(99,102,241,0.08)">Koppel Google Agenda</button>
+              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(244,63,94,0.35);color:var(--red);background:rgba(244,63,94,0.08)">Ontkoppel</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Gevaar zone -->
         <div class="settings-section">
           <div class="settings-section-title" style="color:var(--red)">
@@ -8650,13 +8668,26 @@ const AUTH_URL = '/api/auth';
 
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-function saveSession(apiKey, clientName, projectCode, email) {
-  localStorage.setItem('hvk', apiKey);
+function saveSession(apiKey, clientName, projectCode, email, forceLegacy) {
+  // Normal customers (they have a projectCode) authenticate via the httpOnly
+  // hv_session cookie the server set at login. We deliberately DO NOT persist
+  // their token anywhere JS can read it — state.apiKey holds only a placeholder
+  // so the existing fetches and 'if (state.apiKey)' gates keep working, while the
+  // server reads the cookie instead. Admin/owner (no projectCode) and the onboarding
+  // ?welcome= link (forceLegacy) keep the header token so impersonation/onboarding
+  // are unchanged.
+  const cookieMode = !forceLegacy && !!(projectCode && String(projectCode).trim());
   localStorage.setItem('hv-client', clientName || '');
   localStorage.setItem('hv-project', projectCode || '');
   localStorage.setItem('hv-exp', String(Date.now() + SESSION_TTL));
   if (email) localStorage.setItem('hv-email', email);
-  state.apiKey     = apiKey;
+  if (cookieMode) {
+    localStorage.removeItem('hvk');
+    state.apiKey = 'HV_COOKIE_SESSION';
+  } else {
+    localStorage.setItem('hvk', apiKey);
+    state.apiKey = apiKey;
+  }
   state.clientName = clientName || '';
   state.userEmail  = email || localStorage.getItem('hv-email') || '';
 }
@@ -8669,12 +8700,18 @@ function clearSession() {
 }
 
 function tryAutoLogin() {
-  const key = localStorage.getItem('hvk');
-  const exp = parseInt(localStorage.getItem('hv-exp') || '0', 10);
-  if (!key) return false;
-  // Expire after 24 hours. Clear stale session
-  if (Date.now() > exp) { clearSession(); return false; }
-  state.apiKey     = key;
+  const key     = localStorage.getItem('hvk');
+  const project = localStorage.getItem('hv-project') || '';
+  const exp     = parseInt(localStorage.getItem('hv-exp') || '0', 10);
+  // Cookie-mode customers have no 'hvk' (their token lives only in the httpOnly
+  // cookie). Restore UI state from the non-secret fields and let the cookie
+  // authenticate. If the cookie is gone/expired, the first API call 401s and
+  // handleAuthExpired() bounces back to login.
+  const cookieMode = !key && !!project;
+  if (!key && !cookieMode) return false;
+  // Expire stale sessions by the locally stored TTL
+  if (exp && Date.now() > exp) { clearSession(); return false; }
+  state.apiKey     = cookieMode ? 'HV_COOKIE_SESSION' : key;
   state.clientName = localStorage.getItem('hv-client') || '';
   state.userEmail  = localStorage.getItem('hv-email')  || '';
   return true;
@@ -8694,6 +8731,15 @@ function logout() {
 }
 
 function performLogout() {
+  // Clear the server-side httpOnly session cookie (best-effort; local state is
+  // wiped regardless below). Same-origin fetch sends the cookie automatically.
+  try {
+    fetch(API_BASE + '/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'logout' })
+    }).catch(() => {});
+  } catch (e) {}
   // Wis ALLE state. Vorige versie liet onboarding-flags en pagina-caches
   // staan, waardoor de volgende user (op zelfde computer) soms in een
   // half-vorige-sessie staat kon belanden.
@@ -12077,7 +12123,7 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
         <div class="rapport-leads-list">
           \${qualLeads.map(l => \`
             <div class="rapport-lead-item">
-              <span>\${l.naam || '—'}</span>
+              <span>\${escHtml(l.naam) || '—'}</span>
               <span>\${scorePill(l.leadScore)}</span>
             </div>
           \`).join('')}
@@ -13873,6 +13919,48 @@ function renderInstellingen() {
       toggleBtn.textContent = showing ? 'Verberg' : 'Toon';
     };
   }
+  loadGcalStatus();
+}
+
+/* ============================================================
+   GOOGLE AGENDA (per-client OAuth connect)
+   ============================================================ */
+async function loadGcalStatus() {
+  var sub  = document.getElementById('gcal-status-sub');
+  var cBtn = document.getElementById('btn-gcal-connect');
+  var dBtn = document.getElementById('btn-gcal-disconnect');
+  if (!sub) return;
+  try {
+    var r = await fetch(API_BASE + '/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'status' })
+    });
+    var d = await r.json();
+    if (d && d.connected) {
+      sub.textContent = 'Gekoppeld' + (d.email ? ' — ' + d.email : '') + '. Afspraken worden gesynct met je Google Agenda.';
+      if (cBtn) cBtn.style.display = 'none';
+      if (dBtn) dBtn.style.display = '';
+    } else {
+      sub.textContent = 'Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.';
+      if (cBtn) cBtn.style.display = '';
+      if (dBtn) dBtn.style.display = 'none';
+    }
+  } catch (e) { /* leave default text */ }
+}
+function connectGoogleCalendar() {
+  window.location.href = API_BASE + '/gcal?action=connect';
+}
+async function disconnectGoogleCalendar() {
+  try {
+    await fetch(API_BASE + '/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'disconnect' })
+    });
+  } catch (e) {}
+  loadGcalStatus();
+  try { toast('Google Agenda ontkoppeld', 'success'); } catch (e) {}
 }
 
 /* ============================================================
@@ -14764,13 +14852,26 @@ document.getElementById('goal-modal-overlay').addEventListener('click', function
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
+  // Feedback after the Google Agenda OAuth round-trip (/api/gcal?action=callback)
+  const _gcalMsg = _initParams.get('gcal');
+  if (_gcalMsg) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    const _gmap = {
+      connected: 'Google Agenda gekoppeld', denied: 'Koppeling geannuleerd',
+      error: 'Koppeling mislukt, probeer opnieuw', invalid_state: 'Koppeling verlopen, probeer opnieuw',
+      login_required: 'Log eerst in en probeer opnieuw', unconfigured: 'Google Agenda is nog niet geconfigureerd',
+      client_not_found: 'Account niet gevonden'
+    };
+    setTimeout(function () { try { toast(_gmap[_gcalMsg] || 'Google Agenda', _gcalMsg === 'connected' ? 'success' : 'error'); } catch (e) {} }, 900);
+  }
+
   // Auto-login from onboarding link: ?welcome=APIKEY&name=NAME&project=CODE
   const _welcomeKey = _initParams.get('welcome');
   if (_welcomeKey) {
     const _wName    = decodeURIComponent(_initParams.get('name')    || '');
     const _wProject = decodeURIComponent(_initParams.get('project') || '');
     window.history.replaceState({}, document.title, window.location.pathname); // clean URL
-    saveSession(_welcomeKey, _wName, _wProject, '');
+    saveSession(_welcomeKey, _wName, _wProject, '', true); // forceLegacy: onboarding key comes from the URL, not a cookie-setting login
     try {
       const data = await fetchLeads();
       if (!data.rateLimited && !data.stale) {

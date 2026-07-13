@@ -83,11 +83,21 @@ function deriveAdminToken(adminKey) {
 // ── Signed session tokens ──────────────────────────────────────────────────────
 // Embed client data in a signed token so downstream API handlers (leads, calendly)
 // can verify identity locally. Zero Airtable calls after login, for every client.
-// Secret derived from ADMIN_KEY so no additional env var is required.
+// Secret derived from SESSION_SECRET (preferred) or ADMIN_KEY.
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days. Matches dashboard TTL
+
+// Fail closed: never sign or verify tokens with a known constant. If neither
+// SESSION_SECRET nor ADMIN_KEY is configured, every token would otherwise be
+// forgeable by anyone who can read this source. Throwing here means a
+// misconfigured environment breaks loudly (login returns 500) instead of
+// silently accepting forged sessions for any tenant. leads.js mirrors this.
+function signingBase() {
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY;
+  if (!base) throw new Error('SESSION_SECRET (or ADMIN_KEY) is not configured — refusing to sign tokens with a default secret');
+  return base;
+}
 function sessionSecret() {
-  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
-  return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
+  return crypto.createHmac('sha256', signingBase()).update('helvaro-session-v1').digest('hex');
 }
 function signSession(data) {
   const payload = Buffer.from(JSON.stringify({ ...data, exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
@@ -114,9 +124,8 @@ function safeEqual(a, b) {
 // the moment the password is updated.
 const RESET_TTL_MS = 60 * 60 * 1000;  // 1 hour
 function resetSecret(passwordHash) {
-  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
   // Mixing in the current hash invalidates old tokens after each reset.
-  return crypto.createHmac('sha256', base).update('helvaro-reset-v1:' + (passwordHash || '')).digest('hex');
+  return crypto.createHmac('sha256', signingBase()).update('helvaro-reset-v1:' + (passwordHash || '')).digest('hex');
 }
 function signResetToken(email, passwordHash) {
   const payload = Buffer.from(JSON.stringify({ e: email, iat: Date.now() })).toString('base64url');
@@ -137,10 +146,32 @@ function verifyResetToken(token, passwordHash) {
   } catch { return null; }
 }
 
+// ── Session cookie (httpOnly, so XSS can never read the token) ──────────────────
+// The dashboard and API are same-origin (app.helvaro.pro), so a SameSite=Strict
+// httpOnly cookie is the safest home for the session token: JavaScript — and thus
+// any future XSS — cannot read it. `Secure` is omitted only on localhost so that
+// `vercel dev` over http can still be tested. leads.js reads this cookie.
+const SESSION_COOKIE = 'hv_session';
+function cookieIsSecure(req) {
+  const host = String(req.headers['host'] || '');
+  return !/^localhost(:\d+)?$/.test(host) && !host.startsWith('127.0.0.1');
+}
+function setSessionCookie(req, res, token) {
+  const secure = cookieIsSecure(req) ? ' Secure;' : '';
+  res.setHeader('Set-Cookie',
+    `${SESSION_COOKIE}=${token}; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`);
+}
+function clearSessionCookie(req, res) {
+  const secure = cookieIsSecure(req) ? ' Secure;' : '';
+  res.setHeader('Set-Cookie',
+    `${SESSION_COOKIE}=; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=0`);
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -164,6 +195,12 @@ module.exports = async function handler(req, res) {
     if (!provided || provided !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Ongeldige admin key' });
     clearRateLimit(ip);
     return res.status(200).json({ ok: true, message: 'Rate limit gewist voor jouw IP.' });
+  }
+
+  // ── Logout: clear the httpOnly session cookie ──────────────────────────────
+  if (req.body && req.body.mode === 'logout') {
+    clearSessionCookie(req, res);
+    return res.status(200).json({ ok: true });
   }
 
   if (isRateLimited(ip)) {
@@ -288,7 +325,9 @@ module.exports = async function handler(req, res) {
             projectCode:  user.projectCode  || '',
             calendlyLink: user.calendlyLink || '',  // included in token so leads.js can serve it without Airtable
           };
-          return res.status(200).json({ success: true, ...ud, apiKey: signSession(ud) });
+          const udTok = signSession(ud);
+          setSessionCookie(req, res, udTok);
+          return res.status(200).json({ success: true, ...ud, apiKey: udTok });
         }
       }
     } catch { /* malformed JSON. Fall through to Airtable */ }
@@ -305,7 +344,9 @@ module.exports = async function handler(req, res) {
         projectCode:  process.env.OWNER_PROJECT_CODE  || '',
         calendlyLink: process.env.OWNER_CALENDLY_LINK || '',
       };
-      return res.status(200).json({ success: true, ...ownerData, apiKey: signSession(ownerData) });
+      const ownerTok = signSession(ownerData);
+      setSessionCookie(req, res, ownerTok);
+      return res.status(200).json({ success: true, ...ownerData, apiKey: ownerTok });
     }
 
     // ── Fetch user by email only. Password compared server-side ─────────────
@@ -365,7 +406,9 @@ module.exports = async function handler(req, res) {
       projectCode:  user['fldbrCpBuQjJBfZsv']  || user['Project Code']  || '',
       calendlyLink: user['fldCalendlyLink']     || user['Calendly Link'] || '',
     };
-    return res.status(200).json({ success: true, ...userData, apiKey: signSession(userData) });
+    const userTok = signSession(userData);
+    setSessionCookie(req, res, userTok);
+    return res.status(200).json({ success: true, ...userData, apiKey: userTok });
 
   } catch (err) {
     console.error('Auth error:', err.message);

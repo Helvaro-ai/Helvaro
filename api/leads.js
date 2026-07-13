@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const _gcal  = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -73,8 +74,11 @@ function isAdminToken(provided, adminKey) {
 // ── Session token verification ─────────────────────────────────────────────────
 // Tokens are signed by auth.js; verifying locally saves one Airtable call per
 // request for every client. No env vars needed, works at any scale.
+// Fail closed: never verify tokens with a known constant (see auth.js signingBase).
+// A missing secret must reject sessions, not accept forged ones for any tenant.
 function sessionSecret() {
-  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY;
+  if (!base) throw new Error('SESSION_SECRET (or ADMIN_KEY) is not configured — refusing to verify tokens with a default secret');
   return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
 }
 function verifySession(token) {
@@ -111,8 +115,19 @@ module.exports = async function handler(req, res) {
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
-  const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+  // Token resolution (see auth.js setSessionCookie):
+  //  - Normal customers authenticate via the httpOnly `hv_session` cookie. Their
+  //    dashboard sends the placeholder 'HV_COOKIE_SESSION' in x-api-key; we ignore
+  //    it and read the cookie, so the real token never lives in JS (XSS-safe).
+  //  - Admin/owner (and legacy clients) still send a real token in x-api-key, which
+  //    takes precedence — this is what keeps admin impersonation working unchanged.
+  const COOKIE_PLACEHOLDER = 'HV_COOKIE_SESSION';
+  const cookieToken = (() => {
+    const m = String(req.headers['cookie'] || '').match(/(?:^|;\s*)hv_session=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  })();
+  const hdr = String(req.headers['x-api-key'] || '').trim();
+  const raw = ((hdr && hdr !== COOKIE_PLACEHOLDER) ? hdr : cookieToken).trim().slice(0, 2048);
   if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
 
   let projectCode = '', clientName = '', calendlyLink = '';
@@ -501,7 +516,28 @@ module.exports = async function handler(req, res) {
         );
         const d = await r.json();
         if (!r.ok) return res.status(500).json({ error: d.error?.message || 'Aanmaken mislukt' });
-        return res.status(200).json({ ok: true, id: d.id, apptId });
+        // Mirror into the client's Google Calendar (best-effort, non-blocking).
+        let googleEventId = '';
+        try {
+          const { token, calId } = await gcalAccessForProject(projectCode);
+          if (token) {
+            const ev = await _gcal.createEvent(token, calId, {
+              summary:     `Afspraak: ${fields['Lead Name'] || 'lead'} (Helvaro)`,
+              description: `Telefoon: ${fields['Lead Phone'] || ''}\nProject: ${projectCode}\n${fields['Notes'] || ''}`,
+              startISO:    body.startTime,
+              durationMin: fields['Duration'],
+            });
+            if (ev.ok && ev.eventId) {
+              googleEventId = ev.eventId;
+              await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${d.id}`, {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { 'Google Event ID': ev.eventId }, typecast: true })
+              }).catch(() => {});
+            }
+          }
+        } catch (e) { console.error('[gcal] create mirror failed:', e && e.message); }
+        return res.status(200).json({ ok: true, id: d.id, apptId, googleEventId });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
       }
@@ -514,6 +550,7 @@ module.exports = async function handler(req, res) {
       const id = String(body.id || '').trim();
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
       // Cross-tenant security check. Haal eerst record op en verifieer Project Code
+      let existingFields = {};
       try {
         const chkR = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,
@@ -521,7 +558,8 @@ module.exports = async function handler(req, res) {
         );
         if (!chkR.ok) return res.status(404).json({ error: 'Afspraak niet gevonden' });
         const existing = await chkR.json();
-        if ((existing.fields || {})['Project Code'] !== projectCode) {
+        existingFields = existing.fields || {};
+        if (existingFields['Project Code'] !== projectCode) {
           return res.status(403).json({ error: 'Geen toegang tot deze afspraak' });
         }
       } catch (err) {
@@ -546,6 +584,25 @@ module.exports = async function handler(req, res) {
         );
         if (!r.ok) return res.status(500).json({ error: 'Update mislukt' });
         const d = await r.json();
+        // Sync the change into the client's Google Calendar (best-effort).
+        try {
+          const gEventId = existingFields['Google Event ID'];
+          if (gEventId) {
+            const { token, calId } = await gcalAccessForProject(projectCode);
+            if (token) {
+              if (updateFields['Status'] === 'cancelled') {
+                await _gcal.deleteEvent(token, calId, gEventId);
+              } else if (updateFields['Start Time'] || updateFields['Duration']) {
+                await _gcal.updateEvent(token, calId, gEventId, {
+                  summary:     `Afspraak: ${existingFields['Lead Name'] || 'lead'} (Helvaro)`,
+                  description: `Telefoon: ${existingFields['Lead Phone'] || ''}\nProject: ${projectCode}`,
+                  startISO:    updateFields['Start Time'] || existingFields['Start Time'],
+                  durationMin: updateFields['Duration']   || existingFields['Duration'] || 30,
+                });
+              }
+            }
+          }
+        } catch (e) { console.error('[gcal] update sync failed:', e && e.message); }
         return res.status(200).json({ ok: true, record: d });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
@@ -914,13 +971,40 @@ module.exports = async function handler(req, res) {
 
   // Cache the response at the browser level so all open tabs share one response
   // for 2 minutes instead of each hitting Airtable independently.
-  // Vary: x-api-key ensures different users never share each other's cached data.
+  // Vary on x-api-key AND Cookie: cookie-mode customers all send the same
+  // placeholder x-api-key, so the per-user hv_session cookie is what keeps one
+  // user (e.g. after a logout/login on a shared device) from being served the
+  // previous user's cached leads. `private` already bars shared/CDN caches.
   res.setHeader('Cache-Control', 'private, max-age=120');
-  res.setHeader('Vary', 'x-api-key');
+  res.setHeader('Vary', 'x-api-key, Cookie');
   return res.status(200).json(responsePayload);
 };
 
 // Escape double-quotes and backslashes for Airtable formula strings
+// ── Google Calendar access for a project (optional, fail-soft) ────────────────
+// Looks up the client's Klanten record, decrypts their stored refresh token, and
+// returns a live access token. Returns { token:'' } if not connected/configured.
+async function gcalAccessForProject(projectCode) {
+  try {
+    if (!_gcal.isConfigured() || !projectCode) return { token: '', calId: 'primary' };
+    const BASE_ID = process.env.BASE_AIRTABLE, AIRTABLE_TOKEN = process.env.API_AIRTABLE;
+    const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+    const r = await atFetch(
+      `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+      { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+    );
+    if (!r.ok) return { token: '', calId: 'primary' };
+    const rec = ((await r.json()).records || [])[0];
+    const enc = rec && rec.fields && rec.fields['Google Refresh Token'];
+    if (!enc) return { token: '', calId: 'primary' };
+    const refresh = _gcal.decryptToken(enc);
+    if (!refresh) return { token: '', calId: 'primary' };
+    const token = await _gcal.getAccessToken(refresh);
+    return { token, calId: (rec.fields['Google Calendar ID'] || 'primary') };
+  } catch (e) { console.error('[gcal] access-for-project failed:', e && e.message); return { token: '', calId: 'primary' }; }
+}
+
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }

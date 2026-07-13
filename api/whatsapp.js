@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const _gcal  = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -112,6 +113,14 @@ async function processMessage(phone, text) {
     return;
   }
 
+  // 1b. Opt-out: lead vraagt om te stoppen. Zet nurture uit en antwoord kort.
+  // Geen AI-run. Respecteert de STOP-belofte die in elke nurture-template staat.
+  if (/^\s*(stop|stopp?en|unsubscribe|afmelden|uitschrijven|geen\s+berichten)\b/i.test(text)) {
+    await updateLead(lead.id, { 'Nurture Status': 'opted_out' }, phone).catch(() => {});
+    await sendWA(phone, 'Oké, ik stuur je geen berichten meer. Wil je later toch iets weten, stuur gerust een bericht.').catch(() => {});
+    return;
+  }
+
   // 2. Load client config
   // fldSmczuyUJd26HLe = Project Code field ID; field name fallback for safety
   const projectCode = lead.fields['fldSmczuyUJd26HLe'] || lead.fields['Project Code'];
@@ -201,6 +210,22 @@ async function processMessage(phone, text) {
   let existingAppointments = [];
   if (bookingMethod === 'in_chat') {
     existingAppointments = await getUpcomingAppointments(projectCode).catch(() => []);
+    // Merge the client's Google Calendar busy times so the AI never proposes a
+    // slot they're already busy on. Best-effort: Google problems never block chat.
+    try {
+      const { token, calId } = await gcalAccess(client);
+      if (token) {
+        const busy = await _gcal.freeBusy(token, calId,
+          new Date().toISOString(),
+          new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString());
+        const dOpt = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+        const tOpt = { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+        for (const b of busy) {
+          const s = new Date(b.start), e = new Date(b.end);
+          existingAppointments.push(`${s.toLocaleString('nl-BE', dOpt)}–${e.toLocaleString('nl-BE', tOpt)} (Google agenda, bezet)`);
+        }
+      }
+    } catch (e) { /* best-effort */ }
   }
 
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
@@ -223,6 +248,9 @@ async function processMessage(phone, text) {
     'Last Message':           text,
     'Conversation History':   JSON.stringify(history),
     fld8mkrEWcyq7mUip:       (aiResponse.done && !isEscalation) ? 'completed' : 'in_progress',
+    // Lead is aan het antwoorden -> stop de 14-daagse nurture-sequence.
+    // De cron slaat 'replied' leads over (AI voert nu het gesprek).
+    'Nurture Status':        'replied',
   };
   // ALWAYS update AI Summary if the AI provided one. Even mid-conversation.
   // This way the dashboard's lead-panel always shows the latest understanding
@@ -310,8 +338,23 @@ async function processMessage(phone, text) {
         if (apptResult.ok) {
           await updateLead(lead.id, {
             fldLeEqwNefdglLis: true,
-            fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
+            fldyIGNetqcSEkoaK: true,       // Appointment Booked checkbox
+            'Nurture Status':  'booked'     // definitief uit de nurture
           }, phone);
+          // Mirror the booking into the client's Google Calendar (best-effort).
+          try {
+            const { token, calId } = await gcalAccess(client);
+            if (token) {
+              const ev = await _gcal.createEvent(token, calId, {
+                summary:     `Afspraak: ${leadName || 'lead'} (Helvaro)`,
+                description: `Telefoon: ${phone}\nProject: ${projectCode}\n${aiResponse.summary || ''}`,
+                startISO:    appt.start,
+                durationMin: appt.duration || appointmentDuration,
+              });
+              if (ev.ok && ev.eventId) await setApptGoogleEvent(apptResult.id, ev.eventId);
+              else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
+            }
+          } catch (e) { console.error('[gcal] booking mirror exception:', e && e.message); }
         }
       } catch (err) {
         console.error('[whatsapp] appointment creation failed:', err.message);
@@ -786,6 +829,39 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
     console.error('[Appointment] create exception:', err.message);
     return { ok: false, error: err.message };
   }
+}
+
+// ── Google Calendar (optional, per-client) ───────────────────────────────────
+// Returns { token, calId } for the client's connected Google Calendar, or an
+// empty token if they haven't connected / it's not configured. Never throws —
+// Google issues must never block a WhatsApp reply or a booking.
+async function gcalAccess(client) {
+  try {
+    if (!_gcal.isConfigured()) return { token: '', calId: 'primary' };
+    const enc = (client && client.fields && client.fields['Google Refresh Token']) || '';
+    if (!enc) return { token: '', calId: 'primary' };
+    const refresh = _gcal.decryptToken(enc);
+    if (!refresh) return { token: '', calId: 'primary' };
+    const token = await _gcal.getAccessToken(refresh);
+    const calId = (client.fields['Google Calendar ID'] || 'primary');
+    return { token, calId };
+  } catch (e) {
+    console.error('[gcal] access failed:', e && e.message);
+    return { token: '', calId: 'primary' };
+  }
+}
+
+// Store the created Google event ID back on the Helvaro appointment record so a
+// later reschedule/cancel can update/delete the matching Google event.
+async function setApptGoogleEvent(recordId, eventId) {
+  if (!recordId || !eventId) return;
+  try {
+    await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}/${recordId}`, {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ fields: { 'Google Event ID': eventId }, typecast: true })
+    });
+  } catch (e) { console.error('[gcal] store event id failed:', e && e.message); }
 }
 
 // Haal upcoming appointments op voor een klant (komende 14 dagen) — als string
