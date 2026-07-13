@@ -106,6 +106,13 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Google Calendar OAuth/connection is folded into this function to stay under
+  // Vercel Hobby's 12-serverless-function limit (no separate api/gcal.js). The
+  // public path /api/gcal is rewritten here with __gcal=1 (see vercel.json), so
+  // the registered Google redirect URI (/api/gcal?action=callback) stays valid.
+  // Handle it before the leads auth flow.
+  if (req.query && req.query.__gcal === '1') return handleGcal(req, res);
+
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
 
@@ -1003,6 +1010,112 @@ async function gcalAccessForProject(projectCode) {
     const token = await _gcal.getAccessToken(refresh);
     return { token, calId: (rec.fields['Google Calendar ID'] || 'primary') };
   } catch (e) { console.error('[gcal] access-for-project failed:', e && e.message); return { token: '', calId: 'primary' }; }
+}
+
+// ── Google Calendar OAuth handler (folded in from the former api/gcal.js) ──────
+// Routes: ?action=connect (redirect to Google), ?action=callback (store token),
+// POST {mode:'status'|'disconnect'}. Reached via the /api/gcal rewrite.
+const GCAL_STATE_TTL_MS = 10 * 60 * 1000;
+const GCAL_CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+const GCAL_F_PROJECT = 'fldN4dL0bGgfBOXwM';
+const GCAL_F_REFRESH = 'Google Refresh Token';
+const GCAL_F_GEMAIL  = 'Google Calendar Email';
+const GCAL_F_CALID   = 'Google Calendar ID';
+
+function gcalReadToken(req) {
+  const hdr = String(req.headers['x-api-key'] || '').trim();
+  if (hdr && hdr !== 'HV_COOKIE_SESSION') return hdr;
+  const m = String(req.headers['cookie'] || '').match(/(?:^|;\s*)hv_session=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function gcalCallerProject(req) {
+  const s = verifySession(gcalReadToken(req));
+  return s && s.projectCode ? s.projectCode : '';
+}
+function gcalSignState(projectCode) {
+  const payload = Buffer.from(JSON.stringify({ p: projectCode, t: Date.now() })).toString('base64url');
+  const sig = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+function gcalVerifyState(state) {
+  try {
+    const [payload, sig] = String(state || '').split('.');
+    if (!payload || !sig) return '';
+    const expected = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+    const a = Buffer.from(sig, 'base64url'), b = Buffer.from(expected, 'base64url');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return '';
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.p || !data.t || Date.now() - data.t > GCAL_STATE_TTL_MS) return '';
+    return data.p;
+  } catch { return ''; }
+}
+async function gcalGetClient(projectCode) {
+  const BASE_ID = process.env.BASE_AIRTABLE, TOKEN = process.env.API_AIRTABLE;
+  const formula = encodeURIComponent(`{${GCAL_F_PROJECT}}="${escapeFormula(projectCode)}"`);
+  const r = await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${GCAL_CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+    { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!r.ok) return null;
+  return ((await r.json()).records || [])[0] || null;
+}
+async function gcalPatchClient(recordId, fields) {
+  const BASE_ID = process.env.BASE_AIRTABLE, TOKEN = process.env.API_AIRTABLE;
+  return atFetch(`https://api.airtable.com/v0/${BASE_ID}/${GCAL_CLIENTS_TABLE}/${recordId}`, {
+    method: 'PATCH', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true }),
+  });
+}
+function gcalRedirect(res, url) { res.statusCode = 302; res.setHeader('Location', url); res.end(); }
+
+async function handleGcal(req, res) {
+  if (!_gcal.isConfigured()) {
+    if (req.method === 'GET') return gcalRedirect(res, '/dashboard?gcal=unconfigured');
+    return res.status(200).json({ connected: false, configured: false });
+  }
+  const url    = new URL(req.url, 'https://app.helvaro.pro');
+  const action = url.searchParams.get('action') || '';
+
+  if (req.method === 'GET' && action === 'connect') {
+    const projectCode = gcalCallerProject(req);
+    if (!projectCode) return gcalRedirect(res, '/dashboard?gcal=login_required');
+    return gcalRedirect(res, _gcal.getAuthUrl(gcalSignState(projectCode)));
+  }
+  if (req.method === 'GET' && action === 'callback') {
+    if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?gcal=denied');
+    const code = url.searchParams.get('code');
+    const projectCode = gcalVerifyState(url.searchParams.get('state'));
+    if (!code || !projectCode) return gcalRedirect(res, '/dashboard?gcal=invalid_state');
+    try {
+      const { refreshToken, email } = await _gcal.exchangeCode(code);
+      const client = await gcalGetClient(projectCode);
+      if (!client) return gcalRedirect(res, '/dashboard?gcal=client_not_found');
+      const fields = { [GCAL_F_GEMAIL]: email || '', [GCAL_F_CALID]: 'primary' };
+      if (refreshToken) fields[GCAL_F_REFRESH] = _gcal.encryptToken(refreshToken);
+      await gcalPatchClient(client.id, fields);
+      return gcalRedirect(res, '/dashboard?gcal=connected');
+    } catch (e) {
+      console.error('[gcal callback]', e && e.message);
+      return gcalRedirect(res, '/dashboard?gcal=error');
+    }
+  }
+  if (req.method === 'POST') {
+    const projectCode = gcalCallerProject(req);
+    if (!projectCode) return res.status(401).json({ error: 'Niet ingelogd' });
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+    body = body || {};
+    if (body.mode === 'status') {
+      const client = await gcalGetClient(projectCode);
+      const f = (client && client.fields) || {};
+      return res.status(200).json({ configured: true, connected: !!f[GCAL_F_REFRESH], email: f[GCAL_F_GEMAIL] || '' });
+    }
+    if (body.mode === 'disconnect') {
+      const client = await gcalGetClient(projectCode);
+      if (client) await gcalPatchClient(client.id, { [GCAL_F_REFRESH]: '', [GCAL_F_GEMAIL]: '' });
+      return res.status(200).json({ ok: true, connected: false });
+    }
+    return res.status(400).json({ error: 'Onbekende mode' });
+  }
+  return res.status(405).json({ error: 'Method not allowed' });
 }
 
 function escapeFormula(val) {
