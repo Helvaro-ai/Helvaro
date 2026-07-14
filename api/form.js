@@ -1,3 +1,12 @@
+// waitUntil() registers a promise with the platform's request context so it
+// keeps running for the lifetime of that promise (bounded by maxDuration),
+// even after our HTTP response has already been returned to the browser.
+// Without this, Vercel gives no documented guarantee that a container
+// survives the 45s setTimeout below once the response is flushed. Safe to
+// call in any environment: it's a no-op (getContext().waitUntil?.()) when
+// the platform doesn't provide a request context (e.g. local dev).
+const { waitUntil } = require('@vercel/functions');
+
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
 // Previous design (4 retries, 1/2/4/8 s delays) kept pounding Airtable every
@@ -187,35 +196,60 @@ module.exports = async function handler(req, res) {
 
     // Fire after 45 seconds. Feels like a real person picking up the form
     // Note: Vercel maxDuration is 60s, so 45s delay + processing leaves ~15s buffer
+    //
+    // We already returned (are about to return) the HTTP response below, so
+    // this setTimeout runs entirely after the response is sent. Vercel gives
+    // no documented guarantee a container survives that long post-response
+    // unless the work is registered via waitUntil() — see require() above.
+    // We wrap the whole deferred callback in a Promise + try/catch (not just
+    // `async () => {}` passed straight to setTimeout) for two reasons:
+    //   1. waitUntil() needs an actual Promise to hold onto.
+    //   2. An uncaught throw in a bare `setTimeout(async () => ...)` becomes
+    //      an unhandled promise rejection, which can crash the whole process
+    //      on modern Node — taking down every OTHER in-flight request in this
+    //      Fluid Compute instance, not just this one lead's send.
     const leadId = createData.id;
-    setTimeout(async () => {
-      const waOk = await sendWA(waPhone, waGreeting);
-      if (!waOk) {
-        // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
-        await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
-      } else {
-        // Persist the opening message into Conversation History so the dashboard
-        // shows the very first bubble of the conversation (otherwise it looks
-        // like the lead started the chat unprompted).
-        //
-        // IMPORTANT: keep Conversation State = 'new' here. State only flips to
-        // 'in_progress' when the LEAD replies. The cron-followup job relies on
-        // this signal to know which leads still need a re-engagement message.
+    const deferredSend = new Promise((resolve) => {
+      setTimeout(async () => {
         try {
-          await atFetch(
-            `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
-            {
-              method:  'PATCH',
-              headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-              body:    JSON.stringify({ fields: {
-                'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
-              }})
-            }
-          ).catch(() => {});
-        } catch { /* non-critical */ }
-      }
-      if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
-    }, 45000);
+          const waOk = await sendWA(waPhone, waGreeting);
+          if (!waOk) {
+            // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
+            await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+          } else {
+            // Persist the opening message into Conversation History so the dashboard
+            // shows the very first bubble of the conversation (otherwise it looks
+            // like the lead started the chat unprompted).
+            //
+            // IMPORTANT: keep Conversation State = 'new' here. State only flips to
+            // 'in_progress' when the LEAD replies. The cron-followup job relies on
+            // this signal to know which leads still need a re-engagement message.
+            try {
+              await atFetch(
+                `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+                {
+                  method:  'PATCH',
+                  headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                  body:    JSON.stringify({ fields: {
+                    'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
+                  }})
+                }
+              ).catch(() => {});
+            } catch { /* non-critical */ }
+          }
+          if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
+        } catch (err) {
+          // Belt-and-suspenders: sendWA/atFetch already fail-soft internally,
+          // but if something upstream still throws, flag the lead rather than
+          // let it silently vanish with no "Niet bereikbaar" signal at all.
+          console.error('[form] deferred WhatsApp-send callback crashed:', err.message);
+          await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(() => {});
+        } finally {
+          resolve();
+        }
+      }, 45000);
+    });
+    waitUntil(deferredSend);
 
     // Email notification (fire-and-forget). prefer per-client Rapport Email
     sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});
