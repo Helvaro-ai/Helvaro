@@ -100,6 +100,18 @@ module.exports = async function handler(req, res) {
 
     console.log(`[cron-followup] Checked ${leads.length} leads, sent ${sent} follow-ups`);
 
+    // ── Safety-net sweep: leads stuck at 'new' with an EMPTY history ────────
+    // Defense-in-depth for the delayed-send bug in api/form.js and
+    // api/whatsapp.js (see their waitUntil comments): if the container
+    // running a delayed WhatsApp send got frozen/recycled before it
+    // completed, Airtable never learns the send failed — the lead just sits
+    // silently invisible. This runs every cron regardless of the 24h/48h
+    // window above, so it catches it fast rather than waiting a full day.
+    const stuckNewResult = await sweepStuckNewLeads(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
+      console.error('[cron-followup] stuck-new sweep failed:', e.message);
+      return null;
+    });
+
     // ── Daily summary email ──────────────────────────────────────────────────
     if (sent > 0) {
       const escE = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -194,13 +206,100 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, images: imageResult, posted: posterResult, outreach: outreachResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, content: contentResult, images: imageResult, posted: posterResult, outreach: outreachResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 };
+
+// ── Safety-net sweep for leads stuck at 'new' with an empty history ─────────
+// api/form.js sends the first WhatsApp message from inside a 45s setTimeout,
+// and api/whatsapp.js persists each AI turn only after a 25-55s delayed send.
+// Both are now registered with waitUntil() (see comments in those files), but
+// that's a best-effort platform guarantee, not a certainty — Promises passed
+// to waitUntil() still share the function's own maxDuration, and a future
+// regression could reintroduce the original bug anyway. This sweep is the
+// backstop: it doesn't trust that the delayed send happened, it checks.
+//
+// Threshold: 15 minutes. The delay itself is at most 45s (form.js) or 55s
+// (whatsapp.js), and even a stalled Airtable 429 retry adds at most ~30s on
+// top (see atFetch in both files) — so a healthy send completes within about
+// 90s worst case. 15 minutes gives a wide, deliberately generous margin for
+// cold starts and transient retries so this sweep only ever fires on leads
+// that are genuinely stuck, never on ones still legitimately in flight.
+// There's no upper bound on age: once a lead is flagged (waFailed:true in
+// Notities) the FIND(...)=0 clause below excludes it from future runs, so
+// older unresolved leads simply get caught (and stop reappearing) on
+// whichever day's cron run first sees them, at up to 50/run.
+async function sweepStuckNewLeads(airtableToken, baseId, leadsTable) {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const formula = encodeURIComponent(
+    `AND({fld8mkrEWcyq7mUip}="new", {Conversation History}="", {fldR0r13EU4RwrtvH}<"${cutoff}", FIND("waFailed", {fldoLRI5W12ThTls7})=0)`
+  );
+  const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=50`;
+
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  if (r.status === 429) {
+    console.warn('[cron-followup] stuck-new sweep: Airtable 429, uitgesteld tot volgende run');
+    return { checked: 0, flagged: 0, skipped: 'rate_limited' };
+  }
+  if (!r.ok) throw new Error('Airtable ' + r.status);
+  const data  = await r.json();
+  const stuck = data.records || [];
+
+  let flagged = 0;
+  for (const lead of stuck) {
+    try {
+      const merged = mergeWaFailedFlag(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities']);
+      const pr = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${leadsTable}/${lead.id}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: merged } })
+        }
+      );
+      if (pr.ok) flagged++;
+      else console.error(`[cron-followup] stuck-new flag PATCH mislukt voor ${lead.id} (${pr.status})`);
+    } catch (err) {
+      console.error(`[cron-followup] stuck-new flag exception voor ${lead.id}:`, err.message);
+    }
+    // Slight delay to avoid Airtable rate limits, same pattern as the main loop above
+    await new Promise(res => setTimeout(res, 300));
+  }
+  console.log(`[cron-followup] stuck-new sweep: checked ${stuck.length}, flagged ${flagged}`);
+  return { checked: stuck.length, flagged };
+}
+
+// Merge a waFailed:true marker into a lead's existing Notities JSON without
+// clobbering notes/tasks/calls a client may already have added manually.
+// Same helper as api/whatsapp.js's mergeWaFailedFlag (duplicated here — each
+// api/*.js file in this codebase is a standalone Vercel function with no
+// shared module, matching the existing pattern of small per-file helpers
+// like escEmail/sanitize appearing independently across these files).
+//
+// Notities isn't always JSON: dashboard.js's parseNotities() also accepts
+// bare legacy text (pre-JSON-envelope manual notes) and wraps it as a
+// {id:'legacy', text, ts} note on read. Preserve that instead of discarding
+// it when we merge in the flag.
+function mergeWaFailedFlag(raw) {
+  const trimmed = raw ? String(raw).trim() : '';
+  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
+  let handled = false;
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
+    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
+  }
+  if (!handled && trimmed) {
+    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
+  }
+  data.waFailed = true;
+  return JSON.stringify(data);
+}
 
 // ── Quality rating check ─────────────────────────────────────────────────────
 // Calls the Meta Graph API to fetch this phone number's current quality rating.
