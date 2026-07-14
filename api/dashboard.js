@@ -9883,7 +9883,7 @@ function renderTable() {
       \`<span class="age-badge-table age-badge-cold">\${ageDays}d</span>\`;
     // Quick action buttons
     const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
-    const waPhone = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
+    const waPhone = rawPhone.startsWith('0') ? '32' + rawPhone.slice(1) : rawPhone;
     const waLink = waPhone ? 'https://wa.me/' + waPhone : '#';
     const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     return \`
@@ -10113,7 +10113,7 @@ function openPanel(lead) {
     const naam = encodeURIComponent(lead.naam || '');
     const naamRaw = lead.naam || '';
     const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
-    const waPhone = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
+    const waPhone = rawPhone.startsWith('0') ? '32' + rawPhone.slice(1) : rawPhone;
     const waLink = waPhone
       ? 'https://wa.me/' + waPhone + '?text=Hallo%20' + naam + '%2C%20bedankt%20voor%20uw%20interesse.'
       : '#';
@@ -11350,7 +11350,7 @@ function renderCalSidebar() {
     const phone    = l.telefoon || '';
     const score    = l.leadScore || '';
     const rawPhone = phone.replace(/\D/g,'');
-    const waPhone  = rawPhone.startsWith('0') ? '31' + rawPhone.slice(1) : rawPhone;
+    const waPhone  = rawPhone.startsWith('0') ? '32' + rawPhone.slice(1) : rawPhone;
     const waLink   = \`https://wa.me/\${waPhone}?text=\${encodeURIComponent('Hallo ' + name + ', ik wilde graag een afspraak inplannen. Wanneer schikt het u?')}\`;
     const idStr    = escHtml(String(l.id));
     return \`<div class="cal-call-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${idStr}');if(lead)openPanel(lead);})()">
