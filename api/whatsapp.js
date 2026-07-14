@@ -30,37 +30,61 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
+  // ── Read the raw body ourselves, BEFORE anything touches req.body ───────────
+  // Vercel's Node.js runtime auto-parses application/json bodies into req.body
+  // via a lazy getter (only computed on first access). Once that getter runs,
+  // the exact bytes Meta sent are gone — JSON.stringify(req.body) essentially
+  // never byte-matches the original payload (key order, whitespace), which is
+  // exactly why signature verification used to silently block nothing: the
+  // blocking path only ran when req.body happened to still be a raw string,
+  // which never actually happens on Vercel's Node.js runtime.
+  //
+  // Fix: read req as the plain Node.js IncomingMessage stream it still is
+  // (confirmed via Vercel's docs — req.body is a getter, not eagerly computed,
+  // so nothing has consumed the stream yet) and never reference req.body
+  // anywhere in this file. That gives the literal bytes Meta signed for HMAC
+  // verification, and we JSON.parse those same bytes ourselves to build the
+  // object the rest of the handler needs. No vercel.json change, no env var,
+  // no impact on any other /api route.
+  let rawBody;
+  try {
+    rawBody = await readRawBody(req);
+  } catch (err) {
+    console.error('[WhatsApp] Kon request body niet lezen:', err.message);
+    return res.status(400).send('Bad Request');
+  }
+
   // ── Verify Meta webhook signature ────────────────────────────────────────────
-  // Vercel may pre-parse req.body; if so, JSON.stringify may differ from Meta's
-  // original bytes (key order, whitespace). We block only when req.body is still
-  // a raw string (reliable). When it has been parsed to an object we warn and
-  // continue. A blocking false-positive would cause Meta to retry indefinitely.
+  // Blocks on mismatch. rawBody is the exact bytes Meta sent, so this now
+  // actually verifies (see above — the old "warn only" fallback is gone
+  // because we no longer depend on req.body ever being a raw string).
   if (APP_SECRET) {
-    const sig = req.headers['x-hub-signature-256'] || '';
-    if (typeof req.body === 'string') {
-      // Raw body available. Full verification, block on mismatch
-      const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(req.body, 'utf8').digest('hex');
-      if (!safeEqual(sig, expected)) {
-        console.warn('[WhatsApp] Handtekening ongeldig. Verzoek geblokkeerd');
-        return res.status(403).send('Forbidden');
-      }
-    } else {
-      // Body already parsed. Best-effort check, warn only
-      const rawBody  = JSON.stringify(req.body || {});
-      const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(rawBody, 'utf8').digest('hex');
-      if (!safeEqual(sig, expected)) {
-        console.warn('[WhatsApp] Handtekening kon niet worden geverifieerd (body al geparsed door Vercel)');
-      }
+    const sig      = req.headers['x-hub-signature-256'] || '';
+    const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(rawBody).digest('hex');
+    if (!safeEqual(sig, expected)) {
+      console.warn('[WhatsApp] Handtekening ongeldig. Verzoek geblokkeerd');
+      return res.status(403).send('Forbidden');
     }
   } else {
     console.warn('[WhatsApp] WA_APP_SECRET niet ingesteld. Handtekening verificatie uitgeschakeld');
+  }
+
+  // Parse the verified raw bytes ourselves. Meta always sends application/json,
+  // so this produces the same shape req.body would have — without ever
+  // touching the req.body getter.
+  let body;
+  try {
+    body = rawBody.length ? JSON.parse(rawBody.toString('utf8')) : {};
+  } catch (err) {
+    console.error('[WhatsApp] Ongeldige JSON body:', err.message);
+    return res.status(400).send('Bad Request');
   }
 
   // Always reply 200 immediately. Meta will retry if we don't
   res.status(200).send('OK');
 
   try {
-    const entry   = req.body?.entry?.[0];
+    const entry   = body?.entry?.[0];
     const change  = entry?.changes?.[0]?.value;
     const message = change?.messages?.[0];
 
@@ -816,6 +840,28 @@ async function getUpcomingAppointments(projectCode) {
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+// Buffer the raw request body directly off the Node.js stream, before the
+// Vercel req.body getter (or anything else) has a chance to consume it.
+// 2 MB cap: Meta's webhook payloads are small (a handful of KB); this just
+// guards against an abusive/oversized POST tying up the function.
+function readRawBody(req, maxBytes = 2 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error('Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
 
 // Timing-safe string comparison. Prevents timing attacks on signature checks
 function safeEqual(a, b) {
