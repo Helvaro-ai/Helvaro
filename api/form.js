@@ -85,6 +85,12 @@ module.exports = async function handler(req, res) {
 
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
+    // GDPR Art. 7(1): consent must be given (not just shown) and demonstrable.
+    // The client-side checkbox already blocks the submit button, but that's
+    // trivially bypassed by calling this API directly — enforce it here too,
+    // and persist a timestamped record below so we can prove it was given.
+    if (body.consent !== true) return res.status(400).json({ error: 'Toestemming voor contact is verplicht' });
+    const consentTs = new Date().toISOString();
 
     // ── Look up client config (non-blocking) ───────────────────────────────────
     // Single-shot fetch (no retries). this is non-critical; on any failure we
@@ -151,7 +157,14 @@ module.exports = async function handler(req, res) {
           fldSmczuyUJd26HLe: project_code,
           fld8mkrEWcyq7mUip: 'new',
           fldGoerozqdea4BfU: bron,
-          fldR0r13EU4RwrtvH: new Date().toISOString()
+          fldR0r13EU4RwrtvH: new Date().toISOString(),
+          // GDPR Art. 7(1) demonstrability: no dedicated Airtable column exists
+          // for consent (schema changes are out of scope for a code branch), so
+          // it rides in the existing free-text Notities field alongside the
+          // notes/tasks/calls JSON blob the dashboard already reads/writes via
+          // parseNotities()/serializeNotities(). Those spread unknown keys
+          // through untouched, so this survives future dashboard note edits.
+          fldoLRI5W12ThTls7: JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], consent: { given: true, ts: consentTs } })
         }
       })
     };

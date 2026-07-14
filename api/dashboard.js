@@ -8868,7 +8868,11 @@ function parseNotities(lead) {
 }
 
 function serializeNotities(data) {
-  const obj = { _v: 1, notes: data.notes || [], tasks: data.tasks || [], calls: data.calls || [] };
+  // Spread first so keys the dashboard doesn't know about (consent, waFailed,
+  // etc. — written by form.js / whatsapp.js / cron-followup.js) round-trip
+  // through a save instead of being dropped. The known keys are then always
+  // re-applied on top so they stay in their canonical shape.
+  const obj = { ...data, _v: 1, notes: data.notes || [], tasks: data.tasks || [], calls: data.calls || [] };
   if (data.afspraak !== undefined) obj.afspraak = data.afspraak;
   return JSON.stringify(obj);
 }

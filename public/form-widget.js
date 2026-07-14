@@ -57,7 +57,11 @@
     '.hv-ok-txt{color:#e8f0ff;font-size:14px;line-height:1.6}' +
     '.hv-ok-txt strong{color:#00e5a0}' +
     '#hv-err{color:#ff4560;font-size:12px;margin-top:10px;padding:10px 12px;' +
-    'background:rgba(255,69,96,.1);border:1px solid rgba(255,69,96,.2);border-radius:8px;display:none}';
+    'background:rgba(255,69,96,.1);border:1px solid rgba(255,69,96,.2);border-radius:8px;display:none}' +
+    '.hv-consent-row{display:flex;align-items:flex-start;gap:8px;margin:2px 0 15px;cursor:pointer;user-select:none}' +
+    '.hv-consent-row input[type="checkbox"]{flex-shrink:0;margin-top:2px;width:16px;height:16px;cursor:pointer;accent-color:#1e6fd9}' +
+    '.hv-consent-row span{font-size:11px;line-height:1.5;color:#6a85b0}' +
+    '.hv-consent-row a{color:#00d4ff;text-decoration:underline}';
   document.head.appendChild(css);
 
   /* ── HTML ─────────────────────────────────────────────────────────────── */
@@ -77,6 +81,11 @@
     '<input class="hv-inp" id="hv-naam" type="text" placeholder="Jouw naam" autocomplete="name">' +
     '<label class="hv-lbl" for="hv-tel">Telefoonnummer</label>' +
     '<input class="hv-inp" id="hv-tel" type="tel" placeholder="0478 12 34 56" autocomplete="tel">' +
+    '<label class="hv-consent-row" for="hv-consent">' +
+    '<input type="checkbox" id="hv-consent">' +
+    '<span>Ik ga akkoord dat ' + CLIENT_NAME + ' mij via WhatsApp contacteert. Zie het ' +
+    '<a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">privacybeleid</a>.</span>' +
+    '</label>' +
     '<button id="hv-send">VERSTUUR</button>' +
     '<div id="hv-err"></div>' +
     '</div>' +
@@ -97,6 +106,7 @@
   var errEl   = document.getElementById('hv-err');
   var naamEl  = document.getElementById('hv-naam');
   var telEl   = document.getElementById('hv-tel');
+  var consentEl = document.getElementById('hv-consent');
 
   function open()  { overlay.classList.add('open'); naamEl.focus(); }
   function close() { overlay.classList.remove('open'); }
@@ -118,6 +128,11 @@
       errEl.style.display = 'block';
       return;
     }
+    if (!consentEl.checked) {
+      errEl.textContent   = 'Vink het privacy-vakje aan om verder te gaan.';
+      errEl.style.display = 'block';
+      return;
+    }
     sendBtn.textContent = 'VERSTUREN\u2026';
     sendBtn.disabled    = true;
 
@@ -125,7 +140,7 @@
     fetch(API_ENDPOINT, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name: name, phone: phone, bron: 'Website' })
+      body:    JSON.stringify({ name: name, phone: phone, bron: 'Website', consent: consentEl.checked })
     })
     .then(function (r) {
       if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Serverfout'); });

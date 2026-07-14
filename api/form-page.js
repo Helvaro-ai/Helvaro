@@ -601,7 +601,7 @@ btn.addEventListener('click', function() {
   fetch(API, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie' })
+    body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie', consent: !!(consent && consent.checked) })
   })
   .then(function(r) {
     if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || I18N.errGeneric); });
