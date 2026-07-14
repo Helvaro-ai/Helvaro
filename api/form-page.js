@@ -97,7 +97,22 @@ module.exports = async function handler(req, res) {
   function escHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-  function escJs(s) { return String(s || '').replace(/[\x00-\x1F\x7F]/g, '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+  // Escape for embedding in a JS string literal. Used in two contexts:
+  // 1. Single-quoted strings inside an inline <script> block
+  // 2. Single-quoted strings inside an HTML attribute (e.g. onerror="...")
+  // Must neutralize </script> (browsers parse the closing tag before JS
+  // interprets the string contents) AND double quotes (to not break out of
+  // HTML attribute context). Escaping < > / " as \xNN hex codes handles both.
+  function escJs(s) {
+    return String(s || '')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\x22')
+      .replace(/</g, '\\x3C')
+      .replace(/>/g, '\\x3E')
+      .replace(/\//g, '\\x2F');
+  }
 
   const firstName       = aiName.split(/\s+/)[0] || aiName;
   const initial         = (firstName[0] || 'M').toUpperCase();
