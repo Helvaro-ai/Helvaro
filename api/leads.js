@@ -73,18 +73,32 @@ function isAdminToken(provided, adminKey) {
 // ── Session token verification ─────────────────────────────────────────────────
 // Tokens are signed by auth.js; verifying locally saves one Airtable call per
 // request for every client. No env vars needed, works at any scale.
+// Fail closed: never verify tokens with a known constant (see auth.js signingBase).
+// A missing secret must reject sessions, not accept forged ones for any tenant.
 function sessionSecret() {
-  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY;
+  if (!base) throw new Error('SESSION_SECRET (or ADMIN_KEY) is not configured — refusing to verify tokens with a default secret');
   return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
 }
 function verifySession(token) {
+  if (typeof token !== 'string' || !token.startsWith('hvs1.')) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [, payload, sig] = parts;
+  if (!payload || !sig) return null;
+  // sessionSecret() throwing here means the environment is misconfigured
+  // (no SESSION_SECRET/ADMIN_KEY) — log it distinctly so it surfaces in
+  // ops rather than looking like routine invalid-key traffic. Every request
+  // still falls through to Path B (legacy key) and gets a normal 401;
+  // nothing crashes.
+  let secret;
   try {
-    if (typeof token !== 'string' || !token.startsWith('hvs1.')) return null;
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const [, payload, sig] = parts;
-    if (!payload || !sig) return null;
-    const secret   = sessionSecret();
+    secret = sessionSecret();
+  } catch (err) {
+    console.error('[leads] session verification unavailable:', err.message);
+    return null;
+  }
+  try {
     const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
     const a = Buffer.from(sig,      'base64url');
     const b = Buffer.from(expected, 'base64url');

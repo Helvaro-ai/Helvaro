@@ -83,11 +83,21 @@ function deriveAdminToken(adminKey) {
 // ── Signed session tokens ──────────────────────────────────────────────────────
 // Embed client data in a signed token so downstream API handlers (leads, calendly)
 // can verify identity locally. Zero Airtable calls after login, for every client.
-// Secret derived from ADMIN_KEY so no additional env var is required.
+// Secret derived from SESSION_SECRET (preferred) or ADMIN_KEY.
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days. Matches dashboard TTL
+
+// Fail closed: never sign or verify tokens with a known constant. If neither
+// SESSION_SECRET nor ADMIN_KEY is configured, every token would otherwise be
+// forgeable by anyone who can read this source. Throwing here means a
+// misconfigured environment breaks loudly (login returns 500) instead of
+// silently accepting forged sessions for any tenant. leads.js mirrors this.
+function signingBase() {
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY;
+  if (!base) throw new Error('SESSION_SECRET (or ADMIN_KEY) is not configured — refusing to sign tokens with a default secret');
+  return base;
+}
 function sessionSecret() {
-  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
-  return crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
+  return crypto.createHmac('sha256', signingBase()).update('helvaro-session-v1').digest('hex');
 }
 function signSession(data) {
   const payload = Buffer.from(JSON.stringify({ ...data, exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
@@ -114,9 +124,8 @@ function safeEqual(a, b) {
 // the moment the password is updated.
 const RESET_TTL_MS = 60 * 60 * 1000;  // 1 hour
 function resetSecret(passwordHash) {
-  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY || 'helvaro-default-v1';
   // Mixing in the current hash invalidates old tokens after each reset.
-  return crypto.createHmac('sha256', base).update('helvaro-reset-v1:' + (passwordHash || '')).digest('hex');
+  return crypto.createHmac('sha256', signingBase()).update('helvaro-reset-v1:' + (passwordHash || '')).digest('hex');
 }
 function signResetToken(email, passwordHash) {
   const payload = Buffer.from(JSON.stringify({ e: email, iat: Date.now() })).toString('base64url');
@@ -274,10 +283,15 @@ module.exports = async function handler(req, res) {
     //   USERS_CONFIG = {"email@example.com":{"password":"...","apiKey":"...","clientName":"...","projectCode":"..."}}
     // Use the EXACT same password that is stored in Airtable "Password Hash".
     // Supports multiple accounts. Just add more keys to the JSON object.
-    try {
-      const raw = process.env.USERS_CONFIG;
-      if (raw) {
-        const store = JSON.parse(raw);
+    // NOTE: JSON.parse is isolated in its own try/catch so a signSession() failure
+    // (fail-closed when SESSION_SECRET/ADMIN_KEY are both unset) is NOT swallowed
+    // here — it must propagate to the outer handler catch and surface as a 500,
+    // not silently fall through to the Airtable path with a misleading error.
+    const rawUsersConfig = process.env.USERS_CONFIG;
+    if (rawUsersConfig) {
+      let store = null;
+      try { store = JSON.parse(rawUsersConfig); } catch { /* malformed JSON. Fall through to Airtable */ }
+      if (store) {
         // Find by email (case-insensitive)
         const key  = Object.keys(store).find(k => k.toLowerCase() === email.toLowerCase());
         const user = key ? store[key] : null;
@@ -291,7 +305,7 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ success: true, ...ud, apiKey: signSession(ud) });
         }
       }
-    } catch { /* malformed JSON. Fall through to Airtable */ }
+    }
 
     // ── Owner bypass (legacy. Superseded by USERS_CONFIG) ───────────────────
     const OWNER_EMAIL = process.env.OWNER_EMAIL;
