@@ -1,4 +1,12 @@
 const crypto = require('crypto');
+// waitUntil() registers a promise with the platform's request context so it
+// keeps running for the lifetime of that promise (bounded by maxDuration),
+// even though our HTTP response was already flushed back to Meta. Without
+// this, Vercel gives no documented guarantee that a container survives a
+// long in-process delay (our 25-55s "human" wait) once the response is sent.
+// Safe to call in any environment: it's a no-op (getContext().waitUntil?.())
+// when the platform doesn't provide a request context (e.g. local dev).
+const { waitUntil } = require('@vercel/functions');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -11,8 +19,9 @@ const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const NOTIFY_PHONE    = process.env.NOTIFY_PHONE;
 
-const LEADS_TABLE   = 'tbliukTnDAbEDcZmt';
-const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+const LEADS_TABLE     = 'tbliukTnDAbEDcZmt';
+const CLIENTS_TABLE   = 'tblPidTrwGRzRt4LZ';
+const NOTITIES_FIELD  = 'fldoLRI5W12ThTls7';   // Notities. Also used by api/form.js's flagWaFailed
 
 // ─── WEBHOOK HANDLER ────────────────────────────────────────────────────────
 
@@ -80,7 +89,14 @@ module.exports = async function handler(req, res) {
     const text  = sanitize(message.text.body).trim();
 
     console.log(`[WhatsApp] Bericht van ${phone}: ${text}`);
-    await processMessage(phone, text);
+    // Register the deferred work (AI reply + human-feeling delay + Airtable +
+    // actual send) with the platform via waitUntil() so it isn't dropped if
+    // the container gets frozen/recycled after our 200 OK already went out.
+    // We still `await` it locally too: that preserves today's behaviour on
+    // any runtime where waitUntil() is a no-op (see require comment above).
+    const work = processMessage(phone, text);
+    waitUntil(work);
+    await work;
 
   } catch (err) {
     console.error('[WhatsApp] Fout in handler:', err.message);
@@ -208,47 +224,60 @@ async function processMessage(phone, text) {
     appointmentDuration, existingAppointments
   });
 
-  // 8. Trim and push AI reply to history
-  const replyText = aiResponse.message.trim();
-  history.push({ role: 'assistant', content: replyText });
-  if (history.length > 20) history = history.slice(-20);
-
-  // 9. Update lead in Airtable
-  // All fields use field IDs where known. Immune to Airtable field renames.
-  // 'Conversation History' and 'Last Message' have no known field ID; kept by name.
-  // If AI escalated, we treat the state as 'in_progress' (awaiting human),
-  // never as 'completed'. even if the AI also set done:true.
+  // 8. Trim the AI reply. We deliberately do NOT push it into `history` or
+  //    touch Airtable yet. Whether the conversation "actually advanced" is
+  //    only known once we've tried to deliver it (step 10) — persisting
+  //    optimistically here is exactly the bug this fix closes.
+  const replyText    = aiResponse.message.trim();
   const isEscalation = aiResponse.escalate === true;
-  const updateFields = {
-    'Last Message':           text,
-    'Conversation History':   JSON.stringify(history),
-    fld8mkrEWcyq7mUip:       (aiResponse.done && !isEscalation) ? 'completed' : 'in_progress',
-  };
-  // ALWAYS update AI Summary if the AI provided one. Even mid-conversation.
-  // This way the dashboard's lead-panel always shows the latest understanding
-  // of what the lead wants, instead of having to wait until 'done:true'.
-  if (aiResponse.summary) {
-    updateFields.fldqerIiw5qyQjXHr = String(aiResponse.summary).slice(0, 600);
-  }
-  if (aiResponse.done && !isEscalation) {
-    Object.assign(updateFields, {
-      fld0hAZJ5wgaXrNTn: aiResponse.qualified,         // Qualified
-      fld3NhSENma0okbT7: aiResponse.reason    || '',   // Reason
-      // summary already set above (every turn), don't overwrite
-      fldrfbTopJvZEYSKP: aiResponse.ability   || '',   // Ability
-      fldlyLH1DKrWyG3Tr: aiResponse.urgency   || '',   // Urgency
-      fldqNxsPshvZEBeLr: aiResponse.fit       || '',   // Fit
-      fldpzQgMuWJLjogiD: aiResponse.leadScore || 0,    // Lead Score
-    });
-  }
-  await updateLead(lead.id, updateFields, phone);
 
-  // 10. Wait a randomized, human-feeling delay before sending. Real people
+  // 9. Wait a randomized, human-feeling delay before sending. Real people
   // don't reply on exact 30-sec intervals. Range 25-55 sec keeps it natural
   // while still feeling "they saw it pretty quickly".
   const humanDelay = 25_000 + Math.floor(Math.random() * 30_000);
   await new Promise(resolve => setTimeout(resolve, humanDelay));
-  await sendWA(phone, replyText);
+
+  // 10. Attempt delivery FIRST, then persist an outcome that matches what
+  // actually happened. All fields use field IDs where known. Immune to
+  // Airtable field renames. 'Conversation History' and 'Last Message' have
+  // no known field ID; kept by name.
+  const sendOk = await sendWA(phone, replyText);
+  const updateFields = { 'Last Message': text };
+  if (sendOk) {
+    history.push({ role: 'assistant', content: replyText });
+    if (history.length > 20) history = history.slice(-20);
+    updateFields['Conversation History'] = JSON.stringify(history);
+    // If AI escalated, we treat the state as 'in_progress' (awaiting human),
+    // never as 'completed'. even if the AI also set done:true.
+    updateFields.fld8mkrEWcyq7mUip = (aiResponse.done && !isEscalation) ? 'completed' : 'in_progress';
+    // ALWAYS update AI Summary if the AI provided one. Even mid-conversation.
+    // This way the dashboard's lead-panel always shows the latest understanding
+    // of what the lead wants, instead of having to wait until 'done:true'.
+    if (aiResponse.summary) {
+      updateFields.fldqerIiw5qyQjXHr = String(aiResponse.summary).slice(0, 600);
+    }
+    if (aiResponse.done && !isEscalation) {
+      Object.assign(updateFields, {
+        fld0hAZJ5wgaXrNTn: aiResponse.qualified,         // Qualified
+        fld3NhSENma0okbT7: aiResponse.reason    || '',   // Reason
+        // summary already set above (every turn), don't overwrite
+        fldrfbTopJvZEYSKP: aiResponse.ability   || '',   // Ability
+        fldlyLH1DKrWyG3Tr: aiResponse.urgency   || '',   // Urgency
+        fldqNxsPshvZEBeLr: aiResponse.fit       || '',   // Fit
+        fldpzQgMuWJLjogiD: aiResponse.leadScore || 0,    // Lead Score
+      });
+    }
+  } else {
+    // Delivery failed. Leave Conversation History/State exactly as they were
+    // (the lead never saw this reply, so nothing about the conversation
+    // actually moved forward) and flag the lead the same way api/form.js's
+    // flagWaFailed does, so it surfaces in the dashboard's "Niet bereikbaar"
+    // view and cron-followup's stuck-lead sweep instead of silently looking
+    // like a healthy, in-progress conversation.
+    console.error(`[WhatsApp] Verzenden naar ${phone} mislukt. Conversation History/State blijven ongewijzigd`);
+    updateFields[NOTITIES_FIELD] = mergeWaFailedFlag(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+  }
+  await updateLead(lead.id, updateFields, phone);
 
   // 10b. ESCALATION. When the AI explicitly says "I don't know, let me check",
   // ping the owner immediately so they can take over within the 30 min the AI
@@ -275,8 +304,10 @@ async function processMessage(phone, text) {
 
   // 11. CALLBACK booking flow — alleen als klant 'callback' kiest. In-chat
   //     booking wordt afgehandeld via BOOK:{...} block dat de AI uitstuurt
-  //     (zie sectie 10b hieronder). Skip bij escalatie.
-  if (aiResponse.done && aiResponse.qualified && !isEscalation && bookingMethod === 'callback') {
+  //     (zie sectie 10b hieronder). Skip bij escalatie. Skip ook als de
+  //     hoofdreply (replyText) niet aankwam — anders bevestigen we een
+  //     terugbel-afspraak op een gesprek dat de lead nooit zag.
+  if (sendOk && aiResponse.done && aiResponse.qualified && !isEscalation && bookingMethod === 'callback') {
     const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
     if (!bookingSent) {
       const callbackMsgs = {
@@ -293,7 +324,8 @@ async function processMessage(phone, text) {
   //      Verwerk de booking: maak Appointment record + bevestig naar lead +
   //      notify owner. AI handelt de natuurlijke conversatie zelf af (parseert
   //      lead's tijdvoorstel + stelt slot voor + wacht op bevestiging).
-  if (aiResponse.appointment && bookingMethod === 'in_chat' && !isEscalation) {
+  //      Skip als replyText niet aankwam — zie 11 hierboven.
+  if (sendOk && aiResponse.appointment && bookingMethod === 'in_chat' && !isEscalation) {
     const appt = aiResponse.appointment;
     const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
     if (!bookingSent && appt.start) {
@@ -320,6 +352,9 @@ async function processMessage(phone, text) {
   }
 
   // 11c. Owner notificaties bij qualified (zowel in_chat als callback). Skip bij escalatie.
+  // Intentioneel NIET gegated op sendOk: de kwalificatie is gebaseerd op wat de
+  // LEAD al zei, niet op onze reply. De owner mag dit altijd weten, ook als
+  // ons laatste bericht niet aankwam (kan zelf manueel opvolgen).
   if (aiResponse.done && aiResponse.qualified && !isEscalation) {
 
     // Notify owner when a lead is qualified. WhatsApp + Email parallel
@@ -839,6 +874,35 @@ function sanitize(val) {
   return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 2000);
 }
 
+// Merge a waFailed:true marker into a lead's existing Notities JSON without
+// clobbering notes/tasks/calls a client may already have added manually.
+// api/form.js's flagWaFailed overwrites the field outright, which is safe
+// there because it only ever runs immediately after lead creation (Notities
+// is still empty). Here we're mid-conversation, so an unconditional overwrite
+// could wipe out real staff notes — merge instead.
+//
+// Notities isn't always JSON: dashboard.js's parseNotities() also accepts
+// bare legacy text (pre-JSON-envelope manual notes) and wraps it as a
+// {id:'legacy', text, ts} note on read. If we don't do the same here, a lead
+// with an old-style plain-text note would have that note silently destroyed
+// the moment it gets flagged — preserve it instead.
+function mergeWaFailedFlag(raw) {
+  const trimmed = raw ? String(raw).trim() : '';
+  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
+  let handled = false;
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
+    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
+  }
+  if (!handled && trimmed) {
+    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
+  }
+  data.waFailed = true;
+  return JSON.stringify(data);
+}
+
 // ─── WHATSAPP ────────────────────────────────────────────────────────────────
 
 // Check whether the current Brussels-time falls inside a client's Working Hours.
@@ -898,22 +962,32 @@ function isWithinWorkingHours(spec) {
   return now >= hStart && now < hEnd;
 }
 
+// Returns true on confirmed delivery-to-Meta, false on any failure. Never
+// throws — callers (esp. the delayed-send flow in processMessage) rely on
+// this to decide what's safe to persist to Airtable, so a thrown network
+// error must resolve to `false` rather than propagate and skip that logic.
 async function sendWA(to, message) {
-  const url  = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
-  const res  = await fetch(url, {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'text',
-      text: { body: message },
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok || data.error) {
-    console.error(`[WhatsApp] Sturen naar ${to} mislukt:`, JSON.stringify(data.error || data));
-  } else {
+  try {
+    const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
+    const res = await fetch(url, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: message },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      console.error(`[WhatsApp] Sturen naar ${to} mislukt:`, JSON.stringify(data.error || data));
+      return false;
+    }
     console.log(`[WhatsApp] Bericht gestuurd naar ${to}`);
+    return true;
+  } catch (err) {
+    console.error(`[WhatsApp] Netwerkfout bij sturen naar ${to}:`, err.message);
+    return false;
   }
 }
