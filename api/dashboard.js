@@ -8858,6 +8858,7 @@ function parseNotities(lead) {
   try {
     const d = JSON.parse(raw);
     return {
+      ...d,
       notes:    Array.isArray(d.notes) ? d.notes : [],
       tasks:    Array.isArray(d.tasks) ? d.tasks : [],
       calls:    Array.isArray(d.calls) ? d.calls : [],
