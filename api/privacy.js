@@ -124,7 +124,7 @@ module.exports = function handler(req, res) {
   <p>U heeft het recht om uw gegevens in te zien, te corrigeren of te laten verwijderen. Stuur hiervoor een e-mail naar <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
   <h2>6. Cookies</h2>
-  <p>Wij gebruiken geen tracking cookies. Onze website maakt gebruik van sessie-opslag voor authenticatie.</p>
+  <p>Wij gebruiken geen tracking cookies. Onze website maakt gebruik van lokale opslag (localStorage) voor authenticatie, met een geldigheidsduur van 7 dagen.</p>
 
   <h2>7. Beveiliging</h2>
   <p>Alle gegevens worden beveiligd opgeslagen via Airtable en Vercel. Verbindingen zijn versleuteld via HTTPS.</p>
