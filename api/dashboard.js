@@ -12498,10 +12498,7 @@ function renderPipeline() {
     // Pipeline deal value: sum verwachteWaarde of non-verloren leads
     const pipelineValue = (state.leads || [])
       .filter(l => l.status !== 'verloren')
-      .reduce((sum, l) => {
-        const raw = String(l.verwachteWaarde || '').replace(/[^0-9.,]/g, '').replace(',', '.');
-        return sum + (parseFloat(raw) || 0);
-      }, 0);
+      .reduce((sum, l) => sum + parseDealValue(l.verwachteWaarde), 0);
     const valueFormatted = pipelineValue > 0
       ? '€' + pipelineValue.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
       : null;
@@ -12594,7 +12591,14 @@ function openConversation(leadId) {
    ============================================================ */
 function parseDealValue(v) {
   if (!v) return 0;
-  const s = String(v).replace(/[€\s]/g, '').replace(',', '.');
+  let s = String(v).replace(/[€\\s]/g, '');
+  // Belgian/Dutch number format: '.' = thousands separator, ',' = decimal
+  // separator (e.g. "€ 2.750,00" = 2750). If a comma is present, any '.'
+  // before it is a thousands separator and gets stripped; the comma then
+  // becomes the decimal point. If there's no comma, treat all '.' as
+  // thousands separators too (e.g. "1.500" = 1500, not 1.5) — this format
+  // never uses '.' as a decimal point.
+  s = s.includes(',') ? s.replace(/\\.(?=.*,)/g, '').replace(',', '.') : s.replace(/\\./g, '');
   return parseFloat(s) || 0;
 }
 
