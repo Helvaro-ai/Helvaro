@@ -209,7 +209,18 @@ module.exports = async function handler(req, res) {
         if (allowed.includes(body.status)) fields['fld8mkrEWcyq7mUip'] = body.status;
       }
       if (body.dealWaarde   !== undefined) fields['fldv7qOYvCN1xJfiR'] = String(body.dealWaarde).slice(0, 200);
-      if (body.verliesReden !== undefined) fields['fld3NhSENma0okbT7'] = String(body.verliesReden).slice(0, 500);
+      if (body.verliesReden !== undefined) {
+        // Allowlist matches the exact <select> options in dashboard.js (lines 10020-10027)
+        // Empty string clears the field; unknown values are silently ignored (defense in depth).
+        const allowedRedenen = ['', 'Prijs te hoog', 'Geen timing', 'Concurrent gekozen', 'Geen interesse', 'Geen reactie', 'Andere reden'];
+        const reden = String(body.verliesReden);
+        if (allowedRedenen.includes(reden)) {
+          fields['fld3NhSENma0okbT7'] = reden;
+        }
+        // Unknown values are silently dropped. The dashboard UI only sends known values;
+        // an attacker injecting free text gets their payload ignored, which is exactly
+        // what we want. Returning a 400 here would leak which values ARE valid.
+      }
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
       // SECURITY: verify the lead belongs to the authenticated client BEFORE

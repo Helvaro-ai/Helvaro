@@ -10065,7 +10065,7 @@ function openPanel(lead) {
     bodyHTML += \`
       <div class="panel-section">
         <div class="panel-section-title">Reden</div>
-        <div class="ai-summary">\${lead.reden}</div>
+        <div class="ai-summary">\${escHtml(lead.reden)}</div>
       </div>
     \`;
   }
@@ -12077,7 +12077,7 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
         <div class="rapport-leads-list">
           \${qualLeads.map(l => \`
             <div class="rapport-lead-item">
-              <span>\${l.naam || '—'}</span>
+              <span>\${escHtml(l.naam) || '—'}</span>
               <span>\${scorePill(l.leadScore)}</span>
             </div>
           \`).join('')}
@@ -13918,7 +13918,7 @@ function renderActiviteit() {
   }
 
   const typeMap = {
-    new:       { dotCls: 'activity-dot-new',       title: l => \`Nieuwe lead: \${escHtml(l.naam) || '—'}\`,       sub: l => l.telefoon ? \`\${l.telefoon}\` : '' },
+    new:       { dotCls: 'activity-dot-new',       title: l => \`Nieuwe lead: \${escHtml(l.naam) || '—'}\`,       sub: l => l.telefoon ? \`\${escHtml(l.telefoon)}\` : '' },
     qualified: { dotCls: 'activity-dot-qualified',  title: l => \`Lead gekwalificeerd: \${escHtml(l.naam) || '—'}\`, sub: l => l.leadScore ? \`Score: \${l.leadScore}\` : '' },
     booked:    { dotCls: 'activity-dot-booked',     title: l => \`Afspraak geboekt: \${escHtml(l.naam) || '—'}\`, sub: () => 'Afspraak ingepland via Calendly' },
     won:       { dotCls: 'activity-dot-won',        title: l => \`Lead opgevolgd: \${escHtml(l.naam) || '—'}\`,    sub: l => l.verwachteWaarde ? \`Waarde: \${escHtml(l.verwachteWaarde)}\` : '' }
