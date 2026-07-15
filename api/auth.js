@@ -123,27 +123,74 @@ function safeEqual(a, b) {
 // the current Password Hash into the signing key. So a leaked token is dead
 // the moment the password is updated.
 const RESET_TTL_MS = 60 * 60 * 1000;  // 1 hour
-function resetSecret(passwordHash) {
-  // Mixing in the current hash invalidates old tokens after each reset.
-  return crypto.createHmac('sha256', signingBase()).update('helvaro-reset-v1:' + (passwordHash || '')).digest('hex');
+
+// Monotonic per-instance sequence + best-effort tracker of the most recently
+// issued reset token's seq per email. Mixed into resetSecret() below so
+// requesting a SECOND reset token invalidates the first — same technique as
+// the passwordHash mixing above, just keyed on issuance instead of on an
+// actual password change. Once a newer token is signed for an email, the
+// signing key used to verify an older token for that email no longer
+// matches (the marker baked into the key changed), so the older token's
+// signature stops verifying — even though its own HMAC and expiry would
+// otherwise still be valid.
+// NOTE: the marker is a monotonic counter (_resetSeq), not Date.now(). Two
+// signResetToken() calls issued in the same millisecond would otherwise get
+// the identical wall-clock marker and remain indistinguishable — the
+// counter guarantees every issuance gets a strictly higher marker than the
+// last, regardless of clock resolution.
+// RESIDUAL GAP: _lastResetIssued is per-serverless-instance, in-memory state
+// (same pattern as _userCache above) — NOT shared across concurrent Vercel
+// instances or cold starts. If two reset requests for the same email land on
+// two different warm instances, the instance that never observed the newer
+// issuance still verifies the older token successfully. Fully closing this
+// needs a persisted per-user field (e.g. a "Last Reset Issued At" column on
+// the Users table, synced to Airtable) or external shared state (Redis) —
+// not implemented here without confirming an Airtable schema change is
+// safe. See BATCH-D-SUMMARY.md item 9 for the full write-up of this
+// trade-off. In practice this still closes the common case (a user
+// double-clicking "resend" or requesting a fresh link minutes later, which
+// usually lands on the same warm instance).
+let _resetSeq = 0;
+const _lastResetIssued = new Map(); // email (lowercased) -> highest known seq
+
+function resetSecret(passwordHash, issuedMarker) {
+  // Mixing in the current hash invalidates old tokens after a real password
+  // change; mixing in issuedMarker invalidates old tokens after a newer
+  // reset request for the same (still-unchanged) password.
+  return crypto.createHmac('sha256', signingBase())
+    .update('helvaro-reset-v1:' + (passwordHash || '') + ':' + (issuedMarker || 0))
+    .digest('hex');
 }
 function signResetToken(email, passwordHash) {
-  const payload = Buffer.from(JSON.stringify({ e: email, iat: Date.now() })).toString('base64url');
-  const sig     = crypto.createHmac('sha256', resetSecret(passwordHash)).update(payload).digest('base64url');
+  const iat = Date.now();
+  const seq = ++_resetSeq;
+  const key = String(email).toLowerCase();
+  _lastResetIssued.set(key, seq); // this token becomes "the latest" for this email
+  const payload = Buffer.from(JSON.stringify({ e: email, iat, seq })).toString('base64url');
+  const sig     = crypto.createHmac('sha256', resetSecret(passwordHash, seq)).update(payload).digest('base64url');
   return `hvr1.${payload}.${sig}`;
 }
 function verifyResetToken(token, passwordHash) {
   if (typeof token !== 'string' || !token.startsWith('hvr1.')) return null;
   const [, payload, sig] = token.split('.');
   if (!payload || !sig) return null;
-  const expected = crypto.createHmac('sha256', resetSecret(passwordHash)).update(payload).digest('base64url');
-  if (!safeEqual(sig, expected)) return null;
+  let data;
   try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!data.e || !data.iat) return null;
-    if (Date.now() - data.iat > RESET_TTL_MS) return null;  // expired
-    return data;
+    data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
   } catch { return null; }
+  if (!data.e || !data.iat || typeof data.seq !== 'number') return null;
+  // If this instance knows of a STRICTLY newer token for this email, use
+  // that marker — it won't match what this (older) token was actually
+  // signed with, so the signature check below fails and the token is
+  // rejected. Otherwise fall back to the token's own seq, which reproduces
+  // the exact marker it was signed with (see residual-gap note above).
+  const key          = String(data.e).toLowerCase();
+  const latestKnown  = _lastResetIssued.get(key);
+  const marker       = (latestKnown !== undefined && latestKnown > data.seq) ? latestKnown : data.seq;
+  const expected = crypto.createHmac('sha256', resetSecret(passwordHash, marker)).update(payload).digest('base64url');
+  if (!safeEqual(sig, expected)) return null;
+  if (Date.now() - data.iat > RESET_TTL_MS) return null;  // expired
+  return data;
 }
 
 module.exports = async function handler(req, res) {
@@ -308,11 +355,18 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Owner bypass (legacy. Superseded by USERS_CONFIG) ───────────────────
-    const OWNER_EMAIL = process.env.OWNER_EMAIL;
-    const OWNER_PASS  = process.env.OWNER_PASSWORD_HASH;
-    if (OWNER_EMAIL && OWNER_PASS &&
+    // NOTE: despite the env var's name, OWNER_PASSWORD_HASH is compared here
+    // as PLAINTEXT (safeEqual, not bcrypt/verifyPassword). This is intentional
+    // and matches current production behavior — the var was never migrated to
+    // hold an actual bcrypt hash, unlike "Password Hash" on Airtable user
+    // records above. Do NOT "fix" this into a bcrypt comparison without first
+    // confirming (and rotating) the value stored in Vercel; doing so silently
+    // breaks owner login. See BATCH-D-SUMMARY.md item 8 for the judgment call.
+    const OWNER_EMAIL              = process.env.OWNER_EMAIL;
+    const OWNER_PASSWORD_PLAINTEXT = process.env.OWNER_PASSWORD_HASH;
+    if (OWNER_EMAIL && OWNER_PASSWORD_PLAINTEXT &&
         safeEqual(email, OWNER_EMAIL) &&
-        safeEqual(password, OWNER_PASS)) {
+        safeEqual(password, OWNER_PASSWORD_PLAINTEXT)) {
       const ownerData = {
         apiKey:       process.env.OWNER_API_KEY       || '',
         clientName:   process.env.OWNER_CLIENT_NAME   || 'Owner',
