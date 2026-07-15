@@ -3,12 +3,19 @@
 // publiceert op deze cron-tijd = late ochtend CET = goede engagement.
 // Sends a follow-up WhatsApp to leads that:
 //   - Status is still 'new'
-//   - Were created between 24h and 48h ago (so exactly one follow-up per lead)
+//   - Were created at least 24h ago, and no more than 7 days ago (catch-up
+//     window — see the ago24h/ago7d comment below for why it's not a tight
+//     24h-48h band anymore)
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
 // Marketing Posts + Outreach moved off Airtable to the VPS Postgres API
 // (Airtable-shaped facade). Leads/Client Config etc. stay in Airtable.
 const { pgFetch } = require('./_pgapi');
+// SSRF-protected website fetcher, shared with api/whatsapp.js — see
+// api/lib/fetch-website.js. runOutreach() below fetches Apify-scraped
+// prospect websites (third-party, untrusted input), same SSRF exposure as
+// whatsapp.js fetching a client's own website.
+const { fetchWebsite } = require('./lib/fetch-website');
 
 module.exports = async function handler(req, res) {
   // Vercel calls cron endpoints with GET; block other methods
@@ -28,13 +35,23 @@ module.exports = async function handler(req, res) {
 
   const now    = new Date();
   const ago24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
-  const ago48h = new Date(now - 48 * 60 * 60 * 1000).toISOString();
+  // Upper bound widened from 48h to 7 days. The original tight 24h-48h band
+  // meant a single missed or rate-limited cron run (see the 429 early-return
+  // right below) shifted every lead that was sitting in that window past 48h
+  // old before the *next* run — so they aged out of the query and silently
+  // never got a follow-up ("permanent skip window"). Safe to widen: a lead's
+  // Conversation State flips 'new' -> 'in_progress' the moment a follow-up
+  // actually sends (below), so it drops out of this "new" query on its own —
+  // widening the catch-up window can't cause a duplicate send, it just gives
+  // a missed run up to a week to be caught by the next one before the lead
+  // ages out of consideration entirely.
+  const ago7d  = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
-    // Fetch leads created between 24h and 48h ago that are still 'new'
+    // Fetch leads created 24h-7d ago that are still 'new'
     // Use field IDs in formula. Immune to field renames in Airtable
     const formula = encodeURIComponent(
-      `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago48h}")`
+      `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago7d}")`
     );
     const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=50`;
     const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
@@ -957,14 +974,27 @@ async function runOutreach(airtableToken, baseId) {
   } catch (e) { return { error: 'apify: ' + e.message }; }
   if (!Array.isArray(leads) || !leads.length) return { checked: 0, sent: 0 };
 
-  // 2) dedup: bestaande e-mails uit de Outreach-tabel
+  // 2) dedup: bestaande e-mails uit de Outreach-tabel. Fails CLOSED, not
+  // soft, unlike most of this file: a bare `catch {}` here used to leave
+  // `seen` silently empty on any transient DB error, so step 3 below would
+  // treat every fresh Apify lead as "new" — including businesses we already
+  // cold-emailed. Re-emailing a prospect that already got (or already
+  // declined) our outreach is a worse outcome than skipping one run, so this
+  // aborts the whole run instead of the file's usual fail-soft/best-effort
+  // pattern. Cheap to skip: this cron runs daily and MAX_PER_RUN is 2, so a
+  // skipped run just means these same leads get picked up (correctly
+  // deduped) on the next run.
   const seen = new Set();
   try {
     const er = await pgFetch(`${OUTREACH_TABLE}?pageSize=100&fields%5B%5D=Email`);
+    if (!er.ok) throw new Error('HTTP ' + er.status);
     for (const rec of ((await er.json()).records || [])) {
       const e = String(rec.fields?.Email || '').toLowerCase().trim(); if (e) seen.add(e);
     }
-  } catch {}
+  } catch (e) {
+    console.error('[outreach] dedup-fetch mislukt, outreach deze run overgeslagen (fail-safe tegen dubbele mails):', e.message);
+    return { skipped: 'dedup_fetch_failed' };
+  }
 
   // 3) kies nieuwe leads met bruikbaar zakelijk e-mailadres
   const fresh = [];
@@ -989,8 +1019,13 @@ async function runOutreach(airtableToken, baseId) {
   let sent = 0, failed = 0;
   for (const l of fresh) {
     try {
+      // l.website is third-party Apify-scraped data — same untrusted-URL SSRF
+      // surface as api/whatsapp.js fetching a client's website, so it goes
+      // through the same SSRF-protected fetchWebsite() (protocol whitelist,
+      // private-IP/metadata blocklist, no redirect-follow, 5s timeout)
+      // instead of a raw unprotected fetch().
       let site = '';
-      if (l.website) { try { const wr = await fetch(l.website, { redirect: 'follow' }); site = (await wr.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 3500); } catch {} }
+      if (l.website) site = await fetchWebsite(l.website, { tag: '[outreach]', maxChars: 3500 }) || '';
       const prompt = `Je schrijft namens Sindi (founder van Helvaro) een korte KOUDE B2B-outreachmail in het NEDERLANDS aan een Belgische KMO.
 
 BEDRIJF: ${l.title} (${l.categoryName || ''}, ${l.city || ''})
