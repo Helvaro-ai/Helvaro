@@ -111,11 +111,17 @@ function scrubPost(text) {
 
 module.exports = async function handler(req, res) {
   // Allow the Helvaro app, the legacy Netlify Founder site, and any Cloudflare
-  // Pages (*.pages.dev) or Workers (*.workers.dev) preview the founder team
-  // spins up. Strict pattern match, never reflect arbitrary origins.
+  // Pages (*.pages.dev) preview the founder team spins up. Strict pattern
+  // match, never reflect arbitrary origins.
+  // NOTE: *.workers.dev was previously also whitelisted here, but neither
+  // docs/architecture.md nor docs/api-reference.md document a Workers-hosted
+  // origin (both only mention *.pages.dev), and no wrangler.toml / Workers
+  // deployment exists anywhere in this repo. Tightened to match documented,
+  // minimal-by-default CORS. If a legitimate *.workers.dev origin does need
+  // access, re-add `|workers` to the pattern below AND update both docs.
   const allowedOrigins = ['https://app.helvaro.pro', 'https://founderyou.netlify.app'];
   const origin = req.headers.origin || '';
-  const okCf = /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(pages|workers)\.dev$/.test(origin);
+  const okCf = /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.pages\.dev$/.test(origin);
   const ok = allowedOrigins.includes(origin) || okCf;
   res.setHeader('Access-Control-Allow-Origin', ok ? origin : 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -125,7 +131,14 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  // Vercel sets x-vercel-forwarded-for itself from the real edge connection and
+  // strips/overwrites any client-supplied value, unlike x-forwarded-for, which
+  // a client can set directly to spoof the rate-limit key. Fall back to
+  // x-forwarded-for only when x-vercel-forwarded-for is absent (e.g. local dev
+  // without the Vercel edge in front).
+  const ip = req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
+          || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+          || 'unknown';
   if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken.' });
 
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
@@ -249,7 +262,7 @@ module.exports = async function handler(req, res) {
         // ── pipeline-update ──────────────────────────────────────────────────
         if (body.mode === 'pipeline-update') {
           const recId = String(body.id || '').trim();
-          if (!recId) return res.status(400).json({ error: 'ID verplicht' });
+          if (!/^rec[A-Za-z0-9]{14}$/.test(recId)) return res.status(400).json({ error: 'Ongeldig record ID' });
           const fields = {};
           if (body.naam     !== undefined) fields['Naam']      = String(body.naam).trim().slice(0, 100);
           if (body.bedrijf  !== undefined) fields['Bedrijf']   = String(body.bedrijf).trim().slice(0, 100);
@@ -269,7 +282,7 @@ module.exports = async function handler(req, res) {
         // ── pipeline-delete ──────────────────────────────────────────────────
         if (body.mode === 'pipeline-delete') {
           const recId = String(body.id || '').trim();
-          if (!recId) return res.status(400).json({ error: 'ID verplicht' });
+          if (!/^rec[A-Za-z0-9]{14}$/.test(recId)) return res.status(400).json({ error: 'Ongeldig record ID' });
           const r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${PIPELINE_TABLE}/${recId}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
@@ -288,9 +301,13 @@ module.exports = async function handler(req, res) {
           if (!doel) return res.status(400).json({ error: 'Doel is verplicht' });
           const fields = { 'Doel': doel, 'Target': target, 'Eenheid': eenheid, 'Actief': actief };
           if (deadline) fields['Deadline'] = deadline;
+          const goalRecId = String(body.id || '').trim();
+          if (goalRecId && !/^rec[A-Za-z0-9]{14}$/.test(goalRecId)) {
+            return res.status(400).json({ error: 'Ongeldig record ID' });
+          }
           let r, d;
-          if (body.id) {
-            r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}/${body.id}`, {
+          if (goalRecId) {
+            r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}/${goalRecId}`, {
               method: 'PATCH',
               headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({ fields })
@@ -310,7 +327,7 @@ module.exports = async function handler(req, res) {
         // ── goal-delete ──────────────────────────────────────────────────────
         if (body.mode === 'goal-delete') {
           const recId = String(body.id || '').trim();
-          if (!recId) return res.status(400).json({ error: 'ID verplicht' });
+          if (!/^rec[A-Za-z0-9]{14}$/.test(recId)) return res.status(400).json({ error: 'Ongeldig record ID' });
           const r = await fetch(`https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}/${recId}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
@@ -644,8 +661,12 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
       const status = String(body.status || '').trim();
+      // Same whitelist as the sibling update-content mode below.
+      if (status && !['draft','approved','posted','failed','skipped'].includes(status)) {
+        return res.status(400).json({ error: 'Ongeldige status' });
+      }
       const limit  = Math.min(100, Math.max(1, parseInt(body.limit || 50, 10)));
-      const formula = status ? encodeURIComponent(`{Status}="${status}"`) : '';
+      const formula = status ? encodeURIComponent(`{Status}="${escapeFormula(status)}"`) : '';
       const url = `tblPxnfb5MThgsnaA?pageSize=${limit}${formula ? `&filterByFormula=${formula}` : ''}&sort%5B0%5D%5Bfield%5D=Scheduled%20For&sort%5B0%5D%5Bdirection%5D=asc`;
       const r = await pgFetch(url);
       const d = await r.json();
