@@ -7,6 +7,10 @@ const crypto = require('crypto');
 // Safe to call in any environment: it's a no-op (getContext().waitUntil?.())
 // when the platform doesn't provide a request context (e.g. local dev).
 const { waitUntil } = require('@vercel/functions');
+// SSRF-protected website fetcher, shared with api/cron-followup.js's
+// runOutreach() — see api/lib/fetch-website.js for why this lives outside
+// this file.
+const { fetchWebsite } = require('./lib/fetch-website');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -102,7 +106,8 @@ module.exports = async function handler(req, res) {
 
     // Webhook deduplication. Meta sends duplicate webhooks when our reply is
     // slow or times out. Each WhatsApp message has a unique id; we track seen
-    // ids in a module-scoped Set with a 60-second TTL via timestamp pairs.
+    // ids in a module-scoped Map (see _dedupSeen below — entries are GC'd once
+    // the cache exceeds 500 entries, evicting anything older than 5 minutes).
     // Without dedup the AI would reply twice to the same lead message.
     if (message.id && _dedupSeen(message.id)) {
       console.log(`[WhatsApp] Duplicate webhook voor message ${message.id}. overgeslagen`);
@@ -195,7 +200,7 @@ async function processMessage(phone, text) {
   if (history.length <= 2) {
     // 'Website' is the field name; no field ID is mapped for this field
     const website = client.fields['fldWebsiteUrl'] || client.fields['Website'];
-    if (website) websiteContent = await fetchWebsite(website);
+    if (website) websiteContent = await fetchWebsite(website, { tag: '[WhatsApp]' });
   }
 
   // 6. Determine AI identity and client config
@@ -316,7 +321,15 @@ async function processMessage(phone, text) {
       `Hun vraag:\n"${lastUserMsg}"\n\n` +
       `De AI heeft beloofd dat iemand binnen 30 min terugkomt. Open de lead:\n` +
       `https://app.helvaro.pro/dashboard`;
-    if (ownerPhone) await sendWA(ownerPhone, escalateNotice).catch(() => {});
+    if (ownerPhone) {
+      // sendWA() never throws (see its own doc comment) — it resolves to
+      // `false` on delivery/network failure and already logs the raw reason
+      // itself. Check the result and log call-site context on top, so an
+      // escalation-ping failure specifically is traceable in server logs
+      // rather than indistinguishable from any other WhatsApp send failure.
+      const escalateSent = await sendWA(ownerPhone, escalateNotice);
+      if (!escalateSent) console.error(`[whatsapp] escalatie-melding naar owner (${ownerPhone}) is niet aangekomen`);
+    }
     if (ownerEmail) sendOwnerEmail({
       to: ownerEmail,
       subject: `[Actie nodig] AI heeft hulp nodig. ${leadName || phone}`,
@@ -391,7 +404,10 @@ async function processMessage(phone, text) {
         `Project: ${projectCode}${score}\n` +
         `${aiResponse.summary || ''}\n\n` +
         `Dashboard: https://app.helvaro.pro/dashboard`;
-      await sendWA(ownerPhone, notifyMsg).catch(() => {});
+      // See the escalatie-melding comment above: sendWA() never throws, so
+      // check the resolved boolean rather than relying on an unreachable .catch().
+      const qualifiedNotifySent = await sendWA(ownerPhone, notifyMsg);
+      if (!qualifiedNotifySent) console.error(`[whatsapp] gekwalificeerde-lead-melding naar owner (${ownerPhone}) is niet aangekomen`);
     }
     if (ownerEmail) {
       sendOwnerEmail({
@@ -434,54 +450,6 @@ async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCo
             <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
           </div>`;
   await sendMail({ to, subject, html }).catch(err => console.error('[owner mail]', err && err.message));
-}
-
-// ─── WEBSITE SCRAPER ─────────────────────────────────────────────────────────
-
-async function fetchWebsite(url) {
-  try {
-    // SSRF protection. Only allow http/https and block internal IPs
-    const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      console.warn('[WhatsApp] Blocked non-HTTP URL:', url);
-      return null;
-    }
-    const host = parsed.hostname.toLowerCase();
-    // Block localhost, private IPs, link-local, metadata endpoints
-    if (
-      host === 'localhost' ||
-      host.endsWith('.local') ||
-      host === '169.254.169.254' ||                     // AWS/GCP metadata
-      /^127\./.test(host) ||                            // 127.0.0.0/8
-      /^10\./.test(host) ||                             // 10.0.0.0/8
-      /^192\.168\./.test(host) ||                       // 192.168.0.0/16
-      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||        // 172.16.0.0/12
-      /^\[?::1\]?$/.test(host) ||                       // IPv6 localhost
-      /^\[?fe80:/i.test(host)                           // IPv6 link-local
-    ) {
-      console.warn('[WhatsApp] Blocked internal URL:', url);
-      return null;
-    }
-
-    const res  = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      redirect: 'manual',                               // Don't follow redirects to internal IPs
-      signal:  AbortSignal.timeout(5000),
-    });
-    const html = await res.text();
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 3000);
-    console.log(`[WhatsApp] Website geladen: ${url} (${text.length} tekens)`);
-    return text;
-  } catch (err) {
-    console.error(`[WhatsApp] Website ophalen mislukt (${url}):`, err.message);
-    return null;
-  }
 }
 
 // ─── AI ─────────────────────────────────────────────────────────────────────
