@@ -32,7 +32,14 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  // Vercel sets x-vercel-forwarded-for itself from the real edge connection and
+  // strips/overwrites any client-supplied value, unlike x-forwarded-for, which
+  // a client can set directly to spoof the rate-limit key. Fall back to
+  // x-forwarded-for only when x-vercel-forwarded-for is absent (e.g. local dev
+  // without the Vercel edge in front).
+  const ip = req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
+          || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+          || 'unknown';
   if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
 
   const apiKey = String(req.headers['x-api-key'] || '').trim().slice(0, 100);
