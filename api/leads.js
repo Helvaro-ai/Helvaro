@@ -55,6 +55,26 @@ function isRateLimited(ip, max = 120, windowMs = 60_000) {
   return hits.length > max;
 }
 
+// Per-tenant daily quota for the test-message mode (see below). Keyed by
+// `${projectCode}:${YYYY-MM-DD}` so the counter naturally resets every day
+// with no separate cleanup job needed — same day-bucket idea as the rest of
+// this file's in-memory maps. Protects the shared platform WhatsApp number:
+// without this, one client hammering test-message (their only backstop was
+// the IP-based rate limiter) risks the shared number getting rate-limited or
+// banned by Meta for every client on the platform.
+const _testMsgCounts = new Map();
+const TEST_MSG_DAILY_LIMIT = 10;
+function isTestMessageQuotaExceeded(projectCode) {
+  const day  = new Date().toISOString().slice(0, 10);
+  const key  = `${projectCode}:${day}`;
+  const next = (_testMsgCounts.get(key) || 0) + 1;
+  _testMsgCounts.set(key, next);
+  if (_testMsgCounts.size > 2000) {
+    for (const k of _testMsgCounts.keys()) if (!k.endsWith(':' + day)) _testMsgCounts.delete(k);
+  }
+  return next > TEST_MSG_DAILY_LIMIT;
+}
+
 function safeEqual(a, b) {
   try {
     const ba = Buffer.from(String(a));
@@ -104,7 +124,10 @@ function verifySession(token) {
     const b = Buffer.from(expected, 'base64url');
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (data.exp && Date.now() > data.exp) return null;
+    // Fail closed: a token missing exp entirely must be rejected, not treated
+    // as never-expiring. Every token minted by auth.js's signSession() always
+    // sets exp, so a missing/invalid exp means a malformed or hand-crafted token.
+    if (typeof data.exp !== 'number' || !isFinite(data.exp) || Date.now() > data.exp) return null;
     return data;
   } catch { return null; }
 }
@@ -116,7 +139,14 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  // Vercel sets x-vercel-forwarded-for itself from the real edge connection and
+  // strips/overwrites any client-supplied value, unlike x-forwarded-for, which
+  // a client can set directly to spoof the rate-limit key. Fall back to
+  // x-forwarded-for only when x-vercel-forwarded-for is absent (e.g. local dev
+  // without the Vercel edge in front).
+  const ip = req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
+          || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+          || 'unknown';
   if (isRateLimited(ip)) return res.status(429).json({ error: 'Te veel verzoeken. Probeer later opnieuw.' });
 
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
@@ -145,11 +175,20 @@ module.exports = async function handler(req, res) {
 
     // Admin token. Timing-safe check against the derived token (not the raw key)
     if (isAdminToken(raw, process.env.ADMIN_KEY)) {
-      return res.status(200).json({
-        leads: [],
-        stats: { total: 0, qualified: 0, booked: 0, conversionRate: 0, thisMonth: 0, avgResponseTime: 0 },
-        client: { naam: 'Admin', calendly: '' }
-      });
+      // GET-only short-circuit: an admin session has no real client/lead data
+      // of its own, so a GET (dashboard load) returns an empty-but-valid
+      // payload. PATCH/POST must NOT silently no-op here — a PATCH (save
+      // notes) or POST (send message) authenticated with an admin token used
+      // to hit this same unconditional return, so the caller believed it
+      // succeeded while nothing happened. Surface a clear error instead.
+      if (req.method === 'GET') {
+        return res.status(200).json({
+          leads: [],
+          stats: { total: 0, qualified: 0, booked: 0, conversionRate: 0, thisMonth: 0, avgResponseTime: 0 },
+          client: { naam: 'Admin', calendly: '' }
+        });
+      }
+      return res.status(400).json({ error: 'Admin-token ondersteunt deze bewerking niet' });
     }
 
     // Airtable Clients table lookup (with 5-min in-memory cache as last resort)
@@ -430,7 +469,7 @@ module.exports = async function handler(req, res) {
         const all = [];
         let offset = '';
         for (let page = 0; page < 20; page++) {  // hard cap 2000 leads
-          const formula = encodeURIComponent(`{Project Code}="${projectCode.replace(/"/g, '\\"')}"`);
+          const formula = encodeURIComponent(`{Project Code}="${escapeFormula(projectCode)}"`);
           const url = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=100&sort%5B0%5D%5Bfield%5D=Created%20At&sort%5B0%5D%5Bdirection%5D=desc${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
           const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
           if (!r.ok) break;
@@ -479,7 +518,7 @@ module.exports = async function handler(req, res) {
       const from = body.from || new Date(Date.now() - 7*24*60*60*1000).toISOString();
       const to   = body.to   || new Date(Date.now() + 30*24*60*60*1000).toISOString();
       const formula = encodeURIComponent(
-        `AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", IS_AFTER({Start Time}, "${from}"), IS_BEFORE({Start Time}, "${to}"))`
+        `AND({Project Code}="${escapeFormula(projectCode)}", IS_AFTER({Start Time}, "${from}"), IS_BEFORE({Start Time}, "${to}"))`
       );
       try {
         const r = await atFetch(
@@ -515,6 +554,26 @@ module.exports = async function handler(req, res) {
         'Created At':     new Date().toISOString()
       };
       if (body.leadId && /^rec[A-Za-z0-9]{14}$/.test(body.leadId)) {
+        // SECURITY: verify the lead belongs to this client before linking it
+        // to the new appointment — same ownership check as PATCH and
+        // appointment-update above. Without this, any authenticated client
+        // could link an appointment to another tenant's lead just by
+        // guessing/enumerating a record ID.
+        try {
+          const leadCheck = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${body.leadId}`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          if (!leadCheck.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+          const leadData = await leadCheck.json();
+          const leadProject = leadData.fields?.['fldSmczuyUJd26HLe'] || leadData.fields?.['Project Code'] || '';
+          if (leadProject !== projectCode) {
+            return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+          }
+        } catch (err) {
+          console.error('[appointment-create] lead ownership check failed:', err.message);
+          return res.status(500).json({ error: 'Serverfout' });
+        }
         fields['Lead'] = [body.leadId];
       }
       try {
@@ -590,6 +649,11 @@ module.exports = async function handler(req, res) {
       if (!/^\d{8,15}$/.test(phone))   return res.status(400).json({ error: 'Ongeldig telefoonnummer' });
       const message = String(body.message || '').trim().slice(0, 2000);
       if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
+
+      // Per-tenant daily quota. See isTestMessageQuotaExceeded() above.
+      if (isTestMessageQuotaExceeded(projectCode)) {
+        return res.status(429).json({ error: `Dagelijkse limiet van ${TEST_MSG_DAILY_LIMIT} test-berichten bereikt voor jouw account. Probeer morgen opnieuw.` });
+      }
 
       const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
       const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
