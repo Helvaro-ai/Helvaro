@@ -154,39 +154,58 @@ module.exports = async function handler(req, res) {
     // (minder dan ~1 dag vooruit), zodat het systeem nooit zonder content valt.
     // Met auto-approve (standaard, zie admin.js) gaan posts meteen live, geen
     // handmatige goedkeuring meer nodig.
+    // Social content generation, image backfill and posting moved to the VPS
+    // (herald-service, PM2 + node-cron) on 2026-07-09, but Vercel kept running
+    // them in parallel until 2026-07-18. Both write the same Postgres through
+    // _pgapi.js, so Vercel kept the buffer full, Herald's self-heal never fired,
+    // and Vercel's pollinations.ai images (generated on demand, at fetch time)
+    // were rejected by Instagram with "Only photo or video can be accepted as
+    // media type" (9004) — which tripped Make's error limit and disabled the
+    // whole Atlas Social Poster scenario.
+    //
+    // Vercel now runs the PRODUCT only (WhatsApp follow-ups, quality checks,
+    // client reports, Envoy outreach). Herald on the VPS owns all social.
+    // Set VERCEL_SOCIAL=on to temporarily hand social back to Vercel.
+    const socialOnVercel = process.env.VERCEL_SOCIAL === 'on';
+
     let contentResult = null;
-    const lowBuffer = await upcomingPostsLow(AIRTABLE_TOKEN, BASE_ID).catch(() => false);
-    if (now.getUTCDay() === 0 || lowBuffer) {
-      contentResult = await runWeeklyContentGen(AIRTABLE_TOKEN, BASE_ID).catch(e => {
-        console.error('[cron-followup] content gen failed:', e.message);
+    let imageResult = null;
+    let posterResult = null;
+
+    if (!socialOnVercel) {
+      console.log('[social] skipped, owned by herald-service on the VPS (set VERCEL_SOCIAL=on to override)');
+    } else {
+      const lowBuffer = await upcomingPostsLow(AIRTABLE_TOKEN, BASE_ID).catch(() => false);
+      if (now.getUTCDay() === 0 || lowBuffer) {
+        contentResult = await runWeeklyContentGen(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+          console.error('[cron-followup] content gen failed:', e.message);
+          return null;
+        });
+        console.log('[content-gen] lowBuffer=' + lowBuffer + ' result=' + JSON.stringify(contentResult));
+      } else {
+        console.log('[content-gen] skipped, lowBuffer=' + lowBuffer + ' day=' + now.getUTCDay());
+      }
+
+      // ── Beeld-backfill (server-side, betrouwbaar) ───────────────────────────
+      // Genereert ontbrekende beelden voor aankomende IG/FB posts. Vervangt de
+      // fragiele browser-generatie: draait elke cron, los van of de pagina open is.
+      imageResult = await runImageBackfill(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+        console.error('[cron-followup] image backfill failed:', e.message);
         return null;
       });
-      console.log('[content-gen] lowBuffer=' + lowBuffer + ' result=' + JSON.stringify(contentResult));
-    } else {
-      console.log('[content-gen] skipped, lowBuffer=' + lowBuffer + ' day=' + now.getUTCDay());
+
+      // ── Posting (elke cron-run) ─────────────────────────────────────────────
+      // Ayrshare (autonoom, IG+FB+LinkedIn) zodra AYRSHARE_API_KEY gezet is; anders Meta Graph.
+      const poster = process.env.MAKE_WEBHOOK_URL
+        ? runMakePoster(AIRTABLE_TOKEN, BASE_ID)
+        : process.env.AYRSHARE_API_KEY
+          ? runAyrsharePoster(AIRTABLE_TOKEN, BASE_ID)
+          : runMetaPoster(AIRTABLE_TOKEN, BASE_ID);
+      posterResult = await poster.catch(e => {
+        console.error('[cron-followup] poster failed:', e.message);
+        return null;
+      });
     }
-
-    // ── Beeld-backfill (server-side, betrouwbaar) ───────────────────────────
-    // Genereert ontbrekende beelden voor aankomende IG/FB posts. Vervangt de
-    // fragiele browser-generatie: draait elke cron, los van of de pagina open is.
-    let imageResult = null;
-    imageResult = await runImageBackfill(AIRTABLE_TOKEN, BASE_ID).catch(e => {
-      console.error('[cron-followup] image backfill failed:', e.message);
-      return null;
-    });
-
-    // ── Posting (elke cron-run) ─────────────────────────────────────────────
-    // Ayrshare (autonoom, IG+FB+LinkedIn) zodra AYRSHARE_API_KEY gezet is; anders Meta Graph.
-    let posterResult = null;
-    const poster = process.env.MAKE_WEBHOOK_URL
-      ? runMakePoster(AIRTABLE_TOKEN, BASE_ID)
-      : process.env.AYRSHARE_API_KEY
-        ? runAyrsharePoster(AIRTABLE_TOKEN, BASE_ID)
-        : runMetaPoster(AIRTABLE_TOKEN, BASE_ID);
-    posterResult = await poster.catch(e => {
-      console.error('[cron-followup] poster failed:', e.message);
-      return null;
-    });
 
     // ── Envoy: gepersonaliseerde outreach naar verse Apify-leads (server-side) ──
     const outreachResult = await runOutreach(AIRTABLE_TOKEN, BASE_ID).catch(e => {
