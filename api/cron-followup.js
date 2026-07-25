@@ -130,6 +130,17 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
+    // ── Data retention: anonymize disqualified/cold leads 6 months after
+    // their last activity (compliance fix, ported from the VPS backend's
+    // server/jobs/daily.js — see COMPLIANCE-AUDIT.md section 1.3 / Decision
+    // 2). See runRetentionAnonymization()'s own doc comment below for the
+    // exact eligibility rule and the two documented Airtable-vs-Postgres
+    // differences from the VPS original.
+    const retentionResult = await runRetentionAnonymization(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE, now).catch(e => {
+      console.error('[cron-followup] retention anonymization failed:', e.message);
+      return null;
+    });
+
     // ── Daily summary email ──────────────────────────────────────────────────
     if (sent > 0) {
       const escE = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -185,7 +196,7 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, outreach: outreachResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, retention: retentionResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, outreach: outreachResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -250,6 +261,122 @@ async function sweepStuckNewLeads(airtableToken, baseId, leadsTable) {
   }
   console.log(`[cron-followup] stuck-new sweep: checked ${stuck.length}, flagged ${flagged}`);
   return { checked: stuck.length, flagged };
+}
+
+// ── Compliance fix: data retention — anonymize disqualified/cold leads 6
+// months after their last activity (GDPR Art. 5(1)(e), COMPLIANCE-AUDIT.md
+// section 1.3 / Decision 2 — "keep qualified leads indefinitely, anonymize
+// disqualified/cold leads 6 months after last activity"). Ported from the
+// VPS backend's server/jobs/daily.js runRetentionAnonymization() +
+// server/db/index.js's listRetentionEligibleLeads(), reimplemented against
+// Airtable's filterByFormula instead of a parameterized SQL WHERE clause —
+// see the two documented differences below.
+//
+// Eligibility (all four ANDed in the formula below):
+//   1. NOT qualified. Airtable checkbox fields have no NULL state reachable
+//      via the API (never-checked reads back exactly like explicitly
+//      unchecked — both are simply falsy/absent) — unlike the VPS's
+//      Postgres `qualified` column, which can be NULL (still undecided) vs
+//      false (explicitly disqualified), and which the VPS deliberately only
+//      matches on the latter. This Airtable port can't make that
+//      distinction on Qualified alone, so clause 2 below is what actually
+//      keeps a still-open, undecided lead safe.
+//   2. Cold/terminal: Conversation State is completed/verloren, OR
+//      Conversation History is empty (mirrors sweepStuckNewLeads()'s own
+//      `{Conversation History}=""` convention above — a created-but-never-
+//      really-started lead). A lead still 'new'/'in_progress' WITH real
+//      conversation content never matches this clause no matter how old it
+//      is — it's still being actively pursued. Combined with clause 1, this
+//      is the actual safety gate against catching an undecided-but-live
+//      lead, standing in for the NULL-vs-false distinction Airtable can't
+//      express.
+//   3. Last activity older than 6 months. Airtable's Leads table has no
+//      last-modified timestamp field — the VPS's Postgres `updated_at`
+//      (trigger-bumped on every write) has no Airtable equivalent — so
+//      Created At (fldR0r13EU4RwrtvH) is used as the best available proxy,
+//      same "pick the best available signal in the schema and document it"
+//      instruction the VPS's own listRetentionEligibleLeads() comment
+//      follows. KNOWN GAP: a lead with real activity (e.g. a manually-added
+//      note) after creation but before the cutoff would still be caught by
+//      Created At alone, since this schema has nothing to distinguish that
+//      from a lead that's been silent since it was created. Follow-up:
+//      Airtable's built-in "Last Modified Time" field type could close this
+//      gap, but adding any field is a schema change to the live base —
+//      that's the owner's call, not this batch's (see
+//      VERCEL-DEPLOY-CHECKLIST.md's known-gaps section).
+//   4. Not already anonymized — Name != '[verwijderd]' (the same placeholder
+//      api/leads.js's lead-delete mode writes). Without this, an
+//      already-anonymized lead would be re-selected and re-logged by this
+//      sweep every single day forever.
+//
+// Fail-soft per lead, same pattern as sweepStuckNewLeads() above: one
+// lead's anonymize failure never aborts the rest of the batch, and a lead
+// not reached this run (pageSize cap, same as sweepStuckNewLeads) is simply
+// picked up by tomorrow's run — idempotent, since clause 4 excludes it the
+// moment it's anonymized.
+const RETENTION_MONTHS = 6;
+function retentionCutoffIso(now = new Date()) {
+  const cutoff = new Date(now);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - RETENTION_MONTHS);
+  return cutoff.toISOString();
+}
+
+async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now = new Date()) {
+  const cutoff = retentionCutoffIso(now);
+  const formula = encodeURIComponent(
+    `AND(NOT({fld0hAZJ5wgaXrNTn}), OR({fld8mkrEWcyq7mUip}="completed", {fld8mkrEWcyq7mUip}="verloren", {Conversation History}=""), {fldR0r13EU4RwrtvH}<"${cutoff}", {fldbk0LVNckOU0bqA}!="[verwijderd]")`
+  );
+  const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=50`;
+
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  if (r.status === 429) {
+    console.warn('[cron-followup] retention: Airtable 429, uitgesteld tot volgende run');
+    return { checked: 0, anonymized: 0, skipped: 'rate_limited' };
+  }
+  if (!r.ok) throw new Error('Airtable ' + r.status);
+  const data = await r.json();
+  const eligible = data.records || [];
+
+  // Same scrubbed-field set as api/leads.js's lead-delete (anonymize) mode:
+  // overwrite only Name/Phone/Conversation History/Last Message/AI Summary/
+  // Notities, leaving every aggregate/analytics field (Qualified, Lead
+  // Score, Ability/Urgency/Fit, Conversation State, Booking Link Sent,
+  // Appointment Booked, Bron, Verwachte Waarde, Response Time, Reason,
+  // Opgepikt, Created At) untouched so dashboard stats survive.
+  let anonymized = 0;
+  for (const lead of eligible) {
+    try {
+      const anonFields = {
+        fldbk0LVNckOU0bqA: '[verwijderd]',      // Name
+        fld6YaitW0lMqHUrd: null,                 // Phone
+        'Conversation History': JSON.stringify([]),
+        'Last Message': '',
+        fldqerIiw5qyQjXHr: '',                   // AI Summary
+        fldoLRI5W12ThTls7: '',                   // Notities
+      };
+      const pr = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${leadsTable}/${lead.id}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: anonFields })
+        }
+      );
+      if (pr.ok) {
+        anonymized++;
+        const projectCode = lead.fields?.['fldSmczuyUJd26HLe'] || lead.fields?.['Project Code'] || '';
+        console.log(`[erasure] action=retention-anonymize id=${lead.id} projectCode=${projectCode} actor=system ts=${new Date().toISOString()}`);
+      } else {
+        console.error(`[cron-followup] retention-anonymize PATCH mislukt voor ${lead.id} (${pr.status})`);
+      }
+    } catch (err) {
+      console.error(`[cron-followup] retention-anonymize exception voor ${lead.id}:`, err.message);
+    }
+    // Slight delay to avoid Airtable rate limits, same pattern as sweepStuckNewLeads above
+    await new Promise(res => setTimeout(res, 200));
+  }
+  console.log(`[cron-followup] retention: checked ${eligible.length}, anonymized ${anonymized}`);
+  return { checked: eligible.length, anonymized };
 }
 
 // Merge a waFailed:true marker into a lead's existing Notities JSON without

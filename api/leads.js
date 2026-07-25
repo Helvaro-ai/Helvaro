@@ -159,7 +159,7 @@ module.exports = async function handler(req, res) {
   const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
   if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
 
-  let projectCode = '', clientName = '', calendlyLink = '';
+  let projectCode = '', clientName = '', calendlyLink = '', isAdmin = false;
 
   // Path A: signed session token. Verify locally, zero Airtable calls
   const session = verifySession(raw);
@@ -188,7 +188,21 @@ module.exports = async function handler(req, res) {
           client: { naam: 'Admin', calendly: '' }
         });
       }
-      return res.status(400).json({ error: 'Admin-token ondersteunt deze bewerking niet' });
+      // Compliance fix (COMPLIANCE-AUDIT.md section 1.2, ported from the VPS
+      // backend's server/routes/leads.js): the ONE exception to "admin-token
+      // never touches lead data" above — admin-authenticated lead erasure/
+      // export, so a data-subject-rights request (right to erasure/access,
+      // GDPR Arts. 15-20, DPA clause 7.3) can be fulfilled through a scoped,
+      // logged API call instead of an ad-hoc manual Airtable edit. Every
+      // other POST/PATCH mode stays blocked below — admin has no per-tenant
+      // identity to safely scope any OTHER write to.
+      let peekBody = req.body;
+      if (typeof peekBody === 'string') { try { peekBody = JSON.parse(peekBody); } catch { peekBody = {}; } }
+      if (req.method === 'POST' && peekBody && (peekBody.mode === 'lead-delete' || peekBody.mode === 'lead-export')) {
+        isAdmin = true;
+      } else {
+        return res.status(400).json({ error: 'Admin-token ondersteunt deze bewerking niet' });
+      }
     }
 
     // Airtable Clients table lookup (with 5-min in-memory cache as last resort)
@@ -455,6 +469,148 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true });
       } catch (err) {
         console.error('[config] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── A1b. lead-delete — admin-authenticated erasure of ONE lead (GDPR
+    // Arts. 17/20, docs/verwerkersovereenkomst-DPA.md clause 7.3). Ported
+    // from the VPS backend's server/routes/leads.js (see COMPLIANCE-AUDIT.md
+    // section 1.2). Only reachable by an admin token — `isAdmin` is set ONLY
+    // in the auth block above, and only when the caller both authenticated
+    // with the admin-derived token AND explicitly requested this mode. A
+    // regular client session's own token never carries isAdmin, so it 403s
+    // here like any other actor without admin rights.
+    //
+    // Admin has no tenant context of its own (projectCode is '' for the
+    // admin path), so the target tenant is named explicitly in the body
+    // (`projectCode`) and cross-checked against the lead's TRUE owner
+    // (fetched fresh from Airtable) before anything is touched — same
+    // 404-vs-403 ownership-check pattern used by every other mutation in
+    // this file.
+    //
+    // `method`: 'anonymize' (DEFAULT — scrubs PII, keeps the record + every
+    // aggregate/analytics field so a client's dashboard stats don't change
+    // shape just because one lead was erased) or 'hard-delete' (removes the
+    // Airtable record entirely).
+    //
+    // Erasure audit log: Airtable has no append-only log table for this
+    // (unlike the VPS's erasure_log table) and adding one is a schema change
+    // to the live base that's the owner's call, not this batch's — see
+    // VERCEL-DEPLOY-CHECKLIST.md's "known gaps" section. Every erasure/
+    // export is instead logged clearly to console with a `[erasure]` prefix
+    // (id, projectCode, action, actor, timestamp) as an interim durable-ish
+    // record (Vercel function logs).
+    if (body.mode === 'lead-delete') {
+      if (!isAdmin) return res.status(403).json({ error: 'Alleen admin kan een lead verwijderen/anonimiseren' });
+      const id = String(body.id || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig lead ID' });
+      const targetProjectCode = String(body.projectCode || '').trim();
+      if (!targetProjectCode) return res.status(400).json({ error: 'projectCode ontbreekt' });
+      const method = body.method === 'hard-delete' ? 'hard-delete' : 'anonymize';
+
+      try {
+        const ownCheck = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${id}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!ownCheck.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        const existing = await ownCheck.json();
+        const ownProject = existing.fields?.['fldSmczuyUJd26HLe'] || existing.fields?.['Project Code'] || '';
+        if (ownProject !== targetProjectCode) {
+          return res.status(403).json({ error: 'Lead behoort niet tot de opgegeven projectCode' });
+        }
+
+        if (method === 'hard-delete') {
+          const delRes = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${id}`,
+            { method: 'DELETE', headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          if (!delRes.ok) {
+            const t = await delRes.text().catch(() => '');
+            console.error('[erasure] hard-delete failed', delRes.status, t.slice(0, 300));
+            return res.status(500).json({ error: 'Verwijderen mislukt' });
+          }
+          console.log(`[erasure] action=delete id=${id} projectCode=${targetProjectCode} actor=admin ts=${new Date().toISOString()}`);
+          return res.status(200).json({ ok: true, method: 'hard-delete', id });
+        }
+
+        // anonymize (default): overwrite ONLY the columns that hold the
+        // lead's identity or raw conversation content. Every aggregate/
+        // analytics field (Qualified, Lead Score, Ability/Urgency/Fit,
+        // Conversation State, Booking Link Sent, Appointment Booked, Bron,
+        // Verwachte Waarde, Response Time, Reason, Opgepikt, Created At) is
+        // DELIBERATELY left untouched — same rationale as the VPS's
+        // anonymizeLead() in server/db/index.js. Phone uses `null` (clears
+        // the field); the rest use '' — Airtable accepts either to clear a
+        // text/longtext field, matching how this file already clears optional
+        // text fields elsewhere (e.g. config-save's aiPhotoUrl `''` case).
+        const anonFields = {
+          fldbk0LVNckOU0bqA: '[verwijderd]',      // Name
+          fld6YaitW0lMqHUrd: null,                 // Phone
+          'Conversation History': JSON.stringify([]),
+          'Last Message': '',
+          fldqerIiw5qyQjXHr: '',                   // AI Summary
+          fldoLRI5W12ThTls7: '',                   // Notities
+        };
+        const anonRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${id}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: anonFields })
+          }
+        );
+        if (!anonRes.ok) {
+          const t = await anonRes.text().catch(() => '');
+          console.error('[erasure] anonymize failed', anonRes.status, t.slice(0, 300));
+          return res.status(500).json({ error: 'Anonimiseren mislukt' });
+        }
+        const anonData = await anonRes.json();
+        console.log(`[erasure] action=anonymize id=${id} projectCode=${targetProjectCode} actor=admin ts=${new Date().toISOString()}`);
+        return res.status(200).json({ ok: true, method: 'anonymize', record: anonData });
+      } catch (err) {
+        console.error('[leads] lead-delete error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── A1c. lead-export — admin-authenticated single-lead data-portability
+    // dump (GDPR Arts. 15/20). Same admin-only + explicit-projectCode +
+    // ownership-check-then-scoped-fetch pattern as lead-delete above. Still
+    // logged (action=export) even though nothing is mutated, so there's a
+    // console record of when a lead's data was accessed and by whom (see
+    // lead-delete's comment above on the erasure-log-is-console-only gap).
+    if (body.mode === 'lead-export') {
+      if (!isAdmin) return res.status(403).json({ error: 'Alleen admin kan een lead exporteren' });
+      const id = String(body.id || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig lead ID' });
+      const targetProjectCode = String(body.projectCode || '').trim();
+      if (!targetProjectCode) return res.status(400).json({ error: 'projectCode ontbreekt' });
+
+      try {
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${id}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!r.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        const record = await r.json();
+        const ownProject = record.fields?.['fldSmczuyUJd26HLe'] || record.fields?.['Project Code'] || '';
+        if (ownProject !== targetProjectCode) {
+          return res.status(403).json({ error: 'Lead behoort niet tot de opgegeven projectCode' });
+        }
+
+        let conversationHistory = [];
+        const stored = record.fields?.['Conversation History'];
+        if (stored) { try { conversationHistory = JSON.parse(stored); } catch {} }
+
+        console.log(`[erasure] action=export id=${id} projectCode=${targetProjectCode} actor=admin ts=${new Date().toISOString()}`);
+        return res.status(200).json({
+          ok: true,
+          data: { id: record.id, fields: record.fields || {}, conversationHistory }
+        });
+      } catch (err) {
+        console.error('[leads] lead-export error:', err.message);
         return res.status(500).json({ error: 'Serverfout' });
       }
     }
