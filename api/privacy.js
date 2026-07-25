@@ -102,35 +102,56 @@ module.exports = function handler(req, res) {
 <body>
   <a class="back" href="/">← Terug naar Helvaro</a>
   <h1>Privacybeleid</h1>
-  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: mei 2026</p>
+  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: juli 2026</p>
 
   <h2>1. Wie zijn wij?</h2>
   <p>Helvaro BV is een B2B SaaS-platform dat bedrijven helpt met geautomatiseerde leadkwalificatie via WhatsApp. Contacteer ons via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
   <h2>2. Welke gegevens verzamelen wij?</h2>
   <ul>
-    <li>Naam en telefoonnummer (via het contactformulier)</li>
-    <li>WhatsApp-berichten die worden uitgewisseld met onze AI-assistent</li>
-    <li>Gespreksgeschiedenis en kwalificatiescore</li>
+    <li>Naam en telefoonnummer (via het contactformulier of via WhatsApp)</li>
+    <li>WhatsApp-berichten die u uitwisselt met onze AI-assistent, inclusief de volledige gespreksgeschiedenis</li>
+    <li>Een AI-gegenereerde kwalificatiescore en samenvatting van het gesprek</li>
+    <li>Uw IP-adres wordt kortstondig gebruikt om misbruik te voorkomen (bv. te veel aanvragen in korte tijd), maar wordt niet opgeslagen in onze database</li>
   </ul>
+  <p>Wij verzamelen vandaag standaard geen e-mailadres van u als lead. Mocht dat in de toekomst wijzigen (bijvoorbeeld voor een nieuwe functie), werken wij dit privacybeleid bij vóór wij dat doen.</p>
 
   <h2>3. Waarvoor gebruiken wij uw gegevens?</h2>
-  <p>Uw gegevens worden uitsluitend gebruikt om u te contacteren en te bepalen of er een match is met onze dienstverlening. Wij verkopen uw gegevens nooit aan derden.</p>
+  <p>Uw gegevens worden gebruikt om u te contacteren, uw vraag via onze AI-assistent op WhatsApp te beantwoorden, en te bepalen of er een match is met de dienstverlening van het bedrijf waarmee u contact opnam. Wij verkopen uw gegevens nooit aan derden.</p>
 
   <h2>4. Hoe lang bewaren wij uw gegevens?</h2>
-  <p>Uw gegevens worden bewaard zolang dit nodig is voor het doel waarvoor ze verzameld zijn, of totdat u verzoekt om verwijdering.</p>
+  <p>Uw gegevens worden bewaard zolang dit nodig is voor het doel waarvoor ze verzameld zijn, of totdat u verzoekt om verwijdering. Concreet:</p>
+  <ul>
+    <li><strong>Gekwalificeerde leads</strong> (waarmee een klantrelatie tot stand kwam of nog kan komen) worden bewaard zolang die klantrelatie dit vereist.</li>
+    <li><strong>Niet-gekwalificeerde of koude leads</strong> waarbij 6 maanden lang geen activiteit meer was, worden automatisch geanonimiseerd: naam, telefoonnummer en de volledige gespreksinhoud worden verwijderd. Geanonimiseerde, niet tot een persoon herleidbare statistieken (bv. aantal leads, conversiecijfers) blijven wel bewaard voor rapportagedoeleinden.</li>
+  </ul>
+  <p>U kan op elk moment vroegtijdige verwijdering of anonimisering van uw gegevens aanvragen — zie sectie 7 hieronder.</p>
 
-  <h2>5. Uw rechten</h2>
-  <p>U heeft het recht om uw gegevens in te zien, te corrigeren of te laten verwijderen. Stuur hiervoor een e-mail naar <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
+  <h2>5. Wie verwerkt uw gegevens?</h2>
+  <p>Naast het bedrijf waarmee u rechtstreeks contact opneemt, schakelt Helvaro de volgende partijen (subverwerkers) in om de dienst te kunnen leveren:</p>
+  <ul>
+    <li><strong>Anthropic PBC</strong> (Verenigde Staten) — verwerkt de inhoud van uw WhatsApp-gesprek om de AI-antwoorden te genereren.</li>
+    <li><strong>Meta Platforms Ireland Ltd.</strong> — verzorgt het berichtenverkeer via WhatsApp Business.</li>
+    <li><strong>Vercel Inc.</strong> (Verenigde Staten) — hosting en uitvoering van deze applicatie.</li>
+    <li><strong>Airtable (Formagrid Inc., Verenigde Staten)</strong> — database waarin uw lead- en gespreksgegevens worden opgeslagen.</li>
+    <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — verzendt notificatie-e-mails; Resend wordt gebruikt als automatische fallback wanneer die verzending niet lukt.</li>
+  </ul>
+  <p>Deze lijst komt overeen met Bijlage 3 van onze verwerkersovereenkomst. Wij houden ze actueel en werken dit beleid bij zodra ze wijzigt.</p>
 
-  <h2>6. Cookies</h2>
+  <h2>6. Internationale doorgifte</h2>
+  <p>Sommige van de hierboven genoemde partijen zijn gevestigd buiten de Europese Economische Ruimte (EER), met name in de Verenigde Staten (o.a. Anthropic, Vercel en Airtable). Voor die doorgiften steunen wij op een geldig doorgiftemechanisme onder de AVG, zoals de Standard Contractual Clauses (SCC) van de Europese Commissie of, waar van toepassing, het EU-US Data Privacy Framework — dezelfde waarborgen die zijn vastgelegd in onze verwerkersovereenkomst met klanten.</p>
+
+  <h2>7. Uw rechten</h2>
+  <p>U heeft het recht om uw gegevens in te zien, te corrigeren, te beperken, over te dragen of te laten verwijderen, en u kan bezwaar maken tegen de verwerking. Stuur hiervoor een e-mail naar <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
+
+  <h2>8. Cookies</h2>
   <p>Wij gebruiken geen tracking cookies. Onze website maakt gebruik van lokale opslag (localStorage) voor authenticatie, met een geldigheidsduur van 7 dagen.</p>
 
-  <h2>7. Beveiliging</h2>
-  <p>Alle gegevens worden beveiligd opgeslagen via Airtable en Vercel. Verbindingen zijn versleuteld via HTTPS.</p>
+  <h2>9. Beveiliging en opslag</h2>
+  <p>Uw gegevens worden beveiligd opgeslagen via Airtable en verwerkt door deze applicatie, die draait op Vercel. Alle verbindingen zijn versleuteld via HTTPS/TLS.</p>
 
-  <h2>8. Contact</h2>
-  <p>Voor vragen over dit privacybeleid: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a></p>
+  <h2>10. Contact</h2>
+  <p>Voor vragen over dit privacybeleid: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>. Voor vragen specifiek over gegevensbescherming kan u terecht bij onze gegevensbeschermingscontactpersoon: <a href="mailto:sindi.s@usehelvaro.pro">sindi.s@usehelvaro.pro</a>.</p>
 
   <footer>
     Helvaro BV · <a href="/privacy">Privacybeleid</a> · <a href="/terms">Algemene Voorwaarden</a>
