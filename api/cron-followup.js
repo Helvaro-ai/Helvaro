@@ -18,6 +18,34 @@ const { pgFetch } = require('./_pgapi');
 // whatsapp.js fetching a client's own website.
 const { fetchWebsite } = require('./lib/fetch-website');
 
+// ── Compliance fix 5 (COMPLIANCE-AUDIT.md section 4.1) — fixed,
+// code-controlled outreach footer ───────────────────────────────────────
+// The opt-out line used to be INSTRUCTED to the LLM ("Sluit af met een
+// opt-out...") as part of the generated body — with nothing enforcing it
+// actually survived every generation (paraphrasing drift, max_tokens
+// truncation, etc.). buildOutreachFooter() below is appended AFTER the
+// LLM-generated body in runOutreach(), so the opt-out + legal-entity
+// identification (Belgian e-Privacy / commercial-communication
+// traceability requirements, see COMPLIANCE-AUDIT.md section 4.1) are
+// ALWAYS present regardless of what the model emits.
+//
+// LEGAL_ENTITY_NAME defaults to 'Helvaro BV' — the real legal name already
+// used throughout server/routes/privacy.js / api/privacy.js's Terms of
+// Service copy. LEGAL_ADDRESS/VAT_NUMBER have NO safe default (only Sindi
+// has the exact statutory address and enterprise/VAT number — same
+// [TODO: Sindi] facts left open in docs/verwerkersovereenkomst-DPA.md) —
+// left as an explicit, obviously-a-placeholder bracketed string rather
+// than silently sending blank/`undefined` text to a real prospect. Set
+// LEGAL_ADDRESS (and ideally VAT_NUMBER) via env var before this cron is
+// allowed to send real outreach mail; see COMPLIANCE-FIX1-SUMMARY.md.
+const LEGAL_ENTITY_NAME = process.env.LEGAL_ENTITY_NAME || 'Helvaro BV';
+const LEGAL_ADDRESS = process.env.LEGAL_ADDRESS || '[LEGAL_ADDRESS niet ingesteld — zet env var LEGAL_ADDRESS]';
+const VAT_NUMBER = process.env.VAT_NUMBER || '';
+
+function buildOutreachFooter() {
+  return `\n\n—\n${LEGAL_ENTITY_NAME}, ${LEGAL_ADDRESS}${VAT_NUMBER ? ' · ' + VAT_NUMBER : ''}\nNiet interessant? Antwoord met "stop" en je hoort niets meer van ons.`;
+}
+
 module.exports = async function handler(req, res) {
   // Vercel calls cron endpoints with GET; block other methods
   if (req.method !== 'GET') return res.status(405).end();
@@ -846,7 +874,7 @@ WEBSITE-FRAGMENT: ${site || '(geen website)'}
 Helvaro = een AI die binnenkomende WhatsApp/website-leads binnen 30 seconden opvolgt en kwalificeert, zodat een KMO geen klanten verliest door trage of gemiste opvolging. EUR 1.000/maand.
 
 1. Vind 1 CONCREET pijnpunt rond leadopvolging bij dit bedrijf (bv. enkel een contactformulier, geen chat, beperkte uren, hoog-ticket offertes die snelheid vragen). Baseer op de website, anders op de sector.
-2. Schrijf een mail: 60-100 woorden, persoonlijk, verwijst naar dat pijnpunt, 1 zachte vraag (kort gesprek van 15 min). Geen hype, geen emoji, geen em-dashes. Sluit af met een opt-out ("Niet interessant? 1 woord terug en ik laat je met rust.") en ondertekend Sindi, Helvaro.
+2. Schrijf een mail: 60-100 woorden, persoonlijk, verwijst naar dat pijnpunt, 1 zachte vraag (kort gesprek van 15 min). Geen hype, geen emoji, geen em-dashes. Sluit af met "Sindi, Helvaro" als ondertekening — GEEN opt-out-zin nodig, die wordt automatisch en apart toegevoegd na je tekst.
 
 OUTPUT (strikt):
 PAINPOINT: <1 zin>
@@ -861,8 +889,14 @@ BODY: <de mailtekst>`;
       const subject = ((raw.match(/SUBJECT:\s*(.+)/i) || [])[1] || `Snellere leadopvolging voor ${l.title}`).trim().slice(0, 150);
       const body = (raw.match(/BODY:\s*([\s\S]+)$/i) || [])[1]?.trim();
       if (!body) { failed++; continue; }
-      await transport.sendMail({ from: process.env.SMTP_FROM, to: l.email, subject, text: body, replyTo: process.env.REPLY_TO || undefined });
-      await createRow({ Business: l.title, Email: l.email, City: l.city || '', Website: l.website || '', Category: l.categoryName || '', Painpoint: pain, Subject: subject, Message: body, Status: 'sent', 'Sent At': new Date().toISOString() });
+      // Compliance fix 5: the fixed footer is appended HERE, in code, after
+      // the LLM's output — never something the model can drop, truncate, or
+      // paraphrase away. bodyWithFooter (not the raw LLM `body`) is both
+      // what's actually mailed AND what's stored in Outreach.Message, so
+      // the stored record matches exactly what the prospect received.
+      const bodyWithFooter = body + buildOutreachFooter();
+      await transport.sendMail({ from: process.env.SMTP_FROM, to: l.email, subject, text: bodyWithFooter, replyTo: process.env.REPLY_TO || undefined });
+      await createRow({ Business: l.title, Email: l.email, City: l.city || '', Website: l.website || '', Category: l.categoryName || '', Painpoint: pain, Subject: subject, Message: bodyWithFooter, Status: 'sent', 'Sent At': new Date().toISOString() });
       sent++;
       await new Promise(r => setTimeout(r, 800));
     } catch (e) {
