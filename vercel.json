@@ -1,6 +1,9 @@
 {
   "functions": {
-    "api/**/*.js": { "maxDuration": 60, "includeFiles": "api/lib/fonts/**" }
+    "api/whatsapp.js":      { "maxDuration": 120, "includeFiles": "api/lib/fonts/**" },
+    "api/form.js":          { "maxDuration": 120, "includeFiles": "api/lib/fonts/**" },
+    "api/cron-followup.js": { "maxDuration": 300, "includeFiles": "api/lib/fonts/**" },
+    "api/**/*.js":          { "maxDuration": 60,  "includeFiles": "api/lib/fonts/**" }
   },
   "crons": [
     { "path": "/api/cron-followup", "schedule": "0 9 * * *" }
