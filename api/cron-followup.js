@@ -158,6 +158,16 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
+    // ── 24h appointment reminders ────────────────────────────────────────────
+    // Appointments table already has "Reminder Sent" (fldadjeKPJ2TLiQSA) —
+    // the field existed but nothing ever wrote to it. See
+    // runAppointmentReminders()'s own doc comment below for the reminder
+    // window logic and the idempotency guard.
+    const reminderResult = await runAppointmentReminders(AIRTABLE_TOKEN, BASE_ID, PHONE_NUMBER_ID, WHATSAPP_TOKEN, now).catch(e => {
+      console.error('[cron-followup] appointment reminders failed:', e.message);
+      return null;
+    });
+
     // ── Data retention: anonymize disqualified/cold leads 6 months after
     // their last activity (compliance fix, ported from the VPS backend's
     // server/jobs/daily.js — see COMPLIANCE-AUDIT.md section 1.3 / Decision
@@ -224,7 +234,7 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, retention: retentionResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, outreach: outreachResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, outreach: outreachResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -906,5 +916,185 @@ BODY: <de mailtekst>`;
   }
   console.log(`[outreach] sent=${sent} failed=${failed} checked=${leads.length}`);
   return { checked: leads.length, sent, failed };
+}
+
+// ── 24h appointment reminders ─────────────────────────────────────────────────
+// Appointments table (tblD058vEITs1xYFc) already has "Reminder Sent"
+// (fldadjeKPJ2TLiQSA, description: "Cron zet dit op true wanneer reminder is
+// verstuurd 24u vooraf") — the field existed but nothing ever wrote to it.
+// This finds booked appointments starting soon that haven't been reminded,
+// sends a reminder, and flags Reminder Sent = true.
+//
+// WINDOW: Start Time between now and now+REMINDER_WINDOW_HOURS. This cron
+// runs once per day, so an exact "24h before" reminder isn't achievable with
+// a single daily pass — instead the window must be WIDER than the 24h
+// interval between runs, or an appointment could fall through the gap
+// between two consecutive runs entirely (same "don't let a single
+// missed/late run create a permanent skip window" lesson as the ago7d
+// widening in the main follow-up loop above). 33h = 24h interval + 9h safety
+// margin for cron delay/drift, chosen so two consecutive runs' windows
+// always overlap: run N covers [T, T+33h], run N+1 (24h later) covers
+// [T+24h, T+57h] — the 9h overlap between T+24h and T+33h guarantees every
+// appointment is caught by at least one run before it starts.
+//
+// The overlap this creates is harmless, not a double-send risk: an
+// appointment ~30h out gets reminded THIS run instead of waiting for
+// tomorrow (when it would only be ~6h out and the notice window pointless).
+// Early is always safe here because Reminder Sent is the actual idempotency
+// guard — once set, NOT({fldadjeKPJ2TLiQSA}) excludes the appointment from
+// every future run's filterByFormula, regardless of how early it was first
+// caught. A reminder can never be sent twice no matter how the window is
+// tuned.
+const REMINDER_WINDOW_HOURS = 33;
+
+// Normalize a raw phone string to the digits-only format the Graph API
+// expects (E.164 without the leading '+'). Appointments created via
+// api/leads.js's dashboard form may not enforce a clean format the way the
+// WhatsApp webhook's `message.from` always is, so this is defensive here
+// even though the Leads table itself never needs it.
+function normalizePhoneForWA(raw) {
+  let phone = String(raw || '').replace(/[\s\-\(\)\.]/g, '');
+  if      (phone.startsWith('00')) phone = phone.slice(2);
+  else if (phone.startsWith('+'))  phone = phone.slice(1);
+  else if (phone.startsWith('0'))  phone = '32' + phone.slice(1);
+  return /^\d{8,15}$/.test(phone) ? phone : '';
+}
+
+// Human-readable appointment date/time in the given language, Brussels tz.
+// api/leads.js and api/whatsapp.js each have their own copy — same per-file
+// helper duplication convention already used for mergeWaFailedFlag above.
+function formatApptDateTime(iso, lang) {
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return String(iso || '');
+  const localeMap = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+  return dt.toLocaleString(localeMap[lang] || 'nl-BE', opts);
+}
+
+async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, whatsappToken, now = new Date()) {
+  const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
+  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  const windowStart = now.toISOString();
+  const windowEnd   = new Date(now.getTime() + REMINDER_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+
+  // Field IDs used throughout (immune to renames): fldt3zlcrFKGAGw3E = Status,
+  // fldadjeKPJ2TLiQSA = Reminder Sent, fldxfW4UTI1QBiUsa = Start Time.
+  const formula = encodeURIComponent(
+    `AND({fldt3zlcrFKGAGw3E}="booked", NOT({fldadjeKPJ2TLiQSA}), IS_AFTER({fldxfW4UTI1QBiUsa}, "${windowStart}"), IS_BEFORE({fldxfW4UTI1QBiUsa}, "${windowEnd}"))`
+  );
+  const url = `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50`;
+
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  if (r.status === 429) {
+    console.warn('[cron-followup] appointment reminders: Airtable 429, uitgesteld tot volgende run');
+    return { checked: 0, sent: 0, skipped: 'rate_limited' };
+  }
+  if (!r.ok) throw new Error('Airtable ' + r.status);
+  const data = await r.json();
+  const appointments = data.records || [];
+
+  // ── Meta 24h customer-service window gating ────────────────────────────
+  // A reminder is, by definition, sent to a lead who almost certainly hasn't
+  // messaged recently — so freeform is never safe here, unlike
+  // api/whatsapp.js's in-chat booking confirmation. Always template-gated,
+  // exactly like the main follow-up loop above: skip entirely (no partial
+  // sends, no per-appointment fallback) if no template is configured. Better
+  // no reminder than a Meta policy violation / account ban.
+  const TEMPLATE_NAME = process.env.REMINDER_TEMPLATE_NAME;
+  if (!TEMPLATE_NAME) {
+    if (appointments.length) {
+      console.warn(`[cron-followup] REMINDER_TEMPLATE_NAME niet geconfigureerd. ${appointments.length} afspraak/afspraken binnen ${REMINDER_WINDOW_HOURS}u overgeslagen (freeform zou ban riskeren)`);
+    }
+    return { checked: appointments.length, sent: 0, skipped: appointments.length ? 'no_template' : undefined };
+  }
+  if (!phoneNumberId || !whatsappToken) {
+    console.warn('[cron-followup] appointment reminders: WhatsApp config (PHONE_NUMBER_ID/WHATSAPP_TOKEN) ontbreekt');
+    return { checked: appointments.length, sent: 0, skipped: 'no_whatsapp_config' };
+  }
+
+  // Per-run client cache — multiple appointments often share a Project Code;
+  // avoid refetching the same Klanten record repeatedly within one cron run.
+  const clientCache = new Map();
+  async function getClientForCode(projectCode) {
+    if (clientCache.has(projectCode)) return clientCache.get(projectCode);
+    let rec = null;
+    try {
+      const formula2 = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode.replace(/"/g, '\\"')}"`);
+      const cRes = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${formula2}&maxRecords=1`,
+        { headers: { Authorization: `Bearer ${airtableToken}` } }
+      );
+      if (cRes.ok) rec = (await cRes.json()).records?.[0] || null;
+    } catch (err) {
+      console.error(`[cron-followup] client-lookup voor reminder mislukt (${projectCode}):`, err.message);
+    }
+    clientCache.set(projectCode, rec);
+    return rec;
+  }
+
+  let sent = 0, skipped = 0;
+  for (const appt of appointments) {
+    try {
+      const f = appt.fields || {};
+      const phone       = f['fldO0Gk82OJ9m6lz7'] || f['Lead Phone']    || '';
+      const leadName    = f['fldnCNWPxIX6sYzZP'] || f['Lead Name']     || '';
+      const projectCode = f['fld60vlhoxZYef4U2'] || f['Project Code']  || '';
+      const startTime   = f['fldxfW4UTI1QBiUsa'] || f['Start Time'];
+
+      const normalizedPhone = normalizePhoneForWA(phone);
+      if (!normalizedPhone || !startTime) {
+        console.warn(`[cron-followup] reminder overgeslagen voor ${appt.id}: ontbrekend telefoonnummer of starttijd`);
+        skipped++; continue;
+      }
+
+      const client       = projectCode ? await getClientForCode(projectCode) : null;
+      const clientNameV  = client?.fields?.['fldAnB848Sr5jl6dq'] || client?.fields?.['Client Name'] || '';
+      const rawLang       = (client?.fields?.['fld1iiV9XwSbgAACZ'] || client?.fields?.['Language'] || 'nl').toString().toLowerCase();
+      const clientLang    = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
+      // Template language defaults to the client's own Language setting (same
+      // "one template name, multiple approved locale variants" reasoning as
+      // api/leads.js's sendAppointmentConfirmation). REMINDER_TEMPLATE_LANG,
+      // if set, pins every client to one language regardless.
+      const templateLang = process.env.REMINDER_TEMPLATE_LANG || clientLang;
+
+      const firstName = String(leadName).trim().split(' ')[0] || '';
+      const when = formatApptDateTime(startTime, templateLang);
+
+      // ── Idempotency guard: flip Reminder Sent BEFORE attempting delivery ──
+      // Deliberately the opposite order from the main follow-up loop above
+      // (which marks Conversation State AFTER sending). Reminders have a
+      // stricter requirement — "never sent twice" — so the flag is the lock,
+      // acquired first: if the process crashes/times out between this PATCH
+      // and the WhatsApp call below, the flag is already true and tomorrow's
+      // query (NOT({fldadjeKPJ2TLiQSA})) permanently excludes this
+      // appointment, guaranteeing it can never be reminded twice. If the
+      // PATCH itself fails, we skip the send entirely rather than risk
+      // sending without being able to record it (which WOULD risk a
+      // duplicate tomorrow) — better a missed reminder, retried tomorrow via
+      // this same all-or-nothing rule, than a double-send.
+      const pRes = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}/${appt.id}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { fldadjeKPJ2TLiQSA: true } })
+        }
+      );
+      if (!pRes.ok) {
+        console.error(`[cron-followup] Reminder Sent PATCH mislukt voor ${appt.id} (${pRes.status}). send overgeslagen (opnieuw geprobeerd volgende run)`);
+        skipped++; continue;
+      }
+
+      await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientNameV], phoneNumberId, whatsappToken);
+      sent++;
+    } catch (err) {
+      console.error(`[cron-followup] appointment reminder mislukt voor ${appt.id}:`, err.message);
+      skipped++;
+    }
+    // Slight delay to avoid WhatsApp/Airtable rate limits, same pattern as the other loops above
+    await new Promise(res => setTimeout(res, 300));
+  }
+  console.log(`[cron-followup] appointment reminders: checked ${appointments.length}, sent ${sent}, skipped ${skipped}`);
+  return { checked: appointments.length, sent, skipped };
 }
 
