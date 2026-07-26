@@ -665,6 +665,67 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ── A3. report-summary — ROI / value reporting for the dashboard's
+    // "Resultaten" panel and the weekly client email. Aggregates ONLY what
+    // Airtable already contains for the requested period, plus the same
+    // figures for the PREVIOUS equivalent period (so the caller can show a
+    // trend delta). Client-session-authenticated and Project-Code-scoped
+    // like every other mode in this file.
+    //
+    // Honest-numbers rules (non-negotiable, see REPORTING-SUMMARY.md):
+    //   - Never invent/extrapolate/project revenue.
+    //   - "Verwachte Waarde" is a client-entered ESTIMATE. Reported as
+    //     pipeline/expected value, never as revenue. Leads with no estimate
+    //     are excluded from both the sum and the average (never treated as
+    //     €0, which would silently deflate the average).
+    //   - Lead score / response time averages exclude records where the
+    //     field is absent, not treat missing as zero.
+    //
+    // body: { mode: 'report-summary', period: 'this_month' | 'last_30_days' | 'all_time' }
+    if (body.mode === 'report-summary') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const period = ['this_month', 'last_30_days', 'all_time'].includes(body.period) ? body.period : 'this_month';
+      try {
+        // Fetch ALL leads for this project. Same pagination pattern + hard
+        // cap as csv-export / the main GET path (20 pages * 100 = 2000 leads).
+        const all = [];
+        let offset = '';
+        for (let page = 0; page < 20; page++) {
+          const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
+          const url = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=100${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
+          const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+          if (!r.ok) break;
+          const d = await r.json();
+          all.push(...(d.records || []));
+          if (!d.offset) break;
+          offset = d.offset;
+        }
+
+        const bounds   = reportPeriodBounds(period);
+        const current  = aggregateReportPeriod(all, bounds.currentStart, bounds.currentEnd);
+        const previous = bounds.hasPrevious ? aggregateReportPeriod(all, bounds.previousStart, bounds.previousEnd) : null;
+
+        return res.status(200).json({
+          ok: true,
+          period,
+          periodLabel: bounds.label,
+          current: {
+            ...current,
+            from: new Date(bounds.currentStart).toISOString(),
+            to:   new Date(bounds.currentEnd).toISOString()
+          },
+          previous: previous ? {
+            ...previous,
+            from: new Date(bounds.previousStart).toISOString(),
+            to:   new Date(bounds.previousEnd).toISOString()
+          } : null
+        });
+      } catch (err) {
+        console.error('[report-summary] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── APPOINTMENTS — custom calendar (vervangt Calendly) ────────────────
     // body: { mode: 'appointments-list', from?: ISO, to?: ISO }
     // Returnt alle afspraken voor deze klant binnen het bereik (default = volgende 30 dagen).
@@ -1188,6 +1249,111 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ── Reporting period boundaries (report-summary mode) ────────────────────────
+// All boundaries computed in UTC epoch ms so results don't depend on the
+// Vercel function's local timezone. "this_month" compares the current
+// calendar month against the PRIOR calendar month (not a rolling 30 days),
+// so the trend delta means what it says. "last_30_days" is a rolling window
+// compared against the 30 days immediately before it. "all_time" has no
+// meaningful previous period to compare against.
+function reportPeriodBounds(period) {
+  const now = new Date();
+  if (period === 'last_30_days') {
+    const DAY = 24 * 60 * 60 * 1000;
+    const currentEnd    = now.getTime();
+    const currentStart  = currentEnd - 30 * DAY;
+    const previousEnd    = currentStart;
+    const previousStart  = previousEnd - 30 * DAY;
+    return { currentStart, currentEnd, previousStart, previousEnd, hasPrevious: true, label: 'Afgelopen 30 dagen' };
+  }
+  if (period === 'all_time') {
+    return { currentStart: 0, currentEnd: now.getTime(), previousStart: 0, previousEnd: 0, hasPrevious: false, label: 'Alle tijd' };
+  }
+  // this_month (default). Date.UTC handles the year rollover for January
+  // automatically (month -1 becomes December of the previous year).
+  const y = now.getUTCFullYear(), m = now.getUTCMonth();
+  const currentStart   = Date.UTC(y, m, 1);
+  const currentEnd     = now.getTime();
+  const previousStart  = Date.UTC(y, m - 1, 1);
+  const previousEnd    = currentStart;
+  return { currentStart, currentEnd, previousStart, previousEnd, hasPrevious: true, label: 'Deze maand' };
+}
+
+// True only for Airtable checkbox fields that are actually checked. Mirrors
+// the GET path's bool() helper above (v === true || v === 1) since this
+// aggregation reads raw Airtable records directly rather than the mapped
+// `leads` array (GET-only), to distinguish "field absent" from "field is 0"
+// for the averages below.
+function isChecked(v) { return v === true || v === 1; }
+
+// Aggregate honest reporting stats for one window [startMs, endMs) of raw
+// Airtable lead records. Missing fields degrade to null (never a misleading
+// 0) so the UI/email can render "geen data" instead of a fabricated number.
+function aggregateReportPeriod(records, startMs, endMs) {
+  const inWindow = records.filter(r => {
+    const raw = r.fields?.['fldR0r13EU4RwrtvH'] || r.fields?.['Created At'] || r.createdTime;
+    const t = new Date(raw).getTime();
+    return !isNaN(t) && t >= startMs && t < endMs;
+  });
+
+  const total = inWindow.length;
+  const qualifiedCount = inWindow.filter(r => isChecked(r.fields?.['fld0hAZJ5wgaXrNTn'] ?? r.fields?.['Qualified'])).length;
+  const bookedCount    = inWindow.filter(r => isChecked(r.fields?.['fldyIGNetqcSEkoaK'] ?? r.fields?.['Appointment Booked'])).length;
+
+  // Pipeline value: "Verwachte Waarde" is a free-text, client-entered
+  // ESTIMATE (fldv7qOYvCN1xJfiR). Only leads where the client actually typed
+  // a parseable value count toward the sum/average — an empty field is
+  // excluded, never treated as €0 (that would silently deflate the average,
+  // exactly the bug batch C fixed for the client-side parser this mirrors).
+  const dealValues = inWindow
+    .map(r => parseDealValueServer(r.fields?.['fldv7qOYvCN1xJfiR'] ?? r.fields?.['Verwachte Waarde'] ?? ''))
+    .filter(v => v > 0);
+  const pipelineValueTotal = dealValues.length ? Math.round(dealValues.reduce((a, b) => a + b, 0)) : null;
+  const pipelineValueAvg   = dealValues.length ? Math.round(dealValues.reduce((a, b) => a + b, 0) / dealValues.length) : null;
+
+  // Lead score: only leads the AI has actually scored (field present as a
+  // number). A real score of 0 is possible ("very unqualified"), so presence
+  // — not truthiness — is what determines inclusion.
+  const scores = inWindow
+    .map(r => r.fields?.['fldpzQgMuWJLjogiD'] ?? r.fields?.['Lead Score'])
+    .filter(v => typeof v === 'number' && !isNaN(v));
+  const avgLeadScore = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
+
+  // Response time: only leads with a recorded, positive response time.
+  const times = inWindow
+    .map(r => r.fields?.['fldUJJ8oSmAMQ9wB3'] ?? r.fields?.['Response Time (sec)'])
+    .filter(v => typeof v === 'number' && v > 0);
+  const avgResponseTime = times.length ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10 : null;
+
+  return {
+    leadsReceived:      total,
+    qualifiedCount,
+    qualifiedRate:      total > 0 ? Math.round((qualifiedCount / total) * 1000) / 10 : null,
+    appointmentsBooked: bookedCount,
+    pipelineValueTotal, pipelineValueAvg, pipelineValueCount: dealValues.length,
+    avgLeadScore,       avgLeadScoreCount: scores.length,
+    avgResponseTime,    avgResponseTimeCount: times.length
+  };
+}
+
+// Server-side mirror of dashboard.js's parseDealValue (that copy is
+// client-side JS embedded in an HTML template string, so it can't be
+// require()'d here — same per-file helper duplication convention this
+// codebase already uses for escapeFormula/formatApptDateTime/etc). MUST stay
+// behaviorally identical: batch C fixed a bug where Belgian/Dutch-formatted
+// values like "€ 1.500,00" parsed as 1.5 instead of 1500. Do not change this
+// logic here without changing it in dashboard.js too (grep parseDealValue).
+function parseDealValueServer(v) {
+  if (!v) return 0;
+  let s = String(v).replace(/[€\s]/g, '');
+  // '.' = thousands separator, ',' = decimal separator when a comma is
+  // present ("2.750,00" = 2750). No comma → every '.' is a thousands
+  // separator too ("1.500" = 1500, never 1.5) — this format never uses '.'
+  // as a decimal point.
+  s = s.includes(',') ? s.replace(/\.(?=.*,)/g, '').replace(',', '.') : s.replace(/\./g, '');
+  return parseFloat(s) || 0;
 }
 
 // CSV/Excel formula-injection guard. Lead-supplied fields (name, notes,
