@@ -9866,6 +9866,22 @@ function renderResultaten(d) {
     rangeEl.textContent = (c.from && c.to) ? \`\${fmtDate(c.from)} — \${fmtDate(c.to)}\` : '';
   }
 
+  // Brand-new client / genuinely empty period: show a friendly empty state
+  // instead of a wall of zeroes and em-dashes (matches the leads-table empty state).
+  const hasAnyData = c.leadsReceived || c.qualifiedCount || c.appointmentsBooked || c.pipelineValueTotal;
+  if (!hasAnyData) {
+    grid.innerHTML = \`
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state-illustration" style="width:88px;height:88px;font-size:32px">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        </div>
+        <div class="empty-title">Nog geen resultaten</div>
+        <div class="empty-desc">Zodra Helvaro leads voor u kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
+      </div>
+    \`;
+    return;
+  }
+
   const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString('nl-NL');
   const fmtNum  = v => v == null ? '—' : v;
   const fmtSec  = v => v == null ? 'geen data' : (v < 60 ? Math.round(v) + 's' : Math.round(v / 60) + 'm');
@@ -10065,7 +10081,9 @@ function renderTable() {
   if (state.leads.length === 0) {
     tbody.innerHTML = \`<tr><td colspan="11" style="padding:60px 20px;text-align:center">
       <div style="max-width:400px;margin:0 auto">
-        <div style="font-size:48px;margin-bottom:16px"></div>
+        <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(99,102,241,0.14),rgba(129,140,248,0.06));border:1px dashed rgba(99,102,241,0.3)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </div>
         <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
         <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Uw AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
@@ -10085,7 +10103,12 @@ function renderTable() {
       <tr>
         <td colspan="11">
           <div class="empty-state">
-            <div class="empty-icon">◎</div>
+            <div class="empty-state-illustration" style="width:88px;height:88px;font-size:32px">
+              \${hasFilters
+                ? '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="8" x2="14" y2="14"/><line x1="14" y1="8" x2="8" y2="14"/></svg>'
+                : '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>'
+              }
+            </div>
             <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
             <div class="empty-desc">\${hasFilters ? 'Pas uw filters aan of reset ze.' : 'Er zijn nog geen leads in het systeem.'}</div>
             \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : ''}
