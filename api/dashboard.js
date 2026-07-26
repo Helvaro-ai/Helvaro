@@ -6226,6 +6226,10 @@ tr:hover .td-arrow { color: var(--cyan); }
 
       <!-- ── Inzicht ── -->
       <div class="nav-divider"></div>
+      <button class="nav-item" data-page="resultaten" id="nav-resultaten">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+        Resultaten
+      </button>
       <button class="nav-item" data-page="analyse" id="nav-analyse">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>
         Analyse
@@ -6507,6 +6511,34 @@ tr:hover .td-arrow { color: var(--cyan); }
           </table>
         </div>
       </div>
+    </main>
+
+    <!-- Resultaten Page (ROI / value reporting) -->
+    <main class="page-content page" id="page-resultaten">
+      <div class="export-filter-bar">
+        <div class="export-filter-group">
+          <label class="export-filter-label">Periode</label>
+          <select class="export-select" id="resultaten-period" onchange="loadResultaten()">
+            <option value="this_month" selected>Deze maand</option>
+            <option value="last_30_days">Afgelopen 30 dagen</option>
+            <option value="all_time">Alle tijd</option>
+          </select>
+        </div>
+        <div class="export-preview-count" id="resultaten-period-range">—</div>
+      </div>
+
+      <div class="stats-grid" id="resultaten-grid">
+        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+      </div>
+
+      <p style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
+        "Verwachte pipeline waarde" is een door jou ingeschatte waarde per lead — geen omzet die Helvaro voor jou gegenereerd heeft.
+      </p>
     </main>
 
     <!-- Exports Page -->
@@ -9704,6 +9736,123 @@ function renderStats() {
 }
 
 /* ============================================================
+   RESULTATEN (ROI / VALUE REPORTING)
+   ============================================================
+   Client-facing "what did Helvaro deliver this month" panel. Backed by
+   api/leads.js mode=report-summary — see REPORTING-SUMMARY.md for the exact
+   definition of every metric. Never invents/projects revenue: every number
+   here is a direct aggregation of what Airtable already contains, and
+   "pipeline waarde" is explicitly labeled as a client-entered ESTIMATE, not
+   revenue Helvaro generated. */
+async function loadResultaten() {
+  const grid = document.getElementById('resultaten-grid');
+  if (!grid) return;
+  const period = document.getElementById('resultaten-period')?.value || 'this_month';
+
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'report-summary', period })
+    });
+    if (!r.ok) { toast('Kan resultaten niet laden', 'error'); return; }
+    const d = await r.json();
+    renderResultaten(d);
+  } catch (err) {
+    toast('Netwerkfout bij laden resultaten', 'error');
+  }
+}
+
+// Trend delta vs the previous equivalent period. null on either side means
+// "no data to compare" — render nothing rather than a misleading 0%.
+// opts.lowerIsBetter flips the green/red so e.g. a faster response time
+// (lower seconds) still shows green.
+function resultatenTrend(curr, prev, opts) {
+  opts = opts || {};
+  if (curr == null || prev == null) return '';
+  const diff = curr - prev;
+  const epsilon = opts.epsilon || 0.05;
+  if (Math.abs(diff) < epsilon) {
+    return '<span style="color:var(--text-muted);font-size:11px">— gelijk aan vorige periode</span>';
+  }
+  const arrow = diff > 0 ? '↑' : '↓';
+  const good  = opts.lowerIsBetter ? diff < 0 : diff > 0;
+  const col   = good ? 'var(--green)' : 'var(--red)';
+  const shown = opts.round1 ? Math.abs(Math.round(diff * 10) / 10) : Math.abs(Math.round(diff));
+  const suffix = opts.suffix || '';
+  return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${shown}\${suffix} vs vorige periode</span>\`;
+}
+
+function renderResultaten(d) {
+  const grid = document.getElementById('resultaten-grid');
+  const rangeEl = document.getElementById('resultaten-period-range');
+  if (!grid || !d) return;
+  const c = d.current  || {};
+  const p = d.previous || null; // null for 'all_time' — no previous period exists
+
+  if (rangeEl) {
+    const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    rangeEl.textContent = (c.from && c.to) ? \`\${fmtDate(c.from)} — \${fmtDate(c.to)}\` : '';
+  }
+
+  const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString('nl-NL');
+  const fmtNum  = v => v == null ? '—' : v;
+  const fmtSec  = v => v == null ? 'geen data' : (v < 60 ? Math.round(v) + 's' : Math.round(v / 60) + 'm');
+
+  const cards = [
+    {
+      label: 'Leads Ontvangen',
+      value: fmtNum(c.leadsReceived),
+      desc:  'in geselecteerde periode',
+      trend: p ? resultatenTrend(c.leadsReceived, p.leadsReceived) : ''
+    },
+    {
+      label: 'Gekwalificeerd',
+      value: fmtNum(c.qualifiedCount),
+      color: 'cyan',
+      desc:  c.qualifiedRate != null ? \`\${c.qualifiedRate}% van de leads\` : 'geen data',
+      trend: p ? resultatenTrend(c.qualifiedCount, p.qualifiedCount) : ''
+    },
+    {
+      label: 'Afspraken Geboekt',
+      value: fmtNum(c.appointmentsBooked),
+      color: 'green',
+      desc:  'geboekte afspraken',
+      trend: p ? resultatenTrend(c.appointmentsBooked, p.appointmentsBooked) : ''
+    },
+    {
+      label: 'Verwachte Pipeline Waarde',
+      value: fmtEuro(c.pipelineValueTotal),
+      color: 'orange',
+      desc:  c.pipelineValueCount ? \`\${c.pipelineValueCount} lead(s) met schatting\` : 'nog geen schattingen',
+      trend: p ? resultatenTrend(c.pipelineValueTotal, p.pipelineValueTotal) : ''
+    },
+    {
+      label: 'Gem. Lead Score',
+      value: c.avgLeadScore == null ? '—' : c.avgLeadScore,
+      color: 'blue',
+      desc:  c.avgLeadScoreCount ? \`o.b.v. \${c.avgLeadScoreCount} leads\` : 'geen data',
+      trend: p ? resultatenTrend(c.avgLeadScore, p.avgLeadScore, { round1: true }) : ''
+    },
+    {
+      label: 'Gem. Reactietijd',
+      value: fmtSec(c.avgResponseTime),
+      desc:  c.avgResponseTimeCount ? \`o.b.v. \${c.avgResponseTimeCount} leads\` : 'geen data',
+      trend: p ? resultatenTrend(c.avgResponseTime, p.avgResponseTime, { lowerIsBetter: true }) : ''
+    }
+  ];
+
+  grid.innerHTML = cards.map(cd => \`
+    <div class="stat-card">
+      <div class="stat-label">\${cd.label}</div>
+      <div class="stat-value \${cd.color || ''}">\${cd.value}</div>
+      <div class="stat-desc">\${cd.desc}</div>
+      <div class="stat-trend">\${cd.trend || ''}</div>
+    </div>
+  \`).join('');
+}
+
+/* ============================================================
    FILTERS & SEARCH
    ============================================================ */
 function getActiveFilterCount() {
@@ -11817,6 +11966,7 @@ function navigateTo(page) {
     profile:      { title: 'Profiel',       sub: 'Uw accountgegevens en statistieken' },
     pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van uw leads' },
     gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met uw leads' },
+    resultaten:   { title: 'Resultaten',    sub: 'Wat Helvaro deze periode heeft opgeleverd' },
     analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
     instellingen: { title: 'Instellingen',  sub: 'Beheer uw accountinstellingen' },
     activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
@@ -11844,6 +11994,7 @@ function navigateTo(page) {
 
   if (page === 'calendly')     renderAppointments();
   if (page === 'profile')      renderProfile();
+  if (page === 'resultaten')   loadResultaten();
   if (page === 'pipeline')     renderPipeline();
   if (page === 'gesprekken')   renderGesprekken();
   if (page === 'analyse')      renderAnalyse();
