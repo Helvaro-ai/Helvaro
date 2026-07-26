@@ -80,6 +80,40 @@ function generateFriendlyPassword() {
   return arr.join('');
 }
 
+// Folds the onboarding wizard's "Vertel de AI over je bedrijf" free-text
+// answers (step 4 — services/prices, FAQs, differentiators, what to never
+// say) into the EXISTING AI Instructions field (fld1lqHctRbqFGQf5), combined
+// with the shorter tone-of-voice instructions from step 2. This is the field
+// whatsapp.js reads on EVERY turn (client.fields['AI Instructions']), so it's
+// the only place that guarantees the AI has this business context from its
+// very first message.
+//
+// Deliberately NOT written to 'AI Learned Patterns' (fldnbM5YKh274ISAl):
+// that field is fully REPLACED (not appended) every Monday by
+// cron-followup.js's runWeeklyLearning() job — see its `fields:
+// { fldnbM5YKh274ISAl: newPatterns }` PATCH, which is a straight overwrite.
+// Anything client-provided there would be AI-summarized away and lost within
+// days. AI Instructions has no such job overwriting it, so it's the safe,
+// permanent home for "everything about my business" content.
+//
+// Each sub-field is capped client- and server-side so the combined string
+// stays comfortably under this field's existing 3000-char budget (same cap
+// applied in leads.js's config-save path) without ever needing to silently
+// truncate real content in normal use.
+function composeAiInstructions(tone, biz) {
+  const sections = [];
+  if (tone) sections.push(tone);
+  const bizLines = [];
+  if (biz.bizServices)  bizLines.push(`Diensten & prijzen:\n${biz.bizServices}`);
+  if (biz.bizFaqs)      bizLines.push(`Veelgestelde vragen:\n${biz.bizFaqs}`);
+  if (biz.bizDifferent) bizLines.push(`Wat ons onderscheidt:\n${biz.bizDifferent}`);
+  if (biz.bizNeverSay)  bizLines.push(`Dit mag de AI NOOIT zeggen:\n${biz.bizNeverSay}`);
+  if (bizLines.length) {
+    sections.push('--- Info over het bedrijf (ingevuld tijdens onboarding) ---\n' + bizLines.join('\n\n'));
+  }
+  return sections.join('\n\n').slice(0, 3000);
+}
+
 // Strip dashes (em/en/regular as zin-verbinder) and any euro pricing that
 // leaked past the prompt's "no prices, no dashes" instruction. Last-line
 // defense. The AI usually obeys but this guarantees the contract.
@@ -809,14 +843,95 @@ module.exports = async function handler(req, res) {
     const autoReplyTpl   = String(body.autoReplyTpl   || '').trim().slice(0, 1000);
     const website        = String(body.website        || '').trim().slice(0, 500);
     const address        = String(body.address        || '').trim().slice(0, 300);
-    const aiInstructions = String(body.aiInstructions || '').trim().slice(0, 3000);
+    // Tone-of-voice instructions from wizard step 2. Capped shorter than the
+    // field's overall 3000-char budget because step 4's business-context
+    // free text (below) is folded into the SAME field.
+    const aiToneInstructions = String(body.aiInstructions || '').trim().slice(0, 600);
     const sector         = String(body.sector         || '').trim().slice(0, 100);
     const phone          = String(body.phone          || '').trim().slice(0, 50);
+
+    // ── Wizard step "Vertel de AI over je bedrijf" — free-text business
+    // context. See composeAiInstructions() for why this lands in AI
+    // Instructions (fld1lqHctRbqFGQf5) rather than AI Learned Patterns.
+    const bizServices = String(body.bizServices  || '').trim().slice(0, 600);
+    const bizFaqs      = String(body.bizFaqs      || '').trim().slice(0, 600);
+    const bizDifferent = String(body.bizDifferent || '').trim().slice(0, 400);
+    const bizNeverSay  = String(body.bizNeverSay  || '').trim().slice(0, 400);
+    const aiInstructions = composeAiInstructions(aiToneInstructions, { bizServices, bizFaqs, bizDifferent, bizNeverSay });
+
+    // ── Wizard step "Hoe je werkt" — mirrors the exact validation used by
+    // leads.js's config-save (PATCH) path so onboarding and later dashboard
+    // edits behave identically.
+    const language = (() => {
+      const v = String(body.language || '').trim().toLowerCase();
+      return (v === 'fr' || v === 'en') ? v : 'nl';
+    })();
+    const workingHours = (() => {
+      const v = String(body.workingHours || '').trim().toLowerCase().slice(0, 60);
+      // NOTE: leads.js's config-save uses {3,9} for the day-abbreviation
+      // length, but the wizard's own Dutch default/example is 'ma-vr 9-18'
+      // (2-letter days) — and whatsapp.js's isWithinWorkingHours() parser
+      // (the actual runtime consumer) accepts 2-letter Dutch/French day
+      // codes via its dayAliases map (ma/di/wo/do/vr/za/zo, lun/mar/...).
+      // Using {3,9} here would silently reject the wizard's own suggested
+      // chips for NL clients. Widened to {2,9} to match what actually parses
+      // correctly at runtime. (leads.js itself is out of scope for this change.)
+      return (v === '' || /^[a-z]{2,9}\s*[-–]\s*[a-z]{2,9}\s+\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?$/.test(v)) ? v : '';
+    })();
+    // Booking Method is in_chat | callback in the LIVE product ('calendly' is
+    // deprecated — see dashboard.js's ap-calendly hidden-field comment. The
+    // wizard only ever offers these two).
+    const bookingMethod = (() => {
+      const v = String(body.bookingMethod || '').trim().toLowerCase();
+      return v === 'callback' ? 'callback' : 'in_chat';
+    })();
+    const callbackWindow = String(body.callbackWindow || '').trim().slice(0, 100);
+    const notifyPhone = (() => {
+      const v = String(body.notifyPhone || '').trim().slice(0, 30);
+      return (v === '' || /^[+]?[0-9][0-9\s\-().]{6,29}$/.test(v)) ? v : '';
+    })();
+    const reportEmail = (() => {
+      const v = String(body.reportEmail || '').trim().slice(0, 100);
+      return (v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) ? v : '';
+    })();
+
+    // ── Wizard step "Look & feel" — optional/skippable, same validation as
+    // leads.js's config-save.
+    const brandColor = (() => {
+      const v = String(body.brandColor || '').trim().slice(0, 8);
+      return (v === '' || /^#?[0-9a-fA-F]{6}$/.test(v)) ? v : '';
+    })();
+    const formIntro   = String(body.formIntro   || '').trim().slice(0, 600);
+    const trustBadges = String(body.trustBadges || '').trim().slice(0, 300);
+    const aiPhotoUrl = (() => {
+      const raw = String(body.aiPhotoUrl || '').trim();
+      if (raw === '') return '';
+      const isHttps = /^https:\/\//.test(raw);
+      const isData  = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(raw);
+      if (isHttps && raw.length <= 500) return raw;
+      if (isData && raw.length <= 200 * 1024) return raw;
+      return ''; // invalid/oversized — silently dropped, mirrors leads.js config-save
+    })();
 
     if (!clientName)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!projectCode) return res.status(400).json({ error: 'Projectcode is verplicht' });
     if (!/^[A-Z0-9_]{2,50}$/.test(projectCode)) {
       return res.status(400).json({ error: 'Projectcode mag alleen letters, cijfers en _ bevatten' });
+    }
+    // Email is required for onboarding (not for the plain admin-create path):
+    // it's how the client's dashboard login account gets created below.
+    const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (isOnboard && !emailLooksValid) {
+      return res.status(400).json({ error: 'Geldig e-mailadres is verplicht' });
+    }
+    if (!isOnboard && email && !emailLooksValid) {
+      return res.status(400).json({ error: 'Geldig e-mailadres is verplicht' });
+    }
+    if (website && !/^https?:\/\/.+\..+/.test(website)) {
+      return res.status(400).json({ error: 'Website moet beginnen met http:// of https://' });
+    }
+    if (bookingMethod === 'callback' && !callbackWindow) {
+      return res.status(400).json({ error: 'Vul in wanneer je lead terugbelt (bv. "binnen 30 minuten")' });
     }
 
     try {
@@ -846,10 +961,30 @@ module.exports = async function handler(req, res) {
       //   fldTvMSdTZOyNgWod  Adres
       //   fld1lqHctRbqFGQf5  AI Instructions
       //   fld0BsPnDbBOkTHzr  Niche  (singleSelect. Typecast:true auto-creates new options)
+      //   fld1iiV9XwSbgAACZ  Language (nl/fr/en) — verified in leads.js config-get/save, whatsapp.js, form-page.js
+      //   fldq5oIqw5MG8fKhc  Working Hours       — verified in leads.js, whatsapp.js, form-page.js
+      //   fldUI9BYO0TplgYlm  Booking Method (in_chat/callback — 'calendly' deprecated, see dashboard.js) — verified in leads.js, whatsapp.js
+      //   fldKvMVBalSBRQE7H  Callback Window     — verified in leads.js, whatsapp.js
+      //   fldZEApe0gfse07AU  Notify Phone        — verified in leads.js, whatsapp.js, form.js
+      //   fldDBJCN6dVMA8jax  Rapport Email       — already in docs/architecture.md
+      //   fldJAf4aTNlIQVL2q  Brand Color         — already in docs/architecture.md
+      //   fldxZ5spOeIb5omPr  Form Intro Message  — already in docs/architecture.md
+      //   fld4nzMbnQseuGhnN  Trust Badges        — verified in leads.js, form-page.js
+      //   fld7L0Iijq7ti6A6w  AI Photo URL        — already in docs/architecture.md
+      // NOTE: fld1iiV9XwSbgAACZ, fldq5oIqw5MG8fKhc, fldUI9BYO0TplgYlm,
+      // fldKvMVBalSBRQE7H, fldZEApe0gfse07AU and fld4nzMbnQseuGhnN are NOT
+      // listed in docs/architecture.md's Client Config table, but all six
+      // are live, existing fields — cross-verified by matching field ID
+      // across leads.js (config-get AND config-save), whatsapp.js and
+      // form-page.js/form.js, which only work today if these fields already
+      // exist on the live base. No new Airtable fields are created here.
       const fields = {
         fldAnB848Sr5jl6dq: clientName,
         fldN4dL0bGgfBOXwM: projectCode,
-        fldhmnzVjrb2AyqJr: apiKey
+        fldhmnzVjrb2AyqJr: apiKey,
+        // Booking Method always set (defaults 'in_chat') so a fresh client
+        // config never relies on whatsapp.js's own '|| in_chat' fallback.
+        fldUI9BYO0TplgYlm: bookingMethod
       };
       if (calendlyLink)   fields.fldNEj1ysRgINOOtr = calendlyLink;
       if (email)          fields.fld2GjRvjpsxI8XD0 = email;
@@ -860,6 +995,15 @@ module.exports = async function handler(req, res) {
       if (address)        fields.fldTvMSdTZOyNgWod = address;
       if (aiInstructions) fields.fld1lqHctRbqFGQf5 = aiInstructions;
       if (sector)         fields.fld0BsPnDbBOkTHzr = sector;
+      if (language)       fields.fld1iiV9XwSbgAACZ = language;
+      if (workingHours)   fields.fldq5oIqw5MG8fKhc = workingHours;
+      if (callbackWindow) fields.fldKvMVBalSBRQE7H = callbackWindow;
+      if (notifyPhone)    fields.fldZEApe0gfse07AU = notifyPhone;
+      if (reportEmail)    fields.fldDBJCN6dVMA8jax = reportEmail;
+      if (brandColor)     fields.fldJAf4aTNlIQVL2q = brandColor;
+      if (formIntro)      fields.fldxZ5spOeIb5omPr = formIntro;
+      if (trustBadges)    fields.fld4nzMbnQseuGhnN = trustBadges;
+      if (aiPhotoUrl)     fields.fld7L0Iijq7ti6A6w = aiPhotoUrl;
 
       const createRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}`,
@@ -885,6 +1029,11 @@ module.exports = async function handler(req, res) {
       let loginPassword = String(body.password || '').trim();
       if (!loginPassword || loginPassword.length < 8) loginPassword = generateFriendlyPassword();
       let userCreated = false;
+      // Tracks a REAL failure (lookup/create call errored) so the response
+      // can be honest about a partial create, instead of silently returning
+      // 200 as if everything succeeded. "User already exists" is NOT an
+      // error — that klant can already log in with their existing credentials.
+      let userCreateError = false;
       if (email) {
         try {
           // Look up by email first so we don't create duplicates on retry
@@ -914,12 +1063,16 @@ module.exports = async function handler(req, res) {
                 })
               }
             );
-            if (userRes.ok) userCreated = true;
-            else console.error('[admin] user create failed:', await userRes.text().catch(() => ''));
+            if (userRes.ok) { userCreated = true; }
+            else { userCreateError = true; console.error('[admin] user create failed:', await userRes.text().catch(() => '')); }
           } else if (lookup.ok) {
             console.warn('[admin] user already exists for', email, '— skipping user create');
+          } else {
+            userCreateError = true;
+            console.error('[admin] user lookup failed:', lookup.status);
           }
         } catch (err) {
+          userCreateError = true;
           console.error('[admin] user create error:', err.message);
         }
       }
@@ -934,7 +1087,14 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         id: createData.id, apiKey, projectCode, clientName, formUrl, dashboardUrl,
         userCreated,
-        loginPassword: userCreated ? loginPassword : undefined  // surfaced once to the admin caller; not persisted in response logs
+        loginPassword: userCreated ? loginPassword : undefined,  // surfaced once to the admin caller; not persisted in response logs
+        // Honest partial-failure signal: the Client Config record above WAS
+        // created successfully (createRes.ok), but the login account wasn't.
+        // Still 200 (the client record is real and usable) but the wizard
+        // must tell the founder/client this, not pretend it's fully done.
+        warning: (email && !userCreated && userCreateError)
+          ? 'Klantconfig is aangemaakt, maar het dashboard-login-account kon niet automatisch worden aangemaakt. Probeer het opnieuw, of neem contact op met Helvaro om je login handmatig te laten instellen.'
+          : undefined
       });
     } catch (err) {
       console.error('[admin] create error:', err.message);
