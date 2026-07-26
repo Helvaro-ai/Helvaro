@@ -381,6 +381,30 @@ async function processMessage(phone, text) {
             fldLeEqwNefdglLis: true,
             fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
           }, phone);
+
+          // ── Booking confirmation (fail-soft) ─────────────────────────────
+          // We're mid-conversation right now — the lead just messaged us, so
+          // Meta's 24h customer-service window is definitely open, and a
+          // freeform message is safe here. Contrast with the dashboard-created
+          // path in api/leads.js's appointment-create mode, which has no such
+          // guarantee (the lead may not have messaged in days) and therefore
+          // MUST go through an approved template instead — see
+          // sendAppointmentConfirmation() there.
+          // Own try/catch: a failure here must never read as "appointment
+          // creation failed" (it already exists at this point) — log it
+          // distinctly instead.
+          try {
+            const when = formatApptDateTime(appt.start, lang);
+            const confirmMsgs = {
+              nl: `Bevestigd. Je afspraak bij ${clientName} staat gepland op ${when}.${address ? ` Adres: ${address}.` : ''}`,
+              fr: `Confirmé. Ton rendez-vous chez ${clientName} est prévu le ${when}.${address ? ` Adresse : ${address}.` : ''}`,
+              en: `Confirmed. Your appointment with ${clientName} is booked for ${when}.${address ? ` Address: ${address}.` : ''}`
+            };
+            const confirmSent = await sendWA(phone, confirmMsgs[lang] || confirmMsgs.nl);
+            if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${phone} niet aangekomen (afspraak zelf blijft geldig)`);
+          } catch (err) {
+            console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
+          }
         }
       } catch (err) {
         console.error('[whatsapp] appointment creation failed:', err.message);
@@ -812,6 +836,18 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
     console.error('[Appointment] create exception:', err.message);
     return { ok: false, error: err.message };
   }
+}
+
+// Human-readable afspraak-datum/tijd in de klant-taal, Brussels tijdzone.
+// Gebruikt door de booking-confirmation hierboven. cron-followup.js en
+// api/leads.js hebben elk hun eigen kopie — zelfde per-file helper-duplicatie
+// conventie als mergeWaFailedFlag hierboven.
+function formatApptDateTime(iso, lang) {
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return String(iso || '');
+  const localeMap = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+  return dt.toLocaleString(localeMap[lang] || 'nl-BE', opts);
 }
 
 // Haal upcoming appointments op voor een klant (komende 14 dagen) — als string
