@@ -743,6 +743,24 @@ module.exports = async function handler(req, res) {
         );
         const d = await r.json();
         if (!r.ok) return res.status(500).json({ error: d.error?.message || 'Aanmaken mislukt' });
+
+        // ── Booking confirmation (fail-soft, template-gated) ────────────────
+        // Dashboard-created appointments (Source: 'manual') have no guarantee
+        // the lead has messaged recently — Meta's 24h customer-service window
+        // may well be closed, unlike the AI in-chat booking path
+        // (api/whatsapp.js), which sends a freeform confirmation because
+        // it's mid-conversation. Gated exactly like cron-followup.js's
+        // follow-up loop: only send through an approved template, and NEVER
+        // let a confirmation failure break the appointment that was just
+        // created (the request already succeeded above).
+        const leadPhoneForConfirm = String(fields['Lead Phone'] || '').trim();
+        if (leadPhoneForConfirm) {
+          await sendAppointmentConfirmation({
+            airtableToken: AIRTABLE_TOKEN, baseId: BASE_ID, clientsTable: CLIENTS_TABLE,
+            projectCode, phone: leadPhoneForConfirm, leadName: fields['Lead Name'], startTime: body.startTime
+          }).catch(err => console.error('[appointment-create] confirmation mislukt (afspraak blijft geldig):', err.message));
+        }
+
         return res.status(200).json({ ok: true, id: d.id, apptId });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
@@ -1196,4 +1214,112 @@ async function sendResendEmail({ subject, html, to }) {
   const { sendMail } = require('./_mailer');
   await sendMail({ to: recipient, subject, html })
     .catch(err => console.error('[leads mail]', err && err.message));
+}
+
+// ── Appointment confirmation (WhatsApp) ───────────────────────────────────────
+// Used by appointment-create above. cron-followup.js has its own copy of the
+// reminder-side equivalents (sendWATemplate + formatApptDateTime) and
+// api/whatsapp.js has its own formatApptDateTime — same per-file helper
+// duplication convention already used for mergeWaFailedFlag/escapeFormula
+// across this codebase, rather than a shared module.
+
+// Normalize a raw phone string to the digits-only format the Graph API
+// expects (E.164 without the leading '+'). Same rules as the test-message
+// mode above (line ~800), factored out here since the dashboard's
+// appointment form may not enforce a clean format the way the WhatsApp
+// webhook's `message.from` always is.
+function normalizePhoneForWA(raw) {
+  let phone = String(raw || '').replace(/[\s\-\(\)\.]/g, '');
+  if      (phone.startsWith('00')) phone = phone.slice(2);
+  else if (phone.startsWith('+'))  phone = phone.slice(1);
+  else if (phone.startsWith('0'))  phone = '32' + phone.slice(1);
+  return /^\d{8,15}$/.test(phone) ? phone : '';
+}
+
+// Human-readable appointment date/time in the given language, Brussels tz.
+function formatApptDateTime(iso, lang) {
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return String(iso || '');
+  const localeMap = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+  return dt.toLocaleString(localeMap[lang] || 'nl-BE', opts);
+}
+
+// Send an approved Meta template message (required outside the 24h
+// customer-service window). `params` = the template's body variables
+// {{1}}, {{2}}, ... in order. Never throws — resolves false on any failure,
+// same contract as the rest of this file's WhatsApp calls.
+async function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
+  const components = (params && params.length)
+    ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) }]
+    : [];
+  try {
+    const r = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        messaging_product: 'whatsapp', to, type: 'template',
+        template: { name: templateName, language: { code: lang }, components }
+      })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { console.error(`[appointment-create] template "${templateName}" naar ${to} mislukt:`, JSON.stringify(d.error || d)); return false; }
+    return true;
+  } catch (err) {
+    console.error(`[appointment-create] template netwerk fout naar ${to}:`, err.message);
+    return false;
+  }
+}
+
+// Dashboard-created appointments have no guarantee the lead has messaged us
+// within Meta's 24h customer-service window — unlike the AI in-chat booking
+// path (api/whatsapp.js), which is mid-conversation when it books. Sending
+// freeform here risks a WhatsApp policy violation / account ban (same risk
+// cron-followup.js's follow-up loop already guards against), so this ALWAYS
+// goes through an approved template. If none is configured, it skips rather
+// than risk it — no confirmation beats a banned WhatsApp number.
+//
+// Template language: defaults to the client's own Language setting (nl/fr/en,
+// same field the rest of the codebase respects) since WhatsApp lets one
+// approved template name have multiple approved per-language variants.
+// BOOKING_TEMPLATE_LANG, if set, pins every client to a single language
+// regardless — useful if the owner has so far only gotten one variant
+// approved in Meta Business Manager.
+async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable, projectCode, phone, leadName, startTime }) {
+  const TEMPLATE_NAME   = process.env.BOOKING_TEMPLATE_NAME;
+  const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+  const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
+  if (!TEMPLATE_NAME || !PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
+    console.warn('[appointment-create] BOOKING_TEMPLATE_NAME of WhatsApp-config ontbreekt. Bevestiging overgeslagen (freeform buiten 24u-venster zou ban riskeren)');
+    return;
+  }
+  const normalizedPhone = normalizePhoneForWA(phone);
+  if (!normalizedPhone) { console.warn('[appointment-create] ongeldig telefoonnummer voor bevestiging, overgeslagen'); return; }
+
+  // Best-effort client lookup for name + language. A missing/failed lookup
+  // falls back to sensible defaults rather than blocking the confirmation.
+  let clientName = '', clientLang = 'nl';
+  try {
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+    const cRes = await fetch(
+      `https://api.airtable.com/v0/${baseId}/${clientsTable}?filterByFormula=${formula}&maxRecords=1`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (cRes.ok) {
+      const cData = await cRes.json();
+      const rec = (cData.records || [])[0];
+      if (rec) {
+        clientName = rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || '';
+        const rawLang = (rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language'] || 'nl').toString().toLowerCase();
+        clientLang = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
+      }
+    }
+  } catch (err) {
+    console.error('[appointment-create] klant-lookup voor bevestiging mislukt (gebruikt defaults):', err.message);
+  }
+
+  const templateLang = process.env.BOOKING_TEMPLATE_LANG || clientLang;
+  const firstName = String(leadName || '').trim().split(' ')[0] || '';
+  const when = formatApptDateTime(startTime, templateLang);
+  await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
 }
