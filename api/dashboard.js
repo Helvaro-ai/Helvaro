@@ -3386,8 +3386,39 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: rgba(99,102,241,.08); border-color: var(--accent-bright);
   transform: translateX(2px);
 }
+/* ── Takeover bar (AI actief vs Mens aan het roer) ── */
+.panel-takeover-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 10px; padding: 8px 10px;
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 8px;
+}
+.panel-takeover-status {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  padding: 3px 9px; border-radius: 99px; white-space: nowrap;
+}
+.panel-takeover-status.active { background: rgba(34,197,94,.14); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+.panel-takeover-status.paused { background: rgba(245,158,11,.14); color: #f59e0b;    border: 1px solid rgba(245,158,11,.3); }
+.panel-takeover-meta { font-size: 11px; color: var(--text-muted); }
+.panel-takeover-escalated {
+  font-size: 11px; font-weight: 600; color: var(--red);
+  background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3);
+  padding: 3px 9px; border-radius: 99px; cursor: help;
+}
+.panel-takeover-btn {
+  margin-left: auto; border: none; border-radius: 7px; padding: 6px 12px;
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: opacity .15s ease;
+}
+.panel-takeover-btn.pause  { background: rgba(245,158,11,.16); color: #f59e0b; border: 1px solid rgba(245,158,11,.35); }
+.panel-takeover-btn.resume { background: rgba(34,197,94,.16);  color: var(--green); border: 1px solid rgba(34,197,94,.35); }
+.panel-takeover-btn:hover { opacity: .85; }
+.panel-takeover-btn:disabled { opacity: .5; cursor: wait; }
+
 .panel-reply-row {
   display: flex; gap: 8px; margin-top: 10px; align-items: flex-end;
+}
+.panel-reply-row-paused .panel-reply-input {
+  border-color: rgba(245,158,11,.5); box-shadow: 0 0 0 1px rgba(245,158,11,.15);
 }
 .panel-reply-input {
   flex: 1; padding: 10px 12px; background: var(--bg-card-alt);
@@ -3471,11 +3502,18 @@ tr:hover .td-arrow { color: var(--cyan); }
     .nb-item {
       display: flex; align-items: center; gap: 10px;
       background: var(--bg-card-alt); border-radius: 10px;
-      padding: 10px 12px; cursor: default;
+      padding: 10px 12px; cursor: pointer; transition: background .15s;
     }
+    .nb-item:hover { background: var(--bg-card-hover, rgba(255,255,255,.04)); }
     .nb-item-info { flex: 1; min-width: 0; }
     .nb-item-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
     .nb-item-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .nb-item-tag {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+      padding: 2px 7px; border-radius: 99px; white-space: nowrap; margin-right: 2px;
+    }
+    .nb-item-tag.tag-waFailed   { background: rgba(239,68,68,.14);  color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+    .nb-item-tag.tag-escalated { background: rgba(245,158,11,.14); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
     .nb-call-btn {
       display: flex; align-items: center; gap: 5px; padding: 6px 12px;
       background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
@@ -6417,12 +6455,12 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="followup-list" id="followup-list"></div>
       </div>
 
-      <!-- Niet Bereikbaar Widget -->
+      <!-- Actie Nodig Widget (waFailed + escalated — reuse of the old "Niet bereikbaar" widget) -->
       <div class="nb-widget" id="nb-widget" style="display:none">
         <div class="nb-header">
           <div class="nb-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 5a10.94 10.94 0 0114.06 14.06M10.71 5.05A16 16 0 0122.56 9M1.42 9a16 16 0 0114.26 2.26M5.33 14a16 16 0 006.39 6.6M9 5a8 8 0 017.94 7"/></svg>
-            Niet bereikbaar via WhatsApp
+            Actie nodig
           </div>
           <span class="nb-count" id="nb-count">0</span>
         </div>
@@ -10288,23 +10326,52 @@ function openPanel(lead) {
     \`;
   })();
 
-  // Conversation replay section + 2-way reply box
+  // Notities parsed once here (moved up from below) — the takeover bar in the
+  // conversation section right below needs it to know if AI is paused/who's
+  // driving, and it's the same object the Notes/Tasks/Calls sections further
+  // down already relied on.
+  const nData = parseNotities(lead);
+
+  // Conversation replay section + takeover bar + 2-way reply box
   if (lead.gesprek || lead.telefoon) {
     let bubbles = '';
     try {
       const msgs = JSON.parse(lead.gesprek || '[]');
       bubbles = msgs.map(m => {
         const isUser = m.role === 'user';
-        const tag    = isUser ? 'Lead' : (m.manual ? 'Jij' : 'AI');
+        const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? 'Jij (template)' : 'Jij') : 'AI');
         const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
         return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
     } catch { /* invalid JSON, skip */ }
     if (!bubbles) bubbles = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">Nog geen gesprek.</div>';
 
+    // ── Takeover bar: who's driving this conversation right now ─────────────
+    // aiPaused lives in the same Notities envelope as waFailed/escalated (see
+    // parseNotities/serializeNotities above — unknown keys round-trip fine).
+    // api/whatsapp.js's processMessage() checks this flag on every inbound
+    // message and skips the AI reply while it's set.
+    const aiPaused   = nData.aiPaused && typeof nData.aiPaused === 'object';
+    const pausedMeta = aiPaused
+      ? \`sinds \${relativeTime(nData.aiPaused.at)}\${nData.aiPaused.by ? ' · ' + escHtml(nData.aiPaused.by) : ''}\`
+      : '';
+    const escalatedBadge = (nData.escalated && !aiPaused)
+      ? \`<span class="panel-takeover-escalated" title="\${escHtml(nData.escalated.question || '')}">Escalatie: wacht op reactie</span>\`
+      : '';
+
     bodyHTML += \`
       <div class="panel-section">
         <div class="panel-section-title">WhatsApp Gesprek</div>
+        <div class="panel-takeover-bar" id="panel-takeover-bar">
+          <span class="panel-takeover-status \${aiPaused ? 'paused' : 'active'}">
+            \${aiPaused ? 'Mens aan het roer' : 'AI actief'}
+          </span>
+          \${pausedMeta ? \`<span class="panel-takeover-meta">\${pausedMeta}</span>\` : ''}
+          \${escalatedBadge}
+          <button class="panel-takeover-btn \${aiPaused ? 'resume' : 'pause'}" id="panel-takeover-btn" onclick="toggleAiPause()">
+            \${aiPaused ? 'Geef AI terug' : 'Neem over'}
+          </button>
+        </div>
         <div class="chat-wrap" id="panel-chat-wrap">\${bubbles}</div>
         <div class="panel-suggest-row" id="panel-suggest-row">
           <button class="panel-suggest-btn" id="panel-suggest-btn" onclick="loadReplySuggestions()">
@@ -10313,8 +10380,8 @@ function openPanel(lead) {
           </button>
           <div class="panel-suggest-chips" id="panel-suggest-chips"></div>
         </div>
-        <div class="panel-reply-row">
-          <textarea class="panel-reply-input" id="panel-reply-input" rows="2" placeholder="Antwoord aan \${escHtml(lead.naam || 'de lead')} via WhatsApp..." maxlength="2000"></textarea>
+        <div class="panel-reply-row \${aiPaused ? 'panel-reply-row-paused' : ''}">
+          <textarea class="panel-reply-input" id="panel-reply-input" rows="2" placeholder="\${aiPaused ? 'Jij bent nu aan het roer — antwoord aan ' + escHtml(lead.naam || 'de lead') + '...' : 'Antwoord aan ' + escHtml(lead.naam || 'de lead') + ' via WhatsApp...'}" maxlength="2000"></textarea>
           <button class="panel-reply-send" id="panel-reply-send" onclick="sendWhatsAppReply()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             Verstuur
@@ -10325,7 +10392,6 @@ function openPanel(lead) {
   }
 
   // Notes section (timestamped)
-  const nData = parseNotities(lead);
   function renderNotesList(notes) {
     if (!notes.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Nog geen notities</div>';
     return notes.map(n => \`<div class="panel-note-item">
@@ -10727,14 +10793,65 @@ async function sendWhatsAppReply() {
       toast(d.error || 'Versturen mislukt', 'error');
       return;
     }
-    // Optimistic: render the just-sent bubble right away
-    const html = '<div><div class="chat-label">Jij</div><div class="chat-bubble ai manual">' +
+    // Optimistic: render the just-sent bubble right away. A template send
+    // (24h window closed) delivered an approved template, NOT the typed
+    // text — label it so the thread never implies the lead read \`text\`.
+    const sentTag = d.viaTemplate ? 'Jij (template)' : 'Jij';
+    const html = '<div><div class="chat-label">' + sentTag + '</div><div class="chat-bubble ai manual">' +
       text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
     if (wrap) wrap.insertAdjacentHTML('beforeend', html);
     // Keep the lead object's gesprek in sync so re-opening the panel still shows it
     lead.gesprek = JSON.stringify(d.history || []);
+    // The server also cleared any 'escalated' Notities marker on success —
+    // mirror that locally so the takeover badge disappears without a refetch.
+    const ndAfterReply = parseNotities(lead);
+    if (ndAfterReply.escalated) {
+      delete ndAfterReply.escalated;
+      lead.notities = serializeNotities(ndAfterReply);
+    }
     input.value = '';
-    toast('Verzonden via WhatsApp', 'success');
+    toast(d.viaTemplate
+      ? 'Buiten het 24u-venster: een goedgekeurde template werd gestuurd (niet je eigen tekst)'
+      : 'Verzonden via WhatsApp', d.viaTemplate ? 'info' : 'success');
+  } catch (err) {
+    toast('Netwerkfout. Probeer opnieuw', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+async function toggleAiPause() {
+  const lead = state.activeLead;
+  const btn  = document.getElementById('panel-takeover-btn');
+  if (!lead || !btn) return;
+  const nData   = parseNotities(lead);
+  const pausing = !(nData.aiPaused && typeof nData.aiPaused === 'object');
+
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = pausing ? 'Overnemen...' : 'Teruggeven...';
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: pausing ? 'ai-pause' : 'ai-resume', leadId: lead.id })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(d.error || 'Actie mislukt', 'error'); return; }
+
+    // Keep the lead object's Notities in sync (same pattern as sendWhatsAppReply
+    // above) so the panel re-render below reflects the new state immediately,
+    // without waiting for the next dashboard poll.
+    const merged = { ...nData };
+    if (pausing) merged.aiPaused = { at: new Date().toISOString(), by: state.clientName || 'dashboard' };
+    else delete merged.aiPaused;
+    lead.notities = serializeNotities(merged);
+
+    toast(pausing
+      ? 'Je hebt het gesprek overgenomen. De AI reageert niet meer op deze lead'
+      : 'AI staat weer aan voor deze lead', 'success');
+    openPanel(lead); // re-render the panel with the updated takeover bar
   } catch (err) {
     toast('Netwerkfout. Probeer opnieuw', 'error');
   } finally {
@@ -10744,7 +10861,12 @@ async function sendWhatsAppReply() {
 }
 
 /* ============================================================
-   NIET BEREIKBAAR WIDGET
+   ACTIE NODIG WIDGET (waFailed + escalated takeover-needed leads)
+   Reuses/extends the original "Niet bereikbaar" widget rather than
+   inventing a separate inbox — escalated leads (AI asked for human help,
+   api/whatsapp.js's mergeEscalatedFlag) surface right alongside leads WhatsApp
+   couldn't deliver to (mergeWaFailedFlag), since both need the same action:
+   someone opens the lead and takes over.
    ============================================================ */
 function renderNietBereikbaar() {
   const widget  = document.getElementById('nb-widget');
@@ -10752,33 +10874,42 @@ function renderNietBereikbaar() {
   const countEl = document.getElementById('nb-count');
   if (!widget || !listEl) return;
 
-  const failed = (state.leads || []).filter(lead => {
-    const data = parseNotities(lead);
-    return data.waFailed === true;
-  });
+  const needsAction = (state.leads || [])
+    .map(lead => ({ lead, data: parseNotities(lead) }))
+    .filter(({ data }) => data.waFailed === true || (data.escalated && typeof data.escalated === 'object'));
 
-  if (failed.length === 0) {
+  if (needsAction.length === 0) {
     widget.style.display = 'none';
     return;
   }
 
   widget.style.display = '';
-  if (countEl) countEl.textContent = failed.length;
+  if (countEl) countEl.textContent = needsAction.length;
 
-  listEl.innerHTML = failed.map(lead => {
-    const f    = lead.fields || {};
-    const name = f['fldbk0LVNckOU0bqA'] || f['Name']  || '(onbekend)';
-    const rawPhone = f['fld6YaitW0lMqHUrd'] || f['Phone'] || '';
-    // Convert stored international digits-only number back to callable format
+  // Escalations (someone is actively waiting on a promised 30-min callback)
+  // read as more time-sensitive than a lead we simply couldn't reach — show
+  // those first.
+  needsAction.sort((a, b) => (b.data.escalated ? 1 : 0) - (a.data.escalated ? 1 : 0));
+
+  listEl.innerHTML = needsAction.map(({ lead, data }) => {
+    // Fields already flattened by api/leads.js's GET mapping (naam/telefoon/
+    // datum), NOT the raw Airtable 'fields' object — this widget previously
+    // read lead.fields[...], which is always undefined on these mapped
+    // lead objects and silently produced "(onbekend)"/no phone every time.
+    const name     = lead.naam || '(onbekend)';
+    const rawPhone = (lead.telefoon || '').replace(/\D/g, '');
     const telHref  = rawPhone ? 'tel:+' + rawPhone : '#';
-    const dateRaw  = f['fldR0r13EU4RwrtvH'] || '';
-    const dateStr  = dateRaw ? new Date(dateRaw).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) : '';
-    return \`<div class="nb-item">
+    const dateStr  = lead.datum ? new Date(lead.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) : '';
+    const isEscalated = data.escalated && typeof data.escalated === 'object';
+    const tag = isEscalated
+      ? '<span class="nb-item-tag tag-escalated" title="' + escHtml(data.escalated.question || '') + '">Escalatie</span>'
+      : '<span class="nb-item-tag tag-waFailed">Niet bereikbaar</span>';
+    return \`<div class="nb-item" onclick="(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escHtml(String(lead.id))}';});if(l)openPanel(l);})()">
       <div class="nb-item-info">
-        <span class="nb-item-name">\${escHtml(name)}</span>
+        <div>\${tag}<span class="nb-item-name">\${escHtml(name)}</span></div>
         \${dateStr ? \`<span class="nb-item-sub">\${dateStr}</span>\` : ''}
       </div>
-      <a class="nb-call-btn" href="\${telHref}">Bellen</a>
+      <a class="nb-call-btn" href="\${telHref}" onclick="event.stopPropagation()">Bellen</a>
     </div>\`;
   }).join('');
 }
