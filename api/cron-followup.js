@@ -496,6 +496,21 @@ async function sendResendEmail({ subject, html, to }) {
     .catch(err => console.error('[cron mail]', err && err.message));
 }
 
+// Server-side mirror of dashboard.js's parseDealValue / api/leads.js's
+// parseDealValueServer (that copy is client-side JS embedded in an HTML
+// template string, so it can't be require()'d here — same per-file helper
+// duplication convention this codebase already uses elsewhere). MUST stay
+// behaviorally identical: batch C fixed a bug where Belgian/Dutch-formatted
+// values like "€ 1.500,00" parsed as 1.5 instead of 1500. Do not change this
+// logic here without changing it in the other two copies too (grep
+// parseDealValue across the repo).
+function parseDealValueServer(v) {
+  if (!v) return 0;
+  let s = String(v).replace(/[€\s]/g, '');
+  s = s.includes(',') ? s.replace(/\.(?=.*,)/g, '').replace(',', '.') : s.replace(/\./g, '');
+  return parseFloat(s) || 0;
+}
+
 // ── Weekly per-client report ─────────────────────────────────────────────────
 // Op maandag (UTC) bouwt deze functie voor elke klant met een Rapport Email een
 // samenvatting van de afgelopen 7 dagen en mailt die naar de klant zelf.
@@ -531,13 +546,30 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
     const leads = (await lRes.json()).records || [];
 
     // 3. Stats berekenen
+    // ROI-headline toegevoegd (batch: value/ROI reporting) — leads, gekwalificeerd,
+    // afspraken en verwachte pipeline waarde zijn de cijfers die de klant motiveren
+    // om te blijven betalen. Zie REPORTING-SUMMARY.md voor de exacte definities;
+    // dezelfde honest-numbers regels als api/leads.js's report-summary mode gelden
+    // hier: nooit omzet verzinnen, "Verwachte Waarde" is een schatting van de klant,
+    // ontbrekende velden worden nooit als 0 behandeld.
     const total = leads.length;
     const qualified  = leads.filter(l => l.fields['Qualified'] === true);
+    const booked     = leads.filter(l => l.fields['Appointment Booked'] === true);
     const responseTimes = leads.map(l => l.fields['Response Time (sec)']).filter(t => typeof t === 'number' && t > 0);
     const avgResponse = responseTimes.length
       ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
       : null;
     const conversionPct = total > 0 ? Math.round((qualified.length / total) * 100) : 0;
+
+    // Verwachte pipeline waarde: alleen leads waar de klant echt een schatting
+    // invulde tellen mee (leeg/onparseerbaar wordt uitgesloten, nooit als €0
+    // behandeld — dat zou het gemiddelde stilletjes verlagen). parseDealValueServer
+    // is een server-side spiegel van dashboard.js's parseDealValue (batch C-fix
+    // voor Belgisch/Nederlands getalformaat, bv. "€ 1.500,00" = 1500, niet 1.5).
+    const dealValues = leads
+      .map(l => parseDealValueServer(l.fields['Verwachte Waarde'] || ''))
+      .filter(v => v > 0);
+    const pipelineValueTotal = dealValues.length ? Math.round(dealValues.reduce((a, b) => a + b, 0)) : null;
 
     // Top 5 gekwalificeerde leads gesorteerd op score
     const top5 = [...qualified]
@@ -547,7 +579,10 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
     // 4. Email versturen
     const ok = await sendWeeklyReportEmail({
       to: reportEmail, clientName, projectCode,
-      stats: { total, qualified: qualified.length, conversionPct, avgResponse },
+      stats: {
+        total, qualified: qualified.length, conversionPct, avgResponse,
+        booked: booked.length, pipelineValueTotal, pipelineValueCount: dealValues.length
+      },
       top5
     });
     if (ok) sent++; else skipped++;
@@ -563,6 +598,9 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const fmtTime = s => s == null ? '—' : (s < 60 ? `${s}s` : `${Math.round(s/60)}m`);
+  // "Verwachte waarde" blijft expliciet een schatting in de UI-tekst hieronder
+  // (nooit "omzet") — zie de honest-numbers regels bovenaan sendWeeklyClientReports.
+  const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString('nl-NL');
   const topRows = top5.length
     ? top5.map(l => {
         const f = l.fields || {};
@@ -579,7 +617,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
       <h2 style="color:#1e6fd9;margin:0 0 4px">Weekrapport. ${esc(clientName)}</h2>
       <p style="color:#666;margin:0 0 28px;font-size:14px">Overzicht van de afgelopen 7 dagen op je Helvaro account.</p>
 
-      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
+      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:8px">
         <tr>
           <td style="background:#f0f6ff;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#1e6fd9">${stats.total}</div>
@@ -589,12 +627,28 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
             <div style="font-size:28px;font-weight:700;color:#059669">${stats.qualified}</div>
             <div style="font-size:12px;color:#666;margin-top:4px">Gekwalificeerd</div>
           </td>
-          <td style="background:#fef3c7;border-radius:12px;padding:18px;text-align:center;width:25%">
-            <div style="font-size:28px;font-weight:700;color:#d97706">${stats.conversionPct}%</div>
+          <td style="background:#ecfeff;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#0891b2">${stats.booked}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Afspraken geboekt</div>
+          </td>
+          <td style="background:#fff7ed;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#ea580c">${fmtEuro(stats.pipelineValueTotal)}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Verwachte pipeline waarde${stats.pipelineValueCount ? '' : ' (nog geen schattingen)'}</div>
+          </td>
+        </tr>
+      </table>
+      <p style="font-size:11px;color:#999;margin:0 0 24px;text-align:center">
+        Verwachte pipeline waarde is een door jou ingeschatte waarde per lead — geen omzet die Helvaro gegenereerd heeft.
+      </p>
+
+      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
+        <tr>
+          <td style="background:#fef3c7;border-radius:12px;padding:14px;text-align:center;width:50%">
+            <div style="font-size:22px;font-weight:700;color:#d97706">${stats.conversionPct}%</div>
             <div style="font-size:12px;color:#666;margin-top:4px">Conversie</div>
           </td>
-          <td style="background:#f3e8ff;border-radius:12px;padding:18px;text-align:center;width:25%">
-            <div style="font-size:28px;font-weight:700;color:#7c3aed">${fmtTime(stats.avgResponse)}</div>
+          <td style="background:#f3e8ff;border-radius:12px;padding:14px;text-align:center;width:50%">
+            <div style="font-size:22px;font-weight:700;color:#7c3aed">${fmtTime(stats.avgResponse)}</div>
             <div style="font-size:12px;color:#666;margin-top:4px">Gem. Responstijd</div>
           </td>
         </tr>
