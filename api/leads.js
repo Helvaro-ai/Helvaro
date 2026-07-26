@@ -996,8 +996,60 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ── C0. AI pause / resume — human takeover for a lead's WhatsApp thread ──
+    // POST { mode: 'ai-pause',  leadId: 'recXXX' }
+    // POST { mode: 'ai-resume', leadId: 'recXXX' }
+    // The flag lives inside the lead's existing Notities JSON envelope
+    // (fldoLRI5W12ThTls7) rather than a new Airtable field — same mechanism
+    // api/form.js's flagWaFailed / api/whatsapp.js's mergeWaFailedFlag already
+    // use for waFailed. api/whatsapp.js's processMessage() reads this flag
+    // (getAiPauseInfo) on every inbound message and skips runAI() while it's
+    // set — see its own doc comment there for the full contract.
+    if (body.mode === 'ai-pause' || body.mode === 'ai-resume') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const leadId = String(body.leadId || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(leadId)) return res.status(400).json({ error: 'Ongeldig record ID' });
+
+      try {
+        // Ownership check — identical pattern to every other lead mutation
+        // in this file (PATCH above, appointment-create, mode C below).
+        const lRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!lRes.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        const lead = await lRes.json();
+        const leadProject = lead.fields?.['fldSmczuyUJd26HLe'] || lead.fields?.['Project Code'] || '';
+        if (leadProject !== projectCode) return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+
+        const pausing = body.mode === 'ai-pause';
+        const rawNotities = lead.fields?.['fldoLRI5W12ThTls7'] || lead.fields?.['Notities'] || '';
+        const mergedNotities = mergeNotitiesPatch(rawNotities, {
+          aiPaused: pausing ? { at: new Date().toISOString(), by: clientName || 'dashboard' } : undefined
+        });
+
+        const uRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: mergedNotities } })
+          }
+        );
+        if (!uRes.ok) return res.status(500).json({ error: 'Opslaan mislukt. Probeer later opnieuw.' });
+
+        return res.status(200).json({ ok: true, aiPaused: pausing });
+      } catch (err) {
+        console.error('[leads ai-pause/resume] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── C. Existing: send a WhatsApp reply on an existing lead (2-way chat) ─
     // POST /api/leads?id=recXXX  body: { message: "text" }
+    // Works identically whether the lead is AI-paused or not — pausing only
+    // stops api/whatsapp.js's processMessage() from calling the AI; it never
+    // gates a human's own reply sent from here.
     try {
       const qs     = (req.url || '').split('?')[1] || '';
       const params = new URLSearchParams(qs);
@@ -1024,43 +1076,104 @@ module.exports = async function handler(req, res) {
       const phone = lead.fields?.['fld6YaitW0lMqHUrd'] || lead.fields?.['Phone'] || '';
       if (!phone) return res.status(400).json({ error: 'Lead heeft geen telefoonnummer' });
 
-      // Send WhatsApp via Meta Graph API
+      // Load conversation history up front — needed both for the 24h window
+      // check below and to append the reply after sending.
+      let history = [];
+      const stored = lead.fields?.['Conversation History'];
+      if (stored) { try { history = JSON.parse(stored); } catch {} }
+
+      // ── Meta 24h customer-service window ──────────────────────────────────
+      // Freeform messages are only allowed within 24h of the lead's last
+      // inbound message — the same policy api/cron-followup.js's follow-up
+      // loop and this file's appointment-create/sendAppointmentConfirmation
+      // already respect (see FOLLOWUP_TEMPLATE_NAME / BOOKING_TEMPLATE_NAME).
+      // A manually typed reply can't be squeezed into a fixed, pre-approved
+      // template body (templates only take name/date-style variables, never
+      // free text), so outside the window we send an approved generic
+      // re-engagement template INSTEAD of the typed text when one is
+      // configured, and refuse with a clear error otherwise — exactly the
+      // "MUST use an approved template or refuse" contract this feature
+      // calls for. Never risk the shared WhatsApp number.
+      //
+      // `ts` on user-role history entries is only stamped going forward (see
+      // api/whatsapp.js's processMessage). Conversations that predate this
+      // change have no `ts` on their inbound entries — we can't prove those
+      // are inside the window, so unknown fails closed (treated as expired)
+      // rather than assuming freeform is still safe.
+      let lastInboundTs = null;
+      for (let i = history.length - 1; i >= 0; i--) {
+        const m = history[i];
+        if (m && m.role === 'user' && typeof m.ts === 'number') { lastInboundTs = m.ts; break; }
+      }
+      const hoursSinceInbound = lastInboundTs !== null ? (Date.now() - lastInboundTs) / 3_600_000 : null;
+      const withinWindow = hoursSinceInbound !== null && hoursSinceInbound < 24;
+
       const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
       const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
       if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
         return res.status(500).json({ error: 'WhatsApp configuratie ontbreekt op de server' });
       }
-      const waRes = await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: message } })
-      });
-      const waData = await waRes.json().catch(() => ({}));
-      if (!waRes.ok || waData.error) {
-        console.error('[leads reply] WhatsApp send failed:', JSON.stringify(waData.error || waData));
-        return res.status(502).json({ error: 'WhatsApp versturen mislukt', details: waData.error?.message || 'onbekend' });
+
+      let viaTemplate = false;
+      if (!withinWindow) {
+        // MANUAL_REPLY_TEMPLATE_NAME lets an operator configure a dedicated
+        // re-engagement template for this flow; falls back to the same
+        // FOLLOWUP_TEMPLATE_NAME cron-followup.js already uses so no extra
+        // Meta approval is required to get this working.
+        const TEMPLATE_NAME = process.env.MANUAL_REPLY_TEMPLATE_NAME || process.env.FOLLOWUP_TEMPLATE_NAME;
+        const TEMPLATE_LANG = process.env.MANUAL_REPLY_TEMPLATE_LANG || process.env.FOLLOWUP_TEMPLATE_LANG || 'nl';
+        if (!TEMPLATE_NAME) {
+          return res.status(409).json({
+            error: 'Het 24u WhatsApp-venster is verlopen (of onbekend) sinds het laatste bericht van deze lead. Een vrij bericht versturen kan het gedeelde WhatsApp-nummer laten blokkeren door Meta. Configureer FOLLOWUP_TEMPLATE_NAME (of MANUAL_REPLY_TEMPLATE_NAME) met een goedgekeurde template, of wacht tot de lead opnieuw schrijft.'
+          });
+        }
+        const leadNameForTpl  = lead.fields?.['fldbk0LVNckOU0bqA'] || lead.fields?.['Name'] || '';
+        const firstNameForTpl = String(leadNameForTpl).trim().split(' ')[0] || '';
+        const tplSent = await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstNameForTpl], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
+        if (!tplSent) return res.status(502).json({ error: 'Versturen van goedgekeurde template mislukt.' });
+        viaTemplate = true;
+      } else {
+        // Send WhatsApp via Meta Graph API (inside the 24h window: freeform is safe)
+        const waRes = await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: message } })
+        });
+        const waData = await waRes.json().catch(() => ({}));
+        if (!waRes.ok || waData.error) {
+          console.error('[leads reply] WhatsApp send failed:', JSON.stringify(waData.error || waData));
+          return res.status(502).json({ error: 'WhatsApp versturen mislukt', details: waData.error?.message || 'onbekend' });
+        }
       }
 
       // Append to Conversation History so dashboard shows it immediately.
-      // Use role 'assistant' with a 'manual:true' marker so we can style it differently.
-      let history = [];
-      const stored = lead.fields?.['Conversation History'];
-      if (stored) { try { history = JSON.parse(stored); } catch {} }
-      history.push({ role: 'assistant', content: message, manual: true, ts: Date.now() });
+      // Use role 'assistant' with a 'manual:true' marker so we can style it
+      // differently. When sent via template instead of the typed text, mark
+      // it so the dashboard never claims the lead received words they didn't.
+      history.push(viaTemplate
+        ? { role: 'assistant', content: message, manual: true, template: true, ts: Date.now() }
+        : { role: 'assistant', content: message, manual: true, ts: Date.now() });
       if (history.length > 50) history = history.slice(-50);
+
+      // A human just replied — clear any 'escalated' marker api/whatsapp.js
+      // set, so the takeover widget stops flagging a lead that's now handled.
+      // Merge-based (never overwrite): preserves notes/tasks/calls/afspraak/
+      // waFailed/aiPaused exactly like the ai-pause/ai-resume modes above.
+      const rawNotitiesForClear = lead.fields?.['fldoLRI5W12ThTls7'] || lead.fields?.['Notities'] || '';
+      const clearedNotities = mergeNotitiesPatch(rawNotitiesForClear, { escalated: undefined });
 
       const updateRes = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields: { 'Conversation History': JSON.stringify(history) } })
+          body:    JSON.stringify({ fields: { 'Conversation History': JSON.stringify(history), fldoLRI5W12ThTls7: clearedNotities } })
         }
       );
       if (!updateRes.ok) {
         console.warn('[leads reply] history update failed (message was sent)', updateRes.status);
       }
-      return res.status(200).json({ ok: true, history });
+      return res.status(200).json({ ok: true, history, viaTemplate });
     } catch (err) {
       console.error('POST reply error:', err.message);
       return res.status(500).json({ error: 'Serverfout. Probeer opnieuw' });
@@ -1249,6 +1362,34 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// Merge arbitrary top-level keys into a lead's Notities JSON envelope without
+// clobbering existing notes/tasks/calls/afspraak — including legacy plain-text
+// notes that predate the JSON envelope. Mirrors api/whatsapp.js's
+// mergeWaFailedFlag (same file-local-helper convention already used across
+// this codebase for Notities merging, rather than a shared module) — see its
+// doc comment for why merge-not-overwrite matters here.
+// Any key in `patch` set to `undefined` is DELETED from the envelope (used to
+// clear aiPaused/escalated); every other key is merged in as-is.
+function mergeNotitiesPatch(raw, patch) {
+  const trimmed = raw ? String(raw).trim() : '';
+  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
+  let handled = false;
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
+    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
+  }
+  if (!handled && trimmed) {
+    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
+  }
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (v === undefined) delete data[k];
+    else data[k] = v;
+  }
+  return JSON.stringify(data);
 }
 
 // ── Reporting period boundaries (report-summary mode) ────────────────────────
