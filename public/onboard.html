@@ -18,6 +18,7 @@
     --accent-hi: #818cf8;
     --green:     #22c55e;
     --red:       #ef4444;
+    --amber:     #f59e0b;
   }
   *,*::before,*::after { box-sizing: border-box; }
   body {
@@ -27,7 +28,7 @@
     display: flex; align-items: center; justify-content: center; padding: 24px;
   }
   .card {
-    width: 100%; max-width: 560px;
+    width: 100%; max-width: 620px;
     background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
     box-shadow: 0 20px 60px rgba(0,0,0,.5);
     padding: 36px 32px;
@@ -38,6 +39,7 @@
   }
   .logo img { width: 22px; height: 22px; }
   h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+  h3 { margin: 20px 0 8px; font-size: 14px; font-weight: 700; color: var(--accent-hi); }
   .sub { margin: 0 0 22px; font-size: 13px; color: var(--muted); line-height: 1.5; }
 
   /* Step indicator */
@@ -64,16 +66,42 @@
     color: var(--text); font-size: 14px; font-family: inherit; outline: none;
     transition: border-color .15s ease;
   }
-  textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+  textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+  textarea.tall { min-height: 100px; }
   input:focus, textarea:focus, select:focus { border-color: var(--accent); }
   input.error, textarea.error { border-color: var(--red); }
   .hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
   .hint.code { font-family: monospace; }
   .hint b { color: var(--accent-hi); font-weight: 600; }
+  .counter { font-size: 10px; color: var(--muted); text-align: right; margin-top: 3px; }
+  .counter.near { color: var(--amber); }
+
+  /* Chips (example fillers) */
+  .chip {
+    display: inline-block; margin: 4px 6px 0 0; padding: 4px 10px;
+    background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 99px;
+    color: var(--accent-hi); font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--accent); }
+
+  /* Radio pill rows (booking method, language) */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill-opt {
+    flex: 1 1 auto; min-width: 120px; display: flex; align-items: center; gap: 8px;
+    padding: 11px 12px; background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: 10px; cursor: pointer; font-size: 12.5px;
+  }
+  .pill-opt input { width: auto; padding: 0; margin: 0; accent-color: var(--accent); }
+  .pill-opt.checked { border-color: var(--accent); background: rgba(99,102,241,.08); }
+
+  /* Color row (brand color) */
+  .color-row { display: flex; gap: 8px; align-items: center; }
+  .color-row input[type=text] { flex: 1; }
+  .color-swatch { width: 44px; height: 44px; padding: 0; border-radius: 10px; cursor: pointer; flex: 0 0 auto; }
 
   /* Buttons row */
   .btn-row {
-    display: flex; gap: 10px; margin-top: 26px;
+    display: flex; gap: 10px; margin-top: 26px; align-items: center;
   }
   .btn {
     flex: 1; padding: 13px;
@@ -90,46 +118,69 @@
     color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer;
   }
   .btn-back:hover { color: var(--text); }
+  .btn-skip {
+    flex: 0 0 auto; padding: 13px 14px; background: none; border: none;
+    color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; text-decoration: underline;
+  }
+  .btn-skip:hover { color: var(--accent-hi); }
 
-  /* Error box */
+  /* Error / warning box */
   .err-box {
     display: none;
     background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
     color: var(--red); font-size: 13px; padding: 10px 14px; border-radius: 8px;
     margin-top: 14px;
   }
+  .warn-box {
+    background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.35);
+    color: var(--amber); font-size: 13px; padding: 12px 14px; border-radius: 8px;
+    margin: 16px 0; text-align: left; line-height: 1.5;
+  }
+  .info-box {
+    background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.25);
+    color: var(--text); font-size: 12.5px; padding: 12px 14px; border-radius: 8px;
+    margin: 14px 0; text-align: left; line-height: 1.55;
+  }
 
   /* Review step */
+  .review-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent-hi); margin: 18px 0 4px;
+  }
+  .review-section-title:first-child { margin-top: 0; }
   .review-row {
     display: flex; justify-content: space-between; padding: 10px 0;
     border-bottom: 1px solid var(--border);
-    font-size: 13px;
+    font-size: 13px; gap: 12px;
   }
   .review-row:last-child { border-bottom: none; }
-  .review-label { color: var(--muted); }
+  .review-label { color: var(--muted); flex: 0 0 auto; }
   .review-val { color: var(--text); text-align: right; font-weight: 600; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .review-val.long { white-space: normal; max-width: 60%; font-weight: 400; font-size: 12px; line-height: 1.5; color: var(--text); }
 
-  /* Success */
-  .success-panel { display: none; text-align: center; }
+  /* Success / "wat nu" panel */
+  .success-panel { display: none; text-align: left; }
   .success-icon {
     width: 56px; height: 56px; margin: 0 auto 18px;
     border-radius: 50%; background: var(--green);
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 28px; font-weight: 800;
   }
+  .success-icon.warn { background: var(--amber); }
+  .success-panel h2, .success-panel .sub { text-align: center; }
   .cred-box {
     background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px;
     padding: 14px 16px; margin: 20px 0;
     text-align: left;
   }
   .cred-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; gap: 10px; }
+  .cred-row:not(:last-child) { border-bottom: 1px solid var(--border); }
   .cred-label { color: var(--muted); }
   .cred-val { font-family: monospace; color: var(--accent-hi); word-break: break-all; text-align: right; font-size: 12px; }
   .btn-enter {
     width: 100%; padding: 14px;
     background: var(--accent); border: none; border-radius: 10px;
-    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px;
   }
 
   /* Step body — hide/show via class */
@@ -150,22 +201,48 @@
       <div class="step-dot active" id="dot-1"></div>
       <div class="step-dot"        id="dot-2"></div>
       <div class="step-dot"        id="dot-3"></div>
+      <div class="step-dot"        id="dot-4"></div>
+      <div class="step-dot"        id="dot-5"></div>
+      <div class="step-dot"        id="dot-6"></div>
     </div>
 
-    <!-- STEP 1 — Bedrijf ─────────────────────────────────────────────────── -->
+    <!-- STEP 1 — Bedrijfsbasis ───────────────────────────────────────────── -->
     <div class="step active" id="step-1">
-      <div class="step-label">Stap 1 van 3</div>
+      <div class="step-label">Stap 1 van 6</div>
       <h2>Jouw bedrijf</h2>
-      <p class="sub">We hebben deze info nodig om je dashboard, leadformulier en WhatsApp-flow klaar te zetten.</p>
+      <p class="sub">We hebben deze basisinfo nodig om je dashboard, leadformulier en WhatsApp-flow klaar te zetten.</p>
 
       <div class="field">
         <label>Bedrijfsnaam <span class="req">*</span></label>
-        <input id="f-name" type="text" placeholder="Acme Renovaties BV" autocomplete="organization">
+        <input id="w-name" type="text" placeholder="Acme Renovaties BV" autocomplete="organization">
+      </div>
+
+      <div class="field">
+        <label>Website <span class="opt">(optioneel — sterk aangeraden)</span></label>
+        <input id="w-website" type="url" placeholder="https://www.acme.be" autocomplete="url">
+        <div class="hint">De AI leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
+      </div>
+
+      <div class="field">
+        <label>Adres <span class="opt">(optioneel)</span></label>
+        <input id="w-address" type="text" placeholder="Kerkstraat 12, 9000 Gent">
+        <div class="hint">Wordt mee gestuurd bij afspraakbevestigingen.</div>
+      </div>
+
+      <div class="field">
+        <label>E-mailadres <span class="req">*</span></label>
+        <input id="w-email" type="email" placeholder="contact@acme.be" autocomplete="email">
+        <div class="hint">Hierop ontvang je je dashboard-inloggegevens.</div>
+      </div>
+
+      <div class="field">
+        <label>Telefoon <span class="opt">(optioneel)</span></label>
+        <input id="w-phone" type="tel" placeholder="+32 466 35 84 27" autocomplete="tel">
       </div>
 
       <div class="field">
         <label>Sector / branche <span class="opt">(optioneel)</span></label>
-        <select id="f-sector">
+        <select id="w-sector">
           <option value="">— Kies branche —</option>
           <!-- Values match the Niche singleSelect on the Klanten table -->
           <option value="real_estate">Vastgoed / Real Estate</option>
@@ -178,27 +255,13 @@
       </div>
 
       <div class="field">
-        <label>Website <span class="opt">(optioneel — sterk aangeraden)</span></label>
-        <input id="f-website" type="url" placeholder="https://www.acme.be" autocomplete="url">
-        <div class="hint">De AI leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
-      </div>
-
-      <div class="field">
-        <label>Adres <span class="opt">(optioneel)</span></label>
-        <input id="f-address" type="text" placeholder="Kerkstraat 12, 9000 Gent">
-        <div class="hint">Wordt mee gestuurd bij afspraakbevestigingen.</div>
-      </div>
-
-      <div class="field">
-        <label>E-mailadres <span class="req">*</span></label>
-        <input id="f-email" type="email" placeholder="contact@acme.be" autocomplete="email">
-        <div class="hint">Hierop ontvang je je inloggegevens.</div>
-      </div>
-
-      <div class="field">
-        <label>Calendly link <span class="opt">(optioneel)</span></label>
-        <input id="f-calendly" type="url" placeholder="https://calendly.com/acme/intake" autocomplete="off">
-        <div class="hint">Wordt automatisch verstuurd zodra een lead gekwalificeerd is.</div>
+        <label>Taal van je leads</label>
+        <div class="pill-row" id="w-lang-row">
+          <label class="pill-opt checked"><input type="radio" name="w-lang" value="nl" checked> <span>Nederlands</span></label>
+          <label class="pill-opt"><input type="radio" name="w-lang" value="fr"> <span>Français</span></label>
+          <label class="pill-opt"><input type="radio" name="w-lang" value="en"> <span>English</span></label>
+        </div>
+        <div class="hint">De AI antwoordt automatisch in deze taal, ongeacht wat de lead schrijft.</div>
       </div>
 
       <div class="err-box" id="err-1"></div>
@@ -207,31 +270,23 @@
       </div>
     </div>
 
-    <!-- STEP 2 — AI persona ──────────────────────────────────────────────── -->
+    <!-- STEP 2 — De AI ───────────────────────────────────────────────────── -->
     <div class="step" id="step-2">
-      <div class="step-label">Stap 2 van 3</div>
+      <div class="step-label">Stap 2 van 6</div>
       <h2>Jouw WhatsApp-persoonlijkheid</h2>
       <p class="sub">Dit is de "stem" waarmee je AI met leads praat op WhatsApp. Tip: kies een echte medewerkersnaam — leads voelen dat ze met een mens chatten.</p>
 
       <div class="field">
         <label>AI naam <span class="opt">(optioneel)</span></label>
-        <input id="f-aiName" type="text" placeholder="Sara De Vos" maxlength="60">
+        <input id="w-aiName" type="text" placeholder="Sara De Vos" maxlength="60">
         <div class="hint">Voorbeeld: <b>Sara</b>, <b>Tim Janssen</b>, <b>Lisa</b>. Leeg = "Mathis Willems" (standaard).</div>
       </div>
 
       <div class="field">
-        <label>Welkomstbericht op WhatsApp <span class="opt">(optioneel)</span></label>
-        <textarea id="f-autoReply" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?"></textarea>
-        <div class="hint">
-          Eerste bericht dat een lead krijgt na het invullen van je formulier.<br>
-          Beschikbare placeholders: <b>{naam}</b> (voornaam), <b>{bedrijf}</b>, <b>{ai}</b>, <b>{project}</b>, <b>{bron}</b>.
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Extra AI-instructies <span class="opt">(optioneel)</span></label>
-        <textarea id="f-aiInstr" placeholder="Bv: Praat informeel. Stuur nooit prijzen in WhatsApp. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon."></textarea>
-        <div class="hint">Tone-of-voice, do's &amp; don'ts, sales-aanpak. De AI volgt deze regels in elk gesprek.</div>
+        <label>Tone-of-voice &amp; instructies <span class="opt">(optioneel)</span></label>
+        <textarea id="w-aiTone" maxlength="600" placeholder="Bv: Praat informeel en gebruik 'je' in plaats van 'u'. Stuur nooit exacte prijzen in WhatsApp, verwijs naar een gesprek. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon."></textarea>
+        <div class="hint">Do's &amp; don'ts, sales-aanpak, schrijfstijl. De AI volgt deze regels in élk gesprek.</div>
+        <div class="counter" id="cnt-aiTone">0 / 600</div>
       </div>
 
       <div class="err-box" id="err-2"></div>
@@ -241,34 +296,194 @@
       </div>
     </div>
 
-    <!-- STEP 3 — Review + create ─────────────────────────────────────────── -->
+    <!-- STEP 3 — Hoe je werkt ────────────────────────────────────────────── -->
     <div class="step" id="step-3">
-      <div class="step-label">Stap 3 van 3</div>
-      <h2>Bevestig &amp; activeer</h2>
+      <div class="step-label">Stap 3 van 6</div>
+      <h2>Hoe je werkt</h2>
+      <p class="sub">Bepaalt hoe de AI leads praktisch afhandelt: wanneer, hoe geboekt wordt, en wie een seintje krijgt.</p>
+
+      <div class="field">
+        <label>Werkuren <span class="opt">(optioneel)</span></label>
+        <input id="w-hours" type="text" placeholder="ma-vr 9-18">
+        <div class="hint">
+          Format: <code>ma-vr 9-18</code>. De AI is zelf 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
+          <br>Voorbeelden:
+          <button type="button" class="chip" onclick="document.getElementById('w-hours').value='ma-vr 9-18'">ma-vr 9-18</button>
+          <button type="button" class="chip" onclick="document.getElementById('w-hours').value='ma-za 8-20'">ma-za 8-20</button>
+          <button type="button" class="chip" onclick="document.getElementById('w-hours').value='di-za 10-18'">di-za 10-18</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Wat gebeurt er als een lead gekwalificeerd is?</label>
+        <div class="pill-row" id="w-booking-row">
+          <label class="pill-opt checked"><input type="radio" name="w-booking" value="in_chat" checked> <span>AI boekt direct in WhatsApp</span></label>
+          <label class="pill-opt"><input type="radio" name="w-booking" value="callback"> <span>Een collega belt terug</span></label>
+        </div>
+        <div class="hint" id="hint-in_chat">De AI stelt zelf een concreet moment voor en boekt het na bevestiging in je agenda. Zorg dat je werkuren hierboven zijn ingevuld.</div>
+        <div class="hint" id="hint-callback" style="display:none">De AI zegt tegen de lead dat een collega contact opneemt. Jij krijgt een melding op je notificatie-nummer hieronder.</div>
+      </div>
+
+      <div class="field" id="callback-window-wrap" style="display:none">
+        <label>Wanneer bel je terug? <span class="req">*</span></label>
+        <input id="w-callbackWindow" type="text" placeholder="binnen 30 minuten" maxlength="100">
+        <div class="hint">
+          Deze tekst wordt naar de lead gestuurd. Voorbeelden:
+          <button type="button" class="chip" onclick="document.getElementById('w-callbackWindow').value='binnen 30 minuten'">binnen 30 minuten</button>
+          <button type="button" class="chip" onclick="document.getElementById('w-callbackWindow').value='binnen 1 uur'">binnen 1 uur</button>
+          <button type="button" class="chip" onclick="document.getElementById('w-callbackWindow').value='vandaag nog'">vandaag nog</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Notificatie WhatsApp-nummer <span class="opt">(optioneel)</span></label>
+        <input id="w-notifyPhone" type="tel" placeholder="+32 466 35 84 27" maxlength="30">
+        <div class="hint">Krijgt een ping bij nieuwe + gekwalificeerde leads. Internationaal formaat. Leeg = geen WhatsApp-ping.</div>
+      </div>
+
+      <div class="field">
+        <label>Wekelijks rapport e-mail <span class="opt">(optioneel)</span></label>
+        <input id="w-reportEmail" type="email" placeholder="jij@bedrijf.be" maxlength="100">
+        <div class="hint">Ontvangt een wekelijks overzicht van resultaten. Leeg = geen rapport-mail.</div>
+      </div>
+
+      <div class="err-box" id="err-3"></div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goStep(2)">← Terug</button>
+        <button class="btn" onclick="goStep(4)">Volgende →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4 — Vertel de AI over je bedrijf ────────────────────────────── -->
+    <div class="step" id="step-4">
+      <div class="step-label">Stap 4 van 6</div>
+      <h2>Vertel de AI over je bedrijf</h2>
+      <p class="sub">Hoe meer je hier zet, hoe beter je AI vanaf dag 1 écht kan antwoorden — in plaats van "dat weet ik niet, ik vraag het na". Neem de tijd, dit is het belangrijkste stuk.</p>
+
+      <div class="field">
+        <label>Diensten &amp; prijzen <span class="opt">(optioneel, sterk aangeraden)</span></label>
+        <textarea id="w-bizServices" class="tall" maxlength="600" placeholder="Bv: Keukenrenovatie vanaf €8.000. Badkamerrenovatie vanaf €5.500. Gratis eerste plaatsbezoek. Werken in heel Oost-Vlaanderen."></textarea>
+        <div class="counter" id="cnt-bizServices">0 / 600</div>
+      </div>
+
+      <div class="field">
+        <label>Veelgestelde vragen <span class="opt">(optioneel)</span></label>
+        <textarea id="w-bizFaqs" class="tall" maxlength="600" placeholder="Bv: 'Hoe lang duurt een renovatie?' -> gemiddeld 3-6 weken. 'Werken jullie met een vast contract?' -> ja, altijd, met vaste prijs vooraf."></textarea>
+        <div class="counter" id="cnt-bizFaqs">0 / 600</div>
+      </div>
+
+      <div class="field">
+        <label>Wat maakt jullie anders? <span class="opt">(optioneel)</span></label>
+        <textarea id="w-bizDifferent" maxlength="400" placeholder="Bv: 15 jaar ervaring, eigen vakmensen (geen onderaannemers), 5 jaar garantie op afwerking."></textarea>
+        <div class="counter" id="cnt-bizDifferent">0 / 400</div>
+      </div>
+
+      <div class="field">
+        <label>Wat mag de AI NOOIT zeggen? <span class="opt">(optioneel)</span></label>
+        <textarea id="w-bizNeverSay" maxlength="400" placeholder="Bv: Nooit een definitieve prijs beloven zonder plaatsbezoek. Nooit zeggen dat we 'goedkoper zijn dan iedereen'. Nooit een startdatum garanderen."></textarea>
+        <div class="counter" id="cnt-bizNeverSay">0 / 400</div>
+      </div>
+
+      <div class="info-box">Dit alles wordt samengevoegd met je AI-instructies uit stap 2 en gaat rechtstreeks naar de AI — beschikbaar vanaf het allereerste WhatsApp-gesprek.</div>
+
+      <div class="err-box" id="err-4"></div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goStep(3)">← Terug</button>
+        <button class="btn" onclick="goStep(5)">Volgende →</button>
+      </div>
+    </div>
+
+    <!-- STEP 5 — Look & feel (optioneel) ──────────────────────────────────── -->
+    <div class="step" id="step-5">
+      <div class="step-label">Stap 5 van 6 · optioneel</div>
+      <h2>Look &amp; feel</h2>
+      <p class="sub">Persoonlijke tintjes voor je leadformulier. Volledig optioneel — je kan dit later altijd in je dashboard aanpassen.</p>
+
+      <div class="field">
+        <label>Brand-kleur <span class="opt">(optioneel)</span></label>
+        <div class="color-row">
+          <input id="w-brandColor" type="text" placeholder="#6366f1" maxlength="7">
+          <input id="w-brandColorPick" type="color" class="color-swatch" value="#6366f1">
+        </div>
+        <div class="hint">Hex-code. Accentkleur op je lead-formulier. Leeg = standaard paars.</div>
+      </div>
+
+      <div class="field">
+        <label>Welkomstboodschap op lead-form <span class="opt">(optioneel)</span></label>
+        <textarea id="w-formIntro" maxlength="600" placeholder="Hey ik help je graag. Laat hieronder je gegevens achter en je hoort meteen van me."></textarea>
+        <div class="hint">Verschijnt als chat-bubbel bovenaan je lead-form. Leeg = automatische sector-tekst.</div>
+      </div>
+
+      <div class="field">
+        <label>Trust badges <span class="opt">(optioneel, max 3, gescheiden met |)</span></label>
+        <input id="w-trustBadges" type="text" placeholder="15 jaar ervaring | ISO-gecertificeerd | Lokaal Gent" maxlength="300">
+        <div class="hint">Vervangt de standaard badges (Geen spam / Reactie binnen 1 min / Vrijblijvend).</div>
+      </div>
+
+      <div class="field">
+        <label>Foto van je AI-persoon <span class="opt">(optioneel — URL)</span></label>
+        <input id="w-aiPhotoUrl" type="url" placeholder="https://...">
+        <div class="hint">Link naar een foto (https). Verschijnt als avatar op je lead-form.</div>
+      </div>
+
+      <div class="field">
+        <label>Eerste WhatsApp-bericht <span class="opt">(optioneel — goede standaard hieronder)</span></label>
+        <textarea id="w-autoReply" class="tall" maxlength="1000"></textarea>
+        <div class="hint">
+          Eerste bericht dat een lead krijgt na het invullen van je formulier.
+          Placeholders: <b>{naam}</b>, <b>{bedrijf}</b>, <b>{ai}</b>, <b>{project}</b>, <b>{bron}</b>.
+        </div>
+      </div>
+
+      <div class="err-box" id="err-5"></div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goStep(4)">← Terug</button>
+        <button class="btn-skip" onclick="skipStep5()">Later instellen</button>
+        <button class="btn" onclick="goStep(6)">Volgende →</button>
+      </div>
+    </div>
+
+    <!-- STEP 6 — Controleren & bevestigen ─────────────────────────────────── -->
+    <div class="step" id="step-6">
+      <div class="step-label">Stap 6 van 6</div>
+      <h2>Controleren &amp; bevestigen</h2>
       <p class="sub">Even nakijken — je kunt later alles aanpassen in je dashboard.</p>
 
       <div class="field">
         <label>Projectcode <span class="req">*</span></label>
-        <input id="f-code" type="text" placeholder="ACME_BV" autocomplete="off" style="font-family:monospace;letter-spacing:.5px">
+        <input id="w-code" type="text" placeholder="ACME_BV" autocomplete="off" style="font-family:monospace;letter-spacing:.5px">
         <div class="hint code">Je unieke ID — alleen letters, cijfers en _. Wordt automatisch ingevuld op basis van je bedrijfsnaam.</div>
       </div>
 
       <div id="review-list" style="margin-top:18px"></div>
 
-      <div class="err-box" id="err-3"></div>
+      <div class="err-box" id="err-6"></div>
       <div class="btn-row">
-        <button class="btn-back" onclick="goStep(2)">← Terug</button>
+        <button class="btn-back" onclick="goStep(5)">← Terug</button>
         <button class="btn" id="btn-submit" onclick="submitForm()">Account aanmaken →</button>
       </div>
     </div>
   </div>
 
-  <!-- Success panel ───────────────────────────────────────────────────────── -->
+  <!-- Success / "Wat nu?" panel ────────────────────────────────────────────── -->
   <div class="success-panel" id="success-panel">
-    <div class="success-icon">✓</div>
-    <h2>Account aangemaakt!</h2>
-    <p class="sub">Bewaar deze gegevens — je hebt ze nodig om in te loggen.</p>
+    <div class="success-icon" id="success-icon">✓</div>
+    <h2 id="success-title">Account aangemaakt!</h2>
+    <p class="sub" id="success-sub">Dit is wat er nu gebeurt — bewaar deze pagina of maak een screenshot.</p>
+
+    <div class="warn-box" id="warn-box" style="display:none"></div>
+
+    <h3>Je login</h3>
     <div class="cred-box" id="cred-box"></div>
+
+    <h3>Je lead-formulier</h3>
+    <p class="sub" style="margin-bottom:8px">Plak deze link in je advertenties, website of e-mail handtekening — hierop komen je nieuwe leads binnen:</p>
+    <div class="cred-box" id="form-link-box"></div>
+
+    <div class="info-box">
+      <b>Belangrijk om te weten:</b> je AI kan vanaf nu meteen WhatsAppen met nieuwe leads. Maar berichten die buiten het eerste bericht en het eerste 24-uursvenster gaan — zoals afspraakbevestigingen, herinneringen, of opvolgberichten na een stille periode — moeten via een door <b>Meta goedgekeurde berichtsjabloon</b> verlopen. Dat is een echte goedkeuringsstap bij Meta (meestal enkele dagen), geen instant-proces. Helvaro regelt dit met je op — dit gebeurt niet automatisch bij het aanmaken van je account.
+    </div>
+
     <button class="btn-enter" onclick="enterDashboard()">Open mijn dashboard →</button>
   </div>
 </div>
@@ -278,13 +493,13 @@
   var params     = new URLSearchParams(window.location.search);
   var inviteCode = params.get('invite') || '';
 
-  // ── Element refs ────────────────────────────────────────────────────────
+  // ── Element refs ─────────────────────────────────────────────────────────
   var $ = function (id) { return document.getElementById(id); };
-  var dots = [$('dot-1'), $('dot-2'), $('dot-3')];
-  var steps = [$('step-1'), $('step-2'), $('step-3')];
+  var dots  = [1,2,3,4,5,6].map(function (n) { return $('dot-' + n); });
+  var steps = [1,2,3,4,5,6].map(function (n) { return $('step-' + n); });
 
-  // ── Auto-fill project code from name on Step 1 ──────────────────────────
-  var nameEl = $('f-name'), codeEl = $('f-code');
+  // ── Auto-fill project code from name (kept from original single-page form) ─
+  var nameEl = $('w-name'), codeEl = $('w-code');
   nameEl.addEventListener('input', function () {
     if (!codeEl._edited) {
       codeEl.value = nameEl.value.toUpperCase()
@@ -295,21 +510,93 @@
   });
   codeEl.addEventListener('input', function () { codeEl._edited = true; });
 
-  // ── Step navigation ─────────────────────────────────────────────────────
+  // ── Character counters ───────────────────────────────────────────────────
+  function wireCounter(inputId, counterId, max) {
+    var el = $(inputId), c = $(counterId);
+    function upd() {
+      var len = el.value.length;
+      c.textContent = len + ' / ' + max;
+      c.classList.toggle('near', len > max * 0.85);
+    }
+    el.addEventListener('input', upd);
+    upd();
+  }
+  wireCounter('w-aiTone',       'cnt-aiTone',       600);
+  wireCounter('w-bizServices',  'cnt-bizServices',  600);
+  wireCounter('w-bizFaqs',      'cnt-bizFaqs',      600);
+  wireCounter('w-bizDifferent', 'cnt-bizDifferent', 400);
+  wireCounter('w-bizNeverSay',  'cnt-bizNeverSay',  400);
+
+  // ── Radio pill visual state (language, booking method) ──────────────────
+  function wirePillRow(rowId) {
+    var row = $(rowId);
+    row.querySelectorAll('input[type=radio]').forEach(function (input) {
+      input.addEventListener('change', function () {
+        row.querySelectorAll('.pill-opt').forEach(function (p) { p.classList.remove('checked'); });
+        input.closest('.pill-opt').classList.add('checked');
+      });
+    });
+  }
+  wirePillRow('w-lang-row');
+  wirePillRow('w-booking-row');
+
+  // Booking method toggles the callback-window field + hints
+  document.querySelectorAll('input[name="w-booking"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      var isCallback = getBooking() === 'callback';
+      $('callback-window-wrap').style.display = isCallback ? 'block' : 'none';
+      $('hint-in_chat').style.display  = isCallback ? 'none' : 'block';
+      $('hint-callback').style.display = isCallback ? 'block' : 'none';
+    });
+  });
+
+  function getRadio(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+  function getLang()    { return getRadio('w-lang') || 'nl'; }
+  function getBooking() { return getRadio('w-booking') || 'in_chat'; }
+
+  // Brand color swatch <-> text field sync
+  var colorText = $('w-brandColor'), colorPick = $('w-brandColorPick');
+  colorPick.addEventListener('input', function () { colorText.value = colorPick.value; });
+  colorText.addEventListener('input', function () {
+    if (/^#[0-9a-fA-F]{6}$/.test(colorText.value.trim())) colorPick.value = colorText.value.trim();
+  });
+
+  // Auto-Reply Template: show a good default VALUE (not just a placeholder)
+  // so a non-technical client sees exactly what will be sent and can tweak it.
+  $('w-autoReply').value = 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Waar kan ik je mee helpen?';
+
+  // ── Step navigation ──────────────────────────────────────────────────────
+  function currentStepIndex() {
+    return steps.findIndex(function (s) { return s.classList.contains('active'); });
+  }
   window.goStep = function (n) {
-    // Validate the CURRENT step before moving forward
-    var cur = steps.findIndex(function (s) { return s.classList.contains('active'); });
-    if (n > cur + 1) { // moving forward
+    var cur = currentStepIndex();
+    if (n > cur + 1) { // moving forward — validate the step we're leaving
       if (cur === 0 && !validateStep1()) return;
       if (cur === 1 && !validateStep2()) return;
+      if (cur === 2 && !validateStep3()) return;
+      if (cur === 3 && !validateStep4()) return;
+      if (cur === 4 && !validateStep5()) return;
     }
     steps.forEach(function (s, i) { s.classList.toggle('active', i === n - 1); });
     dots.forEach(function (d, i) {
       d.className = 'step-dot' + (i < n - 1 ? ' done' : i === n - 1 ? ' active' : '');
     });
-    if (n === 3) renderReview();
+    if (n === 6) renderReview();
     window.scrollTo(0, 0);
   };
+  window.skipStep5 = function () { goStepForce(6); };
+  function goStepForce(n) {
+    steps.forEach(function (s, i) { s.classList.toggle('active', i === n - 1); });
+    dots.forEach(function (d, i) {
+      d.className = 'step-dot' + (i < n - 1 ? ' done' : i === n - 1 ? ' active' : '');
+    });
+    if (n === 6) renderReview();
+    window.scrollTo(0, 0);
+  }
 
   function setError(boxId, msg) {
     var box = $(boxId);
@@ -317,37 +604,81 @@
     box.style.display = msg ? 'block' : 'none';
   }
 
+  function markError(el, bad) { el.classList.toggle('error', !!bad); }
+
+  // ── Per-step validation (mirrors server-side checks in api/admin.js) ─────
   function validateStep1() {
     setError('err-1', '');
     var name  = nameEl.value.trim();
-    var email = $('f-email').value.trim();
-    var web   = $('f-website').value.trim();
-    var cal   = $('f-calendly').value.trim();
+    var email = $('w-email').value.trim();
+    var web   = $('w-website').value.trim();
     var errs = [];
-    if (!name) { errs.push('Bedrijfsnaam is verplicht.'); nameEl.classList.add('error'); }
-    else nameEl.classList.remove('error');
+    if (!name) { errs.push('Bedrijfsnaam is verplicht.'); markError(nameEl, true); } else markError(nameEl, false);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errs.push('Geldig e-mailadres is verplicht.'); $('f-email').classList.add('error');
-    } else $('f-email').classList.remove('error');
+      errs.push('Geldig e-mailadres is verplicht.'); markError($('w-email'), true);
+    } else markError($('w-email'), false);
     if (web && !/^https?:\/\/.+\..+/.test(web)) {
-      errs.push('Website moet beginnen met http:// of https://'); $('f-website').classList.add('error');
-    } else $('f-website').classList.remove('error');
-    if (cal && !/^https?:\/\/.*calendly\.com/.test(cal)) {
-      errs.push('Calendly link moet beginnen met https://calendly.com/...'); $('f-calendly').classList.add('error');
-    } else $('f-calendly').classList.remove('error');
+      errs.push('Website moet beginnen met http:// of https://'); markError($('w-website'), true);
+    } else markError($('w-website'), false);
     if (errs.length) { setError('err-1', errs[0]); return false; }
     return true;
   }
 
   function validateStep2() {
     setError('err-2', '');
-    // All fields on step 2 are optional — only check lengths sensibly.
-    var aiName = $('f-aiName').value.trim();
-    if (aiName.length > 60) { setError('err-2', 'AI naam mag maximaal 60 tekens zijn.'); return false; }
-    var tpl    = $('f-autoReply').value.trim();
-    if (tpl.length > 1000) { setError('err-2', 'Welkomstbericht mag maximaal 1000 tekens zijn.'); return false; }
-    var instr  = $('f-aiInstr').value.trim();
-    if (instr.length > 3000) { setError('err-2', 'Instructies mogen maximaal 3000 tekens zijn.'); return false; }
+    if ($('w-aiName').value.trim().length > 60)  { setError('err-2', 'AI naam mag maximaal 60 tekens zijn.'); return false; }
+    if ($('w-aiTone').value.trim().length > 600) { setError('err-2', 'Tone-of-voice mag maximaal 600 tekens zijn.'); return false; }
+    return true;
+  }
+
+  function validateStep3() {
+    setError('err-3', '');
+    var hours = $('w-hours').value.trim().toLowerCase();
+    if (hours && !/^[a-z]{2,9}\s*[-–]\s*[a-z]{2,9}\s+\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?$/.test(hours)) {
+      setError('err-3', 'Werkuren format klopt niet. Gebruik bv. "ma-vr 9-18".'); markError($('w-hours'), true); return false;
+    }
+    markError($('w-hours'), false);
+    if (getBooking() === 'callback' && !$('w-callbackWindow').value.trim()) {
+      setError('err-3', 'Vul in wanneer je terugbelt (bv. "binnen 30 minuten").'); markError($('w-callbackWindow'), true); return false;
+    }
+    markError($('w-callbackWindow'), false);
+    var notify = $('w-notifyPhone').value.trim();
+    if (notify && !/^[+]?[0-9][0-9\s\-().]{6,29}$/.test(notify)) {
+      setError('err-3', 'Notificatie WhatsApp-nummer ziet er niet geldig uit.'); markError($('w-notifyPhone'), true); return false;
+    }
+    markError($('w-notifyPhone'), false);
+    var report = $('w-reportEmail').value.trim();
+    if (report && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(report)) {
+      setError('err-3', 'Rapport e-mail ziet er niet geldig uit.'); markError($('w-reportEmail'), true); return false;
+    }
+    markError($('w-reportEmail'), false);
+    return true;
+  }
+
+  function validateStep4() {
+    setError('err-4', '');
+    var fields = [['w-bizServices', 600], ['w-bizFaqs', 600], ['w-bizDifferent', 400], ['w-bizNeverSay', 400]];
+    for (var i = 0; i < fields.length; i++) {
+      if ($(fields[i][0]).value.trim().length > fields[i][1]) {
+        setError('err-4', 'Een van de velden is te lang. Kort in tot de teller groen/grijs is.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function validateStep5() {
+    setError('err-5', '');
+    var color = $('w-brandColor').value.trim();
+    if (color && !/^#?[0-9a-fA-F]{6}$/.test(color)) {
+      setError('err-5', 'Brand-kleur moet een hex-code zijn (bv. #6366f1).'); markError($('w-brandColor'), true); return false;
+    }
+    markError($('w-brandColor'), false);
+    var photo = $('w-aiPhotoUrl').value.trim();
+    if (photo && !/^https:\/\/.+/.test(photo)) {
+      setError('err-5', 'Foto-URL moet met https:// beginnen.'); markError($('w-aiPhotoUrl'), true); return false;
+    }
+    markError($('w-aiPhotoUrl'), false);
     return true;
   }
 
@@ -355,36 +686,69 @@
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  var SECTOR_LABELS = { real_estate: 'Vastgoed / Real Estate', dentist: 'Tandarts', lawyer: 'Advocaat / Juridisch', finance: 'Financieel / Boekhouding', other: 'Anders' };
+  var LANG_LABELS   = { nl: 'Nederlands', fr: 'Français', en: 'English' };
+  var BOOKING_LABELS = { in_chat: 'AI boekt direct in WhatsApp', callback: 'Een collega belt terug' };
+
   function renderReview() {
-    var rows = [
-      ['Bedrijfsnaam',  nameEl.value.trim()],
-      ['Sector',        $('f-sector').value],
-      ['Website',       $('f-website').value.trim()],
-      ['Adres',         $('f-address').value.trim()],
-      ['E-mailadres',   $('f-email').value.trim()],
-      ['Calendly',      $('f-calendly').value.trim()],
-      ['AI naam',       $('f-aiName').value.trim() || '(standaard — Mathis Willems)'],
-      ['Welkomstbericht', $('f-autoReply').value.trim() || '(standaard opener)'],
-      ['Instructies',   $('f-aiInstr').value.trim() || '(geen extra)']
+    var sections = [
+      { title: 'Bedrijfsbasis', rows: [
+        ['Bedrijfsnaam', nameEl.value.trim()],
+        ['Website',      $('w-website').value.trim()],
+        ['Adres',        $('w-address').value.trim()],
+        ['E-mailadres',  $('w-email').value.trim()],
+        ['Telefoon',     $('w-phone').value.trim()],
+        ['Sector',       SECTOR_LABELS[$('w-sector').value] || ''],
+        ['Taal',         LANG_LABELS[getLang()]]
+      ]},
+      { title: 'De AI', rows: [
+        ['AI naam',      $('w-aiName').value.trim() || '(standaard — Mathis Willems)'],
+        ['Tone-of-voice', $('w-aiTone').value.trim() || '(geen extra)']
+      ]},
+      { title: 'Hoe je werkt', rows: [
+        ['Werkuren',        $('w-hours').value.trim() || '(24/7, geen specifieke uren)'],
+        ['Bij kwalificatie', BOOKING_LABELS[getBooking()]],
+        ['Terugbel-venster', getBooking() === 'callback' ? $('w-callbackWindow').value.trim() : ''],
+        ['Notificatie WhatsApp', $('w-notifyPhone').value.trim() || '(geen)'],
+        ['Rapport e-mail',  $('w-reportEmail').value.trim() || '(geen)']
+      ]},
+      { title: 'Info voor de AI', rows: [
+        ['Diensten & prijzen', $('w-bizServices').value.trim()],
+        ['FAQs',               $('w-bizFaqs').value.trim()],
+        ['Onderscheid',        $('w-bizDifferent').value.trim()],
+        ['Nooit zeggen',       $('w-bizNeverSay').value.trim()]
+      ]},
+      { title: 'Look & feel', rows: [
+        ['Brand-kleur',   $('w-brandColor').value.trim() || '(standaard paars)'],
+        ['Form-intro',    $('w-formIntro').value.trim() || '(automatisch)'],
+        ['Trust badges',  $('w-trustBadges').value.trim() || '(standaard)'],
+        ['AI-foto URL',   $('w-aiPhotoUrl').value.trim() || '(geen)'],
+        ['Welkomstbericht', $('w-autoReply').value.trim()]
+      ]}
     ];
-    var html = rows.filter(function (r) { return r[1]; }).map(function (r) {
-      var isLong = r[1].length > 40;
-      return '<div class="review-row">'
-          + '<span class="review-label">' + escHtml(r[0]) + '</span>'
-          + '<span class="review-val' + (isLong ? ' long' : '') + '">' + escHtml(r[1]) + '</span>'
-        + '</div>';
+    var html = sections.map(function (sec) {
+      var rows = sec.rows.filter(function (r) { return r[1]; });
+      if (!rows.length) return '';
+      return '<div class="review-section-title">' + escHtml(sec.title) + '</div>'
+        + rows.map(function (r) {
+            var isLong = r[1].length > 40;
+            return '<div class="review-row">'
+                + '<span class="review-label">' + escHtml(r[0]) + '</span>'
+                + '<span class="review-val' + (isLong ? ' long' : '') + '">' + escHtml(r[1]) + '</span>'
+              + '</div>';
+          }).join('');
     }).join('');
     $('review-list').innerHTML = html;
   }
 
-  // ── Submit ──────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   var _savedSession = null;
   window.submitForm = function () {
-    setError('err-3', '');
+    setError('err-6', '');
     var code = codeEl.value.trim().toUpperCase();
-    if (!code)                           { setError('err-3', 'Projectcode is verplicht.'); codeEl.classList.add('error'); return; }
-    if (!/^[A-Z0-9_]{2,50}$/.test(code)) { setError('err-3', 'Projectcode mag alleen letters, cijfers en _ bevatten (min 2 tekens).'); codeEl.classList.add('error'); return; }
-    codeEl.classList.remove('error');
+    if (!code)                           { setError('err-6', 'Projectcode is verplicht.'); markError(codeEl, true); return; }
+    if (!/^[A-Z0-9_]{2,50}$/.test(code)) { setError('err-6', 'Projectcode mag alleen letters, cijfers en _ bevatten (min 2 tekens).'); markError(codeEl, true); return; }
+    markError(codeEl, false);
 
     var btn = $('btn-submit');
     btn.disabled = true; btn.textContent = 'Aanmaken...';
@@ -394,14 +758,28 @@
       inviteCode:     inviteCode,
       clientName:     nameEl.value.trim(),
       projectCode:    code,
-      email:          $('f-email').value.trim(),
-      calendlyLink:   $('f-calendly').value.trim(),
-      aiName:         $('f-aiName').value.trim(),
-      autoReplyTpl:   $('f-autoReply').value.trim(),
-      website:        $('f-website').value.trim(),
-      address:        $('f-address').value.trim(),
-      aiInstructions: $('f-aiInstr').value.trim(),
-      sector:         $('f-sector').value
+      email:          $('w-email').value.trim(),
+      phone:          $('w-phone').value.trim(),
+      website:        $('w-website').value.trim(),
+      address:        $('w-address').value.trim(),
+      sector:         $('w-sector').value,
+      language:       getLang(),
+      aiName:         $('w-aiName').value.trim(),
+      aiInstructions: $('w-aiTone').value.trim(),
+      bizServices:    $('w-bizServices').value.trim(),
+      bizFaqs:        $('w-bizFaqs').value.trim(),
+      bizDifferent:   $('w-bizDifferent').value.trim(),
+      bizNeverSay:    $('w-bizNeverSay').value.trim(),
+      workingHours:   $('w-hours').value.trim(),
+      bookingMethod:  getBooking(),
+      callbackWindow: $('w-callbackWindow').value.trim(),
+      notifyPhone:    $('w-notifyPhone').value.trim(),
+      reportEmail:    $('w-reportEmail').value.trim(),
+      brandColor:     $('w-brandColor').value.trim(),
+      formIntro:      $('w-formIntro').value.trim(),
+      trustBadges:    $('w-trustBadges').value.trim(),
+      aiPhotoUrl:     $('w-aiPhotoUrl').value.trim(),
+      autoReplyTpl:   $('w-autoReply').value.trim()
     };
 
     fetch('/api/admin', {
@@ -412,23 +790,43 @@
     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
     .then(function (res) {
       if (!res.ok) {
-        setError('err-3', res.data.error || 'Er is iets misgegaan. Probeer opnieuw.');
+        setError('err-6', res.data.error || 'Er is iets misgegaan. Probeer opnieuw.');
         btn.disabled = false; btn.textContent = 'Account aanmaken →';
         return;
       }
       var d = res.data;
       _savedSession = { key: d.apiKey, name: d.clientName, project: d.projectCode };
-      $('cred-box').innerHTML = [
+
+      // Honest partial-failure messaging: the Client Config record IS
+      // created (we only get here on a 200), but the login account may not
+      // be — surface that clearly instead of a generic "all done" screen.
+      if (d.warning) {
+        $('success-icon').textContent = '!';
+        $('success-icon').classList.add('warn');
+        $('success-title').textContent = 'Klant aangemaakt — met een kanttekening';
+        $('warn-box').style.display = 'block';
+        $('warn-box').textContent = d.warning;
+      }
+
+      var credRows = [
         credRow('Bedrijf',     d.clientName),
-        credRow('Projectcode', d.projectCode),
-        credRow('API Key',     d.apiKey),
-        credRow('Formulier',   d.formUrl)
-      ].join('');
+        credRow('Projectcode', d.projectCode)
+      ];
+      if (d.userCreated) {
+        credRows.push(credRow('Login e-mail', body.email));
+        credRows.push(credRow('Wachtwoord',   d.loginPassword));
+      } else {
+        credRows.push(credRow('Login', 'kon niet automatisch worden aangemaakt — zie melding hierboven'));
+      }
+      credRows.push(credRow('API Key (geavanceerd)', d.apiKey));
+      $('cred-box').innerHTML = credRows.join('');
+      $('form-link-box').innerHTML = credRow('Lead-formulier', d.formUrl);
+
       $('form-panel').style.display = 'none';
       $('success-panel').style.display = 'block';
     })
     .catch(function () {
-      setError('err-3', 'Netwerkfout. Controleer uw verbinding en probeer opnieuw.');
+      setError('err-6', 'Netwerkfout. Controleer uw verbinding en probeer opnieuw.');
       btn.disabled = false; btn.textContent = 'Account aanmaken →';
     });
   };
