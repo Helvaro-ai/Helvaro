@@ -2286,6 +2286,12 @@ button.brand-dot { border: none; padding: 0; }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes cmFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Generic confirm modal buttons (injected via showConfirmModal) */
+.cm-btn:hover { opacity: 0.88; }
+.cm-btn:active { transform: translateY(1px); }
+.cm-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.3); }
+.cm-btn-confirm.danger:focus-visible { box-shadow: 0 0 0 3px rgba(244,63,94,0.3); }
 @keyframes modalIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: .9; } 50% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
 
@@ -2672,6 +2678,11 @@ td {
 
 tr:hover .copy-btn { opacity: 1; }
 .copy-btn:hover { color: var(--cyan); background: rgba(165, 180, 252, 0.1); }
+
+/* Touch devices have no hover — keep the copy button discoverable/tappable */
+@media (hover: none) {
+  .copy-btn { opacity: 0.65; }
+}
 
 .copy-tooltip {
   position: absolute;
@@ -8847,12 +8858,14 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
 
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = cancelText || 'Annuleren';
-  cancelBtn.style.cssText = 'padding:9px 16px;background:var(--bg-card-alt,#f3f4f6);border:1px solid var(--border,#e5e7eb);border-radius:8px;color:var(--text-primary,#111);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+  cancelBtn.className = 'cm-btn cm-btn-cancel';
+  cancelBtn.style.cssText = 'padding:9px 16px;background:var(--bg-card-alt,#f3f4f6);border:1px solid var(--border,#e5e7eb);border-radius:8px;color:var(--text-primary,#111);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .15s ease)';
 
   const confirmBtn = document.createElement('button');
   confirmBtn.textContent = confirmText || 'Ja, ga door';
-  const confirmBg = danger ? '#dc2626' : 'var(--accent,#6366f1)';
-  confirmBtn.style.cssText = 'padding:9px 16px;background:' + confirmBg + ';border:0;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+  confirmBtn.className = 'cm-btn cm-btn-confirm' + (danger ? ' danger' : '');
+  const confirmBg = danger ? 'var(--red,#f43f5e)' : 'var(--accent,#6366f1)';
+  confirmBtn.style.cssText = 'padding:9px 16px;background:' + confirmBg + ';border:0;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .15s ease)';
 
   function close() {
     overlay.remove();
