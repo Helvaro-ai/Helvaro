@@ -5819,6 +5819,24 @@ tr:hover .td-arrow { color: var(--cyan); }
   .btn-icon span:not(.icon) { display: none; }
   .topbar-right { gap: 6px; }
   .page-title { font-size: 14px; letter-spacing: 1.5px; }
+
+  /* Lead detail panel — tighter padding + smaller avatar so the header
+     doesn't feel cramped on the smallest phones */
+  .panel-header { padding: 18px 16px 16px; }
+  .panel-body   { padding: 16px; }
+  .panel-avatar { width: 48px; height: 48px; font-size: 18px; margin-bottom: 10px; }
+  .panel-close  { top: 14px; right: 14px; width: 28px; height: 28px; }
+
+  /* Takeover bar / reply row — allow the send button to sit under the
+     textarea instead of squeezing both into ~300px of width */
+  .panel-reply-row { flex-wrap: wrap; }
+  .panel-reply-send { flex: 1 1 100%; justify-content: center; }
+  .panel-takeover-bar { padding: 8px; gap: 6px; }
+  .panel-takeover-btn { margin-left: 0; }
+
+  /* Actie Nodig / follow-up / top-leads widgets — match .page-content's
+     16px gutter instead of the desktop 20px */
+  .nb-widget, .followup-widget, .top-leads-strip, .taken-widget { padding: 14px 16px; }
 }
 
 /* ============================================================
