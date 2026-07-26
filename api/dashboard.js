@@ -1643,7 +1643,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-persona-switch:hover { color: var(--text-primary); border-color: var(--border-bright); }
 
 /* ── Editable cost panel ────────────────────────────────────────────────── */
-.fdr-cost-edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; }
+.fdr-cost-edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; display: inline-flex; align-items: center; vertical-align: middle; }
 .fdr-cost-edit-btn:hover { color: var(--accent-bright); }
 .fdr-cost-edit-input { width: 60px; padding: 2px 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 5px; color: var(--text-primary); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -2069,7 +2069,7 @@ button.brand-dot { border: none; padding: 0; }
       align-items: center;
       gap: 10px;
     }
-    .search-hint-icon { font-size: 28px; opacity: 0.3; line-height: 1; }
+    .search-hint-icon { opacity: 0.3; line-height: 1; color: var(--text-muted); }
     .search-hint-text { font-size: 13px; color: var(--text-secondary); }
     .search-hint-shortcuts { display: flex; gap: 16px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
     .search-hint-shortcut { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
@@ -2158,7 +2158,7 @@ button.brand-dot { border: none; padding: 0; }
       align-items: center;
       gap: 8px;
     }
-    .search-no-results-icon { font-size: 26px; opacity: 0.3; }
+    .search-no-results-icon { opacity: 0.3; color: var(--text-muted); }
     .search-footer {
       padding: 9px 20px;
       border-top: 1px solid var(--border);
@@ -3166,7 +3166,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-note-delete {
   position: absolute; top: 8px; right: 8px;
   background: none; border: none; cursor: pointer;
-  color: var(--text-muted); font-size: 12px; padding: 2px 5px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 12px; padding: 4px 5px;
   border-radius: 4px; transition: color 0.1s, background 0.1s;
 }
 .panel-note-delete:hover { color: var(--red); background: rgba(244,63,94,0.08); }
@@ -3204,7 +3205,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-task-due.today { background: rgba(245,158,11,0.1); color: var(--orange); border-color: rgba(245,158,11,0.25); }
 .panel-task-delete {
   background: none; border: none; cursor: pointer; color: var(--text-muted);
-  font-size: 12px; padding: 2px 5px; border-radius: 4px; transition: color 0.1s;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 12px; padding: 4px 5px; border-radius: 4px; transition: color 0.1s;
 }
 .panel-task-delete:hover { color: var(--red); }
 .panel-add-task { display: flex; gap: 6px; align-items: center; }
@@ -3234,7 +3236,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--bg-card-alt); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 9px 12px;
 }
-.panel-call-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+.panel-call-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; color: var(--accent-bright); display: flex; align-items: center; }
 .panel-call-body { flex: 1; min-width: 0; }
 .panel-call-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
 .panel-call-note { font-size: 13px; color: var(--text-primary); line-height: 1.4; }
@@ -4431,7 +4433,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-muted);
   font-size: 14px;
 }
-.conv-empty-icon { font-size: 40px; opacity: 0.3; }
+.conv-empty-icon { opacity: 0.3; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
 
 /* ============================================================
    ANALYSE (ANALYTICS)
@@ -5765,7 +5767,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     margin-left: 0;
   }
 
-  .hamburger { display: flex; }
+  .hamburger { display: flex; align-items: center; justify-content: center; }
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -6360,7 +6362,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
-        <button class="hamburger" id="hamburger"></button>
+        <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
           <div class="page-title orbitron gradient-text" id="topbar-title">Dashboard</div>
           <div class="page-subtitle" id="topbar-subtitle">Overzicht van uw gekwalificeerde leads</div>
@@ -6930,7 +6932,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
         <div class="conv-detail" id="conv-detail">
           <div class="conv-empty">
-            <div class="conv-empty-icon"></div>
+            <div class="conv-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
             <div>Selecteer een gesprek</div>
           </div>
         </div>
@@ -7972,8 +7974,8 @@ tr:hover .td-arrow { color: var(--cyan); }
               </div>
               <hr class="fdr-profit-divider">
               <div class="fdr-profit-rows">
-                <div class="fdr-profit-row"><span class="lbl">Vaste kosten <button class="fdr-cost-edit-btn" onclick="editCost('fixed')" title="Bewerk"></button></span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
-                <div class="fdr-profit-row"><span class="lbl">Variabele kosten <button class="fdr-cost-edit-btn" onclick="editCost('variable')" title="Bewerk"></button></span><span class="val neg" id="fdr-cost-var">-€0</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Vaste kosten <button class="fdr-cost-edit-btn" onclick="editCost('fixed')" title="Bewerk"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button></span><span class="val neg" id="fdr-cost-fixed">-€58</span></div>
+                <div class="fdr-profit-row"><span class="lbl">Variabele kosten <button class="fdr-cost-edit-btn" onclick="editCost('variable')" title="Bewerk"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button></span><span class="val neg" id="fdr-cost-var">-€0</span></div>
                 <div class="fdr-profit-row total"><span class="lbl">Nettowinst</span><span class="val" id="fdr-profit-val">€0</span></div>
               </div>
               <div class="fdr-profit-marge" id="fdr-profit-marge">Marge: —%</div>
@@ -8503,7 +8505,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     </div>
     <div class="search-results" id="search-results">
       <div class="search-hint">
-        <div class="search-hint-icon"></div>
+        <div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <div class="search-hint-text">Begin met typen om leads te zoeken</div>
         <div class="search-hint-shortcuts">
           <span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span>
@@ -8545,7 +8547,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 <div class="panel-backdrop" id="panel-backdrop"></div>
 <div class="detail-panel" id="detail-panel">
   <div class="panel-header">
-    <button class="panel-close" id="panel-close"></button>
+    <button class="panel-close" id="panel-close" aria-label="Sluiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="panel-avatar" id="panel-avatar">HV</div>
     <div class="panel-name orbitron" id="panel-name">Lead naam</div>
     <div class="panel-meta">
@@ -8693,14 +8695,18 @@ function animateCounter(el, target, suffix = '') {
    ============================================================ */
 function toast(message, type = 'info', title = null) {
   const container = document.getElementById('toast-container');
-  const icons = { success: '', error: '', info: 'ℹ' };
+  const icons = {
+    success: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>',
+    error:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    info:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+  };
   const titles = { success: 'Gelukt', error: 'Fout', info: 'Info' };
   const el = document.createElement('div');
   el.className = \`toast toast-\${type}\`;
   el.innerHTML = \`
     <div class="toast-header">
-      <span class="toast-title">\${icons[type]} \${title || titles[type]}</span>
-      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))"></button>
+      <span class="toast-title">\${icons[type]}\${title || titles[type]}</span>
+      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))" aria-label="Sluiten"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="toast-message">\${message}</div>
     <div class="toast-progress"></div>
@@ -10150,13 +10156,13 @@ function renderTable() {
         <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
         <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
         <td>\${scoreBar(lead.leadScore)}</td>
-        <td>\${lead.opgepikt ? '<span style="color:var(--green)"></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td>\${lead.opgepikt ? '<span style="color:var(--green);display:inline-flex" title="Opgepikt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
         <td class="td-arrow">›</td>
         <td onclick="event.stopPropagation()">
           <div class="row-actions">
-            <a class="row-action-btn" href="\${telLink}" title="Bellen"></a>
-            <a class="row-action-btn" href="\${waLink}" target="_blank" rel="noopener" title="WhatsApp"></a>
+            <a class="row-action-btn" href="\${telLink}" title="Bellen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
+            <a class="row-action-btn" href="\${waLink}" target="_blank" rel="noopener" title="WhatsApp"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
           </div>
         </td>
       </tr>
@@ -10453,7 +10459,7 @@ function openPanel(lead) {
     return notes.map(n => \`<div class="panel-note-item">
       <div class="panel-note-text">\${escHtml(n.text)}</div>
       <div class="panel-note-ts">\${relativeTime(n.ts)}</div>
-      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}"></button>
+      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}" aria-label="Verwijderen"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
     </div>\`).join('');
   }
   function renderTasksList(tasks) {
@@ -10464,14 +10470,14 @@ function openPanel(lead) {
         <input type="checkbox" class="panel-task-check" \${t.done ? 'checked' : ''}>
         <span class="panel-task-text">\${escHtml(t.text)}</span>
         \${dl.label ? \`<span class="panel-task-due \${dl.cls}">\${dl.label}</span>\` : ''}
-        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}"></button>
+        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}" aria-label="Verwijderen"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
       </div>\`;
     }).join('');
   }
   function renderCallsList(calls) {
     if (!calls.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Geen gesprekken gelogd</div>';
     return calls.map(c => \`<div class="panel-call-item">
-      <div class="panel-call-icon"></div>
+      <div class="panel-call-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
       <div class="panel-call-body">
         <div class="panel-call-meta">\${c.duur} min &bull; \${relativeTime(c.ts)}</div>
         \${c.notitie ? \`<div class="panel-call-note">\${escHtml(c.notitie)}</div>\` : ''}
@@ -12651,7 +12657,7 @@ function closeSearch() {
   const inp = document.getElementById('search-modal-input');
   if (inp) inp.value = '';
   const resultsEl = document.getElementById('search-results');
-  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
   const footer = document.getElementById('search-footer');
   if (footer) footer.style.display = 'none';
   _searchActiveIndex = -1;
@@ -12682,7 +12688,7 @@ function runGlobalSearch() {
   _searchActiveIndex = -1;
 
   if (!q) {
-    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }
@@ -12697,7 +12703,7 @@ function runGlobalSearch() {
   ).slice(0, 12);
 
   if (matches.length === 0) {
-    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon"></div><div>Geen leads gevonden voor "<strong>\${escHtml(q)}</strong>"</div></div>\`;
+    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></div><div>Geen leads gevonden voor "<strong>\${escHtml(q)}</strong>"</div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }
@@ -12920,7 +12926,7 @@ function openConversation(leadId) {
       \${escHtml(lead.naam) || '—'}
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
     </div>
-    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"></div><div>Geen berichten</div></div>\`}</div>
+    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>Geen berichten</div></div>\`}</div>
   \`;
 
   // Scroll to bottom
