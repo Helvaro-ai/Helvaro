@@ -187,13 +187,54 @@ async function processMessage(phone, text) {
     return;
   }
 
+  // 3b. AI-PAUSE CHECK (human takeover). A staff member can pause the AI for
+  // this lead from the dashboard (api/leads.js's 'ai-pause' mode) when they've
+  // decided to drive the conversation themselves. The flag lives inside the
+  // existing Notities JSON envelope (fldoLRI5W12ThTls7) — same mechanism
+  // flagWaFailed/mergeWaFailedFlag already use for waFailed — rather than a
+  // new Airtable field. While paused we must still record the inbound
+  // message (nothing may be lost) and still update Last Message, but we must
+  // NEVER call runAI() or send an AI reply: a human is driving now, and the
+  // AI replying over them is exactly the collision this feature prevents.
+  const pauseInfo = getAiPauseInfo(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+  if (pauseInfo) {
+    console.log(`[WhatsApp] Lead ${phone} is AI-paused sinds ${pauseInfo.at || '?'} (door ${pauseInfo.by || 'onbekend'}). Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);
+
+    let pausedHistory = [];
+    const pausedStored = lead.fields['Conversation History'];
+    if (pausedStored) { try { pausedHistory = JSON.parse(pausedStored); } catch { pausedHistory = []; } }
+    pausedHistory.push({ role: 'user', content: text, ts: Date.now() });
+    if (pausedHistory.length > 20) pausedHistory = pausedHistory.slice(-20);
+    await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(pausedHistory) }, phone);
+
+    // Best-effort nudge to the owner that a paused lead just wrote. Fail-soft:
+    // a notify failure must never look like a message-handling failure —
+    // same contract as the escalation/qualified notifications below.
+    const ownerPhoneP = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone'] || '').toString().trim() || NOTIFY_PHONE;
+    if (ownerPhoneP) {
+      const leadNameP = lead.fields['fldbk0LVNckOU0bqA'] || lead.fields['Name'] || '';
+      const nudge =
+        `[Gepauzeerd] ${leadNameP || phone} schreef net terwijl jij het gesprek overnam\n\n` +
+        `"${text.slice(0, 280)}"\n\n` +
+        `Open de lead: https://app.helvaro.pro/dashboard`;
+      const nudgeSent = await sendWA(ownerPhoneP, nudge);
+      if (!nudgeSent) console.error(`[whatsapp] paused-lead melding naar owner (${ownerPhoneP}) is niet aangekomen`);
+    }
+    return;
+  }
+
   // 4. Load conversation history
   let history = [];
   const stored = lead.fields['Conversation History'];
   if (stored) {
     try { history = JSON.parse(stored); } catch { history = []; }
   }
-  history.push({ role: 'user', content: text });
+  // `ts` stamps every inbound message going forward. api/leads.js's manual-
+  // reply endpoint uses it to enforce Meta's 24h customer-service window —
+  // see its own doc comment for why conversations that predate this change
+  // (no ts on their user-role entries) fail closed rather than assume the
+  // window is still open.
+  history.push({ role: 'user', content: text, ts: Date.now() });
 
   // 5. Fetch client website on first user message
   let websiteContent = null;
@@ -337,6 +378,42 @@ async function processMessage(phone, text) {
       leadName, phone, projectCode, clientName,
       body: `<p style="background:#fef3c7;padding:12px;border-radius:8px"><strong>Hun vraag:</strong><br>"${escEmail(lastUserMsg)}"</p><p>De AI heeft beloofd dat iemand binnen 30 min terugkomt.</p>`
     }).catch(() => {});
+
+    // Persist an 'escalated' marker in Notities (merged, never overwritten —
+    // same mergeWaFailedFlag pattern) so the dashboard's takeover widget can
+    // surface this lead even after the WhatsApp/email ping has scrolled out
+    // of view. If sendOk was false this turn, `updateFields[NOTITIES_FIELD]`
+    // already holds the freshly merged waFailed JSON from step 10 above —
+    // use that as the baseline instead of the stale `lead.fields` snapshot
+    // so we don't clobber it; otherwise Notities wasn't touched this turn
+    // and the original snapshot is still accurate.
+    try {
+      const notitiesBaseline = updateFields[NOTITIES_FIELD] !== undefined
+        ? updateFields[NOTITIES_FIELD]
+        : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+      const mergedNotities = mergeEscalatedFlag(notitiesBaseline, lastUserMsg);
+      await updateLead(lead.id, { [NOTITIES_FIELD]: mergedNotities }, phone);
+    } catch (err) {
+      console.error('[whatsapp] escalated-vlag opslaan mislukt (melding is al verstuurd):', err.message);
+    }
+  } else {
+    // Opportunistic cleanup: a PRIOR turn may have escalated, and this turn
+    // the AI handled things normally (no new escalation) — e.g. the lead
+    // moved on before anyone manually replied, which is the only other place
+    // (api/leads.js's manual-reply mode) that currently clears this flag.
+    // Without this, a resolved-by-itself conversation could keep showing up
+    // in the dashboard's takeover widget forever. Same stale-baseline guard
+    // as above: prefer this turn's freshly merged Notities if step 10 above
+    // already touched it (sendOk===false), else the original snapshot.
+    try {
+      const notitiesBaseline = updateFields[NOTITIES_FIELD] !== undefined
+        ? updateFields[NOTITIES_FIELD]
+        : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+      const cleared = clearEscalatedFlag(notitiesBaseline);
+      if (cleared !== null) await updateLead(lead.id, { [NOTITIES_FIELD]: cleared }, phone);
+    } catch (err) {
+      console.error('[whatsapp] escalated-vlag opruimen mislukt:', err.message);
+    }
   }
 
   // 11. CALLBACK booking flow — alleen als klant 'callback' kiest. In-chat
@@ -950,6 +1027,62 @@ function mergeWaFailedFlag(raw) {
   }
   data.waFailed = true;
   return JSON.stringify(data);
+}
+
+// Read-only check for the AI-pause flag (human takeover). Written by
+// api/leads.js's 'ai-pause'/'ai-resume' modes into the same Notities JSON
+// envelope mergeWaFailedFlag writes to. Returns the `{at, by}` object when
+// paused, or null when not paused / envelope absent / legacy plain-text note
+// (which can never carry structured keys, so it can never be "paused").
+function getAiPauseInfo(raw) {
+  const trimmed = raw ? String(raw).trim() : '';
+  if (!trimmed.startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return (parsed && parsed.aiPaused && typeof parsed.aiPaused === 'object') ? parsed.aiPaused : null;
+  } catch {
+    return null;
+  }
+}
+
+// Merge an 'escalated' marker into a lead's existing Notities JSON. Same
+// merge-not-overwrite contract as mergeWaFailedFlag above (including the
+// legacy-plain-text-note preservation) — see its doc comment for why.
+// Cleared by api/leads.js's manual-reply mode once a human actually answers.
+function mergeEscalatedFlag(raw, question) {
+  const trimmed = raw ? String(raw).trim() : '';
+  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
+  let handled = false;
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
+    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
+  }
+  if (!handled && trimmed) {
+    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
+  }
+  data.escalated = { at: new Date().toISOString(), question: String(question || '').slice(0, 280) };
+  return JSON.stringify(data);
+}
+
+// Remove the 'escalated' marker if present. Returns null when there's
+// nothing to clear (no JSON envelope, or envelope has no escalated key) so
+// callers can skip an unnecessary Airtable write. Used both by the
+// opportunistic cleanup above (a later turn resolved itself without a human
+// reply) and mirrors api/leads.js's mergeNotitiesPatch(raw, {escalated:
+// undefined}) used when a human actually sends a manual reply.
+function clearEscalatedFlag(raw) {
+  const trimmed = raw ? String(raw).trim() : '';
+  if (!trimmed.startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== 'object' || !parsed.escalated) return null;
+    const { escalated, ...rest } = parsed;
+    return JSON.stringify(rest);
+  } catch {
+    return null;
+  }
 }
 
 // ─── WHATSAPP ────────────────────────────────────────────────────────────────
