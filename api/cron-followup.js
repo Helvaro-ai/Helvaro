@@ -17,6 +17,8 @@ const { pgFetch } = require('./_pgapi');
 // prospect websites (third-party, untrusted input), same SSRF exposure as
 // whatsapp.js fetching a client's own website.
 const { fetchWebsite } = require('./lib/fetch-website');
+// Credit/usage accounting — see its file header for the fail-open contract.
+const credits = require('./_credits');
 
 // ── Compliance fix 5 (COMPLIANCE-AUDIT.md section 4.1) — fixed,
 // code-controlled outreach footer ───────────────────────────────────────
@@ -728,6 +730,16 @@ async function runWeeklyLearning(airtableToken, baseId, leadsTable) {
     // 3. Drempel: minstens 3 leads voor zinvolle analyse
     if (leads.length < 3) { skipped++; continue; }
 
+    // 3b. Credit check. Discretionary per-client AI spend (unlike
+    // whatsapp.js's lead conversations) — skip THIS client and continue the
+    // loop for everyone else rather than abort the whole cron run. Fails
+    // open on any credit-infra problem, per _credits.js's header.
+    const learningCheck = await credits.checkCredits(projectCode, credits.FEATURES.WEEKLY_LEARNING);
+    if (!learningCheck.allowed) {
+      console.warn(`[learning] ${projectCode} over credit limit — skipping weekly learning this run.`);
+      skipped++; continue;
+    }
+
     // 4. Bouw compact context — alleen relevante velden om tokens te besparen
     const summary = leads.map(l => {
       const f = l.fields || {};
@@ -800,6 +812,10 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
         }
       );
       if (up.ok) updated++; else skipped++;
+      credits.recordUsage(projectCode, credits.FEATURES.WEEKLY_LEARNING, {
+        credits: credits.WEIGHTS[credits.FEATURES.WEEKLY_LEARNING],
+        tokens: (data.usage && (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)) || null,
+      }).catch(() => {});
       // Spread token usage so we don't burst Anthropic rate limits
       await new Promise(res => setTimeout(res, 500));
     } catch (err) {

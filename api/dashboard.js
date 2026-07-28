@@ -1798,6 +1798,59 @@ button.brand-dot { border: none; padding: 0; }
   border-top: 1px solid var(--border);
 }
 
+/* ── Credit usage widget. Hidden by default (display:none inline in the
+   HTML) — only shown once loadCreditUsage() confirms the credit system is
+   active for this client (allowance configured). See CREDIT-SYSTEM-DESIGN.md
+   and api/_credits.js. ─────────────────────────────────────────────────── */
+.credit-usage-widget {
+  padding: 10px 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+}
+.credit-usage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.credit-usage-head .credit-usage-pct { font-weight: 700; }
+.credit-usage-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--bg-card);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.credit-usage-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .4s ease;
+  background: var(--green);
+}
+.credit-usage-fill.amber { background: var(--orange); }
+.credit-usage-fill.red   { background: var(--red); }
+.credit-usage-head .credit-usage-pct.amber { color: var(--orange); }
+.credit-usage-head .credit-usage-pct.red   { color: var(--red); }
+.credit-usage-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.credit-usage-upgrade {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue-bright);
+  text-decoration: none;
+  cursor: pointer;
+}
+.credit-usage-upgrade:hover { text-decoration: underline; }
+
 .user-info {
   display: flex;
   align-items: center;
@@ -6358,6 +6411,20 @@ tr:hover .td-arrow { color: var(--cyan); }
       </button>
     </nav>
     <div class="sidebar-bottom">
+      <!-- Credit usage widget. Hidden until loadCreditUsage() confirms the
+           credit system is active for this client — inert (display:none)
+           by default, matches CREDIT-SYSTEM-DESIGN.md's "never punitive,
+           always visible once active" bar. -->
+      <div class="credit-usage-widget" id="credit-usage-widget" style="display:none">
+        <div class="credit-usage-head">
+          <span>AI-credits</span>
+          <span class="credit-usage-pct" id="credit-usage-pct">0%</span>
+        </div>
+        <div class="credit-usage-track">
+          <div class="credit-usage-fill" id="credit-usage-fill" style="width:0%"></div>
+        </div>
+        <div class="credit-usage-sub" id="credit-usage-sub">—</div>
+      </div>
       <div class="user-info" id="user-info-btn" onclick="navigateTo('profile')" style="cursor:pointer;" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
@@ -9162,6 +9229,7 @@ async function refreshData(skipFetch = false) {
     renderChart();
     renderBronChart();
     detectNewLeads(state.leads);
+    loadCreditUsage(); // internally throttled — safe to call every refreshData()
     if (state.currentPage === 'exports') updateExportPreview();
 
     // Top leads strip
@@ -9979,6 +10047,74 @@ function renderResultaten(d) {
       <div class="stat-trend">\${cd.trend || ''}</div>
     </div>
   \`).join('');
+}
+
+/* ============================================================
+   CREDIT USAGE WIDGET (sidebar, always-on while active)
+   ============================================================
+   Backed by api/leads.js mode=credit-usage -> api/_credits.js. Stays
+   display:none forever for any client the credit system is inert for
+   (no Airtable fields yet, or no allowance configured) — see
+   CREDIT-SYSTEM-DESIGN.md §5 and _credits.js's file header. Never punitive:
+   over-limit just switches the bar red and shows an upgrade nudge, it never
+   blocks anything from this widget's own code (blocking, where it happens
+   at all, lives server-side in the discretionary-feature call sites). */
+let _creditUsageLastFetch = 0;
+const CREDIT_USAGE_MIN_INTERVAL = 4 * 60 * 1000; // throttle: at most 1 fetch / 4 min, refreshData() polls every 10 min anyway
+
+async function loadCreditUsage(force) {
+  if (!state.apiKey) return;
+  const now = Date.now();
+  if (!force && now - _creditUsageLastFetch < CREDIT_USAGE_MIN_INTERVAL) return;
+  _creditUsageLastFetch = now;
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'credit-usage' })
+    });
+    if (!r.ok) return; // fail silent — widget just stays hidden/stale, never an error toast
+    const d = await r.json();
+    renderCreditUsage(d);
+  } catch (err) {
+    // Network hiccup: leave the widget in whatever state it was already in.
+  }
+}
+
+function renderCreditUsage(d) {
+  const widget = document.getElementById('credit-usage-widget');
+  if (!widget) return;
+  if (!d || !d.active) { widget.style.display = 'none'; return; }
+
+  widget.style.display = '';
+  const pct = Math.max(0, Math.min(999, d.percentUsed || 0));
+  const state2 = pct >= 100 ? 'red' : (pct >= 80 ? 'amber' : '');
+
+  const pctEl  = document.getElementById('credit-usage-pct');
+  const fillEl = document.getElementById('credit-usage-fill');
+  const subEl  = document.getElementById('credit-usage-sub');
+
+  if (pctEl) {
+    pctEl.textContent = pct + '%';
+    pctEl.className = 'credit-usage-pct' + (state2 ? ' ' + state2 : '');
+  }
+  if (fillEl) {
+    fillEl.style.width = Math.min(100, pct) + '%';
+    fillEl.className = 'credit-usage-fill' + (state2 ? ' ' + state2 : '');
+  }
+  if (subEl) {
+    const used = (d.used || 0).toLocaleString('nl-BE');
+    const allowance = (d.allowance || 0).toLocaleString('nl-BE');
+    const leadsLeft = Math.max(0, d.leadsRemaining || 0);
+    const daysLeft = d.daysLeft != null ? d.daysLeft : null;
+    let line = \`\${used} / \${allowance} credits · nog ~\${leadsLeft} leadgesprekken\`;
+    if (daysLeft != null) line += \` · \${daysLeft}d over in periode\`;
+    if (d.overLimit) {
+      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="mailto:hello@helvaro.pro?subject=Credit%20limiet%20verhogen">Limiet bereikt — vraag een upgrade aan →</a>';
+    } else {
+      subEl.textContent = line;
+    }
+  }
 }
 
 /* ============================================================

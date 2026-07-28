@@ -12,6 +12,11 @@ const { waitUntil } = require('@vercel/functions');
 // this file.
 const { fetchWebsite } = require('./lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
+// Credit/usage accounting. See its file header for the full contract — the
+// short version: this file NEVER calls checkCredits() and NEVER blocks a
+// reply, only records usage after the fact. Helvaro's "reactie binnen 30
+// sec, 24/7" promise depends on that.
+const credits = require('./_credits');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -310,6 +315,28 @@ async function processMessage(phone, text) {
     workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
     appointmentDuration, existingAppointments
   });
+
+  // 7b. Credit accounting. Billed ONCE per lead — at the first AI turn
+  // (history.length === 1 means step 4 just pushed this lead's very first
+  // inbound message, before any assistant reply has been appended) — not
+  // once per message turn. CREDIT-SYSTEM-DESIGN.md anchors "1 lead
+  // conversation = 20 credits" against the full lifecycle of a conversation
+  // (2000 credits / 100 gesprekken); billing every turn would blow that math
+  // up to 100-160 credits for a normal 5-8 turn conversation. Fire-and-forget
+  // (never awaited, never blocks delivery below) and NEVER gated by
+  // checkCredits — see this file's top-of-file comment and _credits.js's
+  // header for why a lead conversation must never be blocked.
+  if (history.length === 1) {
+    const creditWork = credits.recordUsage(projectCode, credits.FEATURES.WHATSAPP_CONVERSATION, {
+      credits: credits.WEIGHTS[credits.FEATURES.WHATSAPP_CONVERSATION],
+      meta: { leadId: lead.id },
+    }).catch(() => {}); // recordUsage() itself never throws; belt-and-braces
+    // Not awaited (must never add latency before the reply goes out below),
+    // but still registered with waitUntil() so it survives if the container
+    // gets recycled during the 25-55s human-feeling delay a few lines down —
+    // same pattern the handler above uses for processMessage() itself.
+    waitUntil(creditWork);
+  }
 
   // 8. Trim the AI reply. We deliberately do NOT push it into `history` or
   //    touch Airtable yet. Whether the conversation "actually advanced" is

@@ -3,6 +3,9 @@
 const crypto = require('crypto');
 // Marketing Posts moved off Airtable to the VPS Postgres API (Airtable-shaped facade).
 const { pgFetch } = require('./_pgapi');
+// Credit/usage accounting — see its file header for the fail-open contract
+// and the INTERNAL_PROJECT_CODE decision for founder-only tools below.
+const credits = require('./_credits');
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
@@ -259,6 +262,42 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ── credit management (admin only) ───────────────────────────────────────
+    // body: { mode: 'credit-set-allowance', projectCode, allowance }
+    // body: { mode: 'credit-add-credits',   projectCode, credits }
+    // body: { mode: 'credit-reset-period',  projectCode }
+    // These are the ONLY credit-system entry points that can return a real
+    // error to the caller — if the Credit Allowance/Credits Used/Credit
+    // Period fields aren't on the Client Config schema yet, Airtable's PATCH
+    // rejects the unknown field name and that bubbles up here as a clear
+    // message (see CREDITS-VERCEL-SUMMARY.md for the exact fields to add).
+    const CREDIT_ADMIN_MODES = ['credit-set-allowance', 'credit-add-credits', 'credit-reset-period'];
+    if (CREDIT_ADMIN_MODES.includes(body.mode)) {
+      const cProvided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(cProvided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const projectCode = String(body.projectCode || '').trim().toUpperCase();
+      if (!projectCode) return res.status(400).json({ error: 'projectCode is verplicht' });
+      try {
+        if (body.mode === 'credit-set-allowance') {
+          await credits.setAllowance(projectCode, body.allowance);
+          return res.status(200).json({ ok: true });
+        }
+        if (body.mode === 'credit-add-credits') {
+          await credits.addCredits(projectCode, body.credits);
+          return res.status(200).json({ ok: true });
+        }
+        if (body.mode === 'credit-reset-period') {
+          await credits.resetPeriod(projectCode);
+          return res.status(200).json({ ok: true });
+        }
+      } catch (err) {
+        console.error('[admin] credit management error:', err.message);
+        return res.status(500).json({ error: err.message || 'Serverfout' });
+      }
+    }
+
     // ── founder modes: pipeline + goals + AI advice (admin only) ────────────
     const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice','ai-chat','linkedin-post','content-post','personalized-dm'];
     if (FOUNDER_MODES.includes(body.mode)) {
@@ -374,6 +413,12 @@ module.exports = async function handler(req, res) {
         if (body.mode === 'ai-advice') {
           const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
           if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          // Founder-internal tool, billed to the shared '_internal' pseudo
+          // client — see credits.INTERNAL_PROJECT_CODE's doc comment.
+          // Fails open by default (no Client Config row for '_internal'
+          // exists unless Sindi creates one).
+          const aiAdviceCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_ADVICE);
+          if (!aiAdviceCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: aiAdviceCheck.message });
           const ctx = body.context || {};
           const prompt = [
             'Je bent een strategische startup-adviseur voor Helvaro, een Belgische AI-aangedreven leadkwalificatie SaaS.',
@@ -411,6 +456,9 @@ module.exports = async function handler(req, res) {
           const aiData = await aiRes.json();
           if (!aiRes.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData?.error?.message || aiRes.status) });
           const advice = aiData.content?.[0]?.text || 'Geen advies beschikbaar.';
+          credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_ADVICE, {
+            credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_AI_ADVICE],
+          }).catch(() => {});
           return res.status(200).json({ advice });
         }
 
@@ -418,6 +466,8 @@ module.exports = async function handler(req, res) {
         if (body.mode === 'ai-chat') {
           const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
           if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const aiChatCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_CHAT);
+          if (!aiChatCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: aiChatCheck.message });
           const rawMsgs = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
           const validMessages = rawMsgs
             .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
@@ -446,6 +496,9 @@ module.exports = async function handler(req, res) {
           const aiData2 = await aiRes.json();
           if (!aiRes.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData2?.error?.message || aiRes.status) });
           const reply = aiData2.content?.[0]?.text || 'Geen antwoord beschikbaar.';
+          credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_CHAT, {
+            credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_AI_CHAT],
+          }).catch(() => {});
           return res.status(200).json({ reply });
         }
 
@@ -453,6 +506,8 @@ module.exports = async function handler(req, res) {
         if (body.mode === 'linkedin-post' || body.mode === 'content-post') {
           const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
           if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const contentPostCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST);
+          if (!contentPostCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: contentPostCheck.message });
 
           const platform   = String(body.platform   || 'linkedin');
           const contentType = String(body.contentType || 'pijnpunt');
@@ -608,6 +663,9 @@ module.exports = async function handler(req, res) {
           if (!aiRes2.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData3?.error?.message || aiRes2.status) });
           let post = aiData3.content?.[0]?.text || '';
           post = scrubPost(post);
+          credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST, {
+            credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_CONTENT_POST],
+          }).catch(() => {});
           return res.status(200).json({ post });
         }
 
@@ -615,6 +673,8 @@ module.exports = async function handler(req, res) {
         if (body.mode === 'personalized-dm') {
           const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
           if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
+          const dmCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_PERSONALIZED_DM);
+          if (!dmCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: dmCheck.message });
           const bedrijf  = String(body.bedrijf  || '').trim().slice(0, 100);
           const sector   = String(body.sector   || '').trim().slice(0, 100);
           const fase     = String(body.fase     || 'Gecontacteerd').trim();
@@ -662,6 +722,9 @@ module.exports = async function handler(req, res) {
           });
           const aiDmData = await aiResDm.json();
           if (!aiResDm.ok) return res.status(500).json({ error: 'AI fout: ' + (aiDmData?.error?.message || aiResDm.status) });
+          credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_PERSONALIZED_DM, {
+            credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_PERSONALIZED_DM],
+          }).catch(() => {});
           return res.status(200).json({ message: aiDmData.content?.[0]?.text || '' });
         }
 
@@ -681,9 +744,24 @@ module.exports = async function handler(req, res) {
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
+      // This batch-generates up to days*6 posts (each = 1 Anthropic call via
+      // generateOnePost). Gate the WHOLE batch up front (cheap, avoids a
+      // half-generated week if '_internal' is ever capped) rather than
+      // per-post — see credits.INTERNAL_PROJECT_CODE's doc comment for why
+      // this fails open by default.
+      const genContentCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST);
+      if (!genContentCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: genContentCheck.message });
       const days = Math.min(14, Math.max(1, parseInt(body.days || 7, 10)));
       const startDate = body.startDate ? new Date(body.startDate) : new Date(Date.now() + 24*60*60*1000);
       const result = await generateContentWeek(AIRTABLE_TOKEN, BASE_ID, days, startDate);
+      // Bill for exactly the posts actually created (each = 1 successful
+      // Anthropic call), not a fixed guess.
+      if (result && result.created > 0) {
+        credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST, {
+          credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_CONTENT_POST] * result.created,
+          meta: { batch: true, created: result.created },
+        }).catch(() => {});
+      }
       return res.status(200).json(result);
     }
 
@@ -784,9 +862,19 @@ module.exports = async function handler(req, res) {
         } catch (e) { console.error('[card] render failed:', e.message); }
       }
       // Laatste redmiddel (alleen als renderen faalt): geen slop, wel een beeld.
+      // Only THIS branch has a real external AI-image cost (renderCard/
+      // renderCarousel above are local, free) — gate/bill only here, not the
+      // whole mode, so the common (free) card-render path is never charged.
       if (!imageUrl) {
+        const genImgCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_GENERATE_IMAGE);
+        if (!genImgCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: genImgCheck.message });
         const fb = spec ? `abstract dark blue tech background, glowing gradient, no people, no text` : (rawPrompt || `abstract dark blue tech background, no text`);
         imageUrl = await generateAIImage(fb, platform).catch(() => '');
+        if (imageUrl) {
+          credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_GENERATE_IMAGE, {
+            credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_GENERATE_IMAGE],
+          }).catch(() => {});
+        }
       }
       if (!imageUrl) return res.status(502).json({ error: 'Beeldgeneratie mislukt (zie logs)' });
       const pr = await pgFetch(`tblPxnfb5MThgsnaA/${id}`, {
@@ -1155,6 +1243,17 @@ module.exports = async function handler(req, res) {
       console.error('[admin] founder GET error:', err.message);
       return res.status(500).json({ error: 'Serverfout' });
     }
+  }
+
+  // ── GET credit routes (/api/admin?section=credits&type=usage-overview) ──
+  // Usage + estimated real cost per client, for margin visibility. Empty
+  // array (not an error) when the Credit fields haven't been added to the
+  // Client Config schema yet — see _credits.js's header.
+  if (req.query && req.query.section === 'credits') {
+    const type = req.query.type || 'usage-overview';
+    if (type !== 'usage-overview') return res.status(400).json({ error: 'Onbekend type' });
+    const summaries = await credits.getAllUsageSummaries();
+    return res.status(200).json({ clients: summaries });
   }
 
   try {

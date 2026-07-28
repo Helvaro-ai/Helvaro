@@ -1,5 +1,6 @@
 const crypto = require('crypto');
-const _gcal  = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
+const _gcal   = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
+const credits = require('./_credits'); // credit/usage accounting — see its file header
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -737,6 +738,18 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // ── credit-usage: client-facing usage bar data ─────────────────────────
+    // body: { mode: 'credit-usage' }
+    // Returns { active:false } (nothing to render — inert/unconfigured) or a
+    // full summary. Never errors the dashboard: any credit-system problem
+    // just means the widget stays hidden, same fail-open contract as
+    // everywhere else in _credits.js.
+    if (body.mode === 'credit-usage') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const summary = await credits.getUsageSummary(projectCode);
+      return res.status(200).json(summary);
+    }
+
     // ── APPOINTMENTS — custom calendar (vervangt Calendly) ────────────────
     // body: { mode: 'appointments-list', from?: ISO, to?: ISO }
     // Returnt alle afspraken voor deze klant binnen het bereik (default = volgende 30 dagen).
@@ -984,6 +997,15 @@ module.exports = async function handler(req, res) {
       if (!/^rec[A-Za-z0-9]{14}$/.test(leadId)) return res.status(400).json({ error: 'Ongeldig lead ID' });
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
       if (!ANTHROPIC_KEY) return res.status(503).json({ error: 'AI niet beschikbaar' });
+      // Discretionary AI (unlike whatsapp.js's lead conversation, this is a
+      // manual "give me ideas" click, not the lead-reply promise itself) —
+      // BLOCK when the client is over their credit limit. Fails open on any
+      // credit-infra problem (missing fields, Airtable down) — see
+      // _credits.js's header.
+      const creditCheck = await credits.checkCredits(projectCode, credits.FEATURES.REPLY_SUGGESTION);
+      if (!creditCheck.allowed) {
+        return res.status(402).json({ error: 'credit_limit_reached', message: creditCheck.message });
+      }
       try {
         // Fetch the lead. Verify ownership + read history
         const lRes = await atFetch(
@@ -1051,6 +1073,11 @@ module.exports = async function handler(req, res) {
         }
         const replies = (parsed && Array.isArray(parsed.replies)) ? parsed.replies.filter(s => typeof s === 'string').slice(0, 3) : [];
         if (!replies.length) return res.status(502).json({ error: 'AI gaf geen suggesties terug' });
+        credits.recordUsage(projectCode, credits.FEATURES.REPLY_SUGGESTION, {
+          credits: credits.WEIGHTS[credits.FEATURES.REPLY_SUGGESTION],
+          tokens: (ad.usage && (ad.usage.input_tokens || 0) + (ad.usage.output_tokens || 0)) || null,
+          meta: { leadId },
+        }).catch(() => {});
         return res.status(200).json({ replies });
       } catch (err) {
         console.error('[suggest-replies] error:', err.message);
