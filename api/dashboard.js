@@ -1139,7 +1139,7 @@ button.brand-dot { border: none; padding: 0; }
   display: flex;
   align-items: center;
   gap: 24px;
-  background: var(--accent);
+  background: rgba(var(--accent-rgb),0.07);
   border: 1px solid rgba(var(--accent-rgb),0.25);
   border-radius: 20px;
   padding: 28px 32px;
@@ -1313,7 +1313,7 @@ button.brand-dot { border: none; padding: 0; }
 .founder-btn-sm:hover { background: rgba(var(--accent-rgb),.22); }
 
 /* Hero header */
-.fdr-hero { background: var(--accent); border: 1px solid rgba(var(--accent-rgb),.2); border-radius: 18px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; }
+.fdr-hero { background: rgba(var(--accent-rgb),.08); border: 1px solid rgba(var(--accent-rgb),.22); border-radius: 18px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; }
 .fdr-hero-left {}
 .fdr-day { font-size: 28px; font-weight: 800; letter-spacing: -.5px; color: var(--text-primary); line-height: 1; }
 .fdr-date { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
@@ -2444,7 +2444,7 @@ button.brand-dot { border: none; padding: 0; }
   animation-delay: 0.1s;
 }
 
-/* Always-visible subtle top glow line */
+/* Subtle top line — one quiet sand hairline, not a two-hue glow */
 .stat-card::before {
   content: '';
   position: absolute;
@@ -2452,11 +2452,11 @@ button.brand-dot { border: none; padding: 0; }
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.5), rgba(6,182,212,0.5), transparent);
+  background: rgba(var(--accent-rgb), 0.35);
   transition: opacity 0.3s ease;
 }
 
-/* Corner shimmer accent */
+/* Corner shimmer removed — was a 60x60 solid-fill block, too heavy for "sand never a flood" */
 .stat-card::after {
   content: '';
   position: absolute;
@@ -2464,7 +2464,7 @@ button.brand-dot { border: none; padding: 0; }
   right: 0;
   width: 60px;
   height: 60px;
-  background: radial-gradient(circle at top right, rgba(6,182,212,0.08) 0%, transparent 70%);
+  background: none;
   pointer-events: none;
 }
 
@@ -2476,7 +2476,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .stat-card:hover::before {
-  background: linear-gradient(90deg, transparent, var(--blue-bright), var(--cyan), transparent);
+  background: rgba(var(--accent-rgb), 0.6);
 }
 
 .stat-label {
@@ -4777,8 +4777,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 .fm-code-actions .fm-btn { flex: 1; min-width: 130px; }
 
 .fm-hero {
-  background: var(--accent);
-  border: 1px solid var(--border); border-radius: 16px; padding: 24px 26px;
+  background: rgba(var(--accent-rgb),.06);
+  border: 1px solid rgba(var(--accent-rgb),.2); border-radius: 16px; padding: 24px 26px;
 }
 .fm-hero-top { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
 .fm-hero-icon { font-size: 32px; line-height: 1; }
@@ -5063,7 +5063,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-welcome-chk.done { color: var(--green); border-color: rgba(var(--success-rgb),.4); }
 .ap-welcome-chk.done .ap-welcome-chk-icon { color: var(--green); }
 .ap-welcome-chk-icon { font-size: 12px; }
-.ap-hero { background: var(--accent); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
+.ap-hero { background: rgba(var(--accent-rgb),.06); border: 1px solid rgba(var(--accent-rgb),.2); border-radius: 14px; padding: 22px 24px; }
 .ap-hero-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; color: var(--text-primary); }
 .ap-hero-sub { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
 .ap-field { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
@@ -6000,7 +6000,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .btn-primary-sm {
   background: var(--accent);
   border-color: rgba(var(--accent-rgb),0.4);
-  color: var(--accent);
+  color: var(--on-accent);
 }
 
 [data-theme="light"] .btn-primary-sm:hover {
@@ -6098,7 +6098,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 [data-theme="light"] .stat-card::after {
-  background: var(--accent);
+  background: none;
 }
 
 [data-theme="light"] .stat-card:hover {
@@ -6162,11 +6162,6 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* Table header row */
 [data-theme="light"] .leads-table thead tr {
   background: var(--hover);
-}
-
-/* Nav item. Cleaner active indicator */
-[data-theme="light"] .nav-item.active {
-  background: var(--accent);
 }
 
 /* Sidebar logo glow in light */
