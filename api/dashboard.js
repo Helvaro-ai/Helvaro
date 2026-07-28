@@ -1343,7 +1343,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-task-row input[type=checkbox] { display: none; }
 .fdr-task-check-icon { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-bright); flex-shrink: 0; margin-top: 2px; transition: all .15s; display: flex; align-items: center; justify-content: center; }
 .fdr-task-row.fdr-task-done .fdr-task-check-icon { background: var(--accent); border-color: var(--accent); }
-.fdr-task-row.fdr-task-done .fdr-task-check-icon::after { content: ''; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); display: block; }
+.fdr-task-row.fdr-task-done .fdr-task-check-icon::after { content: ''; width: 5px; height: 9px; border: 2px solid var(--on-accent); border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); display: block; }
 .fdr-task-body { flex: 1; min-width: 0; }
 .fdr-task-name { font-size: 14px; font-weight: 500; color: var(--text-primary); line-height: 1.3; }
 .fdr-task-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
