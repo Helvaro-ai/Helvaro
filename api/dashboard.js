@@ -9640,7 +9640,7 @@ async function sendClientInvite() {
     });
     const data = await resp.json();
     if (!resp.ok) {
-      errEl.textContent = data.error || 'Verzenden mislukt. Probeer opnieuw.';
+      errEl.textContent = data.message || data.error || 'Verzenden mislukt. Probeer opnieuw.';
       errEl.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Stuur uitnodigingsmail';
@@ -9709,7 +9709,7 @@ async function submitNewClient() {
       body:    JSON.stringify({ clientName: name, projectCode: code, email, calendlyLink: calendly })
     });
     const data = await resp.json();
-    if (!resp.ok) { errEl.textContent = data.error || 'Aanmaken mislukt.'; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Aanmaken'; return; }
+    if (!resp.ok) { errEl.textContent = data.message || data.error || 'Aanmaken mislukt.'; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Aanmaken'; return; }
 
     document.getElementById('nc-result-key').textContent = data.apiKey;
     const urlEl = document.getElementById('nc-result-url');
@@ -11007,7 +11007,7 @@ async function loadReplySuggestions() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      toast(d.error || 'Suggesties opvragen mislukt', 'error');
+      toast(d.message || d.error || 'Suggesties opvragen mislukt', 'error');
       return;
     }
     const replies = Array.isArray(d.replies) ? d.replies : [];
@@ -11056,7 +11056,7 @@ async function sendWhatsAppReply() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      toast(d.error || 'Versturen mislukt', 'error');
+      toast(d.message || d.error || 'Versturen mislukt', 'error');
       return;
     }
     // Optimistic: render the just-sent bubble right away. A template send
@@ -11104,7 +11104,7 @@ async function toggleAiPause() {
       body:    JSON.stringify({ mode: pausing ? 'ai-pause' : 'ai-resume', leadId: lead.id })
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { toast(d.error || 'Actie mislukt', 'error'); return; }
+    if (!r.ok) { toast(d.message || d.error || 'Actie mislukt', 'error'); return; }
 
     // Keep the lead object's Notities in sync (same pattern as sendWhatsAppReply
     // above) so the panel re-render below reflects the new state immediately,
@@ -11801,7 +11801,7 @@ async function calBookConfirm() {
     });
     const data = await resp.json();
     if (!resp.ok || !data.ok) {
-      toast(data.error || 'Boeken mislukt', 'error');
+      toast(data.message || data.error || 'Boeken mislukt', 'error');
       if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
       return;
     }
@@ -14166,7 +14166,7 @@ async function saveAiPersona() {
       body:    JSON.stringify(body)
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { toast(d.error || 'Opslaan mislukt', 'error'); return; }
+    if (!r.ok) { toast(d.message || d.error || 'Opslaan mislukt', 'error'); return; }
     // Werkuren meteen toepassen op de boeking-slots, zonder paginavernieuwing.
     applyWorkHours(body.workingHours);
     // Mark them as onboarded. Future logins skip the auto-redirect to this page,
@@ -14416,7 +14416,7 @@ async function sendTestMessage() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
       result.className = 'ap-test-result err';
-      result.textContent = '' + (d.error || 'Versturen mislukt');
+      result.textContent = '' + (d.message || d.error || 'Versturen mislukt');
       return;
     }
     result.className = 'ap-test-result ok';
@@ -14798,7 +14798,7 @@ async function generateDm() {
       })
     });
     var d = await r.json();
-    if (!r.ok) { toast(d.error || 'Genereren mislukt', 'error'); }
+    if (!r.ok) { toast(d.message || d.error || 'Genereren mislukt', 'error'); }
     else {
       if (out) { out.textContent = d.message; out.classList.add('visible'); }
       if (emp) emp.style.display = 'none';
@@ -15052,7 +15052,7 @@ async function savePipeRecord() {
   try {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify(body) });
     const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Fout', 'error'); return; }
+    if (!r.ok) { toast(d.message || d.error || 'Fout', 'error'); return; }
     closePipeModal();
     founderState.loaded = false;
     await loadFounderData(true);
@@ -15113,7 +15113,7 @@ async function saveGoalRecord() {
   try {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify(body) });
     const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Fout', 'error'); return; }
+    if (!r.ok) { toast(d.message || d.error || 'Fout', 'error'); return; }
     closeGoalModal();
     founderState.loaded = false;
     await loadFounderData(true);
@@ -15237,7 +15237,7 @@ async function generateContentPost(forceNew) {
       body: JSON.stringify(payload)
     });
     var d = await r.json();
-    if (!r.ok) { toast(d.error || 'Genereren mislukt', 'error'); }
+    if (!r.ok) { toast(d.message || d.error || 'Genereren mislukt', 'error'); }
     else {
       showContentPost(d.post);
       if (!forceNew) {
@@ -15320,7 +15320,7 @@ async function sendCoachMessage() {
     var d = await r.json();
     if (typingBubble) typingBubble.remove();
     if (!r.ok) {
-      appendChatBubble('assistant', 'Fout: ' + (d.error || 'Onbekende fout'));
+      appendChatBubble('assistant', 'Fout: ' + (d.message || d.error || 'Onbekende fout'));
     } else {
       chatHistory.push({ role: 'assistant', content: d.reply });
       appendChatBubble('assistant', d.reply);
@@ -15370,7 +15370,7 @@ async function getFounderAdvice() {
       body:    JSON.stringify({ mode: 'ai-advice', context })
     });
     const d = await r.json();
-    if (!r.ok) { toast(d.error || 'AI fout', 'error'); } else {
+    if (!r.ok) { toast(d.message || d.error || 'AI fout', 'error'); } else {
       out.textContent = d.advice;
       out.classList.add('visible');
     }
