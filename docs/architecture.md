@@ -19,6 +19,8 @@
 │  /api/admin      → api/admin.js      (admin ops)            │
 │  /api/whatsapp   → api/whatsapp.js   (Meta webhook)         │
 │  /api/calendly-* → api/calendly.js   (OAuth + appointments) │
+│  /api/gcal       → api/leads.js      (rewrite, __gcal=1 —   │
+│                     Google Calendar OAuth, see api/_gcal.js)│
 │  /api/form/{C}   → api/form.js       (lead submissions)     │
 │  /api/cron-followup → api/cron-followup.js (daily 9u)       │
 └────────────────────────────────────────────────────────────┘
@@ -27,6 +29,8 @@
                           ├─→ Meta Graph API (WhatsApp)
                           ├─→ Anthropic API (Claude Haiku)
                           ├─→ Calendly (booking)
+                          ├─→ Google Calendar (per-client, optional — free/busy +
+                          │    appointment mirroring, see api/_gcal.js)
                           └─→ Resend (transactional email)
 ```
 
@@ -135,6 +139,9 @@ Eén record per klant. Stores AI config + Calendly + kwalificatie-criteria.
 | AI Photo URL | `fld7L0Iijq7ti6A6w` | url | Foto voor lead-form avatar (HTTPS-only validated) |
 | Brand Color | `fldJAf4aTNlIQVL2q` | text | Hex (#XXXXXX) voor lead-form theme |
 | Form Intro Message | `fldxZ5spOeIb5omPr` | longtext | Custom welkomstboodschap op lead-form |
+| Google Refresh Token | `fldkYmK3jAabvytCF` | longtext | OAuth refresh token, **AES-256-GCM encrypted at rest** (api/_gcal.js). Nooit geloggd. |
+| Google Calendar Email | `fldXF7qdyHYnSjnGf` | text | Display-only: welk Google-account is gekoppeld |
+| Google Calendar ID | `fldWBxxhGYEZNIMqA` | text | Welke agenda binnen dat account (default `primary`) |
 
 ### Tabel: **Leads** (`tbliukTnDAbEDcZmt`)
 Eén record per lead. Alles wat we over deze persoon weten.
@@ -180,6 +187,18 @@ Dashboard gebruikers (login accounts). Eén user → één Klant.
 
 ### Tabel: **Niche Config** (`tblMbeAQBgZJbOIN1`)
 AI conversation templates per niche. Bepaalt vragen + diskwalifiers per sector.
+
+### Tabel: **Appointments** (`tblD058vEITs1xYFc`)
+Custom afsprakenkalender (verving Calendly). Eén record per boeking, ongeacht of
+die via de AI in-chat (`api/whatsapp.js`) of handmatig vanuit het dashboard
+(`api/leads.js`) is aangemaakt. Belangrijkste velden: Appointment ID, Start Time,
+Duration, Project Code, Lead (link), Lead Name, Lead Phone, Status
+(booked/completed/no_show/cancelled/rescheduled), Source (ai_chat/manual), Notes,
+Created At.
+
+| Field | ID | Type | Doel |
+|---|---|---|---|
+| Google Event ID | `fldPYur43B2n1Y9hc` | text | ID van het gespiegelde event in de Google Calendar van de klant (leeg = niet gekoppeld of klant heeft Google niet verbonden). Gebruikt om een reschedule/cancel door te zetten naar Google. |
 
 ---
 

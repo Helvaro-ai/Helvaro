@@ -7797,6 +7797,24 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
         </div>
 
+        <!-- Google Agenda -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Google Agenda
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Koppel je Google Agenda</div>
+              <div class="settings-label-sub" id="gcal-status-sub">Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.</div>
+            </div>
+            <div id="gcal-actions">
+              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(99,102,241,0.35);color:var(--accent);background:rgba(99,102,241,0.08)">Koppel Google Agenda</button>
+              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(244,63,94,0.35);color:var(--red);background:rgba(244,63,94,0.08)">Ontkoppel</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Gevaar zone -->
         <div class="settings-section">
           <div class="settings-section-title" style="color:var(--red)">
@@ -12507,6 +12525,26 @@ async function startDashboard(skipRefresh = false) {
     }
   }
 
+  // Handle Google Agenda OAuth redirect params (?gcal=... from api/leads.js's
+  // handleGcal callback, reached via the /api/gcal rewrite). Same pattern as
+  // the Calendly block above.
+  const gcalResult = urlParams.get('gcal');
+  if (gcalResult) {
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+    const gcalMsgs = {
+      connected:         ['Google Agenda gekoppeld! Beschikbaarheid en boekingen worden nu gesynchroniseerd.', 'success', 'Gekoppeld'],
+      denied:             ['Koppeling geannuleerd.', 'info', 'Geannuleerd'],
+      error:              ['Er is iets misgegaan bij het koppelen. Probeer het opnieuw.', 'error', 'Fout'],
+      invalid_state:      ['Koppeling verlopen, probeer opnieuw.', 'error', 'Fout'],
+      unconfigured:       ['Google Agenda is nog niet geconfigureerd.', 'info', 'Niet beschikbaar'],
+      client_not_found:   ['Account niet gevonden, probeer opnieuw.', 'error', 'Fout'],
+    };
+    const m = gcalMsgs[gcalResult] || ['Google Agenda', 'info', null];
+    setTimeout(() => toast(m[0], m[1], m[2]), 600);
+    if (gcalResult === 'connected') setTimeout(() => navigateTo('instellingen'), 800);
+  }
+
   // Start presence heartbeat. So the standalone Founder dashboard can show
   // who's currently logged in on app.helvaro.pro.
   startPresencePing();
@@ -14244,6 +14282,62 @@ function renderInstellingen() {
       toggleBtn.textContent = showing ? 'Verberg' : 'Toon';
     };
   }
+  loadGcalStatus();
+}
+
+/* ============================================================
+   GOOGLE AGENDA (per-client OAuth connect)
+   ============================================================ */
+async function loadGcalStatus() {
+  var sub  = document.getElementById('gcal-status-sub');
+  var cBtn = document.getElementById('btn-gcal-connect');
+  var dBtn = document.getElementById('btn-gcal-disconnect');
+  if (!sub) return;
+  try {
+    var r = await fetch(API_BASE + '/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'status' })
+    });
+    var d = await r.json();
+    if (d && d.connected) {
+      sub.textContent = 'Gekoppeld' + (d.email ? ' — ' + d.email : '') + '. Afspraken worden gesynct met je Google Agenda.';
+      if (cBtn) cBtn.style.display = 'none';
+      if (dBtn) dBtn.style.display = '';
+    } else {
+      sub.textContent = 'Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.';
+      if (cBtn) cBtn.style.display = '';
+      if (dBtn) dBtn.style.display = 'none';
+    }
+  } catch (e) { /* leave default text */ }
+}
+// Fetches the (server-signed) Google consent URL first, then navigates the
+// browser there. We can't do a bare GET navigation straight to /api/gcal,
+// because this app authenticates every dashboard call via the x-api-key
+// header (no session cookie) — a top-level navigation can't carry a custom
+// header. Fetching first keeps the session token out of any URL.
+async function connectGoogleCalendar() {
+  try {
+    var r = await fetch(API_BASE + '/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'connect' })
+    });
+    var d = await r.json();
+    if (d && d.url) { window.location.href = d.url; return; }
+    toast('Koppelen mislukt, probeer opnieuw', 'error');
+  } catch (e) { toast('Koppelen mislukt, probeer opnieuw', 'error'); }
+}
+async function disconnectGoogleCalendar() {
+  try {
+    await fetch(API_BASE + '/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'disconnect' })
+    });
+  } catch (e) {}
+  loadGcalStatus();
+  try { toast('Google Agenda ontkoppeld', 'success'); } catch (e) {}
 }
 
 /* ============================================================
