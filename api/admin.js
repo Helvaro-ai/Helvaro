@@ -1111,6 +1111,32 @@ module.exports = async function handler(req, res) {
       const formUrl      = `https://app.helvaro.pro/start/${projectCode}`;
       const dashboardUrl = `https://app.helvaro.pro/dashboard`;
 
+      // ── Self-serve onboarding only: seed a Credit Allowance so the client
+      // doesn't start fully unmetered (see IMPROVEMENTS-REVIEW.md §3.2 —
+      // onboarding was built before the credit system existed, so it never
+      // wired into it). Starter default is 2.000 per CREDIT-SYSTEM-DESIGN.md
+      // §3, overridable via body.creditAllowance, then DEFAULT_CREDIT_ALLOWANCE.
+      // The 'Credit Allowance' Airtable field may not exist yet on the live
+      // base (owner must add it, see CREDITS-VERCEL-SUMMARY.md) — setAllowance()
+      // PATCHes it by name and Airtable rejects the whole PATCH with an
+      // unknown-field error when it's missing. Mirrors _credits.js's own
+      // fail-open/unconfigured-schema contract: caught here, logged, never
+      // allowed to fail onboarding — the Client Config record above already
+      // exists regardless (createRes.ok checked first).
+      let creditAllowance = 0;
+      if (isOnboard) {
+        const requestedAllowance = Math.max(0, Math.round(Number(body.creditAllowance) || 0));
+        const defaultAllowance   = Math.max(0, Math.round(Number(process.env.DEFAULT_CREDIT_ALLOWANCE) || 0)) || 2000;
+        creditAllowance = requestedAllowance || defaultAllowance;
+        try {
+          const { setAllowance } = require('./_credits');
+          await setAllowance(projectCode, creditAllowance);
+        } catch (err) {
+          console.warn('[admin] onboarding: kon Credit Allowance niet zetten (veld bestaat mogelijk nog niet, zie CREDITS-VERCEL-SUMMARY.md):', err.message);
+          creditAllowance = 0; // eerlijk in de notify-mail hieronder: niet effectief gezet
+        }
+      }
+
       // ── Also create the matching User record so the klant can actually log in.
       //    Generate a friendly random password (caller can override via body.password).
       //    USERS_TABLE = tbl2hrPW7gIx5XF4S. Same field IDs as in auth.js.
@@ -1162,6 +1188,21 @@ module.exports = async function handler(req, res) {
         } catch (err) {
           userCreateError = true;
           console.error('[admin] user create error:', err.message);
+        }
+      }
+
+      // ── Self-serve onboarding only: notify Sindi a signup happened. The
+      // wizard's entire purpose is onboarding without her involvement, which
+      // also means "without her involvement" == "she has no idea it happened"
+      // (see IMPROVEMENTS-REVIEW.md §3.2). Fail-soft, same contract as
+      // _credits.js's own threshold-alert emails: sendMail() never throws,
+      // and this is wrapped in try/catch anyway so a notification failure can
+      // never fail the onboarding request — the client is already created.
+      if (isOnboard) {
+        try {
+          await notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance });
+        } catch (err) {
+          console.warn('[admin] onboarding: signup-notificatie mislukt:', err.message);
         }
       }
 
@@ -1387,6 +1428,37 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
   const replyTo = process.env.REPLY_TO || 'sindi.s@usehelvaro.pro';
   return sendMail({ to: toEmail, subject: 'U bent uitgenodigd voor Helvaro', html, replyTo })
     .catch(err => { console.error('[invite mail]', err && err.message); return { ok: false, error: err && err.message }; });
+}
+
+// ── Owner signup notification for self-serve onboarding (mode=onboard).
+// Same fire-and-forget-but-logged shape as _credits.js's 80%/100%/runaway
+// alerts ('const to = process.env.NOTIFY_EMAIL; if (to) sendMail(...)') —
+// sendMail() never throws, and the catch below is a second, belt-and-braces
+// layer so this can never fail the onboarding request it's called from.
+async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance }) {
+  const to = process.env.NOTIFY_EMAIL;
+  if (!to) {
+    console.warn('[admin] onboarding: NOTIFY_EMAIL niet ingesteld — geen signup-notificatie verstuurd voor', projectCode);
+    return;
+  }
+  const allowanceLine = creditAllowance > 0
+    ? `<strong>${creditAllowance}</strong> credits`
+    : `<span style="color:#e11d48">niet gezet — 'Credit Allowance' veld ontbreekt mogelijk nog op Airtable (zie CREDITS-VERCEL-SUMMARY.md)</span>`;
+  const { sendMail } = require('./_mailer');
+  return sendMail({
+    to,
+    subject: `[Helvaro] Nieuwe self-serve klant: ${clientName}`,
+    html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:auto;padding:20px;color:#111">
+      <h2 style="margin:0 0 12px">Nieuwe self-serve onboarding</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr><td style="padding:4px 0;color:#666;width:140px">Klant</td><td style="padding:4px 0;font-weight:600">${escHtml(clientName)}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Projectcode</td><td style="padding:4px 0;font-family:monospace">${escHtml(projectCode)}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">E-mail</td><td style="padding:4px 0">${escHtml(email)}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Niche</td><td style="padding:4px 0">${escHtml(sector || '—')}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Credit Allowance</td><td style="padding:4px 0">${allowanceLine}</td></tr>
+      </table>
+    </div>`,
+  }).catch(err => console.warn('[admin] onboarding: signup-notificatie mislukt:', err && err.message));
 }
 
 // ─── CONTENT GENERATOR ────────────────────────────────────────────────────────
