@@ -166,6 +166,33 @@ No test framework in this app — verification per the task's own bar:
   - `_internal` (founder tools) fails open with no Client Config row for it.
 - 19/19 assertions passed.
 
+## Follow-up — self-serve onboarding now seeds an allowance (fix(onboarding))
+
+`api/admin.js`'s `mode=onboard` path (see `IMPROVEMENTS-REVIEW.md` §3.2) used
+to create a Client Config record with no `Credit Allowance` at all, which per
+this doc's own contract left the credit system permanently inert for exactly
+the clients onboarded without Sindi's involvement — the one scenario the
+wizard exists for. Two gaps closed, onboarding-only (the plain admin-create
+path is unchanged):
+
+- **Default allowance on create**: onboarding now calls `_credits.js`'s
+  `setAllowance()` right after the Client Config record is created, defaulting
+  to the **Starter tier's 2.000 credits** (§3 above). Overridable via
+  `body.creditAllowance` in the onboarding payload, then falls back to the
+  `DEFAULT_CREDIT_ALLOWANCE` env var, then 2000. Same fail-open contract as
+  everywhere else in this system: if `Credit Allowance` doesn't exist yet on
+  the live base, the PATCH is rejected (Airtable `UNKNOWN_FIELD_NAME`),
+  caught, logged — the client is still created successfully either way.
+- **Owner notification on signup**: a fail-soft email to `NOTIFY_EMAIL` on
+  every self-serve signup (client name, project code, email, niche, and the
+  allowance that was set — or an explicit "not set" flag if the field is
+  still missing). Uses the same `api/_mailer.js` `sendMail()` already proven
+  above; a notification failure can never fail the onboarding request.
+
+No new Airtable fields were added by this change — it only writes to the
+`Credit Allowance` field the owner still needs to add per the ACTION ITEM at
+the top of this file.
+
 ## What's NOT verified (can't be, without live data/deploy)
 
 - Real Airtable behaviour when PATCHing a genuinely nonexistent field name
