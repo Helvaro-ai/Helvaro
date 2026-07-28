@@ -904,7 +904,16 @@ module.exports = async function handler(req, res) {
       if (body.status !== undefined && ['booked', 'completed', 'no_show', 'cancelled', 'rescheduled'].includes(body.status)) {
         updateFields['Status'] = body.status;
       }
-      if (body.startTime !== undefined) updateFields['Start Time'] = body.startTime;
+      if (body.startTime !== undefined) {
+        updateFields['Start Time'] = body.startTime;
+        // Rescheduled -> the lead must be reminded about the NEW time.
+        // cron-followup.js's reminder query filters on NOT({Reminder Sent}), so
+        // leaving the flag set would permanently exclude this appointment and the
+        // lead would silently never hear about the change. Clearing it re-arms the
+        // 24h reminder for the new slot. (Sending a second reminder for a genuinely
+        // rescheduled appointment is correct behaviour, not a duplicate.)
+        updateFields['Reminder Sent'] = false;
+      }
       if (body.duration  !== undefined) updateFields['Duration']   = parseInt(body.duration) || 30;
       if (body.notes     !== undefined) updateFields['Notes']      = String(body.notes).slice(0, 2000);
       if (Object.keys(updateFields).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });

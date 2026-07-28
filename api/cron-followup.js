@@ -109,6 +109,17 @@ module.exports = async function handler(req, res) {
       const userReplies = history.filter(m => m.role === 'user').length;
       if (userReplies > 0) continue; // They replied. No follow-up needed
 
+      // AI-PAUSE GUARD (human takeover). A staff member can pause the AI for a
+      // lead from the dashboard; whatsapp.js honours that on inbound messages,
+      // but this cron would otherwise still fire an automated nudge ON TOP of
+      // the human who deliberately took the conversation over — exactly the
+      // collision the takeover feature exists to prevent. Same Notities JSON
+      // envelope + same read semantics as whatsapp.js's getAiPauseInfo().
+      if (isAiPaused(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities'])) {
+        console.log(`[cron-followup] lead ${phone} is AI-paused (mens aan het roer) — automatische nudge overgeslagen`);
+        continue;
+      }
+
       const firstName = name.split(' ')[0] || name;
       const msg = `Hé ${firstName}, we hebben je bericht gekregen maar nog niks teruggehoord. Is er iets waarmee ik je kan helpen?`;
 
@@ -430,6 +441,25 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
 // bare legacy text (pre-JSON-envelope manual notes) and wraps it as a
 // {id:'legacy', text, ts} note on read. Preserve that instead of discarding
 // it when we merge in the flag.
+// Is the AI paused for this lead (a human took the conversation over from the
+// dashboard)? Reads the same `aiPaused` key inside the Notities JSON envelope
+// that api/leads.js's ai-pause/ai-resume modes write and api/whatsapp.js's
+// getAiPauseInfo() reads — kept byte-compatible with that reader on purpose.
+// Non-JSON / legacy plain-text Notities simply means "not paused".
+// Every automated LEAD-facing send in this cron must consult this first: an
+// automated message landing on top of a human mid-conversation is precisely
+// what the takeover feature exists to prevent.
+function isAiPaused(raw) {
+  const trimmed = raw ? String(raw).trim() : '';
+  if (!trimmed.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return !!(parsed && parsed.aiPaused && typeof parsed.aiPaused === 'object');
+  } catch {
+    return false;
+  }
+}
+
 function mergeWaFailedFlag(raw) {
   const trimmed = raw ? String(raw).trim() : '';
   let data    = { _v: 1, notes: [], tasks: [], calls: [] };
@@ -1063,6 +1093,15 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
   const data = await r.json();
   const appointments = data.records || [];
 
+  // ── DELIBERATE: no AI-pause guard here (unlike the nurture loop above) ──
+  // isAiPaused() means "a human took over the CONVERSATION" — it exists to stop
+  // the AI talking over a person mid-dialogue. An appointment reminder is not a
+  // conversation turn; it's a factual notification about a booking the lead
+  // themselves made. Suppressing it for paused leads would be actively harmful:
+  // the lead a human stepped in for is usually the most valuable one, and they'd
+  // be the single lead who gets no reminder and no-shows. Reminders therefore
+  // send regardless of pause state. Do not "fix" this by adding the guard.
+  //
   // ── Meta 24h customer-service window gating ────────────────────────────
   // A reminder is, by definition, sent to a lead who almost certainly hasn't
   // messaged recently — so freeform is never safe here, unlike
