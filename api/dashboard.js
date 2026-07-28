@@ -15,52 +15,106 @@ module.exports = async function handler(req, res) {
    CSS CUSTOM PROPERTIES
    ============================================================ */
 :root {
-  --bg-primary:    #080c14;
-  --bg-card:       #0d1117;
-  --bg-card-alt:   #161b22;
-  --bg-card-hover: #1c2333;
-  --blue-primary:  #6366f1;
-  --blue-bright:   #818cf8;
-  --cyan:          #a5b4fc;
-  --green:         #22c55e;
-  --red:           #f43f5e;
-  --orange:        #f59e0b;
-  --accent:        #6366f1;
-  --accent-bright: #818cf8;
-  --text:          #e6edf3;
-  --text-primary:  #e6edf3;
-  --text-secondary:#9ba3af;
-  --text-muted:    #6e7681;
-  --border:        #21262d;
-  --border-bright: #30363d;
-  --scrollbar-bg:  #0d1117;
-  --scrollbar-thumb: #6366f1;
-  --shadow:        0 8px 32px rgba(0,0,0,0.6);
-  --shadow-card:   0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
-  --shadow-glow:   0 0 40px rgba(99,102,241,0.12);
-  --transition:    all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --radius:        12px;
-  --radius-sm:     8px;
+  /* ---- Sand / Enterprise Dark — canonical semantic tokens ---- */
+  --bg:            #121212;
+  --bg-alt:        #1A1A1A;
+  --card:          #232323;
+  --card-elevated: #2B2B2B;
+  --border-c:      #333333;
+  --divider:       #2A2A2A;
+  --hover-c:       #1E1E1E;
+
+  --accent-c:        #E8D7B1;
+  --accent-hover-c:  #DDCAA1;
+  --accent-pressed-c:#D3BE90;
+  --on-accent:     #121212;
+
+  --text-c:        #F9F9F9;
+  --text-muted-c:  #999999;
+  --text-disabled: #666666;
+  --text-inverse:  #121212;
+
+  --success-c: #22C55E;
+  --warning-c: #E8871E; /* deliberately shifted from the briefed #D4A017 — see DESIGN-SYSTEM.md */
+  --error-c:   #DC2626;
+  --info-c:    #60A5FA;
+
+  --bubble-incoming: #1F1F1F;
+
+  --radius-btn:  14px;
+  --radius-card: 18px;
+  --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition:      all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* No shadow system — depth comes from borders, per design system */
+  --shadow:      none;
+  --shadow-card: none;
+  --shadow-glow: none;
+
+  /* ---- legacy token names (kept so every existing var(--x) in this
+     15k-line file resolves without a line-by-line rewrite) ---- */
+  --bg-primary:    var(--bg);
+  --bg-card:       var(--card);
+  --bg-card-alt:   var(--bg-alt);
+  --bg-card-hover: var(--hover-c);
+  --blue-primary:  var(--accent-c);
+  --blue-bright:   var(--accent-hover-c);
+  --cyan:          var(--info-c);
+  --green:         var(--success-c);
+  --red:           var(--error-c);
+  --orange:        var(--warning-c);
+  --accent:        var(--accent-c);
+  --accent-bright: var(--accent-hover-c);
+  --text:          var(--text-c);
+  --text-primary:  var(--text-c);
+  --text-secondary:var(--text-muted-c);
+  --text-muted:    var(--text-muted-c);
+  --border:        var(--border-c);
+  --border-bright: var(--border-c);
+  --scrollbar-bg:  var(--bg);
+  --scrollbar-thumb: var(--border-c);
+  --radius:        var(--radius-btn);
+  --radius-sm:     10px;
 }
 
 [data-theme="light"] {
-  --bg-primary:    #eef0f6;
-  --bg-card:       #ffffff;
-  --bg-card-alt:   #f5f6fb;
-  --bg-card-hover: #eff1f8;
-  --accent:        #4f46e5;
-  --accent-bright: #6366f1;
-  --text:          #0f1117;
-  --text-primary:  #0f1117;
-  --text-secondary:#5c6478;
-  --text-muted:    #6b7280;
-  --border:        #dde1ed;
-  --border-bright: #c8cede;
-  --scrollbar-bg:  #f0f2f7;
-  --scrollbar-thumb: #6366f1;
-  --shadow:        0 1px 3px rgba(15,17,40,0.06), 0 6px 20px rgba(15,17,40,0.08);
-  --shadow-card:   0 1px 2px rgba(15,17,40,0.05), 0 0 0 1px rgba(99,102,241,0.06);
-  --shadow-glow:   0 0 40px rgba(99,102,241,0.08);
+  --bg:            #F7F5F0;
+  --bg-alt:        #FFFFFF;
+  --card:          #FFFFFF;
+  --card-elevated: #FFFFFF;
+  --border-c:      #E4E0D6;
+  --divider:       #ECE8DE;
+  --hover-c:       #F1EDE3;
+
+  --accent-c:        #C9A85E;
+  --accent-hover-c:  #BB9A4F;
+  --accent-pressed-c:#AD8C43;
+  --on-accent:     #121212;
+
+  --text-c:        #18160F;
+  --text-muted-c:  #6B6558;
+  --text-disabled: #A39C8C;
+  --text-inverse:  #FFFFFF;
+
+  --bubble-incoming: #EFEAE0;
+
+  --bg-primary:    var(--bg);
+  --bg-card:       var(--card);
+  --bg-card-alt:   var(--bg-alt);
+  --bg-card-hover: var(--hover-c);
+  --accent:        var(--accent-c);
+  --accent-bright: var(--accent-hover-c);
+  --text:          var(--text-c);
+  --text-primary:  var(--text-c);
+  --text-secondary:var(--text-muted-c);
+  --text-muted:    var(--text-muted-c);
+  --border:        var(--border-c);
+  --border-bright: var(--border-c);
+  --scrollbar-bg:  var(--bg);
+  --scrollbar-thumb: var(--border-c);
+  --shadow:        0 1px 2px rgba(20,17,10,0.04), 0 4px 14px rgba(20,17,10,0.05);
+  --shadow-card:   none;
+  --shadow-glow:   none;
 }
 
 /* ============================================================
