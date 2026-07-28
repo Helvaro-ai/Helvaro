@@ -1,12 +1,12 @@
 const CSS = `
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 60px auto; padding: 0 24px; color: #111; line-height: 1.7; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 60px auto; padding: 0 24px; color: #18160F; line-height: 1.7; background: #F7F5F0; }
   h1 { font-size: 2rem; margin-bottom: 8px; }
   h2 { font-size: 1.15rem; margin-top: 40px; margin-bottom: 6px; }
-  p, li { color: #444; }
-  a { color: #0066cc; }
-  .back { display: inline-block; margin-bottom: 32px; font-size: 14px; color: #0066cc; text-decoration: none; }
+  p, li { color: #4A453C; }
+  a { color: #8A6D3F; }
+  .back { display: inline-block; margin-bottom: 32px; font-size: 14px; color: #8A6D3F; text-decoration: none; }
   .back:hover { text-decoration: underline; }
-  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #eee; font-size: 13px; color: #999; }
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #E4E0D6; font-size: 13px; color: #8A8478; }
 `;
 
 module.exports = function handler(req, res) {
