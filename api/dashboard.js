@@ -5502,7 +5502,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   width: 30px; height: 30px; border-radius: 7px;
   background: var(--accent);
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+  font-size: 10px; font-weight: 700; color: var(--on-accent); flex-shrink: 0;
 }
 .cal-call-name {
   font-size: 13px; font-weight: 600; color: var(--text-primary);
@@ -8194,7 +8194,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="founder-ai-box">
           <div class="founder-ai-header">
             <div class="founder-ai-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
             <div>
               <div class="founder-ai-title">Wat moet ik nu doen?</div>
@@ -8212,7 +8212,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="fdr-hub-box">
           <div class="fdr-hub-hdr">
             <div class="fdr-hub-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </div>
             <div>
               <div class="fdr-hub-title">Content Hub</div>
@@ -8292,7 +8292,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="fdr-dm-box">
           <div class="fdr-dm-hdr">
             <div class="fdr-dm-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             </div>
             <div>
               <div class="fdr-dm-title">Gepersonaliseerde DM / Email</div>
@@ -8384,7 +8384,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="fdr-bouw-box">
           <div class="fdr-bouw-hdr">
             <div class="fdr-bouw-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             </div>
             <div>
               <div class="fdr-bouw-title">Bouw Tracker. Frade</div>
@@ -8406,7 +8406,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="fdr-docs-hdr">
             <div class="fdr-docs-hdr-left">
               <div class="fdr-docs-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </div>
               <div>
                 <div class="fdr-docs-title">Documenten & Presentaties</div>
@@ -8484,7 +8484,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="fdr-live-hdr">
             <div class="fdr-live-hdr-left">
               <div class="fdr-live-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
               </div>
               <div>
                 <div class="fdr-live-title">Live Klanten</div>
@@ -8680,7 +8680,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   <div id="cal-book-modal">
     <div id="cal-book-header">
       <div class="cal-book-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       </div>
       <div style="flex:1;min-width:0">
         <div id="cal-book-title">Afspraak inplannen</div>
@@ -15680,7 +15680,7 @@ function renderBouwList() {
   if (prog) prog.textContent = done + '/' + items.length + ' taken afgewerkt';
   list.innerHTML = items.map(function(item, idx) {
     return '<div class="fdr-bouw-item' + (item.done ? ' done' : '') + '" onclick="toggleBouwItem(' + idx + ')">' +
-      '<div class="fdr-bouw-cb">' + (item.done ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
+      '<div class="fdr-bouw-cb">' + (item.done ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>' : '') + '</div>' +
       '<span class="fdr-bouw-item-text">' + escHtml(item.text) + '</span>' +
       '<span class="fdr-bouw-tag ' + item.tag + '">' + item.tag + '</span>' +
     '</div>';
