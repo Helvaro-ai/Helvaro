@@ -932,10 +932,10 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 4px 16px rgba(var(--accent-rgb),0.35);
+  box-shadow: none;
   transition: transform 0.15s, box-shadow 0.15s;
 }
-.cal-book-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(var(--accent-rgb),0.5); }
+.cal-book-btn:hover { transform: translateY(-1px); box-shadow: none; }
 
 /* Day header row */
 .cal-day-headers {
@@ -979,7 +979,7 @@ button.brand-dot { border: none; padding: 0; }
 .cal-day-header-cell.cal-today .cal-day-num {
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 4px 12px rgba(var(--accent-rgb),0.4);
+  box-shadow: none;
 }
 .cal-day-header-cell.cal-today .cal-day-name { color: var(--accent-bright); }
 
@@ -1157,7 +1157,7 @@ button.brand-dot { border: none; padding: 0; }
   color: var(--on-accent);
   flex-shrink: 0;
   font-family: 'Inter', sans-serif;
-  box-shadow: 0 8px 24px rgba(var(--accent-rgb),0.4);
+  box-shadow: none;
 }
 .profile-name-lg {
   font-size: 22px;
@@ -1826,7 +1826,7 @@ button.brand-dot { border: none; padding: 0; }
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: linear-gradient(180deg, var(--blue-primary), var(--blue-bright));
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.4);
+  box-shadow: none;
 }
 
 .nav-icon {
@@ -2062,7 +2062,7 @@ button.brand-dot { border: none; padding: 0; }
   background: rgba(var(--accent-rgb),0.12);
   border-color: rgba(var(--accent-rgb),0.25);
   color: var(--blue-bright);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb),0.1);
+  box-shadow: none;
   transform: translateY(-1px);
 }
 
@@ -2213,7 +2213,7 @@ button.brand-dot { border: none; padding: 0; }
       display: flex; align-items: center; justify-content: center;
       font-size: 12px; font-weight: 700; color: var(--on-accent); flex-shrink: 0;
       letter-spacing: 0.03em;
-      box-shadow: 0 2px 8px rgba(var(--accent-rgb),0.3);
+      box-shadow: none;
     }
     .search-result-body { flex: 1; min-width: 0; }
     .search-result-name {
@@ -2479,7 +2479,7 @@ button.brand-dot { border: none; padding: 0; }
   border-color: var(--border-bright);
   background: linear-gradient(160deg, var(--bg-card-hover) 0%, var(--bg-card) 100%);
   transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(var(--accent-rgb),0.15);
+  box-shadow: none;
 }
 
 .stat-card:hover::before {
@@ -2897,7 +2897,7 @@ tr:hover .copy-btn { opacity: 1; }
   background: rgba(var(--success-rgb), 0.12);
   color: var(--green);
   border: 1px solid rgba(var(--success-rgb),0.25);
-  box-shadow: 0 0 12px rgba(var(--success-rgb),0.15);
+  box-shadow: none;
 }
 .score-orange {
   background: rgba(var(--warning-rgb), 0.12);
@@ -3862,7 +3862,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 16px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(var(--accent-rgb),0.12);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   overflow: hidden;
   animation: modal-in 0.2s cubic-bezier(0.4,0,0.2,1);
 }
@@ -6028,7 +6028,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 [data-theme="light"] .stat-card:hover {
-  box-shadow: 0 4px 16px rgba(15,17,40,0.1), 0 0 0 1px rgba(var(--accent-rgb),0.12);
+  box-shadow: none;
   border-color: rgba(var(--accent-rgb),0.2);
 }
 
@@ -6084,7 +6084,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* Login split in light mode */
 [data-theme="light"] .login-split {
-  box-shadow: 0 8px 40px rgba(15,17,40,0.14), 0 0 0 1px rgba(var(--accent-rgb),0.1);
+  box-shadow: 0 8px 40px rgba(15,17,40,0.14);
 }
 
 /* User info bottom of sidebar */
@@ -6117,7 +6117,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .stat-card:hover {
   border-color: rgba(var(--accent-rgb),0.25);
   background: var(--card);
-  box-shadow: 0 8px 28px rgba(var(--accent-rgb),0.12), 0 0 0 1px rgba(var(--accent-rgb),0.14);
+  box-shadow: none;
 }
 
 [data-theme="light"] .stat-card:hover::before {
@@ -7999,7 +7999,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">AI boekt direct in WhatsApp gesprek</span>
             </div>
             <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="navigateTo('calendly')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--accent);border:none;border-radius:10px;color: var(--on-accent);font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(var(--accent-rgb),0.4);font-family:inherit;">
+              <button onclick="navigateTo('calendly')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--accent);border:none;border-radius:10px;color: var(--on-accent);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 Open agenda
               </button>
