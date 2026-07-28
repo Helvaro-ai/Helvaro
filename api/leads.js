@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const _gcal  = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -138,6 +139,16 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Google Calendar OAuth/connection is folded into this function to stay under
+  // Vercel's serverless-function limit (no separate api/gcal.js — that caused a
+  // deploy failure before, see api/_gcal.js's header comment). The public path
+  // /api/gcal is rewritten here with __gcal=1 (see vercel.json), so the
+  // registered Google redirect URI (/api/gcal?action=callback) never has to
+  // change. Handle it before the leads auth flow / rate limiter — it has its
+  // own auth (signed session or signed OAuth state) and must never be blocked
+  // by IP rate limiting meant for the leads API.
+  if (req.query && req.query.__gcal === '1') return handleGcal(req, res);
 
   // Vercel sets x-vercel-forwarded-for itself from the real edge connection and
   // strips/overwrites any client-supplied value, unlike x-forwarded-for, which
@@ -822,7 +833,33 @@ module.exports = async function handler(req, res) {
           }).catch(err => console.error('[appointment-create] confirmation mislukt (afspraak blijft geldig):', err.message));
         }
 
-        return res.status(200).json({ ok: true, id: d.id, apptId });
+        // Mirror into the client's Google Calendar (best-effort, non-blocking).
+        // The appointment already exists in Airtable at this point — a Google
+        // failure here must never surface as an appointment-create failure.
+        let googleEventId = '';
+        try {
+          const { token, calId } = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+          if (token) {
+            const ev = await _gcal.createEvent(token, calId, {
+              summary:     `Afspraak: ${fields['Lead Name'] || 'lead'} (Helvaro)`,
+              description: `Telefoon: ${fields['Lead Phone'] || ''}\nProject: ${projectCode}\n${fields['Notes'] || ''}`,
+              startISO:    body.startTime,
+              durationMin: fields['Duration'],
+            });
+            if (ev.ok && ev.eventId) {
+              googleEventId = ev.eventId;
+              await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${d.id}`, {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { 'Google Event ID': ev.eventId }, typecast: true })
+              }).catch(() => {});
+            } else if (!ev.ok) {
+              console.error('[gcal] create mirror failed:', ev.error);
+            }
+          }
+        } catch (e) { console.error('[gcal] create mirror exception:', e && e.message); }
+
+        return res.status(200).json({ ok: true, id: d.id, apptId, googleEventId });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
       }
@@ -835,6 +872,7 @@ module.exports = async function handler(req, res) {
       const id = String(body.id || '').trim();
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
       // Cross-tenant security check. Haal eerst record op en verifieer Project Code
+      let existingFields = {};
       try {
         const chkR = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,
@@ -842,7 +880,8 @@ module.exports = async function handler(req, res) {
         );
         if (!chkR.ok) return res.status(404).json({ error: 'Afspraak niet gevonden' });
         const existing = await chkR.json();
-        if ((existing.fields || {})['Project Code'] !== projectCode) {
+        existingFields = existing.fields || {};
+        if (existingFields['Project Code'] !== projectCode) {
           return res.status(403).json({ error: 'Geen toegang tot deze afspraak' });
         }
       } catch (err) {
@@ -867,6 +906,29 @@ module.exports = async function handler(req, res) {
         );
         if (!r.ok) return res.status(500).json({ error: 'Update mislukt' });
         const d = await r.json();
+
+        // Sync the change into the client's Google Calendar (best-effort). The
+        // Airtable update already succeeded — a Google failure here must never
+        // surface as an update failure to the caller.
+        try {
+          const gEventId = existingFields['Google Event ID'];
+          if (gEventId) {
+            const { token, calId } = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+            if (token) {
+              if (updateFields['Status'] === 'cancelled') {
+                await _gcal.deleteEvent(token, calId, gEventId);
+              } else if (updateFields['Start Time'] || updateFields['Duration']) {
+                await _gcal.updateEvent(token, calId, gEventId, {
+                  summary:     `Afspraak: ${existingFields['Lead Name'] || 'lead'} (Helvaro)`,
+                  description: `Telefoon: ${existingFields['Lead Phone'] || ''}\nProject: ${projectCode}`,
+                  startISO:    updateFields['Start Time'] || existingFields['Start Time'],
+                  durationMin: updateFields['Duration']   || existingFields['Duration'] || 30,
+                });
+              }
+            }
+          }
+        } catch (e) { console.error('[gcal] update sync failed:', e && e.message); }
+
         return res.status(200).json({ ok: true, record: d });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
@@ -1362,6 +1424,179 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ── Google Calendar access for a project (optional, fail-soft) ────────────────
+// Looks up the client's Klanten record, decrypts their stored refresh token, and
+// returns a live access token. Returns { token: '' } if not connected/configured
+// — every caller treats an empty token as "no Google", never as an error.
+// Field IDs: fldkYmK3jAabvytCF = Google Refresh Token, fldWBxxhGYEZNIMqA =
+// Google Calendar ID (both verified against the live Airtable base; name
+// fallback kept for defense-in-depth, matching this file's existing convention).
+async function gcalAccessForProject(projectCode, airtableToken, baseId, clientsTable) {
+  try {
+    if (!_gcal.isConfigured() || !projectCode) return { token: '', calId: 'primary' };
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+    const r = await atFetch(
+      `https://api.airtable.com/v0/${baseId}/${clientsTable}?filterByFormula=${formula}&maxRecords=1`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (!r.ok) return { token: '', calId: 'primary' };
+    const rec = ((await r.json()).records || [])[0];
+    const enc = rec && rec.fields && (rec.fields['fldkYmK3jAabvytCF'] || rec.fields['Google Refresh Token']);
+    if (!enc) return { token: '', calId: 'primary' };
+    const refresh = _gcal.decryptToken(enc);
+    if (!refresh) return { token: '', calId: 'primary' };
+    const token = await _gcal.getAccessToken(refresh);
+    const calId = rec.fields['fldWBxxhGYEZNIMqA'] || rec.fields['Google Calendar ID'] || 'primary';
+    return { token, calId };
+  } catch (e) { console.error('[gcal] access-for-project failed:', e && e.message); return { token: '', calId: 'primary' }; }
+}
+
+// ── Google Calendar OAuth handler (folded in from the former api/gcal.js) ──────
+// Reached via the /api/gcal -> /api/leads?__gcal=1 rewrite (vercel.json).
+// Modes (all POST, authenticated via the same signed session token every other
+// dashboard request sends in x-api-key — see verifySession() above):
+//   {mode:'connect'}    -> { url } the caller redirects the browser to (Google
+//                          consent screen). We deliberately return the URL
+//                          instead of doing a 302 ourselves: a bare GET
+//                          navigation here has no way to carry the caller's
+//                          x-api-key header (this app has no auth cookie), so
+//                          the SPA fetches this authenticated endpoint first,
+//                          then does `window.location.href = url` itself. The
+//                          session token therefore never travels in any URL.
+//   {mode:'status'}     -> { configured, connected, email }
+//   {mode:'disconnect'} -> clears the stored refresh token + email
+// Plus two GET-only steps Google itself calls, unauthenticated by us — trust
+// is established purely through the signed, short-TTL `state` param:
+//   ?action=callback    -> Google's redirect back after consent. Exchanges the
+//                          code, encrypts + stores the refresh token, 302s back
+//                          to the dashboard with a `?gcal=...` status flag.
+const GCAL_STATE_TTL_MS = 10 * 60 * 1000;
+const GCAL_CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+const GCAL_F_PROJECT = 'fldN4dL0bGgfBOXwM';
+const GCAL_F_REFRESH = 'fldkYmK3jAabvytCF';   // Google Refresh Token (encrypted at rest)
+const GCAL_F_GEMAIL  = 'fldXF7qdyHYnSjnGf';   // Google Calendar Email
+const GCAL_F_CALID   = 'fldWBxxhGYEZNIMqA';   // Google Calendar ID
+
+function gcalSignState(projectCode) {
+  const payload = Buffer.from(JSON.stringify({ p: projectCode, t: Date.now() })).toString('base64url');
+  const sig = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+function gcalVerifyState(state) {
+  try {
+    const [payload, sig] = String(state || '').split('.');
+    if (!payload || !sig) return '';
+    const expected = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
+    const a = Buffer.from(sig, 'base64url'), b = Buffer.from(expected, 'base64url');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return '';
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.p || !data.t || Date.now() - data.t > GCAL_STATE_TTL_MS) return '';
+    return data.p;
+  } catch { return ''; }
+}
+async function gcalGetClient(projectCode) {
+  const BASE_ID = process.env.BASE_AIRTABLE, TOKEN = process.env.API_AIRTABLE;
+  const formula = encodeURIComponent(`{${GCAL_F_PROJECT}}="${escapeFormula(projectCode)}"`);
+  const r = await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${GCAL_CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+    { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!r.ok) return null;
+  return ((await r.json()).records || [])[0] || null;
+}
+async function gcalPatchClient(recordId, fields) {
+  const BASE_ID = process.env.BASE_AIRTABLE, TOKEN = process.env.API_AIRTABLE;
+  return atFetch(`https://api.airtable.com/v0/${BASE_ID}/${GCAL_CLIENTS_TABLE}/${recordId}`, {
+    method: 'PATCH', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true }),
+  });
+}
+function gcalRedirect(res, url) { res.statusCode = 302; res.setHeader('Location', url); res.end(); }
+
+async function handleGcal(req, res) {
+  if (!_gcal.isConfigured()) {
+    if (req.method === 'GET') return gcalRedirect(res, '/dashboard?gcal=unconfigured');
+    return res.status(200).json({ connected: false, configured: false });
+  }
+  const url    = new URL(req.url, 'https://app.helvaro.pro');
+  const action = url.searchParams.get('action') || '';
+
+  // Google's OAuth callback. No x-api-key here (Google doesn't send it) — the
+  // caller's identity comes entirely from the signed, TTL-limited `state`
+  // param we minted in mode:'connect' below (CSRF protection: an attacker
+  // cannot forge a valid state without SESSION_SECRET/ADMIN_KEY).
+  if (req.method === 'GET' && action === 'callback') {
+    if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?gcal=denied');
+    const code = url.searchParams.get('code');
+    const projectCode = gcalVerifyState(url.searchParams.get('state'));
+    if (!code || !projectCode) return gcalRedirect(res, '/dashboard?gcal=invalid_state');
+    try {
+      const { refreshToken, email } = await _gcal.exchangeCode(code);
+      if (!refreshToken) {
+        // Google didn't return a refresh token (e.g. offline access wasn't
+        // actually granted). Fail closed: never mark "connected" without one.
+        console.error('[gcal callback] no refresh_token in response for', projectCode);
+        return gcalRedirect(res, '/dashboard?gcal=error');
+      }
+      const client = await gcalGetClient(projectCode);
+      if (!client) return gcalRedirect(res, '/dashboard?gcal=client_not_found');
+      // encryptToken() throws if no encryption key is configured — caught
+      // below, which fails the connection closed (never stores plaintext).
+      const encrypted = _gcal.encryptToken(refreshToken);
+      await gcalPatchClient(client.id, {
+        [GCAL_F_REFRESH]: encrypted,
+        [GCAL_F_GEMAIL]:  email || '',
+        [GCAL_F_CALID]:   'primary',
+      });
+      return gcalRedirect(res, '/dashboard?gcal=connected');
+    } catch (e) {
+      console.error('[gcal callback]', e && e.message);
+      return gcalRedirect(res, '/dashboard?gcal=error');
+    }
+  }
+
+  if (req.method === 'POST') {
+    // Authenticate via the same signed session token every other dashboard
+    // request sends. Deliberately does NOT accept the legacy raw API-key path
+    // (Path B in the main handler above) — a brand-new OAuth-touching feature
+    // fails closed rather than extend trust to older, unsigned tokens.
+    const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+    const session = verifySession(raw);
+    const projectCode = session && session.projectCode ? session.projectCode : '';
+    if (!projectCode) return res.status(401).json({ error: 'Niet ingelogd' });
+
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+    body = body || {};
+
+    if (body.mode === 'connect') {
+      return res.status(200).json({ url: _gcal.getAuthUrl(gcalSignState(projectCode)) });
+    }
+    if (body.mode === 'status') {
+      try {
+        const client = await gcalGetClient(projectCode);
+        const f = (client && client.fields) || {};
+        const connected = !!(f[GCAL_F_REFRESH] || f['Google Refresh Token']);
+        const email = f[GCAL_F_GEMAIL] || f['Google Calendar Email'] || '';
+        return res.status(200).json({ configured: true, connected, email });
+      } catch (e) {
+        console.error('[gcal status]', e && e.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+    if (body.mode === 'disconnect') {
+      try {
+        const client = await gcalGetClient(projectCode);
+        if (client) await gcalPatchClient(client.id, { [GCAL_F_REFRESH]: '', [GCAL_F_GEMAIL]: '' });
+        return res.status(200).json({ ok: true, connected: false });
+      } catch (e) {
+        console.error('[gcal disconnect]', e && e.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+    return res.status(400).json({ error: 'Onbekende mode' });
+  }
+  return res.status(405).json({ error: 'Method not allowed' });
 }
 
 // Merge arbitrary top-level keys into a lead's Notities JSON envelope without

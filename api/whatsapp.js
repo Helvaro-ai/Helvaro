@@ -11,6 +11,7 @@ const { waitUntil } = require('@vercel/functions');
 // runOutreach() — see api/lib/fetch-website.js for why this lives outside
 // this file.
 const { fetchWebsite } = require('./lib/fetch-website');
+const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -287,6 +288,22 @@ async function processMessage(phone, text) {
   let existingAppointments = [];
   if (bookingMethod === 'in_chat') {
     existingAppointments = await getUpcomingAppointments(projectCode).catch(() => []);
+    // Merge the client's Google Calendar busy times so the AI never proposes a
+    // slot they're already busy on. Best-effort: Google problems never block chat.
+    try {
+      const { token, calId } = await gcalAccess(client);
+      if (token) {
+        const busy = await _gcal.freeBusy(token, calId,
+          new Date().toISOString(),
+          new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString());
+        const dOpt = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+        const tOpt = { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+        for (const b of busy) {
+          const s = new Date(b.start), e = new Date(b.end);
+          existingAppointments.push(`${s.toLocaleString('nl-BE', dOpt)}–${e.toLocaleString('nl-BE', tOpt)} (Google agenda, bezet)`);
+        }
+      }
+    } catch (e) { /* best-effort, never block the AI turn */ }
   }
 
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
@@ -482,6 +499,24 @@ async function processMessage(phone, text) {
           } catch (err) {
             console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
           }
+
+          // Mirror the booking into the client's Google Calendar (best-effort).
+          // Own try/catch, same contract as the confirmation above: the
+          // appointment already exists — a Google failure must never look
+          // like a booking failure.
+          try {
+            const { token, calId } = await gcalAccess(client);
+            if (token) {
+              const ev = await _gcal.createEvent(token, calId, {
+                summary:     `Afspraak: ${leadName || 'lead'} (Helvaro)`,
+                description: `Telefoon: ${phone}\nProject: ${projectCode}\n${aiResponse.summary || ''}`,
+                startISO:    appt.start,
+                durationMin: appt.duration || appointmentDuration,
+              });
+              if (ev.ok && ev.eventId) await setApptGoogleEvent(apptResult.id, ev.eventId);
+              else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
+            }
+          } catch (e) { console.error('[gcal] booking mirror exception:', e && e.message); }
         }
       } catch (err) {
         console.error('[whatsapp] appointment creation failed:', err.message);
@@ -952,6 +987,44 @@ async function getUpcomingAppointments(projectCode) {
     console.error('[Appointment] list exception:', err.message);
     return [];
   }
+}
+
+// ── Google Calendar (optional, per-client) ───────────────────────────────────
+// Returns { token, calId } for the client's connected Google Calendar, or an
+// empty token if they haven't connected / it's not configured. Never throws —
+// Google issues must never block a WhatsApp reply or a booking.
+// getClientByCode() fetches with returnFieldsByFieldId=true, so client.fields
+// is keyed by field ID first (fldkYmK3jAabvytCF = Google Refresh Token,
+// fldWBxxhGYEZNIMqA = Google Calendar ID); name fallback kept for defense,
+// matching every other client.fields lookup in this file.
+async function gcalAccess(client) {
+  try {
+    if (!_gcal.isConfigured()) return { token: '', calId: 'primary' };
+    const enc = (client && client.fields && (client.fields['fldkYmK3jAabvytCF'] || client.fields['Google Refresh Token'])) || '';
+    if (!enc) return { token: '', calId: 'primary' };
+    const refresh = _gcal.decryptToken(enc);
+    if (!refresh) return { token: '', calId: 'primary' };
+    const token = await _gcal.getAccessToken(refresh);
+    const calId = client.fields['fldWBxxhGYEZNIMqA'] || client.fields['Google Calendar ID'] || 'primary';
+    return { token, calId };
+  } catch (e) {
+    console.error('[gcal] access failed:', e && e.message);
+    return { token: '', calId: 'primary' };
+  }
+}
+
+// Store the created Google event ID back on the Helvaro appointment record so a
+// later reschedule/cancel (dashboard-side, api/leads.js) can update/delete the
+// matching Google event. Best-effort — the appointment itself already exists.
+async function setApptGoogleEvent(recordId, eventId) {
+  if (!recordId || !eventId) return;
+  try {
+    await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}/${recordId}`, {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ fields: { 'Google Event ID': eventId }, typecast: true })
+    });
+  } catch (e) { console.error('[gcal] store event id failed:', e && e.message); }
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
