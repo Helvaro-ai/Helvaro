@@ -41,7 +41,10 @@
  *   - The token is never printed, logged, or echoed.
  */
 
-const GRAPH_VERSION = 'v19.0';          // matches the version used across api/
+// v23.0 = the version Meta's own Message Templates docs use (May 2026).
+// NOTE: api/*.js deliberately still SENDS on v19.0 — don't "sync" them without
+// testing; this script only creates templates and is safe to keep current.
+const GRAPH_VERSION = 'v23.0';
 const WABA_ID = (process.env.WABA_ID || '').trim();
 const TOKEN =
   (process.env.WHATSAPP_MANAGEMENT_TOKEN || process.env.WHATSAPP_TOKEN || '').trim();
