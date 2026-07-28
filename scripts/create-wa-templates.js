@@ -72,6 +72,27 @@ const TEMPLATES = [
     examples: ['Jan', 'KinePraktijk Gent', 'dinsdag 12 augustus om 14:30'],
     usedBy: 'BOOKING_TEMPLATE_NAME',
   },
+  // COST OPTIMISATION (optional — comment out if you don't want to test it).
+  // Meta bills per delivered template message since July 2025, and Belgium sits
+  // in the "Rest of Western Europe" tier where MARKETING (~EUR0.11/msg) costs
+  // roughly 2x UTILITY (~EUR0.05/msg). The existing first-contact template
+  // `helvaro_nieuwe_lead` is categorised MARKETING, but it is a service reply to
+  // someone who just filled in a form ASKING to be contacted — a defensible
+  // UTILITY case. On 100 leads/month that is ~EUR7/client/month, and it scales
+  // with every client.
+  //   Risk: Meta may re-categorise it back to MARKETING. That is a SAFE failure
+  //   mode — you simply pay the old rate; nothing breaks. Worth testing.
+  // To use it, point FOLLOWUP/first-contact config at this name once APPROVED.
+  {
+    name: 'helvaro_nieuwe_lead_util',
+    language: 'nl_BE',
+    category: 'UTILITY',
+    body:
+      'Hoi {{1}}, bedankt voor je aanvraag bij {{2}}.\n\n' +
+      'Ik help je graag verder — mag ik je een paar korte vragen stellen zodat we je goed kunnen helpen?',
+    examples: ['Jan', 'KinePraktijk Gent'],
+    usedBy: '(optioneel) goedkoper alternatief voor helvaro_nieuwe_lead',
+  },
   {
     name: 'helvaro_afspraak_herinnering',
     language: 'nl_BE',
