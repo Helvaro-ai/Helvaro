@@ -1194,10 +1194,7 @@ button.brand-dot { border: none; padding: 0; }
 .profile-stat-card .psv {
   font-size: 28px;
   font-weight: 800;
-  background: var(--accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
   font-family: 'Orbitron', sans-serif;
   line-height: 1;
   margin-bottom: 6px;
@@ -1757,11 +1754,7 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 3px;
-  background: var(--accent);
-
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
 }
 
 .sidebar-brand span {
@@ -2013,10 +2006,11 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 2px;
-  background: linear-gradient(135deg, var(--text-primary) 60%, var(--cyan));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  background-clip: initial;
+  color: var(--text);
   transition: opacity 0.2s ease;
 }
 
@@ -2024,7 +2018,6 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 3px;
-  -webkit-text-fill-color: var(--text-muted);
   transition: opacity 0.2s ease;
   opacity: 0.8;
 }
@@ -5960,10 +5953,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* Sidebar brand gradient stays readable */
 [data-theme="light"] .sidebar-brand {
-  background: var(--accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
 }
 
 /* Nav items in light mode */
@@ -5990,10 +5980,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* Topbar page title gradient in light */
 [data-theme="light"] .page-title {
-  background: var(--accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
 }
 
 /* Topbar buttons. Dark on white */
