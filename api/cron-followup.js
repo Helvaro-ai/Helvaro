@@ -1082,16 +1082,34 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
   const formula = encodeURIComponent(
     `AND({fldt3zlcrFKGAGw3E}="booked", NOT({fldadjeKPJ2TLiQSA}), IS_AFTER({fldxfW4UTI1QBiUsa}, "${windowStart}"), IS_BEFORE({fldxfW4UTI1QBiUsa}, "${windowEnd}"))`
   );
-  const url = `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50`;
-
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
-  if (r.status === 429) {
-    console.warn('[cron-followup] appointment reminders: Airtable 429, uitgesteld tot volgende run');
-    return { checked: 0, sent: 0, skipped: 'rate_limited' };
+  // PAGINATED. Airtable returns at most `pageSize` records per response plus an
+  // `offset` cursor; a single unpaginated request silently truncates. For most
+  // queries in this file a dropped record self-heals on the next daily run, but
+  // NOT here: a missed reminder is a missed reminder — the appointment happens,
+  // the moment passes, and there is no second chance. Hard page cap (20 x 50 =
+  // 1000 appointments in one 33h window) so a pathological result set can never
+  // spin the cron against its 300s ceiling.
+  const appointments = [];
+  let offset = '';
+  for (let page = 0; page < 20; page++) {
+    const url = `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50` +
+      (offset ? `&offset=${encodeURIComponent(offset)}` : '');
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    if (r.status === 429) {
+      // Keep whatever we already collected — those still get reminded this run;
+      // the rest are picked up tomorrow (they stay in the window / unflagged).
+      console.warn('[cron-followup] appointment reminders: Airtable 429, rest uitgesteld tot volgende run');
+      break;
+    }
+    if (!r.ok) throw new Error('Airtable ' + r.status);
+    const data = await r.json();
+    appointments.push(...(data.records || []));
+    offset = data.offset || '';
+    if (!offset) break;
   }
-  if (!r.ok) throw new Error('Airtable ' + r.status);
-  const data = await r.json();
-  const appointments = data.records || [];
+  if (offset) {
+    console.warn(`[cron-followup] appointment reminders: paginatie-cap bereikt (${appointments.length} afspraken), rest volgende run`);
+  }
 
   // ── DELIBERATE: no AI-pause guard here (unlike the nurture loop above) ──
   // isAiPaused() means "a human took over the CONVERSATION" — it exists to stop
