@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
   let clientName   = 'Helvaro';
   let niche        = '';
   let aiPhotoUrl   = '';
-  let brandColor   = '#6366f1';
+  let brandColor   = '#8A6D3F'; // Helvaro default (warm bronze/sand family — deep enough for white text on solid fills). Overridden per-client by the Brand Color Airtable field.
   let formIntro    = '';
   let leadsThisWeek = 0;
   let lang          = 'nl';   // nl / fr / en. Controls form-page + AI conversation language
@@ -286,14 +286,14 @@ module.exports = async function handler(req, res) {
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: radial-gradient(circle at 20% 0%, #1a2540 0%, #050811 55%);
+    background: radial-gradient(circle at 20% 0%, #1A1A1A 0%, #121212 55%);
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
     padding: 24px 16px;
-    color: #e8eef7;
+    color: #F9F9F9;
   }
   .card {
-    background: #0b1224; border: 1px solid var(--brand-soft);
+    background: #1A1A1A; border: 1px solid var(--brand-soft);
     border-radius: 20px;
     width: 100%; max-width: 460px;
     box-shadow: 0 20px 60px rgba(0,0,0,.5);
@@ -302,7 +302,7 @@ module.exports = async function handler(req, res) {
 
   /* WhatsApp-style chat header */
   .chat-hdr {
-    background: #14233f;
+    background: #232323;
     padding: 18px 22px;
     display: flex; align-items: center; gap: 14px;
     border-bottom: 1px solid var(--brand-soft);
@@ -321,39 +321,39 @@ module.exports = async function handler(req, res) {
   .online-dot {
     position: absolute; right: 0; bottom: 1px;
     width: 12px; height: 12px; border-radius: 50%;
-    background: #22c55e; border: 2px solid #14233f;
+    background: #22c55e; border: 2px solid #232323;
     box-shadow: 0 0 6px rgba(34,197,94,.7);
     animation: dotPulse 1.6s ease-in-out infinite;
   }
   @keyframes dotPulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
   .hdr-text { flex: 1; min-width: 0; }
-  .hdr-name { font-size: 15px; font-weight: 700; color: #fff; }
+  .hdr-name { font-size: 15px; font-weight: 700; color: #F9F9F9; }
   .hdr-status { font-size: 12px; color: #22c55e; font-weight: 600; }
-  .hdr-brand { font-size: 11px; color: #6a85b0; margin-top: 2px; }
+  .hdr-brand { font-size: 11px; color: #999999; margin-top: 2px; }
 
   /* Chat-style intro bubble */
   .chat-area {
     padding: 22px 22px 8px;
     background:
       radial-gradient(circle at 10% 90%, var(--brand-faint) 0%, transparent 60%),
-      #0b1224;
+      #1A1A1A;
   }
   .bubble {
     background: var(--brand-soft); border: 1px solid var(--brand-soft);
     border-bottom-left-radius: 4px; border-radius: 14px;
     padding: 12px 14px; font-size: 14px; line-height: 1.5;
-    color: #e8eef7; max-width: 88%; margin-bottom: 6px;
+    color: #F9F9F9; max-width: 88%; margin-bottom: 6px;
     animation: bubbleIn .35s ease;
   }
   @keyframes bubbleIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .bubble-meta {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; color: #6a85b0; margin-bottom: 14px; padding-left: 4px;
+    font-size: 11px; color: #999999; margin-bottom: 14px; padding-left: 4px;
   }
   .typing-dots { display: inline-flex; gap: 3px; align-items: center; margin-left: 2px; }
   .typing-dots span {
     width: 4px; height: 4px; border-radius: 50%;
-    background: #6a85b0;
+    background: #999999;
     animation: typingDot 1.2s infinite ease-in-out;
   }
   .typing-dots span:nth-child(2) { animation-delay: .15s; }
@@ -362,12 +362,12 @@ module.exports = async function handler(req, res) {
     0%, 60%, 100% { transform: scale(.7); opacity: .3; }
     30%           { transform: scale(1);  opacity: 1; }
   }
-  .bubble strong { color: #fff; font-weight: 600; }
+  .bubble strong { color: #F9F9F9; font-weight: 600; }
 
   .social-proof {
     display: inline-flex; align-items: center; gap: 6px;
     background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.18);
-    color: #c5d4e8; padding: 6px 11px; border-radius: 999px;
+    color: #999999; padding: 6px 11px; border-radius: 999px;
     font-size: 11px; font-weight: 500;
     margin-bottom: 14px;
   }
@@ -386,14 +386,14 @@ module.exports = async function handler(req, res) {
     filter: brightness(1.4);
   }
   input {
-    width: 100%; background: #0a1320;
+    width: 100%; background: #232323;
     border: 1px solid var(--brand-soft); border-radius: 11px;
-    padding: 13px 15px; color: #e8eef7; font-size: 15px;
+    padding: 13px 15px; color: #F9F9F9; font-size: 15px;
     font-family: inherit; outline: none;
     transition: border-color .15s, box-shadow .15s;
   }
   input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-faint); }
-  input::placeholder { color: #3d5070; }
+  input::placeholder { color: #666666; }
 
   button {
     width: 100%; margin-top: 18px;
@@ -409,9 +409,9 @@ module.exports = async function handler(req, res) {
   .btn-icon { display: inline-flex; }
 
   .error {
-    display: none; color: #ff6378; font-size: 13px;
+    display: none; color: #FF6B6B; font-size: 13px;
     margin-top: 14px; padding: 10px 14px;
-    background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
+    background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.22);
     border-radius: 9px;
   }
 
@@ -423,15 +423,15 @@ module.exports = async function handler(req, res) {
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
     margin: 0 auto 18px; font-size: 30px; color: #22c55e;
   }
-  .success h3 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-  .success p { color: #a0b8d8; font-size: 14px; line-height: 1.65; }
+  .success h3 { font-size: 18px; font-weight: 700; color: #F9F9F9; margin-bottom: 8px; }
+  .success p { color: #999999; font-size: 14px; line-height: 1.65; }
   .success strong { color: #22c55e; }
   .success-steps {
     margin-top: 22px; padding: 14px 16px;
     background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.18);
     border-radius: 10px; text-align: left;
   }
-  .success-step { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; color: #c5d4e8; }
+  .success-step { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; color: #cfcfcf; }
   .success-step .num {
     width: 20px; height: 20px; border-radius: 50%;
     background: #22c55e; color: #fff; font-size: 11px; font-weight: 700;
@@ -451,7 +451,7 @@ module.exports = async function handler(req, res) {
     accent-color: var(--brand);
   }
   .consent-text {
-    font-size: 12px; line-height: 1.5; color: #3d5070;
+    font-size: 12px; line-height: 1.5; color: #999999;
   }
   .consent-text a { color: var(--brand); text-decoration: underline; }
   .consent-text a:hover { opacity: .8; }
@@ -464,14 +464,14 @@ module.exports = async function handler(req, res) {
   }
   .trust-item {
     display: inline-flex; align-items: center; gap: 5px;
-    color: #6a85b0; font-size: 11px;
+    color: #999999; font-size: 11px;
   }
   .trust-item span { font-size: 13px; }
   .powered {
-    text-align: center; font-size: 10px; color: #3d5070;
+    text-align: center; font-size: 10px; color: #666666;
     padding: 6px 0 14px; letter-spacing: .03em;
   }
-  .powered a { color: #6a85b0; text-decoration: none; }
+  .powered a { color: #999999; text-decoration: none; }
 
   @media (max-width: 480px) {
     body { padding: 12px 10px; align-items: flex-start; }
