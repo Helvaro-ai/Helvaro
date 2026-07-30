@@ -219,10 +219,25 @@ function schemaLooksUnconfigured(fields) {
 // numbers without writing anything — checkCredits() must stay read-only so a
 // stale period near its boundary never wrongly blocks a call that a
 // subsequent recordUsage() would have rolled over anyway.
+//
+// `rawPeriod` (added for the trial feature, see TRIAL-DESIGN.md §7 / the
+// once-only-email marker in api/cron-followup.js's runTrialLifecycle()) is
+// the FULL parsed Period JSON object, untouched and NEVER reset on
+// rollover — unlike start/used/byFeature/alerted*, which are credit-cycle
+// state. This lets a second, unrelated subsystem (the trial cron) store its
+// own namespaced key (`trial: {...}`) inside the SAME Credit Period field
+// without this file's own writers (recordUsage/maybeAlertThresholds/
+// addCredits/resetPeriod below) silently dropping it: every write site now
+// spreads `rawPeriod` first, then overrides only the 4 credit-specific keys
+// it actually owns. Symmetric contract: the trial cron does the same in
+// reverse when it writes its own `trial` key. Neither side needs to know
+// the other's schema, both need to know not to reconstruct the field from
+// scratch.
 function effectivePeriodState(fields) {
   const allowance = Number(fields[FIELD.ALLOWANCE]) || 0;
   const periodRaw = fields[FIELD.PERIOD];
   const period = parseJsonField(periodRaw, null);
+  const rawPeriod = (period && typeof period === 'object') ? period : {};
   const now = Date.now();
   const startMs = period && period.start ? Date.parse(period.start) : NaN;
   const stale = !period || !isFinite(startMs) || (now - startMs >= PERIOD_MS);
@@ -241,7 +256,7 @@ function effectivePeriodState(fields) {
   const ceilingRaw = Number(fields[FIELD.CEILING]) || 0;
   const ceiling = ceilingRaw > 0 ? ceilingRaw : allowance * DEFAULT_RUNAWAY_MULTIPLIER;
 
-  return { allowance, used, byFeature, start, stale, ceiling, ...alerted };
+  return { allowance, used, byFeature, start, stale, ceiling, rawPeriod, ...alerted };
 }
 
 function summarize(state) {
@@ -341,7 +356,11 @@ async function recordUsage(projectCode, feature, opts = {}) {
   const state = effectivePeriodState(fields);
   const newUsed = state.used + creditsInt;
   const newByFeature = { ...state.byFeature, [feature]: (state.byFeature[feature] || 0) + creditsInt };
+  // Spread rawPeriod FIRST so any unrelated namespaced key another subsystem
+  // stores in this same field (e.g. the trial cron's `trial: {...}` marker,
+  // see effectivePeriodState()'s doc comment) survives this write untouched.
   const newPeriod = {
+    ...state.rawPeriod,
     start: state.start,
     alerted80: state.alerted80,
     alerted100: state.alerted100,
@@ -415,6 +434,7 @@ async function maybeAlertThresholds(projectCode, state, feature) {
   if (!do80 && !do100 && !doRunaway) return;
 
   const newPeriod = {
+    ...fresh.rawPeriod,
     start: fresh.start,
     alerted80:      fresh.alerted80  || do80,
     alerted100:     fresh.alerted100 || do100,
@@ -636,18 +656,110 @@ async function addCredits(projectCode, n) {
   const fields = record.fields || {};
   const state = effectivePeriodState(fields);
   const newUsed = Math.max(0, state.used - Math.max(0, Math.round(Number(n) || 0)));
+  // Spread rawPeriod first — see effectivePeriodState()'s doc comment: an
+  // admin top-up must never wipe an unrelated namespaced key (e.g. the
+  // trial cron's once-only-email marker) that happens to live in this same field.
   return _patchClientCreditFields(projectCode, {
     [FIELD.USED]: newUsed,
-    [FIELD.PERIOD]: JSON.stringify({ start: state.start, alerted80: state.alerted80, alerted100: state.alerted100, alertedRunaway: state.alertedRunaway }),
+    [FIELD.PERIOD]: JSON.stringify({ ...state.rawPeriod, start: state.start, alerted80: state.alerted80, alerted100: state.alerted100, alertedRunaway: state.alertedRunaway }),
   });
 }
 
+// Admin-triggered CREDIT period reset. Still reads the current record first
+// (rather than blind-overwriting) so an unrelated namespaced key stored in
+// the same Credit Period field — e.g. the trial cron's once-only-email
+// marker (see effectivePeriodState()'s doc comment) — survives an admin
+// resetting a client's credit counters. Only the 4 credit-owned keys are
+// actually reset; everything else in the envelope passes through untouched.
 async function resetPeriod(projectCode) {
+  const code = String(projectCode || '').trim();
+  let rawPeriod = {};
+  try {
+    const record = await getClientRecord(code);
+    if (record) rawPeriod = effectivePeriodState(record.fields || {}).rawPeriod;
+  } catch (err) {
+    console.warn(`[Credits] resetPeriod(${code}) pre-read failed, resetting without preserving extra keys:`, err.message);
+  }
   return _patchClientCreditFields(projectCode, {
     [FIELD.USED]:       0,
-    [FIELD.PERIOD]:     JSON.stringify({ start: new Date().toISOString(), alerted80: false, alerted100: false, alertedRunaway: false }),
+    [FIELD.PERIOD]:     JSON.stringify({ ...rawPeriod, start: new Date().toISOString(), alerted80: false, alerted100: false, alertedRunaway: false }),
     [FIELD.BY_FEATURE]: JSON.stringify({}),
   });
+}
+
+// ── Trial-lifecycle marker (once-only email/alert tracking) ────────────────
+// Piggybacks on the SAME Credit Period field this file already owns, rather
+// than a new Airtable field — see TRIAL-DESIGN.md §7 and
+// CREDITS-VERCEL-SUMMARY.md's "do NOT add Airtable fields" instruction for
+// the trial feature. Stored as a `trial: {day7Sent, day11Sent, expiredSent}`
+// sub-object inside the same JSON envelope this file's own alerted80/100/
+// runaway flags live in. Only api/cron-followup.js's runTrialLifecycle()
+// calls these two — kept here rather than duplicated there, because this
+// file already owns every read/write of Credit Period and effectivePeriodState()'s
+// rawPeriod-spreading (see its doc comment) is what keeps this safe from a
+// concurrent recordUsage() call clobbering it, and vice versa.
+//
+// Deliberately does NOT gate on schemaLooksUnconfigured() the way the
+// credit-specific functions above do: that check answers "have the credit
+// fields been added to the Client Config schema at all", which for THIS
+// feature is a given (Credit Period already exists — see TRIAL-DESIGN.md
+// §6.5, it's one of the fields the credit system rollout already added).
+// If it somehow doesn't, the PATCH below fails naturally and the caller's
+// try/catch handles it exactly like any other Airtable error.
+async function getTrialMarkers(projectCode) {
+  const code = String(projectCode || '').trim();
+  if (!code || !envConfigured()) return {};
+  try {
+    const record = await getClientRecord(code);
+    if (!record) return {};
+    const state = effectivePeriodState(record.fields || {});
+    return (state.rawPeriod && typeof state.rawPeriod.trial === 'object') ? state.rawPeriod.trial : {};
+  } catch (err) {
+    console.warn(`[Credits] getTrialMarkers(${code}) failed, treating as "nothing sent yet":`, err.message);
+    return {};
+  }
+}
+
+// Merges `patch` into the existing `trial` sub-object. Re-reads the record
+// fresh immediately before writing (same pattern as maybeAlertThresholds()
+// above) so this doesn't clobber a concurrent credit write, and vice versa.
+// Throws on genuine failure (network/Airtable error) — callers in
+// cron-followup.js wrap this in try/catch and treat a failure as "email
+// sent, marker not persisted" (logged, not fatal): the bounded downside is
+// a possible duplicate email on the NEXT cron run, never a service-state
+// change, matching this file's own documented Airtable-race risk appetite.
+async function setTrialMarker(projectCode, patch) {
+  const code = String(projectCode || '').trim();
+  if (!code) return false;
+  if (!envConfigured()) return false;
+  const record = await getClientRecord(code);
+  if (!record) return false;
+  const fields = record.fields || {};
+  const state = effectivePeriodState(fields);
+  const currentTrial = (state.rawPeriod && typeof state.rawPeriod.trial === 'object') ? state.rawPeriod.trial : {};
+  const newPeriod = {
+    ...state.rawPeriod,
+    start: state.start,
+    alerted80: state.alerted80,
+    alerted100: state.alerted100,
+    alertedRunaway: state.alertedRunaway,
+    trial: { ...currentTrial, ...patch },
+  };
+  const BASE_ID = process.env.BASE_AIRTABLE;
+  const TOKEN   = process.env.API_AIRTABLE;
+  const r = await atFetch(
+    `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${record.id}`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { [FIELD.PERIOD]: JSON.stringify(newPeriod) } }),
+    }
+  );
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`Airtable PATCH ${r.status}: ${t.slice(0, 200)}`);
+  }
+  return true;
 }
 
 module.exports = {
@@ -662,4 +774,6 @@ module.exports = {
   setAllowance,
   addCredits,
   resetPeriod,
+  getTrialMarkers,
+  setTrialMarker,
 };

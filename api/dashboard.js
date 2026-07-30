@@ -5034,6 +5034,36 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .dash-formlink-btn:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
 
+/* ── Trial banner. Hidden by default (display:none inline in the HTML) —
+   only shown once loadPlanStatus() confirms this client is on trial or
+   expired. See TRIAL-DESIGN.md and api/leads.js's plan-status mode. Two
+   colour states via a modifier class: .trial (accent, informative) and
+   .expired (amber, "non-alarming" per TRIAL-DESIGN.md §3 — never red/error
+   styling, leads are still being captured). ─────────────────────────────── */
+.dash-trial-banner {
+  display: flex; align-items: center; gap: 12px;
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dash-trial-banner.trial {
+  background: rgba(var(--accent-rgb), .08); border: 1px solid rgba(var(--accent-rgb), .25);
+}
+.dash-trial-banner.expired {
+  background: rgba(var(--warning-rgb), .08); border: 1px solid rgba(var(--warning-rgb), .25);
+}
+.dash-trial-banner-icon { font-size: 20px; line-height: 1; }
+.dash-trial-banner-body { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.dash-trial-banner-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.dash-trial-banner-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.dash-trial-banner-cta {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  background: var(--accent); color: var(--bg-primary); border: none; border-radius: 7px;
+  padding: 8px 14px; font-size: 12px; font-weight: 700;
+  text-decoration: none; cursor: pointer; font-family: inherit;
+  transition: all .15s ease;
+}
+.dash-trial-banner-cta:hover { background: var(--accent-hover); }
+
 /* ── AI Persoonlijkheid page ──────────────────────────────────────────── */
 .ap-wrap { width: 100%; padding: 24px 0; }
 .ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
@@ -6519,6 +6549,18 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- Dashboard Page -->
     <main class="page-content page active" id="page-dashboard">
+
+      <!-- Trial banner. Hidden until loadPlanStatus() confirms this client
+           is on trial or expired — see TRIAL-DESIGN.md and
+           api/leads.js's plan-status mode. -->
+      <div class="dash-trial-banner" id="dash-trial-banner" style="display:none">
+        <div class="dash-trial-banner-icon" id="dash-trial-banner-icon"></div>
+        <div class="dash-trial-banner-body">
+          <div class="dash-trial-banner-title" id="dash-trial-banner-title">—</div>
+          <div class="dash-trial-banner-sub" id="dash-trial-banner-sub">—</div>
+        </div>
+        <a class="dash-trial-banner-cta" id="dash-trial-banner-cta" href="#" target="_blank" rel="noopener">Upgrade</a>
+      </div>
 
       <!-- Form Link banner. Quick access to the lead form URL -->
       <div class="dash-formlink" id="dash-formlink">
@@ -9262,6 +9304,7 @@ async function refreshData(skipFetch = false) {
     renderBronChart();
     detectNewLeads(state.leads);
     loadCreditUsage(); // internally throttled — safe to call every refreshData()
+    loadPlanStatus();  // internally throttled — safe to call every refreshData()
     if (state.currentPage === 'exports') updateExportPreview();
 
     // Top leads strip
@@ -10145,6 +10188,73 @@ function renderCreditUsage(d) {
       subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="mailto:hello@helvaro.pro?subject=Credit%20limiet%20verhogen">Limiet bereikt — vraag een upgrade aan →</a>';
     } else {
       subEl.textContent = line;
+    }
+  }
+}
+
+/* ============================================================
+   TRIAL BANNER (Dashboard page, top of main content)
+   ============================================================
+   Backed by api/leads.js mode=plan-status -> api/_plan.js. Stays
+   display:none for any client whose plan is active/cancelled/paused, or
+   for the fail-open default (blank Plan Status) every pre-trial client
+   already has — see TRIAL-DESIGN.md §7. Same throttle pattern as
+   loadCreditUsage() above: safe to call on every refreshData(). */
+let _planStatusLastFetch = 0;
+const PLAN_STATUS_MIN_INTERVAL = 4 * 60 * 1000; // throttle: at most 1 fetch / 4 min
+
+async function loadPlanStatus(force) {
+  if (!state.apiKey) return;
+  const now = Date.now();
+  if (!force && now - _planStatusLastFetch < PLAN_STATUS_MIN_INTERVAL) return;
+  _planStatusLastFetch = now;
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'plan-status' })
+    });
+    if (!r.ok) return; // fail silent — banner just stays hidden/stale, never an error toast
+    const d = await r.json();
+    renderPlanBanner(d);
+  } catch (err) {
+    // Network hiccup: leave the banner in whatever state it was already in.
+  }
+}
+
+function renderPlanBanner(d) {
+  const banner = document.getElementById('dash-trial-banner');
+  if (!banner) return;
+  if (!d || !d.show) { banner.style.display = 'none'; return; }
+
+  const iconEl  = document.getElementById('dash-trial-banner-icon');
+  const titleEl = document.getElementById('dash-trial-banner-title');
+  const subEl   = document.getElementById('dash-trial-banner-sub');
+  const ctaEl   = document.getElementById('dash-trial-banner-cta');
+
+  banner.style.display = '';
+  banner.className = 'dash-trial-banner ' + (d.status === 'expired' ? 'expired' : 'trial');
+
+  if (d.status === 'expired') {
+    if (iconEl)  iconEl.textContent = '⏸';
+    if (titleEl) titleEl.textContent = 'Je proefperiode is afgelopen';
+    // Deliberately non-alarming per TRIAL-DESIGN.md §3: leads are still
+    // captured, only the AI auto-reply stopped. Never phrased as an error.
+    if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — de AI beantwoordt ze alleen niet langer automatisch op WhatsApp.';
+    if (ctaEl) {
+      ctaEl.textContent = 'Heractiveer account';
+      ctaEl.href = 'mailto:hello@helvaro.pro?subject=Reactivatie%20account';
+    }
+  } else {
+    const daysLeft = d.daysLeft != null ? d.daysLeft : null;
+    if (iconEl)  iconEl.textContent = '🎁';
+    if (titleEl) titleEl.textContent = daysLeft != null
+      ? \`Nog \${daysLeft} dag\${daysLeft === 1 ? '' : 'en'} proefperiode\`
+      : 'Je proefperiode loopt';
+    if (subEl)   subEl.textContent = 'Alle functies zijn beschikbaar. Wil je blijven gebruiken na je proefperiode? Upgrade wanneer je klaar bent.';
+    if (ctaEl) {
+      ctaEl.textContent = 'Upgrade nu';
+      ctaEl.href = 'mailto:hello@helvaro.pro?subject=Upgrade%20na%20proefperiode';
     }
   }
 }

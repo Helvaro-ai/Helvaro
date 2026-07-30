@@ -17,6 +17,8 @@ const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fai
 // reply, only records usage after the fact. Helvaro's "reactie binnen 30
 // sec, 24/7" promise depends on that.
 const credits = require('./_credits');
+// Trial/plan-status interpretation. Pure, no I/O — see its file header.
+const { getPlanState } = require('./_plan');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -227,6 +229,70 @@ async function processMessage(phone, text) {
       if (!nudgeSent) console.error(`[whatsapp] paused-lead melding naar owner (${ownerPhoneP}) is niet aangekomen`);
     }
     return;
+  }
+
+  // 3c. PLAN STATUS CHECK — trial/expired/cancelled/paused clients. See
+  // TRIAL-DESIGN.md §3-7 and api/_plan.js's header for the full contract.
+  // getPlanState() fails OPEN on anything ambiguous (blank Plan Status,
+  // unparseable Trial Ends At, unrecognized value) — this branch only ever
+  // triggers for a client whose status is genuinely expired/cancelled/paused.
+  const planState = getPlanState(client.fields);
+  if (planState.isServiceStopped) {
+    // Was the AI already mid-dialogue with this person? If Conversation
+    // History already has prior turns, NEVER cut a real human off
+    // mid-conversation — let it finish exactly as if the plan were active.
+    // Only intercept BRAND NEW conversations (no prior turns yet). Parsed
+    // locally (not reusing the `history` variable, which isn't declared
+    // until step 4) — same per-branch duplication the pause-check above
+    // already uses for its own `pausedHistory`.
+    let priorHistory = [];
+    const priorStored = lead.fields['Conversation History'];
+    if (priorStored) { try { priorHistory = JSON.parse(priorStored); } catch { priorHistory = []; } }
+    const hasPriorTurns = Array.isArray(priorHistory) && priorHistory.length > 0;
+
+    if (!hasPriorTurns) {
+      console.log(`[WhatsApp] Lead ${phone} (project ${projectCode}) — Plan Status '${planState.status}', geen eerdere beurten. Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);
+
+      priorHistory.push({ role: 'user', content: text, ts: Date.now() });
+      if (priorHistory.length > 20) priorHistory = priorHistory.slice(-20);
+      await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(priorHistory) }, phone);
+
+      // Notify the client (fail-soft): a lead came in they need to handle
+      // themselves now that automation has stopped. Same contract as every
+      // other owner-notify call in this file: never let a notify failure
+      // read as a message-handling failure.
+      const ownerPhoneExp = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone']  || '').toString().trim() || NOTIFY_PHONE;
+      const ownerEmailExp = (client.fields['fldDBJCN6dVMA8jax'] || client.fields['Rapport Email'] || '').toString().trim();
+      const leadNameExp   = lead.fields['fldbk0LVNckOU0bqA'] || lead.fields['Name'] || '';
+      const clientNameExp = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name'] || '';
+      const statusLabels  = { expired: 'verlopen', cancelled: 'opgezegd', paused: 'gepauzeerd' };
+      const statusLabel   = statusLabels[planState.status] || planState.status;
+
+      if (ownerPhoneExp) {
+        const nudge =
+          `[Actie nodig] Nieuwe lead. AI staat stil (${statusLabel})\n\n` +
+          `${leadNameExp || phone} schreef net. Je account is ${statusLabel}, dus de AI antwoordt niet automatisch. Het bericht is wel opgeslagen.\n\n` +
+          `"${text.slice(0, 280)}"\n\n` +
+          `Open de lead: https://app.helvaro.pro/dashboard`;
+        const nudgeSentExp = await sendWA(ownerPhoneExp, nudge);
+        if (!nudgeSentExp) console.error(`[whatsapp] plan-status melding naar owner (${ownerPhoneExp}) is niet aangekomen`);
+      }
+      if (ownerEmailExp) {
+        sendOwnerEmail({
+          to: ownerEmailExp,
+          subject: `[Actie nodig] Nieuwe lead. AI staat stil (${statusLabel})`,
+          heading: `Nieuwe lead — automatische AI-opvolging staat stil`,
+          leadName: leadNameExp, phone, projectCode, clientName: clientNameExp,
+          body:
+            `<p>Je accountstatus is <strong>${escEmail(statusLabel)}</strong>, dus de AI beantwoordt deze lead niet automatisch. Het bericht is wel opgeslagen en zichtbaar in je dashboard.</p>` +
+            `<p style="background:#fef3c7;padding:12px;border-radius:8px">"${escEmail(text.slice(0, 280))}"</p>`
+        }).catch(() => {});
+      }
+      return;
+    }
+    // else: conversation already in flight — fall through to the normal
+    // flow below exactly as if the plan were active. Cutting a real human
+    // off mid-conversation reads as a broken product, not a paywall.
   }
 
   // 4. Load conversation history

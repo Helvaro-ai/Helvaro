@@ -6,6 +6,8 @@ const { pgFetch } = require('./_pgapi');
 // Credit/usage accounting — see its file header for the fail-open contract
 // and the INTERNAL_PROJECT_CODE decision for founder-only tools below.
 const credits = require('./_credits');
+// Trial/plan-status interpretation (pure, no I/O) — see its file header.
+const { getPlanState, computeTrialEndsAt, FIELD: PLAN_FIELD, VALID_STATUSES: PLAN_STATUSES } = require('./_plan');
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
@@ -60,6 +62,25 @@ function escHtml(s) {
 
 function generateApiKey() {
   return crypto.randomBytes(24).toString('base64url').slice(0, 32);
+}
+
+// Generic Client Config record PATCH by record id. typecast:true so a
+// singleSelect field (Plan Status) accepts a value that isn't already one
+// of its configured options without erroring — same reasoning admin.js's
+// client-creation PATCH already uses for Niche. Throws on failure; callers
+// decide how to log/degrade (see the trial-seeding and plan-admin-action
+// call sites below).
+async function _patchClientRecord(baseId, airtableToken, recordId, fields) {
+  const r = await fetch(`https://api.airtable.com/v0/${baseId}/tblPidTrwGRzRt4LZ/${recordId}`, {
+    method:  'PATCH',
+    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ fields, typecast: true }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`Airtable PATCH ${r.status}: ${t.slice(0, 300)}`);
+  }
+  return r.json();
 }
 
 // Friendly initial password: easy to read aloud + retype, still strong enough
@@ -294,6 +315,77 @@ module.exports = async function handler(req, res) {
         }
       } catch (err) {
         console.error('[admin] credit management error:', err.message);
+        return res.status(500).json({ error: err.message || 'Serverfout' });
+      }
+    }
+
+    // ── plan/trial management (admin only) ────────────────────────────────
+    // body: { mode: 'plan-extend-trial', projectCode, days? }   — pushes
+    //   Trial Ends At forward by `days` (default 7) from NOW, and forces
+    //   Plan Status back to 'trial' (covers extending a client who already
+    //   flipped to 'expired'). See TRIAL-DESIGN.md §4 "Day 14-21 reactivation
+    //   is one admin action".
+    // body: { mode: 'plan-set-active', projectCode }            — converts
+    //   to a paying client: Plan Status='active', Trial Ends At cleared.
+    // body: { mode: 'plan-set-status', projectCode, status }    — sets Plan
+    //   Status directly to any of trial/active/expired/cancelled/paused.
+    //   Setting 'trial' this way does NOT touch Trial Ends At — use
+    //   plan-extend-trial if you also want that (re)computed.
+    // Same "can return a real error" contract as the credit-admin modes
+    // above: if the Plan Status/Trial Ends At fields aren't on the schema
+    // yet, Airtable's PATCH rejects the unknown field name and that bubbles
+    // up here as a clear message rather than a silent no-op.
+    const PLAN_ADMIN_MODES = ['plan-extend-trial', 'plan-set-active', 'plan-set-status'];
+    if (PLAN_ADMIN_MODES.includes(body.mode)) {
+      const pProvided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(pProvided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const projectCode = String(body.projectCode || '').trim().toUpperCase();
+      if (!projectCode) return res.status(400).json({ error: 'projectCode is verplicht' });
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await fetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        const cData = await cRes.json();
+        const rec = (cData.records || [])[0];
+        if (!rec) return res.status(404).json({ error: `Geen klant gevonden met Project Code "${projectCode}"` });
+
+        if (body.mode === 'plan-extend-trial') {
+          const days = Math.max(1, Math.min(90, Math.round(Number(body.days) || 7)));
+          // computeTrialEndsAt() (used at onboarding) is fixed at the
+          // trial's canonical 14-day length — an extension isn't a fresh
+          // 14-day trial, it's "N more days from now", so compute that
+          // directly here instead.
+          const extendedEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+          await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, rec.id, {
+            [PLAN_FIELD.STATUS]:        'trial',
+            [PLAN_FIELD.TRIAL_ENDS_AT]: extendedEndsAt,
+          });
+          return res.status(200).json({ ok: true, status: 'trial', trialEndsAt: extendedEndsAt });
+        }
+        if (body.mode === 'plan-set-active') {
+          // null (not '') clears an Airtable dateTime field — same
+          // clear-a-field convention used elsewhere in this codebase (e.g.
+          // leads.js's Phone-clear on lead anonymization).
+          await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, rec.id, {
+            [PLAN_FIELD.STATUS]:        'active',
+            [PLAN_FIELD.TRIAL_ENDS_AT]: null,
+          });
+          return res.status(200).json({ ok: true, status: 'active' });
+        }
+        if (body.mode === 'plan-set-status') {
+          const status = String(body.status || '').trim().toLowerCase();
+          if (!PLAN_STATUSES.has(status)) {
+            return res.status(400).json({ error: `Ongeldige status. Gebruik een van: ${[...PLAN_STATUSES].join(', ')}` });
+          }
+          await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, rec.id, { [PLAN_FIELD.STATUS]: status });
+          return res.status(200).json({ ok: true, status });
+        }
+      } catch (err) {
+        console.error('[admin] plan management error:', err.message);
         return res.status(500).json({ error: err.message || 'Serverfout' });
       }
     }
@@ -1137,6 +1229,27 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // ── Self-serve onboarding only: start the 14-day free trial
+      // (TRIAL-DESIGN.md §6). Same graceful-degradation contract as the
+      // Credit Allowance seeding right above: if the Plan Status / Trial
+      // Ends At fields somehow reject the PATCH, the client is still
+      // created — getPlanState() fails open to 'active' for any client with
+      // a blank/missing Plan Status, so a failed trial-seed here degrades to
+      // "behaves like a plain active client", never to "blocked".
+      let trialEndsAt = null;
+      if (isOnboard) {
+        try {
+          trialEndsAt = computeTrialEndsAt();
+          await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, createData.id, {
+            [PLAN_FIELD.STATUS]:        'trial',
+            [PLAN_FIELD.TRIAL_ENDS_AT]: trialEndsAt,
+          });
+        } catch (err) {
+          console.warn('[admin] onboarding: kon trial niet starten (Plan Status/Trial Ends At velden bestaan mogelijk nog niet):', err.message);
+          trialEndsAt = null; // eerlijk in de notify-mail hieronder: niet effectief gezet
+        }
+      }
+
       // ── Also create the matching User record so the klant can actually log in.
       //    Generate a friendly random password (caller can override via body.password).
       //    USERS_TABLE = tbl2hrPW7gIx5XF4S. Same field IDs as in auth.js.
@@ -1200,7 +1313,7 @@ module.exports = async function handler(req, res) {
       // never fail the onboarding request — the client is already created.
       if (isOnboard) {
         try {
-          await notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance });
+          await notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance, trialEndsAt });
         } catch (err) {
           console.warn('[admin] onboarding: signup-notificatie mislukt:', err.message);
         }
@@ -1216,6 +1329,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         id: createData.id, apiKey, projectCode, clientName, formUrl, dashboardUrl,
         userCreated,
+        trialEndsAt: trialEndsAt || undefined, // set only when the trial was actually seeded (see graceful-degradation comment above)
         loginPassword: userCreated ? loginPassword : undefined,  // surfaced once to the admin caller; not persisted in response logs
         // Honest partial-failure signal: the Client Config record above WAS
         // created successfully (createRes.ok), but the login account wasn't.
@@ -1435,7 +1549,7 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
 // alerts ('const to = process.env.NOTIFY_EMAIL; if (to) sendMail(...)') —
 // sendMail() never throws, and the catch below is a second, belt-and-braces
 // layer so this can never fail the onboarding request it's called from.
-async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance }) {
+async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance, trialEndsAt }) {
   const to = process.env.NOTIFY_EMAIL;
   if (!to) {
     console.warn('[admin] onboarding: NOTIFY_EMAIL niet ingesteld — geen signup-notificatie verstuurd voor', projectCode);
@@ -1444,6 +1558,9 @@ async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, cre
   const allowanceLine = creditAllowance > 0
     ? `<strong>${creditAllowance}</strong> credits`
     : `<span style="color:#e11d48">niet gezet — 'Credit Allowance' veld ontbreekt mogelijk nog op Airtable (zie CREDITS-VERCEL-SUMMARY.md)</span>`;
+  const trialLine = trialEndsAt
+    ? `<strong>14 dagen</strong> — eindigt ${escHtml(new Date(trialEndsAt).toLocaleDateString('nl-BE'))}`
+    : `<span style="color:#e11d48">niet gezet — 'Plan Status'/'Trial Ends At' velden ontbreken mogelijk nog op Airtable (zie TRIAL-DESIGN.md)</span>`;
   const { sendMail } = require('./_mailer');
   return sendMail({
     to,
@@ -1456,6 +1573,7 @@ async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, cre
         <tr><td style="padding:4px 0;color:#666">E-mail</td><td style="padding:4px 0">${escHtml(email)}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Niche</td><td style="padding:4px 0">${escHtml(sector || '—')}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Credit Allowance</td><td style="padding:4px 0">${allowanceLine}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Proefperiode</td><td style="padding:4px 0">${trialLine}</td></tr>
       </table>
     </div>`,
   }).catch(err => console.warn('[admin] onboarding: signup-notificatie mislukt:', err && err.message));

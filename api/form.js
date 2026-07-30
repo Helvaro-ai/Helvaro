@@ -6,6 +6,8 @@
 // call in any environment: it's a no-op (getContext().waitUntil?.()) when
 // the platform doesn't provide a request context (e.g. local dev).
 const { waitUntil } = require('@vercel/functions');
+// Trial/plan-status interpretation. Pure, no I/O — see its file header.
+const { getPlanState } = require('./_plan');
 
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
@@ -103,6 +105,13 @@ module.exports = async function handler(req, res) {
     let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
     let   ownerEmail = '';                    // per-client notify email (overrides NOTIFY_EMAIL env)
     let   lang       = 'nl';                   // nl / fr / en. Language for the welcome WhatsApp
+    // TRIAL-DESIGN.md §3/§7: lead capture ALWAYS works, regardless of plan
+    // state. The only thing plan state changes below is whether the
+    // automated first WhatsApp greeting gets sent — never whether the lead
+    // gets created. Defaults to 'active' (getPlanState's own fail-open
+    // behaviour) if the client lookup below fails for any reason, so a
+    // lookup hiccup can never accidentally suppress a real client's greeting.
+    let   planState = { status: 'active', isServiceStopped: false };
 
     try {
       const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
@@ -129,6 +138,7 @@ module.exports = async function handler(req, res) {
           // Per-client owner contacts (override the env-var defaults)
           ownerPhone = (match.fields['fldZEApe0gfse07AU'] || match.fields['Notify Phone']  || '').toString().trim();
           ownerEmail = (match.fields['fldDBJCN6dVMA8jax'] || match.fields['Rapport Email'] || '').toString().trim();
+          planState  = getPlanState(match.fields);
         }
       }
       // 429 / error → use defaults, don't block the form submission
@@ -225,30 +235,41 @@ module.exports = async function handler(req, res) {
     const deferredSend = new Promise((resolve) => {
       setTimeout(async () => {
         try {
-          const waOk = await sendWA(waPhone, waGreeting);
-          if (!waOk) {
-            // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
-            await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+          // TRIAL-DESIGN.md §3: lead capture (above) ALWAYS runs regardless
+          // of plan state. The ONLY thing plan state changes is whether the
+          // automated first WhatsApp greeting goes out — the lead is still
+          // created and visible in the dashboard either way. This is NOT a
+          // send failure (skip flagWaFailed's "Niet bereikbaar" treatment),
+          // it's a deliberate no-send: the owner notification below still
+          // fires so they know to follow up manually.
+          if (planState.isServiceStopped) {
+            console.log(`[form] project ${project_code} — Plan Status '${planState.status}', automatische WhatsApp-begroeting overgeslagen. Lead is wel aangemaakt.`);
           } else {
-            // Persist the opening message into Conversation History so the dashboard
-            // shows the very first bubble of the conversation (otherwise it looks
-            // like the lead started the chat unprompted).
-            //
-            // IMPORTANT: keep Conversation State = 'new' here. State only flips to
-            // 'in_progress' when the LEAD replies. The cron-followup job relies on
-            // this signal to know which leads still need a re-engagement message.
-            try {
-              await atFetch(
-                `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
-                {
-                  method:  'PATCH',
-                  headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-                  body:    JSON.stringify({ fields: {
-                    'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
-                  }})
-                }
-              ).catch(() => {});
-            } catch { /* non-critical */ }
+            const waOk = await sendWA(waPhone, waGreeting);
+            if (!waOk) {
+              // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
+              await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+            } else {
+              // Persist the opening message into Conversation History so the dashboard
+              // shows the very first bubble of the conversation (otherwise it looks
+              // like the lead started the chat unprompted).
+              //
+              // IMPORTANT: keep Conversation State = 'new' here. State only flips to
+              // 'in_progress' when the LEAD replies. The cron-followup job relies on
+              // this signal to know which leads still need a re-engagement message.
+              try {
+                await atFetch(
+                  `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+                  {
+                    method:  'PATCH',
+                    headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ fields: {
+                      'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
+                    }})
+                  }
+                ).catch(() => {});
+              } catch { /* non-critical */ }
+            }
           }
           if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
         } catch (err) {

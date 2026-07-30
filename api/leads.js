@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const _gcal   = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
+const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -748,6 +749,46 @@ module.exports = async function handler(req, res) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       const summary = await credits.getUsageSummary(projectCode);
       return res.status(200).json(summary);
+    }
+
+    // ── plan-status: client-facing trial/expiry banner data ────────────────
+    // body: { mode: 'plan-status' }
+    // Returns { show:false } when the client's plan needs no banner (active,
+    // or blank Plan Status — the fail-open default every pre-trial client
+    // has), or { show:true, status:'trial'|'expired', daysLeft, trialEndsAt }
+    // otherwise. 'cancelled'/'paused' also return show:false here — the
+    // dashboard banner spec (TRIAL-DESIGN.md's touchpoint table) only covers
+    // trial/expired; api/whatsapp.js and api/cron-followup.js still treat
+    // cancelled/paused as service-stopped independently of this banner.
+    // Never errors the dashboard: any problem just means the banner stays
+    // hidden, same fail-open contract as credit-usage above.
+    if (body.mode === 'plan-status') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!cRes.ok) return res.status(200).json({ show: false });
+        const cData = await cRes.json();
+        const rec = (cData.records || [])[0];
+        if (!rec) return res.status(200).json({ show: false });
+
+        const planState = getPlanState(rec.fields || {});
+        if (planState.status !== 'trial' && planState.status !== 'expired') {
+          return res.status(200).json({ show: false });
+        }
+        return res.status(200).json({
+          show: true,
+          status: planState.status,
+          daysLeft: planState.daysLeft,
+          trialEndsAt: planState.trialEndsAt,
+        });
+      } catch (err) {
+        console.warn('[plan-status] failed, hiding banner:', err.message);
+        return res.status(200).json({ show: false });
+      }
     }
 
     // ── APPOINTMENTS — custom calendar (vervangt Calendly) ────────────────
@@ -1901,3 +1942,15 @@ async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable
   const when = formatApptDateTime(startTime, templateLang);
   await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
 }
+
+// ── Named exports (in addition to the default route handler) ───────────────
+// `module.exports` above is the async handler function itself (a plain JS
+// function is also a plain JS object, so attaching properties onto it is
+// safe — Vercel just calls the function it required, extra properties are
+// ignored). api/cron-followup.js's runTrialLifecycle() reuses these two
+// exact aggregation functions for the day-7/day-11 trial emails (TRIAL-
+// DESIGN.md §5: "The ROI report IS the sales pitch" — same honest-numbers
+// aggregation the Resultaten panel already uses, not a second copy of the
+// logic). No behaviour change to this file's own HTTP route.
+module.exports.aggregateReportPeriod = aggregateReportPeriod;
+module.exports.reportPeriodBounds    = reportPeriodBounds;

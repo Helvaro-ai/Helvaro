@@ -19,6 +19,14 @@ const { pgFetch } = require('./_pgapi');
 const { fetchWebsite } = require('./lib/fetch-website');
 // Credit/usage accounting — see its file header for the fail-open contract.
 const credits = require('./_credits');
+// Trial/plan-status interpretation (pure, no I/O) — see its file header.
+const { getPlanState, computeTrialStartMs, FIELD: PLAN_FIELD } = require('./_plan');
+// aggregateReportPeriod: the SAME honest-numbers aggregation the dashboard's
+// Resultaten panel uses (api/leads.js's report-summary mode) — reused here
+// for the trial day-7/day-11 emails per TRIAL-DESIGN.md §5 ("the ROI report
+// IS the sales pitch"). Attached as a named export on top of the default
+// route handler — see leads.js's own comment at the bottom of that file.
+const { aggregateReportPeriod } = require('./leads');
 
 // ── Compliance fix 5 (COMPLIANCE-AUDIT.md section 4.1) — fixed,
 // code-controlled outreach footer ───────────────────────────────────────
@@ -241,13 +249,27 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // ── Trial lifecycle (daily, every client with Plan Status='trial') ──────
+    // TRIAL-DESIGN.md §4/§7: day-11 "3 dagen resterend" nudge + Sindi alert,
+    // day-7 "wat Helvaro deze week deed" report, and the trial->expired flip
+    // once Trial Ends At has passed. Runs every day (not gated to Mondays —
+    // unlike the weekly report above, this has its own once-only markers per
+    // client, see runTrialLifecycle()'s own header). Entirely independent of
+    // api/whatsapp.js's OWN date-derived expiry check (getPlanState()) — this
+    // cron is what performs the one-time Plan Status write + sends the
+    // touchpoint emails, it isn't what makes expiry take effect.
+    const trialResult = await runTrialLifecycle(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
+      console.error('[cron-followup] trial lifecycle failed:', e.message);
+      return null;
+    });
+
     // ── Envoy: gepersonaliseerde outreach naar verse Apify-leads (server-side) ──
     const outreachResult = await runOutreach(AIRTABLE_TOKEN, BASE_ID).catch(e => {
       console.error('[cron-followup] outreach failed:', e.message);
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, outreach: outreachResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult, outreach: outreachResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -1223,5 +1245,303 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
   }
   console.log(`[cron-followup] appointment reminders: checked ${appointments.length}, sent ${sent}, skipped ${skipped}`);
   return { checked: appointments.length, sent, skipped };
+}
+
+// ── Trial lifecycle ──────────────────────────────────────────────────────
+// TRIAL-DESIGN.md §4/§7. For every Client Config record whose RAW Plan
+// Status is literally 'trial':
+//   - past Trial Ends At        -> flip Plan Status to 'expired', alert
+//                                   client + Sindi. Once.
+//   - ~3 days remaining         -> "nog 3 dagen" email + Sindi alert
+//                                   (the phone-call trigger). Once.
+//   - ~7 days elapsed           -> "wat Helvaro deze week deed" email. Once.
+//
+// "Once" is tracked via credits.getTrialMarkers()/setTrialMarker(), which
+// piggyback on the EXISTING Credit Period field (no new Airtable field —
+// see that file's own header for the merge-safety contract with the credit
+// system's own writes to the same field).
+//
+// Fail-soft throughout, per client AND per step: one client's Airtable/mail
+// hiccup must never abort the run for every other trial client, and an
+// email failure must NEVER change service state (the Plan Status write and
+// the email send are independent try/catches — a mail failure never
+// prevents the flip to 'expired', and a flip failure never prevents the
+// attempt to alert).
+async function runTrialLifecycle(airtableToken, baseId, leadsTable) {
+  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+
+  const formula = encodeURIComponent(`{${PLAN_FIELD.STATUS}}="trial"`);
+  const url = `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${formula}&pageSize=100`;
+  let res;
+  try {
+    res = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  } catch (err) {
+    console.error('[trial] clients fetch threw:', err.message);
+    return null;
+  }
+  if (!res.ok) { console.error('[trial] clients fetch failed', res.status); return null; }
+  let data;
+  try { data = await res.json(); } catch (err) { console.error('[trial] clients fetch parse failed:', err.message); return null; }
+  const clientRecords = data.records || [];
+
+  let day7Sent = 0, day11Sent = 0, expiredNow = 0, skipped = 0;
+
+  for (const client of clientRecords) {
+    try {
+      const fields = client.fields || {};
+      const projectCode = fields['fldN4dL0bGgfBOXwM'] || fields['Project Code'] || '';
+      const clientName  = fields['fldAnB848Sr5jl6dq'] || fields['Client Name']  || '';
+      const reportEmail = fields['fldDBJCN6dVMA8jax'] || fields['Rapport Email'] || '';
+      if (!projectCode) { skipped++; continue; }
+
+      const planState = getPlanState(fields);
+      const markers = await credits.getTrialMarkers(projectCode).catch(err => {
+        console.warn(`[trial] ${projectCode} getTrialMarkers failed, treating as "nothing sent yet":`, err.message);
+        return {};
+      });
+
+      // 1. Past Trial Ends At (date-derived, same check whatsapp.js already
+      // trusts on every message) -> flip Plan Status + alert. Once only.
+      if (planState.status === 'expired') {
+        if (!markers.expiredSent) {
+          try {
+            await patchClientFields(airtableToken, baseId, client.id, { [PLAN_FIELD.STATUS]: 'expired' });
+          } catch (err) {
+            console.error(`[trial] ${projectCode} kon Plan Status niet naar expired zetten:`, err.message);
+          }
+          await sendTrialExpiredEmails({ clientName, projectCode, reportEmail }).catch(err =>
+            console.error(`[trial] ${projectCode} expired-alert mislukt:`, err.message));
+          try {
+            await credits.setTrialMarker(projectCode, { expiredSent: true });
+          } catch (err) {
+            console.error(`[trial] ${projectCode} kon expired-marker niet opslaan (alert is al verstuurd, mogelijk dubbele alert volgende run):`, err.message);
+          }
+          expiredNow++;
+        } else {
+          skipped++; // already flipped + alerted on a previous run
+        }
+        continue; // nothing else to check this run for a client that's expired
+      }
+
+      if (planState.status !== 'trial') { skipped++; continue; } // defensive — shouldn't happen given the fetch formula
+
+      // 2. ~3 days remaining -> day-11 email + Sindi alert. Once only.
+      if (planState.daysLeft <= 3 && !markers.day11Sent) {
+        const stats = await computeTrialStats(airtableToken, baseId, leadsTable, projectCode, planState.trialEndsAt).catch(() => null);
+        await sendTrialProgressEmail({ kind: 'day11', to: reportEmail, clientName, projectCode, daysLeft: planState.daysLeft, stats }).catch(err =>
+          console.error(`[trial] ${projectCode} day11-email mislukt:`, err.message));
+        await sendSindiTrialAlert({ kind: 'day11', clientName, projectCode, daysLeft: planState.daysLeft, stats }).catch(err =>
+          console.error(`[trial] ${projectCode} day11 Sindi-alert mislukt:`, err.message));
+        try {
+          await credits.setTrialMarker(projectCode, { day11Sent: true });
+        } catch (err) {
+          console.error(`[trial] ${projectCode} kon day11-marker niet opslaan (mail is al verstuurd, mogelijk dubbele mail volgende run):`, err.message);
+        }
+        day11Sent++;
+        continue; // day-7 and day-11 are mutually exclusive per run — no need to also check day-7 below
+      }
+
+      // 3. ~7 days elapsed -> mid-trial "wat Helvaro deze week deed". Once only.
+      if (!markers.day7Sent) {
+        const startMs = computeTrialStartMs(planState.trialEndsAt);
+        const elapsedDays = startMs ? Math.floor((Date.now() - startMs) / (24 * 60 * 60 * 1000)) : null;
+        if (elapsedDays !== null && elapsedDays >= 7) {
+          const stats = await computeTrialStats(airtableToken, baseId, leadsTable, projectCode, planState.trialEndsAt).catch(() => null);
+          await sendTrialProgressEmail({ kind: 'day7', to: reportEmail, clientName, projectCode, daysLeft: planState.daysLeft, stats }).catch(err =>
+            console.error(`[trial] ${projectCode} day7-email mislukt:`, err.message));
+          try {
+            await credits.setTrialMarker(projectCode, { day7Sent: true });
+          } catch (err) {
+            console.error(`[trial] ${projectCode} kon day7-marker niet opslaan (mail is al verstuurd, mogelijk dubbele mail volgende run):`, err.message);
+          }
+          day7Sent++;
+        }
+      }
+    } catch (err) {
+      // Fail-soft per client: never let one bad record abort the whole run.
+      console.error('[trial] client-loop fout (overgeslagen):', err.message);
+      skipped++;
+    }
+    // Slight delay, same rate-limit courtesy as the other loops in this file.
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  console.log(`[trial] checked ${clientRecords.length}, day7Sent ${day7Sent}, day11Sent ${day11Sent}, expiredNow ${expiredNow}, skipped ${skipped}`);
+  return { checked: clientRecords.length, day7Sent, day11Sent, expiredNow, skipped };
+}
+
+// Generic Client Config field PATCH. Small helper so runTrialLifecycle()
+// above doesn't need to duplicate the fetch boilerplate for the one write
+// it needs (flipping Plan Status). Throws on failure — caller decides how
+// to log/handle it (never lets a throw here change what emails get sent).
+async function patchClientFields(airtableToken, baseId, recordId, fields) {
+  const r = await fetch(`https://api.airtable.com/v0/${baseId}/tblPidTrwGRzRt4LZ/${recordId}`, {
+    method:  'PATCH',
+    headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ fields }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error(`Airtable PATCH ${r.status}: ${t.slice(0, 200)}`);
+  }
+  return r.json();
+}
+
+// Cumulative stats since trial start (not a rolling 7-day window — see
+// TRIAL-DESIGN.md §5's example: "In 11 dagen: 23 leads, 14 gekwalificeerd,
+// 6 afspraken, €12.400 verwachte pipeline" is cumulative since day 0).
+// Reuses api/leads.js's aggregateReportPeriod(), the exact same honest-
+// numbers aggregation the dashboard's Resultaten panel uses — never a
+// second, potentially-drifting copy of that logic. Returns null on any
+// fetch failure (email functions below degrade gracefully to "geen data
+// beschikbaar" rather than showing fabricated/blank numbers as real zeros).
+async function computeTrialStats(airtableToken, baseId, leadsTable, projectCode, trialEndsAtIso) {
+  const startMs = computeTrialStartMs(trialEndsAtIso);
+  if (!startMs) return null;
+  try {
+    const all = [];
+    let offset = '';
+    // Trial-stage clients are, by definition, at most 14 days in — a
+    // handful of pages is generous headroom (500 leads in 2 weeks would be
+    // an extreme outlier for this product), same pagination pattern as
+    // leads.js's report-summary mode, just a smaller cap.
+    for (let page = 0; page < 5; page++) {
+      const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${projectCode.replace(/"/g, '\\"')}"`);
+      const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=100${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+      if (!r.ok) break;
+      const d = await r.json();
+      all.push(...(d.records || []));
+      if (!d.offset) break;
+      offset = d.offset;
+    }
+    return aggregateReportPeriod(all, startMs, Date.now());
+  } catch (err) {
+    console.warn(`[trial] computeTrialStats(${projectCode}) failed:`, err.message);
+    return null;
+  }
+}
+
+// Day-7 / day-11 trial progress email TO THE CLIENT. Same visual shape as
+// sendWeeklyReportEmail() above (design-system-consistent, not a
+// duplicated palette) but framed as cumulative trial progress + an
+// explicit upgrade nudge instead of a routine weekly digest. TRIAL-
+// DESIGN.md §5's honesty rule applies identically: pipeline value is the
+// client's OWN estimate, never described as revenue Helvaro generated.
+async function sendTrialProgressEmail({ kind, to, clientName, projectCode, daysLeft, stats }) {
+  if (!to) return false;
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString('nl-NL');
+  const s = stats || { leadsReceived: 0, qualifiedCount: 0, appointmentsBooked: 0, pipelineValueTotal: null, pipelineValueCount: 0 };
+
+  const isDay11 = kind === 'day11';
+  const heading = isDay11 ? `Nog ${daysLeft} dag${daysLeft === 1 ? '' : 'en'} proefperiode` : 'Wat Helvaro deze week voor je deed';
+  const intro = isDay11
+    ? `Je gratis proefperiode loopt bijna af. Hier zijn je échte cijfers tot nu toe:`
+    : `Een week geleden startte je met Helvaro. Hier is wat er sindsdien gebeurde, automatisch, zonder dat je iets hoefde te doen:`;
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:auto;padding:24px;color:#111;background:#fff">
+      <h2 style="color:#1e6fd9;margin:0 0 4px">${esc(heading)}</h2>
+      <p style="color:#666;margin:0 0 28px;font-size:14px">${esc(intro)}</p>
+
+      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:8px">
+        <tr>
+          <td style="background:#f0f6ff;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#1e6fd9">${s.leadsReceived}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Leads</div>
+          </td>
+          <td style="background:#ecfdf5;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#059669">${s.qualifiedCount}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Gekwalificeerd</div>
+          </td>
+          <td style="background:#ecfeff;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#0891b2">${s.appointmentsBooked}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Afspraken geboekt</div>
+          </td>
+          <td style="background:#fff7ed;border-radius:12px;padding:18px;text-align:center;width:25%">
+            <div style="font-size:28px;font-weight:700;color:#ea580c">${fmtEuro(s.pipelineValueTotal)}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">Verwachte pipeline waarde${s.pipelineValueCount ? '' : ' (nog geen schattingen)'}</div>
+          </td>
+        </tr>
+      </table>
+      <p style="font-size:11px;color:#999;margin:0 0 24px;text-align:center">
+        Verwachte pipeline waarde is een door jou ingeschatte waarde per lead — geen omzet die Helvaro gegenereerd heeft.
+      </p>
+
+      ${isDay11 ? `
+      <div style="background:#fef3c7;border-radius:12px;padding:18px;margin-bottom:24px;text-align:center">
+        <p style="margin:0 0 12px;font-weight:600;color:#92400e">Wil je Helvaro blijven gebruiken na je proefperiode?</p>
+        <a href="mailto:hello@helvaro.pro?subject=Upgrade%20na%20proefperiode%20-%20${encodeURIComponent(projectCode)}" style="display:inline-block;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Upgrade nu</a>
+      </div>` : ''}
+
+      <p style="text-align:center;margin:28px 0 8px">
+        <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
+      </p>
+
+      <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;text-align:center">
+        Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp · <a href="https://helvaro.pro" style="color:#999">helvaro.pro</a>
+      </p>
+    </div>`;
+
+  const { sendMail } = require('./_mailer');
+  const subject = isDay11
+    ? `Nog ${daysLeft} dag${daysLeft === 1 ? '' : 'en'} — jouw Helvaro proefperiode`
+    : `Wat Helvaro deze week voor je deed — ${clientName}`;
+  const sent = await sendMail({ to, subject, html }).catch(err => { console.error('[trial email]', err && err.message); return { ok: false }; });
+  return !!(sent && sent.ok);
+}
+
+// Sindi's own alert for the day-11 touchpoint — the phone-call trigger
+// (TRIAL-DESIGN.md §4: "Day 11 is the conversion moment — it exists to
+// trigger Sindi's phone call, not to automate the close") — reused for the
+// expiry alert too (kind='expired', see sendTrialExpiredEmails below).
+async function sendSindiTrialAlert({ kind, clientName, projectCode, daysLeft, stats }) {
+  const to = process.env.NOTIFY_EMAIL;
+  if (!to) { console.warn('[trial] NOTIFY_EMAIL niet ingesteld — geen Sindi-alert verstuurd voor', projectCode); return; }
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const s = stats || {};
+  const subject = kind === 'expired'
+    ? `[Helvaro] Trial verlopen: ${clientName}`
+    : `[Helvaro] Bel ${clientName} — nog ${daysLeft} dag${daysLeft === 1 ? '' : 'en'} trial`;
+  const { sendMail } = require('./_mailer');
+  await sendMail({
+    to, subject,
+    html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:auto;padding:20px;color:#111">
+      <h2 style="margin:0 0 12px">${kind === 'expired' ? 'Trial verlopen' : 'Trial loopt bijna af — bel deze klant'}</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr><td style="padding:4px 0;color:#666;width:140px">Klant</td><td style="padding:4px 0;font-weight:600">${esc(clientName)}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Projectcode</td><td style="padding:4px 0;font-family:monospace">${esc(projectCode)}</td></tr>
+        ${daysLeft != null ? `<tr><td style="padding:4px 0;color:#666">Dagen resterend</td><td style="padding:4px 0">${esc(daysLeft)}</td></tr>` : ''}
+        <tr><td style="padding:4px 0;color:#666">Leads</td><td style="padding:4px 0">${esc(s.leadsReceived ?? '—')}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Gekwalificeerd</td><td style="padding:4px 0">${esc(s.qualifiedCount ?? '—')}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Afspraken</td><td style="padding:4px 0">${esc(s.appointmentsBooked ?? '—')}</td></tr>
+      </table>
+    </div>`,
+  }).catch(err => console.warn('[trial] Sindi-alert mislukt:', err && err.message));
+}
+
+// Fires both alerts for a trial that just crossed Trial Ends At: the client
+// (fail-soft, non-alarming per TRIAL-DESIGN.md §3 — capture continues,
+// automation stops) and Sindi (reactivation trigger). Wrapped so a failure
+// in either send never affects the caller's Plan Status write or marker
+// persistence, which happen independently in runTrialLifecycle() above.
+async function sendTrialExpiredEmails({ clientName, projectCode, reportEmail }) {
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const { sendMail } = require('./_mailer');
+  if (reportEmail) {
+    await sendMail({
+      to: reportEmail,
+      subject: `Je Helvaro proefperiode is afgelopen`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px;color:#111">
+        <h2 style="color:#1e6fd9;margin:0 0 12px">Je proefperiode is afgelopen</h2>
+        <p style="color:#444;line-height:1.6">Nieuwe leads blijven gewoon binnenkomen en zichtbaar in je dashboard — daar verandert niets aan. De AI beantwoordt ze alleen niet langer automatisch op WhatsApp.</p>
+        <p style="color:#444;line-height:1.6">Wil je de automatische opvolging weer aanzetten? Antwoord op deze mail of neem contact op, dan zetten we het meteen weer aan.</p>
+        <a href="mailto:hello@helvaro.pro?subject=Reactivatie%20-%20${encodeURIComponent(projectCode)}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Heractiveer mijn account</a>
+        <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · ${esc(clientName)}</p>
+      </div>`,
+    }).catch(err => console.warn(`[trial] expired-mail naar klant (${projectCode}) mislukt:`, err && err.message));
+  }
+  await sendSindiTrialAlert({ kind: 'expired', clientName, projectCode, daysLeft: 0, stats: null });
 }
 
