@@ -974,7 +974,11 @@ module.exports = async function handler(req, res) {
         return res.status(429).json({ error: `Dagelijkse limiet van ${TEST_MSG_DAILY_LIMIT} test-berichten bereikt voor jouw account. Probeer morgen opnieuw.` });
       }
 
-      const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+      // Per-client sender number (multitenancy prep): blank on every client
+      // today, in which case this resolves to '' and we fall back to the
+      // shared env var below — identical to pre-change behaviour.
+      const clientPnid      = await getClientWaPhoneNumberId(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+      const PHONE_NUMBER_ID = clientPnid || process.env.PHONE_NUMBER_ID;
       const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
       if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
         return res.status(500).json({ error: 'WhatsApp configuratie ontbreekt op de server' });
@@ -1206,7 +1210,10 @@ module.exports = async function handler(req, res) {
       const hoursSinceInbound = lastInboundTs !== null ? (Date.now() - lastInboundTs) / 3_600_000 : null;
       const withinWindow = hoursSinceInbound !== null && hoursSinceInbound < 24;
 
-      const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+      // Per-client sender number (multitenancy prep) — see the test-message
+      // mode above for the full comment; same fallback contract here.
+      const clientPnid      = await getClientWaPhoneNumberId(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+      const PHONE_NUMBER_ID = clientPnid || process.env.PHONE_NUMBER_ID;
       const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
       if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
         return res.status(500).json({ error: 'WhatsApp configuratie ontbreekt op de server' });
@@ -1460,6 +1467,40 @@ module.exports = async function handler(req, res) {
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ── Per-client WhatsApp sender number (multitenancy prep) ──────────────────
+// Resolves which Phone Number ID to send FROM for a given client. Blank on
+// every client today (single shared WhatsApp Business number) — returns ''
+// in that case, and every call site here falls back to the shared
+// PHONE_NUMBER_ID env var exactly like before. This indirection is what lets
+// a future per-client Meta Tech Provider / Embedded Signup number become a
+// config change instead of a rewrite later (Tech Provider enrolment itself
+// is explicitly out of scope for now — see the multitenancy-prep brief).
+// fldbrhlSrsmlJwcYr = WhatsApp Phone Number ID field on Client Config
+// (tblPidTrwGRzRt4LZ). Mirrors api/whatsapp.js's F_WA_PHONE_NUMBER_ID.
+const F_WA_PHONE_NUMBER_ID = 'fldbrhlSrsmlJwcYr';
+const _waPnidCache = new Map();
+const WA_PNID_TTL  = 5 * 60 * 1000;
+async function getClientWaPhoneNumberId(projectCode, airtableToken, baseId, clientsTable) {
+  if (!projectCode) return '';
+  const cached = _waPnidCache.get(projectCode);
+  if (cached && Date.now() - cached.ts < WA_PNID_TTL) return cached.value;
+  try {
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+    const r = await atFetch(
+      `https://api.airtable.com/v0/${baseId}/${clientsTable}?filterByFormula=${formula}&maxRecords=1`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (!r.ok) return '';
+    const rec   = ((await r.json()).records || [])[0];
+    const value = (rec && rec.fields && (rec.fields[F_WA_PHONE_NUMBER_ID] || rec.fields['WhatsApp Phone Number ID'])) || '';
+    _waPnidCache.set(projectCode, { value, ts: Date.now() });
+    return value;
+  } catch (e) {
+    console.error('[WhatsApp] client phone-number-id lookup mislukt (valt terug op gedeeld nummer):', e && e.message);
+    return '';
+  }
 }
 
 // ── Google Calendar access for a project (optional, fail-soft) ────────────────
@@ -1864,19 +1905,22 @@ async function sendWATemplate(to, templateName, lang, params, phoneNumberId, tok
 // regardless — useful if the owner has so far only gotten one variant
 // approved in Meta Business Manager.
 async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable, projectCode, phone, leadName, startTime }) {
-  const TEMPLATE_NAME   = process.env.BOOKING_TEMPLATE_NAME;
-  const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
-  const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
-  if (!TEMPLATE_NAME || !PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
+  const TEMPLATE_NAME       = process.env.BOOKING_TEMPLATE_NAME;
+  const ENV_PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+  const WHATSAPP_TOKEN      = process.env.WHATSAPP_TOKEN;
+  if (!TEMPLATE_NAME || !WHATSAPP_TOKEN) {
     console.warn('[appointment-create] BOOKING_TEMPLATE_NAME of WhatsApp-config ontbreekt. Bevestiging overgeslagen (freeform buiten 24u-venster zou ban riskeren)');
     return;
   }
   const normalizedPhone = normalizePhoneForWA(phone);
   if (!normalizedPhone) { console.warn('[appointment-create] ongeldig telefoonnummer voor bevestiging, overgeslagen'); return; }
 
-  // Best-effort client lookup for name + language. A missing/failed lookup
-  // falls back to sensible defaults rather than blocking the confirmation.
-  let clientName = '', clientLang = 'nl';
+  // Best-effort client lookup for name + language + per-client WhatsApp
+  // sender number (F_WA_PHONE_NUMBER_ID — multitenancy prep, blank on every
+  // client today). A missing/failed lookup falls back to sensible defaults
+  // (incl. the shared PHONE_NUMBER_ID env var below) rather than blocking
+  // the confirmation.
+  let clientName = '', clientLang = 'nl', clientPnid = '';
   try {
     const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
     const cRes = await fetch(
@@ -1890,10 +1934,17 @@ async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable
         clientName = rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || '';
         const rawLang = (rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language'] || 'nl').toString().toLowerCase();
         clientLang = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
+        clientPnid = (rec.fields[F_WA_PHONE_NUMBER_ID] || rec.fields['WhatsApp Phone Number ID'] || '').toString().trim();
       }
     }
   } catch (err) {
     console.error('[appointment-create] klant-lookup voor bevestiging mislukt (gebruikt defaults):', err.message);
+  }
+
+  const PHONE_NUMBER_ID = clientPnid || ENV_PHONE_NUMBER_ID;
+  if (!PHONE_NUMBER_ID) {
+    console.warn('[appointment-create] Geen WhatsApp Phone Number ID (klant noch gedeeld). Bevestiging overgeslagen');
+    return;
   }
 
   const templateLang = process.env.BOOKING_TEMPLATE_LANG || clientLang;
