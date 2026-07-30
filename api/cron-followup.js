@@ -1326,6 +1326,20 @@ async function runTrialLifecycle(airtableToken, baseId, leadsTable) {
       if (planState.status !== 'trial') { skipped++; continue; } // defensive — shouldn't happen given the fetch formula
 
       // 2. ~3 days remaining -> day-11 email + Sindi alert. Once only.
+      //
+      // Day-11 SUPERSEDES day-7: by definition, a client with <=3 days left
+      // in a 14-day trial is already >=11 days elapsed, well past the day-7
+      // threshold. If day-7 was never sent for them (e.g. this cron's very
+      // first run against a client already deep in trial), sending it AFTER
+      // day-11's "nog 3 dagen" urgency email would read out of order and
+      // broken — a check-in email arriving after the "your trial is nearly
+      // over, call us" email. So when day-11 fires, mark BOTH day11Sent and
+      // day7Sent in the SAME write (belt): the day-7 email is simply skipped
+      // for a client discovered this late, not sent late. Braces: the day-7
+      // condition below ALSO checks !markers.day11Sent directly, so even if
+      // this marker write fails (network hiccup — logged, never fatal) and
+      // day7Sent doesn't persist, the next run still can't send day-7 after
+      // day-11 because markers.day11Sent will already be true by then.
       if (planState.daysLeft <= 3 && !markers.day11Sent) {
         const stats = await computeTrialStats(airtableToken, baseId, leadsTable, projectCode, planState.trialEndsAt).catch(() => null);
         await sendTrialProgressEmail({ kind: 'day11', to: reportEmail, clientName, projectCode, daysLeft: planState.daysLeft, stats }).catch(err =>
@@ -1333,7 +1347,7 @@ async function runTrialLifecycle(airtableToken, baseId, leadsTable) {
         await sendSindiTrialAlert({ kind: 'day11', clientName, projectCode, daysLeft: planState.daysLeft, stats }).catch(err =>
           console.error(`[trial] ${projectCode} day11 Sindi-alert mislukt:`, err.message));
         try {
-          await credits.setTrialMarker(projectCode, { day11Sent: true });
+          await credits.setTrialMarker(projectCode, { day11Sent: true, day7Sent: true });
         } catch (err) {
           console.error(`[trial] ${projectCode} kon day11-marker niet opslaan (mail is al verstuurd, mogelijk dubbele mail volgende run):`, err.message);
         }
@@ -1341,8 +1355,12 @@ async function runTrialLifecycle(airtableToken, baseId, leadsTable) {
         continue; // day-7 and day-11 are mutually exclusive per run — no need to also check day-7 below
       }
 
-      // 3. ~7 days elapsed -> mid-trial "wat Helvaro deze week deed". Once only.
-      if (!markers.day7Sent) {
+      // 3. ~7 days elapsed -> mid-trial "wat Helvaro deze week deed". Once
+      // only. Guarded by BOTH markers — see the day-11 comment above for why
+      // !markers.day11Sent is required here too (belt-and-braces: the marker
+      // write above can fail, this condition is the second, independent
+      // safeguard against sending day-7 after day-11 has already gone out).
+      if (!markers.day7Sent && !markers.day11Sent) {
         const startMs = computeTrialStartMs(planState.trialEndsAt);
         const elapsedDays = startMs ? Math.floor((Date.now() - startMs) / (24 * 60 * 60 * 1000)) : null;
         if (elapsedDays !== null && elapsedDays >= 7) {
