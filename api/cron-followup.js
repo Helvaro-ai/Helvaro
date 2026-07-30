@@ -56,6 +56,47 @@ function buildOutreachFooter() {
   return `\n\n—\n${LEGAL_ENTITY_NAME}, ${LEGAL_ADDRESS}${VAT_NUMBER ? ' · ' + VAT_NUMBER : ''}\nNiet interessant? Antwoord met "stop" en je hoort niets meer van ons.`;
 }
 
+// ── Plan-status gate for automated nurture/reminder WhatsApp TEMPLATE sends ──
+// TRIAL-DESIGN.md §7 + this task's own instruction: "skip all automated
+// nurture/reminder sends for expired clients — don't burn paid WhatsApp
+// templates for someone who isn't paying." Used by the main follow-up loop
+// and runAppointmentReminders() below (both send Meta-billed templates to
+// LEADS, not to the business owner). Deliberately NOT used by
+// runTrialLifecycle()'s own emails (those exist specifically BECAUSE a
+// client is on trial/expired) or by api/whatsapp.js's inbound-message
+// handling (that has its own date-derived getPlanState() check per message,
+// see its own comment — this cache would be stale across the whole
+// container lifetime, wrong tradeoff for a hot path; it's the right
+// tradeoff here because a single cron run is short-lived and many leads
+// share the same handful of clients).
+// Per-cron-run cache keyed by projectCode (pass a `new Map()` from the
+// caller, shared across one loop's iterations — never across cron runs).
+// Fails OPEN: a lookup failure (network hiccup, Airtable down) resolves to
+// "not stopped" so a real client's legitimate reminder is never silently
+// swallowed by an accounting/lookup problem, same fail-open contract as
+// api/_plan.js itself.
+async function isServiceStoppedForProject(airtableToken, baseId, projectCode, cache) {
+  if (!projectCode) return false;
+  if (cache.has(projectCode)) return cache.get(projectCode);
+  let stopped = false;
+  try {
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode.replace(/"/g, '\\"')}"`);
+    const r = await fetch(
+      `https://api.airtable.com/v0/${baseId}/tblPidTrwGRzRt4LZ?filterByFormula=${formula}&maxRecords=1`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (r.ok) {
+      const d = await r.json();
+      const rec = (d.records || [])[0];
+      if (rec) stopped = getPlanState(rec.fields || {}).isServiceStopped;
+    }
+  } catch (err) {
+    console.warn(`[cron-followup] plan-status lookup failed for ${projectCode}, failing OPEN (send proceeds):`, err.message);
+  }
+  cache.set(projectCode, stopped);
+  return stopped;
+}
+
 module.exports = async function handler(req, res) {
   // Vercel calls cron endpoints with GET; block other methods
   if (req.method !== 'GET') return res.status(405).end();
@@ -105,6 +146,8 @@ module.exports = async function handler(req, res) {
     const leads = lData.records || [];
     let sent = 0;
     const followedUp = [];
+    // Per-run cache — see isServiceStoppedForProject()'s own header.
+    const planCache = new Map();
 
     for (const lead of leads) {
       const phone = lead.fields['fld6YaitW0lMqHUrd'] || lead.fields['Phone'] || '';
@@ -125,6 +168,15 @@ module.exports = async function handler(req, res) {
       // envelope + same read semantics as whatsapp.js's getAiPauseInfo().
       if (isAiPaused(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities'])) {
         console.log(`[cron-followup] lead ${phone} is AI-paused (mens aan het roer) — automatische nudge overgeslagen`);
+        continue;
+      }
+
+      // PLAN-STATUS GUARD — don't burn a paid WhatsApp template nudging a
+      // lead on behalf of a client whose service has stopped. See
+      // isServiceStoppedForProject()'s header for the fail-open contract.
+      const projectCodeForPlan = lead.fields['fldSmczuyUJd26HLe'] || lead.fields['Project Code'] || '';
+      if (await isServiceStoppedForProject(AIRTABLE_TOKEN, BASE_ID, projectCodeForPlan, planCache)) {
+        console.log(`[cron-followup] lead ${phone} — klant ${projectCodeForPlan} plan gestopt, automatische follow-up overgeslagen`);
         continue;
       }
 
@@ -1197,6 +1249,20 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
       }
 
       const client       = projectCode ? await getClientForCode(projectCode) : null;
+
+      // PLAN-STATUS GUARD — don't burn a paid WhatsApp template on an
+      // appointment reminder for a client whose service has stopped. Reuses
+      // the client record already fetched above (no extra Airtable call).
+      // Deliberately does NOT mark Reminder Sent: this appointment stays
+      // eligible for tomorrow's run so a reactivation mid-window still gets
+      // the reminder, and it ages out on its own once IS_BEFORE(windowEnd)
+      // stops matching it — same "skip, don't half-process" shape as the
+      // no-template-configured skip above.
+      if (client && getPlanState(client.fields || {}).isServiceStopped) {
+        console.log(`[cron-followup] afspraakherinnering overgeslagen voor ${appt.id}: klant ${projectCode} plan gestopt`);
+        skipped++; continue;
+      }
+
       const clientNameV  = client?.fields?.['fldAnB848Sr5jl6dq'] || client?.fields?.['Client Name'] || '';
       const rawLang       = (client?.fields?.['fld1iiV9XwSbgAACZ'] || client?.fields?.['Language'] || 'nl').toString().toLowerCase();
       const clientLang    = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
