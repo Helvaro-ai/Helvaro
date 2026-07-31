@@ -3,6 +3,7 @@ const _gcal   = require('./_gcal');   // per-client Google Calendar (optional, f
 const credits = require('./_credits'); // credit/usage accounting — see its file header
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
+const _lang   = require('./_lang');   // language registry — see its file header
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -388,6 +389,12 @@ module.exports = async function handler(req, res) {
             brandColor:     rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']         || '',
             formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || '',
             language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl',
+            // Opt-in "reply in the lead's own language" toggle. Field does
+            // NOT exist on the Airtable schema yet (name: "Match Lead
+            // Language", type: Checkbox) — reads as undefined -> false until
+            // Sindi creates it, matching the "absent field = off" contract
+            // this file already uses for every other config field.
+            matchLeadLanguage: rec.fields['Match Lead Language'] === true,
             workingHours:   rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours']       || '',
             trustBadges:    rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges']        || '',
             bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'in_chat').toString().toLowerCase(),
@@ -434,8 +441,18 @@ module.exports = async function handler(req, res) {
         if (body.formIntro      !== undefined) u.fldxZ5spOeIb5omPr = String(body.formIntro).trim().slice(0, 600);
         if (body.language       !== undefined) {
           const v = String(body.language).trim().toLowerCase();
-          if (v === 'nl' || v === 'fr' || v === 'en') u.fld1iiV9XwSbgAACZ = v;
+          if (_lang.isSupportedLanguage(v)) u.fld1iiV9XwSbgAACZ = v;
         }
+        // "Match Lead Language" is handled as a SEPARATE best-effort PATCH
+        // below (after the main save), deliberately NOT folded into `u`.
+        // Airtable rejects an entire PATCH (all fields in it, atomically)
+        // with a 422 if ANY field name in the payload doesn't exist in the
+        // table schema yet — folding an as-yet-nonexistent field into the
+        // same request as aiName/website/etc would break saving THOSE too
+        // until Sindi creates the field. Keeping it isolated means the rest
+        // of config-save keeps working perfectly today, and this one setting
+        // silently no-ops (logged) until the field exists.
+        const wantsMatchLeadLanguageUpdate = body.matchLeadLanguage !== undefined;
         if (body.workingHours   !== undefined) {
           // Lightweight format validation. Must match 'days hours' or be empty
           const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
@@ -463,23 +480,53 @@ module.exports = async function handler(req, res) {
         if (body.learnedPatterns !== undefined) {
           u.fldnbM5YKh274ISAl = String(body.learnedPatterns).slice(0, 1500);
         }
-        if (Object.keys(u).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
-
-        const upRes = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
-          {
-            method:  'PATCH',
-            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ fields: u, typecast: true })
-          }
-        );
-        if (!upRes.ok) {
-          const txt = await upRes.text().catch(() => '');
-          console.error('[config-save] update failed', upRes.status, txt.slice(0, 300));
-          return res.status(500).json({ error: 'Opslaan mislukt' });
+        if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate) {
+          return res.status(400).json({ error: 'Niets om bij te werken' });
         }
-        // Invalidate the client cache so the next leads fetch sees fresh values
-        try { setCachedClient(raw, { ...rec, fields: { ...rec.fields, ...u } }); } catch {}
+
+        if (Object.keys(u).length > 0) {
+          const upRes = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+            {
+              method:  'PATCH',
+              headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ fields: u, typecast: true })
+            }
+          );
+          if (!upRes.ok) {
+            const txt = await upRes.text().catch(() => '');
+            console.error('[config-save] update failed', upRes.status, txt.slice(0, 300));
+            return res.status(500).json({ error: 'Opslaan mislukt' });
+          }
+          // Invalidate the client cache so the next leads fetch sees fresh values
+          try { setCachedClient(raw, { ...rec, fields: { ...rec.fields, ...u } }); } catch {}
+        }
+
+        // "Match Lead Language" — separate, best-effort PATCH (see the
+        // wantsMatchLeadLanguageUpdate comment above for why it's isolated
+        // from `u`). Deliberately does NOT fail the request if the field
+        // doesn't exist on the schema yet: this is a nice-to-have opt-in
+        // setting, not core config, and the main fields above (which DID
+        // exist) already saved successfully by this point.
+        if (wantsMatchLeadLanguageUpdate) {
+          try {
+            const mlRes = await atFetch(
+              `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+              {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { 'Match Lead Language': body.matchLeadLanguage === true }, typecast: true })
+              }
+            );
+            if (!mlRes.ok) {
+              const txt = await mlRes.text().catch(() => '');
+              console.warn('[config-save] "Match Lead Language" niet opgeslagen (veld bestaat waarschijnlijk nog niet in Airtable — zie api/_lang.js voor de spec):', mlRes.status, txt.slice(0, 200));
+            }
+          } catch (err) {
+            console.warn('[config-save] "Match Lead Language" PATCH exception:', err.message);
+          }
+        }
+
         return res.status(200).json({ ok: true });
       } catch (err) {
         console.error('[config] error:', err.message);
@@ -1358,7 +1405,11 @@ module.exports = async function handler(req, res) {
         // FOLLOWUP_TEMPLATE_NAME cron-followup.js already uses so no extra
         // Meta approval is required to get this working.
         const TEMPLATE_NAME = process.env.MANUAL_REPLY_TEMPLATE_NAME || process.env.FOLLOWUP_TEMPLATE_NAME;
-        const TEMPLATE_LANG = process.env.MANUAL_REPLY_TEMPLATE_LANG || process.env.FOLLOWUP_TEMPLATE_LANG || 'nl';
+        // Resolved against Meta's actually-approved template languages
+        // (nl/fr/en today) — see _lang.resolveTemplateLanguage()'s header.
+        const TEMPLATE_LANG = _lang.resolveTemplateLanguage(
+          process.env.MANUAL_REPLY_TEMPLATE_LANG || process.env.FOLLOWUP_TEMPLATE_LANG || 'nl', 'nl'
+        ).code;
         if (!TEMPLATE_NAME) {
           return res.status(409).json({
             error: 'Het 24u WhatsApp-venster is verlopen (of onbekend) sinds het laatste bericht van deze lead. Een vrij bericht versturen kan het gedeelde WhatsApp-nummer laten blokkeren door Meta. Configureer FOLLOWUP_TEMPLATE_NAME (of MANUAL_REPLY_TEMPLATE_NAME) met een goedgekeurde template, of wacht tot de lead opnieuw schrijft.'
@@ -1988,12 +2039,15 @@ function normalizePhoneForWA(raw) {
 }
 
 // Human-readable appointment date/time in the given language, Brussels tz.
+// calendar:'gregory' forced explicitly — some locales default
+// Intl.DateTimeFormat to a non-Gregorian calendar (verified: fa-IR silently
+// used the Persian/Jalali calendar without this), which would show a
+// different day/month than Google Calendar/Airtable for the same appointment.
 function formatApptDateTime(iso, lang) {
   const dt = new Date(iso);
   if (isNaN(dt.getTime())) return String(iso || '');
-  const localeMap = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
-  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
-  return dt.toLocaleString(localeMap[lang] || 'nl-BE', opts);
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels', calendar: 'gregory' };
+  return dt.toLocaleString(_lang.getLocale(lang), opts);
 }
 
 // Send an approved Meta template message (required outside the 24h
@@ -2064,8 +2118,7 @@ async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable
       const rec = (cData.records || [])[0];
       if (rec) {
         clientName = rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || '';
-        const rawLang = (rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language'] || 'nl').toString().toLowerCase();
-        clientLang = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
+        clientLang = _lang.normalizeLanguageCode(rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']);
         clientPnid = (rec.fields[F_WA_PHONE_NUMBER_ID] || rec.fields['WhatsApp Phone Number ID'] || '').toString().trim();
       }
     }
@@ -2079,7 +2132,14 @@ async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable
     return;
   }
 
-  const templateLang = process.env.BOOKING_TEMPLATE_LANG || clientLang;
+  // Resolved against Meta's actually-approved template languages (nl/fr/en
+  // today) — see _lang.resolveTemplateLanguage()'s header. This is the
+  // template-bound half of language support: the dashboard-created booking
+  // confirmation ALWAYS goes through an approved template (see this
+  // function's own header comment on why), so a client whose Language is
+  // now one of the 37 new registry languages falls back to 'nl' here
+  // (logged) rather than sending a template call Meta would reject.
+  const templateLang = _lang.resolveTemplateLanguage(process.env.BOOKING_TEMPLATE_LANG || clientLang, clientLang).code;
   const firstName = String(leadName || '').trim().split(' ')[0] || '';
   const when = formatApptDateTime(startTime, templateLang);
   await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
