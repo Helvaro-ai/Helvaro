@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const _gcal   = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
+const images  = require('./_images'); // Phase 4 AI property images — see its file header
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -1136,6 +1137,92 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         console.error('[suggest-replies] error:', err.message);
         return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── B3. Phase 4 — AI property images (api/_images.js). Folded into this
+    // route's existing mode-dispatch (no new route file — see vercel.json's
+    // 11-route budget and api/_images.js's own header for why this pattern,
+    // not the __gcal-style rewrite, was used). Three modes: property-styles
+    // (static list), property-list (this client's saved gallery), and
+    // property-generate (the actual OpenAI call — credit-gated, AI-labelled).
+    if (body.mode === 'property-styles') {
+      // No tenant-specific data, but every mode in this file requires an
+      // authenticated client context — matches the rest of the file's
+      // posture even though the payload itself is the same for everyone.
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      return res.status(200).json({ styles: images.PROPERTY_STYLES.map((s) => ({ key: s.key, label: s.label })) });
+    }
+
+    if (body.mode === 'property-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const list = await images.listPropertyImages(projectCode);
+      return res.status(200).json({ images: list });
+    }
+
+    if (body.mode === 'property-generate') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
+      const style = String(body.style || '').trim();
+      if (!images.isValidStyleKey(style)) {
+        return res.status(400).json({ error: `Ongeldige stijl. Kies uit: ${images.PROPERTY_STYLES.map((s) => s.key).join(', ')}` });
+      }
+      const customPrompt = body.customPrompt !== undefined ? String(body.customPrompt).trim().slice(0, 500) : '';
+
+      // Validate the upload BEFORE touching credits or OpenAI — never trust
+      // client-supplied filename/MIME, only the actual base64 payload (see
+      // api/_images.js's parseImageDataUrl). 10MB cap matches the VPS
+      // reference's property-upload mode.
+      let uploaded;
+      try {
+        uploaded = images.parseImageDataUrl(body.dataUrl);
+      } catch (err) {
+        if (err instanceof images.ImageFeatureError) return res.status(err.status).json({ error: err.message });
+        return res.status(400).json({ error: 'Ongeldige afbeelding' });
+      }
+
+      // Fail soft, clearly, BEFORE any credit check or paid call — a missing
+      // OPENAI_API_KEY/BLOB_READ_WRITE_TOKEN must never surface as a 500 or
+      // break the dashboard (task requirement).
+      if (!images.isConfigured()) {
+        return res.status(503).json({ error: images.missingConfigMessage() });
+      }
+
+      // Discretionary AI (marketing tool, not the lead-conversation promise
+      // whatsapp.js protects) — BLOCK when over the credit limit, BEFORE the
+      // OpenAI call is made. Fails open on any credit-infra problem — see
+      // _credits.js's header. Same 402 shape as suggest-replies above.
+      const creditCheck = await credits.checkCredits(projectCode, credits.FEATURES.IMAGE_GENERATION);
+      if (!creditCheck.allowed) {
+        return res.status(402).json({ error: 'credit_limit_reached', message: creditCheck.message });
+      }
+
+      try {
+        const generated = await images.generatePropertyImage({
+          imageBuffer: uploaded.buffer,
+          imageMimeType: uploaded.mimeType,
+          style,
+          customPrompt,
+        });
+        const blobUrl = await images.uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
+        if (!blobUrl) return res.status(502).json({ error: 'AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.' });
+
+        // buildImageRecord() is the ONLY place aiLabel is set — see
+        // api/_images.js's file header. Persisted (best-effort, fail-soft)
+        // AND returned to the caller carry the exact same object.
+        const record = images.buildImageRecord({ url: blobUrl, style, customPrompt });
+        images.appendPropertyImage(projectCode, record).catch(() => {});
+
+        credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
+          credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
+          meta: { style },
+        }).catch(() => {});
+
+        return res.status(200).json({ ok: true, image: record });
+      } catch (err) {
+        if (err instanceof images.ImageFeatureError) return res.status(err.status).json({ error: err.message });
+        console.error('[property-generate] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout bij AI-beeldgeneratie. Probeer later opnieuw.' });
       }
     }
 
