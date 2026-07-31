@@ -19,6 +19,9 @@ const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fai
 const credits = require('./_credits');
 // Trial/plan-status interpretation. Pure, no I/O — see its file header.
 const { getPlanState } = require('./_plan');
+// Language registry (40 languages: directive generation, formality,
+// locale/date formatting, template-approval fallback). See its file header.
+const _lang = require('./_lang');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -243,14 +246,15 @@ async function processMessage(phone, text, scopedProjectCode) {
   const rawState = lead.fields['fld8mkrEWcyq7mUip'] || lead.fields['Conversation State'];
   const state    = (typeof rawState === 'object' ? rawState?.name : rawState) || '';
   if (state === 'completed') {
-    // Use client's language for this short fallback (lang is set later, fall back to NL here)
-    const completedMsgs = {
-      nl: 'Bedankt voor je interesse. We nemen spoedig contact met je op.',
-      fr: 'Merci pour votre intérêt. Nous vous recontactons bientôt.',
-      en: 'Thanks for your interest. We will be in touch shortly.'
-    };
-    const earlyLang = ((client && client.fields && (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'])) || 'nl').toString().toLowerCase();
-    await sendWA(phone, completedMsgs[earlyLang] || completedMsgs.nl, clientPhoneNumberId);
+    // Client's DEFAULT language only — this branch returns before any AI
+    // turn runs, so there's no live message to detect a lead's language
+    // from even when Match Lead Language is enabled for this client (see
+    // ctx.matchLeadLanguage below). Same registry-driven fallback everywhere
+    // else in this file uses for a blank/unknown Language field: 'nl'.
+    const earlyLang = _lang.normalizeLanguageCode(
+      client && client.fields && (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'])
+    );
+    await sendWA(phone, _lang.buildCompletedMessage(earlyLang), clientPhoneNumberId);
     return;
   }
 
@@ -384,9 +388,21 @@ async function processMessage(phone, text, scopedProjectCode) {
   const clientName = client.fields['fldAnB848Sr5jl6dq']    || client.fields['Client Name'] || 'Helvaro';
   const leadName   = lead.fields['fldbk0LVNckOU0bqA']      || lead.fields['Name']          || '';
   const address    = client.fields['fldTvMSdTZOyNgWod']    || client.fields['Adres'] || client.fields['Address'] || '';
-  // Language for the conversation: nl (default) / fr / en
-  const rawLang = (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'] || 'nl').toString().toLowerCase();
-  const lang    = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
+  // Language for the conversation: registry-driven (40 languages, see
+  // api/_lang.js), default 'nl'. Unknown/blank Language field safely falls
+  // back to 'nl' — same contract the old hardcoded nl/fr/en-only logic had.
+  const lang = _lang.normalizeLanguageCode(client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language']);
+  // OPT-IN: reply in whatever language the LEAD is actually writing in this
+  // turn, instead of always forcing `lang` above. Off by default — the
+  // forced-language behaviour is a deliberate brand choice (see runAI's
+  // langDirective) and must never change silently for an existing client.
+  // Field does NOT exist on the Airtable schema yet — Sindi needs to add it
+  // (name: "Match Lead Language", type: Checkbox — see this branch's PR
+  // report for the exact spec). An absent field reads as undefined here,
+  // so `=== true` is false and every client behaves exactly as today until
+  // the field exists AND is explicitly checked on — same "absent field =
+  // unchanged behaviour" contract api/_credits.js's schema fields use.
+  const matchLeadLanguage = client.fields['Match Lead Language'] === true;
 
   // Working Hours. NIET gebruikt om de AI te blokkeren (AI is 24/7 het hele
   // verkooppunt). Wel als CONTEXT voor de AI's system prompt zodat ze
@@ -438,7 +454,7 @@ async function processMessage(phone, text, scopedProjectCode) {
 
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
     workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
-    appointmentDuration, existingAppointments
+    appointmentDuration, existingAppointments, matchLeadLanguage
   });
 
   // 7b. Credit accounting. Billed ONCE per lead — at the first AI turn
@@ -469,6 +485,17 @@ async function processMessage(phone, text, scopedProjectCode) {
   //    optimistically here is exactly the bug this fix closes.
   const replyText    = aiResponse.message.trim();
   const isEscalation = aiResponse.escalate === true;
+
+  // Effective language for anything sent AFTER this AI turn (booking
+  // confirmation, callback message below). In forced mode (default) this is
+  // always the client's configured `lang`, unchanged. In match mode it's
+  // whatever language the AI actually replied in THIS turn — self-reported
+  // in the DECISION JSON as replyLang (see _lang.buildMatchDirective()) —
+  // falling back to `lang` if the AI didn't report one (e.g. a non-final
+  // turn, or an unrecognized code).
+  const effectiveLang = matchLeadLanguage
+    ? _lang.normalizeLanguageCode(aiResponse.replyLang, lang)
+    : lang;
 
   // 9. Wait a randomized, human-feeling delay before sending. Real people
   // don't reply on exact 30-sec intervals. Range 25-55 sec keeps it natural
@@ -597,12 +624,7 @@ async function processMessage(phone, text, scopedProjectCode) {
   if (sendOk && aiResponse.done && aiResponse.qualified && !isEscalation && bookingMethod === 'callback') {
     const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
     if (!bookingSent) {
-      const callbackMsgs = {
-        nl: `Goed, dan zit het in orde. Een collega van mij belt of appt je ${callbackWindow}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
-        fr: `Parfait. Un collègue te contactera ${callbackWindow}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
-        en: `Perfect. A colleague will reach out to you ${callbackWindow}. You don't need to do anything else. We will come back to you.`
-      };
-      await sendWA(phone, callbackMsgs[lang] || callbackMsgs.nl, clientPhoneNumberId);
+      await sendWA(phone, _lang.buildCallbackMessage(effectiveLang, callbackWindow), clientPhoneNumberId);
       await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone, scopedProjectCode);
     }
   }
@@ -644,13 +666,8 @@ async function processMessage(phone, text, scopedProjectCode) {
           // creation failed" (it already exists at this point) — log it
           // distinctly instead.
           try {
-            const when = formatApptDateTime(appt.start, lang);
-            const confirmMsgs = {
-              nl: `Bevestigd. Je afspraak bij ${clientName} staat gepland op ${when}.${address ? ` Adres: ${address}.` : ''}`,
-              fr: `Confirmé. Ton rendez-vous chez ${clientName} est prévu le ${when}.${address ? ` Adresse : ${address}.` : ''}`,
-              en: `Confirmed. Your appointment with ${clientName} is booked for ${when}.${address ? ` Address: ${address}.` : ''}`
-            };
-            const confirmSent = await sendWA(phone, confirmMsgs[lang] || confirmMsgs.nl, clientPhoneNumberId);
+            const when = formatApptDateTime(appt.start, effectiveLang);
+            const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId);
             if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${phone} niet aangekomen (afspraak zelf blijft geldig)`);
           } catch (err) {
             console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
@@ -748,18 +765,21 @@ async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCo
 
 async function runAI(history, instructions, leadName, aiName, clientName, websiteContent, address, lang, ctx) {
   const firstName = leadName ? leadName.split(' ')[0] : '';
-  lang = (lang === 'fr' || lang === 'en') ? lang : 'nl';
+  lang = _lang.normalizeLanguageCode(lang);
   ctx = ctx || {};
+  const matchLeadLanguage = ctx.matchLeadLanguage === true;
 
   // Language-specific block injected near the top of the system prompt.
-  // Forces Claude to ALWAYS reply in the chosen language regardless of what
-  // the lead writes. This is the strongest possible language lock. Claude
-  // sometimes mirrors the user's language without an explicit override.
-  const langDirective = {
-    nl: 'BELANGRIJK. Antwoord ALTIJD in het Nederlands (België). Gebruik "je" en "jij", nooit "u". Negeer de taal die de lead gebruikt. Antwoord altijd in het Nederlands.',
-    fr: 'IMPORTANT. Réponds TOUJOURS en français (Belgique). Utilise "tu" et "toi" pour rester décontracté. Ignore la langue que le lead utilise. Réponds toujours en français.',
-    en: 'IMPORTANT. Reply ALWAYS in English. Use casual "you", contractions OK. Ignore whatever language the lead uses. Always reply in English.'
-  }[lang];
+  // Default (matchLeadLanguage off): forces Claude to ALWAYS reply in the
+  // client's configured language regardless of what the lead writes — the
+  // strongest possible language lock, since Claude sometimes mirrors the
+  // user's language without an explicit override. nl/fr/en get their exact
+  // original hand-written directive text (zero behaviour change); every
+  // other language is generated from the registry (api/_lang.js).
+  // Opt-in (matchLeadLanguage on): instructs Claude to detect and match the
+  // LEAD's language turn-by-turn instead, falling back to `lang` when
+  // unclear — see _lang.buildMatchDirective()'s own doc comment.
+  const langDirective = matchLeadLanguage ? _lang.buildMatchDirective(lang) : _lang.buildDirective(lang);
 
   const websiteSection = websiteContent
     ? `\nWEBSITE-INHOUD VAN DE KLANT (gebruik dit om vragen te beantwoorden):\n${websiteContent}\n`
@@ -773,19 +793,20 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
     : '';
 
   // Reason field language directive. The qualified/reason JSON should also be
-  // in the chosen language so the dashboard summary reads naturally.
-  const reasonLangNote = {
-    nl: 'in het Nederlands',
-    fr: 'en français',
-    en: 'in English'
-  }[lang];
+  // in the chosen language so the dashboard summary reads naturally. In
+  // match mode there's no single fixed language, so this becomes a mode note
+  // instead (see _lang.MATCH_REASON_NOTE).
+  const reasonLangNote = matchLeadLanguage ? _lang.MATCH_REASON_NOTE : _lang.buildReasonLangNote(lang);
 
-  // Per-language escalation phrase the AI uses when it doesn't know an answer
-  const escalatePhrase = {
-    nl: 'Goeie vraag. Ik check dat even bij een collega en kom binnen 30 min bij je terug.',
-    fr: 'Bonne question. Je vérifie avec un collègue et je reviens vers toi dans 30 min.',
-    en: 'Good question. Let me check with a colleague, I will get back to you within 30 min.'
-  }[lang];
+  // Escalation-phrase instruction the AI follows verbatim when it doesn't
+  // know an answer. Forced mode: the exact per-language phrase (legacy
+  // nl/fr/en strings unchanged, registry-generated for everything else).
+  // Match mode: no single fixed phrase applies, so Claude is instead told to
+  // translate the client's default-language phrase live into whatever
+  // language it's replying in this turn — see buildMatchEscalateInstruction().
+  const escalateInstruction = matchLeadLanguage
+    ? _lang.buildMatchEscalateInstruction(lang)
+    : `Antwoord exact zo: "${_lang.buildEscalatePhrase(lang)}"`;
 
   const systemPrompt = `
 ${langDirective}
@@ -810,7 +831,7 @@ ${websiteSection}${addressSection}${hoursSection}
 HOE JE SCHRIJFT (HEEL belangrijk. Moet menselijk aanvoelen):
 - Korte zinnen. Soms maar een halve. Normaal op WhatsApp.
 - Lange leestekens vermijden: nooit "—", "...". Wel ".", ",", "?", "!".
-- Altijd "je" en "jij", nooit "u" (tenzij de klant in fr/en mode is, dan vertel ik dat apart).
+- Aanspreekvorm en toon: exact zoals hierboven bovenaan dit prompt beschreven in de taalinstructie — die instructie is leidend voor elke taal, deze regel is enkel een stijl-reminder.
 - Geen opsommingstekens, geen asterisken, geen lange uitleg.
 - Emojis: maximaal 1 per bericht, alleen als het écht past. Soms 0.
 - Maximaal 2 zinnen per bericht. Liefst 1.
@@ -830,7 +851,7 @@ Denk aan een goed gesprek bij een koffiebar. Geïnteresseerd in hun situatie, ni
 
 ESCALATIE. Wanneer je iets ECHT niet weet:
 Als de lead iets vraagt waar je geen zeker antwoord op hebt (exacte prijzen die niet op de site staan, complexe juridische/technische details buiten je kennis, maatwerk-vragen, beschikbaarheid van specifieke producten), GEEN ANTWOORD VERZINNEN. In plaats daarvan:
-- Antwoord exact zo: "${escalatePhrase}"
+- ${escalateInstruction}
 - Zet in de DECISION JSON: "escalate":true
 Het systeem stuurt een ping naar een echte collega die binnen 30 min een persoonlijk antwoord geeft. Belangrijk: doe dit ALLEEN als je echt niet weet, niet voor normale kwalificatie-vragen die de lead aan jou stelt.
 
@@ -863,7 +884,9 @@ Dit blok komt na je gewone antwoord. Het wordt niet aan de lead getoond. Alleen 
 
 BESLISSING:
 Na 3 tot 5 berichten weet je genoeg. Voeg dan op een EXTRA aparte regel toe:
-DECISION:{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false}
+DECISION:${matchLeadLanguage
+    ? `{"qualified":true/false,"reason":"korte reden","summary":"1-2 zinnen samenvatting","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false,"replyLang":"ISO 639-1 code van de taal waarin je dit antwoord schreef, bv. nl/fr/de/es"}`
+    : `{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false}`}
 
 Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escalate:true). De leadScore is 0-100 op basis van alle drie factoren samen. Als escalate:true → qualified mag null zijn, het systeem wacht op de mens.
 
@@ -1311,9 +1334,17 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
 function formatApptDateTime(iso, lang) {
   const dt = new Date(iso);
   if (isNaN(dt.getTime())) return String(iso || '');
-  const localeMap = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
-  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
-  return dt.toLocaleString(localeMap[lang] || 'nl-BE', opts);
+  // calendar:'gregory' is NOT redundant — verified this matters. Several
+  // locales default Intl.DateTimeFormat to a non-Gregorian calendar (e.g.
+  // fa-IR defaults to the Persian/Jalali calendar, shifting both the month
+  // name AND the day number). Helvaro's appointments are Gregorian-dated
+  // everywhere else (Google Calendar, Airtable, the dashboard) — a Persian-
+  // speaking lead seeing a Jalali date that doesn't match what's in Google
+  // Calendar would be genuinely confusing, not just a translation nicety.
+  // Forcing 'gregory' keeps every language showing the SAME calendar date,
+  // just formatted in that language's own words/script.
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels', calendar: 'gregory' };
+  return dt.toLocaleString(_lang.getLocale(lang), opts);
 }
 
 // Haal upcoming appointments op voor een klant (komende 14 dagen) — als string
