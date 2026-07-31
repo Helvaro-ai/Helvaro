@@ -1,4 +1,17 @@
+// Language registry — single source of truth shared with api/whatsapp.js,
+// api/leads.js, api/cron-followup.js, api/admin.js. Injected below as a
+// plain JSON array into the client-side script (AP_LANGUAGES) so the
+// dashboard's language picker always matches exactly what the AI
+// conversation actually supports — no separately hand-maintained list here.
+const _lang = require('./_lang');
+
 module.exports = async function handler(req, res) {
+  // Native/English names only — never leak internal registry fields
+  // (formality, directive builders, etc) into client-side HTML/JS.
+  // Escape '<' so a (hypothetical, never expected) native name containing
+  // "</script>" can't break out of the inline <script> block below — same
+  // defensive intent as api/form-page.js's escJs() neutralizing </script>.
+  const AP_LANGUAGES_JSON = JSON.stringify(_lang.listForPicker()).replace(/</g, '\\u003c');
   const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
@@ -5120,6 +5133,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-color: var(--accent-bright);
   color: var(--accent-bright);
 }
+.ap-checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.ap-checkbox-row input[type="checkbox"] { margin: 0; cursor: pointer; accent-color: var(--accent); width: 16px; height: 16px; }
 .ap-color-row { display: flex; gap: 8px; align-items: stretch; }
 .ap-color-input { flex: 1; font-family: monospace; text-transform: uppercase; }
 .ap-color-swatch {
@@ -7438,12 +7453,13 @@ tr:hover .td-arrow { color: var(--cyan); }
                 Taal van je leads
                 <span class="ap-label-hint">bepaalt taal van lead-form + WhatsApp gesprek</span>
               </label>
-              <div class="ap-lang-row">
-                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-nl" value="nl"> <span>Nederlands</span></label>
-                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-fr" value="fr"> <span>Français</span></label>
-                <label class="ap-lang-opt"><input type="radio" name="ap-lang" id="ap-lang-en" value="en"> <span>English</span></label>
-              </div>
-              <div class="ap-hint">Selecteer de taal waarin je leads communiceren. De AI antwoordt automatisch in deze taal, ongeacht wat de lead schrijft. Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
+              <select id="ap-lang-select" class="ap-input"></select>
+              <div class="ap-hint">Standaardtaal waarin de AI antwoordt, ongeacht wat de lead schrijft (tenzij je hieronder taal-matching aanzet). Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
+              <label class="ap-checkbox-row" style="margin-top:14px">
+                <input type="checkbox" id="ap-match-lead-lang">
+                <span>Antwoord in de taal van de lead</span>
+              </label>
+              <div class="ap-hint">Optioneel. De AI herkent per bericht in welke taal de lead schrijft en antwoordt daarin — met de taal hierboven als terugval wanneer dat onduidelijk is. Handig als je leads in meerdere talen binnenkrijgt (bv. NL, FR, EN in Brussel).</div>
             </div>
 
             <!-- Working Hours -->
@@ -8854,6 +8870,12 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 <script>window.__hOnboard = '${(process.env.ONBOARD_CODE || '').replace(/['"\\<>]/g, '')}';</script>
 <script>
+/* ============================================================
+   LANGUAGE REGISTRY (server-injected — see api/_lang.js, single source of
+   truth also used by api/whatsapp.js's AI conversation). [{code,native,english}]
+   ============================================================ */
+const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
+
 /* ============================================================
    STATE
    ============================================================ */
@@ -10817,7 +10839,7 @@ function openPanel(lead) {
         const isUser = m.role === 'user';
         const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? 'Jij (template)' : 'Jij') : 'AI');
         const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
-        return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
+        return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}" dir="auto">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
     } catch { /* invalid JSON, skip */ }
     if (!bubbles) bubbles = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">Nog geen gesprek.</div>';
@@ -11273,7 +11295,7 @@ async function sendWhatsAppReply() {
     // (24h window closed) delivered an approved template, NOT the typed
     // text — label it so the thread never implies the lead read \`text\`.
     const sentTag = d.viaTemplate ? 'Jij (template)' : 'Jij';
-    const html = '<div><div class="chat-label">' + sentTag + '</div><div class="chat-bubble ai manual">' +
+    const html = '<div><div class="chat-label">' + sentTag + '</div><div class="chat-bubble ai manual" dir="auto">' +
       text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
     if (wrap) wrap.insertAdjacentHTML('beforeend', html);
     // Keep the lead object's gesprek in sync so re-opening the panel still shows it
@@ -13349,7 +13371,7 @@ function openConversation(leadId) {
     const content = (m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
     return \`<div>
       <div class="conv-bubble-label">\${label}</div>
-      <div class="conv-bubble \${isUser ? 'user' : 'assistant'}">\${content}</div>
+      <div class="conv-bubble \${isUser ? 'user' : 'assistant'}" dir="auto">\${content}</div>
     </div>\`;
   }).join('');
 
@@ -14291,9 +14313,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Renders the language <select> from the server-injected AP_LANGUAGES
+// registry (native names, see api/_lang.js). Idempotent — safe to call once.
+function renderApLangSelect() {
+  const sel = document.getElementById('ap-lang-select');
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = AP_LANGUAGES.map(l =>
+    '<option value="' + l.code + '">' + escHtml(l.native) + (l.native !== l.english ? ' (' + escHtml(l.english) + ')' : '') + '</option>'
+  ).join('');
+}
+
 function syncHoursLocaleUI() {
-  const lang = (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl';
-  const preset = AP_HOURS_PRESETS[lang] || AP_HOURS_PRESETS.nl;
+  const sel = document.getElementById('ap-lang-select');
+  const lang = (sel && sel.value) || 'nl';
+  // Working-hours day-abbreviation parsing (whatsapp.js's isWithinWorkingHours)
+  // only recognizes Dutch/French/English day codes today — every other
+  // language falls back to the English preset ('mon-fri' etc, which always
+  // parses correctly regardless of the client's own conversation language).
+  const preset = AP_HOURS_PRESETS[lang] || AP_HOURS_PRESETS.en;
   const input = document.getElementById('ap-hours');
   if (input) input.setAttribute('placeholder', preset.placeholder);
   const fmt = document.getElementById('ap-hours-format-list');
@@ -14420,11 +14457,10 @@ async function loadAiPersona() {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', syncBookingMethodUI);
     });
-    // Language radio re-localizes the work-hours presets (chips + placeholder)
-    ['ap-lang-nl', 'ap-lang-fr', 'ap-lang-en'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('change', syncHoursLocaleUI);
-    });
+    // Language select re-localizes the work-hours presets (chips + placeholder)
+    renderApLangSelect();
+    const apLangSelect = document.getElementById('ap-lang-select');
+    if (apLangSelect) apLangSelect.addEventListener('change', syncHoursLocaleUI);
     // Sync color picker <-> text input
     const apColor = document.getElementById('ap-color');
     const apPick  = document.getElementById('ap-color-pick');
@@ -14484,10 +14520,14 @@ async function loadAiPersona() {
       if (learnedField) learnedField.style.display = 'none';
     }
     syncBookingMethodUI();
-    syncHoursLocaleUI();
-    const apLangVal = (d.language === 'fr' || d.language === 'en') ? d.language : 'nl';
-    const apLangRadio = document.getElementById('ap-lang-' + apLangVal);
-    if (apLangRadio) apLangRadio.checked = true;
+    renderApLangSelect();
+    const apLangCodes = AP_LANGUAGES.map(l => l.code);
+    const apLangVal = apLangCodes.includes(d.language) ? d.language : 'nl';
+    const apLangSelectEl = document.getElementById('ap-lang-select');
+    if (apLangSelectEl) apLangSelectEl.value = apLangVal;
+    const apMatchLeadLangEl = document.getElementById('ap-match-lead-lang');
+    if (apMatchLeadLangEl) apMatchLeadLangEl.checked = !!d.matchLeadLanguage;
+    syncHoursLocaleUI(); // re-sync now the select actually holds the loaded language
     const apColor = document.getElementById('ap-color');
     const apPick  = document.getElementById('ap-color-pick');
     if (apColor) apColor.value = d.brandColor || '';
@@ -14595,7 +14635,8 @@ async function saveAiPersona() {
       aiPhotoUrl:     document.getElementById('ap-photo').value.trim(),
       brandColor:     document.getElementById('ap-color').value.trim(),
       formIntro:      document.getElementById('ap-form-intro').value.trim(),
-      language:       (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl',
+      language:       (document.getElementById('ap-lang-select') || {}).value || 'nl',
+      matchLeadLanguage: !!(document.getElementById('ap-match-lead-lang') || {}).checked,
       workingHours:   document.getElementById('ap-hours').value.trim().toLowerCase(),
       trustBadges:    document.getElementById('ap-badges').value.trim(),
       bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'in_chat',
