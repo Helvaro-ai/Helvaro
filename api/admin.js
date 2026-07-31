@@ -999,12 +999,56 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, via: inviteResult.via });
     }
 
-    // ── mode=onboard: client self-registration via invite code ────────────────
+    // ── mode=onboard: client self-registration via invite code (default) OR
+    // public self-serve signup (opt-in via PUBLIC_SIGNUP_ENABLED). ────────────
+    //
+    // PUBLIC_SIGNUP_ENABLED defaults to unset/false — i.e. CLOSED. With it
+    // unset, this block behaves byte-for-byte like before this change: a
+    // valid ONBOARD_CODE is the only way in, and none of the fraud-guard
+    // code below ever runs. Sindi flips this env var on Vercel only when
+    // she's ready to accept signups without an invite link — see
+    // api/_signup-guard.js's file header for the full design and the two
+    // hard rules it must never violate (never auto-reject; "no website"
+    // alone is never enough to flag).
+    const PUBLIC_SIGNUP_ENABLED = /^true$/i.test(String(process.env.PUBLIC_SIGNUP_ENABLED || '').trim());
     const isOnboard = body.mode === 'onboard';
+    let signupGuardResult = null; // only ever set for a public, non-invite signup — see below
     if (isOnboard) {
       const provided = String(body.inviteCode || '').trim();
-      if (!ONBOARD_CODE || !safeEqual(provided, ONBOARD_CODE)) {
-        return res.status(401).json({ error: 'Ongeldige uitnodigingscode' });
+      const validInvite = !!ONBOARD_CODE && safeEqual(provided, ONBOARD_CODE);
+      if (!validInvite) {
+        if (!PUBLIC_SIGNUP_ENABLED) {
+          // Exact pre-existing behavior: no valid invite code = hard reject.
+          return res.status(401).json({ error: 'Ongeldige uitnodigingscode' });
+        }
+        // Public signup is enabled and this request has no valid invite —
+        // this IS the risky path public signup opens up. First a real
+        // structural throttle (separate, tighter than the endpoint-wide
+        // isRateLimited() above — see _signup-guard.js's RATE_LIMIT doc
+        // comment for why this one is allowed to actually reject a
+        // request). Then the fraud-prevention guard, which by contract
+        // NEVER rejects on its own — it only computes a trust score and an
+        // accept/flag verdict; Sindi turns a flag into an actual
+        // rejection/cancellation later via the existing plan-set-status
+        // admin action.
+        const signupGuard = require('./_signup-guard');
+        const rl = signupGuard.checkSignupRateLimit(ip);
+        if (rl.limited) {
+          return res.status(429).json({ error: 'Te veel aanmeldingen vanaf dit IP-adres. Probeer het later opnieuw.' });
+        }
+        signupGuardResult = await signupGuard.evaluateSignup({
+          email:             String(body.email || '').trim(),
+          companyName:       String(body.clientName || '').trim(),
+          phone:             String(body.phone || '').trim(),
+          website:           String(body.website || '').trim(),
+          ip,
+          deviceFingerprint: String(body.deviceFingerprint || '').trim().slice(0, 128),
+          airtableToken:     AIRTABLE_TOKEN,
+          baseId:            BASE_ID,
+        }).catch(err => {
+          console.warn('[admin] signup-guard evaluate failed, failing OPEN (treated as accept):', err.message);
+          return { score: null, decision: 'accept', reasons: ['Fraud-guard evaluatie mislukt — fail-open.'], signals: null };
+        });
       }
     } else {
       // Regular admin path
@@ -1250,6 +1294,40 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // ── Public self-serve signup only: persist the fraud-guard verdict on
+      // the new Client Config record. Score/status/reasons are kept
+      // indefinitely (not personal data on their own — see
+      // api/_signup-guard.js's file header); the raw signals (IP, device-
+      // fingerprint hash, inside FIELD_NAME.SIGNALS) get a SHORT retention,
+      // cleared by api/cron-followup.js's runSignupSignalsRetention() once
+      // past signupGuard.SIGNALS_RETENTION_DAYS days — see the GDPR section
+      // this change adds to api/privacy.js. Same graceful-degradation
+      // contract as the credit/trial seeding above: these are NEW Airtable
+      // fields that may not exist yet, so a PATCH failure here is caught,
+      // logged, and never blocks onboarding — the Client Config record
+      // already exists regardless of what happens in this block.
+      if (signupGuardResult) {
+        try {
+          const signupGuard = require('./_signup-guard');
+          await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, createData.id, {
+            [signupGuard.FIELD_NAME.SCORE]:   signupGuardResult.score,
+            [signupGuard.FIELD_NAME.STATUS]:  signupGuardResult.decision === 'accept' ? 'accepted' : 'flagged',
+            [signupGuard.FIELD_NAME.REASONS]: signupGuardResult.reasons.join('\n'),
+            [signupGuard.FIELD_NAME.SIGNALS]: signupGuardResult.signals ? JSON.stringify(signupGuardResult.signals) : '',
+          });
+        } catch (err) {
+          console.warn('[admin] onboarding: kon signup-fraud velden niet zetten (velden bestaan mogelijk nog niet — zie api/_signup-guard.js header voor de lijst):', err.message);
+        }
+        // Explainable decision log — same structured single-line convention
+        // as the [erasure] log lines in api/leads.js / api/cron-followup.js.
+        // Kept even when the PATCH above failed, so the verdict is always
+        // recoverable from logs even if the Airtable fields aren't set up yet.
+        console.log(`[signup-guard] action=${signupGuardResult.decision} projectCode=${projectCode} score=${signupGuardResult.score} reasons=${JSON.stringify(signupGuardResult.reasons)} ts=${new Date().toISOString()}`);
+        if (signupGuardResult.decision === 'flag') {
+          console.warn(`[admin] public signup FLAGGED for review: ${projectCode} (score ${signupGuardResult.score})`);
+        }
+      }
+
       // ── Also create the matching User record so the klant can actually log in.
       //    Generate a friendly random password (caller can override via body.password).
       //    USERS_TABLE = tbl2hrPW7gIx5XF4S. Same field IDs as in auth.js.
@@ -1313,7 +1391,7 @@ module.exports = async function handler(req, res) {
       // never fail the onboarding request — the client is already created.
       if (isOnboard) {
         try {
-          await notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance, trialEndsAt });
+          await notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance, trialEndsAt, signupGuardResult });
         } catch (err) {
           console.warn('[admin] onboarding: signup-notificatie mislukt:', err.message);
         }
@@ -1549,7 +1627,7 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
 // alerts ('const to = process.env.NOTIFY_EMAIL; if (to) sendMail(...)') —
 // sendMail() never throws, and the catch below is a second, belt-and-braces
 // layer so this can never fail the onboarding request it's called from.
-async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance, trialEndsAt }) {
+async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, creditAllowance, trialEndsAt, signupGuardResult }) {
   const to = process.env.NOTIFY_EMAIL;
   if (!to) {
     console.warn('[admin] onboarding: NOTIFY_EMAIL niet ingesteld — geen signup-notificatie verstuurd voor', projectCode);
@@ -1561,10 +1639,20 @@ async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, cre
   const trialLine = trialEndsAt
     ? `<strong>14 dagen</strong> — eindigt ${escHtml(new Date(trialEndsAt).toLocaleDateString('nl-BE'))}`
     : `<span style="color:#e11d48">niet gezet — 'Plan Status'/'Trial Ends At' velden ontbreken mogelijk nog op Airtable (zie TRIAL-DESIGN.md)</span>`;
+  // Only present for a public, non-invite signup (see admin.js's onboard-
+  // mode block) — an invite-code signup never runs the fraud guard, so this
+  // row is simply omitted for those (the normal, expected case today).
+  const fraudLine = signupGuardResult
+    ? `<tr><td style="padding:4px 0;color:#666">Fraude-check</td><td style="padding:4px 0">
+        <strong style="color:${signupGuardResult.decision === 'flag' ? '#e11d48' : '#16a34a'}">${signupGuardResult.decision === 'flag' ? 'GEFLAGD voor review' : 'geaccepteerd'}</strong>
+        (score ${escHtml(String(signupGuardResult.score))}/100)<br>
+        <span style="font-size:12px;color:#666">${escHtml(signupGuardResult.reasons.join(' · '))}</span>
+      </td></tr>`
+    : '';
   const { sendMail } = require('./_mailer');
   return sendMail({
     to,
-    subject: `[Helvaro] Nieuwe self-serve klant: ${clientName}`,
+    subject: `[Helvaro] Nieuwe self-serve klant: ${clientName}${signupGuardResult && signupGuardResult.decision === 'flag' ? ' (GEFLAGD)' : ''}`,
     html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:auto;padding:20px;color:#111">
       <h2 style="margin:0 0 12px">Nieuwe self-serve onboarding</h2>
       <table style="width:100%;border-collapse:collapse;font-size:14px">
@@ -1574,6 +1662,7 @@ async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, cre
         <tr><td style="padding:4px 0;color:#666">Niche</td><td style="padding:4px 0">${escHtml(sector || '—')}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Credit Allowance</td><td style="padding:4px 0">${allowanceLine}</td></tr>
         <tr><td style="padding:4px 0;color:#666">Proefperiode</td><td style="padding:4px 0">${trialLine}</td></tr>
+        ${fraudLine}
       </table>
     </div>`,
   }).catch(err => console.warn('[admin] onboarding: signup-notificatie mislukt:', err && err.message));
