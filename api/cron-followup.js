@@ -21,6 +21,9 @@ const { fetchWebsite } = require('./lib/fetch-website');
 const credits = require('./_credits');
 // Trial/plan-status interpretation (pure, no I/O) — see its file header.
 const { getPlanState, computeTrialStartMs, FIELD: PLAN_FIELD } = require('./_plan');
+// Language registry — used here for template-language Meta-approval
+// fallback + locale-aware appointment-date formatting. See its file header.
+const _lang = require('./_lang');
 // aggregateReportPeriod: the SAME honest-numbers aggregation the dashboard's
 // Resultaten panel uses (api/leads.js's report-summary mode) — reused here
 // for the trial day-7/day-11 emails per TRIAL-DESIGN.md §5 ("the ROI report
@@ -190,7 +193,15 @@ module.exports = async function handler(req, res) {
       // Template moet vooraf in WhatsApp Manager → Message Templates worden
       // aangemaakt en goedgekeurd. Variabele {{1}} = de voornaam.
       const TEMPLATE_NAME = process.env.FOLLOWUP_TEMPLATE_NAME;
-      const TEMPLATE_LANG = process.env.FOLLOWUP_TEMPLATE_LANG || 'nl';
+      // This loop doesn't fetch the client record (lead-only query, kept
+      // that way to avoid an extra Airtable call per lead — see the 429
+      // sensitivity notes elsewhere in this file), so it can't read the
+      // client's own Language field the way the appointment-reminder loop
+      // below does. resolveTemplateLanguage() still guards the env var
+      // itself: if FOLLOWUP_TEMPLATE_LANG is ever set to a language with no
+      // approved Meta template, this falls back to 'nl' (logged) instead of
+      // sending a template call that Meta will reject.
+      const TEMPLATE_LANG = _lang.resolveTemplateLanguage(process.env.FOLLOWUP_TEMPLATE_LANG || 'nl', 'nl').code;
       if (TEMPLATE_NAME) {
         await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
       } else {
@@ -1219,12 +1230,16 @@ function normalizePhoneForWA(raw) {
 // Human-readable appointment date/time in the given language, Brussels tz.
 // api/leads.js and api/whatsapp.js each have their own copy — same per-file
 // helper duplication convention already used for mergeWaFailedFlag above.
+// calendar:'gregory' forced explicitly — some locales (e.g. fa-IR) default
+// Intl.DateTimeFormat to a non-Gregorian calendar, which would show a
+// different day/month than what's actually in Google Calendar/Airtable. See
+// api/_lang.js's formatApptDateTime equivalent in api/whatsapp.js for the
+// verified example (fa-IR without this flag showed a Jalali-calendar date).
 function formatApptDateTime(iso, lang) {
   const dt = new Date(iso);
   if (isNaN(dt.getTime())) return String(iso || '');
-  const localeMap = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
-  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
-  return dt.toLocaleString(localeMap[lang] || 'nl-BE', opts);
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels', calendar: 'gregory' };
+  return dt.toLocaleString(_lang.getLocale(lang), opts);
 }
 
 async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, whatsappToken, now = new Date()) {
@@ -1346,13 +1361,18 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
       }
 
       const clientNameV  = client?.fields?.['fldAnB848Sr5jl6dq'] || client?.fields?.['Client Name'] || '';
-      const rawLang       = (client?.fields?.['fld1iiV9XwSbgAACZ'] || client?.fields?.['Language'] || 'nl').toString().toLowerCase();
-      const clientLang    = (rawLang === 'fr' || rawLang === 'en') ? rawLang : 'nl';
+      const clientLang    = _lang.normalizeLanguageCode(client?.fields?.['fld1iiV9XwSbgAACZ'] || client?.fields?.['Language']);
       // Template language defaults to the client's own Language setting (same
       // "one template name, multiple approved locale variants" reasoning as
       // api/leads.js's sendAppointmentConfirmation). REMINDER_TEMPLATE_LANG,
-      // if set, pins every client to one language regardless.
-      const templateLang = process.env.REMINDER_TEMPLATE_LANG || clientLang;
+      // if set, pins every client to one language regardless. Either way,
+      // resolveTemplateLanguage() gates the result against Meta's actually-
+      // approved template languages (today: nl/fr/en) — a client whose
+      // Language is now one of the 37 new registry languages falls back to
+      // 'nl' here (logged), NOT sent in an unapproved language. This is the
+      // template-bound half of language support — contrast with the free-
+      // form AI conversation in whatsapp.js, which has no such limit.
+      const templateLang = _lang.resolveTemplateLanguage(process.env.REMINDER_TEMPLATE_LANG || clientLang, clientLang).code;
 
       const firstName = String(leadName).trim().split(' ')[0] || '';
       const when = formatApptDateTime(startTime, templateLang);
