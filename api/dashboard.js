@@ -7222,7 +7222,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
 
         <div class="ap-field">
-          <label class="ap-label">Foto van het pand<span class="ap-label-hint">PNG, JPG of WebP — max 10MB</span></label>
+          <label class="ap-label">Foto van het pand<span class="ap-label-hint">PNG, JPG of WebP — grote foto's worden automatisch verkleind</span></label>
           <div class="pi-dropzone" id="pi-dropzone" onclick="document.getElementById('pi-file-input').click()">
             <div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder">
               <div style="font-size:26px;line-height:1">+</div>
@@ -14117,15 +14117,50 @@ function selectPiStyle(el) {
   renderPiStyleGrid();
 }
 
+// Server hard-caps the decoded upload at 3MB (api/_images.js's
+// MAX_UPLOAD_BYTES — a base64 JSON body against Vercel's ~4.5MB platform
+// request limit, NOT vps's multipart 10MB; see that file's comment for the
+// full reasoning). A raw phone photo is routinely 3-8MB, so this downscales
+// + recompresses client-side first — same canvas technique as
+// handlePhotoFile() above, tuned for a much bigger target since this feeds
+// an AI edit model, not a small avatar circle. Users pick any photo and
+// never have to think about the limit; only pathological cases (already
+// maximally compressed at target size) still fail, with a clear message.
+const PI_MAX_DIMENSION = 1600;                     // px, long edge — plenty for a 1024x1024 AI edit
+const PI_MAX_DATA_URL_LENGTH = 3 * 1024 * 1024 * 4 / 3; // ~4MB base64 text ≈ server's 3MB decoded cap, with margin
+
 function handlePiFile(input) {
   const file = input.files && input.files[0];
   if (!file) return;
   if (!/^image\\/(png|jpe?g|webp)$/i.test(file.type)) { toast('Alleen PNG, JPG of WebP toegestaan', 'error'); return; }
-  if (file.size > 10 * 1024 * 1024) { toast('Bestand te groot (max 10MB)', 'error'); return; }
+  if (file.size > 30 * 1024 * 1024) { toast('Bestand te groot om te verwerken. Kies een kleinere foto', 'error'); return; }
+
   const reader = new FileReader();
   reader.onload = (e) => {
-    piUploadDataUrl = e.target.result;
-    renderPiDropzone();
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, PI_MAX_DIMENSION / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        let dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL('image/jpeg', 0.60);
+        if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) { toast('Foto te complex om te verwerken. Kies een eenvoudigere of kleinere foto', 'error'); return; }
+        piUploadDataUrl = dataUrl;
+        renderPiDropzone();
+      } catch (err) {
+        console.error(err);
+        toast('Kon de foto niet verwerken', 'error');
+      }
+    };
+    img.onerror = () => toast('Kon de foto niet laden', 'error');
+    img.src = e.target.result;
   };
   reader.onerror = () => toast('Bestand kon niet gelezen worden', 'error');
   reader.readAsDataURL(file);

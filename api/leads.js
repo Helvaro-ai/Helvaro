@@ -1171,8 +1171,12 @@ module.exports = async function handler(req, res) {
 
       // Validate the upload BEFORE touching credits or OpenAI — never trust
       // client-supplied filename/MIME, only the actual base64 payload (see
-      // api/_images.js's parseImageDataUrl). 10MB cap matches the VPS
-      // reference's property-upload mode.
+      // api/_images.js's parseImageDataUrl). Cap is 3MB decoded, NOT the
+      // VPS reference's 10MB — see parseImageDataUrl's/MAX_UPLOAD_BYTES's
+      // own comment in api/_images.js for why: this transport is a base64
+      // JSON body against Vercel's ~4.5MB platform request-size limit, not
+      // vps's multipart stream. The dashboard downscales client-side so
+      // this is invisible to the user in practice.
       let uploaded;
       try {
         uploaded = images.parseImageDataUrl(body.dataUrl);

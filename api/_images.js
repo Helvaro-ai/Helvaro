@@ -106,8 +106,23 @@ const PROPERTY_STYLE_KEYS = PROPERTY_STYLES.map((s) => s.key);
 // THE mandatory AI-content disclaimer. Single constant — see file header.
 const AI_DISCLAIMER_LABEL = 'AI-visualisatie — werkelijke staat van de woning kan afwijken';
 
-// Matches vps's property-upload cap exactly (task requirement).
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+// DEVIATION FROM THE VPS REFERENCE, DELIBERATE: vps's property-upload mode
+// caps at 10MB because it receives the file as a multipart stream straight
+// into Express — no practical ceiling below Node's own limits. This route
+// receives the same upload as a base64 data: URL inside a plain JSON POST
+// body to a Vercel serverless function, which has a hard ~4.5MB REQUEST
+// BODY limit at the platform level (Vercel closes the connection with a 413
+// before this file's code ever runs — no error message of ours would even
+// be seen). Base64 inflates size by ~4/3, so the decoded-buffer cap has to
+// leave room for that inflation plus the small amount of JSON structure
+// around it. 3MB decoded -> ~4.19MB base64, leaving ~300KB of headroom
+// under the platform ceiling. A literal 10MB cap would silently break the
+// feature for most real phone photos (routinely 3-8MB) — matching the
+// number, not the intent, would ship something broken. The dashboard
+// compensates with automatic client-side downscaling (see dashboard.js's
+// handlePiFile()) so a user can still pick any photo; they never have to
+// know this limit exists.
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 const OPENAI_MODEL = 'gpt-image-1-mini';
 const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
