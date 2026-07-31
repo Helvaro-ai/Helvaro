@@ -1,5 +1,16 @@
 // Client-facing lead form page. Personalized per client (AI Name + Client Name)
 // served from the Klanten / Client Config Airtable table.
+//
+// KNOWN SCOPE BOUNDARY (see api/_lang.js): the client's Language field now
+// accepts any of the 40 registry languages (api/whatsapp.js's AI conversation
+// speaks all of them), but the form-page UI text below (`i18n` object, ~20
+// strings + niche hooks) is still hand-translated for nl/fr/en ONLY. A client
+// configured with e.g. German still gets this Dutch-fallback form (see the
+// `lang` variable below, unchanged: only 'fr'/'en'/'nl' are recognized here,
+// everything else stays 'nl') while their WhatsApp AI conversation correctly
+// speaks German. Translating this file's full UI text to all 40 languages is
+// a separate, larger effort intentionally out of scope for the conversation-
+// language rollout — flagged here so it isn't mistaken for an oversight.
 
 module.exports = async function handler(req, res) {
   const code = (req.url || '').split('/').filter(Boolean).pop() || 'HELVARO';

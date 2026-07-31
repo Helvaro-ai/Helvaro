@@ -8,6 +8,8 @@ const { pgFetch } = require('./_pgapi');
 const credits = require('./_credits');
 // Trial/plan-status interpretation (pure, no I/O) — see its file header.
 const { getPlanState, computeTrialEndsAt, FIELD: PLAN_FIELD, VALID_STATUSES: PLAN_STATUSES } = require('./_plan');
+// Language registry — see its file header.
+const _lang = require('./_lang');
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
@@ -1086,10 +1088,7 @@ module.exports = async function handler(req, res) {
     // ── Wizard step "Hoe je werkt" — mirrors the exact validation used by
     // leads.js's config-save (PATCH) path so onboarding and later dashboard
     // edits behave identically.
-    const language = (() => {
-      const v = String(body.language || '').trim().toLowerCase();
-      return (v === 'fr' || v === 'en') ? v : 'nl';
-    })();
+    const language = _lang.normalizeLanguageCode(body.language);
     const workingHours = (() => {
       const v = String(body.workingHours || '').trim().toLowerCase().slice(0, 60);
       // NOTE: leads.js's config-save uses {3,9} for the day-abbreviation
@@ -1185,7 +1184,8 @@ module.exports = async function handler(req, res) {
       //   fldTvMSdTZOyNgWod  Adres
       //   fld1lqHctRbqFGQf5  AI Instructions
       //   fld0BsPnDbBOkTHzr  Niche  (singleSelect. Typecast:true auto-creates new options)
-      //   fld1iiV9XwSbgAACZ  Language (nl/fr/en) — verified in leads.js config-get/save, whatsapp.js, form-page.js
+      //   fld1iiV9XwSbgAACZ  Language — 40-language registry, see api/_lang.js (form-page.js's own
+      //                      i18n UI text still only covers nl/fr/en, see that file's header)
       //   fldq5oIqw5MG8fKhc  Working Hours       — verified in leads.js, whatsapp.js, form-page.js
       //   fldUI9BYO0TplgYlm  Booking Method (in_chat/callback — 'calendly' deprecated, see dashboard.js) — verified in leads.js, whatsapp.js
       //   fldKvMVBalSBRQE7H  Callback Window     — verified in leads.js, whatsapp.js
