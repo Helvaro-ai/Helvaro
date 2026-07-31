@@ -5310,6 +5310,51 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-test-result.ok  { color: var(--green); }
 .ap-test-result.err { color: var(--red); }
 
+/* ── AI-beeld page (Phase 4 property images) ─────────────────────────────
+   Reuses the ap-* token classes above (field/label/hint/chip/btn/tpl-card)
+   for visual consistency with AI Persoonlijkheid — only the pieces with no
+   existing analog (dropzone, gallery, AI-label badge) get new rules here. */
+.pi-dropzone {
+  border: 2px dashed var(--border); border-radius: 12px;
+  background: var(--bg-card-alt); padding: 20px; text-align: center;
+  cursor: pointer; transition: border-color .15s ease, background .15s ease;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  min-height: 140px; justify-content: center;
+}
+.pi-dropzone:hover, .pi-dropzone.dragover { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.06); }
+.pi-dropzone.has-image { border-style: solid; padding: 0; overflow: hidden; }
+.pi-dropzone-placeholder { color: var(--text-muted); font-size: 13px; }
+.pi-dropzone-placeholder b { color: var(--text-primary); }
+.pi-dropzone img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: var(--bg); }
+.pi-dropzone-remove {
+  margin-top: 8px; background: transparent; color: var(--text-muted); border: 0;
+  font-size: 12px; cursor: pointer; text-decoration: underline; font-family: inherit;
+}
+.pi-dropzone-remove:hover { color: var(--red, var(--error)); }
+.pi-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.pi-style-card {
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 9px;
+  padding: 10px 12px; cursor: pointer; text-align: center; font-family: inherit;
+  font-size: 12px; font-weight: 700; color: var(--text-primary); transition: all .15s ease;
+}
+.pi-style-card:hover { border-color: var(--accent-bright); }
+.pi-style-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); }
+.pi-result-wrap { margin-top: 16px; }
+.pi-result-img-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); }
+.pi-result-img-wrap img { display: block; width: 100%; }
+.pi-ai-badge {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+  color: var(--warning); background: rgba(var(--warning-rgb),.10);
+  border: 1px solid rgba(var(--warning-rgb),.3); border-radius: 8px;
+  padding: 7px 10px; margin-top: 8px; line-height: 1.4;
+}
+.pi-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 14px; }
+.pi-gallery-item { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-card); }
+.pi-gallery-item img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.pi-gallery-item-body { padding: 8px 10px 10px; }
+.pi-gallery-item-style { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.pi-empty { color: var(--text-muted); font-size: 13px; padding: 24px 0; text-align: center; }
+
 .settings-wrap { width: 100%; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
   background: var(--bg-card);
@@ -6445,6 +6490,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         Exports
       </button>
+      <button class="nav-item" data-page="ai-beeld" id="nav-ai-beeld">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+        AI-beeld
+      </button>
 
       <!-- ── Setup (zelden) ── -->
       <div class="nav-divider"></div>
@@ -7160,6 +7209,57 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="analyse-card analyse-card-full">
           <div class="analyse-card-title">Leads per Uur van de Dag</div>
           <canvas id="analyse-hours-chart" height="70"></canvas>
+        </div>
+      </div>
+    </main>
+
+    <!-- AI-beeld Page (Phase 4 — AI property visualisation images) -->
+    <main class="page-content page" id="page-ai-beeld">
+      <div class="ap-wrap">
+        <div class="ap-hero" style="margin-bottom:18px">
+          <h2 class="ap-hero-title">AI Vastgoedbeelden</h2>
+          <p class="ap-hero-sub">Upload een foto van een pand en laat de AI een visualisatie genereren in een gekozen stijl. Handig voor listings en sociale media.</p>
+        </div>
+
+        <div class="ap-field">
+          <label class="ap-label">Foto van het pand<span class="ap-label-hint">PNG, JPG of WebP — max 10MB</span></label>
+          <div class="pi-dropzone" id="pi-dropzone" onclick="document.getElementById('pi-file-input').click()">
+            <div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder">
+              <div style="font-size:26px;line-height:1">+</div>
+              <div><b>Klik om een foto te kiezen</b><br>of sleep een bestand hierheen</div>
+            </div>
+          </div>
+          <input type="file" id="pi-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePiFile(this)">
+          <div class="ap-hint"><button type="button" class="ap-btn-link" id="pi-remove-btn" style="display:none" onclick="removePiUpload()">Foto verwijderen</button></div>
+        </div>
+
+        <div class="ap-field" style="margin-top:14px">
+          <label class="ap-label">Stijl</label>
+          <div class="pi-style-grid" id="pi-style-grid">
+            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Stijlen laden...</div>
+          </div>
+        </div>
+
+        <div class="ap-field" style="margin-top:14px">
+          <label class="ap-label">Extra instructies <span class="ap-label-hint">optioneel</span></label>
+          <textarea id="pi-custom-prompt" class="ap-textarea" rows="2" maxlength="500" placeholder="Bv: behoud de open haard, gebruik warmere kleuren"></textarea>
+        </div>
+
+        <div class="ap-actions" style="margin-top:14px">
+          <button class="ap-btn ap-btn-primary" id="pi-generate-btn" onclick="generatePiImage()">Genereer AI-beeld</button>
+        </div>
+
+        <div class="pi-result-wrap" id="pi-result-wrap" style="display:none">
+          <div class="ap-field">
+            <label class="ap-label">Resultaat</label>
+            <div class="pi-result-img-wrap"><img id="pi-result-img" alt="AI-gegenereerde visualisatie"></div>
+            <div class="pi-ai-badge">⚠ <span id="pi-result-label"></span></div>
+          </div>
+        </div>
+
+        <div class="ap-field" style="margin-top:14px">
+          <label class="ap-label">Eerder gegenereerd</label>
+          <div id="pi-gallery"><div class="pi-empty">Laden...</div></div>
         </div>
       </div>
     </main>
@@ -12477,7 +12577,8 @@ function navigateTo(page) {
     analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
     instellingen: { title: 'Instellingen',  sub: 'Beheer uw accountinstellingen' },
     activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
-    founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' }
+    founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
+    'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -12511,6 +12612,7 @@ function navigateTo(page) {
   if (page === 'exports')      updateExportPreview();
   if (page === 'activiteit')   renderActiviteit();
   if (page === 'founder')      loadFounderData();
+  if (page === 'ai-beeld')     loadAiBeeldPage();
 
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -13956,6 +14058,203 @@ function clearLearnedPatterns() {
   if (ta) ta.value = '';
   toast('Wijziging geladen — klik Opslaan om te bevestigen', 'info');
 }
+
+/* ============================================================
+   AI-BEELD PAGE (Phase 4 — AI property visualisation images)
+   ============================================================
+   Backed by api/leads.js modes property-styles / property-list /
+   property-generate -> api/_images.js. Every image record returned or
+   rendered here carries a mandatory aiLabel (api/_images.js's
+   buildImageRecord() — never omittable server-side) which this page
+   ALWAYS shows as a visible caption, never just alt-text (EU AI Act
+   Art. 50(4), see _images.js's file header). */
+let piStyles = [];
+let piStylesLoaded = false;
+let piUploadDataUrl = '';
+let piSelectedStyle = '';
+
+async function loadAiBeeldPage() {
+  if (!state.apiKey) return;
+  if (!piStylesLoaded) {
+    piStylesLoaded = true;
+    loadPiStyles();
+  }
+  // Gallery can change between visits (another tab/device generated one) —
+  // always refresh, no "loaded once" gate needed for a single cheap read.
+  loadPiGallery();
+}
+
+async function loadPiStyles() {
+  const grid = document.getElementById('pi-style-grid');
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'property-styles' })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Stijlen laden mislukt</div>'; return; }
+    piStyles = Array.isArray(d.styles) ? d.styles : [];
+    if (!piStyles.length) { if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Geen stijlen beschikbaar</div>'; return; }
+    if (!piSelectedStyle) piSelectedStyle = piStyles[0].key;
+    renderPiStyleGrid();
+  } catch (err) {
+    if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
+  }
+}
+
+function renderPiStyleGrid() {
+  const grid = document.getElementById('pi-style-grid');
+  if (!grid) return;
+  grid.innerHTML = piStyles.map(s =>
+    '<button type="button" class="pi-style-card' + (s.key === piSelectedStyle ? ' active' : '') +
+    '" onclick="selectPiStyle(this)" data-key="' + escHtml(s.key) + '">' + escHtml(s.label) + '</button>'
+  ).join('');
+}
+
+function selectPiStyle(el) {
+  piSelectedStyle = el.getAttribute('data-key') || '';
+  renderPiStyleGrid();
+}
+
+function handlePiFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!/^image\\/(png|jpe?g|webp)$/i.test(file.type)) { toast('Alleen PNG, JPG of WebP toegestaan', 'error'); return; }
+  if (file.size > 10 * 1024 * 1024) { toast('Bestand te groot (max 10MB)', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    piUploadDataUrl = e.target.result;
+    renderPiDropzone();
+  };
+  reader.onerror = () => toast('Bestand kon niet gelezen worden', 'error');
+  reader.readAsDataURL(file);
+}
+
+function renderPiDropzone() {
+  const zone = document.getElementById('pi-dropzone');
+  const removeBtn = document.getElementById('pi-remove-btn');
+  if (!zone) return;
+  if (piUploadDataUrl) {
+    zone.classList.add('has-image');
+    zone.innerHTML = '<img src="' + piUploadDataUrl.replace(/"/g, '&quot;') + '" alt="Geüploade foto">';
+    if (removeBtn) removeBtn.style.display = '';
+  } else {
+    zone.classList.remove('has-image');
+    zone.innerHTML = '<div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder"><div style="font-size:26px;line-height:1">+</div><div><b>Klik om een foto te kiezen</b><br>of sleep een bestand hierheen</div></div>';
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+}
+
+function removePiUpload(evt) {
+  if (evt) evt.stopPropagation();
+  piUploadDataUrl = '';
+  const fileInput = document.getElementById('pi-file-input');
+  if (fileInput) fileInput.value = '';
+  renderPiDropzone();
+}
+
+async function loadPiGallery() {
+  const wrap = document.getElementById('pi-gallery');
+  if (!wrap) return;
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'property-list' })
+    });
+    if (!r.ok) { wrap.innerHTML = '<div class="pi-empty">Kon galerij niet laden</div>'; return; }
+    const d = await r.json().catch(() => ({}));
+    renderPiGallery(Array.isArray(d.images) ? d.images : []);
+  } catch (err) {
+    wrap.innerHTML = '<div class="pi-empty">Netwerkfout</div>';
+  }
+}
+
+function renderPiGallery(list) {
+  const wrap = document.getElementById('pi-gallery');
+  if (!wrap) return;
+  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">Nog geen AI-beelden gegenereerd</div>'; return; }
+  wrap.innerHTML = '<div class="pi-gallery-grid">' + list.map(img => \`
+    <div class="pi-gallery-item">
+      <img src="\${(img.url || '').replace(/"/g, '&quot;')}" alt="AI-gegenereerde visualisatie">
+      <div class="pi-gallery-item-body">
+        <div class="pi-gallery-item-style">\${escHtml(img.styleLabel || img.style || '')}</div>
+        <div class="pi-ai-badge">⚠ \${escHtml(img.aiLabel || '')}</div>
+      </div>
+    </div>
+  \`).join('') + '</div>';
+}
+
+async function generatePiImage() {
+  const btn = document.getElementById('pi-generate-btn');
+  if (!btn) return;
+  if (!piUploadDataUrl) { toast('Upload eerst een foto', 'error'); return; }
+  if (!piSelectedStyle) { toast('Kies een stijl', 'error'); return; }
+
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg>AI genereert (kan tot een minuut duren)...';
+
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({
+        mode:         'property-generate',
+        dataUrl:      piUploadDataUrl,
+        style:        piSelectedStyle,
+        customPrompt: (document.getElementById('pi-custom-prompt') || {}).value || ''
+      })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (d.error === 'credit_limit_reached') {
+        toast(d.message || 'Je AI-credits voor deze periode zijn op', 'error');
+      } else {
+        toast(d.error || 'AI-beeldgeneratie mislukt', 'error');
+      }
+      return;
+    }
+    const img = d.image;
+    if (!img || !img.url) { toast('AI gaf geen beeld terug', 'error'); return; }
+
+    const resultWrap  = document.getElementById('pi-result-wrap');
+    const resultImg   = document.getElementById('pi-result-img');
+    const resultLabel = document.getElementById('pi-result-label');
+    if (resultWrap)  resultWrap.style.display = '';
+    if (resultImg)   resultImg.src = img.url;
+    if (resultLabel) resultLabel.textContent = img.aiLabel || '';
+
+    toast('AI-beeld gegenereerd', 'success');
+    loadPiGallery();
+  } catch (err) {
+    toast('Netwerkfout. Probeer opnieuw', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+// Drag & drop onto the dropzone (click-to-upload already wired via the
+// input's onclick in the HTML; this only adds the drag path on top).
+document.addEventListener('DOMContentLoaded', () => {
+  const zone = document.getElementById('pi-dropzone');
+  if (!zone) return;
+  ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('dragover'); }));
+  zone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    const fileInput = document.getElementById('pi-file-input');
+    if (fileInput) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      handlePiFile(fileInput);
+    }
+  });
+});
 
 function syncHoursLocaleUI() {
   const lang = (document.querySelector('input[name="ap-lang"]:checked') || {}).value || 'nl';
