@@ -252,6 +252,19 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
+    // ── GDPR: short-retention cleanup of raw signup-fraud signals (IP,
+    // device-fingerprint hash) captured by the public-signup fraud guard
+    // (api/_signup-guard.js, only active when PUBLIC_SIGNUP_ENABLED is set —
+    // see api/admin.js's onboard-mode block). Same "reuse the existing
+    // retention job, don't invent a parallel scheme" instruction as the lead
+    // anonymization above — this just clears a different field, on Client
+    // Config instead of Leads. See runSignupSignalsRetention()'s own doc
+    // comment below.
+    const signupSignalsResult = await runSignupSignalsRetention(AIRTABLE_TOKEN, BASE_ID, now).catch(e => {
+      console.error('[cron-followup] signup-signals retention failed:', e.message);
+      return null;
+    });
+
     // ── Daily summary email ──────────────────────────────────────────────────
     if (sent > 0) {
       const escE = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -321,7 +334,7 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult, outreach: outreachResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult, outreach: outreachResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -502,6 +515,75 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
   }
   console.log(`[cron-followup] retention: checked ${eligible.length}, anonymized ${anonymized}`);
   return { checked: eligible.length, anonymized };
+}
+
+// ── GDPR: clear short-retention signup-fraud signals (IP, device-fingerprint
+// hash) on Client Config records, once past their retention window.
+//
+// Only the public-signup fraud guard (api/_signup-guard.js, wired into
+// api/admin.js's onboard-mode block, active only when PUBLIC_SIGNUP_ENABLED
+// is set) ever writes the `Signup Fraud Signals` field — a JSON blob tagged
+// with its own `capturedAt`. This job does NOT touch `Signup Trust Score` /
+// `Signup Review Status` / `Signup Fraud Reasons`: those are Sindi's ongoing
+// audit trail (a number and human-written reason categories, not personal
+// data on their own — see _signup-guard.js's file header) and are kept
+// indefinitely. Only the raw IP + fingerprint hash inside `Signup Fraud
+// Signals` are "only useful at signup" and get cleared.
+//
+// Scans EVERY Client Config record (same "Helvaro-scale: low dozens of
+// clients, fetch-all is fine" assumption as _credits.js's
+// getAllUsageSummaries() and _signup-guard.js's findDuplicateSignals()) —
+// there's no Airtable filterByFormula that can parse JSON and compare a
+// nested capturedAt date, so eligibility is decided in JS via
+// signupGuard.isSignupSignalsExpired() (the same helper that owns the
+// envelope's shape), not in the fetch formula. Fail-soft per record, same
+// pattern as runRetentionAnonymization() above: one record's PATCH failure
+// never aborts the rest of the batch.
+async function runSignupSignalsRetention(airtableToken, baseId, now = new Date()) {
+  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  const signupGuard = require('./_signup-guard');
+  const SIGNALS_FIELD = signupGuard.FIELD_NAME.SIGNALS; // 'Signup Fraud Signals'
+
+  const url = `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?pageSize=100`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  if (r.status === 429) {
+    console.warn('[cron-followup] signup-signals retention: Airtable 429, uitgesteld tot volgende run');
+    return { checked: 0, cleared: 0, skipped: 'rate_limited' };
+  }
+  if (!r.ok) throw new Error('Airtable ' + r.status);
+  const data = await r.json();
+  const records = data.records || [];
+
+  const eligible = records.filter(rec => {
+    const raw = (rec.fields || {})[SIGNALS_FIELD];
+    return raw && signupGuard.isSignupSignalsExpired(raw, now);
+  });
+
+  let cleared = 0;
+  for (const rec of eligible) {
+    try {
+      const pr = await fetch(
+        `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}/${rec.id}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { [SIGNALS_FIELD]: '' } })
+        }
+      );
+      if (pr.ok) {
+        cleared++;
+        const projectCode = rec.fields?.['fldN4dL0bGgfBOXwM'] || rec.fields?.['Project Code'] || '';
+        console.log(`[erasure] action=signup-signals-clear id=${rec.id} projectCode=${projectCode} actor=system ts=${new Date().toISOString()}`);
+      } else {
+        console.error(`[cron-followup] signup-signals-clear PATCH mislukt voor ${rec.id} (${pr.status})`);
+      }
+    } catch (err) {
+      console.error(`[cron-followup] signup-signals-clear exception voor ${rec.id}:`, err.message);
+    }
+    await new Promise(res => setTimeout(res, 200));
+  }
+  console.log(`[cron-followup] signup-signals retention: checked ${records.length}, expired ${eligible.length}, cleared ${cleared}`);
+  return { checked: records.length, expired: eligible.length, cleared };
 }
 
 // Merge a waFailed:true marker into a lead's existing Notities JSON without
