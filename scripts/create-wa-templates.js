@@ -26,7 +26,7 @@
  *
  * ENV
  *   WABA_ID                     WhatsApp Business Account id (NOT the phone
- *                               number id). Helvaro production: 1000493482531092
+ *                               number id). Helvaro production: <JOUW_WABA_ID>
  *   WHATSAPP_MANAGEMENT_TOKEN   Token with the `whatsapp_business_management`
  *                               scope. The regular WHATSAPP_TOKEN is usually
  *                               messaging-only and will fail with a permissions
@@ -167,7 +167,7 @@ async function main() {
 
   if (!WABA_ID) {
     console.error('ERROR: WABA_ID is not set.');
-    console.error('  Helvaro production WABA: 1000493482531092');
+    console.error('  Helvaro production WABA: <JOUW_WABA_ID>');
     console.error('  Run: WABA_ID=... WHATSAPP_MANAGEMENT_TOKEN=... node scripts/create-wa-templates.js');
     process.exit(1);
   }

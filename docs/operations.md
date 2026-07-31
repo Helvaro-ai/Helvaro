@@ -134,7 +134,7 @@ git revert HEAD --no-edit && git push
 ```bash
 curl -X POST https://app.helvaro.pro/api/form/HELVARO \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test User","phone":"+32466358427","bron":"Test"}'
+  -d '{"name":"Test User","phone":"+32478123456","bron":"Test"}'
 ```
 
 ### Een Resend test-email triggeren

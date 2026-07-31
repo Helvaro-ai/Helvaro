@@ -48,7 +48,7 @@ Returns alle leads voor de authenticated klant + stats.
     {
       "id": "rec...",
       "naam": "Jan Peeters",
-      "telefoon": "32466358427",
+      "telefoon": "32478123456",
       "status": "in_progress",
       "qualified": false,
       "leadScore": 7,
@@ -246,7 +246,7 @@ Public endpoint — een nieuwe lead-submission. Wordt aangeroepen door het `/sta
 ```json
 {
   "name": "Jan Peeters",
-  "phone": "+32466358427",
+  "phone": "+32478123456",
   "bron": "Website"
 }
 ```
