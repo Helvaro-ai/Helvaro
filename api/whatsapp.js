@@ -35,6 +35,22 @@ const LEADS_TABLE     = 'tbliukTnDAbEDcZmt';
 const CLIENTS_TABLE   = 'tblPidTrwGRzRt4LZ';
 const NOTITIES_FIELD  = 'fldoLRI5W12ThTls7';   // Notities. Also used by api/form.js's flagWaFailed
 
+// ── Multitenancy prep (per-client WhatsApp number, deferred Tech Provider build) ──
+// Both fields live on Client Config (CLIENTS_TABLE) and are BLANK on every
+// existing client today. Blank must behave EXACTLY like the old single
+// shared-number setup — every reader of F_WA_PHONE_NUMBER_ID falls back to
+// the PHONE_NUMBER_ID env var when the field is empty. See getClientByPhoneNumberId()
+// and the webhook handler below for how this makes cross-client lead
+// collisions structurally impossible once a client is migrated to their own
+// number. F_WA_WABA_ID is read into client config now but not otherwise used
+// yet — Meta Tech Provider enrolment / Embedded Signup is a deferred build.
+const F_WA_PHONE_NUMBER_ID = 'fldbrhlSrsmlJwcYr';   // Client Config: WhatsApp Phone Number ID
+const F_WA_WABA_ID         = 'fldCEqMp5zs1Wos3T';   // Client Config: WhatsApp WABA ID
+// Sane page cap for getLead()'s candidate fetch — a phone realistically never
+// collides across more than a handful of clients, but this is a hard stop to
+// keep a pathological/abusive case from paginating forever.
+const MAX_LEAD_CANDIDATES = 50;
+
 // ─── WEBHOOK HANDLER ────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -126,12 +142,38 @@ module.exports = async function handler(req, res) {
     const text  = sanitize(message.text.body).trim();
 
     console.log(`[WhatsApp] Bericht van ${phone}: ${text}`);
+
+    // ── Multitenancy webhook routing ─────────────────────────────────────
+    // Meta stamps every inbound message with the Business phone_number_id
+    // that RECEIVED it. When that number belongs to exactly one client (i.e.
+    // they've been migrated off the shared number — F_WA_PHONE_NUMBER_ID is
+    // set), we can scope the lead lookup to (phone, that client) directly:
+    // no candidate list, no heuristic, a cross-client collision becomes
+    // structurally impossible for that lead. On today's default setup every
+    // client's F_WA_PHONE_NUMBER_ID is blank, so the inbound number always
+    // equals the shared PHONE_NUMBER_ID env var, this lookup is skipped
+    // entirely, and behaviour is unchanged.
+    const inboundPhoneNumberId = change?.metadata?.phone_number_id || '';
+    let scopedProjectCode = null;
+    if (inboundPhoneNumberId && inboundPhoneNumberId !== PHONE_NUMBER_ID) {
+      try {
+        const ownerClient = await getClientByPhoneNumberId(inboundPhoneNumberId);
+        if (ownerClient) {
+          scopedProjectCode = ownerClient.fields['fldN4dL0bGgfBOXwM'] || ownerClient.fields['Project Code'] || null;
+        }
+      } catch (err) {
+        // Never let a routing lookup failure drop the message — fall back to
+        // the Task 1 phone-only heuristic exactly like an unrecognized number would.
+        console.error('[Multi-tenant] webhook routing lookup mislukt, val terug op heuristiek:', err.message);
+      }
+    }
+
     // Register the deferred work (AI reply + human-feeling delay + Airtable +
     // actual send) with the platform via waitUntil() so it isn't dropped if
     // the container gets frozen/recycled after our 200 OK already went out.
     // We still `await` it locally too: that preserves today's behaviour on
     // any runtime where waitUntil() is a no-op (see require comment above).
-    const work = processMessage(phone, text);
+    const work = processMessage(phone, text, scopedProjectCode);
     waitUntil(work);
     await work;
 
@@ -156,9 +198,14 @@ function _dedupSeen(id) {
 
 // ─── MAIN LOGIC ─────────────────────────────────────────────────────────────
 
-async function processMessage(phone, text) {
-  // 1. Find lead by phone
-  const lead = await getLead(phone);
+async function processMessage(phone, text, scopedProjectCode) {
+  // 1. Find lead by phone. When scopedProjectCode is set (the inbound webhook
+  // arrived on a client's OWN WhatsApp number — see the handler above), the
+  // lookup is scoped to (phone, that client) directly and the Task 1
+  // cross-client heuristic never runs for this message. Otherwise this is
+  // the shared-number path: getLead() may see multiple clients' leads for
+  // this phone and has to resolve the collision itself.
+  const lead = await getLead(phone, scopedProjectCode);
   if (!lead) {
     // Pre-form fallback. Try to honour client's saved language if we can find the project from phone (best-effort)
     await sendWA(phone, 'Hi, please fill in the contact form first so we can help you. / Bonjour, remplissez d’abord le formulaire de contact pour que nous puissions vous aider. / Dag, stuur eerst het contactformulier in zodat we je verder kunnen helpen.');
@@ -179,6 +226,18 @@ async function processMessage(phone, text) {
     return;
   }
 
+  // 2b. Per-client WhatsApp sender number (multitenancy prep). Blank field
+  // (every client today) falls back to undefined here, and sendWA() itself
+  // falls back to the shared PHONE_NUMBER_ID env var — see sendWA()'s own
+  // comment. This is what keeps "all fields blank" behaving EXACTLY like
+  // before: the fallback chain bottoms out at the same env var every send
+  // already used.
+  const clientPhoneNumberId = (client.fields[F_WA_PHONE_NUMBER_ID] || client.fields['WhatsApp Phone Number ID'] || '').toString().trim() || undefined;
+  // WABA ID: read into the client-config surface now so it's available once
+  // the deferred Tech Provider build needs it. Not otherwise used yet.
+  // eslint-disable-next-line no-unused-vars
+  const clientWabaId = (client.fields[F_WA_WABA_ID] || client.fields['WhatsApp WABA ID'] || '').toString().trim() || '';
+
   // 3. Check if conversation already finished
   // fld8mkrEWcyq7mUip = Conversation State (ID); field name as fallback
   const rawState = lead.fields['fld8mkrEWcyq7mUip'] || lead.fields['Conversation State'];
@@ -191,7 +250,7 @@ async function processMessage(phone, text) {
       en: 'Thanks for your interest. We will be in touch shortly.'
     };
     const earlyLang = ((client && client.fields && (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'])) || 'nl').toString().toLowerCase();
-    await sendWA(phone, completedMsgs[earlyLang] || completedMsgs.nl);
+    await sendWA(phone, completedMsgs[earlyLang] || completedMsgs.nl, clientPhoneNumberId);
     return;
   }
 
@@ -213,7 +272,7 @@ async function processMessage(phone, text) {
     if (pausedStored) { try { pausedHistory = JSON.parse(pausedStored); } catch { pausedHistory = []; } }
     pausedHistory.push({ role: 'user', content: text, ts: Date.now() });
     if (pausedHistory.length > 20) pausedHistory = pausedHistory.slice(-20);
-    await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(pausedHistory) }, phone);
+    await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(pausedHistory) }, phone, scopedProjectCode);
 
     // Best-effort nudge to the owner that a paused lead just wrote. Fail-soft:
     // a notify failure must never look like a message-handling failure —
@@ -225,7 +284,7 @@ async function processMessage(phone, text) {
         `[Gepauzeerd] ${leadNameP || phone} schreef net terwijl jij het gesprek overnam\n\n` +
         `"${text.slice(0, 280)}"\n\n` +
         `Open de lead: https://app.helvaro.pro/dashboard`;
-      const nudgeSent = await sendWA(ownerPhoneP, nudge);
+      const nudgeSent = await sendWA(ownerPhoneP, nudge, clientPhoneNumberId);
       if (!nudgeSent) console.error(`[whatsapp] paused-lead melding naar owner (${ownerPhoneP}) is niet aangekomen`);
     }
     return;
@@ -421,10 +480,14 @@ async function processMessage(phone, text) {
   // actually happened. All fields use field IDs where known. Immune to
   // Airtable field renames. 'Conversation History' and 'Last Message' have
   // no known field ID; kept by name.
-  const sendOk = await sendWA(phone, replyText);
+  const sendOk = await sendWA(phone, replyText, clientPhoneNumberId);
   const updateFields = { 'Last Message': text };
   if (sendOk) {
-    history.push({ role: 'assistant', content: replyText });
+    // `ts` stamps outbound turns too (not just inbound, see step 4's push
+    // above) — getLead()'s cross-client collision resolver uses "most
+    // recent outbound message" as its primary signal, and that only works
+    // if assistant turns carry a timestamp same as user turns already do.
+    history.push({ role: 'assistant', content: replyText, ts: Date.now() });
     if (history.length > 20) history = history.slice(-20);
     updateFields['Conversation History'] = JSON.stringify(history);
     // If AI escalated, we treat the state as 'in_progress' (awaiting human),
@@ -457,7 +520,7 @@ async function processMessage(phone, text) {
     console.error(`[WhatsApp] Verzenden naar ${phone} mislukt. Conversation History/State blijven ongewijzigd`);
     updateFields[NOTITIES_FIELD] = mergeWaFailedFlag(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
   }
-  await updateLead(lead.id, updateFields, phone);
+  await updateLead(lead.id, updateFields, phone, scopedProjectCode);
 
   // 10b. ESCALATION. When the AI explicitly says "I don't know, let me check",
   // ping the owner immediately so they can take over within the 30 min the AI
@@ -478,7 +541,7 @@ async function processMessage(phone, text) {
       // itself. Check the result and log call-site context on top, so an
       // escalation-ping failure specifically is traceable in server logs
       // rather than indistinguishable from any other WhatsApp send failure.
-      const escalateSent = await sendWA(ownerPhone, escalateNotice);
+      const escalateSent = await sendWA(ownerPhone, escalateNotice, clientPhoneNumberId);
       if (!escalateSent) console.error(`[whatsapp] escalatie-melding naar owner (${ownerPhone}) is niet aangekomen`);
     }
     if (ownerEmail) sendOwnerEmail({
@@ -502,7 +565,7 @@ async function processMessage(phone, text) {
         ? updateFields[NOTITIES_FIELD]
         : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
       const mergedNotities = mergeEscalatedFlag(notitiesBaseline, lastUserMsg);
-      await updateLead(lead.id, { [NOTITIES_FIELD]: mergedNotities }, phone);
+      await updateLead(lead.id, { [NOTITIES_FIELD]: mergedNotities }, phone, scopedProjectCode);
     } catch (err) {
       console.error('[whatsapp] escalated-vlag opslaan mislukt (melding is al verstuurd):', err.message);
     }
@@ -520,7 +583,7 @@ async function processMessage(phone, text) {
         ? updateFields[NOTITIES_FIELD]
         : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
       const cleared = clearEscalatedFlag(notitiesBaseline);
-      if (cleared !== null) await updateLead(lead.id, { [NOTITIES_FIELD]: cleared }, phone);
+      if (cleared !== null) await updateLead(lead.id, { [NOTITIES_FIELD]: cleared }, phone, scopedProjectCode);
     } catch (err) {
       console.error('[whatsapp] escalated-vlag opruimen mislukt:', err.message);
     }
@@ -539,8 +602,8 @@ async function processMessage(phone, text) {
         fr: `Parfait. Un collègue te contactera ${callbackWindow}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
         en: `Perfect. A colleague will reach out to you ${callbackWindow}. You don't need to do anything else. We will come back to you.`
       };
-      await sendWA(phone, callbackMsgs[lang] || callbackMsgs.nl);
-      await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone);
+      await sendWA(phone, callbackMsgs[lang] || callbackMsgs.nl, clientPhoneNumberId);
+      await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone, scopedProjectCode);
     }
   }
 
@@ -567,7 +630,7 @@ async function processMessage(phone, text) {
           await updateLead(lead.id, {
             fldLeEqwNefdglLis: true,
             fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
-          }, phone);
+          }, phone, scopedProjectCode);
 
           // ── Booking confirmation (fail-soft) ─────────────────────────────
           // We're mid-conversation right now — the lead just messaged us, so
@@ -587,7 +650,7 @@ async function processMessage(phone, text) {
               fr: `Confirmé. Ton rendez-vous chez ${clientName} est prévu le ${when}.${address ? ` Adresse : ${address}.` : ''}`,
               en: `Confirmed. Your appointment with ${clientName} is booked for ${when}.${address ? ` Address: ${address}.` : ''}`
             };
-            const confirmSent = await sendWA(phone, confirmMsgs[lang] || confirmMsgs.nl);
+            const confirmSent = await sendWA(phone, confirmMsgs[lang] || confirmMsgs.nl, clientPhoneNumberId);
             if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${phone} niet aangekomen (afspraak zelf blijft geldig)`);
           } catch (err) {
             console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
@@ -635,7 +698,7 @@ async function processMessage(phone, text) {
         `Dashboard: https://app.helvaro.pro/dashboard`;
       // See the escalatie-melding comment above: sendWA() never throws, so
       // check the resolved boolean rather than relying on an unreachable .catch().
-      const qualifiedNotifySent = await sendWA(ownerPhone, notifyMsg);
+      const qualifiedNotifySent = await sendWA(ownerPhone, notifyMsg, clientPhoneNumberId);
       if (!qualifiedNotifySent) console.error(`[whatsapp] gekwalificeerde-lead-melding naar owner (${ownerPhone}) is niet aangekomen`);
     }
     if (ownerEmail) {
@@ -915,27 +978,51 @@ function getCachedClient(code) {
 }
 function setCachedClient(code, record) { _clientCache.set(code, { record, ts: Date.now() }); }
 
-// Lead cache by phone. 3 min TTL.
-// getLead() is called on EVERY incoming message with no caching, making it the
-// single biggest Airtable drain (one GET per message, uncached).  Conversations
-// involve multiple messages from the same phone so the cache hit rate is high.
-// After updateLead() we merge the new fields into the cached record so the next
-// message sees the latest conversation state without a fresh Airtable call.
+// Lead cache by phone (or phone+projectCode when scoped — see leadCacheKey()).
+// 3 min TTL. getLead() is called on EVERY incoming message with no caching,
+// making it the single biggest Airtable drain (one GET per message,
+// uncached). Conversations involve multiple messages from the same phone so
+// the cache hit rate is high. After updateLead() we merge the new fields
+// into the cached record so the next message sees the latest conversation
+// state without a fresh Airtable call.
+//
+// Collision safety: a cross-client collision (see getLead() below) is NEVER
+// cached — see the comment at that call site for why. Only the unambiguous
+// cases (single candidate, or scoped-by-own-number lookup) are cached here,
+// so a cache hit can never hand back a lead that a fresh resolution would
+// not have picked.
 const _leadCache = new Map();
 const LEAD_TTL   = 3 * 60 * 1000;
-function getCachedLead(phone) {
-  const e = _leadCache.get(phone);
+// Composite cache key so scoped (phone, projectCode) lookups and unscoped
+// (phone-only) lookups never collide with each other in the same Map — they
+// can legitimately resolve to different records for the same phone.
+function leadCacheKey(phone, scopedProjectCode) {
+  return scopedProjectCode ? `${phone}::${scopedProjectCode}` : phone;
+}
+function getCachedLead(cacheKey) {
+  const e = _leadCache.get(cacheKey);
   if (!e) return null;
-  if (Date.now() - e.ts > LEAD_TTL) { _leadCache.delete(phone); return null; }
+  if (Date.now() - e.ts > LEAD_TTL) { _leadCache.delete(cacheKey); return null; }
   return e.record;
 }
-function setCachedLead(phone, record) { _leadCache.set(phone, { record, ts: Date.now() }); }
-function patchCachedLead(phone, fields) {
-  const e = _leadCache.get(phone);
+function setCachedLead(cacheKey, record) { _leadCache.set(cacheKey, { record, ts: Date.now() }); }
+function patchCachedLead(cacheKey, fields) {
+  const e = _leadCache.get(cacheKey);
   if (!e) return;
   e.record = { ...e.record, fields: { ...e.record.fields, ...fields } };
   // Keep original timestamp so TTL still expires at the right time
 }
+
+// Client cache by WhatsApp Phone Number ID (webhook routing, Task 2). Only
+// populated on a found match, same convention as _clientCache above. 5 min TTL.
+const _clientByPnidCache = new Map();
+function getCachedClientByPnid(pnid) {
+  const e = _clientByPnidCache.get(pnid);
+  if (!e) return null;
+  if (Date.now() - e.ts > CLIENT_TTL) { _clientByPnidCache.delete(pnid); return null; }
+  return e.record;
+}
+function setCachedClientByPnid(pnid, record) { _clientByPnidCache.set(pnid, { record, ts: Date.now() }); }
 
 // Fast-fail retry for Airtable 429. 2 retries, ~3 s max.
 async function atFetch(url, opts) {
@@ -967,23 +1054,194 @@ async function getClientByCode(code) {
   return record;
 }
 
-async function getLead(phone) {
-  const cached = getCachedLead(phone);
+// Reverse lookup: which client (if any) owns a given WhatsApp Phone Number ID
+// (Task 2 webhook routing). Used only when the inbound webhook's
+// metadata.phone_number_id differs from the shared PHONE_NUMBER_ID env var —
+// i.e. never on today's default single-shared-number setup, where every
+// client's F_WA_PHONE_NUMBER_ID is blank and this function is never called.
+// Returns null (not just "no match") both when nobody owns the number AND
+// when MORE than one client somehow owns it (a data-entry mistake) — in
+// neither case is a direct route safe, so the caller falls back to the
+// Task 1 phone-only heuristic rather than guessing.
+async function getClientByPhoneNumberId(phoneNumberId) {
+  if (!phoneNumberId) return null;
+  const cached = getCachedClientByPnid(phoneNumberId);
   if (cached) return cached;
-
-  // fld6YaitW0lMqHUrd = Phone field ID; fldR0r13EU4RwrtvH = Created At field ID
-  // Using field IDs in formula and sort so renames never break lookups.
-  const filter = encodeURIComponent(`{fld6YaitW0lMqHUrd}="${escapeFormula(phone)}"`);
-  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc`;
+  const filter = encodeURIComponent(`{${F_WA_PHONE_NUMBER_ID}}="${escapeFormula(phoneNumberId)}"`);
+  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula=${filter}&maxRecords=2&returnFieldsByFieldId=true`;
   const res    = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
   const data   = await res.json();
-  if (data.error) console.error('[Airtable] Lead fout:', JSON.stringify(data.error));
-  const record = data.records?.[0] || null;
-  if (record) setCachedLead(phone, record);
-  return record;
+  if (data.error) { console.error('[Airtable] Client-by-PhoneNumberId fout:', JSON.stringify(data.error)); return null; }
+  const records = data.records || [];
+  if (records.length !== 1) {
+    if (records.length > 1) {
+      console.error(`[Multi-tenant] WhatsApp Phone Number ID staat op ${records.length} clients ingesteld. Kan niet direct routeren, val terug op heuristiek. pnid=${phoneNumberId}`);
+    }
+    return null;
+  }
+  setCachedClientByPnid(phoneNumberId, records[0]);
+  return records[0];
 }
 
-async function updateLead(recordId, fields, phone) {
+// Pull the most recent inbound (`role:'user'`) and outbound (`role:'assistant'`)
+// timestamps out of a lead's Conversation History JSON. Only entries stamped
+// with a numeric `ts` count — user turns have been stamped since the 24h-window
+// fix (see step 4's push comment in processMessage), assistant turns since the
+// multitenancy collision fix below. Older conversations may have entries with
+// no `ts` at all; those are silently skipped rather than crashing, and the
+// caller (resolveLeadCollision) degrades to Created Date when nothing usable
+// comes back.
+function extractLastTimestamps(historyRaw) {
+  let history = [];
+  if (historyRaw) {
+    try { history = JSON.parse(historyRaw); } catch { history = []; }
+  }
+  let lastOutboundTs = null, lastInboundTs = null;
+  for (const m of history) {
+    if (!m || typeof m.ts !== 'number') continue;
+    if (m.role === 'assistant' && (lastOutboundTs === null || m.ts > lastOutboundTs)) lastOutboundTs = m.ts;
+    if (m.role === 'user'      && (lastInboundTs  === null || m.ts > lastInboundTs))  lastInboundTs  = m.ts;
+  }
+  return { lastOutboundTs, lastInboundTs };
+}
+
+// Resolve a cross-client lead collision (Task 1): same phone number, more
+// than one client's Leads record. `records` is one Airtable Leads record per
+// competing Project Code (already reduced to each project's newest record —
+// see getLead()). Picks a winner using, in priority order:
+//   a. Most recent OUTBOUND message to this phone (a reply is a reply to
+//      something — whoever messaged this phone most recently is almost
+//      certainly who the lead is answering).
+//   b. Tie-break: most recent INBOUND message.
+//   c. Final tie-break: most recently created lead record.
+// Never throws, never returns nothing — if no candidate has any usable
+// timestamp at all, this degrades to created-date ordering (the record
+// array's own order), matching today's single-client behaviour exactly.
+function resolveLeadCollision(records) {
+  const NEG_INF = -Infinity;
+  const candidates = records.map(r => {
+    const { lastOutboundTs, lastInboundTs } = extractLastTimestamps(r.fields['Conversation History']);
+    const createdRaw = r.fields['fldR0r13EU4RwrtvH'] || r.fields['Created At'] || r.createdTime;
+    const createdTs  = createdRaw ? new Date(createdRaw).getTime() : 0;
+    return {
+      record:      r,
+      projectCode: r.fields['fldSmczuyUJd26HLe'] || r.fields['Project Code'] || '(onbekend)',
+      lastOutboundTs,
+      lastInboundTs,
+      createdTs: Number.isFinite(createdTs) ? createdTs : 0,
+    };
+  });
+
+  const sorted = [...candidates].sort((a, b) => {
+    const aOut = a.lastOutboundTs ?? NEG_INF, bOut = b.lastOutboundTs ?? NEG_INF;
+    if (aOut !== bOut) return bOut - aOut;
+    const aIn = a.lastInboundTs ?? NEG_INF, bIn = b.lastInboundTs ?? NEG_INF;
+    if (aIn !== bIn) return bIn - aIn;
+    return b.createdTs - a.createdTs;
+  });
+
+  const winner   = sorted[0];
+  const runnerUp = sorted[1];
+  let decidedBy = 'created_date';
+  if (runnerUp) {
+    const wOut = winner.lastOutboundTs ?? NEG_INF, rOut = runnerUp.lastOutboundTs ?? NEG_INF;
+    if (wOut !== NEG_INF && wOut !== rOut) {
+      decidedBy = 'last_outbound';
+    } else {
+      const wIn = winner.lastInboundTs ?? NEG_INF, rIn = runnerUp.lastInboundTs ?? NEG_INF;
+      decidedBy = (wIn !== NEG_INF && wIn !== rIn) ? 'last_inbound' : 'created_date';
+    }
+  }
+  return { winner, decidedBy, sorted };
+}
+
+async function getLead(phone, scopedProjectCode) {
+  const cacheKey = leadCacheKey(phone, scopedProjectCode);
+  const cached   = getCachedLead(cacheKey);
+  if (cached) return cached;
+
+  if (scopedProjectCode) {
+    // Own-number client (Task 2): the inbound webhook's phone_number_id maps
+    // to EXACTLY this client (resolved in the handler above), so the
+    // Airtable query itself is scoped to (phone, Project Code) — no
+    // candidate list, no heuristic. A cross-client collision is structurally
+    // impossible here: the AND() filter can only ever match this client's
+    // own lead records for this phone.
+    const filter = encodeURIComponent(
+      `AND({fld6YaitW0lMqHUrd}="${escapeFormula(phone)}", {fldSmczuyUJd26HLe}="${escapeFormula(scopedProjectCode)}")`
+    );
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&maxRecords=1&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc`;
+    const res  = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const data = await res.json();
+    if (data.error) console.error('[Airtable] Lead fout (scoped):', JSON.stringify(data.error));
+    const record = data.records?.[0] || null;
+    if (record) setCachedLead(cacheKey, record);
+    return record;
+  }
+
+  // Shared-number path (today's default). Fetch EVERY candidate for this
+  // phone — not just the newest — because the only way to detect a
+  // cross-client collision is to see every lead record that shares this
+  // phone number. fld6YaitW0lMqHUrd = Phone field ID; fldR0r13EU4RwrtvH =
+  // Created At field ID; fldSmczuyUJd26HLe = Project Code field ID. Field
+  // IDs used throughout so renames never break this.
+  const filter = encodeURIComponent(`{fld6YaitW0lMqHUrd}="${escapeFormula(phone)}"`);
+  let records = [];
+  let offset  = '';
+  do {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&pageSize=100&sort[0][field]=fldR0r13EU4RwrtvH&sort[0][direction]=desc${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
+    const res  = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const data = await res.json();
+    if (data.error) { console.error('[Airtable] Lead fout:', JSON.stringify(data.error)); break; }
+    records = records.concat(data.records || []);
+    offset  = data.offset || '';
+  } while (offset && records.length < MAX_LEAD_CANDIDATES);
+
+  if (records.length === 0) return null;
+
+  if (records.length === 1) {
+    setCachedLead(cacheKey, records[0]);
+    return records[0];
+  }
+
+  // Multiple lead records share this phone. Reduce to one candidate PER
+  // Project Code — `records` is already sorted desc by Created At, so the
+  // first record seen for each project code is that project's newest.
+  const bestPerProject = new Map();
+  for (const r of records) {
+    const pc = r.fields['fldSmczuyUJd26HLe'] || r.fields['Project Code'] || '';
+    if (!bestPerProject.has(pc)) bestPerProject.set(pc, r);
+  }
+
+  if (bestPerProject.size === 1) {
+    // Same client, multiple lead records for this phone (e.g. the form was
+    // submitted twice). Not a collision — keep today's exact behaviour:
+    // most recently created wins.
+    const record = records[0];
+    setCachedLead(cacheKey, record);
+    return record;
+  }
+
+  // ── Real cross-client collision ────────────────────────────────────────
+  const { winner, decidedBy, sorted } = resolveLeadCollision([...bestPerProject.values()]);
+  const projectSummary = sorted.map(c => c.projectCode).join(', ');
+  // Deliberate product metric, not a debug line — the rate of this log is
+  // exactly what tells Sindi when a client needs their own WhatsApp number.
+  // GDPR: never log the full phone number.
+  console.warn(
+    `[Multi-tenant] collision phone=${maskPhone(phone)} leadRecords=${records.length} ` +
+    `competingClients=${sorted.length} projects=[${projectSummary}] chosen=${winner.projectCode} decidedBy=${decidedBy}`
+  );
+
+  // Never cache a collision result. The winner depends on which client most
+  // recently messaged this phone — a signal that can flip between two
+  // messages faster than this cache's TTL. Re-resolving fresh every time for
+  // these rare colliding phones is far cheaper than risking a stale
+  // cross-client leak being served out of cache.
+  return winner.record;
+}
+
+async function updateLead(recordId, fields, phone, scopedProjectCode) {
   const url  = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${recordId}`;
   const res  = await atFetch(url, {
     method:  'PATCH',
@@ -994,7 +1252,10 @@ async function updateLead(recordId, fields, phone) {
   if (data.error) console.error('[Airtable] Update fout:', JSON.stringify(data.error));
   // Keep in-memory lead cache in sync so the next message from this phone
   // sees the updated Conversation History / State without a fresh Airtable call.
-  if (phone && !data.error) patchCachedLead(phone, fields);
+  // Uses the same composite cache key as getLead() — a no-op if that key was
+  // never cached in the first place (e.g. a collision result, which is
+  // deliberately never cached — see getLead()'s own comment).
+  if (phone && !data.error) patchCachedLead(leadCacheKey(phone, scopedProjectCode), fields);
   return data;
 }
 
@@ -1166,6 +1427,17 @@ function sanitize(val) {
   return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 2000);
 }
 
+// GDPR: mask a phone number for logging, keeping only the last 4 digits
+// (e.g. "32478123456" -> "*******3456"). Used by the [Multi-tenant] collision
+// log — that line is a permanent product metric (see getLead()), so unlike
+// most of this file's existing debug logs (which do log the full number) it
+// must never carry a full phone number.
+function maskPhone(phone) {
+  const s = String(phone || '');
+  if (s.length <= 4) return '*'.repeat(s.length);
+  return '*'.repeat(s.length - 4) + s.slice(-4);
+}
+
 // Merge a waFailed:true marker into a lead's existing Notities JSON without
 // clobbering notes/tasks/calls a client may already have added manually.
 // api/form.js's flagWaFailed overwrites the field outright, which is safe
@@ -1314,9 +1586,16 @@ function isWithinWorkingHours(spec) {
 // throws — callers (esp. the delayed-send flow in processMessage) rely on
 // this to decide what's safe to persist to Airtable, so a thrown network
 // error must resolve to `false` rather than propagate and skip that logic.
-async function sendWA(to, message) {
+//
+// `phoneNumberId` (Task 2, multitenancy prep): the per-client sender number,
+// resolved from Client Config's F_WA_PHONE_NUMBER_ID by callers in
+// processMessage. Falls back to the shared PHONE_NUMBER_ID env var when
+// omitted/blank — this is the fallback that keeps every existing client
+// (all fields still blank) sending from EXACTLY the same number as before.
+async function sendWA(to, message, phoneNumberId) {
   try {
-    const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
+    const pnid = phoneNumberId || PHONE_NUMBER_ID;
+    const url = `https://graph.facebook.com/v19.0/${pnid}/messages`;
     const res = await fetch(url, {
       method:  'POST',
       headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
