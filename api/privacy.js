@@ -102,7 +102,7 @@ module.exports = function handler(req, res) {
 <body>
   <a class="back" href="/">← Terug naar Helvaro</a>
   <h1>Privacybeleid</h1>
-  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: juli 2026</p>
+  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: augustus 2026</p>
 
   <h2>1. Wie zijn wij?</h2>
   <p>Helvaro BV is een B2B SaaS-platform dat bedrijven helpt met geautomatiseerde leadkwalificatie via WhatsApp. Contacteer ons via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
@@ -119,15 +119,28 @@ module.exports = function handler(req, res) {
   <h2>3. Waarvoor gebruiken wij uw gegevens?</h2>
   <p>Uw gegevens worden gebruikt om u te contacteren, uw vraag via onze AI-assistent op WhatsApp te beantwoorden, en te bepalen of er een match is met de dienstverlening van het bedrijf waarmee u contact opnam. Wij verkopen uw gegevens nooit aan derden.</p>
 
-  <h2>4. Hoe lang bewaren wij uw gegevens?</h2>
+  <h2>4. Fraudepreventie bij aanmelding van een nieuwe klant</h2>
+  <p>Deze sectie geldt niet voor leads, maar voor bedrijven die zelf een Helvaro-account aanmaken via onze aanmeldpagina.</p>
+  <p>Om misbruik van onze gratis proefperiode tegen te gaan (bv. massaal aangemaakte proefaccounts, bots, of pogingen tot concurrentie-onderzoek), verzamelen wij bij een nieuwe aanmelding een aantal extra technische signalen:</p>
+  <ul>
+    <li><strong>IP-adres</strong> van het toestel waarmee wordt aangemeld, gebruikt om het aantal aanmeldingen per IP-adres te beperken en om (via een omgekeerde DNS-check, zonder externe dienst) een indicatie te krijgen of het IP-adres bij een hostingprovider hoort in plaats van bij een gewone internetverbinding.</li>
+    <li><strong>Apparaat-/browser-vingerafdruk</strong>: een technische, niet-herleidbare hash op basis van browserkenmerken (bv. schermresolutie, taal, tijdzone), gebruikt om te detecteren of hetzelfde toestel kort na elkaar meerdere accounts aanmaakt.</li>
+    <li><strong>Het e-mailadres, e-maildomein, bedrijfsnaam en telefoonnummer</strong> die u zelf invult, vergeleken met onze bestaande klanten om dubbele proefaccounts te herkennen.</li>
+  </ul>
+  <p><strong>Rechtsgrond:</strong> ons gerechtvaardigd belang (art. 6(1)(f) AVG) om misbruik, fraude en geautomatiseerde aanmeldingen te voorkomen en de kwaliteit van onze dienst te beschermen.</p>
+  <p><strong>Wat er nooit gebeurt:</strong> deze controle leidt nooit automatisch tot een afwijzing. Het systeem kan een aanmelding automatisch goedkeuren of markeren voor handmatige controle — een effectieve weigering gebeurt altijd pas na menselijke beoordeling. Het ontbreken van een (vindbare) website is op zich nooit een reden om een aanmelding te markeren of te weigeren.</p>
+  <p><strong>Bewaartermijn:</strong> het IP-adres en de apparaat-vingerafdruk zijn enkel nuttig op het moment van aanmelding en worden daarom <strong>automatisch verwijderd na 30 dagen</strong> door dezelfde dagelijkse opschoningstaak die ook koude leads anonimiseert (zie sectie 5 hieronder). De uitkomst van de controle (een score en de gebruikte redenen, zonder het IP-adres of de vingerafdruk zelf) bewaren wij wel langer, als interne administratie van waarom een account is goedgekeurd of gemarkeerd.</p>
+
+  <h2>5. Hoe lang bewaren wij uw gegevens?</h2>
   <p>Uw gegevens worden bewaard zolang dit nodig is voor het doel waarvoor ze verzameld zijn, of totdat u verzoekt om verwijdering. Concreet:</p>
   <ul>
     <li><strong>Gekwalificeerde leads</strong> (waarmee een klantrelatie tot stand kwam of nog kan komen) worden bewaard zolang die klantrelatie dit vereist.</li>
     <li><strong>Niet-gekwalificeerde of koude leads</strong> waarbij 6 maanden lang geen activiteit meer was, worden automatisch geanonimiseerd: naam, telefoonnummer en de volledige gespreksinhoud worden verwijderd. Geanonimiseerde, niet tot een persoon herleidbare statistieken (bv. aantal leads, conversiecijfers) blijven wel bewaard voor rapportagedoeleinden.</li>
+    <li><strong>Fraudepreventie-signalen bij aanmelding</strong> (IP-adres, apparaat-vingerafdruk — zie sectie 4 hierboven) worden na 30 dagen automatisch verwijderd.</li>
   </ul>
-  <p>U kan op elk moment vroegtijdige verwijdering of anonimisering van uw gegevens aanvragen — zie sectie 7 hieronder.</p>
+  <p>U kan op elk moment vroegtijdige verwijdering of anonimisering van uw gegevens aanvragen — zie sectie 8 hieronder.</p>
 
-  <h2>5. Wie verwerkt uw gegevens?</h2>
+  <h2>6. Wie verwerkt uw gegevens?</h2>
   <p>Naast het bedrijf waarmee u rechtstreeks contact opneemt, schakelt Helvaro de volgende partijen (subverwerkers) in om de dienst te kunnen leveren:</p>
   <ul>
     <li><strong>Anthropic PBC</strong> (Verenigde Staten) — verwerkt de inhoud van uw WhatsApp-gesprek om de AI-antwoorden te genereren.</li>
@@ -138,19 +151,19 @@ module.exports = function handler(req, res) {
   </ul>
   <p>Deze lijst komt overeen met Bijlage 3 van onze verwerkersovereenkomst. Wij houden ze actueel en werken dit beleid bij zodra ze wijzigt.</p>
 
-  <h2>6. Internationale doorgifte</h2>
+  <h2>7. Internationale doorgifte</h2>
   <p>Sommige van de hierboven genoemde partijen zijn gevestigd buiten de Europese Economische Ruimte (EER), met name in de Verenigde Staten (o.a. Anthropic, Vercel en Airtable). Voor die doorgiften steunen wij op een geldig doorgiftemechanisme onder de AVG, zoals de Standard Contractual Clauses (SCC) van de Europese Commissie of, waar van toepassing, het EU-US Data Privacy Framework — dezelfde waarborgen die zijn vastgelegd in onze verwerkersovereenkomst met klanten.</p>
 
-  <h2>7. Uw rechten</h2>
+  <h2>8. Uw rechten</h2>
   <p>U heeft het recht om uw gegevens in te zien, te corrigeren, te beperken, over te dragen of te laten verwijderen, en u kan bezwaar maken tegen de verwerking. Stuur hiervoor een e-mail naar <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
-  <h2>8. Cookies</h2>
+  <h2>9. Cookies</h2>
   <p>Wij gebruiken geen tracking cookies. Onze website maakt gebruik van lokale opslag (localStorage) voor authenticatie, met een geldigheidsduur van 7 dagen.</p>
 
-  <h2>9. Beveiliging en opslag</h2>
+  <h2>10. Beveiliging en opslag</h2>
   <p>Uw gegevens worden beveiligd opgeslagen via Airtable en verwerkt door deze applicatie, die draait op Vercel. Alle verbindingen zijn versleuteld via HTTPS/TLS.</p>
 
-  <h2>10. Contact</h2>
+  <h2>11. Contact</h2>
   <p>Voor vragen over dit privacybeleid: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>. Voor vragen specifiek over gegevensbescherming kan u terecht bij onze gegevensbeschermingscontactpersoon: <a href="mailto:sindi.s@usehelvaro.pro">sindi.s@usehelvaro.pro</a>.</p>
 
   <footer>

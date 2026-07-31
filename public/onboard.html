@@ -494,6 +494,38 @@
   var params     = new URLSearchParams(window.location.search);
   var inviteCode = params.get('invite') || '';
 
+  // ── Device/browser fingerprint (best-effort, non-blocking) ───────────────
+  // Only ever used server-side when public self-serve signup is enabled AND
+  // no valid invite code is present (see api/admin.js's onboard-mode block +
+  // api/_signup-guard.js) — with an invite code, or with public signup off
+  // (today's default), this value is computed but never read. A coarse,
+  // non-invasive hash of a few browser characteristics, used only to notice
+  // the same device signing up repeatedly in a short window. If anything
+  // here fails (old browser, no SubtleCrypto, blocked by an extension) we
+  // simply send no fingerprint — the server treats that as neutral, never as
+  // a reason to flag. See api/privacy.js section 4 for what this is and why.
+  var _fp = '';
+  try {
+    var fpRaw = [
+      navigator.userAgent || '',
+      navigator.language || '',
+      (Intl.DateTimeFormat().resolvedOptions().timeZone) || '',
+      (screen.width || 0) + 'x' + (screen.height || 0),
+      screen.colorDepth || '',
+      navigator.hardwareConcurrency || '',
+      navigator.platform || ''
+    ].join('|');
+    if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+      window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(fpRaw))
+        .then(function (buf) {
+          _fp = Array.prototype.map.call(new Uint8Array(buf), function (b) {
+            return b.toString(16).padStart(2, '0');
+          }).join('');
+        })
+        .catch(function () { _fp = ''; });
+    }
+  } catch (e) { _fp = ''; }
+
   // ── Element refs ─────────────────────────────────────────────────────────
   var $ = function (id) { return document.getElementById(id); };
   var dots  = [1,2,3,4,5,6].map(function (n) { return $('dot-' + n); });
@@ -780,7 +812,12 @@
       formIntro:      $('w-formIntro').value.trim(),
       trustBadges:    $('w-trustBadges').value.trim(),
       aiPhotoUrl:     $('w-aiPhotoUrl').value.trim(),
-      autoReplyTpl:   $('w-autoReply').value.trim()
+      autoReplyTpl:   $('w-autoReply').value.trim(),
+      // Best-effort, may still be empty if computed too slowly/unsupported —
+      // see the fingerprint IIFE above. Server treats a missing value as
+      // neutral, never as a signal. Only read at all for public, non-invite
+      // signups — see api/admin.js's onboard-mode block.
+      deviceFingerprint: _fp
     };
 
     fetch('/api/admin', {
