@@ -10,6 +10,14 @@ const { waitUntil } = require('@vercel/functions');
 const { getPlanState } = require('./_plan');
 // Language registry — see its file header.
 const _lang = require('./_lang');
+// Approved-template WhatsApp sender (Meta 24h-window workaround) — shared
+// helper, not duplicated here. See api/leads.js:sendWATemplate's own header.
+// Safe to require: api/leads.js's module.exports is the route handler
+// function itself with extra named properties attached; requiring it here
+// only evaluates the module top-level (function/const declarations, no I/O)
+// and does NOT invoke the handler. api/cron-followup.js already does this
+// exact `require('./leads')` for getClientWaPhoneNumberId/aggregateReportPeriod.
+const { sendWATemplate } = require('./leads');
 
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
@@ -148,9 +156,9 @@ module.exports = async function handler(req, res) {
           ownerPhone = (match.fields['fldZEApe0gfse07AU'] || match.fields['Notify Phone']  || '').toString().trim();
           ownerEmail = (match.fields['fldDBJCN6dVMA8jax'] || match.fields['Rapport Email'] || '').toString().trim();
           planState  = getPlanState(match.fields);
-          // Blank field (every client today) -> '' -> sendWA() falls back to
-          // the shared PHONE_NUMBER_ID env var. Same fallback chain
-          // api/whatsapp.js's clientPhoneNumberId already uses.
+          // Blank field (every client today) -> '' -> the sendWATemplate calls
+          // below fall back to the shared PHONE_NUMBER_ID env var. Same
+          // fallback chain api/whatsapp.js's clientPhoneNumberId already uses.
           clientPnid = (match.fields[F_WA_PHONE_NUMBER_ID] || match.fields['WhatsApp Phone Number ID'] || '').toString().trim();
         }
       }
@@ -220,11 +228,11 @@ module.exports = async function handler(req, res) {
       .replace(/\{project\}/g, sanitize(project_code))
       .replace(/\{bron\}/g,    sanitize(bron))
       .replace(/\{ai\}/g,      sanitize(aiName));
-    // Prefer per-client notify-phone over global env-var fallback
+    // Prefer per-client notify-phone over global env-var fallback. E-mail
+    // (sendEmailNotification below) is the RELIABLE owner-alert channel — see
+    // the deferred callback below for why the WhatsApp ping here is
+    // best-effort-only and template-gated, not a second guaranteed channel.
     const notifyPhone = ownerPhone || process.env.NOTIFY_PHONE;
-    const notifyMsg   = notifyPhone
-      ? `Nieuwe lead!\n\nNaam: ${sanitize(name)}\nTel: ${phone}\nProject: ${project_code}\nBron: ${sanitize(bron)}\n\nDashboard: https://app.helvaro.pro/dashboard`
-      : null;
 
     // Fire after 45 seconds. Feels like a real person picking up the form
     // Note: Vercel maxDuration is 60s, so 45s delay + processing leaves ~15s buffer
@@ -254,37 +262,97 @@ module.exports = async function handler(req, res) {
           if (planState.isServiceStopped) {
             console.log(`[form] project ${project_code} — Plan Status '${planState.status}', automatische WhatsApp-begroeting overgeslagen. Lead is wel aangemaakt.`);
           } else {
-            const waOk = await sendWA(waPhone, waGreeting, clientPnid);
-            if (!waOk) {
-              // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
+            // A web-form lead has never messaged the business, so Meta's 24h
+            // customer-service window is NEVER open here — a freeform
+            // `type: 'text'` send (the old behaviour) is silently rejected by
+            // Meta every time. This MUST go through an approved template,
+            // same rule cron-followup.js / leads.js's sendAppointmentConfirmation
+            // already enforce for their own outside-the-window sends.
+            const introPnid = clientPnid || process.env.PHONE_NUMBER_ID;
+            if (!process.env.INTRO_TEMPLATE_NAME) {
+              // Loud + specific: this is the exact failure mode that let the
+              // original bug (freeform first-contact send) go unnoticed for
+              // every form lead. Never let this degrade silently again.
+              console.error(`[form] INTRO_TEMPLATE_NAME niet geconfigureerd — WhatsApp-begroeting naar lead ${leadId} (${waPhone}) overgeslagen. Freeform buiten het 24u-venster zou Meta-afwijzing/ban riskeren. Lead IS aangemaakt; stel INTRO_TEMPLATE_NAME + INTRO_TEMPLATE_LANG in.`);
               await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
             } else {
-              // Persist the opening message into Conversation History so the dashboard
-              // shows the very first bubble of the conversation (otherwise it looks
-              // like the lead started the chat unprompted).
-              //
-              // IMPORTANT: keep Conversation State = 'new' here. State only flips to
-              // 'in_progress' when the LEAD replies. The cron-followup job relies on
-              // this signal to know which leads still need a re-engagement message.
-              try {
-                await atFetch(
-                  `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
-                  {
-                    method:  'PATCH',
-                    headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ fields: {
-                      'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
-                    }})
-                  }
-                ).catch(() => {});
-              } catch { /* non-critical */ }
+              // Template language gated through the Meta-approval registry
+              // (nl/fr/en today) — never bypass this, see _lang.js header.
+              const introLang = _lang.resolveTemplateLanguage(process.env.INTRO_TEMPLATE_LANG || lang, lang).code;
+              // Params mirror the free-form welcome copy's {naam}/{ai}/{bedrijf}
+              // placeholders: {{1}}=first name, {{2}}=AI/staff name, {{3}}=company
+              // name. The approved Meta template body must declare exactly 3
+              // variables in this order (e.g. "Hey {{1}}! {{2}} hier van {{3}}...").
+              const waOk = await sendWATemplate(
+                waPhone, process.env.INTRO_TEMPLATE_NAME, introLang,
+                [firstName, sanitize(aiName), sanitize(clientName)],
+                introPnid, process.env.WHATSAPP_TOKEN
+              );
+              if (!waOk) {
+                // Meta rejected the template send (unapproved variant, wrong
+                // param count, disabled template, etc). Same loud+flagged
+                // treatment as the missing-config case above.
+                console.error(`[form] WhatsApp-intro template "${process.env.INTRO_TEMPLATE_NAME}" (${introLang}) naar lead ${leadId} (${waPhone}) geweigerd door Meta. Lead IS aangemaakt, maar heeft nog geen WhatsApp-bericht ontvangen.`);
+                await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+              } else {
+                // Persist a readable rendering of the opener into Conversation
+                // History so the dashboard shows the very first bubble of the
+                // conversation (otherwise it looks like the lead started the
+                // chat unprompted). waGreeting is a display approximation —
+                // the actual WhatsApp send used the approved template above,
+                // not this free-text string.
+                //
+                // IMPORTANT: keep Conversation State = 'new' here. State only flips to
+                // 'in_progress' when the LEAD replies. The cron-followup job relies on
+                // this signal to know which leads still need a re-engagement message.
+                try {
+                  await atFetch(
+                    `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+                    {
+                      method:  'PATCH',
+                      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                      body:    JSON.stringify({ fields: {
+                        'Conversation History': JSON.stringify([{ role: 'assistant', content: waGreeting }])
+                      }})
+                    }
+                  ).catch(() => {});
+                } catch { /* non-critical */ }
+              }
             }
           }
-          if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg, clientPnid);
+          // ── Owner WhatsApp ping: best-effort ONLY, never the reliable channel ──
+          // The owner is not a lead and hasn't necessarily messaged the business
+          // number recently either, so the same 24h-window rule applies to them.
+          // Requiring every client to get a dedicated Meta template approved just
+          // for internal "new lead" alerts doesn't scale the way email does (no
+          // approval process, always deliverable) — so email (below, outside this
+          // deferred block, fired unconditionally) is the RELIABLE owner-alert
+          // channel. This WhatsApp ping only fires when NOTIFY_TEMPLATE_NAME is
+          // configured; if it's not, or if the send fails, that's fine — the
+          // owner already has the email either way, so this only warns, it never
+          // flags the lead (the lead's own status is unaffected by this ping).
+          if (notifyPhone) {
+            if (process.env.NOTIFY_TEMPLATE_NAME) {
+              const notifyPnid = clientPnid || process.env.PHONE_NUMBER_ID;
+              const notifyLang = _lang.resolveTemplateLanguage(process.env.NOTIFY_TEMPLATE_LANG || lang, lang).code;
+              // {{1}}=lead name, {{2}}=lead phone, {{3}}=project code
+              const notifyOk = await sendWATemplate(
+                notifyPhone, process.env.NOTIFY_TEMPLATE_NAME, notifyLang,
+                [sanitize(name), phone, sanitize(project_code)],
+                notifyPnid, process.env.WHATSAPP_TOKEN
+              );
+              if (!notifyOk) {
+                console.warn(`[form] WhatsApp-eigenaarsmelding (template "${process.env.NOTIFY_TEMPLATE_NAME}") naar ${notifyPhone} geweigerd door Meta voor lead ${leadId}. Owner is al per e-mail verwittigd — geen verdere actie nodig.`);
+              }
+            } else {
+              console.log(`[form] NOTIFY_TEMPLATE_NAME niet geconfigureerd — WhatsApp-melding aan eigenaar overgeslagen voor lead ${leadId} (freeform buiten 24u-venster zou Meta-afwijzing riskeren). E-mailmelding is al verstuurd.`);
+            }
+          }
         } catch (err) {
-          // Belt-and-suspenders: sendWA/atFetch already fail-soft internally,
-          // but if something upstream still throws, flag the lead rather than
-          // let it silently vanish with no "Niet bereikbaar" signal at all.
+          // Belt-and-suspenders: sendWATemplate/atFetch already fail-soft
+          // internally, but if something upstream still throws, flag the
+          // lead rather than let it silently vanish with no "Niet
+          // bereikbaar" signal at all.
           console.error('[form] deferred WhatsApp-send callback crashed:', err.message);
           await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(() => {});
         } finally {
@@ -340,34 +408,13 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
     .catch(err => console.error('[form mail]', err && err.message));
 }
 
-// `phoneNumberId` (multitenancy prep): the per-client sender number, resolved
-// from Client Config's F_WA_PHONE_NUMBER_ID by the handler above. Falls back
-// to the shared PHONE_NUMBER_ID env var when omitted/blank — this is the
-// fallback that keeps every existing client (all fields still blank) sending
-// from EXACTLY the same number as before. Mirrors api/whatsapp.js's sendWA().
-async function sendWA(to, message, phoneNumberId) {
-  try {
-    const pnid = phoneNumberId || process.env.PHONE_NUMBER_ID;
-    const r = await fetch(
-      `https://graph.facebook.com/v19.0/${pnid}/messages`,
-      {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: message } })
-      }
-    );
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok || data.error) {
-      console.error(`[form] WhatsApp naar ${to} mislukt (${r.status}):`, JSON.stringify(data.error || data));
-      return false;
-    }
-    console.log(`[form] WhatsApp gestuurd naar ${to}`);
-    return true;
-  } catch (err) {
-    console.error(`[form] WhatsApp netwerk fout naar ${to}:`, err.message);
-    return false;
-  }
-}
+// NOTE: this file used to have its own freeform sendWA() helper here. It was
+// removed — a web-form lead has never messaged the business, so Meta's 24h
+// customer-service window is never open for that first contact, and a
+// freeform `type: 'text'` send is silently rejected by Meta every time (the
+// exact bug this file's WhatsApp sends were fixed for). Both the lead-intro
+// and owner-notify sends above now go through the shared sendWATemplate()
+// helper (imported from ./leads) instead. See api/leads.js:sendWATemplate.
 
 async function flagWaFailed(leadId, token, baseId, tableId) {
   const notities = JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], waFailed: true });
