@@ -2162,3 +2162,10 @@ module.exports.reportPeriodBounds    = reportPeriodBounds;
 // instead of writing a second Airtable-call-per-lead helper — same "reuse,
 // don't duplicate" reasoning as the aggregateReportPeriod export above.
 module.exports.getClientWaPhoneNumberId = getClientWaPhoneNumberId;
+// sendWATemplate: shared approved-template WhatsApp sender (works outside
+// Meta's 24h customer-service window, unlike a freeform text send). Exported
+// so api/form.js's first-contact intro + owner-notify sends can reuse this
+// EXACT helper instead of writing a second implementation — same "reuse,
+// don't duplicate" reasoning as the two exports above. Never throws;
+// resolves false on any failure (see its own header for the full contract).
+module.exports.sendWATemplate = sendWATemplate;
