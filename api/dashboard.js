@@ -19,11 +19,29 @@ module.exports = async function handler(req, res) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Helvaro. AI Lead Kwalificatie</title>
 <link rel="icon" href="/favicon.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/vendor/chart.umd.min.js"></script>
 <style>
+/* ============================================================
+   SELF-HOSTED FONTS (GDPR — no requests to Google's CDN)
+   Both files are variable fonts; each weight face below points at
+   the same physical file and the browser selects the right
+   instance, matching the weight set previously requested from
+   Google Fonts (Inter 300/400/500/600/700, Orbitron 400-900).
+   ============================================================ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/fonts/orbitron-var.woff2') format('woff2');
+}
 /* ============================================================
    CSS CUSTOM PROPERTIES
    ============================================================ */
@@ -6266,7 +6284,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-color: rgba(var(--accent-rgb),0.2);
 }
 </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="/vendor/jspdf.umd.min.js"></script>
+    <script src="/vendor/qrcode.js"></script>
 </head>
 <body>
 
@@ -6284,7 +6303,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
 
         <h1 class="login-welcome">Welkom terug!</h1>
-        <p class="login-subtitle">Voer uw gegevens in om toegang te krijgen tot uw dashboard</p>
+        <p class="login-subtitle">Voer je gegevens in om toegang te krijgen tot je dashboard</p>
 
         <div class="form-group">
           <label class="form-label" for="login-email">E-mailadres</label>
@@ -6304,7 +6323,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
         <div style="text-align:center;margin-top:14px"><a href="/forgot-password" style="font-size:13px;color:#6b7280;text-decoration:none">Wachtwoord vergeten?</a></div>
 
-        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform 2026</div>
+        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform ${new Date().getFullYear()}</div>
       </div>
     </div>
 
@@ -6348,7 +6367,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <div class="brand-tagline">
             <h2>Naadloze werkomgeving</h2>
-            <p>Alles wat u nodig heeft in één krachtig AI-platform</p>
+            <p>Alles wat je nodig hebt in één krachtig AI-platform</p>
           </div>
         </div>
 
@@ -6437,7 +6456,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <div class="brand-tagline">
             <h2>Altijd overzicht</h2>
-            <p>Uw agenda en leads op één plek, altijd up-to-date</p>
+            <p>Je agenda en leads op één plek, altijd up-to-date</p>
           </div>
         </div>
 
@@ -6575,7 +6594,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
           <div class="page-title orbitron gradient-text" id="topbar-title">Dashboard</div>
-          <div class="page-subtitle" id="topbar-subtitle">Overzicht van uw gekwalificeerde leads</div>
+          <div class="page-subtitle" id="topbar-subtitle">Overzicht van je gekwalificeerde leads</div>
         </div>
       </div>
       <div class="topbar-right">
@@ -6869,7 +6888,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </div>
           <div class="export-card-title orbitron gradient-text">CSV Export</div>
-          <p class="export-card-desc">Download gefilterde leads als CSV voor Excel, Google Sheets of uw CRM.</p>
+          <p class="export-card-desc">Download gefilterde leads als CSV voor Excel, Google Sheets of je CRM.</p>
           <div class="export-includes">
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Naam &amp; contactgegevens</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Kwalificatiescores</div>
@@ -6922,7 +6941,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
           <div class="export-card-title orbitron gradient-text">Snapshot</div>
-          <p class="export-card-desc">Live overzicht van uw geselecteerde periode.</p>
+          <p class="export-card-desc">Live overzicht van je geselecteerde periode.</p>
           <div class="export-snapshot" id="export-snapshot">
             <div class="export-snap-item">
               <div class="export-snap-val" id="snap-total">—</div>
@@ -7963,7 +7982,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="settings-row">
             <div>
               <div class="settings-label">AI Naam</div>
-              <div class="settings-label-sub">De naam die uw AI-assistent gebruikt</div>
+              <div class="settings-label-sub">De naam die je AI-assistent gebruikt</div>
             </div>
             <div class="settings-value" id="set-ai-name">Helvaro AI</div>
           </div>
@@ -8037,7 +8056,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="settings-row">
             <div>
               <div class="settings-label">Hulp nodig?</div>
-              <div class="settings-label-sub">Ons team helpt u graag verder</div>
+              <div class="settings-label-sub">Ons team helpt je graag verder</div>
             </div>
             <a href="mailto:sindi.s@usehelvaro.pro" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color:var(--accent);background:rgba(var(--accent-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -8080,7 +8099,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="settings-row settings-danger">
             <div>
               <div class="settings-label">Uitloggen</div>
-              <div class="settings-label-sub">Beëindig uw huidige sessie</div>
+              <div class="settings-label-sub">Beëindig je huidige sessie</div>
             </div>
             <button class="btn-icon" onclick="logout()" style="border-color:rgba(var(--error-rgb),0.35);color:var(--red);background:rgba(var(--error-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -8204,7 +8223,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           </div>
           <div class="fdr-hero-right">
             <div class="fdr-deadline-label">Deadline</div>
-            <div class="fdr-deadline-val">20 jun 2026</div>
+            <div class="fdr-deadline-val" id="fdr-deadline-val">—</div>
             <div class="fdr-deadline-days" id="fdr-days-left">— dagen</div>
           </div>
         </div>
@@ -8338,7 +8357,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <div>
               <div class="founder-ai-title">Wat moet ik nu doen?</div>
-              <div class="founder-ai-sub">AI-advies op basis van uw huidige metrics</div>
+              <div class="founder-ai-sub">AI-advies op basis van je huidige metrics</div>
             </div>
           </div>
           <div class="founder-ai-output" id="founder-ai-output"></div>
@@ -8875,6 +8894,38 @@ tr:hover .td-arrow { color: var(--cyan); }
    truth also used by api/whatsapp.js's AI conversation). [{code,native,english}]
    ============================================================ */
 const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
+
+/* ============================================================
+   QR CODE (self-hosted — GDPR: client/project data used to be sent
+   to api.qrserver.com in the URL query string; now rendered fully
+   client-side via the vendored qrcode.js encoder, no network call).
+   ============================================================ */
+function renderQrDataUrl(text, sizePx, marginModules) {
+  if (typeof qrcode === 'undefined' || !text) return '';
+  const qr = qrcode(0, 'L');
+  qr.addData(text);
+  qr.make();
+  const moduleCount = qr.getModuleCount();
+  const margin = (marginModules == null) ? 4 : marginModules;
+  const totalModules = moduleCount + margin * 2;
+  const cell = Math.max(1, Math.floor(sizePx / totalModules));
+  const canvasSize = cell * totalModules;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvasSize, canvasSize);
+  ctx.fillStyle = '#000000';
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect((col + margin) * cell, (row + margin) * cell, cell, cell);
+      }
+    }
+  }
+  return canvas.toDataURL('image/png');
+}
 
 /* ============================================================
    STATE
@@ -9815,7 +9866,7 @@ async function sendClientInvite() {
       setTimeout(() => { btn.disabled = false; btn.textContent = 'Nog een sturen'; }, 3000);
     }
   } catch {
-    errEl.textContent = 'Netwerkfout. Controleer uw verbinding.';
+    errEl.textContent = 'Netwerkfout. Controleer je verbinding.';
     errEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Stuur uitnodigingsmail';
@@ -10183,7 +10234,7 @@ function renderResultaten(d) {
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
         </div>
         <div class="empty-title">Nog geen resultaten</div>
-        <div class="empty-desc">Zodra Helvaro leads voor u kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
+        <div class="empty-desc">Zodra Helvaro leads voor je kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
       </div>
     \`;
     return;
@@ -10527,9 +10578,9 @@ function renderTable() {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
         </div>
         <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
-        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Uw AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
+        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Je AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel uw WhatsApp-nummer of website link met potentiële klanten</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
         </div>
@@ -10552,7 +10603,7 @@ function renderTable() {
               }
             </div>
             <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
-            <div class="empty-desc">\${hasFilters ? 'Pas uw filters aan of reset ze.' : 'Er zijn nog geen leads in het systeem.'}</div>
+            <div class="empty-desc">\${hasFilters ? 'Pas je filters aan of reset ze.' : 'Er zijn nog geen leads in het systeem.'}</div>
             \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : ''}
           </div>
         </td>
@@ -12588,16 +12639,16 @@ function navigateTo(page) {
   if (navEl) navEl.classList.add('active');
 
   const titles = {
-    dashboard:    { title: 'Dashboard',     sub: 'Overzicht van uw gekwalificeerde leads' },
+    dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
     exports:      { title: 'Exports',       sub: 'Rapporten en data-export' },
-    calendly:     { title: 'Kalender',      sub: 'Uw afspraken en beschikbaarheid' },
+    calendly:     { title: 'Kalender',      sub: 'Je afspraken en beschikbaarheid' },
     admin:        { title: 'Klanten',       sub: 'Overzicht van alle klanten' },
-    profile:      { title: 'Profiel',       sub: 'Uw accountgegevens en statistieken' },
-    pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van uw leads' },
-    gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met uw leads' },
+    profile:      { title: 'Profiel',       sub: 'Je accountgegevens en statistieken' },
+    pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van je leads' },
+    gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met je leads' },
     resultaten:   { title: 'Resultaten',    sub: 'Wat Helvaro deze periode heeft opgeleverd' },
     analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
-    instellingen: { title: 'Instellingen',  sub: 'Beheer uw accountinstellingen' },
+    instellingen: { title: 'Instellingen',  sub: 'Beheer je accountinstellingen' },
     activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
     founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' }
@@ -13019,7 +13070,7 @@ async function handleLogin() {
   errEl.classList.remove('visible');
 
   if (!email) {
-    errEl.textContent = 'Vul uw e-mailadres in.';
+    errEl.textContent = 'Vul je e-mailadres in.';
     errEl.classList.add('visible');
     return;
   }
@@ -14713,12 +14764,12 @@ function loadFormulier() {
   setCode('fm-code-iframe', iframe);
   setCode('fm-code-link',   url);
 
-  // QR code
-  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=2&data=' + encodeURIComponent(url);
+  // QR code — generated locally, no data sent to a third party
+  const qrDataUrl = renderQrDataUrl(url, 480, 2);
   const qrImg = document.getElementById('fm-qr-img');
   const qrDl  = document.getElementById('fm-qr-download');
-  if (qrImg) qrImg.src = qrUrl;
-  if (qrDl)  qrDl.href = qrUrl;
+  if (qrImg) qrImg.src = qrDataUrl;
+  if (qrDl)  qrDl.href = qrDataUrl;
 
   // Iframe preview
   const preview = document.getElementById('fm-preview-iframe');
@@ -14850,7 +14901,7 @@ function populateFormLink() {
   }
   if (urlEl)  urlEl.textContent = url;
   if (openEl) openEl.href       = url;
-  if (qrImg)  qrImg.src         = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=' + encodeURIComponent(url);
+  if (qrImg)  qrImg.src         = renderQrDataUrl(url, 240, 0);
   if (embed) {
     // Simple iframe embed. Works on any HTML site
     embed.value = '<iframe src="' + url + '" width="100%" height="640" frameborder="0" style="border:0;border-radius:12px;max-width:560px"></iframe>';
@@ -15383,15 +15434,20 @@ var DAILY_TASKS = {
 };
 
 function initFounderHeader() {
-  var days   = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
-  var months = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  var days       = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+  var months     = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  var monthsShort = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
   var now = new Date();
   var dn = document.getElementById('fdr-dayname');
   var dt = document.getElementById('fdr-date');
   var dl = document.getElementById('fdr-days-left');
+  var dv = document.getElementById('fdr-deadline-val');
   if (dn) dn.textContent = days[now.getDay()];
   if (dt) dt.textContent = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+  // Single source of truth for the roadmap deadline — drives both the
+  // displayed date and the countdown, so they can never drift apart.
   var deadline = new Date('2026-06-20');
+  if (dv) dv.textContent = deadline.getDate() + ' ' + monthsShort[deadline.getMonth()] + ' ' + deadline.getFullYear();
   var daysLeft = Math.ceil((deadline - now) / 86400000);
   if (dl) dl.textContent = daysLeft > 0 ? daysLeft + ' dagen resterend' : 'Deadline voorbij';
 }
