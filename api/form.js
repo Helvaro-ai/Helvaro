@@ -54,6 +54,13 @@ module.exports = async function handler(req, res) {
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
+  // Per-client WhatsApp sender number (multitenancy prep). Blank on every
+  // client today (single shared number) — mirrors api/whatsapp.js's
+  // F_WA_PHONE_NUMBER_ID / api/leads.js's constant of the same name. Only
+  // ONE client is ever in scope for a single form submission, so this is
+  // read straight off the client record already fetched below — no second
+  // lookup/helper needed, unlike cron-followup.js's multi-client batch.
+  const F_WA_PHONE_NUMBER_ID = 'fldbrhlSrsmlJwcYr';
 
   try {
     let body = req.body;
@@ -107,6 +114,7 @@ module.exports = async function handler(req, res) {
     let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
     let   ownerEmail = '';                    // per-client notify email (overrides NOTIFY_EMAIL env)
     let   lang       = 'nl';                   // registry-driven (40 languages, see api/_lang.js). Language for the welcome WhatsApp
+    let   clientPnid = '';                    // per-client WhatsApp sender (multitenancy prep). '' = fall back to shared PHONE_NUMBER_ID
     // TRIAL-DESIGN.md §3/§7: lead capture ALWAYS works, regardless of plan
     // state. The only thing plan state changes below is whether the
     // automated first WhatsApp greeting gets sent — never whether the lead
@@ -140,6 +148,10 @@ module.exports = async function handler(req, res) {
           ownerPhone = (match.fields['fldZEApe0gfse07AU'] || match.fields['Notify Phone']  || '').toString().trim();
           ownerEmail = (match.fields['fldDBJCN6dVMA8jax'] || match.fields['Rapport Email'] || '').toString().trim();
           planState  = getPlanState(match.fields);
+          // Blank field (every client today) -> '' -> sendWA() falls back to
+          // the shared PHONE_NUMBER_ID env var. Same fallback chain
+          // api/whatsapp.js's clientPhoneNumberId already uses.
+          clientPnid = (match.fields[F_WA_PHONE_NUMBER_ID] || match.fields['WhatsApp Phone Number ID'] || '').toString().trim();
         }
       }
       // 429 / error → use defaults, don't block the form submission
@@ -242,7 +254,7 @@ module.exports = async function handler(req, res) {
           if (planState.isServiceStopped) {
             console.log(`[form] project ${project_code} — Plan Status '${planState.status}', automatische WhatsApp-begroeting overgeslagen. Lead is wel aangemaakt.`);
           } else {
-            const waOk = await sendWA(waPhone, waGreeting);
+            const waOk = await sendWA(waPhone, waGreeting, clientPnid);
             if (!waOk) {
               // WhatsApp failed. Flag lead so dashboard shows it in "Niet bereikbaar"
               await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
@@ -268,7 +280,7 @@ module.exports = async function handler(req, res) {
               } catch { /* non-critical */ }
             }
           }
-          if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg);
+          if (notifyPhone && notifyMsg) await sendWA(notifyPhone, notifyMsg, clientPnid);
         } catch (err) {
           // Belt-and-suspenders: sendWA/atFetch already fail-soft internally,
           // but if something upstream still throws, flag the lead rather than
@@ -328,10 +340,16 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
     .catch(err => console.error('[form mail]', err && err.message));
 }
 
-async function sendWA(to, message) {
+// `phoneNumberId` (multitenancy prep): the per-client sender number, resolved
+// from Client Config's F_WA_PHONE_NUMBER_ID by the handler above. Falls back
+// to the shared PHONE_NUMBER_ID env var when omitted/blank — this is the
+// fallback that keeps every existing client (all fields still blank) sending
+// from EXACTLY the same number as before. Mirrors api/whatsapp.js's sendWA().
+async function sendWA(to, message, phoneNumberId) {
   try {
+    const pnid = phoneNumberId || process.env.PHONE_NUMBER_ID;
     const r = await fetch(
-      `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v19.0/${pnid}/messages`,
       {
         method:  'POST',
         headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
