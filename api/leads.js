@@ -2156,3 +2156,9 @@ async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable
 // logic). No behaviour change to this file's own HTTP route.
 module.exports.aggregateReportPeriod = aggregateReportPeriod;
 module.exports.reportPeriodBounds    = reportPeriodBounds;
+// getClientWaPhoneNumberId: per-client WhatsApp sender lookup (multitenancy
+// prep, see its own header above). api/cron-followup.js's main follow-up
+// loop reuses this EXACT cached lookup (5-min TTL, keyed by projectCode)
+// instead of writing a second Airtable-call-per-lead helper — same "reuse,
+// don't duplicate" reasoning as the aggregateReportPeriod export above.
+module.exports.getClientWaPhoneNumberId = getClientWaPhoneNumberId;
