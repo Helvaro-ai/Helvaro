@@ -8,6 +8,8 @@
 const { waitUntil } = require('@vercel/functions');
 // Trial/plan-status interpretation. Pure, no I/O — see its file header.
 const { getPlanState } = require('./_plan');
+// Language registry — see its file header.
+const _lang = require('./_lang');
 
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
@@ -104,7 +106,7 @@ module.exports = async function handler(req, res) {
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
     let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
     let   ownerEmail = '';                    // per-client notify email (overrides NOTIFY_EMAIL env)
-    let   lang       = 'nl';                   // nl / fr / en. Language for the welcome WhatsApp
+    let   lang       = 'nl';                   // registry-driven (40 languages, see api/_lang.js). Language for the welcome WhatsApp
     // TRIAL-DESIGN.md §3/§7: lead capture ALWAYS works, regardless of plan
     // state. The only thing plan state changes below is whether the
     // automated first WhatsApp greeting gets sent — never whether the lead
@@ -132,9 +134,8 @@ module.exports = async function handler(req, res) {
           // so leads feel they're chatting with a real human, not a bot.
           const customAiName = match.fields['fldRvoe1JMPOtPWC7'] || match.fields['AI Name'] || '';
           if (customAiName && String(customAiName).trim()) aiName = String(customAiName).trim().slice(0, 60);
-          // Language (nl/fr/en) controls the default welcome message
-          const lg = (match.fields['fld1iiV9XwSbgAACZ'] || match.fields['Language'] || '').toString().trim().toLowerCase();
-          if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
+          // Language controls the default welcome message (registry-driven)
+          lang = _lang.normalizeLanguageCode(match.fields['fld1iiV9XwSbgAACZ'] || match.fields['Language']);
           // Per-client owner contacts (override the env-var defaults)
           ownerPhone = (match.fields['fldZEApe0gfse07AU'] || match.fields['Notify Phone']  || '').toString().trim();
           ownerEmail = (match.fields['fldDBJCN6dVMA8jax'] || match.fields['Rapport Email'] || '').toString().trim();
@@ -197,13 +198,9 @@ module.exports = async function handler(req, res) {
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
     // Per-client custom template (placeholders: {naam} {bedrijf} {project} {bron} {ai})
-    // falls back to the language-specific default opener so existing clients without the field keep working.
-    const defaultTpls = {
-      nl: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
-      fr: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
-      en: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?'
-    };
-    const defaultTpl  = defaultTpls[lang] || defaultTpls.nl;
+    // falls back to the language-specific default opener (registry-driven,
+    // see api/_lang.js) so existing clients without the field keep working.
+    const defaultTpl = _lang.buildWelcomeMessage(lang);
     const tpl         = (autoReplyTpl && autoReplyTpl.trim()) || defaultTpl;
     const waGreeting  = tpl
       .replace(/\{naam\}/g,    firstName)

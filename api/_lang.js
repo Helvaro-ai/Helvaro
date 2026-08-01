@@ -103,6 +103,7 @@ const LANGUAGES = {
     legacyCompleted: 'Bedankt voor je interesse. We nemen spoedig contact met je op.',
     legacyCallback: (w) => `Goed, dan zit het in orde. Een collega van mij belt of appt je ${w}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
     legacyConfirm: (name, when, addr) => `Bevestigd. Je afspraak bij ${name} staat gepland op ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
+    legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
   },
   fr: {
     iso: 'fr', native: 'Français', english: 'French', locale: 'fr-BE',
@@ -113,6 +114,7 @@ const LANGUAGES = {
     legacyCompleted: 'Merci pour votre intérêt. Nous vous recontactons bientôt.',
     legacyCallback: (w) => `Parfait. Un collègue te contactera ${w}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
     legacyConfirm: (name, when, addr) => `Confirmé. Ton rendez-vous chez ${name} est prévu le ${when}.${addr ? ` Adresse : ${addr}.` : ''}`,
+    legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
   },
   en: {
     iso: 'en', native: 'English', english: 'English', locale: 'en-GB',
@@ -123,6 +125,7 @@ const LANGUAGES = {
     legacyCompleted: 'Thanks for your interest. We will be in touch shortly.',
     legacyCallback: (w) => `Perfect. A colleague will reach out to you ${w}. You don't need to do anything else. We will come back to you.`,
     legacyConfirm: (name, when, addr) => `Confirmed. Your appointment with ${name} is booked for ${when}.${addr ? ` Address: ${addr}.` : ''}`,
+    legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
   },
 
   de: {
@@ -132,6 +135,7 @@ const LANGUAGES = {
     callback: (w) => `Perfekt. Ein Kollege meldet sich ${w} bei dir. Du musst nichts weiter tun. Wir kommen auf dich zu.`,
     confirm: (name, when, addr) => `Bestätigt. Dein Termin bei ${name} ist für ${when} geplant.${addr ? ` Adresse: ${addr}.` : ''}`,
     escalate: 'Gute Frage. Ich frage kurz einen Kollegen und melde mich innerhalb von 30 Minuten bei dir zurück.',
+    welcome: "Hey {naam}! Hier ist {ai} von {bedrijf}. Hab gesehen, dass du deine Daten hinterlassen hast. Was hat dich zu uns geführt?",
   },
   es: {
     iso: 'es', native: 'Español', english: 'Spanish', locale: 'es-ES',
@@ -140,6 +144,7 @@ const LANGUAGES = {
     callback: (w) => `Perfecto. Un compañero te contactará ${w}. No tienes que hacer nada más. Nosotros te contactaremos.`,
     confirm: (name, when, addr) => `Confirmado. Tu cita con ${name} está programada para el ${when}.${addr ? ` Dirección: ${addr}.` : ''}`,
     escalate: 'Buena pregunta. Voy a consultarlo con un compañero y te responderé en 30 minutos.',
+    welcome: "¡Hola {naam}! Soy {ai} de {bedrijf}. Vi que dejaste tus datos. ¿Qué te trae por aquí?",
   },
   it: {
     iso: 'it', native: 'Italiano', english: 'Italian', locale: 'it-IT',
@@ -148,6 +153,7 @@ const LANGUAGES = {
     callback: (w) => `Perfetto. Un collega ti contatterà ${w}. Non devi fare altro. Ti ricontatteremo noi.`,
     confirm: (name, when, addr) => `Confermato. Il tuo appuntamento con ${name} è previsto per ${when}.${addr ? ` Indirizzo: ${addr}.` : ''}`,
     escalate: 'Ottima domanda. Lo chiedo a un collega e ti rispondo entro 30 minuti.',
+    welcome: "Ciao {naam}! Sono {ai} di {bedrijf}. Ho visto che hai lasciato i tuoi dati. Cosa ti ha portato da noi?",
   },
   pt: {
     iso: 'pt', native: 'Português', english: 'Portuguese', locale: 'pt-PT',
@@ -156,6 +162,7 @@ const LANGUAGES = {
     callback: (w) => `Perfeito. Um colega vai contactar-te ${w}. Não precisas de fazer mais nada. Nós entramos em contacto contigo.`,
     confirm: (name, when, addr) => `Confirmado. A tua marcação com ${name} está agendada para ${when}.${addr ? ` Morada: ${addr}.` : ''}`,
     escalate: 'Boa pergunta. Vou verificar com um colega e volto a contactar-te dentro de 30 minutos.',
+    welcome: "Olá {naam}! Aqui é {ai} da {bedrijf}. Vi que deixaste os teus dados. O que te trouxe até nós?",
   },
   pl: {
     iso: 'pl', native: 'Polski', english: 'Polish', locale: 'pl-PL',
@@ -164,6 +171,7 @@ const LANGUAGES = {
     callback: (w) => `Świetnie. Kolega skontaktuje się z Tobą ${w}. Nie musisz nic więcej robić. Odezwiemy się do Ciebie.`,
     confirm: (name, when, addr) => `Potwierdzone. Twoja wizyta w ${name} jest zaplanowana na ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
     escalate: 'Dobre pytanie. Sprawdzę to z kolegą i wrócę do Ciebie w ciągu 30 minut.',
+    welcome: "Cześć {naam}! Tu {ai} z {bedrijf}. Widzę, że zostawiłeś/aś swoje dane. Co Cię do nas sprowadza?",
   },
   ro: {
     iso: 'ro', native: 'Română', english: 'Romanian', locale: 'ro-RO',
@@ -172,6 +180,7 @@ const LANGUAGES = {
     callback: (w) => `Perfect. Un coleg te va contacta ${w}. Nu trebuie să faci nimic altceva. Te vom contacta noi.`,
     confirm: (name, when, addr) => `Confirmat. Programarea ta la ${name} este planificată pentru ${when}.${addr ? ` Adresă: ${addr}.` : ''}`,
     escalate: 'Bună întrebare. Verific cu un coleg și revin către tine în 30 de minute.',
+    welcome: "Salut {naam}! Sunt {ai} de la {bedrijf}. Am văzut că ți-ai lăsat datele. Ce te-a adus la noi?",
   },
   cs: {
     iso: 'cs', native: 'Čeština', english: 'Czech', locale: 'cs-CZ',
@@ -180,6 +189,7 @@ const LANGUAGES = {
     callback: (w) => `Skvělé. Kolega se ti ozve ${w}. Nemusíš nic dalšího dělat. Ozveme se ti my.`,
     confirm: (name, when, addr) => `Potvrzeno. Tvoje schůzka u ${name} je naplánovaná na ${when}.${addr ? ` Adresa: ${addr}.` : ''}`,
     escalate: 'Dobrá otázka. Ověřím to s kolegou a ozvu se ti do 30 minut.',
+    welcome: "Ahoj {naam}! Tady {ai} z {bedrijf}. Všiml jsem si, že jsi nechal/a své údaje. Co tě k nám přivádí?",
   },
   sk: {
     iso: 'sk', native: 'Slovenčina', english: 'Slovak', locale: 'sk-SK',
@@ -188,6 +198,7 @@ const LANGUAGES = {
     callback: (w) => `Skvelé. Kolega sa ti ozve ${w}. Nemusíš nič ďalšie robiť. Ozveme sa ti my.`,
     confirm: (name, when, addr) => `Potvrdené. Tvoje stretnutie u ${name} je naplánované na ${when}.${addr ? ` Adresa: ${addr}.` : ''}`,
     escalate: 'Dobrá otázka. Overím to s kolegom a ozvem sa ti do 30 minút.',
+    welcome: "Ahoj {naam}! Tu {ai} z {bedrijf}. Všimol/la som si, že si nechal/a svoje údaje. Čo ťa k nám priviedlo?",
   },
   hu: {
     iso: 'hu', native: 'Magyar', english: 'Hungarian', locale: 'hu-HU',
@@ -196,6 +207,7 @@ const LANGUAGES = {
     callback: (w) => `Rendben. Egy kollégám ${w} jelentkezik nálad. Neked semmi mást nem kell tenned. Mi keresünk téged.`,
     confirm: (name, when, addr) => `Megerősítve. A(z) ${name} időpontod ${when} időpontra van beütemezve.${addr ? ` Cím: ${addr}.` : ''}`,
     escalate: 'Jó kérdés. Megkérdezem egy kollégámtól, és 30 percen belül visszajelzek.',
+    welcome: "Szia {naam}! Itt {ai} a {bedrijf}-től. Láttam, hogy megadtad az adataidat. Mi hozott hozzánk?",
   },
   bg: {
     iso: 'bg', native: 'Български', english: 'Bulgarian', locale: 'bg-BG',
@@ -204,6 +216,7 @@ const LANGUAGES = {
     callback: (w) => `Чудесно. Колега ще се свърже с теб ${w}. Не е нужно да правиш нищо друго. Ние ще се свържем с теб.`,
     confirm: (name, when, addr) => `Потвърдено. Часът ти при ${name} е насрочен за ${when}.${addr ? ` Адрес: ${addr}.` : ''}`,
     escalate: 'Добър въпрос. Ще проверя с колега и ще се свържа с теб до 30 минути.',
+    welcome: "Здравей {naam}! Тук е {ai} от {bedrijf}. Видях, че си оставил/а данните си. Какво те доведе при нас?",
   },
   hr: {
     iso: 'hr', native: 'Hrvatski', english: 'Croatian', locale: 'hr-HR',
@@ -212,6 +225,7 @@ const LANGUAGES = {
     callback: (w) => `Super. Kolega će te kontaktirati ${w}. Ne moraš ništa više učiniti. Mi ćemo te kontaktirati.`,
     confirm: (name, when, addr) => `Potvrđeno. Tvoj termin kod ${name} zakazan je za ${when}.${addr ? ` Adresa: ${addr}.` : ''}`,
     escalate: 'Dobro pitanje. Provjerit ću s kolegom i javiti ti se unutar 30 minuta.',
+    welcome: "Bok {naam}! Ovdje {ai} iz {bedrijf}. Vidio/vidjela sam da si ostavio/la svoje podatke. Što te dovelo do nas?",
   },
   sl: {
     iso: 'sl', native: 'Slovenščina', english: 'Slovenian', locale: 'sl-SI',
@@ -220,6 +234,7 @@ const LANGUAGES = {
     callback: (w) => `Odlično. Sodelavec te bo kontaktiral ${w}. Tebi ni treba storiti ničesar več. Mi se bomo oglasili.`,
     confirm: (name, when, addr) => `Potrjeno. Tvoj termin pri ${name} je predviden za ${when}.${addr ? ` Naslov: ${addr}.` : ''}`,
     escalate: 'Dobro vprašanje. Preverim pri sodelavcu in se ti oglasim v 30 minutah.',
+    welcome: "Živjo {naam}! Tukaj {ai} iz {bedrijf}. Videl/a sem, da si pustil/a svoje podatke. Kaj te je pripeljalo do nas?",
   },
   el: {
     iso: 'el', native: 'Ελληνικά', english: 'Greek', locale: 'el-GR',
@@ -228,6 +243,7 @@ const LANGUAGES = {
     callback: (w) => `Τέλεια. Ένας συνάδελφος θα επικοινωνήσει μαζί σου ${w}. Δεν χρειάζεται να κάνεις τίποτα άλλο. Θα σε καλέσουμε εμείς.`,
     confirm: (name, when, addr) => `Επιβεβαιώθηκε. Το ραντεβού σου με ${name} έχει προγραμματιστεί για ${when}.${addr ? ` Διεύθυνση: ${addr}.` : ''}`,
     escalate: 'Καλή ερώτηση. Θα το ελέγξω με έναν συνάδελφο και θα επικοινωνήσω μαζί σου εντός 30 λεπτών.',
+    welcome: "Γεια σου {naam}! Εδώ ο/η {ai} από {bedrijf}. Είδα ότι άφησες τα στοιχεία σου. Τι σε έφερε σε εμάς;",
   },
   sv: {
     iso: 'sv', native: 'Svenska', english: 'Swedish', locale: 'sv-SE',
@@ -236,6 +252,7 @@ const LANGUAGES = {
     callback: (w) => `Perfekt. En kollega hör av sig till dig ${w}. Du behöver inte göra något mer. Vi kontaktar dig.`,
     confirm: (name, when, addr) => `Bekräftat. Din tid hos ${name} är bokad till ${when}.${addr ? ` Adress: ${addr}.` : ''}`,
     escalate: 'Bra fråga. Jag kollar med en kollega och återkommer till dig inom 30 minuter.',
+    welcome: "Hej {naam}! Det här är {ai} från {bedrijf}. Jag såg att du lämnade dina uppgifter. Vad förde dig till oss?",
   },
   da: {
     iso: 'da', native: 'Dansk', english: 'Danish', locale: 'da-DK',
@@ -244,6 +261,7 @@ const LANGUAGES = {
     callback: (w) => `Perfekt. En kollega kontakter dig ${w}. Du behøver ikke gøre mere. Vi vender tilbage til dig.`,
     confirm: (name, when, addr) => `Bekræftet. Din aftale hos ${name} er planlagt til ${when}.${addr ? ` Adresse: ${addr}.` : ''}`,
     escalate: 'Godt spørgsmål. Jeg tjekker med en kollega og vender tilbage inden for 30 minutter.',
+    welcome: "Hej {naam}! Det er {ai} fra {bedrijf}. Jeg så, at du efterlod dine oplysninger. Hvad bragte dig til os?",
   },
   no: {
     iso: 'no', native: 'Norsk', english: 'Norwegian', locale: 'nb-NO',
@@ -252,6 +270,7 @@ const LANGUAGES = {
     callback: (w) => `Perfekt. En kollega kontakter deg ${w}. Du trenger ikke gjøre noe mer. Vi tar kontakt med deg.`,
     confirm: (name, when, addr) => `Bekreftet. Timen din hos ${name} er planlagt til ${when}.${addr ? ` Adresse: ${addr}.` : ''}`,
     escalate: 'Godt spørsmål. Jeg sjekker med en kollega og gir deg svar innen 30 minutter.',
+    welcome: "Hei {naam}! Dette er {ai} fra {bedrijf}. Jeg så at du la igjen opplysningene dine. Hva var det som gjorde at du tok kontakt?",
   },
   fi: {
     iso: 'fi', native: 'Suomi', english: 'Finnish', locale: 'fi-FI',
@@ -260,6 +279,7 @@ const LANGUAGES = {
     callback: (w) => `Selvä. Kollegani ottaa sinuun yhteyttä ${w}. Sinun ei tarvitse tehdä muuta. Otamme sinuun yhteyttä.`,
     confirm: (name, when, addr) => `Vahvistettu. Aikasi ${name} on varattu ajalle ${when}.${addr ? ` Osoite: ${addr}.` : ''}`,
     escalate: 'Hyvä kysymys. Tarkistan asian kollegalta ja palaan asiaan 30 minuutin sisällä.',
+    welcome: "Hei {naam}! Täällä {ai} yrityksestä {bedrijf}. Huomasin, että jätit yhteystietosi. Mikä toi sinut meille?",
   },
   lt: {
     iso: 'lt', native: 'Lietuvių', english: 'Lithuanian', locale: 'lt-LT',
@@ -268,6 +288,7 @@ const LANGUAGES = {
     callback: (w) => `Puiku. Kolega su tavimi susisieks ${w}. Tau daugiau nieko daryti nereikia. Mes su tavimi susisieksime.`,
     confirm: (name, when, addr) => `Patvirtinta. Tavo susitikimas su ${name} suplanuotas ${when}.${addr ? ` Adresas: ${addr}.` : ''}`,
     escalate: 'Geras klausimas. Pasitikrinsiu su kolega ir atsakysiu per 30 minučių.',
+    welcome: "Sveika/s {naam}! Čia {ai} iš {bedrijf}. Pastebėjau, kad palikai savo duomenis. Kas tave pas mus atvedė?",
   },
   lv: {
     iso: 'lv', native: 'Latviešu', english: 'Latvian', locale: 'lv-LV',
@@ -276,6 +297,7 @@ const LANGUAGES = {
     callback: (w) => `Lieliski. Kolēģis ar tevi sazināsies ${w}. Tev vairs nekas nav jādara. Mēs ar tevi sazināsimies.`,
     confirm: (name, when, addr) => `Apstiprināts. Tava tikšanās ar ${name} ir plānota ${when}.${addr ? ` Adrese: ${addr}.` : ''}`,
     escalate: 'Labs jautājums. Pārbaudīšu pie kolēģa un atbildēšu 30 minūšu laikā.',
+    welcome: "Sveiks/-a {naam}! Šeit {ai} no {bedrijf}. Redzēju, ka atstāji savus datus. Kas tevi pie mums atveda?",
   },
   et: {
     iso: 'et', native: 'Eesti', english: 'Estonian', locale: 'et-EE',
@@ -284,6 +306,7 @@ const LANGUAGES = {
     callback: (w) => `Suurepärane. Kolleeg võtab sinuga ühendust ${w}. Sul pole vaja midagi rohkem teha. Meie võtame sinuga ühendust.`,
     confirm: (name, when, addr) => `Kinnitatud. Sinu aeg ${name} juures on planeeritud ${when}.${addr ? ` Aadress: ${addr}.` : ''}`,
     escalate: 'Hea küsimus. Kontrollin kolleegiga ja annan 30 minuti jooksul vastuse.',
+    welcome: "Tere {naam}! Siin {ai} ettevõttest {bedrijf}. Nägin, et jätsid oma andmed. Mis sind meie juurde tõi?",
   },
   uk: {
     iso: 'uk', native: 'Українська', english: 'Ukrainian', locale: 'uk-UA',
@@ -292,6 +315,7 @@ const LANGUAGES = {
     callback: (w) => `Чудово. Колега зв'яжеться з тобою ${w}. Тобі більше нічого не потрібно робити. Ми з тобою зв'яжемося.`,
     confirm: (name, when, addr) => `Підтверджено. Твій запис до ${name} заплановано на ${when}.${addr ? ` Адреса: ${addr}.` : ''}`,
     escalate: 'Гарне питання. Уточню в колеги і повернуся з відповіддю протягом 30 хвилин.',
+    welcome: "Привіт {naam}! Це {ai} з {bedrijf}. Побачив(ла), що ти залишив(ла) свої дані. Що тебе до нас привело?",
   },
   ru: {
     iso: 'ru', native: 'Русский', english: 'Russian', locale: 'ru-RU',
@@ -300,6 +324,7 @@ const LANGUAGES = {
     callback: (w) => `Отлично. Коллега свяжется с тобой ${w}. Тебе больше ничего делать не нужно. Мы сами с тобой свяжемся.`,
     confirm: (name, when, addr) => `Подтверждено. Твоя запись к ${name} назначена на ${when}.${addr ? ` Адрес: ${addr}.` : ''}`,
     escalate: 'Хороший вопрос. Уточню у коллеги и отвечу тебе в течение 30 минут.',
+    welcome: "Привет {naam}! Это {ai} из {bedrijf}. Увидел(а), что ты оставил(а) свои данные. Что тебя к нам привело?",
   },
   tr: {
     iso: 'tr', native: 'Türkçe', english: 'Turkish', locale: 'tr-TR',
@@ -308,6 +333,7 @@ const LANGUAGES = {
     callback: (w) => `Harika. Bir meslektaşım ${w} seninle iletişime geçecek. Başka bir şey yapmana gerek yok. Biz seninle iletişime geçeceğiz.`,
     confirm: (name, when, addr) => `Onaylandı. ${name} ile randevun ${when} için planlandı.${addr ? ` Adres: ${addr}.` : ''}`,
     escalate: 'Güzel soru. Bir meslektaşıma soracağım ve 30 dakika içinde sana geri döneceğim.',
+    welcome: "Selam {naam}! Ben {ai}, {bedrijf}'ten. Bilgilerini bıraktığını gördüm. Seni bize getiren neydi?",
   },
   sq: {
     iso: 'sq', native: 'Shqip', english: 'Albanian', locale: 'sq-AL',
@@ -316,6 +342,7 @@ const LANGUAGES = {
     callback: (w) => `Perfekte. Një koleg do të të kontaktojë ${w}. Nuk të duhet të bësh asgjë tjetër. Ne do të të kontaktojmë.`,
     confirm: (name, when, addr) => `Konfirmuar. Takimi yt me ${name} është planifikuar për ${when}.${addr ? ` Adresa: ${addr}.` : ''}`,
     escalate: 'Pyetje e mirë. Do ta kontrolloj me një koleg dhe do të kthehem brenda 30 minutave.',
+    welcome: "Përshëndetje {naam}! Këtu {ai} nga {bedrijf}. Pashë që ke lënë të dhënat e tua. Çfarë të solli tek ne?",
   },
   sr: {
     iso: 'sr', native: 'Српски', english: 'Serbian', locale: 'sr-RS',
@@ -324,6 +351,7 @@ const LANGUAGES = {
     callback: (w) => `Odlično. Kolega će te kontaktirati ${w}. Ne moraš ništa više da radiš. Mi ćemo te kontaktirati.`,
     confirm: (name, when, addr) => `Potvrđeno. Tvoj termin kod ${name} je zakazan za ${when}.${addr ? ` Adresa: ${addr}.` : ''}`,
     escalate: 'Dobro pitanje. Proveriću sa kolegom i javiću ti se u roku od 30 minuta.',
+    welcome: "Ćao {naam}! Ovde {ai} iz {bedrijf}. Video/la sam da si ostavio/la svoje podatke. Šta te dovelo do nas?",
   },
   mk: {
     iso: 'mk', native: 'Македонски', english: 'Macedonian', locale: 'mk-MK',
@@ -332,6 +360,7 @@ const LANGUAGES = {
     callback: (w) => `Одлично. Колега ќе те контактира ${w}. Не треба да правиш ништо повеќе. Ние ќе те контактираме.`,
     confirm: (name, when, addr) => `Потврдено. Твојот термин кај ${name} е закажан за ${when}.${addr ? ` Адреса: ${addr}.` : ''}`,
     escalate: 'Добро прашање. Ќе проверам со колега и ќе се јавам во рок од 30 минути.',
+    welcome: "Здраво {naam}! Тука {ai} од {bedrijf}. Видов дека си ги оставил/а податоците. Што те доведе кај нас?",
   },
   ar: {
     iso: 'ar', native: 'العربية', english: 'Arabic', locale: 'ar-SA', rtl: true,
@@ -340,6 +369,7 @@ const LANGUAGES = {
     callback: (w) => `ممتاز. سيتواصل معك أحد الزملاء ${w}. لا داعي لفعل أي شيء آخر. سنتواصل معك نحن.`,
     confirm: (name, when, addr) => `تم التأكيد. موعدك مع ${name} مُحدد في ${when}.${addr ? ` العنوان: ${addr}.` : ''}`,
     escalate: 'سؤال جيد. سأتحقق من ذلك مع أحد الزملاء وأعود إليك خلال 30 دقيقة.',
+    welcome: "مرحبًا {naam}! أنا {ai} من {bedrijf}. لاحظت أنك تركت بياناتك. ما الذي جاء بك إلينا؟",
   },
   fa: {
     iso: 'fa', native: 'فارسی', english: 'Persian', locale: 'fa-IR', rtl: true,
@@ -348,6 +378,7 @@ const LANGUAGES = {
     callback: (w) => `عالی. یکی از همکاران ${w} با تو تماس می‌گیرد. لازم نیست کار دیگری انجام بدهی. ما با تو تماس می‌گیریم.`,
     confirm: (name, when, addr) => `تأیید شد. نوبت تو با ${name} برای ${when} برنامه‌ریزی شده است.${addr ? ` آدرس: ${addr}.` : ''}`,
     escalate: 'سؤال خوبی بود. با یکی از همکاران بررسی می‌کنم و ظرف ۳۰ دقیقه به تو پاسخ می‌دهم.',
+    welcome: "سلام {naam}! من {ai} از {bedrijf} هستم. دیدم که اطلاعاتت رو گذاشتی. چی باعث شد سراغ ما بیای؟",
   },
   ur: {
     iso: 'ur', native: 'اردو', english: 'Urdu', locale: 'ur-PK', rtl: true,
@@ -356,6 +387,7 @@ const LANGUAGES = {
     callback: (w) => `بہترین۔ ایک ساتھی ${w} آپ سے رابطہ کرے گا۔ آپ کو مزید کچھ کرنے کی ضرورت نہیں۔ ہم آپ سے رابطہ کریں گے۔`,
     confirm: (name, when, addr) => `تصدیق ہو گئی۔ ${name} کے ساتھ آپ کی ملاقات ${when} کے لیے طے ہے۔${addr ? ` پتہ: ${addr}۔` : ''}`,
     escalate: 'اچھا سوال ہے۔ میں ایک ساتھی سے معلوم کرتا ہوں اور 30 منٹ میں آپ کو بتاتا ہوں۔',
+    welcome: "ہیلو {naam}! میں {ai} ہوں {bedrijf} سے۔ میں نے دیکھا کہ آپ نے اپنی معلومات چھوڑی ہیں۔ آپ کو ہمارے پاس کیا لایا؟",
   },
   he: {
     iso: 'he', native: 'עברית', english: 'Hebrew', locale: 'he-IL', rtl: true,
@@ -364,6 +396,7 @@ const LANGUAGES = {
     callback: (w) => `מעולה. עמית ייצור איתך קשר ${w}. אין צורך שתעשה משהו נוסף. אנחנו ניצור איתך קשר.`,
     confirm: (name, when, addr) => `אושר. הפגישה שלך עם ${name} נקבעה ל-${when}.${addr ? ` כתובת: ${addr}.` : ''}`,
     escalate: 'שאלה טובה. אבדוק עם עמית ואחזור אליך תוך 30 דקות.',
+    welcome: "היי {naam}! כאן {ai} מ-{bedrijf}. ראיתי שהשארת את הפרטים שלך. מה הביא אותך אלינו?",
   },
   hi: {
     iso: 'hi', native: 'हिन्दी', english: 'Hindi', locale: 'hi-IN',
@@ -372,6 +405,7 @@ const LANGUAGES = {
     callback: (w) => `बढ़िया। एक सहकर्मी ${w} आपसे संपर्क करेगा। आपको और कुछ करने की ज़रूरत नहीं है। हम आपसे संपर्क करेंगे।`,
     confirm: (name, when, addr) => `पुष्टि हो गई। ${name} के साथ आपकी अपॉइंटमेंट ${when} के लिए तय है।${addr ? ` पता: ${addr}।` : ''}`,
     escalate: 'अच्छा सवाल है। मैं एक सहकर्मी से पूछता हूँ और 30 मिनट में आपको जवाब देता हूँ।',
+    welcome: "हाय {naam}! मैं {ai} हूँ {bedrijf} से। देखा कि आपने अपनी जानकारी छोड़ी। आपको हमारे पास क्या लेकर आया?",
   },
   zh: {
     iso: 'zh', native: '中文', english: 'Chinese', locale: 'zh-CN',
@@ -380,6 +414,7 @@ const LANGUAGES = {
     callback: (w) => `好的。同事会在${w}联系你。你不需要再做任何事。我们会联系你。`,
     confirm: (name, when, addr) => `已确认。你在${name}的预约时间是${when}。${addr ? `地址：${addr}。` : ''}`,
     escalate: '好问题。我会向同事确认，并在30分钟内回复你。',
+    welcome: "嘿 {naam}！我是{bedrijf}的{ai}。看到你留下了联系方式。是什么让你联系我们的？",
   },
   ja: {
     iso: 'ja', native: '日本語', english: 'Japanese', locale: 'ja-JP',
@@ -388,6 +423,7 @@ const LANGUAGES = {
     callback: (w) => `かしこまりました。担当者が${w}にご連絡いたします。これ以上お手続きは不要です。こちらからご連絡いたします。`,
     confirm: (name, when, addr) => `確定しました。${name}でのご予約は${when}に予定されています。${addr ? `住所：${addr}。` : ''}`,
     escalate: '良いご質問ですね。同僚に確認して、30分以内にご連絡します。',
+    welcome: "こんにちは{naam}さん！{bedrijf}の{ai}です。情報を残していただいたのを拝見しました。どのようなご用件でしょうか？",
   },
   ko: {
     iso: 'ko', native: '한국어', english: 'Korean', locale: 'ko-KR',
@@ -396,6 +432,7 @@ const LANGUAGES = {
     callback: (w) => `좋습니다. 담당 직원이 ${w} 연락드릴 예정입니다. 더 이상 하실 일은 없습니다. 저희가 연락드리겠습니다.`,
     confirm: (name, when, addr) => `확정되었습니다. ${name}과의 예약이 ${when}로 예정되어 있습니다.${addr ? ` 주소: ${addr}.` : ''}`,
     escalate: '좋은 질문이네요. 동료에게 확인하고 30분 안에 다시 연락드리겠습니다.',
+    welcome: "안녕하세요 {naam}님! {bedrijf}의 {ai}입니다. 정보를 남겨주신 걸 봤어요. 어떤 일로 저희를 찾아주셨나요?",
   },
   vi: {
     iso: 'vi', native: 'Tiếng Việt', english: 'Vietnamese', locale: 'vi-VN',
@@ -404,6 +441,7 @@ const LANGUAGES = {
     callback: (w) => `Tuyệt. Một đồng nghiệp sẽ liên hệ với bạn ${w}. Bạn không cần làm gì thêm. Chúng tôi sẽ liên hệ với bạn.`,
     confirm: (name, when, addr) => `Đã xác nhận. Lịch hẹn của bạn với ${name} được đặt vào ${when}.${addr ? ` Địa chỉ: ${addr}.` : ''}`,
     escalate: 'Câu hỏi hay. Tôi sẽ hỏi lại đồng nghiệp và phản hồi bạn trong vòng 30 phút.',
+    welcome: "Chào {naam}! Mình là {ai} từ {bedrijf}. Mình thấy bạn đã để lại thông tin. Điều gì đã đưa bạn đến với chúng mình?",
   },
   th: {
     iso: 'th', native: 'ไทย', english: 'Thai', locale: 'th-TH',
@@ -412,6 +450,7 @@ const LANGUAGES = {
     callback: (w) => `เยี่ยมเลย เพื่อนร่วมงานจะติดต่อคุณ${w} คุณไม่ต้องทำอะไรเพิ่มเติม เราจะติดต่อคุณเอง`,
     confirm: (name, when, addr) => `ยืนยันแล้ว นัดหมายของคุณกับ ${name} กำหนดไว้ที่ ${when}${addr ? ` ที่อยู่: ${addr}` : ''}`,
     escalate: 'คำถามดีมาก ฉันจะเช็คกับเพื่อนร่วมงานแล้วตอบกลับภายใน 30 นาที',
+    welcome: "สวัสดี {naam}! นี่คือ {ai} จาก {bedrijf} เห็นว่าคุณทิ้งข้อมูลไว้ อะไรที่ทำให้คุณมาหาเรา",
   },
   id: {
     iso: 'id', native: 'Bahasa Indonesia', english: 'Indonesian', locale: 'id-ID',
@@ -420,6 +459,7 @@ const LANGUAGES = {
     callback: (w) => `Sip. Rekan kami akan menghubungi kamu ${w}. Kamu tidak perlu melakukan apa pun lagi. Kami akan menghubungi kamu.`,
     confirm: (name, when, addr) => `Dikonfirmasi. Janji temu kamu dengan ${name} dijadwalkan pada ${when}.${addr ? ` Alamat: ${addr}.` : ''}`,
     escalate: 'Pertanyaan bagus. Saya akan cek dengan rekan dan menghubungi kamu kembali dalam 30 menit.',
+    welcome: "Hai {naam}! Ini {ai} dari {bedrijf}. Aku lihat kamu meninggalkan datamu. Apa yang membawamu ke kami?",
   },
 };
 
@@ -532,6 +572,19 @@ function buildConfirmMessage(code, clientName, when, address) {
   return fn(clientName, when, address);
 }
 
+// Default WhatsApp opener sent by api/form.js right after a lead submits the
+// intake form (before any AI turn — this is the very first message a lead
+// sees). Free-form, same send mechanism as the rest of the conversation
+// (sendWA, not sendWATemplate) — see api/form.js's own comment. Contains
+// {naam}/{bedrijf}/{ai} placeholders api/form.js fills in with .replace();
+// this function deliberately returns the RAW template, not an interpolated
+// string. A client's own "Auto-Reply Template" field (if set) overrides this
+// default entirely — this is only the per-language fallback.
+function buildWelcomeMessage(code) {
+  const entry = getLanguage(code);
+  return entry.legacyWelcome || entry.welcome;
+}
+
 function getLocale(code) {
   return getLanguage(code).locale;
 }
@@ -592,6 +645,7 @@ module.exports = {
   buildCompletedMessage,
   buildCallbackMessage,
   buildConfirmMessage,
+  buildWelcomeMessage,
   getLocale,
   isRtl,
   TEMPLATE_APPROVED_LANGUAGES,
