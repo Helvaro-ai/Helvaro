@@ -572,14 +572,17 @@ function buildConfirmMessage(code, clientName, when, address) {
   return fn(clientName, when, address);
 }
 
-// Default WhatsApp opener sent by api/form.js right after a lead submits the
-// intake form (before any AI turn — this is the very first message a lead
-// sees). Free-form, same send mechanism as the rest of the conversation
-// (sendWA, not sendWATemplate) — see api/form.js's own comment. Contains
-// {naam}/{bedrijf}/{ai} placeholders api/form.js fills in with .replace();
-// this function deliberately returns the RAW template, not an interpolated
-// string. A client's own "Auto-Reply Template" field (if set) overrides this
-// default entirely — this is only the per-language fallback.
+// Default WhatsApp opener rendered right after a lead submits the intake
+// form (before any AI turn — this is the very first message a lead sees).
+// api/form.js uses this rendered text ONLY for the Conversation History
+// dashboard bubble — the actual WhatsApp send goes through an approved
+// template (sendWATemplate + INTRO_TEMPLATE_NAME/LANG, since a web-form lead
+// has never messaged the business, so Meta's 24h freeform window is never
+// open for this first contact). Contains {naam}/{bedrijf}/{ai} placeholders
+// api/form.js fills in with .replace(); this function deliberately returns
+// the RAW template, not an interpolated string. A client's own "Auto-Reply
+// Template" field (if set) overrides this default entirely — this is only
+// the per-language fallback.
 function buildWelcomeMessage(code) {
   const entry = getLanguage(code);
   return entry.legacyWelcome || entry.welcome;
