@@ -29,7 +29,14 @@ const _lang = require('./_lang');
 // for the trial day-7/day-11 emails per TRIAL-DESIGN.md §5 ("the ROI report
 // IS the sales pitch"). Attached as a named export on top of the default
 // route handler — see leads.js's own comment at the bottom of that file.
-const { aggregateReportPeriod } = require('./leads');
+// getClientWaPhoneNumberId: per-client WhatsApp sender lookup (multitenancy
+// prep). Blank on every client today (single shared number) — resolves to
+// '' and every call site below falls back to the shared PHONE_NUMBER_ID env
+// var exactly like before. Reused here (5-min TTL cache, keyed by
+// projectCode, already built in leads.js) instead of writing a second
+// Airtable-call-per-lead helper — see api/whatsapp.js's F_WA_PHONE_NUMBER_ID
+// comment for the full multitenancy-prep contract this mirrors.
+const { aggregateReportPeriod, getClientWaPhoneNumberId } = require('./leads');
 
 // ── Compliance fix 5 (COMPLIANCE-AUDIT.md section 4.1) — fixed,
 // code-controlled outreach footer ───────────────────────────────────────
@@ -113,6 +120,16 @@ module.exports = async function handler(req, res) {
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
+  const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
+  // Shared-number FALLBACK ONLY. Never send with this directly for a
+  // per-lead/per-appointment message — resolve the client's own
+  // WhatsApp Phone Number ID first (getClientWaPhoneNumberId /
+  // runAppointmentReminders' own client-record lookup below) and fall back
+  // to this only when that field is blank, exactly like api/whatsapp.js and
+  // api/leads.js already do. Still used directly for the quality-rating
+  // check below — that call monitors the shared platform number's own
+  // Meta rating for ops alerting, not a per-client send, so it has nothing
+  // to resolve per-client.
   const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
   const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
 
@@ -203,7 +220,19 @@ module.exports = async function handler(req, res) {
       // sending a template call that Meta will reject.
       const TEMPLATE_LANG = _lang.resolveTemplateLanguage(process.env.FOLLOWUP_TEMPLATE_LANG || 'nl', 'nl').code;
       if (TEMPLATE_NAME) {
-        await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
+        // Per-client sender number (multitenancy prep). Resolved INSIDE the
+        // loop, per lead, from THIS lead's own projectCodeForPlan — never
+        // hoisted out. Hoisting this above the loop would send every
+        // client's follow-up from whichever client happened to resolve
+        // first, which is exactly the cross-client leak this task exists to
+        // prevent. getClientWaPhoneNumberId() has its own 5-min TTL cache
+        // keyed by projectCode (see api/leads.js), so this doesn't add an
+        // Airtable call per lead beyond the first lead for each distinct
+        // client in a run. Blank field (every client today) resolves to ''
+        // and falls back to the shared PHONE_NUMBER_ID — unchanged behaviour.
+        const leadSenderPnid = await getClientWaPhoneNumberId(projectCodeForPlan, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+        const leadPhoneNumberId = leadSenderPnid || PHONE_NUMBER_ID;
+        await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN);
       } else {
         console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. Skip ${phone} (freeform >24u zou ban riskeren)`);
         continue;  // skip. Don't risk a Meta ban
@@ -1245,6 +1274,14 @@ function formatApptDateTime(iso, lang) {
 async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, whatsappToken, now = new Date()) {
   const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
   const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  // Per-client WhatsApp sender number (multitenancy prep). fldbrhlSrsmlJwcYr
+  // = WhatsApp Phone Number ID on Client Config — mirrors api/whatsapp.js's
+  // F_WA_PHONE_NUMBER_ID and api/leads.js's own constant of the same name.
+  // Resolved per-appointment below from the client record getClientForCode()
+  // already fetches (and caches) for the plan-status/language checks — no
+  // extra Airtable call added. `phoneNumberId` (the param above) is only
+  // ever used as the fallback when a client's field is blank.
+  const F_WA_PHONE_NUMBER_ID = 'fldbrhlSrsmlJwcYr';
   const windowStart = now.toISOString();
   const windowEnd   = new Date(now.getTime() + REMINDER_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
 
@@ -1374,6 +1411,17 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
       // form AI conversation in whatsapp.js, which has no such limit.
       const templateLang = _lang.resolveTemplateLanguage(process.env.REMINDER_TEMPLATE_LANG || clientLang, clientLang).code;
 
+      // Per-client sender number (multitenancy prep). Resolved INSIDE the
+      // loop, per appointment, from THIS appointment's own `client` record
+      // (fetched/cached above by getClientForCode(projectCode)) — never
+      // hoisted above the loop. Hoisting would send every client's reminder
+      // from whichever client happened to resolve first, the exact
+      // cross-client leak this task exists to prevent. Blank field (every
+      // client today) resolves to '' and falls back to the shared
+      // `phoneNumberId` param — unchanged behaviour.
+      const clientPnidV = (client && client.fields && (client.fields[F_WA_PHONE_NUMBER_ID] || client.fields['WhatsApp Phone Number ID']) || '').toString().trim();
+      const apptPhoneNumberId = clientPnidV || phoneNumberId;
+
       const firstName = String(leadName).trim().split(' ')[0] || '';
       const when = formatApptDateTime(startTime, templateLang);
 
@@ -1402,7 +1450,7 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
         skipped++; continue;
       }
 
-      await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientNameV], phoneNumberId, whatsappToken);
+      await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientNameV], apptPhoneNumberId, whatsappToken);
       sent++;
     } catch (err) {
       console.error(`[cron-followup] appointment reminder mislukt voor ${appt.id}:`, err.message);
