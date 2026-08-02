@@ -9586,7 +9586,7 @@ async function refreshData(skipFetch = false) {
           const name = l.naam || 'Onbekend';
           const score = l.leadScore ?? '—';
           const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-          return \`<div class="top-lead-chip" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+          return \`<div class="top-lead-chip" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead)openPanel(lead);})()">
             <div class="top-lead-chip-avatar">\${initials}</div>
             <span class="top-lead-chip-name">\${escHtml(name.split(' ')[0])}</span>
             <span class="top-lead-chip-score">\${score}</span>
@@ -9610,13 +9610,13 @@ async function refreshData(skipFetch = false) {
           const name = l.naam || 'Onbekend';
           const score = l.leadScore ?? '—';
           const bron  = l.bron || 'Onbekende bron';
-          return \`<div class="followup-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+          return \`<div class="followup-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead)openPanel(lead);})()">
             <div style="flex:1;min-width:0">
               <div class="followup-item-name">\${escHtml(name)}</div>
               <div class="followup-item-meta">\${escHtml(bron)}</div>
             </div>
             <span class="followup-item-score">\${score}</span>
-            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escHtml(l.telefoon||'')}').then(()=>toast('Nummer gekopieerd','success'))">
+            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escJs(l.telefoon||'')}').then(()=>toast('Nummer gekopieerd','success'))">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/><path d="M1 1l22 22"/></svg>
               Kopieer
             </button>
@@ -11564,7 +11564,7 @@ function renderNietBereikbaar() {
     const tag = isEscalated
       ? '<span class="nb-item-tag tag-escalated" title="' + escHtml(data.escalated.question || '') + '">Escalatie</span>'
       : '<span class="nb-item-tag tag-waFailed">Niet bereikbaar</span>';
-    return \`<div class="nb-item" onclick="(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escHtml(String(lead.id))}';});if(l)openPanel(l);})()">
+    return \`<div class="nb-item" onclick="(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escJs(String(lead.id))}';});if(l)openPanel(l);})()">
       <div class="nb-item-info">
         <div>\${tag}<span class="nb-item-name">\${escHtml(name)}</span></div>
         \${dateStr ? \`<span class="nb-item-sub">\${dateStr}</span>\` : ''}
@@ -11615,7 +11615,7 @@ function renderTakenWidget() {
   listEl.innerHTML = items.map(({ lead, task }) => {
     const isOverdue = task.due < today;
     const dueLbl = isOverdue ? 'Verlopen' : 'Vandaag';
-    return \`<div class="taken-item\${isOverdue ? ' overdue' : ''}" onclick="(function(){navigateTo('dashboard');setTimeout(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escHtml(String(lead.id))}';});if(l)openPanel(l);},120);})()">
+    return \`<div class="taken-item\${isOverdue ? ' overdue' : ''}" onclick="(function(){navigateTo('dashboard');setTimeout(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escJs(String(lead.id))}';});if(l)openPanel(l);},120);})()">
       <div class="taken-item-dot"></div>
       <div class="taken-item-body">
         <div class="taken-item-text">\${escHtml(task.text)}</div>
@@ -11692,6 +11692,9 @@ function openCalEvent(idx) {
       const nd  = parseNotities(ml);
       const v   = nd.afspraak ? nd.afspraak.verschenen : undefined;
       const lid = escHtml(String(ml.id));
+      // Same id, escaped for use inside an onclick="...('...')" JS-string
+      // context instead of a plain HTML attribute -- see escJs() comment above.
+      const lidJs = escJs(String(ml.id));
       const gesloten = nd.afspraak?.gesloten || '';
       const notitie  = escHtml(nd.afspraak?.notitie || '');
 
@@ -11701,7 +11704,7 @@ function openCalEvent(idx) {
           <div class="cal-modal-att-label">Afspraak resultaat</div>
           <div class="cal-modal-att-result yes">
             Gekomen
-            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lid}',true)">Bewerken</span>
+            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',true)">Bewerken</span>
           </div>
           \${gesloten ? \`<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px;">Deal: \${escHtml(gesloten)}</div>\` : ''}
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
@@ -11712,7 +11715,7 @@ function openCalEvent(idx) {
           <div class="cal-modal-att-label">Afspraak resultaat</div>
           <div class="cal-modal-att-result no">
             Niet gekomen
-            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lid}',false)">Bewerken</span>
+            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',false)">Bewerken</span>
           </div>
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
         </div>\`;
@@ -11721,8 +11724,8 @@ function openCalEvent(idx) {
         attSection = \`<div class="cal-modal-att-section" id="cal-att-section-\${lid}">
           <div class="cal-modal-att-label">Kwam deze persoon?</div>
           <div class="cal-modal-att-btns">
-            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lid}',true)">Gekomen</button>
-            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lid}',false)">Niet gekomen</button>
+            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lidJs}',true)">Gekomen</button>
+            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lidJs}',false)">Niet gekomen</button>
           </div>
         </div>\`;
       }
@@ -11750,7 +11753,7 @@ function calAttShowForm(leadId, verschenen) {
           <div class="cal-att-followup-label">Notities over het gesprek</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="Wat is er besproken? Volgende stap?"></textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">
           Opslaan
         </button>
       </div>\`;
@@ -11762,7 +11765,7 @@ function calAttShowForm(leadId, verschenen) {
           <div class="cal-att-followup-label">Reden / notitie (optioneel)</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="bijv. Geen antwoord, verkeerd nummer, wil herplannen..."></textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">
           Opslaan
         </button>
       </div>\`;
@@ -11789,7 +11792,7 @@ function calAttStartEdit(leadId, verschenen) {
           <div class="cal-att-followup-label">Notities</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',true)">Opslaan</button>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">Opslaan</button>
       </div>\`;
   } else {
     section.innerHTML = \`
@@ -11799,7 +11802,7 @@ function calAttStartEdit(leadId, verschenen) {
           <div class="cal-att-followup-label">Notitie</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escHtml(leadId)}',false)">Opslaan</button>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">Opslaan</button>
       </div>\`;
   }
 }
@@ -11960,7 +11963,7 @@ function renderCalBookBody() {
           \${calBookState.eventTypes.map(et => {
             const active = et.uri === calBookState.selectedType ? ' active' : '';
             const dur    = et.duration ? \`<span class="cb-type-dur">(\${et.duration}min)</span>\` : '';
-            return \`<button class="cb-type-btn\${active}" onclick="calBookSelectType('\${escHtml(et.uri)}')">\${escHtml(et.name)}\${dur}</button>\`;
+            return \`<button class="cb-type-btn\${active}" onclick="calBookSelectType('\${escJs(et.uri)}')">\${escHtml(et.name)}\${dur}</button>\`;
           }).join('')}
         </div>
       </div>\`
@@ -12422,8 +12425,8 @@ function bannerAttYes(leadId) {
     <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
     <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="Notities over het gesprek..." style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
     <div style="display:flex;gap:6px">
-      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escHtml(leadId)}')">Opslaan</button>
-      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escHtml(leadId)}',false,'','');renderAttendanceBanner()">Niet</button>
+      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escJs(leadId)}')">Opslaan</button>
+      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escJs(leadId)}',false,'','');renderAttendanceBanner()">Niet</button>
     </div>
   </div>\`;
 }
@@ -12711,7 +12714,7 @@ function renderProfile() {
         const bron  = l.fields?.['Bron'] || l.bron || '';
         const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
         const qual = l.fields?.['Qualified'] === true || l.qualified === true || (l.fields?.['Score'] >= 7) || l.leadScore >= 7;
-        return \`<div class="profile-recent-lead-row" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead){navigateTo('dashboard');setTimeout(function(){openPanel(lead);},120);}})()">
+        return \`<div class="profile-recent-lead-row" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead){navigateTo('dashboard');setTimeout(function(){openPanel(lead);},120);}})()">
           <div class="profile-recent-lead-avatar">\${initials}</div>
           <div style="flex:1;min-width:0">
             <div class="profile-recent-lead-name">\${escHtml(name)}</div>
@@ -13436,7 +13439,7 @@ function renderPipeline() {
       const sc = l.leadScore || 0;
       const scCls = sc >= 8 ? 'score-green' : sc >= 5 ? 'score-orange' : sc > 0 ? 'score-red' : 'score-gray';
       const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
-      return \`<div class="pipeline-card" draggable="true" ondragstart="pipelineDragStart(event,'\${escHtml(String(l.id))}')" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escHtml(String(l.id))}');if(lead)openPanel(lead);})()">
+      return \`<div class="pipeline-card" draggable="true" ondragstart="pipelineDragStart(event,'\${escJs(String(l.id))}')" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead)openPanel(lead);})()">
         <div class="pipeline-card-name">\${escHtml(l.naam) || '—'}</div>
         <div class="pipeline-card-meta">
           \${sc > 0 ? \`<span class="pipeline-score \${scCls}">\${sc}</span>\` : ''}
@@ -13502,7 +13505,7 @@ function renderGesprekken() {
       preview = last ? (last.content || '').slice(0, 50) + ((last.content || '').length > 50 ? '...' : '') : '';
     } catch {}
     const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
-    return \`<div class="conv-list-item" id="conv-item-\${escHtml(String(l.id))}" onclick="openConversation('\${escHtml(String(l.id))}')" >
+    return \`<div class="conv-list-item" id="conv-item-\${escHtml(String(l.id))}" onclick="openConversation('\${escJs(String(l.id))}')" >
       <div class="conv-list-item-name">
         <span>\${escHtml(l.naam) || '—'}</span>
         <span class="conv-list-item-date">\${dateStr}</span>
@@ -15558,7 +15561,7 @@ function renderFounderPipeline() {
       var ageClass = days >= thresh * 2 ? 'age-critical' : days >= thresh ? 'age-warning' : 'age-ok';
       var ageLabel = days === 0 ? 'Vandaag' : days + (days === 1 ? ' dag' : ' dagen');
       var urgent = days >= thresh ? ' has-urgent' : '';
-      return '<div class="founder-card' + urgent + '" onclick="openPipeModal(\\'' + escHtml(p.id) + '\\')">' +
+      return '<div class="founder-card' + urgent + '" onclick="openPipeModal(\\'' + escJs(p.id) + '\\')">' +
         '<div class="founder-card-name">' + escHtml(p.naam || p.bedrijf || '—') + '</div>' +
         (p.bedrijf && p.naam ? '<div class="founder-card-meta">' + escHtml(p.bedrijf) + '</div>' : '') +
         (p.email ? '<div class="founder-card-meta">' + escHtml(p.email) + '</div>' : '') +
@@ -15600,7 +15603,7 @@ function renderFollowUpAlerts() {
     var thresh = thresholds[p.fase] || 5;
     var cls    = days >= thresh * 2 ? 'critical' : 'warning';
     var fi     = faseIdx[p.fase] || 'f0';
-    return '<div class="fdr-followup-item ' + cls + '" onclick="openPipeModal(\\'' + escHtml(p.id) + '\\')">' +
+    return '<div class="fdr-followup-item ' + cls + '" onclick="openPipeModal(\\'' + escJs(p.id) + '\\')">' +
       '<div class="fdr-followup-name">' + escHtml(p.naam || p.bedrijf || '—') + (p.bedrijf && p.naam ? ' <span style="font-weight:400;color:var(--text-muted)">— ' + escHtml(p.bedrijf) + '</span>' : '') + '</div>' +
       '<span class="fdr-followup-fase ' + fi + '">' + escHtml(p.fase) + '</span>' +
       '<span class="fdr-followup-days">' + days + 'd</span>' +
@@ -15733,7 +15736,7 @@ function renderFounderGoals() {
     const current = g.eenheid.toLowerCase().includes('klant') ? founderState.clients : 0;
     const pct     = g.target > 0 ? Math.min(100, Math.round(current / g.target * 100)) : 0;
     const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - today) / 86400000) : null;
-    return '<div class="founder-goal" onclick="openGoalModal(\\'' + escHtml(g.id) + '\\')" style="cursor:pointer">' +
+    return '<div class="founder-goal" onclick="openGoalModal(\\'' + escJs(g.id) + '\\')" style="cursor:pointer">' +
       '<div class="founder-goal-top">' +
         '<div class="founder-goal-name">' + escHtml(g.doel) + '</div>' +
         '<div class="founder-goal-nums">' + current + ' / ' + g.target + ' ' + escHtml(g.eenheid) + '</div>' +
