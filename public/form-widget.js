@@ -10,6 +10,17 @@
   var CLIENT_NAME     = (script && script.getAttribute('data-name'))     || 'Helvaro';
   var CUSTOM_ENDPOINT = (script && script.getAttribute('data-endpoint'))  || '';
 
+  // CLIENT_NAME comes from a script tag attribute this widget is embedded
+  // with on clients' own sites. It is concatenated into innerHTML below, so
+  // it must be HTML-escaped first — otherwise a CMS that templates
+  // data-name from user-editable content turns this into DOM-XSS on the
+  // client's site. Same escaping api/form-page.js's escHtml() applies to
+  // the identical field server-side.
+  function escHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  var SAFE_CLIENT_NAME = escHtml(CLIENT_NAME);
+
   // Build the API endpoint: custom takes priority, otherwise use URL-path format
   var API_ENDPOINT = CUSTOM_ENDPOINT ||
     ('https://helvaro-helvaros-projects.vercel.app/api/form/' + encodeURIComponent(PROJECT_CODE));
@@ -74,7 +85,7 @@
     '<div id="hv-overlay" role="dialog" aria-modal="true">' +
     '<div id="hv-card">' +
     '<button id="hv-x" aria-label="Sluiten">\u2715</button>' +
-    '<div class="hv-logo">' + CLIENT_NAME + '</div>' +
+    '<div class="hv-logo">' + SAFE_CLIENT_NAME + '</div>' +
     '<p class="hv-sub">Vul je gegevens in en wij nemen<br>contact op via WhatsApp</p>' +
     '<div id="hv-form">' +
     '<label class="hv-lbl" for="hv-naam">Naam</label>' +
@@ -83,7 +94,7 @@
     '<input class="hv-inp" id="hv-tel" type="tel" placeholder="0478 12 34 56" autocomplete="tel">' +
     '<label class="hv-consent-row" for="hv-consent">' +
     '<input type="checkbox" id="hv-consent">' +
-    '<span>Ik ga akkoord dat ' + CLIENT_NAME + ' mij via WhatsApp contacteert. Zie het ' +
+    '<span>Ik ga akkoord dat ' + SAFE_CLIENT_NAME + ' mij via WhatsApp contacteert. Zie het ' +
     '<a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">privacybeleid</a>.</span>' +
     '</label>' +
     '<button id="hv-send">VERSTUUR</button>' +
