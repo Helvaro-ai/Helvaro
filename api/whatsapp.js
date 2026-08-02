@@ -557,7 +557,7 @@ async function processMessage(phone, text, scopedProjectCode) {
 
       priorHistory.push({ role: 'user', content: text, ts: Date.now() });
       if (priorHistory.length > 20) priorHistory = priorHistory.slice(-20);
-      await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(priorHistory) }, phone);
+      await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(priorHistory) }, phone, scopedProjectCode);
 
       // Notify the client (fail-soft): a lead came in they need to handle
       // themselves now that automation has stopped. Same contract as every
@@ -576,7 +576,7 @@ async function processMessage(phone, text, scopedProjectCode) {
           `${leadNameExp || phone} schreef net. Je account is ${statusLabel}, dus de AI antwoordt niet automatisch. Het bericht is wel opgeslagen.\n\n` +
           `"${text.slice(0, 280)}"\n\n` +
           `Open de lead: https://app.helvaro.pro/dashboard`;
-        const nudgeSentExp = await sendWA(ownerPhoneExp, nudge);
+        const nudgeSentExp = await sendWA(ownerPhoneExp, nudge, clientPhoneNumberId);
         if (!nudgeSentExp) console.error(`[whatsapp] plan-status melding naar owner (${ownerPhoneExp}) is niet aangekomen`);
       }
       if (ownerEmailExp) {
