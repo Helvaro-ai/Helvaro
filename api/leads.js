@@ -1047,7 +1047,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── B. Test-message. Send a one-off WhatsApp to a phone number ─────────
-    // body: { mode: 'test-message', phone: '32466358427', message: '...' }
+    // body: { mode: 'test-message', phone: '32478123456', message: '...' }
     if (body.mode === 'test-message') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       let phone = String(body.phone || '').replace(/[\s\-\(\)\.]/g, '');

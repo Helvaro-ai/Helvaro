@@ -166,7 +166,7 @@ module.exports = async function handler(req, res) {
     } catch { /* network error. Use defaults */ }
 
     // ── Normalise phone. Stored in Airtable in international digits-only format
-    // so it matches what WhatsApp sends as message.from (e.g. "32466358427")
+    // so it matches what WhatsApp sends as message.from (e.g. "32478123456")
     let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
     if      (waPhone.startsWith('00')) waPhone = waPhone.slice(2);
     else if (waPhone.startsWith('+'))  waPhone = waPhone.slice(1);
