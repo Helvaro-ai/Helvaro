@@ -5618,7 +5618,7 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .page { display: none !important; }
 .page.active { display: block !important; }
-#page-calendly.active { display: flex !important; flex-direction: row; }
+#page-kalender.active { display: flex !important; flex-direction: row; }
 .cal-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .cal-right-sidebar {
   width: 272px; flex-shrink: 0; border-left: 1px solid var(--border);
@@ -5837,21 +5837,6 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cb-label {
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 8px;
-}
-/* Event type tabs */
-.cb-types { display: flex; gap: 7px; flex-wrap: wrap; }
-.cb-type-btn {
-  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
-  background: var(--bg-card-alt); color: var(--text-secondary);
-  font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition);
-  font-family: 'Inter',sans-serif; white-space: nowrap;
-}
-.cb-type-btn:hover { border-color: var(--accent); color: var(--accent); }
-.cb-type-btn.active {
-  background: rgba(var(--accent-rgb),0.12); border-color: var(--accent); color: var(--accent);
-}
-.cb-type-dur {
-  font-size: 10px; opacity: 0.7; margin-left: 4px;
 }
 /* Date nav */
 .cb-date-nav {
@@ -6554,7 +6539,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
         Gesprekken
       </button>
-      <button class="nav-item" data-page="calendly" id="nav-calendly">
+      <button class="nav-item" data-page="kalender" id="nav-kalender">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
         Kalender
         <span class="nav-badge" id="cal-nav-badge" style="display:none">0</span>
@@ -7148,7 +7133,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </div>
 
-    <main class="page-content page" id="page-calendly" style="padding:0;height:calc(100vh - 56px);overflow:hidden;">
+    <main class="page-content page" id="page-kalender" style="padding:0;height:calc(100vh - 56px);overflow:hidden;">
 
       <!-- Calendar main area -->
       <div class="cal-main">
@@ -7162,7 +7147,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
-          <button id="calendly-open-btn" class="cal-book-btn" onclick="openCalBookModal(new Date().toISOString().slice(0,10),null)">
+          <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(new Date().toISOString().slice(0,10),null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Boek afspraak
           </button>
@@ -8231,7 +8216,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">AI boekt direct in WhatsApp gesprek</span>
             </div>
             <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="navigateTo('calendly')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--accent);border:none;border-radius:10px;color: var(--on-accent);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+              <button onclick="navigateTo('kalender')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--accent);border:none;border-radius:10px;color: var(--on-accent);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 Open agenda
               </button>
@@ -8266,7 +8251,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Naar Dashboard
           </button>
-          <button class="profile-action-btn" onclick="navigateTo('calendly')">
+          <button class="profile-action-btn" onclick="navigateTo('kalender')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Kalender Bekijken
           </button>
@@ -10586,7 +10571,7 @@ function applyFilters() {
   updateFilterUI();
   populateBronFilter();
   renderCalSidebar();
-  if (state.currentPage === 'calendly') renderAppointments();
+  if (state.currentPage === 'kalender') renderAppointments();
 }
 
 function sortLeads() {
@@ -11885,8 +11870,6 @@ function calNext()  { calState.weekStart.setDate(calState.weekStart.getDate() + 
 /* ── Custom Calendly booking modal ──────────────────────────── */
 const calBookState = {
   date:          '',        // YYYY-MM-DD
-  eventTypes:    [],
-  selectedType:  null,      // uri string
   selectedSlot:  null,      // ISO string
   selectedLead:  null,      // lead object
   slots:         [],
@@ -11913,8 +11896,6 @@ function openCalBookModal(dateStr, prefillLead) {
   calBookState.bookPhone    = prefillLead ? (prefillLead.telefoon || '') : '';
   calBookState.selectedLead = prefillLead || null;
   calBookState.slots        = [];
-  calBookState.eventTypes   = [];
-  calBookState.selectedType = null;
   calBookState.bookName     = prefillLead ? (prefillLead.naam || '') : '';
   calBookState.bookEmail    = prefillLead ? (prefillLead.email || '') : '';
 
@@ -11948,20 +11929,6 @@ function renderCalBookBody() {
   const nl  = ['zo','ma','di','wo','do','vr','za'];
   const d   = new Date(calBookState.date + 'T12:00:00');
   const dateLbl = nl[d.getDay()].charAt(0).toUpperCase() + nl[d.getDay()].slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
-
-  // Event type tabs
-  const typesHtml = calBookState.eventTypes.length > 1
-    ? \`<div>
-        <div class="cb-label">Type afspraak</div>
-        <div class="cb-types">
-          \${calBookState.eventTypes.map(et => {
-            const active = et.uri === calBookState.selectedType ? ' active' : '';
-            const dur    = et.duration ? \`<span class="cb-type-dur">(\${et.duration}min)</span>\` : '';
-            return \`<button class="cb-type-btn\${active}" onclick="calBookSelectType('\${escJs(et.uri)}')">\${escHtml(et.name)}\${dur}</button>\`;
-          }).join('')}
-        </div>
-      </div>\`
-    : '';
 
   // Date nav
   const dateNavHtml = \`<div>
@@ -12057,7 +12024,7 @@ function renderCalBookBody() {
     </div>\`;
   }
 
-  body.innerHTML = typesHtml + dateNavHtml +
+  body.innerHTML = dateNavHtml +
     \`<div><div class="cb-label">Beschikbare tijden</div>\${slotsHtml}</div>\` +
     leadHtml + confirmHtml;
 }
@@ -12140,8 +12107,6 @@ async function fetchCalSlots() {
       }
     }
 
-    calBookState.eventTypes   = [];
-    calBookState.selectedType = null;
     calBookState.slots        = slots;
     calBookState.loading      = false;
     renderCalBookBody();
@@ -12151,13 +12116,6 @@ async function fetchCalSlots() {
     calBookState.slots   = [];
     renderCalBookBody();
   }
-}
-
-function calBookSelectType(uri) {
-  if (calBookState.selectedType === uri) return;
-  calBookState.selectedType = uri;
-  calBookState.selectedSlot = null;
-  fetchCalSlots();
 }
 
 function calBookSelectSlot(iso) {
@@ -12749,7 +12707,7 @@ function navigateTo(page) {
   const titles = {
     dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
     exports:      { title: 'Exports',       sub: 'Rapporten en data-export' },
-    calendly:     { title: 'Kalender',      sub: 'Je afspraken en beschikbaarheid' },
+    kalender:     { title: 'Kalender',      sub: 'Je afspraken en beschikbaarheid' },
     admin:        { title: 'Klanten',       sub: 'Overzicht van alle klanten' },
     profile:      { title: 'Profiel',       sub: 'Je accountgegevens en statistieken' },
     pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van je leads' },
@@ -12781,7 +12739,7 @@ function navigateTo(page) {
     loadAdminClients();
   }
 
-  if (page === 'calendly')     renderAppointments();
+  if (page === 'kalender')     renderAppointments();
   if (page === 'profile')      renderProfile();
   if (page === 'resultaten')   loadResultaten();
   if (page === 'pipeline')     renderPipeline();
@@ -13068,27 +13026,15 @@ async function startDashboard(skipRefresh = false) {
     if (founderBtn) founderBtn.style.display = 'none';
   }
 
-  // Handle Calendly OAuth redirect params
+  // Calendly OAuth was removed along with the integration itself — nothing
+  // redirects with a ?calendly= param anymore (the live Google Calendar
+  // OAuth flow below uses ?gcal=, see api/leads.js's handleGcal callback).
+  // This declaration stays; the block that used to read the calendly param
+  // from it was dead (unreachable) and has been removed.
   const urlParams = new URLSearchParams(window.location.search);
-  const calResult = urlParams.get('calendly');
-  if (calResult) {
-    // Clean up URL without reload
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-    if (calResult === 'connected') {
-      setTimeout(() => toast('Calendly succesvol gekoppeld! Je afspraken worden nu automatisch gesynchroniseerd.', 'success', 'Calendly gekoppeld'), 600);
-      // Navigate to profile so user sees the updated status
-      setTimeout(() => navigateTo('profile'), 800);
-    } else if (calResult === 'denied') {
-      setTimeout(() => toast('Calendly koppeling geannuleerd.', 'info', 'Geannuleerd'), 600);
-    } else if (calResult === 'error' || calResult === 'save_error') {
-      setTimeout(() => toast('Er is iets misgegaan bij het koppelen van Calendly. Probeer het opnieuw.', 'error', 'Fout'), 600);
-    }
-  }
 
   // Handle Google Agenda OAuth redirect params (?gcal=... from api/leads.js's
-  // handleGcal callback, reached via the /api/gcal rewrite). Same pattern as
-  // the Calendly block above.
+  // handleGcal callback, reached via the /api/gcal rewrite).
   const gcalResult = urlParams.get('gcal');
   if (gcalResult) {
     const cleanUrl = window.location.pathname;
