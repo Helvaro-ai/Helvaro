@@ -103,6 +103,7 @@ const LANGUAGES = {
     legacyCompleted: 'Bedankt voor je interesse. We nemen spoedig contact met je op.',
     legacyCallback: (w) => `Goed, dan zit het in orde. Een collega van mij belt of appt je ${w}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
     legacyConfirm: (name, when, addr) => `Bevestigd. Je afspraak bij ${name} staat gepland op ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
+    legacyConflict: 'Oeps, dat moment bleek toch al bezet. Welk ander moment past je?',
     legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
   },
   fr: {
@@ -114,6 +115,7 @@ const LANGUAGES = {
     legacyCompleted: 'Merci pour votre intérêt. Nous vous recontactons bientôt.',
     legacyCallback: (w) => `Parfait. Un collègue te contactera ${w}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
     legacyConfirm: (name, when, addr) => `Confirmé. Ton rendez-vous chez ${name} est prévu le ${when}.${addr ? ` Adresse : ${addr}.` : ''}`,
+    legacyConflict: 'Oups, ce moment était finalement déjà pris. Quel autre moment te convient ?',
     legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
   },
   en: {
@@ -125,6 +127,7 @@ const LANGUAGES = {
     legacyCompleted: 'Thanks for your interest. We will be in touch shortly.',
     legacyCallback: (w) => `Perfect. A colleague will reach out to you ${w}. You don't need to do anything else. We will come back to you.`,
     legacyConfirm: (name, when, addr) => `Confirmed. Your appointment with ${name} is booked for ${when}.${addr ? ` Address: ${addr}.` : ''}`,
+    legacyConflict: 'Oops, that time turned out to already be taken. What other time works for you?',
     legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
   },
 
@@ -572,6 +575,24 @@ function buildConfirmMessage(code, clientName, when, address) {
   return fn(clientName, when, address);
 }
 
+// Sent when a slot the AI just confirmed to a lead (in-chat booking, see
+// api/whatsapp.js's BOOK:{...} handling) turns out to already be taken on
+// the client's Google Calendar by the time we go to write it — closes the
+// race between the busy-list snapshot at the start of the AI turn and the
+// lead's confirmation later in the same turn. Only nl/fr/en have a native
+// string today (Helvaro's actual current client base, and matchLeadLanguage
+// is off by default — see api/whatsapp.js). Every other language falls back
+// to plain English rather than an unreviewed machine translation of a new
+// string (see this file's translation-quality note at the top). Add a
+// native `conflict`/`legacyConflict` entry per language above once
+// matchLeadLanguage sees real non-nl/fr/en usage.
+function buildSlotConflictMessage(code) {
+  const entry = getLanguage(code);
+  const val = entry.legacyConflict || entry.conflict;
+  if (val) return typeof val === 'function' ? val() : val;
+  return 'Sorry, that time slot was just taken. What other time works for you?';
+}
+
 // Default WhatsApp opener rendered right after a lead submits the intake
 // form (before any AI turn — this is the very first message a lead sees).
 // api/form.js uses this rendered text ONLY for the Conversation History
@@ -648,6 +669,7 @@ module.exports = {
   buildCompletedMessage,
   buildCallbackMessage,
   buildConfirmMessage,
+  buildSlotConflictMessage,
   buildWelcomeMessage,
   getLocale,
   isRtl,
