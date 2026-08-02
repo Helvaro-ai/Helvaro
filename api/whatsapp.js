@@ -8,9 +8,9 @@ const crypto = require('crypto');
 // when the platform doesn't provide a request context (e.g. local dev).
 const { waitUntil } = require('@vercel/functions');
 // SSRF-protected website fetcher, shared with api/cron-followup.js's
-// runOutreach() — see api/lib/fetch-website.js for why this lives outside
+// runOutreach() — see api/_lib/fetch-website.js for why this lives outside
 // this file.
-const { fetchWebsite } = require('./lib/fetch-website');
+const { fetchWebsite } = require('./_lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a

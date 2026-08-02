@@ -934,7 +934,7 @@ module.exports = async function handler(req, res) {
       // bewaar de URLs newline-gescheiden in Image URL.
       if (spec && spec.carousel) {
         try {
-          const { renderCarousel } = require('./lib/card');
+          const { renderCarousel } = require('./_lib/card');
           const bufs = await renderCarousel({ cover: spec.cover, slides: spec.slides || [], cta: spec.cta });
           const urls = [];
           for (const b of bufs) { const u = await uploadToBlob(b, 'image/jpeg', platform).catch(() => ''); if (u) urls.push(u); }
@@ -950,7 +950,7 @@ module.exports = async function handler(req, res) {
       }
       if (!imageUrl && cardSpec) {
         try {
-          const { renderCard } = require('./lib/card');
+          const { renderCard } = require('./_lib/card');
           const buf = await renderCard({ headline: cardSpec.headline, bullets: cardSpec.bullets || [], tagline: cardSpec.tagline });
           imageUrl = await uploadToBlob(buf, 'image/jpeg', platform).catch(() => '');
         } catch (e) { console.error('[card] render failed:', e.message); }
