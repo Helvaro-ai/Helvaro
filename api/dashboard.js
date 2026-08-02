@@ -5404,6 +5404,60 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .pi-roomtype-card:hover { border-color: var(--accent-bright); }
 .pi-roomtype-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); font-weight: 700; }
+.pi-roomtype-card:disabled, .pi-roomtype-card.disabled {
+  opacity: .4; cursor: not-allowed; border-color: var(--border);
+}
+.pi-roomtype-card:disabled:hover, .pi-roomtype-card.disabled:hover { border-color: var(--border); }
+
+/* Visual-controls: the "Meer opties" panel (furniture/walls/floor/lighting/
+   renovation depth). Reuses <details>/<summary> exactly like the AI
+   Persoonlijkheid page's .ap-photo-advanced — same collapsed-by-default
+   pattern, so uploading a photo + picking a style + clicking Generate stays
+   a two-click flow, and every axis in here is a deliberate opt-in. */
+.pi-advanced-details { margin-top: 14px; }
+.pi-advanced-details > summary {
+  cursor: pointer; user-select: none; list-style: none;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-muted); padding: 4px 0;
+}
+.pi-advanced-details > summary::-webkit-details-marker { display: none; }
+.pi-advanced-details > summary:hover { color: var(--accent-bright); }
+.pi-advanced-details > summary::before {
+  content: '▸'; font-size: 10px; transition: transform .15s ease;
+}
+.pi-advanced-details[open] > summary::before { transform: rotate(90deg); }
+.pi-advanced-body { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+
+/* Wall-colour swatches — small curated palette, NOT a free colour picker
+   (see api/_images.js's WALL_COLORS header for why). Each chip shows the
+   actual colour as a quick visual reference plus the Dutch label. */
+.pi-color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.pi-color-card {
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 9px;
+  padding: 7px 10px; cursor: pointer; text-align: left; font-family: inherit;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary); transition: all .15s ease;
+  display: flex; align-items: center; gap: 8px;
+}
+.pi-color-card:hover { border-color: var(--accent-bright); }
+.pi-color-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); font-weight: 700; }
+.pi-color-swatch-dot {
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,.25); box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+}
+.pi-color-note-input { margin-top: 8px; }
+
+/* Honesty note — shown only when "Volledige renovatie" is selected. Uses the
+   warning tokens (same family as the credit-usage bar's 80% state, see
+   DESIGN-SYSTEM.md's deliberate warning/accent split) so it reads as an
+   active caution, not a neutral hint. */
+.pi-honesty-note {
+  display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.5;
+  color: var(--text-secondary); background: rgba(var(--warning-rgb),.08);
+  border: 1px solid rgba(var(--warning-rgb),.28); border-radius: 9px;
+  padding: 10px 12px; margin-top: 8px;
+}
+.pi-honesty-note b { color: var(--warning); }
 
 /* Before/after comparison slider — a single native <input type=range>
    (transparent, full-bleed) drives a clip-path on the "after" image so the
@@ -7314,11 +7368,65 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">Type ruimte <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer)</span></label>
+          <label class="ap-label">Type ruimte <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer). Ook voor buiten: gevel, tuin, terras</span></label>
           <div class="pi-roomtype-grid" id="pi-roomtype-grid">
             <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
           </div>
         </div>
+
+        <!-- Meer opties — collapsed by default, exactly like AI Persoonlijkheid's
+             "Geavanceerd" pattern, so foto -> stijl -> genereren blijft twee klikken.
+             Elke sub-optie hieronder heeft "Automatisch" als standaard. -->
+        <details class="pi-advanced-details" id="pi-advanced-details">
+          <summary>Meer opties (meubels, muren, vloer, sfeer, renovatiediepte)</summary>
+          <div class="pi-advanced-body">
+
+            <div class="ap-field">
+              <label class="ap-label">Meubels <span class="ap-label-hint">hoeveel inrichting mag de AI tonen</span></label>
+              <div class="pi-roomtype-grid" id="pi-furniture-grid">
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+              </div>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label">Muurafwerking <span class="ap-label-hint">optioneel</span></label>
+              <div class="pi-roomtype-grid" id="pi-wallfinish-grid">
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+              </div>
+              <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
+                <label class="ap-label" style="margin-bottom:6px">Muurkleur <span class="ap-label-hint">gecureerd palet — geen vrij kleurveld, dat botst vaak met het AI-model</span></label>
+                <div class="pi-color-grid" id="pi-wallcolor-grid"></div>
+                <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="Optionele nuance, bv. 'met een accentwand'">
+              </div>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label">Vloer <span class="ap-label-hint">optioneel</span></label>
+              <div class="pi-roomtype-grid" id="pi-floor-grid">
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+              </div>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label">Lichtsfeer <span class="ap-label-hint">optioneel</span></label>
+              <div class="pi-roomtype-grid" id="pi-lighting-grid">
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+              </div>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label">Renovatiediepte <span class="ap-label-hint">hoe ver mag de visualisatie gaan</span></label>
+              <div class="pi-roomtype-grid" id="pi-renovation-grid">
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+              </div>
+              <div class="pi-honesty-note" id="pi-honesty-note" style="display:none">
+                <span>⚠</span>
+                <span><b>Gebruik dit eerlijk.</b> "Volledige renovatie" toont een aspirational sfeerbeeld, geen belofte over de werkelijke staat van de woning. Gebruik dit als inspiratie in je advertising, niet als vervanging voor een eerlijke beschrijving van de huidige staat — de AI-labeling hieronder blijft sowieso altijd zichtbaar.</span>
+              </div>
+            </div>
+
+          </div>
+        </details>
 
         <div class="ap-field" style="margin-top:14px">
           <label class="ap-label">Extra instructies <span class="ap-label-hint">optioneel</span></label>
@@ -14204,6 +14312,24 @@ let piSelectedRoomType = ''; // '' = "Automatisch" (no room-type fragment — AI
 let piGalleryList = [];      // last-rendered gallery, kept for the download/toggle button handlers
 let piLastResult = null;     // { image, sourceDataUrl } of the most recently generated result — for download/PDF
 
+// ── Visual-controls axes (all optional, "Automatisch" = '' default) except
+// renovation depth, which defaults to the honest 'light' choice — see
+// api/_images.js's RENOVATION_DEPTHS header for why that one isn't a silent
+// "let the AI decide". Lists load from the SAME 'property-styles' response
+// as piStyles/piRoomTypes above (one round trip, see loadPiStyles()). ─────
+let piFurnitureLevels = [];
+let piSelectedFurniture = '';
+let piWallFinishes = [];
+let piSelectedWallFinish = '';
+let piWallColors = [];
+let piSelectedWallColor = '';
+let piFloorTypes = [];
+let piSelectedFloor = '';
+let piLightingMoods = [];
+let piSelectedLighting = '';
+let piRenovationDepths = [];
+let piSelectedRenovationDepth = 'light';
+
 async function loadAiBeeldPage() {
   if (!state.apiKey) return;
   if (!piStylesLoaded) {
@@ -14232,6 +14358,13 @@ async function loadPiStyles() {
     }
     piStyles = Array.isArray(d.styles) ? d.styles : [];
     piRoomTypes = Array.isArray(d.roomTypes) ? d.roomTypes : [];
+    piFurnitureLevels = Array.isArray(d.furnitureLevels) ? d.furnitureLevels : [];
+    piWallFinishes = Array.isArray(d.wallFinishes) ? d.wallFinishes : [];
+    piWallColors = Array.isArray(d.wallColors) ? d.wallColors : [];
+    piFloorTypes = Array.isArray(d.floorTypes) ? d.floorTypes : [];
+    piLightingMoods = Array.isArray(d.lightingMoods) ? d.lightingMoods : [];
+    piRenovationDepths = Array.isArray(d.renovationDepths) ? d.renovationDepths : [];
+    if (d.defaultRenovationDepth) piSelectedRenovationDepth = d.defaultRenovationDepth;
     if (!piStyles.length) {
       if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Geen stijlen beschikbaar</div>';
     } else {
@@ -14239,6 +14372,12 @@ async function loadPiStyles() {
       renderPiStyleGrid();
     }
     renderPiRoomTypeGrid();
+    renderPiFurnitureGrid();
+    renderPiWallFinishGrid();
+    renderPiWallColorGrid();
+    renderPiFloorGrid();
+    renderPiLightingGrid();
+    renderPiRenovationGrid();
   } catch (err) {
     if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
     if (roomGrid) roomGrid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
@@ -14257,6 +14396,18 @@ function renderPiStyleGrid() {
 function selectPiStyle(el) {
   piSelectedStyle = el.getAttribute('data-key') || '';
   renderPiStyleGrid();
+  // The "staging" style's whole purpose is furnishing an empty room — an
+  // explicit "Leeg" furniture pick would directly contradict it (see
+  // api/_images.js's buildTransformPrompt() contradiction-handling comment,
+  // which mirrors this same guard server-side as defense in depth). Rather
+  // than let a client create that nonsense combination, the furniture grid
+  // disables "Leeg" while staging is active and resets the selection if it
+  // was already chosen.
+  if (piSelectedStyle === 'staging' && piSelectedFurniture === 'empty') {
+    piSelectedFurniture = '';
+    toast('"Leeg" is niet te combineren met de stijl "Lege ruimte inrichten" — teruggezet op automatisch', 'info');
+  }
+  renderPiFurnitureGrid();
 }
 
 // Room-type chips — an "Automatisch" chip (key '') is always first and is
@@ -14275,6 +14426,128 @@ function renderPiRoomTypeGrid() {
 function selectPiRoomType(el) {
   piSelectedRoomType = el.getAttribute('data-key') || '';
   renderPiRoomTypeGrid();
+}
+
+// ── Furniture amount — same chip pattern as room type, reuses the
+// .pi-roomtype-grid/.pi-roomtype-card classes (identical visual language,
+// no reason for a parallel CSS block). "Leeg" is disabled while the active
+// style is "staging" — see selectPiStyle()'s contradiction-guard comment. */
+function renderPiFurnitureGrid() {
+  const grid = document.getElementById('pi-furniture-grid');
+  if (!grid) return;
+  const items = [{ key: '', label: 'Automatisch' }].concat(piFurnitureLevels);
+  grid.innerHTML = items.map(f => {
+    const disabled = f.key === 'empty' && piSelectedStyle === 'staging';
+    return '<button type="button" class="pi-roomtype-card' + (f.key === piSelectedFurniture ? ' active' : '') + (disabled ? ' disabled' : '') +
+      '"' + (disabled ? ' disabled title="Niet te combineren met de stijl Lege ruimte inrichten"' : ' onclick="selectPiFurniture(this)"') +
+      ' data-key="' + escHtml(f.key) + '">' + escHtml(f.label) + '</button>';
+  }).join('');
+}
+
+function selectPiFurniture(el) {
+  piSelectedFurniture = el.getAttribute('data-key') || '';
+  renderPiFurnitureGrid();
+}
+
+// ── Wall finish — the colour swatch sub-picker only appears once
+// "Geschilderd" is chosen (colour is meaningless for wallpaper/brick/
+// plaster). Toggling away from "Geschilderd" clears any chosen colour/note
+// so a stale, inapplicable choice never lingers into the next generation. */
+function renderPiWallFinishGrid() {
+  const grid = document.getElementById('pi-wallfinish-grid');
+  if (!grid) return;
+  const items = [{ key: '', label: 'Automatisch' }].concat(piWallFinishes);
+  grid.innerHTML = items.map(w =>
+    '<button type="button" class="pi-roomtype-card' + (w.key === piSelectedWallFinish ? ' active' : '') +
+    '" onclick="selectPiWallFinish(this)" data-key="' + escHtml(w.key) + '">' + escHtml(w.label) + '</button>'
+  ).join('');
+  const wrap = document.getElementById('pi-wallcolor-wrap');
+  if (wrap) wrap.style.display = piSelectedWallFinish === 'painted' ? '' : 'none';
+}
+
+function selectPiWallFinish(el) {
+  piSelectedWallFinish = el.getAttribute('data-key') || '';
+  if (piSelectedWallFinish !== 'painted') {
+    piSelectedWallColor = '';
+    const note = document.getElementById('pi-wallcolor-note');
+    if (note) note.value = '';
+  }
+  renderPiWallFinishGrid();
+  renderPiWallColorGrid();
+}
+
+// Curated palette, not a free colour field — see api/_images.js's
+// WALL_COLORS header for why. The optional note input next to this grid is
+// a short NUANCE on the chosen swatch, not a second open prompt field.
+function renderPiWallColorGrid() {
+  const grid = document.getElementById('pi-wallcolor-grid');
+  if (!grid) return;
+  const swatchHex = { white: '#FFFFFF', offwhite: '#F3EDE2', greige: '#C9C6BF', sand: '#D9C6A5', sage: '#8FA78E', navy: '#1F2A44' };
+  grid.innerHTML = piWallColors.map(c =>
+    '<button type="button" class="pi-color-card' + (c.key === piSelectedWallColor ? ' active' : '') +
+    '" onclick="selectPiWallColor(this)" data-key="' + escHtml(c.key) + '">' +
+      '<span class="pi-color-swatch-dot" style="background:' + (swatchHex[c.key] || '#999') + '"></span>' +
+      escHtml(c.label) +
+    '</button>'
+  ).join('');
+}
+
+function selectPiWallColor(el) {
+  const key = el.getAttribute('data-key') || '';
+  piSelectedWallColor = (key === piSelectedWallColor) ? '' : key; // click again to deselect back to "automatisch"
+  renderPiWallColorGrid();
+}
+
+// ── Floor ────────────────────────────────────────────────────────────────
+function renderPiFloorGrid() {
+  const grid = document.getElementById('pi-floor-grid');
+  if (!grid) return;
+  const items = [{ key: '', label: 'Automatisch' }].concat(piFloorTypes);
+  grid.innerHTML = items.map(f =>
+    '<button type="button" class="pi-roomtype-card' + (f.key === piSelectedFloor ? ' active' : '') +
+    '" onclick="selectPiFloor(this)" data-key="' + escHtml(f.key) + '">' + escHtml(f.label) + '</button>'
+  ).join('');
+}
+
+function selectPiFloor(el) {
+  piSelectedFloor = el.getAttribute('data-key') || '';
+  renderPiFloorGrid();
+}
+
+// ── Lighting / mood ──────────────────────────────────────────────────────
+function renderPiLightingGrid() {
+  const grid = document.getElementById('pi-lighting-grid');
+  if (!grid) return;
+  const items = [{ key: '', label: 'Automatisch' }].concat(piLightingMoods);
+  grid.innerHTML = items.map(l =>
+    '<button type="button" class="pi-roomtype-card' + (l.key === piSelectedLighting ? ' active' : '') +
+    '" onclick="selectPiLighting(this)" data-key="' + escHtml(l.key) + '">' + escHtml(l.label) + '</button>'
+  ).join('');
+}
+
+function selectPiLighting(el) {
+  piSelectedLighting = el.getAttribute('data-key') || '';
+  renderPiLightingGrid();
+}
+
+// ── Renovation depth — NOT an "Automatisch" axis (see api/_images.js's
+// RENOVATION_DEPTHS header): it always has one of the two real values
+// selected, defaulting to the honest "Lichte opfrisbeurt". The honesty note
+// only appears once "Volledige renovatie" is deliberately chosen. ────────
+function renderPiRenovationGrid() {
+  const grid = document.getElementById('pi-renovation-grid');
+  if (!grid) return;
+  grid.innerHTML = piRenovationDepths.map(r =>
+    '<button type="button" class="pi-roomtype-card' + (r.key === piSelectedRenovationDepth ? ' active' : '') +
+    '" onclick="selectPiRenovation(this)" data-key="' + escHtml(r.key) + '">' + escHtml(r.label) + '</button>'
+  ).join('');
+  const note = document.getElementById('pi-honesty-note');
+  if (note) note.style.display = piSelectedRenovationDepth === 'full' ? '' : 'none';
+}
+
+function selectPiRenovation(el) {
+  piSelectedRenovationDepth = el.getAttribute('data-key') || 'light';
+  renderPiRenovationGrid();
 }
 
 // Server hard-caps the decoded upload at 3MB (api/_images.js's
@@ -14378,7 +14651,14 @@ function renderPiGallery(list) {
   piGalleryList = list;
   if (!list.length) { wrap.innerHTML = '<div class="pi-empty">Nog geen AI-beelden gegenereerd</div>'; return; }
   const cards = list.map(function (img, i) {
-    const metaBits = [img.styleLabel || img.style, img.roomTypeLabel].filter(Boolean);
+    // Older records (persisted before the visual-controls axes existed)
+    // simply have no furniture/wallFinish/floor/lighting/renovationDepth*
+    // fields — filter(Boolean) below degrades those gracefully to just
+    // style + room type, same as before this feature.
+    const metaBits = [
+      img.styleLabel || img.style, img.roomTypeLabel, img.furnitureLabel, img.wallFinishLabel,
+      img.floorLabel, img.lightingLabel, img.renovationDepthLabel,
+    ].filter(Boolean);
     const meta = metaBits.length ? metaBits.join(' · ') : 'Aangepast';
     const safeAfter = (img.url || '').replace(/"/g, '&quot;');
     const safeBefore = (img.sourceUrl || '').replace(/"/g, '&quot;');
@@ -14438,10 +14718,17 @@ async function generatePiImage() {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({
-        mode:         'property-generate',
-        dataUrl:      piUploadDataUrl,
-        style:        piSelectedStyle,
-        roomType:     piSelectedRoomType,
+        mode:             'property-generate',
+        dataUrl:          piUploadDataUrl,
+        style:            piSelectedStyle,
+        roomType:         piSelectedRoomType,
+        furniture:        piSelectedFurniture,
+        wallFinish:       piSelectedWallFinish,
+        wallColor:        piSelectedWallColor,
+        wallColorNote:    (document.getElementById('pi-wallcolor-note') || {}).value || '',
+        floor:            piSelectedFloor,
+        lighting:         piSelectedLighting,
+        renovationDepth:  piSelectedRenovationDepth,
         customPrompt: (document.getElementById('pi-custom-prompt') || {}).value || ''
       })
     });

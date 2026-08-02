@@ -1231,12 +1231,20 @@ module.exports = async function handler(req, res) {
       // authenticated client context — matches the rest of the file's
       // posture even though the payload itself is the same for everyone.
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
-      // roomTypes added alongside styles (same static/global payload) rather
-      // than a new mode — one fewer round trip, and keeps the "no new route
+      // roomTypes, and now the visual-controls axes below, are added
+      // alongside styles (same static/global payload) rather than a new
+      // mode each — one fewer round trip, and keeps the "no new route
       // surface" footprint the same as before this feature expansion.
       return res.status(200).json({
         styles: images.PROPERTY_STYLES.map((s) => ({ key: s.key, label: s.label })),
         roomTypes: images.ROOM_TYPES.map((r) => ({ key: r.key, label: r.label })),
+        furnitureLevels: images.FURNITURE_LEVELS.map((f) => ({ key: f.key, label: f.label })),
+        wallFinishes: images.WALL_FINISHES.map((w) => ({ key: w.key, label: w.label })),
+        wallColors: images.WALL_COLORS.map((c) => ({ key: c.key, label: c.label })),
+        floorTypes: images.FLOOR_TYPES.map((f) => ({ key: f.key, label: f.label })),
+        lightingMoods: images.LIGHTING_MOODS.map((l) => ({ key: l.key, label: l.label })),
+        renovationDepths: images.RENOVATION_DEPTHS.map((r) => ({ key: r.key, label: r.label })),
+        defaultRenovationDepth: images.DEFAULT_RENOVATION_DEPTH,
       });
     }
 
@@ -1260,6 +1268,46 @@ module.exports = async function handler(req, res) {
       if (!images.isValidRoomTypeKey(roomType)) {
         return res.status(400).json({ error: `Ongeldig kamertype. Kies uit: ${images.ROOM_TYPES.map((r) => r.key).join(', ')} (of laat leeg voor automatisch)` });
       }
+
+      // ── Visual-controls axes (all optional, same "empty = automatisch"
+      // contract as roomType above) — see api/_images.js's header comments
+      // on FURNITURE_LEVELS / WALL_FINISHES / WALL_COLORS / FLOOR_TYPES /
+      // LIGHTING_MOODS for what each does to the composed prompt. ────────
+      const furniture = body.furniture !== undefined ? String(body.furniture).trim() : '';
+      if (!images.isValidFurnitureKey(furniture)) {
+        return res.status(400).json({ error: `Ongeldig meubelniveau. Kies uit: ${images.FURNITURE_LEVELS.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)` });
+      }
+      const wallFinish = body.wallFinish !== undefined ? String(body.wallFinish).trim() : '';
+      if (!images.isValidWallFinishKey(wallFinish)) {
+        return res.status(400).json({ error: `Ongeldige muurafwerking. Kies uit: ${images.WALL_FINISHES.map((w) => w.key).join(', ')} (of laat leeg voor automatisch)` });
+      }
+      // wallColor/wallColorNote only mean anything when wallFinish is
+      // 'painted' — nulled out otherwise so a stray value from a stale UI
+      // state never persists a colour that was never actually applied.
+      let wallColor = body.wallColor !== undefined ? String(body.wallColor).trim() : '';
+      if (!images.isValidWallColorKey(wallColor)) {
+        return res.status(400).json({ error: `Ongeldige muurkleur. Kies uit: ${images.WALL_COLORS.map((c) => c.key).join(', ')} (of laat leeg voor automatisch)` });
+      }
+      let wallColorNote = body.wallColorNote !== undefined ? String(body.wallColorNote).trim().slice(0, 80) : '';
+      if (wallFinish !== 'painted') { wallColor = ''; wallColorNote = ''; }
+
+      const floor = body.floor !== undefined ? String(body.floor).trim() : '';
+      if (!images.isValidFloorKey(floor)) {
+        return res.status(400).json({ error: `Ongeldige vloer. Kies uit: ${images.FLOOR_TYPES.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)` });
+      }
+      const lighting = body.lighting !== undefined ? String(body.lighting).trim() : '';
+      if (!images.isValidLightingKey(lighting)) {
+        return res.status(400).json({ error: `Ongeldige lichtsfeer. Kies uit: ${images.LIGHTING_MOODS.map((l) => l.key).join(', ')} (of laat leeg voor automatisch)` });
+      }
+      // NOT optional (see api/_images.js's RENOVATION_DEPTHS header) — a
+      // caller that sends nothing gets the honest 'light' default here,
+      // BEFORE validation, so this never 400s for an omitted field; only an
+      // explicitly-sent, unrecognized value is rejected.
+      const renovationDepth = body.renovationDepth ? String(body.renovationDepth).trim() : images.DEFAULT_RENOVATION_DEPTH;
+      if (!images.isValidRenovationDepthKey(renovationDepth)) {
+        return res.status(400).json({ error: `Ongeldige renovatiediepte. Kies uit: ${images.RENOVATION_DEPTHS.map((r) => r.key).join(', ')}` });
+      }
+
       const customPrompt = body.customPrompt !== undefined ? String(body.customPrompt).trim().slice(0, 500) : '';
 
       // Validate the upload BEFORE touching credits or OpenAI — never trust
@@ -1310,6 +1358,13 @@ module.exports = async function handler(req, res) {
             style,
             customPrompt,
             roomType,
+            furniture,
+            wallFinish,
+            wallColor,
+            wallColorNote,
+            floor,
+            lighting,
+            renovationDepth,
           }),
           images.uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
             console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
@@ -1322,12 +1377,19 @@ module.exports = async function handler(req, res) {
         // buildImageRecord() is the ONLY place aiLabel is set — see
         // api/_images.js's file header. Persisted (best-effort, fail-soft)
         // AND returned to the caller carry the exact same object.
-        const record = images.buildImageRecord({ url: blobUrl, style, customPrompt, roomType, sourceUrl });
+        const record = images.buildImageRecord({
+          url: blobUrl, style, customPrompt, roomType, sourceUrl,
+          furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+        });
         images.appendPropertyImage(projectCode, record).catch(() => {});
 
+        // Weight stays a FLAT 50 regardless of how many of the axes above
+        // were touched — one generation, one charge, unconditionally (task
+        // non-negotiable #2). Only `meta` grows for reporting/debugging;
+        // credits.WEIGHTS lookup itself is untouched.
         credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
           credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
-          meta: { style, roomType },
+          meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth },
         }).catch(() => {});
 
         return res.status(200).json({ ok: true, image: record });
