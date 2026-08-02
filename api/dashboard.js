@@ -9043,6 +9043,26 @@ function escHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Escape a value for embedding inside a JS string literal that itself
+// sits inside an inline HTML event-handler attribute (e.g. onclick="fn('...')").
+// escHtml alone is NOT enough there: the browser HTML-decodes the attribute
+// value BEFORE handing it to the JS parser as event-handler source, so
+// escHtml turning a quote into &#39; just decodes back into a literal quote
+// right where the JS engine reads it. escJs instead neutralizes the actual
+// break-out characters (quotes, angle brackets, slash) as \\xNN hex escapes
+// so nothing decodes back into a syntactically meaningful character.
+// Ported from api/form-page.js's escJs() -- keep both in sync if either changes.
+function escJs(s) {
+  return String(s || '')
+    .replace(/[\\x00-\\x1F\\x7F]/g, '')
+    .replace(/\\\\/g, '\\\\\\\\')
+    .replace(/'/g, "\\\\'")
+    .replace(/"/g, '\\\\x22')
+    .replace(/</g, '\\\\x3C')
+    .replace(/>/g, '\\\\x3E')
+    .replace(/\\//g, '\\\\x2F');
+}
+
 // Map AI qualification rating (Dutch + English variants) to a color class
 function scorePillCls(v) {
   const s = String(v || '').toLowerCase();
@@ -9129,7 +9149,7 @@ function toast(message, type = 'info', title = null) {
       <span class="toast-title">\${icons[type]}\${title || titles[type]}</span>
       <button class="toast-close" onclick="dismissToast(this.closest('.toast'))" aria-label="Sluiten"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
-    <div class="toast-message">\${message}</div>
+    <div class="toast-message">\${escHtml(message)}</div>
     <div class="toast-progress"></div>
   \`;
   container.appendChild(el);
