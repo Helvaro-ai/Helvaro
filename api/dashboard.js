@@ -11670,18 +11670,12 @@ function openCalEvent(idx) {
     ...(ev.notes ? [{ label: 'Notities', val: ev.notes }] : [])
   ].map(r => \`<div class="cal-modal-row"><span class="cal-modal-row-label">\${r.label}</span><span class="cal-modal-row-val">\${escHtml(String(r.val))}</span></div>\`).join('');
 
-  const joinBtn = ev.joinUrl
-    ? \`<a href="\${escHtml(ev.joinUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-primary">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-        Deelnemen
-      </a>\`
-    : '';
-  const rescheduleBtn = ev.rescheduleUrl
-    ? \`<a href="\${escHtml(ev.rescheduleUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-secondary">Verzetten</a>\`
-    : '';
-  const cancelBtn = ev.cancelUrl
-    ? \`<a href="\${escHtml(ev.cancelUrl)}" target="_blank" class="cal-modal-btn cal-modal-btn-danger">Annuleren</a>\`
-    : '';
+  // Note: this used to also render joinUrl/rescheduleUrl/cancelUrl buttons for
+  // Calendly-hosted events. Calendly was removed (see "Calendly is verwijderd"
+  // below) and the current Appointments-table populator never sets those
+  // fields, so the buttons were permanently dead. Removed rather than left as
+  // an unvalidated-scheme href sink (escHtml does not block javascript: URLs)
+  // waiting to be silently reactivated with unsanitised data.
 
   // Attendance section for past events (>5h ago)
   let attSection = '';
@@ -11732,7 +11726,7 @@ function openCalEvent(idx) {
     }
   }
 
-  body.innerHTML = rows + \`<div class="cal-modal-actions">\${joinBtn}\${rescheduleBtn}\${cancelBtn}</div>\` + attSection;
+  body.innerHTML = rows + attSection;
   overlay.classList.add('open');
 }
 
