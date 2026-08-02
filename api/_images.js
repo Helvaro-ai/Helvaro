@@ -165,8 +165,172 @@ const ROOM_TYPES = Object.freeze([
       'This is a bathroom — focus on clean fixtures, tiling and finishing touches; do not add ' +
       'bedroom or living-room furniture',
   }),
+  // ── Exterior — see the "sensible axes" list in the visual-controls task:
+  // rather than a whole separate "indoor vs outdoor" axis (which would need
+  // image classification we don't do server-side), the exterior cases fold
+  // into this SAME room-type axis: it already answers "what kind of space is
+  // this photo of", and facade/garden/terrace are just more answers to that
+  // one question. Zero new UI surface, zero new mode. ─────────────────────
+  Object.freeze({
+    key: 'gevel',
+    label: 'Gevel',
+    promptFragment:
+      'This is a building facade / exterior front — focus on the facade material, windows, ' +
+      'front door and roofline; do not add interior furniture',
+  }),
+  Object.freeze({
+    key: 'tuin',
+    label: 'Tuin',
+    promptFragment:
+      'This is a garden — focus on landscaping, planting and garden features; do not add ' +
+      'interior furniture or structural building changes',
+  }),
+  Object.freeze({
+    key: 'terras',
+    label: 'Terras',
+    promptFragment:
+      'This is a terrace/patio — focus on outdoor flooring, outdoor furniture and ambiance; do ' +
+      'not add interior furniture',
+  }),
 ]);
 const ROOM_TYPE_KEYS = ROOM_TYPES.map((r) => r.key);
+
+// ── Furniture amount (data-driven, same pattern as ROOM_TYPES) ─────────────
+// Extends the pre-existing style axis rather than replacing it: a style like
+// "modern" or "landelijk" already implies SOME furniture, but says nothing
+// about HOW MUCH. This is a THIRD, orthogonal, optional axis. Empty key =
+// "Automatisch" = let the style/room fragments speak for themselves, the
+// pre-existing behaviour. See buildTransformPrompt()'s staging/empty
+// contradiction guard below for the one combination this can't express.
+const FURNITURE_LEVELS = Object.freeze([
+  Object.freeze({
+    key: 'empty',
+    label: 'Leeg',
+    promptFragment:
+      'Furniture level: show the room completely EMPTY — remove any existing furniture and do ' +
+      'not add new furniture, only the empty architectural space',
+  }),
+  Object.freeze({
+    key: 'light',
+    label: 'Licht ingericht',
+    promptFragment:
+      'Furniture level: LIGHTLY staged — a few key pieces only (e.g. a rug, one seating item, ' +
+      'minimal styling), leaving the space feeling open and uncluttered',
+  }),
+  Object.freeze({
+    key: 'full',
+    label: 'Volledig ingericht',
+    promptFragment:
+      'Furniture level: FULLY furnished — a complete, tastefully furnished room with all the ' +
+      'furniture pieces you would expect for this room type',
+  }),
+]);
+const FURNITURE_LEVEL_KEYS = FURNITURE_LEVELS.map((f) => f.key);
+
+// ── Wall finish + curated colour palette ────────────────────────────────
+// Free-text colour was deliberately NOT offered (task constraint): an open
+// field invites prompts that fight the model ("aggressive neon pink accent
+// wall with gold veins" is a real thing a client would type). A small
+// curated palette gives control without that risk; the optional short note
+// is a NUANCE on the chosen swatch ("iets warmer", "met een accentwand"),
+// not a replacement for it — see buildTransformPrompt() for how it's scoped
+// into the prompt so it can't hijack the rest of the composition.
+const WALL_FINISHES = Object.freeze([
+  Object.freeze({ key: 'painted', label: 'Geschilderd', promptFragment: 'Walls: freshly painted' }),
+  Object.freeze({
+    key: 'wallpaper',
+    label: 'Behang',
+    promptFragment: 'Walls: tasteful, subtle wallpaper (small pattern or texture, not overwhelming)',
+  }),
+  Object.freeze({
+    key: 'brick',
+    label: 'Zichtbare baksteen',
+    promptFragment: 'Walls: exposed brick, cleaned and in good condition',
+  }),
+  Object.freeze({
+    key: 'plaster',
+    label: 'Pleisterwerk',
+    promptFragment: 'Walls: smooth plastered finish, natural unpainted plaster tone',
+  }),
+]);
+const WALL_FINISH_KEYS = WALL_FINISHES.map((w) => w.key);
+
+// Only meaningful when wallFinish === 'painted' — see buildTransformPrompt().
+const WALL_COLORS = Object.freeze([
+  Object.freeze({ key: 'white', label: 'Wit', promptFragment: 'crisp white' }),
+  Object.freeze({ key: 'offwhite', label: 'Gebroken wit', promptFragment: 'warm off-white / broken white' }),
+  Object.freeze({ key: 'greige', label: 'Lichtgrijs', promptFragment: 'light warm grey' }),
+  Object.freeze({ key: 'sand', label: 'Zandbeige', promptFragment: 'soft sand/beige' }),
+  Object.freeze({ key: 'sage', label: 'Zachtgroen', promptFragment: 'muted soft sage green' }),
+  Object.freeze({
+    key: 'navy',
+    label: 'Marineblauw (accentmuur)',
+    promptFragment: 'navy blue on one accent wall, the other walls a neutral off-white',
+  }),
+]);
+const WALL_COLOR_KEYS = WALL_COLORS.map((c) => c.key);
+const MAX_WALL_COLOR_NOTE_LENGTH = 80; // short nuance, not a second custom-prompt field
+
+// ── Floor (data-driven) ─────────────────────────────────────────────────
+const FLOOR_TYPES = Object.freeze([
+  Object.freeze({ key: 'wood', label: 'Hout', promptFragment: 'Floor: natural wood flooring (warm tone, visible grain)' }),
+  Object.freeze({ key: 'laminate', label: 'Laminaat', promptFragment: 'Floor: laminate flooring, clean and even' }),
+  Object.freeze({ key: 'tile', label: 'Tegels', promptFragment: 'Floor: tiled flooring, large-format and neutral-toned' }),
+  Object.freeze({ key: 'concrete', label: 'Beton', promptFragment: 'Floor: polished concrete / microcement flooring, contemporary look' }),
+  Object.freeze({ key: 'carpet', label: 'Tapijt', promptFragment: 'Floor: soft carpet flooring in a neutral tone' }),
+]);
+const FLOOR_TYPE_KEYS = FLOOR_TYPES.map((f) => f.key);
+
+// ── Lighting / mood (data-driven) ───────────────────────────────────────
+const LIGHTING_MOODS = Object.freeze([
+  Object.freeze({ key: 'daylight', label: 'Daglicht', promptFragment: 'Lighting: bright natural daylight, as if photographed on a clear day' }),
+  Object.freeze({
+    key: 'warm-evening',
+    label: 'Warm avondlicht',
+    promptFragment: 'Lighting: warm evening ambiance, soft warm-toned lamps switched on, cozy mood',
+  }),
+  Object.freeze({
+    key: 'bright-neutral',
+    label: 'Helder neutraal',
+    promptFragment: 'Lighting: bright, neutral, evenly-lit — a clean, true-to-colour real-estate-listing look',
+  }),
+]);
+const LIGHTING_MOOD_KEYS = LIGHTING_MOODS.map((l) => l.key);
+
+// ── Renovation depth — NOT optional/automatic like the axes above, and
+// deliberately so. This is the one axis the task flags as legally and
+// commercially loaded: a "light refresh" of a livable room is honest
+// marketing, a "full renovation" of the same room is a much bigger leap
+// from reality. Defaulting this to a hidden "let the AI decide" would mean
+// nobody ever explicitly chose how far the visualisation should go — so
+// instead it's a REQUIRED field with an honest default baked into
+// api/leads.js's handler ('light' when the client sends nothing), and the
+// dashboard pre-selects "Lichte opfrisbeurt" so a client still reaches a
+// result in the same two clicks, but never silently ends up with a "full
+// renovation" claim they didn't choose. See buildImageRecord()'s
+// renovationDepthLabel (always persisted/shown — never a silent choice)
+// and the dashboard's honesty note shown when "full" is selected.
+const RENOVATION_DEPTHS = Object.freeze([
+  Object.freeze({
+    key: 'light',
+    label: 'Lichte opfrisbeurt',
+    promptFragment:
+      'Renovation depth: LIGHT REFRESH ONLY — keep the existing layout, structure, windows, doors ' +
+      'and major fixtures fully intact and recognizable; only cosmetic changes (paint, flooring ' +
+      'finish, styling, small fixtures), nothing structural, nothing that implies construction work',
+  }),
+  Object.freeze({
+    key: 'full',
+    label: 'Volledige renovatie',
+    promptFragment:
+      'Renovation depth: FULL RENOVATION — you may show a comprehensively updated space (new ' +
+      'kitchen units, new bathroom fixtures, modernized finishes throughout) as an aspirational ' +
+      'visualisation, while still respecting the room\'s true layout, proportions and window/door ' +
+      'positions — this must read as a possibility, not a literal construction promise',
+  }),
+]);
+const RENOVATION_DEPTH_KEYS = RENOVATION_DEPTHS.map((r) => r.key);
+const DEFAULT_RENOVATION_DEPTH = 'light';
 
 // THE mandatory AI-content disclaimer. Single constant — see file header.
 const AI_DISCLAIMER_LABEL = 'AI-visualisatie — werkelijke staat van de woning kan afwijken';
@@ -221,13 +385,85 @@ function isValidRoomTypeKey(key) {
   return s === '' || ROOM_TYPE_KEYS.includes(s);
 }
 
+// ── New axes' getters/validators — all follow the EXACT same "empty string
+// = automatisch, only an unrecognized non-empty key is rejected" contract
+// as ROOM_TYPES above, with the single exception of renovationDepth (see
+// its own comment: it is required, not optional). ──────────────────────
+function getFurnitureLevelByKey(key) {
+  return FURNITURE_LEVELS.find((f) => f.key === key) || null;
+}
+function isValidFurnitureKey(key) {
+  const s = String(key || '');
+  return s === '' || FURNITURE_LEVEL_KEYS.includes(s);
+}
+function getWallFinishByKey(key) {
+  return WALL_FINISHES.find((w) => w.key === key) || null;
+}
+function isValidWallFinishKey(key) {
+  const s = String(key || '');
+  return s === '' || WALL_FINISH_KEYS.includes(s);
+}
+function getWallColorByKey(key) {
+  return WALL_COLORS.find((c) => c.key === key) || null;
+}
+function isValidWallColorKey(key) {
+  const s = String(key || '');
+  return s === '' || WALL_COLOR_KEYS.includes(s);
+}
+function getFloorTypeByKey(key) {
+  return FLOOR_TYPES.find((f) => f.key === key) || null;
+}
+function isValidFloorKey(key) {
+  const s = String(key || '');
+  return s === '' || FLOOR_TYPE_KEYS.includes(s);
+}
+function getLightingMoodByKey(key) {
+  return LIGHTING_MOODS.find((l) => l.key === key) || null;
+}
+function isValidLightingKey(key) {
+  const s = String(key || '');
+  return s === '' || LIGHTING_MOOD_KEYS.includes(s);
+}
+function getRenovationDepthByKey(key) {
+  return RENOVATION_DEPTHS.find((r) => r.key === key) || null;
+}
+// NOT optional — see RENOVATION_DEPTHS's header comment. Empty string is
+// REJECTED here (unlike every other axis above); api/leads.js's handler is
+// what supplies the 'light' default before validation ever runs, so a
+// caller that sends nothing still gets the honest default rather than a 400.
+function isValidRenovationDepthKey(key) {
+  return RENOVATION_DEPTH_KEYS.includes(String(key || ''));
+}
+
 // Builds the OpenAI prompt. customPrompt is appended, never substituted —
 // a client can add detail but never drop the base style guidance entirely.
 // Caller is responsible for trimming/length-capping customPrompt already
 // (see api/leads.js's 'property-generate' handler); this only assembles text.
-// roomType is optional (see ROOM_TYPES header comment above) — omitted or
-// unrecognized simply adds no room-specific fragment.
-function buildTransformPrompt(styleKey, customPrompt, roomTypeKey) {
+// roomType and every key inside `options` are optional (each follows the
+// ROOM_TYPES "empty = automatisch" contract) except options.renovationDepth,
+// which api/leads.js's handler always supplies (defaulted to 'light' if the
+// caller sent nothing) — this function still falls back to the same default
+// defensively, so it can never silently drop the renovation-depth guidance.
+//
+// Composition order matters for how an image model weighs instructions:
+// style -> room -> furniture -> walls -> floor -> lighting -> renovation
+// depth -> free-text custom instructions LAST. Free text stays last exactly
+// as before this change (append, never substitute) so a client can add
+// nuance but never override the structured, validated choices above it.
+//
+// CONTRADICTION HANDLING: the one combination that can't be expressed
+// sensibly is style 'staging' (whose entire purpose is "furnish this empty
+// room") together with furniture level 'empty' (whose entire purpose is
+// "leave it empty") — those two directly cancel out. Rather than emit both
+// contradictory instructions and hope the model picks one, the furniture
+// selection is ignored in that one case (falls back to "automatisch", i.e.
+// let the staging style's own furnishing guidance stand). This is defense
+// in depth: the dashboard's UI also disables the "Leeg" furniture chip
+// whenever the Staging style is active (see dashboard.js's
+// renderPiFurnitureGrid()), so a normal user never reaches this branch —
+// it only matters for a direct API call that bypasses the UI.
+function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
+  const opts = options || {};
   const style = getStyleByKey(styleKey);
   const base = style
     ? `Transform this real estate photo into a photorealistic visualisation showing ${style.promptFragment}. ` +
@@ -237,8 +473,36 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey) {
       'and camera angle recognizable.';
   const room = getRoomTypeByKey(roomTypeKey);
   const roomPart = room ? ` ${room.promptFragment}.` : '';
+
+  const furnitureKey = (styleKey === 'staging' && opts.furniture === 'empty') ? '' : (opts.furniture || '');
+  const furniture = getFurnitureLevelByKey(furnitureKey);
+  const furniturePart = furniture ? ` ${furniture.promptFragment}.` : '';
+
+  const wallFinish = getWallFinishByKey(opts.wallFinish);
+  let wallPart = '';
+  if (wallFinish) {
+    let wallText = wallFinish.promptFragment;
+    if (wallFinish.key === 'painted') {
+      const color = getWallColorByKey(opts.wallColor);
+      wallText += color ? `, in ${color.promptFragment}` : ', in a fitting neutral tone';
+      const note = opts.wallColorNote ? String(opts.wallColorNote).trim().slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '';
+      if (note) wallText += ` (client nuance on the colour: ${note})`;
+    }
+    wallPart = ` ${wallText}.`;
+  }
+
+  const floor = getFloorTypeByKey(opts.floor);
+  const floorPart = floor ? ` ${floor.promptFragment}.` : '';
+
+  const lighting = getLightingMoodByKey(opts.lighting);
+  const lightingPart = lighting ? ` ${lighting.promptFragment}.` : '';
+
+  const renovationDepth = getRenovationDepthByKey(opts.renovationDepth) || getRenovationDepthByKey(DEFAULT_RENOVATION_DEPTH);
+  const renovationPart = ` ${renovationDepth.promptFragment}.`;
+
+  const composed = `${base}${roomPart}${furniturePart}${wallPart}${floorPart}${lightingPart}${renovationPart}`;
   const extra = customPrompt ? String(customPrompt).trim() : '';
-  return extra ? `${base}${roomPart} Additional client instructions: ${extra}` : `${base}${roomPart}`;
+  return extra ? `${composed} Additional client instructions: ${extra}` : composed;
 }
 
 // ── Config / fail-soft helpers ──────────────────────────────────────────
@@ -308,14 +572,19 @@ async function uploadPropertyImageToBlob(buffer, contentType, projectCode, kind)
 // every failure path is a typed ImageFeatureError with a Dutch, user-safe
 // message and an appropriate HTTP status, so api/leads.js's handler can
 // relay it directly without leaking API internals. ──────────────────────
-async function generatePropertyImage({ imageBuffer, imageMimeType, style, customPrompt, roomType }) {
+async function generatePropertyImage({
+  imageBuffer, imageMimeType, style, customPrompt, roomType,
+  furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+}) {
   const key = openaiKey();
   if (!key) throw new ImageFeatureError(missingConfigMessage(), { code: 'no_api_key', status: 503 });
   if (!Buffer.isBuffer(imageBuffer) || imageBuffer.length === 0) {
     throw new ImageFeatureError('Geen geldige afbeelding meegegeven.', { code: 'invalid_image', status: 400 });
   }
 
-  const prompt = buildTransformPrompt(style, customPrompt, roomType);
+  const prompt = buildTransformPrompt(style, customPrompt, roomType, {
+    furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  });
   const ext = imageMimeType === 'image/webp' ? 'webp' : imageMimeType === 'image/jpeg' ? 'jpg' : 'png';
   const form = new FormData();
   form.append('model', OPENAI_MODEL);
@@ -373,9 +642,23 @@ async function generatePropertyImage({ imageBuffer, imageMimeType, style, custom
 // export to keep working from history, not just the just-generated result.
 // Never required — a record with no sourceUrl (e.g. one persisted before
 // this addition) still renders fine, just without a comparison view.
-function buildImageRecord({ url, style, customPrompt, roomType, sourceUrl }) {
+function buildImageRecord({
+  url, style, customPrompt, roomType, sourceUrl,
+  furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+}) {
   const styleObj = getStyleByKey(style);
   const roomObj = getRoomTypeByKey(roomType);
+  const furnitureObj = getFurnitureLevelByKey(furniture);
+  const wallFinishObj = getWallFinishByKey(wallFinish);
+  // Colour is only meaningful when the finish is 'painted' — see
+  // buildTransformPrompt(); a stray wallColor sent alongside a different
+  // finish is simply not resolved here (getWallColorByKey still validates
+  // it against the real palette, but it's never shown/used unless finish
+  // is 'painted', matching how the prompt itself ignores it in that case).
+  const wallColorObj = wallFinishObj && wallFinishObj.key === 'painted' ? getWallColorByKey(wallColor) : null;
+  const floorObj = getFloorTypeByKey(floor);
+  const lightingObj = getLightingMoodByKey(lighting);
+  const renovationObj = getRenovationDepthByKey(renovationDepth) || getRenovationDepthByKey(DEFAULT_RENOVATION_DEPTH);
   return {
     url: String(url || '').slice(0, 500),
     sourceUrl: sourceUrl ? String(sourceUrl).slice(0, 500) : '',
@@ -383,6 +666,19 @@ function buildImageRecord({ url, style, customPrompt, roomType, sourceUrl }) {
     styleLabel: styleObj ? styleObj.label : 'Aangepast',
     roomType: roomObj ? roomObj.key : '',
     roomTypeLabel: roomObj ? roomObj.label : '',
+    furniture: furnitureObj ? furnitureObj.key : '',
+    furnitureLabel: furnitureObj ? furnitureObj.label : '',
+    wallFinish: wallFinishObj ? wallFinishObj.key : '',
+    wallFinishLabel: wallFinishObj ? wallFinishObj.label : '',
+    wallColor: wallColorObj ? wallColorObj.key : '',
+    wallColorLabel: wallColorObj ? wallColorObj.label : '',
+    wallColorNote: wallColorObj && wallColorNote ? String(wallColorNote).slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '',
+    floor: floorObj ? floorObj.key : '',
+    floorLabel: floorObj ? floorObj.label : '',
+    lighting: lightingObj ? lightingObj.key : '',
+    lightingLabel: lightingObj ? lightingObj.label : '',
+    renovationDepth: renovationObj.key,
+    renovationDepthLabel: renovationObj.label,
     customPrompt: customPrompt ? String(customPrompt).slice(0, 500) : '',
     aiLabel: AI_DISCLAIMER_LABEL,
     createdAt: new Date().toISOString(),
@@ -486,6 +782,13 @@ async function appendPropertyImage(projectCode, record) {
 module.exports = {
   PROPERTY_STYLES,
   ROOM_TYPES,
+  FURNITURE_LEVELS,
+  WALL_FINISHES,
+  WALL_COLORS,
+  FLOOR_TYPES,
+  LIGHTING_MOODS,
+  RENOVATION_DEPTHS,
+  DEFAULT_RENOVATION_DEPTH,
   AI_DISCLAIMER_LABEL,
   MAX_UPLOAD_BYTES,
   ImageFeatureError,
@@ -493,6 +796,18 @@ module.exports = {
   isValidStyleKey,
   getRoomTypeByKey,
   isValidRoomTypeKey,
+  getFurnitureLevelByKey,
+  isValidFurnitureKey,
+  getWallFinishByKey,
+  isValidWallFinishKey,
+  getWallColorByKey,
+  isValidWallColorKey,
+  getFloorTypeByKey,
+  isValidFloorKey,
+  getLightingMoodByKey,
+  isValidLightingKey,
+  getRenovationDepthByKey,
+  isValidRenovationDepthKey,
   buildTransformPrompt,
   isConfigured,
   missingConfigMessage,
