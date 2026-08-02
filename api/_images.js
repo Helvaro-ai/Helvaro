@@ -100,8 +100,73 @@ const PROPERTY_STYLES = Object.freeze([
       'a warm, family-friendly renovation: durable practical materials, soft rounded ' +
       'furniture edges, cheerful warm colors, ample storage, a welcoming lived-in feel',
   }),
+  // ── Added for the Belgian/Flemish estate-agent market (see file-header
+  // addendum above PROPERTY_STYLES for why these three specifically) ──────
+  Object.freeze({
+    key: 'landelijk',
+    label: 'Landelijk',
+    promptFragment:
+      'a classic Flemish/Belgian "landelijke" (country cottage) renovation: warm off-white and ' +
+      'earthy tones, painted or exposed wooden beams, natural stone or brick accents, farmhouse-' +
+      'style fixtures, a timeless, homely countryside feel',
+  }),
+  Object.freeze({
+    key: 'industrial',
+    label: 'Industrieel / Loft',
+    promptFragment:
+      'an industrial loft-style renovation: exposed brick or concrete, black steel window frames ' +
+      'and fixtures, dark metal accents, raw wood, statement pendant lighting, an open urban-loft feel',
+  }),
+  Object.freeze({
+    key: 'staging',
+    label: 'Lege ruimte inrichten',
+    promptFragment:
+      'a professionally staged, tastefully furnished version of this EMPTY room: add well-' +
+      'proportioned furniture and soft furnishings in a warm, neutral, broadly appealing style that ' +
+      'helps buyers picture living there, without altering the architecture, walls, floor or windows',
+  }),
 ]);
 const PROPERTY_STYLE_KEYS = PROPERTY_STYLES.map((s) => s.key);
+
+// ── Room types (data-driven, same pattern as PROPERTY_STYLES above) ────────
+// A style alone ("modern", "staging", ...) produces generic results — a
+// kitchen and a bathroom need different furniture/finishing guidance even
+// under the identical style. This is a SECOND, ORTHOGONAL, OPTIONAL axis
+// layered on top of the chosen style by buildTransformPrompt() below; it is
+// never required (empty string / omitted = let the AI infer the room from
+// the photo itself, the pre-existing behaviour, fully backward compatible
+// with any caller that doesn't send roomType at all).
+const ROOM_TYPES = Object.freeze([
+  Object.freeze({
+    key: 'woonkamer',
+    label: 'Woonkamer',
+    promptFragment:
+      'This is a living room — include appropriate seating (sofa/armchairs), a coffee table, and ' +
+      'a rug where fitting',
+  }),
+  Object.freeze({
+    key: 'slaapkamer',
+    label: 'Slaapkamer',
+    promptFragment:
+      'This is a bedroom — include a bed with linens and nightstands, and keep the atmosphere ' +
+      'calm and restful',
+  }),
+  Object.freeze({
+    key: 'keuken',
+    label: 'Keuken',
+    promptFragment:
+      'This is a kitchen — focus on cohesive cabinetry, worktops and appliances; do not add ' +
+      'living-room or bedroom furniture',
+  }),
+  Object.freeze({
+    key: 'badkamer',
+    label: 'Badkamer',
+    promptFragment:
+      'This is a bathroom — focus on clean fixtures, tiling and finishing touches; do not add ' +
+      'bedroom or living-room furniture',
+  }),
+]);
+const ROOM_TYPE_KEYS = ROOM_TYPES.map((r) => r.key);
 
 // THE mandatory AI-content disclaimer. Single constant — see file header.
 const AI_DISCLAIMER_LABEL = 'AI-visualisatie — werkelijke staat van de woning kan afwijken';
@@ -144,12 +209,25 @@ function getStyleByKey(key) {
 function isValidStyleKey(key) {
   return PROPERTY_STYLE_KEYS.includes(String(key || ''));
 }
+function getRoomTypeByKey(key) {
+  return ROOM_TYPES.find((r) => r.key === key) || null;
+}
+// Empty string is explicitly valid — it means "automatisch" (no room-type
+// fragment added, AI infers the room from the photo), the pre-existing
+// behaviour before room types were added. Only a non-empty, UNRECOGNIZED
+// key is rejected.
+function isValidRoomTypeKey(key) {
+  const s = String(key || '');
+  return s === '' || ROOM_TYPE_KEYS.includes(s);
+}
 
 // Builds the OpenAI prompt. customPrompt is appended, never substituted —
 // a client can add detail but never drop the base style guidance entirely.
 // Caller is responsible for trimming/length-capping customPrompt already
 // (see api/leads.js's 'property-generate' handler); this only assembles text.
-function buildTransformPrompt(styleKey, customPrompt) {
+// roomType is optional (see ROOM_TYPES header comment above) — omitted or
+// unrecognized simply adds no room-specific fragment.
+function buildTransformPrompt(styleKey, customPrompt, roomTypeKey) {
   const style = getStyleByKey(styleKey);
   const base = style
     ? `Transform this real estate photo into a photorealistic visualisation showing ${style.promptFragment}. ` +
@@ -157,8 +235,10 @@ function buildTransformPrompt(styleKey, customPrompt) {
       'visualisation of the SAME space, not a different building.'
     : 'Transform this real estate photo into a photorealistic renovated visualisation, keeping the room layout ' +
       'and camera angle recognizable.';
+  const room = getRoomTypeByKey(roomTypeKey);
+  const roomPart = room ? ` ${room.promptFragment}.` : '';
   const extra = customPrompt ? String(customPrompt).trim() : '';
-  return extra ? `${base} Additional client instructions: ${extra}` : base;
+  return extra ? `${base}${roomPart} Additional client instructions: ${extra}` : `${base}${roomPart}`;
 }
 
 // ── Config / fail-soft helpers ──────────────────────────────────────────
@@ -228,14 +308,14 @@ async function uploadPropertyImageToBlob(buffer, contentType, projectCode, kind)
 // every failure path is a typed ImageFeatureError with a Dutch, user-safe
 // message and an appropriate HTTP status, so api/leads.js's handler can
 // relay it directly without leaking API internals. ──────────────────────
-async function generatePropertyImage({ imageBuffer, imageMimeType, style, customPrompt }) {
+async function generatePropertyImage({ imageBuffer, imageMimeType, style, customPrompt, roomType }) {
   const key = openaiKey();
   if (!key) throw new ImageFeatureError(missingConfigMessage(), { code: 'no_api_key', status: 503 });
   if (!Buffer.isBuffer(imageBuffer) || imageBuffer.length === 0) {
     throw new ImageFeatureError('Geen geldige afbeelding meegegeven.', { code: 'invalid_image', status: 400 });
   }
 
-  const prompt = buildTransformPrompt(style, customPrompt);
+  const prompt = buildTransformPrompt(style, customPrompt, roomType);
   const ext = imageMimeType === 'image/webp' ? 'webp' : imageMimeType === 'image/jpeg' ? 'jpg' : 'png';
   const form = new FormData();
   form.append('model', OPENAI_MODEL);
@@ -287,12 +367,22 @@ async function generatePropertyImage({ imageBuffer, imageMimeType, style, custom
 // The ONLY place an image record is constructed — see file header's
 // AI-LABEL ENFORCEMENT section. No caller can build a record without this
 // function, and this function always stamps aiLabel.
-function buildImageRecord({ url, style, customPrompt }) {
+// sourceUrl is OPTIONAL and purely additive (the original uploaded photo,
+// also blob-stored — see api/leads.js's 'property-generate' handler): it
+// enables the dashboard's before/after comparison slider, download, and PDF
+// export to keep working from history, not just the just-generated result.
+// Never required — a record with no sourceUrl (e.g. one persisted before
+// this addition) still renders fine, just without a comparison view.
+function buildImageRecord({ url, style, customPrompt, roomType, sourceUrl }) {
   const styleObj = getStyleByKey(style);
+  const roomObj = getRoomTypeByKey(roomType);
   return {
     url: String(url || '').slice(0, 500),
+    sourceUrl: sourceUrl ? String(sourceUrl).slice(0, 500) : '',
     style: styleObj ? styleObj.key : 'custom',
     styleLabel: styleObj ? styleObj.label : 'Aangepast',
+    roomType: roomObj ? roomObj.key : '',
+    roomTypeLabel: roomObj ? roomObj.label : '',
     customPrompt: customPrompt ? String(customPrompt).slice(0, 500) : '',
     aiLabel: AI_DISCLAIMER_LABEL,
     createdAt: new Date().toISOString(),
@@ -395,11 +485,14 @@ async function appendPropertyImage(projectCode, record) {
 
 module.exports = {
   PROPERTY_STYLES,
+  ROOM_TYPES,
   AI_DISCLAIMER_LABEL,
   MAX_UPLOAD_BYTES,
   ImageFeatureError,
   getStyleByKey,
   isValidStyleKey,
+  getRoomTypeByKey,
+  isValidRoomTypeKey,
   buildTransformPrompt,
   isConfigured,
   missingConfigMessage,
