@@ -219,26 +219,19 @@ module.exports = async function handler(req, res) {
       // approved Meta template, this falls back to 'nl' (logged) instead of
       // sending a template call that Meta will reject.
       const TEMPLATE_LANG = _lang.resolveTemplateLanguage(process.env.FOLLOWUP_TEMPLATE_LANG || 'nl', 'nl').code;
-      if (TEMPLATE_NAME) {
-        // Per-client sender number (multitenancy prep). Resolved INSIDE the
-        // loop, per lead, from THIS lead's own projectCodeForPlan — never
-        // hoisted out. Hoisting this above the loop would send every
-        // client's follow-up from whichever client happened to resolve
-        // first, which is exactly the cross-client leak this task exists to
-        // prevent. getClientWaPhoneNumberId() has its own 5-min TTL cache
-        // keyed by projectCode (see api/leads.js), so this doesn't add an
-        // Airtable call per lead beyond the first lead for each distinct
-        // client in a run. Blank field (every client today) resolves to ''
-        // and falls back to the shared PHONE_NUMBER_ID — unchanged behaviour.
-        const leadSenderPnid = await getClientWaPhoneNumberId(projectCodeForPlan, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
-        const leadPhoneNumberId = leadSenderPnid || PHONE_NUMBER_ID;
-        await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN);
-      } else {
+      if (!TEMPLATE_NAME) {
         console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. Skip ${phone} (freeform >24u zou ban riskeren)`);
         continue;  // skip. Don't risk a Meta ban
       }
 
-      // Mark follow-up sent. Prevents duplicate follow-ups on next cron run
+      // ── Idempotency guard: flip Conversation State BEFORE attempting
+      // delivery — same order, and same reasoning, as the appointment-
+      // reminder loop's guard below. This send costs a paid WhatsApp
+      // template, so a missed follow-up (retried tomorrow) beats a double
+      // send: if this PATCH fails, we skip the send entirely rather than
+      // send first and mark after, which previously meant a PATCH failure
+      // (429, network blip) left the lead at 'new' with 0 replies — next
+      // run would re-select it and fire the SAME PAID TEMPLATE again.
       const pRes = await fetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${lead.id}`,
         {
@@ -248,8 +241,23 @@ module.exports = async function handler(req, res) {
         }
       );
       if (!pRes.ok) {
-        console.error(`[cron-followup] PATCH mislukt voor ${lead.id} (${pRes.status}). lead wordt morgen opnieuw geprobeerd`);
+        console.error(`[cron-followup] Conversation State PATCH mislukt voor ${lead.id} (${pRes.status}). send overgeslagen (opnieuw geprobeerd volgende run)`);
+        continue;
       }
+
+      // Per-client sender number (multitenancy prep). Resolved INSIDE the
+      // loop, per lead, from THIS lead's own projectCodeForPlan — never
+      // hoisted out. Hoisting this above the loop would send every
+      // client's follow-up from whichever client happened to resolve
+      // first, which is exactly the cross-client leak this task exists to
+      // prevent. getClientWaPhoneNumberId() has its own 5-min TTL cache
+      // keyed by projectCode (see api/leads.js), so this doesn't add an
+      // Airtable call per lead beyond the first lead for each distinct
+      // client in a run. Blank field (every client today) resolves to ''
+      // and falls back to the shared PHONE_NUMBER_ID — unchanged behaviour.
+      const leadSenderPnid = await getClientWaPhoneNumberId(projectCodeForPlan, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+      const leadPhoneNumberId = leadSenderPnid || PHONE_NUMBER_ID;
+      await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN);
 
       sent++;
       followedUp.push(name || phone);
