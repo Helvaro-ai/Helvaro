@@ -73,6 +73,34 @@ function isRateLimited(ip) {
 // Triggered via mode='reset-rate-limit' with the admin key.
 function clearRateLimit(ip) { loginAttempts.delete(ip); }
 
+// Separate, dedicated limiter for the reset-rate-limit action itself (i.e.
+// for guesses of ADMIN_KEY made against THIS branch), deliberately NOT the
+// same counter as isRateLimited()/loginAttempts above.
+//
+// Why not just reuse loginAttempts: this endpoint exists so a legitimate
+// admin who is already locked out (40 failed logins in 15 min) can clear
+// their own lockout. If we gated this branch on the shared loginAttempts
+// counter, a locked-out admin's own reset call would push their count even
+// higher and still read as rate-limited — permanently locking them out with
+// no self-service recovery, which defeats the endpoint's entire purpose.
+// A separate counter throttles brute-forcing of ADMIN_KEY (the actual
+// vulnerability) without coupling it to ordinary login failures.
+const adminKeyAttempts = new Map();
+function isAdminKeyRateLimited(ip) {
+  const now    = Date.now();
+  const window = 15 * 60 * 1000;
+  const max    = 10; // generous for a fumbled paste, tight against brute force
+  const attempts = (adminKeyAttempts.get(ip) || []).filter(t => now - t < window);
+  attempts.push(now);
+  adminKeyAttempts.set(ip, attempts);
+  if (adminKeyAttempts.size > 1000) {
+    for (const [k, v] of adminKeyAttempts) {
+      if (v.every(t => now - t > window)) adminKeyAttempts.delete(k);
+    }
+  }
+  return attempts.length > max;
+}
+
 // Derive a stable admin session token from ADMIN_KEY so the raw secret
 // never leaves the server. The token is deterministic (no DB needed) but
 // cannot be reversed to obtain the original key.
@@ -211,13 +239,33 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  // Vercel sets x-vercel-forwarded-for itself from the real edge connection and
+  // strips/overwrites any client-supplied value, unlike x-forwarded-for, which
+  // a client can set directly to spoof the rate-limit key. Fall back to
+  // x-forwarded-for only when x-vercel-forwarded-for is absent (e.g. local dev
+  // without the Vercel edge in front).
+  const ip = req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
+          || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+          || req.socket?.remoteAddress
+          || 'unknown';
 
   // ── Special unauthenticated mode: reset-rate-limit (requires admin key) ────
   // Useful when an admin locked themselves out by testing logins.
-  if (req.body && (req.body.mode === 'reset-rate-limit' || req.body?.mode === 'reset-rate-limit')) {
-    const provided = String((req.body || {}).adminKey || '').trim();
-    if (!provided || provided !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Ongeldige admin key' });
+  // Throttled by isAdminKeyRateLimited() (own counter, see its definition
+  // above) rather than isRateLimited()/loginAttempts — see that function's
+  // comment for why reusing the login counter here would self-defeat.
+  // Comparison is timing-safe (safeEqual) so a caller can't learn ADMIN_KEY
+  // byte-by-byte from response latency, same as the admin-shortcut login
+  // path further down and admin.js's isValidAdminToken().
+  if (req.body && req.body.mode === 'reset-rate-limit') {
+    if (isAdminKeyRateLimited(ip)) {
+      return res.status(429).json({ error: 'Te veel pogingen. Wacht 15 minuten.' });
+    }
+    const provided  = String((req.body || {}).adminKey || '').trim();
+    const ADMIN_KEY = process.env.ADMIN_KEY;
+    if (!provided || !ADMIN_KEY || !safeEqual(provided, ADMIN_KEY)) {
+      return res.status(401).json({ error: 'Ongeldige admin key' });
+    }
     clearRateLimit(ip);
     return res.status(200).json({ ok: true, message: 'Rate limit gewist voor jouw IP.' });
   }
