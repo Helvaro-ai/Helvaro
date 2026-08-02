@@ -42,6 +42,14 @@ function isRateLimited(ip) {
   const attempts = (formAttempts.get(ip) || []).filter(t => now - t < window);
   attempts.push(now);
   formAttempts.set(ip, attempts);
+  // Evict IPs with no attempts left in the window so this Map doesn't grow
+  // unbounded for the life of a warm serverless instance. Same pattern as
+  // api/auth.js's loginAttempts.
+  if (formAttempts.size > 1000) {
+    for (const [k, v] of formAttempts) {
+      if (v.every(t => now - t > window)) formAttempts.delete(k);
+    }
+  }
   return attempts.length > 5;
 }
 
@@ -53,7 +61,14 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  // Vercel sets x-vercel-forwarded-for itself from the real edge connection and
+  // strips/overwrites any client-supplied value, unlike x-forwarded-for, which
+  // a client can set directly to spoof the rate-limit key. Fall back to
+  // x-forwarded-for only when x-vercel-forwarded-for is absent (e.g. local dev
+  // without the Vercel edge in front).
+  const ip = req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
+          || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+          || 'unknown';
   if (isRateLimited(ip)) {
     return res.status(429).json({ error: 'Te veel aanvragen. Probeer later opnieuw.' });
   }
@@ -404,7 +419,11 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
           </table>
           <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
         </div>`;
-  await sendMail({ to: NOTIFY_EMAIL, subject: `Nieuwe lead — ${name} (${project_code})`, html })
+  // name is raw body.name here (only trimmed/length-capped upstream) — strip
+  // control characters before it lands in a header, same discipline already
+  // applied to firstName (waGreeting) and to this same name via escEmail()
+  // just above in the body. project_code is already regex-locked (A-Z0-9_).
+  await sendMail({ to: NOTIFY_EMAIL, subject: `Nieuwe lead — ${sanitize(name)} (${project_code})`, html })
     .catch(err => console.error('[form mail]', err && err.message));
 }
 
