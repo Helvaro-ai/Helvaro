@@ -979,6 +979,26 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, imageUrl });
     }
 
+    // ── mode=invite-link: admin (authenticated) fetches the ready-made
+    // invite link on demand. The dashboard used to embed ONBOARD_CODE
+    // directly into the rendered page HTML (window.__hOnboard) so the
+    // "invite new client" panel could build this same link client-side —
+    // but GET /dashboard has no server-side auth check, so that secret was
+    // readable by anyone who loaded the page, authenticated or not, making
+    // it the only real gate on self-serve signup while PUBLIC_SIGNUP_ENABLED
+    // is off. This endpoint returns just the finished link behind the same
+    // x-api-key admin check every other admin mode uses below; the browser
+    // never sees the raw code. ────────────────────────────────────────────
+    if (body.mode === 'invite-link') {
+      const provided = String(req.headers['x-api-key'] || '').trim();
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      if (!ONBOARD_CODE) return res.status(200).json({ inviteLink: null });
+      const inviteLink = `https://app.helvaro.pro/onboard?invite=${encodeURIComponent(ONBOARD_CODE)}`;
+      return res.status(200).json({ inviteLink });
+    }
+
     // ── mode=invite: admin sends an invite email to a client ─────────────────
     if (body.mode === 'invite') {
       const provided = String(req.headers['x-api-key'] || '').trim();

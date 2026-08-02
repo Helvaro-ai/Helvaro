@@ -8887,7 +8887,6 @@ tr:hover .td-arrow { color: var(--cyan); }
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
-<script>window.__hOnboard = '${(process.env.ONBOARD_CODE || '').replace(/['"\\<>]/g, '')}';</script>
 <script>
 /* ============================================================
    LANGUAGE REGISTRY (server-injected — see api/_lang.js, single source of
@@ -9777,7 +9776,7 @@ async function loadAdminClients() {
   }
 }
 
-function openNewClientModal() {
+async function openNewClientModal() {
   // Reset invite panel
   document.getElementById('nc-inv-email').value = '';
   document.getElementById('nc-inv-name').value  = '';
@@ -9798,21 +9797,40 @@ function openNewClientModal() {
   document.getElementById('nc-manual-panel').style.display = 'none';
   document.getElementById('nc-manual-toggle').textContent  = 'Zelf aanmaken ▾';
 
-  // Show/hide invite link fallback based on ONBOARD_CODE
-  const code = window.__hOnboard || '';
-  if (code) {
-    const link = 'https://app.helvaro.pro/onboard?invite=' + encodeURIComponent(code);
-    document.getElementById('nc-invite-link').textContent  = link;
-    document.getElementById('nc-invite-link').dataset.link = link;
-    document.getElementById('nc-invite-link-row').style.display  = 'block';
-    document.getElementById('nc-invite-missing').style.display   = 'none';
-  } else {
-    document.getElementById('nc-invite-link-row').style.display  = 'none';
-    document.getElementById('nc-invite-missing').style.display   = 'block';
-  }
+  // Invite link row starts hidden until the authenticated fetch below
+  // resolves. The raw ONBOARD_CODE is never sent to the browser — the
+  // server hands back a ready-made link instead (api/admin.js, mode
+  // 'invite-link'). Previously this code was embedded directly into the
+  // page's rendered HTML (window.__hOnboard), readable by anyone who
+  // loaded /dashboard, authenticated or not.
+  document.getElementById('nc-invite-link-row').style.display  = 'none';
+  document.getElementById('nc-invite-missing').style.display   = 'none';
 
   document.getElementById('new-client-modal').style.display = 'flex';
   setTimeout(() => document.getElementById('nc-inv-email').focus(), 50);
+
+  try {
+    const resp = await fetch(\`\${API_BASE}/admin\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'invite-link' })
+    });
+    if (resp.status === 401) { handleAuthExpired(); return; }
+    const data = await resp.json().catch(() => ({}));
+    const link = resp.ok ? (data.inviteLink || '') : '';
+    if (link) {
+      document.getElementById('nc-invite-link').textContent  = link;
+      document.getElementById('nc-invite-link').dataset.link = link;
+      document.getElementById('nc-invite-link-row').style.display  = 'block';
+      document.getElementById('nc-invite-missing').style.display   = 'none';
+    } else {
+      document.getElementById('nc-invite-link-row').style.display  = 'none';
+      document.getElementById('nc-invite-missing').style.display   = 'block';
+    }
+  } catch {
+    document.getElementById('nc-invite-link-row').style.display  = 'none';
+    document.getElementById('nc-invite-missing').style.display   = 'block';
+  }
 }
 
 function toggleManualCreate() {
