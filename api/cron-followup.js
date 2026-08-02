@@ -9,14 +9,6 @@
 //     24h-48h band anymore)
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
-// Marketing Posts + Outreach moved off Airtable to the VPS Postgres API
-// (Airtable-shaped facade). Leads/Client Config etc. stay in Airtable.
-const { pgFetch } = require('./_pgapi');
-// SSRF-protected website fetcher, shared with api/whatsapp.js — see
-// api/lib/fetch-website.js. runOutreach() below fetches Apify-scraped
-// prospect websites (third-party, untrusted input), same SSRF exposure as
-// whatsapp.js fetching a client's own website.
-const { fetchWebsite } = require('./lib/fetch-website');
 // Credit/usage accounting — see its file header for the fail-open contract.
 const credits = require('./_credits');
 // Trial/plan-status interpretation (pure, no I/O) — see its file header.
@@ -37,34 +29,6 @@ const _lang = require('./_lang');
 // Airtable-call-per-lead helper — see api/whatsapp.js's F_WA_PHONE_NUMBER_ID
 // comment for the full multitenancy-prep contract this mirrors.
 const { aggregateReportPeriod, getClientWaPhoneNumberId } = require('./leads');
-
-// ── Compliance fix 5 (COMPLIANCE-AUDIT.md section 4.1) — fixed,
-// code-controlled outreach footer ───────────────────────────────────────
-// The opt-out line used to be INSTRUCTED to the LLM ("Sluit af met een
-// opt-out...") as part of the generated body — with nothing enforcing it
-// actually survived every generation (paraphrasing drift, max_tokens
-// truncation, etc.). buildOutreachFooter() below is appended AFTER the
-// LLM-generated body in runOutreach(), so the opt-out + legal-entity
-// identification (Belgian e-Privacy / commercial-communication
-// traceability requirements, see COMPLIANCE-AUDIT.md section 4.1) are
-// ALWAYS present regardless of what the model emits.
-//
-// LEGAL_ENTITY_NAME defaults to 'Helvaro BV' — the real legal name already
-// used throughout server/routes/privacy.js / api/privacy.js's Terms of
-// Service copy. LEGAL_ADDRESS/VAT_NUMBER have NO safe default (only Sindi
-// has the exact statutory address and enterprise/VAT number — same
-// [TODO: Sindi] facts left open in docs/verwerkersovereenkomst-DPA.md) —
-// left as an explicit, obviously-a-placeholder bracketed string rather
-// than silently sending blank/`undefined` text to a real prospect. Set
-// LEGAL_ADDRESS (and ideally VAT_NUMBER) via env var before this cron is
-// allowed to send real outreach mail; see COMPLIANCE-FIX1-SUMMARY.md.
-const LEGAL_ENTITY_NAME = process.env.LEGAL_ENTITY_NAME || 'Helvaro BV';
-const LEGAL_ADDRESS = process.env.LEGAL_ADDRESS || '[LEGAL_ADDRESS niet ingesteld — zet env var LEGAL_ADDRESS]';
-const VAT_NUMBER = process.env.VAT_NUMBER || '';
-
-function buildOutreachFooter() {
-  return `\n\n—\n${LEGAL_ENTITY_NAME}, ${LEGAL_ADDRESS}${VAT_NUMBER ? ' · ' + VAT_NUMBER : ''}\nNiet interessant? Antwoord met "stop" en je hoort niets meer van ons.`;
-}
 
 // ── Plan-status gate for automated nurture/reminder WhatsApp TEMPLATE sends ──
 // TRIAL-DESIGN.md §7 + this task's own instruction: "skip all automated
@@ -376,13 +340,7 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
-    // ── Envoy: gepersonaliseerde outreach naar verse Apify-leads (server-side) ──
-    const outreachResult = await runOutreach(AIRTABLE_TOKEN, BASE_ID).catch(e => {
-      console.error('[cron-followup] outreach failed:', e.message);
-      return null;
-    });
-
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult, outreach: outreachResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -1102,124 +1060,6 @@ function sendWA(to, message, phoneNumberId, token) {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) console.error(`[cron-followup] WA fout naar ${to}:`, JSON.stringify(d.error || d));
   }).catch(err => console.error(`[cron-followup] WA netwerk fout naar ${to}:`, err.message));
-}
-
-// ── Envoy: server-side gepersonaliseerde outreach (Vercel, geen laptop) ───────
-// Pakt de laatste Apify-leads, haalt per lead de website op, laat Claude een
-// concreet pijnpunt + korte gepersonaliseerde koude mail schrijven, en verstuurt
-// via SMTP (jouw usehelvaro.pro-mailbox). Laag volume, dedup via de Outreach-tabel.
-async function runOutreach(airtableToken, baseId) {
-  const APIFY = process.env.APIFY_TOKEN;
-  const ANTHROPIC = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
-  if (!APIFY || !ANTHROPIC || !process.env.SMTP_HOST) return { skipped: 'missing APIFY_TOKEN / ANTHROPIC / SMTP' };
-  const OUTREACH_TABLE = 'tbl2LpuY9bj3I4pqS';
-  const APIFY_TASK = 'zg6tVjgqm9qfcdwvL';
-  const MAX_PER_RUN = 2;
-
-  // 1) laatste Apify-leads ophalen
-  let leads = [];
-  try {
-    const lr = await fetch(`https://api.apify.com/v2/actor-tasks/${APIFY_TASK}/runs/last?token=${APIFY}&status=SUCCEEDED`);
-    const ds = (await lr.json())?.data?.defaultDatasetId;
-    if (ds) {
-      const dr = await fetch(`https://api.apify.com/v2/datasets/${ds}/items?token=${APIFY}&clean=true&fields=title,city,address,phone,website,emails,categoryName`);
-      leads = await dr.json();
-    }
-  } catch (e) { return { error: 'apify: ' + e.message }; }
-  if (!Array.isArray(leads) || !leads.length) return { checked: 0, sent: 0 };
-
-  // 2) dedup: bestaande e-mails uit de Outreach-tabel. Fails CLOSED, not
-  // soft, unlike most of this file: a bare `catch {}` here used to leave
-  // `seen` silently empty on any transient DB error, so step 3 below would
-  // treat every fresh Apify lead as "new" — including businesses we already
-  // cold-emailed. Re-emailing a prospect that already got (or already
-  // declined) our outreach is a worse outcome than skipping one run, so this
-  // aborts the whole run instead of the file's usual fail-soft/best-effort
-  // pattern. Cheap to skip: this cron runs daily and MAX_PER_RUN is 2, so a
-  // skipped run just means these same leads get picked up (correctly
-  // deduped) on the next run.
-  const seen = new Set();
-  try {
-    const er = await pgFetch(`${OUTREACH_TABLE}?pageSize=100&fields%5B%5D=Email`);
-    if (!er.ok) throw new Error('HTTP ' + er.status);
-    for (const rec of ((await er.json()).records || [])) {
-      const e = String(rec.fields?.Email || '').toLowerCase().trim(); if (e) seen.add(e);
-    }
-  } catch (e) {
-    console.error('[outreach] dedup-fetch mislukt, outreach deze run overgeslagen (fail-safe tegen dubbele mails):', e.message);
-    return { skipped: 'dedup_fetch_failed' };
-  }
-
-  // 3) kies nieuwe leads met bruikbaar zakelijk e-mailadres
-  const fresh = [];
-  for (const l of leads) {
-    const email = String((l.emails || [])[0] || '').toLowerCase().trim();
-    if (!email || seen.has(email) || /noreply|no-reply/.test(email)) continue;
-    seen.add(email); fresh.push({ ...l, email });
-    if (fresh.length >= MAX_PER_RUN) break;
-  }
-  if (!fresh.length) return { checked: leads.length, sent: 0, note: 'geen nieuwe leads' };
-
-  const transport = require('nodemailer').createTransport({
-    host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 465),
-    secure: String(process.env.SMTP_SECURE) !== 'false',
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-  });
-  const createRow = (fields) => pgFetch(`${OUTREACH_TABLE}`, {
-    method: 'POST',
-    body: JSON.stringify({ fields, typecast: true })
-  });
-
-  let sent = 0, failed = 0;
-  for (const l of fresh) {
-    try {
-      // l.website is third-party Apify-scraped data — same untrusted-URL SSRF
-      // surface as api/whatsapp.js fetching a client's website, so it goes
-      // through the same SSRF-protected fetchWebsite() (protocol whitelist,
-      // private-IP/metadata blocklist, no redirect-follow, 5s timeout)
-      // instead of a raw unprotected fetch().
-      let site = '';
-      if (l.website) site = await fetchWebsite(l.website, { tag: '[outreach]', maxChars: 3500 }) || '';
-      const prompt = `Je schrijft namens Sindi (founder van Helvaro) een korte KOUDE B2B-outreachmail in het NEDERLANDS aan een Belgische KMO.
-
-BEDRIJF: ${l.title} (${l.categoryName || ''}, ${l.city || ''})
-WEBSITE-FRAGMENT: ${site || '(geen website)'}
-
-Helvaro = een AI die binnenkomende WhatsApp/website-leads binnen 30 seconden opvolgt en kwalificeert, zodat een KMO geen klanten verliest door trage of gemiste opvolging. EUR 1.000/maand.
-
-1. Vind 1 CONCREET pijnpunt rond leadopvolging bij dit bedrijf (bv. enkel een contactformulier, geen chat, beperkte uren, hoog-ticket offertes die snelheid vragen). Baseer op de website, anders op de sector.
-2. Schrijf een mail: 60-100 woorden, persoonlijk, verwijst naar dat pijnpunt, 1 zachte vraag (kort gesprek van 15 min). Geen hype, geen emoji, geen em-dashes. Sluit af met "Sindi, Helvaro" als ondertekening — GEEN opt-out-zin nodig, die wordt automatisch en apart toegevoegd na je tekst.
-
-OUTPUT (strikt):
-PAINPOINT: <1 zin>
-SUBJECT: <korte concrete onderwerpregel>
-BODY: <de mailtekst>`;
-      const cr = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: prompt }] })
-      });
-      const raw = (await cr.json())?.content?.[0]?.text || '';
-      const pain = (raw.match(/PAINPOINT:\s*(.+)/i) || [])[1]?.trim() || '';
-      const subject = ((raw.match(/SUBJECT:\s*(.+)/i) || [])[1] || `Snellere leadopvolging voor ${l.title}`).trim().slice(0, 150);
-      const body = (raw.match(/BODY:\s*([\s\S]+)$/i) || [])[1]?.trim();
-      if (!body) { failed++; continue; }
-      // Compliance fix 5: the fixed footer is appended HERE, in code, after
-      // the LLM's output — never something the model can drop, truncate, or
-      // paraphrase away. bodyWithFooter (not the raw LLM `body`) is both
-      // what's actually mailed AND what's stored in Outreach.Message, so
-      // the stored record matches exactly what the prospect received.
-      const bodyWithFooter = body + buildOutreachFooter();
-      await transport.sendMail({ from: process.env.SMTP_FROM, to: l.email, subject, text: bodyWithFooter, replyTo: process.env.REPLY_TO || undefined });
-      await createRow({ Business: l.title, Email: l.email, City: l.city || '', Website: l.website || '', Category: l.categoryName || '', Painpoint: pain, Subject: subject, Message: bodyWithFooter, Status: 'sent', 'Sent At': new Date().toISOString() });
-      sent++;
-      await new Promise(r => setTimeout(r, 800));
-    } catch (e) {
-      await createRow({ Business: l.title, Email: l.email, Status: 'failed', Painpoint: ('err: ' + e.message).slice(0, 400) }).catch(() => {});
-      failed++;
-    }
-  }
-  console.log(`[outreach] sent=${sent} failed=${failed} checked=${leads.length}`);
-  return { checked: leads.length, sent, failed };
 }
 
 // ── 24h appointment reminders ─────────────────────────────────────────────────
