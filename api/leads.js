@@ -1198,7 +1198,13 @@ module.exports = async function handler(req, res) {
       // authenticated client context — matches the rest of the file's
       // posture even though the payload itself is the same for everyone.
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
-      return res.status(200).json({ styles: images.PROPERTY_STYLES.map((s) => ({ key: s.key, label: s.label })) });
+      // roomTypes added alongside styles (same static/global payload) rather
+      // than a new mode — one fewer round trip, and keeps the "no new route
+      // surface" footprint the same as before this feature expansion.
+      return res.status(200).json({
+        styles: images.PROPERTY_STYLES.map((s) => ({ key: s.key, label: s.label })),
+        roomTypes: images.ROOM_TYPES.map((r) => ({ key: r.key, label: r.label })),
+      });
     }
 
     if (body.mode === 'property-list') {
@@ -1213,6 +1219,13 @@ module.exports = async function handler(req, res) {
       const style = String(body.style || '').trim();
       if (!images.isValidStyleKey(style)) {
         return res.status(400).json({ error: `Ongeldige stijl. Kies uit: ${images.PROPERTY_STYLES.map((s) => s.key).join(', ')}` });
+      }
+      // Optional — '' means "automatisch" (AI infers the room from the
+      // photo, the pre-existing behaviour). Only an unrecognized non-empty
+      // key is rejected. See api/_images.js's ROOM_TYPES header comment.
+      const roomType = body.roomType !== undefined ? String(body.roomType).trim() : '';
+      if (!images.isValidRoomTypeKey(roomType)) {
+        return res.status(400).json({ error: `Ongeldig kamertype. Kies uit: ${images.ROOM_TYPES.map((r) => r.key).join(', ')} (of laat leeg voor automatisch)` });
       }
       const customPrompt = body.customPrompt !== undefined ? String(body.customPrompt).trim().slice(0, 500) : '';
 
@@ -1249,24 +1262,39 @@ module.exports = async function handler(req, res) {
       }
 
       try {
-        const generated = await images.generatePropertyImage({
-          imageBuffer: uploaded.buffer,
-          imageMimeType: uploaded.mimeType,
-          style,
-          customPrompt,
-        });
+        // The paid OpenAI edit and the (cheap, best-effort) upload of the
+        // ORIGINAL photo run concurrently — both only need the already-
+        // validated upload buffer, neither depends on the other's result.
+        // The source upload NEVER fails the request: it only powers the
+        // dashboard's before/after comparison slider/PDF from history, and
+        // is wrapped so a Blob hiccup can't cost the client a generation
+        // they already paid credits for. Uploaded under the SAME tenant-
+        // scoped prefix as the result (see uploadPropertyImageToBlob).
+        const [generated, sourceUrl] = await Promise.all([
+          images.generatePropertyImage({
+            imageBuffer: uploaded.buffer,
+            imageMimeType: uploaded.mimeType,
+            style,
+            customPrompt,
+            roomType,
+          }),
+          images.uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
+            console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
+            return '';
+          }),
+        ]);
         const blobUrl = await images.uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
         if (!blobUrl) return res.status(502).json({ error: 'AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.' });
 
         // buildImageRecord() is the ONLY place aiLabel is set — see
         // api/_images.js's file header. Persisted (best-effort, fail-soft)
         // AND returned to the caller carry the exact same object.
-        const record = images.buildImageRecord({ url: blobUrl, style, customPrompt });
+        const record = images.buildImageRecord({ url: blobUrl, style, customPrompt, roomType, sourceUrl });
         images.appendPropertyImage(projectCode, record).catch(() => {});
 
         credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
           credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
-          meta: { style },
+          meta: { style, roomType },
         }).catch(() => {});
 
         return res.status(200).json({ ok: true, image: record });
