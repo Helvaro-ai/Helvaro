@@ -1779,3 +1779,13 @@ async function sendTrialExpiredEmails({ clientName, projectCode, reportEmail }) 
   await sendSindiTrialAlert({ kind: 'expired', clientName, projectCode, daysLeft: 0, stats: null });
 }
 
+// sendOpsAlert: the same Sindi-facing ops email helper checkQualityRating()
+// above already uses (SMTP primary, Resend fallback via _mailer, defaults to
+// NOTIFY_EMAIL). Exported as a named property on the default route-handler
+// export — same attach-alongside-the-handler convention api/leads.js already
+// uses for aggregateReportPeriod/getClientWaPhoneNumberId/sendWATemplate (see
+// its own comment at the bottom of that file) — so api/whatsapp.js's webhook
+// event handling (phone_number_quality_update / template_category_update)
+// can reuse this exact alerting path instead of standing up a second one.
+module.exports.sendOpsAlert = sendResendEmail;
+

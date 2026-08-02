@@ -128,8 +128,21 @@ module.exports = async function handler(req, res) {
     const change  = entry?.changes?.[0]?.value;
     const message = change?.messages?.[0];
 
+    // ── Status callbacks + other WABA event types ────────────────────────
+    // Handled for EVERY change in this entry (not just the first), fully
+    // independent of the inbound-message path below. Started here — before
+    // the message existence check — so it runs CONCURRENTLY with message
+    // handling, never sequentially before it: a real prospect's reply must
+    // never wait on bookkeeping. See processWebhookChange()'s own header for
+    // exactly what's covered. Promise.allSettled + its own internal
+    // try/catch means this can never throw into this handler.
+    const eventWork = Promise.allSettled(
+      (Array.isArray(entry?.changes) ? entry.changes : []).map(processWebhookChange)
+    );
+    waitUntil(eventWork);
+
     // Only handle incoming text messages
-    if (!message || message.type !== 'text') return;
+    if (!message || message.type !== 'text') { await eventWork; return; }
 
     // Webhook deduplication. Meta sends duplicate webhooks when our reply is
     // slow or times out. Each WhatsApp message has a unique id; we track seen
@@ -138,6 +151,7 @@ module.exports = async function handler(req, res) {
     // Without dedup the AI would reply twice to the same lead message.
     if (message.id && _dedupSeen(message.id)) {
       console.log(`[WhatsApp] Duplicate webhook voor message ${message.id}. overgeslagen`);
+      await eventWork;
       return;
     }
 
@@ -178,7 +192,7 @@ module.exports = async function handler(req, res) {
     // any runtime where waitUntil() is a no-op (see require comment above).
     const work = processMessage(phone, text, scopedProjectCode);
     waitUntil(work);
-    await work;
+    await Promise.all([work, eventWork]);
 
   } catch (err) {
     console.error('[WhatsApp] Fout in handler:', err.message);
@@ -197,6 +211,231 @@ function _dedupSeen(id) {
   if (_dedupCache.has(id)) return true;
   _dedupCache.set(id, now);
   return false;
+}
+
+// ─── STATUS CALLBACKS & OTHER WEBHOOK EVENTS ────────────────────────────────
+// Meta's 'messages' field delivers TWO payload shapes: inbound customer
+// messages (value.messages, handled by the handler above and processMessage()
+// below) and delivery-status callbacks (value.statuses: sent/delivered/read/
+// failed). Until this section existed every status callback was silently
+// discarded — including 'failed' ones, which is how the web-form-lead-
+// outside-24h-window bug went undetected for as long as it did: Meta told us
+// every single send failed, and nothing ever read it.
+//
+// Also handles (code-only — these fields are NOT yet subscribed on the Meta
+// app; enable them only once this ships, see this PR's report):
+// message_template_status_update, message_template_quality_update,
+// phone_number_quality_update, template_category_update, account_alerts,
+// account_update.
+//
+// Contract for every branch below: NEVER throw, NEVER block/delay the
+// inbound-message path (the handler above starts this concurrently with,
+// never before, message handling), return fast. An unrecognised field or
+// malformed value must degrade to a log line, not a crash — Meta disables
+// webhooks that fail persistently, and a real prospect waiting on a reply
+// outranks bookkeeping.
+async function processWebhookChange(change) {
+  try {
+    const field = change?.field;
+    const value = change?.value;
+    if (!value || typeof value !== 'object') return;
+
+    if (field === 'messages') {
+      // The inbound-message half of this payload shape is handled directly
+      // by the caller (untouched by this section) — this branch only ever
+      // has work to do when it's the OTHER half: delivery-status callbacks.
+      if (!Array.isArray(value.statuses) || !value.statuses.length) return;
+
+      // Same webhook-routing resolution as the inbound-message path in the
+      // handler above (own copy — this runs independently, per change, and
+      // must not depend on that call's local variables): map the receiving
+      // number to a single client when it's been migrated off the shared
+      // number, so getLead() below can go straight to the collision-safe
+      // scoped lookup instead of the phone-only heuristic.
+      const inboundPhoneNumberId = value?.metadata?.phone_number_id || '';
+      let scopedProjectCode = null;
+      if (inboundPhoneNumberId && inboundPhoneNumberId !== PHONE_NUMBER_ID) {
+        try {
+          const ownerClient = await getClientByPhoneNumberId(inboundPhoneNumberId);
+          if (ownerClient) {
+            scopedProjectCode = ownerClient.fields['fldN4dL0bGgfBOXwM'] || ownerClient.fields['Project Code'] || null;
+          }
+        } catch (err) {
+          console.error('[Multi-tenant] status routing lookup mislukt, val terug op heuristiek:', err.message);
+        }
+      }
+
+      for (const status of value.statuses) {
+        // Handled independently and fail-soft — one malformed entry in a
+        // batch must never sink the others.
+        await handleStatusCallback(status, scopedProjectCode).catch(err =>
+          console.error('[WhatsApp] status-callback verwerking mislukt (genegeerd):', err && err.message));
+      }
+      return;
+    }
+
+    // ── Extra WABA-level event types (code-only, see header above). Not yet
+    // subscribed — must be recognised the moment Sindi enables the field in
+    // Meta's app config rather than landing here as 'onbekend'.
+    switch (field) {
+      case 'message_template_status_update':
+        // A template was approved/rejected by Meta. Informational — visible
+        // in Meta's own template manager too and doesn't affect anything
+        // already running — but must stay traceable in our own logs.
+        console.log('[WhatsApp][template-status]', JSON.stringify(value).slice(0, 1000));
+        break;
+
+      case 'message_template_quality_update':
+        // A template's quality dropped — Meta can pause it. Raised log
+        // level so ops notices in server logs; phone_number_quality_update
+        // below is the one that actually threatens the shared number and
+        // gets the full email alert.
+        console.warn('[WhatsApp][template-quality]', JSON.stringify(value).slice(0, 1000));
+        break;
+
+      case 'phone_number_quality_update':
+        // THE early warning before Meta throttles or bans the shared number
+        // every client sends through. Loud on purpose: reuses the same
+        // Sindi-facing ops alert cron-followup.js's quality-rating poller
+        // already sends (see alertPhoneQualityChange()'s own comment) rather
+        // than inventing a second alerting mechanism.
+        console.error('[WhatsApp][phone-quality] nummer-kwaliteit gewijzigd:', JSON.stringify(value));
+        await alertPhoneQualityChange(value).catch(err =>
+          console.error('[WhatsApp] phone-quality alert mislukt:', err && err.message));
+        break;
+
+      case 'template_category_update':
+        // Category change = price change (utility templates bill at roughly
+        // half of marketing templates). Worth alerting so a cost swing never
+        // arrives as a surprise on the invoice.
+        console.warn('[WhatsApp][template-category] categorie (en dus prijs) gewijzigd:', JSON.stringify(value));
+        await alertTemplateCategoryChange(value).catch(err =>
+          console.error('[WhatsApp] template-category alert mislukt:', err && err.message));
+        break;
+
+      case 'account_alerts':
+      case 'account_update':
+        // WABA-level warning. Logged loudly; no dedicated email template
+        // exists yet for this one (unlike the two above, which have one
+        // clear, specific action) — an error-level server log is the honest
+        // "we don't yet know what to do with this" response for now.
+        console.error(`[WhatsApp][${field}] WABA-niveau waarschuwing:`, JSON.stringify(value));
+        break;
+
+      default:
+        // Genuinely unknown field (Meta added something new, or a shape we
+        // haven't seen). Log and move on — never throw.
+        if (field) console.log(`[WhatsApp] onbekend webhook-veld '${field}' genegeerd:`, JSON.stringify(value).slice(0, 500));
+    }
+  } catch (err) {
+    // Last-resort guard: this function must never throw back into the
+    // handler regardless of payload shape.
+    console.error('[WhatsApp] processWebhookChange onverwachte fout (genegeerd):', err && err.message);
+  }
+}
+
+// Handles one WhatsApp delivery-status object: { id, status, recipient_id,
+// timestamp, errors? }. `status` is one of sent/delivered/read/failed.
+//
+// Volume + cost note: Meta fires one of these per outbound message per state
+// it passes through (so up to 3 for a single reply: sent, delivered, read).
+// Airtable has a 5 req/s limit shared across this whole app, so this is
+// deliberately NOT a 1:1 mirror of every status into an Airtable write:
+//   - 'sent'      → no lookup, no write. Lowest-value signal — sendWA()'s
+//                   own return value already tells processMessage() whether
+//                   the send was accepted.
+//   - 'delivered' → logged only, no write. 'read' (below) is a strict
+//                   superset of the information "delivered but not read"
+//                   would add, so writing both would double the Airtable
+//                   load per message for zero extra insight.
+//   - 'read'      → ONE lightweight write, merged into the same Notities
+//                   JSON envelope AI-pause/waFailed already ride in (no
+//                   schema change). Highest-value of the two "it worked"
+//                   signals.
+//   - 'failed'    → ALWAYS written + logged at error level with Meta's own
+//                   error code/title, because that's the one that matters:
+//                   it's what caught the web-form-outside-24h-window bug,
+//                   and the code is what tells that apart from an invalid
+//                   number or an unapproved template.
+async function handleStatusCallback(status, scopedProjectCode) {
+  const state          = status?.status;
+  const recipientPhone = status?.recipient_id || '';
+  if (!state || !recipientPhone) return;
+
+  if (state === 'sent') return;
+
+  // Resolve the lead the SAME collision-safe way processMessage() does for
+  // inbound messages (see getLead()'s own header for the full contract) —
+  // NOT a fresh phone-only lookup. Statuses carry recipient_id (a phone
+  // number), never a lead id, and this app is multi-tenant on one shared
+  // WhatsApp number: a phone can belong to leads of DIFFERENT clients. Using
+  // anything other than this exact resolver here would reopen, specifically
+  // for status callbacks, the cross-client mix-up class of bug that was just
+  // fixed in getLead() itself.
+  const lead = await getLead(recipientPhone, scopedProjectCode);
+  if (!lead) return; // nothing to attach this status to — not an error
+
+  if (state === 'failed') {
+    const err = Array.isArray(status.errors) && status.errors[0] ? status.errors[0] : null;
+    const projectCodeForLog = lead.fields['fldSmczuyUJd26HLe'] || lead.fields['Project Code'] || '?';
+    console.error(
+      `[WhatsApp][status:failed] lead=${lead.id} project=${projectCodeForLog} recipient=${maskPhone(recipientPhone)} ` +
+      `code=${err?.code ?? '?'} title=${err?.title ?? '?'} detail=${(err?.message || (err?.error_data && err.error_data.details) || '').toString().slice(0, 200)}`
+    );
+    const merged = mergeWaFailedFlag(
+      lead.fields[NOTITIES_FIELD] || lead.fields['Notities'],
+      { code: err?.code, title: err?.title }
+    );
+    await updateLead(lead.id, { [NOTITIES_FIELD]: merged }, recipientPhone, scopedProjectCode);
+    return;
+  }
+
+  if (state === 'read') {
+    const merged = mergeWaReadFlag(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+    await updateLead(lead.id, { [NOTITIES_FIELD]: merged }, recipientPhone, scopedProjectCode);
+    return;
+  }
+
+  // 'delivered' (or any future status value Meta adds) — log only.
+  console.log(`[WhatsApp][status:${state}] lead=${lead.id} recipient=${maskPhone(recipientPhone)} (geen Airtable-write)`);
+}
+
+// Sindi-facing ops alert: reuses cron-followup.js's existing quality-rating
+// email path (checkQualityRating()'s email helper, exported as
+// `sendOpsAlert` — see that file's export line at the bottom) instead of
+// inventing a second alerting mechanism. Lazy require: this event is rare
+// (and not yet even subscribed on the Meta app), so there's no reason to pay
+// the require cost on every cold start.
+async function alertPhoneQualityChange(value) {
+  const { sendOpsAlert } = require('./cron-followup');
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const display = value?.display_phone_number || value?.phone_number || PHONE_NUMBER_ID || '(onbekend)';
+  await sendOpsAlert({
+    subject: `[KRITIEK] WhatsApp nummer-kwaliteit gewijzigd — ${display}`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px">
+      <h2 style="color:#dc2626;margin:0 0 12px">Phone number quality gewijzigd</h2>
+      <p>Meta meldt een verandering in de kwaliteitsstatus van het GEDEELDE WhatsApp-nummer waar alle klanten doorheen sturen. Dit is de vroegste waarschuwing voordat Meta gaat throttlen of het nummer bant.</p>
+      <p style="background:#fef2f2;padding:12px;border-radius:8px;color:#b91c1c"><strong>Actie:</strong> open <a href="https://business.facebook.com/wa/manage/phone-numbers">WhatsApp Manager</a> en check de quality rating meteen.</p>
+      <pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:11px;overflow:auto;white-space:pre-wrap">${esc(JSON.stringify(value, null, 2))}</pre>
+    </div>`
+  });
+}
+
+// Same reuse pattern as alertPhoneQualityChange() above. A category change
+// changes the per-message PRICE (utility templates bill at roughly half of
+// marketing templates), so this is a cost alert, not just an ops one.
+async function alertTemplateCategoryChange(value) {
+  const { sendOpsAlert } = require('./cron-followup');
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const templateName = value?.message_template_name || value?.template_name || '(onbekend template)';
+  await sendOpsAlert({
+    subject: `[Kosten] Template-categorie gewijzigd — ${templateName}`,
+    html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px">
+      <h2 style="color:#d97706;margin:0 0 12px">Template-categorie gewijzigd</h2>
+      <p>Meta heeft een template geherclassificeerd. Categorie bepaalt de PRIJS per bericht (utility ≈ halve prijs van marketing) — dit kan de kostprijs per klant-gesprek veranderen zonder dat er verder iets veranderde.</p>
+      <pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:11px;overflow:auto;white-space:pre-wrap">${esc(JSON.stringify(value, null, 2))}</pre>
+    </div>`
+  });
 }
 
 // ─── MAIN LOGIC ─────────────────────────────────────────────────────────────
@@ -1481,7 +1720,15 @@ function maskPhone(phone) {
 // {id:'legacy', text, ts} note on read. If we don't do the same here, a lead
 // with an old-style plain-text note would have that note silently destroyed
 // the moment it gets flagged — preserve it instead.
-function mergeWaFailedFlag(raw) {
+//
+// `detail` (optional, added for the status-callback path — see
+// handleStatusCallback() above): Meta's error code/title for a 'failed'
+// status. Stored alongside the same `waFailed:true` flag the dashboard's
+// "Niet bereikbaar" widget already reads — NOT a new flag/mechanism, just
+// richer context riding in the same envelope for whoever investigates later.
+// api/form.js's flagWaFailed call site never had this context to give, so it
+// stays undefined there and this parameter is a no-op for that caller.
+function mergeWaFailedFlag(raw, detail) {
   const trimmed = raw ? String(raw).trim() : '';
   let data    = { _v: 1, notes: [], tasks: [], calls: [] };
   let handled = false;
@@ -1495,6 +1742,31 @@ function mergeWaFailedFlag(raw) {
     data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
   }
   data.waFailed = true;
+  if (detail && (detail.code !== undefined || detail.title !== undefined)) {
+    data.waFailedReason = { code: detail.code ?? null, title: detail.title ?? null, at: new Date().toISOString() };
+  }
+  return JSON.stringify(data);
+}
+
+// Merge a 'read' marker into a lead's Notities JSON — same merge-not-
+// overwrite contract as mergeWaFailedFlag above (including legacy-plain-text
+// preservation). Deliberately just a timestamp: see handleStatusCallback()'s
+// volume/cost comment for why 'read' is the only non-failed status that gets
+// an Airtable write at all.
+function mergeWaReadFlag(raw) {
+  const trimmed = raw ? String(raw).trim() : '';
+  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
+  let handled = false;
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
+    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
+  }
+  if (!handled && trimmed) {
+    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
+  }
+  data.waRead = { at: new Date().toISOString() };
   return JSON.stringify(data);
 }
 
