@@ -877,61 +877,131 @@ async function processMessage(phone, text, scopedProjectCode) {
     const appt = aiResponse.appointment;
     const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
     if (!bookingSent && appt.start) {
+      // Fetch Google Calendar access ONCE for this booking — reused below for
+      // both the pre-write availability check and the post-write mirror,
+      // instead of refreshing the OAuth access token twice.
+      let gToken = '', gCalId = 'primary';
+
+      // Final availability check, immediately before writing anything. The
+      // busy-list the AI saw (step 6 above) was snapshotted at the START of
+      // this turn, before the human-feeling delay (step 9) and before the
+      // lead actually confirmed — something else (another lead booking
+      // concurrently, or the client adding something to their own Google
+      // Calendar) can fill the slot in that window. isSlotFree() fails OPEN
+      // on any Google/network error (see api/_gcal.js's own doc comment) —
+      // that is deliberate and must be preserved: `slotTaken` only becomes
+      // true on a genuine, confirmed overlap, never on Google being slow or
+      // down. No token (client never connected Google) means there is
+      // nothing to check against, so behaviour is exactly what it was before
+      // this fix for every client who hasn't connected Google Calendar.
+      let slotTaken = false;
       try {
-        const apptResult = await createAppointment({
-          startTime:     appt.start,
-          duration:      appt.duration || appointmentDuration,
-          projectCode,
-          leadId:        lead.id,
-          leadName,
-          leadPhone:     phone,
-          notes:         aiResponse.summary || ''
-        });
-        if (apptResult.ok) {
-          await updateLead(lead.id, {
-            fldLeEqwNefdglLis: true,
-            fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
-          }, phone, scopedProjectCode);
+        const gAccess = await gcalAccess(client);
+        gToken = gAccess.token; gCalId = gAccess.calId;
+        if (gToken) slotTaken = !(await _gcal.isSlotFree(gToken, gCalId, appt.start, appt.duration || appointmentDuration));
+      } catch (e) {
+        // gcalAccess()/isSlotFree() already fail closed/open internally and
+        // should never throw — this is belt-and-braces. Any unexpected error
+        // here must be treated like "no Google" (fail open), never like a
+        // booking failure.
+        console.error('[gcal] availability check exception (treating as no-Google):', e && e.message);
+        gToken = ''; slotTaken = false;
+      }
 
-          // ── Booking confirmation (fail-soft) ─────────────────────────────
-          // We're mid-conversation right now — the lead just messaged us, so
-          // Meta's 24h customer-service window is definitely open, and a
-          // freeform message is safe here. Contrast with the dashboard-created
-          // path in api/leads.js's appointment-create mode, which has no such
-          // guarantee (the lead may not have messaged in days) and therefore
-          // MUST go through an approved template instead — see
-          // sendAppointmentConfirmation() there.
-          // Own try/catch: a failure here must never read as "appointment
-          // creation failed" (it already exists at this point) — log it
-          // distinctly instead.
-          try {
-            const when = formatApptDateTime(appt.start, effectiveLang);
-            const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId);
-            if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${phone} niet aangekomen (afspraak zelf blijft geldig)`);
-          } catch (err) {
-            console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
-          }
-
-          // Mirror the booking into the client's Google Calendar (best-effort).
-          // Own try/catch, same contract as the confirmation above: the
-          // appointment already exists — a Google failure must never look
-          // like a booking failure.
-          try {
-            const { token, calId } = await gcalAccess(client);
-            if (token) {
-              const ev = await _gcal.createEvent(token, calId, {
-                summary:     `Afspraak: ${leadName || 'lead'} (Helvaro)`,
-                description: `Telefoon: ${phone}\nProject: ${projectCode}\n${aiResponse.summary || ''}`,
-                startISO:    appt.start,
-                durationMin: appt.duration || appointmentDuration,
-              });
-              if (ev.ok && ev.eventId) await setApptGoogleEvent(apptResult.id, ev.eventId);
-              else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
-            }
-          } catch (e) { console.error('[gcal] booking mirror exception:', e && e.message); }
+      if (slotTaken) {
+        // The AI's reply THIS turn (already sent above in step 10 — e.g.
+        // "Ingepland. Tot dan.") told the lead the slot was confirmed BEFORE
+        // we ever get a chance to check Google; the AI drafts that line as
+        // part of the same response that carries the BOOK:{...} block, so
+        // there is no way to check first. We can't unsend it, so we do the
+        // next best thing:
+        //  1. Do NOT create the Airtable appointment — there is then nothing
+        //     that looks "confirmed" to silently double-book the client's
+        //     calendar or show up on their dashboard as a real appointment.
+        //  2. Immediately correct the lead with a real WhatsApp message
+        //     rather than leaving them believing they have a slot that does
+        //     not exist.
+        //  3. Ping the owner so a human is aware and can close the loop if
+        //     the lead doesn't respond again.
+        // fldLeEqwNefdglLis/"Appointment Booked" are deliberately left
+        // unset, so a later turn (lead proposes another time) or the owner
+        // can still book successfully once a real slot is agreed.
+        try {
+          const conflictSent = await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId);
+          if (!conflictSent) console.error(`[whatsapp] slot-conflict correctie naar ${phone} niet aangekomen`);
+        } catch (err) {
+          console.error('[whatsapp] slot-conflict correctie exception:', err.message);
         }
-      } catch (err) {
-        console.error('[whatsapp] appointment creation failed:', err.message);
+        if (ownerPhone) {
+          const conflictNotice =
+            `[Actie nodig] Dubbele boeking voorkomen\n\n` +
+            `Naam: ${leadName || '(onbekend)'}\n` +
+            `Tel: ${phone}\n` +
+            `Project: ${projectCode}\n\n` +
+            `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead, maar dat moment bleek net bezet in de Google agenda. ` +
+            `Er is GEEN afspraak aangemaakt en de lead is gevraagd een ander moment te kiezen — volg op als dat nog niet gebeurd is.\n\n` +
+            `Dashboard: https://app.helvaro.pro/dashboard`;
+          const conflictNotifySent = await sendWA(ownerPhone, conflictNotice, clientPhoneNumberId);
+          if (!conflictNotifySent) console.error(`[whatsapp] conflict-melding naar owner (${ownerPhone}) is niet aangekomen`);
+        }
+      } else {
+        try {
+          const apptResult = await createAppointment({
+            startTime:     appt.start,
+            duration:      appt.duration || appointmentDuration,
+            projectCode,
+            leadId:        lead.id,
+            leadName,
+            leadPhone:     phone,
+            notes:         aiResponse.summary || ''
+          });
+          if (apptResult.ok) {
+            await updateLead(lead.id, {
+              fldLeEqwNefdglLis: true,
+              fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
+            }, phone, scopedProjectCode);
+
+            // ── Booking confirmation (fail-soft) ───────────────────────────
+            // We're mid-conversation right now — the lead just messaged us,
+            // so Meta's 24h customer-service window is definitely open, and
+            // a freeform message is safe here. Contrast with the dashboard-
+            // created path in api/leads.js's appointment-create mode, which
+            // has no such guarantee (the lead may not have messaged in days)
+            // and therefore MUST go through an approved template instead —
+            // see sendAppointmentConfirmation() there.
+            // Own try/catch: a failure here must never read as "appointment
+            // creation failed" (it already exists at this point) — log it
+            // distinctly instead.
+            try {
+              const when = formatApptDateTime(appt.start, effectiveLang);
+              const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId);
+              if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${phone} niet aangekomen (afspraak zelf blijft geldig)`);
+            } catch (err) {
+              console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
+            }
+
+            // Mirror the booking into the client's Google Calendar
+            // (best-effort). Own try/catch, same contract as the
+            // confirmation above: the appointment already exists — a Google
+            // failure must never look like a booking failure. Reuses the
+            // gToken/gCalId fetched above for the availability check instead
+            // of fetching again.
+            try {
+              if (gToken) {
+                const ev = await _gcal.createEvent(gToken, gCalId, {
+                  summary:     `Afspraak: ${leadName || 'lead'} (Helvaro)`,
+                  description: `Telefoon: ${phone}\nProject: ${projectCode}\n${aiResponse.summary || ''}`,
+                  startISO:    appt.start,
+                  durationMin: appt.duration || appointmentDuration,
+                });
+                if (ev.ok && ev.eventId) await setApptGoogleEvent(apptResult.id, ev.eventId);
+                else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
+              }
+            } catch (e) { console.error('[gcal] booking mirror exception:', e && e.message); }
+          }
+        } catch (err) {
+          console.error('[whatsapp] appointment creation failed:', err.message);
+        }
       }
     }
   }

@@ -870,6 +870,38 @@ module.exports = async function handler(req, res) {
       if (!body.startTime) return res.status(400).json({ error: 'startTime ontbreekt' });
       const dt = new Date(body.startTime);
       if (isNaN(dt.getTime())) return res.status(400).json({ error: 'Ongeldige startTime' });
+
+      // Availability check against the client's Google Calendar, BEFORE any
+      // write. Fetch the access once and reuse it below for the post-write
+      // mirror too, instead of refreshing the OAuth token twice. No lead has
+      // been told anything yet at this point (unlike api/whatsapp.js's
+      // in-chat booking, where the AI already confirmed to the lead before
+      // this check can run) — a staff member is booking directly from the
+      // dashboard, so on conflict we can simply refuse the write and let the
+      // UI show an error, with nothing to walk back. isSlotFree() fails OPEN
+      // on any Google/network error (see api/_gcal.js) — a Google outage
+      // must never block a booking, so this only refuses on a genuine,
+      // confirmed overlap. No token (client never connected Google) means
+      // there's nothing to check, so behaviour is unchanged for clients
+      // without Google Calendar connected.
+      let gToken = '', gCalId = 'primary';
+      try {
+        const gcalAccessRes = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+        gToken = gcalAccessRes.token; gCalId = gcalAccessRes.calId;
+        if (gToken) {
+          const free = await _gcal.isSlotFree(gToken, gCalId, body.startTime, parseInt(body.duration) || 30);
+          if (!free) {
+            return res.status(409).json({ error: 'Dat moment is al bezet in de Google agenda. Kies een ander tijdstip.', code: 'slot_conflict' });
+          }
+        }
+      } catch (e) {
+        // Both helpers already fail closed/open internally and should never
+        // throw — this is belt-and-braces. Any unexpected error here must be
+        // treated like "no Google" (fail open), never like a booking failure.
+        console.error('[gcal] availability check exception (treating as no-Google):', e && e.message);
+        gToken = '';
+      }
+
       const apptId = `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
       const fields = {
         'Appointment ID': apptId,
@@ -938,11 +970,12 @@ module.exports = async function handler(req, res) {
         // Mirror into the client's Google Calendar (best-effort, non-blocking).
         // The appointment already exists in Airtable at this point — a Google
         // failure here must never surface as an appointment-create failure.
+        // Reuses the gToken/gCalId fetched above for the availability check
+        // instead of fetching again.
         let googleEventId = '';
         try {
-          const { token, calId } = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
-          if (token) {
-            const ev = await _gcal.createEvent(token, calId, {
+          if (gToken) {
+            const ev = await _gcal.createEvent(gToken, gCalId, {
               summary:     `Afspraak: ${fields['Lead Name'] || 'lead'} (Helvaro)`,
               description: `Telefoon: ${fields['Lead Phone'] || ''}\nProject: ${projectCode}\n${fields['Notes'] || ''}`,
               startISO:    body.startTime,
