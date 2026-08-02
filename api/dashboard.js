@@ -5386,7 +5386,61 @@ tr:hover .td-arrow { color: var(--cyan); }
 .pi-gallery-item img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
 .pi-gallery-item-body { padding: 8px 10px 10px; }
 .pi-gallery-item-style { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.pi-gallery-item-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.pi-gallery-toggle {
+  background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: all .15s ease;
+}
+.pi-gallery-toggle:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
 .pi-empty { color: var(--text-muted); font-size: 13px; padding: 24px 0; text-align: center; }
+
+/* Room-type chips — smaller sibling of pi-style-card, same visual language */
+.pi-roomtype-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.pi-roomtype-card {
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 9px;
+  padding: 8px 10px; cursor: pointer; text-align: center; font-family: inherit;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary); transition: all .15s ease;
+}
+.pi-roomtype-card:hover { border-color: var(--accent-bright); }
+.pi-roomtype-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); font-weight: 700; }
+
+/* Before/after comparison slider — a single native <input type=range>
+   (transparent, full-bleed) drives a clip-path on the "after" image so the
+   drag/keyboard/touch handling is the browser's own accessible range input,
+   never hand-rolled pointer math. The AI badge stays a separate, always-
+   visible element below (never inside the draggable area) so it can never
+   be dragged out of view — EU AI Act Art. 50(4), see api/_images.js header. */
+.pi-compare-stage {
+  position: relative; width: 100%; aspect-ratio: 1; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.pi-compare-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  display: block; pointer-events: none; user-select: none;
+}
+.pi-compare-after { clip-path: inset(0 0 0 50%); }
+.pi-compare-tag {
+  position: absolute; top: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 4px 8px; border-radius: 6px;
+  background: rgba(0,0,0,.55); color: #fff; pointer-events: none;
+}
+.pi-compare-tag.before { left: 8px; }
+.pi-compare-tag.after { right: 8px; }
+.pi-compare-handle {
+  position: absolute; top: 0; bottom: 0; width: 2px; left: 50%; transform: translateX(-1px);
+  background: var(--accent-bright); pointer-events: none; box-shadow: 0 0 0 1px rgba(0,0,0,.3);
+}
+.pi-compare-handle::after {
+  content: ''; position: absolute; top: 50%; left: 50%; width: 32px; height: 32px;
+  border-radius: 50%; background: var(--accent-bright); transform: translate(-50%,-50%);
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+.pi-compare-range {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0;
+  cursor: ew-resize; -webkit-appearance: none; appearance: none;
+}
+.pi-result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 
 .settings-wrap { width: 100%; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
@@ -7275,6 +7329,13 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
 
         <div class="ap-field" style="margin-top:14px">
+          <label class="ap-label">Type ruimte <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer)</span></label>
+          <div class="pi-roomtype-grid" id="pi-roomtype-grid">
+            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+          </div>
+        </div>
+
+        <div class="ap-field" style="margin-top:14px">
           <label class="ap-label">Extra instructies <span class="ap-label-hint">optioneel</span></label>
           <textarea id="pi-custom-prompt" class="ap-textarea" rows="2" maxlength="500" placeholder="Bv: behoud de open haard, gebruik warmere kleuren"></textarea>
         </div>
@@ -7282,12 +7343,24 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="ap-actions" style="margin-top:14px">
           <button class="ap-btn ap-btn-primary" id="pi-generate-btn" onclick="generatePiImage()">Genereer AI-beeld</button>
         </div>
+        <div class="ap-hint" style="margin-top:6px">Tip: je kan de stijl, het kamertype of de instructies aanpassen en opnieuw klikken — dezelfde foto blijft gebruikt totdat je een nieuwe uploadt.</div>
 
         <div class="pi-result-wrap" id="pi-result-wrap" style="display:none">
           <div class="ap-field">
-            <label class="ap-label">Resultaat</label>
-            <div class="pi-result-img-wrap"><img id="pi-result-img" alt="AI-gegenereerde visualisatie"></div>
+            <label class="ap-label">Resultaat <span class="ap-label-hint">sleep de schuifregelaar om voor/na te vergelijken</span></label>
+            <div class="pi-compare-stage" id="pi-compare-stage">
+              <img class="pi-compare-img" id="pi-compare-before" alt="Voor (originele foto)">
+              <img class="pi-compare-img pi-compare-after" id="pi-compare-after" alt="Na (AI-visualisatie)">
+              <div class="pi-compare-tag before">Voor</div>
+              <div class="pi-compare-tag after">Na (AI)</div>
+              <div class="pi-compare-handle" id="pi-compare-handle"></div>
+              <input type="range" class="pi-compare-range" id="pi-compare-range" min="0" max="100" value="50" oninput="updatePiCompare(this.value)" aria-label="Sleep om voor en na te vergelijken">
+            </div>
             <div class="pi-ai-badge">⚠ <span id="pi-result-label"></span></div>
+            <div class="pi-result-actions">
+              <button type="button" class="ap-btn ap-btn-secondary" onclick="downloadPiResult()">Download afbeelding</button>
+              <button type="button" class="ap-btn ap-btn-secondary" onclick="downloadPiComparePDF()">Download vergelijking (PDF)</button>
+            </div>
           </div>
         </div>
 
@@ -14145,6 +14218,10 @@ let piStyles = [];
 let piStylesLoaded = false;
 let piUploadDataUrl = '';
 let piSelectedStyle = '';
+let piRoomTypes = [];
+let piSelectedRoomType = ''; // '' = "Automatisch" (no room-type fragment — AI infers from the photo)
+let piGalleryList = [];      // last-rendered gallery, kept for the download/toggle button handlers
+let piLastResult = null;     // { image, sourceDataUrl } of the most recently generated result — for download/PDF
 
 async function loadAiBeeldPage() {
   if (!state.apiKey) return;
@@ -14159,6 +14236,7 @@ async function loadAiBeeldPage() {
 
 async function loadPiStyles() {
   const grid = document.getElementById('pi-style-grid');
+  const roomGrid = document.getElementById('pi-roomtype-grid');
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
@@ -14166,13 +14244,23 @@ async function loadPiStyles() {
       body:    JSON.stringify({ mode: 'property-styles' })
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Stijlen laden mislukt</div>'; return; }
+    if (!r.ok) {
+      if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Stijlen laden mislukt</div>';
+      if (roomGrid) roomGrid.innerHTML = '';
+      return;
+    }
     piStyles = Array.isArray(d.styles) ? d.styles : [];
-    if (!piStyles.length) { if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Geen stijlen beschikbaar</div>'; return; }
-    if (!piSelectedStyle) piSelectedStyle = piStyles[0].key;
-    renderPiStyleGrid();
+    piRoomTypes = Array.isArray(d.roomTypes) ? d.roomTypes : [];
+    if (!piStyles.length) {
+      if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Geen stijlen beschikbaar</div>';
+    } else {
+      if (!piSelectedStyle) piSelectedStyle = piStyles[0].key;
+      renderPiStyleGrid();
+    }
+    renderPiRoomTypeGrid();
   } catch (err) {
     if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
+    if (roomGrid) roomGrid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
   }
 }
 
@@ -14188,6 +14276,24 @@ function renderPiStyleGrid() {
 function selectPiStyle(el) {
   piSelectedStyle = el.getAttribute('data-key') || '';
   renderPiStyleGrid();
+}
+
+// Room-type chips — an "Automatisch" chip (key '') is always first and is
+// the default selection, so nobody is forced to pick a room type to
+// generate an image (matches the pre-existing, still-supported behaviour).
+function renderPiRoomTypeGrid() {
+  const grid = document.getElementById('pi-roomtype-grid');
+  if (!grid) return;
+  const items = [{ key: '', label: 'Automatisch' }].concat(piRoomTypes);
+  grid.innerHTML = items.map(r =>
+    '<button type="button" class="pi-roomtype-card' + (r.key === piSelectedRoomType ? ' active' : '') +
+    '" onclick="selectPiRoomType(this)" data-key="' + escHtml(r.key) + '">' + escHtml(r.label) + '</button>'
+  ).join('');
+}
+
+function selectPiRoomType(el) {
+  piSelectedRoomType = el.getAttribute('data-key') || '';
+  renderPiRoomTypeGrid();
 }
 
 // Server hard-caps the decoded upload at 3MB (api/_images.js's
@@ -14279,19 +14385,56 @@ async function loadPiGallery() {
   }
 }
 
+// Rewritten as plain string concatenation (no template-literal interpolation)
+// rather than the previous backtick block — this whole page is itself one
+// giant JS template literal server-side (see api/dashboard.js's top-level
+// \`const HTML = \\\`...\\\`\`), so every backtick/\${} used INSIDE this inline
+// <script> has to be escaped there; concatenation sidesteps that class of
+// bug entirely for the parts touched here.
 function renderPiGallery(list) {
   const wrap = document.getElementById('pi-gallery');
   if (!wrap) return;
+  piGalleryList = list;
   if (!list.length) { wrap.innerHTML = '<div class="pi-empty">Nog geen AI-beelden gegenereerd</div>'; return; }
-  wrap.innerHTML = '<div class="pi-gallery-grid">' + list.map(img => \`
-    <div class="pi-gallery-item">
-      <img src="\${(img.url || '').replace(/"/g, '&quot;')}" alt="AI-gegenereerde visualisatie">
-      <div class="pi-gallery-item-body">
-        <div class="pi-gallery-item-style">\${escHtml(img.styleLabel || img.style || '')}</div>
-        <div class="pi-ai-badge">⚠ \${escHtml(img.aiLabel || '')}</div>
-      </div>
-    </div>
-  \`).join('') + '</div>';
+  const cards = list.map(function (img, i) {
+    const metaBits = [img.styleLabel || img.style, img.roomTypeLabel].filter(Boolean);
+    const meta = metaBits.length ? metaBits.join(' · ') : 'Aangepast';
+    const safeAfter = (img.url || '').replace(/"/g, '&quot;');
+    const safeBefore = (img.sourceUrl || '').replace(/"/g, '&quot;');
+    // Older records (persisted before this feature) have no sourceUrl —
+    // hide the voor/na toggle for those rather than offering a broken one.
+    const toggleBtn = img.sourceUrl
+      ? '<button type="button" class="pi-gallery-toggle" onclick="togglePiGalleryImage(' + i + ')" id="pi-gallery-toggle-' + i + '">Bekijk voor</button>'
+      : '<span></span>';
+    return '<div class="pi-gallery-item">' +
+        '<img src="' + safeAfter + '" alt="AI-gegenereerde visualisatie" id="pi-gallery-img-' + i + '" ' +
+          'data-after="' + safeAfter + '" data-before="' + safeBefore + '" data-showing="after">' +
+        '<div class="pi-gallery-item-body">' +
+          '<div class="pi-gallery-item-style">' + escHtml(meta) + '</div>' +
+          '<div class="pi-ai-badge">⚠ ' + escHtml(img.aiLabel || '') + '</div>' +
+          '<div class="pi-gallery-item-actions">' + toggleBtn +
+            '<button type="button" class="pi-gallery-toggle" onclick="downloadPiGalleryImage(' + i + ')">Download</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+  wrap.innerHTML = '<div class="pi-gallery-grid">' + cards + '</div>';
+}
+
+function togglePiGalleryImage(i) {
+  const el = document.getElementById('pi-gallery-img-' + i);
+  const btn = document.getElementById('pi-gallery-toggle-' + i);
+  if (!el) return;
+  const showingAfter = el.getAttribute('data-showing') === 'after';
+  el.src = showingAfter ? el.getAttribute('data-before') : el.getAttribute('data-after');
+  el.setAttribute('data-showing', showingAfter ? 'before' : 'after');
+  if (btn) btn.textContent = showingAfter ? 'Bekijk na (AI)' : 'Bekijk voor';
+}
+
+function downloadPiGalleryImage(i) {
+  const img = piGalleryList[i];
+  if (!img || !img.url) { toast('Afbeelding niet gevonden', 'error'); return; }
+  downloadImageUrl(img.url, piFilename(img, 'ai-beeld'));
 }
 
 async function generatePiImage() {
@@ -14304,6 +14447,11 @@ async function generatePiImage() {
   btn.disabled = true;
   btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg>AI genereert (kan tot een minuut duren)...';
 
+  // Kept OUTSIDE the try so it survives into the catch/finally scope below —
+  // needed so a failed request doesn't leave piLastResult pointing at a
+  // half-updated state (it simply stays whatever it was before this call).
+  const sourceDataUrlAtRequestTime = piUploadDataUrl;
+
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
@@ -14312,6 +14460,7 @@ async function generatePiImage() {
         mode:         'property-generate',
         dataUrl:      piUploadDataUrl,
         style:        piSelectedStyle,
+        roomType:     piSelectedRoomType,
         customPrompt: (document.getElementById('pi-custom-prompt') || {}).value || ''
       })
     });
@@ -14327,11 +14476,12 @@ async function generatePiImage() {
     const img = d.image;
     if (!img || !img.url) { toast('AI gaf geen beeld terug', 'error'); return; }
 
+    piLastResult = { image: img, sourceDataUrl: sourceDataUrlAtRequestTime };
+
     const resultWrap  = document.getElementById('pi-result-wrap');
-    const resultImg   = document.getElementById('pi-result-img');
     const resultLabel = document.getElementById('pi-result-label');
-    if (resultWrap)  resultWrap.style.display = '';
-    if (resultImg)   resultImg.src = img.url;
+    if (resultWrap) resultWrap.style.display = '';
+    renderPiCompare(sourceDataUrlAtRequestTime, img.url);
     if (resultLabel) resultLabel.textContent = img.aiLabel || '';
 
     toast('AI-beeld gegenereerd', 'success');
@@ -14341,6 +14491,174 @@ async function generatePiImage() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
+  }
+}
+
+// ── Before/after comparison slider ──────────────────────────────────────
+// A single native <input type=range> overlays the whole image (see the
+// .pi-compare-range CSS — full-bleed, opacity:0) so drag, click-anywhere,
+// touch AND keyboard arrows all work for free via the browser's own range
+// input; this function just mirrors its value onto the "after" image's
+// clip-path and the decorative handle line. No hand-rolled pointer/touch
+// event math, nothing to get subtly wrong across devices.
+function updatePiCompare(value) {
+  const after  = document.getElementById('pi-compare-after');
+  const handle = document.getElementById('pi-compare-handle');
+  if (after)  after.style.clipPath = 'inset(0 0 0 ' + value + '%)';
+  if (handle) handle.style.left = value + '%';
+}
+
+function renderPiCompare(beforeUrl, afterUrl) {
+  const before = document.getElementById('pi-compare-before');
+  const after  = document.getElementById('pi-compare-after');
+  const range  = document.getElementById('pi-compare-range');
+  if (before) before.src = beforeUrl || '';
+  if (after)  after.src  = afterUrl || '';
+  if (range)  range.value = 50;
+  updatePiCompare(50);
+}
+
+// ── Download / share ─────────────────────────────────────────────────────
+// A sensible, greppable filename beats the browser's default random blob
+// name when an agent drops this straight into a listing folder.
+function piFilename(img, prefix) {
+  const stamp = (img && img.createdAt ? img.createdAt : new Date().toISOString()).slice(0, 10);
+  const bits = [prefix, img && img.style, img && img.roomType, stamp].filter(Boolean);
+  return 'helvaro-' + bits.join('-').toLowerCase().replace(/[^a-z0-9-]+/g, '-') + '.png';
+}
+
+// Fetch + blob + object URL, NOT a plain <a href> — the image lives on a
+// different origin (Vercel Blob), so a bare download attribute is silently
+// ignored by browsers cross-origin; this makes "Download" actually save the
+// file instead of just opening it. Falls back to opening a tab so the user
+// can always still save manually — never a dead end (matches this feature's
+// existing fail-soft posture).
+async function downloadImageUrl(url, filename) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename || 'helvaro-ai-beeld.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(objUrl); }, 4000);
+  } catch (err) {
+    window.open(url, '_blank');
+    toast('Automatisch downloaden lukte niet — afbeelding geopend in een nieuw tabblad', 'info');
+  }
+}
+
+function downloadPiResult() {
+  if (!piLastResult || !piLastResult.image || !piLastResult.image.url) { toast('Geen AI-beeld om te downloaden', 'error'); return; }
+  downloadImageUrl(piLastResult.image.url, piFilename(piLastResult.image, 'ai-beeld'));
+}
+
+// data: URL -> {jsPDF format string}. Client uploads are always re-encoded
+// as JPEG by handlePiFile() above and generated results are always PNG (see
+// api/_images.js's generatePropertyImage()), so this only ever needs to
+// disambiguate those two in practice — kept generic rather than hardcoded
+// so it stays correct if either side's encoding ever changes.
+function dataUrlFormat(dataUrl) {
+  const m = /^data:image\\/(png|jpe?g|webp)/i.exec(dataUrl || '');
+  if (!m) return 'PNG';
+  const t = m[1].toLowerCase();
+  return t === 'png' ? 'PNG' : (t === 'webp' ? 'WEBP' : 'JPEG');
+}
+
+function urlToDataURL(url) {
+  return fetch(url)
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+    .then(function (blob) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function () { resolve(reader.result); };
+        reader.onerror = function () { reject(new Error('read failed')); };
+        reader.readAsDataURL(blob);
+      });
+    });
+}
+
+// One-page before/after PDF sheet, ready to drop into a listing. Reuses the
+// jsPDF UMD build already loaded for exportPDF() above, but with the actual
+// Sand/enterprise-dark brand palette (DESIGN-SYSTEM.md) rather than that
+// older report's purple header. The AI disclaimer is rendered as its own
+// filled, always-visible banner — never a caption so small it could be
+// missed — matching the same "never buried" rule as the on-screen badge.
+async function downloadPiComparePDF() {
+  if (!piLastResult || !piLastResult.image || !piLastResult.image.url) { toast('Geen AI-beeld om te exporteren', 'error'); return; }
+  if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+    toast('PDF bibliotheek nog niet geladen, probeer opnieuw', 'error');
+    return;
+  }
+  const img = piLastResult.image;
+  const beforeDataUrl = piLastResult.sourceDataUrl;
+  if (!beforeDataUrl) {
+    toast('Originele foto niet meer beschikbaar voor vergelijking. Download het AI-beeld apart.', 'error');
+    return;
+  }
+
+  let afterDataUrl;
+  try {
+    afterDataUrl = await urlToDataURL(img.url);
+  } catch (err) {
+    toast('Kon het AI-beeld niet inladen voor de PDF. Download de afbeelding apart.', 'error');
+    return;
+  }
+
+  try {
+    const { jsPDF } = window.jspdf || window;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const clientName = state.clientName || 'Client';
+    const now = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    doc.setFillColor(18, 18, 18);
+    doc.rect(0, 0, 210, 26, 'F');
+    doc.setTextColor(232, 215, 177);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Helvaro. AI Vastgoedbeeld', 14, 12);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(249, 249, 249);
+    doc.text(clientName + ' · ' + now, 14, 19);
+
+    let y = 36;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text('Voor', 14, y);
+    doc.text('Na (AI-visualisatie)', 110, y);
+    y += 4;
+
+    doc.addImage(beforeDataUrl, dataUrlFormat(beforeDataUrl), 14, y, 88, 88, undefined, 'FAST');
+    doc.addImage(afterDataUrl, dataUrlFormat(afterDataUrl), 110, y, 88, 88, undefined, 'FAST');
+    y += 94;
+
+    doc.setFillColor(232, 135, 30);
+    doc.roundedRect(14, y, 182, 14, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    const label = img.aiLabel || 'AI-visualisatie — werkelijke staat van de woning kan afwijken';
+    doc.text(doc.splitTextToSize('⚠ ' + label, 176), 17, y + 5);
+    y += 20;
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    const meta = [];
+    if (img.styleLabel) meta.push('Stijl: ' + img.styleLabel);
+    if (img.roomTypeLabel) meta.push('Ruimte: ' + img.roomTypeLabel);
+    if (meta.length) doc.text(meta.join('   ·   '), 14, y);
+
+    doc.save('helvaro-vergelijking-' + (img.style || 'ai-beeld') + '-' + new Date().toISOString().slice(0, 10) + '.pdf');
+  } catch (err) {
+    console.error('[downloadPiComparePDF]', err);
+    toast('PDF maken is mislukt. Download de afbeeldingen apart.', 'error');
   }
 }
 
