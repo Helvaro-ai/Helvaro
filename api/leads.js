@@ -270,6 +270,32 @@ module.exports = async function handler(req, res) {
       if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
       if (!body || typeof body !== 'object') body = {};
 
+      // SECURITY: verify the lead belongs to the authenticated client BEFORE
+      // building/mutating any fields. Without this, anyone with a valid
+      // session token could PATCH any lead in the system as long as they
+      // knew/guessed the record ID. Admin tokens bypass (already
+      // short-circuited earlier with empty leads). Done up front (rather
+      // than after building `fields`) because the pipeline-stage branch
+      // below needs the lead's current field values too, so we fetch once
+      // and reuse the result for both.
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      let ownData;
+      try {
+        const ownCheck = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!ownCheck.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        ownData = await ownCheck.json();
+        const ownProject = ownData.fields?.['fldSmczuyUJd26HLe'] || ownData.fields?.['Project Code'] || '';
+        if (ownProject !== projectCode) {
+          return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+        }
+      } catch (err) {
+        console.error('[leads PATCH] ownership check failed:', err.message);
+        return res.status(500).json({ error: 'Server fout' });
+      }
+
       const fields = {};
       if (body.notities !== undefined) fields['fldoLRI5W12ThTls7'] = String(body.notities).slice(0, 8000);
       if (body.status   !== undefined) {
@@ -289,28 +315,91 @@ module.exports = async function handler(req, res) {
         // an attacker injecting free text gets their payload ignored, which is exactly
         // what we want. Returning a 400 here would leak which values ARE valid.
       }
-      if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
-      // SECURITY: verify the lead belongs to the authenticated client BEFORE
-      // mutating. Without this, anyone with a valid session token could PATCH
-      // any lead in the system as long as they knew/guessed the record ID.
-      // Admin tokens bypass (already short-circuited earlier with empty leads).
-      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
-      try {
-        const ownCheck = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
-          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-        );
-        if (!ownCheck.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
-        const ownData = await ownCheck.json();
-        const ownProject = ownData.fields?.['fldSmczuyUJd26HLe'] || ownData.fields?.['Project Code'] || '';
-        if (ownProject !== projectCode) {
-          return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+      // ── Pipeline stage transition (Kanban drag-and-drop) ──────────────────────
+      // Dedicated field instead of overloading `status`: `status` (fld8mkrEWcyq7mUip)
+      // drives the WhatsApp nurture cron (cron-followup.js) via literal
+      // 'new'/'in_progress'/'completed'/'verloren' values that mean "conversation
+      // state", NOT "sales pipeline column" — those are two different concepts
+      // that used to be conflated, which is what broke drag-and-drop.
+      //
+      // The pipeline board (renderPipeline() in dashboard.js) computes each
+      // column from three booleans, plus — for the "lost" column only — status.
+      // Filters (order-independent but overlapping, so the write-set per
+      // target must actively clear the OTHER columns' conditions too):
+      //   new        !qualified && !afspraakGeboekt && !opgepikt && !(qualified===false && status==='completed')
+      //   qualified  qualified===true && !afspraakGeboekt && !opgepikt
+      //   afspraak   afspraakGeboekt===true && !opgepikt
+      //   won        opgepikt===true
+      //   lost       qualified===false && status==='completed'
+      if (body.pipelineStage !== undefined) {
+        const PIPELINE_STAGES = ['new', 'qualified', 'afspraak', 'won', 'lost'];
+        if (!PIPELINE_STAGES.includes(body.pipelineStage)) {
+          return res.status(400).json({ error: 'Ongeldige pipeline fase' });
         }
-      } catch (err) {
-        console.error('[leads PATCH] ownership check failed:', err.message);
-        return res.status(500).json({ error: 'Server fout' });
+        const F_QUALIFIED = 'fld0hAZJ5wgaXrNTn';
+        const F_AFSPRAAK  = 'fldyIGNetqcSEkoaK';
+        const F_OPGEPIKT  = 'fld86JQHB6dbuutA7';
+        const F_STATUS    = 'fld8mkrEWcyq7mUip';
+
+        switch (body.pipelineStage) {
+          case 'qualified':
+            // Must clear afspraak/opgepikt or it'd also satisfy those
+            // columns' filters and render twice.
+            fields[F_QUALIFIED] = true;
+            fields[F_AFSPRAAK]  = false;
+            fields[F_OPGEPIKT]  = false;
+            break;
+          case 'afspraak':
+            // A booked appointment implies qualification; clearing opgepikt
+            // keeps it out of the "won" column.
+            fields[F_QUALIFIED] = true;
+            fields[F_AFSPRAAK]  = true;
+            fields[F_OPGEPIKT]  = false;
+            break;
+          case 'won':
+            // The "won" filter only checks opgepikt, but we set all three so
+            // the funnel booleans — and the dashboard's "qualified"/"booked"
+            // stats, which read these same fields — stay consistent with a
+            // closed deal instead of silently understating them.
+            fields[F_QUALIFIED] = true;
+            fields[F_AFSPRAAK]  = true;
+            fields[F_OPGEPIKT]  = true;
+            break;
+          case 'lost':
+            // Must ALSO clear afspraakGeboekt/opgepikt: a lead dragged here
+            // from Afspraak or Won would otherwise still satisfy those
+            // columns' filters and render in two places at once.
+            fields[F_QUALIFIED] = false;
+            fields[F_AFSPRAAK]  = false;
+            fields[F_OPGEPIKT]  = false;
+            fields[F_STATUS]    = 'completed';
+            break;
+          case 'new':
+          default: {
+            fields[F_QUALIFIED] = false;
+            fields[F_AFSPRAAK]  = false;
+            fields[F_OPGEPIKT]  = false;
+            // The "new" filter excludes qualified===false && status==='completed'
+            // — exactly the combination the "lost" column writes above. A lead
+            // dragged back from Lost still has status:'completed' at this
+            // point, so without correcting it here the card would silently
+            // keep rendering under Lost instead of moving to New.
+            // Bump to 'in_progress' rather than literal 'new': 'new' has
+            // cron-followup.js meaning ("un-contacted, fresh conversation")
+            // and would re-arm the 24h/7d nurture follow-up and the
+            // stuck-at-new sweep for a lead that isn't actually fresh — it's
+            // just being manually re-opened in the pipeline. Only touch
+            // status when it's actually 'completed'; leave it alone
+            // otherwise so a lead already sitting in New isn't perturbed.
+            const curStatus = ownData.fields?.[F_STATUS] || '';
+            if (curStatus === 'completed') fields[F_STATUS] = 'in_progress';
+            break;
+          }
+        }
       }
+
+      if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
       const pRes  = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
