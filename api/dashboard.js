@@ -4707,6 +4707,14 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .row-actions { display: flex; gap: 4px; align-items: center; opacity: 0; transition: opacity 0.15s; }
 .leads-table tr:hover .row-actions { opacity: 1; }
+
+/* Touch devices have no hover — without this the call/WhatsApp quick-action
+   icons are permanently invisible (opacity: 0 with no way to trigger it),
+   so a phone user has no way to know they exist. Same fix as .copy-btn above. */
+@media (hover: none) {
+  .row-actions { opacity: 0.65; }
+}
+
 .row-action-btn {
   width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
   background: var(--bg-card-alt); cursor: pointer; display: flex;
@@ -13421,7 +13429,62 @@ function pipelineDragStart(event, leadId) {
   event.dataTransfer.setData('text/plain', String(leadId));
 }
 
-async function pipelineDrop(event, newStatus) {
+const PIPELINE_STAGE_LABELS = { new: 'Nieuw', qualified: 'Gekwalificeerd', afspraak: 'Afspraak', won: 'Gewonnen', lost: 'Verloren' };
+
+// Derives which pipeline column a lead currently renders in. Mirrors the
+// column filters in renderPipeline() below, ordered most-specific-first so
+// it matches actual render output even on legacy/inconsistent data (e.g. a
+// lead with opgepikt=true always renders under "won" regardless of the
+// other booleans, because the qualified/afspraak filters both require
+// !opgepikt). Used to no-op a drop onto the column a card is already in,
+// and to decide what to roll back to if the PATCH fails.
+function pipelineStageOf(lead) {
+  if (!lead) return 'new';
+  if (lead.opgepikt === true) return 'won';
+  if (lead.afspraakGeboekt === true) return 'afspraak';
+  if (lead.qualified === true) return 'qualified';
+  if (lead.qualified === false && lead.status === 'completed') return 'lost';
+  return 'new';
+}
+
+// Mirrors the field write-set api/leads.js applies server-side for each
+// pipelineStage value (see the PATCH handler's "Pipeline stage transition"
+// block) so the optimistic UI update renders the card in the same column
+// the server will confirm.
+function applyPipelineStageLocally(lead, stage) {
+  switch (stage) {
+    case 'qualified':
+      lead.qualified = true; lead.afspraakGeboekt = false; lead.opgepikt = false;
+      break;
+    case 'afspraak':
+      lead.qualified = true; lead.afspraakGeboekt = true; lead.opgepikt = false;
+      break;
+    case 'won':
+      lead.qualified = true; lead.afspraakGeboekt = true; lead.opgepikt = true;
+      break;
+    case 'lost':
+      lead.qualified = false; lead.afspraakGeboekt = false; lead.opgepikt = false;
+      lead.status = 'completed';
+      break;
+    case 'new':
+    default:
+      lead.qualified = false; lead.afspraakGeboekt = false; lead.opgepikt = false;
+      if (lead.status === 'completed') lead.status = 'in_progress';
+      break;
+  }
+}
+
+async function patchPipelineStage(id, stage) {
+  const resp = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(id)}\`, {
+    method: 'PATCH',
+    headers: { 'x-api-key': state.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pipelineStage: stage })
+  });
+  if (!resp.ok) throw new Error(\`Pipeline fase opslaan mislukt: \${resp.status}\`);
+  return resp.json();
+}
+
+async function pipelineDrop(event, newStage) {
   event.preventDefault();
   document.querySelectorAll('.pipeline-col').forEach(c => c.classList.remove('drag-over'));
   const leadId = _pipelineDragId || event.dataTransfer.getData('text/plain');
@@ -13429,18 +13492,26 @@ async function pipelineDrop(event, newStatus) {
   _pipelineDragId = null;
 
   const lead = state.leads.find(l => String(l.id) === String(leadId));
-  if (!lead || lead.status === newStatus) return;
+  if (!lead || pipelineStageOf(lead) === newStage) return;
 
-  // Optimistic update
-  lead.status = newStatus;
+  // Snapshot so a failed PATCH can be rolled back exactly.
+  const prev = { qualified: lead.qualified, afspraakGeboekt: lead.afspraakGeboekt, opgepikt: lead.opgepikt, status: lead.status };
+
+  // Optimistic update, using the same write-set the server will apply.
+  applyPipelineStageLocally(lead, newStage);
   renderPipeline();
-  toast('Lead verplaatst naar ' + newStatus, 'success');
 
-  // Persist
+  // Persist. The success toast only fires once the server confirms — showing
+  // it immediately (the previous behavior) meant a failed save still showed
+  // "success" followed by an error toast, which is worse than no optimistic
+  // feedback. On failure, roll the card back to its previous column.
   try {
-    await patchStatus(lead.id, newStatus);
+    await patchPipelineStage(lead.id, newStage);
+    toast('Lead verplaatst naar ' + (PIPELINE_STAGE_LABELS[newStage] || newStage), 'success');
   } catch (e) {
-    toast('Kon status niet opslaan', 'error');
+    Object.assign(lead, prev);
+    renderPipeline();
+    toast('Kon lead niet verplaatsen', 'error');
   }
 }
 
