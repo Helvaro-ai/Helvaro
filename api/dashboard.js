@@ -1764,7 +1764,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .sidebar-logo {
-  padding: 18px 20px 14px;
+  padding: 26px 20px 22px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -1772,14 +1772,20 @@ button.brand-dot { border: none; padding: 0; }
   gap: 0;
 }
 
-.sidebar-logo > img {
-  height: 52px;
+.sidebar-logo img {
+  height: 44px;
   width: auto;
   object-fit: contain;
   display: block;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.3));
 }
+
+/* Two flat colourways of the mark (see LOGO-RECOLOR notes) — dark surfaces
+   get the pale sand tint, the light surface gets the deeper bronze step so
+   it keeps contrast on white/cream. Swapped per theme, never both at once. */
+.sidebar-logo .sidebar-logo-light { display: none; }
+[data-theme="light"] .sidebar-logo .sidebar-logo-dark  { display: none; }
+[data-theme="light"] .sidebar-logo .sidebar-logo-light { display: block; }
 
 .sidebar-nav {
   flex: 1;
@@ -6357,11 +6363,6 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--hover);
 }
 
-/* Sidebar logo glow in light */
-[data-theme="light"] .sidebar-logo {
-  background: var(--accent);
-}
-
 /* Badge coloring stays vibrant in light */
 [data-theme="light"] .badge-bron {
   background: rgba(var(--accent-rgb),0.1);
@@ -6384,7 +6385,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     <div class="login-form-side">
       <div class="login-form-inner">
         <div class="login-logo-top">
-          <img src="/logo.png" alt="Helvaro">
+          <img src="/logo-ink.png" alt="Helvaro">
         </div>
 
         <h1 class="login-welcome">Welkom terug!</h1>
@@ -6569,7 +6570,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <img src="/logo.png" alt="Helvaro">
+      <img src="/logo-sand.png" alt="Helvaro" class="sidebar-logo-dark">
+      <img src="/logo-ink.png" alt="Helvaro" class="sidebar-logo-light">
     </div>
     <nav class="sidebar-nav">
       <!-- ── Werk (dagelijks) ── -->
