@@ -497,7 +497,22 @@ module.exports = async function handler(req, res) {
             callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || '',
             notifyPhone:    rec.fields['fldZEApe0gfse07AU'] || rec.fields['Notify Phone']        || '',
             reportEmail:    rec.fields['fldDBJCN6dVMA8jax'] || rec.fields['Rapport Email']       || '',
-            learnedPatterns: rec.fields['fldnbM5YKh274ISAl'] || rec.fields['AI Learned Patterns'] || ''
+            learnedPatterns: rec.fields['fldnbM5YKh274ISAl'] || rec.fields['AI Learned Patterns'] || '',
+            // Derived, not stored: true the moment a Google refresh token is on
+            // the record (same field the booking flow itself reads — see
+            // gcalAccessForProject() above). Used by the dashboard onboarding
+            // checklist's "Google Agenda koppelen" item so it never drifts out
+            // of sync with the actual connection state.
+            gcalConnected:  !!(rec.fields['fldkYmK3jAabvytCF'] || rec.fields['Google Refresh Token']),
+            // Onboarding checklist dismiss flag — the ONLY piece of checklist
+            // state that is ever stored (every item's done/not-done is derived
+            // above or client-side from live app state, never persisted).
+            // Field: "Onboarding Checklist Dismissed" (Checkbox, fldNKMaiCKYpT3hxM).
+            // Airtable omits an unchecked/never-touched checkbox from the
+            // record entirely, so blank/missing reads as false === not
+            // dismissed, which is the correct default for every client, new
+            // or pre-existing — nobody has dismissed a card they've never seen.
+            checklistDismissed: rec.fields['fldNKMaiCKYpT3hxM'] === true || rec.fields['Onboarding Checklist Dismissed'] === true
           });
         }
 
@@ -549,6 +564,12 @@ module.exports = async function handler(req, res) {
         // of config-save keeps working perfectly today, and this one setting
         // silently no-ops (logged) until the field exists.
         const wantsMatchLeadLanguageUpdate = body.matchLeadLanguage !== undefined;
+        // Onboarding checklist dismiss — also isolated from `u` for the same
+        // reason as Match Lead Language above (defense-in-depth: the field is
+        // now known-to-exist, but keeping every "new field, best-effort" write
+        // isolated means a future not-yet-created field can never take down
+        // an otherwise-successful save of the fields that DO exist).
+        const wantsChecklistDismissUpdate = body.checklistDismissed !== undefined;
         if (body.workingHours   !== undefined) {
           // Lightweight format validation. Must match 'days hours' or be empty
           const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
@@ -576,7 +597,7 @@ module.exports = async function handler(req, res) {
         if (body.learnedPatterns !== undefined) {
           u.fldnbM5YKh274ISAl = String(body.learnedPatterns).slice(0, 1500);
         }
-        if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate) {
+        if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate && !wantsChecklistDismissUpdate) {
           return res.status(400).json({ error: 'Niets om bij te werken' });
         }
 
@@ -620,6 +641,27 @@ module.exports = async function handler(req, res) {
             }
           } catch (err) {
             console.warn('[config-save] "Match Lead Language" PATCH exception:', err.message);
+          }
+        }
+
+        // Onboarding checklist dismiss — separate best-effort PATCH, same
+        // isolation reasoning as above. Field id fldNKMaiCKYpT3hxM (Checkbox).
+        if (wantsChecklistDismissUpdate) {
+          try {
+            const cdRes = await atFetch(
+              `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+              {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { fldNKMaiCKYpT3hxM: body.checklistDismissed === true }, typecast: true })
+              }
+            );
+            if (!cdRes.ok) {
+              const txt = await cdRes.text().catch(() => '');
+              console.warn('[config-save] "Onboarding Checklist Dismissed" niet opgeslagen:', cdRes.status, txt.slice(0, 200));
+            }
+          } catch (err) {
+            console.warn('[config-save] "Onboarding Checklist Dismissed" PATCH exception:', err.message);
           }
         }
 
