@@ -10,6 +10,8 @@ const credits = require('./_credits');
 const { getPlanState, computeTrialEndsAt, FIELD: PLAN_FIELD, VALID_STATUSES: PLAN_STATUSES } = require('./_plan');
 // Language registry — see its file header.
 const _lang = require('./_lang');
+// Email-ownership verification for self-serve signup — see its file header.
+const verifyEmail = require('./_verify');
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
@@ -1345,6 +1347,33 @@ module.exports = async function handler(req, res) {
         console.log(`[signup-guard] action=${signupGuardResult.decision} projectCode=${projectCode} score=${signupGuardResult.score} reasons=${JSON.stringify(signupGuardResult.reasons)} ts=${new Date().toISOString()}`);
         if (signupGuardResult.decision === 'flag') {
           console.warn(`[admin] public signup FLAGGED for review: ${projectCode} (score ${signupGuardResult.score})`);
+        }
+      }
+
+      // ── Self-serve onboarding only (invite-code OR public): send an
+      // email-ownership confirmation link. Runs for BOTH invite and public
+      // signups — an invite code proves someone had the link, not that the
+      // typed email is theirs. Does NOT block or delay onboarding in any
+      // way: the account above is already created and fully usable; this is
+      // fire-and-forget, wrapped so a failure here can never fail the
+      // request. See api/_verify.js's file header for the full design
+      // (token format, TTL, single-use mechanics) and for why the status
+      // field is a Single Select (not a Checkbox) — that choice is what
+      // keeps this from ever locking out a pre-existing client once Sindi
+      // creates the field. Same graceful-degradation contract as every
+      // other NEW-field block above: if 'Email Verification Status' doesn't
+      // exist on the live base yet, the PATCH fails, is logged, and no
+      // verification email is sent — isVerified() then fails OPEN
+      // (everyone reads as verified) everywhere else that checks it.
+      if (isOnboard && email) {
+        try {
+          await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, createData.id, {
+            [verifyEmail.FIELD_NAME.STATUS]: 'pending',
+          });
+          const sent = await verifyEmail.sendVerificationEmail(email, createData.id);
+          if (!sent.ok) console.warn('[admin] onboarding: verificatiemail versturen mislukt:', sent.error);
+        } catch (err) {
+          console.warn('[admin] onboarding: kon e-mailverificatie niet opzetten (veld "Email Verification Status" bestaat mogelijk nog niet, zie api/_verify.js header):', err.message);
         }
       }
 
