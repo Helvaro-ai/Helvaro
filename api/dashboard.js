@@ -2624,6 +2624,62 @@ button.brand-dot { border: none; padding: 0; }
   box-shadow: var(--shadow-card);
 }
 
+/* ---- Per-metric colour -----------------------------------------------
+   Each card binds one local --a / --a-soft pair; the icon chip, the fill
+   bar and the top hairline all read from it, so a metric's colour is set
+   in exactly one place. Colour never touches the value text — coloured
+   numerals fail contrast and read as decoration rather than data. */
+.stat-card[data-accent="blue"]    { --a: var(--c-blue);    --a-soft: var(--c-blue-soft); }
+.stat-card[data-accent="emerald"] { --a: var(--c-emerald); --a-soft: var(--c-emerald-soft); }
+.stat-card[data-accent="orange"]  { --a: var(--c-orange);  --a-soft: var(--c-orange-soft); }
+.stat-card[data-accent="purple"]  { --a: var(--c-purple);  --a-soft: var(--c-purple-soft); }
+.stat-card[data-accent="cyan"]    { --a: var(--c-cyan);    --a-soft: var(--c-cyan-soft); }
+.stat-card[data-accent="gold"]    { --a: var(--c-gold);    --a-soft: var(--c-gold-soft); }
+
+/* A 2px bar across the top edge, revealed on hover. At rest the grid stays
+   calm; on approach the card identifies itself. */
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--a, var(--accent));
+  opacity: 0;
+  transition: opacity var(--dur-base, .18s) var(--ease-out, ease);
+}
+.stat-card:hover::after { opacity: 1; }
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2, var(--shadow));
+  border-color: var(--a, var(--border));
+}
+.stat-card:active { transform: translateY(0); }
+
+.stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.stat-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--a-soft, rgba(0,0,0,.05));
+  color: var(--a, var(--accent));
+}
+.stat-icon svg { width: 16px; height: 16px; display: block; }
+.stat-bar-fill { background: var(--a, var(--accent)) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card, .stat-card::after { transition: none; }
+  .stat-card:hover { transform: none; }
+}
+
 /* Stagger the grid in on load — content assembling reads calmer than a
    pop-in, and stays under the 240ms entrance guideline per card. */
 @keyframes cardEnter {
@@ -10557,17 +10613,36 @@ function renderStats() {
     }
   ];
 
-  grid.innerHTML = cards.map(c => \`
-    <div class="stat-card">
-      <div class="stat-label">\${c.label}</div>
+  // Each metric carries its own colour + glyph so the grid can be read at
+  // a glance without parsing six labels. Keyed on label so the card
+  // objects above stay untouched. Icons are inline SVG on purpose — an
+  // icon package would mean a CDN, and every external origin was removed
+  // from this app for GDPR reasons.
+  const META = {
+    'Totaal Leads':   { a: 'blue',    i: '<path d="M3 7h18M3 12h18M3 17h12"/>' },
+    'Gekwalificeerd': { a: 'emerald', i: '<path d="M20 6 9 17l-5-5"/>' },
+    'Afspraken':      { a: 'orange',  i: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>' },
+    'Conversie':      { a: 'purple',  i: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>' },
+    'Deze Maand':     { a: 'gold',    i: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
+    'Gem. Reactie':   { a: 'cyan',    i: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>' }
+  };
+
+  grid.innerHTML = cards.map(c => {
+    const m = META[c.label] || { a: 'blue', i: '<circle cx="12" cy="12" r="9"/>' };
+    return \`
+    <div class="stat-card" data-accent="\${m.a}">
+      <div class="stat-head">
+        <div class="stat-label">\${c.label}</div>
+        <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\${m.i}</svg></span>
+      </div>
       <div class="stat-value \${c.color}" data-target="\${c.value}" data-suffix="\${c.suffix}">0\${c.suffix ? \`<span class="stat-unit">\${c.suffix}</span>\` : ''}</div>
       <div class="stat-desc">\${c.desc}</div>
       <div class="stat-trend">\${c.trend || ''}</div>
       <div class="stat-bar">
         <div class="stat-bar-fill" data-fill="\${c.fill}"></div>
       </div>
-    </div>
-  \`).join('');
+    </div>\`;
+  }).join('');
 
   // Animate counters
   grid.querySelectorAll('.stat-value[data-target]').forEach(el => {
