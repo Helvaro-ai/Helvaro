@@ -108,12 +108,50 @@ module.exports = async function handler(req, res) {
   --elev-2: 0 3px 6px rgba(0,0,0,.36), 0 12px 28px rgba(0,0,0,.30);  /* popover, menu, toast */
   --elev-3: 0 8px 18px rgba(0,0,0,.42), 0 28px 64px rgba(0,0,0,.38); /* modal, dialog, slide-in panel */
 
-  /* Legacy aliases — kept at "none" so nothing that already renders flat
-     (structural cards, rows) silently grows a shadow; the new elevation
-     tokens above are opted into explicitly on hover/overlay states. */
-  --shadow:      none;
-  --shadow-card: none;
+  /* Legacy aliases. --shadow-card used to be "none", which is why every
+     surface read dead flat: a card at rest had no elevation at all and
+     only grew one on hover. Cards now sit ON the page instead of being
+     painted into it. Kept deliberately small — this is a resting state,
+     not a hover. */
+  --shadow:      0 1px 2px rgba(0,0,0,0.30), 0 8px 24px rgba(0,0,0,0.22);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.24), 0 4px 16px rgba(0,0,0,0.18);
   --shadow-glow: none;
+
+  /* ---- Liquid glass -------------------------------------------------
+     Glass belongs ONLY on layers that float above content: sidebar,
+     sticky topbar, modals, popovers. Content surfaces stay opaque so
+     text stays crisp — frosting everything is what makes an interface
+     look cheap and unreadable. --glass-edge is the specular highlight
+     along the top edge that makes the material read as a physical pane
+     catching light, rather than as a flat translucent rectangle. */
+  --glass-fill:  rgba(27,29,34,0.72);
+  --glass-edge:  rgba(255,255,255,0.10);
+  --glass-blur:  saturate(160%) blur(20px);
+
+  /* ---- Semantic accent palette --------------------------------------
+     Each metric gets a colour that MEANS something, so the eye can sort
+     the dashboard without reading every label. Gold stays reserved for
+     brand + money. These are identical in both themes; the -soft and
+     -ring variants are the tinted fill and halo used behind icons, so a
+     card can carry its colour without becoming a block of it.
+     Deliberately NOT applied to text — coloured body copy fails
+     contrast and reads as decoration. Icons, sparklines, borders,
+     badges and chart series only. */
+  --c-emerald: #22C55E;  --c-emerald-soft: rgba(34,197,94,0.12);
+  --c-blue:    #4F7CFF;  --c-blue-soft:    rgba(79,124,255,0.12);
+  --c-purple:  #8B5CF6;  --c-purple-soft:  rgba(139,92,246,0.12);
+  --c-orange:  #F59E0B;  --c-orange-soft:  rgba(245,158,11,0.12);
+  --c-coral:   #EF4444;  --c-coral-soft:   rgba(239,68,68,0.12);
+  --c-cyan:    #06B6D4;  --c-cyan-soft:    rgba(6,182,212,0.12);
+  --c-gold:    #C9A34E;  --c-gold-soft:    rgba(201,163,78,0.14);
+
+  /* Gradients for the few surfaces that earn one — hero numbers, the
+     revenue ring, primary actions. Used sparingly on purpose: a
+     gradient on every card cancels itself out. */
+  --grad-gold:    linear-gradient(135deg, #C9A34E, #F59E0B);
+  --grad-ai:      linear-gradient(135deg, #8B5CF6, #4F7CFF);
+  --grad-data:    linear-gradient(135deg, #4F7CFF, #06B6D4);
+  --grad-success: linear-gradient(135deg, #22C55E, #84CC16);
 
   /* ---- legacy token names (kept so every existing var(--x) in this
      15k-line file resolves without a line-by-line rewrite) ---- */
@@ -142,28 +180,36 @@ module.exports = async function handler(req, res) {
 }
 
 [data-theme="light"] {
-  --bg:            #F7F5F0;
+  /* Was #F7F5F0 — only ~4% darker than the #FFFFFF cards sitting on it,
+     so cards dissolved into the page and everything read blank. Deepened
+     into the same warm family (not grey, which would go cold and muddy)
+     so white surfaces read as raised planes instead of painted regions. */
+  /* Moved off the all-beige base. Gold stays the brand colour, but the
+     neutrals are now cool so gold reads as an ACCENT against them rather
+     than as another shade of the background. A warm page under warm
+     cards is why everything looked like one flat sheet of sand. */
+  --bg:            #F7F8FC;
   --bg-alt:        #FFFFFF;
   --card:          #FFFFFF;
   --card-elevated: #FFFFFF;
-  --border-c:      #E4E0D6;
-  --divider:       #ECE8DE;
-  --hover-c:       #F1EDE3;
+  --border-c:      #E6EAF2;
+  --divider:       #EDF0F7;
+  --hover-c:       #F1F4FA;
 
-  --accent-c:        #C9A85E;
-  --accent-hover-c:  #BB9A4F;
-  --accent-pressed-c:#AD8C43;
-  --on-accent:     #121212;
+  --accent-c:        #C9A34E;
+  --accent-hover-c:  #B89344;
+  --accent-pressed-c:#A6823A;
+  --on-accent:     #2D2A26;
 
-  --text-c:        #18160F;
-  --text-muted-c:  #6B6558;
-  --text-disabled: #A39C8C;
+  --text-c:        #2D2A26;
+  --text-muted-c:  #6B7280;
+  --text-disabled: #A6ADBB;
   --text-inverse:  #FFFFFF;
 
-  --bubble-incoming: #EFEAE0;
+  --bubble-incoming: #EEF1F7;
 
-  --accent-rgb:  201,168,94;
-  --text-rgb:    24,22,15;
+  --accent-rgb:  201,163,78;
+  --text-rgb:    45,42,38;
 
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
@@ -179,9 +225,19 @@ module.exports = async function handler(req, res) {
   --border-bright: var(--border-c);
   --scrollbar-bg:  var(--bg);
   --scrollbar-thumb: var(--border-c);
-  --shadow:        0 1px 2px rgba(20,17,10,0.04), 0 4px 14px rgba(20,17,10,0.05);
-  --shadow-card:   none;
+  --shadow:        0 1px 2px rgba(20,17,10,0.05), 0 6px 20px rgba(20,17,10,0.07);
+  /* Was "none". A white card on a near-white page with only a hairline
+     border is invisible — that flatness was the single biggest reason
+     the app read as empty. Ink-tinted (not grey) so it stays warm. */
+  --shadow-card:   0 1px 2px rgba(20,17,10,0.05), 0 3px 12px rgba(20,17,10,0.06);
   --shadow-glow:   none;
+
+  /* Liquid glass, light theme. Higher opacity than dark: light glass
+     needs more body or the text behind it bleeds through and nothing
+     stays legible. */
+  --glass-fill:  rgba(255,255,255,0.72);
+  --glass-edge:  rgba(255,255,255,0.90);
+  --glass-blur:  saturate(180%) blur(20px);
 
   /* Same elevation scale, ink-tinted and much lower opacity — white
      surfaces read depth at a fraction of the alpha dark ones need. */
@@ -199,7 +255,17 @@ html { font-size: 15px; }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: var(--bg-primary);
+  /* Two very wide, very low-opacity warm pools instead of one flat fill.
+     Glass has nothing to refract over a single solid colour — it just
+     looks like a lighter rectangle. These give the blurred layers
+     something to pick up, and stop large empty regions reading as dead
+     space. Fixed attachment so the field stays put while content scrolls
+     over it, which is what sells the layers as separate planes. */
+  background:
+    radial-gradient(1200px 800px at 12% -10%, rgba(232,215,177,0.16), transparent 60%),
+    radial-gradient(1000px 700px at 100% 0%, rgba(173,140,67,0.10), transparent 55%),
+    var(--bg-primary);
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
@@ -1791,13 +1857,58 @@ button.brand-dot { border: none; padding: 0; }
   position: fixed;
   left: 0;
   top: 0;
-  background: var(--bg-card);
-  border-right: 1px solid var(--border);
+  /* Permanently dark in BOTH themes — the anchor the light content area
+     sits against. Rebinding the colour tokens here means every child
+     (nav labels, icons, dividers, the account block) picks up
+     dark-surface values automatically instead of needing its own
+     override. The inset highlight is the specular edge that makes the
+     pane read as a physical sheet catching light. */
+  background: rgba(27,29,34,0.88);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  --text:        #E7EAF0;
+  --text-muted:  #9AA3B2;
+  --border:      rgba(255,255,255,0.07);
+  --hover:       rgba(255,255,255,0.06);
+  --bg-card:     transparent;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(20,22,28,0.10);
   display: flex;
   flex-direction: column;
   z-index: 100;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* Without backdrop-filter the pane would render see-through and
+   unreadable. Literal colour, not var(--bg-card) — that token is
+   rebound to transparent inside .sidebar. */
+@supports not (backdrop-filter: blur(1px)) {
+  .sidebar { background: #1B1D22; }
+}
+
+/* ---- Sidebar navigation ---------------------------------------------
+   Active = solid gold pill. On a dark pane a filled shape reads
+   instantly at a glance, where the old 12%-alpha gradient tint was
+   nearly invisible. Higher specificity than the base .nav-item.active
+   rule so it wins regardless of source order. */
+.sidebar .nav-item {
+  color: #9AA3B2;
+  border-radius: 10px;
+}
+.sidebar .nav-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: #E7EAF0;
+}
+.sidebar .nav-item.active {
+  background: var(--grad-gold);
+  color: #1B1D22;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.24), 0 6px 18px rgba(201,163,78,.28);
+}
+/* The old rule painted a 3px bar down the left edge. Redundant now that
+   the whole item is a filled pill, and it broke the pill's silhouette. */
+.sidebar .nav-item.active::before { display: none; }
+.sidebar .nav-item.active svg { color: #1B1D22; stroke: currentColor; }
+.sidebar .nav-item:active { transform: translateY(1px); }
 
 .sidebar-logo {
   padding: 26px 20px 22px;
@@ -2039,11 +2150,14 @@ button.brand-dot { border: none; padding: 0; }
   align-items: center;
   justify-content: space-between;
   padding: 14px 28px;
-  background: rgba(13, 17, 23, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Was a hardcoded rgba(13,17,23,.85) — a near-black bar, which in the
+     light theme rendered as a dark slab across the top of a pale page.
+     Now themed, so it reads as the same material as the sidebar. */
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.03);
+  box-shadow: inset 0 1px 0 var(--glass-edge), 0 4px 20px rgba(20,17,10,0.05);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -6243,37 +6357,44 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 
 /* Sidebar gets a white surface with left accent border */
+/* The sidebar is now the SAME dark pane in both themes — it is the
+   anchor the light content area sits against, and switching it to white
+   in light mode was what made the whole page read as one flat sheet.
+   These rules used to force it white and tint the active item at 9%
+   alpha (near-invisible); both are handled by the .sidebar block above,
+   which rebinds the colour tokens for everything inside it. */
 [data-theme="light"] .sidebar {
-  background: #ffffff;
-  border-right: 1px solid var(--border);
-  box-shadow: 2px 0 12px rgba(15,17,40,0.06);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(20,22,28,0.10);
 }
 
-/* Nav items in light mode */
 [data-theme="light"] .nav-item:hover {
-  background: rgba(var(--accent-rgb),0.06);
-  color: var(--accent);
+  background: rgba(255,255,255,0.06);
+  color: #E7EAF0;
 }
 
 [data-theme="light"] .nav-item.active {
-  background: rgba(var(--accent-rgb),0.09);
-  color: var(--accent);
+  background: var(--grad-gold);
+  color: #1B1D22;
 }
 
-[data-theme="light"] .nav-item.active::before {
-  background: var(--accent);
-}
+[data-theme="light"] .nav-item.active::before { display: none; }
 
-/* Topbar. Crisp white with soft shadow */
+/* Topbar: glass, not flat white. 0.72 rather than 0.92 alpha so content
+   scrolling underneath actually shows through and the bar reads as a
+   pane floating over the page instead of a painted strip. The inset
+   highlight is the specular top edge. */
 [data-theme="light"] .topbar {
-  background: rgba(255,255,255,0.92);
+  background: rgba(255,255,255,0.72);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(15,17,40,0.05), 0 2px 12px rgba(15,17,40,0.04);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.90), 0 4px 20px rgba(15,17,40,0.05);
 }
 
-/* Topbar page title gradient in light */
+/* Page titles were gold, which put brand colour on ordinary structural
+   text and left nothing louder for actual emphasis. Gold is now reserved
+   for the active nav pill, primary actions and money. */
 [data-theme="light"] .page-title {
-  color: var(--accent);
+  color: var(--text);
 }
 
 /* Topbar buttons. Dark on white */
