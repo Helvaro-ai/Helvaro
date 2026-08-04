@@ -23,10 +23,14 @@ module.exports = async function handler(req, res) {
 <style>
 /* ============================================================
    SELF-HOSTED FONTS (GDPR — no requests to Google's CDN)
-   Both files are variable fonts; each weight face below points at
-   the same physical file and the browser selects the right
-   instance, matching the weight set previously requested from
-   Google Fonts (Inter 300/400/500/600/700, Orbitron 400-900).
+   Inter only. Orbitron was removed 2026-08 — its zero glyph (a squared
+   shape with a diagonal slash) rendered as a broken-looking box at
+   dashboard sizes, most visibly in "€0" / "0%" / "0 leads" empty states.
+   On a dashboard where the numbers ARE the product, that read as the app
+   being broken. Inter's numerals are excellent and already loaded, so
+   every former Orbitron use now sets font-variant-numeric: tabular-nums
+   instead — same "confident data" register, correct zero, columns that
+   don't jitter as figures update.
    ============================================================ */
 @font-face {
   font-family: 'Inter';
@@ -34,13 +38,6 @@ module.exports = async function handler(req, res) {
   font-weight: 300 700;
   font-display: swap;
   src: url('/fonts/inter-var.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Orbitron';
-  font-style: normal;
-  font-weight: 400 900;
-  font-display: swap;
-  src: url('/fonts/orbitron-var.woff2') format('woff2');
 }
 /* ============================================================
    CSS CUSTOM PROPERTIES
@@ -220,7 +217,11 @@ body::after {
 /* ============================================================
    TYPOGRAPHY
    ============================================================ */
-h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
+/* Display treatment for headings/titles. Previously a second typeface
+   (Orbitron) did this job; one family at a confident weight + tight
+   tracking reads calmer and scales better — Linear/Stripe/Vercel all
+   run their whole UI on a single family for exactly this reason. */
+h1, h2, h3, .display-heading { font-weight: 800; letter-spacing: -0.01em; }
 
 /* Was a gradient-clip effect (indigo → cyan). A single accent colour reads
    calmer and is the "important number / highlight" use case sand is for. */
@@ -451,7 +452,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
 }
 
 .brand-stat-num {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 800;
   color: var(--accent);
@@ -563,7 +564,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 16px;
   font-weight: 800;
   color: var(--text);
@@ -625,7 +626,7 @@ h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; }
   font-weight: 700;
   color: var(--accent);
   min-width: 38px;
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
 
@@ -1226,7 +1227,7 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 28px;
   font-weight: 800;
   color: var(--accent);
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   margin-bottom: 6px;
 }
@@ -1311,7 +1312,7 @@ button.brand-dot { border: none; padding: 0; }
     .profile-recent-lead-meta { font-size: 12px; color: var(--text-muted); }
     .profile-recent-lead-score {
       font-size: 13px; font-weight: 700; color: var(--accent);
-      font-family: 'Orbitron', monospace;
+      font-variant-numeric: tabular-nums;
     }
     .profile-quick-actions {
       display: grid;
@@ -1778,18 +1779,6 @@ button.brand-dot { border: none; padding: 0; }
   display: block;
   flex-shrink: 0;
   filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.3));
-}
-
-.sidebar-brand {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  color: var(--accent);
-}
-
-.sidebar-brand span {
-  display: none;
 }
 
 .sidebar-nav {
@@ -2267,7 +2256,7 @@ button.brand-dot { border: none; padding: 0; }
       border-color: rgba(var(--success-rgb),0.2);
     }
     .search-result-score {
-      font-size: 11px; font-weight: 700; font-family: 'Orbitron', monospace;
+      font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
       color: var(--blue-bright);
       background: rgba(var(--accent-rgb),0.1);
       padding: 2px 8px; border-radius: var(--radius-sm);
@@ -2520,7 +2509,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .stat-value {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 28px;
   font-weight: 800;
   color: var(--text-primary);
@@ -2907,7 +2896,7 @@ tr:hover .copy-btn { opacity: 1; }
   border-radius: 7px;
   font-size: 12px;
   font-weight: 700;
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   cursor: default;
   transition: all 0.2s ease;
   padding: 0 6px;
@@ -3119,7 +3108,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   justify-content: center;
   font-size: 22px;
   font-weight: 700;
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   margin-bottom: 14px;
 }
 
@@ -3226,7 +3215,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .score-segment.filled.low { background: linear-gradient(90deg, var(--red), var(--orange)); }
 
 .score-number {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 22px;
   font-weight: 700;
 }
@@ -3627,7 +3616,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   flex-shrink: 0;
 }
 .chart-title {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
@@ -3732,7 +3721,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .followup-item:hover { border-color: var(--orange); }
 .followup-item-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
 .followup-item-meta { font-size: 11px; color: var(--text-muted); }
-.followup-item-score { font-size: 12px; font-weight: 700; font-family: 'Orbitron',monospace; color: var(--orange); }
+.followup-item-score { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--orange); }
 .followup-call-btn {
   display: flex;
   align-items: center;
@@ -3794,7 +3783,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 10px; font-weight: 700; color: var(--on-accent);
 }
 .top-lead-chip-name { font-weight: 600; color: var(--text); }
-.top-lead-chip-score { font-weight: 700; color: var(--accent); font-family:'Orbitron',monospace; font-size:12px; }
+.top-lead-chip-score { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; font-size:12px; }
 
 /* ── Today widget ── */
 .today-widget {
@@ -3805,7 +3794,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   margin-bottom: 20px;
 }
 .today-widget-title {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
@@ -4231,7 +4220,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 22px;
   font-weight: 700;
   color: var(--accent);
-  font-family: 'Orbitron', monospace;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   margin-bottom: 4px;
 }
@@ -4272,7 +4261,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 .rapport-stat-value {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 22px;
   font-weight: 700;
   color: var(--cyan);
@@ -4326,7 +4315,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       color: var(--text-muted);
     }
     .pipeline-chip-count {
-      font-family: 'Orbitron', monospace;
+      font-variant-numeric: tabular-nums;
       font-size: 13px;
       font-weight: 700;
       color: var(--accent);
@@ -4430,7 +4419,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 5px;
   font-size: 11px;
   font-weight: 700;
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 .pipeline-card-phone {
   font-size: 11px;
@@ -4637,7 +4626,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .source-table tr:last-child td { border-bottom: none; }
 .analyse-stat-big {
-  font-family: 'Orbitron', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 36px;
   font-weight: 800;
   color: var(--cyan);
@@ -4666,7 +4655,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   gap: 4px;
 }
 .analyse-revenue-val {
-  font-family: 'Orbitron', monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 800;
   color: var(--text-primary);
@@ -4774,9 +4763,9 @@ tr:hover .td-arrow { color: var(--cyan); }
 .revenue-goal-edit { background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.5; transition: opacity 0.15s; }
 .revenue-goal-edit:hover { opacity: 1; }
 .revenue-goal-amounts { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
-.revenue-goal-current { font-size: 28px; font-weight: 800; color: var(--text-primary); font-family: 'Orbitron', monospace; }
+.revenue-goal-current { font-size: 28px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .revenue-goal-slash { font-size: 18px; color: var(--text-muted); }
-.revenue-goal-target { font-size: 16px; color: var(--text-secondary); font-family: 'Orbitron', monospace; }
+.revenue-goal-target { font-size: 16px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .revenue-goal-bar-wrap { height: 6px; background: var(--bg-card-alt); border-radius: 3px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--border); }
 .revenue-goal-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--blue-bright)); transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
 .revenue-goal-pct { font-size: 12px; color: var(--text-secondary); }
@@ -5725,7 +5714,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 13px; font-weight: 600; color: var(--text-primary);
   flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.cal-call-score { font-size: 11px; font-weight: 700; font-family:'Orbitron',monospace; color: var(--accent); }
+.cal-call-score { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
 .cal-call-phone-link {
   display: flex; align-items: center; gap: 7px; padding: 8px 10px;
   background: var(--bg-card); border: 1px solid var(--border);
@@ -6158,11 +6147,6 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: #ffffff;
   border-right: 1px solid var(--border);
   box-shadow: 2px 0 12px rgba(15,17,40,0.06);
-}
-
-/* Sidebar brand gradient stays readable */
-[data-theme="light"] .sidebar-brand {
-  color: var(--accent);
 }
 
 /* Nav items in light mode */
@@ -6694,7 +6678,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
-          <div class="page-title orbitron gradient-text" id="topbar-title">Dashboard</div>
+          <div class="page-title display-heading gradient-text" id="topbar-title">Dashboard</div>
           <div class="page-subtitle" id="topbar-subtitle">Overzicht van je gekwalificeerde leads</div>
         </div>
       </div>
@@ -6988,7 +6972,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="export-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </div>
-          <div class="export-card-title orbitron gradient-text">CSV Export</div>
+          <div class="export-card-title display-heading gradient-text">CSV Export</div>
           <p class="export-card-desc">Download gefilterde leads als CSV voor Excel, Google Sheets of je CRM.</p>
           <div class="export-includes">
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Naam &amp; contactgegevens</div>
@@ -7007,7 +6991,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="export-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           </div>
-          <div class="export-card-title orbitron gradient-text">Weekrapport</div>
+          <div class="export-card-title display-heading gradient-text">Weekrapport</div>
           <p class="export-card-desc">Gedetailleerd overzicht met statistieken en gekwalificeerde leads van de afgelopen 7 dagen.</p>
           <div class="export-includes">
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Leads &amp; conversie stats</div>
@@ -7041,7 +7025,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="export-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
-          <div class="export-card-title orbitron gradient-text">Snapshot</div>
+          <div class="export-card-title display-heading gradient-text">Snapshot</div>
           <p class="export-card-desc">Live overzicht van je geselecteerde periode.</p>
           <div class="export-snapshot" id="export-snapshot">
             <div class="export-snap-item">
@@ -9034,7 +9018,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   <div class="panel-header">
     <button class="panel-close" id="panel-close" aria-label="Sluiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="panel-avatar" id="panel-avatar">HV</div>
-    <div class="panel-name orbitron" id="panel-name">Lead naam</div>
+    <div class="panel-name display-heading" id="panel-name">Lead naam</div>
     <div class="panel-meta">
       <div class="panel-phone">
         <span></span>
@@ -10775,7 +10759,7 @@ function scoreBar(score) {
     <div style="width:40px;height:5px;background:var(--bg-card-alt);border-radius:3px;overflow:hidden">
       <div style="width:\${pct}%;height:100%;background:\${color};border-radius:3px"></div>
     </div>
-    <span style="font-size:12px;font-weight:700;color:\${color};font-family:'Orbitron',monospace">\${n}</span>
+    <span style="font-size:12px;font-weight:700;color:\${color};font-variant-numeric: tabular-nums;">\${n}</span>
   </div>\`;
 }
 
