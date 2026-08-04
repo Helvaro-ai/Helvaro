@@ -12817,7 +12817,9 @@ function navigateTo(page) {
     instellingen: { title: 'Instellingen',  sub: 'Beheer je accountinstellingen' },
     activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
     founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
-    'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' }
+    'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
+    formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
+    'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
