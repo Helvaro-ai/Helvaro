@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const verify = require('./_verify'); // email-ownership verification — see its file header
 
 // ── Wachtwoord-hashing (bcrypt) ────────────────────────────────────────────────
 // Wachtwoorden werden vroeger als plaintext in "Password Hash" bewaard. Nu hashen
@@ -230,10 +231,12 @@ module.exports = async function handler(req, res) {
 
   // ── GET /forgot-password. Render the request-reset HTML page ─────────────
   // ── GET /reset-password?token=.... render the new-password HTML page ─────
+  // ── GET /verify-email?token=.... confirm email ownership, one click ──────
   if (req.method === 'GET') {
     const path = (req.url || '').split('?')[0];
     if (path.endsWith('/forgot-password')) return renderForgotPage(res);
     if (path.endsWith('/reset-password'))  return renderResetPage(req, res);
+    if (path.endsWith('/verify-email'))    return handleVerifyEmail(req, res);
     return res.status(404).send('Not found');
   }
 
@@ -300,7 +303,31 @@ module.exports = async function handler(req, res) {
         console.warn('[reset] no user for', email);
         return res.status(404).json({ error: 'Dit e-mailadres is bij ons niet bekend. Controleer het adres of neem contact op.' });
       }
-      // 2. Try to send the email. Surface real errors back
+      // 2. Gate: require a verified email before handing out a reset link.
+      // WHY: a reset token, once delivered, grants full control over the
+      // password. We've never confirmed the recipient inbox is the one the
+      // account holder actually controls until it's verified — sending that
+      // capability to an unconfirmed address is exactly the account-takeover
+      // pattern email verification exists to close off (e.g. self-serve
+      // signup let someone type a mistyped or not-their-own address; if that
+      // address is later controlled by someone else, "forgot password" would
+      // otherwise hand them the account). Fails OPEN: any lookup problem, or
+      // the "Email Verification Status" field/record not existing at all,
+      // is treated as verified (see _verify.js's isVerified()) so this can
+      // never lock out an existing client.
+      try {
+        const projectCode = user.fields['fldbrCpBuQjJBfZsv'] || user.fields['Project Code'] || '';
+        const clientRec = projectCode ? await fetchClientRecordByProjectCode(projectCode) : null;
+        if (clientRec && !verify.isVerified(clientRec.fields)) {
+          return res.status(403).json({
+            error: 'Bevestig eerst je e-mailadres voor je wachtwoord kan resetten. Check je inbox voor de bevestigingsmail, of vraag een nieuwe aan.',
+            code: 'email_not_verified'
+          });
+        }
+      } catch (err) {
+        console.warn('[reset] verified-check failed, failing open:', err.message);
+      }
+      // 3. Try to send the email. Surface real errors back
       const sendResult = await sendResetEmailToUser(email, user).catch(err => ({ ok: false, error: err.message }));
       if (!sendResult.ok) {
         console.error('[reset] send failed for', email, sendResult.error);
@@ -310,6 +337,45 @@ module.exports = async function handler(req, res) {
         ok: true,
         message: 'Resetlink verstuurd naar ' + email + '. Check je inbox (en spam). de link werkt 1 uur.'
       });
+    }
+
+    // ── MODE: resend-verification. Re-send the email-ownership confirmation
+    // link. Client-initiated (e.g. from a "confirm your email" dashboard
+    // banner). Same existence-check pattern as request-reset above, and
+    // covered by the same isRateLimited(ip) 40-per-15-min limiter applied
+    // above before any mode branch runs. ─────────────────────────────────────
+    if (body.mode === 'resend-verification') {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Ongeldig e-mailadres' });
+      }
+      const user = await fetchUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: 'Dit e-mailadres is bij ons niet bekend.' });
+      }
+      try {
+        const projectCode = user.fields['fldbrCpBuQjJBfZsv'] || user.fields['Project Code'] || '';
+        const clientRec = projectCode ? await fetchClientRecordByProjectCode(projectCode) : null;
+        if (!clientRec) {
+          // No Client Config record to tie the token to — nothing we can do,
+          // but don't leak internal state either. Same neutral-success shape
+          // as an already-verified account (see below).
+          return res.status(200).json({ ok: true, message: 'Als er iets te bevestigen valt is de mail onderweg.' });
+        }
+        const currentStatus = clientRec.fields[verify.FIELD_NAME.STATUS] || '';
+        if (currentStatus !== 'pending') {
+          // Blank/missing field or already 'verified' — nothing to resend.
+          return res.status(200).json({ ok: true, alreadyVerified: true, message: 'Je e-mailadres is al bevestigd.' });
+        }
+        const sent = await verify.sendVerificationEmail(email, clientRec.id).catch(err => ({ ok: false, error: err.message }));
+        if (!sent.ok) {
+          console.error('[resend-verification] send failed for', email, sent.error);
+          return res.status(500).json({ error: 'Mail kon niet verstuurd worden. Neem contact op met support.' });
+        }
+        return res.status(200).json({ ok: true, message: 'Verificatiemail verstuurd naar ' + email + '. Check je inbox (en spam).' });
+      } catch (err) {
+        console.error('[resend-verification] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
     }
 
     // ── MODE: reset-password. Verify token + set new password ───────────────
@@ -512,6 +578,104 @@ async function fetchUserByEmail(email) {
   const rec = d.records?.[0] || null;
   if (rec) setCachedUser(email, rec);
   return rec;
+}
+
+// ─── EMAIL VERIFICATION HELPERS ───────────────────────────────────────────────
+// See api/_verify.js's file header for the full token design. Verification
+// state lives on the Client Config record (tblPidTrwGRzRt4LZ), NOT the Users
+// table — it's a property of the signup/tenant, not of a login credential.
+const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+
+// Look up a Client Config record by Project Code. Used by request-reset's
+// verification gate and resend-verification. Not cached (unlike
+// fetchUserByEmail) — these two call sites are both low-frequency,
+// already-rate-limited actions, not the hot login path.
+async function fetchClientRecordByProjectCode(projectCode) {
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
+  const BASE_ID        = process.env.BASE_AIRTABLE;
+  const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+  const url = `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`;
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  if (!r.ok) return null;
+  const d = await r.json();
+  return d.records?.[0] || null;
+}
+
+// ── GET /verify-email?token=.... One click, no form (unlike reset-password,
+// there's no additional user input to collect — clicking the link IS the
+// action). Renders a small result page instead of redirecting straight to
+// /dashboard so a stale/reused/expired link gets a clear, honest message
+// instead of a silent bounce.
+async function handleVerifyEmail(req, res) {
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
+  const BASE_ID        = process.env.BASE_AIRTABLE;
+  const q = (req.url || '').split('?')[1] || '';
+  const token = new URLSearchParams(q).get('token') || '';
+
+  const decoded = verify.decodeVerifyToken(token);
+  if (!decoded) {
+    return res.status(400).send(verifyResultPage(false, 'Deze link is ongeldig.'));
+  }
+
+  let rec;
+  try {
+    rec = await verify.fetchClientRecordById(BASE_ID, AIRTABLE_TOKEN, decoded.data.rid);
+  } catch (err) {
+    console.error('[verify-email] lookup failed:', err.message);
+    return res.status(500).send(verifyResultPage(false, 'Serverfout. Probeer het later opnieuw.'));
+  }
+  if (!rec) {
+    return res.status(400).send(verifyResultPage(false, 'Deze link is ongeldig of het account bestaat niet meer.'));
+  }
+
+  const currentStatus = rec.fields[verify.FIELD_NAME.STATUS] || '';
+  // Idempotent-friendly: a second click on the same (now-used) link, or a
+  // click on an older resend, should read as "you're all set", not as an
+  // error — the underlying signature check below would reject it anyway
+  // (see _verify.js's single-use design), but this gives a nicer message.
+  if (currentStatus === 'verified') {
+    return res.status(200).send(verifyResultPage(true, 'Je e-mailadres is al bevestigd. Je kan dit venster sluiten.'));
+  }
+
+  const valid = verify.verifyToken(token, decoded.data.rid, currentStatus);
+  if (!valid) {
+    return res.status(400).send(verifyResultPage(false, 'Deze link is verlopen of al gebruikt. Vraag een nieuwe aan via je dashboard.'));
+  }
+
+  let ok = false;
+  try {
+    ok = await verify.markVerified(BASE_ID, AIRTABLE_TOKEN, decoded.data.rid);
+  } catch (err) {
+    console.error('[verify-email] mark-verified failed:', err.message);
+  }
+  if (!ok) {
+    return res.status(500).send(verifyResultPage(false, 'Er ging iets mis bij het bevestigen. Probeer opnieuw of neem contact op.'));
+  }
+  return res.status(200).send(verifyResultPage(true, 'E-mailadres bevestigd! Je kan dit venster sluiten.'));
+}
+
+function verifyResultPage(success, message) {
+  const title = success ? 'Bevestigd' : 'Kon niet bevestigen';
+  const emoji = success ? '✓' : '✕';
+  const color = success ? '#1e6fd9' : '#b91c1c';
+  return `<!DOCTYPE html>
+<html lang="nl"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${title} · Helvaro</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>${RESET_CSS}</style>
+</head><body>
+  <div class="card" style="text-align:center">
+    <div style="font-size:40px;color:${color};margin-bottom:8px">${emoji}</div>
+    <h1>${title}</h1>
+    <p class="sub" style="margin-bottom:0">${escapeHtml(message)}</p>
+    <a class="back" href="/dashboard">← Naar je dashboard</a>
+  </div>
+</body></html>`;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // Send the reset link to a user we already verified exists.

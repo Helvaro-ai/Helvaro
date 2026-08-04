@@ -20,6 +20,7 @@
     { "source": "/terms",          "destination": "/api/privacy" },
     { "source": "/forgot-password","destination": "/api/auth" },
     { "source": "/reset-password", "destination": "/api/auth" },
+    { "source": "/verify-email",   "destination": "/api/auth" },
     { "source": "/demo",           "destination": "/api/demo" },
     { "source": "/form-widget.js", "destination": "/public/form-widget.js" },
     { "source": "/favicon.png",    "destination": "/public/favicon.png" },
