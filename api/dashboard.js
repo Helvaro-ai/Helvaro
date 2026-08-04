@@ -15171,7 +15171,11 @@ function renderAnalyse() {
   // Avg response time
   const rtEl = document.getElementById('analyse-response-val');
   if (rtEl) {
-    const rts = leads.map(l => Number(l.responseTime)).filter(n => n > 0);
+    // reactietijd, not responseTime — api/leads.js maps 'Response Time (sec)'
+    // to reactietijd. Reading responseTime gave NaN for every lead, which the
+    // >0 filter then dropped, so this tile showed "—" forever even though the
+    // dashboard's own stat card computed the same average correctly.
+    const rts = leads.map(l => Number(l.reactietijd)).filter(n => n > 0);
     const avg = rts.length ? Math.round(rts.reduce((a,b) => a+b, 0) / rts.length) : 0;
     if (avg > 3600) {
       rtEl.textContent = (avg / 3600).toFixed(1) + 'u';
