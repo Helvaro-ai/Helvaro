@@ -7189,9 +7189,9 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="chk-whatsapp-icon">💬</div>
           <div class="chk-whatsapp-body">
             <div class="chk-whatsapp-title">WhatsApp-nummer koppelen</div>
-            <div class="chk-whatsapp-sub">Dit stel je niet zelf in — het vereist een goedkeuring van Meta die Sindi persoonlijk voor je regelt (meestal een paar dagen). Je hoeft nu niets te doen: ze neemt vanzelf contact op. Wil je alvast laten weten dat je er klaar voor bent, zodat het sneller gaat?</div>
+            <div class="chk-whatsapp-sub">Dit stel je niet zelf in. Meta moet je nummer eerst goedkeuren, en dat regelen wij voor je. Duurt meestal een paar dagen. Je hoeft nu niets te doen, we nemen contact op zodra het kan. Laat het gerust weten als je er al klaar voor bent, dan pakken we het sneller op.</div>
           </div>
-          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hoi%20Sindi%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20" target="_blank" rel="noopener">Laat het weten</a>
+          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hallo%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20" target="_blank" rel="noopener">Laat het weten</a>
         </div>
       </div>
 
@@ -11369,7 +11369,7 @@ function renderOnboardingChecklist(d) {
 
   const mailtoEl = document.getElementById('chk-whatsapp-mailto');
   if (mailtoEl && state.clientName) {
-    mailtoEl.href = \`mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hoi%20Sindi%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20\${encodeURIComponent(state.clientName)}\`;
+    mailtoEl.href = \`mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hallo%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20\${encodeURIComponent(state.clientName)}\`;
   }
 }
 
