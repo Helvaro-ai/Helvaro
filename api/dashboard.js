@@ -4178,9 +4178,15 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-weight: 700;
   color: var(--accent);
 }
+/* "Featured" used to mean flood-filling the whole card with sand — heavy,
+   and the accent-coloured title (.gradient-text) went unreadable against
+   an accent-coloured card (same colour on itself). Sand should mark this
+   card as primary without becoming its surface: a solid border plus a
+   solid-fill icon (icons are an explicitly allowed sand use) does that
+   while keeping the card on the same quiet surface as its siblings. */
 .export-card-featured {
-  border-color: rgba(var(--accent-rgb),0.3) !important;
-  background: var(--accent) !important;
+  border: 1.5px solid var(--accent) !important;
+  background: var(--bg-card) !important;
 }
 .export-card-icon {
   width: 44px;
@@ -4193,6 +4199,11 @@ tr:hover .td-arrow { color: var(--cyan); }
   justify-content: center;
   margin-bottom: 12px;
   color: var(--accent);
+}
+.export-card-featured .export-card-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 .export-includes {
   display: flex;
