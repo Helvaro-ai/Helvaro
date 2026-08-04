@@ -29,7 +29,8 @@ module.exports = function handler(req, res) {
     text-align: center;
   }
   h1 {
-    font-family: 'Orbitron', monospace;
+    font-family: 'Inter', sans-serif;
+    font-variant-numeric: tabular-nums;
     font-size: 28px;
     color: #E8D7B1;
     margin-bottom: 12px;
@@ -56,7 +57,19 @@ module.exports = function handler(req, res) {
     font-weight: 600;
   }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Self-hosted Inter (GDPR — no request to Google's CDN). Loading a webfont
+     from Google's font CDN sends the visitor's IP to Google on every page
+     view; a Munich court ruled in 2022 that doing so without consent breaches
+     the GDPR. Same treatment as the dashboard, which was fixed earlier. */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 300 700;
+    font-display: swap;
+    src: url('/fonts/inter-var.woff2') format('woff2');
+  }
+</style>
 </head>
 <body>
 <div class="card">

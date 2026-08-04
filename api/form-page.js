@@ -286,7 +286,19 @@ module.exports = async function handler(req, res) {
 <title>${t.title}</title>
 <meta name="description" content="${t.meta}">
 <link rel="icon" href="/favicon.png" type="image/png">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Self-hosted Inter (GDPR — no request to Google's CDN). Loading a webfont
+     from Google's font CDN sends the visitor's IP to Google on every page
+     view; a Munich court ruled in 2022 that doing so without consent breaches
+     the GDPR. Same treatment as the dashboard, which was fixed earlier. */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 300 700;
+    font-display: swap;
+    src: url('/fonts/inter-var.woff2') format('woff2');
+  }
+</style>
 <style>
   :root {
     --brand: ${brandColor};
