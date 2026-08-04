@@ -14791,9 +14791,15 @@ function renderGesprekken() {
   const listBody = document.getElementById('conv-list-body');
   if (!listBody) return;
 
+  // Field name is 'gesprek' — that is what api/leads.js actually returns
+  // (see its lead mapper, which sets gesprek from 'Conversation History').
+  // This used to read l.conversatieGeschiedenis, a property nothing has
+  // ever set, so the filter rejected every lead and the whole Gesprekken
+  // page read "Geen gesprekken gevonden" in production, while the exact
+  // same data rendered fine in the lead detail panel (already on .gesprek).
   const withConvs = state.leads.filter(l => {
-    if (!l.conversatieGeschiedenis) return false;
-    try { const p = JSON.parse(l.conversatieGeschiedenis); return Array.isArray(p) && p.length > 0; }
+    if (!l.gesprek) return false;
+    try { const p = JSON.parse(l.gesprek); return Array.isArray(p) && p.length > 0; }
     catch { return false; }
   }).sort((a, b) => new Date(b.datum || 0) - new Date(a.datum || 0));
 
@@ -14805,7 +14811,7 @@ function renderGesprekken() {
   listBody.innerHTML = withConvs.map(l => {
     let preview = '';
     try {
-      const msgs = JSON.parse(l.conversatieGeschiedenis);
+      const msgs = JSON.parse(l.gesprek);
       const last = msgs[msgs.length - 1];
       preview = last ? (last.content || '').slice(0, 50) + ((last.content || '').length > 50 ? '...' : '') : '';
     } catch {}
@@ -14833,7 +14839,7 @@ function openConversation(leadId) {
   if (!detail) return;
 
   let msgs = [];
-  try { msgs = JSON.parse(lead.conversatieGeschiedenis || '[]'); } catch {}
+  try { msgs = JSON.parse(lead.gesprek || '[]'); } catch {}
 
   const bubbles = msgs.map(m => {
     const isUser = m.role === 'user';
