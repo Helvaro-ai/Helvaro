@@ -5362,6 +5362,155 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .dash-trial-banner-cta:hover { background: var(--accent-hover); }
 
+/* ── Email-verification banner. Hidden by default (display:none inline) —
+   only shown once loadOnboardingChecklist() confirms config-get's
+   emailVerified is explicitly false (fails open: absent/blank Airtable
+   field or a pre-existing client both read as verified, see api/_verify.js).
+   Separate from the onboarding checklist card below on purpose: dismissing
+   the checklist is meant to be "I've got the gist, hide the getting-started
+   card", but an unverified email is a standing account-recovery risk
+   (password-reset is gated on it) — it deserves its own quiet nudge that
+   survives a checklist dismiss, not a fully separate visual language, so it
+   reuses the trial banner's ".expired" amber treatment (non-alarming, same
+   "gentle attention" register per TRIAL-DESIGN.md §3, never red/error). ── */
+.dash-verify-banner {
+  display: flex; align-items: center; gap: 12px;
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 16px;
+  flex-wrap: wrap;
+  background: rgba(var(--warning-rgb), .08); border: 1px solid rgba(var(--warning-rgb), .25);
+}
+.dash-verify-banner-icon { font-size: 20px; line-height: 1; }
+.dash-verify-banner-body { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.dash-verify-banner-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.dash-verify-banner-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.dash-verify-banner-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.dash-verify-banner-cta {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--warning-c); color: var(--bg-primary); border: none; border-radius: 7px;
+  padding: 8px 14px; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s ease;
+}
+.dash-verify-banner-cta:hover { opacity: .88; }
+.dash-verify-banner-cta:disabled { opacity: .5; cursor: not-allowed; }
+.dash-verify-banner-close {
+  background: none; border: none; color: var(--text-muted); font-size: 18px;
+  line-height: 1; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-family: inherit;
+}
+.dash-verify-banner-close:hover { background: rgba(var(--warning-rgb), .12); color: var(--text-primary); }
+
+/* ── Onboarding checklist card. Hidden by default — loadOnboardingChecklist()
+   reveals it only when there is real, derived work left to do, and it hides
+   itself again the instant every item is done OR the client dismisses it.
+   Card, not a banner strip (this one carries 5 rows), so it borrows the
+   stat-card surface treatment (--bg-card / --border / --shadow-card) rather
+   than the thin colour-tinted banner style above. ─────────────────────── */
+.dash-checklist {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 20px 8px; margin-bottom: 16px; box-shadow: var(--shadow-card);
+}
+.dash-checklist-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.dash-checklist-title-wrap { flex: 1; min-width: 160px; }
+.dash-checklist-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.dash-checklist-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.dash-checklist-progress-bar {
+  width: 120px; height: 6px; border-radius: 999px; background: var(--bg-card-alt);
+  overflow: hidden; flex-shrink: 0;
+}
+.dash-checklist-progress-fill {
+  height: 100%; background: var(--grad-gold); border-radius: 999px;
+  transition: width var(--dur-base, .25s) var(--ease-out, ease);
+}
+.dash-checklist-close {
+  background: none; border: none; color: var(--text-muted); font-size: 18px;
+  line-height: 1; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-family: inherit;
+  flex-shrink: 0;
+}
+.dash-checklist-close:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.dash-checklist-items { display: flex; flex-direction: column; }
+.chk-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 0;
+  border-top: 1px solid var(--divider);
+}
+.chk-item[data-accent="blue"]    { --a: var(--c-blue);    --a-soft: var(--c-blue-soft); }
+.chk-item[data-accent="gold"]    { --a: var(--c-gold);    --a-soft: var(--c-gold-soft); }
+.chk-item[data-accent="purple"]  { --a: var(--c-purple);  --a-soft: var(--c-purple-soft); }
+.chk-item[data-accent="cyan"]    { --a: var(--c-cyan);    --a-soft: var(--c-cyan-soft); }
+.chk-item[data-accent="emerald"] { --a: var(--c-emerald); --a-soft: var(--c-emerald-soft); }
+.chk-item-icon {
+  flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--a-soft, var(--bg-card-alt)); color: var(--a, var(--text-muted));
+  font-size: 13px; font-weight: 700;
+}
+.chk-item.chk-done .chk-item-icon { background: var(--c-emerald-soft); color: var(--c-emerald); }
+.chk-item-body { flex: 1; min-width: 160px; }
+.chk-item-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.chk-item.chk-done .chk-item-title { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+.chk-item-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; line-height: 1.4; }
+.chk-item-action {
+  flex-shrink: 0; background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 12px; font-size: 12px; font-weight: 600; color: var(--text-primary);
+  cursor: pointer; font-family: inherit; transition: all .15s ease;
+}
+.chk-item-action:hover { border-color: var(--a, var(--accent-bright)); color: var(--a, var(--accent-bright)); }
+.chk-whatsapp {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 0 14px;
+  border-top: 1px solid var(--divider); margin-top: 2px;
+}
+.chk-whatsapp-icon { flex: 0 0 auto; font-size: 18px; line-height: 1.3; }
+.chk-whatsapp-body { flex: 1; min-width: 160px; }
+.chk-whatsapp-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.chk-whatsapp-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+.chk-whatsapp-action {
+  flex-shrink: 0; align-self: center; background: none; border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 12px; font-size: 12px; font-weight: 600; color: var(--text-primary);
+  cursor: pointer; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center;
+  transition: all .15s ease;
+}
+.chk-whatsapp-action:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
+@media (max-width: 640px) {
+  .dash-checklist-head { flex-wrap: wrap; }
+  .dash-checklist-progress-bar { order: 3; width: 100%; }
+  .chk-item { flex-wrap: wrap; }
+  .chk-item-action { margin-left: 38px; }
+}
+
+/* ── "Vertel over je bedrijf" modal — reuses the founder-modal-overlay
+   visual language (dim scrim + centered elevated panel) already used for
+   the pipeline/goal modals, so this doesn't invent a second modal system. */
+.chk-biz-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 950;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.chk-biz-modal-overlay.open { display: flex; }
+.chk-biz-modal {
+  background: var(--card-elevated); border: 1px solid var(--border); border-radius: 16px;
+  padding: 26px 26px 20px; width: 100%; max-width: 540px; max-height: 88vh; overflow-y: auto;
+  box-shadow: var(--elev-3);
+}
+.chk-biz-modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.chk-biz-modal-intro { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; }
+.chk-biz-field { margin-bottom: 16px; }
+.chk-biz-field label { display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 5px; }
+.chk-biz-field-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.chk-biz-field textarea {
+  width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; font-family: inherit; color: var(--text-primary);
+  resize: vertical; min-height: 64px; transition: border-color .15s ease;
+}
+.chk-biz-field textarea:focus { outline: none; border-color: var(--accent); }
+.chk-biz-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.chk-biz-cancel {
+  background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--text-primary);
+  cursor: pointer; font-family: inherit;
+}
+.chk-biz-save {
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright)); border: none; border-radius: 10px;
+  padding: 10px 18px; font-size: 13px; font-weight: 700; color: var(--on-accent);
+  cursor: pointer; font-family: inherit;
+}
+.chk-biz-save:disabled { opacity: .6; cursor: not-allowed; }
+
 /* ── AI Persoonlijkheid page ──────────────────────────────────────────── */
 .ap-wrap { width: 100%; padding: 24px 0; }
 .ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
@@ -7001,6 +7150,49 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="dash-trial-banner-sub" id="dash-trial-banner-sub">—</div>
         </div>
         <a class="dash-trial-banner-cta" id="dash-trial-banner-cta" href="#" target="_blank" rel="noopener">Upgrade</a>
+      </div>
+
+      <!-- Email-verification banner. Hidden until loadOnboardingChecklist()
+           confirms config-get's emailVerified is explicitly false. Separate
+           from the checklist card below — see the CSS comment above
+           .dash-verify-banner for why this survives a checklist dismiss. -->
+      <div class="dash-verify-banner" id="dash-verify-banner" style="display:none">
+        <div class="dash-verify-banner-icon">✉️</div>
+        <div class="dash-verify-banner-body">
+          <div class="dash-verify-banner-title">Bevestig je e-mailadres</div>
+          <div class="dash-verify-banner-sub">Check je inbox voor de bevestigingsmail. Dit is alleen nodig zodat je later je wachtwoord kan resetten als je dat ooit vergeet — verder werkt alles al gewoon.</div>
+        </div>
+        <div class="dash-verify-banner-actions">
+          <button class="dash-verify-banner-cta" id="dash-verify-banner-resend" onclick="resendVerificationFromBanner()">Stuur opnieuw</button>
+          <button class="dash-verify-banner-close" onclick="dismissVerifyBanner()" title="Verbergen voor deze sessie">×</button>
+        </div>
+      </div>
+
+      <!-- Onboarding checklist. Hidden until loadOnboardingChecklist() has a
+           config-get response — items and progress are rendered entirely by
+           JS (renderOnboardingChecklist()) from LIVE, derived app state, not
+           a stored "completed" flag. Auto-hides itself once every item is
+           done, or when the client dismisses it (dash-checklist-close). -->
+      <div class="dash-checklist" id="dash-checklist" style="display:none">
+        <div class="dash-checklist-head">
+          <div class="dash-checklist-title-wrap">
+            <div class="dash-checklist-title">Aan de slag met Helvaro</div>
+            <div class="dash-checklist-sub" id="dash-checklist-progress-label">0 van 5 klaar</div>
+          </div>
+          <div class="dash-checklist-progress-bar"><div class="dash-checklist-progress-fill" id="dash-checklist-progress-fill" style="width:0%"></div></div>
+          <button class="dash-checklist-close" id="dash-checklist-close" onclick="dismissChecklist()" title="Verbergen">×</button>
+        </div>
+        <div class="dash-checklist-items" id="dash-checklist-items">
+          <!-- rendered by renderOnboardingChecklist() -->
+        </div>
+        <div class="chk-whatsapp">
+          <div class="chk-whatsapp-icon">💬</div>
+          <div class="chk-whatsapp-body">
+            <div class="chk-whatsapp-title">WhatsApp-nummer koppelen</div>
+            <div class="chk-whatsapp-sub">Dit stel je niet zelf in — het vereist een goedkeuring van Meta die Sindi persoonlijk voor je regelt (meestal een paar dagen). Je hoeft nu niets te doen: ze neemt vanzelf contact op. Wil je alvast laten weten dat je er klaar voor bent, zodat het sneller gaat?</div>
+          </div>
+          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hoi%20Sindi%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20" target="_blank" rel="noopener">Laat het weten</a>
+        </div>
       </div>
 
       <!-- Form Link banner. Quick access to the lead form URL -->
@@ -9315,6 +9507,40 @@ tr:hover .td-arrow { color: var(--cyan); }
   </div>
 </div>
 
+<!-- "Vertel over je bedrijf" modal — onboarding checklist item. Writes to
+     AI Instructions (fld1lqHctRbqFGQf5), NEVER to AI Learned Patterns —
+     the weekly learning cron (api/cron-followup.js's runWeeklyLearning())
+     fully overwrites that field every Monday, so anything typed there would
+     be silently destroyed within a week. See config-save's aiInstructions
+     handling in api/leads.js. -->
+<div class="chk-biz-modal-overlay" id="chk-biz-modal-overlay" onclick="if(event.target===this) closeBusinessInfoModal()">
+  <div class="chk-biz-modal">
+    <div class="chk-biz-modal-title">Vertel over je bedrijf</div>
+    <div class="chk-biz-modal-intro">Dit is wat je AI gebruikt om leads te beantwoorden — hoe meer je hier invult, hoe beter je AI jouw klanten écht helpt in plaats van generiek te antwoorden. Een paar zinnen per vraag is al genoeg.</div>
+    <div class="chk-biz-field">
+      <label for="chk-biz-what">Wat doet je bedrijf?</label>
+      <textarea id="chk-biz-what" maxlength="400" placeholder="Bijv. Wij zijn een tandartspraktijk in Gent, gespecialiseerd in implantaten en cosmetische tandheelkunde."></textarea>
+    </div>
+    <div class="chk-biz-field">
+      <label for="chk-biz-goodlead">Wat is een goede lead voor jou?</label>
+      <textarea id="chk-biz-goodlead" maxlength="300" placeholder="Bijv. Iemand die binnen 30 min. wil langskomen, of een concrete klacht/vraag heeft — geen studenten die rondvragen."></textarea>
+    </div>
+    <div class="chk-biz-field">
+      <label for="chk-biz-notdoes">Wat doet je bedrijf NIET?</label>
+      <textarea id="chk-biz-notdoes" maxlength="300" placeholder="Bijv. Wij doen geen spoedgevallen buiten de uren, en geen behandelingen bij kinderen onder 12."></textarea>
+    </div>
+    <div class="chk-biz-field">
+      <label for="chk-biz-never">Openingsuren &amp; dingen die de AI NOOIT mag beloven</label>
+      <textarea id="chk-biz-never" maxlength="300" placeholder="Bijv. Open ma-vr 9-18. Beloof nooit een exacte prijs of dat een behandeling 100% pijnloos is."></textarea>
+      <div class="chk-biz-field-hint">Dit wordt toegevoegd aan je AI Instructies — je bestaande instructies (indien aanwezig) blijven staan, dit komt erbij.</div>
+    </div>
+    <div class="chk-biz-modal-actions">
+      <button class="chk-biz-cancel" onclick="closeBusinessInfoModal()">Annuleren</button>
+      <button class="chk-biz-save" id="chk-biz-save-btn" onclick="saveBusinessInfoFromChecklist()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
@@ -9935,6 +10161,7 @@ async function refreshData(skipFetch = false) {
     detectNewLeads(state.leads);
     loadCreditUsage(); // internally throttled — safe to call every refreshData()
     loadPlanStatus();  // internally throttled — safe to call every refreshData()
+    loadOnboardingChecklist(); // internally throttled — safe to call every refreshData(); needs state.stats, so runs after renderStats() above
     if (state.currentPage === 'exports') updateExportPreview();
 
     // Top leads strip
@@ -10959,6 +11186,261 @@ function renderPlanBanner(d) {
       ctaEl.textContent = 'Upgrade nu';
       ctaEl.href = 'mailto:hello@helvaro.pro?subject=Upgrade%20na%20proefperiode';
     }
+  }
+}
+
+/* ============================================================
+   ONBOARDING CHECKLIST + EMAIL-VERIFICATION BANNER
+   Backed by api/leads.js mode=config-get (emailVerified, aiInstructions,
+   aiName, autoReplyTpl, gcalConnected, checklistDismissed) plus
+   state.stats.total (already loaded by refreshData() — no extra fetch for
+   the lead-count item). Every item's done/not-done is DERIVED from that
+   live data on every render, never a separately stored "completed" flag,
+   so it can never drift out of sync and self-heals if something is later
+   undone. The ONLY persisted checklist state is the dismiss flag itself
+   (config-save mode, checklistDismissed:true -> Airtable checkbox
+   "Onboarding Checklist Dismissed", fldNKMaiCKYpT3hxM). Same throttle
+   pattern as loadPlanStatus() above — safe to call on every refreshData().
+   ============================================================ */
+let _checklistLastFetch = 0;
+const CHECKLIST_MIN_INTERVAL = 4 * 60 * 1000;
+let _checklistConfigCache = null; // last config-get response — reused by the "Vertel over je bedrijf" modal so it can append rather than clobber
+
+async function loadOnboardingChecklist(force) {
+  if (!state.apiKey) return;
+  const now = Date.now();
+  if (!force && now - _checklistLastFetch < CHECKLIST_MIN_INTERVAL) return;
+  _checklistLastFetch = now;
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'config-get' })
+    });
+    if (!r.ok) return; // fail silent — card/banner just stay hidden/stale, never an error toast
+    const d = await r.json();
+    _checklistConfigCache = d;
+    renderVerifyBanner(d);
+    renderOnboardingChecklist(d);
+  } catch (err) {
+    // Network hiccup: leave whatever was already rendered.
+  }
+}
+
+/* ── Email-verification banner ───────────────────────────────────────────
+   Fails open by construction: config-get's emailVerified only reads false
+   when the Airtable record explicitly holds 'pending' (see api/_verify.js).
+   A missing field or a pre-existing client both read as verified, so this
+   banner can never wrongly nag someone who was never part of this flow. */
+function renderVerifyBanner(d) {
+  const banner = document.getElementById('dash-verify-banner');
+  if (!banner) return;
+  const dismissedThisSession = sessionStorage.getItem('hv-verify-banner-dismissed') === '1';
+  if (!d || d.emailVerified !== false || dismissedThisSession) {
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = '';
+}
+// Session-only dismiss (sessionStorage, not Airtable) — deliberately not the
+// same permanence as the checklist's dismiss. An unverified email is a
+// standing account-recovery risk, so it reappears next visit if still
+// unverified rather than being silenced forever by one click.
+function dismissVerifyBanner() {
+  sessionStorage.setItem('hv-verify-banner-dismissed', '1');
+  const banner = document.getElementById('dash-verify-banner');
+  if (banner) banner.style.display = 'none';
+}
+async function resendVerificationFromBanner() {
+  await sendVerificationEmailNow(document.getElementById('dash-verify-banner-resend'));
+}
+async function resendVerificationFromChecklist() {
+  await sendVerificationEmailNow(null);
+}
+async function sendVerificationEmailNow(btn) {
+  const email = state.userEmail || '';
+  if (!email) { toast('Kon je e-mailadres niet vinden. Log opnieuw in.', 'error'); return; }
+  const original = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Versturen...'; }
+  try {
+    const r = await fetch(\`\${API_BASE}/auth\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ mode: 'resend-verification', email })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d && d.ok) {
+      toast(d.message || 'Verificatiemail verstuurd', 'success');
+      if (d.alreadyVerified) loadOnboardingChecklist(true); // refresh so the item/banner clears
+    } else {
+      toast((d && d.error) || 'Versturen mislukt, probeer later opnieuw', 'error');
+    }
+  } catch (err) {
+    toast('Netwerkfout. Probeer later opnieuw', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+/* ── Onboarding checklist card ─────────────────────────────────────────── */
+function getOnboardingChecklistItems(d) {
+  const leadCount = (state.stats && state.stats.total) || 0;
+  return [
+    {
+      key: 'email', accent: 'blue', title: 'E-mailadres bevestigen',
+      done: d.emailVerified === true,
+      todoSub: 'Check je inbox voor de bevestigingsmail.',
+      doneSub: 'Bevestigd',
+      actionLabel: 'Stuur opnieuw',
+    },
+    {
+      key: 'business', accent: 'gold', title: 'Vertel over je bedrijf',
+      done: !!(d.aiInstructions && d.aiInstructions.trim()),
+      todoSub: 'Dit is wat je AI gebruikt om leads te beantwoorden — hoe meer context, hoe beter ze jouw klanten helpt.',
+      doneSub: 'Ingevuld — je AI kent je bedrijf',
+      actionLabel: 'Vertel het',
+    },
+    {
+      key: 'ainame', accent: 'purple', title: 'Geef je AI een naam',
+      done: !!((d.aiName && d.aiName.trim()) && (d.autoReplyTpl && d.autoReplyTpl.trim())),
+      todoSub: 'Kies een naam en een welkomstbericht, zodat leads meteen weten met wie ze praten.',
+      doneSub: 'Ingesteld',
+      actionLabel: 'Instellen',
+    },
+    {
+      key: 'gcal', accent: 'cyan', title: 'Koppel je Google Agenda',
+      done: d.gcalConnected === true,
+      todoSub: 'Dan checkt je AI automatisch je beschikbaarheid en zet boekingen meteen in je agenda.',
+      doneSub: 'Gekoppeld',
+      actionLabel: 'Koppelen',
+    },
+    {
+      key: 'lead', accent: 'emerald', title: 'Ontvang je eerste lead',
+      done: leadCount > 0,
+      todoSub: 'Deel je formulierlink — zodra er een lead binnenkomt, vink je dit vanzelf af.',
+      doneSub: leadCount > 0 ? (\`\${leadCount} lead\${leadCount === 1 ? '' : 's'} binnen\`) : 'Binnen',
+      actionLabel: 'Bekijk formulier',
+    },
+  ];
+}
+
+function chkItemAction(key) {
+  if (key === 'email') resendVerificationFromChecklist();
+  else if (key === 'business') openBusinessInfoModal();
+  else if (key === 'ainame') navigateTo('ai-persona');
+  else if (key === 'gcal') connectGoogleCalendar();
+  else if (key === 'lead') navigateTo('formulier');
+}
+
+function renderOnboardingChecklist(d) {
+  const wrap = document.getElementById('dash-checklist');
+  if (!wrap || !d) return;
+
+  // Airtable omits an unchecked/never-touched checkbox from the record
+  // entirely — blank/missing reads as false === not dismissed, the correct
+  // default for every client. Only an explicit true hides it permanently.
+  if (d.checklistDismissed === true) { wrap.style.display = 'none'; return; }
+
+  const items = getOnboardingChecklistItems(d);
+  const doneCount = items.filter(function(it) { return it.done; }).length;
+
+  // Everything a client can self-serve is done — the card has done its job.
+  if (doneCount === items.length) { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = '';
+  const label = document.getElementById('dash-checklist-progress-label');
+  if (label) label.textContent = \`\${doneCount} van \${items.length} klaar\`;
+  const fill = document.getElementById('dash-checklist-progress-fill');
+  if (fill) fill.style.width = Math.round((doneCount / items.length) * 100) + '%';
+
+  const itemsEl = document.getElementById('dash-checklist-items');
+  if (itemsEl) {
+    itemsEl.innerHTML = items.map(function(it) {
+      return \`<div class="chk-item\${it.done ? ' chk-done' : ''}" data-accent="\${it.accent}">
+        <div class="chk-item-icon">\${it.done ? '✓' : '○'}</div>
+        <div class="chk-item-body">
+          <div class="chk-item-title">\${escHtml(it.title)}</div>
+          <div class="chk-item-sub">\${escHtml(it.done ? it.doneSub : it.todoSub)}</div>
+        </div>
+        \${it.done ? '' : \`<button class="chk-item-action" onclick="chkItemAction('\${it.key}')">\${escHtml(it.actionLabel)}</button>\`}
+      </div>\`;
+    }).join('');
+  }
+
+  const mailtoEl = document.getElementById('chk-whatsapp-mailto');
+  if (mailtoEl && state.clientName) {
+    mailtoEl.href = \`mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hoi%20Sindi%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20\${encodeURIComponent(state.clientName)}\`;
+  }
+}
+
+function dismissChecklist() {
+  const wrap = document.getElementById('dash-checklist');
+  if (wrap) wrap.style.display = 'none';
+  fetch(\`\${API_BASE}/leads\`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+    body:    JSON.stringify({ mode: 'config-save', checklistDismissed: true })
+  }).catch(function() {}); // best-effort — card is already hidden locally either way
+}
+
+/* ── "Vertel over je bedrijf" modal ──────────────────────────────────────
+   Writes to AI Instructions, NEVER to AI Learned Patterns — the weekly
+   learning cron (api/cron-followup.js's runWeeklyLearning()) fully
+   overwrites that field every Monday, so anything typed there would be
+   silently destroyed within a week. Appends to any existing AI Instructions
+   content rather than overwriting it, so a client who already wrote
+   something (manually, or on the AI Persoonlijkheid page) never loses it. */
+function openBusinessInfoModal() {
+  const overlay = document.getElementById('chk-biz-modal-overlay');
+  if (overlay) overlay.classList.add('open');
+}
+function closeBusinessInfoModal() {
+  const overlay = document.getElementById('chk-biz-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+async function saveBusinessInfoFromChecklist() {
+  const what     = document.getElementById('chk-biz-what').value.trim();
+  const goodLead = document.getElementById('chk-biz-goodlead').value.trim();
+  const notDoes  = document.getElementById('chk-biz-notdoes').value.trim();
+  const never    = document.getElementById('chk-biz-never').value.trim();
+  if (!what && !goodLead && !notDoes && !never) {
+    toast('Vul minstens één veld in', 'error');
+    return;
+  }
+  const parts = [];
+  if (what)     parts.push(\`Over het bedrijf:\\n\${what}\`);
+  if (goodLead) parts.push(\`Een goede lead:\\n\${goodLead}\`);
+  if (notDoes)  parts.push(\`Wat we NIET doen:\\n\${notDoes}\`);
+  if (never)    parts.push(\`Openingsuren & wat de AI nooit mag beloven:\\n\${never}\`);
+  const composedBlock = parts.join('\\n\\n');
+
+  const existing = (_checklistConfigCache && _checklistConfigCache.aiInstructions) || '';
+  const combined = (existing.trim()
+    ? \`\${existing.trim()}\\n\\n--- Toegevoegd via de opstart-checklist ---\\n\${composedBlock}\`
+    : composedBlock
+  ).slice(0, 3000); // same cap config-save already enforces server-side
+
+  const btn = document.getElementById('chk-biz-save-btn');
+  const original = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Opslaan...'; }
+  try {
+    const r = await fetch(\`\${API_BASE}/leads\`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body:    JSON.stringify({ mode: 'config-save', aiInstructions: combined })
+    });
+    if (!r.ok) { toast('Opslaan mislukt, probeer opnieuw', 'error'); return; }
+    toast('Opgeslagen — je AI gebruikt dit meteen', 'success');
+    closeBusinessInfoModal();
+    ['chk-biz-what', 'chk-biz-goodlead', 'chk-biz-notdoes', 'chk-biz-never'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    loadOnboardingChecklist(true);
+  } catch (err) {
+    toast('Netwerkfout. Probeer later opnieuw', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
   }
 }
 
