@@ -83,7 +83,34 @@ module.exports = async function handler(req, res) {
   --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition:      all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* No shadow system — depth comes from borders, per design system */
+  /* ---- Motion: physics, not defaults. One easing family everywhere so
+     hovers/entrances feel like the same product. ease-out for anything
+     that should feel decisive (hovers, state, entrances); spring used
+     sparingly for the couple of moments that should feel alive
+     (toast-in). Durations short — this is a tool people use daily. ---- */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:    120ms;
+  --dur-base:    180ms;
+  --dur-enter:   240ms;
+
+  /* ---- Elevation: layered light from one source (a tight, near-opaque
+     contact shadow + a wide, soft ambient one), not a single flat blob.
+     Resting surfaces (cards, rows) stay flat — --elev-0/none, depth
+     comes from borders as before. Elevation is reserved for things that
+     are interactive-raised or literally stacked on top: hovered cards,
+     popovers/menus, toasts, modals. On dark surfaces a shadow alone
+     barely reads, so raised dark elements should also step up to
+     --card-elevated (a lighter surface tone) rather than lean on shadow
+     opacity alone. */
+  --elev-0: none;
+  --elev-1: 0 1px 2px rgba(0,0,0,.32), 0 4px 10px rgba(0,0,0,.22);   /* hovered card / raised control */
+  --elev-2: 0 3px 6px rgba(0,0,0,.36), 0 12px 28px rgba(0,0,0,.30);  /* popover, menu, toast */
+  --elev-3: 0 8px 18px rgba(0,0,0,.42), 0 28px 64px rgba(0,0,0,.38); /* modal, dialog, slide-in panel */
+
+  /* Legacy aliases — kept at "none" so nothing that already renders flat
+     (structural cards, rows) silently grows a shadow; the new elevation
+     tokens above are opted into explicitly on hover/overlay states. */
   --shadow:      none;
   --shadow-card: none;
   --shadow-glow: none;
@@ -155,6 +182,12 @@ module.exports = async function handler(req, res) {
   --shadow:        0 1px 2px rgba(20,17,10,0.04), 0 4px 14px rgba(20,17,10,0.05);
   --shadow-card:   none;
   --shadow-glow:   none;
+
+  /* Same elevation scale, ink-tinted and much lower opacity — white
+     surfaces read depth at a fraction of the alpha dark ones need. */
+  --elev-1: 0 1px 2px rgba(20,17,10,.05), 0 4px 10px rgba(20,17,10,.06);
+  --elev-2: 0 3px 6px rgba(20,17,10,.06), 0 12px 28px rgba(20,17,10,.08);
+  --elev-3: 0 8px 18px rgba(20,17,10,.08), 0 28px 64px rgba(20,17,10,.12);
 }
 
 /* ============================================================
@@ -832,10 +865,13 @@ button.brand-dot { border: none; padding: 0; }
 .btn-login:hover::before { opacity: 1; }
 .btn-login:hover {
   transform: translateY(-1px);
+  box-shadow: var(--elev-1);
 }
 .btn-login:active {
   transform: translateY(0) scale(0.98);
   background: var(--accent-pressed);
+  box-shadow: none;
+  transition-duration: var(--dur-fast);
 }
 .btn-login:active::after {
   width: 200px;
@@ -1459,7 +1495,7 @@ button.brand-dot { border: none; padding: 0; }
 /* Modal */
 .founder-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 20px; display: none; }
 .founder-modal-overlay.open { display: flex; }
-.founder-modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 420px; }
+.founder-modal { background: var(--card-elevated); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 100%; max-width: 420px; box-shadow: var(--elev-3); animation: modal-in 0.2s var(--ease-out); }
 .founder-modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
 .founder-modal-field { margin-bottom: 14px; }
 .founder-modal-field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -1664,7 +1700,7 @@ button.brand-dot { border: none; padding: 0; }
 /* ── Persona picker (Frade / Teljo) ─────────────────────────────────────── */
 #persona-overlay { position: fixed; inset: 0; background: rgba(8,12,20,.92); backdrop-filter: blur(10px); z-index: 1500; display: none; align-items: center; justify-content: center; }
 #persona-overlay.open { display: flex; }
-.persona-modal { width: min(440px, 92vw); background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 24px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.persona-modal { width: min(440px, 92vw); background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 24px; text-align: center; box-shadow: var(--elev-3); }
 .persona-modal h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--text-primary); }
 .persona-modal p { margin: 0 0 22px; font-size: 13px; color: var(--text-muted); }
 .persona-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1827,6 +1863,11 @@ button.brand-dot { border: none; padding: 0; }
 .nav-item:hover {
   background: rgba(255,255,255,0.05);
   color: var(--text-primary);
+}
+
+.nav-item:active {
+  transform: scale(0.98);
+  transition-duration: var(--dur-fast);
 }
 
 .nav-item.active {
@@ -2073,7 +2114,11 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out),
+              color var(--dur-base) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
   white-space: nowrap;
 }
 
@@ -2085,8 +2130,11 @@ button.brand-dot { border: none; padding: 0; }
   transform: translateY(-1px);
 }
 
+/* Press responds instantly (fast duration, no separate delay) — perceived
+   speed matters more here than the animation itself. */
 .btn-icon:active {
   transform: translateY(0) scale(0.97);
+  transition-duration: var(--dur-fast);
 }
 
 .btn-icon:focus-visible {
@@ -2127,7 +2175,7 @@ button.brand-dot { border: none; padding: 0; }
       border: 1px solid var(--border-bright);
       border-radius: var(--radius);
       width: min(660px, 92vw);
-      box-shadow: 0 32px 80px rgba(0,0,0,0.7), var(--shadow-glow);
+      box-shadow: var(--elev-3);
       overflow: hidden;
       position: relative;
       animation: searchModalIn 0.2s cubic-bezier(0.16,1,0.3,1) both;
@@ -2454,10 +2502,29 @@ button.brand-dot { border: none; padding: 0; }
   padding: 22px 20px 18px;
   position: relative;
   overflow: hidden;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out),
+              background var(--dur-base) var(--ease-out);
   cursor: default;
   box-shadow: var(--shadow-card);
 }
+
+/* Stagger the grid in on load — content assembling reads calmer than a
+   pop-in, and stays under the 240ms entrance guideline per card. */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stats-grid .stat-card {
+  animation: cardEnter var(--dur-enter) var(--ease-out) both;
+}
+.stats-grid .stat-card:nth-child(1) { animation-delay: 0ms;   }
+.stats-grid .stat-card:nth-child(2) { animation-delay: 40ms;  }
+.stats-grid .stat-card:nth-child(3) { animation-delay: 80ms;  }
+.stats-grid .stat-card:nth-child(4) { animation-delay: 120ms; }
+.stats-grid .stat-card:nth-child(5) { animation-delay: 160ms; }
+.stats-grid .stat-card:nth-child(6) { animation-delay: 200ms; }
 
 /* Counter animation for stat values */
 @keyframes countUp {
@@ -2466,7 +2533,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .stat-card .stat-value {
-  animation: countUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: countUp 0.5s var(--ease-out) forwards;
   animation-delay: 0.1s;
 }
 
@@ -2498,7 +2565,12 @@ button.brand-dot { border: none; padding: 0; }
   border-color: var(--border-bright);
   background: linear-gradient(160deg, var(--bg-card-hover) 0%, var(--bg-card) 100%);
   transform: translateY(-3px) scale(1.01);
-  box-shadow: none;
+  box-shadow: var(--elev-1);
+}
+
+.stat-card:active {
+  transform: translateY(-1px) scale(1.005);
+  transition-duration: var(--dur-fast);
 }
 
 .stat-card:hover::before {
@@ -3065,14 +3137,16 @@ tr:hover .td-arrow { color: var(--cyan); }
   top: 0;
   height: 100vh;
   width: 480px;
-  background: var(--bg-card);
+  background: var(--card-elevated);
   border-left: 1px solid var(--border);
-  box-shadow: -8px 0 32px rgba(0,0,0,0.5);
+  /* Directional version of --elev-3 — it slides in from the right edge,
+     so the shadow reads leftward instead of the usual centred spread. */
+  box-shadow: -6px 0 16px rgba(0,0,0,.32), -24px 0 56px rgba(0,0,0,.28);
   z-index: 201;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--dur-enter) var(--ease-out);
   overflow: hidden;
 }
 
@@ -3881,7 +3955,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 16px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  box-shadow: var(--elev-3);
   overflow: hidden;
   animation: modal-in 0.2s cubic-bezier(0.4,0,0.2,1);
 }
@@ -4030,17 +4104,17 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 .toast {
-  background: var(--bg-card);
+  background: var(--card-elevated);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px 16px;
   min-width: 280px;
   max-width: 360px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--elev-2);
   pointer-events: all;
   position: relative;
   overflow: hidden;
-  animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: toastIn 0.35s var(--ease-spring) both;
 }
 
 .toast.dismissing { animation: toastOut 0.3s ease forwards; }
@@ -4125,6 +4199,15 @@ tr:hover .td-arrow { color: var(--cyan); }
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 28px;
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out);
+}
+
+.export-card:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-2px);
+  box-shadow: var(--elev-1);
 }
 
 .export-filter-bar {
@@ -4994,7 +5077,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
   padding: 36px 32px;
   text-align: center;
-  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  box-shadow: var(--elev-3);
   animation: onbPop .45s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes onbPop { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -5872,7 +5955,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius); width: min(520px, 96vw); max-height: 90vh;
   display: flex; flex-direction: column; overflow: hidden;
-  box-shadow: 0 28px 70px rgba(0,0,0,0.55);
+  box-shadow: var(--elev-3);
   animation: modalIn 0.18s ease;
 }
 #cal-book-header {
@@ -9218,6 +9301,13 @@ function animateCounter(el, target, suffix = '') {
     el.insertBefore(document.createTextNode('0'), unitSpan);
   } else if (unitSpan) {
     el.firstChild.textContent = '0';
+  }
+  // Respect prefers-reduced-motion: the CSS catch-all already collapses
+  // transition/animation durations, but this counter is a JS rAF loop, so
+  // it needs its own check — jump straight to the final value instead.
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setNum(num);
+    return;
   }
   function step(now) {
     const progress = Math.min((now - start) / duration, 1);
