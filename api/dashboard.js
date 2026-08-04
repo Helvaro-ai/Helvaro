@@ -12,6 +12,15 @@ module.exports = async function handler(req, res) {
   // "</script>" can't break out of the inline <script> block below — same
   // defensive intent as api/form-page.js's escJs() neutralizing </script>.
   const AP_LANGUAGES_JSON = JSON.stringify(_lang.listForPicker()).replace(/</g, '\\u003c');
+
+  // Support contact for the help widget. The WhatsApp route is opt-in: no
+  // personal number is ever hardcoded here, so the button simply doesn't
+  // render unless SUPPORT_WA is configured. Digits only (wa.me format,
+  // e.g. 32XXXXXXXXX) — anything else is dropped rather than rendered as
+  // a broken link.
+  const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || 'hello@helvaro.pro').trim();
+  const SUPPORT_WA    = String(process.env.SUPPORT_WA || '').replace(/[^0-9]/g, '');
+  const SUPPORT_EMAIL_ATTR = SUPPORT_EMAIL.replace(/[<>"'&]/g, '');
   const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
@@ -271,7 +280,10 @@ module.exports = async function handler(req, res) {
   --c-cyan:    #0E7490;  --c-cyan-soft:    rgba(14,116,144,0.10);
   --c-gold:    #8A6714;  --c-gold-soft:    rgba(138,103,20,0.10);
 
-  --grad-gold:    linear-gradient(135deg, #C9A34E, #C2600A);
+  /* Stays inside gold. An earlier version ran to #C2600A (burnt orange),
+     which turned the sidebar pill, the primary button and the help header
+     into three orange blocks — the brand colour is gold, not amber. */
+  --grad-gold:    linear-gradient(135deg, #D9B063, #BB8A2B);
   --grad-ai:      linear-gradient(135deg, #6D28D9, #2557E8);
   --grad-data:    linear-gradient(135deg, #2557E8, #0E7490);
   --grad-success: linear-gradient(135deg, #15803D, #4D7C0F);
@@ -4339,13 +4351,19 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .toast-container {
   position: fixed;
-  bottom: 24px;
+  /* Lifted clear of the help launcher, which now owns the bottom-right
+     corner (24px + 54px button + 12px gap). Toasts stack upward from
+     here, so the two never overlap. */
+  bottom: 90px;
   right: 24px;
   z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: 10px;
   pointer-events: none;
+}
+@media (max-width: 520px) {
+  .toast-container { bottom: 82px; right: 16px; left: 16px; }
 }
 
 .toast {
@@ -6863,6 +6881,248 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: rgba(var(--accent-rgb),0.1);
   color: var(--accent);
   border-color: rgba(var(--accent-rgb),0.2);
+}
+
+/* ============================================================
+   HELP WIDGET (launcher bottom-right + slide-up panel)
+
+   Deliberately NOT an LLM chat. It answers from a fixed set of
+   articles written against features that actually exist in this
+   build, and hands off to a human for anything else. A generative
+   bot here would confidently invent settings that don't exist and
+   turn every wrong answer into a support ticket.
+   ============================================================ */
+.hv-help-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad-gold);
+  color: var(--on-accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,.28), 0 10px 32px rgba(var(--accent-rgb),.28);
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
+}
+.hv-help-launcher:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 16px rgba(0,0,0,.32), 0 14px 40px rgba(var(--accent-rgb),.36);
+}
+.hv-help-launcher:active { transform: translateY(0) scale(.97); }
+.hv-help-launcher:focus-visible {
+  outline: 2px solid var(--accent-c);
+  outline-offset: 3px;
+}
+/* Two stacked icons, cross-faded — the launcher becomes its own close
+   button when the panel is open, which is the pattern people already
+   know from every other messenger. */
+.hv-help-launcher svg {
+  position: absolute;
+  transition: opacity var(--dur-fast) var(--ease-out),
+              transform var(--dur-base) var(--ease-out);
+}
+.hv-help-launcher .hv-help-ico-close { opacity: 0; transform: rotate(-90deg) scale(.6); }
+.hv-help-launcher.is-open .hv-help-ico-chat  { opacity: 0; transform: rotate(90deg) scale(.6); }
+.hv-help-launcher.is-open .hv-help-ico-close { opacity: 1; transform: none; }
+
+/* Unread dot for the first-run nudge. */
+.hv-help-launcher::after {
+  content: '';
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--c-coral);
+  border: 2px solid var(--bg);
+  opacity: 0;
+  transform: scale(.4);
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-spring);
+}
+.hv-help-launcher.has-dot::after { opacity: 1; transform: none; }
+
+.hv-help-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 90px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  height: 560px;
+  max-height: calc(100vh - 130px);
+  z-index: 9001;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--border-c);
+  box-shadow: var(--edge-hi), var(--elev-3);
+  opacity: 0;
+  transform: translateY(12px) scale(.97);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out),
+              transform var(--dur-enter) var(--ease-out);
+}
+.hv-help-panel.is-open {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hv-help-launcher, .hv-help-launcher svg, .hv-help-panel { transition: none; }
+}
+
+.hv-help-head {
+  padding: 18px 18px 14px;
+  background: var(--grad-gold);
+  color: var(--on-accent);
+  flex-shrink: 0;
+}
+.hv-help-head h2 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+.hv-help-head p  { font-size: 12.5px; margin: 0; opacity: .82; }
+
+.hv-help-search { padding: 12px 14px 8px; flex-shrink: 0; }
+.hv-help-search input {
+  width: 100%;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-c);
+  background: var(--bg-alt);
+  border: 1px solid var(--border-c);
+  border-radius: 10px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.hv-help-search input:focus {
+  outline: none;
+  border-color: var(--accent-c);
+}
+.hv-help-search input::placeholder { color: var(--text-muted-c); }
+
+.hv-help-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 14px 14px;
+}
+.hv-help-sec {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--text-muted-c);
+  margin: 12px 4px 6px;
+}
+.hv-help-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-c);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.hv-help-item:hover {
+  background: var(--hover-c);
+  border-color: var(--border-c);
+}
+.hv-help-item:focus-visible { outline: 2px solid var(--accent-c); outline-offset: -1px; }
+.hv-help-item svg { flex-shrink: 0; opacity: .5; margin-left: auto; }
+
+.hv-help-empty {
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted-c);
+}
+
+.hv-help-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 10px;
+  padding: 5px 10px 5px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted-c);
+  background: transparent;
+  border: 1px solid var(--border-c);
+  border-radius: 99px;
+  cursor: pointer;
+}
+.hv-help-back:hover { color: var(--text-c); background: var(--hover-c); }
+
+.hv-help-article h3 { font-size: 15px; font-weight: 700; margin: 0 0 10px; color: var(--text-c); }
+.hv-help-article p  { font-size: 13px; line-height: 1.62; color: var(--text-muted-c); margin: 0 0 10px; }
+.hv-help-article ol,
+.hv-help-article ul { margin: 0 0 12px 18px; }
+.hv-help-article li { font-size: 13px; line-height: 1.62; color: var(--text-muted-c); margin-bottom: 6px; }
+.hv-help-article strong { color: var(--text-c); font-weight: 600; }
+.hv-help-article code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-c);
+  color: var(--accent-ink);
+}
+
+.hv-help-foot {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--divider);
+  background: var(--bg-alt);
+}
+.hv-help-foot a {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text-c);
+  background: var(--card);
+  border: 1px solid var(--border-c);
+  border-radius: 10px;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.hv-help-foot a:hover { border-color: var(--accent-c); color: var(--accent-ink); }
+
+/* On phones the panel takes the whole screen — a 380px card floating on a
+   375px viewport is the classic broken-messenger look. */
+@media (max-width: 520px) {
+  .hv-help-panel {
+    right: 0; bottom: 0; left: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 88vh;
+    max-height: 88vh;
+    border-radius: 18px 18px 0 0;
+    transform-origin: bottom center;
+  }
+  .hv-help-launcher { right: 16px; bottom: 16px; }
 }
 </style>
     <script src="/vendor/jspdf.umd.min.js"></script>
@@ -9619,6 +9879,52 @@ tr:hover .td-arrow { color: var(--cyan); }
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
+<!-- ============================================================
+     HELP WIDGET. Rendered for logged-in users only (shown by
+     startDashboard, hidden on the login screen) — see initHelpWidget().
+     ============================================================ -->
+<button class="hv-help-launcher" id="hv-help-launcher" type="button"
+        aria-label="Hulp en ondersteuning" aria-expanded="false"
+        aria-controls="hv-help-panel" style="display:none">
+  <svg class="hv-help-ico-chat" width="23" height="23" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-4-.9L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/>
+  </svg>
+  <svg class="hv-help-ico-close" width="21" height="21" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+    <path d="M18 6 6 18M6 6l12 12"/>
+  </svg>
+</button>
+
+<div class="hv-help-panel" id="hv-help-panel" role="dialog"
+     aria-labelledby="hv-help-title" aria-hidden="true">
+  <div class="hv-help-head">
+    <h2 id="hv-help-title">Hoe kunnen we helpen?</h2>
+    <p>Zoek een antwoord, of stuur ons een bericht.</p>
+  </div>
+  <div class="hv-help-search">
+    <input id="hv-help-q" type="search" autocomplete="off" spellcheck="false"
+           placeholder="Zoek in de hulp..." aria-label="Zoek in de hulp">
+  </div>
+  <div class="hv-help-body" id="hv-help-body"></div>
+  <div class="hv-help-foot">
+    <a id="hv-help-mail" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Vraag%20over%20Helvaro">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>
+      </svg>
+      Mail ons
+    </a>${SUPPORT_WA ? `
+    <a id="hv-help-wa" href="https://wa.me/${SUPPORT_WA}" target="_blank" rel="noopener noreferrer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-4-.9L3 21l1.9-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/>
+      </svg>
+      WhatsApp
+    </a>` : ''}
+  </div>
+</div>
+
 <script>
 /* ============================================================
    LANGUAGE REGISTRY (server-injected — see api/_lang.js, single source of
@@ -9911,6 +10217,7 @@ function performLogout() {
   // Wis ALLE state. Vorige versie liet onboarding-flags en pagina-caches
   // staan, waardoor de volgende user (op zelfde computer) soms in een
   // half-vorige-sessie staat kon belanden.
+  hideHelpWidget();
   clearSession();
   state.leads = [];
   state.stats = null;
@@ -10041,6 +10348,7 @@ function handleAuthExpired() {
     const loginEl = document.getElementById('login-page');
     if (dashEl) dashEl.classList.remove('visible');
     if (loginEl) loginEl.style.display = 'flex';
+    hideHelpWidget();
     const emailEl = document.getElementById('login-email');
     if (emailEl) emailEl.focus();
     _authExpiredHandled = false;
@@ -14004,6 +14312,7 @@ async function startDashboard(skipRefresh = false) {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
+  initHelpWidget();
 
   // Admin reveal. Sidebar's 'Klanten' (and Founder) tabs only show when the
   // user logged in with the ADMIN_KEY. We detect this from the session payload:
@@ -17458,6 +17767,295 @@ async function getFounderAdvice() {
 // Close modals on overlay click
 document.getElementById('pipe-modal-overlay').addEventListener('click', function(e) { if (e.target === this) closePipeModal(); });
 document.getElementById('goal-modal-overlay').addEventListener('click', function(e) { if (e.target === this) closeGoalModal(); });
+
+/* ============================================================
+   HELP WIDGET
+
+   A fixed set of articles, not a generative bot. Every article below
+   describes something that exists in THIS build and was checked against
+   the code before being written (notably: lead-erasure is admin-only in
+   api/leads.js, so the privacy article says "vraag het aan" rather than
+   promising a button the client doesn't have). An LLM answering these
+   questions instead would invent plausible settings that don't exist,
+   and each wrong answer becomes a support ticket for a one-person team.
+
+   Bodies are author-written static HTML. Nothing user-supplied is ever
+   interpolated into them, and the search query is never echoed back into
+   the DOM as markup — the empty state uses textContent.
+   ============================================================ */
+var HELP_ARTICLES = [
+  { id: 'werking', sec: 'Aan de slag', title: 'Hoe Helvaro werkt',
+    tags: 'start uitleg overzicht basis werking hoe',
+    body:
+      // Curly apostrophe on purpose: this whole file is a template literal,
+      // so a backslash-escaped \\' would collapse to a bare ' in the emitted
+      // script and break the string it lives in.
+      '<p>Helvaro vangt je binnenkomende leads op en praat er meteen mee, ook ’s avonds en in het weekend. Je krijgt geen ruwe lijst met namen, maar gesprekken die al gevoerd zijn.</p>' +
+      '<ol>' +
+      '<li>Een lead vult je formulier in of stuurt je een WhatsApp-bericht.</li>' +
+      '<li>De AI stelt meteen de vragen die jij belangrijk vindt en beantwoordt die van de lead.</li>' +
+      '<li>Op basis van die antwoorden krijgt de lead een score en een status: gekwalificeerd of niet.</li>' +
+      '<li>Is de lead interessant, dan stuurt de AI je boekingslink en komt de afspraak in je agenda.</li>' +
+      '</ol>' +
+      '<p>Jij ziet het resultaat terug op <strong>Dashboard</strong> en <strong>Pipeline</strong>. Het volledige gesprek staat onder <strong>Gesprekken</strong>.</p>' },
+
+  { id: 'eerste-lead', sec: 'Aan de slag', title: 'Je eerste lead binnenhalen',
+    tags: 'eerste lead testen proberen starten formulier link',
+    body:
+      '<p>De snelste manier om Helvaro te testen is je eigen leadformulier invullen.</p>' +
+      '<ol>' +
+      '<li>Ga naar <strong>Dashboard</strong>. Bovenaan staat het blok <em>Jouw lead-formulier</em> met je persoonlijke link.</li>' +
+      '<li>Klik op <strong>Open</strong> en vul het formulier in met je eigen gegevens.</li>' +
+      '<li>Je krijgt binnen enkele seconden het eerste bericht van je AI.</li>' +
+      '</ol>' +
+      '<p>De lead verschijnt daarna gewoon in je overzicht, precies zoals een echte klant dat zou doen. Je kunt hem achteraf laten verwijderen.</p>' },
+
+  { id: 'formulier-site', sec: 'Aan de slag', title: 'Het formulier op je website zetten',
+    tags: 'formulier website insluiten embed code script knop link site',
+    body:
+      '<p>Er zijn twee manieren, en je hoeft geen ontwikkelaar te zijn voor de eerste.</p>' +
+      '<p><strong>1. Gewoon linken.</strong> Kopieer je formulierlink op het dashboard en zet die achter een knop op je site, in je Google-profiel, in je Instagram-bio of onder je e-mailhandtekening. Dit werkt altijd en overal.</p>' +
+      '<p><strong>2. Insluiten op je site.</strong> Onder <strong>Formulier</strong> vind je een stukje code dat je in je website plakt. Het formulier verschijnt dan als een blok op je eigen pagina, in je eigen huisstijl.</p>' +
+      '<p>Weet je niet waar dat moet in je website? Stuur ons de link van je site, dan kijken we mee.</p>' },
+
+  { id: 'ai-instellen', sec: 'Je AI instellen', title: 'De AI aanpassen aan je bedrijf',
+    tags: 'ai personality persoonlijkheid naam toon instructies welkomstbericht aanpassen taal',
+    body:
+      '<p>Alles daarvoor staat op de pagina <strong>AI Persoonlijkheid</strong>.</p>' +
+      '<ul>' +
+      '<li><strong>Naam</strong>: hoe je AI zich voorstelt aan je leads.</li>' +
+      '<li><strong>Welkomstbericht</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
+      '<li><strong>Instructies</strong>: het belangrijkste veld. Hier zet je wat je bedrijf doet, wat voor jou een goede lead is, en wat de AI juist niet mag beloven. Hoe concreter, hoe beter de gesprekken.</li>' +
+      '<li><strong>Website en adres</strong>: de AI gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
+      '</ul>' +
+      '<p>Wijzigingen gelden meteen voor het volgende gesprek. Lopende gesprekken blijven op de oude instellingen doorlopen.</p>' },
+
+  { id: 'whatsapp', sec: 'Je AI instellen', title: 'Je WhatsApp-nummer koppelen',
+    tags: 'whatsapp nummer koppelen meta telefoon aansluiten',
+    body:
+      '<p>Dit stel je niet zelf in, en dat is geen beperking van Helvaro. Meta moet elk zakelijk WhatsApp-nummer eerst goedkeuren, en dat traject regelen wij voor je.</p>' +
+      '<p>Het duurt meestal een paar dagen. Je hoeft ondertussen niets te doen, we nemen contact op zodra het kan.</p>' +
+      '<p>Ben je er al klaar voor? Laat het weten via de knop op je dashboard of mail ons, dan pakken we het sneller op.</p>' +
+      '<p>Tot dan werkt je leadformulier gewoon: leads komen binnen en de AI praat met ze via het formulier.</p>' },
+
+  { id: 'agenda', sec: 'Je AI instellen', title: 'Google Agenda koppelen',
+    tags: 'agenda kalender google afspraak boeken beschikbaarheid koppelen',
+    body:
+      '<p>Koppel je agenda en de AI kan echt boeken in plaats van alleen een link te sturen.</p>' +
+      '<ol>' +
+      '<li>Ga naar <strong>Dashboard</strong> en klik op <strong>Koppelen</strong> bij Google Agenda. Je kunt het ook via <strong>Instellingen</strong> doen.</li>' +
+      '<li>Log in bij Google en geef toestemming.</li>' +
+      '<li>Klaar. De AI controleert vanaf nu je vrije momenten voordat hij iets voorstelt.</li>' +
+      '</ol>' +
+      '<p>Zonder koppeling blijft alles werken, maar dan stuurt de AI een boekingslink en moet de lead zelf een moment kiezen.</p>' },
+
+  { id: 'overnemen', sec: 'Dagelijks gebruik', title: 'Een gesprek zelf overnemen',
+    tags: 'overnemen takeover mens zelf antwoorden pauzeren ai stoppen chatten',
+    body:
+      '<p>Soms wil je er zelf in. Dat kan op elk moment.</p>' +
+      '<ol>' +
+      '<li>Open de lead vanuit <strong>Gesprekken</strong> of <strong>Pipeline</strong>.</li>' +
+      '<li>Bovenaan het gesprek staat een balk met de status: <strong>AI actief</strong> of <strong>Mens aan het roer</strong>.</li>' +
+      '<li>Zet hem op <em>Mens aan het roer</em> en de AI stopt onmiddellijk met antwoorden in dat gesprek.</li>' +
+      '</ol>' +
+      '<p>Je typt daarna zelf. Zet je de schakelaar terug, dan pikt de AI het gesprek weer op met alles wat er ondertussen gezegd is.</p>' },
+
+  { id: 'pipeline', sec: 'Dagelijks gebruik', title: 'Werken met de pipeline',
+    tags: 'pipeline fase kolom slepen status opvolging kanban',
+    body:
+      '<p>De <strong>Pipeline</strong> toont je leads als kaarten in kolommen, van eerste contact tot gewonnen of verloren.</p>' +
+      '<p>Sleep een kaart naar een andere kolom om de fase bij te werken. Dat is puur voor jou: de lead merkt er niets van en de AI verandert er zijn gedrag niet door.</p>' +
+      '<p>Klik op een kaart voor het volledige gesprek, de score, en waarom de AI deze lead wel of niet gekwalificeerd heeft.</p>' },
+
+  { id: 'export', sec: 'Dagelijks gebruik', title: 'Leads exporteren',
+    tags: 'export exporteren csv excel downloaden bestand rapport',
+    body:
+      '<p>Rechtsboven op het dashboard staat <strong>CSV Export</strong>. Dat downloadt al je leads als bestand dat je in Excel, Numbers of Google Sheets opent.</p>' +
+      '<p>Je krijgt naam, telefoon, status, bron, score, urgentie, verwachte waarde, datum en de samenvatting van het gesprek.</p>' +
+      '<p>Onder <strong>Exports</strong> vind je daarnaast rapporten per periode.</p>' },
+
+  { id: 'credits', sec: 'Account', title: 'Wat zijn AI-credits?',
+    tags: 'credits verbruik limiet kosten opraken tegoed bundel',
+    body:
+      '<p>Elk AI-bericht dat namens jou verstuurd wordt, kost een credit. Linksonder in de zijbalk zie je hoeveel je er deze maand gebruikt hebt.</p>' +
+      '<p>Zit je tegen je limiet aan, dan waarschuwen we je ruim op tijd. We zetten je AI nooit zomaar stil zonder iets te zeggen.</p>' +
+      '<p>Zie je die balk niet staan? Dan geldt er voor jouw account geen maandlimiet en hoef je hier niet naar te kijken.</p>' +
+      '<p>Meer nodig? Mail ons, dan verhogen we het.</p>' },
+
+  { id: 'proef', sec: 'Account', title: 'Proefperiode en abonnement',
+    tags: 'proefperiode trial abonnement betalen opzeggen factuur prijs 14 dagen',
+    body:
+      '<p>Je start met een proefperiode van 14 dagen met alle functies. Je hoeft daarvoor geen kaartgegevens achter te laten.</p>' +
+      '<p>Loopt de proef af, dan blijft je account en alles wat erin staat gewoon bestaan. De AI stopt alleen met nieuwe gesprekken tot je overstapt.</p>' +
+      '<p>Wil je verlengen, overstappen of stoppen? Eén mailtje volstaat, er zit geen opzegtermijn aan vast.</p>' },
+
+  { id: 'privacy', sec: 'Account', title: 'Privacy, AVG en leads verwijderen',
+    tags: 'privacy avg gdpr verwijderen wissen gegevens data bewaren recht vergeten',
+    body:
+      '<p>Je leads zijn van jou. Wij gebruiken ze niet voor iets anders en verkopen ze niet door.</p>' +
+      '<p>Vraagt een lead om verwijdering, of wil je zelf iets weg? Stuur ons het verzoek via de knop hieronder. Verwijderen gebeurt bij ons handmatig en niet met een knop in je dashboard, juist omdat het onomkeerbaar is en we willen dat er iemand naar kijkt.</p>' +
+      '<p>Je kunt kiezen tussen <strong>anonimiseren</strong> (naam, nummer en gesprek worden gewist, je statistieken blijven kloppen) en <strong>volledig verwijderen</strong> (de lead verdwijnt helemaal).</p>' +
+      '<p>Je AI vertelt eerlijk dat hij een AI is als een lead daarnaar vraagt. Dat is verplicht en staat vast.</p>' }
+];
+
+var _helpOpen = false;
+var _helpInited = false;
+
+function _helpPlain(html) {
+  var d = document.createElement('div');
+  d.innerHTML = html;
+  return (d.textContent || '').toLowerCase();
+}
+
+function renderHelpList(query) {
+  var body = document.getElementById('hv-help-body');
+  if (!body) return;
+  var q = String(query || '').trim().toLowerCase();
+  var hits = HELP_ARTICLES.filter(function (a) {
+    if (!q) return true;
+    return (a.title + ' ' + a.tags + ' ' + _helpPlain(a.body)).toLowerCase().indexOf(q) > -1;
+  });
+
+  body.innerHTML = '';
+
+  if (!hits.length) {
+    var empty = document.createElement('div');
+    empty.className = 'hv-help-empty';
+    // textContent, not innerHTML — the query is user input and must never
+    // be parsed as markup, even inside our own panel.
+    empty.textContent = 'Niets gevonden. Stuur ons gerust een bericht, we antwoorden meestal dezelfde dag.';
+    body.appendChild(empty);
+    return;
+  }
+
+  var lastSec = '';
+  hits.forEach(function (a) {
+    if (a.sec !== lastSec) {
+      lastSec = a.sec;
+      var h = document.createElement('div');
+      h.className = 'hv-help-sec';
+      h.textContent = a.sec;
+      body.appendChild(h);
+    }
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'hv-help-item';
+    var label = document.createElement('span');
+    label.textContent = a.title;
+    btn.appendChild(label);
+    btn.insertAdjacentHTML('beforeend',
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>');
+    btn.addEventListener('click', function () { renderHelpArticle(a.id); });
+    body.appendChild(btn);
+  });
+}
+
+function renderHelpArticle(id) {
+  var a = HELP_ARTICLES.filter(function (x) { return x.id === id; })[0];
+  if (!a) return renderHelpList('');
+  var body = document.getElementById('hv-help-body');
+  if (!body) return;
+
+  body.innerHTML = '';
+  var back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'hv-help-back';
+  back.insertAdjacentHTML('afterbegin',
+    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>');
+  back.appendChild(document.createTextNode('Alle onderwerpen'));
+  back.addEventListener('click', function () {
+    var qEl = document.getElementById('hv-help-q');
+    renderHelpList(qEl ? qEl.value : '');
+  });
+  body.appendChild(back);
+
+  var art = document.createElement('div');
+  art.className = 'hv-help-article';
+  // Static, author-written HTML from HELP_ARTICLES above. No user input
+  // reaches this string.
+  art.innerHTML = '<h3></h3>' + a.body;
+  art.querySelector('h3').textContent = a.title;
+  body.appendChild(art);
+  body.scrollTop = 0;
+}
+
+function openHelp() {
+  var panel = document.getElementById('hv-help-panel');
+  var btn   = document.getElementById('hv-help-launcher');
+  if (!panel || !btn) return;
+  _helpOpen = true;
+  panel.classList.add('is-open');
+  panel.setAttribute('aria-hidden', 'false');
+  btn.classList.add('is-open');
+  btn.classList.remove('has-dot');
+  btn.setAttribute('aria-expanded', 'true');
+  try { localStorage.setItem('hv-help-seen', '1'); } catch (e) {}
+  var q = document.getElementById('hv-help-q');
+  if (q) { q.value = ''; }
+  renderHelpList('');
+  // Only pull focus on pointer-capable screens; on mobile this would fling
+  // the keyboard open before the user has read anything.
+  if (q && window.matchMedia('(min-width: 521px)').matches) setTimeout(function () { q.focus(); }, 80);
+}
+
+function closeHelp() {
+  var panel = document.getElementById('hv-help-panel');
+  var btn   = document.getElementById('hv-help-launcher');
+  if (!panel || !btn) return;
+  _helpOpen = false;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
+  btn.classList.remove('is-open');
+  btn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleHelp() { if (_helpOpen) closeHelp(); else openHelp(); }
+
+function initHelpWidget() {
+  var btn = document.getElementById('hv-help-launcher');
+  if (!btn) return;
+  btn.style.display = 'flex';
+
+  if (_helpInited) return;
+  _helpInited = true;
+
+  var seen = false;
+  try { seen = localStorage.getItem('hv-help-seen') === '1'; } catch (e) {}
+  if (!seen) btn.classList.add('has-dot');
+
+  btn.addEventListener('click', toggleHelp);
+
+  var q = document.getElementById('hv-help-q');
+  if (q) q.addEventListener('input', function () { renderHelpList(q.value); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && _helpOpen) { closeHelp(); btn.focus(); }
+  });
+
+  // Click-away. Registered in the CAPTURE phase on purpose: opening an
+  // article replaces the panel's contents synchronously inside the item's
+  // own click handler, so by the time a bubble-phase listener ran, the
+  // clicked button was already detached and panel.contains(e.target) came
+  // back false — every article click closed the panel. Capture runs before
+  // the target handler, while the node is still in the tree.
+  // The launcher is excluded because it has its own toggle handler and
+  // would otherwise close-then-immediately-reopen.
+  document.addEventListener('click', function (e) {
+    if (!_helpOpen) return;
+    var panel = document.getElementById('hv-help-panel');
+    if (!panel) return;
+    if (panel.contains(e.target) || btn.contains(e.target)) return;
+    closeHelp();
+  }, true);
+
+  renderHelpList('');
+}
+
+function hideHelpWidget() {
+  var btn = document.getElementById('hv-help-launcher');
+  closeHelp();
+  if (btn) btn.style.display = 'none';
+}
 
 /* ============================================================
    INIT
