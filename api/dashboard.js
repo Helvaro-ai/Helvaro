@@ -43,40 +43,58 @@ module.exports = async function handler(req, res) {
    CSS CUSTOM PROPERTIES
    ============================================================ */
 :root {
-  /* ---- Sand / Enterprise Dark — canonical semantic tokens ---- */
-  --bg:            #121212;
-  --bg-alt:        #1A1A1A;
-  --card:          #232323;
-  --card-elevated: #2B2B2B;
-  --border-c:      #333333;
-  --divider:       #2A2A2A;
-  --hover-c:       #1E1E1E;
+  /* ---- Enterprise Dark — canonical semantic tokens -------------------
+     Every neutral carries a slight COOL cast (blue channel always highest).
+     The previous palette was #121212 / #232323 / #333333 — R=G=B on every
+     surface, i.e. pure hueless grey, which is what "default dark mode"
+     looks like and why the app read as cheap. A consistent cool ink makes
+     the warm gold accent land as an accent instead of as one more shade
+     of the same sand. The sidebar was already tinted (27,29,34) while
+     nothing else was, which is why it felt bolted on rather than part of
+     the same surface family; everything now shares that cast. ---- */
+  --bg:            #0B0F16;
+  --bg-alt:        #111722;
+  --card:          #161D28;
+  --card-elevated: #1E2735;
+  --border-c:      #2A3444;
+  --divider:       #202836;
+  --hover-c:       #1B2331;
 
-  --accent-c:        #E8D7B1;
-  --accent-hover-c:  #DDCAA1;
-  --accent-pressed-c:#D3BE90;
-  --on-accent:     #121212;
+  /* Gold, not cream. #E8D7B1 was a pale tan that read washed-out and
+     didn't match the #C9A34E the light theme used — one product, two
+     different brand colours. Both themes now sit on the same gold, tuned
+     per background for legibility. */
+  --accent-c:        #E7B75A;
+  --accent-hover-c:  #F2C670;
+  --accent-pressed-c:#D2A449;
+  --on-accent:     #0B0F16;
+  /* Accent tuned for TEXT/links. The fill accent is chosen to look right
+     as a button background; used as type it needs its own value. */
+  --accent-ink:    #E7B75A;
 
-  --text-c:        #F9F9F9;
-  --text-muted-c:  #999999;
-  --text-disabled: #666666;
-  --text-inverse:  #121212;
+  /* Pure #F9F9F9 on a dark surface is harsh — it glares and makes long
+     reading sessions tiring. Pulled back and cooled to sit in the same
+     family as the surfaces. */
+  --text-c:        #E9EEF6;
+  --text-muted-c:  #8D99AC;
+  --text-disabled: #5A6678;
+  --text-inverse:  #0B0F16;
 
-  --success-c: #22C55E;
-  --warning-c: #E8871E; /* deliberately shifted from the briefed #D4A017 — see DESIGN-SYSTEM.md */
-  --error-c:   #DC2626;
+  --success-c: #34D399;
+  --warning-c: #F5A524;
+  --error-c:   #F87171;
   --info-c:    #60A5FA;
 
-  --bubble-incoming: #1F1F1F;
+  --bubble-incoming: #1A2130;
 
   /* RGB triplets so rgba(var(--x-rgb), alpha) works for translucent tints/glows */
-  --accent-rgb:  232,215,177;
-  --success-rgb: 34,197,94;
-  --warning-rgb: 232,135,30;
-  --error-rgb:   220,38,38;
+  --accent-rgb:  231,183,90;
+  --success-rgb: 52,211,153;
+  --warning-rgb: 245,165,36;
+  --error-rgb:   248,113,113;
   --info-rgb:    96,165,250;
-  --text-rgb:    249,249,249;
-  --on-accent-rgb: 18,18,18;
+  --text-rgb:    233,238,246;
+  --on-accent-rgb: 11,15,22;
 
   --radius-btn:  14px;
   --radius-card: 18px;
@@ -113,9 +131,16 @@ module.exports = async function handler(req, res) {
      only grew one on hover. Cards now sit ON the page instead of being
      painted into it. Kept deliberately small — this is a resting state,
      not a hover. */
-  --shadow:      0 1px 2px rgba(0,0,0,0.30), 0 8px 24px rgba(0,0,0,0.22);
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.24), 0 4px 16px rgba(0,0,0,0.18);
+  --shadow:      0 1px 2px rgba(0,0,0,0.40), 0 8px 24px rgba(0,0,0,0.30);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.32), 0 4px 16px rgba(0,0,0,0.24);
   --shadow-glow: none;
+
+  /* The specular top edge. On dark surfaces a drop shadow does almost
+     nothing (dark on dark), so what actually makes a card read as a
+     physical raised plane is a 1px highlight where light would catch its
+     top lip. This is the single biggest reason premium dark UIs look
+     "solid" and flat ones look painted-on. */
+  --edge-hi:     inset 0 1px 0 rgba(255,255,255,0.05);
 
   /* ---- Liquid glass -------------------------------------------------
      Glass belongs ONLY on layers that float above content: sidebar,
@@ -124,34 +149,36 @@ module.exports = async function handler(req, res) {
      look cheap and unreadable. --glass-edge is the specular highlight
      along the top edge that makes the material read as a physical pane
      catching light, rather than as a flat translucent rectangle. */
-  --glass-fill:  rgba(27,29,34,0.72);
+  --glass-fill:  rgba(17,23,34,0.72);
   --glass-edge:  rgba(255,255,255,0.10);
   --glass-blur:  saturate(160%) blur(20px);
 
   /* ---- Semantic accent palette --------------------------------------
      Each metric gets a colour that MEANS something, so the eye can sort
      the dashboard without reading every label. Gold stays reserved for
-     brand + money. These are identical in both themes; the -soft and
-     -ring variants are the tinted fill and halo used behind icons, so a
-     card can carry its colour without becoming a block of it.
-     Deliberately NOT applied to text — coloured body copy fails
-     contrast and reads as decoration. Icons, sparklines, borders,
-     badges and chart series only. */
-  --c-emerald: #22C55E;  --c-emerald-soft: rgba(34,197,94,0.12);
-  --c-blue:    #4F7CFF;  --c-blue-soft:    rgba(79,124,255,0.12);
-  --c-purple:  #8B5CF6;  --c-purple-soft:  rgba(139,92,246,0.12);
-  --c-orange:  #F59E0B;  --c-orange-soft:  rgba(245,158,11,0.12);
-  --c-coral:   #EF4444;  --c-coral-soft:   rgba(239,68,68,0.12);
-  --c-cyan:    #06B6D4;  --c-cyan-soft:    rgba(6,182,212,0.12);
-  --c-gold:    #C9A34E;  --c-gold-soft:    rgba(201,163,78,0.14);
+     brand + money. The -soft variants are the tinted fill behind icons,
+     so a card can carry its colour without becoming a block of it.
+     These are the DARK values — deliberately luminous, because a mid-tone
+     hue disappears against a near-black page. The light theme overrides
+     every one of them further down: the same hues at dark-theme
+     luminance are far too hot on white and turn a business dashboard
+     into a toy. Applied to icons, sparklines, borders, badges and chart
+     series — not to body copy. */
+  --c-emerald: #34D399;  --c-emerald-soft: rgba(52,211,153,0.14);
+  --c-blue:    #6E92FF;  --c-blue-soft:    rgba(110,146,255,0.14);
+  --c-purple:  #A78BFA;  --c-purple-soft:  rgba(167,139,250,0.14);
+  --c-orange:  #F5A524;  --c-orange-soft:  rgba(245,165,36,0.14);
+  --c-coral:   #F87171;  --c-coral-soft:   rgba(248,113,113,0.14);
+  --c-cyan:    #22D3EE;  --c-cyan-soft:    rgba(34,211,238,0.14);
+  --c-gold:    #E7B75A;  --c-gold-soft:    rgba(231,183,90,0.15);
 
   /* Gradients for the few surfaces that earn one — hero numbers, the
      revenue ring, primary actions. Used sparingly on purpose: a
      gradient on every card cancels itself out. */
-  --grad-gold:    linear-gradient(135deg, #C9A34E, #F59E0B);
-  --grad-ai:      linear-gradient(135deg, #8B5CF6, #4F7CFF);
-  --grad-data:    linear-gradient(135deg, #4F7CFF, #06B6D4);
-  --grad-success: linear-gradient(135deg, #22C55E, #84CC16);
+  --grad-gold:    linear-gradient(135deg, #E7B75A, #F5A524);
+  --grad-ai:      linear-gradient(135deg, #A78BFA, #6E92FF);
+  --grad-data:    linear-gradient(135deg, #6E92FF, #22D3EE);
+  --grad-success: linear-gradient(135deg, #34D399, #A3E635);
 
   /* ---- legacy token names (kept so every existing var(--x) in this
      15k-line file resolves without a line-by-line rewrite) ---- */
@@ -188,28 +215,70 @@ module.exports = async function handler(req, res) {
      neutrals are now cool so gold reads as an ACCENT against them rather
      than as another shade of the background. A warm page under warm
      cards is why everything looked like one flat sheet of sand. */
-  --bg:            #F7F8FC;
+  --bg:            #F4F6FB;
   --bg-alt:        #FFFFFF;
   --card:          #FFFFFF;
   --card-elevated: #FFFFFF;
-  --border-c:      #E6EAF2;
+  --border-c:      #E2E7F0;
   --divider:       #EDF0F7;
-  --hover-c:       #F1F4FA;
+  --hover-c:       #EEF2F9;
 
   --accent-c:        #C9A34E;
   --accent-hover-c:  #B89344;
   --accent-pressed-c:#A6823A;
-  --on-accent:     #2D2A26;
+  --on-accent:     #1B222D;
+  /* Gold as TYPE on white fails contrast badly — #C9A34E against #FFFFFF
+     is about 2.2:1, well under the 4.5 needed for body text. The fill
+     accent above is still the button background (dark text on gold reads
+     fine); this darker gold is what links, active nav labels and any
+     accent-coloured copy use. Without the split, every gold label in the
+     light theme was effectively unreadable. */
+  --accent-ink:    #8A6714;
 
-  --text-c:        #2D2A26;
-  --text-muted-c:  #6B7280;
-  --text-disabled: #A6ADBB;
+  /* Text was #2D2A26, a warm brown, sitting on cool grey surfaces —
+     the one leftover from the all-beige era. Cool ink to match. */
+  --text-c:        #1B222D;
+  --text-muted-c:  #5B6779;
+  --text-disabled: #9BA5B4;
   --text-inverse:  #FFFFFF;
+
+  --success-c: #15803D;
+  --warning-c: #B45309;
+  --error-c:   #B91C1C;
+  --info-c:    #1D4ED8;
 
   --bubble-incoming: #EEF1F7;
 
   --accent-rgb:  201,163,78;
-  --text-rgb:    45,42,38;
+  --success-rgb: 21,128,61;
+  --warning-rgb: 180,83,9;
+  --error-rgb:   185,28,28;
+  --info-rgb:    29,78,216;
+  --text-rgb:    27,34,45;
+  --on-accent-rgb: 27,34,45;
+
+  /* Light-theme semantic palette. The dark values are chosen to glow on
+     near-black; the same hues on white are garish and low-contrast at
+     small sizes (a #34D399 icon on #FFFFFF is ~1.9:1 — visible as a
+     shape, illegible as a symbol). These are the same colours pushed
+     down in luminance so they stay readable on white while keeping the
+     card-personality mapping intact. */
+  --c-emerald: #15803D;  --c-emerald-soft: rgba(21,128,61,0.10);
+  --c-blue:    #2557E8;  --c-blue-soft:    rgba(37,87,232,0.10);
+  --c-purple:  #6D28D9;  --c-purple-soft:  rgba(109,40,217,0.10);
+  --c-orange:  #C2600A;  --c-orange-soft:  rgba(194,96,10,0.10);
+  --c-coral:   #C81E1E;  --c-coral-soft:   rgba(200,30,30,0.10);
+  --c-cyan:    #0E7490;  --c-cyan-soft:    rgba(14,116,144,0.10);
+  --c-gold:    #8A6714;  --c-gold-soft:    rgba(138,103,20,0.10);
+
+  --grad-gold:    linear-gradient(135deg, #C9A34E, #C2600A);
+  --grad-ai:      linear-gradient(135deg, #6D28D9, #2557E8);
+  --grad-data:    linear-gradient(135deg, #2557E8, #0E7490);
+  --grad-success: linear-gradient(135deg, #15803D, #4D7C0F);
+
+  /* No specular lip in light mode — a white highlight on a white card is
+     invisible, and faking one with a dark line reads as a seam. */
+  --edge-hi:       none;
 
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
@@ -255,15 +324,21 @@ html { font-size: 15px; }
 
 body {
   font-family: 'Inter', sans-serif;
-  /* Two very wide, very low-opacity warm pools instead of one flat fill.
-     Glass has nothing to refract over a single solid colour — it just
-     looks like a lighter rectangle. These give the blurred layers
-     something to pick up, and stop large empty regions reading as dead
-     space. Fixed attachment so the field stays put while content scrolls
-     over it, which is what sells the layers as separate planes. */
+  /* Very wide, very low-opacity pools instead of one flat fill. Glass has
+     nothing to refract over a single solid colour — it just looks like a
+     lighter rectangle. These give the blurred layers something to pick
+     up, and stop large empty regions reading as dead space. Fixed
+     attachment so the field stays put while content scrolls over it,
+     which is what sells the layers as separate planes.
+
+     Both pools used to be warm sand over a neutral grey page, which is
+     exactly what turned the whole app muddy brown. Now one warm gold
+     pool and one cool blue one, opposite corners: the warm side keeps
+     the brand present, the cool side stops the page collapsing into a
+     single temperature. */
   background:
-    radial-gradient(1200px 800px at 12% -10%, rgba(232,215,177,0.16), transparent 60%),
-    radial-gradient(1000px 700px at 100% 0%, rgba(173,140,67,0.10), transparent 55%),
+    radial-gradient(1200px 800px at 10% -12%, rgba(231,183,90,0.10), transparent 62%),
+    radial-gradient(1000px 760px at 100% 4%, rgba(79,124,255,0.08), transparent 58%),
     var(--bg-primary);
   background-attachment: fixed;
   color: var(--text-primary);
@@ -277,26 +352,26 @@ body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(249,249,249,0.05) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(233,238,246,0.045) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   z-index: 0;
   opacity: 0.4;
 }
 
-/* Ambient wash. One quiet sand bloom, never a flood */
+/* Ambient wash. One quiet gold bloom at the top, never a flood */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(232,215,177,0.045) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(231,183,90,0.05) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
 
 [data-theme="light"] body::before {
-  background-image: radial-gradient(circle, rgba(24,22,15,0.05) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(27,34,45,0.05) 1px, transparent 1px);
   background-size: 28px 28px;
   opacity: 0.6;
 }
@@ -304,7 +379,7 @@ body::after {
 [data-theme="light"] body::after {
   display: block;
   background:
-    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(201,168,94,0.05) 0%, transparent 60%);
+    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(201,163,78,0.06) 0%, transparent 60%);
 }
 
 /* Custom scrollbar */
@@ -1863,11 +1938,11 @@ button.brand-dot { border: none; padding: 0; }
      dark-surface values automatically instead of needing its own
      override. The inset highlight is the specular edge that makes the
      pane read as a physical sheet catching light. */
-  background: rgba(27,29,34,0.88);
+  background: rgba(15,20,30,0.88);
   backdrop-filter: saturate(160%) blur(20px);
   -webkit-backdrop-filter: saturate(160%) blur(20px);
-  --text:        #E7EAF0;
-  --text-muted:  #9AA3B2;
+  --text:        #E9EEF6;
+  --text-muted:  #8D99AC;
   --border:      rgba(255,255,255,0.07);
   --hover:       rgba(255,255,255,0.06);
   --bg-card:     transparent;
@@ -1882,7 +1957,7 @@ button.brand-dot { border: none; padding: 0; }
    unreadable. Literal colour, not var(--bg-card) — that token is
    rebound to transparent inside .sidebar. */
 @supports not (backdrop-filter: blur(1px)) {
-  .sidebar { background: #1B1D22; }
+  .sidebar { background: #0F141E; }
 }
 
 /* ---- Sidebar navigation ---------------------------------------------
@@ -1891,23 +1966,23 @@ button.brand-dot { border: none; padding: 0; }
    nearly invisible. Higher specificity than the base .nav-item.active
    rule so it wins regardless of source order. */
 .sidebar .nav-item {
-  color: #9AA3B2;
+  color: #8D99AC;
   border-radius: 10px;
 }
 .sidebar .nav-item:hover {
   background: rgba(255,255,255,0.06);
-  color: #E7EAF0;
+  color: #E9EEF6;
 }
 .sidebar .nav-item.active {
   background: var(--grad-gold);
-  color: #1B1D22;
+  color: #0B0F16;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0,0,0,.24), 0 6px 18px rgba(201,163,78,.28);
+  box-shadow: 0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(231,183,90,.26);
 }
 /* The old rule painted a 3px bar down the left edge. Redundant now that
    the whole item is a filled pill, and it broke the pill's silhouette. */
 .sidebar .nav-item.active::before { display: none; }
-.sidebar .nav-item.active svg { color: #1B1D22; stroke: currentColor; }
+.sidebar .nav-item.active svg { color: #0B0F16; stroke: currentColor; }
 .sidebar .nav-item:active { transform: translateY(1px); }
 
 .sidebar-logo {
@@ -2621,7 +2696,7 @@ button.brand-dot { border: none; padding: 0; }
               border-color var(--dur-base) var(--ease-out),
               background var(--dur-base) var(--ease-out);
   cursor: default;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--edge-hi), var(--shadow-card);
 }
 
 /* ---- Per-metric colour -----------------------------------------------
@@ -2930,7 +3005,7 @@ button.brand-dot { border: none; padding: 0; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--edge-hi), var(--shadow-card);
   position: relative;
 }
 
@@ -5406,7 +5481,7 @@ tr:hover .td-arrow { color: var(--cyan); }
    than the thin colour-tinted banner style above. ─────────────────────── */
 .dash-checklist {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 18px 20px 8px; margin-bottom: 16px; box-shadow: var(--shadow-card);
+  padding: 18px 20px 8px; margin-bottom: 16px; box-shadow: var(--edge-hi), var(--shadow-card);
 }
 .dash-checklist-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .dash-checklist-title-wrap { flex: 1; min-width: 160px; }
@@ -6575,7 +6650,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 [data-theme="light"] .nav-item:hover {
   background: rgba(255,255,255,0.06);
-  color: #E7EAF0;
+  color: #E9EEF6;
 }
 
 [data-theme="light"] .nav-item.active {
@@ -6629,7 +6704,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* Stat cards. White with real depth */
 [data-theme="light"] .stat-card {
   background: #ffffff;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--edge-hi), var(--shadow-card);
   border: 1px solid var(--border);
 }
 
@@ -6747,7 +6822,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .chart-card-sm {
   background: #ffffff;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--edge-hi), var(--shadow-card);
 }
 
 [data-theme="light"] .chart-title {
@@ -6758,7 +6833,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .today-widget {
   background: #ffffff;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--edge-hi), var(--shadow-card);
 }
 
 /* Cal modal */
@@ -8164,8 +8239,8 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">accenten op je lead-formulier</span>
               </label>
               <div class="ap-color-row">
-                <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E8D7B1" maxlength="7">
-                <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#E8D7B1">
+                <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E7B75A" maxlength="7">
+                <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#E7B75A">
               </div>
               <div class="ap-hint">Hex-code (bv. <code>#16a34a</code>). Vertegenwoordigt jouw bedrijfskleur op de lead-form knoppen + accenten. Leeg = standaard zand.</div>
             </div>
@@ -9881,11 +9956,11 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;animation:cmFadeIn .15s ease-out';
 
   const card = document.createElement('div');
-  card.style.cssText = 'background:var(--card,#232323);border:1px solid var(--border,#333);border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:none';
+  card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:none';
 
   const titleEl = document.createElement('h3');
   titleEl.textContent = title || 'Weet je het zeker?';
-  titleEl.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#F9F9F9)';
+  titleEl.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
 
   const msgEl = document.createElement('p');
   msgEl.textContent = message || '';
@@ -9897,13 +9972,13 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = cancelText || 'Annuleren';
   cancelBtn.className = 'cm-btn cm-btn-cancel';
-  cancelBtn.style.cssText = 'padding:9px 16px;background:var(--card-elevated,#2B2B2B);border:1px solid var(--border,#333);border-radius:14px;color:var(--text,#F9F9F9);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .2s ease)';
+  cancelBtn.style.cssText = 'padding:9px 16px;background:var(--card-elevated,#1E2735);border:1px solid var(--border,#2A3444);border-radius:14px;color:var(--text,#E9EEF6);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .2s ease)';
 
   const confirmBtn = document.createElement('button');
   confirmBtn.textContent = confirmText || 'Ja, ga door';
   confirmBtn.className = 'cm-btn cm-btn-confirm' + (danger ? ' danger' : '');
-  const confirmBg = danger ? 'var(--error,#DC2626)' : 'var(--accent,#E8D7B1)';
-  const confirmFg = danger ? '#fff' : 'var(--on-accent,#121212)';
+  const confirmBg = danger ? 'var(--error,#F87171)' : 'var(--accent,#E7B75A)';
+  const confirmFg = danger ? '#fff' : 'var(--on-accent,#0B0F16)';
   confirmBtn.style.cssText = 'padding:9px 16px;background:' + confirmBg + ';border:0;border-radius:14px;color:' + confirmFg + ';font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .2s ease)';
 
   function close() {
@@ -10432,7 +10507,7 @@ function renderBronChart() {
   if (labels.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
 
-  const palette = ['#E8D7B1','#7C93C4','#8FA888','#C99A6C','#A78BA0','#8B949E'];
+  const palette = ['#E7B75A','#6E92FF','#34D399','#F5A524','#A78BFA','#8D99AC'];
   const data    = labels.map(k => counts[k]);
   const colors  = labels.map((_, i) => palette[i % palette.length]);
 
@@ -13383,7 +13458,7 @@ async function renderCalendar() {
   if (!colsEl) return;
 
   const renderCols = (events) => {
-    const eventColors = ['#E8D7B1','#C9A85E','#7C93C4','#8FA888','#C99A6C'];
+    const eventColors = ['#E7B75A','#6E92FF','#A78BFA','#34D399','#22D3EE'];
 
     // Store events for modal lookup
     calState.lastEvents = events;
@@ -14725,7 +14800,7 @@ function renderAnalyse() {
       type: 'bar',
       data: {
         labels: dayLabels,
-        datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(232,215,177,0.45)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
+        datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(231,183,90,0.45)', borderColor: '#E7B75A', borderWidth: 1, borderRadius: 6 }]
       },
       options: { responsive: true, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
@@ -14770,7 +14845,7 @@ function renderAnalyse() {
       type: 'bar',
       data: {
         labels: hourBuckets,
-        datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(232,215,177,0.4)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
+        datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(231,183,90,0.4)', borderColor: '#E7B75A', borderWidth: 1, borderRadius: 6 }]
       },
       options: { responsive: true, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
@@ -16981,7 +17056,7 @@ function renderPipeMini() {
   if (!el) return;
   var stages = [
     { name: 'Gecontacteerd', color: '#7C93C4' },
-    { name: 'Geinteresseerd', color: '#E8D7B1' },
+    { name: 'Geinteresseerd', color: '#E7B75A' },
     { name: 'Beslissing', color: '#C99A6C' }
   ];
   el.innerHTML = stages.map(function(s) {
