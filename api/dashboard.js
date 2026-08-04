@@ -10120,6 +10120,18 @@ function renderChart() {
 
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
+  // Leads are blue in the semantic palette. A vertical gradient makes a
+  // bar read as a solid object catching light instead of a flat block of
+  // colour — the single cheapest thing that stops a chart looking like a
+  // default library render.
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+  grad.addColorStop(0, 'rgba(79,124,255,0.95)');
+  grad.addColorStop(1, 'rgba(79,124,255,0.35)');
+  const gradHover = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+  gradHover.addColorStop(0, 'rgba(79,124,255,1)');
+  gradHover.addColorStop(1, 'rgba(6,182,212,0.55)');
+
   if (state.leadsChart) state.leadsChart.destroy();
   state.leadsChart = new Chart(canvas, {
     type: 'bar',
@@ -10128,24 +10140,47 @@ function renderChart() {
       datasets: [{
         label: 'Leads',
         data: counts,
-        backgroundColor: isLight ? 'rgba(201,168,94,0.55)' : 'rgba(232,215,177,0.4)',
-        borderColor: isLight ? '#C9A85E' : '#E8D7B1',
-        borderWidth: isLight ? 0 : 2,
+        backgroundColor: grad,
+        borderWidth: 0,
         borderRadius: 8,
-        hoverBackgroundColor: isLight ? 'rgba(201,168,94,0.75)' : 'rgba(232,215,177,0.5)'
+        borderSkipped: false,
+        maxBarThickness: 44,
+        hoverBackgroundColor: gradHover
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      maintainAspectRatio: false,
+      // Respect the OS setting rather than animating regardless.
+      animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? false
+        : { duration: 700, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isLight ? 'rgba(27,29,34,0.94)' : 'rgba(20,22,28,0.94)',
+          titleColor: '#fff',
+          bodyColor: '#E7EAF0',
+          borderColor: 'rgba(79,124,255,0.5)',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 10,
+          displayColors: false,
+          callbacks: {
+            label: (i) => \` \${i.parsed.y} lead\${i.parsed.y === 1 ? '' : 's'}\`
+          }
+        }
+      },
       scales: {
         x: {
-          grid: { color: isLight ? 'rgba(201,168,94,0.06)' : 'rgba(255,255,255,0.05)' },
-          ticks: { color: isLight ? '#5c6478' : '#6a85b0' }
+          border: { display: false },
+          grid: { display: false },
+          ticks: { color: isLight ? '#6B7280' : '#9AA3B2', font: { size: 11 } }
         },
         y: {
-          grid: { color: isLight ? 'rgba(201,168,94,0.06)' : 'rgba(255,255,255,0.05)' },
-          ticks: { color: isLight ? '#5c6478' : '#6a85b0', stepSize: 1 },
+          border: { display: false },
+          grid: { color: isLight ? 'rgba(45,42,38,0.06)' : 'rgba(255,255,255,0.05)' },
+          ticks: { color: isLight ? '#6B7280' : '#9AA3B2', stepSize: 1, font: { size: 11 } },
           beginAtZero: true
         }
       }
