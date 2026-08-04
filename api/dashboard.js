@@ -2071,8 +2071,8 @@ button.brand-dot { border: none; padding: 0; }
 
 .page-title {
   font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   background: none;
   -webkit-background-clip: initial;
   -webkit-text-fill-color: currentColor;
@@ -3199,7 +3199,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-name {
   font-size: 20px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: -0.01em;
   margin-bottom: 8px;
 }
 
@@ -4335,7 +4335,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .export-card-title {
   font-size: 15px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: -0.01em;
   margin-bottom: 8px;
 }
 
