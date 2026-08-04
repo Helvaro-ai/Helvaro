@@ -4,6 +4,7 @@ const credits = require('./_credits'); // credit/usage accounting — see its fi
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _lang   = require('./_lang');   // language registry — see its file header
+const _verify = require('./_verify'); // email-ownership verification — see its file header
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -485,6 +486,12 @@ module.exports = async function handler(req, res) {
             // this file already uses for every other config field.
             matchLeadLanguage: rec.fields['Match Lead Language'] === true,
             workingHours:   rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours']       || '',
+            // Email-ownership verification banner state — see api/_verify.js's
+            // file header. Fails open: blank/missing field (not yet created,
+            // or a pre-existing client that predates this feature) reads as
+            // verified, so this can never surface a false "please verify"
+            // banner for an existing client.
+            emailVerified:  _verify.isVerified(rec.fields),
             trustBadges:    rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges']        || '',
             bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'in_chat').toString().toLowerCase(),
             callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || '',
