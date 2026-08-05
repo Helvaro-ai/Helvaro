@@ -7607,7 +7607,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="chk-whatsapp-title">WhatsApp-nummer koppelen</div>
             <div class="chk-whatsapp-sub">Dit stel je niet zelf in. Meta moet je nummer eerst goedkeuren, en dat regelen wij voor je. Duurt meestal een paar dagen. Je hoeft nu niets te doen, we nemen contact op zodra het kan. Laat het gerust weten als je er al klaar voor bent, dan pakken we het sneller op.</div>
           </div>
-          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hallo%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20" target="_blank" rel="noopener">Laat het weten</a>
+          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=WhatsApp%20koppelen&body=Hallo%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20" target="_blank" rel="noopener">Laat het weten</a>
         </div>
       </div>
 
@@ -9016,7 +9016,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             AI Instellingen
           </div>
           <div class="settings-info-box">
-            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a>
+            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a>
           </div>
           <div class="settings-row">
             <div>
@@ -9097,7 +9097,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label">Hulp nodig?</div>
               <div class="settings-label-sub">Ons team helpt je graag verder</div>
             </div>
-            <a href="mailto:sindi.s@usehelvaro.pro" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color:var(--accent);background:rgba(var(--accent-rgb),0.08)">
+            <a href="mailto:${SUPPORT_EMAIL_ATTR}" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color:var(--accent);background:rgba(var(--accent-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               Mail sturen
             </a>
@@ -9107,7 +9107,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label">E-mailadres support</div>
               <div class="settings-label-sub">Bereikbaar op werkdagen</div>
             </div>
-            <div class="settings-value"><a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a></div>
+            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a></div>
           </div>
         </div>
 
@@ -11579,7 +11579,7 @@ function renderCreditUsage(d) {
     let line = \`\${used} / \${allowance} credits · nog ~\${leadsLeft} leadgesprekken\`;
     if (daysLeft != null) line += \` · \${daysLeft}d over in periode\`;
     if (d.overLimit) {
-      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="mailto:hello@helvaro.pro?subject=Credit%20limiet%20verhogen">Limiet bereikt — vraag een upgrade aan →</a>';
+      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Credit%20limiet%20verhogen">Limiet bereikt — vraag een upgrade aan →</a>';
     } else {
       subEl.textContent = line;
     }
@@ -11637,7 +11637,7 @@ function renderPlanBanner(d) {
     if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — de AI beantwoordt ze alleen niet langer automatisch op WhatsApp.';
     if (ctaEl) {
       ctaEl.textContent = 'Heractiveer account';
-      ctaEl.href = 'mailto:hello@helvaro.pro?subject=Reactivatie%20account';
+      ctaEl.href = 'mailto:${SUPPORT_EMAIL_ATTR}?subject=Reactivatie%20account';
     }
   } else {
     const daysLeft = d.daysLeft != null ? d.daysLeft : null;
@@ -11648,7 +11648,7 @@ function renderPlanBanner(d) {
     if (subEl)   subEl.textContent = 'Alle functies zijn beschikbaar. Wil je blijven gebruiken na je proefperiode? Upgrade wanneer je klaar bent.';
     if (ctaEl) {
       ctaEl.textContent = 'Upgrade nu';
-      ctaEl.href = 'mailto:hello@helvaro.pro?subject=Upgrade%20na%20proefperiode';
+      ctaEl.href = 'mailto:${SUPPORT_EMAIL_ATTR}?subject=Upgrade%20na%20proefperiode';
     }
   }
 }
@@ -11833,7 +11833,7 @@ function renderOnboardingChecklist(d) {
 
   const mailtoEl = document.getElementById('chk-whatsapp-mailto');
   if (mailtoEl && state.clientName) {
-    mailtoEl.href = \`mailto:sindi.s@usehelvaro.pro?subject=WhatsApp%20koppelen&body=Hallo%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20\${encodeURIComponent(state.clientName)}\`;
+    mailtoEl.href = \`mailto:${SUPPORT_EMAIL_ATTR}?subject=WhatsApp%20koppelen&body=Hallo%2C%0A%0AIk%20wil%20graag%20mijn%20WhatsApp-nummer%20laten%20koppelen%20aan%20Helvaro.%0A%0ABedrijf%3A%20\${encodeURIComponent(state.clientName)}\`;
   }
 }
 
@@ -12060,7 +12060,7 @@ function renderTable() {
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
         </div>
-        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:sindi.s@usehelvaro.pro" style="color:var(--accent)">sindi.s@usehelvaro.pro</a></div>
+        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent)">sindi.s@usehelvaro.pro</a></div>
       </div>
     </td></tr>\`;
     return;

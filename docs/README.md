@@ -84,7 +84,6 @@ Helvaro/
 │   └── whatsapp.js               ← Meta webhook receiver + AI runner
 │
 ├── public/                       ← Static assets
-│   ├── dashboard.html            ← legacy fallback
 │   ├── favicon.png
 │   ├── form-widget.js            ← embeddable widget script
 │   ├── logo.png
