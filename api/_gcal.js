@@ -165,6 +165,47 @@ async function isSlotFree(accessToken, calendarId, startISO, durationMin) {
   });
 }
 
+// List real events from the connected calendar. freeBusy() only ever returned
+// opaque busy blocks, which is all a booking check needs — but it meant the
+// Kalender page could show Helvaro's own appointments and nothing else, so a
+// client looking at it saw a half-empty week and could double-book themselves
+// against their own meetings. The calendar.readonly scope was already granted
+// at connect time, so no re-consent is needed.
+//
+// Fail-soft like everything else here: any error returns [] so the page still
+// renders Helvaro's own appointments rather than breaking.
+async function listEvents(accessToken, calendarId, timeMinISO, timeMaxISO, max) {
+  try {
+    const qs = new URLSearchParams({
+      timeMin:      timeMinISO,
+      timeMax:      timeMaxISO,
+      singleEvents: 'true',          // expand recurring series into occurrences
+      orderBy:      'startTime',
+      maxResults:   String(Math.min(parseInt(max) || 250, 2500)),
+    });
+    const r = await fetch(
+      `${CAL_BASE}/calendars/${encodeURIComponent(calendarId || 'primary')}/events?${qs}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!r.ok) return [];
+    const d = await r.json().catch(() => ({}));
+    return (d.items || [])
+      // Declined invitations shouldn't block the client's own view.
+      .filter(e => e.status !== 'cancelled')
+      .map(e => ({
+        id:       String(e.id || '').slice(0, 200),
+        // Private events still occupy the slot but their title is nobody's
+        // business — show them as busy without leaking what they are.
+        title:    e.visibility === 'private' ? 'Bezet' : String(e.summary || 'Bezet').slice(0, 200),
+        start:    (e.start && (e.start.dateTime || e.start.date)) || '',
+        end:      (e.end   && (e.end.dateTime   || e.end.date))   || '',
+        allDay:   !!(e.start && e.start.date && !e.start.dateTime),
+        source:   'google',
+      }))
+      .filter(e => e.start);
+  } catch { return []; }
+}
+
 function eventBody({ summary, description, startISO, durationMin, timeZone }) {
   const start = new Date(startISO);
   const end   = new Date(start.getTime() + (parseInt(durationMin) || 30) * 60000);
@@ -222,6 +263,6 @@ async function deleteEvent(accessToken, calendarId, eventId) {
 module.exports = {
   isConfigured, getAuthUrl, exchangeCode, getAccessToken,
   encryptToken, decryptToken,
-  freeBusy, isSlotFree, createEvent, updateEvent, deleteEvent,
+  freeBusy, isSlotFree, listEvents, createEvent, updateEvent, deleteEvent,
   SCOPES,
 };

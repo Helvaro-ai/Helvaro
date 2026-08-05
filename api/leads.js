@@ -995,7 +995,25 @@ module.exports = async function handler(req, res) {
         );
         if (!r.ok) return res.status(500).json({ error: 'Airtable fout' });
         const d = await r.json();
-        return res.status(200).json({ appointments: d.records || [] });
+
+        // Also pull the client's real Google Calendar entries for the same
+        // window. Without this the Kalender page showed ONLY appointments
+        // Helvaro itself booked, so a client looked at an apparently free
+        // week and could double-book straight over their own meetings.
+        // The calendar.readonly scope is already granted at connect time.
+        // Fail-soft: on any Google problem this stays [] and the page still
+        // renders the Helvaro appointments.
+        let externalEvents = [];
+        try {
+          const { token: gToken, calId: gCalId } = await gcalAccessForProject(
+            projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE
+          );
+          if (gToken) externalEvents = await _gcal.listEvents(gToken, gCalId, from, to);
+        } catch (e) {
+          console.warn('[appointments-list] gcal listEvents failed:', e && e.message);
+        }
+
+        return res.status(200).json({ appointments: d.records || [], externalEvents });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
       }

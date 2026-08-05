@@ -1340,6 +1340,29 @@ button.brand-dot { border: none; padding: 0; }
   gap: 2px;
   border-left: 3px solid rgba(255,255,255,0.35);
 }
+/* Read-only entries mirrored from the client's own Google Calendar. They
+   occupy the slot so nothing gets double-booked, but they are deliberately
+   quiet and not clickable — Helvaro doesn't own them and can't edit them. */
+.cal-event-external {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-card-alt) 0 6px,
+    var(--hover-c) 6px 12px
+  );
+  color: var(--text-muted-c);
+  border-left: 3px solid var(--text-disabled);
+  box-shadow: none;
+  cursor: default;
+  font-weight: 500;
+  z-index: 4;
+}
+.cal-event-external:hover {
+  filter: none;
+  transform: none;
+  box-shadow: none;
+  z-index: 4;
+}
+
 .cal-event:hover {
   filter: brightness(1.1);
   transform: translateX(-1px) scale(1.018);
@@ -13926,6 +13949,12 @@ async function renderCalendar() {
           // Tall: full info
           bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}<div class="cal-event-dur">⏱ \${durLbl}</div>\`;
         }
+        // Google entries are read-only context, not Helvaro appointments:
+        // muted, hatched, no click handler. Making them look like bookings
+        // would be worse than not showing them at all.
+        if (ev.external) {
+          return \`<div class="cal-event cal-event-external" style="top:\${top}px;height:\${height}px;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (uit je Google Agenda)">\${bodyHtml}</div>\`;
+        }
         return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${durLbl})" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
       }).join('');
 
@@ -13989,8 +14018,36 @@ async function renderCalendar() {
           notes:     f['Notes'] || ''
         };
       });
-      calState.cache[weekKey] = events;
-      renderCols(events);
+      // Merge the client's real Google Calendar entries in alongside
+      // Helvaro's own bookings. Before this the week looked emptier than it
+      // was, and nothing stopped a client booking straight over their own
+      // meetings. Tagged 'Google agenda' and marked external so the two are
+      // never confused — these are read-only and not Helvaro appointments.
+      const external = (data.externalEvents || []).map(function (e) {
+        const st = new Date(e.start);
+        const en = e.end ? new Date(e.end) : new Date(st.getTime() + 30 * 60 * 1000);
+        return {
+          id:        'g_' + (e.id || Math.random().toString(36).slice(2)),
+          name:      e.title || 'Bezet',
+          phone:     '',
+          startTime: st.toISOString(),
+          endTime:   en.toISOString(),
+          eventType: 'Google agenda',
+          status:    'external',
+          source:    'google',
+          external:  true,
+          allDay:    !!e.allDay,
+          notes:     ''
+        };
+      // All-day entries would otherwise paint over the entire column and
+      // bury the actual appointments underneath them.
+      }).filter(function (e) { return !e.allDay; });
+
+      const merged = events.concat(external)
+        .sort(function (a, b) { return new Date(a.startTime) - new Date(b.startTime); });
+
+      calState.cache[weekKey] = merged;
+      renderCols(merged);
     }
   } catch (e) { /* stay with empty */ }
 }
