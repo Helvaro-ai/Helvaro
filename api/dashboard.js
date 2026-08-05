@@ -6587,11 +6587,26 @@ tr:hover .td-arrow { color: var(--cyan); }
     font-size: 24px;
   }
 
-  .page-content { padding: 16px; }
+  /* Extra bottom padding so the last row of content can always be
+     scrolled clear of the floating help launcher, which is fixed and
+     would otherwise sit permanently on top of whatever ends the page. */
+  .page-content { padding: 16px 16px 96px; }
 
   .topbar { padding: 12px 16px; }
 
   .timestamp-info { display: none; }
+
+  /* Wrapped to three lines at 375px and doubled the header height */
+  .page-subtitle { display: none; }
+
+  /* A phone has no Cmd key, so the ⌘K hint is both misleading and the
+     widest thing in the row. Dropping it lets the five topbar controls
+     sit on one line instead of wrapping onto a second. */
+  .search-pill-kbd { display: none; }
+
+  /* Let the title give up space before the actions wrap. */
+  .topbar-left { min-width: 0; flex-shrink: 1; }
+  .page-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .detail-panel {
     width: 100vw;
@@ -6621,8 +6636,16 @@ tr:hover .td-arrow { color: var(--cyan); }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .login-form-side { padding: 32px 24px; }
   .login-welcome { font-size: 28px; }
-  .btn-icon span:not(.icon) { display: none; }
-  .topbar-right { gap: 6px; }
+  /* Collapse the topbar actions to icons. This rule existed before but
+     only matched <span>s, and these two labels were bare text nodes — so
+     the buttons stayed ~110px wide, wrapped onto three rows, and pushed
+     the topbar to 137px tall on a 375px phone. */
+  .btn-icon span:not(.icon), .btn-label { display: none; }
+  /* Icon-only buttons don't need label-sized side padding; trimming this
+     plus the gap is what gets all five controls onto a single row at
+     375px instead of leaving the theme toggle stranded on its own line. */
+  .topbar-right { gap: 4px; }
+  .topbar-right .btn-icon, .topbar-right .search-pill { padding-left: 9px; padding-right: 9px; }
   .page-title { font-size: 14px; letter-spacing: 1.5px; }
 
   /* Lead detail panel — tighter padding + smaller avatar so the header
@@ -7441,13 +7464,13 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
       <div class="topbar-right">
         <span class="timestamp-info" id="timestamp-info">Bijgewerkt zojuist</span>
-        <button class="btn-icon" id="btn-refresh">
+        <button class="btn-icon" id="btn-refresh" title="Vernieuwen" aria-label="Vernieuwen">
           <span class="icon">↻</span>
-          Vernieuwen
+          <span class="btn-label">Vernieuwen</span>
         </button>
-        <button class="btn-icon btn-primary-sm" id="btn-export-csv">
+        <button class="btn-icon btn-primary-sm" id="btn-export-csv" title="CSV Export" aria-label="Exporteer leads als CSV">
           <span class="icon">⇓</span>
-          CSV Export
+          <span class="btn-label">CSV Export</span>
         </button>
             <button class="search-pill" id="btn-search" title="Zoeken (Ctrl+K)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
