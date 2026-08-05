@@ -12,6 +12,7 @@ const { getPlanState, computeTrialEndsAt, FIELD: PLAN_FIELD, VALID_STATUSES: PLA
 const _lang = require('./_lang');
 // Email-ownership verification for self-serve signup — see its file header.
 const verifyEmail = require('./_verify');
+const _session = require('./_session'); // cookie-first session transport + CSRF
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 async function atFetch(url, opts) {
@@ -252,6 +253,9 @@ module.exports = async function handler(req, res) {
 
   // ── POST. Create new client (admin OR invite-code onboarding) ────────────
   if (req.method === 'POST') {
+    // Only bites on cookie-authenticated calls; public invite-code onboarding
+    // carries no session and is therefore exempt (see api/_session.js).
+    if (!_session.csrfOk(req)) return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     if (!body || typeof body !== 'object') body = {};
@@ -265,7 +269,7 @@ module.exports = async function handler(req, res) {
     // (status + body) so you can see exactly why a send fails (e.g. Domain
     // not verified, invalid key, etc.) without digging through logs.
     if (body.mode === 'test-email') {
-      const tProvided = String(req.headers['x-api-key'] || '').trim();
+      const tProvided = _session.readToken(req);
       if (!isValidAdminToken(tProvided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -297,7 +301,7 @@ module.exports = async function handler(req, res) {
     // Lightweight heartbeat: stores apiKey hash + clientName in module map.
     // Used by founder dashboard to show "online now" dots for each client.
     if (body.mode === 'presence-ping') {
-      const ak = String(req.headers['x-api-key'] || '').trim();
+      const ak = _session.readToken(req);
       if (!ak) return res.status(401).json({ error: 'apiKey required' });
       const cn = String(body.clientName || '').trim().slice(0, 80);
       _presence.set(_presenceKey(ak), { ts: Date.now(), clientName: cn });
@@ -316,7 +320,7 @@ module.exports = async function handler(req, res) {
     // message (see CREDITS-VERCEL-SUMMARY.md for the exact fields to add).
     const CREDIT_ADMIN_MODES = ['credit-set-allowance', 'credit-add-credits', 'credit-reset-period'];
     if (CREDIT_ADMIN_MODES.includes(body.mode)) {
-      const cProvided = String(req.headers['x-api-key'] || '').trim();
+      const cProvided = _session.readToken(req);
       if (!isValidAdminToken(cProvided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -359,7 +363,7 @@ module.exports = async function handler(req, res) {
     // up here as a clear message rather than a silent no-op.
     const PLAN_ADMIN_MODES = ['plan-extend-trial', 'plan-set-active', 'plan-set-status'];
     if (PLAN_ADMIN_MODES.includes(body.mode)) {
-      const pProvided = String(req.headers['x-api-key'] || '').trim();
+      const pProvided = _session.readToken(req);
       if (!isValidAdminToken(pProvided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -415,7 +419,7 @@ module.exports = async function handler(req, res) {
     // ── founder modes: pipeline + goals + AI advice (admin only) ────────────
     const FOUNDER_MODES = ['pipeline-create','pipeline-update','pipeline-delete','goal-save','goal-delete','ai-advice','ai-chat','linkedin-post','content-post','personalized-dm'];
     if (FOUNDER_MODES.includes(body.mode)) {
-      const fProvided = String(req.headers['x-api-key'] || '').trim();
+      const fProvided = _session.readToken(req);
       if (!isValidAdminToken(fProvided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -854,7 +858,7 @@ module.exports = async function handler(req, res) {
     // Schrijft alles als status=draft naar Marketing Posts tabel. Klant approved
     // daarna manueel via dashboard of Airtable.
     if (body.mode === 'generate-content') {
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -882,7 +886,7 @@ module.exports = async function handler(req, res) {
     // ── mode=list-content: haal de drafts/approved/posted op ────────────────
     // body: { mode: 'list-content', status?: 'draft'|'approved'|'posted', limit?: 50 }
     if (body.mode === 'list-content') {
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -902,7 +906,7 @@ module.exports = async function handler(req, res) {
     // ── mode=update-content: approve/edit/skip een specifieke post ──────────
     // body: { mode: 'update-content', id: 'rec...', status?, content?, scheduledFor? }
     if (body.mode === 'update-content') {
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -932,7 +936,7 @@ module.exports = async function handler(req, res) {
     // body: { mode: 'generate-image', id: 'rec...' }
     // Apart per post zodat we nooit de 60s functie-timeout raken.
     if (body.mode === 'generate-image') {
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -1010,7 +1014,7 @@ module.exports = async function handler(req, res) {
     // x-api-key admin check every other admin mode uses below; the browser
     // never sees the raw code. ────────────────────────────────────────────
     if (body.mode === 'invite-link') {
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -1021,7 +1025,7 @@ module.exports = async function handler(req, res) {
 
     // ── mode=invite: admin sends an invite email to a client ─────────────────
     if (body.mode === 'invite') {
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -1094,7 +1098,7 @@ module.exports = async function handler(req, res) {
       }
     } else {
       // Regular admin path
-      const provided = String(req.headers['x-api-key'] || '').trim();
+      const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
@@ -1492,7 +1496,7 @@ module.exports = async function handler(req, res) {
 
   // ── GET. All clients + lead stats (admin only) ──────────────────────────
   const ADMIN_KEY = process.env.ADMIN_KEY;
-  const provided  = String(req.headers['x-api-key'] || '').trim();
+  const provided  = _session.readToken(req);
   if (!isValidAdminToken(provided, ADMIN_KEY)) {
     return res.status(401).json({ error: 'Ongeldige admin key' });
   }

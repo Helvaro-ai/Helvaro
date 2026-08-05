@@ -10037,6 +10037,39 @@ tr:hover .td-arrow { color: var(--cyan); }
 const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
 
 /* ============================================================
+   CSRF — one fetch wrapper instead of 45 call sites
+
+   The session now rides in an httpOnly cookie, which the browser attaches
+   automatically. That is what makes CSRF possible at all, so every
+   state-changing call has to echo back the readable hv_csrf cookie in a
+   header; the server compares the two (double-submit, see api/_session.js).
+   Wrapping fetch once means no call site has to remember, and any code added
+   later is covered by default.
+   ============================================================ */
+(function () {
+  function csrfToken() {
+    var m = /(?:^|;\\s*)hv_csrf=([^;]*)/.exec(document.cookie || '');
+    try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return m ? m[1] : ''; }
+  }
+  var _fetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    init = init || {};
+    var method = String(init.method || 'GET').toUpperCase();
+    var url    = typeof input === 'string' ? input : (input && input.url) || '';
+    var sameOrigin = url.indexOf('http') !== 0 || url.indexOf(location.origin) === 0;
+    if (sameOrigin && method !== 'GET' && method !== 'HEAD') {
+      var t = csrfToken();
+      if (t) {
+        var h = new Headers(init.headers || {});
+        if (!h.has('x-csrf-token')) h.set('x-csrf-token', t);
+        init.headers = h;
+      }
+    }
+    return _fetch(input, init);
+  };
+})();
+
+/* ============================================================
    QR CODE (self-hosted — GDPR: client/project data used to be sent
    to api.qrserver.com in the URL query string; now rendered fully
    client-side via the vendored qrcode.js encoder, no network call).
@@ -10274,8 +10307,14 @@ const AUTH_URL = '/api/auth';
 
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+// The session token is deliberately NOT persisted to localStorage any more.
+// It lives in an httpOnly cookie the server sets at login (api/_session.js),
+// which script cannot read — so an XSS anywhere in this file can no longer
+// walk off with a working 7-day session. state.apiKey is kept in memory only,
+// so the existing x-api-key call sites keep working within a page life; after
+// a reload the cookie authenticates instead. The remaining keys below are
+// non-secret display data (which client, which project, which email).
 function saveSession(apiKey, clientName, projectCode, email) {
-  localStorage.setItem('hvk', apiKey);
   localStorage.setItem('hv-client', clientName || '');
   localStorage.setItem('hv-project', projectCode || '');
   localStorage.setItem('hv-exp', String(Date.now() + SESSION_TTL));
@@ -10286,19 +10325,30 @@ function saveSession(apiKey, clientName, projectCode, email) {
 }
 
 function clearSession() {
-  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email'].forEach(k => localStorage.removeItem(k));
+  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email'].forEach(k => localStorage.removeItem(k)); // 'hvk' kept in the list so any token left by an older build is cleaned up
   state.apiKey     = '';
   state.clientName = '';
   state.userEmail  = '';
 }
 
 function tryAutoLogin() {
-  const key = localStorage.getItem('hvk');
-  const exp = parseInt(localStorage.getItem('hv-exp') || '0', 10);
-  if (!key) return false;
-  // Expire after 24 hours. Clear stale session
+  // There is no readable token any more, so this can only make an optimistic
+  // guess: if we still hold the non-secret session markers and they haven't
+  // expired, show the dashboard and let the first API call settle it. The
+  // httpOnly cookie is what actually authenticates; if it is gone or invalid
+  // the call returns 401 and handleAuthExpired() drops back to the login page.
+  const exp    = parseInt(localStorage.getItem('hv-exp') || '0', 10);
+  const marker = localStorage.getItem('hv-client') || localStorage.getItem('hv-project');
+  if (!marker) return false;
   if (Date.now() > exp) { clearSession(); return false; }
-  state.apiKey     = key;
+  // Sentinel, not a real token. Seven call sites gate on state.apiKey being
+  // truthy (including the polling loop), so leaving it empty would silently
+  // stop the whole dashboard from refreshing after a reload. The value is
+  // never what authenticates: the server reads the httpOnly cookie first and
+  // only falls back to this header, where it simply fails verification and
+  // yields a 401 -> login, which is exactly the right outcome when the
+  // cookie is gone.
+  state.apiKey     = 'cookie-session';
   state.clientName = localStorage.getItem('hv-client') || '';
   state.userEmail  = localStorage.getItem('hv-email')  || '';
   return true;

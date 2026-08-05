@@ -1,5 +1,6 @@
 const crypto = require('crypto');
-const _gcal   = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
+const _gcal   = require('./_gcal');
+const _session = require('./_session'); // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
@@ -172,8 +173,12 @@ module.exports = async function handler(req, res) {
 
   // ── Auth ────────────────────────────────────────────────────────────────────
   // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
-  const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+  // Cookie first, x-api-key as fallback — see api/_session.js.
+  const raw = _session.readToken(req);
   if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
+  // Only cookie-authenticated writes are checked; header auth cannot be
+  // forged cross-origin, so it is exempt.
+  if (!_session.csrfOk(req)) return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
 
   let projectCode = '', clientName = '', calendlyLink = '', isAdmin = false;
 

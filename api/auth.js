@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const verify = require('./_verify'); // email-ownership verification — see its file header
+const verify = require('./_verify');
+const _session = require('./_session'); // cookie transport + CSRF — see its header // email-ownership verification — see its file header
 
 // ── Wachtwoord-hashing (bcrypt) ────────────────────────────────────────────────
 // Wachtwoorden werden vroeger als plaintext in "Password Hash" bewaard. Nu hashen
@@ -433,12 +434,17 @@ module.exports = async function handler(req, res) {
     if (ADMIN_KEY && safeEqual(password, ADMIN_KEY)) {
       // Admin gets the derived HMAC token. NOT a session token.
       // leads.js recognises it via isAdminToken() before session verification.
-      return res.status(200).json({
-        success:     true,
-        apiKey:      deriveAdminToken(ADMIN_KEY),
-        clientName:  'Admin',
-        projectCode: ''
-      });
+      {
+        const _tok  = deriveAdminToken(ADMIN_KEY);
+        const _csrf = _session.setSessionCookies(res, _tok);
+        return res.status(200).json({
+          success:     true,
+          apiKey:      _tok,
+          csrfToken:   _csrf,
+          clientName:  'Admin',
+          projectCode: ''
+        });
+      }
     }
 
     // Basic email shape check. Reject obvious injections early
@@ -491,7 +497,13 @@ module.exports = async function handler(req, res) {
         projectCode:  process.env.OWNER_PROJECT_CODE  || '',
         calendlyLink: process.env.OWNER_CALENDLY_LINK || '',
       };
-      return res.status(200).json({ success: true, ...ownerData, apiKey: signSession(ownerData) });
+      {
+      const _tok = signSession(ownerData);
+      const _csrf = _session.setSessionCookies(res, _tok);
+      // apiKey stays in the body for now so a client mid-upgrade keeps working;
+      // the cookie is what new clients actually use.
+      return res.status(200).json({ success: true, ...ownerData, apiKey: _tok, csrfToken: _csrf });
+    }
     }
 
     // ── Fetch user by email only. Password compared server-side ─────────────
@@ -551,7 +563,13 @@ module.exports = async function handler(req, res) {
       projectCode:  user['fldbrCpBuQjJBfZsv']  || user['Project Code']  || '',
       calendlyLink: user['fldCalendlyLink']     || user['Calendly Link'] || '',
     };
-    return res.status(200).json({ success: true, ...userData, apiKey: signSession(userData) });
+    {
+      const _tok = signSession(userData);
+      const _csrf = _session.setSessionCookies(res, _tok);
+      // apiKey stays in the body for now so a client mid-upgrade keeps working;
+      // the cookie is what new clients actually use.
+      return res.status(200).json({ success: true, ...userData, apiKey: _tok, csrfToken: _csrf });
+    }
 
   } catch (err) {
     console.error('Auth error:', err.message);
