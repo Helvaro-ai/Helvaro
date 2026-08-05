@@ -1933,17 +1933,27 @@ Schrijf nu de post.`;
   }
 }
 
+// Blob storage is reachable via the legacy long-lived BLOB_READ_WRITE_TOKEN
+// or via Vercel's OIDC flow (BLOB_STORE_ID + the injected VERCEL_OIDC_TOKEN),
+// which needs no stored secret. Both are accepted so the long-lived token can
+// be removed from the project without silently disabling image hosting.
+function blobStorageConfigured() {
+  return !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID || process.env.VERCEL_OIDC_TOKEN);
+}
+
 // Upload een buffer naar Vercel Blob -> permanente publieke URL (of '' als niet kan).
 async function uploadToBlob(buffer, contentType, platform) {
   let put;
   try { ({ put } = require('@vercel/blob')); }
   catch (e) { console.error('[ai-image] @vercel/blob niet beschikbaar:', e.message); return ''; }
-  if (!process.env.BLOB_READ_WRITE_TOKEN) { console.warn('[ai-image] geen BLOB_READ_WRITE_TOKEN'); return ''; }
+  if (!blobStorageConfigured()) { console.warn('[ai-image] geen blob-opslag geconfigureerd'); return ''; }
   const ext = (contentType || '').includes('png') ? 'png' : 'jpg';
   const filename = `social/${platform}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const blob = await put(filename, buffer, {
-    access: 'public', contentType: contentType || 'image/png', token: process.env.BLOB_READ_WRITE_TOKEN
-  });
+  // Token alleen meegeven als de legacy variant echt gezet is; zonder token
+  // lost de SDK de credentials via OIDC op.
+  const putOpts = { access: 'public', contentType: contentType || 'image/png' };
+  if (process.env.BLOB_READ_WRITE_TOKEN) putOpts.token = process.env.BLOB_READ_WRITE_TOKEN;
+  const blob = await put(filename, buffer, putOpts);
   return (blob.url || '').slice(0, 500);
 }
 
@@ -1953,7 +1963,7 @@ async function uploadToBlob(buffer, contentType, platform) {
 async function generateOpenAIImage(prompt, platform) {
   const KEY = process.env.OPENAI_API_KEY || process.env.OPENAI;
   if (!KEY) return '';
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return '';   // zonder hosting geen zin
+  if (!blobStorageConfigured()) return '';   // zonder hosting geen zin
   try {
     const size = platform === 'instagram' ? '1024x1024' : '1536x1024';   // IG vierkant, FB landscape
     const enriched = `${prompt}. Professional photography, clean, brand-safe, no text, no letters, no watermark.`;
@@ -1988,7 +1998,7 @@ async function generatePollinationsImage(prompt, platform) {
     const headers = {};
     if (process.env.POLLINATIONS_TOKEN) headers.Authorization = `Bearer ${process.env.POLLINATIONS_TOKEN}`;
     // Zonder Blob: geef een compacte directe Pollinations-URL terug (browser laadt rechtstreeks).
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    if (!blobStorageConfigured()) {
       const sp = new URLSearchParams({ width: String(width), height: String(height), seed: String(seed), model: 'flux', nologo: 'true' });
       const direct = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 120))}?${sp}`;
       return direct.length <= 500 ? direct : (`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 60))}?${sp}`).slice(0, 500);

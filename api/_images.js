@@ -509,14 +509,22 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
 function openaiKey() {
   return process.env.OPENAI_API_KEY || process.env.OPENAI || '';
 }
+// Blob storage is reachable either way: the legacy long-lived
+// BLOB_READ_WRITE_TOKEN, or Vercel's OIDC flow (BLOB_STORE_ID plus the
+// VERCEL_OIDC_TOKEN the runtime injects), which is the direction Vercel
+// has moved to and needs no stored secret at all. Accept both so removing
+// the long-lived token never silently kills image generation.
+function blobStorageConfigured() {
+  return !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID || process.env.VERCEL_OIDC_TOKEN);
+}
 function isConfigured() {
-  return !!(openaiKey() && process.env.BLOB_READ_WRITE_TOKEN);
+  return !!(openaiKey() && blobStorageConfigured());
 }
 // Clear, specific message per missing piece — never a generic 500, never a
 // crash. Returned to the client as-is (Dutch, matches the rest of this app).
 function missingConfigMessage() {
   if (!openaiKey()) return 'AI-beeldgeneratie is nog niet geconfigureerd (ontbrekende OpenAI-sleutel). Neem contact op met Helvaro.';
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return 'AI-beeldgeneratie is nog niet geconfigureerd (ontbrekende opslag). Neem contact op met Helvaro.';
+  if (!blobStorageConfigured()) return 'AI-beeldgeneratie is nog niet geconfigureerd (ontbrekende opslag). Neem contact op met Helvaro.';
   return 'AI-beeldgeneratie is momenteel niet beschikbaar. Probeer later opnieuw.';
 }
 
@@ -553,18 +561,22 @@ async function uploadPropertyImageToBlob(buffer, contentType, projectCode, kind)
   } catch (e) {
     throw new ImageFeatureError('Opslag niet beschikbaar op de server.', { code: 'no_blob_module', status: 503 });
   }
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!blobStorageConfigured()) {
     throw new ImageFeatureError(missingConfigMessage(), { code: 'no_blob_token', status: 503 });
   }
   const ext = (contentType || '').includes('png') ? 'png' : (contentType || '').includes('webp') ? 'webp' : 'jpg';
   const safeProject = String(projectCode || 'unknown').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'unknown';
   const safeKind = kind === 'source' ? 'source' : 'result';
   const filename = `property/${safeProject}/${safeKind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const blob = await put(filename, buffer, {
+  // Only pass an explicit token when the legacy one is actually set. With
+  // it omitted the SDK resolves credentials through OIDC, so this same code
+  // keeps working after BLOB_READ_WRITE_TOKEN is deleted from the project.
+  const putOpts = {
     access: 'public',
     contentType: contentType || 'image/png',
-    token: process.env.BLOB_READ_WRITE_TOKEN,
-  });
+  };
+  if (process.env.BLOB_READ_WRITE_TOKEN) putOpts.token = process.env.BLOB_READ_WRITE_TOKEN;
+  const blob = await put(filename, buffer, putOpts);
   return (blob.url || '').slice(0, 500);
 }
 
