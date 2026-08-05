@@ -18,6 +18,24 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
+// Concurrency-limited map. Airtable allows 5 requests/second per base and
+// answers anything above that with a 429. Promise.all over a client list
+// fires one request per client simultaneously, so from roughly the sixth
+// client onward the extra calls get rejected — and because the per-item
+// error handler falls back to zeroes, the admin overview quietly showed
+// "0 leads" for real, healthy clients instead of failing loudly.
+// Four at a time with a beat between waves stays inside the limit and costs
+// about a second on a 20-client list.
+async function mapPaced(items, fn, { concurrency = 4, pauseMs = 250 } = {}) {
+  const out = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    const slice = items.slice(i, i + concurrency);
+    out.push(...await Promise.all(slice.map(fn)));
+    if (i + concurrency < items.length) await new Promise(r => setTimeout(r, pauseMs));
+  }
+  return out;
+}
+
 // Rate limiter. 20 req / 60s per IP
 const _rl = new Map();
 
@@ -1554,7 +1572,8 @@ module.exports = async function handler(req, res) {
       calendly:    r.fields['fldNEj1ysRgINOOtr']  || r.fields['Calendly Link'] || ''
     }));
 
-    const withStats = await Promise.all(clients.map(async c => {
+    // Paced, not Promise.all — see mapPaced()'s header for why.
+    const withStats = await mapPaced(clients, async c => {
       const lastSeen = c.apiKey ? (_presence.get(_presenceKey(c.apiKey))?.ts || 0) : 0;
       if (!c.projectCode) return { ...c, totalLeads: 0, newLeads: 0, qualified: 0, appointments: 0, firstLeadDate: '', lastSeen };
       try {
@@ -1583,7 +1602,7 @@ module.exports = async function handler(req, res) {
       } catch {
         return { ...c, totalLeads: 0, newLeads: 0, qualified: 0, appointments: 0, firstLeadDate: '', lastSeen };
       }
-    }));
+    });
 
     return res.status(200).json({ clients: withStats });
   } catch (err) {

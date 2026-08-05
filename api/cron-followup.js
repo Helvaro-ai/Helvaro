@@ -307,6 +307,28 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
+    // ── Trial lifecycle (daily, every client with Plan Status='trial') ──────
+    // TRIAL-DESIGN.md §4/§7: day-11 "3 dagen resterend" nudge + Sindi alert,
+    // day-7 "wat Helvaro deze week deed" report, and the trial->expired flip
+    // once Trial Ends At has passed. Runs every day (not gated to Mondays —
+    // unlike the weekly report below, this has its own once-only markers per
+    // client, see runTrialLifecycle()'s own header). Entirely independent of
+    // api/whatsapp.js's OWN date-derived expiry check (getPlanState()) — this
+    // cron is what performs the one-time Plan Status write + sends the
+    // touchpoint emails, it isn't what makes expiry take effect.
+    //
+    // ORDER MATTERS: this used to run dead last, behind the two Monday-only
+    // heavy tasks (per-client report emails, then a per-client AI call each).
+    // Those can eat most of the 300s budget, so on exactly the day they run,
+    // the billing-critical work was the thing most likely to be cut off — a
+    // client could stay on 'trial' past their end date, or never get the
+    // "3 days left" nudge. It is cheap and revenue-relevant, so it now runs
+    // before anything discretionary.
+    const trialResult = await runTrialLifecycle(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
+      console.error('[cron-followup] trial lifecycle failed:', e.message);
+      return null;
+    });
+
     // ── Weekly client report (Mondays) ───────────────────────────────────────
     // Stuurt elke maandag (UTC) een overzichts-email naar elke klant met hun
     // Rapport Email ingesteld. Per-klant: leads/week, qualified, conversie, top 5.
@@ -325,20 +347,6 @@ module.exports = async function handler(req, res) {
         return null;
       });
     }
-
-    // ── Trial lifecycle (daily, every client with Plan Status='trial') ──────
-    // TRIAL-DESIGN.md §4/§7: day-11 "3 dagen resterend" nudge + Sindi alert,
-    // day-7 "wat Helvaro deze week deed" report, and the trial->expired flip
-    // once Trial Ends At has passed. Runs every day (not gated to Mondays —
-    // unlike the weekly report above, this has its own once-only markers per
-    // client, see runTrialLifecycle()'s own header). Entirely independent of
-    // api/whatsapp.js's OWN date-derived expiry check (getPlanState()) — this
-    // cron is what performs the one-time Plan Status write + sends the
-    // touchpoint emails, it isn't what makes expiry take effect.
-    const trialResult = await runTrialLifecycle(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE).catch(e => {
-      console.error('[cron-followup] trial lifecycle failed:', e.message);
-      return null;
-    });
 
     return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult });
 
