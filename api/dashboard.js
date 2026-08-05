@@ -7492,7 +7492,7 @@ tr:hover .td-arrow { color: var(--cyan); }
            from the checklist card below — see the CSS comment above
            .dash-verify-banner for why this survives a checklist dismiss. -->
       <div class="dash-verify-banner" id="dash-verify-banner" style="display:none">
-        <div class="dash-verify-banner-icon">✉️</div>
+        <div class="dash-verify-banner-icon">✉</div>
         <div class="dash-verify-banner-body">
           <div class="dash-verify-banner-title">Bevestig je e-mailadres</div>
           <div class="dash-verify-banner-sub">Check je inbox voor de bevestigingsmail. Dit is alleen nodig zodat je later je wachtwoord kan resetten als je dat ooit vergeet — verder werkt alles al gewoon.</div>
@@ -7589,7 +7589,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <div class="revenue-goal-label">Omzet Doel</div>
             <div class="revenue-goal-sub" id="revenue-goal-sub">deze maand</div>
           </div>
-          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen">️</button>
+          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen" aria-label="Omzetdoel aanpassen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         </div>
         <div class="revenue-goal-amounts">
           <span class="revenue-goal-current" id="revenue-goal-current">€0</span>
@@ -7959,7 +7959,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
               <!-- Manual welcome-email helpers -->
               <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-                <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">️ Welkomstmail (zelf versturen)</div>
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Welkomstmail (zelf versturen)</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <button id="nc-copy-mail-btn" onclick="copyWelcomeEmail()" style="flex:1;min-width:140px;padding:9px 12px;background:var(--accent);border:none;border-radius:7px;color: var(--on-accent);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -8682,7 +8682,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <!-- Option 2: Iframe embed -->
           <div class="fm-option-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">️ Inbouwen als pagina-onderdeel</div>
+              <div class="fm-option-title">Inbouwen als pagina-onderdeel</div>
               <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
             </div>
             <textarea class="fm-code" id="fm-code-iframe" readonly rows="3"></textarea>
@@ -8721,7 +8721,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Installation guide. Platform-specific step-by-step -->
         <div class="fm-guide-card">
           <div class="fm-guide-hdr">
-            <div class="fm-option-title">️ Installatie-handleiding per platform</div>
+            <div class="fm-option-title">Installatie-handleiding per platform</div>
             <p class="fm-option-sub">Klik op het platform dat je gebruikt voor een stap-voor-stap uitleg. Werkt op ALLE moderne websites.</p>
           </div>
 
@@ -8790,7 +8790,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Bij <strong>Place Code in</strong>: kies <strong>Body. End</strong></li>
                 <li>Klik <strong>Apply</strong> → publiceer je site</li>
               </ol>
-              <div class="fm-guide-tip">️ Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code. Gebruik dan de directe link of QR-code.</div>
+              <div class="fm-guide-tip">Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code. Gebruik dan de directe link of QR-code.</div>
             </div>
           </details>
 
@@ -8808,7 +8808,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Footer"</strong></li>
                 <li>Klik <strong>Save</strong> bovenaan</li>
               </ol>
-              <div class="fm-guide-tip">️ Code Injection is beschikbaar vanaf het <strong>Business</strong> plan. Op Personal plan: gebruik een <em>Code Block</em> in een sectie, of gebruik enkel de directe link.</div>
+              <div class="fm-guide-tip">Code Injection is beschikbaar vanaf het <strong>Business</strong> plan. Op Personal plan: gebruik een <em>Code Block</em> in een sectie, of gebruik enkel de directe link.</div>
             </div>
           </details>
 
@@ -8914,7 +8914,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
           <div class="fm-preview-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">️ Voorbeeld</div>
+              <div class="fm-option-title">Voorbeeld</div>
               <p class="fm-option-sub">Zo ziet je formulier eruit voor een lead.</p>
             </div>
             <div class="fm-iframe-wrap">
@@ -9266,7 +9266,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Follow-up alerts -->
         <div id="fdr-followup-section" style="display:none">
           <div class="fdr-section-hdr">
-            <h3>️ Vandaag opvolgen</h3>
+            <h3>Vandaag opvolgen</h3>
             <span style="font-size:11px;color:var(--text-muted)" id="fdr-followup-count"></span>
           </div>
           <div class="fdr-followup-wrap" id="fdr-followup-list"></div>
@@ -12263,7 +12263,7 @@ function openPanel(lead) {
         <div class="panel-quick-actions">
           <a class="panel-quick-btn" href="\${telLink}">Bellen</a>
           <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">WhatsApp</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">️ Opvolging</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">Opvolging</a>
           <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">Offerte</a>
         </div>
       </div>
@@ -16291,7 +16291,7 @@ function appendApInstruction(idx) {
 const AP_NICHE_TO_TEMPLATE = {
   real_estate: 6,   // Voor vastgoed
   dentist:     5,   // Voor zorg/medisch
-  lawyer:      7,   // ️ Voor advocaten
+  lawyer:      7,   // Voor advocaten
   finance:     1,   // Professioneel
   // 'other' / unknown → no suggestion
 };
