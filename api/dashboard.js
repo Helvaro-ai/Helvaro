@@ -216,21 +216,24 @@ module.exports = async function handler(req, res) {
 }
 
 [data-theme="light"] {
-  /* Was #F7F5F0 — only ~4% darker than the #FFFFFF cards sitting on it,
-     so cards dissolved into the page and everything read blank. Deepened
-     into the same warm family (not grey, which would go cold and muddy)
-     so white surfaces read as raised planes instead of painted regions. */
-  /* Moved off the all-beige base. Gold stays the brand colour, but the
-     neutrals are now cool so gold reads as an ACCENT against them rather
-     than as another shade of the background. A warm page under warm
-     cards is why everything looked like one flat sheet of sand. */
-  --bg:            #F4F6FB;
-  --bg-alt:        #FFFFFF;
+  /* Light is the same product as dark, inverted — cool ink neutrals with
+     gold as the one warm accent. It is NOT a separate visual world.
+
+     The page is deliberately a good step darker than the cards. Earlier
+     versions ran #F7F5F0 and then #F4F6FB, both of which put a white card
+     on a near-white page at ~1.08 contrast: technically two surfaces,
+     visually one flat sheet. At #E9ECF4 a white card reads as a plane
+     lifted off the page before you notice any border or shadow, which is
+     what makes the difference between "clean" and "unfinished". */
+  --bg:            #E9ECF4;
+  --bg-alt:        #F4F6FB;
   --card:          #FFFFFF;
   --card-elevated: #FFFFFF;
-  --border-c:      #E2E7F0;
-  --divider:       #EDF0F7;
-  --hover-c:       #EEF2F9;
+  /* Was #E2E7F0 — 1.24 against a white card, i.e. a hairline you had to
+     look for. Deep enough now to actually delimit a surface. */
+  --border-c:      #D5DCE9;
+  --divider:       #E3E8F2;
+  --hover-c:       #EFF2F8;
 
   --accent-c:        #C9A34E;
   --accent-hover-c:  #B89344;
@@ -289,8 +292,17 @@ module.exports = async function handler(req, res) {
   --grad-success: linear-gradient(135deg, #15803D, #4D7C0F);
 
   /* No specular lip in light mode — a white highlight on a white card is
-     invisible, and faking one with a dark line reads as a seam. */
-  --edge-hi:       none;
+     invisible, and faking one with a dark line reads as a seam.
+
+     MUST stay a valid shadow layer, never the keyword none. Cards set
+     box-shadow to var(--edge-hi) followed by var(--shadow-card), and the
+     none keyword is not allowed as one layer of a comma-separated list:
+     it makes the WHOLE
+     declaration invalid, so the card silently loses its shadow entirely.
+     That is exactly what happened here and it is why every light-mode
+     card rendered dead flat. A fully transparent zero-size layer is the
+     correct no-op. */
+  --edge-hi:       0 0 0 0 rgba(0,0,0,0);
 
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
@@ -306,11 +318,11 @@ module.exports = async function handler(req, res) {
   --border-bright: var(--border-c);
   --scrollbar-bg:  var(--bg);
   --scrollbar-thumb: var(--border-c);
-  --shadow:        0 1px 2px rgba(20,17,10,0.05), 0 6px 20px rgba(20,17,10,0.07);
-  /* Was "none". A white card on a near-white page with only a hairline
-     border is invisible — that flatness was the single biggest reason
-     the app read as empty. Ink-tinted (not grey) so it stays warm. */
-  --shadow-card:   0 1px 2px rgba(20,17,10,0.05), 0 3px 12px rgba(20,17,10,0.06);
+  /* Ink-tinted rather than neutral grey, and stronger than before: a
+     light-theme card needs a readable contact shadow or it reads as a
+     painted rectangle instead of a raised surface. */
+  --shadow:        0 1px 2px rgba(23,31,45,0.07), 0 8px 24px rgba(23,31,45,0.09);
+  --shadow-card:   0 1px 2px rgba(23,31,45,0.06), 0 4px 14px rgba(23,31,45,0.07);
   --shadow-glow:   none;
 
   /* Liquid glass, light theme. Higher opacity than dark: light glass
@@ -320,11 +332,12 @@ module.exports = async function handler(req, res) {
   --glass-edge:  rgba(255,255,255,0.90);
   --glass-blur:  saturate(180%) blur(20px);
 
-  /* Same elevation scale, ink-tinted and much lower opacity — white
-     surfaces read depth at a fraction of the alpha dark ones need. */
-  --elev-1: 0 1px 2px rgba(20,17,10,.05), 0 4px 10px rgba(20,17,10,.06);
-  --elev-2: 0 3px 6px rgba(20,17,10,.06), 0 12px 28px rgba(20,17,10,.08);
-  --elev-3: 0 8px 18px rgba(20,17,10,.08), 0 28px 64px rgba(20,17,10,.12);
+  /* Same elevation scale, ink-tinted. Lower alpha than dark, but not as
+     timid as before — these were so faint that a hovered card and a
+     resting one looked identical. */
+  --elev-1: 0 1px 2px rgba(23,31,45,.07), 0 5px 12px rgba(23,31,45,.09);
+  --elev-2: 0 3px 6px rgba(23,31,45,.08), 0 14px 30px rgba(23,31,45,.11);
+  --elev-3: 0 8px 18px rgba(23,31,45,.10), 0 30px 66px rgba(23,31,45,.16);
 }
 
 /* ============================================================
@@ -380,6 +393,18 @@ body::after {
     radial-gradient(ellipse 80% 40% at 50% -5%, rgba(231,183,90,0.05) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* The two pools on the body element are tuned for a near-black ground.
+   Over a light
+   page the same alphas turn the top of the screen into a dirty smear, so
+   light gets its own, much quieter field: a hint of gold top-left, a hint
+   of cool top-right, and otherwise clean paper. */
+[data-theme="light"] body {
+  background:
+    radial-gradient(1100px 720px at 8% -14%, rgba(201,163,78,0.10), transparent 60%),
+    radial-gradient(900px 680px at 100% 2%, rgba(79,124,255,0.06), transparent 56%),
+    var(--bg-primary);
 }
 
 [data-theme="light"] body::before {
@@ -1953,11 +1978,39 @@ button.brand-dot { border: none; padding: 0; }
   background: rgba(15,20,30,0.88);
   backdrop-filter: saturate(160%) blur(20px);
   -webkit-backdrop-filter: saturate(160%) blur(20px);
-  --text:        #E9EEF6;
-  --text-muted:  #8D99AC;
+  /* The sidebar is dark in BOTH themes, so it rebinds the FULL token set
+     and becomes a self-contained dark context. Rebinding only a few of
+     them is what caused a run of light-theme bugs in here: the account
+     block painted white (it used --bg-card-alt), the client's own name
+     rendered at 1.04 contrast (it used --text-primary), and the logout
+     button sat at 2.38 (it used --red, which light tunes for white).
+     Every alias a child might reach for is covered here on purpose. */
+  --text:           #E9EEF6;
+  --text-c:         #E9EEF6;
+  --text-primary:   #E9EEF6;
+  --text-muted:     #8D99AC;
+  --text-muted-c:   #8D99AC;
+  --text-secondary: #8D99AC;
   --border:      rgba(255,255,255,0.07);
+  --border-c:    rgba(255,255,255,0.07);
+  --divider:     rgba(255,255,255,0.07);
   --hover:       rgba(255,255,255,0.06);
+  --hover-c:     rgba(255,255,255,0.06);
   --bg-card:     transparent;
+  --bg-card-alt: rgba(255,255,255,0.05);
+  --bg-alt:      rgba(255,255,255,0.05);
+  /* Semantic colours in their dark-surface variants — the light theme's
+     deepened versions are unreadable against this pane. */
+  --red:         #F87171;
+  --error-c:     #F87171;
+  --error-rgb:   248,113,113;
+  --green:       #34D399;
+  --success-c:   #34D399;
+  --success-rgb: 52,211,153;
+  --accent:        #E7B75A;
+  --accent-c:      #E7B75A;
+  --accent-bright: #F2C670;
+  --accent-rgb:    231,183,90;
   border-right: 1px solid rgba(255,255,255,0.06);
   box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(20,22,28,0.10);
   display: flex;
@@ -6810,10 +6863,15 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 
 /* User info bottom of sidebar */
+/* No light-theme override here on purpose. The sidebar is dark in BOTH
+   themes and rebinds its own surface tokens, so the account block already
+   gets the right treatment. The override that used to sit here predated
+   the permanently-dark sidebar and painted a white card inside it. */
 [data-theme="light"] .user-info {
   background: var(--bg-card-alt);
   border-radius: 10px;
 }
+[data-theme="light"] .sidebar .user-info { background: rgba(255,255,255,0.05); }
 
 /* Sidebar bottom button */
 [data-theme="light"] .btn-logout {
