@@ -10,11 +10,19 @@ const verify = require('./_verify'); // email-ownership verification — see its
 const BCRYPT_ROUNDS = 10;
 function isHashed(s) { return /^\$2[aby]\$/.test(String(s || '')); }
 function hashPassword(pw) { return bcrypt.hashSync(String(pw), BCRYPT_ROUNDS); }
+
+// bcrypt ONLY. There used to be a fallback here that compared the password
+// against the stored value as plaintext, for records predating hashing. It was
+// meant as a temporary migration path but it is a standing liability: it means
+// a leaked Airtable base hands over working passwords, and it silently keeps
+// working forever because a successful legacy login is indistinguishable from
+// a normal one. Anyone still on a plaintext record now fails the check and has
+// to go through "wachtwoord vergeten", which rehashes properly.
 function verifyPassword(pw, stored) {
   stored = String(stored || '');
   if (!stored) return false;
-  if (isHashed(stored)) { try { return bcrypt.compareSync(String(pw), stored); } catch { return false; } }
-  return safeEqual(pw, stored);   // legacy plaintext
+  if (!isHashed(stored)) return false;
+  try { return bcrypt.compareSync(String(pw), stored); } catch { return false; }
 }
 
 // Exponential backoff + jitter for Airtable 429. auth path only.
@@ -438,49 +446,45 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
 
-    // ── Env-var user store (USERS_CONFIG) ────────────────────────────────────
-    // Single JSON env var that eliminates ALL Airtable calls for listed users.
-    // Format (set in Vercel → Settings → Environment Variables):
-    //   USERS_CONFIG = {"email@example.com":{"password":"...","apiKey":"...","clientName":"...","projectCode":"..."}}
-    // Use the EXACT same password that is stored in Airtable "Password Hash".
-    // Supports multiple accounts. Just add more keys to the JSON object.
-    // NOTE: JSON.parse is isolated in its own try/catch so a signSession() failure
-    // (fail-closed when SESSION_SECRET/ADMIN_KEY are both unset) is NOT swallowed
-    // here — it must propagate to the outer handler catch and surface as a 500,
-    // not silently fall through to the Airtable path with a misleading error.
-    const rawUsersConfig = process.env.USERS_CONFIG;
-    if (rawUsersConfig) {
-      let store = null;
-      try { store = JSON.parse(rawUsersConfig); } catch { /* malformed JSON. Fall through to Airtable */ }
-      if (store) {
-        // Find by email (case-insensitive)
-        const key  = Object.keys(store).find(k => k.toLowerCase() === email.toLowerCase());
-        const user = key ? store[key] : null;
-        if (user && safeEqual(password, String(user.password || ''))) {
-          const ud = {
-            apiKey:       user.apiKey       || '',
-            clientName:   user.clientName   || '',
-            projectCode:  user.projectCode  || '',
-            calendlyLink: user.calendlyLink || '',  // included in token so leads.js can serve it without Airtable
-          };
-          return res.status(200).json({ success: true, ...ud, apiKey: signSession(ud) });
+    // ── USERS_CONFIG removed ─────────────────────────────────────────────────
+    // There used to be an env-var user store here: a JSON blob mapping email ->
+    // { password, apiKey, clientName, projectCode }, compared as PLAINTEXT, so
+    // that listed users could log in without touching Airtable. It bought a few
+    // hundred milliseconds in exchange for keeping real, working passwords in
+    // clear text in an environment variable — readable by anyone with project
+    // access, and copied into every build log and local .env that ever held it.
+    // Its own documentation said to use the exact same password as Airtable, so
+    // every one of those users authenticates fine through the normal path below.
+    // Nothing to migrate; the variable can simply be deleted in Vercel.
+
+    // ── Owner bypass ─────────────────────────────────────────────────────────
+    // OWNER_PASSWORD_HASH is misnamed: historically it held PLAINTEXT, and the
+    // previous comment here warned against "fixing" that to bcrypt because
+    // doing so blindly locks the owner out of her own admin.
+    //
+    // So this now accepts BOTH, decided by the shape of the stored value:
+    //   - starts with $2a/$2b/$2y  -> treated as a bcrypt hash, verified properly
+    //   - anything else            -> legacy plaintext, timing-safe compare,
+    //                                 plus a loud warning in the logs
+    // Nothing breaks today, and the moment OWNER_PASSWORD_HASH is replaced with
+    // a real bcrypt hash it starts being verified as one, with no code change.
+    // Generate one with:
+    //   node -e "console.log(require('bcryptjs').hashSync('JOUW-WACHTWOORD',10))"
+    const OWNER_EMAIL         = process.env.OWNER_EMAIL;
+    const OWNER_PASSWORD_REF  = process.env.OWNER_PASSWORD_HASH;
+    let ownerPasswordOk = false;
+    if (OWNER_EMAIL && OWNER_PASSWORD_REF && safeEqual(email, OWNER_EMAIL)) {
+      if (isHashed(OWNER_PASSWORD_REF)) {
+        try { ownerPasswordOk = bcrypt.compareSync(String(password), OWNER_PASSWORD_REF); }
+        catch { ownerPasswordOk = false; }
+      } else {
+        ownerPasswordOk = safeEqual(password, OWNER_PASSWORD_REF);
+        if (ownerPasswordOk) {
+          console.warn('[auth] OWNER_PASSWORD_HASH bevat nog PLAINTEXT. Vervang hem door een bcrypt-hash.');
         }
       }
     }
-
-    // ── Owner bypass (legacy. Superseded by USERS_CONFIG) ───────────────────
-    // NOTE: despite the env var's name, OWNER_PASSWORD_HASH is compared here
-    // as PLAINTEXT (safeEqual, not bcrypt/verifyPassword). This is intentional
-    // and matches current production behavior — the var was never migrated to
-    // hold an actual bcrypt hash, unlike "Password Hash" on Airtable user
-    // records above. Do NOT "fix" this into a bcrypt comparison without first
-    // confirming (and rotating) the value stored in Vercel; doing so silently
-    // breaks owner login. See BATCH-D-SUMMARY.md item 8 for the judgment call.
-    const OWNER_EMAIL              = process.env.OWNER_EMAIL;
-    const OWNER_PASSWORD_PLAINTEXT = process.env.OWNER_PASSWORD_HASH;
-    if (OWNER_EMAIL && OWNER_PASSWORD_PLAINTEXT &&
-        safeEqual(email, OWNER_EMAIL) &&
-        safeEqual(password, OWNER_PASSWORD_PLAINTEXT)) {
+    if (ownerPasswordOk) {
       const ownerData = {
         apiKey:       process.env.OWNER_API_KEY       || '',
         clientName:   process.env.OWNER_CLIENT_NAME   || 'Owner',
