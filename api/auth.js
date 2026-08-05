@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const verify = require('./_verify');
-const _session = require('./_session'); // cookie transport + CSRF — see its header // email-ownership verification — see its file header
+const _session = require('./_session');
+const _rl      = require('./_ratelimit'); // shared, cold-start-proof counters // cookie transport + CSRF — see its header // email-ownership verification — see its file header
 
 // ── Wachtwoord-hashing (bcrypt) ────────────────────────────────────────────────
 // Wachtwoorden werden vroeger als plaintext in "Password Hash" bewaard. Nu hashen
@@ -60,56 +61,38 @@ function setCachedUser(email, record) {
   _userCache.set(email, { record, ts: Date.now() });
 }
 
-// In-memory rate limiter. Max 40 login attempts per IP per 15 minutes.
-// (Was 10. too aggressive during setup/testing when users type wrong passwords
-// a few times. 40 still blocks credential-stuffing while not annoying real users.)
-const loginAttempts = new Map();
-function isRateLimited(ip) {
-  const now    = Date.now();
-  const window = 15 * 60 * 1000;
-  const max    = 40;
-  const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < window);
-  attempts.push(now);
-  loginAttempts.set(ip, attempts);
-  if (loginAttempts.size > 1000) {
-    for (const [k, v] of loginAttempts) {
-      if (v.every(t => now - t > window)) loginAttempts.delete(k);
-    }
-  }
-  return attempts.length > max;
+// Max 40 login attempts per IP per 15 minutes. 40 rather than 10 because a
+// real user fumbling their password a few times during setup shouldn't get
+// locked out; it still stops credential stuffing. Counter lives in the shared
+// store (see api/_ratelimit.js) — as plain in-memory Maps these limits were
+// per-instance and reset on every cold start, which on serverless is barely a
+// limit at all.
+async function isRateLimited(ip) {
+  const r = await _rl.hit('login', ip, 40, 15 * 60 * 1000);
+  return r.limited;
 }
 
-// Manual reset for support. Wipes the in-memory attempts for a given IP.
-// Triggered via mode='reset-rate-limit' with the admin key.
-function clearRateLimit(ip) { loginAttempts.delete(ip); }
+// Manual reset for support, triggered via mode='reset-rate-limit' with the
+// admin key. Clears the shared counter, not just this instance's copy.
+async function clearRateLimit(ip) { await _rl.reset('login', ip); }
 
 // Separate, dedicated limiter for the reset-rate-limit action itself (i.e.
 // for guesses of ADMIN_KEY made against THIS branch), deliberately NOT the
-// same counter as isRateLimited()/loginAttempts above.
+// same counter as isRateLimited() above (separate 'adminkey' bucket).
 //
-// Why not just reuse loginAttempts: this endpoint exists so a legitimate
+// Why not just reuse the login bucket: this endpoint exists so a legitimate
 // admin who is already locked out (40 failed logins in 15 min) can clear
-// their own lockout. If we gated this branch on the shared loginAttempts
+// their own lockout. If we gated this branch on the same login
 // counter, a locked-out admin's own reset call would push their count even
 // higher and still read as rate-limited — permanently locking them out with
 // no self-service recovery, which defeats the endpoint's entire purpose.
 // A separate counter throttles brute-forcing of ADMIN_KEY (the actual
 // vulnerability) without coupling it to ordinary login failures.
-const adminKeyAttempts = new Map();
-function isAdminKeyRateLimited(ip) {
-  const now    = Date.now();
-  const window = 15 * 60 * 1000;
-  const max    = 10; // generous for a fumbled paste, tight against brute force
-  const attempts = (adminKeyAttempts.get(ip) || []).filter(t => now - t < window);
-  attempts.push(now);
-  adminKeyAttempts.set(ip, attempts);
-  if (adminKeyAttempts.size > 1000) {
-    for (const [k, v] of adminKeyAttempts) {
-      if (v.every(t => now - t > window)) adminKeyAttempts.delete(k);
-    }
-  }
-  return attempts.length > max;
+async function isAdminKeyRateLimited(ip) {
+  const r = await _rl.hit('adminkey', ip, 10, 15 * 60 * 1000);
+  return r.limited;
 }
+
 
 // Derive a stable admin session token from ADMIN_KEY so the raw secret
 // never leaves the server. The token is deterministic (no DB needed) but
@@ -264,13 +247,13 @@ module.exports = async function handler(req, res) {
   // ── Special unauthenticated mode: reset-rate-limit (requires admin key) ────
   // Useful when an admin locked themselves out by testing logins.
   // Throttled by isAdminKeyRateLimited() (own counter, see its definition
-  // above) rather than isRateLimited()/loginAttempts — see that function's
+  // above) rather than isRateLimited()'s bucket — see that function's
   // comment for why reusing the login counter here would self-defeat.
   // Comparison is timing-safe (safeEqual) so a caller can't learn ADMIN_KEY
   // byte-by-byte from response latency, same as the admin-shortcut login
   // path further down and admin.js's isValidAdminToken().
   if (req.body && req.body.mode === 'reset-rate-limit') {
-    if (isAdminKeyRateLimited(ip)) {
+    if (await isAdminKeyRateLimited(ip)) {
       return res.status(429).json({ error: 'Te veel pogingen. Wacht 15 minuten.' });
     }
     const provided  = String((req.body || {}).adminKey || '').trim();
@@ -278,11 +261,11 @@ module.exports = async function handler(req, res) {
     if (!provided || !ADMIN_KEY || !safeEqual(provided, ADMIN_KEY)) {
       return res.status(401).json({ error: 'Ongeldige admin key' });
     }
-    clearRateLimit(ip);
+    await clearRateLimit(ip);
     return res.status(200).json({ ok: true, message: 'Rate limit gewist voor jouw IP.' });
   }
 
-  if (isRateLimited(ip)) {
+  if (await isRateLimited(ip)) {
     return res.status(429).json({ error: 'Te veel pogingen. Wacht 15 minuten of probeer vanaf een ander IP. Tip: open een privé/incognito venster.' });
   }
 
