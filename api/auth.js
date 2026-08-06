@@ -14,18 +14,29 @@ const BCRYPT_ROUNDS = 10;
 function isHashed(s) { return /^\$2[aby]\$/.test(String(s || '')); }
 function hashPassword(pw) { return bcrypt.hashSync(String(pw), BCRYPT_ROUNDS); }
 
-// bcrypt ONLY. There used to be a fallback here that compared the password
-// against the stored value as plaintext, for records predating hashing. It was
-// meant as a temporary migration path but it is a standing liability: it means
-// a leaked Airtable base hands over working passwords, and it silently keeps
-// working forever because a successful legacy login is indistinguishable from
-// a normal one. Anyone still on a plaintext record now fails the check and has
-// to go through "wachtwoord vergeten", which rehashes properly.
+// bcrypt, with a self-healing legacy path.
+//
+// This briefly rejected non-bcrypt values outright, on the reasoning that a
+// plaintext fallback is a standing liability. That was right about the risk and
+// wrong about the remedy: it locked out every account still holding a plaintext
+// password — including the owner's own — and refusing a login does not remove
+// the plaintext from the database, it just makes it unreachable.
+//
+// So plaintext is accepted again, but only once: verifyPassword reports HOW the
+// match was made, and the caller immediately rewrites the record as bcrypt (see
+// the upgrade block at the login call site). The plaintext is gone after the
+// next successful sign-in, which actually solves the problem instead of
+// stranding people on it.
+//
+// Returns { ok, legacy }.
 function verifyPassword(pw, stored) {
   stored = String(stored || '');
-  if (!stored) return false;
-  if (!isHashed(stored)) return false;
-  try { return bcrypt.compareSync(String(pw), stored); } catch { return false; }
+  if (!stored) return { ok: false, legacy: false };
+  if (isHashed(stored)) {
+    try { return { ok: bcrypt.compareSync(String(pw), stored), legacy: false }; }
+    catch { return { ok: false, legacy: false }; }
+  }
+  return { ok: safeEqual(pw, stored), legacy: true };
 }
 
 // Exponential backoff + jitter for Airtable 429. auth path only.
@@ -530,14 +541,37 @@ module.exports = async function handler(req, res) {
     const storedHash = String(user['Password Hash'] || user['fldPasswordHash'] || '');
 
     // Verifieer wachtwoord. bcrypt voor nieuwe hashes, timing-safe plaintext voor legacy.
-    if (!storedHash || !verifyPassword(password, storedHash)) {
+    const pwCheck = storedHash ? verifyPassword(password, storedHash) : { ok: false, legacy: false };
+    if (!pwCheck.ok) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
-    // The transparent plaintext -> bcrypt upgrade that used to live here is
-    // gone with the legacy path: verifyPassword() above now rejects anything
-    // that is not already a bcrypt hash, so this block was unreachable. A
-    // record still holding plaintext fails login and is recovered through
-    // "wachtwoord vergeten", which hashes properly.
+    // This login matched a plaintext record. Rewrite it as bcrypt right now, so
+    // the clear-text password stops existing in Airtable from here on. Runs at
+    // most once per account. Best-effort: if the write fails the user is still
+    // logged in and the next sign-in tries again — never block a valid login on
+    // a housekeeping write.
+    // effectiveHash is what the session fingerprint must be pinned to. Without
+    // this the upgrade below would rewrite the stored hash while the token was
+    // still pinned to the OLD (plaintext) value, so the very next request would
+    // see a fingerprint mismatch and revoke the session the user just created.
+    let effectiveHash = storedHash;
+    if (pwCheck.legacy) {
+      const upgraded = hashPassword(password);
+      try {
+        await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}/${userRecord.id}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: { 'Password Hash': upgraded } })
+          }
+        );
+        effectiveHash = upgraded;
+        _userCache.delete(email);
+        _revoke.forget(email);
+        console.warn('[auth] plaintext-wachtwoord omgezet naar bcrypt voor een account');
+      } catch (e) { /* nooit een geldige login blokkeren op een opruimactie */ }
+    }
 
     const userData = {
       apiKey:       user['fldxZMgVXSy7EShDL'] || user['API Key']        || '',
@@ -548,7 +582,7 @@ module.exports = async function handler(req, res) {
       // the password it was issued under, so changing the password ends every
       // session that predates it, including ones on other devices.
       em:           email,
-      pv:           _revoke.fingerprint(storedHash),
+      pv:           _revoke.fingerprint(effectiveHash),
     };
     {
       const _tok = signSession(userData);
