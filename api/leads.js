@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const _gcal   = require('./_gcal');
-const _session = require('./_session'); // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
+const _session = require('./_session');
+const _revoke  = require('./_revocation'); // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
@@ -185,6 +186,13 @@ module.exports = async function handler(req, res) {
   // Path A: signed session token. Verify locally, zero Airtable calls
   const session = verifySession(raw);
   if (session) {
+    // Signature and expiry are not enough on their own: a token stays valid
+    // for its full 7 days even after the password behind it changed. This
+    // check ends sessions minted under an older password. Cached ~60s, and
+    // fails open on an Airtable outage — see api/_revocation.js.
+    if (await _revoke.isRevoked(session)) {
+      return res.status(401).json({ error: 'Sessie verlopen. Log opnieuw in.' });
+    }
     projectCode  = session.projectCode  || '';
     clientName   = session.clientName   || '';
     calendlyLink = session.calendlyLink || '';

@@ -2,7 +2,8 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const verify = require('./_verify');
 const _session = require('./_session');
-const _rl      = require('./_ratelimit'); // shared, cold-start-proof counters // cookie transport + CSRF — see its header // email-ownership verification — see its file header
+const _rl      = require('./_ratelimit');
+const _revoke  = require('./_revocation'); // password-hash fingerprint -> session revocation // shared, cold-start-proof counters // cookie transport + CSRF — see its header // email-ownership verification — see its file header
 
 // ── Wachtwoord-hashing (bcrypt) ────────────────────────────────────────────────
 // Wachtwoorden werden vroeger als plaintext in "Password Hash" bewaard. Nu hashen
@@ -404,6 +405,14 @@ module.exports = async function handler(req, res) {
       }
       // Invalidate the user cache so the next login uses the new hash
       _userCache.delete(emailFromToken);
+      // And drop the cached password fingerprint, so every session issued under
+      // the OLD password is rejected on its very next request instead of
+      // lingering for up to the 60s revocation-cache window.
+      _revoke.forget(emailFromToken);
+      // Whoever is resetting is holding a session for the old password too;
+      // clear their cookies so they land on a clean login rather than a
+      // session that is about to start failing.
+      _session.clearSessionCookies(res);
       return res.status(200).json({ ok: true, message: 'Wachtwoord aangepast. Je kan nu inloggen.' });
     }
 
@@ -524,27 +533,22 @@ module.exports = async function handler(req, res) {
     if (!storedHash || !verifyPassword(password, storedHash)) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
-    // Transparante upgrade: oude plaintext-wachtwoorden eenmalig omzetten naar bcrypt.
-    // Best-effort: faalt dit, dan blijft de login gewoon werken (legacy-pad blijft geldig).
-    if (!isHashed(storedHash)) {
-      try {
-        await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${USERS_TABLE}/${userRecord.id}`,
-          {
-            method:  'PATCH',
-            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ fields: { 'Password Hash': hashPassword(password) } })
-          }
-        );
-        _userCache.delete(email);
-      } catch (e) { /* upgrade nooit de login laten blokkeren */ }
-    }
+    // The transparent plaintext -> bcrypt upgrade that used to live here is
+    // gone with the legacy path: verifyPassword() above now rejects anything
+    // that is not already a bcrypt hash, so this block was unreachable. A
+    // record still holding plaintext fails login and is recovered through
+    // "wachtwoord vergeten", which hashes properly.
 
     const userData = {
       apiKey:       user['fldxZMgVXSy7EShDL'] || user['API Key']        || '',
       clientName:   user['fldmKwegSUj1joru3']  || user['Client Name']   || '',
       projectCode:  user['fldbrCpBuQjJBfZsv']  || user['Project Code']  || '',
       calendlyLink: user['fldCalendlyLink']     || user['Calendly Link'] || '',
+      // Revocation claims — see api/_revocation.js. 'pv' pins the session to
+      // the password it was issued under, so changing the password ends every
+      // session that predates it, including ones on other devices.
+      em:           email,
+      pv:           _revoke.fingerprint(storedHash),
     };
     {
       const _tok = signSession(userData);
