@@ -9039,7 +9039,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             AI Instellingen
           </div>
           <div class="settings-info-box">
-            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a>
+            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
           </div>
           <div class="settings-row">
             <div>
@@ -9130,7 +9130,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label">E-mailadres support</div>
               <div class="settings-label-sub">Bereikbaar op werkdagen</div>
             </div>
-            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">sindi.s@usehelvaro.pro</a></div>
+            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
           </div>
         </div>
 
@@ -12133,7 +12133,7 @@ function renderTable() {
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
         </div>
-        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent)">sindi.s@usehelvaro.pro</a></div>
+        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent)">${SUPPORT_EMAIL_ATTR}</a></div>
       </div>
     </td></tr>\`;
     return;
@@ -15496,7 +15496,7 @@ function exportPDF() {
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(150,150,160);
-  doc.text('Gegenereerd door Helvaro · sindi.s@usehelvaro.pro', 14, 287);
+  doc.text('Gegenereerd door Helvaro · ${SUPPORT_EMAIL_ATTR}', 14, 287);
 
   doc.save('helvaro-rapport-' + new Date().toISOString().slice(0,10) + '.pdf');
   toast('PDF gedownload', 'success');
