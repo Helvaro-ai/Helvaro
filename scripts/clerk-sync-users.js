@@ -17,7 +17,28 @@
 // Existing Clerk users are matched by email and updated in place, so running
 // this twice is harmless. It never deletes anyone.
 
+const fs = require('fs');
+const path = require('path');
 const { createClerkClient } = require('@clerk/backend');
+
+// The keys live in Vercel, not in your shell. Rather than make you paste a
+// secret onto a command line (where it lands in shell history), this reads a
+// .env / .env.local next to the project — exactly what `vercel env pull`
+// produces. Values already in the real environment always win.
+(function loadEnvFile() {
+  for (const name of ['.env.local', '.env']) {
+    const file = path.join(__dirname, '..', name);
+    if (!fs.existsSync(file)) continue;
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      const m = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
+      if (!m) continue;
+      let v = m[2].trim().replace(/^["']|["']$/g, '');
+      if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+    }
+    console.log(`(omgeving geladen uit ${name})`);
+    break;
+  }
+})();
 
 const USERS_TABLE = 'tbl2hrPW7gIx5XF4S';
 const F = {
@@ -31,7 +52,13 @@ const APPLY = process.argv.includes('--apply');
 
 function need(name) {
   const v = process.env[name];
-  if (!v) { console.error(`Ontbrekende omgevingsvariabele: ${name}`); process.exit(1); }
+  if (!v) {
+    console.error(`\nOntbrekende omgevingsvariabele: ${name}\n`);
+    console.error('De sleutels staan in Vercel, niet in je terminal. Haal ze op met:');
+    console.error('  npx vercel env pull .env.local\n');
+    console.error('en draai dit script daarna opnieuw.');
+    process.exit(1);
+  }
   return v;
 }
 

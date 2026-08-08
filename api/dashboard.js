@@ -1116,6 +1116,27 @@ button.brand-dot { border: none; padding: 0; }
 
 .login-error.visible { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
+/* Sign-in / sign-up switch under the Clerk component */
+#clerk-toggle {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.clerk-toggle-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: #8A6714;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.clerk-toggle-link:hover { color: #6d520f; }
+.clerk-toggle-link:focus-visible { outline: 2px solid #C9A34E; outline-offset: 2px; border-radius: 3px; }
+
 .login-error::before {
   content: '';
   width: 18px;
@@ -2112,9 +2133,11 @@ button.brand-dot { border: none; padding: 0; }
 /* Two flat colourways of the mark (see LOGO-RECOLOR notes) — dark surfaces
    get the pale sand tint, the light surface gets the deeper bronze step so
    it keeps contrast on white/cream. Swapped per theme, never both at once. */
+/* The sidebar is permanently dark in BOTH themes (see .sidebar), so the logo
+   must not follow the page theme — it follows the surface it sits on. These
+   rules used to swap to the ink logo in light mode, which put the dark logo on
+   the dark sidebar and made it almost invisible. The pale variant stays. */
 .sidebar-logo .sidebar-logo-light { display: none; }
-[data-theme="light"] .sidebar-logo .sidebar-logo-dark  { display: none; }
-[data-theme="light"] .sidebar-logo .sidebar-logo-light { display: block; }
 
 .sidebar-nav {
   flex: 1;
@@ -7293,8 +7316,11 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div style="text-align:center;margin-top:14px"><a href="/forgot-password" style="font-size:13px;color:#6b7280;text-decoration:none">Wachtwoord vergeten?</a></div>
         </div><!-- /login-form-wrap -->
 
-        <!-- Clerk mounts its sign-in component here. Hidden until it does. -->
+        <!-- Clerk mounts sign-in OR sign-up here. Hidden until it does. -->
         <div id="clerk-signin" style="display:none;min-height:320px"></div>
+        <!-- Switch between the two, kept in our own page so the user never
+             leaves the branded login screen for a Clerk-hosted one. -->
+        <div id="clerk-toggle" style="display:none"></div>
 
         <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform ${new Date().getFullYear()}</div>
       </div>
@@ -10104,30 +10130,79 @@ async function clerkToken() {
   try { return (await window.Clerk.session.getToken()) || ''; } catch (e) { return ''; }
 }
 
-// Clerk's own sign-in component, dropped into the existing login panel so the
-// page keeps its layout, logo and split-screen showcase. Clerk supplies the
-// form and the flows (reset, verification); we supply the frame.
-function mountClerkSignIn(clerk) {
+// Clerk's own components, dropped into the existing login panel so the page
+// keeps its layout, logo and split-screen showcase. Clerk supplies the forms
+// and the flows (password reset, email verification); we supply the frame.
+//
+// Both sign-in AND sign-up are mounted on demand: without the sign-up view a
+// new client has no way to create an account at all, which is the whole point
+// of moving to a hosted identity provider.
+var CLERK_APPEARANCE = {
+  variables: {
+    colorPrimary: '#C9A34E',
+    colorBackground: 'transparent',
+    borderRadius: '12px',
+    fontFamily: 'Inter, sans-serif',
+  },
+  elements: { card: { boxShadow: 'none', border: 'none' } },
+};
+
+function clerkHost() {
   var host = document.getElementById('clerk-signin');
-  if (!host) return;
+  if (!host) return null;
   var form = document.getElementById('login-form-wrap');
   if (form) form.style.display = 'none';
   host.style.display = 'block';
+  // Unmount whatever is there before mounting the other view, otherwise Clerk
+  // stacks two forms on top of each other when you toggle back and forth.
   try {
-    clerk.mountSignIn(host, {
-      appearance: {
-        variables: {
-          colorPrimary: '#C9A34E',
-          colorBackground: 'transparent',
-          borderRadius: '12px',
-          fontFamily: 'Inter, sans-serif',
-        },
-        elements: { card: { boxShadow: 'none', border: 'none' } },
-      },
-    });
-  } catch (e) {
-    console.error('[clerk] sign-in kon niet gemonteerd worden', e);
-  }
+    if (host.dataset.mounted === 'signin')      window.Clerk.unmountSignIn(host);
+    else if (host.dataset.mounted === 'signup') window.Clerk.unmountSignUp(host);
+  } catch (e) {}
+  host.innerHTML = '';
+  return host;
+}
+
+function mountClerkSignIn(clerk) {
+  var host = clerkHost();
+  if (!host) return;
+  try {
+    clerk.mountSignIn(host, CLERK_APPEARANCE);
+    host.dataset.mounted = 'signin';
+    setClerkToggle('signin');
+  } catch (e) { console.error('[clerk] sign-in kon niet gemonteerd worden', e); }
+}
+
+function mountClerkSignUp(clerk) {
+  var host = clerkHost();
+  if (!host) return;
+  try {
+    clerk.mountSignUp(host, CLERK_APPEARANCE);
+    host.dataset.mounted = 'signup';
+    setClerkToggle('signup');
+  } catch (e) { console.error('[clerk] sign-up kon niet gemonteerd worden', e); }
+}
+
+// Clerk's components carry their own "already have an account?" links, but
+// those navigate to Clerk-hosted pages by default. This keeps the switch inside
+// our own page so the user never leaves the branded login screen.
+function setClerkToggle(view) {
+  var el = document.getElementById('clerk-toggle');
+  if (!el) return;
+  el.innerHTML = '';
+  var span = document.createElement('span');
+  span.textContent = view === 'signin' ? 'Nog geen account? ' : 'Heb je al een account? ';
+  var link = document.createElement('button');
+  link.type = 'button';
+  link.className = 'clerk-toggle-link';
+  link.textContent = view === 'signin' ? 'Account aanmaken' : 'Inloggen';
+  link.addEventListener('click', function () {
+    if (view === 'signin') mountClerkSignUp(window.Clerk);
+    else                   mountClerkSignIn(window.Clerk);
+  });
+  el.appendChild(span);
+  el.appendChild(link);
+  el.style.display = 'block';
 }
 
 async function clerkSignOut() {
