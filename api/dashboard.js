@@ -10124,7 +10124,7 @@ async function clerkInit() {
     sc.setAttribute('data-clerk-publishable-key', '${CLERK_PK}');
     sc.src = 'https://${CLERK_HOST}/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
     sc.onload = async function () {
-      try { await window.Clerk.load({ afterSignOutUrl: '/dashboard' }); resolve(window.Clerk); }
+      try { await window.Clerk.load({ afterSignOutUrl: '/dashboard', localization: CLERK_NL }); resolve(window.Clerk); }
       catch (e) { console.error('[clerk] laden mislukt', e); resolve(null); }
     };
     sc.onerror = function () { console.error('[clerk] script kon niet geladen worden'); resolve(null); };
@@ -10152,7 +10152,45 @@ var CLERK_APPEARANCE = {
     borderRadius: '12px',
     fontFamily: 'Inter, sans-serif',
   },
-  elements: { card: { boxShadow: 'none', border: 'none' } },
+  elements: {
+    card: { boxShadow: 'none', border: 'none' },
+    // Clerk ships its own "Don't have an account? Sign up" footer, which
+    // navigates to a Clerk-hosted page and leaves our branded screen. We
+    // already have an in-page switch under the component, so hiding this
+    // removes both the duplicate and the exit.
+    footerAction: { display: 'none' },
+    footer: { display: 'none' },
+  },
+};
+
+// Clerk's UI is English out of the box. Only the strings that actually show up
+// on these two screens are translated — a full locale bundle would be dead
+// weight for a sign-in box with four fields.
+var CLERK_NL = {
+  socialButtonsBlockButton: 'Doorgaan met {{provider|titleize}}',
+  dividerText: 'of',
+  formFieldLabel__emailAddress: 'E-mailadres',
+  formFieldLabel__password: 'Wachtwoord',
+  formFieldInputPlaceholder__emailAddress: 'naam@bedrijf.be',
+  formFieldInputPlaceholder__password: 'Je wachtwoord',
+  formButtonPrimary: 'Doorgaan',
+  footerActionLink__useAnotherMethod: 'Andere manier proberen',
+  backButton: 'Terug',
+  signIn: {
+    start: { title: 'Inloggen bij Helvaro', subtitle: 'Welkom terug. Log in om verder te gaan.' },
+    password: { title: 'Vul je wachtwoord in', subtitle: 'Voer het wachtwoord van je account in' },
+    forgotPasswordAlternativeMethods: { label__alternativeMethods: 'Of log op een andere manier in' },
+    forgotPassword: { title: 'Wachtwoord vergeten', subtitle_email: 'We sturen je een code per e-mail' },
+  },
+  signUp: {
+    start: { title: 'Account aanmaken', subtitle: 'Vul je gegevens in om te beginnen' },
+    emailCode: { title: 'Bevestig je e-mailadres', subtitle: 'Vul de code in die we je gestuurd hebben' },
+  },
+  formFieldAction__forgotPassword: 'Wachtwoord vergeten?',
+  unstable__errors: {
+    form_password_incorrect: 'Verkeerd wachtwoord. Probeer het opnieuw.',
+    form_identifier_not_found: 'We kennen dit e-mailadres niet.',
+  },
 };
 
 function clerkHost() {
@@ -10160,6 +10198,12 @@ function clerkHost() {
   if (!host) return null;
   var form = document.getElementById('login-form-wrap');
   if (form) form.style.display = 'none';
+  // Clerk's card carries its own title and subtitle, so ours would be the
+  // second heading on the same panel saying roughly the same thing.
+  var wel = document.querySelector('.login-welcome');
+  var sub = document.querySelector('.login-subtitle');
+  if (wel) wel.style.display = 'none';
+  if (sub) sub.style.display = 'none';
   host.style.display = 'block';
   // Unmount whatever is there before mounting the other view, otherwise Clerk
   // stacks two forms on top of each other when you toggle back and forth.
