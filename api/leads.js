@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const _gcal   = require('./_gcal');
 const _session = require('./_session');
-const _revoke  = require('./_revocation'); // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
+const _revoke  = require('./_revocation');
+const _clerk   = require('./_clerk'); // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
@@ -173,18 +174,37 @@ module.exports = async function handler(req, res) {
   const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
-  // Cookie first, x-api-key as fallback — see api/_session.js.
-  const raw = _session.readToken(req);
-  if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
-  // Only cookie-authenticated writes are checked; header auth cannot be
-  // forged cross-origin, so it is exempt.
-  if (!_session.csrfOk(req)) return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
-
   let projectCode = '', clientName = '', calendlyLink = '', isAdmin = false;
 
+  // Path 0: Clerk. Only consulted when CLERK_ENABLED=1 (see api/_clerk.js);
+  // otherwise it returns null immediately and nothing below behaves any
+  // differently. It runs BEFORE the token check on purpose: a Clerk request
+  // carries only Clerk's own __session cookie, so requiring the legacy token
+  // first would 401 every Clerk user before they ever got here.
+  const clerkSession = await _clerk.verifySession(req);
+  if (clerkSession) {
+    projectCode  = clerkSession.projectCode;
+    clientName   = clerkSession.clientName;
+    calendlyLink = clerkSession.calendlyLink;
+    // _clerk.verifySession already refuses a session without a projectCode, so
+    // reaching here means the tenant is known. Belt and braces anyway: an empty
+    // projectCode reads as "admin, show everything" further down.
+    if (!projectCode) return res.status(401).json({ error: 'Sessie mist een projectcode' });
+    if (!_session.csrfOk(req)) return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
+  }
+
+  // Accept up to 2 KB to accommodate signed session tokens (~400 chars)
+  // Cookie first, x-api-key as fallback — see api/_session.js.
+  const raw = projectCode ? '' : _session.readToken(req);
+  if (!projectCode) {
+    if (!raw) return res.status(401).json({ error: 'API key ontbreekt' });
+    // Only cookie-authenticated writes are checked; header auth cannot be
+    // forged cross-origin, so it is exempt.
+    if (!_session.csrfOk(req)) return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
+  }
+
   // Path A: signed session token. Verify locally, zero Airtable calls
-  const session = verifySession(raw);
+  const session = projectCode ? null : verifySession(raw);
   if (session) {
     // Signature and expiry are not enough on their own: a token stays valid
     // for its full 7 days even after the password behind it changed. This
