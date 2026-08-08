@@ -21,6 +21,25 @@ module.exports = async function handler(req, res) {
   const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || 'hello@helvaro.pro').trim();
   const SUPPORT_WA    = String(process.env.SUPPORT_WA || '').replace(/[^0-9]/g, '');
   const SUPPORT_EMAIL_ATTR = SUPPORT_EMAIL.replace(/[<>"'&]/g, '');
+
+  // ── Clerk (optional) ──────────────────────────────────────────────────────
+  // Only rendered when CLERK_ENABLED=1 and a publishable key is present, so the
+  // page is byte-identical to before until the switch is thrown.
+  //
+  // The publishable key is public by design and safe to inline; it also encodes
+  // the Frontend API host as base64 of "host$", which is where clerk.browser.js
+  // is served from. Deriving it beats asking for a second env var that could
+  // drift out of sync with the key.
+  const CLERK_ON = process.env.CLERK_ENABLED === '1' && !!process.env.CLERK_PUBLISHABLE_KEY;
+  const CLERK_PK = CLERK_ON ? String(process.env.CLERK_PUBLISHABLE_KEY).replace(/[<>"'&]/g, '') : '';
+  let CLERK_HOST = '';
+  if (CLERK_ON) {
+    try {
+      CLERK_HOST = Buffer.from(CLERK_PK.replace(/^pk_(test|live)_/, ''), 'base64')
+        .toString('utf8').replace(/\$+$/, '').replace(/[^a-zA-Z0-9.-]/g, '');
+    } catch { CLERK_HOST = ''; }
+  }
+  const CLERK_READY = CLERK_ON && !!CLERK_HOST;
   const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
@@ -7250,6 +7269,11 @@ tr:hover .td-arrow { color: var(--cyan); }
         <h1 class="login-welcome">Welkom terug!</h1>
         <p class="login-subtitle">Voer je gegevens in om toegang te krijgen tot je dashboard</p>
 
+        <!-- Everything from here to the closing tag is the built-in form.
+             mountClerkSignIn() hides this wrapper and reveals #clerk-signin
+             instead, so the logo, heading and split-screen showcase stay put
+             and only the form itself is swapped. -->
+        <div id="login-form-wrap">
         <div class="form-group">
           <label class="form-label" for="login-email">E-mailadres</label>
           <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.nl" autocomplete="username">
@@ -7267,6 +7291,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="login-error" id="login-error" role="alert" aria-live="assertive"></div>
 
         <div style="text-align:center;margin-top:14px"><a href="/forgot-password" style="font-size:13px;color:#6b7280;text-decoration:none">Wachtwoord vergeten?</a></div>
+        </div><!-- /login-form-wrap -->
+
+        <!-- Clerk mounts its sign-in component here. Hidden until it does. -->
+        <div id="clerk-signin" style="display:none;min-height:320px"></div>
 
         <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform ${new Date().getFullYear()}</div>
       </div>
@@ -10037,6 +10065,78 @@ tr:hover .td-arrow { color: var(--cyan); }
 const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
 
 /* ============================================================
+   CLERK (optioneel — leeg tenzij CLERK_ENABLED=1)
+
+   No React and no build step here, so this uses Clerk's vanilla SDK and
+   deliberately does NOT rely on Clerk's __session cookie: that needs DNS
+   records on a production instance before it is set on our own domain. Instead
+   the page asks the SDK for a fresh JWT and sends it as a Bearer header, which
+   api/_clerk.js already accepts. Works immediately on test keys, and survives
+   the move to a production instance without a code change.
+
+   getToken() returns a short-lived token and refreshes it as needed, so it is
+   called per request rather than cached.
+   ============================================================ */
+const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
+let _clerkLoaded = null;
+
+async function clerkInit() {
+  if (!CLERK_READY) return null;
+  if (_clerkLoaded) return _clerkLoaded;
+  _clerkLoaded = new Promise(function (resolve) {
+    var sc = document.createElement('script');
+    sc.async = true;
+    sc.crossOrigin = 'anonymous';
+    sc.setAttribute('data-clerk-publishable-key', '${CLERK_PK}');
+    sc.src = 'https://${CLERK_HOST}/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+    sc.onload = async function () {
+      try { await window.Clerk.load({ afterSignOutUrl: '/dashboard' }); resolve(window.Clerk); }
+      catch (e) { console.error('[clerk] laden mislukt', e); resolve(null); }
+    };
+    sc.onerror = function () { console.error('[clerk] script kon niet geladen worden'); resolve(null); };
+    document.head.appendChild(sc);
+  });
+  return _clerkLoaded;
+}
+
+async function clerkToken() {
+  if (!CLERK_READY || !window.Clerk || !window.Clerk.session) return '';
+  try { return (await window.Clerk.session.getToken()) || ''; } catch (e) { return ''; }
+}
+
+// Clerk's own sign-in component, dropped into the existing login panel so the
+// page keeps its layout, logo and split-screen showcase. Clerk supplies the
+// form and the flows (reset, verification); we supply the frame.
+function mountClerkSignIn(clerk) {
+  var host = document.getElementById('clerk-signin');
+  if (!host) return;
+  var form = document.getElementById('login-form-wrap');
+  if (form) form.style.display = 'none';
+  host.style.display = 'block';
+  try {
+    clerk.mountSignIn(host, {
+      appearance: {
+        variables: {
+          colorPrimary: '#C9A34E',
+          colorBackground: 'transparent',
+          borderRadius: '12px',
+          fontFamily: 'Inter, sans-serif',
+        },
+        elements: { card: { boxShadow: 'none', border: 'none' } },
+      },
+    });
+  } catch (e) {
+    console.error('[clerk] sign-in kon niet gemonteerd worden', e);
+  }
+}
+
+async function clerkSignOut() {
+  try { if (window.Clerk) await window.Clerk.signOut(); } catch (e) {}
+  window.location.href = '/dashboard';
+}
+
+
+/* ============================================================
    CSRF — one fetch wrapper instead of 45 call sites
 
    The session now rides in an httpOnly cookie, which the browser attaches
@@ -10064,6 +10164,19 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
         if (!h.has('x-csrf-token')) h.set('x-csrf-token', t);
         init.headers = h;
       }
+    }
+    // Clerk: attach a fresh bearer token to every same-origin API call. Async,
+    // so the wrapper returns a promise chain here rather than calling through
+    // directly. Only when Clerk is actually on — otherwise this is dead weight.
+    if (CLERK_READY && sameOrigin && url.indexOf('/api/') > -1) {
+      return clerkToken().then(function (tok) {
+        if (tok) {
+          var hh = new Headers(init.headers || {});
+          if (!hh.has('authorization')) hh.set('authorization', 'Bearer ' + tok);
+          init.headers = hh;
+        }
+        return _fetch(input, init);
+      });
     }
     return _fetch(input, init);
   };
@@ -18260,6 +18373,40 @@ function hideHelpWidget() {
    ============================================================ */
 (async function init() {
   initTheme();
+
+  // ── Clerk owns sign-in when it is on ────────────────────────────────────
+  // Returns early so none of the legacy session logic below runs: no
+  // localStorage markers, no tryAutoLogin, no custom login form. Clerk decides
+  // whether we are signed in, and the API is reached with its bearer token.
+  if (CLERK_READY) {
+    const clerk = await clerkInit();
+    if (!clerk) {
+      // Clerk was expected but did not load (blocked script, outage). Say so
+      // rather than silently dropping back to a login form that cannot work.
+      const el = document.getElementById('login-error');
+      document.getElementById('login-page').style.display = 'flex';
+      if (el) { el.textContent = 'Inloggen is tijdelijk niet beschikbaar. Probeer het zo opnieuw.'; el.classList.add('visible'); }
+      return;
+    }
+    if (!clerk.user) {
+      document.getElementById('login-page').style.display = 'flex';
+      mountClerkSignIn(clerk);
+      return;
+    }
+    // Signed in. The tenant comes from the server, not from anything the page
+    // could tamper with — state.clientName is only ever used as a label.
+    state.clientName = clerk.user.publicMetadata?.clientName || '';
+    state.userEmail  = clerk.user.primaryEmailAddress?.emailAddress || '';
+    state.apiKey     = 'clerk-session';   // sentinel; see tryAutoLogin's note
+    try {
+      const data = await fetchLeads();
+      state.leads = data.leads || [];
+      state.stats = data.stats || {};
+      state.lastFetch = Date.now();
+    } catch { state.leads = []; state.stats = {}; }
+    await startDashboard(true);
+    return;
+  }
 
   // ?reset. Wis sessie en toon login (escape hatch voor geblokkeerde sessies)
   const _initParams = new URLSearchParams(window.location.search);
