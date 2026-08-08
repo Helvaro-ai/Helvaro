@@ -30,8 +30,16 @@ module.exports = async function handler(req, res) {
   // the Frontend API host as base64 of "host$", which is where clerk.browser.js
   // is served from. Deriving it beats asking for a second env var that could
   // drift out of sync with the key.
-  const CLERK_ON = process.env.CLERK_ENABLED === '1' && !!process.env.CLERK_PUBLISHABLE_KEY;
-  const CLERK_PK = CLERK_ON ? String(process.env.CLERK_PUBLISHABLE_KEY).replace(/[<>"'&]/g, '') : '';
+  // Accept both names. Clerk's own quick-start hands out the Next.js variable
+  // (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY), so that is what ends up pasted into
+  // Vercel even on a project that is not Next.js — and then nothing works, with
+  // no error to explain why. Reading either spelling costs nothing and removes
+  // a failure mode that is invisible from the outside.
+  const CLERK_PK_RAW = process.env.CLERK_PUBLISHABLE_KEY
+                    || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+                    || '';
+  const CLERK_ON = process.env.CLERK_ENABLED === '1' && !!CLERK_PK_RAW;
+  const CLERK_PK = CLERK_ON ? String(CLERK_PK_RAW).replace(/[<>"'&]/g, '') : '';
   let CLERK_HOST = '';
   if (CLERK_ON) {
     try {

@@ -50,6 +50,21 @@ const F = {
 
 const APPLY = process.argv.includes('--apply');
 
+// Bootstrap mode: provision one user without touching Airtable.
+//   --user <email> --project <CODE> [--name "Client Name"]
+// Needed because Airtable tokens are usually stored in Vercel as "Sensitive",
+// which means `vercel env pull` cannot read them back — so the normal
+// Airtable-driven sync can't run from a laptop even with everything set up
+// correctly. This also covers the chicken-and-egg case of the very first
+// account, before anyone can log in to create others.
+function argOf(flag) {
+  const i = process.argv.indexOf(flag);
+  return i > -1 ? process.argv[i + 1] : null;
+}
+const ONE_EMAIL   = argOf('--user');
+const ONE_PROJECT = argOf('--project');
+const ONE_NAME    = argOf('--name') || '';
+
 function need(name) {
   const v = process.env[name];
   if (!v) {
@@ -89,7 +104,19 @@ async function airtableUsers() {
 
 (async () => {
   const clerk = createClerkClient({ secretKey: need('CLERK_SECRET_KEY') });
-  const users = await airtableUsers();
+
+  let users;
+  if (ONE_EMAIL) {
+    if (!ONE_PROJECT) {
+      console.error('--user vereist ook --project (de projectCode bepaalt welke klant deze gebruiker ziet)');
+      process.exit(1);
+    }
+    users = [{ id: '(handmatig)', email: ONE_EMAIL.trim().toLowerCase(),
+               clientName: ONE_NAME, projectCode: ONE_PROJECT.trim(), active: true }];
+    console.log('Bootstrap-modus: Airtable wordt overgeslagen.\n');
+  } else {
+    users = await airtableUsers();
+  }
 
   console.log(`${users.length} gebruiker(s) in Airtable\n`);
   if (!APPLY) console.log('DROOGLOOP — er wordt niets weggeschreven. Voeg --apply toe om echt te synchroniseren.\n');
