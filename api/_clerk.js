@@ -26,6 +26,10 @@ const crypto = require('crypto');
 const { verifyToken, createClerkClient } = require('@clerk/backend');
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+// Deliberately well under a paid plan's 2.000. Enough to genuinely try the
+// product, not enough for an abandoned or abusive sign-up to cost real money.
+const TRIAL_DAYS    = 14;
+const TRIAL_CREDITS = 250;
 const USERS_TABLE   = 'tbl2hrPW7gIx5XF4S';
 
 // Derived from the Clerk user id, never random. Two requests arriving at the
@@ -72,18 +76,30 @@ async function provisionTenant(user) {
   const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode}"`);
   const existing = await at(`${CLIENTS_TABLE}?filterByFormula=${cFormula}&maxRecords=1`);
   if (!(existing.records || []).length) {
+    // Trial + a credit ceiling from the very first moment.
+    //
+    // This matters more than it looks. api/_credits.js FAILS OPEN for a client
+    // with no allowance configured — sensible when every client was onboarded
+    // by hand, dangerous the moment anyone on the internet can create one.
+    // Without these fields a self-signed-up tenant would get a working lead
+    // form and unmetered AI replies, billed to Helvaro. Setting the allowance
+    // here is what makes public sign-up safe to leave on.
+    const trialEnds = new Date(Date.now() + TRIAL_DAYS * 86400000).toISOString().slice(0, 10);
     await at(CLIENTS_TABLE, {
       method: 'POST',
       body: JSON.stringify({
         fields: {
-          fldAnB848Sr5jl6dq: clientName,     // Client Name
-          fldN4dL0bGgfBOXwM: projectCode,    // Project Code
-          fld2GjRvjpsxI8XD0: email,          // Email
+          fldAnB848Sr5jl6dq: clientName,      // Client Name
+          fldN4dL0bGgfBOXwM: projectCode,     // Project Code
+          fld2GjRvjpsxI8XD0: email,           // Email
+          'Plan Status':      'trial',
+          'Trial Ends At':    trialEnds,
+          'Credit Allowance': TRIAL_CREDITS,
         },
         typecast: true,
       }),
     });
-    console.log('[clerk] nieuwe tenant aangemaakt', projectCode);
+    console.log('[clerk] nieuwe tenant aangemaakt', projectCode, '- proef tot', trialEnds, 'met', TRIAL_CREDITS, 'credits');
   }
 
   const uFormula = encodeURIComponent(`{Email}="${email.replace(/["\\]/g, '\\$&')}"`);
