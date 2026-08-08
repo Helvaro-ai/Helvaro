@@ -1439,7 +1439,31 @@ module.exports = async function handler(req, res) {
                 })
               }
             );
-            if (userRes.ok) { userCreated = true; }
+            if (userRes.ok) {
+              userCreated = true;
+              // Mirror the account into Clerk when Clerk is live, so a client
+              // onboarded today can actually sign in. Without this the Airtable
+              // record exists but Clerk has never heard of them.
+              // projectCode is the tenant key and _clerk.js refuses a session
+              // without it, so it is set here at creation rather than left to a
+              // later sync. Best-effort: a Clerk hiccup must not fail the
+              // onboarding that already wrote to Airtable — the mismatch is
+              // recoverable with scripts/clerk-sync-users.js.
+              if (_clerk.enabled()) {
+                try {
+                  const { createClerkClient } = require('@clerk/backend');
+                  await createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
+                    .users.createUser({
+                      emailAddress: [email],
+                      password: loginPassword,
+                      publicMetadata: { projectCode, clientName },
+                    });
+                } catch (ce) {
+                  console.error('[admin] Clerk-gebruiker aanmaken mislukt voor', email, '-', ce && ce.message,
+                                '- draai scripts/clerk-sync-users.js om dit recht te zetten');
+                }
+              }
+            }
             else { userCreateError = true; console.error('[admin] user create failed:', await userRes.text().catch(() => '')); }
           } else if (lookup.ok) {
             console.warn('[admin] user already exists for', email, '— skipping user create');

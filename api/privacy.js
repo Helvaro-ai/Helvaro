@@ -148,11 +148,13 @@ module.exports = function handler(req, res) {
     <li><strong>Vercel Inc.</strong> (Verenigde Staten) — hosting en uitvoering van deze applicatie.</li>
     <li><strong>Airtable (Formagrid Inc., Verenigde Staten)</strong> — database waarin uw lead- en gespreksgegevens worden opgeslagen.</li>
     <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — verzendt notificatie-e-mails; Resend wordt gebruikt als automatische fallback wanneer die verzending niet lukt.</li>
+    <li><strong>Clerk Inc.</strong> (Verenigde Staten) — verzorgt het inloggen op het dashboard. Verwerkt het e-mailadres, het wachtwoord (versleuteld) en technische aanmeldgegevens zoals IP-adres, browser en aanmeldmomenten. Betreft uitsluitend accounts van klanten; leads komen hier niet in voor.</li>
+    <li><strong>Upstash Inc.</strong> (Verenigde Staten) — telt kortstondig inlogpogingen per IP-adres om misbruik tegen te gaan. Bewaart geen namen of berichten, en de tellers verlopen automatisch binnen het kwartier.</li>
   </ul>
   <p>Deze lijst komt overeen met Bijlage 3 van onze verwerkersovereenkomst. Wij houden ze actueel en werken dit beleid bij zodra ze wijzigt.</p>
 
   <h2>7. Internationale doorgifte</h2>
-  <p>Sommige van de hierboven genoemde partijen zijn gevestigd buiten de Europese Economische Ruimte (EER), met name in de Verenigde Staten (o.a. Anthropic, Vercel en Airtable). Voor die doorgiften steunen wij op een geldig doorgiftemechanisme onder de AVG, zoals de Standard Contractual Clauses (SCC) van de Europese Commissie of, waar van toepassing, het EU-US Data Privacy Framework — dezelfde waarborgen die zijn vastgelegd in onze verwerkersovereenkomst met klanten.</p>
+  <p>Sommige van de hierboven genoemde partijen zijn gevestigd buiten de Europese Economische Ruimte (EER), met name in de Verenigde Staten (o.a. Anthropic, Vercel, Airtable, Clerk en Upstash). Voor die doorgiften steunen wij op een geldig doorgiftemechanisme onder de AVG, zoals de Standard Contractual Clauses (SCC) van de Europese Commissie of, waar van toepassing, het EU-US Data Privacy Framework — dezelfde waarborgen die zijn vastgelegd in onze verwerkersovereenkomst met klanten.</p>
 
   <h2>8. Uw rechten</h2>
   <p>U heeft het recht om uw gegevens in te zien, te corrigeren, te beperken, over te dragen of te laten verwijderen, en u kan bezwaar maken tegen de verwerking. Stuur hiervoor een e-mail naar <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
