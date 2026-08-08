@@ -182,6 +182,12 @@ module.exports = async function handler(req, res) {
   // carries only Clerk's own __session cookie, so requiring the legacy token
   // first would 401 every Clerk user before they ever got here.
   const clerkSession = await _clerk.verifySession(req);
+  if (clerkSession && clerkSession.pending) {
+    // Valid Clerk login, but nobody has assigned this account to a client yet.
+    // A distinct code so the dashboard can explain the wait instead of showing
+    // a login failure to someone whose credentials were fine.
+    return res.status(403).json({ error: 'Je account wordt nog ingericht.', code: 'TENANT_PENDING' });
+  }
   if (clerkSession) {
     projectCode  = clerkSession.projectCode;
     clientName   = clerkSession.clientName;

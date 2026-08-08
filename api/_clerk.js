@@ -22,7 +22,94 @@
 // misconfigured user the whole database. That is the single most dangerous
 // failure mode in this migration and it is guarded at exactly one place: here.
 
+const crypto = require('crypto');
 const { verifyToken, createClerkClient } = require('@clerk/backend');
+
+const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+const USERS_TABLE   = 'tbl2hrPW7gIx5XF4S';
+
+// Derived from the Clerk user id, never random. Two requests arriving at the
+// same moment for the same new user therefore compute the SAME code, so the
+// existence check below makes provisioning idempotent instead of racing to
+// create two tenants for one person. It also means a retry after a half-failed
+// run lands on the same records rather than orphaning the first attempt.
+function deriveProjectCode(userId) {
+  const h = crypto.createHash('sha256').update('helvaro-tenant|' + userId).digest('base64url');
+  return ('C' + h.replace(/[^A-Za-z0-9]/g, '').toUpperCase()).slice(0, 10);
+}
+
+async function at(path, opts) {
+  const token  = process.env.API_AIRTABLE;
+  const baseId = process.env.BASE_AIRTABLE;
+  if (!token || !baseId) throw new Error('Airtable niet geconfigureerd');
+  const r = await fetch(`https://api.airtable.com/v0/${baseId}/${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts && opts.headers) },
+  });
+  if (!r.ok) throw new Error(`Airtable ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+  return r.json();
+}
+
+// Gives a freshly signed-up user their own tenant, so signing up is enough to
+// start using the product — no manual step in between.
+//
+// Everything here is written to be safe to run twice: the project code is
+// derived, and both tables are checked before anything is created. The order
+// matters — Clerk's metadata is written LAST, because that is what the rest of
+// the app trusts. If an earlier step fails, the user simply has no tenant yet
+// and the next request retries cleanly, rather than holding a projectCode that
+// points at records which do not exist.
+async function provisionTenant(user) {
+  const uid   = user.id;
+  const email = String(user.primaryEmailAddress?.emailAddress || '').trim().toLowerCase();
+  if (!email) throw new Error('gebruiker zonder e-mailadres');
+
+  const projectCode = deriveProjectCode(uid);
+  const clientName  = String(user.firstName || '').trim()
+                      ? [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+                      : email.split('@')[0];
+
+  const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode}"`);
+  const existing = await at(`${CLIENTS_TABLE}?filterByFormula=${cFormula}&maxRecords=1`);
+  if (!(existing.records || []).length) {
+    await at(CLIENTS_TABLE, {
+      method: 'POST',
+      body: JSON.stringify({
+        fields: {
+          fldAnB848Sr5jl6dq: clientName,     // Client Name
+          fldN4dL0bGgfBOXwM: projectCode,    // Project Code
+          fld2GjRvjpsxI8XD0: email,          // Email
+        },
+        typecast: true,
+      }),
+    });
+    console.log('[clerk] nieuwe tenant aangemaakt', projectCode);
+  }
+
+  const uFormula = encodeURIComponent(`{Email}="${email.replace(/["\\]/g, '\\$&')}"`);
+  const uExisting = await at(`${USERS_TABLE}?filterByFormula=${uFormula}&maxRecords=1`);
+  if (!(uExisting.records || []).length) {
+    await at(USERS_TABLE, {
+      method: 'POST',
+      body: JSON.stringify({
+        fields: {
+          fldsqiSy41CCDickr: email,        // Email
+          fldmKwegSUj1joru3: clientName,   // Client Name
+          fldbrCpBuQjJBfZsv: projectCode,  // Project Code
+          fldb8sGE3Bslch8f8: true,         // Active
+        },
+        typecast: true,
+      }),
+    });
+  }
+
+  // Last, deliberately: this is the flag the whole app reads.
+  await client().users.updateUserMetadata(uid, {
+    publicMetadata: { projectCode, clientName },
+  });
+
+  return { projectCode, clientName, calendlyLink: '', em: email };
+}
 
 const USER_TTL = 60 * 1000;
 const _userCache = new Map();   // clerk user id -> { data, ts }
@@ -78,9 +165,20 @@ async function resolveTenant(claims) {
 
   const md = (user && user.publicMetadata) || {};
   if (!md.projectCode) {
-    // Fail closed — see the header. A user with no tenant is not an admin.
-    console.warn('[clerk] gebruiker zonder projectCode in publicMetadata, sessie geweigerd');
-    return null;
+    // Signing up is enough: give them their own tenant now rather than making
+    // them wait for someone to do it by hand.
+    try {
+      const fresh = await provisionTenant(user);
+      _userCache.set(uid, { data: fresh, ts: Date.now() });
+      return fresh;
+    } catch (e) {
+      // Provisioning failed (Airtable down, bad config). Still fail CLOSED on
+      // access — an empty projectCode reads as "admin, show everything"
+      // further down — but say why, so the UI can explain the wait instead of
+      // telling someone with valid credentials that their login was wrong.
+      console.error('[clerk] tenant aanmaken mislukt:', e && e.message);
+      return { pending: true, em: String(user.primaryEmailAddress?.emailAddress || '') };
+    }
   }
   const data = {
     projectCode:  String(md.projectCode),
@@ -111,4 +209,4 @@ async function verifySession(req) {
 
 function forget(userId) { _userCache.delete(String(userId || '')); }
 
-module.exports = { enabled, verifySession, readClerkToken, forget };
+module.exports = { enabled, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant };

@@ -45,19 +45,24 @@ function check(name, actual, expected) {
   let s = await c.verifySession(req);
   check('sessie krijgt projectCode van klant A', s && s.projectCode, 'KLANT_A');
 
-  console.log('\n— GEEN projectCode: moet dicht falen —');
+  console.log('\n— GEEN projectCode: inrichten mislukt -> geen toegang —');
+  // Airtable niet bereikbaar, dus provisionTenant() faalt. De sessie mag dan
+  // wel uitleggen dat er gewacht wordt, maar absoluut geen projectCode dragen:
+  // leeg betekent verderop in de API "admin, toon alles".
   CLAIMS = { sub: 'user_2' };
   CLERK_USER = { id: 'user_2', publicMetadata: {}, primaryEmailAddress: { emailAddress: 'x@y.be' } };
+  delete process.env.API_AIRTABLE;
   c = fresh();
   s = await c.verifySession(req);
-  check('gebruiker zonder projectCode krijgt GEEN sessie', s, null);
+  check('mislukte inrichting geeft GEEN projectCode', s && s.projectCode, undefined);
+  check('en markeert de sessie als wachtend', s && s.pending, true);
 
   console.log('\n— lege projectCode telt ook als ontbrekend —');
   CLAIMS = { sub: 'user_3' };
   CLERK_USER = { id: 'user_3', publicMetadata: { projectCode: '' }, primaryEmailAddress: { emailAddress: 'x@y.be' } };
   c = fresh();
   s = await c.verifySession(req);
-  check('lege projectCode geeft GEEN sessie', s, null);
+  check('lege projectCode geeft GEEN projectCode', s && s.projectCode, undefined);
 
   console.log('\n— projectCode uit publicMetadata (geen custom claim) —');
   CLAIMS = { sub: 'user_4' };

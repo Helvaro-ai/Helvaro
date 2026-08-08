@@ -10257,6 +10257,77 @@ function setClerkToggle(view) {
   el.style.display = 'block';
 }
 
+// Shown when Clerk says who you are but no client has been assigned to you.
+// This is a normal step in a business where accounts are set up by hand, not a
+// failure — so it reads as a status, offers a way out, and does not pretend
+// something went wrong.
+function showTenantPending(clerk) {
+  var login = document.getElementById('login-page');
+  var app   = document.getElementById('dashboard-app');
+  if (app) app.classList.remove('visible');
+  if (login) login.style.display = 'flex';
+
+  var host = document.getElementById('clerk-signin');
+  var toggle = document.getElementById('clerk-toggle');
+  var form = document.getElementById('login-form-wrap');
+  if (form) form.style.display = 'none';
+  if (toggle) toggle.style.display = 'none';
+  if (!host) return;
+  try {
+    if (host.dataset.mounted === 'signin') window.Clerk.unmountSignIn(host);
+    else if (host.dataset.mounted === 'signup') window.Clerk.unmountSignUp(host);
+  } catch (e) {}
+  host.dataset.mounted = '';
+  host.style.display = 'block';
+  host.innerHTML = '';
+
+  var email = '';
+  try { email = (clerk && clerk.user && clerk.user.primaryEmailAddress &&
+                 clerk.user.primaryEmailAddress.emailAddress) || ''; } catch (e) {}
+
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'text-align:center;padding:8px 4px';
+
+  var h = document.createElement('h2');
+  h.textContent = 'Je account wordt klaargezet';
+  h.style.cssText = 'font-size:19px;font-weight:700;margin:0 0 10px;color:#1B222D';
+
+  var p1 = document.createElement('p');
+  p1.textContent = 'Je bent aangemeld' + (email ? ' als ' + email : '') +
+    '. We koppelen je account nu aan je bedrijf, zodat je alleen je eigen leads ziet. Dat doen we met de hand, meestal binnen een werkdag.';
+  p1.style.cssText = 'font-size:13.5px;line-height:1.6;color:#5B6779;margin:0 0 8px';
+
+  var p2 = document.createElement('p');
+  p2.textContent = 'Je hoeft niets te doen. Zodra het klaar is kun je gewoon inloggen.';
+  p2.style.cssText = 'font-size:13.5px;line-height:1.6;color:#5B6779;margin:0 0 18px';
+
+  var actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap';
+
+  var mail = document.createElement('a');
+  // %0A rather than a newline escape: this file is one big template
+  // literal, so a backslash-n here would collapse into a real line break
+  // inside the emitted string and break the script.
+  mail.href = 'mailto:${SUPPORT_EMAIL_ATTR}'
+            + '?subject=' + encodeURIComponent('Account klaarzetten')
+            + '&body=Hallo%2C%0A%0AIk%20heb%20me%20aangemeld'
+            + (email ? '%20met%20' + encodeURIComponent(email) : '')
+            + '%20en%20wacht%20op%20toegang.%0A%0A';
+  mail.textContent = 'Vraag ernaar';
+  mail.style.cssText = 'padding:9px 16px;border:1px solid #E2E7F0;border-radius:10px;font-size:13px;font-weight:600;color:#1B222D;text-decoration:none';
+
+  var out = document.createElement('button');
+  out.type = 'button';
+  out.textContent = 'Uitloggen';
+  out.style.cssText = 'padding:9px 16px;border:1px solid #E2E7F0;border-radius:10px;font-size:13px;font-weight:600;color:#5B6779;background:none;cursor:pointer';
+  out.addEventListener('click', clerkSignOut);
+
+  actions.appendChild(mail);
+  actions.appendChild(out);
+  wrap.appendChild(h); wrap.appendChild(p1); wrap.appendChild(p2); wrap.appendChild(actions);
+  host.appendChild(wrap);
+}
+
 async function clerkSignOut() {
   try { if (window.Clerk) await window.Clerk.signOut(); } catch (e) {}
   window.location.href = '/dashboard';
@@ -10721,6 +10792,13 @@ async function fetchLeads() {
       signal: ctrl.signal
     });
     if (resp.status === 401) { handleAuthExpired(); throw new Error('Sessie verlopen'); }
+    if (resp.status === 403) {
+      // Distinguish "you exist but have no client yet" from a real failure —
+      // see TENANT_PENDING in api/leads.js.
+      const body = await resp.json().catch(() => ({}));
+      if (body && body.code === 'TENANT_PENDING') window.__hvTenantPending = true;
+      throw new Error('API fout: 403');
+    }
     if (!resp.ok) throw new Error(\`API fout: \${resp.status}\`);
     return resp.json();
   } finally {
@@ -18525,12 +18603,22 @@ function hideHelpWidget() {
     state.clientName = clerk.user.publicMetadata?.clientName || '';
     state.userEmail  = clerk.user.primaryEmailAddress?.emailAddress || '';
     state.apiKey     = 'clerk-session';   // sentinel; see tryAutoLogin's note
+    let data = null;
     try {
-      const data = await fetchLeads();
-      state.leads = data.leads || [];
-      state.stats = data.stats || {};
-      state.lastFetch = Date.now();
-    } catch { state.leads = []; state.stats = {}; }
+      data = await fetchLeads();
+    } catch (e) {
+      // A signed-in user who has not been assigned to a client yet. Their
+      // credentials are fine; there is simply nothing for them to see. Saying
+      // "login mislukt" here would be both wrong and alarming.
+      if (String(e && e.message || '').indexOf('403') > -1 || window.__hvTenantPending) {
+        showTenantPending(clerk);
+        return;
+      }
+      data = null;
+    }
+    state.leads = (data && data.leads) || [];
+    state.stats = (data && data.stats) || {};
+    state.lastFetch = Date.now();
     await startDashboard(true);
     return;
   }
