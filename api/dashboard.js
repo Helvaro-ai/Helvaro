@@ -1124,6 +1124,15 @@ button.brand-dot { border: none; padding: 0; }
 
 .login-error.visible { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
+/* Clerk renders its own "Don't have an account? Sign up" footer, which is
+   still English and navigates away to a Clerk-hosted page. Setting
+   appearance.elements.footerAction did not take, so this targets Clerk's own
+   stable cl- classes instead of guessing at appearance keys. Our own in-page
+   switch sits directly below and does the same job in Dutch. */
+#clerk-signin .cl-footerAction,
+#clerk-signin .cl-footerAction__signIn,
+#clerk-signin .cl-footerAction__signUp { display: none !important; }
+
 /* Sign-in / sign-up switch under the Clerk component */
 #clerk-toggle {
   text-align: center;
