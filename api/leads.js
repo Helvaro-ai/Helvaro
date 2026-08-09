@@ -2202,7 +2202,24 @@ async function handleGcal(req, res) {
     if (body.mode === 'disconnect') {
       try {
         const client = await gcalGetClient(projectCode);
-        if (client) await gcalPatchClient(client.id, { [GCAL_F_REFRESH]: '', [GCAL_F_GEMAIL]: '' });
+        if (client) {
+          // Eerst bij Google intrekken, dan pas lokaal wissen. Andersom zouden
+          // we de token kwijt zijn die we nodig hebben om in te trekken, en
+          // bleef Helvaro aan Google's kant gekoppeld staan.
+          const enc = client.fields && (client.fields[GCAL_F_REFRESH] || client.fields['Google Refresh Token']);
+          if (enc) {
+            try {
+              const plain = _gcal.decryptToken(enc);
+              const rev = await _gcal.revokeToken(plain);
+              if (!rev.ok) console.warn('[gcal disconnect] intrekken bij Google mislukt:', rev.error);
+            } catch (e) {
+              // Ontsleutelen mislukt (sleutel gewijzigd?). Niet fataal: hieronder
+              // wissen we hem alsnog, en zonder token doen we niets meer.
+              console.warn('[gcal disconnect] token niet te ontsleutelen:', e && e.message);
+            }
+          }
+          await gcalPatchClient(client.id, { [GCAL_F_REFRESH]: '', [GCAL_F_GEMAIL]: '' });
+        }
         return res.status(200).json({ ok: true, connected: false });
       } catch (e) {
         console.error('[gcal disconnect]', e && e.message);

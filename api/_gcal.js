@@ -260,9 +260,36 @@ async function deleteEvent(accessToken, calendarId, eventId) {
   } catch (err) { return { ok: false, error: err.message }; }
 }
 
+// Trekt de toestemming ook bij Google zelf in, niet alleen bij ons.
+//
+// Ontkoppelen wiste tot nu toe alleen de refresh token uit Airtable. Praktisch
+// werkte dat — zonder token doen we niets meer — maar aan Google's kant bleef
+// Helvaro gewoon in de lijst met gekoppelde apps staan, met een token die op
+// papier nog geldig was. Voor de OAuth-verificatie moet je kunnen aantonen dat
+// "ontkoppelen" ook echt ontkoppelt, en het is simpelweg wat een gebruiker
+// verwacht als hij op die knop drukt.
+//
+// Faalt zacht: als Google onbereikbaar is wissen we de token alsnog lokaal.
+// Een token die wij niet meer hebben kunnen we ook niet meer gebruiken, dus
+// de gebruiker vasthouden aan een mislukte netwerkcall helpt niemand.
+async function revokeToken(refreshToken) {
+  if (!refreshToken) return { ok: true };
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/revoke', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    new URLSearchParams({ token: refreshToken }).toString(),
+      signal:  AbortSignal.timeout(5000),
+    });
+    // 400 = token al ongeldig of ingetrokken. Dat is de gewenste eindtoestand.
+    if (!r.ok && r.status !== 400) return { ok: false, error: 'http ' + r.status };
+    return { ok: true };
+  } catch (err) { return { ok: false, error: err.message }; }
+}
+
 module.exports = {
   isConfigured, getAuthUrl, exchangeCode, getAccessToken,
-  encryptToken, decryptToken,
+  encryptToken, decryptToken, revokeToken,
   freeBusy, isSlotFree, listEvents, createEvent, updateEvent, deleteEvent,
   SCOPES,
 };
