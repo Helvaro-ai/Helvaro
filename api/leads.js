@@ -1789,6 +1789,15 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── GET. Fetch all leads (paginated) ───────────────────────────────────────
+  // Every other branch in this file guards this; the main GET did not. Reaching
+  // here without a projectCode means a session token or an Airtable client
+  // record with a blank Project Code — and the filter below would then match
+  // every lead whose own Project Code is blank, i.e. one misconfigured account
+  // seeing other tenants' orphaned leads. The admin token never lands here (it
+  // short-circuits GET with an empty payload above), so this is only ever a
+  // misconfiguration, and refusing is the right answer.
+  if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
   // Try cache first. On 429 we return stale payload so the dashboard stays alive.
   const leadsCache = getCachedLeads(projectCode);
   const cacheAge   = leadsCache ? Date.now() - leadsCache.ts : Infinity;

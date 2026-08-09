@@ -5,12 +5,12 @@
   "description": "Helvaro — AI WhatsApp lead-kwalificatie SaaS",
   "dependencies": {
     "@clerk/backend": "^3.16.1",
-    "@vercel/blob": "^0.27.0",
+    "@vercel/blob": "^2.7.0",
     "@vercel/functions": "^3.7.5",
     "bcryptjs": "^2.4.3",
-    "nodemailer": "^6.9.14",
+    "nodemailer": "^9.0.5",
     "satori": "^0.10.13",
-    "sharp": "^0.33.5",
-    "undici": "^5.29.0"
+    "sharp": "^0.35.3",
+    "undici": "^7.29.0"
   }
 }

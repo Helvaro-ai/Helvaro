@@ -100,8 +100,42 @@ function csrfOk(req) {
   return !!cookie && safeEqual(cookie, header);
 }
 
+// Verifies a session token signed by auth.js and returns its payload, or null.
+// This is the same check api/leads.js does inline; it lives here so endpoints
+// that only need "is this a real session?" (and not the full tenant-resolution
+// pipeline) can ask without accepting any non-empty string as proof of login.
+//
+// Fails closed on a missing secret: verifying with a known constant would
+// accept forged tokens for every tenant at once.
+function verifySignedSession(token) {
+  if (typeof token !== 'string' || !token.startsWith('hvs1.')) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [, payload, sig] = parts;
+  if (!payload || !sig) return null;
+
+  const base = process.env.SESSION_SECRET || process.env.ADMIN_KEY;
+  if (!base) {
+    console.error('[session] SESSION_SECRET/ADMIN_KEY ontbreekt — sessies kunnen niet geverifieerd worden');
+    return null;
+  }
+  const secret = crypto.createHmac('sha256', base).update('helvaro-session-v1').digest('hex');
+
+  try {
+    const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+    const a = Buffer.from(sig,      'base64url');
+    const b = Buffer.from(expected, 'base64url');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    // A token without exp is malformed, not immortal — auth.js always sets it.
+    if (typeof data.exp !== 'number' || !isFinite(data.exp) || Date.now() > data.exp) return null;
+    return data;
+  } catch { return null; }
+}
+
 module.exports = {
   SESSION_COOKIE, CSRF_COOKIE, CSRF_HEADER,
   parseCookies, readToken, authedViaCookie,
   setSessionCookies, clearSessionCookies, csrfOk,
+  verifySignedSession,
 };

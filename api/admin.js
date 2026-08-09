@@ -303,6 +303,32 @@ module.exports = async function handler(req, res) {
     if (body.mode === 'presence-ping') {
       const ak = _session.readToken(req);
       if (!ak) return res.status(401).json({ error: 'apiKey required' });
+      // "Any logged-in user" used to mean "any non-empty string" — the token
+      // was never checked at all.
+      //
+      // What that could NOT do is worth stating, because it bounds the fix: the
+      // map is keyed by a hash of the caller's own credential, and the founder
+      // dashboard looks each client up by that client's real API key (see the
+      // read at ~line 1605). So a stranger cannot light up someone else's dot
+      // without already holding their key. The only reachable damage is filling
+      // the map with junk.
+      //
+      // Two things are worth refusing anyway. A string shaped like one of our
+      // session tokens but failing its signature is a forgery attempt, not a
+      // stale client, and should never be treated as a login. And a malformed
+      // token is never a real credential. Opaque Airtable API keys still pass
+      // on shape alone: verifying those means an Airtable read on what is
+      // deliberately a cheap heartbeat, and since an unverified key can only
+      // ever key its own useless entry, that read buys nothing.
+      const looksLikeSession = ak.startsWith('hvs1.');
+      const validSession     = looksLikeSession && !!_session.verifySignedSession(ak);
+      const wellFormedKey    = /^[A-Za-z0-9\-_]{8,100}$/.test(ak);
+      if (!validSession && !wellFormedKey && !isValidAdminToken(ak, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige sessie' });
+      }
+      if (looksLikeSession && !validSession) {
+        return res.status(401).json({ error: 'Sessie verlopen of ongeldig' });
+      }
       const cn = String(body.clientName || '').trim().slice(0, 80);
       _presence.set(_presenceKey(ak), { ts: Date.now(), clientName: cn });
       if (_presence.size > 500) _gcPresence();
