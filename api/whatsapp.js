@@ -98,15 +98,25 @@ module.exports = async function handler(req, res) {
   // Blocks on mismatch. rawBody is the exact bytes Meta sent, so this now
   // actually verifies (see above — the old "warn only" fallback is gone
   // because we no longer depend on req.body ever being a raw string).
-  if (APP_SECRET) {
+  // FAILS CLOSED. This used to skip verification entirely when APP_SECRET was
+  // unset, which meant one missing environment variable silently turned the
+  // webhook into an open endpoint: anyone could POST a forged Meta payload and
+  // drive AI replies, bookings and outbound WhatsApp sends for any tenant whose
+  // lead phone number they could guess. A misconfiguration should take the
+  // webhook offline loudly, not quietly disarm the only thing authenticating
+  // it. api/cron-followup.js already fails closed on its own secret; this now
+  // matches that.
+  if (!APP_SECRET) {
+    console.error('[WhatsApp] WA_APP_SECRET ontbreekt — webhook geweigerd. Zonder dit secret is elk binnenkomend bericht onverifieerbaar.');
+    return res.status(503).send('Webhook not configured');
+  }
+  {
     const sig      = req.headers['x-hub-signature-256'] || '';
     const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(rawBody).digest('hex');
     if (!safeEqual(sig, expected)) {
       console.warn('[WhatsApp] Handtekening ongeldig. Verzoek geblokkeerd');
       return res.status(403).send('Forbidden');
     }
-  } else {
-    console.warn('[WhatsApp] WA_APP_SECRET niet ingesteld. Handtekening verificatie uitgeschakeld');
   }
 
   // Parse the verified raw bytes ourselves. Meta always sends application/json,
