@@ -633,20 +633,82 @@ function isRtl(code) {
 // (FOLLOWUP_TEMPLATE_NAME / REMINDER_TEMPLATE_NAME / BOOKING_TEMPLATE_NAME /
 // MANUAL_REPLY_TEMPLATE_NAME). Never silently assume a template exists in a
 // language just because the registry supports it for conversation.
-const TEMPLATE_APPROVED_LANGUAGES = new Set(['nl', 'fr', 'en']);
+// LET OP: dit zijn Meta-taalcodes, geen registratiecodes uit LANGUAGES.
+//
+// Meta matcht een template op naam ÉN taal, exact. 'nl' vindt een template die
+// als 'nl_BE' geregistreerd staat niet — je krijgt error 132001, "template name
+// does not exist in the translation". Er is geen terugval van nl_BE naar nl.
+//
+// Dit ging mis: elke template in Sindi's WhatsApp Manager staat op Dutch (BEL),
+// dus nl_BE, terwijl deze set alleen 'nl' kende en normalizeLanguageCode() een
+// nl_BE die binnenkwam platsloeg tot 'nl'. Wat je ook in *_TEMPLATE_LANG zette,
+// Meta kreeg 'nl' en vond niets. Gevolg: geen enkele opvolging, afspraak-
+// bevestiging of herinnering kon ooit vertrekken.
+//
+// Daarom staat de volledige locale hier nu apart, en wordt die niet meer door
+// normalizeLanguageCode() gehaald — die functie hoort bij de gesprekstaal van
+// de AI (waar 'nl' juist wél klopt) en mag hier niet over gaan.
+// Deze lijst moet gelijk lopen met WhatsApp Manager -> Message templates, kolom
+// Language. Stand augustus 2026: alle vijf de templates die Helvaro gebruikt
+// staan op Dutch (BEL) = nl_BE; alleen Meta's eigen voorbeeld hello_world staat
+// op English (US) = en_US.
+//
+// Kale 'nl' staat er bewust NIET in. Als NOTIFY_TEMPLATE_LANG niet gezet is
+// valt de code terug op de taal van de lead, en die is 'nl' — dan zou hij een
+// nl-template zoeken die niet bestaat. Nu valt 'nl' netjes door naar nl_BE.
+// Zodra je een template in een nieuwe taal laat goedkeuren, zet je hem hier
+// erbij; niet eerder, want dan faalt de send pas bij Meta.
+const TEMPLATE_APPROVED_LANGUAGES = new Set(['nl_BE', 'fr_BE', 'en_US']);
+
+// Meta schrijft de regio in hoofdletters: nl_BE, niet nl_be. Accepteer wat de
+// gebruiker intypt (nl-BE, NL_be, ...) en geef terug wat Meta verwacht.
+function canonicalTemplateLang(raw) {
+  const s = String(raw || '').trim().replace(/-/g, '_');
+  if (!s) return '';
+  const [lang, region] = s.split('_');
+  return region ? `${lang.toLowerCase()}_${region.toUpperCase()}` : lang.toLowerCase();
+}
 
 // resolveTemplateLanguage(requestedCode, fallbackCode) -> { code, fellBack,
 //   requested }. Never returns a language without (assumed) Meta approval —
-// falls back to `fallbackCode` if that's approved, else 'nl'. Logs once per
+// falls back to `fallbackCode` if that's approved, else 'nl_BE'. Logs once per
 // call when it falls back, so an unapproved language is always visible in
 // server logs BEFORE Meta rejects the send outright.
 function resolveTemplateLanguage(requestedCode, fallbackCode) {
-  const requested = normalizeLanguageCode(requestedCode);
-  if (TEMPLATE_APPROVED_LANGUAGES.has(requested)) {
-    return { code: requested, fellBack: false, requested };
+  // Eerst de volledige locale proberen — die is specifieker en is wat Meta
+  // daadwerkelijk heeft goedgekeurd.
+  const exact = canonicalTemplateLang(requestedCode);
+  if (TEMPLATE_APPROVED_LANGUAGES.has(exact)) {
+    return { code: exact, fellBack: false, requested: exact };
   }
-  const fallback = normalizeLanguageCode(fallbackCode);
-  const safeFallback = TEMPLATE_APPROVED_LANGUAGES.has(fallback) ? fallback : 'nl';
+  // Pas daarna de kale taalcode (nl uit nl_NL), voor het geval iemand een
+  // locale opgeeft waarvan alleen de generieke variant is goedgekeurd.
+  const bare = exact.split('_')[0];
+  if (bare && TEMPLATE_APPROVED_LANGUAGES.has(bare)) {
+    return { code: bare, fellBack: false, requested: exact };
+  }
+
+  // En andersom: gevraagd wordt 'fr', goedgekeurd is 'fr_BE'. Dat is geen
+  // terugval maar de juiste template — een Franstalige lead hoort de Franse
+  // versie te krijgen, niet de Nederlandse. Zonder deze stap kreeg elke
+  // niet-Nederlandse lead het Nederlandse bericht.
+  //
+  // Staan er meerdere regio's voor dezelfde taal, dan wint de eerste uit de
+  // set hierboven. Zet in dat geval de gewenste regio vooraan, of wees
+  // expliciet via de *_TEMPLATE_LANG env-var.
+  if (bare) {
+    for (const approved of TEMPLATE_APPROVED_LANGUAGES) {
+      if (approved.split('_')[0] === bare) {
+        return { code: approved, fellBack: false, requested: exact };
+      }
+    }
+  }
+
+  const requested = exact || normalizeLanguageCode(requestedCode);
+  const fbExact = canonicalTemplateLang(fallbackCode);
+  const safeFallback = TEMPLATE_APPROVED_LANGUAGES.has(fbExact) ? fbExact
+                     : TEMPLATE_APPROVED_LANGUAGES.has(fbExact.split('_')[0]) ? fbExact.split('_')[0]
+                     : 'nl_BE';
   console.warn(`[i18n] Template language '${requested}' has no approved Meta template yet — falling back to '${safeFallback}'. Get this locale variant approved in Meta Business Manager, then add it to TEMPLATE_APPROVED_LANGUAGES in api/_lang.js.`);
   return { code: safeFallback, fellBack: true, requested };
 }
