@@ -15,8 +15,11 @@ const verifyEmail = require('./_verify');
 const _session = require('./_session'); // cookie-first session transport + CSRF
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
+// Zie de uitleg bij atFetch in api/leads.js: zonder timeout hangt een trage
+// Airtable-call tot de functie zelf wordt afgekapt.
+const AT_TIMEOUT_MS = 10_000;
 async function atFetch(url, opts) {
-  return fetch(url, opts);
+  return fetch(url, { ...opts, signal: (opts && opts.signal) || AbortSignal.timeout(AT_TIMEOUT_MS) });
 }
 
 // Concurrency-limited map. Airtable allows 5 requests/second per base and

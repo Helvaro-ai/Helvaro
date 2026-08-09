@@ -165,8 +165,12 @@ function escapeFormula(val) {
 // (compounding 429 retries across many callers is what caused the original
 // Airtable rate-limit spiral). Credit calls are low-frequency relative to
 // getLead()/getCachedClient() hot paths.
+// Zie de uitleg bij atFetch in api/leads.js. Hier extra van belang: de
+// creditcheck zit VOOR elke AI-call, dus een hangende Airtable blokkeert
+// anders het hele WhatsApp-antwoord.
+const AT_TIMEOUT_MS = 10_000;
 async function atFetch(url, opts) {
-  return fetch(url, opts);
+  return fetch(url, { ...opts, signal: (opts && opts.signal) || AbortSignal.timeout(AT_TIMEOUT_MS) });
 }
 
 function envConfigured() {

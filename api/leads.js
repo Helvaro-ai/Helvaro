@@ -18,8 +18,14 @@ const _verify = require('./_verify'); // email-ownership verification — see it
 // Fix: one attempt only for everything.  On 429 → return immediately →
 // serve stale cache (polling) or surface error (PATCH) → wait the natural
 // interval before trying again.  No rapid retries that extend the ban.
+// Airtable-timeout. Zonder signal blijft een hangende call staan tot Vercel de
+// hele functie afkapt op zijn maxDuration — 60s hier — en krijgt de gebruiker
+// een verbroken verbinding in plaats van een nette fout. 10s is ruim: een
+// normale Airtable-call is 200-400ms, dus alles daarboven is al kapot.
+// AbortSignal.timeout is standaard vanaf Node 18, geen dependency nodig.
+const AT_TIMEOUT_MS = 10_000;
 async function atFetch(url, opts) {
-  return fetch(url, opts);
+  return fetch(url, { ...opts, signal: (opts && opts.signal) || AbortSignal.timeout(AT_TIMEOUT_MS) });
 }
 
 // Client config cache by API key. 30 min TTL

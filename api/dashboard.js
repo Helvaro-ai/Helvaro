@@ -217,6 +217,19 @@ module.exports = async function handler(req, res) {
   --orange:        var(--warning-c);
   --accent:        var(--accent-c);
   --accent-bright: var(--accent-hover-c);
+
+  /* Deze zes ontbraken in dit blok, terwijl er 42 keer naar verwezen wordt.
+     Een var() zonder fallback naar iets ongedefinieerds maakt de hele
+     declaratie ongeldig, dus die 42 regels deden niets en de eigenschap erfde
+     van de ouder — zichtbaar op het inlogscherm, waar de foutmelding daardoor
+     bijna-wit op lichtroze stond. Aliassen, geen nieuwe kleuren, zodat ze het
+     thema volgen net als de rest hierboven. */
+  --error:          var(--error-c);
+  --warning:        var(--warning-c);
+  --success:        var(--success-c);
+  --info:           var(--info-c);
+  --accent-hover:   var(--accent-hover-c);
+  --accent-pressed: var(--accent-deep);
   --text:          var(--text-c);
   --text-primary:  var(--text-c);
   --text-secondary:var(--text-muted-c);
@@ -536,11 +549,13 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 .login-welcome {
   font-size: 34px;
-  font-weight: 800;
+  /* Zette Inter hier hard, dus de kop-regel bovenaan kwam er niet doorheen en
+     juist het eerste dat een klant ziet stond niet in de huisstijlletter. */
+  font-family: var(--font-head);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--login-text);
   margin-bottom: 8px;
-  letter-spacing: -0.5px;
-  font-family: 'Inter', sans-serif;
   line-height: 1.15;
 }
 
@@ -1069,7 +1084,13 @@ button.brand-dot { border: none; padding: 0; }
   background: rgba(220,38,38,0.06);
   border: 1px solid rgba(220,38,38,0.2);
   border-radius: 10px;
-  color: var(--error);
+  /* Stond op var(--error), en --error bestaat nergens in dit bestand. Een
+     var() zonder fallback naar een ongedefinieerde custom property maakt de
+     declaratie ongeldig, dus erfde de tekst de kleur van de ouder: #F9F9F9 op
+     een lichtroze vlak. De enige foutmelding die de gebruiker op het
+     inlogscherm te zien krijgt, was dus onleesbaar. Vaste waarde, want dit
+     paneel is altijd licht (zie --login-text) en volgt het thema niet. */
+  color: #B42318;
   font-size: 13px;
   font-weight: 500;
   text-align: center;
@@ -18555,41 +18576,56 @@ function hideHelpWidget() {
   if (CLERK_READY) {
     const clerk = await clerkInit();
     if (!clerk) {
-      // Clerk was expected but did not load (blocked script, outage). Say so
-      // rather than silently dropping back to a login form that cannot work.
-      const el = document.getElementById('login-error');
-      document.getElementById('login-page').style.display = 'flex';
-      if (el) { el.textContent = 'Inloggen is tijdelijk niet beschikbaar. Probeer het zo opnieuw.'; el.classList.add('visible'); }
-      return;
-    }
-    if (!clerk.user) {
-      document.getElementById('login-page').style.display = 'flex';
-      mountClerkSignIn(clerk);
-      return;
-    }
-    // Signed in. The tenant comes from the server, not from anything the page
-    // could tamper with — state.clientName is only ever used as a label.
-    state.clientName = clerk.user.publicMetadata?.clientName || '';
-    state.userEmail  = clerk.user.primaryEmailAddress?.emailAddress || '';
-    state.apiKey     = 'clerk-session';   // sentinel; see tryAutoLogin's note
-    let data = null;
-    try {
-      data = await fetchLeads();
-    } catch (e) {
-      // A signed-in user who has not been assigned to a client yet. Their
-      // credentials are fine; there is simply nothing for them to see. Saying
-      // "login mislukt" here would be both wrong and alarming.
-      if (String(e && e.message || '').indexOf('403') > -1 || window.__hvTenantPending) {
-        showTenantPending(clerk);
+      // Clerk stond aan maar laadde niet: script geblokkeerd, storing bij
+      // Clerk, of — het geval dat dit echt liet zien — een productie-instantie
+      // waarvan de DNS nog niet staat, zodat clerk.<domein> niet resolvet.
+      //
+      // Hier stond een return met "inloggen is tijdelijk niet beschikbaar".
+      // Dat maakte het erger dan nodig: het wachtwoordformulier bleef zichtbaar
+      // maar kreeg nooit een handler, dus je zag een inlogscherm dat niet
+      // reageerde, en NIEMAND kon nog in de app — ook niet met een geldig
+      // wachtwoord. Terwijl de server beide manieren gewoon accepteert: als
+      // Clerk er niet is geeft clerkToken() een lege string terug en valt elke
+      // API-call terug op de gewone sessie.
+      //
+      // Dus niet stoppen, maar doorvallen naar de klassieke inlog. Eén
+      // externe partij die eruit ligt hoort het product niet te sluiten.
+      console.warn('[clerk] niet geladen — terug naar de klassieke inlog met e-mail en wachtwoord');
+      const el = document.getElementById('clerk-signin');
+      if (el) el.style.display = 'none';
+      const wrap = document.getElementById('login-form-wrap');
+      if (wrap) wrap.style.display = 'block';
+      // en verder met het legacy-pad hieronder (geen return)
+    } else {
+      if (!clerk.user) {
+        document.getElementById('login-page').style.display = 'flex';
+        mountClerkSignIn(clerk);
         return;
       }
-      data = null;
+      // Signed in. The tenant comes from the server, not from anything the page
+      // could tamper with — state.clientName is only ever used as a label.
+      state.clientName = clerk.user.publicMetadata?.clientName || '';
+      state.userEmail  = clerk.user.primaryEmailAddress?.emailAddress || '';
+      state.apiKey     = 'clerk-session';   // sentinel; see tryAutoLogin's note
+      let data = null;
+      try {
+        data = await fetchLeads();
+      } catch (e) {
+        // A signed-in user who has not been assigned to a client yet. Their
+        // credentials are fine; there is simply nothing for them to see. Saying
+        // "login mislukt" here would be both wrong and alarming.
+        if (String(e && e.message || '').indexOf('403') > -1 || window.__hvTenantPending) {
+          showTenantPending(clerk);
+          return;
+        }
+        data = null;
+      }
+      state.leads = (data && data.leads) || [];
+      state.stats = (data && data.stats) || {};
+      state.lastFetch = Date.now();
+      await startDashboard(true);
+      return;
     }
-    state.leads = (data && data.leads) || [];
-    state.stats = (data && data.stats) || {};
-    state.lastFetch = Date.now();
-    await startDashboard(true);
-    return;
   }
 
   // ?reset. Wis sessie en toon login (escape hatch voor geblokkeerde sessies)
