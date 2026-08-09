@@ -12747,7 +12747,7 @@ function openPanel(lead) {
         const isUser = m.role === 'user';
         const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? 'Jij (template)' : 'Jij') : 'AI');
         const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
-        return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}" dir="auto">\${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
+        return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}" dir="auto">\${m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
     } catch { /* invalid JSON, skip */ }
     if (!bubbles) bubbles = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">Nog geen gesprek.</div>';
@@ -13204,7 +13204,7 @@ async function sendWhatsAppReply() {
     // text — label it so the thread never implies the lead read \`text\`.
     const sentTag = d.viaTemplate ? 'Jij (template)' : 'Jij';
     const html = '<div><div class="chat-label">' + sentTag + '</div><div class="chat-bubble ai manual" dir="auto">' +
-      text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
+      text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
     if (wrap) wrap.insertAdjacentHTML('beforeend', html);
     // Keep the lead object's gesprek in sync so re-opening the panel still shows it
     lead.gesprek = JSON.stringify(d.history || []);
