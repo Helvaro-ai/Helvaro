@@ -281,6 +281,10 @@ module.exports = async function handler(req, res) {
   // Stond hier niet, op dashboard.js wel. Deze pagina vraagt geen camera,
   // microfoon of locatie, dus zet ze uit.
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Ook uit Google: dit is de leadpagina van één specifieke klant, die je via
+  // een advertentie of een link deelt. Die hoort niet vindbaar te zijn onder
+  // de naam van die klant, en al helemaal niet onder "Helvaro".
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   // Zie de uitleg bij dezelfde header in api/dashboard.js. Geen Clerk hier —
   // dit is de publieke leadpagina, die praat alleen met zijn eigen origin.
   // img-src staat https: toe omdat de AI-foto van een klant een externe

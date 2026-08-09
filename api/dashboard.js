@@ -19144,6 +19144,17 @@ function stopPresencePing() {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+  // Uit Google houden. Dit is een ingelogde applicatie, geen pagina die je in
+  // zoekresultaten wil. Het stond er niet, en omdat www.helvaro.pro per ongeluk
+  // aan dit Vercel-project hangt, indexeerde Google dit inlogscherm als het
+  // hoofdresultaat voor "helvaro" — met de wizardteksten als omschrijving,
+  // in plaats van de marketingsite.
+  //
+  // Bewust GEEN robots.txt-blokkade erbij: die zou het crawlen verbieden,
+  // waardoor Google deze header nooit ziet en de al geïndexeerde URL blijft
+  // staan. Crawlen mag, indexeren niet — zo verdwijnt hij vanzelf.
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+
   // Content-Security-Policy.
   //
   // 'unsafe-inline' is niet te vermijden: deze pagina is één groot inline

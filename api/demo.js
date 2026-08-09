@@ -1,5 +1,9 @@
 module.exports = function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  // Interne demopagina van de widget. Niet iets wat onder "Helvaro" in Google
+  // hoort te staan naast de echte site. api/privacy.js krijgt dit bewust NIET:
+  // die moet juist vindbaar blijven.
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.status(200).send(`<!DOCTYPE html>
 <html lang="nl">
 <head>
