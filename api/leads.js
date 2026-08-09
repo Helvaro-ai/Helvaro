@@ -459,7 +459,10 @@ module.exports = async function handler(req, res) {
       if (body.dealWaarde) {
         const leadName = pData.fields?.['fldbk0LVNckOU0bqA'] || pData.fields?.['Name'] || '(onbekend)';
         sendResendEmail({
-          subject: `Deal gesloten - ${escHtml(leadName)} (${escHtml(body.dealWaarde)})`,
+          // escHtml vervangt & < > " en laat \r\n staan — prima voor de HTML
+          // hieronder, waardeloos voor een mailheader. De naam komt uit het
+          // publieke formulier, dus stuurtekens er hier expliciet uit.
+          subject: `Deal gesloten - ${String(leadName).replace(/[\x00-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120)} (${String(body.dealWaarde).replace(/[\x00-\x1F\x7F]/g, '').slice(0, 40)})`,
           html: `
             <div style="font-family:sans-serif;max-width:480px;margin:auto">
               <h2 style="color:#16a34a">Deal gesloten</h2>
@@ -1804,6 +1807,9 @@ module.exports = async function handler(req, res) {
 
   let allLeads = [];
   let usedStale = false;
+  const MAX_PAGES = 20;          // 20 x 100 = 2.000 leads, zie de lus hieronder
+  let pagesFetched = 0;
+  let listTruncated = false;
   try {
     // Use field ID (fldSmczuyUJd26HLe = Project Code). field IDs are stable,
     // field names can be renamed in Airtable without breaking the query.
@@ -1844,6 +1850,18 @@ module.exports = async function handler(req, res) {
       }
       allLeads = allLeads.concat(lData.records || []);
       offset   = lData.offset || '';
+      // Deze lus had geen bovengrens, terwijl de export-paden in dit bestand er
+      // wel een hebben (20 pagina's). Hij draait bij ELKE dashboardlading en bij
+      // elke poll van elk open tabblad, sequentieel, 100 records per keer. Rond
+      // de 5.000 leads is dat al 50 opeenvolgende Airtable-calls; ruim daarboven
+      // haalt de functie zijn maxDuration van 60s niet en is het dashboard voor
+      // die klant permanent stuk. Liever de 2.000 nieuwste leads tonen dan een
+      // time-out. Wie alles wil, gebruikt de CSV-export.
+      if (offset && ++pagesFetched >= MAX_PAGES) {
+        console.warn(`[leads] ${projectCode}: meer dan ${MAX_PAGES * 100} leads, lijst afgekapt`);
+        listTruncated = true;
+        break;
+      }
     } while (offset);
   } catch (err) {
     console.error('Leads fetch error:', err.message);
@@ -1964,6 +1982,10 @@ module.exports = async function handler(req, res) {
   }
 
   const responsePayload = { leads, stats, client: { naam: clientName, calendly: calendlyLink } };
+  // Alleen aanwezig als de paginering tegen zijn plafond liep, zodat het
+  // dashboard kan zeggen "de 2.000 nieuwste" in plaats van te suggereren dat
+  // dit alles is.
+  if (listTruncated) responsePayload.truncated = MAX_PAGES * 100;
   setCachedLeads(projectCode, responsePayload); // warm cache for 429 fallback
 
   // Cache the response at the browser level so all open tabs share one response

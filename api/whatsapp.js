@@ -168,7 +168,13 @@ module.exports = async function handler(req, res) {
     const phone = message.from;           // e.g. "32478123456"
     const text  = sanitize(message.text.body).trim();
 
-    console.log(`[WhatsApp] Bericht van ${phone}: ${text}`);
+    // Gemaskeerd nummer, geen berichtinhoud. Dit vuurt op ELK inkomend bericht,
+    // dus stond hier het volledige nummer plus de letterlijke tekst van de lead
+    // in de Vercel-logs — een tweede plek waar persoonsgegevens van klanten van
+    // klanten staan, buiten Airtable om, zonder dat de AVG-documentatie die
+    // kent. De lengte is genoeg om te zien dat er iets binnenkwam; de inhoud
+    // staat waar hij hoort, in Conversation History.
+    console.log(`[WhatsApp] Bericht van ${maskPhone(phone)} (${String(text || '').length} tekens)`);
 
     // ── Multitenancy webhook routing ─────────────────────────────────────
     // Meta stamps every inbound message with the Business phone_number_id
@@ -822,7 +828,9 @@ async function processMessage(phone, text, scopedProjectCode) {
     }
     if (ownerEmail) sendOwnerEmail({
       to: ownerEmail,
-      subject: `[Actie nodig] AI heeft hulp nodig. ${leadName || phone}`,
+      // subjectSafe(), niet de rauwe naam: die komt uit het publieke
+      // leadformulier en mag geen CR/LF in een mailheader zetten.
+      subject: `[Actie nodig] AI heeft hulp nodig. ${subjectSafe(leadName || phone)}`,
       heading: `Lead-vraag die de AI niet kan beantwoorden`,
       leadName, phone, projectCode, clientName,
       body: `<p style="background:#fef3c7;padding:12px;border-radius:8px"><strong>Hun vraag:</strong><br>"${escEmail(lastUserMsg)}"</p><p>De AI heeft beloofd dat iemand binnen 30 min terugkomt.</p>`
@@ -1040,7 +1048,7 @@ async function processMessage(phone, text, scopedProjectCode) {
     if (ownerEmail) {
       sendOwnerEmail({
         to: ownerEmail,
-        subject: `Nieuwe gekwalificeerde lead. ${leadName}`,
+        subject: `Nieuwe gekwalificeerde lead. ${subjectSafe(leadName)}`,
         heading: `Gekwalificeerde lead`,
         leadName, phone, projectCode, clientName,
         body:
@@ -1775,6 +1783,16 @@ function escapeFormula(val) {
 // Strip control characters and limit message length before passing to AI
 function sanitize(val) {
   return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 2000);
+}
+
+// Voor waarden die in een e-mail Subject: terechtkomen. Een lead vult zijn eigen
+// naam in op het publieke formulier, en dat veld wordt daar alleen getrimd en
+// afgekapt — niet ontdaan van stuurtekens. Een naam als "Jan\r\nBcc: ..." zou
+// dus als losse header in de melding aan de klant belanden. Mailers weren dat
+// meestal zelf, maar dat is hun verdediging, niet de onze. Zelfde stripset als
+// sanitize(), korter afgekapt omdat een onderwerpregel geen 2000 tekens is.
+function subjectSafe(val) {
+  return sanitize(val).replace(/\s+/g, ' ').trim().slice(0, 120);
 }
 
 // GDPR: mask a phone number for logging, keeping only the last 4 digits

@@ -1,5 +1,3 @@
-const crypto        = require('crypto');
-
 // Rate limiter. 60 req / 60s per IP
 const _rl = new Map();
 function isRateLimited(ip) {
@@ -50,7 +48,12 @@ module.exports = async function handler(req, res) {
   if (!client) return res.status(403).json({ error: 'Ongeldige API key' });
 
   const projectCode = client.fields['Project Code'] || '';
-  const leads       = await getLeadsByProjectCode(projectCode);
+  // projectCode is de tenantsleutel. Een clientrecord zonder Project Code gaf
+  // hier de formule {Project Code}="" en dus elke lead met een leeg veld —
+  // andermans weesleads. Zelfde gat als in api/leads.js, daar al gedicht.
+  if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
+  const leads = await getLeadsByProjectCode(projectCode);
 
   return res.status(200).json(leads.map(l => ({
     id:                    l.id,
@@ -84,10 +87,22 @@ async function getClientByApiKey(apiKey) {
   return data.records?.[0] || null;
 }
 
+// Airtable levert maximaal 100 records per pagina, ook als je geen pageSize
+// meegeeft. Zonder offset-lus kreeg een klant met meer dan 100 leads er hier
+// stilzwijgend 100 terug — geen foutmelding, gewoon een afgekapte lijst.
+// Bovengrens van 20 pagina's, gelijk aan leads.js' export-paden.
 async function getLeadsByProjectCode(projectCode) {
   const filter = encodeURIComponent(`{Project Code}="${escapeFormula(projectCode)}"`);
-  const url    = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&sort[0][field]=Created%20At&sort[0][direction]=desc`;
-  const res    = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-  const data   = await res.json();
-  return data.records || [];
+  const out    = [];
+  let offset   = '';
+  let pages    = 0;
+  do {
+    const url  = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&sort[0][field]=Created%20At&sort[0][direction]=desc&pageSize=100${offset ? '&offset=' + offset : ''}`;
+    const res  = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    if (!res.ok) break;
+    const data = await res.json();
+    out.push(...(data.records || []));
+    offset = data.offset || '';
+  } while (offset && ++pages < 20);
+  return out;
 }

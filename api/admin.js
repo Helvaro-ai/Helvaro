@@ -1632,12 +1632,33 @@ module.exports = async function handler(req, res) {
       if (!c.projectCode) return { ...c, totalLeads: 0, newLeads: 0, qualified: 0, appointments: 0, firstLeadDate: '', lastSeen };
       try {
         const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(c.projectCode)}"`);
-        const lRes = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&fields[]=fld8mkrEWcyq7mUip&fields[]=fld0hAZJ5wgaXrNTn&fields[]=fldyIGNetqcSEkoaK&fields[]=fldR0r13EU4RwrtvH&pageSize=100`,
-          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-        );
-        const lData   = await lRes.json();
-        const records = lData.records || [];
+        // Airtable geeft maximaal 100 records per pagina. Hier stond geen
+        // offset-lus, dus elke klant met meer dan 100 leads werd stilletjes
+        // afgekapt: totalLeads bleef op 100 staan, en newLeads/qualified/
+        // appointments/firstLeadDate werden over dat ene venster berekend.
+        // Op het founderoverzicht zag je een goedlopende klant dus kleiner dan
+        // hij is — en juist de beste klant het meest verkeerd.
+        //
+        // Dezelfde bovengrens als leads.js' csv-export: 20 pagina's. Dit draait
+        // per klant, dus een ongelimiteerde lus laat één grote klant het hele
+        // overzicht ophouden. Boven de grens wordt `truncated` gezet in plaats
+        // van te doen alsof het getal klopt.
+        const MAX_PAGES = 20;
+        let records = [];
+        let lOffset  = '';
+        let pages    = 0;
+        let truncated = false;
+        do {
+          const lRes = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&fields[]=fld8mkrEWcyq7mUip&fields[]=fld0hAZJ5wgaXrNTn&fields[]=fldyIGNetqcSEkoaK&fields[]=fldR0r13EU4RwrtvH&pageSize=100${lOffset ? '&offset=' + lOffset : ''}`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          const lData = await lRes.json();
+          records = records.concat(lData.records || []);
+          lOffset = lData.offset || '';
+          pages++;
+          if (lOffset && pages >= MAX_PAGES) { truncated = true; break; }
+        } while (lOffset);
         // Oldest lead date = client's "first lead" timestamp (proxy for tenure start)
         let firstLeadDate = '';
         for (const rec of records) {
@@ -1651,6 +1672,7 @@ module.exports = async function handler(req, res) {
           qualified:     records.filter(r => r.fields['fld0hAZJ5wgaXrNTn'] === true).length,
           appointments:  records.filter(r => r.fields['fldyIGNetqcSEkoaK'] === true).length,
           firstLeadDate,
+          truncated,
           lastSeen
         };
       } catch {

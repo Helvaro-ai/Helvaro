@@ -278,6 +278,28 @@ module.exports = async function handler(req, res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Stond hier niet, op dashboard.js wel. Deze pagina vraagt geen camera,
+  // microfoon of locatie, dus zet ze uit.
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Zie de uitleg bij dezelfde header in api/dashboard.js. Geen Clerk hier —
+  // dit is de publieke leadpagina, die praat alleen met zijn eigen origin.
+  // img-src staat https: toe omdat de AI-foto van een klant een externe
+  // https-URL mag zijn (gevalideerd in buildAiPhoto).
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    // Het formulier post naar een ABSOLUTE URL (var API hieronder), dus
+    // app.helvaro.pro moet er expliciet in staan: op een preview-deploy is
+    // 'self' die host niet en zou versturen stilletjes geblokkeerd worden.
+    "connect-src 'self' https://app.helvaro.pro",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; '));
   res.status(200).send(`<!DOCTYPE html>
 <html lang="${lang}">
 <head>

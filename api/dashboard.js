@@ -75,156 +75,143 @@ module.exports = async function handler(req, res) {
   font-display: swap;
   src: url('/fonts/inter-var.woff2') format('woff2');
 }
+@font-face {
+  /* Space Grotesk, self-hosted for the same GDPR reason as Inter. This is the
+     brand's heading face — the marketing site loads it from Google, which is
+     the leak we already closed here. Variable, so 500/600/700 all come from
+     one 22 KB file. */
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-var.woff2') format('woff2');
+}
 /* ============================================================
    CSS CUSTOM PROPERTIES
    ============================================================ */
 :root {
-  /* ---- Enterprise Dark — canonical semantic tokens -------------------
-     Every neutral carries a slight COOL cast (blue channel always highest).
-     The previous palette was #121212 / #232323 / #333333 — R=G=B on every
-     surface, i.e. pure hueless grey, which is what "default dark mode"
-     looks like and why the app read as cheap. A consistent cool ink makes
-     the warm gold accent land as an accent instead of as one more shade
-     of the same sand. The sidebar was already tinted (27,29,34) while
-     nothing else was, which is why it felt bolted on rather than part of
-     the same surface family; everything now shares that cast. ---- */
-  --bg:            #0B0F16;
-  --bg-alt:        #111722;
-  --card:          #161D28;
-  --card-elevated: #1E2735;
-  --border-c:      #2A3444;
-  --divider:       #202836;
-  --hover-c:       #1B2331;
+  /* ── Sand Black — the brand, restored ──────────────────────────────────
+     An earlier pass moved the accent off #E8D7B1 to a brighter gold and
+     recoloured the neutrals cool-blue. The diagnosis behind that was right
+     (the surfaces read flat and the warm wash over grey went muddy) but the
+     remedy overwrote the brand. These are the real values, from the brand
+     guide and from helvaro.pro's own tokens. The flatness is fixed the way
+     the marketing site fixes it — with a genuine soft shadow and honest
+     borders — not by changing the colours.
 
-  /* Gold, not cream. #E8D7B1 was a pale tan that read washed-out and
-     didn't match the #C9A34E the light theme used — one product, two
-     different brand colours. Both themes now sit on the same gold, tuned
-     per background for legibility. */
-  --accent-c:        #E7B75A;
-  --accent-hover-c:  #F2C670;
-  --accent-pressed-c:#D2A449;
-  --on-accent:     #0B0F16;
-  /* Accent tuned for TEXT/links. The fill accent is chosen to look right
-     as a button background; used as type it needs its own value. */
-  --accent-ink:    #E7B75A;
+     THE CONTRAST RULE, which is the whole reason there are two accent
+     tokens: sand is a FILL, never type. #E8D7B1 as text on white is about
+     1.7:1, invisible. So --accent-c fills (always with dark text on it) and
+     --accent-ink is what you set type in. */
+  --bg:            #121212;
+  --bg-alt:        #0D0D0D;
+  --card:          #232323;
+  --card-elevated: #2A2A2A;
+  --border-c:      #262626;
+  --border-strong: #333333;
+  --divider:       #262626;
+  --hover-c:       #1C1C1C;
 
-  /* Pure #F9F9F9 on a dark surface is harsh — it glares and makes long
-     reading sessions tiring. Pulled back and cooled to sit in the same
-     family as the surfaces. */
-  --text-c:        #E9EEF6;
-  --text-muted-c:  #8D99AC;
-  --text-disabled: #5A6678;
-  --text-inverse:  #0B0F16;
+  --accent-c:        #E8D7B1;   /* sand — fills, buttons, icons */
+  --accent-hover-c:  #DDCAA1;
+  --accent-pressed-c:#C9AE7C;
+  --accent-deep:     #C9AE7C;   /* second stop in gradients */
+  --accent-ink:      #F0E4C8;   /* accent AS TEXT, on dark only */
+  --on-accent:       #121212;   /* always dark type on sand */
 
-  --success-c: #34D399;
-  --warning-c: #F5A524;
-  --error-c:   #F87171;
-  --info-c:    #60A5FA;
+  --text-c:        #F9F9F9;
+  --text-muted-c:  #B5B5B5;
+  --text-disabled: #999999;
+  --text-inverse:  #121212;
 
-  --bubble-incoming: #1A2130;
+  --success-c: #22C55E;
+  --warning-c: #D4A017;
+  --error-c:   #DC2626;
+  --info-c:    #B5B5B5;   /* no blue: the brand rules out blue accents */
 
-  /* RGB triplets so rgba(var(--x-rgb), alpha) works for translucent tints/glows */
-  --accent-rgb:  231,183,90;
-  --success-rgb: 52,211,153;
-  --warning-rgb: 245,165,36;
-  --error-rgb:   248,113,113;
-  --info-rgb:    96,165,250;
-  --text-rgb:    233,238,246;
-  --on-accent-rgb: 11,15,22;
+  --bubble-incoming: #1F1F1F;
 
+  --accent-rgb:  232,215,177;
+  --success-rgb: 34,197,94;
+  --warning-rgb: 212,160,23;
+  --error-rgb:   220,38,38;
+  --info-rgb:    181,181,181;
+  --text-rgb:    249,249,249;
+  --on-accent-rgb: 18,18,18;
+
+  /* Twee families, zoals de huisstijl voorschrijft: Space Grotesk voor koppen,
+     Inter voor alles wat je leest. Space Grotesk valt terug op Inter, dus als
+     het woff2-bestand ontbreekt wordt de pagina niet lelijk — alleen minder
+     eigen. */
+  --font-head: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* 8 / 14 / 22, per the brand's shape language */
+  --radius-sm:   8px;
   --radius-btn:  14px;
-  --radius-card: 18px;
-  --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition:      all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-card: 22px;
 
-  /* ---- Motion: physics, not defaults. One easing family everywhere so
-     hovers/entrances feel like the same product. ease-out for anything
-     that should feel decisive (hovers, state, entrances); spring used
-     sparingly for the couple of moments that should feel alive
-     (toast-in). Durations short — this is a tool people use daily. ---- */
-  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast:    120ms;
-  --dur-base:    180ms;
-  --dur-enter:   240ms;
+  /* One easing for everything, the brand's own curve. Slow and subtle. */
+  --ease-out:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:    140ms;
+  --dur-base:    220ms;
+  --dur-enter:   320ms;
+  --transition-fast: all 140ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition:      all 220ms cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* ---- Elevation: layered light from one source (a tight, near-opaque
-     contact shadow + a wide, soft ambient one), not a single flat blob.
-     Resting surfaces (cards, rows) stay flat — --elev-0/none, depth
-     comes from borders as before. Elevation is reserved for things that
-     are interactive-raised or literally stacked on top: hovered cards,
-     popovers/menus, toasts, modals. On dark surfaces a shadow alone
-     barely reads, so raised dark elements should also step up to
-     --card-elevated (a lighter surface tone) rather than lean on shadow
-     opacity alone. */
+  /* Soft and deep, never a hard drop. This is what makes a #232323 card read
+     as raised on a #121212 page without changing either colour. */
   --elev-0: none;
-  --elev-1: 0 1px 2px rgba(0,0,0,.32), 0 4px 10px rgba(0,0,0,.22);   /* hovered card / raised control */
-  --elev-2: 0 3px 6px rgba(0,0,0,.36), 0 12px 28px rgba(0,0,0,.30);  /* popover, menu, toast */
-  --elev-3: 0 8px 18px rgba(0,0,0,.42), 0 28px 64px rgba(0,0,0,.38); /* modal, dialog, slide-in panel */
-
-  /* Legacy aliases. --shadow-card used to be "none", which is why every
-     surface read dead flat: a card at rest had no elevation at all and
-     only grew one on hover. Cards now sit ON the page instead of being
-     painted into it. Kept deliberately small — this is a resting state,
-     not a hover. */
-  --shadow:      0 1px 2px rgba(0,0,0,0.40), 0 8px 24px rgba(0,0,0,0.30);
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.32), 0 4px 16px rgba(0,0,0,0.24);
+  --elev-1: 0 2px 8px rgba(0,0,0,.30), 0 8px 24px rgba(0,0,0,.24);
+  --elev-2: 0 4px 12px rgba(0,0,0,.34), 0 16px 40px rgba(0,0,0,.30);
+  --elev-3: 0 8px 20px rgba(0,0,0,.40), 0 32px 72px rgba(0,0,0,.38);
+  --shadow:      0 2px 8px rgba(0,0,0,.30), 0 12px 34px rgba(0,0,0,.26);
+  --shadow-card: 0 2px 8px rgba(0,0,0,.26), 0 10px 34px rgba(0,0,0,.22);
   --shadow-glow: none;
 
-  /* The specular top edge. On dark surfaces a drop shadow does almost
-     nothing (dark on dark), so what actually makes a card read as a
-     physical raised plane is a 1px highlight where light would catch its
-     top lip. This is the single biggest reason premium dark UIs look
-     "solid" and flat ones look painted-on. */
-  --edge-hi:     inset 0 1px 0 rgba(255,255,255,0.05);
+  /* 1px specular lip. On near-black surfaces a drop shadow alone barely
+     registers; this is what sells a card as a physical plane. */
+  --edge-hi: inset 0 1px 0 rgba(255,255,255,0.04);
 
-  /* ---- Liquid glass -------------------------------------------------
-     Glass belongs ONLY on layers that float above content: sidebar,
-     sticky topbar, modals, popovers. Content surfaces stay opaque so
-     text stays crisp — frosting everything is what makes an interface
-     look cheap and unreadable. --glass-edge is the specular highlight
-     along the top edge that makes the material read as a physical pane
-     catching light, rather than as a flat translucent rectangle. */
-  --glass-fill:  rgba(17,23,34,0.72);
-  --glass-edge:  rgba(255,255,255,0.10);
-  --glass-blur:  saturate(160%) blur(20px);
+  --glass-fill:  rgba(18,18,18,0.78);
+  --glass-edge:  rgba(255,255,255,0.06);
+  --glass-blur:  saturate(140%) blur(18px);
 
-  /* ---- Semantic accent palette --------------------------------------
-     Each metric gets a colour that MEANS something, so the eye can sort
-     the dashboard without reading every label. Gold stays reserved for
-     brand + money. The -soft variants are the tinted fill behind icons,
-     so a card can carry its colour without becoming a block of it.
-     These are the DARK values — deliberately luminous, because a mid-tone
-     hue disappears against a near-black page. The light theme overrides
-     every one of them further down: the same hues at dark-theme
-     luminance are far too hot on white and turn a business dashboard
-     into a toy. Applied to icons, sparklines, borders, badges and chart
-     series — not to body copy. */
-  --c-emerald: #34D399;  --c-emerald-soft: rgba(52,211,153,0.14);
-  --c-blue:    #6E92FF;  --c-blue-soft:    rgba(110,146,255,0.14);
-  --c-purple:  #A78BFA;  --c-purple-soft:  rgba(167,139,250,0.14);
-  --c-orange:  #F5A524;  --c-orange-soft:  rgba(245,165,36,0.14);
-  --c-coral:   #F87171;  --c-coral-soft:   rgba(248,113,113,0.14);
-  --c-cyan:    #22D3EE;  --c-cyan-soft:    rgba(34,211,238,0.14);
-  --c-gold:    #E7B75A;  --c-gold-soft:    rgba(231,183,90,0.15);
+  /* ── One accent, not a rainbow ──────────────────────────────────────────
+     There used to be seven per-card hues here (emerald, blue, purple,
+     orange, coral, cyan, gold). The brand rules out purple, indigo and blue
+     outright, and a dashboard for someone who handles other people's money
+     should not look like a colour wheel. Cards are now differentiated by
+     sand at varying strength, with real colour reserved for STATUS: green
+     when something succeeded, amber when it needs attention, red when it
+     failed. That is information, not decoration. */
+  --c-sand:    #E8D7B1;  --c-sand-soft:    rgba(232,215,177,0.10);
+  --c-deep:    #C9AE7C;  --c-deep-soft:    rgba(201,174,124,0.10);
+  --c-emerald: #22C55E;  --c-emerald-soft: rgba(34,197,94,0.12);
+  --c-amber:   #D4A017;  --c-amber-soft:   rgba(212,160,23,0.12);
+  --c-coral:   #DC2626;  --c-coral-soft:   rgba(220,38,38,0.12);
+  /* Legacy aliases so the ~40 existing var(--c-blue) style references keep
+     resolving; they now all land on sand instead of off-brand hues. */
+  --c-blue:    var(--c-sand);   --c-blue-soft:   var(--c-sand-soft);
+  --c-purple:  var(--c-deep);   --c-purple-soft: var(--c-deep-soft);
+  --c-cyan:    var(--c-sand);   --c-cyan-soft:   var(--c-sand-soft);
+  --c-orange:  var(--c-amber);  --c-orange-soft: var(--c-amber-soft);
+  --c-gold:    var(--c-sand);   --c-gold-soft:   var(--c-sand-soft);
 
-  /* Gradients for the few surfaces that earn one — hero numbers, the
-     revenue ring, primary actions. Used sparingly on purpose: a
-     gradient on every card cancels itself out. */
-  --grad-gold:    linear-gradient(135deg, #E7B75A, #F5A524);
-  --grad-ai:      linear-gradient(135deg, #A78BFA, #6E92FF);
-  --grad-data:    linear-gradient(135deg, #6E92FF, #22D3EE);
-  --grad-success: linear-gradient(135deg, #34D399, #A3E635);
+  --grad-gold:    linear-gradient(135deg, #E8D7B1, #C9AE7C);
+  --grad-ai:      linear-gradient(135deg, #E8D7B1, #C9AE7C);
+  --grad-data:    linear-gradient(135deg, #C9AE7C, #E8D7B1);
+  --grad-success: linear-gradient(135deg, #22C55E, #16A34A);
 
   /* ---- legacy token names (kept so every existing var(--x) in this
-     15k-line file resolves without a line-by-line rewrite) ---- */
+     18k-line file resolves without a line-by-line rewrite) ---- */
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
   --bg-card-alt:   var(--bg-alt);
   --bg-card-hover: var(--hover-c);
   --blue-primary:  var(--accent-c);
   --blue-bright:   var(--accent-hover-c);
-  --cyan:          var(--info-c);
+  --cyan:          var(--accent-c);
   --green:         var(--success-c);
   --red:           var(--error-c);
   --orange:        var(--warning-c);
@@ -235,101 +222,67 @@ module.exports = async function handler(req, res) {
   --text-secondary:var(--text-muted-c);
   --text-muted:    var(--text-muted-c);
   --border:        var(--border-c);
-  --border-bright: var(--border-c);
+  --border-bright: var(--border-strong);
   --scrollbar-bg:  var(--bg);
-  --scrollbar-thumb: var(--border-c);
+  --scrollbar-thumb: var(--border-strong);
   --radius:        var(--radius-btn);
-  --radius-sm:     10px;
+  --radius-s:      var(--radius-sm);
 }
 
 [data-theme="light"] {
-  /* Light is the same product as dark, inverted — cool ink neutrals with
-     gold as the one warm accent. It is NOT a separate visual world.
-
-     The page is deliberately a good step darker than the cards. Earlier
-     versions ran #F7F5F0 and then #F4F6FB, both of which put a white card
-     on a near-white page at ~1.08 contrast: technically two surfaces,
-     visually one flat sheet. At #E9ECF4 a white card reads as a plane
-     lifted off the page before you notice any border or shadow, which is
-     what makes the difference between "clean" and "unfinished". */
-  --bg:            #E9ECF4;
-  --bg-alt:        #F4F6FB;
+  /* Taken straight from helvaro.pro's own custom properties, so the app and
+     the marketing site are the same product rather than two designs that
+     happen to share a logo. */
+  --bg:            #FFFFFF;
+  --bg-alt:        #F7F7F7;
   --card:          #FFFFFF;
   --card-elevated: #FFFFFF;
-  /* Was #E2E7F0 — 1.24 against a white card, i.e. a hairline you had to
-     look for. Deep enough now to actually delimit a surface. */
-  --border-c:      #D5DCE9;
-  --divider:       #E3E8F2;
-  --hover-c:       #EFF2F8;
+  --border-c:      #E5E7EB;
+  --border-strong: #D1D5DB;
+  --divider:       #E5E7EB;
+  --hover-c:       #FAFAF8;
 
-  --accent-c:        #C9A34E;
-  --accent-hover-c:  #B89344;
-  --accent-pressed-c:#A6823A;
-  --on-accent:     #1B222D;
-  /* Gold as TYPE on white fails contrast badly — #C9A34E against #FFFFFF
-     is about 2.2:1, well under the 4.5 needed for body text. The fill
-     accent above is still the button background (dark text on gold reads
-     fine); this darker gold is what links, active nav labels and any
-     accent-coloured copy use. Without the split, every gold label in the
-     light theme was effectively unreadable. */
-  --accent-ink:    #8A6714;
+  --accent-c:        #E8D7B1;   /* sand still fills, even on white */
+  --accent-hover-c:  #DDCAA1;
+  --accent-pressed-c:#D3BE93;
+  --accent-deep:     #D3BE93;
+  /* Sand as type on white is ~1.7:1. This deeper bronze is the brand's
+     answer, and it is the ONLY accent allowed to carry text here. */
+  --accent-ink:      #8A6A33;
+  --on-accent:       #121212;
 
-  /* Text was #2D2A26, a warm brown, sitting on cool grey surfaces —
-     the one leftover from the all-beige era. Cool ink to match. */
-  --text-c:        #1B222D;
-  --text-muted-c:  #5B6779;
-  --text-disabled: #9BA5B4;
+  --text-c:        #111827;
+  --text-muted-c:  #4B5563;
+  --text-disabled: #6B7280;
   --text-inverse:  #FFFFFF;
 
-  --success-c: #15803D;
+  --success-c: #16A34A;
   --warning-c: #B45309;
-  --error-c:   #B91C1C;
-  --info-c:    #1D4ED8;
+  --error-c:   #DC2626;
+  --info-c:    #6B7280;
 
-  --bubble-incoming: #EEF1F7;
+  --bubble-incoming: #F3F4F6;
 
-  --accent-rgb:  201,163,78;
-  --success-rgb: 21,128,61;
+  --accent-rgb:  232,215,177;
+  --success-rgb: 22,163,74;
   --warning-rgb: 180,83,9;
-  --error-rgb:   185,28,28;
-  --info-rgb:    29,78,216;
-  --text-rgb:    27,34,45;
-  --on-accent-rgb: 27,34,45;
+  --error-rgb:   220,38,38;
+  --info-rgb:    107,114,128;
+  --text-rgb:    17,24,39;
+  --on-accent-rgb: 18,18,18;
 
-  /* Light-theme semantic palette. The dark values are chosen to glow on
-     near-black; the same hues on white are garish and low-contrast at
-     small sizes (a #34D399 icon on #FFFFFF is ~1.9:1 — visible as a
-     shape, illegible as a symbol). These are the same colours pushed
-     down in luminance so they stay readable on white while keeping the
-     card-personality mapping intact. */
-  --c-emerald: #15803D;  --c-emerald-soft: rgba(21,128,61,0.10);
-  --c-blue:    #2557E8;  --c-blue-soft:    rgba(37,87,232,0.10);
-  --c-purple:  #6D28D9;  --c-purple-soft:  rgba(109,40,217,0.10);
-  --c-orange:  #C2600A;  --c-orange-soft:  rgba(194,96,10,0.10);
-  --c-coral:   #C81E1E;  --c-coral-soft:   rgba(200,30,30,0.10);
-  --c-cyan:    #0E7490;  --c-cyan-soft:    rgba(14,116,144,0.10);
-  --c-gold:    #8A6714;  --c-gold-soft:    rgba(138,103,20,0.10);
+  /* Same single accent on white. The bronze is what shows up as an icon or a
+     hairline; the sand is what fills a button under dark text. */
+  --c-sand:    #8A6A33;  --c-sand-soft:    rgba(232,215,177,0.30);
+  --c-deep:    #6F5427;  --c-deep-soft:    rgba(201,174,124,0.26);
+  --c-emerald: #16A34A;  --c-emerald-soft: rgba(22,163,74,0.10);
+  --c-amber:   #B45309;  --c-amber-soft:   rgba(180,83,9,0.10);
+  --c-coral:   #DC2626;  --c-coral-soft:   rgba(220,38,38,0.10);
 
-  /* Stays inside gold. An earlier version ran to #C2600A (burnt orange),
-     which turned the sidebar pill, the primary button and the help header
-     into three orange blocks — the brand colour is gold, not amber. */
-  --grad-gold:    linear-gradient(135deg, #D9B063, #BB8A2B);
-  --grad-ai:      linear-gradient(135deg, #6D28D9, #2557E8);
-  --grad-data:    linear-gradient(135deg, #2557E8, #0E7490);
-  --grad-success: linear-gradient(135deg, #15803D, #4D7C0F);
-
-  /* No specular lip in light mode — a white highlight on a white card is
-     invisible, and faking one with a dark line reads as a seam.
-
-     MUST stay a valid shadow layer, never the keyword none. Cards set
-     box-shadow to var(--edge-hi) followed by var(--shadow-card), and the
-     none keyword is not allowed as one layer of a comma-separated list:
-     it makes the WHOLE
-     declaration invalid, so the card silently loses its shadow entirely.
-     That is exactly what happened here and it is why every light-mode
-     card rendered dead flat. A fully transparent zero-size layer is the
-     correct no-op. */
-  --edge-hi:       0 0 0 0 rgba(0,0,0,0);
+  --grad-gold:    linear-gradient(135deg, #E8D7B1, #D3BE93);
+  --grad-ai:      linear-gradient(135deg, #E8D7B1, #D3BE93);
+  --grad-data:    linear-gradient(135deg, #D3BE93, #E8D7B1);
+  --grad-success: linear-gradient(135deg, #16A34A, #4D7C0F);
 
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
@@ -342,29 +295,23 @@ module.exports = async function handler(req, res) {
   --text-secondary:var(--text-muted-c);
   --text-muted:    var(--text-muted-c);
   --border:        var(--border-c);
-  --border-bright: var(--border-c);
+  --border-bright: var(--border-strong);
   --scrollbar-bg:  var(--bg);
-  --scrollbar-thumb: var(--border-c);
-  /* Ink-tinted rather than neutral grey, and stronger than before: a
-     light-theme card needs a readable contact shadow or it reads as a
-     painted rectangle instead of a raised surface. */
-  --shadow:        0 1px 2px rgba(23,31,45,0.07), 0 8px 24px rgba(23,31,45,0.09);
-  --shadow-card:   0 1px 2px rgba(23,31,45,0.06), 0 4px 14px rgba(23,31,45,0.07);
+  --scrollbar-thumb: var(--border-strong);
+
+  /* The site's own card shadow, verbatim. */
+  --shadow:        0 10px 34px rgba(17,24,39,0.08);
+  --shadow-card:   0 10px 34px rgba(17,24,39,0.08);
   --shadow-glow:   none;
+  --elev-1: 0 4px 14px rgba(17,24,39,.06);
+  --elev-2: 0 10px 34px rgba(17,24,39,.08);
+  --elev-3: 0 24px 64px rgba(17,24,39,.12);
+  /* A white highlight on a white card is nothing. */
+  --edge-hi: none;
 
-  /* Liquid glass, light theme. Higher opacity than dark: light glass
-     needs more body or the text behind it bleeds through and nothing
-     stays legible. */
-  --glass-fill:  rgba(255,255,255,0.72);
+  --glass-fill:  rgba(255,255,255,0.80);
   --glass-edge:  rgba(255,255,255,0.90);
-  --glass-blur:  saturate(180%) blur(20px);
-
-  /* Same elevation scale, ink-tinted. Lower alpha than dark, but not as
-     timid as before — these were so faint that a hovered card and a
-     resting one looked identical. */
-  --elev-1: 0 1px 2px rgba(23,31,45,.07), 0 5px 12px rgba(23,31,45,.09);
-  --elev-2: 0 3px 6px rgba(23,31,45,.08), 0 14px 30px rgba(23,31,45,.11);
-  --elev-3: 0 8px 18px rgba(23,31,45,.10), 0 30px 66px rgba(23,31,45,.16);
+  --glass-blur:  saturate(160%) blur(18px);
 }
 
 /* ============================================================
@@ -389,7 +336,7 @@ body {
      the brand present, the cool side stops the page collapsing into a
      single temperature. */
   background:
-    radial-gradient(1200px 800px at 10% -12%, rgba(231,183,90,0.10), transparent 62%),
+    radial-gradient(1200px 800px at 10% -12%, rgba(232,215,177,0.10), transparent 62%),
     radial-gradient(1000px 760px at 100% 4%, rgba(79,124,255,0.08), transparent 58%),
     var(--bg-primary);
   background-attachment: fixed;
@@ -417,7 +364,7 @@ body::after {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(231,183,90,0.05) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(232,215,177,0.05) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -455,11 +402,18 @@ body::after {
 /* ============================================================
    TYPOGRAPHY
    ============================================================ */
-/* Display treatment for headings/titles. Previously a second typeface
-   (Orbitron) did this job; one family at a confident weight + tight
-   tracking reads calmer and scales better — Linear/Stripe/Vercel all
-   run their whole UI on a single family for exactly this reason. */
-h1, h2, h3, .display-heading { font-weight: 800; letter-spacing: -0.01em; }
+/* Koppen in Space Grotesk, 600-700, -0.02em — dat is wat de huisstijl zegt en
+   wat helvaro.pro doet. Een eerdere ronde hier draaide alles op één familie
+   (Inter op 800) omdat de vorige tweede letter Orbitron was, en die paste
+   nergens bij. Dat argument gold Orbitron, niet het idee van een tweede
+   letter: Space Grotesk is juist de kop-letter van het merk, dus de app en de
+   site lezen nu als hetzelfde product. 800 gaat naar 700 omdat Space Grotesk
+   niet zwaarder gaat en op 700 al steviger oogt dan Inter op 800. */
+h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
+  font-family: var(--font-head);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
 
 /* Was a gradient-clip effect (indigo → cyan). A single accent colour reads
    calmer and is the "important number / highlight" use case sand is for. */
@@ -2087,8 +2041,8 @@ button.brand-dot { border: none; padding: 0; }
   --green:       #34D399;
   --success-c:   #34D399;
   --success-rgb: 52,211,153;
-  --accent:        #E7B75A;
-  --accent-c:      #E7B75A;
+  --accent:        #E8D7B1;
+  --accent-c:      #E8D7B1;
   --accent-bright: #F2C670;
   --accent-rgb:    231,183,90;
   border-right: 1px solid rgba(255,255,255,0.06);
@@ -2122,7 +2076,7 @@ button.brand-dot { border: none; padding: 0; }
   background: var(--grad-gold);
   color: #0B0F16;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(231,183,90,.26);
+  box-shadow: 0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(232,215,177,.26);
 }
 /* The old rule painted a 3px bar down the left edge. Redundant now that
    the whole item is a filled pill, and it broke the pill's silhouette. */
@@ -2407,8 +2361,11 @@ button.brand-dot { border: none; padding: 0; }
 
 .page-title {
   font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  /* Deze regel staat na de kop-regel bovenaan en zou hem anders terugzetten
+     naar Inter/800. Zelfde waarden als daar. */
+  font-family: var(--font-head);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   background: none;
   -webkit-background-clip: initial;
   -webkit-text-fill-color: currentColor;
@@ -2981,12 +2938,15 @@ button.brand-dot { border: none; padding: 0; }
 .stat-value {
   font-variant-numeric: tabular-nums;
   font-size: 28px;
-  font-weight: 800;
+  /* Deze regel staat na de kop-regel; zonder deze drie zou hij terugvallen
+     op Inter/800. De grote cijfers zijn juist waar de kop-letter het meest
+     doet. */
+  font-family: var(--font-head);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   line-height: 1;
   margin-bottom: 8px;
-  letter-spacing: -0.5px;
-  text-shadow: 0 0 20px rgba(255,255,255,0.08);
 }
 
 .stat-value.cyan  { color: var(--cyan);        text-shadow: 0 0 20px rgba(6,182,212,0.35); }
@@ -8674,8 +8634,8 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <span class="ap-label-hint">accenten op je lead-formulier</span>
               </label>
               <div class="ap-color-row">
-                <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E7B75A" maxlength="7">
-                <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#E7B75A">
+                <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E8D7B1" maxlength="7">
+                <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#E8D7B1">
               </div>
               <div class="ap-hint">Hex-code (bv. <code>#16a34a</code>). Vertegenwoordigt jouw bedrijfskleur op de lead-form knoppen + accenten. Leeg = standaard zand.</div>
             </div>
@@ -10758,7 +10718,7 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   const confirmBtn = document.createElement('button');
   confirmBtn.textContent = confirmText || 'Ja, ga door';
   confirmBtn.className = 'cm-btn cm-btn-confirm' + (danger ? ' danger' : '');
-  const confirmBg = danger ? 'var(--error,#F87171)' : 'var(--accent,#E7B75A)';
+  const confirmBg = danger ? 'var(--error,#F87171)' : 'var(--accent,#E8D7B1)';
   const confirmFg = danger ? '#fff' : 'var(--on-accent,#0B0F16)';
   confirmBtn.style.cssText = 'padding:9px 16px;background:' + confirmBg + ';border:0;border-radius:14px;color:' + confirmFg + ';font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .2s ease)';
 
@@ -11296,7 +11256,7 @@ function renderBronChart() {
   if (labels.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
 
-  const palette = ['#E7B75A','#6E92FF','#34D399','#F5A524','#A78BFA','#8D99AC'];
+  const palette = ['#E8D7B1','#E8D7B1','#34D399','#C9AE7C','#C9AE7C','#8D99AC'];
   const data    = labels.map(k => counts[k]);
   const colors  = labels.map((_, i) => palette[i % palette.length]);
 
@@ -14247,7 +14207,7 @@ async function renderCalendar() {
   if (!colsEl) return;
 
   const renderCols = (events) => {
-    const eventColors = ['#E7B75A','#6E92FF','#A78BFA','#34D399','#22D3EE'];
+    const eventColors = ['#E8D7B1','#E8D7B1','#C9AE7C','#34D399','#C9AE7C'];
 
     // Store events for modal lookup
     calState.lastEvents = events;
@@ -15630,7 +15590,7 @@ function renderAnalyse() {
       type: 'bar',
       data: {
         labels: dayLabels,
-        datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(231,183,90,0.45)', borderColor: '#E7B75A', borderWidth: 1, borderRadius: 6 }]
+        datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(232,215,177,0.45)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
       },
       options: { responsive: true, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
@@ -15675,7 +15635,7 @@ function renderAnalyse() {
       type: 'bar',
       data: {
         labels: hourBuckets,
-        datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(231,183,90,0.4)', borderColor: '#E7B75A', borderWidth: 1, borderRadius: 6 }]
+        datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(232,215,177,0.4)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
       },
       options: { responsive: true, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
@@ -17890,7 +17850,7 @@ function renderPipeMini() {
   if (!el) return;
   var stages = [
     { name: 'Gecontacteerd', color: '#7C93C4' },
-    { name: 'Geinteresseerd', color: '#E7B75A' },
+    { name: 'Geinteresseerd', color: '#E8D7B1' },
     { name: 'Beslissing', color: '#C99A6C' }
   ];
   el.innerHTML = stages.map(function(s) {
@@ -19147,5 +19107,37 @@ function stopPresencePing() {
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  // Content-Security-Policy.
+  //
+  // 'unsafe-inline' is niet te vermijden: deze pagina is één groot inline
+  // script plus ~170 onclick-attributen en ~395 inline style-attributen. Dat
+  // wegwerken is een echte refactor, geen header. De CSP stopt dus GEEN
+  // geïnjecteerd inline script — dat blijft het werk van escHtml(). Wat hij wel
+  // doet: een <script src="https://kwaadaardig..."> weren, wegsluizen van data
+  // naar een vreemde host blokkeren (connect-src), plugins uitzetten, en
+  // framing verbieden naast de bestaande X-Frame-Options.
+  //
+  // Clerk is de reden dat dit niet zomaar 'self' kan zijn: de inlogpagina laadt
+  // clerk.browser.js van de Frontend API-host en praat daar daarna mee. Die
+  // host staat hieronder alleen in de lijst als Clerk ook echt aanstaat, zodat
+  // de policy niet losser is dan nodig. Zonder deze twee regels is inloggen
+  // stuk — het script wordt dan geblokkeerd, niet de aanvaller.
+  const clerkSrc = CLERK_READY ? ` https://${CLERK_HOST}` : '';
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${clerkSrc}`,
+    `connect-src 'self'${clerkSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",       // Vercel Blob + Clerk-avatars
+    "font-src 'self' data:",             // zelf gehost, geen Google Fonts (AVG)
+    "worker-src 'self' blob:",           // Clerk gebruikt een blob-worker
+    "frame-src 'self'" + clerkSrc,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; '));
+
   res.status(200).send(HTML);
 };
