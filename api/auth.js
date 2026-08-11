@@ -272,7 +272,7 @@ module.exports = async function handler(req, res) {
     if (await isAdminKeyRateLimited(ip)) {
       return res.status(429).json({ error: 'Te veel pogingen. Wacht 15 minuten.' });
     }
-    const provided  = String((req.body || {}).adminKey || '').trim();
+    const provided  = String(_session.safeBody(req).adminKey || '').trim();
     const ADMIN_KEY = process.env.ADMIN_KEY;
     if (!provided || !ADMIN_KEY || !safeEqual(provided, ADMIN_KEY)) {
       return res.status(401).json({ error: 'Ongeldige admin key' });
@@ -290,9 +290,12 @@ module.exports = async function handler(req, res) {
   const USERS_TABLE    = 'tbl2hrPW7gIx5XF4S';
 
   try {
-    let body = req.body;
-    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-    if (!body || typeof body !== 'object') body = {};
+    // Ook hier safeBody. Deze regel zit wél in een try, dus kapotte JSON gaf
+    // geen kale 400 meer maar een 500 met "Serverfout" — en dat is een leugen:
+    // 500 zegt "wij hebben het verpest", terwijl de invoer fout was. Met
+    // safeBody wordt een onleesbare body gewoon een leeg object, waarna de
+    // validatie hieronder er zelf een nette 400 van maakt.
+    const body = _session.safeBody(req);
 
     const email    = String(body.email    || '').trim().slice(0, 254);
     const password = String(body.password || '').trim().slice(0, 200);
