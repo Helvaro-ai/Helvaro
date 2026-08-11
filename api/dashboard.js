@@ -2125,11 +2125,12 @@ button.brand-dot { border: none; padding: 0; }
 /* Two flat colourways of the mark (see LOGO-RECOLOR notes) — dark surfaces
    get the pale sand tint, the light surface gets the deeper bronze step so
    it keeps contrast on white/cream. Swapped per theme, never both at once. */
-/* The sidebar is permanently dark in BOTH themes (see .sidebar), so the logo
-   must not follow the page theme — it follows the surface it sits on. These
-   rules used to swap to the ink logo in light mode, which put the dark logo on
-   the dark sidebar and made it almost invisible. The pale variant stays. */
-.sidebar-logo .sidebar-logo-light { display: none; }
+/* Hier stonden twee logo's over elkaar, een lichte en een donkere, waarvan de
+   lichte permanent verborgen was — de sidebar is in beide thema's donker, dus
+   die wissel had geen functie meer. Een img op display:none wordt door de
+   browser nog steeds opgehaald, dus dat kostte elke lading een extra download
+   voor niets. Nu één logo: het goud leest op donker én op licht, dus de
+   ink/sand-splitsing is sowieso overbodig geworden. */
 
 .sidebar-nav {
   flex: 1;
@@ -7290,7 +7291,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     <div class="login-form-side">
       <div class="login-form-inner">
         <div class="login-logo-top">
-          <img src="/logo-ink.png" alt="Helvaro">
+          <img src="/logo.png" alt="Helvaro">
         </div>
 
         <h1 class="login-welcome">Welkom terug!</h1>
@@ -7487,8 +7488,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <img src="/logo-sand.png" alt="Helvaro" class="sidebar-logo-dark">
-      <img src="/logo-ink.png" alt="Helvaro" class="sidebar-logo-light">
+      <img src="/logo.png" alt="Helvaro">
     </div>
     <nav class="sidebar-nav">
       <!-- ── Werk (dagelijks) ── -->
