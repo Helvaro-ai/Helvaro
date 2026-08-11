@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pagina niet gevonden · Helvaro</title>
+<link rel="icon" href="/favicon.png">
+<!--
+  Vercel serveert dit bestand automatisch bij een onbekende URL, omdat public/
+  de statische root is. Er stond hiervoor alleen Vercel's kale "NOT_FOUND" met
+  een request-id eronder — dat leest als een stukgelopen server, niet als een
+  product. Een klant die zich vertypt hoort niet te denken dat de app plat ligt.
+
+  Bewust zelfstandig: geen framework, geen externe fonts (Google Fonts is de
+  AVG-lek die elders in deze app al gedicht is), en het lettertype komt van
+  /fonts, dat op dezelfde origin staat. Valt dat weg, dan zakt hij terug op een
+  systeemfont en blijft de pagina gewoon leesbaar.
+-->
+<style>
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url('/fonts/space-grotesk-var.woff2') format('woff2');
+}
+:root{
+  --bg:#121212; --card:#232323; --line:#262626;
+  --sand:#E8D7B1; --deep:#C9AE7C; --ink:#121212;
+  --text:#F9F9F9; --muted:#B5B5B5;
+}
+/* De app is standaard donker, maar wie zijn systeem op licht heeft staan krijgt
+   hier een lichte pagina — anders knalt een zwart vlak in je gezicht. */
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#FFFFFF; --card:#F7F7F7; --line:#E5E7EB;
+    --sand:#E8D7B1; --deep:#8A6A33;
+    --text:#111827; --muted:#4B5563;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;line-height:1.55;
+}
+.card{max-width:480px;width:100%;text-align:center}
+.logo{height:38px;width:auto;margin-bottom:40px;opacity:.9}
+.code{
+  font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
+  font-size:clamp(64px,16vw,104px);letter-spacing:-.04em;line-height:1;
+  color:var(--sand);margin:0 0 4px;
+}
+h1{
+  font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
+  letter-spacing:-.02em;font-size:22px;margin:0 0 12px;
+}
+p{color:var(--muted);font-size:15px;margin:0 auto 32px;max-width:380px}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{
+  display:inline-block;padding:12px 22px;border-radius:14px;
+  font-size:14px;font-weight:600;text-decoration:none;
+  transition:transform .14s cubic-bezier(.4,0,.2,1),opacity .14s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--sand);color:var(--ink)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--deep)}
+.help{margin-top:36px;font-size:12px;color:var(--muted)}
+.help a{color:var(--deep);text-decoration:none}
+.help a:hover{text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.btn{transition:none}.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="/logo-sand.png" alt="Helvaro"
+         onerror="this.style.display='none'">
+
+    <div class="code">404</div>
+    <h1>Deze pagina bestaat niet</h1>
+    <p>
+      De link klopt niet meer, of er zit een tikfout in het adres.
+      Je gegevens zijn veilig — er is niets stuk.
+    </p>
+
+    <div class="row">
+      <a class="btn btn-primary" href="/dashboard">Naar je dashboard</a>
+      <a class="btn btn-ghost" href="https://helvaro.pro">Naar de website</a>
+    </div>
+
+    <p class="help">
+      Kwam je hier via een link uit de app? Laat het weten via
+      <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a> — dan repareren we hem.
+    </p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Er ging iets mis · Helvaro</title>
+<link rel="icon" href="/favicon.png">
+<!--
+  De tegenhanger van 404.html: niet "je zocht iets dat er niet is" maar "wij
+  hebben iets stukgemaakt". Dat verschil is belangrijk voor de toon — bij een
+  404 heeft de bezoeker zich vertypt, hier ligt het aan ons, en dan hoor je dat
+  te zeggen in plaats van te doen alsof het aan hun internet ligt.
+
+  LET OP over de dekking: Vercel serveert dit bestand bij statische fouten. Een
+  crash IN een serverless functie geeft Vercel's eigen foutpagina, niet deze —
+  dat is niet iets wat je met een HTML-bestand kunt opvangen. De echte
+  verdediging daartegen zit in de API zelf, die overal een nette JSON-fout
+  teruggeeft in plaats van te klappen.
+
+  Zelfde opzet als 404.html: geen framework, geen externe fonts, en als het
+  lettertype niet laadt zakt hij terug op een systeemfont.
+-->
+<style>
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url('/fonts/space-grotesk-var.woff2') format('woff2');
+}
+:root{
+  --bg:#121212; --card:#232323; --line:#262626;
+  --sand:#E8D7B1; --deep:#C9AE7C; --ink:#121212;
+  --text:#F9F9F9; --muted:#B5B5B5;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#FFFFFF; --card:#F7F7F7; --line:#E5E7EB;
+    --sand:#E8D7B1; --deep:#8A6A33;
+    --text:#111827; --muted:#4B5563;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;line-height:1.55;
+}
+.card{max-width:480px;width:100%;text-align:center}
+.logo{height:38px;width:auto;margin-bottom:40px;opacity:.9}
+.code{
+  font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
+  font-size:clamp(64px,16vw,104px);letter-spacing:-.04em;line-height:1;
+  color:var(--sand);margin:0 0 4px;
+}
+h1{
+  font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
+  letter-spacing:-.02em;font-size:22px;margin:0 0 12px;
+}
+p{color:var(--muted);font-size:15px;margin:0 auto 32px;max-width:400px}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{
+  display:inline-block;padding:12px 22px;border-radius:14px;
+  font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;
+  font-family:inherit;border:0;
+  transition:transform .14s cubic-bezier(.4,0,.2,1);
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--sand);color:var(--ink)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--deep)}
+.help{margin-top:36px;font-size:12px;color:var(--muted)}
+.help a{color:var(--deep);text-decoration:none}
+.help a:hover{text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.btn{transition:none}.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="/logo-sand.png" alt="Helvaro"
+         onerror="this.style.display='none'">
+
+    <div class="code">500</div>
+    <h1>Er ging iets mis aan onze kant</h1>
+    <p>
+      Dit ligt niet aan jou. Je leads en gesprekken staan veilig opgeslagen —
+      er is niets verloren. Meestal is het binnen een minuut voorbij.
+    </p>
+
+    <div class="row">
+      <button class="btn btn-primary" onclick="location.reload()">Opnieuw proberen</button>
+      <a class="btn btn-ghost" href="/dashboard">Naar je dashboard</a>
+    </div>
+
+    <p class="help">
+      Blijft het misgaan? Mail
+      <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a> — vermeld hoe laat
+      het gebeurde, dan vinden we het terug in de logs.
+    </p>
+  </main>
+</body>
+</html>
