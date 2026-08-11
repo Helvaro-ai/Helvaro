@@ -57,6 +57,22 @@ const MAX_LEAD_CANDIDATES = 50;
 // ─── WEBHOOK HANDLER ────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
+  // ── Website-demo ────────────────────────────────────────────────────────────
+  // /api/ai-demo komt hier binnen via een rewrite (zie vercel.json). Helemaal
+  // bovenaan afgetakt, want alles hieronder gaat uit van een Meta-webhook:
+  // handtekening, rauwe body, telefoonnummers. De demo heeft daar niets mee te
+  // maken en zou er alleen op stuklopen.
+  //
+  // Waarom hier en niet in een eigen bestand: Vercel Hobby staat 12 functies
+  // toe en we zitten op 11. Een rewrite naar een bestaande functie kost er nul,
+  // net zoals /api/gcal op leads.js meelift. De logica zelf staat wél apart in
+  // _demo-chat.js; die krijgt de drie dingen mee die hij uit dit bestand nodig
+  // heeft, zodat runAI niet losgebroken hoeft te worden.
+  if (req.query && req.query.__demo === '1') {
+    const _demo = require('./_demo-chat');
+    return _demo.handleDemoChat(req, res, { runAI, getClientByCode, atFetch });
+  }
+
   // Webhook verification (Meta sends a GET to verify the endpoint)
   if (req.method === 'GET') {
     const mode      = req.query['hub.mode'];

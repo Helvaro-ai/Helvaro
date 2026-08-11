@@ -31,8 +31,10 @@
     { "source": "/verify-email",   "destination": "/api/auth" },
     { "source": "/demo",           "destination": "/api/demo" },
     { "source": "/form-widget.js", "destination": "/public/form-widget.js" },
+    { "source": "/ai-demo.js",     "destination": "/public/ai-demo.js" },
     { "source": "/favicon.png",    "destination": "/public/favicon.png" },
     { "source": "/api/gcal",       "destination": "/api/leads?__gcal=1" },
+    { "source": "/api/ai-demo",    "destination": "/api/whatsapp?__demo=1" },
     { "source": "/api/form/:code", "destination": "/api/form" },
     { "source": "/start/:code",    "destination": "/api/form-page" },
     { "source": "/start",          "destination": "/api/form-page" }
