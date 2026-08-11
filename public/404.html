@@ -41,14 +41,19 @@
   }
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{min-height:100%}
 body{
   margin:0;background:var(--bg);color:var(--text);
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  display:flex;align-items:center;justify-content:center;
-  padding:24px;line-height:1.55;
+  display:flex;justify-content:center;
+  padding:24px;line-height:1.55;min-height:100vh;
 }
-.card{max-width:480px;width:100%;text-align:center}
+/* margin:auto in plaats van align-items:center. Die laatste centreert wel,
+   maar snijdt bij een laag venster (landscape telefoon, klein browservenster)
+   de BOVENkant af op een manier waar je niet naartoe kunt scrollen — het logo
+   was daar simpelweg weg. Met margin:auto wijkt hij netjes naar boven zodra
+   de inhoud niet meer past. */
+.card{max-width:480px;width:100%;text-align:center;margin:auto}
 .logo{height:38px;width:auto;margin-bottom:40px;opacity:.9}
 .code{
   font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
