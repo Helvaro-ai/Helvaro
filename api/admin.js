@@ -259,9 +259,12 @@ module.exports = async function handler(req, res) {
     // Only bites on cookie-authenticated calls; public invite-code onboarding
     // carries no session and is therefore exempt (see api/_session.js).
     if (!_session.csrfOk(req)) return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
-    let body = req.body;
-    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-    if (!body || typeof body !== 'object') body = {};
+    // Zie _session.safeBody(): req.body is een lazy getter die bij ongeldige
+    // JSON gooit, en die worp gebeurde hier buiten elke try/catch. Resultaat
+    // was een kale 400 zonder body, niet de {error:...} die de rest van de API
+    // teruggeeft. safeBody vangt ook het string- en Buffer-geval af, wat deze
+    // twee regels hiervoor al deden.
+    const body = _session.safeBody(req);
 
     const ONBOARD_CODE = process.env.ONBOARD_CODE;
     const ADMIN_KEY    = process.env.ADMIN_KEY;

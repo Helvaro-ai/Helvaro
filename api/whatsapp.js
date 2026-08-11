@@ -786,10 +786,12 @@ async function processMessage(phone, text, scopedProjectCode) {
         fld0hAZJ5wgaXrNTn: aiResponse.qualified,         // Qualified
         fld3NhSENma0okbT7: aiResponse.reason    || '',   // Reason
         // summary already set above (every turn), don't overwrite
-        fldrfbTopJvZEYSKP: aiResponse.ability   || '',   // Ability
-        fldlyLH1DKrWyG3Tr: aiResponse.urgency   || '',   // Urgency
-        fldqNxsPshvZEBeLr: aiResponse.fit       || '',   // Fit
-        fldpzQgMuWJLjogiD: aiResponse.leadScore || 0,    // Lead Score
+        // Alle vier gaan door een validatie, want Airtable weigert bij één
+        // ongeldige waarde de HELE update — zie updateLead() hieronder.
+        fldrfbTopJvZEYSKP: oneOf(aiResponse.ability, ABILITY_CHOICES),  // Ability
+        fldlyLH1DKrWyG3Tr: oneOf(aiResponse.urgency, URGENCY_CHOICES),  // Urgency
+        fldqNxsPshvZEBeLr: oneOf(aiResponse.fit,     FIT_CHOICES),      // Fit
+        fldpzQgMuWJLjogiD: clampScore(aiResponse.leadScore),            // Lead Score
       });
     }
   } else {
@@ -1031,7 +1033,7 @@ async function processMessage(phone, text, scopedProjectCode) {
   if (aiResponse.done && aiResponse.qualified && !isEscalation) {
 
     // Notify owner when a lead is qualified. WhatsApp + Email parallel
-    const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/100` : '';
+    const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/10` : '';
     if (ownerPhone) {
       const notifyMsg =
         `Gekwalificeerde lead\n\n` +
@@ -1052,7 +1054,7 @@ async function processMessage(phone, text, scopedProjectCode) {
         heading: `Gekwalificeerde lead`,
         leadName, phone, projectCode, clientName,
         body:
-          `${aiResponse.leadScore ? `<p><strong>Lead score:</strong> ${aiResponse.leadScore}/100</p>` : ''}` +
+          `${aiResponse.leadScore ? `<p><strong>Lead score:</strong> ${aiResponse.leadScore}/10</p>` : ''}` +
           `${aiResponse.summary ? `<p style="background:#ecfdf5;padding:12px;border-radius:8px"><strong>Samenvatting:</strong><br>${escEmail(aiResponse.summary)}</p>` : ''}` +
           `${aiResponse.reason  ? `<p><strong>Waarom gekwalificeerd:</strong> ${escEmail(aiResponse.reason)}</p>` : ''}`
       }).catch(() => {});
@@ -1212,10 +1214,10 @@ Dit blok komt na je gewone antwoord. Het wordt niet aan de lead getoond. Alleen 
 BESLISSING:
 Na 3 tot 5 berichten weet je genoeg. Voeg dan op een EXTRA aparte regel toe:
 DECISION:${matchLeadLanguage
-    ? `{"qualified":true/false,"reason":"korte reden","summary":"1-2 zinnen samenvatting","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false,"replyLang":"ISO 639-1 code van de taal waarin je dit antwoord schreef, bv. nl/fr/de/es"}`
-    : `{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-100,"escalate":true/false}`}
+    ? `{"qualified":true/false,"reason":"korte reden","summary":"1-2 zinnen samenvatting","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-10,"escalate":true/false,"replyLang":"ISO 639-1 code van de taal waarin je dit antwoord schreef, bv. nl/fr/de/es"}`
+    : `{"qualified":true/false,"reason":"korte reden ${reasonLangNote}","summary":"1-2 zinnen samenvatting ${reasonLangNote}","ability":"low/medium/high","urgency":"low/medium/high","fit":"poor/moderate/strong","leadScore":0-10,"escalate":true/false}`}
 
-Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escalate:true). De leadScore is 0-100 op basis van alle drie factoren samen. Als escalate:true → qualified mag null zijn, het systeem wacht op de mens.
+Voeg DECISION alleen toe als je écht genoeg weet OF als je escaleert (set escalate:true). De leadScore is 0-10 op basis van alle drie factoren samen. Als escalate:true → qualified mag null zijn, het systeem wacht op de mens.
 
 ${ctx && ctx.bookingMethod === 'in_chat' ? `
 AFSPRAAK IN GESPREK BOEKEN:
@@ -1596,7 +1598,15 @@ async function updateLead(recordId, fields, phone, scopedProjectCode) {
   const res  = await atFetch(url, {
     method:  'PATCH',
     headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ fields }),
+    // typecast als vangnet. Airtable weigert bij een ongeldige waarde niet dat
+    // ene veld maar de HELE PATCH, en dit is de plek waar een gesprek wordt
+    // vastgelegd: gaat het hier mis, dan verliest de lead in één klap zijn
+    // Qualified, Reason, Ability, Urgency, Fit en Conversation State — zonder
+    // dat de klant iets ziet, want de fout wordt alleen gelogd.
+    //
+    // De waarden worden hierboven al gevalideerd en begrensd; dit is de tweede
+    // lijn voor het geval de AI iets teruggeeft waar niemand aan gedacht had.
+    body:    JSON.stringify({ fields, typecast: true }),
   });
   const data = await res.json();
   if (data.error) console.error('[Airtable] Update fout:', JSON.stringify(data.error));
@@ -1783,6 +1793,40 @@ function escapeFormula(val) {
 // Strip control characters and limit message length before passing to AI
 function sanitize(val) {
   return String(val || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 2000);
+}
+
+// ── Wat de AI teruggeeft past niet vanzelf in Airtable ───────────────────────
+// Deze drie velden zijn singleSelect met een vaste keuzelijst, en Lead Score is
+// een rating-veld met maximum 10. Airtable weigert bij ÉÉN ongeldige waarde de
+// hele PATCH, niet alleen dat veld. Dat is precies wat er misging: de prompt
+// vroeg een score van 0-100, het veld gaat tot 10, en dus mislukte bij vrijwel
+// elk afgerond gesprek de volledige opslag — Qualified, Reason, Ability,
+// Urgency en Fit verdwenen samen met de score. De klant zag een lead die in
+// zijn oude status bleef hangen, en in de logs alleen een weggeslikte fout.
+//
+// Vandaar: eerst valideren, dan pas schrijven. Een LLM die iets onverwachts
+// teruggeeft hoort één leeg veld op te leveren, niet een verloren gesprek.
+const ABILITY_CHOICES = ['low', 'medium', 'high'];
+const URGENCY_CHOICES = ['low', 'medium', 'high'];
+const FIT_CHOICES     = ['poor', 'moderate', 'strong'];
+
+function oneOf(val, choices) {
+  const v = String(val || '').trim().toLowerCase();
+  return choices.includes(v) ? v : '';
+}
+
+// 0-10, want zo staat het veld in Airtable ingesteld en zo rekent het dashboard
+// (score >= 7 telt daar als sterke lead).
+//
+// Alles boven de 10 wordt gedeeld door 10 in plaats van afgekapt. Een score
+// boven 10 kan namelijk maar één ding betekenen: het model rekende nog op de
+// oude 0-100-schaal. Afkappen zou van elke 60 en elke 95 een 10 maken en dus
+// het onderscheid tussen "redelijk" en "uitstekend" wissen; delen behoudt het.
+function clampScore(val) {
+  let n = Number(val);
+  if (!isFinite(n) || n <= 0) return 0;
+  if (n > 10) n = n / 10;
+  return Math.min(Math.round(n), 10);
 }
 
 // Voor waarden die in een e-mail Subject: terechtkomen. Een lead vult zijn eigen

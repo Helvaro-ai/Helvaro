@@ -133,9 +133,28 @@ function verifySignedSession(token) {
   } catch { return null; }
 }
 
+// Leest req.body zonder dat ongeldige JSON de handler onderuit haalt.
+//
+// Op Vercel is req.body een lazy getter die de body pas parseert zodra je hem
+// aanraakt — en bij kapotte JSON gooit die getter een SyntaxError. Staat die
+// aanraking buiten een try/catch, dan vangt de handler hem niet en antwoordt
+// het platform met een kale HTTP 400 zonder body en zonder Content-Type. Een
+// client die daar res.json() op doet, crasht op zijn beurt.
+//
+// Geeft altijd een object terug, nooit een exception. Onleesbare invoer is
+// gewoon "geen velden meegestuurd" — de bestaande validatie verderop geeft dan
+// zelf een nette foutmelding in het formaat dat de rest van de API ook gebruikt.
+function safeBody(req) {
+  let b;
+  try { b = req && req.body; } catch { return {}; }
+  if (typeof b === 'string') { try { b = JSON.parse(b); } catch { return {}; } }
+  if (Buffer.isBuffer(b))    { try { b = JSON.parse(b.toString('utf8')); } catch { return {}; } }
+  return (b && typeof b === 'object') ? b : {};
+}
+
 module.exports = {
   SESSION_COOKIE, CSRF_COOKIE, CSRF_HEADER,
   parseCookies, readToken, authedViaCookie,
   setSessionCookies, clearSessionCookies, csrfOk,
-  verifySignedSession,
+  verifySignedSession, safeBody,
 };

@@ -7269,8 +7269,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   .hv-help-launcher { right: 16px; bottom: 16px; }
 }
 </style>
-    <script src="/vendor/jspdf.umd.min.js"></script>
-    <script src="/vendor/qrcode.js"></script>
+    <!-- jspdf (117 KB gecomprimeerd) en qrcode (13 KB) stonden hier als gewone
+         script-tags en blokkeerden dus elke pagina-opbouw, terwijl ze alleen
+         nodig zijn als iemand een PDF exporteert of de QR-code van zijn
+         formulier bekijkt. Dat is een kleine minderheid van de bezoeken.
+         Ze worden nu geladen zodra de browser niets beters te doen heeft (zie
+         loadVendorsWhenIdle onderaan het script). De bestaande guards in
+         exportPDF() en renderQrDataUrl() vangen het zeldzame geval af dat
+         iemand klikt voordat het laden klaar is. -->
 </head>
 <body>
 
@@ -19133,11 +19139,67 @@ function startPresencePing() {
 function stopPresencePing() {
   if (_presenceTimer) { clearInterval(_presenceTimer); _presenceTimer = null; }
 }
+
+/* ============================================================
+   ZWARE BIBLIOTHEKEN PAS LADEN ALS DE PAGINA STAAT
+   ============================================================
+   jspdf en qrcode stonden als gewone script-tags in de <head>. Samen 130 KB
+   gecomprimeerd (jspdf 117, qrcode 13) die de browser eerst moest binnenhalen,
+   parsen en uitvoeren voordat er ook maar iets in beeld kwam — terwijl ze
+   alleen nodig zijn bij een PDF-export of het bekijken van de formulier-QR.
+   Op de meeste bezoeken wordt geen van beide ooit aangeraakt.
+
+   Nu laden ze pas wanneer de browser klaar is met het echte werk. Twee vangnetten
+   houden dit veilig:
+   - requestIdleCallback bestaat niet in Safari, vandaar de setTimeout-terugval.
+   - Klikt iemand sneller dan het laden, dan vangen de bestaande guards in
+     exportPDF() en renderQrDataUrl() dat af met een nette melding in plaats van
+     een crash. Daarom hoefden die functies zelf niet async te worden — dat zou
+     een lange keten aanroepen hebben geraakt voor een winst van niks.
+   ============================================================ */
+function loadVendorScript(src) {
+  return new Promise(function (resolve) {
+    if (document.querySelector('script[src="' + src + '"]')) return resolve(true);
+    var s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload  = function () { resolve(true); };
+    // Faalt zacht: zonder de bibliotheek werkt de rest van het dashboard
+    // gewoon door, alleen die ene knop meldt straks dat hij niet klaar is.
+    s.onerror = function () { console.warn('[vendor] kon niet laden:', src); resolve(false); };
+    document.head.appendChild(s);
+  });
+}
+
+function loadVendorsWhenIdle() {
+  var go = function () {
+    loadVendorScript('/vendor/qrcode.js');
+    loadVendorScript('/vendor/jspdf.umd.min.js');
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(go, { timeout: 4000 });
+  } else {
+    setTimeout(go, 1500);
+  }
+}
+
+if (document.readyState === 'complete') loadVendorsWhenIdle();
+else window.addEventListener('load', loadVendorsWhenIdle);
 </script>
 </body>
 </html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
+  // 'no-cache', niet 'no-store'. Het verschil is niet cosmetisch: no-store
+  // verbiedt de browser om de pagina überhaupt te bewaren, dus haalde elke
+  // navigatie — refresh, terugknop, nieuw tabblad — de volledige 200 KB opnieuw
+  // op. Terwijl deze HTML voor iedereen identiek is en per deploy verandert;
+  // alle persoonlijke gegevens komen los binnen via /api/leads.
+  //
+  // Met no-cache mag de browser hem bewaren maar moet hij elke keer navragen.
+  // Vercel zet al een ETag, dus dat navragen levert een 304 zonder body op:
+  // dezelfde versheid, bijna geen verkeer. 'private' blijft staan zodat geen
+  // enkele tussenliggende proxy hem deelt.
+  res.setHeader('Cache-Control', 'private, no-cache');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

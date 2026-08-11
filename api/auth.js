@@ -264,7 +264,11 @@ module.exports = async function handler(req, res) {
   // Comparison is timing-safe (safeEqual) so a caller can't learn ADMIN_KEY
   // byte-by-byte from response latency, same as the admin-shortcut login
   // path further down and admin.js's isValidAdminToken().
-  if (req.body && req.body.mode === 'reset-rate-limit') {
+  // safeBody i.p.v. req.body: dat is op Vercel een lazy getter die bij kapotte
+  // JSON gooit, en deze regel staat buiten de try/catch verderop. Eén verkeerd
+  // gevormde POST gaf daardoor een kale 400 zonder body — waar de frontend
+  // vervolgens zelf op crasht bij res.json().
+  if (_session.safeBody(req).mode === 'reset-rate-limit') {
     if (await isAdminKeyRateLimited(ip)) {
       return res.status(429).json({ error: 'Te veel pogingen. Wacht 15 minuten.' });
     }
