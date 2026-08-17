@@ -91,7 +91,7 @@ function draft({ id, title, body, meta }) {
  * request/response cycle, so the component renders a placeholder that the
  * client polls until state flips to 'ready'.
  */
-function mediaJob({ jobId, kind, state, previewUrl, resultUrl, meta }) {
+function mediaJob({ jobId, kind, state, previewUrl, resultUrl, meta, actions }) {
   return {
     type: 'media_job',
     jobId,
@@ -100,7 +100,11 @@ function mediaJob({ jobId, kind, state, previewUrl, resultUrl, meta }) {
     previewUrl: previewUrl || null,
     resultUrl: resultUrl || null,
     meta: meta || {},
-    actions: kind === 'video'
+    // An explicit list wins. The defaults below are the full set for a saved
+    // asset; a caller that knows only some of them are wired — the chat's
+    // freshly generated image, for instance — passes what actually works,
+    // rather than showing four buttons where two do nothing.
+    actions: actions || (kind === 'video'
       ? [
           { key: 'preview',  label: 'Bekijken'         },
           { key: 'save',     label: 'Bij pand opslaan' },
@@ -112,7 +116,7 @@ function mediaJob({ jobId, kind, state, previewUrl, resultUrl, meta }) {
           { key: 'edit',     label: 'Bewerken'         },
           { key: 'variation',label: 'Variatie maken'   },
           { key: 'download', label: 'Downloaden'       },
-        ],
+        ]),
   };
 }
 

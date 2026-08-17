@@ -61,6 +61,39 @@ verlichting, houten vloer". What it cannot invent is the photo — that comes fr
 the turn's attachments, on `ctx`, never from the model's arguments. A model that
 could name its own image source could reference someone else's upload.
 
+### Getting the request into the picture
+
+The tool's JSON Schema is **built from `api/_images.js`'s own option arrays**,
+so every enum is exactly what the backend accepts and the Dutch labels the model
+reads are the labels the user sees. This is the difference between the feature
+working and not: with free-text parameters the model guesses (`luxurious`,
+`hardwood`, `sage-green`) and every near-miss is a 400 the user experiences as
+"it just failed". With enums it cannot emit an invalid key, and a style added to
+`PROPERTY_STYLES` becomes available to the model with no edit in Faro.
+
+Colour is the case that needed the most care. `WALL_COLORS` has six keys, so
+"terracotta", "RAL 7016" and "dezelfde tint als de kastjes" can only travel as
+`wallColorNote` free text. Two things make that work:
+
+1. The tool description tells the model that naming any colour means setting
+   `wallFinish: 'painted'` and putting the user's own words in `wallColorNote`.
+2. `buildTransformPrompt` was **wrong** for exactly that case. With a note and
+   no key it emitted *"in a fitting neutral tone (client nuance on the colour:
+   terracotta)"* — telling the image model NEUTRAL first and treating the actual
+   request as a footnote. A note with no key colour now IS the colour:
+   *"in exactly this colour as described by the client: terracotta"*. The
+   fallback to neutral only applies when nothing about colour was said at all.
+   This fix is shared with the CRM's AI-beeld page, which had the same bug.
+
+Anything no enum can express rides in `prompt`, verbatim, which
+`buildTransformPrompt` appends as "Additional client instructions" — that is
+what carries "behoud de open haard" or "meer planten".
+
+Results render with a **before/after toggle** on the image itself: the original
+photo is already stored alongside the result, so the comparison costs nothing
+and it answers the question an agent actually has — is this still recognisably
+my room?
+
 ### One implementation of the money path
 
 `api/leads.js`'s `property-generate` block moved into

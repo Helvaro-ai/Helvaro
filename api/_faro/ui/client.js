@@ -471,67 +471,49 @@ function faroMediaCard(c) {
   var d = document.createElement('div');
   d.className = 'faro-media';
   d.dataset.job = c.jobId || '';
-  if (c.state === 'ready' && c.resultUrl) {
-    var fmt = (c.meta && c.meta.format) || '';
-    var cls = 'faro-media__img' + (fmt === '9:16' ? ' faro-media__img--9-16' : fmt === '1:1' ? ' faro-media__img--1-1' : '');
-    d.innerHTML = (c.kind === 'video'
-      ? '<video class="' + cls + '" src="' + faroEsc(c.resultUrl) + '" controls playsinline></video>'
-      : '<img class="' + cls + '" src="' + faroEsc(c.resultUrl) + '" alt="">') +
-      '<div class="faro-media__bar">' + (c.actions || []).map(function (a) {
-        return '<button class="faro-card__btn" data-media="' + faroEsc(a.key) + '">' + faroEsc(a.label) + '</button>';
-      }).join('') +
-      '<span class="faro-form__note" data-media-note></span></div>';
-    faroWireMediaActions(d, c);
-  } else {
+
+  if (c.state !== 'ready' || !c.resultUrl) {
     d.innerHTML = '<div class="faro-media__img faro-skeleton"></div>';
     if (c.jobId) faroPollJob(c.jobId, d);
+    return d;
   }
+
+  var fmt = (c.meta && c.meta.format) || '';
+  var cls = 'faro-media__img' +
+    (fmt === '9:16' ? ' faro-media__img--9-16' : fmt === '1:1' ? ' faro-media__img--1-1' : '');
+  var before = (c.meta && c.meta.sourceUrl) || null;
+
+  d.innerHTML =
+    '<div class="faro-media__frame">' +
+      (c.kind === 'video'
+        ? '<video class="' + cls + '" src="' + faroEsc(c.resultUrl) + '" controls playsinline></video>'
+        : '<img class="' + cls + '" src="' + faroEsc(c.resultUrl) + '" alt="">') +
+      // The original photo is already stored alongside the result, so showing
+      // the comparison costs nothing and it is the thing an agent actually
+      // wants to see — "is this still recognisably my room?"
+      (before ? '<button type="button" class="faro-media__ba" data-ba>' + T('md.before') + '</button>' : '') +
+    '</div>' +
+    '<div class="faro-media__bar">' + (c.actions || []).map(function (a) {
+      return '<button class="faro-card__btn" data-media="' + faroEsc(a.key) + '">' + faroEsc(a.label) + '</button>';
+    }).join('') +
+    '<span class="faro-form__note" data-media-note></span></div>';
+
+  if (before) {
+    var img = d.querySelector('img');
+    var btn = d.querySelector('[data-ba]');
+    var showing = 'after';
+    btn.addEventListener('click', function () {
+      showing = showing === 'after' ? 'before' : 'after';
+      img.src = showing === 'before' ? before : c.resultUrl;
+      btn.textContent = showing === 'before' ? T('md.after') : T('md.before');
+      btn.classList.toggle('active', showing === 'before');
+    });
+    // Preload so the first toggle is instant rather than a flash of nothing.
+    var pre = new Image(); pre.src = before;
+  }
+
+  faroWireMediaActions(d, c);
   return d;
-}
-
-/* Media card buttons. Download and Preview work entirely client-side; the rest
-   need backend ops that are not wired yet, so they call them and surface
-   whatever the server says. That way the button is honest today ("not yet
-   available") and becomes real with no UI change. */
-function faroWireMediaActions(card, c) {
-  var note = card.querySelector('[data-media-note]');
-  card.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-media]');
-    if (!btn) return;
-    var act = btn.dataset.media;
-
-    if (act === 'download' && c.resultUrl) {
-      var a = document.createElement('a');
-      a.href = c.resultUrl;
-      a.download = (c.meta && c.meta.filename) || ('helvaro-' + (c.jobId || 'asset'));
-      a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); a.remove();
-      return;
-    }
-    if (act === 'preview' && c.resultUrl) {
-      var v = card.querySelector('video');
-      if (v) { v.paused ? v.play() : v.pause(); return; }
-      window.open(c.resultUrl, '_blank', 'noopener');
-      return;
-    }
-
-    var op = act === 'save' ? 'save-to-property'
-           : act === 'variation' ? (c.kind === 'video' ? 'generate-video' : 'generate-image')
-           : null;
-    if (!op) { if (note) note.textContent = T('pn.soon'); return; }
-
-    btn.disabled = true;
-    if (note) note.textContent = T('st.busy');
-    faroPost({ mode: 'faro-media', op: op, jobId: c.jobId, propertyId: (c.meta && c.meta.propertyId) || null })
-      .then(function (r) {
-        btn.disabled = false;
-        if (note) note.textContent = r.summary || T('st.done');
-      })
-      .catch(function (err) {
-        btn.disabled = false;
-        if (note) note.textContent = (err && err.message) || T('st.error');
-      });
-  });
 }
 
 function faroErrorCard(c) {

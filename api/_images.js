@@ -484,9 +484,28 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
     let wallText = wallFinish.promptFragment;
     if (wallFinish.key === 'painted') {
       const color = getWallColorByKey(opts.wallColor);
-      wallText += color ? `, in ${color.promptFragment}` : ', in a fitting neutral tone';
       const note = opts.wallColorNote ? String(opts.wallColorNote).trim().slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '';
-      if (note) wallText += ` (client nuance on the colour: ${note})`;
+
+      // Three cases, and the middle one used to be wrong in a way that quietly
+      // ruined the request. WALL_COLORS holds six keys; anything outside them —
+      // "terracotta", "RAL 7016", "dezelfde tint als de kastjes" — arrives only
+      // as a note. The old text emitted "in a fitting neutral tone (client
+      // nuance on the colour: terracotta)", which tells the image model
+      // NEUTRAL first and treats the actual request as a footnote. Terracotta
+      // is not neutral, and the output showed it.
+      //
+      // A note with no key colour IS the colour, so it is stated as one. The
+      // fallback to neutral now only applies when the caller genuinely said
+      // nothing about colour at all.
+      if (color && note) {
+        wallText += `, in ${color.promptFragment} (client nuance on the colour: ${note})`;
+      } else if (color) {
+        wallText += `, in ${color.promptFragment}`;
+      } else if (note) {
+        wallText += `, in exactly this colour as described by the client: ${note}`;
+      } else {
+        wallText += ', in a fitting neutral tone';
+      }
     }
     wallPart = ` ${wallText}.`;
   }

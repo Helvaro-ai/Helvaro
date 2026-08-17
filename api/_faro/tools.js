@@ -366,6 +366,54 @@ const actTools = [
   },
 ];
 
+/*
+ * Build generate_property_image's JSON Schema from api/_images.js's option
+ * arrays. Enum VALUES are the keys the backend validates against; the Dutch
+ * labels go in the description so the model can match them to what a user
+ * actually types ("zachtgroen", "warm avondlicht").
+ */
+function enumOf(list, hint) {
+  return {
+    type: 'string',
+    enum: [''].concat(list.map((x) => x.key)),
+    description: `${hint} Keuzes: ${list.map((x) => `${x.key} (${x.label})`).join(', ')}. Leeg = automatisch.`,
+  };
+}
+
+function imageParams() {
+  return {
+    type: 'object',
+    properties: {
+      style: {
+        type: 'string',
+        enum: images.PROPERTY_STYLES.map((x) => x.key),
+        description: `De gewenste stijl. Verplicht. Keuzes: ${images.PROPERTY_STYLES.map((x) => `${x.key} (${x.label})`).join(', ')}. Gebruik 'staging' wanneer een LEGE ruimte ingericht moet worden.`,
+      },
+      prompt: {
+        type: 'string',
+        description: 'De vraag van de gebruiker in hun eigen woorden. Neem details op die nergens anders passen, zoals "behoud de open haard" of "meer planten".',
+      },
+      roomType:        enumOf(images.ROOM_TYPES, 'Welke ruimte op de foto staat.'),
+      renovationDepth: {
+        type: 'string',
+        enum: images.RENOVATION_DEPTHS.map((x) => x.key),
+        description: `Hoe ingrijpend. Keuzes: ${images.RENOVATION_DEPTHS.map((x) => `${x.key} (${x.label})`).join(', ')}. Kies 'full' bij woorden als verbouwen of renoveren, 'light' bij opfrissen of restylen.`,
+      },
+      furniture:  enumOf(images.FURNITURE_LEVELS, 'Hoeveel meubilair.'),
+      wallFinish: enumOf(images.WALL_FINISHES, "De muurafwerking. Zet op 'painted' zodra de gebruiker een kleur noemt."),
+      wallColor:  enumOf(images.WALL_COLORS, 'De dichtstbijzijnde muurkleur uit de lijst. Staat de gevraagde kleur er niet bij, laat dit leeg en gebruik wallColorNote.'),
+      wallColorNote: {
+        type: 'string',
+        maxLength: 80,
+        description: "De gevraagde kleur in de woorden van de gebruiker, bv. 'terracotta', 'RAL 7016' of 'zelfde tint als de kastjes'. Werkt alleen samen met wallFinish 'painted'.",
+      },
+      floor:    enumOf(images.FLOOR_TYPES, 'Het vloertype.'),
+      lighting: enumOf(images.LIGHTING_MOODS, 'De lichtsfeer.'),
+    },
+    required: ['style'],
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MEDIA TOOLS
 // Images are wired and run inside the turn — an image edit finishes well within
@@ -379,26 +427,24 @@ const mediaTools = [
   {
     name: 'generate_property_image',
     kind: 'create',
-    description: 'Genereer een AI-visualisatie van een pand op basis van de foto die de gebruiker heeft meegestuurd. Gebruik dit zodra iemand een foto stuurt en vraagt om een restyling, renovatie of visualisatie.',
-    parameters: {
-      type: 'object',
-      properties: {
-        style:  { type: 'string', description: "Stijlsleutel, bv. 'modern' of 'luxury'. Verplicht." },
-        prompt: { type: 'string', description: 'Wat de gebruiker precies wil zien.' },
-        roomType:        { type: 'string', description: 'Leeg laten = automatisch bepalen.' },
-        renovationDepth: { type: 'string', description: "'light' of 'full'." },
-        furniture:       { type: 'string' },
-        wallFinish:      { type: 'string' },
-        wallColor:       { type: 'string' },
-        floor:           { type: 'string' },
-        lighting:        { type: 'string' },
-      },
-      required: ['style'],
-    },
-    // Calls the SAME api/_images.js generateForClient() the CRM route calls —
-    // one implementation of the guard chain, two callers. The photo comes from
-    // the turn's attachments, never from the model: the model chooses the
-    // STYLE, the user supplies the picture.
+    description:
+      'Verbouw of restyle een pandfoto die de gebruiker heeft meegestuurd. Gebruik dit zodra iemand een foto ' +
+      'stuurt en vraagt om een renovatie, restyling, andere kleur, andere vloer, andere sfeer of een ingerichte ' +
+      'versie van een lege ruimte. Vertaal wat de gebruiker schrijft naar de velden hieronder — hoe meer je ' +
+      'invult, hoe dichter het resultaat bij de vraag ligt. Laat een veld leeg als de gebruiker er niets over ' +
+      'zegt; dan bepaalt het systeem het zelf. Noemt de gebruiker een kleur voor de muren, zet dan wallFinish ' +
+      "op 'painted' en schrijf de kleur in de woorden van de gebruiker in wallColorNote — ook als die kleur " +
+      'niet in de lijst wallColor staat.',
+    // The schema is BUILT from api/_images.js's own option arrays, so every
+    // enum is exactly what the backend will accept and the labels the model
+    // reads are the labels the user sees.
+    //
+    // This is the difference between the feature working and not. With free
+    // strings the model guesses ("luxurious", "hardwood", "sage-green") and
+    // every near-miss is a 400 the user experiences as "it just failed".
+    // With enums it cannot emit an invalid key at all, and a style added to
+    // PROPERTY_STYLES becomes available to the model with no edit here.
+    parameters: imageParams(),
     async run(args, ctx) {
       const photo = (ctx.attachments || [])[0];
       if (!photo) {
@@ -408,29 +454,43 @@ const mediaTools = [
         const record = await images.generateForClient(ctx.projectCode, {
           dataUrl: `data:${photo.mediaType};base64,${photo.data}`,
           style: args.style,
+          // The user's own phrasing, verbatim. buildTransformPrompt appends it
+          // as "Additional client instructions", which is what carries the
+          // things no enum can express — "behoud de open haard", "meer planten".
           customPrompt: args.prompt || '',
           roomType: args.roomType || '',
           renovationDepth: args.renovationDepth || '',
           furniture: args.furniture || '',
           wallFinish: args.wallFinish || '',
           wallColor: args.wallColor || '',
+          // Free text, capped at 80 chars by _images.js. This is how a colour
+          // outside the six keys survives — "terracotta", "RAL 7016", "dezelfde
+          // groentint als de keukenkastjes".
+          wallColorNote: args.wallColorNote || '',
           floor: args.floor || '',
           lighting: args.lighting || '',
         }, { credits });
+
         return {
           summary: 'Beeld gegenereerd.',
           data: { image: record },
           components: [schema.mediaJob({
             jobId: record.id, kind: 'image', state: 'ready',
-            resultUrl: record.url, meta: { sourceUrl: record.sourceUrl || null },
+            resultUrl: record.url,
+            // sourceUrl drives the before/after toggle on the card. It is
+            // best-effort upstream, so the card must cope with it being absent.
+            meta: { sourceUrl: record.sourceUrl || null, style: args.style },
+            // Only actions that work today. schema.mediaJob's fuller default
+            // set includes save-to-property and variation, which are not wired
+            // — offering them here would be four buttons where two do anything.
+            actions: [{ key: 'download', label: 'Downloaden' }],
           })],
         };
       } catch (err) {
         // Surface the failure BOTH ways. The summary goes back to the model so
         // it can explain in its own words; the error card goes to the screen so
         // the user is never left with a half-sentence and nothing else. Out of
-        // credits and missing-key are the two that will actually happen, and
-        // both are recoverable, so the card offers a retry.
+        // credits and missing-key are the two that will actually happen.
         const message = err.message || 'Beeldgeneratie mislukt.';
         return {
           summary: message,

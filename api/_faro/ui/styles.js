@@ -595,7 +595,24 @@ function css() {
 .faro-media__img { width: 100%; display: block; aspect-ratio: 4 / 3; object-fit: cover; background: var(--faro-raised); }
 .faro-media__img--9-16 { aspect-ratio: 9 / 16; }
 .faro-media__img--1-1  { aspect-ratio: 1 / 1;  }
-.faro-media__bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
+.faro-media__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; }
+
+/* Before/after toggle, sitting on the image itself rather than in the button
+   row — it changes what you are looking at, so it belongs on the thing it
+   changes. */
+.faro-media__frame { position: relative; }
+.faro-media__ba {
+  position: absolute; left: 10px; bottom: 10px;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(18,18,18,0.72);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  color: #F4E7C8; font: inherit; font-size: 11.5px; font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.faro-media__ba:hover { background: rgba(18,18,18,0.88); }
+.faro-media__ba.active { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 
 /* ═══ Menu — the model tier picker ════════════════════════════════════════ */
 .faro-input__bar { position: relative; }
