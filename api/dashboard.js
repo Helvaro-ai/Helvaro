@@ -7553,10 +7553,6 @@ ${faro.css}
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         Exports
       </button>
-      <button class="nav-item" data-page="ai-beeld" id="nav-ai-beeld">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
-        AI-beeld
-      </button>
 
       <!-- ── Setup (zelden) ── -->
       <div class="nav-divider"></div>
@@ -8321,7 +8317,18 @@ ${faro.launcher}
       </div>
     </main>
 
-    <!-- AI-beeld Page (Phase 4 — AI property visualisation images) -->
+    <!-- AI-beeld Page (Phase 4 — AI property visualisation images)
+
+         NO LONGER IN THE SIDEBAR. Image generation moved into Faro, which
+         drives the SAME api/leads.js property-* modes with the same eight
+         option axes, so generation is at parity and this nav entry was
+         duplication on a sidebar that was already too long.
+
+         The page is kept and still reachable — navigateTo('ai-beeld'), which
+         Faro's Beelden panel links to — because two things here have NOT been
+         ported: the before/after comparison slider (renderPiCompare) and the
+         comparison PDF export (downloadPiComparePDF). Deleting the page would
+         delete those. Port them into Faro and this whole block can go. -->
     <main class="page-content page" id="page-ai-beeld">
       <div class="ap-wrap">
         <div class="ap-hero" style="margin-bottom:18px">

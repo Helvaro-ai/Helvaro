@@ -47,6 +47,45 @@ What replaced it:
 `scripts/faro-check.js` asserts Faro markup never appears inside the CRM sidebar
 nav — that regression is easy to introduce and invisible in a diff review.
 
+## What moved off the CRM
+
+`AI-beeld` is gone from the sidebar — image generation is Faro's job, and the
+sidebar was the reason Faro is an overlay in the first place. Nav: 12 → 11.
+
+Faro's Beelden panel drives the **same** `api/leads.js` `property-*` modes the
+old page drove, with the same eight option axes (style, room, renovation depth,
+furniture, walls, wall colour, floor, lighting), rendered generically from the
+`property-styles` response. Add a style to `PROPERTY_STYLES` in
+`api/_images.js` and it appears in Faro with no UI change.
+
+The alternative — a `faro-media` op calling `api/_images.js` directly — was
+rejected. It would have to re-implement the guard chain in `api/leads.js`:
+eight option validations, upload parsing with a 3MB decoded cap, an
+`isConfigured()` fail-soft, a credit check before the paid call, and the
+concurrent generate + source upload. Two copies of that will drift, and the one
+that drifts is the one that spends money.
+
+**The page itself is kept, and is still reachable** via Faro's `Vergelijking &
+PDF` link, because two things were not ported: the before/after comparison
+slider (`renderPiCompare`) and the comparison PDF export
+(`downloadPiComparePDF`). Deleting the page would delete those. Port them into
+Faro and the whole block — roughly 660 lines — can go.
+
+### What was deliberately NOT removed
+
+`AI Persoonlijkheid` stays. Despite the name it is **not** Faro: it configures
+the WhatsApp lead-qualification bot — its name, welcome message, working hours
+and booking mode. That is the feature that earns the money, onboarding routes
+new users straight to it (`navigateTo('ai-persona')` after signup), and the
+settings page links to it. Removing it would take the config for the core
+product off the page.
+
+`Slimme AI-scoring` is a marketing slide on the login page, not a feature.
+
+The `AI suggesties voor antwoord` button inside a lead's conversation is
+arguably Faro's job eventually, but it works in context today and Faro cannot
+yet draft into a specific WhatsApp thread. Left alone.
+
 ## The name
 
 "Faro" replaces "Helvaro AI" everywhere a user can see it, and "AI" appears in

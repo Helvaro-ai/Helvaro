@@ -657,7 +657,26 @@ function css() {
   font-weight: 600;
 }
 .faro-form__foot { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-.faro-form__note { font-size: 12.5px; color: var(--text-muted); }
+
+/* Source-photo preview. Capped so a portrait shot cannot push the controls off
+   the panel — this is a thumbnail confirming what was picked, not the result. */
+.faro-form__preview {
+  display: block;
+  max-height: 180px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--faro-hairline);
+}
+.faro-form__preview[hidden] { display: none; }
+.faro-form__note { font-size: 12.5px; color: var(--text-muted); flex: 1; }
+.faro-form__link {
+  background: none; border: 0; padding: 0;
+  color: var(--text-muted); font: inherit; font-size: 12.5px;
+  text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer; white-space: nowrap;
+  transition: color 150ms ease;
+}
+.faro-form__link:hover { color: var(--accent); }
 
 /* ═══ Responsive (requirement 16) ═════════════════════════════════════════ */
 @media (max-width: 1100px) {

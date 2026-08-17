@@ -106,6 +106,40 @@ const server = http.createServer(async (req, res) => {
       return faroHandler.handle(req, res, LOCAL_AUTH);
     }
 
+    // Faro's Beelden panel drives the SAME api/leads.js property-* modes the
+    // CRM's AI-beeld page drove, rather than owning a second copy of that
+    // guard chain. Locally there is no Airtable and no OpenAI key, so those
+    // three modes are answered here — with the REAL option arrays out of
+    // api/_images.js, so the panel renders the true eight axes and a label
+    // added there shows up locally without touching this file.
+    if (p === '/api/leads') {
+      req.body = await readBody(req);
+      const images = require('../api/_images');
+      const opt = (arr) => arr.map((x) => ({ key: x.key, label: x.label }));
+      switch (req.body.mode) {
+        case 'property-styles':
+          return res.status(200).json({
+            styles: opt(images.PROPERTY_STYLES),
+            roomTypes: opt(images.ROOM_TYPES),
+            furnitureLevels: opt(images.FURNITURE_LEVELS),
+            wallFinishes: opt(images.WALL_FINISHES),
+            wallColors: opt(images.WALL_COLORS),
+            floorTypes: opt(images.FLOOR_TYPES),
+            lightingMoods: opt(images.LIGHTING_MOODS),
+            renovationDepths: opt(images.RENOVATION_DEPTHS),
+            defaultRenovationDepth: images.DEFAULT_RENOVATION_DEPTH,
+          });
+        case 'property-list':
+          return res.status(200).json({ images: [] });
+        case 'property-generate':
+          // Never fake a generated image: a placeholder here would make a
+          // broken pipeline look like a working one.
+          return res.status(503).json({ error: 'Beeldgeneratie vereist OPENAI_API_KEY — niet ingesteld lokaal.' });
+        default:
+          return res.status(400).json({ error: 'mode not stubbed in faro-dev' });
+      }
+    }
+
     if (p === '/' || p === '/dashboard') {
       req.query = Object.fromEntries(url.searchParams);
       req.headers.cookie = req.headers.cookie || '';
