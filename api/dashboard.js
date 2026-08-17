@@ -13,9 +13,10 @@ const _lang = require('./_lang');
 // to edit and hazardous to review. Those modules return plain strings and
 // splice in at four points, marked "FARO" below.
 //
-// Faro is NOT a second workspace and NOT a sidebar entry. It is a launcher pill
-// in the topbar that opens an overlay above whatever CRM page you are on — the
-// sidebar is already carrying twelve items and did not need a thirteenth.
+// Faro is NOT a second workspace and NOT a sidebar entry. It is an ask bar
+// docked along the bottom of every page, which expands into an overlay above
+// whatever CRM page you are on. The sidebar was already carrying twelve items
+// and did not need a thirteenth.
 //
 // faro.* is bound to ONE language per request, resolved from the user's setting
 // through the same registry the WhatsApp AI uses — no client-side translation
@@ -7615,8 +7616,6 @@ ${faro.css}
 
     <!-- Topbar -->
     <header class="topbar">
-      <!-- FARO: launcher pill. Opens the overlay; adds nothing to the sidebar. -->
-${faro.launcher}
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
@@ -9865,6 +9864,10 @@ ${faro.launcher}
 
       </div>
     </main>
+
+    <!-- FARO: the ask bar. Last flex child of .main-content, so it shortens
+         the page rather than overlapping it. -->
+${faro.dock}
 
     <!-- FARO: the overlay itself (api/_faro/ui/markup.js) -->
 ${faro.overlay}

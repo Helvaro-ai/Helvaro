@@ -46,8 +46,15 @@ function T(k) {
   return (FARO_T && Object.prototype.hasOwnProperty.call(FARO_T, k)) ? FARO_T[k] : k;
 }
 
-/* Cmd/Ctrl + this opens Faro. K is already the CRM's lead search. */
+/* Cmd/Ctrl + this opens Faro. K is already the CRM's lead search. The dock's
+   badge is rendered from this same constant, so it cannot advertise a shortcut
+   that does not work. */
 var FARO_HOTKEY = 'j';
+
+function faroHotkeyLabel() {
+  var mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+  return (mac ? '⌘' : 'Ctrl+') + FARO_HOTKEY.toUpperCase();
+}
 
 var faroState = {
   open: false,
@@ -116,7 +123,7 @@ function faroClose() {
   faroState.open = false;
 
   var el = document.getElementById('faro-overlay');
-  var launch = document.getElementById('faro-launch');
+  var opener = document.getElementById('faro-dock-open');
   if (el) {
     el.classList.remove('open');
     // Wait out the transition before hiding, or the panel vanishes instead of
@@ -124,7 +131,7 @@ function faroClose() {
     setTimeout(function () { if (!faroState.open) el.hidden = true; }, 180);
   }
   document.body.classList.remove('faro-open');
-  if (launch) launch.setAttribute('aria-expanded', 'false');
+  if (opener) opener.setAttribute('aria-expanded', 'false');
 
   // A generation in flight is abandoned rather than left running invisibly.
   if (faroState.abort) { faroState.abort.abort(); faroState.abort = null; }
@@ -827,8 +834,40 @@ function faroLoadProjects() {
 
 /* ── Wiring ───────────────────────────────────────────────────────────────── */
 function faroInit() {
-  var launch = document.getElementById('faro-launch');
-  if (launch) launch.addEventListener('click', faroToggle);
+  // ── Dock ────────────────────────────────────────────────────────────────
+  // Typing here is the primary way in. Enter opens Faro AND sends, so the
+  // first question never costs a round trip through an empty screen.
+  var dockInput = document.getElementById('faro-dock-input');
+  var dockOpen  = document.getElementById('faro-dock-open');
+  var dockKbd   = document.getElementById('faro-dock-kbd');
+
+  function fromDock(send) {
+    var text = dockInput ? dockInput.value.trim() : '';
+    if (dockInput) dockInput.value = '';
+    faroOpen();
+    if (send && text) {
+      faroSetPanel('chat');
+      // Let the overlay paint before the stream starts, or the first tokens
+      // land in a panel the user has not seen yet.
+      setTimeout(function () { faroSend(text); }, 60);
+    } else if (text) {
+      var f = document.getElementById('faro-input-field');
+      if (f) { f.value = text; f.focus(); faroSetSendEnabled(true); }
+    }
+  }
+
+  if (dockKbd) dockKbd.textContent = faroHotkeyLabel();
+  if (dockOpen) dockOpen.addEventListener('click', function () { fromDock(true); });
+  if (dockInput) {
+    dockInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); fromDock(true); }
+      if (e.key === 'Escape') dockInput.blur();
+    });
+    // Clicking the bar opens Faro without sending, carrying anything typed.
+    dockInput.addEventListener('focus', function () {
+      if (!faroState.open) fromDock(false);
+    });
+  }
 
   var scrim = document.getElementById('faro-scrim');
   if (scrim) scrim.addEventListener('click', faroClose);
@@ -851,13 +890,6 @@ function faroInit() {
       if (e.target.closest('[data-faro-page], [data-convo], #faro-new-convo')) rail.classList.remove('open');
     });
   }
-
-  // The CRM's search pill already owns Cmd/Ctrl-K, so Faro takes J. The pill
-  // label is written from the SAME constant that the handler matches on, so the
-  // badge can never advertise a shortcut that does not work.
-  var mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
-  var kbd = document.getElementById('faro-launch-kbd');
-  if (kbd) kbd.textContent = (mac ? '⌘' : 'Ctrl+') + FARO_HOTKEY.toUpperCase();
 
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && (e.key || '').toLowerCase() === FARO_HOTKEY) {

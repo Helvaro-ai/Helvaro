@@ -20,6 +20,28 @@ visible-but-empty panel with an explicit "coming soon" rather than a hidden
 entry, because a hidden feature is less honest to a paying customer than a
 stated one.
 
+## Where Faro lives
+
+An **ask bar docked along the bottom of every CRM page**, which expands into an
+overlay above whatever page you are on. `Ctrl/⌘-J` also opens it.
+
+It replaced a launcher pill in the topbar, and the reason is the whole argument
+for the feature. A pill is a door: you have to decide to open it, which means
+deciding you have a question, which means Faro only ever gets used by someone
+who already thought of using it. A bar with a cursor in it is an invitation —
+it sits in peripheral vision while you look at the pipeline, and asking costs
+one keystroke instead of a click plus a context switch. Typing and pressing
+Enter opens Faro **and sends**, so the first question never costs a round trip
+through an empty screen.
+
+It is a **sticky flex child of `.main-content`, not a fixed overlay.** Fixed
+would float over the page and hide whatever sits under it. As a sticky flex
+child it pins to the viewport bottom on any page taller than the screen *and*
+still occupies its own space at the end of the document — verified at 0px of
+content hidden at full scroll on Dashboard, Pipeline and Kalender. (A
+non-sticky version sat at y=1225 on a 900px viewport: you had to scroll to find
+the thing whose entire purpose is being in peripheral vision.)
+
 ## Faro is not a workspace
 
 The original brief asked for a `CRM | AI` switcher — two co-equal workspaces,
@@ -259,7 +281,8 @@ is what keeps the contract honest.
 | `api/_faro/media.js` | Job lifecycle; providers unwired. |
 | `api/_faro/orchestrator.js` | Turn loop complete; stops at the provider. |
 | `api/_faro/handler.js` | Dispatch + validation real. |
-| `api/_faro/providers/{index,claude,openai}.js` | Contract + mappings real; network calls stubbed. |
+| `api/_faro/providers/claude.js` | **Working.** Full streaming implementation — set `ANTHROPIC_API_KEY` and it answers. |
+| `api/_faro/providers/{index,openai}.js` | Contract real; OpenAI's network call still stubbed. |
 | `api/_faro/providers/demo.js` | **Working.** Scripted provider for local dev. |
 | `api/_faro/fixtures.js` | **Working.** Sample data behind `FARO_DEMO_MODE=1`. |
 
@@ -306,7 +329,18 @@ Ordered so each step is independently verifiable.
       `store.js` through `_pgapi`.
 - [ ] **4. Pending actions table.** `actions.js` currently holds proposals in
       memory, which does not survive a cold start. Must be a table before launch.
-- [ ] **5. Claude adapter.** Implement `streamChat`. Set `ANTHROPIC_API_KEY`.
+- [x] **5. Claude adapter.** Implemented: SSE transport, streaming text, tool-use
+      accumulation, usage, abort, and status-mapped errors that never leak a
+      vendor name. The fiddly part is that tool arguments arrive as a JSON
+      *string* split across arbitrary `input_json_delta` events — buffered
+      untouched and parsed exactly once at `content_block_stop`, because
+      incremental parsing produces intermittent failures that look like the
+      model "sometimes" ignoring a tool. A call whose JSON never parses is
+      DROPPED rather than run with `{}`, which would present an unrelated
+      answer as if it were the response. `scripts/faro-check.js` exercises the
+      whole event machine against a synthetic stream sliced every 7 bytes, so
+      frames and JSON arguments straddle chunk boundaries.
+      **Remaining: set `ANTHROPIC_API_KEY`.**
 - [ ] **6. Read tools.** Wire the nine read tools to existing Airtable/Postgres
       reads. Never re-implement a query that `api/leads.js` already has.
 - [ ] **7. Credits + rate limit.** Meter chat turns through `api/_credits.js`.

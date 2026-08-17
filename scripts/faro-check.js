@@ -88,7 +88,7 @@ try {
 // Every mount point must still be present — a merge could silently drop one,
 // and the failure mode is a missing workspace rather than an error.
 const dash = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
-for (const marker of ['${faro.css}', '${faro.launcher}', '${faro.overlay}', '${faro.js}']) {
+for (const marker of ['${faro.css}', '${faro.dock}', '${faro.overlay}', '${faro.js}']) {
   if (dash.indexOf(marker) === -1) fail(`mount point missing: ${marker}`);
 }
 if (dash.indexOf('_faroUI.forLang') === -1) fail('dashboard.js does not bind a language');
@@ -196,6 +196,81 @@ function finish() {
   const clientSrc = ui.forLang('en').js + ui.forLang('en').css + ui.forLang('en').workspace;
   if (/claude|anthropic|openai|gpt-4/i.test(clientSrc)) fail('vendor name present in client-side output');
   else pass('no vendor name in client-side output');
+
+  // ── 8. The Claude adapter's event machine ─────────────────────────────────
+  // No network. A synthetic SSE stream, deliberately split in the places that
+  // actually break naive parsers: mid-JSON-argument and mid-frame.
+  console.log('\nclaude adapter');
+  const claude = require('../api/_faro/providers/claude');
+
+  const frames = [
+    { type: 'message_start', message: { usage: { input_tokens: 42 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Ik kijk ' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'even.' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'tu_1', name: 'search_leads' } },
+    // The arguments arrive as a JSON STRING in fragments that split mid-key
+    // and mid-value — the case that makes incremental parsing fail.
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"minBud' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: 'get":4000' } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '00,"limit":5}' } },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 17 } },
+    { type: 'message_stop' },
+  ];
+  const wire = frames.map((f) => `event: ${f.type}\ndata: ${JSON.stringify(f)}\n\n`).join('');
+
+  // Feed it in awkward slices so frames straddle chunk boundaries.
+  const state = { tool: null, stopReason: null };
+  const got = [];
+  let buf = '';
+  for (let i = 0; i < wire.length; i += 7) {
+    buf += wire.slice(i, i + 7);
+    const { events, rest } = claude.parseFrames(buf);
+    buf = rest;
+    for (const e of events) for (const n of claude.handleEvent(e, state)) got.push(n);
+  }
+
+  const text = got.filter((e) => e.type === 'text').map((e) => e.text).join('');
+  const call = got.find((e) => e.type === 'tool_call');
+  const done = got.find((e) => e.type === 'done');
+  const usageIn = got.filter((e) => e.type === 'usage').reduce((a, e) => a + e.inputTokens, 0);
+  const usageOut = got.filter((e) => e.type === 'usage').reduce((a, e) => a + e.outputTokens, 0);
+
+  if (text !== 'Ik kijk even.') fail(`text reassembly wrong: ${JSON.stringify(text)}`);
+  else pass('text reassembles across split chunks');
+
+  if (!call) fail('no tool_call emitted');
+  else if (call.name !== 'search_leads' || call.id !== 'tu_1') fail('tool_call identity wrong');
+  else if (call.input.minBudget !== 400000 || call.input.limit !== 5) {
+    fail(`tool arguments wrong: ${JSON.stringify(call.input)}`);
+  } else pass('tool arguments survive a JSON split mid-key and mid-value');
+
+  if (!done || done.stopReason !== 'tool_use') fail('stop reason not carried to done');
+  else pass('stop reason carried');
+
+  if (usageIn !== 42 || usageOut !== 17) fail(`usage wrong: in=${usageIn} out=${usageOut}`);
+  else pass('token usage accumulated');
+
+  // A tool call whose JSON never parses must be DROPPED, not run with {} —
+  // running it would present an unrelated answer as if it were the response.
+  const s2 = { tool: null, stopReason: null };
+  claude.handleEvent({ type: 'content_block_start', content_block: { type: 'tool_use', id: 'x', name: 'get_leads' } }, s2);
+  claude.handleEvent({ type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: '{"broken' } }, s2);
+  const dropped = claude.handleEvent({ type: 'content_block_stop' }, s2);
+  if (dropped.length) fail('a malformed tool call was emitted instead of dropped');
+  else pass('malformed tool arguments are dropped, not run with {}');
+
+  // Message conversion, both directions of the awkward shapes.
+  const conv = claude.toAnthropicMessages([
+    { role: 'user', content: [{ type: 'text', text: 'hoi' }, { type: 'image', mediaType: 'image/png', dataBase64: 'AA' }] },
+    { role: 'assistant', content: [{ type: 'tool_call', id: 't1', name: 'f', input: { a: 1 } }] },
+    { role: 'user', content: [{ type: 'tool_result', toolCallId: 't1', result: { ok: true } }] },
+  ]);
+  const shapes = JSON.stringify(conv.map((m) => m.content.map((c) => c.type)));
+  if (shapes !== '[["text","image"],["tool_use"],["tool_result"]]') fail(`message conversion wrong: ${shapes}`);
+  else pass('message conversion covers text/image/tool_use/tool_result');
 
   console.log(failures ? `\n${failures} check(s) failed\n` : '\nall checks passed\n');
   process.exit(failures ? 1 : 0);

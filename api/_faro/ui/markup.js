@@ -28,23 +28,36 @@
 const QA = require('./quick-actions');
 const { icon } = require('./icons');
 
-/* ── Launcher ──────────────────────────────────────────────────────────────
-   Faro's ONLY entry point. A pill in the topbar, not a sidebar item and not a
-   workspace switcher.
+/* ── Dock ──────────────────────────────────────────────────────────────────
+   Faro's entry point: a slim bar along the bottom of every CRM page.
 
-   Why: the CRM sidebar already carries twelve items. Adding a thirteenth to
-   reach an assistant is the wrong trade, and a CRM|AI switcher was worse — it
-   split the product into two worlds when the whole value of this thing is that
-   it lives inside the one you are already in. The launcher costs no nav weight,
-   is reachable from every page, and Faro opens ON TOP of whatever you were
-   looking at rather than replacing it. */
-function launcher(t) {
+   It replaced a launcher pill in the topbar, and the reason is the whole
+   argument for this feature. A pill is a door — you have to decide to open it,
+   which means deciding you have a question, which means Faro only ever gets
+   used by someone who already thought of using it. A bar with a cursor in it is
+   an invitation: it sits in peripheral vision while you look at the pipeline,
+   and asking costs one keystroke instead of a click plus a context switch.
+
+   It is a real <input>, not a fake one. Typing goes straight in; Enter opens
+   Faro with the message already sending, so the first question never costs the
+   user a round trip through an empty screen.
+
+   Rendered as the last flex child of .main-content — NOT fixed-position — so it
+   can never overlap page content. .page-content is already `flex:1` with its
+   own scroll, so it simply gets shorter. */
+function dock(t) {
   return `
-      <button class="faro-launch" id="faro-launch" aria-haspopup="dialog" aria-expanded="false">
-        ${icon('spark', 14)}
-        <span class="faro-launch__label">${t('ws.title')}</span>
-        <kbd class="faro-launch__kbd" id="faro-launch-kbd"></kbd>
-      </button>`;
+    <div class="faro-dock" id="faro-dock">
+      <div class="faro-dock__inner">
+        <span class="faro-dock__spark">${icon('spark', 15)}</span>
+        <input class="faro-dock__input" id="faro-dock-input" type="text"
+               autocomplete="off" placeholder="${t('dock.placeholder')}"
+               aria-label="${t('dock.placeholder')}">
+        <kbd class="faro-dock__kbd" id="faro-dock-kbd"></kbd>
+        <button class="faro-dock__open" id="faro-dock-open" aria-haspopup="dialog"
+                aria-label="${t('ws.title')}">${icon('arrowUp', 15)}</button>
+      </div>
+    </div>`;
 }
 
 /* ── Overlay rail ──────────────────────────────────────────────────────────
@@ -299,4 +312,4 @@ function overlay(t) {
     </div>`;
 }
 
-module.exports = { launcher, overlay, rail, landing, thread, input, context, quickActions, activity, subPages };
+module.exports = { dock, overlay, rail, landing, thread, input, context, quickActions, activity, subPages };

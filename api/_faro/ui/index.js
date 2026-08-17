@@ -86,7 +86,7 @@ function forLang(langCode) {
     lang,
     css: tokens.css() + styles.css(),
     js: `\n${bootstrap}\n${client.js()}`,
-    launcher: markup.launcher(tt),
+    dock: markup.dock(tt),
     overlay: markup.overlay(tt),
   };
 }
@@ -101,7 +101,7 @@ function verify() {
   const problems = [];
   for (const lang of i18n.TRANSLATED) {
     const out = forLang(lang);
-    for (const key of ['css', 'js', 'launcher', 'overlay']) {
+    for (const key of ['css', 'js', 'dock', 'overlay']) {
       const s = out[key];
       if (s.indexOf('`') > -1) problems.push(`${lang}/${key}: contains a backtick`);
       if (/(^|[^\\])\$\{/.test(s)) problems.push(`${lang}/${key}: contains an unescaped \${`);

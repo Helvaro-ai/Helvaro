@@ -31,6 +31,7 @@ const STRINGS = {
   nl: {
     'ws.title': 'Faro',
     'ws.subtitle': 'Je assistent binnen Helvaro',
+    'dock.placeholder': 'Vraag Faro iets over je leads, panden of marketing…',
 
     'sb.new': 'Nieuw gesprek',
     'sb.search': 'Zoeken',
@@ -132,6 +133,7 @@ const STRINGS = {
   en: {
     'ws.title': 'Faro',
     'ws.subtitle': 'Your assistant inside Helvaro',
+    'dock.placeholder': 'Ask Faro about your leads, properties or marketing…',
 
     'sb.new': 'New conversation',
     'sb.search': 'Search',
@@ -233,6 +235,7 @@ const STRINGS = {
   fr: {
     'ws.title': 'Faro',
     'ws.subtitle': 'Votre assistant dans Helvaro',
+    'dock.placeholder': 'Demandez à Faro vos leads, biens ou marketing…',
 
     'sb.new': 'Nouvelle conversation',
     'sb.search': 'Rechercher',
@@ -334,6 +337,7 @@ const STRINGS = {
   de: {
     'ws.title': 'Faro',
     'ws.subtitle': 'Ihr Assistent in Helvaro',
+    'dock.placeholder': 'Fragen Sie Faro zu Leads, Objekten oder Marketing…',
 
     'sb.new': 'Neue Unterhaltung',
     'sb.search': 'Suchen',

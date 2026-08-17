@@ -26,37 +26,72 @@
 
 function css() {
   return `
-/* ═══ Launcher ════════════════════════════════════════════════════════════
-   A pill in the topbar. Not a nav item — the CRM sidebar already carries
-   twelve, and a thirteenth to reach an assistant is the wrong trade. Sand
-   hairline, not a filled button: it should read as available, not as the
-   loudest thing in the bar. */
-.faro-launch {
-  display: inline-flex;
+/* ═══ Dock ════════════════════════════════════════════════════════════════
+   The ask bar along the bottom of every page. A flex child of .main-content,
+   never fixed — .page-content is flex:1 with its own scroll, so the page
+   simply gets shorter and nothing is ever hidden behind this. */
+.faro-dock {
+  flex-shrink: 0;
+  /* Sticky, not fixed. Fixed would float over the page and hide whatever is
+     under it; as a sticky flex child the bar still OCCUPIES its space at the
+     end of the document — so nothing is ever covered — while pinning to the
+     viewport bottom on any page taller than the screen. Without this it sat
+     at y=1225 on a 900px viewport, i.e. you had to scroll to find the thing
+     whose entire purpose is being in peripheral vision. */
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  padding: 10px 28px 14px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+.faro-dock__inner {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--champagne-line);
-  background: var(--champagne-dim);
-  color: var(--sand-on-surface);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 150ms ease, border-color 150ms ease;
+  gap: 10px;
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 7px 8px 7px 14px;
+  border-radius: 14px;
+  background: var(--faro-input-bg);
+  border: 1px solid var(--border);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-.faro-launch:hover { background: var(--champagne-line); border-color: var(--champagne); }
-.faro-launch:focus-visible { outline: 2px solid var(--champagne); outline-offset: 2px; }
-.faro-launch__kbd {
-  font: inherit;
-  font-size: 10.5px;
-  padding: 1px 5px;
-  border-radius: 5px;
-  border: 1px solid var(--champagne-line);
-  opacity: 0.75;
+.faro-dock__inner:focus-within {
+  border-color: var(--champagne);
+  box-shadow: 0 0 0 3px var(--faro-input-ring);
 }
+.faro-dock__spark { display: inline-flex; color: var(--champagne); flex-shrink: 0; }
+.faro-dock__input {
+  flex: 1; min-width: 0;
+  border: 0; outline: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: 14px;
+}
+.faro-dock__input::placeholder { color: var(--text-disabled); }
+.faro-dock__kbd {
+  flex-shrink: 0;
+  font: inherit; font-size: 10.5px;
+  padding: 2px 6px; border-radius: 5px;
+  border: 1px solid var(--border);
+  color: var(--text-disabled);
+}
+.faro-dock__open {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9px; border: 0;
+  background: var(--accent); color: var(--on-accent);
+  cursor: pointer; transition: background 150ms ease;
+}
+.faro-dock__open:hover { background: var(--accent-hover); }
+
+/* One page sets its own height inline (calc(100vh - 56px), the calendar), so
+   it does not participate in the flex shrink and would push the dock off the
+   bottom. Subtract the dock here rather than editing the CRM's inline style. */
+#page-kalender { height: calc(100vh - 56px - 62px) !important; }
+
+/* While Faro is open the dock is inert — the overlay has its own, larger
+   input, and two live composers on screen is one too many. */
+body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
 
 /* ═══ Overlay ═════════════════════════════════════════════════════════════
    Faro sits ABOVE the CRM. The page underneath is untouched and still there
@@ -722,9 +757,11 @@ function css() {
 
 /* Phones. The launcher must survive a crowded topbar without pushing the theme
    toggle onto a second row, so it drops to icon-only. */
-@media (max-width: 480px) {
-  .faro-launch { padding: 7px 9px; }
-  .faro-launch__label, .faro-launch__kbd { display: none; }
+@media (max-width: 768px) {
+  .faro-dock { padding: 8px 16px 12px; }
+  .faro-dock__inner { padding: 6px 6px 6px 12px; }
+  .faro-dock__kbd { display: none; }
+  #page-kalender { height: calc(100vh - 56px - 58px) !important; }
 }
 `;
 }
