@@ -39,6 +39,7 @@ const schema    = require('./schema');
 const store     = require('./store');
 const stream    = require('./stream');
 const { getProvider, ProviderError } = require('./providers');
+const credits = require('../_credits');
 
 /**
  * Run one conversational turn, streaming to `res`.
@@ -55,6 +56,30 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
   const provider = getProvider();
   const model = config.modelFor(tier);
   const { LIMITS } = config;
+
+  // ── The spend ceiling, checked BEFORE the first model call ────────────────
+  // One charge per USER TURN, not per model call: a turn that runs three tools
+  // is still one question, and per-call billing would make Faro cost most
+  // exactly when it is being most useful. Image generation inside the turn is
+  // billed separately at its own much higher weight, where the real money is.
+  //
+  // Checked here rather than in the handler because this is the last point
+  // before anything is spent, and it fails OPEN on credit-infrastructure
+  // problems (see _credits.js's header) — an Airtable hiccup must not silently
+  // disable the assistant.
+  try {
+    const check = await credits.checkCredits(ctx.projectCode, credits.FEATURES.FARO_CHAT);
+    if (!check.allowed) {
+      stream.send(res, 'component', { component: schema.errorCard({
+        message: check.message || 'Je AI-credits voor deze periode zijn op.',
+        retryable: false,
+        code: 'credit_limit_reached',
+      }) });
+      return stream.close(res, { usage: { in: 0, out: 0 } });
+    }
+  } catch (err) {
+    console.error('[faro] credit check failed, continuing:', err.message);
+  }
 
   stream.send(res, 'start', {
     conversationId,

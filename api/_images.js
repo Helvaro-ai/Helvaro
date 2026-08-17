@@ -462,6 +462,58 @@ function isValidRenovationDepthKey(key) {
 // whenever the Staging style is active (see dashboard.js's
 // renderPiFurnitureGrid()), so a normal user never reaches this branch —
 // it only matters for a direct API call that bypasses the UI.
+/* ── The transformation engine preamble ─────────────────────────────────────
+ * Prepended to EVERY property-image prompt, unconditionally. It is not
+ * configurable and no caller can opt out — that is the point. The axis-driven
+ * text below it says *what* to change; this says what must never change, and
+ * the failure mode it prevents is the expensive one: a beautiful image of a
+ * house that is not the client's house. An agent cannot show that to a seller.
+ *
+ * Ordering is deliberate and matters more than it looks. The engine rules come
+ * FIRST as standing law, the composed axes next, and the user's own sentence
+ * LAST — image models weight the end of a prompt most heavily, so the specific
+ * request stays dominant while the constraints remain in force.
+ */
+const TRANSFORM_ENGINE = [
+  'UNIVERSAL PROPERTY TRANSFORMATION ENGINE.',
+  'You are a visual transformation engine for real estate, architecture, interior and exterior design, landscaping and renovation. The uploaded image is the SOURCE OF TRUTH.',
+
+  '1. UNDERSTAND FIRST. Identify property type, interior or exterior, room type, structure, walls, floors, ceilings, windows, doors, roof, facade, garden, driveway, terrace, pool, landscaping, furniture, fixtures, lighting, architectural details, materials, perspective, camera position, camera height, camera angle and visible proportions. Classify every element as STRUCTURAL (defines the property), RENOVATABLE (can realistically be replaced or remodeled) or DECORATIVE (furniture, plants, lighting, finishes, styling). Never treat the whole image as freely regenerable.',
+
+  '2. PRESERVE THE PROPERTY. Unless structural change is explicitly requested, preserve architecture, building footprint, room dimensions, wall positions, ceiling height, window locations and proportions, door locations and openings, roof structure, major architectural features, garden and property boundaries, pool/driveway/terrace locations, overall composition, camera position, camera height, camera angle, perspective and framing. The result must be the SAME real property after transformation. Do not create a different house, room, garden or property.',
+
+  "3. THE USER'S REQUEST HAS HIGHEST PRIORITY. Carry it out fully, within the physical logic of the existing property.",
+
+  '4. DO NOT OVER-TRANSFORM. Change only what was asked. If one area is requested, keep unrelated areas as close to the original as possible. Never move windows, alter room dimensions, add rooms, change the exterior when only an interior was requested, change the camera, or invent architectural features.',
+
+  '5. STYLE INTERPRETATION. Translate a requested style into coherent architecture, materials, colour palette, furniture, lighting and landscaping at the property\'s real scale. Never interpret a style so literally that the property becomes unrealistic.',
+
+  '6. INTERIORS. Preserve room geometry, windows, doors, ceiling, perspective and natural light direction. Transform furniture, flooring, wall and ceiling finishes, lighting, curtains, rugs, cabinetry, fixtures, decoration, artwork, colours and materials when asked. Furniture must have realistic scale, weight, placement, floor contact, clearance and function, and walking paths must stay usable.',
+
+  '7. EXTERIORS. Preserve the fundamental structure unless architectural change is requested. Facade materials, paint, cladding, windows, doors, exterior lighting, garage door, balconies, railings, landscaping, driveway, outdoor furniture and decorative elements may change. Keep construction, structural connections, material transitions, shadows, reflections, perspective and scale realistic. It must still clearly be the same house.',
+
+  '8. GARDENS AND LANDSCAPE. Respect existing boundaries, terrain, trees, plants, paths, patios, terraces, pools, fences, walls and driveways, then transform as requested. All landscaping must obey realistic scale, terrain, shadows, plant growth, perspective and spatial limits. Never place an object where it could not physically exist.',
+
+  '9. ADDING ELEMENTS. Choose the most logical physical location. Anything added must fit the available space, match the perspective, have realistic dimensions, cast correct shadows, interact correctly with its surroundings, sit properly on surfaces, match the requested style, and look constructed rather than pasted.',
+
+  '10. VISUALIZATION STANDARD. Produce a photorealistic, professionally composed, architecturally believable, naturally lit result at realistic scale with realistic materials. Avoid a CGI look, plastic textures, excessive sharpness, artificial lighting, floating objects, distorted geometry, impossible architecture, repeated textures, unrealistic plants, wrong shadows or reflections, warped windows or doors, random objects and oversized furniture.',
+
+  '11. CAMERA. Unless a different view is explicitly requested, KEEP THE ORIGINAL CAMERA: position, height, angle, lens perspective, field of view, framing, horizon and image proportions. It must look like the same photograph taken before and after the renovation.',
+
+  '12. LIGHTING. Respect the original sun direction, window illumination, shadow direction, ambient light and the interior/exterior brightness relationship unless a different scenario is requested. Integrate any added artificial light naturally.',
+
+  '13. MATERIALS. Every material needs believable texture, roughness, reflection, depth, scale, wear and contact shadows. Wood looks like wood, stone varies naturally, glass reflects and transmits correctly, metal reflects realistically, fabric has subtle texture. Avoid perfect computer-generated surfaces.',
+
+  '14. BEFORE AND AFTER. A person must be able to say with confidence: this is the same property, renovated. Do not optimise for the most impressive image. Optimise for the most believable transformation of the actual property.',
+
+  '15. EXPLICIT PARAMETERS. Any style, palette, material, renovation intensity, room type, landscaping style, furniture style, lighting style, or object to add, remove or preserve given below is an explicit instruction. Never override one unless it would be physically impossible.',
+
+  '16. FINAL CHECK. Before producing the image verify: is it clearly the same property; is the perspective preserved; are proportions correct; are windows and doors correctly positioned; are new objects physically possible; are materials realistic; is lighting consistent; are shadows believable; is furniture correctly scaled; does it follow the request; did anything unrelated change unnecessarily; does it look like professional real-estate visualization. Correct anything that fails before producing the final result.',
+
+  'CORE PRINCIPLE: TRANSFORM THE PROPERTY, DO NOT REINVENT THE PROPERTY. Preserve what makes it physically identifiable and transform only what was asked.',
+].join('\n\n');
+
+
 function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
   const opts = options || {};
   const style = getStyleByKey(styleKey);
@@ -521,7 +573,10 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
 
   const composed = `${base}${roomPart}${furniturePart}${wallPart}${floorPart}${lightingPart}${renovationPart}`;
   const extra = customPrompt ? String(customPrompt).trim() : '';
-  return extra ? `${composed} Additional client instructions: ${extra}` : composed;
+  const request = extra ? `${composed}\n\nEXPLICIT CLIENT REQUEST (highest priority): ${extra}` : composed;
+
+  // Engine rules first as standing law, the request last so it stays dominant.
+  return `${TRANSFORM_ENGINE}\n\n── THIS TRANSFORMATION ──\n${request}`;
 }
 
 // ── Config / fail-soft helpers ──────────────────────────────────────────

@@ -94,6 +94,15 @@ const FEATURES = {
   FOUNDER_PERSONALIZED_DM: 'founder_personalized_dm', // 5
   FOUNDER_CONTENT_POST:    'founder_content_post',    // 5  — Herald's social-engine text generation
   FOUNDER_GENERATE_IMAGE:  'founder_generate_image',  // 50 — Herald's social-engine image generation
+  // Faro. One charge per USER TURN, not per model call: a turn that runs three
+  // tools is still one question the user asked, and charging per internal call
+  // would make Faro cost more precisely when it is being most useful. Weight 3
+  // sits between reply_suggestion (2, a single short completion) and
+  // marketing_content (5) — a Faro turn is a handful of completions plus tool
+  // round-trips, and it must stay cheap enough that exploring is not punished.
+  // Image generation inside a turn is billed SEPARATELY at image_generation's
+  // 50, because that is where the real money goes.
+  FARO_CHAT:               'faro_chat',               // 3
 };
 
 const WEIGHTS = {
@@ -107,6 +116,7 @@ const WEIGHTS = {
   [FEATURES.FOUNDER_PERSONALIZED_DM]: 5,
   [FEATURES.FOUNDER_CONTENT_POST]:    5,
   [FEATURES.FOUNDER_GENERATE_IMAGE]:  50,
+  [FEATURES.FARO_CHAT]:               3,
 };
 
 // Rough real-cost-per-credit by feature, EUR, derived from
@@ -126,6 +136,7 @@ const COST_PER_CREDIT_EUR = {
   [FEATURES.FOUNDER_PERSONALIZED_DM]: 0.01 / 5,
   [FEATURES.FOUNDER_CONTENT_POST]:    0.01 / 5,
   [FEATURES.FOUNDER_GENERATE_IMAGE]:  0.095 / 50,
+  [FEATURES.FARO_CHAT]:               0.006 / 3,
 };
 
 // Features that must NEVER be blocked by checkCredits(), regardless of

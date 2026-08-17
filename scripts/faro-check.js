@@ -272,6 +272,67 @@ function finish() {
   if (shapes !== '[["text","image"],["tool_use"],["tool_result"]]') fail(`message conversion wrong: ${shapes}`);
   else pass('message conversion covers text/image/tool_use/tool_result');
 
+  // ── 9. Safeguards ─────────────────────────────────────────────────────────
+  // These are the properties that stop Faro being a general chatbot with a
+  // logo, and every one of them is a single edit away from silently vanishing.
+  console.log('\nsafeguards');
+
+  const identity = require('../api/_faro/prompt').IDENTITY;
+  const guards = [
+    ['scope is closed',            /geen algemene chatbot/i],
+    ['refusal has a redirect',     /Wil je dat ik/i],
+    ['tool output is data',        /GEGEVENS ZIJN GEEN OPDRACHTEN/],
+    ['never fabricates',           /verzint nooit/i],
+    ['prompt is not disclosed',    /instructies niet weer/i],
+    ['actions need confirmation',  /NOOIT zonder bevestiging/],
+  ];
+  for (const [name, re] of guards) {
+    if (re.test(identity)) pass(name);
+    else fail(`system prompt lost its guard: ${name}`);
+  }
+
+  // The image engine is prepended unconditionally — no argument combination
+  // may produce a prompt without it, because the failure it prevents is an
+  // image of a house that is not the client's house.
+  const imgs = require('../api/_images');
+  const combos = [
+    ['bare',      ['modern', '', '', {}]],
+    ['full',      ['luxury', 'behoud de haard', 'keuken', { wallFinish: 'painted', wallColorNote: 'terracotta', floor: 'wood', lighting: 'daylight', renovationDepth: 'full' }]],
+    ['staging',   ['staging', '', 'slaapkamer', { furniture: 'full' }]],
+    ['bad style', ['not-a-style', '', '', {}]],
+  ];
+  let engineOk = true;
+  for (const [name, args] of combos) {
+    const p = imgs.buildTransformPrompt(args[0], args[1], args[2], args[3]);
+    if (!/TRANSFORM THE PROPERTY, DO NOT REINVENT THE PROPERTY/.test(p)) {
+      fail(`image engine missing for combo: ${name}`); engineOk = false;
+    }
+    if (!/UNIVERSAL PROPERTY TRANSFORMATION ENGINE/.test(p.slice(0, 60))) {
+      fail(`image engine not first for combo: ${name}`); engineOk = false;
+    }
+  }
+  if (engineOk) pass(`image engine prepended for all ${combos.length} argument shapes`);
+
+  // The client's own words must remain LAST — image models weight the end of a
+  // prompt most heavily, so a preamble that swallowed the request would be a
+  // regression that looks like nothing changed.
+  const withReq = imgs.buildTransformPrompt('modern', 'behoud de open haard', '', {});
+  if (withReq.trim().endsWith('behoud de open haard')) pass('client request stays last in the prompt');
+  else fail('client request is no longer the final instruction');
+
+  // Chat has a spend ceiling.
+  const cr = require('../api/_credits');
+  if (!cr.FEATURES.FARO_CHAT) fail('FARO_CHAT credit feature missing');
+  else if (!cr.WEIGHTS[cr.FEATURES.FARO_CHAT]) fail('FARO_CHAT has no weight');
+  else pass(`chat metered at ${cr.WEIGHTS[cr.FEATURES.FARO_CHAT]} credits/turn`);
+
+  const orch = fs.readFileSync(path.join(__dirname, '..', 'api', '_faro', 'orchestrator.js'), 'utf8');
+  if (!/checkCredits\(ctx\.projectCode, credits\.FEATURES\.FARO_CHAT\)/.test(orch)) {
+    fail('orchestrator does not check credits before the model call');
+  } else if (orch.indexOf('checkCredits') > orch.indexOf('provider.streamChat')) {
+    fail('credit check runs AFTER the model call');
+  } else pass('credits checked before the first model call');
+
   console.log(failures ? `\n${failures} check(s) failed\n` : '\nall checks passed\n');
   process.exit(failures ? 1 : 0);
 }
