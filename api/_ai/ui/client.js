@@ -40,7 +40,8 @@ var aiState = {
   streaming: false,
   attachments: [],
   abort: null,
-  contextSources: []
+  contextSources: [],
+  lastSent: ''
 };
 
 function aiEsc(s) {
@@ -179,6 +180,12 @@ function aiSend(text) {
   aiEnterThread();
   aiAppendUser(text);
   aiClearInput();
+
+  // Kept so the error card's Retry has something to resend. Retry re-sends the
+  // TEXT rather than replaying the failed request, because a stream that died
+  // part-way may already have persisted a partial assistant message; a fresh
+  // turn is the only state we can reason about.
+  aiState.lastSent = text;
 
   aiState.streaming = true;
   aiSetSendEnabled(false);
@@ -443,12 +450,59 @@ function aiMediaCard(c) {
       : '<img class="' + cls + '" src="' + aiEsc(c.resultUrl) + '" alt="">') +
       '<div class="ai-media__bar">' + (c.actions || []).map(function (a) {
         return '<button class="ai-card__btn" data-media="' + aiEsc(a.key) + '">' + aiEsc(a.label) + '</button>';
-      }).join('') + '</div>';
+      }).join('') +
+      '<span class="ai-form__note" data-media-note></span></div>';
+    aiWireMediaActions(d, c);
   } else {
     d.innerHTML = '<div class="ai-media__img ai-skeleton"></div>';
     if (c.jobId) aiPollJob(c.jobId, d);
   }
   return d;
+}
+
+/* Media card buttons. Download and Preview work entirely client-side; the rest
+   need backend ops that are not wired yet, so they call them and surface
+   whatever the server says. That way the button is honest today ("not yet
+   available") and becomes real with no UI change. */
+function aiWireMediaActions(card, c) {
+  var note = card.querySelector('[data-media-note]');
+  card.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-media]');
+    if (!btn) return;
+    var act = btn.dataset.media;
+
+    if (act === 'download' && c.resultUrl) {
+      var a = document.createElement('a');
+      a.href = c.resultUrl;
+      a.download = (c.meta && c.meta.filename) || ('helvaro-' + (c.jobId || 'asset'));
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    if (act === 'preview' && c.resultUrl) {
+      var v = card.querySelector('video');
+      if (v) { v.paused ? v.play() : v.pause(); return; }
+      window.open(c.resultUrl, '_blank', 'noopener');
+      return;
+    }
+
+    var op = act === 'save' ? 'save-to-property'
+           : act === 'variation' ? (c.kind === 'video' ? 'generate-video' : 'generate-image')
+           : null;
+    if (!op) { if (note) note.textContent = T('pn.soon'); return; }
+
+    btn.disabled = true;
+    if (note) note.textContent = T('st.busy');
+    aiPost({ mode: 'ai-media', op: op, jobId: c.jobId, propertyId: (c.meta && c.meta.propertyId) || null })
+      .then(function (r) {
+        btn.disabled = false;
+        if (note) note.textContent = r.summary || T('st.done');
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        if (note) note.textContent = (err && err.message) || T('st.error');
+      });
+  });
 }
 
 function aiErrorCard(c) {
@@ -457,6 +511,19 @@ function aiErrorCard(c) {
   d.innerHTML = '<div class="ai-card__meta">' + aiEsc(c.message) + '</div>' +
     (c.retryable ? '<div class="ai-card__actions"><button class="ai-card__btn" data-retry="1">' +
       T('st.retry') + '</button></div>' : '');
+
+  // A Retry button that does nothing is worse than no Retry button.
+  var btn = d.querySelector('[data-retry]');
+  if (btn) btn.addEventListener('click', function () {
+    var text = aiState.lastSent;
+    if (!text) return;
+    // Drop the failed exchange so the thread does not accumulate dead turns.
+    var msg = d.closest('.ai-msg--ai');
+    if (msg) msg.remove();
+    var prevUser = document.querySelectorAll('#ai-thread-inner .ai-msg--user');
+    if (prevUser.length) prevUser[prevUser.length - 1].remove();
+    aiSend(text);
+  });
   return d;
 }
 
@@ -849,6 +916,7 @@ function aiInit() {
 
   aiWireUploads();
   aiWireContextPanel();
+  aiWireModelPicker();
 
   try {
     if (localStorage.getItem('helvaro:workspace') === 'ai') setWorkspace('ai');
@@ -943,6 +1011,60 @@ function aiAcceptFiles(files) {
       aiSetSendEnabled(true);
     };
     reader.readAsDataURL(f);
+  });
+}
+
+/* ── Model selector ───────────────────────────────────────────────────────
+   Capability tiers, not model names: the user picks "Snel" or "Precies" and
+   config.js alone knows which vendor model that resolves to (requirement 13).
+   The list is injected server-side as AI_TIERS. */
+function aiWireModelPicker() {
+  var btn = document.getElementById('ai-model-btn');
+  if (!btn) return;
+
+  aiState.tier = AI_DEFAULT_TIER;
+  var pop = document.createElement('div');
+  pop.className = 'ai-menu';
+  pop.hidden = true;
+  pop.setAttribute('role', 'listbox');
+  pop.innerHTML = AI_TIERS.map(function (t) {
+    return '<button type="button" class="ai-menu__item" role="option" data-tier="' + aiEsc(t.key) + '">' +
+             '<span class="ai-menu__label">' + aiEsc(t.short) + '</span>' +
+             '<span class="ai-menu__hint">' + aiEsc(t.hint) + '</span>' +
+           '</button>';
+  }).join('');
+  btn.parentNode.insertBefore(pop, btn.nextSibling);
+
+  function setTier(key) {
+    var t = AI_TIERS.filter(function (x) { return x.key === key; })[0];
+    if (!t) return;
+    aiState.tier = key;
+    var lbl = document.getElementById('ai-model-label');
+    if (lbl) lbl.textContent = t.label;
+    pop.querySelectorAll('.ai-menu__item').forEach(function (i) {
+      i.classList.toggle('active', i.dataset.tier === key);
+    });
+  }
+  setTier(AI_DEFAULT_TIER);
+
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    pop.hidden = !pop.hidden;
+    btn.setAttribute('aria-expanded', pop.hidden ? 'false' : 'true');
+  });
+  pop.addEventListener('click', function (e) {
+    var i = e.target.closest('[data-tier]');
+    if (!i) return;
+    setTier(i.dataset.tier);
+    pop.hidden = true;
+  });
+  // Click-away. Registered once, on document, rather than per-open.
+  document.addEventListener('click', function (e) {
+    if (pop.hidden) return;
+    if (!pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.hidden = true;
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !pop.hidden) pop.hidden = true;
   });
 }
 

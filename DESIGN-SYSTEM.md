@@ -74,6 +74,38 @@ selected state, icons, progress, charts, important numbers, highlights.
    light-first for exactly that reason. Not overriding the brief; keeping the
    door open at near-zero cost.
 
+## Third deviation — quick-action icon hues (AI workspace only)
+
+The rule above says Sand is the only accent. The AI workspace's nine
+quick-action icons break it, deliberately and on request, and the exception is
+recorded here rather than left to be discovered.
+
+Tokens live in `api/_ai/ui/tokens.js` as `--ic-*`. What keeps this from becoming
+a second palette:
+
+- **Scope is one element.** A 30px icon chip inside a quick action. The hues
+  never touch text, borders, buttons, charts, status, or any CRM surface.
+- **Muted mid-tones only.** Each reads as tinted metal, not a highlighter, so
+  nine in a row still look like one palette.
+- **No purple; blue only as slate.** The brief rules out "generic AI purple/blue
+  gradients" and that instinct survives even though solid fills are not gradients.
+- **Per-action, not decorative.** One hue per action means the colour carries
+  information — an agent learns "amber is my hot leads" and stops reading the
+  label. A single global accent would have been decoration.
+- **Both themes, both verified.** Light-mode values are separately darkened;
+  `scripts/ai-check.js` asserts every hue clears 3:1 against its canvas.
+
+Everything else in the AI workspace remains Sand.
+
+### A trap this exposed
+
+`--warm-sand` (#F4E7C8) is near-white. It is correct on the dark canvas and on
+the permanently-dark sidebar, and **invisible on the light canvas** — the
+workspace switcher's active segment shipped at 1.15:1 in light mode before this
+was caught. Sand-coloured text that sits on an AI *surface* rather than inside
+the sidebar must use `--sand-on-surface`, which flips per theme.
+`scripts/ai-check.js` now asserts 4.5:1 for it in both themes.
+
 ## Implementation rule
 Do **not** find-and-replace hex values. Introduce the token layer first, map
 every existing hardcoded colour to a token, then set token values. That makes

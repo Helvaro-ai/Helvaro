@@ -11,8 +11,10 @@
  * same registry (api/_lang.js) the WhatsApp AI already uses.
  *
  * ── Matched to the approved design, with these deliberate differences ────────
- * 1. Icons are monochrome line art, not the mockup's blue/green/orange. See
- *    ./icons.js for why.
+ * 1. Quick-action icons are colour-coded per action (see ./quick-actions.js
+ *    `hue` and ./tokens.js --ic-*). Every OTHER icon in the workspace stays
+ *    monochrome on currentColor — the colour is scoped to the nine action
+ *    chips, which is what keeps it from becoming a second palette.
  * 2. The switcher is centred within the TOPBAR (so, within the content area)
  *    rather than the viewport. Viewport-centring puts it visibly left of the
  *    content's midpoint because the sidebar occupies the left edge.
@@ -175,7 +177,7 @@ function context(t) {
 function quickActions(t) {
   const row = (a) => `
           <button class="ai-quick__action" data-quick="${a.id}">
-            <span class="ai-quick__icon">${icon(a.icon, 16)}</span>
+            <span class="ai-quick__icon ai-quick__icon--${a.hue}">${icon(a.icon, 16)}</span>
             <span class="ai-quick__text">${t(a.labelKey)}</span>
             <span class="ai-quick__chev">${icon('chevronR', 14)}</span>
           </button>`;

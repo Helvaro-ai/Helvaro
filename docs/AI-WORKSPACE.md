@@ -202,7 +202,7 @@ Ordered so each step is independently verifiable.
 | Scope | Everything except video | Video is the only net-new provider integration and the only real per-unit cost. |
 | Language | Follows the user's setting via `api/_lang.js` | UI chrome hand-translated for nl/fr/en/de, English fallback for the other 36. Quick-action *prompts* stay in one language — the reply language comes from `_lang`'s directive, so translating prompts 40 ways would buy nothing. |
 | Theme | Inherits the CRM's `[data-theme]` | Both palettes are tokens; switching workspace never changes the user's theme. |
-| Icons | Monochrome sand line art | The mockup's blue/green/orange broke `DESIGN-SYSTEM.md`'s "Sand is the ONLY accent" and was the thing most likely to make the workspace read as a second product. |
+| Icons | **Colour-coded per quick action** (revised) | Initially monochrome; colour was requested. Implemented as one hue per action rather than a decorative wash, so the colour carries information. Scoped to the nine 30px icon chips only — every other icon in the workspace stays monochrome. Recorded as a third deviation in `DESIGN-SYSTEM.md`. |
 
 ### Changes made against the approved design, and why
 
@@ -214,6 +214,10 @@ Ordered so each step is independently verifiable.
   that there are two co-equal workspaces.
 - **Switcher centred on the topbar, not the viewport.** Viewport-centring reads
   visibly left of the content's midpoint because the sidebar holds the left edge.
+- **Quick-action icons are colour-coded**, against my initial recommendation and
+  at your request. Done properly rather than grudgingly: muted mid-tones tuned to
+  sit beside sand, no purple, per-action so the hue means something, separately
+  darkened for light mode, and asserted at 3:1 by `scripts/ai-check.js`.
 - **Send button glyph is `--on-accent` (dark).** The mockup's pale arrow on
   champagne would not have met contrast, and it is the one control that must
   always be findable.
@@ -237,7 +241,17 @@ Ordered so each step is independently verifiable.
 - `api/dashboard.js` is touched in exactly six places: one `require`, one
   language binding, and the four markup/CSS/JS mount points.
 
-## 8. Local development
+## 8. Known issue, pre-existing
+
+In **light theme the topbar page title is low-contrast** — pale sand on cream.
+This is `.gradient-text` in `api/dashboard.js:451`, which resolves to
+`color: var(--accent)` in both themes, and it affects every CRM page title
+("Dashboard", "Pipeline", …) exactly as much as it affects "Helvaro AI". It
+predates this work and I have not touched it, because the fix changes the CRM's
+appearance on every page and that was not in scope. Worth fixing separately —
+it is a one-line token change.
+
+## 9. Local development
 
 `scripts/ai-dev.js` serves the real dashboard HTML and routes `/api/ai` to the
 real handler with a fixed local tenant. Everything in the request path is

@@ -26,6 +26,14 @@
  * ── Groups ───────────────────────────────────────────────────────────────────
  * Analyze / Create / Act is requirement 17's journey (Ask → Understand →
  * Analyze → Create → Act) collapsed to what fits a landing screen.
+ *
+ * ── `hue` ────────────────────────────────────────────────────────────────────
+ * Each action carries its own icon hue, resolving to the --ic-* tokens in
+ * ./tokens.js. Colour was requested; making it PER-ACTION rather than one
+ * global accent is what makes it useful rather than decorative — the agent
+ * learns "amber is my hot leads" and stops reading the label. The hues are
+ * grouped into families so the three columns still read as three columns:
+ * warm/analytic for Analyze, earthy for Create, go-signal for Act.
  */
 
 const GROUPS = Object.freeze([
@@ -34,17 +42,17 @@ const GROUPS = Object.freeze([
     labelKey: 'qa.analyze',
     actions: Object.freeze([
       Object.freeze({
-        id: 'hot-leads', icon: 'flame',
+        id: 'hot-leads', icon: 'flame', hue: 'amber',
         labelKey: 'qa.hotLeads',
         prompt: 'Which of my leads are worth contacting right now? Rank them and show them as lead cards.',
       }),
       Object.freeze({
-        id: 'pipeline', icon: 'chart',
+        id: 'pipeline', icon: 'chart', hue: 'slate',
         labelKey: 'qa.pipeline',
         prompt: 'Analyse my pipeline. Where is the value concentrated and where is it stalling?',
       }),
       Object.freeze({
-        id: 'today-convos', icon: 'message',
+        id: 'today-convos', icon: 'message', hue: 'teal',
         labelKey: 'qa.summarize',
         prompt: "Summarise today's conversations. What needs follow-up?",
       }),
@@ -54,10 +62,10 @@ const GROUPS = Object.freeze([
     key: 'create',
     labelKey: 'qa.create',
     actions: Object.freeze([
-      Object.freeze({ id: 'gen-image', icon: 'image', labelKey: 'qa.genImage', panel: 'images' }),
-      Object.freeze({ id: 'gen-video', icon: 'video', labelKey: 'qa.genVideo', panel: 'videos' }),
+      Object.freeze({ id: 'gen-image', icon: 'image', hue: 'terracotta', labelKey: 'qa.genImage', panel: 'images' }),
+      Object.freeze({ id: 'gen-video', icon: 'video', hue: 'rose', labelKey: 'qa.genVideo', panel: 'videos' }),
       Object.freeze({
-        id: 'write-listing', icon: 'doc',
+        id: 'write-listing', icon: 'doc', hue: 'gold',
         labelKey: 'qa.writeListing',
         prompt: 'Write a listing description for one of my properties. Ask me which property first.',
       }),
@@ -68,17 +76,17 @@ const GROUPS = Object.freeze([
     labelKey: 'qa.act',
     actions: Object.freeze([
       Object.freeze({
-        id: 'followup', icon: 'send',
+        id: 'followup', icon: 'send', hue: 'green',
         labelKey: 'qa.followUp',
         prompt: 'Which leads deserve follow-up today? Propose a follow-up message for each one.',
       }),
       Object.freeze({
-        id: 'campaign', icon: 'megaphone',
+        id: 'campaign', icon: 'megaphone', hue: 'orange',
         labelKey: 'qa.campaign',
         prompt: 'I want to create a campaign for a property. Ask me which property, then propose a campaign.',
       }),
       Object.freeze({
-        id: 'calls', icon: 'phone',
+        id: 'calls', icon: 'phone', hue: 'sky',
         labelKey: 'qa.calls',
         prompt: "Prepare today's calls: who do I call, why, and what is the context for each?",
       }),

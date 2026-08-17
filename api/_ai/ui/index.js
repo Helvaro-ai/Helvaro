@@ -43,6 +43,7 @@ const client = require('./client');
 const icons  = require('./icons');
 const quick  = require('./quick-actions');
 const i18n   = require('./i18n');
+const config = require('../config');
 
 /** JSON safe to embed in an inline <script>: neutralises </script> breakout. */
 function inlineJson(value) {
@@ -63,10 +64,22 @@ function forLang(langCode) {
   const strings = Object.assign({}, i18n.table(lang), quick.LABELS[lang] || quick.LABELS.en);
   const tt = (k) => (Object.prototype.hasOwnProperty.call(strings, k) ? strings[k] : t(k));
 
+  // Tier keys + their Helvaro-branded labels. config.js is the only module that
+  // knows a tier maps to a vendor model id, and that mapping stays server-side —
+  // the client receives capability names ("Standaard"), never model names.
+  const tiers = config.TIERS.map((x) => ({
+    key: x.key,
+    label: config.publicModelLabel(x.key),
+    short: x.label,
+    hint: x.hint,
+  }));
+
   const bootstrap = [
     `var AI_T = ${inlineJson(strings)};`,
     `var AI_ICONS = ${inlineJson(icons.PATHS)};`,
     `var AI_QUICK_ACTIONS = ${inlineJson(quick.BY_ID)};`,
+    `var AI_TIERS = ${inlineJson(tiers)};`,
+    `var AI_DEFAULT_TIER = ${inlineJson(config.DEFAULT_TIER)};`,
   ].join('\n');
 
   return {

@@ -116,8 +116,63 @@ actions.execute({ actionId: id, ctx: { projectCode: 'B', userId: 'v' } })
     finish();
   });
 
+/* Relative luminance / WCAG contrast, from the literal token values. */
+function srgb(c) { const x = c / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }
+function lum(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return 0.2126 * srgb((n >> 16) & 255) + 0.7152 * srgb((n >> 8) & 255) + 0.0722 * srgb(n & 255);
+}
+function contrast(a, b) {
+  const L1 = lum(a); const L2 = lum(b);
+  if (L1 === null || L2 === null) return null;
+  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+}
+function tokenValue(css, name, scope) {
+  // Last definition wins, which matches the cascade for these single-block themes.
+  const block = scope
+    ? (css.split(scope)[1] || '').split('}')[0]
+    : (css.split(':root')[1] || '').split('}')[0];
+  const m = new RegExp(`${name}\\s*:\\s*(#[0-9a-fA-F]{6})`).exec(block);
+  return m ? m[1] : null;
+}
+
 function finish() {
-  // ── 6. No vendor branding may reach the client ────────────────────────────
+  // ── 6. Contrast of sand-coloured text on AI surfaces ──────────────────────
+  // --warm-sand is near-white: right on #101010, invisible on cream. Anything
+  // sand outside the permanently-dark sidebar must use --sand-on-surface, which
+  // flips per theme. The switcher's active segment shipped at 1.15:1 in light
+  // mode once; this makes that a build failure rather than a screenshot review.
+  console.log('\ncontrast');
+  const css = require('../api/_ai/ui/tokens').css();
+  const pairs = [
+    ['dark',  tokenValue(css, '--sand-on-surface'), '#101010'],
+    ['light', tokenValue(css, '--sand-on-surface', '[data-theme="light"]'), '#FAF8F4'],
+  ];
+  for (const [theme, fg, bg] of pairs) {
+    if (!fg) { fail(`${theme}: --sand-on-surface not found`); continue; }
+    const r = contrast(fg, bg);
+    if (r === null) fail(`${theme}: could not compute contrast for ${fg}`);
+    else if (r < 4.5) fail(`${theme}: --sand-on-surface ${fg} on ${bg} is ${r.toFixed(2)}:1 (need 4.5)`);
+    else pass(`${theme}: sand-on-surface ${r.toFixed(2)}:1`);
+  }
+
+  // Every quick-action hue must clear 3:1 against its canvas — icons are
+  // non-text content, so 3:1 is the applicable threshold.
+  const hues = ['amber', 'slate', 'teal', 'terracotta', 'rose', 'gold', 'green', 'orange', 'sky'];
+  for (const [theme, scope, bg] of [['dark', null, '#1A1A1A'], ['light', '[data-theme="light"]', '#FFFFFF']]) {
+    const bad = [];
+    for (const h of hues) {
+      const v = tokenValue(css, `--ic-${h}`, scope);
+      const r = v && contrast(v, bg);
+      if (!r || r < 3) bad.push(`${h}${r ? ` ${r.toFixed(2)}` : ''}`);
+    }
+    if (bad.length) fail(`${theme}: icon hues below 3:1 — ${bad.join(', ')}`);
+    else pass(`${theme}: all 9 icon hues clear 3:1`);
+  }
+
+  // ── 7. No vendor branding may reach the client ────────────────────────────
   console.log('\nbranding (requirement 13)');
   const config = require('../api/_ai/config');
   const labels = config.TIERS.map((t) => config.publicModelLabel(t.key));

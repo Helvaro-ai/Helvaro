@@ -67,7 +67,7 @@ function css() {
    are two co-equal workspaces. So: champagne text, a tint, a hairline AND a
    bottom rule. Still restrained (no fill), but unmistakable. */
 .workspace-switch__btn.active {
-  color: var(--warm-sand);
+  color: var(--sand-on-surface);
   background: var(--champagne-dim);
   box-shadow: inset 0 0 0 1px var(--champagne-line),
               inset 0 -2px 0 0 var(--champagne);
@@ -336,14 +336,26 @@ function css() {
 }
 .ai-quick__action:last-child { margin-bottom: 0; }
 .ai-quick__action:hover { color: var(--text); border-color: var(--champagne-line); }
+/* Icon chips. Colour is scoped to exactly this element — 26px, inside a quick
+   action, nowhere else in the product. See ./tokens.js for why the hues are
+   muted and why purple is absent. */
 .ai-quick__icon {
   display: inline-flex; flex-shrink: 0;
-  width: 26px; height: 26px; align-items: center; justify-content: center;
-  border-radius: 8px;
+  width: 30px; height: 30px; align-items: center; justify-content: center;
+  border-radius: 9px;
   background: var(--champagne-dim);
   color: var(--deep-sand);
+  transition: background 150ms ease, color 150ms ease;
 }
-.ai-quick__action:hover .ai-quick__icon { color: var(--warm-sand); }
+.ai-quick__icon--amber      { background: var(--ic-amber-bg);      color: var(--ic-amber);      }
+.ai-quick__icon--slate      { background: var(--ic-slate-bg);      color: var(--ic-slate);      }
+.ai-quick__icon--teal       { background: var(--ic-teal-bg);       color: var(--ic-teal);       }
+.ai-quick__icon--terracotta { background: var(--ic-terracotta-bg); color: var(--ic-terracotta); }
+.ai-quick__icon--rose       { background: var(--ic-rose-bg);       color: var(--ic-rose);       }
+.ai-quick__icon--gold       { background: var(--ic-gold-bg);       color: var(--ic-gold);       }
+.ai-quick__icon--green      { background: var(--ic-green-bg);      color: var(--ic-green);      }
+.ai-quick__icon--orange     { background: var(--ic-orange-bg);     color: var(--ic-orange);     }
+.ai-quick__icon--sky        { background: var(--ic-sky-bg);        color: var(--ic-sky);        }
 .ai-quick__text { flex: 1; min-width: 0; }
 .ai-quick__chev { flex-shrink: 0; opacity: 0.3; transition: opacity 150ms ease, transform 150ms ease; }
 .ai-quick__action:hover .ai-quick__chev { opacity: 0.8; transform: translateX(2px); }
@@ -505,6 +517,28 @@ function css() {
 .ai-media__img--1-1  { aspect-ratio: 1 / 1;  }
 .ai-media__bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
 
+/* ═══ Menu — the model tier picker ════════════════════════════════════════ */
+.ai-input__bar { position: relative; }
+.ai-menu {
+  position: absolute; bottom: calc(100% + 8px); right: 44px;
+  min-width: 208px; z-index: 30;
+  padding: 5px;
+  border: 1px solid var(--ai-hairline); border-radius: 14px;
+  background: var(--ai-raised);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+}
+.ai-menu__item {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 10px; border: 0; border-radius: 10px;
+  background: transparent; cursor: pointer;
+  transition: background 150ms ease;
+}
+.ai-menu__item:hover { background: var(--hover); }
+.ai-menu__item.active { background: var(--champagne-dim); }
+.ai-menu__label { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+.ai-menu__item.active .ai-menu__label { color: var(--sand-on-surface); }
+.ai-menu__hint { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
 /* ═══ Forms — the Images/Videos workspace controls ════════════════════════ */
 .ai-form {
   border: 1px solid var(--ai-hairline); border-radius: 18px;
@@ -537,7 +571,7 @@ function css() {
 }
 .ai-form__drop:hover { color: var(--text-muted); border-color: var(--champagne-line); }
 .ai-form__drop.dragover {
-  border-color: var(--champagne); color: var(--warm-sand); background: var(--champagne-dim);
+  border-color: var(--champagne); color: var(--sand-on-surface); background: var(--champagne-dim);
 }
 
 .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; }
