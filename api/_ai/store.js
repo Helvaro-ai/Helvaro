@@ -40,6 +40,7 @@
  */
 
 const _pg = require('../_pgapi');
+const fixtures = require('./fixtures');
 
 const T_CONVERSATIONS = 'ai_conversations';
 const T_MESSAGES      = 'ai_messages';
@@ -55,6 +56,7 @@ const NOT_WIRED = () => {
 /** Most recent conversations for the sidebar's "Recent" list. */
 async function listConversations(_projectCode, _opts = {}) {
   // { limit = 20, favoritesOnly = false, projectId = null }
+  if (fixtures.isEnabled()) return fixtures.CONVERSATIONS.slice();
   return []; // stub: empty sidebar rather than a crash
 }
 
@@ -98,7 +100,10 @@ function windowForModel(messages, maxTurns) {
 
 // ── Projects (requirement 12) ────────────────────────────────────────────────
 
-async function listProjects(_projectCode) { return []; }
+async function listProjects(_projectCode) {
+  if (fixtures.isEnabled()) return fixtures.PROJECTS.slice();
+  return [];
+}
 async function getProject(_projectCode, _id) { return null; }
 async function createProject(_projectCode, _data) { NOT_WIRED(); }
 async function linkToProject(_projectCode, _projectId, _kind, _refId) { NOT_WIRED(); }

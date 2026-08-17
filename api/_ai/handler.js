@@ -210,6 +210,7 @@ async function mediaMode(res, ctx, body) {
         videoFormats: media.VIDEO_FORMATS,
         videoDurations: media.VIDEO_DURATIONS,
       });
+    case 'list-activity': return res.status(200).json({ activity: await media.listActivity(ctx, { limit: 12 }) });
     case 'list-images': return res.status(200).json({ images: await media.listImages(ctx) });
     case 'list-videos': return res.status(200).json({ videos: await media.listVideos(ctx) });
     case 'job':

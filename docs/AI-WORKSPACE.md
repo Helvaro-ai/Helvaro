@@ -1,12 +1,27 @@
 # Helvaro AI Workspace — structure
 
-**Status: scaffold. Nothing executes.** Every module below exists with its real
-interface; the bodies that would call a model, write to the database or spend
-money throw `not_wired` or return empty. `AI_WORKSPACE_ENABLED` is unset, so
-`api/ai.js` returns 404 for every request regardless.
+**Status: mounted and runnable locally. Nothing is wired to a real model, a
+real database, or real money.**
+
+The workspace is now integrated into `api/dashboard.js` and works end to end
+against a scripted provider and fixture data:
+
+```
+node scripts/ai-dev.js     →  http://localhost:4321   (click "AI", top centre)
+node scripts/ai-check.js   →  static checks, no network
+```
+
+In production nothing changes until three env vars are set — `AI_PROVIDER`,
+`AI_WORKSPACE_ENABLED`, and (for a real model) an API key. Unset,
+`api/ai.js` returns 404 for every request.
+
+Scope decision: **everything except video generation.** Video ships as a
+visible-but-empty panel with an explicit "coming soon" rather than a hidden
+entry, because a hidden feature is less honest to a paying customer than a
+stated one.
 
 This document is the map, the reasoning behind the shape, and the checklist for
-turning it on.
+finishing it.
 
 ---
 
@@ -42,8 +57,9 @@ api/_ai/handler.js ................ mode dispatch, validation, rate limit
 api/_ai/orchestrator.js ........... turn loop, tool loop, streaming
    ▼
 api/_ai/providers/index.js ........ one interface
-   ├── claude.js
-   └── openai.js
+   ├── claude.js   (not wired)
+   ├── openai.js   (not wired)
+   └── demo.js     (scripted — local dev, and proof the contract holds)
         ▲
         │ tools
 api/_ai/tools.js .................. read tools run; act tools only propose
@@ -97,13 +113,15 @@ is what keeps the contract honest.
 | `api/_ai/schema.js` | Complete. Component builders. |
 | `api/_ai/stream.js` | Complete. SSE transport. |
 | `api/_ai/prompt.js` | Structure done, context block stubbed. |
-| `api/_ai/tools.js` | All 15 tools declared with real schemas; bodies mocked. |
+| `api/_ai/tools.js` | 16 tools with real schemas. 9 read / 7 act. Read tools return fixtures in demo mode; production reads unwired. |
 | `api/_ai/actions.js` | Gate + validation real; executors stubbed. |
 | `api/_ai/store.js` | Full surface; no queries wired. |
 | `api/_ai/media.js` | Job lifecycle; providers unwired. |
 | `api/_ai/orchestrator.js` | Turn loop complete; stops at the provider. |
 | `api/_ai/handler.js` | Dispatch + validation real. |
 | `api/_ai/providers/{index,claude,openai}.js` | Contract + mappings real; network calls stubbed. |
+| `api/_ai/providers/demo.js` | **Working.** Scripted provider for local dev. |
+| `api/_ai/fixtures.js` | **Working.** Sample data behind `AI_DEMO_MODE=1`. |
 
 ### UI
 | File | Status |
@@ -112,8 +130,16 @@ is what keeps the contract honest.
 | `api/_ai/ui/tokens.js` | Complete. Three new tokens. |
 | `api/_ai/ui/styles.js` | Complete. Layout, states, responsive. |
 | `api/_ai/ui/markup.js` | Complete. Switcher, sidebar, landing, thread, panels. |
-| `api/_ai/ui/quick-actions.js` | Complete. Nine actions as data. |
-| `api/_ai/ui/client.js` | Complete. State machine, SSE reader, renderers. |
+| `api/_ai/ui/quick-actions.js` | Complete. Nine actions as data + labels. |
+| `api/_ai/ui/client.js` | Complete. State machine, SSE reader, renderers, Images form. |
+| `api/_ai/ui/i18n.js` | Complete. nl/fr/en/de, English fallback. |
+| `api/_ai/ui/icons.js` | Complete. Monochrome line set. |
+
+### Scripts
+| File | Purpose |
+|---|---|
+| `scripts/ai-dev.js` | Local server. Real code path, scripted provider, fixture data. |
+| `scripts/ai-check.js` | Static checks: splice safety, client parse, gate, branding. |
 
 **The UI does not live inside `api/dashboard.js`.** That file is a single
 ~19,000-line template literal where every backtick and `${` must be escaped —
@@ -125,12 +151,16 @@ modules return plain strings and splice in at five points.
 
 Ordered so each step is independently verifiable.
 
-- [ ] **1. Mount the UI.** Five interpolations in `api/dashboard.js` (see
-      `api/_ai/ui/index.js` header). Switcher works, workspace renders, nothing
-      answers. This is the visual sign-off point.
+- [x] **1. Mount the UI.** Five interpolations in `api/dashboard.js` (see
+      `api/_ai/ui/index.js` header). Switcher, sidebar, landing, conversation
+      view, Images panel and Projects panel all render. Verified round-trip:
+      CRM → AI → CRM restores the CRM exactly, and the AI selection survives a
+      reload.
 - [ ] **2. Mascot assets.** Six `.webp` files at `/ai/falcon-{idle,thinking,generating,video,success,error}.webp`.
       Add a `public/ai/` rewrite in `vercel.json`. CSS handles the motion —
-      the assets are stills.
+      the assets are stills. **Blocked on the assets**: only the idle render
+      exists. Until then the mascot hides itself rather than showing a broken
+      image, and a missing state falls back to idle without re-requesting the 404.
 - [ ] **3. VPS tables.** `ai_conversations`, `ai_messages`, `ai_projects`,
       `ai_project_links` (columns in `api/_ai/store.js` header), then wire
       `store.js` through `_pgapi`.
@@ -165,14 +195,70 @@ Ordered so each step is independently verifiable.
 4. **Language.** UI strings are Dutch, matching the rest of the dashboard. The
    brief was written in English; confirm Dutch is right for the AI workspace too.
 
-## 6. What this scaffold deliberately does not do
+## 6. Decisions taken since the scaffold
 
-- No model is called.
+| Decision | Choice | Why |
+|---|---|---|
+| Scope | Everything except video | Video is the only net-new provider integration and the only real per-unit cost. |
+| Language | Follows the user's setting via `api/_lang.js` | UI chrome hand-translated for nl/fr/en/de, English fallback for the other 36. Quick-action *prompts* stay in one language — the reply language comes from `_lang`'s directive, so translating prompts 40 ways would buy nothing. |
+| Theme | Inherits the CRM's `[data-theme]` | Both palettes are tokens; switching workspace never changes the user's theme. |
+| Icons | Monochrome sand line art | The mockup's blue/green/orange broke `DESIGN-SYSTEM.md`'s "Sand is the ONLY accent" and was the thing most likely to make the workspace read as a second product. |
+
+### Changes made against the approved design, and why
+
+- **Mascot smaller** (72px vs ~170px). Requirement 4 says "subtle and relatively
+  small", requirement 11 says "not childish". At the mockup's scale it
+  out-competed the input, which is meant to be the page's focus.
+- **Switcher active state strengthened.** The mockup's was too quiet to read as
+  selected at a glance, and this control carries requirement 18's whole claim
+  that there are two co-equal workspaces.
+- **Switcher centred on the topbar, not the viewport.** Viewport-centring reads
+  visibly left of the content's midpoint because the sidebar holds the left edge.
+- **Send button glyph is `--on-accent` (dark).** The mockup's pale arrow on
+  champagne would not have met contrast, and it is the one control that must
+  always be findable.
+- **Settings added to the sidebar.** The mockup omitted it; requirement 3 lists it.
+- **`Recent AI activity` kept** — it was the design's best addition, and it gives
+  the workspace a reason to return to even with no question in mind.
+- **CRM page controls hide in AI.** Refresh / CSV-export / last-updated belong to
+  the CRM dashboard page and were bleeding into the AI topbar.
+- **Below 480px the page title is dropped**, not the switcher. `dashboard.js`'s
+  own mobile CSS notes it fought to keep the topbar off 137px; the switcher
+  already names the workspace, so the title was the redundant half.
+
+## 7. What still does not happen
+
+- No model is called (`AI_PROVIDER=demo` is scripted; `claude`/`openai` throw `not_wired`).
 - No database table is created or written.
 - No key is read at import time.
-- `api/dashboard.js` is untouched — the CRM is byte-identical.
+- No money is spent.
 - `vercel.json` is untouched.
 - No dependency was added to `package.json`.
+- `api/dashboard.js` is touched in exactly six places: one `require`, one
+  language binding, and the four markup/CSS/JS mount points.
 
-Turning any of this on is a deliberate, reviewable step, not a side effect of
-this code being present.
+## 8. Local development
+
+`scripts/ai-dev.js` serves the real dashboard HTML and routes `/api/ai` to the
+real handler with a fixed local tenant. Everything in the request path is
+production code — same orchestrator, same tool registry, same SSE framing, same
+confirmation gate. Three substitutions, each an env var production does not set:
+
+| Var | Effect |
+|---|---|
+| `AI_PROVIDER=demo` | `api/_ai/providers/demo.js` — scripted responses, real tool calls |
+| `AI_DEMO_MODE=1` | `api/_ai/fixtures.js` — sample Belgian leads instead of Airtable |
+| `AI_WORKSPACE_ENABLED=1` | the feature flag |
+
+The demo provider does **not** fake tool results: it emits genuine `tool_call`
+events, the orchestrator runs the real tool, and the real result comes back. It
+is also the third implementation of the provider contract, and the one
+structurally unlike the other two — a generator over a local array rather than
+HTTP+SSE. That it fits unchanged is the evidence the contract describes a
+capability rather than a vendor's shape.
+
+`scripts/ai-check.js` catches the two failure modes this architecture creates
+that `node --check api/dashboard.js` cannot see: a stray backtick or `${...}` in
+a generated string, and a syntax error in the generated client script — which
+kills the entire inline `<script>`, CRM included. Both happened during
+development. Run it before any commit touching `api/_ai/ui/`.

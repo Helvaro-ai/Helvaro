@@ -59,6 +59,9 @@ function getProvider() {
   switch (name) {
     case 'claude': return require('./claude');
     case 'openai': return require('./openai');
+    // Scripted, offline, costs nothing. Also the third implementation of this
+    // contract, and the one structurally unlike the other two — see ./demo.js.
+    case 'demo':   return require('./demo');
     default:
       // Deliberately generic: a misconfigured AI_PROVIDER is an operator
       // problem, and the user-facing string still must not name vendors.

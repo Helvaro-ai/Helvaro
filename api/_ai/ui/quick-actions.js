@@ -2,55 +2,141 @@
 /*
  * Helvaro AI — quick action definitions (requirement 5).
  *
- * SCAFFOLD: complete. Plain data.
- *
  * ── Why these are data and not nine onclick handlers ─────────────────────────
  * Requirement 5: "clicking an action should start the appropriate AI workflow
- * immediately." The cheapest correct way to do that is for each action to BE a
- * prompt — clicking one is identical to the user typing that sentence, so there
- * is exactly one code path into a conversation and no second, parallel
- * "workflow launcher" that can behave differently from the chat box.
+ * immediately." The cheapest correct way is for each action to BE a prompt —
+ * clicking one is identical to the user typing that sentence, so there is
+ * exactly one code path into a conversation and no parallel "workflow launcher"
+ * that can drift from the chat box.
  *
- * A few actions open a sub-workspace instead of starting a chat, because the
- * work genuinely needs controls (a property, a style, an aspect ratio) that a
- * sentence cannot carry. Those carry `panel` instead of `prompt`.
+ * Two actions open a sub-workspace instead, because the work needs controls
+ * (a property, a style, an aspect ratio) that a sentence cannot carry. Those
+ * carry `panel` instead of `prompt`.
  *
- * The three groups are the user journey from requirement 17 —
- * Ask → Understand → Analyze → Create → Act — collapsed into what fits on a
- * landing screen: Analyseren / Maken / Doen.
+ * ── Prompt language ──────────────────────────────────────────────────────────
+ * `prompt` is what gets SENT to the model, not what the model answers in. The
+ * reply language comes from the directive api/_lang.js builds and
+ * api/_ai/prompt.js injects. Prompts are therefore kept in one language
+ * (English) rather than translated forty ways — a Polish user clicking
+ * "hottest leads" sends English and receives Polish. See ./i18n.js.
+ *
+ * Labels ARE translated, because the user reads those. `labelKey` resolves
+ * against the i18n table at render time.
+ *
+ * ── Groups ───────────────────────────────────────────────────────────────────
+ * Analyze / Create / Act is requirement 17's journey (Ask → Understand →
+ * Analyze → Create → Act) collapsed to what fits a landing screen.
  */
 
 const GROUPS = Object.freeze([
   Object.freeze({
     key: 'analyze',
-    label: 'Analyseren',
+    labelKey: 'qa.analyze',
     actions: Object.freeze([
-      { id: 'hot-leads',    label: 'Vind mijn beste leads',        prompt: 'Wie zijn op dit moment mijn beste leads om te contacteren? Toon ze als kaarten.' },
-      { id: 'pipeline',     label: 'Analyseer mijn pipeline',      prompt: 'Analyseer mijn pipeline. Waar zit de waarde en waar loopt het vast?' },
-      { id: 'today-convos', label: 'Vat gesprekken van vandaag samen', prompt: 'Vat de gesprekken van vandaag samen. Wat vraagt opvolging?' },
+      Object.freeze({
+        id: 'hot-leads', icon: 'flame',
+        labelKey: 'qa.hotLeads',
+        prompt: 'Which of my leads are worth contacting right now? Rank them and show them as lead cards.',
+      }),
+      Object.freeze({
+        id: 'pipeline', icon: 'chart',
+        labelKey: 'qa.pipeline',
+        prompt: 'Analyse my pipeline. Where is the value concentrated and where is it stalling?',
+      }),
+      Object.freeze({
+        id: 'today-convos', icon: 'message',
+        labelKey: 'qa.summarize',
+        prompt: "Summarise today's conversations. What needs follow-up?",
+      }),
     ]),
   }),
   Object.freeze({
     key: 'create',
-    label: 'Maken',
+    labelKey: 'qa.create',
     actions: Object.freeze([
-      { id: 'gen-image',   label: 'Genereer pandbeeld',  panel: 'images' },
-      { id: 'gen-video',   label: 'Genereer pandvideo',  panel: 'videos' },
-      { id: 'write-listing', label: 'Schrijf een pandtekst', prompt: 'Schrijf een verkooptekst voor een van mijn panden. Vraag me eerst welk pand.' },
+      Object.freeze({ id: 'gen-image', icon: 'image', labelKey: 'qa.genImage', panel: 'images' }),
+      Object.freeze({ id: 'gen-video', icon: 'video', labelKey: 'qa.genVideo', panel: 'videos' }),
+      Object.freeze({
+        id: 'write-listing', icon: 'doc',
+        labelKey: 'qa.writeListing',
+        prompt: 'Write a listing description for one of my properties. Ask me which property first.',
+      }),
     ]),
   }),
   Object.freeze({
     key: 'act',
-    label: 'Doen',
+    labelKey: 'qa.act',
     actions: Object.freeze([
-      { id: 'followup',  label: 'Volg leads op',        prompt: 'Welke leads verdienen vandaag opvolging? Stel per lead een opvolgbericht voor.' },
-      { id: 'campaign',  label: 'Maak een campagne',    prompt: 'Ik wil een campagne maken voor een pand. Vraag me welk pand en stel dan een campagne voor.' },
-      { id: 'calls',     label: 'Bereid gesprekken voor', prompt: 'Bereid mijn gesprekken van vandaag voor: wie bel ik, waarom, en wat is de context?' },
+      Object.freeze({
+        id: 'followup', icon: 'send',
+        labelKey: 'qa.followUp',
+        prompt: 'Which leads deserve follow-up today? Propose a follow-up message for each one.',
+      }),
+      Object.freeze({
+        id: 'campaign', icon: 'megaphone',
+        labelKey: 'qa.campaign',
+        prompt: 'I want to create a campaign for a property. Ask me which property, then propose a campaign.',
+      }),
+      Object.freeze({
+        id: 'calls', icon: 'phone',
+        labelKey: 'qa.calls',
+        prompt: "Prepare today's calls: who do I call, why, and what is the context for each?",
+      }),
     ]),
   }),
 ]);
 
-/** Flat lookup for the click handler. */
+/* Action labels live here rather than in i18n.js's main block so a new action
+   ships as ONE edit — definition and its four translations together. Merged
+   into the table by ./i18n.js consumers via LABELS. */
+const LABELS = Object.freeze({
+  nl: {
+    'qa.hotLeads': 'Vind mijn beste leads',
+    'qa.pipeline': 'Analyseer mijn pipeline',
+    'qa.summarize': 'Vat gesprekken van vandaag samen',
+    'qa.genImage': 'Genereer pandbeeld',
+    'qa.genVideo': 'Genereer pandvideo',
+    'qa.writeListing': 'Schrijf een pandtekst',
+    'qa.followUp': 'Volg leads op',
+    'qa.campaign': 'Maak een campagne',
+    'qa.calls': 'Bereid gesprekken voor',
+  },
+  en: {
+    'qa.hotLeads': 'Find my hottest leads',
+    'qa.pipeline': 'Analyze my pipeline',
+    'qa.summarize': "Summarize today's conversations",
+    'qa.genImage': 'Generate property image',
+    'qa.genVideo': 'Generate property video',
+    'qa.writeListing': 'Write listing description',
+    'qa.followUp': 'Follow up with leads',
+    'qa.campaign': 'Create campaign',
+    'qa.calls': "Prepare today's calls",
+  },
+  fr: {
+    'qa.hotLeads': 'Mes meilleurs leads',
+    'qa.pipeline': 'Analyser mon pipeline',
+    'qa.summarize': "Résumer les conversations du jour",
+    'qa.genImage': 'Générer une image de bien',
+    'qa.genVideo': 'Générer une vidéo de bien',
+    'qa.writeListing': 'Rédiger une description',
+    'qa.followUp': 'Relancer les leads',
+    'qa.campaign': 'Créer une campagne',
+    'qa.calls': 'Préparer les appels du jour',
+  },
+  de: {
+    'qa.hotLeads': 'Meine besten Leads',
+    'qa.pipeline': 'Pipeline analysieren',
+    'qa.summarize': 'Heutige Gespräche zusammenfassen',
+    'qa.genImage': 'Objektbild erzeugen',
+    'qa.genVideo': 'Objektvideo erzeugen',
+    'qa.writeListing': 'Objekttext schreiben',
+    'qa.followUp': 'Leads nachverfolgen',
+    'qa.campaign': 'Kampagne erstellen',
+    'qa.calls': 'Heutige Anrufe vorbereiten',
+  },
+});
+
+/** Flat lookup for the client's click handler. */
 const BY_ID = Object.freeze(
   GROUPS.reduce((acc, g) => {
     for (const a of g.actions) acc[a.id] = a;
@@ -58,4 +144,4 @@ const BY_ID = Object.freeze(
   }, {}),
 );
 
-module.exports = { GROUPS, BY_ID };
+module.exports = { GROUPS, LABELS, BY_ID };

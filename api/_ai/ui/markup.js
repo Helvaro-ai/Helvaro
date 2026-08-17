@@ -2,230 +2,269 @@
 /*
  * Helvaro AI — workspace markup.
  *
- * SCAFFOLD: structurally complete. Every element the client script addresses
- * exists here with its final id/class. Content that comes from the backend
- * (conversations, cards, galleries) is rendered by client.js into the
- * containers below.
- *
  * Returns plain strings spliced into api/dashboard.js's HTML template literal.
  * Because these are ordinary files rather than text inside that template,
  * nothing here needs backtick or ${} escaping.
  *
- * ── Language ─────────────────────────────────────────────────────────────────
- * The dashboard is Dutch; requirement text is English. Visible strings follow
- * the product (Dutch), matching every other page in api/dashboard.js. The
- * English headings in the brief map as:
- *   "What are we working on?"   → "Waar werken we aan?"
- *   "Ask Helvaro anything…"     → "Vraag Helvaro alles…"
+ * Every builder takes a translator `t` from ./i18n.js. Nothing is hardcoded in
+ * a single language — the workspace follows the user's language setting, the
+ * same registry (api/_lang.js) the WhatsApp AI already uses.
+ *
+ * ── Matched to the approved design, with these deliberate differences ────────
+ * 1. Icons are monochrome line art, not the mockup's blue/green/orange. See
+ *    ./icons.js for why.
+ * 2. The switcher is centred within the TOPBAR (so, within the content area)
+ *    rather than the viewport. Viewport-centring puts it visibly left of the
+ *    content's midpoint because the sidebar occupies the left edge.
+ * 3. Settings is present in the sidebar — the mockup omitted it, but
+ *    requirement 3 lists it.
+ * 4. The account block is NOT duplicated here. api/dashboard.js's existing
+ *    .sidebar-bottom (credits widget, user info, logout) is shared by both
+ *    workspaces, which is the whole point of "keep the existing sidebar".
  */
 
-const QUICK_ACTIONS = require('./quick-actions');
+const QA = require('./quick-actions');
+const { icon } = require('./icons');
 
 /* ── 1. Workspace switcher ─────────────────────────────────────────────────
-   Mounted in the topbar. Two buttons, no <select>, no popover — requirement 1
-   is explicit that this must not be a dropdown. role="tablist" is the honest
-   ARIA mapping: two panels, one visible at a time. */
-function switcher() {
+   Two buttons, no <select>, no popover — requirement 1 is explicit that this
+   must not be a dropdown. role="tablist" is the honest ARIA mapping: two
+   panels, one visible at a time. */
+function switcher(t) {
   return `
-  <div class="workspace-switch" role="tablist" aria-label="Werkruimte">
-    <button class="workspace-switch__btn active" role="tab" aria-selected="true"
-            id="ws-crm" data-workspace="crm">CRM</button>
-    <span class="workspace-switch__sep" aria-hidden="true"></span>
-    <button class="workspace-switch__btn" role="tab" aria-selected="false"
-            id="ws-ai" data-workspace="ai">AI</button>
-  </div>`;
+      <div class="workspace-switch" role="tablist" aria-label="${t('ws.title')}">
+        <button class="workspace-switch__btn active" role="tab" aria-selected="true"
+                id="ws-crm" data-workspace="crm">${t('ws.crm')}</button>
+        <span class="workspace-switch__sep" aria-hidden="true"></span>
+        <button class="workspace-switch__btn" role="tab" aria-selected="false"
+                id="ws-ai" data-workspace="ai">${t('ws.ai')}</button>
+      </div>`;
 }
 
 /* ── 3. AI sidebar ─────────────────────────────────────────────────────────
-   Replaces the CRM nav inside the SAME .sidebar shell — the logo, the bottom
-   user block and the mobile drawer behaviour are inherited untouched, which is
-   what requirement 3's "keep the existing Helvaro sidebar" means in practice.
+   Replaces the CRM nav inside the SAME .sidebar shell, so the logo, the
+   account block and the mobile drawer behaviour are inherited untouched.
 
-   Recent conversations are rendered by client.js from real data; the six items
-   in the brief are seed examples, not hardcoded rows. */
-function sidebar() {
+   Recent conversations are rendered by client.js from real data — the items in
+   the design were sample content, not a fixed list. */
+function sidebar(t) {
+  const navItem = (id, ic, label, page) => `
+      <button class="nav-item" id="ai-nav-${id}"${page ? ` data-ai-page="${page}"` : ''}>
+        <span class="nav-icon">${icon(ic, 16)}</span>${label}
+      </button>`;
+
   return `
-  <nav class="sidebar-nav ai-sidebar" id="ai-sidebar">
+    <nav class="sidebar-nav ai-sidebar" id="ai-sidebar">
 
-    <button class="ai-sidebar__new" id="ai-new-convo">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Nieuw gesprek
-    </button>
-
-    <button class="nav-item" id="ai-nav-search" data-ai-page="search">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-      Zoeken
-    </button>
-    <button class="nav-item" id="ai-nav-recent" data-ai-page="recent">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>
-      Recent
-    </button>
-    <button class="nav-item" id="ai-nav-favorites" data-ai-page="favorites">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
-      Favorieten
-    </button>
-    <button class="nav-item" id="ai-nav-projects" data-ai-page="projects">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-      Projecten
-    </button>
-
-    <div class="nav-divider"></div>
-
-    <div class="ai-sidebar__section">Maken</div>
-    <button class="nav-item" id="ai-nav-images" data-ai-page="images">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
-      Beelden
-    </button>
-    <button class="nav-item" id="ai-nav-videos" data-ai-page="videos">
-      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><polygon points="22 7 16 12 22 17"/></svg></span>
-      Video's
-    </button>
-
-    <div class="nav-divider"></div>
-
-    <div class="ai-sidebar__section">Recent</div>
-    <div class="ai-sidebar__convos" id="ai-convo-list">
-      <!-- rendered by client.js; skeleton rows while loading -->
-    </div>
-
-    <div class="sidebar-bottom">
-      <button class="nav-item" id="ai-nav-settings">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-        Instellingen
+      <button class="ai-sidebar__new" id="ai-new-convo">
+        ${icon('plus', 14)}${t('sb.new')}
       </button>
-      <button class="nav-item" id="ai-nav-account">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-        Account
-      </button>
-    </div>
-  </nav>`;
+
+      ${navItem('search', 'search', t('sb.search'), 'search')}
+      ${navItem('recent', 'clock', t('sb.recent'), 'recent')}
+      ${navItem('favorites', 'star', t('sb.favorites'), 'favorites')}
+      ${navItem('projects', 'folder', t('sb.projects'), 'projects')}
+
+      <div class="nav-divider"></div>
+      <div class="ai-sidebar__section">${t('sb.tools')}</div>
+      ${navItem('images', 'image', t('sb.images'), 'images')}
+      ${navItem('videos', 'video', t('sb.videos'), 'videos')}
+
+      <div class="nav-divider"></div>
+      <div class="ai-sidebar__section">${t('sb.conversations')}</div>
+      <div class="ai-sidebar__convos" id="ai-convo-list"></div>
+      <button class="ai-sidebar__viewall" id="ai-view-all-convos">${t('sb.viewAllConvos')}</button>
+
+      <div class="ai-sidebar__tail">
+        ${navItem('settings', 'settings', t('sb.settings'), 'settings')}
+        <div class="ai-sidebar__badge">
+          <div class="ai-sidebar__badge-title">${icon('spark', 12)} ${t('ws.title')}</div>
+          <div class="ai-sidebar__badge-sub">${t('sb.poweredBy')}</div>
+        </div>
+      </div>
+    </nav>`;
 }
 
-/* ── 4/5/6. Landing screen ─────────────────────────────────────────────────
-   Mascot → question → subtext → input → context indicator → quick actions.
-   The input sits above the quick actions and carries the focus ring, which is
-   what makes it "the visual focus of the page" (requirement 4). */
-function landing() {
+/* ── 4. Landing screen ─────────────────────────────────────────────────────
+   Mascot → question → subtext → input → context → quick actions → activity.
+
+   The mascot is deliberately smaller than the mockup's: requirement 4 asked
+   for "subtle and relatively small" and requirement 11 for "not childish", and
+   at the mockup's scale it out-competed the input, which is supposed to be the
+   page's focus. Size lives in CSS so it is one number to revisit. */
+function landing(t) {
   return `
-  <div class="ai-landing" id="ai-landing">
-    <div class="ai-landing__inner">
+      <div class="ai-landing" id="ai-landing">
+        <div class="ai-landing__inner">
 
-      <img class="ai-mascot" id="ai-mascot" data-state="idle"
-           src="/ai/falcon-idle.webp" alt="" width="88" height="88" draggable="false">
+          <img class="ai-mascot" id="ai-mascot" data-state="idle"
+               src="/ai/falcon-idle.webp" alt="" width="72" height="72"
+               draggable="false" onerror="this.classList.add('ai-mascot--missing')">
 
-      <h1 class="ai-landing__title">Waar werken we aan?</h1>
-      <p class="ai-landing__sub">Vraag Helvaro alles over je leads, panden, gesprekken of marketing.</p>
+          <h1 class="ai-landing__title">${t('land.title')}</h1>
+          <p class="ai-landing__sub">${t('land.sub')}</p>
 
-      ${input()}
-
-      <div style="text-align:center">
-        <button class="ai-context" id="ai-context-btn" aria-expanded="false">
-          <span class="ai-context__dot" aria-hidden="true"></span>
-          Helvaro-context
-          <span style="color:var(--text-disabled)">Leads · Panden · Gesprekken · Analytics</span>
-        </button>
-      </div>
-
-      ${quickActions()}
-    </div>
-  </div>`;
+          ${input(t)}
+          ${context(t)}
+          ${quickActions(t)}
+          ${activity(t)}
+        </div>
+      </div>`;
 }
 
 /* The input is shared between the landing screen and the conversation view —
-   one component, two mount points, so behaviour cannot drift between them. */
-function input() {
+   one element, moved rather than duplicated, so behaviour cannot drift. */
+function input(t) {
   return `
-  <form class="ai-input" id="ai-input-form">
-    <textarea class="ai-input__field" id="ai-input-field" rows="1"
-              placeholder="Vraag Helvaro alles…" autocomplete="off"></textarea>
+      <form class="ai-input" id="ai-input-form">
+        <textarea class="ai-input__field" id="ai-input-field" rows="1"
+                  placeholder="${t('in.placeholder')}" autocomplete="off"
+                  aria-label="${t('in.placeholder')}"></textarea>
 
-    <div class="ai-input__attachments" id="ai-attachments"></div>
+        <div class="ai-input__attachments" id="ai-attachments"></div>
 
-    <div class="ai-input__bar">
-      <button type="button" class="ai-tool-btn" id="ai-btn-attach" title="Bestand toevoegen">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-        Bijlage
-      </button>
-      <button type="button" class="ai-tool-btn" id="ai-btn-property">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        Pand
-      </button>
-      <button type="button" class="ai-tool-btn" id="ai-btn-commands" title="Commando's">/</button>
+        <div class="ai-input__bar">
+          <button type="button" class="ai-tool-btn ai-tool-btn--icon" id="ai-btn-attach"
+                  title="${t('in.attach')}" aria-label="${t('in.attach')}">${icon('paperclip', 15)}</button>
+          <button type="button" class="ai-tool-btn" id="ai-btn-property">
+            ${icon('home', 14)}<span>${t('in.property')}</span>
+          </button>
+          <button type="button" class="ai-tool-btn" id="ai-btn-commands">
+            ${icon('slash', 14)}<span>${t('in.command')}</span>
+          </button>
 
-      <span class="ai-input__spacer"></span>
+          <span class="ai-input__spacer"></span>
 
-      <button type="button" class="ai-tool-btn" id="ai-model-btn" aria-haspopup="listbox">
-        Helvaro AI · Standaard
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
+          <button type="button" class="ai-tool-btn ai-model-btn" id="ai-model-btn" aria-haspopup="listbox">
+            ${icon('spark', 13)}<span id="ai-model-label">${t('ws.title')}</span>${icon('chevron', 12)}
+          </button>
 
-      <button type="submit" class="ai-send" id="ai-send" disabled aria-label="Versturen">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-      </button>
-    </div>
+          <button type="submit" class="ai-send" id="ai-send" disabled aria-label="${t('in.send')}">
+            ${icon('arrowUp', 16)}
+          </button>
+        </div>
 
-    <input type="file" id="ai-file-input" accept="image/*" multiple hidden>
-  </form>`;
+        <input type="file" id="ai-file-input" accept="image/*" multiple hidden>
+      </form>`;
 }
 
-/* ── 5. Quick actions ──────────────────────────────────────────────────────
-   Definitions live in ./quick-actions.js because both this markup and the
-   client's click handler need them, and the prompt each one sends is the
-   contract between them. */
-function quickActions() {
-  const group = (g) => `
-    <div class="ai-quick__group">
-      <div class="ai-quick__label">${g.label}</div>
-      <div class="ai-quick__actions">
-        ${g.actions.map((a) => `<button class="ai-quick__action" data-quick="${a.id}">${a.label}</button>`).join('')}
+/* ── 6. Helvaro context ────────────────────────────────────────────────────
+   Chips are rendered by client.js from the backend's own source list, so the
+   badge can never claim access the assistant does not actually have.
+
+   `Manage` came from the design, not the brief. It is wired as a panel that
+   toggles sources; a disabled source must cause the orchestrator to WITHHOLD
+   the matching tools, not merely hide a chip — otherwise the control is
+   decorative. See api/_ai/prompt.js contextSources(). */
+function context(t) {
+  return `
+      <div class="ai-context-row">
+        <span class="ai-context-row__label">${t('ctx.label')}</span>
+        <div class="ai-context-row__chips" id="ai-context-chips"></div>
+        <button class="ai-context-row__manage" id="ai-context-btn" aria-expanded="false">
+          ${t('ctx.manage')}
+        </button>
       </div>
-    </div>`;
-  return `<div class="ai-quick">${QUICK_ACTIONS.GROUPS.map(group).join('')}</div>`;
+      <div class="ai-context-panel" id="ai-context-panel" hidden>
+        <p class="ai-context-panel__note">${t('ctx.explain')}</p>
+        <div id="ai-context-toggles"></div>
+      </div>`;
 }
 
-/* ── 7. Conversation view ──────────────────────────────────────────────────
-   Hidden until the first message is sent, at which point the landing screen
-   is swapped for this and the input moves into the composer slot. */
+/* ── 5. Quick actions ─────────────────────────────────────────────────────── */
+function quickActions(t) {
+  const row = (a) => `
+          <button class="ai-quick__action" data-quick="${a.id}">
+            <span class="ai-quick__icon">${icon(a.icon, 16)}</span>
+            <span class="ai-quick__text">${t(a.labelKey)}</span>
+            <span class="ai-quick__chev">${icon('chevronR', 14)}</span>
+          </button>`;
+
+  const group = (g) => `
+        <div class="ai-quick__group">
+          <div class="ai-quick__label">${t(g.labelKey)}</div>
+          <div class="ai-quick__actions">${g.actions.map(row).join('')}</div>
+        </div>`;
+
+  return `
+      <div class="ai-section">
+        <div class="ai-section__head">
+          <h2 class="ai-section__title">${t('qa.title')}</h2>
+          <button class="ai-pill" id="ai-view-all-actions">${t('qa.viewAll')}</button>
+        </div>
+        <div class="ai-quick">${QA.GROUPS.map(group).join('')}</div>
+      </div>`;
+}
+
+/* ── Recent AI activity ────────────────────────────────────────────────────
+   Not in the brief — it came from the design, and it is the best idea there.
+   A landing screen with nothing on it gives an agent no reason to return; a
+   strip of what the AI has already produced does. Horizontally scrollable,
+   which is also what requirement 16 asks of this pattern on mobile.
+
+   Note the TEXT card type: listing copy is a stored, re-openable artifact,
+   not just chat output. That is a store.js concern, flagged in the docs. */
+function activity(t) {
+  return `
+      <div class="ai-section">
+        <div class="ai-section__head">
+          <h2 class="ai-section__title">${t('act.title')}</h2>
+          <button class="ai-pill" id="ai-view-all-activity">${t('act.viewAll')}</button>
+        </div>
+        <div class="ai-activity" id="ai-activity">
+          <div class="ai-activity__track" id="ai-activity-track"></div>
+          <button class="ai-activity__nav" id="ai-activity-next" aria-label="${t('act.viewAll')}">
+            ${icon('chevronR', 16)}
+          </button>
+        </div>
+      </div>`;
+}
+
+/* ── 7. Conversation view ─────────────────────────────────────────────────── */
 function thread() {
   return `
-  <div class="ai-thread" id="ai-thread" hidden>
-    <div class="ai-thread__inner" id="ai-thread-inner"></div>
-  </div>
-  <div class="ai-composer" id="ai-composer" hidden>
-    <div class="ai-thread__inner"><!-- input is moved here on first send --></div>
-  </div>`;
+      <div class="ai-thread" id="ai-thread" hidden>
+        <div class="ai-thread__inner" id="ai-thread-inner"></div>
+      </div>
+      <div class="ai-composer" id="ai-composer" hidden>
+        <div class="ai-composer__inner"><!-- input is moved here on first send --></div>
+      </div>`;
 }
 
-/* ── 9/10/12. Sub-workspaces ───────────────────────────────────────────────
-   Each is its own panel inside the AI workspace, switched by the sidebar.
-   Controls are laid out here; their option lists are populated from
-   api/_ai/media.js via the ai-media/styles call, so the style list has ONE
-   source of truth rather than a copy in the markup. */
-function subPages() {
+/* ── 9/10/12. Sub-workspaces ──────────────────────────────────────────────
+   Controls are populated from api/_ai/media.js via the ai-media/styles call so
+   the style list has ONE source of truth rather than a copy in the markup.
+
+   Videos ships as a visible-but-empty panel with an explicit "coming soon",
+   per the deferral decision. A hidden entry would be less honest to a paying
+   customer than a stated one. */
+function subPages(t) {
+  const panel = (id, title, body) => `
+      <div class="ai-panel" id="ai-panel-${id}" hidden>
+        <div class="ai-panel__head"><h2 class="ai-section__title">${title}</h2></div>
+        ${body}
+      </div>`;
+
+  return [
+    panel('images', t('pn.images'),
+      `<div class="ai-panel__controls" id="ai-images-controls"></div>
+       <div class="ai-gallery" id="ai-images-gallery"></div>`),
+    panel('videos', t('pn.videos'),
+      `<div class="ai-empty" id="ai-videos-empty">${t('pn.soon')}</div>
+       <div class="ai-gallery ai-gallery--video" id="ai-videos-gallery"></div>`),
+    panel('projects', t('pn.projects'),
+      `<div id="ai-projects-list"></div>`),
+  ].join('');
+}
+
+/** The whole workspace, mounted as a sibling of the CRM's .page sections. */
+function workspace(t) {
   return `
-  <div class="ai-panel" id="ai-panel-images" hidden>
-    <div class="ai-panel__controls" id="ai-images-controls"></div>
-    <div class="ai-gallery" id="ai-images-gallery"></div>
-  </div>
-
-  <div class="ai-panel" id="ai-panel-videos" hidden>
-    <div class="ai-panel__controls" id="ai-videos-controls"></div>
-    <div class="ai-gallery ai-gallery--video" id="ai-videos-gallery"></div>
-  </div>
-
-  <div class="ai-panel" id="ai-panel-projects" hidden>
-    <div id="ai-projects-list"></div>
-  </div>`;
+    <div class="ai-workspace" id="ai-workspace">
+      ${landing(t)}
+      ${thread()}
+      ${subPages(t)}
+    </div>`;
 }
 
-/* The whole workspace, mounted as a sibling of the CRM's .page sections. */
-function workspace() {
-  return `
-  <div class="ai-workspace" id="ai-workspace">
-    ${landing()}
-    ${thread()}
-    ${subPages()}
-  </div>`;
-}
-
-module.exports = { switcher, sidebar, workspace, landing, thread, input, quickActions, subPages };
+module.exports = { switcher, sidebar, workspace, landing, thread, input, context, quickActions, activity, subPages };

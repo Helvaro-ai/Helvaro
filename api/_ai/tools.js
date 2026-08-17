@@ -42,6 +42,7 @@
  */
 
 const schema = require('./schema');
+const fixtures = require('./fixtures');
 
 const NOT_WIRED = 'not_wired';
 
@@ -68,8 +69,12 @@ const readTools = [
       },
     },
     // WIRE TO: api/leads.js Airtable read, filtered by ctx.projectCode.
-    async run(_args, _ctx) {
-      return stub('8 leads gevonden.', { leads: [] }, []);
+    async run(args, _ctx) {
+      if (fixtures.isEnabled()) {
+        const leads = fixtures.searchLeads({ status: args.status, limit: args.limit || 10 });
+        return stub(`${leads.length} leads gevonden.`, { leads }, leads.map(fixtures.leadCard));
+      }
+      return stub('Geen leads gevonden.', { leads: [] }, []);
     },
   },
 
@@ -92,7 +97,15 @@ const readTools = [
     // WIRE TO: Airtable filterByFormula built server-side from these fields.
     // Never interpolate `query` into a formula unescaped — api/_credits.js's
     // escapeFormula() is the existing helper for this.
-    async run(_args, _ctx) {
+    async run(args, _ctx) {
+      if (fixtures.isEnabled()) {
+        const leads = fixtures.searchLeads(args);
+        return stub(
+          leads.length ? `${leads.length} leads gevonden.` : 'Geen leads passen bij deze filters.',
+          { leads },
+          leads.map(fixtures.leadCard),
+        );
+      }
       return stub('Geen resultaten (nog niet aangesloten).', { leads: [] }, []);
     },
   },
@@ -145,7 +158,14 @@ const readTools = [
         limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
       },
     },
-    async run(_args, _ctx) { return stub('Geen gesprekken gevonden.', { conversations: [] }); },
+    async run(_args, _ctx) {
+      if (fixtures.isEnabled()) {
+        return stub('3 gesprekken vragen opvolging.',
+          { conversations: fixtures.CONVERSATIONS },
+          fixtures.searchLeads({ limit: 3 }).map(fixtures.leadCard));
+      }
+      return stub('Geen gesprekken gevonden.', { conversations: [] });
+    },
   },
 
   {
@@ -154,7 +174,13 @@ const readTools = [
     description: 'Haal de pipeline op: aantal leads en waarde per fase.',
     parameters: { type: 'object', properties: {} },
     // WIRE TO: the same aggregation the CRM pipeline page already renders.
-    async run(_args, _ctx) { return stub('Pipeline niet beschikbaar.', { stages: [] }); },
+    async run(_args, _ctx) {
+      if (fixtures.isEnabled()) {
+        return stub('Pipeline opgehaald.', { stages: fixtures.PIPELINE },
+          [schema.statGroup({ title: 'Pipeline', stats: fixtures.PIPELINE })]);
+      }
+      return stub('Pipeline niet beschikbaar.', { stages: [] });
+    },
   },
 
   {
@@ -167,7 +193,13 @@ const readTools = [
         period: { type: 'string', enum: ['today', '7d', '30d', '90d'], default: '30d' },
       },
     },
-    async run(_args, _ctx) { return stub('Cijfers niet beschikbaar.', { metrics: {} }); },
+    async run(_args, _ctx) {
+      if (fixtures.isEnabled()) {
+        return stub('Cijfers opgehaald.', { metrics: fixtures.ANALYTICS },
+          [schema.statGroup({ title: 'Prestaties (30 dagen)', stats: fixtures.ANALYTICS })]);
+      }
+      return stub('Cijfers niet beschikbaar.', { metrics: {} });
+    },
   },
 
   {

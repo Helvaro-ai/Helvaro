@@ -46,6 +46,8 @@ const MODELS = Object.freeze({
     standard: 'gpt-4o',
     precise:  'gpt-4o',
   }),
+  // Scripted local provider — the ids are labels, nothing resolves them.
+  demo: Object.freeze({ fast: 'demo', standard: 'demo', precise: 'demo' }),
 });
 
 // What the model selector in the UI offers. Labels are deliberately
@@ -105,6 +107,7 @@ function publicModelLabel(tier) {
 function isConfigured() {
   if (PROVIDER === 'claude') return Boolean(process.env.ANTHROPIC_API_KEY);
   if (PROVIDER === 'openai') return Boolean(process.env.OPENAI_API_KEY);
+  if (PROVIDER === 'demo')   return true; // scripted, offline, needs no key
   return false;
 }
 

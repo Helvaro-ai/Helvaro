@@ -33,6 +33,8 @@
  * cron). A synchronous video call would time out and still be billed.
  */
 
+const fixtures = require('./fixtures');
+
 const STYLE_KEYS = Object.freeze([
   'luxury', 'modern', 'contemporary', 'scandinavian',
   'minimal', 'classic', 'warm', 'architectural',
@@ -60,6 +62,30 @@ async function generateImage(_args, _ctx) {
 
 /** Existing generated images for the gallery. WIRE TO: _images.js property-list. */
 async function listImages(_ctx, _opts = {}) { return []; }
+
+/*
+ * ── Recent activity ─────────────────────────────────────────────────────────
+ * Feeds the landing screen's activity strip. Came from the design rather than
+ * the brief, and it earns its place: a landing screen with nothing on it gives
+ * an agent no reason to come back, while a strip of what the AI has already
+ * produced does.
+ *
+ * NOTE the third kind. The design showed an IMAGE, a VIDEO and a TEXT card,
+ * which means listing copy is a stored, re-openable ARTIFACT — not just prose
+ * that scrolled past in a chat. That is a store.js concern: it needs an
+ * artifacts table, because text produced in a conversation currently has
+ * nowhere to live except that conversation.
+ *
+ * Returns a merged, reverse-chronological list:
+ *   { id, kind:'image'|'video'|'text', title, subtitle, thumbUrl?, excerpt?,
+ *     duration?, propertyId?, createdAt }
+ */
+async function listActivity(_ctx, opts = {}) {
+  // WIRE TO: images from _images.js, videos from this module, text artifacts
+  // from store.js. Merge, sort by createdAt desc, cap at `limit`.
+  if (fixtures.isEnabled()) return fixtures.ACTIVITY.slice(0, opts.limit || 12);
+  return [];
+}
 
 // ── Video ────────────────────────────────────────────────────────────────────
 
@@ -100,7 +126,7 @@ async function saveToProperty(_jobId, _propertyId, _ctx) {
 
 module.exports = {
   STYLE_KEYS, IMAGE_ASPECTS, VIDEO_FORMATS, VIDEO_DURATIONS, JOB_STATES,
-  generateImage, listImages,
+  generateImage, listImages, listActivity,
   generateVideo, listVideos,
   getJob, saveToProperty,
 };

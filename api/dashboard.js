@@ -5,6 +5,19 @@
 // conversation actually supports — no separately hand-maintained list here.
 const _lang = require('./_lang');
 
+// ── Helvaro AI workspace ────────────────────────────────────────────────────
+// The AI workspace's CSS, markup and client script live in api/_ai/ui/* rather
+// than inline below. This file is a single ~19,000-line template literal where
+// every backtick and ${...} must be escaped (see the note at the inline-script
+// boundary further down); several thousand more lines of AI CSS and JS in here
+// would be hostile to edit and hazardous to review. Those modules return plain
+// strings and splice in at five points, marked "AI WORKSPACE" below.
+//
+// ai.* is bound to ONE language per request, resolved from the user's setting
+// through the same registry the WhatsApp AI uses — no client-side translation
+// step and no flash of untranslated content.
+const _aiUI = require('./_ai/ui');
+
 module.exports = async function handler(req, res) {
   // Native/English names only — never leak internal registry fields
   // (formality, directive builders, etc) into client-side HTML/JS.
@@ -12,6 +25,11 @@ module.exports = async function handler(req, res) {
   // "</script>" can't break out of the inline <script> block below — same
   // defensive intent as api/form-page.js's escJs() neutralizing </script>.
   const AP_LANGUAGES_JSON = JSON.stringify(_lang.listForPicker()).replace(/</g, '\\u003c');
+
+  // Dashboard UI language. DASHBOARD_LANG lets an operator force one; otherwise
+  // the registry default applies until a per-user preference exists to read.
+  const AI_LANG = _lang.normalizeLanguageCode(process.env.DASHBOARD_LANG || _lang.DEFAULT_CODE);
+  const ai = _aiUI.forLang(AI_LANG);
 
   // Support contact for the help widget. The WhatsApp route is opt-in: no
   // personal number is ever hardcoded here, so the button simply doesn't
@@ -7269,6 +7287,9 @@ tr:hover .td-arrow { color: var(--cyan); }
   }
   .hv-help-launcher { right: 16px; bottom: 16px; }
 }
+
+/* ═══ AI WORKSPACE (api/_ai/ui/styles.js + tokens.js) ═══ */
+${ai.css}
 </style>
     <!-- jspdf (117 KB gecomprimeerd) en qrcode (13 KB) stonden hier als gewone
          script-tags en blokkeerden dus elke pagina-opbouw, terwijl ze alleen
@@ -7558,6 +7579,11 @@ tr:hover .td-arrow { color: var(--cyan); }
         Founder
       </button>
     </nav>
+
+    <!-- AI WORKSPACE: the AI sidebar. Same .sidebar shell, different contents;
+         .sidebar-bottom below (credits, account, logout) is SHARED. -->
+${ai.sidebar}
+
     <div class="sidebar-bottom">
       <!-- Credit usage widget. Hidden until loadCreditUsage() confirms the
            credit system is active for this client — inert (display:none)
@@ -7594,6 +7620,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 
     <!-- Topbar -->
     <header class="topbar">
+      <!-- AI WORKSPACE: CRM | AI switcher (api/_ai/ui/markup.js) -->
+${ai.switcher}
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
@@ -9831,6 +9859,9 @@ tr:hover .td-arrow { color: var(--cyan); }
 
       </div>
     </main>
+
+    <!-- AI WORKSPACE: the workspace itself (api/_ai/ui/markup.js) -->
+${ai.workspace}
 
     <!-- Persona picker (Frade / Teljo). shown right after login -->
     <div id="persona-overlay">
@@ -19185,6 +19216,9 @@ function loadVendorsWhenIdle() {
 
 if (document.readyState === 'complete') loadVendorsWhenIdle();
 else window.addEventListener('load', loadVendorsWhenIdle);
+
+/* ═══ AI WORKSPACE (api/_ai/ui/client.js) ═══ */
+${ai.js}
 </script>
 </body>
 </html>`;
