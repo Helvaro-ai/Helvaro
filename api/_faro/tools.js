@@ -12,11 +12,26 @@
  * ── The one distinction that shapes this whole file ──────────────────────────
  * Tools are split into READ and ACT.
  *
- *   kind: 'read'  — safe, idempotent, executed immediately by the orchestrator.
- *   kind: 'act'   — changes something, or reaches outside Helvaro. NEVER
- *                   executed on the model's say-so. Returns a *proposal*; the
- *                   user confirms it in the UI; only then does api/_faro/actions.js
- *                   execute it.
+ *   kind: 'read'   — safe, idempotent, executed immediately.
+ *   kind: 'create' — makes an ASSET FOR THE USER (an image, a draft). Executed
+ *                    immediately, like read. It costs credits, but the credit
+ *                    system is the guard for cost; a confirm dialog is not.
+ *   kind: 'act'    — reaches OUTSIDE Helvaro, or changes a customer-facing
+ *                    record. NEVER executed on the model's say-so. Returns a
+ *                    *proposal*; the user confirms in the UI; only then does
+ *                    api/_faro/actions.js execute it.
+ *
+ * ── Why 'create' is not gated ────────────────────────────────────────────────
+ * Generation moved into the chat, so "make this living room modern" should
+ * produce an image the way asking Claude or ChatGPT for one does — not pop a
+ * confirmation first. Nothing leaves the building when an image is generated:
+ * no customer is messaged, no calendar is written, nothing is published. The
+ * cost is real, and it is handled where cost belongs — api/_credits.js blocks
+ * the call before a paid API is touched.
+ *
+ * The line is therefore "does this have a consequence outside Helvaro", not
+ * "does this cost money". Sending a WhatsApp message to a lead, booking a
+ * calendar slot and creating a campaign are gated. Drawing a picture is not.
  *
  * That split is requirement 8's "ask for confirmation before executing external
  * actions", made structural rather than a prompt instruction. A prompt can be
@@ -43,6 +58,8 @@
 
 const schema = require('./schema');
 const fixtures = require('./fixtures');
+const images = require('../_images');
+const credits = require('../_credits');
 
 const NOT_WIRED = 'not_wired';
 
@@ -217,6 +234,9 @@ const readTools = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ACT TOOLS — these build a PROPOSAL. They never execute.
+// Exactly four, and the test for membership is "does this have a consequence
+// outside Helvaro": a message reaches a customer, a calendar slot is booked, a
+// campaign goes out. Drafting and generating are 'create' and run immediately.
 // The returned confirmation component is what the user approves in the UI;
 // api/_faro/actions.js is the only module that can carry it out.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,7 +348,7 @@ const actTools = [
 
   {
     name: 'write_listing',
-    kind: 'act',
+    kind: 'create',
     description: 'Schrijf de verkooptekst voor een pand. Levert een concept op dat de gebruiker kan bewerken.',
     parameters: {
       type: 'object',
@@ -347,36 +367,87 @@ const actTools = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MEDIA TOOLS — image generation already exists in api/_images.js; video does
-// not exist yet anywhere in this repo. Both are metered and both are slow, so
-// both return a JOB, never a finished asset. See ./media.js.
+// MEDIA TOOLS
+// Images are wired and run inside the turn — an image edit finishes well within
+// the 60s function budget, so the user gets the picture in the reply rather
+// than a placeholder that resolves later.
+// Video is not wired: no provider is chosen, and nothing useful finishes in 60s,
+// so when it lands it will be a polled job (see ./media.js).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const mediaTools = [
   {
     name: 'generate_property_image',
-    kind: 'act',
-    description: 'Genereer een AI-visualisatie van een pand in een gekozen stijl.',
+    kind: 'create',
+    description: 'Genereer een AI-visualisatie van een pand op basis van de foto die de gebruiker heeft meegestuurd. Gebruik dit zodra iemand een foto stuurt en vraagt om een restyling, renovatie of visualisatie.',
     parameters: {
       type: 'object',
       properties: {
-        propertyId: { type: 'string' },
-        sourceImageId: { type: 'string', description: 'Bestaande foto om te transformeren' },
-        prompt: { type: 'string' },
-        style:  { type: 'string', description: 'Stijlsleutel uit api/_images.js PROPERTY_STYLES' },
-        aspectRatio: { type: 'string', enum: ['1:1', '4:3', '3:2', '16:9'], default: '4:3' },
+        style:  { type: 'string', description: "Stijlsleutel, bv. 'modern' of 'luxury'. Verplicht." },
+        prompt: { type: 'string', description: 'Wat de gebruiker precies wil zien.' },
+        roomType:        { type: 'string', description: 'Leeg laten = automatisch bepalen.' },
+        renovationDepth: { type: 'string', description: "'light' of 'full'." },
+        furniture:       { type: 'string' },
+        wallFinish:      { type: 'string' },
+        wallColor:       { type: 'string' },
+        floor:           { type: 'string' },
+        lighting:        { type: 'string' },
       },
-      required: ['prompt'],
+      required: ['style'],
     },
-    // WIRE TO: api/_images.js — do NOT reimplement. It already handles the
-    // OpenAI image-edit call, Vercel Blob storage under property/${projectCode}/,
-    // credit metering and the AI-disclaimer label.
-    async run(_args, _ctx) { return stub('Beeldgeneratie nog niet aangesloten.', { jobId: null }); },
+    // Calls the SAME api/_images.js generateForClient() the CRM route calls —
+    // one implementation of the guard chain, two callers. The photo comes from
+    // the turn's attachments, never from the model: the model chooses the
+    // STYLE, the user supplies the picture.
+    async run(args, ctx) {
+      const photo = (ctx.attachments || [])[0];
+      if (!photo) {
+        return stub('Geen foto meegestuurd. Vraag de gebruiker om een pandfoto toe te voegen.', { needsPhoto: true });
+      }
+      try {
+        const record = await images.generateForClient(ctx.projectCode, {
+          dataUrl: `data:${photo.mediaType};base64,${photo.data}`,
+          style: args.style,
+          customPrompt: args.prompt || '',
+          roomType: args.roomType || '',
+          renovationDepth: args.renovationDepth || '',
+          furniture: args.furniture || '',
+          wallFinish: args.wallFinish || '',
+          wallColor: args.wallColor || '',
+          floor: args.floor || '',
+          lighting: args.lighting || '',
+        }, { credits });
+        return {
+          summary: 'Beeld gegenereerd.',
+          data: { image: record },
+          components: [schema.mediaJob({
+            jobId: record.id, kind: 'image', state: 'ready',
+            resultUrl: record.url, meta: { sourceUrl: record.sourceUrl || null },
+          })],
+        };
+      } catch (err) {
+        // Surface the failure BOTH ways. The summary goes back to the model so
+        // it can explain in its own words; the error card goes to the screen so
+        // the user is never left with a half-sentence and nothing else. Out of
+        // credits and missing-key are the two that will actually happen, and
+        // both are recoverable, so the card offers a retry.
+        const message = err.message || 'Beeldgeneratie mislukt.';
+        return {
+          summary: message,
+          data: { error: true },
+          components: [schema.errorCard({
+            message,
+            retryable: err.code !== 'credit_limit_reached',
+            code: err.code || 'image_failed',
+          })],
+        };
+      }
+    },
   },
 
   {
     name: 'generate_property_video',
-    kind: 'act',
+    kind: 'create',
     description: 'Genereer een korte marketingvideo voor een pand.',
     parameters: {
       type: 'object',

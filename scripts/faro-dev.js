@@ -171,10 +171,13 @@ server.listen(PORT, '127.0.0.1', () => {
   language   ${LOCAL_AUTH.lang}
   tenant     ${LOCAL_AUTH.projectCode}  (fake — localhost only)
 
-  Click "AI" in the top centre. Try:
+  Open Faro from the topbar pill, or Ctrl/⌘-J. Try:
     "Wie zijn mijn beste leads?"      → streams + lead cards
     "Stuur ze een opvolgbericht"      → confirmation gate
     "Analyseer mijn pipeline"         → stat card
+    attach a photo + "maak dit modern" → generates in the chat
+                                          (needs OPENAI_API_KEY; without it
+                                           you get the honest error card)
   ──────────────────────────────────────────────
 `);
 });

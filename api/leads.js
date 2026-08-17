@@ -1459,146 +1459,27 @@ module.exports = async function handler(req, res) {
     }
 
     if (body.mode === 'property-generate') {
+      // The whole guard chain — eight option validations, upload parsing, the
+      // isConfigured() fail-soft, the credit block, generation, storage,
+      // persistence and usage recording — lives in api/_images.js's
+      // generateForClient(). It moved there when Faro's chat became a second
+      // caller: two copies of a money path drift, and the copy that drifts is
+      // the one that spends the client's money. This route now only does what
+      // a route should — resolve the tenant, call it, map errors to status.
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
-
-      const style = String(body.style || '').trim();
-      if (!images.isValidStyleKey(style)) {
-        return res.status(400).json({ error: `Ongeldige stijl. Kies uit: ${images.PROPERTY_STYLES.map((s) => s.key).join(', ')}` });
-      }
-      // Optional — '' means "automatisch" (AI infers the room from the
-      // photo, the pre-existing behaviour). Only an unrecognized non-empty
-      // key is rejected. See api/_images.js's ROOM_TYPES header comment.
-      const roomType = body.roomType !== undefined ? String(body.roomType).trim() : '';
-      if (!images.isValidRoomTypeKey(roomType)) {
-        return res.status(400).json({ error: `Ongeldig kamertype. Kies uit: ${images.ROOM_TYPES.map((r) => r.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-
-      // ── Visual-controls axes (all optional, same "empty = automatisch"
-      // contract as roomType above) — see api/_images.js's header comments
-      // on FURNITURE_LEVELS / WALL_FINISHES / WALL_COLORS / FLOOR_TYPES /
-      // LIGHTING_MOODS for what each does to the composed prompt. ────────
-      const furniture = body.furniture !== undefined ? String(body.furniture).trim() : '';
-      if (!images.isValidFurnitureKey(furniture)) {
-        return res.status(400).json({ error: `Ongeldig meubelniveau. Kies uit: ${images.FURNITURE_LEVELS.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      const wallFinish = body.wallFinish !== undefined ? String(body.wallFinish).trim() : '';
-      if (!images.isValidWallFinishKey(wallFinish)) {
-        return res.status(400).json({ error: `Ongeldige muurafwerking. Kies uit: ${images.WALL_FINISHES.map((w) => w.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      // wallColor/wallColorNote only mean anything when wallFinish is
-      // 'painted' — nulled out otherwise so a stray value from a stale UI
-      // state never persists a colour that was never actually applied.
-      let wallColor = body.wallColor !== undefined ? String(body.wallColor).trim() : '';
-      if (!images.isValidWallColorKey(wallColor)) {
-        return res.status(400).json({ error: `Ongeldige muurkleur. Kies uit: ${images.WALL_COLORS.map((c) => c.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      let wallColorNote = body.wallColorNote !== undefined ? String(body.wallColorNote).trim().slice(0, 80) : '';
-      if (wallFinish !== 'painted') { wallColor = ''; wallColorNote = ''; }
-
-      const floor = body.floor !== undefined ? String(body.floor).trim() : '';
-      if (!images.isValidFloorKey(floor)) {
-        return res.status(400).json({ error: `Ongeldige vloer. Kies uit: ${images.FLOOR_TYPES.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      const lighting = body.lighting !== undefined ? String(body.lighting).trim() : '';
-      if (!images.isValidLightingKey(lighting)) {
-        return res.status(400).json({ error: `Ongeldige lichtsfeer. Kies uit: ${images.LIGHTING_MOODS.map((l) => l.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      // NOT optional (see api/_images.js's RENOVATION_DEPTHS header) — a
-      // caller that sends nothing gets the honest 'light' default here,
-      // BEFORE validation, so this never 400s for an omitted field; only an
-      // explicitly-sent, unrecognized value is rejected.
-      const renovationDepth = body.renovationDepth ? String(body.renovationDepth).trim() : images.DEFAULT_RENOVATION_DEPTH;
-      if (!images.isValidRenovationDepthKey(renovationDepth)) {
-        return res.status(400).json({ error: `Ongeldige renovatiediepte. Kies uit: ${images.RENOVATION_DEPTHS.map((r) => r.key).join(', ')}` });
-      }
-
-      const customPrompt = body.customPrompt !== undefined ? String(body.customPrompt).trim().slice(0, 500) : '';
-
-      // Validate the upload BEFORE touching credits or OpenAI — never trust
-      // client-supplied filename/MIME, only the actual base64 payload (see
-      // api/_images.js's parseImageDataUrl). Cap is 3MB decoded, NOT the
-      // VPS reference's 10MB — see parseImageDataUrl's/MAX_UPLOAD_BYTES's
-      // own comment in api/_images.js for why: this transport is a base64
-      // JSON body against Vercel's ~4.5MB platform request-size limit, not
-      // vps's multipart stream. The dashboard downscales client-side so
-      // this is invisible to the user in practice.
-      let uploaded;
       try {
-        uploaded = images.parseImageDataUrl(body.dataUrl);
-      } catch (err) {
-        if (err instanceof images.ImageFeatureError) return res.status(err.status).json({ error: err.message });
-        return res.status(400).json({ error: 'Ongeldige afbeelding' });
-      }
-
-      // Fail soft, clearly, BEFORE any credit check or paid call — a missing
-      // OPENAI_API_KEY/BLOB_READ_WRITE_TOKEN must never surface as a 500 or
-      // break the dashboard (task requirement).
-      if (!images.isConfigured()) {
-        return res.status(503).json({ error: images.missingConfigMessage() });
-      }
-
-      // Discretionary AI (marketing tool, not the lead-conversation promise
-      // whatsapp.js protects) — BLOCK when over the credit limit, BEFORE the
-      // OpenAI call is made. Fails open on any credit-infra problem — see
-      // _credits.js's header. Same 402 shape as suggest-replies above.
-      const creditCheck = await credits.checkCredits(projectCode, credits.FEATURES.IMAGE_GENERATION);
-      if (!creditCheck.allowed) {
-        return res.status(402).json({ error: 'credit_limit_reached', message: creditCheck.message });
-      }
-
-      try {
-        // The paid OpenAI edit and the (cheap, best-effort) upload of the
-        // ORIGINAL photo run concurrently — both only need the already-
-        // validated upload buffer, neither depends on the other's result.
-        // The source upload NEVER fails the request: it only powers the
-        // dashboard's before/after comparison slider/PDF from history, and
-        // is wrapped so a Blob hiccup can't cost the client a generation
-        // they already paid credits for. Uploaded under the SAME tenant-
-        // scoped prefix as the result (see uploadPropertyImageToBlob).
-        const [generated, sourceUrl] = await Promise.all([
-          images.generatePropertyImage({
-            imageBuffer: uploaded.buffer,
-            imageMimeType: uploaded.mimeType,
-            style,
-            customPrompt,
-            roomType,
-            furniture,
-            wallFinish,
-            wallColor,
-            wallColorNote,
-            floor,
-            lighting,
-            renovationDepth,
-          }),
-          images.uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
-            console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
-            return '';
-          }),
-        ]);
-        const blobUrl = await images.uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
-        if (!blobUrl) return res.status(502).json({ error: 'AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.' });
-
-        // buildImageRecord() is the ONLY place aiLabel is set — see
-        // api/_images.js's file header. Persisted (best-effort, fail-soft)
-        // AND returned to the caller carry the exact same object.
-        const record = images.buildImageRecord({
-          url: blobUrl, style, customPrompt, roomType, sourceUrl,
-          furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
-        });
-        images.appendPropertyImage(projectCode, record).catch(() => {});
-
-        // Weight stays a FLAT 50 regardless of how many of the axes above
-        // were touched — one generation, one charge, unconditionally (task
-        // non-negotiable #2). Only `meta` grows for reporting/debugging;
-        // credits.WEIGHTS lookup itself is untouched.
-        credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
-          credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
-          meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth },
-        }).catch(() => {});
-
+        const record = await images.generateForClient(projectCode, body, { credits });
         return res.status(200).json({ ok: true, image: record });
       } catch (err) {
-        if (err instanceof images.ImageFeatureError) return res.status(err.status).json({ error: err.message });
+        if (err instanceof images.ImageFeatureError) {
+          // The credit ceiling keeps its distinct shape — the dashboard
+          // branches on error === 'credit_limit_reached' to show the upgrade
+          // copy rather than a generic failure toast.
+          if (err.code === 'credit_limit_reached') {
+            return res.status(402).json({ error: 'credit_limit_reached', message: err.message });
+          }
+          return res.status(err.status || 500).json({ error: err.message });
+        }
         console.error('[property-generate] error:', err.message);
         return res.status(500).json({ error: 'Serverfout bij AI-beeldgeneratie. Probeer later opnieuw.' });
       }

@@ -47,23 +47,57 @@ What replaced it:
 `scripts/faro-check.js` asserts Faro markup never appears inside the CRM sidebar
 nav — that regression is easy to introduce and invisible in a diff review.
 
+## Generation happens in the chat
+
+Faro generates the way a general-purpose assistant does: attach a property
+photo, say what you want, and the picture comes back in the reply. **Beelden**
+and **Video's** are galleries — the library you open to look at what you already
+made, not forms you fill in.
+
+The eight-axis control form that briefly lived in the Beelden panel is gone. It
+stood between the user and a sentence they could just type, and the model can
+set every one of those axes from "maak deze woonkamer modern en luxueus, warme
+verlichting, houten vloer". What it cannot invent is the photo — that comes from
+the turn's attachments, on `ctx`, never from the model's arguments. A model that
+could name its own image source could reference someone else's upload.
+
+### One implementation of the money path
+
+`api/leads.js`'s `property-generate` block moved into
+`api/_images.js` as `generateForClient()`. Both the CRM route and Faro's tool
+call it, so the guard chain exists once: eight option validations, upload
+parsing capped at 3MB decoded, an `isConfigured()` fail-soft, a credit check
+that blocks before the paid call, generation, storage, persistence and usage
+recording. `api/leads.js` lost 136 lines and now only resolves the tenant, calls
+it, and maps errors to status codes.
+
+### A third tool kind
+
+Tools are `read`, `create` or `act`:
+
+| kind | runs | examples |
+|---|---|---|
+| `read` | immediately | `search_leads`, `get_pipeline` |
+| `create` | immediately | `generate_property_image`, `write_listing` |
+| `act` | **only after the user confirms** | `create_followup`, `schedule_followup`, `create_campaign`, `add_leads_to_campaign` |
+
+`create` exists because gating generation behind a confirmation dialog would
+make chat-driven image generation miserable, and the gate was never about cost —
+`api/_credits.js` blocks before a paid API is touched. The line is **"does this
+have a consequence outside Helvaro"**: a message reaching a customer, a calendar
+slot being booked, a campaign going out. Drawing a picture does not.
+
+`scripts/faro-check.js` pins the `act` set by name, so adding a tool to the
+security boundary has to be a deliberate, reviewed edit rather than a typo in a
+`kind` field.
+
 ## What moved off the CRM
 
 `AI-beeld` is gone from the sidebar — image generation is Faro's job, and the
 sidebar was the reason Faro is an overlay in the first place. Nav: 12 → 11.
 
-Faro's Beelden panel drives the **same** `api/leads.js` `property-*` modes the
-old page drove, with the same eight option axes (style, room, renovation depth,
-furniture, walls, wall colour, floor, lighting), rendered generically from the
-`property-styles` response. Add a style to `PROPERTY_STYLES` in
-`api/_images.js` and it appears in Faro with no UI change.
-
-The alternative — a `faro-media` op calling `api/_images.js` directly — was
-rejected. It would have to re-implement the guard chain in `api/leads.js`:
-eight option validations, upload parsing with a 3MB decoded cap, an
-`isConfigured()` fail-soft, a credit check before the paid call, and the
-concurrent generate + source upload. Two copies of that will drift, and the one
-that drifts is the one that spends money.
+Generation itself moved into the chat (above); the Beelden gallery lists through
+`property-list`, the same endpoint the old page used.
 
 **The page itself is kept, and is still reachable** via Faro's `Vergelijking &
 PDF` link, because two things were not ported: the before/after comparison

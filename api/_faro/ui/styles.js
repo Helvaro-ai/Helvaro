@@ -505,6 +505,13 @@ function css() {
 }
 .faro-msg--ai { margin: 0 0 26px; font-size: 14.5px; line-height: 1.65; color: var(--text); }
 .faro-msg__text { white-space: pre-wrap; }
+.faro-msg__thumb {
+  display: block;
+  max-width: 220px; max-height: 160px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.faro-msg__thumb:last-child { margin-bottom: 0; }
 
 .faro-status {
   display: inline-flex; align-items: center; gap: 8px;
@@ -576,7 +583,10 @@ function css() {
 /* The shell sets display on .faro-dialog*, but these sub-pages are toggled by
    the hidden attribute — which any display rule would silently defeat. */
 .faro-panel[hidden] { display: none; }
-.faro-panel__head { max-width: 980px; margin: 0 auto 16px; }
+.faro-panel__head {
+  max-width: 980px; margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
 .faro-panel__controls, .faro-gallery, #faro-projects-list { max-width: 980px; margin: 0 auto; }
 .faro-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .faro-gallery--video { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
@@ -609,74 +619,12 @@ function css() {
 .faro-menu__item.active .faro-menu__label { color: var(--sand-on-surface); }
 .faro-menu__hint { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
 
-/* ═══ Forms — the Images/Videos workspace controls ════════════════════════ */
-.faro-form {
-  border: 1px solid var(--faro-hairline); border-radius: 18px;
-  background: var(--faro-surface); padding: 18px; margin-bottom: 20px;
-}
-.faro-form__row { margin-bottom: 14px; }
-.faro-form__label {
-  display: block; font-size: 12px; font-weight: 600;
-  color: var(--text-muted); margin-bottom: 6px;
-}
-.faro-form__select, .faro-form__area {
-  width: 100%; padding: 9px 11px;
-  background: var(--faro-input-bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: 12px;
-  font: inherit; font-size: 13.5px; outline: 0;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-.faro-form__area { resize: vertical; line-height: 1.5; }
-.faro-form__select:focus, .faro-form__area:focus {
-  border-color: var(--champagne); box-shadow: 0 0 0 3px var(--faro-input-ring);
-}
-
-/* Drag-and-drop target for property photos (requirement 15). */
-.faro-form__drop {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 22px; margin-bottom: 14px;
-  border: 1px dashed var(--faro-hairline); border-radius: 14px;
-  color: var(--text-disabled); font-size: 13px; cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
-}
-.faro-form__drop:hover { color: var(--text-muted); border-color: var(--champagne-line); }
-.faro-form__drop.dragover {
-  border-color: var(--champagne); color: var(--sand-on-surface); background: var(--champagne-dim);
-}
-
-.faro-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.faro-chip {
-  padding: 6px 12px; border-radius: 999px;
-  border: 1px solid var(--faro-hairline); background: transparent;
-  color: var(--text-muted); font-size: 12.5px; cursor: pointer;
-  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
-}
-.faro-chip:hover { color: var(--text); border-color: var(--champagne-line); }
-.faro-chip.active {
-  background: var(--champagne-dim); border-color: var(--champagne-line); color: var(--deep-sand);
-  font-weight: 600;
-}
-.faro-form__foot { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-
-/* Source-photo preview. Capped so a portrait shot cannot push the controls off
-   the panel — this is a thumbnail confirming what was picked, not the result. */
-.faro-form__preview {
-  display: block;
-  max-height: 180px;
-  border-radius: 12px;
-  margin-bottom: 14px;
-  border: 1px solid var(--faro-hairline);
-}
-.faro-form__preview[hidden] { display: none; }
-.faro-form__note { font-size: 12.5px; color: var(--text-muted); flex: 1; }
-.faro-form__link {
-  background: none; border: 0; padding: 0;
-  color: var(--text-muted); font: inherit; font-size: 12.5px;
-  text-decoration: underline; text-underline-offset: 3px;
-  cursor: pointer; white-space: nowrap;
-  transition: color 150ms ease;
-}
-.faro-form__link:hover { color: var(--accent); }
+/* ═══ Gallery empty states ════════════════════════════════════════════════
+   These have to teach, not just report emptiness: generation moved to the chat
+   and a user landing here may not know that yet. */
+.faro-empty--cta { padding: 30px 22px; }
+.faro-empty__title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.faro-empty__hint { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
 
 /* ═══ Responsive (requirement 16) ═════════════════════════════════════════ */
 @media (max-width: 1100px) {

@@ -791,6 +791,137 @@ async function appendPropertyImage(projectCode, record) {
   }
 }
 
+/* ── The one place a property image is generated ────────────────────────────
+ * Extracted verbatim from api/leads.js's 'property-generate' block so that the
+ * CRM page and Faro's chat share ONE implementation of it.
+ *
+ * That mattered as soon as generation moved into the chat. There are now two
+ * callers, and every one of the steps below is either a validation that keeps
+ * a bad request from reaching a paid API, or a guard on money:
+ *   - eight option-axis validations
+ *   - upload parsing, capped at 3MB DECODED (Vercel's ~4.5MB request limit)
+ *   - isConfigured() fail-soft, BEFORE any credit check or paid call
+ *   - a credit check that BLOCKS when over the limit, before OpenAI is called
+ *   - flat-weight usage recording after success
+ * Two copies of that will drift, and the copy that drifts is the one that
+ * spends the client's money.
+ *
+ * Throws ImageFeatureError with a `status` for every failure case, so an HTTP
+ * caller can map straight onto it and a non-HTTP caller (the chat tool) can
+ * read `.message` without knowing about responses.
+ *
+ * @param {string} projectCode  tenant — from the session, never the caller's body
+ * @param {object} input        the same field names api/leads.js accepted
+ * @param {object} deps         { credits } — injected so this module does not
+ *                              take a hard dependency on the credit system and
+ *                              stays unit-testable without it
+ * @returns {Promise<object>}   the persisted image record
+ */
+async function generateForClient(projectCode, input = {}, deps = {}) {
+  const credits = deps.credits;
+  if (!projectCode) throw new ImageFeatureError('Geen client context', { status: 403 });
+
+  const style = String(input.style || '').trim();
+  if (!isValidStyleKey(style)) {
+    throw new ImageFeatureError(`Ongeldige stijl. Kies uit: ${PROPERTY_STYLES.map((s) => s.key).join(', ')}`, { status: 400 });
+  }
+
+  const roomType = input.roomType !== undefined ? String(input.roomType).trim() : '';
+  if (!isValidRoomTypeKey(roomType)) {
+    throw new ImageFeatureError(`Ongeldig kamertype. Kies uit: ${ROOM_TYPES.map((r) => r.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  const furniture = input.furniture !== undefined ? String(input.furniture).trim() : '';
+  if (!isValidFurnitureKey(furniture)) {
+    throw new ImageFeatureError(`Ongeldig meubelniveau. Kies uit: ${FURNITURE_LEVELS.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  const wallFinish = input.wallFinish !== undefined ? String(input.wallFinish).trim() : '';
+  if (!isValidWallFinishKey(wallFinish)) {
+    throw new ImageFeatureError(`Ongeldige muurafwerking. Kies uit: ${WALL_FINISHES.map((w) => w.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  let wallColor = input.wallColor !== undefined ? String(input.wallColor).trim() : '';
+  if (!isValidWallColorKey(wallColor)) {
+    throw new ImageFeatureError(`Ongeldige muurkleur. Kies uit: ${WALL_COLORS.map((c) => c.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  let wallColorNote = input.wallColorNote !== undefined ? String(input.wallColorNote).trim().slice(0, 80) : '';
+  // wallColor/wallColorNote only mean anything when wallFinish is 'painted' —
+  // nulled otherwise so a stray value from a stale UI never persists a colour
+  // that was never applied.
+  if (wallFinish !== 'painted') { wallColor = ''; wallColorNote = ''; }
+
+  const floor = input.floor !== undefined ? String(input.floor).trim() : '';
+  if (!isValidFloorKey(floor)) {
+    throw new ImageFeatureError(`Ongeldige vloer. Kies uit: ${FLOOR_TYPES.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  const lighting = input.lighting !== undefined ? String(input.lighting).trim() : '';
+  if (!isValidLightingKey(lighting)) {
+    throw new ImageFeatureError(`Ongeldige lichtsfeer. Kies uit: ${LIGHTING_MOODS.map((l) => l.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  // NOT optional — a caller that sends nothing gets the honest default here,
+  // BEFORE validation, so this never 400s for an omitted field.
+  const renovationDepth = input.renovationDepth ? String(input.renovationDepth).trim() : DEFAULT_RENOVATION_DEPTH;
+  if (!isValidRenovationDepthKey(renovationDepth)) {
+    throw new ImageFeatureError(`Ongeldige renovatiediepte. Kies uit: ${RENOVATION_DEPTHS.map((r) => r.key).join(', ')}`, { status: 400 });
+  }
+
+  const customPrompt = input.customPrompt !== undefined ? String(input.customPrompt).trim().slice(0, 500) : '';
+
+  // Validate the upload BEFORE touching credits or OpenAI — never trust a
+  // client-supplied filename/MIME, only the actual base64 payload.
+  const uploaded = parseImageDataUrl(input.dataUrl);
+
+  // Fail soft, clearly, BEFORE any credit check or paid call — a missing
+  // OPENAI_API_KEY/BLOB_READ_WRITE_TOKEN must never surface as a 500.
+  if (!isConfigured()) throw new ImageFeatureError(missingConfigMessage(), { status: 503 });
+
+  // Discretionary AI (a marketing tool, not the lead-conversation promise
+  // whatsapp.js protects) — BLOCK when over the limit, before the paid call.
+  if (credits) {
+    const check = await credits.checkCredits(projectCode, credits.FEATURES.IMAGE_GENERATION);
+    if (!check.allowed) {
+      throw new ImageFeatureError(check.message || 'Je AI-credits voor deze periode zijn op', {
+        status: 402, code: 'credit_limit_reached',
+      });
+    }
+  }
+
+  // The paid edit and the (cheap, best-effort) upload of the ORIGINAL photo run
+  // concurrently. The source upload NEVER fails the request: it only powers the
+  // before/after comparison, and a Blob hiccup must not cost a generation the
+  // client already paid credits for.
+  const [generated, sourceUrl] = await Promise.all([
+    generatePropertyImage({
+      imageBuffer: uploaded.buffer,
+      imageMimeType: uploaded.mimeType,
+      style, customPrompt, roomType, furniture, wallFinish, wallColor,
+      wallColorNote, floor, lighting, renovationDepth,
+    }),
+    uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
+      console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
+      return '';
+    }),
+  ]);
+
+  const blobUrl = await uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
+  if (!blobUrl) throw new ImageFeatureError('AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.', { status: 502 });
+
+  const record = buildImageRecord({
+    url: blobUrl, style, customPrompt, roomType, sourceUrl,
+    furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  });
+  appendPropertyImage(projectCode, record).catch(() => {});
+
+  // Flat weight regardless of how many axes were touched — one generation, one
+  // charge. Only `meta` grows, for reporting.
+  if (credits) {
+    credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
+      credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
+      meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth },
+    }).catch(() => {});
+  }
+
+  return record;
+}
+
 module.exports = {
   PROPERTY_STYLES,
   ROOM_TYPES,
@@ -829,4 +960,5 @@ module.exports = {
   buildImageRecord,
   listPropertyImages,
   appendPropertyImage,
+  generateForClient,
 };

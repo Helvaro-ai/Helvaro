@@ -125,6 +125,12 @@ async function chat(req, res, ctx, body) {
     ...attachments.map((a) => ({ type: 'image', mediaType: a.mediaType, dataBase64: a.data })),
   ];
 
+  // Tools that transform an uploaded photo (generate_property_image) need the
+  // bytes. They come from ctx, never from the model's arguments: the model
+  // chooses the STYLE, the user supplies the picture. A model that could name
+  // its own image source could reference someone else's upload.
+  ctx.attachments = attachments;
+
   // Streaming starts here — from this point failures are SSE error frames,
   // not HTTP status codes, because the headers are already sent.
   stream.open(res);

@@ -38,6 +38,15 @@
  */
 const SCRIPTS = [
   {
+    // Image generation — runs immediately, no confirmation. Costs are handled
+    // by the credit system, not by a dialog.
+    match: /woonkamer|keuken|slaapkamer|badkamer|restyl|renov|visualis|modern|luxe|foto|beeld/i,
+    steps: [
+      { type: 'text', text: 'Ik maak er een visualisatie van…\n\n' },
+      { type: 'tool', name: 'generate_property_image', input: { style: 'modern', prompt: 'modern en luxueus, echte architectuur behouden' } },
+    ],
+  },
+  {
     // Campaign — ends at a confirmation card.
     match: /campagne|campaign|adverteer|promoot/i,
     steps: [

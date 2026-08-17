@@ -23,6 +23,20 @@
  * ── Strings ──────────────────────────────────────────────────────────────────
  * FARO_T is injected by ./index.js from ./i18n.js for the user's language.
  * T('key') is the accessor; a missing key returns the key rather than blank.
+ *
+ * ── Galleries, not generators ────────────────────────────────────────────────
+ * Beelden and Video's used to carry an eight-axis generation form. They do not
+ * any more: you generate by asking in the chat — attach a photo, say what you
+ * want, the picture comes back in the reply — and the panels are the library
+ * you open to look at what you already made. That is the same split the
+ * general-purpose assistants use, and it was the right one here for a concrete
+ * reason: the form stood between the user and a sentence they could just type,
+ * and the model can set every one of those eight axes from "maak deze woonkamer
+ * modern en luxueus, warme verlichting, houten vloer".
+ *
+ * NOTE: this header does NOT ship. Everything inside js()'s returned template
+ * literal does, including its comments — so no vendor name may appear in there.
+ * scripts/faro-check.js enforces that, and caught exactly this mistake once.
  */
 
 function js() {
@@ -45,6 +59,7 @@ var faroState = {
   abort: null,
   contextSources: [],
   lastSent: '',
+  lastAttachments: [],
   lastFocus: null
 };
 
@@ -181,8 +196,15 @@ function faroSend(text) {
   text = String(text || '').trim();
   if (!text && !faroState.attachments.length) return;
 
+  // Snapshot the attachments BEFORE clearing the composer. faroClearInput()
+  // resets faroState.attachments, and the request body used to be built after
+  // it ran — so every attached photo was silently dropped on the way out and
+  // generate_property_image never received one. Read the state you are about
+  // to reset, then reset it.
+  var attachments = faroState.attachments.slice();
+
   faroEnterThread();
-  faroAppendUser(text);
+  faroAppendUser(text, attachments);
   faroClearInput();
 
   // Kept so the error card's Retry has something to resend. Retry re-sends the
@@ -190,6 +212,7 @@ function faroSend(text) {
   // part-way may already have persisted a partial assistant message; a fresh
   // turn is the only state we can reason about.
   faroState.lastSent = text;
+  faroState.lastAttachments = attachments;
 
   faroState.streaming = true;
   faroSetSendEnabled(false);
@@ -207,7 +230,7 @@ function faroSend(text) {
       text: text,
       conversationId: faroState.conversationId,
       tier: faroState.tier,
-      attachments: faroState.attachments
+      attachments: attachments
     }),
     signal: faroState.abort.signal
   })
@@ -523,6 +546,7 @@ function faroErrorCard(c) {
   if (btn) btn.addEventListener('click', function () {
     var text = faroState.lastSent;
     if (!text) return;
+    faroState.attachments = (faroState.lastAttachments || []).slice();
     // Drop the failed exchange so the thread does not accumulate dead turns.
     var msg = d.closest('.faro-msg--ai');
     if (msg) msg.remove();
@@ -565,10 +589,24 @@ function faroEnterThread() {
   }
 }
 
-function faroAppendUser(text) {
+function faroAppendUser(text, attachments) {
   var d = document.createElement('div');
   d.className = 'faro-msg--user';
-  d.textContent = text;
+
+  // Thumbnails first, then the text — the user should see what they sent, and
+  // an image-generation turn is meaningless without it.
+  (attachments || []).forEach(function (a) {
+    var img = document.createElement('img');
+    img.className = 'faro-msg__thumb';
+    img.src = 'data:' + a.mediaType + ';base64,' + a.data;
+    img.alt = '';
+    d.appendChild(img);
+  });
+
+  var t = document.createElement('div');
+  t.textContent = text;
+  d.appendChild(t);
+
   document.getElementById('faro-thread-inner').appendChild(d);
   faroScrollToEnd();
 }
@@ -713,36 +751,12 @@ function faroActivityCard(a) {
   return d;
 }
 
-/* ── 9. Beelden ───────────────────────────────────────────────────────────
-   Faro's image panel drives the SAME endpoints the CRM's AI-beeld page drove:
-   /api/leads with modes property-styles / property-list / property-generate.
+/* ── 9/10. Beelden & Video's — galleries, not generators ──────────────────
+   Generation happens in the chat; these panels are where you go to LOOK at
+   what you already made. See this module's file header for why.
 
-   That is deliberate and worth stating plainly, because the tempting
-   alternative — a faro-media generate op calling api/_images.js directly —
-   would have to re-implement the guard chain that lives in api/leads.js:
-   eight option-axis validations, upload parsing with a 3MB decoded cap, an
-   isConfigured() fail-soft, a credit check before the paid call, and the
-   concurrent generate + source-upload. Two copies of that WILL drift, and the
-   copy that drifts is the one that spends money. So Faro calls the proven path
-   instead of owning a second one.
-
-   All the option lists come from the property-styles response, so the axes are
-   rendered generically — adding one in api/_images.js makes it appear here with
-   no change to this file. */
-var FARO_IMG_AXES = [
-  { key: 'style',            field: 'styles',            labelKey: 'im.style',      required: true  },
-  { key: 'roomType',         field: 'roomTypes',         labelKey: 'im.roomType'   },
-  { key: 'renovationDepth',  field: 'renovationDepths',  labelKey: 'im.depth',      required: true  },
-  { key: 'furniture',        field: 'furnitureLevels',   labelKey: 'im.furniture'  },
-  { key: 'wallFinish',       field: 'wallFinishes',      labelKey: 'im.wallFinish' },
-  { key: 'wallColor',        field: 'wallColors',        labelKey: 'im.wallColor'  },
-  { key: 'floor',            field: 'floorTypes',        labelKey: 'im.floor'      },
-  { key: 'lighting',         field: 'lightingMoods',     labelKey: 'im.lighting'   }
-];
-
-var faroImgOpts = null;
-var faroImgUpload = null;   // data URL of the source photo
-
+   Listing still goes through /api/leads property-list — the same endpoint the
+   old AI-beeld page used. */
 function faroLeadsPost(body) {
   var headers = { 'Content-Type': 'application/json' };
   if (typeof state !== 'undefined' && state.apiKey) headers['x-api-key'] = state.apiKey;
@@ -755,186 +769,24 @@ function faroLeadsPost(body) {
     });
 }
 
-function faroRenderImageControls() {
-  var box = document.getElementById('faro-images-controls');
-  if (!box || box.dataset.ready) return;
-  faroLeadsPost({ mode: 'property-styles' })
-    .then(function (r) {
-      box.dataset.ready = '1';
-      faroImgOpts = r;
-
-      var axes = FARO_IMG_AXES.filter(function (a) { return (r[a.field] || []).length; }).map(function (a) {
-        var opts = r[a.field] || [];
-        // An optional axis gets an explicit "automatisch" choice rather than a
-        // blank — the backend's contract is that empty means "let the AI
-        // decide", and that should be a thing you can pick, not a thing you
-        // achieve by not picking.
-        var chips = (a.required ? [] : [{ key: '', label: T('im.auto') }]).concat(opts);
-        var preset = a.key === 'renovationDepth' ? (r.defaultRenovationDepth || '') : (a.required ? opts[0].key : '');
-        return '<div class="faro-form__row"><label class="faro-form__label">' + aiT(a.labelKey) + '</label>' +
-          '<div class="faro-chips" data-axis="' + a.key + '">' +
-            chips.map(function (o) {
-              return '<button type="button" class="faro-chip' + (o.key === preset ? ' active' : '') +
-                     '" data-value="' + faroEsc(o.key) + '">' + faroEsc(o.label) + '</button>';
-            }).join('') +
-          '</div></div>';
-      }).join('');
-
-      box.innerHTML =
-        '<div class="faro-form">' +
-          '<div class="faro-form__drop" id="faro-img-drop">' +
-            faroIcon('image', 20) +
-            '<span id="faro-img-droplabel">' + faroEsc(T('im.drop')) + '</span>' +
-            '<input type="file" id="faro-img-file" accept="image/*" hidden>' +
-          '</div>' +
-          '<img class="faro-form__preview" id="faro-img-preview" alt="" hidden>' +
-          axes +
-          '<div class="faro-form__row">' +
-            '<label class="faro-form__label" for="faro-img-prompt">' + T('im.describe') + '</label>' +
-            '<textarea class="faro-form__area" id="faro-img-prompt" rows="2" maxlength="500" placeholder="' +
-              faroEsc(T('im.placeholder')) + '"></textarea>' +
-          '</div>' +
-          '<div class="faro-form__foot">' +
-            '<button class="faro-card__btn faro-card__btn--primary" id="faro-img-generate">' +
-              T('im.generate') + '</button>' +
-            '<span class="faro-form__note" id="faro-img-note"></span>' +
-            '<button class="faro-form__link" id="faro-img-advanced">' + T('im.advanced') + '</button>' +
-          '</div>' +
-        '</div>';
-
-      box.querySelectorAll('.faro-chips').forEach(function (g) {
-        g.addEventListener('click', function (e) {
-          var c = e.target.closest('.faro-chip');
-          if (!c) return;
-          g.querySelectorAll('.faro-chip').forEach(function (x) { x.classList.remove('active'); });
-          c.classList.add('active');
-          faroSyncWallColour();
-        });
-      });
-      faroSyncWallColour();
-      faroWireImageUpload();
-
-      var gen = document.getElementById('faro-img-generate');
-      if (gen) gen.addEventListener('click', faroGenerateImage);
-
-      // The before/after comparison slider and the comparison PDF export were
-      // not ported into Faro, so the old page is kept for them and reached from
-      // here. It is no longer in the CRM sidebar. Remove this link once those
-      // two are ported and the page can be deleted.
-      var adv = document.getElementById('faro-img-advanced');
-      if (adv) adv.addEventListener('click', function () {
-        faroClose();
-        navigateTo('ai-beeld');
-      });
-    })
-    .catch(function (err) {
-      box.innerHTML = '<div class="faro-empty">' + faroEsc((err && err.message) || T('st.error')) + '</div>';
-    });
-}
-
-function aiT(k) { return T(k); }
-
-function faroAxisValue(key) {
-  var g = document.querySelector('.faro-chips[data-axis="' + key + '"] .faro-chip.active');
-  return g ? g.dataset.value : '';
-}
-
-/* Wall colour only means anything when the finish is painted — api/leads.js
-   nulls it out otherwise, so showing it would offer a control that silently
-   does nothing. */
-function faroSyncWallColour() {
-  var row = document.querySelector('.faro-chips[data-axis="wallColor"]');
-  if (!row) return;
-  var painted = faroAxisValue('wallFinish') === 'painted';
-  row.closest('.faro-form__row').style.display = painted ? '' : 'none';
-}
-
-/* The source photo is downscaled in the browser before upload. The endpoint
-   caps the DECODED payload at 3MB against Vercel's ~4.5MB request limit, and a
-   modern phone photo blows straight through that. */
-function faroWireImageUpload() {
-  var drop = document.getElementById('faro-img-drop');
-  var file = document.getElementById('faro-img-file');
-  if (!drop || !file) return;
-
-  drop.addEventListener('click', function () { file.click(); });
-  file.addEventListener('change', function () { if (file.files[0]) faroAcceptPhoto(file.files[0]); });
-  ['dragenter', 'dragover'].forEach(function (ev) {
-    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('dragover'); });
+/* An empty gallery has to teach, not just say "nothing here" — the whole point
+   of the move is that the user may not know generation now lives in the chat. */
+function faroGalleryEmpty(kind) {
+  var d = document.createElement('div');
+  d.className = 'faro-empty faro-empty--cta';
+  d.innerHTML =
+    '<div class="faro-empty__title">' + faroEsc(T(kind === 'videos' ? 'gal.emptyVideo' : 'gal.emptyImage')) + '</div>' +
+    '<div class="faro-empty__hint">' + faroEsc(T(kind === 'videos' ? 'gal.hintVideo' : 'gal.hintImage')) + '</div>' +
+    (kind === 'images'
+      ? '<button class="faro-card__btn faro-card__btn--primary" data-goto-chat>' + T('gal.ask') + '</button>'
+      : '');
+  var go = d.querySelector('[data-goto-chat]');
+  if (go) go.addEventListener('click', function () {
+    faroSetPanel('chat');
+    var f = document.getElementById('faro-input-field');
+    if (f) { f.value = T('gal.seed'); f.focus(); faroSetSendEnabled(true); }
   });
-  ['dragleave', 'drop'].forEach(function (ev) {
-    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('dragover'); });
-  });
-  drop.addEventListener('drop', function (e) {
-    if (e.dataTransfer && e.dataTransfer.files[0]) faroAcceptPhoto(e.dataTransfer.files[0]);
-  });
-}
-
-function faroAcceptPhoto(f) {
-  if (!/^image\\//.test(f.type)) return;
-  var reader = new FileReader();
-  reader.onload = function () {
-    var img = new Image();
-    img.onload = function () {
-      var max = 1536;
-      var w = img.width, h = img.height;
-      if (w > max || h > max) {
-        var r = Math.min(max / w, max / h);
-        w = Math.round(w * r); h = Math.round(h * r);
-      }
-      var c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      faroImgUpload = c.toDataURL('image/jpeg', 0.85);
-
-      var prev = document.getElementById('faro-img-preview');
-      if (prev) { prev.src = faroImgUpload; prev.hidden = false; }
-      var lbl = document.getElementById('faro-img-droplabel');
-      if (lbl) lbl.textContent = f.name;
-    };
-    img.src = String(reader.result);
-  };
-  reader.readAsDataURL(f);
-}
-
-function faroGenerateImage() {
-  var note = document.getElementById('faro-img-note');
-  var gen  = document.getElementById('faro-img-generate');
-  if (!faroImgUpload) { if (note) note.textContent = T('im.needPhoto'); return; }
-
-  if (note) note.textContent = T('st.busy');
-  if (gen) gen.disabled = true;
-  faroMascot('generating');
-
-  var payload = {
-    mode: 'property-generate',
-    dataUrl: faroImgUpload,
-    wallColorNote: '',
-    customPrompt: (document.getElementById('faro-img-prompt') || {}).value || ''
-  };
-  FARO_IMG_AXES.forEach(function (a) { payload[a.key] = faroAxisValue(a.key); });
-
-  faroLeadsPost(payload)
-    .then(function (d) {
-      if (gen) gen.disabled = false;
-      if (note) note.textContent = '';
-      faroMascot('success');
-      var img = d.image;
-      var gal = document.getElementById('faro-images-gallery');
-      if (img && img.url && gal) {
-        faroClearEmpty(gal);
-        gal.prepend(faroMediaCard({
-          jobId: img.id, kind: 'image', state: 'ready', resultUrl: img.url,
-          meta: { propertyId: null },
-          actions: [{ key: 'download', label: T('st.download') }]
-        }));
-      }
-    })
-    .catch(function (err) {
-      if (gen) gen.disabled = false;
-      faroMascot('error');
-      if (note) note.textContent = (err && err.message) || T('st.error');
-    });
+  return d;
 }
 
 function faroClearEmpty(el) {
@@ -944,36 +796,35 @@ function faroClearEmpty(el) {
 
 function faroLoadGallery(kind) {
   var el = document.getElementById('faro-' + kind + '-gallery');
+  var box = document.getElementById('faro-' + kind + '-empty');
   if (!el) return;
-  if (kind === 'images') faroRenderImageControls();
+  if (box) box.innerHTML = '';
   el.innerHTML = '<div class="faro-media"><div class="faro-media__img faro-skeleton"></div></div>'.repeat(3);
+
   var load = kind === 'images'
     ? faroLeadsPost({ mode: 'property-list' }).then(function (r) {
-        return { images: (r.images || []).map(function (i) {
-          return { jobId: i.id, kind: 'image', state: 'ready', resultUrl: i.url,
-                   meta: {}, actions: [{ key: 'download', label: T('st.download') }] };
-        }) };
+        return (r.images || []).map(function (i) {
+          return { jobId: i.id, kind: 'image', state: 'ready', resultUrl: i.url, meta: {},
+                   actions: [{ key: 'download', label: T('st.download') }] };
+        });
       })
-    : faroPost({ mode: 'faro-media', op: 'list-videos' });
+    : faroPost({ mode: 'faro-media', op: 'list-videos' }).then(function (r) { return r.videos || []; });
 
   load
-    .then(function (r) {
-      var items = r.images || r.videos || [];
+    .then(function (items) {
       el.innerHTML = '';
-      if (!items.length) {
-        // An empty gallery must say so — requirement 15's empty states. Videos
-        // has its own "coming soon" notice already, so only images needs one.
-        if (kind === 'images') {
-          var empty = document.createElement('div');
-          empty.className = 'faro-empty';
-          empty.textContent = T('act.empty');
-          el.parentNode.insertBefore(empty, el);
-        }
-        return;
-      }
+      if (!items.length) { if (box) box.appendChild(faroGalleryEmpty(kind)); return; }
       items.forEach(function (i) { el.appendChild(faroMediaCard(i)); });
     })
-    .catch(function () { el.innerHTML = ''; });
+    .catch(function (err) {
+      el.innerHTML = '';
+      if (box) {
+        var e = document.createElement('div');
+        e.className = 'faro-empty';
+        e.textContent = (err && err.message) || T('st.error');
+        box.appendChild(e);
+      }
+    });
 }
 
 function faroLoadProjects() {
@@ -1005,6 +856,11 @@ function faroInit() {
 
   // Mobile: the rail is a drawer. Picking anything inside it closes it again,
   // or it would sit on top of the thing you just navigated to.
+  // Reaches the old ai-beeld page for its before/after slider and PDF export —
+  // the two things not ported into Faro. Remove with the page once they are.
+  var adv = document.getElementById('faro-img-advanced');
+  if (adv) adv.addEventListener('click', function () { faroClose(); navigateTo('ai-beeld'); });
+
   var railToggle = document.getElementById('faro-rail-toggle');
   var rail = document.querySelector('.faro-rail');
   if (railToggle && rail) {

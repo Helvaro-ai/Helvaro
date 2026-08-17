@@ -105,6 +105,19 @@ const reads = tools.ALL.filter((t) => t.kind === 'read').map((t) => t.name);
 if (reads.some((n) => tools.requiresConfirmation(n))) fail('a read-tool requires confirmation');
 else pass(`${reads.length} read-tools run without a gate`);
 
+const creates = tools.ALL.filter((t) => t.kind === 'create').map((t) => t.name);
+if (creates.some((n) => tools.requiresConfirmation(n))) fail('a create-tool requires confirmation');
+else pass(`${creates.length} create-tools run without a gate`);
+
+// The act set is the security boundary, so it is pinned by name rather than by
+// count. Anything that reaches a customer, a calendar or a campaign belongs
+// here; adding a tool to this list must be a deliberate, reviewed edit.
+const EXPECTED_ACT = ['create_followup', 'schedule_followup', 'create_campaign', 'add_leads_to_campaign'];
+const actSet = acts.slice().sort().join(',');
+if (actSet !== EXPECTED_ACT.slice().sort().join(',')) {
+  fail(`act-tool set changed: expected [${EXPECTED_ACT.join(', ')}], got [${acts.join(', ')}]`);
+} else pass('act-tool set unchanged (external-consequence tools only)');
+
 // A staged action must never be reachable from another tenant.
 const actions = require('../api/_faro/actions');
 const id = actions.stage({ projectCode: 'A', userId: 'u', action: 'create_followup', payload: {} });

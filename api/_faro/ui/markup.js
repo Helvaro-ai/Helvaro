@@ -234,18 +234,27 @@ function thread() {
    per the deferral decision. A hidden entry would be less honest to a paying
    customer than a stated one. */
 function subPages(t) {
-  const panel = (id, title, body) => `
+  const panel = (id, title, body, extra) => `
       <div class="faro-panel" id="faro-panel-${id}" hidden>
-        <div class="faro-panel__head"><h2 class="faro-section__title">${title}</h2></div>
+        <div class="faro-panel__head">
+          <h2 class="faro-section__title">${title}</h2>
+          ${extra || ''}
+        </div>
         ${body}
       </div>`;
 
   return [
+    // Galleries only. Generation lives in the chat — see client.js's
+    // "Beelden & Video's — galleries, not generators".
+    // The Vergelijking & PDF link is the ONLY route left to the old ai-beeld
+    // page, which is no longer in the CRM sidebar. Those two tools were never
+    // ported; drop this link and the page becomes unreachable.
     panel('images', t('pn.images'),
-      `<div class="faro-panel__controls" id="faro-images-controls"></div>
-       <div class="faro-gallery" id="faro-images-gallery"></div>`),
+      `<div id="faro-images-empty"></div>
+       <div class="faro-gallery" id="faro-images-gallery"></div>`,
+      `<button class="faro-pill" id="faro-img-advanced">${t('im.advanced')}</button>`),
     panel('videos', t('pn.videos'),
-      `<div class="faro-empty" id="faro-videos-empty">${t('pn.soon')}</div>
+      `<div id="faro-videos-empty"></div>
        <div class="faro-gallery faro-gallery--video" id="faro-videos-gallery"></div>`),
     panel('projects', t('pn.projects'),
       `<div id="faro-projects-list"></div>`),
