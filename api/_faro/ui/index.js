@@ -1,12 +1,12 @@
 'use strict';
 /*
- * Helvaro AI — UI assembly.
+ * Faro — UI assembly.
  *
- * The single seam between the AI workspace and api/dashboard.js.
+ * The single seam between Faro and api/dashboard.js.
  *
  * ── How dashboard.js consumes this ───────────────────────────────────────────
  * Five interpolations inside its `const HTML = \`...\`` template literal, with
- * `const aiUI = require('./_ai/ui');` and `const ai = aiUI.forLang(LANG);`
+ * `const faroUI = require('./_faro/ui');` and `const ai = faroUI.forLang(LANG);`
  * near the top of the handler:
  *
  *   1. before </style>                              ${ai.css}
@@ -16,7 +16,7 @@
  *   5. before </script>                             ${ai.js}
  *
  * That is the whole integration. Deliberately small: dashboard.js is ~19,000
- * lines and carries the entire paying product, so the AI workspace touches it
+ * lines and carries the entire paying product, so Faro touches it
  * in five places rather than being woven through it.
  *
  * ── Everything is language-bound at build time ───────────────────────────────
@@ -75,26 +75,25 @@ function forLang(langCode) {
   }));
 
   const bootstrap = [
-    `var AI_T = ${inlineJson(strings)};`,
-    `var AI_ICONS = ${inlineJson(icons.PATHS)};`,
-    `var AI_QUICK_ACTIONS = ${inlineJson(quick.BY_ID)};`,
-    `var AI_TIERS = ${inlineJson(tiers)};`,
-    `var AI_DEFAULT_TIER = ${inlineJson(config.DEFAULT_TIER)};`,
+    `var FARO_T = ${inlineJson(strings)};`,
+    `var FARO_ICONS = ${inlineJson(icons.PATHS)};`,
+    `var FARO_QUICK_ACTIONS = ${inlineJson(quick.BY_ID)};`,
+    `var FARO_TIERS = ${inlineJson(tiers)};`,
+    `var FARO_DEFAULT_TIER = ${inlineJson(config.DEFAULT_TIER)};`,
   ].join('\n');
 
   return {
     lang,
     css: tokens.css() + styles.css(),
     js: `\n${bootstrap}\n${client.js()}`,
-    switcher: markup.switcher(tt),
-    sidebar: markup.sidebar(tt),
-    workspace: markup.workspace(tt),
+    launcher: markup.launcher(tt),
+    overlay: markup.overlay(tt),
   };
 }
 
 /**
  * Assert the splice-safety invariant for every language.
- * Cheap enough to run at require time in tests; called by scripts/ai-check.js.
+ * Cheap enough to run at require time in tests; called by scripts/faro-check.js.
  * Returns the offending pieces rather than throwing, so a caller can report all
  * of them at once.
  */
@@ -102,7 +101,7 @@ function verify() {
   const problems = [];
   for (const lang of i18n.TRANSLATED) {
     const out = forLang(lang);
-    for (const key of ['css', 'js', 'switcher', 'sidebar', 'workspace']) {
+    for (const key of ['css', 'js', 'launcher', 'overlay']) {
       const s = out[key];
       if (s.indexOf('`') > -1) problems.push(`${lang}/${key}: contains a backtick`);
       if (/(^|[^\\])\$\{/.test(s)) problems.push(`${lang}/${key}: contains an unescaped \${`);

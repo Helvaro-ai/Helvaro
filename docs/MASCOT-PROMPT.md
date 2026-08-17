@@ -1,4 +1,4 @@
-# Helvaro falcon — asset brief & generation prompts
+# Faro — mascot asset brief & generation prompts
 
 What the code needs, and prompts to produce it. Paste one prompt per state into
 whatever image tool you're using (Midjourney, Higgsfield, Sora, gpt-image, etc).
@@ -10,12 +10,12 @@ whatever image tool you're using (Midjourney, Higgsfield, Sora, gpt-image, etc).
 Six files, at these exact paths:
 
 ```
-public/ai/falcon-idle.webp        ← the one you already have
-public/ai/falcon-thinking.webp
-public/ai/falcon-generating.webp
-public/ai/falcon-video.webp
-public/ai/falcon-success.webp
-public/ai/falcon-error.webp
+public/faro/falcon-idle.webp        ← the one you already have
+public/faro/falcon-thinking.webp
+public/faro/falcon-generating.webp
+public/faro/falcon-video.webp
+public/faro/falcon-success.webp
+public/faro/falcon-error.webp
 ```
 
 Specs:
@@ -26,11 +26,11 @@ Specs:
   rather than a change of expression.
 - Motion is CSS, not the asset. Don't add motion blur or trails.
 
-Until all six exist the workspace degrades cleanly: a missing state falls back
+Until all six exist Faro degrades cleanly: a missing state falls back
 to idle, and a missing idle hides the mascot rather than showing a broken image.
 
 One `vercel.json` rewrite is needed once the files land:
-`{ "source": "/ai/(.*)", "destination": "/public/ai/$1" }`
+`{ "source": "/faro/(.*)", "destination": "/public/faro/$1" }`
 
 ---
 
@@ -65,7 +65,7 @@ neon rim light.
 
 **Variant B** (keep the current character, only fix scale): replace the second
 sentence with *"Rounded friendly proportions consistent with the existing
-Helvaro falcon character, large expressive eyes, compact body."*
+Faro falcon character, large expressive eyes, compact body."*
 
 ---
 
@@ -112,10 +112,10 @@ wildly different poses will read as six different birds.
 1. Remove backgrounds if the tool didn't (transparency is required — the page
    background differs between light and dark theme).
 2. Confirm all six align: stack them and check the bird doesn't shift or resize.
-3. Save to `public/ai/` with the exact filenames above.
+3. Save to `public/faro/` with the exact filenames above.
 4. Add the `vercel.json` rewrite.
-5. `node scripts/ai-dev.js`, click AI, send a message — you should see idle →
-   thinking → success as the turn runs.
+5. `node scripts/faro-dev.js`, open Faro (Ctrl/⌘-J), send a message — you
+   should see idle → thinking → success as the turn runs.
 
 ---
 
@@ -123,16 +123,16 @@ wildly different poses will read as six different birds.
 
 Not blocking, but each shapes real work:
 
-1. **`Manage` on Helvaro context** — informational panel, or actual per-source
+1. **`Beheren` on the Faro context row** — informational panel, or actual per-source
    on/off toggles? If toggles, disabling Analytics must make the orchestrator
    *withhold `get_analytics` from the model*, not just hide a chip. Currently
    built read-only.
-2. **The TEXT card in Recent AI activity** — is listing copy a stored,
-   re-openable artifact? If so `store.js` needs an artifacts table I haven't
+2. **The TEXT card in `Recent gemaakt`** — is listing copy a stored,
+   re-openable artifact? If so `api/_faro/store.js` needs an artifacts table I haven't
    scaffolded.
 3. **The three `View all` links** (actions, conversations, activity) — do those
    pages exist in the design, or should I build them as filtered inline views?
    Currently they render but go nowhere.
 4. **Real estate only?** `DESIGN-SYSTEM.md` describes Belgian clinic owners and
    receptionists; `_images.js` targets Flemish estate agents. If both verticals
-   are live, this workspace points your most visible surface at one of them.
+   are live, Faro's whole vocabulary points at one of them.

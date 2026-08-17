@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — provider factory.
+ * Faro — provider factory.
  *
  * SCAFFOLD: structure only. Adapters are stubs; nothing calls a model yet.
  *
@@ -63,9 +63,9 @@ function getProvider() {
     // contract, and the one structurally unlike the other two — see ./demo.js.
     case 'demo':   return require('./demo');
     default:
-      // Deliberately generic: a misconfigured AI_PROVIDER is an operator
+      // Deliberately generic: a misconfigured FARO_PROVIDER is an operator
       // problem, and the user-facing string still must not name vendors.
-      throw new ProviderError('Helvaro AI is niet beschikbaar.', { code: 'provider_unconfigured' });
+      throw new ProviderError('Faro is niet beschikbaar.', { code: 'provider_unconfigured' });
   }
 }
 

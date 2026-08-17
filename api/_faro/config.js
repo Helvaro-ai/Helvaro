@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — configuration and provider selection.
+ * Faro — configuration and provider selection.
  *
  * SCAFFOLD: structure only. Nothing here calls a model yet.
  *
@@ -11,7 +11,7 @@
  * Claude → OpenAI → anything else is then an env var, not a code change.
  *
  * ── The branding rule is enforced here, not by convention ────────────────────
- * Requirement 13: the UI says "Helvaro AI" and never exposes Claude/OpenAI.
+ * Requirement 13: the UI says "Faro" and never exposes Claude/OpenAI.
  * That is easy to state and easy to leak: an error message, a model field in a
  * JSON response, a debug log. So the provider name and model id NEVER leave
  * this module toward the client — publicModelLabel() is the only thing the
@@ -19,18 +19,18 @@
  *
  * ── Keys ─────────────────────────────────────────────────────────────────────
  * Server-side env only, same posture as api/_images.js's OPENAI_API_KEY.
- * Nothing in api/_ai/ may be imported from a client bundle, and no key value
+ * Nothing in api/_faro/ may be imported from a client bundle, and no key value
  * is ever included in a response body or a thrown error's message.
  */
 
 // ── Which provider answers ───────────────────────────────────────────────────
 // Default 'claude'. Changing this env var is the entire swap procedure.
-const PROVIDER = (process.env.AI_PROVIDER || 'claude').trim().toLowerCase();
+const PROVIDER = (process.env.FARO_PROVIDER || 'claude').trim().toLowerCase();
 
 // The feature stays off until explicitly switched on, same reasoning as
 // api/_demo-chat.js's isEnabled(): a paid, publicly reachable AI endpoint
 // should not start running merely because its code shipped to the server.
-const ENABLED = String(process.env.AI_WORKSPACE_ENABLED || '') === '1';
+const ENABLED = String(process.env.FARO_WORKSPACE_ENABLED || '') === '1';
 
 // ── Model registry ───────────────────────────────────────────────────────────
 // Internal ids only. `tier` is what the UI's model selector actually sends —
@@ -92,11 +92,12 @@ function modelFor(tier) {
 
 /**
  * The ONLY model-identifying string the client may receive.
- * Requirement 13: no Claude/OpenAI branding in the primary experience.
+ * Requirement 13: no Claude/OpenAI branding in the primary experience — and,
+ * since the rename, no "AI" in the product's own name either.
  */
 function publicModelLabel(tier) {
   const t = TIERS.find((x) => x.key === tier) || TIERS.find((x) => x.key === DEFAULT_TIER);
-  return `Helvaro AI · ${t.label}`;
+  return `Faro · ${t.label}`;
 }
 
 /**

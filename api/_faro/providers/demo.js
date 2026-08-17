@@ -1,9 +1,9 @@
 'use strict';
 /*
- * Helvaro AI — demo provider.
+ * Faro — demo provider.
  *
  * A scripted provider that streams canned responses and issues REAL tool calls.
- * Selected with AI_PROVIDER=demo. Costs nothing and calls nobody.
+ * Selected with FARO_PROVIDER=demo. Costs nothing and calls nobody.
  *
  * ── Why this exists ──────────────────────────────────────────────────────────
  * Two reasons, and the second is the better one.
@@ -25,7 +25,7 @@
  * It does not fake tool RESULTS. It emits genuine tool_call events, the
  * orchestrator runs the real tool, and the real result comes back. So a demo
  * conversation exercises the true data path — with fixtures behind it when
- * AI_DEMO_MODE=1 (see ../fixtures.js), and with empty results otherwise.
+ * FARO_DEMO_MODE=1 (see ../fixtures.js), and with empty results otherwise.
  * Nothing here can make a mocked answer look like a real one.
  */
 
@@ -94,7 +94,7 @@ const SCRIPTS = [
 ];
 
 const FALLBACK = [
-  { type: 'text', text: 'Ik ben Helvaro AI. Ik kan je leads doorzoeken, je pipeline analyseren, ' },
+  { type: 'text', text: 'Ik ben Faro. Ik kan je leads doorzoeken, je pipeline analyseren, ' },
   { type: 'text', text: 'panden en teksten maken en opvolging voorbereiden.\n\n' },
   { type: 'text', text: 'Probeer bijvoorbeeld: "Wie zijn mijn beste leads?"' },
 ];

@@ -1,11 +1,11 @@
 'use strict';
 /*
- * Helvaro AI — system prompt assembly.
+ * Faro — system prompt assembly.
  *
  * SCAFFOLD: structure complete, the context fetch is stubbed.
  *
  * ── Why the prompt is built per-turn from live data ──────────────────────────
- * Requirement 6: Helvaro AI "should feel fundamentally different from a generic
+ * Requirement 6: Faro "should feel fundamentally different from a generic
  * chatbot" because it knows the company's leads, properties, conversations,
  * CRM, analytics, campaigns, calendar and marketing assets.
  *
@@ -28,7 +28,7 @@
  * language registry in api/_lang.js rather than a second list here.
  */
 
-const IDENTITY = `Je bent Helvaro AI, de assistent binnen het Helvaro-platform voor vastgoedmakelaars.
+const IDENTITY = `Je bent Faro, de assistent binnen het Helvaro-platform voor vastgoedmakelaars.
 
 Je bent geen algemene chatbot. Je werkt binnen het CRM van dit kantoor en je hebt
 via tools toegang tot hun echte leads, panden, gesprekken, pipeline, cijfers,
@@ -40,7 +40,7 @@ Werkwijze:
 - Als een tool niets teruggeeft, zeg je dat. Je vult het gat niet op.
 - Antwoord kort. Eén of twee zinnen, daarna de kaarten of het resultaat.
   De interface toont de details — jij hoeft ze niet uit te schrijven.
-- Je noemt nooit welk onderliggend AI-model je gebruikt. Je bent Helvaro AI.
+- Je noemt nooit welk onderliggend AI-model je gebruikt. Je bent Faro.
 
 Acties:
 - Berichten versturen, campagnes aanmaken, agenda-items inplannen en leads aan

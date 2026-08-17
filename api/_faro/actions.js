@@ -1,11 +1,11 @@
 'use strict';
 /*
- * Helvaro AI — the confirmed-action executor.
+ * Faro — the confirmed-action executor.
  *
  * SCAFFOLD: the gate and its validation are real; the executors are stubs.
  *
  * ── This module is the only place an act-tool actually happens ───────────────
- * api/_ai/tools.js act-tools BUILD proposals and stop. This file EXECUTES them,
+ * api/_faro/tools.js act-tools BUILD proposals and stop. This file EXECUTES them,
  * and only when handed a confirmation the user clicked. The separation is the
  * point: the orchestrator has no execute path, so no amount of model output —
  * or prompt injection arriving through a lead's WhatsApp message that ends up
@@ -119,7 +119,7 @@ const EXECUTORS = {
     throw new ActionError('Beeldgeneratie is nog niet aangesloten.', 'not_wired');
   },
 
-  // WIRE TO: api/_ai/media.js (video provider does not exist in this repo yet).
+  // WIRE TO: api/_faro/media.js (video provider does not exist in this repo yet).
   async generate_property_video(_payload, _ctx) {
     throw new ActionError('Videogeneratie is nog niet aangesloten.', 'not_wired');
   },

@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — Claude (Anthropic) provider adapter.
+ * Faro — Claude (Anthropic) provider adapter.
  *
  * SCAFFOLD: the request/response mapping is laid out and documented, but the
  * network call is NOT wired. streamChat() throws NOT_WIRED until the
@@ -41,7 +41,7 @@ const MAX_TOKENS = 4096;
 
 function apiKey() {
   const k = process.env.ANTHROPIC_API_KEY || '';
-  if (!k) throw new ProviderError('Helvaro AI is niet beschikbaar.', { code: 'provider_unconfigured' });
+  if (!k) throw new ProviderError('Faro is niet beschikbaar.', { code: 'provider_unconfigured' });
   return k;
 }
 
@@ -104,7 +104,7 @@ async function* streamChat({ system, messages, tools, model, signal }) {
   // NOT WIRED — implementation phase. Shape of the real body:
   //   { model, max_tokens: MAX_TOKENS, system, messages, tools, stream: true }
   // Headers: x-api-key, anthropic-version, content-type, accept: text/event-stream
-  throw new ProviderError('Helvaro AI is nog niet geactiveerd.', {
+  throw new ProviderError('Faro is nog niet geactiveerd.', {
     code: 'not_wired',
     retryable: false,
   });

@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — SSE streaming helpers.
+ * Faro — SSE streaming helpers.
  *
  * SCAFFOLD: complete and usable. Pure transport, no model involvement, so
  * this file is finished rather than stubbed.
@@ -56,7 +56,7 @@ function close(res, data = {}) {
  * Terminal error frame.
  * Takes an already-sanitised message: raw provider errors must be converted to
  * ProviderError upstream, since vendor error text can name the model and
- * sometimes echoes request content (see api/_ai/providers/index.js).
+ * sometimes echoes request content (see api/_faro/providers/index.js).
  */
 function fail(res, { message, retryable = true, code = 'error' }) {
   send(res, 'error', { message, retryable, code });

@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — OpenAI provider adapter.
+ * Faro — OpenAI provider adapter.
  *
  * SCAFFOLD: not wired. Exists now, rather than "later", for one reason: an
  * abstraction with a single implementation is an unproven abstraction. Writing
@@ -29,7 +29,7 @@ const MAX_TOKENS = 4096;
 
 function apiKey() {
   const k = process.env.OPENAI_API_KEY || '';
-  if (!k) throw new ProviderError('Helvaro AI is niet beschikbaar.', { code: 'provider_unconfigured' });
+  if (!k) throw new ProviderError('Faro is niet beschikbaar.', { code: 'provider_unconfigured' });
   return k;
 }
 
@@ -88,7 +88,7 @@ async function* streamChat({ system, messages, tools, model, signal }) {
   void API_URL; void MAX_TOKENS;
   void system; void messages; void tools; void model; void signal;
 
-  throw new ProviderError('Helvaro AI is nog niet geactiveerd.', {
+  throw new ProviderError('Faro is nog niet geactiveerd.', {
     code: 'not_wired',
     retryable: false,
   });

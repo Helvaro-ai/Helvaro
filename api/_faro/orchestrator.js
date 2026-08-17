@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — the orchestrator.
+ * Faro — the orchestrator.
  *
  * SCAFFOLD: the turn loop is written out in full; it runs as far as the
  * provider adapter, which throws NOT_WIRED. Everything around that call —
@@ -175,7 +175,7 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
     }
 
     // WIRE: persist the assistant message and meter credits before closing.
-    // Metering goes through api/_credits.js — the AI workspace must share the
+    // Metering goes through api/_credits.js — Faro must share the
     // existing meter, not run a parallel one.
     //   await store.appendMessage(ctx.projectCode, conversationId, {...});
     //   await credits.consume(ctx.projectCode, 'ai_chat', usage);

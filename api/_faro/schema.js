@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — response component contract.
+ * Faro — response component contract.
  *
  * SCAFFOLD: complete and usable. These are plain builders, no I/O, so this
  * file is finished rather than stubbed.

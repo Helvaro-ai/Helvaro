@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — quick action definitions (requirement 5).
+ * Faro — quick action definitions (requirement 5).
  *
  * ── Why these are data and not nine onclick handlers ─────────────────────────
  * Requirement 5: "clicking an action should start the appropriate AI workflow
@@ -16,7 +16,7 @@
  * ── Prompt language ──────────────────────────────────────────────────────────
  * `prompt` is what gets SENT to the model, not what the model answers in. The
  * reply language comes from the directive api/_lang.js builds and
- * api/_ai/prompt.js injects. Prompts are therefore kept in one language
+ * api/_faro/prompt.js injects. Prompts are therefore kept in one language
  * (English) rather than translated forty ways — a Polish user clicking
  * "hottest leads" sends English and receives Polish. See ./i18n.js.
  *

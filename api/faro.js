@@ -1,14 +1,14 @@
 'use strict';
 /*
- * Helvaro AI — HTTP route.
+ * Faro — HTTP route.
  *
  * SCAFFOLD: deployed but INERT. config.isEnabled() is false unless
- * AI_WORKSPACE_ENABLED=1, so every request 404s until the feature is switched
+ * FARO_WORKSPACE_ENABLED=1, so every request 404s until the feature is switched
  * on deliberately. Same posture as api/_demo-chat.js: code shipping to the
  * server must not be the same event as a paid endpoint going live.
  *
  * ── This file is intentionally tiny ──────────────────────────────────────────
- * It does two things: resolve the session, and hand off to api/_ai/handler.js.
+ * It does two things: resolve the session, and hand off to api/_faro/handler.js.
  * All behaviour lives in the underscore modules, which are not deployed as
  * functions. That keeps the option open to delete this file entirely and
  * dispatch the same handler from api/leads.js by `body.mode` — the pattern the
@@ -24,11 +24,11 @@
  * ── Timeouts ─────────────────────────────────────────────────────────────────
  * Inherits the 60s catch-all in vercel.json. That is enough for a chat turn
  * with a few tool calls. It is NOT enough for video generation — which is why
- * api/_ai/media.js models video as a polled job rather than a blocking call.
+ * api/_faro/media.js models video as a polled job rather than a blocking call.
  */
 
 const _session = require('./_session');
-const aiHandler = require('./_ai/handler');
+const faroHandler = require('./_faro/handler');
 
 module.exports = async function handler(req, res) {
   // CSRF: state-changing POSTs must carry the double-submit token, same as the
@@ -49,5 +49,5 @@ module.exports = async function handler(req, res) {
     isAdmin: Boolean(session.isAdmin),
   };
 
-  return aiHandler.handle(req, res, auth);
+  return faroHandler.handle(req, res, auth);
 };

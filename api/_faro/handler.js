@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — route-agnostic request handler.
+ * Faro — route-agnostic request handler.
  *
  * SCAFFOLD: dispatch, guards and validation are real; the handlers that need a
  * model or a database resolve to not-wired responses.
@@ -12,26 +12,26 @@
  * property-image feature is dispatched through api/leads.js by `body.mode`
  * rather than getting a route of its own.
  *
- * The AI workspace has a real reason to want its own route (it streams, and it
+ * Faro has a real reason to want its own route (it streams, and it
  * has a different timeout profile than lead CRUD), but that is a deployment
  * decision, not an architectural one. So all the logic lives here, in an
  * underscore module that is not a route, and there are two ways to serve it:
  *
- *   A. api/ai.js — a four-line route that calls this. One extra function.
- *   B. add `if (body.mode?.startsWith('ai-')) return require('./_ai/handler')…`
+ *   A. api/faro.js — a four-line route that calls this. One extra function.
+ *   B. add `if (body.mode?.startsWith('faro-')) return require('./_faro/handler')…`
  *      to api/leads.js, exactly like the property-* modes. Zero extra functions.
  *
  * Both work unchanged against this file. Pick at wiring time; nothing below
  * has to change either way.
  *
  * ── Modes ────────────────────────────────────────────────────────────────────
- *   ai-chat            stream a turn                        (SSE)
- *   ai-confirm         execute a confirmed action           (JSON)
- *   ai-conversations   list / rename / favorite / delete    (JSON)
- *   ai-messages        rehydrate a conversation             (JSON)
- *   ai-projects        list / create / read a project       (JSON)
- *   ai-media           submit or poll an image/video job    (JSON)
- *   ai-context         what Helvaro AI can see              (JSON)
+ *   faro-chat            stream a turn                        (SSE)
+ *   faro-confirm         execute a confirmed action           (JSON)
+ *   faro-conversations   list / rename / favorite / delete    (JSON)
+ *   faro-messages        rehydrate a conversation             (JSON)
+ *   faro-projects        list / create / read a project       (JSON)
+ *   faro-media           submit or poll an image/video job    (JSON)
+ *   faro-context         what Faro can see              (JSON)
  */
 
 const config       = require('./config');
@@ -81,18 +81,18 @@ async function handle(req, res, auth) {
   }
 
   switch (body.mode) {
-    case 'ai-chat':          return chat(req, res, ctx, body);
-    case 'ai-confirm':       return confirm(res, ctx, body);
-    case 'ai-conversations': return conversations(res, ctx, body);
-    case 'ai-messages':      return messages(res, ctx, body);
-    case 'ai-projects':      return projects(res, ctx, body);
-    case 'ai-media':         return mediaMode(res, ctx, body);
-    case 'ai-context':       return res.status(200).json({ sources: prompt.contextSources() });
+    case 'faro-chat':          return chat(req, res, ctx, body);
+    case 'faro-confirm':       return confirm(res, ctx, body);
+    case 'faro-conversations': return conversations(res, ctx, body);
+    case 'faro-messages':      return messages(res, ctx, body);
+    case 'faro-projects':      return projects(res, ctx, body);
+    case 'faro-media':         return mediaMode(res, ctx, body);
+    case 'faro-context':       return res.status(200).json({ sources: prompt.contextSources() });
     default:                 return res.status(400).json({ error: 'Onbekende mode' });
   }
 }
 
-// ── ai-chat ──────────────────────────────────────────────────────────────────
+// ── faro-chat ──────────────────────────────────────────────────────────────────
 
 async function chat(req, res, ctx, body) {
   const text = String(body.text || '').trim();
@@ -139,7 +139,7 @@ async function chat(req, res, ctx, body) {
   });
 }
 
-// ── ai-confirm ───────────────────────────────────────────────────────────────
+// ── faro-confirm ───────────────────────────────────────────────────────────────
 
 async function confirm(res, ctx, body) {
   if (!body.actionId) return res.status(400).json({ error: 'Ontbrekende actie' });
@@ -153,7 +153,7 @@ async function confirm(res, ctx, body) {
   }
 }
 
-// ── ai-conversations / ai-messages ───────────────────────────────────────────
+// ── faro-conversations / faro-messages ───────────────────────────────────────────
 
 async function conversations(res, ctx, body) {
   switch (body.op) {
@@ -181,7 +181,7 @@ async function messages(res, ctx, body) {
   });
 }
 
-// ── ai-projects ──────────────────────────────────────────────────────────────
+// ── faro-projects ──────────────────────────────────────────────────────────────
 
 async function projects(res, ctx, body) {
   switch (body.op) {
@@ -199,7 +199,7 @@ async function projects(res, ctx, body) {
   }
 }
 
-// ── ai-media ─────────────────────────────────────────────────────────────────
+// ── faro-media ─────────────────────────────────────────────────────────────────
 
 async function mediaMode(res, ctx, body) {
   switch (body.op) {

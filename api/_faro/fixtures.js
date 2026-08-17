@@ -1,13 +1,13 @@
 'use strict';
 /*
- * Helvaro AI — demo fixtures.
+ * Faro — demo fixtures.
  *
- * Sample data returned by the read tools when AI_DEMO_MODE=1. Off by default.
+ * Sample data returned by the read tools when FARO_DEMO_MODE=1. Off by default.
  *
  * ── The one rule ─────────────────────────────────────────────────────────────
  * Fixture data must be impossible to mistake for real CRM data. Every record
  * here carries a `demo-` id prefix, and every tool result built from fixtures
- * keeps the `_stub` marker that api/_ai/tools.js sets. If this ever ships
+ * keeps the `_stub` marker that api/_faro/tools.js sets. If this ever ships
  * enabled by default, an agent must be able to tell at a glance that "Emma Van
  * Dijk, €350.000" is a sample and not a person to phone.
  *
@@ -109,7 +109,7 @@ const PROJECTS = Object.freeze([
 ]);
 
 function isEnabled() {
-  return String(process.env.AI_DEMO_MODE || '') === '1';
+  return String(process.env.FARO_DEMO_MODE || '') === '1';
 }
 
 module.exports = {

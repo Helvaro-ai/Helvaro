@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Local dev server for the Helvaro AI workspace.
+ * Local dev server for the Faro.
  *
- *   node scripts/ai-dev.js            → http://localhost:4321
- *   PORT=5000 node scripts/ai-dev.js
+ *   node scripts/faro-dev.js            → http://localhost:4321
+ *   PORT=5000 node scripts/faro-dev.js
  *
  * ── What it is for ───────────────────────────────────────────────────────────
- * Seeing the AI workspace work without Vercel, without Airtable, without Clerk
+ * Seeing Faro work without Vercel, without Airtable, without Clerk
  * and without an API key. It serves api/dashboard.js's HTML and routes
- * /api/ai to api/_ai/handler.js with a fixed local session.
+ * /api/faro to api/_faro/handler.js with a fixed local session.
  *
  * Everything in the request path is the REAL code: the same handler, the same
  * orchestrator, the same tool registry, the same SSE framing, the same
  * confirmation gate. Only three things are substituted, and each is an env var
  * the production deploy simply does not set:
  *
- *   AI_PROVIDER=demo        scripted responses instead of a model
- *   AI_DEMO_MODE=1          fixture leads/pipeline instead of Airtable
- *   AI_WORKSPACE_ENABLED=1  the feature flag, off in production until chosen
+ *   FARO_PROVIDER=demo        scripted responses instead of a model
+ *   FARO_DEMO_MODE=1          fixture leads/pipeline instead of Airtable
+ *   FARO_WORKSPACE_ENABLED=1  the feature flag, off in production until chosen
  *
  * ── This is a dev tool, not a deployment ─────────────────────────────────────
  * It binds localhost, has no authentication, and hands every request the same
@@ -30,19 +30,19 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Set before requiring anything under api/_ai — config.js reads these at load.
-process.env.AI_WORKSPACE_ENABLED = process.env.AI_WORKSPACE_ENABLED || '1';
-process.env.AI_PROVIDER = process.env.AI_PROVIDER || 'demo';
-process.env.AI_DEMO_MODE = process.env.AI_DEMO_MODE || '1';
+// Set before requiring anything under api/_faro — config.js reads these at load.
+process.env.FARO_WORKSPACE_ENABLED = process.env.FARO_WORKSPACE_ENABLED || '1';
+process.env.FARO_PROVIDER = process.env.FARO_PROVIDER || 'demo';
+process.env.FARO_DEMO_MODE = process.env.FARO_DEMO_MODE || '1';
 
 const dashboard = require('../api/dashboard');
-const aiHandler = require('../api/_ai/handler');
+const faroHandler = require('../api/_faro/handler');
 
 const PORT = Number(process.env.PORT || 4321);
 const ROOT = path.join(__dirname, '..');
 
 /* The fake local tenant. In production this comes from a verified signed
-   session (see api/ai.js); here it is a constant, which is exactly why this
+   session (see api/faro.js); here it is a constant, which is exactly why this
    server must never be exposed. */
 const LOCAL_AUTH = {
   projectCode: 'LOCALDEV',
@@ -101,9 +101,9 @@ const server = http.createServer(async (req, res) => {
   decorate(req, res);
 
   try {
-    if (p === '/api/ai') {
+    if (p === '/api/faro') {
       req.body = await readBody(req);
-      return aiHandler.handle(req, res, LOCAL_AUTH);
+      return faroHandler.handle(req, res, LOCAL_AUTH);
     }
 
     if (p === '/' || p === '/dashboard') {
@@ -126,14 +126,14 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  const cfg = require('../api/_ai/config');
+  const cfg = require('../api/_faro/config');
   console.log(`
-  Helvaro AI — local dev
+  Faro — local dev
   ──────────────────────────────────────────────
   http://localhost:${PORT}
 
   provider   ${cfg.providerName()}${cfg.providerName() === 'demo' ? '  (scripted, no API calls)' : ''}
-  fixtures   ${process.env.AI_DEMO_MODE === '1' ? 'on  (sample leads, not real data)' : 'off'}
+  fixtures   ${process.env.FARO_DEMO_MODE === '1' ? 'on  (sample leads, not real data)' : 'off'}
   language   ${LOCAL_AUTH.lang}
   tenant     ${LOCAL_AUTH.projectCode}  (fake — localhost only)
 

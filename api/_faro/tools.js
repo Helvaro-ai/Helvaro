@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — tool registry.
+ * Faro — tool registry.
  *
  * SCAFFOLD: every tool is declared with its real JSON Schema and its real
  * result shape, but the implementations are stubs returning representative
@@ -15,7 +15,7 @@
  *   kind: 'read'  — safe, idempotent, executed immediately by the orchestrator.
  *   kind: 'act'   — changes something, or reaches outside Helvaro. NEVER
  *                   executed on the model's say-so. Returns a *proposal*; the
- *                   user confirms it in the UI; only then does api/_ai/actions.js
+ *                   user confirms it in the UI; only then does api/_faro/actions.js
  *                   execute it.
  *
  * That split is requirement 8's "ask for confirmation before executing external
@@ -218,7 +218,7 @@ const readTools = [
 // ─────────────────────────────────────────────────────────────────────────────
 // ACT TOOLS — these build a PROPOSAL. They never execute.
 // The returned confirmation component is what the user approves in the UI;
-// api/_ai/actions.js is the only module that can carry it out.
+// api/_faro/actions.js is the only module that can carry it out.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const actTools = [

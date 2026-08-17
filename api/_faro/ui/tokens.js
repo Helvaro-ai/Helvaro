@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — design tokens.
+ * Faro — design tokens.
  *
  * SCAFFOLD: complete. Pure CSS, nothing to wire.
  *
@@ -11,7 +11,7 @@
  * palette plus two values the token layer never named: Warm Sand (#F4E7C8),
  * Champagne Gold (#D8C49A) and Deep Sand (#B89D73).
  *
- * So this file adds three tokens and changes nothing else. The AI workspace
+ * So this file adds three tokens and changes nothing else. Faro
  * inherits every existing surface, text and status token, which is what makes
  * it read as an expansion of Helvaro rather than a second product bolted on
  * (requirement 18).
@@ -33,7 +33,7 @@
 
 function css() {
   return `
-/* ── Helvaro AI tokens (extends DESIGN-SYSTEM.md) ────────────────────────── */
+/* ── Faro tokens (extends DESIGN-SYSTEM.md) ────────────────────────── */
 :root {
   --warm-sand:      #F4E7C8;
   --champagne:      #D8C49A;
@@ -44,16 +44,16 @@ function css() {
   --champagne-line: rgba(216, 196, 154, 0.32);
   --warm-sand-glow: rgba(244, 231, 200, 0.10);
 
-  /* AI workspace canvas — one step darker than the CRM's --bg-alt so the
+  /* Faro canvas — one step darker than the CRM's --bg-alt so the
      workspace switch is felt, not just seen. */
-  --ai-canvas:      #101010;
-  --ai-surface:     #1A1A1A;
-  --ai-raised:      #232323;
-  --ai-hairline:    rgba(184, 157, 115, 0.16);
+  --faro-canvas:      #101010;
+  --faro-surface:     #1A1A1A;
+  --faro-raised:      #232323;
+  --faro-hairline:    rgba(184, 157, 115, 0.16);
 
   /* The AI input is the visual focus of the landing screen (requirement 4). */
-  --ai-input-bg:    #1C1C1C;
-  --ai-input-ring:  rgba(244, 231, 200, 0.22);
+  --faro-input-bg:    #1C1C1C;
+  --faro-input-ring:  rgba(244, 231, 200, 0.22);
 
   /* ── Quick-action icon hues ───────────────────────────────────────────────
      One hue per action, families per group. These are the ONE deliberate
@@ -104,11 +104,11 @@ function css() {
    workspace is not exempt from the light variant DESIGN-SYSTEM.md deliberately
    kept cheap — see its "two deliberate deviations", point 2. */
 [data-theme="light"] {
-  --ai-canvas:      #FAF8F4;
-  --ai-surface:     #FFFFFF;
-  --ai-raised:      #F4F1EA;
-  --ai-hairline:    rgba(184, 157, 115, 0.24);
-  --ai-input-bg:    #FFFFFF;
+  --faro-canvas:      #FAF8F4;
+  --faro-surface:     #FFFFFF;
+  --faro-raised:      #F4F1EA;
+  --faro-hairline:    rgba(184, 157, 115, 0.24);
+  --faro-input-bg:    #FFFFFF;
   --warm-sand-glow: rgba(184, 157, 115, 0.10);
 
   /* The icon hues are darkened for light mode. The dark-theme values are tuned

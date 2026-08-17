@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — UI strings.
+ * Faro — UI strings.
  *
  * ── Why four languages and not forty ─────────────────────────────────────────
  * api/_lang.js supports 40 languages, because the WhatsApp AI has to talk to
@@ -17,7 +17,7 @@
  * ── The answer language is a separate mechanism ───────────────────────────────
  * Quick-action prompts here are the text SENT to the model, not what it answers
  * in. The reply language is governed by the directive api/_lang.js already
- * builds and api/_ai/prompt.js injects. That is why a Polish user clicking
+ * builds and api/_faro/prompt.js injects. That is why a Polish user clicking
  * "Find my hottest leads" gets an English prompt and a Polish answer — and why
  * this table does not need a Polish column to work correctly.
  */
@@ -29,17 +29,15 @@ const TRANSLATED = ['nl', 'fr', 'en', 'de'];
 
 const STRINGS = {
   nl: {
-    'ws.crm': 'CRM',
-    'ws.ai': 'AI',
-    'ws.title': 'Helvaro AI',
-    'ws.subtitle': 'Je AI-werkruimte',
+    'ws.title': 'Faro',
+    'ws.subtitle': 'Je assistent binnen Helvaro',
 
     'sb.new': 'Nieuw gesprek',
     'sb.search': 'Zoeken',
     'sb.recent': 'Recent',
     'sb.favorites': 'Favorieten',
     'sb.projects': 'Projecten',
-    'sb.tools': 'AI-tools',
+    'sb.tools': 'Maken',
     'sb.images': 'Beelden',
     'sb.videos': "Video's",
     'sb.conversations': 'Recente gesprekken',
@@ -48,15 +46,15 @@ const STRINGS = {
     'sb.poweredBy': 'Werkt op je eigen bedrijfsdata',
 
     'land.title': 'Waar werken we aan?',
-    'land.sub': 'Vraag Helvaro alles over je leads, panden, gesprekken of marketing.',
+    'land.sub': 'Vraag Faro alles over je leads, panden, gesprekken of marketing.',
 
-    'in.placeholder': 'Vraag Helvaro alles…',
+    'in.placeholder': 'Vraag Faro alles…',
     'in.attach': 'Bijlage',
     'in.property': 'Pand',
     'in.command': 'Commando',
     'in.send': 'Versturen',
 
-    'ctx.label': 'Helvaro-context',
+    'ctx.label': 'Faro ziet',
     'ctx.manage': 'Beheren',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Panden',
@@ -65,7 +63,7 @@ const STRINGS = {
     'ctx.analytics': 'Analytics',
     'ctx.campaigns': 'Campagnes',
     'ctx.assets': 'Marketing',
-    'ctx.explain': 'Helvaro AI kan deze gegevens gebruiken om je vragen te beantwoorden.',
+    'ctx.explain': 'Faro kan deze gegevens gebruiken om je vragen te beantwoorden.',
 
     'qa.title': 'Snelle acties',
     'qa.viewAll': 'Alle acties',
@@ -73,7 +71,7 @@ const STRINGS = {
     'qa.create': 'Maken',
     'qa.act': 'Doen',
 
-    'act.title': 'Recente AI-activiteit',
+    'act.title': 'Recent gemaakt',
     'act.viewAll': 'Alles bekijken',
     'act.empty': 'Nog niets gemaakt. Genereer je eerste pandbeeld of pandtekst.',
 
@@ -87,6 +85,7 @@ const STRINGS = {
     'st.done': 'Uitgevoerd.',
     'st.busy': 'Bezig…',
     'st.failed': 'Generatie mislukt.',
+    'st.close': 'Sluiten',
 
     'pn.images': 'Beelden',
     'pn.videos': "Video's",
@@ -112,17 +111,15 @@ const STRINGS = {
   },
 
   en: {
-    'ws.crm': 'CRM',
-    'ws.ai': 'AI',
-    'ws.title': 'Helvaro AI',
-    'ws.subtitle': 'Your AI workspace',
+    'ws.title': 'Faro',
+    'ws.subtitle': 'Your assistant inside Helvaro',
 
     'sb.new': 'New conversation',
     'sb.search': 'Search',
     'sb.recent': 'Recent',
     'sb.favorites': 'Favorites',
     'sb.projects': 'Projects',
-    'sb.tools': 'AI tools',
+    'sb.tools': 'Create',
     'sb.images': 'Images',
     'sb.videos': 'Videos',
     'sb.conversations': 'Recent conversations',
@@ -131,15 +128,15 @@ const STRINGS = {
     'sb.poweredBy': 'Powered by your business data',
 
     'land.title': 'What are we working on?',
-    'land.sub': 'Ask Helvaro anything about your leads, properties, conversations or marketing.',
+    'land.sub': 'Ask Faro anything about your leads, properties, conversations or marketing.',
 
-    'in.placeholder': 'Ask Helvaro anything…',
+    'in.placeholder': 'Ask Faro anything…',
     'in.attach': 'Attach',
     'in.property': 'Property',
     'in.command': 'Command',
     'in.send': 'Send',
 
-    'ctx.label': 'Helvaro context',
+    'ctx.label': 'Faro sees',
     'ctx.manage': 'Manage',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Properties',
@@ -148,7 +145,7 @@ const STRINGS = {
     'ctx.analytics': 'Analytics',
     'ctx.campaigns': 'Campaigns',
     'ctx.assets': 'Marketing',
-    'ctx.explain': 'Helvaro AI can use this data to answer your questions.',
+    'ctx.explain': 'Faro can use this data to answer your questions.',
 
     'qa.title': 'Quick actions',
     'qa.viewAll': 'View all actions',
@@ -156,7 +153,7 @@ const STRINGS = {
     'qa.create': 'Create',
     'qa.act': 'Act',
 
-    'act.title': 'Recent AI activity',
+    'act.title': 'Recently created',
     'act.viewAll': 'View all',
     'act.empty': 'Nothing created yet. Generate your first property image or listing.',
 
@@ -170,6 +167,7 @@ const STRINGS = {
     'st.done': 'Done.',
     'st.busy': 'Working…',
     'st.failed': 'Generation failed.',
+    'st.close': 'Close',
 
     'pn.images': 'Images',
     'pn.videos': 'Videos',
@@ -195,17 +193,15 @@ const STRINGS = {
   },
 
   fr: {
-    'ws.crm': 'CRM',
-    'ws.ai': 'IA',
-    'ws.title': 'Helvaro AI',
-    'ws.subtitle': 'Votre espace IA',
+    'ws.title': 'Faro',
+    'ws.subtitle': 'Votre assistant dans Helvaro',
 
     'sb.new': 'Nouvelle conversation',
     'sb.search': 'Rechercher',
     'sb.recent': 'Récent',
     'sb.favorites': 'Favoris',
     'sb.projects': 'Projets',
-    'sb.tools': 'Outils IA',
+    'sb.tools': 'Créer',
     'sb.images': 'Images',
     'sb.videos': 'Vidéos',
     'sb.conversations': 'Conversations récentes',
@@ -214,15 +210,15 @@ const STRINGS = {
     'sb.poweredBy': 'Alimenté par vos données',
 
     'land.title': 'Sur quoi travaillons-nous ?',
-    'land.sub': 'Demandez tout à Helvaro sur vos leads, biens, conversations ou marketing.',
+    'land.sub': 'Demandez tout à Faro sur vos leads, biens, conversations ou marketing.',
 
-    'in.placeholder': 'Demandez tout à Helvaro…',
+    'in.placeholder': 'Demandez tout à Faro…',
     'in.attach': 'Pièce jointe',
     'in.property': 'Bien',
     'in.command': 'Commande',
     'in.send': 'Envoyer',
 
-    'ctx.label': 'Contexte Helvaro',
+    'ctx.label': 'Faro voit',
     'ctx.manage': 'Gérer',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Biens',
@@ -231,7 +227,7 @@ const STRINGS = {
     'ctx.analytics': 'Analytique',
     'ctx.campaigns': 'Campagnes',
     'ctx.assets': 'Marketing',
-    'ctx.explain': 'Helvaro AI peut utiliser ces données pour répondre à vos questions.',
+    'ctx.explain': 'Faro peut utiliser ces données pour répondre à vos questions.',
 
     'qa.title': 'Actions rapides',
     'qa.viewAll': 'Toutes les actions',
@@ -239,7 +235,7 @@ const STRINGS = {
     'qa.create': 'Créer',
     'qa.act': 'Agir',
 
-    'act.title': 'Activité IA récente',
+    'act.title': 'Créé récemment',
     'act.viewAll': 'Tout voir',
     'act.empty': "Rien de créé pour l'instant. Générez votre première image de bien.",
 
@@ -253,6 +249,7 @@ const STRINGS = {
     'st.done': 'Terminé.',
     'st.busy': 'En cours…',
     'st.failed': 'Génération échouée.',
+    'st.close': 'Fermer',
 
     'pn.images': 'Images',
     'pn.videos': 'Vidéos',
@@ -278,17 +275,15 @@ const STRINGS = {
   },
 
   de: {
-    'ws.crm': 'CRM',
-    'ws.ai': 'KI',
-    'ws.title': 'Helvaro AI',
-    'ws.subtitle': 'Ihr KI-Arbeitsbereich',
+    'ws.title': 'Faro',
+    'ws.subtitle': 'Ihr Assistent in Helvaro',
 
     'sb.new': 'Neue Unterhaltung',
     'sb.search': 'Suchen',
     'sb.recent': 'Kürzlich',
     'sb.favorites': 'Favoriten',
     'sb.projects': 'Projekte',
-    'sb.tools': 'KI-Werkzeuge',
+    'sb.tools': 'Erstellen',
     'sb.images': 'Bilder',
     'sb.videos': 'Videos',
     'sb.conversations': 'Letzte Unterhaltungen',
@@ -297,15 +292,15 @@ const STRINGS = {
     'sb.poweredBy': 'Basiert auf Ihren Unternehmensdaten',
 
     'land.title': 'Woran arbeiten wir?',
-    'land.sub': 'Fragen Sie Helvaro alles zu Ihren Leads, Objekten, Gesprächen oder Marketing.',
+    'land.sub': 'Fragen Sie Faro alles zu Ihren Leads, Objekten, Gesprächen oder Marketing.',
 
-    'in.placeholder': 'Fragen Sie Helvaro alles…',
+    'in.placeholder': 'Fragen Sie Faro alles…',
     'in.attach': 'Anhang',
     'in.property': 'Objekt',
     'in.command': 'Befehl',
     'in.send': 'Senden',
 
-    'ctx.label': 'Helvaro-Kontext',
+    'ctx.label': 'Faro sieht',
     'ctx.manage': 'Verwalten',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Objekte',
@@ -314,7 +309,7 @@ const STRINGS = {
     'ctx.analytics': 'Analytik',
     'ctx.campaigns': 'Kampagnen',
     'ctx.assets': 'Marketing',
-    'ctx.explain': 'Helvaro AI kann diese Daten zur Beantwortung Ihrer Fragen nutzen.',
+    'ctx.explain': 'Faro kann diese Daten zur Beantwortung Ihrer Fragen nutzen.',
 
     'qa.title': 'Schnellaktionen',
     'qa.viewAll': 'Alle Aktionen',
@@ -322,7 +317,7 @@ const STRINGS = {
     'qa.create': 'Erstellen',
     'qa.act': 'Handeln',
 
-    'act.title': 'Letzte KI-Aktivität',
+    'act.title': 'Zuletzt erstellt',
     'act.viewAll': 'Alle ansehen',
     'act.empty': 'Noch nichts erstellt. Erzeugen Sie Ihr erstes Objektbild.',
 
@@ -336,6 +331,7 @@ const STRINGS = {
     'st.done': 'Erledigt.',
     'st.busy': 'Läuft…',
     'st.failed': 'Erzeugung fehlgeschlagen.',
+    'st.close': 'Schließen',
 
     'pn.images': 'Bilder',
     'pn.videos': 'Videos',

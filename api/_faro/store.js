@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — persistence for conversations, messages and projects.
+ * Faro — persistence for conversations, messages and projects.
  *
  * SCAFFOLD: full function surface, no queries wired.
  *

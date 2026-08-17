@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Static checks for the Helvaro AI workspace. No network, no browser.
+ * Static checks for the Faro. No network, no browser.
  *
- *   node scripts/ai-check.js
+ *   node scripts/faro-check.js
  *
  * ── Why this exists ──────────────────────────────────────────────────────────
- * The AI workspace's CSS, markup and client script are generated as STRINGS and
+ * Faro's CSS, markup and client script are generated as STRINGS and
  * spliced into api/dashboard.js's template literal. That buys a clean
  * separation, but it moves two whole classes of error from "compile time" to
  * "the page is blank in production":
@@ -23,7 +23,7 @@
  * translated language, since a translation is exactly the kind of edit that
  * introduces an unescaped apostrophe.
  *
- * Run this before any commit that touches api/_ai/ui/.
+ * Run this before any commit that touches api/_faro/ui/.
  */
 
 const fs = require('fs');
@@ -35,7 +35,7 @@ let failures = 0;
 const fail = (msg) => { console.error(`  ✗ ${msg}`); failures += 1; };
 const pass = (msg) => console.log(`  ✓ ${msg}`);
 
-console.log('\nHelvaro AI — static checks\n');
+console.log('\nFaro — static checks\n');
 
 // ── 1. Every module loads ───────────────────────────────────────────────────
 console.log('modules');
@@ -47,23 +47,23 @@ const MODULES = [
   'ui/i18n', 'ui/quick-actions',
 ];
 for (const m of MODULES) {
-  try { require(path.join('..', 'api', '_ai', m)); } catch (err) { fail(`${m}: ${err.message}`); }
+  try { require(path.join('..', 'api', '_faro', m)); } catch (err) { fail(`${m}: ${err.message}`); }
 }
 if (!failures) pass(`${MODULES.length} modules load`);
-try { require('../api/ai'); pass('api/ai.js loads'); } catch (err) { fail(`api/ai.js: ${err.message}`); }
+try { require('../api/faro'); pass('api/faro.js loads'); } catch (err) { fail(`api/faro.js: ${err.message}`); }
 
 // ── 2. Splice safety, per language ──────────────────────────────────────────
 console.log('\nsplice safety (no backticks or ${} in generated strings)');
-const ui = require('../api/_ai/ui');
+const ui = require('../api/_faro/ui');
 const problems = ui.verify();
 if (problems.length) problems.forEach(fail);
 else pass('clean across all translated languages');
 
 // ── 3. The generated client script parses, per language ─────────────────────
 console.log('\ngenerated client script');
-const i18n = require('../api/_ai/ui/i18n');
+const i18n = require('../api/_faro/ui/i18n');
 for (const lang of i18n.TRANSLATED) {
-  const tmp = path.join(os.tmpdir(), `helvaro-ai-client-${lang}-${process.pid}.js`);
+  const tmp = path.join(os.tmpdir(), `helvaro-faro-client-${lang}-${process.pid}.js`);
   try {
     fs.writeFileSync(tmp, ui.forLang(lang).js);
     execFileSync(process.execPath, ['--check', tmp], { stdio: 'pipe' });
@@ -88,14 +88,14 @@ try {
 // Every mount point must still be present — a merge could silently drop one,
 // and the failure mode is a missing workspace rather than an error.
 const dash = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
-for (const marker of ['${ai.css}', '${ai.switcher}', '${ai.sidebar}', '${ai.workspace}', '${ai.js}']) {
+for (const marker of ['${faro.css}', '${faro.launcher}', '${faro.overlay}', '${faro.js}']) {
   if (dash.indexOf(marker) === -1) fail(`mount point missing: ${marker}`);
 }
-if (dash.indexOf('_aiUI.forLang') === -1) fail('dashboard.js does not bind a language');
+if (dash.indexOf('_faroUI.forLang') === -1) fail('dashboard.js does not bind a language');
 
 // ── 5. The confirmation gate holds ──────────────────────────────────────────
 console.log('\nconfirmation gate');
-const tools = require('../api/_ai/tools');
+const tools = require('../api/_faro/tools');
 const acts = tools.ALL.filter((t) => t.kind === 'act').map((t) => t.name);
 if (!acts.length) fail('no act-tools registered');
 else if (acts.every((n) => tools.requiresConfirmation(n))) pass(`${acts.length} act-tools all require confirmation`);
@@ -106,7 +106,7 @@ if (reads.some((n) => tools.requiresConfirmation(n))) fail('a read-tool requires
 else pass(`${reads.length} read-tools run without a gate`);
 
 // A staged action must never be reachable from another tenant.
-const actions = require('../api/_ai/actions');
+const actions = require('../api/_faro/actions');
 const id = actions.stage({ projectCode: 'A', userId: 'u', action: 'create_followup', payload: {} });
 actions.execute({ actionId: id, ctx: { projectCode: 'B', userId: 'v' } })
   .then(() => { fail('cross-tenant action execution was NOT blocked'); finish(); })
@@ -145,7 +145,7 @@ function finish() {
   // flips per theme. The switcher's active segment shipped at 1.15:1 in light
   // mode once; this makes that a build failure rather than a screenshot review.
   console.log('\ncontrast');
-  const css = require('../api/_ai/ui/tokens').css();
+  const css = require('../api/_faro/ui/tokens').css();
   const pairs = [
     ['dark',  tokenValue(css, '--sand-on-surface'), '#101010'],
     ['light', tokenValue(css, '--sand-on-surface', '[data-theme="light"]'), '#FAF8F4'],
@@ -174,7 +174,7 @@ function finish() {
 
   // ── 7. No vendor branding may reach the client ────────────────────────────
   console.log('\nbranding (requirement 13)');
-  const config = require('../api/_ai/config');
+  const config = require('../api/_faro/config');
   const labels = config.TIERS.map((t) => config.publicModelLabel(t.key));
   const leaked = labels.filter((l) => /claude|anthropic|openai|gpt/i.test(l));
   if (leaked.length) fail(`public model label leaks a vendor: ${leaked.join(', ')}`);

@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Helvaro AI — image and video generation jobs.
+ * Faro — image and video generation jobs.
  *
  * SCAFFOLD: job lifecycle laid out, providers not wired.
  *
