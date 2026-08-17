@@ -462,6 +462,111 @@ function isValidRenovationDepthKey(key) {
 // whenever the Staging style is active (see dashboard.js's
 // renderPiFurnitureGrid()), so a normal user never reaches this branch —
 // it only matters for a direct API call that bypasses the UI.
+/* ── Client-customisable axes, added after the original eight ───────────────
+ * The engine preamble is fixed law. THESE are the dials a client turns inside
+ * it — §15 of the engine spec ("treat user-selected parameters as explicit
+ * instructions") made real.
+ *
+ * ── Why this block is data and the original eight are not ──────────────────
+ * The first eight axes (style, room, furniture, walls, wall colour, floor,
+ * lighting, depth) each carry a special case: wall colour only applies to a
+ * painted finish, staging overrides an empty-furniture request, renovation
+ * depth has a non-empty default. They are hand-composed above and left alone,
+ * because rewriting a working money path to save future typing is a bad trade.
+ *
+ * Everything from here on is uniform — a key, a list, one prompt clause — so
+ * it lives in a registry instead. Adding "and more" later is one array entry:
+ * validation, the composed prompt, and Faro's tool schema all read from this,
+ * so nothing else has to be touched.
+ */
+const PALETTES = Object.freeze([
+  Object.freeze({ key: 'warm-neutral', label: 'Warm neutraal', promptFragment: 'a warm neutral palette — creams, soft beiges, warm greys' }),
+  Object.freeze({ key: 'cool-neutral', label: 'Koel neutraal', promptFragment: 'a cool neutral palette — crisp whites, cool greys, soft blacks' }),
+  Object.freeze({ key: 'earth',        label: 'Aardetinten',   promptFragment: 'an earth-tone palette — terracotta, ochre, clay, olive, warm browns' }),
+  Object.freeze({ key: 'monochrome',   label: 'Monochroom',    promptFragment: 'a monochrome palette — a single hue family from light to dark' }),
+  Object.freeze({ key: 'natural',      label: 'Natuurlijk',    promptFragment: 'a natural palette drawn from raw materials — wood, stone, linen, unpainted textures' }),
+  Object.freeze({ key: 'bold-accent',  label: 'Met accentkleur', promptFragment: 'a restrained neutral base with one confident accent colour used sparingly' }),
+]);
+
+const VIBES = Object.freeze([
+  Object.freeze({ key: 'serene',    label: 'Sereen',        promptFragment: 'a calm, serene atmosphere — uncluttered, quiet, restful' }),
+  Object.freeze({ key: 'cozy',      label: 'Knus',          promptFragment: 'a cozy, inviting atmosphere — soft textiles, warm light, a lived-in comfort' }),
+  Object.freeze({ key: 'airy',      label: 'Licht en ruim', promptFragment: 'an airy, open atmosphere — light, space, minimal visual weight' }),
+  Object.freeze({ key: 'dramatic',  label: 'Dramatisch',    promptFragment: 'a dramatic atmosphere — deep contrast, strong shadow, a sense of occasion' }),
+  Object.freeze({ key: 'boutique',  label: 'Boutique hotel', promptFragment: 'a boutique-hotel atmosphere — considered, tailored, quietly expensive' }),
+  Object.freeze({ key: 'timeless',  label: 'Tijdloos',      promptFragment: 'a timeless atmosphere — classic proportions and materials that will not date' }),
+]);
+
+const MATERIAL_ACCENTS = Object.freeze([
+  Object.freeze({ key: 'oak',        label: 'Eik',          promptFragment: 'light oak as the dominant material accent' }),
+  Object.freeze({ key: 'walnut',     label: 'Noten',        promptFragment: 'dark walnut as the dominant material accent' }),
+  Object.freeze({ key: 'marble',     label: 'Marmer',       promptFragment: 'marble as the dominant material accent, with believable natural veining' }),
+  Object.freeze({ key: 'stone',      label: 'Natuursteen',  promptFragment: 'natural stone as the dominant material accent, with genuine variation' }),
+  Object.freeze({ key: 'concrete',   label: 'Beton',        promptFragment: 'polished concrete as the dominant material accent' }),
+  Object.freeze({ key: 'brass',      label: 'Messing',      promptFragment: 'brass detailing as the dominant metal accent' }),
+  Object.freeze({ key: 'matte-black',label: 'Mat zwart',    promptFragment: 'matte black metalwork as the dominant hardware accent' }),
+  Object.freeze({ key: 'rattan',     label: 'Rotan',        promptFragment: 'rattan and woven natural fibre as a recurring material accent' }),
+]);
+
+/* Only meaningful for exterior shots — gevel, tuin, terras. Applied regardless
+ * of room type, because the model can see whether it is outdoors and the engine
+ * preamble already forbids inventing a garden that is not there. */
+const LANDSCAPING_STYLES = Object.freeze([
+  Object.freeze({ key: 'mediterranean', label: 'Mediterraan',  promptFragment: 'Mediterranean landscaping — olive, lavender, gravel, terracotta, sun-tolerant planting' }),
+  Object.freeze({ key: 'modern-minimal',label: 'Modern strak', promptFragment: 'modern minimal landscaping — clean lines, architectural planting, large-format paving' }),
+  Object.freeze({ key: 'japanese',      label: 'Japans',       promptFragment: 'Japanese-inspired landscaping — moss, acer, stone, water, deliberate restraint' }),
+  Object.freeze({ key: 'cottage',       label: 'Landelijk',    promptFragment: 'cottage landscaping — layered borders, informal planting, natural materials' }),
+  Object.freeze({ key: 'lush',          label: 'Weelderig',    promptFragment: 'lush green landscaping — dense foliage, generous planting, a mature garden feel' }),
+]);
+
+/*
+ * The registry. Each entry composes exactly one clause. `optional` axes accept
+ * an empty value meaning "the AI decides", which is the same contract the
+ * original eight use.
+ */
+const EXTRA_AXES = Object.freeze([
+  Object.freeze({ key: 'palette',     list: PALETTES,           label: 'Kleurenpalet',     clause: 'Colour palette' }),
+  Object.freeze({ key: 'vibe',        list: VIBES,              label: 'Sfeer',            clause: 'Atmosphere' }),
+  Object.freeze({ key: 'material',    list: MATERIAL_ACCENTS,   label: 'Materiaal',        clause: 'Materials' }),
+  Object.freeze({ key: 'landscaping', list: LANDSCAPING_STYLES, label: 'Tuinstijl',        clause: 'Landscaping' }),
+]);
+
+/* Free text, not a list — "de open haard", "het behang in de gang". Capped for
+ * the same reason wallColorNote is: this text reaches a paid API. */
+const MAX_OBJECT_NOTE_LENGTH = 120;
+const OBJECT_AXES = Object.freeze([
+  Object.freeze({ key: 'preserve', label: 'Behouden',  clause: 'PRESERVE EXACTLY, do not alter' }),
+  Object.freeze({ key: 'remove',   label: 'Verwijderen', clause: 'REMOVE from the scene, replacing it with what would plausibly be there instead' }),
+  Object.freeze({ key: 'add',      label: 'Toevoegen', clause: 'ADD to the scene, placed where it could physically exist' }),
+]);
+
+function axisByKey(list, key) {
+  return list.find((x) => x.key === key) || null;
+}
+
+/** True for '' (automatisch) or a known key. Mirrors the original axes' contract. */
+function isValidExtraAxis(axisKey, value) {
+  const axis = EXTRA_AXES.find((a) => a.key === axisKey);
+  if (!axis) return false;
+  const v = value === undefined || value === null ? '' : String(value).trim();
+  return v === '' || Boolean(axisByKey(axis.list, v));
+}
+
+/** Compose the extra axes into prompt clauses. Empty axes contribute nothing. */
+function buildExtraClauses(opts = {}) {
+  const parts = [];
+  for (const axis of EXTRA_AXES) {
+    const hit = axisByKey(axis.list, String(opts[axis.key] || '').trim());
+    if (hit) parts.push(` ${axis.clause}: ${hit.promptFragment}.`);
+  }
+  for (const axis of OBJECT_AXES) {
+    const note = opts[axis.key] ? String(opts[axis.key]).trim().slice(0, MAX_OBJECT_NOTE_LENGTH) : '';
+    if (note) parts.push(` ${axis.clause}: ${note}.`);
+  }
+  return parts.join('');
+}
+
+
 /* ── The transformation engine preamble ─────────────────────────────────────
  * Prepended to EVERY property-image prompt, unconditionally. It is not
  * configurable and no caller can opt out — that is the point. The axis-driven
@@ -571,7 +676,8 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
   const renovationDepth = getRenovationDepthByKey(opts.renovationDepth) || getRenovationDepthByKey(DEFAULT_RENOVATION_DEPTH);
   const renovationPart = ` ${renovationDepth.promptFragment}.`;
 
-  const composed = `${base}${roomPart}${furniturePart}${wallPart}${floorPart}${lightingPart}${renovationPart}`;
+  const extraPart = buildExtraClauses(opts);
+  const composed = `${base}${roomPart}${furniturePart}${wallPart}${floorPart}${lightingPart}${renovationPart}${extraPart}`;
   const extra = customPrompt ? String(customPrompt).trim() : '';
   const request = extra ? `${composed}\n\nEXPLICIT CLIENT REQUEST (highest priority): ${extra}` : composed;
 
@@ -939,6 +1045,26 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
 
   const customPrompt = input.customPrompt !== undefined ? String(input.customPrompt).trim().slice(0, 500) : '';
 
+  // The client-customisable axes. Validated from the registry, so a new axis is
+  // covered here the moment it is added to EXTRA_AXES — no edit at this call
+  // site, which is what keeps "and more" from meaning "and more places to
+  // forget a validator".
+  const extra = {};
+  for (const axis of EXTRA_AXES) {
+    const v = input[axis.key] !== undefined ? String(input[axis.key]).trim() : '';
+    if (!isValidExtraAxis(axis.key, v)) {
+      throw new ImageFeatureError(
+        `Ongeldige ${axis.label.toLowerCase()}. Kies uit: ${axis.list.map((x) => x.key).join(', ')} (of laat leeg voor automatisch)`,
+        { status: 400 },
+      );
+    }
+    extra[axis.key] = v;
+  }
+  for (const axis of OBJECT_AXES) {
+    extra[axis.key] = input[axis.key] !== undefined
+      ? String(input[axis.key]).trim().slice(0, MAX_OBJECT_NOTE_LENGTH) : '';
+  }
+
   // Validate the upload BEFORE touching credits or OpenAI — never trust a
   // client-supplied filename/MIME, only the actual base64 payload.
   const uploaded = parseImageDataUrl(input.dataUrl);
@@ -968,6 +1094,7 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
       imageMimeType: uploaded.mimeType,
       style, customPrompt, roomType, furniture, wallFinish, wallColor,
       wallColorNote, floor, lighting, renovationDepth,
+      ...extra,
     }),
     uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
       console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
@@ -981,6 +1108,7 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
   const record = buildImageRecord({
     url: blobUrl, style, customPrompt, roomType, sourceUrl,
     furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+    ...extra,
   });
   appendPropertyImage(projectCode, record).catch(() => {});
 
@@ -989,7 +1117,7 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
   if (credits) {
     credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
       credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
-      meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth },
+      meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth, ...extra },
     }).catch(() => {});
   }
 
@@ -999,6 +1127,15 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
 module.exports = {
   PROPERTY_STYLES,
   ROOM_TYPES,
+  PALETTES,
+  VIBES,
+  MATERIAL_ACCENTS,
+  LANDSCAPING_STYLES,
+  EXTRA_AXES,
+  OBJECT_AXES,
+  MAX_OBJECT_NOTE_LENGTH,
+  isValidExtraAxis,
+  buildExtraClauses,
   FURNITURE_LEVELS,
   WALL_FINISHES,
   WALL_COLORS,

@@ -320,6 +320,40 @@ function finish() {
   if (withReq.trim().endsWith('behoud de open haard')) pass('client request stays last in the prompt');
   else fail('client request is no longer the final instruction');
 
+  // Every customisable axis must be reachable end to end: declared in the
+  // registry, validated before spending, composed into the prompt, and offered
+  // to the model. An axis that exists in only three of those four is a dial
+  // the user can turn that changes nothing.
+  const toolParams = tools.get('generate_property_image').parameters.properties;
+  const axisGaps = [];
+  for (const a of imgs.EXTRA_AXES) {
+    if (!toolParams[a.key]) axisGaps.push(`${a.key}: not in the tool schema`);
+    else if (!toolParams[a.key].enum || toolParams[a.key].enum.length !== a.list.length + 1) {
+      axisGaps.push(`${a.key}: schema enum out of sync with its list`);
+    }
+    if (!imgs.isValidExtraAxis(a.key, a.list[0].key)) axisGaps.push(`${a.key}: validator rejects its own first option`);
+    if (imgs.isValidExtraAxis(a.key, 'definitely-not-a-key')) axisGaps.push(`${a.key}: validator accepts anything`);
+    const composed = imgs.buildExtraClauses({ [a.key]: a.list[0].key });
+    if (!composed.trim()) axisGaps.push(`${a.key}: contributes nothing to the prompt`);
+  }
+  for (const a of imgs.OBJECT_AXES) {
+    if (!toolParams[a.key]) axisGaps.push(`${a.key}: not in the tool schema`);
+    if (!imgs.buildExtraClauses({ [a.key]: 'de open haard' }).includes('de open haard')) {
+      axisGaps.push(`${a.key}: free text does not reach the prompt`);
+    }
+  }
+  if (axisGaps.length) axisGaps.forEach(fail);
+  else pass(`${imgs.EXTRA_AXES.length + imgs.OBJECT_AXES.length} customisable axes wired end to end`);
+
+  // Customisation must never be able to displace the engine.
+  const loaded = imgs.buildTransformPrompt('modern', 'doe maar iets', 'woonkamer', {
+    palette: 'earth', vibe: 'cozy', material: 'oak', landscaping: 'lush',
+    preserve: 'de open haard', remove: 'het behang', add: 'een zwembad',
+  });
+  if (!/TRANSFORM THE PROPERTY, DO NOT REINVENT THE PROPERTY/.test(loaded)) {
+    fail('engine lost when every customisable axis is set');
+  } else pass('engine survives every axis being set at once');
+
   // Chat has a spend ceiling.
   const cr = require('../api/_credits');
   if (!cr.FEATURES.FARO_CHAT) fail('FARO_CHAT credit feature missing');

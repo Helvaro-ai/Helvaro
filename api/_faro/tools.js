@@ -409,6 +409,18 @@ function imageParams() {
       },
       floor:    enumOf(images.FLOOR_TYPES, 'Het vloertype.'),
       lighting: enumOf(images.LIGHTING_MOODS, 'De lichtsfeer.'),
+
+      // The client-customisable axes, straight from the registry — palette,
+      // vibe, material, landscaping today, and whatever is added tomorrow
+      // without an edit here.
+      ...Object.fromEntries(images.EXTRA_AXES.map((a) => [a.key, enumOf(a.list, `${a.label}.`)])),
+
+      // Free text: the things a list can never enumerate.
+      ...Object.fromEntries(images.OBJECT_AXES.map((a) => [a.key, {
+        type: 'string',
+        maxLength: images.MAX_OBJECT_NOTE_LENGTH,
+        description: `${a.label}: wat de gebruiker specifiek genoemd heeft, in hun eigen woorden. Bijvoorbeeld 'de open haard' of 'het gele behang'. Leeg laten als ze niets noemen.`,
+      }])),
     },
     required: ['style'],
   };
@@ -434,7 +446,9 @@ const mediaTools = [
       'invult, hoe dichter het resultaat bij de vraag ligt. Laat een veld leeg als de gebruiker er niets over ' +
       'zegt; dan bepaalt het systeem het zelf. Noemt de gebruiker een kleur voor de muren, zet dan wallFinish ' +
       "op 'painted' en schrijf de kleur in de woorden van de gebruiker in wallColorNote — ook als die kleur " +
-      'niet in de lijst wallColor staat.',
+      'niet in de lijst wallColor staat. Vertaal ook sfeer en kleurgevoel: "warm en gezellig" is vibe cozy, ' +
+      '"aardetinten" is palette earth, "veel eiken" is material oak. Noemt de gebruiker iets dat moet blijven ' +
+      "of weg moet — \"behoud de open haard\", \"weg met dat behang\" — zet dat in preserve of remove.",
     // The schema is BUILT from api/_images.js's own option arrays, so every
     // enum is exactly what the backend will accept and the labels the model
     // reads are the labels the user sees.
@@ -469,6 +483,9 @@ const mediaTools = [
           wallColorNote: args.wallColorNote || '',
           floor: args.floor || '',
           lighting: args.lighting || '',
+          // Registry-driven, so a new axis flows through with no edit here.
+          ...Object.fromEntries(images.EXTRA_AXES.map((a) => [a.key, args[a.key] || ''])),
+          ...Object.fromEntries(images.OBJECT_AXES.map((a) => [a.key, args[a.key] || ''])),
         }, { credits });
 
         return {

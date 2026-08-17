@@ -83,7 +83,36 @@ engine is present for every argument shape *and* that the client's request is
 still the final instruction — a preamble that swallowed the request would be a
 regression that looks like nothing changed.
 
-Total prompt is ~7k characters, well inside the model's limit.
+Total prompt is ~7.5k characters, well inside the model's limit.
+
+### What the client can customise inside it
+
+The engine is fixed law; these are the dials turned inside it — §15 of the
+engine spec ("treat user-selected parameters as explicit instructions") made
+real. Beyond the original eight axes (style, room, renovation depth, furniture,
+walls, wall colour, floor, lighting):
+
+| Axis | Options |
+|---|---|
+| `palette` | warm-neutral, cool-neutral, earth, monochrome, natural, bold-accent |
+| `vibe` | serene, cozy, airy, dramatic, boutique, timeless |
+| `material` | oak, walnut, marble, stone, concrete, brass, matte-black, rattan |
+| `landscaping` | mediterranean, modern-minimal, japanese, cottage, lush |
+| `preserve` / `remove` / `add` | free text — "de open haard", "het gele behang", "een zwembad" |
+
+**These live in a registry, not in hand-written code.** The original eight each
+carry a special case (wall colour only applies to a painted finish, staging
+overrides an empty-furniture request, renovation depth has a non-empty default),
+so they stay hand-composed — rewriting a working money path to save future
+typing is a bad trade. Everything from `EXTRA_AXES` on is uniform: a key, a
+list, one clause. Adding another is **one array entry**, and validation, the
+composed prompt, Faro's tool schema and the `property-styles` endpoint all read
+from it.
+
+`faro-check.js` asserts every axis is wired end to end — declared, validated
+before spending, composed into the prompt, and offered to the model. An axis
+present in only three of those four is a dial the user can turn that changes
+nothing. It also asserts the engine survives every axis being set at once.
 
 ## Where Faro lives
 

@@ -128,6 +128,8 @@ const server = http.createServer(async (req, res) => {
             lightingMoods: opt(images.LIGHTING_MOODS),
             renovationDepths: opt(images.RENOVATION_DEPTHS),
             defaultRenovationDepth: images.DEFAULT_RENOVATION_DEPTH,
+            extraAxes: images.EXTRA_AXES.map((a) => ({ key: a.key, label: a.label, options: opt(a.list) })),
+            objectAxes: images.OBJECT_AXES.map((a) => ({ key: a.key, label: a.label })),
           });
         case 'property-list':
           return res.status(200).json({ images: [] });

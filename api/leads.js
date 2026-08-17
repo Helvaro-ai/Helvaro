@@ -1449,6 +1449,14 @@ module.exports = async function handler(req, res) {
         lightingMoods: images.LIGHTING_MOODS.map((l) => ({ key: l.key, label: l.label })),
         renovationDepths: images.RENOVATION_DEPTHS.map((r) => ({ key: r.key, label: r.label })),
         defaultRenovationDepth: images.DEFAULT_RENOVATION_DEPTH,
+        // The client-customisable axes, emitted from the registry so a new one
+        // appears here — and therefore in any UI reading this — automatically.
+        extraAxes: images.EXTRA_AXES.map((a) => ({
+          key: a.key,
+          label: a.label,
+          options: a.list.map((x) => ({ key: x.key, label: x.label })),
+        })),
+        objectAxes: images.OBJECT_AXES.map((a) => ({ key: a.key, label: a.label })),
       });
     }
 
