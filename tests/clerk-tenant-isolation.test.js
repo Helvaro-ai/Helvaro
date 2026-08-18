@@ -7,11 +7,23 @@ const BASE = require('path').join(__dirname, '..') + '/';
 // Stub @clerk/backend so we control exactly what the token resolves to.
 let CLAIMS = null;
 let CLERK_USER = null;
+let LAST_VERIFY_OPTS = null;
 require.cache[require.resolve(BASE + 'node_modules/@clerk/backend')] = {
   id: require.resolve(BASE + 'node_modules/@clerk/backend'),
   loaded: true,
   exports: {
-    verifyToken: async () => { if (!CLAIMS) throw new Error('invalid'); return CLAIMS; },
+    verifyToken: async (_tok, opts) => {
+      LAST_VERIFY_OPTS = opts || {};
+      if (!CLAIMS) throw new Error('invalid');
+      // Clerk's own verifyToken rejects a token whose azp is not in the list.
+      // The stub mirrors that, so the test proves the option is actually passed
+      // rather than just present in the source.
+      const parties = opts && opts.authorizedParties;
+      if (parties && CLAIMS.azp && !parties.includes(CLAIMS.azp)) {
+        throw new Error('Invalid JWT Authorized party claim (azp)');
+      }
+      return CLAIMS;
+    },
     createClerkClient: () => ({ users: { getUser: async () => {
       if (!CLERK_USER) throw new Error('not found');
       return CLERK_USER;
@@ -85,6 +97,64 @@ function check(name, actual, expected) {
   c = fresh();
   s = await c.verifySession(req);
   check('met de schakelaar uit wordt Clerk volledig genegeerd', s, null);
+
+  // ── Transport: cookie vs bearer ────────────────────────────────────────────
+  // De __session-cookie is first-party geworden zodra de DNS geverifieerd was.
+  // api/_session.js's csrfOk() ziet die cookie niet als cookie-auth, dus zonder
+  // deze regel zou een cross-origin schrijfverzoek meeliften op de cookie van
+  // een ingelogde gebruiker.
+  console.log('\n— transport: lezen mag met de cookie, schrijven niet —');
+  process.env.CLERK_ENABLED = '1';
+  process.env.CLERK_SECRET_KEY = 'sk_test_stub';
+  CLAIMS = { sub: 'user_1', projectCode: 'KLANT_A', clientName: 'Klant A' };
+  c = fresh();
+
+  const cookieReq = (method) => ({ method, headers: { cookie: '__session=abc' } });
+  const bearerReq = (method) => ({ method, headers: { authorization: 'Bearer abc' } });
+  // Wat een vervalst formulier van een andere site oplevert: de cookie gaat
+  // mee, de Authorization-header niet.
+  const forgedWrite = { method: 'POST', headers: { cookie: '__session=abc' } };
+
+  check('GET met alleen de cookie werkt', (await c.verifySession(cookieReq('GET'))).projectCode, 'KLANT_A');
+  check('POST met alleen de cookie wordt geweigerd', await c.verifySession(forgedWrite), null);
+  check('POST met bearer werkt wel', (await c.verifySession(bearerReq('POST'))).projectCode, 'KLANT_A');
+  check('DELETE met alleen de cookie wordt geweigerd', await c.verifySession(cookieReq('DELETE')), null);
+  check('bearer wint van de cookie', c.readClerkToken({ method: 'POST', headers: { cookie: '__session=cookie', authorization: 'Bearer header' } }), 'header');
+
+  // ── authorizedParties ──────────────────────────────────────────────────────
+  console.log('\n— authorizedParties —');
+  delete process.env.CLERK_AUTHORIZED_PARTIES;
+  c = fresh();
+  await c.verifySession(bearerReq('GET'));
+  check('standaard vastgezet op het eigen domein', c.authorizedParties(), ['https://app.helvaro.pro']);
+  check('en ook echt doorgegeven aan verifyToken', LAST_VERIFY_OPTS.authorizedParties, ['https://app.helvaro.pro']);
+
+  CLAIMS = { sub: 'user_1', projectCode: 'KLANT_A', azp: 'https://ergens-anders.be' };
+  c = fresh();
+  check('token van een vreemde origin wordt geweigerd', await c.verifySession(bearerReq('GET')), null);
+
+  CLAIMS = { sub: 'user_1', projectCode: 'KLANT_A', azp: 'https://app.helvaro.pro' };
+  c = fresh();
+  check('token van het eigen domein wordt aanvaard', (await c.verifySession(bearerReq('GET'))).projectCode, 'KLANT_A');
+
+  process.env.CLERK_AUTHORIZED_PARTIES = 'https://app.helvaro.pro, https://accounts.helvaro.pro';
+  c = fresh();
+  check('meerdere origins configureerbaar', c.authorizedParties(), ['https://app.helvaro.pro', 'https://accounts.helvaro.pro']);
+  // Leeg = geen controle, niet "alles weigeren": een niet-gezette variabele mag
+  // geen enkele klant buitensluiten.
+  process.env.CLERK_AUTHORIZED_PARTIES = '';
+  c = fresh();
+  check('leeg zet de controle uit in plaats van iedereen buiten', c.authorizedParties(), undefined);
+  delete process.env.CLERK_AUTHORIZED_PARTIES;
+
+  // ── userId ─────────────────────────────────────────────────────────────────
+  // api/_faro/actions.js bindt een voorstel aan de gebruiker die het maakte, en
+  // controleert dat bij het bevestigen. Zonder userId zou elke Clerk-gebruiker
+  // op dezelfde sleutel uitkomen en elkaars bevestigingen kunnen inlossen.
+  console.log('\n— userId op de sessie —');
+  CLAIMS = { sub: 'user_9', projectCode: 'KLANT_C' };
+  c = fresh();
+  check('sessie draagt de Clerk-gebruiker mee', (await c.verifySession(bearerReq('GET'))).userId, 'user_9');
 
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);

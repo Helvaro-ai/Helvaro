@@ -124,7 +124,7 @@ async function provisionTenant(user) {
     publicMetadata: { projectCode, clientName },
   });
 
-  return { projectCode, clientName, calendlyLink: '', em: email };
+  return { userId: uid, projectCode, clientName, calendlyLink: '', em: email };
 }
 
 const USER_TTL = 60 * 1000;
@@ -135,13 +135,70 @@ function enabled() {
   return process.env.CLERK_ENABLED === '1' && !!process.env.CLERK_SECRET_KEY;
 }
 
+// ── Which origins may present a token here ───────────────────────────────────
+// A Clerk instance issues session tokens to every origin configured on it, and
+// verifyToken() alone only proves "this instance signed it" — not "it was
+// issued to this app". The `azp` claim carries the origin the token was minted
+// for, and Clerk checks it only if you say what you expect.
+//
+// That is worth having now for the same reason the cookie changed: on a
+// production instance the account portal (accounts.helvaro.pro) and any future
+// satellite domain are separate origins on the same instance. Pinning the list
+// means a token handed to one of those cannot be replayed against the API.
+//
+// Empty list = no check, which is what verifyToken did before. That is the
+// right fallback rather than a hard failure: an unset variable must not lock
+// every customer out of the product.
+function authorizedParties() {
+  // Not `|| default`: an explicitly EMPTY variable has to mean "turn the check
+  // off", and that is the escape hatch if a legitimate origin ever ends up
+  // locked out at a bad moment. `|| default` would quietly ignore it and put
+  // the same list back.
+  const set = Object.prototype.hasOwnProperty.call(process.env, 'CLERK_AUTHORIZED_PARTIES');
+  const raw = String(set ? process.env.CLERK_AUTHORIZED_PARTIES : 'https://app.helvaro.pro').trim();
+  if (!raw) return undefined;
+  const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return list.length ? list : undefined;
+}
+
 function client() {
   if (!_client) _client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
   return _client;
 }
 
-// Clerk's browser SDK stores the session JWT in a cookie called __session.
-function readClerkToken(req) {
+// ── How a Clerk session may arrive ───────────────────────────────────────────
+// Two transports, and which one is acceptable depends on the HTTP method.
+//
+// The bearer header is always fine: no browser attaches it to a cross-origin
+// request on its own, so possessing it is proof the caller is our own page.
+//
+// The __session COOKIE is a different matter, and it changed under us. While
+// the Clerk instance was on test keys the cookie lived on Clerk's own domain
+// and never reached this server, so every Clerk request here was a bearer one.
+// Now that the DNS records are verified and the Frontend API answers on our own
+// domain, __session is a FIRST-PARTY cookie on app.helvaro.pro — the browser
+// sends it with requests this page did not make.
+//
+// api/_session.js's CSRF check does not cover it: csrfOk() looks for the
+// hv_session cookie to decide whether a request is cookie-authenticated, and a
+// Clerk user has no hv_session and no hv_csrf. So it waves the request through
+// as "header auth, not forgeable", while the request is in fact authenticated
+// by a cookie. That is precisely the shape of a CSRF hole, and DNS verification
+// is what opened it.
+//
+// Clerk sets __session as SameSite=Lax, which already stops the classic
+// cross-site form POST, but that is one third party's default standing between
+// us and a forged write. So: the cookie authenticates reads, and writes must
+// carry the bearer. Our own fetch wrapper in api/dashboard.js attaches it to
+// every /api/ call, so nothing legitimate loses access.
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function bearerToken(req) {
+  const auth = String((req && req.headers && req.headers.authorization) || '');
+  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+}
+
+function cookieToken(req) {
   const raw = (req && req.headers && req.headers.cookie) || '';
   for (const part of String(raw).split(';')) {
     const i = part.indexOf('=');
@@ -150,9 +207,15 @@ function readClerkToken(req) {
     try { return decodeURIComponent(part.slice(i + 1).trim()); }
     catch { return part.slice(i + 1).trim(); }
   }
-  // Also accept it as a bearer token, for non-browser callers.
-  const auth = String((req && req.headers && req.headers.authorization) || '');
-  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  return '';
+}
+
+function readClerkToken(req) {
+  const bearer = bearerToken(req);
+  if (bearer) return bearer;
+  const method = String((req && req.method) || 'GET').toUpperCase();
+  if (!SAFE_METHODS.has(method)) return '';
+  return cookieToken(req);
 }
 
 // Claims first (cheap), user lookup only as a fallback. Putting projectCode in
@@ -163,6 +226,7 @@ async function resolveTenant(claims) {
                  || claims.publicMetadata?.projectCode || '';
   if (fromClaim) {
     return {
+      userId:       String(claims.sub || ''),
       projectCode:  String(fromClaim),
       clientName:   String(claims.clientName || claims.public_metadata?.clientName || claims.publicMetadata?.clientName || ''),
       calendlyLink: String(claims.calendlyLink || claims.public_metadata?.calendlyLink || claims.publicMetadata?.calendlyLink || ''),
@@ -193,10 +257,11 @@ async function resolveTenant(claims) {
       // further down — but say why, so the UI can explain the wait instead of
       // telling someone with valid credentials that their login was wrong.
       console.error('[clerk] tenant aanmaken mislukt:', e && e.message);
-      return { pending: true, em: String(user.primaryEmailAddress?.emailAddress || '') };
+      return { pending: true, userId: String(uid), em: String(user.primaryEmailAddress?.emailAddress || '') };
     }
   }
   const data = {
+    userId:       String(uid),
     projectCode:  String(md.projectCode),
     clientName:   String(md.clientName || ''),
     calendlyLink: String(md.calendlyLink || ''),
@@ -214,7 +279,10 @@ async function verifySession(req) {
   const token = readClerkToken(req);
   if (!token) return null;
   try {
-    const claims = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY });
+    const claims = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+      authorizedParties: authorizedParties(),
+    });
     if (!claims || !claims.sub) return null;
     return await resolveTenant(claims);
   } catch (e) {
@@ -225,4 +293,4 @@ async function verifySession(req) {
 
 function forget(userId) { _userCache.delete(String(userId || '')); }
 
-module.exports = { enabled, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant };
+module.exports = { enabled, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };

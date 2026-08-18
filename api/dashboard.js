@@ -10189,12 +10189,16 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
 /* ============================================================
    CLERK (optioneel — leeg tenzij CLERK_ENABLED=1)
 
-   No React and no build step here, so this uses Clerk's vanilla SDK and
-   deliberately does NOT rely on Clerk's __session cookie: that needs DNS
-   records on a production instance before it is set on our own domain. Instead
-   the page asks the SDK for a fresh JWT and sends it as a Bearer header, which
-   api/_clerk.js already accepts. Works immediately on test keys, and survives
-   the move to a production instance without a code change.
+   No React and no build step here, so this uses Clerk's vanilla SDK, and the
+   page authenticates with a Bearer token rather than Clerk's __session cookie.
+
+   That started as a workaround — on a test instance the cookie lives on Clerk's
+   own domain and never reaches this server. Now that the DNS records are
+   verified it IS set on app.helvaro.pro, and the bearer has become the
+   requirement instead of the workaround: api/_clerk.js accepts the cookie for
+   reads only, because api/_session.js's CSRF check cannot see it. Writes must
+   carry this header. The fetch wrapper further down attaches it to every /api/
+   call, so no call site has to remember.
 
    getToken() returns a short-lived token and refreshes it as needed, so it is
    called per request rather than cached.
@@ -10767,6 +10771,23 @@ function logout() {
 }
 
 function performLogout() {
+  // Clerk eerst, en dan stoppen. Alles hieronder ruimt de KLASSIEKE sessie op:
+  // cookies wissen, state leegmaken, het loginscherm tonen. Bij Clerk zegt dat
+  // niets — de sessie leeft bij Clerk, niet in onze cookie. Zonder deze regels
+  // zag je het loginscherm terwijl je nog gewoon ingelogd was: één keer
+  // verversen en je stond weer binnen, en de API bleef bereikbaar met een
+  // token dat nog dagen geldig was. Op een gedeelde computer is dat precies
+  // het moment waarop uitloggen moet werken.
+  //
+  // clerkSignOut() stuurt door naar /dashboard, dus de pagina wordt opnieuw
+  // opgebouwd en de opruiming hieronder is niet meer nodig.
+  if (CLERK_READY && window.Clerk && window.Clerk.session) {
+    hideHelpWidget();
+    try { stopPresencePing && stopPresencePing(); } catch (e) {}
+    clerkSignOut();
+    return;
+  }
+
   // Wis ALLE state. Vorige versie liet onboarding-flags en pagina-caches
   // staan, waardoor de volgende user (op zelfde computer) soms in een
   // half-vorige-sessie staat kon belanden.
@@ -19363,15 +19384,22 @@ ${cmd.js}
   // de policy niet losser is dan nodig. Zonder deze twee regels is inloggen
   // stuk — het script wordt dan geblokkeerd, niet de aanvaller.
   const clerkSrc = CLERK_READY ? ` https://${CLERK_HOST}` : '';
+  // Clerk's bot-protectie (Smart CAPTCHA) draait op Cloudflare Turnstile en
+  // wordt op een PRODUCTIE-instantie standaard aangezet. Die laadt een script
+  // en een iframe van challenges.cloudflare.com. Stond die host er niet bij,
+  // dan blokkeerde de policy de captcha en niet de bot: het aanmeldformulier
+  // bleef dan hangen op een vakje dat nooit verschijnt. Alleen meegenomen als
+  // Clerk ook echt aanstaat, zodat de policy niet losser is dan nodig.
+  const botSrc = CLERK_READY ? ' https://challenges.cloudflare.com' : '';
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${clerkSrc}`,
+    `script-src 'self' 'unsafe-inline'${clerkSrc}${botSrc}`,
     `connect-src 'self'${clerkSrc}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",       // Vercel Blob + Clerk-avatars
     "font-src 'self' data:",             // zelf gehost, geen Google Fonts (AVG)
     "worker-src 'self' blob:",           // Clerk gebruikt een blob-worker
-    "frame-src 'self'" + clerkSrc,
+    "frame-src 'self'" + clerkSrc + botSrc,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

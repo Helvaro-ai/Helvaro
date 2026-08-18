@@ -29,6 +29,7 @@
 
 const _session = require('./_session');
 const _revoke = require('./_revocation');
+const _clerk = require('./_clerk');
 const faroHandler = require('./_faro/handler');
 
 module.exports = async function handler(req, res) {
@@ -36,6 +37,37 @@ module.exports = async function handler(req, res) {
   // rest of the dashboard's write paths.
   if (!_session.csrfOk(req)) {
     return res.status(403).json({ error: 'Ongeldig verzoek' });
+  }
+
+  // ── Path 0: Clerk ──────────────────────────────────────────────────────────
+  // Same shape as api/leads.js, and it has to be here rather than only there:
+  // Faro is the page a user lands on after logging in, so a Clerk session that
+  // this route does not recognise means the first screen of the product is a
+  // 401 for every customer. It is consulted BEFORE the legacy token because a
+  // Clerk request carries no hv_session at all.
+  //
+  // Returns null the moment CLERK_ENABLED is not 1, so with the flag off this
+  // route behaves exactly as it did.
+  const clerkSession = await _clerk.verifySession(req);
+  if (clerkSession && clerkSession.pending) {
+    return res.status(403).json({ error: 'Je account wordt nog ingericht.', code: 'TENANT_PENDING' });
+  }
+  if (clerkSession) {
+    // Belt and braces, as in leads.js: an empty projectCode reads as "admin,
+    // show everything" downstream, and Faro's read tools query on it directly.
+    if (!clerkSession.projectCode) {
+      return res.status(401).json({ error: 'Sessie mist een projectcode' });
+    }
+    // No revocation check: _revocation.js tracks tokens THIS server signed, and
+    // a Clerk session is not one of them. Revoking it is Clerk's own job — the
+    // session is invalidated there and verifyToken stops accepting it, which is
+    // a stronger guarantee than the list below, not a weaker one.
+    return faroHandler.handle(req, res, {
+      projectCode: clerkSession.projectCode,
+      userId: clerkSession.userId || clerkSession.em || clerkSession.projectCode,
+      lang: 'nl',
+      isAdmin: false,
+    });
   }
 
   const session = _session.verifySignedSession(_session.readToken(req));
