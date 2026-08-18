@@ -96,6 +96,13 @@ const STRINGS = {
     'qa.act': 'Doen',
 
     'act.title': 'Recent gemaakt',
+    'ago.now': 'zonet',
+    'ago.min': '{n} min geleden',
+    'ago.hour': '{n} u geleden',
+    'ago.day': '{n} d geleden',
+    'kind.image': 'Beeld',
+    'kind.video': 'Video',
+    'kind.text': 'Tekst',
     'act.viewAll': 'Alles bekijken',
     'act.empty': 'Nog niets gemaakt. Genereer je eerste pandbeeld of pandtekst.',
 
@@ -222,6 +229,13 @@ const STRINGS = {
     'qa.act': 'Act',
 
     'act.title': 'Recently created',
+    'ago.now': 'just now',
+    'ago.min': '{n} min ago',
+    'ago.hour': '{n} h ago',
+    'ago.day': '{n} d ago',
+    'kind.image': 'Image',
+    'kind.video': 'Video',
+    'kind.text': 'Text',
     'act.viewAll': 'View all',
     'act.empty': 'Nothing created yet. Generate your first property image or listing.',
 
@@ -348,6 +362,13 @@ const STRINGS = {
     'qa.act': 'Agir',
 
     'act.title': 'Créé récemment',
+    'ago.now': 'à l\u2019instant',
+    'ago.min': 'il y a {n} min',
+    'ago.hour': 'il y a {n} h',
+    'ago.day': 'il y a {n} j',
+    'kind.image': 'Image',
+    'kind.video': 'Vidéo',
+    'kind.text': 'Texte',
     'act.viewAll': 'Tout voir',
     'act.empty': "Rien de créé pour l'instant. Générez votre première image de bien.",
 
@@ -474,6 +495,13 @@ const STRINGS = {
     'qa.act': 'Handeln',
 
     'act.title': 'Zuletzt erstellt',
+    'ago.now': 'gerade eben',
+    'ago.min': 'vor {n} Min',
+    'ago.hour': 'vor {n} Std',
+    'ago.day': 'vor {n} T',
+    'kind.image': 'Bild',
+    'kind.video': 'Video',
+    'kind.text': 'Text',
     'act.viewAll': 'Alle ansehen',
     'act.empty': 'Noch nichts erstellt. Erzeugen Sie Ihr erstes Objektbild.',
 

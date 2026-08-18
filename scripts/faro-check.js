@@ -158,6 +158,30 @@ Promise.all([
   finish();
 });
 
+/* ── Text on a fixed scrim ───────────────────────────────────────────────────
+   A chip whose BACKGROUND is a literal dark rgba sits on dark in both themes,
+   so its colour must be literal too. Using a theme token there puts near-black
+   text on a near-black pill in light mode — which is how the video duration
+   went invisible, silently, in one theme only. */
+{
+  const css = require('../api/_faro/ui/styles').css()
+    + require('../api/_command-ui/styles').css();
+  const offenders = [];
+  // Rules that set BOTH a hard-coded dark rgba background and a var() colour.
+  for (const m of css.matchAll(/\{[^}]*\}/g)) {
+    const rule = m[0];
+    if (!/background:\s*rgba\(\s*(?:[0-2]?\d|3\d)\s*,/.test(rule)) continue;
+    const col = rule.match(/(?:^|[;{\s])color:\s*var\((--[a-z-]+)\)/);
+    // --warm-sand and --champagne are the same value in both themes, so they
+    // are safe on a fixed scrim; anything else is not.
+    if (col && !/--(warm-sand|champagne)\b/.test(col[1])) {
+      offenders.push(col[1] + ' on a fixed dark background');
+    }
+  }
+  if (offenders.length) offenders.forEach((o) => fail(`theme-flipping colour on a fixed scrim: ${o}`));
+  else pass('text on fixed dark scrims uses literal colours, not flipping tokens');
+}
+
 /* ── Embedding contract ──────────────────────────────────────────────────────
    Two things customers actually rely on, both of which were broken and neither
    of which throws anything: a header and a hostname. */

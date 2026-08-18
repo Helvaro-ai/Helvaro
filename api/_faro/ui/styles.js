@@ -608,65 +608,108 @@ body.faro-open .faro-dock { display: none; }
 /* ═══ Recently created ════════════════════════════════════════════════════ */
 .faro-activity { position: relative; }
 .faro-activity__track {
-  display: flex; gap: var(--sp-4);
+  display: flex; gap: var(--sp-3);
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: var(--sp-1);
+  /* Room for the card's own hover lift, so it is not clipped by the scroller. */
+  padding: var(--sp-05) var(--sp-05) var(--sp-2);
 }
 .faro-activity__track::-webkit-scrollbar { display: none; }
+
+/* The arrow floats over the last card rather than beside the row: putting it
+   outside would either eat page width or hang into the gutter, and this
+   section already sits at the container edge. */
 .faro-activity__nav {
-  position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
-  width: 30px; height: 30px; border-radius: 50%;
+  position: absolute; right: calc(var(--sp-05) * -1); top: 38%;
+  width: var(--sp-8); height: var(--sp-8); border-radius: var(--r-full);
   display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--faro-hairline);
   background: var(--faro-surface); color: var(--text-muted);
-  cursor: pointer; transition: color 150ms ease;
+  box-shadow: 0 var(--sp-05) var(--sp-3) rgba(0,0,0,0.28);
+  cursor: pointer; transition: color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
-.faro-activity__nav:hover { color: var(--text); }
+.faro-activity__nav:hover { color: var(--text); border-color: var(--champagne); }
+.faro-activity__nav[hidden] { display: none; }
+/* At the end it points back to the start rather than pretending there is more. */
+.faro-activity__nav[data-at-end="1"] svg { transform: scaleX(-1); }
 
 .faro-act-card {
-  flex: 0 0 200px; scroll-snap-align: start;
+  flex: 0 0 216px; scroll-snap-align: start;
   border: 1px solid var(--faro-hairline); border-radius: var(--r-lg);
   background: var(--faro-surface); overflow: hidden;
-  cursor: pointer; transition: border-color 150ms ease;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease;
 }
-.faro-act-card:hover { border-color: var(--champagne-line); }
-.faro-act-card__media { position: relative; aspect-ratio: 4 / 3; background: var(--faro-raised); }
+.faro-act-card:hover { border-color: var(--champagne-line); transform: translateY(calc(var(--sp-05) * -1)); }
+.faro-act-card:focus-visible { outline: 2px solid var(--champagne); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .faro-act-card:hover { transform: none; } }
+
+/* 4:3, so a room photo reads as a room. The surface underneath is what shows
+   while the image loads and if it never does — a plain panel with a badge on
+   it, rather than a browser's broken-image glyph. */
+.faro-act-card__media {
+  position: relative; aspect-ratio: 4 / 3;
+  background: var(--faro-raised);
+  display: flex; align-items: center; justify-content: center;
+}
 .faro-act-card__media img,
 .faro-act-card__media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 .faro-act-card__badge {
-  position: absolute; top: 8px; left: 8px;
+  position: absolute; top: var(--sp-2); left: var(--sp-2);
   padding: var(--sp-05) var(--sp-2); border-radius: var(--r-xs);
   background: rgba(18,18,18,0.72); color: var(--warm-sand);
   font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  backdrop-filter: blur(2px);
 }
 .faro-act-card__dur {
-  position: absolute; top: 8px; right: 8px;
+  position: absolute; top: var(--sp-2); right: var(--sp-2);
   padding: var(--sp-05) var(--sp-2); border-radius: var(--r-xs);
-  background: rgba(18,18,18,0.72); color: var(--text);
+  /* Literal white, not var(--text). This chip sits on a dark scrim in BOTH
+     themes, so a token that flips with the theme puts near-black text on a
+     near-black pill — the duration was invisible in light mode. Same reason
+     the badge above uses --warm-sand rather than an accent that flips. */
+  background: rgba(18,18,18,0.72); color: #F4F1EA;
   font-size: var(--fs-micro); font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(2px);
 }
-/* TEXT artifacts have no image — the copy itself is the preview. Position
-   relative so the badge anchors to this block rather than overlapping the copy. */
-.faro-act-card__text {
-  position: relative;
+/* Play marker, centred. Marks a video as a video without needing the word. */
+.faro-act-card__play {
+  position: absolute; inset: 0; margin: auto;
+  width: var(--sp-8); height: var(--sp-8); border-radius: var(--r-full);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(18,18,18,0.62); color: #FFF;
+  backdrop-filter: blur(2px);
+}
+
+/* TEXT artifacts have no image — the copy itself is the preview, faded at the
+   bottom so a long excerpt reads as continuing rather than as cut off. */
+.faro-act-card__media--text {
+  display: block;
   padding: var(--sp-8) var(--sp-3) var(--sp-3);
-  aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: var(--faro-raised);
 }
 .faro-act-card__excerpt {
-  display: block;
-  font-size: var(--fs-tiny); line-height: 1.5; color: var(--text-muted);
+  margin: 0;
+  font-size: var(--fs-tiny); line-height: 1.55; color: var(--text-muted);
 }
-.faro-act-card__meta { padding: var(--sp-3) var(--sp-3); }
+.faro-act-card__media--text::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: var(--sp-8);
+  background: linear-gradient(to bottom, rgba(0,0,0,0), var(--faro-raised));
+  pointer-events: none;
+}
+
+.faro-act-card__meta { padding: var(--sp-3); }
 .faro-act-card__title {
   font-size: var(--fs-small); font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.faro-act-card__sub { font-size: var(--fs-micro); color: var(--text-disabled); margin-top: var(--sp-05); }
+.faro-act-card__sub {
+  font-size: var(--fs-micro); color: var(--text-muted); margin-top: var(--sp-05);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 /* ═══ Conversation view (requirement 7) ═══════════════════════════════════ */
 .faro-thread { flex: 1; overflow-y: auto; padding: var(--sp-6) 0 var(--sp-2); min-height: 0; }
@@ -888,8 +931,9 @@ body.faro-open .faro-dock { display: none; }
   .faro-context-row__chips { width: 100%; }
 
   .faro-gallery, .faro-gallery--video, .faro-cards { grid-template-columns: 1fr; }
+  /* The arrow goes; a thumb swipes the row on a phone. */
   .faro-activity__nav { display: none; }
-  .faro-act-card { flex-basis: 168px; }
+  .faro-act-card { flex-basis: 176px; }
   .faro-section { margin-top: var(--sp-6); }
 
 }

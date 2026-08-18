@@ -1015,36 +1015,102 @@ function faroLoadActivity() {
       }
       track.innerHTML = '';
       items.forEach(function (i) { track.appendChild(faroActivityCard(i)); });
+      faroWireActivityNav();
     })
     .catch(function () { track.innerHTML = ''; });
+}
+
+/* Relative time, from the record's own timestamp rather than a pre-formatted
+   string. The server used to send "5 min geleden" already rendered, which is
+   wrong twice: it is a string that ages while the page is open, and it cannot
+   be translated. */
+function faroAgo(ms) {
+  var t = Number(ms) || 0;
+  if (!t) return '';
+  var mins = Math.floor((Date.now() - t) / 60000);
+  if (mins < 1) return T('ago.now');
+  if (mins < 60) return T('ago.min').replace('{n}', mins);
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return T('ago.hour').replace('{n}', hrs);
+  var days = Math.floor(hrs / 24);
+  return T('ago.day').replace('{n}', days);
 }
 
 function faroActivityCard(a) {
   var d = document.createElement('div');
   d.className = 'faro-act-card';
+  d.setAttribute('data-kind', a.kind || 'image');
+  // Every card opens its gallery, whether or not the record carries a URL —
+  // an id is enough, and a card that looks clickable and is not is worse than
+  // one that never offered.
+  var ref = a.url || a.id || '';
+  if (ref) { d.setAttribute('role', 'button'); d.tabIndex = 0; d.setAttribute('data-act-open', ref); }
+
   var media;
   if (a.kind === 'text') {
-    media = '<div class="faro-act-card__text">' +
-              '<span class="faro-act-card__badge">' + faroEsc(a.kind) + '</span>' +
-              '<span class="faro-act-card__excerpt">' + faroEsc(a.excerpt || '') + '</span>' +
+    media = '<div class="faro-act-card__media faro-act-card__media--text">' +
+              '<span class="faro-act-card__badge">' + faroEsc(T('kind.text')) + '</span>' +
+              '<p class="faro-act-card__excerpt">' + faroEsc(a.excerpt || '') + '</p>' +
             '</div>';
-  } else if (a.kind === 'video') {
-    media = '<div class="faro-act-card__media">' +
-      (a.thumbUrl ? '<img src="' + faroEsc(a.thumbUrl) + '" alt="">' : '') +
-      '<span class="faro-act-card__badge">' + faroEsc(a.kind) + '</span>' +
-      (a.duration ? '<span class="faro-act-card__dur">' + faroEsc(a.duration) + '</span>' : '') +
-      '</div>';
   } else {
+    /* The image itself is the card. loading="lazy" because a landing screen
+       can carry a dozen of these and none of them is above the fold on a
+       phone; the onerror leaves the badge on a plain surface rather than a
+       browser's broken-image glyph. */
     media = '<div class="faro-act-card__media">' +
-      (a.thumbUrl ? '<img src="' + faroEsc(a.thumbUrl) + '" alt="">' : '') +
-      '<span class="faro-act-card__badge">' + faroEsc(a.kind) + '</span></div>';
+      (a.thumbUrl
+        ? '<img src="' + faroEsc(a.thumbUrl) + '" alt="" loading="lazy" ' +
+          'onerror="this.remove()">'
+        : '') +
+      '<span class="faro-act-card__badge">' +
+        faroEsc(T(a.kind === 'video' ? 'kind.video' : 'kind.image')) + '</span>' +
+      (a.kind === 'video'
+        ? '<span class="faro-act-card__play" aria-hidden="true">' + faroIcon('play', 13) + '</span>' +
+          (a.duration ? '<span class="faro-act-card__dur">' + faroEsc(a.duration) + '</span>' : '')
+        : '') +
+      '</div>';
   }
+
+  // Subtitle is assembled here, not sent pre-rendered: the property and the
+  // age are two facts, and only one of them ages while the page is open.
+  var sub = [a.subtitle, faroAgo(a.createdAt)].filter(Boolean).join(' · ');
+
   d.innerHTML = media +
     '<div class="faro-act-card__meta">' +
       '<div class="faro-act-card__title">' + faroEsc(a.title) + '</div>' +
-      '<div class="faro-act-card__sub">' + faroEsc(a.subtitle || '') + '</div>' +
+      (sub ? '<div class="faro-act-card__sub">' + faroEsc(sub) + '</div>' : '') +
     '</div>';
   return d;
+}
+
+/* The carousel. One card-width per press, and the arrow hides at the end
+   rather than sitting there doing nothing — a control that no longer works but
+   still looks like a control is worse than no control. */
+function faroWireActivityNav() {
+  var track = document.getElementById('faro-activity-track');
+  var next = document.getElementById('faro-activity-next');
+  if (!track || !next || next.dataset.wired) return;
+  next.dataset.wired = '1';
+
+  var step = function () {
+    var card = track.querySelector('.faro-act-card');
+    return card ? card.getBoundingClientRect().width + 14 : 240;
+  };
+  var sync = function () {
+    var atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+    var fits = track.scrollWidth <= track.clientWidth + 4;
+    next.hidden = fits;
+    next.setAttribute('data-at-end', atEnd ? '1' : '0');
+  };
+
+  next.addEventListener('click', function () {
+    // Wrap at the end, so the arrow keeps meaning something on a short list.
+    var atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+    track.scrollBy({ left: atEnd ? -track.scrollLeft : step(), behavior: 'smooth' });
+  });
+  track.addEventListener('scroll', sync);
+  window.addEventListener('resize', sync);
+  sync();
 }
 
 /* ── 9/10. Beelden & Video's — galleries, not generators ──────────────────
@@ -1251,6 +1317,23 @@ function faroInit() {
 
   document.querySelectorAll('[data-faro-page]').forEach(function (b) {
     b.addEventListener('click', function () { faroSetPanel(b.dataset.faroPage); });
+  });
+
+  /* Recent-activity cards. An image opens the Beelden panel — the gallery is
+     where assets live, and dropping someone onto a raw blob URL loses every
+     control around it. */
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest && e.target.closest('[data-act-open]');
+    if (!card) return;
+    var kind = card.getAttribute('data-kind');
+    faroSetPanel(kind === 'video' ? 'videos' : 'images');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var card = e.target && e.target.closest && e.target.closest('[data-act-open]');
+    if (!card) return;
+    e.preventDefault();
+    faroSetPanel(card.getAttribute('data-kind') === 'video' ? 'videos' : 'images');
   });
 
   var nc = document.getElementById('faro-new-convo');

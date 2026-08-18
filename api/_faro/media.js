@@ -34,6 +34,7 @@
  */
 
 const fixtures = require('./fixtures');
+const images_ = require('../_images');   // the only artifact store this product has
 
 /* Read from api/_images.js rather than restated here. This used to be a
    hardcoded wish-list of eight keys, five of which the backend would reject
@@ -81,11 +82,52 @@ async function listImages(_ctx, _opts = {}) { return []; }
  *   { id, kind:'image'|'video'|'text', title, subtitle, thumbUrl?, excerpt?,
  *     duration?, propertyId?, createdAt }
  */
-async function listActivity(_ctx, opts = {}) {
-  // WIRE TO: images from _images.js, videos from this module, text artifacts
-  // from store.js. Merge, sort by createdAt desc, cap at `limit`.
+/* ── Recent activity ─────────────────────────────────────────────────────────
+   What Faro has actually made for this tenant, newest first.
+
+   Today that is generated property images and nothing else: they are the only
+   artifact this product persists. Videos have no provider, and listing copy is
+   handed back into the chat rather than stored — so neither can appear here
+   without inventing a record. When either gains a store, it merges into the
+   same sorted list and the card renderer already handles both kinds.
+
+   This returned [] in production while the fixtures returned four cards, which
+   is the worst possible split: the section looked finished in every demo and
+   was empty for every real customer. */
+async function listActivity(ctx, opts = {}) {
   if (fixtures.isEnabled()) return fixtures.ACTIVITY.slice(0, opts.limit || 12);
-  return [];
+
+  const limit = Math.max(1, Math.min(24, opts.limit || 12));
+  let images = [];
+  try {
+    images = await images_.listPropertyImages(ctx && ctx.projectCode);
+  } catch (err) {
+    // An unreadable gallery is an empty section, never a broken page.
+    console.error('[faro/media] listActivity failed:', err && err.message);
+    return [];
+  }
+
+  return images
+    .filter((r) => r && r.url)
+    .slice()
+    .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
+    .slice(0, limit)
+    .map((r) => ({
+      // The blob URL is stable and unique per generation, so it doubles as the
+      // id — these records carry no id of their own.
+      id: r.url,
+      kind: 'image',
+      // Room first, then style: "Woonkamer — Modern Luxe" reads as a thing that
+      // was made, where "Modern Luxe — Woonkamer" reads as a setting.
+      title: [r.roomTypeLabel, r.styleLabel].filter(Boolean).join(' — ') || 'Pandbeeld',
+      subtitle: '',
+      createdAt: Date.parse(r.createdAt || 0) || 0,
+      thumbUrl: r.url,
+      url: r.url,
+      // Carried so the card can show it. Every generated image is AI-labelled
+      // at the point of construction; the label travels with it.
+      aiLabel: r.aiLabel || '',
+    }));
 }
 
 // ── Video ────────────────────────────────────────────────────────────────────

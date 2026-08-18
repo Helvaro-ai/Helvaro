@@ -88,11 +88,37 @@ const ANALYTICS = Object.freeze([
   { label: 'Bezoeken geboekt',   value: '11'      },
 ]);
 
+/* Recent activity. `subtitle` carries the PROPERTY only — the age is derived
+   from createdAt on the client, because a pre-rendered "5 min geleden" ages
+   while the page is open and cannot be translated.
+
+   Thumbnails are inline SVG data URIs rather than remote images: they render
+   at any size, need no network, and cannot 404 into a broken card. They are
+   obviously placeholders up close, which is the point — nothing here should be
+   mistakable for a real generated render. */
+function fixtureThumb(a, b, label) {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240">'
+    + '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+    + '<stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/>'
+    + '</linearGradient></defs>'
+    + '<rect width="320" height="240" fill="url(#g)"/>'
+    + '<text x="160" y="128" text-anchor="middle" font-family="sans-serif" font-size="15"'
+    + ' fill="rgba(255,255,255,0.66)">' + label + '</text></svg>';
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
 const ACTIVITY = Object.freeze([
-  { id: 'demo-a1', kind: 'image', title: 'Woonkamer — Modern Luxe', subtitle: 'Villa Knokke · 5 min geleden', thumbUrl: null, createdAt: Date.now() - 3e5 },
-  { id: 'demo-a2', kind: 'video', title: 'Instagram Reel — Villa Knokke', subtitle: '10 min geleden', duration: '00:15', thumbUrl: null, createdAt: Date.now() - 6e5 },
-  { id: 'demo-a3', kind: 'text',  title: 'Pandtekst', subtitle: '22 min geleden', excerpt: 'Luxueuze villa met zeezicht in Knokke-Heist. 4 slaapkamers, 3 badkamers, ruim terras en hoogwaardige afwerking.', createdAt: Date.now() - 1.3e6 },
-  { id: 'demo-a4', kind: 'image', title: 'Exterieur — Daglicht', subtitle: 'Villa Knokke · 35 min geleden', thumbUrl: null, createdAt: Date.now() - 2.1e6 },
+  { id: 'demo-a1', kind: 'image', title: 'Woonkamer — Modern Luxe', subtitle: 'Villa Knokke',
+    thumbUrl: fixtureThumb('#4a4438', '#20201c', 'woonkamer'), createdAt: Date.now() - 3e5 },
+  { id: 'demo-a2', kind: 'video', title: 'Instagram Reel — Villa Knokke', subtitle: '',
+    duration: '00:15', thumbUrl: fixtureThumb('#3b4a52', '#1b2124', 'reel'), createdAt: Date.now() - 6e5 },
+  { id: 'demo-a3', kind: 'text',  title: 'Pandtekst', subtitle: '',
+    excerpt: 'Luxueuze villa met zeezicht in Knokke-Heist. 4 slaapkamers, 3 badkamers, ruim terras en hoogwaardige afwerking.',
+    createdAt: Date.now() - 1.3e6 },
+  { id: 'demo-a4', kind: 'image', title: 'Exterieur — Daglicht', subtitle: 'Villa Knokke',
+    thumbUrl: fixtureThumb('#54503f', '#23231d', 'exterieur'), createdAt: Date.now() - 2.1e6 },
+  { id: 'demo-a5', kind: 'image', title: 'Keuken — Scandinavisch', subtitle: 'Appartement Gent',
+    thumbUrl: fixtureThumb('#4c4a45', '#232322', 'keuken'), createdAt: Date.now() - 5.4e6 },
 ]);
 
 const CONVERSATIONS = Object.freeze([
