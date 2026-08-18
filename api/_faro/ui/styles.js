@@ -280,9 +280,10 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
    size it out-competed the input, which is supposed to be the page's focus.
    One number to revisit if that judgement is wrong. */
 .faro-mascot {
+  position: relative;          /* above the orb, which is the grid's other cell */
   width: 72px;
   height: 72px;
-  margin: 0 auto 20px;
+  margin: 0;                   /* .faro-mark owns the spacing now */
   display: block;
   filter: drop-shadow(0 0 20px var(--warm-sand-glow));
   transition: filter 400ms ease, transform 400ms ease;
@@ -303,9 +304,75 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
   .faro-mascot, .faro-mascot[data-state="thinking"] { animation: none; transition: none; }
 }
 
+/* ── The orb ────────────────────────────────────────────────────────────────
+   A mark built entirely from gradients: no asset to ship, nothing to 404, and
+   it themes itself from the same two custom properties as everything else.
+   It exists because public/faro/ is empty on a fresh checkout, which left the
+   landing screen with a headline and no face at all.
+
+   Three stacked layers do the work: a soft outer bloom, a rotating conic sheen
+   that reads as light moving across a curved surface, and a small offset
+   highlight that fixes the light source to the upper left -- the same
+   direction the falcon brief specifies, so the two can coexist. */
+.faro-mark {
+  position: relative;
+  width: 72px; height: 72px;
+  margin: 0 auto 20px;
+  display: grid; place-items: center;
+}
+.faro-orb {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
+    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.10) inset,
+    0 8px 28px var(--warm-sand-glow);
+  animation: faro-orb-spin 14s linear infinite, faro-orb-breathe 5.2s ease-in-out infinite;
+}
+/* The bloom. Separate element would be another node; a pseudo keeps it free. */
+.faro-orb::after {
+  content: ''; position: absolute; inset: -34%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--warm-sand-glow) 0%, rgba(0,0,0,0) 68%);
+  opacity: 0.85; pointer-events: none;
+}
+
+/* States. Each is a change of tempo or bloom, never of shape -- the same
+   "extremely subtle" rule the falcon brief is written to. */
+.faro-mark[data-state="thinking"]   .faro-orb { animation-duration: 4s, 2.4s; }
+.faro-mark[data-state="generating"] .faro-orb { animation-duration: 2.6s, 1.5s; }
+.faro-mark[data-state="video"]      .faro-orb { animation-duration: 2.6s, 1.5s; }
+.faro-mark[data-state="success"]    .faro-orb { box-shadow: 0 0 0 1px rgba(255,255,255,0.16) inset, 0 8px 40px var(--warm-sand-glow); }
+.faro-mark[data-state="error"]      .faro-orb {
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 42%),
+    conic-gradient(from 200deg, #8a7a63, #6f6152, #8a7a63);
+  animation-play-state: paused;
+}
+/* When the falcon artwork exists it sits on the orb; the orb then reads as the
+   glow behind it rather than as the mark itself. */
+.faro-mark:has(.faro-mascot:not(.faro-mascot--missing)) .faro-orb { opacity: 0.5; }
+
+@keyframes faro-orb-spin    { to { transform: rotate(360deg); } }
+@keyframes faro-orb-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 8px 24px var(--warm-sand-glow); }
+  50%      { box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset, 0 8px 34px var(--warm-sand-glow); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faro-orb, .faro-mark[data-state] .faro-orb { animation: none; }
+}
+
 .faro-landing__title {
   font-size: 30px; font-weight: 600; letter-spacing: -0.02em;
   text-align: center; color: var(--text); margin: 0 0 8px;
+}
+/* The question, once the headline above it has become a greeting. Sits between
+   title and sub in weight so the eye still lands on it before the input. */
+.faro-landing__lead {
+  font-size: 16px; font-weight: 500; text-align: center;
+  color: var(--text); margin: 0 0 6px;
 }
 .faro-landing__sub {
   font-size: 14px; text-align: center; color: var(--text-muted); margin: 0 0 26px;
@@ -313,16 +380,82 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
 
 /* ═══ The input — the visual focus of the panel ═══════════════════════════ */
 .faro-input {
+  position: relative;
   background: var(--faro-input-bg);
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 14px 16px 10px;
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
+/* Ambient glow. A soft sand bloom sitting UNDER the composer, so the input
+   reads as the lit object on the page rather than one more bordered box. It
+   sits just BELOW the box rather than behind it: a negative z-index would put
+   it behind the panel's own background and render it invisible, and isolating
+   the input to fix that would hide it behind the input instead. Blur is on a
+   gradient, not a filter -- filter would promote a layer and cost a repaint on
+   every keystroke. */
+.faro-input::before {
+  content: ''; position: absolute;
+  left: 8%; right: 8%; top: 100%; height: 56px;
+  transform: translateY(-10px);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, var(--warm-sand-glow) 0%, rgba(0,0,0,0) 70%);
+  opacity: 0.6;
+  transition: opacity 220ms ease, transform 220ms ease;
+  pointer-events: none;
+}
+.faro-input:focus-within::before { opacity: 1; transform: translateY(-10px) scale(1.06); }
 .faro-input:focus-within,
 .faro-input.dragover {
   border-color: var(--champagne);
   box-shadow: 0 0 0 3px var(--faro-input-ring);
+}
+
+/* ── Step list ──────────────────────────────────────────────────────────────
+   Every tool the model runs gets a row that STAYS. The single status line it
+   replaces overwrote itself, so a three-tool turn showed only whichever tool
+   happened to be last -- the user could not tell whether Faro had read their
+   pipeline before answering, which is exactly the thing that makes an answer
+   trustworthy. */
+.faro-steps {
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 7px 12px 7px 10px;
+  background: var(--faro-input-bg);
+  display: inline-flex; flex-direction: column; gap: 2px;
+  /* Hugs its rows. Stretched to the bubble width a single step reads as an
+     empty banner rather than a line of progress. */
+  width: fit-content; max-width: 100%; align-self: flex-start;
+}
+.faro-step {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 13px; color: var(--text-muted);
+  padding: 4px 2px; line-height: 1.4;
+}
+.faro-step__mark {
+  flex: 0 0 auto; width: 14px; height: 14px;
+  display: grid; place-items: center;
+}
+.faro-step__mark::before {
+  content: ''; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--border);
+}
+.faro-step[data-state="running"] .faro-step__mark::before {
+  background: var(--champagne);
+  animation: faro-step-pulse 1.1s ease-in-out infinite;
+}
+.faro-step[data-state="done"]   .faro-step__mark::before { background: var(--champagne); }
+.faro-step[data-state="failed"] .faro-step__mark::before { background: #dc2626; }
+.faro-step[data-state="done"]   { color: var(--text); }
+.faro-step[data-state="failed"] { color: var(--text); }
+@keyframes faro-step-pulse {
+  0%, 100% { transform: scale(1);   opacity: 1;    }
+  50%      { transform: scale(0.6); opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faro-step[data-state="running"] .faro-step__mark::before { animation: none; }
+  .faro-input::before { transition: none; }
 }
 .faro-input__field {
   width: 100%; min-height: 24px; max-height: 200px; resize: none;
@@ -716,7 +849,9 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
   .faro-landing { padding: 22px 16px 44px; }
   .faro-landing__title { font-size: 23px; }
   .faro-landing__sub { font-size: 13px; }
-  .faro-mascot { width: 56px; height: 56px; margin-bottom: 16px; }
+  .faro-mark { width: 56px; height: 56px; margin-bottom: 16px; }
+  .faro-mascot { width: 56px; height: 56px; }
+  .faro-landing__lead { font-size: 15px; }
 
   .faro-thread__inner { padding: 0 16px; }
   .faro-composer { padding: 12px 16px 16px; }

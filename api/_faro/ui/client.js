@@ -42,8 +42,14 @@
 function js() {
   return `
 /* ═══ Faro ════════════════════════════════════════════════ */
-function T(k) {
-  return (FARO_T && Object.prototype.hasOwnProperty.call(FARO_T, k)) ? FARO_T[k] : k;
+function T(k, fallback) {
+  if (FARO_T && Object.prototype.hasOwnProperty.call(FARO_T, k)) return FARO_T[k];
+  /* A missing key used to render its own name -- the context row literally read
+     "ctx.images" in all four languages. Prefer a caller-supplied fallback, and
+     otherwise show the last segment rather than the dotted key. */
+  if (fallback) return fallback;
+  var seg = String(k).split('.').pop();
+  return seg.charAt(0).toUpperCase() + seg.slice(1);
 }
 
 /* Cmd/Ctrl + this opens Faro. K is already the CRM's lead search. The dock's
@@ -117,6 +123,7 @@ function faroOpen() {
   document.body.classList.add('faro-open');
   if (launch) launch.setAttribute('aria-expanded', 'true');
 
+  faroApplyGreeting();   // faroOpen does not route through faroSetPanel
   faroLoadConversations();
   faroLoadContext();
   faroLoadActivity();
@@ -168,6 +175,10 @@ function faroSetPanel(panel) {
   var composer = document.getElementById('faro-composer');
   var inThread = faroState.inThread;
   if (landing)  landing.hidden  = !showChat || inThread;
+  // Re-resolved every time the landing appears: the clock moves and the CRM
+  // fills #user-name asynchronously, so a once-at-init read would show
+  // "Goedemiddag" at 9pm to whoever left the tab open.
+  if (landing && !landing.hidden) faroApplyGreeting();
   if (thread)   thread.hidden   = !showChat || !inThread;
   if (composer) composer.hidden = !showChat || !inThread;
 
@@ -196,6 +207,12 @@ var FARO_MASCOT_SRC = {
 var faroMascotMissing = {};
 
 function faroMascot(stateName) {
+  // The orb carries the state whether or not the artwork exists -- it is the
+  // mark on a checkout with an empty public/faro/, so it cannot depend on the
+  // <img> being there.
+  var mark = document.getElementById('faro-mark');
+  if (mark) mark.dataset.state = stateName;
+
   var el = document.getElementById('faro-mascot');
   if (!el) return;
   el.dataset.state = stateName;
@@ -216,6 +233,74 @@ function faroMascot(stateName) {
     }
   };
   el.src = src;
+}
+
+/* ── Greeting ────────────────────────────────────────────────────────────────
+   A named, time-aware headline. The name is read from the CRM's own user chip
+   rather than passed in: this module renders server-side, one request before
+   the session is known, and reaching for the rendered DOM keeps the coupling
+   to a single element id instead of a new contract. The placeholder the CRM
+   ships with ("Gebruiker") is not a name and is treated as absent. */
+var FARO_NAME_PLACEHOLDERS = ['gebruiker', 'user', 'client account', 'utilisateur', 'benutzer'];
+
+function faroFirstName() {
+  var raw = '';
+  var el = document.getElementById('user-name');
+  if (el) raw = (el.textContent || '').trim();
+  if (!raw) { try { raw = (localStorage.getItem('hv-client') || '').trim(); } catch (e) { raw = ''; } }
+  if (!raw || FARO_NAME_PLACEHOLDERS.indexOf(raw.toLowerCase()) !== -1) return '';
+  var first = raw.split(/\s+/)[0];
+  // A company name ("Immo Vandenberghe BVBA") reads badly after "Goedemiddag,";
+  // a single leading token is the safe half of it either way.
+  return first.length > 24 ? '' : first;
+}
+
+function faroGreeting() {
+  var h = new Date().getHours();
+  var key = h < 12 ? 'land.greet.morning' : h < 18 ? 'land.greet.afternoon' : 'land.greet.evening';
+  var name = faroFirstName();
+  return T(key) + (name ? ', ' + name : '');
+}
+
+function faroApplyGreeting() {
+  var head = document.getElementById('faro-greeting');
+  var lead = document.getElementById('faro-landing-title');
+  if (!head || !lead) return;
+  var g = faroGreeting();
+  if (!g) return;                       // no clock-free fallback needed: T() always returns something
+  head.textContent = g;
+  lead.hidden = false;                  // the question moves down a line, it does not disappear
+}
+
+/* ── Step list ───────────────────────────────────────────────────────────────
+   One persistent row per tool the model runs, replacing a status line that
+   overwrote itself. Rows are keyed by tool name, so a tool called twice in one
+   turn updates its row instead of stacking a duplicate. */
+function faroSteps(bubble) {
+  var box = bubble.querySelector('.faro-steps');
+  if (!box) {
+    box = document.createElement('div');
+    box.className = 'faro-steps';
+    bubble.insertBefore(box, bubble.firstChild);
+  }
+  return box;
+}
+
+function faroStep(bubble, name, state) {
+  var box = faroSteps(bubble);
+  var id = 'step-' + String(name).replace(/[^\w-]/g, '');
+  var row = box.querySelector('[data-step="' + id + '"]');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'faro-step';
+    row.setAttribute('data-step', id);
+    // textContent for the label -- the tool name comes off the wire.
+    row.innerHTML = '<span class="faro-step__mark"></span><span class="faro-step__label"></span>';
+    row.querySelector('.faro-step__label').textContent = T('tool.' + name, name);
+    box.appendChild(row);
+  }
+  row.dataset.state = state;
+  faroScrollToEnd();
 }
 
 /* ── 7. Sending a message + streaming the answer ──────────────────────────── */
@@ -337,13 +422,10 @@ function faroHandleEvent(name, data, bubble, status) {
       break;
 
     case 'tool':
-      if (status) {
-        status.style.display = '';
-        status.querySelector('.faro-status__label').textContent =
-          data.state === 'running' ? T('st.searching')
-          : data.state === 'failed' ? T('st.toolFailed')
-          : T('st.working');
-      }
+      // The generic spinner is for the phase BEFORE any tool is known. Once a
+      // tool has a name there is a real row to show, so the spinner retires.
+      if (status) status.style.display = 'none';
+      if (data.name) faroStep(bubble, data.name, data.state || 'running');
       break;
 
     case 'component':
@@ -760,7 +842,7 @@ function faroLoadContext() {
       chips.innerHTML = faroState.contextSources.filter(function (s) { return s.available; })
         .slice(0, 4)
         .map(function (s) {
-          return '<span class="faro-context-chip">' + faroIcon('check', 11) + faroEsc(T('ctx.' + s.key)) + '</span>';
+          return '<span class="faro-context-chip">' + faroIcon('check', 11) + faroEsc(T('ctx.' + s.key, s.label)) + '</span>';
         }).join('');
       faroRenderContextToggles();
     })
@@ -771,7 +853,7 @@ function faroRenderContextToggles() {
   var box = document.getElementById('faro-context-toggles');
   if (!box) return;
   box.innerHTML = faroState.contextSources.map(function (s) {
-    return '<div class="faro-context-toggle"><span>' + faroEsc(T('ctx.' + s.key)) + '</span>' +
+    return '<div class="faro-context-toggle"><span>' + faroEsc(T('ctx.' + s.key, s.label)) + '</span>' +
            '<span class="faro-tag' + (s.available ? ' faro-tag--qualified' : '') + '">' +
            (s.available ? faroIcon('check', 11) : '—') + '</span></div>';
   }).join('');

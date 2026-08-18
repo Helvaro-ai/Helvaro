@@ -105,11 +105,25 @@ function landing(t) {
       <div class="faro-landing" id="faro-landing">
         <div class="faro-landing__inner">
 
-          <img class="faro-mascot" id="faro-mascot" data-state="idle"
-               src="/faro/falcon-idle.webp" alt="" width="72" height="72"
-               draggable="false" onerror="this.classList.add('faro-mascot--missing')">
+          <!-- The mark. The orb is CSS -- no asset, no request, no 404 -- and it
+               carries the six states on its own, so Faro has a face on a fresh
+               checkout where public/faro/ is empty. The falcon renders on top
+               of it when the artwork exists; until then the orb IS the mascot,
+               which is why it is not decorative and not hidden from the flow. -->
+          <div class="faro-mark" id="faro-mark" data-state="idle">
+            <span class="faro-orb" aria-hidden="true"></span>
+            <img class="faro-mascot" id="faro-mascot" data-state="idle"
+                 src="/faro/falcon-idle.webp" alt="" width="72" height="72"
+                 draggable="false" onerror="this.classList.add('faro-mascot--missing')">
+          </div>
 
-          <h1 class="faro-landing__title">${t('land.title')}</h1>
+          <!-- Server-rendered as the plain question, which is what a no-JS or
+               pre-hydration render shows. The client upgrades the headline to a
+               time-aware, named greeting and demotes the question to the line
+               below -- it needs the clock and the signed-in name, neither of
+               which this request has. Nothing here depends on that upgrade. -->
+          <h1 class="faro-landing__title" id="faro-greeting">${t('land.title')}</h1>
+          <p class="faro-landing__lead" id="faro-landing-title" hidden>${t('land.title')}</p>
           <p class="faro-landing__sub">${t('land.sub')}</p>
 
           ${input(t)}
