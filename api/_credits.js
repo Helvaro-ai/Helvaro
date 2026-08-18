@@ -390,6 +390,35 @@ async function recordUsage(projectCode, feature, opts = {}) {
     );
     if (!r.ok) {
       const t = await r.text().catch(() => '');
+
+      // Eén ontbrekend veld liet hier de HELE update mislukken, en het gevolg
+      // was erger dan het lijkt: zonder deze PATCH wordt Credits Used nooit
+      // opgehoogd, dus telde het creditplafond niets meer. Dat is precies het
+      // omgekeerde van wat een limiet hoort te doen — hij faalde open, stil, en
+      // alleen zichtbaar in een console.error. Zo stond het maandenlang: het
+      // veld Credit Usage By Feature bestond niet in Airtable.
+      //
+      // De uitsplitsing per functie is een nice-to-have; de teller is dat niet.
+      // Bij een onbekend veld proberen we het daarom opnieuw met alleen de twee
+      // velden die echt moeten kloppen. Beter een limiet die telt zonder
+      // detailrapportage dan een limiet die niet telt.
+      if (r.status === 422 && /UNKNOWN_FIELD_NAME/.test(t)) {
+        console.warn(`[Credits] onbekend veld in Client Config — opnieuw zonder de uitsplitsing per functie. Voeg "${FIELD.BY_FEATURE}" toe om die terug te krijgen.`);
+        const retry = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${record.id}`,
+          {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: { [FIELD.USED]: newUsed, [FIELD.PERIOD]: JSON.stringify(newPeriod) },
+            }),
+          }
+        );
+        if (retry.ok) return;
+        console.error(`[Credits] recordUsage(${code}, ${feature}) ook de beperkte poging faalde (HTTP ${retry.status}) — verbruik NIET geteld`);
+        return;
+      }
+
       console.error(`[Credits] recordUsage(${code}, ${feature}) PATCH failed (HTTP ${r.status}) — usage NOT recorded:`, t.slice(0, 200));
       return;
     }
