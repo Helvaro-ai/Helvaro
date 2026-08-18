@@ -41,18 +41,18 @@ function css() {
   position: sticky;
   bottom: 0;
   z-index: 40;
-  padding: 10px 28px 14px;
+  padding: var(--sp-3) var(--sp-6) var(--sp-4);
   background: var(--bg);
   border-top: 1px solid var(--border);
 }
 .faro-dock__inner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   max-width: 940px;
   margin: 0 auto;
-  padding: 7px 8px 7px 14px;
-  border-radius: 14px;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
   background: var(--faro-input-bg);
   border: 1px solid var(--border);
   transition: border-color 150ms ease, box-shadow 150ms ease;
@@ -65,20 +65,20 @@ function css() {
 .faro-dock__input {
   flex: 1; min-width: 0;
   border: 0; outline: 0; background: transparent;
-  color: var(--text); font: inherit; font-size: 14px;
+  color: var(--text); font: inherit; font-size: var(--fs-meta);
 }
 .faro-dock__input::placeholder { color: var(--text-disabled); }
 .faro-dock__kbd {
   flex-shrink: 0;
-  font: inherit; font-size: 10.5px;
-  padding: 2px 6px; border-radius: 5px;
+  font: inherit; font-size: var(--fs-micro);
+  padding: var(--sp-05) var(--sp-15); border-radius: var(--r-xs);
   border: 1px solid var(--border);
   color: var(--text-disabled);
 }
 .faro-dock__open {
   width: 30px; height: 30px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 9px; border: 0;
+  border-radius: var(--r-sm); border: 0;
   background: var(--accent); color: var(--on-accent);
   cursor: pointer; transition: background 150ms ease;
 }
@@ -132,7 +132,7 @@ body.faro-open .faro-dock { display: none; }
   z-index: 5;
   width: 32px; height: 32px;
   align-items: center; justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--faro-hairline);
   background: var(--faro-raised);
   color: var(--text-muted);
@@ -165,11 +165,11 @@ body.faro-open .faro-dock { display: none; }
 .faro-nav-cta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   width: calc(100% - 24px);
-  margin: 0 12px 14px;
-  padding: 9px 11px;
-  border-radius: 14px;
+  margin: 0 var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-card-alt);
   color: var(--text);
@@ -196,9 +196,9 @@ body.faro-open .faro-dock { display: none; }
   box-shadow: 0 0 12px rgba(244, 231, 200, 0.18);
 }
 .faro-nav-cta__text { display: flex; flex-direction: column; min-width: 0; }
-.faro-nav-cta__title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.faro-nav-cta__title { font-size: var(--fs-small); font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
 .faro-nav-cta__sub {
-  font-size: 11px; color: var(--text-muted); margin-top: 1px;
+  font-size: var(--fs-micro); color: var(--text-muted); margin-top: var(--sp-05);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -211,31 +211,31 @@ body.faro-open .faro-dock { display: none; }
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 14px 0 10px;
+  padding: var(--sp-4) 0 var(--sp-3);
   border-right: 1px solid var(--faro-hairline);
   background: var(--faro-surface);
 }
 .faro-rail__new {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-  margin: 0 12px 12px;
-  padding: 9px 12px;
-  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  margin: 0 var(--sp-3) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
   border: 0;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 12.5px; font-weight: 600;
+  font-size: var(--fs-small); font-weight: 600;
   cursor: pointer;
   transition: background 150ms ease;
 }
 .faro-rail__new:hover { background: var(--accent-hover); }
 
 .faro-rail__item {
-  display: flex; align-items: center; gap: 9px;
+  display: flex; align-items: center; gap: var(--sp-2);
   width: 100%; text-align: left;
-  padding: 8px 16px;
+  padding: var(--sp-2) var(--sp-4);
   border: 0; background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-small);
   cursor: pointer;
   transition: color 150ms ease, background 150ms ease;
 }
@@ -244,15 +244,15 @@ body.faro-open .faro-dock { display: none; }
 .faro-rail__icon { display: inline-flex; opacity: 0.85; }
 
 .faro-rail__section {
-  padding: 14px 16px 5px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em;
+  padding: var(--sp-4) var(--sp-4) var(--sp-15);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.09em;
   text-transform: uppercase; color: var(--text-disabled);
 }
 .faro-rail__convos { overflow-y: auto; flex: 1 1 auto; min-height: 30px; }
 .faro-convo {
   display: block; width: 100%; text-align: left;
-  padding: 6px 16px;
-  font-size: 12.5px; color: var(--text-muted);
+  padding: var(--sp-15) var(--sp-4);
+  font-size: var(--fs-small); color: var(--text-muted);
   background: transparent; border: 0; cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color 150ms ease, background 150ms ease;
@@ -261,16 +261,16 @@ body.faro-open .faro-dock { display: none; }
 .faro-convo.active { color: var(--sand-on-surface); background: var(--champagne-dim); }
 
 .faro-rail__viewall {
-  margin: 4px 16px 0; padding: 0;
+  margin: var(--sp-1) var(--sp-4) 0; padding: 0;
   background: none; border: 0;
-  color: var(--text-disabled); font-size: 12px; text-align: left; cursor: pointer;
+  color: var(--text-disabled); font-size: var(--fs-tiny); text-align: left; cursor: pointer;
   transition: color 150ms ease;
 }
 .faro-rail__viewall:hover { color: var(--accent); }
 
 
 /* ═══ Landing (requirement 4) ══════════════════════════════════════════════ */
-.faro-landing { flex: 1; overflow-y: auto; padding: 32px 24px 44px; }
+.faro-landing { flex: 1; overflow-y: auto; padding: var(--sp-8) var(--sp-6) var(--sp-10); }
 .faro-landing__inner { width: 100%; max-width: 720px; margin: 0 auto; }
 
 /* Mascot. Smaller than the design's — requirement 4 asks for "subtle and
@@ -315,7 +315,7 @@ body.faro-open .faro-dock { display: none; }
 .faro-mark {
   position: relative;
   width: 72px; height: 72px;
-  margin: 0 auto 20px;
+  margin: 0 auto var(--sp-5);
   display: grid; place-items: center;
 }
 .faro-orb {
@@ -363,17 +363,17 @@ body.faro-open .faro-dock { display: none; }
 }
 
 .faro-landing__title {
-  font-size: 30px; font-weight: 600; letter-spacing: -0.02em;
-  text-align: center; color: var(--text); margin: 0 0 8px;
+  font-size: var(--fs-display); font-weight: 600; letter-spacing: -0.02em;
+  text-align: center; color: var(--text); margin: 0 0 var(--sp-2);
 }
 /* The question, once the headline above it has become a greeting. Sits between
    title and sub in weight so the eye still lands on it before the input. */
 .faro-landing__lead {
-  font-size: 16px; font-weight: 500; text-align: center;
-  color: var(--text); margin: 0 0 6px;
+  font-size: var(--fs-body); font-weight: 500; text-align: center;
+  color: var(--text); margin: 0 0 var(--sp-15);
 }
 .faro-landing__sub {
-  font-size: 14px; text-align: center; color: var(--text-muted); margin: 0 0 26px;
+  font-size: var(--fs-meta); text-align: center; color: var(--text-muted); margin: 0 0 var(--sp-6);
 }
 
 /* ═══ The input — the visual focus of the panel ═══════════════════════════ */
@@ -381,8 +381,8 @@ body.faro-open .faro-dock { display: none; }
   position: relative;
   background: var(--faro-input-bg);
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 14px 16px 10px;
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 /* Ambient glow. A soft sand bloom sitting UNDER the composer, so the input
@@ -416,20 +416,20 @@ body.faro-open .faro-dock { display: none; }
    pipeline before answering, which is exactly the thing that makes an answer
    trustworthy. */
 .faro-steps {
-  margin: 0 0 12px;
+  margin: 0 0 var(--sp-3);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 7px 12px 7px 10px;
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3);
   background: var(--faro-input-bg);
-  display: inline-flex; flex-direction: column; gap: 2px;
+  display: inline-flex; flex-direction: column; gap: var(--sp-05);
   /* Hugs its rows. Stretched to the bubble width a single step reads as an
      empty banner rather than a line of progress. */
   width: fit-content; max-width: 100%; align-self: flex-start;
 }
 .faro-step {
-  display: flex; align-items: center; gap: 9px;
-  font-size: 13px; color: var(--text-muted);
-  padding: 4px 2px; line-height: 1.4;
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-small); color: var(--text-muted);
+  padding: var(--sp-1) var(--sp-05); line-height: 1.4;
 }
 .faro-step__mark {
   flex: 0 0 auto; width: 14px; height: 14px;
@@ -458,25 +458,25 @@ body.faro-open .faro-dock { display: none; }
 .faro-input__field {
   width: 100%; min-height: 24px; max-height: 200px; resize: none;
   border: 0; outline: 0; background: transparent; color: var(--text);
-  font: inherit; font-size: 15px; line-height: 1.5;
+  font: inherit; font-size: var(--fs-body); line-height: 1.5;
 }
 .faro-input__field::placeholder { color: var(--text-disabled); }
 
-.faro-input__attachments { display: flex; flex-wrap: wrap; gap: 6px; }
-.faro-input__attachments:not(:empty) { margin-top: 8px; }
+.faro-input__attachments { display: flex; flex-wrap: wrap; gap: var(--sp-15); }
+.faro-input__attachments:not(:empty) { margin-top: var(--sp-2); }
 
-.faro-input__bar { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.faro-input__bar { display: flex; align-items: center; gap: var(--sp-15); margin-top: var(--sp-3); }
 .faro-input__spacer { flex: 1; }
 
 .faro-tool-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 11px; border-radius: 10px;
+  display: inline-flex; align-items: center; gap: var(--sp-15);
+  padding: var(--sp-15) var(--sp-3); border-radius: var(--r-sm);
   border: 1px solid var(--faro-hairline); background: transparent;
-  color: var(--text-muted); font-size: 12.5px; cursor: pointer;
+  color: var(--text-muted); font-size: var(--fs-small); cursor: pointer;
   transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
 }
 .faro-tool-btn:hover { color: var(--text); background: var(--faro-raised); border-color: var(--champagne-line); }
-.faro-tool-btn--icon { padding: 6px 8px; }
+.faro-tool-btn--icon { padding: var(--sp-15) var(--sp-2); }
 .faro-model-btn { font-weight: 500; }
 
 /* Send button. Dark glyph on champagne — the light arrow in the design would
@@ -485,7 +485,7 @@ body.faro-open .faro-dock { display: none; }
 .faro-send {
   width: 34px; height: 34px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 11px; border: 0;
+  border-radius: var(--r-sm); border: 0;
   background: var(--accent); color: var(--on-accent);
   cursor: pointer;
   transition: background 150ms ease, opacity 150ms ease;
@@ -495,81 +495,81 @@ body.faro-open .faro-dock { display: none; }
 
 /* ═══ Faro context (requirement 6) ════════════════════════════════════════ */
 .faro-context-row {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  margin-top: 14px; padding: 0 2px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
+  margin-top: var(--sp-4); padding: 0 var(--sp-05);
 }
-.faro-context-row__label { font-size: 12px; color: var(--text-muted); }
-.faro-context-row__chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.faro-context-row__label { font-size: var(--fs-tiny); color: var(--text-muted); }
+.faro-context-row__chips { display: flex; flex-wrap: wrap; gap: var(--sp-15); flex: 1; }
 .faro-context-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: var(--sp-15);
+  padding: var(--sp-1) var(--sp-3); border-radius: var(--r-full);
   border: 1px solid var(--faro-hairline);
-  font-size: 11.5px; color: var(--text-muted);
+  font-size: var(--fs-tiny); color: var(--text-muted);
 }
 .faro-context-chip svg { color: var(--success); }
 .faro-context-chip--off { opacity: 0.45; }
 .faro-context-chip--off svg { color: var(--text-disabled); }
 
 .faro-context-row__manage {
-  padding: 4px 12px; border-radius: 999px;
+  padding: var(--sp-1) var(--sp-3); border-radius: var(--r-full);
   border: 1px solid var(--faro-hairline); background: transparent;
-  color: var(--text-muted); font-size: 11.5px; cursor: pointer;
+  color: var(--text-muted); font-size: var(--fs-tiny); cursor: pointer;
   transition: color 150ms ease, border-color 150ms ease;
 }
 .faro-context-row__manage:hover { color: var(--text); border-color: var(--champagne-line); }
 
 .faro-context-panel {
-  margin-top: 10px; padding: 14px 16px;
-  border: 1px solid var(--faro-hairline); border-radius: 14px;
+  margin-top: var(--sp-3); padding: var(--sp-4) var(--sp-4);
+  border: 1px solid var(--faro-hairline); border-radius: var(--r-md);
   background: var(--faro-surface);
 }
-.faro-context-panel__note { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); }
+.faro-context-panel__note { margin: 0 0 var(--sp-3); font-size: var(--fs-small); color: var(--text-muted); }
 .faro-context-toggle {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 7px 0; font-size: 13px; color: var(--text);
+  padding: var(--sp-2) 0; font-size: var(--fs-small); color: var(--text);
   border-top: 1px solid var(--divider);
 }
 .faro-context-toggle:first-child { border-top: 0; }
 
 /* ═══ Sections ════════════════════════════════════════════════════════════ */
-.faro-section { margin-top: 34px; }
+.faro-section { margin-top: var(--sp-8); }
 .faro-section__head {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-bottom: 14px;
+  gap: var(--sp-3); margin-bottom: var(--sp-4);
 }
 .faro-section__title {
-  margin: 0; font-size: 17px; font-weight: 600;
+  margin: 0; font-size: var(--fs-lead); font-weight: 600;
   letter-spacing: -0.01em; color: var(--text);
 }
 .faro-pill {
-  padding: 5px 13px; border-radius: 999px;
+  padding: var(--sp-15) var(--sp-3); border-radius: var(--r-full);
   border: 1px solid var(--faro-hairline); background: transparent;
-  color: var(--text-muted); font-size: 12px; cursor: pointer; white-space: nowrap;
+  color: var(--text-muted); font-size: var(--fs-tiny); cursor: pointer; white-space: nowrap;
   transition: color 150ms ease, border-color 150ms ease;
 }
 .faro-pill:hover { color: var(--text); border-color: var(--champagne-line); }
 
 /* ═══ Quick actions (requirement 5) ═══════════════════════════════════════ */
-.faro-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.faro-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
 .faro-quick__group {
   min-width: 0;
   border: 1px solid var(--faro-hairline);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   background: var(--faro-surface);
-  padding: 14px;
+  padding: var(--sp-4);
 }
 .faro-quick__label {
-  font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px;
+  font-size: var(--fs-small); font-weight: 600; color: var(--text); margin-bottom: var(--sp-3);
 }
 .faro-quick__action {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: var(--sp-3);
   width: 100%; text-align: left;
-  padding: 10px 11px; margin-bottom: 6px;
-  border-radius: 12px;
+  padding: var(--sp-3) var(--sp-3); margin-bottom: var(--sp-15);
+  border-radius: var(--r-md);
   border: 1px solid transparent;
   background: var(--faro-raised);
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-small);
   cursor: pointer;
   transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
 }
@@ -581,7 +581,7 @@ body.faro-open .faro-dock { display: none; }
 .faro-quick__icon {
   display: inline-flex; flex-shrink: 0;
   width: 30px; height: 30px; align-items: center; justify-content: center;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: var(--champagne-dim);
   color: var(--deep-sand);
   transition: background 150ms ease, color 150ms ease;
@@ -602,12 +602,12 @@ body.faro-open .faro-dock { display: none; }
 /* ═══ Recently created ════════════════════════════════════════════════════ */
 .faro-activity { position: relative; }
 .faro-activity__track {
-  display: flex; gap: 14px;
+  display: flex; gap: var(--sp-4);
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 4px;
+  padding-bottom: var(--sp-1);
 }
 .faro-activity__track::-webkit-scrollbar { display: none; }
 .faro-activity__nav {
@@ -622,7 +622,7 @@ body.faro-open .faro-dock { display: none; }
 
 .faro-act-card {
   flex: 0 0 200px; scroll-snap-align: start;
-  border: 1px solid var(--faro-hairline); border-radius: 16px;
+  border: 1px solid var(--faro-hairline); border-radius: var(--r-lg);
   background: var(--faro-surface); overflow: hidden;
   cursor: pointer; transition: border-color 150ms ease;
 }
@@ -632,62 +632,62 @@ body.faro-open .faro-dock { display: none; }
 .faro-act-card__media video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .faro-act-card__badge {
   position: absolute; top: 8px; left: 8px;
-  padding: 2px 7px; border-radius: 5px;
+  padding: var(--sp-05) var(--sp-2); border-radius: var(--r-xs);
   background: rgba(18,18,18,0.72); color: var(--warm-sand);
-  font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
 }
 .faro-act-card__dur {
   position: absolute; top: 8px; right: 8px;
-  padding: 2px 7px; border-radius: 5px;
+  padding: var(--sp-05) var(--sp-2); border-radius: var(--r-xs);
   background: rgba(18,18,18,0.72); color: var(--text);
-  font-size: 10px; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-micro); font-variant-numeric: tabular-nums;
 }
 /* TEXT artifacts have no image — the copy itself is the preview. Position
    relative so the badge anchors to this block rather than overlapping the copy. */
 .faro-act-card__text {
   position: relative;
-  padding: 34px 12px 12px;
+  padding: var(--sp-8) var(--sp-3) var(--sp-3);
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--faro-raised);
 }
 .faro-act-card__excerpt {
   display: block;
-  font-size: 11.5px; line-height: 1.5; color: var(--text-muted);
+  font-size: var(--fs-tiny); line-height: 1.5; color: var(--text-muted);
 }
-.faro-act-card__meta { padding: 10px 12px; }
+.faro-act-card__meta { padding: var(--sp-3) var(--sp-3); }
 .faro-act-card__title {
-  font-size: 12.5px; font-weight: 600; color: var(--text);
+  font-size: var(--fs-small); font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.faro-act-card__sub { font-size: 11px; color: var(--text-disabled); margin-top: 2px; }
+.faro-act-card__sub { font-size: var(--fs-micro); color: var(--text-disabled); margin-top: var(--sp-05); }
 
 /* ═══ Conversation view (requirement 7) ═══════════════════════════════════ */
-.faro-thread { flex: 1; overflow-y: auto; padding: 28px 0 8px; min-height: 0; }
-.faro-thread__inner { max-width: 760px; margin: 0 auto; padding: 0 24px; }
-.faro-composer { flex-shrink: 0; border-top: 1px solid var(--faro-hairline); padding: 14px 24px 18px; }
+.faro-thread { flex: 1; overflow-y: auto; padding: var(--sp-6) 0 var(--sp-2); min-height: 0; }
+.faro-thread__inner { max-width: 760px; margin: 0 auto; padding: 0 var(--sp-6); }
+.faro-composer { flex-shrink: 0; border-top: 1px solid var(--faro-hairline); padding: var(--sp-4) var(--sp-6) var(--sp-4); }
 .faro-composer__inner { max-width: 760px; margin: 0 auto; }
 
 /* User messages stay minimal — requirement 7. No avatar, no chrome. */
 .faro-msg--user {
-  margin: 0 0 20px auto; max-width: 78%; width: fit-content;
-  padding: 10px 14px; border-radius: 16px 16px 4px 16px;
+  margin: 0 0 var(--sp-5) auto; max-width: 78%; width: fit-content;
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg) var(--r-lg) var(--r-xs) var(--r-lg);
   background: var(--faro-raised); color: var(--text);
-  font-size: 14.5px; line-height: 1.55; white-space: pre-wrap;
+  font-size: var(--fs-meta); line-height: 1.55; white-space: pre-wrap;
 }
-.faro-msg--ai { margin: 0 0 26px; font-size: 14.5px; line-height: 1.65; color: var(--text); }
+.faro-msg--ai { margin: 0 0 var(--sp-6); font-size: var(--fs-meta); line-height: 1.65; color: var(--text); }
 .faro-msg__text { white-space: pre-wrap; }
 .faro-msg__thumb {
   display: block;
   max-width: 220px; max-height: 160px;
-  border-radius: 10px;
-  margin-bottom: 8px;
+  border-radius: var(--r-sm);
+  margin-bottom: var(--sp-2);
 }
 .faro-msg__thumb:last-child { margin-bottom: 0; }
 
 .faro-status {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12.5px; color: var(--text-muted); margin-bottom: 10px;
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-small); color: var(--text-muted); margin-bottom: var(--sp-3);
 }
 .faro-status__dot {
   width: 5px; height: 5px; border-radius: 50%; background: var(--champagne);
@@ -696,29 +696,29 @@ body.faro-open .faro-dock { display: none; }
 @keyframes faro-pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 /* ═══ Response components ═════════════════════════════════════════════════ */
-.faro-cards { display: grid; gap: 10px; }
-.faro-cards:not(:empty) { margin-top: 14px; }
+.faro-cards { display: grid; gap: var(--sp-3); }
+.faro-cards:not(:empty) { margin-top: var(--sp-4); }
 
 .faro-card {
-  border: 1px solid var(--faro-hairline); border-radius: 18px;
-  background: var(--faro-surface); padding: 14px 16px;
+  border: 1px solid var(--faro-hairline); border-radius: var(--r-lg);
+  background: var(--faro-surface); padding: var(--sp-4) var(--sp-4);
   transition: border-color 150ms ease;
 }
 .faro-card:hover { border-color: var(--champagne-line); }
-.faro-card__name { font-size: 15px; font-weight: 600; color: var(--text); }
-.faro-card__budget { font-size: 19px; font-weight: 600; color: var(--deep-sand); margin: 4px 0 2px; }
-.faro-card__meta { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-.faro-card__tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.faro-card__name { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
+.faro-card__budget { font-size: var(--fs-lead); font-weight: 600; color: var(--deep-sand); margin: var(--sp-1) 0 var(--sp-05); }
+.faro-card__meta { font-size: var(--fs-small); color: var(--text-muted); line-height: 1.5; }
+.faro-card__tags { display: flex; flex-wrap: wrap; gap: var(--sp-15); margin: var(--sp-3) 0 0; }
 .faro-tag {
-  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  font-size: var(--fs-micro); padding: var(--sp-1) var(--sp-2); border-radius: var(--r-xs);
   background: var(--faro-raised); color: var(--text-muted);
 }
 .faro-tag--qualified { background: var(--champagne-dim); color: var(--deep-sand); }
-.faro-card__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.faro-card__actions { display: flex; flex-wrap: wrap; gap: var(--sp-15); margin-top: var(--sp-3); }
 .faro-card__btn {
-  padding: 6px 12px; border-radius: 10px;
+  padding: var(--sp-15) var(--sp-3); border-radius: var(--r-sm);
   border: 1px solid var(--faro-hairline); background: transparent;
-  color: var(--text-muted); font-size: 12.5px; cursor: pointer;
+  color: var(--text-muted); font-size: var(--fs-small); cursor: pointer;
   transition: color 150ms ease, background 150ms ease;
 }
 .faro-card__btn:hover { color: var(--text); background: var(--faro-raised); }
@@ -736,7 +736,7 @@ body.faro-open .faro-dock { display: none; }
 
 /* ═══ Skeletons, empties, errors (requirement 15) ═════════════════════════ */
 .faro-skeleton {
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: linear-gradient(90deg, var(--faro-surface) 25%, var(--faro-raised) 37%, var(--faro-surface) 63%);
   background-size: 400% 100%;
   animation: faro-shimmer 1.4s ease infinite;
@@ -745,29 +745,29 @@ body.faro-open .faro-dock { display: none; }
 @media (prefers-reduced-motion: reduce) { .faro-skeleton { animation: none; } }
 
 .faro-empty {
-  padding: 22px; border: 1px dashed var(--faro-hairline); border-radius: 16px;
-  color: var(--text-disabled); font-size: 13px; text-align: center;
+  padding: var(--sp-5); border: 1px dashed var(--faro-hairline); border-radius: var(--r-lg);
+  color: var(--text-disabled); font-size: var(--fs-small); text-align: center;
 }
 .faro-card--error { border-color: rgba(220,38,38,0.35); }
 
 /* ═══ Panels & galleries (requirements 9, 10, 12) ═════════════════════════ */
-.faro-panel { flex: 1; overflow-y: auto; padding: 28px 24px 64px; }
+.faro-panel { flex: 1; overflow-y: auto; padding: var(--sp-6) var(--sp-6) var(--sp-16); }
 /* These sub-pages are toggled by the hidden attribute, which any display rule
    above would silently defeat — hence the explicit reset. */
 .faro-panel[hidden] { display: none; }
 .faro-panel__head {
-  max-width: 980px; margin: 0 auto 16px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  max-width: 980px; margin: 0 auto var(--sp-4);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
 }
 .faro-panel__controls, .faro-gallery, #faro-projects-list { max-width: 980px; margin: 0 auto; }
-.faro-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.faro-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--sp-4); }
 .faro-gallery--video { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .faro-gallery:empty { display: none; }
-.faro-media { border-radius: 18px; overflow: hidden; border: 1px solid var(--faro-hairline); background: var(--faro-surface); }
+.faro-media { border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--faro-hairline); background: var(--faro-surface); }
 .faro-media__img { width: 100%; display: block; aspect-ratio: 4 / 3; object-fit: cover; background: var(--faro-raised); }
 .faro-media__img--9-16 { aspect-ratio: 9 / 16; }
 .faro-media__img--1-1  { aspect-ratio: 1 / 1;  }
-.faro-media__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; }
+.faro-media__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-15); padding: var(--sp-3) var(--sp-3); }
 
 /* Before/after toggle, sitting on the image itself rather than in the button
    row — it changes what you are looking at, so it belongs on the thing it
@@ -775,11 +775,11 @@ body.faro-open .faro-dock { display: none; }
 .faro-media__frame { position: relative; }
 .faro-media__ba {
   position: absolute; left: 10px; bottom: 10px;
-  padding: 5px 11px; border-radius: 999px;
+  padding: var(--sp-15) var(--sp-3); border-radius: var(--r-full);
   border: 1px solid rgba(255,255,255,0.18);
   background: rgba(18,18,18,0.72);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-  color: #F4E7C8; font: inherit; font-size: 11.5px; font-weight: 600;
+  color: #F4E7C8; font: inherit; font-size: var(--fs-tiny); font-weight: 600;
   cursor: pointer;
   transition: background 150ms ease;
 }
@@ -791,29 +791,29 @@ body.faro-open .faro-dock { display: none; }
 .faro-menu {
   position: absolute; bottom: calc(100% + 8px); right: 44px;
   min-width: 208px; z-index: 30;
-  padding: 5px;
-  border: 1px solid var(--faro-hairline); border-radius: 14px;
+  padding: var(--sp-15);
+  border: 1px solid var(--faro-hairline); border-radius: var(--r-md);
   background: var(--faro-raised);
   box-shadow: 0 8px 28px rgba(0,0,0,0.28);
 }
 .faro-menu__item {
   display: block; width: 100%; text-align: left;
-  padding: 8px 10px; border: 0; border-radius: 10px;
+  padding: var(--sp-2) var(--sp-3); border: 0; border-radius: var(--r-sm);
   background: transparent; cursor: pointer;
   transition: background 150ms ease;
 }
 .faro-menu__item:hover { background: var(--hover); }
 .faro-menu__item.active { background: var(--champagne-dim); }
-.faro-menu__label { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+.faro-menu__label { display: block; font-size: var(--fs-small); font-weight: 600; color: var(--text); }
 .faro-menu__item.active .faro-menu__label { color: var(--sand-on-surface); }
-.faro-menu__hint { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+.faro-menu__hint { display: block; font-size: var(--fs-tiny); color: var(--text-muted); margin-top: var(--sp-05); }
 
 /* ═══ Gallery empty states ════════════════════════════════════════════════
    These have to teach, not just report emptiness: generation moved to the chat
    and a user landing here may not know that yet. */
-.faro-empty--cta { padding: 30px 22px; }
-.faro-empty__title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
-.faro-empty__hint { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
+.faro-empty--cta { padding: var(--sp-8) var(--sp-5); }
+.faro-empty__title { font-size: var(--fs-meta); font-weight: 600; color: var(--text); margin-bottom: var(--sp-15); }
+.faro-empty__hint { font-size: var(--fs-small); color: var(--text-muted); margin-bottom: var(--sp-4); line-height: 1.5; }
 
 /* ═══ Responsive (requirement 16) ═════════════════════════════════════════ */
 @media (max-width: 1100px) {
@@ -840,24 +840,24 @@ body.faro-open .faro-dock { display: none; }
 
 @media (max-width: 768px) {
   /* Extra top padding clears the rail handle pinned at the top left. */
-  .faro-landing { padding: 52px 16px 44px; }
-  .faro-landing__title { font-size: 23px; }
-  .faro-landing__sub { font-size: 13px; }
-  .faro-mark { width: 56px; height: 56px; margin-bottom: 16px; }
+  .faro-landing { padding: var(--sp-12) var(--sp-4) var(--sp-10); }
+  .faro-landing__title { font-size: var(--fs-title); }
+  .faro-landing__sub { font-size: var(--fs-small); }
+  .faro-mark { width: 56px; height: 56px; margin-bottom: var(--sp-4); }
   .faro-mascot { width: 56px; height: 56px; }
-  .faro-landing__lead { font-size: 15px; }
+  .faro-landing__lead { font-size: var(--fs-body); }
 
-  .faro-thread__inner { padding: 0 16px; }
-  .faro-composer { padding: 12px 16px 16px; }
+  .faro-thread__inner { padding: 0 var(--sp-4); }
+  .faro-composer { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
   .faro-msg--user { max-width: 88%; }
 
   /* The control row does not fit at 390px with five items and text labels, and
      the one being pushed off the edge was Send — the single control
      requirement 16 says must "remain easily accessible". So on narrow screens
      the tool buttons go icon-only and Send may never shrink. */
-  .faro-input { padding: 12px 12px 8px; }
-  .faro-input__bar { gap: 4px; flex-wrap: nowrap; }
-  .faro-tool-btn { padding: 6px 8px; }
+  .faro-input { padding: var(--sp-3) var(--sp-3) var(--sp-2); }
+  .faro-input__bar { gap: var(--sp-1); flex-wrap: nowrap; }
+  .faro-tool-btn { padding: var(--sp-15) var(--sp-2); }
   .faro-tool-btn span:not(.faro-input__spacer) { display: none; }
   .faro-model-btn { min-width: 0; overflow: hidden; }
   .faro-model-btn #faro-model-label {
@@ -870,29 +870,29 @@ body.faro-open .faro-dock { display: none; }
      lives on the strip, never the page — requirement 16's "no horizontal
      overflow". */
   .faro-quick__actions {
-    display: flex; gap: 8px; overflow-x: auto;
-    scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+    display: flex; gap: var(--sp-2); overflow-x: auto;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: var(--sp-05);
   }
   .faro-quick__actions::-webkit-scrollbar { display: none; }
   .faro-quick__action { flex: 0 0 auto; width: auto; margin-bottom: 0; white-space: nowrap; }
   .faro-quick__chev { display: none; }
 
   /* Wrapping put the manage button mid-chip-run. Stack instead. */
-  .faro-context-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .faro-context-row { flex-direction: column; align-items: flex-start; gap: var(--sp-15); }
   .faro-context-row__chips { width: 100%; }
 
   .faro-gallery, .faro-gallery--video, .faro-cards { grid-template-columns: 1fr; }
   .faro-activity__nav { display: none; }
   .faro-act-card { flex-basis: 168px; }
-  .faro-section { margin-top: 26px; }
+  .faro-section { margin-top: var(--sp-6); }
 
 }
 
 /* Phones. The launcher must survive a crowded topbar without pushing the theme
    toggle onto a second row, so it drops to icon-only. */
 @media (max-width: 768px) {
-  .faro-dock { padding: 8px 16px 12px; }
-  .faro-dock__inner { padding: 6px 6px 6px 12px; }
+  .faro-dock { padding: var(--sp-2) var(--sp-4) var(--sp-3); }
+  .faro-dock__inner { padding: var(--sp-15) var(--sp-15) var(--sp-15) var(--sp-3); }
   .faro-dock__kbd { display: none; }
   #page-kalender { height: calc(100vh - 56px - 58px) !important; }
 }

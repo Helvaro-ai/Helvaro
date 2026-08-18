@@ -128,6 +128,62 @@ function css() {
      rather than brown text. */
   --sand-on-surface: #6B5836;
 }
+
+/* ═══ Scales ══════════════════════════════════════════════════════════════
+   Colour tokens flip with the theme; these do not, so they live outside both
+   blocks and are declared once.
+
+   Faro's CSS reached 17 distinct font sizes, 10 radii, and spacing values
+   scattered across 23 numbers with more than half of them off any grid. Every
+   one of those was a reasonable local decision -- 12.5px because 13 looked a
+   touch heavy next to that icon -- and together they are the reason two cards
+   built a month apart do not line up. The fix is not taste, it is a closed
+   set: pick from the scale, and if nothing on it fits, the scale is wrong and
+   changes for everyone.
+
+   scripts/faro-check.js enforces this. A raw px value in a size, radius or
+   spacing property fails the build.
+
+   ── Spacing: a 4px grid, with 2 and 6 as deliberate half-steps ─────────────
+   Half-steps exist because optical alignment sometimes genuinely needs 2px
+   (a hairline offset, an icon nudge) and pretending otherwise just pushes
+   people back to raw values. */
+:root {
+  --sp-05: 2px;
+  --sp-1:  4px;
+  --sp-15: 6px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ── Type: eight steps, and the names say the job, not the number ──────
+     Named by role rather than by size so a step can be retuned without every
+     call site lying about what it is. --fs-body is the reading size; anything
+     smaller is supporting text, anything larger is a heading. */
+  --fs-micro: 11px;   /* keyboard hints, counters */
+  --fs-tiny:  12px;   /* uppercase labels, chips */
+  --fs-small: 13px;   /* secondary text, list rows */
+  --fs-meta:  14px;   /* controls, card body */
+  --fs-body:  15px;   /* the composer and message text */
+  --fs-lead:  19px;   /* section headings */
+  --fs-title: 23px;   /* panel titles */
+  --fs-display: 30px; /* the landing headline, once */
+
+  /* ── Radius: five, two of them fixed by DESIGN-SYSTEM.md ───────────────
+     The 14px button and 18px card are the house rule; the other three exist
+     because a chip cannot wear a card's corner. */
+  --r-xs:   6px;      /* chips, tags, step marks */
+  --r-sm:   10px;     /* small controls, icon buttons */
+  --r-md:   14px;     /* buttons — DESIGN-SYSTEM.md */
+  --r-lg:   18px;     /* cards, panels — DESIGN-SYSTEM.md */
+  --r-full: 999px;    /* pills, avatars */
+}
 `;
 }
 

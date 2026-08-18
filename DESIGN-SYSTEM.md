@@ -46,6 +46,26 @@ selected state, icons, progress, charts, important numbers, highlights.
 
 ### Shape & motion
 - Buttons radius **14px**, cards radius **18px**. No shadows (use borders).
+
+### Scales (enforced)
+
+Sizes, radii and spacing come from a closed set of tokens declared in
+`api/_faro/ui/tokens.js`. `scripts/faro-check.js` fails on a raw `px` value in
+any `font-size`, `border-radius`, `padding`, `margin` or `gap` — so this is a
+build rule, not a convention.
+
+| Scale | Tokens | Notes |
+|---|---|---|
+| Spacing | `--sp-05 … --sp-16` (2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64) | A 4px grid. `--sp-05` (2px) and `--sp-15` (6px) are deliberate half-steps for optical alignment — without them people go back to raw values. |
+| Type | `--fs-micro` 11 · `--fs-tiny` 12 · `--fs-small` 13 · `--fs-meta` 14 · `--fs-body` 15 · `--fs-lead` 19 · `--fs-title` 23 · `--fs-display` 30 | Named by role, not by size, so a step can be retuned without every call site lying about what it is. |
+| Radius | `--r-xs` 6 · `--r-sm` 10 · `--r-md` 14 · `--r-lg` 18 · `--r-full` 999 | `--r-md` and `--r-lg` are the button and card rules above; the check asserts both against the token values. |
+
+**If nothing on the scale fits, the scale is wrong.** Change the token, which
+changes it everywhere, rather than reaching for a one-off number. That is the
+whole point: Faro's CSS had reached 17 distinct font sizes, 10 radii and 23
+spacing values with more than half off any grid. Each was a defensible local
+decision, and together they were why two cards built a month apart did not line
+up.
 - Transitions 150–250ms, fade/scale/slide only. Nothing flashy.
 - Inputs: bg `--card`, border `--border`, **focus border `--accent`**,
   placeholder `--text-disabled`.

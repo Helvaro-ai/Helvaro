@@ -158,6 +158,49 @@ Promise.all([
   finish();
 });
 
+/* ── Design scales ──────────────────────────────────────────────────────────
+   Faro's CSS reached 17 distinct font sizes, 10 radii and 23 spacing values,
+   more than half of them off any grid. Every one was a defensible local call;
+   together they are why two cards built a month apart did not line up. The
+   scales in tokens.js are a closed set, and this check is what keeps it closed
+   — a raw px in a size, radius or spacing property fails here rather than
+   surviving review because a diff of one number looks harmless. */
+{
+  const css = require('../api/_faro/ui/styles').css();
+
+  // Strip comments first: a px value inside a note explaining why something is
+  // 22px is not a violation, and flagging it teaches people to delete the note.
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+  const offenders = [];
+  const scan = (_label, re) => {
+    for (const m of code.matchAll(re)) {
+      // 0 needs no token, and percentages/em are outside the grid's remit.
+      const raw = m[0];
+      const bad = (raw.match(/(?<![\w.])(\d*\.?\d+)px/g) || []).filter((v) => parseFloat(v) !== 0);
+      if (bad.length) offenders.push(raw.trim().replace(/\s+/g, ' '));
+    }
+  };
+  scan('font-size', /font-size:[^;}]*?\d*\.?\d+px[^;}]*/g);
+  scan('border-radius', /border-radius:[^;}]*?\d*\.?\d+px[^;}]*/g);
+  scan('spacing', /\b(?:padding|margin|gap|row-gap|column-gap)(?:-(?:top|bottom|left|right))?:[^;}]*?\d*\.?\d+px[^;}]*/g);
+
+  if (offenders.length) {
+    offenders.slice(0, 8).forEach((o) => fail(`off-scale value — use a token: ${o}`));
+    if (offenders.length > 8) fail(`…and ${offenders.length - 8} more off-scale values`);
+  } else {
+    pass('every size, radius and spacing value comes from the scale');
+  }
+
+  // The two rules DESIGN-SYSTEM.md states outright, asserted against the token
+  // values rather than against every call site.
+  const tokens = require('../api/_faro/ui/tokens').css();
+  const tok = (name) => (tokens.match(new RegExp(`${name}:\\s*([^;]+);`)) || [])[1];
+  if ((tok('--r-md') || '').trim() !== '14px') fail('--r-md must be 14px (DESIGN-SYSTEM.md: buttons)');
+  else if ((tok('--r-lg') || '').trim() !== '18px') fail('--r-lg must be 18px (DESIGN-SYSTEM.md: cards)');
+  else pass('button radius 14px and card radius 18px match DESIGN-SYSTEM.md');
+}
+
 /* Relative luminance / WCAG contrast, from the literal token values. */
 function srgb(c) { const x = c / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }
 function lum(hex) {
