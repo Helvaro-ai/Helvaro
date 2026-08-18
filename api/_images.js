@@ -353,8 +353,13 @@ const AI_DISCLAIMER_LABEL = 'AI-visualisatie — werkelijke staat van de woning 
 // know this limit exists.
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
-const OPENAI_MODEL = 'gpt-image-1-mini';
-const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
+// Which model renders the image, and at what quality, now lives in
+// api/_media-models.js — one file that also carries each model's request
+// quirks, its real cost, and its sunset date. It used to be a bare constant
+// here, which is how the code ended up on gpt-image-1-mini long after a much
+// better model existed on the same endpoint.
+const models = require('./_media-models');
+
 // Stays comfortably under vercel.json's api/**/*.js maxDuration=60s.
 const REQUEST_TIMEOUT_MS = 55_000;
 
@@ -799,6 +804,10 @@ function composeApiPrompt(args = {}) {
 async function generatePropertyImage({
   imageBuffer, imageMimeType, style, customPrompt, roomType,
   furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  // Render settings, not prompt content. Named explicitly so they cannot fall
+  // into ...extraAxes and end up spliced into the prompt as if a client had
+  // asked for a room in the style of "1024x1024".
+  quality, size,
   // Everything else — the client-customisable axes and any added later. A
   // fixed destructure silently DROPPED palette/vibe/material/landscaping/
   // preserve/remove/add: the caller passed them, this signature ate them, and
@@ -817,11 +826,24 @@ async function generatePropertyImage({
     furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
     ...extraAxes,
   });
+  // Model, quality and size come from the registry rather than from literals
+  // here, so the choice is reviewable in one place and overridable per
+  // deployment without a code change.
+  const model = models.imageModel();
+  const renderQuality = models.imageQuality(model, quality);
+  const renderSize = models.nearestSize(model, size);
+
   const ext = imageMimeType === 'image/webp' ? 'webp' : imageMimeType === 'image/jpeg' ? 'jpg' : 'png';
   const form = new FormData();
-  form.append('model', OPENAI_MODEL);
+  form.append('model', model.id);
   form.append('prompt', prompt);
-  form.append('size', '1024x1024');
+  form.append('size', renderSize);
+  form.append('quality', renderQuality);
+  // gpt-image-2 always works at high input fidelity and returns 400 if the
+  // parameter is sent at all; its predecessors need it explicitly to stop the
+  // model redrawing the room instead of transforming the photo. Which of the
+  // two applies is a property of the model, not of this call site.
+  if (model.supportsInputFidelity) form.append('input_fidelity', 'high');
   form.append('image', new Blob([imageBuffer], { type: imageMimeType || 'image/png' }), `source.${ext}`);
 
   const controller = new AbortController();
@@ -829,7 +851,7 @@ async function generatePropertyImage({
 
   let res;
   try {
-    res = await fetch(OPENAI_IMAGES_EDIT_URL, {
+    res = await fetch(model.endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}` },
       body: form,
@@ -853,7 +875,7 @@ async function generatePropertyImage({
 
   if (!res.ok || !body) {
     const apiMessage = (body && body.error && body.error.message) || `HTTP ${res.status}`;
-    console.error('[images] OpenAI images/edits failed:', res.status, String(apiMessage).slice(0, 300));
+    console.error(`[images] ${model.id} images/edits failed:`, res.status, String(apiMessage).slice(0, 300));
     throw new ImageFeatureError('AI-beeldgeneratie is mislukt. Probeer een andere foto of stijl.', { code: 'api_error', status: 502 });
   }
 
