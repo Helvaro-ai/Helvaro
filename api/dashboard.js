@@ -10728,7 +10728,13 @@ function saveSession(apiKey, clientName, projectCode, email) {
 }
 
 function clearSession() {
-  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email'].forEach(k => localStorage.removeItem(k)); // 'hvk' kept in the list so any token left by an older build is cleaned up
+  // LS_LEADS_KEY is in this list because logging out has to mean the leads are
+  // gone from the machine. It was not, so every lead of the previous account —
+  // name, phone number, AI summary — sat in readable localStorage for 24 hours
+  // after logout. That also undid the point of moving the session into an
+  // httpOnly cookie: the token was out of reach and the data it protected was
+  // not.
+  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email', LS_LEADS_KEY].forEach(k => localStorage.removeItem(k)); // 'hvk' kept in the list so any token left by an older build is cleaned up
   state.apiKey     = '';
   state.clientName = '';
   state.userEmail  = '';
@@ -10784,6 +10790,11 @@ function performLogout() {
   if (CLERK_READY && window.Clerk && window.Clerk.session) {
     hideHelpWidget();
     try { stopPresencePing && stopPresencePing(); } catch (e) {}
+    // clearSession() eerst, en niet overslaan omdat we toch doorsturen: de
+    // redirect laadt de pagina opnieuw maar laat localStorage staan, dus
+    // zonder deze regel blijft de volledige leadcache van deze klant achter op
+    // de computer.
+    clearSession();
     clerkSignOut();
     return;
   }
@@ -11057,13 +11068,49 @@ function exportCSV() {
 // populated across page reloads even when Airtable is temporarily rate-limited.
 const LS_LEADS_KEY = 'hvk_leads_cache';
 const LS_LEADS_TTL = 24 * 60 * 60 * 1000; // 24 hours
-function saveLeadsToLS(leads, stats) {
-  try { localStorage.setItem(LS_LEADS_KEY, JSON.stringify({ leads, stats, ts: Date.now() })); } catch {}
+// Whose cache this is. Not a secret — the project code is already stored in
+// plain localStorage for the session markers, and it rides in the Clerk JWT —
+// it is here purely as an identity check on read.
+function leadsCacheOwner() {
+  try {
+    return localStorage.getItem('hv-project') || localStorage.getItem('hv-client') || '';
+  } catch { return ''; }
 }
+
+function saveLeadsToLS(leads, stats) {
+  try {
+    localStorage.setItem(LS_LEADS_KEY, JSON.stringify({
+      leads, stats, ts: Date.now(), owner: leadsCacheOwner(),
+    }));
+  } catch {}
+}
+
+// Two guards, and the second one is the important one.
+//
+// This cache is served whenever the live read fails — and the read failing is
+// routine: api/leads.js returns rateLimited on an Airtable 429 and says in its
+// own comments that several polling tabs are enough to cause one. So the cache
+// is not an edge case, it is the fallback the dashboard reaches for regularly.
+//
+// It used to be keyed on nothing. Log out of one agency's account and into
+// another's on the same machine, hit a 429 on the first read, and the new
+// account's dashboard filled up with the previous tenant's leads: names, phone
+// numbers, AI summaries, conversation state. No server bug required.
+//
+// So: cache entries carry the tenant they were written for, and a mismatch is
+// discarded rather than shown. Entries written before this existed have no
+// owner and are discarded too — there is no way to tell whose they are.
 function loadLeadsFromLS() {
   try {
     const c = JSON.parse(localStorage.getItem(LS_LEADS_KEY) || '{}');
-    if (c.leads && c.leads.length > 0 && Date.now() - (c.ts || 0) < LS_LEADS_TTL) return c;
+    if (!c.leads || !c.leads.length) return null;
+    if (Date.now() - (c.ts || 0) >= LS_LEADS_TTL) return null;
+    const owner = leadsCacheOwner();
+    if (!c.owner || !owner || c.owner !== owner) {
+      localStorage.removeItem(LS_LEADS_KEY);
+      return null;
+    }
+    return c;
   } catch {}
   return null;
 }
@@ -18760,6 +18807,18 @@ function hideHelpWidget() {
       state.clientName = clerk.user.publicMetadata?.clientName || '';
       state.userEmail  = clerk.user.primaryEmailAddress?.emailAddress || '';
       state.apiKey     = 'clerk-session';   // sentinel; see tryAutoLogin's note
+      // De markers die het klassieke pad via saveSession() zet. Ze
+      // authenticeren niets — de server leest de tenant uit het Clerk-token,
+      // nooit hieruit — maar loadLeadsFromLS() gebruikt de projectcode om te
+      // controleren van wie een gecachete leadlijst is. Zonder deze regel
+      // heeft een Clerk-gebruiker geen eigenaar, en dan wordt de cache altijd
+      // weggegooid: geen datalek, wel een dashboard dat leeg is zodra
+      // Airtable even niet meewerkt.
+      try {
+        localStorage.setItem('hv-project', clerk.user.publicMetadata?.projectCode || '');
+        localStorage.setItem('hv-client', state.clientName);
+        if (state.userEmail) localStorage.setItem('hv-email', state.userEmail);
+      } catch (e) {}
       let data = null;
       try {
         data = await fetchLeads();
