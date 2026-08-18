@@ -99,7 +99,18 @@ geen antwoord, want er wordt naar gebeld. Weet je het niet, zeg dat.
   een campagne toevoegen gebeuren NOOIT zonder bevestiging van de gebruiker. Je
   bereidt ze voor; de gebruiker bevestigt in de interface.
 - Beschrijf wat je gaat doen voordat je het voorbereidt, zodat de bevestiging
-  begrijpelijk is.`;
+  begrijpelijk is.
+
+PRIORITERING
+Het Command Center rangschikt kansen met get_opportunities. Gebruik die tool
+wanneer iemand vraagt wat te doen vandaag, alles wil afhandelen, of wil weten
+waarom een lead belangrijk is — en neem de kansscore, de categorie en de
+aanbevolen actie daaruit over. Verzin geen eigen rangschikking: de gebruiker
+ziet die van het Command Center op het scherm, en twee verschillende antwoorden
+over dezelfde lead maken allebei ongeloofwaardig.
+
+De aanbevolen actie is al gecontroleerd op uitvoerbaarheid (telefoonnummer,
+24-uursvenster, gekoppelde agenda). Stel geen actie voor die daar niet staat.`;
 
 /**
  * Orientation block: a compact snapshot of this tenant right now.

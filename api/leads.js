@@ -9,6 +9,7 @@ const images  = require('./_images'); // Phase 4 AI property images — see its 
 const _lang   = require('./_lang');   // language registry — see its file header
 const _verify = require('./_verify'); // email-ownership verification — see its file header
 const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
+const _command   = require('./_command');     // Command Center intelligence layer — pure, no I/O, no model
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -1465,6 +1466,54 @@ module.exports = async function handler(req, res) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       const list = await images.listPropertyImages(projectCode);
       return res.status(200).json({ images: list });
+    }
+
+    /* ── Command Center ──────────────────────────────────────────────────────
+       One mode rather than a new route: Vercel Hobby allows twelve functions
+       and this repo is at twelve. It reuses the tenant resolution, the session
+       check and the CSRF guard already performed above, and the analysis
+       itself (api/_command.js) is pure arithmetic over rows -- no model call,
+       so opening the page costs nothing and consumes no credits.
+
+       The calendar is consulted only to learn whether it is CONNECTED, which
+       decides whether "book an appointment" may be recommended at all. Slot
+       availability is not checked here: that belongs at the moment of booking,
+       through the existing flow, so the page can never show a slot as free
+       that the calendar would refuse. */
+    if (body.mode === 'command-center') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const { leads: cmdLeads } = await _leadsRead.fetchLeads(projectCode, {
+          token: AIRTABLE_TOKEN, baseId: BASE_ID, maxPages: 6,
+        });
+
+        // Fail-soft: a client without Google Calendar still gets the whole page,
+        // minus the booking recommendation. An outage here must not blank it.
+        let calendarConnected = false;
+        let appointmentsToday = 0;
+        try {
+          const access = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+          if (access && access.token) {
+            calendarConnected = true;
+            const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+            const todays = await _gcal.listEvents(
+              access.token, access.calId, dayStart.toISOString(), dayEnd.toISOString(), 50);
+            appointmentsToday = (todays || []).length;
+          }
+        } catch (gerr) {
+          console.warn('[command-center] calendar unavailable:', gerr && gerr.message);
+        }
+
+        return res.status(200).json(_command.build(cmdLeads, {
+          calendarConnected, appointmentsToday,
+        }));
+      } catch (err) {
+        console.error('[command-center] failed:', err && err.message);
+        // Explicit, so the UI can say "we could not read your CRM" rather than
+        // rendering an empty command center that looks like a quiet morning.
+        return res.status(503).json({ error: 'Je CRM-gegevens zijn nu niet bereikbaar.', code: 'unavailable' });
+      }
     }
 
     if (body.mode === 'property-generate') {

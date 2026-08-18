@@ -304,6 +304,74 @@ const readTools = [
   },
 
   {
+    name: 'get_opportunities',
+    kind: 'read',
+    description: 'Haal de kansen op die nu actie verdienen, met kansscore, categorie, uitleg en de aanbevolen volgende stap. Dit is dezelfde prioritering die het Command Center toont. Gebruik dit voor "wat moet ik vandaag doen", "handel alles af", en om uit te leggen waarom een lead belangrijk is.',
+    parameters: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['ready_to_book', 'high_priority', 'at_risk', 'high_value', 'gone_cold'],
+          description: 'Beperk tot één categorie. Leeg = alle kansen.',
+        },
+        limit: { type: 'integer', minimum: 1, maximum: 25, default: 10 },
+      },
+    },
+    /* Reuses api/_command.js rather than re-deriving anything. Two rankings of
+       the same leads that disagree is worse than one imperfect ranking: the
+       user would be told one thing by the page and another by the assistant,
+       about the same lead, in the same minute. */
+    run: readTool('get_opportunities', async (args, ctx) => {
+      const command = require('../_command');
+      const { leads } = await data.leadsFor(ctx);
+      if (!leads.length) {
+        return { summary: 'Deze klant heeft nog geen leads in het CRM.', data: { opportunities: [] }, components: [] };
+      }
+
+      // Whether booking may be recommended depends on the calendar actually
+      // being connected — the same condition the Command Center applies.
+      let calendarConnected = false;
+      try { calendarConnected = Boolean(await data.gcalAccessFor(ctx)); } catch (_) { /* fail-soft */ }
+
+      const built = command.build(leads, { calendarConnected });
+      let list = built.opportunities;
+      if (args.category) list = list.filter((o) => o.category === args.category);
+      list = list.slice(0, Math.max(1, Math.min(25, args.limit || 10)));
+
+      if (!list.length) {
+        return {
+          summary: args.category
+            ? `Geen kansen in de categorie ${args.category}.`
+            : 'Er staat op dit moment niets open dat actie vraagt.',
+          data: { opportunities: [], totalOpportunities: built.totalOpportunities },
+          components: [],
+        };
+      }
+
+      return {
+        summary: `${list.length} van ${built.totalOpportunities} kansen. `
+          + list.map((o) => `${o.name} (${o.categoryLabel}, kansscore ${o.score}, aanbevolen: ${o.action.label})`).join('; ')
+          + '. Elke aanbevolen actie is al gecheckt op uitvoerbaarheid — stel niets voor dat hier niet staat.',
+        data: {
+          opportunities: list.map((o) => ({
+            id: o.id, naam: o.name, kansscore: o.score, categorie: o.categoryLabel,
+            waarom: o.why, budget: o.budget, leadscore: o.leadScore,
+            gekwalificeerd: o.qualified, dagenStil: o.silentDays,
+            aanbevolenActie: o.action.key, actieReden: o.action.reason,
+            redenen: o.reasons.map((r) => `${r.label}: ${r.detail}`),
+          })),
+          totalOpportunities: built.totalOpportunities,
+        },
+        components: list.slice(0, 6).map((o) => {
+          const lead = data.findLead(leads, { leadId: o.id });
+          return lead ? leadToCard(lead) : null;
+        }).filter(Boolean),
+      };
+    }),
+  },
+
+  {
     name: 'get_property',
     kind: 'read',
     description: 'Haal een pand op met adres, prijs, kenmerken en gekoppelde media.',

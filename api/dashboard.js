@@ -23,6 +23,13 @@ const _lang = require('./_lang');
 // step and no flash of untranslated content.
 const _faroUI = require('./_faro/ui');
 
+// ── Command Center ──────────────────────────────────────────────────────────
+// The intelligence layer's UI, assembled the same way Faro's is: this file
+// interpolates four finished strings and knows nothing else about it. Same
+// language binding, same splice-safety contract (no backtick, no unescaped
+// ${...}), same design tokens — see api/_command-ui/index.js.
+const _cmdUI = require('./_command-ui');
+
 module.exports = async function handler(req, res) {
   // Native/English names only — never leak internal registry fields
   // (formality, directive builders, etc) into client-side HTML/JS.
@@ -35,6 +42,7 @@ module.exports = async function handler(req, res) {
   // the registry default applies until a per-user preference exists to read.
   const FARO_LANG = _lang.normalizeLanguageCode(process.env.DASHBOARD_LANG || _lang.DEFAULT_CODE);
   const faro = _faroUI.forLang(FARO_LANG);
+  const cmd = _cmdUI.forLang(FARO_LANG);
 
   // Support contact for the help widget. The WhatsApp route is opt-in: no
   // personal number is ever hardcoded here, so the button simply doesn't
@@ -7311,6 +7319,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* ═══ FARO (api/_faro/ui/styles.js + tokens.js) ═══ */
 ${faro.css}
+${cmd.css}
 </style>
     <!-- jspdf (117 KB gecomprimeerd) en qrcode (13 KB) stonden hier als gewone
          script-tags en blokkeerden dus elke pagina-opbouw, terwijl ze alleen
@@ -7538,7 +7547,10 @@ ${faro.navCta}
 
     <nav class="sidebar-nav">
       <!-- ── Werk (dagelijks) ── -->
-      <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
+      <!-- COMMAND CENTER: first, because it is where the day starts. Everything
+           below it is somewhere you go on purpose. -->
+${cmd.nav}
+      <button class="nav-item" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         Dashboard
       </button>
@@ -7686,7 +7698,7 @@ ${faro.navCta}
     </header>
 
     <!-- Dashboard Page -->
-    <main class="page-content page active" id="page-dashboard">
+    <main class="page-content page" id="page-dashboard">
 
       <!-- Trial banner. Hidden until loadPlanStatus() confirms this client
            is on trial or expired — see TRIAL-DESIGN.md and
@@ -9396,6 +9408,9 @@ ${faro.navCta}
         </div>
       </div>
     </main>
+
+    <!-- COMMAND CENTER (api/_command-ui/markup.js). The landing experience. -->
+${cmd.page}
 
     <!-- FARO: its own page (api/_faro/ui/markup.js), a sibling of every other
          .page here and shown by the same navigateTo(). -->
@@ -14606,7 +14621,8 @@ function navigateTo(page) {
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
     'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
-    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
+    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' },
+    command:      { title: 'Command Center', sub: 'Wat vandaag je aandacht verdient' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -14621,6 +14637,11 @@ function navigateTo(page) {
   if (btnRefresh) btnRefresh.style.display = isDash ? '' : 'none';
   if (btnExport)  btnExport.style.display  = isDash ? '' : 'none';
   if (tsInfo)     tsInfo.style.display     = isDash ? '' : 'none';
+
+  // The Command Center fetches once, on first visit. Its analysis is arithmetic
+  // over rows the dashboard already polls — re-running it because someone
+  // clicked back is spend without benefit. cmdLoad() guards re-entry itself.
+  if (page === 'command' && typeof cmdLoad === 'function') cmdLoad(false);
 
   // Load admin page on first visit
   if (page === 'admin' && !state.adminLoaded) {
@@ -14901,6 +14922,11 @@ async function startDashboard(skipRefresh = false) {
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
   initHelpWidget();
+  // COMMAND CENTER: the landing experience. navigateTo() below triggers its
+  // one data request; the CRM dashboard keeps loading in the background the
+  // way it always did, so switching to it is instant.
+  cmdInit();
+  navigateTo('command');
 
   // Admin reveal. Sidebar's 'Klanten' (and Founder) tabs only show when the
   // user logged in with the ADMIN_KEY. We detect this from the session payload:
@@ -19274,6 +19300,7 @@ else window.addEventListener('load', loadVendorsWhenIdle);
 
 /* ═══ FARO (api/_faro/ui/client.js) ═══ */
 ${faro.js}
+${cmd.js}
 </script>
 </body>
 </html>`;

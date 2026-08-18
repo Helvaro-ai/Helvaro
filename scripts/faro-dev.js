@@ -35,6 +35,56 @@ process.env.FARO_WORKSPACE_ENABLED = process.env.FARO_WORKSPACE_ENABLED || '1';
 process.env.FARO_PROVIDER = process.env.FARO_PROVIDER || 'demo';
 process.env.FARO_DEMO_MODE = process.env.FARO_DEMO_MODE || '1';
 
+/* ── Command Center fixture ──────────────────────────────────────────────────
+   The Command Center reads real Airtable rows through api/_leads-read.js. This
+   server has no Airtable, so it stubs the ONE function that fetches, with a
+   spread of leads chosen to exercise every category: ready-to-book, high
+   priority, at risk, high value, gone cold, plus the cases that must be
+   EXCLUDED (booked, lost, no phone). Production never loads this file. */
+const _leadsRead = require('../api/_leads-read');
+const _DAY = 86400000;
+const _now = Date.now();
+const _convo = (leadMsgs, ourMsgs, lastLeadAgoDays) => {
+  const t = [];
+  for (let i = 0; i < ourMsgs; i++) t.push({ role: 'assistant', content: 'bericht ' + i, ts: _now - (lastLeadAgoDays + 1) * _DAY + i * 60000 });
+  for (let i = 0; i < leadMsgs; i++) t.push({ role: 'user', content: 'antwoord ' + i, ts: _now - lastLeadAgoDays * _DAY + i * 60000 });
+  return JSON.stringify(t);
+};
+const _fixtureLeads = [
+  { naam: 'Marie Declercq', tel: '+32470111111', q: true, score: 9.4, budget: '€475.000', urg: 'Hoog',
+    bron: 'Formulier', sam: 'Zoekt een villa in Knokke, wil binnen 60 dagen kopen.', convo: [7, 8, 0.2] },
+  { naam: 'Thomas Van Acker', tel: '+32470222222', q: true, score: 8.1, budget: '€620.000', urg: 'Middel',
+    bron: 'WhatsApp', sam: 'Appartement met zeezicht, budget bevestigd.', convo: [4, 4, 0.6] },
+  { naam: 'Jonas Peeters', tel: '+32470333333', q: true, score: 9.2, budget: '€520.000', urg: 'Hoog',
+    bron: 'Instagram', sam: 'Wil binnen 3 maanden kopen, tweede woning.', convo: [6, 6, 1] },
+  { naam: 'Sophie Maes', tel: '+32470444444', q: true, score: 8.7, budget: '€390.000', urg: 'Middel',
+    bron: 'Formulier', sam: 'Starterswoning, financiering rond.', convo: [5, 6, 4] },
+  { naam: 'Karel Janssens', tel: '+32470555555', q: true, score: 7.5, budget: '€310.000', urg: 'Laag',
+    bron: 'Telefoon', sam: 'Orienteert zich, geen haast.', convo: [2, 4, 11] },
+  { naam: 'Greet Willems', tel: '+32470666666', q: true, score: 9.0, budget: '€800.000', urg: 'Hoog',
+    bron: 'Formulier', sam: 'Bezichtiging staat gepland.', convo: [6, 6, 1], booked: true },
+  { naam: 'Vera Coppens', tel: '+32470777777', q: false, score: 3, budget: '€200.000', urg: 'Laag',
+    bron: 'Website', sam: 'Zoekt huurwoning, past niet.', status: 'Verloren' },
+  { naam: 'Bram De Smet', tel: '', q: true, score: 8.0, budget: '€450.000', urg: 'Middel',
+    bron: 'Formulier', sam: 'Geen telefoonnummer achtergelaten.', convo: [3, 3, 1] },
+  { naam: 'Ilse Vermeulen', tel: '+32470888888', q: true, score: 8.4, budget: '€540.000', urg: 'Hoog',
+    bron: 'Instagram', sam: 'Zoekt nieuwbouw, budget flexibel.', convo: [4, 5, 2.5] },
+  { naam: 'Pieter Goossens', tel: '+32470999999', q: false, score: 5.5, budget: '€280.000', urg: 'Middel',
+    bron: 'Website', sam: 'Nog aan het rondkijken.', convo: [1, 3, 6] },
+];
+_leadsRead.fetchLeads = async () => ({
+  truncated: false,
+  leads: _fixtureLeads.map((f, i) => ({
+    id: 'recFIXT' + String(i).padStart(9, '0'),
+    naam: f.naam, telefoon: f.tel, status: f.status || (f.q ? 'Gekwalificeerd' : 'Nieuw'),
+    qualified: !!f.q, reden: '', samenvatting: f.sam, capaciteit: '', urgentie: f.urg, fit: '',
+    bron: f.bron, boekingslinkVerstuurd: false, afspraakGeboekt: !!f.booked, notities: '',
+    gesprek: f.convo ? _convo(f.convo[0], f.convo[1], f.convo[2]) : '',
+    leadScore: f.score, opgepikt: false, verwachteWaarde: f.budget,
+    reactietijd: 20 + i * 7, datum: new Date(_now - (2 + i) * _DAY).toISOString(),
+  })),
+});
+
 const dashboard = require('../api/dashboard');
 const faroHandler = require('../api/_faro/handler');
 
@@ -133,6 +183,16 @@ const server = http.createServer(async (req, res) => {
           });
         case 'property-list':
           return res.status(200).json({ images: [] });
+        case 'command-center': {
+          // The REAL intelligence layer over the fixture rows above, so what
+          // renders locally is what production computes — only the source of
+          // the rows is substituted.
+          const _command = require('../api/_command');
+          const { leads: cmdLeads } = await _leadsRead.fetchLeads('LOCALDEV', {});
+          return res.status(200).json(_command.build(cmdLeads, {
+            calendarConnected: true, appointmentsToday: 2,
+          }));
+        }
         case 'property-generate':
           // Never fake a generated image: a placeholder here would make a
           // broken pipeline look like a working one.

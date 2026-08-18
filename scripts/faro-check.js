@@ -158,6 +158,50 @@ Promise.all([
   finish();
 });
 
+/* ── Command Center ──────────────────────────────────────────────────────────
+   Same seam contract as Faro: finished strings spliced into dashboard.js's own
+   template literal, so a backtick or an unescaped ${...} in any of them would
+   be evaluated by that literal rather than printed. */
+{
+  const cmdUI = require('../api/_command-ui');
+  const problems = cmdUI.verify();
+  if (problems.length) problems.forEach((p) => fail(`command-center splice: ${p}`));
+  else pass('command center: splice-safe across all translated languages');
+
+  for (const marker of ['${cmd.css}', '${cmd.nav}', '${cmd.page}', '${cmd.js}']) {
+    if (dash.indexOf(marker) === -1) fail(`command-center mount point missing: ${marker}`);
+  }
+
+  // The Command Center is the landing page. If some future edit re-activates
+  // page-dashboard the app silently reverts to being a CRM, which is exactly
+  // the change this whole feature exists to make — and two `active` pages
+  // would render on top of each other besides.
+  const cmdPage = cmdUI.forLang('nl').page;
+  if (!/class="page-content page cmd active"/.test(cmdPage)) {
+    fail('command center is no longer the active landing page');
+  } else if (/<main class="page-content page active" id="page-dashboard">/.test(dash)) {
+    fail('page-dashboard is active again — two pages would render at once');
+  } else if (dash.indexOf("navigateTo('command')") === -1) {
+    fail('nothing navigates to the command center after login');
+  } else {
+    pass('command center is the landing page, and the only active one');
+  }
+
+  // The whole point of routing actions through Faro is that nothing on this
+  // page can reach an external side effect without the confirmation gate.
+  const cmdClient = require('../api/_command-ui/client').js();
+  for (const forbidden of ['faro-confirm', 'actions.execute', 'sendFreeform', 'graph.facebook.com']) {
+    if (cmdClient.indexOf(forbidden) !== -1) {
+      fail(`command center client reaches past the confirmation gate: ${forbidden}`);
+    }
+  }
+  if (cmdClient.indexOf('cmdHandToFaro') === -1) {
+    fail('command center no longer hands actions to Faro');
+  } else {
+    pass('command center actions route through Faro and the confirmation gate');
+  }
+}
+
 /* ── Collapsed regex escapes ─────────────────────────────────────────────────
    client.js is a template literal that EMITS JavaScript, so a lone \s, \w or
    \d inside it is consumed as a string escape and reaches the browser as a
@@ -172,7 +216,8 @@ Promise.all([
    EMITTED source rather than the file, which is the only place the difference
    is visible. */
 {
-  const emitted = require('../api/_faro/ui/client').js();
+  const emitted = require('../api/_faro/ui/client').js()
+    + '\n' + require('../api/_command-ui/client').js();
   const suspects = [];
   emitted.split('\n').forEach((line, i) => {
     const code = line.replace(/\/\/.*$/, '');   // a comment may legitimately discuss \s
@@ -201,7 +246,8 @@ Promise.all([
    — a raw px in a size, radius or spacing property fails here rather than
    surviving review because a diff of one number looks harmless. */
 {
-  const css = require('../api/_faro/ui/styles').css();
+  const css = require('../api/_faro/ui/styles').css()
+    + require('../api/_command-ui/styles').css();
 
   // Strip comments first: a px value inside a note explaining why something is
   // 22px is not a violation, and flagging it teaches people to delete the note.
