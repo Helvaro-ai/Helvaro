@@ -83,6 +83,12 @@ function rail(t) {
         <div class="faro-rail__section">${t('sb.conversations')}</div>
         <div class="faro-rail__convos" id="faro-convo-list"></div>
         <button class="faro-rail__viewall" id="faro-view-all-convos">${t('sb.viewAllConvos')}</button>
+        <!-- Said out loud rather than implied. Conversations are kept in
+             localStorage until the server-side store exists, which means they
+             do not follow the user to another device and a colleague does not
+             see them. A history that silently fails to sync is worse than one
+             that says where it lives. -->
+        <p class="faro-rail__hint">${t('sb.localOnly')}</p>
 
         <!-- The "Faro — works on your own business data" badge that used to sit
              here is gone. It said the same thing as the sidebar's Faro button

@@ -45,6 +45,7 @@ const STRINGS = {
     'sb.viewAllConvos': 'Alle gesprekken',
     'sb.settings': 'Instellingen',
     'sb.poweredBy': 'Werkt op je eigen bedrijfsdata',
+    'sb.localOnly': 'Bewaard in deze browser',
 
     'land.title': 'Waar werken we aan?',
     'land.sub': 'Vraag Faro alles over je leads, panden, gesprekken of marketing.',
@@ -169,6 +170,7 @@ const STRINGS = {
     'sb.viewAllConvos': 'View all conversations',
     'sb.settings': 'Settings',
     'sb.poweredBy': 'Powered by your business data',
+    'sb.localOnly': 'Saved in this browser',
 
     'land.title': 'What are we working on?',
     'land.sub': 'Ask Faro anything about your leads, properties, conversations or marketing.',
@@ -293,6 +295,7 @@ const STRINGS = {
     'sb.viewAllConvos': 'Toutes les conversations',
     'sb.settings': 'Paramètres',
     'sb.poweredBy': 'Alimenté par vos données',
+    'sb.localOnly': 'Enregistré dans ce navigateur',
 
     'land.title': 'Sur quoi travaillons-nous ?',
     'land.sub': 'Demandez tout à Faro sur vos leads, biens, conversations ou marketing.',
@@ -417,6 +420,7 @@ const STRINGS = {
     'sb.viewAllConvos': 'Alle Unterhaltungen',
     'sb.settings': 'Einstellungen',
     'sb.poweredBy': 'Basiert auf Ihren Unternehmensdaten',
+    'sb.localOnly': 'In diesem Browser gespeichert',
 
     'land.title': 'Woran arbeiten wir?',
     'land.sub': 'Fragen Sie Faro alles zu Ihren Leads, Objekten, Gesprächen oder Marketing.',

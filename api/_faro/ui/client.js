@@ -77,7 +77,9 @@ var faroState = {
   lastAttachments: [],
   lastFocus: null,
   // Where leaving Faro goes back to. Set when Faro is entered, never empty.
-  returnPage: 'dashboard'
+  returnPage: 'dashboard',
+  conversationTitle: '',
+  turnComponents: []
 };
 
 function faroEsc(s) {
@@ -260,7 +262,7 @@ function faroFirstName() {
   if (el) raw = (el.textContent || '').trim();
   if (!raw) { try { raw = (localStorage.getItem('hv-client') || '').trim(); } catch (e) { raw = ''; } }
   if (!raw || FARO_NAME_PLACEHOLDERS.indexOf(raw.toLowerCase()) !== -1) return '';
-  var first = raw.split(/\s+/)[0];
+  var first = raw.split(/\\s+/)[0];
   // A company name ("Immo Vandenberghe BVBA") reads badly after "Goedemiddag,";
   // a single leading token is the safe half of it either way.
   return first.length > 24 ? '' : first;
@@ -299,7 +301,11 @@ function faroSteps(bubble) {
 
 function faroStep(bubble, name, state) {
   var box = faroSteps(bubble);
-  var id = 'step-' + String(name).replace(/[^\w-]/g, '');
+  // \\w, not \w. This whole file is a template literal, so a lone \w is an
+  // escape that collapses to a bare "w" -- making this [^w-], which strips
+  // nearly every character. Every tool in a turn then produced the SAME id and
+  // shared one row, so the step list silently reported only the last one.
+  var id = 'step-' + String(name).replace(/[^\\w-]/g, '');
   var row = box.querySelector('[data-step="' + id + '"]');
   if (!row) {
     row = document.createElement('div');
@@ -415,6 +421,21 @@ function faroHandleEvent(name, data, bubble, status) {
         faroState.conversationId = data.conversationId;
         faroLoadConversations();
       }
+      // The server's store is a scaffold and mints no id, so local history
+      // would have nothing to file the turn under. Mint one here, 'local-'
+      // prefixed so it is obvious which side owns it and so a future server id
+      // can never collide with one of these.
+      if (!faroState.conversationId) {
+        faroState.conversationId = 'local-' + Date.now().toString(36) + '-'
+          + Math.random().toString(36).slice(2, 8);
+      }
+      // Titled from the user's own first message: instant, free, predictable,
+      // and the same rule store.js's deriveTitle() uses server-side.
+      if (!faroState.conversationTitle) {
+        var t0 = String(faroState.lastSent || '').trim().replace(/\\s+/g, ' ');
+        faroState.conversationTitle = !t0 ? 'Nieuw gesprek'
+          : (t0.length <= 48 ? t0 : t0.slice(0, 47) + '…');
+      }
       if (data.model) {
         var ml = document.getElementById('faro-model-label');
         if (ml) ml.textContent = data.model;
@@ -441,6 +462,9 @@ function faroHandleEvent(name, data, bubble, status) {
 
     case 'component':
       faroSafeRender(bubble, data.component);
+      // Kept alongside the rendered node so the turn can be written to local
+      // history without reading the DOM back into component objects.
+      if (data.component) (faroState.turnComponents = faroState.turnComponents || []).push(data.component);
       break;
 
     case 'error':
@@ -453,6 +477,15 @@ function faroHandleEvent(name, data, bubble, status) {
     case 'done':
       faroMascot('success');
       setTimeout(function () { faroMascot('idle'); }, 1800);
+      faroLsSave(
+        faroState.conversationId,
+        faroState.conversationTitle,
+        faroState.lastSent,
+        (bubble.querySelector('.faro-msg__text') || {}).textContent || '',
+        faroState.turnComponents || []
+      );
+      faroState.turnComponents = [];
+      faroLoadConversations();
       break;
   }
 }
@@ -827,18 +860,116 @@ function faroPost(body) {
   });
 }
 
+/* ── Local conversation history ───────────────────────────────────────────────
+   Faro's server-side store (api/_faro/store.js) needs three tables on the VPS
+   that do not exist yet, so every reload threw the conversation away. This
+   keeps it in localStorage instead.
+
+   What that honestly is: history for THIS browser. It does not follow you to
+   your phone and a colleague does not see it. That is a real limitation, and
+   the rail says so rather than implying sync. It is still the difference
+   between "my chat from this morning is gone" and "it is where I left it".
+
+   The server stays authoritative: faroLoadConversations merges and anything
+   the server returns wins on id collision, so the day those tables exist this
+   becomes a cache and nothing else has to change.
+
+   Namespaced by project code, because one browser can sign into two tenants
+   and one agency's conversation titles must never surface under another's. */
+var FARO_LS_VERSION = 1;
+var FARO_MAX_CONVOS = 25;
+var FARO_MAX_MSGS = 60;
+
+function faroLsKey() {
+  var project = '';
+  try { project = localStorage.getItem('hv-project') || ''; } catch (e) { project = ''; }
+  return 'faro-convos-v' + FARO_LS_VERSION + ':' + (project || 'anon');
+}
+
+function faroLsRead() {
+  try {
+    var raw = localStorage.getItem(faroLsKey());
+    var parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    // Corrupt, private mode, or hand-edited: behave as if there were no
+    // history rather than breaking the panel.
+    return [];
+  }
+}
+
+function faroLsWrite(convos) {
+  try {
+    localStorage.setItem(faroLsKey(), JSON.stringify(convos.slice(0, FARO_MAX_CONVOS)));
+    return true;
+  } catch (e) {
+    // Quota. Halve it and try once; a browser that still refuses simply gets no
+    // local history, which is where we started.
+    try {
+      localStorage.setItem(faroLsKey(), JSON.stringify(convos.slice(0, Math.floor(FARO_MAX_CONVOS / 2))));
+      return true;
+    } catch (e2) { return false; }
+  }
+}
+
+/** Record one completed exchange. Called after the turn ends, never mid-stream:
+    a half-arrived assistant message is not worth restoring. */
+function faroLsSave(id, title, userText, assistantText, components) {
+  if (!id) return;
+  var convos = faroLsRead();
+  var found = null;
+  for (var i = 0; i < convos.length; i++) if (convos[i].id === id) { found = convos[i]; break; }
+  if (!found) {
+    found = { id: id, title: title || userText || 'Gesprek', createdAt: Date.now(), messages: [] };
+    convos.unshift(found);
+  }
+  found.updatedAt = Date.now();
+  if (userText) found.messages.push({ role: 'user', text: userText });
+  found.messages.push({ role: 'assistant', text: assistantText || '', components: components || [] });
+  if (found.messages.length > FARO_MAX_MSGS) found.messages = found.messages.slice(-FARO_MAX_MSGS);
+
+  convos.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+  faroLsWrite(convos);
+}
+
+function faroLsList() {
+  return faroLsRead().map(function (c) { return { id: c.id, title: c.title, local: true }; });
+}
+
+function faroLsMessages(id) {
+  var convos = faroLsRead();
+  for (var i = 0; i < convos.length; i++) if (convos[i].id === id) return convos[i].messages || [];
+  return null;
+}
+
+function faroRenderConvoList(convos) {
+  var list = document.getElementById('faro-convo-list');
+  if (!list) return;
+  list.innerHTML = convos.map(function (c) {
+    return '<button class="faro-convo' + (c.id === faroState.conversationId ? ' active' : '') +
+           '" data-convo="' + faroEsc(c.id) + '">' + faroEsc(c.title) + '</button>';
+  }).join('');
+}
+
 function faroLoadConversations() {
   var list = document.getElementById('faro-convo-list');
   if (!list) return;
+
+  // Local first, so the list is populated before the round trip rather than
+  // flashing empty every time the panel opens.
+  var local = faroLsList();
+  faroRenderConvoList(local);
+
   faroPost({ mode: 'faro-conversations', op: 'list' })
     .then(function (r) {
-      var convos = r.conversations || [];
-      list.innerHTML = convos.map(function (c) {
-        return '<button class="faro-convo' + (c.id === faroState.conversationId ? ' active' : '') +
-               '" data-convo="' + faroEsc(c.id) + '">' + faroEsc(c.title) + '</button>';
-      }).join('');
+      var server = r.conversations || [];
+      // Server wins on id collision: once the VPS tables exist it is the source
+      // of truth and the local copy is only a cache.
+      var seen = {};
+      server.forEach(function (c) { seen[c.id] = true; });
+      faroRenderConvoList(server.concat(local.filter(function (c) { return !seen[c.id]; })));
     })
-    .catch(function () { list.innerHTML = ''; });
+    .catch(function () { faroRenderConvoList(local); });
 }
 
 /* ── 6. Helvaro context ───────────────────────────────────────────────────
@@ -1158,6 +1289,8 @@ function faroQuickAction(id) {
 function faroNewConversation() {
   if (faroState.abort) faroState.abort.abort();
   faroState.conversationId = null;
+  faroState.conversationTitle = '';
+  faroState.turnComponents = [];
   faroState.inThread = false;
 
   var inner = document.getElementById('faro-thread-inner');
@@ -1181,23 +1314,36 @@ function faroNewConversation() {
 
 function faroOpenConversation(id) {
   faroState.conversationId = id;
+  // Carry the existing title, so continuing a thread does not retitle it from
+  // whatever the next message happens to say.
+  faroState.conversationTitle = (faroLsList().filter(function (c) { return c.id === id; })[0] || {}).title || '';
+  faroState.turnComponents = [];
   faroState.inThread = true;
   faroSetPanel('chat');
   faroEnterThread();
   var inner = document.getElementById('faro-thread-inner');
   inner.innerHTML = '<div class="faro-skeleton" style="height:60px"></div>';
+  var render = function (messages) {
+    inner.innerHTML = '';
+    (messages || []).forEach(function (m) {
+      if (m.role === 'user') { faroAppendUser(m.text || ''); return; }
+      var b = faroAppendAssistant();
+      b.querySelector('.faro-msg__text').textContent = m.text || '';
+      (m.components || []).forEach(function (c) { faroSafeRender(b, c); });
+    });
+    faroLoadConversations();
+  };
+
   faroPost({ mode: 'faro-messages', conversationId: id })
     .then(function (r) {
-      inner.innerHTML = '';
-      (r.messages || []).forEach(function (m) {
-        if (m.role === 'user') { faroAppendUser(m.text || ''); return; }
-        var b = faroAppendAssistant();
-        b.querySelector('.faro-msg__text').textContent = m.text || '';
-        (m.components || []).forEach(function (c) { faroRenderComponent(b, c); });
-      });
-      faroLoadConversations();
+      // An empty server response means "not stored there", not "empty
+      // conversation" -- the store is a scaffold. Fall through to the local
+      // copy rather than showing a blank thread for something the user can
+      // plainly see in the list.
+      var server = r.messages || [];
+      render(server.length ? server : (faroLsMessages(id) || []));
     })
-    .catch(function () { inner.innerHTML = ''; });
+    .catch(function () { render(faroLsMessages(id) || []); });
 }
 
 /* ── 15. Uploads + drag-and-drop ──────────────────────────────────────────── */

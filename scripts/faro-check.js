@@ -158,6 +158,41 @@ Promise.all([
   finish();
 });
 
+/* ── Collapsed regex escapes ─────────────────────────────────────────────────
+   client.js is a template literal that EMITS JavaScript, so a lone \s, \w or
+   \d inside it is consumed as a string escape and reaches the browser as a
+   bare "s", "w" or "d". The regex still compiles, still runs, and quietly means
+   something else — .split(/\s+/) became .split(/s+/), which turned "beste
+   leads" into "be te lead ", and a step id sanitiser became [^w-], which
+   stripped nearly every character so every tool in a turn shared one row and
+   the step list only ever showed the last one.
+
+   Neither threw. Neither showed up in a diff. Both survived a browser pass,
+   because with one tool and one word you cannot see it. This check reads the
+   EMITTED source rather than the file, which is the only place the difference
+   is visible. */
+{
+  const emitted = require('../api/_faro/ui/client').js();
+  const suspects = [];
+  emitted.split('\n').forEach((line, i) => {
+    const code = line.replace(/\/\/.*$/, '');   // a comment may legitimately discuss \s
+    // A shorthand that lost its backslash, in the two places it is load-bearing:
+    // immediately after a regex delimiter, or inside a character class.
+    if (/(?:split|replace|match|test|exec)\(\/[^/\n]*(?:\/[gimsuy]*)?/.test(code)) {
+      const rx = code.match(/\/(?:\\.|\[[^\]]*\]|[^/\n\\])+\/[gimsuy]*/g) || [];
+      rx.forEach((r) => {
+        // \s \w \d \b as bare letters directly after / or [ or [^ — the exact
+        // shapes that mean something completely different from the intent.
+        if (/\/\^?[swdb][+*{]/.test(r) || /\[\^?[swdb][\]\-+*]/.test(r)) {
+          suspects.push(`line ${i + 1}: ${r}  (in: ${code.trim().slice(0, 70)})`);
+        }
+      });
+    }
+  });
+  if (suspects.length) suspects.forEach((x) => fail(`regex escape collapsed by the template literal — use \\\\s not \\s: ${x}`));
+  else pass('no regex escape was swallowed by the template literal');
+}
+
 /* ── Design scales ──────────────────────────────────────────────────────────
    Faro's CSS reached 17 distinct font sizes, 10 radii and 23 spacing values,
    more than half of them off any grid. Every one was a defensible local call;

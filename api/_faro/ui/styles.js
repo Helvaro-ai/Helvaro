@@ -266,6 +266,12 @@ body.faro-open .faro-dock { display: none; }
   color: var(--text-disabled); font-size: var(--fs-tiny); text-align: left; cursor: pointer;
   transition: color 150ms ease;
 }
+.faro-rail__hint {
+  margin: var(--sp-05) var(--sp-3) 0;
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
 .faro-rail__viewall:hover { color: var(--accent); }
 
 
