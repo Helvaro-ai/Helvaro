@@ -85,9 +85,8 @@ function cmdLoad(force) {
         var txt = document.getElementById('cmd-error-text');
         if (txt) txt.textContent = (e && e.message) || CT('err.unavailable');
       }
-      // The greeting still renders: the page saying good morning and then
+      // Faro's own greeting stays put — the page saying good evening and then
       // admitting it cannot read the CRM is honest. A blank page is not.
-      cmdRenderGreeting(null);
     });
 }
 
@@ -111,36 +110,10 @@ function cmdApiPost(payload) {
 function cmdRender() {
   var d = cmdState.data;
   if (!d) return;
-  cmdRenderGreeting(d);
   cmdRenderBrief(d);
   cmdRenderKpis(d);
   cmdRenderOpps(d);
   cmdRenderInsights(d);
-}
-
-function cmdRenderGreeting(d) {
-  var h = document.getElementById('cmd-greet');
-  var s = document.getElementById('cmd-sub');
-  if (!h) return;
-
-  var hour = new Date().getHours();
-  var key = hour < 12 ? 'greet.morning' : (hour < 18 ? 'greet.afternoon' : 'greet.evening');
-  var name = '';
-  try {
-    var el = document.getElementById('user-name');
-    var raw = el ? (el.textContent || '').trim() : '';
-    if (raw && ['gebruiker', 'user', 'client account'].indexOf(raw.toLowerCase()) === -1) {
-      var first = raw.split(/\\s+/)[0];
-      if (first.length <= 24) name = first;
-    }
-  } catch (e) { /* the greeting works without a name */ }
-
-  h.textContent = CT(key) + (name ? ', ' + name : '') + '.';
-
-  if (!s) return;
-  if (!d) { s.textContent = ''; return; }
-  var n = d.totalOpportunities || 0;
-  s.textContent = n === 0 ? CT('sub.none') : (n === 1 ? CT('sub.one') : CTn('sub.many', n));
 }
 
 function cmdRenderBrief(d) {
@@ -151,7 +124,11 @@ function cmdRenderBrief(d) {
 
   var b = d.briefing || {};
   var c = b.counts || {};
-  if (!b.top) { box.hidden = true; return; }
+
+  // With nothing to report the briefing hides rather than printing a row of
+  // zeros: "0 kansen · 0 afspraken" is a worse answer than the empty state
+  // below it, which explains what would put something here.
+  if (!b.top && !c.appointments) { box.hidden = true; return; }
   box.hidden = false;
 
   var items = [
@@ -165,11 +142,12 @@ function cmdRenderBrief(d) {
            '</span><span class="cmd-brief__l">' + cmdEsc(i.l) + '</span></span>';
   }).join('');
 
-  top.innerHTML =
-    '<div class="cmd-brief__label">' + cmdEsc(CT('brief.title')) + '</div>' +
-    '<p class="cmd-brief__line">' + cmdEsc(b.top.line) + '</p>' +
-    '<button class="cmd-btn" data-cmd-brief="' + cmdEsc(b.top.id) + '">' +
-      cmdEsc(CT('brief.review')) + '</button>';
+  top.innerHTML = b.top
+    ? '<div class="cmd-brief__label">' + cmdEsc(CT('brief.title')) + '</div>' +
+      '<p class="cmd-brief__line">' + cmdEsc(b.top.line) + '</p>' +
+      '<button class="cmd-btn" data-cmd-brief="' + cmdEsc(b.top.id) + '">' +
+        cmdEsc(CT('brief.review')) + '</button>'
+    : '';
 }
 
 function cmdRenderKpis(d) {
@@ -418,10 +396,11 @@ function cmdContextLine(o) {
    already exists, with its tools, its tenant scoping and its confirmation
    gate. */
 function cmdHandToFaro(text) {
-  if (typeof faroOpen !== 'function' || typeof faroSend !== 'function') return;
-  faroOpen();
-  // Next frame, so the page has painted before the stream starts — otherwise
-  // the first tokens land on a panel that is still animating in.
+  if (typeof faroSend !== 'function') return;
+  // Already on the Faro page in the merged layout; faroOpen() is a no-op then
+  // and a navigation when the user is somewhere else in the CRM. Either way
+  // faroSend() takes over: it swaps the landing for the thread.
+  if (typeof faroOpen === 'function') faroOpen();
   setTimeout(function () { faroSend(text); }, 60);
 }
 

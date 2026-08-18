@@ -116,12 +116,44 @@ nothing. It also asserts the engine survives every axis being set at once.
 
 ## Where Faro lives
 
-**Its own page**, `#page-faro`, a sibling of Dashboard and Pipeline, shown by
-the same `navigateTo()` that shows any of them. Two ways in: the **Faro button
-at the top of the sidebar**, and the **ask bar docked along the bottom of every
-other CRM page**. `Ctrl/⌘-J` opens it too.
+**It is the home page.** You log in and land on Faro: it asks how it can help,
+and directly underneath, it tells you what happened while you were away.
 
-### The dock
+That is one screen, not two. Faro and the Command Center were separate pages
+first, and they answered two halves of the same question — *what happened* and
+*what do I do about it* — from opposite sides of a nav item. You had to know
+which half you wanted before you could look at either. They are merged now:
+
+```
+  orb
+  Goedenavond, Sarah
+  Waar kan ik je mee helpen?          ← the ask
+  [ ask bar ]
+  Faro ziet: Leads · Gesprekken · Analytics · Pipeline
+
+  6 kansen · 2 afspraken · 1 dreigt af te koelen · €3,31M   ← what happened
+  Je grootste kans vandaag: …
+  Kansen van vandaag  (opportunity cards)
+  KPI strip
+  Helvaro Insight
+  Snelle acties
+  Recent gemaakt
+```
+
+Asking a question swaps the landing for the thread; **Nieuw gesprek** brings the
+briefing back. `api/_command-ui` renders those sections and Faro's landing
+splices them in through `landingExtra` — the Command Center is not a page and
+has no nav item of its own.
+
+`scripts/faro-check.js` asserts the merge: the ask bar and the briefing must
+render in the same document, `page-command` must not exist, and Faro must be
+the only `active` page. A future edit splitting them apart again would read
+like a tidy-up in a diff, which is exactly why it is checked rather than
+remembered.
+
+The dock stays on every other CRM page as the way back in.
+
+### The dock### The dock
 
 A bar with a cursor in it is an invitation in a way a button is not — it sits in
 peripheral vision while you look at the pipeline, and asking costs one keystroke

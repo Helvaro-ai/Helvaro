@@ -41,8 +41,13 @@ module.exports = async function handler(req, res) {
   // Dashboard UI language. DASHBOARD_LANG lets an operator force one; otherwise
   // the registry default applies until a per-user preference exists to read.
   const FARO_LANG = _lang.normalizeLanguageCode(process.env.DASHBOARD_LANG || _lang.DEFAULT_CODE);
-  const faro = _faroUI.forLang(FARO_LANG);
+  // cmd first: Faro's landing screen renders the Command Center's briefing
+  // inside it, so the sections have to exist before the page is built.
   const cmd = _cmdUI.forLang(FARO_LANG);
+  const faro = _faroUI.forLang(FARO_LANG, {
+    landingExtra: cmd.sections,
+    headerExtra: cmd.autopilot,
+  });
 
   // Support contact for the help widget. The WhatsApp route is opt-in: no
   // personal number is ever hardcoded here, so the button simply doesn't
@@ -7547,9 +7552,6 @@ ${faro.navCta}
 
     <nav class="sidebar-nav">
       <!-- ── Werk (dagelijks) ── -->
-      <!-- COMMAND CENTER: first, because it is where the day starts. Everything
-           below it is somewhere you go on purpose. -->
-${cmd.nav}
       <button class="nav-item" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         Dashboard
@@ -9409,12 +9411,10 @@ ${cmd.nav}
       </div>
     </main>
 
-    <!-- COMMAND CENTER (api/_command-ui/markup.js). The landing experience. -->
-${cmd.page}
-
-    <!-- FARO: its own page (api/_faro/ui/markup.js), a sibling of every other
-         .page here and shown by the same navigateTo(). -->
+    <!-- FARO: the home page. The Command Center's briefing renders inside its
+         landing screen; the lead drawer is a page-level overlay beside it. -->
 ${faro.page}
+${cmd.drawer}
 
     <!-- ─── Founder Dashboard ─── -->
     <main class="page-content page" id="page-founder">
@@ -14621,8 +14621,7 @@ function navigateTo(page) {
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
     'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
-    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' },
-    command:      { title: 'Command Center', sub: 'Wat vandaag je aandacht verdient' }
+    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -14922,11 +14921,12 @@ async function startDashboard(skipRefresh = false) {
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
   initHelpWidget();
-  // COMMAND CENTER: the landing experience. navigateTo() below triggers its
-  // one data request; the CRM dashboard keeps loading in the background the
-  // way it always did, so switching to it is instant.
+  // FARO is the home page: it asks how it can help, and shows what happened
+  // underneath. navigateTo() below triggers the briefing's one data request;
+  // the CRM dashboard keeps loading in the background the way it always did,
+  // so switching to it is instant.
   cmdInit();
-  navigateTo('command');
+  navigateTo('faro');
 
   // Admin reveal. Sidebar's 'Klanten' (and Founder) tabs only show when the
   // user logged in with the ADMIN_KEY. We detect this from the session payload:

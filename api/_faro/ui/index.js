@@ -67,6 +67,10 @@ function inlineJson(value) {
 /**
  * @param {string} langCode
  * @param {object} [opts]
+ * @param {string} [opts.landingExtra]  HTML spliced into the landing screen
+ *   under the ask bar — the Command Center's briefing. Already-escaped,
+ *   already-finished markup; this module does not inspect it.
+ * @param {string} [opts.headerExtra]  HTML for the page header, top right.
  * @param {boolean} [opts.force]  Build the UI even when the feature flag is
  *   off. Only for checks — config.isEnabled() reads a module-level constant
  *   captured at load, so flipping the env var afterwards does nothing, and a
@@ -113,7 +117,7 @@ function forLang(langCode, opts = {}) {
     js: `\n${bootstrap}\n${client.js()}`,
     dock: markup.dock(tt),
     navCta: markup.navCta(tt),
-    page: markup.page(tt),
+    page: markup.page(tt, { landingExtra: opts.landingExtra, headerExtra: opts.headerExtra }),
   };
 }
 

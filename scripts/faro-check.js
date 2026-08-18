@@ -201,23 +201,47 @@ Promise.all([
   if (problems.length) problems.forEach((p) => fail(`command-center splice: ${p}`));
   else pass('command center: splice-safe across all translated languages');
 
-  for (const marker of ['${cmd.css}', '${cmd.nav}', '${cmd.page}', '${cmd.js}']) {
+  for (const marker of ['${cmd.css}', '${cmd.drawer}', '${cmd.js}']) {
     if (dash.indexOf(marker) === -1) fail(`command-center mount point missing: ${marker}`);
   }
 
-  // The Command Center is the landing page. If some future edit re-activates
-  // page-dashboard the app silently reverts to being a CRM, which is exactly
-  // the change this whole feature exists to make — and two `active` pages
-  // would render on top of each other besides.
-  const cmdPage = cmdUI.forLang('nl').page;
-  if (!/class="page-content page cmd active"/.test(cmdPage)) {
-    fail('command center is no longer the active landing page');
+  /* One page, not two. The briefing renders INSIDE Faro's landing screen —
+     they answer two halves of the same question, and behind separate nav items
+     you had to know which half you wanted before you could look at either.
+     These assertions exist because the merge is easy to undo by accident: a
+     future edit giving the Command Center its own page again would read like a
+     tidy-up in a diff. */
+  const faroUI2 = require('../api/_faro/ui');
+  const cmdParts = cmdUI.forLang('nl');
+  const merged = faroUI2.forLang('nl', {
+    force: true,
+    landingExtra: cmdParts.sections,
+    headerExtra: cmdParts.autopilot,
+  }).page;
+
+  if (merged.indexOf('id="cmd-opps"') === -1 || merged.indexOf('id="cmd-brief"') === -1) {
+    fail('the briefing no longer renders inside the Faro landing screen');
+  } else if (merged.indexOf('id="faro-input-field"') === -1) {
+    fail('the ask bar is missing from the merged landing screen');
+  } else if (merged.indexOf('id="cmd-autopilot"') === -1) {
+    fail('the autopilot control is missing from the Faro header');
+  } else if (dash.indexOf('id="page-command"') !== -1) {
+    fail('page-command exists again — the Command Center was split back out');
+  } else {
+    pass('one page: the ask bar and the briefing render together');
+  }
+
+  // Faro is the home page. If some future edit re-activates page-dashboard the
+  // app silently reverts to being a CRM, and two `active` pages would render on
+  // top of each other besides.
+  if (!/class="page-content page faro-page active"/.test(merged)) {
+    fail('the Faro page is not the active landing page');
   } else if (/<main class="page-content page active" id="page-dashboard">/.test(dash)) {
     fail('page-dashboard is active again — two pages would render at once');
-  } else if (dash.indexOf("navigateTo('command')") === -1) {
-    fail('nothing navigates to the command center after login');
+  } else if (dash.indexOf("navigateTo('faro')") === -1) {
+    fail('nothing navigates to Faro after login');
   } else {
-    pass('command center is the landing page, and the only active one');
+    pass('Faro is the landing page, and the only active one');
   }
 
   // The whole point of routing actions through Faro is that nothing on this

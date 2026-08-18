@@ -38,33 +38,24 @@ function css() {
   --cmd-cold:   #2F5F86;  --cmd-cold-bg:   rgba(107, 155, 196, 0.15);
 }
 
-.cmd.page-content { padding: 0; }
-.cmd__inner {
-  width: 100%;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: var(--sp-8) var(--sp-6) var(--sp-16);
-}
+/* ── Inside the Faro landing ────────────────────────────────────────────────
+   These sections are children of .faro-landing__inner, which already owns the
+   width and the scroll. What they need is the vertical rhythm that separates
+   "what happened" from the ask bar above it. */
+#cmd-body { margin-top: var(--sp-8); }
+.cmd-section { margin-bottom: var(--sp-8); }
 
-/* ── Head ─────────────────────────────────────────────────────────────────── */
-.cmd-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: var(--sp-4); margin-bottom: var(--sp-8);
-}
-.cmd-greet {
-  font-size: var(--fs-display); font-weight: 600; letter-spacing: -0.02em;
-  color: var(--text); margin: 0 0 var(--sp-1);
-}
-.cmd-sub { font-size: var(--fs-body); color: var(--text-muted); margin: 0; max-width: 52ch; }
-
-/* Autopilot. A status control, not a toggle switch: it reports a state and
-   changes it, and it says what it does on hover rather than implying the AI is
-   off doing things unsupervised. */
+/* Autopilot sits in the page header, opposite the rail toggle. Absolute rather
+   than in flow: the landing is a scroll container, and a control that scrolls
+   away is a control nobody finds again. */
 .cmd-auto {
+  position: absolute;
+  top: var(--sp-3); right: var(--sp-4);
+  z-index: 5;
   display: inline-flex; align-items: center; gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
   border: 1px solid var(--border); border-radius: var(--r-md);
-  background: var(--bg-card-alt); color: var(--text);
+  background: var(--faro-raised); color: var(--text);
   font: inherit; cursor: pointer; flex-shrink: 0;
   transition: border-color 150ms ease;
 }
@@ -314,21 +305,16 @@ function css() {
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .cmd__inner { padding: var(--sp-5) var(--sp-4) var(--sp-16); }
-  .cmd-head { flex-direction: column; align-items: stretch; gap: var(--sp-3); margin-bottom: var(--sp-5); }
-  .cmd-auto { align-self: flex-start; }
-  .cmd-greet { font-size: var(--fs-title); }
-
   /* Opportunities move ABOVE the KPI strip. On a phone the first screen has to
      answer "what do I do now", and five metrics pushing that under the fold is
      precisely the dashboard behaviour this page exists to replace.
 
      Ordered by explicit class, not :nth-of-type. Every child here is a
      <section>, so .cmd-section:nth-of-type(1) asks for an element that is both
-     the first section AND carries that class — which is the briefing, which
-     does not. It matched nothing, the sections kept order 0, and the briefing
-     ended up BELOW the list it summarises. */
-  #cmd-body { display: flex; flex-direction: column; }
+     the first section AND carries that class -- which is the briefing, which
+     does not. It matched nothing and the briefing ended up BELOW the list it
+     summarises. */
+  #cmd-body { display: flex; flex-direction: column; margin-top: var(--sp-6); }
   .cmd-brief             { order: 1; }
   .cmd-section--opps     { order: 2; }
   .cmd-kpis              { order: 3; }
@@ -343,6 +329,11 @@ function css() {
     -webkit-overflow-scrolling: touch;
   }
   .cmd-kpi { flex: 0 0 152px; scroll-snap-align: start; }
+
+  /* Autopilot shrinks to its dot and title; the state word is the first thing
+     that can go when the header is competing with a rail toggle. */
+  .cmd-auto { top: var(--sp-2); right: var(--sp-3); padding: var(--sp-15) var(--sp-2); }
+  .cmd-auto__state { display: none; }
 
   .cmd-opp { grid-template-columns: var(--sp-1) 1fr; }
   .cmd-opp__side {

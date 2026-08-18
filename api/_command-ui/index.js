@@ -2,10 +2,15 @@
 /*
  * Command Center — UI assembly.
  *
- * The seam between the Command Center and api/dashboard.js, built to exactly
- * the pattern api/_faro/ui/index.js established: this module returns finished
- * strings, dashboard.js interpolates them at four points, and nothing about
- * the Command Center is woven through that 19,000-line file.
+ * The Command Center is not a page. Its sections render INSIDE Faro's landing
+ * screen: api/dashboard.js hands `sections` and `autopilot` to
+ * _faroUI.forLang() as landing content, and mounts `drawer` beside the page.
+ *
+ * The two were separate pages first. They answered two halves of one question
+ * -- "what happened" and "what do I do about it" -- from opposite sides of a
+ * nav item, and you had to know which half you wanted before you could look at
+ * either. On login you now land on Faro: it asks how it can help, and directly
+ * underneath, it tells you what happened.
  *
  * ── Splice safety ────────────────────────────────────────────────────────────
  * These strings land INSIDE dashboard.js's own template literal, so a backtick
@@ -28,7 +33,7 @@ const client = require('./client');
 const icons  = require('./markup');
 const i18n   = require('./i18n');
 
-const DISABLED = Object.freeze({ lang: '', css: '', js: '', page: '', nav: '' });
+const DISABLED = Object.freeze({ lang: '', css: '', js: '', sections: '', autopilot: '', drawer: '' });
 
 function inlineJson(value) {
   return JSON.stringify(value).replace(/</g, '\\u003c');
@@ -56,8 +61,9 @@ function forLang(langCode, opts = {}) {
       `var CMD_ICON_PATHS = ${inlineJson(icons.ICONS)};`,
       client.js(),
     ].join('\n'),
-    page: markup.page(t),
-    nav: markup.nav(t),
+    sections: markup.sections(t),
+    autopilot: markup.autopilot(t),
+    drawer: markup.drawer(t),
   };
 }
 
@@ -66,7 +72,7 @@ function verify() {
   const problems = [];
   for (const lang of i18n.TRANSLATED) {
     const out = forLang(lang);
-    for (const key of ['css', 'js', 'page', 'nav']) {
+    for (const key of ['css', 'js', 'sections', 'autopilot', 'drawer']) {
       const s = out[key];
       if (s.indexOf('`') > -1) problems.push(`${lang}/${key}: contains a backtick`);
       if (/(^|[^\\])\$\{/.test(s)) problems.push(`${lang}/${key}: contains an unescaped \${`);

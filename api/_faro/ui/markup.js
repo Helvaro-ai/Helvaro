@@ -104,7 +104,7 @@ function rail(t) {
    for "subtle and relatively small" and requirement 11 for "not childish", and
    at the mockup's scale it out-competed the input, which is supposed to be the
    page's focus. Size lives in CSS so it is one number to revisit. */
-function landing(t) {
+function landing(t, opts = {}) {
   return `
       <div class="faro-landing" id="faro-landing">
         <div class="faro-landing__inner">
@@ -132,6 +132,15 @@ function landing(t) {
 
           ${input(t)}
           ${context(t)}
+
+          <!-- What happened. The Command Center's briefing, opportunities, KPIs
+               and insights render here (api/_command-ui/markup.js sections()).
+               Directly under the ask bar on purpose: the page asks how it can
+               help, and immediately shows what it already found. Empty string
+               when the Command Center is disabled, which leaves the original
+               landing screen exactly as it was. -->
+          ${opts.landingExtra || ''}
+
           ${quickActions(t)}
           ${activity(t)}
         </div>
@@ -327,9 +336,12 @@ function navCta(t) {
    No role="dialog" and no aria-modal any more: neither is true of a page, and
    claiming modality that the page does not enforce is worse for a screen
    reader than claiming nothing. The heading below is the landmark instead. */
-function page(t) {
+function page(t, opts = {}) {
+  /* `active` is on the element as rendered: this is the home page, showing
+     before any script runs. navigateTo() manages it from there like any
+     other .page. */
   return `
-    <main class="page-content page faro-page" id="page-faro">
+    <main class="page-content page faro-page active" id="page-faro">
       <div class="faro-page__body">
         ${rail(t)}
         <div class="faro-page__main">
@@ -342,7 +354,11 @@ function page(t) {
             ${icon('menu', 16)}
           </button>
 
-          ${landing(t)}
+          <!-- Autopilot. A state of the assistant rather than part of the
+               briefing, so it sits with the page and not in the scroll. -->
+          ${opts.headerExtra || ''}
+
+          ${landing(t, opts)}
           ${thread()}
           ${subPages(t)}
         </div>

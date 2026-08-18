@@ -47,8 +47,8 @@ const STRINGS = {
     'sb.poweredBy': 'Werkt op je eigen bedrijfsdata',
     'sb.localOnly': 'Bewaard in deze browser',
 
-    'land.title': 'Waar werken we aan?',
-    'land.sub': 'Vraag Faro alles over je leads, panden, gesprekken of marketing.',
+    'land.title': 'Waar kan ik je mee helpen?',
+    'land.sub': 'Vraag me alles over je leads, panden, gesprekken of marketing. Hieronder staat wat er intussen gebeurd is.',
     'land.greet.morning': 'Goedemorgen',
     'land.greet.afternoon': 'Goedemiddag',
     'land.greet.evening': 'Goedenavond',
@@ -173,8 +173,8 @@ const STRINGS = {
     'sb.poweredBy': 'Powered by your business data',
     'sb.localOnly': 'Saved in this browser',
 
-    'land.title': 'What are we working on?',
-    'land.sub': 'Ask Faro anything about your leads, properties, conversations or marketing.',
+    'land.title': 'How can I help?',
+    'land.sub': 'Ask me anything about your leads, properties, conversations or marketing. Below is what happened while you were away.',
     'land.greet.morning': 'Good morning',
     'land.greet.afternoon': 'Good afternoon',
     'land.greet.evening': 'Good evening',
@@ -299,8 +299,8 @@ const STRINGS = {
     'sb.poweredBy': 'Alimenté par vos données',
     'sb.localOnly': 'Enregistré dans ce navigateur',
 
-    'land.title': 'Sur quoi travaillons-nous ?',
-    'land.sub': 'Demandez tout à Faro sur vos leads, biens, conversations ou marketing.',
+    'land.title': 'Comment puis-je vous aider ?',
+    'land.sub': 'Demandez-moi tout sur vos leads, biens, conversations ou marketing. Ci-dessous, ce qui s\u2019est passé entre-temps.',
     'land.greet.morning': 'Bonjour',
     'land.greet.afternoon': 'Bon après-midi',
     'land.greet.evening': 'Bonsoir',
@@ -425,8 +425,8 @@ const STRINGS = {
     'sb.poweredBy': 'Basiert auf Ihren Unternehmensdaten',
     'sb.localOnly': 'In diesem Browser gespeichert',
 
-    'land.title': 'Woran arbeiten wir?',
-    'land.sub': 'Fragen Sie Faro alles zu Ihren Leads, Objekten, Gesprächen oder Marketing.',
+    'land.title': 'Wie kann ich helfen?',
+    'land.sub': 'Fragen Sie mich alles zu Ihren Leads, Objekten, Gesprächen oder Marketing. Darunter steht, was inzwischen passiert ist.',
     'land.greet.morning': 'Guten Morgen',
     'land.greet.afternoon': 'Guten Tag',
     'land.greet.evening': 'Guten Abend',

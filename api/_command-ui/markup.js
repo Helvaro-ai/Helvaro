@@ -33,62 +33,32 @@ function icon(name, size) {
     + `stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 
-/* The sidebar entry. Sits at the top of the nav list because the Command
-   Center is where the day starts; everything below it is somewhere you go on
-   purpose. */
-function nav(t) {
+/* ── The briefing, rendered INSIDE Faro's landing screen ────────────────────
+   These used to be their own page. Faro and the Command Center answered two
+   halves of the same question -- "what happened" and "what do I do about it"
+   -- from opposite sides of a nav item, and you had to know which half you
+   wanted before you could look at either. They are one screen now: the ask bar
+   at the top, what happened underneath it.
+
+   No <main> and no page wrapper: these sections are spliced into the Faro
+   landing (api/_faro/ui/markup.js landing()), which owns the scroll container
+   and the width. */
+function sections(t) {
   return `
-      <button class="nav-item" data-page="command" id="nav-command">
-        <span class="nav-icon">${icon('chart', 16)}</span>
-        ${t('nav.command')}
-      </button>`;
-}
-
-function page(t) {
-  /* `active` is on the element as rendered, because this is the landing
-     experience: the page is showing before any script runs. navigateTo()
-     manages it from there like any other .page. */
-  return `
-    <main class="page-content page cmd active" id="page-command">
-      <div class="cmd__inner">
-
-        <!-- Greeting. Filled by the client, which has the clock and the name;
-             the server has neither at render time. -->
-        <header class="cmd-head">
-          <div class="cmd-head__text">
-            <h1 class="cmd-greet" id="cmd-greet">${t('loading')}</h1>
-            <p class="cmd-sub" id="cmd-sub"></p>
-          </div>
-          <button class="cmd-auto" id="cmd-autopilot" type="button" aria-pressed="true"
-                  title="${t('auto.explain')}">
-            <span class="cmd-auto__dot" aria-hidden="true"></span>
-            <span class="cmd-auto__text">
-              <span class="cmd-auto__title">${t('auto.title')}</span>
-              <span class="cmd-auto__state" id="cmd-auto-state">${t('auto.active')}</span>
-            </span>
-          </button>
-        </header>
-
-        <!-- Error state. Shown instead of the page, never alongside a blank
-             one: an empty Command Center reads as a quiet morning, which is
-             the opposite of "we could not reach your CRM". -->
+        <!-- Error. Shown instead of the briefing, never alongside a blank one:
+             an empty briefing reads as a quiet morning, which is the opposite
+             of "we could not reach your CRM". -->
         <div class="cmd-error" id="cmd-error" hidden>
           <p class="cmd-error__text" id="cmd-error-text">${t('err.unavailable')}</p>
           <button class="cmd-btn cmd-btn--ghost" id="cmd-retry">${t('err.retry')}</button>
         </div>
 
         <div id="cmd-body" hidden>
-
-          <!-- Briefing. The three-line version of the whole page. -->
           <section class="cmd-brief" id="cmd-brief" hidden>
             <div class="cmd-brief__counts" id="cmd-brief-counts"></div>
             <div class="cmd-brief__top" id="cmd-brief-top"></div>
           </section>
 
-          <!-- Revenue strip. Order swaps on mobile — see styles.js. -->
-          <section class="cmd-kpis" id="cmd-kpis" aria-label="${t('kpi.pipeline')}"></section>
-
-          <!-- The point of the page. -->
           <section class="cmd-section cmd-section--opps">
             <div class="cmd-section__head">
               <h2 class="cmd-section__title">${t('opp.title')}</h2>
@@ -97,18 +67,36 @@ function page(t) {
             <div class="cmd-opps" id="cmd-opps"></div>
           </section>
 
+          <section class="cmd-kpis" id="cmd-kpis" aria-label="${t('kpi.pipeline')}"></section>
+
           <section class="cmd-section cmd-section--insights">
             <div class="cmd-section__head">
               <h2 class="cmd-section__title">${t('insight.title')}</h2>
             </div>
             <div class="cmd-insights" id="cmd-insights"></div>
           </section>
-        </div>
-      </div>
+        </div>`;
+}
 
-      <!-- Lead drawer. A panel rather than a navigation: the list is the place
-           you are working from, and losing it to look at one lead is how a
-           queue stops feeling like a queue. -->
+/* The Autopilot control. Rendered into Faro's header rather than the landing
+   body, because it is a state of the assistant rather than a part of the
+   briefing. */
+function autopilot(t) {
+  return `
+          <button class="cmd-auto" id="cmd-autopilot" type="button" aria-pressed="true"
+                  title="${t('auto.explain')}">
+            <span class="cmd-auto__dot" aria-hidden="true"></span>
+            <span class="cmd-auto__text">
+              <span class="cmd-auto__title">${t('auto.title')}</span>
+              <span class="cmd-auto__state" id="cmd-auto-state">${t('auto.active')}</span>
+            </span>
+          </button>`;
+}
+
+/* The lead drawer. A page-level overlay, so it is mounted beside the Faro page
+   rather than inside its scroll container. */
+function drawer(t) {
+  return `
       <aside class="cmd-drawer" id="cmd-drawer" hidden aria-label="${t('drawer.openLead')}">
         <div class="cmd-drawer__scrim" id="cmd-drawer-scrim"></div>
         <div class="cmd-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="cmd-drawer-name">
@@ -120,8 +108,7 @@ function page(t) {
           </header>
           <div class="cmd-drawer__body" id="cmd-drawer-body"></div>
         </div>
-      </aside>
-    </main>`;
+      </aside>`;
 }
 
-module.exports = { page, nav, icon, ICONS };
+module.exports = { sections, autopilot, drawer, icon, ICONS };
