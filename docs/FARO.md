@@ -116,49 +116,71 @@ nothing. It also asserts the engine survives every axis being set at once.
 
 ## Where Faro lives
 
-An **ask bar docked along the bottom of every CRM page**, which expands into an
-overlay above whatever page you are on. `Ctrl/⌘-J` also opens it.
+**Its own page**, `#page-faro`, a sibling of Dashboard and Pipeline, shown by
+the same `navigateTo()` that shows any of them. Two ways in: the **Faro button
+at the top of the sidebar**, and the **ask bar docked along the bottom of every
+other CRM page**. `Ctrl/⌘-J` opens it too.
 
-It replaced a launcher pill in the topbar, and the reason is the whole argument
-for the feature. A pill is a door: you have to decide to open it, which means
-deciding you have a question, which means Faro only ever gets used by someone
-who already thought of using it. A bar with a cursor in it is an invitation —
-it sits in peripheral vision while you look at the pipeline, and asking costs
-one keystroke instead of a click plus a context switch. Typing and pressing
-Enter opens Faro **and sends**, so the first question never costs a round trip
-through an empty screen.
+### The dock
 
-It is a **sticky flex child of `.main-content`, not a fixed overlay.** Fixed
-would float over the page and hide whatever sits under it. As a sticky flex
-child it pins to the viewport bottom on any page taller than the screen *and*
-still occupies its own space at the end of the document — verified at 0px of
-content hidden at full scroll on Dashboard, Pipeline and Kalender. (A
-non-sticky version sat at y=1225 on a 900px viewport: you had to scroll to find
-the thing whose entire purpose is being in peripheral vision.)
+A bar with a cursor in it is an invitation in a way a button is not — it sits in
+peripheral vision while you look at the pipeline, and asking costs one keystroke
+instead of a click plus a context switch. Typing and pressing Enter navigates to
+Faro **and sends**, so the first question never costs a round trip through an
+empty screen. It is a **sticky flex child of `.main-content`**, so it pins to
+the viewport bottom on any page taller than the screen and still occupies its
+own space at the end of the document — verified at 0px of content hidden at
+full scroll on Dashboard, Pipeline and Kalender. On the Faro page itself the
+dock is `display:none`: the page has its own, larger composer, and two live
+composers on one screen is one too many.
 
-## Faro is not a workspace
+### The sidebar entry
 
-The original brief asked for a `CRM | AI` switcher — two co-equal workspaces,
-one active at a time. That was built, then removed, for two reasons given in
-review: the product should not be split into two worlds, and the CRM sidebar was
-already carrying twelve items and could not take a thirteenth.
+A primary action **above** the nav list, not a thirteenth row inside it — the
+list was already carrying twelve items, and that constraint is what made an
+overlay look like the only option in the first place. It has the same shape as
+the "new chat" button every assistant puts there, so Faro reads as a mode you
+enter rather than one more report to go and read.
 
-What replaced it:
+Its colours come from the **CRM's** token set, not Faro's. The sidebar is
+permanently dark in both themes and rebinds `--text` / `--border` / `--hover` /
+`--bg-card-alt` for its children; Faro's `--faro-raised` and `--faro-hairline`
+are `:root` tokens that flip with the theme and are *not* rebound. Using them
+there painted a light surface under dark-context text and the title vanished in
+light theme.
 
-- **One launcher pill in the topbar.** Not a nav item. `Ctrl/⌘-J` — K was
-  already taken by the CRM's lead search, and the pill's badge is written from
-  the same constant the key handler matches, so it cannot advertise a shortcut
-  that does not work.
-- **Faro opens *above* the page you are on.** Nothing underneath changes: no nav
-  is hidden, no `.page` is deactivated, no title is rewritten. Close it and you
-  are still on Pipeline, mid-scroll, with the same lead panel open. There is no
-  second mode to be in and no state to restore on the way back.
-- **Faro's own navigation lives inside the overlay** — a slim rail with New,
-  Recent, Beelden, Video's and Projecten. That is what keeps all of it reachable
-  while adding exactly zero entries to the CRM sidebar.
-- **Nothing is remembered across reloads.** A workspace is a place you live in;
-  an overlay is something you opened. Re-opening it on every page load would put
-  Faro in front of the CRM the user actually came back for.
+## Why a page, and not an overlay
+
+Faro was an overlay first — a dialog above whatever CRM page you were on, with a
+scrim, a focus trap and an Escape handler. It worked. It was replaced because a
+dialog is something you visit and dismiss, and Faro is somewhere you work: two
+surfaces fighting for one screen, and every open/close bug this project actually
+hit (focus restored into the dock reopening it on the same tick; the composer
+stranded after a panel round-trip) came from Faro maintaining its own show/hide
+system next to the CRM's.
+
+As a page there is no scrim, no z-index stack, no aria-modal claim the page does
+not enforce, and no second show/hide system:
+
+- **`faroOpen()` is `navigateTo('faro')`; `faroClose()` is `navigateTo(returnPage)`.**
+  `returnPage` is captured on the way in and defaults to `dashboard`, so leaving
+  always lands somewhere real.
+- **`navigateTo` is wrapped, not edited.** Faro appends `faroSyncPage()` to the
+  CRM's own function, so leaving by *any* route — a sidebar click, a button deep
+  in a lead panel, a deep link — runs the same teardown as pressing Escape, and
+  `dashboard.js` keeps exactly one definition of `navigateTo`.
+- **`faroSyncPage()` is idempotent** and reconciles `faroState.open`, the body
+  class, the CTA's active state and the in-flight request against whichever page
+  is actually showing. It is the only thing that flips those.
+- **`.faro-page` is `flex: 0 0 auto` with a fixed height**, not `.page-content`'s
+  default `flex: 1`. With grow on and a basis of 0 the flex algorithm — not the
+  height — decides the box, so the page grew to fit the landing screen, which
+  made `.main-content` taller than the viewport, which grew the page again. The
+  thread and landing scroll inside it; the page itself never scrolls.
+- **Faro's own navigation is the rail** — New, Recent, Beelden, Video's,
+  Projecten — which is what keeps all of it reachable while adding exactly zero
+  entries to the CRM nav list.
+- **Nothing is remembered across reloads.** Faro is not the page you land on.
 
 `scripts/faro-check.js` asserts Faro markup never appears inside the CRM sidebar
 nav — that regression is easy to introduce and invisible in a diff review.
@@ -243,7 +265,8 @@ security boundary has to be a deliberate, reviewed edit rather than a typo in a
 ## What moved off the CRM
 
 `AI-beeld` is gone from the sidebar — image generation is Faro's job, and the
-sidebar was the reason Faro is an overlay in the first place. Nav: 12 → 11.
+size of that nav list is why Faro's own entry sits above it rather than in it.
+Nav: 12 → 11.
 
 Generation itself moved into the chat (above); the Beelden gallery lists through
 `property-list`, the same endpoint the old page used.
@@ -295,7 +318,7 @@ build.** Before writing anything, the existing repo gave us:
 | Calendar | `api/_gcal.js` | Requirement 8's "schedule a follow-up tomorrow". |
 | Credits | `api/_credits.js` | The hard spending ceiling everything must share. |
 | A Postgres escape hatch | `api/_pgapi.js` | Three tables already moved off Airtable for write pressure. Chat belongs on this path. |
-| Client routing | `navigateTo()`, `api/dashboard.js:14498` | Toggles `.page` sections. The workspace switcher hooks in here. |
+| Client routing | `navigateTo()`, `api/dashboard.js` | Toggles `.page` sections. Faro is one of them, and wraps this function to run `faroSyncPage()` after every navigation. |
 
 What did **not** exist: any video pipeline, any conversation storage, and the
 3D falcon mascot.
@@ -304,7 +327,7 @@ What did **not** exist: any video pipeline, any conversation storage, and the
 
 ```
 Browser — api/dashboard.js inline script + api/_faro/ui/*
-   │  CRM | AI switcher → setWorkspace('ai')
+   │  sidebar Faro button / dock / Ctrl-J → navigateTo('faro')
    ▼
 api/faro.js ......................... route: session + CSRF only, 50 lines
    ▼
@@ -493,11 +516,12 @@ Ordered so each step is independently verifiable.
 - **Settings added to the sidebar.** The mockup omitted it; requirement 3 lists it.
 - **`Recent AI activity` kept** — it was the design's best addition, and it gives
   the workspace a reason to return to even with no question in mind.
-- **CRM page controls hide in AI.** Refresh / CSV-export / last-updated belong to
-  the CRM dashboard page and were bleeding into the AI topbar.
-- **Below 480px the page title is dropped**, not the switcher. `dashboard.js`'s
-  own mobile CSS notes it fought to keep the topbar off 137px; the switcher
-  already names the workspace, so the title was the redundant half.
+- **CRM page controls hide on Faro.** Refresh / CSV-export / last-updated belong
+  to the CRM dashboard page; `navigateTo()` already scopes them to `dashboard`,
+  so the Faro page gets them hidden for free.
+- **The rail becomes a drawer below 860px**, with a handle pinned top-left —
+  the same move the CRM's own sidebar makes at that width. Two 200px+ nav
+  columns plus content do not fit on a phone.
 
 ## 7. What is real, and what still is not
 
@@ -513,7 +537,7 @@ in-process Map, which does not survive Vercel's instance model, so act tools
 must stay off until that is a table.
 
 **Off by default:** with `FARO_WORKSPACE_ENABLED` unset, `api/faro.js` returns
-404 *and* the UI emits nothing at all — no dock, no overlay, no CSS, no client
+404 *and* the UI emits nothing at all — no dock, no sidebar entry, no page, no CSS, no client
 script, and the CRM keeps its AI-beeld nav entry. Verified: 0 bytes.
 - `vercel.json` is untouched.
 - No dependency was added to `package.json`.

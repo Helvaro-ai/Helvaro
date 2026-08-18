@@ -9,11 +9,15 @@
  * `const faroUI = require('./_faro/ui');` and `const ai = faroUI.forLang(LANG);`
  * near the top of the handler:
  *
- *   1. before </style>                              ${ai.css}
- *   2. inside <header class="topbar">               ${ai.switcher}
- *   3. after the CRM's </nav>, inside .sidebar      ${ai.sidebar}
- *   4. after the last </main>                       ${ai.workspace}
- *   5. before </script>                             ${ai.js}
+ * Four interpolations inside its `const HTML = \`...\`` template literal, with
+ * `const _faroUI = require('./_faro/ui');` and `const faro = _faroUI.forLang(LANG);`
+ * near the top of the handler:
+ *
+ *   1. before </style>                              ${faro.css}
+ *   2. above the CRM's <nav class="sidebar-nav">    ${faro.navCta}
+ *   3. alongside the CRM's other <main class="page"> ${faro.page}
+ *   4. as the last child of .main-content           ${faro.dock}
+ *   5. before </script>                             ${faro.js}
  *
  * That is the whole integration. Deliberately small: dashboard.js is ~19,000
  * lines and carries the entire paying product, so Faro touches it
@@ -48,7 +52,7 @@ const config = require('../config');
 /* What a disabled Faro contributes to the page: nothing at all. The one
    exception is deliberate — see the CSS note in styles.js about #nav-ai-beeld,
    which is only hidden while Faro is ON, so the CRM stays whole when it is off. */
-const DISABLED = Object.freeze({ lang: '', css: '', js: '', dock: '', overlay: '' });
+const DISABLED = Object.freeze({ lang: '', css: '', js: '', dock: '', navCta: '', page: '' });
 
 /** JSON safe to embed in an inline <script>: neutralises </script> breakout. */
 function inlineJson(value) {
@@ -70,7 +74,7 @@ function inlineJson(value) {
  *   mutating process.env and busting the require cache.
  */
 function forLang(langCode, opts = {}) {
-  // With the feature off, emit NOTHING. Previously the dock and overlay
+  // With the feature off, emit NOTHING. Previously the dock and page
   // rendered unconditionally, so a customer with Faro disabled got an inviting
   // ask bar whose every message ended in a generic error — and paid ~108 KB of
   // HTML plus the module's parse cost on every dashboard load for the
@@ -108,7 +112,8 @@ function forLang(langCode, opts = {}) {
     css: tokens.css() + styles.css(),
     js: `\n${bootstrap}\n${client.js()}`,
     dock: markup.dock(tt),
-    overlay: markup.overlay(tt),
+    navCta: markup.navCta(tt),
+    page: markup.page(tt),
   };
 }
 
@@ -124,7 +129,7 @@ function verify() {
   // feature on; the disabled path is empty by definition.
   for (const lang of i18n.TRANSLATED) {
     const out = forLang(lang, { force: true });
-    for (const key of ['css', 'js', 'dock', 'overlay']) {
+    for (const key of ['css', 'js', 'dock', 'navCta', 'page']) {
       const s = out[key];
       if (s.indexOf('`') > -1) problems.push(`${lang}/${key}: contains a backtick`);
       if (/(^|[^\\])\$\{/.test(s)) problems.push(`${lang}/${key}: contains an unescaped \${`);

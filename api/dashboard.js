@@ -7532,6 +7532,10 @@ ${faro.css}
     <div class="sidebar-logo">
       <img src="/logo.png" alt="Helvaro">
     </div>
+
+    <!-- FARO: the way in (api/_faro/ui/markup.js). Not a nav row -- see there. -->
+${faro.navCta}
+
     <nav class="sidebar-nav">
       <!-- ── Werk (dagelijks) ── -->
       <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
@@ -9393,6 +9397,10 @@ ${faro.css}
       </div>
     </main>
 
+    <!-- FARO: its own page (api/_faro/ui/markup.js), a sibling of every other
+         .page here and shown by the same navigateTo(). -->
+${faro.page}
+
     <!-- ─── Founder Dashboard ─── -->
     <main class="page-content page" id="page-founder">
       <div class="fdr-wrap">
@@ -9897,11 +9905,9 @@ ${faro.css}
     </main>
 
     <!-- FARO: the ask bar. Last flex child of .main-content, so it shortens
-         the page rather than overlapping it. -->
+         the page rather than overlapping it. Hidden while you are already on
+         the Faro page -- see .faro-dock in styles.js. -->
 ${faro.dock}
-
-    <!-- FARO: the overlay itself (api/_faro/ui/markup.js) -->
-${faro.overlay}
 
     <!-- Persona picker (Frade / Teljo). shown right after login -->
     <div id="persona-overlay">
@@ -14599,7 +14605,8 @@ function navigateTo(page) {
     founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
-    'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' }
+    'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
+    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
   };
 
   const t = titles[page] || { title: page, sub: '' };

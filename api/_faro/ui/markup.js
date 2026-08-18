@@ -84,12 +84,10 @@ function rail(t) {
         <div class="faro-rail__convos" id="faro-convo-list"></div>
         <button class="faro-rail__viewall" id="faro-view-all-convos">${t('sb.viewAllConvos')}</button>
 
-        <div class="faro-rail__tail">
-          <div class="faro-rail__badge">
-            <div class="faro-rail__badge-title">${icon('spark', 12)} ${t('ws.title')}</div>
-            <div class="faro-rail__badge-sub">${t('sb.poweredBy')}</div>
-          </div>
-        </div>
+        <!-- The "Faro — works on your own business data" badge that used to sit
+             here is gone. It said the same thing as the sidebar's Faro button
+             two columns to its left, and once Faro became a page those two were
+             visible at the same time, on the same screen, saying it twice. -->
       </nav>`;
 }
 
@@ -288,42 +286,62 @@ function subPages(t) {
   ].join('');
 }
 
-/* ── The overlay ───────────────────────────────────────────────────────────
-   Mounted once, as a sibling of the CRM's .page sections, and hidden until
-   launched. It sits ABOVE the CRM rather than replacing it: the page you were
-   on is still there, untouched, when you close Faro.
+/* ── Sidebar entry ─────────────────────────────────────────────────────────
+   Deliberately NOT a thirteenth nav row. The CRM's nav list was already
+   carrying twelve items when Faro was designed, and adding a thirteenth of
+   equal weight is what made an overlay look like the only option. This is a
+   primary action ABOVE that list -- the same shape as the "new chat" button
+   every assistant puts there -- so Faro reads as a mode you enter rather than
+   one more report to go and read.
 
-   role="dialog" + aria-modal is the honest mapping — while Faro is open it is
-   the only interactive surface, and Escape closes it. */
-function overlay(t) {
+   It lives here, not in dashboard.js, for two reasons: the copy is translated
+   like the rest of Faro, and Faro stays removable in one piece. */
+function navCta(t) {
   return `
-    <div class="faro-overlay" id="faro-overlay" hidden>
-      <div class="faro-overlay__scrim" id="faro-scrim"></div>
-      <div class="faro-dialog" role="dialog" aria-modal="true" aria-label="${t('ws.title')}">
-
-        <header class="faro-dialog__head">
-          <button class="faro-dialog__rail-toggle" id="faro-rail-toggle" aria-label="${t('sb.recent')}">
-            ${icon('menu', 16)}
-          </button>
-          <div class="faro-dialog__title">
-            ${icon('spark', 15)}<span>${t('ws.title')}</span>
-          </div>
-          <div class="faro-dialog__sub" id="faro-dialog-sub">${t('ws.subtitle')}</div>
-          <button class="faro-dialog__close" id="faro-close" aria-label="${t('st.close')}">
-            ${icon('close', 16)}
-          </button>
-        </header>
-
-        <div class="faro-dialog__body">
-          ${rail(t)}
-          <div class="faro-dialog__main">
-            ${landing(t)}
-            ${thread()}
-            ${subPages(t)}
-          </div>
-        </div>
-      </div>
-    </div>`;
+    <button class="faro-nav-cta" id="faro-nav-cta" type="button">
+      <span class="faro-nav-cta__mark" aria-hidden="true"></span>
+      <span class="faro-nav-cta__text">
+        <span class="faro-nav-cta__title">${t('ws.title')}</span>
+        <span class="faro-nav-cta__sub">${t('sb.poweredBy')}</span>
+      </span>
+    </button>`;
 }
 
-module.exports = { dock, overlay, rail, landing, thread, input, context, quickActions, activity, subPages };
+/* ── The Faro page ─────────────────────────────────────────────────────────
+   Faro is its own page, a sibling of the CRM's other .page sections, shown by
+   the same navigateTo() that shows Dashboard or Pipeline.
+
+   It was an overlay first -- a dialog floating above whatever CRM page you
+   were on. That worked, but it made Faro a thing you visited and dismissed
+   rather than a place you work, and it meant two surfaces (the CRM page
+   underneath, the dialog above) fighting for the same screen. A page has no
+   scrim, no z-index stack, no focus trap to get wrong, and it can be linked
+   to and navigated back from like anything else in the app.
+
+   No role="dialog" and no aria-modal any more: neither is true of a page, and
+   claiming modality that the page does not enforce is worse for a screen
+   reader than claiming nothing. The heading below is the landmark instead. */
+function page(t) {
+  return `
+    <main class="page-content page faro-page" id="page-faro">
+      <div class="faro-page__body">
+        ${rail(t)}
+        <div class="faro-page__main">
+
+          <!-- Mobile only. The 208px rail becomes a drawer under 860px -- the
+               same move the CRM's own sidebar makes at that width -- and a
+               drawer needs a handle. Hidden on desktop, where the rail is
+               simply always there. -->
+          <button class="faro-page__rail-toggle" id="faro-rail-toggle" aria-label="${t('sb.recent')}">
+            ${icon('menu', 16)}
+          </button>
+
+          ${landing(t)}
+          ${thread()}
+          ${subPages(t)}
+        </div>
+      </div>
+    </main>`;
+}
+
+module.exports = { dock, navCta, page, rail, landing, thread, input, context, quickActions, activity, subPages };

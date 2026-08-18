@@ -88,7 +88,7 @@ try {
 // Every mount point must still be present — a merge could silently drop one,
 // and the failure mode is a missing workspace rather than an error.
 const dash = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
-for (const marker of ['${faro.css}', '${faro.dock}', '${faro.overlay}', '${faro.js}']) {
+for (const marker of ['${faro.css}', '${faro.navCta}', '${faro.dock}', '${faro.page}', '${faro.js}']) {
   if (dash.indexOf(marker) === -1) fail(`mount point missing: ${marker}`);
 }
 if (dash.indexOf('_faroUI.forLang') === -1) fail('dashboard.js does not bind a language');

@@ -75,7 +75,9 @@ var faroState = {
   restoringFocus: false,
   lastSent: '',
   lastAttachments: [],
-  lastFocus: null
+  lastFocus: null,
+  // Where leaving Faro goes back to. Set when Faro is entered, never empty.
+  returnPage: 'dashboard'
 };
 
 function faroEsc(s) {
@@ -93,40 +95,33 @@ function faroIcon(name, size) {
 }
 
 /* ── Open / close ─────────────────────────────────────────────────────────
-   Faro opens ON TOP of the CRM. Nothing about the page underneath changes: no
-   nav is hidden, no .page is deactivated, no title is rewritten. Close it and
-   you are exactly where you were, mid-scroll, with the same lead panel open.
+   Faro is a PAGE, not an overlay. Opening it is navigateTo('faro') and closing
+   it is navigateTo(wherever you were) -- the same mechanism the CRM already
+   uses for Dashboard or Pipeline, so there is no second show/hide system, no
+   scrim, no z-index stack and no focus trap to get wrong.
 
-   That is the whole difference from the workspace switcher this replaces —
-   there is no second mode to be in, and no state to restore on the way back. */
+   faroState.open is still the single source of truth for "is Faro showing",
+   because plenty of code below needs to know; it is now kept in sync with the
+   page rather than with a hidden attribute. faroSyncPage() is what the CRM's
+   navigateTo() calls so that leaving Faro by ANY route -- a sidebar click, the
+   back button, a deep link -- runs the same teardown as pressing Escape. */
 function faroOpen() {
   if (faroState.open) return;
-  faroState.open = true;
 
-  var el = document.getElementById('faro-overlay');
-  var launch = document.getElementById('faro-launch');
-  if (!el) return;
+  // Where to go back to. Captured before navigating, and defaulted rather than
+  // left empty: closing Faro must always land somewhere real, even if Faro was
+  // the first page shown after login.
+  faroState.returnPage = (window.state && state.currentPage && state.currentPage !== 'faro')
+    ? state.currentPage : 'dashboard';
 
-  // Remember what had focus so Escape can hand it back — the launcher is in the
-  // topbar, and a keyboard user who opened with ⌘K should not be dumped at the
-  // top of the document on close.
   // NOT the dock input. Restoring focus to it on close re-fires its own focus
-  // handler, which reopens Faro on the same tick — the overlay became
-  // impossible to close by any route (Escape, scrim, the X) once opened from
-  // the dock, which is the primary entry point.
+  // handler, which reopens Faro on the same tick -- Faro became impossible to
+  // leave by any route once entered from the dock, which is the primary way in.
   var active = document.activeElement;
   faroState.lastFocus = (active && active.id === 'faro-dock-input') ? null : active;
 
-  el.hidden = false;
-  // Next frame, so the transition has a from-state to animate out of.
-  requestAnimationFrame(function () { el.classList.add('open'); });
-  document.body.classList.add('faro-open');
-  if (launch) launch.setAttribute('aria-expanded', 'true');
-
-  faroApplyGreeting();   // faroOpen does not route through faroSetPanel
-  faroLoadConversations();
-  faroLoadContext();
-  faroLoadActivity();
+  if (typeof navigateTo === 'function') navigateTo('faro');
+  faroSyncPage();
 
   var input = document.getElementById('faro-input-field');
   if (input) input.focus();
@@ -134,28 +129,44 @@ function faroOpen() {
 
 function faroClose() {
   if (!faroState.open) return;
-  faroState.open = false;
-
-  var el = document.getElementById('faro-overlay');
-  var opener = document.getElementById('faro-dock-open');
-  if (el) {
-    el.classList.remove('open');
-    // Wait out the transition before hiding, or the panel vanishes instead of
-    // fading. Matches the 180ms in styles.js.
-    setTimeout(function () { if (!faroState.open) el.hidden = true; }, 180);
-  }
-  document.body.classList.remove('faro-open');
-  if (opener) opener.setAttribute('aria-expanded', 'false');
-
-  // A generation in flight is abandoned rather than left running invisibly.
-  if (faroState.abort) { faroState.abort.abort(); faroState.abort = null; }
+  var back = faroState.returnPage || 'dashboard';
+  if (typeof navigateTo === 'function') navigateTo(back);
+  faroSyncPage();
 
   if (faroState.lastFocus && faroState.lastFocus.focus) {
-    // Guard the restore anyway: any element that opens Faro on focus would
-    // otherwise re-trigger it here.
+    // Guard the restore: any element that opens Faro on focus would otherwise
+    // re-trigger it here.
     faroState.restoringFocus = true;
-    faroState.lastFocus.focus();
+    try { faroState.lastFocus.focus(); } catch (e) { /* detached node */ }
     faroState.restoringFocus = false;
+  }
+}
+
+/* Reconcile Faro's own state with whichever page is actually showing. Called
+   after every navigation, including ones Faro did not initiate -- that is the
+   point. Idempotent, so calling it twice for one navigation is harmless. */
+function faroSyncPage() {
+  var el = document.getElementById('page-faro');
+  var showing = !!(el && el.classList.contains('active'));
+  if (showing === faroState.open) return;
+  faroState.open = showing;
+
+  document.body.classList.toggle('faro-open', showing);
+  var cta = document.getElementById('faro-nav-cta');
+  if (cta) cta.classList.toggle('active', showing);
+  var opener = document.getElementById('faro-dock-open');
+  if (opener) opener.setAttribute('aria-expanded', showing ? 'true' : 'false');
+
+  if (showing) {
+    faroApplyGreeting();
+    faroLoadConversations();
+    faroLoadContext();
+    faroLoadActivity();
+  } else if (faroState.abort) {
+    // A generation in flight is abandoned rather than left running invisibly
+    // against a page nobody is looking at.
+    faroState.abort.abort();
+    faroState.abort = null;
   }
 }
 
@@ -1034,11 +1045,27 @@ function faroInit() {
     });
   }
 
-  var scrim = document.getElementById('faro-scrim');
-  if (scrim) scrim.addEventListener('click', faroClose);
 
-  var closeBtn = document.getElementById('faro-close');
-  if (closeBtn) closeBtn.addEventListener('click', faroClose);
+  // The sidebar's primary action. Clicking it while already on Faro is a
+  // no-op rather than a toggle -- a nav item you are standing on should not
+  // navigate you away, which is how every other row in that sidebar behaves.
+  var navCta = document.getElementById('faro-nav-cta');
+  if (navCta) navCta.addEventListener('click', function () { faroOpen(); });
+
+  /* Faro is shown by the CRM's navigateTo(), which knows nothing about Faro.
+     Wrapping it is what makes leaving by ANY route -- a sidebar click, a
+     button deep in a lead panel, the topbar logo -- run the same teardown as
+     pressing Escape. Wrapped rather than edited so dashboard.js keeps one
+     definition of navigateTo and Faro stays removable in one piece. */
+  if (typeof window.navigateTo === 'function' && !window.navigateTo.__faroWrapped) {
+    var crmNavigate = window.navigateTo;
+    window.navigateTo = function (page) {
+      var out = crmNavigate.apply(this, arguments);
+      faroSyncPage();
+      return out;
+    };
+    window.navigateTo.__faroWrapped = true;
+  }
 
   // Mobile: the rail is a drawer. Picking anything inside it closes it again,
   // or it would sit on top of the thing you just navigated to.
@@ -1064,6 +1091,8 @@ function faroInit() {
       // Let an open popover inside Faro close first.
       var menu = document.querySelector('.faro-menu:not([hidden])');
       if (menu) return;
+      // Escape leaves Faro and lands back where you came from. On a page this
+      // is a convenience rather than the only way out, which is the point.
       faroClose();
     }
   });

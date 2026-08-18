@@ -95,103 +95,114 @@ function css() {
    bottom. Subtract the dock here rather than editing the CRM's inline style. */
 #page-kalender { height: calc(100vh - 56px - 62px) !important; }
 
-/* While Faro is open the dock is inert — the overlay has its own, larger
-   input, and two live composers on screen is one too many. */
-body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
+/* On the Faro page the dock is redundant -- the page has its own, larger
+   composer -- and two live composers on screen is one too many. Hidden, not
+   dimmed: a 40%-opacity input still looks clickable and still takes a tab
+   stop. .main-content is a flex column, so removing it also gives the page
+   back the height the dock was reserving. */
+body.faro-open .faro-dock { display: none; }
 
-/* ═══ Overlay ═════════════════════════════════════════════════════════════
-   Faro sits ABOVE the CRM. The page underneath is untouched and still there
-   when the overlay closes — that is the whole point of not being a workspace. */
-.faro-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
-}
-.faro-overlay[hidden] { display: none; }
+/* ═══ The Faro page ═══════════════════════════════════════════════════════
+   Faro is a .page like Dashboard or Pipeline, so the CRM's own page machinery
+   sizes and shows it. What this adds is the internal split -- rail beside
+   main -- and the fact that it must fill the viewport rather than flow: the
+   thread scrolls inside itself, the composer stays pinned at the bottom, and
+   the page as a whole never scrolls.
 
-.faro-overlay__scrim {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 8, 8, 0.58);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
-.faro-overlay.open .faro-overlay__scrim { opacity: 1; }
-
-.faro-dialog {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 1120px;
-  height: 100%;
-  max-height: 860px;
-  border-radius: 22px;
-  border: 1px solid var(--faro-hairline);
-  background: var(--faro-canvas);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+   The height matches #page-kalender's above: the topbar is 56px, and the dock
+   is gone here so its 62px does not need subtracting. */
+.faro-page.page-content {
+  padding: 0;
+  /* flex:0 0 auto, not the .page-content default of flex:1. With flex-grow on
+     and a flex-basis of 0, the flex algorithm — not the height below — decides
+     the box, so the page grew to fit the landing screen's own content, which
+     made .main-content taller than the viewport, which grew the page again.
+     Pinning the basis breaks that loop; the landing and thread scroll inside. */
+  flex: 0 0 auto;
+  height: calc(100vh - 56px);
   overflow: hidden;
-  opacity: 0;
-  transform: translateY(8px) scale(0.995);
-  transition: opacity 180ms ease, transform 180ms ease;
 }
-.faro-overlay.open .faro-dialog { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  .faro-overlay__scrim, .faro-dialog { transition: none; }
-}
-
-.faro-dialog__head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--faro-hairline);
-  flex-shrink: 0;
-}
-.faro-dialog__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-.faro-dialog__title svg { color: var(--champagne); }
-.faro-dialog__sub { font-size: 12.5px; color: var(--text-muted); flex: 1; }
-/* Rail toggle. Desktop shows the rail permanently, so this only exists on
-   narrow screens — same pattern as the CRM's own sidebar drawer. */
-.faro-dialog__rail-toggle {
+.faro-page__body { display: flex; height: 100%; min-height: 0; }
+/* Desktop keeps the rail permanently visible, so the handle only exists on
+   narrow screens — see the 860px breakpoint. */
+.faro-page__rail-toggle {
   display: none;
-  width: 30px; height: 30px; flex-shrink: 0;
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 5;
+  width: 32px; height: 32px;
   align-items: center; justify-content: center;
-  border-radius: 9px; border: 1px solid transparent;
-  background: transparent; color: var(--text-muted); cursor: pointer;
-}
-.faro-dialog__rail-toggle:hover { color: var(--text); background: var(--faro-raised); }
-
-.faro-dialog__close {
-  width: 30px; height: 30px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 9px;
-  border: 1px solid transparent;
-  background: transparent;
+  border-radius: 10px;
+  border: 1px solid var(--faro-hairline);
+  background: var(--faro-raised);
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 150ms ease, background 150ms ease;
 }
-.faro-dialog__close:hover { color: var(--text); background: var(--faro-raised); }
+.faro-page__rail-toggle:hover { color: var(--text); }
+.faro-page__main {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 
-.faro-dialog__body { display: flex; flex: 1; min-height: 0; }
-.faro-dialog__main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* ═══ Sidebar entry ═══════════════════════════════════════════════════════
+   A primary action above the nav list, not a thirteenth row inside it. The orb
+   mark is the same gradient recipe as the landing screen's, at 22px, so the
+   button carries Faro's identity without shipping an icon for it.
 
-/* ═══ Rail — Faro's own nav, inside the overlay ═══════════════════════════
+   ⚠ Every colour here comes from the CRM's token set, not Faro's. The sidebar
+   is permanently dark in BOTH themes and rebinds --text/--border/--hover/
+   --bg-card-alt to dark-surface values for its children; Faro's own
+   --faro-raised and --faro-hairline are :root tokens that flip with the theme
+   and are NOT rebound. Using them here painted a light surface under
+   dark-context text, and in light theme the button read at roughly 1:1 —
+   the title was invisible. --champagne is safe: it is the same value in both
+   themes, and raw sand is legible inside this permanently-dark pane (which is
+   exactly what --sand-on-surface exists to handle everywhere else). */
+.faro-nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 24px);
+  margin: 0 12px 14px;
+  padding: 9px 11px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card-alt);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.faro-nav-cta:hover { border-color: var(--champagne); background: var(--hover); }
+.faro-nav-cta.active {
+  border-color: var(--champagne);
+  background: var(--hover);
+  box-shadow: 0 0 0 3px rgba(244, 231, 200, 0.10);
+}
+.faro-nav-cta__mark {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
+    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
+  /* Literal, not --warm-sand-glow: that token flips for light backgrounds and
+     this one always sits on the dark sidebar. */
+  box-shadow: 0 0 12px rgba(244, 231, 200, 0.18);
+}
+.faro-nav-cta__text { display: flex; flex-direction: column; min-width: 0; }
+.faro-nav-cta__title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.faro-nav-cta__sub {
+  font-size: 11px; color: var(--text-muted); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ═══ Rail — Faro's own nav, inside the page ══════════════════════════════
    This is what keeps conversations, Images and Projects reachable without any
    of them appearing in the CRM sidebar. */
 .faro-rail {
@@ -257,19 +268,6 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
 }
 .faro-rail__viewall:hover { color: var(--accent); }
 
-.faro-rail__tail { margin-top: auto; padding-top: 10px; flex-shrink: 0; }
-.faro-rail__badge {
-  margin: 0 12px;
-  padding: 9px 11px;
-  border-radius: 11px;
-  background: var(--champagne-dim);
-  border: 1px solid var(--champagne-line);
-}
-.faro-rail__badge-title {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 600; color: var(--sand-on-surface);
-}
-.faro-rail__badge-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.35; }
 
 /* ═══ Landing (requirement 4) ══════════════════════════════════════════════ */
 .faro-landing { flex: 1; overflow-y: auto; padding: 32px 24px 44px; }
@@ -754,8 +752,8 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
 
 /* ═══ Panels & galleries (requirements 9, 10, 12) ═════════════════════════ */
 .faro-panel { flex: 1; overflow-y: auto; padding: 28px 24px 64px; }
-/* The shell sets display on .faro-dialog*, but these sub-pages are toggled by
-   the hidden attribute — which any display rule would silently defeat. */
+/* These sub-pages are toggled by the hidden attribute, which any display rule
+   above would silently defeat — hence the explicit reset. */
 .faro-panel[hidden] { display: none; }
 .faro-panel__head {
   max-width: 980px; margin: 0 auto 16px;
@@ -823,14 +821,9 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
 }
 
 @media (max-width: 860px) {
-  /* The overlay goes full-bleed. A centred card with margins on a phone wastes
-     the only screen space there is. */
-  .faro-overlay { padding: 0; }
-  .faro-dialog { max-width: none; max-height: none; border-radius: 0; border: 0; }
-
-  /* The 208px rail does not fit, so it becomes a drawer inside the panel —
+  /* The 208px rail does not fit, so it becomes a drawer inside the page —
      the same move the CRM sidebar already makes at this width. */
-  .faro-dialog__rail-toggle { display: inline-flex; }
+  .faro-page__rail-toggle { display: inline-flex; }
   .faro-rail {
     position: absolute;
     top: 0; bottom: 0; left: 0;
@@ -840,13 +833,14 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
     box-shadow: 0 0 40px rgba(0,0,0,0.4);
   }
   .faro-rail.open { transform: none; }
-  .faro-dialog__body { position: relative; }
+  .faro-page__body { position: relative; }
 }
 
 @media (prefers-reduced-motion: reduce) { .faro-rail { transition: none; } }
 
 @media (max-width: 768px) {
-  .faro-landing { padding: 22px 16px 44px; }
+  /* Extra top padding clears the rail handle pinned at the top left. */
+  .faro-landing { padding: 52px 16px 44px; }
   .faro-landing__title { font-size: 23px; }
   .faro-landing__sub { font-size: 13px; }
   .faro-mark { width: 56px; height: 56px; margin-bottom: 16px; }
@@ -892,8 +886,6 @@ body.faro-open .faro-dock { opacity: 0.4; pointer-events: none; }
   .faro-act-card { flex-basis: 168px; }
   .faro-section { margin-top: 26px; }
 
-  .faro-dialog__head { padding: 12px 14px; }
-  .faro-dialog__sub { display: none; }
 }
 
 /* Phones. The launcher must survive a crowded topbar without pushing the theme
