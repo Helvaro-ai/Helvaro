@@ -118,16 +118,45 @@ if (actSet !== EXPECTED_ACT.slice().sort().join(',')) {
   fail(`act-tool set changed: expected [${EXPECTED_ACT.join(', ')}], got [${acts.join(', ')}]`);
 } else pass('act-tool set unchanged (external-consequence tools only)');
 
-// A staged action must never be reachable from another tenant.
+// A staged action must never be reachable from another tenant, and a tampered
+// one must not be reachable at all. Proposals are now signed rather than
+// stored, so SESSION_SECRET has to be present for staging to be possible —
+// a deployment without it refuses to stage instead of signing with nothing,
+// which is itself worth asserting.
 const actions = require('../api/_faro/actions');
-const id = actions.stage({ projectCode: 'A', userId: 'u', action: 'create_followup', payload: {} });
-actions.execute({ actionId: id, ctx: { projectCode: 'B', userId: 'v' } })
-  .then(() => { fail('cross-tenant action execution was NOT blocked'); finish(); })
-  .catch((err) => {
-    if (err.code === 'not_found') pass('cross-tenant action execution blocked');
-    else fail(`unexpected error for cross-tenant execute: ${err.code}`);
-    finish();
-  });
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'faro-check-secret';
+
+const stagedBy = { projectCode: 'A', userId: 'u' };
+const id = actions.stage({ ...stagedBy, action: 'create_followup', payload: { leadIds: ['recA'] } });
+
+// Swap the payload, keep the signature: the MAC covers the body, so this must
+// not verify. This is the check that would catch someone "optimising" the
+// token by moving a field outside the signed portion.
+const [signedBody, mac] = id.slice(4).split('.');
+const tamperedBody = Buffer.from(
+  JSON.stringify({ ...JSON.parse(Buffer.from(signedBody.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()),
+                   d: { leadIds: ['recSOMEONE_ELSE'] } }),
+).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const forged = `act_${tamperedBody}.${mac}`;
+
+Promise.all([
+  actions.execute({ actionId: id, ctx: { projectCode: 'B', userId: 'v' } })
+    .then(() => 'cross-tenant execution was NOT blocked')
+    .catch((err) => (err.code === 'not_found' ? null : `cross-tenant: unexpected ${err.code}`)),
+
+  actions.execute({ actionId: id, ctx: { projectCode: 'A', userId: 'someone-else' } })
+    .then(() => 'cross-USER execution was NOT blocked')
+    .catch((err) => (err.code === 'not_found' ? null : `cross-user: unexpected ${err.code}`)),
+
+  actions.execute({ actionId: forged, ctx: stagedBy })
+    .then(() => 'a TAMPERED payload was accepted')
+    .catch((err) => (err.code === 'not_found' ? null : `tampered: unexpected ${err.code}`)),
+]).then((problems) => {
+  const real = problems.filter(Boolean);
+  if (real.length) real.forEach(fail);
+  else pass('signed proposals: cross-tenant, cross-user and tampered all refused');
+  finish();
+});
 
 /* Relative luminance / WCAG contrast, from the literal token values. */
 function srgb(c) { const x = c / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }

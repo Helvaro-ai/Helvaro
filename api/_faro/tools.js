@@ -59,6 +59,7 @@
 const schema = require('./schema');
 const fixtures = require('./fixtures');
 const images = require('../_images');
+const data = require('./data');
 const credits = require('../_credits');
 
 const NOT_WIRED = 'not_wired';
@@ -73,70 +74,221 @@ function stub(summary, data, components = []) {
 // reads already used by api/leads.js; do NOT re-implement queries here.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/* ── Turning a CRM lead into a card ──────────────────────────────────────────
+   One function, so every tool that returns leads returns the same card. The
+   channel and status vocabularies are the schema's, not Airtable's; mapping
+   happens here rather than in the renderer, which should not have to know what
+   a Flemish single-select says this week. */
+function toChannelKey(bron) {
+  const b = String(bron || '').toLowerCase();
+  if (b.indexOf('whats') !== -1) return 'whatsapp';
+  if (b.indexOf('form') !== -1 || b.indexOf('website') !== -1) return 'form';
+  if (b.indexOf('tel') !== -1 || b.indexOf('phone') !== -1) return 'phone';
+  if (b.indexOf('mail') !== -1) return 'email';
+  return 'form';
+}
+
+function toStatusKey(lead) {
+  if (lead.afspraakGeboekt) return 'booked';
+  if (lead.qualified) return 'qualified';
+  if (lead.opgepikt) return 'contacted';
+  return 'new';
+}
+
+/* Money, in the format the rest of the product prints it. Intl rather than a
+   hand-rolled replace, so a 7-figure value groups correctly. */
+const EUR = new Intl.NumberFormat('nl-BE', {
+  style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
+});
+function money(n) {
+  return Number.isFinite(n) && n > 0 ? EUR.format(n) : '';
+}
+
+function leadToCard(lead) {
+  const budget = data.parseBudget(lead.verwachteWaarde);
+  return schema.leadCard({
+    id: lead.id,
+    name: lead.naam || 'Naamloze lead',
+    // Show the agent's own words when the number cannot be parsed, rather than
+    // a blank -- "in overleg" is information, and blanking it looks like a bug.
+    budget: money(budget) || String(lead.verwachteWaarde || ''),
+    timeframe: lead.urgentie || '',
+    channel: toChannelKey(lead.bron),
+    status: toStatusKey(lead),
+    note: lead.samenvatting || lead.reden || '',
+  });
+}
+
+/* Everything a tool hands back to the MODEL about a lead. Deliberately not the
+   whole record: the phone number and the full conversation blob are not needed
+   to answer "who are my best leads", and every field here is one the model may
+   quote back to the user. */
+function leadForModel(lead) {
+  return {
+    id: lead.id,
+    naam: lead.naam,
+    score: lead.leadScore,
+    gekwalificeerd: lead.qualified,
+    afspraakGeboekt: lead.afspraakGeboekt,
+    opgepikt: lead.opgepikt,
+    bron: lead.bron,
+    urgentie: lead.urgentie,
+    capaciteit: lead.capaciteit,
+    fit: lead.fit,
+    budget: data.parseBudget(lead.verwachteWaarde),
+    budgetTekst: lead.verwachteWaarde,
+    status: lead.status,
+    samenvatting: lead.samenvatting,
+    datum: lead.datum,
+  };
+}
+
+/* Every read tool is wrapped in this. A tool that throws inside the
+   orchestrator becomes "Tool mislukt", which the model then explains away in
+   prose -- so the two failures that are NOT a lookup miss get their own honest
+   answer instead: the CRM being unreachable, and the CRM not being configured.
+   Neither may ever be reported as "no results". */
+function readTool(name, run) {
+  return async function (args, ctx) {
+    try {
+      return await run(args || {}, ctx);
+    } catch (err) {
+      if (err instanceof data.DataUnavailable) {
+        return {
+          summary: `KAN NIET LEZEN: ${err.message} Zeg dit tegen de gebruiker. Verzin geen cijfers.`,
+          data: { unavailable: true },
+          components: [],
+        };
+      }
+      console.error(`[faro/tools] ${name} failed:`, err && err.message);
+      throw err;
+    }
+  };
+}
+
+/** A note appended to a summary when the underlying page cap was hit. */
+function truncationNote(truncated) {
+  return truncated
+    ? ' (gebaseerd op de meest recente leads, niet het volledige archief)'
+    : '';
+}
+
 const readTools = [
   {
     name: 'get_leads',
     kind: 'read',
-    description: 'Haal de meest recente leads op. Gebruik search_leads wanneer de gebruiker filtert op budget, timing, status of kanaal.',
+    description: 'Haal de meest recente of best scorende leads op. Gebruik search_leads wanneer de gebruiker filtert op budget, timing, status of kanaal.',
     parameters: {
       type: 'object',
       properties: {
         limit:  { type: 'integer', minimum: 1, maximum: 50, default: 10 },
         status: { type: 'string', enum: ['new', 'qualified', 'contacted', 'won', 'lost'] },
+        sort:   { type: 'string', enum: ['score', 'recent'], default: 'score',
+                  description: 'score = beste leads eerst, recent = nieuwste eerst' },
       },
     },
-    // WIRE TO: api/leads.js Airtable read, filtered by ctx.projectCode.
-    async run(args, _ctx) {
+    run: readTool('get_leads', async (args, ctx) => {
       if (fixtures.isEnabled()) {
         const leads = fixtures.searchLeads({ status: args.status, limit: args.limit || 10 });
         return stub(`${leads.length} leads gevonden.`, { leads }, leads.map(fixtures.leadCard));
       }
-      return stub('Geen leads gevonden.', { leads: [] }, []);
-    },
+      const { leads, truncated } = await data.leadsFor(ctx);
+      const { matches, total } = data.filterLeads(leads, {
+        status: args.status, limit: args.limit || 10, sort: args.sort || 'score',
+      });
+      if (!matches.length) {
+        return {
+          summary: leads.length
+            ? `Geen van de ${leads.length} leads past bij deze filter.`
+            : 'Deze klant heeft nog geen leads in het CRM.',
+          data: { leads: [], totalInCrm: leads.length },
+          components: [],
+        };
+      }
+      return {
+        summary: `${matches.length} van ${total} leads${truncationNote(truncated)}.`,
+        data: { leads: matches.map(leadForModel), total, totalInCrm: leads.length },
+        components: matches.map(leadToCard),
+      };
+    }),
   },
 
   {
     name: 'search_leads',
     kind: 'read',
-    description: 'Zoek leads op budget, aankooptermijn, status, kanaal of trefwoord. Dit is de tool achter vragen als "leads met budget boven 400k die binnen 3 maanden willen kopen".',
+    description: 'Zoek leads op budget, aankooptermijn, status, kanaal, score of trefwoord. Dit is de tool achter vragen als "leads met budget boven 400k die binnen 3 maanden willen kopen".',
     parameters: {
       type: 'object',
       properties: {
         minBudget:   { type: 'integer', description: 'Minimum budget in euro' },
         maxBudget:   { type: 'integer', description: 'Maximum budget in euro' },
+        minScore:    { type: 'integer', minimum: 1, maximum: 10, description: 'Minimale leadscore' },
         timeframe:   { type: 'string', enum: ['0-1m', '1-3m', '3-6m', '6m+'] },
         status:      { type: 'string', enum: ['new', 'qualified', 'contacted', 'won', 'lost'] },
         channel:     { type: 'string', enum: ['whatsapp', 'form', 'phone', 'email'] },
+        qualifiedOnly: { type: 'boolean' },
         query:       { type: 'string', description: 'Vrije tekst — naam, adres of trefwoord' },
         limit:       { type: 'integer', minimum: 1, maximum: 50, default: 10 },
       },
     },
-    // WIRE TO: Airtable filterByFormula built server-side from these fields.
-    // Never interpolate `query` into a formula unescaped — api/_credits.js's
-    // escapeFormula() is the existing helper for this.
-    async run(args, _ctx) {
+    run: readTool('search_leads', async (args, ctx) => {
       if (fixtures.isEnabled()) {
         const leads = fixtures.searchLeads(args);
         return stub(
           leads.length ? `${leads.length} leads gevonden.` : 'Geen leads passen bij deze filters.',
-          { leads },
-          leads.map(fixtures.leadCard),
+          { leads }, leads.map(fixtures.leadCard),
         );
       }
-      return stub('Geen resultaten (nog niet aangesloten).', { leads: [] }, []);
-    },
+      const { leads, truncated } = await data.leadsFor(ctx);
+      const { matches, total } = data.filterLeads(leads, args);
+      if (!matches.length) {
+        return {
+          summary: `Geen van de ${leads.length} leads past bij deze filters. `
+            + 'Let op: leads zonder ingevuld budget tellen niet mee bij een budgetfilter.',
+          data: { leads: [], totalInCrm: leads.length },
+          components: [],
+        };
+      }
+      return {
+        summary: `${matches.length} van ${total} passende leads${truncationNote(truncated)}.`,
+        data: { leads: matches.map(leadForModel), total, totalInCrm: leads.length },
+        components: matches.map(leadToCard),
+      };
+    }),
   },
 
   {
     name: 'get_lead',
     kind: 'read',
-    description: 'Haal één lead op met volledige details en kwalificatiegegevens.',
+    description: 'Haal één lead op met volledige details en kwalificatiegegevens. Werkt met een lead-id of met een naam.',
     parameters: {
       type: 'object',
-      properties: { id: { type: 'string' } },
-      required: ['id'],
+      properties: {
+        id:   { type: 'string', description: 'Lead-id uit een eerdere tool' },
+        name: { type: 'string', description: 'Naam, wanneer je geen id hebt' },
+      },
     },
-    async run(_args, _ctx) { return stub('Lead niet gevonden.', { lead: null }); },
+    run: readTool('get_lead', async (args, ctx) => {
+      if (fixtures.isEnabled()) return stub('Lead niet gevonden.', { lead: null });
+      const { leads } = await data.leadsFor(ctx);
+      const lead = data.findLead(leads, { leadId: args.id, name: args.name });
+      if (!lead) {
+        return {
+          summary: `Geen lead gevonden voor ${args.id || args.name || 'deze zoekopdracht'}.`,
+          data: { lead: null }, components: [],
+        };
+      }
+      return {
+        summary: `Lead ${lead.naam}: score ${lead.leadScore || '?'}/10, `
+          + `${lead.qualified ? 'gekwalificeerd' : 'nog niet gekwalificeerd'}, `
+          + `${lead.afspraakGeboekt ? 'afspraak geboekt' : 'geen afspraak'}.`,
+        data: {
+          lead: { ...leadForModel(lead), notities: lead.notities, reden: lead.reden },
+          heeftGesprek: Boolean(lead.gesprek),
+        },
+        components: [leadToCard(lead)],
+      };
+    }),
   },
 
   {
@@ -148,7 +300,17 @@ const readTools = [
       properties: { id: { type: 'string' } },
       required: ['id'],
     },
-    async run(_args, _ctx) { return stub('Pand niet gevonden.', { property: null }); },
+    /* Still honest about being unwired: this CRM has no property table. Panden
+       exist as free text on a lead and as generated images, both of which other
+       tools already reach. Saying so out loud beats inventing a house. */
+    async run(_args, _ctx) {
+      return {
+        summary: 'Er is geen pandendatabank in dit CRM. Panden staan als tekst bij de lead. '
+          + 'Gebruik get_lead of search_leads met een trefwoord.',
+        data: { property: null, unsupported: true },
+        components: [],
+      };
+    },
   },
 
   {
@@ -157,32 +319,80 @@ const readTools = [
     description: 'Haal het volledige WhatsApp-gesprek met een lead op.',
     parameters: {
       type: 'object',
-      properties: { leadId: { type: 'string' } },
-      required: ['leadId'],
+      properties: {
+        leadId: { type: 'string' },
+        name:   { type: 'string', description: 'Naam, wanneer je geen id hebt' },
+      },
     },
-    async run(_args, _ctx) { return stub('Geen gesprek gevonden.', { messages: [] }); },
+    run: readTool('get_conversation', async (args, ctx) => {
+      if (fixtures.isEnabled()) return stub('Geen gesprek gevonden.', { messages: [] });
+      const { leads } = await data.leadsFor(ctx);
+      const lead = data.findLead(leads, { leadId: args.leadId, name: args.name });
+      if (!lead) {
+        return { summary: 'Die lead bestaat niet in dit CRM.', data: { messages: [] }, components: [] };
+      }
+      const messages = data.parseConversation(lead.gesprek);
+      if (!messages.length) {
+        return {
+          summary: `Er is nog geen WhatsApp-gesprek met ${lead.naam}.`,
+          data: { messages: [], lead: leadForModel(lead) },
+          components: [leadToCard(lead)],
+        };
+      }
+      return {
+        summary: `Gesprek met ${lead.naam}: ${messages.length} berichten.`,
+        data: { messages, lead: leadForModel(lead) },
+        components: [leadToCard(lead)],
+      };
+    }),
   },
 
   {
     name: 'search_conversations',
     kind: 'read',
-    description: 'Zoek in gesprekken op trefwoord of periode. Gebruik dit voor "vat de gesprekken van vandaag samen".',
+    description: 'Zoek in gesprekken op trefwoord, of haal de leads op die opvolging nodig hebben. Gebruik dit voor "vat de gesprekken van vandaag samen" en "wie moet ik opvolgen".',
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string' },
-        since: { type: 'string', description: 'ISO-datum' },
-        limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
+        query:          { type: 'string' },
+        needsFollowUp:  { type: 'boolean', description: 'Alleen gekwalificeerde leads zonder afspraak' },
+        since:          { type: 'string', description: 'ISO-datum' },
+        limit:          { type: 'integer', minimum: 1, maximum: 50, default: 20 },
       },
     },
-    async run(_args, _ctx) {
+    run: readTool('search_conversations', async (args, ctx) => {
       if (fixtures.isEnabled()) {
         return stub('3 gesprekken vragen opvolging.',
           { conversations: fixtures.CONVERSATIONS },
           fixtures.searchLeads({ limit: 3 }).map(fixtures.leadCard));
       }
-      return stub('Geen gesprekken gevonden.', { conversations: [] });
-    },
+      const { leads } = await data.leadsFor(ctx);
+      let found = data.searchConversations(leads, {
+        query: args.query, needsFollowUp: args.needsFollowUp, limit: args.limit || 20,
+      });
+      if (args.since) {
+        const from = Date.parse(args.since);
+        if (Number.isFinite(from)) found = found.filter((l) => Date.parse(l.datum) >= from);
+      }
+      if (!found.length) {
+        return {
+          summary: args.needsFollowUp
+            ? 'Er staan geen gekwalificeerde leads zonder afspraak open.'
+            : 'Geen gesprekken gevonden die hierbij passen.',
+          data: { conversations: [] }, components: [],
+        };
+      }
+      return {
+        summary: `${found.length} ${found.length === 1 ? 'gesprek' : 'gesprekken'}.`,
+        data: {
+          conversations: found.map((l) => ({
+            ...leadForModel(l),
+            laatsteBerichten: data.parseConversation(l.gesprek).slice(-6),
+          })),
+        },
+        components: found.slice(0, 8).map(leadToCard),
+      };
+    }),
   },
 
   {
@@ -190,45 +400,118 @@ const readTools = [
     kind: 'read',
     description: 'Haal de pipeline op: aantal leads en waarde per fase.',
     parameters: { type: 'object', properties: {} },
-    // WIRE TO: the same aggregation the CRM pipeline page already renders.
-    async run(_args, _ctx) {
+    run: readTool('get_pipeline', async (_args, ctx) => {
       if (fixtures.isEnabled()) {
         return stub('Pipeline opgehaald.', { stages: fixtures.PIPELINE },
           [schema.statGroup({ title: 'Pipeline', stats: fixtures.PIPELINE })]);
       }
-      return stub('Pipeline niet beschikbaar.', { stages: [] });
-    },
+      const { leads, truncated } = await data.leadsFor(ctx);
+      if (!leads.length) {
+        return { summary: 'Deze klant heeft nog geen leads in het CRM.', data: { stages: [] }, components: [] };
+      }
+      const stages = data.pipeline(leads);
+      const stats = stages.map((s) => ({
+        label: s.label,
+        value: String(s.count),
+        sub: money(s.value) || '—',
+      }));
+      return {
+        summary: stages.map((s) => `${s.label}: ${s.count}`).join(', ')
+          + `. Totale waarde ${money(stages.reduce((t, s) => t + s.value, 0)) || 'onbekend'}`
+          + truncationNote(truncated) + '.',
+        data: {
+          stages: stages.map((s) => ({ key: s.key, label: s.label, count: s.count, value: s.value })),
+        },
+        components: [schema.statGroup({ title: 'Pipeline', stats })],
+      };
+    }),
   },
 
   {
     name: 'get_analytics',
     kind: 'read',
-    description: 'Haal prestatiecijfers op over een periode: nieuwe leads, kwalificatiegraad, responstijd, conversie.',
+    description: 'Haal prestatiecijfers op: nieuwe leads, kwalificatiegraad, responstijd, conversie en prestaties per kanaal.',
     parameters: {
       type: 'object',
       properties: {
-        period: { type: 'string', enum: ['today', '7d', '30d', '90d'], default: '30d' },
+        period: { type: 'string', enum: ['today', '7d', '30d', '90d', 'all'], default: '30d' },
       },
     },
-    async run(_args, _ctx) {
+    run: readTool('get_analytics', async (args, ctx) => {
       if (fixtures.isEnabled()) {
         return stub('Cijfers opgehaald.', { metrics: fixtures.ANALYTICS },
           [schema.statGroup({ title: 'Prestaties (30 dagen)', stats: fixtures.ANALYTICS })]);
       }
-      return stub('Cijfers niet beschikbaar.', { metrics: {} });
-    },
+      const { leads, truncated } = await data.leadsFor(ctx);
+      if (!leads.length) {
+        return { summary: 'Nog geen leads, dus nog geen cijfers.', data: { metrics: {} }, components: [] };
+      }
+
+      const DAYS = { today: 1, '7d': 7, '30d': 30, '90d': 90 };
+      const period = args.period || '30d';
+      const days = DAYS[period];
+      const scoped = days
+        ? leads.filter((l) => {
+            const t = Date.parse(l.datum);
+            return Number.isFinite(t) && t >= Date.now() - days * 86400000;
+          })
+        : leads;
+
+      if (!scoped.length) {
+        return {
+          summary: `Geen leads in deze periode (${period}). Over alle tijd zijn het er ${leads.length}.`,
+          data: { metrics: {}, period, totalInCrm: leads.length }, components: [],
+        };
+      }
+
+      const m = data.analytics(scoped);
+      const stats = [
+        { label: 'Leads',            value: String(m.total) },
+        { label: 'Gekwalificeerd',   value: String(m.qualified), sub: m.total ? Math.round((m.qualified / m.total) * 100) + '%' : '' },
+        { label: 'Afspraken',        value: String(m.booked),    sub: m.conversionRate + '% conversie' },
+        { label: 'Gem. score',       value: String(m.avgLeadScore) + '/10' },
+        { label: 'Gem. reactietijd', value: m.avgResponseTime ? m.avgResponseTime + 's' : '—' },
+        { label: 'Pipelinewaarde',   value: money(m.pipelineValue) || '—' },
+      ];
+      return {
+        summary: `Periode ${period}: ${m.total} leads, ${m.qualified} gekwalificeerd, `
+          + `${m.booked} afspraken (${m.conversionRate}% conversie)${truncationNote(truncated)}.`,
+        data: { metrics: m, period },
+        components: [schema.statGroup({ title: `Prestaties (${period})`, stats })],
+      };
+    }),
   },
 
   {
     name: 'get_calendar',
     kind: 'read',
-    description: 'Haal komende afspraken en vrije momenten op.',
+    description: 'Haal de leads op met een geboekte afspraak.',
     parameters: {
       type: 'object',
-      properties: { days: { type: 'integer', minimum: 1, maximum: 30, default: 7 } },
+      properties: { limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 } },
     },
-    // WIRE TO: api/_gcal.js — the integration already exists.
-    async run(_args, _ctx) { return stub('Agenda niet beschikbaar.', { events: [] }); },
+    /* Reports the CRM's own booking flag, NOT Google Calendar. The gcal
+       integration (api/_gcal.js) is per-client and optional, so a tool built on
+       it would return nothing for every client who has not connected it -- the
+       same silent-empty failure this whole wiring pass exists to remove. When
+       the times themselves are needed, that is a second tool with its own
+       "not connected" answer, not a quiet blank from this one. */
+    run: readTool('get_calendar', async (args, ctx) => {
+      const { leads } = await data.leadsFor(ctx);
+      const booked = data.bookedAppointments(leads, { limit: args.limit || 20 });
+      if (!booked.length) {
+        return {
+          summary: 'Er staan nog geen afspraken geboekt bij leads in het CRM.',
+          data: { appointments: [] }, components: [],
+        };
+      }
+      return {
+        summary: `${booked.length} leads met een geboekte afspraak. `
+          + 'Let op: dit komt uit het CRM, niet uit Google Agenda — exacte tijdstippen staan daar.',
+        data: { appointments: booked.map(leadForModel), source: 'crm' },
+        components: booked.slice(0, 8).map(leadToCard),
+      };
+    }),
   },
 ];
 
@@ -349,20 +632,72 @@ const actTools = [
   {
     name: 'write_listing',
     kind: 'create',
-    description: 'Schrijf de verkooptekst voor een pand. Levert een concept op dat de gebruiker kan bewerken.',
+    description: 'Lever een geschreven pandtekst op als bewerkbaar concept. Schrijf de tekst zelf en geef hem mee in `body` — deze tool bewaart en toont hem, hij schrijft niet voor jou. Gebruik get_lead of search_leads eerst wanneer de tekst over een bestaande lead gaat.',
     parameters: {
       type: 'object',
       properties: {
-        propertyId: { type: 'string' },
-        length:     { type: 'string', enum: ['kort', 'normaal', 'uitgebreid'], default: 'normaal' },
-        tone:       { type: 'string', enum: ['luxe', 'zakelijk', 'warm'], default: 'luxe' },
+        title: { type: 'string', description: 'Korte titel, bv. "Villa Knokke-Heist — 4 slaapkamers"' },
+        body:  { type: 'string', description: 'De volledige verkooptekst, klaar om te publiceren.' },
+        leadId: { type: 'string', description: 'Optioneel: de lead waar deze tekst bij hoort.' },
+        length: { type: 'string', enum: ['kort', 'normaal', 'uitgebreid'], default: 'normaal' },
+        tone:   { type: 'string', enum: ['luxe', 'zakelijk', 'warm'], default: 'luxe' },
       },
-      required: ['propertyId'],
+      required: ['title', 'body'],
     },
-    // Drafting text changes nothing outside Helvaro, so this one resolves to a
-    // draft component rather than a confirmation — publishing it is a separate,
-    // confirmed step.
-    async run(_args, _ctx) { return stub('Concept niet beschikbaar.', { draft: null }); },
+    /* The model writes the copy; this tool packages it.
+     *
+     * The obvious alternative -- a second model call inside the tool, driven by
+     * a propertyId -- was what the stub was shaped for, and it is wrong twice.
+     * There is no property table for a propertyId to point at, and the model
+     * that already has the whole conversation (the brief, the lead, the three
+     * corrections the user made two messages ago) would be handing a summary of
+     * all that to a second model with none of it. Writing is what the model is
+     * for; the tool's job is to turn the text into an artifact the user can see
+     * and edit, which is exactly how a chat assistant's documents work.
+     *
+     * Drafting changes nothing outside Helvaro, so this is 'create', not 'act'.
+     * Publishing it anywhere would be a separate, confirmed step.
+     */
+    async run(args, ctx) {
+      const title = String(args.title || '').trim();
+      const body = String(args.body || '').trim();
+      if (!body) {
+        return {
+          summary: 'Geen tekst meegegeven. Schrijf de pandtekst zelf en geef hem mee in `body`.',
+          data: { draft: null }, components: [],
+        };
+      }
+
+      // Bounded so one turn cannot push an unbounded blob into the transcript
+      // that every later turn then pays for in input tokens.
+      const MAX = 6000;
+      const text = body.length > MAX ? body.slice(0, MAX) : body;
+
+      const meta = [];
+      if (args.tone) meta.push(args.tone);
+      if (args.length) meta.push(args.length);
+
+      let leadName = '';
+      if (args.leadId) {
+        try {
+          const { leads } = await data.leadsFor(ctx);
+          const lead = data.findLead(leads, { leadId: args.leadId });
+          if (lead) { leadName = lead.naam; meta.push(lead.naam); }
+        } catch (_) { /* the draft is still valid without the lead's name */ }
+      }
+
+      return {
+        summary: `Pandtekst "${title || 'concept'}" opgeleverd (${text.length} tekens)`
+          + (body.length > MAX ? ', ingekort' : '') + '.',
+        data: { draft: { title, body: text, leadId: args.leadId || null, leadName } },
+        components: [schema.draft({
+          id: 'listing-' + Date.now().toString(36),
+          title: title || 'Pandtekst',
+          body: text,
+          meta: meta.join(' · '),
+        })],
+      };
+    },
   },
 ];
 

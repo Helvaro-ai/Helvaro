@@ -84,6 +84,7 @@ const STRINGS = {
     'ctx.campaigns': 'Campagnes',
     'ctx.assets': 'Marketing',
     'ctx.images': 'Beelden',
+    'ctx.pipeline': 'Pipeline',
     'ctx.explain': 'Faro kan deze gegevens gebruiken om je vragen te beantwoorden.',
 
     'qa.title': 'Snelle acties',
@@ -207,6 +208,7 @@ const STRINGS = {
     'ctx.campaigns': 'Campaigns',
     'ctx.assets': 'Marketing',
     'ctx.images': 'Images',
+    'ctx.pipeline': 'Pipeline',
     'ctx.explain': 'Faro can use this data to answer your questions.',
 
     'qa.title': 'Quick actions',
@@ -330,6 +332,7 @@ const STRINGS = {
     'ctx.campaigns': 'Campagnes',
     'ctx.assets': 'Marketing',
     'ctx.images': 'Visuels',
+    'ctx.pipeline': 'Pipeline',
     'ctx.explain': 'Faro peut utiliser ces données pour répondre à vos questions.',
 
     'qa.title': 'Actions rapides',
@@ -453,6 +456,7 @@ const STRINGS = {
     'ctx.campaigns': 'Kampagnen',
     'ctx.assets': 'Marketing',
     'ctx.images': 'Bilder',
+    'ctx.pipeline': 'Pipeline',
     'ctx.explain': 'Faro kann diese Daten zur Beantwortung Ihrer Fragen nutzen.',
 
     'qa.title': 'Schnellaktionen',

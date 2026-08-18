@@ -134,13 +134,26 @@ function contextSources() {
   // to". These were all reported as available while every backing tool was
   // still a stub, so the badge told the agent Faro could see their leads while
   // it answered "geen leads gevonden" — the one claim this indicator exists to
-  // make, made falsely. Flip each to true as its tool is wired.
-  const WIRED = { images: true };
+  // make, made falsely. Flip each to true as its tool is wired, and only then.
+  const WIRED = {
+    leads: true,          // api/_faro/data.js → api/_leads-read.js → Airtable
+    conversations: true,  // the WhatsApp history stored on the lead record
+    analytics: true,      // derived from the same rows the dashboard charts
+    images: true,
+    // Still off, and each for a real reason rather than an unfinished TODO:
+    //   properties — this CRM has no property table; panden are free text on a
+    //                lead, which search_leads already reaches.
+    //   campaigns  — no campaign store is wired; create_campaign proposes but
+    //                cannot execute.
+    //   calendar   — get_calendar reports the CRM's own booking flag, not
+    //                Google Calendar, so claiming "agenda" would overstate it.
+  };
   return [
     { key: 'leads',         label: 'Leads',      available: Boolean(WIRED.leads)         },
     { key: 'properties',    label: 'Panden',     available: Boolean(WIRED.properties)    },
     { key: 'conversations', label: 'Gesprekken', available: Boolean(WIRED.conversations) },
     { key: 'analytics',     label: 'Analytics',  available: Boolean(WIRED.analytics)     },
+    { key: 'pipeline',      label: 'Pipeline',   available: Boolean(WIRED.leads)         },
     { key: 'campaigns',     label: 'Campagnes',  available: Boolean(WIRED.campaigns)     },
     { key: 'calendar',      label: 'Agenda',     available: Boolean(WIRED.calendar)      },
     { key: 'images',        label: 'Beelden',    available: Boolean(WIRED.images)        },

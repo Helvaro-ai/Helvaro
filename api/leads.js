@@ -8,6 +8,7 @@ const { getPlanState } = require('./_plan'); // trial/plan-status interpretation
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _lang   = require('./_lang');   // language registry — see its file header
 const _verify = require('./_verify'); // email-ownership verification — see its file header
+const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -1778,55 +1779,13 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ...leadsCache.payload, stale: true });
   }
 
-  // ── Field helpers ───────────────────────────────────────────────────────────
-  function str(v)  { if (!v) return ''; if (typeof v === 'object' && v.name) return v.name; return String(v); }
-  function bool(v) { return v === true || v === 1; }
-  function num(v)  { return typeof v === 'number' ? v : parseFloat(v) || 0; }
-
-  const leads = allLeads.map(r => {
-    const f = r.fields;
-    return {
-      id:                    r.id,
-      naam:                  f.fldbk0LVNckOU0bqA          || f.Name                    || '',
-      telefoon:              f.fld6YaitW0lMqHUrd           || f.Phone                   || '',
-      status:                str(f.fld8mkrEWcyq7mUip       || f['Conversation State']),
-      qualified:             bool(f.fld0hAZJ5wgaXrNTn      || f.Qualified),
-      reden:                 f.fld3NhSENma0okbT7           || f.Reason                  || '',
-      samenvatting:          f.fldqerIiw5qyQjXHr           || f['AI Summary']           || '',
-      capaciteit:            str(f.fldrfbTopJvZEYSKP        || f.Ability),
-      urgentie:              str(f.fldlyLH1DKrWyG3Tr        || f.Urgency),
-      fit:                   str(f.fldqNxsPshvZEBeLr        || f.Fit),
-      bron:                  str(f.fldGoerozqdea4BfU        || f.Bron),
-      boekingslinkVerstuurd: bool(f.fldLeEqwNefdglLis       || f['Booking Link Sent']),
-      afspraakGeboekt:       bool(f.fldyIGNetqcSEkoaK       || f['Appointment Booked']),
-      notities:              f.fldoLRI5W12ThTls7            || f.Notities               || '',
-      gesprek:               f['Conversation History']       || '',
-      leadScore:             num(f.fldpzQgMuWJLjogiD        || f['Lead Score']),
-      opgepikt:              bool(f.fld86JQHB6dbuutA7       || f.Opgepikt),
-      verwachteWaarde:       f.fldv7qOYvCN1xJfiR            || f['Verwachte Waarde']    || '',
-      reactietijd:           num(f.fldUJJ8oSmAMQ9wB3        || f['Response Time (sec)']),
-      datum:                 f.fldR0r13EU4RwrtvH            || f['Created At']          || r.createdTime || ''
-    };
-  });
-
-  // ── Stats ───────────────────────────────────────────────────────────────────
-  const now            = new Date();
-  const total          = leads.length;
-  const qualified      = leads.filter(l => l.qualified).length;
-  const booked         = leads.filter(l => l.afspraakGeboekt).length;
-  const conversionRate = total > 0 ? Math.round((booked / total) * 1000) / 10 : 0;
-  const thisMonth      = leads.filter(l => {
-    const d = new Date(l.datum);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).length;
-  const times          = leads.map(l => l.reactietijd).filter(v => v > 0);
-  const avgResponseTime = times.length > 0
-    ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
-    : 0;
-  const avgLeadScore   = leads.length > 0
-    ? Math.round(leads.reduce((a, l) => a + (l.leadScore || 0), 0) / leads.length)
-    : 0;
-  const stats = { total, qualified, booked, conversionRate, thisMonth, avgResponseTime, avgLeadScore };
+  // The record mapper and the stat arithmetic moved to api/_leads-read.js so
+  // Faro reads a lead the same way this file does. Nothing about the output
+  // changed — the dashboard reads these exact keys — but there is now one
+  // table of Airtable field IDs instead of two that can drift apart.
+  const leads = allLeads.map(_leadsRead.mapLead);
+  const stats = _leadsRead.computeStats(leads);
+  const now = new Date();
 
   // ── Query params ────────────────────────────────────────────────────────────
   const qs     = (req.url || '').split('?')[1] || '';
