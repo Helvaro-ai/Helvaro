@@ -182,6 +182,58 @@ Promise.all([
   else pass('text on fixed dark scrims uses literal colours, not flipping tokens');
 }
 
+/* ── The AI books, not the agent ─────────────────────────────────────────────
+   Appointments are made automatically by the WhatsApp AI inside the
+   conversation (api/whatsapp.js step 11b). A "book appointment" action on the
+   briefing would tell the agent to do by hand the one thing the product
+   already does for them, and would put a viewing in the calendar that the lead
+   never agreed to. It was built that way first, so this is checked rather than
+   remembered. */
+{
+  const command = require('../api/_command');
+  const now = Date.now();
+  const convo = (agoDays) => JSON.stringify([
+    { role: 'assistant', content: 'dag', ts: now - (agoDays + 1) * 86400000 },
+    { role: 'user', content: 'hoi', ts: now - agoDays * 86400000 },
+  ]);
+  const base = {
+    id: 'r1', naam: 'Test', telefoon: '+32470000000', status: 'Gekwalificeerd',
+    qualified: true, reden: '', samenvatting: '', capaciteit: '', urgentie: 'Hoog',
+    fit: '', bron: 'Formulier', boekingslinkVerstuurd: false, afspraakGeboekt: false,
+    notities: '', aiPaused: false, leadScore: 9, opgepikt: false,
+    verwachteWaarde: '€500.000', reactietijd: 30,
+    datum: new Date(now - 2 * 86400000).toISOString(), gesprek: convo(0.2),
+  };
+
+  const actionFor = (lead) => {
+    const built = command.build([lead], { calendarConnected: true });
+    const o = built.opportunities[0] || command.analyse([lead], {}).all[0];
+    return o && o.action ? o.action.key : 'none';
+  };
+
+  const cases = [
+    ['qualified, in conversation, no appointment', base, 'follow_up'],
+    ['24-hour window shut',                        { ...base, gesprek: convo(3) }, 'call'],
+    ['AI paused',                                  { ...base, aiPaused: true }, 'takeover'],
+    ['appointment already booked',                 { ...base, afspraakGeboekt: true }, 'review'],
+  ];
+  const wrong = cases.filter(([, lead, want]) => actionFor(lead) !== want);
+  if (wrong.length) {
+    wrong.forEach(([name, lead, want]) => fail(`next action for "${name}": expected ${want}, got ${actionFor(lead)}`));
+  } else {
+    pass('recommended actions match who actually books (the AI, in WhatsApp)');
+  }
+
+  // No code path may offer to book on the agent's behalf.
+  const engine = fs.readFileSync(path.join(__dirname, '..', 'api', '_command.js'), 'utf8');
+  const cmdClient2 = require('../api/_command-ui/client').js();
+  if (/key:\s*'book'/.test(engine) || /data-cmd-act="book"/.test(cmdClient2) || /'book'/.test(cmdClient2)) {
+    fail('a manual "book appointment" action is back — the WhatsApp AI books, not the agent');
+  } else {
+    pass('nothing offers to book an appointment by hand');
+  }
+}
+
 /* ── Embedding contract ──────────────────────────────────────────────────────
    Two things customers actually rely on, both of which were broken and neither
    of which throws anything: a header and a hostname. */

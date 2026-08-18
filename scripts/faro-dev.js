@@ -78,6 +78,11 @@ const _fixtureLeads = [
     bron: 'Formulier', sam: 'Geen telefoonnummer achtergelaten.', convo: [3, 3, 1] },
   { naam: 'Ilse Vermeulen', tel: '+32470888888', q: true, score: 8.4, budget: '€540.000', urg: 'Hoog',
     bron: 'Instagram', sam: 'Zoekt nieuwbouw, budget flexibel.', convo: [4, 5, 2.5] },
+  // AI paused: the most urgent state a lead can be in — mid-conversation and
+  // being met with silence, because a person took over and has not replied.
+  { naam: 'Lotte Peeters', tel: '+32470121212', q: true, score: 8.8, budget: '€465.000', urg: 'Hoog',
+    bron: 'WhatsApp', sam: 'Vroeg naar de erfpacht — AI wist het niet.',
+    convo: [3, 3, 0.3], paused: true },
   { naam: 'Pieter Goossens', tel: '+32470999999', q: false, score: 5.5, budget: '€280.000', urg: 'Middel',
     bron: 'Website', sam: 'Nog aan het rondkijken.', convo: [1, 3, 6] },
 ];
@@ -89,6 +94,7 @@ _leadsRead.fetchLeads = async () => ({
     qualified: !!f.q, reden: '', samenvatting: f.sam, capaciteit: '', urgentie: f.urg, fit: '',
     bron: f.bron, boekingslinkVerstuurd: false, afspraakGeboekt: !!f.booked, notities: '',
     gesprek: f.convo ? _convo(f.convo[0], f.convo[1], f.convo[2]) : '',
+    aiPaused: !!f.paused,
     leadScore: f.score, opgepikt: false, verwachteWaarde: f.budget,
     reactietijd: 20 + i * 7, datum: new Date(_now - (2 + i) * _DAY).toISOString(),
   })),

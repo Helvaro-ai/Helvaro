@@ -163,7 +163,7 @@ function cmdRenderKpis(d) {
     tiles.push({ l: CT('kpi.pipeline'), v: cmdEur(o.potentialPipeline), s: CT('kpi.pipelineSub') });
   }
   tiles.push({ l: CT('kpi.qualified'), v: String(o.qualified || 0), s: '' });
-  tiles.push({ l: CT('kpi.appointments'), v: String(o.appointments || 0), s: '' });
+  tiles.push({ l: CT('kpi.appointments'), v: String(o.appointments || 0), s: CT('kpi.appointmentsSub') });
   tiles.push({ l: CT('kpi.conversion'), v: (o.conversion || 0) + '%', s: CT('kpi.conversionSub') });
   if (rec.count > 0 && rec.potentialValue > 0) {
     // Labelled potential pipeline, never revenue. The distinction is the whole
@@ -351,7 +351,9 @@ function cmdAct(key, id) {
   var o = cmdState.byId[id];
   if (!o) return;
 
-  if (key === 'review') {
+  if (key === 'review' || key === 'takeover') {
+    // Both land in the conversation view: that is where a human reads the
+    // thread and, for a paused lead, where they type the reply themselves.
     cmdCloseDrawer();
     navigateTo('gesprekken');
     return;
@@ -363,11 +365,16 @@ function cmdAct(key, id) {
 
   var prompt;
   if (key === 'follow_up') {
+    // The AI books the viewing itself once the conversation restarts, so the
+    // message asks for a nudge — not for a proposed time. Asking Faro to
+    // "propose a viewing" would have it negotiate a slot in text that the
+    // WhatsApp AI is about to negotiate again, with the calendar in hand.
     prompt = 'Schrijf een kort, persoonlijk opvolgbericht voor ' + o.name +
-      ' en vraag me om bevestiging voor je het verstuurt. Context: ' + cmdContextLine(o);
-  } else if (key === 'book') {
-    prompt = 'Stel een bezichtiging voor met ' + o.name +
-      ' en zet die in mijn agenda na mijn bevestiging. Context: ' + cmdContextLine(o);
+      ' dat het gesprek weer op gang brengt, zodat de AI de afspraak kan afronden. ' +
+      'Vraag me om bevestiging voor je het verstuurt. Context: ' + cmdContextLine(o);
+  } else if (key === 'takeover') {
+    prompt = 'De AI staat op pauze bij ' + o.name +
+      '. Vat samen waar het gesprek staat en stel voor wat ik nu zou antwoorden. Context: ' + cmdContextLine(o);
   } else {
     prompt = 'Waarom is ' + o.name + ' nu belangrijk, en wat raad je aan? Context: ' + cmdContextLine(o);
   }

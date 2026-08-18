@@ -736,7 +736,7 @@ const actTools = [
   {
     name: 'schedule_followup',
     kind: 'act',
-    description: 'Zet een opvolgmoment of bezichtiging in de gekoppelde Google Agenda. Wordt pas aangemaakt nadat de gebruiker bevestigt.',
+    description: 'Zet een HERINNERING voor de gebruiker zelf in hun Google Agenda — bijvoorbeeld "bel Karel donderdag". Gebruik dit NIET om een bezichtiging met een lead te boeken: dat doet de WhatsApp-AI zelf in het gesprek, met de agenda erbij. Wordt pas aangemaakt nadat de gebruiker bevestigt.',
     parameters: {
       type: 'object',
       properties: {
@@ -748,8 +748,14 @@ const actTools = [
       },
       required: ['when'],
     },
-    /* Validates the time and the connection BEFORE proposing. A confirmation
-       card for an agenda that is not connected, or for a date the model
+    /* This books nothing with a lead. Viewings are booked by the WhatsApp AI
+       inside the conversation, where it reads the lead's proposed time, checks
+       the client's calendar and confirms in the thread (api/whatsapp.js step
+       11b). What this creates is the AGENT'S own reminder — the "call Karel
+       Thursday" kind — which is why nothing here messages anybody.
+
+       Validates the time and the connection BEFORE proposing: a confirmation
+       card for a calendar that is not connected, or for a date the model
        hallucinated, is a click that can only end in an error. */
     async run(args, ctx) {
       const startMs = Date.parse(args.when);

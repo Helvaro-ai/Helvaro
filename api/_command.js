@@ -24,6 +24,21 @@
  * near zero on Tuesday once the viewing is booked. Conflating them is why CRM
  * dashboards sort by score and still leave the urgent thing at position 14.
  *
+ * ── The AI books; the agent unblocks ─────────────────────────────────────────
+ * Appointments are made automatically by the WhatsApp AI, inside the
+ * conversation (api/whatsapp.js step 11b): it reads the lead's proposed time,
+ * checks the client's Google Calendar, books the slot and confirms in the
+ * thread. Nobody books by hand.
+ *
+ * That is what this file's recommended actions are built around. A qualified
+ * lead with no appointment does not mean a booking is owed — it almost always
+ * means the conversation stalled before the AI could close it. So the actions
+ * are the ones only a human can take: take over a paused conversation, nudge a
+ * quiet one back to life so the AI can finish, call when the 24-hour window has
+ * shut, read the thread. There is deliberately no "book appointment": offering
+ * it would tell the agent to do by hand the one thing the product already does
+ * for them, and would put a viewing in the calendar the lead never agreed to.
+ *
  * ── Explainability is a hard requirement, not a feature ──────────────────────
  * Every score carries the reasons that produced it, in the order they
  * contributed. Nothing here may reach the UI as a bare number: a prioritisation
@@ -192,13 +207,28 @@ function scoreLead(lead, ctx) {
    nobody trusts to be a count of anything. */
 const CATEGORIES = [
   {
-    key: 'ready_to_book',
-    label: 'Klaar om te boeken',
-    icon: 'calendar',
+    /* The AI has stopped answering and is waiting for a person. Nothing else
+       on this page outranks that: the lead is mid-conversation and currently
+       being met with silence. */
+    key: 'needs_human',
+    label: 'Wacht op jou',
+    icon: 'alert',
+    tone: 'risk',
+    test: (l) => l.aiPaused && !l.afspraakGeboekt,
+    why: () => 'De AI staat op pauze bij deze lead — zolang jij niet antwoordt, antwoordt niemand.',
+  },
+  {
+    /* Qualified, still talking, and no appointment yet. The AI books viewings
+       itself inside the WhatsApp conversation, so this state almost always
+       means the conversation stalled rather than that a booking is owed. One
+       message restarts it and the AI closes it from there. */
+    key: 'nudge',
+    label: 'Zet weer in gang',
+    icon: 'flame',
     tone: 'ready',
     test: (l, s) => l.qualified && !l.afspraakGeboekt && Boolean(l.telefoon)
       && s.silent != null && s.silent <= T.QUIET_DAYS,
-    why: () => 'Gekwalificeerd, recent in gesprek en er staat nog geen bezichtiging.',
+    why: () => 'Gekwalificeerd en nog in gesprek, maar de AI kreeg de afspraak nog niet rond. Eén bericht zet het weer in gang.',
   },
   {
     key: 'high_priority',
@@ -239,47 +269,60 @@ const CATEGORIES = [
 ];
 
 /* ── Next best action ────────────────────────────────────────────────────────
-   Only actions the system can actually carry out. Recommending "send a
-   WhatsApp" to a lead whose 24-hour window closed is worse than recommending
-   nothing: the user clicks, it fails, and they stop believing the column. */
+   THE AI BOOKS THE APPOINTMENT. It does that inside the WhatsApp conversation:
+   it reads the lead's proposed time, checks the client's Google Calendar, books
+   the slot and confirms in the thread (api/whatsapp.js, step 11b). Booking is
+   not something the agent does, and it is not something this page should ever
+   offer to do for them.
+
+   That reframes the whole column. The agent's job is to UNBLOCK a conversation
+   the AI cannot finish on its own — because it went quiet, because the 24-hour
+   window closed, or because the AI was paused and is waiting for a person. So
+   the actions here are: take over, nudge on WhatsApp, call, read the thread.
+   There is deliberately no "book appointment": recommending it would tell the
+   agent to do by hand the one thing the product already does for them, and
+   would put a viewing in the calendar that the lead never agreed to.
+
+   Everything offered is also checked for executability first. Recommending a
+   WhatsApp message to a lead whose 24-hour window shut is worse than
+   recommending nothing: the user clicks, Meta refuses it, and they stop
+   believing the column. */
 function nextAction(lead, s, ctx) {
-  if (!lead.telefoon && lead.gesprek) {
-    return { key: 'review', label: 'Gesprek bekijken', reason: 'Geen telefoonnummer om op te volgen.' };
+  // The AI is paused: a human is the only thing that can move this at all.
+  if (lead.aiPaused) {
+    return {
+      key: 'takeover', label: 'Zelf antwoorden',
+      reason: 'De AI staat op pauze bij deze lead.',
+    };
   }
+
   if (!lead.telefoon) {
-    return { key: 'none', label: 'Geen actie mogelijk', reason: 'Deze lead heeft geen contactgegevens.' };
+    return lead.gesprek
+      ? { key: 'review', label: 'Gesprek bekijken', reason: 'Geen telefoonnummer om op te volgen.' }
+      : { key: 'none', label: 'Geen actie mogelijk', reason: 'Deze lead heeft geen contactgegevens.' };
+  }
+
+  if (lead.afspraakGeboekt) {
+    return { key: 'review', label: 'Gesprek bekijken', reason: 'De AI heeft de afspraak al geboekt.' };
   }
 
   const win = data.messagingWindow(lead);
 
-  if (lead.afspraakGeboekt) {
-    return { key: 'review', label: 'Gesprek bekijken', reason: 'De afspraak staat al; niets te doen.' };
-  }
-
-  // Booking beats messaging when the lead is qualified and the calendar can
-  // actually confirm a slot. Without a connected calendar this would be an
-  // invitation to promise a time nobody can honour.
-  if (lead.qualified && ctx.calendarConnected && win.open) {
-    return {
-      key: 'book', label: 'Afspraak inplannen',
-      reason: 'Gekwalificeerd en bereikbaar — stel een bezichtiging voor.',
-    };
-  }
-
   if (win.open) {
     return {
       key: 'follow_up', label: 'Opvolgen',
-      reason: `WhatsApp-venster nog ${win.hoursLeft} uur open.`,
+      // Says what actually happens next, which is the AI finishing the job.
+      reason: `Eén bericht en de AI pakt het gesprek weer op — venster nog ${win.hoursLeft} uur open.`,
     };
   }
 
-  // Window shut: WhatsApp free-form is not permitted, so the honest advice is
-  // a phone call, which the user can do and the system is not pretending to.
+  // Window shut: WhatsApp free-form is not permitted, so the AI cannot restart
+  // the conversation either. A phone call is the honest recommendation.
   return {
     key: 'call', label: 'Bellen',
     reason: win.reason === 'no_inbound_timestamp'
-      ? 'Deze lead heeft nooit zelf geantwoord, dus WhatsApp mag niet.'
-      : 'Het 24-uursvenster is gesloten; WhatsApp mag alleen nog met een template.',
+      ? 'Deze lead heeft nooit zelf geantwoord, dus de AI mag niet appen.'
+      : 'Het 24-uursvenster is gesloten, dus de AI kan niet meer appen.',
   };
 }
 
@@ -325,6 +368,7 @@ function analyse(leads, opts = {}) {
       why: category ? category.why(lead, s, ctx) : '',
       action: nextAction(lead, s, ctx),
       hasConversation: Boolean(lead.gesprek),
+      aiPaused: Boolean(lead.aiPaused),
     };
   });
 

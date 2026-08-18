@@ -41,6 +41,20 @@ function escapeFormula(val) {
   return String(val == null ? '' : val).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+/* Notities doubles as a small JSON blob for per-lead flags. Non-JSON content
+   is the normal case (an agent typed a note), so a parse failure is not an
+   error — it just means the flag is not set. */
+function readNotitiesFlag(raw, key) {
+  const text = String(raw || '').trim();
+  if (text[0] !== '{') return null;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && parsed[key] ? parsed[key] : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function str(v) {
   if (!v) return '';
   if (typeof v === 'object' && v.name) return v.name;   // single-select
@@ -71,6 +85,12 @@ function mapLead(r) {
     boekingslinkVerstuurd: bool(f.fldLeEqwNefdglLis || f['Booking Link Sent']),
     afspraakGeboekt:       bool(f.fldyIGNetqcSEkoaK || f['Appointment Booked']),
     notities:              f.fldoLRI5W12ThTls7      || f.Notities             || '',
+    // The AI can be paused per lead from the dashboard (api/leads.js's
+    // ai-pause mode), which is stored as JSON inside Notities rather than in a
+    // field of its own. It matters well beyond that panel: a paused lead is
+    // one where the AI has stopped answering and a human has to, which is the
+    // single most urgent state a lead can be in.
+    aiPaused:              Boolean(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'aiPaused')),
     gesprek:               f['Conversation History'] || '',
     leadScore:             num(f.fldpzQgMuWJLjogiD  || f['Lead Score']),
     opgepikt:              bool(f.fld86JQHB6dbuutA7 || f.Opgepikt),
