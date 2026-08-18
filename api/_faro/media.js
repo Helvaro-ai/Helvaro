@@ -35,10 +35,11 @@
 
 const fixtures = require('./fixtures');
 
-const STYLE_KEYS = Object.freeze([
-  'luxury', 'modern', 'contemporary', 'scandinavian',
-  'minimal', 'classic', 'warm', 'architectural',
-]);
+/* Read from api/_images.js rather than restated here. This used to be a
+   hardcoded wish-list of eight keys, five of which the backend would reject
+   with a 400 — dead data served by the styles endpoint, waiting for the first
+   caller to trust it. The real list has one home. */
+const STYLE_KEYS = Object.freeze(require('../_images').PROPERTY_STYLES.map((s) => s.key));
 
 const IMAGE_ASPECTS = Object.freeze(['1:1', '4:3', '3:2', '16:9']);
 const VIDEO_FORMATS = Object.freeze(['9:16', '16:9', '1:1']);

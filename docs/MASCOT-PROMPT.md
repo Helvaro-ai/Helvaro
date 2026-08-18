@@ -29,8 +29,9 @@ Specs:
 Until all six exist Faro degrades cleanly: a missing state falls back
 to idle, and a missing idle hides the mascot rather than showing a broken image.
 
-One `vercel.json` rewrite is needed once the files land:
-`{ "source": "/faro/(.*)", "destination": "/public/faro/$1" }`
+No `vercel.json` change is needed — `public/` is already served at the root
+(that is how `/fonts/…` and `/vendor/…` work today). Just drop the files in
+`public/faro/`.
 
 ---
 
@@ -113,7 +114,6 @@ wildly different poses will read as six different birds.
    background differs between light and dark theme).
 2. Confirm all six align: stack them and check the bird doesn't shift or resize.
 3. Save to `public/faro/` with the exact filenames above.
-4. Add the `vercel.json` rewrite.
 5. `node scripts/faro-dev.js`, open Faro (Ctrl/⌘-J), send a message — you
    should see idle → thinking → success as the turn runs.
 

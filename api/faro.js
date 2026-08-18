@@ -28,6 +28,7 @@
  */
 
 const _session = require('./_session');
+const _revoke = require('./_revocation');
 const faroHandler = require('./_faro/handler');
 
 module.exports = async function handler(req, res) {
@@ -40,6 +41,22 @@ module.exports = async function handler(req, res) {
   const session = _session.verifySignedSession(_session.readToken(req));
   if (!session) {
     return res.status(401).json({ error: 'Niet ingelogd' });
+  }
+
+  // api/leads.js does this and Faro did not, which meant "log me out
+  // everywhere" left Faro reachable with a stolen cookie for the rest of the
+  // token's 7 days — including every CRM read tool and image generation on the
+  // victim's credits. A revocation check is only worth having if every route
+  // that trusts a session performs it.
+  try {
+    if (await _revoke.isRevoked(session)) {
+      return res.status(401).json({ error: 'Sessie verlopen' });
+    }
+  } catch (err) {
+    // Fail CLOSED: an unavailable revocation check must not silently restore
+    // access to a session someone deliberately invalidated.
+    console.error('[faro] revocation check failed:', err.message);
+    return res.status(503).json({ error: 'Even niet beschikbaar' });
   }
 
   const auth = {

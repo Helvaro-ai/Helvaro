@@ -65,6 +65,8 @@ var faroState = {
   attachments: [],
   abort: null,
   contextSources: [],
+  inThread: false,
+  restoringFocus: false,
   lastSent: '',
   lastAttachments: [],
   lastFocus: null
@@ -102,7 +104,12 @@ function faroOpen() {
   // Remember what had focus so Escape can hand it back — the launcher is in the
   // topbar, and a keyboard user who opened with ⌘K should not be dumped at the
   // top of the document on close.
-  faroState.lastFocus = document.activeElement;
+  // NOT the dock input. Restoring focus to it on close re-fires its own focus
+  // handler, which reopens Faro on the same tick — the overlay became
+  // impossible to close by any route (Escape, scrim, the X) once opened from
+  // the dock, which is the primary entry point.
+  var active = document.activeElement;
+  faroState.lastFocus = (active && active.id === 'faro-dock-input') ? null : active;
 
   el.hidden = false;
   // Next frame, so the transition has a from-state to animate out of.
@@ -136,7 +143,13 @@ function faroClose() {
   // A generation in flight is abandoned rather than left running invisibly.
   if (faroState.abort) { faroState.abort.abort(); faroState.abort = null; }
 
-  if (faroState.lastFocus && faroState.lastFocus.focus) faroState.lastFocus.focus();
+  if (faroState.lastFocus && faroState.lastFocus.focus) {
+    // Guard the restore anyway: any element that opens Faro on focus would
+    // otherwise re-trigger it here.
+    faroState.restoringFocus = true;
+    faroState.lastFocus.focus();
+    faroState.restoringFocus = false;
+  }
 }
 
 function faroToggle() { faroState.open ? faroClose() : faroOpen(); }
@@ -153,7 +166,7 @@ function faroSetPanel(panel) {
   var landing = document.getElementById('faro-landing');
   var thread = document.getElementById('faro-thread');
   var composer = document.getElementById('faro-composer');
-  var inThread = Boolean(faroState.conversationId);
+  var inThread = faroState.inThread;
   if (landing)  landing.hidden  = !showChat || inThread;
   if (thread)   thread.hidden   = !showChat || !inThread;
   if (composer) composer.hidden = !showChat || !inThread;
@@ -189,10 +202,18 @@ function faroMascot(stateName) {
   var src = FARO_MASCOT_SRC[stateName];
   if (!src || faroMascotMissing[stateName]) return;
   el.onerror = function () {
-    // Remember the gap so we stop re-requesting a 404 on every state change.
+    // Clear the handler BEFORE the fallback assignment. Without this, idle's own
+    // 404 re-entered this closure with stateName still set to the original
+    // state, reassigned idle, and looped — measured at ~800 requests in seven
+    // seconds against the current repo, where no mascot asset exists at all.
+    el.onerror = null;
     faroMascotMissing[stateName] = true;
-    if (stateName !== 'idle') el.src = FARO_MASCOT_SRC.idle;
-    else el.classList.add('faro-mascot--missing');
+    if (stateName !== 'idle' && !faroMascotMissing.idle) {
+      el.src = FARO_MASCOT_SRC.idle;
+    } else {
+      faroMascotMissing.idle = true;
+      el.classList.add('faro-mascot--missing');
+    }
   };
   el.src = src;
 }
@@ -254,6 +275,9 @@ function faroSend(text) {
       faroState.streaming = false;
       faroState.abort = null;
       faroSetSendEnabled(true);
+      // A stream that ends without a done frame never cleared this, leaving the
+      // mascot stuck in its error face until the next turn.
+      setTimeout(function () { if (!faroState.streaming) faroMascot('idle'); }, 1800);
       if (status && status.parentNode) status.parentNode.removeChild(status);
     });
 }
@@ -316,12 +340,14 @@ function faroHandleEvent(name, data, bubble, status) {
       if (status) {
         status.style.display = '';
         status.querySelector('.faro-status__label').textContent =
-          data.state === 'running' ? T('st.searching') : T('st.working');
+          data.state === 'running' ? T('st.searching')
+          : data.state === 'failed' ? T('st.toolFailed')
+          : T('st.working');
       }
       break;
 
     case 'component':
-      faroRenderComponent(bubble, data.component);
+      faroSafeRender(bubble, data.component);
       break;
 
     case 'error':
@@ -358,6 +384,17 @@ function faroRenderComponent(bubble, c) {
   }
   wrap.appendChild(el);
   faroScrollToEnd();
+}
+
+/* Rendering one component must never kill the turn. Before this, a throw inside
+   a card builder escaped the SSE pump, rejected the fetch chain and surfaced as
+   a failed turn with a Retry — after the credits were already spent. */
+function faroSafeRender(bubble, component) {
+  try {
+    faroRenderComponent(bubble, component);
+  } catch (err) {
+    console.error('[faro] component render failed:', err && err.message);
+  }
 }
 
 function faroLeadCard(c) {
@@ -506,7 +543,7 @@ function faroMediaCard(c) {
     '<span class="faro-form__note" data-media-note></span></div>';
 
   if (before) {
-    var img = d.querySelector('img');
+    var img = d.querySelector('img, video');
     var btn = d.querySelector('[data-ba]');
     var showing = 'after';
     btn.addEventListener('click', function () {
@@ -521,6 +558,51 @@ function faroMediaCard(c) {
 
   faroWireMediaActions(d, c);
   return d;
+}
+
+/* Media card buttons. Download and Preview work entirely client-side; the rest
+   call their backend op and surface whatever the server says, so a button is
+   honest today and becomes real with no UI change.
+
+   This function was deleted in a refactor while its call site stayed, which
+   made faroMediaCard throw a ReferenceError for every ready image — inside the
+   SSE frame loop, so the whole turn failed and offered a Retry that would spend
+   the credits again. It was invisible locally because generation cannot succeed
+   without an API key, so a ready card never rendered. faro-check.js now asserts
+   every function the client calls is defined. */
+function faroWireMediaActions(card, c) {
+  var note = card.querySelector('[data-media-note]');
+  card.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-media]');
+    if (!btn) return;
+    var act = btn.dataset.media;
+
+    if (act === 'download' && c.resultUrl) {
+      var a = document.createElement('a');
+      a.href = c.resultUrl;
+      a.download = (c.meta && c.meta.filename) || ('helvaro-' + (c.jobId || 'asset'));
+      a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    if (act === 'preview' && c.resultUrl) {
+      var v = card.querySelector('video');
+      if (v) { v.paused ? v.play() : v.pause(); return; }
+      window.open(c.resultUrl, '_blank', 'noopener');
+      return;
+    }
+
+    var op = act === 'save' ? 'save-to-property'
+           : act === 'variation' ? (c.kind === 'video' ? 'generate-video' : 'generate-image')
+           : null;
+    if (!op) { if (note) note.textContent = T('pn.soon'); return; }
+
+    btn.disabled = true;
+    if (note) note.textContent = T('st.busy');
+    faroPost({ mode: 'faro-media', op: op, jobId: c.jobId, propertyId: (c.meta && c.meta.propertyId) || null })
+      .then(function (r) { btn.disabled = false; if (note) note.textContent = r.summary || T('st.done'); })
+      .catch(function (err) { btn.disabled = false; if (note) note.textContent = (err && err.message) || T('st.error'); });
+  });
 }
 
 function faroErrorCard(c) {
@@ -569,6 +651,7 @@ function faroEnterThread() {
   var landing = document.getElementById('faro-landing');
   var thread = document.getElementById('faro-thread');
   var composer = document.getElementById('faro-composer');
+  faroState.inThread = true;
   if (landing && !landing.hidden) {
     landing.hidden = true;
     thread.hidden = false;
@@ -865,7 +948,7 @@ function faroInit() {
     });
     // Clicking the bar opens Faro without sending, carrying anything typed.
     dockInput.addEventListener('focus', function () {
-      if (!faroState.open) fromDock(false);
+      if (!faroState.open && !faroState.restoringFocus) fromDock(false);
     });
   }
 
@@ -964,6 +1047,7 @@ function faroQuickAction(id) {
 function faroNewConversation() {
   if (faroState.abort) faroState.abort.abort();
   faroState.conversationId = null;
+  faroState.inThread = false;
 
   var inner = document.getElementById('faro-thread-inner');
   if (inner) inner.innerHTML = '';
@@ -986,6 +1070,7 @@ function faroNewConversation() {
 
 function faroOpenConversation(id) {
   faroState.conversationId = id;
+  faroState.inThread = true;
   faroSetPanel('chat');
   faroEnterThread();
   var inner = document.getElementById('faro-thread-inner');

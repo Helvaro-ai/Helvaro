@@ -112,9 +112,13 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       for await (const ev of provider.streamChat({
         system,
         messages,
-        // At the ceiling we withhold the tools entirely, which forces a prose
-        // answer rather than another tool request we would have to refuse.
-        tools: atCeiling ? [] : tools.definitions(),
+        // Tools stay DECLARED even at the ceiling. Withholding them was wrong:
+        // by then `messages` already carries tool_use/tool_result blocks from
+        // earlier passes, and both providers reject a request containing those
+        // with no tools declared — so the ceiling would have 400'd into a
+        // generic error on precisely the expensive turn it exists to contain.
+        // The `break` below is what actually stops the loop.
+        tools: tools.definitions(),
         model,
       })) {
         switch (ev.type) {
@@ -197,13 +201,30 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       // An act-tool proposed something. The turn ends here; the user's
       // confirmation click starts a fresh request.
       if (awaitingConfirmation) break;
+
+      // Stop AT the ceiling rather than relying on the provider to notice we
+      // stopped offering tools. A provider that kept emitting tool calls would
+      // otherwise loop forever, executing tools and streaming, with no bound —
+      // the exact runaway the ceiling exists to prevent.
+      if (atCeiling) break;
     }
 
-    // WIRE: persist the assistant message and meter credits before closing.
-    // Metering goes through api/_credits.js — Faro must share the
-    // existing meter, not run a parallel one.
+    // Charge once, after the turn actually produced something. Fire-and-forget
+    // and fail-soft: a metering hiccup must never break a turn the user has
+    // already received.
+    //
+    // This was previously only a comment. The credit CHECK above ran, but
+    // nothing ever decremented the balance, so the check could never fire and
+    // an enabled Faro had no spend ceiling on the model key at all. A check
+    // without a corresponding charge is worse than no check, because it reads
+    // like a ceiling in review.
+    credits.recordUsage(ctx.projectCode, credits.FEATURES.FARO_CHAT, {
+      credits: credits.WEIGHTS[credits.FEATURES.FARO_CHAT],
+      meta: { tier, iterations, tokensIn: usage.inputTokens, tokensOut: usage.outputTokens },
+    }).catch(() => {});
+
+    // WIRE: persist the assistant message once the VPS tables exist.
     //   await store.appendMessage(ctx.projectCode, conversationId, {...});
-    //   await credits.consume(ctx.projectCode, 'ai_chat', usage);
 
     stream.close(res, { usage: { in: usage.inputTokens, out: usage.outputTokens } });
   } catch (err) {
@@ -213,7 +234,12 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       // carry the model name or echo request contents (see providers/index.js).
       : { message: 'Er ging iets mis. Probeer het opnieuw.', retryable: true, code: 'internal' };
 
-    stream.send(res, 'component', { component: schema.errorCard(safe) });
+    // ONE terminal error signal. This used to send both a component frame and
+    // an error frame carrying the same payload, and the client renders a card
+    // for each — so every failure produced two identical error cards with two
+    // Retry buttons, and on a retryable error a user could double-spend by
+    // clicking each. stream.fail is the terminal signal; the client already
+    // renders it as a card.
     stream.fail(res, safe);
   }
 }

@@ -45,6 +45,11 @@ const quick  = require('./quick-actions');
 const i18n   = require('./i18n');
 const config = require('../config');
 
+/* What a disabled Faro contributes to the page: nothing at all. The one
+   exception is deliberate — see the CSS note in styles.js about #nav-ai-beeld,
+   which is only hidden while Faro is ON, so the CRM stays whole when it is off. */
+const DISABLED = Object.freeze({ lang: '', css: '', js: '', dock: '', overlay: '' });
+
 /** JSON safe to embed in an inline <script>: neutralises </script> breakout. */
 function inlineJson(value) {
   return JSON.stringify(value).replace(/</g, '\\u003c');
@@ -55,7 +60,23 @@ function inlineJson(value) {
  * @param {string} langCode  any api/_lang.js code; unsupported UI languages
  *                           fall back to English (see ./i18n.js).
  */
-function forLang(langCode) {
+/**
+ * @param {string} langCode
+ * @param {object} [opts]
+ * @param {boolean} [opts.force]  Build the UI even when the feature flag is
+ *   off. Only for checks — config.isEnabled() reads a module-level constant
+ *   captured at load, so flipping the env var afterwards does nothing, and a
+ *   test that needs the enabled output must say so explicitly rather than
+ *   mutating process.env and busting the require cache.
+ */
+function forLang(langCode, opts = {}) {
+  // With the feature off, emit NOTHING. Previously the dock and overlay
+  // rendered unconditionally, so a customer with Faro disabled got an inviting
+  // ask bar whose every message ended in a generic error — and paid ~108 KB of
+  // HTML plus the module's parse cost on every dashboard load for the
+  // privilege. The kill switch has to reach the UI, not just the route.
+  if (!opts.force && !config.isEnabled()) return DISABLED;
+
   const lang = i18n.resolve(langCode);
   const t = i18n.translator(lang);
 
@@ -99,8 +120,10 @@ function forLang(langCode) {
  */
 function verify() {
   const problems = [];
+  // Inspect the ENABLED output — that is what ships to a customer with the
+  // feature on; the disabled path is empty by definition.
   for (const lang of i18n.TRANSLATED) {
-    const out = forLang(lang);
+    const out = forLang(lang, { force: true });
     for (const key of ['css', 'js', 'dock', 'overlay']) {
       const s = out[key];
       if (s.indexOf('`') > -1) problems.push(`${lang}/${key}: contains a backtick`);

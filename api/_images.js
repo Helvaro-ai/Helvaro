@@ -764,9 +764,47 @@ async function uploadPropertyImageToBlob(buffer, contentType, projectCode, kind)
 // every failure path is a typed ImageFeatureError with a Dutch, user-safe
 // message and an appropriate HTTP status, so api/leads.js's handler can
 // relay it directly without leaking API internals. ──────────────────────
+/* ── What is ACTUALLY sent to the image API ────────────────────────────────
+ * Split out from generatePropertyImage so the exact string that leaves this
+ * process can be asserted in a test. It could not be before, and that hid a
+ * bug that charged clients 50 credits for a request the model never saw:
+ *
+ * the prompt was posted as `prompt.slice(0, 4000)`. That cap was written when
+ * a full prompt was ~700 characters. Prepending the ~5.9k-character
+ * TRANSFORM_ENGINE pushed every real instruction past it, so each generation
+ * sent engine rules 1-11, truncated mid-sentence, and nothing else — no style,
+ * no room, no colour, no client request.
+ *
+ * The cap is now the API's actual limit rather than an arbitrary number, and
+ * the inputs are already individually bounded (customPrompt 500,
+ * wallColorNote 80, object notes 120), so a real prompt lands around 8k and
+ * can never approach it. If that ever stops being true we want to know loudly,
+ * not silently ship a decapitated prompt — hence the log.
+ */
+const MAX_API_PROMPT_CHARS = 32000;
+
+function composeApiPrompt(args = {}) {
+  const { style, customPrompt, roomType, ...opts } = args;
+  const prompt = buildTransformPrompt(style, customPrompt, roomType, opts);
+  if (prompt.length > MAX_API_PROMPT_CHARS) {
+    console.error(
+      `[property-generate] prompt is ${prompt.length} chars, over the ${MAX_API_PROMPT_CHARS} cap — ` +
+      'the client request would be truncated. Shorten TRANSFORM_ENGINE or tighten the input caps.',
+    );
+    return prompt.slice(0, MAX_API_PROMPT_CHARS);
+  }
+  return prompt;
+}
+
 async function generatePropertyImage({
   imageBuffer, imageMimeType, style, customPrompt, roomType,
   furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  // Everything else — the client-customisable axes and any added later. A
+  // fixed destructure silently DROPPED palette/vibe/material/landscaping/
+  // preserve/remove/add: the caller passed them, this signature ate them, and
+  // the axes only appeared to work because the tests called
+  // buildTransformPrompt directly instead of going through here.
+  ...extraAxes
 }) {
   const key = openaiKey();
   if (!key) throw new ImageFeatureError(missingConfigMessage(), { code: 'no_api_key', status: 503 });
@@ -774,13 +812,15 @@ async function generatePropertyImage({
     throw new ImageFeatureError('Geen geldige afbeelding meegegeven.', { code: 'invalid_image', status: 400 });
   }
 
-  const prompt = buildTransformPrompt(style, customPrompt, roomType, {
+  const prompt = composeApiPrompt({
+    style, customPrompt, roomType,
     furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+    ...extraAxes,
   });
   const ext = imageMimeType === 'image/webp' ? 'webp' : imageMimeType === 'image/jpeg' ? 'jpg' : 'png';
   const form = new FormData();
   form.append('model', OPENAI_MODEL);
-  form.append('prompt', prompt.slice(0, 4000));
+  form.append('prompt', prompt);
   form.append('size', '1024x1024');
   form.append('image', new Blob([imageBuffer], { type: imageMimeType || 'image/png' }), `source.${ext}`);
 
@@ -837,6 +877,7 @@ async function generatePropertyImage({
 function buildImageRecord({
   url, style, customPrompt, roomType, sourceUrl,
   furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  ...extraAxes
 }) {
   const styleObj = getStyleByKey(style);
   const roomObj = getRoomTypeByKey(roomType);
@@ -864,7 +905,13 @@ function buildImageRecord({
     wallFinishLabel: wallFinishObj ? wallFinishObj.label : '',
     wallColor: wallColorObj ? wallColorObj.key : '',
     wallColorLabel: wallColorObj ? wallColorObj.label : '',
-    wallColorNote: wallColorObj && wallColorNote ? String(wallColorNote).slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '',
+    // Kept whenever the finish is painted, NOT only when a key colour was also
+    // chosen. A note without a key is now the main path for any colour outside
+    // the six presets — "terracotta", "RAL 7016" — and the old condition would
+    // have dropped exactly those from the history, losing the colour that was
+    // actually used.
+    wallColorNote: wallFinishObj && wallFinishObj.key === 'painted' && wallColorNote
+      ? String(wallColorNote).slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '',
     floor: floorObj ? floorObj.key : '',
     floorLabel: floorObj ? floorObj.label : '',
     lighting: lightingObj ? lightingObj.key : '',
@@ -872,6 +919,20 @@ function buildImageRecord({
     renovationDepth: renovationObj.key,
     renovationDepthLabel: renovationObj.label,
     customPrompt: customPrompt ? String(customPrompt).slice(0, 500) : '',
+    // The client-customisable axes, resolved to key + label the same way the
+    // originals are, so history shows what was actually asked for. Registry-
+    // driven: a new axis is persisted without touching this function.
+    ...EXTRA_AXES.reduce((acc, axis) => {
+      const hit = axisByKey(axis.list, String(extraAxes[axis.key] || '').trim());
+      acc[axis.key] = hit ? hit.key : '';
+      acc[`${axis.key}Label`] = hit ? hit.label : '';
+      return acc;
+    }, {}),
+    ...OBJECT_AXES.reduce((acc, axis) => {
+      acc[axis.key] = extraAxes[axis.key]
+        ? String(extraAxes[axis.key]).slice(0, MAX_OBJECT_NOTE_LENGTH) : '';
+      return acc;
+    }, {}),
     aiLabel: AI_DISCLAIMER_LABEL,
     createdAt: new Date().toISOString(),
   };
@@ -1163,6 +1224,8 @@ module.exports = {
   getRenovationDepthByKey,
   isValidRenovationDepthKey,
   buildTransformPrompt,
+  composeApiPrompt,
+  MAX_API_PROMPT_CHARS,
   isConfigured,
   missingConfigMessage,
   parseImageDataUrl,

@@ -107,6 +107,19 @@ async function chat(req, res, ctx, body) {
   if (attachments.length > config.LIMITS.maxAttachments) {
     return res.status(400).json({ error: 'Te veel bijlagen' });
   }
+  // LIMITS.maxAttachmentBytes existed and nothing read it, and mediaType went
+  // straight through to the provider unvalidated. Both are checked here, before
+  // anything is decoded, forwarded or paid for.
+  const ALLOWED_MEDIA = ['image/png', 'image/jpeg', 'image/webp'];
+  for (const a of attachments) {
+    if (!a || typeof a.data !== 'string' || !ALLOWED_MEDIA.includes(a.mediaType)) {
+      return res.status(400).json({ error: 'Alleen PNG-, JPG- of WebP-afbeeldingen' });
+    }
+    // base64 decodes to ~3/4 of its length; cheaper than actually decoding it.
+    if (Math.floor(a.data.length * 0.75) > config.LIMITS.maxAttachmentBytes) {
+      return res.status(400).json({ error: 'Afbeelding te groot' });
+    }
+  }
 
   // A conversation is created on the FIRST message, not when the user opens
   // the workspace — otherwise every idle visit leaves an empty row in the

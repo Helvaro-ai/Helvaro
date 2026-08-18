@@ -84,6 +84,12 @@ function css() {
 }
 .faro-dock__open:hover { background: var(--accent-hover); }
 
+/* Faro owns image generation, so the CRM's AI-beeld nav entry is redundant
+   while Faro is on. It is hidden HERE rather than deleted from the markup,
+   because this stylesheet only ships when the feature is enabled: switch Faro
+   off and the CRM gets its navigation — and that paid feature — back. */
+#nav-ai-beeld { display: none !important; }
+
 /* One page sets its own height inline (calc(100vh - 56px), the calendar), so
    it does not participate in the flex shrink and would push the dock off the
    bottom. Subtract the dock here rather than editing the CRM's inline style. */

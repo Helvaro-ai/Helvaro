@@ -354,6 +354,51 @@ function finish() {
     fail('engine lost when every customisable axis is set');
   } else pass('engine survives every axis being set at once');
 
+  // ── What actually leaves the process ──────────────────────────────────────
+  // The checks above assert buildTransformPrompt's RETURN VALUE. That is not
+  // what OpenAI receives, and the difference hid two bugs at once: the posted
+  // string was capped at 4000 chars (so a ~5.9k engine preamble truncated away
+  // every real instruction), and generatePropertyImage's fixed destructure
+  // silently dropped the new axes. Both looked fine from buildTransformPrompt.
+  // So: assert the composed API prompt, with every axis set.
+  const posted = imgs.composeApiPrompt({
+    style: 'luxury', customPrompt: 'behoud de open haard', roomType: 'woonkamer',
+    wallFinish: 'painted', wallColorNote: 'terracotta', floor: 'wood',
+    lighting: 'warm-evening', renovationDepth: 'full',
+    palette: 'earth', vibe: 'cozy', material: 'oak', landscaping: 'lush',
+    preserve: 'de haard', remove: 'het behang', add: 'een zwembad',
+  });
+  const mustSurvive = [
+    ['engine',       'DO NOT REINVENT THE PROPERTY'],
+    ['style',        'luxury renovation'],
+    ['room type',    'living room'],
+    ['wall colour',  'terracotta'],
+    ['floor',        'natural wood'],
+    ['lighting',     'warm evening'],
+    ['depth',        'FULL RENOVATION'],
+    ['palette',      'earth-tone'],
+    ['vibe',         'cozy'],
+    ['material',     'light oak'],
+    ['landscaping',  'lush green'],
+    ['preserve',     'de haard'],
+    ['remove',       'het behang'],
+    ['add',          'een zwembad'],
+    ['client words', 'behoud de open haard'],
+  ];
+  const lost = mustSurvive.filter(([, needle]) => !posted.includes(needle)).map(([name]) => name);
+  if (lost.length) fail(`dropped from the POSTED prompt: ${lost.join(', ')}`);
+  else pass(`all ${mustSurvive.length} instructions survive into the posted prompt`);
+
+  if (posted.length > imgs.MAX_API_PROMPT_CHARS) {
+    fail(`posted prompt ${posted.length} exceeds the ${imgs.MAX_API_PROMPT_CHARS} cap`);
+  } else pass(`posted prompt ${posted.length} chars, within the ${imgs.MAX_API_PROMPT_CHARS} cap`);
+
+  // The cap must sit above a fully-loaded prompt with real headroom. A cap that
+  // merely fits today is the bug that just happened, one added rule later.
+  if (imgs.MAX_API_PROMPT_CHARS < posted.length * 2) {
+    fail(`cap ${imgs.MAX_API_PROMPT_CHARS} leaves no headroom over a full prompt (${posted.length})`);
+  } else pass('cap leaves headroom over a fully-loaded prompt');
+
   // Chat has a spend ceiling.
   const cr = require('../api/_credits');
   if (!cr.FEATURES.FARO_CHAT) fail('FARO_CHAT credit feature missing');
@@ -366,6 +411,13 @@ function finish() {
   } else if (orch.indexOf('checkCredits') > orch.indexOf('provider.streamChat')) {
     fail('credit check runs AFTER the model call');
   } else pass('credits checked before the first model call');
+
+  // A check with no corresponding charge is worse than no check: the balance
+  // never moves, so the ceiling can never be reached. This shipped once as a
+  // comment while the check above passed.
+  if (!/credits\.recordUsage\(\s*ctx\.projectCode,\s*credits\.FEATURES\.FARO_CHAT/.test(orch)) {
+    fail('orchestrator never charges for a chat turn — the ceiling can never be reached');
+  } else pass('chat turns are actually charged, not just checked');
 
   console.log(failures ? `\n${failures} check(s) failed\n` : '\nall checks passed\n');
   process.exit(failures ? 1 : 0);

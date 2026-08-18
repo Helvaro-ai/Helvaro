@@ -130,14 +130,20 @@ async function buildContextBlock(_ctx) {
  * access the assistant does not actually have.
  */
 function contextSources() {
+  // `available` must mean "a wired tool actually reads this", not "we intend
+  // to". These were all reported as available while every backing tool was
+  // still a stub, so the badge told the agent Faro could see their leads while
+  // it answered "geen leads gevonden" — the one claim this indicator exists to
+  // make, made falsely. Flip each to true as its tool is wired.
+  const WIRED = { images: true };
   return [
-    { key: 'leads',         label: 'Leads',        available: true  },
-    { key: 'properties',    label: 'Panden',       available: true  },
-    { key: 'conversations', label: 'Gesprekken',   available: true  },
-    { key: 'analytics',     label: 'Analytics',    available: true  },
-    { key: 'campaigns',     label: 'Campagnes',    available: false },
-    { key: 'calendar',      label: 'Agenda',       available: true  },
-    { key: 'assets',        label: 'Marketing',    available: false },
+    { key: 'leads',         label: 'Leads',      available: Boolean(WIRED.leads)         },
+    { key: 'properties',    label: 'Panden',     available: Boolean(WIRED.properties)    },
+    { key: 'conversations', label: 'Gesprekken', available: Boolean(WIRED.conversations) },
+    { key: 'analytics',     label: 'Analytics',  available: Boolean(WIRED.analytics)     },
+    { key: 'campaigns',     label: 'Campagnes',  available: Boolean(WIRED.campaigns)     },
+    { key: 'calendar',      label: 'Agenda',     available: Boolean(WIRED.calendar)      },
+    { key: 'images',        label: 'Beelden',    available: Boolean(WIRED.images)        },
   ];
 }
 

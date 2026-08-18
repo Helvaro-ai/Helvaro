@@ -25,6 +25,8 @@
  * a confirmation clicked an hour later should not fire against stale data.
  */
 
+const crypto = require('crypto');
+
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 // In-memory pending store. NOTE: Vercel functions are stateless across cold
@@ -35,7 +37,10 @@ const TTL_MS = 30 * 60 * 1000; // 30 minutes
 const pending = new Map();
 
 function newActionId() {
-  return `act_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  // crypto, not Math.random. These ids authorise a real-world side effect —
+  // a WhatsApp message to a customer, a calendar booking — so they must not be
+  // guessable by anyone who can observe a few of them.
+  return `act_${crypto.randomBytes(16).toString('hex')}`;
 }
 
 /** Called by the orchestrator when an act-tool produced a confirmation card. */
@@ -72,6 +77,11 @@ async function execute({ actionId, ctx }) {
   const rec = pending.get(actionId);
   if (!rec)                              throw new ActionError('Deze actie is verlopen. Vraag het opnieuw.', 'expired');
   if (rec.projectCode !== ctx.projectCode) throw new ActionError('Actie niet gevonden.', 'not_found');
+  // Bound to the person who staged it, not just the tenant. A colleague sharing
+  // the account must not be able to fire someone else's pending WhatsApp send
+  // by holding its id — "the user confirmed an intent" only means anything if
+  // it is the same user.
+  if (rec.userId !== ctx.userId) throw new ActionError('Actie niet gevonden.', 'not_found');
   if (rec.executed)                      throw new ActionError('Deze actie is al uitgevoerd.', 'already_executed');
 
   const exec = EXECUTORS[rec.action];

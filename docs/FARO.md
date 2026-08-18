@@ -12,7 +12,7 @@ node scripts/faro-check.js   →  static checks, no network
 ```
 
 In production nothing changes until three env vars are set — `FARO_PROVIDER`,
-`FARO_ENABLED`, and (for a real model) an API key. Unset,
+`FARO_WORKSPACE_ENABLED`, and (for a real model) an API key. Unset,
 `api/faro.js` returns 404 for every request.
 
 Scope decision: **everything except video generation.** Video ships as a
@@ -414,7 +414,8 @@ Ordered so each step is independently verifiable.
       CRM → AI → CRM restores the CRM exactly, and the AI selection survives a
       reload.
 - [ ] **2. Mascot assets.** Six `.webp` files at `/faro/falcon-{idle,thinking,generating,video,success,error}.webp`.
-      Add a `public/faro/` rewrite in `vercel.json`. CSS handles the motion —
+      No `vercel.json` change: `public/` is already served at the root, so the
+      files just go in `public/faro/`. CSS handles the motion —
       the assets are stills. **Blocked on the assets**: only the idle render
       exists. Until then the mascot hides itself rather than showing a broken
       image, and a missing state falls back to idle without re-requesting the 404.
@@ -498,12 +499,22 @@ Ordered so each step is independently verifiable.
   own mobile CSS notes it fought to keep the topbar off 137px; the switcher
   already names the workspace, so the title was the redundant half.
 
-## 7. What still does not happen
+## 7. What is real, and what still is not
 
-- No model is called (`FARO_PROVIDER=demo` is scripted; `claude`/`openai` throw `not_wired`).
-- No database table is created or written.
-- No key is read at import time.
-- No money is spent.
+**Real now:** the Claude provider is fully implemented, image generation is
+wired end to end through `api/_images.js`, and both spend real money once
+`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` are set. Chat is metered at 3 credits a
+turn, images at 50.
+
+**Still not real:** the nine read tools are stubs, so Faro cannot see actual
+leads yet — it will answer "geen leads gevonden" to a customer with 300 of
+them. Conversations are not persisted. Pending act-tool proposals live in an
+in-process Map, which does not survive Vercel's instance model, so act tools
+must stay off until that is a table.
+
+**Off by default:** with `FARO_WORKSPACE_ENABLED` unset, `api/faro.js` returns
+404 *and* the UI emits nothing at all — no dock, no overlay, no CSS, no client
+script, and the CRM keeps its AI-beeld nav entry. Verified: 0 bytes.
 - `vercel.json` is untouched.
 - No dependency was added to `package.json`.
 - `api/dashboard.js` is touched in exactly six places: one `require`, one
