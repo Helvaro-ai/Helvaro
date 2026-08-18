@@ -275,7 +275,14 @@ module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');     // always render fresh. Client just changed AI Name
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  // SAMEORIGIN, not DENY. The clickjacking protection this exists for is about
+  // a THIRD party framing the form to trick someone into submitting it, and
+  // same-origin-only stops that completely. DENY also blocked Helvaro's own
+  // dashboard, whose Formulier page previews this exact URL in an iframe — so
+  // that preview panel rendered blank for every client, in production, since
+  // it shipped. The paired frame-ancestors below is what modern browsers
+  // actually read; this header is for the ones that do not.
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Stond hier niet, op dashboard.js wel. Deze pagina vraagt geen camera,
@@ -299,7 +306,9 @@ module.exports = async function handler(req, res) {
     // app.helvaro.pro moet er expliciet in staan: op een preview-deploy is
     // 'self' die host niet en zou versturen stilletjes geblokkeerd worden.
     "connect-src 'self' https://app.helvaro.pro",
-    "frame-ancestors 'none'",
+    // 'self', so the dashboard's own form preview can render. Any other origin
+    // is still refused — see the X-Frame-Options note above.
+    "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",

@@ -34,6 +34,15 @@ const path = require('path');
 process.env.FARO_WORKSPACE_ENABLED = process.env.FARO_WORKSPACE_ENABLED || '1';
 process.env.FARO_PROVIDER = process.env.FARO_PROVIDER || 'demo';
 process.env.FARO_DEMO_MODE = process.env.FARO_DEMO_MODE || '1';
+/* Placeholder Airtable credentials. _leadsRead.fetchLeads is stubbed below, so
+   these are never used to reach anything — but api/_faro/data.js checks that
+   credentials EXIST before it fetches, and without them every read tool
+   short-circuits to "CRM unreachable". That made the whole read path, the
+   Command Center's opportunity tool and both confirmation flows impossible to
+   exercise locally, which is most of what this server is for. */
+process.env.API_AIRTABLE = process.env.API_AIRTABLE || 'local-fixture';
+process.env.BASE_AIRTABLE = process.env.BASE_AIRTABLE || 'local-fixture';
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'local-dev-secret';
 
 /* ── Command Center fixture ──────────────────────────────────────────────────
    The Command Center reads real Airtable rows through api/_leads-read.js. This
@@ -84,6 +93,19 @@ _leadsRead.fetchLeads = async () => ({
     reactietijd: 20 + i * 7, datum: new Date(_now - (2 + i) * _DAY).toISOString(),
   })),
 });
+
+/* A connected Google Calendar, locally. Without it schedule_followup correctly
+   refuses to propose anything — which is the right production behaviour and
+   exactly why the booking confirmation could not be exercised here. Reads are
+   stubbed; nothing is ever written to a real calendar from this server. */
+const _faroData = require('../api/_faro/data');
+_faroData.calendarEvents = async () => ({
+  source: 'google', reason: 'ok',
+  events: [{ id: 'ev1', title: 'Bezichtiging Knokke', allDay: false,
+             start: new Date(_now + 86400000).toISOString(),
+             end: new Date(_now + 86400000 + 3600000).toISOString() }],
+});
+_faroData.gcalAccessFor = async () => ({ token: 'local-fixture', calId: 'primary' });
 
 const dashboard = require('../api/dashboard');
 const faroHandler = require('../api/_faro/handler');
@@ -163,6 +185,23 @@ const server = http.createServer(async (req, res) => {
     // api/_images.js, so the panel renders the true eight axes and a label
     // added there shows up locally without touching this file.
     if (p === '/api/leads') {
+      /* GET is the dashboard's main data pull — every CRM page renders from it.
+         Without it the whole app is empty locally and nothing downstream can be
+         exercised, so it is answered from the same fixture the Command Center
+         uses. Same shape api/leads.js returns: leads, stats, client. */
+      if (req.method === 'GET') {
+        const { leads: fx } = await _leadsRead.fetchLeads('LOCALDEV', {});
+        if (url.searchParams.get('export') === 'true') {
+          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+          return res.status(200).send('Naam;Telefoon\n' + fx.map((l) => l.naam + ';' + l.telefoon).join('\n'));
+        }
+        return res.status(200).json({
+          leads: fx,
+          stats: _leadsRead.computeStats(fx),
+          client: { naam: 'Immo Delva', calendly: '' },
+        });
+      }
+
       req.body = await readBody(req);
       const images = require('../api/_images');
       const opt = (arr) => arr.map((x) => ({ key: x.key, label: x.label }));
@@ -197,9 +236,70 @@ const server = http.createServer(async (req, res) => {
           // Never fake a generated image: a placeholder here would make a
           // broken pipeline look like a working one.
           return res.status(503).json({ error: 'Beeldgeneratie vereist OPENAI_API_KEY — niet ingesteld lokaal.' });
+        case 'plan-status':
+          return res.status(200).json({ status: 'active', trialEndsAt: null, daysLeft: null });
+        case 'config-get':
+          return res.status(200).json({
+            aiName: 'Faro', clientName: 'Immo Delva', autoReplyTpl: '', aiInstructions: '',
+            welcomeMessage: '', bookingConfirmText: '', bookingMode: 'in_chat',
+            reportEmail: 'sarah@immodelva.be', language: 'nl', replyInLeadLanguage: true,
+          });
+        case 'config-save':
+          return res.status(200).json({ ok: true });
+        case 'credit-usage':
+          return res.status(200).json({ used: 1240, allowance: 5000, features: {} });
+        case 'appointments-list':
+          return res.status(200).json({ appointments: [] });
+        case 'status':
+          return res.status(200).json({ configured: true, connected: false, email: '' });
+        case 'report-summary':
+          return res.status(200).json({ rapport: null });
+        case 'suggest-replies':
+          return res.status(200).json({ replies: [
+            'Dag! Zal ik een bezichtiging inplannen deze week?',
+            'Heb je nog vragen over het pand?',
+            'Ik hoor het graag als je erover wil praten.',
+          ] });
+        case 'lead-export':
+          return res.status(200).json({ lead: {} });
+        case 'ai-pause':
+        case 'ai-resume':
+          return res.status(200).json({ ok: true });
         default:
-          return res.status(400).json({ error: 'mode not stubbed in faro-dev' });
+          // Loud rather than silent: an unstubbed mode is a gap in this file,
+          // and a 200 with an empty body would make it look like a working
+          // feature returning nothing.
+          console.warn('[faro-dev] mode not stubbed:', req.body.mode);
+          return res.status(501).json({ error: 'mode not stubbed in faro-dev: ' + req.body.mode });
       }
+    }
+
+    /* The client-facing lead form. The dashboard's Formulier page previews it
+       in an iframe, so without this route that preview is a 404 locally — and
+       the preview is the one place you check the form before sending the link
+       to a customer. */
+    if (p === '/start' || p.startsWith('/start/')) {
+      req.query = Object.fromEntries(url.searchParams);
+      req.url = p + (url.search || '');
+      try {
+        return await require('../api/form-page')(req, res);
+      } catch (e) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.end('<!doctype html><meta charset="utf-8"><body style="font:14px system-ui;padding:32px">'
+          + 'Formulier vereist Airtable — niet ingesteld lokaal.</body>');
+      }
+    }
+
+    /* Google Calendar status. Reported as CONFIGURED BUT NOT CONNECTED, which
+       is the honest local answer and the state most clients are actually in —
+       it is also the branch the Instellingen page has the most UI for. */
+    if (p === '/api/gcal') {
+      req.body = await readBody(req);
+      if (req.body.mode === 'connect') {
+        return res.status(200).json({ url: 'https://accounts.google.com/o/oauth2/v2/auth?local-dev' });
+      }
+      return res.status(200).json({ configured: true, connected: false, email: '' });
     }
 
     if (p === '/' || p === '/dashboard') {

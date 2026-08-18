@@ -158,6 +158,39 @@ Promise.all([
   finish();
 });
 
+/* ── Embedding contract ──────────────────────────────────────────────────────
+   Two things customers actually rely on, both of which were broken and neither
+   of which throws anything: a header and a hostname. */
+{
+  const formPage = fs.readFileSync(path.join(__dirname, '..', 'api', 'form-page.js'), 'utf8');
+
+  // The dashboard previews /start/<code> in an iframe. X-Frame-Options: DENY
+  // and frame-ancestors 'none' meant that panel was blank for every client,
+  // in production, from the day it shipped.
+  if (/X-Frame-Options'\s*,\s*'DENY'/.test(formPage)) {
+    fail("form-page sends X-Frame-Options: DENY — the dashboard's own form preview cannot render");
+  } else if (/frame-ancestors 'none'/.test(formPage)) {
+    fail("form-page sends frame-ancestors 'none' — the dashboard's own form preview cannot render");
+  } else if (!/frame-ancestors 'self'/.test(formPage)) {
+    fail('form-page no longer restricts frame-ancestors at all');
+  } else {
+    pass('form page is frameable by Helvaro itself and nobody else');
+  }
+
+  // The widget every customer pastes into their own site must not point at a
+  // Vercel-generated hostname: that name changes with the project or team and
+  // takes every embedded form down silently.
+  const widget = fs.readFileSync(path.join(__dirname, '..', 'public', 'form-widget.js'), 'utf8');
+  const code = widget.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+  if (/vercel\.app/.test(code)) {
+    fail('form-widget.js posts to a vercel.app hostname — it changes when the project is renamed');
+  } else if (!/originOfScript/.test(code)) {
+    fail('form-widget.js no longer derives its API origin from its own script tag');
+  } else {
+    pass('embed widget posts to its own origin, not a generated hostname');
+  }
+}
+
 /* ── Command Center ──────────────────────────────────────────────────────────
    Same seam contract as Faro: finished strings spliced into dashboard.js's own
    template literal, so a backtick or an unescaped ${...} in any of them would

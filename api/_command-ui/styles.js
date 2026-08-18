@@ -225,6 +225,17 @@ function css() {
   transition: filter 150ms ease, border-color 150ms ease;
 }
 .cmd-btn:hover { filter: brightness(1.06); }
+/* Keyboard users get the same affordance mouse users get. :focus-visible so a
+   mouse click does not leave a ring behind, which is the reason people remove
+   these and end up with nothing. */
+.cmd-btn:focus-visible,
+.cmd-auto:focus-visible,
+.cmd-drawer__close:focus-visible,
+.cmd-opp__main:focus-visible {
+  outline: 2px solid var(--champagne);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
 .cmd-btn:disabled { opacity: 0.5; cursor: default; }
 .cmd-btn--ghost {
   background: transparent; color: var(--text-muted);

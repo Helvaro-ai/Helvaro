@@ -17208,6 +17208,17 @@ function getFormUrl() {
   if (!code) return '';
   return 'https://app.helvaro.pro/start/' + encodeURIComponent(code);
 }
+/* The same form, addressed relatively. Used ONLY for the preview iframe.
+   getFormUrl() stays absolute because that is what the client copies into
+   their own website — but the CSP on this page is frame-src 'self', so an
+   absolute app.helvaro.pro URL is same-origin in production and cross-origin
+   everywhere else. The preview was therefore blank on every preview
+   deployment and in local development: the one place you look at it before
+   shipping. */
+function getFormPreviewUrl() {
+  const code = getProjectCode();
+  return code ? '/start/' + encodeURIComponent(code) : '';
+}
 // ── Formulier page ────────────────────────────────────────────────────────
 function loadFormulier() {
   const url      = getFormUrl();
@@ -17238,9 +17249,12 @@ function loadFormulier() {
   if (qrImg) qrImg.src = qrDataUrl;
   if (qrDl)  qrDl.href = qrDataUrl;
 
-  // Iframe preview
+  // Iframe preview — relative, so it survives the CSP on any host.
   const preview = document.getElementById('fm-preview-iframe');
-  if (preview && preview.src !== url) preview.src = url;
+  const previewUrl = getFormPreviewUrl();
+  if (preview && previewUrl && preview.getAttribute('src') !== previewUrl) {
+    preview.setAttribute('src', previewUrl);
+  }
 
   // Stats from already-fetched leads
   populateFormStats();

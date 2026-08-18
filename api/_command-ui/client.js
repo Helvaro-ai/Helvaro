@@ -26,7 +26,7 @@ function CT(k, fallback) {
 }
 function CTn(k, n) { return CT(k).replace('{n}', String(n)); }
 
-var cmdState = { data: null, loading: false, loaded: false, autopilot: true, byId: {} };
+var cmdState = { data: null, loading: false, loaded: false, autopilot: true, byId: {}, lastFocus: null };
 
 function cmdEsc(s) {
   return String(s == null ? '' : s)
@@ -329,11 +329,39 @@ function cmdOpenDrawer(id) {
 
   body.innerHTML = html;
   drawer.hidden = false;
+
+  /* Focus moves INTO the drawer. Without this a keyboard user opens a panel
+     they cannot reach: the next Tab continues from the card behind it, through
+     content the scrim has covered. Remember where we came from so Escape hands
+     it back. */
+  cmdState.lastFocus = document.activeElement;
+  var firstBtn = drawer.querySelector('.cmd-drawer__actions .cmd-btn') ||
+                 document.getElementById('cmd-drawer-close');
+  if (firstBtn) firstBtn.focus();
 }
 
 function cmdCloseDrawer() {
   var d = document.getElementById('cmd-drawer');
-  if (d) d.hidden = true;
+  if (!d || d.hidden) return;
+  d.hidden = true;
+  if (cmdState.lastFocus && cmdState.lastFocus.focus) {
+    try { cmdState.lastFocus.focus(); } catch (e) { /* node detached */ }
+  }
+  cmdState.lastFocus = null;
+}
+
+/* Keep Tab inside the drawer while it is open. It is aria-modal, and a modal
+   whose focus leaks is worse than one that never claimed to be modal. */
+function cmdTrapFocus(e) {
+  var d = document.getElementById('cmd-drawer');
+  if (!d || d.hidden || e.key !== 'Tab') return;
+  var f = [].slice.call(d.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(function (el) { return el.offsetParent !== null; });
+  if (!f.length) return;
+  var first = f[0];
+  var last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
 /* ── Actions ──────────────────────────────────────────────────────────────────
@@ -455,6 +483,7 @@ function cmdInit() {
 
   // Keyboard parity: the cards are role="button", so they must answer to keys.
   document.addEventListener('keydown', function (e) {
+    cmdTrapFocus(e);
     if (e.key === 'Escape') { cmdCloseDrawer(); return; }
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var open = e.target && e.target.closest && e.target.closest('[data-cmd-open]');

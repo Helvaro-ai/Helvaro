@@ -38,6 +38,19 @@
  */
 const SCRIPTS = [
   {
+    /* "What should I do today" / "handle everything" — the Command Center's own
+       flow, and the most specific pattern, so it goes first. Without it the
+       flagship interaction fell through to the generic intro locally, which
+       meant the one flow the whole feature is named for was never exercised. */
+    match: /vandaag doen|openstaande kansen|handel alles|alles afhandelen|wat moet ik|prioriteit|kansen/i,
+    steps: [
+      { type: 'text', text: 'Ik kijk welke kansen nu actie vragen…\n\n' },
+      { type: 'tool', name: 'get_opportunities', input: { limit: 6 } },
+      { type: 'text', text: 'Dit zijn je kansen, op volgorde van wat vandaag het meeste oplevert. '
+        + 'Voor elke lead staat de aanbevolen stap erbij — zeg welke je wil doen, dan zet ik hem klaar ter bevestiging.' },
+    ],
+  },
+  {
     // Image generation — runs immediately, no confirmation. Costs are handled
     // by the credit system, not by a dialog.
     match: /woonkamer|keuken|slaapkamer|badkamer|restyl|renov|visualis|modern|luxe|foto|beeld/i,
@@ -55,19 +68,39 @@ const SCRIPTS = [
     ],
   },
   {
-    // Calendar — also a confirmation card, different action.
+    /* Calendar — a confirmation card, not a completion. The old copy said "Ik
+       heb het opvolgmoment klaargezet", which reads as done; the tool only
+       ever proposes, and a demo that models the wrong contract teaches the
+       wrong thing. `when` must also be a real ISO datetime now, because the
+       tool validates it rather than accepting "tomorrow". */
     match: /\bplan\b|inplannen|agenda|schedule|afspraak|morgen/i,
     steps: [
-      { type: 'text', text: 'Ik heb het opvolgmoment klaargezet.\n\n' },
-      { type: 'tool', name: 'schedule_followup', input: { leadId: 'demo-2', when: 'tomorrow', note: 'Opvolging na eerste contact' } },
+      { type: 'text', text: 'Ik stel een moment voor. Er komt nog niets in je agenda — bevestig hieronder.\n\n' },
+      { type: 'tool', name: 'schedule_followup', input: {
+        leadId: 'recFIXT000000002',
+        title: 'Bezichtiging',
+        when: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 16) + ':00',
+        durationMin: 45,
+        note: 'Opvolging na eerste contact',
+      } },
     ],
   },
   {
-    // Sending messages — the highest-consequence gate.
-    match: /stuur|verstuur|send|bericht/i,
+    /* Sending messages — the highest-consequence gate, and therefore the one
+       local dev most needs to actually reach. create_followup now writes the
+       message itself and checks Meta's 24-hour window per lead, so the input
+       has to carry a real `message` and real lead ids: with the old
+       placeholder ids and no message the tool correctly refused, no
+       confirmation card rendered, and the safety-critical UI stopped being
+       exercised anywhere. */
+    match: /stuur|verstuur|send|bericht|opvolg/i,
     steps: [
-      { type: 'text', text: 'Ik heb de berichten voorbereid. Niets is verstuurd — bekijk het en bevestig hieronder.\n\n' },
-      { type: 'tool', name: 'create_followup', input: { leadIds: ['demo-1', 'demo-2', 'demo-3'], tone: 'warm' } },
+      { type: 'text', text: 'Ik heb een opvolgbericht opgesteld. Niets is verstuurd — bekijk het en bevestig hieronder.\n\n' },
+      { type: 'tool', name: 'create_followup', input: {
+        leadIds: ['recFIXT000000000', 'recFIXT000000002'],
+        message: 'Dag! Ik zag dat je interesse had. Zal ik deze week een bezichtiging inplannen?',
+        intent: 'bezichtiging voorstellen',
+      } },
     ],
   },
   {
