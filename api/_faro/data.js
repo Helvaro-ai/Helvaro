@@ -28,6 +28,9 @@
  */
 
 const leadsRead = require('../_leads-read');
+const gcal = require('../_gcal');   // per-client Google Calendar, optional and fail-soft
+
+const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 
 /* ── Credentials ─────────────────────────────────────────────────────────────
    Same env names api/leads.js uses. Missing credentials is a real, reportable
@@ -291,22 +294,87 @@ function analytics(all) {
 }
 
 /* ── Conversations ───────────────────────────────────────────────────────────
-   The WhatsApp history lives on the lead record as one text blob written by
-   api/whatsapp.js. Splitting it into turns is presentation, and belongs here
-   rather than in a prompt asking the model to parse it. */
+   The WhatsApp history is stored on the lead record by api/whatsapp.js as
+   JSON.stringify([{ role, content, ts }, …]) — NOT as the "Lead: … / AI: …"
+   text blob this originally tried to parse. The text-prefix parser is kept as
+   a fallback for any record written before that format settled, but the JSON
+   path is the real one, and it is the only one that carries a timestamp.
+
+   That timestamp matters far beyond display: `ts` on the most recent user turn
+   is the lead's last inbound message, which is what Meta's 24-hour
+   customer-service window is measured from. Without it there is no way to know
+   whether a free-form WhatsApp reply is even allowed. */
 function parseConversation(raw) {
   const text = String(raw || '').trim();
   if (!text) return [];
+
+  if (text[0] === '[') {
+    try {
+      const arr = JSON.parse(text);
+      if (Array.isArray(arr)) {
+        return arr
+          .filter((m) => m && m.content)
+          .map((m) => ({
+            role: m.role === 'user' ? 'lead' : 'assistant',
+            text: String(m.content),
+            at: Number(m.ts) || null,
+          }));
+      }
+    } catch (_) { /* fall through to the text parser */ }
+  }
+
   return text
     .split(/\n(?=(?:lead|klant|customer|ai|assistant|helvaro|agent)\s*[:>-])/i)
     .map((chunk) => {
       const m = chunk.match(/^\s*([\wéèëï]+)\s*[:>-]\s*([\s\S]*)$/i);
-      if (!m) return { role: 'unknown', text: chunk.trim() };
+      if (!m) return { role: 'unknown', text: chunk.trim(), at: null };
       const who = norm(m[1]);
       const role = /^(lead|klant|customer)$/.test(who) ? 'lead' : 'assistant';
-      return { role, text: m[2].trim() };
+      return { role, text: m[2].trim(), at: null };
     })
     .filter((t) => t.text);
+}
+
+/* ── The 24-hour window ──────────────────────────────────────────────────────
+   Meta only permits a free-form WhatsApp message inside 24 hours of the
+   customer's own last message. Outside it, only an approved template may be
+   sent, and a free-form attempt is rejected by the API — so this is not a
+   politeness check, it is whether the send can work at all.
+
+   Returns { open, lastInboundAt, hoursLeft, reason } and never throws: a lead
+   whose history cannot be read is reported as CLOSED, because attempting a
+   send we cannot justify is the worse failure. */
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function lastInboundAt(lead) {
+  const turns = parseConversation(lead && lead.gesprek);
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].role === 'lead' && turns[i].at) return turns[i].at;
+  }
+  return null;
+}
+
+function messagingWindow(lead) {
+  const at = lastInboundAt(lead);
+  if (!at) {
+    return {
+      open: false, lastInboundAt: null, hoursLeft: 0,
+      reason: 'no_inbound_timestamp',
+    };
+  }
+  const elapsed = Date.now() - at;
+  if (elapsed >= WINDOW_MS) {
+    return {
+      open: false, lastInboundAt: at, hoursLeft: 0,
+      reason: 'window_closed',
+    };
+  }
+  return {
+    open: true,
+    lastInboundAt: at,
+    hoursLeft: Math.max(0, Math.round(((WINDOW_MS - elapsed) / 3600000) * 10) / 10),
+    reason: 'open',
+  };
 }
 
 function searchConversations(all, { query, needsFollowUp, limit = 10 }) {
@@ -325,11 +393,66 @@ function searchConversations(all, { query, needsFollowUp, limit = 10 }) {
 }
 
 /* ── Calendar ────────────────────────────────────────────────────────────────
-   Reported from the CRM's own booking flag, not from Google Calendar. The
-   gcal integration is per-client and optional (api/_gcal.js), and a tool that
-   silently returns nothing for every client who has not connected it would be
-   the "geen leads gevonden" bug again in a different costume. What this can
-   honestly say is which leads have an appointment booked. */
+   Two sources, in that order of preference.
+
+   Google Calendar is the real answer when the client has connected it: actual
+   events with actual times, which is what someone asking "what's on tomorrow"
+   means. It is per-client and optional (api/_gcal.js), so it is not always
+   there — and a tool that silently returned nothing for every client who has
+   not connected it would be the "geen leads gevonden" bug in a different
+   costume.
+
+   So when Calendar is unavailable this falls back to the CRM's own booking
+   flag and SAYS which source it used. A caller must never present the fallback
+   as if it were the calendar; the `source` field is what makes that possible. */
+async function calendarEvents(ctx, { days = 7 } = {}) {
+  const { token, baseId, ok } = creds();
+  if (!ok) return { source: 'none', events: [], reason: 'not_configured' };
+
+  let access;
+  try {
+    access = await gcalAccessForProject(ctx.projectCode, token, baseId);
+  } catch (err) {
+    console.error('[faro/data] gcal access failed:', err.message);
+    access = null;
+  }
+  if (!access || !access.token) return { source: 'none', events: [], reason: 'not_connected' };
+
+  const from = new Date();
+  const to = new Date(Date.now() + Math.max(1, Math.min(30, days)) * 86400000);
+  try {
+    const events = await gcal.listEvents(access.token, access.calId, from.toISOString(), to.toISOString(), 100);
+    return { source: 'google', events: events || [], reason: 'ok' };
+  } catch (err) {
+    console.error('[faro/data] gcal listEvents failed:', err.message);
+    return { source: 'none', events: [], reason: 'unreachable' };
+  }
+}
+
+/* Resolve one client's Google access. Mirrors api/leads.js's
+   gcalAccessForProject: same field IDs, same fail-soft contract — an
+   unconnected or broken integration returns no token rather than throwing, so
+   the calendar tool degrades instead of failing the whole turn. */
+async function gcalAccessForProject(projectCode, airtableToken, baseId) {
+  if (!gcal.isConfigured() || !projectCode) return null;
+  const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${leadsRead.escapeFormula(projectCode)}"`);
+  const res = await fetch(
+    `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } },
+  );
+  if (!res.ok) return null;
+  const rec = ((await res.json()).records || [])[0];
+  const enc = rec && rec.fields && (rec.fields.fldkYmK3jAabvytCF || rec.fields['Google Refresh Token']);
+  if (!enc) return null;
+  const refresh = gcal.decryptToken(enc);
+  if (!refresh) return null;
+  const access = await gcal.getAccessToken(refresh);
+  if (!access) return null;
+  return { token: access, calId: rec.fields.fldWBxxhGYEZNIMqA || rec.fields['Google Calendar ID'] || 'primary' };
+}
+
+/* The CRM fallback: which leads have an appointment ticked. Not times, and
+   never described as times. */
 function bookedAppointments(all, { limit = 20 } = {}) {
   return all
     .filter((l) => l.afspraakGeboekt)
@@ -338,8 +461,26 @@ function bookedAppointments(all, { limit = 20 } = {}) {
     .slice(0, limit);
 }
 
+/* The connection itself, for callers that need to WRITE to the calendar
+   rather than read it. Same fail-soft contract: null when unavailable. */
+async function gcalAccessFor(ctx) {
+  const { token, baseId, ok } = creds();
+  if (!ok) return null;
+  try {
+    return await gcalAccessForProject(ctx.projectCode, token, baseId);
+  } catch (err) {
+    console.error('[faro/data] gcal access failed:', err.message);
+    return null;
+  }
+}
+
 module.exports = {
   DataUnavailable,
+  calendarEvents,
+  gcalAccessFor,
+  lastInboundAt,
+  messagingWindow,
+  WINDOW_MS,
   leadsFor,
   filterLeads,
   findLead,

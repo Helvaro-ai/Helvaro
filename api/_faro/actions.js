@@ -53,6 +53,9 @@
  */
 
 const crypto = require('crypto');
+const data = require('./data');       // lead lookup + the 24-hour window check
+const waSend = require('../_wa-send'); // the single outbound WhatsApp door
+const gcal = require('../_gcal');      // per-client Google Calendar
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -179,16 +182,93 @@ async function execute({ actionId, ctx }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EXECUTORS = {
-  // WIRE TO: the WhatsApp send path in api/whatsapp.js.
-  // Must respect the same opt-out, quiet-hours and credit checks as any other
-  // outbound message — an AI-triggered send is not a privileged send.
-  async create_followup(_payload, _ctx) {
-    throw new ActionError('Versturen is nog niet geactiveerd.', 'not_wired');
+  /* Send the follow-up the user approved.
+   *
+   * Three things are deliberately re-done here rather than trusted from the
+   * payload, even though the payload is signed:
+   *
+   *   1. Phone numbers are re-resolved from the tenant's own rows. The token
+   *      carries lead IDS only, so there is no field in it that could redirect
+   *      a message to an arbitrary number.
+   *   2. The 24-hour window is re-checked. It was open when the proposal was
+   *      built; the user may have confirmed twenty-nine minutes later, and the
+   *      window can close in between.
+   *   3. Every lead is confirmed to belong to this tenant, because findLead
+   *      only ever searches rows already scoped to ctx.projectCode.
+   *
+   * Sends are sequential, not Promise.all: a partial failure has to be
+   * reportable per lead, and firing twenty-five parallel requests at Meta is
+   * how an account earns a rate limit. */
+  async create_followup(payload, ctx) {
+    const message = String((payload && payload.message) || '').trim();
+    const ids = Array.isArray(payload && payload.leadIds) ? payload.leadIds.slice(0, 25) : [];
+    if (!message || !ids.length) throw new ActionError('Er is niets om te versturen.', 'empty');
+
+    let leads;
+    try {
+      ({ leads } = await data.leadsFor({ projectCode: ctx.projectCode }));
+    } catch (err) {
+      throw new ActionError('Je CRM-gegevens zijn nu niet bereikbaar. Er is niets verstuurd.', 'data_unavailable');
+    }
+
+    const sent = [];
+    const failed = [];
+    for (const id of ids) {
+      const lead = data.findLead(leads, { leadId: id });
+      if (!lead || !lead.telefoon) { failed.push({ id, naam: (lead && lead.naam) || id, reason: 'geen telefoonnummer' }); continue; }
+
+      const win = data.messagingWindow(lead);
+      if (!win.open) { failed.push({ id, naam: lead.naam, reason: 'het 24-uursvenster sloot intussen' }); continue; }
+
+      try {
+        await waSend.sendFreeform({ to: lead.telefoon, text: message, windowOpen: true });
+        sent.push(lead.naam || id);
+      } catch (err) {
+        failed.push({ id, naam: lead.naam, reason: err.message });
+      }
+    }
+
+    // Every send failing is an error the user must see as one; a partial
+    // success is reported as a success that names what did not go out.
+    if (!sent.length) {
+      throw new ActionError(
+        `Niets verstuurd. ${failed.map((f) => `${f.naam}: ${f.reason}`).join('; ')}`,
+        'all_failed',
+      );
+    }
+    return {
+      summary: `Verstuurd naar ${sent.join(', ')}.`
+        + (failed.length ? ` Niet verstuurd: ${failed.map((f) => `${f.naam} (${f.reason})`).join('; ')}.` : ''),
+      components: [],
+    };
   },
 
-  // WIRE TO: api/_gcal.js event creation.
-  async schedule_followup(_payload, _ctx) {
-    throw new ActionError('Agenda-integratie is nog niet aangesloten.', 'not_wired');
+  /* Create the agenda item the user approved.
+   *
+   * The connection is re-resolved rather than carried in the payload: an OAuth
+   * access token has a lifetime measured in minutes and the proposal's is
+   * thirty, so a token minted at proposal time would frequently be dead by the
+   * time anyone clicked. Re-checking also means a client who disconnected
+   * Calendar in between gets a clean refusal instead of a 401. */
+  async schedule_followup(payload, ctx) {
+    const startMs = Date.parse(payload && payload.startISO);
+    if (!Number.isFinite(startMs)) throw new ActionError('Ongeldig tijdstip.', 'invalid_time');
+
+    const access = await data.gcalAccessFor(ctx);
+    if (!access) throw new ActionError('Google Agenda is niet gekoppeld.', 'not_connected');
+
+    const durationMin = Math.max(15, Math.min(480, Number(payload.durationMin) || 60));
+    const out = await gcal.createEvent(access.token, access.calId, {
+      summary: String(payload.title || 'Opvolging').slice(0, 200),
+      description: String(payload.note || '').slice(0, 2000),
+      start: new Date(startMs).toISOString(),
+      end: new Date(startMs + durationMin * 60000).toISOString(),
+    });
+    if (!out || !out.ok) {
+      console.error('[faro/actions] createEvent failed:', out && out.error);
+      throw new ActionError('Het agenda-item kon niet aangemaakt worden.', 'calendar_failed');
+    }
+    return { summary: `Ingepland: ${payload.title || 'Opvolging'}.`, components: [] };
   },
 
   // WIRE TO: Marketing Posts / campaign records via api/_pgapi.js.

@@ -104,6 +104,18 @@ function money(n) {
   return Number.isFinite(n) && n > 0 ? EUR.format(n) : '';
 }
 
+/* Human date/time for a calendar entry. Belgian conventions, 24-hour clock,
+   and an explicit weekday because "dinsdag 14:00" is what someone reads off a
+   calendar -- a bare ISO string is not an answer. */
+const WHEN_DAY = new Intl.DateTimeFormat('nl-BE', { weekday: 'short', day: 'numeric', month: 'short' });
+const WHEN_TIME = new Intl.DateTimeFormat('nl-BE', { hour: '2-digit', minute: '2-digit', hour12: false });
+function formatWhen(iso, allDay) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return '';
+  const d = new Date(t);
+  return allDay ? WHEN_DAY.format(d) : `${WHEN_DAY.format(d)} ${WHEN_TIME.format(d)}`;
+}
+
 function leadToCard(lead) {
   const budget = data.parseBudget(lead.verwachteWaarde);
   return schema.leadCard({
@@ -485,30 +497,60 @@ const readTools = [
   {
     name: 'get_calendar',
     kind: 'read',
-    description: 'Haal de leads op met een geboekte afspraak.',
+    description: 'Haal de komende afspraken op uit Google Agenda. Valt terug op de afspraken die in het CRM staan aangevinkt wanneer de agenda niet gekoppeld is.',
     parameters: {
       type: 'object',
-      properties: { limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 } },
+      properties: {
+        days:  { type: 'integer', minimum: 1, maximum: 30, default: 7 },
+        limit: { type: 'integer', minimum: 1, maximum: 50, default: 20 },
+      },
     },
-    /* Reports the CRM's own booking flag, NOT Google Calendar. The gcal
-       integration (api/_gcal.js) is per-client and optional, so a tool built on
-       it would return nothing for every client who has not connected it -- the
-       same silent-empty failure this whole wiring pass exists to remove. When
-       the times themselves are needed, that is a second tool with its own
-       "not connected" answer, not a quiet blank from this one. */
+    /* Google Calendar first, CRM booking flags second, and it always says
+       which one it used. The two answer different questions -- Calendar knows
+       when, the CRM only knows that -- so quietly substituting one for the
+       other would let the model tell someone a time that does not exist. */
     run: readTool('get_calendar', async (args, ctx) => {
+      const days = args.days || 7;
+      const cal = await data.calendarEvents(ctx, { days });
+
+      if (cal.source === 'google') {
+        const events = cal.events.slice(0, args.limit || 20);
+        if (!events.length) {
+          return {
+            summary: `Google Agenda is gekoppeld en er staat niets in de komende ${days} dagen.`,
+            data: { events: [], source: 'google' }, components: [],
+          };
+        }
+        const stats = events.slice(0, 6).map((e) => ({
+          label: e.title || 'Bezet',
+          value: formatWhen(e.start, e.allDay),
+          sub: e.allDay ? 'hele dag' : formatWhen(e.end, false),
+        }));
+        return {
+          summary: `${events.length} afspraken in de komende ${days} dagen, uit Google Agenda.`,
+          data: { events, source: 'google' },
+          components: [schema.statGroup({ title: `Agenda (${days} dagen)`, stats })],
+        };
+      }
+
       const { leads } = await data.leadsFor(ctx);
       const booked = data.bookedAppointments(leads, { limit: args.limit || 20 });
+      const why = cal.reason === 'not_connected'
+        ? 'Google Agenda is niet gekoppeld voor deze klant'
+        : cal.reason === 'unreachable'
+          ? 'Google Agenda was niet bereikbaar'
+          : 'Google Agenda is niet geconfigureerd';
+
       if (!booked.length) {
         return {
-          summary: 'Er staan nog geen afspraken geboekt bij leads in het CRM.',
-          data: { appointments: [] }, components: [],
+          summary: `${why}, en er staan geen afspraken aangevinkt in het CRM.`,
+          data: { events: [], source: 'none', reason: cal.reason }, components: [],
         };
       }
       return {
-        summary: `${booked.length} leads met een geboekte afspraak. `
-          + 'Let op: dit komt uit het CRM, niet uit Google Agenda — exacte tijdstippen staan daar.',
-        data: { appointments: booked.map(leadForModel), source: 'crm' },
+        summary: `${why}. Uit het CRM: ${booked.length} leads met een afspraak aangevinkt. `
+          + 'Dit zijn GEEN tijdstippen — noem geen uren, die staan alleen in de agenda.',
+        data: { appointments: booked.map(leadForModel), source: 'crm', reason: cal.reason },
         components: booked.slice(0, 8).map(leadToCard),
       };
     }),
@@ -528,54 +570,173 @@ const actTools = [
   {
     name: 'create_followup',
     kind: 'act',
-    description: 'Stel een opvolgbericht op voor één of meer leads. Het bericht wordt NIET verstuurd — de gebruiker bevestigt eerst.',
+    description: 'Stel een opvolgbericht op voor één of meer leads en vraag bevestiging om het via WhatsApp te versturen. Schrijf het bericht zelf en geef het mee in `message`. Het wordt pas verstuurd nadat de gebruiker bevestigt.',
     parameters: {
       type: 'object',
       properties: {
-        leadIds: { type: 'array', items: { type: 'string' }, minItems: 1 },
-        tone:    { type: 'string', enum: ['warm', 'zakelijk', 'kort'], default: 'warm' },
+        leadIds: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 25 },
+        message: { type: 'string', description: 'Het volledige bericht, in de taal van de lead. Persoonlijk, kort, en zonder placeholders.' },
         intent:  { type: 'string', description: 'Wat het bericht moet bereiken' },
       },
-      required: ['leadIds'],
+      required: ['leadIds', 'message'],
     },
-    async run(args, _ctx) {
-      return stub(
-        `Opvolgbericht voorbereid voor ${args.leadIds.length} lead(s). Wacht op bevestiging.`,
-        { pending: true },
-        [schema.confirmation({
+    /* Checks the 24-hour window BEFORE proposing, not after confirming.
+     *
+     * Meta only allows a free-form WhatsApp message within 24 hours of the
+     * lead's own last message; outside it the API rejects the send. Learning
+     * that at execution time would mean showing the user a confirmation for
+     * something that cannot happen, then failing after they clicked it. So the
+     * proposal itself says which leads are actually reachable, and the
+     * confirmation card only covers those.
+     */
+    async run(args, ctx) {
+      const message = String(args.message || '').trim();
+      if (!message) {
+        return {
+          summary: 'Geen bericht meegegeven. Schrijf het opvolgbericht zelf en geef het mee in `message`.',
+          data: { pending: false }, components: [],
+        };
+      }
+      if (message.length > 900) {
+        return {
+          summary: 'Bericht te lang voor WhatsApp-opvolging. Houd het onder 900 tekens.',
+          data: { pending: false }, components: [],
+        };
+      }
+
+      let leads;
+      try {
+        ({ leads } = await data.leadsFor(ctx));
+      } catch (err) {
+        if (err instanceof data.DataUnavailable) {
+          return {
+            summary: `KAN NIET LEZEN: ${err.message} Er is niets voorbereid.`,
+            data: { pending: false }, components: [],
+          };
+        }
+        throw err;
+      }
+
+      const reachable = [];
+      const blocked = [];
+      for (const id of args.leadIds.slice(0, 25)) {
+        const lead = data.findLead(leads, { leadId: id, name: id });
+        if (!lead) { blocked.push({ id, naam: null, reason: 'unknown_lead' }); continue; }
+        if (!lead.telefoon) { blocked.push({ id, naam: lead.naam, reason: 'no_phone' }); continue; }
+        const win = data.messagingWindow(lead);
+        if (!win.open) { blocked.push({ id, naam: lead.naam, reason: win.reason }); continue; }
+        reachable.push({ id: lead.id, naam: lead.naam, telefoon: lead.telefoon, hoursLeft: win.hoursLeft });
+      }
+
+      const why = {
+        unknown_lead: 'bestaat niet in dit CRM',
+        no_phone: 'heeft geen telefoonnummer',
+        window_closed: 'reageerde langer dan 24 uur geleden — WhatsApp staat dan alleen een goedgekeurde template toe',
+        no_inbound_timestamp: 'heeft nog nooit zelf een bericht gestuurd, dus het 24-uursvenster is nooit geopend',
+      };
+      const blockedLine = blocked.length
+        ? ' Niet bereikbaar: ' + blocked.map((b) => `${b.naam || b.id} (${why[b.reason] || b.reason})`).join('; ') + '.'
+        : '';
+
+      if (!reachable.length) {
+        return {
+          summary: 'Geen van deze leads kan nu een vrij WhatsApp-bericht ontvangen.' + blockedLine
+            + ' Vertel dit eerlijk; stel niet voor om het toch te proberen.',
+          data: { pending: false, blocked }, components: [],
+        };
+      }
+
+      return {
+        summary: `Opvolgbericht klaar voor ${reachable.length} lead(s).${blockedLine} Wacht op bevestiging.`,
+        data: { pending: true, reachable, blocked },
+        components: [schema.confirmation({
           action: 'create_followup',
-          title: 'Opvolgberichten versturen?',
-          body: `${args.leadIds.length} lead(s) ontvangen een bericht via WhatsApp.`,
+          title: reachable.length === 1
+            ? `Bericht sturen naar ${reachable[0].naam}?`
+            : `Bericht sturen naar ${reachable.length} leads?`,
+          body: `${message}\n\n— via WhatsApp naar: ${reachable.map((r) => r.naam).join(', ')}`,
           confirmLabel: 'Versturen',
-          payload: args,
+          // Only ids and the message travel. Phone numbers are re-resolved at
+          // execution time from the tenant's own rows, so a modified payload
+          // cannot redirect a message to an arbitrary number.
+          payload: { leadIds: reachable.map((r) => r.id), message, intent: args.intent || '' },
         })],
-      );
+      };
     },
   },
 
   {
     name: 'schedule_followup',
     kind: 'act',
-    description: 'Plan een opvolgmoment in de agenda. Wordt pas aangemaakt na bevestiging.',
+    description: 'Zet een opvolgmoment of bezichtiging in de gekoppelde Google Agenda. Wordt pas aangemaakt nadat de gebruiker bevestigt.',
     parameters: {
       type: 'object',
       properties: {
-        leadId: { type: 'string' },
-        when:   { type: 'string', description: 'ISO-datum/tijd' },
-        note:   { type: 'string' },
+        leadId:      { type: 'string', description: 'Optioneel: de lead waar dit over gaat.' },
+        title:       { type: 'string', description: 'Titel van het agenda-item.' },
+        when:        { type: 'string', description: 'Starttijd als ISO-datum/tijd, bv. 2026-08-21T14:00:00' },
+        durationMin: { type: 'integer', minimum: 15, maximum: 480, default: 60 },
+        note:        { type: 'string' },
       },
-      required: ['leadId', 'when'],
+      required: ['when'],
     },
-    // WIRE TO: api/_gcal.js event creation, post-confirmation.
-    async run(args, _ctx) {
-      return stub('Afspraak voorbereid. Wacht op bevestiging.', { pending: true },
-        [schema.confirmation({
+    /* Validates the time and the connection BEFORE proposing. A confirmation
+       card for an agenda that is not connected, or for a date the model
+       hallucinated, is a click that can only end in an error. */
+    async run(args, ctx) {
+      const startMs = Date.parse(args.when);
+      if (!Number.isFinite(startMs)) {
+        return {
+          summary: `"${args.when}" is geen geldige datum/tijd. Vraag de gebruiker wanneer precies.`,
+          data: { pending: false }, components: [],
+        };
+      }
+      if (startMs < Date.now() - 60000) {
+        return {
+          summary: 'Dat tijdstip ligt in het verleden. Vraag om een moment in de toekomst.',
+          data: { pending: false }, components: [],
+        };
+      }
+
+      const cal = await data.calendarEvents(ctx, { days: 1 });
+      if (cal.source !== 'google') {
+        return {
+          summary: cal.reason === 'not_connected'
+            ? 'Google Agenda is niet gekoppeld voor deze klant, dus er kan niets ingepland worden. '
+              + 'Wijs de gebruiker naar Instellingen om de agenda te koppelen.'
+            : 'Google Agenda is nu niet bereikbaar, dus er kan niets ingepland worden.',
+          data: { pending: false, reason: cal.reason }, components: [],
+        };
+      }
+
+      let lead = null;
+      if (args.leadId) {
+        try {
+          const { leads } = await data.leadsFor(ctx);
+          lead = data.findLead(leads, { leadId: args.leadId });
+        } catch (_) { /* the appointment stands without the lead's name */ }
+      }
+
+      const durationMin = Math.max(15, Math.min(480, args.durationMin || 60));
+      const title = String(args.title || '').trim()
+        || (lead ? `Opvolging ${lead.naam}` : 'Opvolging');
+
+      return {
+        summary: `Agenda-item "${title}" klaar voor ${formatWhen(new Date(startMs).toISOString(), false)}. Wacht op bevestiging.`,
+        data: { pending: true, startMs, durationMin, title },
+        components: [schema.confirmation({
           action: 'schedule_followup',
-          title: 'Afspraak inplannen?',
-          body: 'Dit maakt een item aan in je gekoppelde agenda.',
+          title: 'Inplannen in je agenda?',
+          body: `${title}\n${formatWhen(new Date(startMs).toISOString(), false)} · ${durationMin} min`
+            + (lead ? `\nLead: ${lead.naam}` : '')
+            + (args.note ? `\n${args.note}` : ''),
           confirmLabel: 'Inplannen',
-          payload: args,
-        })]);
+          payload: {
+            title, startISO: new Date(startMs).toISOString(), durationMin,
+            note: args.note || '', leadId: args.leadId || null,
+          },
+        })],
+      };
     },
   },
 

@@ -140,13 +140,16 @@ function contextSources() {
     conversations: true,  // the WhatsApp history stored on the lead record
     analytics: true,      // derived from the same rows the dashboard charts
     images: true,
+    // Google Calendar, per client and optional. Reported as available because
+    // get_calendar always answers honestly: real events when it is connected,
+    // and an explicit "not connected, here is what the CRM knows instead" when
+    // it is not. What must never happen is a silent empty result.
+    calendar: true,
     // Still off, and each for a real reason rather than an unfinished TODO:
     //   properties — this CRM has no property table; panden are free text on a
     //                lead, which search_leads already reaches.
     //   campaigns  — no campaign store is wired; create_campaign proposes but
     //                cannot execute.
-    //   calendar   — get_calendar reports the CRM's own booking flag, not
-    //                Google Calendar, so claiming "agenda" would overstate it.
   };
   return [
     { key: 'leads',         label: 'Leads',      available: Boolean(WIRED.leads)         },
