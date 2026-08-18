@@ -4092,6 +4092,22 @@ tr:hover .td-arrow { color: var(--cyan); }
   width: 260px;
   flex-shrink: 0;
 }
+/* Every chart in the app runs with maintainAspectRatio:false and lives in one
+   of these. Without a bounded parent Chart.js keeps growing the canvas to fill
+   the available space and the bars run off the page; with maintainAspectRatio
+   left on, a wide card produced an absurdly tall chart instead. A fixed-height
+   parent is the documented requirement for that option, and it also decouples
+   chart height from card width. flex:none so a flex-column card can't shrink it. */
+.chart-canvas-wrap { position: relative; height: 220px; margin-top: 14px; flex: 0 0 auto; }
+.chart-canvas-wrap--sm { height: 180px; }
+.chart-canvas-wrap--xs { height: 150px; }
+.chart-canvas-wrap > canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+@media (max-width: 768px) {
+  .chart-canvas-wrap { height: 180px; }
+  .chart-canvas-wrap--sm { height: 160px; }
+  .chart-canvas-wrap--xs { height: 140px; }
+}
+
 .chart-title {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
@@ -7761,11 +7777,17 @@ ${faro.css}
       <div class="charts-row">
         <div class="chart-card">
           <div class="chart-title">Leads per week (laatste 8 weken)</div>
-          <canvas id="leads-chart" height="80"></canvas>
+          <!-- The wrapper is load-bearing. Both charts run with
+               maintainAspectRatio:false, which makes Chart.js size the canvas
+               to its CONTAINER and ignore the height attribute. .chart-card is
+               flex:1 with no height, so the canvas grew unbounded and the bars
+               stretched the full length of the page. A fixed-height parent is
+               the documented requirement for that option. -->
+          <div class="chart-canvas-wrap"><canvas id="leads-chart"></canvas></div>
         </div>
         <div class="chart-card-sm" id="bron-chart-wrap">
           <div class="chart-title">Leads per bron</div>
-          <canvas id="bron-chart" height="160"></canvas>
+          <div class="chart-canvas-wrap chart-canvas-wrap--sm"><canvas id="bron-chart"></canvas></div>
         </div>
       </div>
 
@@ -8298,12 +8320,12 @@ ${faro.css}
         <!-- Days of week chart -->
         <div class="analyse-card">
           <div class="analyse-card-title">Leads per Weekdag</div>
-          <canvas id="analyse-days-chart" height="120"></canvas>
+          <div class="chart-canvas-wrap chart-canvas-wrap--sm"><canvas id="analyse-days-chart"></canvas></div>
         </div>
         <!-- Lead score distribution. Spans 2 cols -->
         <div class="analyse-card analyse-card-span2">
           <div class="analyse-card-title">Score Verdeling</div>
-          <canvas id="analyse-score-chart" height="100"></canvas>
+          <div class="chart-canvas-wrap"><canvas id="analyse-score-chart"></canvas></div>
         </div>
         <!-- Avg response time. Col 3 beside score chart -->
         <div class="analyse-card">
@@ -8320,7 +8342,7 @@ ${faro.css}
         <!-- Hours chart (full width) -->
         <div class="analyse-card analyse-card-full">
           <div class="analyse-card-title">Leads per Uur van de Dag</div>
-          <canvas id="analyse-hours-chart" height="70"></canvas>
+          <div class="chart-canvas-wrap chart-canvas-wrap--xs"><canvas id="analyse-hours-chart"></canvas></div>
         </div>
       </div>
     </main>
@@ -11252,10 +11274,14 @@ function renderChart() {
   // colour — the single cheapest thing that stops a chart looking like a
   // default library render.
   const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+  // The canvas has no height attribute (the .chart-canvas-wrap sizes it), so
+  // canvas.height is Chart.js-managed and can still be the 150px default at
+  // first paint. Measure the wrapper instead, and fall back to its CSS height.
+  const gradH = (canvas.parentElement && canvas.parentElement.clientHeight) || canvas.clientHeight || 220;
+  const grad = ctx.createLinearGradient(0, 0, 0, gradH);
   grad.addColorStop(0, 'rgba(79,124,255,0.95)');
   grad.addColorStop(1, 'rgba(79,124,255,0.35)');
-  const gradHover = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+  const gradHover = ctx.createLinearGradient(0, 0, 0, gradH);
   gradHover.addColorStop(0, 'rgba(79,124,255,1)');
   gradHover.addColorStop(1, 'rgba(6,182,212,0.55)');
 
@@ -11347,6 +11373,10 @@ function renderBronChart() {
     },
     options: {
       responsive: true,
+      // The .chart-canvas-wrap parent is fixed-height, so let the doughnut fill
+      // it rather than deriving its own height from the width — with the
+      // wrapper forcing height:100% the two sizing models fight otherwise.
+      maintainAspectRatio: false,
       cutout: '65%',
       plugins: {
         legend: {
@@ -15668,7 +15698,7 @@ function renderAnalyse() {
         labels: dayLabels,
         datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(232,215,177,0.45)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
       },
-      options: { responsive: true, plugins: { legend: { display: false } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
       }
     });
@@ -15688,7 +15718,7 @@ function renderAnalyse() {
         labels: scoreLabels,
         datasets: [{ label: 'Leads', data: scoreCounts, backgroundColor: scoreColors, borderRadius: 5 }]
       },
-      options: { responsive: true, plugins: { legend: { display: false } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
       }
     });
@@ -15713,7 +15743,7 @@ function renderAnalyse() {
         labels: hourBuckets,
         datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(232,215,177,0.4)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
       },
-      options: { responsive: true, plugins: { legend: { display: false } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
       }
     });
