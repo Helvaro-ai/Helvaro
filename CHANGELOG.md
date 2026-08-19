@@ -91,6 +91,24 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Alles vragen in plaats van klikken
+
+- **Faro kan nu ook dingen VERANDEREN in je CRM.** Hij kon lezen, berichten
+  sturen en beeld maken, maar een lead verplaatsen of een instelling aanpassen
+  moest je zelf gaan aanklikken. Nu kan het gevraagd worden: een lead op
+  gewonnen of verloren zetten (met reden), er een notitie bij schrijven, hem
+  verwijderen, en de stem van de WhatsApp-AI bijstellen -- naam,
+  welkomstbericht, instructies, werkuren, formuliertekst.
+- **Alles gaat door dezelfde bevestigingskaart als altijd.** De AI stelt voor,
+  jij klikt, pas dan gebeurt er iets. De kaart toont ook de nieuwe waarde en
+  niet alleen de veldnaam: "AI-naam wordt aangepast" laat je klikken zonder te
+  weten waarin.
+- **Notities worden toegevoegd, nooit overschreven.** In dat veld zit ook de
+  vlag die zegt dat de AI voor deze lead gepauzeerd is; overschrijven zou de AI
+  ongemerkt weer laten antwoorden op een lead die een mens had overgenomen.
+- **Faro mag de stem aanpassen, niet de rekening.** Plan, creditlimiet en
+  projectcode staan niet in de lijst velden die hij kan raken.
+
 ### Prijsadvies
 
 - **Faro kan nu een vraagprijs adviseren.** Vraag "wat kan ik vragen voor een

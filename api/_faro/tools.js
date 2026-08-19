@@ -710,6 +710,184 @@ const readTools = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 const actTools = [
+  /* ── De CRM-schrijfacties ───────────────────────────────────────────────────
+     Alles wat je in de app kunt aanklikken hoort ook vraagbaar te zijn. Deze
+     vier dekken de gaten die overbleven: een lead verplaatsen, er iets bij
+     schrijven, hem weggooien, en de stem van de AI bijstellen.
+
+     Alle vier zijn kind:'act', dus ze STELLEN VOOR en voeren niets uit. Het
+     uitvoeren gebeurt in api/_faro/actions.js nadat de gebruiker op de
+     bevestigingskaart klikt, en pas daar wordt api/_faro/writes.js aangeroepen
+     -- dat als enige de tenant-eigendom van de rij nog eens controleert. */
+  {
+    name: 'set_lead_status',
+    kind: 'act',
+    description:
+      'Zet een lead op een andere status: new, in_progress, completed of verloren. '
+      + 'Bij "verloren" mag je een reden meegeven. Wordt pas doorgevoerd na bevestiging.',
+    parameters: {
+      type: 'object',
+      properties: {
+        leadId: { type: 'string', description: 'Het record-id van de lead.' },
+        status: { type: 'string', enum: ['new', 'in_progress', 'completed', 'verloren'] },
+        lossReason: {
+          type: 'string',
+          enum: ['Prijs te hoog', 'Geen timing', 'Concurrent gekozen', 'Geen interesse', 'Geen reactie', 'Andere reden'],
+          description: 'Alleen bij status "verloren".',
+        },
+      },
+      required: ['leadId', 'status'],
+    },
+    async run(args, ctx) {
+      const { leads } = await data.leadsFor(ctx);
+      const lead = data.findLead(leads, { leadId: args.leadId });
+      // Nu al opzoeken, niet pas bij het uitvoeren: een bevestigingskaart voor
+      // een lead die niet bestaat is een klik die alleen op een fout kan
+      // uitlopen.
+      if (!lead) {
+        return { summary: 'Die lead staat niet in dit account. Vraag om welke lead het gaat.',
+                 data: { pending: false }, components: [] };
+      }
+      const labels = { new: 'Nieuw', in_progress: 'In behandeling', completed: 'Gewonnen', verloren: 'Verloren' };
+      const naar = labels[args.status] || args.status;
+      return {
+        summary: `Klaar om ${lead.naam} op "${naar}" te zetten. Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'set_lead_status',
+          title: 'Status aanpassen?',
+          body: `${lead.naam}\n${lead.status || 'onbekend'} -> ${naar}`
+            + (args.lossReason ? `\nReden: ${args.lossReason}` : ''),
+          confirmLabel: 'Aanpassen',
+          payload: { leadId: lead.id, status: args.status, lossReason: args.lossReason || undefined },
+        })],
+      };
+    },
+  },
+
+  {
+    name: 'add_lead_note',
+    kind: 'act',
+    description:
+      'Schrijf een notitie bij een lead. De notitie wordt toegevoegd onder wat er al staat, '
+      + 'met datum ervoor. Wordt pas opgeslagen na bevestiging.',
+    parameters: {
+      type: 'object',
+      properties: {
+        leadId: { type: 'string' },
+        note:   { type: 'string', description: 'De notitie zelf.' },
+      },
+      required: ['leadId', 'note'],
+    },
+    async run(args, ctx) {
+      const note = String(args.note || '').trim();
+      if (!note) {
+        return { summary: 'Er is geen notitietekst. Vraag wat er genoteerd moet worden.',
+                 data: { pending: false }, components: [] };
+      }
+      const { leads } = await data.leadsFor(ctx);
+      const lead = data.findLead(leads, { leadId: args.leadId });
+      if (!lead) {
+        return { summary: 'Die lead staat niet in dit account.', data: { pending: false }, components: [] };
+      }
+      return {
+        summary: `Notitie klaar voor ${lead.naam}. Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'add_lead_note',
+          title: 'Notitie opslaan?',
+          body: `${lead.naam}\n\n${note}`,
+          confirmLabel: 'Opslaan',
+          payload: { leadId: lead.id, note },
+        })],
+      };
+    },
+  },
+
+  {
+    name: 'delete_lead',
+    kind: 'act',
+    description:
+      'Verwijder een lead definitief uit het CRM. Onomkeerbaar. Gebruik dit alleen als de '
+      + 'gebruiker er expliciet om vraagt, en nooit uit jezelf.',
+    parameters: {
+      type: 'object',
+      properties: { leadId: { type: 'string' } },
+      required: ['leadId'],
+    },
+    async run(args, ctx) {
+      const { leads } = await data.leadsFor(ctx);
+      const lead = data.findLead(leads, { leadId: args.leadId });
+      if (!lead) {
+        return { summary: 'Die lead staat niet in dit account.', data: { pending: false }, components: [] };
+      }
+      /* De kaart zegt wat er weggaat en dat het niet terugkomt. Een
+         bevestiging die alleen "Weet je het zeker?" vraagt laat de gebruiker
+         raden wat hij bevestigt. */
+      return {
+        summary: `Klaar om ${lead.naam} te verwijderen. Dit is onomkeerbaar. Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'delete_lead',
+          title: 'Lead verwijderen?',
+          body: `${lead.naam}${lead.telefoon ? ' - ' + lead.telefoon : ''}\n\n`
+            + 'Het gesprek, de samenvatting en de notities gaan mee. Dit kan niet ongedaan gemaakt worden.',
+          confirmLabel: 'Definitief verwijderen',
+          payload: { leadId: lead.id },
+        })],
+      };
+    },
+  },
+
+  {
+    name: 'update_ai_persona',
+    kind: 'act',
+    description:
+      'Pas aan hoe de WhatsApp-AI zich gedraagt: naam, welkomstbericht, instructies, werkuren, '
+      + 'of de introtekst van het leadformulier. Geef alleen mee wat er moet veranderen. '
+      + 'Wordt pas opgeslagen na bevestiging.',
+    parameters: {
+      type: 'object',
+      properties: {
+        aiName:         { type: 'string', description: 'De naam waarmee de AI zich voorstelt.' },
+        autoReplyTpl:   { type: 'string', description: 'Het eerste bericht dat een lead krijgt.' },
+        aiInstructions: { type: 'string', description: 'Vrije instructies over toon en werkwijze.' },
+        workingHours:   { type: 'string', description: 'Bijvoorbeeld "ma-vr 9-18".' },
+        formIntro:      { type: 'string', description: 'De introtekst boven het leadformulier.' },
+      },
+    },
+    async run(args, _ctx) {
+      const velden = ['aiName', 'autoReplyTpl', 'aiInstructions', 'workingHours', 'formIntro'];
+      const patch = {};
+      for (const k of velden) if (args[k] !== undefined) patch[k] = String(args[k]);
+      if (!Object.keys(patch).length) {
+        return { summary: 'Er is niets meegegeven om aan te passen. Vraag wat er moet veranderen.',
+                 data: { pending: false }, components: [] };
+      }
+      const labels = {
+        aiName: 'AI-naam', autoReplyTpl: 'Welkomstbericht', aiInstructions: 'AI-instructies',
+        workingHours: 'Werkuren', formIntro: 'Formuliertekst',
+      };
+      /* De kaart toont de nieuwe WAARDE en niet alleen de veldnaam: "AI-naam
+         wordt aangepast" laat je klikken zonder te weten waarin. */
+      const regels = Object.keys(patch).map((k) => {
+        const v = patch[k];
+        return labels[k] + ': ' + (v.length > 140 ? v.slice(0, 140) + '...' : v || '(leeg)');
+      });
+      return {
+        summary: `Klaar om ${regels.length} instelling(en) aan te passen. Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'update_ai_persona',
+          title: 'Instellingen aanpassen?',
+          body: regels.join('\n\n'),
+          confirmLabel: 'Opslaan',
+          payload: patch,
+        })],
+      };
+    },
+  },
+
   {
     name: 'create_followup',
     kind: 'act',

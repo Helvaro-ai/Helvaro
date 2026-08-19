@@ -110,9 +110,18 @@ if (creates.some((n) => tools.requiresConfirmation(n))) fail('a create-tool requ
 else pass(`${creates.length} create-tools run without a gate`);
 
 // The act set is the security boundary, so it is pinned by name rather than by
-// count. Anything that reaches a customer, a calendar or a campaign belongs
-// here; adding a tool to this list must be a deliberate, reviewed edit.
-const EXPECTED_ACT = ['create_followup', 'schedule_followup', 'create_campaign', 'add_leads_to_campaign'];
+// count. Anything that reaches a customer, a calendar, a campaign or a CRM row
+// belongs here; adding a tool to this list must be a deliberate, reviewed edit.
+//
+// The four CRM writers were added when Faro gained parity with the UI: a lead
+// you can move, annotate or delete by clicking should be reachable by asking.
+// They mutate tenant data, so they are gated exactly like the outbound ones --
+// and api/_faro/writes.js re-checks row ownership at execution time, because a
+// lead id in a chat is a string a language model can invent.
+const EXPECTED_ACT = [
+  'set_lead_status', 'add_lead_note', 'delete_lead', 'update_ai_persona',
+  'create_followup', 'schedule_followup', 'create_campaign', 'add_leads_to_campaign',
+];
 const actSet = acts.slice().sort().join(',');
 if (actSet !== EXPECTED_ACT.slice().sort().join(',')) {
   fail(`act-tool set changed: expected [${EXPECTED_ACT.join(', ')}], got [${acts.join(', ')}]`);

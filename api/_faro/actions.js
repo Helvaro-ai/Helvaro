@@ -57,6 +57,7 @@ const data = require('./data');       // lead lookup + the 24-hour window check
 const waSend = require('../_wa-send'); // the single outbound WhatsApp door
 const gcal = require('../_gcal');      // per-client Google Calendar
 const credits = require('../_credits'); // creditpoort — zie de video-executor
+const writes = require('./writes');   // de enige plek die CRM-rijen wijzigt
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -183,6 +184,49 @@ async function execute({ actionId, ctx }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EXECUTORS = {
+  /* ── CRM-schrijfacties ─────────────────────────────────────────────────────
+     Alle vier delegeren naar api/_faro/writes.js, dat als enige plek de
+     eigendom van de rij nog eens tegen de sessie controleert. Ze doen dat
+     bewust nog eens hier ook niet: een tweede, iets andere controle op twee
+     plekken is precies hoe er eentje achterblijft bij een wijziging.
+
+     De payload is ondertekend, maar draagt alleen IDS -- geen veldnamen, geen
+     tabel, geen tenant. Er zit dus niets in wat een schrijfactie ergens anders
+     heen kan sturen. */
+  async set_lead_status(payload, ctx) {
+    const out = await writes.setLeadStatus({
+      leadId: payload && payload.leadId,
+      status: payload && payload.status,
+      lossReason: payload && payload.lossReason,
+    }, ctx);
+    const labels = { new: 'Nieuw', in_progress: 'In behandeling', completed: 'Gewonnen', verloren: 'Verloren' };
+    return {
+      summary: `${out.naam || 'De lead'} staat nu op "${labels[out.status] || out.status}".`,
+      components: [],
+    };
+  },
+
+  async add_lead_note(payload, ctx) {
+    const out = await writes.appendLeadNote({
+      leadId: payload && payload.leadId,
+      note:   payload && payload.note,
+    }, ctx);
+    return { summary: 'Notitie opgeslagen bij de lead.', components: [], data: { leadId: out.leadId } };
+  },
+
+  async delete_lead(payload, ctx) {
+    const out = await writes.deleteLead({ leadId: payload && payload.leadId }, ctx);
+    return { summary: `${out.naam || 'De lead'} is verwijderd.`, components: [] };
+  },
+
+  async update_ai_persona(payload, ctx) {
+    const out = await writes.updatePersona(payload || {}, ctx);
+    return {
+      summary: `Aangepast: ${out.changed.join(', ')}. De WhatsApp-AI gebruikt dit vanaf het volgende gesprek.`,
+      components: [],
+    };
+  },
+
   /* Send the follow-up the user approved.
    *
    * Three things are deliberately re-done here rather than trusted from the
