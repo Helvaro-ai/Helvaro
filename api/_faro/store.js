@@ -4,26 +4,50 @@
  *
  * SCAFFOLD: full function surface, no queries wired.
  *
- * ── Why Postgres and not Airtable ────────────────────────────────────────────
- * Leads, Client Config, Niche Config and Users live in Airtable. Chat does not
- * belong there: Airtable is rate-limited at 5 requests/second per base and
- * priced per record, and a single AI conversation writes a row per turn plus a
- * row per tool call. Three tables were already moved off Airtable onto the VPS
- * for exactly this kind of write pressure (Marketing Posts, Outreach,
- * Appointments) behind the Airtable-shaped facade in api/_pgapi.js.
+ * ── Waar dit heen schrijft ───────────────────────────────────────────────────
+ * Oorspronkelijk: naar een VPS met Postgres, via de Airtable-vormige façade in
+ * api/_pgapi.js. Die VPS bestaat niet — bevestigd door de eigenaar op
+ * 2026-08-19; zie de kop van api/_pgapi.js.
  *
- * AI data follows that same path — same facade, same helper, no new database
- * and no new client. Requirement 15's "conversation persistence" is therefore
- * an extension of an existing pattern rather than new infrastructure.
+ * Omdat die façade Airtable-dialect spreekt, waren de queries hieronder al in
+ * precies de vorm die Airtable zelf ook accepteert. Er hoefde dus geen enkele
+ * query te veranderen: alleen het TRANSPORT kiest nu zelf waar het heen gaat.
+ *   1. is PG_API_URL/PG_API_TOKEN gezet, dan die (voor als er ooit een
+ *      Postgres bij komt — dan verandert hier verder niets);
+ *   2. anders Airtable, want dat is de database die er wel is;
+ *   3. en bestaat de tabel daar nog niet, dan valt Faro terug op de
+ *      geschiedenis die de browser bijhoudt.
  *
- * ── Tables to create on the VPS ──────────────────────────────────────────────
+ * Het bezwaar uit de oude kop blijft waar en is bewust geaccepteerd: Airtable
+ * is 5 requests/seconde per base en rekent per record, en een gesprek schrijft
+ * een rij per beurt. Voor een handvol kantoren met tientallen beurten per dag
+ * is dat ruim binnen de marge. Wordt dat ooit krap, dan is stap 1 hierboven de
+ * uitweg zonder de rest te hoeven aanraken.
+ *
+ * ── Tabellen die hiervoor moeten bestaan ─────────────────────────────────────
+ * In Airtable, met precies deze veldnamen (de code leest ze letterlijk):
+ *
  *   ai_conversations
- *     id, project_code, user_id, title, project_id (nullable), favorite,
- *     created_at, updated_at, last_message_at
+ *     project_code     Single line text   ← de tenantsleutel, verplicht
+ *     user_id          Single line text
+ *     title            Single line text
+ *     project_id       Single line text   (mag leeg)
+ *     favorite         Checkbox
+ *     created_at       Single line text   (ISO-8601)
+ *     last_message_at  Single line text   (ISO-8601, sorteersleutel zijbalk)
  *
  *   ai_messages
- *     id, conversation_id, role ('user'|'assistant'), content (jsonb: blocks),
- *     components (jsonb), tool_calls (jsonb), tokens_in, tokens_out, created_at
+ *     conversation_id  Single line text   ← record-id uit ai_conversations
+ *     role             Single line text   ('user' of 'assistant')
+ *     content          Long text          (JSON: blokken)
+ *     components       Long text          (JSON)
+ *     tool_calls       Long text          (JSON)
+ *     tokens_in        Number
+ *     tokens_out       Number
+ *     created_at       Single line text   (ISO-8601, sorteersleutel)
+ *
+ * Datums bewust als tekst: de code schrijft en vergelijkt ISO-strings, en een
+ * Airtable-datumveld normaliseert die stilletjes naar een andere precisie.
  *
  *   ai_projects                     -- requirement 12
  *     id, project_code, name, property_id, status, created_at, updated_at
@@ -42,6 +66,9 @@
 const _pg = require('../_pgapi');
 const fixtures = require('./fixtures');
 
+/* Namen, geen Airtable-ids: een tabel die nog aangemaakt moet worden heeft nog
+   geen id, en Airtable accepteert de naam net zo goed in het pad. Wie ze later
+   hernoemt breekt dit — daarom staan ze hier op één plek. */
 const T_CONVERSATIONS = 'ai_conversations';
 const T_MESSAGES      = 'ai_messages';
 const T_PROJECTS      = 'ai_projects';
@@ -60,22 +87,47 @@ const T_PROJECT_LINKS = 'ai_project_links';
 let _available = null;
 
 function configured() {
-  return Boolean(process.env.PG_API_URL && process.env.PG_API_TOKEN);
+  return Boolean(
+    (process.env.PG_API_URL && process.env.PG_API_TOKEN) ||
+    (process.env.API_AIRTABLE && process.env.BASE_AIRTABLE)
+  );
+}
+
+/* Eén deur naar buiten, zodat elke query hieronder onveranderd blijft. De
+   paden zijn Airtable-dialect (filterByFormula, sort[0][field], pageSize), wat
+   allebei de bestemmingen begrijpen. */
+function backend() {
+  return (process.env.PG_API_URL && process.env.PG_API_TOKEN) ? 'pg' : 'airtable';
+}
+
+async function dbFetch(pathAndQuery, options = {}) {
+  if (backend() === 'pg') return dbFetch(pathAndQuery, options);
+  const baseId = process.env.BASE_AIRTABLE;
+  const token = process.env.API_AIRTABLE;
+  if (!baseId || !token) throw new Error('store: geen database geconfigureerd');
+  const headers = Object.assign(
+    { Authorization: `Bearer ${token}` },
+    options.body ? { 'Content-Type': 'application/json' } : {},
+    options.headers || {}
+  );
+  return fetch(`https://api.airtable.com/v0/${baseId}/${pathAndQuery}`,
+               Object.assign({}, options, { headers }));
 }
 
 async function available() {
   if (_available !== null) return _available;
   if (!configured()) { _available = false; return false; }
   try {
-    const r = await _pg.pgFetch(`${T_CONVERSATIONS}?pageSize=1`);
+    const r = await dbFetch(`${T_CONVERSATIONS}?pageSize=1`);
     // 404 = tabel bestaat niet (nog). 401/403 = verkeerd token; in beide
     // gevallen is doorgaan zinloos maar mag Faro niet omvallen.
     _available = r.ok;
     if (!r.ok) {
-      console.warn(`[faro/store] ${T_CONVERSATIONS} niet beschikbaar (HTTP ${r.status}) — gesprekken worden niet bewaard`);
+      console.warn(`[faro/store] tabel ${T_CONVERSATIONS} niet gevonden in ${backend()} (HTTP ${r.status}) — ` +
+                   'gesprekken leven alleen in de browser tot die tabel bestaat');
     }
   } catch (e) {
-    console.warn('[faro/store] Postgres onbereikbaar:', e && e.message);
+    console.warn(`[faro/store] ${backend()} onbereikbaar:`, e && e.message);
     _available = false;
   }
   return _available;
@@ -133,7 +185,7 @@ async function listConversations(projectCode, opts = {}) {
   if (opts.projectId) clauses.push(`{project_id}="${esc(opts.projectId)}"`);
   const formula = encodeURIComponent(clauses.length > 1 ? `AND(${clauses.join(',')})` : clauses[0]);
   try {
-    const r = await _pg.pgFetch(
+    const r = await dbFetch(
       `${T_CONVERSATIONS}?filterByFormula=${formula}&sort[0][field]=last_message_at&sort[0][direction]=desc&pageSize=${limit}`);
     if (!r.ok) return [];
     const d = await r.json();
@@ -156,7 +208,7 @@ async function getConversation(projectCode, id) {
   if (!(await available())) return null;
   const formula = encodeURIComponent(`AND({project_code}="${esc(projectCode)}",RECORD_ID()="${esc(id)}")`);
   try {
-    const r = await _pg.pgFetch(`${T_CONVERSATIONS}?filterByFormula=${formula}&maxRecords=1`);
+    const r = await dbFetch(`${T_CONVERSATIONS}?filterByFormula=${formula}&maxRecords=1`);
     if (!r.ok) return null;
     const d = await r.json();
     const rec = (d.records || [])[0];
@@ -172,7 +224,7 @@ async function createConversation(projectCode, userId, opts = {}) {
   if (!(await available())) return null;
   const now = new Date().toISOString();
   try {
-    const r = await _pg.pgFetch(T_CONVERSATIONS, {
+    const r = await dbFetch(T_CONVERSATIONS, {
       method: 'POST',
       body: JSON.stringify({
         fields: {
@@ -214,7 +266,7 @@ async function patchConversation(projectCode, id, fields) {
   const own = await getConversation(projectCode, id);
   if (!own) return null;
   try {
-    const r = await _pg.pgFetch(`${T_CONVERSATIONS}/${encodeURIComponent(id)}`, {
+    const r = await dbFetch(`${T_CONVERSATIONS}/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify({ fields }),
     });
@@ -241,14 +293,14 @@ async function deleteConversation(projectCode, id) {
     // Berichten eerst: een gesprek weghalen en de berichten laten staan levert
     // rijen op die aan niets meer hangen en die niemand ooit nog opruimt.
     const formula = encodeURIComponent(`{conversation_id}="${esc(id)}"`);
-    const list = await _pg.pgFetch(`${T_MESSAGES}?filterByFormula=${formula}&pageSize=100`);
+    const list = await dbFetch(`${T_MESSAGES}?filterByFormula=${formula}&pageSize=100`);
     if (list.ok) {
       const d = await list.json();
       for (const rec of d.records || []) {
-        await _pg.pgFetch(`${T_MESSAGES}/${encodeURIComponent(rec.id)}`, { method: 'DELETE' });
+        await dbFetch(`${T_MESSAGES}/${encodeURIComponent(rec.id)}`, { method: 'DELETE' });
       }
     }
-    const r = await _pg.pgFetch(`${T_CONVERSATIONS}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const r = await dbFetch(`${T_CONVERSATIONS}/${encodeURIComponent(id)}`, { method: 'DELETE' });
     return r.ok;
   } catch (e) {
     console.warn('[faro/store] deleteConversation:', e && e.message);
@@ -272,7 +324,7 @@ async function listMessages(projectCode, conversationId, opts = {}) {
   const formula = encodeURIComponent(`{conversation_id}="${esc(conversationId)}"`);
   const limit = Math.min(200, Math.max(1, opts.limit || 100));
   try {
-    const r = await _pg.pgFetch(
+    const r = await dbFetch(
       `${T_MESSAGES}?filterByFormula=${formula}&sort[0][field]=created_at&sort[0][direction]=asc&pageSize=${limit}`);
     if (!r.ok) return [];
     const d = await r.json();
@@ -290,7 +342,7 @@ async function appendMessage(projectCode, conversationId, message) {
   if (!own) return null;
   const now = new Date().toISOString();
   try {
-    const r = await _pg.pgFetch(T_MESSAGES, {
+    const r = await dbFetch(T_MESSAGES, {
       method: 'POST',
       body: JSON.stringify({
         fields: {
@@ -308,7 +360,7 @@ async function appendMessage(projectCode, conversationId, message) {
     if (!r.ok) return null;
     // De zijbalk sorteert op last_message_at; zonder deze regel zakt een actief
     // gesprek langzaam naar beneden terwijl er juist in gepraat wordt.
-    await _pg.pgFetch(`${T_CONVERSATIONS}/${encodeURIComponent(conversationId)}`, {
+    await dbFetch(`${T_CONVERSATIONS}/${encodeURIComponent(conversationId)}`, {
       method: 'PATCH',
       body: JSON.stringify({ fields: { last_message_at: now } }),
     }).catch(() => {});
