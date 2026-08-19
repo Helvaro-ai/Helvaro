@@ -30,6 +30,29 @@ hieronder.
 
 ### Inloggen en accounts
 
+- **Een bestaande klant houdt zijn eigen tenant.** Dit was de duurste fout in de
+  hele migratie. Logde een klant die al in Airtable stond voor het eerst via
+  Clerk in, dan kreeg hij een gloednieuwe lege tenant: succesvol ingelogd, nul
+  leads, proefperiode van veertien dagen — terwijl al zijn echte records
+  gewoon in Airtable bleven staan, alleen niet meer bereikbaar vanaf zijn
+  account. Van zijn kant niet te onderscheiden van "Helvaro heeft mijn klanten
+  gewist". De rij werd wél opgezocht, maar alleen om te kijken óf hij bestond;
+  zijn projectcode werd weggegooid. Die wordt nu overgenomen. Er is een test
+  bijgekomen die precies dit geval afdekt, plus het spiegelgeval dat een écht
+  nieuwe klant nog steeds gewoon een tenant krijgt.
+- **Google Agenda werkte voor geen enkele Clerk-gebruiker.** Status, koppelen en
+  ontkoppelen gaven alle drie een 401: de agendaroute werd afgehandeld vóórdat
+  de Clerk-controle draaide, en keek alleen naar het oude sessietoken. Het
+  paneel bleef daardoor eeuwig op "nog niet gekoppeld" staan en er was geen
+  enkele manier om een agenda te koppelen. Zonder agenda kan de boekingsstroom
+  nooit bevestigen dat een slot vrij is — precies het ding waar hij niet naar
+  mag gokken.
+- **`preflight.js` telde maar tot 100.** Airtable geeft honderd rijen per pagina
+  en de rest achter een `offset`, die niet werd gelezen. Bij meer dan honderd
+  klanten meldde hij "alle 100 actieve klanten bestaan in Clerk" — groen licht
+  — terwijl klant 101 en verder ongecontroleerd bleven en bij het inloggen
+  precies in de lege tenant hierboven terechtkwamen. De controle die dat moest
+  voorkomen, bevestigde dus het tegendeel. Hij paginaeert nu.
 - **Clerk werkt nu op een geverifieerd eigen domein.** Faro had helemaal geen
   Clerk-pad en gaf iedereen een 401 op de pagina waar je na het inloggen landt.
 - **Uitloggen logt echt uit.** De Clerk-sessie bleef leven: één keer verversen en

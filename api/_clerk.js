@@ -68,6 +68,41 @@ async function provisionTenant(user) {
   const email = String(user.primaryEmailAddress?.emailAddress || '').trim().toLowerCase();
   if (!email) throw new Error('gebruiker zonder e-mailadres');
 
+  // FIRST, before deriving anything: does this e-mail already belong to a
+  // tenant? An existing customer who signs in through Clerk for the first time
+  // must land in the tenant he already has. Deriving a code from the Clerk user
+  // id and creating a fresh Client Config row instead is not a cosmetic
+  // mistake: he logs in successfully, sees zero leads and a 14-day trial, and
+  // his real records are still in Airtable but no longer reachable from his
+  // account. That is indistinguishable, from his side, from Helvaro having
+  // deleted his customers.
+  //
+  // The row is matched on e-mail because that is the only identifier the two
+  // systems share — Airtable predates Clerk and holds no Clerk user id.
+  const uFormula  = encodeURIComponent(`{Email}="${email.replace(/["\\]/g, '\\$&')}"`);
+  const uExisting = await at(`${USERS_TABLE}?filterByFormula=${uFormula}&maxRecords=1`);
+  const uRow      = (uExisting.records || [])[0] || null;
+  const uFields   = (uRow && uRow.fields) || {};
+  const adopted   = String(uFields.fldbrCpBuQjJBfZsv || uFields['Project Code'] || '').trim();
+
+  if (adopted) {
+    // Adopt and stop. Deliberately no Client Config write: that row is the
+    // customer's real one and predates this sign-in. Only Clerk's metadata is
+    // missing, which is exactly what scripts/clerk-sync-users.js would have
+    // filled in had it been run first.
+    // Airtable's name wins — it is what the customer is called on his own
+    // records — then whatever Clerk collected at sign-up, and only then the
+    // e-mail prefix, which is a last resort and reads as a placeholder.
+    const adoptedName = String(uFields.fldmKwegSUj1joru3 || uFields['Client Name'] || '').trim()
+                        || [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+                        || email.split('@')[0];
+    await client().users.updateUserMetadata(uid, {
+      publicMetadata: { projectCode: adopted, clientName: adoptedName },
+    });
+    console.log('[clerk] bestaande tenant overgenomen', adopted, 'voor', email);
+    return { userId: uid, projectCode: adopted, clientName: adoptedName, calendlyLink: '', em: email };
+  }
+
   const projectCode = deriveProjectCode(uid);
   const clientName  = String(user.firstName || '').trim()
                       ? [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
@@ -102,9 +137,15 @@ async function provisionTenant(user) {
     console.log('[clerk] nieuwe tenant aangemaakt', projectCode, '- proef tot', trialEnds, 'met', TRIAL_CREDITS, 'credits');
   }
 
-  const uFormula = encodeURIComponent(`{Email}="${email.replace(/["\\]/g, '\\$&')}"`);
-  const uExisting = await at(`${USERS_TABLE}?filterByFormula=${uFormula}&maxRecords=1`);
-  if (!(uExisting.records || []).length) {
+  // uRow was fetched above. Reaching here means it either does not exist or
+  // carries no Project Code; in the latter case patch the row we already found
+  // rather than creating a second one for the same e-mail.
+  if (uRow && !adopted) {
+    await at(`${USERS_TABLE}/${uRow.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ fields: { fldbrCpBuQjJBfZsv: projectCode }, typecast: true }),
+    });
+  } else if (!uRow) {
     await at(USERS_TABLE, {
       method: 'POST',
       body: JSON.stringify({

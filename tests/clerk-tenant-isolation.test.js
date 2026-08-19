@@ -8,6 +8,7 @@ const BASE = require('path').join(__dirname, '..') + '/';
 let CLAIMS = null;
 let CLERK_USER = null;
 let LAST_VERIFY_OPTS = null;
+let LAST_METADATA = null;
 require.cache[require.resolve(BASE + 'node_modules/@clerk/backend')] = {
   id: require.resolve(BASE + 'node_modules/@clerk/backend'),
   loaded: true,
@@ -24,10 +25,13 @@ require.cache[require.resolve(BASE + 'node_modules/@clerk/backend')] = {
       }
       return CLAIMS;
     },
-    createClerkClient: () => ({ users: { getUser: async () => {
-      if (!CLERK_USER) throw new Error('not found');
-      return CLERK_USER;
-    } } }),
+    createClerkClient: () => ({ users: {
+      getUser: async () => {
+        if (!CLERK_USER) throw new Error('not found');
+        return CLERK_USER;
+      },
+      updateUserMetadata: async (uid, data) => { LAST_METADATA = { uid, data }; },
+    } }),
   },
 };
 
@@ -155,6 +159,79 @@ function check(name, actual, expected) {
   CLAIMS = { sub: 'user_9', projectCode: 'KLANT_C' };
   c = fresh();
   check('sessie draagt de Clerk-gebruiker mee', (await c.verifySession(bearerReq('GET'))).userId, 'user_9');
+
+  // ── Provisioning: een BESTAANDE klant mag geen nieuwe lege tenant krijgen ──
+  // Dit is de duurste fout die deze migratie kan maken. Een klant die al jaren
+  // in Airtable staat en voor het eerst via Clerk inlogt, moet in ZIJN tenant
+  // landen. Kreeg hij een verse, dan logt hij succesvol in, ziet nul leads en
+  // een proefperiode, terwijl zijn echte records onbereikbaar in Airtable
+  // blijven staan — van zijn kant niet te onderscheiden van "Helvaro heeft mijn
+  // klanten gewist". De koppeling gaat op e-mail, want dat is het enige dat de
+  // twee systemen delen.
+  console.log('\n— provisioning neemt een bestaande tenant over —');
+
+  const _realFetch = global.fetch;
+  process.env.API_AIRTABLE  = 'test-key';
+  process.env.BASE_AIRTABLE = 'test-base';
+
+  // Airtable-dubbel: één Users-rij voor jan@makelaar.be die naar MAKELAARJAN
+  // wijst. Elke schrijfactie wordt geregistreerd zodat de test kan bewijzen dat
+  // er GEEN nieuwe Client Config-rij bijkomt.
+  let writes = [];
+  function stubAirtable(usersRow) {
+    writes = [];
+    global.fetch = async (url, opts) => {
+      const method = (opts && opts.method) || 'GET';
+      if (method !== 'GET') writes.push(method + ' ' + String(url).split('/').pop().split('?')[0]);
+      const body = String(url).includes('tbl2hrPW7gIx5XF4S') && usersRow
+        ? { records: [usersRow] }
+        : { records: [] };
+      return { ok: true, status: 200, json: async () => body, text: async () => '' };
+    };
+  }
+
+  const JAN = {
+    id: 'rec_jan',
+    fields: { fldsqiSy41CCDickr: 'jan@makelaar.be', fldmKwegSUj1joru3: 'Jan Peeters', fldbrCpBuQjJBfZsv: 'MAKELAARJAN' },
+  };
+  const CLERK_JAN = {
+    id: 'user_jan',
+    primaryEmailAddress: { emailAddress: 'jan@makelaar.be' },
+    firstName: 'Jan', lastName: 'Peeters',
+    publicMetadata: {},           // nog nooit gesynct — dit is de gevaarlijke toestand
+  };
+
+  stubAirtable(JAN);
+  CLAIMS = { sub: 'user_jan' };   // geen projectCode in het token -> provisioning
+  CLERK_USER = CLERK_JAN;
+  LAST_METADATA = null;
+  c = fresh();
+  let sess = await c.verifySession(bearerReq('GET'));
+
+  check('bestaande klant houdt zijn eigen tenant', sess && sess.projectCode, 'MAKELAARJAN');
+  check('naam komt van zijn eigen rij, niet van het e-mailadres', sess && sess.clientName, 'Jan Peeters');
+  check('geen enkele nieuwe rij aangemaakt', writes, []);
+  check('Clerk-metadata wijst naar de echte tenant',
+        LAST_METADATA && LAST_METADATA.data.publicMetadata.projectCode, 'MAKELAARJAN');
+
+  // Spiegelgeval: een écht nieuwe gebruiker moet wel gewoon een tenant krijgen,
+  // anders zou de fix hierboven zelfaanmelden stukmaken.
+  stubAirtable(null);
+  CLAIMS = { sub: 'user_nieuw' };
+  CLERK_USER = {
+    id: 'user_nieuw',
+    primaryEmailAddress: { emailAddress: 'nieuw@makelaar.be' },
+    firstName: 'Nieuwe', lastName: 'Klant',
+    publicMetadata: {},
+  };
+  LAST_METADATA = null;
+  c = fresh();
+  sess = await c.verifySession(bearerReq('GET'));
+  check('nieuwe gebruiker krijgt wel degelijk een tenant', !!(sess && sess.projectCode), true);
+  check('en die tenant is niet die van Jan', sess && sess.projectCode !== 'MAKELAARJAN', true);
+  check('voor een nieuwe klant worden er rijen aangemaakt', writes.length > 0, true);
+
+  global.fetch = _realFetch;
 
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);

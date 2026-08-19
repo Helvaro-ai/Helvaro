@@ -2084,9 +2084,27 @@ async function handleGcal(req, res) {
     // request sends. Deliberately does NOT accept the legacy raw API-key path
     // (Path B in the main handler above) — a brand-new OAuth-touching feature
     // fails closed rather than extend trust to older, unsigned tokens.
-    const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
-    const session = verifySession(raw);
-    const projectCode = session && session.projectCode ? session.projectCode : '';
+    //
+    // Clerk first, for the same reason the main handler has a Path 0: this
+    // route is dispatched before that block runs, and a Clerk session sends
+    // 'clerk-session' in x-api-key — a sentinel, not a token. verifySession
+    // rejects it, so without this every Clerk tenant got a 401 on status,
+    // connect and disconnect alike: the panel read "nog niet gekoppeld"
+    // forever and there was no way to attach a calendar at all. With no
+    // calendar attached the booking flow can never confirm a slot is free,
+    // which is the one thing it must never guess at.
+    let projectCode = '';
+    const clerkGcal = await _clerk.verifySession(req);
+    if (clerkGcal && clerkGcal.pending) {
+      return res.status(403).json({ error: 'TENANT_PENDING' });
+    }
+    if (clerkGcal && clerkGcal.projectCode) {
+      projectCode = clerkGcal.projectCode;
+    } else {
+      const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+      const session = verifySession(raw);
+      projectCode = session && session.projectCode ? session.projectCode : '';
+    }
     if (!projectCode) return res.status(401).json({ error: 'Niet ingelogd' });
 
     let body = req.body;

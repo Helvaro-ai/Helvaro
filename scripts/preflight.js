@@ -268,11 +268,24 @@ async function probe(url, opts = {}) {
   } else {
     try {
       const USERS_TABLE = 'tbl2hrPW7gIx5XF4S';
-      const r = await probe(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/${USERS_TABLE}?pageSize=100`,
-                            { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } });
-      if (!r.ok) throw new Error(r.error || `Airtable ${r.status}`);
-      const d = await r.res.json();
-      const actief = (d.records || [])
+      // Paginate. Airtable caps a page at 100 rows and hands back an `offset`
+      // for the rest. Reading only the first page and then reporting "alle N
+      // klanten bestaan in Clerk" is worse than not checking at all: past 100
+      // users it green-lights the deploy while every unchecked customer walks
+      // into a fresh empty tenant on first sign-in. This check exists purely to
+      // prevent that, so it has to see everyone.
+      const rows = [];
+      let offset = '';
+      do {
+        const url = `https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/${USERS_TABLE}`
+                  + `?pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`;
+        const r = await probe(url, { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } });
+        if (!r.ok) throw new Error(r.error || `Airtable ${r.status}`);
+        const d = await r.res.json();
+        rows.push(...(d.records || []));
+        offset = d.offset || '';
+      } while (offset);
+      const actief = rows
         .map((rec) => rec.fields || {})
         .filter((f) => (f.fldb8sGE3Bslch8f8 === true || f.Active === true))
         .map((f) => String(f.fldsqiSy41CCDickr || f.Email || '').trim().toLowerCase())
