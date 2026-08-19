@@ -91,6 +91,11 @@ hieronder.
 
 ### Onder de motorkap
 
+- **Dit changelogbestand.** Vanaf nu wordt elke wijziging hier beschreven, in
+  gevolgen in plaats van commits. `node scripts/changelog.js` zegt wat er nog
+  ontbreekt; `CLAUDE.md` legt de afspraak vast voor iedereen die hier verder
+  werkt.
+
 - **De VPS is opgeheven** en de code deed alsof hij er nog was. Wat eraan hing —
   marketingposts, outreach, social posting via "Herald" — is stil, en dat staat
   nu eerlijk in `api/_pgapi.js`. Afspraken stonden in Airtable en zijn veilig.
@@ -104,4 +109,4 @@ hieronder.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: be03d36 -->
+<!-- changelog-tot: e09e8c7 -->
