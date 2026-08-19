@@ -539,6 +539,38 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    buiten beeld, en omdat de pagina zijn overflow verbergt was dat geen
    scrollbalk maar een tabel die stilletjes kolommen kwijtraakte. Eén wrapper
    die zelf scrollt geeft ze terug. */
+/* De storingsbalk. display:flex staat op de klasse en niet inline, zodat een
+   [hidden] of style.display='none' hem ook echt weg krijgt — een eerdere versie
+   van een banner in dit bestand bleef zichtbaar boven een gezonde pagina omdat
+   display:flex het van [hidden] won. */
+.crm-error-banner {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(var(--error-rgb), 0.10);
+  border: 1px solid rgba(var(--error-rgb), 0.28);
+}
+.crm-error-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.crm-error-text strong { font-size: 14px; color: var(--error-ink); }
+.crm-error-text span { font-size: 13px; color: var(--text-muted); }
+.crm-error-retry {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--error-rgb), 0.35);
+  background: none;
+  color: var(--error-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.crm-error-retry:hover:not(:disabled) { background: rgba(var(--error-rgb), 0.12); }
+.crm-error-retry:disabled { opacity: 0.6; cursor: default; }
+.crm-error-retry:focus-visible { outline: 2px solid var(--error-ink); outline-offset: 2px; }
+
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -11430,6 +11462,7 @@ async function refreshData(skipFetch = false) {
         state.calendlyUrl = data.client?.calendly || '';
         state.lastFetch   = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
+        hideCrmError();
       }
     }
     // When skipFetch=true, state is already populated by init(). go straight to render
@@ -11521,9 +11554,71 @@ async function refreshData(skipFetch = false) {
     const ts = document.getElementById('timestamp-info');
     if (ts) ts.textContent = 'Verbinding mislukt. Opnieuw proberen over 90s';
     console.warn('refreshData error:', err.message);
+    // Hier stond alleen die console.warn. Bij een 500, ongeldige JSON of een
+    // verbroken verbinding bleven alle KPI-tegels op "LADEN..." staan, zonder
+    // melding en zonder banner — niet te onderscheiden van een trage pagina.
+    // De gebruiker wacht, herlaadt, en concludeert dat het product stuk is.
+    showCrmError(err);
   } finally {
     if (btn) btn.classList.remove('spin');
   }
+}
+
+/* ── Zichtbaar maken dat er iets mis is ──────────────────────────────────────
+   Eén balk bovenaan de inhoud, met een knop die het echt opnieuw probeert.
+   Onderscheidt de twee gevallen die de gebruiker verschillend moet lezen:
+   "wij konden je CRM niet lezen" (jouw data is er wel) tegenover een gewone
+   verbindingsfout. Wat het NOOIT meer doet is een leeg dashboard tonen alsof
+   het account leeg is — zie de 503 in api/leads.js. */
+function showCrmError(err) {
+  const msg = String((err && err.message) || '');
+  const unavailable = /503|crm_unavailable/.test(msg);
+  let el = document.getElementById('crm-error-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'crm-error-banner';
+    el.className = 'crm-error-banner';
+    el.setAttribute('role', 'alert');
+    const host = document.querySelector('.page.active') || document.querySelector('.main-content');
+    if (!host) return;
+    host.insertBefore(el, host.firstChild);
+  }
+  el.innerHTML = '';
+
+  const text = document.createElement('div');
+  text.className = 'crm-error-text';
+  const strong = document.createElement('strong');
+  strong.textContent = unavailable
+    ? 'We konden je leads even niet ophalen.'
+    : 'Geen verbinding met Helvaro.';
+  const sub = document.createElement('span');
+  sub.textContent = unavailable
+    ? 'Je gegevens zijn niet weg — we konden ze nu alleen niet lezen. We proberen het vanzelf opnieuw.'
+    : 'Controleer je internetverbinding. We proberen het vanzelf opnieuw.';
+  text.appendChild(strong);
+  text.appendChild(sub);
+
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.className = 'crm-error-retry';
+  retry.textContent = 'Opnieuw proberen';
+  retry.addEventListener('click', function () {
+    retry.disabled = true;
+    retry.textContent = 'Bezig…';
+    refreshData().finally(function () {
+      retry.disabled = false;
+      retry.textContent = 'Opnieuw proberen';
+    });
+  });
+
+  el.appendChild(text);
+  el.appendChild(retry);
+  el.style.display = 'flex';
+}
+
+function hideCrmError() {
+  const el = document.getElementById('crm-error-banner');
+  if (el) el.style.display = 'none';
 }
 
 /* ============================================================
@@ -19226,6 +19321,7 @@ function hideHelpWidget() {
     return;
   }
 
+  let _initFetchError = null;
   if (tryAutoLogin()) {
     // Small random delay (0–4s) so multiple tabs opened at once don't all hit
     // Airtable in the same second.  localStorage data renders immediately; the
@@ -19254,15 +19350,22 @@ function hideHelpWidget() {
         else { state.leads = []; state.stats = {}; }
         state.lastFetch = 0;
       }
-    } catch {
+    } catch (err) {
       // Network error. Same localStorage fallback
       const lsCache = loadLeadsFromLS();
       if (lsCache) { state.leads = lsCache.leads; state.stats = lsCache.stats || {}; }
       else { state.leads = []; state.stats = {}; }
       state.lastFetch = 0;
+      // Ook bij de EERSTE lading moet zichtbaar zijn dat het mislukte. Zonder
+      // dit opent het dashboard met nullen en zonder enige uitleg, en dat is
+      // precies het scherm dat een klant met 400 leads laat denken dat alles
+      // weg is. Na startDashboard(), anders plaatst de banner zich in een
+      // pagina die zo meteen opnieuw opgebouwd wordt.
+      _initFetchError = err;
     }
     // Pass skipRefresh=true. State already populated above, no second Airtable call needed
     await startDashboard(true);
+    if (_initFetchError) { try { showCrmError(_initFetchError); } catch (e) {} }
   } else {
     document.getElementById('login-page').style.display = 'flex';
     initLoginSlideshow();

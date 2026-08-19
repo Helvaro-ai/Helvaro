@@ -1814,12 +1814,24 @@ module.exports = async function handler(req, res) {
       console.warn('Leads error. Serving stale cache as fallback (age ' + Math.round(cacheAge / 1000) + 's)');
       return res.status(200).json({ ...leadsCache.payload, stale: true });
     }
-    // Unknown error, no usable cache. Return empty rather than 500 so the dashboard
-    // stays alive and retries on the next poll cycle.
-    console.warn('Leads error, no usable cache. Returning empty payload');
-    return res.status(200).json({
-      leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
-      client: { naam: clientName, calendly: calendlyLink }, error: err.message
+    // Geen bruikbare cache. Dit gaf een keurige 200 met een lege leadlijst
+    // terug, en dat is het gevaarlijkste antwoord dat hier mogelijk is: het is
+    // niet te onderscheiden van een gloednieuw account. Een klant met 400 leads
+    // kreeg tijdens een Airtable-storing het onboardingscherm te zien — "0 van 5
+    // klaar · Ontvang je eerste lead" — met nergens de mededeling dat er iets
+    // mislukt was. De command-center-route in dit bestand doet het al goed met
+    // een 503; dit pad stond andersom.
+    //
+    // 503 en niet 500: dit is tijdelijk en de dashboardpoll mag het gewoon
+    // opnieuw proberen. `unavailable` is wat de UI leest om "we konden je CRM
+    // niet lezen" te tonen in plaats van een leeg huis.
+    console.warn('Leads error, no usable cache. Returning 503 rather than a fake empty account');
+    return res.status(503).json({
+      error: 'We konden je leads nu niet ophalen.',
+      code: 'crm_unavailable',
+      unavailable: true,
+      detail: err.message,
+      client: { naam: clientName, calendly: calendlyLink }
     });
   }
 
