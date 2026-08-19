@@ -543,6 +543,27 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    [hidden] of style.display='none' hem ook echt weg krijgt — een eerdere versie
    van een banner in dit bestand bleef zichtbaar boven een gezonde pagina omdat
    display:flex het van [hidden] won. */
+/* Aanraakdoelen. WCAG 2.2 vraagt minimaal 24x24 CSS-pixels voor iets dat je
+   moet kunnen raken; deze zaten daaronder — potloodjes en kruisjes van 14 tot
+   20 pixels.
+
+   Eerste poging was een onzichtbaar ::after om het raakvlak te vergroten zonder
+   de layout te verschuiven. Gemeten met elementFromPoint bleek dat niet te
+   werken: op 11px van het midden ving het pseudo-element de klik niet op, want
+   een ouder knipt zijn overflow af. Dus gewoon de knop zelf op maat, met het
+   icoon gecentreerd zodat hij visueel niet groter oogt. */
+#revenue-goal-edit,
+.copy-btn,
+#dash-checklist-close,
+#btn-toggle-apikey,
+#panel-copy-phone {
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .crm-error-banner {
   display: none;
   align-items: center;
@@ -8184,23 +8205,23 @@ ${faro.navCta}
       <div class="filters-bar">
         <div class="search-wrapper">
           <span class="search-icon"></span>
-          <input class="search-input" id="search-input" type="text" placeholder="Zoek op naam of telefoonnummer...">
+          <input class="search-input" id="search-input" aria-label="Zoek leads op naam of telefoonnummer" type="text" placeholder="Zoek op naam of telefoonnummer...">
         </div>
-        <select class="filter-select" id="filter-status">
+        <select class="filter-select" id="filter-status" aria-label="Filter op status">
           <option value="">Alle statussen</option>
           <option value="new">Nieuw</option>
           <option value="in_progress">Bezig</option>
           <option value="completed">Klaar</option>
         </select>
-        <select class="filter-select" id="filter-qualified">
+        <select class="filter-select" id="filter-qualified" aria-label="Filter op gekwalificeerd">
           <option value="">Alle leads</option>
           <option value="true">Gekwalificeerd</option>
           <option value="false">Niet gekwalificeerd</option>
         </select>
-        <select class="filter-select" id="filter-bron">
+        <select class="filter-select" id="filter-bron" aria-label="Filter op bron">
           <option value="">Alle bronnen</option>
         </select>
-        <select class="filter-select" id="filter-opgepikt">
+        <select class="filter-select" id="filter-opgepikt" aria-label="Filter op opgepikt">
           <option value="">Opgepikt: Alle</option>
           <option value="true">Opgepikt</option>
           <option value="false">Niet opgepikt</option>
@@ -8251,7 +8272,7 @@ ${faro.navCta}
       <div class="export-filter-bar">
         <div class="export-filter-group">
           <label class="export-filter-label">Periode</label>
-          <select class="export-select" id="resultaten-period" onchange="loadResultaten()">
+          <select class="export-select" id="resultaten-period" aria-label="Periode voor resultaten" onchange="loadResultaten()">
             <option value="this_month" selected>Deze maand</option>
             <option value="last_30_days">Afgelopen 30 dagen</option>
             <option value="all_time">Alle tijd</option>
@@ -8281,7 +8302,7 @@ ${faro.navCta}
       <div class="export-filter-bar">
         <div class="export-filter-group">
           <label class="export-filter-label">Periode</label>
-          <select class="export-select" id="export-period" onchange="updateExportPreview()">
+          <select class="export-select" id="export-period" aria-label="Periode voor export" onchange="updateExportPreview()">
             <option value="7">Afgelopen 7 dagen</option>
             <option value="30" selected>Afgelopen 30 dagen</option>
             <option value="90">Afgelopen 90 dagen</option>
@@ -8290,7 +8311,7 @@ ${faro.navCta}
         </div>
         <div class="export-filter-group">
           <label class="export-filter-label">Status</label>
-          <select class="export-select" id="export-status" onchange="updateExportPreview()">
+          <select class="export-select" id="export-status" aria-label="Status voor export" onchange="updateExportPreview()">
             <option value="all">Alle leads</option>
             <option value="qualified">Alleen gekwalificeerd</option>
             <option value="unqualified">Niet gekwalificeerd</option>
@@ -9210,7 +9231,7 @@ ${faro.navCta}
               <div class="fm-option-title">Drijvende WhatsApp-knop op je site</div>
               <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-widget" readonly rows="3"></textarea>
+            <textarea class="fm-code" id="fm-code-widget" aria-label="Insluitcode voor de widget" readonly rows="3"></textarea>
             <div class="fm-code-actions">
               <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-widget')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -9232,7 +9253,7 @@ ${faro.navCta}
               <div class="fm-option-title">Inbouwen als pagina-onderdeel</div>
               <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-iframe" readonly rows="3"></textarea>
+            <textarea class="fm-code" id="fm-code-iframe" aria-label="Insluitcode voor een iframe" readonly rows="3"></textarea>
             <div class="fm-code-actions">
               <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-iframe')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -9254,7 +9275,7 @@ ${faro.navCta}
               <div class="fm-option-title">Alleen de link</div>
               <p class="fm-option-sub">Voor advertenties, e-mail handtekening, socials of WhatsApp-bio. Klant opent een eigen pagina met enkel het formulier.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-link" readonly rows="1"></textarea>
+            <textarea class="fm-code" id="fm-code-link" aria-label="Directe link naar je formulier" readonly rows="1"></textarea>
             <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-link')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               Kopieer link
@@ -12964,6 +12985,50 @@ function scoreBar(score) {
   </div>\`;
 }
 
+/* ── Alles wat klikbaar is, moet ook met het toetsenbord kunnen ──────────────
+   Zes elementen droegen een onclick op een <div> of <td>: de opvolgrij, de
+   top-lead-chip, de pipelinekaart, de belrij in de kalender en de recente-lead
+   rij op het profiel. Met de muis werkten ze, met het toetsenbord bestonden ze
+   niet — je kon er niet eens naartoe tabben.
+
+   Eén pas over de actieve pagina zet tabindex en role, en één gedelegeerde
+   handler op document laat Enter en spatie hetzelfde doen als een klik. Dat
+   dekt ook alles wat later wordt toegevoegd, zonder dat elke render eraan hoeft
+   te denken.
+
+   Kanttekening die eerlijk in de code hoort: een paar van deze rijen bevatten
+   zelf al een knop (bijvoorbeeld "Kopieer"). Een knop in een knop is niet ideaal
+   voor een schermlezer. Onbereikbaar is slechter, en die binnenste knoppen
+   stoppen hun eigen event al, dus dit is de betere van twee onvolmaakte opties.
+   De echte oplossing is die rijen herbouwen met de knop ernaast in plaats van
+   erin. */
+function hvMakeActivatable(root) {
+  const scope = root || document.querySelector('.page.active') || document;
+  scope.querySelectorAll('[onclick]').forEach(function (el) {
+    const t = el.tagName;
+    if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+    if (el.hasAttribute('tabindex')) return;
+    el.setAttribute('tabindex', '0');
+    if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+  });
+}
+
+let _activatableBound = false;
+function bindActivatable() {
+  if (_activatableBound) return;
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = e.target;
+    if (!el || !el.matches) return;
+    if (!el.matches('[role="button"][tabindex="0"]')) return;
+    const t = el.tagName;
+    if (t === 'BUTTON' || t === 'A') return;   // die doen dit zelf al
+    e.preventDefault();
+    el.click();
+  }, true);
+  _activatableBound = true;
+}
+
 /* Rijen waren alleen met de muis te openen: de klik zat op de <tr> en die is
    niet focusbaar, dus met het toetsenbord kwam je nergens. De rij krijgt nu
    tabindex en role, en deze ene handler op de tbody laat Enter en spatie
@@ -12989,6 +13054,7 @@ function bindRowKeys() {
 
 function renderTable() {
   bindRowKeys();
+  setTimeout(hvMakeActivatable, 0);
   const tbody = document.getElementById('leads-tbody');
   if (!tbody) return;
 
@@ -15202,6 +15268,8 @@ function navigateTo(page) {
   if (navEl) navEl.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function (n) { n.removeAttribute('aria-current'); });
   if (navEl) navEl.setAttribute('aria-current', 'page');
+  bindActivatable();
+  setTimeout(hvMakeActivatable, 0);   // na de render van deze pagina
 
   const titles = {
     dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
