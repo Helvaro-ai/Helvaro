@@ -143,6 +143,14 @@ hieronder.
 
 - **Licht thema:** 150 leesbaarheidsfouten naar 0, donker 7 naar 0. Zand op wit
   haalde 1,29:1.
+- **Twee plekken in plaats van één hoop: CRM en AI.** Bovenaan de zijbalk staat
+  nu een schakelaar. CRM toont je gewone navigatie, AI toont Faro met zijn eigen
+  lijst gesprekken, beelden en projecten. Daarvoor stonden die twee kolommen
+  naast elkaar op élk scherm — 428 pixels aan menu voordat er werk in beeld
+  kwam, en geen manier om te zien welke van de twee je moest lezen. Faro blijft
+  de startpagina; kies je CRM, dan onthoudt hij dat, ook na herladen. Schakelen
+  brengt je terug op de CRM-pagina waar je gebleven was, niet naar het
+  dashboard.
 - **Je eigen naam stond onzichtbaar in de zijbalk (donker thema).** De
   profielknop kreeg nooit een achtergrond, dus Chrome gebruikte zijn eigen
   knopkleur: een lichtgrijze pil met bijna-witte tekst erop. Nu 12,2:1.

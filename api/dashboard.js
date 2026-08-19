@@ -15737,7 +15737,14 @@ async function startDashboard(skipRefresh = false) {
   // the CRM dashboard keeps loading in the background the way it always did,
   // so switching to it is instant.
   cmdInit();
-  navigateTo('faro');
+  // ...unless the user last chose CRM in the sidebar switch. A preference that
+  // silently resets on every reload is not a preference. Read straight from
+  // localStorage rather than through Faro, so this line still works when Faro
+  // is switched off and the key is simply absent.
+  var hvHome = 'faro';
+  try { if (localStorage.getItem('hv-mode') === 'crm') hvHome = 'dashboard'; } catch (e) {}
+  if (!document.getElementById('page-faro')) hvHome = 'dashboard';
+  navigateTo(hvHome);
 
   // Admin reveal. Sidebar's 'Klanten' (and Founder) tabs only show when the
   // user logged in with the ADMIN_KEY. We detect this from the session payload:

@@ -315,15 +315,29 @@ function subPages(t) {
 
    It lives here, not in dashboard.js, for two reasons: the copy is translated
    like the rest of Faro, and Faro stays removable in one piece. */
+/* ── The CRM / AI switch ───────────────────────────────────────────────────
+   Two modes, one sidebar. Faro's rail and the CRM's nav are both navigation
+   for the whole app, and showing them at once put two nav columns side by side
+   on every screen -- 428px of chrome before any work appeared, and no way to
+   tell which column you were supposed to be reading. The switch makes that a
+   choice instead of a collision: CRM shows the CRM nav, AI shows Faro's rail,
+   and the rail is MOVED into this sidebar on boot (see client.js) so there is
+   only ever one navigation column.
+
+   A radiogroup rather than two buttons, because that is what it is: two
+   mutually exclusive states of one control. Arrow keys move between them for
+   free, and a screen reader says "CRM, selected, 1 of 2". */
 function navCta(t) {
+  const tab = (id, label, sel) => `
+      <button class="hv-switch__tab${sel ? ' active' : ''}" id="hv-switch-${id}"
+              type="button" role="radio" aria-checked="${sel ? 'true' : 'false'}"
+              data-mode="${id}" tabindex="${sel ? '0' : '-1'}">${label}</button>`;
+
   return `
-    <button class="faro-nav-cta" id="faro-nav-cta" type="button">
-      <span class="faro-nav-cta__mark" aria-hidden="true"></span>
-      <span class="faro-nav-cta__text">
-        <span class="faro-nav-cta__title">${t('ws.title')}</span>
-        <span class="faro-nav-cta__sub">${t('sb.poweredBy')}</span>
-      </span>
-    </button>`;
+    <div class="hv-switch" role="radiogroup" aria-label="${t('sw.label')}">
+      ${tab('crm', t('sw.crm'), true)}
+      ${tab('ai', t('sw.ai'), false)}
+    </div>`;
 }
 
 /* ── The Faro page ─────────────────────────────────────────────────────────

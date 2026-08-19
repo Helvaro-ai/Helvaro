@@ -1283,11 +1283,89 @@ function faroInit() {
   }
 
 
-  // The sidebar's primary action. Clicking it while already on Faro is a
-  // no-op rather than a toggle -- a nav item you are standing on should not
-  // navigate you away, which is how every other row in that sidebar behaves.
-  var navCta = document.getElementById('faro-nav-cta');
-  if (navCta) navCta.addEventListener('click', function () { faroOpen(); });
+  /* ── CRM / AI switch ─────────────────────────────────────────────────────
+     Move the rail OUT of the Faro page and INTO the CRM sidebar, once, on
+     boot. Before this, Faro's rail and the CRM nav were two separate columns
+     visible at the same time; the app looked like it had two sidebars because
+     it did. Moving it means the two navs are siblings in one column and the
+     mode decides which is displayed -- no duplicated markup, and every
+     listener already bound to the rail keeps working because it is the same
+     element, not a copy. */
+  var hvSidebar = document.querySelector('.sidebar');
+  var hvNav     = document.querySelector('.sidebar-nav');
+  var hvRail    = document.querySelector('.faro-rail');
+  if (hvSidebar && hvNav && hvRail && hvRail.parentNode !== hvSidebar) {
+    hvNav.parentNode.insertBefore(hvRail, hvNav.nextSibling);
+  }
+
+  var HV_MODE_KEY = 'hv-mode';
+
+  function hvSetMode(mode, navigate, persist) {
+    var ai = mode === 'ai';
+    document.body.classList.toggle('hv-mode-ai', ai);
+    document.body.classList.toggle('hv-mode-crm', !ai);
+
+    var tabs = document.querySelectorAll('.hv-switch__tab');
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i].getAttribute('data-mode') === mode;
+      tabs[i].classList.toggle('active', on);
+      tabs[i].setAttribute('aria-checked', on ? 'true' : 'false');
+      // Roving tabindex: a radiogroup is ONE tab stop, arrows move inside it.
+      tabs[i].setAttribute('tabindex', on ? '0' : '-1');
+    }
+    /* Only an explicit choice is remembered. Writing on the boot restore too
+       turned "no preference yet" into "CRM" on the very first load: this ran
+       before startDashboard read the key, so the default home page silently
+       stopped being Faro for every new user. */
+    if (persist) { try { localStorage.setItem(HV_MODE_KEY, mode); } catch (e) {} }
+
+    if (!navigate) return;
+    if (ai) { faroOpen(); return; }
+    // Leaving AI returns you to the CRM page you were last on, not always the
+    // dashboard -- switching away and back should not lose your place.
+    var back = faroState.lastCrmPage || 'dashboard';
+    if (typeof navigateTo === 'function') navigateTo(back);
+  }
+  window.hvSetMode = hvSetMode;
+
+  var hvTabs = document.querySelectorAll('.hv-switch__tab');
+  for (var ti = 0; ti < hvTabs.length; ti++) {
+    hvTabs[ti].addEventListener('click', function () {
+      hvSetMode(this.getAttribute('data-mode'), true, true);
+    });
+    hvTabs[ti].addEventListener('keydown', function (e) {
+      var k = e.key;
+      if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+      e.preventDefault();
+      var next = this.getAttribute('data-mode') === 'crm' ? 'ai' : 'crm';
+      hvSetMode(next, true, true);
+      var el = document.getElementById('hv-switch-' + next);
+      if (el) el.focus();
+    });
+  }
+
+  // Land where you left off. Guarded: a stored 'ai' is worthless if Faro is
+  // not actually on this page.
+  var hvStored = null;
+  try { hvStored = localStorage.getItem(HV_MODE_KEY); } catch (e) {}
+  if (hvStored === 'ai' && !document.getElementById('page-faro')) hvStored = null;
+  /* navigate:true in BOTH directions, deliberately: setting the mode without
+     moving the page would leave the CRM nav next to whatever section happened
+     to carry .active in the markup (Faro's page ships with it, being the home
+     screen). The switch and the content have to agree.
+
+     This does NOT fight the setup redirect in dashboard.js, which sends a
+     tenant with incomplete AI config to AI Persoonlijkheid on a 300ms timer.
+     That runs after this and still wins, which is right -- finishing setup
+     matters more than restoring the last mode. */
+  if (hvStored) {
+    hvSetMode(hvStored, true, false);
+  } else {
+    // No preference yet: paint a mode class so the sidebar is not unstyled,
+    // but let startDashboard choose the landing page (Faro). The navigateTo
+    // wrapper above then moves the switch to match whatever it picked.
+    hvSetMode('crm', false, false);
+  }
 
   /* Faro is shown by the CRM's navigateTo(), which knows nothing about Faro.
      Wrapping it is what makes leaving by ANY route -- a sidebar click, a
@@ -1297,8 +1375,16 @@ function faroInit() {
   if (typeof window.navigateTo === 'function' && !window.navigateTo.__faroWrapped) {
     var crmNavigate = window.navigateTo;
     window.navigateTo = function (page) {
+      // Remember the last CRM page so the switch can bring you back to it.
+      if (page !== 'faro') faroState.lastCrmPage = page;
       var out = crmNavigate.apply(this, arguments);
       faroSyncPage();
+      // Any route into or out of Faro -- a lead panel button, the topbar
+      // logo, a hotkey -- moves the switch with it, so the control never
+      // disagrees with the page you are looking at.
+      if (typeof window.hvSetMode === 'function') {
+        window.hvSetMode(page === 'faro' ? 'ai' : 'crm', false);
+      }
       return out;
     };
     window.navigateTo.__faroWrapped = true;

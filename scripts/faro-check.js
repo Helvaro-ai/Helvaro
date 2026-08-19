@@ -314,8 +314,12 @@ Promise.all([
     fail('the Faro page is not the active landing page');
   } else if (/<main class="page-content page active" id="page-dashboard">/.test(dash)) {
     fail('page-dashboard is active again — two pages would render at once');
-  } else if (dash.indexOf("navigateTo('faro')") === -1) {
-    fail('nothing navigates to Faro after login');
+  } else if (!/var hvHome = 'faro';/.test(dash) || dash.indexOf('navigateTo(hvHome)') === -1) {
+    // Faro must still be where login LANDS by default. The sidebar switch may
+    // send a user who last chose CRM to the dashboard instead, so the literal
+    // navigateTo('faro') is gone -- but the default must stay Faro, or the app
+    // quietly reverts to being a CRM for everyone.
+    fail('login no longer defaults to Faro as the home page');
   } else {
     pass('Faro is the landing page, and the only active one');
   }

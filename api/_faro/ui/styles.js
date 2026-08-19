@@ -162,44 +162,67 @@ body.faro-open .faro-dock { display: none; }
    the title was invisible. --champagne is safe: it is the same value in both
    themes, and raw sand is legible inside this permanently-dark pane (which is
    exactly what --sand-on-surface exists to handle everywhere else). */
-.faro-nav-cta {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
+.hv-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-1);
   width: calc(100% - 24px);
   margin: 0 var(--sp-3) var(--sp-4);
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-1);
   border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-card-alt);
-  color: var(--text);
+}
+.hv-switch__tab {
+  /* minmax(0,1fr) on the grid is not enough on its own: a grid ITEM also
+     defaults to min-width:auto and would refuse to shrink below its label. */
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  /* A literal, like .sidebar .nav-item's #8D99AC, because this pane is dark in
+     BOTH themes and a theme-flipping token would invert under it. Not #8D99AC
+     itself though: the switch sits on --bg-card-alt, which is lighter than the
+     sidebar behind the nav items, and measured on the rendered pixels that
+     leaves the muted grey at 3,91:1 in light theme. This one measures 5,04:1
+     there and higher on the darker pane. */
+  color: #A3AEC0;
   font: inherit;
-  text-align: left;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease;
+  transition: background 150ms ease, color 150ms ease;
 }
-.faro-nav-cta:hover { border-color: var(--champagne); background: var(--hover); }
-.faro-nav-cta.active {
-  border-color: var(--champagne);
-  background: var(--hover);
-  box-shadow: 0 0 0 3px rgba(244, 231, 200, 0.10);
+.hv-switch__tab:hover { color: var(--text); background: var(--hover); }
+.hv-switch__tab.active {
+  background: var(--accent);
+  /* The paired ink token, not the fill: --accent as text on --accent as
+     background is the 1:1 mistake this codebase has made before. */
+  color: var(--on-accent);
 }
-.faro-nav-cta__mark {
-  flex: 0 0 auto;
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
-    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
-  /* Literal, not --warm-sand-glow: that token flips for light backgrounds and
-     this one always sits on the dark sidebar. */
-  box-shadow: 0 0 12px rgba(244, 231, 200, 0.18);
+.hv-switch__tab:focus-visible {
+  outline: 2px solid var(--champagne);
+  outline-offset: 2px;
 }
-.faro-nav-cta__text { display: flex; flex-direction: column; min-width: 0; }
-.faro-nav-cta__title { font-size: var(--fs-small); font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
-.faro-nav-cta__sub {
-  font-size: var(--fs-micro); color: var(--text-muted); margin-top: var(--sp-05);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+
+/* ── One navigation column, never two ──────────────────────────────────────
+   The rail is moved into the CRM sidebar on boot, so both navs are siblings
+   there and the mode decides which one is in the document flow. display:none
+   rather than visibility, so the hidden one costs no space and its buttons
+   leave the tab order. */
+body.hv-mode-crm .faro-rail { display: none; }
+body.hv-mode-ai  .sidebar-nav { display: none; }
+
+/* The rail was a column inside the page; in the sidebar it is the sidebar. */
+body.hv-mode-ai .faro-rail {
+  width: auto;
+  border-right: 0;
+  background: transparent;
+  padding-top: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 /* ═══ Rail — Faro's own nav, inside the page ══════════════════════════════
