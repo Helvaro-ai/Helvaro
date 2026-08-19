@@ -2277,6 +2277,131 @@ button.brand-dot { border: none; padding: 0; }
   text-align: left;
 }
 
+/* ═══ Zijbalk: groepen, inklappen, actieve staat ═══════════════════════════
+   Twaalf navigatie-items achter elkaar met twee naamloze streepjes ertussen
+   dwingt je elke keer de hele lijst te lezen. De groepen bestonden al in de
+   broncode als commentaar (Werk / Inzicht / Setup); dit maakt ze zichtbaar. */
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.62;
+  padding: 0 14px;
+  margin: 14px 0 6px;
+  user-select: none;
+}
+.sidebar-nav > .nav-group-label:first-child { margin-top: 2px; }
+
+/* De actieve pagina had alleen een achtergrondje. Een staaf aan de linkerkant
+   leest sneller dan een kleurverschil, en werkt ook als je de kleuren niet
+   goed uit elkaar houdt. */
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-c);
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-item.active::before { transform: translateY(-50%) scaleY(1); }
+.nav-item.active { font-weight: 650; }
+
+/* ── Ingeklapt ──────────────────────────────────────────────────────────────
+   220px van een 1280px-scherm is 17% van de breedte, permanent, voor een lijst
+   die je één keer per pagina gebruikt. Ingeklapt blijft de navigatie volledig
+   bruikbaar (icoon + tooltip) en krijgt de inhoud 152px terug. De keuze wordt
+   onthouden. */
+.sidebar { transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1); }
+body.sidebar-collapsed .sidebar { width: 68px; }
+body.sidebar-collapsed .main-content,
+body.sidebar-collapsed .topbar { margin-left: 68px; }
+body.sidebar-collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
+body.sidebar-collapsed .nav-item > :not(.nav-icon):not(.nav-badge) { display: none; }
+body.sidebar-collapsed .nav-item { font-size: 0; }
+body.sidebar-collapsed .nav-icon { font-size: 13px; }
+/* De Faro-CTA is geen .nav-item maar eigen markup uit api/_faro/ui/markup.js,
+   dus die viel buiten de regel hierboven en hield zijn label. */
+body.sidebar-collapsed .faro-nav-cta__text { display: none; }
+body.sidebar-collapsed .faro-nav-cta { justify-content: center; padding-left: 0; padding-right: 0; }
+body.sidebar-collapsed .nav-group-label,
+body.sidebar-collapsed .credit-usage-widget,
+body.sidebar-collapsed .user-info > div:not(.user-avatar),
+body.sidebar-collapsed .user-info > svg,
+body.sidebar-collapsed .btn-logout span { display: none; }
+body.sidebar-collapsed .user-info { justify-content: center; padding-left: 0; padding-right: 0; }
+body.sidebar-collapsed .btn-logout { justify-content: center; }
+body.sidebar-collapsed .sidebar-logo img { max-width: 34px; }
+body.sidebar-collapsed .nav-badge {
+  position: absolute; top: 5px; right: 9px;
+  min-width: 7px; height: 7px; padding: 0;
+  font-size: 0; border-radius: 50%;
+}
+
+/* De tooltip is wat inklappen bruikbaar houdt in plaats van een raadspelletje.
+   Alleen ingeklapt, en alleen op apparaten met een muis. */
+@media (hover: hover) {
+  body.sidebar-collapsed .nav-item[data-label]:hover::after,
+  body.sidebar-collapsed .nav-item[data-label]:focus-visible::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1B1B1B;
+    color: #F4F4F4;
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 120;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
+}
+
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-collapse-btn:hover { background: var(--hover-c); color: var(--text); }
+.sidebar-collapse-btn:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 2px; }
+.sidebar-collapse-btn svg { transition: transform 0.22s ease; flex-shrink: 0; }
+body.sidebar-collapsed .sidebar-collapse-btn span { display: none; }
+body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+
+/* Het accountblok is nu een <button>, dus het heeft de knop-resets nodig die
+   een <div> niet had — en een zichtbare focusring, want met de muis was het
+   altijd al klikbaar en met het toetsenbord niet te bereiken. */
+.user-info {
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.user-info:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 2px; }
+
 .nav-item:focus-visible {
   outline: 2px solid var(--blue-bright);
   outline-offset: 2px;
@@ -7645,8 +7770,9 @@ ${cmd.css}
     <!-- FARO: the way in (api/_faro/ui/markup.js). Not a nav row -- see there. -->
 ${faro.navCta}
 
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" aria-label="Hoofdnavigatie">
       <!-- ── Werk (dagelijks) ── -->
+      <div class="nav-group-label" aria-hidden="true">Werk</div>
       <button class="nav-item" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         Dashboard
@@ -7666,7 +7792,7 @@ ${faro.navCta}
       </button>
 
       <!-- ── Inzicht ── -->
-      <div class="nav-divider"></div>
+      <div class="nav-group-label" aria-hidden="true">Inzicht</div>
       <button class="nav-item" data-page="resultaten" id="nav-resultaten">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
         Resultaten
@@ -7694,7 +7820,7 @@ ${faro.navCta}
       </button>
 
       <!-- ── Setup (zelden) ── -->
-      <div class="nav-divider"></div>
+      <div class="nav-group-label" aria-hidden="true">Instellen</div>
       <button class="nav-item" data-page="formulier" id="nav-formulier">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
         Formulier
@@ -7708,17 +7834,22 @@ ${faro.navCta}
         Instellingen
       </button>
 
-      <!-- ── Admin-only (verborgen voor gewone klanten) ── -->
-      <button class="nav-item" data-page="admin" id="nav-admin" style="display:none">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-        Klanten
-      </button>
-      <button class="nav-item" data-page="founder" id="nav-founder" style="display:none">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
-        Founder
-      </button>
+      <!-- ── Admin-only ──────────────────────────────────────────────────
+           Stond hier als twee knoppen met style="display:none". Dat betekende
+           dat de back-office van Helvaro zelf — "Klanten", "Founder" — in de
+           HTML zat van ELKE klant die de app opende, zichtbaar voor iedereen
+           die "toon paginabron" kiest. Verbergen met CSS is geen autorisatie.
+           Ze worden nu pas aangemaakt als de sessie ook echt admin is; zie
+           mountAdminNav(). -->
+      <div id="nav-admin-slot"></div>
     </nav>
     <div class="sidebar-bottom">
+      <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn"
+              onclick="toggleSidebarCollapsed()" aria-controls="sidebar" aria-expanded="true"
+              title="Menu inklappen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Inklappen</span>
+      </button>
       <!-- Credit usage widget. Hidden until loadCreditUsage() confirms the
            credit system is active for this client — inert (display:none)
            by default, matches CREDIT-SYSTEM-DESIGN.md's "never punitive,
@@ -7733,19 +7864,19 @@ ${faro.navCta}
         </div>
         <div class="credit-usage-sub" id="credit-usage-sub">—</div>
       </div>
-      <div class="user-info" id="user-info-btn" onclick="navigateTo('profile')" style="cursor:pointer;" title="Bekijk profiel">
+      <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
           <div class="user-name" id="user-name">Gebruiker</div>
-          <div class="user-role">Client Account</div>
+          <div class="user-role" id="user-org">Mijn profiel</div>
         </div>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
-      </div>
+      </button>
       <button id="btn-back-admin" onclick="backToAdmin()" style="display:none;width:100%;padding:9px 12px;margin-bottom:6px;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:8px;color: var(--accent-ink);font-size:12px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:7px">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         Klantenoverzicht
       </button>
-      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen</button>
+      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Uitloggen</span></button>
     </div>
   </aside>
 
@@ -14762,6 +14893,74 @@ function renderProfile() {
   }
 }
 
+/* ═══ Zijbalk ══════════════════════════════════════════════════════════════ */
+
+/* De twee admin-items werden vroeger meegestuurd in de HTML van iedereen en
+   daarna met display:none verborgen. Ze bestaan nu pas als de sessie ook echt
+   admin is, dus de back-office van Helvaro staat niet meer in de paginabron
+   van elke makelaar. */
+function mountAdminNav(isAdmin) {
+  const slot = document.getElementById('nav-admin-slot');
+  if (!slot) return;
+  if (!isAdmin) { slot.innerHTML = ''; return; }
+  if (slot.dataset.mounted === '1') return;
+  const items = [
+    { page: 'admin',   label: 'Klanten', path: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+    { page: 'founder', label: 'Founder', path: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' },
+  ];
+  const label = document.createElement('div');
+  label.className = 'nav-group-label';
+  label.setAttribute('aria-hidden', 'true');
+  label.textContent = 'Helvaro';
+  slot.appendChild(label);
+  items.forEach(function (it) {
+    const b = document.createElement('button');
+    b.className = 'nav-item';
+    b.id = 'nav-' + it.page;
+    b.dataset.page = it.page;
+    b.dataset.label = it.label;
+    b.innerHTML = '<span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + it.path + '</svg></span>' + it.label;
+    b.addEventListener('click', function () { navigateTo(it.page); });
+    slot.appendChild(b);
+  });
+  slot.dataset.mounted = '1';
+}
+
+/* Ingeklapt of niet, onthouden per browser. Losgetrokken van navigateTo zodat
+   het ook klopt op de eerste render, vóór er genavigeerd is. */
+function applySidebarCollapsed(on) {
+  document.body.classList.toggle('sidebar-collapsed', !!on);
+  const btn = document.getElementById('sidebar-collapse-btn');
+  if (btn) {
+    btn.setAttribute('aria-expanded', on ? 'false' : 'true');
+    btn.setAttribute('title', on ? 'Menu uitklappen' : 'Menu inklappen');
+  }
+  const sb = document.getElementById('sidebar');
+  if (sb) sb.setAttribute('aria-expanded', on ? 'false' : 'true');
+}
+
+function toggleSidebarCollapsed() {
+  const next = !document.body.classList.contains('sidebar-collapsed');
+  applySidebarCollapsed(next);
+  try { localStorage.setItem('hv-sidebar-collapsed', next ? '1' : '0'); } catch (e) {}
+}
+
+/* data-label voedt de tooltip die ingeklapt verschijnt. Uit de knop zelf
+   gelezen in plaats van een tweede lijst met namen die uit de pas gaat lopen. */
+function initSidebar() {
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(function (el) {
+    if (el.dataset.label) return;
+    const txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (txt) el.dataset.label = txt;
+  });
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('hv-sidebar-collapsed') === '1'; } catch (e) {}
+  // Op een smal scherm schuift de zijbalk al helemaal weg via de hamburger;
+  // daar zou ingeklapt-onthouden alleen maar in de weg zitten.
+  if (window.innerWidth <= 768) collapsed = false;
+  applySidebarCollapsed(collapsed);
+}
+
 function navigateTo(page) {
   state.currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -14771,6 +14970,8 @@ function navigateTo(page) {
   const navEl = document.getElementById(\`nav-\${page}\`);
   if (pageEl) pageEl.classList.add('active');
   if (navEl) navEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function (n) { n.removeAttribute('aria-current'); });
+  if (navEl) navEl.setAttribute('aria-current', 'page');
 
   const titles = {
     dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
@@ -15099,15 +15300,7 @@ async function startDashboard(skipRefresh = false) {
   // user logged in with the ADMIN_KEY. We detect this from the session payload:
   // admin sessions have clientName='Admin' AND an empty projectCode.
   const isAdmin = (state.clientName === 'Admin') && !localStorage.getItem('hv-project');
-  const adminBtn   = document.getElementById('nav-admin');
-  const founderBtn = document.getElementById('nav-founder');
-  if (isAdmin) {
-    if (adminBtn)   adminBtn.style.display   = '';
-    if (founderBtn) founderBtn.style.display = '';
-  } else {
-    if (adminBtn)   adminBtn.style.display   = 'none';
-    if (founderBtn) founderBtn.style.display = 'none';
-  }
+  mountAdminNav(isAdmin);
 
   // Calendly OAuth was removed along with the integration itself — nothing
   // redirects with a ?calendly= param anymore (the live Google Calendar
@@ -18867,6 +19060,7 @@ function hideHelpWidget() {
    ============================================================ */
 (async function init() {
   initTheme();
+  initSidebar();
 
   // ── Clerk owns sign-in when it is on ────────────────────────────────────
   // Returns early so none of the legacy session logic below runs: no
