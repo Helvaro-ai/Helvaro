@@ -178,7 +178,7 @@ module.exports = async function handler(req, res) {
      klopt het, als tekst niet — precies dezelfde fout als sand op wit, alleen
      de andere kant op. */
   --error-ink:   #F87171;           /* 5,68:1 op de kaart, 5,14:1 op de chip */
-  --neutral-ink: #8A96AA;   /* status-chip type; light theme darkens it */
+  --neutral-ink: #96A2B6;   /* 4,9:1 op de chip waar hij op staat; licht thema maakt hem donkerder */
 
   --bubble-incoming: #1F1F1F;
 
