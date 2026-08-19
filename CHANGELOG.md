@@ -91,6 +91,22 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Prijsadvies
+
+- **Faro kan nu een vraagprijs adviseren.** Vraag "wat kan ik vragen voor een
+  woning in Gent met 3 slaapkamers" en hij rekent het uit over de budgetten die
+  je eigen leads noemden: mediaan, spreiding, en een advies op het 75e
+  percentiel. Niet de mediaan, want op de mediaan prijzen betekent dat de helft
+  van je geinteresseerden je pand per definitie te duur vindt.
+- **Hij zegt er altijd bij wat het NIET is.** Helvaro heeft geen
+  verkoopcijfers; het heeft wat kopers in gesprekken zeggen te willen betalen.
+  Dat is bruikbaar en zeldzaam, maar het is geen marktwaarde, en elk antwoord
+  noemt die grens. Onder acht budgetten geeft hij bewust geen prijs: "te weinig
+  om op te sturen" is dan het eerlijke antwoord.
+- **Een uitschieter kantelt het advies niet.** Een lead die 3 miljoen noemt
+  tilt een gemiddelde over de kop; de mediaan niet. Ligt het gemiddelde ver
+  boven de mediaan, dan zegt hij dat er los bij.
+
 ### Cijfers die fout waren
 
 - **"GEM. REACTIE 55u"** was 55 secónden. Het veld heet `Response Time (sec)`.

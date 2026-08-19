@@ -60,6 +60,7 @@ const schema = require('./schema');
 const fixtures = require('./fixtures');
 const images = require('../_images');
 const data = require('./data');
+const pricing = require('./pricing');
 const credits = require('../_credits');
 const mediaModels = require('../_media-models');
 
@@ -504,6 +505,79 @@ const readTools = [
           stages: stages.map((s) => ({ key: s.key, label: s.label, count: s.count, value: s.value })),
         },
         components: [schema.statGroup({ title: 'Pipeline', stats })],
+      };
+    }),
+  },
+
+  {
+    name: 'get_price_advice',
+    kind: 'read',
+    description:
+      'Prijsadvies voor een pand of segment, op basis van de budgetten die je eigen leads noemden. '
+      + 'Geeft mediaan, spreiding en een aanbevolen vraagprijs. Let op: dit is VRAAGZIJDE '
+      + '(wat kopers zeggen te willen betalen), geen verkoopstatistiek en geen marktwaarde. '
+      + 'Noem die grens altijd als je dit gebruikt.',
+    parameters: {
+      type: 'object',
+      properties: {
+        segment: {
+          type: 'string',
+          description:
+            'Waar het over gaat, in gewone woorden: "gent 3 slaapkamers", "appartement oostende". '
+            + 'Alle woorden moeten in de lead voorkomen. Leeg = alle leads.',
+        },
+        days: {
+          type: 'integer',
+          description: 'Hoeveel dagen terug meetellen. 0 = alles. Standaard 180.',
+          default: 180,
+        },
+      },
+    },
+    run: readTool('get_price_advice', async (args, ctx) => {
+      const { leads, truncated } = await data.leadsFor(ctx);
+      const segment = String(args.segment || '').trim();
+      const days = Number.isFinite(Number(args.days)) ? Number(args.days) : pricing.DEFAULT_DAYS;
+
+      const advies = pricing.advise({ leads, segment, days });
+      const v = advies.vraagzijde;
+
+      /* De samenvatting is wat het model te lezen krijgt, dus de grens tussen
+         vraagzijde en marktwaarde staat er letterlijk in. Zonder die zin gaat
+         een taalmodel er vroeg of laat "de markt zegt" van maken, en dan staat
+         er een verzonnen zekerheid in een chat waar een makelaar een
+         vraagprijs op baseert. */
+      const grens =
+        ' Dit zijn budgetten uit je eigen gesprekken (vraagzijde), GEEN verkoopcijfers en GEEN '
+        + 'marktwaarde. Zeg dat er ook bij.';
+
+      if (!v.aantalMetBudget || !v.betrouwbaar) {
+        return {
+          summary: (v.reden || 'Te weinig gegevens voor een prijsadvies.')
+            + ' Geef GEEN vraagprijs; zeg eerlijk dat de basis te smal is.' + grens,
+          data: { advies },
+          components: [],
+        };
+      }
+
+      const stats = [
+        { label: 'ADVIES',    value: pricing.eur(advies.aanbevolenPrijs) },
+        { label: 'MEDIAAN',   value: pricing.eur(v.mediaan) },
+        { label: 'MIDDENMOOT', value: pricing.eur(v.p25) + ' - ' + pricing.eur(v.p75) },
+        { label: 'BUDGETTEN', value: String(v.aantalMetBudget) },
+      ];
+
+      return {
+        summary:
+          'Prijsadvies voor "' + (segment || 'alle leads') + '": ' + pricing.eur(advies.aanbevolenPrijs)
+          + ' (p75). Mediaan ' + pricing.eur(v.mediaan) + ' over ' + v.aantalMetBudget + ' budgetten.'
+          + truncationNote(truncated) + grens,
+        data: { advies },
+        components: [
+          schema.statGroup({
+            title: 'Prijsadvies - ' + (segment || 'alle leads') + ' (vraagzijde, eigen leads)',
+            stats,
+          }),
+        ],
       };
     }),
   },
