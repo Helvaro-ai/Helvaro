@@ -103,6 +103,11 @@ hieronder.
   3,25:1. Nu de bijpassende inktkleur.
 - **Het vinkje van de checklist** deed hetzelfde in het lichte thema (2,95:1).
   Ook rechtgezet.
+- **Instellingen bood een API-sleutel aan die nergens op werkt.** Er stond
+  "API Sleutel: cookie-s********" met eronder "Gebruik dit voor directe
+  API-toegang", en op "Toon" verscheen letterlijk het woord `cookie-session`.
+  Dat is de interne aanduiding sinds de sessie in een beveiligde cookie zit,
+  geen sleutel. De rij is nu verborgen zolang er geen echte sleutel is.
 
 ### Kleine dingen die iedereen raakten
 

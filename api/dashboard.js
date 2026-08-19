@@ -9640,7 +9640,14 @@ ${faro.navCta}
               <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.3);color: var(--accent-ink)">Pro</span>
             </div>
           </div>
-          <div class="settings-row">
+          <!-- Verborgen zolang er geen ECHTE sleutel is; zie renderInstellingen().
+               state.apiKey is sinds de sessie in een httpOnly-cookie zit een
+               sentinel ('cookie-session' / 'clerk-session'), geen token. Deze
+               rij toonde die gemaskeerd als "cookie-s********" met eronder
+               "Gebruik dit voor directe API-toegang", en "Toon" onthulde
+               letterlijk het woord cookie-session. Een sleutel die nooit
+               ergens op werkt, aangeboden aan elke klant. -->
+          <div class="settings-row" id="set-apikey-row" style="display:none">
             <div>
               <div class="settings-label">API Sleutel</div>
               <div class="settings-label-sub">Gebruik dit voor directe API-toegang</div>
@@ -18343,8 +18350,16 @@ function renderInstellingen() {
   // API key masked display
   const keyEl = document.getElementById('set-apikey-display');
   const toggleBtn = document.getElementById('btn-toggle-apikey');
-  if (keyEl && toggleBtn) {
-    const key = s.apiKey || '';
+  /* Sentinels zijn geen sleutels. tryAutoLogin() en de Clerk-tak zetten
+     state.apiKey op een vaste tekst zodat de zeven plekken die op een
+     waarheidswaarde gaten blijven werken; die tekst authenticeert niets. */
+  const SENTINELS = ['cookie-session', 'clerk-session'];
+  const rowEl = document.getElementById('set-apikey-row');
+  const echteSleutel = s.apiKey && SENTINELS.indexOf(s.apiKey) === -1 ? s.apiKey : '';
+  if (rowEl) rowEl.style.display = echteSleutel ? '' : 'none';
+
+  if (keyEl && toggleBtn && echteSleutel) {
+    const key = echteSleutel;
     const masked = key.length > 8 ? key.slice(0, 8) + '••••••••' : '••••••••';
     keyEl.textContent = masked;
     let showing = false;
