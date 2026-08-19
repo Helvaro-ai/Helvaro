@@ -142,6 +142,11 @@ function rowToConversation(rec) {
     userId: f.user_id || '',
     title: f.title || 'Nieuw gesprek',
     projectId: f.project_id || null,
+    // project_name bestaat NIET als kolom en levert dus altijd ''. Bewust zo
+    // gelaten: projecten zijn nog niet aangesloten (createProject roept
+    // NOT_WIRED aan), en een kolom aanmaken voor een functie die nog niet
+    // bestaat is een lege belofte in de base. Zodra projecten er zijn: veld
+    // toevoegen, hier verandert dan niets.
     projectName: f.project_name || '',
     favorite: f.favorite === true,
     createdAt: f.created_at || '',
