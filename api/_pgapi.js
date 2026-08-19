@@ -4,10 +4,22 @@
  * facade).
  *
  * ── LEES DIT EERST (2026-08-19) ─────────────────────────────────────────────
- * ER IS GEEN VPS. De eigenaar heeft bevestigd dat de machine die deze kop
- * beschreef niet bestaat. Alles hieronder was een plan, geen beschrijving, en
- * het stond hier als feit — met gevolgen die pas zichtbaar werden toen iemand
- * ernaar vroeg:
+ * DE VPS IS VERNIETIGD. Hij heeft bestaan; de eigenaar heeft de machine
+ * opgeheven. Deze module praat dus met een adres waar niets meer staat, en dat
+ * heeft twee soorten gevolgen: dingen die niet meer werken, en één ding dat
+ * gevaarlijk is zolang de omgevingsvariabelen nog gezet staan.
+ *
+ * ── GEVAARLIJK: haal PG_API_URL, PG_API_TOKEN en PG_API_INSECURE uit Vercel ──
+ * PG_API_URL wees naar een kaal IP-adres (167.172.164.4). IP-adressen van
+ * opgeheven servers worden door de provider opnieuw uitgedeeld. Staat de
+ * variabele er nog, dan stuurt Helvaro PG_API_TOKEN als bearer naar wie dat
+ * adres nu ook heeft — en met PG_API_INSECURE=1 staat certificaatcontrole uit,
+ * dus er is niets dat merkt dat het een andere machine is.
+ *
+ * Weghalen is de fix. Deze module valt dan netjes stil in plaats van een
+ * geheim naar een vreemde te sturen.
+ *
+ * ── Wat er kapot is ─────────────────────────────────────────────────────────
  *
  *   • Elke pgFetch() gooit "PG_API_URL/PG_API_TOKEN not configured". Elke
  *     aanroeper vangt dat netjes af en geeft een leeg resultaat terug, dus het
@@ -20,9 +32,12 @@
  *     regels posting-code uit Vercel zijn GESLOOPT omdat Herald het zou
  *     overnemen. Zonder VPS post er dus helemaal niets.
  *
- * Ook de bewering hieronder dat drie tabellen "van Airtable af zijn" klopt
- * niet: api/whatsapp.js en api/cron-followup.js praten voor Appointments
- * (tblD058vEITs1xYFc) gewoon rechtstreeks met Airtable.
+ * ── Wat er met de machine verdwenen is ──────────────────────────────────────
+ * Marketing Posts en Outreach stonden er wél op: die records zijn weg en staan
+ * nergens anders. Appointments NIET — ondanks wat de kop hieronder beweert
+ * praten api/whatsapp.js, api/cron-followup.js en api/leads.js daarvoor
+ * rechtstreeks met Airtable (tblD058vEITs1xYFc). Afspraken zijn dus veilig; de
+ * bewering dat drie tabellen "van Airtable af zijn" gold er maar voor twee.
  *
  * Deze module blijft staan omdat api/admin.js hem nog aanroept en netjes
  * faalt. Bouw er niets nieuws op zonder eerst te controleren of PG_API_URL
@@ -53,6 +68,9 @@ const INSECURE     = String(process.env.PG_API_INSECURE || '') === '1';
 
 let dispatcher;
 if (INSECURE) {
+  console.warn('[pgapi] PG_API_INSECURE=1 — TLS-certificaten worden NIET gecontroleerd. ' +
+               'Dit hoorde tijdelijk te zijn zolang de VPS een zelfondertekend certificaat had. ' +
+               'Die VPS bestaat niet meer: haal deze variabele weg.');
   try {
     const { Agent } = require('undici');
     dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
@@ -66,6 +84,13 @@ function configured() {
 }
 
 let _warnedUnconfigured = false;
+
+/* Tien seconden, want een adres zonder machine antwoordt niet met een fout maar
+   met stilte. Zonder deze grens wachtte elke aanroep op het TCP-timeout van het
+   platform; api/cron-followup.js mag 300 seconden draaien en acht aanroepen in
+   api/admin.js zitten in serie. Eén opgeheven server kon zo een hele functie
+   opeten in plaats van meteen te falen. */
+const PG_TIMEOUT_MS = 10000;
 
 async function pgFetch(pathAndQuery, options = {}) {
   if (!configured()) {
@@ -84,7 +109,15 @@ async function pgFetch(pathAndQuery, options = {}) {
   if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
   const opts = Object.assign({}, options, { headers });
   if (dispatcher) opts.dispatcher = dispatcher;
-  return fetch(url, opts);
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PG_TIMEOUT_MS);
+  opts.signal = ctrl.signal;
+  try {
+    return await fetch(url, opts);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const PG_TABLES = {
