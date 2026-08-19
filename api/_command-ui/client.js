@@ -342,6 +342,18 @@ function cmdTrapFocus(e) {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
+/* Korte melding. Gebruikt de toast van het CRM als die er is, zodat dit er
+   niet als een tweede meldsysteem uitziet; anders een nette terugval. */
+function cmdNotify(msg) {
+  if (typeof toast === 'function') { try { toast(msg, 'info'); return; } catch (e) {} }
+  var el = document.createElement('div');
+  el.className = 'cmd-notify';
+  el.setAttribute('role', 'status');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function () { el.remove(); }, 4000);
+}
+
 /* ── Actions ──────────────────────────────────────────────────────────────────
    Every consequential action is handed to Faro, which proposes it through the
    existing HMAC-signed confirmation gate. Nothing here sends, books or charges
@@ -352,14 +364,27 @@ function cmdAct(key, id) {
   if (!o) return;
 
   if (key === 'review' || key === 'takeover') {
-    // Both land in the conversation view: that is where a human reads the
-    // thread and, for a paused lead, where they type the reply themselves.
+    // Beide landen in het gespreksoverzicht: daar leest een mens de draad, en
+    // daar typt hij bij een gepauzeerde lead zelf het antwoord.
+    //
+    // Hier stond alleen navigateTo('gesprekken'), wat je op een lijst zette met
+    // niets geselecteerd — "Selecteer een gesprek" — terwijl je de lead net in
+    // handen had. Je moest hem dus opnieuw opzoeken. Nu wordt het gesprek van
+    // deze lead meteen geopend.
     cmdCloseDrawer();
     navigateTo('gesprekken');
+    if (typeof openConversation === 'function') {
+      setTimeout(function () { try { openConversation(o.id); } catch (e) {} }, 80);
+    }
     return;
   }
   if (key === 'call') {
-    if (o.phone) window.location.href = 'tel:' + o.phone.replace(/[^0-9+]/g, '');
+    var digits = (o.phone || '').replace(/[^0-9+]/g, '');
+    if (digits) { window.location.href = 'tel:' + digits; return; }
+    // Zonder nummer deed deze knop letterlijk niets: geen melding, geen
+    // verandering. Een knop met het woord "Bellen" erop die niets doet is
+    // erger dan geen knop, want je gaat ervan uit dat het gelukt is.
+    cmdNotify('Van ' + o.name + ' hebben we geen telefoonnummer. Open het gesprek om te reageren.');
     return;
   }
 
@@ -372,9 +397,6 @@ function cmdAct(key, id) {
     prompt = 'Schrijf een kort, persoonlijk opvolgbericht voor ' + o.name +
       ' dat het gesprek weer op gang brengt, zodat de AI de afspraak kan afronden. ' +
       'Vraag me om bevestiging voor je het verstuurt. Context: ' + cmdContextLine(o);
-  } else if (key === 'takeover') {
-    prompt = 'De AI staat op pauze bij ' + o.name +
-      '. Vat samen waar het gesprek staat en stel voor wat ik nu zou antwoorden. Context: ' + cmdContextLine(o);
   } else {
     prompt = 'Waarom is ' + o.name + ' nu belangrijk, en wat raad je aan? Context: ' + cmdContextLine(o);
   }
@@ -403,7 +425,18 @@ function cmdContextLine(o) {
    already exists, with its tools, its tenant scoping and its confirmation
    gate. */
 function cmdHandToFaro(text) {
-  if (typeof faroSend !== 'function') return;
+  if (typeof faroSend !== 'function') {
+    // Faro staat uit of is niet geladen. Dit was een stille return, waardoor
+    // ELKE knop in de briefing niets deed zonder ook maar iets te melden.
+    cmdNotify('Faro is nu niet beschikbaar. Probeer het zo opnieuw.');
+    return;
+  }
+  if (typeof faroState === 'object' && faroState && faroState.streaming) {
+    // faroSend() weigert tijdens een lopende stream, óók stilzwijgend. Vanuit
+    // een knop moet je dat te horen krijgen in plaats van het te raden.
+    cmdNotify('Faro is nog bezig met het vorige antwoord.');
+    return;
+  }
   // Already on the Faro page in the merged layout; faroOpen() is a no-op then
   // and a navigation when the user is somewhere else in the CRM. Either way
   // faroSend() takes over: it swaps the landing for the thread.
@@ -425,11 +458,18 @@ function cmdReviewAll() {
   );
 }
 
-/* ── Autopilot ────────────────────────────────────────────────────────────────
-   A visible state, stored per browser. It governs whether the Command Center
-   analyses on open; it does not and cannot grant the model an execution path,
-   which stays behind the confirmation gate either way. Existing customer
-   settings are never written from here. */
+/* ── Automatisch bijwerken ────────────────────────────────────────────────────
+   Een zichtbare stand, per browser bewaard. Bepaalt of het Command Center bij
+   het openen opnieuw analyseert. Hij geeft het model geen uitvoerpad — dat
+   blijft hoe dan ook achter de bevestigingspoort — en schrijft nooit naar
+   bestaande klantinstellingen.
+
+   Dit heette "Autopilot", en dat was het probleem: de knop stuurt geen enkel
+   verzoek naar de server, en dat is ook precies goed, want hij hoort niets aan
+   te sturen. Maar met "Autopilot · Gepauzeerd" erop leek het alsof je de AI
+   stilzette die elke binnenkomende WhatsApp-lead beantwoordt. Iemand die vóór
+   een vakantie op pauze drukt en aanneemt dat het stil is, komt bedrogen uit.
+   De naam dekt nu de lading; de AI stilzetten doe je per lead. */
 function cmdSetAutopilot(on) {
   cmdState.autopilot = !!on;
   try { localStorage.setItem('hv-autopilot', on ? '1' : '0'); } catch (e) { /* private mode */ }

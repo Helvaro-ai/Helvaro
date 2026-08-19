@@ -10371,7 +10371,7 @@ ${faro.dock}
 
 <!-- Detail Panel -->
 <div class="panel-backdrop" id="panel-backdrop"></div>
-<div class="detail-panel" id="detail-panel">
+<div class="detail-panel" id="detail-panel" role="dialog" aria-modal="true" aria-labelledby="panel-name" tabindex="-1">
   <div class="panel-header">
     <button class="panel-close" id="panel-close" aria-label="Sluiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="panel-avatar" id="panel-avatar">HV</div>
@@ -12964,7 +12964,31 @@ function scoreBar(score) {
   </div>\`;
 }
 
+/* Rijen waren alleen met de muis te openen: de klik zat op de <tr> en die is
+   niet focusbaar, dus met het toetsenbord kwam je nergens. De rij krijgt nu
+   tabindex en role, en deze ene handler op de tbody laat Enter en spatie
+   hetzelfde doen als een klik. Eén handler op de container in plaats van een
+   per rij, zodat opnieuw renderen hem niet kwijtraakt. */
+let _rowKeysBound = false;
+function bindRowKeys() {
+  if (_rowKeysBound) return;
+  const tbody = document.getElementById('leads-tbody');
+  if (!tbody) return;
+  tbody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const tr = e.target.closest && e.target.closest('tr[data-id]');
+    if (!tr || !tbody.contains(tr)) return;
+    // Niet kapen wat binnen de rij zelf al een knop of link is.
+    if (e.target !== tr) return;
+    e.preventDefault();
+    const lead = (state.leads || []).find((x) => String(x.id) === tr.dataset.id);
+    if (lead) openPanel(lead);
+  });
+  _rowKeysBound = true;
+}
+
 function renderTable() {
+  bindRowKeys();
   const tbody = document.getElementById('leads-tbody');
   if (!tbody) return;
 
@@ -13024,7 +13048,8 @@ function renderTable() {
     const waLink = waPhone ? 'https://wa.me/' + waPhone : '#';
     const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     return \`
-      <tr data-id="\${lead.id}" \${delay}>
+      <tr data-id="\${lead.id}" \${delay} tabindex="0" role="button"
+          aria-label="Open lead \${escHtml(lead.naam) || 'zonder naam'}">
         <td class="td-naam">\${escHtml(lead.naam) || '—'}\${ageBadge}</td>
         <td>
           <div class="td-phone">
@@ -13102,6 +13127,9 @@ document.querySelectorAll('th.sortable').forEach(th => {
    ============================================================ */
 function openPanel(lead) {
   state.activeLead = lead;
+  // Onthouden waar we vandaan kwamen, zodat sluiten de focus teruggeeft aan de
+  // rij die het paneel opende in plaats van hem in het niets te laten vallen.
+  _panelLastFocus = document.activeElement;
 
   // Avatar
   const avatar = document.getElementById('panel-avatar');
@@ -13646,12 +13674,58 @@ function openPanel(lead) {
   // Show panel
   document.getElementById('panel-backdrop').classList.add('visible');
   document.getElementById('detail-panel').classList.add('visible');
+  _panelActivate();
 }
 
 function closePanel() {
   document.getElementById('panel-backdrop').classList.remove('visible');
   document.getElementById('detail-panel').classList.remove('visible');
   state.activeLead = null;
+  document.removeEventListener('keydown', _panelTrap, true);
+  if (_panelLastFocus && document.contains(_panelLastFocus)) {
+    try { _panelLastFocus.focus(); } catch (e) {}
+  }
+  _panelLastFocus = null;
+}
+
+/* ── Focus in het leadpaneel ─────────────────────────────────────────────────
+   Het paneel schoof open over de pagina heen, maar de focus bleef achter op de
+   knop waar je vandaan kwam. Tien keer Tab bleef ERBUITEN, door inhoud die het
+   scherm al bedekte. Escape sloot het wel, en liet de focus dan achter op wat
+   het tabben toevallig bereikt had.
+
+   Dit is de standaardafspraak voor een dialoog: focus gaat erin, blijft erin
+   zolang hij open staat, en gaat terug naar de opener bij sluiten. */
+var _panelLastFocus = null;
+
+function _panelFocusables() {
+  const panel = document.getElementById('detail-panel');
+  if (!panel) return [];
+  return [...panel.querySelectorAll(
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter((el) => el.offsetParent !== null);
+}
+
+function _panelTrap(e) {
+  if (e.key !== 'Tab') return;
+  const panel = document.getElementById('detail-panel');
+  if (!panel || !panel.classList.contains('visible')) return;
+  const items = _panelFocusables();
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (e.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+    e.preventDefault(); last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault(); first.focus();
+  }
+}
+
+function _panelActivate() {
+  document.addEventListener('keydown', _panelTrap, true);
+  const items = _panelFocusables();
+  const target = document.getElementById('panel-close') || items[0] || document.getElementById('detail-panel');
+  if (target) { try { target.focus(); } catch (e) {} }
 }
 
 // ── Send a manual WhatsApp reply from the lead panel ─────────────────────────
@@ -14757,7 +14831,12 @@ async function renderCalendar() {
   if (timeLabels) {
     timeLabels.innerHTML = Array.from({ length: CAL_HOURS }, (_, i) => {
       const h   = CAL_START_HOUR + i;
-      const lbl = h < 12 ? h + ':00' : (h === 12 ? '12:00' : (h - 12) + ':00');
+      // 24-uurs, zoals de rest van de app (die toLocaleTimeString('nl-BE')
+      // gebruikt). Hier stond een 12-uursnotatie ZONDER am/pm, dus 13:00 tot
+      // 20:00 lazen als 1:00 tot 8:00 en "8:00" kwam twee keer voor in dezelfde
+      // dagkolom. Een makelaar kan dan niet zien of een bezichtiging 's ochtends
+      // of 's avonds is.
+      const lbl = String(h).padStart(2, '0') + ':00';
       const halfLbl = h < 11 ? (h) + ':30' : (h === 11 ? '11:30' : (h === 12 ? '12:30' : (h - 12) + ':30'));
       return \`<div class="cal-time-label">\${lbl}<span class="cal-time-label-half">\${halfLbl}</span></div>\`;
     }).join('');
@@ -16026,13 +16105,34 @@ function leadAgeClass(days) {
 /* ============================================================
    FEATURE 5: REVENUE GOAL
    ============================================================ */
+
+/* Een doel dat ergens op slaat zolang de klant er zelf geen heeft ingesteld.
+   Een vaste 5.000 was gegarandeerd fout: te laag voor elk vastgoedkantoor, dus
+   de balk stond altijd vol. Dit rondt de huidige pipeline naar boven af op een
+   heel getal dat als doel leesbaar is, zodat de balk iets zegt en niet meteen
+   op 100% staat. */
+function suggestRevenueGoal(current) {
+  const c = Number(current) || 0;
+  if (c <= 0) return 0;                       // niets te meten: kaart toont geen doel
+  const target = c * 1.25;                    // 25% boven waar je nu staat
+  const mag = Math.pow(10, Math.floor(Math.log10(target)));
+  return Math.max(mag, Math.ceil(target / (mag / 2)) * (mag / 2));
+}
+
 function renderRevenueGoal() {
-  const goal = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
+  // Het standaarddoel stond op 5.000 — tegen een pipeline die bij een
+  // vastgoedkantoor al snel in de miljoenen loopt. De kaart meldde daardoor
+  // vanaf dag één "100% van doel bereikt", wat de kaart meteen betekenisloos
+  // maakt. Zonder eigen doel wordt er nu een schatting uit de eigen pipeline
+  // afgeleid, afgerond op een leesbaar bedrag, in plaats van een getal dat met
+  // niets te maken heeft.
+  const stored = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '');
   const current = (state.leads || []).reduce((sum, l) => {
     if (l.qualified || l.afspraakGeboekt) sum += parseDealValue(l.verwachteWaarde);
     return sum;
   }, 0);
-  const pct = Math.min(100, Math.round(current / goal * 100));
+  const goal = (Number.isFinite(stored) && stored > 0) ? stored : suggestRevenueGoal(current);
+  const pct = goal > 0 ? Math.min(100, Math.round(current / goal * 100)) : 0;
   const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
 
   const el = document.getElementById('revenue-goal-current');
@@ -16520,7 +16620,7 @@ const AP_TEMPLATES = [
   },
   {
     emoji: '', label: 'Voor vastgoed',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wil u er één verkopen?'
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wilt u er één verkopen?'
   },
   {
     emoji: '', label: 'Voor advocaten',
