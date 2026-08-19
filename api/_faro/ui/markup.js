@@ -126,7 +126,11 @@ function landing(t, opts = {}) {
                time-aware, named greeting and demotes the question to the line
                below -- it needs the clock and the signed-in name, neither of
                which this request has. Nothing here depends on that upgrade. -->
-          <h1 class="faro-landing__title" id="faro-greeting">${t('land.title')}</h1>
+          <!-- h2, geen h1. De topbalk draagt sinds kort op ELKE pagina de h1 met
+               de paginanaam; deze begroeting daarnaast maakte er twee op één
+               scherm, en dan weet een schermlezer niet meer welke de pagina
+               benoemt. -->
+          <h2 class="faro-landing__title" id="faro-greeting">${t('land.title')}</h2>
           <p class="faro-landing__lead" id="faro-landing-title" hidden>${t('land.title')}</p>
           <p class="faro-landing__sub">${t('land.sub')}</p>
 

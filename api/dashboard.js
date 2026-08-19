@@ -2732,6 +2732,29 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
 
 .hamburger:hover { background: var(--bg-card-alt); }
 
+/* .page-title is nu een <h1>. De browser geeft die standaard 2em en flinke
+   marges; dit blok stond er al voor de <div> en moet die reset dus expliciet
+   maken, anders springt de hele topbalk uit elkaar. */
+h1.page-title { margin: 0; font-weight: inherit; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 200;
+  padding: 10px 16px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--accent-c);
+  border-radius: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+}
+
 .page-title {
   font-size: 16px;
   /* Deze regel staat na de kop-regel bovenaan en zou hem anders terugzetten
@@ -3426,7 +3449,20 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
   min-width: 130px;
 }
 
-.filter-select:focus { border-color: var(--blue-bright); }
+/* :focus alleen op border-color was in het donkere thema onzichtbaar — de
+   randkleur verschilde te weinig van de rustkleur om als focus te lezen, en
+   een tabpas leek daardoor nergens te landen. Nu een echte ring, en
+   :focus-visible zodat een muisklik hem niet oproept. */
+.filter-select:focus { border-color: var(--accent-c); }
+/* box-shadow en geen outline: de regel met outline stond wél in de uitvoer en
+   won ook op specificiteit, maar de gemeten breedte bleef 0px — een <select>
+   laat zich door de browser maar beperkt opmaken. .cm-btn:focus-visible
+   verderop in dit bestand doet het al zo, en dat werkt wel. */
+.filter-select:focus-visible,
+#search-input:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.45);
+  border-color: var(--accent-c);
+}
 
 .filters-label {
   display: flex;
@@ -7869,6 +7905,11 @@ ${cmd.css}
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
   <!-- Sidebar -->
+  <!-- Overslaan-link. Zonder deze moet iemand die met het toetsenbord werkt
+       eerst door twaalf navigatie-items voordat hij bij de inhoud is, op elke
+       pagina opnieuw. Alleen zichtbaar zodra hij focus krijgt. -->
+  <a href="#page-content-anchor" class="skip-link">Naar de inhoud</a>
+
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="/logo.png" alt="Helvaro">
@@ -7988,14 +8029,19 @@ ${faro.navCta}
   </aside>
 
   <!-- Main Content -->
-  <div class="main-content">
+  <div class="main-content" id="page-content-anchor" tabindex="-1">
 
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
-          <div class="page-title display-heading gradient-text" id="topbar-title">Dashboard</div>
+          <!-- Een <h1>, geen <div>: geen enkele pagina had er een, dus een
+               schermlezer kon nergens "waar ben ik" beantwoorden en de
+               koppenstructuur begon overal bij h2. Deze tekst verandert al per
+               pagina in navigateTo(), dus hij is precies de juiste kandidaat —
+               één h1 per weergave, en niets aan de opmaak verandert. -->
+          <h1 class="page-title display-heading gradient-text" id="topbar-title">Dashboard</h1>
           <div class="page-subtitle" id="topbar-subtitle">Overzicht van je gekwalificeerde leads</div>
         </div>
       </div>
@@ -13090,7 +13136,12 @@ function bindRowKeys() {
     if (e.target !== tr) return;
     e.preventDefault();
     const lead = (state.leads || []).find((x) => String(x.id) === tr.dataset.id);
-    if (lead) openPanel(lead);
+    if (!lead) return;
+    // Hier weten we zeker WELKE rij het was. Dat afleiden binnen openPanel()
+    // ging mis omdat het paneel ook via de onclick op de <td> geopend kan
+    // worden, en dan wijst document.activeElement ergens anders heen.
+    _panelReturnTo = tr.dataset.id;
+    openPanel(lead);
   });
   _rowKeysBound = true;
 }
@@ -13238,7 +13289,23 @@ function openPanel(lead) {
   state.activeLead = lead;
   // Onthouden waar we vandaan kwamen, zodat sluiten de focus teruggeeft aan de
   // rij die het paneel opende in plaats van hem in het niets te laten vallen.
-  _panelLastFocus = document.activeElement;
+  // Het ELEMENT onthouden is niet genoeg: de leadtabel wordt opnieuw
+  // opgebouwd (refreshData, hvMakeActivatable), en dan bestaat de rij waar je
+  // vandaan kwam niet meer als hetzelfde knooppunt. De focus viel daardoor
+  // terug naar body. Dus ook de lead-id bewaren en de rij terugzoeken.
+  //
+  // En alleen als het paneel nog NIET open staat. openPanel() wordt bij een
+  // toetsenbordactie twee keer aangeroepen — door de rij-handler en door de
+  // gedelegeerde [role=button]-handler — en bij die tweede keer stond de focus
+  // al binnen het paneel. Zo werd de SLUITKNOP opgeslagen als "waar we vandaan
+  // kwamen", en gaf sluiten de focus terug aan de knop die net verdween. Dat
+  // is waarom de focus nergens heen leek te gaan: hij ging terug naar waar hij
+  // al stond, en er vuurde dus ook geen focusin.
+  if (!document.getElementById('detail-panel').classList.contains('visible')) {
+    _panelLastFocus = document.activeElement;
+    _panelLastFocusId = _panelReturnTo;
+  }
+  _panelReturnTo = null;
 
   // Avatar
   const avatar = document.getElementById('panel-avatar');
@@ -13791,10 +13858,22 @@ function closePanel() {
   document.getElementById('detail-panel').classList.remove('visible');
   state.activeLead = null;
   document.removeEventListener('keydown', _panelTrap, true);
-  if (_panelLastFocus && document.contains(_panelLastFocus)) {
-    try { _panelLastFocus.focus(); } catch (e) {}
-  }
+  const wasFocus = _panelLastFocus;
+  const wasId = _panelLastFocusId;
   _panelLastFocus = null;
+  _panelLastFocusId = null;
+  // In een rAF, niet meteen. Het paneel verliest zijn .visible-klasse in
+  // dezelfde tik; focus zetten vóór die stijlwijziging is verwerkt liet de
+  // focus gewoon op de sluitknop staan — gemeten, niet vermoed.
+  setTimeout(function () {
+    let back = (wasFocus && document.contains(wasFocus)) ? wasFocus : null;
+    if (!back && wasId) back = document.querySelector('tr[data-id="' + CSS.escape(wasId) + '"]');
+    if (!back || back.offsetParent === null) return;
+    back.focus();
+    // Eén keer opnieuw als het niet pakte. De sluitanimatie van het paneel kan
+    // de focus terugtrekken; dit is gemeten gedrag, niet voorzorg.
+    if (document.activeElement !== back) setTimeout(function () { try { back.focus(); } catch (e) {} }, 120);
+  }, 0);
 }
 
 /* ── Focus in het leadpaneel ─────────────────────────────────────────────────
@@ -13806,6 +13885,8 @@ function closePanel() {
    Dit is de standaardafspraak voor een dialoog: focus gaat erin, blijft erin
    zolang hij open staat, en gaat terug naar de opener bij sluiten. */
 var _panelLastFocus = null;
+var _panelLastFocusId = null;
+var _panelReturnTo = null;
 
 function _panelFocusables() {
   const panel = document.getElementById('detail-panel');
