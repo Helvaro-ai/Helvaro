@@ -882,8 +882,7 @@ function faroClearInput() {
   var f = document.getElementById('faro-input-field');
   if (f) { f.value = ''; f.style.height = 'auto'; }
   faroState.attachments = [];
-  var a = document.getElementById('faro-attachments');
-  if (a) a.innerHTML = '';
+  faroRenderAttachments();
 }
 
 /* ── Data loading ─────────────────────────────────────────────────────────
@@ -1499,20 +1498,73 @@ function faroWireUploads() {
 }
 
 function faroAcceptFiles(files) {
-  var strip = document.getElementById('faro-attachments');
+  var rejected = 0;
   Array.prototype.slice.call(files).forEach(function (f) {
-    if (faroState.attachments.length >= 6) return;
-    if (!/^image\\//.test(f.type)) return;
+    if (faroState.attachments.length >= 6) { rejected++; return; }
+    if (!/^image\\//.test(f.type)) { rejected++; return; }
     var reader = new FileReader();
     reader.onload = function () {
-      faroState.attachments.push({ mediaType: f.type, data: String(reader.result).split(',')[1] });
-      var chip = document.createElement('span');
-      chip.className = 'faro-tag';
-      chip.textContent = f.name;
-      strip.appendChild(chip);
+      faroState.attachments.push({
+        mediaType: f.type,
+        data: String(reader.result).split(',')[1],
+        name: f.name,
+        // De data-URL bewaren voor het miniatuurtje. Kost niets extra: hij is
+        // er al, en de bytes gaan toch mee in het verzoek.
+        preview: String(reader.result),
+      });
+      faroRenderAttachments();
       faroSetSendEnabled(true);
     };
     reader.readAsDataURL(f);
+  });
+  // Stil weigeren laat je raden waarom je pdf niet verschijnt.
+  if (rejected) {
+    var msg = faroState.attachments.length >= 6
+      ? 'Maximaal 6 afbeeldingen per bericht.'
+      : 'Alleen afbeeldingen kunnen mee.';
+    if (typeof toast === 'function') { try { toast(msg, 'info'); } catch (e) {} }
+  }
+}
+
+/* De strip werd één keer opgebouwd bij het toevoegen, zonder manier om iets
+   weg te halen: verkeerde foto erbij betekende het hele bericht opnieuw
+   beginnen. Nu wordt hij uit de state hertekend, zodat de indexen na een
+   verwijdering blijven kloppen. */
+function faroRenderAttachments() {
+  var strip = document.getElementById('faro-attachments');
+  if (!strip) return;
+  strip.innerHTML = '';
+  faroState.attachments.forEach(function (a, i) {
+    var chip = document.createElement('span');
+    chip.className = 'faro-tag faro-attach';
+
+    if (a.preview) {
+      var img = document.createElement('img');
+      img.className = 'faro-attach__thumb';
+      img.src = a.preview;
+      img.alt = '';
+      chip.appendChild(img);
+    }
+
+    var label = document.createElement('span');
+    label.className = 'faro-attach__name';
+    label.textContent = a.name || 'afbeelding';
+    chip.appendChild(label);
+
+    var rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'faro-attach__rm';
+    rm.setAttribute('data-remove', String(i));
+    rm.setAttribute('aria-label', 'Verwijder ' + (a.name || 'afbeelding'));
+    rm.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    rm.addEventListener('click', function () {
+      faroState.attachments.splice(i, 1);
+      faroRenderAttachments();
+      faroSetSendEnabled(true);
+    });
+    chip.appendChild(rm);
+
+    strip.appendChild(chip);
   });
 }
 

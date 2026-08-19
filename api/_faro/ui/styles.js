@@ -491,6 +491,41 @@ body.faro-open .faro-dock { display: none; }
 /* Stopmodus: dezelfde knop, duidelijk andere betekenis. Rood zou hier "fout"
    suggereren terwijl stoppen een normale keuze is, dus neutraal met een rand —
    het verschil zit in de vorm (vierkant) en het label. */
+/* Bijlagen: miniatuur, naam, en een kruisje om hem weer weg te halen. */
+.faro-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-15);
+  padding-right: var(--sp-1);
+  max-width: 220px;
+}
+.faro-attach__thumb {
+  width: 18px; height: 18px;
+  border-radius: var(--sp-1);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.faro-attach__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.faro-attach__rm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+}
+.faro-attach__rm:hover { opacity: 1; background: var(--surface-3); }
+.faro-attach__rm:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
+
 .faro-send--stop {
   background: var(--surface-2) !important;
   color: var(--text) !important;
