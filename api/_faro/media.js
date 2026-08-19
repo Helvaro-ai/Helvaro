@@ -44,7 +44,11 @@ const STYLE_KEYS = Object.freeze(require('../_images').PROPERTY_STYLES.map((s) =
 
 const IMAGE_ASPECTS = Object.freeze(['1:1', '4:3', '3:2', '16:9']);
 const VIDEO_FORMATS = Object.freeze(['9:16', '16:9', '1:1']);
-const VIDEO_DURATIONS = Object.freeze([10, 15, 30]);
+/* From the registry, for the same reason as the tool schema in tools.js: this
+   said [10, 15, 30] while every wired model accepts 4, 8 or 12. Two hardcoded
+   copies of a provider constraint drift apart, and the copy that drifts is the
+   one a caller trusts. */
+const VIDEO_DURATIONS = Object.freeze(require('../_media-models').videoModel().durationsSec.slice());
 
 const JOB_STATES = Object.freeze(['queued', 'running', 'ready', 'failed']);
 

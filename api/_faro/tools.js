@@ -61,6 +61,7 @@ const fixtures = require('./fixtures');
 const images = require('../_images');
 const data = require('./data');
 const credits = require('../_credits');
+const mediaModels = require('../_media-models');
 
 const NOT_WIRED = 'not_wired';
 
@@ -1117,7 +1118,16 @@ const mediaTools = [
         propertyId:  { type: 'string' },
         sourceImageIds: { type: 'array', items: { type: 'string' } },
         prompt:      { type: 'string' },
-        durationSec: { type: 'integer', enum: [10, 15, 30], default: 15 },
+        // Driven by the model registry, not by literals. These used to read
+        // [10, 15, 30] while every wired model accepts only 4, 8 or 12 —
+        // meaning EVERY duration the model could choose was one the provider
+        // would reject. An enum that cannot produce a valid value is worse
+        // than no enum: it reads as a working feature right up to the 400.
+        durationSec: {
+          type: 'integer',
+          enum: mediaModels.videoModel().durationsSec,
+          default: mediaModels.videoModel().defaultDurationSec,
+        },
         format:      { type: 'string', enum: ['9:16', '16:9', '1:1'], default: '9:16' },
         style:       { type: 'string' },
         music:       { type: 'string' },

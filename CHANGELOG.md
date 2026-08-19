@@ -68,6 +68,11 @@ hieronder.
 
 ### Faro
 
+- **De videolengtes die Faro kon kiezen bestonden geen van alle.** Het schema
+  bood 10, 15 of 30 seconden aan; het model achter de knop accepteert alleen 4,
+  8 of 12. Elke keuze die de AI kon maken was er dus één die de provider zou
+  weigeren — een functie die werkend oogt tot aan de foutmelding. Lengtes komen
+  nu uit dezelfde registry als de prijs.
 - **Om Faro aan te zetten heb je één nieuwe sleutel nodig:** `ANTHROPIC_API_KEY`.
   De rest (Airtable, WhatsApp, `SESSION_SECRET`) heeft Helvaro al. Beeld en video
   vragen daarnaast `OPENAI_API_KEY` én `BLOB_READ_WRITE_TOKEN` — allebei of geen
