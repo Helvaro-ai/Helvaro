@@ -705,6 +705,36 @@ function finish() {
     fail('orchestrator never charges for a chat turn — the ceiling can never be reached');
   } else pass('chat turns are actually charged, not just checked');
 
+  // ── Snelkoppelingen praten de taal van de gebruiker ───────────────────────
+  // Deze prompts komen als het bericht van de GEBRUIKER in de draad en worden
+  // de titel van het gesprek. Ze stonden als vaste Engelse zinnen in de code,
+  // zodat een Vlaamse makelaar zichzelf Engels zag praten. Nu i18n-sleutels —
+  // en een sleutel die in één taal ontbreekt valt terug op de sleutelnaam zelf,
+  // wat er in de draad uitziet als 'qp.campaign'.
+  console.log('\nsnelkoppelingen');
+  try {
+    const qa = require(path.join(__dirname, '..', 'api', '_faro', 'ui', 'quick-actions.js'));
+    const i18n = require(path.join(__dirname, '..', 'api', '_faro', 'ui', 'i18n.js'));
+    const groups = qa.GROUPS || (Array.isArray(qa) ? qa : Object.values(qa).find(Array.isArray));
+    const keys = [];
+    (groups || []).forEach((g) => (g.actions || []).forEach((a) => { if (a.promptKey) keys.push(a.promptKey); }));
+    const hardcoded = [];
+    (groups || []).forEach((g) => (g.actions || []).forEach((a) => { if (a.prompt) hardcoded.push(a.id); }));
+
+    if (hardcoded.length) fail(`snelkoppeling(en) met een vaste prompt i.p.v. een sleutel: ${hardcoded.join(', ')}`);
+    else pass(`${keys.length} snelkoppelingen gebruiken een i18n-sleutel`);
+
+    const missing = [];
+    for (const lang of i18n.TRANSLATED) {
+      const t = i18n.translator(lang);
+      for (const k of keys) { const v = t(k); if (!v || v === k) missing.push(`${lang}:${k}`); }
+    }
+    if (missing.length) fail(`prompt ontbreekt in een taal: ${missing.slice(0, 5).join(', ')}`);
+    else pass(`elke prompt bestaat in alle ${i18n.TRANSLATED.length} talen`);
+  } catch (e) {
+    fail(`snelkoppelingen niet te controleren: ${e.message}`);
+  }
+
   // ── De sterkste controle die er is: parseer wat de browser krijgt ─────────
   // api/dashboard.js is één reusachtige template literal, en de valkuil daarvan
   // is dat een geldig ogende regel iets ANDERS oplevert in de uitvoer. Twee

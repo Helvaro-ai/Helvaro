@@ -1412,7 +1412,9 @@ function faroQuickAction(id) {
   faroOpen();
   if (a.panel) { faroSetPanel(a.panel); return; }
   faroSetPanel('chat');
-  faroSend(a.prompt);
+  // promptKey i.p.v. een vaste zin: de prompt komt als het bericht van de
+  // gebruiker in de draad, dus hij hoort in diens eigen taal te staan.
+  faroSend(a.promptKey ? T(a.promptKey) : a.prompt);
 }
 
 function faroNewConversation() {

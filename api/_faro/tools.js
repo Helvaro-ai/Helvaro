@@ -829,11 +829,26 @@ const actTools = [
       required: ['propertyId'],
     },
     async run(args, _ctx) {
+      // Een bevestigingspoort die niet zegt WAT hij gaat doen, is geen poort.
+      // Hier stond alleen "Helvaro maakt de campagne aan met de voorbereide
+      // teksten en media" — geen pand, geen kanalen, geen doelgroep, geen
+      // aantal leads — met daaronder een knop die het echt doet. Je kunt dan
+      // niet bevestigen, alleen maar hopen.
+      const kanaalNamen = { whatsapp: 'WhatsApp', email: 'e-mail', social: 'sociale media' };
+      const kanalen = (args.channels || []).map((c) => kanaalNamen[c] || c);
+      const regels = [];
+      if (args.propertyId) regels.push(`Pand: ${args.propertyId}`);
+      if (kanalen.length)  regels.push(`Kanalen: ${kanalen.join(', ')}`);
+      if (args.angle)      regels.push(`Invalshoek: ${args.angle}`);
+      regels.push((args.leadIds && args.leadIds.length)
+        ? `Doelgroep: ${args.leadIds.length} geselecteerde lead(s)`
+        : 'Doelgroep: nog geen leads geselecteerd');
+
       return stub('Campagne voorbereid. Wacht op bevestiging.', { pending: true },
         [schema.confirmation({
           action: 'create_campaign',
           title: 'Campagne aanmaken?',
-          body: 'Helvaro maakt de campagne aan met de voorbereide teksten en media.',
+          body: regels.join('\n') + '\n\nEr wordt nog niets verstuurd — de campagne wordt alleen aangemaakt.',
           confirmLabel: 'Aanmaken',
           payload: args,
         })]);

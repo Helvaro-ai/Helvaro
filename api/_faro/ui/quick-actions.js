@@ -1,4 +1,8 @@
 'use strict';
+/* De prompts stonden hier als vaste Engelse zinnen. Ze verschijnen als het
+   EIGEN bericht van de gebruiker in de draad en worden bovendien de titel van
+   het gesprek, dus een Vlaamse makelaar zag zichzelf Engels praten in een
+   Nederlandse app. Ze staan nu in i18n.js als qp.*-sleutels. */
 /*
  * Faro — quick action definitions (requirement 5).
  *
@@ -44,17 +48,17 @@ const GROUPS = Object.freeze([
       Object.freeze({
         id: 'hot-leads', icon: 'flame', hue: 'amber',
         labelKey: 'qa.hotLeads',
-        prompt: 'Which of my leads are worth contacting right now? Rank them and show them as lead cards.',
+        promptKey: 'qp.bestLeads',
       }),
       Object.freeze({
         id: 'pipeline', icon: 'chart', hue: 'slate',
         labelKey: 'qa.pipeline',
-        prompt: 'Analyse my pipeline. Where is the value concentrated and where is it stalling?',
+        promptKey: 'qp.pipeline',
       }),
       Object.freeze({
         id: 'today-convos', icon: 'message', hue: 'teal',
         labelKey: 'qa.summarize',
-        prompt: "Summarise today's conversations. What needs follow-up?",
+        promptKey: 'qp.summarize',
       }),
     ]),
   }),
@@ -67,7 +71,7 @@ const GROUPS = Object.freeze([
       Object.freeze({
         id: 'write-listing', icon: 'doc', hue: 'gold',
         labelKey: 'qa.writeListing',
-        prompt: 'Write a listing description for one of my properties. Ask me which property first.',
+        promptKey: 'qp.writeListing',
       }),
     ]),
   }),
@@ -78,17 +82,17 @@ const GROUPS = Object.freeze([
       Object.freeze({
         id: 'followup', icon: 'send', hue: 'green',
         labelKey: 'qa.followUp',
-        prompt: 'Which leads deserve follow-up today? Propose a follow-up message for each one.',
+        promptKey: 'qp.followUp',
       }),
       Object.freeze({
         id: 'campaign', icon: 'megaphone', hue: 'orange',
         labelKey: 'qa.campaign',
-        prompt: 'I want to create a campaign for a property. Ask me which property, then propose a campaign.',
+        promptKey: 'qp.campaign',
       }),
       Object.freeze({
         id: 'calls', icon: 'phone', hue: 'sky',
         labelKey: 'qa.calls',
-        prompt: "Prepare today's calls: who do I call, why, and what is the context for each?",
+        promptKey: 'qp.calls',
       }),
     ]),
   }),
