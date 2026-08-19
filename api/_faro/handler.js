@@ -141,9 +141,25 @@ async function chat(req, res, ctx, body) {
   let history = [];
   if (conversationId) {
     const conv = await store.getConversation(ctx.projectCode, conversationId);
-    if (!conv) return res.status(404).json({ error: 'Gesprek niet gevonden' });
-    history = await store.listMessages(ctx.projectCode, conversationId);
-    if (conv.projectName) ctx.projectName = conv.projectName;
+    if (conv) {
+      history = await store.listMessages(ctx.projectCode, conversationId);
+      if (conv.projectName) ctx.projectName = conv.projectName;
+    } else if (await store.available()) {
+      // De opslag doet het WEL en kent dit gesprek niet: dan is het van iemand
+      // anders of het bestaat niet. Dat hoort een 404 te zijn.
+      return res.status(404).json({ error: 'Gesprek niet gevonden' });
+    } else {
+      // De opslag is er (nog) niet. Vroeger viel dit samen met het geval
+      // hierboven, en omdat getConversation() ALTIJD null teruggaf kreeg elk
+      // tweede bericht een 404: je kon Faro precies één vraag stellen, en elk
+      // item onder "recente gesprekken" was dood bij aanklikken.
+      //
+      // De browser houdt het gesprek zelf al bij — de zijbalk zegt dat ook
+      // met zoveel woorden ("Bewaard in deze browser"). Dus nemen we die
+      // geschiedenis aan in plaats van te weigeren. Zie clientHistory() voor
+      // wat er wel en niet uit een verzoek overgenomen wordt.
+      history = clientHistory(body.history);
+    }
   }
 
   const userContent = [
@@ -169,6 +185,45 @@ async function chat(req, res, ctx, body) {
     userContent,
     tier: body.tier || config.DEFAULT_TIER,
   });
+}
+
+/* ── Geschiedenis uit de browser ─────────────────────────────────────────────
+ * Alleen gebruikt zolang er geen serveropslag is. Wat hier binnenkomt is door
+ * de gebruiker te beïnvloeden, dus de vraag is niet "vertrouwen we dit" maar
+ * "wat kan iemand ermee".
+ *
+ * Wel toegestaan: platte tekstbeurten van user en assistant. Iemand kan daarmee
+ * de context van zijn EIGEN model sturen — precies wat hij ook kan door het te
+ * typen. Geen nieuwe mogelijkheid dus.
+ *
+ * Niet toegestaan: tool_use- en tool_result-blokken. Die zou je kunnen
+ * vervalsen om het model te laten geloven dat een gereedschap al iets heeft
+ * gedaan of iets heeft teruggegeven. Gereedschappen draaien altijd hier op de
+ * server, en acties naar buiten hangen sowieso achter de HMAC-poort in
+ * actions.js — een verzonnen geschiedenis kan dus niets autoriseren. Ze eruit
+ * houden scheelt het model wel een hoop verwarring.
+ *
+ * En een dak: 40 beurten van elk 4 kB is ruim voor een gesprek en te weinig om
+ * er een contextvenster mee vol te duwen op andermans rekening.
+ */
+const CLIENT_HISTORY_MAX_TURNS = 40;
+const CLIENT_HISTORY_MAX_CHARS = 4000;
+
+function clientHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const m of raw.slice(-CLIENT_HISTORY_MAX_TURNS)) {
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    let text = '';
+    if (typeof m.text === 'string') text = m.text;
+    else if (Array.isArray(m.content)) {
+      text = m.content.filter((b) => b && b.type === 'text').map((b) => b.text || '').join('\n');
+    }
+    text = String(text).trim().slice(0, CLIENT_HISTORY_MAX_CHARS);
+    if (!text) continue;
+    out.push({ role: m.role, content: [{ type: 'text', text }] });
+  }
+  return out;
 }
 
 // ── faro-confirm ───────────────────────────────────────────────────────────────

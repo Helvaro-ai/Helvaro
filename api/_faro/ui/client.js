@@ -360,7 +360,12 @@ function faroSend(text) {
       text: text,
       conversationId: faroState.conversationId,
       tier: faroState.tier,
-      attachments: attachments
+      attachments: attachments,
+      // Zolang de servertabellen niet bestaan is DIT de geschiedenis. De server
+      // gebruikt hem alleen als hij het gesprek zelf niet kent en zijn opslag
+      // niet beschikbaar is; kent hij het wel, dan wint de server altijd. Zie
+      // clientHistory() in api/_faro/handler.js voor wat er overgenomen wordt.
+      history: faroState.conversationId ? (faroLsMessages(faroState.conversationId) || []) : []
     }),
     signal: faroState.abort.signal
   })
