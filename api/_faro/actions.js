@@ -56,6 +56,7 @@ const crypto = require('crypto');
 const data = require('./data');       // lead lookup + the 24-hour window check
 const waSend = require('../_wa-send'); // the single outbound WhatsApp door
 const gcal = require('../_gcal');      // per-client Google Calendar
+const credits = require('../_credits'); // creditpoort — zie de video-executor
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -292,8 +293,27 @@ const EXECUTORS = {
     throw new ActionError('Beeldgeneratie is nog niet aangesloten.', 'not_wired');
   },
 
-  // WIRE TO: api/_faro/media.js (video provider does not exist in this repo yet).
-  async generate_property_video(_payload, _ctx) {
+  // WIRE TO: api/_faro/media.js (de videoprovider bestaat nog niet in deze repo).
+  //
+  // De creditpoort staat hier AL, vóór de not_wired. Dat is bewust: video is
+  // verreweg de duurste actie in dit product — één filmpje van acht seconden
+  // kost meer dan zeven leadgesprekken — en een poort die pas ná het aansluiten
+  // wordt bedacht, wordt vergeten. Wie de provider aansluit, vervangt alleen de
+  // laatste regel en heeft de rem dan automatisch al staan.
+  //
+  // Controleren kost niets en schrijft niets af; afschrijven gebeurt pas NA een
+  // geslaagde generatie, met credits.creditsForVideo() voor het echte aantal.
+  async generate_property_video(payload, ctx) {
+    const kosten = credits.creditsForVideo({
+      seconds: payload && payload.seconds,
+      size: payload && payload.size,
+    });
+    const check = await credits.checkCredits(ctx.projectCode, credits.FEATURES.VIDEO_GENERATION);
+    if (!check.allowed) {
+      throw new ActionError(
+        check.message || `Hier is geen ruimte meer voor: een video kost ${kosten} credits.`,
+        'credit_limit_reached');
+    }
     throw new ActionError('Videogeneratie is nog niet aangesloten.', 'not_wired');
   },
 };

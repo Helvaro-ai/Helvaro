@@ -72,6 +72,24 @@ hieronder.
 - **Een budget van "3 slaapkamers, 450.000"** werd gelezen als € 3.
 - **De kalender toonde 12-uursnotatie** zonder am/pm: 13:00 las als 1:00.
 
+### Credits
+
+- **Video heeft nu een prijs.** Het was het enige dat Faro kan doen zonder enige
+  afschrijving, en het is verreweg het duurste: één filmpje van acht seconden
+  kost twaalf leadgesprekken. Het staat op 30 credits per seconde (50 op de
+  bredere formaten), ongeveer 1,6x kostprijs. De poort staat al in de code
+  hoewel videogeneratie zelf nog niet is aangesloten — een rem die je pas ná het
+  openzetten bedenkt, bedenk je te laat.
+- **Actie:** beslis wat een proefklant met video mag. Bij dit tarief kost één
+  standaardvideo 240 van de 250 proefcredits: hij kan er precies één maken en
+  heeft daarna niets meer voor leads. Zie `CREDIT-SYSTEM-DESIGN.md` §7 voor de
+  drie opties.
+- **Gelijktijdige afschrijvingen gaan niet meer verloren.** Gemeten: vijf
+  tegelijk van 3 credits werden geboekt als 3 in plaats van 15 — vier van de
+  vijf verdampten. Faro maakte dit erger dan het was, want één vraag kan
+  meerdere gereedschappen draaien. Afschrijvingen voor dezelfde klant staan nu
+  achter elkaar in plaats van door elkaar.
+
 ### Als er iets misgaat
 
 - **Een storing ziet er niet meer uit als een leeg account.** Een mislukte

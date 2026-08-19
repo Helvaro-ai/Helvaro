@@ -101,10 +101,54 @@ estimated real cost per client (so margin is visible per account).
 
 ## 6. Honest limitation on Airtable
 
-The VPS/Postgres version increments usage atomically inside a transaction.
+The VPS/Postgres version incremented usage atomically inside a transaction.
 **Airtable has no atomic increment** — the Vercel implementation must
-read-modify-write, so two simultaneous conversations for the same client can
-race and under-count by one. At Helvaro's volume (a handful of concurrent
-conversations) this is acceptable, and it errs toward under-charging, never
-over-charging. It must be documented in code, not hidden — and it resolves
-itself when the app moves to the VPS/Postgres backend.
+read-modify-write, so two simultaneous charges for the same client can race and
+under-count. It errs toward under-charging, never over-charging.
+
+Two things changed since this was written, and the VPS is not one of them —
+that machine has been destroyed, so "it resolves itself when the app moves to
+Postgres" is no longer a plan, it is a decision nobody has made yet.
+
+**Measured, not assumed.** Against a stubbed Airtable with a 20ms read, five
+concurrent charges of 3 credits recorded as **3, not 15** — four of five
+vanished. The old note said "under-count by one"; at Faro's concurrency it is
+closer to "count one of five". Faro made this worse than it was: one question
+can run several tools, and a chat turn and an image are billed separately.
+
+**What now happens.** `recordUsage()` serialises per project code: charges for
+the same client queue behind each other instead of interleaving. That removes
+the race *within one instance*, which is the bulk of it, since one agency's
+requests generally land on the same warm instance. The window between instances
+remains and cannot be closed without a counter that can add without reading
+first.
+
+## 7. Video — priced before it is wired
+
+Video generation does not work yet (`api/_faro/actions.js` throws `not_wired`),
+which is exactly why the price exists now: it is by far the most expensive thing
+this product can do, and a rate invented after the tap is open is invented too
+late.
+
+Real cost from `api/_media-models.js`: $0.30/second at 1280x720, $0.50/second on
+the wider formats. Against this document's anchor of ~EUR0.015 per credit:
+
+| | Real cost | At cost | Charged |
+|---|---|---|---|
+| 8s, 1280x720 | ~EUR2.21 | 147 credits | **240** |
+| 8s, 1792x1024 | ~EUR3.68 | 245 credits | **400** |
+| 4s, 1280x720 | ~EUR1.10 | 74 credits | **120** |
+
+For scale: an image is 50 credits and a **whole lead conversation is 20**. One
+eight-second video is therefore worth twelve lead conversations.
+
+Images sit at roughly 8x cost deliberately — §2 calls them "the one genuinely
+unbounded risk". Video cannot take the same multiplier: it would put one clip at
+~1,200 credits, more than half a month of Growth. It is priced at ~1.6x instead.
+
+**A decision this document cannot make for you.** At 30 credits/second, one
+standard video costs 240 of a trial's 250 credits. A trial customer can make
+exactly one and then has nothing left for leads. That may be the intent — let
+them see it work once — or it may be a trial that ends the moment it is used.
+Options, none obviously right: leave it, exclude video from trials entirely, or
+give trials a smaller video budget of their own.

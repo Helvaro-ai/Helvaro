@@ -103,6 +103,11 @@ const FEATURES = {
   // Image generation inside a turn is billed SEPARATELY at image_generation's
   // 50, because that is where the real money goes.
   FARO_CHAT:               'faro_chat',               // 3
+  // Video. Nog niet aangesloten (api/_faro/actions.js gooit not_wired), en
+  // juist daarom staat de prijs er NU al: video is verreweg het duurste dat dit
+  // product kan doen, en een tarief bedenken nadat de kraan openstaat is te
+  // laat. Zie creditsForVideo() — dit is geen vast getal maar per seconde.
+  VIDEO_GENERATION:        'video_generation',
 };
 
 const WEIGHTS = {
@@ -117,7 +122,45 @@ const WEIGHTS = {
   [FEATURES.FOUNDER_CONTENT_POST]:    5,
   [FEATURES.FOUNDER_GENERATE_IMAGE]:  50,
   [FEATURES.FARO_CHAT]:               3,
+  // Nominale waarde voor een standaardvideo (8s, 720p). De echte afschrijving
+  // loopt via creditsForVideo(); dit getal bestaat zodat WEIGHTS volledig is en
+  // een aanroeper die het vergeet niet op 0 uitkomt.
+  [FEATURES.VIDEO_GENERATION]:        240,
 };
+
+/* ── Wat een video kost ───────────────────────────────────────────────────────
+ * api/_media-models.js kent de echte prijs: $0,30 per seconde op 1280x720 en
+ * $0,50 per seconde op de bredere formaten. Tegen de basis uit
+ * CREDIT-SYSTEM-DESIGN.md (1 credit ~ EUR0,015 kostprijs) levert dat op:
+ *
+ *    8s 720p            $2,40  = EUR2,21  = 147 credits op kostprijs
+ *    8s breed/portret   $4,00  = EUR3,68  = 245 credits op kostprijs
+ *
+ * Ter vergelijking: een BEELD kost 50 credits en een heel leadgesprek 20.
+ * Eén video van acht seconden is dus zeven leadgesprekken, en op het bredere
+ * formaat evenveel als de complete proefperiode van 250 credits.
+ *
+ * Daarom een andere opslag dan bij beeld. Beeld staat bewust op ~8x kostprijs
+ * ("de enige echt onbegrensde post"); dezelfde factor op video zou één filmpje
+ * op ~1.200 credits brengen — meer dan een halve maand Growth. Dit staat op
+ * ongeveer 1,6x kostprijs: genoeg marge om niet te verliezen, laag genoeg dat
+ * het bruikbaar blijft.
+ *
+ * PRODUCTBESLISSING die hier niet gemaakt kan worden: bij 30 credits/seconde
+ * kost één standaardvideo 240 van de 250 proefcredits. Een proefklant kan er
+ * dus precies één maken. Dat kan de bedoeling zijn (laten proeven) of niet
+ * (proefperiode meteen op). Zie CREDIT-SYSTEM-DESIGN.md §6.
+ */
+const VIDEO_CREDITS_PER_SECOND = { standard: 30, wide: 50 };
+const VIDEO_WIDE_SIZES = ['1792x1024', '1024x1792'];
+
+function creditsForVideo({ seconds = 8, size = '1280x720' } = {}) {
+  const secs = Math.max(1, Math.min(60, Math.round(Number(seconds) || 8)));
+  const rate = VIDEO_WIDE_SIZES.includes(String(size))
+    ? VIDEO_CREDITS_PER_SECOND.wide
+    : VIDEO_CREDITS_PER_SECOND.standard;
+  return secs * rate;
+}
 
 // Rough real-cost-per-credit by feature, EUR, derived from
 // CREDIT-SYSTEM-DESIGN.md §1-2 (lead conv ~€0.30/20cr, image ~€0.095 avg/50cr,
@@ -405,9 +448,41 @@ function clearUnrecorded(code) { _unrecorded.delete(String(code || '').trim()); 
  * dit is een rem, geen slot. */
 const UNMETERED_CEILING = 60;
 
+/* ── Waarom hier een wachtrij per klant staat ────────────────────────────────
+ * recordUsage() is lezen-wijzigen-schrijven: haal het huidige verbruik op, tel
+ * erbij op, schrijf terug. Twee beurten die elkaar overlappen lezen dan
+ * allebei dezelfde beginstand en de tweede overschrijft de eerste — één van de
+ * twee afschrijvingen verdampt. Bij Faro is dat geen randgeval: één vraag kan
+ * meerdere gereedschappen draaien, en een beeld en een chatbeurt worden apart
+ * geboekt.
+ *
+ * Airtable kent geen atomaire ophoging, dus echt oplossen kan hier niet. Wat
+ * wel kan: de aanroepen voor DEZELFDE klant achter elkaar zetten in plaats van
+ * door elkaar. Dat haalt de races binnen één instance weg, en dat is het
+ * leeuwendeel — de verzoeken van één kantoor landen meestal op dezelfde warme
+ * instance. Tussen instances blijft het venster bestaan; dat verdwijnt pas met
+ * een teller die kan optellen zonder eerst te lezen.
+ */
+const _queues = new Map();   // projectCode -> Promise-ketting
+
+function serialize(code, task) {
+  const prev = _queues.get(code) || Promise.resolve();
+  // .catch erin, anders breekt één mislukking de hele ketting voor die klant.
+  const next = prev.then(task, task);
+  _queues.set(code, next.catch(() => {}));
+  // Opruimen zodra deze de laatste in de rij is, anders groeit de Map met elke
+  // klant die ooit iets verbruikt heeft.
+  next.catch(() => {}).then(() => { if (_queues.get(code) === next.catch(() => {})) _queues.delete(code); });
+  return next;
+}
+
 async function recordUsage(projectCode, feature, opts = {}) {
   const code = String(projectCode || '').trim();
   if (!code) return;
+  return serialize(code, () => recordUsageInner(code, feature, opts));
+}
+
+async function recordUsageInner(code, feature, opts = {}) {
   const creditsInt = Math.max(0, Math.round(Number(opts.credits) || 0));
   if (creditsInt <= 0) return;
 
@@ -843,6 +918,7 @@ async function setTrialMarker(projectCode, patch) {
 
 module.exports = {
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
+  creditsForVideo, VIDEO_CREDITS_PER_SECOND,
   FEATURES,
   WEIGHTS,
   FIELD,
