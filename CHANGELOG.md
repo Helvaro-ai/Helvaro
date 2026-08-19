@@ -108,6 +108,10 @@ hieronder.
   ongemerkt weer laten antwoorden op een lead die een mens had overgenomen.
 - **Faro mag de stem aanpassen, niet de rekening.** Plan, creditlimiet en
   projectcode staan niet in de lijst velden die hij kan raken.
+- **Een afspraak verzetten of afzeggen kan ook via de chat.** Bij afzeggen zegt
+  hij er expliciet bij dat de lead GEEN bericht krijgt, en biedt hij aan er een
+  te sturen. Wie denkt dat afzeggen ook afmeldt, laat iemand voor een dichte
+  deur staan.
 
 ### Prijsadvies
 

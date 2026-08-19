@@ -120,6 +120,7 @@ else pass(`${creates.length} create-tools run without a gate`);
 // lead id in a chat is a string a language model can invent.
 const EXPECTED_ACT = [
   'set_lead_status', 'add_lead_note', 'delete_lead', 'update_ai_persona',
+  'move_appointment', 'cancel_appointment',
   'create_followup', 'schedule_followup', 'create_campaign', 'add_leads_to_campaign',
 ];
 const actSet = acts.slice().sort().join(',');

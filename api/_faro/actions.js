@@ -323,6 +323,46 @@ const EXECUTORS = {
     return { summary: `Ingepland: ${payload.title || 'Opvolging'}.`, components: [] };
   },
 
+  /* Een bestaand agenda-item verzetten of afzeggen.
+     eventId komt uit data.calendarEvents(), dus uit de agenda die aan DEZE
+     tenant hangt: gcalAccessFor(ctx) levert het token van deze klant en Google
+     weigert een id dat niet in die agenda staat. Er is dus geen pad waarlangs
+     dit item van iemand anders kan zijn. */
+  async move_appointment(payload, ctx) {
+    const startMs = Date.parse(payload && payload.startISO);
+    if (!Number.isFinite(startMs)) throw new ActionError('Ongeldig tijdstip.', 'invalid_time');
+    const access = await data.gcalAccessFor(ctx);
+    if (!access) throw new ActionError('Google Agenda is niet gekoppeld.', 'not_connected');
+
+    const durationMin = Math.max(15, Math.min(480, Number(payload.durationMin) || 60));
+    const out = await gcal.updateEvent(access.token, access.calId, payload.eventId, {
+      startISO: new Date(startMs).toISOString(),
+      durationMin,
+    });
+    if (!out || !out.ok) {
+      console.error('[faro/actions] updateEvent failed:', out && out.error);
+      throw new ActionError('Het agenda-item kon niet verzet worden.', 'calendar_failed');
+    }
+    return { summary: 'Afspraak verzet.', components: [] };
+  },
+
+  async cancel_appointment(payload, ctx) {
+    const access = await data.gcalAccessFor(ctx);
+    if (!access) throw new ActionError('Google Agenda is niet gekoppeld.', 'not_connected');
+    const out = await gcal.deleteEvent(access.token, access.calId, payload && payload.eventId);
+    if (!out || !out.ok) {
+      console.error('[faro/actions] deleteEvent failed:', out && out.error);
+      throw new ActionError('De afspraak kon niet afgezegd worden.', 'calendar_failed');
+    }
+    /* Bewust expliciet: Google zegt niets tegen de lead. Wie denkt dat
+       afzeggen ook afmeldt, laat iemand voor een dichte deur staan. */
+    return {
+      summary: 'Afspraak uit je agenda gehaald. Let op: de lead heeft hier GEEN bericht over gekregen '
+             + '- zeg dat erbij en bied aan om hem een bericht te sturen.',
+      components: [],
+    };
+  },
+
   // WIRE TO: Marketing Posts / campaign records via api/_pgapi.js.
   async create_campaign(_payload, _ctx) {
     throw new ActionError('Campagnes zijn nog niet aangesloten.', 'not_wired');

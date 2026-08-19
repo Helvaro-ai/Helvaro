@@ -889,6 +889,103 @@ const actTools = [
   },
 
   {
+    name: 'move_appointment',
+    kind: 'act',
+    description:
+      'Verzet een bestaande afspraak naar een ander tijdstip. Gebruik get_calendar om het '
+      + 'eventId te vinden. Wordt pas verzet na bevestiging.',
+    parameters: {
+      type: 'object',
+      properties: {
+        eventId:     { type: 'string', description: 'Het id uit get_calendar.' },
+        when:        { type: 'string', description: 'Nieuwe starttijd als ISO-datum/tijd.' },
+        durationMin: { type: 'integer', minimum: 15, maximum: 480, default: 60 },
+      },
+      required: ['eventId', 'when'],
+    },
+    async run(args, ctx) {
+      const startMs = Date.parse(args.when);
+      if (!Number.isFinite(startMs)) {
+        return { summary: `"${args.when}" is geen geldige datum/tijd. Vraag wanneer precies.`,
+                 data: { pending: false }, components: [] };
+      }
+      if (startMs < Date.now() - 60000) {
+        return { summary: 'Dat tijdstip ligt in het verleden. Vraag om een moment in de toekomst.',
+                 data: { pending: false }, components: [] };
+      }
+      // De afspraak eerst opzoeken, zodat de kaart kan tonen WAT er verzet
+      // wordt en niet alleen een id.
+      const cal = await data.calendarEvents(ctx, { days: 60 });
+      if (cal.source !== 'google') {
+        return {
+          summary: cal.reason === 'not_connected'
+            ? 'Google Agenda is niet gekoppeld, dus er valt niets te verzetten.'
+            : 'Google Agenda is nu niet bereikbaar.',
+          data: { pending: false }, components: [],
+        };
+      }
+      const ev = (cal.events || []).find((e) => e && e.id === args.eventId);
+      if (!ev) {
+        return { summary: 'Die afspraak staat niet in de agenda. Noem get_calendar om te kijken wat er staat.',
+                 data: { pending: false }, components: [] };
+      }
+      const durationMin = Math.max(15, Math.min(480, args.durationMin || 60));
+      return {
+        summary: `Klaar om "${ev.title || 'afspraak'}" te verzetten. Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'move_appointment',
+          title: 'Afspraak verzetten?',
+          body: `${ev.title || 'Afspraak'}\n${formatWhen(ev.start, false)}`
+            + `\n-> ${formatWhen(new Date(startMs).toISOString(), false)} - ${durationMin} min`,
+          confirmLabel: 'Verzetten',
+          payload: { eventId: ev.id, startISO: new Date(startMs).toISOString(), durationMin },
+        })],
+      };
+    },
+  },
+
+  {
+    name: 'cancel_appointment',
+    kind: 'act',
+    description:
+      'Zeg een afspraak af en haal hem uit de agenda. Let op: de lead krijgt hier GEEN bericht over. '
+      + 'Wordt pas afgezegd na bevestiging.',
+    parameters: {
+      type: 'object',
+      properties: { eventId: { type: 'string' } },
+      required: ['eventId'],
+    },
+    async run(args, ctx) {
+      const cal = await data.calendarEvents(ctx, { days: 60 });
+      if (cal.source !== 'google') {
+        return {
+          summary: cal.reason === 'not_connected'
+            ? 'Google Agenda is niet gekoppeld, dus er valt niets af te zeggen.'
+            : 'Google Agenda is nu niet bereikbaar.',
+          data: { pending: false }, components: [],
+        };
+      }
+      const ev = (cal.events || []).find((e) => e && e.id === args.eventId);
+      if (!ev) {
+        return { summary: 'Die afspraak staat niet in de agenda.', data: { pending: false }, components: [] };
+      }
+      return {
+        summary: `Klaar om "${ev.title || 'afspraak'}" af te zeggen. Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'cancel_appointment',
+          title: 'Afspraak afzeggen?',
+          body: `${ev.title || 'Afspraak'}\n${formatWhen(ev.start, false)}\n\n`
+            + 'De lead krijgt hier geen bericht over.',
+          confirmLabel: 'Afzeggen',
+          payload: { eventId: ev.id },
+        })],
+      };
+    },
+  },
+
+  {
     name: 'create_followup',
     kind: 'act',
     description: 'Stel een opvolgbericht op voor één of meer leads en vraag bevestiging om het via WhatsApp te versturen. Schrijf het bericht zelf en geef het mee in `message`. Het wordt pas verstuurd nadat de gebruiker bevestigt.',
