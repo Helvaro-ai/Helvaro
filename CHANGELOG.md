@@ -91,6 +91,25 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Video
+
+- **De standaard hangt niet meer aan Sora.** OpenAI haalt die API op 24
+  september weg en heeft geen opvolger aangekondigd. De standaard staat nu op
+  Kling, met Runway als goedkope laag; allebei kunnen ze een FOTO van het pand
+  animeren, wat hier zwaarder weegt dan de prijs -- tekst-naar-video verzint een
+  huis, en een huis dat niet bestaat verkoopt niemand.
+- **Alles rond de leverancier is nu wel gebouwd en getest.** De job, de
+  duur- en formaatgrenzen, het pollen, en de controle dat een job van jou is.
+  Dat laatste is geen formaliteit: een job-id staat in een poll-URL in de
+  browser, dus het is geen bewijs van eigendom. Een job van een andere klant
+  geeft nu hetzelfde antwoord als een job die niet bestaat.
+- **Actie:** de koppeling met Kling of Runway zelf is NIET geschreven, en dat
+  weigert met een duidelijke melding in plaats van te gokken. Ik kon hun
+  documentatie niet lezen vanaf deze machine, en een adapter die eruitziet als
+  de echte maar net andere veldnamen gebruikt faalt pas bij je eerste klant.
+  Nodig: `KLING_ACCESS_KEY` + `KLING_SECRET_KEY` (of `RUNWAY_API_KEY`), plus
+  hun API-documentatie.
+
 ### Alles vragen in plaats van klikken
 
 - **Faro kan nu ook dingen VERANDEREN in je CRM.** Hij kon lezen, berichten

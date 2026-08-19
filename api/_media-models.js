@@ -146,9 +146,75 @@ const VIDEO_MODELS = {
     supportsInputReference: true,
     costUsd({ seconds = 8 } = {}) { return 0.10 * seconds; },
   },
+
+  /* ── De opvolgers ──────────────────────────────────────────────────────────
+     Sora verdwijnt op 2026-09-24 en OpenAI heeft geen opvolger aangekondigd,
+     dus de standaard staat hieronder al op een model dat daar niet aan hangt.
+
+     ⚠ De HTTP-adapters voor deze twee zijn NIET geschreven. Zie
+     api/_video-adapters.js: die weigert met een duidelijke fout in plaats van
+     te gokken naar endpoint, auth-header en pollvorm. Een adapter die "er goed
+     uitziet" en 400's geeft bij de eerste echte klant is erger dan een die
+     eerlijk zegt dat hij er nog niet is.
+
+     De prijzen hieronder zijn RICHTPRIJZEN uit openbare vergelijkingen
+     (augustus 2026), niet uit een factuur. Ze zijn goed genoeg om credits mee
+     te ijken en te grof om een marge op te bouwen -- bevestig ze bij de
+     leverancier voordat video aangaat. costUsd wordt sowieso alleen gebruikt
+     voor de sanity-check onderaan dit bestand, nooit om te factureren. */
+  'kling-3': {
+    id: 'kling-3',
+    provider: 'kling',
+    adapter: 'kling',
+    endpoint: '',                      // vult de adapter in
+    sizes: ['1280x720', '720x1280', '1920x1080'],
+    durationsSec: [5, 10],
+    defaultDurationSec: 5,
+    sunsetOn: null,
+    supportsInputReference: true,      // beeld-naar-video: de eis die telt
+    costUsd({ seconds = 5, size = '1280x720' } = {}) {
+      // Richtprijs 0,09-0,14 per seconde; 1080p aan de bovenkant.
+      const perSecond = size === '1920x1080' ? 0.14 : 0.10;
+      return perSecond * seconds;
+    },
+  },
+
+  /* De goedkope laag. Voor een social teaser is dit vaak de juiste ruil. */
+  'runway-gen4-turbo': {
+    id: 'runway-gen4-turbo',
+    provider: 'runway',
+    adapter: 'runway',
+    endpoint: '',
+    sizes: ['1280x720', '720x1280'],
+    durationsSec: [5, 10],
+    defaultDurationSec: 5,
+    sunsetOn: null,
+    supportsInputReference: true,
+    costUsd({ seconds = 5 } = {}) { return 0.05 * seconds; },
+  },
+
+  /* Alleen voor tests en scripts/faro-dev.js: levert na een paar tellen een
+     verzonnen resultaat zonder ooit het netwerk aan te raken. Zo is de hele
+     pijplijn eromheen -- credits, job, opslag, polling -- echt te testen
+     zonder sleutel en zonder rekening. */
+  'demo-video': {
+    id: 'demo-video',
+    provider: 'demo',
+    adapter: 'demo',
+    endpoint: '',
+    sizes: ['1280x720', '720x1280'],
+    durationsSec: [4, 8],
+    defaultDurationSec: 8,
+    sunsetOn: null,
+    supportsInputReference: true,
+    costUsd() { return 0; },
+  },
 };
 
-const DEFAULT_VIDEO_MODEL = 'sora-2-pro';
+/* Kling en niet Sora: de standaard mag niet een model zijn dat over een maand
+   verdwijnt. Dat de adapter nog niet af is, is een eerlijke fout bij het
+   genereren -- een standaard die op 24 september stilvalt is dat niet. */
+const DEFAULT_VIDEO_MODEL = 'kling-3';
 
 /* ── Selection ────────────────────────────────────────────────────────────────
  * An unknown env value is a hard failure at call time rather than a silent
