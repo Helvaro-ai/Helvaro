@@ -300,6 +300,24 @@ module.exports = async function handler(req, res) {
     const email    = String(body.email    || '').trim().slice(0, 254);
     const password = String(body.password || '').trim().slice(0, 200);
 
+    /* ── MODE: logout. End the session on the SERVER ────────────────────────
+       Logging out used to be entirely client-side: it emptied localStorage and
+       showed the login screen. But hv_session is httpOnly, so JavaScript could
+       not clear it and never did -- the cookie stayed valid for its full 7
+       days. On a shared machine that is the whole point of logging out:
+       restore two localStorage markers by hand and tryAutoLogin() lets you
+       straight back in, authenticated by the surviving cookie, with hv_csrf
+       still present so writes pass too. No token theft required.
+
+       Deliberately unauthenticated: clearing your OWN cookies needs no proof
+       of who you are, and refusing to log out someone whose session already
+       expired is the wrong failure. It only ever clears the cookies on THIS
+       response, so it cannot touch anyone else's session. */
+    if (body.mode === 'logout') {
+      _session.clearSessionCookies(res);
+      return res.status(200).json({ ok: true });
+    }
+
     // ── MODE: request-reset. Email the user a reset link ────────────────────
     // We verify the user exists before sending so the form gives clear feedback
     // (B2B context: ~10-100 known clients, account enumeration risk is low and

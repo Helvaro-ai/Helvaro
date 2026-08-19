@@ -117,16 +117,37 @@ hieronder.
   model. De tokens werden al geteld en alleen als notitie bewaard; ze bepalen nu
   de afschrijving. Gemeten op het goedkoopste model kost een zware beurt 15
   credits waar er 3 werd gerekend.
-- **Actie:** zet de prijs van `claude-sonnet-5` en `claude-opus-5` in
-  `MODEL_PRICES` (bovenin `api/_credits.js`). Zolang die ontbreekt valt de
-  afschrijving terug op het oude platte tarief en waarschuwt hij in het log —
-  en Sonnet is het standaardmodel, dus dat raakt de meeste beurten. Alleen de
-  Haiku-prijs staat er, met bron.
+- **Sonnet en Opus hebben nu een prijs.** Dit hoefde niet meer op jou te
+  wachten: het zijn de lijstprijzen van Anthropic. Dezelfde beurt (10.000 in,
+  700 uit) kost nu 3 credits op Haiku, 8 op Sonnet en 13 op Opus — waar er
+  overal 3 werd gerekend, en Sonnet is het standaardmodel. Sonnet staat er op
+  het NORMALE tarief, niet op de introprijs die tot en met 31 augustus 2026
+  geldt: met de introprijs erin zou de afschrijving op 1 september in één nacht
+  50% te laag worden, precies wanneer niemand eraan denkt.
 - **Gelijktijdige afschrijvingen gaan niet meer verloren.** Gemeten: vijf
   tegelijk van 3 credits werden geboekt als 3 in plaats van 15 — vier van de
   vijf verdampten. Faro maakte dit erger dan het was, want één vraag kan
   meerdere gereedschappen draaien. Afschrijvingen voor dezelfde klant staan nu
   achter elkaar in plaats van door elkaar.
+
+### Beveiliging
+
+- **Uitloggen beëindigt de sessie nu ook op de server.** Het was volledig
+  client-side: localStorage leegmaken en het inlogscherm tonen. Maar de
+  sessiecookie is httpOnly, dus JavaScript kón hem niet wissen en deed dat ook
+  niet — hij bleef zeven dagen geldig. Op een gedeelde computer is dat precies
+  waar uitloggen voor bedoeld is: twee markers met de hand terugzetten en je
+  stond weer binnen, met een geldige cookie en zonder dat er iets gestolen
+  hoefde te worden.
+- **Zelfaanmelden staat nu ook via Clerk dicht.** `PUBLIC_SIGNUP_ENABLED` staat
+  standaard uit en `api/admin.js` weigerde daarom elke aanmelding zonder
+  uitnodigingscode. Het Clerk-pad liep daar volledig omheen: met Clerk aan en
+  die vlag uit — wat jij als gesloten beschouwt — kon een willekeurige
+  bezoeker een e-mailadres bevestigen en met een werkende tenant, een live
+  leadformulier en 250 credits naar buiten lopen. Een bestaande klant die voor
+  het eerst inlogt wordt níét geblokkeerd: dat is koppelen, geen aanmelden.
+  **Actie:** wil je zelfaanmelden wél openzetten, zet dan
+  `PUBLIC_SIGNUP_ENABLED=true` in Vercel.
 
 ### Als er iets misgaat
 

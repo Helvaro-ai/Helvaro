@@ -103,6 +103,32 @@ async function provisionTenant(user) {
     return { userId: uid, projectCode: adopted, clientName: adoptedName, calendlyLink: '', em: email };
   }
 
+  /* Past dit punt we are CREATING a tenant, not linking to an existing one.
+     That is self-serve signup, and api/admin.js's onboard mode has gated it
+     behind PUBLIC_SIGNUP_ENABLED (default: closed) plus an invite code, a
+     rate limit and the fraud guard since it existed. The Clerk path had none
+     of that: with CLERK_ENABLED=1 and PUBLIC_SIGNUP_ENABLED unset -- the
+     configuration the owner believes is CLOSED -- a stranger could verify an
+     e-mail and walk out with a working tenant, a live lead form and 250
+     credits.
+
+     Adoption above is deliberately NOT gated: recognising a customer who
+     already exists in Airtable is linking, not signing up, and must keep
+     working while the door is shut. */
+  const openSignup = /^true$/i.test(String(process.env.PUBLIC_SIGNUP_ENABLED || '').trim());
+  if (!openSignup) {
+    console.warn('[clerk] geen tenant voor', email,
+                 '- zelfaanmelden staat uit (PUBLIC_SIGNUP_ENABLED). '
+               + 'Bestaande klant? Draai scripts/clerk-sync-users.js --apply.');
+    /* The same pending shape the failure branch below returns, NOT null:
+       null would fall through to "no session at all" and answer 401, telling
+       someone with perfectly valid credentials that their login was wrong.
+       Pending is a state both routes already answer with 403 TENANT_PENDING
+       and the dashboard already renders as "your account is being set up",
+       which is the truth here. */
+    return { pending: true, userId: String(uid), em: email };
+  }
+
   const projectCode = deriveProjectCode(uid);
   const clientName  = String(user.firstName || '').trim()
                       ? [user.firstName, user.lastName].filter(Boolean).join(' ').trim()

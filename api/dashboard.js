@@ -11232,6 +11232,22 @@ function performLogout() {
     return;
   }
 
+  // Beeindig de sessie eerst op de SERVER. clearSession() hieronder raakt
+  // alleen localStorage, en hv_session is httpOnly: zonder deze aanroep bleef
+  // de cookie na "uitloggen" zeven dagen geldig, en kon iemand op dezelfde
+  // computer met twee handmatig teruggezette markers gewoon weer binnen.
+  // Niet awaiten: uitloggen mag nooit blijven hangen op een trage of
+  // onbereikbare API. Het antwoord bevat de Set-Cookie die de sessie wist, en
+  // de opruiming hieronder loopt intussen door.
+  try {
+    fetch(API_BASE + '/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'logout' }),
+      keepalive: true,
+    }).catch(function () {});
+  } catch (e) {}
+
   // Wis ALLE state. Vorige versie liet onboarding-flags en pagina-caches
   // staan, waardoor de volgende user (op zelfde computer) soms in een
   // half-vorige-sessie staat kon belanden.

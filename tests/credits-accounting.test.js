@@ -49,8 +49,25 @@ const ck=(n,ok,got)=>{console.log(`  ${ok?'OK  ':'FOUT'}  ${n}${ok?'':'  → '+J
   // Dit is het hele punt: 8 gereedschapsrondes kostten evenveel als één regel.
   ck('zwaar is minstens 4x het oude platte tarief', zwaar.credits >= 4 * c.WEIGHTS[c.FEATURES.FARO_CHAT], zwaar);
 
+  console.log('\n— elk model dat Faro echt gebruikt heeft een prijs —');
+  // Sonnet is het standaardmodel en Opus is "Precies". Stonden die op null,
+  // dan viel juist de MEERDERHEID van de beurten terug op het platte tarief.
+  for (const m of ['claude-haiku-4-5-20251001', 'claude-sonnet-5', 'claude-opus-5']) {
+    const r = c.creditsForChatTurn({inputTokens:10000, outputTokens:700, model:m});
+    ck(m + ' wordt echt geprijsd', r.priced === true && r.costEur > 0, r);
+  }
+  // Duurder model = duurdere beurt, bij exact hetzelfde verbruik.
+  const opHaiku  = c.creditsForChatTurn({inputTokens:10000, outputTokens:700, model:'claude-haiku-4-5-20251001'});
+  const opSonnet = c.creditsForChatTurn({inputTokens:10000, outputTokens:700, model:'claude-sonnet-5'});
+  const opOpus   = c.creditsForChatTurn({inputTokens:10000, outputTokens:700, model:'claude-opus-5'});
+  ck('duurder model kost meer credits',
+     opOpus.credits > opSonnet.credits && opSonnet.credits > opHaiku.credits,
+     {haiku: opHaiku.credits, sonnet: opSonnet.credits, opus: opOpus.credits});
+
   console.log('\n— onbekende prijs rekent niet stilzwijgend te weinig —');
-  const onbekend = c.creditsForChatTurn({inputTokens:60000, outputTokens:4000, model:'claude-sonnet-5'});
+  // Een model dat hier NIET in MODEL_PRICES staat. Dit gebeurt echt zodra er
+  // een nieuw model wordt aangezet en niemand aan de prijstabel denkt.
+  const onbekend = c.creditsForChatTurn({inputTokens:60000, outputTokens:4000, model:'claude-toekomst-9'});
   ck('valt terug op het platte tarief', onbekend.credits === c.WEIGHTS[c.FEATURES.FARO_CHAT], onbekend);
   ck('en markeert zichzelf als niet-geprijsd', onbekend.priced === false, onbekend);
   ck('zonder een kostprijs te verzinnen',      onbekend.costEur === null, onbekend);

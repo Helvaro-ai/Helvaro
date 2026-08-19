@@ -149,11 +149,10 @@ const WEIGHTS = {
  * gaf ze alleen als metadata door. Nu bepalen ze de afschrijving.
  *
  * ── Prijzen ─────────────────────────────────────────────────────────────────
- * Alleen Haiku staat hier met een bron. Sonnet en Opus staan bewust op null:
- * die prijzen horen uit de facturatie van de eigenaar te komen, niet uit een
- * schatting in code. Zolang ze null zijn valt de afschrijving terug op het oude
- * platte tarief EN wordt er per model één keer luid gewaarschuwd — nooit
- * stilzwijgend te weinig rekenen.
+ * Alle drie de modellen staan er nu in, met de lijstprijs van Anthropic als
+ * bron. Blijft een model onbekend, dan valt de afschrijving terug op het platte
+ * tarief EN wordt er per model één keer luid gewaarschuwd — nooit stilzwijgend
+ * te weinig rekenen.
  */
 const USD_TO_EUR = 0.92;
 
@@ -164,12 +163,16 @@ const USD_TO_EUR = 0.92;
 const CHAT_MARGIN = 3;
 
 const MODEL_PRICES = Object.freeze({
-  // $ per 1M tokens. Bron: CREDIT-SYSTEM-DESIGN.md §1 (geverifieerd juli 2026).
+  // $ per 1M tokens, lijstprijs van Anthropic.
   'claude-haiku-4-5-20251001': { inPerM: 1.00, outPerM: 5.00 },
-  // MOET GEZET WORDEN — zie de kop hierboven. Null betekent: val terug op het
-  // platte tarief en waarschuw, niet: gratis.
-  'claude-sonnet-5': { inPerM: null, outPerM: null },
-  'claude-opus-5':   { inPerM: null, outPerM: null },
+  /* Sonnet 5 staat hier op de NORMALE prijs, niet op de introprijs van
+     $2/$10 die tot en met 31 augustus 2026 geldt. Met de introprijs erin zou
+     de afschrijving op 1 september in één nacht 50% te laag worden, precies op
+     het moment dat niemand eraan denkt. Nu is ze tot die datum iets aan de
+     hoge kant en daarna klopt ze — de kant om op te vergissen als het je eigen
+     marge is. */
+  'claude-sonnet-5': { inPerM: 3.00, outPerM: 15.00 },
+  'claude-opus-5':   { inPerM: 5.00, outPerM: 25.00 },
 });
 
 const _priceWarned = new Set();

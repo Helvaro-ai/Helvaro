@@ -214,8 +214,9 @@ function check(name, actual, expected) {
   check('Clerk-metadata wijst naar de echte tenant',
         LAST_METADATA && LAST_METADATA.data.publicMetadata.projectCode, 'MAKELAARJAN');
 
-  // Spiegelgeval: een écht nieuwe gebruiker moet wel gewoon een tenant krijgen,
-  // anders zou de fix hierboven zelfaanmelden stukmaken.
+  // Spiegelgeval: een écht nieuwe gebruiker moet wel gewoon een tenant krijgen
+  // ZODRA zelfaanmelden openstaat, anders zou de fix hierboven dat stukmaken.
+  process.env.PUBLIC_SIGNUP_ENABLED = 'true';
   stubAirtable(null);
   CLAIMS = { sub: 'user_nieuw' };
   CLERK_USER = {
@@ -230,6 +231,41 @@ function check(name, actual, expected) {
   check('nieuwe gebruiker krijgt wel degelijk een tenant', !!(sess && sess.projectCode), true);
   check('en die tenant is niet die van Jan', sess && sess.projectCode !== 'MAKELAARJAN', true);
   check('voor een nieuwe klant worden er rijen aangemaakt', writes.length > 0, true);
+
+  /* ── Met zelfaanmelden DICHT ────────────────────────────────────────────
+     api/admin.js weigert een onboard zonder uitnodigingscode zolang
+     PUBLIC_SIGNUP_ENABLED niet aanstaat. Het Clerk-pad deed dat niet: met
+     CLERK_ENABLED=1 en de vlag uit — precies wat de eigenaar als GESLOTEN
+     beschouwt — kon een vreemde een e-mailadres bevestigen en met een
+     werkende tenant, een live leadformulier en 250 credits naar buiten lopen. */
+  delete process.env.PUBLIC_SIGNUP_ENABLED;
+  stubAirtable(null);
+  CLAIMS = { sub: 'user_vreemde' };
+  CLERK_USER = {
+    id: 'user_vreemde',
+    primaryEmailAddress: { emailAddress: 'vreemde@internet.com' },
+    firstName: 'Onbekende', lastName: 'Bezoeker',
+    publicMetadata: {},
+  };
+  LAST_METADATA = null;
+  c = fresh();
+  sess = await c.verifySession(bearerReq('GET'));
+  check('vreemde krijgt geen tenant als zelfaanmelden uit staat', !!(sess && sess.projectCode), false);
+  check('en er wordt niets aangemaakt', writes, []);
+  check('en zijn Clerk-metadata blijft ongemoeid', LAST_METADATA, null);
+  // Wel "in behandeling", niet "verkeerd ingelogd": een 401 zou iemand met
+  // geldige inloggegevens vertellen dat zijn wachtwoord fout is.
+  check('hij is in behandeling, niet uitgelogd', !!(sess && sess.pending), true);
+
+  /* En de bestaande klant komt nog steeds binnen met de deur dicht — dat is
+     koppelen, geen aanmelden, en moet blijven werken. */
+  stubAirtable(JAN);
+  CLAIMS = { sub: 'user_jan' };
+  CLERK_USER = CLERK_JAN;
+  c = fresh();
+  sess = await c.verifySession(bearerReq('GET'));
+  check('bestaande klant komt binnen ook met zelfaanmelden dicht',
+        sess && sess.projectCode, 'MAKELAARJAN');
 
   global.fetch = _realFetch;
 
