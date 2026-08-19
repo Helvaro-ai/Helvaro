@@ -302,8 +302,22 @@ async function checkCredits(projectCode, feature) {
   try {
     record = await getClientRecord(code);
   } catch (err) {
-    console.warn(`[Credits] checkCredits(${code}, ${feature}) lookup failed, failing OPEN:`, err.message);
-    return { allowed: true, remaining: Infinity, percentUsed: 0 };
+    // Open falen blijft de juiste keuze — een klant buitensluiten omdat ONZE
+    // database niet reageert is erger dan even niet meten. Maar niet zonder
+    // grens: zonder deze telling betekende "fail open" letterlijk onbeperkt.
+    const lost = unrecordedFor(code);
+    if (lost.calls >= UNMETERED_CEILING) {
+      console.error(`[Credits] checkCredits(${code}, ${feature}) GEWEIGERD — ${lost.calls} ongemeten aanroepen sinds ${lost.since}`);
+      return {
+        allowed: false,
+        remaining: 0,
+        percentUsed: 100,
+        reason: 'metering_unavailable',
+        message: 'We kunnen je verbruik nu niet bijhouden. Probeer het over enkele minuten opnieuw.',
+      };
+    }
+    console.warn(`[Credits] checkCredits(${code}, ${feature}) lookup failed, failing OPEN (${lost.calls}/${UNMETERED_CEILING} ongemeten):`, err.message);
+    return { allowed: true, remaining: Infinity, percentUsed: 0, unmetered: true };
   }
   if (!record) {
     // Client not found under this project code. Not this file's job to
@@ -348,6 +362,49 @@ async function checkCredits(projectCode, feature) {
  * including whatsapp_conversation (whatsapp.js never gates on checkCredits,
  * but it must still record usage so the dashboard/admin numbers are real).
  */
+/* ── Wat er niet weggeschreven kon worden ────────────────────────────────────
+ * recordUsage() mag nooit gooien, dus een mislukte schrijfactie eindigde als
+ * een console.error en verder niets. Tijdens een Airtable-storing was AI-inzet
+ * daarmee tegelijk ongelimiteerd EN ongemeten: achteraf viel niet eens vast te
+ * stellen wat er verbruikt was, want het enige spoor was een logregel zonder
+ * bedragen.
+ *
+ * Deze twee dingen lossen dat op zonder een wachtrij te introduceren:
+ *   1. een regel met ALLE velden die nodig zijn om het later opnieuw te boeken,
+ *      op één herkenbaar voorvoegsel zodat hij uit de Vercel-logs te vissen is;
+ *   2. een tellertje in het geheugen, zodat checkCredits() weet dat er iets
+ *      niet klopt en de fail-open niet eindeloos doorloopt.
+ */
+const _unrecorded = new Map();   // projectCode -> { credits, calls, since }
+
+function noteUnrecorded(code, feature, credits, reason) {
+  const cur = _unrecorded.get(code) || { credits: 0, calls: 0, since: new Date().toISOString() };
+  cur.credits += credits;
+  cur.calls += 1;
+  _unrecorded.set(code, cur);
+  // Eén regel, alles erin, machinaal terug te lezen.
+  console.error('[Credits][RECONCILE] ' + JSON.stringify({
+    projectCode: code, feature, credits, reason,
+    at: new Date().toISOString(),
+    unrecordedTotal: cur.credits, unrecordedCalls: cur.calls, since: cur.since,
+  }));
+}
+
+/** Wat deze instance kwijt is geraakt. Gelezen door checkCredits(). */
+function unrecordedFor(code) {
+  return _unrecorded.get(String(code || '').trim()) || { credits: 0, calls: 0, since: null };
+}
+
+function clearUnrecorded(code) { _unrecorded.delete(String(code || '').trim()); }
+
+/* Hoeveel beurten er tijdens een storing ongemeten door mogen. Niet nul —
+ * een klant buitensluiten omdat ONZE database plat ligt is de verkeerde keuze —
+ * maar ook niet oneindig, want dat is precies wat "fail open" vandaag betekent.
+ * Ruim genoeg voor een normale werkdag, klein genoeg om weglopende kosten te
+ * begrenzen. Per instance, dus de echte grens ligt hoger bij veel instances;
+ * dit is een rem, geen slot. */
+const UNMETERED_CEILING = 60;
+
 async function recordUsage(projectCode, feature, opts = {}) {
   const code = String(projectCode || '').trim();
   if (!code) return;
@@ -361,6 +418,7 @@ async function recordUsage(projectCode, feature, opts = {}) {
     record = await getClientRecord(code);
   } catch (err) {
     console.error(`[Credits] recordUsage(${code}, ${feature}) lookup failed — usage NOT recorded, caller flow continues:`, err.message);
+    noteUnrecorded(code, feature, creditsInt, 'lookup_failed');
     return;
   }
   if (!record) return;
@@ -402,12 +460,18 @@ async function recordUsage(projectCode, feature, opts = {}) {
     if (!r.ok) {
       const t = await r.text().catch(() => '');
       console.error(`[Credits] recordUsage(${code}, ${feature}) PATCH failed (HTTP ${r.status}) — usage NOT recorded:`, t.slice(0, 200));
+      noteUnrecorded(code, feature, creditsInt, `patch_http_${r.status}`);
       return;
     }
   } catch (err) {
     console.error(`[Credits] recordUsage(${code}, ${feature}) PATCH threw — usage NOT recorded:`, err.message);
+    noteUnrecorded(code, feature, creditsInt, 'patch_threw');
     return;
   }
+
+  // Gelukt: de storing is voorbij, dus de teller mag terug naar nul. De
+  // RECONCILE-regels blijven in het log staan om na te boeken.
+  clearUnrecorded(code);
 
   // Threshold alerts (80% / 100% / runaway ceiling), each fires at most once
   // per period. Fire-and-forget — must never affect the caller's flow.
@@ -778,6 +842,7 @@ async function setTrialMarker(projectCode, patch) {
 }
 
 module.exports = {
+  unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   FEATURES,
   WEIGHTS,
   FIELD,
