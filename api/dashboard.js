@@ -7358,6 +7358,21 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 [data-theme="light"] .sidebar .user-info { background: rgba(255,255,255,0.05); }
 
+/* De zijbalk BLIJFT donker in het lichte thema — dat is opzet, en .sidebar
+   .nav-item zet daarom al een vaste inkt (#8D99AC) los van het thema. De
+   voettekst deed dat niet en erfde de paginakleuren: de profielnaam werd
+   bijna-zwart (#111827) en Uitloggen kreeg --red-ink, dat in licht #B91C1C
+   is — een rood bedoeld voor een WIT vlak. Gemeten op de echte pixels van
+   het donkere vlak: 1,86:1 en 1,88:1, allebei ruim onder 4,5:1.
+   Meet tegen het oppervlak waar de tekst ECHT op staat. */
+[data-theme="light"] .sidebar .user-name { color: #E9EEF6; }
+[data-theme="light"] .sidebar .user-role { color: #8D99AC; }
+/* Niet --error-ink (#F87171): dat is afgestemd op het KAARTvlak en haalt
+   daar 5,68:1, maar op het donkerdere zijbalkvlak (rgb(56,52,60), gemeten op
+   de echte pixels) blijft het op 4,40:1 steken — net onder 4,5. Deze tint
+   haalt er 5,68:1. */
+[data-theme="light"] .sidebar .btn-logout { color: #FB8C8C; }
+
 /* Sidebar bottom button */
 [data-theme="light"] .btn-logout {
   background: rgba(var(--error-rgb),0.06);

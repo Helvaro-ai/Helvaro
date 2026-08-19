@@ -143,6 +143,11 @@ hieronder.
 
 - **Licht thema:** 150 leesbaarheidsfouten naar 0, donker 7 naar 0. Zand op wit
   haalde 1,29:1.
+- **De voet van de zijbalk was onleesbaar in het lichte thema.** De zijbalk
+  blijft daar bewust donker, maar je profielnaam en de Uitloggen-knop pakten de
+  paginakleuren: bijna-zwart op donkergrijs (1,86:1) en een rood dat voor een
+  wit vlak bedoeld is (1,88:1). Nu 5,68:1 en hoger, gemeten op de echte pixels
+  van het vlak waar de tekst op staat.
 - **Niets wordt meer afgesneden** op smalle schermen: 13 gevallen naar 1 van 6px.
 - **De zijbalk** kreeg groepen, een inklapstand die 152px teruggeeft, en een
   duidelijke actieve pagina.
