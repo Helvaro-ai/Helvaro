@@ -190,6 +190,17 @@ const server = http.createServer(async (req, res) => {
     // three modes are answered here — with the REAL option arrays out of
     // api/_images.js, so the panel renders the true eight axes and a label
     // added there shows up locally without touching this file.
+    /* /api/admin bestaat wel degelijk in productie (api/admin.js), maar wordt
+       hier niet nagebootst. Zonder deze tak gaf een klik op de AI-beeld-pagina
+       een kale 404, die in een audit niet te onderscheiden is van een echt
+       ontbrekende route. Nu zegt hij wat er aan de hand is. */
+    if (p === '/api/admin') {
+      return res.status(501).json({
+        error: 'api/admin is niet nagebootst in faro-dev; deze route bestaat wel in productie.',
+        mode: (req.body && req.body.mode) || null,
+      });
+    }
+
     if (p === '/api/leads') {
       /* GET is the dashboard's main data pull — every CRM page renders from it.
          Without it the whole app is empty locally and nothing downstream can be

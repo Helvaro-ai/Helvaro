@@ -91,6 +91,15 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Kleine dingen die iedereen raakten
+
+- **Elke sessie haalde een 404 op.** De mascotte-afbeelding staat in de HTML,
+  maar `public/faro/` bestaat niet in deze repo. De code ving dat netjes af en
+  viel terug op de CSS-bol -- alleen pas NA de mislukte request, dus iedere
+  klant deed bij elk bezoek een verzoek dat nooit iets kon opleveren. De bol is
+  nu meteen de mascotte; zet `FARO_MASCOT_ASSETS` op true zodra de bestanden er
+  wel zijn.
+
 ### Video
 
 - **De standaard hangt niet meer aan Sora.** OpenAI haalt die API op 24

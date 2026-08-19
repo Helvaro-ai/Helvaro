@@ -209,6 +209,16 @@ function faroSetPanel(panel) {
    handles the motion, which keeps it "extremely subtle" and the payload small.
    Only the idle asset exists today — a missing state falls back to idle rather
    than blanking the mascot. */
+/* Er zit vandaag GEEN enkel mascotte-bestand in de repo: public/faro/ bestaat
+   niet eens. De code hieronder ving dat al netjes af -- hij valt terug op de
+   CSS-bol -- maar hij deed dat pas NA een mislukte request, en dus haalde elke
+   sessie van elke klant een 404 op voordat hij het opgaf. Dat is geen kapotte
+   pagina, wel een verzoek dat nooit iets kan opleveren, in het log van iedereen.
+
+   Zet dit op true zodra de bestanden er zijn; dan doet de rest hieronder weer
+   wat hij altijd al deed, inclusief de terugval per ontbrekende toestand. */
+var FARO_MASCOT_ASSETS = false;
+
 var FARO_MASCOT_SRC = {
   idle:       '/faro/falcon-idle.webp',
   thinking:   '/faro/falcon-thinking.webp',
@@ -229,6 +239,11 @@ function faroMascot(stateName) {
   var el = document.getElementById('faro-mascot');
   if (!el) return;
   el.dataset.state = stateName;
+  if (!FARO_MASCOT_ASSETS) {
+    // Geen bestanden aan boord: meteen de bol, zonder eerst een 404 te halen.
+    el.classList.add('faro-mascot--missing');
+    return;
+  }
   var src = FARO_MASCOT_SRC[stateName];
   if (!src || faroMascotMissing[stateName]) return;
   el.onerror = function () {

@@ -116,8 +116,15 @@ function landing(t, opts = {}) {
                which is why it is not decorative and not hidden from the flow. -->
           <div class="faro-mark" id="faro-mark" data-state="idle">
             <span class="faro-orb" aria-hidden="true"></span>
-            <img class="faro-mascot" id="faro-mascot" data-state="idle"
-                 src="/faro/falcon-idle.webp" alt="" width="72" height="72"
+            <!-- GEEN src. Het commentaar hierboven zegt terecht "no asset, no
+                 request, no 404" over de bol -- maar deze <img> stond er wel
+                 een te doen: public/faro/ bestaat niet, dus elke sessie van
+                 elke klant haalde eerst een 404 op voordat onerror hem
+                 wegzette. Het bestand komt er via client.js zodra
+                 FARO_MASCOT_ASSETS aan gaat; tot die tijd is de bol de
+                 mascotte en vraagt niemand iets op. -->
+            <img class="faro-mascot faro-mascot--missing" id="faro-mascot" data-state="idle"
+                 alt="" width="72" height="72"
                  draggable="false" onerror="this.classList.add('faro-mascot--missing')">
           </div>
 
