@@ -143,6 +143,9 @@ hieronder.
 
 - **Licht thema:** 150 leesbaarheidsfouten naar 0, donker 7 naar 0. Zand op wit
   haalde 1,29:1.
+- **Je eigen naam stond onzichtbaar in de zijbalk (donker thema).** De
+  profielknop kreeg nooit een achtergrond, dus Chrome gebruikte zijn eigen
+  knopkleur: een lichtgrijze pil met bijna-witte tekst erop. Nu 12,2:1.
 - **De voet van de zijbalk was onleesbaar in het lichte thema.** De zijbalk
   blijft daar bewust donker, maar je profielnaam en de Uitloggen-knop pakten de
   paginakleuren: bijna-zwart op donkergrijs (1,86:1) en een rood dat voor een

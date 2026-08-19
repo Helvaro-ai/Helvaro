@@ -2512,6 +2512,12 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
   text-align: left;
   cursor: pointer;
   width: 100%;
+  /* Expliciet, want dit is een <button>: zonder background pakt Chrome zijn
+     eigen knopkleur (#efefef). Op de donkere zijbalk gaf dat een lichtgrijze
+     pil met bijna-witte tekst erop — de profielnaam was in het donkere thema
+     onzichtbaar. Niet zichtbaar in de berekende stijl van een ouder: de
+     UA-stijl staat op het element zelf. */
+  background: rgba(255, 255, 255, 0.05);
 }
 .user-info:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 2px; }
 

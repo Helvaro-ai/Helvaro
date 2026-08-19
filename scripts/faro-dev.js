@@ -123,7 +123,7 @@ const ROOT = path.join(__dirname, '..');
    session (see api/faro.js); here it is a constant, which is exactly why this
    server must never be exposed. */
 const LOCAL_AUTH = {
-  projectCode: 'LOCALDEV',
+  projectCode: 'TELJO',
   userId: 'local@helvaro.test',
   lang: process.env.DASHBOARD_LANG || 'nl',
   isAdmin: false,
@@ -196,7 +196,7 @@ const server = http.createServer(async (req, res) => {
          exercised, so it is answered from the same fixture the Command Center
          uses. Same shape api/leads.js returns: leads, stats, client. */
       if (req.method === 'GET') {
-        const { leads: fx } = await _leadsRead.fetchLeads('LOCALDEV', {});
+        const { leads: fx } = await _leadsRead.fetchLeads(LOCAL_AUTH.projectCode, {});
         if (url.searchParams.get('export') === 'true') {
           res.setHeader('Content-Type', 'text/csv; charset=utf-8');
           return res.status(200).send('Naam;Telefoon\n' + fx.map((l) => l.naam + ';' + l.telefoon).join('\n'));
@@ -204,7 +204,7 @@ const server = http.createServer(async (req, res) => {
         return res.status(200).json({
           leads: fx,
           stats: _leadsRead.computeStats(fx),
-          client: { naam: 'Immo Delva', calendly: '' },
+          client: { naam: 'Teljo', calendly: '' },
         });
       }
 
@@ -233,7 +233,7 @@ const server = http.createServer(async (req, res) => {
           // renders locally is what production computes — only the source of
           // the rows is substituted.
           const _command = require('../api/_command');
-          const { leads: cmdLeads } = await _leadsRead.fetchLeads('LOCALDEV', {});
+          const { leads: cmdLeads } = await _leadsRead.fetchLeads(LOCAL_AUTH.projectCode, {});
           return res.status(200).json(_command.build(cmdLeads, {
             calendarConnected: true, appointmentsToday: 2,
           }));
@@ -246,7 +246,7 @@ const server = http.createServer(async (req, res) => {
           return res.status(200).json({ status: 'active', trialEndsAt: null, daysLeft: null });
         case 'config-get':
           return res.status(200).json({
-            aiName: 'Faro', clientName: 'Immo Delva', autoReplyTpl: '', aiInstructions: '',
+            aiName: 'Faro', clientName: 'Teljo', autoReplyTpl: '', aiInstructions: '',
             welcomeMessage: '', bookingConfirmText: '', bookingMode: 'in_chat',
             reportEmail: 'sarah@immodelva.be', language: 'nl', replyInLeadLanguage: true,
           });
