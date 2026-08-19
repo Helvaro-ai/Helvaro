@@ -705,6 +705,40 @@ function finish() {
     fail('orchestrator never charges for a chat turn — the ceiling can never be reached');
   } else pass('chat turns are actually charged, not just checked');
 
+  // ── De sterkste controle die er is: parseer wat de browser krijgt ─────────
+  // api/dashboard.js is één reusachtige template literal, en de valkuil daarvan
+  // is dat een geldig ogende regel iets ANDERS oplevert in de uitvoer. Twee
+  // keer eerder gebeurd in dit bestand: een \s in een regex die tot s
+  // verschrompelde, en een \' in een string die het aanhalingsteken sloot en
+  // de rest van het script meenam.
+  //
+  // Geen van beide gooide een fout bij het laden van de module — de fout zit in
+  // de UITVOER, niet in de bron. Dus wordt de uitvoer hier echt geparseerd.
+  console.log('\nuitgestuurde JavaScript');
+  try {
+    const vm = require('vm');
+    const dash = require(path.join(__dirname, '..', 'api', 'dashboard.js'));
+    let html = '';
+    dash({ method: 'GET', headers: {}, url: '/dashboard' }, {
+      setHeader() {}, status() { return this; }, send(b) { html = String(b); },
+    });
+    if (!html) {
+      fail('dashboard leverde geen HTML op');
+    } else {
+      const re = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
+      let m, n = 0, bad = 0;
+      while ((m = re.exec(html)) !== null) {
+        n++;
+        try { new vm.Script(m[1]); }
+        catch (e) { bad++; fail(`inline script #${n} parseert niet: ${e.message}`); }
+      }
+      if (!n) fail('geen inline script gevonden — is de pagina nog wel opgebouwd?');
+      else if (!bad) pass(`${n} inline script(s) parseren zonder fout`);
+    }
+  } catch (e) {
+    fail(`kon de uitgestuurde pagina niet controleren: ${e.message}`);
+  }
+
   console.log(failures ? `\n${failures} check(s) failed\n` : '\nall checks passed\n');
   process.exit(failures ? 1 : 0);
 }

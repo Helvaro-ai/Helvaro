@@ -614,9 +614,18 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   .page.active .fm-qr-card,
   .page.active .fm-preview-card,
   .page.active .fm-option-card,
+  .page.active .cal-day-num,
+  .page.active .stat-icon,
+  .page.active #chk-whatsapp-mailto,
   .page.active .cal-book-btn {
     max-width: 100%;
     min-width: 0;
+  }
+  /* De onboarding-checklist zet een lange mailto-link op één regel; op 320px
+     steekt die er 35px uit. Breken mag hier: het is een adres, geen knop. */
+  .page.active #chk-whatsapp-mailto {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .page.active .cal-book-btn {
     white-space: normal;
@@ -10988,7 +10997,40 @@ function toast(message, type = 'info', title = null) {
     <div class="toast-message">\${escHtml(message)}</div>
     <div class="toast-progress"></div>
   \`;
+  // ── Dezelfde melding niet stapelen ────────────────────────────────────────
+  // Vier snelle kliks op "CSV downloaden" leverden zeven toasts op, over
+  // elkaar heen, terwijl er maar één verzoek uitging. Het werk was dus prima;
+  // de meldingen waren de rommel. Herhaalt een melding zich binnen een paar
+  // seconden, dan blijft het bij één kaartje met een telling erachter — dat
+  // vertelt bovendien iets nuttigs ("dit is vier keer gebeurd") in plaats van
+  // hetzelfde vier keer te zeggen.
+  const key = type + '|' + message;
+  const existing = container.querySelector('.toast[data-toast-key="' + CSS.escape(key) + '"]');
+  if (existing) {
+    const n = (parseInt(existing.dataset.count || '1', 10) || 1) + 1;
+    existing.dataset.count = String(n);
+    const msgEl = existing.querySelector('.toast-message');
+    if (msgEl) msgEl.textContent = message + ' (' + n + 'x)';
+    clearTimeout(existing._timer);
+    existing._timer = setTimeout(() => dismissToast(existing), 3500);
+    return;
+  }
+  el.dataset.toastKey = key;
+  el.dataset.count = '1';
+
   container.appendChild(el);
+
+  // Een dak op het aantal zichtbare meldingen. Verschillende meldingen mogen
+  // stapelen, maar niet eindeloos: boven de vier verdwijnt de oudste, anders
+  // duwt een reeks fouten de pagina vol met kaartjes die niemand meer leest.
+  //
+  // De reeds wegvallende kaartjes worden NIET meegeteld: dismissToast() zet een
+  // klasse en ruimt pas 300ms later op, dus zonder deze uitzondering telt het
+  // dak elementen mee die al onderweg naar buiten zijn en blijft de stapel
+  // groeien.
+  const live = container.querySelectorAll('.toast:not(.dismissing)');
+  for (let i = 0; i < live.length - 4; i++) dismissToast(live[i]);
+
   const timer = setTimeout(() => dismissToast(el), 3500);
   el._timer = timer;
 }
@@ -12398,6 +12440,7 @@ function renderResultaten(d) {
         </div>
         <div class="empty-title">Nog geen resultaten</div>
         <div class="empty-desc">Zodra Helvaro leads voor je kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
+        \${emptyStateCta()}
       </div>
     \`;
     return;
@@ -13090,8 +13133,8 @@ function renderTable() {
               }
             </div>
             <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
-            <div class="empty-desc">\${hasFilters ? 'Pas je filters aan of reset ze.' : 'Er zijn nog geen leads in het systeem.'}</div>
-            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : ''}
+            <div class="empty-desc">\${hasFilters ? 'Pas je filters aan of reset ze.' : 'Deel je formulierlink en de eerste aanvraag komt vanzelf binnen.'}</div>
+            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : emptyStateCta()}
           </div>
         </td>
       </tr>
@@ -17891,6 +17934,23 @@ function getProjectCode() {
   // Read from localStorage (saved on login). Fallback to API_BASE-relative blank.
   try { return localStorage.getItem('hv-project') || ''; } catch (e) { return ''; }
 }
+/* De enige zinnige volgende stap als er nog geen leads zijn: je formulierlink
+   delen. Beide lege staten eindigden met een zin en verder niets — "Er zijn nog
+   geen leads in het systeem" vertelt je wat je al ziet en laat je vervolgens
+   zelf uitzoeken hoe je er wél aan komt. Onboarding staat alleen op het
+   dashboard, en dat is sinds de samenvoeging niet meer de startpagina. */
+function emptyStateCta() {
+  const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
+  if (!url) return '';
+  return '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">'
+    + '<button class="btn-icon btn-primary-sm" onclick="copyFormLink()">Kopieer je formulierlink</button>'
+    // &quot; en geen geneste apostrof: dit hele bestand is één template
+    // literal, waarin \' gewoon ' wordt — precies op de plek waar de
+    // JavaScript-string eindigt. De entity komt als " bij de browser aan.
+    + '<button class="btn-icon" onclick="navigateTo(&quot;formulier&quot;)">Waar deel ik die?</button>'
+    + '</div>';
+}
+
 function getFormUrl() {
   const code = getProjectCode();
   if (!code) return '';
