@@ -91,6 +91,19 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Wat de schermafdrukken opleverden
+
+- **De agenda toonde halve uren nog steeds in 12-uursnotatie.** De hele uren
+  waren eerder al rechtgezet, de halve niet: naast "13:00" stond "1:30", en
+  20:30 kreeg exact dezelfde tekst als 08:30 -- twee keer "8:30" in dezelfde
+  dagkolom, in de agenda waarin je bezichtigingen boekt. Er zit nu een controle
+  op die dit een derde keer tegenhoudt.
+- **De leadscore was slecht leesbaar.** Het cijfer naast het balkje gebruikte de
+  VULkleur van het balkje als lettertkleur: rood op de donkere kaart haalde
+  3,25:1. Nu de bijpassende inktkleur.
+- **Het vinkje van de checklist** deed hetzelfde in het lichte thema (2,95:1).
+  Ook rechtgezet.
+
 ### Kleine dingen die iedereen raakten
 
 - **Elke sessie haalde een 404 op.** De mascotte-afbeelding staat in de HTML,

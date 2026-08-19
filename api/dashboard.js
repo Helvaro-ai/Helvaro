@@ -6074,7 +6074,10 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   border-radius: 50%; background: var(--a-soft, var(--bg-card-alt)); color: var(--a, var(--text-muted));
   font-size: 13px; font-weight: 700;
 }
-.chk-item.chk-done .chk-item-icon { background: var(--c-emerald-soft); color: var(--c-emerald); }
+/* Vulling en inkt uit elkaar: --c-emerald is de VULkleur en haalde als vinkje
+   op de zachte groene pil 2,95:1 in het lichte thema. --success-ink is
+   dezelfde kleur, afgestemd om als letter te lezen (#166534 in licht). */
+.chk-item.chk-done .chk-item-icon { background: var(--c-emerald-soft); color: var(--success-ink); }
 .chk-item-body { flex: 1; min-width: 160px; }
 .chk-item-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .chk-item.chk-done .chk-item-title { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
@@ -13101,13 +13104,19 @@ function scorePill(score) {
 function scoreBar(score) {
   if (score == null || score === '') return '<span style="color:var(--text-muted)">—</span>';
   const n = parseInt(score) || 0;
-  const color = n >= 8 ? 'var(--success)' : n >= 5 ? 'var(--warning)' : 'var(--error)';
+  /* Twee tokens, geen een. --success/--warning/--error zijn VULkleuren: prima
+     voor het balkje, maar als tekst op de donkere kaart haalde het cijfer
+     3,25:1 (rood #DC2626 op rgb(35,35,35)). De *-ink varianten zijn dezelfde
+     kleur, afgestemd om als letter te lezen. Dit is de regel uit CLAUDE.md:
+     meet tegen het oppervlak waar de tekst ECHT op staat. */
+  const barColor = n >= 8 ? 'var(--success)'   : n >= 5 ? 'var(--warning)'      : 'var(--error)';
+  const inkColor = n >= 8 ? 'var(--green-ink)' : n >= 5 ? 'var(--warning-ink)'  : 'var(--red-ink)';
   const pct = Math.round(n / 10 * 100);
   return \`<div style="display:flex;align-items:center;gap:6px">
     <div style="width:40px;height:5px;background:var(--bg-card-alt);border-radius:3px;overflow:hidden">
-      <div style="width:\${pct}%;height:100%;background:\${color};border-radius:3px"></div>
+      <div style="width:\${pct}%;height:100%;background:\${barColor};border-radius:3px"></div>
     </div>
-    <span style="font-size:12px;font-weight:700;color:\${color};font-variant-numeric: tabular-nums;">\${n}</span>
+    <span style="font-size:12px;font-weight:700;color:\${inkColor};font-variant-numeric: tabular-nums;">\${n}</span>
   </div>\`;
 }
 
@@ -15063,8 +15072,13 @@ async function renderCalendar() {
       // 20:00 lazen als 1:00 tot 8:00 en "8:00" kwam twee keer voor in dezelfde
       // dagkolom. Een makelaar kan dan niet zien of een bezichtiging 's ochtends
       // of 's avonds is.
-      const lbl = String(h).padStart(2, '0') + ':00';
-      const halfLbl = h < 11 ? (h) + ':30' : (h === 11 ? '11:30' : (h === 12 ? '12:30' : (h - 12) + ':30'));
+      // Beide labels 24-uurs. Het halfuur-label bleef bij de vorige fix staan
+      // op de oude 12-uurslogica, dus de kolom toonde "13:00" met daaronder
+      // "1:30", en 20:30 kreeg exact dezelfde tekst als 08:30 -- twee keer
+      // "8:30" in dezelfde dagkolom, in een agenda waarin je bezichtigingen
+      // boekt. Dat is dezelfde fout als hierboven beschreven, een regel lager.
+      const lbl     = String(h).padStart(2, '0') + ':00';
+      const halfLbl = String(h).padStart(2, '0') + ':30';
       return \`<div class="cal-time-label">\${lbl}<span class="cal-time-label-half">\${halfLbl}</span></div>\`;
     }).join('');
   }

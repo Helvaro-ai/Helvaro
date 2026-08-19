@@ -109,6 +109,19 @@ const creates = tools.ALL.filter((t) => t.kind === 'create').map((t) => t.name);
 if (creates.some((n) => tools.requiresConfirmation(n))) fail('a create-tool requires confirmation');
 else pass(`${creates.length} create-tools run without a gate`);
 
+/* De agenda moet 24-uurs blijven, allebei de labels.
+   Dit is twee keer misgegaan: eerst lazen de hele uren als 12-uurs (13:00 werd
+   1:00), en na die fix bleef het HALFUUR-label op de oude logica staan, zodat
+   20:30 en 08:30 dezelfde tekst kregen in dezelfde dagkolom. In een agenda
+   waarin bezichtigingen geboekt worden is dat geen cosmetisch probleem. */
+if (/\(h - 12\)/.test(dash)) {
+  fail('de agenda rekent ergens nog 12 uur af van het uur -- dat is de 12-uursnotatie die hier al twee keer is teruggekomen');
+} else if (!/const halfLbl = String\(h\)\.padStart\(2, '0'\) \+ ':30'/.test(dash)) {
+  fail('het halfuur-label van de agenda is niet meer expliciet 24-uurs');
+} else {
+  pass('agenda-labels zijn 24-uurs, hele en halve uren allebei');
+}
+
 // The act set is the security boundary, so it is pinned by name rather than by
 // count. Anything that reaches a customer, a calendar, a campaign or a CRM row
 // belongs here; adding a tool to this list must be a deliberate, reviewed edit.
