@@ -255,9 +255,24 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
     // an enabled Faro had no spend ceiling on the model key at all. A check
     // without a corresponding charge is worse than no check, because it reads
     // like a ceiling in review.
+    // Naar echt verbruik, niet naar een vast tarief. De tokens werden hier al
+    // geteld en gingen alleen als metadata mee; een beurt met acht
+    // gereedschapsrondes kostte evenveel als een vraag van één regel, en dat
+    // werd duurder naarmate Faro nuttiger was. creditsForChatTurn() valt terug
+    // op het vaste tarief zolang de prijs van dit model niet gezet is, en
+    // waarschuwt dan luid in plaats van stil te weinig te rekenen.
+    const charge = credits.creditsForChatTurn({
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      model,
+    });
     credits.recordUsage(ctx.projectCode, credits.FEATURES.FARO_CHAT, {
-      credits: credits.WEIGHTS[credits.FEATURES.FARO_CHAT],
-      meta: { tier, iterations, tokensIn: usage.inputTokens, tokensOut: usage.outputTokens },
+      credits: charge.credits,
+      meta: {
+        tier, iterations,
+        tokensIn: usage.inputTokens, tokensOut: usage.outputTokens,
+        costEur: charge.costEur, priced: charge.priced,
+      },
     }).catch(() => {});
 
     // Het antwoord bewaren. Ook fire-and-forget: de gebruiker heeft het al

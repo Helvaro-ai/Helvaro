@@ -40,6 +40,21 @@ const ck=(n,ok,got)=>{console.log(`  ${ok?'OK  ':'FOUT'}  ${n}${ok?'':'  → '+J
   ck('duur is begrensd op 60s',     c.creditsForVideo({seconds:9999}) === 60*30, c.creditsForVideo({seconds:9999}));
   ck('een video kost meer dan 7 leadgesprekken', c.creditsForVideo({}) > 7*c.WEIGHTS[c.FEATURES.WHATSAPP_CONVERSATION], null);
 
+  console.log('\n— chat wordt op echt verbruik afgerekend —');
+  const klein = c.creditsForChatTurn({inputTokens:3000, outputTokens:500, model:'claude-haiku-4-5-20251001'});
+  const zwaar = c.creditsForChatTurn({inputTokens:60000, outputTokens:4000, model:'claude-haiku-4-5-20251001'});
+  ck('een korte vraag blijft op het minimum', klein.credits === c.WEIGHTS[c.FEATURES.FARO_CHAT], klein);
+  ck('een zware beurt kost meer dan een korte', zwaar.credits > klein.credits, {klein:klein.credits, zwaar:zwaar.credits});
+  ck('en er hangt een echte kostprijs aan',    zwaar.costEur > 0 && zwaar.priced === true, zwaar);
+  // Dit is het hele punt: 8 gereedschapsrondes kostten evenveel als één regel.
+  ck('zwaar is minstens 4x het oude platte tarief', zwaar.credits >= 4 * c.WEIGHTS[c.FEATURES.FARO_CHAT], zwaar);
+
+  console.log('\n— onbekende prijs rekent niet stilzwijgend te weinig —');
+  const onbekend = c.creditsForChatTurn({inputTokens:60000, outputTokens:4000, model:'claude-sonnet-5'});
+  ck('valt terug op het platte tarief', onbekend.credits === c.WEIGHTS[c.FEATURES.FARO_CHAT], onbekend);
+  ck('en markeert zichzelf als niet-geprijsd', onbekend.priced === false, onbekend);
+  ck('zonder een kostprijs te verzinnen',      onbekend.costEur === null, onbekend);
+
   console.log('\n— gelijktijdige boekingen voor DEZELFDE klant —');
   used = 0; reads = 0; writes = 0; maxInFlight = 0;
   await Promise.all([1,2,3,4,5].map(() =>

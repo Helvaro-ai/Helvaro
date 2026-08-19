@@ -128,6 +128,79 @@ const WEIGHTS = {
   [FEATURES.VIDEO_GENERATION]:        240,
 };
 
+/* ── Wat een Faro-beurt kost ──────────────────────────────────────────────────
+ * Faro rekende 3 credits per beurt, plat, ongeacht wat die beurt deed. Dat was
+ * een verdedigbare keuze toen het "een handvol completions" was, maar de vorm
+ * van een beurt is inmiddels anders:
+ *
+ *   - 17 gereedschapsdefinities gaan in ELK verzoek mee
+ *   - de systeemprompt is ~7.600 tekens
+ *   - de geschiedenis mag tot 40 beurten teruggaan
+ *   - er mogen 8 gereedschapsrondes in één beurt, en elke ronde stuurt de
+ *     hele context opnieuw mee
+ *   - het standaardmodel is Sonnet, "Precies" is Opus — niet de Haiku waarmee
+ *     het WhatsApp-gesprek is doorgerekend in CREDIT-SYSTEM-DESIGN.md §1
+ *
+ * Eén beurt kan dus acht modelaanroepen zijn met een groeiende context, op een
+ * duurder model, voor dezelfde 3 credits. En het wordt erger naarmate Faro
+ * NUTTIGER is: meer gereedschappen inzetten kost meer en levert hetzelfde op.
+ *
+ * De orchestrator telt de echte tokens al (usage.inputTokens/outputTokens) en
+ * gaf ze alleen als metadata door. Nu bepalen ze de afschrijving.
+ *
+ * ── Prijzen ─────────────────────────────────────────────────────────────────
+ * Alleen Haiku staat hier met een bron. Sonnet en Opus staan bewust op null:
+ * die prijzen horen uit de facturatie van de eigenaar te komen, niet uit een
+ * schatting in code. Zolang ze null zijn valt de afschrijving terug op het oude
+ * platte tarief EN wordt er per model één keer luid gewaarschuwd — nooit
+ * stilzwijgend te weinig rekenen.
+ */
+const USD_TO_EUR = 0.92;
+
+// Marge op kostprijs. Beeld staat op ~8x, video op ~1,6x; chat zit ertussenin:
+// hoog genoeg om de vaste lasten te dragen, laag genoeg dat doorvragen niet
+// bestraft wordt. Eén plek, zodat de eigenaar er één getal voor hoeft te
+// veranderen.
+const CHAT_MARGIN = 3;
+
+const MODEL_PRICES = Object.freeze({
+  // $ per 1M tokens. Bron: CREDIT-SYSTEM-DESIGN.md §1 (geverifieerd juli 2026).
+  'claude-haiku-4-5-20251001': { inPerM: 1.00, outPerM: 5.00 },
+  // MOET GEZET WORDEN — zie de kop hierboven. Null betekent: val terug op het
+  // platte tarief en waarschuw, niet: gratis.
+  'claude-sonnet-5': { inPerM: null, outPerM: null },
+  'claude-opus-5':   { inPerM: null, outPerM: null },
+});
+
+const _priceWarned = new Set();
+
+/**
+ * Credits voor één Faro-beurt, op basis van wat hij echt verbruikt heeft.
+ * Geeft { credits, costEur, priced } terug. priced=false betekent: prijs
+ * onbekend, dit is het oude platte tarief en waarschijnlijk te laag.
+ */
+function creditsForChatTurn({ inputTokens = 0, outputTokens = 0, model = '' } = {}) {
+  const flat = WEIGHTS[FEATURES.FARO_CHAT];
+  const price = MODEL_PRICES[model];
+  if (!price || price.inPerM == null || price.outPerM == null) {
+    if (model && !_priceWarned.has(model)) {
+      _priceWarned.add(model);
+      console.warn(`[Credits] geen prijs bekend voor model "${model}" — er wordt ${flat} credits per beurt gerekend, `
+                 + 'wat vrijwel zeker te weinig is. Zet de prijs in MODEL_PRICES in api/_credits.js.');
+    }
+    return { credits: flat, costEur: null, priced: false };
+  }
+  const usd = (Number(inputTokens) || 0) / 1e6 * price.inPerM
+            + (Number(outputTokens) || 0) / 1e6 * price.outPerM;
+  const costEur = usd * USD_TO_EUR;
+  // EUR_PER_CREDIT is de ankerwaarde uit het ontwerpdocument: 1 credit ~ EUR0,015
+  // aan kostprijs. Delen door dat anker zet euro's om in credits.
+  const raw = Math.ceil((costEur / 0.015) * CHAT_MARGIN);
+  // Nooit minder dan het platte tarief: een piepklein vraagje mag goedkoop
+  // zijn, maar niet gratis — er zit ook infrastructuur achter.
+  return { credits: Math.max(flat, raw), costEur, priced: true };
+}
+
 /* ── Wat een video kost ───────────────────────────────────────────────────────
  * api/_media-models.js kent de echte prijs: $0,30 per seconde op 1280x720 en
  * $0,50 per seconde op de bredere formaten. Tegen de basis uit
@@ -919,6 +992,7 @@ async function setTrialMarker(projectCode, patch) {
 module.exports = {
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
+  creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,
   FEATURES,
   WEIGHTS,
   FIELD,

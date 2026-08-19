@@ -84,6 +84,16 @@ hieronder.
   standaardvideo 240 van de 250 proefcredits: hij kan er precies één maken en
   heeft daarna niets meer voor leads. Zie `CREDIT-SYSTEM-DESIGN.md` §7 voor de
   drie opties.
+- **Faro rekent nu af op wat hij echt verbruikt.** Het was 3 credits per beurt,
+  plat — of die beurt nu één regel was of acht gereedschapsrondes op een duurder
+  model. De tokens werden al geteld en alleen als notitie bewaard; ze bepalen nu
+  de afschrijving. Gemeten op het goedkoopste model kost een zware beurt 15
+  credits waar er 3 werd gerekend.
+- **Actie:** zet de prijs van `claude-sonnet-5` en `claude-opus-5` in
+  `MODEL_PRICES` (bovenin `api/_credits.js`). Zolang die ontbreekt valt de
+  afschrijving terug op het oude platte tarief en waarschuwt hij in het log —
+  en Sonnet is het standaardmodel, dus dat raakt de meeste beurten. Alleen de
+  Haiku-prijs staat er, met bron.
 - **Gelijktijdige afschrijvingen gaan niet meer verloren.** Gemeten: vijf
   tegelijk van 3 credits werden geboekt als 3 in plaats van 15 — vier van de
   vijf verdampten. Faro maakte dit erger dan het was, want één vraag kan
