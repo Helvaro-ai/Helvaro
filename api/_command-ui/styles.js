@@ -23,12 +23,16 @@ function css() {
   return `
 /* ═══ Command Center ═══════════════════════════════════════════════════════ */
 :root {
-  /* Semantic tone per opportunity category. Dark-surface values. */
-  --cmd-hot:    #E0873F;  --cmd-hot-bg:    rgba(224, 135,  63, 0.13);
-  --cmd-ready:  #4CA39B;  --cmd-ready-bg:  rgba( 76, 163, 155, 0.13);
-  --cmd-risk:   #C96A5A;  --cmd-risk-bg:   rgba(201, 106,  90, 0.13);
-  --cmd-value:  #B79A5E;  --cmd-value-bg:  rgba(183, 154,  94, 0.13);
-  --cmd-cold:   #6B9BC4;  --cmd-cold-bg:   rgba(107, 155, 196, 0.13);
+  /* Semantic tone per opportunity category. Dark-surface values.
+     Elke waarde is gemeten tegen de chip waar hij ECHT op staat: dezelfde tint
+     op 13% over de kaart, niet tegen de kaart zelf. Dat scheelt ongeveer een
+     punt contrast, en drie van de vijf zakten daardoor onder 4,5:1 terwijl ze
+     tegen de kale kaart nog leken te kloppen. */
+  --cmd-hot:    #EDA164;  --cmd-hot-bg:    rgba(224, 135,  63, 0.13);  /* 6,0:1 */
+  --cmd-ready:  #6FC4BC;  --cmd-ready-bg:  rgba( 76, 163, 155, 0.13);  /* 6,3:1 */
+  --cmd-risk:   #E4907F;  --cmd-risk-bg:   rgba(201, 106,  90, 0.13);  /* 5,5:1 */
+  --cmd-value:  #CFB57C;  --cmd-value-bg:  rgba(183, 154,  94, 0.13);  /* 6,4:1 */
+  --cmd-cold:   #8FB9DC;  --cmd-cold-bg:   rgba(107, 155, 196, 0.13);  /* 6,2:1 */
 }
 [data-theme="light"] {
   --cmd-hot:    #A2541A;  --cmd-hot-bg:    rgba(224, 135,  63, 0.13);
