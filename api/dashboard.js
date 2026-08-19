@@ -825,6 +825,57 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 }
 
 /* ── Slides wrapper ── */
+/* ── Het WhatsApp-mockje op het inlogscherm ─────────────────────────────────
+   Stond hier eerst een staafgrafiek met 24 / 68% / 12. Die cijfers waren
+   verzonnen, ongelabeld, en vertelden een makelaar niet wat dit product doet.
+   Een gesprek wel: dit IS het product, en het tijdstip (21:47) draagt het
+   argument dat geen enkele tagline zo goed kan maken. */
+.login-what {
+  margin: 18px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--login-muted, #5B6779);
+  max-width: 42ch;
+}
+
+.brand-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 2px;
+}
+.brand-chat-msg {
+  max-width: 84%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  position: relative;
+}
+.brand-chat-msg span { display: block; }
+.brand-chat-msg em {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
+}
+.brand-chat-msg.in {
+  align-self: flex-start;
+  background: rgba(255,255,255,0.07);
+  color: #EDEDED;
+  border-bottom-left-radius: 5px;
+}
+.brand-chat-msg.out {
+  align-self: flex-end;
+  background: rgba(var(--accent-rgb), 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.24);
+  color: #F2E9D5;
+  border-bottom-right-radius: 5px;
+}
+.brand-chat-msg.out em { text-align: right; }
+
 .brand-slides-wrap {
   position: relative;
   z-index: 1;
@@ -7571,7 +7622,7 @@ ${cmd.css}
         </div>
 
         <h1 class="login-welcome">Welkom terug!</h1>
-        <p class="login-subtitle">Voer je gegevens in om toegang te krijgen tot je dashboard</p>
+        <p class="login-subtitle">Log in om te zien wat er sinds gisteren gebeurd is.</p>
 
         <!-- Everything from here to the closing tag is the built-in form.
              mountClerkSignIn() hides this wrapper and reveals #clerk-signin
@@ -7603,7 +7654,11 @@ ${cmd.css}
              leaves the branded login screen for a Clerk-hosted one. -->
         <div id="clerk-toggle" style="display:none"></div>
 
-        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform ${new Date().getFullYear()}</div>
+        <p class="login-what">
+        Helvaro beantwoordt je vastgoedleads op WhatsApp, vraagt budget en timing uit,
+        en boekt de bezichtiging meteen in je agenda.
+      </p>
+      <div class="login-footer">&copy; ${new Date().getFullYear()} <span>Helvaro</span> &mdash; gemaakt voor Vlaamse makelaars</div>
       </div>
     </div>
 
@@ -7618,36 +7673,26 @@ ${cmd.css}
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
-              <span class="brand-card-title">Lead Overzicht</span>
+              <span class="brand-card-title">WhatsApp</span>
             </div>
-            <div class="brand-stats">
-              <div class="brand-stat">
-                <div class="brand-stat-num">24</div>
-                <div class="brand-stat-label">Leads</div>
+            <div class="brand-chat">
+              <div class="brand-chat-msg in">
+                <span>Hallo, ik zag de woning in Gent op uw site. Is die nog vrij?</span>
+                <em>21:47</em>
               </div>
-              <div class="brand-stat">
-                <div class="brand-stat-num">68%</div>
-                <div class="brand-stat-label">Conversie</div>
+              <div class="brand-chat-msg out">
+                <span>Dag Marie! Ja hoor. Zoekt u voor uzelf, en wat is uw budget ongeveer?</span>
+                <em>21:47</em>
               </div>
-              <div class="brand-stat">
-                <div class="brand-stat-num">12</div>
-                <div class="brand-stat-label">Afspraken</div>
+              <div class="brand-chat-msg in">
+                <span>Voor ons gezin, rond de 450.000</span>
+                <em>21:51</em>
               </div>
-            </div>
-            <div class="brand-bars">
-              <div class="brand-bar" style="height:30%"></div>
-              <div class="brand-bar" style="height:55%"></div>
-              <div class="brand-bar" style="height:40%"></div>
-              <div class="brand-bar" style="height:70%"></div>
-              <div class="brand-bar active" style="height:100%"></div>
-              <div class="brand-bar" style="height:85%"></div>
-              <div class="brand-bar" style="height:60%"></div>
-              <div class="brand-bar" style="height:90%"></div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Naadloze werkomgeving</h2>
-            <p>Alles wat je nodig hebt in één krachtig AI-platform</p>
+            <h2>Antwoord binnen de minuut</h2>
+            <p>Ook om kwart voor tien 's avonds, als jij al lang naar huis bent</p>
           </div>
         </div>
 
@@ -7679,22 +7724,22 @@ ${cmd.css}
               <div class="brand-score-items">
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:85%"></div></div>
-                  <span>Budget fit</span>
+                  <span>Budget past</span>
                 </div>
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:60%"></div></div>
-                  <span>Urgentie</span>
+                  <span>Wil snel verhuizen</span>
                 </div>
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:72%"></div></div>
-                  <span>Beslisser</span>
+                  <span>Beslist mee</span>
                 </div>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Slimme AI-scoring</h2>
-            <p>Elke lead automatisch gekwalificeerd en gescoord</p>
+            <h2>Je weet wie serieus is</h2>
+            <p>Budget, timing en beslissingsbevoegdheid — uitgevraagd in het gesprek zelf</p>
           </div>
         </div>
 
@@ -7705,38 +7750,38 @@ ${cmd.css}
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
-              <span class="brand-card-title">Aankomende Afspraken</span>
+              <span class="brand-card-title">Jouw agenda — morgen</span>
             </div>
             <div class="brand-agenda">
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">09:00</div>
                 <div class="brand-agenda-content">
-                  <div class="brand-agenda-name">Thomas B.</div>
-                  <div class="brand-agenda-tag">Kennismaking</div>
+                  <div class="brand-agenda-name">Marie D.</div>
+                  <div class="brand-agenda-tag">Bezichtiging · Gent</div>
                 </div>
                 <div class="brand-agenda-dot hot"></div>
               </div>
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">11:30</div>
                 <div class="brand-agenda-content">
-                  <div class="brand-agenda-name">Laura V.</div>
-                  <div class="brand-agenda-tag">Demo call</div>
+                  <div class="brand-agenda-name">Jonas P.</div>
+                  <div class="brand-agenda-tag">Bezichtiging · Aalst</div>
                 </div>
                 <div class="brand-agenda-dot warm"></div>
               </div>
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">14:00</div>
                 <div class="brand-agenda-content">
-                  <div class="brand-agenda-name">Marco S.</div>
-                  <div class="brand-agenda-tag">Follow-up</div>
+                  <div class="brand-agenda-name">Sofie M.</div>
+                  <div class="brand-agenda-tag">Schatting · Brugge</div>
                 </div>
                 <div class="brand-agenda-dot warm"></div>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Altijd overzicht</h2>
-            <p>Je agenda en leads op één plek, altijd up-to-date</p>
+            <h2>De afspraak staat er al in</h2>
+            <p>De AI kijkt in je agenda en boekt de bezichtiging in het gesprek zelf</p>
           </div>
         </div>
 
