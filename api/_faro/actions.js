@@ -258,11 +258,18 @@ const EXECUTORS = {
     if (!access) throw new ActionError('Google Agenda is niet gekoppeld.', 'not_connected');
 
     const durationMin = Math.max(15, Math.min(480, Number(payload.durationMin) || 60));
+    // api/_gcal.js's eventBody() leest { startISO, durationMin } — niet
+    // { start, end }. Met de oude sleutels kwam er `new Date(undefined)` uit en
+    // gooide toISOString() "Invalid time value", die createEvent's try/catch
+    // netjes omzette in { ok: false }. Resultaat: wie deze actie bevestigde
+    // kreeg ALTIJD "Het agenda-item kon niet aangemaakt worden" — de actie had
+    // nog nooit kunnen slagen. api/leads.js gebruikt dezelfde functie wél met
+    // de juiste vorm, wat het verschil onzichtbaar hield.
     const out = await gcal.createEvent(access.token, access.calId, {
       summary: String(payload.title || 'Opvolging').slice(0, 200),
       description: String(payload.note || '').slice(0, 2000),
-      start: new Date(startMs).toISOString(),
-      end: new Date(startMs + durationMin * 60000).toISOString(),
+      startISO: new Date(startMs).toISOString(),
+      durationMin,
     });
     if (!out || !out.ok) {
       console.error('[faro/actions] createEvent failed:', out && out.error);

@@ -74,10 +74,23 @@ async function handle(req, res, auth) {
 
   // Per-user rate limit. The credit system is the hard ceiling; this is the
   // cheap guard in front of it, same layering as api/_demo-chat.js.
+  // Drie fouten stapelden hier op elkaar, met als netto effect dat de limiet
+  // NOOIT afging:
+  //   1. hit() is hit(bucket, id, limit, windowMs) — dit gaf drie argumenten,
+  //      dus limit kreeg de venstergrootte en windowMs werd undefined. Met een
+  //      ongedefinieerd venster is `now - t < undefined` altijd false, dus de
+  //      teller kwam nooit boven 1.
+  //   2. hit() geeft { limited, count } terug, geen boolean. `if (!ok)` op een
+  //      object is per definitie false.
+  //   3. het geheel zat achter configured(), dus zonder Upstash werd er sowieso
+  //      niets geteld — terwijl hit() zelf al netjes terugvalt op een teller in
+  //      het geheugen.
+  // Dit is de enige rem vóór de modelaanroepen en de beeldgeneratie, en de laag
+  // erachter (checkCredits) faalt open bij een Airtable-storing.
   const { LIMITS } = config;
-  if (_rl.configured && _rl.configured()) {
-    const ok = await _rl.hit(`ai:${ctx.projectCode}:${ctx.userId}`, LIMITS.rateLimitMax, LIMITS.rateLimitWindowMs);
-    if (!ok) return res.status(429).json({ error: 'Te veel verzoeken. Probeer het zo weer.' });
+  const rl = await _rl.hit('ai', `${ctx.projectCode}:${ctx.userId}`, LIMITS.rateLimitMax, LIMITS.rateLimitWindowMs);
+  if (rl && rl.limited) {
+    return res.status(429).json({ error: 'Te veel verzoeken. Probeer het zo weer.' });
   }
 
   switch (body.mode) {

@@ -117,25 +117,48 @@ function matchesChannel(lead, wanted) {
    and matching every minBudget query. */
 function parseBudget(raw) {
   const s = String(raw == null ? '' : raw);
-  const m = s.match(/(\d[\d.\s,]*)\s*(k|K|m|M)?/);
-  if (!m) return null;
-  const suffix = (m[2] || '').toLowerCase();
-  const body = m[1].trim();
 
-  // Separators mean opposite things either side of a k/M suffix, and both
-  // spellings are in this data. "450.000" is Flemish for four hundred and
-  // fifty thousand; "1.2M" is English for one point two million. Stripping
-  // separators unconditionally turned the second into twelve million.
-  let n;
-  if (suffix) {
-    n = Number(body.replace(/\s/g, '').replace(',', '.'));
-  } else {
-    n = Number(body.replace(/[.\s,]/g, ''));
+  // ── Waarom dit ALLE getallen bekijkt en niet het eerste ────────────────────
+  // Dit veld is vrije tekst die een makelaar zelf intikt, en die begint lang
+  // niet altijd met het bedrag: "3 slaapkamers, 450.000" leverde 3 op, en
+  // "2 gevels 300k" leverde 2 op. Die 3 verscheen daarna als € 3 in de
+  // pipelinewaarde en zakte bovendien onder elke minBudget-filter door, zodat
+  // de lead ook nog eens uit de lijst met dure kansen viel.
+  //
+  // Dus: elk kandidaat-getal langslopen en alleen accepteren wat er als geld
+  // uitziet — een k/M-achtervoegsel, een euroteken ervoor, of gewoon groot
+  // genoeg om geen kamertelling te zijn. Levert dat niets op, dan is null het
+  // eerlijke antwoord; een verkeerd bedrag is erger dan geen bedrag.
+  //   \d[\d.\s,]*\d  het getal moet op een cijfer EINDIGEN, anders knipt een
+  //                    spatie "350 000" in tweeen en houd je 350 over.
+  //   (?![\w])         zonder deze kijkt "4 kamers" als 4k en dus als 4.000:
+  //                    de k van kamers werd als duizendtal gelezen.
+  const re = /(€\s*)?(\d[\d.\s,]*\d|\d)\s*(k|K|m|M)?(?![\w])/g;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const hasEuro = Boolean(m[1]);
+    const suffix  = (m[3] || '').toLowerCase();
+    const body    = m[2].trim().replace(/[.,\s]+$/, '');
+    if (!body) continue;
+
+    // Scheidingstekens betekenen het tegenovergestelde aan weerszijden van een
+    // k/M-achtervoegsel, en beide schrijfwijzen komen voor. "450.000" is
+    // Vlaams voor vierhonderdvijftigduizend; "1.2M" is Engels voor 1,2 miljoen.
+    let n;
+    if (suffix) {
+      n = Number(body.replace(/\s/g, '').replace(',', '.'));
+    } else {
+      n = Number(body.replace(/[.\s,]/g, ''));
+    }
+    if (!Number.isFinite(n) || n <= 0) continue;
+    if (suffix === 'k') n *= 1000;
+    else if (suffix === 'm') n *= 1000000;
+
+    // 1.000 is de ondergrens waaronder een los getal in dit veld vrijwel altijd
+    // iets anders telt: slaapkamers, gevels, een huisnummer.
+    if (suffix || hasEuro || n >= 1000) return n;
   }
-  if (!Number.isFinite(n) || n <= 0) return null;
-  if (suffix === 'k') n *= 1000;
-  else if (suffix === 'm') n *= 1000000;
-  return n;
+  return null;
 }
 
 /* Urgency is the CRM's stand-in for "when do they want to buy". Same

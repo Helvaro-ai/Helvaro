@@ -12156,8 +12156,8 @@ function renderStats() {
     },
     {
       label: 'Gem. Reactie',
-      value: s.avgResponseTime || 0,
-      suffix: 'u',
+      value: fmtDuration(s.avgResponseTime || 0).value,
+      suffix: fmtDuration(s.avgResponseTime || 0).suffix,
       desc: 'Gemiddelde reactietijd',
       color: '',
       fill: 60,
@@ -15006,6 +15006,17 @@ function initSidebar() {
   applySidebarCollapsed(collapsed);
 }
 
+/* Reactietijd komt in SECONDEN binnen (Airtable: "Response Time (sec)").
+   Onder de minuut in seconden, daarboven in minuten, daarboven in uren — de
+   eenheid hoort bij de waarde en niet bij de kaart. */
+function fmtDuration(sec) {
+  const n = Number(sec) || 0;
+  if (n <= 0)   return { value: 0, suffix: 's' };
+  if (n < 90)   return { value: Math.round(n), suffix: 's' };
+  if (n < 5400) return { value: Math.round(n / 60), suffix: 'm' };
+  return { value: Math.round(n / 360) / 10, suffix: 'u' };
+}
+
 function navigateTo(page) {
   state.currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -16020,10 +16031,19 @@ function renderAnalyse() {
     if (gemSubEl) gemSubEl.textContent = leadsMetWaarde.length + ' deals met waarde';
 
     // Win rate
+    // Dit was 100 - verloren%, oftewel "nog niet verloren", en dat is geen win
+    // rate: een kantoor met 40 openstaande leads en nul gewonnen las 100%. Het
+    // deelt nu door wat er ECHT beslist is, en toont niets als er nog niets
+    // beslist is — een percentage van nul beslissingen bestaat niet.
     const verlorenCount = leads.filter(l => l.status === 'verloren').length;
-    const winRate = leads.length > 0 ? Math.round(100 - (verlorenCount / leads.length * 100)) : 100;
+    const gewonnenCount = leads.filter(l => l.afspraakGeboekt).length;
+    const beslist = verlorenCount + gewonnenCount;
+    const winRate = beslist > 0 ? Math.round((gewonnenCount / beslist) * 100) : null;
     const wrEl = document.getElementById('analyse-winrate-val');
-    if (wrEl) {
+    if (wrEl && winRate === null) {
+      wrEl.textContent = '—';
+      wrEl.style.color = 'var(--text-muted)';
+    } else if (wrEl) {
       wrEl.textContent = winRate + '%';
       wrEl.style.color = winRate >= 70 ? 'var(--green-ink)' : winRate >= 40 ? 'var(--orange-ink)' : 'var(--red-ink)';
     }
