@@ -836,10 +836,46 @@ function faroScrollToEnd() {
   if (t) t.scrollTop = t.scrollHeight;
 }
 
+/* Tijdens het streamen was deze knop simpelweg uitgeschakeld: je kon niets
+   sturen, niets afbreken, en Enter deed zwijgend niets. Een antwoord dat de
+   verkeerde kant op gaat moest je uitzitten.
+
+   Dezelfde knop wordt nu een stopknop. Dat lost twee dingen tegelijk op — je
+   krijgt de controle terug, en het is meteen zichtbaar WAAROM je niet kunt
+   versturen. */
 function faroSetSendEnabled(on) {
   var b = document.getElementById('faro-send');
   var f = document.getElementById('faro-input-field');
-  if (b) b.disabled = !on || faroState.streaming || !((f && f.value.trim()) || faroState.attachments.length);
+  if (!b) return;
+  if (faroState.streaming) {
+    b.disabled = false;
+    b.dataset.mode = 'stop';
+    b.setAttribute('aria-label', T('in.stop'));
+    b.title = T('in.stop');
+    b.classList.add('faro-send--stop');
+    b.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
+    return;
+  }
+  if (b.dataset.mode === 'stop') {
+    b.dataset.mode = 'send';
+    b.classList.remove('faro-send--stop');
+    b.setAttribute('aria-label', T('in.send'));
+    b.title = '';
+    b.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+  }
+  b.disabled = !on || !((f && f.value.trim()) || faroState.attachments.length);
+}
+
+/* Afbreken op verzoek van de gebruiker. Anders dan het afbreken bij het sluiten
+   van het paneel laat dit staan wat er al binnen was: een half antwoord is
+   soms precies genoeg, en het weggooien voelt als straf voor het stoppen. */
+function faroStop() {
+  if (!faroState.streaming || !faroState.abort) return;
+  try { faroState.abort.abort(); } catch (e) {}
+  faroState.abort = null;
+  faroState.streaming = false;
+  faroSetSendEnabled(true);
+  faroMascot('idle');
 }
 
 function faroClearInput() {
@@ -1302,7 +1338,12 @@ function faroInit() {
   var form = document.getElementById('faro-input-form');
   var field = document.getElementById('faro-input-field');
 
-  if (form) form.addEventListener('submit', function (e) { e.preventDefault(); faroSend(field.value); });
+  if (form) form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var b = document.getElementById('faro-send');
+    if (b && b.dataset.mode === 'stop') { faroStop(); return; }
+    faroSend(field.value);
+  });
 
   if (field) {
     field.addEventListener('input', function () {

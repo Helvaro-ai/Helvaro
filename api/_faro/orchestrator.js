@@ -81,10 +81,47 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
     console.error('[faro] credit check failed, continuing:', err.message);
   }
 
+  // ── Het gesprek vastleggen ────────────────────────────────────────────────
+  // Pas bij het EERSTE bericht, niet bij het openen van de werkruimte: anders
+  // laat elk bezoek zonder vraag een lege regel achter in de zijbalk.
+  //
+  // Vóór de 'start'-frame, want daar reist de conversationId in mee en de
+  // client gebruikt hem om vervolgvragen aan hetzelfde gesprek te hangen.
+  //
+  // Faalt dit, dan gaat de beurt gewoon door met conversationId = null: niets
+  // bewaren is vervelend, maar geen antwoord kunnen geven omdat de opslag hapert
+  // is erger.
+  if (!conversationId) {
+    try {
+      const firstText = (userContent.find((b) => b.type === 'text') || {}).text || '';
+      const created = await store.createConversation(ctx.projectCode, ctx.userId, {
+        title: store.deriveTitle(firstText),
+      });
+      if (created && created.id) conversationId = created.id;
+    } catch (err) {
+      console.warn('[faro] gesprek aanmaken mislukt, beurt gaat door zonder opslag:', err && err.message);
+    }
+  }
+
   stream.send(res, 'start', {
     conversationId,
     model: config.publicModelLabel(tier), // Helvaro-branded — never the model id
   });
+
+  // De vraag van de gebruiker meteen wegschrijven, niet pas aan het eind: valt
+  // de stream halverwege weg, dan hoort de vraag er nog te staan als je
+  // terugkomt. Fire-and-forget — de gebruiker wacht hier niet op.
+  if (conversationId) {
+    store.appendMessage(ctx.projectCode, conversationId, {
+      role: 'user',
+      content: userContent.map((b) => (b.type === 'image'
+        // Geen base64 van een foto in de database: dat is megabytes per beurt en
+        // de bytes zijn na de beurt niet meer nodig. Een merkteken volstaat om
+        // te tonen dat er een foto bij zat.
+        ? { type: 'text', text: '[afbeelding]' }
+        : b)),
+    }).catch(() => {});
+  }
 
   const system = await prompt.build(ctx);
   const messages = store.windowForModel(
@@ -223,8 +260,18 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       meta: { tier, iterations, tokensIn: usage.inputTokens, tokensOut: usage.outputTokens },
     }).catch(() => {});
 
-    // WIRE: persist the assistant message once the VPS tables exist.
-    //   await store.appendMessage(ctx.projectCode, conversationId, {...});
+    // Het antwoord bewaren. Ook fire-and-forget: de gebruiker heeft het al
+    // gelezen tegen de tijd dat dit draait, en een trage schrijfactie hoort de
+    // stream niet op te houden.
+    if (conversationId) {
+      store.appendMessage(ctx.projectCode, conversationId, {
+        role: 'assistant',
+        content: assistantText ? [{ type: 'text', text: assistantText }] : [],
+        components,
+        tokensIn: usage.inputTokens,
+        tokensOut: usage.outputTokens,
+      }).catch(() => {});
+    }
 
     stream.close(res, { usage: { in: usage.inputTokens, out: usage.outputTokens } });
   } catch (err) {

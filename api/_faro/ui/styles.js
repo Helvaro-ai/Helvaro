@@ -488,6 +488,16 @@ body.faro-open .faro-dock { display: none; }
 /* Send button. Dark glyph on champagne — the light arrow in the design would
    not have met contrast against this fill, and this is the one control the
    user must always be able to find. --on-accent is the token for exactly this. */
+/* Stopmodus: dezelfde knop, duidelijk andere betekenis. Rood zou hier "fout"
+   suggereren terwijl stoppen een normale keuze is, dus neutraal met een rand —
+   het verschil zit in de vorm (vierkant) en het label. */
+.faro-send--stop {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+.faro-send--stop:hover { background: var(--surface-3) !important; }
+
 .faro-send {
   width: 34px; height: 34px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;

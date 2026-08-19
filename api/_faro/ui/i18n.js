@@ -75,6 +75,7 @@ const STRINGS = {
     'in.property': 'Pand',
     'in.command': 'Commando',
     'in.send': 'Versturen',
+    'in.stop': 'Stoppen',
 
     'ctx.label': 'Faro ziet',
     'ctx.manage': 'Beheren',
@@ -208,6 +209,7 @@ const STRINGS = {
     'in.property': 'Property',
     'in.command': 'Command',
     'in.send': 'Send',
+    'in.stop': 'Stop',
 
     'ctx.label': 'Faro sees',
     'ctx.manage': 'Manage',
@@ -341,6 +343,7 @@ const STRINGS = {
     'in.property': 'Bien',
     'in.command': 'Commande',
     'in.send': 'Envoyer',
+    'in.stop': 'Arrêter',
 
     'ctx.label': 'Faro voit',
     'ctx.manage': 'Gérer',
@@ -474,6 +477,7 @@ const STRINGS = {
     'in.property': 'Objekt',
     'in.command': 'Befehl',
     'in.send': 'Senden',
+    'in.stop': 'Stoppen',
 
     'ctx.label': 'Faro sieht',
     'ctx.manage': 'Verwalten',
