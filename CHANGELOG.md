@@ -91,6 +91,22 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Je eigen cijfers stonden in de pagina van elke klant
+
+> **De Founder-pagina ging mee in de HTML die iedere klant kreeg.** Daarin
+> staan je MRR, je vaste en variabele kosten, je nettowinst, je prijslijst
+> (€ 1.000/maand), je contractvoorwaarden, je roadmap, de takenlijst van je
+> partner en een tabel met al je klanten. Een klant hoefde niet eens ergens te
+> klikken: "paginabron bekijken" volstond.
+>
+> Eerder is alleen de navigatie weggehaald, niet de pagina zelf — ik had in
+> deze changelog geschreven dat hij "daar niet meer bestaat", en dat klopte
+> dus niet. Die regel is nu bijgesteld.
+>
+> De server beslist nu op de geverifieerde sessie of die twee pagina's
+> überhaupt meegestuurd worden. Voor een klant zijn ze er niet meer: 19,5 KB
+> minder, en geen enkel cijfer van jou erin. Er is een test die dit vastlegt.
+
 ### Wat de schermafdrukken opleverden
 
 - **De agenda toonde halve uren nog steeds in 12-uursnotatie.** De hele uren
@@ -272,7 +288,7 @@ hieronder.
 - **Toetsenbord:** elk klikbaar element is bereikbaar, elke bediening heeft een
   naam, elke pagina één `h1`, en er is een overslaan-link.
 - **De back-office van Helvaro** (`Klanten`, `Founder`) zat verborgen in de HTML
-  van élke klant. Nu bestaat hij daar niet meer.
+  van élke klant. De navigatieknoppen zijn eruit.
 
 ### Onder de motorkap
 

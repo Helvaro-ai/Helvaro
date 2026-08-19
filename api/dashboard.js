@@ -4,6 +4,7 @@
 // dashboard's language picker always matches exactly what the AI
 // conversation actually supports — no separately hand-maintained list here.
 const _lang = require('./_lang');
+const _session = require('./_session');
 
 // ── Faro ────────────────────────────────────────────────────────────────────
 // Faro's CSS, markup and client script live in api/_faro/ui/* rather than
@@ -15444,8 +15445,18 @@ function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-  const pageEl = document.getElementById(\`page-\${page}\`);
-  const navEl = document.getElementById(\`nav-\${page}\`);
+  let pageEl = document.getElementById(\`page-\${page}\`);
+  let navEl = document.getElementById(\`nav-\${page}\`);
+
+  /* Bestaat de pagina niet, val terug op het dashboard.
+     Zonder dit haalt de regel hierboven overal .active weg en komt er niets
+     voor terug: een leeg scherm zonder foutmelding. Dat kan nu echt gebeuren,
+     want de back-officepagina's worden voor een klant niet meer uitgestuurd
+     (zie stripBackoffice) terwijl navigateTo('founder') nog aanroepbaar is. */
+  if (!pageEl) {
+    if (page !== 'dashboard') return navigateTo('dashboard');
+    return;
+  }
   if (pageEl) pageEl.classList.add('active');
   if (navEl) navEl.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function (n) { n.removeAttribute('aria-current'); });
@@ -20308,5 +20319,48 @@ ${cmd.js}
     "object-src 'none'",
   ].join('; '));
 
-  res.status(200).send(HTML);
+  /* ── De back-office hoort niet in de HTML van een klant ──────────────────
+     Klanten en Founder zijn pagina's van HELVARO: omzet, kosten, nettowinst,
+     prijslijst, contractvoorwaarden, roadmap, en de takenlijst van de partner.
+
+     Eerder werden alleen de NAV-KNOPPEN client-side weggelaten voor
+     niet-admins. De pagina's zelf gingen gewoon mee in de HTML die iedereen
+     kreeg -- navigateTo('founder') vanuit de console toonde alles, en zelfs
+     dat hoefde niet: "paginabron bekijken" volstond.
+
+     Waarom hier weggeknipt en niet met ${...} in het sjabloon: dit bestand is
+     EEN template-literal, en een nieuwe literal erin openen verandert de
+     escaping van alles ertussen. Toen ik dat probeerde werd elke bedoeld
+     letterlijke ${...} in die 500 regels alsnog uitgevoerd en hing het
+     verzoek. Knippen op de gerenderde string raakt het sjabloon niet aan.
+
+     De beslissing komt van de SERVER, uit de geverifieerde sessie die met
+     deze GET meekomt. Geen sessie = geen admin. Niet verstuurde HTML kan een
+     bezoeker niet omzetten; een client-side vlag wel. */
+  let HV_IS_ADMIN = false;
+  try {
+    const _tok  = _session.readToken(req);
+    const _sess = _tok ? _session.verifySignedSession(_tok) : null;
+    // Dezelfde definitie als de client hanteert: naam 'Admin' zonder projectcode.
+    HV_IS_ADMIN = !!(_sess && _sess.clientName === 'Admin' && !_sess.projectCode);
+  } catch (_) { HV_IS_ADMIN = false; }
+
+  res.status(200).send(HV_IS_ADMIN ? HTML : stripBackoffice(HTML));
 };
+
+/* Knipt <main id="page-admin"> en <main id="page-founder"> uit de gerenderde
+   pagina. Werkt op exacte markeringen en laat de HTML ongemoeid als een blok
+   niet gevonden wordt -- liever een pagina die klopt dan een halve knip. */
+function stripBackoffice(html) {
+  let uit = html;
+  for (const id of ['page-admin', 'page-founder']) {
+    const start = uit.indexOf('<main class="page-content page" id="' + id + '">');
+    if (start === -1) continue;
+    const eind = uit.indexOf('</main>', start);
+    if (eind === -1) continue;
+    uit = uit.slice(0, start) + '<!-- ' + id + ': alleen voor Helvaro -->' + uit.slice(eind + '</main>'.length);
+  }
+  return uit;
+}
+
+module.exports.stripBackoffice = stripBackoffice;
