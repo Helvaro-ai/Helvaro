@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Controleert of Clerk aangezet KAN worden — voordat je de schakelaar omzet.
+// Controleert of Clerk EN Faro aangezet kunnen worden — voordat je een
+// schakelaar omzet.
 //
 // ── Waarom dit bestaat ───────────────────────────────────────────────────────
 // Als er iets mis is met de Clerk-configuratie, faalt de app stil. clerkInit()
@@ -12,7 +13,7 @@
 // Dit script maakt daar een naam van. Elke controle zegt wat er mis is EN wat
 // je eraan doet. Het schrijft niets weg en verandert niets.
 //
-//   node scripts/clerk-preflight.js
+//   node scripts/preflight.js
 //
 // Nodig in de omgeving: CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY.
 // API_AIRTABLE en BASE_AIRTABLE zijn optioneel — daarmee wordt ook
@@ -324,15 +325,102 @@ async function probe(url, opts = {}) {
     warn(`kon de app niet uitvoeren om dit te controleren: ${e.message}`);
   }
 
+  // ── 8. Faro ────────────────────────────────────────────────────────────────
+  // Faro heeft één sleutel nodig die de rest van Helvaro niet gebruikt, en een
+  // paar die er al zijn. Zonder deze sectie moest je dat afleiden uit de code.
+  head('faro');
+
+  const faroOn = process.env.FARO_WORKSPACE_ENABLED === '1';
+  if (faroOn) ok('FARO_WORKSPACE_ENABLED=1 — Faro is aan');
+  else warn('FARO_WORKSPACE_ENABLED staat niet op 1 — Faro is uit',
+            'De route geeft dan overal 404. Zet dit pas om NA het uitrollen van deze tak:\n'
+          + 'de versie die nu live staat geeft elke ingelogde gebruiker een 401 op de\n'
+          + 'Faro-pagina, en dat is precies de pagina waar je na het inloggen landt.');
+
+  // Het model
+  const provider = (process.env.FARO_PROVIDER || 'claude').trim().toLowerCase();
+  if (provider === 'demo') {
+    fail('FARO_PROVIDER=demo — Faro geeft dan verzonnen antwoorden',
+         'Bedoeld om lokaal te proberen zonder kosten. Nooit in productie: hij toont\n'
+       + 'leads die niet bestaan.');
+  } else if (provider === 'openai') {
+    warn('FARO_PROVIDER=openai — die adapter is een stub', 'Laat leeg voor Claude, de enige werkende.');
+  } else {
+    ok('FARO_PROVIDER=claude (standaard)');
+  }
+
+  const anth = (process.env.ANTHROPIC_API_KEY || '').trim();
+  if (provider === 'claude') {
+    if (!anth) {
+      fail('ANTHROPIC_API_KEY ontbreekt — dit is Faro\'s brein',
+           'De ENIGE sleutel die je erbij moet zetten; de rest heeft Helvaro al.\n'
+         + 'Op te halen op console.anthropic.com. Zonder deze zegt Faro niets.');
+    } else if (!/^sk-ant-/.test(anth)) {
+      warn(`ANTHROPIC_API_KEY heeft een onverwachte vorm (${mask(anth)})`, 'Verwacht sk-ant-….');
+    } else {
+      ok(`ANTHROPIC_API_KEY aanwezig (${mask(anth)})`);
+    }
+  }
+
+  // Zonder dit weigert elke bevestigde actie — en dat lijkt op een bug, niet op
+  // een ontbrekende variabele.
+  if (!process.env.SESSION_SECRET) {
+    fail('SESSION_SECRET ontbreekt — Faro mag dan NIETS uitvoeren',
+         'Hiermee worden bevestigingen ondertekend. api/_faro/actions.js faalt dicht:\n'
+       + 'elk voorstel dat je bevestigt wordt geweigerd. Dat oogt als een kapotte knop.');
+  } else {
+    ok('SESSION_SECRET aanwezig — bevestigingen kunnen ondertekend worden');
+  }
+
+  if (process.env.FARO_DEMO_MODE === '1') {
+    fail('FARO_DEMO_MODE=1 — Faro toont fixture-leads die niet bestaan', 'Uit in productie.');
+  }
+
+  // Beeld en video: allebei of geen van beide.
+  const openai = (process.env.OPENAI_API_KEY || process.env.OPENAI || '').trim();
+  const blob = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID || process.env.VERCEL_OIDC_TOKEN);
+  if (!openai && !blob) {
+    ok('geen beeld/video geconfigureerd — chat werkt gewoon, die tools geven een nette foutkaart');
+  } else if (openai && blob) {
+    ok('beeld en video kunnen: OpenAI-sleutel én opslag aanwezig');
+  } else if (openai && !blob) {
+    warn('OPENAI_API_KEY zonder opslag (BLOB_READ_WRITE_TOKEN)',
+         'Een beeld wordt dan wél gegenereerd — en betaald — maar kan nergens heen.');
+  } else {
+    warn('opslag aanwezig maar geen OPENAI_API_KEY', 'Beeldgeneratie blijft uit.');
+  }
+
+  // De twee tabellen waar gesprekken in gaan.
+  if (process.env.API_AIRTABLE && process.env.BASE_AIRTABLE) {
+    for (const tbl of ['ai_conversations', 'ai_messages']) {
+      const r = await probe(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/${tbl}?pageSize=1`,
+                            { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } });
+      if (r.ok) ok(`tabel ${tbl} bestaat`);
+      else warn(`tabel ${tbl} niet gevonden (HTTP ${r.status || r.error})`,
+                'Gesprekken leven dan alleen in de browser: ze overleven een herlaadbeurt,\n'
+              + 'maar niet je laptop. Velden staan in de kop van api/_faro/store.js.');
+    }
+  } else {
+    warn('tabellen niet te controleren — Airtable-credentials niet beschikbaar');
+  }
+
+  // Sora heeft een einddatum in de registry.
+  try {
+    const mm = require(path.join(__dirname, '..', 'api', '_media-models.js'));
+    if (typeof mm.isSunsetting === 'function' && mm.isSunsetting()) {
+      warn('het videomodel loopt af', 'Zie api/_media-models.js voor de datum en de opvolger.');
+    }
+  } catch (_) { /* registry niet leesbaar; geen blokkade */ }
+
   // ── Slot ───────────────────────────────────────────────────────────────────
   console.log('');
   if (fails) {
-    console.log(`${fails} probleem/problemen en ${warns} aandachtspunt(en). Zet CLERK_ENABLED nog niet op 1.`);
+    console.log(`${fails} probleem/problemen en ${warns} aandachtspunt(en). Zet de schakelaars nog niet om.`);
     process.exit(1);
   }
   if (warns) {
     console.log(`Geen blokkerende problemen, ${warns} aandachtspunt(en) — lees ze na en zet daarna om.`);
     process.exit(0);
   }
-  console.log('Alles in orde. Clerk kan aan.');
+  console.log('Alles in orde. Clerk en Faro kunnen aan.');
 })().catch((e) => { console.error('\nOnverwachte fout:', e.message); process.exit(1); });

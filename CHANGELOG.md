@@ -22,7 +22,8 @@ hieronder.
 > de provider opnieuw uitgedeeld — zolang de variabelen er staan stuurt Helvaro
 > een bearer-token naar wie dat adres nu ook heeft, met certificaatcontrole uit.
 
-> **Actie:** draai `node scripts/clerk-preflight.js` vóór je uitrolt. Clerk staat
+> **Actie:** draai `node scripts/preflight.js` vóór je uitrolt. Eén commando
+> zegt of Clerk én Faro aan kunnen. Clerk staat
 > AL aan in productie, en een bestaande klant zonder Clerk-account krijgt bij
 > "Account aanmaken" een gloednieuwe lege tenant — hij logt succesvol in en ziet
 > nul leads, terwijl zijn echte data gewoon in Airtable staat.
@@ -36,11 +37,18 @@ hieronder.
 - **De leadcache verlaat de computer bij uitloggen.** Namen, telefoonnummers en
   samenvattingen bleven 24 uur in de browser staan en verschenen bij de volgende
   klant zodra Airtable even druk was.
-- **`scripts/clerk-preflight.js`** zegt vooraf of Clerk aan kán, met een reden per
-  probleem in plaats van een stil inlogscherm.
+- **`scripts/preflight.js`** zegt vooraf of Clerk én Faro aan kunnen, met een
+  reden per probleem in plaats van een stil inlogscherm. Controleert ook de
+  gevallen die geld kosten of op een bug lijken: een OpenAI-sleutel zonder
+  opslag, een ontbrekende `SESSION_SECRET` (dan weigert élke bevestigde actie),
+  en `FARO_DEMO_MODE` dat per ongeluk aan staat.
 
 ### Faro
 
+- **Om Faro aan te zetten heb je één nieuwe sleutel nodig:** `ANTHROPIC_API_KEY`.
+  De rest (Airtable, WhatsApp, `SESSION_SECRET`) heeft Helvaro al. Beeld en video
+  vragen daarnaast `OPENAI_API_KEY` én `BLOB_READ_WRITE_TOKEN` — allebei of geen
+  van beide.
 - **Je kunt meer dan één vraag stellen.** Elk tweede bericht gaf 404 en elk
   "recent gesprek" was dood bij aanklikken.
 - **Gesprekken worden bewaard** in twee nieuwe Airtable-tabellen
