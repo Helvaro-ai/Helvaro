@@ -534,6 +534,44 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   overflow-x: hidden;
 }
 
+/* Een tabel heeft een harde min-content-breedte: kolomkoppen en getallen
+   kunnen niet verder krimpen. Op een telefoon liep .source-table daardoor 129px
+   buiten beeld, en omdat de pagina zijn overflow verbergt was dat geen
+   scrollbalk maar een tabel die stilletjes kolommen kwijtraakte. Eén wrapper
+   die zelf scrollt geeft ze terug. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+.table-scroll > table { min-width: 460px; }
+
+/* Op de smalste telefoons is de paginamarge zelf het laatste dat nog wint van
+   de inhoud: 2x28px is 56px van een scherm van 320. */
+@media (max-width: 400px) {
+  .page-content { padding: 18px 14px; }
+}
+@media (max-width: 360px) {
+  .page-content { padding: 16px 10px; }
+  /* Vangnet voor de laatste paar kaarten en knoppen die op 320px nog een paar
+     pixel buiten beeld staken. Liever één regel die zegt "niets is breder dan
+     zijn container" dan vijf losse uitzonderingen die de volgende kaart weer
+     mist. */
+  .page.active .profile-card,
+  .page.active .fm-qr-card,
+  .page.active .fm-preview-card,
+  .page.active .fm-option-card,
+  .page.active .cal-book-btn {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .page.active .cal-book-btn {
+    white-space: normal;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
 /* ============================================================
    LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
@@ -1290,8 +1328,17 @@ button.brand-dot { border: none; padding: 0; }
 .cal-gutter { width: 54px; flex-shrink: 0; }
 .cal-day-cols-header {
   flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+/* Zeven dagkolommen plus een gutter van 54px legden een bodem van 425px onder
+   de week. Op 390px verdween zondag daardoor volledig en werd zaterdag
+   doormidden gesneden — zonder scrollbalk, want de pagina verbergt zijn
+   overflow. De gutter (de uren-as) is het enige dat hier gemist kan worden. */
+@media (max-width: 480px) {
+  .cal-gutter { width: 34px; }
+  .cal-day-header-cell { padding: 8px 2px; }
 }
 .cal-day-header-cell {
   padding: 10px 8px;
@@ -1367,8 +1414,9 @@ button.brand-dot { border: none; padding: 0; }
 }
 .cal-day-cols {
   flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   position: relative;
 }
 .cal-day-col {
@@ -1575,7 +1623,7 @@ button.brand-dot { border: none; padding: 0; }
 
 .profile-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .profile-card {
@@ -5116,7 +5164,13 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    ============================================================ */
 .analyse-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0,1fr), niet 1fr. Een 1fr-track heeft impliciet min-width:auto en
+     kan dus NIET kleiner worden dan zijn breedste kind — één tabel of één lang
+     woord duwt de kolom breder dan de pagina. Gemeten op 390px: de track kwam
+     uit op 457,7px in een container van 358px, en omdat .page-content
+     overflow-x:hidden heeft werd dat niet afgekapt met een scrollbalk maar
+     gewoon onzichtbaar afgesneden. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
   overflow: visible;
@@ -5205,8 +5259,16 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   width: 100%;
   margin-bottom: 16px;
 }
+/* Onder 700px passen drie omzetkaarten naast elkaar niet meer: ze bleven op
+   hun min-content-breedte staan en liepen 168px buiten beeld op een telefoon,
+   onzichtbaar afgekapt door overflow-x:hidden. */
+@media (max-width: 700px) {
+  .analyse-revenue-row { flex-wrap: wrap; }
+  .analyse-revenue-row > * { flex: 1 1 100%; }
+}
 .analyse-revenue-card {
   flex: 1;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -5804,9 +5866,13 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 /* ── AI Persoonlijkheid page ──────────────────────────────────────────── */
 .ap-wrap { width: 100%; padding: 24px 0; }
-.ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
-@media (max-width: 1100px) { .ap-grid { grid-template-columns: 1fr; } }
-.ap-form-col { display: flex; flex-direction: column; gap: 18px; }
+.ap-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 1100px) { .ap-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px)  { .ap-grid { gap: 18px; } }
+/* min-width:0 om dezelfde reden als hierboven: een flex-item weigert standaard
+   onder zijn min-content-breedte te krimpen. */
+.ap-form-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.ap-form-col > *, .ap-side-col > * { min-width: 0; max-width: 100%; }
 .ap-welcome-banner {
   display: flex; gap: 14px; align-items: flex-start;
   background: linear-gradient(135deg, rgba(var(--success-rgb),.10), rgba(var(--success-rgb),.02));
@@ -6725,7 +6791,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 /* Tablet landscape */
 @media (max-width: 1200px) {
-  .analyse-grid { grid-template-columns: repeat(2, 1fr); }
+  .analyse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .exports-grid { grid-template-columns: repeat(2, 1fr); }
   .profile-cards { grid-template-columns: 1fr 1fr; }
   .charts-row { flex-direction: column; }
@@ -6748,7 +6814,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 /* Larger phones / small tablets */
 @media (max-width: 900px) {
-  .analyse-grid { grid-template-columns: 1fr; }
+  .analyse-grid { grid-template-columns: minmax(0, 1fr); }
   .analyse-card-span2 { grid-column: span 1; }
   .profile-cards { grid-template-columns: 1fr; }
   .cal-right-sidebar { display: none; }
@@ -15801,12 +15867,12 @@ function renderAnalyse() {
         <td style="text-align:center">\${avg}</td>
       </tr>\`;
     }).join('');
-    sourceEl.innerHTML = \`<table class="source-table">
+    sourceEl.innerHTML = \`<div class="table-scroll"><table class="source-table">
       <thead><tr>
         <th>Bron</th><th>Totaal</th><th>Gekwal.</th><th>Conversie</th><th>Gem. Score</th>
       </tr></thead>
       <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">Geen data</td></tr>\`}</tbody>
-    </table>\`;
+    </table></div>\`;
   }
 
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
