@@ -36,9 +36,16 @@ const base = defaultBranch();
 const branch = git('git rev-parse --abbrev-ref HEAD');
 // Formaat tussen aanhalingstekens: de pijp is anders een SHELL-pipe en git-
 // uitvoer verdwijnt in een commando dat "%s" heet.
+// Commits die ALLEEN de changelog aanraken tellen niet mee. Zonder deze regel
+// jaagt het merkteken zijn eigen staart na: je beschrijft het werk, werkt het
+// merkteken bij, en die bijwerking is zelf weer een onbeschreven commit.
 const commits = git(`git log --format="%h|%s" origin/${base}..HEAD`)
   .split('\n').filter(Boolean)
-  .map((l) => { const i = l.indexOf('|'); return { sha: l.slice(0, i), subject: l.slice(i + 1) }; });
+  .map((l) => { const i = l.indexOf('|'); return { sha: l.slice(0, i), subject: l.slice(i + 1) }; })
+  .filter((c) => {
+    const files = git(`git show --name-only --format= ${c.sha}`).split('\n').filter(Boolean);
+    return !(files.length && files.every((f) => f === 'CHANGELOG.md'));
+  });
 
 if (process.argv.includes('--release')) {
   if (!UNRELEASED.test(md)) {
