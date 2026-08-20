@@ -4,6 +4,7 @@ const _session = require('./_session');
 const _revoke  = require('./_revocation');
 const _clerk   = require('./_clerk'); // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
+const _ai     = require('./_ai');      // AI-router: modelkeuze, fallback, verbruik
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _lang   = require('./_lang');   // language registry — see its file header
@@ -1389,23 +1390,22 @@ module.exports = async function handler(req, res) {
           'Je bent ' + aiName + ' van ' + clientName2 + '. Je helpt de salesmedewerker met 3 verschillende, korte WhatsApp-antwoorden die ze nu naar de lead "' + (leadName || 'de lead') + '" zou kunnen sturen. ' +
           (aiInstr ? 'Volg deze stijl-regels: ' + aiInstr.slice(0, 800) + ' ' : '') +
           'Antwoord ALLEEN met geldig JSON: {"replies":["...","...","..."]}. Elk antwoord max 200 tekens. Antwoorden zijn verschillend van toon (bv. Vriendelijk / direct / vraag-stellend). Geen uitleg buiten de JSON.';
-        const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-          method:  'POST',
-          headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            model:      'claude-haiku-4-5-20251001',
-            max_tokens: 600,
-            system:     sysPrompt,
-            messages:   [{ role: 'user', content: 'Recente gespreksgeschiedenis:\n\n' + (convText || '(nog geen berichten)') }]
-          })
-        });
-        if (!aiRes.ok) {
-          const t = await aiRes.text().catch(() => '');
-          console.error('[suggest-replies] anthropic failed', aiRes.status, t.slice(0, 300));
+        // Via de AI-router: model uit configuratie, uitwijken bij een provider
+        // die omvalt, en verbruik geboekt op deze tenant.
+        let txt = '';
+        try {
+          const uit = await _ai.converse({
+            ctx: { projectCode, userId: 'dashboard' },
+            task: _ai.TASKS.CUSTOMER_QUESTION,
+            system: sysPrompt,
+            messages: [{ role: 'user', content: 'Recente gespreksgeschiedenis:\n\n' + (convText || '(nog geen berichten)') }],
+            maxTokens: 600,
+          });
+          txt = uit.text || '';
+        } catch (err) {
+          console.error('[suggest-replies] AI-router fout:', err && err.code, err && err.message);
           return res.status(502).json({ error: 'AI niet bereikbaar' });
         }
-        const ad = await aiRes.json();
-        const txt = ad.content?.[0]?.text || '';
         let parsed = null;
         try { parsed = JSON.parse(txt); } catch {
           // Tolerant: extract first {...} block

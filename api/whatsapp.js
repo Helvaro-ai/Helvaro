@@ -22,6 +22,7 @@ const { getPlanState } = require('./_plan');
 // Language registry (40 languages: directive generation, formality,
 // locale/date formatting, template-approval fallback). See its file header.
 const _lang = require('./_lang');
+const _ai = require('./_ai');
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -29,7 +30,6 @@ const APP_SECRET    = process.env.WA_APP_SECRET;   // Meta App Secret for signat
 
 const AIRTABLE_TOKEN  = process.env.API_AIRTABLE;
 const AIRTABLE_BASE   = process.env.BASE_AIRTABLE;
-const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY;
 const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const NOTIFY_PHONE    = process.env.NOTIFY_PHONE;
@@ -725,7 +725,9 @@ async function processMessage(phone, text, scopedProjectCode) {
 
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
     workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
-    appointmentDuration, existingAppointments, matchLeadLanguage
+    appointmentDuration, existingAppointments, matchLeadLanguage,
+    // De AI-router boekt verbruik per tenant; zonder projectcode weigert hij.
+    projectCode,
   });
 
   // 7b. Credit accounting. Billed ONCE per lead — at the first AI turn
@@ -1267,29 +1269,34 @@ Belangrijke regels:
 ` : ''}
 `.trim();
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method:  'POST',
-    headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 350,
-      system:     systemPrompt,
-      messages:   history,
-    }),
-  });
+  /* Via de AI-router in plaats van rechtstreeks naar Anthropic.
+     Wat dat oplevert op de drukste plek van Helvaro: het model komt uit de
+     configuratie in plaats van uit deze regel, een provider die omvalt leidt
+     tot uitwijken in plaats van tot een lead zonder antwoord, en het verbruik
+     wordt per tenant geboekt zodat je weet wat WhatsApp je kost.
 
-  const data = await response.json();
-
-  if (!response.ok || data.error) {
-    console.error('[WhatsApp] Anthropic fout:', JSON.stringify(data.error || data));
+     Het antwoord zelf is onveranderd: hieronder wordt dezelfde `raw` string
+     gelezen en op dezelfde manier ontleed (SUMMARY / BOOK / DECISION). */
+  let raw = '';
+  try {
+    const uit = await _ai.converse({
+      ctx: { projectCode: ctx.projectCode, userId: 'whatsapp' },
+      system: systemPrompt,
+      messages: history,
+      maxTokens: 350,
+    });
+    raw = uit.text || '';
+  } catch (err) {
+    /* Precies het gedrag van hiervoor: een storing mag nooit stilte worden.
+       Een lead die niets terugkrijgt is erger dan een lead die hoort dat het
+       even niet lukt. */
+    console.error('[WhatsApp] AI-router fout:', err && err.code, err && err.message);
     return { done: false, message: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.' };
   }
-
-  const raw = data.content?.[0]?.text || '';
+  if (!raw.trim()) {
+    console.error('[WhatsApp] AI-router gaf een leeg antwoord');
+    return { done: false, message: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.' };
+  }
 
   // 1. Pull out the running SUMMARY:{...} line (present on every turn).
   //    Stored in Airtable so the dashboard always shows fresh context.

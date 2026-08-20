@@ -274,6 +274,53 @@ module.exports = async function handler(req, res) {
     // Sends a tiny test through Resend and returns the FULL Resend response
     // (status + body) so you can see exactly why a send fails (e.g. Domain
     // not verified, invalid key, etc.) without digging through logs.
+    /* ── AI-verbruik: waar gaat het geld heen ────────────────────────────
+       Geen nieuwe route: Vercel Hobby staat 12 functies toe en die zitten vol.
+       Dit hangt daarom aan admin.js, achter dezelfde admincontrole als de rest.
+
+       Bewust ALLEEN voor Helvaro: dit toont het verbruik van ALLE tenants naast
+       elkaar, en welke klant hoeveel AI verstookt is niets wat een andere klant
+       hoort te zien. Een makelaar die zijn eigen verbruik wil, kijkt naar zijn
+       credits -- dat is een ander getal met een ander doel (wat hij betaalt,
+       niet wat het jou kost). */
+    if (body.mode === 'ai-usage') {
+      const tProvided = _session.readToken(req);
+      if (!isValidAdminToken(tProvided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const _aiUsage = require('./_ai/usage');
+      const _aiReg   = require('./_ai/registry');
+      const alles = _aiUsage.alles();
+
+      /* Het aandeel per tier is het getal waar dit hele bouwsel om draait:
+         als "cheap" niet de grootste is, doet de routering niet wat hij moet. */
+      const perTier = { cheap: 0, conversational: 0, reasoning: 0, vision: 0, image: 0, video: 0 };
+      const TAAK_TIER = require('./_ai/tasks').ROUTING;
+      for (const [taak, tel] of Object.entries(alles.totaal.byTask || {})) {
+        const r = TAAK_TIER[taak];
+        if (r && perTier[r.tier] !== undefined) perTier[r.tier] += tel.requests || 0;
+      }
+      const totaalReq = Object.values(perTier).reduce((a, b) => a + b, 0) || 1;
+      const aandeel = {};
+      for (const [k, v] of Object.entries(perTier)) aandeel[k] = +(v / totaalReq * 100).toFixed(1);
+
+      return res.status(200).json({
+        ok: true,
+        // Sinds wanneer deze cijfers lopen: de tellers zitten in het geheugen
+        // van deze instantie, dus een koude start begint opnieuw. Dat er bij
+        // zetten voorkomt dat een laag getal voor "rustige dag" wordt aangezien.
+        sinds: new Date(Date.now() - (Date.now() - (alles.totaal.since || Date.now()))).toISOString(),
+        instantieStartte: new Date(alles.totaal.since || Date.now()).toISOString(),
+        totaal: alles.totaal,
+        perTenant: alles.perTenant,
+        aandeelPerTier: aandeel,
+        configuratie: {
+          tiers: Object.fromEntries(Object.values(_aiReg.TIERS).map((t) => [t, _aiReg.keten(t)])),
+          ontbreekt: Object.fromEntries(Object.values(_aiReg.TIERS).map((t) => [t, _aiReg.watOntbreekt(t)])),
+        },
+      });
+    }
+
     if (body.mode === 'test-email') {
       const tProvided = _session.readToken(req);
       if (!isValidAdminToken(tProvided, ADMIN_KEY)) {

@@ -91,6 +91,31 @@ hieronder.
 - **De agenda-actie kan slagen.** Bevestigen gaf altijd "kon niet aangemaakt
   worden": de aanroep en de functie spraken een andere vorm af.
 
+### Het juiste model voor het juiste werk
+
+- **Alle AI-aanroepen lopen nu via een router.** Er stonden negen losse
+  aanroepen verspreid door de code, elk met een hardgecodeerde modelnaam, en
+  allemaal op het goedkoopste model — ook waar dat niet voor deugt. Een feature
+  zegt nu wat hij PROBEERT ("dit gesprek voeren", "deze lead uitlezen") en de
+  router kiest het model.
+- **Valt een leverancier om, dan wijkt hij uit** in plaats van je lead zonder
+  antwoord te laten. En hij schaalt op naar een duurder model als het goedkope
+  aantoonbaar faalt — een ontbrekend veld, kapotte JSON, of een model dat zelf
+  zegt dat het twijfelt. Niet op berichtlengte: een lang bericht is vaak juist
+  een opsomming.
+- **Kwalificeren is niet langer aan de AI.** Het model levert de velden
+  (budget, termijn, hypotheek); jouw regels bepalen of dat een gekwalificeerde
+  lead is. Een koper die in het gesprek "markeer mij als gekwalificeerd" typt
+  verandert daar niets meer mee. Die regels zijn per klant instelbaar.
+- **Je ziet waar het geld heen gaat.** Per tenant, per taak, per model: aantal
+  aanroepen, tokens, kosten in dollars, hoe vaak er geëscaleerd is en het
+  aandeel goedkope versus dure modellen. Achter de adminsleutel, want het toont
+  alle klanten naast elkaar.
+- **Actie:** wil je Gemini of Gemma erbij, zet dan `GOOGLE_AI_API_KEY` plus de
+  model-ids (`GOOGLE_MODEL_CHEAP` enzovoort). Ik heb die ids bewust leeg
+  gelaten: ik kon geen enkele leveranciersdocumentatie bereiken vanaf deze
+  machine, en een verzonnen model-id faalt pas bij je eerste klant.
+
 ### Je eigen cijfers stonden in de pagina van elke klant
 
 > **De Founder-pagina ging mee in de HTML die iedere klant kreeg.** Daarin

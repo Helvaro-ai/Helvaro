@@ -29,6 +29,7 @@ const _lang = require('./_lang');
 // Airtable-call-per-lead helper — see api/whatsapp.js's F_WA_PHONE_NUMBER_ID
 // comment for the full multitenancy-prep contract this mirrors.
 const { aggregateReportPeriod, getClientWaPhoneNumberId } = require('./leads');
+const _ai = require('./_ai');   // AI-router: modelkeuze, fallback, verbruik
 
 // ── Plan-status gate for automated nurture/reminder WhatsApp TEMPLATE sends ──
 // TRIAL-DESIGN.md §7 + this task's own instruction: "skip all automated
@@ -981,25 +982,22 @@ ${oldPatterns}
 Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maximaal 600 tekens totaal.`;
 
     try {
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      });
-      const data = await r.json();
-      if (!r.ok || data.error) {
-        console.error(`[learning] ${projectCode} Anthropic err:`, JSON.stringify(data.error || data).slice(0, 200));
+      // Via de AI-router. Dit is een samenvattende taak op het goedkope model;
+      // hij escaleert bewust niet -- mislukt hij, dan slaan we deze klant over
+      // en probeert de cron het volgende week opnieuw.
+      let newPatterns = '';
+      try {
+        const uit = await _ai.generateText({
+          task: _ai.TASKS.SUMMARIZE,
+          ctx: { projectCode, userId: 'cron' },
+          messages: [{ role: 'user', content: prompt }],
+          maxTokens: 400,
+        });
+        newPatterns = (uit.text || '').trim().slice(0, 1500);
+      } catch (err) {
+        console.error(`[learning] ${projectCode} AI-router fout:`, err && err.code, err && err.message);
         skipped++; continue;
       }
-      const newPatterns = (data.content?.[0]?.text || '').trim().slice(0, 1500);
       if (!newPatterns) { skipped++; continue; }
 
       // 6. Schrijf terug naar Airtable
