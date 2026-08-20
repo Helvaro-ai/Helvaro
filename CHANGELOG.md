@@ -161,6 +161,16 @@ hieronder.
   Dat is de interne aanduiding sinds de sessie in een beveiligde cookie zit,
   geen sleutel. De rij is nu verborgen zolang er geen echte sleutel is.
 
+### Afspraken
+
+- **Het boekingsvenster bood tijden aan waar je al een afspraak had.** De
+  kalender toonde de vergaderingen uit je eigen Google-agenda wél, maar het
+  venster "Afspraak inplannen" rekende alleen met wat Helvaro zelf geboekt
+  had. Op hetzelfde scherm stond dus een bezet halfuur in het raster én
+  hetzelfde halfuur als vrij in de lijst — en boekte je eroverheen. Nu telt je
+  echte agenda mee. Een dagvullend item (verlof, een verjaardag) zet de dag
+  niet dicht, want dat is geen bezet halfuur.
+
 ### Kleine dingen die iedereen raakten
 
 - **Het inlogscherm heeft een thema-knop.** Wie in de app naar licht was

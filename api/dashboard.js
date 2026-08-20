@@ -14748,6 +14748,24 @@ async function fetchCalSlots() {
       return { start: start.getTime(), end: start.getTime() + durMin*60*1000 };
     });
 
+    /* OOK de echte Google-agenda van de klant, niet alleen wat Helvaro zelf
+       geboekt heeft. Zonder dit bood dit venster een tijdstip aan als vrij
+       terwijl er op HETZELFDE scherm, in het raster erachter, een afspraak van
+       de klant stond: het raster voegt externalEvents wel samen, deze lijst
+       deed dat niet. Een slot tonen als vrij dat de agenda niet bevestigt is
+       precies wat hier nooit mag gebeuren -- de makelaar boekt dan over zijn
+       eigen vergadering heen.
+
+       Dagvullende items tellen niet mee: die zouden elke dag volledig dicht
+       zetten, terwijl "verlof" of een verjaardag geen bezet halfuur is. */
+    for (const e of (data.externalEvents || [])) {
+      if (e.allDay) continue;
+      const st = new Date(e.start).getTime();
+      if (!isFinite(st)) continue;
+      const en = e.end ? new Date(e.end).getTime() : st + 30*60*1000;
+      existing.push({ start: st, end: isFinite(en) ? en : st + 30*60*1000 });
+    }
+
     // 2. Genereer kandidaat-slots binnen de werkuren van de klant.
     //    state.workHours = { startHour, endHour } afgeleid uit klantconfig,
     //    valt terug op 9-18 als niet bekend.
