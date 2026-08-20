@@ -7032,6 +7032,32 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .pd-leads { font-size: 12px; color: var(--text-muted); }
 .pd-leads strong { color: var(--text-primary); }
 
+/* Importeren uit een link. Staat bovenaan het venster en mag dat ook zien:
+   dit is de weg die een makelaar zou moeten nemen, de losse velden zijn de
+   uitwijk. */
+.pd-import {
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.07);
+  border: 1px solid rgba(var(--accent-rgb),0.20);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pd-import-kop { font-size: 13px; font-weight: 700; color: var(--accent-ink); }
+.pd-import-sub { font-size: 12px; line-height: 1.45; color: var(--text-muted); margin-bottom: 6px; }
+.pd-import-row { display: flex; gap: 8px; align-items: stretch; }
+.pd-import-row .pd-input { flex: 1; min-width: 0; }
+.pd-import-row button { flex: 0 0 auto; white-space: nowrap; }
+.pd-import-status { font-size: 12px; line-height: 1.5; margin-top: 8px; }
+.pd-import-status--bezig { color: var(--text-muted); }
+.pd-import-status--ok    { color: var(--success-ink); }
+.pd-import-status--fout  { color: var(--error-ink); }
+/* Een veld dat de import NIET kon invullen. Geen foutkleur: er is niets mis,
+   er staat alleen nog niets -- de makelaar moet er even naar kijken. */
+.pd-input--leeg {
+  border-color: rgba(var(--warning-rgb),0.45);
+  background: rgba(var(--warning-rgb),0.06);
+}
+
 /* Het bewerkvenster */
 #pd-overlay {
   position: fixed; inset: 0; z-index: 1200;
@@ -10697,6 +10723,20 @@ ${faro.dock}
       <button class="pd-modal-x" onclick="closePandModal()" aria-label="Sluiten">&times;</button>
     </div>
     <div class="pd-modal-body">
+      <!-- De snelste weg staat bovenaan: een link plakken en de rest laten
+           invullen. Wie liever zelf typt scrollt gewoon door -- alle velden
+           blijven gewone velden. -->
+      <div class="pd-import">
+        <div class="pd-import-kop">Plak de link van je zoekertje</div>
+        <div class="pd-import-sub">Helvaro leest de pagina en vult de velden hieronder in. Je controleert ze daarna zelf.</div>
+        <div class="pd-import-row">
+          <input class="pd-input" id="pd-f-link" type="url" inputmode="url" autocomplete="off"
+                 placeholder="https://www.immoweb.be/nl/zoekertje/..." maxlength="2000">
+          <button class="btn-icon btn-primary-sm" id="pd-import-btn" onclick="importeerPand()">Ophalen</button>
+        </div>
+        <div class="pd-import-status" id="pd-import-status" style="display:none"></div>
+      </div>
+
       <!-- De code staat bovenaan omdat hij in de publieke link komt: dat is
            het eerste wat een makelaar wil weten en overtypen. -->
       <div class="pd-row-2">
@@ -18348,6 +18388,91 @@ function copyPandLink(code) {
     .catch(function () { toast('Kopieren mislukt', 'error'); });
 }
 
+/* Een pand uit een link halen. De velden worden INGEVULD, niet opgeslagen --
+   de makelaar kijkt ernaar en drukt daarna pas op opslaan. Wat leeg bleef
+   krijgt een rand, zodat hij ziet wat hij nog moet nakijken in plaats van een
+   formulier te moeten controleren dat er af uitziet. */
+var PD_IMPORT_VELDEN = ['adres','postcode','plaats','type','transactie','prijs',
+                        'slaapkamers','oppervlakte','epc','omschrijving'];
+
+function pdStatus(tekst, soort) {
+  var el = document.getElementById('pd-import-status');
+  if (!el) return;
+  if (!tekst) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = '';
+  el.className = 'pd-import-status pd-import-status--' + (soort || 'bezig');
+  el.textContent = tekst;
+}
+
+function pdMarkeerLeeg(lijst) {
+  PD_IMPORT_VELDEN.forEach(function (naam) {
+    var el = document.getElementById('pd-f-' + naam);
+    if (el) el.classList.remove('pd-input--leeg');
+  });
+  (lijst || []).forEach(function (naam) {
+    var el = document.getElementById('pd-f-' + naam);
+    if (el) el.classList.add('pd-input--leeg');
+  });
+}
+
+async function importeerPand() {
+  var link = (document.getElementById('pd-f-link').value || '').trim();
+  var btn  = document.getElementById('pd-import-btn');
+  if (!link) { pdStatus('Plak eerst een link.', 'fout'); return; }
+
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  pdStatus('De pagina wordt gelezen. Dit duurt een paar tellen.', 'bezig');
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-import', url: link })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      pdStatus(d.message || d.error || 'Die pagina kon niet gelezen worden.', 'fout');
+      return;
+    }
+
+    var c = d.concept || {};
+    var zet = function (id, v) {
+      var el = document.getElementById(id);
+      if (el && v !== null && v !== undefined && v !== '') el.value = v;
+    };
+    zet('pd-f-adres',        c.adres);
+    zet('pd-f-postcode',     c.postcode);
+    zet('pd-f-plaats',       c.plaats);
+    zet('pd-f-type',         c.type);
+    zet('pd-f-transactie',   c.transactie);
+    zet('pd-f-prijs',        c.prijs);
+    zet('pd-f-slaapkamers',  c.slaapkamers);
+    zet('pd-f-oppervlakte',  c.oppervlakte);
+    zet('pd-f-epc',          c.epc);
+    zet('pd-f-omschrijving', c.omschrijving);
+    zet('pd-f-status',       c.status);
+    /* De foto's komen van de pagina zelf, nooit van het model: een verzonnen
+       afbeeldings-URL wordt een gebroken plaatje op het formulier van een
+       echte klant. */
+    if (c.fotos && c.fotos.length) document.getElementById('pd-f-fotos').value = c.fotos.join('\\n');
+
+    pdMarkeerLeeg(d.ontbreekt);
+
+    var bron = '';
+    try { bron = new URL(d.bron || link).hostname.replace(/^www\./, ''); } catch (e) { bron = ''; }
+    var boodschap = 'Ingevuld' + (bron ? ' vanaf ' + bron : '') + '. Kijk de velden even na';
+    if (d.ontbreekt && d.ontbreekt.length) {
+      boodschap += ' — ' + d.ontbreekt.length + ' veld' + (d.ontbreekt.length === 1 ? '' : 'en')
+                 + ' stond' + (d.ontbreekt.length === 1 ? '' : 'en') + ' niet op de pagina';
+    }
+    pdStatus(boodschap + '.', 'ok');
+  } catch (e) {
+    pdStatus('Het lezen van die pagina lukte niet. Controleer je verbinding.', 'fout');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Ophalen';
+  }
+}
+
 function openPandModal(code) {
   var pand = code ? pandState.panden.filter(function (p) { return p.code === code; })[0] : null;
   pandState.bewerkt = pand || null;
@@ -18373,6 +18498,9 @@ function openPandModal(code) {
      doodlopende weg. */
   document.getElementById('pd-f-code').readOnly = !!pand;
 
+  document.getElementById('pd-f-link').value = '';
+  pdStatus('');
+  pdMarkeerLeeg([]);
   document.getElementById('pd-modal-err').style.display = 'none';
   document.getElementById('pd-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';

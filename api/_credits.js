@@ -103,6 +103,11 @@ const FEATURES = {
   // Image generation inside a turn is billed SEPARATELY at image_generation's
   // 50, because that is where the real money goes.
   FARO_CHAT:               'faro_chat',               // 3
+  /* Een pand importeren uit een link: één pagina ophalen plus één goedkope
+     extractie. Zelfde orde als een Faro-beurt, en met opzet laag: dit is het
+     eerste wat een nieuwe klant doet, en die mag niet afgerekend worden op het
+     invoeren van zijn eigen aanbod. */
+  PROPERTY_IMPORT:         'property_import',         // 3
   // Video. Nog niet aangesloten (api/_faro/actions.js gooit not_wired), en
   // juist daarom staat de prijs er NU al: video is verreweg het duurste dat dit
   // product kan doen, en een tarief bedenken nadat de kraan openstaat is te
@@ -122,6 +127,7 @@ const WEIGHTS = {
   [FEATURES.FOUNDER_CONTENT_POST]:    5,
   [FEATURES.FOUNDER_GENERATE_IMAGE]:  50,
   [FEATURES.FARO_CHAT]:               3,
+  [FEATURES.PROPERTY_IMPORT]:         3,
   // Nominale waarde voor een standaardvideo (8s, 720p). De echte afschrijving
   // loopt via creditsForVideo(); dit getal bestaat zodat WEIGHTS volledig is en
   // een aanroeper die het vergeet niet op 0 uitkomt.

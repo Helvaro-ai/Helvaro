@@ -63,6 +63,8 @@
  * bestaande Notities-blob. Zie api/form.js voor waarom.
  */
 
+const { fetchPage } = require('./_lib/fetch-website');
+
 const TABEL = 'properties';
 
 /* Veldnamen, geen Airtable-ids: de tabel moet nog aangemaakt worden en heeft
@@ -516,6 +518,113 @@ async function archive(projectCode, code, gearchiveerd = true) {
   return vanRecord(await r.json());
 }
 
+/* ── Importeren uit een link ─────────────────────────────────────────────────
+ * De makelaar plakt de link van zijn eigen zoekertje; wij lezen de pagina uit
+ * en vullen de velden in. Dat scheelt hem vijf minuten typen per pand, en het
+ * scheelt fouten: een prijs die je overtypt is een prijs die je verkeerd kunt
+ * overtypen.
+ *
+ * -- Er wordt hier NIETS opgeslagen -------------------------------------------
+ * Deze functie levert een CONCEPT. De makelaar ziet wat eruit kwam, past aan
+ * wat niet klopt en drukt dan pas op opslaan. Dat is geen omslachtigheid maar
+ * de kern: een model dat rechtstreeks in de database schrijft, schrijft ook
+ * zijn vergissingen daarin -- en die vergissing staat straks in een WhatsApp-
+ * bericht aan een koper.
+ *
+ * -- Wat er NIET uit komt -------------------------------------------------------
+ * Geen pandcode (die geeft Helvaro), geen status verkocht als de pagina dat
+ * niet zegt, en geen enkel getal dat niet op de pagina stond. Ontbreekt iets,
+ * dan blijft het veld leeg en vult de makelaar het zelf in.
+ */
+async function importeerUitLink(projectCode, url, opties = {}) {
+  const tenant = String(projectCode || '').trim();
+  if (!tenant) throw new PropertyError('Pand importeren zonder projectcode.', 'no_tenant');
+
+  const link = String(url || '').trim();
+  if (!link) throw new PropertyError('Geen link meegegeven.', 'no_url');
+  if (link.length > 2000) throw new PropertyError('Die link is te lang.', 'bad_url');
+  /* De controle op interne adressen zit in fetchPage en wordt daar bij ELKE
+     omleiding herhaald. Hier alleen de vorm, zodat een typfout een nette
+     melding geeft in plaats van een mislukte ophaalpoging. */
+  if (!/^https?:\/\//i.test(link)) {
+    throw new PropertyError('Een link moet met http:// of https:// beginnen.', 'bad_url');
+  }
+
+  const pagina = await fetchPage(link, { tag: '[pand-import]', maxChars: 14000, maxRedirects: 2 });
+  if (!pagina || !pagina.text || pagina.text.length < 120) {
+    /* Te weinig tekst betekent bijna altijd: cookiemuur, of een pagina die
+       zijn inhoud pas met JavaScript ophaalt. Dat is geen fout van de
+       makelaar, dus zeg wat hij eraan kan doen. */
+    throw new PropertyError(
+      'Die pagina kon ik niet lezen. Sommige sites tonen hun inhoud pas na een cookiemelding. '
+      + 'Vul het pand dan met de hand in, of probeer een andere link naar hetzelfde pand.',
+      'unreadable');
+  }
+
+  const _ai = require('./_ai');
+  let uit;
+  try {
+    /* generateText en niet generateStructured: die laatste levert alleen de
+       velden terug, en we willen ook weten WELK model het deed -- dat staat in
+       de logregel waarmee je later een rare import terugvindt. */
+    uit = await _ai.generateText({
+      task: _ai.TASKS.PROPERTY_IMPORT,
+      ctx: { projectCode: tenant, userId: opties.userId || 'dashboard' },
+      system: _ai.prompts.pandImport.system(),
+      messages: [{ role: 'user', content: _ai.prompts.pandImport.user(pagina) }],
+      schema: _ai.prompts.PAND_IMPORT_SCHEMA,
+      maxTokens: 900,
+    });
+  } catch (err) {
+    console.warn('[pand-import] model faalde:', err && err.code, err && err.message);
+    throw new PropertyError('Het uitlezen van die pagina lukte niet. Probeer het zo meteen opnieuw.', 'ai_failed');
+  }
+
+  const d = (uit && uit.data) || {};
+
+  /* De foto's komen van de PAGINA, niet van het model. Een model dat een
+     afbeeldings-URL "onthoudt" verzint er een die niet bestaat, en dan staat
+     er een gebroken plaatje op het aanvraagformulier van een echte klant. */
+  const fotos = (pagina.images || []).slice(0, 8);
+
+  const concept = {
+    adres:        String(d.adres || '').trim(),
+    postcode:     String(d.postcode || '').trim(),
+    plaats:       String(d.plaats || '').trim(),
+    type:         TYPES.indexOf(String(d.type || '').toLowerCase()) !== -1 ? String(d.type).toLowerCase() : '',
+    transactie:   TRANSACTIES.indexOf(String(d.transactie || '').toLowerCase()) !== -1 ? String(d.transactie).toLowerCase() : 'te koop',
+    prijs:        getal(d.prijs),
+    slaapkamers:  getal(d.slaapkamers),
+    badkamers:    getal(d.badkamers),
+    oppervlakte:  getal(d.oppervlakte),
+    grond:        getal(d.grond),
+    epc:          String(d.epc || '').trim().slice(0, 40),
+    bouwjaar:     getal(d.bouwjaar),
+    /* Status komt alleen mee als de pagina hem noemt. Standaard beschikbaar:
+       een pand dat per ongeluk zichtbaar blijft is te herstellen, een pand dat
+       ten onrechte op verkocht staat kost leads zonder dat iemand het merkt. */
+    status:       ALLE_STATUS.indexOf(String(d.status || '').toLowerCase()) !== -1
+                    ? String(d.status).toLowerCase() : STATUS.BESCHIKBAAR,
+    omschrijving: String(d.omschrijving || '').trim().slice(0, 4000),
+    troeven:      Array.isArray(d.troeven) ? d.troeven.map((x) => String(x).trim()).filter(Boolean).slice(0, 8) : [],
+    fotos,
+  };
+
+  /* Welke velden LEEG bleven. De UI zet die in het oog, zodat de makelaar
+     precies ziet wat hij nog zelf moet nakijken in plaats van een formulier te
+     moeten controleren dat er af uitziet. */
+  const ontbreekt = ['adres', 'plaats', 'prijs', 'slaapkamers', 'oppervlakte']
+    .filter((k) => concept[k] === null || concept[k] === '' || concept[k] === undefined);
+
+  return {
+    concept,
+    ontbreekt,
+    bron: pagina.url,
+    zekerheid: Number.isFinite(Number(d.confidence)) ? Number(d.confidence) : null,
+    model: uit && uit.model,
+  };
+}
+
 /* ── Presentatie ─────────────────────────────────────────────────────────────
    Deze twee staan hier en niet in de UI, omdat het formulier, het dashboard,
    de AI-prompt en Faro anders elk hun eigen manier krijgen om een prijs op te
@@ -546,7 +655,7 @@ module.exports = {
   TABEL, F, STATUS, ALLE_STATUS, TYPES, TRANSACTIES, BEZICHTIGBAAR,
   PropertyError,
   available, configured, _resetAvailability,
-  list, getByCode, save, archive,
+  list, getByCode, save, archive, importeerUitLink,
   matchUitTekst, kanBezichtigen, normStatus, normCode, geldigeCode, volgendeCode,
   prijsTekst, adresTekst, samenvatting, vanRecord, naarVelden,
 };

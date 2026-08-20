@@ -173,6 +173,17 @@ hieronder.
   tot tekst. Heb je vier panden, dan staan daar vier prijzen in. Hij gokte dus
   welke je lead bedoelde, of hij vroeg het na — en voor een woning die al
   verkocht was plande hij vrolijk een bezichtiging in.
+- **Een pand toevoegen is één link plakken.** Plak de link van je zoekertje —
+  Immoweb, Realo, je eigen site — en Helvaro leest de pagina uit en vult adres,
+  prijs, slaapkamers, oppervlakte, EPC, omschrijving en de foto's zelf in. Je
+  controleert het en drukt op opslaan. Wat niet op de pagina stond blijft leeg
+  en krijgt een randje, zodat je meteen ziet wat je nog moet nakijken.
+- **Er wordt niets verzonnen bij het inlezen.** Stond het bouwjaar er niet, dan
+  blijft dat veld leeg — geen aannemelijk getal dat later in een WhatsApp-bericht
+  aan een koper belandt. De foto's komen van de pagina zelf, nooit van de AI.
+- **En er wordt niets opgeslagen zonder dat jij kijkt.** Het inlezen vult het
+  formulier in; opslaan doe jij. Kost 3 credits per import, ongeveer een
+  Faro-vraag.
 - **Elk pand krijgt zijn eigen link.** `app.helvaro.pro/start/TELJO/P3`. Die zet
   je onder een advertentie, op Immoweb of op een bordje met een QR-code. Het
   formulier toont dan meteen om welke woning het gaat — met foto, prijs en

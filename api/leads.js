@@ -1498,6 +1498,35 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* Een pand importeren uit een link. Levert een CONCEPT terug -- de
+       makelaar kijkt ernaar en drukt daarna pas op opslaan. Zie de kop van
+       importeerUitLink() voor waarom er hier niets wordt weggeschreven. */
+    if (body.mode === 'listing-import') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      /* De creditpoort staat VOOR de aanroep: dit haalt een pagina op en zet
+         er een model op, en allebei kosten geld. */
+      const importCheck = await credits.checkCredits(projectCode, credits.FEATURES.PROPERTY_IMPORT);
+      if (!importCheck.allowed) {
+        return res.status(402).json({ error: 'credit_limit_reached', message: importCheck.message });
+      }
+      try {
+        const uit = await _properties.importeerUitLink(projectCode, body.url, { userId: 'dashboard' });
+        /* Pas afschrijven NA een geslaagde uitlezing. Een cookiemuur is geen
+           dienst waarvoor je betaalt. */
+        credits.recordUsage(projectCode, credits.FEATURES.PROPERTY_IMPORT, {
+          credits: credits.WEIGHTS[credits.FEATURES.PROPERTY_IMPORT],
+        }).catch(() => {});
+        return res.status(200).json(uit);
+      } catch (err) {
+        console.error('[listing-import]', err && err.code, err && err.message);
+        const uitlegbaar = ['no_url', 'bad_url', 'unreadable'];
+        if (uitlegbaar.indexOf(err && err.code) !== -1) {
+          return res.status(400).json({ error: err.message, code: err.code });
+        }
+        return res.status(502).json({ error: 'Die pagina uitlezen lukte niet. Probeer het zo meteen opnieuw.' });
+      }
+    }
+
     if (body.mode === 'listing-save') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {

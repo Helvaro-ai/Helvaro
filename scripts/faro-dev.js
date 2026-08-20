@@ -40,6 +40,7 @@ process.env.FARO_DEMO_MODE = process.env.FARO_DEMO_MODE || '1';
    short-circuits to "CRM unreachable". That made the whole read path, the
    Command Center's opportunity tool and both confirmation flows impossible to
    exercise locally, which is most of what this server is for. */
+process.env.AI_PROVIDER_FORCE = process.env.AI_PROVIDER_FORCE || 'demo';
 process.env.API_AIRTABLE = process.env.API_AIRTABLE || 'local-fixture';
 process.env.BASE_AIRTABLE = process.env.BASE_AIRTABLE || 'local-fixture';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'local-dev-secret';
@@ -275,6 +276,23 @@ const server = http.createServer(async (req, res) => {
               : _fixturePanden.filter((p2) => !p2.gearchiveerd),
             available: true,
           });
+        /* Importeren uit een link. Draait de ECHTE weg: pagina ophalen,
+           ontleden, velden vullen -- alleen het model is de demo-adapter, dus
+           het kost niets. Faalt het ophalen (geen netwerk in deze omgeving),
+           dan zie je precies de foutmelding die een klant ook zou zien. */
+        case 'listing-import': {
+          const _props = require('../api/_properties');
+          try {
+            const uit = await _props.importeerUitLink(LOCAL_AUTH.projectCode, req.body.url, { userId: 'dev' });
+            return res.status(200).json(uit);
+          } catch (err) {
+            const uitlegbaar = ['no_url', 'bad_url', 'unreadable'];
+            if (uitlegbaar.indexOf(err && err.code) !== -1) {
+              return res.status(400).json({ error: err.message, code: err.code });
+            }
+            return res.status(502).json({ error: 'Die pagina uitlezen lukte niet.' });
+          }
+        }
         case 'listing-save': {
           const inv = req.body.property || {};
           if (!String(inv.adres || '').trim()) {

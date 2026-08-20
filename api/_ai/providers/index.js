@@ -184,6 +184,22 @@ const demo = {
     if (inhoud.includes('__mist_veld__')) {
       return { text: JSON.stringify({ budget: 300000, confidence: 0.9 }), inputTokens: 20, outputTokens: 12 };
     }
+    /* Een pandimport, zodat scripts/faro-dev.js en de tests de hele weg kunnen
+       lopen -- pagina lezen, ontleden, velden invullen -- zonder sleutel en
+       zonder rekening. Bewust NIET alles ingevuld: bouwjaar en badkamers
+       blijven leeg, want juist het gedrag bij ontbrekende velden is wat hier
+       getest moet worden. */
+    if (inhoud.includes('__pand__') || inhoud.indexOf('json-ld') !== -1 || inhoud.indexOf('tekst van de pagina') !== -1) {
+      return { text: JSON.stringify({
+        adres: 'Lange Violettestraat 12', postcode: '9000', plaats: 'Gent',
+        type: 'huis', transactie: 'te koop', prijs: 395000,
+        slaapkamers: 3, badkamers: null, oppervlakte: 145, grond: 210,
+        epc: 'C', bouwjaar: null, status: 'beschikbaar',
+        omschrijving: 'Ruime rijwoning met zuidgerichte tuin.',
+        troeven: ['Zuidgerichte tuin', 'Nieuw dak uit 2021'],
+        confidence: 0.88,
+      }), inputTokens: 900, outputTokens: 120 };
+    }
     if (inhoud.includes('__json__')) {
       return { text: '```json\n' + JSON.stringify({ budget: 300000, timeline_months: 3,
         mortgage_required: true, bedrooms: 2, intent: 'high', confidence: 0.94 }) + '\n```',

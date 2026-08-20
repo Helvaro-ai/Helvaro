@@ -32,6 +32,11 @@ const TASKS = Object.freeze({
   PROPERTY_TRANSFORMATION:'property_transformation',
   MARKETING_COPY:         'marketing_copy',
   DOCUMENT_EXTRACTION:    'document_extraction',
+  /* Een pandpagina uitlezen tot velden. Extractie, dus goedkoop -- maar wel
+     escaleerbaar: een zoekertje met de prijs alleen in een afbeelding of achter
+     een cookiemuur levert een half leeg antwoord op, en dan is een duurder
+     model beter dan een makelaar die alles alsnog met de hand typt. */
+  PROPERTY_IMPORT:        'property_import',
   SUMMARIZE:              'summarize',
   IMAGE_GENERATION:       'image_generation',
   VIDEO_GENERATION:       'video_generation',
@@ -59,6 +64,7 @@ const ROUTING = Object.freeze({
   [TASKS.LEAD_SCORING]:            { tier: TIERS.CHEAP,          escaleerbaar: true,  structured: true  },
   [TASKS.SUMMARIZE]:               { tier: TIERS.CHEAP,          escaleerbaar: false, structured: false },
   [TASKS.DOCUMENT_EXTRACTION]:     { tier: TIERS.CHEAP,          escaleerbaar: true,  structured: true  },
+  [TASKS.PROPERTY_IMPORT]:         { tier: TIERS.CHEAP,          escaleerbaar: true,  structured: true  },
 
   [TASKS.WHATSAPP_CONVERSATION]:   { tier: TIERS.CONVERSATIONAL, escaleerbaar: true,  structured: false },
   [TASKS.WHATSAPP_FOLLOWUP]:       { tier: TIERS.CONVERSATIONAL, escaleerbaar: false, structured: false },
@@ -88,6 +94,7 @@ const CREDIT_FEATURE = Object.freeze({
   [TASKS.PROPERTY_TRANSFORMATION]: 'image_generation',
   [TASKS.VIDEO_GENERATION]:        'video_generation',
   [TASKS.MARKETING_COPY]:          'marketing_content',
+  [TASKS.PROPERTY_IMPORT]:         'property_import',
 });
 
 class TaskError extends Error {
