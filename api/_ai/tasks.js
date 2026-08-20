@@ -35,6 +35,10 @@ const TASKS = Object.freeze({
   SUMMARIZE:              'summarize',
   IMAGE_GENERATION:       'image_generation',
   VIDEO_GENERATION:       'video_generation',
+  /* Helvaro's eigen back-office: het adviespaneel en de coach-chat op de
+     founder-pagina. Geen klantverkeer, wel echte kosten -- en dus dezelfde
+     boekhouding als de rest. */
+  INTERNAL_ASSISTANT:     'internal_assistant',
 });
 
 /*
@@ -61,6 +65,7 @@ const ROUTING = Object.freeze({
   [TASKS.APPOINTMENT_ASSISTANCE]:  { tier: TIERS.CONVERSATIONAL, escaleerbaar: true,  structured: false },
   [TASKS.CUSTOMER_QUESTION]:       { tier: TIERS.CONVERSATIONAL, escaleerbaar: true,  structured: false },
   [TASKS.MARKETING_COPY]:          { tier: TIERS.CONVERSATIONAL, escaleerbaar: false, structured: false },
+  [TASKS.INTERNAL_ASSISTANT]:      { tier: TIERS.CONVERSATIONAL, escaleerbaar: false, structured: false },
 
   [TASKS.COMPLEX_REASONING]:       { tier: TIERS.REASONING,      escaleerbaar: false, structured: false },
 

@@ -134,7 +134,7 @@ module.exports = async function handler(req, res) {
   // ── i18n: all UI strings per language ──────────────────────────────────────
   const i18n = {
     nl: {
-      title:           safeFirstName + ' van ' + safeClientName + '. neem contact op',
+      title:           safeFirstName + ' van ' + safeClientName + ' · Contact',
       meta:            safeFirstName + ' reageert binnen 1 minuut via WhatsApp.',
       status:          '● Online. Reageert binnen 1 min',
       intro:           'Hallo, ik ben',
@@ -177,7 +177,7 @@ module.exports = async function handler(req, res) {
       }
     },
     fr: {
-      title:           safeFirstName + ' de ' + safeClientName + '. prenez contact',
+      title:           safeFirstName + ' de ' + safeClientName + ' · Contact',
       meta:            safeFirstName + ' répond en 1 minute via WhatsApp.',
       status:          '● En ligne. Réponse en 1 min',
       intro:           'Bonjour, je suis',
@@ -220,7 +220,7 @@ module.exports = async function handler(req, res) {
       }
     },
     en: {
-      title:           safeFirstName + ' from ' + safeClientName + '. get in touch',
+      title:           safeFirstName + ' from ' + safeClientName + ' · Contact',
       meta:            safeFirstName + ' replies within 1 minute on WhatsApp.',
       status:          '● Online. Replies in 1 min',
       intro:           "Hello, I'm",
@@ -551,7 +551,7 @@ module.exports = async function handler(req, res) {
       <span class="online-dot" title="${safeFirstName} is online"></span>
     </div>
     <div class="hdr-text">
-      <div class="hdr-name">${safeAiName}</div>
+      <h1 class="hdr-name">${safeAiName}</h1>
       <div class="hdr-status">${escHtml(t.status)}</div>
       <div class="hdr-brand">${safeClientName}</div>
     </div>

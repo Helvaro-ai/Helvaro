@@ -796,7 +796,7 @@ function renderForgotPage(res) {
   res.status(200).send(`<!DOCTYPE html>
 <html lang="nl"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Wachtwoord vergeten. Helvaro</title>
+  <title>Wachtwoord vergeten · Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${RESET_CSS}</style>
 </head><body>
@@ -844,7 +844,7 @@ function renderResetPage(req, res) {
   res.status(200).send(`<!DOCTYPE html>
 <html lang="nl"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Nieuw wachtwoord. Helvaro</title>
+  <title>Nieuw wachtwoord · Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${RESET_CSS}</style>
 </head><body>

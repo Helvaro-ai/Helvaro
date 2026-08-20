@@ -115,6 +115,17 @@ hieronder.
   model-ids (`GOOGLE_MODEL_CHEAP` enzovoort). Ik heb die ids bewust leeg
   gelaten: ik kon geen enkele leveranciersdocumentatie bereiken vanaf deze
   machine, en een verzonnen model-id faalt pas bij je eerste klant.
+- **Ook je eigen founder-tools lopen nu via de router.** Het adviespaneel, de
+  coach-chat, de DM-generator en de social-posts belden Anthropic nog
+  rechtstreeks, elk met dezelfde modelnaam in de regel. Vijf plekken minder om
+  te vergeten als je van model wisselt, en hun verbruik staat nu in hetzelfde
+  overzicht als de rest. Er is een test die faalt zodra iemand er weer een
+  losse aanroep naast zet.
+- **De WhatsApp-prompt staat op zijn eigen plek.** Hij zat midden in het
+  bestand dat ook de webhook en de betaalstroom draagt; een zin veranderen
+  betekende daar rondlopen. De tekst is teken voor teken hetzelfde gebleven —
+  er ligt een momentopname van de oude versie waar de test tegenaan vergelijkt,
+  inclusief de boekingsvariant met het BOOK-signaal.
 
 ### Je eigen cijfers stonden in de pagina van elke klant
 
@@ -151,6 +162,21 @@ hieronder.
   geen sleutel. De rij is nu verborgen zolang er geen echte sleutel is.
 
 ### Kleine dingen die iedereen raakten
+
+- **Het inlogscherm heeft een thema-knop.** Wie in de app naar licht was
+  geswitcht kreeg die keuze wel terug op het inlogscherm, maar kon er niets aan
+  veranderen tot na het inloggen. De knop staat nu rechtsboven.
+- **De demo-chat op het inlogscherm was in het lichte thema onleesbaar.** De
+  ballonnen hadden een vaste bijna-witte tekstkleur op een wit paneel. Dat viel
+  nooit op omdat je daar geen thema kon wisselen; nu dat wel kan, is het
+  gemeten en rechtgezet — 16:1 in plaats van onzichtbaar.
+- **De paginatitels waren niet consistent.** Een punt op de ene pagina, een
+  puntje op de andere, en het contactformulier heette letterlijk "Mathis van
+  Helvaro. neem contact op". Overal nu hetzelfde scheidingsteken, en het
+  formulier heet "<naam> van <kantoor> · Contact".
+- **Het publieke contactformulier had geen kop.** Voor een zoekmachine en voor
+  een schermlezer begon die pagina met niets. De naam van je assistent is nu de
+  kop; er verandert visueel niets aan.
 
 - **Elke sessie haalde een 404 op.** De mascotte-afbeelding staat in de HTML,
   maar `public/faro/` bestaat niet in deze repo. De code ving dat netjes af en

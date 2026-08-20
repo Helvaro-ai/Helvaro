@@ -13,6 +13,7 @@ const _lang = require('./_lang');
 // Email-ownership verification for self-serve signup — see its file header.
 const verifyEmail = require('./_verify');
 const _session = require('./_session'); // cookie-first session transport + CSRF
+const _ai = require('./_ai');           // AI-router: taak in, model uit
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 // Zie de uitleg bij atFetch in api/leads.js: zonder timeout hangt een trage
@@ -608,8 +609,6 @@ module.exports = async function handler(req, res) {
 
         // ── ai-advice ────────────────────────────────────────────────────────
         if (body.mode === 'ai-advice') {
-          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
           // Founder-internal tool, billed to the shared '_internal' pseudo
           // client — see credits.INTERNAL_PROJECT_CODE's doc comment.
           // Fails open by default (no Client Config row for '_internal'
@@ -637,22 +636,19 @@ module.exports = async function handler(req, res) {
             'Geef de 3 meest impactvolle acties voor deze week. Wees concreet, kort en direct. Antwoord in het Nederlands.'
           ].filter(Boolean).join('\n');
 
-          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key':         ANTHROPIC_KEY,
-              'anthropic-version': '2023-06-01',
-              'Content-Type':      'application/json'
-            },
-            body: JSON.stringify({
-              model:      'claude-haiku-4-5',
-              max_tokens: 600,
-              messages:   [{ role: 'user', content: prompt }]
-            })
-          });
-          const aiData = await aiRes.json();
-          if (!aiRes.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData?.error?.message || aiRes.status) });
-          const advice = aiData.content?.[0]?.text || 'Geen advies beschikbaar.';
+          let advice;
+          try {
+            const uit = await _ai.generateText({
+              task: _ai.TASKS.INTERNAL_ASSISTANT,
+              ctx: { projectCode: credits.INTERNAL_PROJECT_CODE, userId: 'founder' },
+              messages: [{ role: 'user', content: prompt }],
+              maxTokens: 600,
+            });
+            advice = (uit.text || '').trim() || 'Geen advies beschikbaar.';
+          } catch (err) {
+            console.error('[admin] ai-advice:', err && err.code, err && err.message);
+            return res.status(500).json({ error: 'AI fout: ' + (err && err.message || 'onbekend') });
+          }
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_ADVICE, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_AI_ADVICE],
           }).catch(() => {});
@@ -661,8 +657,6 @@ module.exports = async function handler(req, res) {
 
         // ── ai-chat ────────────────────────────────────────────────────────────
         if (body.mode === 'ai-chat') {
-          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
           const aiChatCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_CHAT);
           if (!aiChatCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: aiChatCheck.message });
           const rawMsgs = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
@@ -685,14 +679,20 @@ module.exports = async function handler(req, res) {
             'Geef altijd concrete, korte antwoorden in het Nederlands. Max 3 paragrafen. Doe aan actie, niet theorie.'
           ].join('\n');
 
-          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 500, system: systemPrompt, messages: validMessages })
-          });
-          const aiData2 = await aiRes.json();
-          if (!aiRes.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData2?.error?.message || aiRes.status) });
-          const reply = aiData2.content?.[0]?.text || 'Geen antwoord beschikbaar.';
+          let reply;
+          try {
+            const uit = await _ai.converse({
+              task: _ai.TASKS.INTERNAL_ASSISTANT,
+              ctx: { projectCode: credits.INTERNAL_PROJECT_CODE, userId: 'founder' },
+              system: systemPrompt,
+              messages: validMessages,
+              maxTokens: 500,
+            });
+            reply = (uit.text || '').trim() || 'Geen antwoord beschikbaar.';
+          } catch (err) {
+            console.error('[admin] ai-chat:', err && err.code, err && err.message);
+            return res.status(500).json({ error: 'AI fout: ' + (err && err.message || 'onbekend') });
+          }
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_CHAT, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_AI_CHAT],
           }).catch(() => {});
@@ -701,8 +701,6 @@ module.exports = async function handler(req, res) {
 
         // ── content-post (linkedin + instagram, all types) ─────────────────────
         if (body.mode === 'linkedin-post' || body.mode === 'content-post') {
-          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
           const contentPostCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST);
           if (!contentPostCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: contentPostCheck.message });
 
@@ -846,19 +844,20 @@ module.exports = async function handler(req, res) {
             ].join('\n');
           }
 
-          const aiRes2 = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: 'claude-haiku-4-5',
-              max_tokens: 600,
+          let post;
+          try {
+            const uit = await _ai.generateText({
+              task: _ai.TASKS.MARKETING_COPY,
+              ctx: { projectCode: credits.INTERNAL_PROJECT_CODE, userId: 'founder' },
               system: systemPrompt,
-              messages: [{ role: 'user', content: contentPrompt }]
-            })
-          });
-          const aiData3 = await aiRes2.json();
-          if (!aiRes2.ok) return res.status(500).json({ error: 'AI fout: ' + (aiData3?.error?.message || aiRes2.status) });
-          let post = aiData3.content?.[0]?.text || '';
+              messages: [{ role: 'user', content: contentPrompt }],
+              maxTokens: 600,
+            });
+            post = uit.text || '';
+          } catch (err) {
+            console.error('[admin] content-post:', err && err.code, err && err.message);
+            return res.status(500).json({ error: 'AI fout: ' + (err && err.message || 'onbekend') });
+          }
           post = scrubPost(post);
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_CONTENT_POST],
@@ -868,8 +867,6 @@ module.exports = async function handler(req, res) {
 
         // ── personalized-dm ────────────────────────────────────────────────────
         if (body.mode === 'personalized-dm') {
-          const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-          if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld' });
           const dmCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_PERSONALIZED_DM);
           if (!dmCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: dmCheck.message });
           const bedrijf  = String(body.bedrijf  || '').trim().slice(0, 100);
@@ -912,17 +909,23 @@ module.exports = async function handler(req, res) {
           ].filter(Boolean).join('\n');
 
           const dmPrompt = platform === 'email' ? emailPrompt : linkedinPrompt;
-          const aiResDm = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 350, messages: [{ role: 'user', content: dmPrompt }] })
-          });
-          const aiDmData = await aiResDm.json();
-          if (!aiResDm.ok) return res.status(500).json({ error: 'AI fout: ' + (aiDmData?.error?.message || aiResDm.status) });
+          let dmTekst;
+          try {
+            const uit = await _ai.generateText({
+              task: _ai.TASKS.MARKETING_COPY,
+              ctx: { projectCode: credits.INTERNAL_PROJECT_CODE, userId: 'founder' },
+              messages: [{ role: 'user', content: dmPrompt }],
+              maxTokens: 350,
+            });
+            dmTekst = uit.text || '';
+          } catch (err) {
+            console.error('[admin] personalized-dm:', err && err.code, err && err.message);
+            return res.status(500).json({ error: 'AI fout: ' + (err && err.message || 'onbekend') });
+          }
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_PERSONALIZED_DM, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_PERSONALIZED_DM],
           }).catch(() => {});
-          return res.status(200).json({ message: aiDmData.content?.[0]?.text || '' });
+          return res.status(200).json({ message: dmTekst });
         }
 
       } catch (err) {
@@ -1935,8 +1938,6 @@ function pickPillarByMode(mode) {
 }
 
 async function generateOnePost(platform, pillar, dateIso, learn) {
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
-  if (!ANTHROPIC_KEY) { console.error('[content-gen] ANTHROPIC_API_KEY niet ingesteld'); return null; }
   const tone = PLATFORM_TONES[platform];
   // Instagram educatieve pijlers worden een CAROUSEL (topformat voor SaaS: saves + shares).
   const isCarousel = platform === 'instagram' && ['quick-tip', 'myth-buster'].includes(pillar.name);
@@ -1995,25 +1996,13 @@ ${visualBlock}
 Schrijf nu de post.`;
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const uit = await _ai.generateText({
+      task: _ai.TASKS.MARKETING_COPY,
+      ctx: { projectCode: credits.INTERNAL_PROJECT_CODE, userId: 'content-gen' },
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 800,
     });
-    const d = await r.json();
-    if (!r.ok || d.error) {
-      console.error('[content-gen] Anthropic err:', JSON.stringify(d.error || d).slice(0, 200));
-      return null;
-    }
-    const raw = (d.content?.[0]?.text || '').trim();
+    const raw = (uit.text || '').trim();
     // Parse the structured output
     const titleM    = raw.match(/TITLE:\s*(.+?)(?:\n|$)/i);
     const contentM  = raw.match(/CONTENT:\s*([\s\S]+?)(?:\n(?:HASHTAGS|CARD_HEADLINE|VISUAL_QUERY):|$)/i);

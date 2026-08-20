@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helvaro. AI Lead Kwalificatie</title>
+<title>Helvaro · AI Lead Kwalificatie</title>
 <link rel="icon" href="/favicon.png" type="image/png">
 <script src="/vendor/chart.umd.min.js"></script>
 <style>
@@ -656,6 +656,23 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 #login-page::before { display: none; }
 #login-page::after  { display: none; }
 
+/* Thema-knop op het inlogscherm. Hij staat op het showcase-paneel rechts, want
+   het formulierpaneel links is altijd wit -- daar zou een lichte knop op een
+   lichte achtergrond staan. Alle kleuren komen van .btn-icon, inclusief de
+   light-variant verderop; deze regel doet alleen de plaatsing. */
+.login-theme-toggle {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 2;
+  padding: 8px 10px;
+}
+@media (max-width: 900px) {
+  /* Onder deze breedte valt het showcase-paneel weg en blijft het witte
+     formulier over; dan hoort de knop daar wel op, en niet over de rand. */
+  .login-theme-toggle { top: 14px; right: 14px; }
+}
+
 /* Full-screen two-panel split. No card, no border-radius */
 .login-split {
   display: flex;
@@ -1137,6 +1154,28 @@ button.brand-dot { border: none; padding: 0; }
 
 [data-theme="light"] #login-page {
   background: var(--bg);
+}
+
+/* Het showcase-paneel rechts was volledig op donker geschreven: de chatballonnen
+   hadden #EDEDED en #F2E9D5 als tekstkleur, en de vulling was wit op 7%. Op een
+   licht paneel is dat bijna-wit op wit -- de demo was daar letterlijk
+   onleesbaar. Het viel nooit op omdat het inlogscherm geen thema-knop had; nu
+   die er wel is, is dit het eerste wat je ziet.
+
+   Kleuren komen uit tokens, en tekst gebruikt de ink-variant: --accent-c is de
+   vulling van de uitgaande ballon, --accent-ink diezelfde kleur als tekst. */
+[data-theme="light"] .brand-chat-msg.in {
+  background: rgba(15,17,40,0.05);
+  color: var(--text-primary);
+}
+[data-theme="light"] .brand-chat-msg.out {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.28);
+  color: var(--text-primary);
+}
+/* Het puntenraster is wit op 6%: onzichtbaar op een licht vlak. */
+[data-theme="light"] .login-brand-side::before {
+  background-image: radial-gradient(circle, rgba(15,17,40,0.07) 1px, transparent 1px);
 }
 
 .form-group {
@@ -7735,6 +7774,8 @@ ${cmd.css}
      LOGIN PAGE
      ============================================================ -->
 <div id="login-page">
+  <button class="btn-icon login-theme-toggle" id="btn-theme-login" type="button" onclick="toggleTheme()"
+          aria-label="Wissel tussen donker en licht"></button>
   <div class="login-split">
 
     <!-- LEFT: Form side -->
@@ -11133,8 +11174,11 @@ function initTheme() {
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('btn-theme');
-  if (btn) btn.innerHTML = theme === 'dark'
+  /* Twee knoppen, hetzelfde pictogram: de topbar na het inloggen en de knop op
+     het inlogscherm. Wie in het donker inlogt hoort niet eerst een wit scherm
+     te krijgen om daarna pas te kunnen wisselen. */
+  const knoppen = ['btn-theme', 'btn-theme-login'].map((id) => document.getElementById(id)).filter(Boolean);
+  for (const btn of knoppen) btn.innerHTML = theme === 'dark'
     ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
     : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
   localStorage.setItem('hv-theme', theme);
@@ -11143,7 +11187,8 @@ function applyTheme(theme) {
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   applyTheme(current === 'dark' ? 'light' : 'dark');
-  // Re-render chart with correct theme colors
+  // Re-render chart with correct theme colors. renderChart controleert zelf of
+  // het canvas er is, dus op het inlogscherm doet dit niets.
   setTimeout(renderChart, 50);
 }
 

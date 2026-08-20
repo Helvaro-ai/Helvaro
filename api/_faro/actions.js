@@ -372,10 +372,16 @@ const EXECUTORS = {
     throw new ActionError('Campagnes zijn nog niet aangesloten.', 'not_wired');
   },
 
-  // WIRE TO: api/_images.js generate path (already handles credits + storage).
-  async generate_property_image(_payload, _ctx) {
-    throw new ActionError('Beeldgeneratie is nog niet aangesloten.', 'not_wired');
-  },
+  /* generate_property_image staat hier BEWUST NIET.
+     Beeld loopt niet via de bevestigingspoort: de tool in ./tools.js roept
+     api/_images.js binnen dezelfde beurt aan en levert de foto meteen terug.
+     Dat mag, want een beeldbewerking gaat nergens naartoe -- er wordt niets
+     verstuurd, niets geboekt en niets aangemaakt bij een derde. De poort is er
+     voor uitgaande daden.
+
+     Hier stond een executor die 'nog niet aangesloten' riep. Die was
+     onbereikbaar (geen enkele tool zet een bevestigingskaart voor deze actie
+     klaar) en las als een kapotte functie terwijl de functie gewoon werkt. */
 
   // WIRE TO: api/_faro/media.js (de videoprovider bestaat nog niet in deze repo).
   //

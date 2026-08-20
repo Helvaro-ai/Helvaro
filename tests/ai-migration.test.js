@@ -23,8 +23,8 @@ function ck(naam, cond, ctx) {
 function lees(rel) { return fs.readFileSync(path.join(API, rel), 'utf8'); }
 
 /* Bestanden die de router MOETEN gebruiken en dus geen eigen provideraanroep
-   horen te hebben. admin.js staat er (nog) niet bij -- zie de TODO onderaan. */
-const GEMIGREERD = ['whatsapp.js', 'leads.js', 'cron-followup.js'];
+   horen te hebben. */
+const GEMIGREERD = ['whatsapp.js', 'leads.js', 'cron-followup.js', 'admin.js'];
 
 console.log('\n— gemigreerde bestanden bellen geen provider meer rechtstreeks —');
 for (const f of GEMIGREERD) {
@@ -65,7 +65,6 @@ const uitgezonderd = new Set([
   '_video-adapters.js',          // videopijplijn
   '_faro/providers/claude.js',   // streaming-adapters van de chatwerkomgeving
   '_faro/providers/openai.js',
-  'admin.js',                    // nog niet gemigreerd, zie TODO
 ]);
 
 function loopDoor(dir, prefix = '') {
@@ -89,10 +88,3 @@ ck('geen enkel ander bestand belt een tekstmodel rechtstreeks',
 console.log(`\n${pass} geslaagd, ${fail} gefaald`);
 process.exit(fail ? 1 : 0);
 
-/* TODO: api/admin.js heeft nog vijf directe Anthropic-aanroepen (de
-   founder-tools: ai-chat, ai-advice, personalized-dm, content-post en de
-   signup-guard). Die zijn niet gemigreerd omdat ze Helvaro's eigen
-   back-office zijn, geen klantverkeer: ze draaien op jouw tenant, niet op die
-   van een makelaar, en ze staan in een bestand van 137 KB dat ik niet in
-   dezelfde beweging wilde openbreken. Zet ze in de GEMIGREERD-lijst zodra ze
-   over zijn. */
