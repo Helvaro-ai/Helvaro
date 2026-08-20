@@ -59,6 +59,27 @@ const _convo = (leadMsgs, ourMsgs, lastLeadAgoDays) => {
   for (let i = 0; i < leadMsgs; i++) t.push({ role: 'user', content: 'antwoord ' + i, ts: _now - lastLeadAgoDays * _DAY + i * 60000 });
   return JSON.stringify(t);
 };
+/* Panden voor de Panden-pagina. Drie stuks, met opzet in drie verschillende
+   toestanden: beschikbaar, onder bod en verkocht -- zo zie je lokaal meteen of
+   de statuskleuren kloppen en of een verkocht pand er anders uitziet. */
+const _fixturePanden = [
+  { code: 'P1', projectCode: 'TELJO', adres: 'Lange Violettestraat 12', postcode: '9000', plaats: 'Gent',
+    type: 'huis', transactie: 'te koop', prijs: 395000, slaapkamers: 3, badkamers: 1, oppervlakte: 145,
+    grond: 210, epc: 'C', bouwjaar: 1968, status: 'beschikbaar', publiek: true, gearchiveerd: false,
+    omschrijving: 'Ruime rijwoning met zuidgerichte tuin, op wandelafstand van het centrum.',
+    troeven: ['Zuidgerichte tuin', 'Nieuw dak (2021)'], fotos: [] },
+  { code: 'P2', projectCode: 'TELJO', adres: 'Korenmarkt 4', postcode: '9000', plaats: 'Gent',
+    type: 'appartement', transactie: 'te koop', prijs: 289000, slaapkamers: 2, badkamers: 1, oppervlakte: 92,
+    grond: null, epc: 'B', bouwjaar: 2004, status: 'onder bod', publiek: true, gearchiveerd: false,
+    omschrijving: 'Instapklaar appartement op de tweede verdieping, met lift.',
+    troeven: ['Lift', 'Terras op het zuiden'], fotos: [] },
+  { code: 'P3', projectCode: 'TELJO', adres: 'Brugsesteenweg 118', postcode: '9030', plaats: 'Mariakerke',
+    type: 'huis', transactie: 'te koop', prijs: 475000, slaapkamers: 4, badkamers: 2, oppervlakte: 210,
+    grond: 640, epc: 'A', bouwjaar: 2016, status: 'verkocht', publiek: true, gearchiveerd: false,
+    omschrijving: 'Recente villa met vier slaapkamers en een dubbele garage.',
+    troeven: ['Dubbele garage', 'Zonnepanelen'], fotos: [] },
+];
+
 const _fixtureLeads = [
   { naam: 'Marie Declercq', tel: '+32470111111', q: true, score: 9.4, budget: '€475.000', urg: 'Hoog',
     bron: 'Formulier', sam: 'Zoekt een villa in Knokke, wil binnen 60 dagen kopen.', convo: [7, 8, 0.2] },
@@ -239,6 +260,44 @@ const server = http.createServer(async (req, res) => {
           });
         case 'property-list':
           return res.status(200).json({ images: [] });
+
+        /* Panden. Een lijstje in het geheugen, zodat toevoegen, bewerken en
+           archiveren lokaal ECHT werken -- een stub die altijd hetzelfde
+           teruggeeft laat een kapotte opslaan-knop er goed uitzien. */
+        case 'listing-list':
+          /* Gearchiveerd valt weg, net als in api/_properties.js. Zou de stub
+             ze wel tonen, dan lijkt archiveren hier stuk terwijl het in
+             productie werkt -- en dan wordt er gezocht naar een bug die er
+             niet is. */
+          return res.status(200).json({
+            properties: req.body.includeArchived === true
+              ? _fixturePanden
+              : _fixturePanden.filter((p2) => !p2.gearchiveerd),
+            available: true,
+          });
+        case 'listing-save': {
+          const inv = req.body.property || {};
+          if (!String(inv.adres || '').trim()) {
+            return res.status(400).json({ error: 'Een pand heeft minstens een adres nodig.', code: 'no_address' });
+          }
+          const code = String(inv.code || '').trim().toUpperCase()
+            || ('P' + (_fixturePanden.reduce((m, p2) => Math.max(m, parseInt(String(p2.code).replace(/^P/, ''), 10) || 0), 0) + 1));
+          const bestaand = _fixturePanden.find((p2) => p2.code === code);
+          const pand = Object.assign({
+            code, status: 'beschikbaar', publiek: true, gearchiveerd: false,
+            fotos: [], troeven: [], projectCode: LOCAL_AUTH.projectCode,
+          }, bestaand || {}, inv, { code });
+          pand.fotos = Array.isArray(inv.fotos) ? inv.fotos : (pand.fotos || []);
+          if (bestaand) Object.assign(bestaand, pand);
+          else _fixturePanden.push(pand);
+          return res.status(200).json({ property: pand });
+        }
+        case 'listing-archive': {
+          const pand = _fixturePanden.find((p2) => p2.code === String(req.body.code || '').toUpperCase());
+          if (!pand) return res.status(404).json({ error: 'Pand niet gevonden.' });
+          pand.gearchiveerd = req.body.archived !== false;
+          return res.status(200).json({ property: pand });
+        }
         case 'command-center': {
           // The REAL intelligence layer over the fixture rows above, so what
           // renders locally is what production computes — only the source of

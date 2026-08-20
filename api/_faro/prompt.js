@@ -167,9 +167,13 @@ function contextSources() {
     // and an explicit "not connected, here is what the CRM knows instead" when
     // it is not. What must never happen is a silent empty result.
     calendar: true,
-    // Still off, and each for a real reason rather than an unfinished TODO:
-    //   properties — this CRM has no property table; panden are free text on a
-    //                lead, which search_leads already reaches.
+    /* Panden. get_properties leest api/_properties.js, dus deze vlag is waar
+       zolang die tool bestaat. Staat de Airtable-tabel er nog niet, dan zegt
+       de tool dat eerlijk in plaats van een lege lijst terug te geven -- een
+       lege lijst leest het model als "deze makelaar heeft geen aanbod", en
+       dat vertelt hij dan door aan de klant. */
+    properties: true,
+    // Still off, for a real reason rather than an unfinished TODO:
     //   campaigns  — no campaign store is wired; create_campaign proposes but
     //                cannot execute.
   };

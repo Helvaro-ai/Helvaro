@@ -6944,6 +6944,155 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .cal-att-save-btn:disabled { opacity:0.5; pointer-events:none; }
 
 /* ── Custom booking modal ─────────────────────────────────────── */
+/* ── Panden ──────────────────────────────────────────────────────────────────
+   Kleuren komen uit tokens, en tekst gebruikt de ink-variant van de kleur die
+   eronder ligt -- een groene status staat op een groene chip, niet op de kaart
+   eronder. Zie CLAUDE.md. */
+.pd-wrap { display: flex; flex-direction: column; gap: 18px; }
+.pd-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pd-head-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.pd-head-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+
+.pd-notice {
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);
+  font-size: 13px; line-height: 1.55; color: var(--text-secondary);
+}
+.pd-notice strong { color: var(--accent-ink); }
+.pd-notice code {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px;
+  padding: 1px 5px; border-radius: 4px; background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
+}
+
+.pd-empty {
+  padding: 40px 28px; text-align: center;
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.pd-empty-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.pd-empty-text { font-size: 13px; line-height: 1.6; color: var(--text-muted); max-width: 440px; }
+
+.pd-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.pd-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: var(--transition);
+}
+.pd-card:hover { border-color: rgba(var(--accent-rgb),0.35); }
+.pd-card--archived { opacity: 0.55; }
+.pd-card-foto {
+  width: 100%; height: 150px; object-fit: cover; display: block;
+  background: var(--bg-card-alt);
+}
+.pd-card-foto-leeg {
+  height: 150px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card-alt); color: var(--text-disabled);
+}
+.pd-card-body { padding: 14px 15px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.pd-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pd-card-adres { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+.pd-card-plaats { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pd-card-code {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 700;
+  padding: 3px 7px; border-radius: 6px; flex-shrink: 0;
+  background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
+}
+.pd-card-feiten { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-feit {
+  font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+  background: var(--bg-card-alt); color: var(--text-secondary);
+}
+.pd-feit--prijs { background: rgba(var(--accent-rgb),0.14); color: var(--accent-ink); }
+/* Status: de vulling is de kleur, de tekst is de ink-variant van diezelfde
+   kleur. Zand op wit haalt 1,29:1 -- dit is geen smaakkwestie. */
+.pd-status { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.02em; }
+.pd-status--beschikbaar { background: rgba(var(--success-rgb),0.14); color: var(--success-ink); }
+.pd-status--bod         { background: rgba(var(--warning-rgb),0.16); color: var(--warning-ink); }
+.pd-status--weg         { background: rgba(var(--error-rgb),0.14);   color: var(--error-ink); }
+
+.pd-link-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.pd-link {
+  flex: 1; min-width: 0; font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 6px 9px; border-radius: 6px; background: var(--bg-card-alt); border: 1px solid var(--border);
+}
+.pd-card-acties { display: flex; gap: 7px; margin-top: auto; padding-top: 4px; }
+.pd-mini {
+  flex: 1; font-size: 12px; font-weight: 600; padding: 7px 8px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+  transition: var(--transition);
+}
+.pd-mini:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.pd-leads { font-size: 12px; color: var(--text-muted); }
+.pd-leads strong { color: var(--text-primary); }
+
+/* Het bewerkvenster */
+#pd-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+}
+#pd-overlay.open { display: flex; }
+#pd-modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); width: min(640px, 96vw); max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--elev-3); animation: modalIn 0.18s ease;
+}
+.pd-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+}
+.pd-modal-x {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; cursor: pointer; color: var(--text-muted);
+  font-size: 18px; line-height: 1; transition: var(--transition);
+}
+.pd-modal-x:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.pd-modal-body {
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.pd-modal-body::-webkit-scrollbar { width: 5px; }
+.pd-modal-body::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.3); border-radius: 3px; }
+.pd-modal-foot {
+  display: flex; justify-content: flex-end; gap: 9px;
+  padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.pd-modal-err {
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: rgba(var(--error-rgb),0.10); border: 1px solid rgba(var(--error-rgb),0.28);
+  color: var(--error-ink); font-size: 12.5px; line-height: 1.5;
+}
+.pd-label {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px;
+}
+.pd-input {
+  width: 100%; padding: 9px 11px; font-size: 13px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-family: inherit; transition: var(--transition);
+}
+.pd-input:focus { outline: none; border-color: rgba(var(--accent-rgb),0.5); }
+.pd-textarea { resize: vertical; line-height: 1.5; }
+.pd-hint { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+.pd-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pd-row-3 { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+.pd-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.pd-col-2 { grid-column: span 1; }
+.pd-checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+@media (max-width: 620px) {
+  .pd-row-2, .pd-row-3, .pd-row-4 { grid-template-columns: 1fr; }
+}
+
 #cal-book-overlay {
   position: fixed; inset: 0; z-index: 1200;
   background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
@@ -7998,6 +8147,10 @@ ${faro.navCta}
       <button class="nav-item" data-page="gesprekken" id="nav-gesprekken">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
         Gesprekken
+      </button>
+      <button class="nav-item" data-page="panden" id="nav-panden">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>
+        Panden
       </button>
       <button class="nav-item" data-page="kalender" id="nav-kalender">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
@@ -9272,6 +9425,44 @@ ${faro.navCta}
       </div>
     </main>
 
+    <!-- ══ Panden ══════════════════════════════════════════════════════════
+         Het aanbod van de makelaar. Elk pand heeft een code die in een
+         publieke link past (/start/TELJO/P3): die zet hij onder een
+         advertentie of op een bordje met QR. De lead die daaruit komt draagt
+         die code mee tot in het WhatsApp-gesprek, zodat de AI weet over welke
+         woning het gaat -- daarvoor moest hij raden. -->
+    <main class="page-content page" id="page-panden">
+      <div class="pd-wrap">
+
+        <div class="pd-head">
+          <div>
+            <div class="pd-head-title">Je aanbod</div>
+            <div class="pd-head-sub" id="pd-count">—</div>
+          </div>
+          <button class="btn-icon btn-primary-sm" onclick="openPandModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Pand toevoegen
+          </button>
+        </div>
+
+        <!-- Drie toestanden, en ze zeggen alle drie iets anders:
+             tabel-ontbreekt (eenmalig, eigenaar moet iets doen),
+             nog-geen-panden (normaal, nieuwe klant),
+             de lijst. -->
+        <div class="pd-notice" id="pd-notice" style="display:none"></div>
+        <div class="pd-empty" id="pd-empty" style="display:none">
+          <div class="pd-empty-title">Nog geen panden</div>
+          <div class="pd-empty-text">
+            Voeg je eerste woning toe. Je krijgt er meteen een eigen link bij die je onder een
+            advertentie kunt zetten &mdash; en dan weet je AI precies over welk pand een lead het heeft.
+          </div>
+          <button class="btn-icon btn-primary-sm" onclick="openPandModal()">Pand toevoegen</button>
+        </div>
+
+        <div class="pd-grid" id="pd-grid"></div>
+      </div>
+    </main>
+
     <!-- Formulier Page. Share your lead form link in 3 ways -->
     <main class="page-content page" id="page-formulier">
       <div class="fm-wrap">
@@ -10494,6 +10685,112 @@ ${faro.dock}
       <span class="search-footer-hint"><kbd>↵</kbd> openen</span>
       <span class="search-footer-hint"><kbd>Esc</kbd> sluiten</span>
       <span class="search-footer-count" id="search-footer-count"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Pand toevoegen / bewerken -->
+<div id="pd-overlay" onclick="if(event.target===this)closePandModal()">
+  <div id="pd-modal" role="dialog" aria-modal="true" aria-labelledby="pd-modal-title">
+    <div class="pd-modal-head">
+      <div id="pd-modal-title">Pand toevoegen</div>
+      <button class="pd-modal-x" onclick="closePandModal()" aria-label="Sluiten">&times;</button>
+    </div>
+    <div class="pd-modal-body">
+      <!-- De code staat bovenaan omdat hij in de publieke link komt: dat is
+           het eerste wat een makelaar wil weten en overtypen. -->
+      <div class="pd-row-2">
+        <div>
+          <label class="pd-label" for="pd-f-code">Referentie</label>
+          <input class="pd-input" id="pd-f-code" type="text" placeholder="automatisch (P1, P2, ...)" maxlength="20">
+          <div class="pd-hint">Leeg laten mag. Heb je een eigen referentie, vul hem hier in.</div>
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-status">Status</label>
+          <select class="pd-input" id="pd-f-status">
+            <option value="beschikbaar">beschikbaar</option>
+            <option value="onder bod">onder bod</option>
+            <option value="verkocht">verkocht</option>
+            <option value="verhuurd">verhuurd</option>
+            <option value="uit aanbod">uit aanbod</option>
+          </select>
+          <div class="pd-hint">Verkocht of uit aanbod? Dan plant je AI er geen bezichtiging meer voor in.</div>
+        </div>
+      </div>
+
+      <label class="pd-label" for="pd-f-adres">Adres</label>
+      <input class="pd-input" id="pd-f-adres" type="text" placeholder="Lange Violettestraat 12" maxlength="200">
+
+      <div class="pd-row-3">
+        <div>
+          <label class="pd-label" for="pd-f-postcode">Postcode</label>
+          <input class="pd-input" id="pd-f-postcode" type="text" placeholder="9000" maxlength="20">
+        </div>
+        <div class="pd-col-2">
+          <label class="pd-label" for="pd-f-plaats">Gemeente</label>
+          <input class="pd-input" id="pd-f-plaats" type="text" placeholder="Gent" maxlength="100">
+        </div>
+      </div>
+
+      <div class="pd-row-2">
+        <div>
+          <label class="pd-label" for="pd-f-type">Type</label>
+          <select class="pd-input" id="pd-f-type">
+            <option value="huis">huis</option>
+            <option value="appartement">appartement</option>
+            <option value="grond">grond</option>
+            <option value="commercieel">commercieel</option>
+            <option value="garage">garage</option>
+            <option value="overig">overig</option>
+          </select>
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-transactie">Te koop of te huur</label>
+          <select class="pd-input" id="pd-f-transactie">
+            <option value="te koop">te koop</option>
+            <option value="te huur">te huur</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pd-row-4">
+        <div>
+          <label class="pd-label" for="pd-f-prijs">Prijs (&euro;)</label>
+          <input class="pd-input" id="pd-f-prijs" type="number" min="0" step="1000" placeholder="395000">
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-slaapkamers">Slaapkamers</label>
+          <input class="pd-input" id="pd-f-slaapkamers" type="number" min="0" max="50" placeholder="3">
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-oppervlakte">Opp. (m&sup2;)</label>
+          <input class="pd-input" id="pd-f-oppervlakte" type="number" min="0" placeholder="145">
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-epc">EPC</label>
+          <input class="pd-input" id="pd-f-epc" type="text" maxlength="40" placeholder="C">
+        </div>
+      </div>
+
+      <label class="pd-label" for="pd-f-omschrijving">Omschrijving</label>
+      <textarea class="pd-input pd-textarea" id="pd-f-omschrijving" rows="4" maxlength="4000"
+        placeholder="Wat je AI mag vertellen over dit pand. Alleen wat hier staat wordt genoemd &mdash; hij verzint niets bij."></textarea>
+
+      <label class="pd-label" for="pd-f-fotos">Foto's (een URL per regel)</label>
+      <textarea class="pd-input pd-textarea" id="pd-f-fotos" rows="2"
+        placeholder="https://..."></textarea>
+      <div class="pd-hint">Alleen https-adressen. De eerste foto komt op het aanvraagformulier.</div>
+
+      <label class="pd-checkline" for="pd-f-publiek">
+        <input type="checkbox" id="pd-f-publiek" checked>
+        <span>Zichtbaar op het aanvraagformulier</span>
+      </label>
+
+      <div class="pd-modal-err" id="pd-modal-err" role="alert" style="display:none"></div>
+    </div>
+    <div class="pd-modal-foot">
+      <button class="btn-icon" onclick="closePandModal()">Annuleren</button>
+      <button class="btn-icon btn-primary-sm" id="pd-save-btn" onclick="savePand()">Opslaan</button>
     </div>
   </div>
 </div>
@@ -15542,6 +15839,7 @@ function navigateTo(page) {
     founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
+    'panden':     { title: 'Panden', sub: 'Je aanbod, en de link die je onder een advertentie zet' },
     'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
     faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
   };
@@ -15577,6 +15875,7 @@ function navigateTo(page) {
   if (page === 'gesprekken')   renderGesprekken();
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
+  if (page === 'panden')       loadPanden();
   if (page === 'ai-persona')   loadAiPersona();
   if (page === 'formulier')    loadFormulier();
   if (page === 'exports')      updateExportPreview();
@@ -17900,6 +18199,265 @@ function highlightActiveTemplate() {
     const match = AP_TEMPLATES[idx] && AP_TEMPLATES[idx].text === current;
     card.classList.toggle('active', !!match);
   });
+}
+
+/* ══ Panden ═══════════════════════════════════════════════════════════════════
+   Het aanbod van de makelaar. Elk pand krijgt een link (/start/CODE/PANDCODE)
+   die hij onder een advertentie zet; de lead die daaruit komt draagt de
+   pandcode mee tot in het WhatsApp-gesprek.
+
+   Let op de schrijfwijze hieronder: geen sjabloonliteralen. api/dashboard.js is
+   zelf een sjabloon van twintigduizend regels, en alles wat daarin op een
+   plaatshouder lijkt wordt bij het uitrollen ingevuld in plaats van
+   meegestuurd. Zie de kop van CLAUDE.md. */
+var pandState = { panden: [], beschikbaar: true, bewerkt: null };
+
+function pandEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function pandPrijs(n) {
+  if (n === null || n === undefined || !isFinite(Number(n))) return '';
+  return '\u20AC ' + Math.round(Number(n)).toLocaleString('nl-BE');
+}
+
+function pandLink(code) {
+  return 'https://app.helvaro.pro/start/' + encodeURIComponent(pandProject()) + '/' + encodeURIComponent(code);
+}
+
+function pandProject() {
+  return localStorage.getItem('hv-project') || localStorage.getItem('hv-client') || '';
+}
+
+async function loadPanden() {
+  var grid   = document.getElementById('pd-grid');
+  var leeg   = document.getElementById('pd-empty');
+  var notice = document.getElementById('pd-notice');
+  if (!grid) return;
+  grid.innerHTML = '<div class="pd-leads">Laden...</div>';
+  leeg.style.display = 'none';
+  notice.style.display = 'none';
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-list' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    pandState.panden = d.properties || [];
+    pandState.beschikbaar = d.available !== false;
+  } catch (e) {
+    /* Een storing mag er niet uitzien als "je hebt geen panden". Dat verschil
+       is precies wat een klant anders als datenverlies leest. */
+    grid.innerHTML = '';
+    notice.style.display = '';
+    notice.innerHTML = 'De panden konden niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    return;
+  }
+  renderPanden();
+}
+
+function renderPanden() {
+  var grid   = document.getElementById('pd-grid');
+  var leeg   = document.getElementById('pd-empty');
+  var notice = document.getElementById('pd-notice');
+  var telEl  = document.getElementById('pd-count');
+  if (!grid) return;
+
+  /* Drie toestanden, drie boodschappen. "De tabel bestaat nog niet" is iets
+     dat de eigenaar moet oplossen; "nog geen panden" lost de klant zelf op. */
+  if (!pandState.beschikbaar) {
+    grid.innerHTML = '';
+    leeg.style.display = 'none';
+    notice.style.display = '';
+    notice.innerHTML = '<strong>Panden staan nog uit.</strong> De tabel <code>properties</code> bestaat nog niet '
+      + 'in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets uitgerold hoeft te worden.';
+    telEl.textContent = '';
+    return;
+  }
+  notice.style.display = 'none';
+
+  if (!pandState.panden.length) {
+    grid.innerHTML = '';
+    leeg.style.display = '';
+    telEl.textContent = '';
+    return;
+  }
+  leeg.style.display = 'none';
+
+  var actief = pandState.panden.filter(function (p) { return p.status === 'beschikbaar' || p.status === 'onder bod'; });
+  telEl.textContent = pandState.panden.length + (pandState.panden.length === 1 ? ' pand' : ' panden')
+    + ', ' + actief.length + ' in aanbod';
+
+  /* Hoeveel leads per pand. Uit de leads die al geladen zijn -- geen extra
+     verzoek voor een getal dat we al hebben. */
+  var perPand = {};
+  (state.leads || []).forEach(function (l) {
+    var c = (l.property || '').toUpperCase();
+    if (!c) return;
+    perPand[c] = (perPand[c] || 0) + 1;
+  });
+
+  grid.innerHTML = pandState.panden.map(function (p) {
+    var statusKlasse = p.status === 'beschikbaar' ? 'pd-status--beschikbaar'
+                     : (p.status === 'onder bod' ? 'pd-status--bod' : 'pd-status--weg');
+    var feiten = [];
+    if (pandPrijs(p.prijs)) feiten.push('<span class="pd-feit pd-feit--prijs">' + pandEsc(pandPrijs(p.prijs)) + '</span>');
+    if (p.slaapkamers) feiten.push('<span class="pd-feit">' + p.slaapkamers + ' slk</span>');
+    if (p.oppervlakte) feiten.push('<span class="pd-feit">' + p.oppervlakte + ' m\u00B2</span>');
+    if (p.epc) feiten.push('<span class="pd-feit">EPC ' + pandEsc(p.epc) + '</span>');
+
+    var aantal = perPand[(p.code || '').toUpperCase()] || 0;
+    var foto = (p.fotos && p.fotos[0]) ? p.fotos[0] : '';
+
+    return '<div class="pd-card' + (p.gearchiveerd ? ' pd-card--archived' : '') + '">'
+      + (foto
+          ? '<img class="pd-card-foto" src="' + pandEsc(foto) + '" alt="' + pandEsc(p.adres) + '" onerror="this.style.display=&quot;none&quot;">'
+          : '<div class="pd-card-foto-leeg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>')
+      + '<div class="pd-card-body">'
+      +   '<div class="pd-card-top">'
+      +     '<div><div class="pd-card-adres">' + pandEsc(p.adres || 'Zonder adres') + '</div>'
+      +     (p.plaats || p.postcode ? '<div class="pd-card-plaats">' + pandEsc([p.postcode, p.plaats].filter(Boolean).join(' ')) + '</div>' : '')
+      +     '</div>'
+      +     '<span class="pd-card-code">' + pandEsc(p.code) + '</span>'
+      +   '</div>'
+      +   '<div class="pd-card-feiten">' + feiten.join('') + '<span class="pd-status ' + statusKlasse + '">' + pandEsc(p.status) + '</span></div>'
+      +   '<div class="pd-leads">' + (aantal ? '<strong>' + aantal + '</strong> ' + (aantal === 1 ? 'lead' : 'leads') : 'Nog geen leads') + '</div>'
+      +   '<div class="pd-link-row">'
+      +     '<div class="pd-link" title="' + pandEsc(pandLink(p.code)) + '">' + pandEsc(pandLink(p.code)) + '</div>'
+      +     '<button class="pd-mini" style="flex:0 0 auto" onclick="copyPandLink(&quot;' + pandEsc(p.code) + '&quot;)">Kopieer</button>'
+      +   '</div>'
+      +   '<div class="pd-card-acties">'
+      +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">Bewerken</button>'
+      +     '<button class="pd-mini" onclick="archivePand(&quot;' + pandEsc(p.code) + '&quot;, ' + (p.gearchiveerd ? 'false' : 'true') + ')">'
+      +       (p.gearchiveerd ? 'Terugzetten' : 'Archiveren') + '</button>'
+      +   '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function copyPandLink(code) {
+  var link = pandLink(code);
+  if (!navigator.clipboard) { toast('Kopieren lukt niet in deze browser', 'error'); return; }
+  navigator.clipboard.writeText(link)
+    .then(function () { toast('Link gekopieerd', 'success'); })
+    .catch(function () { toast('Kopieren mislukt', 'error'); });
+}
+
+function openPandModal(code) {
+  var pand = code ? pandState.panden.filter(function (p) { return p.code === code; })[0] : null;
+  pandState.bewerkt = pand || null;
+
+  document.getElementById('pd-modal-title').textContent = pand ? ('Pand ' + pand.code) : 'Pand toevoegen';
+  var zet = function (id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
+  zet('pd-f-code',        pand ? pand.code : '');
+  zet('pd-f-status',      pand ? pand.status : 'beschikbaar');
+  zet('pd-f-adres',       pand ? pand.adres : '');
+  zet('pd-f-postcode',    pand ? pand.postcode : '');
+  zet('pd-f-plaats',      pand ? pand.plaats : '');
+  zet('pd-f-type',        pand && pand.type ? pand.type : 'huis');
+  zet('pd-f-transactie',  pand && pand.transactie ? pand.transactie : 'te koop');
+  zet('pd-f-prijs',       pand && pand.prijs != null ? pand.prijs : '');
+  zet('pd-f-slaapkamers', pand && pand.slaapkamers != null ? pand.slaapkamers : '');
+  zet('pd-f-oppervlakte', pand && pand.oppervlakte != null ? pand.oppervlakte : '');
+  zet('pd-f-epc',         pand ? pand.epc : '');
+  zet('pd-f-omschrijving',pand ? pand.omschrijving : '');
+  zet('pd-f-fotos',       pand && pand.fotos ? pand.fotos.join('\\n') : '');
+  document.getElementById('pd-f-publiek').checked = pand ? pand.publiek !== false : true;
+  /* Een bestaande referentie ligt vast: hij staat in advertenties en op
+     bordjes. Hem hier laten wijzigen maakt van elke gedeelde link een
+     doodlopende weg. */
+  document.getElementById('pd-f-code').readOnly = !!pand;
+
+  document.getElementById('pd-modal-err').style.display = 'none';
+  document.getElementById('pd-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(function () {
+    var el = document.getElementById(pand ? 'pd-f-adres' : 'pd-f-adres');
+    if (el) el.focus();
+  }, 60);
+}
+
+function closePandModal() {
+  document.getElementById('pd-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  pandState.bewerkt = null;
+}
+
+async function savePand() {
+  var lees = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var getal = function (id) { var v = lees(id); return v === '' ? null : Number(v); };
+  var fout = document.getElementById('pd-modal-err');
+  var btn  = document.getElementById('pd-save-btn');
+
+  var adres = lees('pd-f-adres');
+  if (!adres) {
+    fout.style.display = '';
+    fout.textContent = 'Vul minstens een adres in.';
+    return;
+  }
+
+  var payload = {
+    code:         lees('pd-f-code'),
+    status:       lees('pd-f-status'),
+    adres:        adres,
+    postcode:     lees('pd-f-postcode'),
+    plaats:       lees('pd-f-plaats'),
+    type:         lees('pd-f-type'),
+    transactie:   lees('pd-f-transactie'),
+    prijs:        getal('pd-f-prijs'),
+    slaapkamers:  getal('pd-f-slaapkamers'),
+    oppervlakte:  getal('pd-f-oppervlakte'),
+    epc:          lees('pd-f-epc'),
+    omschrijving: lees('pd-f-omschrijving'),
+    fotos:        lees('pd-f-fotos').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean),
+    publiek:      document.getElementById('pd-f-publiek').checked
+  };
+
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-save', property: payload })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      fout.style.display = '';
+      fout.textContent = d.error || 'Opslaan mislukt.';
+      return;
+    }
+    closePandModal();
+    toast(pandState.bewerkt ? 'Pand bijgewerkt' : 'Pand toegevoegd', 'success');
+    await loadPanden();
+  } catch (e) {
+    fout.style.display = '';
+    fout.textContent = 'Opslaan mislukt. Controleer je verbinding.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Opslaan';
+  }
+}
+
+async function archivePand(code, archiveren) {
+  /* Archiveren, niet verwijderen: aan een pand hangen leads en afspraken, en
+     die mogen niet naar niets gaan wijzen. */
+  if (archiveren && !confirm('Dit pand uit je aanbod halen? De leads en afspraken blijven bewaard.')) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-archive', code: code, archived: archiveren })
+    });
+    if (!r.ok) { toast('Archiveren mislukt', 'error'); return; }
+    toast(archiveren ? 'Pand gearchiveerd' : 'Pand teruggezet', 'success');
+    await loadPanden();
+  } catch (e) {
+    toast('Archiveren mislukt', 'error');
+  }
 }
 
 async function loadAiPersona() {

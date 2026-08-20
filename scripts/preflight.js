@@ -413,6 +413,17 @@ async function probe(url, opts = {}) {
                 'Gesprekken leven dan alleen in de browser: ze overleven een herlaadbeurt,\n'
               + 'maar niet je laptop. Velden staan in de kop van api/_faro/store.js.');
     }
+    /* De pandentabel. Apart, want hij hoort bij een andere functie en de
+       boodschap is een andere: zonder deze tabel weet de AI niet over welk
+       pand een lead het heeft, en valt hij terug op de website van de klant --
+       waar bij vier panden vier prijzen op staan. */
+    const rp = await probe(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/properties?pageSize=1`,
+                           { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } });
+    if (rp.ok) ok('tabel properties bestaat');
+    else warn(`tabel properties niet gevonden (HTTP ${rp.status || rp.error})`,
+              'De Panden-pagina zegt dat eerlijk en de AI verzint geen panden, maar hij kan\n'
+            + 'ook niet weten over welk pand een lead het heeft. Velden staan in de kop van\n'
+            + 'api/_properties.js.');
   } else {
     warn('tabellen niet te controleren — Airtable-credentials niet beschikbaar');
   }

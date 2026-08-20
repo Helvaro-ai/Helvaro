@@ -23,6 +23,7 @@ const { getPlanState } = require('./_plan');
 // locale/date formatting, template-approval fallback). See its file header.
 const _lang = require('./_lang');
 const _ai = require('./_ai');
+const _properties = require('./_properties'); // welk pand deze lead bedoelt
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -723,11 +724,65 @@ async function processMessage(phone, text, scopedProjectCode) {
     } catch (e) { /* best-effort, never block the AI turn */ }
   }
 
+  /* ── Over welk pand gaat dit? ───────────────────────────────────────────────
+     Drie mogelijkheden, in deze volgorde:
+
+       1. De lead kwam via /start/TELJO/P3. Dan staat de code op zijn record en
+          weten we het gewoon.
+       2. Hij schreef rechtstreeks naar het nummer, maar noemt een straat of
+          een referentie. Dan zoeken we die op in de panden van DEZE makelaar.
+       3. We weten het niet. Dan krijgt de AI de lijst en de opdracht om het te
+          VRAGEN -- niet om te gokken.
+
+     Best-effort: bestaat de pandentabel nog niet of hapert Airtable, dan is
+     pandSectie leeg en gedraagt de AI zich precies zoals hiervoor. Een lead
+     zonder antwoord laten is erger dan een lead zonder pandfiche. */
+  let pandSectie = '';
+  let herkendPand = null;
+  try {
+    if (await _properties.available()) {
+      const opLead = _properties.normCode(
+        (function () {
+          try {
+            const blob = JSON.parse(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities'] || '{}');
+            return blob && blob.property ? blob.property : '';
+          } catch (_) { return ''; }
+        })()
+      );
+
+      if (opLead) herkendPand = await _properties.getByCode(projectCode, opLead);
+
+      if (!herkendPand) {
+        /* Zoeken op wat de lead schrijft. Alleen de berichten VAN de lead:
+           wat de AI zelf eerder zei is geen bewijs van wat de lead bedoelt --
+           anders bevestigt hij zijn eigen gok van drie beurten geleden. */
+        const leadTekst = history
+          .filter((m) => m && m.role === 'user')
+          .map((m) => String(m.content || ''))
+          .join(' ');
+        const kandidaten = await _properties.list(projectCode, { alleenPubliek: true });
+        const match = _properties.matchUitTekst(kandidaten, leadTekst);
+        if (match.pand) herkendPand = match.pand;
+        else if (kandidaten.length) pandSectie = _ai.prompts.panden.index(kandidaten);
+      }
+
+      if (herkendPand) pandSectie = _ai.prompts.panden.fiche(herkendPand);
+    }
+  } catch (e) {
+    console.warn('[WhatsApp] pandcontext overgeslagen:', e && e.message);
+  }
+
   const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
     workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
     appointmentDuration, existingAppointments, matchLeadLanguage,
     // De AI-router boekt verbruik per tenant; zonder projectcode weigert hij.
     projectCode,
+    pandSectie,
+    /* Een verkocht pand mag geen bezichtiging opleveren. De prompt zegt het al,
+       maar een prompt is een verzoek en dit is een regel -- zie waar
+       BOOK verwerkt wordt. */
+    pandBezichtigbaar: herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true,
+    pandCode: herkendPand ? herkendPand.code : '',
   });
 
   // 7b. Credit accounting. Billed ONCE per lead — at the first AI turn
@@ -1162,6 +1217,7 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
      webhook en het opslaan van leads draagt. */
   const systemPrompt = _ai.prompts.whatsappGesprek.system({
     langDirective, aiName, clientName, firstName, instructions,
+    pandSectie: ctx.pandSectie || '',
     websiteSection, addressSection, hoursSection,
     reasonLangNote, escalateInstruction, matchLeadLanguage, ctx,
   });
@@ -1213,7 +1269,20 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
     try {
       const bookData = JSON.parse(bookMatch[1]);
       if (bookData.confirmed && bookData.start) {
-        appointment = { start: bookData.start, duration: bookData.duration || 30 };
+        /* Een verkocht pand levert GEEN afspraak op. De prompt zegt het al,
+           maar een prompt is een verzoek: het model kan het negeren, en dan
+           rijdt er een koper naar een huis dat weg is. Dit is de rem, en die
+           zit hier omdat elke boeking hier langskomt.
+
+           Wat de lead te lezen krijgt verandert niet -- de tekst van het model
+           blijft staan -- maar er wordt niets in de agenda gezet. De volgende
+           beurt kan de AI het rechtzetten; een lege agenda is te herstellen,
+           een lead die voor een dichte deur staat niet. */
+        if (ctx.pandBezichtigbaar === false) {
+          console.warn('[WhatsApp] BOOK geweigerd: pand ' + (ctx.pandCode || '?') + ' is niet bezichtigbaar');
+        } else {
+          appointment = { start: bookData.start, duration: bookData.duration || 30 };
+        }
       }
       cleaned = cleaned.replace(/BOOK:\s*\{[\s\S]*?\}/, '').trim();
     } catch (e) {

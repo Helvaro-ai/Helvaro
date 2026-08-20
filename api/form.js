@@ -117,6 +117,18 @@ module.exports = async function handler(req, res) {
     // Unknown values fall back to 'Website'. always set so analytics stay clean.
     const bron    = VALID_BRON.has(bronRaw) ? bronRaw : 'Website';
 
+    /* De pandcode uit /start/TELJO/P3. Hij bepaalt straks over WELKE woning de
+       AI praat, dus hij moet mee de lead in.
+
+       Alleen het patroon wordt hier gecontroleerd, niet of het pand bestaat.
+       Twee redenen: dit is de route waarlangs het geld binnenkomt en een extra
+       Airtable-lezing maakt hem trager, en het patroon (hoofdletters, cijfers,
+       streepje) kan niets injecteren. Een code die nergens op slaat wordt aan
+       de andere kant gewoon genegeerd -- api/whatsapp.js zoekt hem op in de
+       panden van DEZE klant en vindt hem dan niet. */
+    const pandRaw = String(body.property || '').trim().toUpperCase();
+    const pand    = /^[A-Z0-9][A-Z0-9-]{0,19}$/.test(pandRaw) ? pandRaw : '';
+
     if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
     if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
     // GDPR Art. 7(1): consent must be given (not just shown) and demonstrable.
@@ -210,7 +222,16 @@ module.exports = async function handler(req, res) {
           // notes/tasks/calls JSON blob the dashboard already reads/writes via
           // parseNotities()/serializeNotities(). Those spread unknown keys
           // through untouched, so this survives future dashboard note edits.
-          fldoLRI5W12ThTls7: JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], consent: { given: true, ts: consentTs } })
+          /* property rijdt mee in dezelfde JSON-blob als consent. Bewust geen
+             nieuwe Airtable-kolom: een veld dat nog niet bestaat laat de HELE
+             create met een 422 stuklopen, en dat kost dan een echte lead. Zo
+             werkt dit vanaf de dag dat het uitrolt, zonder dat iemand eerst
+             een kolom moet aanmaken. parseNotities() laat onbekende sleutels
+             ongemoeid, dus hij overleeft elke bewerking vanuit het dashboard. */
+          fldoLRI5W12ThTls7: JSON.stringify(Object.assign(
+            { _v: 1, notes: [], tasks: [], calls: [], consent: { given: true, ts: consentTs } },
+            pand ? { property: pand } : {}
+          ))
         }
       })
     };

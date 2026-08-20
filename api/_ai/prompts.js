@@ -181,6 +181,99 @@ const pandTransformatie = {
 };
 
 
+/* ── Panden ──────────────────────────────────────────────────────────────────
+   Twee blokken, en welke je krijgt hangt af van wat er bekend is.
+
+   pandFiche: de lead kwam via /start/TELJO/P3, dus we WETEN over welke woning
+   dit gaat. Dan krijgt de AI die ene fiche en niets anders -- geen website vol
+   andere prijzen om zich in te vergissen.
+
+   pandIndex: de lead schreef gewoon naar het nummer. Dan krijgt hij een korte
+   lijst en de opdracht om te VRAGEN welke het is. Vragen is hier het goede
+   antwoord: een bezichtiging voor het verkeerde huis inplannen kost de
+   makelaar een rit en de lead zijn vertrouwen.
+
+   Wat allebei de blokken gemeen hebben is de belangrijkste regel: staat een
+   cijfer niet in de fiche, dan bestaat het niet. Een model dat een
+   bouwjaar bijverzint klinkt behulpzaam en is het niet -- de koper hoort het
+   pas bij het bezoek, en dan is het de makelaar die stond te liegen. */
+
+function bedrag(n) {
+  return (n === null || n === undefined || !Number.isFinite(Number(n)))
+    ? null : '€ ' + Math.round(Number(n)).toLocaleString('nl-BE');
+}
+
+const BEZICHTIGBARE_STATUS = ['beschikbaar', 'onder bod'];
+
+const panden = {
+  naam: 'property_context_' + VERSIE,
+
+  /**
+   * Het blok voor EEN bekend pand.
+   * @param {object} pand  zoals api/_properties.js het teruggeeft
+   */
+  fiche(pand) {
+    if (!pand) return '';
+    const r = [];
+    r.push('DIT GESPREK GAAT OVER DIT PAND:');
+    r.push('- Referentie: ' + pand.code);
+    r.push('- Adres: ' + [pand.adres, [pand.postcode, pand.plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '));
+    if (pand.type)        r.push('- Type: ' + pand.type + (pand.transactie ? ' (' + pand.transactie + ')' : ''));
+    if (bedrag(pand.prijs)) r.push('- Vraagprijs: ' + bedrag(pand.prijs));
+    if (pand.slaapkamers) r.push('- Slaapkamers: ' + pand.slaapkamers);
+    if (pand.badkamers)   r.push('- Badkamers: ' + pand.badkamers);
+    if (pand.oppervlakte) r.push('- Bewoonbare oppervlakte: ' + pand.oppervlakte + ' m2');
+    if (pand.grond)       r.push('- Grondoppervlakte: ' + pand.grond + ' m2');
+    if (pand.bouwjaar)    r.push('- Bouwjaar: ' + pand.bouwjaar);
+    if (pand.epc)         r.push('- EPC: ' + pand.epc);
+    r.push('- Status: ' + pand.status);
+    if (pand.troeven && pand.troeven.length) {
+      r.push('- Troeven: ' + pand.troeven.slice(0, 8).join('; '));
+    }
+    if (pand.omschrijving) {
+      r.push('', 'Omschrijving zoals de makelaar hem geschreven heeft:', pand.omschrijving.slice(0, 1200));
+    }
+
+    r.push('', 'REGELS OVER DIT PAND:');
+    r.push('- Noem alleen wat hierboven staat. Staat een cijfer er niet bij -- bouwjaar, EPC, kadastraal inkomen, syndickosten -- dan zeg je dat je het navraagt. Verzin NOOIT een getal.');
+    r.push('- De vraagprijs is de vraagprijs. Je doet geen uitspraak over wat het pand waard is en je onderhandelt niet.');
+
+    if (BEZICHTIGBARE_STATUS.indexOf(String(pand.status)) === -1) {
+      r.push('- LET OP: dit pand is ' + pand.status + '. Plan hier GEEN bezichtiging voor in, ook niet als de lead erop aandringt. '
+           + 'Zeg eerlijk dat het weg is, vraag waar hij naar op zoek is, en bied aan om te laten weten wat er nog wel beschikbaar is.');
+    } else if (String(pand.status) === 'onder bod') {
+      r.push('- Dit pand staat ONDER BOD. Bezichtigen mag, maar zeg er eerlijk bij dat er al een bod ligt, zodat niemand voor een verrassing staat.');
+    }
+    return r.join('\n');
+  },
+
+  /**
+   * Het blok als het pand NIET bekend is: een korte lijst om uit te kiezen.
+   * @param {object[]} lijst  panden van deze makelaar
+   */
+  index(lijst) {
+    const panden = (lijst || []).filter((p) => p && BEZICHTIGBARE_STATUS.indexOf(String(p.status)) !== -1);
+    if (!panden.length) return '';
+    const r = ['PANDEN DIE DEZE MAKELAAR NU AANBIEDT:'];
+    /* Twaalf is het dak. Niet uit netheid: deze tekst gaat bij ELKE beurt mee
+       naar het model, dus een kantoor met tachtig panden zou de helft van het
+       gesprek aan een opsomming besteden. */
+    for (const p of panden.slice(0, 12)) {
+      const stukken = [p.code, [p.adres, p.plaats].filter(Boolean).join(', ')];
+      if (bedrag(p.prijs)) stukken.push(bedrag(p.prijs));
+      if (p.slaapkamers)   stukken.push(p.slaapkamers + ' slaapkamers');
+      r.push('- ' + stukken.filter(Boolean).join(' | '));
+    }
+    if (panden.length > 12) r.push('- (en nog ' + (panden.length - 12) + ' andere)');
+    r.push('');
+    r.push('Je weet NIET over welk pand deze lead het heeft. Vraag het, vriendelijk en in een zin, ');
+    r.push('voordat je over prijs, kamers of een bezichtiging begint. Herkent hij het aan de straat ');
+    r.push('of de plaats, dan mag je bevestigen welk pand je bedoelt. Gok nooit, en noem nooit ');
+    r.push('cijfers van het ene pand terwijl het over het andere gaat.');
+    return r.join('\n');
+  },
+};
+
 /* ── WhatsApp-gesprek ────────────────────────────────────────────────────────
    De prompt die het meeste werk van Helvaro doet: elk leadgesprek loopt hier
    doorheen. Hij stond in api/whatsapp.js, tussen de webhook-afhandeling en het
@@ -204,6 +297,7 @@ const whatsappGesprek = {
    * @param {string} o.clientName          naam van het kantoor
    * @param {string} o.firstName           voornaam van de lead, of ''
    * @param {string} o.instructions        vrije instructies van de klant
+   * @param {string} o.pandSectie          pandfiche of pandenlijst, of '' (zie panden hierboven)
    * @param {string} o.websiteSection      voorgevormd blok of ''
    * @param {string} o.addressSection      voorgevormd blok of ''
    * @param {string} o.hoursSection        voorgevormd blok of ''
@@ -213,7 +307,7 @@ const whatsappGesprek = {
    * @param {object} o.ctx                 gespreksstaat en agendavensters
    */
   system({ langDirective = '', aiName = '', clientName = '', firstName = '',
-           instructions = '', websiteSection = '', addressSection = '',
+           instructions = '', pandSectie = '', websiteSection = '', addressSection = '',
            hoursSection = '', reasonLangNote = '', escalateInstruction = '',
            matchLeadLanguage = false, ctx = {} } = {}) {
     return `
@@ -235,7 +329,7 @@ Je hebt een eigen persoonlijkheid en toon, net als een goede medewerker:
 - Je hebt een mening en spreekt met karakter, niet generiek.
 - Soms wat sneller, soms wat trager met antwoorden. Heel normaal.
 ${firstName ? `\nJe spreekt nu met ${firstName}.\n` : ''}
-${websiteSection}${addressSection}${hoursSection}
+${pandSectie ? `\n${pandSectie}\n` : ''}${websiteSection}${addressSection}${hoursSection}
 HOE JE SCHRIJFT (HEEL belangrijk. Moet menselijk aanvoelen):
 - Korte zinnen. Soms maar een halve. Normaal op WhatsApp.
 - Lange leestekens vermijden: nooit "—", "...". Wel ".", ",", "?", "!".
@@ -334,6 +428,6 @@ Belangrijke regels:
 
 module.exports = {
   VERSIE, STIJLEN, BEHOUD_STANDAARD, PAND_ANALYSE_SCHEMA,
-  leadExtractie, gesprekSamenvatting, pandAnalyse, pandTransformatie, whatsappGesprek,
+  leadExtractie, gesprekSamenvatting, pandAnalyse, pandTransformatie, whatsappGesprek, panden,
 };
 

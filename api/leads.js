@@ -7,6 +7,7 @@ const credits = require('./_credits'); // credit/usage accounting — see its fi
 const _ai     = require('./_ai');      // AI-router: modelkeuze, fallback, verbruik
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
+const _properties = require('./_properties'); // de panden zelf, niet hun beelden
 const _lang   = require('./_lang');   // language registry — see its file header
 const _verify = require('./_verify'); // email-ownership verification — see its file header
 const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
@@ -1466,6 +1467,65 @@ module.exports = async function handler(req, res) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       const list = await images.listPropertyImages(projectCode);
       return res.status(200).json({ images: list });
+    }
+
+    /* ── Panden ──────────────────────────────────────────────────────────────
+       Drie modes en geen nieuwe route: Vercel Hobby staat twaalf functies toe
+       en die zijn op. Ze hangen hier omdat de tenantcontrole, de sessiecheck
+       en de CSRF-poort hierboven al gedaan zijn.
+
+       LET OP de naamgeving. 'property-list' hierboven gaat over AI-BEELDEN van
+       panden; 'listing-*' hieronder gaat over de panden zelf. Verwarrend, maar
+       'property-list' hernoemen breekt het dashboard van elke klant die de
+       pagina open heeft staan tijdens de deploy.
+
+       De projectcode komt uit de geverifieerde sessie hierboven en NOOIT uit
+       body: een pandcode staat in een publieke URL en is dus te raden, dus als
+       de klant erbij ook nog uit de body kwam kon iedereen elk pand lezen. */
+    if (body.mode === 'listing-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const panden = await _properties.list(projectCode, {
+          inclusiefGearchiveerd: body.includeArchived === true,
+        });
+        /* beschikbaar meesturen zodat de UI het verschil kan tonen tussen
+           "geen panden ingevoerd" en "de tabel bestaat nog niet". Dat zijn twee
+           heel verschillende boodschappen voor de klant. */
+        return res.status(200).json({ properties: panden, available: await _properties.available() });
+      } catch (err) {
+        console.error('[listing-list]', err && err.code, err && err.message);
+        return res.status(500).json({ error: 'Panden konden niet opgehaald worden.' });
+      }
+    }
+
+    if (body.mode === 'listing-save') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const pand = await _properties.save(projectCode, body.property || {});
+        return res.status(200).json({ property: pand });
+      } catch (err) {
+        console.error('[listing-save]', err && err.code, err && err.message);
+        /* De reden telt hier: "adres ontbreekt" en "de tabel bestaat niet" zijn
+           allebei een 4xx voor de gebruiker, maar de eerste lost hij zelf op en
+           de tweede nooit. */
+        const klantfouten = ['no_address', 'bad_code'];
+        const code = err && err.code;
+        if (klantfouten.indexOf(code) !== -1) return res.status(400).json({ error: err.message, code });
+        if (code === 'no_table') return res.status(503).json({ error: err.message, code });
+        return res.status(500).json({ error: 'Het pand kon niet opgeslagen worden.' });
+      }
+    }
+
+    if (body.mode === 'listing-archive') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const pand = await _properties.archive(projectCode, body.code, body.archived !== false);
+        return res.status(200).json({ property: pand });
+      } catch (err) {
+        console.error('[listing-archive]', err && err.code, err && err.message);
+        if (err && err.code === 'not_found') return res.status(404).json({ error: 'Pand niet gevonden.' });
+        return res.status(500).json({ error: 'Het pand kon niet gearchiveerd worden.' });
+      }
     }
 
     /* ── Command Center ──────────────────────────────────────────────────────

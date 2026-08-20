@@ -63,6 +63,7 @@ const data = require('./data');
 const pricing = require('./pricing');
 const credits = require('../_credits');
 const mediaModels = require('../_media-models');
+const properties = require('../_properties');
 
 const NOT_WIRED = 'not_wired';
 
@@ -188,6 +189,91 @@ function truncationNote(truncated) {
 }
 
 const readTools = [
+  {
+    name: 'get_properties',
+    kind: 'read',
+    description:
+      'Haal het aanbod van deze makelaar op: adres, prijs, slaapkamers, oppervlakte en status. Gebruik dit ' +
+      'zodra de gebruiker het over een pand, een woning, een appartement of "mijn aanbod" heeft, en ook ' +
+      'wanneer je wil weten welk pand bij een lead hoort. Verzin nooit een pand dat hier niet uit komt.',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: properties.ALLE_STATUS.slice(),
+                  description: 'Alleen panden met deze status.' },
+        code:   { type: 'string', description: 'Een specifieke referentie, bijvoorbeeld P3.' },
+        alleenAanbod: { type: 'boolean', default: false,
+                        description: 'Alleen wat nu nog te bezichtigen is (beschikbaar of onder bod).' },
+      },
+    },
+    run: readTool('get_properties', async (args, ctx) => {
+      /* De tabel kan er nog niet zijn. Dan is het antwoord "panden staan nog
+         uit", niet een lege lijst -- want een lege lijst leest het model als
+         "deze makelaar heeft geen aanbod", en dat vertelt hij dan door. */
+      if (!(await properties.available())) {
+        return stub(
+          'De pandenlijst is nog niet aangezet voor deze klant. Zeg dat je het aanbod niet kunt inzien '
+          + 'en verzin geen panden.', { unavailable: true });
+      }
+      const alle = await properties.list(ctx.projectCode, { alleenBezichtigbaar: args.alleenAanbod === true });
+      const code = args.code ? properties.normCode(args.code) : '';
+      const gefilterd = alle.filter((p) => {
+        if (code && p.code !== code) return false;
+        if (args.status && p.status !== properties.normStatus(args.status)) return false;
+        return true;
+      });
+
+      if (!gefilterd.length) {
+        return {
+          summary: alle.length
+            ? 'Geen pand past bij deze filter. De makelaar heeft er ' + alle.length + '.'
+            : 'Deze makelaar heeft nog geen panden ingevoerd.',
+          data: { properties: [], totaal: alle.length },
+          components: [],
+        };
+      }
+
+      /* Hoeveel leads per pand. Dezelfde rijen die de rest van Faro leest, dus
+         geen tweede waarheid over hetzelfde getal. */
+      let perPand = {};
+      try {
+        const { leads } = await data.leadsFor(ctx);
+        for (const l of leads) {
+          const c = String(l.property || '').toUpperCase();
+          if (c) perPand[c] = (perPand[c] || 0) + 1;
+        }
+      } catch (_) { perPand = {}; }
+
+      return {
+        summary: gefilterd.length + ' pand' + (gefilterd.length === 1 ? '' : 'en') + ': '
+          + gefilterd.slice(0, 8).map((p) => properties.samenvatting(p)).join(' / '),
+        data: {
+          properties: gefilterd.map((p) => ({
+            code: p.code, adres: p.adres, plaats: p.plaats, type: p.type, transactie: p.transactie,
+            prijs: p.prijs, slaapkamers: p.slaapkamers, oppervlakte: p.oppervlakte, epc: p.epc,
+            status: p.status, bezichtigbaar: properties.kanBezichtigen(p.status),
+            leads: perPand[p.code] || 0,
+          })),
+          totaal: alle.length,
+        },
+        components: gefilterd.slice(0, 12).map((p) => schema.propertyCard({
+          id: p.code,
+          title: p.adres || p.code,
+          address: [p.postcode, p.plaats].filter(Boolean).join(' '),
+          price: properties.prijsTekst(p.prijs) || '',
+          imageUrl: (p.fotos && p.fotos[0]) || '',
+          specs: [
+            p.slaapkamers ? p.slaapkamers + ' slk' : '',
+            p.oppervlakte ? p.oppervlakte + ' m2' : '',
+            p.epc ? 'EPC ' + p.epc : '',
+            p.status,
+            (perPand[p.code] || 0) + ' leads',
+          ].filter(Boolean),
+        })),
+      };
+    }),
+  },
+
   {
     name: 'get_leads',
     kind: 'read',

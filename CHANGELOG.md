@@ -161,6 +161,43 @@ hieronder.
   Dat is de interne aanduiding sinds de sessie in een beveiligde cookie zit,
   geen sleutel. De rij is nu verborgen zolang er geen echte sleutel is.
 
+### Panden — je AI weet nu over welke woning het gaat
+
+> **Actie:** maak in Airtable één tabel aan met de naam `properties`. De velden
+> en hun types staan bovenaan `api/_properties.js`. Zolang die tabel er niet is
+> zegt de Panden-pagina dat eerlijk en verzint de AI niets — hij weet alleen
+> niet over welk pand een lead het heeft. De Leads-tabel heeft géén nieuw veld
+> nodig.
+
+- **Dit was het gat.** De AI kreeg als achtergrond je hele website, platgeslagen
+  tot tekst. Heb je vier panden, dan staan daar vier prijzen in. Hij gokte dus
+  welke je lead bedoelde, of hij vroeg het na — en voor een woning die al
+  verkocht was plande hij vrolijk een bezichtiging in.
+- **Elk pand krijgt zijn eigen link.** `app.helvaro.pro/start/TELJO/P3`. Die zet
+  je onder een advertentie, op Immoweb of op een bordje met een QR-code. Het
+  formulier toont dan meteen om welke woning het gaat — met foto, prijs en
+  slaapkamers — en de lead die eruit komt draagt dat pand mee tot in het
+  WhatsApp-gesprek.
+- **De AI krijgt de fiche, niet je website.** Prijs, kamers, oppervlakte, EPC,
+  status en jouw eigen omschrijving. Met de regel erbij: staat een cijfer niet
+  in de fiche, dan zeg je dat je het navraagt. Nooit een getal verzinnen.
+- **Verkocht is verkocht.** Voor een pand dat weg is plant de AI geen
+  bezichtiging meer — en dat is niet alleen een instructie in de prompt: de
+  boeking wordt geweigerd, ook als het model het toch probeert. Hij zegt eerlijk
+  dat het weg is en vraagt waar je lead verder naar zoekt.
+- **Weet hij het niet, dan vraagt hij het.** Schrijft iemand rechtstreeks naar
+  je WhatsApp-nummer, dan herkent de AI het pand aan de straat of de referentie.
+  Lukt dat niet, dan krijgt hij je aanbod te zien en vraagt hij welke woning het
+  is. Gokken doet hij niet meer.
+- **Nieuwe pagina "Panden" in het CRM.** Toevoegen, bewerken, archiveren, en per
+  pand de link met een kopieerknop. Je ziet er ook hoeveel leads elk pand
+  opgeleverd heeft — zo weet je welke advertentie werkt.
+- **Faro kan erover praten.** "Welke panden staan onder bod?", "Hoeveel leads
+  heeft de Lange Violettestraat opgeleverd?" De chip "Panden" in de
+  contextbalk staat nu aan, en dat klopt ook.
+- **Archiveren, niet verwijderen.** Aan een pand hangen leads en afspraken. Die
+  blijven bewaard; het pand verdwijnt alleen uit je aanbod.
+
 ### Afspraken
 
 - **Het boekingsvenster bood tijden aan waar je al een afspraak had.** De

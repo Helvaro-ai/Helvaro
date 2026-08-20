@@ -91,6 +91,12 @@ function mapLead(r) {
     // one where the AI has stopped answering and a human has to, which is the
     // single most urgent state a lead can be in.
     aiPaused:              Boolean(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'aiPaused')),
+    /* Over welk pand deze lead het heeft. Komt uit /start/TELJO/P3 en zit in
+       dezelfde JSON-blob als aiPaused -- zie api/form.js voor waarom er geen
+       aparte kolom is. Leeg = onbekend, en dat is een geldig antwoord: iemand
+       die rechtstreeks naar het WhatsApp-nummer schrijft heeft nooit een
+       pandlink aangeraakt. */
+    property:              String(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'property') || '').toUpperCase(),
     gesprek:               f['Conversation History'] || '',
     leadScore:             num(f.fldpzQgMuWJLjogiD  || f['Lead Score']),
     opgepikt:              bool(f.fld86JQHB6dbuutA7 || f.Opgepikt),
