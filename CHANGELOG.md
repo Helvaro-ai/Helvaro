@@ -449,4 +449,4 @@ hieronder.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 1c87c98 -->
+<!-- changelog-tot: effd9e2 -->
