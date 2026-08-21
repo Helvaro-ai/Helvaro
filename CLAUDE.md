@@ -41,10 +41,22 @@ Beide zijn hier al eens gebeurd zonder dat de module weigerde te laden — de fo
 zit in de UITVOER, niet in de bron. `scripts/faro-check.js` parseert daarom de
 uitgestuurde JavaScript; draai hem na elke wijziging aan dit bestand.
 
-**Precies 12 functies in `api/`.** Dat is het plafond van Vercel Hobby. Modules
-met een underscore ervoor (`api/_faro/`, `api/_credits.js`, …) zijn géén routes
-en tellen niet mee. Een nieuwe route erbij breekt de deploy; hang extra gedrag
-aan een bestaande route via `body.mode`, zoals `api/leads.js` doet.
+**Routes zijn duur; hang gedrag aan `body.mode`.** Er staan er nu 13 in `api/`.
+Modules met een underscore ervoor (`api/_faro/`, `api/_credits.js`, …) zijn géén
+routes en tellen niet mee.
+
+Het plafond van twaalf was dat van Vercel Hobby; het project staat inmiddels op
+Pro, dus een route erbij breekt de deploy niet meer. Dat maakt de gewoonte niet
+minder waar: elke route is een koude start en een tweede plek waar de
+sessiecontrole moet kloppen. `api/leads.js` draagt daarom panden, facturatie,
+plannen en het bijkopen van credits als modes.
+
+Eén route is er bewust wél bij gekomen: `api/stripe.js`. Die kan niet aan
+`leads.js` hangen, omdat Stripe de RUWE bytes van de body ondertekent en Vercel
+een JSON-body automatisch wegparst — de handtekening zou dan bij elke betaling
+falen. Vandaar `bodyParser: false` op die ene route. Dat is de lat: een eigen
+route is te rechtvaardigen als het technisch niet anders kan, niet omdat het
+netter oogt.
 
 **Kleuren komen uit tokens, en tekst gebruikt een ándere token dan een vlak.**
 `--accent-c` is de vulling, `--accent-ink` is diezelfde kleur als tekst — met per
@@ -83,4 +95,14 @@ niet stuk zijn.
   `api/_faro/actions.js`.
 - **Geen verzonnen cijfers in het echte dashboard.** Elk getal komt uit
   tenant-eigen records. Pipeline is geen omzet.
+- **Prijzen staan in `api/_plans.js` en nergens anders.** Ze hebben hier al twee
+  keer los in de code gestaan en klopten allebei de keren niet met de
+  prijspagina — één keer zes keer te duur, één keer drie keer te goedkoop. Wat
+  daaruit volgt (het tarief voor bijkopen, de creditlimiet bij onboarding, wat
+  het scherm toont) wordt afgeleid, nooit overgetypt. De browser rekent geen
+  prijs uit: dat is het getal dat een klant kan aanpassen.
+- **Geen mailto op een moment dat iemand wil betalen.** Er stonden er vier
+  ("Upgrade nu", "Heractiveer account", "Limiet bereikt", "mail ons voor een
+  account"). Elke daarvan is een klant die moet wachten tot er iemand wakker is.
+  `tests/zelfbediening.test.js` bewaakt dat ze niet terugkomen.
 - **Nooit een slot tonen als vrij** zonder dat de agenda dat bevestigt.

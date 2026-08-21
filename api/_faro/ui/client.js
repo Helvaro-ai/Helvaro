@@ -385,13 +385,26 @@ function faroSend(text) {
     signal: faroState.abort.signal
   })
     .then(function (r) {
+      /* 429 apart. Zonder dit kreeg iemand die te snel klikte dezelfde melding
+         als bij een crash -- met een knop "opnieuw proberen" die meteen weer
+         faalt, want de limiet is nog niet voorbij. Dan lijkt de app stuk
+         terwijl er niets stuk is.
+
+         Ook niet als "opnieuw te proberen" gemarkeerd: de enige juiste actie is
+         even wachten, en een knop die dat niet doet nodigt uit tot doorklikken. */
+      if (r.status === 429) { var e = new Error('ratelimit'); e.faroCode = 'ratelimit'; throw e; }
       if (!r.ok || !r.body) throw new Error('stream');
       return faroReadStream(r.body, bubble, status);
     })
     .catch(function (err) {
       if (err && err.name === 'AbortError') return;
+      var teSnel = err && err.faroCode === 'ratelimit';
       faroMascot('error');
-      faroRenderComponent(bubble, { type: 'error', message: T('st.error'), retryable: true });
+      faroRenderComponent(bubble, {
+        type: 'error',
+        message: T(teSnel ? 'st.ratelimit' : 'st.error'),
+        retryable: !teSnel
+      });
     })
     .finally(function () {
       faroState.streaming = false;

@@ -5723,13 +5723,6 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   width: 100%;
   margin-bottom: 16px;
 }
-/* Onder 700px passen drie omzetkaarten naast elkaar niet meer: ze bleven op
-   hun min-content-breedte staan en liepen 168px buiten beeld op een telefoon,
-   onzichtbaar afgekapt door overflow-x:hidden. */
-@media (max-width: 700px) {
-  .analyse-revenue-row { flex-wrap: wrap; }
-  .analyse-revenue-row > * { flex: 1 1 100%; }
-}
 .analyse-revenue-card {
   flex: 1;
   min-width: 0;
@@ -5741,6 +5734,21 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   flex-direction: column;
   gap: 4px;
 }
+/* Onder 700px passen drie omzetkaarten niet meer naast elkaar.
+
+   Deze regels stonden VOOR .analyse-revenue-card. Een @media-blok verhoogt de
+   specificiteit niet, dus bij gelijke specificiteit wint wat later staat -- en
+   dat was de flex-verkorting op de kaart hierboven. De kaarten kregen daardoor
+   76px op een telefoon van 390px en de tekst erin werd afgekapt, terwijl de
+   regel die dat had moeten voorkomen er gewoon stond. Dat is precies de
+   cascadeval uit CLAUDE.md, en het is hier al eerder misgegaan met .btn-icon.
+
+   Vandaar: NA de basisregel. Verplaats dit blok niet naar boven. */
+@media (max-width: 700px) {
+  .analyse-revenue-row { flex-wrap: wrap; }
+  .analyse-revenue-row > * { flex: 1 1 100%; }
+}
+
 .analyse-revenue-val {
   font-variant-numeric: tabular-nums;
   font-size: 26px;
