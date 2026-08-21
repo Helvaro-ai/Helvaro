@@ -274,13 +274,34 @@ const COST_PER_CREDIT_EUR = {
  * iemand krijgt, en dat is precies het getal dat een klant kan aanpassen.
  * Alles wordt hier berekend en de UI toont alleen de uitkomst.
  *
- * -- De tarieven zijn instelbaar ---------------------------------------------
- * Via de omgeving, zodat je je marge kunt bijstellen zonder een deploy. De
- * standaard hieronder volgt je huidige plan: EUR 1.000 per maand voor 2.000
- * credits, dus EUR 0,50 per credit. BEVESTIG DIT voordat je het aanzet -- het
- * is afgeleid van je planprijs, niet uit een factuur.
+ * -- Het tarief ---------------------------------------------------------------
+ * EUR 0,025 per credit. Dat is niet verzonnen: het is exact het overage-tarief
+ * uit CREDIT-SYSTEM-DESIGN.md 4 -- "EUR 25 per 1.000 extra credits (~EUR15
+ * kostprijs => ~40% marge)". Bijkopen en overschrijden horen hetzelfde te
+ * kosten, anders is het goedkoper om je limiet te overschrijden dan om netjes
+ * bij te kopen.
+ *
+ * Een eerdere versie stond op EUR 0,50 -- twintig keer te hoog. Dat getal was
+ * afgeleid uit een losse opmerking over EUR 1.000/maand voor 2.000 credits,
+ * terwijl de plannen op de prijspagina EUR 149 voor 2.000 credits zijn
+ * (EUR 0,075 per credit). Een bijgekocht leadgesprek kostte daardoor EUR 10,
+ * tegenover EUR 1,49 op Starter. Dit staat hier zodat het niet nog eens
+ * gebeurt: leid dit tarief af van de prijspagina, niet van een terzijde.
+ *
+ * -- Wat de staffel met je marge doet ----------------------------------------
+ * Kostprijs is ~EUR 0,30 per leadgesprek (20 credits), zie 1 van dezelfde
+ * doc. Bij dit tarief levert een bijgekocht gesprek op:
+ *   geen bonus  EUR 0,50 per gesprek -> 40% marge
+ *   5% bonus    EUR 0,476            -> 37%
+ *   10% bonus   EUR 0,455            -> 34%
+ *   15% bonus   EUR 0,435            -> 31%
+ * Alles positief, maar dunner dan een abonnement (75-80%). Wil je de staffel
+ * niet, zet de bonuspercentages hieronder op 0.
+ *
+ * Beide instelbaar via de omgeving, zodat je je marge kunt bijstellen zonder
+ * een deploy.
  */
-const TOPUP_RATE_EUR = Number(process.env.CREDIT_TOPUP_RATE_EUR || 0.50);
+const TOPUP_RATE_EUR = Number(process.env.CREDIT_TOPUP_RATE_EUR || 0.025);
 const TOPUP_MIN_EUR  = Number(process.env.CREDIT_TOPUP_MIN_EUR  || 25);
 const TOPUP_MAX_EUR  = Number(process.env.CREDIT_TOPUP_MAX_EUR  || 5000);
 
