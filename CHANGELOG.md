@@ -14,6 +14,27 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold — tak `claude/helvaro-ai-workspace-ol7lbr`
 
+### Wat er uit een klikronde over alle pagina's kwam
+
+- **De omzetkaarten op Analyse waren 76px breed op een telefoon.** De tekst erin
+  werd afgekapt. De regel die dat had moeten voorkomen stond er wél, maar op de
+  verkeerde plek in het stijlblad en verloor daardoor.
+- **Te snel klikken in Faro gaf "Er ging iets mis".** Dezelfde melding als bij
+  een storing, met een knop "opnieuw proberen" die meteen weer faalde. Nu staat
+  er dat je te snel gaat, en is die knop weg — even wachten is het enige dat
+  helpt.
+
+### "Verloren" en "gewonnen" betekenden allebei twee dingen
+
+- **Zette je een lead op "Verloren", dan bleef zijn kaartje in Nieuw staan.** Het
+  pipelinebord en de cijfers op Analyse gebruikten elk hun eigen definitie. Dat
+  is nu één definitie, dus het bord en de cijfers kunnen niet meer verschillen.
+- **De win rate telde leads als gewonnen die op het bord nog in "Afspraak"
+  stonden.** Ook rechtgezet.
+- Slepen werkt beide kanten op: een lead die je op verloren zette kun je gewoon
+  terugslepen.
+
+
 > **Actie:** zet vier variabelen in Vercel voordat je klanten binnenlaat.
 > `STRIPE_SECRET_KEY` en `STRIPE_WEBHOOK_SECRET` (anders is er geen betaalweg),
 > `PUBLIC_SIGNUP_ENABLED=true` (anders kan niemand zich zelf aanmelden), en
@@ -637,4 +658,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 7fd8b95 -->
+<!-- changelog-tot: 9fe8b73 -->
