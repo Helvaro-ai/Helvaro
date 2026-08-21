@@ -14,6 +14,105 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold — tak `claude/helvaro-ai-workspace-ol7lbr`
 
+> **Actie:** zet vier variabelen in Vercel voordat je klanten binnenlaat.
+> `STRIPE_SECRET_KEY` en `STRIPE_WEBHOOK_SECRET` (anders is er geen betaalweg),
+> `PUBLIC_SIGNUP_ENABLED=true` (anders kan niemand zich zelf aanmelden), en
+> controleer dat `CLERK_ENABLED` op `1` of `true` staat.
+> Zet in Stripe één webhook naar `https://app.helvaro.pro/api/stripe` met de
+> gebeurtenissen `checkout.session.completed`, `invoice.paid` en
+> `customer.subscription.deleted`.
+
+### Clerk was uitgeschakeld zonder dat iets dat zei
+
+`CLERK_ENABLED` moest exact `1` zijn. Stond er `true` — de spelling die iedereen
+intikt en die elke andere schakelaar hier ook accepteert — dan sliep Clerk, viel
+het scherm terug op het oude wachtwoordformulier, en was er geen foutmelding,
+geen waarschuwing en geen aanwijzing. De vlag leest nu ook `true`, `yes`, `on`
+en `ja`, en `preflight.js` zegt voortaan welke waarde hij las.
+
+### Wisselen naar "Account aanmaken" liet een leeg scherm achter
+
+Klikte je op Account aanmaken, dan verdween het formulier en stond er "Het scherm
+om te registreren kon niet geladen worden". Twee oorzaken:
+
+Het knopje keek of Clerk er *al* was, maar Clerk laadt op de achtergrond terwijl
+de knop er meteen staat. Wie binnen de eerste seconde klikte — het normale geval
+— kreeg dus een fout voor iets dat een seconde later gewoon werkte. En het eigen
+formulier werd verborgen vóórdat Clerk iets had getekend, dus lukte het niet,
+dan was er niets om naar terug te vallen.
+
+Nu wordt er gewacht tot Clerk klaar is, verdwijnt het formulier pas als er echt
+iets staat, en komt het terug zodra dat niet zo is. Inloggen kan dus altijd, wat
+Clerk ook doet.
+
+### Het inlogscherm opnieuw ingedeeld
+
+- Een schakelaar bovenaan met **Inloggen** en **Account aanmaken** naast elkaar.
+  De weg naar binnen voor een nieuwe klant was het kleinste element op het
+  scherm: een tekstlinkje onderaan, achter een middenpunt.
+- Titel en ondertitel volgen de stand: "Welkom terug!" of "Begin vandaag".
+- Een regel met wat je krijgt: 14 dagen gratis, geen kaart nodig, maandelijks
+  opzegbaar.
+- De rechterhelft blijft in beide thema's donker. Zette je het lichte thema aan,
+  dan werd die helft wit en verdween de merkkant volledig.
+
+### Zelf een abonnement afsluiten, zonder dat wij eraan te pas komen
+
+Dit is het gat dat overbleef: een klant kon zich aanmelden en veertien dagen
+proberen, en daarna hield het op. Betalend worden ging alleen doordat iemand met
+de hand een plan en een creditlimiet invulde.
+
+Op **Facturatie** staan nu de drie plannen. Kiezen, afrekenen bij Stripe, en het
+plan én de creditlimiet staan goed voordat de klant terug is op het scherm.
+Facturen, kaart wijzigen en opzeggen lopen via Stripe's eigen portaal — een
+opzegknop die alleen bij ons werkt en niet bij Stripe laat iemand doorbetalen
+terwijl hij denkt dat hij weg is.
+
+**Actie:** "mail ons en wij zetten je account klaar" is weg van het inlogscherm.
+Dat was handwerk per klant; wie zich 's avonds aanmeldde was de volgende ochtend
+weg. Zet daarom `PUBLIC_SIGNUP_ENABLED=true`, anders is er geen weg naar binnen.
+
+### De prijzen klopten niet met je eigen prijspagina
+
+Alles stond verspreid: onboarding gaf **2.000** credits waar Starter **3.000**
+zegt, dus elke nieuwe klant kreeg een derde te weinig. Er is nu één plantabel:
+Starter € 249,99 / 3.000, Growth € 499 / 10.000, Scale € 799 / 20.000.
+
+Het tarief voor bijgekochte credits volgt daaruit: **€ 0,0833 per credit**,
+gelijk aan Starter. Het stond eerder op € 0,50 (zes keer te duur) en daarna op
+€ 0,025 (drie keer te goedkoop) — allebei omdat het een los getal was dat
+nergens uit volgde.
+
+De volumebonus is eruit. Doorgerekend gaf die voor € 249,99 aan bijgekochte
+credits er 3.151, terwijl Starter voor hetzelfde bedrag 3.000 geeft: bijkopen
+was voordeliger dan een abonnement. Het scherm zegt nu juist dat een groter plan
+meer geeft zodra dat zo is.
+
+Ook: het Starter-plan stond op het scherm als "€ 250" in plaats van € 249,99.
+
+### Betalen kan niet twee keer aankomen
+
+Stripe stuurt een gebeurtenis opnieuw zodra hij geen bevestiging krijgt. Het
+bijschrijven van credits werkte de teller bij vóórdat gecontroleerd werd of die
+betaling al geboekt was — twee webhooks betekende dus twee keer credits voor één
+betaling. De controle staat nu vooraan.
+
+### Leesbaarheid: de vorige meting deugde niet
+
+Eerlijk hierover, want alle eerdere uitspraken hierover hingen eraan. De vorige
+controle mat veertien keer het **inlogscherm** in plaats van de pagina erachter,
+en de meetmethode las de zijbalk als lichtblauw terwijl die donker is — goed
+voor 23 tot 49 valse meldingen per pagina.
+
+Opnieuw gemeten, met een methode die de hele achtergrondstapel doorrekent: over
+alle veertien pagina's in beide thema's **twee echte fouten**, allebei hersteld.
+Het rondje van een nog niet afgevinkte onboardingstap (2,95:1) en "Mijn profiel"
+in de zijbalk in het lichte thema (3,99:1). Nu 6,40 en 5,15.
+
+---
+
+## 21 augustus 2026 — uitgerold
+
 ### Drie back-officeknoppen gaven een kale 500 na het weghalen van de VPS-variabelen
 
 `PG_API_URL` en `PG_API_TOKEN` horen weg te zijn — dat token ging naar een
@@ -49,11 +148,12 @@ abonnement, en dat staat nu uitgerekend bij de code.
 > `CREDIT_TOPUP_RATE_EUR` in Vercel of zet de bonuspercentages in
 > `api/_credits.js` op 0.
 
----
+*Naschrift:* dit tarief is dezelfde dag nog aangepast. € 0,025 lag namelijk
+onder je eigen planprijs, dus bijkopen werd goedkoper dan een abonnement — de
+fout in de andere richting. Het staat nu op € 0,0833, gelijk aan Starter. Zie
+"De prijzen klopten niet met je eigen prijspagina" hierboven.
 
-## 21 augustus 2026 — uitgerold
-
-Alles hieronder staat sinds vandaag op `main` en draait in productie.
+Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 
 > **Actie:** haal `PG_API_URL`, `PG_API_TOKEN` en `PG_API_INSECURE` uit Vercel.
 > Ze wijzen naar de opgeheven VPS. Dat was een kaal IP-adres, en die worden door
@@ -537,4 +637,4 @@ Alles hieronder staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 7a34f12 -->
+<!-- changelog-tot: 7fd8b95 -->
