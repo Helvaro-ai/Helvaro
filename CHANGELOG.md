@@ -14,8 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold — tak `claude/helvaro-ai-workspace-ol7lbr`
 
-47 commits die nog niet op `main` staan. Productie draait dus nog niets
-hieronder.
+### Bijgekochte credits kostten twintig keer te veel
+
+Het tarief voor bijkopen stond op € 0,50 per credit. Een bijgekocht
+leadgesprek (20 credits) kostte daarmee **€ 10**, terwijl datzelfde gesprek op
+Starter € 1,49 kost. Dat getal was afgeleid uit een losse opmerking over
+€ 1.000 per maand voor 2.000 credits; de prijspagina zegt € 149 voor 2.000.
+
+Staat nu op **€ 0,025 per credit** — precies het overage-tarief dat al in
+`CREDIT-SYSTEM-DESIGN.md` §4 stond: € 25 per 1.000 extra credits. Bijkopen en
+je limiet overschrijden kosten nu hetzelfde, wat ook de bedoeling was: anders
+is slordig zijn goedkoper dan netjes bijkopen.
+
+Wat een klant nu ziet: € 25 → 1.000 credits → 50 gesprekken. € 500 → 22.000
+credits (20.000 + 10% bonus) → 1.100 gesprekken. Je marge per bijgekocht
+gesprek loopt van 40% (geen bonus) tot 31% (15% bonus); dunner dan een
+abonnement, en dat staat nu uitgerekend bij de code.
+
+> **Actie:** wil je een ander tarief of geen volumebonus, zet
+> `CREDIT_TOPUP_RATE_EUR` in Vercel of zet de bonuspercentages in
+> `api/_credits.js` op 0.
+
+---
+
+## 21 augustus 2026 — uitgerold
+
+Alles hieronder staat sinds vandaag op `main` en draait in productie.
 
 > **Actie:** haal `PG_API_URL`, `PG_API_TOKEN` en `PG_API_INSECURE` uit Vercel.
 > Ze wijzen naar de opgeheven VPS. Dat was een kaal IP-adres, en die worden door
@@ -499,4 +523,4 @@ hieronder.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: b1204b9 -->
+<!-- changelog-tot: 7a34f12 -->
