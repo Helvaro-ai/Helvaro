@@ -78,13 +78,69 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Handtekening ongeldig' });
   }
 
-  /* Alleen deze ene gebeurtenis doet iets. Alle andere krijgen 200 -- anders
-     blijft Stripe ze eindeloos opnieuw aanbieden. */
+  const object = (gebeurtenis.data && gebeurtenis.data.object) || {};
+
+  /* ── Abonnementen ────────────────────────────────────────────────────────
+     Dit is wat "werkt zonder dat er iemand nodig is" echt betekent: een klant
+     kiest een plan, betaalt, en zijn limiet staat goed voordat hij terug is op
+     het dashboard. Er komt geen mens meer aan te pas. */
+  if (gebeurtenis.type === 'checkout.session.completed' && object.mode === 'subscription') {
+    const meta = object.metadata || {};
+    const code = String(meta.projectCode || object.client_reference_id || '').trim();
+    const planId = String(meta.plan || '').trim();
+    if (!code || !planId) {
+      console.error(`[stripe] abonnement ${object.id} zonder bruikbare metadata — handmatig nakijken.`);
+      return res.status(200).json({ ontvangen: true, fout: 'metadata ontbreekt' });
+    }
+    try {
+      const abo = require('./_abonnement');
+      await abo.activeer({ projectCode: code, planId,
+                           klantId: object.customer, abonnementId: object.subscription });
+      return res.status(200).json({ ontvangen: true, plan: planId });
+    } catch (e) {
+      console.error(`[stripe] abonnement activeren mislukt voor ${code}:`, e.message);
+      return res.status(500).json({ error: 'Activeren mislukt' });   // 500 = Stripe probeert opnieuw
+    }
+  }
+
+  /* Een verlenging. Elke maand opnieuw, en dat is precies waar de creditperiode
+     hoort te herstarten: zonder dit blijft een klant op het verbruik van vorige
+     maand staan en loopt hij halverwege tegen zijn plafond. */
+  if (gebeurtenis.type === 'invoice.paid' && object.subscription) {
+    const code = String((object.subscription_details && object.subscription_details.metadata
+                        && object.subscription_details.metadata.projectCode) || '').trim();
+    if (!code) return res.status(200).json({ ontvangen: true, genegeerd: 'geen projectcode op de factuur' });
+    try {
+      const credits = require('./_credits');
+      await credits.resetPeriod(code);
+      console.log(`[stripe] nieuwe periode gestart voor ${code} na een betaalde factuur.`);
+    } catch (e) {
+      console.warn(`[stripe] periode herstarten mislukt voor ${code}:`, e.message);
+    }
+    return res.status(200).json({ ontvangen: true });
+  }
+
+  /* Opgezegd of verlopen. Data blijft staan -- zie api/_abonnement.js. */
+  if (gebeurtenis.type === 'customer.subscription.deleted') {
+    const code = String((object.metadata || {}).projectCode || '').trim();
+    if (!code) return res.status(200).json({ ontvangen: true, genegeerd: 'geen projectcode' });
+    try {
+      const abo = require('./_abonnement');
+      await abo.stop({ projectCode: code, reden: 'abonnement gestopt bij Stripe' });
+    } catch (e) {
+      console.error(`[stripe] stoppen mislukt voor ${code}:`, e.message);
+      return res.status(500).json({ error: 'Stoppen mislukt' });
+    }
+    return res.status(200).json({ ontvangen: true, gestopt: true });
+  }
+
+  /* Alle overige gebeurtenissen krijgen 200 -- anders blijft Stripe ze
+     eindeloos opnieuw aanbieden. */
   if (gebeurtenis.type !== 'checkout.session.completed') {
     return res.status(200).json({ ontvangen: true, genegeerd: gebeurtenis.type });
   }
 
-  const sessie = (gebeurtenis.data && gebeurtenis.data.object) || {};
+  const sessie = object;
   const meta = sessie.metadata || {};
   const projectCode = String(meta.projectCode || sessie.client_reference_id || '').trim();
   const aantal = Math.round(Number(meta.credits) || 0);

@@ -6248,14 +6248,25 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: flex; align-items: center; gap: 12px; padding: 10px 0;
   border-top: 1px solid var(--divider);
 }
-.chk-item[data-accent="blue"]    { --a: var(--c-blue);    --a-soft: var(--c-blue-soft); }
-.chk-item[data-accent="gold"]    { --a: var(--c-gold);    --a-soft: var(--c-gold-soft); }
-.chk-item[data-accent="purple"]  { --a: var(--c-purple);  --a-soft: var(--c-purple-soft); }
-.chk-item[data-accent="cyan"]    { --a: var(--c-cyan);    --a-soft: var(--c-cyan-soft); }
-.chk-item[data-accent="emerald"] { --a: var(--c-emerald); --a-soft: var(--c-emerald-soft); }
+/* Drie waarden per accent, niet twee: de VULLING (--a), het zachte vlak
+   (--a-soft) waar het bolletje op staat, en de INKT (--a-ink) waarin het
+   teken erin geschreven wordt.
+
+   Er stonden er twee, en het bolletje gebruikte de vulling als letterkleur.
+   Gemeten in het lichte thema: het groene rondje van een nog niet afgevinkte
+   stap kwam uit op 2,95:1 -- #16A34A op #E8F6ED. Dat is precies de regel uit
+   CLAUDE.md, en dit is de derde plek waar hij misging. De afgevinkte variant
+   hieronder was al eerder gerepareerd; de NIET-afgevinkte niet, en die is
+   degene die je het vaakst ziet. */
+.chk-item[data-accent="blue"]    { --a: var(--c-blue);    --a-soft: var(--c-blue-soft);    --a-ink: var(--neutral-ink); }
+.chk-item[data-accent="gold"]    { --a: var(--c-gold);    --a-soft: var(--c-gold-soft);    --a-ink: var(--accent-ink); }
+.chk-item[data-accent="purple"]  { --a: var(--c-purple);  --a-soft: var(--c-purple-soft);  --a-ink: var(--neutral-ink); }
+.chk-item[data-accent="cyan"]    { --a: var(--c-cyan);    --a-soft: var(--c-cyan-soft);    --a-ink: var(--neutral-ink); }
+.chk-item[data-accent="emerald"] { --a: var(--c-emerald); --a-soft: var(--c-emerald-soft); --a-ink: var(--success-ink); }
 .chk-item-icon {
   flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center;
-  border-radius: 50%; background: var(--a-soft, var(--bg-card-alt)); color: var(--a, var(--text-muted));
+  border-radius: 50%; background: var(--a-soft, var(--bg-card-alt));
+  color: var(--a-ink, var(--text-muted));
   font-size: 13px; font-weight: 700;
 }
 /* Vulling en inkt uit elkaar: --c-emerald is de VULkleur en haalde als vinkje
@@ -7168,6 +7179,46 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    Kleuren uit tokens, tekst uit de ink-variant van het vlak eronder. Een
    bedrag mag hier nooit slecht leesbaar zijn: dit is de pagina waar een klant
    naar kijkt als hij twijfelt of hij te veel betaalt. */
+/* ── De plannen ──────────────────────────────────────────────────────────
+   Drie kaarten naast elkaar, met het huidige plan gemarkeerd. Het accent zit
+   in de RAND en in de knop, nooit als vlak achter lopende tekst -- zand als
+   ondergrond voor een alinea leest niet, en dat is precies de regel waar dit
+   project al twee keer op is misgegaan. */
+.fa-plannen { display: flex; flex-direction: column; gap: var(--sp-2); }
+.fa-plannen-titel { font-size: 16px; font-weight: 650; margin: 0; color: var(--text-primary); }
+.fa-plannen-sub   { font-size: 13px; color: var(--text-secondary); margin: 0 0 var(--sp-2); }
+.fa-plannen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-3);
+}
+.fa-plan {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+.fa-plan.huidig {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.18);
+}
+.fa-plan-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.fa-plan-titel { font-size: 15px; font-weight: 650; color: var(--text-primary); }
+.fa-plan-badge {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+.fa-plan-prijs {
+  font-size: 26px; font-weight: 700; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.fa-plan-prijs span { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.fa-plan-regel { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+.fa-plan-knop { margin-top: auto; }
+
 .fa-wrap { display: flex; flex-direction: column; gap: 16px; max-width: 940px; }
 .fa-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 780px) { .fa-top { grid-template-columns: 1fr; } }
@@ -7883,7 +7934,15 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    het donkere vlak: 1,86:1 en 1,88:1, allebei ruim onder 4,5:1.
    Meet tegen het oppervlak waar de tekst ECHT op staat. */
 [data-theme="light"] .sidebar .user-name { color: #E9EEF6; }
-[data-theme="light"] .sidebar .user-role { color: #8D99AC; }
+/* #8D99AC haalde 5,74:1 op de zijbalkVOET (rgb 26,31,39) -- daar was op
+   gerekend. Maar "Mijn profiel" staat niet op de voet: het staat in het
+   profielblok, en dat is lichter (rgb 54,57,65). Daar kwam dezelfde kleur uit
+   op 3,99:1. Het verschil zat er altijd al; de vorige meting keek naar het
+   verkeerde vlak.
+
+   #A3AEC0 haalt 5,15:1 op het profielblok en 7,38:1 op de voet -- goed op
+   allebei, dus één waarde volstaat. */
+[data-theme="light"] .sidebar .user-role { color: #A3AEC0; }
 /* Niet --error-ink (#F87171): dat is afgestemd op het KAARTvlak en haalt
    daar 5,68:1, maar op het donkerdere zijbalkvlak (rgb(56,52,60), gemeten op
    de echte pixels) blijft het op 4,40:1 steken — net onder 4,5. Deze tint
@@ -9799,7 +9858,14 @@ ${faro.navCta}
             <div class="fa-plan-naam" id="fa-plan-naam">—</div>
             <div class="fa-plan-sub" id="fa-plan-sub"></div>
             <div class="fa-plan-acties">
-              <button class="btn-icon" onclick="facturatieContact('plan')">Plan wijzigen</button>
+              <!-- Stond op "Plan wijzigen" met een mailtje erachter. Dat is
+                   handwerk per klant en dus precies wat niet meeschaalt: de
+                   klant wil betalen en moet wachten tot er iemand wakker is.
+                   Nu scrollt hij naar de plannen en rekent zelf af. -->
+              <button class="btn-icon" onclick="naarPlannen()">Plan wijzigen</button>
+              <!-- Alleen zichtbaar als er echt iets te beheren valt. -->
+              <button class="btn-icon" id="fa-portaal-knop" style="display:none"
+                      onclick="naarFacturatieportaal()">Facturen &amp; opzeggen</button>
             </div>
           </div>
 
@@ -9813,6 +9879,15 @@ ${faro.navCta}
             </div>
           </div>
         </div>
+
+        <!-- De plannen. Dit is de hele reden dat een klant zonder ons betalend
+             kan worden: kiezen, afrekenen bij Stripe, en de webhook zet het
+             plan en de creditlimiet voordat hij terug is op dit scherm. -->
+        <section class="fa-plannen" id="fa-plannen" aria-labelledby="fa-plannen-titel">
+          <h2 class="fa-plannen-titel" id="fa-plannen-titel">Plannen</h2>
+          <p class="fa-plannen-sub">Maandelijks opzegbaar. Je credits gaan mee naar het nieuwe plan.</p>
+          <div class="fa-plannen-grid" id="fa-plannen-grid"></div>
+        </section>
 
         <!-- Waar de credits heen gingen -->
         <div class="fa-card">
@@ -18885,6 +18960,23 @@ function koopFmt(n) {
   return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
 }
 
+/* Een BEDRAG, en niet zomaar een getal. koopFmt rondt af op hele eenheden --
+   prima voor 3.000 credits, fout voor een prijs: het Starter-plan kostte op het
+   scherm "EUR 250" terwijl de prijspagina EUR 249,99 zegt. Een cent verschil is
+   klein; een prijs die niet klopt met wat je adverteert is dat niet.
+
+   Hele euro's blijven heel: EUR 499 wordt geen "EUR 499,00", want dat leest
+   als een kassabon in plaats van als een prijs. */
+function euroFmt(n) {
+  var x = Number(n);
+  if (!isFinite(x)) return '0';
+  var heel = Math.abs(x - Math.round(x)) < 0.005;
+  return x.toLocaleString('nl-BE', {
+    minimumFractionDigits: heel ? 0 : 2,
+    maximumFractionDigits: 2
+  });
+}
+
 function openKoopModal() {
   koopState.bedrag = 100;
   document.getElementById('koop-bedrag').value = 100;
@@ -18990,12 +19082,109 @@ async function koopOfferteOphalen() {
     adviesEl.innerHTML =
       '<div class="koop-advies">'
       + '<strong>' + bp.naam + ' geeft je meer voor dit bedrag.</strong>'
-      + '<span>\\u20AC ' + koopFmt(bp.prijsEur) + ' per maand \\u00B7 ' + koopFmt(bp.credits)
+      + '<span>\\u20AC ' + euroFmt(bp.prijsEur) + ' per maand \\u00B7 ' + koopFmt(bp.credits)
       + ' credits \\u00B7 ongeveer ' + koopFmt(bp.gesprekken) + ' leadgesprekken, elke maand opnieuw.</span>'
       + '</div>';
   } else {
     adviesEl.innerHTML = '';
   }
+}
+
+/* ══ Plannen ══════════════════════════════════════════════════════════════════
+   Ophalen, tonen, en afrekenen. Alle bedragen komen van de SERVER (api/_plans.js
+   via mode plan-list) -- de browser rekent hier niets uit, want een browser die
+   prijzen berekent is een browser waarin een klant zijn eigen prijs aanpast. */
+var planState = { plannen: [], huidig: null, stripeAan: false };
+
+async function laadPlannen() {
+  var grid = document.getElementById('fa-plannen-grid');
+  if (!grid) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'plan-list' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    planState.plannen   = d.plannen || [];
+    planState.huidig    = d.huidig || null;
+    planState.stripeAan = !!d.stripeAan;
+  } catch (e) {
+    grid.innerHTML = '<div class="fa-plan"><div class="fa-plan-regel">'
+      + 'De plannen konden niet opgehaald worden. Ververs de pagina.</div></div>';
+    return;
+  }
+  tekenPlannen();
+
+  var portaal = document.getElementById('fa-portaal-knop');
+  if (portaal) portaal.style.display = (planState.huidig && planState.huidig.kanBeheren) ? '' : 'none';
+}
+
+function tekenPlannen() {
+  var grid = document.getElementById('fa-plannen-grid');
+  if (!grid) return;
+  var huidigId = planState.huidig && planState.huidig.planId;
+
+  grid.innerHTML = planState.plannen.map(function (p) {
+    var isHuidig = p.id === huidigId;
+    var knop;
+    if (isHuidig) {
+      knop = '<button class="btn-icon fa-plan-knop" disabled>Je huidige plan</button>';
+    } else if (!planState.stripeAan) {
+      /* Eerlijk in plaats van een knop die niets doet. */
+      knop = '<button class="btn-icon fa-plan-knop" disabled title="Online betalen staat nog niet aan">Binnenkort</button>';
+    } else {
+      knop = '<button class="btn-icon btn-primary-sm fa-plan-knop" onclick="kiesPlan(&quot;'
+           + p.id + '&quot;)">Kies ' + escHtml(p.naam) + '</button>';
+    }
+    return '<div class="fa-plan' + (isHuidig ? ' huidig' : '') + '">'
+      + '<div class="fa-plan-kop"><span class="fa-plan-titel">' + escHtml(p.naam) + '</span>'
+      + (isHuidig ? '<span class="fa-plan-badge">Huidig</span>' : '') + '</div>'
+      + '<div class="fa-plan-prijs">\u20AC ' + euroFmt(p.prijsEur) + '<span> /maand</span></div>'
+      + '<div class="fa-plan-regel">' + koopFmt(p.credits) + ' credits \u00B7 ongeveer '
+      + koopFmt(p.gesprekken) + ' leadgesprekken</div>'
+      + '<div class="fa-plan-regel">' + escHtml(p.omschrijving || '') + '</div>'
+      + knop + '</div>';
+  }).join('');
+}
+
+async function kiesPlan(planId) {
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'plan-checkout', planId: planId })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.url) { window.location.href = d.url; return; }
+    toast(d.error || 'De betaalpagina kon niet geopend worden.', 'error');
+  } catch (e) {
+    toast('Er ging iets mis. Controleer je verbinding.', 'error');
+  }
+}
+
+/* Naar Stripe's eigen portaal. Bewust niet zelf nagebouwd: een opzegknop die
+   alleen in ons scherm werkt en niet bij Stripe laat iemand doorbetalen terwijl
+   hij denkt dat hij weg is. */
+async function naarFacturatieportaal() {
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'billing-portal' })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.url) { window.location.href = d.url; return; }
+    toast(d.error || 'Het portaal kon niet geopend worden.', 'error');
+  } catch (e) {
+    toast('Er ging iets mis. Controleer je verbinding.', 'error');
+  }
+}
+
+function naarPlannen() {
+  var el = document.getElementById('fa-plannen');
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function koopAanvragen() {
@@ -19070,6 +19259,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* Pas na het laden, en met een kleine vertraging: toast() en loadFacturatie()
      bestaan pas als de rest van het scherm er is. */
   setTimeout(betalingRetour, 400);
+  setTimeout(abonnementRetour, 400);
 });
 
 function betalingRetour() {
@@ -19088,6 +19278,29 @@ function betalingRetour() {
     setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
   } else if (status === 'geannuleerd') {
     toast('Betaling geannuleerd. Er is niets afgeschreven.', 'info');
+  }
+}
+
+/* Hetzelfde voor een abonnement. Apart van betalingRetour() omdat de melding
+   iets anders is: bij een abonnement gaat het niet om credits die bijkomen maar
+   om een plan dat aan gaat. */
+function abonnementRetour() {
+  var params = new URLSearchParams(window.location.search);
+  var status = params.get('abonnement');
+  if (!status) return;
+  params.delete('abonnement');
+  var rest = params.toString();
+  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
+
+  if (status === 'gelukt') {
+    /* "Wordt geactiveerd" en geen "is actief": de webhook is meestal sneller dan
+       een browser die terugnavigeert, maar gegarandeerd is dat niet. Zeggen dat
+       iets klaar is terwijl het dat misschien niet is, is hoe je vertrouwen
+       verliest op precies het moment dat iemand net betaald heeft. */
+    toast('Betaling gelukt. Je abonnement wordt geactiveerd.', 'success');
+    setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
+  } else if (status === 'geannuleerd') {
+    toast('Geannuleerd. Er is niets afgeschreven.', 'info');
   }
 }
 
@@ -19140,6 +19353,7 @@ var FA_TYPE_NAMEN = {
 };
 
 async function loadFacturatie() {
+  laadPlannen();
   var notice = document.getElementById('fa-notice');
   if (!notice) return;
   document.getElementById('fa-plan-naam').textContent = 'Laden...';

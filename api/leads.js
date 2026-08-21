@@ -1495,6 +1495,78 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    /* ── Abonnementen ────────────────────────────────────────────────────────
+       Wat er nodig is om zonder mens betalend te worden: de plannen tonen, een
+       abonnement starten, en het zelf kunnen beheren.
+
+       Er was tot hier geen enkele weg van proefaccount naar betalende klant
+       zonder dat iemand met de hand een plan en een creditlimiet in Airtable
+       zette. Dat werkt bij drie klanten en breekt bij dertig -- en het breekt
+       op het slechtste moment: de klant wil betalen en moet wachten. */
+    if (body.mode === 'plan-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _plans = require('./_plans');
+      const abo = await require('./_abonnement').lees(projectCode);
+      return res.status(200).json({
+        plannen: _plans.publiek(),
+        huidig: abo ? { planId: abo.planId, status: abo.status, betalend: abo.betalend,
+                        allowance: abo.allowance, kanBeheren: !!abo.klantId } : null,
+        stripeAan: require('./_stripe').configured(),
+      });
+    }
+
+    if (body.mode === 'plan-checkout') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _stripe = require('./_stripe');
+      if (!_stripe.configured()) {
+        return res.status(503).json({ error: 'Online betalen staat nog niet aan.', code: 'stripe_uit' });
+      }
+      const _plans = require('./_plans');
+      /* Het plan wordt hier OPGEZOCHT, niet overgenomen. De browser stuurt een
+         naam; de prijs komt uit de plantabel. Anders koopt iemand Scale voor
+         een euro door één getal in het netwerkverkeer te veranderen. */
+      const plan = _plans.plan(body.planId);
+      if (!plan) return res.status(400).json({ error: 'Onbekend plan.' });
+
+      const abo = await require('./_abonnement').lees(projectCode);
+      try {
+        const sessie = await _stripe.createSubscription({
+          projectCode, plan,
+          email: (abo && abo.email) || '',
+          klantId: (abo && abo.klantId) || '',
+          origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+        });
+        if (!sessie || !sessie.url) throw new Error('Stripe gaf geen betaalpagina terug');
+        console.log(`[stripe] abonnement ${plan.id} voor ${projectCode} (${sessie.id})`);
+        return res.status(200).json({ url: sessie.url });
+      } catch (err) {
+        console.error('[stripe] abonnement starten mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({ error: 'De betaalpagina kon niet geopend worden. Probeer het zo meteen opnieuw.' });
+      }
+    }
+
+    /* Naar Stripe's eigen portaal: facturen, kaart wijzigen, opzeggen. Bewust
+       niet zelf nagebouwd -- een opzegknop die alleen in ons scherm werkt en
+       niet bij Stripe laat een klant betalen terwijl hij denkt dat hij weg is. */
+    if (body.mode === 'billing-portal') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _stripe = require('./_stripe');
+      const abo = await require('./_abonnement').lees(projectCode);
+      if (!_stripe.configured() || !abo || !abo.klantId) {
+        return res.status(503).json({ error: 'Er is nog geen betaalgeschiedenis om te beheren.', code: 'geen_klant' });
+      }
+      try {
+        const sessie = await _stripe.billingPortal({
+          klantId: abo.klantId,
+          origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+        });
+        return res.status(200).json({ url: sessie.url });
+      } catch (err) {
+        console.error('[stripe] portaal openen mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({ error: 'Het facturatieportaal kon niet geopend worden.' });
+      }
+    }
+
     /* Betalen voor credits, via Stripe.
 
        Het AANMAKEN van de betaalpagina staat hier en niet in api/stripe.js,
