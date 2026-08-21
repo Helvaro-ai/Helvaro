@@ -2,7 +2,25 @@
 // Protected by ADMIN_KEY env var (timing-safe comparison)
 const crypto = require('crypto');
 // Marketing Posts moved off Airtable to the VPS Postgres API (Airtable-shaped facade).
-const { pgFetch } = require('./_pgapi');
+const { pgFetch, configured: pgConfigured } = require('./_pgapi');
+
+/* De VPS die deze drie standen bediende is opgeheven, en de bijbehorende
+   variabelen horen uit Vercel te zijn (zie de kop van api/_pgapi.js: het token
+   ging naar een vrijgegeven IP-adres). Zonder die variabelen GOOIT pgFetch, en
+   die drie aanroepen stonden niet in een try -- dus kreeg je een kale 500 van
+   Vercel zonder te zien waarom.
+
+   Een 503 met een reden is hier het eerlijke antwoord: de dienst bestaat niet
+   meer, dat is geen fout van de aanroeper en ook niets dat overgaat door het
+   nog eens te proberen. */
+function pgWeg(res) {
+  if (pgConfigured()) return false;
+  res.status(503).json({
+    error: 'Deze functie hing aan de opgeheven VPS en is buiten dienst.',
+    reason: 'pgapi_gone',
+  });
+  return true;
+}
 // Credit/usage accounting — see its file header for the fail-open contract
 // and the INTERNAL_PROJECT_CODE decision for founder-only tools below.
 const credits = require('./_credits');
@@ -972,6 +990,7 @@ module.exports = async function handler(req, res) {
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
+      if (pgWeg(res)) return;
       const status = String(body.status || '').trim();
       // Same whitelist as the sibling update-content mode below.
       if (status && !['draft','approved','posted','failed','skipped'].includes(status)) {
@@ -992,6 +1011,7 @@ module.exports = async function handler(req, res) {
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
+      if (pgWeg(res)) return;
       const id = String(body.id || '').trim();
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
       const fields = {};
@@ -1022,6 +1042,7 @@ module.exports = async function handler(req, res) {
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
+      if (pgWeg(res)) return;
       const id = String(body.id || '').trim();
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: 'Ongeldig record ID' });
       // Haal de post op
