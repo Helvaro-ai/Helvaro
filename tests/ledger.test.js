@@ -175,6 +175,59 @@ function nepAirtable(records, opties = {}) {
   ck('zonder grootboek zegt de pagina dat, in plaats van een verdeling te tonen',
      dash.indexOf('De geschiedenis staat nog niet aan') !== -1);
 
+  console.log('\n— credits bijkopen: de prijs staat op de server —');
+  /* De offerte wordt op de SERVER berekend. Zou de browser dat doen, dan is het
+     getal dat een klant ziet ook het getal dat hij kan aanpassen. */
+  const c = require('../api/_credits');
+  const o100 = c.topupOfferte(100);
+  ck('100 euro geeft credits', o100.geldig && o100.credits > 0, o100.credits);
+  ck('en vertaalt naar leadgesprekken', o100.gesprekken === Math.floor(o100.credits / 20), o100);
+  ck('onder het minimum wordt geweigerd', c.topupOfferte(5).reden === 'te_laag');
+  ck('boven het maximum ook', c.topupOfferte(999999).reden === 'te_hoog');
+  ck('onzin geeft geen credits', c.topupOfferte('veel').credits === 0);
+  ck('een negatief bedrag geeft geen credits', c.topupOfferte(-500).credits === 0);
+  /* Meer kopen mag nooit MINDER credits opleveren. */
+  const oplopend = [25, 100, 200, 500, 1000, 2000].map((n) => c.topupOfferte(n).credits);
+  ck('meer betalen geeft nooit minder credits',
+     oplopend.every((n, i) => i === 0 || n > oplopend[i - 1]), oplopend);
+  /* En de prijs per credit mag nooit stijgen bij een hoger bedrag. */
+  const perCredit = [25, 200, 500, 1000].map((n) => c.topupOfferte(n).perCredit);
+  ck('de prijs per credit daalt of blijft gelijk',
+     perCredit.every((n, i) => i === 0 || n <= perCredit[i - 1]), perCredit);
+  ck('de staffel klopt bij 500', c.topupOfferte(500).bonusPct === 10, c.topupOfferte(500).bonusPct);
+  ck('bonuscredits tellen op tot het totaal',
+     [100, 500, 1000].every((n) => { const q = c.topupOfferte(n);
+       return q.basisCredits + q.bonusCredits === q.credits; }));
+  /* Het tarief hoort instelbaar te zijn, niet verspreid door de code. */
+  const credSrc = lees('api/_credits.js');
+  ck('het tarief komt uit de omgeving', credSrc.indexOf('CREDIT_TOPUP_RATE_EUR') !== -1);
+
+  console.log('\n— een aanvraag boekt GEEN credits bij —');
+  /* Een saldo dat omhoog gaat voordat er betaald is, is een verzonnen saldo. */
+  const iAanvraag = leads.indexOf("body.mode === 'credit-purchase-request'");
+  ck('de mode bestaat', iAanvraag !== -1);
+  const aanvraagBlok = leads.slice(iAanvraag, iAanvraag + 2600);
+  ck('client context wordt gecontroleerd', aanvraagBlok.indexOf('if (!projectCode)') !== -1);
+  ck('de offerte wordt op de server HERberekend',
+     aanvraagBlok.indexOf('credits.topupOfferte(body.amountEur)') !== -1);
+  /* Zoek naar een AANROEP, niet naar de tekst. In de mail aan Helvaro staat
+     addCredits(...) als instructie voor de eigenaar -- dat is uitleg, geen code
+     die draait. */
+  ck('er worden geen credits bijgeboekt',
+     !/await\s+credits\.addCredits\(/.test(aanvraagBlok), 'aanroep gevonden');
+  ck('en geen grootboekregel geschreven', aanvraagBlok.indexOf('_ledger.record') === -1);
+  ck('zonder ontvanger komt er een eerlijke fout in plaats van een bedankje',
+     aanvraagBlok.indexOf('kan nergens heen') !== -1);
+
+  const dashSrc = lees('api/dashboard.js');
+  ck('het koopvenster bestaat', dashSrc.indexOf('id="koop-modal"') !== -1);
+  ck('met een vrij in te vullen bedrag', dashSrc.indexOf('id="koop-bedrag"') !== -1);
+  ck('en snelkeuzes', dashSrc.indexOf('KOOP_PRESETS') !== -1);
+  /* De browser mag de prijs niet zelf uitrekenen. */
+  ck('de browser rekent de prijs niet zelf uit',
+     dashSrc.indexOf("mode: 'credit-quote'") !== -1
+     && !/koopState\.bedrag\s*\/\s*[0-9.]+/.test(dashSrc));
+
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);
 })();

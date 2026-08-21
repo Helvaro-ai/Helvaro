@@ -211,6 +211,23 @@ hieronder.
 
 ### Facturatie en credits
 
+> **Actie:** bevestig het tarief voor bijgekochte credits. De standaard is
+> € 0,50 per credit, afgeleid van je planprijs (€ 1.000 voor 2.000 credits) —
+> niet uit een factuur. Bijstellen kan zonder deploy met
+> `CREDIT_TOPUP_RATE_EUR`, `CREDIT_TOPUP_MIN_EUR` en `CREDIT_TOPUP_MAX_EUR`.
+
+- **Credits bijkopen met een zelfgekozen bedrag.** Geen vaste pakketten: je
+  typt een bedrag en ziet meteen wat je krijgt — het aantal credits, wat je per
+  credit betaalt, en hoeveel leadgesprekken dat ongeveer is. Vanaf € 200 krijg
+  je 5% extra credits, vanaf € 500 tien procent, vanaf € 1.000 vijftien.
+- **De prijs wordt op de server berekend.** Zou de browser dat doen, dan is het
+  getal dat je ziet ook het getal dat aan te passen is.
+- **Er komen geen credits bij vóór de betaling.** De aanvraag gaat naar
+  Helvaro, je krijgt een factuur, en pas als die betaald is staan de credits op
+  je account — met een regel in het grootboek. Een saldo dat omhoog gaat voordat
+  er betaald is, is een verzonnen saldo.
+
+
 > **Actie:** maak in Airtable de tabel `credit_transactions` aan. De velden
 > staan bovenaan `api/_ledger.js`. Zonder die tabel werkt alles gewoon door —
 > credits worden geteld zoals altijd — maar dan blijft de geschiedenis leeg en
@@ -233,6 +250,14 @@ hieronder.
 - **Credits bijkopen en van plan wisselen** openen een mail aan Helvaro. Er
   hangt nog geen betaalprovider aan, en een betaalknop die niet werkt is erger
   dan een mailtje dat aankomt.
+
+### Cijfers die eerlijk moeten zijn
+
+- **"Omzet Doel" op het dashboard telde je pipeline op, geen omzet.** Bij elf
+  leads stond er "€ 4.570.000 — 76% van doel bereikt", en dat las als "Helvaro
+  heeft vier en een half miljoen voor je verdiend". Het is de verwachte waarde
+  van je gekwalificeerde leads. De kaart heet nu **Pipeline Doel** en zegt
+  eronder wat het getal is.
 
 ### Inloggen
 

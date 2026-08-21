@@ -264,6 +264,77 @@ const COST_PER_CREDIT_EUR = {
   [FEATURES.FARO_CHAT]:               0.006 / 3,
 };
 
+/* ── Credits bijkopen ─────────────────────────────────────────────────────────
+ * Zoals bij een API-console: je kiest een BEDRAG, en je ziet meteen wat je
+ * ervoor krijgt. Niet een vast pakket, want de ene makelaar heeft twee panden
+ * en de andere veertig.
+ *
+ * -- Waarom dit hier staat en niet in de UI --------------------------------
+ * De prijs mag nooit in het dashboard staan: dan rekent de browser uit wat
+ * iemand krijgt, en dat is precies het getal dat een klant kan aanpassen.
+ * Alles wordt hier berekend en de UI toont alleen de uitkomst.
+ *
+ * -- De tarieven zijn instelbaar ---------------------------------------------
+ * Via de omgeving, zodat je je marge kunt bijstellen zonder een deploy. De
+ * standaard hieronder volgt je huidige plan: EUR 1.000 per maand voor 2.000
+ * credits, dus EUR 0,50 per credit. BEVESTIG DIT voordat je het aanzet -- het
+ * is afgeleid van je planprijs, niet uit een factuur.
+ */
+const TOPUP_RATE_EUR = Number(process.env.CREDIT_TOPUP_RATE_EUR || 0.50);
+const TOPUP_MIN_EUR  = Number(process.env.CREDIT_TOPUP_MIN_EUR  || 25);
+const TOPUP_MAX_EUR  = Number(process.env.CREDIT_TOPUP_MAX_EUR  || 5000);
+
+/* Staffel: hoe meer je in één keer koopt, hoe meer credits je per euro krijgt.
+   Bonus in procenten, van hoog naar laag gecontroleerd. */
+const TOPUP_STAFFEL = Object.freeze([
+  { vanafEur: 1000, bonusPct: 15 },
+  { vanafEur:  500, bonusPct: 10 },
+  { vanafEur:  200, bonusPct:  5 },
+  { vanafEur:    0, bonusPct:  0 },
+]);
+
+/**
+ * Wat je krijgt voor een bedrag.
+ *
+ * Geeft ALTIJD een geldig antwoord terug, ook bij onzin -- de aanroeper is een
+ * publieke route en mag niet met een fout omvallen omdat iemand "veel" typt.
+ *
+ * @param {number} bedragEur
+ * @returns {{ geldig, bedragEur, basisCredits, bonusPct, bonusCredits, credits, perCredit, gesprekken, reden }}
+ */
+function topupOfferte(bedragEur) {
+  const bedrag = Math.round((Number(bedragEur) || 0) * 100) / 100;
+  const leeg = {
+    geldig: false, bedragEur: bedrag, basisCredits: 0, bonusPct: 0, bonusCredits: 0,
+    credits: 0, perCredit: TOPUP_RATE_EUR, gesprekken: 0, reden: '',
+  };
+  if (!isFinite(bedrag) || bedrag <= 0)  return { ...leeg, reden: 'geen_bedrag' };
+  if (bedrag < TOPUP_MIN_EUR)            return { ...leeg, reden: 'te_laag' };
+  if (bedrag > TOPUP_MAX_EUR)            return { ...leeg, reden: 'te_hoog' };
+  if (!(TOPUP_RATE_EUR > 0))             return { ...leeg, reden: 'geen_tarief' };
+
+  const basis = Math.floor(bedrag / TOPUP_RATE_EUR);
+  const staffel = TOPUP_STAFFEL.find((t) => bedrag >= t.vanafEur) || { bonusPct: 0 };
+  const bonus = Math.floor(basis * (staffel.bonusPct / 100));
+  const totaal = basis + bonus;
+
+  return {
+    geldig: true,
+    bedragEur: bedrag,
+    basisCredits: basis,
+    bonusPct: staffel.bonusPct,
+    bonusCredits: bonus,
+    credits: totaal,
+    /* Wat je effectief betaalt per credit, inclusief bonus. Dit is het getal
+       waarmee een klant twee bedragen vergelijkt. */
+    perCredit: Math.round((bedrag / totaal) * 1000) / 1000,
+    /* Vertaald naar iets dat een makelaar herkent. Een leadgesprek is de
+       eenheid waarin hij denkt, niet een credit. */
+    gesprekken: Math.floor(totaal / WEIGHTS[FEATURES.WHATSAPP_CONVERSATION]),
+    reden: '',
+  };
+}
+
 // Features that must NEVER be blocked by checkCredits(), regardless of
 // balance. Defense-in-depth — see file header. whatsapp.js never actually
 // calls checkCredits() for this feature; this is the backstop if it ever did.
@@ -1086,6 +1157,7 @@ async function refundCredits(projectCode, credits, reason, opts = {}) {
 
 module.exports = {
   refundCredits,
+  topupOfferte, TOPUP_RATE_EUR, TOPUP_MIN_EUR, TOPUP_MAX_EUR, TOPUP_STAFFEL,
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
   creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,

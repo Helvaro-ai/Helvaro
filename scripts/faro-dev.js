@@ -268,6 +268,24 @@ const server = http.createServer(async (req, res) => {
         /* Facturatie. Het grootboek staat AAN in deze fixture, met een paar
            boekingen erin, zodat de pagina laat zien wat een klant echt te
            zien krijgt in plaats van een lege lijst. */
+        /* Credits bijkopen. De offerte komt uit de ECHTE api/_credits.js, dus
+           wat je lokaal ziet is wat een klant ziet. De aanvraag verstuurt hier
+           geen mail -- er is geen SMTP in deze omgeving. */
+        case 'credit-quote': {
+          const c = require('../api/_credits');
+          return res.status(200).json({
+            offerte: c.topupOfferte(req.body.amountEur),
+            grenzen: { min: c.TOPUP_MIN_EUR, max: c.TOPUP_MAX_EUR },
+            staffel: c.TOPUP_STAFFEL,
+          });
+        }
+        case 'credit-purchase-request': {
+          const c = require('../api/_credits');
+          const o = c.topupOfferte(req.body.amountEur);
+          if (!o.geldig) return res.status(400).json({ error: 'Dat bedrag kan niet.', code: o.reden });
+          console.log('[faro-dev] creditaanvraag: EUR ' + o.bedragEur + ' -> ' + o.credits + ' credits');
+          return res.status(200).json({ ok: true, offerte: o });
+        }
         case 'billing-overview': {
           const nu = Date.now();
           const dag = 86400000;

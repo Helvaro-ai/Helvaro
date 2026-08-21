@@ -1483,6 +1483,80 @@ module.exports = async function handler(req, res) {
        De projectcode komt uit de geverifieerde sessie hierboven en NOOIT uit
        body: een pandcode staat in een publieke URL en is dus te raden, dus als
        de klant erbij ook nog uit de body kwam kon iedereen elk pand lezen. */
+    /* Wat krijg je voor een bedrag. Berekend op de SERVER: zou de browser dit
+       uitrekenen, dan is het getal dat een klant ziet ook het getal dat hij kan
+       aanpassen. */
+    if (body.mode === 'credit-quote') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      return res.status(200).json({
+        offerte: credits.topupOfferte(body.amountEur),
+        grenzen: { min: credits.TOPUP_MIN_EUR, max: credits.TOPUP_MAX_EUR },
+        staffel: credits.TOPUP_STAFFEL,
+      });
+    }
+
+    /* Een aanvraag om credits bij te kopen.
+    
+       Er komen hier GEEN credits bij. Dat is geen tekortkoming maar de enige
+       eerlijke vorm zolang er geen betaalprovider hangt: een saldo dat omhoog
+       gaat voordat er betaald is, is een verzonnen saldo. De aanvraag gaat naar
+       Helvaro, en pas als de betaling binnen is boekt de eigenaar hem bij --
+       dat loopt via credits.addCredits(code, n, { type: 'purchase' }) en komt
+       dan wél in het grootboek.
+    
+       Wie hier een betaalprovider aanhangt vervangt precies dit blok: offerte
+       opnieuw berekenen, betaalsessie starten, en pas op de webhook bijboeken. */
+    if (body.mode === 'credit-purchase-request') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
+      /* Opnieuw berekenen, nooit overnemen wat de browser meestuurt. */
+      const offerte = credits.topupOfferte(body.amountEur);
+      if (!offerte.geldig) {
+        const teksten = {
+          te_laag:     `Het minimum is € ${credits.TOPUP_MIN_EUR}.`,
+          te_hoog:     `Voor bedragen boven € ${credits.TOPUP_MAX_EUR} nemen we liever even contact op.`,
+          geen_bedrag: 'Vul een bedrag in.',
+          geen_tarief: 'Bijkopen staat nog niet aan.',
+        };
+        return res.status(400).json({ error: teksten[offerte.reden] || 'Dat bedrag kan niet.', code: offerte.reden });
+      }
+
+      /* De aanvraag naar Helvaro. Faalt de mail, dan hoort de klant dat -- een
+         "bedankt" tonen voor een aanvraag die nergens aankwam is erger dan een
+         foutmelding. */
+      const naarHelvaro = process.env.NOTIFY_EMAIL || process.env.SUPPORT_EMAIL || '';
+      if (!naarHelvaro) {
+        console.error('[credit-purchase] geen NOTIFY_EMAIL ingesteld — aanvraag van', projectCode, 'kan nergens heen');
+        return res.status(503).json({ error: 'Bijkopen kan nu niet automatisch. Mail ons op hello@helvaro.pro.' });
+      }
+
+      try {
+        const { sendMail } = require('./_mailer');
+        await sendMail({
+          to: naarHelvaro,
+          subject: `[Helvaro] Creditaanvraag: ${clientName || projectCode} — € ${offerte.bedragEur}`,
+          html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:auto;padding:20px;color:#111">
+            <h2 style="margin:0 0 12px">Creditaanvraag</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+              <tr><td style="padding:6px 0;color:#666">Klant</td><td style="padding:6px 0"><strong>${escHtmlBasic(clientName || '')}</strong> (${escHtmlBasic(projectCode)})</td></tr>
+              <tr><td style="padding:6px 0;color:#666">Bedrag</td><td style="padding:6px 0"><strong>€ ${offerte.bedragEur}</strong></td></tr>
+              <tr><td style="padding:6px 0;color:#666">Credits</td><td style="padding:6px 0">${offerte.credits} (${offerte.basisCredits} + ${offerte.bonusCredits} bonus, ${offerte.bonusPct}%)</td></tr>
+              <tr><td style="padding:6px 0;color:#666">Per credit</td><td style="padding:6px 0">€ ${offerte.perCredit}</td></tr>
+            </table>
+            <p style="margin-top:18px;font-size:13px;color:#666">Na betaling bijboeken met
+            <code>credits.addCredits('${escHtmlBasic(projectCode)}', ${offerte.credits}, { type: 'purchase' })</code> —
+            dan komt het ook in het grootboek te staan.</p>
+          </div>`,
+        });
+      } catch (err) {
+        console.error('[credit-purchase] mail mislukt:', err && err.message);
+        return res.status(502).json({ error: 'De aanvraag kon niet verstuurd worden. Probeer het zo meteen opnieuw.' });
+      }
+
+      console.log(`[credit-purchase] aanvraag ${projectCode}: EUR ${offerte.bedragEur} -> ${offerte.credits} credits`);
+      return res.status(200).json({ ok: true, offerte });
+    }
+
     /* ── Facturatie ──────────────────────────────────────────────────────────
        Eén mode voor de hele pagina: plan, credits, verbruik per onderdeel en
        de laatste boekingen. Bewust in één antwoord, want vier losse verzoeken
@@ -2063,6 +2137,14 @@ module.exports = async function handler(req, res) {
 };
 
 // Escape double-quotes and backslashes for Airtable formula strings
+/* Voor de e-mail hieronder. De klantnaam komt uit Airtable en is dus niet door
+   ons geschreven -- die hoort niet als HTML in een mailtje terecht te komen. */
+function escHtmlBasic(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }

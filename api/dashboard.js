@@ -2729,6 +2729,11 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
 
 .user-role {
   font-size: 11px;
+  /* De zijbalk is in BEIDE thema's donker, dus --text-muted krijgt hier een
+     eigen waarde per thema (zie de light-override verderop). Nagerekend op de
+     samengestelde voet rgb(26,31,39): donker #B5B5B5 en licht #8D99AC halen
+     allebei ruim boven 4,5:1. Twee meetmethodes zeiden hier eerst van niet --
+     de ene mist gradiënten, de andere leest antialiasing als tekst. */
   color: var(--text-muted);
 }
 
@@ -6973,6 +6978,75 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .cal-att-save-btn:disabled { opacity:0.5; pointer-events:none; }
 
 /* ── Custom booking modal ─────────────────────────────────────── */
+/* ── Credits bijkopen ────────────────────────────────────────────────────── */
+#koop-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+}
+#koop-overlay.open { display: flex; }
+#koop-modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); width: min(460px, 96vw); max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--elev-3); animation: modalIn 0.18s ease;
+}
+.koop-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  font-size: 15px; font-weight: 700; color: var(--text-primary); flex-shrink: 0;
+}
+.koop-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.koop-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.koop-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.koop-preset {
+  flex: 1 1 0; min-width: 76px; padding: 9px 6px; text-align: center;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: var(--transition);
+}
+.koop-preset:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.koop-preset.actief {
+  border-color: rgba(var(--accent-rgb),0.5);
+  background: rgba(var(--accent-rgb),0.12);
+  color: var(--accent-ink);
+}
+.koop-veld { position: relative; margin-top: 4px; }
+.koop-euro {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 15px; font-weight: 600; color: var(--text-muted); pointer-events: none;
+}
+.koop-input {
+  width: 100%; padding: 11px 12px 11px 30px; font-size: 16px; font-weight: 600;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-family: inherit; font-variant-numeric: tabular-nums;
+}
+.koop-input:focus { outline: none; border-color: rgba(var(--accent-rgb),0.5); }
+.koop-hint { font-size: 11.5px; color: var(--text-muted); }
+
+.koop-uitkomst {
+  margin-top: 6px; padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.20);
+}
+.koop-credits {
+  font-size: 22px; font-weight: 700; color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.koop-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
+
+.koop-staffel { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.koop-staffel-rij {
+  display: flex; justify-content: space-between; font-size: 12px;
+  color: var(--text-muted); padding: 3px 0;
+}
+.koop-staffel-rij.actief { color: var(--accent-ink); font-weight: 600; }
+.koop-uitleg { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
+
 /* ── Facturatie ──────────────────────────────────────────────────────────────
    Kleuren uit tokens, tekst uit de ink-variant van het vlak eronder. Een
    bedrag mag hier nooit slecht leesbaar zijn: dit is de pagina waar een klant
@@ -8557,10 +8631,10 @@ ${faro.navCta}
       <div class="revenue-goal-card" id="revenue-goal-card">
         <div class="revenue-goal-header">
           <div>
-            <div class="revenue-goal-label">Omzet Doel</div>
-            <div class="revenue-goal-sub" id="revenue-goal-sub">deze maand</div>
+            <div class="revenue-goal-label">Pipeline Doel</div>
+            <div class="revenue-goal-sub" id="revenue-goal-sub">verwachte waarde van je gekwalificeerde leads</div>
           </div>
-          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen" aria-label="Omzetdoel aanpassen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen" aria-label="Pipelinedoel aanpassen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         </div>
         <div class="revenue-goal-amounts">
           <span class="revenue-goal-current" id="revenue-goal-current">€0</span>
@@ -8570,7 +8644,7 @@ ${faro.navCta}
         <div class="revenue-goal-bar-wrap">
           <div class="revenue-goal-bar" id="revenue-goal-bar" style="width:0%"></div>
         </div>
-        <div class="revenue-goal-pct" id="revenue-goal-pct">0% van doel bereikt</div>
+        <div class="revenue-goal-pct" id="revenue-goal-pct">0% van je pipelinedoel</div>
       </div>
 
       <!-- Follow-up Queue -->
@@ -9592,7 +9666,7 @@ ${faro.navCta}
             <div class="fa-saldo-sub" id="fa-saldo-sub"></div>
             <div class="fa-balk"><div class="fa-balk-vul" id="fa-balk-vul"></div></div>
             <div class="fa-plan-acties">
-              <button class="btn-icon btn-primary-sm" onclick="facturatieContact('credits')">Credits bijkopen</button>
+              <button class="btn-icon btn-primary-sm" onclick="openKoopModal()">Credits bijkopen</button>
             </div>
           </div>
         </div>
@@ -10873,6 +10947,48 @@ ${faro.dock}
       <span class="search-footer-hint"><kbd>↵</kbd> openen</span>
       <span class="search-footer-hint"><kbd>Esc</kbd> sluiten</span>
       <span class="search-footer-count" id="search-footer-count"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Credits bijkopen. Je kiest een bedrag, niet een pakket: de ene makelaar
+     heeft twee panden en de andere veertig. Wat je ervoor krijgt wordt op de
+     SERVER berekend -- zou de browser dat doen, dan is het getal dat de klant
+     ziet ook het getal dat hij kan aanpassen. -->
+<div id="koop-overlay" onclick="if(event.target===this)closeKoopModal()">
+  <div id="koop-modal" role="dialog" aria-modal="true" aria-labelledby="koop-titel">
+    <div class="koop-head">
+      <div id="koop-titel">Credits bijkopen</div>
+      <button class="pd-modal-x" onclick="closeKoopModal()" aria-label="Sluiten">&times;</button>
+    </div>
+
+    <div class="koop-body">
+      <div class="koop-label">Hoeveel wil je bijkopen?</div>
+      <div class="koop-presets" id="koop-presets"></div>
+
+      <div class="koop-veld">
+        <span class="koop-euro">&euro;</span>
+        <input class="koop-input" id="koop-bedrag" type="number" min="0" step="5"
+               inputmode="decimal" aria-label="Bedrag in euro" oninput="koopHerbereken()">
+      </div>
+      <div class="koop-hint" id="koop-grenzen"></div>
+
+      <div class="koop-uitkomst" id="koop-uitkomst">
+        <div class="koop-credits" id="koop-credits">—</div>
+        <div class="koop-detail" id="koop-detail"></div>
+      </div>
+
+      <div class="koop-staffel" id="koop-staffel"></div>
+
+      <div class="koop-uitleg">
+        Credits verlopen niet en komen bovenop wat je deze periode nog hebt.
+      </div>
+      <div class="pd-modal-err" id="koop-fout" role="alert" style="display:none"></div>
+    </div>
+
+    <div class="pd-modal-foot">
+      <button class="btn-icon" onclick="closeKoopModal()">Annuleren</button>
+      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Aanvragen</button>
     </div>
   </div>
 </div>
@@ -17060,6 +17176,12 @@ function suggestRevenueGoal(current) {
 }
 
 function renderRevenueGoal() {
+  // LET OP wat dit optelt: de verwachte waarde van GEKWALIFICEERDE leads. Dat
+  // is pipeline, geen omzet. De kaart heette "Omzet Doel" en meldde "76% van
+  // doel bereikt" -- bij een makelaar met elf leads las dat als "Helvaro heeft
+  // 4,5 miljoen voor je verdiend". CLAUDE.md is er kort over: pipeline is geen
+  // omzet. Het label zegt nu wat het getal is.
+  //
   // Het standaarddoel stond op 5.000 — tegen een pipeline die bij een
   // vastgoedkantoor al snel in de miljoenen loopt. De kaart meldde daardoor
   // vanaf dag één "100% van doel bereikt", wat de kaart meteen betekenisloos
@@ -17089,7 +17211,7 @@ function renderRevenueGoal() {
         ? 'var(--accent)'
         : 'var(--warning)';
   }
-  if (pctEl) pctEl.textContent = pct + '% van doel bereikt';
+  if (pctEl) pctEl.textContent = pct + '% van je pipelinedoel';
 }
 
 (function setupRevenueGoalEdit() {
@@ -17097,7 +17219,7 @@ function renderRevenueGoal() {
   if (!editBtn) return;
   editBtn.addEventListener('click', function() {
     const current = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
-    const input = prompt('Nieuw omzetdoel (€):', current);
+    const input = prompt('Nieuw pipelinedoel (€):', current);
     if (input === null) return;
     const val = parseFloat(input.replace(/[^0-9.]/g, ''));
     if (!isNaN(val) && val > 0) {
@@ -18509,6 +18631,157 @@ function highlightActiveTemplate() {
     const match = AP_TEMPLATES[idx] && AP_TEMPLATES[idx].text === current;
     card.classList.toggle('active', !!match);
   });
+}
+
+/* ── Credits bijkopen ────────────────────────────────────────────────────────
+   Je kiest een BEDRAG en ziet meteen wat je krijgt, zoals bij een API-console.
+   Geen vaste pakketten: de ene makelaar heeft twee panden en de andere veertig.
+
+   Wat je krijgt wordt op de SERVER berekend. Zou de browser dat doen, dan is
+   het getal dat de klant ziet ook het getal dat hij kan aanpassen. */
+var koopState = { bedrag: 100, offerte: null, bezig: false, grenzen: null, staffel: null };
+var KOOP_PRESETS = [50, 100, 250, 500];
+
+function koopFmt(n) {
+  var x = Number(n);
+  return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
+}
+
+function openKoopModal() {
+  koopState.bedrag = 100;
+  document.getElementById('koop-bedrag').value = 100;
+  document.getElementById('koop-fout').style.display = 'none';
+  document.getElementById('koop-presets').innerHTML = KOOP_PRESETS.map(function (n) {
+    return '<button type="button" class="koop-preset" data-bedrag="' + n
+      + '" onclick="koopKiesPreset(' + n + ')">&euro; ' + n + '</button>';
+  }).join('');
+  document.getElementById('koop-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  koopHerbereken();
+}
+
+function closeKoopModal() {
+  document.getElementById('koop-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function koopKiesPreset(n) {
+  document.getElementById('koop-bedrag').value = n;
+  koopHerbereken();
+}
+
+/* Eén verzoek per rustpunt: bij elke toetsaanslag de server bevragen maakt van
+   een bedrag intypen tien verzoeken. */
+var _koopTimer = null;
+function koopHerbereken() {
+  clearTimeout(_koopTimer);
+  _koopTimer = setTimeout(koopOfferteOphalen, 220);
+
+  // De preset meteen markeren, zonder op de server te wachten.
+  var v = Number(document.getElementById('koop-bedrag').value) || 0;
+  [].forEach.call(document.querySelectorAll('.koop-preset'), function (b) {
+    b.classList.toggle('actief', Number(b.dataset.bedrag) === v);
+  });
+}
+
+async function koopOfferteOphalen() {
+  var bedrag = Number(document.getElementById('koop-bedrag').value) || 0;
+  koopState.bedrag = bedrag;
+  var credits = document.getElementById('koop-credits');
+  var detail  = document.getElementById('koop-detail');
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'credit-quote', amountEur: bedrag })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    koopState.offerte = d.offerte;
+    koopState.grenzen = d.grenzen;
+    koopState.staffel = d.staffel;
+  } catch (e) {
+    credits.textContent = '—';
+    detail.textContent = 'De prijs kon niet opgehaald worden.';
+    return;
+  }
+
+  var o = koopState.offerte || {};
+  var g = koopState.grenzen || {};
+  document.getElementById('koop-grenzen').textContent =
+    'Van \\u20AC ' + koopFmt(g.min) + ' tot \\u20AC ' + koopFmt(g.max) + '.';
+
+  if (!o.geldig) {
+    var redenen = {
+      te_laag: 'Minimaal \\u20AC ' + koopFmt(g.min) + '.',
+      te_hoog: 'Boven \\u20AC ' + koopFmt(g.max) + ' nemen we liever even contact op.',
+      geen_bedrag: 'Vul een bedrag in.',
+      geen_tarief: 'Bijkopen staat nog niet aan.'
+    };
+    credits.textContent = '—';
+    detail.textContent = redenen[o.reden] || 'Dat bedrag kan niet.';
+    document.getElementById('koop-staffel').innerHTML = '';
+    return;
+  }
+
+  credits.textContent = koopFmt(o.credits) + ' credits';
+  var stukken = [];
+  if (o.bonusCredits > 0) {
+    stukken.push(koopFmt(o.basisCredits) + ' + ' + koopFmt(o.bonusCredits) + ' bonus (' + o.bonusPct + '%)');
+  }
+  /* Nederlandse notatie: een komma, en twee tot drie cijfers. "0.5" leest
+     als een tikfout; "0,50" leest als een prijs. */
+  stukken.push('\\u20AC ' + o.perCredit.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' per credit');
+  /* Vertaald naar iets dat een makelaar herkent. Hij denkt in gesprekken, niet
+     in credits. */
+  stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
+  detail.textContent = stukken.join(' \\u00B7 ');
+
+  // De staffel, met de trede waar je nu in zit gemarkeerd.
+  var st = (koopState.staffel || []).slice().sort(function (a, b) { return a.vanafEur - b.vanafEur; });
+  document.getElementById('koop-staffel').innerHTML = st.filter(function (t) { return t.bonusPct > 0; })
+    .map(function (t) {
+      var actief = o.bonusPct === t.bonusPct;
+      return '<div class="koop-staffel-rij' + (actief ? ' actief' : '') + '">'
+        + '<span>Vanaf \\u20AC ' + koopFmt(t.vanafEur) + '</span>'
+        + '<span>+' + t.bonusPct + '% credits</span></div>';
+    }).join('');
+}
+
+async function koopAanvragen() {
+  var o = koopState.offerte;
+  var fout = document.getElementById('koop-fout');
+  var btn = document.getElementById('koop-btn');
+  if (!o || !o.geldig) {
+    fout.style.display = '';
+    fout.textContent = 'Kies eerst een geldig bedrag.';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  fout.style.display = 'none';
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'credit-purchase-request', amountEur: koopState.bedrag })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      fout.style.display = '';
+      fout.textContent = d.error || 'De aanvraag kon niet verstuurd worden.';
+      return;
+    }
+    closeKoopModal();
+    /* Eerlijk over wat er nu gebeurt. Er komen GEEN credits bij tot er betaald
+       is -- een saldo dat omhoog gaat voor de betaling is een verzonnen saldo. */
+    toast('Aanvraag verstuurd. Je krijgt een factuur; de credits staan er zodra die betaald is.', 'success');
+  } catch (e) {
+    fout.style.display = '';
+    fout.textContent = 'De aanvraag kon niet verstuurd worden. Controleer je verbinding.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Aanvragen';
+  }
 }
 
 /* ══ Facturatie ═══════════════════════════════════════════════════════════════
