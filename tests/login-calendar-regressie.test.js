@@ -44,7 +44,11 @@ ck('unmount wordt nog steeds geprobeerd', clerkHost.indexOf('unmountSignIn') !==
 
 console.log('\n— een leeg paneel wordt opgemerkt in plaats van getoond —');
 ck('er is een vangnet', js.indexOf('function clerkVangnet') !== -1);
-ck('en een melding als het toch leeg blijft', js.indexOf('function clerkLeegMelding') !== -1);
+/* Heette clerkLeegMelding: een tekstje IN het lege paneel. Dat was nog steeds
+   een dood scherm -- je kon alleen verversen. Nu komt het eigen formulier
+   terug, zodat inloggen altijd kan, wat Clerk ook doet. */
+ck('en het eigen formulier komt terug als het leeg blijft', js.indexOf('function terugNaarEigenFormulier') !== -1);
+ck('tonen en verbergen zit op één plek', js.indexOf('function eigenFormulier') !== -1);
 ck('beide schermen gebruiken het vangnet',
    (js.split('clerkVangnet(host,').length - 1) >= 2);
 
@@ -68,6 +72,15 @@ const winter = new Date('2026-12-14T00:00:00');
 ck('ook in de winter', fn(winter) === '2026-12-14', fn(winter));
 ck('een onmogelijke datum geeft leeg', fn(new Date('onzin')) === '');
 
+console.log('\n— de wissel wacht op Clerk in plaats van meteen op te geven —');
+/* De bug die de eigenaar zag: klikken terwijl Clerk nog laadt gaf "het
+   registratiescherm kon niet geladen worden", terwijl het een seconde later
+   gewoon werkte. De controle was synchroon op window.Clerk. */
+ck('naarRegistreren wacht op clerkInit', /await\s+clerkInit\(\)/.test(js.slice(js.indexOf('async function naarRegistreren'), js.indexOf('async function naarRegistreren') + 1600)));
+ck('en er is een weg terug naar inloggen', js.indexOf('async function naarInloggen') !== -1);
+ck('met een zichtbare schakelaar tussen de twee', html.indexOf('login-modus') !== -1);
+ck('die beide standen als tab aanbiedt', (html.match(/login-modus-knop/g) || []).length >= 2);
+
 console.log('\n— registreren is bereikbaar, ook als Clerk niet laadt —');
 /* Registreren loopt volledig via Clerk. Laadde die niet, dan stond er
    helemaal niets: alleen een inlogformulier, zonder enige aanwijzing waar een
@@ -76,7 +89,7 @@ ck('er is een knop "Account aanmaken" in de basis-HTML', html.indexOf('btn-naar-
 ck('die knop staat NIET in het Clerk-blok', html.indexOf('btn-naar-registreren') < html.indexOf('id="clerk-signin"'));
 ck('en er is een afhandeling voor', js.indexOf('function naarRegistreren') !== -1);
 const iReg = js.indexOf('function naarRegistreren');
-const naarReg = iReg === -1 ? '' : js.slice(iReg, iReg + 1800);
+const naarReg = iReg === -1 ? '' : js.slice(iReg, iReg + 3600);
 ck('met Clerk: het registratiescherm', naarReg.indexOf('mountClerkSignUp') !== -1);
 /* Hier stond: "zonder Clerk een e-mailadres in plaats van een dode knop".
    Dat was beter dan niets, maar het is handwerk per klant -- iemand die zich

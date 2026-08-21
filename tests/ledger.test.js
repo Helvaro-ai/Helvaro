@@ -194,7 +194,21 @@ function nepAirtable(records, opties = {}) {
   const perCredit = [25, 200, 500, 1000].map((n) => c.topupOfferte(n).perCredit);
   ck('de prijs per credit daalt of blijft gelijk',
      perCredit.every((n, i) => i === 0 || n <= perCredit[i - 1]), perCredit);
-  ck('de staffel klopt bij 500', c.topupOfferte(500).bonusPct === 10, c.topupOfferte(500).bonusPct);
+  /* Hier stond: bij EUR 500 hoort 10% bonus. Die staffel is bewust weg.
+     Doorgerekend gaf hij voor EUR 249,99 aan bijgekochte credits er 3.151,
+     terwijl Starter voor datzelfde bedrag 3.000 geeft -- bijkopen was dus
+     voordeliger dan een abonnement, en dan is je abonnement een instapfee.
+     Volumekorting hoort in de PLANNEN te zitten (0,083 / 0,050 / 0,040 per
+     credit) en niet in het bijkopen. */
+  ck('geen volumebonus meer op bijkopen', c.topupOfferte(500).bonusPct === 0, c.topupOfferte(500).bonusPct);
+  ck('en de prijs per credit is overal gelijk aan Starter',
+     [25, 200, 500, 1000].every((n) => Math.abs(c.topupOfferte(n).perCredit - c.TOPUP_RATE_EUR) < 0.0005),
+     [25, 200, 500, 1000].map((n) => c.topupOfferte(n).perCredit));
+  /* In plaats daarvan wijst het scherm op een groter plan zodra dat meer geeft. */
+  ck('bij EUR 500 wordt Growth aangeraden',
+     (c.topupOfferte(500).beterPlan || {}).id === 'growth', c.topupOfferte(500).beterPlan);
+  ck('bij een klein bedrag geen verkooppraatje',
+     c.topupOfferte(25).beterPlan === null, c.topupOfferte(25).beterPlan);
   ck('bonuscredits tellen op tot het totaal',
      [100, 500, 1000].every((n) => { const q = c.topupOfferte(n);
        return q.basisCredits + q.bonusCredits === q.credits; }));

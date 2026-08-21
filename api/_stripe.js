@@ -151,6 +151,78 @@ async function createCheckout({ projectCode, offerte, email, origin } = {}) {
   });
 }
 
+/**
+ * Maak een betaalpagina voor een ABONNEMENT.
+ *
+ * Bewust met price_data en niet met een price-id: dan hoeft er in het
+ * Stripe-dashboard niets aangemaakt te worden. Zou je met price-ids werken, dan
+ * is er per plan een handmatige stap die iemand moet doen én onthouden bij elke
+ * prijswijziging -- en dan werkt "de klant meldt zich zelf aan" alleen zolang
+ * die iemand oplet. De prijs komt uit api/_plans.js, dus de plantabel blijft de
+ * enige waarheid.
+ *
+ * @param {object} o
+ * @param {string} o.projectCode  de tenant, uit de geverifieerde sessie
+ * @param {object} o.plan         een plan uit api/_plans.js
+ * @param {string} o.email        optioneel
+ * @param {string} o.origin       waar de klant naartoe terugkeert
+ * @param {string} o.klantId      bestaande Stripe-klant, als die er al is
+ */
+async function createSubscription({ projectCode, plan, email, origin, klantId } = {}) {
+  const tenant = String(projectCode || '').trim();
+  if (!tenant) throw new StripeError('Abonnement zonder projectcode.', 'no_tenant');
+  if (!plan || !plan.id || !(plan.prijsEur > 0)) throw new StripeError('Onbekend plan.', 'bad_plan');
+
+  const basis = String(origin || 'https://app.helvaro.pro').replace(/\/$/, '');
+  const centen = Math.round(Number(plan.prijsEur) * 100);
+
+  const body = {
+    mode: 'subscription',
+    success_url: `${basis}/dashboard?abonnement=gelukt`,
+    cancel_url: `${basis}/dashboard?abonnement=geannuleerd`,
+    client_reference_id: tenant,
+    /* Zowel op de sessie als op het abonnement zelf. De sessie-metadata komt
+       terug bij checkout.session.completed; de abonnement-metadata bij elke
+       maandelijkse factuur daarna. Zonder die tweede weet de webhook bij de
+       verlenging niet meer wiens abonnement het is. */
+    metadata: { projectCode: tenant, plan: plan.id },
+    subscription_data: { metadata: { projectCode: tenant, plan: plan.id } },
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: 'eur',
+        unit_amount: centen,
+        recurring: { interval: 'month' },
+        product_data: { name: `Helvaro ${plan.naam}`, description: plan.omschrijving || '' },
+      },
+    }],
+  };
+  /* Een bestaande klant hergebruiken, anders krijgt dezelfde makelaar bij elke
+     planwissel een nieuwe klantrij in Stripe en klopt geen enkel overzicht. */
+  if (klantId) body.customer = klantId;
+  else if (email) body.customer_email = email;
+
+  return post('/checkout/sessions', body);
+}
+
+/** Een lopend abonnement opzeggen per einde periode. */
+async function cancelSubscription(abonnementId) {
+  const id = String(abonnementId || '').trim();
+  if (!id) throw new StripeError('Geen abonnement-id.', 'no_subscription');
+  /* Aan het EIND van de periode, niet meteen: de klant heeft de maand betaald
+     en hoort die maand te krijgen. Meteen opzeggen zou hem zijn eigen geld
+     afpakken. */
+  return post(`/subscriptions/${encodeURIComponent(id)}`, { cancel_at_period_end: 'true' });
+}
+
+/** Een link naar Stripe's eigen portaal: factuur, kaart, opzeggen. */
+async function billingPortal({ klantId, origin } = {}) {
+  const id = String(klantId || '').trim();
+  if (!id) throw new StripeError('Geen Stripe-klant bekend.', 'no_customer');
+  const basis = String(origin || 'https://app.helvaro.pro').replace(/\/$/, '');
+  return post('/billing_portal/sessions', { customer: id, return_url: `${basis}/dashboard` });
+}
+
 /* Hoeveel seconden een getekend verzoek oud mag zijn. Stripe's eigen
    aanbeveling. Zonder deze controle kan iemand die ooit één geldig verzoek
    heeft opgevangen het eeuwig blijven afspelen. */
@@ -210,6 +282,7 @@ function verifyWebhook(ruweBody, handtekening) {
 
 module.exports = {
   configured, webhookConfigured, createCheckout, verifyWebhook,
+  createSubscription, cancelSubscription, billingPortal,
   StripeError, TOLERANTIE_S,
   _encode: encode,
 };

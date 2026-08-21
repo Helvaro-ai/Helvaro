@@ -660,6 +660,12 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   --login-text:       #18160F;
   --login-muted:      #6B6558;
   --login-placeholder:#A39C8C;
+  /* Zand ALS TEKST op dit paneel. Precies de regel uit CLAUDE.md: --accent-c
+     is de vulling, --accent-ink diezelfde kleur als tekst -- maar --accent-ink
+     is afgestemd op een DONKERE ondergrond, en dit paneel is altijd wit. Het
+     merk-zand kwam hier uit op 2,14:1 (donker thema) en 1,82:1 (licht). Deze
+     tint zit in dezelfde familie en haalt 4,88:1 op wit; gemeten, niet gekozen. */
+  --login-accent-ink: #8A6D2E;
   position: fixed;
   inset: 0;
   display: flex;
@@ -674,6 +680,70 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 /* De regel onder de inlogknop: wachtwoord vergeten en registreren. Kleuren
    uit tokens -- hier stond #6b7280 hardgecodeerd, wat in het lichte thema
    toevallig klopte en verder nergens op sloeg. */
+/* ── De segmentschakelaar inloggen / registreren ──────────────────────────
+   Twee gelijkwaardige knoppen in één spoor. De actieve krijgt het witte
+   plaatje en de schaduw; de andere blijft leesbaar maar rustig -- geen grijs
+   dat je moet zoeken. Gemeten op het altijd-witte formulierpaneel:
+   #6B6558 op #F1EFE9 haalt 5,07:1, ruim boven de eis.
+
+   Waarom een spoor en geen twee losse knoppen: zo is te zien dat het één
+   keuze is met twee standen, en niet twee dingen die je allebei kunt doen. */
+.login-modus {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  margin: var(--sp-5) 0 var(--sp-5);
+  background: #F1EFE9;
+  border: 1px solid var(--login-border);
+  border-radius: var(--r-md);
+}
+.login-modus-knop {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: var(--login-muted);
+  padding: 9px 10px;
+  border-radius: calc(var(--r-md) - 4px);
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+}
+.login-modus-knop:hover { color: var(--login-text); }
+.login-modus-knop.actief {
+  background: var(--login-panel);
+  color: var(--login-text);
+  box-shadow: 0 1px 2px rgba(24,22,15,0.10), 0 0 0 1px rgba(24,22,15,0.04);
+}
+.login-modus-knop:focus-visible {
+  outline: 2px solid var(--login-accent-ink);
+  outline-offset: 1px;
+}
+
+/* ── Wat je krijgt, voordat je je e-mailadres achterlaat ─────────────────── */
+.login-trust {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  /* Krap genoeg om op één regel te passen in het paneel van 380px. Brak hij af,
+     dan stond "Maandelijks opzegbaar" als losse regel eronder en las het als
+     een voetnoot in plaats van als een van de drie. */
+  gap: var(--sp-1) var(--sp-3);
+  list-style: none; margin: var(--sp-4) 0 0; padding: 0;
+  font-size: 11.5px; color: var(--login-muted);
+}
+.login-trust li { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+/* Het vinkje is decoratief; de tekst ernaast zegt het al. Vandaar een vorm en
+   geen letter, en geen aria-label -- een schermlezer die "vinkje vinkje
+   vinkje" voorleest helpt niemand. */
+.login-trust li::before {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--login-accent-ink);
+  flex-shrink: 0;
+}
+
 .login-links {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   margin-top: 14px; flex-wrap: wrap;
@@ -684,7 +754,10 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   font-family: inherit;
 }
 .login-link:hover { color: var(--login-text); text-decoration: underline; }
-.login-link-sep { color: var(--login-border); font-size: 12px; }
+/* Stond op --login-border: 1,32:1 op wit, dus in de praktijk onzichtbaar.
+   Een scheidingsteken dat je niet ziet scheidt niets -- dan kun je hem net zo
+   goed weglaten. Nu op de gedempte tekstkleur (5,79:1). */
+.login-link-sep { color: var(--login-muted); font-size: 12px; }
 
 /* Thema-knop op het inlogscherm. Hij staat op het showcase-paneel rechts, want
    het formulierpaneel links is altijd wit -- daar zou een lichte knop op een
@@ -1211,7 +1284,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .login-footer span {
-  color: var(--accent-ink);
+  color: var(--login-accent-ink);
   font-weight: 600;
 }
 
@@ -1309,7 +1382,9 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .login-footer span {
-  color: var(--accent-pressed);
+  /* Stond op --accent-pressed: zand op wit, 2,14:1. Dit is de regel die won
+     van de eerdere hierboven, dus dit was wat je echt zag. */
+  color: var(--login-accent-ink);
   font-weight: 600;
 }
 
@@ -8181,6 +8256,27 @@ ${cmd.css}
         <h1 class="login-welcome">Welkom terug!</h1>
         <p class="login-subtitle">Log in om te zien wat er sinds gisteren gebeurd is.</p>
 
+        <!-- De schakelaar tussen inloggen en registreren.
+
+             Hij stond eerder als tekstlinkje onderaan, tussen "Wachtwoord
+             vergeten?" en een middenpunt in. Twee dingen waren daar mis mee.
+             Ten eerste zag een nieuwe bezoeker vooral een INLOGformulier, met
+             de weg naar binnen als kleinste element op het scherm. Ten tweede
+             kon je, als de wissel misging, nergens meer terug -- er was geen
+             zichtbare toestand om naar terug te keren.
+
+             Een segmentschakelaar lost allebei op: waar je bent is te zien, en
+             waar je heen kunt ook. -->
+        <div class="login-modus" role="tablist" aria-label="Inloggen of account aanmaken">
+          <button type="button" class="login-modus-knop actief" id="modus-inloggen" role="tab"
+                  aria-selected="true" onclick="naarInloggen()">Inloggen</button>
+          <button type="button" class="login-modus-knop" id="btn-naar-registreren" role="tab"
+                  aria-selected="false" onclick="naarRegistreren()">Account aanmaken</button>
+          <!-- De naam btn-naar-registreren zat op de oude tekstlink onderaan. Die
+               link is weg (hij stond twee keer op hetzelfde scherm), maar de naam
+               blijft: de rest van de code en de regressietest kennen hem zo. -->
+        </div>
+
         <!-- Everything from here to the closing tag is the built-in form.
              mountClerkSignIn() hides this wrapper and reveals #clerk-signin
              instead, so the logo, heading and split-screen showcase stay put
@@ -8204,13 +8300,18 @@ ${cmd.css}
 
         <div class="login-links">
           <a class="login-link" href="/forgot-password">Wachtwoord vergeten?</a>
-          <!-- Registreren loopt via Clerk. Laadt Clerk niet, dan hoort hier
-               niet NIETS te staan: een bezoeker die zich wil aanmelden zag
-               alleen een inlogformulier en had geen idee waar hij heen moest.
-               De knop zegt daarom altijd wat er aan de hand is. -->
-          <span class="login-link-sep" aria-hidden="true">&middot;</span>
-          <button type="button" class="login-link" id="btn-naar-registreren" onclick="naarRegistreren()">Account aanmaken</button>
         </div>
+
+        <!-- Wat een bezoeker wil weten voordat hij zijn e-mailadres achterlaat.
+             Alle drie waar: de proef is 14 dagen (api/_clerk.js), er wordt geen
+             kaart gevraagd voor de proef, en Stripe-abonnementen lopen per maand
+             (api/_stripe.js, interval: month). Staat hier niets dat we niet
+             waarmaken. -->
+        <ul class="login-trust" aria-label="Voorwaarden">
+          <li>14 dagen gratis</li>
+          <li>Geen kaart nodig</li>
+          <li>Maandelijks opzegbaar</li>
+        </ul>
         </div><!-- /login-form-wrap -->
 
         <!-- Clerk mounts sign-in OR sign-up here. Hidden until it does. -->
@@ -11395,17 +11496,43 @@ var CLERK_NL = {
   },
 };
 
+/* Het eigen formulier tonen of verbergen -- op EEN plek, zodat "terugkomen"
+   even makkelijk is als "weggaan". Dat het maar een kant op ging, is precies
+   waarom een mislukte wissel een leeg scherm opleverde. */
+function eigenFormulier(zichtbaar) {
+  var form = document.getElementById('login-form-wrap');
+  var wel  = document.querySelector('.login-welcome');
+  var sub  = document.querySelector('.login-subtitle');
+  if (form) form.style.display = zichtbaar ? '' : 'none';
+  // Clerk's kaart heeft zijn eigen titel; die van ons zou de tweede kop op
+  // hetzelfde paneel zijn die ongeveer hetzelfde zegt.
+  if (wel) wel.style.display = zichtbaar ? '' : 'none';
+  if (sub) sub.style.display = zichtbaar ? '' : 'none';
+}
+
+/* Terug naar het eigen formulier, met uitleg. Dit is het vangnet: wat er ook
+   misgaat met Clerk, er staat nooit een leeg paneel. Iemand die wil inloggen
+   kan dat altijd. */
+function terugNaarEigenFormulier(melding) {
+  var host = document.getElementById('clerk-signin');
+  if (host) { host.innerHTML = ''; host.style.display = 'none'; host.dataset.mounted = ''; }
+  var tog = document.getElementById('clerk-toggle');
+  if (tog) { tog.innerHTML = ''; tog.style.display = 'none'; }
+  eigenFormulier(true);
+  zetModus('inloggen');
+  if (melding) {
+    var fout = document.getElementById('login-error');
+    if (fout) { fout.textContent = melding; fout.classList.add('visible'); }
+  }
+}
+
 function clerkHost() {
   var host = document.getElementById('clerk-signin');
   if (!host) return null;
-  var form = document.getElementById('login-form-wrap');
-  if (form) form.style.display = 'none';
-  // Clerk's card carries its own title and subtitle, so ours would be the
-  // second heading on the same panel saying roughly the same thing.
-  var wel = document.querySelector('.login-welcome');
-  var sub = document.querySelector('.login-subtitle');
-  if (wel) wel.style.display = 'none';
-  if (sub) sub.style.display = 'none';
+  /* Het formulier blijft staan tot Clerk aantoonbaar iets getekend heeft --
+     zie clerkVangnet. Verbergen VOORDAT de mount slaagt is hoe je een leeg
+     scherm maakt: lukt de mount niet, dan is er niets meer om naar terug te
+     vallen en staat de bezoeker met lege handen. */
   host.style.display = 'block';
   /* Wisselen tussen inloggen en registreren gaf een LEEG paneel.
 
@@ -11445,23 +11572,71 @@ function clerkHost() {
    ziet, gaat weg.
 
    Drie gevallen, drie eerlijke antwoorden. */
-function naarRegistreren() {
-  // 1. Clerk staat aan en is geladen: gewoon het registratiescherm tonen.
-  if (typeof CLERK_READY !== 'undefined' && CLERK_READY && window.Clerk && window.Clerk.mountSignUp) {
-    mountClerkSignUp(window.Clerk);
+/* De segmentschakelaar bijwerken. Op één plek, zodat de knop en het scherm
+   nooit uit elkaar kunnen lopen -- een schakelaar die "Inloggen" markeert
+   terwijl er een registratieformulier staat is erger dan geen schakelaar. */
+function zetModus(modus) {
+  var knoppen = { inloggen: document.getElementById('modus-inloggen'),
+                  registreren: document.getElementById('btn-naar-registreren') };
+  for (var k in knoppen) {
+    if (!knoppen[k]) continue;
+    var aan = (k === modus);
+    knoppen[k].classList.toggle('actief', aan);
+    knoppen[k].setAttribute('aria-selected', aan ? 'true' : 'false');
+  }
+  var wel = document.querySelector('.login-welcome');
+  var sub = document.querySelector('.login-subtitle');
+  if (wel) wel.textContent = modus === 'registreren' ? 'Begin vandaag' : 'Welkom terug!';
+  if (sub) sub.textContent = modus === 'registreren'
+    ? 'Veertien dagen gratis. Je eerste lead kan vanavond binnenkomen.'
+    : 'Log in om te zien wat er sinds gisteren gebeurd is.';
+}
+
+/* Terug naar inloggen. Bestond niet: de wissel ging maar één kant op, en wie
+   per ongeluk op registreren klikte kon alleen nog verversen. */
+async function naarInloggen() {
+  var fout = document.getElementById('login-error');
+  if (fout) { fout.textContent = ''; fout.classList.remove('visible'); }
+  zetModus('inloggen');
+
+  if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
+    try {
+      var clerk = await clerkInit();
+      if (clerk && clerk.mountSignIn) { mountClerkSignIn(clerk); return; }
+    } catch (e) { console.error('[clerk] inloggen kon niet starten', e); }
+    terugNaarEigenFormulier('');
     return;
   }
+  terugNaarEigenFormulier('');
+}
 
-  // 2. Clerk hoort aan te staan maar is er niet. Dat is een storing aan onze
-  //    kant, en dan hoort de bezoeker dat te horen in plaats van op een knop
-  //    te blijven drukken die niets doet.
+async function naarRegistreren() {
+  var knop = document.getElementById('btn-naar-registreren');
   var fout = document.getElementById('login-error');
+  if (fout) { fout.textContent = ''; fout.classList.remove('visible'); }
+
+  // 1. Clerk staat aan. WACHTEN tot hij geladen is -- dat was de bug.
+  //
+  //    Er stond een synchrone controle op window.Clerk.mountSignUp. Klikte
+  //    iemand voordat het script van Clerk binnen was (en dat is het normale
+  //    geval: het laadt async, de knop staat er meteen), dan viel hij door naar
+  //    "kon niet geladen worden" terwijl er niets aan de hand was. Het scherm
+  //    liet dan een fout zien voor iets dat een halve seconde later gewoon had
+  //    gewerkt.
   if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
-    if (fout) {
-      fout.textContent = 'Het registratiescherm kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
-      fout.classList.add('visible');
+    if (knop) { knop.disabled = true; knop.dataset.oud = knop.textContent; knop.textContent = 'Even geduld...'; }
+    try {
+      var clerk = await clerkInit();
+      if (clerk && clerk.mountSignUp) { mountClerkSignUp(clerk); return; }
+      throw new Error('Clerk geladen maar zonder mountSignUp');
+    } catch (e) {
+      console.error('[clerk] registreren kon niet starten', e);
+      // Geen doodlopend scherm: het eigen formulier staat er nog.
+      terugNaarEigenFormulier('Registreren lukt nu niet. Probeer het zo meteen opnieuw, of log hieronder in.');
+      return;
+    } finally {
+      if (knop) { knop.disabled = false; knop.textContent = knop.dataset.oud || 'Account aanmaken'; }
     }
-    return;
   }
 
   // 3. Clerk staat uit, maar zelfaanmelden staat open: stuur ze naar de
@@ -11491,11 +11666,12 @@ function mountClerkSignIn(clerk) {
   try {
     clerk.mountSignIn(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signin';
+    zetModus('inloggen');
     setClerkToggle('signin');
     clerkVangnet(host, 'inloggen');
   } catch (e) {
     console.error('[clerk] sign-in kon niet gemonteerd worden', e);
-    clerkLeegMelding(host, 'inloggen');
+    terugNaarEigenFormulier('Het inlogscherm van onze aanbieder laadt niet. Gebruik hieronder je e-mailadres en wachtwoord.');
   }
 }
 
@@ -11505,33 +11681,41 @@ function mountClerkSignUp(clerk) {
   try {
     clerk.mountSignUp(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signup';
+    zetModus('registreren');
     setClerkToggle('signup');
     clerkVangnet(host, 'registreren');
   } catch (e) {
     console.error('[clerk] sign-up kon niet gemonteerd worden', e);
-    clerkLeegMelding(host, 'registreren');
+    terugNaarEigenFormulier('Registreren lukt nu niet. Probeer het zo meteen opnieuw, of log hieronder in.');
   }
 }
 
 /* Als Clerk stilzwijgend niets neerzet, is een leeg paneel het slechtste wat
    je kunt tonen: de gebruiker denkt dat de app stuk is en heeft geen weg
    terug. Na een halve seconde kijken of er echt iets staat. */
-function clerkVangnet(host, wat) {
-  setTimeout(function () {
-    if (host && host.isConnected && host.childElementCount === 0) {
-      console.error('[clerk] ' + wat + ' bleef leeg na monteren');
-      clerkLeegMelding(host, wat);
-    }
-  }, 600);
-}
+/* Heeft Clerk echt iets getekend? Zo ja: ons formulier mag weg. Zo nee: ons
+   formulier komt terug.
 
-function clerkLeegMelding(host, wat) {
-  if (!host) return;
-  host.innerHTML = '';
-  var p = document.createElement('p');
-  p.style.cssText = 'text-align:center;font-size:13px;line-height:1.6;color:var(--text-muted);padding:18px 6px';
-  p.textContent = 'Het scherm om te ' + wat + ' kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
-  host.appendChild(p);
+   Twee keer kijken en niet één keer. Clerk's kaart verschijnt soms pas na een
+   netwerkronde (bot-protectie), en 600 ms is dan te vroeg -- dan zou het
+   vangnet een werkende mount wegduwen. */
+function clerkVangnet(host, wat) {
+  var pogingen = 0;
+  (function kijk() {
+    pogingen++;
+    if (!host || !host.isConnected) return;          // al vervangen door een nieuwe mount
+    if (host.childElementCount > 0) {
+      // Gelukt. Nu pas mag het eigen formulier weg.
+      eigenFormulier(false);
+      return;
+    }
+    if (pogingen < 6) { setTimeout(kijk, 500); return; }
+    console.error('[clerk] ' + wat + ' bleef leeg na ' + pogingen + ' pogingen');
+    terugNaarEigenFormulier(
+      wat === 'registreren'
+        ? 'Het registratiescherm laadt niet. Log hieronder in, of probeer het zo meteen opnieuw.'
+        : 'Het inlogscherm van onze aanbieder laadt niet. Gebruik hieronder je e-mailadres en wachtwoord.');
+  })();
 }
 
 // Clerk's components carry their own "already have an account?" links, but
