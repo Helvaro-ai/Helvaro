@@ -14,6 +14,20 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold — tak `claude/helvaro-ai-workspace-ol7lbr`
 
+### Drie back-officeknoppen gaven een kale 500 na het weghalen van de VPS-variabelen
+
+`PG_API_URL` en `PG_API_TOKEN` horen weg te zijn — dat token ging naar een
+vrijgegeven IP-adres. Maar drie standen in de back-office (de contentlijst, een
+post bijwerken, een beeld genereren) riepen de opgeheven VPS aan **zonder
+foutafhandeling**. Zonder die variabelen gooide de aanroep, en Vercel gaf een
+kale 500 zonder te zeggen waarom.
+
+Ze antwoorden nu met "Deze functie hing aan de opgeheven VPS en is buiten
+dienst." Dat is geen fout van jou en gaat ook niet over door het opnieuw te
+proberen — dus een 503 met een reden in plaats van een crash. Alleen jouw eigen
+back-office raakte dit; klanten hebben er nooit bij gekund.
+
+
 ### Bijgekochte credits kostten twintig keer te veel
 
 Het tarief voor bijkopen stond op € 0,50 per credit. Een bijgekocht
