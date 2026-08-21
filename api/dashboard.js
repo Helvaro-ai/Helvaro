@@ -656,6 +656,21 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 #login-page::before { display: none; }
 #login-page::after  { display: none; }
 
+/* De regel onder de inlogknop: wachtwoord vergeten en registreren. Kleuren
+   uit tokens -- hier stond #6b7280 hardgecodeerd, wat in het lichte thema
+   toevallig klopte en verder nergens op sloeg. */
+.login-links {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 14px; flex-wrap: wrap;
+}
+.login-link {
+  font-size: 13px; color: var(--login-muted); text-decoration: none;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit;
+}
+.login-link:hover { color: var(--login-text); text-decoration: underline; }
+.login-link-sep { color: var(--login-border); font-size: 12px; }
+
 /* Thema-knop op het inlogscherm. Hij staat op het showcase-paneel rechts, want
    het formulierpaneel links is altijd wit -- daar zou een lichte knop op een
    lichte achtergrond staan. Alle kleuren komen van .btn-icon, inclusief de
@@ -668,9 +683,23 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   padding: 8px 10px;
 }
 @media (max-width: 900px) {
-  /* Onder deze breedte valt het showcase-paneel weg en blijft het witte
-     formulier over; dan hoort de knop daar wel op, en niet over de rand. */
-  .login-theme-toggle { top: 14px; right: 14px; }
+  /* Onder deze breedte vallen de panelen onder elkaar en landt de knop op het
+     formulierpaneel -- en dat is ALTIJD wit, ook in het donkere thema. Zijn
+     kleuren kwamen van .btn-icon, dus lichte tekst op wit: gemeten 2,05:1.
+     Hier dus expliciet de kleuren van dat paneel, niet die van het thema. */
+  /* Met de id ervoor, anders verliest deze regel van .btn-icon en van
+     [data-theme="light"] .btn-icon -- die staan allebei VERDEROP in dit
+     sjabloon en winnen dan op volgorde. Gemeten gevolg zonder de id: 2,05:1. */
+  #login-page .login-theme-toggle {
+    top: 14px; right: 14px;
+    background: rgba(15,17,40,0.05);
+    border-color: var(--login-border);
+    color: var(--login-text);
+  }
+  #login-page .login-theme-toggle:hover {
+    background: rgba(15,17,40,0.09);
+    color: var(--login-text);
+  }
 }
 
 /* Full-screen two-panel split. No card, no border-radius */
@@ -7984,7 +8013,15 @@ ${cmd.css}
         <button class="btn-login" id="btn-login" aria-label="Inloggen"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
         <div class="login-error" id="login-error" role="alert" aria-live="assertive"></div>
 
-        <div style="text-align:center;margin-top:14px"><a href="/forgot-password" style="font-size:13px;color:#6b7280;text-decoration:none">Wachtwoord vergeten?</a></div>
+        <div class="login-links">
+          <a class="login-link" href="/forgot-password">Wachtwoord vergeten?</a>
+          <!-- Registreren loopt via Clerk. Laadt Clerk niet, dan hoort hier
+               niet NIETS te staan: een bezoeker die zich wil aanmelden zag
+               alleen een inlogformulier en had geen idee waar hij heen moest.
+               De knop zegt daarom altijd wat er aan de hand is. -->
+          <span class="login-link-sep" aria-hidden="true">&middot;</span>
+          <button type="button" class="login-link" id="btn-naar-registreren" onclick="naarRegistreren()">Account aanmaken</button>
+        </div>
         </div><!-- /login-form-wrap -->
 
         <!-- Clerk mounts sign-in OR sign-up here. Hidden until it does. -->
@@ -11113,6 +11150,44 @@ function clerkHost() {
   vers.dataset.mounted = '';
   if (host.parentNode) host.parentNode.replaceChild(vers, host);
   return vers;
+}
+
+/* Wat er gebeurt als iemand op "Account aanmaken" klikt.
+
+   Registreren loopt volledig via Clerk. Dat is prima zolang Clerk laadt --
+   maar deed hij dat niet, dan stond er tot nu HELEMAAL niets: het scherm
+   toonde alleen een inlogformulier, zonder enige aanwijzing waar een nieuwe
+   klant heen moest. Een bezoeker die zich wil aanmelden en alleen "Inloggen"
+   ziet, gaat weg.
+
+   Drie gevallen, drie eerlijke antwoorden. */
+function naarRegistreren() {
+  // 1. Clerk staat aan en is geladen: gewoon het registratiescherm tonen.
+  if (typeof CLERK_READY !== 'undefined' && CLERK_READY && window.Clerk && window.Clerk.mountSignUp) {
+    mountClerkSignUp(window.Clerk);
+    return;
+  }
+
+  // 2. Clerk hoort aan te staan maar is er niet. Dat is een storing aan onze
+  //    kant, en dan hoort de bezoeker dat te horen in plaats van op een knop
+  //    te blijven drukken die niets doet.
+  var fout = document.getElementById('login-error');
+  if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
+    if (fout) {
+      fout.textContent = 'Het registratiescherm kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
+      fout.classList.add('visible');
+    }
+    return;
+  }
+
+  // 3. Clerk staat uit. Accounts worden dan met de hand aangemaakt -- zeg dat,
+  //    en geef een adres in plaats van een doodlopende knop.
+  if (fout) {
+    fout.innerHTML = 'Accounts worden voor je klaargezet. Mail ons op '
+      + '<a href="mailto:hello@helvaro.pro?subject=Account%20aanvragen" style="color:inherit;text-decoration:underline">hello@helvaro.pro</a>'
+      + ' en je kunt dezelfde dag beginnen.';
+    fout.classList.add('visible');
+  }
 }
 
 function mountClerkSignIn(clerk) {

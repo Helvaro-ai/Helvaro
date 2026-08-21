@@ -68,5 +68,32 @@ const winter = new Date('2026-12-14T00:00:00');
 ck('ook in de winter', fn(winter) === '2026-12-14', fn(winter));
 ck('een onmogelijke datum geeft leeg', fn(new Date('onzin')) === '');
 
+console.log('\n— registreren is bereikbaar, ook als Clerk niet laadt —');
+/* Registreren loopt volledig via Clerk. Laadde die niet, dan stond er
+   helemaal niets: alleen een inlogformulier, zonder enige aanwijzing waar een
+   nieuwe klant heen moest. Een bezoeker die zich wil aanmelden gaat dan weg. */
+ck('er is een knop "Account aanmaken" in de basis-HTML', html.indexOf('btn-naar-registreren') !== -1);
+ck('die knop staat NIET in het Clerk-blok', html.indexOf('btn-naar-registreren') < html.indexOf('id="clerk-signin"'));
+ck('en er is een afhandeling voor', js.indexOf('function naarRegistreren') !== -1);
+const iReg = js.indexOf('function naarRegistreren');
+const naarReg = iReg === -1 ? '' : js.slice(iReg, iReg + 1800);
+ck('met Clerk: het registratiescherm', naarReg.indexOf('mountClerkSignUp') !== -1);
+ck('zonder Clerk: een adres in plaats van een dode knop', naarReg.indexOf('hello@helvaro.pro') !== -1);
+ck('en bij een storing een eerlijke melding', naarReg.indexOf('kon niet geladen worden') !== -1);
+
+console.log('\n— de themaknop leest ook op een telefoon —');
+/* Onder 900px vallen de panelen onder elkaar en landt de knop op het
+   formulierpaneel, dat ALTIJD wit is. Zijn kleuren kwamen uit het donkere
+   thema: gemeten 2,05:1. De regel heeft de id nodig, anders verliest hij van
+   .btn-icon verderop in hetzelfde sjabloon. */
+ck('de mobiele regel wint op specificiteit',
+   /#login-page \.login-theme-toggle\s*\{/.test(html));
+ck('en zet een eigen tekstkleur', /#login-page \.login-theme-toggle[\s\S]{0,220}--login-text/.test(html));
+
+console.log('\n— de link onder het formulier gebruikt tokens —');
+ck('geen hardgecodeerde grijstint meer op die regel',
+   html.indexOf('color:#6b7280;text-decoration:none">Wachtwoord vergeten') === -1);
+ck('wel een tokenkleur', /\.login-link\s*\{[\s\S]{0,160}var\(--login-muted\)/.test(html));
+
 console.log(`\n${pass} geslaagd, ${fail} gefaald`);
 process.exit(fail ? 1 : 0);

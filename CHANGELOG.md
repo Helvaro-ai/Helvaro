@@ -211,6 +211,18 @@ hieronder.
 
 ### Inloggen
 
+- **Een nieuwe klant kon zich niet aanmelden als Clerk niet laadde.** Registreren
+  liep volledig via Clerk, en de knop ernaartoe werd pas gemaakt nádat Clerk
+  geladen was. Laadde die niet — geblokkeerd script, storing, DNS — dan zag een
+  bezoeker alleen een inlogformulier en geen enkele aanwijzing waar hij heen
+  moest. Er staat nu altijd "Account aanmaken" onder het formulier, met drie
+  eerlijke antwoorden: het registratiescherm als Clerk er is, een melding als
+  hij hoort te werken maar niet laadt, en anders een e-mailadres.
+- **De thema-knop was onleesbaar op een telefoon.** Onder 900px vallen de
+  panelen onder elkaar en landt die knop op het witte formulierpaneel, terwijl
+  zijn kleuren uit het donkere thema kwamen: 2,05:1, oftewel lichtgrijs op wit.
+  Nu 16,32:1.
+
 - **Wisselen van "Inloggen" naar "Account aanmaken" gaf een leeg vak.** Het
   formulier verdween en er kwam niets voor in de plaats — je kon je alleen nog
   registreren door de pagina te verversen. Oorzaak: het inlogvak werd
