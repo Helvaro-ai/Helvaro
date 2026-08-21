@@ -4,6 +4,32 @@
 // dashboard's language picker always matches exactly what the AI
 // conversation actually supports — no separately hand-maintained list here.
 const _lang = require('./_lang');
+const _session = require('./_session');
+
+// ── Faro ────────────────────────────────────────────────────────────────────
+// Faro's CSS, markup and client script live in api/_faro/ui/* rather than
+// inline below. This file is a single ~19,000-line template literal where every
+// backtick and ${...} must be escaped (see the note at the inline-script
+// boundary further down); several thousand more lines in here would be hostile
+// to edit and hazardous to review. Those modules return plain strings and
+// splice in at four points, marked "FARO" below.
+//
+// Faro is NOT a second workspace and NOT a sidebar entry. It is an ask bar
+// docked along the bottom of every page, which expands into an overlay above
+// whatever CRM page you are on. The sidebar was already carrying twelve items
+// and did not need a thirteenth.
+//
+// faro.* is bound to ONE language per request, resolved from the user's setting
+// through the same registry the WhatsApp AI uses — no client-side translation
+// step and no flash of untranslated content.
+const _faroUI = require('./_faro/ui');
+
+// ── Command Center ──────────────────────────────────────────────────────────
+// The intelligence layer's UI, assembled the same way Faro's is: this file
+// interpolates four finished strings and knows nothing else about it. Same
+// language binding, same splice-safety contract (no backtick, no unescaped
+// ${...}), same design tokens — see api/_command-ui/index.js.
+const _cmdUI = require('./_command-ui');
 
 module.exports = async function handler(req, res) {
   // Native/English names only — never leak internal registry fields
@@ -12,6 +38,17 @@ module.exports = async function handler(req, res) {
   // "</script>" can't break out of the inline <script> block below — same
   // defensive intent as api/form-page.js's escJs() neutralizing </script>.
   const AP_LANGUAGES_JSON = JSON.stringify(_lang.listForPicker()).replace(/</g, '\\u003c');
+
+  // Dashboard UI language. DASHBOARD_LANG lets an operator force one; otherwise
+  // the registry default applies until a per-user preference exists to read.
+  const FARO_LANG = _lang.normalizeLanguageCode(process.env.DASHBOARD_LANG || _lang.DEFAULT_CODE);
+  // cmd first: Faro's landing screen renders the Command Center's briefing
+  // inside it, so the sections have to exist before the page is built.
+  const cmd = _cmdUI.forLang(FARO_LANG);
+  const faro = _faroUI.forLang(FARO_LANG, {
+    landingExtra: cmd.sections,
+    headerExtra: cmd.autopilot,
+  });
 
   // Support contact for the help widget. The WhatsApp route is opt-in: no
   // personal number is ever hardcoded here, so the button simply doesn't
@@ -53,7 +90,7 @@ module.exports = async function handler(req, res) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helvaro. AI Lead Kwalificatie</title>
+<title>Helvaro · AI Lead Kwalificatie</title>
 <link rel="icon" href="/favicon.png" type="image/png">
 <script src="/vendor/chart.umd.min.js"></script>
 <style>
@@ -128,6 +165,21 @@ module.exports = async function handler(req, res) {
   --warning-c: #D4A017;
   --error-c:   #DC2626;
   --info-c:    #B5B5B5;   /* no blue: the brand rules out blue accents */
+
+  /* Semantic colours AS TEXT. Same story as --accent-c vs --accent-ink: a hue
+     picked to read as a fill is not automatically legible as type, and the
+     place it breaks is a chip that tints the SAME hue behind it — a green
+     score on a 15%-green pill. On dark the fill values already clear 4.5:1
+     against both the canvas and their own chip, so these are aliases here and
+     dark is unchanged; the light block overrides them with darker values. */
+  --success-ink: var(--success-c);   /* 6,9:1 op de kaart — prima als tekst */
+  --warning-ink: var(--warning-c);  /* 6,6:1 */
+  /* Rood is de uitzondering: #DC2626 is hetzelfde in beide thema's en haalt
+     op donker maar 3,25:1 op de kaart en 2,95:1 op zijn eigen chip. Als vulling
+     klopt het, als tekst niet — precies dezelfde fout als sand op wit, alleen
+     de andere kant op. */
+  --error-ink:   #F87171;           /* 5,68:1 op de kaart, 5,14:1 op de chip */
+  --neutral-ink: #96A2B6;   /* 4,9:1 op de chip waar hij op staat; licht thema maakt hem donkerder */
 
   --bubble-incoming: #1F1F1F;
 
@@ -215,6 +267,9 @@ module.exports = async function handler(req, res) {
   --green:         var(--success-c);
   --red:           var(--error-c);
   --orange:        var(--warning-c);
+  --green-ink:     var(--success-ink);
+  --red-ink:       var(--error-ink);
+  --orange-ink:    var(--warning-ink);
   --accent:        var(--accent-c);
   --accent-bright: var(--accent-hover-c);
 
@@ -273,6 +328,18 @@ module.exports = async function handler(req, res) {
   --warning-c: #B45309;
   --error-c:   #DC2626;
   --info-c:    #6B7280;
+
+  /* Measured against the worst surface each one actually lands on — its own
+     15% chip over a white card, which is where the score badges live:
+       #166534 on #DCF1E4 = 6.03:1   (was #16A34A at 2.78:1)
+       #92400E on #F4E5DA = 5.76:1   (was #B45309 at 4.08:1)
+       #B91C1C on #FADEDE = 5.10:1   (was #DC2626 at 3.81:1)
+     Fills keep the brighter values above, so the chips still read as green,
+     amber and red at a glance. */
+  --success-ink: #166534;
+  --warning-ink: #92400E;
+  --error-ink:   #B91C1C;
+  --neutral-ink: #45526B;   /* 2,67:1 -> 7,3:1 on the chip it actually sits on */
 
   --bubble-incoming: #F3F4F6;
 
@@ -434,13 +501,12 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   background: none;
   -webkit-text-fill-color: currentColor;
   background-clip: initial;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 [data-theme="light"] .gradient-text {
-  -webkit-text-fill-color: var(--accent);
+  -webkit-text-fill-color: currentColor;
   background: none;
-  color: var(--accent);
 }
 
 /* ============================================================
@@ -469,6 +535,106 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   overflow-x: hidden;
 }
 
+/* Een tabel heeft een harde min-content-breedte: kolomkoppen en getallen
+   kunnen niet verder krimpen. Op een telefoon liep .source-table daardoor 129px
+   buiten beeld, en omdat de pagina zijn overflow verbergt was dat geen
+   scrollbalk maar een tabel die stilletjes kolommen kwijtraakte. Eén wrapper
+   die zelf scrollt geeft ze terug. */
+/* De storingsbalk. display:flex staat op de klasse en niet inline, zodat een
+   [hidden] of style.display='none' hem ook echt weg krijgt — een eerdere versie
+   van een banner in dit bestand bleef zichtbaar boven een gezonde pagina omdat
+   display:flex het van [hidden] won. */
+/* Aanraakdoelen. WCAG 2.2 vraagt minimaal 24x24 CSS-pixels voor iets dat je
+   moet kunnen raken; deze zaten daaronder — potloodjes en kruisjes van 14 tot
+   20 pixels.
+
+   Eerste poging was een onzichtbaar ::after om het raakvlak te vergroten zonder
+   de layout te verschuiven. Gemeten met elementFromPoint bleek dat niet te
+   werken: op 11px van het midden ving het pseudo-element de klik niet op, want
+   een ouder knipt zijn overflow af. Dus gewoon de knop zelf op maat, met het
+   icoon gecentreerd zodat hij visueel niet groter oogt. */
+#revenue-goal-edit,
+.copy-btn,
+#dash-checklist-close,
+#btn-toggle-apikey,
+#panel-copy-phone {
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crm-error-banner {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(var(--error-rgb), 0.10);
+  border: 1px solid rgba(var(--error-rgb), 0.28);
+}
+.crm-error-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.crm-error-text strong { font-size: 14px; color: var(--error-ink); }
+.crm-error-text span { font-size: 13px; color: var(--text-muted); }
+.crm-error-retry {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--error-rgb), 0.35);
+  background: none;
+  color: var(--error-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.crm-error-retry:hover:not(:disabled) { background: rgba(var(--error-rgb), 0.12); }
+.crm-error-retry:disabled { opacity: 0.6; cursor: default; }
+.crm-error-retry:focus-visible { outline: 2px solid var(--error-ink); outline-offset: 2px; }
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+.table-scroll > table { min-width: 460px; }
+
+/* Op de smalste telefoons is de paginamarge zelf het laatste dat nog wint van
+   de inhoud: 2x28px is 56px van een scherm van 320. */
+@media (max-width: 400px) {
+  .page-content { padding: 18px 14px; }
+}
+@media (max-width: 360px) {
+  .page-content { padding: 16px 10px; }
+  /* Vangnet voor de laatste paar kaarten en knoppen die op 320px nog een paar
+     pixel buiten beeld staken. Liever één regel die zegt "niets is breder dan
+     zijn container" dan vijf losse uitzonderingen die de volgende kaart weer
+     mist. */
+  .page.active .profile-card,
+  .page.active .fm-qr-card,
+  .page.active .fm-preview-card,
+  .page.active .fm-option-card,
+  .page.active .cal-day-num,
+  .page.active .stat-icon,
+  .page.active #chk-whatsapp-mailto,
+  .page.active .cal-book-btn {
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* De onboarding-checklist zet een lange mailto-link op één regel; op 320px
+     steekt die er 35px uit. Breken mag hier: het is een adres, geen knop. */
+  .page.active #chk-whatsapp-mailto {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .page.active .cal-book-btn {
+    white-space: normal;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
 /* ============================================================
    LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
@@ -489,6 +655,52 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 #login-page::before { display: none; }
 #login-page::after  { display: none; }
+
+/* De regel onder de inlogknop: wachtwoord vergeten en registreren. Kleuren
+   uit tokens -- hier stond #6b7280 hardgecodeerd, wat in het lichte thema
+   toevallig klopte en verder nergens op sloeg. */
+.login-links {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 14px; flex-wrap: wrap;
+}
+.login-link {
+  font-size: 13px; color: var(--login-muted); text-decoration: none;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit;
+}
+.login-link:hover { color: var(--login-text); text-decoration: underline; }
+.login-link-sep { color: var(--login-border); font-size: 12px; }
+
+/* Thema-knop op het inlogscherm. Hij staat op het showcase-paneel rechts, want
+   het formulierpaneel links is altijd wit -- daar zou een lichte knop op een
+   lichte achtergrond staan. Alle kleuren komen van .btn-icon, inclusief de
+   light-variant verderop; deze regel doet alleen de plaatsing. */
+.login-theme-toggle {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 2;
+  padding: 8px 10px;
+}
+@media (max-width: 900px) {
+  /* Onder deze breedte vallen de panelen onder elkaar en landt de knop op het
+     formulierpaneel -- en dat is ALTIJD wit, ook in het donkere thema. Zijn
+     kleuren kwamen van .btn-icon, dus lichte tekst op wit: gemeten 2,05:1.
+     Hier dus expliciet de kleuren van dat paneel, niet die van het thema. */
+  /* Met de id ervoor, anders verliest deze regel van .btn-icon en van
+     [data-theme="light"] .btn-icon -- die staan allebei VERDEROP in dit
+     sjabloon en winnen dan op volgorde. Gemeten gevolg zonder de id: 2,05:1. */
+  #login-page .login-theme-toggle {
+    top: 14px; right: 14px;
+    background: rgba(15,17,40,0.05);
+    border-color: var(--login-border);
+    color: var(--login-text);
+  }
+  #login-page .login-theme-toggle:hover {
+    background: rgba(15,17,40,0.09);
+    color: var(--login-text);
+  }
+}
 
 /* Full-screen two-panel split. No card, no border-radius */
 .login-split {
@@ -662,7 +874,7 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--accent-ink);
   line-height: 1;
   margin-bottom: 4px;
 }
@@ -722,6 +934,57 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 }
 
 /* ── Slides wrapper ── */
+/* ── Het WhatsApp-mockje op het inlogscherm ─────────────────────────────────
+   Stond hier eerst een staafgrafiek met 24 / 68% / 12. Die cijfers waren
+   verzonnen, ongelabeld, en vertelden een makelaar niet wat dit product doet.
+   Een gesprek wel: dit IS het product, en het tijdstip (21:47) draagt het
+   argument dat geen enkele tagline zo goed kan maken. */
+.login-what {
+  margin: 18px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--login-muted, #5B6779);
+  max-width: 42ch;
+}
+
+.brand-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 2px;
+}
+.brand-chat-msg {
+  max-width: 84%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  position: relative;
+}
+.brand-chat-msg span { display: block; }
+.brand-chat-msg em {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
+}
+.brand-chat-msg.in {
+  align-self: flex-start;
+  background: rgba(255,255,255,0.07);
+  color: #EDEDED;
+  border-bottom-left-radius: 5px;
+}
+.brand-chat-msg.out {
+  align-self: flex-end;
+  background: rgba(var(--accent-rgb), 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.24);
+  color: #F2E9D5;
+  border-bottom-right-radius: 5px;
+}
+.brand-chat-msg.out em { text-align: right; }
+
 .brand-slides-wrap {
   position: relative;
   z-index: 1;
@@ -831,7 +1094,7 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 .brand-agenda-time {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
   min-width: 38px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -899,7 +1162,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .login-footer span {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
@@ -920,6 +1183,28 @@ button.brand-dot { border: none; padding: 0; }
 
 [data-theme="light"] #login-page {
   background: var(--bg);
+}
+
+/* Het showcase-paneel rechts was volledig op donker geschreven: de chatballonnen
+   hadden #EDEDED en #F2E9D5 als tekstkleur, en de vulling was wit op 7%. Op een
+   licht paneel is dat bijna-wit op wit -- de demo was daar letterlijk
+   onleesbaar. Het viel nooit op omdat het inlogscherm geen thema-knop had; nu
+   die er wel is, is dit het eerste wat je ziet.
+
+   Kleuren komen uit tokens, en tekst gebruikt de ink-variant: --accent-c is de
+   vulling van de uitgaande ballon, --accent-ink diezelfde kleur als tekst. */
+[data-theme="light"] .brand-chat-msg.in {
+  background: rgba(15,17,40,0.05);
+  color: var(--text-primary);
+}
+[data-theme="light"] .brand-chat-msg.out {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.28);
+  color: var(--text-primary);
+}
+/* Het puntenraster is wit op 6%: onzichtbaar op een licht vlak. */
+[data-theme="light"] .login-brand-side::before {
+  background-image: radial-gradient(circle, rgba(15,17,40,0.07) 1px, transparent 1px);
 }
 
 .form-group {
@@ -1176,7 +1461,7 @@ button.brand-dot { border: none; padding: 0; }
   font-family: 'Inter', sans-serif;
   transition: border-color 0.2s;
 }
-.cal-today-btn:hover { border-color: rgba(var(--accent-rgb),0.5); color: var(--accent-bright); }
+.cal-today-btn:hover { border-color: rgba(var(--accent-rgb),0.5); color: var(--accent-ink); }
 .cal-nav-btn {
   width: 32px;
   height: 32px;
@@ -1190,7 +1475,7 @@ button.brand-dot { border: none; padding: 0; }
   justify-content: center;
   transition: border-color 0.2s;
 }
-.cal-nav-btn:hover { border-color: rgba(var(--accent-rgb),0.5); color: var(--accent-bright); }
+.cal-nav-btn:hover { border-color: rgba(var(--accent-rgb),0.5); color: var(--accent-ink); }
 .cal-range-label {
   font-size: 16px;
   font-weight: 700;
@@ -1225,8 +1510,17 @@ button.brand-dot { border: none; padding: 0; }
 .cal-gutter { width: 54px; flex-shrink: 0; }
 .cal-day-cols-header {
   flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+/* Zeven dagkolommen plus een gutter van 54px legden een bodem van 425px onder
+   de week. Op 390px verdween zondag daardoor volledig en werd zaterdag
+   doormidden gesneden — zonder scrollbalk, want de pagina verbergt zijn
+   overflow. De gutter (de uren-as) is het enige dat hier gemist kan worden. */
+@media (max-width: 480px) {
+  .cal-gutter { width: 34px; }
+  .cal-day-header-cell { padding: 8px 2px; }
 }
 .cal-day-header-cell {
   padding: 10px 8px;
@@ -1259,7 +1553,7 @@ button.brand-dot { border: none; padding: 0; }
   color: var(--on-accent);
   box-shadow: none;
 }
-.cal-day-header-cell.cal-today .cal-day-name { color: var(--accent-bright); }
+.cal-day-header-cell.cal-today .cal-day-name { color: var(--accent-ink); }
 
 /* Scrollable grid */
 .cal-scroll-area {
@@ -1302,8 +1596,9 @@ button.brand-dot { border: none; padding: 0; }
 }
 .cal-day-cols {
   flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   position: relative;
 }
 .cal-day-col {
@@ -1477,7 +1772,7 @@ button.brand-dot { border: none; padding: 0; }
   font-weight: 600;
   background: rgba(var(--accent-rgb),0.15);
   border: 1px solid rgba(var(--accent-rgb),0.3);
-  color: var(--accent-bright);
+  color: var(--accent-ink);
 }
 
 .profile-stats-row {
@@ -1495,7 +1790,7 @@ button.brand-dot { border: none; padding: 0; }
 .profile-stat-card .psv {
   font-size: 28px;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   margin-bottom: 6px;
@@ -1510,7 +1805,7 @@ button.brand-dot { border: none; padding: 0; }
 
 .profile-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .profile-card {
@@ -1580,7 +1875,7 @@ button.brand-dot { border: none; padding: 0; }
     .profile-recent-lead-name { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
     .profile-recent-lead-meta { font-size: 12px; color: var(--text-muted); }
     .profile-recent-lead-score {
-      font-size: 13px; font-weight: 700; color: var(--accent);
+      font-size: 13px; font-weight: 700; color: var(--accent-ink);
       font-variant-numeric: tabular-nums;
     }
     .profile-quick-actions {
@@ -1602,7 +1897,7 @@ button.brand-dot { border: none; padding: 0; }
       text-align: left;
     }
     .profile-action-btn:hover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
-    .profile-action-btn svg { color: var(--accent); flex-shrink: 0; }
+    .profile-action-btn svg { color: var(--accent-ink); flex-shrink: 0; }
 
 /* ============================================================
    FOUNDER DASHBOARD. Cofounder-style layout
@@ -1610,7 +1905,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-wrap { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
 .fdr-section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .fdr-section-hdr h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-secondary); }
-.founder-btn-sm { padding: 6px 14px; background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.founder-btn-sm { padding: 6px 14px; background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 8px; color: var(--accent-ink); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
 .founder-btn-sm:hover { background: rgba(var(--accent-rgb),.22); }
 
 /* Hero header */
@@ -1622,7 +1917,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-hero-right { text-align: right; }
 .fdr-deadline-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); }
 .fdr-deadline-val { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 2px; }
-.fdr-deadline-days { font-size: 12px; color: var(--accent-bright); margin-top: 2px; font-weight: 600; }
+.fdr-deadline-days { font-size: 12px; color: var(--accent-ink); margin-top: 2px; font-weight: 600; }
 
 /* Two-column main grid */
 .fdr-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 18px; align-items: start; }
@@ -1650,9 +1945,9 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-task-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
 .fdr-task-row.fdr-task-done .fdr-task-name { text-decoration: line-through; color: var(--text-muted); }
 .fdr-wie-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; margin-top: 2px; }
-.fdr-badge-frade { background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); border: 1px solid rgba(var(--accent-rgb),.25); }
-.fdr-badge-teljo { background: rgba(var(--warning-rgb),.12); color: var(--warning); border: 1px solid rgba(var(--warning-rgb),.2); }
-.fdr-badge-beiden { background: rgba(var(--success-rgb),.1); color: var(--success); border: 1px solid rgba(var(--success-rgb),.2); }
+.fdr-badge-frade { background: rgba(var(--accent-rgb),.15); color: var(--accent-ink); border: 1px solid rgba(var(--accent-rgb),.25); }
+.fdr-badge-teljo { background: rgba(var(--warning-rgb),.12); color: var(--warning-ink); border: 1px solid rgba(var(--warning-rgb),.2); }
+.fdr-badge-beiden { background: rgba(var(--success-rgb),.1); color: var(--success-ink); border: 1px solid rgba(var(--success-rgb),.2); }
 .fdr-progress-bar-wrap { height: 3px; background: var(--bg-card-alt); border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
 .fdr-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-bright)); transition: width .4s ease; border-radius: 99px; }
 .fdr-weekend-msg { padding: 32px 18px; text-align: center; }
@@ -1670,7 +1965,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-goal-panel { padding: 16px 18px; }
 .fdr-goal-hdr { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; }
 .fdr-goal-big { display: flex; align-items: baseline; gap: 4px; margin-bottom: 10px; }
-.fdr-goal-current { font-size: 40px; font-weight: 900; color: var(--accent-bright); line-height: 1; }
+.fdr-goal-current { font-size: 40px; font-weight: 900; color: var(--accent-ink); line-height: 1; }
 .fdr-goal-sep { font-size: 22px; color: var(--text-muted); }
 .fdr-goal-target { font-size: 22px; font-weight: 700; color: var(--text-primary); }
 .fdr-goal-unit { font-size: 13px; color: var(--text-secondary); margin-left: 4px; }
@@ -1699,9 +1994,9 @@ button.brand-dot { border: none; padding: 0; }
 .founder-card-meta { font-size: 11px; color: var(--text-secondary); }
 .founder-col-add { padding: 8px 10px; border-top: 1px solid var(--border); }
 .founder-col-add button { width: 100%; padding: 7px; background: none; border: 1px dashed var(--border-bright); border-radius: 7px; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: var(--transition); }
-.founder-col-add button:hover { border-color: var(--accent); color: var(--accent); }
-.founder-badge-won  { background: rgba(var(--success-rgb),.12); color: var(--success); border: 1px solid rgba(var(--success-rgb),.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-.founder-badge-lost { background: rgba(var(--error-rgb),.1); color: var(--error); border: 1px solid rgba(var(--error-rgb),.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+.founder-col-add button:hover { border-color: var(--accent); color: var(--accent-ink); }
+.founder-badge-won  { background: rgba(var(--success-rgb),.12); color: var(--success-ink); border: 1px solid rgba(var(--success-rgb),.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+.founder-badge-lost { background: rgba(var(--error-rgb),.1); color: var(--error-ink); border: 1px solid rgba(var(--error-rgb),.2); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
 
 /* Goals */
 .founder-goals-list { display: flex; flex-direction: column; gap: 12px; }
@@ -1739,7 +2034,7 @@ button.brand-dot { border: none; padding: 0; }
 .founder-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 .founder-modal-cancel { padding: 9px 18px; background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
 .founder-modal-save { padding: 9px 18px; background: var(--accent); border: none; border-radius: 8px; color: var(--on-accent); font-size: 13px; font-weight: 700; cursor: pointer; }
-.founder-modal-delete { padding: 9px 18px; background: rgba(var(--error-rgb),.12); border: 1px solid rgba(var(--error-rgb),.25); border-radius: 8px; color: var(--error); font-size: 13px; font-weight: 600; cursor: pointer; margin-right: auto; }
+.founder-modal-delete { padding: 9px 18px; background: rgba(var(--error-rgb),.12); border: 1px solid rgba(var(--error-rgb),.25); border-radius: 8px; color: var(--error-ink); font-size: 13px; font-weight: 600; cursor: pointer; margin-right: auto; }
 
 @media (max-width: 960px) {
   .fdr-main-grid { grid-template-columns: 1fr; }
@@ -1774,7 +2069,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-hub-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.8; color: var(--text-primary); white-space: pre-wrap; min-height: 80px; display: none; margin-bottom: 12px; max-height: 420px; overflow-y: auto; }
 .fdr-hub-output.visible { display: block; }
 .fdr-hub-footer { display: flex; align-items: center; gap: 10px; }
-.fdr-hub-copy-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(var(--accent-rgb),.1); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+.fdr-hub-copy-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(var(--accent-rgb),.1); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 8px; color: var(--accent-ink); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
 .fdr-hub-copy-btn.visible { display: inline-flex; }
 .fdr-hub-copy-btn:hover { background: rgba(var(--accent-rgb),.2); }
 .fdr-hub-regen-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); }
@@ -1796,9 +2091,9 @@ button.brand-dot { border: none; padding: 0; }
 
 /* Follow-up urgency */
 .founder-card-age { display: inline-block; margin-top: 5px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
-.founder-card-age.age-ok       { background: rgba(var(--success-rgb),.1);  color: var(--success); }
-.founder-card-age.age-warning  { background: rgba(var(--warning-rgb),.12); color: var(--warning); }
-.founder-card-age.age-critical { background: rgba(var(--error-rgb),.12);  color: var(--error); }
+.founder-card-age.age-ok       { background: rgba(var(--success-rgb),.1);  color: var(--success-ink); }
+.founder-card-age.age-warning  { background: rgba(var(--warning-rgb),.12); color: var(--warning-ink); }
+.founder-card-age.age-critical { background: rgba(var(--error-rgb),.12);  color: var(--error-ink); }
 .founder-card.has-urgent       { border-color: rgba(var(--error-rgb),.35); }
 .fdr-followup-wrap { display: flex; flex-direction: column; gap: 8px; }
 .fdr-followup-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: border-color .15s; }
@@ -1808,15 +2103,15 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-followup-name { flex: 1; font-size: 13px; font-weight: 600; }
 .fdr-followup-fase { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 700; }
 .fdr-followup-fase.f0 { background: rgba(124,147,196,.14);  color: #7C93C4; }
-.fdr-followup-fase.f1 { background: rgba(var(--accent-rgb),.16);  color: var(--accent); }
+.fdr-followup-fase.f1 { background: rgba(var(--accent-rgb),.16);  color: var(--accent-ink); }
 .fdr-followup-fase.f2 { background: rgba(201,154,108,.16);  color: #C99A6C; }
-.fdr-followup-days { font-size: 11px; font-weight: 700; color: var(--error); flex-shrink: 0; }
+.fdr-followup-days { font-size: 11px; font-weight: 700; color: var(--error-ink); flex-shrink: 0; }
 .fdr-followup-empty { padding: 14px 0; color: var(--text-muted); font-size: 13px; }
 
 /* MRR panel */
 .fdr-mrr-panel { padding: 14px 18px; }
 .fdr-mrr-hdr { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); margin-bottom: 8px; }
-.fdr-mrr-val { font-size: 34px; font-weight: 900; color: var(--success); line-height: 1; }
+.fdr-mrr-val { font-size: 34px; font-weight: 900; color: var(--success-ink); line-height: 1; }
 .fdr-mrr-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 .fdr-mrr-target { font-size: 12px; color: var(--text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
 .fdr-mrr-arrow { color: var(--text-muted); }
@@ -1825,10 +2120,10 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-profit-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
 .fdr-profit-row .lbl { color: var(--text-muted); }
 .fdr-profit-row .val { font-weight: 600; color: var(--text-primary); }
-.fdr-profit-row .val.neg { color: var(--red); }
+.fdr-profit-row .val.neg { color: var(--red-ink); }
 .fdr-profit-row.total { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
 .fdr-profit-row.total .lbl { font-weight: 700; color: var(--text-primary); font-size: 13px; }
-.fdr-profit-row.total .val { font-size: 16px; font-weight: 900; color: var(--success); }
+.fdr-profit-row.total .val { font-size: 16px; font-weight: 900; color: var(--success-ink); }
 .fdr-profit-marge { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
 /* Outreach tracker */
@@ -1850,7 +2145,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-outreach-footer { display: flex; justify-content: space-between; align-items: center; }
 .fdr-outreach-pct { font-size: 12px; color: var(--text-muted); }
 .fdr-outreach-reset { background: none; border: none; font-size: 11px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
-.fdr-outreach-reset:hover { color: var(--red); }
+.fdr-outreach-reset:hover { color: var(--red-ink); }
 
 /* Bouw tracker */
 .fdr-bouw-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -1868,9 +2163,9 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-bouw-item.done .fdr-bouw-cb { background: var(--accent); border-color: var(--accent); }
 .fdr-bouw-item-text { font-size: 13px; flex: 1; }
 .fdr-bouw-tag { font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 600; flex-shrink: 0; }
-.fdr-bouw-tag.fix { background: rgba(239,68,68,.12); color: var(--red); }
-.fdr-bouw-tag.feat { background: rgba(var(--accent-rgb),.12); color: var(--accent-bright); }
-.fdr-bouw-tag.test { background: rgba(var(--warning-rgb),.12); color: var(--orange); }
+.fdr-bouw-tag.fix { background: rgba(239,68,68,.12); color: var(--red-ink); }
+.fdr-bouw-tag.feat { background: rgba(var(--accent-rgb),.12); color: var(--accent-ink); }
+.fdr-bouw-tag.test { background: rgba(var(--warning-rgb),.12); color: var(--orange-ink); }
 .fdr-bouw-add-row { display: flex; gap: 8px; }
 .fdr-bouw-add-input { flex: 1; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
 .fdr-bouw-add-btn { padding: 7px 14px; background: var(--accent); border: none; border-radius: 8px; color: var(--on-accent); font-size: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
@@ -1891,7 +2186,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-dm-body { padding: 16px 18px; }
 .fdr-dm-output { background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 13px; line-height: 1.75; color: var(--text-primary); white-space: pre-wrap; min-height: 60px; display: none; margin-bottom: 12px; }
 .fdr-dm-output.visible { display: block; }
-.fdr-dm-copy-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(var(--accent-rgb),.1); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 8px; color: var(--accent-bright); font-size: 12px; font-weight: 600; cursor: pointer; }
+.fdr-dm-copy-btn { display: none; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(var(--accent-rgb),.1); border: 1px solid rgba(var(--accent-rgb),.25); border-radius: 8px; color: var(--accent-ink); font-size: 12px; font-weight: 600; cursor: pointer; }
 .fdr-dm-copy-btn.visible { display: inline-flex; }
 .fdr-dm-copy-btn:hover { background: rgba(var(--accent-rgb),.2); }
 .fdr-dm-empty { padding: 20px 0; color: var(--text-muted); font-size: 13px; text-align: center; }
@@ -1913,15 +2208,15 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-doc-card-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .fdr-doc-card-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
 .fdr-doc-card-badge { position: absolute; top: 10px; right: 10px; font-size: 9px; padding: 2px 6px; border-radius: 99px; font-weight: 700; }
-.fdr-doc-card-badge.pdf { background: rgba(239,68,68,.12); color: var(--red); }
-.fdr-doc-card-badge.slides { background: rgba(var(--warning-rgb),.12); color: var(--orange); }
-.fdr-doc-card-badge.drive { background: rgba(var(--success-rgb),.12); color: var(--success); }
-.fdr-doc-card-badge.link { background: rgba(var(--accent-rgb),.12); color: var(--accent-bright); }
+.fdr-doc-card-badge.pdf { background: rgba(239,68,68,.12); color: var(--red-ink); }
+.fdr-doc-card-badge.slides { background: rgba(var(--warning-rgb),.12); color: var(--orange-ink); }
+.fdr-doc-card-badge.drive { background: rgba(var(--success-rgb),.12); color: var(--success-ink); }
+.fdr-doc-card-badge.link { background: rgba(var(--accent-rgb),.12); color: var(--accent-ink); }
 .fdr-doc-card-nolink { opacity: .5; cursor: default; }
 .fdr-doc-card-nolink:hover { transform: none; background: var(--bg-card-alt); border-color: var(--border); }
 .fdr-docs-embed-wrap { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; position: relative; background: var(--bg-card-alt); }
 .fdr-docs-embed-placeholder { padding: 32px; text-align: center; color: var(--text-muted); font-size: 13px; }
-.fdr-docs-embed-placeholder a { color: var(--accent-bright); text-decoration: underline; cursor: pointer; }
+.fdr-docs-embed-placeholder a { color: var(--accent-ink); text-decoration: underline; cursor: pointer; }
 .fdr-docs-cfg { display: none; padding: 14px 18px; border-top: 1px solid var(--border); background: var(--bg-card-alt); }
 .fdr-docs-cfg.open { display: block; }
 .fdr-docs-cfg-title { font-size: 12px; font-weight: 600; margin-bottom: 10px; }
@@ -1953,7 +2248,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-live-title { font-size: 14px; font-weight: 700; }
 .fdr-live-sub { font-size: 11px; color: var(--text-muted); }
 .fdr-live-count { font-size: 11px; color: var(--text-muted); }
-.fdr-live-count .online-num { color: var(--green); font-weight: 700; }
+.fdr-live-count .online-num { color: var(--green-ink); font-weight: 700; }
 .fdr-live-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .fdr-live-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); background: var(--bg-card-alt); }
 .fdr-live-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
@@ -1966,7 +2261,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-live-name { font-weight: 600; color: var(--text-primary); }
 .fdr-live-meta { font-size: 11px; color: var(--text-muted); }
 .fdr-live-stat { font-weight: 600; font-variant-numeric: tabular-nums; }
-.fdr-live-mrr { color: var(--green); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fdr-live-mrr { color: var(--green-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
 .fdr-live-empty { padding: 32px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
 .fdr-live-mrr-input { width: 70px; padding: 4px 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
 .fdr-live-mrr-input:focus { outline: none; border-color: var(--accent-bright); }
@@ -1976,7 +2271,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-meeting-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .fdr-meeting-icon { font-size: 16px; }
 .fdr-meeting-title { font-size: 13px; font-weight: 700; }
-.fdr-meeting-when { font-size: 18px; font-weight: 700; color: var(--accent-bright); margin: 4px 0; }
+.fdr-meeting-when { font-size: 18px; font-weight: 700; color: var(--accent-ink); margin: 4px 0; }
 .fdr-meeting-agenda { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
 .fdr-meeting-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .fdr-meeting-row input { flex: 1; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 7px; color: var(--text-primary); font-size: 12px; font-family: inherit; outline: none; }
@@ -1985,13 +2280,13 @@ button.brand-dot { border: none; padding: 0; }
 
 /* ── Persona greeting in hero ───────────────────────────────────────────── */
 .fdr-persona-greeting { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-.fdr-persona-greeting strong { color: var(--accent-bright); }
+.fdr-persona-greeting strong { color: var(--accent-ink); }
 .fdr-persona-switch { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-left: 8px; }
 .fdr-persona-switch:hover { color: var(--text-primary); border-color: var(--border-bright); }
 
 /* ── Editable cost panel ────────────────────────────────────────────────── */
 .fdr-cost-edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 4px; display: inline-flex; align-items: center; vertical-align: middle; }
-.fdr-cost-edit-btn:hover { color: var(--accent-bright); }
+.fdr-cost-edit-btn:hover { color: var(--accent-ink); }
 .fdr-cost-edit-input { width: 60px; padding: 2px 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 5px; color: var(--text-primary); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* AI Coach chat */
@@ -2164,6 +2459,137 @@ button.brand-dot { border: none; padding: 0; }
   text-align: left;
 }
 
+/* ═══ Zijbalk: groepen, inklappen, actieve staat ═══════════════════════════
+   Twaalf navigatie-items achter elkaar met twee naamloze streepjes ertussen
+   dwingt je elke keer de hele lijst te lezen. De groepen bestonden al in de
+   broncode als commentaar (Werk / Inzicht / Setup); dit maakt ze zichtbaar. */
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.62;
+  padding: 0 14px;
+  margin: 14px 0 6px;
+  user-select: none;
+}
+.sidebar-nav > .nav-group-label:first-child { margin-top: 2px; }
+
+/* De actieve pagina had alleen een achtergrondje. Een staaf aan de linkerkant
+   leest sneller dan een kleurverschil, en werkt ook als je de kleuren niet
+   goed uit elkaar houdt. */
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-c);
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-item.active::before { transform: translateY(-50%) scaleY(1); }
+.nav-item.active { font-weight: 650; }
+
+/* ── Ingeklapt ──────────────────────────────────────────────────────────────
+   220px van een 1280px-scherm is 17% van de breedte, permanent, voor een lijst
+   die je één keer per pagina gebruikt. Ingeklapt blijft de navigatie volledig
+   bruikbaar (icoon + tooltip) en krijgt de inhoud 152px terug. De keuze wordt
+   onthouden. */
+.sidebar { transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1); }
+body.sidebar-collapsed .sidebar { width: 68px; }
+body.sidebar-collapsed .main-content,
+body.sidebar-collapsed .topbar { margin-left: 68px; }
+body.sidebar-collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
+body.sidebar-collapsed .nav-item > :not(.nav-icon):not(.nav-badge) { display: none; }
+body.sidebar-collapsed .nav-item { font-size: 0; }
+body.sidebar-collapsed .nav-icon { font-size: 13px; }
+/* De Faro-CTA is geen .nav-item maar eigen markup uit api/_faro/ui/markup.js,
+   dus die viel buiten de regel hierboven en hield zijn label. */
+body.sidebar-collapsed .faro-nav-cta__text { display: none; }
+body.sidebar-collapsed .faro-nav-cta { justify-content: center; padding-left: 0; padding-right: 0; }
+body.sidebar-collapsed .nav-group-label,
+body.sidebar-collapsed .credit-usage-widget,
+body.sidebar-collapsed .user-info > div:not(.user-avatar),
+body.sidebar-collapsed .user-info > svg,
+body.sidebar-collapsed .btn-logout span { display: none; }
+body.sidebar-collapsed .user-info { justify-content: center; padding-left: 0; padding-right: 0; }
+body.sidebar-collapsed .btn-logout { justify-content: center; }
+body.sidebar-collapsed .sidebar-logo img { max-width: 34px; }
+body.sidebar-collapsed .nav-badge {
+  position: absolute; top: 5px; right: 9px;
+  min-width: 7px; height: 7px; padding: 0;
+  font-size: 0; border-radius: 50%;
+}
+
+/* De tooltip is wat inklappen bruikbaar houdt in plaats van een raadspelletje.
+   Alleen ingeklapt, en alleen op apparaten met een muis. */
+@media (hover: hover) {
+  body.sidebar-collapsed .nav-item[data-label]:hover::after,
+  body.sidebar-collapsed .nav-item[data-label]:focus-visible::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1B1B1B;
+    color: #F4F4F4;
+    border: 1px solid rgba(255,255,255,0.10);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 120;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
+}
+
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-collapse-btn:hover { background: var(--hover-c); color: var(--text); }
+.sidebar-collapse-btn:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 2px; }
+.sidebar-collapse-btn svg { transition: transform 0.22s ease; flex-shrink: 0; }
+body.sidebar-collapsed .sidebar-collapse-btn span { display: none; }
+body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+
+/* Het accountblok is nu een <button>, dus het heeft de knop-resets nodig die
+   een <div> niet had — en een zichtbare focusring, want met de muis was het
+   altijd al klikbaar en met het toetsenbord niet te bereiken. */
+.user-info {
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  /* Expliciet, want dit is een <button>: zonder background pakt Chrome zijn
+     eigen knopkleur (#efefef). Op de donkere zijbalk gaf dat een lichtgrijze
+     pil met bijna-witte tekst erop — de profielnaam was in het donkere thema
+     onzichtbaar. Niet zichtbaar in de berekende stijl van een ouder: de
+     UA-stijl staat op het element zelf. */
+  background: rgba(255, 255, 255, 0.05);
+}
+.user-info:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 2px; }
+
 .nav-item:focus-visible {
   outline: 2px solid var(--blue-bright);
   outline-offset: 2px;
@@ -2181,7 +2607,7 @@ button.brand-dot { border: none; padding: 0; }
 
 .nav-item.active {
   background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.06));
-  color: var(--blue-bright);
+  color: var(--accent-ink);
   border: none;
   font-weight: 600;
 }
@@ -2251,8 +2677,8 @@ button.brand-dot { border: none; padding: 0; }
 }
 .credit-usage-fill.amber { background: var(--orange); }
 .credit-usage-fill.red   { background: var(--red); }
-.credit-usage-head .credit-usage-pct.amber { color: var(--orange); }
-.credit-usage-head .credit-usage-pct.red   { color: var(--red); }
+.credit-usage-head .credit-usage-pct.amber { color: var(--orange-ink); }
+.credit-usage-head .credit-usage-pct.red   { color: var(--red-ink); }
 .credit-usage-sub {
   font-size: 11px;
   color: var(--text-muted);
@@ -2263,7 +2689,7 @@ button.brand-dot { border: none; padding: 0; }
   margin-top: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--blue-bright);
+  color: var(--accent-ink);
   text-decoration: none;
   cursor: pointer;
 }
@@ -2303,6 +2729,11 @@ button.brand-dot { border: none; padding: 0; }
 
 .user-role {
   font-size: 11px;
+  /* De zijbalk is in BEIDE thema's donker, dus --text-muted krijgt hier een
+     eigen waarde per thema (zie de light-override verderop). Nagerekend op de
+     samengestelde voet rgb(26,31,39): donker #B5B5B5 en licht #8D99AC halen
+     allebei ruim boven 4,5:1. Twee meetmethodes zeiden hier eerst van niet --
+     de ene mist gradiënten, de andere leest antialiasing als tekst. */
   color: var(--text-muted);
 }
 
@@ -2312,7 +2743,7 @@ button.brand-dot { border: none; padding: 0; }
   background: rgba(255, 69, 96, 0.08);
   border: 1px solid rgba(255, 69, 96, 0.2);
   border-radius: 8px;
-  color: var(--red);
+  color: var(--red-ink);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -2381,6 +2812,29 @@ button.brand-dot { border: none; padding: 0; }
 
 .hamburger:hover { background: var(--bg-card-alt); }
 
+/* .page-title is nu een <h1>. De browser geeft die standaard 2em en flinke
+   marges; dit blok stond er al voor de <div> en moet die reset dus expliciet
+   maken, anders springt de hele topbalk uit elkaar. */
+h1.page-title { margin: 0; font-weight: inherit; }
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 200;
+  padding: 10px 16px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--accent-c);
+  border-radius: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+}
+
 .page-title {
   font-size: 16px;
   /* Deze regel staat na de kop-regel bovenaan en zou hem anders terugzetten
@@ -2440,7 +2894,7 @@ button.brand-dot { border: none; padding: 0; }
 .btn-icon:hover {
   background: rgba(var(--accent-rgb),0.12);
   border-color: rgba(var(--accent-rgb),0.25);
-  color: var(--blue-bright);
+  color: var(--accent-ink);
   box-shadow: none;
   transform: translateY(-1px);
 }
@@ -2512,7 +2966,7 @@ button.brand-dot { border: none; padding: 0; }
       padding: 16px 20px;
       border-bottom: 1px solid var(--border);
     }
-    .search-modal-bar svg { color: var(--accent); flex-shrink:0; }
+    .search-modal-bar svg { color: var(--accent-ink); flex-shrink:0; }
     .search-modal-input {
       flex: 1;
       background: none;
@@ -2603,7 +3057,7 @@ button.brand-dot { border: none; padding: 0; }
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .search-result-name mark {
-      background: rgba(var(--accent-rgb),0.2); color: var(--accent-bright);
+      background: rgba(var(--accent-rgb),0.2); color: var(--accent-ink);
       font-weight: 700; border-radius: 3px; padding: 0 2px;
     }
     .search-result-meta {
@@ -2617,16 +3071,16 @@ button.brand-dot { border: none; padding: 0; }
     .search-result-badge {
       font-size: 10px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.04em; padding: 2px 7px; border-radius: 20px;
-      background: rgba(var(--accent-rgb),0.12); color: var(--blue-bright);
+      background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
       border: 1px solid rgba(var(--accent-rgb),0.2);
     }
     .search-result-badge.qualified {
-      background: rgba(var(--success-rgb),0.1); color: var(--green);
+      background: rgba(var(--success-rgb),0.1); color: var(--green-ink);
       border-color: rgba(var(--success-rgb),0.2);
     }
     .search-result-score {
       font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
-      color: var(--blue-bright);
+      color: var(--accent-ink);
       background: rgba(var(--accent-rgb),0.1);
       padding: 2px 8px; border-radius: var(--radius-sm);
       border: 1px solid rgba(var(--accent-rgb),0.2);
@@ -2727,7 +3181,7 @@ button.brand-dot { border: none; padding: 0; }
   font-size: 13px; font-weight: 700; color: var(--text-primary);
 }
 .notif-dd-clear {
-  background: none; border: none; color: var(--accent-bright);
+  background: none; border: none; color: var(--accent-ink);
   font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
 }
 .notif-dd-clear:hover { text-decoration: underline; }
@@ -2747,9 +3201,9 @@ button.brand-dot { border: none; padding: 0; }
 .notif-dd-icon {
   width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--bg-card-alt); color: var(--accent-bright);
+  background: var(--bg-card-alt); color: var(--accent-ink);
 }
-.notif-dd-icon.hot { background: rgba(var(--success-rgb),0.12); color: var(--green); }
+.notif-dd-icon.hot { background: rgba(var(--success-rgb),0.12); color: var(--green-ink); }
 .notif-dd-main { flex: 1; min-width: 0; }
 .notif-dd-title {
   font-size: 13px; font-weight: 600; color: var(--text-primary);
@@ -2759,7 +3213,7 @@ button.brand-dot { border: none; padding: 0; }
 .notif-dd-empty { padding: 28px 14px; text-align: center; color: var(--text-muted); font-size: 13px; }
 .notif-dd-foot {
   width: 100%; padding: 11px; background: var(--bg-card-alt); border: none;
-  border-top: 1px solid var(--border); color: var(--accent-bright);
+  border-top: 1px solid var(--border); color: var(--accent-ink);
   font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
 }
 .notif-dd-foot:hover { background: var(--bg-card-hover); }
@@ -2782,12 +3236,12 @@ button.brand-dot { border: none; padding: 0; }
 .btn-primary-sm {
   background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb), 0.2));
   border-color: var(--blue-primary);
-  color: var(--blue-bright);
+  color: var(--accent-ink);
 }
 
 .btn-primary-sm:hover {
   background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb), 0.35));
-  color: var(--cyan);
+  color: var(--accent-ink);
 }
 
 .btn-primary-sm:disabled,
@@ -2795,7 +3249,7 @@ button.brand-dot { border: none; padding: 0; }
   opacity: 0.5;
   cursor: not-allowed;
   background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb), 0.2));
-  color: var(--blue-bright);
+  color: var(--accent-ink);
 }
 
 .theme-toggle { font-size: 16px; padding: 8px 10px; }
@@ -2971,10 +3425,10 @@ button.brand-dot { border: none; padding: 0; }
   margin-bottom: 8px;
 }
 
-.stat-value.cyan  { color: var(--cyan);        text-shadow: 0 0 20px rgba(6,182,212,0.35); }
-.stat-value.green { color: var(--green);        text-shadow: 0 0 20px rgba(16,185,129,0.35); }
-.stat-value.orange{ color: var(--orange);       text-shadow: 0 0 20px rgba(var(--warning-rgb),0.3); }
-.stat-value.blue  { color: var(--blue-bright);  text-shadow: 0 0 20px rgba(59,130,246,0.35); }
+.stat-value.cyan  { color: var(--accent-ink);        text-shadow: 0 0 20px rgba(6,182,212,0.35); }
+.stat-value.green { color: var(--green-ink);        text-shadow: 0 0 20px rgba(16,185,129,0.35); }
+.stat-value.orange{ color: var(--orange-ink);       text-shadow: 0 0 20px rgba(var(--warning-rgb),0.3); }
+.stat-value.blue  { color: var(--accent-ink);  text-shadow: 0 0 20px rgba(59,130,246,0.35); }
 
 .stat-unit {
   font-size: 16px;
@@ -3075,7 +3529,20 @@ button.brand-dot { border: none; padding: 0; }
   min-width: 130px;
 }
 
-.filter-select:focus { border-color: var(--blue-bright); }
+/* :focus alleen op border-color was in het donkere thema onzichtbaar — de
+   randkleur verschilde te weinig van de rustkleur om als focus te lezen, en
+   een tabpas leek daardoor nergens te landen. Nu een echte ring, en
+   :focus-visible zodat een muisklik hem niet oproept. */
+.filter-select:focus { border-color: var(--accent-c); }
+/* box-shadow en geen outline: de regel met outline stond wél in de uitvoer en
+   won ook op specificiteit, maar de gemeten breedte bleef 0px — een <select>
+   laat zich door de browser maar beperkt opmaken. .cm-btn:focus-visible
+   verderop in dit bestand doet het al zo, en dat werkt wel. */
+.filter-select:focus-visible,
+#search-input:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.45);
+  border-color: var(--accent-c);
+}
 
 .filters-label {
   display: flex;
@@ -3105,7 +3572,7 @@ button.brand-dot { border: none; padding: 0; }
   background: rgba(255, 69, 96, 0.08);
   border: 1px solid rgba(255, 69, 96, 0.2);
   border-radius: 8px;
-  color: var(--red);
+  color: var(--red-ink);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -3179,8 +3646,8 @@ th.sortable {
   transition: color 0.2s;
 }
 
-th.sortable:hover { color: var(--cyan); }
-th.sort-active { color: var(--cyan); }
+th.sortable:hover { color: var(--accent-ink); }
+th.sort-active { color: var(--accent-ink); }
 
 .sort-indicator { margin-left: 4px; font-size: 10px; }
 
@@ -3244,7 +3711,7 @@ td {
 }
 
 tr:hover .copy-btn { opacity: 1; }
-.copy-btn:hover { color: var(--cyan); background: rgba(165, 180, 252, 0.1); }
+.copy-btn:hover { color: var(--accent-ink); background: rgba(165, 180, 252, 0.1); }
 
 /* Touch devices have no hover — keep the copy button discoverable/tappable */
 @media (hover: none) {
@@ -3286,12 +3753,12 @@ tr:hover .copy-btn { opacity: 1; }
 
 .badge-new {
   background: rgba(138, 150, 170, 0.12);
-  color: #8a96aa;
+  color: var(--neutral-ink);
   border: 1px solid rgba(138,150,170,0.2);
 }
 .badge-inprogress {
   background: rgba(255, 149, 0, 0.1);
-  color: var(--orange);
+  color: var(--orange-ink);
   border: 1px solid rgba(255,149,0,0.22);
   position: relative;
 }
@@ -3305,12 +3772,12 @@ tr:hover .copy-btn { opacity: 1; }
 }
 .badge-done {
   background: rgba(var(--accent-rgb), 0.1);
-  color: var(--blue-bright);
+  color: var(--accent-ink);
   border: 1px solid rgba(var(--accent-rgb),0.22);
 }
 .badge-yes {
   background: rgba(var(--success-rgb), 0.1);
-  color: var(--green);
+  color: var(--green-ink);
   border: 1px solid rgba(var(--success-rgb),0.22);
 }
 .badge-yes::before {
@@ -3323,12 +3790,12 @@ tr:hover .copy-btn { opacity: 1; }
 }
 .badge-no {
   background: rgba(var(--error-rgb), 0.1);
-  color: var(--red);
+  color: var(--red-ink);
   border: 1px solid rgba(var(--error-rgb),0.22);
 }
 .badge-bron {
   background: rgba(var(--accent-rgb), 0.08);
-  color: var(--blue-bright);
+  color: var(--accent-ink);
   border: 1px solid rgba(var(--accent-rgb),0.18);
   font-size: 10px;
 }
@@ -3360,18 +3827,18 @@ tr:hover .copy-btn { opacity: 1; }
 
 .score-green {
   background: rgba(var(--success-rgb), 0.12);
-  color: var(--green);
+  color: var(--green-ink);
   border: 1px solid rgba(var(--success-rgb),0.25);
   box-shadow: none;
 }
 .score-orange {
   background: rgba(var(--warning-rgb), 0.12);
-  color: var(--orange);
+  color: var(--orange-ink);
   border: 1px solid rgba(var(--warning-rgb),0.25);
 }
 .score-red {
   background: rgba(var(--error-rgb), 0.12);
-  color: var(--red);
+  color: var(--red-ink);
   border: 1px solid rgba(var(--error-rgb),0.25);
 }
 .score-gray {
@@ -3390,7 +3857,7 @@ tr:hover .copy-btn { opacity: 1; }
 }
 
 .td-arrow { color: var(--text-muted); font-size: 14px; text-align: right; }
-tr:hover .td-arrow { color: var(--cyan); }
+tr:hover .td-arrow { color: var(--accent-ink); }
 
 /* Skeleton loading */
 .skeleton-row td { padding: 16px 14px; }
@@ -3551,7 +4018,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   transition: var(--transition);
 }
 
-.panel-close:hover { background: rgba(255,69,96,0.1); border-color: var(--red); color: var(--red); }
+.panel-close:hover { background: rgba(255,69,96,0.1); border-color: var(--red); color: var(--red-ink); }
 
 .panel-avatar {
   width: 60px;
@@ -3566,9 +4033,9 @@ tr:hover .td-arrow { color: var(--cyan); }
   margin-bottom: 14px;
 }
 
-.avatar-green { background: rgba(0, 229, 160, 0.15); color: var(--green); border: 2px solid rgba(0,229,160,0.3); }
-.avatar-red { background: rgba(255, 69, 96, 0.15); color: var(--red); border: 2px solid rgba(255,69,96,0.3); }
-.avatar-orange { background: rgba(255, 149, 0, 0.15); color: var(--orange); border: 2px solid rgba(255,149,0,0.3); }
+.avatar-green { background: rgba(0, 229, 160, 0.15); color: var(--green-ink); border: 2px solid rgba(0,229,160,0.3); }
+.avatar-red { background: rgba(255, 69, 96, 0.15); color: var(--red-ink); border: 2px solid rgba(255,69,96,0.3); }
+.avatar-orange { background: rgba(255, 149, 0, 0.15); color: var(--orange-ink); border: 2px solid rgba(255,149,0,0.3); }
 
 .panel-name {
   font-size: 20px;
@@ -3603,7 +4070,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   transition: var(--transition);
 }
 
-.panel-copy-btn:hover { color: var(--cyan); background: rgba(0,212,255,0.1); }
+.panel-copy-btn:hover { color: var(--accent-ink); background: rgba(0,212,255,0.1); }
 
 .panel-body {
   flex: 1;
@@ -3618,7 +4085,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-section-title {
   font-size: 11px;
   font-weight: 700;
-  color: var(--cyan);
+  color: var(--accent-ink);
   text-transform: uppercase;
   letter-spacing: 1.2px;
   margin-bottom: 10px;
@@ -3739,7 +4206,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-muted); font-size: 12px; padding: 4px 5px;
   border-radius: 4px; transition: color 0.1s, background 0.1s;
 }
-.panel-note-delete:hover { color: var(--red); background: rgba(var(--error-rgb),0.08); }
+.panel-note-delete:hover { color: var(--red-ink); background: rgba(var(--error-rgb),0.08); }
 .panel-add-note textarea {
   width: 100%; background: var(--bg-card-alt); border: 1px solid var(--border);
   border-radius: var(--radius-sm); color: var(--text-primary); font-family: 'Inter',sans-serif;
@@ -3749,7 +4216,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-add-note textarea:focus { outline: none; border-color: var(--accent); }
 .btn-add-note {
   margin-top: 6px; background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.25);
-  color: var(--accent); border-radius: var(--radius-sm); padding: 6px 14px;
+  color: var(--accent-ink); border-radius: var(--radius-sm); padding: 6px 14px;
   font-size: 12px; cursor: pointer; font-family: 'Inter',sans-serif; transition: var(--transition);
 }
 .btn-add-note:hover { background: rgba(var(--accent-rgb),0.2); }
@@ -3770,14 +4237,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border);
   white-space: nowrap; flex-shrink: 0;
 }
-.panel-task-due.overdue { background: rgba(var(--error-rgb),0.1); color: var(--red); border-color: rgba(var(--error-rgb),0.25); }
-.panel-task-due.today { background: rgba(var(--warning-rgb),0.1); color: var(--orange); border-color: rgba(var(--warning-rgb),0.25); }
+.panel-task-due.overdue { background: rgba(var(--error-rgb),0.1); color: var(--red-ink); border-color: rgba(var(--error-rgb),0.25); }
+.panel-task-due.today { background: rgba(var(--warning-rgb),0.1); color: var(--orange-ink); border-color: rgba(var(--warning-rgb),0.25); }
 .panel-task-delete {
   background: none; border: none; cursor: pointer; color: var(--text-muted);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   font-size: 12px; padding: 4px 5px; border-radius: 4px; transition: color 0.1s;
 }
-.panel-task-delete:hover { color: var(--red); }
+.panel-task-delete:hover { color: var(--red-ink); }
 .panel-add-task { display: flex; gap: 6px; align-items: center; }
 .panel-add-task input[type="text"] {
   flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border);
@@ -3793,7 +4260,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-add-task input[type="date"]:focus { outline: none; border-color: var(--accent); }
 .btn-add-task {
   background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.25);
-  color: var(--accent); border-radius: var(--radius-sm); padding: 7px 14px;
+  color: var(--accent-ink); border-radius: var(--radius-sm); padding: 7px 14px;
   font-size: 14px; cursor: pointer; font-family: 'Inter',sans-serif; transition: var(--transition);
 }
 .btn-add-task:hover { background: rgba(var(--accent-rgb),0.22); }
@@ -3805,7 +4272,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--bg-card-alt); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 9px 12px;
 }
-.panel-call-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; color: var(--accent-bright); display: flex; align-items: center; }
+.panel-call-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; color: var(--accent-ink); display: flex; align-items: center; }
 .panel-call-body { flex: 1; min-width: 0; }
 .panel-call-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
 .panel-call-note { font-size: 13px; color: var(--text-primary); line-height: 1.4; }
@@ -3823,7 +4290,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .panel-log-call input:focus { outline: none; border-color: var(--accent); }
 .btn-log-call {
   background: rgba(var(--success-rgb),0.1); border: 1px solid rgba(var(--success-rgb),0.25);
-  color: var(--green); border-radius: var(--radius-sm); padding: 7px 14px;
+  color: var(--green-ink); border-radius: var(--radius-sm); padding: 7px 14px;
   font-size: 12px; cursor: pointer; font-family: 'Inter',sans-serif;
   white-space: nowrap; transition: var(--transition);
 }
@@ -3841,8 +4308,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   text-align: center;
 }
 .afspraak-btn:hover { border-color: var(--border-bright); color: var(--text-primary); }
-.afspraak-btn.active-yes { background: rgba(var(--success-rgb),0.12); border-color: rgba(var(--success-rgb),0.4); color: var(--green); }
-.afspraak-btn.active-no  { background: rgba(var(--error-rgb),0.1);  border-color: rgba(var(--error-rgb),0.35); color: var(--red); }
+.afspraak-btn.active-yes { background: rgba(var(--success-rgb),0.12); border-color: rgba(var(--success-rgb),0.4); color: var(--green-ink); }
+.afspraak-btn.active-no  { background: rgba(var(--error-rgb),0.1);  border-color: rgba(var(--error-rgb),0.35); color: var(--red-ink); }
 .afspraak-value-row { display: flex; flex-direction: column; gap: 4px; }
 .afspraak-value-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .afspraak-notitie {
@@ -3855,14 +4322,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
 }
-.afspraak-status-chip.yes { background: rgba(var(--success-rgb),0.12); color: var(--green); border: 1px solid rgba(var(--success-rgb),0.25); }
-.afspraak-status-chip.no  { background: rgba(var(--error-rgb),0.1);  color: var(--red);   border: 1px solid rgba(var(--error-rgb),0.2); }
+.afspraak-status-chip.yes { background: rgba(var(--success-rgb),0.12); color: var(--green-ink); border: 1px solid rgba(var(--success-rgb),0.25); }
+.afspraak-status-chip.no  { background: rgba(var(--error-rgb),0.1);  color: var(--red-ink);   border: 1px solid rgba(var(--error-rgb),0.2); }
 
 /* Taken widget */
 .taken-widget { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
 .taken-widget-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .taken-widget-title { font-size: 13px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em; }
-.taken-widget-count { font-size: 11px; font-weight: 700; background: rgba(var(--error-rgb),0.15); color: var(--red); padding: 2px 8px; border-radius: 20px; }
+.taken-widget-count { font-size: 11px; font-weight: 700; background: rgba(var(--error-rgb),0.15); color: var(--red-ink); padding: 2px 8px; border-radius: 20px; }
 .taken-widget-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 12px 0; }
 .taken-item {
   display: flex; align-items: center; gap: 10px;
@@ -3877,8 +4344,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 .taken-item-body { flex: 1; min-width: 0; }
 .taken-item-text { font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .taken-item-lead { font-size: 11px; color: var(--text-muted); }
-.taken-item-due { font-size: 11px; font-weight: 600; color: var(--orange); white-space: nowrap; flex-shrink: 0; }
-.taken-item.overdue .taken-item-due { color: var(--red); }
+.taken-item-due { font-size: 11px; font-weight: 600; color: var(--orange-ink); white-space: nowrap; flex-shrink: 0; }
+.taken-item.overdue .taken-item-due { color: var(--red-ink); }
 
 /* ── Nav badge (new-lead notification) ── */
 .nav-badge {
@@ -3955,9 +4422,9 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px;
   white-space: nowrap;
 }
-.score-pill.sp-strong { background: rgba(var(--success-rgb),.14); color: var(--green); border: 1px solid rgba(var(--success-rgb),.3); }
-.score-pill.sp-medium { background: rgba(var(--warning-rgb),.14); color: var(--warning);     border: 1px solid rgba(var(--warning-rgb),.3); }
-.score-pill.sp-weak   { background: rgba(239,68,68,.14); color: var(--red);   border: 1px solid rgba(239,68,68,.3); }
+.score-pill.sp-strong { background: rgba(var(--success-rgb),.14); color: var(--green-ink); border: 1px solid rgba(var(--success-rgb),.3); }
+.score-pill.sp-medium { background: rgba(var(--warning-rgb),.14); color: var(--warning-ink);     border: 1px solid rgba(var(--warning-rgb),.3); }
+.score-pill.sp-weak   { background: rgba(239,68,68,.14); color: var(--red-ink);   border: 1px solid rgba(239,68,68,.3); }
 .score-pill.sp-neutral{ background: var(--bg-card-alt); color: var(--text-muted); border: 1px solid var(--border); }
 
 .panel-suggest-row {
@@ -3967,7 +4434,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   align-self: flex-start;
   display: inline-flex; align-items: center; gap: 6px;
   background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.3);
-  color: var(--accent-bright); padding: 6px 12px; border-radius: 7px;
+  color: var(--accent-ink); padding: 6px 12px; border-radius: 7px;
   font-size: 12px; font-weight: 600; cursor: pointer;
   transition: all .15s ease; font-family: inherit;
 }
@@ -3998,11 +4465,11 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
   padding: 3px 9px; border-radius: 99px; white-space: nowrap;
 }
-.panel-takeover-status.active { background: rgba(var(--success-rgb),.14); color: var(--green); border: 1px solid rgba(var(--success-rgb),.3); }
-.panel-takeover-status.paused { background: rgba(var(--warning-rgb),.14); color: var(--warning);    border: 1px solid rgba(var(--warning-rgb),.3); }
+.panel-takeover-status.active { background: rgba(var(--success-rgb),.14); color: var(--green-ink); border: 1px solid rgba(var(--success-rgb),.3); }
+.panel-takeover-status.paused { background: rgba(var(--warning-rgb),.14); color: var(--warning-ink);    border: 1px solid rgba(var(--warning-rgb),.3); }
 .panel-takeover-meta { font-size: 11px; color: var(--text-muted); }
 .panel-takeover-escalated {
-  font-size: 11px; font-weight: 600; color: var(--red);
+  font-size: 11px; font-weight: 600; color: var(--red-ink);
   background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3);
   padding: 3px 9px; border-radius: 99px; cursor: help;
 }
@@ -4011,8 +4478,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
   transition: opacity .15s ease;
 }
-.panel-takeover-btn.pause  { background: rgba(var(--warning-rgb),.16); color: var(--warning); border: 1px solid rgba(var(--warning-rgb),.35); }
-.panel-takeover-btn.resume { background: rgba(var(--success-rgb),.16);  color: var(--green); border: 1px solid rgba(var(--success-rgb),.35); }
+.panel-takeover-btn.pause  { background: rgba(var(--warning-rgb),.16); color: var(--warning-ink); border: 1px solid rgba(var(--warning-rgb),.35); }
+.panel-takeover-btn.resume { background: rgba(var(--success-rgb),.16);  color: var(--green-ink); border: 1px solid rgba(var(--success-rgb),.35); }
 .panel-takeover-btn:hover { opacity: .85; }
 .panel-takeover-btn:disabled { opacity: .5; cursor: wait; }
 
@@ -4069,6 +4536,22 @@ tr:hover .td-arrow { color: var(--cyan); }
   width: 260px;
   flex-shrink: 0;
 }
+/* Every chart in the app runs with maintainAspectRatio:false and lives in one
+   of these. Without a bounded parent Chart.js keeps growing the canvas to fill
+   the available space and the bars run off the page; with maintainAspectRatio
+   left on, a wide card produced an absurdly tall chart instead. A fixed-height
+   parent is the documented requirement for that option, and it also decouples
+   chart height from card width. flex:none so a flex-column card can't shrink it. */
+.chart-canvas-wrap { position: relative; height: 220px; margin-top: 14px; flex: 0 0 auto; }
+.chart-canvas-wrap--sm { height: 180px; }
+.chart-canvas-wrap--xs { height: 150px; }
+.chart-canvas-wrap > canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+@media (max-width: 768px) {
+  .chart-canvas-wrap { height: 180px; }
+  .chart-canvas-wrap--sm { height: 160px; }
+  .chart-canvas-wrap--xs { height: 140px; }
+}
+
 .chart-title {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
@@ -4093,10 +4576,10 @@ tr:hover .td-arrow { color: var(--cyan); }
 .nb-title {
   display: flex; align-items: center; gap: 7px;
   font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--red);
+  text-transform: uppercase; color: var(--red-ink);
 }
 .nb-count {
-  background: rgba(var(--error-rgb),0.15); color: var(--red);
+  background: rgba(var(--error-rgb),0.15); color: var(--red-ink);
   font-size: 11px; font-weight: 700; padding: 2px 8px;
   border-radius: 20px; border: 1px solid rgba(var(--error-rgb),0.3);
 }
@@ -4114,12 +4597,12 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
   padding: 2px 7px; border-radius: 99px; white-space: nowrap; margin-right: 2px;
 }
-.nb-item-tag.tag-waFailed   { background: rgba(var(--error-rgb),.14);  color: var(--red); border: 1px solid rgba(var(--error-rgb),.3); }
-.nb-item-tag.tag-escalated { background: rgba(var(--warning-rgb),.14); color: var(--orange); border: 1px solid rgba(var(--warning-rgb),.3); }
+.nb-item-tag.tag-waFailed   { background: rgba(var(--error-rgb),.14);  color: var(--red-ink); border: 1px solid rgba(var(--error-rgb),.3); }
+.nb-item-tag.tag-escalated { background: rgba(var(--warning-rgb),.14); color: var(--orange-ink); border: 1px solid rgba(var(--warning-rgb),.3); }
 .nb-call-btn {
   display: flex; align-items: center; gap: 5px; padding: 6px 12px;
   background: rgba(var(--error-rgb),0.1); border: 1px solid rgba(var(--error-rgb),0.3);
-  border-radius: 8px; color: var(--red); font-size: 12px; font-weight: 600;
+  border-radius: 8px; color: var(--red-ink); font-size: 12px; font-weight: 600;
   text-decoration: none; white-space: nowrap; transition: background 0.15s;
 }
 .nb-call-btn:hover { background: rgba(var(--error-rgb),0.2); }
@@ -4145,11 +4628,11 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--orange);
+  color: var(--orange-ink);
 }
 .followup-count {
   background: rgba(var(--warning-rgb),0.15);
-  color: var(--orange);
+  color: var(--orange-ink);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -4175,7 +4658,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .followup-item:hover { border-color: var(--orange); }
 .followup-item-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
 .followup-item-meta { font-size: 11px; color: var(--text-muted); }
-.followup-item-score { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--orange); }
+.followup-item-score { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--orange-ink); }
 .followup-call-btn {
   display: flex;
   align-items: center;
@@ -4184,7 +4667,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 7px;
   background: rgba(var(--warning-rgb),0.12);
   border: 1px solid rgba(var(--warning-rgb),0.3);
-  color: var(--orange);
+  color: var(--orange-ink);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -4211,7 +4694,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-muted);
   margin-bottom: 12px;
 }
-.top-leads-strip-title svg { color: var(--orange); }
+.top-leads-strip-title svg { color: var(--orange-ink); }
 .top-leads-list {
   display: flex;
   gap: 10px;
@@ -4237,7 +4720,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 10px; font-weight: 700; color: var(--on-accent);
 }
 .top-lead-chip-name { font-weight: 600; color: var(--text); }
-.top-lead-chip-score { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; font-size:12px; }
+.top-lead-chip-score { font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; font-size:12px; }
 
 /* ── Today widget ── */
 .today-widget {
@@ -4267,7 +4750,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .today-apt-time {
   font-size: 12px;
   font-weight: 600;
-  color: var(--blue-bright);
+  color: var(--accent-ink);
   min-width: 48px;
   flex-shrink: 0;
 }
@@ -4414,7 +4897,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-modal-btn-secondary:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
 .cal-modal-btn-danger {
   background: rgba(var(--error-rgb),0.1);
-  color: var(--red);
+  color: var(--red-ink);
   border: 1px solid rgba(var(--error-rgb),0.25);
 }
 .cal-modal-btn-danger:hover { background: rgba(var(--error-rgb),0.2); }
@@ -4438,7 +4921,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .admin-card-code { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 14px; }
 .admin-card-stats { display: flex; gap: 16px; }
 .admin-stat { text-align: center; }
-.admin-stat-val { font-size: 22px; font-weight: 700; color: var(--blue-bright); }
+.admin-stat-val { font-size: 22px; font-weight: 700; color: var(--accent-ink); }
 .admin-stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
 .check-item {
@@ -4450,8 +4933,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-secondary);
 }
 
-.check-yes { color: var(--green); }
-.check-no { color: var(--red); }
+.check-yes { color: var(--green-ink); }
+.check-no { color: var(--red-ink); }
 
 .ai-summary {
   font-size: 13px;
@@ -4528,9 +5011,9 @@ tr:hover .td-arrow { color: var(--cyan); }
   gap: 6px;
 }
 
-.toast-success .toast-title { color: var(--green); }
-.toast-error .toast-title { color: var(--red); }
-.toast-info .toast-title { color: var(--blue-bright); }
+.toast-success .toast-title { color: var(--green-ink); }
+.toast-error .toast-title { color: var(--red-ink); }
+.toast-info .toast-title { color: var(--accent-ink); }
 
 .toast-close {
   background: none;
@@ -4639,7 +5122,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .export-preview-count #export-count-num {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 /* "Featured" used to mean flood-filling the whole card with sand — heavy,
    and the accent-coloured title (.gradient-text) went unreadable against
@@ -4661,7 +5144,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .export-card-featured .export-card-icon {
   background: var(--accent);
@@ -4681,7 +5164,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 12px;
   color: var(--text-muted);
 }
-.export-include-item svg { color: var(--green); flex-shrink: 0; }
+.export-include-item svg { color: var(--green-ink); flex-shrink: 0; }
 .export-card { display: flex; flex-direction: column; }
 .export-snapshot {
   display: grid;
@@ -4699,7 +5182,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .export-snap-val {
   font-size: 22px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   margin-bottom: 4px;
@@ -4744,7 +5227,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-variant-numeric: tabular-nums;
   font-size: 22px;
   font-weight: 700;
-  color: var(--cyan);
+  color: var(--accent-ink);
   margin-bottom: 4px;
 }
 
@@ -4798,7 +5281,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       font-variant-numeric: tabular-nums;
       font-size: 13px;
       font-weight: 700;
-      color: var(--accent);
+      color: var(--accent-ink);
     }
 .pipeline-board {
   display: flex;
@@ -5035,7 +5518,13 @@ tr:hover .td-arrow { color: var(--cyan); }
    ============================================================ */
 .analyse-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0,1fr), niet 1fr. Een 1fr-track heeft impliciet min-width:auto en
+     kan dus NIET kleiner worden dan zijn breedste kind — één tabel of één lang
+     woord duwt de kolom breder dan de pagina. Gemeten op 390px: de track kwam
+     uit op 457,7px in een container van 358px, en omdat .page-content
+     overflow-x:hidden heeft werd dat niet afgekapt met een scrollbalk maar
+     gewoon onzichtbaar afgesneden. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
   overflow: visible;
@@ -5109,7 +5598,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-variant-numeric: tabular-nums;
   font-size: 36px;
   font-weight: 800;
-  color: var(--cyan);
+  color: var(--accent-ink);
   line-height: 1;
   margin-bottom: 6px;
   text-shadow: 0 0 20px rgba(6,182,212,0.35);
@@ -5124,8 +5613,16 @@ tr:hover .td-arrow { color: var(--cyan); }
   width: 100%;
   margin-bottom: 16px;
 }
+/* Onder 700px passen drie omzetkaarten naast elkaar niet meer: ze bleven op
+   hun min-content-breedte staan en liepen 168px buiten beeld op een telefoon,
+   onzichtbaar afgekapt door overflow-x:hidden. */
+@media (max-width: 700px) {
+  .analyse-revenue-row { flex-wrap: wrap; }
+  .analyse-revenue-row > * { flex: 1 1 100%; }
+}
 .analyse-revenue-card {
   flex: 1;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -5204,7 +5701,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   text-decoration: none; cursor: pointer; transition: var(--transition);
   font-family: 'Inter', sans-serif;
 }
-.panel-quick-btn:hover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.08); color: var(--accent); }
+.panel-quick-btn:hover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.08); color: var(--accent-ink); }
 
 /* ============================================================
    LEAD AGE BADGES (Feature 4)
@@ -5214,16 +5711,16 @@ tr:hover .td-arrow { color: var(--cyan); }
   border: 1px solid var(--border);
 }
 .age-chip.fresh { display: none; }
-.age-chip.warm { background: rgba(var(--success-rgb),0.1); color: var(--green); border-color: rgba(var(--success-rgb),0.2); }
-.age-chip.cooling { background: rgba(var(--warning-rgb),0.1); color: var(--orange); border-color: rgba(var(--warning-rgb),0.2); }
-.age-chip.cold { background: rgba(var(--error-rgb),0.1); color: var(--red); border-color: rgba(var(--error-rgb),0.2); }
+.age-chip.warm { background: rgba(var(--success-rgb),0.1); color: var(--green-ink); border-color: rgba(var(--success-rgb),0.2); }
+.age-chip.cooling { background: rgba(var(--warning-rgb),0.1); color: var(--orange-ink); border-color: rgba(var(--warning-rgb),0.2); }
+.age-chip.cold { background: rgba(var(--error-rgb),0.1); color: var(--red-ink); border-color: rgba(var(--error-rgb),0.2); }
 .age-badge-table {
   display: inline-block; font-size: 10px; font-weight: 700;
   padding: 1px 6px; border-radius: 10px; margin-left: 6px; vertical-align: middle;
 }
-.age-badge-warm { background: rgba(var(--success-rgb),0.12); color: var(--green); }
-.age-badge-cooling { background: rgba(var(--warning-rgb),0.12); color: var(--orange); }
-.age-badge-cold { background: rgba(var(--error-rgb),0.12); color: var(--red); }
+.age-badge-warm { background: rgba(var(--success-rgb),0.12); color: var(--green-ink); }
+.age-badge-cooling { background: rgba(var(--warning-rgb),0.12); color: var(--orange-ink); }
+.age-badge-cold { background: rgba(var(--error-rgb),0.12); color: var(--red-ink); }
 
 /* ============================================================
    REVENUE GOAL CARD (Feature 5)
@@ -5277,8 +5774,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 .fm-stat-delta {
   font-size: 11px; color: var(--text-muted); margin-top: 4px; min-height: 14px;
 }
-.fm-stat-delta.up   { color: var(--green); }
-.fm-stat-delta.down { color: var(--red); }
+.fm-stat-delta.up   { color: var(--green-ink); }
+.fm-stat-delta.down { color: var(--red-ink); }
 
 /* Code actions row (Kopieer + Stuur naar developer side by side) */
 .fm-code-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
@@ -5297,7 +5794,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .fm-url {
   flex: 1; min-width: 220px; padding: 11px 14px;
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-  color: var(--accent-bright); font-family: monospace; font-size: 13px;
+  color: var(--accent-ink); font-family: monospace; font-size: 13px;
   display: flex; align-items: center;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -5321,7 +5818,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 7px; color: var(--text-muted); font-size: 12px; font-weight: 600;
   text-decoration: none; cursor: pointer; font-family: inherit; transition: all .15s ease;
 }
-.fm-share-btn:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+.fm-share-btn:hover { color: var(--accent-ink); border-color: var(--accent-bright); }
 .fm-share-btn[id="fm-share-wa"]:hover     { color: #25d366; border-color: #25d366; }
 .fm-share-btn[id="fm-share-linkedin"]:hover { color: #0a66c2; border-color: #0a66c2; }
 
@@ -5336,7 +5833,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .fm-option-hdr { margin-bottom: 12px; position: relative; }
 .fm-option-rec {
   position: absolute; top: -6px; right: -6px;
-  background: rgba(var(--success-rgb),.15); color: var(--green);
+  background: rgba(var(--success-rgb),.15); color: var(--green-ink);
   font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px;
   text-transform: uppercase; letter-spacing: .04em;
   border: 1px solid rgba(var(--success-rgb),.3);
@@ -5357,7 +5854,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .fm-instructions strong { color: var(--text-primary); }
 .fm-instructions code {
-  background: rgba(var(--accent-rgb),.12); color: var(--accent-bright);
+  background: rgba(var(--accent-rgb),.12); color: var(--accent-ink);
   padding: 1px 5px; border-radius: 4px; font-size: 11px;
 }
 
@@ -5389,7 +5886,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .fm-guide-item[open] summary::after { transform: rotate(45deg); }
 .fm-guide-item summary:hover { background: var(--bg-card-alt); }
-.fm-guide-item[open] summary { background: rgba(var(--accent-rgb),.06); color: var(--accent-bright); }
+.fm-guide-item[open] summary { background: rgba(var(--accent-rgb),.06); color: var(--accent-ink); }
 .fm-guide-emoji { font-size: 18px; line-height: 1; }
 .fm-guide-label { flex: 1; }
 .fm-guide-meta { font-size: 11px; font-weight: 500; color: var(--text-muted); font-style: italic; }
@@ -5401,9 +5898,9 @@ tr:hover .td-arrow { color: var(--cyan); }
 .fm-guide-body p strong { color: var(--text-primary); }
 .fm-guide-body ol { padding-left: 22px; margin: 8px 0; }
 .fm-guide-body ol li { margin-bottom: 6px; color: var(--text-primary); }
-.fm-guide-body ol li strong { color: var(--accent-bright); font-weight: 600; }
+.fm-guide-body ol li strong { color: var(--accent-ink); font-weight: 600; }
 .fm-guide-body code {
-  background: var(--bg-card-alt); color: var(--accent-bright);
+  background: var(--bg-card-alt); color: var(--accent-ink);
   padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace;
 }
 .fm-guide-tip {
@@ -5411,14 +5908,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: rgba(var(--warning-rgb),.08); border-left: 3px solid var(--warning);
   font-size: 12px; color: var(--text-primary); line-height: 1.55;
 }
-.fm-guide-tip strong { color: var(--warning); font-weight: 700; }
+.fm-guide-tip strong { color: var(--warning-ink); font-weight: 700; }
 .fm-guide-test {
   margin-top: 14px; padding: 14px 16px;
   background: rgba(var(--success-rgb),.08); border: 1px solid rgba(var(--success-rgb),.25);
   border-radius: 10px;
   font-size: 13px; color: var(--text-primary); line-height: 1.6;
 }
-.fm-guide-test strong { display: block; color: var(--green); margin-bottom: 4px; font-weight: 700; }
+.fm-guide-test strong { display: block; color: var(--green-ink); margin-bottom: 4px; font-weight: 700; }
 
 .fm-bottom-grid {
   display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start;
@@ -5475,7 +5972,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px;
 }
 .onb-done-url {
-  display: block; font-family: monospace; font-size: 13px; color: var(--accent-bright);
+  display: block; font-family: monospace; font-size: 13px; color: var(--accent-ink);
   background: var(--bg-primary); padding: 8px 11px; border-radius: 7px;
   margin-bottom: 10px; word-break: break-all;
 }
@@ -5514,7 +6011,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   background: var(--bg-card-alt); border: 1px solid var(--border);
   color: var(--text-primary);
 }
-.onb-done-btn-secondary:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
+.onb-done-btn-secondary:hover { border-color: var(--accent-bright); color: var(--accent-ink); }
 
 /* ── Dashboard form-link banner ───────────────────────────────────────── */
 .dash-formlink {
@@ -5527,7 +6024,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .dash-formlink-body { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
 .dash-formlink-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
 .dash-formlink-url {
-  font-family: monospace; font-size: 12px; color: var(--accent-bright);
+  font-family: monospace; font-size: 12px; color: var(--accent-ink);
   background: var(--bg-card-alt); padding: 5px 9px; border-radius: 6px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   display: inline-block; max-width: 100%;
@@ -5540,7 +6037,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-muted); text-decoration: none; cursor: pointer; font-family: inherit;
   transition: all .15s ease;
 }
-.dash-formlink-btn:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+.dash-formlink-btn:hover { color: var(--accent-ink); border-color: var(--accent-bright); }
 
 /* ── Trial banner. Hidden by default (display:none inline in the HTML) —
    only shown once loadPlanStatus() confirms this client is on trial or
@@ -5651,7 +6148,10 @@ tr:hover .td-arrow { color: var(--cyan); }
   border-radius: 50%; background: var(--a-soft, var(--bg-card-alt)); color: var(--a, var(--text-muted));
   font-size: 13px; font-weight: 700;
 }
-.chk-item.chk-done .chk-item-icon { background: var(--c-emerald-soft); color: var(--c-emerald); }
+/* Vulling en inkt uit elkaar: --c-emerald is de VULkleur en haalde als vinkje
+   op de zachte groene pil 2,95:1 in het lichte thema. --success-ink is
+   dezelfde kleur, afgestemd om als letter te lezen (#166534 in licht). */
+.chk-item.chk-done .chk-item-icon { background: var(--c-emerald-soft); color: var(--success-ink); }
 .chk-item-body { flex: 1; min-width: 160px; }
 .chk-item-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .chk-item.chk-done .chk-item-title { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
@@ -5676,7 +6176,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   cursor: pointer; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center;
   transition: all .15s ease;
 }
-.chk-whatsapp-action:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
+.chk-whatsapp-action:hover { border-color: var(--accent-bright); color: var(--accent-ink); }
 @media (max-width: 640px) {
   .dash-checklist-head { flex-wrap: wrap; }
   .dash-checklist-progress-bar { order: 3; width: 100%; }
@@ -5723,9 +6223,13 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* ── AI Persoonlijkheid page ──────────────────────────────────────────── */
 .ap-wrap { width: 100%; padding: 24px 0; }
-.ap-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
-@media (max-width: 1100px) { .ap-grid { grid-template-columns: 1fr; } }
-.ap-form-col { display: flex; flex-direction: column; gap: 18px; }
+.ap-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 1100px) { .ap-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px)  { .ap-grid { gap: 18px; } }
+/* min-width:0 om dezelfde reden als hierboven: een flex-item weigert standaard
+   onder zijn min-content-breedte te krimpen. */
+.ap-form-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.ap-form-col > *, .ap-side-col > * { min-width: 0; max-width: 100%; }
 .ap-welcome-banner {
   display: flex; gap: 14px; align-items: flex-start;
   background: linear-gradient(135deg, rgba(var(--success-rgb),.10), rgba(var(--success-rgb),.02));
@@ -5747,8 +6251,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 11px; font-weight: 600; color: var(--text-muted);
   transition: all .15s ease;
 }
-.ap-welcome-chk.done { color: var(--green); border-color: rgba(var(--success-rgb),.4); }
-.ap-welcome-chk.done .ap-welcome-chk-icon { color: var(--green); }
+.ap-welcome-chk.done { color: var(--green-ink); border-color: rgba(var(--success-rgb),.4); }
+.ap-welcome-chk.done .ap-welcome-chk-icon { color: var(--green-ink); }
 .ap-welcome-chk-icon { font-size: 12px; }
 .ap-hero { background: rgba(var(--accent-rgb),.06); border: 1px solid rgba(var(--accent-rgb),.2); border-radius: 14px; padding: 22px 24px; }
 .ap-hero-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; color: var(--text-primary); }
@@ -5775,7 +6279,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-lang-opt:has(input:checked) {
   background: rgba(var(--accent-rgb),.15);
   border-color: var(--accent-bright);
-  color: var(--accent-bright);
+  color: var(--accent-ink);
 }
 .ap-checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .ap-checkbox-row input[type="checkbox"] { margin: 0; cursor: pointer; accent-color: var(--accent); width: 16px; height: 16px; }
@@ -5793,7 +6297,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-hint em { color: var(--text-primary); font-style: normal; font-weight: 600; }
 .ap-chip {
   background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.25);
-  color: var(--accent-bright); padding: 2px 8px; border-radius: 6px;
+  color: var(--accent-ink); padding: 2px 8px; border-radius: 6px;
   font-size: 11px; font-weight: 600; cursor: pointer; font-family: monospace;
   transition: all .15s ease;
 }
@@ -5821,7 +6325,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
 }
 .ap-btn-secondary {
-  background: rgba(var(--accent-rgb),.10); color: var(--accent-bright);
+  background: rgba(var(--accent-rgb),.10); color: var(--accent-ink);
   border: 1px solid rgba(var(--accent-rgb),.30); padding: 8px 14px;
   border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px;
@@ -5841,13 +6345,13 @@ tr:hover .td-arrow { color: var(--cyan); }
   cursor: pointer; color: var(--text-muted); padding: 4px 0;
   user-select: none;
 }
-.ap-photo-advanced summary:hover { color: var(--accent-bright); }
+.ap-photo-advanced summary:hover { color: var(--accent-ink); }
 .ap-photo-advanced[open] summary { margin-bottom: 8px; }
 
 /* Template inspiration library */
 .ap-tpl-wrap { margin-bottom: 12px; }
 .ap-tpl-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
-.ap-tpl-title { font-size: 11px; font-weight: 700; color: var(--accent-bright); text-transform: uppercase; letter-spacing: .06em; }
+.ap-tpl-title { font-size: 11px; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .06em; }
 .ap-tpl-sub { font-size: 11px; color: var(--text-muted); }
 .ap-tpl-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -5875,7 +6379,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .ap-tpl-card-rec {
   position: absolute; top: 4px; left: 8px; right: 8px;
-  font-size: 9px; font-weight: 700; color: var(--green);
+  font-size: 9px; font-weight: 700; color: var(--green-ink);
   text-transform: uppercase; letter-spacing: .04em;
 }
 .ap-tpl-card-label {
@@ -5899,7 +6403,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-bright)); border-color: transparent; color: var(--on-accent); }
 .ap-btn-primary:hover { opacity: .9; }
 .ap-btn:disabled { opacity: .5; cursor: not-allowed; }
-.ap-saved-mark { font-size: 12px; color: var(--green); opacity: 0; transition: opacity .25s ease; }
+.ap-saved-mark { font-size: 12px; color: var(--green-ink); opacity: 0; transition: opacity .25s ease; }
 .ap-saved-mark.visible { opacity: 1; }
 
 .ap-preview-col { position: relative; }
@@ -5938,7 +6442,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-formlink-url {
   flex: 1; min-width: 0; padding: 9px 12px;
   background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--accent-bright); font-size: 12px; font-family: monospace;
+  color: var(--accent-ink); font-size: 12px; font-family: monospace;
   display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ap-formlink-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -5949,7 +6453,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-muted); text-decoration: none; cursor: pointer; font-family: inherit;
   transition: all .15s ease;
 }
-.ap-formlink-link:hover { color: var(--accent-bright); border-color: var(--accent-bright); }
+.ap-formlink-link:hover { color: var(--accent-ink); border-color: var(--accent-bright); }
 .ap-formlink-qr {
   margin-top: 12px; padding: 14px; background: #fff; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center;
@@ -5966,8 +6470,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 .ap-test-row { display: flex; gap: 8px; }
 .ap-test-row .ap-input { flex: 1; }
 .ap-test-result { font-size: 12px; margin-top: 10px; min-height: 16px; }
-.ap-test-result.ok  { color: var(--green); }
-.ap-test-result.err { color: var(--red); }
+.ap-test-result.ok  { color: var(--green-ink); }
+.ap-test-result.err { color: var(--red-ink); }
 
 /* ── AI-beeld page (Phase 4 property images) ─────────────────────────────
    Reuses the ap-* token classes above (field/label/hint/chip/btn/tpl-card)
@@ -5997,13 +6501,13 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 12px; font-weight: 700; color: var(--text-primary); transition: all .15s ease;
 }
 .pi-style-card:hover { border-color: var(--accent-bright); }
-.pi-style-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); }
+.pi-style-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-ink); }
 .pi-result-wrap { margin-top: 16px; }
 .pi-result-img-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); }
 .pi-result-img-wrap img { display: block; width: 100%; }
 .pi-ai-badge {
   display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
-  color: var(--warning); background: rgba(var(--warning-rgb),.10);
+  color: var(--warning-ink); background: rgba(var(--warning-rgb),.10);
   border: 1px solid rgba(var(--warning-rgb),.3); border-radius: 8px;
   padding: 7px 10px; margin-top: 8px; line-height: 1.4;
 }
@@ -6018,7 +6522,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
   padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; transition: all .15s ease;
 }
-.pi-gallery-toggle:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
+.pi-gallery-toggle:hover { border-color: var(--accent-bright); color: var(--accent-ink); }
 .pi-empty { color: var(--text-muted); font-size: 13px; padding: 24px 0; text-align: center; }
 
 /* Room-type chips — smaller sibling of pi-style-card, same visual language */
@@ -6029,7 +6533,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 12px; font-weight: 600; color: var(--text-secondary); transition: all .15s ease;
 }
 .pi-roomtype-card:hover { border-color: var(--accent-bright); }
-.pi-roomtype-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); font-weight: 700; }
+.pi-roomtype-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-ink); font-weight: 700; }
 .pi-roomtype-card:disabled, .pi-roomtype-card.disabled {
   opacity: .4; cursor: not-allowed; border-color: var(--border);
 }
@@ -6048,7 +6552,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   color: var(--text-muted); padding: 4px 0;
 }
 .pi-advanced-details > summary::-webkit-details-marker { display: none; }
-.pi-advanced-details > summary:hover { color: var(--accent-bright); }
+.pi-advanced-details > summary:hover { color: var(--accent-ink); }
 .pi-advanced-details > summary::before {
   content: '▸'; font-size: 10px; transition: transform .15s ease;
 }
@@ -6066,7 +6570,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   display: flex; align-items: center; gap: 8px;
 }
 .pi-color-card:hover { border-color: var(--accent-bright); }
-.pi-color-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-bright); font-weight: 700; }
+.pi-color-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-ink); font-weight: 700; }
 .pi-color-swatch-dot {
   width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
   border: 1px solid rgba(255,255,255,.25); box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
@@ -6083,7 +6587,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   border: 1px solid rgba(var(--warning-rgb),.28); border-radius: 9px;
   padding: 10px 12px; margin-top: 8px;
 }
-.pi-honesty-note b { color: var(--warning); }
+.pi-honesty-note b { color: var(--warning-ink); }
 
 /* Before/after comparison slider — a single native <input type=range>
    (transparent, full-bleed) drives a clip-path on the "after" image so the
@@ -6195,10 +6699,10 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-weight: 600;
   background: rgba(var(--warning-rgb),0.1);
   border: 1px solid rgba(var(--warning-rgb),0.25);
-  color: var(--orange);
+  color: var(--orange-ink);
   letter-spacing: 0.5px;
 }
-.settings-danger .settings-label { color: var(--red); }
+.settings-danger .settings-label { color: var(--red-ink); }
 .settings-info-box {
   margin: 0 20px 16px;
   padding: 14px;
@@ -6226,7 +6730,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   transition: var(--transition);
   margin-left: 8px;
 }
-.btn-show-key:hover { border-color: var(--blue-bright); color: var(--blue-bright); }
+.btn-show-key:hover { border-color: var(--blue-bright); color: var(--accent-ink); }
 
 /* ============================================================
    ACTIVITEIT (ACTIVITY FEED)
@@ -6313,7 +6817,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .cal-sidebar-count {
   font-size: 11px; font-weight: 700; padding: 2px 8px;
-  border-radius: 20px; background: rgba(var(--error-rgb),0.15); color: var(--red);
+  border-radius: 20px; background: rgba(var(--error-rgb),0.15); color: var(--red-ink);
 }
 .cal-sidebar-desc {
   padding: 4px 14px 10px; font-size: 11px; color: var(--text-muted);
@@ -6343,7 +6847,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 13px; font-weight: 600; color: var(--text-primary);
   flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.cal-call-score { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+.cal-call-score { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent-ink); }
 .cal-call-phone-link {
   display: flex; align-items: center; gap: 7px; padding: 8px 10px;
   background: var(--bg-card); border: 1px solid var(--border);
@@ -6352,7 +6856,7 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 13px; font-weight: 700; transition: border-color 0.15s, color 0.15s;
   font-family: 'Inter', sans-serif;
 }
-.cal-call-phone-link:hover { border-color: var(--green); color: var(--green); }
+.cal-call-phone-link:hover { border-color: var(--green); color: var(--green-ink); }
 .cal-call-actions { display: flex; gap: 6px; }
 .cal-call-btn {
   flex: 1; padding: 6px 6px; border-radius: 6px;
@@ -6362,14 +6866,14 @@ tr:hover .td-arrow { color: var(--cyan); }
   transition: var(--transition); font-family: 'Inter', sans-serif;
   display: flex; align-items: center; justify-content: center; gap: 3px;
 }
-.cal-call-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(var(--accent-rgb),0.08); }
-.cal-call-btn.primary { background: rgba(var(--accent-rgb),0.1); border-color: rgba(var(--accent-rgb),0.25); color: var(--accent); }
+.cal-call-btn:hover { border-color: var(--accent); color: var(--accent-ink); background: rgba(var(--accent-rgb),0.08); }
+.cal-call-btn.primary { background: rgba(var(--accent-rgb),0.1); border-color: rgba(var(--accent-rgb),0.25); color: var(--accent-ink); }
 .cal-call-btn.primary:hover { background: rgba(var(--accent-rgb),0.2); }
 .cal-hour-row { cursor: default; }
 .cal-hour-add {
   display: none; position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
   width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(var(--accent-rgb),0.35);
-  background: rgba(var(--accent-rgb),0.12); color: var(--accent); font-size: 16px; font-weight: 300;
+  background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink); font-size: 16px; font-weight: 300;
   cursor: pointer; align-items: center; justify-content: center; line-height: 1;
   transition: background 0.15s;
 }
@@ -6386,7 +6890,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-attendance-banner.visible { display: block; }
 .cal-att-banner-title {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--orange); margin-bottom: 9px; display: flex; align-items: center; gap: 6px;
+  color: var(--orange-ink); margin-bottom: 9px; display: flex; align-items: center; gap: 6px;
 }
 .cal-att-cards { display: flex; gap: 9px; flex-wrap: wrap; }
 .cal-att-card {
@@ -6404,9 +6908,9 @@ tr:hover .td-arrow { color: var(--cyan); }
   padding: 5px 13px; border-radius: 7px; font-size: 12px; font-weight: 700;
   border: 1px solid; cursor: pointer; transition: var(--transition); font-family:'Inter',sans-serif;
 }
-.cal-att-btn.yes { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:var(--green); }
+.cal-att-btn.yes { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color: var(--green-ink); }
 .cal-att-btn.yes:hover { background:rgba(16,185,129,0.2); }
-.cal-att-btn.no  { background:rgba(var(--error-rgb),0.1); border-color:rgba(var(--error-rgb),0.3); color:var(--red); }
+.cal-att-btn.no  { background:rgba(var(--error-rgb),0.1); border-color:rgba(var(--error-rgb),0.3); color: var(--red-ink); }
 .cal-att-btn.no:hover  { background:rgba(var(--error-rgb),0.2); }
 .cal-att-followup-input, .cal-att-followup-textarea {
   width:100%; box-sizing:border-box; padding:7px 10px;
@@ -6434,8 +6938,8 @@ tr:hover .td-arrow { color: var(--cyan); }
   margin-top:14px; padding:9px 14px; border-radius:9px;
   font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;
 }
-.cal-modal-att-result.yes { background:rgba(16,185,129,0.1); color:var(--green); }
-.cal-modal-att-result.no  { background:rgba(var(--error-rgb),0.1);  color:var(--red);   }
+.cal-modal-att-result.yes { background:rgba(16,185,129,0.1); color: var(--green-ink); }
+.cal-modal-att-result.no  { background:rgba(var(--error-rgb),0.1);  color: var(--red-ink);   }
 .cal-modal-att-result-edit {
   margin-left:auto; font-size:11px; font-weight:600; cursor:pointer;
   color:var(--text-muted); text-decoration:underline;
@@ -6474,6 +6978,323 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cal-att-save-btn:disabled { opacity:0.5; pointer-events:none; }
 
 /* ── Custom booking modal ─────────────────────────────────────── */
+/* ── Credits bijkopen ────────────────────────────────────────────────────── */
+#koop-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+}
+#koop-overlay.open { display: flex; }
+#koop-modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); width: min(460px, 96vw); max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--elev-3); animation: modalIn 0.18s ease;
+}
+.koop-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  font-size: 15px; font-weight: 700; color: var(--text-primary); flex-shrink: 0;
+}
+.koop-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.koop-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.koop-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.koop-preset {
+  flex: 1 1 0; min-width: 76px; padding: 9px 6px; text-align: center;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: var(--transition);
+}
+.koop-preset:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.koop-preset.actief {
+  border-color: rgba(var(--accent-rgb),0.5);
+  background: rgba(var(--accent-rgb),0.12);
+  color: var(--accent-ink);
+}
+.koop-veld { position: relative; margin-top: 4px; }
+.koop-euro {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 15px; font-weight: 600; color: var(--text-muted); pointer-events: none;
+}
+.koop-input {
+  width: 100%; padding: 11px 12px 11px 30px; font-size: 16px; font-weight: 600;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-family: inherit; font-variant-numeric: tabular-nums;
+}
+.koop-input:focus { outline: none; border-color: rgba(var(--accent-rgb),0.5); }
+.koop-hint { font-size: 11.5px; color: var(--text-muted); }
+
+.koop-uitkomst {
+  margin-top: 6px; padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.20);
+}
+.koop-credits {
+  font-size: 22px; font-weight: 700; color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.koop-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
+
+.koop-staffel { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.koop-staffel-rij {
+  display: flex; justify-content: space-between; font-size: 12px;
+  color: var(--text-muted); padding: 3px 0;
+}
+.koop-staffel-rij.actief { color: var(--accent-ink); font-weight: 600; }
+.koop-uitleg { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
+
+/* ── Facturatie ──────────────────────────────────────────────────────────────
+   Kleuren uit tokens, tekst uit de ink-variant van het vlak eronder. Een
+   bedrag mag hier nooit slecht leesbaar zijn: dit is de pagina waar een klant
+   naar kijkt als hij twijfelt of hij te veel betaalt. */
+.fa-wrap { display: flex; flex-direction: column; gap: 16px; max-width: 940px; }
+.fa-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 780px) { .fa-top { grid-template-columns: 1fr; } }
+
+.fa-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.fa-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.fa-kop { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.fa-sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px; }
+
+.fa-plan-naam { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+.fa-plan-sub  { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.fa-plan-acties { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.fa-saldo {
+  font-size: 30px; font-weight: 700; color: var(--text-primary); margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.fa-saldo-sub { font-size: 13px; color: var(--text-secondary); }
+.fa-balk {
+  height: 6px; border-radius: 999px; background: var(--bg-card-alt);
+  overflow: hidden; margin-top: 10px;
+}
+.fa-balk-vul { height: 100%; width: 0; background: var(--accent); transition: width var(--dur-base) var(--ease-out); }
+/* Bijna op is een waarschuwing, niet een fout: er werkt nog van alles. */
+.fa-balk-vul.fa-bijna { background: rgba(var(--warning-rgb), 0.85); }
+.fa-balk-vul.fa-op    { background: rgba(var(--error-rgb), 0.85); }
+
+.fa-rij {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.fa-rij:first-child { border-top: none; }
+.fa-rij-naam { flex: 1; min-width: 0; color: var(--text-primary); }
+.fa-rij-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.fa-rij-bedrag {
+  flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.fa-rij-bedrag.fa-plus { color: var(--success-ink); }
+.fa-rij-bedrag.fa-min  { color: var(--text-secondary); }
+.fa-rij-datum { flex: 0 0 auto; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.fa-chip {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+  padding: 2px 7px; border-radius: 999px; flex: 0 0 auto;
+  background: var(--bg-card-alt); color: var(--text-secondary);
+}
+.fa-mini-balk { height: 4px; border-radius: 999px; background: var(--bg-card-alt); margin-top: 6px; overflow: hidden; }
+.fa-mini-vul { height: 100%; background: rgba(var(--accent-rgb), 0.7); }
+
+.fa-leeg { font-size: 13px; color: var(--text-muted); padding: 14px 0; line-height: 1.6; }
+.fa-notice {
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);
+  font-size: 13px; line-height: 1.55; color: var(--text-secondary);
+}
+.fa-notice strong { color: var(--accent-ink); }
+.fa-notice code {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px;
+  padding: 1px 5px; border-radius: 4px; background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
+}
+
+/* ── Panden ──────────────────────────────────────────────────────────────────
+   Kleuren komen uit tokens, en tekst gebruikt de ink-variant van de kleur die
+   eronder ligt -- een groene status staat op een groene chip, niet op de kaart
+   eronder. Zie CLAUDE.md. */
+.pd-wrap { display: flex; flex-direction: column; gap: 18px; }
+.pd-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pd-head-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.pd-head-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+
+.pd-notice {
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);
+  font-size: 13px; line-height: 1.55; color: var(--text-secondary);
+}
+.pd-notice strong { color: var(--accent-ink); }
+.pd-notice code {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px;
+  padding: 1px 5px; border-radius: 4px; background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
+}
+
+.pd-empty {
+  padding: 40px 28px; text-align: center;
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.pd-empty-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.pd-empty-text { font-size: 13px; line-height: 1.6; color: var(--text-muted); max-width: 440px; }
+
+.pd-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.pd-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: var(--transition);
+}
+.pd-card:hover { border-color: rgba(var(--accent-rgb),0.35); }
+.pd-card--archived { opacity: 0.55; }
+.pd-card-foto {
+  width: 100%; height: 150px; object-fit: cover; display: block;
+  background: var(--bg-card-alt);
+}
+.pd-card-foto-leeg {
+  height: 150px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card-alt); color: var(--text-disabled);
+}
+.pd-card-body { padding: 14px 15px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.pd-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pd-card-adres { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+.pd-card-plaats { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pd-card-code {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 700;
+  padding: 3px 7px; border-radius: 6px; flex-shrink: 0;
+  background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
+}
+.pd-card-feiten { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-feit {
+  font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+  background: var(--bg-card-alt); color: var(--text-secondary);
+}
+.pd-feit--prijs { background: rgba(var(--accent-rgb),0.14); color: var(--accent-ink); }
+/* Status: de vulling is de kleur, de tekst is de ink-variant van diezelfde
+   kleur. Zand op wit haalt 1,29:1 -- dit is geen smaakkwestie. */
+.pd-status { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.02em; }
+.pd-status--beschikbaar { background: rgba(var(--success-rgb),0.14); color: var(--success-ink); }
+.pd-status--bod         { background: rgba(var(--warning-rgb),0.16); color: var(--warning-ink); }
+.pd-status--weg         { background: rgba(var(--error-rgb),0.14);   color: var(--error-ink); }
+
+.pd-link-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.pd-link {
+  flex: 1; min-width: 0; font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 6px 9px; border-radius: 6px; background: var(--bg-card-alt); border: 1px solid var(--border);
+}
+.pd-card-acties { display: flex; gap: 7px; margin-top: auto; padding-top: 4px; }
+.pd-mini {
+  flex: 1; font-size: 12px; font-weight: 600; padding: 7px 8px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+  transition: var(--transition);
+}
+.pd-mini:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.pd-leads { font-size: 12px; color: var(--text-muted); }
+.pd-leads strong { color: var(--text-primary); }
+
+/* Importeren uit een link. Staat bovenaan het venster en mag dat ook zien:
+   dit is de weg die een makelaar zou moeten nemen, de losse velden zijn de
+   uitwijk. */
+.pd-import {
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.07);
+  border: 1px solid rgba(var(--accent-rgb),0.20);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pd-import-kop { font-size: 13px; font-weight: 700; color: var(--accent-ink); }
+.pd-import-sub { font-size: 12px; line-height: 1.45; color: var(--text-muted); margin-bottom: 6px; }
+.pd-import-row { display: flex; gap: 8px; align-items: stretch; }
+.pd-import-row .pd-input { flex: 1; min-width: 0; }
+.pd-import-row button { flex: 0 0 auto; white-space: nowrap; }
+.pd-import-status { font-size: 12px; line-height: 1.5; margin-top: 8px; }
+.pd-import-status--bezig { color: var(--text-muted); }
+.pd-import-status--ok    { color: var(--success-ink); }
+.pd-import-status--fout  { color: var(--error-ink); }
+/* Een veld dat de import NIET kon invullen. Geen foutkleur: er is niets mis,
+   er staat alleen nog niets -- de makelaar moet er even naar kijken. */
+.pd-input--leeg {
+  border-color: rgba(var(--warning-rgb),0.45);
+  background: rgba(var(--warning-rgb),0.06);
+}
+
+/* Het bewerkvenster */
+#pd-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+}
+#pd-overlay.open { display: flex; }
+#pd-modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); width: min(640px, 96vw); max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--elev-3); animation: modalIn 0.18s ease;
+}
+.pd-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+}
+.pd-modal-x {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; cursor: pointer; color: var(--text-muted);
+  font-size: 18px; line-height: 1; transition: var(--transition);
+}
+.pd-modal-x:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.pd-modal-body {
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.pd-modal-body::-webkit-scrollbar { width: 5px; }
+.pd-modal-body::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.3); border-radius: 3px; }
+.pd-modal-foot {
+  display: flex; justify-content: flex-end; gap: 9px;
+  padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.pd-modal-err {
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: rgba(var(--error-rgb),0.10); border: 1px solid rgba(var(--error-rgb),0.28);
+  color: var(--error-ink); font-size: 12.5px; line-height: 1.5;
+}
+.pd-label {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px;
+}
+.pd-input {
+  width: 100%; padding: 9px 11px; font-size: 13px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-family: inherit; transition: var(--transition);
+}
+.pd-input:focus { outline: none; border-color: rgba(var(--accent-rgb),0.5); }
+.pd-textarea { resize: vertical; line-height: 1.5; }
+.pd-hint { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+.pd-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pd-row-3 { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+.pd-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.pd-col-2 { grid-column: span 1; }
+.pd-checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+@media (max-width: 620px) {
+  .pd-row-2, .pd-row-3, .pd-row-4 { grid-template-columns: 1fr; }
+}
+
 #cal-book-overlay {
   position: fixed; inset: 0; z-index: 1200;
   background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
@@ -6544,10 +7365,10 @@ tr:hover .td-arrow { color: var(--cyan); }
   font-size: 13px; font-weight: 700; cursor: pointer; text-align: center;
   transition: var(--transition); font-family: 'Inter',sans-serif;
 }
-.cb-slot:hover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.08); color: var(--accent); }
+.cb-slot:hover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.08); color: var(--accent-ink); }
 .cb-slot.selected {
   background: rgba(var(--accent-rgb),0.15); border-color: var(--accent);
-  color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.2);
+  color: var(--accent-ink); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),0.2);
 }
 .cb-slots-empty {
   grid-column: 1/-1; text-align: center; padding: 24px;
@@ -6592,7 +7413,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 .cb-lead-opt:last-child { border-bottom: none; }
 .cb-lead-opt:hover { background: rgba(var(--accent-rgb),0.07); }
-.cb-lead-opt-score { font-size: 10px; color: var(--accent); font-weight: 700; margin-left: auto; }
+.cb-lead-opt-score { font-size: 10px; color: var(--accent-ink); font-weight: 700; margin-left: auto; }
 /* Confirm button */
 .cb-confirm-wrap { padding-top: 4px; }
 .cb-confirm-btn {
@@ -6620,7 +7441,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 .cb-no-connection {
   padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; line-height: 1.7;
 }
-.cb-no-connection a { color: var(--accent); font-weight: 600; }
+.cb-no-connection a { color: var(--accent-ink); font-weight: 600; }
 /* Loading spinner for slots refresh */
 .cb-slots-loading {
   grid-column: 1/-1; display: flex; align-items: center; justify-content: center;
@@ -6644,7 +7465,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* Tablet landscape */
 @media (max-width: 1200px) {
-  .analyse-grid { grid-template-columns: repeat(2, 1fr); }
+  .analyse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .exports-grid { grid-template-columns: repeat(2, 1fr); }
   .profile-cards { grid-template-columns: 1fr 1fr; }
   .charts-row { flex-direction: column; }
@@ -6667,7 +7488,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 /* Larger phones / small tablets */
 @media (max-width: 900px) {
-  .analyse-grid { grid-template-columns: 1fr; }
+  .analyse-grid { grid-template-columns: minmax(0, 1fr); }
   .analyse-card-span2 { grid-column: span 1; }
   .profile-cards { grid-template-columns: 1fr; }
   .cal-right-sidebar { display: none; }
@@ -6845,7 +7666,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 [data-theme="light"] .btn-icon:hover {
   background: rgba(var(--accent-rgb),0.08);
   border-color: rgba(var(--accent-rgb),0.25);
-  color: var(--accent);
+  color: var(--accent-ink);
   box-shadow: none;
 }
 
@@ -6937,6 +7758,21 @@ tr:hover .td-arrow { color: var(--cyan); }
 }
 [data-theme="light"] .sidebar .user-info { background: rgba(255,255,255,0.05); }
 
+/* De zijbalk BLIJFT donker in het lichte thema — dat is opzet, en .sidebar
+   .nav-item zet daarom al een vaste inkt (#8D99AC) los van het thema. De
+   voettekst deed dat niet en erfde de paginakleuren: de profielnaam werd
+   bijna-zwart (#111827) en Uitloggen kreeg --red-ink, dat in licht #B91C1C
+   is — een rood bedoeld voor een WIT vlak. Gemeten op de echte pixels van
+   het donkere vlak: 1,86:1 en 1,88:1, allebei ruim onder 4,5:1.
+   Meet tegen het oppervlak waar de tekst ECHT op staat. */
+[data-theme="light"] .sidebar .user-name { color: #E9EEF6; }
+[data-theme="light"] .sidebar .user-role { color: #8D99AC; }
+/* Niet --error-ink (#F87171): dat is afgestemd op het KAARTvlak en haalt
+   daar 5,68:1, maar op het donkerdere zijbalkvlak (rgb(56,52,60), gemeten op
+   de echte pixels) blijft het op 4,40:1 steken — net onder 4,5. Deze tint
+   haalt er 5,68:1. */
+[data-theme="light"] .sidebar .btn-logout { color: #FB8C8C; }
+
 /* Sidebar bottom button */
 [data-theme="light"] .btn-logout {
   background: rgba(var(--error-rgb),0.06);
@@ -6972,8 +7808,8 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* Colored stat values. Keep glow but lighter */
 [data-theme="light"] .stat-value { text-shadow: none; color: #0f1117; }
 [data-theme="light"] .stat-value.cyan   { color: var(--info); text-shadow: none; }
-[data-theme="light"] .stat-value.green  { color: var(--success); text-shadow: none; }
-[data-theme="light"] .stat-value.orange { color: var(--warning); text-shadow: none; }
+[data-theme="light"] .stat-value.green  { color: var(--success-ink); text-shadow: none; }
+[data-theme="light"] .stat-value.orange { color: var(--warning-ink); text-shadow: none; }
 [data-theme="light"] .stat-value.blue   { color: var(--info); text-shadow: none; }
 
 /* Stat bar in light */
@@ -7024,7 +7860,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 /* Badge coloring stays vibrant in light */
 [data-theme="light"] .badge-bron {
   background: rgba(var(--accent-rgb),0.1);
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: rgba(var(--accent-rgb),0.2);
 }
 
@@ -7269,6 +8105,10 @@ tr:hover .td-arrow { color: var(--cyan); }
   }
   .hv-help-launcher { right: 16px; bottom: 16px; }
 }
+
+/* ═══ FARO (api/_faro/ui/styles.js + tokens.js) ═══ */
+${faro.css}
+${cmd.css}
 </style>
     <!-- jspdf (117 KB gecomprimeerd) en qrcode (13 KB) stonden hier als gewone
          script-tags en blokkeerden dus elke pagina-opbouw, terwijl ze alleen
@@ -7285,6 +8125,8 @@ tr:hover .td-arrow { color: var(--cyan); }
      LOGIN PAGE
      ============================================================ -->
 <div id="login-page">
+  <button class="btn-icon login-theme-toggle" id="btn-theme-login" type="button" onclick="toggleTheme()"
+          aria-label="Wissel tussen donker en licht"></button>
   <div class="login-split">
 
     <!-- LEFT: Form side -->
@@ -7295,7 +8137,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
 
         <h1 class="login-welcome">Welkom terug!</h1>
-        <p class="login-subtitle">Voer je gegevens in om toegang te krijgen tot je dashboard</p>
+        <p class="login-subtitle">Log in om te zien wat er sinds gisteren gebeurd is.</p>
 
         <!-- Everything from here to the closing tag is the built-in form.
              mountClerkSignIn() hides this wrapper and reveals #clerk-signin
@@ -7318,7 +8160,15 @@ tr:hover .td-arrow { color: var(--cyan); }
         <button class="btn-login" id="btn-login" aria-label="Inloggen"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
         <div class="login-error" id="login-error" role="alert" aria-live="assertive"></div>
 
-        <div style="text-align:center;margin-top:14px"><a href="/forgot-password" style="font-size:13px;color:#6b7280;text-decoration:none">Wachtwoord vergeten?</a></div>
+        <div class="login-links">
+          <a class="login-link" href="/forgot-password">Wachtwoord vergeten?</a>
+          <!-- Registreren loopt via Clerk. Laadt Clerk niet, dan hoort hier
+               niet NIETS te staan: een bezoeker die zich wil aanmelden zag
+               alleen een inlogformulier en had geen idee waar hij heen moest.
+               De knop zegt daarom altijd wat er aan de hand is. -->
+          <span class="login-link-sep" aria-hidden="true">&middot;</span>
+          <button type="button" class="login-link" id="btn-naar-registreren" onclick="naarRegistreren()">Account aanmaken</button>
+        </div>
         </div><!-- /login-form-wrap -->
 
         <!-- Clerk mounts sign-in OR sign-up here. Hidden until it does. -->
@@ -7327,7 +8177,11 @@ tr:hover .td-arrow { color: var(--cyan); }
              leaves the branded login screen for a Clerk-hosted one. -->
         <div id="clerk-toggle" style="display:none"></div>
 
-        <div class="login-footer">Beveiligd door <span>Helvaro</span> &mdash; AI Platform ${new Date().getFullYear()}</div>
+        <p class="login-what">
+        Helvaro beantwoordt je vastgoedleads op WhatsApp, vraagt budget en timing uit,
+        en boekt de bezichtiging meteen in je agenda.
+      </p>
+      <div class="login-footer">&copy; ${new Date().getFullYear()} <span>Helvaro</span> &mdash; gemaakt voor Vlaamse makelaars</div>
       </div>
     </div>
 
@@ -7342,36 +8196,26 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
-              <span class="brand-card-title">Lead Overzicht</span>
+              <span class="brand-card-title">WhatsApp</span>
             </div>
-            <div class="brand-stats">
-              <div class="brand-stat">
-                <div class="brand-stat-num">24</div>
-                <div class="brand-stat-label">Leads</div>
+            <div class="brand-chat">
+              <div class="brand-chat-msg in">
+                <span>Hallo, ik zag de woning in Gent op uw site. Is die nog vrij?</span>
+                <em>21:47</em>
               </div>
-              <div class="brand-stat">
-                <div class="brand-stat-num">68%</div>
-                <div class="brand-stat-label">Conversie</div>
+              <div class="brand-chat-msg out">
+                <span>Dag Marie! Ja hoor. Zoekt u voor uzelf, en wat is uw budget ongeveer?</span>
+                <em>21:47</em>
               </div>
-              <div class="brand-stat">
-                <div class="brand-stat-num">12</div>
-                <div class="brand-stat-label">Afspraken</div>
+              <div class="brand-chat-msg in">
+                <span>Voor ons gezin, rond de 450.000</span>
+                <em>21:51</em>
               </div>
-            </div>
-            <div class="brand-bars">
-              <div class="brand-bar" style="height:30%"></div>
-              <div class="brand-bar" style="height:55%"></div>
-              <div class="brand-bar" style="height:40%"></div>
-              <div class="brand-bar" style="height:70%"></div>
-              <div class="brand-bar active" style="height:100%"></div>
-              <div class="brand-bar" style="height:85%"></div>
-              <div class="brand-bar" style="height:60%"></div>
-              <div class="brand-bar" style="height:90%"></div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Naadloze werkomgeving</h2>
-            <p>Alles wat je nodig hebt in één krachtig AI-platform</p>
+            <h2>Antwoord binnen de minuut</h2>
+            <p>Ook om kwart voor tien 's avonds, als jij al lang naar huis bent</p>
           </div>
         </div>
 
@@ -7403,22 +8247,22 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="brand-score-items">
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:85%"></div></div>
-                  <span>Budget fit</span>
+                  <span>Budget past</span>
                 </div>
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:60%"></div></div>
-                  <span>Urgentie</span>
+                  <span>Wil snel verhuizen</span>
                 </div>
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:72%"></div></div>
-                  <span>Beslisser</span>
+                  <span>Beslist mee</span>
                 </div>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Slimme AI-scoring</h2>
-            <p>Elke lead automatisch gekwalificeerd en gescoord</p>
+            <h2>Je weet wie serieus is</h2>
+            <p>Budget, timing en beslissingsbevoegdheid — uitgevraagd in het gesprek zelf</p>
           </div>
         </div>
 
@@ -7429,38 +8273,38 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
-              <span class="brand-card-title">Aankomende Afspraken</span>
+              <span class="brand-card-title">Jouw agenda — morgen</span>
             </div>
             <div class="brand-agenda">
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">09:00</div>
                 <div class="brand-agenda-content">
-                  <div class="brand-agenda-name">Thomas B.</div>
-                  <div class="brand-agenda-tag">Kennismaking</div>
+                  <div class="brand-agenda-name">Marie D.</div>
+                  <div class="brand-agenda-tag">Bezichtiging · Gent</div>
                 </div>
                 <div class="brand-agenda-dot hot"></div>
               </div>
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">11:30</div>
                 <div class="brand-agenda-content">
-                  <div class="brand-agenda-name">Laura V.</div>
-                  <div class="brand-agenda-tag">Demo call</div>
+                  <div class="brand-agenda-name">Jonas P.</div>
+                  <div class="brand-agenda-tag">Bezichtiging · Aalst</div>
                 </div>
                 <div class="brand-agenda-dot warm"></div>
               </div>
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">14:00</div>
                 <div class="brand-agenda-content">
-                  <div class="brand-agenda-name">Marco S.</div>
-                  <div class="brand-agenda-tag">Follow-up</div>
+                  <div class="brand-agenda-name">Sofie M.</div>
+                  <div class="brand-agenda-tag">Schatting · Brugge</div>
                 </div>
                 <div class="brand-agenda-dot warm"></div>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Altijd overzicht</h2>
-            <p>Je agenda en leads op één plek, altijd up-to-date</p>
+            <h2>De afspraak staat er al in</h2>
+            <p>De AI kijkt in je agenda en boekt de bezichtiging in het gesprek zelf</p>
           </div>
         </div>
 
@@ -7486,13 +8330,23 @@ tr:hover .td-arrow { color: var(--cyan); }
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
   <!-- Sidebar -->
+  <!-- Overslaan-link. Zonder deze moet iemand die met het toetsenbord werkt
+       eerst door twaalf navigatie-items voordat hij bij de inhoud is, op elke
+       pagina opnieuw. Alleen zichtbaar zodra hij focus krijgt. -->
+  <a href="#page-content-anchor" class="skip-link">Naar de inhoud</a>
+
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <img src="/logo.png" alt="Helvaro">
     </div>
-    <nav class="sidebar-nav">
+
+    <!-- FARO: the way in (api/_faro/ui/markup.js). Not a nav row -- see there. -->
+${faro.navCta}
+
+    <nav class="sidebar-nav" aria-label="Hoofdnavigatie">
       <!-- ── Werk (dagelijks) ── -->
-      <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
+      <div class="nav-group-label" aria-hidden="true">Werk</div>
+      <button class="nav-item" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
         Dashboard
       </button>
@@ -7504,6 +8358,10 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
         Gesprekken
       </button>
+      <button class="nav-item" data-page="panden" id="nav-panden">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>
+        Panden
+      </button>
       <button class="nav-item" data-page="kalender" id="nav-kalender">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
         Kalender
@@ -7511,7 +8369,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       </button>
 
       <!-- ── Inzicht ── -->
-      <div class="nav-divider"></div>
+      <div class="nav-group-label" aria-hidden="true">Inzicht</div>
       <button class="nav-item" data-page="resultaten" id="nav-resultaten">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
         Resultaten
@@ -7528,13 +8386,18 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         Exports
       </button>
+      <!-- Image generation moved into Faro. This entry is hidden by Faro's own
+           stylesheet (#nav-ai-beeld), which only ships when the feature is
+           ENABLED — so with Faro off the CRM keeps its full navigation and this
+           paid feature stays reachable. Delete this button only once Faro is
+           permanently on and the page's compare/PDF tools have been ported. -->
       <button class="nav-item" data-page="ai-beeld" id="nav-ai-beeld">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
         AI-beeld
       </button>
 
       <!-- ── Setup (zelden) ── -->
-      <div class="nav-divider"></div>
+      <div class="nav-group-label" aria-hidden="true">Instellen</div>
       <button class="nav-item" data-page="formulier" id="nav-formulier">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
         Formulier
@@ -7543,22 +8406,31 @@ tr:hover .td-arrow { color: var(--cyan); }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
         AI Persoonlijkheid
       </button>
+      <button class="nav-item" data-page="facturatie" id="nav-facturatie">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+        Facturatie
+      </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         Instellingen
       </button>
 
-      <!-- ── Admin-only (verborgen voor gewone klanten) ── -->
-      <button class="nav-item" data-page="admin" id="nav-admin" style="display:none">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-        Klanten
-      </button>
-      <button class="nav-item" data-page="founder" id="nav-founder" style="display:none">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
-        Founder
-      </button>
+      <!-- ── Admin-only ──────────────────────────────────────────────────
+           Stond hier als twee knoppen met style="display:none". Dat betekende
+           dat de back-office van Helvaro zelf — "Klanten", "Founder" — in de
+           HTML zat van ELKE klant die de app opende, zichtbaar voor iedereen
+           die "toon paginabron" kiest. Verbergen met CSS is geen autorisatie.
+           Ze worden nu pas aangemaakt als de sessie ook echt admin is; zie
+           mountAdminNav(). -->
+      <div id="nav-admin-slot"></div>
     </nav>
     <div class="sidebar-bottom">
+      <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn"
+              onclick="toggleSidebarCollapsed()" aria-controls="sidebar" aria-expanded="true"
+              title="Menu inklappen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Inklappen</span>
+      </button>
       <!-- Credit usage widget. Hidden until loadCreditUsage() confirms the
            credit system is active for this client — inert (display:none)
            by default, matches CREDIT-SYSTEM-DESIGN.md's "never punitive,
@@ -7573,31 +8445,36 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
         <div class="credit-usage-sub" id="credit-usage-sub">—</div>
       </div>
-      <div class="user-info" id="user-info-btn" onclick="navigateTo('profile')" style="cursor:pointer;" title="Bekijk profiel">
+      <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
           <div class="user-name" id="user-name">Gebruiker</div>
-          <div class="user-role">Client Account</div>
+          <div class="user-role" id="user-org">Mijn profiel</div>
         </div>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
-      </div>
-      <button id="btn-back-admin" onclick="backToAdmin()" style="display:none;width:100%;padding:9px 12px;margin-bottom:6px;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:8px;color:var(--accent-bright);font-size:12px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:7px">
+      </button>
+      <button id="btn-back-admin" onclick="backToAdmin()" style="display:none;width:100%;padding:9px 12px;margin-bottom:6px;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:8px;color: var(--accent-ink);font-size:12px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:7px">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         Klantenoverzicht
       </button>
-      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen</button>
+      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Uitloggen</span></button>
     </div>
   </aside>
 
   <!-- Main Content -->
-  <div class="main-content">
+  <div class="main-content" id="page-content-anchor" tabindex="-1">
 
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <div>
-          <div class="page-title display-heading gradient-text" id="topbar-title">Dashboard</div>
+          <!-- Een <h1>, geen <div>: geen enkele pagina had er een, dus een
+               schermlezer kon nergens "waar ben ik" beantwoorden en de
+               koppenstructuur begon overal bij h2. Deze tekst verandert al per
+               pagina in navigateTo(), dus hij is precies de juiste kandidaat —
+               één h1 per weergave, en niets aan de opmaak verandert. -->
+          <h1 class="page-title display-heading gradient-text" id="topbar-title">Dashboard</h1>
           <div class="page-subtitle" id="topbar-subtitle">Overzicht van je gekwalificeerde leads</div>
         </div>
       </div>
@@ -7635,7 +8512,7 @@ tr:hover .td-arrow { color: var(--cyan); }
     </header>
 
     <!-- Dashboard Page -->
-    <main class="page-content page active" id="page-dashboard">
+    <main class="page-content page" id="page-dashboard">
 
       <!-- Trial banner. Hidden until loadPlanStatus() confirms this client
            is on trial or expired — see TRIAL-DESIGN.md and
@@ -7730,11 +8607,17 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="charts-row">
         <div class="chart-card">
           <div class="chart-title">Leads per week (laatste 8 weken)</div>
-          <canvas id="leads-chart" height="80"></canvas>
+          <!-- The wrapper is load-bearing. Both charts run with
+               maintainAspectRatio:false, which makes Chart.js size the canvas
+               to its CONTAINER and ignore the height attribute. .chart-card is
+               flex:1 with no height, so the canvas grew unbounded and the bars
+               stretched the full length of the page. A fixed-height parent is
+               the documented requirement for that option. -->
+          <div class="chart-canvas-wrap"><canvas id="leads-chart"></canvas></div>
         </div>
         <div class="chart-card-sm" id="bron-chart-wrap">
           <div class="chart-title">Leads per bron</div>
-          <canvas id="bron-chart" height="160"></canvas>
+          <div class="chart-canvas-wrap chart-canvas-wrap--sm"><canvas id="bron-chart"></canvas></div>
         </div>
       </div>
 
@@ -7748,10 +8631,10 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="revenue-goal-card" id="revenue-goal-card">
         <div class="revenue-goal-header">
           <div>
-            <div class="revenue-goal-label">Omzet Doel</div>
-            <div class="revenue-goal-sub" id="revenue-goal-sub">deze maand</div>
+            <div class="revenue-goal-label">Pipeline Doel</div>
+            <div class="revenue-goal-sub" id="revenue-goal-sub">verwachte waarde van je gekwalificeerde leads</div>
           </div>
-          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen" aria-label="Omzetdoel aanpassen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen" aria-label="Pipelinedoel aanpassen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         </div>
         <div class="revenue-goal-amounts">
           <span class="revenue-goal-current" id="revenue-goal-current">€0</span>
@@ -7761,7 +8644,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         <div class="revenue-goal-bar-wrap">
           <div class="revenue-goal-bar" id="revenue-goal-bar" style="width:0%"></div>
         </div>
-        <div class="revenue-goal-pct" id="revenue-goal-pct">0% van doel bereikt</div>
+        <div class="revenue-goal-pct" id="revenue-goal-pct">0% van je pipelinedoel</div>
       </div>
 
       <!-- Follow-up Queue -->
@@ -7810,23 +8693,23 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="filters-bar">
         <div class="search-wrapper">
           <span class="search-icon"></span>
-          <input class="search-input" id="search-input" type="text" placeholder="Zoek op naam of telefoonnummer...">
+          <input class="search-input" id="search-input" aria-label="Zoek leads op naam of telefoonnummer" type="text" placeholder="Zoek op naam of telefoonnummer...">
         </div>
-        <select class="filter-select" id="filter-status">
+        <select class="filter-select" id="filter-status" aria-label="Filter op status">
           <option value="">Alle statussen</option>
           <option value="new">Nieuw</option>
           <option value="in_progress">Bezig</option>
           <option value="completed">Klaar</option>
         </select>
-        <select class="filter-select" id="filter-qualified">
+        <select class="filter-select" id="filter-qualified" aria-label="Filter op gekwalificeerd">
           <option value="">Alle leads</option>
           <option value="true">Gekwalificeerd</option>
           <option value="false">Niet gekwalificeerd</option>
         </select>
-        <select class="filter-select" id="filter-bron">
+        <select class="filter-select" id="filter-bron" aria-label="Filter op bron">
           <option value="">Alle bronnen</option>
         </select>
-        <select class="filter-select" id="filter-opgepikt">
+        <select class="filter-select" id="filter-opgepikt" aria-label="Filter op opgepikt">
           <option value="">Opgepikt: Alle</option>
           <option value="true">Opgepikt</option>
           <option value="false">Niet opgepikt</option>
@@ -7877,7 +8760,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="export-filter-bar">
         <div class="export-filter-group">
           <label class="export-filter-label">Periode</label>
-          <select class="export-select" id="resultaten-period" onchange="loadResultaten()">
+          <select class="export-select" id="resultaten-period" aria-label="Periode voor resultaten" onchange="loadResultaten()">
             <option value="this_month" selected>Deze maand</option>
             <option value="last_30_days">Afgelopen 30 dagen</option>
             <option value="all_time">Alle tijd</option>
@@ -7907,7 +8790,7 @@ tr:hover .td-arrow { color: var(--cyan); }
       <div class="export-filter-bar">
         <div class="export-filter-group">
           <label class="export-filter-label">Periode</label>
-          <select class="export-select" id="export-period" onchange="updateExportPreview()">
+          <select class="export-select" id="export-period" aria-label="Periode voor export" onchange="updateExportPreview()">
             <option value="7">Afgelopen 7 dagen</option>
             <option value="30" selected>Afgelopen 30 dagen</option>
             <option value="90">Afgelopen 90 dagen</option>
@@ -7916,7 +8799,7 @@ tr:hover .td-arrow { color: var(--cyan); }
         </div>
         <div class="export-filter-group">
           <label class="export-filter-label">Status</label>
-          <select class="export-select" id="export-status" onchange="updateExportPreview()">
+          <select class="export-select" id="export-status" aria-label="Status voor export" onchange="updateExportPreview()">
             <option value="all">Alle leads</option>
             <option value="qualified">Alleen gekwalificeerd</option>
             <option value="unqualified">Niet gekwalificeerd</option>
@@ -7965,7 +8848,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             Rapport laden
           </button>
           <div id="rapport-content" style="display:none;margin-top:20px">
-            <button class="btn-icon btn-primary-sm" id="btn-download-pdf" style="width:100%;justify-content:center;padding:10px;margin-bottom:16px;background:rgba(var(--error-rgb),0.1);border-color:rgba(var(--error-rgb),0.3);color:var(--error)" onclick="exportPDF()">
+            <button class="btn-icon btn-primary-sm" id="btn-download-pdf" style="width:100%;justify-content:center;padding:10px;margin-bottom:16px;background:rgba(var(--error-rgb),0.1);border-color:rgba(var(--error-rgb),0.3);color: var(--error-ink)" onclick="exportPDF()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               Downloaden als PDF
             </button>
@@ -8053,8 +8936,8 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
           </div>
 
-          <div id="nc-inv-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(var(--error-rgb),0.1);border-radius:8px;margin-top:12px"></div>
-          <div id="nc-inv-success" style="display:none;background:rgba(var(--success-rgb),.08);border:1px solid rgba(var(--success-rgb),.25);border-radius:8px;padding:12px 14px;margin-top:12px;font-size:13px;color:var(--green)">
+          <div id="nc-inv-error" style="display:none;color: var(--red-ink);font-size:13px;padding:10px 12px;background:rgba(var(--error-rgb),0.1);border-radius:8px;margin-top:12px"></div>
+          <div id="nc-inv-success" style="display:none;background:rgba(var(--success-rgb),.08);border:1px solid rgba(var(--success-rgb),.25);border-radius:8px;padding:12px 14px;margin-top:12px;font-size:13px;color: var(--green-ink)">
             Uitnodiging verzonden! De klant ontvangt een e-mail met de registratielink.
           </div>
 
@@ -8066,11 +8949,11 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div id="nc-invite-link-row" style="display:none;margin-top:14px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Of kopieer de link handmatig:</div>
             <div style="display:flex;gap:8px;align-items:center">
-              <code id="nc-invite-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:6px 8px;border-radius:6px;word-break:break-all;color:var(--accent-bright);border:1px solid var(--border)"></code>
+              <code id="nc-invite-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:6px 8px;border-radius:6px;word-break:break-all;color: var(--accent-ink);border:1px solid var(--border)"></code>
               <button onclick="copyInviteLink()" id="nc-invite-copy" style="flex-shrink:0;padding:5px 10px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
             </div>
           </div>
-          <div id="nc-invite-missing" style="display:none;background:rgba(var(--error-rgb),.08);border:1px solid rgba(var(--error-rgb),.2);border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12px;color:var(--error)">
+          <div id="nc-invite-missing" style="display:none;background:rgba(var(--error-rgb),.08);border:1px solid rgba(var(--error-rgb),.2);border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12px;color: var(--error-ink)">
             Stel <code>ONBOARD_CODE</code> in als omgevingsvariabele op Vercel om uitnodigingen te activeren.
           </div>
         </div>
@@ -8099,24 +8982,24 @@ tr:hover .td-arrow { color: var(--cyan); }
             </div>
             <!-- Calendly veld DEPRECATED. Hidden input voor backwards compat. -->
             <input id="nc-calendly" type="hidden" value="">
-            <div id="nc-error" style="display:none;color:var(--red);font-size:13px;padding:10px 12px;background:rgba(var(--error-rgb),0.1);border-radius:8px"></div>
+            <div id="nc-error" style="display:none;color: var(--red-ink);font-size:13px;padding:10px 12px;background:rgba(var(--error-rgb),0.1);border-radius:8px"></div>
             <div id="nc-success" style="display:none;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;padding:14px">
-              <div style="font-weight:600;margin-bottom:10px;color:var(--green)">Klant aangemaakt</div>
+              <div style="font-weight:600;margin-bottom:10px;color: var(--green-ink)">Klant aangemaakt</div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Stuur zelf de welkomstmail vanuit je eigen mailbox. Klik op de knop hieronder om een kant-en-klare tekst te kopiëren.</div>
 
               <!-- Login credentials (only shown when user record was created. Primary action!) -->
               <div id="nc-result-login-block" style="display:none;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-                <div style="font-size:11px;color:var(--accent-bright);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Login credentials</div>
+                <div style="font-size:11px;color: var(--accent-ink);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Login credentials</div>
                 <div style="font-size:12px;display:flex;flex-direction:column;gap:4px">
                   <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">E-mail:</span><code id="nc-result-email" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:11px"></code><button onclick="copyNcField('nc-result-email','nc-copy-email')" id="nc-copy-email" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
-                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">Wachtwoord:</span><code id="nc-result-pw" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:12px;color:var(--accent-bright);font-weight:600;letter-spacing:.5px"></code><button onclick="copyNcField('nc-result-pw','nc-copy-pw')" id="nc-copy-pw" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
+                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">Wachtwoord:</span><code id="nc-result-pw" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:12px;color: var(--accent-ink);font-weight:600;letter-spacing:.5px"></code><button onclick="copyNcField('nc-result-pw','nc-copy-pw')" id="nc-copy-pw" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
                 </div>
                 <div style="font-size:10px;color:var(--text-muted);margin-top:6px">Klant moet wijzigen via <em>Wachtwoord vergeten</em> na 1ste login.</div>
               </div>
 
               <div style="font-size:12px;display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
                 <div><span style="color:var(--text-muted)">API Key: </span><code id="nc-result-key" style="background:var(--bg-primary);padding:2px 6px;border-radius:4px;font-size:11px"></code></div>
-                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-bright)"></a></div>
+                <div><span style="color:var(--text-muted)">Formulier: </span><a id="nc-result-url" href="#" target="_blank" style="color:var(--accent-ink)"></a></div>
               </div>
 
               <!-- Manual welcome-email helpers -->
@@ -8155,7 +9038,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
-          <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(new Date().toISOString().slice(0,10),null)">
+          <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(lokaleDatum(new Date()),null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Boek afspraak
           </button>
@@ -8242,12 +9125,12 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="analyse-revenue-sub" id="analyse-gem-sub">0 deals met waarde</div>
         </div>
         <div class="analyse-revenue-card">
-          <div class="analyse-revenue-val" id="analyse-showup-val" style="color:var(--green)">—</div>
+          <div class="analyse-revenue-val" id="analyse-showup-val" style="color:var(--green-ink)">—</div>
           <div class="analyse-revenue-label">Show-up Rate</div>
           <div class="analyse-revenue-sub" id="analyse-showup-sub">van geboekte afspraken</div>
         </div>
         <div class="analyse-revenue-card">
-          <div class="analyse-revenue-val" id="analyse-winrate-val" style="color:var(--green)">0%</div>
+          <div class="analyse-revenue-val" id="analyse-winrate-val" style="color:var(--green-ink)">0%</div>
           <div class="analyse-revenue-label">Win Rate</div>
           <div class="analyse-revenue-sub">verloren vs totaal</div>
           <div class="analyse-verlies-list" id="analyse-verlies-list"></div>
@@ -8267,12 +9150,12 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Days of week chart -->
         <div class="analyse-card">
           <div class="analyse-card-title">Leads per Weekdag</div>
-          <canvas id="analyse-days-chart" height="120"></canvas>
+          <div class="chart-canvas-wrap chart-canvas-wrap--sm"><canvas id="analyse-days-chart"></canvas></div>
         </div>
         <!-- Lead score distribution. Spans 2 cols -->
         <div class="analyse-card analyse-card-span2">
           <div class="analyse-card-title">Score Verdeling</div>
-          <canvas id="analyse-score-chart" height="100"></canvas>
+          <div class="chart-canvas-wrap"><canvas id="analyse-score-chart"></canvas></div>
         </div>
         <!-- Avg response time. Col 3 beside score chart -->
         <div class="analyse-card">
@@ -8289,12 +9172,23 @@ tr:hover .td-arrow { color: var(--cyan); }
         <!-- Hours chart (full width) -->
         <div class="analyse-card analyse-card-full">
           <div class="analyse-card-title">Leads per Uur van de Dag</div>
-          <canvas id="analyse-hours-chart" height="70"></canvas>
+          <div class="chart-canvas-wrap chart-canvas-wrap--xs"><canvas id="analyse-hours-chart"></canvas></div>
         </div>
       </div>
     </main>
 
-    <!-- AI-beeld Page (Phase 4 — AI property visualisation images) -->
+    <!-- AI-beeld Page (Phase 4 — AI property visualisation images)
+
+         NO LONGER IN THE SIDEBAR. Image generation moved into Faro, which
+         drives the SAME api/leads.js property-* modes with the same eight
+         option axes, so generation is at parity and this nav entry was
+         duplication on a sidebar that was already too long.
+
+         The page is kept and still reachable — navigateTo('ai-beeld'), which
+         Faro's Beelden panel links to — because two things here have NOT been
+         ported: the before/after comparison slider (renderPiCompare) and the
+         comparison PDF export (downloadPiComparePDF). Deleting the page would
+         delete those. Port them into Faro and this whole block can go. -->
     <main class="page-content page" id="page-ai-beeld">
       <div class="ap-wrap">
         <div class="ap-hero" style="margin-bottom:18px">
@@ -8745,6 +9639,92 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
+    <!-- ══ Facturatie ══════════════════════════════════════════════════════
+         Wat je betaalt, wat je verbruikt hebt en waar het heen ging. Elk getal
+         hier komt uit de eigen tenant: de teller in Client Config en het
+         grootboek in credit_transactions. Er staat niets in dat niet ergens
+         geboekt is. -->
+    <main class="page-content page" id="page-facturatie">
+      <div class="fa-wrap">
+
+        <div class="fa-notice" id="fa-notice" style="display:none"></div>
+
+        <!-- Plan + saldo naast elkaar -->
+        <div class="fa-top">
+          <div class="fa-card fa-card--plan">
+            <div class="fa-label">Je plan</div>
+            <div class="fa-plan-naam" id="fa-plan-naam">—</div>
+            <div class="fa-plan-sub" id="fa-plan-sub"></div>
+            <div class="fa-plan-acties">
+              <button class="btn-icon" onclick="facturatieContact('plan')">Plan wijzigen</button>
+            </div>
+          </div>
+
+          <div class="fa-card fa-card--saldo">
+            <div class="fa-label">Credits deze periode</div>
+            <div class="fa-saldo" id="fa-saldo">—</div>
+            <div class="fa-saldo-sub" id="fa-saldo-sub"></div>
+            <div class="fa-balk"><div class="fa-balk-vul" id="fa-balk-vul"></div></div>
+            <div class="fa-plan-acties">
+              <button class="btn-icon btn-primary-sm" onclick="openKoopModal()">Credits bijkopen</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Waar de credits heen gingen -->
+        <div class="fa-card">
+          <div class="fa-kop">Waar je credits heen gingen</div>
+          <div class="fa-sub" id="fa-verdeling-sub">Deze periode</div>
+          <div id="fa-verdeling"></div>
+        </div>
+
+        <!-- Boekingen -->
+        <div class="fa-card">
+          <div class="fa-kop">Boekingen</div>
+          <div class="fa-sub" id="fa-boekingen-sub">Elke beweging, nieuwste eerst</div>
+          <div id="fa-boekingen"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ══ Panden ══════════════════════════════════════════════════════════
+         Het aanbod van de makelaar. Elk pand heeft een code die in een
+         publieke link past (/start/TELJO/P3): die zet hij onder een
+         advertentie of op een bordje met QR. De lead die daaruit komt draagt
+         die code mee tot in het WhatsApp-gesprek, zodat de AI weet over welke
+         woning het gaat -- daarvoor moest hij raden. -->
+    <main class="page-content page" id="page-panden">
+      <div class="pd-wrap">
+
+        <div class="pd-head">
+          <div>
+            <div class="pd-head-title">Je aanbod</div>
+            <div class="pd-head-sub" id="pd-count">—</div>
+          </div>
+          <button class="btn-icon btn-primary-sm" onclick="openPandModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Pand toevoegen
+          </button>
+        </div>
+
+        <!-- Drie toestanden, en ze zeggen alle drie iets anders:
+             tabel-ontbreekt (eenmalig, eigenaar moet iets doen),
+             nog-geen-panden (normaal, nieuwe klant),
+             de lijst. -->
+        <div class="pd-notice" id="pd-notice" style="display:none"></div>
+        <div class="pd-empty" id="pd-empty" style="display:none">
+          <div class="pd-empty-title">Nog geen panden</div>
+          <div class="pd-empty-text">
+            Voeg je eerste woning toe. Je krijgt er meteen een eigen link bij die je onder een
+            advertentie kunt zetten &mdash; en dan weet je AI precies over welk pand een lead het heeft.
+          </div>
+          <button class="btn-icon btn-primary-sm" onclick="openPandModal()">Pand toevoegen</button>
+        </div>
+
+        <div class="pd-grid" id="pd-grid"></div>
+      </div>
+    </main>
+
     <!-- Formulier Page. Share your lead form link in 3 ways -->
     <main class="page-content page" id="page-formulier">
       <div class="fm-wrap">
@@ -8825,7 +9805,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fm-option-title">Drijvende WhatsApp-knop op je site</div>
               <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-widget" readonly rows="3"></textarea>
+            <textarea class="fm-code" id="fm-code-widget" aria-label="Insluitcode voor de widget" readonly rows="3"></textarea>
             <div class="fm-code-actions">
               <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-widget')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -8847,7 +9827,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fm-option-title">Inbouwen als pagina-onderdeel</div>
               <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-iframe" readonly rows="3"></textarea>
+            <textarea class="fm-code" id="fm-code-iframe" aria-label="Insluitcode voor een iframe" readonly rows="3"></textarea>
             <div class="fm-code-actions">
               <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-iframe')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -8869,7 +9849,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="fm-option-title">Alleen de link</div>
               <p class="fm-option-sub">Voor advertenties, e-mail handtekening, socials of WhatsApp-bio. Klant opent een eigen pagina met enkel het formulier.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-link" readonly rows="1"></textarea>
+            <textarea class="fm-code" id="fm-code-link" aria-label="Directe link naar je formulier" readonly rows="1"></textarea>
             <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-link')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               Kopieer link
@@ -9097,7 +10077,7 @@ tr:hover .td-arrow { color: var(--cyan); }
             AI Instellingen
           </div>
           <div class="settings-info-box">
-            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
+            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
           </div>
           <div class="settings-row">
             <div>
@@ -9127,7 +10107,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label-sub">Elke maandag een samenvatting van leads + conversie naar je notificatie-mail</div>
             </div>
             <div class="settings-toggle">
-              <span style="font-size:12px;color:var(--green);font-weight:600;display:inline-flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color: var(--green-ink);font-weight:600;display:inline-flex;align-items:center;gap:6px">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Actief
               </span>
@@ -9152,10 +10132,17 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="settings-row">
             <div class="settings-label">Plan</div>
             <div class="settings-value">
-              <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.3);color:var(--accent-bright)">Pro</span>
+              <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.3);color: var(--accent-ink)">Pro</span>
             </div>
           </div>
-          <div class="settings-row">
+          <!-- Verborgen zolang er geen ECHTE sleutel is; zie renderInstellingen().
+               state.apiKey is sinds de sessie in een httpOnly-cookie zit een
+               sentinel ('cookie-session' / 'clerk-session'), geen token. Deze
+               rij toonde die gemaskeerd als "cookie-s********" met eronder
+               "Gebruik dit voor directe API-toegang", en "Toon" onthulde
+               letterlijk het woord cookie-session. Een sleutel die nooit
+               ergens op werkt, aangeboden aan elke klant. -->
+          <div class="settings-row" id="set-apikey-row" style="display:none">
             <div>
               <div class="settings-label">API Sleutel</div>
               <div class="settings-label-sub">Gebruik dit voor directe API-toegang</div>
@@ -9178,7 +10165,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label">Hulp nodig?</div>
               <div class="settings-label-sub">Ons team helpt je graag verder</div>
             </div>
-            <a href="mailto:${SUPPORT_EMAIL_ATTR}" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color:var(--accent);background:rgba(var(--accent-rgb),0.08)">
+            <a href="mailto:${SUPPORT_EMAIL_ATTR}" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               Mail sturen
             </a>
@@ -9188,7 +10175,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label">E-mailadres support</div>
               <div class="settings-label-sub">Bereikbaar op werkdagen</div>
             </div>
-            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
+            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
           </div>
         </div>
 
@@ -9204,15 +10191,15 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label-sub" id="gcal-status-sub">Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.</div>
             </div>
             <div id="gcal-actions">
-              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color:var(--accent);background:rgba(var(--accent-rgb),0.08)">Koppel Google Agenda</button>
-              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color:var(--red);background:rgba(var(--error-rgb),0.08)">Ontkoppel</button>
+              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">Koppel Google Agenda</button>
+              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">Ontkoppel</button>
             </div>
           </div>
         </div>
 
         <!-- Gevaar zone -->
         <div class="settings-section">
-          <div class="settings-section-title" style="color:var(--red)">
+          <div class="settings-section-title" style="color:var(--red-ink)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             Gevaar zone
           </div>
@@ -9221,7 +10208,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <div class="settings-label">Uitloggen</div>
               <div class="settings-label-sub">Beëindig je huidige sessie</div>
             </div>
-            <button class="btn-icon" onclick="logout()" style="border-color:rgba(var(--error-rgb),0.35);color:var(--red);background:rgba(var(--error-rgb),0.08)">
+            <button class="btn-icon" onclick="logout()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Uitloggen
             </button>
@@ -9273,7 +10260,7 @@ tr:hover .td-arrow { color: var(--cyan); }
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Boekingssysteem
             </div>
-            <div class="profile-row"><span>Status</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color:var(--success);">Actief</span></div>
+            <div class="profile-row"><span>Status</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);">Actief</span></div>
             <div class="profile-row"><span>Modus</span>
               <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">AI boekt direct in WhatsApp gesprek</span>
             </div>
@@ -9329,6 +10316,11 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
+    <!-- FARO: the home page. The Command Center's briefing renders inside its
+         landing screen; the lead drawer is a page-level overlay beside it. -->
+${faro.page}
+${cmd.drawer}
+
     <!-- ─── Founder Dashboard ─── -->
     <main class="page-content page" id="page-founder">
       <div class="fdr-wrap">
@@ -9370,10 +10362,10 @@ tr:hover .td-arrow { color: var(--cyan); }
 
             <!-- Stats 2x2 -->
             <div class="fdr-stats-grid fdr-panel">
-              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-clients" style="color:var(--accent-bright)">—</div><div class="fdr-stat-lbl">Klanten</div></div>
-              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-leads" style="color:var(--green)">—</div><div class="fdr-stat-lbl">Leads/mnd</div></div>
-              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-qual" style="color:var(--orange)">—%</div><div class="fdr-stat-lbl">Gekwalificeerd</div></div>
-              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-new" style="color:var(--red)">—</div><div class="fdr-stat-lbl">Ongelezen</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-clients" style="color:var(--accent-ink)">—</div><div class="fdr-stat-lbl">Klanten</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-leads" style="color:var(--green-ink)">—</div><div class="fdr-stat-lbl">Leads/mnd</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-qual" style="color:var(--orange-ink)">—%</div><div class="fdr-stat-lbl">Gekwalificeerd</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-new" style="color:var(--red-ink)">—</div><div class="fdr-stat-lbl">Ongelezen</div></div>
             </div>
 
             <!-- Goal: 5 clients -->
@@ -9617,7 +10609,7 @@ tr:hover .td-arrow { color: var(--cyan); }
           <div class="fdr-outreach-body">
             <div class="fdr-outreach-grid" id="fdr-outreach-grid">
               <div class="fdr-outreach-card">
-                <div class="fdr-outreach-num" id="or-dms" style="color:var(--accent)">0</div>
+                <div class="fdr-outreach-num" id="or-dms" style="color:var(--accent-ink)">0</div>
                 <div class="fdr-outreach-info">
                   <div class="fdr-outreach-name">LinkedIn DMs</div>
                   <div class="fdr-outreach-target">Doel: 20/week</div>
@@ -9633,7 +10625,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <button class="fdr-outreach-plus" onclick="logOutreach('emails')">+</button>
               </div>
               <div class="fdr-outreach-card">
-                <div class="fdr-outreach-num" id="or-demos" style="color:var(--success)">0</div>
+                <div class="fdr-outreach-num" id="or-demos" style="color:var(--success-ink)">0</div>
                 <div class="fdr-outreach-info">
                   <div class="fdr-outreach-name">Demo's gehad</div>
                   <div class="fdr-outreach-target">Doel: 3/week</div>
@@ -9641,7 +10633,7 @@ tr:hover .td-arrow { color: var(--cyan); }
                 <button class="fdr-outreach-plus" onclick="logOutreach('demos')">+</button>
               </div>
               <div class="fdr-outreach-card">
-                <div class="fdr-outreach-num" id="or-follows" style="color:var(--warning)">0</div>
+                <div class="fdr-outreach-num" id="or-follows" style="color:var(--warning-ink)">0</div>
                 <div class="fdr-outreach-info">
                   <div class="fdr-outreach-name">Follow-ups</div>
                   <div class="fdr-outreach-target">Doel: 10/week</div>
@@ -9832,6 +10824,11 @@ tr:hover .td-arrow { color: var(--cyan); }
       </div>
     </main>
 
+    <!-- FARO: the ask bar. Last flex child of .main-content, so it shortens
+         the page rather than overlapping it. Hidden while you are already on
+         the Faro page -- see .faro-dock in styles.js. -->
+${faro.dock}
+
     <!-- Persona picker (Frade / Teljo). shown right after login -->
     <div id="persona-overlay">
       <div class="persona-modal">
@@ -9954,6 +10951,168 @@ tr:hover .td-arrow { color: var(--cyan); }
   </div>
 </div>
 
+<!-- Credits bijkopen. Je kiest een bedrag, niet een pakket: de ene makelaar
+     heeft twee panden en de andere veertig. Wat je ervoor krijgt wordt op de
+     SERVER berekend -- zou de browser dat doen, dan is het getal dat de klant
+     ziet ook het getal dat hij kan aanpassen. -->
+<div id="koop-overlay" onclick="if(event.target===this)closeKoopModal()">
+  <div id="koop-modal" role="dialog" aria-modal="true" aria-labelledby="koop-titel">
+    <div class="koop-head">
+      <div id="koop-titel">Credits bijkopen</div>
+      <button class="pd-modal-x" onclick="closeKoopModal()" aria-label="Sluiten">&times;</button>
+    </div>
+
+    <div class="koop-body">
+      <div class="koop-label">Hoeveel wil je bijkopen?</div>
+      <div class="koop-presets" id="koop-presets"></div>
+
+      <div class="koop-veld">
+        <span class="koop-euro">&euro;</span>
+        <input class="koop-input" id="koop-bedrag" type="number" min="0" step="5"
+               inputmode="decimal" aria-label="Bedrag in euro" oninput="koopHerbereken()">
+      </div>
+      <div class="koop-hint" id="koop-grenzen"></div>
+
+      <div class="koop-uitkomst" id="koop-uitkomst">
+        <div class="koop-credits" id="koop-credits">—</div>
+        <div class="koop-detail" id="koop-detail"></div>
+      </div>
+
+      <div class="koop-staffel" id="koop-staffel"></div>
+
+      <div class="koop-uitleg">
+        Credits verlopen niet en komen bovenop wat je deze periode nog hebt.
+      </div>
+      <div class="pd-modal-err" id="koop-fout" role="alert" style="display:none"></div>
+    </div>
+
+    <div class="pd-modal-foot">
+      <button class="btn-icon" onclick="closeKoopModal()">Annuleren</button>
+      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Aanvragen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pand toevoegen / bewerken -->
+<div id="pd-overlay" onclick="if(event.target===this)closePandModal()">
+  <div id="pd-modal" role="dialog" aria-modal="true" aria-labelledby="pd-modal-title">
+    <div class="pd-modal-head">
+      <div id="pd-modal-title">Pand toevoegen</div>
+      <button class="pd-modal-x" onclick="closePandModal()" aria-label="Sluiten">&times;</button>
+    </div>
+    <div class="pd-modal-body">
+      <!-- De snelste weg staat bovenaan: een link plakken en de rest laten
+           invullen. Wie liever zelf typt scrollt gewoon door -- alle velden
+           blijven gewone velden. -->
+      <div class="pd-import">
+        <div class="pd-import-kop">Plak de link van je zoekertje</div>
+        <div class="pd-import-sub">Helvaro leest de pagina en vult de velden hieronder in. Je controleert ze daarna zelf.</div>
+        <div class="pd-import-row">
+          <input class="pd-input" id="pd-f-link" type="url" inputmode="url" autocomplete="off"
+                 placeholder="https://www.immoweb.be/nl/zoekertje/..." maxlength="2000">
+          <button class="btn-icon btn-primary-sm" id="pd-import-btn" onclick="importeerPand()">Ophalen</button>
+        </div>
+        <div class="pd-import-status" id="pd-import-status" style="display:none"></div>
+      </div>
+
+      <!-- De code staat bovenaan omdat hij in de publieke link komt: dat is
+           het eerste wat een makelaar wil weten en overtypen. -->
+      <div class="pd-row-2">
+        <div>
+          <label class="pd-label" for="pd-f-code">Referentie</label>
+          <input class="pd-input" id="pd-f-code" type="text" placeholder="automatisch (P1, P2, ...)" maxlength="20">
+          <div class="pd-hint">Leeg laten mag. Heb je een eigen referentie, vul hem hier in.</div>
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-status">Status</label>
+          <select class="pd-input" id="pd-f-status">
+            <option value="beschikbaar">beschikbaar</option>
+            <option value="onder bod">onder bod</option>
+            <option value="verkocht">verkocht</option>
+            <option value="verhuurd">verhuurd</option>
+            <option value="uit aanbod">uit aanbod</option>
+          </select>
+          <div class="pd-hint">Verkocht of uit aanbod? Dan plant je AI er geen bezichtiging meer voor in.</div>
+        </div>
+      </div>
+
+      <label class="pd-label" for="pd-f-adres">Adres</label>
+      <input class="pd-input" id="pd-f-adres" type="text" placeholder="Lange Violettestraat 12" maxlength="200">
+
+      <div class="pd-row-3">
+        <div>
+          <label class="pd-label" for="pd-f-postcode">Postcode</label>
+          <input class="pd-input" id="pd-f-postcode" type="text" placeholder="9000" maxlength="20">
+        </div>
+        <div class="pd-col-2">
+          <label class="pd-label" for="pd-f-plaats">Gemeente</label>
+          <input class="pd-input" id="pd-f-plaats" type="text" placeholder="Gent" maxlength="100">
+        </div>
+      </div>
+
+      <div class="pd-row-2">
+        <div>
+          <label class="pd-label" for="pd-f-type">Type</label>
+          <select class="pd-input" id="pd-f-type">
+            <option value="huis">huis</option>
+            <option value="appartement">appartement</option>
+            <option value="grond">grond</option>
+            <option value="commercieel">commercieel</option>
+            <option value="garage">garage</option>
+            <option value="overig">overig</option>
+          </select>
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-transactie">Te koop of te huur</label>
+          <select class="pd-input" id="pd-f-transactie">
+            <option value="te koop">te koop</option>
+            <option value="te huur">te huur</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pd-row-4">
+        <div>
+          <label class="pd-label" for="pd-f-prijs">Prijs (&euro;)</label>
+          <input class="pd-input" id="pd-f-prijs" type="number" min="0" step="1000" placeholder="395000">
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-slaapkamers">Slaapkamers</label>
+          <input class="pd-input" id="pd-f-slaapkamers" type="number" min="0" max="50" placeholder="3">
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-oppervlakte">Opp. (m&sup2;)</label>
+          <input class="pd-input" id="pd-f-oppervlakte" type="number" min="0" placeholder="145">
+        </div>
+        <div>
+          <label class="pd-label" for="pd-f-epc">EPC</label>
+          <input class="pd-input" id="pd-f-epc" type="text" maxlength="40" placeholder="C">
+        </div>
+      </div>
+
+      <label class="pd-label" for="pd-f-omschrijving">Omschrijving</label>
+      <textarea class="pd-input pd-textarea" id="pd-f-omschrijving" rows="4" maxlength="4000"
+        placeholder="Wat je AI mag vertellen over dit pand. Alleen wat hier staat wordt genoemd &mdash; hij verzint niets bij."></textarea>
+
+      <label class="pd-label" for="pd-f-fotos">Foto's (een URL per regel)</label>
+      <textarea class="pd-input pd-textarea" id="pd-f-fotos" rows="2"
+        placeholder="https://..."></textarea>
+      <div class="pd-hint">Alleen https-adressen. De eerste foto komt op het aanvraagformulier.</div>
+
+      <label class="pd-checkline" for="pd-f-publiek">
+        <input type="checkbox" id="pd-f-publiek" checked>
+        <span>Zichtbaar op het aanvraagformulier</span>
+      </label>
+
+      <div class="pd-modal-err" id="pd-modal-err" role="alert" style="display:none"></div>
+    </div>
+    <div class="pd-modal-foot">
+      <button class="btn-icon" onclick="closePandModal()">Annuleren</button>
+      <button class="btn-icon btn-primary-sm" id="pd-save-btn" onclick="savePand()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Booking Modal (handmatig afspraak inplannen vanuit kalender) -->
 <div id="cal-book-overlay" onclick="if(event.target===this)closeCalBookModal()">
   <div id="cal-book-modal">
@@ -9976,7 +11135,7 @@ tr:hover .td-arrow { color: var(--cyan); }
 
 <!-- Detail Panel -->
 <div class="panel-backdrop" id="panel-backdrop"></div>
-<div class="detail-panel" id="detail-panel">
+<div class="detail-panel" id="detail-panel" role="dialog" aria-modal="true" aria-labelledby="panel-name" tabindex="-1">
   <div class="panel-header">
     <button class="panel-close" id="panel-close" aria-label="Sluiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="panel-avatar" id="panel-avatar">HV</div>
@@ -10097,12 +11256,16 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
 /* ============================================================
    CLERK (optioneel — leeg tenzij CLERK_ENABLED=1)
 
-   No React and no build step here, so this uses Clerk's vanilla SDK and
-   deliberately does NOT rely on Clerk's __session cookie: that needs DNS
-   records on a production instance before it is set on our own domain. Instead
-   the page asks the SDK for a fresh JWT and sends it as a Bearer header, which
-   api/_clerk.js already accepts. Works immediately on test keys, and survives
-   the move to a production instance without a code change.
+   No React and no build step here, so this uses Clerk's vanilla SDK, and the
+   page authenticates with a Bearer token rather than Clerk's __session cookie.
+
+   That started as a workaround — on a test instance the cookie lives on Clerk's
+   own domain and never reaches this server. Now that the DNS records are
+   verified it IS set on app.helvaro.pro, and the bearer has become the
+   requirement instead of the workaround: api/_clerk.js accepts the cookie for
+   reads only, because api/_session.js's CSRF check cannot see it. Writes must
+   carry this header. The fetch wrapper further down attaches it to every /api/
+   call, so no call site has to remember.
 
    getToken() returns a short-lived token and refreshes it as needed, so it is
    called per request rather than cached.
@@ -10201,14 +11364,71 @@ function clerkHost() {
   if (wel) wel.style.display = 'none';
   if (sub) sub.style.display = 'none';
   host.style.display = 'block';
-  // Unmount whatever is there before mounting the other view, otherwise Clerk
-  // stacks two forms on top of each other when you toggle back and forth.
+  /* Wisselen tussen inloggen en registreren gaf een LEEG paneel.
+
+     De oude aanpak was: unmount aanroepen, innerHTML leegmaken, en hetzelfde
+     element opnieuw aan Clerk geven. Clerk monteert zijn kaart met React, en
+     React ruimt asynchroon op. Wie in dezelfde tel de innerHTML wist, laat
+     React's wortel achter op een boom die niet meer bestaat -- de volgende
+     mount op datzelfde element doet dan niets, zonder fout. Resultaat: het
+     formulier verdween en er stond niets voor in de plaats.
+
+     De oplossing is het element VERVANGEN in plaats van leeghalen. Een vers
+     knooppunt heeft geen React-wortel, dus Clerk krijgt altijd een schone
+     plek. De unmount blijft staan voor het geval Clerk er intern iets aan
+     heeft; faalt hij, dan is dat niet erg meer, want het oude knooppunt gaat
+     toch weg. */
   try {
     if (host.dataset.mounted === 'signin')      window.Clerk.unmountSignIn(host);
     else if (host.dataset.mounted === 'signup') window.Clerk.unmountSignUp(host);
   } catch (e) {}
-  host.innerHTML = '';
-  return host;
+
+  var vers = document.createElement('div');
+  vers.id = host.id;
+  vers.className = host.className;
+  vers.style.cssText = host.style.cssText;
+  vers.style.display = 'block';
+  vers.dataset.mounted = '';
+  if (host.parentNode) host.parentNode.replaceChild(vers, host);
+  return vers;
+}
+
+/* Wat er gebeurt als iemand op "Account aanmaken" klikt.
+
+   Registreren loopt volledig via Clerk. Dat is prima zolang Clerk laadt --
+   maar deed hij dat niet, dan stond er tot nu HELEMAAL niets: het scherm
+   toonde alleen een inlogformulier, zonder enige aanwijzing waar een nieuwe
+   klant heen moest. Een bezoeker die zich wil aanmelden en alleen "Inloggen"
+   ziet, gaat weg.
+
+   Drie gevallen, drie eerlijke antwoorden. */
+function naarRegistreren() {
+  // 1. Clerk staat aan en is geladen: gewoon het registratiescherm tonen.
+  if (typeof CLERK_READY !== 'undefined' && CLERK_READY && window.Clerk && window.Clerk.mountSignUp) {
+    mountClerkSignUp(window.Clerk);
+    return;
+  }
+
+  // 2. Clerk hoort aan te staan maar is er niet. Dat is een storing aan onze
+  //    kant, en dan hoort de bezoeker dat te horen in plaats van op een knop
+  //    te blijven drukken die niets doet.
+  var fout = document.getElementById('login-error');
+  if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
+    if (fout) {
+      fout.textContent = 'Het registratiescherm kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
+      fout.classList.add('visible');
+    }
+    return;
+  }
+
+  // 3. Clerk staat uit. Accounts worden dan met de hand aangemaakt -- zeg dat,
+  //    en geef een adres in plaats van een doodlopende knop.
+  if (fout) {
+    fout.innerHTML = 'Accounts worden voor je klaargezet. Mail ons op '
+      + '<a href="mailto:hello@helvaro.pro?subject=Account%20aanvragen" style="color:inherit;text-decoration:underline">hello@helvaro.pro</a>'
+      + ' en je kunt dezelfde dag beginnen.';
+    fout.classList.add('visible');
+  }
 }
 
 function mountClerkSignIn(clerk) {
@@ -10218,7 +11438,11 @@ function mountClerkSignIn(clerk) {
     clerk.mountSignIn(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signin';
     setClerkToggle('signin');
-  } catch (e) { console.error('[clerk] sign-in kon niet gemonteerd worden', e); }
+    clerkVangnet(host, 'inloggen');
+  } catch (e) {
+    console.error('[clerk] sign-in kon niet gemonteerd worden', e);
+    clerkLeegMelding(host, 'inloggen');
+  }
 }
 
 function mountClerkSignUp(clerk) {
@@ -10228,7 +11452,32 @@ function mountClerkSignUp(clerk) {
     clerk.mountSignUp(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signup';
     setClerkToggle('signup');
-  } catch (e) { console.error('[clerk] sign-up kon niet gemonteerd worden', e); }
+    clerkVangnet(host, 'registreren');
+  } catch (e) {
+    console.error('[clerk] sign-up kon niet gemonteerd worden', e);
+    clerkLeegMelding(host, 'registreren');
+  }
+}
+
+/* Als Clerk stilzwijgend niets neerzet, is een leeg paneel het slechtste wat
+   je kunt tonen: de gebruiker denkt dat de app stuk is en heeft geen weg
+   terug. Na een halve seconde kijken of er echt iets staat. */
+function clerkVangnet(host, wat) {
+  setTimeout(function () {
+    if (host && host.isConnected && host.childElementCount === 0) {
+      console.error('[clerk] ' + wat + ' bleef leeg na monteren');
+      clerkLeegMelding(host, wat);
+    }
+  }, 600);
+}
+
+function clerkLeegMelding(host, wat) {
+  if (!host) return;
+  host.innerHTML = '';
+  var p = document.createElement('p');
+  p.style.cssText = 'text-align:center;font-size:13px;line-height:1.6;color:var(--text-muted);padding:18px 6px';
+  p.textContent = 'Het scherm om te ' + wat + ' kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
+  host.appendChild(p);
 }
 
 // Clerk's components carry their own "already have an account?" links, but
@@ -10568,7 +11817,40 @@ function toast(message, type = 'info', title = null) {
     <div class="toast-message">\${escHtml(message)}</div>
     <div class="toast-progress"></div>
   \`;
+  // ── Dezelfde melding niet stapelen ────────────────────────────────────────
+  // Vier snelle kliks op "CSV downloaden" leverden zeven toasts op, over
+  // elkaar heen, terwijl er maar één verzoek uitging. Het werk was dus prima;
+  // de meldingen waren de rommel. Herhaalt een melding zich binnen een paar
+  // seconden, dan blijft het bij één kaartje met een telling erachter — dat
+  // vertelt bovendien iets nuttigs ("dit is vier keer gebeurd") in plaats van
+  // hetzelfde vier keer te zeggen.
+  const key = type + '|' + message;
+  const existing = container.querySelector('.toast[data-toast-key="' + CSS.escape(key) + '"]');
+  if (existing) {
+    const n = (parseInt(existing.dataset.count || '1', 10) || 1) + 1;
+    existing.dataset.count = String(n);
+    const msgEl = existing.querySelector('.toast-message');
+    if (msgEl) msgEl.textContent = message + ' (' + n + 'x)';
+    clearTimeout(existing._timer);
+    existing._timer = setTimeout(() => dismissToast(existing), 3500);
+    return;
+  }
+  el.dataset.toastKey = key;
+  el.dataset.count = '1';
+
   container.appendChild(el);
+
+  // Een dak op het aantal zichtbare meldingen. Verschillende meldingen mogen
+  // stapelen, maar niet eindeloos: boven de vier verdwijnt de oudste, anders
+  // duwt een reeks fouten de pagina vol met kaartjes die niemand meer leest.
+  //
+  // De reeds wegvallende kaartjes worden NIET meegeteld: dismissToast() zet een
+  // klasse en ruimt pas 300ms later op, dus zonder deze uitzondering telt het
+  // dak elementen mee die al onderweg naar buiten zijn en blijft de stapel
+  // groeien.
+  const live = container.querySelectorAll('.toast:not(.dismissing)');
+  for (let i = 0; i < live.length - 4; i++) dismissToast(live[i]);
+
   const timer = setTimeout(() => dismissToast(el), 3500);
   el._timer = timer;
 }
@@ -10593,8 +11875,11 @@ function initTheme() {
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('btn-theme');
-  if (btn) btn.innerHTML = theme === 'dark'
+  /* Twee knoppen, hetzelfde pictogram: de topbar na het inloggen en de knop op
+     het inlogscherm. Wie in het donker inlogt hoort niet eerst een wit scherm
+     te krijgen om daarna pas te kunnen wisselen. */
+  const knoppen = ['btn-theme', 'btn-theme-login'].map((id) => document.getElementById(id)).filter(Boolean);
+  for (const btn of knoppen) btn.innerHTML = theme === 'dark'
     ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
     : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
   localStorage.setItem('hv-theme', theme);
@@ -10603,7 +11888,8 @@ function applyTheme(theme) {
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   applyTheme(current === 'dark' ? 'light' : 'dark');
-  // Re-render chart with correct theme colors
+  // Re-render chart with correct theme colors. renderChart controleert zelf of
+  // het canvas er is, dus op het inlogscherm doet dit niets.
   setTimeout(renderChart, 50);
 }
 
@@ -10632,7 +11918,13 @@ function saveSession(apiKey, clientName, projectCode, email) {
 }
 
 function clearSession() {
-  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email'].forEach(k => localStorage.removeItem(k)); // 'hvk' kept in the list so any token left by an older build is cleaned up
+  // LS_LEADS_KEY is in this list because logging out has to mean the leads are
+  // gone from the machine. It was not, so every lead of the previous account —
+  // name, phone number, AI summary — sat in readable localStorage for 24 hours
+  // after logout. That also undid the point of moving the session into an
+  // httpOnly cookie: the token was out of reach and the data it protected was
+  // not.
+  ['hvk', 'hv-client', 'hv-project', 'hv-exp', 'hv-email', LS_LEADS_KEY].forEach(k => localStorage.removeItem(k)); // 'hvk' kept in the list so any token left by an older build is cleaned up
   state.apiKey     = '';
   state.clientName = '';
   state.userEmail  = '';
@@ -10675,6 +11967,44 @@ function logout() {
 }
 
 function performLogout() {
+  // Clerk eerst, en dan stoppen. Alles hieronder ruimt de KLASSIEKE sessie op:
+  // cookies wissen, state leegmaken, het loginscherm tonen. Bij Clerk zegt dat
+  // niets — de sessie leeft bij Clerk, niet in onze cookie. Zonder deze regels
+  // zag je het loginscherm terwijl je nog gewoon ingelogd was: één keer
+  // verversen en je stond weer binnen, en de API bleef bereikbaar met een
+  // token dat nog dagen geldig was. Op een gedeelde computer is dat precies
+  // het moment waarop uitloggen moet werken.
+  //
+  // clerkSignOut() stuurt door naar /dashboard, dus de pagina wordt opnieuw
+  // opgebouwd en de opruiming hieronder is niet meer nodig.
+  if (CLERK_READY && window.Clerk && window.Clerk.session) {
+    hideHelpWidget();
+    try { stopPresencePing && stopPresencePing(); } catch (e) {}
+    // clearSession() eerst, en niet overslaan omdat we toch doorsturen: de
+    // redirect laadt de pagina opnieuw maar laat localStorage staan, dus
+    // zonder deze regel blijft de volledige leadcache van deze klant achter op
+    // de computer.
+    clearSession();
+    clerkSignOut();
+    return;
+  }
+
+  // Beeindig de sessie eerst op de SERVER. clearSession() hieronder raakt
+  // alleen localStorage, en hv_session is httpOnly: zonder deze aanroep bleef
+  // de cookie na "uitloggen" zeven dagen geldig, en kon iemand op dezelfde
+  // computer met twee handmatig teruggezette markers gewoon weer binnen.
+  // Niet awaiten: uitloggen mag nooit blijven hangen op een trage of
+  // onbereikbare API. Het antwoord bevat de Set-Cookie die de sessie wist, en
+  // de opruiming hieronder loopt intussen door.
+  try {
+    fetch(API_BASE + '/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'logout' }),
+      keepalive: true,
+    }).catch(function () {});
+  } catch (e) {}
+
   // Wis ALLE state. Vorige versie liet onboarding-flags en pagina-caches
   // staan, waardoor de volgende user (op zelfde computer) soms in een
   // half-vorige-sessie staat kon belanden.
@@ -10888,7 +12218,7 @@ function relativeTime(iso) {
 
 function taskDueLabel(due) {
   if (!due) return { label: '', cls: '' };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   if (due < today) return { label: 'Verlopen', cls: 'overdue' };
   if (due === today) return { label: 'Vandaag', cls: 'today' };
   const d = new Date(due);
@@ -10916,7 +12246,7 @@ function exportCSV() {
     .then(r => {
       if (r.status === 401) { handleAuthExpired && handleAuthExpired(); throw new Error('Sessie verlopen'); }
       if (!r.ok) throw new Error('Export mislukt');
-      const ts = new Date().toISOString().slice(0, 10);
+      const ts = lokaleDatum(new Date());
       const cd = r.headers.get('Content-Disposition') || '';
       const m  = cd.match(/filename="([^"]+)"/);
       return r.blob().then(blob => ({ blob, fname: (m && m[1]) || ('helvaro-leads-' + ts + '.csv') }));
@@ -10944,13 +12274,49 @@ function exportCSV() {
 // populated across page reloads even when Airtable is temporarily rate-limited.
 const LS_LEADS_KEY = 'hvk_leads_cache';
 const LS_LEADS_TTL = 24 * 60 * 60 * 1000; // 24 hours
-function saveLeadsToLS(leads, stats) {
-  try { localStorage.setItem(LS_LEADS_KEY, JSON.stringify({ leads, stats, ts: Date.now() })); } catch {}
+// Whose cache this is. Not a secret — the project code is already stored in
+// plain localStorage for the session markers, and it rides in the Clerk JWT —
+// it is here purely as an identity check on read.
+function leadsCacheOwner() {
+  try {
+    return localStorage.getItem('hv-project') || localStorage.getItem('hv-client') || '';
+  } catch { return ''; }
 }
+
+function saveLeadsToLS(leads, stats) {
+  try {
+    localStorage.setItem(LS_LEADS_KEY, JSON.stringify({
+      leads, stats, ts: Date.now(), owner: leadsCacheOwner(),
+    }));
+  } catch {}
+}
+
+// Two guards, and the second one is the important one.
+//
+// This cache is served whenever the live read fails — and the read failing is
+// routine: api/leads.js returns rateLimited on an Airtable 429 and says in its
+// own comments that several polling tabs are enough to cause one. So the cache
+// is not an edge case, it is the fallback the dashboard reaches for regularly.
+//
+// It used to be keyed on nothing. Log out of one agency's account and into
+// another's on the same machine, hit a 429 on the first read, and the new
+// account's dashboard filled up with the previous tenant's leads: names, phone
+// numbers, AI summaries, conversation state. No server bug required.
+//
+// So: cache entries carry the tenant they were written for, and a mismatch is
+// discarded rather than shown. Entries written before this existed have no
+// owner and are discarded too — there is no way to tell whose they are.
 function loadLeadsFromLS() {
   try {
     const c = JSON.parse(localStorage.getItem(LS_LEADS_KEY) || '{}');
-    if (c.leads && c.leads.length > 0 && Date.now() - (c.ts || 0) < LS_LEADS_TTL) return c;
+    if (!c.leads || !c.leads.length) return null;
+    if (Date.now() - (c.ts || 0) >= LS_LEADS_TTL) return null;
+    const owner = leadsCacheOwner();
+    if (!c.owner || !owner || c.owner !== owner) {
+      localStorage.removeItem(LS_LEADS_KEY);
+      return null;
+    }
+    return c;
   } catch {}
   return null;
 }
@@ -10999,6 +12365,7 @@ async function refreshData(skipFetch = false) {
         state.calendlyUrl = data.client?.calendly || '';
         state.lastFetch   = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
+        hideCrmError();
       }
     }
     // When skipFetch=true, state is already populated by init(). go straight to render
@@ -11090,9 +12457,71 @@ async function refreshData(skipFetch = false) {
     const ts = document.getElementById('timestamp-info');
     if (ts) ts.textContent = 'Verbinding mislukt. Opnieuw proberen over 90s';
     console.warn('refreshData error:', err.message);
+    // Hier stond alleen die console.warn. Bij een 500, ongeldige JSON of een
+    // verbroken verbinding bleven alle KPI-tegels op "LADEN..." staan, zonder
+    // melding en zonder banner — niet te onderscheiden van een trage pagina.
+    // De gebruiker wacht, herlaadt, en concludeert dat het product stuk is.
+    showCrmError(err);
   } finally {
     if (btn) btn.classList.remove('spin');
   }
+}
+
+/* ── Zichtbaar maken dat er iets mis is ──────────────────────────────────────
+   Eén balk bovenaan de inhoud, met een knop die het echt opnieuw probeert.
+   Onderscheidt de twee gevallen die de gebruiker verschillend moet lezen:
+   "wij konden je CRM niet lezen" (jouw data is er wel) tegenover een gewone
+   verbindingsfout. Wat het NOOIT meer doet is een leeg dashboard tonen alsof
+   het account leeg is — zie de 503 in api/leads.js. */
+function showCrmError(err) {
+  const msg = String((err && err.message) || '');
+  const unavailable = /503|crm_unavailable/.test(msg);
+  let el = document.getElementById('crm-error-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'crm-error-banner';
+    el.className = 'crm-error-banner';
+    el.setAttribute('role', 'alert');
+    const host = document.querySelector('.page.active') || document.querySelector('.main-content');
+    if (!host) return;
+    host.insertBefore(el, host.firstChild);
+  }
+  el.innerHTML = '';
+
+  const text = document.createElement('div');
+  text.className = 'crm-error-text';
+  const strong = document.createElement('strong');
+  strong.textContent = unavailable
+    ? 'We konden je leads even niet ophalen.'
+    : 'Geen verbinding met Helvaro.';
+  const sub = document.createElement('span');
+  sub.textContent = unavailable
+    ? 'Je gegevens zijn niet weg — we konden ze nu alleen niet lezen. We proberen het vanzelf opnieuw.'
+    : 'Controleer je internetverbinding. We proberen het vanzelf opnieuw.';
+  text.appendChild(strong);
+  text.appendChild(sub);
+
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.className = 'crm-error-retry';
+  retry.textContent = 'Opnieuw proberen';
+  retry.addEventListener('click', function () {
+    retry.disabled = true;
+    retry.textContent = 'Bezig…';
+    refreshData().finally(function () {
+      retry.disabled = false;
+      retry.textContent = 'Opnieuw proberen';
+    });
+  });
+
+  el.appendChild(text);
+  el.appendChild(retry);
+  el.style.display = 'flex';
+}
+
+function hideCrmError() {
+  const el = document.getElementById('crm-error-banner');
+  if (el) el.style.display = 'none';
 }
 
 /* ============================================================
@@ -11203,10 +12632,14 @@ function renderChart() {
   // colour — the single cheapest thing that stops a chart looking like a
   // default library render.
   const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+  // The canvas has no height attribute (the .chart-canvas-wrap sizes it), so
+  // canvas.height is Chart.js-managed and can still be the 150px default at
+  // first paint. Measure the wrapper instead, and fall back to its CSS height.
+  const gradH = (canvas.parentElement && canvas.parentElement.clientHeight) || canvas.clientHeight || 220;
+  const grad = ctx.createLinearGradient(0, 0, 0, gradH);
   grad.addColorStop(0, 'rgba(79,124,255,0.95)');
   grad.addColorStop(1, 'rgba(79,124,255,0.35)');
-  const gradHover = ctx.createLinearGradient(0, 0, 0, canvas.height || 240);
+  const gradHover = ctx.createLinearGradient(0, 0, 0, gradH);
   gradHover.addColorStop(0, 'rgba(79,124,255,1)');
   gradHover.addColorStop(1, 'rgba(6,182,212,0.55)');
 
@@ -11298,6 +12731,10 @@ function renderBronChart() {
     },
     options: {
       responsive: true,
+      // The .chart-canvas-wrap parent is fixed-height, so let the doughnut fill
+      // it rather than deriving its own height from the width — with the
+      // wrapper forcing height:100% the two sizing models fight otherwise.
+      maintainAspectRatio: false,
       cutout: '65%',
       plugins: {
         legend: {
@@ -11337,13 +12774,13 @@ async function loadAdminClients() {
         <div class="admin-card-code">\${escHtml(c.projectCode)}</div>
         <div class="admin-card-stats">
           <div class="admin-stat"><div class="admin-stat-val">\${c.totalLeads}</div><div class="admin-stat-lbl">Leads</div></div>
-          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--red)">\${c.newLeads}</div><div class="admin-stat-lbl">Nieuw</div></div>
-          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--green)">\${c.qualified}</div><div class="admin-stat-lbl">Gekwal.</div></div>
+          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--red-ink)">\${c.newLeads}</div><div class="admin-stat-lbl">Nieuw</div></div>
+          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--green-ink)">\${c.qualified}</div><div class="admin-stat-lbl">Gekwal.</div></div>
         </div>
       </div>
     \`).join('');
   } catch (err) {
-    grid.innerHTML = \`<div style="color:var(--red);font-size:14px">\${escHtml(err.message)}</div>\`;
+    grid.innerHTML = \`<div style="color:var(--red-ink);font-size:14px">\${escHtml(err.message)}</div>\`;
   }
 }
 
@@ -11418,7 +12855,7 @@ async function sendClientInvite() {
   // en lowercase. Een geldig e-mailadres bevat nooit spaties, dus dit is veilig.
   const email = (document.getElementById('nc-inv-email').value || '')
     .replace(/[​-‍﻿ ]/g, '')
-    .replace(/\s+/g, '')
+    .replace(/\\s+/g, '')
     .toLowerCase();
   const name  = document.getElementById('nc-inv-name').value.trim();
   const errEl = document.getElementById('nc-inv-error');
@@ -11665,7 +13102,7 @@ function renderStats() {
     const d = a - b;
     if (d === 0) return '<span style="color:var(--text-muted);font-size:11px">— zelfde</span>';
     const arrow = d > 0 ? '↑' : '↓';
-    const col = d > 0 ? 'var(--green)' : 'var(--red)';
+    const col = d > 0 ? 'var(--green-ink)' : 'var(--red-ink)';
     return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${Math.abs(d)} vs vorige week</span>\`;
   };
 
@@ -11717,8 +13154,8 @@ function renderStats() {
     },
     {
       label: 'Gem. Reactie',
-      value: s.avgResponseTime || 0,
-      suffix: 'u',
+      value: fmtDuration(s.avgResponseTime || 0).value,
+      suffix: fmtDuration(s.avgResponseTime || 0).suffix,
       desc: 'Gemiddelde reactietijd',
       color: '',
       fill: 60,
@@ -11843,6 +13280,7 @@ function renderResultaten(d) {
         </div>
         <div class="empty-title">Nog geen resultaten</div>
         <div class="empty-desc">Zodra Helvaro leads voor je kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
+        \${emptyStateCta()}
       </div>
     \`;
     return;
@@ -12420,17 +13858,97 @@ function scorePill(score) {
 function scoreBar(score) {
   if (score == null || score === '') return '<span style="color:var(--text-muted)">—</span>';
   const n = parseInt(score) || 0;
-  const color = n >= 8 ? 'var(--success)' : n >= 5 ? 'var(--warning)' : 'var(--error)';
+  /* Twee tokens, geen een. --success/--warning/--error zijn VULkleuren: prima
+     voor het balkje, maar als tekst op de donkere kaart haalde het cijfer
+     3,25:1 (rood #DC2626 op rgb(35,35,35)). De *-ink varianten zijn dezelfde
+     kleur, afgestemd om als letter te lezen. Dit is de regel uit CLAUDE.md:
+     meet tegen het oppervlak waar de tekst ECHT op staat. */
+  const barColor = n >= 8 ? 'var(--success)'   : n >= 5 ? 'var(--warning)'      : 'var(--error)';
+  const inkColor = n >= 8 ? 'var(--green-ink)' : n >= 5 ? 'var(--warning-ink)'  : 'var(--red-ink)';
   const pct = Math.round(n / 10 * 100);
   return \`<div style="display:flex;align-items:center;gap:6px">
     <div style="width:40px;height:5px;background:var(--bg-card-alt);border-radius:3px;overflow:hidden">
-      <div style="width:\${pct}%;height:100%;background:\${color};border-radius:3px"></div>
+      <div style="width:\${pct}%;height:100%;background:\${barColor};border-radius:3px"></div>
     </div>
-    <span style="font-size:12px;font-weight:700;color:\${color};font-variant-numeric: tabular-nums;">\${n}</span>
+    <span style="font-size:12px;font-weight:700;color:\${inkColor};font-variant-numeric: tabular-nums;">\${n}</span>
   </div>\`;
 }
 
+/* ── Alles wat klikbaar is, moet ook met het toetsenbord kunnen ──────────────
+   Zes elementen droegen een onclick op een <div> of <td>: de opvolgrij, de
+   top-lead-chip, de pipelinekaart, de belrij in de kalender en de recente-lead
+   rij op het profiel. Met de muis werkten ze, met het toetsenbord bestonden ze
+   niet — je kon er niet eens naartoe tabben.
+
+   Eén pas over de actieve pagina zet tabindex en role, en één gedelegeerde
+   handler op document laat Enter en spatie hetzelfde doen als een klik. Dat
+   dekt ook alles wat later wordt toegevoegd, zonder dat elke render eraan hoeft
+   te denken.
+
+   Kanttekening die eerlijk in de code hoort: een paar van deze rijen bevatten
+   zelf al een knop (bijvoorbeeld "Kopieer"). Een knop in een knop is niet ideaal
+   voor een schermlezer. Onbereikbaar is slechter, en die binnenste knoppen
+   stoppen hun eigen event al, dus dit is de betere van twee onvolmaakte opties.
+   De echte oplossing is die rijen herbouwen met de knop ernaast in plaats van
+   erin. */
+function hvMakeActivatable(root) {
+  const scope = root || document.querySelector('.page.active') || document;
+  scope.querySelectorAll('[onclick]').forEach(function (el) {
+    const t = el.tagName;
+    if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+    if (el.hasAttribute('tabindex')) return;
+    el.setAttribute('tabindex', '0');
+    if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+  });
+}
+
+let _activatableBound = false;
+function bindActivatable() {
+  if (_activatableBound) return;
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = e.target;
+    if (!el || !el.matches) return;
+    if (!el.matches('[role="button"][tabindex="0"]')) return;
+    const t = el.tagName;
+    if (t === 'BUTTON' || t === 'A') return;   // die doen dit zelf al
+    e.preventDefault();
+    el.click();
+  }, true);
+  _activatableBound = true;
+}
+
+/* Rijen waren alleen met de muis te openen: de klik zat op de <tr> en die is
+   niet focusbaar, dus met het toetsenbord kwam je nergens. De rij krijgt nu
+   tabindex en role, en deze ene handler op de tbody laat Enter en spatie
+   hetzelfde doen als een klik. Eén handler op de container in plaats van een
+   per rij, zodat opnieuw renderen hem niet kwijtraakt. */
+let _rowKeysBound = false;
+function bindRowKeys() {
+  if (_rowKeysBound) return;
+  const tbody = document.getElementById('leads-tbody');
+  if (!tbody) return;
+  tbody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const tr = e.target.closest && e.target.closest('tr[data-id]');
+    if (!tr || !tbody.contains(tr)) return;
+    // Niet kapen wat binnen de rij zelf al een knop of link is.
+    if (e.target !== tr) return;
+    e.preventDefault();
+    const lead = (state.leads || []).find((x) => String(x.id) === tr.dataset.id);
+    if (!lead) return;
+    // Hier weten we zeker WELKE rij het was. Dat afleiden binnen openPanel()
+    // ging mis omdat het paneel ook via de onclick op de <td> geopend kan
+    // worden, en dan wijst document.activeElement ergens anders heen.
+    _panelReturnTo = tr.dataset.id;
+    openPanel(lead);
+  });
+  _rowKeysBound = true;
+}
+
 function renderTable() {
+  bindRowKeys();
+  setTimeout(hvMakeActivatable, 0);
   const tbody = document.getElementById('leads-tbody');
   if (!tbody) return;
 
@@ -12443,11 +13961,11 @@ function renderTable() {
         <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
         <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Je AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
         </div>
-        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent)">${SUPPORT_EMAIL_ATTR}</a></div>
+        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
       </div>
     </td></tr>\`;
     return;
@@ -12466,8 +13984,8 @@ function renderTable() {
               }
             </div>
             <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
-            <div class="empty-desc">\${hasFilters ? 'Pas je filters aan of reset ze.' : 'Er zijn nog geen leads in het systeem.'}</div>
-            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : ''}
+            <div class="empty-desc">\${hasFilters ? 'Pas je filters aan of reset ze.' : 'Deel je formulierlink en de eerste aanvraag komt vanzelf binnen.'}</div>
+            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : emptyStateCta()}
           </div>
         </td>
       </tr>
@@ -12490,7 +14008,8 @@ function renderTable() {
     const waLink = waPhone ? 'https://wa.me/' + waPhone : '#';
     const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     return \`
-      <tr data-id="\${lead.id}" \${delay}>
+      <tr data-id="\${lead.id}" \${delay} tabindex="0" role="button"
+          aria-label="Open lead \${escHtml(lead.naam) || 'zonder naam'}">
         <td class="td-naam">\${escHtml(lead.naam) || '—'}\${ageBadge}</td>
         <td>
           <div class="td-phone">
@@ -12506,7 +14025,7 @@ function renderTable() {
         <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
         <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
         <td>\${scoreBar(lead.leadScore)}</td>
-        <td>\${lead.opgepikt ? '<span style="color:var(--green);display:inline-flex" title="Opgepikt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td>\${lead.opgepikt ? '<span style="color:var(--green-ink);display:inline-flex" title="Opgepikt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
         <td class="td-arrow">›</td>
         <td onclick="event.stopPropagation()">
@@ -12568,6 +14087,25 @@ document.querySelectorAll('th.sortable').forEach(th => {
    ============================================================ */
 function openPanel(lead) {
   state.activeLead = lead;
+  // Onthouden waar we vandaan kwamen, zodat sluiten de focus teruggeeft aan de
+  // rij die het paneel opende in plaats van hem in het niets te laten vallen.
+  // Het ELEMENT onthouden is niet genoeg: de leadtabel wordt opnieuw
+  // opgebouwd (refreshData, hvMakeActivatable), en dan bestaat de rij waar je
+  // vandaan kwam niet meer als hetzelfde knooppunt. De focus viel daardoor
+  // terug naar body. Dus ook de lead-id bewaren en de rij terugzoeken.
+  //
+  // En alleen als het paneel nog NIET open staat. openPanel() wordt bij een
+  // toetsenbordactie twee keer aangeroepen — door de rij-handler en door de
+  // gedelegeerde [role=button]-handler — en bij die tweede keer stond de focus
+  // al binnen het paneel. Zo werd de SLUITKNOP opgeslagen als "waar we vandaan
+  // kwamen", en gaf sluiten de focus terug aan de knop die net verdween. Dat
+  // is waarom de focus nergens heen leek te gaan: hij ging terug naar waar hij
+  // al stond, en er vuurde dus ook geen focusin.
+  if (!document.getElementById('detail-panel').classList.contains('visible')) {
+    _panelLastFocus = document.activeElement;
+    _panelLastFocusId = _panelReturnTo;
+  }
+  _panelReturnTo = null;
 
   // Avatar
   const avatar = document.getElementById('panel-avatar');
@@ -13112,12 +14650,72 @@ function openPanel(lead) {
   // Show panel
   document.getElementById('panel-backdrop').classList.add('visible');
   document.getElementById('detail-panel').classList.add('visible');
+  _panelActivate();
 }
 
 function closePanel() {
   document.getElementById('panel-backdrop').classList.remove('visible');
   document.getElementById('detail-panel').classList.remove('visible');
   state.activeLead = null;
+  document.removeEventListener('keydown', _panelTrap, true);
+  const wasFocus = _panelLastFocus;
+  const wasId = _panelLastFocusId;
+  _panelLastFocus = null;
+  _panelLastFocusId = null;
+  // In een rAF, niet meteen. Het paneel verliest zijn .visible-klasse in
+  // dezelfde tik; focus zetten vóór die stijlwijziging is verwerkt liet de
+  // focus gewoon op de sluitknop staan — gemeten, niet vermoed.
+  setTimeout(function () {
+    let back = (wasFocus && document.contains(wasFocus)) ? wasFocus : null;
+    if (!back && wasId) back = document.querySelector('tr[data-id="' + CSS.escape(wasId) + '"]');
+    if (!back || back.offsetParent === null) return;
+    back.focus();
+    // Eén keer opnieuw als het niet pakte. De sluitanimatie van het paneel kan
+    // de focus terugtrekken; dit is gemeten gedrag, niet voorzorg.
+    if (document.activeElement !== back) setTimeout(function () { try { back.focus(); } catch (e) {} }, 120);
+  }, 0);
+}
+
+/* ── Focus in het leadpaneel ─────────────────────────────────────────────────
+   Het paneel schoof open over de pagina heen, maar de focus bleef achter op de
+   knop waar je vandaan kwam. Tien keer Tab bleef ERBUITEN, door inhoud die het
+   scherm al bedekte. Escape sloot het wel, en liet de focus dan achter op wat
+   het tabben toevallig bereikt had.
+
+   Dit is de standaardafspraak voor een dialoog: focus gaat erin, blijft erin
+   zolang hij open staat, en gaat terug naar de opener bij sluiten. */
+var _panelLastFocus = null;
+var _panelLastFocusId = null;
+var _panelReturnTo = null;
+
+function _panelFocusables() {
+  const panel = document.getElementById('detail-panel');
+  if (!panel) return [];
+  return [...panel.querySelectorAll(
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter((el) => el.offsetParent !== null);
+}
+
+function _panelTrap(e) {
+  if (e.key !== 'Tab') return;
+  const panel = document.getElementById('detail-panel');
+  if (!panel || !panel.classList.contains('visible')) return;
+  const items = _panelFocusables();
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (e.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+    e.preventDefault(); last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault(); first.focus();
+  }
+}
+
+function _panelActivate() {
+  document.addEventListener('keydown', _panelTrap, true);
+  const items = _panelFocusables();
+  const target = document.getElementById('panel-close') || items[0] || document.getElementById('detail-panel');
+  if (target) { try { target.focus(); } catch (e) {} }
 }
 
 // ── Send a manual WhatsApp reply from the lead panel ─────────────────────────
@@ -13309,7 +14907,7 @@ function renderNietBereikbaar() {
     // read lead.fields[...], which is always undefined on these mapped
     // lead objects and silently produced "(onbekend)"/no phone every time.
     const name     = lead.naam || '(onbekend)';
-    const rawPhone = (lead.telefoon || '').replace(/\D/g, '');
+    const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
     const telHref  = rawPhone ? 'tel:+' + rawPhone : '#';
     const dateStr  = lead.datum ? new Date(lead.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) : '';
     const isEscalated = data.escalated && typeof data.escalated === 'object';
@@ -13335,7 +14933,7 @@ function renderTakenWidget() {
   const countEl = document.getElementById('taken-widget-count');
   if (!widget || !listEl) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   const items = [];
   (state.leads || []).forEach(lead => {
     const data = parseNotities(lead);
@@ -13452,7 +15050,7 @@ function openCalEvent(idx) {
             Gekomen
             <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',true)">Bewerken</span>
           </div>
-          \${gesloten ? \`<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px;">Deal: \${escHtml(gesloten)}</div>\` : ''}
+          \${gesloten ? \`<div style="font-size:12px;color: var(--green-ink);font-weight:600;margin-top:6px;">Deal: \${escHtml(gesloten)}</div>\` : ''}
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
         </div>\`;
       } else if (v === false) {
@@ -13655,7 +15253,7 @@ function openCalBookModal(dateStr, prefillLead) {
 
   // Set initial state. Je kan geen afspraak in het verleden boeken, dus snap
   // een datum die al voorbij is naar vandaag.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   let initialDate = dateStr || today;
   if (initialDate < today) initialDate = today;
   calBookState.date         = initialDate;
@@ -13796,6 +15394,26 @@ function renderCalBookBody() {
     leadHtml + confirmHtml;
 }
 
+/* Een datum als YYYY-MM-DD in de LOKALE tijdzone.
+
+   Waarom niet toISOString(): die zet om naar UTC. Een Date op lokale
+   middernacht in Brussel (UTC+1/+2) wordt in UTC de VORIGE dag, dus
+   new Date van 21 augustus middernacht levert via toISOString de datum
+   2026-08-20 op. Elke kolomknop in de kalender gaf daardoor de dag ervoor door
+   aan het boekvenster: klikte je op vrijdag, dan boekte je donderdag. En bij
+   'vandaag' viel het niet op, want die datum werd verderop toch naar vandaag
+   gesnapt -- wat het juist gevaarlijker maakte.
+
+   Een kalenderdatum is een LOKAAL begrip. Deze functie is de enige plek waar
+   hij gemaakt wordt. */
+function lokaleDatum(d) {
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return dt.getFullYear() + '-'
+       + String(dt.getMonth() + 1).padStart(2, '0') + '-'
+       + String(dt.getDate()).padStart(2, '0');
+}
+
 // Parse een werkuren-string ('ma-vr 9-18', 'mon-sat 8-20', '9-18') naar
 // { startHour, endHour }. Pakt het LAATSTE getal-streepje-getal paar (de
 // uren komen na de dagen, die ook een streepje hebben). null = onbekend.
@@ -13850,6 +15468,24 @@ async function fetchCalSlots() {
       const durMin = parseInt(f['Duration']) || 30;
       return { start: start.getTime(), end: start.getTime() + durMin*60*1000 };
     });
+
+    /* OOK de echte Google-agenda van de klant, niet alleen wat Helvaro zelf
+       geboekt heeft. Zonder dit bood dit venster een tijdstip aan als vrij
+       terwijl er op HETZELFDE scherm, in het raster erachter, een afspraak van
+       de klant stond: het raster voegt externalEvents wel samen, deze lijst
+       deed dat niet. Een slot tonen als vrij dat de agenda niet bevestigt is
+       precies wat hier nooit mag gebeuren -- de makelaar boekt dan over zijn
+       eigen vergadering heen.
+
+       Dagvullende items tellen niet mee: die zouden elke dag volledig dicht
+       zetten, terwijl "verlof" of een verjaardag geen bezet halfuur is. */
+    for (const e of (data.externalEvents || [])) {
+      if (e.allDay) continue;
+      const st = new Date(e.start).getTime();
+      if (!isFinite(st)) continue;
+      const en = e.end ? new Date(e.end).getTime() : st + 30*60*1000;
+      existing.push({ start: st, end: isFinite(en) ? en : st + 30*60*1000 });
+    }
 
     // 2. Genereer kandidaat-slots binnen de werkuren van de klant.
     //    state.workHours = { startHour, endHour } afgeleid uit klantconfig,
@@ -13935,9 +15571,9 @@ async function calBookConfirm() {
 function calBookNavDate(delta) {
   const d = new Date(calBookState.date + 'T12:00:00');
   d.setDate(d.getDate() + delta);
-  const newDate = d.toISOString().slice(0, 10);
+  const newDate = lokaleDatum(d);
   // Niet terug in het verleden navigeren.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   if (newDate < today) return;
   calBookState.date         = newDate;
   calBookState.selectedSlot = null;
@@ -14015,7 +15651,7 @@ function renderCalSidebar() {
     const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0,2).toUpperCase() || 'HV';
     const phone    = l.telefoon || '';
     const score    = l.leadScore || '';
-    const rawPhone = phone.replace(/\D/g,'');
+    const rawPhone = phone.replace(/\\D/g,'');
     const waPhone  = rawPhone.startsWith('0') ? '32' + rawPhone.slice(1) : rawPhone;
     const waLink   = \`https://wa.me/\${waPhone}?text=\${encodeURIComponent('Hallo ' + name + ', ik wilde graag een afspraak inplannen. Wanneer schikt het u?')}\`;
     const idStr    = escHtml(String(l.id));
@@ -14031,7 +15667,7 @@ function renderCalSidebar() {
       <div class="cal-call-actions">
         \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">Bellen</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">WA</a>\` : ''}
-        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(new Date().toISOString().slice(0,10),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
+        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(lokaleDatum(new Date()),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
       </div>
     </div>\`;
   }).join('');
@@ -14039,11 +15675,11 @@ function renderCalSidebar() {
 
 /* ── Attendance tracking ─────────────────────────────────────── */
 function matchLeadToEvent(evName) {
-  const n = (evName || '').toLowerCase().replace(/\s+/g,' ').trim();
+  const n = (evName || '').toLowerCase().replace(/\\s+/g,' ').trim();
   if (!n) return null;
   const leads = state.leads || [];
   // Exact match first
-  let found = leads.find(l => (l.naam||'').toLowerCase().replace(/\s+/g,' ').trim() === n);
+  let found = leads.find(l => (l.naam||'').toLowerCase().replace(/\\s+/g,' ').trim() === n);
   if (found) return found;
   // Partial: every word of event name appears in lead name (or vice versa)
   const evWords = n.split(' ').filter(w => w.length > 2);
@@ -14223,8 +15859,18 @@ async function renderCalendar() {
   if (timeLabels) {
     timeLabels.innerHTML = Array.from({ length: CAL_HOURS }, (_, i) => {
       const h   = CAL_START_HOUR + i;
-      const lbl = h < 12 ? h + ':00' : (h === 12 ? '12:00' : (h - 12) + ':00');
-      const halfLbl = h < 11 ? (h) + ':30' : (h === 11 ? '11:30' : (h === 12 ? '12:30' : (h - 12) + ':30'));
+      // 24-uurs, zoals de rest van de app (die toLocaleTimeString('nl-BE')
+      // gebruikt). Hier stond een 12-uursnotatie ZONDER am/pm, dus 13:00 tot
+      // 20:00 lazen als 1:00 tot 8:00 en "8:00" kwam twee keer voor in dezelfde
+      // dagkolom. Een makelaar kan dan niet zien of een bezichtiging 's ochtends
+      // of 's avonds is.
+      // Beide labels 24-uurs. Het halfuur-label bleef bij de vorige fix staan
+      // op de oude 12-uurslogica, dus de kolom toonde "13:00" met daaronder
+      // "1:30", en 20:30 kreeg exact dezelfde tekst als 08:30 -- twee keer
+      // "8:30" in dezelfde dagkolom, in een agenda waarin je bezichtigingen
+      // boekt. Dat is dezelfde fout als hierboven beschreven, een regel lager.
+      const lbl     = String(h).padStart(2, '0') + ':00';
+      const halfLbl = String(h).padStart(2, '0') + ':30';
       return \`<div class="cal-time-label">\${lbl}<span class="cal-time-label-half">\${halfLbl}</span></div>\`;
     }).join('');
   }
@@ -14248,7 +15894,7 @@ async function renderCalendar() {
       const isToday   = d.getTime() === today.getTime();
       const dow       = d.getDay();
       const isWeekend = dow === 0 || dow === 6;
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = lokaleDatum(d);
       const rows = Array.from({ length: CAL_HOURS }, (_, hIdx) => {
         const h = CAL_START_HOUR + hIdx;
         return \`<div class="cal-hour-row"><button class="cal-hour-add" onclick="bookSlot('\${dateStr}',\${h})" title="Boek afspraak \${h}:00">+</button></div>\`;
@@ -14343,7 +15989,7 @@ async function renderCalendar() {
   renderCols([]);
 
   // Fetch real events from Calendly API
-  const weekKey = ws.toISOString().slice(0, 10);
+  const weekKey = lokaleDatum(ws);
   if (calState.cache[weekKey]) return renderCols(calState.cache[weekKey]);
 
   try {
@@ -14435,8 +16081,12 @@ function renderProfile() {
   const pfCal    = document.getElementById('pf-calendly');
   if (statusEl) {
     statusEl.textContent = 'Actief';
-    statusEl.style.background = 'rgba(16,185,129,0.15)';
-    statusEl.style.color = 'var(--success)';
+    // De achtergrond stond hier hardgecodeerd op een groen dat NIET in de
+    // tokens voorkomt (#10B981), en de tekst op de vulkleur. Op de lichte
+    // kaart gaf dat 2,87:1. Beide nu op de tokens, zodat dit meebeweegt met
+    // het thema en de tekstwaarde de donkere variant pakt.
+    statusEl.style.background = 'rgba(var(--success-rgb),0.15)';
+    statusEl.style.color = 'var(--success-ink)';
   }
   if (btnEl)  btnEl.style.display  = 'none';   // connect-knop verbergen
   if (openEl) openEl.style.display = 'none';   // externe link verbergen
@@ -14473,7 +16123,7 @@ function renderProfile() {
             <div class="profile-recent-lead-name">\${escHtml(name)}</div>
             <div class="profile-recent-lead-meta">\${escHtml(bron || 'Onbekende bron')}</div>
           </div>
-          \${qual ? '<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color:var(--success);font-weight:700">&#10003; Gekw.</span>' : ''}
+          \${qual ? '<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);font-weight:700">&#10003; Gekw.</span>' : ''}
           <div class="profile-recent-lead-score">\${score}</div>
         </div>\`;
       }).join('');
@@ -14495,15 +16145,108 @@ function renderProfile() {
   }
 }
 
+/* ═══ Zijbalk ══════════════════════════════════════════════════════════════ */
+
+/* De twee admin-items werden vroeger meegestuurd in de HTML van iedereen en
+   daarna met display:none verborgen. Ze bestaan nu pas als de sessie ook echt
+   admin is, dus de back-office van Helvaro staat niet meer in de paginabron
+   van elke makelaar. */
+function mountAdminNav(isAdmin) {
+  const slot = document.getElementById('nav-admin-slot');
+  if (!slot) return;
+  if (!isAdmin) { slot.innerHTML = ''; return; }
+  if (slot.dataset.mounted === '1') return;
+  const items = [
+    { page: 'admin',   label: 'Klanten', path: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+    { page: 'founder', label: 'Founder', path: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' },
+  ];
+  const label = document.createElement('div');
+  label.className = 'nav-group-label';
+  label.setAttribute('aria-hidden', 'true');
+  label.textContent = 'Helvaro';
+  slot.appendChild(label);
+  items.forEach(function (it) {
+    const b = document.createElement('button');
+    b.className = 'nav-item';
+    b.id = 'nav-' + it.page;
+    b.dataset.page = it.page;
+    b.dataset.label = it.label;
+    b.innerHTML = '<span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + it.path + '</svg></span>' + it.label;
+    b.addEventListener('click', function () { navigateTo(it.page); });
+    slot.appendChild(b);
+  });
+  slot.dataset.mounted = '1';
+}
+
+/* Ingeklapt of niet, onthouden per browser. Losgetrokken van navigateTo zodat
+   het ook klopt op de eerste render, vóór er genavigeerd is. */
+function applySidebarCollapsed(on) {
+  document.body.classList.toggle('sidebar-collapsed', !!on);
+  const btn = document.getElementById('sidebar-collapse-btn');
+  if (btn) {
+    btn.setAttribute('aria-expanded', on ? 'false' : 'true');
+    btn.setAttribute('title', on ? 'Menu uitklappen' : 'Menu inklappen');
+  }
+  const sb = document.getElementById('sidebar');
+  if (sb) sb.setAttribute('aria-expanded', on ? 'false' : 'true');
+}
+
+function toggleSidebarCollapsed() {
+  const next = !document.body.classList.contains('sidebar-collapsed');
+  applySidebarCollapsed(next);
+  try { localStorage.setItem('hv-sidebar-collapsed', next ? '1' : '0'); } catch (e) {}
+}
+
+/* data-label voedt de tooltip die ingeklapt verschijnt. Uit de knop zelf
+   gelezen in plaats van een tweede lijst met namen die uit de pas gaat lopen. */
+function initSidebar() {
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(function (el) {
+    if (el.dataset.label) return;
+    const txt = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+    if (txt) el.dataset.label = txt;
+  });
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('hv-sidebar-collapsed') === '1'; } catch (e) {}
+  // Op een smal scherm schuift de zijbalk al helemaal weg via de hamburger;
+  // daar zou ingeklapt-onthouden alleen maar in de weg zitten.
+  if (window.innerWidth <= 768) collapsed = false;
+  applySidebarCollapsed(collapsed);
+}
+
+/* Reactietijd komt in SECONDEN binnen (Airtable: "Response Time (sec)").
+   Onder de minuut in seconden, daarboven in minuten, daarboven in uren — de
+   eenheid hoort bij de waarde en niet bij de kaart. */
+function fmtDuration(sec) {
+  const n = Number(sec) || 0;
+  if (n <= 0)   return { value: 0, suffix: 's' };
+  if (n < 90)   return { value: Math.round(n), suffix: 's' };
+  if (n < 5400) return { value: Math.round(n / 60), suffix: 'm' };
+  return { value: Math.round(n / 360) / 10, suffix: 'u' };
+}
+
 function navigateTo(page) {
   state.currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-  const pageEl = document.getElementById(\`page-\${page}\`);
-  const navEl = document.getElementById(\`nav-\${page}\`);
+  let pageEl = document.getElementById(\`page-\${page}\`);
+  let navEl = document.getElementById(\`nav-\${page}\`);
+
+  /* Bestaat de pagina niet, val terug op het dashboard.
+     Zonder dit haalt de regel hierboven overal .active weg en komt er niets
+     voor terug: een leeg scherm zonder foutmelding. Dat kan nu echt gebeuren,
+     want de back-officepagina's worden voor een klant niet meer uitgestuurd
+     (zie stripBackoffice) terwijl navigateTo('founder') nog aanroepbaar is. */
+  if (!pageEl) {
+    if (page !== 'dashboard') return navigateTo('dashboard');
+    return;
+  }
   if (pageEl) pageEl.classList.add('active');
   if (navEl) navEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function (n) { n.removeAttribute('aria-current'); });
+  if (navEl) navEl.setAttribute('aria-current', 'page');
+  bindActivatable();
+  setTimeout(hvMakeActivatable, 0);   // na de render van deze pagina
 
   const titles = {
     dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
@@ -14520,7 +16263,10 @@ function navigateTo(page) {
     founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
-    'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' }
+    'panden':     { title: 'Panden', sub: 'Je aanbod, en de link die je onder een advertentie zet' },
+    'facturatie': { title: 'Facturatie', sub: 'Je plan, je credits en waar ze heen gingen' },
+    'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
+    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
   };
 
   const t = titles[page] || { title: page, sub: '' };
@@ -14536,6 +16282,11 @@ function navigateTo(page) {
   if (btnExport)  btnExport.style.display  = isDash ? '' : 'none';
   if (tsInfo)     tsInfo.style.display     = isDash ? '' : 'none';
 
+  // The Command Center fetches once, on first visit. Its analysis is arithmetic
+  // over rows the dashboard already polls — re-running it because someone
+  // clicked back is spend without benefit. cmdLoad() guards re-entry itself.
+  if (page === 'command' && typeof cmdLoad === 'function') cmdLoad(false);
+
   // Load admin page on first visit
   if (page === 'admin' && !state.adminLoaded) {
     state.adminLoaded = true;
@@ -14549,6 +16300,8 @@ function navigateTo(page) {
   if (page === 'gesprekken')   renderGesprekken();
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
+  if (page === 'panden')       loadPanden();
+  if (page === 'facturatie')   loadFacturatie();
   if (page === 'ai-persona')   loadAiPersona();
   if (page === 'formulier')    loadFormulier();
   if (page === 'exports')      updateExportPreview();
@@ -14815,20 +16568,25 @@ async function startDashboard(skipRefresh = false) {
   document.getElementById('dashboard-app').classList.add('visible');
   requestNotificationPermission();
   initHelpWidget();
+  // FARO is the home page: it asks how it can help, and shows what happened
+  // underneath. navigateTo() below triggers the briefing's one data request;
+  // the CRM dashboard keeps loading in the background the way it always did,
+  // so switching to it is instant.
+  cmdInit();
+  // ...unless the user last chose CRM in the sidebar switch. A preference that
+  // silently resets on every reload is not a preference. Read straight from
+  // localStorage rather than through Faro, so this line still works when Faro
+  // is switched off and the key is simply absent.
+  var hvHome = 'faro';
+  try { if (localStorage.getItem('hv-mode') === 'crm') hvHome = 'dashboard'; } catch (e) {}
+  if (!document.getElementById('page-faro')) hvHome = 'dashboard';
+  navigateTo(hvHome);
 
   // Admin reveal. Sidebar's 'Klanten' (and Founder) tabs only show when the
   // user logged in with the ADMIN_KEY. We detect this from the session payload:
   // admin sessions have clientName='Admin' AND an empty projectCode.
   const isAdmin = (state.clientName === 'Admin') && !localStorage.getItem('hv-project');
-  const adminBtn   = document.getElementById('nav-admin');
-  const founderBtn = document.getElementById('nav-founder');
-  if (isAdmin) {
-    if (adminBtn)   adminBtn.style.display   = '';
-    if (founderBtn) founderBtn.style.display = '';
-  } else {
-    if (adminBtn)   adminBtn.style.display   = 'none';
-    if (founderBtn) founderBtn.style.display = 'none';
-  }
+  mountAdminNav(isAdmin);
 
   // Calendly OAuth was removed along with the integration itself — nothing
   // redirects with a ?calendly= param anymore (the live Google Calendar
@@ -15282,7 +17040,7 @@ function renderPipeline() {
       : null;
     summaryEl.innerHTML = \`<div class="pipeline-chip"><span>Totaal</span><span class="pipeline-chip-count">\${total}</span></div>\`
       + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('')
-      + (valueFormatted ? \`<div class="pipeline-chip"><span>Pipeline waarde</span><span class="pipeline-chip-count" style="color:var(--green)">\${valueFormatted}</span></div>\` : '');
+      + (valueFormatted ? \`<div class="pipeline-chip"><span>Pipeline waarde</span><span class="pipeline-chip-count" style="color:var(--green-ink)">\${valueFormatted}</span></div>\` : '');
   }
 }
 
@@ -15403,13 +17161,40 @@ function leadAgeClass(days) {
 /* ============================================================
    FEATURE 5: REVENUE GOAL
    ============================================================ */
+
+/* Een doel dat ergens op slaat zolang de klant er zelf geen heeft ingesteld.
+   Een vaste 5.000 was gegarandeerd fout: te laag voor elk vastgoedkantoor, dus
+   de balk stond altijd vol. Dit rondt de huidige pipeline naar boven af op een
+   heel getal dat als doel leesbaar is, zodat de balk iets zegt en niet meteen
+   op 100% staat. */
+function suggestRevenueGoal(current) {
+  const c = Number(current) || 0;
+  if (c <= 0) return 0;                       // niets te meten: kaart toont geen doel
+  const target = c * 1.25;                    // 25% boven waar je nu staat
+  const mag = Math.pow(10, Math.floor(Math.log10(target)));
+  return Math.max(mag, Math.ceil(target / (mag / 2)) * (mag / 2));
+}
+
 function renderRevenueGoal() {
-  const goal = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
+  // LET OP wat dit optelt: de verwachte waarde van GEKWALIFICEERDE leads. Dat
+  // is pipeline, geen omzet. De kaart heette "Omzet Doel" en meldde "76% van
+  // doel bereikt" -- bij een makelaar met elf leads las dat als "Helvaro heeft
+  // 4,5 miljoen voor je verdiend". CLAUDE.md is er kort over: pipeline is geen
+  // omzet. Het label zegt nu wat het getal is.
+  //
+  // Het standaarddoel stond op 5.000 — tegen een pipeline die bij een
+  // vastgoedkantoor al snel in de miljoenen loopt. De kaart meldde daardoor
+  // vanaf dag één "100% van doel bereikt", wat de kaart meteen betekenisloos
+  // maakt. Zonder eigen doel wordt er nu een schatting uit de eigen pipeline
+  // afgeleid, afgerond op een leesbaar bedrag, in plaats van een getal dat met
+  // niets te maken heeft.
+  const stored = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '');
   const current = (state.leads || []).reduce((sum, l) => {
     if (l.qualified || l.afspraakGeboekt) sum += parseDealValue(l.verwachteWaarde);
     return sum;
   }, 0);
-  const pct = Math.min(100, Math.round(current / goal * 100));
+  const goal = (Number.isFinite(stored) && stored > 0) ? stored : suggestRevenueGoal(current);
+  const pct = goal > 0 ? Math.min(100, Math.round(current / goal * 100)) : 0;
   const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
 
   const el = document.getElementById('revenue-goal-current');
@@ -15426,7 +17211,7 @@ function renderRevenueGoal() {
         ? 'var(--accent)'
         : 'var(--warning)';
   }
-  if (pctEl) pctEl.textContent = pct + '% van doel bereikt';
+  if (pctEl) pctEl.textContent = pct + '% van je pipelinedoel';
 }
 
 (function setupRevenueGoalEdit() {
@@ -15434,7 +17219,7 @@ function renderRevenueGoal() {
   if (!editBtn) return;
   editBtn.addEventListener('click', function() {
     const current = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
-    const input = prompt('Nieuw omzetdoel (€):', current);
+    const input = prompt('Nieuw pipelinedoel (€):', current);
     if (input === null) return;
     const val = parseFloat(input.replace(/[^0-9.]/g, ''));
     if (!isNaN(val) && val > 0) {
@@ -15487,7 +17272,7 @@ function renderAnalyse() {
       } else {
         const rate = Math.round(verschenenCount / trackedTotal * 100);
         showupEl.textContent = rate + '%';
-        showupEl.style.color = rate >= 70 ? 'var(--green)' : rate >= 40 ? 'var(--orange)' : 'var(--red)';
+        showupEl.style.color = rate >= 70 ? 'var(--green-ink)' : rate >= 40 ? 'var(--orange-ink)' : 'var(--red-ink)';
         if (showupSubEl) showupSubEl.textContent = verschenenCount + ' van ' + trackedTotal + ' geboekt';
       }
     }
@@ -15503,12 +17288,21 @@ function renderAnalyse() {
     if (gemSubEl) gemSubEl.textContent = leadsMetWaarde.length + ' deals met waarde';
 
     // Win rate
+    // Dit was 100 - verloren%, oftewel "nog niet verloren", en dat is geen win
+    // rate: een kantoor met 40 openstaande leads en nul gewonnen las 100%. Het
+    // deelt nu door wat er ECHT beslist is, en toont niets als er nog niets
+    // beslist is — een percentage van nul beslissingen bestaat niet.
     const verlorenCount = leads.filter(l => l.status === 'verloren').length;
-    const winRate = leads.length > 0 ? Math.round(100 - (verlorenCount / leads.length * 100)) : 100;
+    const gewonnenCount = leads.filter(l => l.afspraakGeboekt).length;
+    const beslist = verlorenCount + gewonnenCount;
+    const winRate = beslist > 0 ? Math.round((gewonnenCount / beslist) * 100) : null;
     const wrEl = document.getElementById('analyse-winrate-val');
-    if (wrEl) {
+    if (wrEl && winRate === null) {
+      wrEl.textContent = '—';
+      wrEl.style.color = 'var(--text-muted)';
+    } else if (wrEl) {
       wrEl.textContent = winRate + '%';
-      wrEl.style.color = winRate >= 70 ? 'var(--green)' : winRate >= 40 ? 'var(--orange)' : 'var(--red)';
+      wrEl.style.color = winRate >= 70 ? 'var(--green-ink)' : winRate >= 40 ? 'var(--orange-ink)' : 'var(--red-ink)';
     }
 
     // Verlies redenen top 3
@@ -15588,12 +17382,12 @@ function renderAnalyse() {
         <td style="text-align:center">\${avg}</td>
       </tr>\`;
     }).join('');
-    sourceEl.innerHTML = \`<table class="source-table">
+    sourceEl.innerHTML = \`<div class="table-scroll"><table class="source-table">
       <thead><tr>
         <th>Bron</th><th>Totaal</th><th>Gekwal.</th><th>Conversie</th><th>Gem. Score</th>
       </tr></thead>
       <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">Geen data</td></tr>\`}</tbody>
-    </table>\`;
+    </table></div>\`;
   }
 
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
@@ -15619,7 +17413,7 @@ function renderAnalyse() {
         labels: dayLabels,
         datasets: [{ label: 'Leads', data: dayCounts, backgroundColor: 'rgba(232,215,177,0.45)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
       },
-      options: { responsive: true, plugins: { legend: { display: false } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
       }
     });
@@ -15639,7 +17433,7 @@ function renderAnalyse() {
         labels: scoreLabels,
         datasets: [{ label: 'Leads', data: scoreCounts, backgroundColor: scoreColors, borderRadius: 5 }]
       },
-      options: { responsive: true, plugins: { legend: { display: false } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
       }
     });
@@ -15664,7 +17458,7 @@ function renderAnalyse() {
         labels: hourBuckets,
         datasets: [{ label: 'Leads', data: hourCounts, backgroundColor: 'rgba(232,215,177,0.4)', borderColor: '#E8D7B1', borderWidth: 1, borderRadius: 6 }]
       },
-      options: { responsive: true, plugins: { legend: { display: false } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, stepSize: 1 }, beginAtZero: true } }
       }
     });
@@ -15888,7 +17682,7 @@ const AP_TEMPLATES = [
   },
   {
     emoji: '', label: 'Voor vastgoed',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wil u er één verkopen?'
+    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wilt u er één verkopen?'
   },
   {
     emoji: '', label: 'Voor advocaten',
@@ -16692,7 +18486,7 @@ async function downloadPiComparePDF() {
     if (img.roomTypeLabel) meta.push('Ruimte: ' + img.roomTypeLabel);
     if (meta.length) doc.text(meta.join('   ·   '), 14, y);
 
-    doc.save('helvaro-vergelijking-' + (img.style || 'ai-beeld') + '-' + new Date().toISOString().slice(0, 10) + '.pdf');
+    doc.save('helvaro-vergelijking-' + (img.style || 'ai-beeld') + '-' + lokaleDatum(new Date()) + '.pdf');
   } catch (err) {
     console.error('[downloadPiComparePDF]', err);
     toast('PDF maken is mislukt. Download de afbeeldingen apart.', 'error');
@@ -16837,6 +18631,693 @@ function highlightActiveTemplate() {
     const match = AP_TEMPLATES[idx] && AP_TEMPLATES[idx].text === current;
     card.classList.toggle('active', !!match);
   });
+}
+
+/* ── Credits bijkopen ────────────────────────────────────────────────────────
+   Je kiest een BEDRAG en ziet meteen wat je krijgt, zoals bij een API-console.
+   Geen vaste pakketten: de ene makelaar heeft twee panden en de andere veertig.
+
+   Wat je krijgt wordt op de SERVER berekend. Zou de browser dat doen, dan is
+   het getal dat de klant ziet ook het getal dat hij kan aanpassen. */
+var koopState = { bedrag: 100, offerte: null, bezig: false, grenzen: null, staffel: null };
+var KOOP_PRESETS = [50, 100, 250, 500];
+
+function koopFmt(n) {
+  var x = Number(n);
+  return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
+}
+
+function openKoopModal() {
+  koopState.bedrag = 100;
+  document.getElementById('koop-bedrag').value = 100;
+  document.getElementById('koop-fout').style.display = 'none';
+  document.getElementById('koop-presets').innerHTML = KOOP_PRESETS.map(function (n) {
+    return '<button type="button" class="koop-preset" data-bedrag="' + n
+      + '" onclick="koopKiesPreset(' + n + ')">&euro; ' + n + '</button>';
+  }).join('');
+  document.getElementById('koop-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  koopHerbereken();
+}
+
+function closeKoopModal() {
+  document.getElementById('koop-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function koopKiesPreset(n) {
+  document.getElementById('koop-bedrag').value = n;
+  koopHerbereken();
+}
+
+/* Eén verzoek per rustpunt: bij elke toetsaanslag de server bevragen maakt van
+   een bedrag intypen tien verzoeken. */
+var _koopTimer = null;
+function koopHerbereken() {
+  clearTimeout(_koopTimer);
+  _koopTimer = setTimeout(koopOfferteOphalen, 220);
+
+  // De preset meteen markeren, zonder op de server te wachten.
+  var v = Number(document.getElementById('koop-bedrag').value) || 0;
+  [].forEach.call(document.querySelectorAll('.koop-preset'), function (b) {
+    b.classList.toggle('actief', Number(b.dataset.bedrag) === v);
+  });
+}
+
+async function koopOfferteOphalen() {
+  var bedrag = Number(document.getElementById('koop-bedrag').value) || 0;
+  koopState.bedrag = bedrag;
+  var credits = document.getElementById('koop-credits');
+  var detail  = document.getElementById('koop-detail');
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'credit-quote', amountEur: bedrag })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    koopState.offerte = d.offerte;
+    koopState.grenzen = d.grenzen;
+    koopState.staffel = d.staffel;
+  } catch (e) {
+    credits.textContent = '—';
+    detail.textContent = 'De prijs kon niet opgehaald worden.';
+    return;
+  }
+
+  var o = koopState.offerte || {};
+  var g = koopState.grenzen || {};
+  document.getElementById('koop-grenzen').textContent =
+    'Van \\u20AC ' + koopFmt(g.min) + ' tot \\u20AC ' + koopFmt(g.max) + '.';
+
+  if (!o.geldig) {
+    var redenen = {
+      te_laag: 'Minimaal \\u20AC ' + koopFmt(g.min) + '.',
+      te_hoog: 'Boven \\u20AC ' + koopFmt(g.max) + ' nemen we liever even contact op.',
+      geen_bedrag: 'Vul een bedrag in.',
+      geen_tarief: 'Bijkopen staat nog niet aan.'
+    };
+    credits.textContent = '—';
+    detail.textContent = redenen[o.reden] || 'Dat bedrag kan niet.';
+    document.getElementById('koop-staffel').innerHTML = '';
+    return;
+  }
+
+  credits.textContent = koopFmt(o.credits) + ' credits';
+  var stukken = [];
+  if (o.bonusCredits > 0) {
+    stukken.push(koopFmt(o.basisCredits) + ' + ' + koopFmt(o.bonusCredits) + ' bonus (' + o.bonusPct + '%)');
+  }
+  /* Nederlandse notatie: een komma, en twee tot drie cijfers. "0.5" leest
+     als een tikfout; "0,50" leest als een prijs. */
+  stukken.push('\\u20AC ' + o.perCredit.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' per credit');
+  /* Vertaald naar iets dat een makelaar herkent. Hij denkt in gesprekken, niet
+     in credits. */
+  stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
+  detail.textContent = stukken.join(' \\u00B7 ');
+
+  // De staffel, met de trede waar je nu in zit gemarkeerd.
+  var st = (koopState.staffel || []).slice().sort(function (a, b) { return a.vanafEur - b.vanafEur; });
+  document.getElementById('koop-staffel').innerHTML = st.filter(function (t) { return t.bonusPct > 0; })
+    .map(function (t) {
+      var actief = o.bonusPct === t.bonusPct;
+      return '<div class="koop-staffel-rij' + (actief ? ' actief' : '') + '">'
+        + '<span>Vanaf \\u20AC ' + koopFmt(t.vanafEur) + '</span>'
+        + '<span>+' + t.bonusPct + '% credits</span></div>';
+    }).join('');
+}
+
+async function koopAanvragen() {
+  var o = koopState.offerte;
+  var fout = document.getElementById('koop-fout');
+  var btn = document.getElementById('koop-btn');
+  if (!o || !o.geldig) {
+    fout.style.display = '';
+    fout.textContent = 'Kies eerst een geldig bedrag.';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  fout.style.display = 'none';
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'credit-purchase-request', amountEur: koopState.bedrag })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      fout.style.display = '';
+      fout.textContent = d.error || 'De aanvraag kon niet verstuurd worden.';
+      return;
+    }
+    closeKoopModal();
+    /* Eerlijk over wat er nu gebeurt. Er komen GEEN credits bij tot er betaald
+       is -- een saldo dat omhoog gaat voor de betaling is een verzonnen saldo. */
+    toast('Aanvraag verstuurd. Je krijgt een factuur; de credits staan er zodra die betaald is.', 'success');
+  } catch (e) {
+    fout.style.display = '';
+    fout.textContent = 'De aanvraag kon niet verstuurd worden. Controleer je verbinding.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Aanvragen';
+  }
+}
+
+/* ══ Facturatie ═══════════════════════════════════════════════════════════════
+   Wat je betaalt, wat je verbruikt hebt, en waar het heen ging.
+
+   Elk getal op deze pagina komt uit de eigen tenant: de teller in Client
+   Config en het grootboek in credit_transactions. Er wordt hier NIETS
+   uitgerekend dat niet ergens geboekt staat -- als het grootboek er niet is,
+   zegt de pagina dat, in plaats van een verdeling te verzinnen die klopt met
+   het totaal maar niet met de werkelijkheid.
+
+   Geen sjabloonliteralen hieronder: dit bestand is er zelf een. */
+var faState = { data: null };
+
+function faEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function faGetal(n) {
+  var x = Number(n);
+  return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
+}
+
+function faDatum(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  var mnd = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  return d.getDate() + ' ' + mnd[d.getMonth()];
+}
+
+/* Namen die een makelaar herkent. De sleutels komen uit api/_credits.js;
+   staat er iets nieuws bij, dan valt het terug op de sleutel zelf in plaats
+   van te verdwijnen. */
+var FA_NAMEN = {
+  whatsapp_conversation: 'Leadgesprekken via WhatsApp',
+  image_generation:      'Beelden genereren',
+  video_generation:      'Video genereren',
+  marketing_content:     'Marketingteksten',
+  reply_suggestion:      'Antwoordsuggesties',
+  weekly_learning:       'Wekelijkse analyse',
+  faro_chat:             'Vragen aan Faro',
+  property_import:       'Panden importeren uit een link'
+};
+var FA_TYPE_NAMEN = {
+  allocation: 'toewijzing', usage: 'verbruik', purchase: 'aankoop',
+  refund: 'terugbetaling', adjustment: 'correctie'
+};
+
+async function loadFacturatie() {
+  var notice = document.getElementById('fa-notice');
+  if (!notice) return;
+  document.getElementById('fa-plan-naam').textContent = 'Laden...';
+  document.getElementById('fa-verdeling').innerHTML = '';
+  document.getElementById('fa-boekingen').innerHTML = '';
+  notice.style.display = 'none';
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'billing-overview' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    faState.data = await r.json();
+  } catch (e) {
+    /* Een storing mag er niet uitzien als "je hebt geen plan". */
+    document.getElementById('fa-plan-naam').textContent = '—';
+    notice.style.display = '';
+    notice.innerHTML = 'Het facturatieoverzicht kon niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    return;
+  }
+  renderFacturatie();
+}
+
+function renderFacturatie() {
+  var d = faState.data || {};
+  var v = d.verbruik || {};
+  var plan = d.plan || {};
+  var gb = d.grootboek || {};
+
+  // ── Plan ──
+  var naam = document.getElementById('fa-plan-naam');
+  var sub  = document.getElementById('fa-plan-sub');
+  if (plan.status === 'trial') {
+    naam.textContent = 'Proefperiode';
+    sub.textContent = plan.daysLeft != null
+      ? (plan.daysLeft + ' ' + (plan.daysLeft === 1 ? 'dag' : 'dagen') + ' te gaan')
+      : 'Je proefperiode loopt.';
+  } else if (plan.status === 'expired') {
+    naam.textContent = 'Proefperiode voorbij';
+    sub.textContent = 'Neem contact op om verder te gaan.';
+  } else if (plan.status === 'active') {
+    naam.textContent = 'Actief';
+    sub.textContent = d.klantNaam ? ('Op naam van ' + d.klantNaam) : '';
+  } else {
+    naam.textContent = 'Actief';
+    sub.textContent = '';
+  }
+
+  // ── Saldo ──
+  var saldo = document.getElementById('fa-saldo');
+  var saldoSub = document.getElementById('fa-saldo-sub');
+  var balk = document.getElementById('fa-balk-vul');
+  if (v.active) {
+    saldo.textContent = faGetal(v.remaining) + ' over';
+    saldoSub.textContent = faGetal(v.used) + ' van ' + faGetal(v.allowance) + ' verbruikt'
+      + (v.daysLeft != null ? ' · nog ' + v.daysLeft + ' ' + (v.daysLeft === 1 ? 'dag' : 'dagen') + ' deze periode' : '');
+    var pct = Math.max(0, Math.min(100, Number(v.percentUsed) || 0));
+    balk.style.width = pct + '%';
+    balk.className = 'fa-balk-vul' + (pct >= 100 ? ' fa-op' : (pct >= 80 ? ' fa-bijna' : ''));
+  } else {
+    /* Geen limiet ingesteld is iets anders dan nul credits. Dat verschil moet
+       hier staan, anders belt een klant over een limiet die niet bestaat. */
+    saldo.textContent = 'Onbeperkt';
+    saldoSub.textContent = 'Er staat geen creditlimiet op dit account.';
+    balk.style.width = '0%';
+  }
+
+  // ── Waar het heen ging ──
+  var verdeling = document.getElementById('fa-verdeling');
+  var verdelingSub = document.getElementById('fa-verdeling-sub');
+  var perFeature = (gb.totalen && gb.totalen.perFeature) || null;
+
+  if (!gb.beschikbaar) {
+    verdelingSub.textContent = '';
+    verdeling.innerHTML = '<div class="fa-leeg">De geschiedenis staat nog niet aan. Zolang de tabel '
+      + '<code>credit_transactions</code> niet bestaat worden credits wel geteld, maar niet per stuk bewaard '
+      + '— dus kan hier niet staan waar ze heen gingen.</div>';
+  } else if (!perFeature || !Object.keys(perFeature).length) {
+    verdelingSub.textContent = 'Deze periode';
+    verdeling.innerHTML = '<div class="fa-leeg">Nog niets verbruikt deze periode.</div>';
+  } else {
+    var paren = Object.keys(perFeature).map(function (k) { return { k: k, n: perFeature[k] }; })
+      .sort(function (a, b) { return b.n - a.n; });
+    var hoogste = paren[0].n || 1;
+    verdelingSub.textContent = 'Deze periode · ' + faGetal(gb.totalen.verbruikt) + ' credits';
+    verdeling.innerHTML = paren.map(function (p) {
+      var breed = Math.max(2, Math.round((p.n / hoogste) * 100));
+      return '<div class="fa-rij"><div class="fa-rij-naam">'
+        + faEsc(FA_NAMEN[p.k] || p.k)
+        + '<div class="fa-mini-balk"><div class="fa-mini-vul" style="width:' + breed + '%"></div></div>'
+        + '</div><div class="fa-rij-bedrag">' + faGetal(p.n) + '</div></div>';
+    }).join('');
+  }
+
+  // ── Boekingen ──
+  var lijst = document.getElementById('fa-boekingen');
+  var lijstSub = document.getElementById('fa-boekingen-sub');
+  var boekingen = gb.boekingen || [];
+  if (!gb.beschikbaar) {
+    lijstSub.textContent = '';
+    lijst.innerHTML = '<div class="fa-leeg">Nog geen boekingen om te tonen.</div>';
+  } else if (!boekingen.length) {
+    lijstSub.textContent = 'Elke beweging, nieuwste eerst';
+    lijst.innerHTML = '<div class="fa-leeg">Nog geen boekingen deze periode.</div>';
+  } else {
+    lijstSub.textContent = boekingen.length + ' ' + (boekingen.length === 1 ? 'boeking' : 'boekingen')
+      + ' deze periode, nieuwste eerst';
+    lijst.innerHTML = boekingen.map(function (t) {
+      var plus = t.credits > 0;
+      var titel = t.type === 'usage'
+        ? (FA_NAMEN[t.feature] || t.feature || 'Verbruik')
+        : (FA_TYPE_NAMEN[t.type] || t.type);
+      titel = titel.charAt(0).toUpperCase() + titel.slice(1);
+      return '<div class="fa-rij">'
+        + '<div class="fa-rij-datum">' + faEsc(faDatum(t.aangemaakt)) + '</div>'
+        + '<div class="fa-rij-naam">' + faEsc(titel)
+        + (t.notitie ? '<div class="fa-rij-detail">' + faEsc(t.notitie) + '</div>' : '')
+        + '</div>'
+        + '<span class="fa-chip">' + faEsc(FA_TYPE_NAMEN[t.type] || t.type) + '</span>'
+        + '<div class="fa-rij-bedrag ' + (plus ? 'fa-plus' : 'fa-min') + '">'
+        + (plus ? '+' : '') + faGetal(t.credits) + '</div>'
+        + '</div>';
+    }).join('');
+  }
+}
+
+/* Credits bijkopen en van plan wisselen lopen nog niet via een betaalpagina.
+   Dat is bewust geen knop die niets doet: een mailtje dat aankomt is beter dan
+   een betaalscherm dat er is maar niet werkt. Zodra er een betaalprovider
+   hangt, vervangt die deze functie. */
+function facturatieContact(wat) {
+  var onderwerp = wat === 'credits' ? 'Credits bijkopen' : 'Plan wijzigen';
+  var klant = localStorage.getItem('hv-client') || '';
+  var body = 'Hallo,%0A%0AIk wil graag ' + (wat === 'credits' ? 'credits bijkopen' : 'mijn plan wijzigen')
+           + '.%0A%0AKlant: ' + encodeURIComponent(klant) + '%0A';
+  window.location.href = 'mailto:hello@helvaro.pro?subject=' + encodeURIComponent(onderwerp) + '&body=' + body;
+}
+
+/* ══ Panden ═══════════════════════════════════════════════════════════════════
+   Het aanbod van de makelaar. Elk pand krijgt een link (/start/CODE/PANDCODE)
+   die hij onder een advertentie zet; de lead die daaruit komt draagt de
+   pandcode mee tot in het WhatsApp-gesprek.
+
+   Let op de schrijfwijze hieronder: geen sjabloonliteralen. api/dashboard.js is
+   zelf een sjabloon van twintigduizend regels, en alles wat daarin op een
+   plaatshouder lijkt wordt bij het uitrollen ingevuld in plaats van
+   meegestuurd. Zie de kop van CLAUDE.md. */
+var pandState = { panden: [], beschikbaar: true, bewerkt: null };
+
+function pandEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function pandPrijs(n) {
+  if (n === null || n === undefined || !isFinite(Number(n))) return '';
+  return '\u20AC ' + Math.round(Number(n)).toLocaleString('nl-BE');
+}
+
+function pandLink(code) {
+  return 'https://app.helvaro.pro/start/' + encodeURIComponent(pandProject()) + '/' + encodeURIComponent(code);
+}
+
+function pandProject() {
+  return localStorage.getItem('hv-project') || localStorage.getItem('hv-client') || '';
+}
+
+async function loadPanden() {
+  var grid   = document.getElementById('pd-grid');
+  var leeg   = document.getElementById('pd-empty');
+  var notice = document.getElementById('pd-notice');
+  if (!grid) return;
+  grid.innerHTML = '<div class="pd-leads">Laden...</div>';
+  leeg.style.display = 'none';
+  notice.style.display = 'none';
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-list' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    pandState.panden = d.properties || [];
+    pandState.beschikbaar = d.available !== false;
+  } catch (e) {
+    /* Een storing mag er niet uitzien als "je hebt geen panden". Dat verschil
+       is precies wat een klant anders als datenverlies leest. */
+    grid.innerHTML = '';
+    notice.style.display = '';
+    notice.innerHTML = 'De panden konden niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    return;
+  }
+  renderPanden();
+}
+
+function renderPanden() {
+  var grid   = document.getElementById('pd-grid');
+  var leeg   = document.getElementById('pd-empty');
+  var notice = document.getElementById('pd-notice');
+  var telEl  = document.getElementById('pd-count');
+  if (!grid) return;
+
+  /* Drie toestanden, drie boodschappen. "De tabel bestaat nog niet" is iets
+     dat de eigenaar moet oplossen; "nog geen panden" lost de klant zelf op. */
+  if (!pandState.beschikbaar) {
+    grid.innerHTML = '';
+    leeg.style.display = 'none';
+    notice.style.display = '';
+    notice.innerHTML = '<strong>Panden staan nog uit.</strong> De tabel <code>properties</code> bestaat nog niet '
+      + 'in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets uitgerold hoeft te worden.';
+    telEl.textContent = '';
+    return;
+  }
+  notice.style.display = 'none';
+
+  if (!pandState.panden.length) {
+    grid.innerHTML = '';
+    leeg.style.display = '';
+    telEl.textContent = '';
+    return;
+  }
+  leeg.style.display = 'none';
+
+  var actief = pandState.panden.filter(function (p) { return p.status === 'beschikbaar' || p.status === 'onder bod'; });
+  telEl.textContent = pandState.panden.length + (pandState.panden.length === 1 ? ' pand' : ' panden')
+    + ', ' + actief.length + ' in aanbod';
+
+  /* Hoeveel leads per pand. Uit de leads die al geladen zijn -- geen extra
+     verzoek voor een getal dat we al hebben. */
+  var perPand = {};
+  (state.leads || []).forEach(function (l) {
+    var c = (l.property || '').toUpperCase();
+    if (!c) return;
+    perPand[c] = (perPand[c] || 0) + 1;
+  });
+
+  grid.innerHTML = pandState.panden.map(function (p) {
+    var statusKlasse = p.status === 'beschikbaar' ? 'pd-status--beschikbaar'
+                     : (p.status === 'onder bod' ? 'pd-status--bod' : 'pd-status--weg');
+    var feiten = [];
+    if (pandPrijs(p.prijs)) feiten.push('<span class="pd-feit pd-feit--prijs">' + pandEsc(pandPrijs(p.prijs)) + '</span>');
+    if (p.slaapkamers) feiten.push('<span class="pd-feit">' + p.slaapkamers + ' slk</span>');
+    if (p.oppervlakte) feiten.push('<span class="pd-feit">' + p.oppervlakte + ' m\u00B2</span>');
+    if (p.epc) feiten.push('<span class="pd-feit">EPC ' + pandEsc(p.epc) + '</span>');
+
+    var aantal = perPand[(p.code || '').toUpperCase()] || 0;
+    var foto = (p.fotos && p.fotos[0]) ? p.fotos[0] : '';
+
+    return '<div class="pd-card' + (p.gearchiveerd ? ' pd-card--archived' : '') + '">'
+      + (foto
+          ? '<img class="pd-card-foto" src="' + pandEsc(foto) + '" alt="' + pandEsc(p.adres) + '" onerror="this.style.display=&quot;none&quot;">'
+          : '<div class="pd-card-foto-leeg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>')
+      + '<div class="pd-card-body">'
+      +   '<div class="pd-card-top">'
+      +     '<div><div class="pd-card-adres">' + pandEsc(p.adres || 'Zonder adres') + '</div>'
+      +     (p.plaats || p.postcode ? '<div class="pd-card-plaats">' + pandEsc([p.postcode, p.plaats].filter(Boolean).join(' ')) + '</div>' : '')
+      +     '</div>'
+      +     '<span class="pd-card-code">' + pandEsc(p.code) + '</span>'
+      +   '</div>'
+      +   '<div class="pd-card-feiten">' + feiten.join('') + '<span class="pd-status ' + statusKlasse + '">' + pandEsc(p.status) + '</span></div>'
+      +   '<div class="pd-leads">' + (aantal ? '<strong>' + aantal + '</strong> ' + (aantal === 1 ? 'lead' : 'leads') : 'Nog geen leads') + '</div>'
+      +   '<div class="pd-link-row">'
+      +     '<div class="pd-link" title="' + pandEsc(pandLink(p.code)) + '">' + pandEsc(pandLink(p.code)) + '</div>'
+      +     '<button class="pd-mini" style="flex:0 0 auto" onclick="copyPandLink(&quot;' + pandEsc(p.code) + '&quot;)">Kopieer</button>'
+      +   '</div>'
+      +   '<div class="pd-card-acties">'
+      +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">Bewerken</button>'
+      +     '<button class="pd-mini" onclick="archivePand(&quot;' + pandEsc(p.code) + '&quot;, ' + (p.gearchiveerd ? 'false' : 'true') + ')">'
+      +       (p.gearchiveerd ? 'Terugzetten' : 'Archiveren') + '</button>'
+      +   '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function copyPandLink(code) {
+  var link = pandLink(code);
+  if (!navigator.clipboard) { toast('Kopieren lukt niet in deze browser', 'error'); return; }
+  navigator.clipboard.writeText(link)
+    .then(function () { toast('Link gekopieerd', 'success'); })
+    .catch(function () { toast('Kopieren mislukt', 'error'); });
+}
+
+/* Een pand uit een link halen. De velden worden INGEVULD, niet opgeslagen --
+   de makelaar kijkt ernaar en drukt daarna pas op opslaan. Wat leeg bleef
+   krijgt een rand, zodat hij ziet wat hij nog moet nakijken in plaats van een
+   formulier te moeten controleren dat er af uitziet. */
+var PD_IMPORT_VELDEN = ['adres','postcode','plaats','type','transactie','prijs',
+                        'slaapkamers','oppervlakte','epc','omschrijving'];
+
+function pdStatus(tekst, soort) {
+  var el = document.getElementById('pd-import-status');
+  if (!el) return;
+  if (!tekst) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = '';
+  el.className = 'pd-import-status pd-import-status--' + (soort || 'bezig');
+  el.textContent = tekst;
+}
+
+function pdMarkeerLeeg(lijst) {
+  PD_IMPORT_VELDEN.forEach(function (naam) {
+    var el = document.getElementById('pd-f-' + naam);
+    if (el) el.classList.remove('pd-input--leeg');
+  });
+  (lijst || []).forEach(function (naam) {
+    var el = document.getElementById('pd-f-' + naam);
+    if (el) el.classList.add('pd-input--leeg');
+  });
+}
+
+async function importeerPand() {
+  var link = (document.getElementById('pd-f-link').value || '').trim();
+  var btn  = document.getElementById('pd-import-btn');
+  if (!link) { pdStatus('Plak eerst een link.', 'fout'); return; }
+
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  pdStatus('De pagina wordt gelezen. Dit duurt een paar tellen.', 'bezig');
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-import', url: link })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      pdStatus(d.message || d.error || 'Die pagina kon niet gelezen worden.', 'fout');
+      return;
+    }
+
+    var c = d.concept || {};
+    var zet = function (id, v) {
+      var el = document.getElementById(id);
+      if (el && v !== null && v !== undefined && v !== '') el.value = v;
+    };
+    zet('pd-f-adres',        c.adres);
+    zet('pd-f-postcode',     c.postcode);
+    zet('pd-f-plaats',       c.plaats);
+    zet('pd-f-type',         c.type);
+    zet('pd-f-transactie',   c.transactie);
+    zet('pd-f-prijs',        c.prijs);
+    zet('pd-f-slaapkamers',  c.slaapkamers);
+    zet('pd-f-oppervlakte',  c.oppervlakte);
+    zet('pd-f-epc',          c.epc);
+    zet('pd-f-omschrijving', c.omschrijving);
+    zet('pd-f-status',       c.status);
+    /* De foto's komen van de pagina zelf, nooit van het model: een verzonnen
+       afbeeldings-URL wordt een gebroken plaatje op het formulier van een
+       echte klant. */
+    if (c.fotos && c.fotos.length) document.getElementById('pd-f-fotos').value = c.fotos.join('\\n');
+
+    pdMarkeerLeeg(d.ontbreekt);
+
+    var bron = '';
+    try { bron = new URL(d.bron || link).hostname.replace(/^www\./, ''); } catch (e) { bron = ''; }
+    var boodschap = 'Ingevuld' + (bron ? ' vanaf ' + bron : '') + '. Kijk de velden even na';
+    if (d.ontbreekt && d.ontbreekt.length) {
+      boodschap += ' — ' + d.ontbreekt.length + ' veld' + (d.ontbreekt.length === 1 ? '' : 'en')
+                 + ' stond' + (d.ontbreekt.length === 1 ? '' : 'en') + ' niet op de pagina';
+    }
+    pdStatus(boodschap + '.', 'ok');
+  } catch (e) {
+    pdStatus('Het lezen van die pagina lukte niet. Controleer je verbinding.', 'fout');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Ophalen';
+  }
+}
+
+function openPandModal(code) {
+  var pand = code ? pandState.panden.filter(function (p) { return p.code === code; })[0] : null;
+  pandState.bewerkt = pand || null;
+
+  document.getElementById('pd-modal-title').textContent = pand ? ('Pand ' + pand.code) : 'Pand toevoegen';
+  var zet = function (id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
+  zet('pd-f-code',        pand ? pand.code : '');
+  zet('pd-f-status',      pand ? pand.status : 'beschikbaar');
+  zet('pd-f-adres',       pand ? pand.adres : '');
+  zet('pd-f-postcode',    pand ? pand.postcode : '');
+  zet('pd-f-plaats',      pand ? pand.plaats : '');
+  zet('pd-f-type',        pand && pand.type ? pand.type : 'huis');
+  zet('pd-f-transactie',  pand && pand.transactie ? pand.transactie : 'te koop');
+  zet('pd-f-prijs',       pand && pand.prijs != null ? pand.prijs : '');
+  zet('pd-f-slaapkamers', pand && pand.slaapkamers != null ? pand.slaapkamers : '');
+  zet('pd-f-oppervlakte', pand && pand.oppervlakte != null ? pand.oppervlakte : '');
+  zet('pd-f-epc',         pand ? pand.epc : '');
+  zet('pd-f-omschrijving',pand ? pand.omschrijving : '');
+  zet('pd-f-fotos',       pand && pand.fotos ? pand.fotos.join('\\n') : '');
+  document.getElementById('pd-f-publiek').checked = pand ? pand.publiek !== false : true;
+  /* Een bestaande referentie ligt vast: hij staat in advertenties en op
+     bordjes. Hem hier laten wijzigen maakt van elke gedeelde link een
+     doodlopende weg. */
+  document.getElementById('pd-f-code').readOnly = !!pand;
+
+  document.getElementById('pd-f-link').value = '';
+  pdStatus('');
+  pdMarkeerLeeg([]);
+  document.getElementById('pd-modal-err').style.display = 'none';
+  document.getElementById('pd-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(function () {
+    var el = document.getElementById(pand ? 'pd-f-adres' : 'pd-f-adres');
+    if (el) el.focus();
+  }, 60);
+}
+
+function closePandModal() {
+  document.getElementById('pd-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  pandState.bewerkt = null;
+}
+
+async function savePand() {
+  var lees = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var getal = function (id) { var v = lees(id); return v === '' ? null : Number(v); };
+  var fout = document.getElementById('pd-modal-err');
+  var btn  = document.getElementById('pd-save-btn');
+
+  var adres = lees('pd-f-adres');
+  if (!adres) {
+    fout.style.display = '';
+    fout.textContent = 'Vul minstens een adres in.';
+    return;
+  }
+
+  var payload = {
+    code:         lees('pd-f-code'),
+    status:       lees('pd-f-status'),
+    adres:        adres,
+    postcode:     lees('pd-f-postcode'),
+    plaats:       lees('pd-f-plaats'),
+    type:         lees('pd-f-type'),
+    transactie:   lees('pd-f-transactie'),
+    prijs:        getal('pd-f-prijs'),
+    slaapkamers:  getal('pd-f-slaapkamers'),
+    oppervlakte:  getal('pd-f-oppervlakte'),
+    epc:          lees('pd-f-epc'),
+    omschrijving: lees('pd-f-omschrijving'),
+    fotos:        lees('pd-f-fotos').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean),
+    publiek:      document.getElementById('pd-f-publiek').checked
+  };
+
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-save', property: payload })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) {
+      fout.style.display = '';
+      fout.textContent = d.error || 'Opslaan mislukt.';
+      return;
+    }
+    closePandModal();
+    toast(pandState.bewerkt ? 'Pand bijgewerkt' : 'Pand toegevoegd', 'success');
+    await loadPanden();
+  } catch (e) {
+    fout.style.display = '';
+    fout.textContent = 'Opslaan mislukt. Controleer je verbinding.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Opslaan';
+  }
+}
+
+async function archivePand(code, archiveren) {
+  /* Archiveren, niet verwijderen: aan een pand hangen leads en afspraken, en
+     die mogen niet naar niets gaan wijzen. */
+  if (archiveren && !confirm('Dit pand uit je aanbod halen? De leads en afspraken blijven bewaard.')) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'listing-archive', code: code, archived: archiveren })
+    });
+    if (!r.ok) { toast('Archiveren mislukt', 'error'); return; }
+    toast(archiveren ? 'Pand gearchiveerd' : 'Pand teruggezet', 'success');
+    await loadPanden();
+  } catch (e) {
+    toast('Archiveren mislukt', 'error');
+  }
 }
 
 async function loadAiPersona() {
@@ -17091,10 +19572,38 @@ function getProjectCode() {
   // Read from localStorage (saved on login). Fallback to API_BASE-relative blank.
   try { return localStorage.getItem('hv-project') || ''; } catch (e) { return ''; }
 }
+/* De enige zinnige volgende stap als er nog geen leads zijn: je formulierlink
+   delen. Beide lege staten eindigden met een zin en verder niets — "Er zijn nog
+   geen leads in het systeem" vertelt je wat je al ziet en laat je vervolgens
+   zelf uitzoeken hoe je er wél aan komt. Onboarding staat alleen op het
+   dashboard, en dat is sinds de samenvoeging niet meer de startpagina. */
+function emptyStateCta() {
+  const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
+  if (!url) return '';
+  return '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">'
+    + '<button class="btn-icon btn-primary-sm" onclick="copyFormLink()">Kopieer je formulierlink</button>'
+    // &quot; en geen geneste apostrof: dit hele bestand is één template
+    // literal, waarin \' gewoon ' wordt — precies op de plek waar de
+    // JavaScript-string eindigt. De entity komt als " bij de browser aan.
+    + '<button class="btn-icon" onclick="navigateTo(&quot;formulier&quot;)">Waar deel ik die?</button>'
+    + '</div>';
+}
+
 function getFormUrl() {
   const code = getProjectCode();
   if (!code) return '';
   return 'https://app.helvaro.pro/start/' + encodeURIComponent(code);
+}
+/* The same form, addressed relatively. Used ONLY for the preview iframe.
+   getFormUrl() stays absolute because that is what the client copies into
+   their own website — but the CSP on this page is frame-src 'self', so an
+   absolute app.helvaro.pro URL is same-origin in production and cross-origin
+   everywhere else. The preview was therefore blank on every preview
+   deployment and in local development: the one place you look at it before
+   shipping. */
+function getFormPreviewUrl() {
+  const code = getProjectCode();
+  return code ? '/start/' + encodeURIComponent(code) : '';
 }
 // ── Formulier page ────────────────────────────────────────────────────────
 function loadFormulier() {
@@ -17126,9 +19635,12 @@ function loadFormulier() {
   if (qrImg) qrImg.src = qrDataUrl;
   if (qrDl)  qrDl.href = qrDataUrl;
 
-  // Iframe preview
+  // Iframe preview — relative, so it survives the CSP on any host.
   const preview = document.getElementById('fm-preview-iframe');
-  if (preview && preview.src !== url) preview.src = url;
+  const previewUrl = getFormPreviewUrl();
+  if (preview && previewUrl && preview.getAttribute('src') !== previewUrl) {
+    preview.setAttribute('src', previewUrl);
+  }
 
   // Stats from already-fetched leads
   populateFormStats();
@@ -17330,8 +19842,16 @@ function renderInstellingen() {
   // API key masked display
   const keyEl = document.getElementById('set-apikey-display');
   const toggleBtn = document.getElementById('btn-toggle-apikey');
-  if (keyEl && toggleBtn) {
-    const key = s.apiKey || '';
+  /* Sentinels zijn geen sleutels. tryAutoLogin() en de Clerk-tak zetten
+     state.apiKey op een vaste tekst zodat de zeven plekken die op een
+     waarheidswaarde gaten blijven werken; die tekst authenticeert niets. */
+  const SENTINELS = ['cookie-session', 'clerk-session'];
+  const rowEl = document.getElementById('set-apikey-row');
+  const echteSleutel = s.apiKey && SENTINELS.indexOf(s.apiKey) === -1 ? s.apiKey : '';
+  if (rowEl) rowEl.style.display = echteSleutel ? '' : 'none';
+
+  if (keyEl && toggleBtn && echteSleutel) {
+    const key = echteSleutel;
     const masked = key.length > 8 ? key.slice(0, 8) + '••••••••' : '••••••••';
     keyEl.textContent = masked;
     let showing = false;
@@ -17630,7 +20150,7 @@ function updateMrrWidget() {
   if (varEl)  varEl.textContent  = '-€' + varCost.toLocaleString('nl-BE');
   if (profEl) {
     profEl.textContent = (profit >= 0 ? '€' : '-€') + Math.abs(profit).toLocaleString('nl-BE');
-    profEl.style.color = profit >= 0 ? 'var(--success)' : 'var(--red)';
+    profEl.style.color = profit >= 0 ? 'var(--success-ink)' : 'var(--red-ink)';
   }
   if (margeEl) margeEl.textContent = 'Marge: ' + (mrr > 0 ? marge + '%' : '—%') + ' • variabel €' + varPerClient + '/klant';
 }
@@ -17819,7 +20339,7 @@ function renderDailyChecklist() {
     return;
   }
 
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var raw = localStorage.getItem('hv-daily-tasks-v2');
   var stored = {};
   try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
@@ -17848,7 +20368,7 @@ function renderDailyChecklist() {
 }
 
 function toggleDailyTask(idx) {
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var raw = localStorage.getItem('hv-daily-tasks-v2');
   var stored = {};
   try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
@@ -18050,7 +20570,7 @@ function initLinkedInSection() {
   if (sub) sub.textContent = HUB_DAY_LABELS[day] || 'LinkedIn & Instagram';
 
   // Restore cached post for today
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var cacheKey = 'hv-hub-post-' + hubState.platform + '-' + today;
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
@@ -18066,7 +20586,7 @@ function setHubPlatform(platform) {
   if (igTab) igTab.classList.toggle('active', platform === 'instagram');
   if (igTab) igTab.classList.toggle('ig-active', platform === 'instagram');
   // Try load cached post for this platform
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var out = document.getElementById('fdr-hub-output');
   var empty = document.getElementById('fdr-hub-empty');
   var copy = document.getElementById('fdr-hub-copy');
@@ -18137,7 +20657,7 @@ async function generateContentPost(forceNew) {
     else {
       showContentPost(d.post);
       if (!forceNew) {
-        var today = new Date().toISOString().slice(0, 10);
+        var today = lokaleDatum(new Date());
         var cacheKey = 'hv-hub-post-' + hubState.platform + '-' + today;
         localStorage.setItem(cacheKey, JSON.stringify({ post: d.post, type: contentType }));
       }
@@ -18574,6 +21094,7 @@ function hideHelpWidget() {
    ============================================================ */
 (async function init() {
   initTheme();
+  initSidebar();
 
   // ── Clerk owns sign-in when it is on ────────────────────────────────────
   // Returns early so none of the legacy session logic below runs: no
@@ -18613,6 +21134,18 @@ function hideHelpWidget() {
       state.clientName = clerk.user.publicMetadata?.clientName || '';
       state.userEmail  = clerk.user.primaryEmailAddress?.emailAddress || '';
       state.apiKey     = 'clerk-session';   // sentinel; see tryAutoLogin's note
+      // De markers die het klassieke pad via saveSession() zet. Ze
+      // authenticeren niets — de server leest de tenant uit het Clerk-token,
+      // nooit hieruit — maar loadLeadsFromLS() gebruikt de projectcode om te
+      // controleren van wie een gecachete leadlijst is. Zonder deze regel
+      // heeft een Clerk-gebruiker geen eigenaar, en dan wordt de cache altijd
+      // weggegooid: geen datalek, wel een dashboard dat leeg is zodra
+      // Airtable even niet meewerkt.
+      try {
+        localStorage.setItem('hv-project', clerk.user.publicMetadata?.projectCode || '');
+        localStorage.setItem('hv-client', state.clientName);
+        if (state.userEmail) localStorage.setItem('hv-email', state.userEmail);
+      } catch (e) {}
       let data = null;
       try {
         data = await fetchLeads();
@@ -18662,6 +21195,7 @@ function hideHelpWidget() {
     return;
   }
 
+  let _initFetchError = null;
   if (tryAutoLogin()) {
     // Small random delay (0–4s) so multiple tabs opened at once don't all hit
     // Airtable in the same second.  localStorage data renders immediately; the
@@ -18690,15 +21224,22 @@ function hideHelpWidget() {
         else { state.leads = []; state.stats = {}; }
         state.lastFetch = 0;
       }
-    } catch {
+    } catch (err) {
       // Network error. Same localStorage fallback
       const lsCache = loadLeadsFromLS();
       if (lsCache) { state.leads = lsCache.leads; state.stats = lsCache.stats || {}; }
       else { state.leads = []; state.stats = {}; }
       state.lastFetch = 0;
+      // Ook bij de EERSTE lading moet zichtbaar zijn dat het mislukte. Zonder
+      // dit opent het dashboard met nullen en zonder enige uitleg, en dat is
+      // precies het scherm dat een klant met 400 leads laat denken dat alles
+      // weg is. Na startDashboard(), anders plaatst de banner zich in een
+      // pagina die zo meteen opnieuw opgebouwd wordt.
+      _initFetchError = err;
     }
     // Pass skipRefresh=true. State already populated above, no second Airtable call needed
     await startDashboard(true);
+    if (_initFetchError) { try { showCrmError(_initFetchError); } catch (e) {} }
   } else {
     document.getElementById('login-page').style.display = 'flex';
     initLoginSlideshow();
@@ -19052,7 +21593,7 @@ function renderProfit(mrr) {
   if (vEl) vEl.textContent = '-' + fmtEuro(variable);
   if (pEl) {
     pEl.textContent = (profit >= 0 ? '' : '-') + fmtEuro(Math.abs(profit));
-    pEl.style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
+    pEl.style.color = profit >= 0 ? 'var(--green-ink)' : 'var(--red-ink)';
   }
   if (mEl) {
     var margin = mrr > 0 ? Math.round((profit / mrr) * 100) : 0;
@@ -19185,6 +21726,10 @@ function loadVendorsWhenIdle() {
 
 if (document.readyState === 'complete') loadVendorsWhenIdle();
 else window.addEventListener('load', loadVendorsWhenIdle);
+
+/* ═══ FARO (api/_faro/ui/client.js) ═══ */
+${faro.js}
+${cmd.js}
 </script>
 </body>
 </html>`;
@@ -19233,20 +21778,70 @@ else window.addEventListener('load', loadVendorsWhenIdle);
   // de policy niet losser is dan nodig. Zonder deze twee regels is inloggen
   // stuk — het script wordt dan geblokkeerd, niet de aanvaller.
   const clerkSrc = CLERK_READY ? ` https://${CLERK_HOST}` : '';
+  // Clerk's bot-protectie (Smart CAPTCHA) draait op Cloudflare Turnstile en
+  // wordt op een PRODUCTIE-instantie standaard aangezet. Die laadt een script
+  // en een iframe van challenges.cloudflare.com. Stond die host er niet bij,
+  // dan blokkeerde de policy de captcha en niet de bot: het aanmeldformulier
+  // bleef dan hangen op een vakje dat nooit verschijnt. Alleen meegenomen als
+  // Clerk ook echt aanstaat, zodat de policy niet losser is dan nodig.
+  const botSrc = CLERK_READY ? ' https://challenges.cloudflare.com' : '';
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${clerkSrc}`,
+    `script-src 'self' 'unsafe-inline'${clerkSrc}${botSrc}`,
     `connect-src 'self'${clerkSrc}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",       // Vercel Blob + Clerk-avatars
     "font-src 'self' data:",             // zelf gehost, geen Google Fonts (AVG)
     "worker-src 'self' blob:",           // Clerk gebruikt een blob-worker
-    "frame-src 'self'" + clerkSrc,
+    "frame-src 'self'" + clerkSrc + botSrc,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
   ].join('; '));
 
-  res.status(200).send(HTML);
+  /* ── De back-office hoort niet in de HTML van een klant ──────────────────
+     Klanten en Founder zijn pagina's van HELVARO: omzet, kosten, nettowinst,
+     prijslijst, contractvoorwaarden, roadmap, en de takenlijst van de partner.
+
+     Eerder werden alleen de NAV-KNOPPEN client-side weggelaten voor
+     niet-admins. De pagina's zelf gingen gewoon mee in de HTML die iedereen
+     kreeg -- navigateTo('founder') vanuit de console toonde alles, en zelfs
+     dat hoefde niet: "paginabron bekijken" volstond.
+
+     Waarom hier weggeknipt en niet met ${...} in het sjabloon: dit bestand is
+     EEN template-literal, en een nieuwe literal erin openen verandert de
+     escaping van alles ertussen. Toen ik dat probeerde werd elke bedoeld
+     letterlijke ${...} in die 500 regels alsnog uitgevoerd en hing het
+     verzoek. Knippen op de gerenderde string raakt het sjabloon niet aan.
+
+     De beslissing komt van de SERVER, uit de geverifieerde sessie die met
+     deze GET meekomt. Geen sessie = geen admin. Niet verstuurde HTML kan een
+     bezoeker niet omzetten; een client-side vlag wel. */
+  let HV_IS_ADMIN = false;
+  try {
+    const _tok  = _session.readToken(req);
+    const _sess = _tok ? _session.verifySignedSession(_tok) : null;
+    // Dezelfde definitie als de client hanteert: naam 'Admin' zonder projectcode.
+    HV_IS_ADMIN = !!(_sess && _sess.clientName === 'Admin' && !_sess.projectCode);
+  } catch (_) { HV_IS_ADMIN = false; }
+
+  res.status(200).send(HV_IS_ADMIN ? HTML : stripBackoffice(HTML));
 };
+
+/* Knipt <main id="page-admin"> en <main id="page-founder"> uit de gerenderde
+   pagina. Werkt op exacte markeringen en laat de HTML ongemoeid als een blok
+   niet gevonden wordt -- liever een pagina die klopt dan een halve knip. */
+function stripBackoffice(html) {
+  let uit = html;
+  for (const id of ['page-admin', 'page-founder']) {
+    const start = uit.indexOf('<main class="page-content page" id="' + id + '">');
+    if (start === -1) continue;
+    const eind = uit.indexOf('</main>', start);
+    if (eind === -1) continue;
+    uit = uit.slice(0, start) + '<!-- ' + id + ': alleen voor Helvaro -->' + uit.slice(eind + '</main>'.length);
+  }
+  return uit;
+}
+
+module.exports.stripBackoffice = stripBackoffice;

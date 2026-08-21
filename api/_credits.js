@@ -94,6 +94,25 @@ const FEATURES = {
   FOUNDER_PERSONALIZED_DM: 'founder_personalized_dm', // 5
   FOUNDER_CONTENT_POST:    'founder_content_post',    // 5  — Herald's social-engine text generation
   FOUNDER_GENERATE_IMAGE:  'founder_generate_image',  // 50 — Herald's social-engine image generation
+  // Faro. One charge per USER TURN, not per model call: a turn that runs three
+  // tools is still one question the user asked, and charging per internal call
+  // would make Faro cost more precisely when it is being most useful. Weight 3
+  // sits between reply_suggestion (2, a single short completion) and
+  // marketing_content (5) — a Faro turn is a handful of completions plus tool
+  // round-trips, and it must stay cheap enough that exploring is not punished.
+  // Image generation inside a turn is billed SEPARATELY at image_generation's
+  // 50, because that is where the real money goes.
+  FARO_CHAT:               'faro_chat',               // 3
+  /* Een pand importeren uit een link: één pagina ophalen plus één goedkope
+     extractie. Zelfde orde als een Faro-beurt, en met opzet laag: dit is het
+     eerste wat een nieuwe klant doet, en die mag niet afgerekend worden op het
+     invoeren van zijn eigen aanbod. */
+  PROPERTY_IMPORT:         'property_import',         // 3
+  // Video. Nog niet aangesloten (api/_faro/actions.js gooit not_wired), en
+  // juist daarom staat de prijs er NU al: video is verreweg het duurste dat dit
+  // product kan doen, en een tarief bedenken nadat de kraan openstaat is te
+  // laat. Zie creditsForVideo() — dit is geen vast getal maar per seconde.
+  VIDEO_GENERATION:        'video_generation',
 };
 
 const WEIGHTS = {
@@ -107,7 +126,123 @@ const WEIGHTS = {
   [FEATURES.FOUNDER_PERSONALIZED_DM]: 5,
   [FEATURES.FOUNDER_CONTENT_POST]:    5,
   [FEATURES.FOUNDER_GENERATE_IMAGE]:  50,
+  [FEATURES.FARO_CHAT]:               3,
+  [FEATURES.PROPERTY_IMPORT]:         3,
+  // Nominale waarde voor een standaardvideo (8s, 720p). De echte afschrijving
+  // loopt via creditsForVideo(); dit getal bestaat zodat WEIGHTS volledig is en
+  // een aanroeper die het vergeet niet op 0 uitkomt.
+  [FEATURES.VIDEO_GENERATION]:        240,
 };
+
+/* ── Wat een Faro-beurt kost ──────────────────────────────────────────────────
+ * Faro rekende 3 credits per beurt, plat, ongeacht wat die beurt deed. Dat was
+ * een verdedigbare keuze toen het "een handvol completions" was, maar de vorm
+ * van een beurt is inmiddels anders:
+ *
+ *   - 17 gereedschapsdefinities gaan in ELK verzoek mee
+ *   - de systeemprompt is ~7.600 tekens
+ *   - de geschiedenis mag tot 40 beurten teruggaan
+ *   - er mogen 8 gereedschapsrondes in één beurt, en elke ronde stuurt de
+ *     hele context opnieuw mee
+ *   - het standaardmodel is Sonnet, "Precies" is Opus — niet de Haiku waarmee
+ *     het WhatsApp-gesprek is doorgerekend in CREDIT-SYSTEM-DESIGN.md §1
+ *
+ * Eén beurt kan dus acht modelaanroepen zijn met een groeiende context, op een
+ * duurder model, voor dezelfde 3 credits. En het wordt erger naarmate Faro
+ * NUTTIGER is: meer gereedschappen inzetten kost meer en levert hetzelfde op.
+ *
+ * De orchestrator telt de echte tokens al (usage.inputTokens/outputTokens) en
+ * gaf ze alleen als metadata door. Nu bepalen ze de afschrijving.
+ *
+ * ── Prijzen ─────────────────────────────────────────────────────────────────
+ * Alle drie de modellen staan er nu in, met de lijstprijs van Anthropic als
+ * bron. Blijft een model onbekend, dan valt de afschrijving terug op het platte
+ * tarief EN wordt er per model één keer luid gewaarschuwd — nooit stilzwijgend
+ * te weinig rekenen.
+ */
+const USD_TO_EUR = 0.92;
+
+// Marge op kostprijs. Beeld staat op ~8x, video op ~1,6x; chat zit ertussenin:
+// hoog genoeg om de vaste lasten te dragen, laag genoeg dat doorvragen niet
+// bestraft wordt. Eén plek, zodat de eigenaar er één getal voor hoeft te
+// veranderen.
+const CHAT_MARGIN = 3;
+
+const MODEL_PRICES = Object.freeze({
+  // $ per 1M tokens, lijstprijs van Anthropic.
+  'claude-haiku-4-5-20251001': { inPerM: 1.00, outPerM: 5.00 },
+  /* Sonnet 5 staat hier op de NORMALE prijs, niet op de introprijs van
+     $2/$10 die tot en met 31 augustus 2026 geldt. Met de introprijs erin zou
+     de afschrijving op 1 september in één nacht 50% te laag worden, precies op
+     het moment dat niemand eraan denkt. Nu is ze tot die datum iets aan de
+     hoge kant en daarna klopt ze — de kant om op te vergissen als het je eigen
+     marge is. */
+  'claude-sonnet-5': { inPerM: 3.00, outPerM: 15.00 },
+  'claude-opus-5':   { inPerM: 5.00, outPerM: 25.00 },
+});
+
+const _priceWarned = new Set();
+
+/**
+ * Credits voor één Faro-beurt, op basis van wat hij echt verbruikt heeft.
+ * Geeft { credits, costEur, priced } terug. priced=false betekent: prijs
+ * onbekend, dit is het oude platte tarief en waarschijnlijk te laag.
+ */
+function creditsForChatTurn({ inputTokens = 0, outputTokens = 0, model = '' } = {}) {
+  const flat = WEIGHTS[FEATURES.FARO_CHAT];
+  const price = MODEL_PRICES[model];
+  if (!price || price.inPerM == null || price.outPerM == null) {
+    if (model && !_priceWarned.has(model)) {
+      _priceWarned.add(model);
+      console.warn(`[Credits] geen prijs bekend voor model "${model}" — er wordt ${flat} credits per beurt gerekend, `
+                 + 'wat vrijwel zeker te weinig is. Zet de prijs in MODEL_PRICES in api/_credits.js.');
+    }
+    return { credits: flat, costEur: null, priced: false };
+  }
+  const usd = (Number(inputTokens) || 0) / 1e6 * price.inPerM
+            + (Number(outputTokens) || 0) / 1e6 * price.outPerM;
+  const costEur = usd * USD_TO_EUR;
+  // EUR_PER_CREDIT is de ankerwaarde uit het ontwerpdocument: 1 credit ~ EUR0,015
+  // aan kostprijs. Delen door dat anker zet euro's om in credits.
+  const raw = Math.ceil((costEur / 0.015) * CHAT_MARGIN);
+  // Nooit minder dan het platte tarief: een piepklein vraagje mag goedkoop
+  // zijn, maar niet gratis — er zit ook infrastructuur achter.
+  return { credits: Math.max(flat, raw), costEur, priced: true };
+}
+
+/* ── Wat een video kost ───────────────────────────────────────────────────────
+ * api/_media-models.js kent de echte prijs: $0,30 per seconde op 1280x720 en
+ * $0,50 per seconde op de bredere formaten. Tegen de basis uit
+ * CREDIT-SYSTEM-DESIGN.md (1 credit ~ EUR0,015 kostprijs) levert dat op:
+ *
+ *    8s 720p            $2,40  = EUR2,21  = 147 credits op kostprijs
+ *    8s breed/portret   $4,00  = EUR3,68  = 245 credits op kostprijs
+ *
+ * Ter vergelijking: een BEELD kost 50 credits en een heel leadgesprek 20.
+ * Eén video van acht seconden is dus zeven leadgesprekken, en op het bredere
+ * formaat evenveel als de complete proefperiode van 250 credits.
+ *
+ * Daarom een andere opslag dan bij beeld. Beeld staat bewust op ~8x kostprijs
+ * ("de enige echt onbegrensde post"); dezelfde factor op video zou één filmpje
+ * op ~1.200 credits brengen — meer dan een halve maand Growth. Dit staat op
+ * ongeveer 1,6x kostprijs: genoeg marge om niet te verliezen, laag genoeg dat
+ * het bruikbaar blijft.
+ *
+ * PRODUCTBESLISSING die hier niet gemaakt kan worden: bij 30 credits/seconde
+ * kost één standaardvideo 240 van de 250 proefcredits. Een proefklant kan er
+ * dus precies één maken. Dat kan de bedoeling zijn (laten proeven) of niet
+ * (proefperiode meteen op). Zie CREDIT-SYSTEM-DESIGN.md §6.
+ */
+const VIDEO_CREDITS_PER_SECOND = { standard: 30, wide: 50 };
+const VIDEO_WIDE_SIZES = ['1792x1024', '1024x1792'];
+
+function creditsForVideo({ seconds = 8, size = '1280x720' } = {}) {
+  const secs = Math.max(1, Math.min(60, Math.round(Number(seconds) || 8)));
+  const rate = VIDEO_WIDE_SIZES.includes(String(size))
+    ? VIDEO_CREDITS_PER_SECOND.wide
+    : VIDEO_CREDITS_PER_SECOND.standard;
+  return secs * rate;
+}
 
 // Rough real-cost-per-credit by feature, EUR, derived from
 // CREDIT-SYSTEM-DESIGN.md §1-2 (lead conv ~€0.30/20cr, image ~€0.095 avg/50cr,
@@ -126,7 +261,79 @@ const COST_PER_CREDIT_EUR = {
   [FEATURES.FOUNDER_PERSONALIZED_DM]: 0.01 / 5,
   [FEATURES.FOUNDER_CONTENT_POST]:    0.01 / 5,
   [FEATURES.FOUNDER_GENERATE_IMAGE]:  0.095 / 50,
+  [FEATURES.FARO_CHAT]:               0.006 / 3,
 };
+
+/* ── Credits bijkopen ─────────────────────────────────────────────────────────
+ * Zoals bij een API-console: je kiest een BEDRAG, en je ziet meteen wat je
+ * ervoor krijgt. Niet een vast pakket, want de ene makelaar heeft twee panden
+ * en de andere veertig.
+ *
+ * -- Waarom dit hier staat en niet in de UI --------------------------------
+ * De prijs mag nooit in het dashboard staan: dan rekent de browser uit wat
+ * iemand krijgt, en dat is precies het getal dat een klant kan aanpassen.
+ * Alles wordt hier berekend en de UI toont alleen de uitkomst.
+ *
+ * -- De tarieven zijn instelbaar ---------------------------------------------
+ * Via de omgeving, zodat je je marge kunt bijstellen zonder een deploy. De
+ * standaard hieronder volgt je huidige plan: EUR 1.000 per maand voor 2.000
+ * credits, dus EUR 0,50 per credit. BEVESTIG DIT voordat je het aanzet -- het
+ * is afgeleid van je planprijs, niet uit een factuur.
+ */
+const TOPUP_RATE_EUR = Number(process.env.CREDIT_TOPUP_RATE_EUR || 0.50);
+const TOPUP_MIN_EUR  = Number(process.env.CREDIT_TOPUP_MIN_EUR  || 25);
+const TOPUP_MAX_EUR  = Number(process.env.CREDIT_TOPUP_MAX_EUR  || 5000);
+
+/* Staffel: hoe meer je in één keer koopt, hoe meer credits je per euro krijgt.
+   Bonus in procenten, van hoog naar laag gecontroleerd. */
+const TOPUP_STAFFEL = Object.freeze([
+  { vanafEur: 1000, bonusPct: 15 },
+  { vanafEur:  500, bonusPct: 10 },
+  { vanafEur:  200, bonusPct:  5 },
+  { vanafEur:    0, bonusPct:  0 },
+]);
+
+/**
+ * Wat je krijgt voor een bedrag.
+ *
+ * Geeft ALTIJD een geldig antwoord terug, ook bij onzin -- de aanroeper is een
+ * publieke route en mag niet met een fout omvallen omdat iemand "veel" typt.
+ *
+ * @param {number} bedragEur
+ * @returns {{ geldig, bedragEur, basisCredits, bonusPct, bonusCredits, credits, perCredit, gesprekken, reden }}
+ */
+function topupOfferte(bedragEur) {
+  const bedrag = Math.round((Number(bedragEur) || 0) * 100) / 100;
+  const leeg = {
+    geldig: false, bedragEur: bedrag, basisCredits: 0, bonusPct: 0, bonusCredits: 0,
+    credits: 0, perCredit: TOPUP_RATE_EUR, gesprekken: 0, reden: '',
+  };
+  if (!isFinite(bedrag) || bedrag <= 0)  return { ...leeg, reden: 'geen_bedrag' };
+  if (bedrag < TOPUP_MIN_EUR)            return { ...leeg, reden: 'te_laag' };
+  if (bedrag > TOPUP_MAX_EUR)            return { ...leeg, reden: 'te_hoog' };
+  if (!(TOPUP_RATE_EUR > 0))             return { ...leeg, reden: 'geen_tarief' };
+
+  const basis = Math.floor(bedrag / TOPUP_RATE_EUR);
+  const staffel = TOPUP_STAFFEL.find((t) => bedrag >= t.vanafEur) || { bonusPct: 0 };
+  const bonus = Math.floor(basis * (staffel.bonusPct / 100));
+  const totaal = basis + bonus;
+
+  return {
+    geldig: true,
+    bedragEur: bedrag,
+    basisCredits: basis,
+    bonusPct: staffel.bonusPct,
+    bonusCredits: bonus,
+    credits: totaal,
+    /* Wat je effectief betaalt per credit, inclusief bonus. Dit is het getal
+       waarmee een klant twee bedragen vergelijkt. */
+    perCredit: Math.round((bedrag / totaal) * 1000) / 1000,
+    /* Vertaald naar iets dat een makelaar herkent. Een leadgesprek is de
+       eenheid waarin hij denkt, niet een credit. */
+    gesprekken: Math.floor(totaal / WEIGHTS[FEATURES.WHATSAPP_CONVERSATION]),
+    reden: '',
+  };
+}
 
 // Features that must NEVER be blocked by checkCredits(), regardless of
 // balance. Defense-in-depth — see file header. whatsapp.js never actually
@@ -291,8 +498,22 @@ async function checkCredits(projectCode, feature) {
   try {
     record = await getClientRecord(code);
   } catch (err) {
-    console.warn(`[Credits] checkCredits(${code}, ${feature}) lookup failed, failing OPEN:`, err.message);
-    return { allowed: true, remaining: Infinity, percentUsed: 0 };
+    // Open falen blijft de juiste keuze — een klant buitensluiten omdat ONZE
+    // database niet reageert is erger dan even niet meten. Maar niet zonder
+    // grens: zonder deze telling betekende "fail open" letterlijk onbeperkt.
+    const lost = unrecordedFor(code);
+    if (lost.calls >= UNMETERED_CEILING) {
+      console.error(`[Credits] checkCredits(${code}, ${feature}) GEWEIGERD — ${lost.calls} ongemeten aanroepen sinds ${lost.since}`);
+      return {
+        allowed: false,
+        remaining: 0,
+        percentUsed: 100,
+        reason: 'metering_unavailable',
+        message: 'We kunnen je verbruik nu niet bijhouden. Probeer het over enkele minuten opnieuw.',
+      };
+    }
+    console.warn(`[Credits] checkCredits(${code}, ${feature}) lookup failed, failing OPEN (${lost.calls}/${UNMETERED_CEILING} ongemeten):`, err.message);
+    return { allowed: true, remaining: Infinity, percentUsed: 0, unmetered: true };
   }
   if (!record) {
     // Client not found under this project code. Not this file's job to
@@ -337,9 +558,84 @@ async function checkCredits(projectCode, feature) {
  * including whatsapp_conversation (whatsapp.js never gates on checkCredits,
  * but it must still record usage so the dashboard/admin numbers are real).
  */
+/* ── Wat er niet weggeschreven kon worden ────────────────────────────────────
+ * recordUsage() mag nooit gooien, dus een mislukte schrijfactie eindigde als
+ * een console.error en verder niets. Tijdens een Airtable-storing was AI-inzet
+ * daarmee tegelijk ongelimiteerd EN ongemeten: achteraf viel niet eens vast te
+ * stellen wat er verbruikt was, want het enige spoor was een logregel zonder
+ * bedragen.
+ *
+ * Deze twee dingen lossen dat op zonder een wachtrij te introduceren:
+ *   1. een regel met ALLE velden die nodig zijn om het later opnieuw te boeken,
+ *      op één herkenbaar voorvoegsel zodat hij uit de Vercel-logs te vissen is;
+ *   2. een tellertje in het geheugen, zodat checkCredits() weet dat er iets
+ *      niet klopt en de fail-open niet eindeloos doorloopt.
+ */
+const _unrecorded = new Map();   // projectCode -> { credits, calls, since }
+
+function noteUnrecorded(code, feature, credits, reason) {
+  const cur = _unrecorded.get(code) || { credits: 0, calls: 0, since: new Date().toISOString() };
+  cur.credits += credits;
+  cur.calls += 1;
+  _unrecorded.set(code, cur);
+  // Eén regel, alles erin, machinaal terug te lezen.
+  console.error('[Credits][RECONCILE] ' + JSON.stringify({
+    projectCode: code, feature, credits, reason,
+    at: new Date().toISOString(),
+    unrecordedTotal: cur.credits, unrecordedCalls: cur.calls, since: cur.since,
+  }));
+}
+
+/** Wat deze instance kwijt is geraakt. Gelezen door checkCredits(). */
+function unrecordedFor(code) {
+  return _unrecorded.get(String(code || '').trim()) || { credits: 0, calls: 0, since: null };
+}
+
+function clearUnrecorded(code) { _unrecorded.delete(String(code || '').trim()); }
+
+/* Hoeveel beurten er tijdens een storing ongemeten door mogen. Niet nul —
+ * een klant buitensluiten omdat ONZE database plat ligt is de verkeerde keuze —
+ * maar ook niet oneindig, want dat is precies wat "fail open" vandaag betekent.
+ * Ruim genoeg voor een normale werkdag, klein genoeg om weglopende kosten te
+ * begrenzen. Per instance, dus de echte grens ligt hoger bij veel instances;
+ * dit is een rem, geen slot. */
+const UNMETERED_CEILING = 60;
+
+/* ── Waarom hier een wachtrij per klant staat ────────────────────────────────
+ * recordUsage() is lezen-wijzigen-schrijven: haal het huidige verbruik op, tel
+ * erbij op, schrijf terug. Twee beurten die elkaar overlappen lezen dan
+ * allebei dezelfde beginstand en de tweede overschrijft de eerste — één van de
+ * twee afschrijvingen verdampt. Bij Faro is dat geen randgeval: één vraag kan
+ * meerdere gereedschappen draaien, en een beeld en een chatbeurt worden apart
+ * geboekt.
+ *
+ * Airtable kent geen atomaire ophoging, dus echt oplossen kan hier niet. Wat
+ * wel kan: de aanroepen voor DEZELFDE klant achter elkaar zetten in plaats van
+ * door elkaar. Dat haalt de races binnen één instance weg, en dat is het
+ * leeuwendeel — de verzoeken van één kantoor landen meestal op dezelfde warme
+ * instance. Tussen instances blijft het venster bestaan; dat verdwijnt pas met
+ * een teller die kan optellen zonder eerst te lezen.
+ */
+const _queues = new Map();   // projectCode -> Promise-ketting
+
+function serialize(code, task) {
+  const prev = _queues.get(code) || Promise.resolve();
+  // .catch erin, anders breekt één mislukking de hele ketting voor die klant.
+  const next = prev.then(task, task);
+  _queues.set(code, next.catch(() => {}));
+  // Opruimen zodra deze de laatste in de rij is, anders groeit de Map met elke
+  // klant die ooit iets verbruikt heeft.
+  next.catch(() => {}).then(() => { if (_queues.get(code) === next.catch(() => {})) _queues.delete(code); });
+  return next;
+}
+
 async function recordUsage(projectCode, feature, opts = {}) {
   const code = String(projectCode || '').trim();
   if (!code) return;
+  return serialize(code, () => recordUsageInner(code, feature, opts));
+}
+
+async function recordUsageInner(code, feature, opts = {}) {
   const creditsInt = Math.max(0, Math.round(Number(opts.credits) || 0));
   if (creditsInt <= 0) return;
 
@@ -350,6 +646,7 @@ async function recordUsage(projectCode, feature, opts = {}) {
     record = await getClientRecord(code);
   } catch (err) {
     console.error(`[Credits] recordUsage(${code}, ${feature}) lookup failed — usage NOT recorded, caller flow continues:`, err.message);
+    noteUnrecorded(code, feature, creditsInt, 'lookup_failed');
     return;
   }
   if (!record) return;
@@ -420,11 +717,41 @@ async function recordUsage(projectCode, feature, opts = {}) {
       }
 
       console.error(`[Credits] recordUsage(${code}, ${feature}) PATCH failed (HTTP ${r.status}) — usage NOT recorded:`, t.slice(0, 200));
+      noteUnrecorded(code, feature, creditsInt, `patch_http_${r.status}`);
       return;
     }
   } catch (err) {
     console.error(`[Credits] recordUsage(${code}, ${feature}) PATCH threw — usage NOT recorded:`, err.message);
+    noteUnrecorded(code, feature, creditsInt, 'patch_threw');
     return;
+  }
+
+  // Gelukt: de storing is voorbij, dus de teller mag terug naar nul. De
+  // RECONCILE-regels blijven in het log staan om na te boeken.
+  clearUnrecorded(code);
+
+  /* Boek de beweging in het grootboek. PAS HIER, na een geslaagde PATCH: een
+     regel schrijven voor een afschrijving die niet doorging maakt de
+     geschiedenis onbetrouwbaar, en dat is erger dan geen geschiedenis.
+
+     Fire-and-forget en met opzet niet afgewacht -- het grootboek mag een
+     WhatsApp-antwoord nooit vertragen, en als de tabel er niet is gebeurt er
+     gewoon niets. api/_ledger.js valt daar zelf netjes op stil.
+
+     De referentie maakt een herhaalde aanroep na een time-out onschadelijk:
+     tweemaal dezelfde sleutel is één boeking. */
+  try {
+    const _ledger = require('./_ledger');
+    _ledger.record({
+      projectCode: code,
+      type: _ledger.TYPE.VERBRUIK,
+      credits: creditsInt,
+      feature,
+      reference: opts.reference || '',
+      meta: opts.meta || null,
+    }).catch(() => {});
+  } catch (e) {
+    console.warn('[Credits] grootboek niet bereikbaar:', e && e.message);
   }
 
   // Threshold alerts (80% / 100% / runaway ceiling), each fires at most once
@@ -682,7 +1009,7 @@ async function setAllowance(projectCode, allowance) {
 // "Add credits" = extra headroom this period = reduce Credits Used (floored
 // at 0), same semantics as both reference implementations — a top-up, not a
 // permanent allowance change.
-async function addCredits(projectCode, n) {
+async function addCredits(projectCode, n, opts = {}) {
   const code = String(projectCode || '').trim();
   const record = await getClientRecord(code);
   if (!record) throw new Error(`Geen klant gevonden met Project Code "${code}"`);
@@ -692,10 +1019,32 @@ async function addCredits(projectCode, n) {
   // Spread rawPeriod first — see effectivePeriodState()'s doc comment: an
   // admin top-up must never wipe an unrelated namespaced key (e.g. the
   // trial cron's once-only-email marker) that happens to live in this same field.
-  return _patchClientCreditFields(projectCode, {
+  const uit = await _patchClientCreditFields(projectCode, {
     [FIELD.USED]: newUsed,
     [FIELD.PERIOD]: JSON.stringify({ ...state.rawPeriod, start: state.start, alerted80: state.alerted80, alerted100: state.alerted100, alertedRunaway: state.alertedRunaway }),
   });
+
+  /* Ook een bijstorting is een beweging. Zonder deze regel staat er straks in
+     het overzicht wel dat er credits bij kwamen, maar niet wanneer of hoeveel.
+
+     'skip-ledger' bestaat voor refundCredits hieronder: die gebruikt addCredits
+     alleen om de TELLER bij te werken en boekt zelf een terugbetaling. Zonder
+     deze uitzondering stonden er twee regels voor één terugbetaling, en dan
+     klopt het saldo in het overzicht niet meer met de werkelijkheid. */
+  if (opts && opts.type === 'skip-ledger') return uit;
+  try {
+    const _ledger = require('./_ledger');
+    await _ledger.record({
+      projectCode: code,
+      type: opts && opts.type === 'purchase' ? _ledger.TYPE.AANKOOP : _ledger.TYPE.CORRECTIE,
+      credits: Math.max(0, Math.round(Number(n) || 0)),
+      reference: (opts && opts.reference) || '',
+      note: (opts && opts.note) || 'Credits bijgeschreven',
+    });
+  } catch (e) {
+    console.warn('[Credits] bijstorting niet geboekt in grootboek:', e && e.message);
+  }
+  return uit;
 }
 
 // Admin-triggered CREDIT period reset. Still reads the current record first
@@ -795,7 +1144,52 @@ async function setTrialMarker(projectCode, patch) {
   return true;
 }
 
+/**
+ * Een afschrijving terugdraaien omdat de actie erna alsnog mislukte.
+ *
+ * Dit bestond niet. De regel was "afschrijven doen we PAS na een geslaagde
+ * actie", en dat dekt het meeste -- maar niet alles: een video die na het
+ * afschrijven bij de leverancier stukloopt, of een beeld dat gemaakt is maar
+ * niet opgeslagen kon worden. Zonder terugbetaling betaalt de klant daarvoor.
+ *
+ * De reden is verplicht en komt in het grootboek te staan, zodat een klant die
+ * ernaar vraagt een antwoord krijgt in plaats van een getal.
+ */
+async function refundCredits(projectCode, credits, reason, opts = {}) {
+  const code = String(projectCode || '').trim();
+  const aantal = Math.max(0, Math.round(Number(credits) || 0));
+  if (!code || aantal <= 0) return null;
+  if (!String(reason || '').trim()) {
+    console.warn('[Credits] terugbetaling zonder reden geweigerd voor', code);
+    return null;
+  }
+
+  // De teller: minder verbruikt betekent meer ruimte, precies zoals addCredits.
+  try {
+    await addCredits(code, aantal, { type: 'skip-ledger' });
+  } catch (err) {
+    console.error('[Credits] terugbetaling kon de teller niet bijwerken:', err && err.message);
+    return null;
+  }
+
+  try {
+    const _ledger = require('./_ledger');
+    return await _ledger.refund({
+      projectCode: code, credits: aantal, reason,
+      feature: opts.feature || '', reference: opts.reference || '',
+    });
+  } catch (e) {
+    console.warn('[Credits] terugbetaling niet geboekt in grootboek:', e && e.message);
+    return null;
+  }
+}
+
 module.exports = {
+  refundCredits,
+  topupOfferte, TOPUP_RATE_EUR, TOPUP_MIN_EUR, TOPUP_MAX_EUR, TOPUP_STAFFEL,
+  unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
+  creditsForVideo, VIDEO_CREDITS_PER_SECOND,
+  creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,
   FEATURES,
   WEIGHTS,
   FIELD,

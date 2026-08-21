@@ -353,8 +353,13 @@ const AI_DISCLAIMER_LABEL = 'AI-visualisatie — werkelijke staat van de woning 
 // know this limit exists.
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
-const OPENAI_MODEL = 'gpt-image-1-mini';
-const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
+// Which model renders the image, and at what quality, now lives in
+// api/_media-models.js — one file that also carries each model's request
+// quirks, its real cost, and its sunset date. It used to be a bare constant
+// here, which is how the code ended up on gpt-image-1-mini long after a much
+// better model existed on the same endpoint.
+const models = require('./_media-models');
+
 // Stays comfortably under vercel.json's api/**/*.js maxDuration=60s.
 const REQUEST_TIMEOUT_MS = 55_000;
 
@@ -462,6 +467,163 @@ function isValidRenovationDepthKey(key) {
 // whenever the Staging style is active (see dashboard.js's
 // renderPiFurnitureGrid()), so a normal user never reaches this branch —
 // it only matters for a direct API call that bypasses the UI.
+/* ── Client-customisable axes, added after the original eight ───────────────
+ * The engine preamble is fixed law. THESE are the dials a client turns inside
+ * it — §15 of the engine spec ("treat user-selected parameters as explicit
+ * instructions") made real.
+ *
+ * ── Why this block is data and the original eight are not ──────────────────
+ * The first eight axes (style, room, furniture, walls, wall colour, floor,
+ * lighting, depth) each carry a special case: wall colour only applies to a
+ * painted finish, staging overrides an empty-furniture request, renovation
+ * depth has a non-empty default. They are hand-composed above and left alone,
+ * because rewriting a working money path to save future typing is a bad trade.
+ *
+ * Everything from here on is uniform — a key, a list, one prompt clause — so
+ * it lives in a registry instead. Adding "and more" later is one array entry:
+ * validation, the composed prompt, and Faro's tool schema all read from this,
+ * so nothing else has to be touched.
+ */
+const PALETTES = Object.freeze([
+  Object.freeze({ key: 'warm-neutral', label: 'Warm neutraal', promptFragment: 'a warm neutral palette — creams, soft beiges, warm greys' }),
+  Object.freeze({ key: 'cool-neutral', label: 'Koel neutraal', promptFragment: 'a cool neutral palette — crisp whites, cool greys, soft blacks' }),
+  Object.freeze({ key: 'earth',        label: 'Aardetinten',   promptFragment: 'an earth-tone palette — terracotta, ochre, clay, olive, warm browns' }),
+  Object.freeze({ key: 'monochrome',   label: 'Monochroom',    promptFragment: 'a monochrome palette — a single hue family from light to dark' }),
+  Object.freeze({ key: 'natural',      label: 'Natuurlijk',    promptFragment: 'a natural palette drawn from raw materials — wood, stone, linen, unpainted textures' }),
+  Object.freeze({ key: 'bold-accent',  label: 'Met accentkleur', promptFragment: 'a restrained neutral base with one confident accent colour used sparingly' }),
+]);
+
+const VIBES = Object.freeze([
+  Object.freeze({ key: 'serene',    label: 'Sereen',        promptFragment: 'a calm, serene atmosphere — uncluttered, quiet, restful' }),
+  Object.freeze({ key: 'cozy',      label: 'Knus',          promptFragment: 'a cozy, inviting atmosphere — soft textiles, warm light, a lived-in comfort' }),
+  Object.freeze({ key: 'airy',      label: 'Licht en ruim', promptFragment: 'an airy, open atmosphere — light, space, minimal visual weight' }),
+  Object.freeze({ key: 'dramatic',  label: 'Dramatisch',    promptFragment: 'a dramatic atmosphere — deep contrast, strong shadow, a sense of occasion' }),
+  Object.freeze({ key: 'boutique',  label: 'Boutique hotel', promptFragment: 'a boutique-hotel atmosphere — considered, tailored, quietly expensive' }),
+  Object.freeze({ key: 'timeless',  label: 'Tijdloos',      promptFragment: 'a timeless atmosphere — classic proportions and materials that will not date' }),
+]);
+
+const MATERIAL_ACCENTS = Object.freeze([
+  Object.freeze({ key: 'oak',        label: 'Eik',          promptFragment: 'light oak as the dominant material accent' }),
+  Object.freeze({ key: 'walnut',     label: 'Noten',        promptFragment: 'dark walnut as the dominant material accent' }),
+  Object.freeze({ key: 'marble',     label: 'Marmer',       promptFragment: 'marble as the dominant material accent, with believable natural veining' }),
+  Object.freeze({ key: 'stone',      label: 'Natuursteen',  promptFragment: 'natural stone as the dominant material accent, with genuine variation' }),
+  Object.freeze({ key: 'concrete',   label: 'Beton',        promptFragment: 'polished concrete as the dominant material accent' }),
+  Object.freeze({ key: 'brass',      label: 'Messing',      promptFragment: 'brass detailing as the dominant metal accent' }),
+  Object.freeze({ key: 'matte-black',label: 'Mat zwart',    promptFragment: 'matte black metalwork as the dominant hardware accent' }),
+  Object.freeze({ key: 'rattan',     label: 'Rotan',        promptFragment: 'rattan and woven natural fibre as a recurring material accent' }),
+]);
+
+/* Only meaningful for exterior shots — gevel, tuin, terras. Applied regardless
+ * of room type, because the model can see whether it is outdoors and the engine
+ * preamble already forbids inventing a garden that is not there. */
+const LANDSCAPING_STYLES = Object.freeze([
+  Object.freeze({ key: 'mediterranean', label: 'Mediterraan',  promptFragment: 'Mediterranean landscaping — olive, lavender, gravel, terracotta, sun-tolerant planting' }),
+  Object.freeze({ key: 'modern-minimal',label: 'Modern strak', promptFragment: 'modern minimal landscaping — clean lines, architectural planting, large-format paving' }),
+  Object.freeze({ key: 'japanese',      label: 'Japans',       promptFragment: 'Japanese-inspired landscaping — moss, acer, stone, water, deliberate restraint' }),
+  Object.freeze({ key: 'cottage',       label: 'Landelijk',    promptFragment: 'cottage landscaping — layered borders, informal planting, natural materials' }),
+  Object.freeze({ key: 'lush',          label: 'Weelderig',    promptFragment: 'lush green landscaping — dense foliage, generous planting, a mature garden feel' }),
+]);
+
+/*
+ * The registry. Each entry composes exactly one clause. `optional` axes accept
+ * an empty value meaning "the AI decides", which is the same contract the
+ * original eight use.
+ */
+const EXTRA_AXES = Object.freeze([
+  Object.freeze({ key: 'palette',     list: PALETTES,           label: 'Kleurenpalet',     clause: 'Colour palette' }),
+  Object.freeze({ key: 'vibe',        list: VIBES,              label: 'Sfeer',            clause: 'Atmosphere' }),
+  Object.freeze({ key: 'material',    list: MATERIAL_ACCENTS,   label: 'Materiaal',        clause: 'Materials' }),
+  Object.freeze({ key: 'landscaping', list: LANDSCAPING_STYLES, label: 'Tuinstijl',        clause: 'Landscaping' }),
+]);
+
+/* Free text, not a list — "de open haard", "het behang in de gang". Capped for
+ * the same reason wallColorNote is: this text reaches a paid API. */
+const MAX_OBJECT_NOTE_LENGTH = 120;
+const OBJECT_AXES = Object.freeze([
+  Object.freeze({ key: 'preserve', label: 'Behouden',  clause: 'PRESERVE EXACTLY, do not alter' }),
+  Object.freeze({ key: 'remove',   label: 'Verwijderen', clause: 'REMOVE from the scene, replacing it with what would plausibly be there instead' }),
+  Object.freeze({ key: 'add',      label: 'Toevoegen', clause: 'ADD to the scene, placed where it could physically exist' }),
+]);
+
+function axisByKey(list, key) {
+  return list.find((x) => x.key === key) || null;
+}
+
+/** True for '' (automatisch) or a known key. Mirrors the original axes' contract. */
+function isValidExtraAxis(axisKey, value) {
+  const axis = EXTRA_AXES.find((a) => a.key === axisKey);
+  if (!axis) return false;
+  const v = value === undefined || value === null ? '' : String(value).trim();
+  return v === '' || Boolean(axisByKey(axis.list, v));
+}
+
+/** Compose the extra axes into prompt clauses. Empty axes contribute nothing. */
+function buildExtraClauses(opts = {}) {
+  const parts = [];
+  for (const axis of EXTRA_AXES) {
+    const hit = axisByKey(axis.list, String(opts[axis.key] || '').trim());
+    if (hit) parts.push(` ${axis.clause}: ${hit.promptFragment}.`);
+  }
+  for (const axis of OBJECT_AXES) {
+    const note = opts[axis.key] ? String(opts[axis.key]).trim().slice(0, MAX_OBJECT_NOTE_LENGTH) : '';
+    if (note) parts.push(` ${axis.clause}: ${note}.`);
+  }
+  return parts.join('');
+}
+
+
+/* ── The transformation engine preamble ─────────────────────────────────────
+ * Prepended to EVERY property-image prompt, unconditionally. It is not
+ * configurable and no caller can opt out — that is the point. The axis-driven
+ * text below it says *what* to change; this says what must never change, and
+ * the failure mode it prevents is the expensive one: a beautiful image of a
+ * house that is not the client's house. An agent cannot show that to a seller.
+ *
+ * Ordering is deliberate and matters more than it looks. The engine rules come
+ * FIRST as standing law, the composed axes next, and the user's own sentence
+ * LAST — image models weight the end of a prompt most heavily, so the specific
+ * request stays dominant while the constraints remain in force.
+ */
+const TRANSFORM_ENGINE = [
+  'UNIVERSAL PROPERTY TRANSFORMATION ENGINE.',
+  'You are a visual transformation engine for real estate, architecture, interior and exterior design, landscaping and renovation. The uploaded image is the SOURCE OF TRUTH.',
+
+  '1. UNDERSTAND FIRST. Identify property type, interior or exterior, room type, structure, walls, floors, ceilings, windows, doors, roof, facade, garden, driveway, terrace, pool, landscaping, furniture, fixtures, lighting, architectural details, materials, perspective, camera position, camera height, camera angle and visible proportions. Classify every element as STRUCTURAL (defines the property), RENOVATABLE (can realistically be replaced or remodeled) or DECORATIVE (furniture, plants, lighting, finishes, styling). Never treat the whole image as freely regenerable.',
+
+  '2. PRESERVE THE PROPERTY. Unless structural change is explicitly requested, preserve architecture, building footprint, room dimensions, wall positions, ceiling height, window locations and proportions, door locations and openings, roof structure, major architectural features, garden and property boundaries, pool/driveway/terrace locations, overall composition, camera position, camera height, camera angle, perspective and framing. The result must be the SAME real property after transformation. Do not create a different house, room, garden or property.',
+
+  "3. THE USER'S REQUEST HAS HIGHEST PRIORITY. Carry it out fully, within the physical logic of the existing property.",
+
+  '4. DO NOT OVER-TRANSFORM. Change only what was asked. If one area is requested, keep unrelated areas as close to the original as possible. Never move windows, alter room dimensions, add rooms, change the exterior when only an interior was requested, change the camera, or invent architectural features.',
+
+  '5. STYLE INTERPRETATION. Translate a requested style into coherent architecture, materials, colour palette, furniture, lighting and landscaping at the property\'s real scale. Never interpret a style so literally that the property becomes unrealistic.',
+
+  '6. INTERIORS. Preserve room geometry, windows, doors, ceiling, perspective and natural light direction. Transform furniture, flooring, wall and ceiling finishes, lighting, curtains, rugs, cabinetry, fixtures, decoration, artwork, colours and materials when asked. Furniture must have realistic scale, weight, placement, floor contact, clearance and function, and walking paths must stay usable.',
+
+  '7. EXTERIORS. Preserve the fundamental structure unless architectural change is requested. Facade materials, paint, cladding, windows, doors, exterior lighting, garage door, balconies, railings, landscaping, driveway, outdoor furniture and decorative elements may change. Keep construction, structural connections, material transitions, shadows, reflections, perspective and scale realistic. It must still clearly be the same house.',
+
+  '8. GARDENS AND LANDSCAPE. Respect existing boundaries, terrain, trees, plants, paths, patios, terraces, pools, fences, walls and driveways, then transform as requested. All landscaping must obey realistic scale, terrain, shadows, plant growth, perspective and spatial limits. Never place an object where it could not physically exist.',
+
+  '9. ADDING ELEMENTS. Choose the most logical physical location. Anything added must fit the available space, match the perspective, have realistic dimensions, cast correct shadows, interact correctly with its surroundings, sit properly on surfaces, match the requested style, and look constructed rather than pasted.',
+
+  '10. VISUALIZATION STANDARD. Produce a photorealistic, professionally composed, architecturally believable, naturally lit result at realistic scale with realistic materials. Avoid a CGI look, plastic textures, excessive sharpness, artificial lighting, floating objects, distorted geometry, impossible architecture, repeated textures, unrealistic plants, wrong shadows or reflections, warped windows or doors, random objects and oversized furniture.',
+
+  '11. CAMERA. Unless a different view is explicitly requested, KEEP THE ORIGINAL CAMERA: position, height, angle, lens perspective, field of view, framing, horizon and image proportions. It must look like the same photograph taken before and after the renovation.',
+
+  '12. LIGHTING. Respect the original sun direction, window illumination, shadow direction, ambient light and the interior/exterior brightness relationship unless a different scenario is requested. Integrate any added artificial light naturally.',
+
+  '13. MATERIALS. Every material needs believable texture, roughness, reflection, depth, scale, wear and contact shadows. Wood looks like wood, stone varies naturally, glass reflects and transmits correctly, metal reflects realistically, fabric has subtle texture. Avoid perfect computer-generated surfaces.',
+
+  '14. BEFORE AND AFTER. A person must be able to say with confidence: this is the same property, renovated. Do not optimise for the most impressive image. Optimise for the most believable transformation of the actual property.',
+
+  '15. EXPLICIT PARAMETERS. Any style, palette, material, renovation intensity, room type, landscaping style, furniture style, lighting style, or object to add, remove or preserve given below is an explicit instruction. Never override one unless it would be physically impossible.',
+
+  '16. FINAL CHECK. Before producing the image verify: is it clearly the same property; is the perspective preserved; are proportions correct; are windows and doors correctly positioned; are new objects physically possible; are materials realistic; is lighting consistent; are shadows believable; is furniture correctly scaled; does it follow the request; did anything unrelated change unnecessarily; does it look like professional real-estate visualization. Correct anything that fails before producing the final result.',
+
+  'CORE PRINCIPLE: TRANSFORM THE PROPERTY, DO NOT REINVENT THE PROPERTY. Preserve what makes it physically identifiable and transform only what was asked.',
+].join('\n\n');
+
+
 function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
   const opts = options || {};
   const style = getStyleByKey(styleKey);
@@ -484,9 +646,28 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
     let wallText = wallFinish.promptFragment;
     if (wallFinish.key === 'painted') {
       const color = getWallColorByKey(opts.wallColor);
-      wallText += color ? `, in ${color.promptFragment}` : ', in a fitting neutral tone';
       const note = opts.wallColorNote ? String(opts.wallColorNote).trim().slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '';
-      if (note) wallText += ` (client nuance on the colour: ${note})`;
+
+      // Three cases, and the middle one used to be wrong in a way that quietly
+      // ruined the request. WALL_COLORS holds six keys; anything outside them —
+      // "terracotta", "RAL 7016", "dezelfde tint als de kastjes" — arrives only
+      // as a note. The old text emitted "in a fitting neutral tone (client
+      // nuance on the colour: terracotta)", which tells the image model
+      // NEUTRAL first and treats the actual request as a footnote. Terracotta
+      // is not neutral, and the output showed it.
+      //
+      // A note with no key colour IS the colour, so it is stated as one. The
+      // fallback to neutral now only applies when the caller genuinely said
+      // nothing about colour at all.
+      if (color && note) {
+        wallText += `, in ${color.promptFragment} (client nuance on the colour: ${note})`;
+      } else if (color) {
+        wallText += `, in ${color.promptFragment}`;
+      } else if (note) {
+        wallText += `, in exactly this colour as described by the client: ${note}`;
+      } else {
+        wallText += ', in a fitting neutral tone';
+      }
     }
     wallPart = ` ${wallText}.`;
   }
@@ -500,9 +681,13 @@ function buildTransformPrompt(styleKey, customPrompt, roomTypeKey, options) {
   const renovationDepth = getRenovationDepthByKey(opts.renovationDepth) || getRenovationDepthByKey(DEFAULT_RENOVATION_DEPTH);
   const renovationPart = ` ${renovationDepth.promptFragment}.`;
 
-  const composed = `${base}${roomPart}${furniturePart}${wallPart}${floorPart}${lightingPart}${renovationPart}`;
+  const extraPart = buildExtraClauses(opts);
+  const composed = `${base}${roomPart}${furniturePart}${wallPart}${floorPart}${lightingPart}${renovationPart}${extraPart}`;
   const extra = customPrompt ? String(customPrompt).trim() : '';
-  return extra ? `${composed} Additional client instructions: ${extra}` : composed;
+  const request = extra ? `${composed}\n\nEXPLICIT CLIENT REQUEST (highest priority): ${extra}` : composed;
+
+  // Engine rules first as standing law, the request last so it stays dominant.
+  return `${TRANSFORM_ENGINE}\n\n── THIS TRANSFORMATION ──\n${request}`;
 }
 
 // ── Config / fail-soft helpers ──────────────────────────────────────────
@@ -584,9 +769,51 @@ async function uploadPropertyImageToBlob(buffer, contentType, projectCode, kind)
 // every failure path is a typed ImageFeatureError with a Dutch, user-safe
 // message and an appropriate HTTP status, so api/leads.js's handler can
 // relay it directly without leaking API internals. ──────────────────────
+/* ── What is ACTUALLY sent to the image API ────────────────────────────────
+ * Split out from generatePropertyImage so the exact string that leaves this
+ * process can be asserted in a test. It could not be before, and that hid a
+ * bug that charged clients 50 credits for a request the model never saw:
+ *
+ * the prompt was posted as `prompt.slice(0, 4000)`. That cap was written when
+ * a full prompt was ~700 characters. Prepending the ~5.9k-character
+ * TRANSFORM_ENGINE pushed every real instruction past it, so each generation
+ * sent engine rules 1-11, truncated mid-sentence, and nothing else — no style,
+ * no room, no colour, no client request.
+ *
+ * The cap is now the API's actual limit rather than an arbitrary number, and
+ * the inputs are already individually bounded (customPrompt 500,
+ * wallColorNote 80, object notes 120), so a real prompt lands around 8k and
+ * can never approach it. If that ever stops being true we want to know loudly,
+ * not silently ship a decapitated prompt — hence the log.
+ */
+const MAX_API_PROMPT_CHARS = 32000;
+
+function composeApiPrompt(args = {}) {
+  const { style, customPrompt, roomType, ...opts } = args;
+  const prompt = buildTransformPrompt(style, customPrompt, roomType, opts);
+  if (prompt.length > MAX_API_PROMPT_CHARS) {
+    console.error(
+      `[property-generate] prompt is ${prompt.length} chars, over the ${MAX_API_PROMPT_CHARS} cap — ` +
+      'the client request would be truncated. Shorten TRANSFORM_ENGINE or tighten the input caps.',
+    );
+    return prompt.slice(0, MAX_API_PROMPT_CHARS);
+  }
+  return prompt;
+}
+
 async function generatePropertyImage({
   imageBuffer, imageMimeType, style, customPrompt, roomType,
   furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  // Render settings, not prompt content. Named explicitly so they cannot fall
+  // into ...extraAxes and end up spliced into the prompt as if a client had
+  // asked for a room in the style of "1024x1024".
+  quality, size,
+  // Everything else — the client-customisable axes and any added later. A
+  // fixed destructure silently DROPPED palette/vibe/material/landscaping/
+  // preserve/remove/add: the caller passed them, this signature ate them, and
+  // the axes only appeared to work because the tests called
+  // buildTransformPrompt directly instead of going through here.
+  ...extraAxes
 }) {
   const key = openaiKey();
   if (!key) throw new ImageFeatureError(missingConfigMessage(), { code: 'no_api_key', status: 503 });
@@ -594,14 +821,29 @@ async function generatePropertyImage({
     throw new ImageFeatureError('Geen geldige afbeelding meegegeven.', { code: 'invalid_image', status: 400 });
   }
 
-  const prompt = buildTransformPrompt(style, customPrompt, roomType, {
+  const prompt = composeApiPrompt({
+    style, customPrompt, roomType,
     furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+    ...extraAxes,
   });
+  // Model, quality and size come from the registry rather than from literals
+  // here, so the choice is reviewable in one place and overridable per
+  // deployment without a code change.
+  const model = models.imageModel();
+  const renderQuality = models.imageQuality(model, quality);
+  const renderSize = models.nearestSize(model, size);
+
   const ext = imageMimeType === 'image/webp' ? 'webp' : imageMimeType === 'image/jpeg' ? 'jpg' : 'png';
   const form = new FormData();
-  form.append('model', OPENAI_MODEL);
-  form.append('prompt', prompt.slice(0, 4000));
-  form.append('size', '1024x1024');
+  form.append('model', model.id);
+  form.append('prompt', prompt);
+  form.append('size', renderSize);
+  form.append('quality', renderQuality);
+  // gpt-image-2 always works at high input fidelity and returns 400 if the
+  // parameter is sent at all; its predecessors need it explicitly to stop the
+  // model redrawing the room instead of transforming the photo. Which of the
+  // two applies is a property of the model, not of this call site.
+  if (model.supportsInputFidelity) form.append('input_fidelity', 'high');
   form.append('image', new Blob([imageBuffer], { type: imageMimeType || 'image/png' }), `source.${ext}`);
 
   const controller = new AbortController();
@@ -609,7 +851,7 @@ async function generatePropertyImage({
 
   let res;
   try {
-    res = await fetch(OPENAI_IMAGES_EDIT_URL, {
+    res = await fetch(model.endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}` },
       body: form,
@@ -633,7 +875,7 @@ async function generatePropertyImage({
 
   if (!res.ok || !body) {
     const apiMessage = (body && body.error && body.error.message) || `HTTP ${res.status}`;
-    console.error('[images] OpenAI images/edits failed:', res.status, String(apiMessage).slice(0, 300));
+    console.error(`[images] ${model.id} images/edits failed:`, res.status, String(apiMessage).slice(0, 300));
     throw new ImageFeatureError('AI-beeldgeneratie is mislukt. Probeer een andere foto of stijl.', { code: 'api_error', status: 502 });
   }
 
@@ -657,6 +899,7 @@ async function generatePropertyImage({
 function buildImageRecord({
   url, style, customPrompt, roomType, sourceUrl,
   furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+  ...extraAxes
 }) {
   const styleObj = getStyleByKey(style);
   const roomObj = getRoomTypeByKey(roomType);
@@ -684,7 +927,13 @@ function buildImageRecord({
     wallFinishLabel: wallFinishObj ? wallFinishObj.label : '',
     wallColor: wallColorObj ? wallColorObj.key : '',
     wallColorLabel: wallColorObj ? wallColorObj.label : '',
-    wallColorNote: wallColorObj && wallColorNote ? String(wallColorNote).slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '',
+    // Kept whenever the finish is painted, NOT only when a key colour was also
+    // chosen. A note without a key is now the main path for any colour outside
+    // the six presets — "terracotta", "RAL 7016" — and the old condition would
+    // have dropped exactly those from the history, losing the colour that was
+    // actually used.
+    wallColorNote: wallFinishObj && wallFinishObj.key === 'painted' && wallColorNote
+      ? String(wallColorNote).slice(0, MAX_WALL_COLOR_NOTE_LENGTH) : '',
     floor: floorObj ? floorObj.key : '',
     floorLabel: floorObj ? floorObj.label : '',
     lighting: lightingObj ? lightingObj.key : '',
@@ -692,6 +941,20 @@ function buildImageRecord({
     renovationDepth: renovationObj.key,
     renovationDepthLabel: renovationObj.label,
     customPrompt: customPrompt ? String(customPrompt).slice(0, 500) : '',
+    // The client-customisable axes, resolved to key + label the same way the
+    // originals are, so history shows what was actually asked for. Registry-
+    // driven: a new axis is persisted without touching this function.
+    ...EXTRA_AXES.reduce((acc, axis) => {
+      const hit = axisByKey(axis.list, String(extraAxes[axis.key] || '').trim());
+      acc[axis.key] = hit ? hit.key : '';
+      acc[`${axis.key}Label`] = hit ? hit.label : '';
+      return acc;
+    }, {}),
+    ...OBJECT_AXES.reduce((acc, axis) => {
+      acc[axis.key] = extraAxes[axis.key]
+        ? String(extraAxes[axis.key]).slice(0, MAX_OBJECT_NOTE_LENGTH) : '';
+      return acc;
+    }, {}),
     aiLabel: AI_DISCLAIMER_LABEL,
     createdAt: new Date().toISOString(),
   };
@@ -791,9 +1054,171 @@ async function appendPropertyImage(projectCode, record) {
   }
 }
 
+/* ── The one place a property image is generated ────────────────────────────
+ * Extracted verbatim from api/leads.js's 'property-generate' block so that the
+ * CRM page and Faro's chat share ONE implementation of it.
+ *
+ * That mattered as soon as generation moved into the chat. There are now two
+ * callers, and every one of the steps below is either a validation that keeps
+ * a bad request from reaching a paid API, or a guard on money:
+ *   - eight option-axis validations
+ *   - upload parsing, capped at 3MB DECODED (Vercel's ~4.5MB request limit)
+ *   - isConfigured() fail-soft, BEFORE any credit check or paid call
+ *   - a credit check that BLOCKS when over the limit, before OpenAI is called
+ *   - flat-weight usage recording after success
+ * Two copies of that will drift, and the copy that drifts is the one that
+ * spends the client's money.
+ *
+ * Throws ImageFeatureError with a `status` for every failure case, so an HTTP
+ * caller can map straight onto it and a non-HTTP caller (the chat tool) can
+ * read `.message` without knowing about responses.
+ *
+ * @param {string} projectCode  tenant — from the session, never the caller's body
+ * @param {object} input        the same field names api/leads.js accepted
+ * @param {object} deps         { credits } — injected so this module does not
+ *                              take a hard dependency on the credit system and
+ *                              stays unit-testable without it
+ * @returns {Promise<object>}   the persisted image record
+ */
+async function generateForClient(projectCode, input = {}, deps = {}) {
+  const credits = deps.credits;
+  if (!projectCode) throw new ImageFeatureError('Geen client context', { status: 403 });
+
+  const style = String(input.style || '').trim();
+  if (!isValidStyleKey(style)) {
+    throw new ImageFeatureError(`Ongeldige stijl. Kies uit: ${PROPERTY_STYLES.map((s) => s.key).join(', ')}`, { status: 400 });
+  }
+
+  const roomType = input.roomType !== undefined ? String(input.roomType).trim() : '';
+  if (!isValidRoomTypeKey(roomType)) {
+    throw new ImageFeatureError(`Ongeldig kamertype. Kies uit: ${ROOM_TYPES.map((r) => r.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  const furniture = input.furniture !== undefined ? String(input.furniture).trim() : '';
+  if (!isValidFurnitureKey(furniture)) {
+    throw new ImageFeatureError(`Ongeldig meubelniveau. Kies uit: ${FURNITURE_LEVELS.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  const wallFinish = input.wallFinish !== undefined ? String(input.wallFinish).trim() : '';
+  if (!isValidWallFinishKey(wallFinish)) {
+    throw new ImageFeatureError(`Ongeldige muurafwerking. Kies uit: ${WALL_FINISHES.map((w) => w.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  let wallColor = input.wallColor !== undefined ? String(input.wallColor).trim() : '';
+  if (!isValidWallColorKey(wallColor)) {
+    throw new ImageFeatureError(`Ongeldige muurkleur. Kies uit: ${WALL_COLORS.map((c) => c.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  let wallColorNote = input.wallColorNote !== undefined ? String(input.wallColorNote).trim().slice(0, 80) : '';
+  // wallColor/wallColorNote only mean anything when wallFinish is 'painted' —
+  // nulled otherwise so a stray value from a stale UI never persists a colour
+  // that was never applied.
+  if (wallFinish !== 'painted') { wallColor = ''; wallColorNote = ''; }
+
+  const floor = input.floor !== undefined ? String(input.floor).trim() : '';
+  if (!isValidFloorKey(floor)) {
+    throw new ImageFeatureError(`Ongeldige vloer. Kies uit: ${FLOOR_TYPES.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  const lighting = input.lighting !== undefined ? String(input.lighting).trim() : '';
+  if (!isValidLightingKey(lighting)) {
+    throw new ImageFeatureError(`Ongeldige lichtsfeer. Kies uit: ${LIGHTING_MOODS.map((l) => l.key).join(', ')} (of laat leeg voor automatisch)`, { status: 400 });
+  }
+  // NOT optional — a caller that sends nothing gets the honest default here,
+  // BEFORE validation, so this never 400s for an omitted field.
+  const renovationDepth = input.renovationDepth ? String(input.renovationDepth).trim() : DEFAULT_RENOVATION_DEPTH;
+  if (!isValidRenovationDepthKey(renovationDepth)) {
+    throw new ImageFeatureError(`Ongeldige renovatiediepte. Kies uit: ${RENOVATION_DEPTHS.map((r) => r.key).join(', ')}`, { status: 400 });
+  }
+
+  const customPrompt = input.customPrompt !== undefined ? String(input.customPrompt).trim().slice(0, 500) : '';
+
+  // The client-customisable axes. Validated from the registry, so a new axis is
+  // covered here the moment it is added to EXTRA_AXES — no edit at this call
+  // site, which is what keeps "and more" from meaning "and more places to
+  // forget a validator".
+  const extra = {};
+  for (const axis of EXTRA_AXES) {
+    const v = input[axis.key] !== undefined ? String(input[axis.key]).trim() : '';
+    if (!isValidExtraAxis(axis.key, v)) {
+      throw new ImageFeatureError(
+        `Ongeldige ${axis.label.toLowerCase()}. Kies uit: ${axis.list.map((x) => x.key).join(', ')} (of laat leeg voor automatisch)`,
+        { status: 400 },
+      );
+    }
+    extra[axis.key] = v;
+  }
+  for (const axis of OBJECT_AXES) {
+    extra[axis.key] = input[axis.key] !== undefined
+      ? String(input[axis.key]).trim().slice(0, MAX_OBJECT_NOTE_LENGTH) : '';
+  }
+
+  // Validate the upload BEFORE touching credits or OpenAI — never trust a
+  // client-supplied filename/MIME, only the actual base64 payload.
+  const uploaded = parseImageDataUrl(input.dataUrl);
+
+  // Fail soft, clearly, BEFORE any credit check or paid call — a missing
+  // OPENAI_API_KEY/BLOB_READ_WRITE_TOKEN must never surface as a 500.
+  if (!isConfigured()) throw new ImageFeatureError(missingConfigMessage(), { status: 503 });
+
+  // Discretionary AI (a marketing tool, not the lead-conversation promise
+  // whatsapp.js protects) — BLOCK when over the limit, before the paid call.
+  if (credits) {
+    const check = await credits.checkCredits(projectCode, credits.FEATURES.IMAGE_GENERATION);
+    if (!check.allowed) {
+      throw new ImageFeatureError(check.message || 'Je AI-credits voor deze periode zijn op', {
+        status: 402, code: 'credit_limit_reached',
+      });
+    }
+  }
+
+  // The paid edit and the (cheap, best-effort) upload of the ORIGINAL photo run
+  // concurrently. The source upload NEVER fails the request: it only powers the
+  // before/after comparison, and a Blob hiccup must not cost a generation the
+  // client already paid credits for.
+  const [generated, sourceUrl] = await Promise.all([
+    generatePropertyImage({
+      imageBuffer: uploaded.buffer,
+      imageMimeType: uploaded.mimeType,
+      style, customPrompt, roomType, furniture, wallFinish, wallColor,
+      wallColorNote, floor, lighting, renovationDepth,
+      ...extra,
+    }),
+    uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
+      console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
+      return '';
+    }),
+  ]);
+
+  const blobUrl = await uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
+  if (!blobUrl) throw new ImageFeatureError('AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.', { status: 502 });
+
+  const record = buildImageRecord({
+    url: blobUrl, style, customPrompt, roomType, sourceUrl,
+    furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+    ...extra,
+  });
+  appendPropertyImage(projectCode, record).catch(() => {});
+
+  // Flat weight regardless of how many axes were touched — one generation, one
+  // charge. Only `meta` grows, for reporting.
+  if (credits) {
+    credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
+      credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
+      meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth, ...extra },
+    }).catch(() => {});
+  }
+
+  return record;
+}
+
 module.exports = {
   PROPERTY_STYLES,
   ROOM_TYPES,
+  PALETTES,
+  VIBES,
+  MATERIAL_ACCENTS,
+  LANDSCAPING_STYLES,
+  EXTRA_AXES,
+  OBJECT_AXES,
+  MAX_OBJECT_NOTE_LENGTH,
+  isValidExtraAxis,
+  buildExtraClauses,
   FURNITURE_LEVELS,
   WALL_FINISHES,
   WALL_COLORS,
@@ -821,6 +1246,8 @@ module.exports = {
   getRenovationDepthByKey,
   isValidRenovationDepthKey,
   buildTransformPrompt,
+  composeApiPrompt,
+  MAX_API_PROMPT_CHARS,
   isConfigured,
   missingConfigMessage,
   parseImageDataUrl,
@@ -829,4 +1256,5 @@ module.exports = {
   buildImageRecord,
   listPropertyImages,
   appendPropertyImage,
+  generateForClient,
 };

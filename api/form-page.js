@@ -12,14 +12,29 @@
 // a separate, larger effort intentionally out of scope for the conversation-
 // language rollout — flagged here so it isn't mistaken for an oversight.
 
+const _properties = require('./_properties');
+
 module.exports = async function handler(req, res) {
-  const code = (req.url || '').split('/').filter(Boolean).pop() || 'HELVARO';
-  let project = decodeURIComponent(code).toUpperCase();
+  /* Twee vormen:
+       /start/TELJO       -- het algemene formulier van de makelaar
+       /start/TELJO/P3    -- hetzelfde formulier, maar voor EEN pand
+     De tweede is wat er onder een advertentie of op een bordje met QR-code
+     komt te staan. Zonder deze splitsing pakte pop() bij die vorm de
+     PANDCODE als projectcode, en dan viel het formulier terug op de
+     Helvaro-standaard -- een klantloos formulier dat er correct uitziet. */
+  const pad = (req.url || '').split('?')[0].split('/').filter(Boolean);
+  const naStart = pad[0] === 'start' ? pad.slice(1) : pad.slice(-1);
+  let project  = decodeURIComponent(naStart[0] || 'HELVARO').toUpperCase();
+  let pandCode = naStart[1] ? decodeURIComponent(naStart[1]).toUpperCase() : '';
 
   // Strict validation. Only alphanumeric + underscore, prevents XSS in JS context
   if (!/^[A-Z0-9_]{1,50}$/.test(project)) {
     project = 'HELVARO';
   }
+  /* Een onbekende of onzinnige pandcode is geen fout maar een lege waarde: het
+     formulier werkt dan gewoon zonder pand. Iemand die een QR-code scheef
+     scant hoort geen foutpagina te krijgen. */
+  if (!_properties.geldigeCode(pandCode)) pandCode = '';
 
   // ── Pull client config (best-effort; falls back to defaults on any error) ──
   let aiName       = 'Mathis';
@@ -86,6 +101,27 @@ module.exports = async function handler(req, res) {
     }
   } catch { /* silent. Fallback to defaults */ }
 
+  /* ── Het pand, als de link er een noemt ────────────────────────────────────
+     Dit is waarom deze pagina bestaat in de pandvorm: de bezoeker ziet meteen
+     WELKE woning hij aanvraagt, en de lead die eruit komt draagt die code mee
+     tot in het WhatsApp-gesprek. Zonder dit moest de AI raden welke van de
+     vier panden bedoeld werd.
+
+     Best-effort, net als alles hierboven: valt Airtable weg, dan is er geen
+     pandblok en werkt het formulier gewoon. Een storing hoort een lead niet
+     tegen te houden. */
+  let pand = null;
+  if (pandCode) {
+    try {
+      pand = await _properties.getByCode(project, pandCode);
+      /* Niet-publiek betekent: wel in het CRM, niet naar buiten. Een makelaar
+         die een pand voorbereidt hoort het niet al gedeeld te zien. */
+      if (pand && (!pand.publiek || pand.gearchiveerd)) pand = null;
+    } catch (e) {
+      console.warn('[form-page] pand ophalen mislukt:', e && e.message);
+    }
+  }
+
   // Compute a contrasting darker shade for the gradient end-stop
   function shadeHex(hex, percent) {
     const h = hex.replace('#', '');
@@ -134,7 +170,7 @@ module.exports = async function handler(req, res) {
   // ── i18n: all UI strings per language ──────────────────────────────────────
   const i18n = {
     nl: {
-      title:           safeFirstName + ' van ' + safeClientName + '. neem contact op',
+      title:           safeFirstName + ' van ' + safeClientName + ' · Contact',
       meta:            safeFirstName + ' reageert binnen 1 minuut via WhatsApp.',
       status:          '● Online. Reageert binnen 1 min',
       intro:           'Hallo, ik ben',
@@ -177,7 +213,7 @@ module.exports = async function handler(req, res) {
       }
     },
     fr: {
-      title:           safeFirstName + ' de ' + safeClientName + '. prenez contact',
+      title:           safeFirstName + ' de ' + safeClientName + ' · Contact',
       meta:            safeFirstName + ' répond en 1 minute via WhatsApp.',
       status:          '● En ligne. Réponse en 1 min',
       intro:           'Bonjour, je suis',
@@ -220,7 +256,7 @@ module.exports = async function handler(req, res) {
       }
     },
     en: {
-      title:           safeFirstName + ' from ' + safeClientName + '. get in touch',
+      title:           safeFirstName + ' from ' + safeClientName + ' · Contact',
       meta:            safeFirstName + ' replies within 1 minute on WhatsApp.',
       status:          '● Online. Replies in 1 min',
       intro:           "Hello, I'm",
@@ -275,7 +311,14 @@ module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');     // always render fresh. Client just changed AI Name
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  // SAMEORIGIN, not DENY. The clickjacking protection this exists for is about
+  // a THIRD party framing the form to trick someone into submitting it, and
+  // same-origin-only stops that completely. DENY also blocked Helvaro's own
+  // dashboard, whose Formulier page previews this exact URL in an iframe — so
+  // that preview panel rendered blank for every client, in production, since
+  // it shipped. The paired frame-ancestors below is what modern browsers
+  // actually read; this header is for the ones that do not.
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Stond hier niet, op dashboard.js wel. Deze pagina vraagt geen camera,
@@ -299,7 +342,9 @@ module.exports = async function handler(req, res) {
     // app.helvaro.pro moet er expliciet in staan: op een preview-deploy is
     // 'self' die host niet en zou versturen stilletjes geblokkeerd worden.
     "connect-src 'self' https://app.helvaro.pro",
-    "frame-ancestors 'none'",
+    // 'self', so the dashboard's own form preview can render. Any other origin
+    // is still refused — see the X-Frame-Options note above.
+    "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
@@ -377,6 +422,45 @@ module.exports = async function handler(req, res) {
   @keyframes dotPulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
   .hdr-text { flex: 1; min-width: 0; }
   .hdr-name { font-size: 15px; font-weight: 700; color: #F9F9F9; }
+
+/* De pandkaart. Kleuren komen van de merkkleur van de klant, net als de rest
+   van deze pagina, zodat hij er niet uitziet als een advertentie van iemand
+   anders. */
+.pand-card {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.pand-card-foto {
+  display: block;
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.06);
+}
+.pand-card-adres { font-size: 14px; font-weight: 700; color: #F5F5F5; line-height: 1.35; }
+.pand-card-plaats { font-size: 12px; color: #B9B4A8; margin-top: 2px; }
+.pand-card-feiten {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px;
+}
+.pand-card-feit {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(255,255,255,0.07); color: #E7E3D9;
+}
+.pand-card-prijs { background: rgba(255,255,255,0.13); color: #FFFFFF; }
+/* Verkocht of onder bod krijgt zijn eigen vlak. Iemand die het formulier
+   invult voor een woning die weg is, hoort dat HIER te lezen en niet pas van
+   de AI. */
+.pand-card-weg {
+  margin-top: 9px; padding: 7px 10px; border-radius: 8px;
+  background: rgba(220,120,90,0.16); border: 1px solid rgba(220,120,90,0.32);
+  font-size: 12px; line-height: 1.45; color: #FFD9C9;
+}
   .hdr-status { font-size: 12px; color: #22c55e; font-weight: 600; }
   .hdr-brand { font-size: 11px; color: #999999; margin-top: 2px; }
 
@@ -542,7 +626,7 @@ module.exports = async function handler(req, res) {
       <span class="online-dot" title="${safeFirstName} is online"></span>
     </div>
     <div class="hdr-text">
-      <div class="hdr-name">${safeAiName}</div>
+      <h1 class="hdr-name">${safeAiName}</h1>
       <div class="hdr-status">${escHtml(t.status)}</div>
       <div class="hdr-brand">${safeClientName}</div>
     </div>
@@ -554,6 +638,20 @@ module.exports = async function handler(req, res) {
       ? `<div class="social-proof"><span class="dot"></span> <b>${leadsThisWeek}</b> ${escHtml(t.socialPre)} ${safeFirstName} ${escHtml(t.socialPost)}</div>`
       : ''
     }
+    ${pand ? `<div class="pand-card">
+      ${pand.fotos[0] ? `<img class="pand-card-foto" src="${escHtml(pand.fotos[0])}" alt="${escHtml(pand.adres)}" onerror="this.style.display='none'">` : ''}
+      <div class="pand-card-adres">${escHtml(pand.adres)}</div>
+      ${pand.plaats || pand.postcode ? `<div class="pand-card-plaats">${escHtml([pand.postcode, pand.plaats].filter(Boolean).join(' '))}</div>` : ''}
+      <div class="pand-card-feiten">
+        ${_properties.prijsTekst(pand.prijs) ? `<span class="pand-card-feit pand-card-prijs">${escHtml(_properties.prijsTekst(pand.prijs))}</span>` : ''}
+        ${pand.slaapkamers ? `<span class="pand-card-feit">${pand.slaapkamers} slaapkamer${pand.slaapkamers === 1 ? '' : 's'}</span>` : ''}
+        ${pand.oppervlakte ? `<span class="pand-card-feit">${pand.oppervlakte} m²</span>` : ''}
+        ${pand.epc ? `<span class="pand-card-feit">EPC ${escHtml(pand.epc)}</span>` : ''}
+      </div>
+      ${!_properties.kanBezichtigen(pand.status)
+        ? `<div class="pand-card-weg">Deze woning is ${escHtml(pand.status)}. Laat gerust je gegevens achter — ${safeFirstName} laat je weten wat er nog wél beschikbaar is.</div>`
+        : ''}
+    </div>` : ''}
     <div class="bubble">
       ${escHtml(t.intro)} <strong>${safeFirstName}</strong> ${escHtml(t.introMid)} <strong>${safeClientName}</strong>.<br>
       ${escHtml(introText)}
@@ -620,6 +718,9 @@ module.exports = async function handler(req, res) {
 
 <script>
 var PROJECT  = '${escJs(project)}';
+/* De pandcode reist mee naar de lead, zodat de AI straks weet over welke
+   woning dit gesprek gaat. Leeg = het algemene formulier. */
+var PAND     = '${escJs(pand ? pand.code : '')}';
 var AI_FIRST = '${escJs(firstName)}';
 var FALLBACK_NAME = '${escJs(t.friend)}';
 var I18N = {
@@ -665,7 +766,7 @@ btn.addEventListener('click', function() {
   fetch(API, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie', consent: !!(consent && consent.checked) })
+    body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie', property: PAND, consent: !!(consent && consent.checked) })
   })
   .then(function(r) {
     if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || I18N.errGeneric); });

@@ -1,0 +1,223 @@
+'use strict';
+/*
+ * Command Center — strings.
+ *
+ * Same four languages Faro carries, resolved the same way. Anything not
+ * translated falls back to English rather than to a key, because a key on
+ * screen is the bug api/_faro/ui/client.js's T() was changed to stop.
+ */
+
+const TRANSLATED = ['nl', 'en', 'fr', 'de'];
+
+const TABLES = {
+  nl: {
+    'nav.command':        'Command Center',
+    'greet.morning':      'Goedemorgen',
+    'greet.afternoon':    'Goedemiddag',
+    'greet.evening':      'Goedenavond',
+    'sub.none':           'Er staat vandaag niets dringends open.',
+    'sub.one':            'Helvaro vond 1 kans die je aandacht verdient.',
+    'sub.many':           'Helvaro vond {n} kansen die je aandacht verdienen.',
+
+    'kpi.pipeline':       'Potentiële pipeline',
+    'kpi.pipelineSub':    'Gekwalificeerd, nog geen afspraak',
+    'kpi.qualified':      'Gekwalificeerd',
+    'kpi.appointments':   'Afspraken',
+    'kpi.appointmentsSub': 'Door de AI geboekt in WhatsApp',
+    'kpi.conversion':     'Conversie',
+    'kpi.conversionSub':  'Lead naar afspraak',
+    'kpi.recovered':      'Heropgevist',
+    'kpi.recoveredSub':   'Potentiële pipeline, geen omzet',
+    'kpi.response':       'Reactietijd',
+
+    'brief.title':        'Je grootste kans vandaag',
+    'brief.opportunities': 'kansen',
+    'brief.appointments': 'afspraken vandaag',
+    'brief.atRisk':       'dreigen af te koelen',
+    'brief.pipeline':     'potentiële pipeline',
+    'brief.review':       'Bekijken en opvolgen',
+
+    'opp.title':          'Kansen van vandaag',
+    'opp.all':            'Alle kansen bekijken',
+    'opp.empty':          'Niets wat nu je aandacht nodig heeft.',
+    'opp.emptySub':       'Zodra een lead reageert, afkoelt of gekwalificeerd raakt zonder afspraak, staat het hier.',
+    'opp.score':          'Prioriteit',
+    'opp.why':            'Waarom nu',
+    'opp.whyPicked':      'Waarom Helvaro dit koos',
+    'opp.noAppointment':  'Nog geen afspraak',
+    'opp.silent':         '{n} dagen geen reactie',
+    'opp.leadScore':      'Kwalificatie',
+
+    'act.follow_up':      'Opvolgen',
+    'act.takeover':       'Zelf antwoorden',
+    'act.call':           'Bellen',
+    'act.review':         'Gesprek bekijken',
+    'act.none':           'Geen actie mogelijk',
+    'act.ask':            'Vraag het Faro',
+
+    'insight.title':      'Wat opvalt',
+    'insight.empty':      'Nog te weinig gegevens',
+    'insight.emptySub':   'Helvaro heeft meer activiteit nodig voor een betrouwbaar patroon.',
+
+    'drawer.close':       'Sluiten',
+    'drawer.budget':      'Budget',
+    'drawer.timing':      'Timing',
+    'drawer.source':      'Bron',
+    'drawer.status':      'Status',
+    'drawer.lastContact': 'Laatste contact',
+    'drawer.summary':     'Samenvatting',
+    'drawer.reasoning':   'Waarom Helvaro dit koos',
+    'drawer.recommended': 'Aanbevolen actie',
+    'drawer.openLead':    'Lead openen',
+    'drawer.openConvo':   'Gesprek openen',
+    'drawer.qualified':   'Gekwalificeerd',
+    'drawer.notQualified': 'Nog niet gekwalificeerd',
+    'drawer.today':       'vandaag',
+    'drawer.yesterday':   'gisteren',
+    'drawer.daysAgo':     '{n} dagen geleden',
+    'drawer.never':       'nooit zelf gereageerd',
+
+    // "Autopilot · Gepauzeerd" las als "de AI die mijn WhatsApp-leads
+    // beantwoordt staat uit". Dat doet deze knop niet en heeft hij nooit
+    // gedaan: hij bepaalt alleen of deze briefing zichzelf ververst. Iemand die
+    // vóór een vakantie op pauze drukte, dacht de AI stilgezet te hebben
+    // terwijl die gewoon doorging. De naam zegt nu wat hij doet, en de uitleg
+    // wijst naar de plek waar je de AI wél stilzet.
+    'auto.title':         'Automatisch bijwerken',
+    'auto.active':        'Aan',
+    'auto.paused':        'Uit',
+    'auto.explain':       'Bepaalt of deze briefing zichzelf ververst als je hem opent. Dit zet de WhatsApp-AI NIET stil — dat doe je per lead in het gesprek.',
+
+    'err.unavailable':    'Je CRM-gegevens zijn nu niet bereikbaar.',
+    'err.retry':          'Opnieuw proberen',
+    'loading':            'Laden…',
+  },
+
+  en: {
+    'nav.command': 'Command Center',
+    'greet.morning': 'Good morning', 'greet.afternoon': 'Good afternoon', 'greet.evening': 'Good evening',
+    'sub.none': 'Nothing urgent is open today.',
+    'sub.one': 'Helvaro found 1 opportunity that deserves your attention.',
+    'sub.many': 'Helvaro found {n} opportunities that deserve your attention.',
+    'kpi.pipeline': 'Potential pipeline', 'kpi.pipelineSub': 'Qualified, no appointment yet',
+    'kpi.qualified': 'Qualified', 'kpi.appointments': 'Appointments',
+    'kpi.appointmentsSub': 'Booked by the AI in WhatsApp',
+    'kpi.conversion': 'Conversion', 'kpi.conversionSub': 'Lead to appointment',
+    'kpi.recovered': 'Recovered', 'kpi.recoveredSub': 'Potential pipeline, not revenue',
+    'kpi.response': 'Response time',
+    'brief.title': 'Your biggest opportunity today',
+    'brief.opportunities': 'opportunities', 'brief.appointments': 'appointments today',
+    'brief.atRisk': 'at risk of going cold', 'brief.pipeline': 'potential pipeline',
+    'brief.review': 'Review and follow up',
+    'opp.title': "Today's opportunities", 'opp.all': 'Review all opportunities',
+    'opp.empty': 'Nothing needs your attention right now.',
+    'opp.emptySub': 'The moment a lead replies, goes quiet, or qualifies without an appointment, it appears here.',
+    'opp.score': 'Priority', 'opp.why': 'Why now', 'opp.whyPicked': 'Why Helvaro picked this',
+    'opp.noAppointment': 'No appointment yet', 'opp.silent': 'no reply for {n} days', 'opp.leadScore': 'Qualification',
+    'act.follow_up': 'Follow up', 'act.takeover': 'Reply yourself', 'act.call': 'Call',
+    'act.review': 'Review conversation', 'act.none': 'No action possible', 'act.ask': 'Ask Faro',
+    'insight.title': 'What stands out', 'insight.empty': 'Not enough data yet',
+    'insight.emptySub': 'Helvaro needs more activity before it can identify a reliable pattern.',
+    'drawer.close': 'Close', 'drawer.budget': 'Budget', 'drawer.timing': 'Timing', 'drawer.source': 'Source',
+    'drawer.status': 'Status', 'drawer.lastContact': 'Last contact', 'drawer.summary': 'Summary',
+    'drawer.reasoning': 'Why Helvaro picked this', 'drawer.recommended': 'Recommended action',
+    'drawer.openLead': 'Open lead', 'drawer.openConvo': 'Open conversation',
+    'drawer.qualified': 'Qualified', 'drawer.notQualified': 'Not yet qualified',
+    'drawer.today': 'today', 'drawer.yesterday': 'yesterday', 'drawer.daysAgo': '{n} days ago',
+    'drawer.never': 'never replied',
+    'auto.title': 'Auto-refresh', 'auto.active': 'On', 'auto.paused': 'Off',
+    'auto.explain': 'Controls whether this briefing refreshes itself when you open it. It does NOT pause the WhatsApp AI — you do that per lead in the conversation.',
+    'err.unavailable': 'Your CRM data is unreachable right now.', 'err.retry': 'Try again', 'loading': 'Loading…',
+  },
+
+  fr: {
+    'nav.command': 'Command Center',
+    'greet.morning': 'Bonjour', 'greet.afternoon': 'Bon après-midi', 'greet.evening': 'Bonsoir',
+    'sub.none': "Rien d'urgent aujourd'hui.",
+    'sub.one': 'Helvaro a trouvé 1 opportunité qui mérite votre attention.',
+    'sub.many': 'Helvaro a trouvé {n} opportunités qui méritent votre attention.',
+    'kpi.pipeline': 'Pipeline potentiel', 'kpi.pipelineSub': 'Qualifié, sans rendez-vous',
+    'kpi.qualified': 'Qualifiés', 'kpi.appointments': 'Rendez-vous',
+    'kpi.appointmentsSub': 'Pris par l\u2019IA dans WhatsApp',
+    'kpi.conversion': 'Conversion', 'kpi.conversionSub': 'Lead vers rendez-vous',
+    'kpi.recovered': 'Récupéré', 'kpi.recoveredSub': 'Pipeline potentiel, pas du chiffre',
+    'kpi.response': 'Temps de réponse',
+    'brief.title': "Votre plus grande opportunité aujourd'hui",
+    'brief.opportunities': 'opportunités', 'brief.appointments': "rendez-vous aujourd'hui",
+    'brief.atRisk': 'risquent de refroidir', 'brief.pipeline': 'pipeline potentiel',
+    'brief.review': 'Examiner et relancer',
+    'opp.title': "Opportunités du jour", 'opp.all': 'Voir toutes les opportunités',
+    'opp.empty': "Rien ne requiert votre attention pour le moment.",
+    'opp.emptySub': "Dès qu'un lead répond, se refroidit ou se qualifie sans rendez-vous, il apparaît ici.",
+    'opp.score': 'Priorité', 'opp.why': 'Pourquoi maintenant',
+    'opp.whyPicked': "Pourquoi Helvaro l'a choisi",
+    'opp.noAppointment': 'Pas encore de rendez-vous', 'opp.silent': 'sans réponse depuis {n} jours',
+    'opp.leadScore': 'Qualification',
+    'act.follow_up': 'Relancer', 'act.takeover': 'Répondre vous-même', 'act.call': 'Appeler',
+    'act.review': 'Voir la conversation', 'act.none': 'Aucune action possible', 'act.ask': 'Demander à Faro',
+    'insight.title': 'Ce qui ressort', 'insight.empty': 'Pas encore assez de données',
+    'insight.emptySub': "Helvaro a besoin de plus d'activité pour identifier un schéma fiable.",
+    'drawer.close': 'Fermer', 'drawer.budget': 'Budget', 'drawer.timing': 'Échéance', 'drawer.source': 'Source',
+    'drawer.status': 'Statut', 'drawer.lastContact': 'Dernier contact', 'drawer.summary': 'Résumé',
+    'drawer.reasoning': "Pourquoi Helvaro l'a choisi", 'drawer.recommended': 'Action recommandée',
+    'drawer.openLead': 'Ouvrir le lead', 'drawer.openConvo': 'Ouvrir la conversation',
+    'drawer.qualified': 'Qualifié', 'drawer.notQualified': 'Pas encore qualifié',
+    'drawer.today': "aujourd'hui", 'drawer.yesterday': 'hier', 'drawer.daysAgo': 'il y a {n} jours',
+    'drawer.never': "n'a jamais répondu",
+    'auto.title': 'Actualisation auto', 'auto.active': 'Activée', 'auto.paused': 'Désactivée',
+    'auto.explain': "Détermine si ce briefing se rafraîchit à l'ouverture. Cela ne met PAS l'IA WhatsApp en pause — cela se fait par lead dans la conversation.",
+    'err.unavailable': 'Vos données CRM sont inaccessibles pour le moment.', 'err.retry': 'Réessayer',
+    'loading': 'Chargement…',
+  },
+
+  de: {
+    'nav.command': 'Command Center',
+    'greet.morning': 'Guten Morgen', 'greet.afternoon': 'Guten Tag', 'greet.evening': 'Guten Abend',
+    'sub.none': 'Heute steht nichts Dringendes an.',
+    'sub.one': 'Helvaro hat 1 Chance gefunden, die Ihre Aufmerksamkeit verdient.',
+    'sub.many': 'Helvaro hat {n} Chancen gefunden, die Ihre Aufmerksamkeit verdienen.',
+    'kpi.pipeline': 'Potenzielle Pipeline', 'kpi.pipelineSub': 'Qualifiziert, noch kein Termin',
+    'kpi.qualified': 'Qualifiziert', 'kpi.appointments': 'Termine',
+    'kpi.appointmentsSub': 'Von der KI in WhatsApp gebucht',
+    'kpi.conversion': 'Conversion', 'kpi.conversionSub': 'Lead zu Termin',
+    'kpi.recovered': 'Zurückgewonnen', 'kpi.recoveredSub': 'Potenzielle Pipeline, kein Umsatz',
+    'kpi.response': 'Reaktionszeit',
+    'brief.title': 'Ihre größte Chance heute',
+    'brief.opportunities': 'Chancen', 'brief.appointments': 'Termine heute',
+    'brief.atRisk': 'drohen abzukühlen', 'brief.pipeline': 'potenzielle Pipeline',
+    'brief.review': 'Prüfen und nachfassen',
+    'opp.title': 'Chancen von heute', 'opp.all': 'Alle Chancen ansehen',
+    'opp.empty': 'Im Moment braucht nichts Ihre Aufmerksamkeit.',
+    'opp.emptySub': 'Sobald ein Lead antwortet, abkühlt oder sich ohne Termin qualifiziert, erscheint er hier.',
+    'opp.score': 'Priorität', 'opp.why': 'Warum jetzt', 'opp.whyPicked': 'Warum Helvaro das gewählt hat',
+    'opp.noAppointment': 'Noch kein Termin', 'opp.silent': 'seit {n} Tagen keine Antwort',
+    'opp.leadScore': 'Qualifizierung',
+    'act.follow_up': 'Nachfassen', 'act.takeover': 'Selbst antworten', 'act.call': 'Anrufen',
+    'act.review': 'Gespräch ansehen', 'act.none': 'Keine Aktion möglich', 'act.ask': 'Faro fragen',
+    'insight.title': 'Was auffällt', 'insight.empty': 'Noch zu wenige Daten',
+    'insight.emptySub': 'Helvaro braucht mehr Aktivität für ein verlässliches Muster.',
+    'drawer.close': 'Schließen', 'drawer.budget': 'Budget', 'drawer.timing': 'Zeitrahmen', 'drawer.source': 'Quelle',
+    'drawer.status': 'Status', 'drawer.lastContact': 'Letzter Kontakt', 'drawer.summary': 'Zusammenfassung',
+    'drawer.reasoning': 'Warum Helvaro das gewählt hat', 'drawer.recommended': 'Empfohlene Aktion',
+    'drawer.openLead': 'Lead öffnen', 'drawer.openConvo': 'Gespräch öffnen',
+    'drawer.qualified': 'Qualifiziert', 'drawer.notQualified': 'Noch nicht qualifiziert',
+    'drawer.today': 'heute', 'drawer.yesterday': 'gestern', 'drawer.daysAgo': 'vor {n} Tagen',
+    'drawer.never': 'hat nie geantwortet',
+    'auto.title': 'Auto-Aktualisierung', 'auto.active': 'Ein', 'auto.paused': 'Aus',
+    'auto.explain': 'Bestimmt, ob dieses Briefing sich beim Öffnen aktualisiert. Es pausiert NICHT die WhatsApp-KI — das machen Sie pro Lead im Gespräch.',
+    'err.unavailable': 'Ihre CRM-Daten sind derzeit nicht erreichbar.', 'err.retry': 'Erneut versuchen',
+    'loading': 'Wird geladen…',
+  },
+};
+
+function resolve(code) {
+  const c = String(code || '').slice(0, 2).toLowerCase();
+  return TRANSLATED.indexOf(c) !== -1 ? c : 'en';
+}
+
+/** English fills any gap, so a missing key never reaches the screen. */
+function table(lang) {
+  return Object.assign({}, TABLES.en, TABLES[resolve(lang)]);
+}
+
+module.exports = { TRANSLATED, resolve, table };

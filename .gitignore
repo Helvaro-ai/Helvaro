@@ -10,3 +10,8 @@
 node_modules/
 .vercel
 .env*
+
+# Wegwerpscripts in de repo-root. Playwright-core zit in node_modules hier, dus
+# een browsertest MOET vanaf deze map draaien -- vandaar dat losse _foo.js
+# bestanden hier ontstaan tijdens het testen. Ze horen nooit in een commit.
+/_*.js

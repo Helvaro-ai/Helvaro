@@ -21,9 +21,28 @@
   }
   var SAFE_CLIENT_NAME = escHtml(CLIENT_NAME);
 
-  // Build the API endpoint: custom takes priority, otherwise use URL-path format
+  /* Build the API endpoint.
+     Order: an explicit data-endpoint, then THIS SCRIPT'S OWN ORIGIN, then the
+     product domain.
+
+     The origin is derived from the script tag because that is the one host
+     that is guaranteed correct: the customer pasted a <script src> pointing at
+     wherever Helvaro actually lives, so the API lives there too. It was
+     hardcoded to a Vercel-generated hostname
+     (helvaro-helvaros-projects.vercel.app) — a name Vercel derives from the
+     project and team and will change if either is renamed, at which point
+     every customer's embedded form silently stops submitting, on their site,
+     with no error anyone at Helvaro would see. It also put a third-party-
+     looking domain in the network traffic of every client's website. */
+  function originOfScript() {
+    try {
+      if (script && script.src) return new URL(script.src, location.href).origin;
+    } catch (e) { /* fall through */ }
+    return '';
+  }
+  var API_ORIGIN = originOfScript() || 'https://app.helvaro.pro';
   var API_ENDPOINT = CUSTOM_ENDPOINT ||
-    ('https://helvaro-helvaros-projects.vercel.app/api/form/' + encodeURIComponent(PROJECT_CODE));
+    (API_ORIGIN + '/api/form/' + encodeURIComponent(PROJECT_CODE));
 
   /* ── Styles ───────────────────────────────────────────────────────────── */
   var css = document.createElement('style');

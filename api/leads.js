@@ -4,10 +4,15 @@ const _session = require('./_session');
 const _revoke  = require('./_revocation');
 const _clerk   = require('./_clerk'); // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
+const _ai     = require('./_ai');      // AI-router: modelkeuze, fallback, verbruik
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
+const _properties = require('./_properties'); // de panden zelf, niet hun beelden
+const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
 const _verify = require('./_verify'); // email-ownership verification — see its file header
+const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
+const _command   = require('./_command');     // Command Center intelligence layer — pure, no I/O, no model
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -1387,23 +1392,22 @@ module.exports = async function handler(req, res) {
           'Je bent ' + aiName + ' van ' + clientName2 + '. Je helpt de salesmedewerker met 3 verschillende, korte WhatsApp-antwoorden die ze nu naar de lead "' + (leadName || 'de lead') + '" zou kunnen sturen. ' +
           (aiInstr ? 'Volg deze stijl-regels: ' + aiInstr.slice(0, 800) + ' ' : '') +
           'Antwoord ALLEEN met geldig JSON: {"replies":["...","...","..."]}. Elk antwoord max 200 tekens. Antwoorden zijn verschillend van toon (bv. Vriendelijk / direct / vraag-stellend). Geen uitleg buiten de JSON.';
-        const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-          method:  'POST',
-          headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            model:      'claude-haiku-4-5-20251001',
-            max_tokens: 600,
-            system:     sysPrompt,
-            messages:   [{ role: 'user', content: 'Recente gespreksgeschiedenis:\n\n' + (convText || '(nog geen berichten)') }]
-          })
-        });
-        if (!aiRes.ok) {
-          const t = await aiRes.text().catch(() => '');
-          console.error('[suggest-replies] anthropic failed', aiRes.status, t.slice(0, 300));
+        // Via de AI-router: model uit configuratie, uitwijken bij een provider
+        // die omvalt, en verbruik geboekt op deze tenant.
+        let txt = '';
+        try {
+          const uit = await _ai.converse({
+            ctx: { projectCode, userId: 'dashboard' },
+            task: _ai.TASKS.CUSTOMER_QUESTION,
+            system: sysPrompt,
+            messages: [{ role: 'user', content: 'Recente gespreksgeschiedenis:\n\n' + (convText || '(nog geen berichten)') }],
+            maxTokens: 600,
+          });
+          txt = uit.text || '';
+        } catch (err) {
+          console.error('[suggest-replies] AI-router fout:', err && err.code, err && err.message);
           return res.status(502).json({ error: 'AI niet bereikbaar' });
         }
-        const ad = await aiRes.json();
-        const txt = ad.content?.[0]?.text || '';
         let parsed = null;
         try { parsed = JSON.parse(txt); } catch {
           // Tolerant: extract first {...} block
@@ -1449,6 +1453,14 @@ module.exports = async function handler(req, res) {
         lightingMoods: images.LIGHTING_MOODS.map((l) => ({ key: l.key, label: l.label })),
         renovationDepths: images.RENOVATION_DEPTHS.map((r) => ({ key: r.key, label: r.label })),
         defaultRenovationDepth: images.DEFAULT_RENOVATION_DEPTH,
+        // The client-customisable axes, emitted from the registry so a new one
+        // appears here — and therefore in any UI reading this — automatically.
+        extraAxes: images.EXTRA_AXES.map((a) => ({
+          key: a.key,
+          label: a.label,
+          options: a.list.map((x) => ({ key: x.key, label: x.label })),
+        })),
+        objectAxes: images.OBJECT_AXES.map((a) => ({ key: a.key, label: a.label })),
       });
     }
 
@@ -1458,147 +1470,299 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ images: list });
     }
 
-    if (body.mode === 'property-generate') {
+    /* ── Panden ──────────────────────────────────────────────────────────────
+       Drie modes en geen nieuwe route: Vercel Hobby staat twaalf functies toe
+       en die zijn op. Ze hangen hier omdat de tenantcontrole, de sessiecheck
+       en de CSRF-poort hierboven al gedaan zijn.
+
+       LET OP de naamgeving. 'property-list' hierboven gaat over AI-BEELDEN van
+       panden; 'listing-*' hieronder gaat over de panden zelf. Verwarrend, maar
+       'property-list' hernoemen breekt het dashboard van elke klant die de
+       pagina open heeft staan tijdens de deploy.
+
+       De projectcode komt uit de geverifieerde sessie hierboven en NOOIT uit
+       body: een pandcode staat in een publieke URL en is dus te raden, dus als
+       de klant erbij ook nog uit de body kwam kon iedereen elk pand lezen. */
+    /* Wat krijg je voor een bedrag. Berekend op de SERVER: zou de browser dit
+       uitrekenen, dan is het getal dat een klant ziet ook het getal dat hij kan
+       aanpassen. */
+    if (body.mode === 'credit-quote') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      return res.status(200).json({
+        offerte: credits.topupOfferte(body.amountEur),
+        grenzen: { min: credits.TOPUP_MIN_EUR, max: credits.TOPUP_MAX_EUR },
+        staffel: credits.TOPUP_STAFFEL,
+      });
+    }
+
+    /* Een aanvraag om credits bij te kopen.
+    
+       Er komen hier GEEN credits bij. Dat is geen tekortkoming maar de enige
+       eerlijke vorm zolang er geen betaalprovider hangt: een saldo dat omhoog
+       gaat voordat er betaald is, is een verzonnen saldo. De aanvraag gaat naar
+       Helvaro, en pas als de betaling binnen is boekt de eigenaar hem bij --
+       dat loopt via credits.addCredits(code, n, { type: 'purchase' }) en komt
+       dan wél in het grootboek.
+    
+       Wie hier een betaalprovider aanhangt vervangt precies dit blok: offerte
+       opnieuw berekenen, betaalsessie starten, en pas op de webhook bijboeken. */
+    if (body.mode === 'credit-purchase-request') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
 
-      const style = String(body.style || '').trim();
-      if (!images.isValidStyleKey(style)) {
-        return res.status(400).json({ error: `Ongeldige stijl. Kies uit: ${images.PROPERTY_STYLES.map((s) => s.key).join(', ')}` });
-      }
-      // Optional — '' means "automatisch" (AI infers the room from the
-      // photo, the pre-existing behaviour). Only an unrecognized non-empty
-      // key is rejected. See api/_images.js's ROOM_TYPES header comment.
-      const roomType = body.roomType !== undefined ? String(body.roomType).trim() : '';
-      if (!images.isValidRoomTypeKey(roomType)) {
-        return res.status(400).json({ error: `Ongeldig kamertype. Kies uit: ${images.ROOM_TYPES.map((r) => r.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-
-      // ── Visual-controls axes (all optional, same "empty = automatisch"
-      // contract as roomType above) — see api/_images.js's header comments
-      // on FURNITURE_LEVELS / WALL_FINISHES / WALL_COLORS / FLOOR_TYPES /
-      // LIGHTING_MOODS for what each does to the composed prompt. ────────
-      const furniture = body.furniture !== undefined ? String(body.furniture).trim() : '';
-      if (!images.isValidFurnitureKey(furniture)) {
-        return res.status(400).json({ error: `Ongeldig meubelniveau. Kies uit: ${images.FURNITURE_LEVELS.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      const wallFinish = body.wallFinish !== undefined ? String(body.wallFinish).trim() : '';
-      if (!images.isValidWallFinishKey(wallFinish)) {
-        return res.status(400).json({ error: `Ongeldige muurafwerking. Kies uit: ${images.WALL_FINISHES.map((w) => w.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      // wallColor/wallColorNote only mean anything when wallFinish is
-      // 'painted' — nulled out otherwise so a stray value from a stale UI
-      // state never persists a colour that was never actually applied.
-      let wallColor = body.wallColor !== undefined ? String(body.wallColor).trim() : '';
-      if (!images.isValidWallColorKey(wallColor)) {
-        return res.status(400).json({ error: `Ongeldige muurkleur. Kies uit: ${images.WALL_COLORS.map((c) => c.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      let wallColorNote = body.wallColorNote !== undefined ? String(body.wallColorNote).trim().slice(0, 80) : '';
-      if (wallFinish !== 'painted') { wallColor = ''; wallColorNote = ''; }
-
-      const floor = body.floor !== undefined ? String(body.floor).trim() : '';
-      if (!images.isValidFloorKey(floor)) {
-        return res.status(400).json({ error: `Ongeldige vloer. Kies uit: ${images.FLOOR_TYPES.map((f) => f.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      const lighting = body.lighting !== undefined ? String(body.lighting).trim() : '';
-      if (!images.isValidLightingKey(lighting)) {
-        return res.status(400).json({ error: `Ongeldige lichtsfeer. Kies uit: ${images.LIGHTING_MOODS.map((l) => l.key).join(', ')} (of laat leeg voor automatisch)` });
-      }
-      // NOT optional (see api/_images.js's RENOVATION_DEPTHS header) — a
-      // caller that sends nothing gets the honest 'light' default here,
-      // BEFORE validation, so this never 400s for an omitted field; only an
-      // explicitly-sent, unrecognized value is rejected.
-      const renovationDepth = body.renovationDepth ? String(body.renovationDepth).trim() : images.DEFAULT_RENOVATION_DEPTH;
-      if (!images.isValidRenovationDepthKey(renovationDepth)) {
-        return res.status(400).json({ error: `Ongeldige renovatiediepte. Kies uit: ${images.RENOVATION_DEPTHS.map((r) => r.key).join(', ')}` });
+      /* Opnieuw berekenen, nooit overnemen wat de browser meestuurt. */
+      const offerte = credits.topupOfferte(body.amountEur);
+      if (!offerte.geldig) {
+        const teksten = {
+          te_laag:     `Het minimum is € ${credits.TOPUP_MIN_EUR}.`,
+          te_hoog:     `Voor bedragen boven € ${credits.TOPUP_MAX_EUR} nemen we liever even contact op.`,
+          geen_bedrag: 'Vul een bedrag in.',
+          geen_tarief: 'Bijkopen staat nog niet aan.',
+        };
+        return res.status(400).json({ error: teksten[offerte.reden] || 'Dat bedrag kan niet.', code: offerte.reden });
       }
 
-      const customPrompt = body.customPrompt !== undefined ? String(body.customPrompt).trim().slice(0, 500) : '';
-
-      // Validate the upload BEFORE touching credits or OpenAI — never trust
-      // client-supplied filename/MIME, only the actual base64 payload (see
-      // api/_images.js's parseImageDataUrl). Cap is 3MB decoded, NOT the
-      // VPS reference's 10MB — see parseImageDataUrl's/MAX_UPLOAD_BYTES's
-      // own comment in api/_images.js for why: this transport is a base64
-      // JSON body against Vercel's ~4.5MB platform request-size limit, not
-      // vps's multipart stream. The dashboard downscales client-side so
-      // this is invisible to the user in practice.
-      let uploaded;
-      try {
-        uploaded = images.parseImageDataUrl(body.dataUrl);
-      } catch (err) {
-        if (err instanceof images.ImageFeatureError) return res.status(err.status).json({ error: err.message });
-        return res.status(400).json({ error: 'Ongeldige afbeelding' });
-      }
-
-      // Fail soft, clearly, BEFORE any credit check or paid call — a missing
-      // OPENAI_API_KEY/BLOB_READ_WRITE_TOKEN must never surface as a 500 or
-      // break the dashboard (task requirement).
-      if (!images.isConfigured()) {
-        return res.status(503).json({ error: images.missingConfigMessage() });
-      }
-
-      // Discretionary AI (marketing tool, not the lead-conversation promise
-      // whatsapp.js protects) — BLOCK when over the credit limit, BEFORE the
-      // OpenAI call is made. Fails open on any credit-infra problem — see
-      // _credits.js's header. Same 402 shape as suggest-replies above.
-      const creditCheck = await credits.checkCredits(projectCode, credits.FEATURES.IMAGE_GENERATION);
-      if (!creditCheck.allowed) {
-        return res.status(402).json({ error: 'credit_limit_reached', message: creditCheck.message });
+      /* De aanvraag naar Helvaro. Faalt de mail, dan hoort de klant dat -- een
+         "bedankt" tonen voor een aanvraag die nergens aankwam is erger dan een
+         foutmelding. */
+      const naarHelvaro = process.env.NOTIFY_EMAIL || process.env.SUPPORT_EMAIL || '';
+      if (!naarHelvaro) {
+        console.error('[credit-purchase] geen NOTIFY_EMAIL ingesteld — aanvraag van', projectCode, 'kan nergens heen');
+        return res.status(503).json({ error: 'Bijkopen kan nu niet automatisch. Mail ons op hello@helvaro.pro.' });
       }
 
       try {
-        // The paid OpenAI edit and the (cheap, best-effort) upload of the
-        // ORIGINAL photo run concurrently — both only need the already-
-        // validated upload buffer, neither depends on the other's result.
-        // The source upload NEVER fails the request: it only powers the
-        // dashboard's before/after comparison slider/PDF from history, and
-        // is wrapped so a Blob hiccup can't cost the client a generation
-        // they already paid credits for. Uploaded under the SAME tenant-
-        // scoped prefix as the result (see uploadPropertyImageToBlob).
-        const [generated, sourceUrl] = await Promise.all([
-          images.generatePropertyImage({
-            imageBuffer: uploaded.buffer,
-            imageMimeType: uploaded.mimeType,
-            style,
-            customPrompt,
-            roomType,
-            furniture,
-            wallFinish,
-            wallColor,
-            wallColorNote,
-            floor,
-            lighting,
-            renovationDepth,
-          }),
-          images.uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
-            console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
-            return '';
-          }),
-        ]);
-        const blobUrl = await images.uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
-        if (!blobUrl) return res.status(502).json({ error: 'AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.' });
-
-        // buildImageRecord() is the ONLY place aiLabel is set — see
-        // api/_images.js's file header. Persisted (best-effort, fail-soft)
-        // AND returned to the caller carry the exact same object.
-        const record = images.buildImageRecord({
-          url: blobUrl, style, customPrompt, roomType, sourceUrl,
-          furniture, wallFinish, wallColor, wallColorNote, floor, lighting, renovationDepth,
+        const { sendMail } = require('./_mailer');
+        await sendMail({
+          to: naarHelvaro,
+          subject: `[Helvaro] Creditaanvraag: ${clientName || projectCode} — € ${offerte.bedragEur}`,
+          html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:auto;padding:20px;color:#111">
+            <h2 style="margin:0 0 12px">Creditaanvraag</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:14px">
+              <tr><td style="padding:6px 0;color:#666">Klant</td><td style="padding:6px 0"><strong>${escHtmlBasic(clientName || '')}</strong> (${escHtmlBasic(projectCode)})</td></tr>
+              <tr><td style="padding:6px 0;color:#666">Bedrag</td><td style="padding:6px 0"><strong>€ ${offerte.bedragEur}</strong></td></tr>
+              <tr><td style="padding:6px 0;color:#666">Credits</td><td style="padding:6px 0">${offerte.credits} (${offerte.basisCredits} + ${offerte.bonusCredits} bonus, ${offerte.bonusPct}%)</td></tr>
+              <tr><td style="padding:6px 0;color:#666">Per credit</td><td style="padding:6px 0">€ ${offerte.perCredit}</td></tr>
+            </table>
+            <p style="margin-top:18px;font-size:13px;color:#666">Na betaling bijboeken met
+            <code>credits.addCredits('${escHtmlBasic(projectCode)}', ${offerte.credits}, { type: 'purchase' })</code> —
+            dan komt het ook in het grootboek te staan.</p>
+          </div>`,
         });
-        images.appendPropertyImage(projectCode, record).catch(() => {});
+      } catch (err) {
+        console.error('[credit-purchase] mail mislukt:', err && err.message);
+        return res.status(502).json({ error: 'De aanvraag kon niet verstuurd worden. Probeer het zo meteen opnieuw.' });
+      }
 
-        // Weight stays a FLAT 50 regardless of how many of the axes above
-        // were touched — one generation, one charge, unconditionally (task
-        // non-negotiable #2). Only `meta` grows for reporting/debugging;
-        // credits.WEIGHTS lookup itself is untouched.
-        credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
-          credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
-          meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth },
+      console.log(`[credit-purchase] aanvraag ${projectCode}: EUR ${offerte.bedragEur} -> ${offerte.credits} credits`);
+      return res.status(200).json({ ok: true, offerte });
+    }
+
+    /* ── Facturatie ──────────────────────────────────────────────────────────
+       Eén mode voor de hele pagina: plan, credits, verbruik per onderdeel en
+       de laatste boekingen. Bewust in één antwoord, want vier losse verzoeken
+       bij het openen van een pagina is precies wat een dashboard traag maakt.
+
+       Alles komt uit de eigen tenant. Er staat geen enkel verzonnen getal in:
+       ontbreekt het grootboek, dan zegt het antwoord dat -- en toont de UI
+       alleen wat de teller wél weet. */
+    if (body.mode === 'billing-overview') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        /* getPlanState is puur en leest VELDEN, geen projectcode -- dus eerst
+           de klantrij ophalen, net als mode 'plan-status' hierboven doet. */
+        const planFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const [verbruik, klantRes] = await Promise.all([
+          credits.getUsageSummary(projectCode),
+          atFetch(`https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${planFormula}&maxRecords=1`,
+                  { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }).catch(() => null),
+        ]);
+
+        let plan = null;
+        let klantNaam = '';
+        if (klantRes && klantRes.ok) {
+          const d = await klantRes.json().catch(() => ({}));
+          const rec = (d.records || [])[0];
+          if (rec) {
+            plan = getPlanState(rec.fields || {});
+            klantNaam = String(rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || '').trim();
+          }
+        }
+
+        let boekingen = [];
+        let totalen = null;
+        const grootboekAan = await _ledger.available();
+        if (grootboekAan) {
+          /* Alleen deze periode: het overzicht gaat over wat je NU betaalt.
+             De volledige geschiedenis is een export, geen scherm. */
+          const sinds = verbruik && verbruik.periodStart ? verbruik.periodStart : undefined;
+          boekingen = await _ledger.list(projectCode, { limit: 50, sinds });
+          totalen  = await _ledger.totals(projectCode, { sinds });
+        }
+
+        return res.status(200).json({
+          verbruik: verbruik || { active: false },
+          plan: plan || null,
+          klantNaam,
+          grootboek: {
+            beschikbaar: grootboekAan,
+            boekingen,
+            totalen,
+          },
+          /* Wat een credit kost per onderdeel, zodat de klant kan zien waar
+             zijn credits heen gaan zonder dat wij het per stuk uitrekenen. */
+          tarieven: credits.WEIGHTS,
+        });
+      } catch (err) {
+        console.error('[billing-overview]', err && err.message);
+        return res.status(500).json({ error: 'Het facturatieoverzicht kon niet opgehaald worden.' });
+      }
+    }
+
+    if (body.mode === 'listing-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const panden = await _properties.list(projectCode, {
+          inclusiefGearchiveerd: body.includeArchived === true,
+        });
+        /* beschikbaar meesturen zodat de UI het verschil kan tonen tussen
+           "geen panden ingevoerd" en "de tabel bestaat nog niet". Dat zijn twee
+           heel verschillende boodschappen voor de klant. */
+        return res.status(200).json({ properties: panden, available: await _properties.available() });
+      } catch (err) {
+        console.error('[listing-list]', err && err.code, err && err.message);
+        return res.status(500).json({ error: 'Panden konden niet opgehaald worden.' });
+      }
+    }
+
+    /* Een pand importeren uit een link. Levert een CONCEPT terug -- de
+       makelaar kijkt ernaar en drukt daarna pas op opslaan. Zie de kop van
+       importeerUitLink() voor waarom er hier niets wordt weggeschreven. */
+    if (body.mode === 'listing-import') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      /* De creditpoort staat VOOR de aanroep: dit haalt een pagina op en zet
+         er een model op, en allebei kosten geld. */
+      const importCheck = await credits.checkCredits(projectCode, credits.FEATURES.PROPERTY_IMPORT);
+      if (!importCheck.allowed) {
+        return res.status(402).json({ error: 'credit_limit_reached', message: importCheck.message });
+      }
+      try {
+        const uit = await _properties.importeerUitLink(projectCode, body.url, { userId: 'dashboard' });
+        /* Pas afschrijven NA een geslaagde uitlezing. Een cookiemuur is geen
+           dienst waarvoor je betaalt. */
+        credits.recordUsage(projectCode, credits.FEATURES.PROPERTY_IMPORT, {
+          credits: credits.WEIGHTS[credits.FEATURES.PROPERTY_IMPORT],
         }).catch(() => {});
+        return res.status(200).json(uit);
+      } catch (err) {
+        console.error('[listing-import]', err && err.code, err && err.message);
+        const uitlegbaar = ['no_url', 'bad_url', 'unreadable'];
+        if (uitlegbaar.indexOf(err && err.code) !== -1) {
+          return res.status(400).json({ error: err.message, code: err.code });
+        }
+        return res.status(502).json({ error: 'Die pagina uitlezen lukte niet. Probeer het zo meteen opnieuw.' });
+      }
+    }
 
+    if (body.mode === 'listing-save') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const pand = await _properties.save(projectCode, body.property || {});
+        return res.status(200).json({ property: pand });
+      } catch (err) {
+        console.error('[listing-save]', err && err.code, err && err.message);
+        /* De reden telt hier: "adres ontbreekt" en "de tabel bestaat niet" zijn
+           allebei een 4xx voor de gebruiker, maar de eerste lost hij zelf op en
+           de tweede nooit. */
+        const klantfouten = ['no_address', 'bad_code'];
+        const code = err && err.code;
+        if (klantfouten.indexOf(code) !== -1) return res.status(400).json({ error: err.message, code });
+        if (code === 'no_table') return res.status(503).json({ error: err.message, code });
+        return res.status(500).json({ error: 'Het pand kon niet opgeslagen worden.' });
+      }
+    }
+
+    if (body.mode === 'listing-archive') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const pand = await _properties.archive(projectCode, body.code, body.archived !== false);
+        return res.status(200).json({ property: pand });
+      } catch (err) {
+        console.error('[listing-archive]', err && err.code, err && err.message);
+        if (err && err.code === 'not_found') return res.status(404).json({ error: 'Pand niet gevonden.' });
+        return res.status(500).json({ error: 'Het pand kon niet gearchiveerd worden.' });
+      }
+    }
+
+    /* ── Command Center ──────────────────────────────────────────────────────
+       One mode rather than a new route: Vercel Hobby allows twelve functions
+       and this repo is at twelve. It reuses the tenant resolution, the session
+       check and the CSRF guard already performed above, and the analysis
+       itself (api/_command.js) is pure arithmetic over rows -- no model call,
+       so opening the page costs nothing and consumes no credits.
+
+       The calendar is consulted only to learn whether it is CONNECTED, which
+       decides whether "book an appointment" may be recommended at all. Slot
+       availability is not checked here: that belongs at the moment of booking,
+       through the existing flow, so the page can never show a slot as free
+       that the calendar would refuse. */
+    if (body.mode === 'command-center') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const { leads: cmdLeads } = await _leadsRead.fetchLeads(projectCode, {
+          token: AIRTABLE_TOKEN, baseId: BASE_ID, maxPages: 6,
+        });
+
+        // Fail-soft: a client without Google Calendar still gets the whole page,
+        // minus the booking recommendation. An outage here must not blank it.
+        let calendarConnected = false;
+        let appointmentsToday = 0;
+        try {
+          const access = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+          if (access && access.token) {
+            calendarConnected = true;
+            const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+            const todays = await _gcal.listEvents(
+              access.token, access.calId, dayStart.toISOString(), dayEnd.toISOString(), 50);
+            appointmentsToday = (todays || []).length;
+          }
+        } catch (gerr) {
+          console.warn('[command-center] calendar unavailable:', gerr && gerr.message);
+        }
+
+        return res.status(200).json(_command.build(cmdLeads, {
+          calendarConnected, appointmentsToday,
+        }));
+      } catch (err) {
+        console.error('[command-center] failed:', err && err.message);
+        // Explicit, so the UI can say "we could not read your CRM" rather than
+        // rendering an empty command center that looks like a quiet morning.
+        return res.status(503).json({ error: 'Je CRM-gegevens zijn nu niet bereikbaar.', code: 'unavailable' });
+      }
+    }
+
+    if (body.mode === 'property-generate') {
+      // The whole guard chain — eight option validations, upload parsing, the
+      // isConfigured() fail-soft, the credit block, generation, storage,
+      // persistence and usage recording — lives in api/_images.js's
+      // generateForClient(). It moved there when Faro's chat became a second
+      // caller: two copies of a money path drift, and the copy that drifts is
+      // the one that spends the client's money. This route now only does what
+      // a route should — resolve the tenant, call it, map errors to status.
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const record = await images.generateForClient(projectCode, body, { credits });
         return res.status(200).json({ ok: true, image: record });
       } catch (err) {
-        if (err instanceof images.ImageFeatureError) return res.status(err.status).json({ error: err.message });
+        if (err instanceof images.ImageFeatureError) {
+          // The credit ceiling keeps its distinct shape — the dashboard
+          // branches on error === 'credit_limit_reached' to show the upgrade
+          // copy rather than a generic failure toast.
+          if (err.code === 'credit_limit_reached') {
+            return res.status(402).json({ error: 'credit_limit_reached', message: err.message });
+          }
+          return res.status(err.status || 500).json({ error: err.message });
+        }
         console.error('[property-generate] error:', err.message);
         return res.status(500).json({ error: 'Serverfout bij AI-beeldgeneratie. Probeer later opnieuw.' });
       }
@@ -1875,12 +2039,24 @@ module.exports = async function handler(req, res) {
       console.warn('Leads error. Serving stale cache as fallback (age ' + Math.round(cacheAge / 1000) + 's)');
       return res.status(200).json({ ...leadsCache.payload, stale: true });
     }
-    // Unknown error, no usable cache. Return empty rather than 500 so the dashboard
-    // stays alive and retries on the next poll cycle.
-    console.warn('Leads error, no usable cache. Returning empty payload');
-    return res.status(200).json({
-      leads: [], stats: { total:0, qualified:0, booked:0, conversionRate:0, thisMonth:0, avgResponseTime:0, avgLeadScore:0 },
-      client: { naam: clientName, calendly: calendlyLink }, error: err.message
+    // Geen bruikbare cache. Dit gaf een keurige 200 met een lege leadlijst
+    // terug, en dat is het gevaarlijkste antwoord dat hier mogelijk is: het is
+    // niet te onderscheiden van een gloednieuw account. Een klant met 400 leads
+    // kreeg tijdens een Airtable-storing het onboardingscherm te zien — "0 van 5
+    // klaar · Ontvang je eerste lead" — met nergens de mededeling dat er iets
+    // mislukt was. De command-center-route in dit bestand doet het al goed met
+    // een 503; dit pad stond andersom.
+    //
+    // 503 en niet 500: dit is tijdelijk en de dashboardpoll mag het gewoon
+    // opnieuw proberen. `unavailable` is wat de UI leest om "we konden je CRM
+    // niet lezen" te tonen in plaats van een leeg huis.
+    console.warn('Leads error, no usable cache. Returning 503 rather than a fake empty account');
+    return res.status(503).json({
+      error: 'We konden je leads nu niet ophalen.',
+      code: 'crm_unavailable',
+      unavailable: true,
+      detail: err.message,
+      client: { naam: clientName, calendly: calendlyLink }
     });
   }
 
@@ -1889,55 +2065,13 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ...leadsCache.payload, stale: true });
   }
 
-  // ── Field helpers ───────────────────────────────────────────────────────────
-  function str(v)  { if (!v) return ''; if (typeof v === 'object' && v.name) return v.name; return String(v); }
-  function bool(v) { return v === true || v === 1; }
-  function num(v)  { return typeof v === 'number' ? v : parseFloat(v) || 0; }
-
-  const leads = allLeads.map(r => {
-    const f = r.fields;
-    return {
-      id:                    r.id,
-      naam:                  f.fldbk0LVNckOU0bqA          || f.Name                    || '',
-      telefoon:              f.fld6YaitW0lMqHUrd           || f.Phone                   || '',
-      status:                str(f.fld8mkrEWcyq7mUip       || f['Conversation State']),
-      qualified:             bool(f.fld0hAZJ5wgaXrNTn      || f.Qualified),
-      reden:                 f.fld3NhSENma0okbT7           || f.Reason                  || '',
-      samenvatting:          f.fldqerIiw5qyQjXHr           || f['AI Summary']           || '',
-      capaciteit:            str(f.fldrfbTopJvZEYSKP        || f.Ability),
-      urgentie:              str(f.fldlyLH1DKrWyG3Tr        || f.Urgency),
-      fit:                   str(f.fldqNxsPshvZEBeLr        || f.Fit),
-      bron:                  str(f.fldGoerozqdea4BfU        || f.Bron),
-      boekingslinkVerstuurd: bool(f.fldLeEqwNefdglLis       || f['Booking Link Sent']),
-      afspraakGeboekt:       bool(f.fldyIGNetqcSEkoaK       || f['Appointment Booked']),
-      notities:              f.fldoLRI5W12ThTls7            || f.Notities               || '',
-      gesprek:               f['Conversation History']       || '',
-      leadScore:             num(f.fldpzQgMuWJLjogiD        || f['Lead Score']),
-      opgepikt:              bool(f.fld86JQHB6dbuutA7       || f.Opgepikt),
-      verwachteWaarde:       f.fldv7qOYvCN1xJfiR            || f['Verwachte Waarde']    || '',
-      reactietijd:           num(f.fldUJJ8oSmAMQ9wB3        || f['Response Time (sec)']),
-      datum:                 f.fldR0r13EU4RwrtvH            || f['Created At']          || r.createdTime || ''
-    };
-  });
-
-  // ── Stats ───────────────────────────────────────────────────────────────────
-  const now            = new Date();
-  const total          = leads.length;
-  const qualified      = leads.filter(l => l.qualified).length;
-  const booked         = leads.filter(l => l.afspraakGeboekt).length;
-  const conversionRate = total > 0 ? Math.round((booked / total) * 1000) / 10 : 0;
-  const thisMonth      = leads.filter(l => {
-    const d = new Date(l.datum);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).length;
-  const times          = leads.map(l => l.reactietijd).filter(v => v > 0);
-  const avgResponseTime = times.length > 0
-    ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
-    : 0;
-  const avgLeadScore   = leads.length > 0
-    ? Math.round(leads.reduce((a, l) => a + (l.leadScore || 0), 0) / leads.length)
-    : 0;
-  const stats = { total, qualified, booked, conversionRate, thisMonth, avgResponseTime, avgLeadScore };
+  // The record mapper and the stat arithmetic moved to api/_leads-read.js so
+  // Faro reads a lead the same way this file does. Nothing about the output
+  // changed — the dashboard reads these exact keys — but there is now one
+  // table of Airtable field IDs instead of two that can drift apart.
+  const leads = allLeads.map(_leadsRead.mapLead);
+  const stats = _leadsRead.computeStats(leads);
+  const now = new Date();
 
   // ── Query params ────────────────────────────────────────────────────────────
   const qs     = (req.url || '').split('?')[1] || '';
@@ -2003,6 +2137,14 @@ module.exports = async function handler(req, res) {
 };
 
 // Escape double-quotes and backslashes for Airtable formula strings
+/* Voor de e-mail hieronder. De klantnaam komt uit Airtable en is dus niet door
+   ons geschreven -- die hoort niet als HTML in een mailtje terecht te komen. */
+function escHtmlBasic(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
@@ -2175,9 +2317,27 @@ async function handleGcal(req, res) {
     // request sends. Deliberately does NOT accept the legacy raw API-key path
     // (Path B in the main handler above) — a brand-new OAuth-touching feature
     // fails closed rather than extend trust to older, unsigned tokens.
-    const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
-    const session = verifySession(raw);
-    const projectCode = session && session.projectCode ? session.projectCode : '';
+    //
+    // Clerk first, for the same reason the main handler has a Path 0: this
+    // route is dispatched before that block runs, and a Clerk session sends
+    // 'clerk-session' in x-api-key — a sentinel, not a token. verifySession
+    // rejects it, so without this every Clerk tenant got a 401 on status,
+    // connect and disconnect alike: the panel read "nog niet gekoppeld"
+    // forever and there was no way to attach a calendar at all. With no
+    // calendar attached the booking flow can never confirm a slot is free,
+    // which is the one thing it must never guess at.
+    let projectCode = '';
+    const clerkGcal = await _clerk.verifySession(req);
+    if (clerkGcal && clerkGcal.pending) {
+      return res.status(403).json({ error: 'TENANT_PENDING' });
+    }
+    if (clerkGcal && clerkGcal.projectCode) {
+      projectCode = clerkGcal.projectCode;
+    } else {
+      const raw = String(req.headers['x-api-key'] || '').trim().slice(0, 2048);
+      const session = verifySession(raw);
+      projectCode = session && session.projectCode ? session.projectCode : '';
+    }
     if (!projectCode) return res.status(401).json({ error: 'Niet ingelogd' });
 
     let body = req.body;

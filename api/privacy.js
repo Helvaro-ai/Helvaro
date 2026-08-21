@@ -20,7 +20,7 @@ module.exports = function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Algemene Voorwaarden. Helvaro</title>
+  <title>Algemene Voorwaarden · Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${CSS}</style>
 </head>
@@ -95,7 +95,7 @@ module.exports = function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacybeleid. Helvaro</title>
+  <title>Privacybeleid · Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
   <style>${CSS}</style>
 </head>
