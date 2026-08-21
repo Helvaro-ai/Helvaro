@@ -8850,7 +8850,7 @@ ${faro.navCta}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
-          <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(new Date().toISOString().slice(0,10),null)">
+          <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(lokaleDatum(new Date()),null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Boek afspraak
           </button>
@@ -11086,14 +11086,33 @@ function clerkHost() {
   if (wel) wel.style.display = 'none';
   if (sub) sub.style.display = 'none';
   host.style.display = 'block';
-  // Unmount whatever is there before mounting the other view, otherwise Clerk
-  // stacks two forms on top of each other when you toggle back and forth.
+  /* Wisselen tussen inloggen en registreren gaf een LEEG paneel.
+
+     De oude aanpak was: unmount aanroepen, innerHTML leegmaken, en hetzelfde
+     element opnieuw aan Clerk geven. Clerk monteert zijn kaart met React, en
+     React ruimt asynchroon op. Wie in dezelfde tel de innerHTML wist, laat
+     React's wortel achter op een boom die niet meer bestaat -- de volgende
+     mount op datzelfde element doet dan niets, zonder fout. Resultaat: het
+     formulier verdween en er stond niets voor in de plaats.
+
+     De oplossing is het element VERVANGEN in plaats van leeghalen. Een vers
+     knooppunt heeft geen React-wortel, dus Clerk krijgt altijd een schone
+     plek. De unmount blijft staan voor het geval Clerk er intern iets aan
+     heeft; faalt hij, dan is dat niet erg meer, want het oude knooppunt gaat
+     toch weg. */
   try {
     if (host.dataset.mounted === 'signin')      window.Clerk.unmountSignIn(host);
     else if (host.dataset.mounted === 'signup') window.Clerk.unmountSignUp(host);
   } catch (e) {}
-  host.innerHTML = '';
-  return host;
+
+  var vers = document.createElement('div');
+  vers.id = host.id;
+  vers.className = host.className;
+  vers.style.cssText = host.style.cssText;
+  vers.style.display = 'block';
+  vers.dataset.mounted = '';
+  if (host.parentNode) host.parentNode.replaceChild(vers, host);
+  return vers;
 }
 
 function mountClerkSignIn(clerk) {
@@ -11103,7 +11122,11 @@ function mountClerkSignIn(clerk) {
     clerk.mountSignIn(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signin';
     setClerkToggle('signin');
-  } catch (e) { console.error('[clerk] sign-in kon niet gemonteerd worden', e); }
+    clerkVangnet(host, 'inloggen');
+  } catch (e) {
+    console.error('[clerk] sign-in kon niet gemonteerd worden', e);
+    clerkLeegMelding(host, 'inloggen');
+  }
 }
 
 function mountClerkSignUp(clerk) {
@@ -11113,7 +11136,32 @@ function mountClerkSignUp(clerk) {
     clerk.mountSignUp(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signup';
     setClerkToggle('signup');
-  } catch (e) { console.error('[clerk] sign-up kon niet gemonteerd worden', e); }
+    clerkVangnet(host, 'registreren');
+  } catch (e) {
+    console.error('[clerk] sign-up kon niet gemonteerd worden', e);
+    clerkLeegMelding(host, 'registreren');
+  }
+}
+
+/* Als Clerk stilzwijgend niets neerzet, is een leeg paneel het slechtste wat
+   je kunt tonen: de gebruiker denkt dat de app stuk is en heeft geen weg
+   terug. Na een halve seconde kijken of er echt iets staat. */
+function clerkVangnet(host, wat) {
+  setTimeout(function () {
+    if (host && host.isConnected && host.childElementCount === 0) {
+      console.error('[clerk] ' + wat + ' bleef leeg na monteren');
+      clerkLeegMelding(host, wat);
+    }
+  }, 600);
+}
+
+function clerkLeegMelding(host, wat) {
+  if (!host) return;
+  host.innerHTML = '';
+  var p = document.createElement('p');
+  p.style.cssText = 'text-align:center;font-size:13px;line-height:1.6;color:var(--text-muted);padding:18px 6px';
+  p.textContent = 'Het scherm om te ' + wat + ' kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
+  host.appendChild(p);
 }
 
 // Clerk's components carry their own "already have an account?" links, but
@@ -11854,7 +11902,7 @@ function relativeTime(iso) {
 
 function taskDueLabel(due) {
   if (!due) return { label: '', cls: '' };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   if (due < today) return { label: 'Verlopen', cls: 'overdue' };
   if (due === today) return { label: 'Vandaag', cls: 'today' };
   const d = new Date(due);
@@ -11882,7 +11930,7 @@ function exportCSV() {
     .then(r => {
       if (r.status === 401) { handleAuthExpired && handleAuthExpired(); throw new Error('Sessie verlopen'); }
       if (!r.ok) throw new Error('Export mislukt');
-      const ts = new Date().toISOString().slice(0, 10);
+      const ts = lokaleDatum(new Date());
       const cd = r.headers.get('Content-Disposition') || '';
       const m  = cd.match(/filename="([^"]+)"/);
       return r.blob().then(blob => ({ blob, fname: (m && m[1]) || ('helvaro-leads-' + ts + '.csv') }));
@@ -12491,7 +12539,7 @@ async function sendClientInvite() {
   // en lowercase. Een geldig e-mailadres bevat nooit spaties, dus dit is veilig.
   const email = (document.getElementById('nc-inv-email').value || '')
     .replace(/[​-‍﻿ ]/g, '')
-    .replace(/\s+/g, '')
+    .replace(/\\s+/g, '')
     .toLowerCase();
   const name  = document.getElementById('nc-inv-name').value.trim();
   const errEl = document.getElementById('nc-inv-error');
@@ -14543,7 +14591,7 @@ function renderNietBereikbaar() {
     // read lead.fields[...], which is always undefined on these mapped
     // lead objects and silently produced "(onbekend)"/no phone every time.
     const name     = lead.naam || '(onbekend)';
-    const rawPhone = (lead.telefoon || '').replace(/\D/g, '');
+    const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
     const telHref  = rawPhone ? 'tel:+' + rawPhone : '#';
     const dateStr  = lead.datum ? new Date(lead.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) : '';
     const isEscalated = data.escalated && typeof data.escalated === 'object';
@@ -14569,7 +14617,7 @@ function renderTakenWidget() {
   const countEl = document.getElementById('taken-widget-count');
   if (!widget || !listEl) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   const items = [];
   (state.leads || []).forEach(lead => {
     const data = parseNotities(lead);
@@ -14889,7 +14937,7 @@ function openCalBookModal(dateStr, prefillLead) {
 
   // Set initial state. Je kan geen afspraak in het verleden boeken, dus snap
   // een datum die al voorbij is naar vandaag.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   let initialDate = dateStr || today;
   if (initialDate < today) initialDate = today;
   calBookState.date         = initialDate;
@@ -15028,6 +15076,26 @@ function renderCalBookBody() {
   body.innerHTML = dateNavHtml +
     \`<div><div class="cb-label">Beschikbare tijden</div>\${slotsHtml}</div>\` +
     leadHtml + confirmHtml;
+}
+
+/* Een datum als YYYY-MM-DD in de LOKALE tijdzone.
+
+   Waarom niet toISOString(): die zet om naar UTC. Een Date op lokale
+   middernacht in Brussel (UTC+1/+2) wordt in UTC de VORIGE dag, dus
+   new Date van 21 augustus middernacht levert via toISOString de datum
+   2026-08-20 op. Elke kolomknop in de kalender gaf daardoor de dag ervoor door
+   aan het boekvenster: klikte je op vrijdag, dan boekte je donderdag. En bij
+   'vandaag' viel het niet op, want die datum werd verderop toch naar vandaag
+   gesnapt -- wat het juist gevaarlijker maakte.
+
+   Een kalenderdatum is een LOKAAL begrip. Deze functie is de enige plek waar
+   hij gemaakt wordt. */
+function lokaleDatum(d) {
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return dt.getFullYear() + '-'
+       + String(dt.getMonth() + 1).padStart(2, '0') + '-'
+       + String(dt.getDate()).padStart(2, '0');
 }
 
 // Parse een werkuren-string ('ma-vr 9-18', 'mon-sat 8-20', '9-18') naar
@@ -15187,9 +15255,9 @@ async function calBookConfirm() {
 function calBookNavDate(delta) {
   const d = new Date(calBookState.date + 'T12:00:00');
   d.setDate(d.getDate() + delta);
-  const newDate = d.toISOString().slice(0, 10);
+  const newDate = lokaleDatum(d);
   // Niet terug in het verleden navigeren.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = lokaleDatum(new Date());
   if (newDate < today) return;
   calBookState.date         = newDate;
   calBookState.selectedSlot = null;
@@ -15267,7 +15335,7 @@ function renderCalSidebar() {
     const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0,2).toUpperCase() || 'HV';
     const phone    = l.telefoon || '';
     const score    = l.leadScore || '';
-    const rawPhone = phone.replace(/\D/g,'');
+    const rawPhone = phone.replace(/\\D/g,'');
     const waPhone  = rawPhone.startsWith('0') ? '32' + rawPhone.slice(1) : rawPhone;
     const waLink   = \`https://wa.me/\${waPhone}?text=\${encodeURIComponent('Hallo ' + name + ', ik wilde graag een afspraak inplannen. Wanneer schikt het u?')}\`;
     const idStr    = escHtml(String(l.id));
@@ -15283,7 +15351,7 @@ function renderCalSidebar() {
       <div class="cal-call-actions">
         \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">Bellen</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">WA</a>\` : ''}
-        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(new Date().toISOString().slice(0,10),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
+        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(lokaleDatum(new Date()),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
       </div>
     </div>\`;
   }).join('');
@@ -15291,11 +15359,11 @@ function renderCalSidebar() {
 
 /* ── Attendance tracking ─────────────────────────────────────── */
 function matchLeadToEvent(evName) {
-  const n = (evName || '').toLowerCase().replace(/\s+/g,' ').trim();
+  const n = (evName || '').toLowerCase().replace(/\\s+/g,' ').trim();
   if (!n) return null;
   const leads = state.leads || [];
   // Exact match first
-  let found = leads.find(l => (l.naam||'').toLowerCase().replace(/\s+/g,' ').trim() === n);
+  let found = leads.find(l => (l.naam||'').toLowerCase().replace(/\\s+/g,' ').trim() === n);
   if (found) return found;
   // Partial: every word of event name appears in lead name (or vice versa)
   const evWords = n.split(' ').filter(w => w.length > 2);
@@ -15510,7 +15578,7 @@ async function renderCalendar() {
       const isToday   = d.getTime() === today.getTime();
       const dow       = d.getDay();
       const isWeekend = dow === 0 || dow === 6;
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = lokaleDatum(d);
       const rows = Array.from({ length: CAL_HOURS }, (_, hIdx) => {
         const h = CAL_START_HOUR + hIdx;
         return \`<div class="cal-hour-row"><button class="cal-hour-add" onclick="bookSlot('\${dateStr}',\${h})" title="Boek afspraak \${h}:00">+</button></div>\`;
@@ -15605,7 +15673,7 @@ async function renderCalendar() {
   renderCols([]);
 
   // Fetch real events from Calendly API
-  const weekKey = ws.toISOString().slice(0, 10);
+  const weekKey = lokaleDatum(ws);
   if (calState.cache[weekKey]) return renderCols(calState.cache[weekKey]);
 
   try {
@@ -15818,7 +15886,7 @@ function toggleSidebarCollapsed() {
 function initSidebar() {
   document.querySelectorAll('.sidebar-nav .nav-item').forEach(function (el) {
     if (el.dataset.label) return;
-    const txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    const txt = (el.textContent || '').replace(/\\s+/g, ' ').trim();
     if (txt) el.dataset.label = txt;
   });
   let collapsed = false;
@@ -18094,7 +18162,7 @@ async function downloadPiComparePDF() {
     if (img.roomTypeLabel) meta.push('Ruimte: ' + img.roomTypeLabel);
     if (meta.length) doc.text(meta.join('   ·   '), 14, y);
 
-    doc.save('helvaro-vergelijking-' + (img.style || 'ai-beeld') + '-' + new Date().toISOString().slice(0, 10) + '.pdf');
+    doc.save('helvaro-vergelijking-' + (img.style || 'ai-beeld') + '-' + lokaleDatum(new Date()) + '.pdf');
   } catch (err) {
     console.error('[downloadPiComparePDF]', err);
     toast('PDF maken is mislukt. Download de afbeeldingen apart.', 'error');
@@ -19607,7 +19675,7 @@ function renderDailyChecklist() {
     return;
   }
 
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var raw = localStorage.getItem('hv-daily-tasks-v2');
   var stored = {};
   try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
@@ -19636,7 +19704,7 @@ function renderDailyChecklist() {
 }
 
 function toggleDailyTask(idx) {
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var raw = localStorage.getItem('hv-daily-tasks-v2');
   var stored = {};
   try { stored = JSON.parse(raw) || {}; } catch (e) { stored = {}; }
@@ -19838,7 +19906,7 @@ function initLinkedInSection() {
   if (sub) sub.textContent = HUB_DAY_LABELS[day] || 'LinkedIn & Instagram';
 
   // Restore cached post for today
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var cacheKey = 'hv-hub-post-' + hubState.platform + '-' + today;
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) {}
@@ -19854,7 +19922,7 @@ function setHubPlatform(platform) {
   if (igTab) igTab.classList.toggle('active', platform === 'instagram');
   if (igTab) igTab.classList.toggle('ig-active', platform === 'instagram');
   // Try load cached post for this platform
-  var today = new Date().toISOString().slice(0, 10);
+  var today = lokaleDatum(new Date());
   var out = document.getElementById('fdr-hub-output');
   var empty = document.getElementById('fdr-hub-empty');
   var copy = document.getElementById('fdr-hub-copy');
@@ -19925,7 +19993,7 @@ async function generateContentPost(forceNew) {
     else {
       showContentPost(d.post);
       if (!forceNew) {
-        var today = new Date().toISOString().slice(0, 10);
+        var today = lokaleDatum(new Date());
         var cacheKey = 'hv-hub-post-' + hubState.platform + '-' + today;
         localStorage.setItem(cacheKey, JSON.stringify({ post: d.post, type: contentType }));
       }

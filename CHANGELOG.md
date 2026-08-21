@@ -209,7 +209,24 @@ hieronder.
 - **Archiveren, niet verwijderen.** Aan een pand hangen leads en afspraken. Die
   blijven bewaard; het pand verdwijnt alleen uit je aanbod.
 
+### Inloggen
+
+- **Wisselen van "Inloggen" naar "Account aanmaken" gaf een leeg vak.** Het
+  formulier verdween en er kwam niets voor in de plaats — je kon je alleen nog
+  registreren door de pagina te verversen. Oorzaak: het inlogvak werd
+  leeggemaakt en opnieuw aan Clerk gegeven, en die weigert dan stilzwijgend een
+  tweede keer te tekenen. Nu krijgt hij elke keer een vers vak. En blijft het
+  onverhoopt tóch leeg, dan staat er voortaan een zin die zegt wat je kunt doen
+  in plaats van een wit vlak.
+
 ### Afspraken
+
+- **Klikken op een dag in de kalender boekte de dag ervóór.** Klikte je op
+  vrijdag, dan opende het boekvenster op donderdag. De datum werd naar UTC
+  omgerekend, en middernacht in België is in UTC de vorige dag. Bij "vandaag"
+  viel het niet op omdat die datum verderop toch naar vandaag werd
+  teruggezet — wat het juist gevaarlijker maakte: de fout dook alleen op bij
+  de andere zes dagen van de week.
 
 - **Het boekingsvenster bood tijden aan waar je al een afspraak had.** De
   kalender toonde de vergaderingen uit je eigen Google-agenda wél, maar het
