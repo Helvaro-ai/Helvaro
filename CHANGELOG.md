@@ -209,6 +209,31 @@ hieronder.
 - **Archiveren, niet verwijderen.** Aan een pand hangen leads en afspraken. Die
   blijven bewaard; het pand verdwijnt alleen uit je aanbod.
 
+### Facturatie en credits
+
+> **Actie:** maak in Airtable de tabel `credit_transactions` aan. De velden
+> staan bovenaan `api/_ledger.js`. Zonder die tabel werkt alles gewoon door —
+> credits worden geteld zoals altijd — maar dan blijft de geschiedenis leeg en
+> zegt de pagina dat eerlijk.
+
+- **Nieuwe pagina: Facturatie.** Je plan, hoeveel credits je nog hebt, waar ze
+  heen gingen en elke boeking op een rij. Alles uit je eigen gegevens; er staat
+  geen enkel geschat getal op.
+- **Credits zijn een grootboek geworden.** Het was een teller: "1240
+  verbruikt", zonder dat ergens stond waaraan. Nu is elke beweging een regel
+  met datum, reden en bedrag — toewijzing, verbruik, aankoop, terugbetaling of
+  correctie.
+- **Een mislukte actie kan terugbetaald worden.** Dat kon niet: je kon een
+  getal verlagen, maar niet uitleggen waarom. Een terugbetaling zonder reden
+  wordt geweigerd, want juist als een klant ernaar vraagt moet je hem kunnen
+  navertellen.
+- **Twee keer betalen voor één actie kan niet meer.** Een boeking kan een
+  referentie meekrijgen; dezelfde referentie tweemaal is één boeking. Dat is
+  wat een herhaalde aanroep na een time-out onschadelijk maakt.
+- **Credits bijkopen en van plan wisselen** openen een mail aan Helvaro. Er
+  hangt nog geen betaalprovider aan, en een betaalknop die niet werkt is erger
+  dan een mailtje dat aankomt.
+
 ### Inloggen
 
 - **Een nieuwe klant kon zich niet aanmelden als Clerk niet laadde.** Registreren

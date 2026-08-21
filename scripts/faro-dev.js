@@ -265,6 +265,40 @@ const server = http.createServer(async (req, res) => {
         /* Panden. Een lijstje in het geheugen, zodat toevoegen, bewerken en
            archiveren lokaal ECHT werken -- een stub die altijd hetzelfde
            teruggeeft laat een kapotte opslaan-knop er goed uitzien. */
+        /* Facturatie. Het grootboek staat AAN in deze fixture, met een paar
+           boekingen erin, zodat de pagina laat zien wat een klant echt te
+           zien krijgt in plaats van een lege lijst. */
+        case 'billing-overview': {
+          const nu = Date.now();
+          const dag = 86400000;
+          const boekingen = [
+            { type: 'usage',      credits: -20, feature: 'whatsapp_conversation', aangemaakt: new Date(nu - 1 * dag).toISOString(), notitie: '' },
+            { type: 'usage',      credits: -50, feature: 'image_generation',      aangemaakt: new Date(nu - 2 * dag).toISOString(), notitie: '' },
+            { type: 'refund',     credits:  50, feature: 'image_generation',      aangemaakt: new Date(nu - 2 * dag).toISOString(), notitie: 'Beeld kon niet opgeslagen worden' },
+            { type: 'usage',      credits:  -3, feature: 'faro_chat',             aangemaakt: new Date(nu - 3 * dag).toISOString(), notitie: '' },
+            { type: 'usage',      credits:  -3, feature: 'property_import',       aangemaakt: new Date(nu - 3 * dag).toISOString(), notitie: '' },
+            { type: 'usage',      credits: -20, feature: 'whatsapp_conversation', aangemaakt: new Date(nu - 5 * dag).toISOString(), notitie: '' },
+            { type: 'allocation', credits: 2000, feature: '',                     aangemaakt: new Date(nu - 12 * dag).toISOString(), notitie: 'Maandelijkse toekenning' },
+          ];
+          const perFeature = {};
+          let verbruikt = 0;
+          for (const b of boekingen) {
+            if (b.type !== 'usage') continue;
+            verbruikt += Math.abs(b.credits);
+            perFeature[b.feature] = (perFeature[b.feature] || 0) + Math.abs(b.credits);
+          }
+          return res.status(200).json({
+            verbruik: { active: true, allowance: 2000, used: 1240, remaining: 760,
+                        percentUsed: 62, periodStart: new Date(nu - 12 * dag).toISOString(), daysLeft: 18 },
+            plan: { status: 'trial', daysLeft: 6 },
+            klantNaam: 'Teljo',
+            grootboek: { beschikbaar: true, boekingen,
+                         totalen: { toegewezen: 2000, verbruikt, gekocht: 0, terugbetaald: 50,
+                                    gecorrigeerd: 0, saldo: 2000 - verbruikt + 50, perFeature,
+                                    aantal: boekingen.length } },
+            tarieven: require('../api/_credits').WEIGHTS,
+          });
+        }
         case 'listing-list':
           /* Gearchiveerd valt weg, net als in api/_properties.js. Zou de stub
              ze wel tonen, dan lijkt archiveren hier stuk terwijl het in

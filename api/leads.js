@@ -8,6 +8,7 @@ const _ai     = require('./_ai');      // AI-router: modelkeuze, fallback, verbr
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
+const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
 const _verify = require('./_verify'); // email-ownership verification — see its file header
 const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
@@ -1482,6 +1483,67 @@ module.exports = async function handler(req, res) {
        De projectcode komt uit de geverifieerde sessie hierboven en NOOIT uit
        body: een pandcode staat in een publieke URL en is dus te raden, dus als
        de klant erbij ook nog uit de body kwam kon iedereen elk pand lezen. */
+    /* ── Facturatie ──────────────────────────────────────────────────────────
+       Eén mode voor de hele pagina: plan, credits, verbruik per onderdeel en
+       de laatste boekingen. Bewust in één antwoord, want vier losse verzoeken
+       bij het openen van een pagina is precies wat een dashboard traag maakt.
+
+       Alles komt uit de eigen tenant. Er staat geen enkel verzonnen getal in:
+       ontbreekt het grootboek, dan zegt het antwoord dat -- en toont de UI
+       alleen wat de teller wél weet. */
+    if (body.mode === 'billing-overview') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        /* getPlanState is puur en leest VELDEN, geen projectcode -- dus eerst
+           de klantrij ophalen, net als mode 'plan-status' hierboven doet. */
+        const planFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const [verbruik, klantRes] = await Promise.all([
+          credits.getUsageSummary(projectCode),
+          atFetch(`https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${planFormula}&maxRecords=1`,
+                  { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }).catch(() => null),
+        ]);
+
+        let plan = null;
+        let klantNaam = '';
+        if (klantRes && klantRes.ok) {
+          const d = await klantRes.json().catch(() => ({}));
+          const rec = (d.records || [])[0];
+          if (rec) {
+            plan = getPlanState(rec.fields || {});
+            klantNaam = String(rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || '').trim();
+          }
+        }
+
+        let boekingen = [];
+        let totalen = null;
+        const grootboekAan = await _ledger.available();
+        if (grootboekAan) {
+          /* Alleen deze periode: het overzicht gaat over wat je NU betaalt.
+             De volledige geschiedenis is een export, geen scherm. */
+          const sinds = verbruik && verbruik.periodStart ? verbruik.periodStart : undefined;
+          boekingen = await _ledger.list(projectCode, { limit: 50, sinds });
+          totalen  = await _ledger.totals(projectCode, { sinds });
+        }
+
+        return res.status(200).json({
+          verbruik: verbruik || { active: false },
+          plan: plan || null,
+          klantNaam,
+          grootboek: {
+            beschikbaar: grootboekAan,
+            boekingen,
+            totalen,
+          },
+          /* Wat een credit kost per onderdeel, zodat de klant kan zien waar
+             zijn credits heen gaan zonder dat wij het per stuk uitrekenen. */
+          tarieven: credits.WEIGHTS,
+        });
+      } catch (err) {
+        console.error('[billing-overview]', err && err.message);
+        return res.status(500).json({ error: 'Het facturatieoverzicht kon niet opgehaald worden.' });
+      }
+    }
+
     if (body.mode === 'listing-list') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {

@@ -5,8 +5,25 @@ const BASE=require('path').join(__dirname,'..')+'/';
 // Een nagebootste Airtable die de race ZOU laten zien: lezen duurt even, en
 // schrijven overschrijft blind. Zonder serialisatie verdwijnt er een boeking.
 let used = 0, reads = 0, writes = 0, inFlight = 0, maxInFlight = 0;
+/* Alleen lezingen van de KLANTRIJ tellen mee voor inFlight.
+
+   Sinds api/_ledger.js bestaat leest recordUsage ook het grootboek, en die
+   lezing valt buiten het geserialiseerde stuk (hij is fire-and-forget, zodat
+   het grootboek een WhatsApp-antwoord nooit vertraagt). Die lezing overlapt
+   dus met de volgende boeking -- en dat is prima: wat NIET mag overlappen is
+   het lezen-en-terugschrijven van de TELLER, want daar verdwijnt anders een
+   boeking. Deze test mat eerder "geen enkele GET overlapt" als benadering
+   daarvan; die benadering klopte tot er een tweede soort GET bij kwam. */
+function isKlantLezing(url) {
+  return !String(url).includes('credit_transactions');
+}
+
 global.fetch = async (url, opts) => {
   const method = (opts && opts.method) || 'GET';
+  if (method === 'GET' && !isKlantLezing(url)) {
+    // grootboek: bestaat niet in deze test, en telt niet mee.
+    return { ok:false, status:404, json: async () => ({}), text: async () => '' };
+  }
   if (method === 'GET') {
     inFlight++; maxInFlight = Math.max(maxInFlight, inFlight); reads++;
     const snapshot = used;

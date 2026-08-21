@@ -630,6 +630,30 @@ async function recordUsageInner(code, feature, opts = {}) {
   // RECONCILE-regels blijven in het log staan om na te boeken.
   clearUnrecorded(code);
 
+  /* Boek de beweging in het grootboek. PAS HIER, na een geslaagde PATCH: een
+     regel schrijven voor een afschrijving die niet doorging maakt de
+     geschiedenis onbetrouwbaar, en dat is erger dan geen geschiedenis.
+
+     Fire-and-forget en met opzet niet afgewacht -- het grootboek mag een
+     WhatsApp-antwoord nooit vertragen, en als de tabel er niet is gebeurt er
+     gewoon niets. api/_ledger.js valt daar zelf netjes op stil.
+
+     De referentie maakt een herhaalde aanroep na een time-out onschadelijk:
+     tweemaal dezelfde sleutel is één boeking. */
+  try {
+    const _ledger = require('./_ledger');
+    _ledger.record({
+      projectCode: code,
+      type: _ledger.TYPE.VERBRUIK,
+      credits: creditsInt,
+      feature,
+      reference: opts.reference || '',
+      meta: opts.meta || null,
+    }).catch(() => {});
+  } catch (e) {
+    console.warn('[Credits] grootboek niet bereikbaar:', e && e.message);
+  }
+
   // Threshold alerts (80% / 100% / runaway ceiling), each fires at most once
   // per period. Fire-and-forget — must never affect the caller's flow.
   maybeAlertThresholds(code, { ...state, used: newUsed }, feature).catch(() => {});
@@ -885,7 +909,7 @@ async function setAllowance(projectCode, allowance) {
 // "Add credits" = extra headroom this period = reduce Credits Used (floored
 // at 0), same semantics as both reference implementations — a top-up, not a
 // permanent allowance change.
-async function addCredits(projectCode, n) {
+async function addCredits(projectCode, n, opts = {}) {
   const code = String(projectCode || '').trim();
   const record = await getClientRecord(code);
   if (!record) throw new Error(`Geen klant gevonden met Project Code "${code}"`);
@@ -895,10 +919,32 @@ async function addCredits(projectCode, n) {
   // Spread rawPeriod first — see effectivePeriodState()'s doc comment: an
   // admin top-up must never wipe an unrelated namespaced key (e.g. the
   // trial cron's once-only-email marker) that happens to live in this same field.
-  return _patchClientCreditFields(projectCode, {
+  const uit = await _patchClientCreditFields(projectCode, {
     [FIELD.USED]: newUsed,
     [FIELD.PERIOD]: JSON.stringify({ ...state.rawPeriod, start: state.start, alerted80: state.alerted80, alerted100: state.alerted100, alertedRunaway: state.alertedRunaway }),
   });
+
+  /* Ook een bijstorting is een beweging. Zonder deze regel staat er straks in
+     het overzicht wel dat er credits bij kwamen, maar niet wanneer of hoeveel.
+
+     'skip-ledger' bestaat voor refundCredits hieronder: die gebruikt addCredits
+     alleen om de TELLER bij te werken en boekt zelf een terugbetaling. Zonder
+     deze uitzondering stonden er twee regels voor één terugbetaling, en dan
+     klopt het saldo in het overzicht niet meer met de werkelijkheid. */
+  if (opts && opts.type === 'skip-ledger') return uit;
+  try {
+    const _ledger = require('./_ledger');
+    await _ledger.record({
+      projectCode: code,
+      type: opts && opts.type === 'purchase' ? _ledger.TYPE.AANKOOP : _ledger.TYPE.CORRECTIE,
+      credits: Math.max(0, Math.round(Number(n) || 0)),
+      reference: (opts && opts.reference) || '',
+      note: (opts && opts.note) || 'Credits bijgeschreven',
+    });
+  } catch (e) {
+    console.warn('[Credits] bijstorting niet geboekt in grootboek:', e && e.message);
+  }
+  return uit;
 }
 
 // Admin-triggered CREDIT period reset. Still reads the current record first
@@ -998,7 +1044,48 @@ async function setTrialMarker(projectCode, patch) {
   return true;
 }
 
+/**
+ * Een afschrijving terugdraaien omdat de actie erna alsnog mislukte.
+ *
+ * Dit bestond niet. De regel was "afschrijven doen we PAS na een geslaagde
+ * actie", en dat dekt het meeste -- maar niet alles: een video die na het
+ * afschrijven bij de leverancier stukloopt, of een beeld dat gemaakt is maar
+ * niet opgeslagen kon worden. Zonder terugbetaling betaalt de klant daarvoor.
+ *
+ * De reden is verplicht en komt in het grootboek te staan, zodat een klant die
+ * ernaar vraagt een antwoord krijgt in plaats van een getal.
+ */
+async function refundCredits(projectCode, credits, reason, opts = {}) {
+  const code = String(projectCode || '').trim();
+  const aantal = Math.max(0, Math.round(Number(credits) || 0));
+  if (!code || aantal <= 0) return null;
+  if (!String(reason || '').trim()) {
+    console.warn('[Credits] terugbetaling zonder reden geweigerd voor', code);
+    return null;
+  }
+
+  // De teller: minder verbruikt betekent meer ruimte, precies zoals addCredits.
+  try {
+    await addCredits(code, aantal, { type: 'skip-ledger' });
+  } catch (err) {
+    console.error('[Credits] terugbetaling kon de teller niet bijwerken:', err && err.message);
+    return null;
+  }
+
+  try {
+    const _ledger = require('./_ledger');
+    return await _ledger.refund({
+      projectCode: code, credits: aantal, reason,
+      feature: opts.feature || '', reference: opts.reference || '',
+    });
+  } catch (e) {
+    console.warn('[Credits] terugbetaling niet geboekt in grootboek:', e && e.message);
+    return null;
+  }
+}
+
 module.exports = {
+  refundCredits,
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
   creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,

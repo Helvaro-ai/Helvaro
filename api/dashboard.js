@@ -6973,6 +6973,79 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .cal-att-save-btn:disabled { opacity:0.5; pointer-events:none; }
 
 /* ── Custom booking modal ─────────────────────────────────────── */
+/* ── Facturatie ──────────────────────────────────────────────────────────────
+   Kleuren uit tokens, tekst uit de ink-variant van het vlak eronder. Een
+   bedrag mag hier nooit slecht leesbaar zijn: dit is de pagina waar een klant
+   naar kijkt als hij twijfelt of hij te veel betaalt. */
+.fa-wrap { display: flex; flex-direction: column; gap: 16px; max-width: 940px; }
+.fa-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 780px) { .fa-top { grid-template-columns: 1fr; } }
+
+.fa-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.fa-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.fa-kop { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.fa-sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px; }
+
+.fa-plan-naam { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+.fa-plan-sub  { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.fa-plan-acties { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.fa-saldo {
+  font-size: 30px; font-weight: 700; color: var(--text-primary); margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.fa-saldo-sub { font-size: 13px; color: var(--text-secondary); }
+.fa-balk {
+  height: 6px; border-radius: 999px; background: var(--bg-card-alt);
+  overflow: hidden; margin-top: 10px;
+}
+.fa-balk-vul { height: 100%; width: 0; background: var(--accent); transition: width var(--dur-base) var(--ease-out); }
+/* Bijna op is een waarschuwing, niet een fout: er werkt nog van alles. */
+.fa-balk-vul.fa-bijna { background: rgba(var(--warning-rgb), 0.85); }
+.fa-balk-vul.fa-op    { background: rgba(var(--error-rgb), 0.85); }
+
+.fa-rij {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.fa-rij:first-child { border-top: none; }
+.fa-rij-naam { flex: 1; min-width: 0; color: var(--text-primary); }
+.fa-rij-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.fa-rij-bedrag {
+  flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.fa-rij-bedrag.fa-plus { color: var(--success-ink); }
+.fa-rij-bedrag.fa-min  { color: var(--text-secondary); }
+.fa-rij-datum { flex: 0 0 auto; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.fa-chip {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+  padding: 2px 7px; border-radius: 999px; flex: 0 0 auto;
+  background: var(--bg-card-alt); color: var(--text-secondary);
+}
+.fa-mini-balk { height: 4px; border-radius: 999px; background: var(--bg-card-alt); margin-top: 6px; overflow: hidden; }
+.fa-mini-vul { height: 100%; background: rgba(var(--accent-rgb), 0.7); }
+
+.fa-leeg { font-size: 13px; color: var(--text-muted); padding: 14px 0; line-height: 1.6; }
+.fa-notice {
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);
+  font-size: 13px; line-height: 1.55; color: var(--text-secondary);
+}
+.fa-notice strong { color: var(--accent-ink); }
+.fa-notice code {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px;
+  padding: 1px 5px; border-radius: 4px; background: rgba(var(--accent-rgb),0.12); color: var(--accent-ink);
+}
+
 /* ── Panden ──────────────────────────────────────────────────────────────────
    Kleuren komen uit tokens, en tekst gebruikt de ink-variant van de kleur die
    eronder ligt -- een groene status staat op een groene chip, niet op de kaart
@@ -8259,6 +8332,10 @@ ${faro.navCta}
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
         AI Persoonlijkheid
       </button>
+      <button class="nav-item" data-page="facturatie" id="nav-facturatie">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+        Facturatie
+      </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         Instellingen
@@ -9484,6 +9561,54 @@ ${faro.navCta}
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ══ Facturatie ══════════════════════════════════════════════════════
+         Wat je betaalt, wat je verbruikt hebt en waar het heen ging. Elk getal
+         hier komt uit de eigen tenant: de teller in Client Config en het
+         grootboek in credit_transactions. Er staat niets in dat niet ergens
+         geboekt is. -->
+    <main class="page-content page" id="page-facturatie">
+      <div class="fa-wrap">
+
+        <div class="fa-notice" id="fa-notice" style="display:none"></div>
+
+        <!-- Plan + saldo naast elkaar -->
+        <div class="fa-top">
+          <div class="fa-card fa-card--plan">
+            <div class="fa-label">Je plan</div>
+            <div class="fa-plan-naam" id="fa-plan-naam">—</div>
+            <div class="fa-plan-sub" id="fa-plan-sub"></div>
+            <div class="fa-plan-acties">
+              <button class="btn-icon" onclick="facturatieContact('plan')">Plan wijzigen</button>
+            </div>
+          </div>
+
+          <div class="fa-card fa-card--saldo">
+            <div class="fa-label">Credits deze periode</div>
+            <div class="fa-saldo" id="fa-saldo">—</div>
+            <div class="fa-saldo-sub" id="fa-saldo-sub"></div>
+            <div class="fa-balk"><div class="fa-balk-vul" id="fa-balk-vul"></div></div>
+            <div class="fa-plan-acties">
+              <button class="btn-icon btn-primary-sm" onclick="facturatieContact('credits')">Credits bijkopen</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Waar de credits heen gingen -->
+        <div class="fa-card">
+          <div class="fa-kop">Waar je credits heen gingen</div>
+          <div class="fa-sub" id="fa-verdeling-sub">Deze periode</div>
+          <div id="fa-verdeling"></div>
+        </div>
+
+        <!-- Boekingen -->
+        <div class="fa-card">
+          <div class="fa-kop">Boekingen</div>
+          <div class="fa-sub" id="fa-boekingen-sub">Elke beweging, nieuwste eerst</div>
+          <div id="fa-boekingen"></div>
         </div>
       </div>
     </main>
@@ -16023,6 +16148,7 @@ function navigateTo(page) {
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
     'panden':     { title: 'Panden', sub: 'Je aanbod, en de link die je onder een advertentie zet' },
+    'facturatie': { title: 'Facturatie', sub: 'Je plan, je credits en waar ze heen gingen' },
     'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
     faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
   };
@@ -16059,6 +16185,7 @@ function navigateTo(page) {
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
   if (page === 'panden')       loadPanden();
+  if (page === 'facturatie')   loadFacturatie();
   if (page === 'ai-persona')   loadAiPersona();
   if (page === 'formulier')    loadFormulier();
   if (page === 'exports')      updateExportPreview();
@@ -18382,6 +18509,195 @@ function highlightActiveTemplate() {
     const match = AP_TEMPLATES[idx] && AP_TEMPLATES[idx].text === current;
     card.classList.toggle('active', !!match);
   });
+}
+
+/* ══ Facturatie ═══════════════════════════════════════════════════════════════
+   Wat je betaalt, wat je verbruikt hebt, en waar het heen ging.
+
+   Elk getal op deze pagina komt uit de eigen tenant: de teller in Client
+   Config en het grootboek in credit_transactions. Er wordt hier NIETS
+   uitgerekend dat niet ergens geboekt staat -- als het grootboek er niet is,
+   zegt de pagina dat, in plaats van een verdeling te verzinnen die klopt met
+   het totaal maar niet met de werkelijkheid.
+
+   Geen sjabloonliteralen hieronder: dit bestand is er zelf een. */
+var faState = { data: null };
+
+function faEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function faGetal(n) {
+  var x = Number(n);
+  return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
+}
+
+function faDatum(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  var mnd = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  return d.getDate() + ' ' + mnd[d.getMonth()];
+}
+
+/* Namen die een makelaar herkent. De sleutels komen uit api/_credits.js;
+   staat er iets nieuws bij, dan valt het terug op de sleutel zelf in plaats
+   van te verdwijnen. */
+var FA_NAMEN = {
+  whatsapp_conversation: 'Leadgesprekken via WhatsApp',
+  image_generation:      'Beelden genereren',
+  video_generation:      'Video genereren',
+  marketing_content:     'Marketingteksten',
+  reply_suggestion:      'Antwoordsuggesties',
+  weekly_learning:       'Wekelijkse analyse',
+  faro_chat:             'Vragen aan Faro',
+  property_import:       'Panden importeren uit een link'
+};
+var FA_TYPE_NAMEN = {
+  allocation: 'toewijzing', usage: 'verbruik', purchase: 'aankoop',
+  refund: 'terugbetaling', adjustment: 'correctie'
+};
+
+async function loadFacturatie() {
+  var notice = document.getElementById('fa-notice');
+  if (!notice) return;
+  document.getElementById('fa-plan-naam').textContent = 'Laden...';
+  document.getElementById('fa-verdeling').innerHTML = '';
+  document.getElementById('fa-boekingen').innerHTML = '';
+  notice.style.display = 'none';
+
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'billing-overview' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    faState.data = await r.json();
+  } catch (e) {
+    /* Een storing mag er niet uitzien als "je hebt geen plan". */
+    document.getElementById('fa-plan-naam').textContent = '—';
+    notice.style.display = '';
+    notice.innerHTML = 'Het facturatieoverzicht kon niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    return;
+  }
+  renderFacturatie();
+}
+
+function renderFacturatie() {
+  var d = faState.data || {};
+  var v = d.verbruik || {};
+  var plan = d.plan || {};
+  var gb = d.grootboek || {};
+
+  // ── Plan ──
+  var naam = document.getElementById('fa-plan-naam');
+  var sub  = document.getElementById('fa-plan-sub');
+  if (plan.status === 'trial') {
+    naam.textContent = 'Proefperiode';
+    sub.textContent = plan.daysLeft != null
+      ? (plan.daysLeft + ' ' + (plan.daysLeft === 1 ? 'dag' : 'dagen') + ' te gaan')
+      : 'Je proefperiode loopt.';
+  } else if (plan.status === 'expired') {
+    naam.textContent = 'Proefperiode voorbij';
+    sub.textContent = 'Neem contact op om verder te gaan.';
+  } else if (plan.status === 'active') {
+    naam.textContent = 'Actief';
+    sub.textContent = d.klantNaam ? ('Op naam van ' + d.klantNaam) : '';
+  } else {
+    naam.textContent = 'Actief';
+    sub.textContent = '';
+  }
+
+  // ── Saldo ──
+  var saldo = document.getElementById('fa-saldo');
+  var saldoSub = document.getElementById('fa-saldo-sub');
+  var balk = document.getElementById('fa-balk-vul');
+  if (v.active) {
+    saldo.textContent = faGetal(v.remaining) + ' over';
+    saldoSub.textContent = faGetal(v.used) + ' van ' + faGetal(v.allowance) + ' verbruikt'
+      + (v.daysLeft != null ? ' · nog ' + v.daysLeft + ' ' + (v.daysLeft === 1 ? 'dag' : 'dagen') + ' deze periode' : '');
+    var pct = Math.max(0, Math.min(100, Number(v.percentUsed) || 0));
+    balk.style.width = pct + '%';
+    balk.className = 'fa-balk-vul' + (pct >= 100 ? ' fa-op' : (pct >= 80 ? ' fa-bijna' : ''));
+  } else {
+    /* Geen limiet ingesteld is iets anders dan nul credits. Dat verschil moet
+       hier staan, anders belt een klant over een limiet die niet bestaat. */
+    saldo.textContent = 'Onbeperkt';
+    saldoSub.textContent = 'Er staat geen creditlimiet op dit account.';
+    balk.style.width = '0%';
+  }
+
+  // ── Waar het heen ging ──
+  var verdeling = document.getElementById('fa-verdeling');
+  var verdelingSub = document.getElementById('fa-verdeling-sub');
+  var perFeature = (gb.totalen && gb.totalen.perFeature) || null;
+
+  if (!gb.beschikbaar) {
+    verdelingSub.textContent = '';
+    verdeling.innerHTML = '<div class="fa-leeg">De geschiedenis staat nog niet aan. Zolang de tabel '
+      + '<code>credit_transactions</code> niet bestaat worden credits wel geteld, maar niet per stuk bewaard '
+      + '— dus kan hier niet staan waar ze heen gingen.</div>';
+  } else if (!perFeature || !Object.keys(perFeature).length) {
+    verdelingSub.textContent = 'Deze periode';
+    verdeling.innerHTML = '<div class="fa-leeg">Nog niets verbruikt deze periode.</div>';
+  } else {
+    var paren = Object.keys(perFeature).map(function (k) { return { k: k, n: perFeature[k] }; })
+      .sort(function (a, b) { return b.n - a.n; });
+    var hoogste = paren[0].n || 1;
+    verdelingSub.textContent = 'Deze periode · ' + faGetal(gb.totalen.verbruikt) + ' credits';
+    verdeling.innerHTML = paren.map(function (p) {
+      var breed = Math.max(2, Math.round((p.n / hoogste) * 100));
+      return '<div class="fa-rij"><div class="fa-rij-naam">'
+        + faEsc(FA_NAMEN[p.k] || p.k)
+        + '<div class="fa-mini-balk"><div class="fa-mini-vul" style="width:' + breed + '%"></div></div>'
+        + '</div><div class="fa-rij-bedrag">' + faGetal(p.n) + '</div></div>';
+    }).join('');
+  }
+
+  // ── Boekingen ──
+  var lijst = document.getElementById('fa-boekingen');
+  var lijstSub = document.getElementById('fa-boekingen-sub');
+  var boekingen = gb.boekingen || [];
+  if (!gb.beschikbaar) {
+    lijstSub.textContent = '';
+    lijst.innerHTML = '<div class="fa-leeg">Nog geen boekingen om te tonen.</div>';
+  } else if (!boekingen.length) {
+    lijstSub.textContent = 'Elke beweging, nieuwste eerst';
+    lijst.innerHTML = '<div class="fa-leeg">Nog geen boekingen deze periode.</div>';
+  } else {
+    lijstSub.textContent = boekingen.length + ' ' + (boekingen.length === 1 ? 'boeking' : 'boekingen')
+      + ' deze periode, nieuwste eerst';
+    lijst.innerHTML = boekingen.map(function (t) {
+      var plus = t.credits > 0;
+      var titel = t.type === 'usage'
+        ? (FA_NAMEN[t.feature] || t.feature || 'Verbruik')
+        : (FA_TYPE_NAMEN[t.type] || t.type);
+      titel = titel.charAt(0).toUpperCase() + titel.slice(1);
+      return '<div class="fa-rij">'
+        + '<div class="fa-rij-datum">' + faEsc(faDatum(t.aangemaakt)) + '</div>'
+        + '<div class="fa-rij-naam">' + faEsc(titel)
+        + (t.notitie ? '<div class="fa-rij-detail">' + faEsc(t.notitie) + '</div>' : '')
+        + '</div>'
+        + '<span class="fa-chip">' + faEsc(FA_TYPE_NAMEN[t.type] || t.type) + '</span>'
+        + '<div class="fa-rij-bedrag ' + (plus ? 'fa-plus' : 'fa-min') + '">'
+        + (plus ? '+' : '') + faGetal(t.credits) + '</div>'
+        + '</div>';
+    }).join('');
+  }
+}
+
+/* Credits bijkopen en van plan wisselen lopen nog niet via een betaalpagina.
+   Dat is bewust geen knop die niets doet: een mailtje dat aankomt is beter dan
+   een betaalscherm dat er is maar niet werkt. Zodra er een betaalprovider
+   hangt, vervangt die deze functie. */
+function facturatieContact(wat) {
+  var onderwerp = wat === 'credits' ? 'Credits bijkopen' : 'Plan wijzigen';
+  var klant = localStorage.getItem('hv-client') || '';
+  var body = 'Hallo,%0A%0AIk wil graag ' + (wat === 'credits' ? 'credits bijkopen' : 'mijn plan wijzigen')
+           + '.%0A%0AKlant: ' + encodeURIComponent(klant) + '%0A';
+  window.location.href = 'mailto:hello@helvaro.pro?subject=' + encodeURIComponent(onderwerp) + '&body=' + body;
 }
 
 /* ══ Panden ═══════════════════════════════════════════════════════════════════
