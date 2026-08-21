@@ -75,7 +75,10 @@ module.exports = async function handler(req, res) {
   const CLERK_PK_RAW = process.env.CLERK_PUBLISHABLE_KEY
                     || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
                     || '';
-  const CLERK_ON = process.env.CLERK_ENABLED === '1' && !!CLERK_PK_RAW;
+  // Dezelfde soepele lezing als api/_clerk.js: `true` hoort ook aan te zijn.
+  // Stonden die twee niet gelijk, dan kon de server denken dat Clerk aan was
+  // terwijl de pagina hem niet toonde -- of andersom.
+  const CLERK_ON = require('./_clerk').vlagAan(process.env.CLERK_ENABLED) && !!CLERK_PK_RAW;
   const CLERK_PK = CLERK_ON ? String(CLERK_PK_RAW).replace(/[<>"'&]/g, '') : '';
   let CLERK_HOST = '';
   if (CLERK_ON) {
@@ -85,6 +88,9 @@ module.exports = async function handler(req, res) {
     } catch { CLERK_HOST = ''; }
   }
   const CLERK_READY = CLERK_ON && !!CLERK_HOST;
+  // Zelfaanmelden zonder uitnodiging (api/admin.js, mode=onboard). Staat dit
+  // aan, dan is /onboard een echte weg naar binnen en hoeft niemand te mailen.
+  const OPEN_SIGNUP = require('./_clerk').vlagAan(process.env.PUBLIC_SIGNUP_ENABLED);
   const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
@@ -639,6 +645,15 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
 #login-page {
+  /* Het merkpaneel rechts is een podium, geen oppervlak van de app: het blijft
+     donker in beide thema's, zoals het logo dat erop staat. Het volgde eerder
+     --bg, en dus het thema -- schakelde je naar licht, dan werd de halve
+     inlogpagina wit en verdween de merkkant helemaal. Vandaar een eigen token
+     in plaats van --bg: het is niet dezelfde kleur die toevallig gelijk is,
+     het is een kleur die met opzet niet meebeweegt. */
+  --login-stage:      #121212;
+  --login-stage-ink:  #F9F9F9;
+  --login-stage-dim:  #A9A6A0;
   --login-panel:      #FFFFFF;
   --login-input-bg:   #F7F6F2;
   --login-border:     #E4E0D6;
@@ -785,8 +800,42 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* ── RIGHT: brand panel (58%). Calm dark surface, sand accents only ── */
 .login-brand-side {
+  /* Alles binnen dit paneel rekent voortaan met de DONKERE waarden, ongeacht
+     het thema van de pagina.
+
+     Waarom hier en niet per regel: de kaarten, de chatballonnen, de scorebalken
+     en de agendategels binnenin gebruiken samen een stuk of tien tokens
+     (--text-muted, --border, --card, ...). Zet je het paneel donker vast en
+     laat je die tokens meebewegen, dan krijg je in het lichte thema donkere
+     tekst op een donker vlak -- onleesbaar, en op precies de plek die een
+     nieuwe klant als eerste ziet. Eén blok dat de tokens vastzet, is
+     controleerbaar; tien losse uitzonderingen zijn dat niet, en er komt altijd
+     een elfde element bij dat vergeten wordt.
+
+     De waarden hieronder zijn letterlijk die uit het donkere thema. */
+  --bg:            #121212;
+  --bg-alt:        #0D0D0D;
+  --card:          #232323;
+  --card-elevated: #2A2A2A;
+  --border-c:      #262626;
+  --border-strong: #333333;
+  --divider:       #262626;
+  --hover-c:       #1C1C1C;
+  --text-c:        #F9F9F9;
+  --text-muted-c:  #B5B5B5;
+  --accent-ink:    #F0E4C8;
+  --on-accent:     #121212;
+  --text:           var(--text-c);
+  --text-primary:   var(--text-c);
+  --text-secondary: var(--text-muted-c);
+  --text-muted:     var(--text-muted-c);
+  --border:         var(--border-c);
+  --border-bright:  var(--border-strong);
+  --surface:        var(--card);
+
   flex: 1;
-  background: var(--bg);
+  background: var(--login-stage);
+  color: var(--login-stage-ink);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1185,27 +1234,13 @@ button.brand-dot { border: none; padding: 0; }
   background: var(--bg);
 }
 
-/* Het showcase-paneel rechts was volledig op donker geschreven: de chatballonnen
-   hadden #EDEDED en #F2E9D5 als tekstkleur, en de vulling was wit op 7%. Op een
-   licht paneel is dat bijna-wit op wit -- de demo was daar letterlijk
-   onleesbaar. Het viel nooit op omdat het inlogscherm geen thema-knop had; nu
-   die er wel is, is dit het eerste wat je ziet.
-
-   Kleuren komen uit tokens, en tekst gebruikt de ink-variant: --accent-c is de
-   vulling van de uitgaande ballon, --accent-ink diezelfde kleur als tekst. */
-[data-theme="light"] .brand-chat-msg.in {
-  background: rgba(15,17,40,0.05);
-  color: var(--text-primary);
-}
-[data-theme="light"] .brand-chat-msg.out {
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.28);
-  color: var(--text-primary);
-}
-/* Het puntenraster is wit op 6%: onzichtbaar op een licht vlak. */
-[data-theme="light"] .login-brand-side::before {
-  background-image: radial-gradient(circle, rgba(15,17,40,0.07) 1px, transparent 1px);
-}
+/* Hier stonden drie overschrijvingen die het merkpaneel in het lichte thema
+   licht maakten -- de chatballonnen kregen donkere tekst, het puntenraster werd
+   donker. Dat was een correcte oplossing voor het verkeerde probleem: het
+   paneel hoorde helemaal niet licht te worden. Nu het op --login-stage staat en
+   in beide thema's donker blijft, zouden deze regels de demo juist ONleesbaar
+   maken: donkere tekst op een donker paneel. Ze zijn daarom weg in plaats van
+   aangepast. */
 
 .form-group {
   margin-bottom: 18px;
@@ -7039,12 +7074,19 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .koop-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
 
-.koop-staffel { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.koop-staffel-rij {
-  display: flex; justify-content: space-between; font-size: 12px;
-  color: var(--text-muted); padding: 3px 0;
+/* Het planadvies. Een rustig kaartje, geen banner: het hoort te helpen, niet
+   te duwen. De accentkleur zit in de RAND en de kop, nooit als vlak achter
+   lopende tekst -- zand op zand leest niet. */
+.koop-staffel { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: var(--sp-1); }
+.koop-advies {
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  padding: var(--sp-3);
+  border: 1px solid rgba(var(--accent-rgb), 0.30);
+  border-radius: var(--r-md);
+  background: rgba(var(--accent-rgb), 0.07);
 }
-.koop-staffel-rij.actief { color: var(--accent-ink); font-weight: 600; }
+.koop-advies strong { font-size: 13px; color: var(--accent-ink); font-weight: 650; }
+.koop-advies span   { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
 .koop-uitleg { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
 
 /* ── Facturatie ──────────────────────────────────────────────────────────────
@@ -10988,7 +11030,7 @@ ${faro.dock}
 
     <div class="pd-modal-foot">
       <button class="btn-icon" onclick="closeKoopModal()">Annuleren</button>
-      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Aanvragen</button>
+      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Afrekenen</button>
     </div>
   </div>
 </div>
@@ -11271,6 +11313,7 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
    called per request rather than cached.
    ============================================================ */
 const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
+const OPEN_SIGNUP = ${OPEN_SIGNUP ? 'true' : 'false'};
 let _clerkLoaded = null;
 
 async function clerkInit() {
@@ -11421,13 +11464,24 @@ function naarRegistreren() {
     return;
   }
 
-  // 3. Clerk staat uit. Accounts worden dan met de hand aangemaakt -- zeg dat,
-  //    en geef een adres in plaats van een doodlopende knop.
+  // 3. Clerk staat uit, maar zelfaanmelden staat open: stuur ze naar de
+  //    aanmeldpagina. Dit is de enige uitkomst die meeschaalt -- "mail ons en
+  //    wij zetten je account klaar" stond hier eerder, en dat is per definitie
+  //    handwerk per klant. Wie zich 's avonds om half elf wil aanmelden is de
+  //    volgende ochtend weg.
+  if (OPEN_SIGNUP) {
+    window.location.href = '/onboard';
+    return;
+  }
+
+  // 4. Clerk uit EN zelfaanmelden dicht. Dat is geen toestand waar een bezoeker
+  //    iets aan kan doen; het is een instelling die vergeten is. Zeg dat
+  //    eerlijk in plaats van iemand op een dode knop te laten drukken.
   if (fout) {
-    fout.innerHTML = 'Accounts worden voor je klaargezet. Mail ons op '
-      + '<a href="mailto:hello@helvaro.pro?subject=Account%20aanvragen" style="color:inherit;text-decoration:underline">hello@helvaro.pro</a>'
-      + ' en je kunt dezelfde dag beginnen.';
+    fout.textContent = 'Aanmelden staat tijdelijk uit. Probeer het later opnieuw.';
     fout.classList.add('visible');
+    console.warn('[signup] CLERK_ENABLED en PUBLIC_SIGNUP_ENABLED staan allebei uit — '
+               + 'er is dus geen enkele weg naar binnen voor een nieuwe klant.');
   }
 }
 
@@ -18738,15 +18792,26 @@ async function koopOfferteOphalen() {
   stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
   detail.textContent = stukken.join(' \\u00B7 ');
 
-  // De staffel, met de trede waar je nu in zit gemarkeerd.
-  var st = (koopState.staffel || []).slice().sort(function (a, b) { return a.vanafEur - b.vanafEur; });
-  document.getElementById('koop-staffel').innerHTML = st.filter(function (t) { return t.bonusPct > 0; })
-    .map(function (t) {
-      var actief = o.bonusPct === t.bonusPct;
-      return '<div class="koop-staffel-rij' + (actief ? ' actief' : '') + '">'
-        + '<span>Vanaf \\u20AC ' + koopFmt(t.vanafEur) + '</span>'
-        + '<span>+' + t.bonusPct + '% credits</span></div>';
-    }).join('');
+  /* Hier stond een staffeltabel met volumebonussen. Die is weg, en niet omdat
+     hij lelijk was: doorgerekend gaf hij voor EUR 249,99 aan bijgekochte
+     credits er 3.151, terwijl het Starter-abonnement voor datzelfde bedrag
+     3.000 geeft. Bijkopen was dus voordeliger dan een abonnement.
+
+     Wat er nu staat is het omgekeerde: krijg je voor dit bedrag meer uit een
+     groter plan, dan zegt het scherm dat. Dat kost op deze ene aankoop iets,
+     en levert een klant op die volgend jaar nog klant is. */
+  var adviesEl = document.getElementById('koop-staffel');
+  if (o.beterPlan) {
+    var bp = o.beterPlan;
+    adviesEl.innerHTML =
+      '<div class="koop-advies">'
+      + '<strong>' + bp.naam + ' geeft je meer voor dit bedrag.</strong>'
+      + '<span>\\u20AC ' + koopFmt(bp.prijsEur) + ' per maand \\u00B7 ' + koopFmt(bp.credits)
+      + ' credits \\u00B7 ongeveer ' + koopFmt(bp.gesprekken) + ' leadgesprekken, elke maand opnieuw.</span>'
+      + '</div>';
+  } else {
+    adviesEl.innerHTML = '';
+  }
 }
 
 async function koopAanvragen() {
@@ -18760,16 +18825,43 @@ async function koopAanvragen() {
   }
   btn.disabled = true; btn.textContent = 'Bezig...';
   fout.style.display = 'none';
-  try {
-    var r = await fetch(API_BASE + '/leads', {
+
+  function post(mode) {
+    return fetch(API_BASE + '/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'credit-purchase-request', amountEur: koopState.bedrag })
+      body: JSON.stringify({ mode: mode, amountEur: koopState.bedrag })
     });
+  }
+
+  try {
+    /* Eerst online betalen. Staat Stripe niet aan, dan geeft de server 503 met
+       code stripe_uit en valt dit terug op een aanvraag per mail. Die terugval
+       is er met opzet: een knop die niets doet omdat een sleutel ontbreekt is
+       erger dan een tragere weg die wel werkt. */
+    var r = await post('credit-checkout');
     var d = await r.json().catch(function () { return {}; });
-    if (!r.ok) {
+
+    if (r.ok && d.url) {
+      /* Geen nieuw tabblad: een popupblokkering zou de betaling stilletjes
+         opeten. De klant komt terug op /dashboard?betaling=gelukt. */
+      window.location.href = d.url;
+      return;
+    }
+
+    if (r.status !== 503 || d.code !== 'stripe_uit') {
       fout.style.display = '';
-      fout.textContent = d.error || 'De aanvraag kon niet verstuurd worden.';
+      fout.textContent = d.error || 'De betaalpagina kon niet geopend worden.';
+      return;
+    }
+
+    // Terugval: geen betaalprovider, dus een aanvraag.
+    btn.textContent = 'Aanvragen...';
+    var r2 = await post('credit-purchase-request');
+    var d2 = await r2.json().catch(function () { return {}; });
+    if (!r2.ok) {
+      fout.style.display = '';
+      fout.textContent = d2.error || 'De aanvraag kon niet verstuurd worden.';
       return;
     }
     closeKoopModal();
@@ -18778,9 +18870,40 @@ async function koopAanvragen() {
     toast('Aanvraag verstuurd. Je krijgt een factuur; de credits staan er zodra die betaald is.', 'success');
   } catch (e) {
     fout.style.display = '';
-    fout.textContent = 'De aanvraag kon niet verstuurd worden. Controleer je verbinding.';
+    fout.textContent = 'Er ging iets mis. Controleer je verbinding en probeer opnieuw.';
   } finally {
-    btn.disabled = false; btn.textContent = 'Aanvragen';
+    btn.disabled = false; btn.textContent = 'Afrekenen';
+  }
+}
+
+/* De klant komt terug van Stripe met ?betaling=gelukt of =geannuleerd.
+
+   Bij 'gelukt' staan de credits er meestal al -- de webhook is sneller dan een
+   browser die terugnavigeert -- maar niet gegarandeerd. Daarom wordt het saldo
+   opnieuw opgehaald en zegt de melding "worden bijgeschreven" in plaats van een
+   getal dat er misschien nog niet staat. */
+document.addEventListener('DOMContentLoaded', function () {
+  /* Pas na het laden, en met een kleine vertraging: toast() en loadFacturatie()
+     bestaan pas als de rest van het scherm er is. */
+  setTimeout(betalingRetour, 400);
+});
+
+function betalingRetour() {
+  var params = new URLSearchParams(window.location.search);
+  var status = params.get('betaling');
+  if (!status) return;
+
+  // De parameter meteen uit de balk halen: verversen hoort niet nog eens
+  // dezelfde melding te geven.
+  params.delete('betaling');
+  var rest = params.toString();
+  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
+
+  if (status === 'gelukt') {
+    toast('Betaling gelukt. Je credits worden bijgeschreven.', 'success');
+    setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
+  } else if (status === 'geannuleerd') {
+    toast('Betaling geannuleerd. Er is niets afgeschreven.', 'info');
   }
 }
 

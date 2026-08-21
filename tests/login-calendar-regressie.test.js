@@ -78,7 +78,15 @@ ck('en er is een afhandeling voor', js.indexOf('function naarRegistreren') !== -
 const iReg = js.indexOf('function naarRegistreren');
 const naarReg = iReg === -1 ? '' : js.slice(iReg, iReg + 1800);
 ck('met Clerk: het registratiescherm', naarReg.indexOf('mountClerkSignUp') !== -1);
-ck('zonder Clerk: een adres in plaats van een dode knop', naarReg.indexOf('hello@helvaro.pro') !== -1);
+/* Hier stond: "zonder Clerk een e-mailadres in plaats van een dode knop".
+   Dat was beter dan niets, maar het is handwerk per klant -- iemand die zich
+   's avonds wil aanmelden moet dan wachten tot er iemand mailt, en die is de
+   volgende ochtend weg. Zelfaanmelden bestond al (api/admin.js, mode=onboard,
+   achter PUBLIC_SIGNUP_ENABLED); de knop wist er alleen niet van. */
+ck('zonder Clerk maar met zelfaanmelden: naar de aanmeldpagina', naarReg.indexOf("'/onboard'") !== -1);
+ck('en dat hangt aan de serververvlag', naarReg.indexOf('OPEN_SIGNUP') !== -1);
+ck('staat alles uit, dan een eerlijke melding en geen mailadres',
+   naarReg.indexOf('Aanmelden staat tijdelijk uit') !== -1 && naarReg.indexOf('hello@helvaro.pro') === -1);
 ck('en bij een storing een eerlijke melding', naarReg.indexOf('kon niet geladen worden') !== -1);
 
 console.log('\n— de themaknop leest ook op een telefoon —');

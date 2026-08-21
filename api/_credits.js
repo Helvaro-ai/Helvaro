@@ -275,43 +275,58 @@ const COST_PER_CREDIT_EUR = {
  * Alles wordt hier berekend en de UI toont alleen de uitkomst.
  *
  * -- Het tarief ---------------------------------------------------------------
- * EUR 0,025 per credit. Dat is niet verzonnen: het is exact het overage-tarief
- * uit CREDIT-SYSTEM-DESIGN.md 4 -- "EUR 25 per 1.000 extra credits (~EUR15
- * kostprijs => ~40% marge)". Bijkopen en overschrijden horen hetzelfde te
- * kosten, anders is het goedkoper om je limiet te overschrijden dan om netjes
- * bij te kopen.
+ * Afgeleid van het Starter-plan in api/_plans.js: EUR 249,99 voor 3.000
+ * credits, dus EUR 0,0833 per credit. Bijkopen kost daarmee exact evenveel als
+ * een abonnement, en dat is niet toevallig het enige tarief dat klopt:
  *
- * Een eerdere versie stond op EUR 0,50 -- twintig keer te hoog. Dat getal was
- * afgeleid uit een losse opmerking over EUR 1.000/maand voor 2.000 credits,
- * terwijl de plannen op de prijspagina EUR 149 voor 2.000 credits zijn
- * (EUR 0,075 per credit). Een bijgekocht leadgesprek kostte daardoor EUR 10,
- * tegenover EUR 1,49 op Starter. Dit staat hier zodat het niet nog eens
- * gebeurt: leid dit tarief af van de prijspagina, niet van een terzijde.
+ *   te LAAG  -> een klant neemt het kleinste plan en koopt eeuwig bij; je
+ *               abonnement wordt een instapfee in plaats van je omzet.
+ *   te HOOG  -> je straft iemand die meer afneemt dan hij dacht, precies op
+ *               het moment dat het goed met hem gaat.
+ *
+ * Beide fouten zijn hier al gemaakt. Eerst stond het op EUR 0,50 (zes keer te
+ * duur, afgeleid uit een losse opmerking over EUR 1.000 per maand), daarna op
+ * EUR 0,025 (drie keer te goedkoop, overgenomen uit het overage-tarief in
+ * CREDIT-SYSTEM-DESIGN.md §4 -- dat tarief lag zelf al onder de planprijs).
+ * Daarom staat het getal nu NERGENS meer los: het komt uit de plantabel, en
+ * verandert de prijspagina, dan verandert dit mee.
  *
  * -- Wat de staffel met je marge doet ----------------------------------------
- * Kostprijs is ~EUR 0,30 per leadgesprek (20 credits), zie 1 van dezelfde
- * doc. Bij dit tarief levert een bijgekocht gesprek op:
- *   geen bonus  EUR 0,50 per gesprek -> 40% marge
- *   5% bonus    EUR 0,476            -> 37%
- *   10% bonus   EUR 0,455            -> 34%
- *   15% bonus   EUR 0,435            -> 31%
- * Alles positief, maar dunner dan een abonnement (75-80%). Wil je de staffel
- * niet, zet de bonuspercentages hieronder op 0.
+ * Kostprijs is ~EUR 0,30 per leadgesprek van 20 credits, dus EUR 0,015 per
+ * credit. Bij dit tarief houd je over:
+ *   geen bonus  EUR 0,0833 per credit -> 82% marge
+ *   15% bonus   EUR 0,0725            -> 79%
+ * Vrijwel gelijk aan de marge op een abonnement, en dat hoort ook: het is
+ * dezelfde dienst. Wil je de staffel niet, zet de percentages hieronder op 0.
  *
- * Beide instelbaar via de omgeving, zodat je je marge kunt bijstellen zonder
- * een deploy.
+ * Alles blijft instelbaar via de omgeving, zodat je je marge kunt bijstellen
+ * zonder een deploy.
  */
-const TOPUP_RATE_EUR = Number(process.env.CREDIT_TOPUP_RATE_EUR || 0.025);
+const _plans = require('./_plans');
+
+const TOPUP_RATE_EUR = Number(process.env.CREDIT_TOPUP_RATE_EUR)
+                    || Math.round(_plans.perCredit(_plans.STANDAARD_PLAN) * 10000) / 10000;
 const TOPUP_MIN_EUR  = Number(process.env.CREDIT_TOPUP_MIN_EUR  || 25);
 const TOPUP_MAX_EUR  = Number(process.env.CREDIT_TOPUP_MAX_EUR  || 5000);
 
-/* Staffel: hoe meer je in één keer koopt, hoe meer credits je per euro krijgt.
-   Bonus in procenten, van hoog naar laag gecontroleerd. */
+/* Geen volumebonus op bijkopen. Dat is een productbeslissing, geen omissie.
+
+   Er stond een staffel van 5/10/15%. Doorgerekend bleek die precies het
+   verkeerde te belonen: voor EUR 249,99 aan bijgekochte credits kreeg je er
+   3.151, terwijl het Starter-abonnement voor hetzelfde bedrag 3.000 geeft.
+   Bijkopen was dus BETER dan een abonnement, en dan is je abonnement een
+   instapfee geworden.
+
+   Volumekorting hoort in de PLANNEN te zitten, en dat doet ze ook: Starter
+   kost EUR 0,083 per credit, Growth EUR 0,050 en Scale EUR 0,040. Wie meer
+   nodig heeft, hoort door te groeien naar een groter plan -- niet eeuwig bij
+   te kopen op het kleinste. Daarom stuurt topupOfferte() hieronder ook een
+   suggestie mee zodra een groter plan voordeliger is.
+
+   De staffel zelf blijft bestaan zodat je hem kunt aanzetten zonder een
+   codewijziging; de percentages staan alleen op nul. */
 const TOPUP_STAFFEL = Object.freeze([
-  { vanafEur: 1000, bonusPct: 15 },
-  { vanafEur:  500, bonusPct: 10 },
-  { vanafEur:  200, bonusPct:  5 },
-  { vanafEur:    0, bonusPct:  0 },
+  { vanafEur: 0, bonusPct: 0 },
 ]);
 
 /**
@@ -352,8 +367,29 @@ function topupOfferte(bedragEur) {
     /* Vertaald naar iets dat een makelaar herkent. Een leadgesprek is de
        eenheid waarin hij denkt, niet een credit. */
     gesprekken: Math.floor(totaal / WEIGHTS[FEATURES.WHATSAPP_CONVERSATION]),
+    /* Krijgt hij voor ditzelfde geld meer uit een groter plan? Dan zeggen we
+       dat. Iemand die maandelijks voor EUR 500 bijkoopt op Starter betaalt zich
+       blauw terwijl Growth voor EUR 499 het dubbele geeft -- dat verzwijgen is
+       op korte termijn meer omzet en op lange termijn een opzegging. */
+    beterPlan: beterPlanVoor(bedrag, totaal),
     reden: '',
   };
+}
+
+/* Welk plan geeft meer credits voor (ongeveer) dit bedrag dan bijkopen doet?
+   Geeft null als bijkopen gewoon de beste keuze is -- bij kleine bedragen is
+   dat zo, en dan hoort er geen verkooppraatje te staan. */
+function beterPlanVoor(bedragEur, credits) {
+  try {
+    const kandidaten = _plans.PLANNEN
+      .filter((p) => p.prijsEur <= bedragEur * 1.05 && p.credits > credits)
+      .sort((a, b) => b.credits - a.credits);
+    if (!kandidaten.length) return null;
+    const p = kandidaten[0];
+    return { id: p.id, naam: p.naam, prijsEur: p.prijsEur, credits: p.credits, gesprekken: _plans.gesprekken(p.credits) };
+  } catch (e) {
+    return null;
+  }
 }
 
 // Features that must NEVER be blocked by checkCredits(), regardless of
@@ -1032,6 +1068,34 @@ async function setAllowance(projectCode, allowance) {
 // permanent allowance change.
 async function addCredits(projectCode, n, opts = {}) {
   const code = String(projectCode || '').trim();
+
+  /* Dubbele bijschrijving voorkomen VOOR de teller wordt aangeraakt.
+
+     Het grootboek weigert al een tweede regel met dezelfde referentie, maar dat
+     gebeurde PAS onderaan deze functie -- de teller was dan al opgehoogd. Bij
+     een betaling is dat het verschil tussen "de webhook kwam twee keer, één
+     regel in het overzicht" en "de klant kreeg twee keer credits voor één
+     betaling". En Stripe stuurt een gebeurtenis opnieuw zodra hij geen 2xx
+     krijgt, dus dit is geen theoretisch geval.
+
+     Kunnen we het niet controleren (grootboektabel bestaat niet, Airtable ligt
+     eruit), dan gaat de bijschrijving door: een klant die betaald heeft en
+     niets krijgt is erger dan een dubbele boeking, en een dubbele boeking is
+     zichtbaar en terug te draaien. */
+  const ref = String((opts && opts.reference) || '').trim();
+  if (ref) {
+    try {
+      const _ledger = require('./_ledger');
+      const bestaand = await _ledger.zoekOpReferentie(code, ref);
+      if (bestaand) {
+        console.log(`[Credits] bijschrijving met referentie "${ref}" bestond al — niets gedaan.`);
+        return { alGeboekt: true, transactie: bestaand };
+      }
+    } catch (e) {
+      console.warn('[Credits] kon niet controleren of deze bijschrijving al bestond, hij gaat door:', e && e.message);
+    }
+  }
+
   const record = await getClientRecord(code);
   if (!record) throw new Error(`Geen klant gevonden met Project Code "${code}"`);
   const fields = record.fields || {};
@@ -1059,8 +1123,9 @@ async function addCredits(projectCode, n, opts = {}) {
       projectCode: code,
       type: opts && opts.type === 'purchase' ? _ledger.TYPE.AANKOOP : _ledger.TYPE.CORRECTIE,
       credits: Math.max(0, Math.round(Number(n) || 0)),
-      reference: (opts && opts.reference) || '',
+      reference: ref,
       note: (opts && opts.note) || 'Credits bijgeschreven',
+      meta: (opts && opts.meta) || null,
     });
   } catch (e) {
     console.warn('[Credits] bijstorting niet geboekt in grootboek:', e && e.message);
@@ -1207,7 +1272,7 @@ async function refundCredits(projectCode, credits, reason, opts = {}) {
 
 module.exports = {
   refundCredits,
-  topupOfferte, TOPUP_RATE_EUR, TOPUP_MIN_EUR, TOPUP_MAX_EUR, TOPUP_STAFFEL,
+  topupOfferte, beterPlanVoor, TOPUP_RATE_EUR, TOPUP_MIN_EUR, TOPUP_MAX_EUR, TOPUP_STAFFEL,
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
   creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,

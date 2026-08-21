@@ -1495,7 +1495,61 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    /* Een aanvraag om credits bij te kopen.
+    /* Betalen voor credits, via Stripe.
+
+       Het AANMAKEN van de betaalpagina staat hier en niet in api/stripe.js,
+       omdat de sessiecontrole hier al gebeurd is. De webhook heeft een eigen
+       route, en om één reden: Stripe tekent de ruwe bytes van de body en Vercel
+       parst die weg. Zie de kop van api/stripe.js.
+
+       Het bedrag wordt hier OPNIEUW doorgerekend. Wat de browser meestuurt is
+       een wens, geen prijs -- anders koopt iemand 46.000 credits voor een euro
+       door één getal in het netwerkverkeer aan te passen. */
+    if (body.mode === 'credit-checkout') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
+      const _stripe = require('./_stripe');
+      if (!_stripe.configured()) {
+        /* Geen sleutel = geen betaalpagina. Het scherm valt dan terug op de
+           aanvraag per mail; dat is trager maar het werkt, en het is eerlijker
+           dan een knop die niets doet. */
+        return res.status(503).json({ error: 'Online betalen staat nog niet aan.', code: 'stripe_uit' });
+      }
+
+      const offerte = credits.topupOfferte(body.amountEur);
+      if (!offerte.geldig) {
+        const teksten = {
+          te_laag:     `Het minimum is € ${credits.TOPUP_MIN_EUR}.`,
+          te_hoog:     `Voor bedragen boven € ${credits.TOPUP_MAX_EUR} nemen we liever even contact op.`,
+          geen_bedrag: 'Vul een bedrag in.',
+          geen_tarief: 'Bijkopen staat nog niet aan.',
+        };
+        return res.status(400).json({ error: teksten[offerte.reden] || 'Dat bedrag kan niet.', code: offerte.reden });
+      }
+
+      try {
+        const sessie = await _stripe.createCheckout({
+          projectCode,
+          offerte,
+          /* Geen e-mailadres meegeven: dat staat op de klantrij en die is hier
+             niet altijd geladen. Stripe vraagt het gewoon op de betaalpagina,
+             en een adres dat we niet zeker weten alvast invullen is erger dan
+             het niet invullen. */
+          origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+        });
+        if (!sessie || !sessie.url) throw new Error('Stripe gaf geen betaalpagina terug');
+        console.log(`[stripe] betaalpagina voor ${projectCode}: EUR ${offerte.bedragEur} -> ${offerte.credits} credits (${sessie.id})`);
+        /* Alleen de URL terug. De credits worden pas geboekt door de webhook,
+           nadat Stripe zegt dat er betaald is -- nooit hier, want hier weten we
+           alleen dat iemand op een knop heeft geklikt. */
+        return res.status(200).json({ url: sessie.url, offerte });
+      } catch (err) {
+        console.error('[stripe] betaalpagina aanmaken mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({ error: 'De betaalpagina kon niet geopend worden. Probeer het zo meteen opnieuw.' });
+      }
+    }
+
+    /* Een aanvraag om credits bij te kopen, zonder betaalprovider.
     
        Er komen hier GEEN credits bij. Dat is geen tekortkoming maar de enige
        eerlijke vorm zolang er geen betaalprovider hangt: een saldo dat omhoog

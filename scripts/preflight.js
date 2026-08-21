@@ -88,9 +88,12 @@ async function probe(url, opts = {}) {
 
   // ── 1. De schakelaar ───────────────────────────────────────────────────────
   head('schakelaar');
-  const enabled = process.env.CLERK_ENABLED === '1';
-  if (enabled) ok('CLERK_ENABLED=1 — Clerk is aan');
-  else warn('CLERK_ENABLED staat niet op 1 — de code is aanwezig maar slaapt',
+  // Dezelfde soepele lezing als api/_clerk.js. Stond hier een strengere
+  // controle dan in de app, dan meldde preflight een probleem dat er niet was
+  // -- of erger, andersom.
+  const enabled = require('../api/_clerk.js').vlagAan(process.env.CLERK_ENABLED);
+  if (enabled) ok(`CLERK_ENABLED=${String(process.env.CLERK_ENABLED).trim()} — Clerk is aan`);
+  else warn(`CLERK_ENABLED leest als UIT (waarde: ${JSON.stringify(process.env.CLERK_ENABLED || '')}) — de code is aanwezig maar slaapt`,
             'Iedereen logt nu in met het klassieke wachtwoordformulier. Zet dit pas op 1\n'
           + 'als alles hieronder groen is EN clerk-sync-users.js gedraaid heeft.');
 
