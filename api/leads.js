@@ -393,6 +393,26 @@ module.exports = async function handler(req, res) {
         const F_OPGEPIKT  = 'fld86JQHB6dbuutA7';
         const F_STATUS    = 'fld8mkrEWcyq7mUip';
 
+        /* status:'verloren' -- de markering die de makelaar zelf in het paneel
+           zet -- telt sinds kort ook als "verloren" op het bord. Dat was nodig
+           (die markering deed op het bord zichtbaar niets), maar het maakt een
+           tweede uitweg noodzakelijk: sleep je zo'n lead terug naar een andere
+           kolom, dan blijft die status staan en springt het kaartje terug.
+
+           Elke fase BEHALVE lost zet de status daarom op 'in_progress'. Niet op
+           'new', om dezelfde reden als in de new-tak hieronder: 'new' zet de
+           opvolgcron opnieuw aan voor een lead die niet vers is.
+
+           Alleen als hij er ook echt op stond: de huidige rij is hier al
+           opgehaald (ownData), dus dat kost niets. Een lead die gewoon op
+           'in_progress' of 'new' staat wordt niet aangeraakt -- die status
+           stuurt de opvolgcron, en die zonder reden verzetten is precies hoe je
+           een opvolging kwijtraakt. */
+        if (body.pipelineStage !== 'lost'
+            && String((ownData.fields || {})[F_STATUS] || '').toLowerCase() === 'verloren') {
+          fields[F_STATUS] = 'in_progress';
+        }
+
         switch (body.pipelineStage) {
           case 'qualified':
             // Must clear afspraak/opgepikt or it'd also satisfy those
@@ -441,8 +461,11 @@ module.exports = async function handler(req, res) {
             // and would re-arm the 24h/7d nurture follow-up and the
             // stuck-at-new sweep for a lead that isn't actually fresh — it's
             // just being manually re-opened in the pipeline. Only touch
-            // status when it's actually 'completed'; leave it alone
-            // otherwise so a lead already sitting in New isn't perturbed.
+            // status when it's actually 'completed' OR 'verloren'; leave it
+            // alone otherwise so a lead already sitting in New isn't perturbed.
+            // 'verloren' staat er sinds die markering ook als lost telt: zonder
+            // dit springt een handmatig-verloren lead terug naar Verloren zodra
+            // je hem naar Nieuw sleept.
             const curStatus = ownData.fields?.[F_STATUS] || '';
             if (curStatus === 'completed') fields[F_STATUS] = 'in_progress';
             break;

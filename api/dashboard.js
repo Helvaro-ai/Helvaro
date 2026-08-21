@@ -13717,7 +13717,13 @@ function renderCreditUsage(d) {
     let line = \`\${used} / \${allowance} credits · nog ~\${leadsLeft} leadgesprekken\`;
     if (daysLeft != null) line += \` · \${daysLeft}d over in periode\`;
     if (d.overLimit) {
-      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Credit%20limiet%20verhogen">Limiet bereikt — vraag een upgrade aan →</a>';
+      /* Stond op een mailto. Dit is de zijbalk die een klant ziet op het moment
+         dat hij door zijn credits heen is -- precies wanneer hij wíl betalen.
+         Hem dan een e-mailprogramma voorschotelen en laten wachten op antwoord
+         is de duurste seconde in de hele app. Nu opent het de plannen. */
+      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="#" '
+        + 'onclick="event.preventDefault();navigateTo(&quot;facturatie&quot;);setTimeout(naarPlannen,300)">'
+        + 'Limiet bereikt — bekijk je plannen →</a>';
     } else {
       subEl.textContent = line;
     }
@@ -13774,8 +13780,13 @@ function renderPlanBanner(d) {
     // captured, only the AI auto-reply stopped. Never phrased as an error.
     if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — de AI beantwoordt ze alleen niet langer automatisch op WhatsApp.';
     if (ctaEl) {
-      ctaEl.textContent = 'Heractiveer account';
-      ctaEl.href = 'mailto:${SUPPORT_EMAIL_ATTR}?subject=Reactivatie%20account';
+      /* Stond op een mailto. Dat is het moment waarop iemand wíl betalen, en
+         dan een e-mailprogramma openen dat misschien niet eens ingesteld is --
+         waarna hij moet wachten tot er iemand antwoordt. Nu gaat hij naar zijn
+         plannen en rekent zelf af. */
+      ctaEl.textContent = 'Kies een plan';
+      ctaEl.href = '#';
+      ctaEl.onclick = function (e) { e.preventDefault(); navigateTo('facturatie'); setTimeout(naarPlannen, 300); };
     }
   } else {
     const daysLeft = d.daysLeft != null ? d.daysLeft : null;
@@ -13785,8 +13796,9 @@ function renderPlanBanner(d) {
       : 'Je proefperiode loopt';
     if (subEl)   subEl.textContent = 'Alle functies zijn beschikbaar. Wil je blijven gebruiken na je proefperiode? Upgrade wanneer je klaar bent.';
     if (ctaEl) {
-      ctaEl.textContent = 'Upgrade nu';
-      ctaEl.href = 'mailto:${SUPPORT_EMAIL_ATTR}?subject=Upgrade%20na%20proefperiode';
+      ctaEl.textContent = 'Bekijk de plannen';
+      ctaEl.href = '#';
+      ctaEl.onclick = function (e) { e.preventDefault(); navigateTo('facturatie'); setTimeout(naarPlannen, 300); };
     }
   }
 }
@@ -17190,19 +17202,41 @@ function pipelineDragStart(event, leadId) {
 
 const PIPELINE_STAGE_LABELS = { new: 'Nieuw', qualified: 'Gekwalificeerd', afspraak: 'Afspraak', won: 'Gewonnen', lost: 'Verloren' };
 
-// Derives which pipeline column a lead currently renders in. Mirrors the
-// column filters in renderPipeline() below, ordered most-specific-first so
-// it matches actual render output even on legacy/inconsistent data (e.g. a
-// lead with opgepikt=true always renders under "won" regardless of the
-// other booleans, because the qualified/afspraak filters both require
-// !opgepikt). Used to no-op a drop onto the column a card is already in,
-// and to decide what to roll back to if the PATCH fails.
+/* In welke fase zit een lead? DE enige plek waar dat bepaald wordt.
+
+   Dit was het niet. De kolomfilters van het bord, deze functie en de cijfers op
+   Analyse hadden alle drie hun eigen regeltjes, en die spraken elkaar tegen:
+
+   1. "Verloren" betekende twee dingen. Het bord keek naar
+      qualified===false && status==='completed' (de AI diskwalificeerde hem),
+      Analyse naar status==='verloren' (de makelaar zette hem zelf op verloren).
+      Gevolg: zette je een lead in het paneel op "Verloren", dan bleef zijn
+      kaartje gewoon in de kolom Nieuw staan. De handmatige markering deed op
+      het bord dus zichtbaar niets.
+
+   2. "Gewonnen" betekende ook twee dingen. Het bord: opgepikt===true. De win
+      rate op Analyse: afspraakGeboekt. Maar "Afspraak" is op het bord een
+      APARTE kolom vóór Gewonnen -- dus telde Analyse leads als gewonnen die op
+      het bord nog niet zover waren.
+
+   3. De pipelinewaarde trok status==='verloren' eraf, terwijl de kolom Verloren
+      op de andere regel draaide. Een lead kon dus in Verloren staan én meetellen
+      in de waarde.
+
+   Volgorde: het meest uitgesproken signaal eerst. Een makelaar die zelf
+   "Verloren" kiest weet iets wat de AI niet weet, en dat overrulet de rest.
+
+   LET OP bij het lezen: "Gewonnen" is hier opgepikt===true. Of dat de juiste
+   naam is voor dat veld is een aparte vraag -- het heet in Airtable "Opgepikt"
+   en betekent "de makelaar heeft hem overgenomen". Deze functie verandert die
+   keuze niet, ze zorgt alleen dat overal hetzelfde bedoeld wordt. */
 function pipelineStageOf(lead) {
   if (!lead) return 'new';
+  if (lead.status === 'verloren') return 'lost';
+  if (lead.qualified === false && lead.status === 'completed') return 'lost';
   if (lead.opgepikt === true) return 'won';
   if (lead.afspraakGeboekt === true) return 'afspraak';
   if (lead.qualified === true) return 'qualified';
-  if (lead.qualified === false && lead.status === 'completed') return 'lost';
   return 'new';
 }
 
@@ -17211,6 +17245,12 @@ function pipelineStageOf(lead) {
 // block) so the optimistic UI update renders the card in the same column
 // the server will confirm.
 function applyPipelineStageLocally(lead, stage) {
+  /* De handmatige "verloren"-markering weghalen bij elke fase behalve lost.
+     Zonder dit springt een lead die de makelaar zelf op verloren zette meteen
+     terug zodra hij hem naar een andere kolom sleept -- pipelineStageOf kijkt
+     namelijk als eerste naar die status. Spiegelt wat api/leads.js server-side
+     doet, zodat de kaart niet even op de goede plek staat en dan terugklapt. */
+  if (stage !== 'lost' && lead.status === 'verloren') lead.status = 'in_progress';
   switch (stage) {
     case 'qualified':
       lead.qualified = true; lead.afspraakGeboekt = false; lead.opgepikt = false;
@@ -17284,31 +17324,31 @@ function renderPipeline() {
       id: 'new',
       label: 'Nieuw',
       cls: 'col-new',
-      leads: leads.filter(l => !l.qualified && !l.afspraakGeboekt && !l.opgepikt && !(l.qualified === false && l.status === 'completed'))
+      leads: leads.filter(l => pipelineStageOf(l) === 'new')
     },
     {
       id: 'qualified',
       label: 'Gekwalificeerd',
       cls: 'col-qual',
-      leads: leads.filter(l => l.qualified === true && !l.afspraakGeboekt && !l.opgepikt)
+      leads: leads.filter(l => pipelineStageOf(l) === 'qualified')
     },
     {
       id: 'afspraak',
       label: 'Afspraak',
       cls: 'col-apt',
-      leads: leads.filter(l => l.afspraakGeboekt === true && !l.opgepikt)
+      leads: leads.filter(l => pipelineStageOf(l) === 'afspraak')
     },
     {
       id: 'won',
       label: 'Gewonnen',
       cls: 'col-won',
-      leads: leads.filter(l => l.opgepikt === true)
+      leads: leads.filter(l => pipelineStageOf(l) === 'won')
     },
     {
       id: 'lost',
       label: 'Verloren',
       cls: 'col-lost',
-      leads: leads.filter(l => l.qualified === false && l.status === 'completed')
+      leads: leads.filter(l => pipelineStageOf(l) === 'lost')
     }
   ];
 
@@ -17344,9 +17384,11 @@ function renderPipeline() {
     const colCounts = {};
     cols.forEach(c => { colCounts[c.label] = c.leads.length; });
     const total = (state.leads || []).length;
-    // Pipeline deal value: sum verwachteWaarde of non-verloren leads
+    // Pipelinewaarde: de verwachte waarde van alles wat NIET verloren is.
+    // Draaide op status!=='verloren' terwijl de kolom Verloren een andere regel
+    // gebruikte -- een lead kon dus in Verloren staan en toch meetellen.
     const pipelineValue = (state.leads || [])
-      .filter(l => l.status !== 'verloren')
+      .filter(l => pipelineStageOf(l) !== 'lost')
       .reduce((sum, l) => sum + parseDealValue(l.verwachteWaarde), 0);
     const valueFormatted = pipelineValue > 0
       ? '€' + pipelineValue.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
@@ -17605,8 +17647,12 @@ function renderAnalyse() {
     // rate: een kantoor met 40 openstaande leads en nul gewonnen las 100%. Het
     // deelt nu door wat er ECHT beslist is, en toont niets als er nog niets
     // beslist is — een percentage van nul beslissingen bestaat niet.
-    const verlorenCount = leads.filter(l => l.status === 'verloren').length;
-    const gewonnenCount = leads.filter(l => l.afspraakGeboekt).length;
+    // Dezelfde definitie als het pipelinebord (zie pipelineStageOf). Stond hier
+    // op status==='verloren' en afspraakGeboekt, wat allebei iets anders is dan
+    // wat het bord toont -- twee getallen op hetzelfde product die allebei
+    // "gewonnen" en "verloren" beweerden en het oneens waren.
+    const verlorenCount = leads.filter(l => pipelineStageOf(l) === 'lost').length;
+    const gewonnenCount = leads.filter(l => pipelineStageOf(l) === 'won').length;
     const beslist = verlorenCount + gewonnenCount;
     const winRate = beslist > 0 ? Math.round((gewonnenCount / beslist) * 100) : null;
     const wrEl = document.getElementById('analyse-winrate-val');
@@ -17620,7 +17666,7 @@ function renderAnalyse() {
 
     // Verlies redenen top 3
     const redenMap = {};
-    leads.filter(l => l.status === 'verloren' && l.reden).forEach(l => {
+    leads.filter(l => pipelineStageOf(l) === 'lost' && l.reden).forEach(l => {
       redenMap[l.reden] = (redenMap[l.reden] || 0) + 1;
     });
     const top3 = Object.entries(redenMap).sort((a,b) => b[1]-a[1]).slice(0,3);
@@ -19486,13 +19532,11 @@ function renderFacturatie() {
    Dat is bewust geen knop die niets doet: een mailtje dat aankomt is beter dan
    een betaalscherm dat er is maar niet werkt. Zodra er een betaalprovider
    hangt, vervangt die deze functie. */
-function facturatieContact(wat) {
-  var onderwerp = wat === 'credits' ? 'Credits bijkopen' : 'Plan wijzigen';
-  var klant = localStorage.getItem('hv-client') || '';
-  var body = 'Hallo,%0A%0AIk wil graag ' + (wat === 'credits' ? 'credits bijkopen' : 'mijn plan wijzigen')
-           + '.%0A%0AKlant: ' + encodeURIComponent(klant) + '%0A';
-  window.location.href = 'mailto:hello@helvaro.pro?subject=' + encodeURIComponent(onderwerp) + '&body=' + body;
-}
+/* Hier stond facturatieContact(): een mailto voor "credits bijkopen" en "plan
+   wijzigen". Allebei kunnen ze nu zelf -- credits via de koopmodal, een plan via
+   de plankaarten. Er riep niets deze functie nog aan, en een ongebruikte functie
+   die een mailtje opent is precies het soort ding dat over een half jaar weer
+   ergens aan een knop hangt. Vandaar weg in plaats van bewaard. */
 
 /* ══ Panden ═══════════════════════════════════════════════════════════════════
    Het aanbod van de makelaar. Elk pand krijgt een link (/start/CODE/PANDCODE)
