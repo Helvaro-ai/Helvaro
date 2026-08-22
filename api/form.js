@@ -10,6 +10,7 @@ const { waitUntil } = require('@vercel/functions');
 const { getPlanState } = require('./_plan');
 // Language registry — see its file header.
 const _lang = require('./_lang');
+const _regio = require('./_regio');   // land, tijdzone, munt en telefoon per klant
 // Approved-template WhatsApp sender (Meta 24h-window workaround) — shared
 // helper, not duplicated here. See api/leads.js:sendWATemplate's own header.
 // Safe to require: api/leads.js's module.exports is the route handler
@@ -143,7 +144,8 @@ module.exports = async function handler(req, res) {
     // fall back to safe defaults and always proceed with lead creation.
     // Uses a formula filter on the field ID so only 1 record is returned instead
     // of fetching all 100 clients and filtering client-side.
-    let   aiName     = 'Mathis Willems';      // safe default. Overwritten by client's "AI Name" field if set
+    let   regio      = _regio.standaard();    // België tenzij de klantrij iets anders zegt
+  let   aiName     = 'Mathis Willems';      // safe default. Overwritten by client's "AI Name" field if set
     let   clientName = project_code;          // safe default. Overwritten below if found
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
     let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
@@ -171,6 +173,11 @@ module.exports = async function handler(req, res) {
           // Field IDs (immune to renames): fldAnB848Sr5jl6dq=Client Name,
           // fldOGdVq6T54xEo6W=Auto-Reply Template, fldRvoe1JMPOtPWC7=AI Name
           clientName   = match.fields['fldAnB848Sr5jl6dq']   || match.fields['Client Name']         || clientName;
+          /* Land van de klant: bepaalt hoe een telefoonnummer met een nul
+             ervoor gelezen wordt. Zonder dit werd 07700 900123 (Brits) een
+             Belgisch nummer dat niet bestaat -- de lead kwam binnen, het
+             WhatsApp-bericht ging nergens heen, en niemand zag een fout. */
+          regio = _regio.lees(match.fields);
           autoReplyTpl = match.fields['fldOGdVq6T54xEo6W']   || match.fields['Auto-Reply Template'] || '';
           // "AI Name" = the persona that signs WhatsApp messages.
           // Tip for clients: use an actual employee name ("Sara", "Tim Janssen")
@@ -194,10 +201,7 @@ module.exports = async function handler(req, res) {
 
     // ── Normalise phone. Stored in Airtable in international digits-only format
     // so it matches what WhatsApp sends as message.from (e.g. "32478123456")
-    let waPhone = phone.replace(/[\s\-\(\)\.]/g, '');
-    if      (waPhone.startsWith('00')) waPhone = waPhone.slice(2);
-    else if (waPhone.startsWith('+'))  waPhone = waPhone.slice(1);
-    else if (waPhone.startsWith('0'))  waPhone = '32' + waPhone.slice(1);
+    const waPhone = _regio.naarE164(phone, regio);
 
     // Validate: digits only, 8-15 chars (standard E.164 range)
     if (!/^\d{8,15}$/.test(waPhone)) {

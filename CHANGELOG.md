@@ -14,6 +14,61 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou, en dit kost anders geld.** Maak op **Client Config** een veld
+> **`Credit Purchased`** aan, type **Number**. Zonder dat veld verdwijnt het deel
+> van een bijkoop dat groter is dan wat de klant al verbruikt had — hij betaalt
+> en krijgt het niet. `node scripts/preflight.js` faalt hier nu hard op.
+>
+> Optioneel, voor klanten buiten België: de velden **`Country`** (bv. `GB`),
+> **`Timezone`**, **`Currency`** en **`Locale`**. Laat je ze leeg, dan blijft
+> alles precies zoals het nu is.
+
+**Geld**
+
+- **Bijgekochte credits verdwenen gedeeltelijk, en soms helemaal.** Bijkopen
+  verlaagde de verbruiksteller in plaats van een saldo op te bouwen. Wie 400
+  credits verbruikt had en er 6.000 bijkocht, kreeg er 400. Wie net een nieuwe
+  periode in was en 6.000 kocht, kreeg er **nul**. En wat er wél bij kwam
+  verdween bij de maandelijkse reset. Nu is bijgekocht een eigen saldo dat
+  optelt bij je maandlimiet en de reset overleeft.
+- **Een opgezegde klant kon eindeloos blijven verbruiken.** Bij opzeggen ging
+  alleen de status om; de creditlimiet bleef staan en reset zichzelf elke dertig
+  dagen. Een opgezegd account hield dus maandelijks zijn volle limiet aan
+  beeldgeneratie, video en AI-chat — bij nul omzet. Nu gaat dat dicht.
+  Leadgesprekken blijven wél doorlopen: dat is de lead zijn schuld niet.
+- **Een gesprek werd meermaals afgeschreven tijdens een storing.** De twintig
+  credits van een leadgesprek werden geboekt vóór het bericht verstuurd was, en
+  de gespreksgeschiedenis wordt alleen bewaard als het antwoord aankwam. Tijdens
+  een WhatsApp-storing werd hetzelfde gesprek daardoor bij elk bericht opnieuw
+  geboekt. Nu telt één gesprek één keer, wat er ook misgaat.
+- **"Limiet bereikt" stuurde je niet meer naar Helvaro toe.** Die melding zei
+  "neem contact op om je limiet te verhogen". Nu wijst hij naar de knop waarmee
+  je zelf bijkoopt.
+
+**Internationaal**
+
+- **Werkuren stonden op de Brusselse klok, voor iedereen.** Een kantoor in
+  Londen was volgens ons open van 08:00 tot 16:00 hun tijd; in Dubai liep het
+  drie uur uit de pas. De AI zei dan "we zijn gesloten" midden op de werkdag.
+  Nu telt de klok van de klant zelf.
+- **Een buitenlands telefoonnummer werd een Belgisch nummer dat niet bestaat.**
+  `07700 900123` (Brits) werd `+32 7700900123`. Het bericht ging nergens heen,
+  zonder foutmelding. Nu wordt de landcode van de klant gebruikt.
+- **Prijzen, datums en tijden volgen nu land en munt van de klant** in plaats van
+  altijd euro met Belgische opmaak.
+- **Openingsuren worden nu ook in het Frans en het Duits gelezen** (`lun-ven`,
+  `mo-fr`). Die vielen eerder terug op "altijd open".
+
+**De lead**
+
+- **Een afspraak die niet opgeslagen kon worden, ging stil verloren.** De AI had
+  de lead al "ingepland, tot dan" geschreven; mislukte het wegschrijven daarna,
+  dan stond er niets in de agenda en wist niemand het. Nu wordt de lead
+  rechtgezet en krijg jij meteen bericht.
+- **Een stukgelopen stuurblok kon in het bericht van de lead belanden.** Schreef
+  het AI-model onbedoeld ongeldige JSON, dan las de lead letterlijk
+  `DECISION:{"qualified":true...}` in zijn WhatsApp. Dat kan nu niet meer,
+  ongeacht wat er misgaat.
 - **Een lead kan nu zelf afzeggen via WhatsApp.** Zegt hij "ik kan niet komen",
   "ik ben ziek" of "kan het een andere keer", dan haalt de AI de afspraak uit je
   agenda, zet hem op geannuleerd, en vraagt meteen wanneer het wel past. Jij

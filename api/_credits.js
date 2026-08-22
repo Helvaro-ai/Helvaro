@@ -66,6 +66,7 @@
  */
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+const _plan = require('./_plan'); // planstatus: betaalt deze klant nog?
 
 // ── Field names (NOT IDs — see file header) ────────────────────────────────
 const FIELD = {
@@ -74,6 +75,11 @@ const FIELD = {
   PERIOD:     'Credit Period',             // Long text (JSON): {start, alerted80, alerted100, alertedRunaway}
   BY_FEATURE: 'Credit Usage By Feature',   // Long text (JSON): {feature: creditsThisPeriod}
   CEILING:    'Credit Runaway Ceiling',    // Number, optional. Absolute abuse ceiling. Default = allowance * 3.
+  /* Bijgekochte credits. Number, mag ontbreken (dan valt addCredits terug op de
+     oude weg -- zie daar). Dit veld bestaat omdat bijkopen ANDERS werkt dan een
+     abonnement: het abonnement geeft elke maand opnieuw `Credit Allowance`, en
+     wat je bijkoopt hoort daar bovenop te komen en NIET mee te resetten. */
+  PURCHASED:  'Credit Purchased',
 };
 
 // ── Credit weights. See CREDIT-SYSTEM-DESIGN.md §2 for the exact numbers
@@ -524,13 +530,41 @@ function effectivePeriodState(fields) {
   const ceilingRaw = Number(fields[FIELD.CEILING]) || 0;
   const ceiling = ceilingRaw > 0 ? ceilingRaw : allowance * DEFAULT_RUNAWAY_MULTIPLIER;
 
-  return { allowance, used, byFeature, start, stale, ceiling, rawPeriod, ...alerted };
+  /* Bijgekocht telt NIET mee in `stale`. Dat is het hele punt van het veld: een
+     abonnementsperiode loopt af en `used` gaat naar nul, maar wat iemand met
+     eigen geld heeft bijgekocht hoort te blijven staan tot hij het opmaakt. */
+  const purchased = Math.max(0, Number(fields[FIELD.PURCHASED]) || 0);
+
+  return { allowance, purchased, used, byFeature, start, stale, ceiling, rawPeriod, ...alerted };
 }
 
+/*
+ * Wat er nog over is.
+ *
+ * ── Waarom hier een derde getal bij kwam ────────────────────────────────────
+ * Bijkopen werkte door de TELLER te verlagen: `used = max(0, used - gekocht)`.
+ * Zolang je meer verbruikt had dan je bijkocht klopte dat toevallig. Daarbuiten
+ * verdween het verschil zonder een spoor:
+ *
+ *   400 verbruikt, 6.000 bijgekocht  ->  used = 0. De klant kreeg 400 credits
+ *                                        ruimte en betaalde voor 6.000.
+ *   0 verbruikt, 6.000 bijgekocht    ->  used = 0. Hij kreeg NIETS.
+ *
+ * En wat er wel bij kwam verdween alsnog bij de maandelijkse reset, want die
+ * zet `used` op nul -- inclusief de "korting" die de bijkoop daar had achtergelaten.
+ *
+ * Nu is bijgekocht een eigen getal dat optelt bij de maandlimiet en de reset
+ * overleeft. `remaining = allowance + purchased - used`.
+ */
 function summarize(state) {
   const { allowance, used } = state;
-  const remaining   = allowance > 0 ? Math.max(0, allowance - used) : Infinity;
-  const percentUsed = allowance > 0 ? Math.round((used / allowance) * 100) : 0;
+  const purchased = Math.max(0, Number(state.purchased) || 0);
+  /* allowance 0 betekent "creditsysteem staat uit voor deze klant" (fail-open).
+     Dan blijft het Infinity, ook als er bijgekocht is -- anders zou bijkopen bij
+     een klant zonder limiet ineens een limiet INVOEREN. */
+  const totaal = allowance + purchased;
+  const remaining   = allowance > 0 ? Math.max(0, totaal - used) : Infinity;
+  const percentUsed = allowance > 0 ? Math.min(100, Math.round((used / totaal) * 100)) : 0;
   return { remaining, percentUsed };
 }
 
@@ -593,15 +627,50 @@ async function checkCredits(projectCode, feature) {
     return { allowed: true, remaining: Infinity, percentUsed: 0 };
   }
 
+  /* Betaalt deze klant nog?
+   *
+   * Dit stond hier niet, en dat was duur. `stop()` zette alleen Plan Status op
+   * 'opgezegd' en liet de creditlimiet staan; de periode reset zichzelf elke
+   * dertig dagen. Een opgezegde klant hield dus zijn dashboard, en daarmee elke
+   * maand opnieuw zijn volle limiet aan beeldgeneratie, video en Faro-chat --
+   * bij een omzet van nul. Bij Scale is dat honderden euro's leverancierskosten
+   * per maand per dood account.
+   *
+   * De limiet op nul zetten was NIET de oplossing: in dit bestand betekent een
+   * limiet van nul "creditsysteem uit" en dus onbeperkt. De poort hoort hier.
+   *
+   * Leadgesprekken blijven buiten schot (NEVER_BLOCK_FEATURES hierboven): een
+   * lead van een opgezegde klant hoort geen stilte te krijgen, dat is de lead
+   * zijn schuld niet. Alleen wat de KLANT zelf aanklikt gaat dicht. */
+  const planStatus = _plan.getPlanState(fields);
+  if (planStatus.isServiceStopped) {
+    console.warn(`[Credits] ${code} heeft status "${planStatus.status}" — discretionaire functie ${feature} geweigerd.`);
+    return {
+      allowed: false,
+      remaining: 0,
+      percentUsed: 100,
+      reason: 'plan_stopped',
+      message: planStatus.status === 'expired'
+        ? 'Je proefperiode is voorbij. Kies een plan om dit weer te gebruiken.'
+        : 'Je abonnement is gestopt. Kies een plan om dit weer te gebruiken.',
+    };
+  }
+
   const { remaining, percentUsed } = summarize(state);
-  const overLimit = state.used >= state.allowance;
+  /* Bijgekocht telt mee. Zonder `+ state.purchased` blokkeert deze regel een
+     klant die net credits heeft bijgekocht -- hij heeft betaald en wordt
+     alsnog tegengehouden, wat erger is dan geen limiet hebben. */
+  const overLimit = state.used >= (state.allowance + state.purchased);
   if (overLimit) {
-    console.warn(`[Credits] ${code} is at/over its limit (${state.used}/${state.allowance}) — blocking discretionary feature=${feature}.`);
+    console.warn(`[Credits] ${code} is at/over its limit (${state.used}/${state.allowance}+${state.purchased} bijgekocht) — blocking discretionary feature=${feature}.`);
     return {
       allowed: false,
       remaining: 0,
       percentUsed,
-      message: 'Je hebt de AI-credits voor deze periode bereikt. Deze actie is tijdelijk niet beschikbaar — neem contact op met Helvaro om je limiet te verhogen, of wacht tot de volgende periode.',
+      /* Geen "neem contact op met Helvaro". Dat is een klant die wil betalen en
+         moet wachten tot iemand wakker is -- precies wat tests/zelfbediening
+         bewaakt. Hij kan zelf bijkopen of een groter plan kiezen. */
+      message: 'Je AI-credits voor deze periode zijn op. Koop credits bij of kies een groter plan op de Facturatie-pagina.',
     };
   }
 
@@ -697,6 +766,31 @@ async function recordUsageInner(code, feature, opts = {}) {
   if (creditsInt <= 0) return;
 
   if (!envConfigured()) return; // logged once already by checkCredits/other callers if relevant
+
+  /* Dezelfde referentie telt één keer.
+   *
+   * addCredits() deed dit al; recordUsage() niet, terwijl het de referentie wél
+   * accepteerde -- hij werd pas verderop in _ledger.record() bekeken, ná de
+   * PATCH die de teller al had opgehoogd. Wat dat kostte: een WhatsApp-gesprek
+   * wordt geboekt zodra er één bericht in de historie staat, en die historie
+   * wordt alleen bewaard als het antwoord ook echt AANKWAM. Faalde het
+   * versturen, dan begon de volgende beurt weer bij één bericht -- en werd er
+   * opnieuw twintig credits afgeschreven. Voor een gesprek dat de lead nooit
+   * gezien heeft.
+   *
+   * De controle staat nu vóór de teller, net als bij addCredits. */
+  const ref = String(opts.reference || '').trim();
+  if (ref) {
+    try {
+      const _ledger = require('./_ledger');
+      const bestaand = await _ledger.zoekOpReferentie(code, ref);
+      if (bestaand) return;
+    } catch (e) {
+      // Niet kunnen controleren mag geen reden zijn om niets te boeken: dan
+      // verbruikt iemand gratis. Liever een dubbeling dan een gat.
+      console.warn('[Credits] kon niet controleren of dit verbruik al geboekt was, het gaat door:', e && e.message);
+    }
+  }
 
   let record;
   try {
@@ -1100,14 +1194,39 @@ async function addCredits(projectCode, n, opts = {}) {
   if (!record) throw new Error(`Geen klant gevonden met Project Code "${code}"`);
   const fields = record.fields || {};
   const state = effectivePeriodState(fields);
-  const newUsed = Math.max(0, state.used - Math.max(0, Math.round(Number(n) || 0)));
+  const bij = Math.max(0, Math.round(Number(n) || 0));
+
   // Spread rawPeriod first — see effectivePeriodState()'s doc comment: an
   // admin top-up must never wipe an unrelated namespaced key (e.g. the
   // trial cron's once-only-email marker) that happens to live in this same field.
-  const uit = await _patchClientCreditFields(projectCode, {
-    [FIELD.USED]: newUsed,
-    [FIELD.PERIOD]: JSON.stringify({ ...state.rawPeriod, start: state.start, alerted80: state.alerted80, alerted100: state.alerted100, alertedRunaway: state.alertedRunaway }),
-  });
+  const periodeJson = JSON.stringify({ ...state.rawPeriod, start: state.start, alerted80: state.alerted80, alerted100: state.alerted100, alertedRunaway: state.alertedRunaway });
+
+  /* Optellen bij het bijgekocht-saldo. Zie summarize() voor waarom dit niet
+     langer de teller verlaagt. */
+  let uit;
+  try {
+    uit = await _patchClientCreditFields(projectCode, {
+      [FIELD.PURCHASED]: state.purchased + bij,
+      [FIELD.PERIOD]: periodeJson,
+    });
+  } catch (err) {
+    /* Bestaat het veld nog niet in Airtable, dan weigert Airtable de HELE patch.
+       Dan valt dit terug op de oude manier, want de klant heeft al betaald en
+       iets is beter dan niets -- maar het gaat luid het log in MET het bedrag
+       dat daarbij verloren gaat, want dat is precies wat niemand ooit zag.
+       `node scripts/preflight.js` faalt hier ook hard op. */
+    if (!/UNKNOWN_FIELD_NAME|Unknown field/i.test(String(err && err.message))) throw err;
+    const kwijt = Math.max(0, bij - state.used);
+    console.error(
+      `[Credits] veld "${FIELD.PURCHASED}" bestaat niet in Airtable. Terugval op de oude telling voor ${code}: `
+      + `${bij} credits bijgeschreven op een verbruik van ${state.used}`
+      + (kwijt > 0 ? ` — ${kwijt} CREDITS GAAN VERLOREN. Maak het veld aan.` : '.')
+    );
+    uit = await _patchClientCreditFields(projectCode, {
+      [FIELD.USED]: Math.max(0, state.used - bij),
+      [FIELD.PERIOD]: periodeJson,
+    });
+  }
 
   /* Ook een bijstorting is een beweging. Zonder deze regel staat er straks in
      het overzicht wel dat er credits bij kwamen, maar niet wanneer of hoeveel.
@@ -1148,6 +1267,9 @@ async function resetPeriod(projectCode) {
   } catch (err) {
     console.warn(`[Credits] resetPeriod(${code}) pre-read failed, resetting without preserving extra keys:`, err.message);
   }
+  /* FIELD.PURCHASED staat hier BEWUST niet bij. Een nieuwe maand geeft de
+     maandlimiet opnieuw; wat de klant met eigen geld heeft bijgekocht is van
+     hem en blijft staan tot hij het opmaakt. Zet het hier nooit op nul. */
   return _patchClientCreditFields(projectCode, {
     [FIELD.USED]:       0,
     [FIELD.PERIOD]:     JSON.stringify({ ...rawPeriod, start: new Date().toISOString(), alerted80: false, alerted100: false, alertedRunaway: false }),

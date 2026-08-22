@@ -9,6 +9,18 @@
 //     24h-48h band anymore)
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
+const _crypto = require('crypto');
+
+/* Vergelijken zonder te verklappen hoeveel tekens er klopten. Ongelijke lengtes
+   geven meteen false -- timingSafeEqual gooit daarop, en de lengte van een
+   geheim is geen geheim. */
+function veiligGelijk(a, b) {
+  const ba = Buffer.from(String(a), 'utf8');
+  const bb = Buffer.from(String(b), 'utf8');
+  if (ba.length !== bb.length) return false;
+  return _crypto.timingSafeEqual(ba, bb);
+}
+
 // Credit/usage accounting — see its file header for the fail-open contract.
 const credits = require('./_credits');
 // Trial/plan-status interpretation (pure, no I/O) — see its file header.
@@ -78,7 +90,12 @@ module.exports = async function handler(req, res) {
 
   // Protect with CRON_SECRET so only Vercel can trigger this
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers['authorization'] !== `Bearer ${secret}`) {
+  /* Tekenreeksvergelijking met !== stopt bij het eerste verschil, en dat
+     verschil is meetbaar. De andere vier plekken die een geheim vergelijken
+     (admin.js, _stripe.js, whatsapp.js, _session.js) gebruiken daarom
+     timingSafeEqual; deze was de enige die dat niet deed. Praktisch nauwelijks
+     uitbuitbaar over het netwerk, maar het is één regel. */
+  if (!secret || !veiligGelijk(String(req.headers['authorization'] || ''), `Bearer ${secret}`)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
