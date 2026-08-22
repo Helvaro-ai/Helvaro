@@ -776,6 +776,26 @@ function finish() {
   //
   // Geen van beide gooide een fout bij het laden van de module — de fout zit in
   // de UITVOER, niet in de bron. Dus wordt de uitvoer hier echt geparseerd.
+  /* De scripts in scripts/ zelf. Klinkt overbodig -- ze worden toch gedraaid --
+     maar dat gebeurt pas als iemand ze nodig heeft, en preflight.js heeft hier
+     al een keer met een kapotte string in main gestaan omdat een bewerking een
+     regeleinde midden in een tekenreeks zette. Dit kost geen seconde en vindt
+     precies dat. */
+  console.log('\nde scripts zelf');
+  try {
+    const vm = require('vm');
+    const dir = path.join(__dirname);
+    let n = 0, bad = 0;
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+      n++;
+      try { new vm.Script(fs.readFileSync(path.join(dir, f), 'utf8'), { filename: f }); }
+      catch (e) { bad++; fail(`scripts/${f} parseert niet: ${e.message}`); }
+    }
+    if (!bad) pass(`${n} script(s) in scripts/ parseren zonder fout`);
+  } catch (e) {
+    fail(`kon scripts/ niet nalopen: ${e.message}`);
+  }
+
   console.log('\nuitgestuurde JavaScript');
   try {
     const vm = require('vm');
