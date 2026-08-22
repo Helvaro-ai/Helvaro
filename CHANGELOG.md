@@ -14,6 +14,28 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou, en dit is er nu twee.** Maak op de **Leads**-tabel een veld
+> **`Opted Out`** aan, type **Checkbox**. En op **Client Config** het veld
+> **`Credit Purchased`**, type **Number** (dat stond er al). `node
+> scripts/preflight.js` faalt hard op allebei.
+
+**Afmelden — dit bestond helemaal niet**
+
+- **Een lead die "STOP" stuurde kreeg gewoon antwoord, en de dag erna weer een
+  opvolging.** Er was geen enkele afmeldweg. Dat is niet alleen vervelend: het
+  is tegen het beleid van WhatsApp (en het nummer is voorlopig gedeeld, dus één
+  klant die dit fout doet raakt alle klanten), en "STOP" is in AVG-termen
+  gewoon bezwaar — dan hoort het te stoppen.
+- **Nu:** de AI herkent een afmelding in het Nederlands, Frans, Engels, Duits,
+  Spaans en Italiaans, stuurt één korte bevestiging, en daarna gaat er niets
+  meer naartoe — geen opvolging, geen herinnering, geen campagne. Jij krijgt
+  bericht met het nummer, zodat je hem desnoods nog kunt bellen.
+- **Wat bewust NIET als afmelding telt:** "stop me maar een berichtje als er
+  iets nieuws is" of "ik wil geen reclame maar wel info over dit pand". Een te
+  gretige afmelding kost je een lead die juist interesse had, en die krijg je
+  niet terug — een gemiste afmelding typt iemand nog wel een tweede keer.
+
+
 **Het scherm zei dingen die niet waar waren**
 
 - **De filters op de exportpagina deden niets.** Je koos "laatste 7 dagen,

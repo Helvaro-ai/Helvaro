@@ -94,7 +94,27 @@ async function post(pnid, token, payload) {
  * @param {boolean} args.windowOpen    caller's window check — must be true
  * @param {string} [args.phoneNumberId] per-client sender
  */
-async function sendFreeform({ to, text, windowOpen, phoneNumberId }) {
+/* ── De afmeldrem ────────────────────────────────────────────────────────────
+ * Zelfde contract als `windowOpen` hierboven, en om dezelfde reden expliciet:
+ * deze module haalt geen leadrecords op, dus de aanroeper geeft mee of deze
+ * lead afgemeld is. Het verschil is dat dit veld NIET verplicht is -- laat je
+ * hem weg, dan gedraagt alles zich als vroeger. Dat is bewust, want anders
+ * breekt elke bestaande aanroeper in één keer.
+ *
+ * Wie hem wél meegeeft en `true` zet, krijgt een weigering in plaats van een
+ * verzending. Dat is de enige plek waar het echt telt: hier gaat het bericht
+ * de deur uit. */
+function weigerBijAfmelding(optedOut, soort) {
+  if (optedOut === true) {
+    throw new SendError(
+      `Deze lead heeft zich afgemeld; er wordt geen ${soort} meer verstuurd.`,
+      'opted_out',
+    );
+  }
+}
+
+async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut }) {
+  weigerBijAfmelding(optedOut, 'bericht');
   // Deliberately not defaulted and not inferred. A caller that forgets to check
   // gets a refusal here rather than an accidental send attempt — and the check
   // needs the lead's history, which this module has no business fetching.
@@ -124,7 +144,8 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId }) {
  * Kept here so a future "send anyway, as a template" path has somewhere to
  * live that is already the single outbound door.
  */
-async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId }) {
+async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut }) {
+  weigerBijAfmelding(optedOut, 'template');
   if (!template) throw new SendError('Geen template opgegeven.', 'no_template');
   const { token, pnid } = creds(phoneNumberId);
   const components = params.length
@@ -138,4 +159,4 @@ async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumbe
   });
 }
 
-module.exports = { sendFreeform, sendTemplate, normalizePhone, SendError, GRAPH_VERSION };
+module.exports = { sendFreeform, sendTemplate, normalizePhone, SendError, GRAPH_VERSION, weigerBijAfmelding };
