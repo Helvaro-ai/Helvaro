@@ -286,6 +286,25 @@ const server = http.createServer(async (req, res) => {
           console.log('[faro-dev] creditaanvraag: EUR ' + o.bedragEur + ' -> ' + o.credits + ' credits');
           return res.status(200).json({ ok: true, offerte: o });
         }
+        case 'plan-list': {
+          /* Dezelfde vorm als api/leads.js, met de ECHTE plantabel -- geen
+             verzonnen bedragen. Zou de stub eigen prijzen tonen, dan ziet het
+             scherm er lokaal goed uit terwijl productie iets anders laat zien,
+             en dat is precies het soort verschil dat pas bij een klant opvalt. */
+          const _plans = require('../api/_plans');
+          return res.status(200).json({
+            plannen: _plans.publiek(),
+            huidig: { planId: null, status: 'trial', betalend: false, allowance: 300, kanBeheren: false },
+            /* Aan, zodat de knoppen lokaal te zien zijn. Zonder sleutel zou
+               "Binnenkort" staan en was de vormgeving niet te beoordelen. */
+            stripeAan: true,
+          });
+        }
+        case 'plan-checkout':
+          console.log('[faro-dev] plan gekozen:', req.body.planId, '(geen echte betaling lokaal)');
+          return res.status(503).json({ error: 'Lokaal wordt er niet echt afgerekend.', code: 'stripe_uit' });
+        case 'billing-portal':
+          return res.status(503).json({ error: 'Er is nog geen betaalgeschiedenis om te beheren.', code: 'geen_klant' });
         case 'billing-overview': {
           const nu = Date.now();
           const dag = 86400000;

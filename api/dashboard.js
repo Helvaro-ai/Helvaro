@@ -75,7 +75,10 @@ module.exports = async function handler(req, res) {
   const CLERK_PK_RAW = process.env.CLERK_PUBLISHABLE_KEY
                     || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
                     || '';
-  const CLERK_ON = process.env.CLERK_ENABLED === '1' && !!CLERK_PK_RAW;
+  // Dezelfde soepele lezing als api/_clerk.js: `true` hoort ook aan te zijn.
+  // Stonden die twee niet gelijk, dan kon de server denken dat Clerk aan was
+  // terwijl de pagina hem niet toonde -- of andersom.
+  const CLERK_ON = require('./_clerk').vlagAan(process.env.CLERK_ENABLED) && !!CLERK_PK_RAW;
   const CLERK_PK = CLERK_ON ? String(CLERK_PK_RAW).replace(/[<>"'&]/g, '') : '';
   let CLERK_HOST = '';
   if (CLERK_ON) {
@@ -85,6 +88,9 @@ module.exports = async function handler(req, res) {
     } catch { CLERK_HOST = ''; }
   }
   const CLERK_READY = CLERK_ON && !!CLERK_HOST;
+  // Zelfaanmelden zonder uitnodiging (api/admin.js, mode=onboard). Staat dit
+  // aan, dan is /onboard een echte weg naar binnen en hoeft niemand te mailen.
+  const OPEN_SIGNUP = require('./_clerk').vlagAan(process.env.PUBLIC_SIGNUP_ENABLED);
   const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
@@ -639,12 +645,27 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
 #login-page {
+  /* Het merkpaneel rechts is een podium, geen oppervlak van de app: het blijft
+     donker in beide thema's, zoals het logo dat erop staat. Het volgde eerder
+     --bg, en dus het thema -- schakelde je naar licht, dan werd de halve
+     inlogpagina wit en verdween de merkkant helemaal. Vandaar een eigen token
+     in plaats van --bg: het is niet dezelfde kleur die toevallig gelijk is,
+     het is een kleur die met opzet niet meebeweegt. */
+  --login-stage:      #121212;
+  --login-stage-ink:  #F9F9F9;
+  --login-stage-dim:  #A9A6A0;
   --login-panel:      #FFFFFF;
   --login-input-bg:   #F7F6F2;
   --login-border:     #E4E0D6;
   --login-text:       #18160F;
   --login-muted:      #6B6558;
   --login-placeholder:#A39C8C;
+  /* Zand ALS TEKST op dit paneel. Precies de regel uit CLAUDE.md: --accent-c
+     is de vulling, --accent-ink diezelfde kleur als tekst -- maar --accent-ink
+     is afgestemd op een DONKERE ondergrond, en dit paneel is altijd wit. Het
+     merk-zand kwam hier uit op 2,14:1 (donker thema) en 1,82:1 (licht). Deze
+     tint zit in dezelfde familie en haalt 4,88:1 op wit; gemeten, niet gekozen. */
+  --login-accent-ink: #8A6D2E;
   position: fixed;
   inset: 0;
   display: flex;
@@ -659,6 +680,70 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 /* De regel onder de inlogknop: wachtwoord vergeten en registreren. Kleuren
    uit tokens -- hier stond #6b7280 hardgecodeerd, wat in het lichte thema
    toevallig klopte en verder nergens op sloeg. */
+/* ── De segmentschakelaar inloggen / registreren ──────────────────────────
+   Twee gelijkwaardige knoppen in één spoor. De actieve krijgt het witte
+   plaatje en de schaduw; de andere blijft leesbaar maar rustig -- geen grijs
+   dat je moet zoeken. Gemeten op het altijd-witte formulierpaneel:
+   #6B6558 op #F1EFE9 haalt 5,07:1, ruim boven de eis.
+
+   Waarom een spoor en geen twee losse knoppen: zo is te zien dat het één
+   keuze is met twee standen, en niet twee dingen die je allebei kunt doen. */
+.login-modus {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  margin: var(--sp-5) 0 var(--sp-5);
+  background: #F1EFE9;
+  border: 1px solid var(--login-border);
+  border-radius: var(--r-md);
+}
+.login-modus-knop {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: var(--login-muted);
+  padding: 9px 10px;
+  border-radius: calc(var(--r-md) - 4px);
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+}
+.login-modus-knop:hover { color: var(--login-text); }
+.login-modus-knop.actief {
+  background: var(--login-panel);
+  color: var(--login-text);
+  box-shadow: 0 1px 2px rgba(24,22,15,0.10), 0 0 0 1px rgba(24,22,15,0.04);
+}
+.login-modus-knop:focus-visible {
+  outline: 2px solid var(--login-accent-ink);
+  outline-offset: 1px;
+}
+
+/* ── Wat je krijgt, voordat je je e-mailadres achterlaat ─────────────────── */
+.login-trust {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  /* Krap genoeg om op één regel te passen in het paneel van 380px. Brak hij af,
+     dan stond "Maandelijks opzegbaar" als losse regel eronder en las het als
+     een voetnoot in plaats van als een van de drie. */
+  gap: var(--sp-1) var(--sp-3);
+  list-style: none; margin: var(--sp-4) 0 0; padding: 0;
+  font-size: 11.5px; color: var(--login-muted);
+}
+.login-trust li { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+/* Het vinkje is decoratief; de tekst ernaast zegt het al. Vandaar een vorm en
+   geen letter, en geen aria-label -- een schermlezer die "vinkje vinkje
+   vinkje" voorleest helpt niemand. */
+.login-trust li::before {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--login-accent-ink);
+  flex-shrink: 0;
+}
+
 .login-links {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   margin-top: 14px; flex-wrap: wrap;
@@ -669,7 +754,10 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   font-family: inherit;
 }
 .login-link:hover { color: var(--login-text); text-decoration: underline; }
-.login-link-sep { color: var(--login-border); font-size: 12px; }
+/* Stond op --login-border: 1,32:1 op wit, dus in de praktijk onzichtbaar.
+   Een scheidingsteken dat je niet ziet scheidt niets -- dan kun je hem net zo
+   goed weglaten. Nu op de gedempte tekstkleur (5,79:1). */
+.login-link-sep { color: var(--login-muted); font-size: 12px; }
 
 /* Thema-knop op het inlogscherm. Hij staat op het showcase-paneel rechts, want
    het formulierpaneel links is altijd wit -- daar zou een lichte knop op een
@@ -785,8 +873,42 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* ── RIGHT: brand panel (58%). Calm dark surface, sand accents only ── */
 .login-brand-side {
+  /* Alles binnen dit paneel rekent voortaan met de DONKERE waarden, ongeacht
+     het thema van de pagina.
+
+     Waarom hier en niet per regel: de kaarten, de chatballonnen, de scorebalken
+     en de agendategels binnenin gebruiken samen een stuk of tien tokens
+     (--text-muted, --border, --card, ...). Zet je het paneel donker vast en
+     laat je die tokens meebewegen, dan krijg je in het lichte thema donkere
+     tekst op een donker vlak -- onleesbaar, en op precies de plek die een
+     nieuwe klant als eerste ziet. Eén blok dat de tokens vastzet, is
+     controleerbaar; tien losse uitzonderingen zijn dat niet, en er komt altijd
+     een elfde element bij dat vergeten wordt.
+
+     De waarden hieronder zijn letterlijk die uit het donkere thema. */
+  --bg:            #121212;
+  --bg-alt:        #0D0D0D;
+  --card:          #232323;
+  --card-elevated: #2A2A2A;
+  --border-c:      #262626;
+  --border-strong: #333333;
+  --divider:       #262626;
+  --hover-c:       #1C1C1C;
+  --text-c:        #F9F9F9;
+  --text-muted-c:  #B5B5B5;
+  --accent-ink:    #F0E4C8;
+  --on-accent:     #121212;
+  --text:           var(--text-c);
+  --text-primary:   var(--text-c);
+  --text-secondary: var(--text-muted-c);
+  --text-muted:     var(--text-muted-c);
+  --border:         var(--border-c);
+  --border-bright:  var(--border-strong);
+  --surface:        var(--card);
+
   flex: 1;
-  background: var(--bg);
+  background: var(--login-stage);
+  color: var(--login-stage-ink);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1162,7 +1284,7 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .login-footer span {
-  color: var(--accent-ink);
+  color: var(--login-accent-ink);
   font-weight: 600;
 }
 
@@ -1185,27 +1307,13 @@ button.brand-dot { border: none; padding: 0; }
   background: var(--bg);
 }
 
-/* Het showcase-paneel rechts was volledig op donker geschreven: de chatballonnen
-   hadden #EDEDED en #F2E9D5 als tekstkleur, en de vulling was wit op 7%. Op een
-   licht paneel is dat bijna-wit op wit -- de demo was daar letterlijk
-   onleesbaar. Het viel nooit op omdat het inlogscherm geen thema-knop had; nu
-   die er wel is, is dit het eerste wat je ziet.
-
-   Kleuren komen uit tokens, en tekst gebruikt de ink-variant: --accent-c is de
-   vulling van de uitgaande ballon, --accent-ink diezelfde kleur als tekst. */
-[data-theme="light"] .brand-chat-msg.in {
-  background: rgba(15,17,40,0.05);
-  color: var(--text-primary);
-}
-[data-theme="light"] .brand-chat-msg.out {
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.28);
-  color: var(--text-primary);
-}
-/* Het puntenraster is wit op 6%: onzichtbaar op een licht vlak. */
-[data-theme="light"] .login-brand-side::before {
-  background-image: radial-gradient(circle, rgba(15,17,40,0.07) 1px, transparent 1px);
-}
+/* Hier stonden drie overschrijvingen die het merkpaneel in het lichte thema
+   licht maakten -- de chatballonnen kregen donkere tekst, het puntenraster werd
+   donker. Dat was een correcte oplossing voor het verkeerde probleem: het
+   paneel hoorde helemaal niet licht te worden. Nu het op --login-stage staat en
+   in beide thema's donker blijft, zouden deze regels de demo juist ONleesbaar
+   maken: donkere tekst op een donker paneel. Ze zijn daarom weg in plaats van
+   aangepast. */
 
 .form-group {
   margin-bottom: 18px;
@@ -1274,7 +1382,9 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .login-footer span {
-  color: var(--accent-pressed);
+  /* Stond op --accent-pressed: zand op wit, 2,14:1. Dit is de regel die won
+     van de eerdere hierboven, dus dit was wat je echt zag. */
+  color: var(--login-accent-ink);
   font-weight: 600;
 }
 
@@ -5613,13 +5723,6 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   width: 100%;
   margin-bottom: 16px;
 }
-/* Onder 700px passen drie omzetkaarten naast elkaar niet meer: ze bleven op
-   hun min-content-breedte staan en liepen 168px buiten beeld op een telefoon,
-   onzichtbaar afgekapt door overflow-x:hidden. */
-@media (max-width: 700px) {
-  .analyse-revenue-row { flex-wrap: wrap; }
-  .analyse-revenue-row > * { flex: 1 1 100%; }
-}
 .analyse-revenue-card {
   flex: 1;
   min-width: 0;
@@ -5631,6 +5734,21 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   flex-direction: column;
   gap: 4px;
 }
+/* Onder 700px passen drie omzetkaarten niet meer naast elkaar.
+
+   Deze regels stonden VOOR .analyse-revenue-card. Een @media-blok verhoogt de
+   specificiteit niet, dus bij gelijke specificiteit wint wat later staat -- en
+   dat was de flex-verkorting op de kaart hierboven. De kaarten kregen daardoor
+   76px op een telefoon van 390px en de tekst erin werd afgekapt, terwijl de
+   regel die dat had moeten voorkomen er gewoon stond. Dat is precies de
+   cascadeval uit CLAUDE.md, en het is hier al eerder misgegaan met .btn-icon.
+
+   Vandaar: NA de basisregel. Verplaats dit blok niet naar boven. */
+@media (max-width: 700px) {
+  .analyse-revenue-row { flex-wrap: wrap; }
+  .analyse-revenue-row > * { flex: 1 1 100%; }
+}
+
 .analyse-revenue-val {
   font-variant-numeric: tabular-nums;
   font-size: 26px;
@@ -6138,14 +6256,25 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: flex; align-items: center; gap: 12px; padding: 10px 0;
   border-top: 1px solid var(--divider);
 }
-.chk-item[data-accent="blue"]    { --a: var(--c-blue);    --a-soft: var(--c-blue-soft); }
-.chk-item[data-accent="gold"]    { --a: var(--c-gold);    --a-soft: var(--c-gold-soft); }
-.chk-item[data-accent="purple"]  { --a: var(--c-purple);  --a-soft: var(--c-purple-soft); }
-.chk-item[data-accent="cyan"]    { --a: var(--c-cyan);    --a-soft: var(--c-cyan-soft); }
-.chk-item[data-accent="emerald"] { --a: var(--c-emerald); --a-soft: var(--c-emerald-soft); }
+/* Drie waarden per accent, niet twee: de VULLING (--a), het zachte vlak
+   (--a-soft) waar het bolletje op staat, en de INKT (--a-ink) waarin het
+   teken erin geschreven wordt.
+
+   Er stonden er twee, en het bolletje gebruikte de vulling als letterkleur.
+   Gemeten in het lichte thema: het groene rondje van een nog niet afgevinkte
+   stap kwam uit op 2,95:1 -- #16A34A op #E8F6ED. Dat is precies de regel uit
+   CLAUDE.md, en dit is de derde plek waar hij misging. De afgevinkte variant
+   hieronder was al eerder gerepareerd; de NIET-afgevinkte niet, en die is
+   degene die je het vaakst ziet. */
+.chk-item[data-accent="blue"]    { --a: var(--c-blue);    --a-soft: var(--c-blue-soft);    --a-ink: var(--neutral-ink); }
+.chk-item[data-accent="gold"]    { --a: var(--c-gold);    --a-soft: var(--c-gold-soft);    --a-ink: var(--accent-ink); }
+.chk-item[data-accent="purple"]  { --a: var(--c-purple);  --a-soft: var(--c-purple-soft);  --a-ink: var(--neutral-ink); }
+.chk-item[data-accent="cyan"]    { --a: var(--c-cyan);    --a-soft: var(--c-cyan-soft);    --a-ink: var(--neutral-ink); }
+.chk-item[data-accent="emerald"] { --a: var(--c-emerald); --a-soft: var(--c-emerald-soft); --a-ink: var(--success-ink); }
 .chk-item-icon {
   flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center;
-  border-radius: 50%; background: var(--a-soft, var(--bg-card-alt)); color: var(--a, var(--text-muted));
+  border-radius: 50%; background: var(--a-soft, var(--bg-card-alt));
+  color: var(--a-ink, var(--text-muted));
   font-size: 13px; font-weight: 700;
 }
 /* Vulling en inkt uit elkaar: --c-emerald is de VULkleur en haalde als vinkje
@@ -7039,18 +7168,65 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .koop-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
 
-.koop-staffel { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.koop-staffel-rij {
-  display: flex; justify-content: space-between; font-size: 12px;
-  color: var(--text-muted); padding: 3px 0;
+/* Het planadvies. Een rustig kaartje, geen banner: het hoort te helpen, niet
+   te duwen. De accentkleur zit in de RAND en de kop, nooit als vlak achter
+   lopende tekst -- zand op zand leest niet. */
+.koop-staffel { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: var(--sp-1); }
+.koop-advies {
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  padding: var(--sp-3);
+  border: 1px solid rgba(var(--accent-rgb), 0.30);
+  border-radius: var(--r-md);
+  background: rgba(var(--accent-rgb), 0.07);
 }
-.koop-staffel-rij.actief { color: var(--accent-ink); font-weight: 600; }
+.koop-advies strong { font-size: 13px; color: var(--accent-ink); font-weight: 650; }
+.koop-advies span   { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
 .koop-uitleg { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
 
 /* ── Facturatie ──────────────────────────────────────────────────────────────
    Kleuren uit tokens, tekst uit de ink-variant van het vlak eronder. Een
    bedrag mag hier nooit slecht leesbaar zijn: dit is de pagina waar een klant
    naar kijkt als hij twijfelt of hij te veel betaalt. */
+/* ── De plannen ──────────────────────────────────────────────────────────
+   Drie kaarten naast elkaar, met het huidige plan gemarkeerd. Het accent zit
+   in de RAND en in de knop, nooit als vlak achter lopende tekst -- zand als
+   ondergrond voor een alinea leest niet, en dat is precies de regel waar dit
+   project al twee keer op is misgegaan. */
+.fa-plannen { display: flex; flex-direction: column; gap: var(--sp-2); }
+.fa-plannen-titel { font-size: 16px; font-weight: 650; margin: 0; color: var(--text-primary); }
+.fa-plannen-sub   { font-size: 13px; color: var(--text-secondary); margin: 0 0 var(--sp-2); }
+.fa-plannen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-3);
+}
+.fa-plan {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+.fa-plan.huidig {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.18);
+}
+.fa-plan-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.fa-plan-titel { font-size: 15px; font-weight: 650; color: var(--text-primary); }
+.fa-plan-badge {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+.fa-plan-prijs {
+  font-size: 26px; font-weight: 700; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.fa-plan-prijs span { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.fa-plan-regel { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+.fa-plan-knop { margin-top: auto; }
+
 .fa-wrap { display: flex; flex-direction: column; gap: 16px; max-width: 940px; }
 .fa-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 780px) { .fa-top { grid-template-columns: 1fr; } }
@@ -7766,7 +7942,15 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    het donkere vlak: 1,86:1 en 1,88:1, allebei ruim onder 4,5:1.
    Meet tegen het oppervlak waar de tekst ECHT op staat. */
 [data-theme="light"] .sidebar .user-name { color: #E9EEF6; }
-[data-theme="light"] .sidebar .user-role { color: #8D99AC; }
+/* #8D99AC haalde 5,74:1 op de zijbalkVOET (rgb 26,31,39) -- daar was op
+   gerekend. Maar "Mijn profiel" staat niet op de voet: het staat in het
+   profielblok, en dat is lichter (rgb 54,57,65). Daar kwam dezelfde kleur uit
+   op 3,99:1. Het verschil zat er altijd al; de vorige meting keek naar het
+   verkeerde vlak.
+
+   #A3AEC0 haalt 5,15:1 op het profielblok en 7,38:1 op de voet -- goed op
+   allebei, dus één waarde volstaat. */
+[data-theme="light"] .sidebar .user-role { color: #A3AEC0; }
 /* Niet --error-ink (#F87171): dat is afgestemd op het KAARTvlak en haalt
    daar 5,68:1, maar op het donkerdere zijbalkvlak (rgb(56,52,60), gemeten op
    de echte pixels) blijft het op 4,40:1 steken — net onder 4,5. Deze tint
@@ -8139,6 +8323,27 @@ ${cmd.css}
         <h1 class="login-welcome">Welkom terug!</h1>
         <p class="login-subtitle">Log in om te zien wat er sinds gisteren gebeurd is.</p>
 
+        <!-- De schakelaar tussen inloggen en registreren.
+
+             Hij stond eerder als tekstlinkje onderaan, tussen "Wachtwoord
+             vergeten?" en een middenpunt in. Twee dingen waren daar mis mee.
+             Ten eerste zag een nieuwe bezoeker vooral een INLOGformulier, met
+             de weg naar binnen als kleinste element op het scherm. Ten tweede
+             kon je, als de wissel misging, nergens meer terug -- er was geen
+             zichtbare toestand om naar terug te keren.
+
+             Een segmentschakelaar lost allebei op: waar je bent is te zien, en
+             waar je heen kunt ook. -->
+        <div class="login-modus" role="tablist" aria-label="Inloggen of account aanmaken">
+          <button type="button" class="login-modus-knop actief" id="modus-inloggen" role="tab"
+                  aria-selected="true" onclick="naarInloggen()">Inloggen</button>
+          <button type="button" class="login-modus-knop" id="btn-naar-registreren" role="tab"
+                  aria-selected="false" onclick="naarRegistreren()">Account aanmaken</button>
+          <!-- De naam btn-naar-registreren zat op de oude tekstlink onderaan. Die
+               link is weg (hij stond twee keer op hetzelfde scherm), maar de naam
+               blijft: de rest van de code en de regressietest kennen hem zo. -->
+        </div>
+
         <!-- Everything from here to the closing tag is the built-in form.
              mountClerkSignIn() hides this wrapper and reveals #clerk-signin
              instead, so the logo, heading and split-screen showcase stay put
@@ -8162,13 +8367,18 @@ ${cmd.css}
 
         <div class="login-links">
           <a class="login-link" href="/forgot-password">Wachtwoord vergeten?</a>
-          <!-- Registreren loopt via Clerk. Laadt Clerk niet, dan hoort hier
-               niet NIETS te staan: een bezoeker die zich wil aanmelden zag
-               alleen een inlogformulier en had geen idee waar hij heen moest.
-               De knop zegt daarom altijd wat er aan de hand is. -->
-          <span class="login-link-sep" aria-hidden="true">&middot;</span>
-          <button type="button" class="login-link" id="btn-naar-registreren" onclick="naarRegistreren()">Account aanmaken</button>
         </div>
+
+        <!-- Wat een bezoeker wil weten voordat hij zijn e-mailadres achterlaat.
+             Alle drie waar: de proef is 14 dagen (api/_clerk.js), er wordt geen
+             kaart gevraagd voor de proef, en Stripe-abonnementen lopen per maand
+             (api/_stripe.js, interval: month). Staat hier niets dat we niet
+             waarmaken. -->
+        <ul class="login-trust" aria-label="Voorwaarden">
+          <li>14 dagen gratis</li>
+          <li>Geen kaart nodig</li>
+          <li>Maandelijks opzegbaar</li>
+        </ul>
         </div><!-- /login-form-wrap -->
 
         <!-- Clerk mounts sign-in OR sign-up here. Hidden until it does. -->
@@ -9656,7 +9866,14 @@ ${faro.navCta}
             <div class="fa-plan-naam" id="fa-plan-naam">—</div>
             <div class="fa-plan-sub" id="fa-plan-sub"></div>
             <div class="fa-plan-acties">
-              <button class="btn-icon" onclick="facturatieContact('plan')">Plan wijzigen</button>
+              <!-- Stond op "Plan wijzigen" met een mailtje erachter. Dat is
+                   handwerk per klant en dus precies wat niet meeschaalt: de
+                   klant wil betalen en moet wachten tot er iemand wakker is.
+                   Nu scrollt hij naar de plannen en rekent zelf af. -->
+              <button class="btn-icon" onclick="naarPlannen()">Plan wijzigen</button>
+              <!-- Alleen zichtbaar als er echt iets te beheren valt. -->
+              <button class="btn-icon" id="fa-portaal-knop" style="display:none"
+                      onclick="naarFacturatieportaal()">Facturen &amp; opzeggen</button>
             </div>
           </div>
 
@@ -9670,6 +9887,15 @@ ${faro.navCta}
             </div>
           </div>
         </div>
+
+        <!-- De plannen. Dit is de hele reden dat een klant zonder ons betalend
+             kan worden: kiezen, afrekenen bij Stripe, en de webhook zet het
+             plan en de creditlimiet voordat hij terug is op dit scherm. -->
+        <section class="fa-plannen" id="fa-plannen" aria-labelledby="fa-plannen-titel">
+          <h2 class="fa-plannen-titel" id="fa-plannen-titel">Plannen</h2>
+          <p class="fa-plannen-sub">Maandelijks opzegbaar. Je credits gaan mee naar het nieuwe plan.</p>
+          <div class="fa-plannen-grid" id="fa-plannen-grid"></div>
+        </section>
 
         <!-- Waar de credits heen gingen -->
         <div class="fa-card">
@@ -10988,7 +11214,7 @@ ${faro.dock}
 
     <div class="pd-modal-foot">
       <button class="btn-icon" onclick="closeKoopModal()">Annuleren</button>
-      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Aanvragen</button>
+      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Afrekenen</button>
     </div>
   </div>
 </div>
@@ -11271,6 +11497,7 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
    called per request rather than cached.
    ============================================================ */
 const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
+const OPEN_SIGNUP = ${OPEN_SIGNUP ? 'true' : 'false'};
 let _clerkLoaded = null;
 
 async function clerkInit() {
@@ -11352,17 +11579,43 @@ var CLERK_NL = {
   },
 };
 
+/* Het eigen formulier tonen of verbergen -- op EEN plek, zodat "terugkomen"
+   even makkelijk is als "weggaan". Dat het maar een kant op ging, is precies
+   waarom een mislukte wissel een leeg scherm opleverde. */
+function eigenFormulier(zichtbaar) {
+  var form = document.getElementById('login-form-wrap');
+  var wel  = document.querySelector('.login-welcome');
+  var sub  = document.querySelector('.login-subtitle');
+  if (form) form.style.display = zichtbaar ? '' : 'none';
+  // Clerk's kaart heeft zijn eigen titel; die van ons zou de tweede kop op
+  // hetzelfde paneel zijn die ongeveer hetzelfde zegt.
+  if (wel) wel.style.display = zichtbaar ? '' : 'none';
+  if (sub) sub.style.display = zichtbaar ? '' : 'none';
+}
+
+/* Terug naar het eigen formulier, met uitleg. Dit is het vangnet: wat er ook
+   misgaat met Clerk, er staat nooit een leeg paneel. Iemand die wil inloggen
+   kan dat altijd. */
+function terugNaarEigenFormulier(melding) {
+  var host = document.getElementById('clerk-signin');
+  if (host) { host.innerHTML = ''; host.style.display = 'none'; host.dataset.mounted = ''; }
+  var tog = document.getElementById('clerk-toggle');
+  if (tog) { tog.innerHTML = ''; tog.style.display = 'none'; }
+  eigenFormulier(true);
+  zetModus('inloggen');
+  if (melding) {
+    var fout = document.getElementById('login-error');
+    if (fout) { fout.textContent = melding; fout.classList.add('visible'); }
+  }
+}
+
 function clerkHost() {
   var host = document.getElementById('clerk-signin');
   if (!host) return null;
-  var form = document.getElementById('login-form-wrap');
-  if (form) form.style.display = 'none';
-  // Clerk's card carries its own title and subtitle, so ours would be the
-  // second heading on the same panel saying roughly the same thing.
-  var wel = document.querySelector('.login-welcome');
-  var sub = document.querySelector('.login-subtitle');
-  if (wel) wel.style.display = 'none';
-  if (sub) sub.style.display = 'none';
+  /* Het formulier blijft staan tot Clerk aantoonbaar iets getekend heeft --
+     zie clerkVangnet. Verbergen VOORDAT de mount slaagt is hoe je een leeg
+     scherm maakt: lukt de mount niet, dan is er niets meer om naar terug te
+     vallen en staat de bezoeker met lege handen. */
   host.style.display = 'block';
   /* Wisselen tussen inloggen en registreren gaf een LEEG paneel.
 
@@ -11402,32 +11655,91 @@ function clerkHost() {
    ziet, gaat weg.
 
    Drie gevallen, drie eerlijke antwoorden. */
-function naarRegistreren() {
-  // 1. Clerk staat aan en is geladen: gewoon het registratiescherm tonen.
-  if (typeof CLERK_READY !== 'undefined' && CLERK_READY && window.Clerk && window.Clerk.mountSignUp) {
-    mountClerkSignUp(window.Clerk);
-    return;
+/* De segmentschakelaar bijwerken. Op één plek, zodat de knop en het scherm
+   nooit uit elkaar kunnen lopen -- een schakelaar die "Inloggen" markeert
+   terwijl er een registratieformulier staat is erger dan geen schakelaar. */
+function zetModus(modus) {
+  var knoppen = { inloggen: document.getElementById('modus-inloggen'),
+                  registreren: document.getElementById('btn-naar-registreren') };
+  for (var k in knoppen) {
+    if (!knoppen[k]) continue;
+    var aan = (k === modus);
+    knoppen[k].classList.toggle('actief', aan);
+    knoppen[k].setAttribute('aria-selected', aan ? 'true' : 'false');
   }
+  var wel = document.querySelector('.login-welcome');
+  var sub = document.querySelector('.login-subtitle');
+  if (wel) wel.textContent = modus === 'registreren' ? 'Begin vandaag' : 'Welkom terug!';
+  if (sub) sub.textContent = modus === 'registreren'
+    ? 'Veertien dagen gratis. Je eerste lead kan vanavond binnenkomen.'
+    : 'Log in om te zien wat er sinds gisteren gebeurd is.';
+}
 
-  // 2. Clerk hoort aan te staan maar is er niet. Dat is een storing aan onze
-  //    kant, en dan hoort de bezoeker dat te horen in plaats van op een knop
-  //    te blijven drukken die niets doet.
+/* Terug naar inloggen. Bestond niet: de wissel ging maar één kant op, en wie
+   per ongeluk op registreren klikte kon alleen nog verversen. */
+async function naarInloggen() {
   var fout = document.getElementById('login-error');
+  if (fout) { fout.textContent = ''; fout.classList.remove('visible'); }
+  zetModus('inloggen');
+
   if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
-    if (fout) {
-      fout.textContent = 'Het registratiescherm kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
-      fout.classList.add('visible');
+    try {
+      var clerk = await clerkInit();
+      if (clerk && clerk.mountSignIn) { mountClerkSignIn(clerk); return; }
+    } catch (e) { console.error('[clerk] inloggen kon niet starten', e); }
+    terugNaarEigenFormulier('');
+    return;
+  }
+  terugNaarEigenFormulier('');
+}
+
+async function naarRegistreren() {
+  var knop = document.getElementById('btn-naar-registreren');
+  var fout = document.getElementById('login-error');
+  if (fout) { fout.textContent = ''; fout.classList.remove('visible'); }
+
+  // 1. Clerk staat aan. WACHTEN tot hij geladen is -- dat was de bug.
+  //
+  //    Er stond een synchrone controle op window.Clerk.mountSignUp. Klikte
+  //    iemand voordat het script van Clerk binnen was (en dat is het normale
+  //    geval: het laadt async, de knop staat er meteen), dan viel hij door naar
+  //    "kon niet geladen worden" terwijl er niets aan de hand was. Het scherm
+  //    liet dan een fout zien voor iets dat een halve seconde later gewoon had
+  //    gewerkt.
+  if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
+    if (knop) { knop.disabled = true; knop.dataset.oud = knop.textContent; knop.textContent = 'Even geduld...'; }
+    try {
+      var clerk = await clerkInit();
+      if (clerk && clerk.mountSignUp) { mountClerkSignUp(clerk); return; }
+      throw new Error('Clerk geladen maar zonder mountSignUp');
+    } catch (e) {
+      console.error('[clerk] registreren kon niet starten', e);
+      // Geen doodlopend scherm: het eigen formulier staat er nog.
+      terugNaarEigenFormulier('Registreren lukt nu niet. Probeer het zo meteen opnieuw, of log hieronder in.');
+      return;
+    } finally {
+      if (knop) { knop.disabled = false; knop.textContent = knop.dataset.oud || 'Account aanmaken'; }
     }
+  }
+
+  // 3. Clerk staat uit, maar zelfaanmelden staat open: stuur ze naar de
+  //    aanmeldpagina. Dit is de enige uitkomst die meeschaalt -- "mail ons en
+  //    wij zetten je account klaar" stond hier eerder, en dat is per definitie
+  //    handwerk per klant. Wie zich 's avonds om half elf wil aanmelden is de
+  //    volgende ochtend weg.
+  if (OPEN_SIGNUP) {
+    window.location.href = '/onboard';
     return;
   }
 
-  // 3. Clerk staat uit. Accounts worden dan met de hand aangemaakt -- zeg dat,
-  //    en geef een adres in plaats van een doodlopende knop.
+  // 4. Clerk uit EN zelfaanmelden dicht. Dat is geen toestand waar een bezoeker
+  //    iets aan kan doen; het is een instelling die vergeten is. Zeg dat
+  //    eerlijk in plaats van iemand op een dode knop te laten drukken.
   if (fout) {
-    fout.innerHTML = 'Accounts worden voor je klaargezet. Mail ons op '
-      + '<a href="mailto:hello@helvaro.pro?subject=Account%20aanvragen" style="color:inherit;text-decoration:underline">hello@helvaro.pro</a>'
-      + ' en je kunt dezelfde dag beginnen.';
+    fout.textContent = 'Aanmelden staat tijdelijk uit. Probeer het later opnieuw.';
     fout.classList.add('visible');
+    console.warn('[signup] CLERK_ENABLED en PUBLIC_SIGNUP_ENABLED staan allebei uit — '
+               + 'er is dus geen enkele weg naar binnen voor een nieuwe klant.');
   }
 }
 
@@ -11437,11 +11749,12 @@ function mountClerkSignIn(clerk) {
   try {
     clerk.mountSignIn(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signin';
+    zetModus('inloggen');
     setClerkToggle('signin');
     clerkVangnet(host, 'inloggen');
   } catch (e) {
     console.error('[clerk] sign-in kon niet gemonteerd worden', e);
-    clerkLeegMelding(host, 'inloggen');
+    terugNaarEigenFormulier('Het inlogscherm van onze aanbieder laadt niet. Gebruik hieronder je e-mailadres en wachtwoord.');
   }
 }
 
@@ -11451,33 +11764,41 @@ function mountClerkSignUp(clerk) {
   try {
     clerk.mountSignUp(host, CLERK_APPEARANCE);
     host.dataset.mounted = 'signup';
+    zetModus('registreren');
     setClerkToggle('signup');
     clerkVangnet(host, 'registreren');
   } catch (e) {
     console.error('[clerk] sign-up kon niet gemonteerd worden', e);
-    clerkLeegMelding(host, 'registreren');
+    terugNaarEigenFormulier('Registreren lukt nu niet. Probeer het zo meteen opnieuw, of log hieronder in.');
   }
 }
 
 /* Als Clerk stilzwijgend niets neerzet, is een leeg paneel het slechtste wat
    je kunt tonen: de gebruiker denkt dat de app stuk is en heeft geen weg
    terug. Na een halve seconde kijken of er echt iets staat. */
-function clerkVangnet(host, wat) {
-  setTimeout(function () {
-    if (host && host.isConnected && host.childElementCount === 0) {
-      console.error('[clerk] ' + wat + ' bleef leeg na monteren');
-      clerkLeegMelding(host, wat);
-    }
-  }, 600);
-}
+/* Heeft Clerk echt iets getekend? Zo ja: ons formulier mag weg. Zo nee: ons
+   formulier komt terug.
 
-function clerkLeegMelding(host, wat) {
-  if (!host) return;
-  host.innerHTML = '';
-  var p = document.createElement('p');
-  p.style.cssText = 'text-align:center;font-size:13px;line-height:1.6;color:var(--text-muted);padding:18px 6px';
-  p.textContent = 'Het scherm om te ' + wat + ' kon niet geladen worden. Ververs de pagina en probeer opnieuw.';
-  host.appendChild(p);
+   Twee keer kijken en niet één keer. Clerk's kaart verschijnt soms pas na een
+   netwerkronde (bot-protectie), en 600 ms is dan te vroeg -- dan zou het
+   vangnet een werkende mount wegduwen. */
+function clerkVangnet(host, wat) {
+  var pogingen = 0;
+  (function kijk() {
+    pogingen++;
+    if (!host || !host.isConnected) return;          // al vervangen door een nieuwe mount
+    if (host.childElementCount > 0) {
+      // Gelukt. Nu pas mag het eigen formulier weg.
+      eigenFormulier(false);
+      return;
+    }
+    if (pogingen < 6) { setTimeout(kijk, 500); return; }
+    console.error('[clerk] ' + wat + ' bleef leeg na ' + pogingen + ' pogingen');
+    terugNaarEigenFormulier(
+      wat === 'registreren'
+        ? 'Het registratiescherm laadt niet. Log hieronder in, of probeer het zo meteen opnieuw.'
+        : 'Het inlogscherm van onze aanbieder laadt niet. Gebruik hieronder je e-mailadres en wachtwoord.');
+  })();
 }
 
 // Clerk's components carry their own "already have an account?" links, but
@@ -13404,7 +13725,13 @@ function renderCreditUsage(d) {
     let line = \`\${used} / \${allowance} credits · nog ~\${leadsLeft} leadgesprekken\`;
     if (daysLeft != null) line += \` · \${daysLeft}d over in periode\`;
     if (d.overLimit) {
-      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Credit%20limiet%20verhogen">Limiet bereikt — vraag een upgrade aan →</a>';
+      /* Stond op een mailto. Dit is de zijbalk die een klant ziet op het moment
+         dat hij door zijn credits heen is -- precies wanneer hij wíl betalen.
+         Hem dan een e-mailprogramma voorschotelen en laten wachten op antwoord
+         is de duurste seconde in de hele app. Nu opent het de plannen. */
+      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="#" '
+        + 'onclick="event.preventDefault();navigateTo(&quot;facturatie&quot;);setTimeout(naarPlannen,300)">'
+        + 'Limiet bereikt — bekijk je plannen →</a>';
     } else {
       subEl.textContent = line;
     }
@@ -13461,8 +13788,13 @@ function renderPlanBanner(d) {
     // captured, only the AI auto-reply stopped. Never phrased as an error.
     if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — de AI beantwoordt ze alleen niet langer automatisch op WhatsApp.';
     if (ctaEl) {
-      ctaEl.textContent = 'Heractiveer account';
-      ctaEl.href = 'mailto:${SUPPORT_EMAIL_ATTR}?subject=Reactivatie%20account';
+      /* Stond op een mailto. Dat is het moment waarop iemand wíl betalen, en
+         dan een e-mailprogramma openen dat misschien niet eens ingesteld is --
+         waarna hij moet wachten tot er iemand antwoordt. Nu gaat hij naar zijn
+         plannen en rekent zelf af. */
+      ctaEl.textContent = 'Kies een plan';
+      ctaEl.href = '#';
+      ctaEl.onclick = function (e) { e.preventDefault(); navigateTo('facturatie'); setTimeout(naarPlannen, 300); };
     }
   } else {
     const daysLeft = d.daysLeft != null ? d.daysLeft : null;
@@ -13472,8 +13804,9 @@ function renderPlanBanner(d) {
       : 'Je proefperiode loopt';
     if (subEl)   subEl.textContent = 'Alle functies zijn beschikbaar. Wil je blijven gebruiken na je proefperiode? Upgrade wanneer je klaar bent.';
     if (ctaEl) {
-      ctaEl.textContent = 'Upgrade nu';
-      ctaEl.href = 'mailto:${SUPPORT_EMAIL_ATTR}?subject=Upgrade%20na%20proefperiode';
+      ctaEl.textContent = 'Bekijk de plannen';
+      ctaEl.href = '#';
+      ctaEl.onclick = function (e) { e.preventDefault(); navigateTo('facturatie'); setTimeout(naarPlannen, 300); };
     }
   }
 }
@@ -16877,19 +17210,41 @@ function pipelineDragStart(event, leadId) {
 
 const PIPELINE_STAGE_LABELS = { new: 'Nieuw', qualified: 'Gekwalificeerd', afspraak: 'Afspraak', won: 'Gewonnen', lost: 'Verloren' };
 
-// Derives which pipeline column a lead currently renders in. Mirrors the
-// column filters in renderPipeline() below, ordered most-specific-first so
-// it matches actual render output even on legacy/inconsistent data (e.g. a
-// lead with opgepikt=true always renders under "won" regardless of the
-// other booleans, because the qualified/afspraak filters both require
-// !opgepikt). Used to no-op a drop onto the column a card is already in,
-// and to decide what to roll back to if the PATCH fails.
+/* In welke fase zit een lead? DE enige plek waar dat bepaald wordt.
+
+   Dit was het niet. De kolomfilters van het bord, deze functie en de cijfers op
+   Analyse hadden alle drie hun eigen regeltjes, en die spraken elkaar tegen:
+
+   1. "Verloren" betekende twee dingen. Het bord keek naar
+      qualified===false && status==='completed' (de AI diskwalificeerde hem),
+      Analyse naar status==='verloren' (de makelaar zette hem zelf op verloren).
+      Gevolg: zette je een lead in het paneel op "Verloren", dan bleef zijn
+      kaartje gewoon in de kolom Nieuw staan. De handmatige markering deed op
+      het bord dus zichtbaar niets.
+
+   2. "Gewonnen" betekende ook twee dingen. Het bord: opgepikt===true. De win
+      rate op Analyse: afspraakGeboekt. Maar "Afspraak" is op het bord een
+      APARTE kolom vóór Gewonnen -- dus telde Analyse leads als gewonnen die op
+      het bord nog niet zover waren.
+
+   3. De pipelinewaarde trok status==='verloren' eraf, terwijl de kolom Verloren
+      op de andere regel draaide. Een lead kon dus in Verloren staan én meetellen
+      in de waarde.
+
+   Volgorde: het meest uitgesproken signaal eerst. Een makelaar die zelf
+   "Verloren" kiest weet iets wat de AI niet weet, en dat overrulet de rest.
+
+   LET OP bij het lezen: "Gewonnen" is hier opgepikt===true. Of dat de juiste
+   naam is voor dat veld is een aparte vraag -- het heet in Airtable "Opgepikt"
+   en betekent "de makelaar heeft hem overgenomen". Deze functie verandert die
+   keuze niet, ze zorgt alleen dat overal hetzelfde bedoeld wordt. */
 function pipelineStageOf(lead) {
   if (!lead) return 'new';
+  if (lead.status === 'verloren') return 'lost';
+  if (lead.qualified === false && lead.status === 'completed') return 'lost';
   if (lead.opgepikt === true) return 'won';
   if (lead.afspraakGeboekt === true) return 'afspraak';
   if (lead.qualified === true) return 'qualified';
-  if (lead.qualified === false && lead.status === 'completed') return 'lost';
   return 'new';
 }
 
@@ -16898,6 +17253,12 @@ function pipelineStageOf(lead) {
 // block) so the optimistic UI update renders the card in the same column
 // the server will confirm.
 function applyPipelineStageLocally(lead, stage) {
+  /* De handmatige "verloren"-markering weghalen bij elke fase behalve lost.
+     Zonder dit springt een lead die de makelaar zelf op verloren zette meteen
+     terug zodra hij hem naar een andere kolom sleept -- pipelineStageOf kijkt
+     namelijk als eerste naar die status. Spiegelt wat api/leads.js server-side
+     doet, zodat de kaart niet even op de goede plek staat en dan terugklapt. */
+  if (stage !== 'lost' && lead.status === 'verloren') lead.status = 'in_progress';
   switch (stage) {
     case 'qualified':
       lead.qualified = true; lead.afspraakGeboekt = false; lead.opgepikt = false;
@@ -16971,31 +17332,31 @@ function renderPipeline() {
       id: 'new',
       label: 'Nieuw',
       cls: 'col-new',
-      leads: leads.filter(l => !l.qualified && !l.afspraakGeboekt && !l.opgepikt && !(l.qualified === false && l.status === 'completed'))
+      leads: leads.filter(l => pipelineStageOf(l) === 'new')
     },
     {
       id: 'qualified',
       label: 'Gekwalificeerd',
       cls: 'col-qual',
-      leads: leads.filter(l => l.qualified === true && !l.afspraakGeboekt && !l.opgepikt)
+      leads: leads.filter(l => pipelineStageOf(l) === 'qualified')
     },
     {
       id: 'afspraak',
       label: 'Afspraak',
       cls: 'col-apt',
-      leads: leads.filter(l => l.afspraakGeboekt === true && !l.opgepikt)
+      leads: leads.filter(l => pipelineStageOf(l) === 'afspraak')
     },
     {
       id: 'won',
       label: 'Gewonnen',
       cls: 'col-won',
-      leads: leads.filter(l => l.opgepikt === true)
+      leads: leads.filter(l => pipelineStageOf(l) === 'won')
     },
     {
       id: 'lost',
       label: 'Verloren',
       cls: 'col-lost',
-      leads: leads.filter(l => l.qualified === false && l.status === 'completed')
+      leads: leads.filter(l => pipelineStageOf(l) === 'lost')
     }
   ];
 
@@ -17031,9 +17392,11 @@ function renderPipeline() {
     const colCounts = {};
     cols.forEach(c => { colCounts[c.label] = c.leads.length; });
     const total = (state.leads || []).length;
-    // Pipeline deal value: sum verwachteWaarde of non-verloren leads
+    // Pipelinewaarde: de verwachte waarde van alles wat NIET verloren is.
+    // Draaide op status!=='verloren' terwijl de kolom Verloren een andere regel
+    // gebruikte -- een lead kon dus in Verloren staan en toch meetellen.
     const pipelineValue = (state.leads || [])
-      .filter(l => l.status !== 'verloren')
+      .filter(l => pipelineStageOf(l) !== 'lost')
       .reduce((sum, l) => sum + parseDealValue(l.verwachteWaarde), 0);
     const valueFormatted = pipelineValue > 0
       ? '€' + pipelineValue.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
@@ -17292,8 +17655,12 @@ function renderAnalyse() {
     // rate: een kantoor met 40 openstaande leads en nul gewonnen las 100%. Het
     // deelt nu door wat er ECHT beslist is, en toont niets als er nog niets
     // beslist is — een percentage van nul beslissingen bestaat niet.
-    const verlorenCount = leads.filter(l => l.status === 'verloren').length;
-    const gewonnenCount = leads.filter(l => l.afspraakGeboekt).length;
+    // Dezelfde definitie als het pipelinebord (zie pipelineStageOf). Stond hier
+    // op status==='verloren' en afspraakGeboekt, wat allebei iets anders is dan
+    // wat het bord toont -- twee getallen op hetzelfde product die allebei
+    // "gewonnen" en "verloren" beweerden en het oneens waren.
+    const verlorenCount = leads.filter(l => pipelineStageOf(l) === 'lost').length;
+    const gewonnenCount = leads.filter(l => pipelineStageOf(l) === 'won').length;
     const beslist = verlorenCount + gewonnenCount;
     const winRate = beslist > 0 ? Math.round((gewonnenCount / beslist) * 100) : null;
     const wrEl = document.getElementById('analyse-winrate-val');
@@ -17307,7 +17674,7 @@ function renderAnalyse() {
 
     // Verlies redenen top 3
     const redenMap = {};
-    leads.filter(l => l.status === 'verloren' && l.reden).forEach(l => {
+    leads.filter(l => pipelineStageOf(l) === 'lost' && l.reden).forEach(l => {
       redenMap[l.reden] = (redenMap[l.reden] || 0) + 1;
     });
     const top3 = Object.entries(redenMap).sort((a,b) => b[1]-a[1]).slice(0,3);
@@ -18647,6 +19014,23 @@ function koopFmt(n) {
   return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
 }
 
+/* Een BEDRAG, en niet zomaar een getal. koopFmt rondt af op hele eenheden --
+   prima voor 3.000 credits, fout voor een prijs: het Starter-plan kostte op het
+   scherm "EUR 250" terwijl de prijspagina EUR 249,99 zegt. Een cent verschil is
+   klein; een prijs die niet klopt met wat je adverteert is dat niet.
+
+   Hele euro's blijven heel: EUR 499 wordt geen "EUR 499,00", want dat leest
+   als een kassabon in plaats van als een prijs. */
+function euroFmt(n) {
+  var x = Number(n);
+  if (!isFinite(x)) return '0';
+  var heel = Math.abs(x - Math.round(x)) < 0.005;
+  return x.toLocaleString('nl-BE', {
+    minimumFractionDigits: heel ? 0 : 2,
+    maximumFractionDigits: 2
+  });
+}
+
 function openKoopModal() {
   koopState.bedrag = 100;
   document.getElementById('koop-bedrag').value = 100;
@@ -18738,15 +19122,123 @@ async function koopOfferteOphalen() {
   stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
   detail.textContent = stukken.join(' \\u00B7 ');
 
-  // De staffel, met de trede waar je nu in zit gemarkeerd.
-  var st = (koopState.staffel || []).slice().sort(function (a, b) { return a.vanafEur - b.vanafEur; });
-  document.getElementById('koop-staffel').innerHTML = st.filter(function (t) { return t.bonusPct > 0; })
-    .map(function (t) {
-      var actief = o.bonusPct === t.bonusPct;
-      return '<div class="koop-staffel-rij' + (actief ? ' actief' : '') + '">'
-        + '<span>Vanaf \\u20AC ' + koopFmt(t.vanafEur) + '</span>'
-        + '<span>+' + t.bonusPct + '% credits</span></div>';
-    }).join('');
+  /* Hier stond een staffeltabel met volumebonussen. Die is weg, en niet omdat
+     hij lelijk was: doorgerekend gaf hij voor EUR 249,99 aan bijgekochte
+     credits er 3.151, terwijl het Starter-abonnement voor datzelfde bedrag
+     3.000 geeft. Bijkopen was dus voordeliger dan een abonnement.
+
+     Wat er nu staat is het omgekeerde: krijg je voor dit bedrag meer uit een
+     groter plan, dan zegt het scherm dat. Dat kost op deze ene aankoop iets,
+     en levert een klant op die volgend jaar nog klant is. */
+  var adviesEl = document.getElementById('koop-staffel');
+  if (o.beterPlan) {
+    var bp = o.beterPlan;
+    adviesEl.innerHTML =
+      '<div class="koop-advies">'
+      + '<strong>' + bp.naam + ' geeft je meer voor dit bedrag.</strong>'
+      + '<span>\\u20AC ' + euroFmt(bp.prijsEur) + ' per maand \\u00B7 ' + koopFmt(bp.credits)
+      + ' credits \\u00B7 ongeveer ' + koopFmt(bp.gesprekken) + ' leadgesprekken, elke maand opnieuw.</span>'
+      + '</div>';
+  } else {
+    adviesEl.innerHTML = '';
+  }
+}
+
+/* ══ Plannen ══════════════════════════════════════════════════════════════════
+   Ophalen, tonen, en afrekenen. Alle bedragen komen van de SERVER (api/_plans.js
+   via mode plan-list) -- de browser rekent hier niets uit, want een browser die
+   prijzen berekent is een browser waarin een klant zijn eigen prijs aanpast. */
+var planState = { plannen: [], huidig: null, stripeAan: false };
+
+async function laadPlannen() {
+  var grid = document.getElementById('fa-plannen-grid');
+  if (!grid) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'plan-list' })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    planState.plannen   = d.plannen || [];
+    planState.huidig    = d.huidig || null;
+    planState.stripeAan = !!d.stripeAan;
+  } catch (e) {
+    grid.innerHTML = '<div class="fa-plan"><div class="fa-plan-regel">'
+      + 'De plannen konden niet opgehaald worden. Ververs de pagina.</div></div>';
+    return;
+  }
+  tekenPlannen();
+
+  var portaal = document.getElementById('fa-portaal-knop');
+  if (portaal) portaal.style.display = (planState.huidig && planState.huidig.kanBeheren) ? '' : 'none';
+}
+
+function tekenPlannen() {
+  var grid = document.getElementById('fa-plannen-grid');
+  if (!grid) return;
+  var huidigId = planState.huidig && planState.huidig.planId;
+
+  grid.innerHTML = planState.plannen.map(function (p) {
+    var isHuidig = p.id === huidigId;
+    var knop;
+    if (isHuidig) {
+      knop = '<button class="btn-icon fa-plan-knop" disabled>Je huidige plan</button>';
+    } else if (!planState.stripeAan) {
+      /* Eerlijk in plaats van een knop die niets doet. */
+      knop = '<button class="btn-icon fa-plan-knop" disabled title="Online betalen staat nog niet aan">Binnenkort</button>';
+    } else {
+      knop = '<button class="btn-icon btn-primary-sm fa-plan-knop" onclick="kiesPlan(&quot;'
+           + p.id + '&quot;)">Kies ' + escHtml(p.naam) + '</button>';
+    }
+    return '<div class="fa-plan' + (isHuidig ? ' huidig' : '') + '">'
+      + '<div class="fa-plan-kop"><span class="fa-plan-titel">' + escHtml(p.naam) + '</span>'
+      + (isHuidig ? '<span class="fa-plan-badge">Huidig</span>' : '') + '</div>'
+      + '<div class="fa-plan-prijs">\u20AC ' + euroFmt(p.prijsEur) + '<span> /maand</span></div>'
+      + '<div class="fa-plan-regel">' + koopFmt(p.credits) + ' credits \u00B7 ongeveer '
+      + koopFmt(p.gesprekken) + ' leadgesprekken</div>'
+      + '<div class="fa-plan-regel">' + escHtml(p.omschrijving || '') + '</div>'
+      + knop + '</div>';
+  }).join('');
+}
+
+async function kiesPlan(planId) {
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'plan-checkout', planId: planId })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.url) { window.location.href = d.url; return; }
+    toast(d.error || 'De betaalpagina kon niet geopend worden.', 'error');
+  } catch (e) {
+    toast('Er ging iets mis. Controleer je verbinding.', 'error');
+  }
+}
+
+/* Naar Stripe's eigen portaal. Bewust niet zelf nagebouwd: een opzegknop die
+   alleen in ons scherm werkt en niet bij Stripe laat iemand doorbetalen terwijl
+   hij denkt dat hij weg is. */
+async function naarFacturatieportaal() {
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'billing-portal' })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.url) { window.location.href = d.url; return; }
+    toast(d.error || 'Het portaal kon niet geopend worden.', 'error');
+  } catch (e) {
+    toast('Er ging iets mis. Controleer je verbinding.', 'error');
+  }
+}
+
+function naarPlannen() {
+  var el = document.getElementById('fa-plannen');
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function koopAanvragen() {
@@ -18760,16 +19252,43 @@ async function koopAanvragen() {
   }
   btn.disabled = true; btn.textContent = 'Bezig...';
   fout.style.display = 'none';
-  try {
-    var r = await fetch(API_BASE + '/leads', {
+
+  function post(mode) {
+    return fetch(API_BASE + '/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'credit-purchase-request', amountEur: koopState.bedrag })
+      body: JSON.stringify({ mode: mode, amountEur: koopState.bedrag })
     });
+  }
+
+  try {
+    /* Eerst online betalen. Staat Stripe niet aan, dan geeft de server 503 met
+       code stripe_uit en valt dit terug op een aanvraag per mail. Die terugval
+       is er met opzet: een knop die niets doet omdat een sleutel ontbreekt is
+       erger dan een tragere weg die wel werkt. */
+    var r = await post('credit-checkout');
     var d = await r.json().catch(function () { return {}; });
-    if (!r.ok) {
+
+    if (r.ok && d.url) {
+      /* Geen nieuw tabblad: een popupblokkering zou de betaling stilletjes
+         opeten. De klant komt terug op /dashboard?betaling=gelukt. */
+      window.location.href = d.url;
+      return;
+    }
+
+    if (r.status !== 503 || d.code !== 'stripe_uit') {
       fout.style.display = '';
-      fout.textContent = d.error || 'De aanvraag kon niet verstuurd worden.';
+      fout.textContent = d.error || 'De betaalpagina kon niet geopend worden.';
+      return;
+    }
+
+    // Terugval: geen betaalprovider, dus een aanvraag.
+    btn.textContent = 'Aanvragen...';
+    var r2 = await post('credit-purchase-request');
+    var d2 = await r2.json().catch(function () { return {}; });
+    if (!r2.ok) {
+      fout.style.display = '';
+      fout.textContent = d2.error || 'De aanvraag kon niet verstuurd worden.';
       return;
     }
     closeKoopModal();
@@ -18778,9 +19297,64 @@ async function koopAanvragen() {
     toast('Aanvraag verstuurd. Je krijgt een factuur; de credits staan er zodra die betaald is.', 'success');
   } catch (e) {
     fout.style.display = '';
-    fout.textContent = 'De aanvraag kon niet verstuurd worden. Controleer je verbinding.';
+    fout.textContent = 'Er ging iets mis. Controleer je verbinding en probeer opnieuw.';
   } finally {
-    btn.disabled = false; btn.textContent = 'Aanvragen';
+    btn.disabled = false; btn.textContent = 'Afrekenen';
+  }
+}
+
+/* De klant komt terug van Stripe met ?betaling=gelukt of =geannuleerd.
+
+   Bij 'gelukt' staan de credits er meestal al -- de webhook is sneller dan een
+   browser die terugnavigeert -- maar niet gegarandeerd. Daarom wordt het saldo
+   opnieuw opgehaald en zegt de melding "worden bijgeschreven" in plaats van een
+   getal dat er misschien nog niet staat. */
+document.addEventListener('DOMContentLoaded', function () {
+  /* Pas na het laden, en met een kleine vertraging: toast() en loadFacturatie()
+     bestaan pas als de rest van het scherm er is. */
+  setTimeout(betalingRetour, 400);
+  setTimeout(abonnementRetour, 400);
+});
+
+function betalingRetour() {
+  var params = new URLSearchParams(window.location.search);
+  var status = params.get('betaling');
+  if (!status) return;
+
+  // De parameter meteen uit de balk halen: verversen hoort niet nog eens
+  // dezelfde melding te geven.
+  params.delete('betaling');
+  var rest = params.toString();
+  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
+
+  if (status === 'gelukt') {
+    toast('Betaling gelukt. Je credits worden bijgeschreven.', 'success');
+    setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
+  } else if (status === 'geannuleerd') {
+    toast('Betaling geannuleerd. Er is niets afgeschreven.', 'info');
+  }
+}
+
+/* Hetzelfde voor een abonnement. Apart van betalingRetour() omdat de melding
+   iets anders is: bij een abonnement gaat het niet om credits die bijkomen maar
+   om een plan dat aan gaat. */
+function abonnementRetour() {
+  var params = new URLSearchParams(window.location.search);
+  var status = params.get('abonnement');
+  if (!status) return;
+  params.delete('abonnement');
+  var rest = params.toString();
+  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
+
+  if (status === 'gelukt') {
+    /* "Wordt geactiveerd" en geen "is actief": de webhook is meestal sneller dan
+       een browser die terugnavigeert, maar gegarandeerd is dat niet. Zeggen dat
+       iets klaar is terwijl het dat misschien niet is, is hoe je vertrouwen
+       verliest op precies het moment dat iemand net betaald heeft. */
+    toast('Betaling gelukt. Je abonnement wordt geactiveerd.', 'success');
+    setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
+  } else if (status === 'geannuleerd') {
+    toast('Geannuleerd. Er is niets afgeschreven.', 'info');
   }
 }
 
@@ -18833,6 +19407,7 @@ var FA_TYPE_NAMEN = {
 };
 
 async function loadFacturatie() {
+  laadPlannen();
   var notice = document.getElementById('fa-notice');
   if (!notice) return;
   document.getElementById('fa-plan-naam').textContent = 'Laden...';
@@ -18965,13 +19540,11 @@ function renderFacturatie() {
    Dat is bewust geen knop die niets doet: een mailtje dat aankomt is beter dan
    een betaalscherm dat er is maar niet werkt. Zodra er een betaalprovider
    hangt, vervangt die deze functie. */
-function facturatieContact(wat) {
-  var onderwerp = wat === 'credits' ? 'Credits bijkopen' : 'Plan wijzigen';
-  var klant = localStorage.getItem('hv-client') || '';
-  var body = 'Hallo,%0A%0AIk wil graag ' + (wat === 'credits' ? 'credits bijkopen' : 'mijn plan wijzigen')
-           + '.%0A%0AKlant: ' + encodeURIComponent(klant) + '%0A';
-  window.location.href = 'mailto:hello@helvaro.pro?subject=' + encodeURIComponent(onderwerp) + '&body=' + body;
-}
+/* Hier stond facturatieContact(): een mailto voor "credits bijkopen" en "plan
+   wijzigen". Allebei kunnen ze nu zelf -- credits via de koopmodal, een plan via
+   de plankaarten. Er riep niets deze functie nog aan, en een ongebruikte functie
+   die een mailtje opent is precies het soort ding dat over een half jaar weer
+   ergens aan een knop hangt. Vandaar weg in plaats van bewaard. */
 
 /* ══ Panden ═══════════════════════════════════════════════════════════════════
    Het aanbod van de makelaar. Elk pand krijgt een link (/start/CODE/PANDCODE)

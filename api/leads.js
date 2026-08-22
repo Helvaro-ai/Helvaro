@@ -393,6 +393,26 @@ module.exports = async function handler(req, res) {
         const F_OPGEPIKT  = 'fld86JQHB6dbuutA7';
         const F_STATUS    = 'fld8mkrEWcyq7mUip';
 
+        /* status:'verloren' -- de markering die de makelaar zelf in het paneel
+           zet -- telt sinds kort ook als "verloren" op het bord. Dat was nodig
+           (die markering deed op het bord zichtbaar niets), maar het maakt een
+           tweede uitweg noodzakelijk: sleep je zo'n lead terug naar een andere
+           kolom, dan blijft die status staan en springt het kaartje terug.
+
+           Elke fase BEHALVE lost zet de status daarom op 'in_progress'. Niet op
+           'new', om dezelfde reden als in de new-tak hieronder: 'new' zet de
+           opvolgcron opnieuw aan voor een lead die niet vers is.
+
+           Alleen als hij er ook echt op stond: de huidige rij is hier al
+           opgehaald (ownData), dus dat kost niets. Een lead die gewoon op
+           'in_progress' of 'new' staat wordt niet aangeraakt -- die status
+           stuurt de opvolgcron, en die zonder reden verzetten is precies hoe je
+           een opvolging kwijtraakt. */
+        if (body.pipelineStage !== 'lost'
+            && String((ownData.fields || {})[F_STATUS] || '').toLowerCase() === 'verloren') {
+          fields[F_STATUS] = 'in_progress';
+        }
+
         switch (body.pipelineStage) {
           case 'qualified':
             // Must clear afspraak/opgepikt or it'd also satisfy those
@@ -441,8 +461,11 @@ module.exports = async function handler(req, res) {
             // and would re-arm the 24h/7d nurture follow-up and the
             // stuck-at-new sweep for a lead that isn't actually fresh — it's
             // just being manually re-opened in the pipeline. Only touch
-            // status when it's actually 'completed'; leave it alone
-            // otherwise so a lead already sitting in New isn't perturbed.
+            // status when it's actually 'completed' OR 'verloren'; leave it
+            // alone otherwise so a lead already sitting in New isn't perturbed.
+            // 'verloren' staat er sinds die markering ook als lost telt: zonder
+            // dit springt een handmatig-verloren lead terug naar Verloren zodra
+            // je hem naar Nieuw sleept.
             const curStatus = ownData.fields?.[F_STATUS] || '';
             if (curStatus === 'completed') fields[F_STATUS] = 'in_progress';
             break;
@@ -1495,7 +1518,133 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    /* Een aanvraag om credits bij te kopen.
+    /* ── Abonnementen ────────────────────────────────────────────────────────
+       Wat er nodig is om zonder mens betalend te worden: de plannen tonen, een
+       abonnement starten, en het zelf kunnen beheren.
+
+       Er was tot hier geen enkele weg van proefaccount naar betalende klant
+       zonder dat iemand met de hand een plan en een creditlimiet in Airtable
+       zette. Dat werkt bij drie klanten en breekt bij dertig -- en het breekt
+       op het slechtste moment: de klant wil betalen en moet wachten. */
+    if (body.mode === 'plan-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _plans = require('./_plans');
+      const abo = await require('./_abonnement').lees(projectCode);
+      return res.status(200).json({
+        plannen: _plans.publiek(),
+        huidig: abo ? { planId: abo.planId, status: abo.status, betalend: abo.betalend,
+                        allowance: abo.allowance, kanBeheren: !!abo.klantId } : null,
+        stripeAan: require('./_stripe').configured(),
+      });
+    }
+
+    if (body.mode === 'plan-checkout') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _stripe = require('./_stripe');
+      if (!_stripe.configured()) {
+        return res.status(503).json({ error: 'Online betalen staat nog niet aan.', code: 'stripe_uit' });
+      }
+      const _plans = require('./_plans');
+      /* Het plan wordt hier OPGEZOCHT, niet overgenomen. De browser stuurt een
+         naam; de prijs komt uit de plantabel. Anders koopt iemand Scale voor
+         een euro door één getal in het netwerkverkeer te veranderen. */
+      const plan = _plans.plan(body.planId);
+      if (!plan) return res.status(400).json({ error: 'Onbekend plan.' });
+
+      const abo = await require('./_abonnement').lees(projectCode);
+      try {
+        const sessie = await _stripe.createSubscription({
+          projectCode, plan,
+          email: (abo && abo.email) || '',
+          klantId: (abo && abo.klantId) || '',
+          origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+        });
+        if (!sessie || !sessie.url) throw new Error('Stripe gaf geen betaalpagina terug');
+        console.log(`[stripe] abonnement ${plan.id} voor ${projectCode} (${sessie.id})`);
+        return res.status(200).json({ url: sessie.url });
+      } catch (err) {
+        console.error('[stripe] abonnement starten mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({ error: 'De betaalpagina kon niet geopend worden. Probeer het zo meteen opnieuw.' });
+      }
+    }
+
+    /* Naar Stripe's eigen portaal: facturen, kaart wijzigen, opzeggen. Bewust
+       niet zelf nagebouwd -- een opzegknop die alleen in ons scherm werkt en
+       niet bij Stripe laat een klant betalen terwijl hij denkt dat hij weg is. */
+    if (body.mode === 'billing-portal') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _stripe = require('./_stripe');
+      const abo = await require('./_abonnement').lees(projectCode);
+      if (!_stripe.configured() || !abo || !abo.klantId) {
+        return res.status(503).json({ error: 'Er is nog geen betaalgeschiedenis om te beheren.', code: 'geen_klant' });
+      }
+      try {
+        const sessie = await _stripe.billingPortal({
+          klantId: abo.klantId,
+          origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+        });
+        return res.status(200).json({ url: sessie.url });
+      } catch (err) {
+        console.error('[stripe] portaal openen mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({ error: 'Het facturatieportaal kon niet geopend worden.' });
+      }
+    }
+
+    /* Betalen voor credits, via Stripe.
+
+       Het AANMAKEN van de betaalpagina staat hier en niet in api/stripe.js,
+       omdat de sessiecontrole hier al gebeurd is. De webhook heeft een eigen
+       route, en om één reden: Stripe tekent de ruwe bytes van de body en Vercel
+       parst die weg. Zie de kop van api/stripe.js.
+
+       Het bedrag wordt hier OPNIEUW doorgerekend. Wat de browser meestuurt is
+       een wens, geen prijs -- anders koopt iemand 46.000 credits voor een euro
+       door één getal in het netwerkverkeer aan te passen. */
+    if (body.mode === 'credit-checkout') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
+      const _stripe = require('./_stripe');
+      if (!_stripe.configured()) {
+        /* Geen sleutel = geen betaalpagina. Het scherm valt dan terug op de
+           aanvraag per mail; dat is trager maar het werkt, en het is eerlijker
+           dan een knop die niets doet. */
+        return res.status(503).json({ error: 'Online betalen staat nog niet aan.', code: 'stripe_uit' });
+      }
+
+      const offerte = credits.topupOfferte(body.amountEur);
+      if (!offerte.geldig) {
+        const teksten = {
+          te_laag:     `Het minimum is € ${credits.TOPUP_MIN_EUR}.`,
+          te_hoog:     `Voor bedragen boven € ${credits.TOPUP_MAX_EUR} nemen we liever even contact op.`,
+          geen_bedrag: 'Vul een bedrag in.',
+          geen_tarief: 'Bijkopen staat nog niet aan.',
+        };
+        return res.status(400).json({ error: teksten[offerte.reden] || 'Dat bedrag kan niet.', code: offerte.reden });
+      }
+
+      try {
+        const sessie = await _stripe.createCheckout({
+          projectCode,
+          offerte,
+          /* Geen e-mailadres meegeven: dat staat op de klantrij en die is hier
+             niet altijd geladen. Stripe vraagt het gewoon op de betaalpagina,
+             en een adres dat we niet zeker weten alvast invullen is erger dan
+             het niet invullen. */
+          origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+        });
+        if (!sessie || !sessie.url) throw new Error('Stripe gaf geen betaalpagina terug');
+        console.log(`[stripe] betaalpagina voor ${projectCode}: EUR ${offerte.bedragEur} -> ${offerte.credits} credits (${sessie.id})`);
+        /* Alleen de URL terug. De credits worden pas geboekt door de webhook,
+           nadat Stripe zegt dat er betaald is -- nooit hier, want hier weten we
+           alleen dat iemand op een knop heeft geklikt. */
+        return res.status(200).json({ url: sessie.url, offerte });
+      } catch (err) {
+        console.error('[stripe] betaalpagina aanmaken mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({ error: 'De betaalpagina kon niet geopend worden. Probeer het zo meteen opnieuw.' });
+      }
+    }
+
+    /* Een aanvraag om credits bij te kopen, zonder betaalprovider.
     
        Er komen hier GEEN credits bij. Dat is geen tekortkoming maar de enige
        eerlijke vorm zolang er geen betaalprovider hangt: een saldo dat omhoog

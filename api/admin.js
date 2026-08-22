@@ -1397,8 +1397,8 @@ module.exports = async function handler(req, res) {
       // ── Self-serve onboarding only: seed a Credit Allowance so the client
       // doesn't start fully unmetered (see IMPROVEMENTS-REVIEW.md §3.2 —
       // onboarding was built before the credit system existed, so it never
-      // wired into it). Starter default is 2.000 per CREDIT-SYSTEM-DESIGN.md
-      // §3, overridable via body.creditAllowance, then DEFAULT_CREDIT_ALLOWANCE.
+      // wired into it). De standaard komt uit api/_plans.js (Starter), te
+      // overschrijven via body.creditAllowance en dan DEFAULT_CREDIT_ALLOWANCE.
       // The 'Credit Allowance' Airtable field may not exist yet on the live
       // base (owner must add it, see CREDITS-VERCEL-SUMMARY.md) — setAllowance()
       // PATCHes it by name and Airtable rejects the whole PATCH with an
@@ -1409,7 +1409,12 @@ module.exports = async function handler(req, res) {
       let creditAllowance = 0;
       if (isOnboard) {
         const requestedAllowance = Math.max(0, Math.round(Number(body.creditAllowance) || 0));
-        const defaultAllowance   = Math.max(0, Math.round(Number(process.env.DEFAULT_CREDIT_ALLOWANCE) || 0)) || 2000;
+        // Uit api/_plans.js, niet als los getal hier. Stond op een harde 2.000,
+        // terwijl de prijspagina 3.000 voor Starter zegt -- elke nieuwe klant
+        // kreeg dus een derde te weinig, en niets in de code wees erop.
+        const _plans = require('./_plans');
+        const starterCredits     = (_plans.plan(_plans.STANDAARD_PLAN) || {}).credits || 0;
+        const defaultAllowance   = Math.max(0, Math.round(Number(process.env.DEFAULT_CREDIT_ALLOWANCE) || 0)) || starterCredits;
         creditAllowance = requestedAllowance || defaultAllowance;
         try {
           const { setAllowance } = require('./_credits');

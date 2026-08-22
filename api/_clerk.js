@@ -29,7 +29,15 @@ const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 // Deliberately well under a paid plan's 2.000. Enough to genuinely try the
 // product, not enough for an abandoned or abusive sign-up to cost real money.
 const TRIAL_DAYS    = 14;
-const TRIAL_CREDITS = 250;
+/* Wat een proefaccount krijgt. Een tiende van Starter, dus 300 credits = 15
+   leadgesprekken: genoeg om te zien of het werkt, te weinig om er een maand op
+   te draaien. Afgeleid uit de plantabel zodat het meebeweegt als de prijspagina
+   verandert -- stond eerder op een losse 250 die nergens uit volgde.
+
+   LET OP bij video: een standaardvideo kost 240 credits, dus bijna een hele
+   proefperiode. Zie CREDIT-SYSTEM-DESIGN.md §7; dat is nog een open keuze. */
+const _plans = require('./_plans');
+const TRIAL_CREDITS = Math.round(((_plans.plan(_plans.STANDAARD_PLAN) || {}).credits || 3000) / 10);
 const USERS_TABLE   = 'tbl2hrPW7gIx5XF4S';
 
 // Derived from the Clerk user id, never random. Two requests arriving at the
@@ -198,8 +206,26 @@ const USER_TTL = 60 * 1000;
 const _userCache = new Map();   // clerk user id -> { data, ts }
 let _client = null;
 
+/* Wat telt als "aan".
+
+   Dit stond op een harde vergelijking met '1'. Wie CLERK_ENABLED op `true`
+   zette -- de spelling die elke andere schakelaar in dit project ook accepteert
+   en die iedereen intikt -- kreeg geen foutmelding, geen waarschuwing en geen
+   Clerk: de app viel stilletjes terug op het oude wachtwoordformulier, en de
+   enige aanwijzing was dat er iets ONTBRAK op een scherm dat je nooit eerder
+   met Clerk erop gezien had. Dat is precies gebeurd.
+
+   Een schakelaar die vier redelijke spellingen van "ja" kent, kost niets en
+   haalt een hele klasse onzichtbare storingen weg. `0`, `false`, leeg of
+   afwezig blijven uit -- daar mag geen twijfel over bestaan. */
+const AAN = /^(1|true|yes|on|ja|aan)$/i;
+
+function vlagAan(waarde) {
+  return AAN.test(String(waarde == null ? '' : waarde).trim());
+}
+
 function enabled() {
-  return process.env.CLERK_ENABLED === '1' && !!process.env.CLERK_SECRET_KEY;
+  return vlagAan(process.env.CLERK_ENABLED) && !!process.env.CLERK_SECRET_KEY;
 }
 
 // ── Which origins may present a token here ───────────────────────────────────
@@ -360,4 +386,5 @@ async function verifySession(req) {
 
 function forget(userId) { _userCache.delete(String(userId || '')); }
 
-module.exports = { enabled, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };
+module.exports = {
+  vlagAan, enabled, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };

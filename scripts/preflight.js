@@ -88,9 +88,12 @@ async function probe(url, opts = {}) {
 
   // ── 1. De schakelaar ───────────────────────────────────────────────────────
   head('schakelaar');
-  const enabled = process.env.CLERK_ENABLED === '1';
-  if (enabled) ok('CLERK_ENABLED=1 — Clerk is aan');
-  else warn('CLERK_ENABLED staat niet op 1 — de code is aanwezig maar slaapt',
+  // Dezelfde soepele lezing als api/_clerk.js. Stond hier een strengere
+  // controle dan in de app, dan meldde preflight een probleem dat er niet was
+  // -- of erger, andersom.
+  const enabled = require('../api/_clerk.js').vlagAan(process.env.CLERK_ENABLED);
+  if (enabled) ok(`CLERK_ENABLED=${String(process.env.CLERK_ENABLED).trim()} — Clerk is aan`);
+  else warn(`CLERK_ENABLED leest als UIT (waarde: ${JSON.stringify(process.env.CLERK_ENABLED || '')}) — de code is aanwezig maar slaapt`,
             'Iedereen logt nu in met het klassieke wachtwoordformulier. Zet dit pas op 1\n'
           + 'als alles hieronder groen is EN clerk-sync-users.js gedraaid heeft.');
 
@@ -341,6 +344,65 @@ async function probe(url, opts = {}) {
   // ── 8. Faro ────────────────────────────────────────────────────────────────
   // Faro heeft één sleutel nodig die de rest van Helvaro niet gebruikt, en een
   // paar die er al zijn. Zonder deze sectie moest je dat afleiden uit de code.
+  /* ── Betalen ────────────────────────────────────────────────────────────────
+     Dit is de sectie die bepaalt of een klant zichzelf kan laten worden tot
+     betalende klant. Ontbreekt hier iets, dan werkt de app gewoon door -- maar
+     dan moet er voor elke nieuwe klant iemand met de hand een plan invullen, en
+     dat is precies wat niet meeschaalt. */
+  head('betalen');
+
+  const _plans = require('../api/_plans.js');
+  const _stripe = require('../api/_stripe.js');
+  const stripeSk = (process.env.STRIPE_SECRET_KEY || '').trim();
+  const whsec = (process.env.STRIPE_WEBHOOK_SECRET || '').trim();
+
+  if (!stripeSk) {
+    warn('STRIPE_SECRET_KEY ontbreekt — er is geen betaalweg',
+         'Klanten zien "Binnenkort" bij elk plan, en bijkopen valt terug op een\n'
+       + 'aanvraag per mail. Alles werkt, maar elke betaling is handwerk.');
+  } else if (!_stripe.configured()) {
+    fail(`STRIPE_SECRET_KEY heeft niet de juiste vorm (${mask(stripeSk)})`, 'Verwacht sk_live_… of sk_test_….');
+  } else if (/^sk_test_/.test(stripeSk)) {
+    warn('STRIPE_SECRET_KEY is een TESTsleutel', 'Echte betalingen komen niet binnen. Prima om te proberen, niet om mee te draaien.');
+  } else {
+    ok(`STRIPE_SECRET_KEY aanwezig (${mask(stripeSk)}) — live`);
+  }
+
+  if (stripeSk && !whsec) {
+    /* Dit is de gevaarlijkste combinatie van de twee: betalen lukt, maar de
+       credits komen nooit aan. De klant heeft dan betaald en niets gekregen. */
+    fail('STRIPE_WEBHOOK_SECRET ontbreekt terwijl betalen AAN staat',
+         'De betaling slaagt en de webhook wordt geweigerd — de klant betaalt en\n'
+       + 'krijgt niets. Zet in Stripe een webhook naar https://app.helvaro.pro/api/stripe\n'
+       + 'met checkout.session.completed, invoice.paid en customer.subscription.deleted.');
+  } else if (whsec && !_stripe.webhookConfigured()) {
+    fail(`STRIPE_WEBHOOK_SECRET heeft niet de juiste vorm (${mask(whsec)})`, 'Verwacht whsec_….');
+  } else if (whsec) {
+    ok(`STRIPE_WEBHOOK_SECRET aanwezig (${mask(whsec)})`);
+  }
+
+  // Het tarief voor bijkopen hoort gelijk te zijn aan het goedkoopste plan.
+  const credits = require('../api/_credits.js');
+  const starterPer = _plans.perCredit(_plans.STANDAARD_PLAN);
+  if (Math.abs(credits.TOPUP_RATE_EUR - starterPer) < 0.001) {
+    ok(`bijkopen kost hetzelfde als een abonnement (EUR ${credits.TOPUP_RATE_EUR}/credit)`);
+  } else if (credits.TOPUP_RATE_EUR < starterPer) {
+    warn(`bijkopen (EUR ${credits.TOPUP_RATE_EUR}/credit) is GOEDKOPER dan ${_plans.STANDAARD_PLAN} (EUR ${Math.round(starterPer * 10000) / 10000})`,
+         'Een klant neemt dan het kleinste plan en koopt eeuwig bij. Zet\n'
+       + 'CREDIT_TOPUP_RATE_EUR gelijk aan de planprijs, of haal hem weg zodat hij\n'
+       + 'automatisch volgt.');
+  } else {
+    warn(`bijkopen (EUR ${credits.TOPUP_RATE_EUR}/credit) is DUURDER dan ${_plans.STANDAARD_PLAN} (EUR ${Math.round(starterPer * 10000) / 10000})`,
+         'Je straft een klant die meer afneemt dan hij dacht. Zie CREDIT_TOPUP_RATE_EUR.');
+  }
+
+  // Zelfaanmelden.
+  const openSignup = require('../api/_clerk.js').vlagAan(process.env.PUBLIC_SIGNUP_ENABLED);
+  if (openSignup) ok('PUBLIC_SIGNUP_ENABLED staat aan — iemand kan zich zelf aanmelden');
+  else warn('PUBLIC_SIGNUP_ENABLED staat uit',
+            'Zonder Clerk is er dan GEEN weg naar binnen voor een nieuwe klant: de knop\n'
+          + '"Account aanmaken" zegt dan alleen dat aanmelden tijdelijk uit staat.');
+
   head('faro');
 
   const faroOn = process.env.FARO_WORKSPACE_ENABLED === '1';
