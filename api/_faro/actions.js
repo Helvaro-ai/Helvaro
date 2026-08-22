@@ -60,6 +60,7 @@ const credits = require('../_credits'); // creditpoort — zie de video-executor
 const writes = require('./writes');   // de enige plek die CRM-rijen wijzigt
 const schema = require('./schema');   // de kaartjes die de client tekent
 const afspraken = require('../_afspraken'); // afzeggen/verzetten: rij + agenda + leadvlaggen
+const campagnes = require('../_campagnes');  // campagnes: opslag en selectie
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -403,13 +404,74 @@ const EXECUTORS = {
     };
   },
 
-  // WIRE TO: Marketing Posts / campaign records via api/_pgapi.js.
-  async create_campaign(_payload, _ctx) {
-    throw new ActionError('Campagnes zijn nog niet aangesloten.', 'not_wired');
+  /* ── Campagnes ──────────────────────────────────────────────────────────────
+     Aanmaken en samenstellen werkt; VERSTUREN nog niet, en dat is geen
+     halfheid maar de eerlijke grens: een campagnebericht valt vrijwel altijd
+     buiten het 24-uursvenster -- dat is nu juist waarom je een campagne doet --
+     en dan staat Meta alleen een goedgekeurde template toe. Die goedkeuring
+     ligt niet in deze codebase.
+
+     Wat hier wel gebeurt en meteen waarde heeft: de selectie wordt gemaakt,
+     afgemelde leads gaan er automatisch uit, en de campagne staat klaar. Zie
+     de kop van api/_campagnes.js. */
+  async create_campaign(payload, ctx) {
+    const uit = await campagnes.maak({
+      projectCode: ctx.projectCode,
+      naam:       (payload && payload.naam) || (payload && payload.propertyId ? `Campagne ${payload.propertyId}` : ''),
+      pandCode:    payload && payload.propertyId,
+      kanalen:     payload && payload.channels,
+      invalshoek:  payload && payload.angle,
+      bericht:     payload && payload.message,
+      leadIds:     payload && payload.leadIds,
+    }).catch((err) => {
+      if (err && err.code === 'tabel_ontbreekt') {
+        throw new ActionError(
+          'Campagnes staan nog niet aan voor deze omgeving: de tabel "campaigns" moet nog aangemaakt worden in Airtable.',
+          'not_wired');
+      }
+      throw new ActionError((err && err.message) || 'De campagne kon niet aangemaakt worden.', 'campagne_mislukt');
+    });
+
+    /* Wat er is weggelaten hoort in het antwoord, niet alleen in een veld dat
+       niemand leest. Een makelaar die 50 leads koos en er 47 ziet, hoort te
+       weten waarom -- anders lijkt het een fout. */
+    const weg = [];
+    if (uit.afgemeld)     weg.push(`${uit.afgemeld} afgemeld`);
+    if (uit.nietGevonden) weg.push(`${uit.nietGevonden} niet gevonden in dit account`);
+
+    return {
+      summary: `Campagne "${uit.naam}" aangemaakt met ${uit.aantalLeads} lead(s)`
+        + (weg.length ? ` (${weg.join(', ')} overgeslagen)` : '')
+        + '. Er is nog NIETS verstuurd: daarvoor is een goedgekeurde WhatsApp-template nodig.',
+      components: [],
+      data: { campagneId: uit.id, aantalLeads: uit.aantalLeads },
+    };
   },
 
-  async add_leads_to_campaign(_payload, _ctx) {
-    throw new ActionError('Campagnes zijn nog niet aangesloten.', 'not_wired');
+  async add_leads_to_campaign(payload, ctx) {
+    const uit = await campagnes.voegLeadsToe({
+      projectCode: ctx.projectCode,
+      campagneId:  payload && payload.campaignId,
+      leadIds:     payload && payload.leadIds,
+    }).catch((err) => {
+      if (err && err.code === 'tabel_ontbreekt') {
+        throw new ActionError('Campagnes staan nog niet aan voor deze omgeving.', 'not_wired');
+      }
+      throw new ActionError((err && err.message) || 'De leads konden niet toegevoegd worden.', 'campagne_mislukt');
+    });
+
+    const weg = [];
+    if (uit.alAanwezig)   weg.push(`${uit.alAanwezig} stond er al in`);
+    if (uit.afgemeld)     weg.push(`${uit.afgemeld} afgemeld`);
+    if (uit.nietGevonden) weg.push(`${uit.nietGevonden} niet gevonden`);
+
+    return {
+      summary: `${uit.toegevoegd} lead(s) toegevoegd`
+        + (weg.length ? ` (${weg.join(', ')})` : '')
+        + `. De campagne telt nu ${uit.totaal} lead(s).`,
+      components: [],
+      data: { campagneId: uit.id, totaal: uit.totaal },
+    };
   },
 
   /* generate_property_image staat hier BEWUST NIET.
