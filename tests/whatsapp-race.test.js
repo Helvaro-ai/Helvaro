@@ -148,6 +148,33 @@ const opDeRij = maak(
      /unavailable/.test(_lang.buildOutageMessage('de')), _lang.buildOutageMessage('de'));
   ck('en whatsapp.js gebruikt het', !/ik ben er even niet/.test(bron), null);
 
+  console.log('\n— spraak uitschrijven staat standaard UIT —');
+  /* Het kost geld per bericht en dat is niet in de creditprijs verwerkt. Wie
+     dat wil, hoort dat zelf te beslissen en niet te ontdekken op een factuur. */
+  const T = require(BASE + 'api/_transcriptie.js');
+  const bewaard = { v: process.env.WHATSAPP_TRANSCRIBE, o: process.env.OPENAI_API_KEY, w: process.env.WHATSAPP_TOKEN };
+  delete process.env.WHATSAPP_TRANSCRIBE;
+  ck('zonder vlag: uit', T.aan() === false);
+  process.env.WHATSAPP_TRANSCRIBE = '1';
+  delete process.env.OPENAI_API_KEY; delete process.env.OPENAI; delete process.env.WHATSAPP_TOKEN;
+  ck('met vlag maar zonder sleutels: nog steeds uit', T.aan() === false);
+  process.env.OPENAI_API_KEY = 'sk-zelftest'; process.env.WHATSAPP_TOKEN = 'wa-zelftest';
+  ck('met vlag en sleutels: aan', T.aan() === true);
+  ck('en uitschrijven zonder media-id geeft leeg, geen fout',
+     (await T.schrijfUit({})) === '');
+  ck('een te lang bericht wordt overgeslagen',
+     (await T.schrijfUit({ mediaId: 'x', seconden: 9999 })) === '');
+  if (bewaard.v === undefined) delete process.env.WHATSAPP_TRANSCRIBE; else process.env.WHATSAPP_TRANSCRIBE = bewaard.v;
+  if (bewaard.o === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = bewaard.o;
+  if (bewaard.w === undefined) delete process.env.WHATSAPP_TOKEN; else process.env.WHATSAPP_TOKEN = bewaard.w;
+
+  ck('de webhook probeert het alleen bij audio', /message\.type === 'audio' \|\| message\.type === 'voice'/.test(bron));
+  /* Mislukt het, dan blijft de beschrijving staan en gebeurt er precies wat er
+     nu gebeurt. Er mag geen pad zijn waarin dit iets stukmaakt. */
+  ck('en valt terug op de beschrijving als het niet lukt',
+     /if \(uitgeschreven\) \{/.test(bron), null);
+  ck('het model weet dat het gesproken is', /Ingesproken bericht, automatisch uitgeschreven/.test(bron));
+
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);
 })();
