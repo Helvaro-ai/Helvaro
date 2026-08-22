@@ -12,22 +12,29 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## 23 augustus 2026 — geld, agenda en internationaal (uitgerold)
+## Nog niet uitgerold
 
-- **Twee snel achter elkaar getypte berichten raakten er één kwijt.** Zo typen
-  mensen op WhatsApp: "hey", en vijf tellen later de echte vraag. Beide beurten
-  lazen dezelfde gespreksgeschiedenis, antwoordden apart, en de laatste schreef
-  over de andere heen. De lead kreeg twee antwoorden op een gesprek dat geen van
-  beide heel gezien had, en één beurt was voorgoed weg. Dezelfde fout kon twee
-  afspraken voor één lead maken. Berichten van hetzelfde gesprek gaan nu netjes
-  achter elkaar; verschillende leads houden elkaar niet op.
-- **Een spraakbericht of foto kreeg totale stilte.** Geen antwoord, geen regel in
-  het gesprek, geen spoor op je dashboard — voor de lead leek het alsof je
-  gestopt was met antwoorden. De AI zegt nu vriendelijk dat hij het niet kan
-  beluisteren en vraagt of de lead het wil typen, in diens eigen taal, en jij
-  ziet het bericht gewoon staan.
+**Het scherm zei dingen die niet waar waren**
 
-## 23 augustus 2026 — geld, agenda en internationaal (uitgerold)
+- **De filters op de exportpagina deden niets.** Je koos "laatste 7 dagen,
+  alleen gekwalificeerd", het scherm zei "4 leads geselecteerd", je klikte
+  downloaden — en kreeg alle 380. De filters pasten alleen de voorbeeldweergave
+  aan en gingen nooit mee naar de server. Nu bevat het bestand precies wat je
+  aanvinkte.
+- **"Afspraak resultaat" kon mislukken zonder dat je het zag.** De knop meldde
+  succes en het scherm was al bijgewerkt, ook als het opslaan stukliep. Dat is
+  het veld waar je omzet- en opkomstcijfers op Analyse uit gerekend worden. Nu
+  krijg je een echte foutmelding en springt de knop terug.
+- **"Google Agenda ontkoppelen" meldde altijd dat het gelukt was**, ook als het
+  mislukte. Je koppeling was dan nog gewoon actief.
+- **De Kalender feliciteerde een nieuwe klant** met "Alle gekwalificeerde leads
+  hebben een afspraak!" terwijl hij er nul had.
+- **De pagina Gesprekken was een dubbele doodlopende weg** voor een nieuwe
+  klant: links "Geen gesprekken gevonden", rechts "Selecteer een gesprek", en
+  nergens een aanwijzing. Nu staat er wat er moet gebeuren, met de knop om je
+  formulierlink te kopiëren.
+
+**De AI en de agenda**
 
 - **Twee snel achter elkaar getypte berichten raakten er één kwijt.** Zo typen
   mensen op WhatsApp: "hey", en vijf tellen later de echte vraag. Beide beurten
