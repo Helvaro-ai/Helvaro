@@ -12562,7 +12562,14 @@ function exportCSV() {
   fetch(\`\${API_BASE}/leads\`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-    body:    JSON.stringify({ mode: 'csv-export' })
+    /* De filters MOETEN mee. Ze stonden hier niet, terwijl het scherm er wel
+       een telling op baseerde: je koos "laatste 7 dagen, alleen gekwalificeerd",
+       las "4 leads geselecteerd", klikte downloaden, en kreeg alle 380. */
+    body:    JSON.stringify({
+      mode: 'csv-export',
+      periode: document.getElementById('export-period')?.value || '30',
+      status:  document.getElementById('export-status')?.value || 'all',
+    })
   })
     .then(r => {
       if (r.status === 401) { handleAuthExpired && handleAuthExpired(); throw new Error('Sessie verlopen'); }
@@ -14799,33 +14806,58 @@ function openPanel(lead) {
 
   // Afspraak Resultaat handlers
   if (lead.afspraakGeboekt) {
+    /* try/catch, net als de verliesreden en de dealwaarde dertig regels
+       hieronder. Die hadden het wel; deze twee niet, en dat was een omissie en
+       geen keuze: persistNotities() past state.leads AL aan voordat hij post,
+       dus bij een mislukte opslag zag je het resultaat gewoon op het scherm
+       staan terwijl er niets bewaard was. Dit is bovendien het veld waar de
+       omzet- en opkomstcijfers op Analyse uit worden gerekend. */
     async function saveAfspraak() {
-      const data = parseNotities(state.activeLead);
-      data.afspraak = data.afspraak || {};
-      const waarde = (document.getElementById('afspraak-waarde')?.value || '').trim();
-      const notitie = (document.getElementById('afspraak-notitie')?.value || '').trim();
-      if (waarde) data.afspraak.gesloten = waarde;
-      if (notitie) data.afspraak.notitie = notitie;
-      await persistNotities(data);
-      // Also update verwachteWaarde if closed value entered
-      if (waarde) {
-        await patchLead(lead.id, { dealWaarde: waarde });
-        const idx = state.leads.findIndex(l => l.id === lead.id);
-        if (idx !== -1) state.leads[idx].verwachteWaarde = waarde;
-        state.activeLead.verwachteWaarde = waarde;
+      const knop = document.getElementById('btn-save-afspraak');
+      if (knop) { knop.disabled = true; knop.style.opacity = '0.6'; }
+      try {
+        const data = parseNotities(state.activeLead);
+        data.afspraak = data.afspraak || {};
+        const waarde = (document.getElementById('afspraak-waarde')?.value || '').trim();
+        const notitie = (document.getElementById('afspraak-notitie')?.value || '').trim();
+        if (waarde) data.afspraak.gesloten = waarde;
+        if (notitie) data.afspraak.notitie = notitie;
+        await persistNotities(data);
+        // Also update verwachteWaarde if closed value entered
+        if (waarde) {
+          await patchLead(lead.id, { dealWaarde: waarde });
+          const idx = state.leads.findIndex(l => l.id === lead.id);
+          if (idx !== -1) state.leads[idx].verwachteWaarde = waarde;
+          state.activeLead.verwachteWaarde = waarde;
+        }
+        toast('Afspraak resultaat opgeslagen', 'success');
+      } catch (err) {
+        toast(err.message || 'Opslaan mislukt, probeer opnieuw', 'error');
+      } finally {
+        if (knop) { knop.disabled = false; knop.style.opacity = ''; }
       }
-      toast('Afspraak resultaat opgeslagen', 'success');
     }
 
     function setVerschenen(val) {
       const data = parseNotities(state.activeLead);
       data.afspraak = { ...(data.afspraak || {}), verschenen: val };
-      persistNotities(data).then(() => toast(val ? 'Verschenen opgeslagen' : 'No-show opgeslagen', 'success'));
-      // Update button styles immediately
       const jaBtn  = document.getElementById('btn-afspraak-ja');
       const neeBtn = document.getElementById('btn-afspraak-nee');
+      /* De knop springt meteen om -- dat hoort, anders voelt het traag. Maar
+         dan MOET hij ook terugspringen als het opslaan mislukt, want anders
+         staat er "verschenen" op het scherm terwijl er niets bewaard is. Er
+         stond geen .catch, dus dat gebeurde nooit. */
+      const jaWas  = jaBtn  ? jaBtn.className  : '';
+      const neeWas = neeBtn ? neeBtn.className : '';
       if (jaBtn)  { jaBtn.classList.toggle('active-yes', val === true);  jaBtn.classList.remove('active-no'); }
       if (neeBtn) { neeBtn.classList.toggle('active-no', val === false); neeBtn.classList.remove('active-yes'); }
+      persistNotities(data)
+        .then(() => toast(val ? 'Verschenen opgeslagen' : 'No-show opgeslagen', 'success'))
+        .catch((err) => {
+          if (jaBtn)  jaBtn.className  = jaWas;
+          if (neeBtn) neeBtn.className = neeWas;
+          toast((err && err.message) || 'Opslaan mislukt, probeer opnieuw', 'error');
+        });
     }
 
     const jaBtn  = document.getElementById('btn-afspraak-ja');
@@ -15975,7 +16007,13 @@ function renderCalSidebar() {
   if (countEl) countEl.textContent = leads.length;
 
   if (leads.length === 0) {
-    listEl.innerHTML = \`<div class="cal-sidebar-empty">Alle gekwalificeerde leads hebben een afspraak!</div>\`;
+    /* "Alle gekwalificeerde leads hebben een afspraak!" tegen iemand die nog
+       NUL leads heeft, is een felicitatie voor iets dat niet gebeurd is. Voor
+       een nieuwe klant is dat het eerste wat hij op deze pagina leest. */
+    const nogGeenLeads = !(state.leads && state.leads.length);
+    listEl.innerHTML = nogGeenLeads
+      ? \`<div class="cal-sidebar-empty">Nog geen leads. Zodra de AI er een kwalificeert, staat hij hier klaar om in te plannen.</div>\`
+      : \`<div class="cal-sidebar-empty">Alle gekwalificeerde leads hebben een afspraak!</div>\`;
     return;
   }
 
@@ -17427,7 +17465,15 @@ function renderGesprekken() {
   }).sort((a, b) => new Date(b.datum || 0) - new Date(a.datum || 0));
 
   if (withConvs.length === 0) {
-    listBody.innerHTML = \`<div style="padding:20px;color:var(--text-muted);font-size:13px">Geen gesprekken gevonden</div>\`;
+    /* "Geen gesprekken gevonden" is een mededeling, geen hulp -- en links en
+       rechts stond allebei zoiets, dus een nieuwe klant keek naar twee lege
+       vlakken zonder één aanwijzing. emptyStateCta() bestond al en werd op
+       twee andere schermen gebruikt; hier hoorde hij ook. */
+    listBody.innerHTML = \`<div style="padding:24px 20px;text-align:center;color:var(--text-muted);font-size:13px">
+      <div style="font-weight:600;color:var(--text);margin-bottom:6px">Nog geen gesprekken</div>
+      <div>Zodra een lead je formulier invult, start de AI het gesprek en verschijnt het hier.</div>
+      \${emptyStateCta()}
+    </div>\`;
     return;
   }
 
@@ -20481,15 +20527,23 @@ async function connectGoogleCalendar() {
   } catch (e) { toast('Koppelen mislukt, probeer opnieuw', 'error'); }
 }
 async function disconnectGoogleCalendar() {
+  /* Er werd niet naar r.ok gekeken, de catch was leeg, en daarna meldde hij
+     hoe dan ook succes. Een mislukte ontkoppeling zag er dus uit als een
+     geslaagde -- terwijl je koppeling gewoon nog actief was, met een token
+     dat je dacht te hebben ingetrokken. */
   try {
-    await fetch(API_BASE + '/gcal', {
+    const r = await fetch(API_BASE + '/gcal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'disconnect' })
     });
-  } catch (e) {}
+    if (r.status === 401) { handleAuthExpired && handleAuthExpired(); return; }
+    if (!r.ok) throw new Error('Ontkoppelen mislukt');
+    toast('Google Agenda ontkoppeld', 'success');
+  } catch (e) {
+    toast((e && e.message) || 'Ontkoppelen mislukt, probeer opnieuw', 'error');
+  }
   loadGcalStatus();
-  try { toast('Google Agenda ontkoppeld', 'success'); } catch (e) {}
 }
 
 /* ============================================================

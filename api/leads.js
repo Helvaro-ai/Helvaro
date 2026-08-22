@@ -911,6 +911,35 @@ module.exports = async function handler(req, res) {
           if (!d.offset) break;
           offset = d.offset;
         }
+
+        /* Dezelfde filters die het scherm op de voorbeeldweergave toepast, hier
+           ook echt uitvoeren. Ze kwamen niet mee en werden dus genegeerd: het
+           scherm zei "4 leads geselecteerd" en het bestand bevatte er 380. Een
+           export die iets anders bevat dan wat je aanvinkte is erger dan geen
+           export -- je merkt het pas als je hem al ergens ingelezen hebt.
+
+           De regels staan met opzet gelijk aan updateExportPreview() in
+           api/dashboard.js. Lopen ze uiteen, dan klopt de telling weer niet. */
+        const periodeRuw = String(body.periode == null ? 'all' : body.periode);
+        const dagen = parseInt(periodeRuw, 10);
+        const grens = (periodeRuw === 'all' || !Number.isFinite(dagen))
+          ? null : Date.now() - dagen * 86400000;
+        const statusFilter = (body.status === 'qualified' || body.status === 'unqualified')
+          ? body.status : 'all';
+
+        const gefilterd = all.filter((rec) => {
+          const f = rec.fields || {};
+          if (grens !== null) {
+            const gemaakt = Date.parse(f['Created At'] || '');
+            if (!Number.isFinite(gemaakt) || gemaakt < grens) return false;
+          }
+          if (statusFilter === 'all') return true;
+          const score = Number(f['Lead Score']);
+          const isGekwalificeerd = f['Qualified'] === true || (Number.isFinite(score) && score >= 7);
+          return statusFilter === 'qualified' ? isGekwalificeerd : !isGekwalificeerd;
+        });
+        all.length = 0;
+        all.push.apply(all, gefilterd);
         // Build CSV. Guard against formula injection, quote fields, escape
         // internal quotes by doubling them
         const csvEscape = (v) => {
