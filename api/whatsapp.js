@@ -12,6 +12,7 @@ const { waitUntil } = require('@vercel/functions');
 // this file.
 const { fetchWebsite } = require('./_lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
+const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a
 // reply, only records usage after the fact. Helvaro's "reactie binnen 30
@@ -724,6 +725,21 @@ async function processMessage(phone, text, scopedProjectCode) {
     } catch (e) { /* best-effort, never block the AI turn */ }
   }
 
+  /* Heeft DEZE lead zelf een afspraak staan?
+     Los van de bezette-slots-lijst hierboven, en om een andere reden: die lijst
+     zegt wanneer er GEEN plek is, dit zegt of er iets af te zeggen valt. Alleen
+     als er echt iets staat krijgt de AI het afzeggen aangeboden -- anders praat
+     hij over een afspraak die niet bestaat zodra een lead "ik kan niet" zegt.
+
+     Ook voor callback-klanten: een afspraak kan ook vanuit het dashboard
+     ingepland zijn, en de lead die afzegt weet dat onderscheid niet. */
+  let eigenAfspraak = null;
+  try {
+    eigenAfspraak = await _afspraken.komendeVoorLead(projectCode, { leadId: lead.id, telefoon: phone });
+  } catch (e) {
+    console.warn('[whatsapp] eigen afspraak ophalen overgeslagen:', e && e.message);
+  }
+
   /* ── Over welk pand gaat dit? ───────────────────────────────────────────────
      Drie mogelijkheden, in deze volgorde:
 
@@ -783,6 +799,16 @@ async function processMessage(phone, text, scopedProjectCode) {
        BOOK verwerkt wordt. */
     pandBezichtigbaar: herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true,
     pandCode: herkendPand ? herkendPand.code : '',
+    /* Alleen het MOMENT gaat mee, niet het record-id. De AI hoeft niet te weten
+       welke rij het is -- hij zegt "de afspraak" af en deze code zoekt hem er
+       zelf bij. Een id in een prompt is een id dat een model kan verzinnen. */
+    eigenAfspraak: eigenAfspraak
+      /* `lang` en niet effectiveLang: die wordt pas NA de AI-aanroep bepaald
+         (hij hangt af van de taal waarin de AI antwoordde) en staat hier nog in
+         zijn dode zone. Voor een datum in een systeemprompt is de ingestelde
+         taal van de klant sowieso de juiste. */
+      ? formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], lang)
+      : '',
   });
 
   // 7b. Credit accounting. Billed ONCE per lead — at the first AI turn
@@ -961,6 +987,98 @@ async function processMessage(phone, text, scopedProjectCode) {
     }
   }
 
+  /* 11a-bis. AFZEGGEN -- de lead heeft laten weten dat hij niet komt.
+   *
+   * Staat VOOR de boeking hieronder, en dat is geen smaak: zegt een lead af en
+   * noemt hij in dezelfde beurt een nieuw moment, dan moet de oude eerst weg.
+   * Andersom zou de nieuwe boeking overgeslagen worden door de rem die de oude
+   * afspraak nog zette.
+   *
+   * Waarom dit hier hoort en niet in het dashboard: de makelaar leest zijn
+   * dashboard misschien morgen. Een lead die vanavond afzegt, hoort vanavond
+   * uit de agenda -- anders houdt de makelaar een uur vrij voor iemand die niet
+   * komt, en dat is precies het uur dat hij aan een andere lead had kunnen
+   * geven.
+   *
+   * `sendOk` is bewust GEEN voorwaarde, anders dan bij boeken. Een boeking
+   * bevestigen op een bericht dat de lead nooit zag is misleidend; een afspraak
+   * uit de agenda halen omdat iemand zei dat hij niet komt is gewoon waar, ook
+   * als ons antwoord onderweg strandde.
+   */
+  let afspraakAfgezegd = false;
+  if (aiResponse.cancel && !isEscalation) {
+    if (!eigenAfspraak) {
+      // De AI zag in de prompt dat er een afspraak stond, maar die is er nu
+      // niet meer (dashboard, of een eerdere beurt). Niets doen en niets
+      // beloven -- wel loggen, want als dit vaak gebeurt klopt de prompt niet.
+      console.warn(`[whatsapp] CANCEL zonder afspraak voor ${phone} (${projectCode}) — genegeerd`);
+    } else {
+      const uit = await _afspraken.annuleer({
+        projectCode,
+        record: eigenAfspraak,
+        reden: aiResponse.cancel.reason,
+        door: 'lead',
+      }).catch((err) => {
+        console.error('[whatsapp] afzeggen exception:', err && err.message);
+        return { ok: false, reden: 'exception' };
+      });
+
+      if (!uit.ok) {
+        console.error(`[whatsapp] afzeggen mislukt voor ${phone} (${projectCode}): ${uit.reden}`);
+        // Niets tegen de lead zeggen dat niet waar is. Wel de makelaar
+        // waarschuwen: iemand komt niet opdagen en de agenda weet dat niet.
+        if (ownerPhone) {
+          await sendWA(ownerPhone,
+            `[Actie nodig] Afzegging NIET verwerkt\n\n` +
+            `Naam: ${leadName || '(onbekend)'}\n` +
+            `Tel: ${phone}\n` +
+            `Project: ${projectCode}\n\n` +
+            `De lead liet weten dat hij niet komt, maar de afspraak kon niet afgezegd worden (${uit.reden}). ` +
+            `Zet hem met de hand op geannuleerd, anders blijft het moment bezet.\n\n` +
+            `Dashboard: https://app.helvaro.pro/dashboard`,
+            clientPhoneNumberId).catch(() => {});
+        }
+      } else {
+        afspraakAfgezegd = true;
+        const wanneer = formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], effectiveLang);
+
+        /* De AI schreef zelf al iets ("jammer, wanneer komt het je wel uit?").
+           Dit bericht komt daar NIET nog eens overheen -- twee berichten over
+           dezelfde afzegging leest als een bot die zichzelf herhaalt. Alleen
+           als ons antwoord niet aankwam, is dit het enige wat de lead hoort. */
+        if (!sendOk) {
+          await sendWA(phone, _lang.buildCancelledMessage(effectiveLang), clientPhoneNumberId).catch(() => {});
+        }
+
+        // De makelaar, meteen. Dit is de kern van wat afzeggen bruikbaar maakt.
+        if (ownerPhone) {
+          const melding =
+            `[Afgezegd] ${leadName || 'Lead'} komt niet\n\n` +
+            `Was gepland: ${wanneer}\n` +
+            `Tel: ${phone}\n` +
+            `Project: ${projectCode}\n` +
+            (aiResponse.cancel.reason ? `\nReden: "${aiResponse.cancel.reason}"\n` : '') +
+            `\nHet moment staat weer vrij${uit.googleWeg ? ' en is uit je Google-agenda gehaald' : ''}. ` +
+            `De AI heeft al gevraagd wanneer het wel past.\n\n` +
+            `Dashboard: https://app.helvaro.pro/dashboard`;
+          const gestuurd = await sendWA(ownerPhone, melding, clientPhoneNumberId);
+          if (!gestuurd) console.error(`[whatsapp] afzeg-melding naar owner (${ownerPhone}) is niet aangekomen`);
+        }
+        if (ownerEmail) {
+          sendOwnerEmail({
+            to: ownerEmail,
+            subject: `[Afgezegd] ${subjectSafe(leadName || phone)} komt niet op ${wanneer}`,
+            heading: 'Afspraak afgezegd door de lead',
+            leadName, phone, projectCode, clientName,
+            body: `<p>Was gepland: <strong>${escEmail(wanneer)}</strong>.</p>`
+                + (aiResponse.cancel.reason ? `<p style="background:#fef3c7;padding:12px;border-radius:8px"><strong>Reden:</strong><br>"${escEmail(aiResponse.cancel.reason)}"</p>` : '')
+                + `<p>Het moment staat weer vrij${uit.googleWeg ? ' en is uit de Google-agenda gehaald' : ''}. De AI heeft al gevraagd wanneer het wel past.</p>`,
+          }).catch(() => {});
+        }
+      }
+    }
+  }
+
   // 11b. IN-CHAT booking — AI heeft BOOK:{...} block uitgegeven in z'n antwoord.
   //      Verwerk de booking: maak Appointment record + bevestig naar lead +
   //      notify owner. AI handelt de natuurlijke conversatie zelf af (parseert
@@ -968,7 +1086,13 @@ async function processMessage(phone, text, scopedProjectCode) {
   //      Skip als replyText niet aankwam — zie 11 hierboven.
   if (sendOk && aiResponse.appointment && bookingMethod === 'in_chat' && !isEscalation) {
     const appt = aiResponse.appointment;
-    const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
+    /* Na een afzegging in DEZELFDE beurt is de vlag hierboven al gewist in
+       Airtable, maar `lead.fields` is een foto van het begin van deze beurt en
+       zegt nog "ja, al geboekt". Zonder dit zou een lead die afzegt en meteen
+       een nieuw moment bevestigt geen nieuwe afspraak krijgen -- de stilste
+       manier om iemand kwijt te raken. */
+    const bookingSent = !afspraakAfgezegd
+      && (lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent']);
     if (!bookingSent && appt.start) {
       // Fetch Google Calendar access ONCE for this booking — reused below for
       // both the pre-write availability check and the post-write mirror,
@@ -1290,6 +1414,35 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
     }
   }
 
+  /* 2b. CANCEL:{...} -- de lead kan niet komen.
+
+     Twee dingen die hier bewust anders zijn dan bij BOOK. Ten eerste hoeft er
+     geen tijdstip in: welke afspraak het is zoekt de server zelf op, want dat
+     is het enige wat een model niet kan verzinnen. Ten tweede telt `confirmed`
+     hier niet als een extra drempel maar als een expliciete bevestiging dat de
+     lead het echt gezegd heeft -- de prompt zegt met zoveel woorden dat er bij
+     twijfel NIETS gestuurd wordt.
+
+     Het blok wordt hoe dan ook uit de tekst geknipt, ook als het onbruikbaar
+     is: een lead hoort nooit `CANCEL:{...}` in zijn WhatsApp te zien staan. */
+  let cancel = null;
+  const cancelMatch = cleaned.match(/CANCEL:\s*(\{[\s\S]*?\})/);
+  if (cancelMatch) {
+    try {
+      const c = JSON.parse(cancelMatch[1]);
+      if (c.confirmed) cancel = { reason: String(c.reason || '').slice(0, 300) };
+    } catch (e) {
+      console.error('[WhatsApp] CANCEL parse fout:', e.message, cancelMatch[1]);
+    }
+    cleaned = cleaned.replace(/CANCEL:\s*\{[\s\S]*?\}/, '').trim();
+  }
+  /* En dan nog een veegregel, want de regex hierboven heeft een sluitende accolade
+     nodig. Schrijft het model `CANCEL:{ziek` zonder afsluiter, dan matcht hij niet,
+     wordt er niets geknipt, en leest de lead die regel gewoon in zijn WhatsApp.
+     Dat is de ene fout die hier echt niet mag: alles op deze plek mag misgaan
+     zolang de lead maar niet ziet dat hij met een machine praat. */
+  cleaned = cleaned.replace(/^[ \t]*CANCEL:.*$/gm, '').trim();
+
   // 3. Parse DECISION block if present (only on final turn / escalation)
   const match = cleaned.match(/DECISION:\s*(\{[\s\S]*?\})/);
   if (match) {
@@ -1297,13 +1450,13 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
       const decision = JSON.parse(match[1]);
       const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
       // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
-      return { done: true, message: message || '...', appointment, ...decision, summary: decision.summary || runningSummary };
+      return { done: true, message: message || '...', appointment, cancel, ...decision, summary: decision.summary || runningSummary };
     } catch (e) {
       console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
     }
   }
 
-  return { done: false, message: cleaned, summary: runningSummary, appointment };
+  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel };
 }
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────

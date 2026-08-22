@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const _gcal   = require('./_gcal');
+const _afspraken = require('./_afspraken'); // afzeggen: rij + agenda + leadvlaggen
 const _session = require('./_session');
 const _revoke  = require('./_revocation');
 const _clerk   = require('./_clerk'); // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
@@ -1304,6 +1305,19 @@ module.exports = async function handler(req, res) {
             }
           }
         } catch (e) { console.error('[gcal] update sync failed:', e && e.message); }
+
+        /* Bij afzeggen ook de twee vlaggen op de lead terugzetten. Zonder dit
+           blijft "Appointment Booked" aan -- de lead telt dan door in de
+           pipeline en de win rate als iemand met een afspraak die er niet meer
+           is -- en blijft "Booking Link Sent" aan, waardoor de AI voor deze
+           lead NOOIT meer een nieuwe afspraak kan boeken in het gesprek.
+           Welke velden dat zijn en waarom staat in api/_afspraken.js; hier
+           alleen de aanroep, zodat er niet twee lijstjes ontstaan. */
+        if (updateFields['Status'] === 'cancelled') {
+          try {
+            await _afspraken.wisLeadVlaggen(existingFields['Lead']);
+          } catch (e) { console.error('[afspraken] leadvlaggen na afzegging:', e && e.message); }
+        }
 
         return res.status(200).json({ ok: true, record: d });
       } catch (err) {
