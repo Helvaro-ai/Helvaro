@@ -12,7 +12,26 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold — tak `claude/helvaro-ai-workspace-ol7lbr`
+## 22 augustus 2026 — uitgerold
+
+Alles onder dit kopje draait sinds vandaag in productie.
+
+> **Actie voor jou, vóór je klanten binnenlaat.** In Vercel: `STRIPE_SECRET_KEY`,
+> `STRIPE_WEBHOOK_SECRET` en `PUBLIC_SIGNUP_ENABLED=true`. In Stripe: één webhook
+> naar `https://app.helvaro.pro/api/stripe` met `checkout.session.completed`,
+> `invoice.paid` en `customer.subscription.deleted`. Producten of prijzen hoef je
+> daar níét aan te maken — die komen uit de plantabel.
+>
+> Draai daarna `node scripts/preflight.js`. Er staat een nieuwe sectie *betalen*
+> in die precies dit controleert.
+>
+> Doe eerst een testbetaling met kaart `4242 4242 4242 4242` voordat je op live
+> sleutels overgaat: Stripe heeft nog nooit een echt verzoek van ons gezien.
+
+> **Losse aandacht:** je eigen klantrij (HELVARO) staat nog op 2.000 credits,
+> terwijl Starter er 3.000 zegt. Dat is data, geen code — ik heb hem niet
+> aangepast.
+
 
 ### Wat er uit een klikronde over alle pagina's kwam
 
@@ -658,4 +677,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 9fe8b73 -->
+<!-- changelog-tot: 85d3cb2 -->
