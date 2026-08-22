@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 22 augustus 2026 — video (uitgerold)
 
 > **Actie voor jou, vóór je video aanzet.** Zet `KLING_ACCESS_KEY` en
 > `KLING_SECRET_KEY` in Vercel en draai daarna één keer
@@ -701,4 +701,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 85d3cb2 -->
+<!-- changelog-tot: fb21606 -->
