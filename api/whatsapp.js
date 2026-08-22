@@ -170,8 +170,47 @@ module.exports = async function handler(req, res) {
     );
     waitUntil(eventWork);
 
-    // Only handle incoming text messages
-    if (!message || message.type !== 'text') { await eventWork; return; }
+    if (!message) { await eventWork; return; }
+
+    /* Een spraakbericht, een foto, een sticker: hier stond `return` en verder
+     * niets. Geen antwoord, geen regel in de geschiedenis, en op het dashboard
+     * geen enkel spoor dat iemand iets gestuurd had. Vanuit de lead gezien is
+     * het bedrijf gewoon gestopt met antwoorden -- en spraakberichten zijn op
+     * WhatsApp eerder regel dan uitzondering.
+     *
+     * Wat er nu gebeurt: het bericht wordt omgezet naar een korte beschrijving
+     * en langs de gewone weg gestuurd. Dat kost één AI-beurt, maar levert wel
+     * een antwoord in de taal van de lead, een regel in de geschiedenis die de
+     * makelaar ziet, en een AI die zijn context houdt. De beschrijving zegt er
+     * expliciet bij dat de inhoud NIET gelezen kan worden, zodat het model niet
+     * gaat raden wat er op de foto stond.
+     *
+     * Bewust niet: audio transcriberen of beeld analyseren. Dat kan, het kost
+     * geld per bericht, en het is een productbeslissing die hier niet gemaakt
+     * kan worden. */
+    const SOORTEN = {
+      audio:    'een spraakbericht',
+      voice:    'een spraakbericht',
+      image:    'een foto',
+      video:    'een video',
+      document: 'een document',
+      sticker:  'een sticker',
+      location: 'zijn locatie',
+      contacts: 'een contactkaart',
+    };
+    let nietTekst = '';
+    if (message.type !== 'text') {
+      const soort = SOORTEN[message.type];
+      if (!soort) {
+        // Iets wat we niet kennen (een reactie-emoji, een systeembericht).
+        // Daar hoort geen antwoord op; stil overslaan is hier juist correct.
+        console.log(`[WhatsApp] berichttype "${message.type}" overgeslagen`);
+        await eventWork;
+        return;
+      }
+      nietTekst = `[De lead stuurde ${soort}. Je kunt de inhoud hiervan NIET zien of beluisteren. `
+        + `Zeg dat vriendelijk, vraag of hij het wil typen, en ga verder met het gesprek.]`;
+    }
 
     // Webhook deduplication. Meta sends duplicate webhooks when our reply is
     // slow or times out. Each WhatsApp message has a unique id; we track seen
@@ -185,7 +224,10 @@ module.exports = async function handler(req, res) {
     }
 
     const phone = message.from;           // e.g. "32478123456"
-    const text  = sanitize(message.text.body).trim();
+    /* Bij een spraakbericht of foto is er geen message.text -- dan gaat de
+       beschrijving mee die hierboven is opgesteld. Zonder deze regel gooit
+       `message.text.body` en verdwijnt het bericht alsnog in de catch. */
+    const text  = nietTekst || sanitize(message.text.body).trim();
 
     // Gemaskeerd nummer, geen berichtinhoud. Dit vuurt op ELK inkomend bericht,
     // dus stond hier het volledige nummer plus de letterlijke tekst van de lead
@@ -225,7 +267,7 @@ module.exports = async function handler(req, res) {
     // the container gets frozen/recycled after our 200 OK already went out.
     // We still `await` it locally too: that preserves today's behaviour on
     // any runtime where waitUntil() is a no-op (see require comment above).
-    const work = processMessage(phone, text, scopedProjectCode);
+    const work = opDeRij(phone, scopedProjectCode, () => processMessage(phone, text, scopedProjectCode));
     waitUntil(work);
     await Promise.all([work, eventWork]);
 
@@ -233,6 +275,67 @@ module.exports = async function handler(req, res) {
     console.error('[WhatsApp] Fout in handler:', err.message);
   }
 };
+
+/* ── Eén gesprek tegelijk ────────────────────────────────────────────────────
+ *
+ * Twee berichten van dezelfde lead, een paar seconden na elkaar. Dat is geen
+ * randgeval; zo typen mensen op WhatsApp. Zonder deze rij gebeurde dit:
+ *
+ *   1. "hey" komt binnen. De historie wordt gelezen (leeg), de AI antwoordt, en
+ *      dan wacht de code 25 tot 55 seconden voordat hij verstuurt -- dat is de
+ *      menselijke vertraging.
+ *   2. Vijf seconden later: "over dat huis in de Lange Violettestraat". Die
+ *      beurt leest DEZELFDE historie, want beurt 1 heeft nog niets weggeschreven.
+ *   3. Allebei antwoorden. De lead krijgt twee antwoorden op een gesprek dat
+ *      geen van beide heel gezien heeft.
+ *   4. Allebei schrijven de historie weg. De laatste wint; de andere beurt is
+ *      voorgoed weg, ook uit elke volgende beurt.
+ *
+ * Dezelfde race maakte van "Booking Link Sent" een momentopname die twee keer
+ * `false` las -- twee afspraken, twee agenda-items, voor één lead.
+ *
+ * Dit is geen volledige oplossing: tussen twee Vercel-instanties blijft het
+ * venster bestaan, en dat sluit pas met een vergrendeling in de database zelf.
+ * Maar de berichten van één gesprek landen vrijwel altijd op dezelfde warme
+ * instantie, dus dit haalt het leeuwendeel weg. Zelfde afweging en zelfde
+ * patroon als de wachtrij per klant in api/_credits.js.
+ *
+ * De sleutel is telefoon + tenant: dat IS de identiteit van een gesprek, en het
+ * lead-id is op dit punt nog niet bekend.
+ *
+ * Let op de volgorde met het 200 OK: dat is hierboven al verstuurd voordat er
+ * iets verwerkt wordt. Wachten kost Meta dus niets -- het houdt alleen deze
+ * functie langer open, en dat is de juiste ruil tegen een zoekgeraakte beurt. */
+const _gesprekRijen = new Map();   // "tenant:telefoon" -> Promise-ketting
+
+function opDeRij(phone, scopedProjectCode, taak) {
+  const sleutel = `${scopedProjectCode || '?'}:${phone}`;
+  const vorige = _gesprekRijen.get(sleutel) || Promise.resolve();
+
+  const volgende = vorige.then(async () => {
+    /* De vorige beurt heeft net geschreven; de foto in de leadcache is dus
+       oud. Weggooien, anders leest deze beurt alsnog de historie van vóór het
+       vorige antwoord -- precies de fout die de rij moet voorkomen. */
+    _leadCache.delete(leadCacheKey(phone, scopedProjectCode));
+    _leadCache.delete(leadCacheKey(phone, ''));
+    return taak();
+  }, async () => {
+    // Ook doorgaan als de vorige beurt stukliep: één fout gesprek mag de
+    // volgende berichten van deze lead niet blokkeren.
+    _leadCache.delete(leadCacheKey(phone, scopedProjectCode));
+    _leadCache.delete(leadCacheKey(phone, ''));
+    return taak();
+  });
+
+  /* De ketting bewaren als een variant die niet omvalt, en hem opruimen zodra
+     deze beurt de laatste in de rij is. Zonder dat opruimen groeit de Map met
+     elke lead die ooit iets gestuurd heeft. */
+  const stil = volgende.catch(() => {});
+  _gesprekRijen.set(sleutel, stil);
+  stil.then(() => { if (_gesprekRijen.get(sleutel) === stil) _gesprekRijen.delete(sleutel); });
+
+  return volgende;
+}
 
 // Module-scoped dedup cache. Survives warm function invocations on Vercel.
 // Cleared on cold start (acceptable: Meta retries within seconds, not minutes).
