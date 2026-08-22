@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 23 augustus 2026 — geld, agenda en internationaal (uitgerold)
 
 > **Actie voor jou, en dit kost anders geld.** Maak op **Client Config** een veld
 > **`Credit Purchased`** aan, type **Number**. Zonder dat veld verdwijnt het deel
@@ -777,4 +777,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: fb21606 -->
+<!-- changelog-tot: 17b19b4 -->
