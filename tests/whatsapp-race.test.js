@@ -123,6 +123,31 @@ const opDeRij = maak(
      (bron.match(/= processMessage\(/g) || []).length === 0,
      (bron.match(/.{0,40}= processMessage\(.{0,20}/g) || []));
 
+  console.log('\n— een gehallucineerd tijdstip boekt niets —');
+  /* "morgen om 14u" is truthy, dus de enige poort (`appt.start`) liet het door.
+     Daarna rekent de dubbelboekingscontrole met NaN -- elke vergelijking is
+     false, dus die laat het OOK door -- en het afspraak-id wordt
+     "TELJO-aNNaNNaN". De lead leest intussen keurig "bevestigd voor morgen om
+     14u", want de datumopmaak valt netjes terug op de ruwe tekst. */
+  ck('een onleesbare datum wordt geweigerd', /startGeldig/.test(bron), null);
+  ck('en een datum in het verleden ook',
+     /startMs > Date\.now\(\) - 60000/.test(bron), null);
+  ck('de lead krijgt dan een correctie in plaats van een bevestiging',
+     /onbruikbaar tijdstip[\s\S]{0,200}meldMislukteBoeking/.test(bron), null);
+  ck('en de duur wordt begrensd', /Math\.min\(240, Math\.max\(5,/.test(bron), null);
+
+  // Wat de oude poort deed met precies die invoer:
+  const dt = new Date('morgen om 14u');
+  ck('ter illustratie: die datum is echt onbruikbaar', isNaN(dt.getTime()));
+
+  console.log('\n— het storingsbericht is niet meer altijd Nederlands —');
+  const _lang = require(BASE + 'api/_lang.js');
+  ck('nl krijgt Nederlands', /ik ben er even niet/.test(_lang.buildOutageMessage('nl')));
+  ck('fr krijgt Frans', /Désolé/.test(_lang.buildOutageMessage('fr')), _lang.buildOutageMessage('fr'));
+  ck('en een taal zonder eigen tekst valt terug op Engels, niet op Nederlands',
+     /unavailable/.test(_lang.buildOutageMessage('de')), _lang.buildOutageMessage('de'));
+  ck('en whatsapp.js gebruikt het', !/ik ben er even niet/.test(bron), null);
+
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);
 })();

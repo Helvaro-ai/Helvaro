@@ -105,6 +105,7 @@ const LANGUAGES = {
     legacyConfirm: (name, when, addr) => `Bevestigd. Je afspraak bij ${name} staat gepland op ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
     legacyConflict: 'Oeps, dat moment bleek toch al bezet. Welk ander moment past je?',
     legacyCancelled: 'Genoteerd, ik heb de afspraak geannuleerd. Wil je meteen een ander moment prikken?',
+    legacyStoring: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.',
     legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
   },
   fr: {
@@ -118,6 +119,7 @@ const LANGUAGES = {
     legacyConfirm: (name, when, addr) => `Confirmé. Ton rendez-vous chez ${name} est prévu le ${when}.${addr ? ` Adresse : ${addr}.` : ''}`,
     legacyConflict: 'Oups, ce moment était finalement déjà pris. Quel autre moment te convient ?',
     legacyCancelled: 'Noté, j’ai annulé le rendez-vous. Tu veux qu’on fixe un autre moment ?',
+    legacyStoring: 'Désolé, je ne suis pas disponible un instant. Réessaie dans un moment.',
     legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
   },
   en: {
@@ -131,6 +133,7 @@ const LANGUAGES = {
     legacyConfirm: (name, when, addr) => `Confirmed. Your appointment with ${name} is booked for ${when}.${addr ? ` Address: ${addr}.` : ''}`,
     legacyConflict: 'Oops, that time turned out to already be taken. What other time works for you?',
     legacyCancelled: 'Noted, I have cancelled the appointment. Shall we pick another time?',
+    legacyStoring: 'Sorry, I am briefly unavailable. Please try again in a moment.',
     legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
   },
 
@@ -612,6 +615,21 @@ function buildCancelledMessage(code) {
   return 'Noted, I have cancelled the appointment. Shall we pick another time?';
 }
 
+/* Wat een lead hoort als de AI onbereikbaar is.
+ *
+ * Dit stond hardgecodeerd in het Nederlands in api/whatsapp.js. Dat is
+ * uitgerekend het bericht dat een Franstalige of Duitse lead te zien krijgt op
+ * het moment dat er iets stuk is -- het enige bericht dat gegarandeerd
+ * aankomt tijdens een storing, in de verkeerde taal.
+ *
+ * Zelfde nl/fr/en-eigen, Engels-terugval als buildSlotConflictMessage. */
+function buildOutageMessage(code) {
+  const entry = getLanguage(code);
+  const val = entry.legacyStoring || entry.storing;
+  if (val) return typeof val === 'function' ? val() : val;
+  return 'Sorry, I am briefly unavailable. Please try again in a moment.';
+}
+
 // Default WhatsApp opener rendered right after a lead submits the intake
 // form (before any AI turn — this is the very first message a lead sees).
 // api/form.js uses this rendered text ONLY for the Conversation History
@@ -752,6 +770,7 @@ module.exports = {
   buildConfirmMessage,
   buildSlotConflictMessage,
   buildCancelledMessage,
+  buildOutageMessage,
   buildWelcomeMessage,
   getLocale,
   isRtl,

@@ -1241,6 +1241,13 @@ async function processMessage(phone, text, scopedProjectCode) {
   //      Skip als replyText niet aankwam — zie 11 hierboven.
   if (sendOk && aiResponse.appointment && bookingMethod === 'in_chat' && !isEscalation) {
     const appt = aiResponse.appointment;
+    /* Begrenzen, niet vertrouwen. Een duur van 100000 uit een modelantwoord zet
+       tien weken agenda vast; nul minuten maakt een afspraak die niemand ziet
+       staan. Vijf minuten tot vier uur is het bereik waarin een bezichtiging
+       bestaat. */
+    if (appt && appt.duration !== undefined) {
+      appt.duration = Math.min(240, Math.max(5, Math.round(Number(appt.duration) || appointmentDuration)));
+    }
     /* Na een afzegging in DEZELFDE beurt is de vlag hierboven al gewist in
        Airtable, maar `lead.fields` is een foto van het begin van deze beurt en
        zegt nog "ja, al geboekt". Zonder dit zou een lead die afzegt en meteen
@@ -1248,7 +1255,22 @@ async function processMessage(phone, text, scopedProjectCode) {
        manier om iemand kwijt te raken. */
     const bookingSent = !afspraakAfgezegd
       && (lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent']);
-    if (!bookingSent && appt.start) {
+    /* De enige poort was tot hier `appt.start` truthy. Een gehallucineerd
+       tijdstip ("morgen om 14u") is truthy, en dan gaat het hele stuk eronder
+       door met een Invalid Date:
+         - isSlotFree() rekent met NaN, elke overlapvergelijking is false, dus
+           de dubbelboekingscontrole laat het ONGEMERKT door;
+         - het afspraak-id wordt "TELJO-aNNaNNaN";
+         - formatApptDateTime() valt netjes terug op de ruwe tekst, dus de lead
+           krijgt keurig "bevestigd voor morgen om 14u" te lezen.
+       Een datum in het verleden is even erg: een bezichtiging vorige week.
+       De duur was ook onbegrensd -- 100000 minuten blokkeert tien weken agenda. */
+    const startMs = Date.parse(appt.start);
+    const startGeldig = Number.isFinite(startMs) && startMs > Date.now() - 60000;
+    if (!bookingSent && appt.start && !startGeldig) {
+      console.warn(`[whatsapp] BOOK geweigerd: onbruikbaar tijdstip "${appt.start}" voor ${phone} (${projectCode})`);
+      await meldMislukteBoeking(`het model gaf een onbruikbaar tijdstip: "${String(appt.start).slice(0, 60)}"`);
+    } else if (!bookingSent && appt.start) {
       // Fetch Google Calendar access ONCE for this booking — reused below for
       // both the pre-write availability check and the post-write mirror,
       // instead of refreshing the OAuth access token twice.
@@ -1538,11 +1560,11 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
        Een lead die niets terugkrijgt is erger dan een lead die hoort dat het
        even niet lukt. */
     console.error('[WhatsApp] AI-router fout:', err && err.code, err && err.message);
-    return { done: false, message: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.' };
+    return { done: false, message: _lang.buildOutageMessage(lang) };
   }
   if (!raw.trim()) {
     console.error('[WhatsApp] AI-router gaf een leeg antwoord');
-    return { done: false, message: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.' };
+    return { done: false, message: _lang.buildOutageMessage(lang) };
   }
 
   // 1. Pull out the running SUMMARY:{...} line (present on every turn).
