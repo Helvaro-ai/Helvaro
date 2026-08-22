@@ -507,18 +507,14 @@ async function probe(url, opts = {}) {
       fail('het videomodel staat op demo — er komt nooit een echte video uit',
            'HELVARO_VIDEO_MODEL staat op demo-video. Zet hem leeg voor kling-3.');
     } else if (mist.length) {
-      warn(`video staat uit: ${mist.join(' + ')} ontbreek${mist.length > 1 ? 'en' : 't'}`,
-           'De AI biedt geen video aan en zegt eerlijk dat het niet aanstaat. Er wordt
-'
+      warn(`video staat uit: ${mist.join(' + ')} ontbre${mist.length > 1 ? 'ken' : 'ekt'}`,
+           'De AI biedt geen video aan en zegt eerlijk dat het niet aanstaat. Er wordt\n'
          + 'niets afgeschreven. Zet de sleutels om video aan te zetten.');
     } else {
       warn(`video staat AAN met ${vm.id}, maar de adapter is nooit tegen de echte API gedraaid`,
-           'Draai `node scripts/kling-check.js` -- één echte opdracht, hij zegt per aanname
-'
-         + '(A1 tot A6) of hij klopt. Zonder die controle faalt de eerste klantvideo als een
-'
-         + '400 die op een storing lijkt. Afschrijven gebeurt pas bij een geslaagde video,
-'
+           'Draai `node scripts/kling-check.js` -- één echte opdracht, hij zegt per aanname\n'
+         + '(A1 tot A6) of hij klopt. Zonder die controle faalt de eerste klantvideo als een\n'
+         + '400 die op een storing lijkt. Afschrijven gebeurt pas bij een geslaagde video,\n'
          + 'dus een mislukte poging kost de klant niets.');
     }
   } catch (e) {
