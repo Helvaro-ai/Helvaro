@@ -14,6 +14,7 @@ const { fetchWebsite } = require('./_lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
+const _optout = require('./_optout');     // wie STOP zegt, krijgt niets meer
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a
 // reply, only records usage after the fact. Helvaro's "reactie binnen 30
@@ -644,6 +645,81 @@ async function processMessage(phone, text, scopedProjectCode) {
   // message (nothing may be lost) and still update Last Message, but we must
   // NEVER call runAI() or send an AI reply: a human is driving now, and the
   // AI replying over them is exactly the collision this feature prevents.
+  /* ── Afmelden ──────────────────────────────────────────────────────────────
+   * VÓÓR de AI-pauze en vóór alles wat geld kost. Een lead die STOP typt hoort
+   * geen AI-antwoord te krijgen op zijn afmelding, en al helemaal geen
+   * creditafschrijving voor het gesprek.
+   *
+   * Er was hier niets: STOP kreeg een vriendelijk antwoord over het pand, en de
+   * opvolgcron stuurde de dag erna weer een bericht. Zie api/_optout.js voor
+   * waarom dat drie problemen tegelijk is.
+   *
+   * De bevestiging gaat WEL nog uit -- precies één zin. Zonder dat lijkt de
+   * afmelding niet aangekomen en typt iemand het nog drie keer. */
+  if (_optout.isAfmelding(text)) {
+    console.log(`[WhatsApp] ${maskPhone(phone)} meldt zich af (${projectCode || '?'})`);
+
+    const opgeslagen = await _optout.markeer(
+      (id, velden) => updateLead(id, velden, phone, scopedProjectCode),
+      lead.id,
+    );
+
+    // De afmelding blijft ook in de geschiedenis staan, zodat de makelaar ziet
+    // wanneer en hoe het gebeurd is.
+    let afmeldHistorie = [];
+    const opgeslagenHist = lead.fields['Conversation History'];
+    if (opgeslagenHist) { try { afmeldHistorie = JSON.parse(opgeslagenHist); } catch { afmeldHistorie = []; } }
+    afmeldHistorie.push({ role: 'user', content: text, ts: Date.now() });
+    if (afmeldHistorie.length > 20) afmeldHistorie = afmeldHistorie.slice(-20);
+    await updateLead(lead.id, {
+      'Last Message': text,
+      'Conversation History': JSON.stringify(afmeldHistorie),
+    }, phone, scopedProjectCode).catch(() => {});
+
+    await sendWA(phone, _optout.bevestiging(lang), clientPhoneNumberId).catch(() => {});
+
+    /* Eigen lokale kopie, net als het pauzeblok hieronder: `ownerPhone` en
+       `leadName` worden pas tweehonderd regels verderop gedeclareerd en staan
+       hier nog in hun dode zone. Ze hier gebruiken geeft een ReferenceError bij
+       de eerste afmelding -- precies het soort fout dat pas bij een echte klant
+       opvalt. */
+    const ownerPhoneA = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone'] || '').toString().trim() || NOTIFY_PHONE;
+    const leadNaamA   = lead.fields['fldbk0LVNckOU0bqA'] || lead.fields['Name'] || '';
+
+    /* De makelaar hoort dit te weten: dit is een lead die hij niet meer mag
+       appen, en als de vlag NIET opgeslagen kon worden moet hij het handmatig
+       doen -- anders blijft de opvolgcron gewoon sturen. */
+    if (ownerPhoneA) {
+      await sendWA(ownerPhoneA,
+        `[Afgemeld] ${leadNaamA || maskPhone(phone)} wil geen berichten meer\n\n` +
+        `Tel: ${phone}\n` +
+        `Project: ${projectCode}\n\n` +
+        (opgeslagen
+          ? 'Hij is gemarkeerd; er gaat automatisch niets meer naar hem toe. Bellen mag nog wel.'
+          : 'LET OP: de markering kon NIET opgeslagen worden. Zet hem met de hand op afgemeld, '
+            + 'anders blijft de opvolging berichten sturen.'),
+        clientPhoneNumberId).catch(() => {});
+    }
+    return;
+  }
+
+  /* Al eerder afgemeld? Dan komt er niets meer terug. Geen AI, geen credits,
+     geen tweede bevestiging -- die kreeg hij de eerste keer al. Het bericht
+     wordt wel bewaard, want de makelaar mag zien dat hij nog schrijft. */
+  if (_optout.isAfgemeld(lead.fields)) {
+    console.log(`[WhatsApp] ${maskPhone(phone)} is afgemeld — bericht bewaard, geen antwoord`);
+    let hist = [];
+    const opgesl = lead.fields['Conversation History'];
+    if (opgesl) { try { hist = JSON.parse(opgesl); } catch { hist = []; } }
+    hist.push({ role: 'user', content: text, ts: Date.now() });
+    if (hist.length > 20) hist = hist.slice(-20);
+    await updateLead(lead.id, {
+      'Last Message': text,
+      'Conversation History': JSON.stringify(hist),
+    }, phone, scopedProjectCode).catch(() => {});
+    return;
+  }
+
   const pauseInfo = getAiPauseInfo(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
   if (pauseInfo) {
     console.log(`[WhatsApp] Lead ${phone} is AI-paused sinds ${pauseInfo.at || '?'} (door ${pauseInfo.by || 'onbekend'}). Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);

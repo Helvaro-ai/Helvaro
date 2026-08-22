@@ -10,6 +10,7 @@
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
 const _crypto = require('crypto');
+const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
 
 /* Vergelijken zonder te verklappen hoeveel tekens er klopten. Ongelijke lengtes
    geven meteen false -- timingSafeEqual gooit daarop, en de lengte van een
@@ -155,6 +156,18 @@ module.exports = async function handler(req, res) {
       const phone = lead.fields['fld6YaitW0lMqHUrd'] || lead.fields['Phone'] || '';
       const name  = lead.fields['fldbk0LVNckOU0bqA']  || lead.fields['Name']  || '';
       if (!phone) continue;
+
+      /* Afgemeld? Dan gaat er niets meer heen. Dit is DE lus die het probleem
+         was: iemand typte STOP en kreeg de dag erna gewoon weer een opvolging.
+
+         In JavaScript en niet in de filterformule, met opzet: het veld bestaat
+         mogelijk nog niet in Airtable, en één onbekende veldnaam in een formule
+         laat de HELE query mislukken -- dan stopt de opvolging voor iedereen.
+         Zo werkt het of het veld er nu staat of niet. */
+      if (_optout.isAfgemeld(lead.fields)) {
+        console.log(`[cron-followup] lead ${lead.id} is afgemeld — overgeslagen`);
+        continue;
+      }
 
       // Only send if conversation has ≤1 AI message (lead never replied)
       let history = [];
@@ -1239,9 +1252,53 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
   }
 
   let sent = 0, skipped = 0;
+  /* Wie van deze leads heeft zich afgemeld?
+   *
+   * De afspraakrij kent alleen een telefoonnummer en een koppeling naar de
+   * lead, niet de afmeldvlag. Eén gebundelde query voor alle betrokken leads in
+   * plaats van een lookup per afspraak: het zijn er weinig, maar een cron die
+   * per record een extra aanroep doet loopt bij een drukke dag tegen zijn
+   * tijdslimiet.
+   *
+   * Mislukt die query, dan is de uitkomst "niemand afgemeld" en gaan de
+   * herinneringen gewoon door. Dat is de juiste kant om op te falen: een
+   * gemiste herinnering is een gemiste bezichtiging, en dat weegt zwaarder dan
+   * één bericht te veel aan iemand die zich net heeft afgemeld -- die is
+   * bovendien al geblokkeerd op de inkomende weg. */
+  const afgemeldeLeads = new Set();
+  try {
+    const leadIds = [];
+    for (const a of appointments) {
+      const gekoppeld = (a.fields || {}).Lead;
+      if (Array.isArray(gekoppeld)) for (const id of gekoppeld) if (id) leadIds.push(id);
+    }
+    if (leadIds.length) {
+      const uniek = [...new Set(leadIds)].slice(0, 100);
+      const f = encodeURIComponent(`OR(${uniek.map((id) => `RECORD_ID()="${id}"`).join(',')})`);
+      /* De tabel-id staat hier letterlijk omdat LEADS_TABLE in deze functie
+         niet in scope is (die is lokaal aan de handler hierboven). Zelfde
+         id als daar; het is dezelfde tabel. */
+      const r = await fetch(
+        `https://api.airtable.com/v0/${baseId}/tbliukTnDAbEDcZmt?filterByFormula=${f}&pageSize=100`,
+        { headers: { Authorization: `Bearer ${airtableToken}` } });
+      if (r.ok) {
+        for (const rec of ((await r.json()).records || [])) {
+          if (_optout.isAfgemeld(rec.fields)) afgemeldeLeads.add(rec.id);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[cron-followup] afmeldingen niet te controleren voor herinneringen:', e && e.message);
+  }
+
   for (const appt of appointments) {
     try {
       const f = appt.fields || {};
+      const gekoppeldeLeads = Array.isArray(f.Lead) ? f.Lead : [];
+      if (gekoppeldeLeads.some((id) => afgemeldeLeads.has(id))) {
+        console.log(`[cron-followup] herinnering overgeslagen voor ${appt.id}: lead is afgemeld`);
+        skipped++; continue;
+      }
       const phone       = f['fldO0Gk82OJ9m6lz7'] || f['Lead Phone']    || '';
       const leadName    = f['fldnCNWPxIX6sYzZP'] || f['Lead Name']     || '';
       const projectCode = f['fld60vlhoxZYef4U2'] || f['Project Code']  || '';

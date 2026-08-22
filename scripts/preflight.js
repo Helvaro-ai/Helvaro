@@ -510,6 +510,26 @@ async function probe(url, opts = {}) {
     }
   }
 
+  /* ── De afmeldvlag ─────────────────────────────────────────────────────────
+     Zonder dit veld wordt een afmelding wel HERKEND (de lead krijgt zijn
+     bevestiging en de AI zwijgt verder), maar niet OPGESLAGEN -- en dan stuurt
+     de opvolgcron morgen gewoon weer een bericht naar iemand die STOP zei.
+     Dat is niet alleen vervelend maar ook tegen het beleid van Meta, en het
+     WhatsApp-nummer is voorlopig gedeeld. Vandaar een FOUT. */
+  if (process.env.API_AIRTABLE && process.env.BASE_AIRTABLE) {
+    const r = await probe(
+      `https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tbliukTnDAbEDcZmt?pageSize=1&fields%5B%5D=Opted%20Out`,
+      { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } });
+    if (r.ok) ok('veld "Opted Out" bestaat — een afmelding blijft ook staan');
+    else if (r.status === 422) {
+      fail('veld "Opted Out" ontbreekt op de Leads-tabel',
+           'Maak het aan als Checkbox. Zonder dit veld wordt een afmelding herkend maar niet\n'
+         + 'bewaard, en blijft de opvolging berichten sturen naar iemand die STOP zei.');
+    } else {
+      warn(`veld "Opted Out" niet te controleren (HTTP ${r.status || r.error})`);
+    }
+  }
+
   /* ── Video ─────────────────────────────────────────────────────────────────
      Het videomodel staat op kling, en de kling-adapter is geschreven zonder
      toegang tot de documentatie van de leverancier -- zes aannames, elk met een
