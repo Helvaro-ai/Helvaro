@@ -490,6 +490,41 @@ async function probe(url, opts = {}) {
     warn('tabellen niet te controleren — Airtable-credentials niet beschikbaar');
   }
 
+  /* ── Video ─────────────────────────────────────────────────────────────────
+     Het videomodel staat op kling, en de kling-adapter is geschreven zonder
+     toegang tot de documentatie van de leverancier -- zes aannames, elk met een
+     naam, in de kop van api/_kling.js. Dit blok zegt in welke van de drie
+     toestanden je staat, want ze zien er in de app hetzelfde uit en kosten
+     verschillend veel geld. */
+  try {
+    const mm  = require(path.join(__dirname, '..', 'api', '_media-models.js'));
+    const va  = require(path.join(__dirname, '..', 'api', '_video-adapters.js'));
+    const vm  = mm.videoModel();
+    const adp = vm.adapter || vm.provider;
+    const mist = va.missingEnv(adp);
+
+    if (adp === 'demo') {
+      fail('het videomodel staat op demo — er komt nooit een echte video uit',
+           'HELVARO_VIDEO_MODEL staat op demo-video. Zet hem leeg voor kling-3.');
+    } else if (mist.length) {
+      warn(`video staat uit: ${mist.join(' + ')} ontbreek${mist.length > 1 ? 'en' : 't'}`,
+           'De AI biedt geen video aan en zegt eerlijk dat het niet aanstaat. Er wordt
+'
+         + 'niets afgeschreven. Zet de sleutels om video aan te zetten.');
+    } else {
+      warn(`video staat AAN met ${vm.id}, maar de adapter is nooit tegen de echte API gedraaid`,
+           'Draai `node scripts/kling-check.js` -- één echte opdracht, hij zegt per aanname
+'
+         + '(A1 tot A6) of hij klopt. Zonder die controle faalt de eerste klantvideo als een
+'
+         + '400 die op een storing lijkt. Afschrijven gebeurt pas bij een geslaagde video,
+'
+         + 'dus een mislukte poging kost de klant niets.');
+    }
+  } catch (e) {
+    warn('video-instellingen niet te lezen', String(e && e.message).slice(0, 200));
+  }
+
   // Sora heeft een einddatum in de registry.
   try {
     const mm = require(path.join(__dirname, '..', 'api', '_media-models.js'));

@@ -264,7 +264,42 @@ async function getJob(jobId, ctx = {}) {
   job.state = out && out.state ? out.state : 'failed';
   if (out && out.url) job.url = out.url;
   if (out && out.error) job.error = out.error;
+
+  /* Afschrijven gebeurt HIER, en alleen hier: op de eerste poll die 'ready'
+     ziet. Niet bij het insturen, want dan betaalt een klant voor een video die
+     bij de leverancier mislukt -- en niet bij 'failed', om dezelfde reden.
+     `charged` staat op het jobrecord zodat een tweede poll (de client polt elke
+     paar seconden) niet nog een keer boekt. */
+  if (job.state === 'ready' && !job.charged) {
+    job.charged = true;
+    try {
+      await creditsVoorVideo(job);
+    } catch (err) {
+      /* Een mislukte boeking mag de klaar-zijnde video niet opeten. Het gaat
+         wel luid het log in, want dit is echt geld. */
+      console.error(`[faro/media] credits niet geboekt voor ${job.jobId} (${job.projectCode}):`, err && err.message);
+    }
+  }
+
   return { ...job };
+}
+
+/* Wat een geslaagde video kost. Nul bij een model dat zelf niets kost -- de
+   demo-adapter raakt het netwerk nooit aan, en credits rekenen voor een
+   verzonnen resultaat is precies het soort getal dat later niemand kan
+   verklaren. */
+async function creditsVoorVideo(job) {
+  const models  = require('../_media-models');
+  const credits = require('../_credits');
+  const model   = models.VIDEO_MODELS[job.modelId];
+
+  let kost = 0;
+  try { kost = Number(model.costUsd({ seconds: job.seconds, size: job.size })) || 0; } catch (_) { kost = 0; }
+  if (kost <= 0) return;
+
+  const bedrag = credits.creditsForVideo({ seconds: job.seconds, size: job.size });
+  await credits.recordUsage(job.projectCode, credits.FEATURES.VIDEO_GENERATION, { credits: bedrag });
+  job.creditsCharged = bedrag;
 }
 
 /** Attach a finished asset to a property, and optionally to a Project. */
@@ -277,6 +312,9 @@ module.exports = {
   generateImage, listImages, listActivity,
   generateVideo, listVideos,
   getJob, saveToProperty,
-  // Alleen voor tests: de jobtabel leegmaken tussen gevallen door.
+  // Alleen voor tests: de jobtabel leegmaken, en één ruw jobrecord pakken. Dat
+  // laatste is er zodat een test de starttijd terug kan zetten in plaats van
+  // echt seconden te wachten op de demo-adapter.
   _resetJobs() { _jobs.clear(); },
+  _job(jobId) { return _jobs.get(String(jobId || '')) || null; },
 };

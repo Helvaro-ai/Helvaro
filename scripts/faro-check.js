@@ -135,6 +135,11 @@ const EXPECTED_ACT = [
   'set_lead_status', 'add_lead_note', 'delete_lead', 'update_ai_persona',
   'move_appointment', 'cancel_appointment',
   'create_followup', 'schedule_followup', 'create_campaign', 'add_leads_to_campaign',
+  // Video staat hier om een andere reden dan de rest: er gaat niets naar buiten
+  // en er verandert geen CRM-rij. Wat er wel gebeurt is 150 tot 300 credits
+  // uitgeven aan een opdracht die niet meer te annuleren is. Dat hoort achter
+  // een klik waar het bedrag op staat, niet achter een zin in een chat.
+  'generate_property_video',
 ];
 const actSet = acts.slice().sort().join(',');
 if (actSet !== EXPECTED_ACT.slice().sort().join(',')) {

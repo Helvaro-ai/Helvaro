@@ -58,6 +58,7 @@ const waSend = require('../_wa-send'); // the single outbound WhatsApp door
 const gcal = require('../_gcal');      // per-client Google Calendar
 const credits = require('../_credits'); // creditpoort — zie de video-executor
 const writes = require('./writes');   // de enige plek die CRM-rijen wijzigt
+const schema = require('./schema');   // de kaartjes die de client tekent
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -383,16 +384,20 @@ const EXECUTORS = {
      onbereikbaar (geen enkele tool zet een bevestigingskaart voor deze actie
      klaar) en las als een kapotte functie terwijl de functie gewoon werkt. */
 
-  // WIRE TO: api/_faro/media.js (de videoprovider bestaat nog niet in deze repo).
-  //
-  // De creditpoort staat hier AL, vóór de not_wired. Dat is bewust: video is
-  // verreweg de duurste actie in dit product — één filmpje van acht seconden
-  // kost meer dan zeven leadgesprekken — en een poort die pas ná het aansluiten
-  // wordt bedacht, wordt vergeten. Wie de provider aansluit, vervangt alleen de
-  // laatste regel en heeft de rem dan automatisch al staan.
-  //
-  // Controleren kost niets en schrijft niets af; afschrijven gebeurt pas NA een
-  // geslaagde generatie, met credits.creditsForVideo() voor het echte aantal.
+  /*
+   * Video. Verreweg de duurste actie in dit product: één filmpje van acht
+   * seconden kost meer dan zeven leadgesprekken.
+   *
+   * Daarom staat de creditpoort vóór alles, en op TWEE dingen:
+   *   - mag deze klant nog iets verbruiken (checkCredits), en
+   *   - is er genoeg over voor DIT specifieke filmpje.
+   * Alleen het eerste controleren liet een klant met 40 credits een video van
+   * 240 starten; die was al besteld voordat iemand het merkte.
+   *
+   * Afschrijven gebeurt hier NIET. Dat gebeurt in media.getJob(), op de eerste
+   * poll die 'ready' ziet -- zodat een video die bij de leverancier mislukt
+   * niets kost. Zie de opmerking daar.
+   */
   async generate_property_video(payload, ctx) {
     const kosten = credits.creditsForVideo({
       seconds: payload && payload.seconds,
@@ -404,7 +409,59 @@ const EXECUTORS = {
         check.message || `Hier is geen ruimte meer voor: een video kost ${kosten} credits.`,
         'credit_limit_reached');
     }
-    throw new ActionError('Videogeneratie is nog niet aangesloten.', 'not_wired');
+    /* Infinity komt uit een creditsysteem dat bewust open faalt (geen
+       Airtable, of een lookup die hapert). Dan niet blokkeren -- dat is daar
+       een weloverwogen keuze -- maar een eindig tekort wél tegenhouden. */
+    if (Number.isFinite(check.remaining) && check.remaining < kosten) {
+      throw new ActionError(
+        `Een video van ${kosten} credits past niet meer: er ${check.remaining === 1 ? 'is' : 'zijn'} er nog ${check.remaining} over. `
+        + 'Koop credits bij of kies een kortere video.',
+        'credit_limit_reached');
+    }
+
+    const media = require('./media');
+    let job;
+    try {
+      job = await media.generateVideo({
+        prompt:   payload && payload.prompt,
+        imageUrl: (payload && (payload.imageUrl || payload.sourceImageUrl)) || '',
+        seconds:  payload && payload.seconds,
+        size:     payload && payload.size,
+      }, ctx);
+    } catch (err) {
+      /* Een adapter die niet aangesloten is, is een configuratiefout van ons en
+         geen mislukte poging van de klant. Die moet als zodanig lezen -- en er
+         is niets afgeschreven, want dat gebeurt pas bij 'ready'. */
+      const code = (err && err.code) || '';
+      if (code === 'adapter_not_implemented' || code === 'not_configured' || code === 'unknown_adapter') {
+        throw new ActionError(
+          'Videogeneratie staat nog niet aan voor deze omgeving. Er is niets in rekening gebracht.',
+          'not_wired');
+      }
+      throw new ActionError(
+        `De video kon niet gestart worden: ${(err && err.message) || 'onbekende fout'}. Er is niets in rekening gebracht.`,
+        'video_submit_failed');
+    }
+
+    /* Een media_job-kaart, geen tekst: de client polt hem via faro-media
+       op:'job' tot hij op 'ready' staat. Alleen 'Bekijken' en 'Downloaden' --
+       opslaan bij een pand en een variatie maken bestaan nog niet, en vier
+       knoppen waarvan er twee niets doen is erger dan twee die werken. */
+    return {
+      summary: `De video wordt gemaakt (${job.seconds} seconden, ${kosten} credits). `
+        + 'Dat duurt meestal een paar minuten; er wordt pas afgeschreven als hij klaar is.',
+      components: [schema.mediaJob({
+        jobId: job.jobId,
+        kind: 'video',
+        state: job.state || 'queued',
+        meta: { seconds: job.seconds, size: job.size, model: job.model, credits: kosten },
+        actions: [
+          { key: 'preview',  label: 'Bekijken'   },
+          { key: 'download', label: 'Downloaden' },
+        ],
+      })],
+      data: { jobId: job.jobId, credits: kosten },
+    };
   },
 };
 

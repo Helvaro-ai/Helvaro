@@ -1545,7 +1545,11 @@ const mediaTools = [
 
   {
     name: 'generate_property_video',
-    kind: 'create',
+    /* 'act' en niet 'create', anders dan bij beeld. Een video kost 150 tot 300
+       credits -- meer dan een halve dag leadgesprekken -- en start een opdracht
+       bij een leverancier die niet meer te annuleren is. Dat hoort achter een
+       klik, niet achter een zin. */
+    kind: 'act',
     description: 'Genereer een korte marketingvideo voor een pand.',
     parameters: {
       type: 'object',
@@ -1569,7 +1573,37 @@ const mediaTools = [
       },
       required: ['prompt'],
     },
-    async run(_args, _ctx) { return stub('Videogeneratie nog niet aangesloten.', { jobId: null }); },
+    async run(args, _ctx) {
+      const prompt = String(args.prompt || '').trim();
+      if (!prompt) {
+        return { summary: 'Er is nog geen beschrijving voor de video. Vraag wat er te zien moet zijn.',
+                 data: { pending: false }, components: [] };
+      }
+
+      const model   = mediaModels.videoModel();
+      const seconds = mediaModels.nearestDuration(model, args.durationSec);
+      /* Het model denkt in beeldverhouding omdat een gebruiker dat doet; de
+         registry en de leveranciers denken in pixels. Hier vertaald, en
+         nearestSize() maakt er daarna een maat van die dit model echt kent. */
+      const FORMATEN = { '9:16': '720x1280', '16:9': '1280x720', '1:1': '1024x1024' };
+      const size = mediaModels.nearestSize(model, FORMATEN[String(args.format || '9:16')]);
+
+      const kosten = credits.creditsForVideo({ seconds, size });
+
+      return {
+        summary: `Klaar om een video van ${seconds} seconden te maken (${kosten} credits). Wacht op bevestiging.`,
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'generate_property_video',
+          title: 'Video maken?',
+          // Het aantal credits staat op de kaart zelf. Wie op "Maken" klikt
+          // hoort te weten wat het kost voordat hij klikt, niet erna.
+          body: `${prompt}\n\n${seconds} seconden - ${args.format || '9:16'} - ${kosten} credits`,
+          confirmLabel: 'Maken',
+          payload: { prompt, seconds, size, propertyId: args.propertyId || undefined },
+        })],
+      };
+    },
   },
 ];
 

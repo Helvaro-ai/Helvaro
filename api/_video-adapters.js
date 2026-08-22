@@ -20,17 +20,19 @@
  * Meer niet. De job zelf, de eigendomscontrole, de credits en de opslag zitten
  * in api/_faro/media.js; een adapter weet niets van tenants.
  *
- * -- Waarom kling en runway hieronder WEIGEREN in plaats van te gokken -------
- * Ik kon hun documentatie niet lezen vanaf deze machine. Een adapter schrijven
- * op basis van een herinnering aan een API betekent: een endpoint dat er goed
- * uitziet, een auth-header die net anders heet, en een pollvorm die niet
- * bestaat. Dat faalt niet bij het schrijven maar bij de eerste echte klant, en
- * dan als een 400 die op een storing lijkt.
+ * -- Kling is er, runway nog niet ---------------------------------------------
+ * api/_kling.js implementeert submit() en poll(). LET OP: de vorm van die
+ * verzoeken is niet geverifieerd tegen de echte API -- de documentatie was
+ * vanaf de bouwmachine niet te bereiken. Elke aanname staat met een naam in de
+ * kop van dat bestand, en `node scripts/kling-check.js` controleert ze in één
+ * echte aanroep.
  *
- * Dus staat er hier een expliciete weigering met daarin precies wat er nodig
- * is. Aansluiten is: de vier regels van submit() en poll() invullen volgens de
- * documentatie van de leverancier, en de test in tests/video-pipeline.test.js
- * van 'demo' op 'kling' zetten.
+ * Runway weigert nog wel, en om dezelfde reden als kling ooit: een adapter
+ * schrijven op een herinnering aan een API geeft een endpoint dat er goed
+ * uitziet, een auth-header die net anders heet, en een pollvorm die niet
+ * bestaat. Dat faalt niet bij het schrijven maar bij de eerste echte klant.
+ * Voor kling is die gok bewust genomen omdat de sleutels er zijn en er een
+ * controlescript bij zit; voor runway is er geen van beide.
  */
 
 class AdapterError extends Error {
@@ -103,9 +105,19 @@ const demo = {
   },
 };
 
+/* Kling is geschreven, maar niet geverifieerd tegen de echte API -- de
+   documentatie was vanaf de bouwmachine niet te bereiken. Wat er wel is: elke
+   aanname staat met een naam in de kop van api/_kling.js, en
+   `node scripts/kling-check.js` controleert ze in één aanroep.
+
+   Blijft de sleutel leeg, dan valt hij terug op de weigering hieronder in
+   plaats van een 401 van Kling -- dat leest als "niet aangesloten" en niet als
+   "stuk". */
+const _kling = require('./_kling');
+
 const ADAPTERS = {
   demo,
-  kling:  notImplemented('kling'),
+  kling:  _kling.configured() ? _kling.kling : notImplemented('kling'),
   runway: notImplemented('runway'),
   /* Sora had wel een adapter kunnen hebben -- de API is bekend en de sleutel
      staat er al. Bewust niet gedaan: het model verdwijnt op 2026-09-24, en een

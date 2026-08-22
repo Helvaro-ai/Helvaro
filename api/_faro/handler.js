@@ -303,8 +303,17 @@ async function mediaMode(res, ctx, body) {
     case 'job':
       if (!body.jobId) return res.status(400).json({ error: 'Ontbrekende job' });
       return res.status(200).json({ job: await media.getJob(body.jobId, ctx) });
-    case 'generate-image':
+    /* Video loopt BEWUST niet langs hier. Een filmpje kost 150 tot 300 credits
+       en start een opdracht die niet meer te annuleren is; die hoort achter de
+       bevestigingskaart in api/_faro/actions.js, niet achter een POST die de
+       creditcontrole zelf zou moeten overdoen. Twee wegen naar dezelfde
+       rekening is precies hoe er eentje zonder rem raakt. */
     case 'generate-video':
+      return res.status(501).json({
+        error: 'Video maak je via de chat: daar staat wat het kost en bevestig je het.',
+        code: 'use_chat',
+      });
+    case 'generate-image':
     case 'save-to-property':
       return res.status(501).json({ error: 'Nog niet beschikbaar', code: 'not_wired' });
     default:

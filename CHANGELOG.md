@@ -12,6 +12,30 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+> **Actie voor jou, vóór je video aanzet.** Zet `KLING_ACCESS_KEY` en
+> `KLING_SECRET_KEY` in Vercel en draai daarna één keer
+> `node scripts/kling-check.js`. Dat stuurt één echte opdracht in (kost ongeveer
+> een halve euro) en zegt per aanname of onze code klopt met Kling. Zolang je dat
+> niet gedaan hebt, biedt de AI geen video aan en wordt er niets afgeschreven —
+> dat is met opzet zo.
+
+- **De AI kan nu een video van een pand maken.** Je vraagt het in de chat, je
+  krijgt een kaartje met wat het kost, en pas als je op *Maken* klikt wordt de
+  opdracht ingestuurd. Daarvoor zei hij "nog niet aangesloten".
+- **Een mislukte video kost je niets.** Credits gaan er pas af op het moment dat
+  de video echt klaar is — niet bij het insturen. Blijft hij hangen of faalt hij
+  bij de leverancier, dan is er niets afgeschreven. Ook doorpollen (de app kijkt
+  elke paar seconden of hij klaar is) boekt nooit een tweede keer.
+- **Een video die niet meer past wordt geweigerd voordat hij besteld is.** Er
+  werd eerder alleen gekeken óf je nog credits had, niet of je er genoeg had:
+  met 40 credits over kon je een video van 300 starten. Nu zegt hij hoeveel je
+  er nog hebt en hoeveel het kost.
+- **`node scripts/preflight.js` vertelt in welke van de drie video-toestanden je
+  staat**: uit (geen sleutels), aan maar nooit tegen de echte API gedraaid, of
+  per ongeluk op het demo-model.
+
 ## 22 augustus 2026 — uitgerold
 
 Alles onder dit kopje draait sinds vandaag in productie.
