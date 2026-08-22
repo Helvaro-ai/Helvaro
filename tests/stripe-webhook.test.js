@@ -199,6 +199,38 @@ const ABONNEMENT = (over = {}) => ({
   ck('geeft 503 en geen 200', res.code === 503, res);
   process.env.STRIPE_WEBHOOK_SECRET = bewaard;
 
+  console.log('\n— als de body toch al geparst is —');
+  /* De config onderaan api/stripe.js zet bodyParser uit. Dat is een afspraak
+     met de runtime, geen garantie. Gaat die afspraak stuk, dan is req.body een
+     object en zou elke betaling er als een ongeldige handtekening uitzien --
+     terwijl er niets mis is met Stripe.
+
+     Het mag dan NIET opnieuw geserialiseerd worden: JSON.stringify geeft andere
+     bytes dan wat er getekend is. En het moet 500 geven en geen 400, zodat
+     Stripe het opnieuw aanbiedt zodra de config gerepareerd is, in plaats van
+     de betaling weg te gooien. */
+  {
+    const res3 = nepRes();
+    delete require.cache[require.resolve(BASE + 'api/stripe.js')];
+    const handler = require(BASE + 'api/stripe.js');
+    const req3 = { method: 'POST', headers: { 'stripe-signature': teken('{}') },
+                   body: { type: 'checkout.session.completed' }, on: () => {} };
+    await handler(req3, res3);
+    ck('een geparste body geeft 500 (Stripe probeert opnieuw)', res3.code === 500, res3);
+    ck('en niet 400 (dat zou de betaling weggooien)', res3.code !== 400, res3);
+  }
+  {
+    // Een Buffer is prima: dan is het nog steeds byte voor byte wat er getekend is.
+    const body = JSON.stringify(AANKOOP());
+    nepBase();
+    const res4 = nepRes();
+    delete require.cache[require.resolve(BASE + 'api/stripe.js')];
+    const handler = require(BASE + 'api/stripe.js');
+    await handler({ method: 'POST', headers: { 'stripe-signature': teken(body) },
+                    body: Buffer.from(body, 'utf8'), on: () => {} }, res4);
+    ck('een Buffer-body werkt gewoon', res4.code === 200, res4);
+  }
+
   console.log('\n— alleen POST —');
   const res2 = nepRes();
   delete require.cache[require.resolve(BASE + 'api/stripe.js')];

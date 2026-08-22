@@ -39,6 +39,30 @@ const credits = require('./_credits');
 const MAX_BODY = 1024 * 256;
 
 function ruweBody(req) {
+  /* Eerst kijken of de body er al IS.
+
+     De config onderaan zet bodyParser uit, en dan komt de body als stream. Maar
+     die config is een afspraak met de runtime, geen garantie: bij een andere
+     Vercel-versie of een verkeerd overgenomen instelling parst hij toch. Dan is
+     req.body een OBJECT, blijft de stream leeg, en faalt elke handtekening --
+     wat eruitziet als een probleem bij Stripe en het niet is.
+
+     Dit is het enige stuk van de betaalketen dat ik niet lokaal kan bewijzen,
+     dus het vangt beide gevallen op:
+       Buffer of string  -> gebruiken zoals hij is, byte voor byte
+       object            -> WEIGEREN, niet opnieuw serialiseren. JSON.stringify
+                            geeft andere bytes (sleutelvolgorde, witruimte,
+                            getalnotatie) en dan zou de handtekening ONTERECHT
+                            falen, of erger: toevallig kloppen op een body die
+                            niet is wat Stripe stuurde.
+       niets             -> de stream lezen, het normale geval. */
+  if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
+  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body, 'utf8'));
+  if (req.body && typeof req.body === 'object') {
+    return Promise.reject(new Error(
+      'de body is al geparst tot een object — bodyParser staat aan terwijl deze route hem uit nodig heeft. '
+      + 'Controleer de config-export onderaan api/stripe.js.'));
+  }
   return new Promise((resolve, reject) => {
     const delen = [];
     let n = 0;
@@ -72,6 +96,13 @@ module.exports = async function handler(req, res) {
     const body = await ruweBody(req);
     gebeurtenis = _stripe.verifyWebhook(body, req.headers['stripe-signature']);
   } catch (e) {
+    /* Een geparste body is ONZE fout, geen ongeldige handtekening. 500 dus:
+       Stripe biedt hem opnieuw aan, en zodra de config klopt komt de betaling
+       alsnog binnen in plaats van verloren te gaan. */
+    if (/al geparst/.test(e.message)) {
+      console.error('[stripe] ' + e.message);
+      return res.status(500).json({ error: 'Verkeerd geconfigureerd' });
+    }
     /* 400 zodat Stripe het NIET opnieuw probeert: een handtekening die niet
        klopt, klopt de tweede keer ook niet. */
     console.warn('[stripe] webhook geweigerd:', e.message);
