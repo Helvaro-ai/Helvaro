@@ -104,6 +104,7 @@ const LANGUAGES = {
     legacyCallback: (w) => `Goed, dan zit het in orde. Een collega van mij belt of appt je ${w}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
     legacyConfirm: (name, when, addr) => `Bevestigd. Je afspraak bij ${name} staat gepland op ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
     legacyConflict: 'Oeps, dat moment bleek toch al bezet. Welk ander moment past je?',
+    legacyCancelled: 'Genoteerd, ik heb de afspraak geannuleerd. Wil je meteen een ander moment prikken?',
     legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
   },
   fr: {
@@ -116,6 +117,7 @@ const LANGUAGES = {
     legacyCallback: (w) => `Parfait. Un collègue te contactera ${w}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
     legacyConfirm: (name, when, addr) => `Confirmé. Ton rendez-vous chez ${name} est prévu le ${when}.${addr ? ` Adresse : ${addr}.` : ''}`,
     legacyConflict: 'Oups, ce moment était finalement déjà pris. Quel autre moment te convient ?',
+    legacyCancelled: 'Noté, j’ai annulé le rendez-vous. Tu veux qu’on fixe un autre moment ?',
     legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
   },
   en: {
@@ -128,6 +130,7 @@ const LANGUAGES = {
     legacyCallback: (w) => `Perfect. A colleague will reach out to you ${w}. You don't need to do anything else. We will come back to you.`,
     legacyConfirm: (name, when, addr) => `Confirmed. Your appointment with ${name} is booked for ${when}.${addr ? ` Address: ${addr}.` : ''}`,
     legacyConflict: 'Oops, that time turned out to already be taken. What other time works for you?',
+    legacyCancelled: 'Noted, I have cancelled the appointment. Shall we pick another time?',
     legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
   },
 
@@ -593,6 +596,22 @@ function buildSlotConflictMessage(code) {
   return 'Sorry, that time slot was just taken. What other time works for you?';
 }
 
+// Sent when a lead tells us in the conversation that they cannot make it and
+// the appointment has actually been cancelled (see the CANCEL:{...} handling in
+// api/whatsapp.js). Deliberately without a reproach and WITH an opening: most
+// leads who cancel are not lost, they are busy -- and the cheapest new
+// appointment is the one you ask for in the same breath.
+//
+// Same nl/fr/en-native, English-fallback rule as buildSlotConflictMessage
+// above, and for the same reason: an unreviewed machine translation of a
+// message about someone's agenda is worse than plain English.
+function buildCancelledMessage(code) {
+  const entry = getLanguage(code);
+  const val = entry.legacyCancelled || entry.cancelled;
+  if (val) return typeof val === 'function' ? val() : val;
+  return 'Noted, I have cancelled the appointment. Shall we pick another time?';
+}
+
 // Default WhatsApp opener rendered right after a lead submits the intake
 // form (before any AI turn — this is the very first message a lead sees).
 // api/form.js uses this rendered text ONLY for the Conversation History
@@ -732,6 +751,7 @@ module.exports = {
   buildCallbackMessage,
   buildConfirmMessage,
   buildSlotConflictMessage,
+  buildCancelledMessage,
   buildWelcomeMessage,
   getLocale,
   isRtl,

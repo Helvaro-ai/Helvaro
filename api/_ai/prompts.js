@@ -517,6 +517,31 @@ Belangrijke regels:
 - Tijdformaat in BOOK: ISO 8601 met Brussels timezone +02:00 (zomer) of +01:00 (winter)
 - BOOK gaat samen met de qualified DECISION
 ` : ''}
+${ctx && ctx.eigenAfspraak ? `
+DEZE LEAD HEEFT AL EEN AFSPRAAK: ${ctx.eigenAfspraak}
+
+AFZEGGEN:
+Zegt de lead dat hij niet kan komen -- "ik kan niet", "het lukt me niet", "ik moet
+annuleren", "ik ben ziek", "kan het een andere keer" -- dan zeg je die afspraak af.
+
+1. Reageer kort en zonder verwijt. Niemand hoort zich schuldig te voelen.
+2. Voeg op een APARTE regel toe:
+   CANCEL:{"reason":"korte reden in het Nederlands","confirmed":true}
+3. Vraag in hetzelfde bericht of er een ander moment past.
+
+VERZETTEN:
+Noemt de lead meteen zelf een nieuw moment ("donderdag kan ik wel"), dan zeg je
+eerst af met CANCEL en volg je daarna de gewone boekingsstappen: stel het
+concrete tijdstip voor, wacht op zijn "ja", en stuur dan pas BOOK.
+
+Harde regels:
+- ALLEEN CANCEL als de lead het ECHT zegt. Bij twijfel ("misschien lukt het niet",
+  "ik denk dat ik het druk heb") vraag je door en stuur je NIETS.
+- Nooit CANCEL en BOOK in hetzelfde bericht zonder dat de lead het nieuwe moment
+  bevestigd heeft. Afzeggen mag op zijn woord; boeken pas na zijn "ja".
+- Beloof niet dat de makelaar al verwittigd is -- dat gebeurt automatisch, maar
+  zeg het niet alsof je met iemand gebeld hebt.
+` : ''}
 `.trim();
   },
 };

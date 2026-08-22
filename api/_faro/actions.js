@@ -59,6 +59,7 @@ const gcal = require('../_gcal');      // per-client Google Calendar
 const credits = require('../_credits'); // creditpoort — zie de video-executor
 const writes = require('./writes');   // de enige plek die CRM-rijen wijzigt
 const schema = require('./schema');   // de kaartjes die de client tekent
+const afspraken = require('../_afspraken'); // afzeggen/verzetten: rij + agenda + leadvlaggen
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -329,25 +330,66 @@ const EXECUTORS = {
      tenant hangt: gcalAccessFor(ctx) levert het token van deze klant en Google
      weigert een id dat niet in die agenda staat. Er is dus geen pad waarlangs
      dit item van iemand anders kan zijn. */
+  /* ── Verzetten en afzeggen ──────────────────────────────────────────────────
+     Deze twee raakten alleen Google aan. Dat leek te werken -- het item was uit
+     de agenda -- maar de rij in Appointments bleef op 'booked' staan, en dat is
+     precies het veld waar de herinneringscron op filtert. Gevolg: de lead kreeg
+     24 uur van tevoren nog netjes een herinnering voor een afspraak die al
+     afgezegd was, en stond voor een dichte deur.
+
+     Allebei lopen nu via api/_afspraken.js, dat de rij, het agenda-item én de
+     twee vlaggen op de lead in één keer bijwerkt. Faro werkt met het GOOGLE-id
+     (dat is wat de makelaar op zijn scherm ziet), dus dat wordt eerst vertaald
+     naar onze eigen rij. Vinden we die niet, dan is het een item dat de
+     makelaar zelf in zijn agenda zette -- geen Helvaro-afspraak, en dan is
+     alleen Google inderdaad alles. */
   async move_appointment(payload, ctx) {
     const startMs = Date.parse(payload && payload.startISO);
     if (!Number.isFinite(startMs)) throw new ActionError('Ongeldig tijdstip.', 'invalid_time');
+    const durationMin = Math.max(15, Math.min(480, Number(payload.durationMin) || 60));
+    const startISO = new Date(startMs).toISOString();
+
+    const eigen = await afspraken.zoekOpEvent(ctx.projectCode, payload && payload.eventId);
+    if (eigen) {
+      const uit = await afspraken.verzet({ projectCode: ctx.projectCode, record: eigen, startISO, durationMin });
+      if (!uit.ok) {
+        console.error('[faro/actions] verzetten mislukt:', uit.reden);
+        throw new ActionError('Het agenda-item kon niet verzet worden.', 'calendar_failed');
+      }
+      return {
+        summary: 'Afspraak verzet, ook in de agenda. De lead heeft hier nog GEEN bericht over gekregen '
+               + '- de automatische herinnering gaat wel over de nieuwe tijd.',
+        components: [],
+      };
+    }
+
     const access = await data.gcalAccessFor(ctx);
     if (!access) throw new ActionError('Google Agenda is niet gekoppeld.', 'not_connected');
-
-    const durationMin = Math.max(15, Math.min(480, Number(payload.durationMin) || 60));
-    const out = await gcal.updateEvent(access.token, access.calId, payload.eventId, {
-      startISO: new Date(startMs).toISOString(),
-      durationMin,
-    });
+    const out = await gcal.updateEvent(access.token, access.calId, payload.eventId, { startISO, durationMin });
     if (!out || !out.ok) {
       console.error('[faro/actions] updateEvent failed:', out && out.error);
       throw new ActionError('Het agenda-item kon niet verzet worden.', 'calendar_failed');
     }
-    return { summary: 'Afspraak verzet.', components: [] };
+    return { summary: 'Agenda-item verzet.', components: [] };
   },
 
   async cancel_appointment(payload, ctx) {
+    const eigen = await afspraken.zoekOpEvent(ctx.projectCode, payload && payload.eventId);
+    if (eigen) {
+      const uit = await afspraken.annuleer({ projectCode: ctx.projectCode, record: eigen, door: 'makelaar' });
+      if (!uit.ok) {
+        console.error('[faro/actions] afzeggen mislukt:', uit.reden);
+        throw new ActionError('De afspraak kon niet afgezegd worden.', 'calendar_failed');
+      }
+      /* Bewust expliciet: er gaat niets naar de lead. Wie denkt dat afzeggen
+         ook afmeldt, laat iemand voor een dichte deur staan. */
+      return {
+        summary: 'Afgezegd: uit de agenda, de afspraak staat op geannuleerd en het moment is weer vrij. '
+               + 'De lead heeft hier GEEN bericht over gekregen - zeg dat erbij en bied aan om hem er een te sturen.',
+        components: [],
+      };
+    }
+
     const access = await data.gcalAccessFor(ctx);
     if (!access) throw new ActionError('Google Agenda is niet gekoppeld.', 'not_connected');
     const out = await gcal.deleteEvent(access.token, access.calId, payload && payload.eventId);
@@ -355,11 +397,8 @@ const EXECUTORS = {
       console.error('[faro/actions] deleteEvent failed:', out && out.error);
       throw new ActionError('De afspraak kon niet afgezegd worden.', 'calendar_failed');
     }
-    /* Bewust expliciet: Google zegt niets tegen de lead. Wie denkt dat
-       afzeggen ook afmeldt, laat iemand voor een dichte deur staan. */
     return {
-      summary: 'Afspraak uit je agenda gehaald. Let op: de lead heeft hier GEEN bericht over gekregen '
-             + '- zeg dat erbij en bied aan om hem een bericht te sturen.',
+      summary: 'Agenda-item weggehaald. Dit was geen Helvaro-afspraak, dus er is geen lead die hierop wacht.',
       components: [],
     };
   },

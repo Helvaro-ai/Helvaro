@@ -12,6 +12,27 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+- **Een lead kan nu zelf afzeggen via WhatsApp.** Zegt hij "ik kan niet komen",
+  "ik ben ziek" of "kan het een andere keer", dan haalt de AI de afspraak uit je
+  agenda, zet hem op geannuleerd, en vraagt meteen wanneer het wel past. Jij
+  krijgt op hetzelfde moment een bericht met wie het is, wanneer het stond en wat
+  hij als reden gaf. Daarvoor bleef zo'n afspraak gewoon staan tot je hem zelf
+  opmerkte — en hield je een uur vrij voor iemand die niet kwam.
+- **Afzeggen deed maar de helft.** Vroeg je Faro om een afspraak af te zeggen,
+  dan verdween het item uit Google maar bleef de afspraak in Helvaro op
+  "geboekt" staan. Gevolg: de lead kreeg 24 uur van tevoren nog netjes een
+  herinnering voor een afspraak die niet meer bestond. Nu gaan de agenda, de
+  afspraak, en de lead zelf in één keer mee. Dat geldt ook voor afzeggen vanaf de
+  Kalender-pagina.
+- **Een afgezegde lead kan weer een nieuwe afspraak maken.** Er stond een rem op
+  die voorkomt dat er twee keer geboekt wordt, en die bleef na een afzegging
+  staan — waardoor de AI voor die lead nooit meer iets kon inplannen. De stilste
+  van de vier fouten hierboven, en de duurste.
+- **Verzetten waarschuwt de lead over de nieuwe tijd.** De herinnering ging
+  eerder uit van de oude afspraak en werd daarna nooit meer verstuurd.
+
 ## 22 augustus 2026 — video (uitgerold)
 
 > **Actie voor jou, vóór je video aanzet.** Zet `KLING_ACCESS_KEY` en
