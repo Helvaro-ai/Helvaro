@@ -29,6 +29,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## 23 augustus 2026 — geld, agenda en internationaal (uitgerold)
 
+- **Twee snel achter elkaar getypte berichten raakten er één kwijt.** Zo typen
+  mensen op WhatsApp: "hey", en vijf tellen later de echte vraag. Beide beurten
+  lazen dezelfde gespreksgeschiedenis, antwoordden apart, en de laatste schreef
+  over de andere heen. De lead kreeg twee antwoorden op een gesprek dat geen van
+  beide heel gezien had, en één beurt was voorgoed weg. Dezelfde fout kon twee
+  afspraken voor één lead maken. Berichten van hetzelfde gesprek gaan nu netjes
+  achter elkaar; verschillende leads houden elkaar niet op.
+- **Een verzonnen tijdstip kon een afspraak maken die nergens op sloeg.** Gaf het
+  AI-model "morgen om 14u" terug in plaats van een echte datum, dan glipte dat
+  langs de dubbelboekingscontrole heen (die rekent dan met een onleesbare datum
+  en vergelijkt dus nooit iets), kwam er een afspraak met een kapot nummer in de
+  agenda, en las de lead een keurige bevestiging voor "morgen om 14u". Nu wordt
+  zo'n tijdstip geweigerd, krijg jij bericht, en wordt de lead om een echt
+  moment gevraagd. Een duur van meer dan vier uur of minder dan vijf minuten kan
+  ook niet meer.
+- **Het storingsbericht was altijd Nederlands.** Precies het ene bericht dat
+  gegarandeerd aankomt als er iets stuk is, ging in het Nederlands naar een
+  Franse of Duitse lead. Nu in hun eigen taal, of anders in het Engels.
+- **Een spraakbericht of foto kreeg totale stilte.** Geen antwoord, geen regel in
+  het gesprek, geen spoor op je dashboard — voor de lead leek het alsof je
+  gestopt was met antwoorden. De AI zegt nu vriendelijk dat hij het niet kan
+  beluisteren en vraagt of de lead het wil typen, in diens eigen taal, en jij
+  ziet het bericht gewoon staan.
+
+## 23 augustus 2026 — geld, agenda en internationaal (uitgerold)
+
 > **Actie voor jou, en dit kost anders geld.** Maak op **Client Config** een veld
 > **`Credit Purchased`** aan, type **Number**. Zonder dat veld verdwijnt het deel
 > van een bijkoop dat groter is dan wat de klant al verbruikt had — hij betaalt
