@@ -15,6 +15,7 @@ const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fai
 const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
 const _optout = require('./_optout');     // wie STOP zegt, krijgt niets meer
+const _transcriptie = require('./_transcriptie'); // spraakberichten uitschrijven (standaard uit)
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a
 // reply, only records usage after the fact. Helvaro's "reactie binnen 30
@@ -211,6 +212,28 @@ module.exports = async function handler(req, res) {
       }
       nietTekst = `[De lead stuurde ${soort}. Je kunt de inhoud hiervan NIET zien of beluisteren. `
         + `Zeg dat vriendelijk, vraag of hij het wil typen, en ga verder met het gesprek.]`;
+
+      /* Is uitschrijven aangezet, dan proberen we het alsnog te LEZEN. Staat
+         standaard uit omdat het geld kost per bericht -- zie api/_transcriptie.js.
+
+         Lukt het, dan gaat de echte tekst het gesprek in en merkt de lead
+         helemaal niets van het onderscheid. Lukt het niet, dan blijft de
+         beschrijving hierboven staan en gebeurt er precies wat er nu gebeurt.
+         Er is dus geen pad waarin dit iets stukmaakt. */
+      if ((message.type === 'audio' || message.type === 'voice') && _transcriptie.aan()) {
+        const bron = message[message.type] || {};
+        const uitgeschreven = await _transcriptie.schrijfUit({
+          mediaId:  bron.id,
+          seconden: bron.duration,
+        }).catch(() => '');
+        if (uitgeschreven) {
+          console.log(`[WhatsApp] spraakbericht uitgeschreven (${uitgeschreven.length} tekens)`);
+          /* Met een markering ervoor, zodat het model weet dat dit gesproken
+             is en niet getypt. Dat scheelt: gesproken taal loopt anders, en
+             "eh" of een halve zin is geen onduidelijkheid maar spraak. */
+          nietTekst = `[Ingesproken bericht, automatisch uitgeschreven] ${uitgeschreven}`;
+        }
+      }
     }
 
     // Webhook deduplication. Meta sends duplicate webhooks when our reply is

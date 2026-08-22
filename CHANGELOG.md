@@ -19,6 +19,20 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 > **`Credit Purchased`**, type **Number** (dat stond er al). `node
 > scripts/preflight.js` faalt hard op allebei.
 
+**Spraakberichten kunnen nu echt gelezen worden**
+
+- **Optioneel, en standaard uit.** Zet `WHATSAPP_TRANSCRIBE=1` in Vercel en de
+  AI schrijft ingesproken berichten automatisch uit, in plaats van te vragen of
+  de lead het wil typen. Het kost ongeveer een halve cent per spraakbericht en
+  dat zit niet in de creditprijs — vandaar dat jij het aanzet en niet ik.
+- **Waarom het de moeite waard is:** iemand die net zijn hele situatie heeft
+  ingesproken en dan te horen krijgt "kan je dat typen", is precies het moment
+  waarop een lead afhaakt. Zeker bij oudere kopers, die vaker inspreken dan
+  typen.
+- Lukt het uitschrijven niet, dan gebeurt er precies wat er nu gebeurt: de AI
+  zegt vriendelijk dat hij het niet kan beluisteren. Er is geen situatie waarin
+  dit iets stukmaakt.
+
 **Campagnes**
 
 - **Campagnes zeiden "nog niet aangesloten" en doen nu het werk dat kan.** Je
