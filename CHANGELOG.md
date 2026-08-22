@@ -12,7 +12,29 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## 23 augustus 2026 — geld, agenda en internationaal (uitgerold)
+## Nog niet uitgerold
+
+**Het scherm zei dingen die niet waar waren**
+
+- **De filters op de exportpagina deden niets.** Je koos "laatste 7 dagen,
+  alleen gekwalificeerd", het scherm zei "4 leads geselecteerd", je klikte
+  downloaden — en kreeg alle 380. De filters pasten alleen de voorbeeldweergave
+  aan en gingen nooit mee naar de server. Nu bevat het bestand precies wat je
+  aanvinkte.
+- **"Afspraak resultaat" kon mislukken zonder dat je het zag.** De knop meldde
+  succes en het scherm was al bijgewerkt, ook als het opslaan stukliep. Dat is
+  het veld waar je omzet- en opkomstcijfers op Analyse uit gerekend worden. Nu
+  krijg je een echte foutmelding en springt de knop terug.
+- **"Google Agenda ontkoppelen" meldde altijd dat het gelukt was**, ook als het
+  mislukte. Je koppeling was dan nog gewoon actief.
+- **De Kalender feliciteerde een nieuwe klant** met "Alle gekwalificeerde leads
+  hebben een afspraak!" terwijl hij er nul had.
+- **De pagina Gesprekken was een dubbele doodlopende weg** voor een nieuwe
+  klant: links "Geen gesprekken gevonden", rechts "Selecteer een gesprek", en
+  nergens een aanwijzing. Nu staat er wat er moet gebeuren, met de knop om je
+  formulierlink te kopiëren.
+
+**De AI en de agenda**
 
 - **Twee snel achter elkaar getypte berichten raakten er één kwijt.** Zo typen
   mensen op WhatsApp: "hey", en vijf tellen later de echte vraag. Beide beurten
@@ -21,6 +43,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   beide heel gezien had, en één beurt was voorgoed weg. Dezelfde fout kon twee
   afspraken voor één lead maken. Berichten van hetzelfde gesprek gaan nu netjes
   achter elkaar; verschillende leads houden elkaar niet op.
+- **Een verzonnen tijdstip kon een afspraak maken die nergens op sloeg.** Gaf het
+  AI-model "morgen om 14u" terug in plaats van een echte datum, dan glipte dat
+  langs de dubbelboekingscontrole heen (die rekent dan met een onleesbare datum
+  en vergelijkt dus nooit iets), kwam er een afspraak met een kapot nummer in de
+  agenda, en las de lead een keurige bevestiging voor "morgen om 14u". Nu wordt
+  zo'n tijdstip geweigerd, krijg jij bericht, en wordt de lead om een echt
+  moment gevraagd. Een duur van meer dan vier uur of minder dan vijf minuten kan
+  ook niet meer.
+- **Het storingsbericht was altijd Nederlands.** Precies het ene bericht dat
+  gegarandeerd aankomt als er iets stuk is, ging in het Nederlands naar een
+  Franse of Duitse lead. Nu in hun eigen taal, of anders in het Engels.
 - **Een spraakbericht of foto kreeg totale stilte.** Geen antwoord, geen regel in
   het gesprek, geen spoor op je dashboard — voor de lead leek het alsof je
   gestopt was met antwoorden. De AI zegt nu vriendelijk dat hij het niet kan
