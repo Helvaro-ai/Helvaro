@@ -490,6 +490,26 @@ async function probe(url, opts = {}) {
     warn('tabellen niet te controleren — Airtable-credentials niet beschikbaar');
   }
 
+  /* ── Het bijgekocht-saldo ──────────────────────────────────────────────────
+     Zonder dit veld valt addCredits() terug op de oude telling, en die liet
+     bijgekochte credits verdampen: wie 400 verbruikt had en er 6.000 bijkocht,
+     kreeg er 400 bij. Dat is geld dat een klant betaald heeft en niet krijgt,
+     dus dit is een FOUT en geen aandachtspunt. */
+  if (process.env.API_AIRTABLE && process.env.BASE_AIRTABLE) {
+    const r = await probe(
+      `https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?pageSize=1&fields%5B%5D=Credit%20Purchased`,
+      { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } });
+    if (r.ok) ok('veld "Credit Purchased" bestaat — bijgekochte credits blijven staan');
+    else if (r.status === 422) {
+      fail('veld "Credit Purchased" ontbreekt in Client Config',
+           'Maak het aan als Number op Client Config. Zonder dit veld verdwijnt het deel van\n'
+         + 'een bijkoop dat groter is dan het huidige verbruik — de klant betaalt en krijgt het\n'
+         + 'niet. De code valt terug op de oude telling en logt wat er verloren gaat.');
+    } else {
+      warn(`veld "Credit Purchased" niet te controleren (HTTP ${r.status || r.error})`);
+    }
+  }
+
   /* ── Video ─────────────────────────────────────────────────────────────────
      Het videomodel staat op kling, en de kling-adapter is geschreven zonder
      toegang tot de documentatie van de leverancier -- zes aannames, elk met een

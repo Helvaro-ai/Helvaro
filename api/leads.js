@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const _gcal   = require('./_gcal');
 const _afspraken = require('./_afspraken'); // afzeggen: rij + agenda + leadvlaggen
+const _regio  = require('./_regio');      // land, tijdzone, munt en telefoon per klant
 const _session = require('./_session');
 const _revoke  = require('./_revocation');
 const _clerk   = require('./_clerk'); // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
@@ -1329,11 +1330,8 @@ module.exports = async function handler(req, res) {
     // body: { mode: 'test-message', phone: '32478123456', message: '...' }
     if (body.mode === 'test-message') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
-      let phone = String(body.phone || '').replace(/[\s\-\(\)\.]/g, '');
-      if      (phone.startsWith('00')) phone = phone.slice(2);
-      else if (phone.startsWith('+'))  phone = phone.slice(1);
-      else if (phone.startsWith('0'))  phone = '32' + phone.slice(1);
-      if (!/^\d{8,15}$/.test(phone))   return res.status(400).json({ error: 'Ongeldig telefoonnummer' });
+      const phone = normalizePhoneForWA(body.phone);
+      if (!phone) return res.status(400).json({ error: 'Ongeldig telefoonnummer' });
       const message = String(body.message || '').trim().slice(0, 2000);
       if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
 
@@ -2725,12 +2723,11 @@ async function sendResendEmail({ subject, html, to }) {
 // mode above (line ~800), factored out here since the dashboard's
 // appointment form may not enforce a clean format the way the WhatsApp
 // webhook's `message.from` always is.
-function normalizePhoneForWA(raw) {
-  let phone = String(raw || '').replace(/[\s\-\(\)\.]/g, '');
-  if      (phone.startsWith('00')) phone = phone.slice(2);
-  else if (phone.startsWith('+'))  phone = phone.slice(1);
-  else if (phone.startsWith('0'))  phone = '32' + phone.slice(1);
-  return /^\d{8,15}$/.test(phone) ? phone : '';
+function normalizePhoneForWA(raw, regio) {
+  /* `regio` bepaalt wat een nul vooraan betekent. Zonder meegegeven regio blijft
+     dit België, precies zoals het was -- zie api/_regio.js voor waarom dat voor
+     een Britse of Emiraatse klant een nummer opleverde dat niet bestaat. */
+  return _regio.naarE164(raw, regio || _regio.standaard());
 }
 
 // Human-readable appointment date/time in the given language, Brussels tz.

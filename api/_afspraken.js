@@ -72,7 +72,12 @@ const STATUS = Object.freeze({
 
 function envKlaar() { return Boolean(AIRTABLE_BASE && AIRTABLE_TOKEN); }
 
-function escapeFormula(s) { return String(s == null ? '' : s).replace(/"/g, '\\"'); }
+/* Backslash EERST, dan het aanhalingsteken -- andersom escape je je eigen
+   escape-teken weer weg. Alle twaalf andere kopieën in deze codebase doen het
+   zo; deze was de dertiende die het niet deed. */
+function escapeFormula(s) {
+  return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
 
 /* Eigen kopie, net als in elk ander bestand hier: één retry op 429 en klaar.
    Airtable knijpt per base, en een afzegging die stukloopt op een limiet is een

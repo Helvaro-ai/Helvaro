@@ -13,6 +13,7 @@ const { waitUntil } = require('@vercel/functions');
 const { fetchWebsite } = require('./_lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
+const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a
 // reply, only records usage after the fact. Helvaro's "reactie binnen 30
@@ -681,8 +682,17 @@ async function processMessage(phone, text, scopedProjectCode) {
   // verkooppunt). Wel als CONTEXT voor de AI's system prompt zodat ze
   // realistische afspraak-tijden voorstelt ('morgen om 10u' ipv 'over een
   // uur' als het 22u is en de zaak 9-18 open is).
+  /* Waar staat dit kantoor? Bepaalt de klok, de munt en het landnummer.
+     Ontbreken de velden in Airtable, dan komt hier België uit en verandert er
+     voor bestaande klanten niets. Zie api/_regio.js. */
+  const regio = _regio.lees(client.fields);
+
   const workingHours = (client.fields['fldq5oIqw5MG8fKhc'] || client.fields['Working Hours'] || '').toString().trim();
-  const outsideHours = workingHours && !isWithinWorkingHours(workingHours);
+  /* De klok van de KLANT, niet die van Brussel. Dit stond hardgecodeerd op
+     Europe/Brussels: een Londens kantoor was volgens ons open van 08:00 tot
+     16:00 hun tijd, en in Dubai liep het drie uur uit de pas. De AI vertelde
+     leads dan dat het bureau gesloten was terwijl er iemand zat. */
+  const outsideHours = workingHours && !_regio.binnenWerkuren(workingHours, regio);
 
   // Booking method: 'in_chat' (AI vraagt + boekt direct) of 'callback' (collega belt terug)
   // 'calendly' is deprecated — bestaande klanten met 'calendly' krijgen automatisch 'in_chat' gedrag.
@@ -824,6 +834,14 @@ async function processMessage(phone, text, scopedProjectCode) {
   if (history.length === 1) {
     const creditWork = credits.recordUsage(projectCode, credits.FEATURES.WHATSAPP_CONVERSATION, {
       credits: credits.WEIGHTS[credits.FEATURES.WHATSAPP_CONVERSATION],
+      /* Eén gesprek, één afschrijving, voor altijd -- ook al komt deze beurt
+         tien keer langs. Dat gebeurde echt: de historie wordt alleen bewaard
+         als het antwoord AANKWAM, dus tijdens een storing begon elke volgende
+         beurt weer bij "één bericht" en werd er opnieuw twintig credits
+         geboekt. Voor een lead die nooit iets terugkreeg. Dezelfde referentie
+         vangt ook een webhook die Meta opnieuw aanbiedt op een andere
+         Vercel-instantie, waar de geheugen-ontdubbeling niets van weet. */
+      reference: `wa:${lead.id}`,
       meta: { leadId: lead.id },
     }).catch(() => {}); // recordUsage() itself never throws; belt-and-braces
     // Not awaited (must never add latency before the reply goes out below),
@@ -1079,6 +1097,40 @@ async function processMessage(phone, text, scopedProjectCode) {
     }
   }
 
+  /* Wat er moet gebeuren als een boeking stukloopt nadat de AI hem al bevestigd
+     heeft. Apart, omdat er twee wegen naartoe lopen (een geweigerde schrijf en
+     een uitzondering) en ze allebei hetzelfde moeten doen. */
+  async function meldMislukteBoeking(reden) {
+    console.error(`[whatsapp] afspraak NIET aangemaakt voor ${phone} (${projectCode}): ${reden}`);
+    try {
+      await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId);
+    } catch (e) {
+      console.error('[whatsapp] correctie na mislukte boeking niet verstuurd:', e && e.message);
+    }
+    if (ownerPhone) {
+      await sendWA(ownerPhone,
+        `[Actie nodig] Afspraak NIET aangemaakt\n\n` +
+        `Naam: ${leadName || '(onbekend)'}\n` +
+        `Tel: ${phone}\n` +
+        `Project: ${projectCode}\n\n` +
+        `De AI bevestigde een afspraak aan de lead, maar het opslaan mislukte (${String(reden).slice(0, 160)}). ` +
+        `Er staat NIETS in de agenda. De lead is gevraagd een ander moment te kiezen, maar bel hem gerust zelf.\n\n` +
+        `Dashboard: https://app.helvaro.pro/dashboard`,
+        clientPhoneNumberId).catch(() => {});
+    }
+    if (ownerEmail) {
+      sendOwnerEmail({
+        to: ownerEmail,
+        subject: `[Actie nodig] Afspraak niet aangemaakt. ${subjectSafe(leadName || phone)}`,
+        heading: 'Een bevestigde afspraak is niet opgeslagen',
+        leadName, phone, projectCode, clientName,
+        body: `<p style="background:#fee2e2;padding:12px;border-radius:8px">De AI bevestigde een afspraak aan de lead, `
+            + `maar het opslaan mislukte:<br><strong>${escEmail(String(reden).slice(0, 200))}</strong></p>`
+            + `<p>Er staat niets in de agenda. De lead is gevraagd een ander moment te kiezen.</p>`,
+      }).catch(() => {});
+    }
+  }
+
   // 11b. IN-CHAT booking — AI heeft BOOK:{...} block uitgegeven in z'n antwoord.
   //      Verwerk de booking: maak Appointment record + bevestig naar lead +
   //      notify owner. AI handelt de natuurlijke conversatie zelf af (parseert
@@ -1215,9 +1267,24 @@ async function processMessage(phone, text, scopedProjectCode) {
                 else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
               }
             } catch (e) { console.error('[gcal] booking mirror exception:', e && e.message); }
+          } else {
+            /* De afspraak is NIET aangemaakt, en de AI heeft de lead hierboven
+               al "ingepland, tot dan" geschreven. Dat bericht is niet terug te
+               halen. Hier stond niets -- geen else, alleen een console.error in
+               de catch -- en dat betekende: de lead denkt dat hij een
+               bezichtiging heeft, de agenda is leeg, en niemand weet het. De
+               makelaar hoorde er pas van als er iemand voor een dichte deur
+               stond, of nooit.
+
+               Het slot-conflict twee blokken hierboven doet dit al goed en is
+               hier het voorbeeld: de lead rechtzetten, de makelaar waarschuwen,
+               en de boekingsvlag NIET zetten zodat een volgende beurt het
+               alsnog kan boeken. */
+            await meldMislukteBoeking(apptResult.error || 'onbekende fout');
           }
         } catch (err) {
           console.error('[whatsapp] appointment creation failed:', err.message);
+          await meldMislukteBoeking(err && err.message);
         }
       }
     }
@@ -1441,7 +1508,21 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
      wordt er niets geknipt, en leest de lead die regel gewoon in zijn WhatsApp.
      Dat is de ene fout die hier echt niet mag: alles op deze plek mag misgaan
      zolang de lead maar niet ziet dat hij met een machine praat. */
-  cleaned = cleaned.replace(/^[ \t]*CANCEL:.*$/gm, '').trim();
+  /* En dan de vangnetregel voor ALLE vier de stuurblokken.
+   *
+   * Elk blok wordt hierboven netjes geknipt zodra het parseert. Parseert het
+   * niet -- en dat gebeurt: het model schrijft `"reason":"hij zei "ja""` met een
+   * niet-ontsnapt aanhalingsteken, of vergeet een accolade -- dan gooit
+   * JSON.parse, en bij BOOK en DECISION staat de knipregel BINNEN die try. Er
+   * werd dan niets geknipt en de lead las letterlijk
+   * `DECISION:{"qualified":true,...}` in zijn WhatsApp.
+   *
+   * Dit is de enige fout in dit bestand die de illusie meteen kapotmaakt. Eén
+   * regel, buiten elke try, na alle parsers: wat er ook misgaat, een regel die
+   * met een stuurwoord begint gaat er hoe dan ook uit.
+   *
+   * /gm en niet /m: het model kan er twee uitsturen. */
+  cleaned = cleaned.replace(/^[ \t]*(?:CANCEL|BOOK|DECISION|SUMMARY):.*$/gm, '').trim();
 
   // 3. Parse DECISION block if present (only on final turn / escalation)
   const match = cleaned.match(/DECISION:\s*(\{[\s\S]*?\})/);
