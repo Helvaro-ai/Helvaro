@@ -19,6 +19,21 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 > **`Credit Purchased`**, type **Number** (dat stond er al). `node
 > scripts/preflight.js` faalt hard op allebei.
 
+**Campagnes**
+
+- **Campagnes zeiden "nog niet aangesloten" en doen nu het werk dat kan.** Je
+  vraagt de AI een campagne rond een pand, hij maakt hem aan met de leads die
+  je koos, en hij vertelt je hoeveel er afvielen en waarom. Afgemelde leads
+  gaan er automatisch uit, en leads van een ander kantoor komen er niet in.
+- **Wat nog NIET kan: versturen.** Een campagnebericht valt vrijwel altijd
+  buiten het 24-uursvenster van WhatsApp — dat is nu juist waarom je een
+  campagne doet — en dan staat Meta alleen een goedgekeurde template toe. Die
+  goedkeuring moet er eerst komen. De campagne staat tot dan op *klaar voor
+  verzending* en de AI zegt er met zoveel woorden bij dat er niets verstuurd is.
+- **Optioneel:** wil je dit gebruiken, maak dan een tabel **`campaigns`** aan in
+  Airtable. Zolang die er niet is, zegt de AI eerlijk dat campagnes uitstaan in
+  plaats van een fout te geven.
+
 **Afmelden — dit bestond helemaal niet**
 
 - **Een lead die "STOP" stuurde kreeg gewoon antwoord, en de dag erna weer een
