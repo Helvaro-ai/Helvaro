@@ -677,6 +677,53 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 #login-page::before { display: none; }
 #login-page::after  { display: none; }
 
+/* ── Zolang Clerk laadt ─────────────────────────────────────────────────────
+   Ons eigen formulier staat er wel in de HTML (het is het vangnet), maar het
+   wordt niet getoond zolang we nog verwachten dat Clerk het overneemt. Anders
+   ziet een bezoeker twee inlogschermen na elkaar.
+
+   De titel en de ondertitel gaan mee: Clerks kaart heeft zijn eigen kop, en
+   twee koppen die ongeveer hetzelfde zeggen op één paneel is dezelfde fout in
+   het klein. De schakelaar Inloggen/Account aanmaken blijft WEL staan -- die
+   is van ons, hij werkt met Clerk, en hij is het enige wat een nieuwe bezoeker
+   meteen vertelt dat hij hier ook een account kan maken. */
+#login-page.clerk-wacht #login-form-wrap,
+#login-page.clerk-wacht .login-welcome,
+#login-page.clerk-wacht .login-subtitle { display: none; }
+
+#clerk-skelet {
+  min-height: 320px;
+  padding: 8px 0 0;
+}
+.skelet-regel, .skelet-veld, .skelet-knop {
+  background: var(--login-input-bg);
+  border-radius: 8px;
+}
+.skelet-regel { height: 14px; margin-bottom: 10px; }
+.skelet-titel  { width: 58%; height: 22px; margin-bottom: 12px; }
+.skelet-sub    { width: 78%; margin-bottom: 26px; }
+.skelet-veld {
+  height: 44px;
+  margin-bottom: 16px;
+  border: 1px solid var(--login-border);
+}
+.skelet-knop {
+  height: 44px;
+  margin-top: 8px;
+  background: var(--login-border);
+}
+/* Een rustige puls, geen glinsterband die over het scherm schuift: dit staat er
+   idealiter een halve seconde, en dan hoort het niet de aandacht te trekken. */
+@keyframes skelet-puls { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+#clerk-skelet > * { animation: skelet-puls 1.4s ease-in-out infinite; }
+#clerk-skelet > *:nth-child(2) { animation-delay: .1s; }
+#clerk-skelet > *:nth-child(3) { animation-delay: .2s; }
+#clerk-skelet > *:nth-child(4) { animation-delay: .3s; }
+#clerk-skelet > *:nth-child(5) { animation-delay: .4s; }
+@media (prefers-reduced-motion: reduce) {
+  #clerk-skelet > * { animation: none; }
+}
+
 /* De regel onder de inlogknop: wachtwoord vergeten en registreren. Kleuren
    uit tokens -- hier stond #6b7280 hardgecodeerd, wat in het lichte thema
    toevallig klopte en verder nergens op sloeg. */
@@ -8308,7 +8355,22 @@ ${cmd.css}
 <!-- ============================================================
      LOGIN PAGE
      ============================================================ -->
-<div id="login-page">
+<!-- De klasse clerk-wacht verbergt ONS formulier zolang Clerk nog laadt.
+
+     Zonder die klasse zag je eerst het eigen e-mail-en-wachtwoordscherm en een
+     seconde later dat van Clerk eroverheen. Twee verschillende inlogschermen na
+     elkaar op dezelfde pagina, en het tweede vervangt wat je net begon in te
+     typen -- dat is geen trage pagina, dat is een pagina die van gedachten
+     verandert.
+
+     Hij wordt SERVERZIJDIG gezet, want de server weet al of Clerk aanstaat.
+     Het in JavaScript doen zou de flits alleen verkleinen, niet weghalen.
+
+     Het vangnet blijft heel: elk pad dat Clerk opgeeft -- script geblokkeerd,
+     time-out, mislukte mount, leeg gebleven kaart -- haalt deze klasse weg via
+     eigenFormulier(true), en dan staat het eigen formulier er gewoon. Er is
+     geen weg waarin de bezoeker met een leeg paneel achterblijft. -->
+<div id="login-page"${CLERK_READY ? ' class="clerk-wacht"' : ''}>
   <button class="btn-icon login-theme-toggle" id="btn-theme-login" type="button" onclick="toggleTheme()"
           aria-label="Wissel tussen donker en licht"></button>
   <div class="login-split">
@@ -8380,6 +8442,19 @@ ${cmd.css}
           <li>Maandelijks opzegbaar</li>
         </ul>
         </div><!-- /login-form-wrap -->
+
+        <!-- Wat er staat terwijl Clerk onderweg is. Geen tekst als "even
+             geduld" -- de vorm van het formulier dat zo komt, zodat het scherm
+             niet springt zodra het er echt is. Verdwijnt pas als Clerk
+             aantoonbaar iets getekend heeft (clerkVangnet), of als het
+             misgaat, en dan komt ons eigen formulier terug. -->
+        <div id="clerk-skelet" aria-hidden="true"${CLERK_READY ? '' : ' style="display:none"'}>
+          <div class="skelet-regel skelet-titel"></div>
+          <div class="skelet-regel skelet-sub"></div>
+          <div class="skelet-veld"></div>
+          <div class="skelet-veld"></div>
+          <div class="skelet-knop"></div>
+        </div>
 
         <!-- Clerk mounts sign-in OR sign-up here. Hidden until it does. -->
         <div id="clerk-signin" style="display:none;min-height:320px"></div>
@@ -11504,16 +11579,29 @@ async function clerkInit() {
   if (!CLERK_READY) return null;
   if (_clerkLoaded) return _clerkLoaded;
   _clerkLoaded = new Promise(function (resolve) {
+    /* Een harde bovengrens, want niet elke mislukking geeft een foutmelding.
+       Een script dat blijft hangen (een DNS die niet antwoordt, een netwerk dat
+       de verbinding openhoudt) roept nooit onload EN nooit onerror aan. Zonder
+       deze klok blijft dit belofte-object eeuwig open, wacht init() daar
+       eeuwig op, en staat de bezoeker naar een plaatshouder te kijken die nooit
+       iets wordt. Tien seconden is ruim voor een trage 3G-verbinding en kort
+       genoeg om nog iemand te zijn die wil inloggen. */
+    var klaar = false;
+    var af = function (waarde) { if (!klaar) { klaar = true; resolve(waarde); } };
+    setTimeout(function () {
+      if (!klaar) console.error('[clerk] laadde niet binnen 10s — terug naar het eigen formulier');
+      af(null);
+    }, 10000);
     var sc = document.createElement('script');
     sc.async = true;
     sc.crossOrigin = 'anonymous';
     sc.setAttribute('data-clerk-publishable-key', '${CLERK_PK}');
     sc.src = 'https://${CLERK_HOST}/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
     sc.onload = async function () {
-      try { await window.Clerk.load({ afterSignOutUrl: '/dashboard', localization: CLERK_NL }); resolve(window.Clerk); }
-      catch (e) { console.error('[clerk] laden mislukt', e); resolve(null); }
+      try { await window.Clerk.load({ afterSignOutUrl: '/dashboard', localization: CLERK_NL }); af(window.Clerk); }
+      catch (e) { console.error('[clerk] laden mislukt', e); af(null); }
     };
-    sc.onerror = function () { console.error('[clerk] script kon niet geladen worden'); resolve(null); };
+    sc.onerror = function () { console.error('[clerk] script kon niet geladen worden'); af(null); };
     document.head.appendChild(sc);
   });
   return _clerkLoaded;
@@ -11579,6 +11667,26 @@ var CLERK_NL = {
   },
 };
 
+/* De wachtstand: staat er een plaatshouder waar Clerk zo komt, of niet?
+
+   wachtOpClerk(false) is onomkeerbaar in de goede richting: de plaatshouder
+   gaat weg en het eigen formulier mag weer getoond worden. Elk pad dat eindigt
+   -- Clerk staat er, Clerk komt niet, de bezoeker is al ingelogd -- gaat hier
+   langs. */
+function wachtOpClerk(aan) {
+  var pagina = document.getElementById('login-page');
+  if (pagina) pagina.classList.toggle('clerk-wacht', !!aan);
+  var skelet = document.getElementById('clerk-skelet');
+  if (skelet) skelet.style.display = aan ? '' : 'none';
+}
+
+/* Clerk heeft getekend: de plaatshouder mag weg, maar ons formulier blijft
+   verborgen -- er staat immers iets beters. */
+function skeletWeg() {
+  var skelet = document.getElementById('clerk-skelet');
+  if (skelet) skelet.style.display = 'none';
+}
+
 /* Het eigen formulier tonen of verbergen -- op EEN plek, zodat "terugkomen"
    even makkelijk is als "weggaan". Dat het maar een kant op ging, is precies
    waarom een mislukte wissel een leeg scherm opleverde. */
@@ -11586,6 +11694,14 @@ function eigenFormulier(zichtbaar) {
   var form = document.getElementById('login-form-wrap');
   var wel  = document.querySelector('.login-welcome');
   var sub  = document.querySelector('.login-subtitle');
+  /* De wachtstand opheffen hoort HIER, en niet bij elke aanroeper.
+
+     Het eigen formulier wordt serverzijdig verborgen met de klasse clerk-wacht
+     zolang we Clerk verwachten (zie de HTML van #login-page). Een stijlregel
+     wint van style.display = '': zou dat vergeten worden, dan zet dit de
+     display terug op "wat de CSS zegt", en de CSS zegt: verborgen. Precies het
+     lege paneel dat het vangnet moest voorkomen. */
+  if (zichtbaar) wachtOpClerk(false);
   if (form) form.style.display = zichtbaar ? '' : 'none';
   // Clerk's kaart heeft zijn eigen titel; die van ons zou de tweede kop op
   // hetzelfde paneel zijn die ongeveer hetzelfde zegt.
@@ -11788,8 +11904,11 @@ function clerkVangnet(host, wat) {
     pogingen++;
     if (!host || !host.isConnected) return;          // al vervangen door een nieuwe mount
     if (host.childElementCount > 0) {
-      // Gelukt. Nu pas mag het eigen formulier weg.
+      // Gelukt. Nu pas mag het eigen formulier weg, en nu pas is de
+      // plaatshouder overbodig -- niet één tel eerder, want dan is er een
+      // moment waarop het paneel leeg is.
       eigenFormulier(false);
+      skeletWeg();
       return;
     }
     if (pogingen < 6) { setTimeout(kijk, 500); return; }
@@ -12468,8 +12587,18 @@ function handleAuthExpired() {
     if (dashEl) dashEl.classList.remove('visible');
     if (loginEl) loginEl.style.display = 'flex';
     hideHelpWidget();
-    const emailEl = document.getElementById('login-email');
-    if (emailEl) emailEl.focus();
+    /* Met Clerk aan staat ons eigen formulier er niet -- het inlogscherm is
+       Clerks kaart. Hier werd onvoorwaardelijk het e-mailveld gefocust, en dat
+       veld is dan verborgen: je kreeg het loginscherm te zien zonder iets om
+       in te loggen. Opnieuw monteren geeft wél een bruikbaar scherm, en het is
+       geen herlaadbeurt -- die zou bij een 401 met een geldige Clerk-sessie in
+       een lus kunnen belanden. */
+    if (typeof CLERK_READY !== 'undefined' && CLERK_READY && window.Clerk && window.Clerk.mountSignIn) {
+      try { mountClerkSignIn(window.Clerk); } catch (e) { terugNaarEigenFormulier(''); }
+    } else {
+      const emailEl = document.getElementById('login-email');
+      if (emailEl) emailEl.focus();
+    }
     _authExpiredHandled = false;
   }, 600);
 }
@@ -21747,6 +21876,10 @@ function hideHelpWidget() {
       console.warn('[clerk] niet geladen — terug naar de klassieke inlog met e-mail en wachtwoord');
       const el = document.getElementById('clerk-signin');
       if (el) el.style.display = 'none';
+      // De wachtstand opheffen VOORDAT het formulier getoond wordt: zolang de
+      // klasse clerk-wacht op de pagina staat, verbergt de CSS het formulier
+      // en zou display:'block' er niets aan veranderen.
+      eigenFormulier(true);
       const wrap = document.getElementById('login-form-wrap');
       if (wrap) wrap.style.display = 'block';
       // en verder met het legacy-pad hieronder (geen return)
@@ -21754,6 +21887,11 @@ function hideHelpWidget() {
       if (!clerk.user) {
         document.getElementById('login-page').style.display = 'flex';
         mountClerkSignIn(clerk);
+        /* De diavoorstelling rechts stond stil op precies het scherm dat
+           iedereen ziet. Hij werd alleen gestart in de klassieke tak
+           hieronder, dus met Clerk aan bleef de merkkant op dia 1 hangen --
+           inclusief de bolletjes die suggereren dat er meer komt. */
+        initLoginSlideshow();
         return;
       }
       // Signed in. The tenant comes from the server, not from anything the page
