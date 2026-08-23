@@ -381,6 +381,69 @@ async function probe(url, opts = {}) {
     ok(`STRIPE_WEBHOOK_SECRET aanwezig (${mask(whsec)})`);
   }
 
+  /* Twee dingen bestaan alleen BIJ Stripe en niet in een omgevingsvariabele.
+     Beide zijn precies één keer aan te zetten en beide falen anders altijd --
+     niet af en toe. Ze staan hier omdat er geen andere plek is waar je ze
+     tegenkomt vóór een klant ze tegenkomt. */
+  if (stripeSk && _stripe.configured()) {
+    const kop = { Authorization: `Bearer ${stripeSk}` };
+
+    /* 1. Het klantportaal. Zonder eenmalige configuratie weigert Stripe ELKE
+          portaalsessie met "No configuration provided". De knop "Beheer
+          abonnement" werkt dan voor niemand, ooit. */
+    const pc = await probe('https://api.stripe.com/v1/billing_portal/configurations?limit=1', { headers: kop });
+    if (!pc.ok) {
+      warn(`het klantportaal is niet na te kijken (${pc.error || 'HTTP ' + pc.status})`,
+           'Controleer het met de hand: Stripe > Instellingen > Facturatie > Klantportaal.');
+    } else {
+      const d = await pc.res.json().catch(() => ({}));
+      const aantal = (d && Array.isArray(d.data) && d.data.length) || 0;
+      if (!aantal) {
+        fail('het KLANTPORTAAL is niet geactiveerd in Stripe',
+             'Elke klant die op "Beheer abonnement" klikt krijgt een foutmelding, nu en\n'
+           + 'over een maand. Zet het één keer aan via Stripe > Instellingen >\n'
+           + 'Facturatie > Klantportaal (dashboard.stripe.com/settings/billing/portal)\n'
+           + 'en bewaar de instellingen; daarmee ontstaat de standaardconfiguratie.');
+      } else {
+        ok(`klantportaal geactiveerd (${aantal} configuratie${aantal > 1 ? 's' : ''})`);
+      }
+    }
+
+    /* 2. De webhook zelf. Een correct gevormd whsec_… bewijst niet dat er aan
+          de andere kant iets naar ons luistert -- en juist dán betaalt de klant
+          zonder credits te krijgen. */
+    const we = await probe('https://api.stripe.com/v1/webhook_endpoints?limit=100', { headers: kop });
+    if (!we.ok) {
+      warn(`de webhook is niet na te kijken (${we.error || 'HTTP ' + we.status})`,
+           'Controleer met de hand of https://app.helvaro.pro/api/stripe in Stripe staat.');
+    } else {
+      const d = await we.res.json().catch(() => ({}));
+      const alle = (d && Array.isArray(d.data) && d.data) || [];
+      const naarOns = alle.filter((e) => String(e.url || '').indexOf('/api/stripe') !== -1
+                                      && e.status === 'enabled');
+      if (!naarOns.length) {
+        fail('er staat GEEN ingeschakelde webhook naar /api/stripe in Stripe',
+             'De betaling slaagt en er gebeurt daarna niets: geen credits, geen plan.\n'
+           + 'Maak er een naar https://app.helvaro.pro/api/stripe.');
+      } else {
+        /* Precies de drie waar api/stripe.js iets mee doet. Een ontbrekende
+           gebeurtenis is stil: alles werkt, behalve dat ene geval. */
+        const nodig = ['checkout.session.completed', 'invoice.paid', 'customer.subscription.deleted'];
+        const geleverd = new Set();
+        for (const e of naarOns) for (const g of (e.enabled_events || [])) geleverd.add(g);
+        const mist = geleverd.has('*') ? [] : nodig.filter((g) => !geleverd.has(g));
+        if (mist.length) {
+          fail(`de webhook luistert niet naar: ${mist.join(', ')}`,
+               'Zet die gebeurtenis(sen) erbij in Stripe. Zonder checkout.session.completed\n'
+             + 'komen gekochte credits nooit aan; zonder customer.subscription.deleted\n'
+             + 'blijft een opgezegde klant onbeperkt doordraaien.');
+        } else {
+          ok(`webhook naar /api/stripe staat aan (${naarOns[0].url})`);
+        }
+      }
+    }
+  }
+
   // Het tarief voor bijkopen hoort gelijk te zijn aan het goedkoopste plan.
   const credits = require('../api/_credits.js');
   const starterPer = _plans.perCredit(_plans.STANDAARD_PLAN);
