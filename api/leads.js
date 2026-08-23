@@ -1645,7 +1645,28 @@ module.exports = async function handler(req, res) {
         });
         return res.status(200).json({ url: sessie.url });
       } catch (err) {
-        console.error('[stripe] portaal openen mislukt voor', projectCode, '-', err && err.message);
+        const reden = String((err && err.message) || '');
+        console.error('[stripe] portaal openen mislukt voor', projectCode, '-', reden);
+
+        /* Eén oorzaak apart, omdat hij niets met de klant te maken heeft en
+           precies één keer voorkomt: het klantportaal moet in Stripe eenmalig
+           geactiveerd worden (Instellingen > Facturatie > Klantportaal). Is dat
+           niet gebeurd, dan weigert Stripe ELKE portaalsessie met "No
+           configuration provided". Dat is een instelling van ons, geen storing
+           van de klant, en zonder dit onderscheid staat er "probeer het later
+           opnieuw" bij iets dat later ook niet werkt.
+
+           Geverifieerd op de live account: er stond geen enkele configuratie. */
+        if (/no configuration|default configuration/i.test(reden)) {
+          console.error(
+            '[stripe] HET KLANTPORTAAL IS NOG NIET GEACTIVEERD IN STRIPE. '
+            + 'Zet het eenmalig aan via Stripe > Instellingen > Facturatie > Klantportaal. '
+            + 'Tot dan kan geen enkele klant zijn abonnement zelf beheren.');
+          return res.status(503).json({
+            error: 'Het facturatieportaal is nog niet geactiveerd. We zetten dit meteen recht — je abonnement loopt gewoon door.',
+            code: 'portaal_niet_geactiveerd',
+          });
+        }
         return res.status(502).json({ error: 'Het facturatieportaal kon niet geopend worden.' });
       }
     }

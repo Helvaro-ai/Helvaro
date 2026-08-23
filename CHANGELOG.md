@@ -14,6 +14,38 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou — twee dingen, allebei één keer.**
+>
+> 1. Zet in Vercel de variabele **`STRIPE_WEBHOOK_SECRET`** (Production) en
+>    deploy opnieuw. De waarde staat in Stripe bij de webhook naar
+>    `app.helvaro.pro/api/stripe` ("Signing secret", begint met `whsec_`) — die
+>    hoort niet in dit bestand, want dit bestand staat in git. Zolang de
+>    variabele ontbreekt weigert de webhook elke melding van Stripe: de klant
+>    betaalt en krijgt geen credits.
+> 2. Zet in Stripe het **klantportaal** aan: Instellingen > Facturatie >
+>    Klantportaal, instellingen bewaren. Dat maakt de standaardconfiguratie aan.
+>    Zonder die ene handeling weigert Stripe élke portaalsessie, dus "Beheer
+>    abonnement" werkt voor niemand.
+
+**Stripe staat nu echt aangesloten**
+
+- **De webhook bestond nog helemaal niet.** Er stond nul webhooks op de
+  Stripe-account. Betalen werkte dus wél, maar er kwam daarna niets terug: geen
+  credits, geen plan, geen opzegging die aankomt. Er staat er nu één naar
+  `https://app.helvaro.pro/api/stripe`, ingeschakeld, voor
+  `checkout.session.completed`, `invoice.paid` en
+  `customer.subscription.deleted`.
+- **"Beheer abonnement" gaf een foutmelding die nergens over ging.** Het
+  klantportaal van Stripe was nooit geactiveerd. De klant las "probeer het zo
+  meteen opnieuw" bij iets dat zo meteen precies even goed werkt als nu. Hij
+  leest nu dat het portaal nog niet aanstaat en dat zijn abonnement gewoon
+  doorloopt — en in het log staat exact welke Stripe-instelling ontbreekt.
+- **`node scripts/preflight.js` kijkt dit voortaan bij Stripe zelf na.** Niet of
+  de sleutel de juiste vorm heeft — dat bewees niets — maar of er echt een
+  ingeschakelde webhook naar ons wijst, of hij naar de juiste gebeurtenissen
+  luistert, en of het klantportaal bestaat. Ontbreekt er iets, dan faalt hij
+  hard, mét de handeling die het oplost.
+
 > **Actie voor jou: geen meer.** De drie Airtable-dingen die hier stonden zijn
 > aangemaakt — `Credit Purchased` (Client Config), `Opted Out` (Leads) en de
 > tabel `campaigns`. Je hoeft in Airtable niets meer te doen.
@@ -918,4 +950,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 17b19b4 -->
+<!-- changelog-tot: a73f802 -->
