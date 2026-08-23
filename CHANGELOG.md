@@ -27,6 +27,30 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 >    Zonder die ene handeling weigert Stripe élke portaalsessie, dus "Beheer
 >    abonnement" werkt voor niemand.
 
+**Het inlogscherm liet eerst het verkeerde formulier zien**
+
+- **Twee inlogschermen na elkaar, op dezelfde plek.** De pagina opende met ons
+  eigen e-mail-en-wachtwoordformulier, en een seconde later kwam dat van Clerk
+  eroverheen. Wie meteen begon te typen was zijn invoer kwijt. De server weet al
+  of Clerk aanstaat, dus staat er nu meteen een plaatshouder in de vorm van het
+  formulier dat komt - en het eigen formulier blijft weg zolang Clerk verwacht
+  wordt. Gemeten in Chromium: 200 ms na het openen staat er geen eigen formulier
+  meer, alleen de plaatshouder.
+- **Het vangnet is er nog, en op meer paden dan eerst.** Laadt Clerk niet - een
+  geblokkeerd script, een storing, of een verbinding die blijft hangen zonder
+  ooit te antwoorden - dan komt het eigen inlogformulier gewoon terug. Dat
+  laatste geval was nieuw: er zat geen tijdslimiet op, dus een hangend script
+  liet je eeuwig naar een ladend scherm kijken. Nu tien seconden, en daarna het
+  eigen formulier.
+- **De diavoorstelling rechts stond stil.** Op precies het scherm dat iedereen
+  ziet: met Clerk aan werd hij nooit gestart, dus bleef de merkkant op dia 1
+  hangen mét bolletjes die suggereren dat er meer komt.
+- **Een verlopen sessie gaf een scherm zonder inlogveld.** Bij een 401 werd het
+  loginscherm getoond en de cursor in het e-mailveld gezet - een veld dat er met
+  Clerk niet is. Nu wordt Clerks inlogkaart opnieuw getoond.
+- Alle dertien pagina's van de app zijn erna in Chromium nagelopen: geen enkele
+  JavaScript-fout, elke pagina rendert.
+
 **Stripe staat nu echt aangesloten**
 
 - **De webhook bestond nog helemaal niet.** Er stond nul webhooks op de
