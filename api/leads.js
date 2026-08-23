@@ -477,17 +477,36 @@ module.exports = async function handler(req, res) {
 
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: 'Geen velden om bij te werken' });
 
+      /* typecast:true, en dat is hier geen luxe maar een reparatie.
+         `Conversation State` is een singleSelect met alleen new/in_progress/
+         completed. De dashboardstatus "Verloren" schrijft `verloren`, en
+         Airtable weigert bij een onbekende keuze de HELE patch -- dus ook de
+         notities, de dealwaarde en de verliesreden die in dezelfde aanroep
+         meegingen. De makelaar zag "Opslaan mislukt" en raakte alles kwijt wat
+         hij net had ingevuld.
+
+         Met typecast maakt Airtable de ontbrekende keuze zelf aan. De waarden
+         staan hierboven al op een allowlist, dus er kan niets anders binnenkomen
+         dan wat wij zelf toestaan -- typecast is hier geen open deur.
+
+         Dezelfde vlag staat al op drie andere plekken in dit bestand, om
+         precies dezelfde reden. */
       const pRes  = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
         {
           method:  'PATCH',
           headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ fields })
+          body:    JSON.stringify({ fields, typecast: true })
         }
       );
       const pData = await pRes.json();
       if (!pRes.ok) {
-        console.error('Airtable PATCH error:', pRes.status);
+        /* De reden meelezen in het log. "Airtable PATCH error: 422" zegt niet
+           WELK veld weigerde, en dat is precies wat je nodig hebt -- deze fout
+           heeft maandenlang de verloren-status stilgelegd zonder dat er ergens
+           stond waarom. Naar de klant blijft het een nette zin. */
+        const detail = await pRes.text().catch(() => '');
+        console.error(`[leads] PATCH ${recordId} mislukt (HTTP ${pRes.status}):`, detail.slice(0, 300));
         return res.status(500).json({ error: 'Opslaan mislukt. Probeer later opnieuw.' });
       }
 

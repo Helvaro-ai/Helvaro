@@ -80,5 +80,31 @@ ck('en "Geen gesprekken gevonden" staat niet meer in de uitvoer',
    codeAlleen.indexOf('Geen gesprekken gevonden') === -1,
    (codeAlleen.match(/.{0,70}Geen gesprekken gevonden.{0,40}/) || [])[0]);
 
+console.log('\n— "Verloren" markeren mag niet alles meesleuren —');
+/* De singleSelect `Conversation State` in de productie-base kende alleen
+   new/in_progress/completed. De dashboardstatus "Verloren" schrijft `verloren`,
+   en Airtable weigert bij een onbekende keuze de HELE patch -- dus ook de
+   notities, de dealwaarde en de verliesreden die in dezelfde aanroep meegingen.
+   De makelaar zag "Opslaan mislukt" en was alles kwijt wat hij net had ingevuld.
+
+   typecast:true laat Airtable de ontbrekende keuze zelf aanmaken. De waarden
+   staan al op een allowlist, dus typecast opent hier niets. */
+const leadsBron2 = fs.readFileSync(require('path').join(__dirname, '..', 'api', 'leads.js'), 'utf8');
+const iAllow = leadsBron2.indexOf("const allowed = ['new', 'in_progress', 'completed', 'verloren']");
+const iPatch = leadsBron2.indexOf('JSON.stringify({ fields, typecast: true })');
+ck('de lead-PATCH gebruikt typecast', iPatch !== -1, null);
+ck('en "verloren" staat nog steeds op de allowlist', iAllow !== -1, null);
+/* Zonder allowlist zou typecast betekenen dat een aanroeper elke gewenste
+   keuze kan laten aanmaken in de tabel. Die twee horen bij elkaar, en in deze
+   volgorde. */
+ck('de allowlist staat VOOR de patch, niet erna', iAllow !== -1 && iAllow < iPatch,
+   { allowlist: iAllow, patch: iPatch });
+ck('en een mislukte patch logt nu WAAROM',
+   /PATCH \$\{recordId\} mislukt \(HTTP/.test(leadsBron2), null);
+
+console.log('\n— de export filtert server-side met dezelfde drempel —');
+ck('en de exportfilters gebruiken geen typecast-omweg',
+   /const gefilterd = all\.filter/.test(leadsBron2), null);
+
 console.log(`\n${pass} geslaagd, ${fail} gefaald`);
 process.exit(fail ? 1 : 0);

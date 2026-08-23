@@ -14,6 +14,23 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou: geen meer.** De drie Airtable-dingen die hier stonden zijn
+> aangemaakt — `Credit Purchased` (Client Config), `Opted Out` (Leads) en de
+> tabel `campaigns`. Je hoeft in Airtable niets meer te doen.
+
+**Gevonden in de echte productiebase**
+
+- **"Verloren" markeren mislukte, en sleurde je notities mee.** De statuslijst in
+  Airtable kende alleen Nieuw, In behandeling en Gewonnen — de status *Verloren*
+  bestond daar niet. Airtable weigert bij een onbekende keuze de **hele**
+  opslagactie, dus als je in hetzelfde scherm ook een notitie of dealwaarde had
+  ingevuld, was die óók weg. Je zag alleen "Opslaan mislukt". Dit werkt nu, en
+  de fout in het log zegt voortaan wélk veld weigerde.
+- **De omschrijving van het creditveld klopte niet meer.** Er stond nog
+  Starter=2000 en Growth=5000, terwijl de prijspagina en de code 3.000 en 10.000
+  zeggen. Rechtgezet in Airtable zelf.
+
+
 > **Actie voor jou, en dit is er nu twee.** Maak op de **Leads**-tabel een veld
 > **`Opted Out`** aan, type **Checkbox**. En op **Client Config** het veld
 > **`Credit Purchased`**, type **Number** (dat stond er al). `node
