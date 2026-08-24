@@ -340,6 +340,71 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    /* ── Kosten: wat Helvaro zelf betaalt ────────────────────────────────
+       De tegenhanger van ai-usage hierboven. Dat toont wat de KLANTEN
+       verstoken; dit toont wat JIJ afdraagt -- abonnementen, sleutels,
+       gemeten AI-uitgaven -- en zet er de maandomzet naast.
+
+       Alleen voor Helvaro, om dezelfde reden als de rest van deze back-office:
+       hier staan leverancierstarieven, welke sleutels wel en niet gezet zijn,
+       en het verbruik van alle klanten naast elkaar.
+
+       Er komt hier NOOIT een sleutelwaarde uit -- _kosten.sleutels() geeft per
+       variabele alleen "gezet of niet". */
+    if (body.mode === 'kosten') {
+      const tProvided = _session.readToken(req);
+      if (!isValidAdminToken(tProvided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const _kosten = require('./_kosten');
+      const _plans  = require('./_plans');
+      const _plan   = require('./_plan');
+
+      /* De omzetkant komt uit de klantrijen, niet uit een getal dat iemand
+         ooit intypte: alleen een klant met een lopend plan telt mee. */
+      let mrrEur = 0, gesprekken = 0, klanten = 0, betalend = 0;
+      let omzetGelezen = false;
+      try {
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+        if (r.ok) {
+          const d = await r.json();
+          omzetGelezen = true;
+          for (const rec of (d.records || [])) {
+            const f = rec.fields || {};
+            if (!f['Project Code']) continue;
+            klanten++;
+            const staat = _plan.getPlanState(f);
+            const plan = _plans.plan(f['Plan ID']);
+            /* Een proefaccount betaalt niets, en getPlanState() geeft daar
+               status 'trial' voor terug -- die valt hier dus vanzelf af.
+               Meetellen zou de MRR laten zien die je HOOPT, en dat is precies
+               het getal waar een startup zichzelf mee voor de gek houdt. */
+            if (plan && staat && staat.status === 'active') {
+              mrrEur += plan.prijsEur;
+              betalend++;
+            }
+            /* Gesprekken deze periode, uit het verbruik per functie van de
+               klant zelf. Credits gedeeld door het gewicht van een gesprek. */
+            let perFunctie = {};
+            try { perFunctie = JSON.parse(f['Credit Usage By Feature'] || '{}') || {}; } catch (_) { perFunctie = {}; }
+            const c = Number(perFunctie.whatsapp_conversation) || 0;
+            gesprekken += Math.round(c / _plans.CREDITS_PER_GESPREK);
+          }
+        }
+      } catch (err) {
+        console.warn('[kosten] omzetkant niet te lezen:', err && err.message);
+      }
+
+      const overzicht = await _kosten.overzicht({
+        gesprekken: omzetGelezen ? gesprekken : null,
+        mrrEur: omzetGelezen ? Math.round(mrrEur * 100) / 100 : null,
+      });
+
+      return res.status(200).json(Object.assign({ ok: true, klanten, betalend, omzetGelezen }, overzicht));
+    }
+
     if (body.mode === 'test-email') {
       const tProvided = _session.readToken(req);
       if (!isValidAdminToken(tProvided, ADMIN_KEY)) {

@@ -642,6 +642,137 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 }
 
 /* ============================================================
+   KOSTEN (alleen Helvaro)
+
+   Een rekening, geen dashboard. Vandaar: één kolom, uitgelijnde bedragen met
+   tabular-nums zodat je ze onder elkaar kan lezen, en de HERKOMST van elk
+   bedrag als klein label ernaast. Dat label is het hele punt van de pagina --
+   een lijstprijs en een ingevuld bedrag horen er niet hetzelfde uit te zien.
+   ============================================================ */
+/* Onderaan ruimte voor de Faro-balk, die vast onder in beeld staat. Zonder
+   deze marge legt hij zich over de laatste regel van de laatste lijst. */
+.kst-wrap { max-width: 940px; padding-bottom: 96px; }
+
+.kst-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.kst-kaart {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 18px 20px;
+}
+.kst-lbl {
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.kst-groot {
+  font-family: var(--font-head);
+  font-size: 27px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kst-onder { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+.kst-melding {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warning-c);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+}
+
+.kst-blok { margin-bottom: 26px; }
+.kst-blok-kop { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.kst-blok-titel { font-size: 15px; font-weight: 700; }
+.kst-blok-sub { font-size: 12px; color: var(--text-muted); }
+
+.kst-tabel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.kst-rij {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 18px;
+  align-items: center;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--divider);
+}
+.kst-rij:last-child { border-bottom: none; }
+.kst-rij.uit { opacity: .55; }
+.kst-naam { font-size: 14px; font-weight: 600; }
+.kst-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.kst-bedrag {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.kst-bedrag.leeg { color: var(--warning-ink); font-weight: 600; font-size: 13px; }
+
+/* De herkomst. Klein, maar het verschil tussen een getal dat je kan geloven en
+   een getal dat je moet controleren. */
+.kst-bron {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+.kst-bron.ingevuld { color: var(--success-ink); border-color: rgba(var(--success-rgb), .45); }
+.kst-bron.lijstprijs { color: var(--neutral-ink); }
+.kst-bron.onbekend { color: var(--warning-ink); border-color: rgba(var(--warning-rgb), .45); }
+
+.kst-sleutels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.kst-sleutel {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 13px;
+  font-size: 12.5px;
+}
+.kst-stip { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.kst-stip.aan { background: var(--success-c); }
+.kst-stip.uit { background: var(--border-strong); }
+.kst-env { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.kst-sleutel-dienst { color: var(--text-muted); margin-left: auto; font-size: 11px; }
+
+.kst-ai { margin-top: 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+.kst-leeg { padding: 18px; color: var(--text-muted); font-size: 13px; }
+
+@media (max-width: 560px) {
+  .kst-rij { grid-template-columns: 1fr; }
+  .kst-bedrag { text-align: left; }
+}
+
+/* ============================================================
    LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
 #login-page {
@@ -9180,6 +9311,71 @@ ${faro.navCta}
       </div>
     </main>
 
+    <!-- ══ KOSTEN (alleen Helvaro) ═══════════════════════════════════════
+         Wat Helvaro zelf betaalt. Stond eerder als één getal op de
+         Founder-pagina, ingetypt in een prompt() en bewaard in localStorage.
+         Deze pagina rekent het uit de echte instellingen, per dienst, met de
+         herkomst van elk bedrag erbij. Wordt voor een klant uit de HTML
+         geknipt -- zie stripBackoffice. -->
+    <main class="page-content page" id="page-kosten">
+      <div class="kst-wrap">
+
+        <!-- De drie getallen die ertoe doen. Meer niet: een kop vol kaartjes
+             leest als een dashboard, en dit is een rekening. -->
+        <div class="kst-top">
+          <div class="kst-kaart">
+            <div class="kst-lbl">Vaste kosten per maand</div>
+            <div class="kst-groot" id="kst-vast">&mdash;</div>
+            <div class="kst-onder" id="kst-vast-onder">Laden...</div>
+          </div>
+          <div class="kst-kaart">
+            <div class="kst-lbl">Maandomzet</div>
+            <div class="kst-groot" id="kst-mrr">&mdash;</div>
+            <div class="kst-onder" id="kst-mrr-onder">Alleen betalende klanten</div>
+          </div>
+          <div class="kst-kaart">
+            <div class="kst-lbl">Netto per maand</div>
+            <div class="kst-groot" id="kst-netto">&mdash;</div>
+            <div class="kst-onder" id="kst-netto-onder">Omzet min vaste kosten en raming</div>
+          </div>
+        </div>
+
+        <div class="kst-melding" id="kst-melding" style="display:none"></div>
+
+        <div class="kst-blok">
+          <div class="kst-blok-kop">
+            <h3 class="kst-blok-titel">Abonnementen</h3>
+            <span class="kst-blok-sub">Elke maand hetzelfde, hoeveel klanten je ook hebt</span>
+          </div>
+          <div class="kst-tabel" id="kst-vaste-lijst">
+            <div class="kst-leeg">Laden...</div>
+          </div>
+        </div>
+
+        <div class="kst-blok">
+          <div class="kst-blok-kop">
+            <h3 class="kst-blok-titel">Verbruik</h3>
+            <span class="kst-blok-sub">Je betaalt per aanroep &mdash; het bedrag hangt af van gebruik</span>
+          </div>
+          <div class="kst-tabel" id="kst-verbruik-lijst">
+            <div class="kst-leeg">Laden...</div>
+          </div>
+          <div class="kst-ai" id="kst-ai"></div>
+        </div>
+
+        <div class="kst-blok">
+          <div class="kst-blok-kop">
+            <h3 class="kst-blok-titel">Sleutels</h3>
+            <span class="kst-blok-sub">Welke gezet zijn. De waarden staan hier bewust nooit</span>
+          </div>
+          <div class="kst-sleutels" id="kst-sleutels">
+            <div class="kst-leeg">Laden...</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
     <main class="page-content page" id="page-admin">
       <div id="admin-content">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
@@ -16659,6 +16855,7 @@ function mountAdminNav(isAdmin) {
   const items = [
     { page: 'admin',   label: 'Klanten', path: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
     { page: 'founder', label: 'Founder', path: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' },
+    { page: 'kosten',  label: 'Kosten',  path: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
   ];
   const label = document.createElement('div');
   label.className = 'nav-group-label';
@@ -16752,7 +16949,6 @@ function navigateTo(page) {
     dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
     exports:      { title: 'Exports',       sub: 'Rapporten en data-export' },
     kalender:     { title: 'Kalender',      sub: 'Je afspraken en beschikbaarheid' },
-    admin:        { title: 'Klanten',       sub: 'Overzicht van alle klanten' },
     profile:      { title: 'Profiel',       sub: 'Je accountgegevens en statistieken' },
     pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van je leads' },
     gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met je leads' },
@@ -16760,7 +16956,6 @@ function navigateTo(page) {
     analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
     instellingen: { title: 'Instellingen',  sub: 'Beheer je accountinstellingen' },
     activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
-    founder:      { title: 'Founder',       sub: 'Jouw startup. Alles in één oogopslag' },
     'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
     formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
     'panden':     { title: 'Panden', sub: 'Je aanbod, en de link die je onder een advertentie zet' },
@@ -16769,7 +16964,16 @@ function navigateTo(page) {
     faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
   };
 
-  const t = titles[page] || { title: page, sub: '' };
+  /* De back-officepagina's staan bewust NIET in de lijst hierboven. Die lijst
+     gaat mee in de HTML van iedereen, en "Kosten -- wat Helvaro zelf betaalt"
+     is precies het soort zinnetje waaraan een klant ziet wat er achter zijn
+     scherm zit. Hun kop komt uit de navigatieknop, en die wordt alleen voor
+     een admin aangemaakt (mountAdminNav). Geen knop, geen kop, geen zin. */
+  let t = titles[page];
+  if (!t) {
+    const navKnop = document.getElementById('nav-' + page);
+    t = { title: (navKnop && navKnop.dataset.label) || page, sub: '' };
+  }
   document.getElementById('topbar-title').textContent = t.title;
   document.getElementById('topbar-subtitle').textContent = t.sub;
 
@@ -16807,6 +17011,7 @@ function navigateTo(page) {
   if (page === 'exports')      updateExportPreview();
   if (page === 'activiteit')   renderActiviteit();
   if (page === 'founder')      loadFounderData();
+  if (page === 'kosten')       loadKosten();
   if (page === 'ai-beeld')     loadAiBeeldPage();
 
   // Close mobile sidebar
@@ -20750,6 +20955,147 @@ const founderState = {
   _goalEditId: null
 };
 
+/* ── KOSTEN ────────────────────────────────────────────────────────────────
+   Alles komt van de server: welke diensten aanstaan, wat ze kosten, waar dat
+   bedrag vandaan komt, en welke sleutels gezet zijn. De pagina rekent zelf
+   NIETS uit -- ook geen totaal. Een frontend die kosten optelt is een frontend
+   die op een dag iets anders optelt dan de server, en dan heb je twee cijfers
+   en geen waarheid. */
+var KOSTEN_GELADEN = false;
+
+function kstBedrag(v, munt) {
+  if (v === null || v === undefined) return null;
+  var teken = munt === 'USD' ? '$' : munt === 'GBP' ? '£' : '€';
+  return teken + Number(v).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function kstBronLabel(bron) {
+  if (bron === 'ingevuld')   return '<span class="kst-bron ingevuld">ingevuld</span>';
+  if (bron === 'lijstprijs') return '<span class="kst-bron lijstprijs">lijstprijs</span>';
+  return '<span class="kst-bron onbekend">nog invullen</span>';
+}
+
+function kstRij(d) {
+  var bedrag = kstBedrag(d.perMaand, d.valuta);
+  var meta = [d.leverancier, d.waarvoor].filter(Boolean).join(' — ');
+  if (!d.aan) meta = 'Staat uit — geen sleutel gezet. ' + meta;
+  else if (d.aantal > 1 && d.perStuk) meta = d.aantal + ' x ' + d.perStuk + '. ' + meta;
+  else if (d.perStuk && d.bron === 'lijstprijs') meta = 'Per ' + d.perStuk + '. ' + meta;
+  if (d.notitie) meta += ' — ' + d.notitie;
+  return '<div class="kst-rij' + (d.aan ? '' : ' uit') + '">'
+    + '<div><div class="kst-naam">' + escHtml(d.naam) + kstBronLabel(d.bron) + '</div>'
+    + '<div class="kst-meta">' + escHtml(meta) + '</div></div>'
+    + (bedrag
+        ? '<div class="kst-bedrag">' + escHtml(bedrag) + '<span style="font-weight:400;color:var(--text-muted);font-size:12px">/mnd</span></div>'
+        : '<div class="kst-bedrag leeg">bedrag onbekend</div>')
+    + '</div>';
+}
+
+async function loadKosten(force) {
+  if (KOSTEN_GELADEN && !force) return;
+  var vastEl = document.getElementById('kst-vaste-lijst');
+  var verbEl = document.getElementById('kst-verbruik-lijst');
+  var sleuEl = document.getElementById('kst-sleutels');
+  if (!vastEl) return;
+
+  var d;
+  try {
+    var r = await fetch(API_BASE + '/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'kosten' })
+    });
+    d = await r.json().catch(function () { return {}; });
+    if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+  } catch (e) {
+    /* Geen half scherm met nullen: dat leest als "je kosten zijn nul". */
+    vastEl.innerHTML = '<div class="kst-leeg">Kosten konden niet geladen worden: ' + escHtml(String(e.message || e)) + '</div>';
+    if (verbEl) verbEl.innerHTML = '';
+    if (sleuEl) sleuEl.innerHTML = '';
+    return;
+  }
+  KOSTEN_GELADEN = true;
+
+  // ── De drie getallen bovenaan ───────────────────────────────────────────
+  var v = d.vastPerMaand || {};
+  var perMunt = v.perMunt || {};
+  var munten = Object.keys(perMunt);
+  var vastTekst = v.inEur !== null && v.inEur !== undefined
+    ? kstBedrag(v.inEur, 'EUR')
+    : (munten.length ? munten.map(function (m) { return kstBedrag(perMunt[m], m); }).join(' + ') : '—');
+  document.getElementById('kst-vast').textContent = vastTekst;
+  document.getElementById('kst-vast-onder').textContent = (d.nogInvullen && d.nogInvullen.length)
+    ? d.nogInvullen.length + ' dienst(en) zonder bedrag: ' + d.nogInvullen.join(', ')
+    : (v.koersUsdEur ? 'Omgerekend tegen ' + v.koersUsdEur + ' EUR per USD' : 'Per munt, niet omgerekend');
+
+  document.getElementById('kst-mrr').textContent =
+    d.mrrEur === null || d.mrrEur === undefined ? '—' : kstBedrag(d.mrrEur, 'EUR');
+  document.getElementById('kst-mrr-onder').textContent =
+    (d.betalend || 0) + ' betalend van ' + (d.klanten || 0) + ' klant(en)';
+
+  var nEl = document.getElementById('kst-netto');
+  if (d.nettoPerMaandEur === null || d.nettoPerMaandEur === undefined) {
+    nEl.textContent = '—';
+    /* Geen winstcijfer zolang een deel van de kosten onbekend is. Een netto
+       dat een halve kostenkant mist is erger dan geen netto. */
+    document.getElementById('kst-netto-onder').textContent =
+      'Nog niet te berekenen zolang niet elk bedrag bekend is';
+  } else {
+    nEl.textContent = kstBedrag(d.nettoPerMaandEur, 'EUR');
+    nEl.style.color = d.nettoPerMaandEur >= 0 ? 'var(--success-ink)' : 'var(--error-ink)';
+    document.getElementById('kst-netto-onder').textContent = 'Omzet min vaste kosten en de raming';
+  }
+
+  var melding = document.getElementById('kst-melding');
+  var meldingen = [];
+  if (d.waarschuwing) meldingen.push(d.waarschuwing);
+  if (!d.tabelBestaat) {
+    meldingen.push('De tabel "' + (d.tabel || 'costs') + '" bestaat nog niet in Airtable. '
+      + 'Zolang die er niet is, staan hier lijstprijzen in plaats van jouw eigen facturen.');
+  }
+  if (meldingen.length) { melding.innerHTML = meldingen.map(escHtml).join('<br>'); melding.style.display = ''; }
+  else melding.style.display = 'none';
+
+  // ── De twee lijsten ─────────────────────────────────────────────────────
+  var diensten = d.diensten || [];
+  var vast = diensten.filter(function (x) { return x.soort === 'vast'; });
+  var verbruik = diensten.filter(function (x) { return x.soort === 'verbruik'; });
+  vastEl.innerHTML = vast.length ? vast.map(kstRij).join('') : '<div class="kst-leeg">Geen abonnementen.</div>';
+  if (verbEl) verbEl.innerHTML = verbruik.length ? verbruik.map(kstRij).join('') : '';
+
+  // ── Gemeten AI-verbruik ─────────────────────────────────────────────────
+  var aiEl = document.getElementById('kst-ai');
+  if (aiEl) {
+    var ai = d.ai || {};
+    if (!ai.beschikbaar) aiEl.textContent = '';
+    else {
+      var sinds = ai.sinds ? new Date(ai.sinds) : null;
+      aiEl.innerHTML = '<strong>Gemeten AI-uitgaven:</strong> $'
+        + Number(ai.kostenUsd || 0).toFixed(4) + ' over ' + (ai.aanroepen || 0) + ' aanroep(en)'
+        + (sinds ? ', sinds ' + sinds.toLocaleString('nl-BE') : '')
+        + '.<br><span style="opacity:.8">' + escHtml(ai.let_op || '') + '</span>'
+        + (d.raming
+            ? '<br><strong>Raming op basis van gebruik:</strong> ' + kstBedrag(d.raming.totaalEur, 'EUR')
+              + ' voor ' + d.raming.gesprekken + ' leadgesprek(ken) à '
+              + kstBedrag(d.raming.perGesprekEur, 'EUR') + '. '
+              + '<span style="opacity:.8">' + escHtml(d.raming.let_op) + '</span>'
+            : '');
+    }
+  }
+
+  // ── De sleutels ─────────────────────────────────────────────────────────
+  if (sleuEl) {
+    var sl = d.sleutels || [];
+    sleuEl.innerHTML = sl.length ? sl.map(function (k) {
+      return '<div class="kst-sleutel">'
+        + '<span class="kst-stip ' + (k.gezet ? 'aan' : 'uit') + '"></span>'
+        + '<span class="kst-env">' + escHtml(k.env) + '</span>'
+        + '<span class="kst-sleutel-dienst">' + escHtml(k.gezet ? 'gezet' : 'niet gezet') + '</span>'
+        + '</div>';
+    }).join('') : '<div class="kst-leeg">Geen sleutels bekend.</div>';
+  }
+}
+
 async function loadFounderData(force) {
   if (founderState.loaded && !force) return;
   founderState.loaded = true;
@@ -22594,12 +22940,12 @@ ${cmd.js}
   res.status(200).send(HV_IS_ADMIN ? HTML : stripBackoffice(HTML));
 };
 
-/* Knipt <main id="page-admin"> en <main id="page-founder"> uit de gerenderde
+/* Knipt de back-officepagina's (Klanten, Founder, Kosten) uit de gerenderde
    pagina. Werkt op exacte markeringen en laat de HTML ongemoeid als een blok
    niet gevonden wordt -- liever een pagina die klopt dan een halve knip. */
 function stripBackoffice(html) {
   let uit = html;
-  for (const id of ['page-admin', 'page-founder']) {
+  for (const id of ['page-admin', 'page-founder', 'page-kosten']) {
     const start = uit.indexOf('<main class="page-content page" id="' + id + '">');
     if (start === -1) continue;
     const eind = uit.indexOf('</main>', start);

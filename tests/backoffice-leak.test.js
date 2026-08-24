@@ -38,6 +38,10 @@ const HTML = [
   '  <div>Prijslijst: Helvaro EUR 1.000/maand</div>',
   '  <div>Klantcontracten, 3 maanden + maandelijks</div>',
   '</main>',
+  '<main class="page-content page" id="page-kosten">',
+  '  <div>Vercel Pro USD 20/maand, Airtable Team USD 24/maand</div>',
+  '  <div>ANTHROPIC_API_KEY gezet</div>',
+  '</main>',
   '<main class="page-content page" id="page-instellingen">Instellingen</main>',
   '</body>',
 ].join('\n');
@@ -46,6 +50,11 @@ console.log('\n- wat een KLANT krijgt -');
 const klant = strip(HTML);
 
 for (const geheim of [
+  /* Kosten kwam er later bij: leverancierstarieven en de vraag welke sleutels
+     gezet zijn horen net zo min bij een makelaar als de MRR. */
+  'Vercel Pro',
+  'Airtable Team',
+  'ANTHROPIC_API_KEY',
   'Roadmap naar 5 klanten',
   'Nettowinst',
   'Vaste kosten',
@@ -58,6 +67,7 @@ for (const geheim of [
 }
 
 ck('de founder-pagina bestaat niet meer', klant.indexOf('id="page-founder"') === -1, null);
+ck('de kostenpagina ook niet', klant.indexOf('id="page-kosten"') === -1, null);
 ck('de klanten-pagina ook niet',          klant.indexOf('id="page-admin"') === -1, null);
 
 console.log('\n- en de app blijft heel -');

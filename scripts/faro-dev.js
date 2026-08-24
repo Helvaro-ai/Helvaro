@@ -217,6 +217,18 @@ const server = http.createServer(async (req, res) => {
        een kale 404, die in een audit niet te onderscheiden is van een echt
        ontbrekende route. Nu zegt hij wat er aan de hand is. */
     if (p === '/api/admin') {
+      req.body = await readBody(req);
+      /* Kosten is wél na te bootsen, en juist nuttig: de module leest de
+         omgeving van deze machine (welke sleutels staan er, welke diensten
+         draaien) en dat is precies wat de pagina toont. Geen fixture -- de
+         echte api/_kosten.js, alleen zonder de omzetkant, want die komt uit
+         Airtable en dat draait hier niet. */
+      if (req.body && req.body.mode === 'kosten') {
+        const _kosten = require('../api/_kosten');
+        const overzicht = await _kosten.overzicht({ gesprekken: null, mrrEur: null });
+        return res.status(200).json(Object.assign(
+          { ok: true, klanten: 0, betalend: 0, omzetGelezen: false }, overzicht));
+      }
       return res.status(501).json({
         error: 'api/admin is niet nagebootst in faro-dev; deze route bestaat wel in productie.',
         mode: (req.body && req.body.mode) || null,
