@@ -20981,6 +20981,7 @@ function kstRij(d) {
   if (!d.aan) meta = 'Staat uit — geen sleutel gezet. ' + meta;
   else if (d.aantal > 1 && d.perStuk) meta = d.aantal + ' x ' + d.perStuk + '. ' + meta;
   else if (d.perStuk && d.bron === 'lijstprijs') meta = 'Per ' + d.perStuk + '. ' + meta;
+  if (d.gemeten !== null && d.gemeten !== undefined) meta = d.gemeten + ' geteld deze maand. ' + meta;
   if (d.notitie) meta += ' — ' + d.notitie;
   return '<div class="kst-rij' + (d.aan ? '' : ' uit') + '">'
     + '<div><div class="kst-naam">' + escHtml(d.naam) + kstBronLabel(d.bron) + '</div>'
@@ -21063,14 +21064,39 @@ async function loadKosten(force) {
   vastEl.innerHTML = vast.length ? vast.map(kstRij).join('') : '<div class="kst-leeg">Geen abonnementen.</div>';
   if (verbEl) verbEl.innerHTML = verbruik.length ? verbruik.map(kstRij).join('') : '';
 
+  /* Wat er van het verbruik WEL bekend is, apart opgeteld. Vroeger stond een
+     ingevulde Meta-factuur wel op het scherm en in geen enkel totaal. */
+  var vb = d.verbruikPerMaand || {};
+  var vbMunten = Object.keys(vb.perMunt || {});
+  if (vbMunten.length && verbEl) {
+    var vbTekst = vb.inEur !== null && vb.inEur !== undefined
+      ? kstBedrag(vb.inEur, 'EUR')
+      : vbMunten.map(function (m) { return kstBedrag(vb.perMunt[m], m); }).join(' + ');
+    verbEl.insertAdjacentHTML('beforeend',
+      '<div class="kst-rij"><div><div class="kst-naam">Bekend verbruik samen</div>'
+      + '<div class="kst-meta">Alleen de diensten waarvan een bedrag of een tarief bekend is</div></div>'
+      + '<div class="kst-bedrag">' + escHtml(vbTekst) + '<span style="font-weight:400;color:var(--text-muted);font-size:12px">/mnd</span></div></div>');
+  }
+
   // ── Gemeten AI-verbruik ─────────────────────────────────────────────────
   var aiEl = document.getElementById('kst-ai');
   if (aiEl) {
     var ai = d.ai || {};
-    if (!ai.beschikbaar) aiEl.textContent = '';
+    var t = d.telling || {};
+    /* Wat er van WhatsApp geteld is, en net zo belangrijk: wat niet. Zonder
+       die tweede helft leest een laag getal als "we sturen bijna niets". */
+    var meta = t.sjablonen === null || t.sjablonen === undefined ? '' :
+      '<strong>Sjabloonberichten deze maand:</strong> ' + t.sjablonen
+      + '. <span style="opacity:.8">' + escHtml(t.waaruit || '')
+      + (t.nietGeteld && t.nietGeteld.length
+          ? ' Niet meegeteld: ' + escHtml(t.nietGeteld.join(', ')) + '.'
+          : '')
+      + ' Meta rekent per sjabloonbericht; een gesprek dat de lead zelf begint is gratis.'
+      + ' Zet je tarief in de tabel costs (Service whatsapp, Interval bericht) en het bedrag wordt hiermee berekend.</span><br>';
+    if (!ai.beschikbaar) aiEl.innerHTML = meta;
     else {
       var sinds = ai.sinds ? new Date(ai.sinds) : null;
-      aiEl.innerHTML = '<strong>Gemeten AI-uitgaven:</strong> $'
+      aiEl.innerHTML = meta + '<strong>Gemeten AI-uitgaven:</strong> $'
         + Number(ai.kostenUsd || 0).toFixed(4) + ' over ' + (ai.aanroepen || 0) + ' aanroep(en)'
         + (sinds ? ', sinds ' + sinds.toLocaleString('nl-BE') : '')
         + '.<br><span style="opacity:.8">' + escHtml(ai.let_op || '') + '</span>'

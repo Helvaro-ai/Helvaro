@@ -56,10 +56,37 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   net als Klanten en Founder. Bij die twee stonden de paginatitels nog wél in de
   broncode van iedereen ("Founder — jouw startup"); die zijn nu ook weg.
 
+**Meta erbij, en die rekent anders**
+
+- **Meta factureert per verstuurd sjabloonbericht**, niet per maand — een
+  gesprek dat de lead zélf begint is gratis. De Kosten-pagina kan daar nu mee
+  rekenen: zet je tarief per bericht in de tabel `costs` (Service `whatsapp`,
+  Interval `bericht`) en het maandbedrag volgt uit het aantal dat de pagina
+  telt.
+- **Geteld wordt alleen wat écht in je records staat:** afspraakherinneringen
+  laten `Reminder Sent` achter op de afspraak, dus die zijn te tellen. Opvolg-
+  en introberichten laten geen eigen markering achter — die staan er dus níét
+  bij, en dat zegt de pagina er ook bij in plaats van het verschil weg te
+  rekenen.
+- **Kennen we het aantal niet, dan komt er geen bedrag.** Een tarief per bericht
+  maal een onbekend aantal gaf eerst netjes "€ 0,00 per maand" — een dienst
+  waarvan je het volume niet kent die eruitziet alsof hij gratis is. Nu blijft
+  het leeg.
+- **Verbruik telt nu ook echt ergens op.** Vulde je een Meta-factuur in, dan
+  stond die wel op het scherm maar in geen enkel totaal. Er staat nu een regel
+  "bekend verbruik samen", en dat bedrag gaat mee in de nettowinst.
+- **Een ingevuld bedrag telt altijd mee**, ook als de bijbehorende sleutel hier
+  niet gelezen kan worden. Jij hebt de factuur; die weegt zwaarder dan een
+  omgevingsvariabele.
+
 > **Actie voor jou, optioneel:** in Airtable staat een nieuwe tabel **`costs`**.
 > Vul daar een regel per dienst in met je échte factuurbedrag (`Service` moet
 > `vercel`, `airtable`, `domein`, … zijn) en de pagina rekent daarmee in plaats
 > van met de lijstprijs. Laat je hem leeg, dan blijven de lijstprijzen staan.
+>
+> Wil je Meta erbij: voeg in dat tabelletje bij **Interval** zelf de keuze
+> **`bericht`** toe (Airtable staat niet toe dat de API een keuze aanmaakt) en
+> zet bij Amount je tarief per sjabloonbericht.
 
 **Het inlogscherm liet eerst het verkeerde formulier zien**
 
@@ -1008,4 +1035,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 9d84cb7 -->
+<!-- changelog-tot: 85a799d -->

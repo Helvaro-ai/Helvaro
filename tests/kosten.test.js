@@ -119,6 +119,42 @@ const K = require(BASE + 'api/_kosten.js');
      e.vercel.perMaand === 20 && e.vercel.bron === 'lijstprijs', e.vercel);
   ck('nu is er niets meer onbekend', o.nogInvullen.length === 0, o.nogInvullen);
 
+  console.log('\n— Meta rekent per bericht, niet per maand —');
+  /* Sinds juli 2025 factureert Meta per verstuurd sjabloonbericht. Een
+     stuksprijs is pas een maandbedrag als je weet hoeveel er verstuurd zijn --
+     en dat aantal komt uit de records, niet uit een aanname. */
+  global.fetch = async () => ({
+    ok: true, status: 200, text: async () => '',
+    json: async () => ({ records: [
+      { id: 'rec9', fields: { Service: 'whatsapp', Amount: 0.09, Currency: 'EUR', Interval: 'bericht' } },
+    ] }),
+  });
+  K._resetTabelCache();
+  o = await K.overzicht({ volumes: { whatsapp: 40 } });
+  const w = Object.fromEntries(o.diensten.map((d) => [d.id, d]));
+  ck('40 berichten à 0,09 is 3,60 per maand', w.whatsapp.perMaand === 3.6, w.whatsapp);
+  ck('en het getelde aantal staat erbij', w.whatsapp.gemeten === 40, w.whatsapp.gemeten);
+  ck('verbruik telt apart op, niet bij de vaste lasten',
+     o.verbruikPerMaand.perMunt.EUR === 3.6 && o.vastPerMaand.perMunt.EUR === undefined,
+     { verbruik: o.verbruikPerMaand, vast: o.vastPerMaand });
+
+  /* Zonder telling GEEN bedrag. Een stuksprijs stilzwijgend als maandbedrag
+     lezen zou hier 0,09 per maand opleveren -- een getal dat nergens op slaat
+     en er wel uitziet alsof het klopt. */
+  K._resetTabelCache();
+  o = await K.overzicht();
+  const z = Object.fromEntries(o.diensten.map((d) => [d.id, d]));
+  ck('zonder gemeten aantal blijft het bedrag leeg', z.whatsapp.perMaand === null, z.whatsapp);
+
+  console.log('\n— een gemeten verbruik telt mee in het netto —');
+  K._resetTabelCache();
+  process.env.KOSTEN_USD_EUR = '1';
+  o = await K.overzicht({ volumes: { whatsapp: 40 }, gesprekken: 10, mrrEur: 499 });
+  /* Vaste lasten: Vercel 20 + Airtable 24 = 44 (koers 1). Het domein heeft geen
+     bedrag, dus er hoort GEEN netto te staan -- ook nu niet. */
+  ck('nog steeds geen netto zolang het domein leeg is', o.nettoPerMaandEur === null, o.nettoPerMaandEur);
+  delete process.env.KOSTEN_USD_EUR;
+
   console.log('\n— de sleutels, en wat er NIET uitkomt —');
   process.env.ANTHROPIC_API_KEY = 'sk-ant-geheim-zelftest-abcdefghijklmnop';
   const sl = K.sleutels();

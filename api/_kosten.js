@@ -197,11 +197,28 @@ function staatAan(dienst) {
   return env.some(gezet);
 }
 
-/** Alles omrekenen naar een maandbedrag. Een jaarabonnement is geen maandpost. */
-function perMaand(bedrag, interval) {
+/**
+ * Alles omrekenen naar een maandbedrag. Een jaarabonnement is geen maandpost.
+ *
+ * 'bericht' is geen tijdsinterval maar een STUKSPRIJS: dat is hoe Meta sinds
+ * juli 2025 afrekent -- per verstuurd sjabloonbericht, met een tarief per
+ * categorie en per land. Een stuksprijs kan alleen een maandbedrag worden als
+ * je weet hoeveel er verstuurd zijn; zonder dat aantal geeft dit null terug in
+ * plaats van te doen alsof het er één was.
+ */
+function perMaand(bedrag, interval, aantalPerMaand) {
   const n = Number(bedrag);
   if (!Number.isFinite(n)) return null;
   const i = String(interval || 'maand').toLowerCase();
+  if (i === 'bericht' || i === 'stuk' || i === 'message') {
+    /* Number(null) is 0 en 0 is een eindig getal, dus een simpele isFinite-
+       controle liet een ONBEKEND aantal als NUL door: tarief x 0 = 0, en dan
+       stond er netjes "EUR 0,00 per maand" bij een dienst waarvan we het
+       volume niet kennen. Precies de leugen die dit bestand moet voorkomen. */
+    if (aantalPerMaand === null || aantalPerMaand === undefined || aantalPerMaand === '') return null;
+    const stuks = Number(aantalPerMaand);
+    return Number.isFinite(stuks) ? n * stuks : null;
+  }
   if (i === 'jaar' || i === 'year' || i === 'jaarlijks') return n / 12;
   if (i === 'week') return n * 52 / 12;
   if (i === 'dag' || i === 'day') return n * 365 / 12;
@@ -337,7 +354,7 @@ function aiVerbruik() {
  *        kosten -- apart gehouden van het gemeten verbruik hierboven.
  * @param {number} [o.mrrEur] maandomzet uit lopende plannen.
  */
-async function overzicht({ gesprekken = null, mrrEur = null } = {}) {
+async function overzicht({ gesprekken = null, mrrEur = null, volumes = {} } = {}) {
   const eigen = await eigenBedragen();
   const opDienst = {};
   for (const r of eigen) if (r.dienst) opDienst[r.dienst] = r;
@@ -345,11 +362,17 @@ async function overzicht({ gesprekken = null, mrrEur = null } = {}) {
   const regels = [];
   for (const d of DIENSTEN) {
     const mijn = opDienst[d.id];
-    const aan = staatAan(d);
+    const zelfIngevuld = !!(mijn && mijn.actief && mijn.bedrag !== null);
+    /* Een ingevuld bedrag telt als bewijs dat de dienst draait, ook als de
+       sleuteldetectie zegt van niet. Jij hebt de factuur; die weegt zwaarder
+       dan een omgevingsvariabele die hier toevallig niet zichtbaar is. Zonder
+       deze regel verdween een ingevulde Meta-factuur uit het totaal zodra
+       WHATSAPP_TOKEN even niet gelezen kon worden. */
+    const aan = staatAan(d) || zelfIngevuld;
 
     let bedrag = null, valuta = 'EUR', interval = 'maand', aantal = 1, bron = 'onbekend', notitie = '';
 
-    if (mijn && mijn.actief && mijn.bedrag !== null) {
+    if (zelfIngevuld) {
       bedrag = mijn.bedrag; valuta = mijn.valuta; interval = mijn.interval;
       aantal = mijn.aantal; bron = 'ingevuld'; notitie = mijn.notitie;
     } else if (d.tarief) {
@@ -357,7 +380,11 @@ async function overzicht({ gesprekken = null, mrrEur = null } = {}) {
       interval = d.tarief.interval; bron = d.tarief.bron;
     }
 
-    const maand = bedrag === null ? null : perMaand(bedrag, interval) * (aantal || 1);
+    /* Voor een stuksprijs is het gemeten aantal van DEZE dienst nodig. Staat
+       dat er niet, dan blijft het bedrag leeg -- zie perMaand(). */
+    const gemeten = Object.prototype.hasOwnProperty.call(volumes, d.id) ? volumes[d.id] : null;
+    const gerekend = bedrag === null ? null : perMaand(bedrag, interval, gemeten);
+    const maand = gerekend === null ? null : gerekend * (aantal || 1);
 
     regels.push({
       id: d.id,
@@ -369,6 +396,10 @@ async function overzicht({ gesprekken = null, mrrEur = null } = {}) {
       bedrag, valuta, interval, aantal,
       perStuk: (d.tarief && d.tarief.perStuk) || null,
       perMaand: maand === null ? null : Math.round(maand * 100) / 100,
+      /* Wat er van deze dienst geteld is, en waaruit. Staat naast het bedrag
+         zodat je kan nagaan waar het vandaan komt in plaats van het te moeten
+         geloven. */
+      gemeten: gemeten === null ? null : gemeten,
       bron,
       notitie,
     });
@@ -385,17 +416,30 @@ async function overzicht({ gesprekken = null, mrrEur = null } = {}) {
     vastPerMunt[r.valuta] = Math.round(((vastPerMunt[r.valuta] || 0) + r.perMaand) * 100) / 100;
   }
 
+  /* Verbruiksdiensten tellen apart op. Ze horen NIET bij de vaste lasten -- een
+     maand zonder leads kost je hier niets -- maar ze horen wel in de nettowinst
+     terecht te komen zodra je er een bedrag van weet. Dat gebeurde niet: een
+     ingevulde Meta-factuur stond wel op het scherm en nergens in een totaal. */
+  const verbruikend = regels.filter((r) => r.aan && r.soort === 'verbruik');
+  const verbruikPerMunt = {};
+  for (const r of verbruikend) {
+    if (r.perMaand === null) continue;
+    verbruikPerMunt[r.valuta] = Math.round(((verbruikPerMunt[r.valuta] || 0) + r.perMaand) * 100) / 100;
+  }
+
   const onbekend = meetellend.filter((r) => r.perMaand === null).map((r) => r.naam);
 
   const koers = koersUsdEur();
-  let vastEur = null;
-  if (koers) {
+  const naarEur = (perMunt) => {
+    if (!koers) return null;
     let som = 0;
-    for (const [munt, bedrag] of Object.entries(vastPerMunt)) {
+    for (const [munt, bedrag] of Object.entries(perMunt)) {
       som += munt === 'USD' ? bedrag * koers : bedrag;
     }
-    vastEur = Math.round(som * 100) / 100;
-  }
+    return Math.round(som * 100) / 100;
+  };
+  const vastEur = naarEur(vastPerMunt);
+  const verbruikEur = naarEur(verbruikPerMunt);
 
   /* De modelraming van de variabele kosten: aantal gesprekken maal wat een
      gesprek ons kost volgens api/_plans.js. Dat is een MODEL, geen factuur --
@@ -412,13 +456,19 @@ async function overzicht({ gesprekken = null, mrrEur = null } = {}) {
      een winstcijfer dat een halve kostenkant mist, is erger dan geen. */
   let netto = null;
   if (mrrEur !== null && vastEur !== null && !onbekend.length) {
-    const variabel = raming ? raming.totaalEur : 0;
+    /* Wat je van je verbruik WEET gaat eraf; wat je er alleen van kan RAMEN
+       ook, maar alleen als er geen gemeten bedrag is -- anders trek je
+       dezelfde kosten twee keer af. */
+    const gemetenVerbruik = verbruikEur !== null ? verbruikEur : 0;
+    const variabel = gemetenVerbruik > 0 ? gemetenVerbruik : (raming ? raming.totaalEur : 0);
     netto = Math.round((mrrEur - vastEur - variabel) * 100) / 100;
   }
 
   return {
     diensten: regels,
     vastPerMaand: { perMunt: vastPerMunt, inEur: vastEur, koersUsdEur: koers },
+    verbruikPerMaand: { perMunt: verbruikPerMunt, inEur: verbruikEur },
+    volumes,
     nogInvullen: onbekend,
     tabelBestaat: _tabelBestaat !== false,
     tabel: COSTS_TABLE,
