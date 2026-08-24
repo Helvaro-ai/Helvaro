@@ -27,6 +27,40 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 >    Zonder die ene handeling weigert Stripe élke portaalsessie, dus "Beheer
 >    abonnement" werkt voor niemand.
 
+**Nieuwe pagina: Kosten (alleen voor jou)**
+
+- **Wat Helvaro zelf betaalt, per dienst.** Tot nu stond dat als één getal op de
+  Founder-pagina — `-€58` — ingetypt in een prompt en bewaard in je browser. Dus
+  onzichtbaar op je telefoon, weg zodra je je browser leegde, en door niemand na
+  te rekenen. De nieuwe pagina leest het uit de echte instellingen: welke
+  diensten draaien, wat ze kosten, en waar dat bedrag vandaan komt.
+- **Vercel Pro en Airtable Team staan erin** met hun gepubliceerde tarief
+  ($20 per teamlid en $24 per plek per maand). Betaal je Airtable per jaar, dan
+  is het $20 — zie hieronder hoe je je eigen bedrag invult.
+- **Bij elk bedrag staat de herkomst.** *Lijstprijs* (wat de leverancier
+  publiceert), *ingevuld* (jouw eigen bedrag, dat wint altijd) of *nog invullen*.
+  Een dienst waarvan we de prijs niet kennen krijgt géén nul: hij telt niet mee
+  in het totaal en staat apart vermeld. Een kostenoverzicht dat onbekende posten
+  stilletjes op nul zet, is precies het overzicht dat je te rooskleurig
+  voorspiegelt.
+- **Er staat geen nettowinst zolang een bedrag ontbreekt.** Liever geen cijfer
+  dan een winstcijfer dat een deel van je kosten niet kent.
+- **Dollars en euro's worden niet zomaar opgeteld.** Er wordt geen koers
+  verzonnen: de totalen staan per munt. Wil je één eurobedrag, zet dan
+  `KOSTEN_USD_EUR` in Vercel op de koers die je zelf hanteert.
+- **Je sleutels in één oogopslag.** Twintig omgevingsvariabelen met een groen of
+  grijs bolletje: gezet of niet. De wáárden staan er bewust nooit bij, ook niet
+  afgekort — dit scherm gaat over het netwerk en een sleutel hoort daar niet in.
+  Zo zie je in één blik dat bijvoorbeeld `STRIPE_WEBHOOK_SECRET` nog ontbreekt.
+- **Alleen jij ziet dit.** De pagina wordt uit de HTML van een klant geknipt,
+  net als Klanten en Founder. Bij die twee stonden de paginatitels nog wél in de
+  broncode van iedereen ("Founder — jouw startup"); die zijn nu ook weg.
+
+> **Actie voor jou, optioneel:** in Airtable staat een nieuwe tabel **`costs`**.
+> Vul daar een regel per dienst in met je échte factuurbedrag (`Service` moet
+> `vercel`, `airtable`, `domein`, … zijn) en de pagina rekent daarmee in plaats
+> van met de lijstprijs. Laat je hem leeg, dan blijven de lijstprijzen staan.
+
 **Het inlogscherm liet eerst het verkeerde formulier zien**
 
 - **Twee inlogschermen na elkaar, op dezelfde plek.** De pagina opende met ons
