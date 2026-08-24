@@ -24,6 +24,13 @@
  *                  op nul zetten omdat je de prijs niet kent, is precies hoe
  *                  een kostenoverzicht te rooskleurig wordt.
  *
+ * ── Alles loopt per maand ────────────────────────────────────────────────────
+ * De eigenaar betaalt elk abonnement en elke API maandelijks, niet per jaar
+ * (bevestigd augustus 2026). Daarom staat 'maand' overal als standaard en is
+ * de maandprijs van Airtable Team de juiste -- niet het jaartarief. Verandert
+ * dat ooit, dan is Interval in de tabel `costs` de plek: die deelt een
+ * jaarbedrag door twaalf en dan hoeft er in de code niets te veranderen.
+ *
  * ── Geen wisselkoers uit de lucht ────────────────────────────────────────────
  * Vercel, Airtable en Anthropic factureren in dollar; de plannen zijn in euro.
  * Er wordt hier GEEN koers verzonnen: de totalen staan per munt naast elkaar.
@@ -83,9 +90,10 @@ const DIENSTEN = Object.freeze([
     soort: 'vast',
     waarvoor: 'De database: klanten, leads, gesprekken, grootboek, panden.',
     /* USD 24 per plek per maand bij maandbetaling, USD 20 bij jaarbetaling.
-       De maandprijs staat hier als standaard, want dat is de duurdere van de
-       twee -- bij een schatting van je eigen kosten is dat de kant om je op te
-       vergissen. Betaal je per jaar, zet het bedrag dan op 20. */
+       De eigenaar betaalt per maand (bevestigd augustus 2026), dus 24 is hier
+       het juiste getal en niet het lagere jaartarief. Het stond hier al op de
+       maandprijs, om een andere reden: bij een schatting van je eigen kosten
+       is te hoog de kant om je op te vergissen. */
     tarief: Object.freeze({ bedrag: 24, valuta: 'USD', interval: 'maand', perStuk: 'plek', bron: 'lijstprijs' }),
     env: ['API_AIRTABLE'],
   }),
@@ -145,7 +153,7 @@ const DIENSTEN = Object.freeze([
     naam: 'Kling (video)',
     leverancier: 'Kuaishou',
     soort: 'verbruik',
-    waarvoor: 'Videogeneratie. Staat uit zonder deze twee sleutels.',
+    waarvoor: 'Videogeneratie. Staat uit zonder KLING_ACCESS_KEY en KLING_SECRET_KEY.',
     tarief: null,
     env: ['KLING_ACCESS_KEY'],
   }),
@@ -175,7 +183,10 @@ const DIENSTEN = Object.freeze([
     leverancier: 'Registrar',
     soort: 'vast',
     waarvoor: 'Het adres zelf.',
-    /* Per jaar, en wat jij betaald hebt weet dit bestand niet. */
+    /* Wat een registrar rekent weet dit bestand niet -- dat verschilt per
+       registrar en per extensie. De rij in `costs` staat op maand, zoals al het
+       andere; is jouw domein een jaarpost, dan zet je Interval op jaar en wordt
+       het bedrag door twaalf gedeeld. */
     tarief: null,
     altijdAan: true,
   }),
