@@ -119,6 +119,28 @@ const K = require(BASE + 'api/_kosten.js');
      e.vercel.perMaand === 20 && e.vercel.bron === 'lijstprijs', e.vercel);
   ck('nu is er niets meer onbekend', o.nogInvullen.length === 0, o.nogInvullen);
 
+  console.log('\n— een rij zonder bedrag verandert niets —');
+  /* Zo staat de productiebase er nu bij: er is voor elke dienst een regel
+     aangemaakt met munt, interval en een notitie, maar met een LEEG bedrag --
+     zodat de eigenaar alleen nog een getal hoeft te typen. Zo'n lege regel mag
+     de lijstprijs niet overrulen en al helemaal geen nul worden. */
+  global.fetch = async () => ({
+    ok: true, status: 200, text: async () => '',
+    json: async () => ({ records: [
+      { id: 'recL', fields: { Service: 'vercel', Name: 'Vercel Pro', Currency: 'USD', Interval: 'maand', Seats: 1, Active: true, Notes: 'Vul Amount in' } },
+      { id: 'recM', fields: { Service: 'airtable', Currency: 'USD', Interval: 'maand', Seats: 1, Active: true } },
+    ] }),
+  });
+  K._resetTabelCache();
+  o = await K.overzicht();
+  const leeg = Object.fromEntries(o.diensten.map((d) => [d.id, d]));
+  ck('de lijstprijs blijft staan', leeg.vercel.perMaand === 20 && leeg.vercel.bron === 'lijstprijs', leeg.vercel);
+  ck('en wordt geen nul', leeg.airtable.perMaand === 24, leeg.airtable);
+  ck('het totaal is nog steeds 44', o.vastPerMaand.perMunt.USD === 44, o.vastPerMaand);
+  /* De naam uit de tabel mag wel meteen gelden -- die is ingevuld, het bedrag
+     niet. */
+  ck('een ingevulde naam telt wel', leeg.vercel.naam === 'Vercel Pro', leeg.vercel.naam);
+
   console.log('\n— Meta rekent per bericht, niet per maand —');
   /* Sinds juli 2025 factureert Meta per verstuurd sjabloonbericht. Een
      stuksprijs is pas een maandbedrag als je weet hoeveel er verstuurd zijn --
