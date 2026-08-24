@@ -725,6 +725,17 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 }
 .kst-bedrag.leeg { color: var(--warning-ink); font-weight: 600; font-size: 13px; }
 
+/* Wat deze dienst tot nu toe gekost heeft. Eigen regel onder de omschrijving:
+   het is een ander soort getal dan het maandbedrag ernaast, en die twee door
+   elkaar lezen is precies wat je hier niet wil. */
+.kst-sinds {
+  font-size: 12px;
+  color: var(--accent-ink);
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.kst-sinds.leeg { color: var(--warning-ink); }
+
 /* De herkomst. Klein, maar het verschil tussen een getal dat je kan geloven en
    een getal dat je moet controleren. */
 .kst-bron {
@@ -9332,6 +9343,11 @@ ${faro.navCta}
             <div class="kst-lbl">Maandomzet</div>
             <div class="kst-groot" id="kst-mrr">&mdash;</div>
             <div class="kst-onder" id="kst-mrr-onder">Alleen betalende klanten</div>
+          </div>
+          <div class="kst-kaart">
+            <div class="kst-lbl">Totaal uitgegeven</div>
+            <div class="kst-groot" id="kst-uit">&mdash;</div>
+            <div class="kst-onder" id="kst-uit-onder">Sinds de startdatum van elk abonnement</div>
           </div>
           <div class="kst-kaart">
             <div class="kst-lbl">Netto per maand</div>
@@ -20969,6 +20985,13 @@ function kstBedrag(v, munt) {
   return teken + Number(v).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function kstDatum(iso) {
+  if (!iso) return '';
+  var d = new Date(String(iso));
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function kstBronLabel(bron) {
   if (bron === 'ingevuld')   return '<span class="kst-bron ingevuld">ingevuld</span>';
   if (bron === 'lijstprijs') return '<span class="kst-bron lijstprijs">lijstprijs</span>';
@@ -20982,10 +21005,20 @@ function kstRij(d) {
   else if (d.aantal > 1 && d.perStuk) meta = d.aantal + ' x ' + d.perStuk + '. ' + meta;
   else if (d.perStuk && d.bron === 'lijstprijs') meta = 'Per ' + d.perStuk + '. ' + meta;
   if (d.gemeten !== null && d.gemeten !== undefined) meta = d.gemeten + ' geteld deze maand. ' + meta;
+  var sinds = '';
+  if (d.uitgegeven !== null && d.uitgegeven !== undefined) {
+    sinds = '<div class="kst-sinds">Sinds ' + escHtml(kstDatum(d.gestart)) + ': '
+      + d.betalingen + ' betaling' + (d.betalingen === 1 ? '' : 'en') + ', samen '
+      + escHtml(kstBedrag(d.uitgegeven, d.valuta)) + '</div>';
+  } else if (d.bedrag !== null && d.bedrag !== undefined && !d.gestart) {
+    /* Wel een bedrag, geen startdatum: dan is er geen totaal, en dat hoort te
+       zien te zijn in plaats van als nul in de som te verdwijnen. */
+    sinds = '<div class="kst-sinds leeg">Geen startdatum ingevuld, dus geen totaal</div>';
+  }
   if (d.notitie) meta += ' — ' + d.notitie;
   return '<div class="kst-rij' + (d.aan ? '' : ' uit') + '">'
     + '<div><div class="kst-naam">' + escHtml(d.naam) + kstBronLabel(d.bron) + '</div>'
-    + '<div class="kst-meta">' + escHtml(meta) + '</div></div>'
+    + '<div class="kst-meta">' + escHtml(meta) + '</div>' + sinds + '</div>'
     + (bedrag
         ? '<div class="kst-bedrag">' + escHtml(bedrag) + '<span style="font-weight:400;color:var(--text-muted);font-size:12px">/mnd</span></div>'
         : '<div class="kst-bedrag leeg">bedrag onbekend</div>')
@@ -21033,6 +21066,19 @@ async function loadKosten(force) {
     d.mrrEur === null || d.mrrEur === undefined ? '—' : kstBedrag(d.mrrEur, 'EUR');
   document.getElementById('kst-mrr-onder').textContent =
     (d.betalend || 0) + ' betalend van ' + (d.klanten || 0) + ' klant(en)';
+
+  var u = d.uitgegeven || {};
+  var uMunten = Object.keys(u.perMunt || {});
+  document.getElementById('kst-uit').textContent = uMunten.length
+    ? (u.inEur !== null && u.inEur !== undefined
+        ? kstBedrag(u.inEur, 'EUR')
+        : uMunten.map(function (m) { return kstBedrag(u.perMunt[m], m); }).join(' + '))
+    : '—';
+  document.getElementById('kst-uit-onder').textContent = !uMunten.length
+    ? 'Vul Started On in bij een dienst om dit te berekenen'
+    : ((u.zonderStartdatum && u.zonderStartdatum.length)
+        ? 'Zonder startdatum, dus niet meegeteld: ' + u.zonderStartdatum.join(', ')
+        : 'Alle betalingen sinds de start van elk abonnement');
 
   var nEl = document.getElementById('kst-netto');
   if (d.nettoPerMaandEur === null || d.nettoPerMaandEur === undefined) {
