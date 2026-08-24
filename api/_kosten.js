@@ -54,6 +54,7 @@ const F = Object.freeze({
   aantal:   'Seats',
   actief:   'Active',
   notitie:  'Notes',
+  gestart:  'Started On',
 });
 
 /*
@@ -178,6 +179,21 @@ const DIENSTEN = Object.freeze([
     env: ['SMTP_HOST', 'RESEND_API_KEY'],
   }),
   Object.freeze({
+    id: 'smartlead',
+    naam: 'Smartlead',
+    leverancier: 'Smartlead.ai',
+    soort: 'vast',
+    waarvoor: 'Koude e-mailcampagnes om zelf klanten te werven. Staat BUITEN de app.',
+    /* Geen sleutel om op te detecteren, en dat is hier geen omissie: Helvaro
+       praat niet met Smartlead. Het is een abonnement dat de eigenaar betaalt
+       en dat dus in dit overzicht hoort, maar het draait niet mee in de code.
+       Vandaar altijdAan -- anders zou hij als "staat uit" tussen de diensten
+       staan die wel een sleutel missen, en dat is een ander verhaal. */
+    tarief: null,
+    altijdAan: true,
+    extern: true,
+  }),
+  Object.freeze({
     id: 'domein',
     naam: 'Domeinnaam helvaro.pro',
     leverancier: 'Registrar',
@@ -236,6 +252,49 @@ function perMaand(bedrag, interval, aantalPerMaand) {
   return n;
 }
 
+/**
+ * Hoeveel keer is deze dienst gefactureerd sinds de startdatum?
+ *
+ * Niet "hoeveel maanden zitten ertussen", maar hoeveel BETALINGEN er geweest
+ * zijn -- dat is een ander getal en het is het getal dat je zoekt. Een
+ * abonnement dat op 15 maart begon is op 15 maart voor het eerst afgeschreven,
+ * dus op 20 maart heb je één keer betaald en niet nul keer. En op 14 april nog
+ * steeds één keer: de tweede afschrijving is er dan nog niet geweest.
+ *
+ * @returns {number|null} aantal betalingen, of null bij een onbruikbare datum
+ */
+function betalingenSinds(start, interval, nu = new Date()) {
+  if (!start) return null;
+  const s = start instanceof Date ? start : new Date(String(start));
+  if (isNaN(s.getTime())) return null;
+  if (s.getTime() > nu.getTime()) return 0;      // begint pas
+
+  const i = String(interval || 'maand').toLowerCase();
+  /* Een stuksprijs heeft geen ritme: hoe vaak Meta factureert hangt af van hoe
+     veel je stuurt, niet van de kalender. Daar valt niets terug te rekenen. */
+  if (i === 'bericht' || i === 'stuk' || i === 'message') return null;
+
+  if (i === 'jaar' || i === 'year' || i === 'jaarlijks') {
+    let jaren = nu.getFullYear() - s.getFullYear();
+    const verjaardagGehad = (nu.getMonth() > s.getMonth())
+      || (nu.getMonth() === s.getMonth() && nu.getDate() >= s.getDate());
+    if (!verjaardagGehad) jaren -= 1;
+    return jaren + 1;
+  }
+  if (i === 'week') return Math.floor((nu - s) / (7 * 86400000)) + 1;
+  if (i === 'dag' || i === 'day') return Math.floor((nu - s) / 86400000) + 1;
+
+  // maand
+  let maanden = (nu.getFullYear() - s.getFullYear()) * 12 + (nu.getMonth() - s.getMonth());
+  /* De 31e van een maand met 30 dagen bestaat niet; de afschrijving valt dan op
+     de laatste dag. Zonder deze regel telt zo'n abonnement in februari een
+     betaling te weinig. */
+  const laatsteDagNu = new Date(nu.getFullYear(), nu.getMonth() + 1, 0).getDate();
+  const dagDezeMaand = Math.min(s.getDate(), laatsteDagNu);
+  if (nu.getDate() < dagDezeMaand) maanden -= 1;
+  return maanden + 1;
+}
+
 function koersUsdEur() {
   const v = Number(String(process.env.KOSTEN_USD_EUR || '').trim());
   return Number.isFinite(v) && v > 0 ? v : null;
@@ -283,6 +342,7 @@ async function eigenBedragen() {
            soort stilte die dit bestand juist moet wegnemen. */
         actief:   f[F.actief] === undefined ? true : !!f[F.actief],
         notitie:  String(f[F.notitie] || '').trim(),
+        gestart:  f[F.gestart] ? String(f[F.gestart]) : null,
       };
     });
   } catch (err) {
@@ -413,8 +473,40 @@ async function overzicht({ gesprekken = null, mrrEur = null, volumes = {} } = {}
       gemeten: gemeten === null ? null : gemeten,
       bron,
       notitie,
+      /* Sinds wanneer je dit betaalt, en wat het bij elkaar gekost heeft. Alleen
+         als er een startdatum EN een bedrag is -- een van de twee alleen levert
+         geen som op, en een halve som is hier erger dan geen. */
+      gestart: (mijn && mijn.gestart) || null,
+      betalingen: null,
+      uitgegeven: null,
     });
   }
+
+  /* ── Wat er tot nu toe uitgegeven is ──────────────────────────────────────
+     Het aantal betalingen maal het bedrag. Bewust NIET maal het maandbedrag:
+     een jaarabonnement dat drie keer betaald is, kostte drie keer het
+     jaarbedrag -- niet 36 keer een twaalfde. Dat verschil is precies het soort
+     rekenfout dat in een totaal onzichtbaar blijft. */
+  const nu = new Date();
+  for (const r of regels) {
+    if (!r.gestart || r.bedrag === null) continue;
+    const n = betalingenSinds(r.gestart, r.interval, nu);
+    if (n === null) continue;
+    r.betalingen = n;
+    r.uitgegeven = Math.round(n * r.bedrag * (r.aantal || 1) * 100) / 100;
+  }
+
+  const uitgegevenPerMunt = {};
+  for (const r of regels) {
+    if (r.uitgegeven === null || !r.aan) continue;
+    uitgegevenPerMunt[r.valuta] =
+      Math.round(((uitgegevenPerMunt[r.valuta] || 0) + r.uitgegeven) * 100) / 100;
+  }
+  /* Welke diensten wél een bedrag hebben maar geen startdatum: die ontbreken in
+     het totaal, en dat hoort te zien te zijn. */
+  const zonderStartdatum = regels
+    .filter((r) => r.aan && r.bedrag !== null && !r.gestart)
+    .map((r) => r.naam);
 
   /* Alleen wat AAN staat telt mee. Een dienst zonder sleutel draait niet, en
      zijn lijstprijs bij je maandlasten optellen zou je kosten hoger laten
@@ -479,6 +571,11 @@ async function overzicht({ gesprekken = null, mrrEur = null, volumes = {} } = {}
     diensten: regels,
     vastPerMaand: { perMunt: vastPerMunt, inEur: vastEur, koersUsdEur: koers },
     verbruikPerMaand: { perMunt: verbruikPerMunt, inEur: verbruikEur },
+    uitgegeven: {
+      perMunt: uitgegevenPerMunt,
+      inEur: naarEur(uitgegevenPerMunt),
+      zonderStartdatum,
+    },
     volumes,
     nogInvullen: onbekend,
     tabelBestaat: _tabelBestaat !== false,
@@ -497,6 +594,6 @@ async function overzicht({ gesprekken = null, mrrEur = null, volumes = {} } = {}
 
 module.exports = {
   DIENSTEN, OP_ID, COSTS_TABLE, F,
-  staatAan, perMaand, sleutels, aiVerbruik, eigenBedragen, overzicht,
-  koersUsdEur, _resetTabelCache,
+  staatAan, perMaand, betalingenSinds, sleutels, aiVerbruik, eigenBedragen,
+  overzicht, koersUsdEur, _resetTabelCache,
 };

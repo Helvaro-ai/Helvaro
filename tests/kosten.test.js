@@ -52,7 +52,7 @@ const K = require(BASE + 'api/_kosten.js');
      geen bedrag, en telt daarom niet mee in het totaal maar wel in "nog
      invullen". */
   ck('alleen wat niet aan een sleutel hangt blijft staan',
-     o.diensten.filter((d) => d.aan && d.soort === 'vast').map((d) => d.id).join(',') === 'vercel,domein',
+     o.diensten.filter((d) => d.aan && d.soort === 'vast').map((d) => d.id).join(',') === 'vercel,smartlead,domein',
      o.diensten.filter((d) => d.aan).map((d) => d.id));
 
   console.log('\n— met Airtable aan —');
@@ -103,6 +103,9 @@ const K = require(BASE + 'api/_kosten.js');
       { id: 'rec1', fields: { Service: 'airtable', Name: 'Airtable Team (jaar)', Amount: 20, Currency: 'USD', Interval: 'jaar', Seats: 2, Notes: 'per plek' } },
       { id: 'rec2', fields: { Service: 'domein', Amount: 24, Currency: 'EUR', Interval: 'jaar' } },
       { id: 'rec3', fields: { Service: 'vercel', Amount: 999, Currency: 'USD', Interval: 'maand', Active: false } },
+      /* Smartlead hangt aan geen enkele sleutel en staat dus altijd aan; zonder
+         bedrag zou hij hier eeuwig op "nog invullen" blijven staan. */
+      { id: 'rec4', fields: { Service: 'smartlead', Amount: 39, Currency: 'USD', Interval: 'maand' } },
     ] }),
   });
   K._resetTabelCache();
@@ -176,6 +179,67 @@ const K = require(BASE + 'api/_kosten.js');
      bedrag, dus er hoort GEEN netto te staan -- ook nu niet. */
   ck('nog steeds geen netto zolang het domein leeg is', o.nettoPerMaandEur === null, o.nettoPerMaandEur);
   delete process.env.KOSTEN_USD_EUR;
+
+  console.log('\n— hoeveel is er tot nu toe uitgegeven —');
+  /* Niet "hoeveel maanden zitten ertussen" maar hoeveel BETALINGEN er geweest
+     zijn. Een abonnement dat op 15 maart begon is die dag voor het eerst
+     afgeschreven, dus op 20 maart heb je één keer betaald en niet nul keer. */
+  const nu = new Date('2026-08-24T12:00:00Z');
+  ck('gestart op 15 maart 2026 = 6 betalingen', K.betalingenSinds('2026-03-15', 'maand', nu) === 6,
+     K.betalingenSinds('2026-03-15', 'maand', nu));
+  ck('vandaag gestart = 1 betaling', K.betalingenSinds('2026-08-24', 'maand', nu) === 1);
+  ck('morgen gestart = nog niets', K.betalingenSinds('2026-08-25', 'maand', nu) === 0);
+  /* De 31e bestaat niet in elke maand; de afschrijving valt dan op de laatste
+     dag. Zonder die correctie telt zo'n abonnement in februari te weinig. */
+  ck('de 31e als startdag telt gewoon door', K.betalingenSinds('2025-01-31', 'maand', nu) === 19,
+     K.betalingenSinds('2025-01-31', 'maand', nu));
+  ck('een jaarabonnement telt in jaren', K.betalingenSinds('2024-08-24', 'jaar', nu) === 3);
+  /* Een tarief per bericht heeft geen ritme: hoe vaak Meta factureert hangt af
+     van hoeveel je stuurt, niet van de kalender. */
+  ck('een stuksprijs levert geen telling op', K.betalingenSinds('2026-01-01', 'bericht', nu) === null);
+  ck('een onleesbare datum ook niet', K.betalingenSinds('ergens in maart', 'maand', nu) === null);
+  ck('en een lege datum evenmin', K.betalingenSinds('', 'maand', nu) === null);
+
+  global.fetch = async () => ({
+    ok: true, status: 200, text: async () => '',
+    json: async () => ({ records: [
+      { id: 'recA', fields: { Service: 'vercel', Amount: 20, Currency: 'USD', Interval: 'maand', 'Started On': '2026-03-15' } },
+      { id: 'recB', fields: { Service: 'smartlead', Amount: 39, Currency: 'USD', Interval: 'maand', 'Started On': '2026-06-01' } },
+      { id: 'recC', fields: { Service: 'airtable', Amount: 24, Currency: 'USD', Interval: 'maand' } },
+    ] }),
+  });
+  K._resetTabelCache();
+  o = await K.overzicht();
+  const u = Object.fromEntries(o.diensten.map((d) => [d.id, d]));
+  ck('Smartlead staat in de lijst', !!u.smartlead, Object.keys(u));
+  ck('en telt mee zonder sleutel, want er is geen sleutel om te hebben',
+     u.smartlead.aan === true, u.smartlead);
+  ck('Vercel: 6 betalingen van 20 = 120', u.vercel.uitgegeven === 120 && u.vercel.betalingen === 6, u.vercel);
+  /* Juni, juli, augustus = drie afschrijvingen. */
+  ck('Smartlead: 3 x 39 = 117', u.smartlead.uitgegeven === 117, u.smartlead);
+  ck('Airtable heeft geen startdatum, dus geen totaal', u.airtable.uitgegeven === null, u.airtable);
+  ck('en staat apart vermeld', o.uitgegeven.zonderStartdatum.indexOf('Airtable Team') !== -1,
+     o.uitgegeven.zonderStartdatum);
+  ck('het totaal is 237 dollar, niet meer', o.uitgegeven.perMunt.USD === 237, o.uitgegeven);
+  /* De maandlasten blijven ongemoeid: dat is een ander getal en het mag niet
+     meebewegen met hoe lang je iets al hebt. */
+  ck('en de maandlasten zijn er niet door veranderd', o.vastPerMaand.perMunt.USD === 83,
+     o.vastPerMaand);
+
+  console.log('\n— een jaarbedrag wordt niet twaalf keer geteld —');
+  /* Drie jaarbetalingen van 120 is 360, niet 36 x 10. Het verschil verdwijnt
+     in een totaal zonder dat iemand het ziet. */
+  global.fetch = async () => ({
+    ok: true, status: 200, text: async () => '',
+    json: async () => ({ records: [
+      { id: 'recD', fields: { Service: 'domein', Amount: 120, Currency: 'EUR', Interval: 'jaar', 'Started On': '2024-08-24' } },
+    ] }),
+  });
+  K._resetTabelCache();
+  o = await K.overzicht();
+  const j = Object.fromEntries(o.diensten.map((d) => [d.id, d]));
+  ck('3 jaarbetalingen van 120 = 360', j.domein.uitgegeven === 360, j.domein);
+  ck('maar per maand is het 10', j.domein.perMaand === 10, j.domein);
 
   console.log('\n— de sleutels, en wat er NIET uitkomt —');
   process.env.ANTHROPIC_API_KEY = 'sk-ant-geheim-zelftest-abcdefghijklmnop';

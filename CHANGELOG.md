@@ -56,6 +56,28 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   net als Klanten en Founder. Bij die twee stonden de paginatitels nog wél in de
   broncode van iedereen ("Founder — jouw startup"); die zijn nu ook weg.
 
+**Smartlead erbij, en "hoeveel hebben we hier al aan uitgegeven"**
+
+- **Smartlead staat nu in het overzicht.** Hij hangt aan geen enkele sleutel —
+  Helvaro praat niet met Smartlead — en telt daarom altijd mee in plaats van als
+  "staat uit" te verschijnen tussen de diensten die wél een sleutel missen.
+- **Nieuw veld `Started On` in de tabel `costs`.** Vul daar in wanneer je een
+  abonnement gestart bent, en de pagina rekent uit hoeveel keer er sindsdien
+  betaald is en wat je er in totaal aan kwijt bent geweest. Bovenaan staat een
+  vierde kaart met het totaal over alles.
+- **Het telt BETALINGEN, geen maanden.** Een abonnement dat op 15 maart begon is
+  die dag voor het eerst afgeschreven; op 20 maart heb je dus één keer betaald
+  en niet nul keer. En op 14 april nog steeds één keer, want de tweede
+  afschrijving is er dan nog niet geweest.
+- **Een jaarbedrag wordt niet twaalf keer geteld.** Drie jaarbetalingen van €120
+  is €360, niet 36 × €10. Per maand blijft het gewoon €10 — dat is een ander
+  getal en het blijft een ander getal.
+- **Geen startdatum, geen totaal.** Diensten zonder datum verdwijnen niet
+  stilzwijgend als nul in de som: ze worden bij naam genoemd onder de kaart.
+
+> **Actie voor jou:** vul in `costs` bij elke dienst **Started On** in (de datum
+> van je eerste afschrijving) en het bedrag. Vanaf dat moment klopt het totaal.
+
 **Alle elf diensten staan nu in `costs`, allemaal per maand**
 
 - **Elke dienst heeft nu een regel**: Vercel, Airtable, Clerk, Upstash, Meta,
