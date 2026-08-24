@@ -56,6 +56,23 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   net als Klanten en Founder. Bij die twee stonden de paginatitels nog wél in de
   broncode van iedereen ("Founder — jouw startup"); die zijn nu ook weg.
 
+**Alle elf diensten staan nu in `costs`, allemaal per maand**
+
+- **Elke dienst heeft nu een regel**: Vercel, Airtable, Clerk, Upstash, Meta,
+  Anthropic, OpenAI, Kling, Stripe, e-mail en het domein. Allemaal op
+  **maand** — zoals je zei dat je betaalt — met de munt ingevuld en een
+  notitie die zegt wat er in Amount hoort. Alleen het bedrag is nog leeg.
+- **Kling stond er nog niet bij** en is toegevoegd.
+- **Het domein stond op jaar** en staat nu ook op maand. Betaal je je domein
+  toch per jaar, zet Interval dan terug op `jaar`; dan wordt het bedrag door
+  twaalf gedeeld.
+- **Meta staat op maand** (je maandfactuur). Wil je het per bericht laten
+  uitrekenen, zet Interval dan op `bericht` en Amount op je tarief per
+  sjabloonbericht — dat blijft gewoon werken.
+- **Zit je bij Clerk of Upstash nog in de gratis laag? Zet daar `0`.** Dan telt
+  de dienst als bekend in plaats van als "nog invullen" — en zolang er nog iets
+  op "nog invullen" staat, toont de pagina bewust geen nettowinst.
+
 **Meta erbij, en die rekent anders**
 
 - **Meta factureert per verstuurd sjabloonbericht**, niet per maand — een
