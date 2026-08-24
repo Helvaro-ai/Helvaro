@@ -397,10 +397,45 @@ module.exports = async function handler(req, res) {
         console.warn('[kosten] omzetkant niet te lezen:', err && err.message);
       }
 
+      /* ── Wat Meta je kan factureren ───────────────────────────────────
+         Meta rekent sinds juli 2025 per verstuurd SJABLOONBERICHT, met een
+         tarief per categorie en per land. Een gesprek dat de lead zelf begint
+         is gratis; wat jij buiten het venster stuurt niet.
+
+         Er wordt hier niets geschat. Geteld wordt alleen wat ook echt in de
+         records staat: een afspraakherinnering zet `Reminder Sent` op de
+         afspraak, en dat is een verstuurd sjabloonbericht. Opvolgberichten
+         laten géén eigen markering achter -- die staan er dus NIET bij, en dat
+         wordt er ook bij gezegd in plaats van het verschil weg te rekenen. */
+      const volumes = {};
+      const telling = { sjablonen: null, waaruit: '', nietGeteld: [] };
+      try {
+        const nu = new Date();
+        const begin = new Date(Date.UTC(nu.getUTCFullYear(), nu.getUTCMonth(), 1)).toISOString();
+        const formule = encodeURIComponent(
+          `AND({Reminder Sent}=TRUE(), IS_AFTER({Start Time}, "${begin}"))`);
+        const rA = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/tblD058vEITs1xYFc?filterByFormula=${formule}&pageSize=100&fields%5B%5D=Reminder%20Sent`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+        if (rA.ok) {
+          const dA = await rA.json();
+          const n = ((dA && dA.records) || []).length;
+          volumes.whatsapp = n;
+          telling.sjablonen = n;
+          telling.waaruit = 'Afspraakherinneringen deze maand (Reminder Sent op de afspraak).';
+          telling.nietGeteld = ['opvolgberichten (laten geen eigen markering achter)',
+                                'introberichten via het formulier'];
+        }
+      } catch (err) {
+        console.warn('[kosten] sjabloontelling mislukt:', err && err.message);
+      }
+
       const overzicht = await _kosten.overzicht({
         gesprekken: omzetGelezen ? gesprekken : null,
         mrrEur: omzetGelezen ? Math.round(mrrEur * 100) / 100 : null,
+        volumes,
       });
+      overzicht.telling = telling;
 
       return res.status(200).json(Object.assign({ ok: true, klanten, betalend, omzetGelezen }, overzicht));
     }
