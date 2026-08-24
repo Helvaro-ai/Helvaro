@@ -84,9 +84,12 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 > `vercel`, `airtable`, `domein`, … zijn) en de pagina rekent daarmee in plaats
 > van met de lijstprijs. Laat je hem leeg, dan blijven de lijstprijzen staan.
 >
-> Wil je Meta erbij: voeg in dat tabelletje bij **Interval** zelf de keuze
-> **`bericht`** toe (Airtable staat niet toe dat de API een keuze aanmaakt) en
-> zet bij Amount je tarief per sjabloonbericht.
+> **Dat is nu al voor je klaargezet.** In `costs` staat voor Vercel, Airtable,
+> Meta, Anthropic, OpenAI en het domein al een regel met de juiste munt, het
+> juiste interval en een notitie erbij — alleen **Amount** is leeg. Je hoeft er
+> dus enkel een getal in te typen. Zolang dat leeg blijft verandert er niets:
+> de lijstprijzen blijven gelden. De keuze `bericht` bij Interval staat er ook
+> in, dus Meta kan meteen op een tarief per sjabloonbericht.
 
 **Het inlogscherm liet eerst het verkeerde formulier zien**
 
@@ -1035,4 +1038,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 85a799d -->
+<!-- changelog-tot: bf8e934 -->
