@@ -56,6 +56,31 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   net als Klanten en Founder. Bij die twee stonden de paginatitels nog wél in de
   broncode van iedereen ("Founder — jouw startup"); die zijn nu ook weg.
 
+**Iemand die zelf appt wordt nu een lead**
+
+- **Dit was een doodlopende weg.** Wie het nummer appte zonder ooit een
+  formulier te hebben ingevuld — via een advertentie met klik-naar-WhatsApp,
+  een QR-code, of gewoon omdat hij het nummer ergens zag — kreeg "vul eerst
+  het contactformulier in" en werd nooit een lead. Nu start de AI gewoon het
+  gesprek.
+- **Waarom dat niet eerder kon:** op een gedeeld nummer is bij een onbekende
+  beller niet te weten voor wélk kantoor hij belt. Dat is nu opgelost door het
+  strikt te binden aan één voorwaarde: er mag maar **één actieve klant** in de
+  base staan. Dan heeft de vraag maar één mogelijk antwoord en wordt er niets
+  geraden. Komt er een tweede klant bij, dan valt dit vanzelf terug op het
+  formulierbericht — geen vlag om te vergeten, geen instelling die veroudert.
+- **Wat dit voor je launch betekent:** je kan vandaag live met één nummer,
+  zónder te wachten op Meta's templategoedkeuring. Deel een wa.me-link in
+  plaats van het formulier en het volledige gesprek werkt: kwalificatie,
+  agenda, afzeggen, alles.
+- **De bron staat op WhatsApp** in plaats van op het formulier, zodat je later
+  kan zien welke leads uit een advertentie kwamen.
+- **Toestemming wordt niet verzonnen.** Bij het formulier vinkt iemand
+  expliciet aan; wie zelf appt heeft dat nooit gedaan. Hij zoekt duidelijk
+  contact — dat is de grondslag — maar dat is iets anders dan gegeven
+  toestemming, en dat verschil staat nu in de administratie in plaats van dat
+  het weggemoffeld wordt.
+
 **Klaar om te launchen: de WhatsApp-controle en de vier templates**
 
 - **`node scripts/preflight.js` kijkt nu ook WhatsApp na.** Dat ontbrak, en het
