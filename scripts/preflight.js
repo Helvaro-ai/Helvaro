@@ -466,6 +466,79 @@ async function probe(url, opts = {}) {
             'Zonder Clerk is er dan GEEN weg naar binnen voor een nieuwe klant: de knop\n'
           + '"Account aanmaken" zegt dan alleen dat aanmelden tijdelijk uit staat.');
 
+  /* ── WhatsApp: de weg waarlangs het product eigenlijk werkt ─────────────
+     Dit ontbrak, en het is precies de sectie die je vóór een launch nodig hebt.
+     Een lead die een formulier invult heeft jou nog NOOIT een bericht gestuurd,
+     dus het 24-uursvenster van Meta is dicht en alleen een goedgekeurde template
+     mag naar buiten. Staat INTRO_TEMPLATE_NAME niet ingevuld, dan wordt de lead
+     wel aangemaakt en gaat er NIETS uit -- luid in het log, onzichtbaar op het
+     scherm. Dat is de duurste stille storing die dit product kent. */
+  head('whatsapp');
+
+  const waToken   = (process.env.WHATSAPP_TOKEN || '').trim();
+  const waPnid    = (process.env.PHONE_NUMBER_ID || '').trim();
+  const waSecret  = (process.env.WA_APP_SECRET || '').trim();
+  const waVerify  = (process.env.WA_VERIFY_TOKEN || '').trim();
+
+  if (!waToken) {
+    fail('WHATSAPP_TOKEN ontbreekt — er gaat geen enkel bericht uit',
+         'Zonder dit token kan Helvaro niets versturen: geen begroeting, geen\n'
+       + 'antwoord, geen herinnering. Het product doet dan niets.');
+  } else ok(`WHATSAPP_TOKEN aanwezig (${mask(waToken)})`);
+
+  if (!waPnid) {
+    fail('PHONE_NUMBER_ID ontbreekt', 'Meta weet dan niet VANAF welk nummer er verstuurd wordt.');
+  } else ok(`PHONE_NUMBER_ID aanwezig (${waPnid})`);
+
+  /* De handtekeningcontrole. api/whatsapp.js weigert de webhook zonder dit
+     geheim in plaats van de controle over te slaan -- dus dit ontbreken
+     betekent: geen enkel binnenkomend bericht wordt verwerkt. */
+  if (!waSecret) {
+    fail('WA_APP_SECRET ontbreekt — binnenkomende berichten worden GEWEIGERD',
+         'De webhook controleert de handtekening van Meta en weigert liever alles\n'
+       + 'dan een ongecontroleerd bericht te verwerken. Een lead die antwoordt,\n'
+       + 'krijgt dus niets terug.');
+  } else ok('WA_APP_SECRET aanwezig');
+
+  if (!waVerify) {
+    warn('WA_VERIFY_TOKEN ontbreekt',
+         'Alleen nodig om de webhook bij Meta te (her)koppelen. Loopt hij al, dan\n'
+       + 'merk je hier niets van tot je hem opnieuw moet verifiëren.');
+  } else ok('WA_VERIFY_TOKEN aanwezig');
+
+  /* De vier templates. Elk mist iets anders, en het gevolg staat erbij -- niet
+     "niet geconfigureerd", maar wat een lead of een makelaar NIET krijgt. */
+  const TEMPLATES = [
+    { env: 'INTRO_TEMPLATE_NAME', hard: true, wat: 'het eerste bericht na een formulier',
+      gevolg: 'Een lead die je formulier invult wordt wel aangemaakt maar krijgt NIETS.\n'
+            + 'Dat is de hele kernlus van het product. Drie variabelen: {{1}} voornaam,\n'
+            + '{{2}} naam van de AI, {{3}} bedrijfsnaam.' },
+    { env: 'FOLLOWUP_TEMPLATE_NAME', hard: false, wat: 'de opvolging na 24u/7d',
+      gevolg: 'Leads die niet antwoorden worden nooit opnieuw aangeraakt. Eén variabele:\n'
+            + '{{1}} voornaam.' },
+    { env: 'REMINDER_TEMPLATE_NAME', hard: false, wat: 'de herinnering 24u voor de afspraak',
+      gevolg: 'Geen herinnering, dus meer no-shows. Drie variabelen: {{1}} voornaam,\n'
+            + '{{2}} tijdstip, {{3}} bedrijfsnaam.' },
+    { env: 'NOTIFY_TEMPLATE_NAME', hard: false, wat: 'jouw eigen ping bij een nieuwe lead',
+      gevolg: 'Je hoort het pas als je zelf in het dashboard kijkt.' },
+  ];
+
+  for (const t of TEMPLATES) {
+    const naam = (process.env[t.env] || '').trim();
+    if (naam) { ok(`${t.env} = "${naam}" — ${t.wat}`); continue; }
+    if (t.hard) fail(`${t.env} ontbreekt — ${t.wat} gaat niet uit`, t.gevolg);
+    else warn(`${t.env} ontbreekt — ${t.wat} gaat niet uit`, t.gevolg);
+  }
+
+  /* Een goedgekeurde template bestaat per TAAL. Staat de taal op iets waarvoor
+     je geen goedkeuring hebt, dan weigert Meta de verzending -- en dat ziet er
+     in het log uit als een kapotte template in plaats van een ontbrekende taal. */
+  const introLang = (process.env.INTRO_TEMPLATE_LANG || '').trim();
+  if (introLang) ok(`INTRO_TEMPLATE_LANG = ${introLang}`);
+  else warn('INTRO_TEMPLATE_LANG staat leeg — de taal van de klant wordt gebruikt',
+            'Dat werkt zolang je voor élke klanttaal een goedgekeurde template hebt.\n'
+          + 'Heb je er alleen een in het Nederlands, zet hem dan expliciet op nl.');
+
   head('faro');
 
   const faroOn = process.env.FARO_WORKSPACE_ENABLED === '1';

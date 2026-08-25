@@ -56,6 +56,27 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   net als Klanten en Founder. Bij die twee stonden de paginatitels nog wél in de
   broncode van iedereen ("Founder — jouw startup"); die zijn nu ook weg.
 
+**Klaar om te launchen: de WhatsApp-controle en de vier templates**
+
+- **`node scripts/preflight.js` kijkt nu ook WhatsApp na.** Dat ontbrak, en het
+  is precies de stille storing die je een launch kost: staat
+  `INTRO_TEMPLATE_NAME` niet ingevuld, dan wordt een lead die je formulier
+  invult wél aangemaakt en gaat er **niets** naar hem toe. Preflight zegt dat nu
+  hard, met bij elke ontbrekende template wat een lead of jij niet krijgt —
+  geen "niet geconfigureerd", maar het gevolg.
+- **Ook `WHATSAPP_TOKEN`, `PHONE_NUMBER_ID` en `WA_APP_SECRET`.** Die laatste is
+  er zo een: zonder dat geheim weigert de webhook élk binnenkomend bericht, dus
+  een lead die antwoordt krijgt niets terug.
+- **De vier templates staan uitgeschreven in `docs/whatsapp-templates.md`** —
+  intro, opvolging, herinnering en jouw eigen notificatie, in het Nederlands,
+  met het juiste aantal variabelen en in de juiste volgorde. Kopiëren, indienen
+  bij Meta, naam in Vercel zetten.
+
+> **Actie voor jou:** dien die vier in bij Meta (WhatsApp Manager →
+> Berichtsjablonen). Zonder de intro-template werkt de formulierroute niet.
+> Ondertussen kan je wél live met leads die jou eerst appen — dan is het
+> 24-uursvenster open en werkt het volledige gesprek zonder één template.
+
 **Smartlead erbij, en "hoeveel hebben we hier al aan uitgegeven"**
 
 - **Smartlead staat nu in het overzicht.** Hij hangt aan geen enkele sleutel —
@@ -1077,4 +1098,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: b815cc7 -->
+<!-- changelog-tot: 52f9a40 -->
