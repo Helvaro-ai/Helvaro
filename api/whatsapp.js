@@ -609,7 +609,34 @@ async function processMessage(phone, text, scopedProjectCode) {
   // cross-client heuristic never runs for this message. Otherwise this is
   // the shared-number path: getLead() may see multiple clients' leads for
   // this phone and has to resolve the collision itself.
-  const lead = await getLead(phone, scopedProjectCode);
+  let lead = await getLead(phone, scopedProjectCode);
+
+  /* ── Iemand appt uit zichzelf, zonder ooit een formulier te hebben ingevuld ──
+     Dit is de weg die een advertentie met een klik-naar-WhatsApp of een
+     QR-code oplevert, en tot nu eindigde hij doodlopend: de beller kreeg
+     "vul eerst het formulier in" en werd nooit een lead.
+
+     Dat kon ook niet anders, want op een GEDEELD nummer is niet te weten voor
+     welk kantoor die onbekende beller belt. Behalve in precies één geval: als
+     er maar ÉÉN actieve klant in de base staat. Dan is er niets om verkeerd
+     te raden -- de vraag "van wie is deze lead" heeft dan maar één mogelijk
+     antwoord.
+
+     Daarom is dit strikt gebonden aan die telling. Komt er een tweede klant
+     bij, dan valt dit vanzelf terug op het formulierbericht hieronder; er is
+     geen vlag om te vergeten en geen instelling die kan verouderen. Zo blijft
+     de regel uit CLAUDE.md overeind: tenant-identiteit komt nooit uit iets dat
+     de afzender kan beïnvloeden. */
+  if (!lead && !scopedProjectCode) {
+    const enige = await enigeActieveKlant();
+    if (enige) {
+      lead = await maakLeadUitBinnenkomend(phone, text, enige);
+      if (lead) {
+        console.log(`[WhatsApp] koude inbound van ${maskPhone(phone)} → nieuwe lead voor ${enige.projectCode}`);
+      }
+    }
+  }
+
   if (!lead) {
     // Pre-form fallback. Try to honour client's saved language if we can find the project from phone (best-effort)
     await sendWA(phone, 'Hi, please fill in the contact form first so we can help you. / Bonjour, remplissez d’abord le formulaire de contact pour que nous puissions vous aider. / Dag, stuur eerst het contactformulier in zodat we je verder kunnen helpen.');
@@ -1862,6 +1889,101 @@ async function getClientByCode(code) {
 // when MORE than one client somehow owns it (a data-entry mistake) — in
 // neither case is a direct route safe, so the caller falls back to the
 // Task 1 phone-only heuristic rather than guessing.
+/* ── Is er precies één actieve klant? ────────────────────────────────────────
+   Alleen dan mag een koud binnenkomend bericht op het gedeelde nummer een lead
+   worden (zie processMessage). Twee of meer klanten en het antwoord is nee --
+   niet omdat het lastig is, maar omdat het dan een GOK is wie de beller
+   bedoelt, en een verkeerd geraden tenant is precies wat deze codebase nergens
+   doet.
+
+   Bewust geen cache met een lange levensduur: dit is de schakelaar die vanzelf
+   moet omvallen op de dag dat er een tweede klant bij komt. Vijf minuten is
+   kort genoeg om dat binnen één koffiepauze te laten gebeuren en lang genoeg
+   om niet bij elk bericht een extra Airtable-aanroep te doen. */
+let _enigeKlantCache = { ts: 0, waarde: null };
+const ENIGE_KLANT_TTL_MS = 5 * 60 * 1000;
+
+async function enigeActieveKlant() {
+  if (Date.now() - _enigeKlantCache.ts < ENIGE_KLANT_TTL_MS) return _enigeKlantCache.waarde;
+  try {
+    /* maxRecords=2 is het hele punt: we hoeven niet te weten hoeveel klanten
+       er zijn, alleen of het er meer dan één is. */
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}`
+              + `?maxRecords=2&filterByFormula=${encodeURIComponent('NOT({Project Code}="")')}`;
+    const res  = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const data = await res.json();
+    if (data.error) { console.error('[WhatsApp] klantentelling mislukt:', JSON.stringify(data.error)); return null; }
+    const recs = data.records || [];
+    let waarde = null;
+    if (recs.length === 1) {
+      const f = recs[0].fields || {};
+      const code = f['Project Code'] || '';
+      /* Een klant zonder projectcode bestaat voor de rest van de app niet; die
+         mag hier dus ook geen leads krijgen. */
+      if (code) waarde = { projectCode: code, naam: f['Client Name'] || '', record: recs[0] };
+    }
+    _enigeKlantCache = { ts: Date.now(), waarde };
+    return waarde;
+  } catch (err) {
+    console.error('[WhatsApp] klantentelling mislukt:', err && err.message);
+    return null;
+  }
+}
+
+/* Een lead aanmaken uit een binnenkomend WhatsApp-bericht.
+   Dezelfde velden als api/form.js gebruikt, zodat het dashboard, de opvolging
+   en de kwalificatie er niets bijzonders aan merken -- met twee verschillen die
+   ertoe doen:
+
+     Bron    'WhatsApp' in plaats van het formulier, zodat je later kan zien
+             welke leads uit een advertentie of QR-code kwamen.
+     consent hier NIET op true. Bij het formulier vinkt iemand expliciet aan;
+             wie zelf appt heeft dat nooit gedaan. Hij heeft wel duidelijk
+             contact gezocht -- dat is de grondslag -- maar dat is iets anders
+             dan een gegeven toestemming, en het verschil hoort in de
+             administratie te staan en niet weggemoffeld te worden.
+
+   Mislukt het aanmaken, dan geeft dit null terug en valt de aanroeper terug op
+   het formulierbericht. Een lead die door een Airtable-storing niets hoort is
+   erger dan een lead die naar het formulier gestuurd wordt. */
+async function maakLeadUitBinnenkomend(phone, eersteBericht, klant) {
+  try {
+    const nu = new Date().toISOString();
+    const res = await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        typecast: true,
+        fields: {
+          fldbk0LVNckOU0bqA: '',                    // Name -- de AI vraagt hem zo meteen
+          fld6YaitW0lMqHUrd: phone,                 // Phone
+          fldSmczuyUJd26HLe: klant.projectCode,     // Project Code
+          fld8mkrEWcyq7mUip: 'new',                 // Conversation State
+          fldGoerozqdea4BfU: 'WhatsApp',            // Bron
+          fldR0r13EU4RwrtvH: nu,                    // Created At
+          fldoLRI5W12ThTls7: JSON.stringify({
+            _v: 1, notes: [], tasks: [], calls: [],
+            consent: { given: false, ts: nu, via: 'inbound_whatsapp' },
+          }),
+        },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      console.error('[WhatsApp] lead aanmaken uit inbound mislukt:',
+                    JSON.stringify(data.error || {}).slice(0, 300));
+      return null;
+    }
+    /* De cache van getLead() wist niet dat deze lead bestond; zonder deze regel
+       leest de volgende beurt binnen de TTL nog steeds "geen lead". */
+    setCachedLead(leadCacheKey(phone, null), data);
+    return data;
+  } catch (err) {
+    console.error('[WhatsApp] lead aanmaken uit inbound mislukt:', err && err.message);
+    return null;
+  }
+}
+
 async function getClientByPhoneNumberId(phoneNumberId) {
   if (!phoneNumberId) return null;
   const cached = getCachedClientByPnid(phoneNumberId);
