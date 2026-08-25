@@ -27,6 +27,44 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 >    Zonder die ene handeling weigert Stripe élke portaalsessie, dus "Beheer
 >    abonnement" werkt voor niemand.
 
+**Kling: één sleutel in plaats van twee**
+
+- Kling heeft hun legitimatie omgezet. Maak je vandaag een sleutel aan, dan
+  krijg je **één** waarde (`api-key-kling-…`) die je precies één keer te zien
+  krijgt; het oude paar AccessKey + SecretKey bestaat alleen nog voor oudere
+  accounts. Helvaro kende alleen die oude weg en zou met een nieuwe sleutel een
+  401 hebben gegeven — een fout die eruitziet alsof je abonnement verlopen is.
+- **Actie (alleen als je video wil gebruiken):** zet in Vercel
+  **`KLING_API_KEY`** met die ene sleutel. `KLING_ACCESS_KEY` en
+  `KLING_SECRET_KEY` mogen dan weg. Heb je nog het oude paar, dan blijft dat
+  gewoon werken — staan ze allebei, dan wint de nieuwe. Controleren kan met
+  `node scripts/kling-check.js`; die zegt nu ook wélke van de twee wegen hij
+  neemt.
+- Video staat los van leadkwalificatie: hier niets aan doen blokkeert geen
+  enkele klant.
+
+**Het inlogscherm**
+
+- **Het logo was op het inlogscherm nauwelijks te zien.** Het is een gouden
+  lijntekening met een dunne letter, gemaakt voor een donkere ondergrond, en
+  het stond kaal op het witte formulierpaneel — daar haalt de tekst ongeveer
+  1,9:1 en zag een klant vooral een lichte vlek. Het staat nu op een eigen
+  donker vlak in dezelfde kleur als het merkpaneel rechts, dus op de ondergrond
+  waarvoor het getekend is.
+- **De dag-en-nachtknop op het inlogscherm is weg.** Het formulierpaneel is
+  altijd wit en het merkpaneel altijd donker, in beide thema's — die knop
+  veranderde dus niets aan het scherm waar hij op stond. In de app zelf blijft
+  hij gewoon staan.
+
+**De wekelijkse learning sloeg zichzelf elke week over**
+
+- Deze functie leest de gesprekken van de afgelopen week terug en schrijft op
+  wat opvalt ("AI Learned Patterns"). Ze vroeg alleen naar een sleutel onder de
+  naam `ANTHROPIC_KEY`, terwijl de rest van Helvaro — en jouw Vercel — die
+  onder `ANTHROPIC_API_KEY` heeft staan. Gevolg: ze stopte elke week meteen, in
+  stilte, en dat vak bleef leeg. Ze leest nu allebei de namen, en zegt het in
+  het log als er echt geen sleutel is.
+
 **Nieuwe pagina: Kosten (alleen voor jou)**
 
 - **Wat Helvaro zelf betaalt, per dienst.** Tot nu stond dat als één getal op de
@@ -1123,4 +1161,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 0b81965 -->
+<!-- changelog-tot: a4adcf0 -->

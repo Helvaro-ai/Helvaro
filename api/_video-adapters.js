@@ -46,9 +46,23 @@ class AdapterError extends Error {
 /* Wat elke echte adapter nodig heeft voordat hij iets kan. Apart, zodat de
    preflight en de foutmelding hetzelfde lijstje gebruiken. */
 const REQUIRED_ENV = Object.freeze({
-  kling:  ['KLING_ACCESS_KEY', 'KLING_SECRET_KEY'],
+  kling:  ['KLING_API_KEY'],
   runway: ['RUNWAY_API_KEY'],
   demo:   [],
+});
+
+/* Sommige leveranciers hebben MEER dan één geldige manier om je te legitimeren,
+   en dan is "deze variabele ontbreekt" een leugen zolang de andere weg openligt.
+   Kling is er zo een: hun console geeft sinds kort één sleutel (Bearer), maar
+   oudere accounts hebben alleen het paar AccessKey + SecretKey waarmee je zelf
+   een JWT ondertekent. Beide werken bij hen nog.
+
+   Eén complete groep is genoeg. De EERSTE groep is de aanbevolen weg, en die
+   noemen we ook in de foutmelding -- iemand die vandaag een sleutel aanmaakt
+   krijgt de nieuwe, en moet niet naar een paar gaan zoeken dat hij nooit zal
+   zien. */
+const ALT_ENV = Object.freeze({
+  kling: [['KLING_API_KEY'], ['KLING_ACCESS_KEY', 'KLING_SECRET_KEY']],
 });
 
 function notImplemented(name) {
@@ -136,7 +150,15 @@ function forModel(model) {
 
 /** Ontbrekende env-variabelen voor een adapter, voor preflight en foutmelding. */
 function missingEnv(name) {
-  return (REQUIRED_ENV[name] || []).filter((k) => !String(process.env[k] || '').trim());
+  const gezet = (k) => !!String(process.env[k] || '').trim();
+  const groepen = ALT_ENV[name];
+  if (groepen) {
+    /* Is één groep compleet, dan ontbreekt er niets -- ook al is de andere leeg. */
+    if (groepen.some((g) => g.every(gezet))) return [];
+    return groepen[0].filter((k) => !gezet(k));
+  }
+  return (REQUIRED_ENV[name] || []).filter(gezet_niet);
+  function gezet_niet(k) { return !gezet(k); }
 }
 
-module.exports = { ADAPTERS, AdapterError, REQUIRED_ENV, forModel, missingEnv, DEMO_MS };
+module.exports = { ADAPTERS, AdapterError, REQUIRED_ENV, ALT_ENV, forModel, missingEnv, DEMO_MS };

@@ -102,10 +102,28 @@ const them = { projectCode: 'ANDERE', userId: 'u2' };
   process.env.HELVARO_VIDEO_MODEL = 'demo-video';
 
   console.log('\n— wat een adapter nodig heeft, staat opgeschreven —');
-  ck('kling noemt zijn sleutels', adapters.REQUIRED_ENV.kling.length === 2, adapters.REQUIRED_ENV.kling);
+  ck('kling noemt de aanbevolen sleutel', adapters.REQUIRED_ENV.kling.length === 1, adapters.REQUIRED_ENV.kling);
   ck('runway ook', adapters.REQUIRED_ENV.runway.length === 1, adapters.REQUIRED_ENV.runway);
-  ck('en missingEnv ziet dat ze ontbreken',
-     adapters.missingEnv('kling').length === 2, adapters.missingEnv('kling'));
+  ck('en missingEnv ziet dat er niets staat',
+     adapters.missingEnv('kling').length === 1, adapters.missingEnv('kling'));
+
+  /* Kling kent twee geldige manieren. "KLING_API_KEY ontbreekt" is een leugen
+     zolang het oude paar gezet is -- dan werkt de adapter gewoon. Andersom ook.
+     Deze vier regels bewaken precies dat. */
+  const bewaar = { a: process.env.KLING_API_KEY, b: process.env.KLING_ACCESS_KEY, c: process.env.KLING_SECRET_KEY };
+  process.env.KLING_API_KEY = 'api-key-kling-test';
+  ck('met alleen de nieuwe sleutel ontbreekt er niets', adapters.missingEnv('kling').length === 0);
+  delete process.env.KLING_API_KEY;
+  process.env.KLING_ACCESS_KEY = 'ak'; process.env.KLING_SECRET_KEY = 'sk';
+  ck('met alleen het legacy paar ook niet', adapters.missingEnv('kling').length === 0);
+  delete process.env.KLING_ACCESS_KEY;
+  ck('een half paar telt niet als in orde', adapters.missingEnv('kling').length === 1, adapters.missingEnv('kling'));
+  ck('en dan noemt hij de NIEUWE sleutel, niet het paar',
+     adapters.missingEnv('kling')[0] === 'KLING_API_KEY', adapters.missingEnv('kling'));
+  delete process.env.KLING_SECRET_KEY;
+  if (bewaar.a) process.env.KLING_API_KEY = bewaar.a;
+  if (bewaar.b) process.env.KLING_ACCESS_KEY = bewaar.b;
+  if (bewaar.c) process.env.KLING_SECRET_KEY = bewaar.c;
 
   console.log('\n— een mislukte generatie is een toestand, geen crash —');
   media._resetJobs();

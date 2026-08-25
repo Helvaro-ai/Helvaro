@@ -22,9 +22,18 @@
  *
  * AANNAMES, in volgorde van hoe erg het is als ze fout zijn:
  *
- *   A1  Auth is een JWT (HS256), ondertekend met KLING_SECRET_KEY, met
- *       {iss: accessKey, exp: nu+30min, nbf: nu-5s}, meegestuurd als
- *       Authorization: Bearer <jwt>.
+ *   A1  Auth kan op twee manieren, en Kling heeft ze allebei tegelijk in de
+ *       lucht:
+ *         (a) NIEUW -- één sleutel, KLING_API_KEY, rechtstreeks meegestuurd
+ *             als Authorization: Bearer <sleutel>. Dit is wat je in de
+ *             console krijgt als je vandaag een key aanmaakt; hij begint met
+ *             "api-key-kling-" en je ziet hem precies één keer.
+ *         (b) LEGACY -- een JWT (HS256), ondertekend met KLING_SECRET_KEY,
+ *             met {iss: accessKey, exp: nu+30min, nbf: nu-5s}. Oudere
+ *             accounts hebben alleen dit paar.
+ *       Staat KLING_API_KEY gezet, dan wint die; anders het paar. Beide
+ *       eindigen als een Bearer-token, dus de rest van dit bestand merkt er
+ *       niets van.
  *   A2  Tekst naar video:  POST /v1/videos/text2video
  *       Beeld naar video:  POST /v1/videos/image2video
  *   A3  Het antwoord is {code, message, data:{task_id, task_status}}, waarbij
@@ -73,7 +82,9 @@ function b64url(buf) {
 function maakToken({ accessKey, secretKey, nu = Math.floor(Date.now() / 1000) } = {}) {
   const ak = String(accessKey || process.env.KLING_ACCESS_KEY || '').trim();
   const sk = String(secretKey || process.env.KLING_SECRET_KEY || '').trim();
-  if (!ak || !sk) throw new KlingError('KLING_ACCESS_KEY of KLING_SECRET_KEY ontbreekt.', 'not_configured');
+  if (!ak || !sk) throw new KlingError(
+    'Geen Kling-sleutel: zet KLING_API_KEY (nieuw, één sleutel) of KLING_ACCESS_KEY plus KLING_SECRET_KEY (legacy paar).',
+    'not_configured');
 
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   /* nbf een paar seconden in het verleden: klokken lopen niet gelijk, en een
@@ -84,7 +95,27 @@ function maakToken({ accessKey, secretKey, nu = Math.floor(Date.now() / 1000) } 
   return `${header}.${payload}.${sig}`;
 }
 
+/**
+ * A1: wat er in de Authorization-kop komt.
+ *
+ * Eén plek die kiest tussen de nieuwe sleutel en het oude paar, zodat roep()
+ * en kling-check.js niet allebei hun eigen keuze maken -- dat is precies hoe
+ * je krijgt dat het script "in orde" zegt over een pad dat de app niet neemt.
+ */
+function authToken() {
+  const enkel = String(process.env.KLING_API_KEY || '').trim();
+  if (enkel) return enkel;
+  return maakToken();
+}
+
+/** Welke van de twee manieren er gebruikt wordt. Voor de foutmelding en
+ *  voor kling-check.js -- niet voor de logica. */
+function authMethode() {
+  return String(process.env.KLING_API_KEY || '').trim() ? 'api_key' : 'jwt';
+}
+
 function configured() {
+  if (String(process.env.KLING_API_KEY || '').trim()) return true;
   return !!(String(process.env.KLING_ACCESS_KEY || '').trim()
          && String(process.env.KLING_SECRET_KEY || '').trim());
 }
@@ -112,7 +143,7 @@ function duur(seconds) {
 }
 
 async function roep(pad, { method = 'GET', body = null } = {}) {
-  const token = maakToken();
+  const token = authToken();
   const r = await fetch(`${BASIS}${pad}`, {
     method,
     headers: {
@@ -228,4 +259,4 @@ const kling = {
   },
 };
 
-module.exports = { kling, maakToken, configured, aspect, duur, KlingError, BASIS };
+module.exports = { kling, maakToken, authToken, authMethode, configured, aspect, duur, KlingError, BASIS };

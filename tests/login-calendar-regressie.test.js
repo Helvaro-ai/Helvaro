@@ -102,14 +102,14 @@ ck('staat alles uit, dan een eerlijke melding en geen mailadres',
    naarReg.indexOf('Aanmelden staat tijdelijk uit') !== -1 && naarReg.indexOf('hello@helvaro.pro') === -1);
 ck('en bij een storing een eerlijke melding', naarReg.indexOf('kon niet geladen worden') !== -1);
 
-console.log('\n— de themaknop leest ook op een telefoon —');
-/* Onder 900px vallen de panelen onder elkaar en landt de knop op het
-   formulierpaneel, dat ALTIJD wit is. Zijn kleuren kwamen uit het donkere
-   thema: gemeten 2,05:1. De regel heeft de id nodig, anders verliest hij van
-   .btn-icon verderop in hetzelfde sjabloon. */
-ck('de mobiele regel wint op specificiteit',
-   /#login-page \.login-theme-toggle\s*\{/.test(html));
-ck('en zet een eigen tekstkleur', /#login-page \.login-theme-toggle[\s\S]{0,220}--login-text/.test(html));
+console.log('\n— de themaknop staat niet meer op het inlogscherm —');
+/* Hij is weg op verzoek. Deze controle blijft staan omdat hij ooit terugkwam
+   als een knop die op een telefoon op het WITTE formulierpaneel landde met
+   kleuren uit het donkere thema: gemeten 2,05:1. Komt hij ooit terug, dan
+   faalt deze test en moet die contrastregel er meteen bij. */
+ck('geen knop en geen id meer in de uitvoer', html.indexOf('btn-theme-login') === -1);
+ck('en ook de bijbehorende stijlregels zijn weg', html.indexOf('login-theme-toggle') === -1);
+ck('de knop in de app zelf blijft wel bestaan', html.indexOf('id="btn-theme"') !== -1);
 
 console.log('\n— de link onder het formulier gebruikt tokens —');
 ck('geen hardgecodeerde grijstint meer op die regel',
