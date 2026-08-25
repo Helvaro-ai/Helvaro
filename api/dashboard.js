@@ -948,36 +948,12 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    goed weglaten. Nu op de gedempte tekstkleur (5,79:1). */
 .login-link-sep { color: var(--login-muted); font-size: 12px; }
 
-/* Thema-knop op het inlogscherm. Hij staat op het showcase-paneel rechts, want
-   het formulierpaneel links is altijd wit -- daar zou een lichte knop op een
-   lichte achtergrond staan. Alle kleuren komen van .btn-icon, inclusief de
-   light-variant verderop; deze regel doet alleen de plaatsing. */
-.login-theme-toggle {
-  position: absolute;
-  top: 22px;
-  right: 24px;
-  z-index: 2;
-  padding: 8px 10px;
-}
-@media (max-width: 900px) {
-  /* Onder deze breedte vallen de panelen onder elkaar en landt de knop op het
-     formulierpaneel -- en dat is ALTIJD wit, ook in het donkere thema. Zijn
-     kleuren kwamen van .btn-icon, dus lichte tekst op wit: gemeten 2,05:1.
-     Hier dus expliciet de kleuren van dat paneel, niet die van het thema. */
-  /* Met de id ervoor, anders verliest deze regel van .btn-icon en van
-     [data-theme="light"] .btn-icon -- die staan allebei VERDEROP in dit
-     sjabloon en winnen dan op volgorde. Gemeten gevolg zonder de id: 2,05:1. */
-  #login-page .login-theme-toggle {
-    top: 14px; right: 14px;
-    background: rgba(15,17,40,0.05);
-    border-color: var(--login-border);
-    color: var(--login-text);
-  }
-  #login-page .login-theme-toggle:hover {
-    background: rgba(15,17,40,0.09);
-    color: var(--login-text);
-  }
-}
+/* De themaknop stond hier ooit rechtsboven op het merkpaneel. Hij is weg op
+   verzoek: op het inlogscherm valt er niets te wisselen dat de bezoeker helpt
+   -- het formulierpaneel is altijd wit en het merkpaneel altijd donker, in
+   beide thema's. Een knop die het scherm waar hij op staat niet verandert is
+   een knop die alleen maar vragen oproept. In de app zelf blijft #btn-theme
+   staan; die schakelt wel iets. */
 
 /* Full-screen two-panel split. No card, no border-radius */
 .login-split {
@@ -1019,16 +995,35 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   max-width: 380px;
 }
 
-/* Logo top-left of panel */
+/* Logo linksboven op het formulierpaneel.
+
+   Het stond kaal op wit, en dat is precies de ondergrond waar dit logo niet
+   voor gemaakt is: het is een goudlijn-tekening met een dunne letter, bedoeld
+   voor een donker vlak -- op wit haalt de tekst 1,9:1 en las de klant vooral
+   een lichte vlek. Vandaar een eigen donker plaatje eronder, dezelfde kleur
+   als het merkpaneel rechts (--login-stage). Het logo staat dan op de
+   ondergrond waarvoor het getekend is, en de twee helften van het scherm
+   horen zichtbaar bij elkaar. */
 .login-logo-top {
-  display: flex;
+  display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 0;
-  margin-bottom: 48px;
+  margin-bottom: 44px;
+  padding: 14px 22px;
+  background: var(--login-stage);
+  /* Met terugvalwaarde: de schaal-tokens komen uit de Faro-CSS verderop in
+     ditzelfde style-blok, en dat blok is leeg als Faro uitstaat. Zonder
+     terugval krijgt het plaatje dan scherpe hoeken.
+     En nee, de naam van die variabele staat hier bewust niet voluit: een
+     dollarteken met accolades in dit bestand is geen tekst maar een
+     invulling, en die propte hier de complete tokens-CSS midden in deze
+     regel. Precies de val uit CLAUDE.md, en hij is hier echt dichtgeklapt. */
+  border-radius: var(--r-lg, 18px);
 }
 
 .login-logo-top img {
-  height: 88px;
+  height: 72px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -8513,8 +8508,6 @@ ${cmd.css}
      eigenFormulier(true), en dan staat het eigen formulier er gewoon. Er is
      geen weg waarin de bezoeker met een leeg paneel achterblijft. -->
 <div id="login-page"${CLERK_READY ? ' class="clerk-wacht"' : ''}>
-  <button class="btn-icon login-theme-toggle" id="btn-theme-login" type="button" onclick="toggleTheme()"
-          aria-label="Wissel tussen donker en licht"></button>
   <div class="login-split">
 
     <!-- LEFT: Form side -->
@@ -12527,10 +12520,10 @@ function initTheme() {
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  /* Twee knoppen, hetzelfde pictogram: de topbar na het inloggen en de knop op
-     het inlogscherm. Wie in het donker inlogt hoort niet eerst een wit scherm
-     te krijgen om daarna pas te kunnen wisselen. */
-  const knoppen = ['btn-theme', 'btn-theme-login'].map((id) => document.getElementById(id)).filter(Boolean);
+  /* Alleen de knop in de topbar nog; die op het inlogscherm is weg. Het blijft
+     een lijst omdat applyTheme ook draait terwijl het inlogscherm nog staat --
+     dan is er niets om te tekenen en moet dit stil doorlopen. */
+  const knoppen = ['btn-theme'].map((id) => document.getElementById(id)).filter(Boolean);
   for (const btn of knoppen) btn.innerHTML = theme === 'dark'
     ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
     : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';

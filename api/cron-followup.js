@@ -927,8 +927,14 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
 // Drempel: klant moet ≥3 leads hebben gehad in afgelopen 7 dagen anders
 // is er te weinig signaal en wordt de oude learning behouden.
 async function runWeeklyLearning(airtableToken, baseId, leadsTable) {
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
-  if (!ANTHROPIC_KEY) { console.warn('[learning] ANTHROPIC_KEY missing'); return null; }
+  /* Beide namen, en dat is geen slordigheid maar een reparatie: de rest van de
+     codebase leest ANTHROPIC_API_KEY (api/leads.js, api/_ai/, api/_faro/) en
+     alleen deze functie las ANTHROPIC_KEY. In productie stond alleen de eerste
+     gezet, dus de wekelijkse learning sloeg zichzelf elke week over met een
+     regel in het log die niemand las -- en het veld "AI Learned Patterns" bleef
+     dus altijd leeg. */
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_KEY;
+  if (!ANTHROPIC_KEY) { console.warn('[learning] ANTHROPIC_API_KEY ontbreekt — wekelijkse learning overgeslagen'); return null; }
   const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
   const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
