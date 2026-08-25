@@ -45,16 +45,23 @@ function nee(aanname, wat, detail) {
 
   // ── A1: de sleutels en het token ──────────────────────────────────────────
   if (!K.configured()) {
-    nee('A1', 'KLING_ACCESS_KEY / KLING_SECRET_KEY ontbreken',
-        'Zet ze in je omgeving, of draai met `vercel env pull .env.local` en `node --env-file=.env.local scripts/kling-check.js`.');
+    nee('A1', 'geen Kling-sleutel gevonden',
+        'Zet KLING_API_KEY (de sleutel die de console vandaag geeft, begint met "api-key-kling-"), '
+      + 'of het oude paar KLING_ACCESS_KEY + KLING_SECRET_KEY. Draaien kan met '
+      + '`vercel env pull .env.local` en `node --env-file=.env.local scripts/kling-check.js`.');
     console.log(`\n${goed} goed, ${fout} fout\n`);
     process.exit(1);
   }
   try {
-    const t = K.maakToken();
-    ok('A1', `token gemaakt (${t.split('.').length} delen, ${t.length} tekens)`);
+    /* Welke van de twee wegen genomen wordt, komt uit dezelfde functie die de
+       app gebruikt. Anders zegt dit script "in orde" over een pad dat in
+       productie niet bewandeld wordt. */
+    const t = K.authToken();
+    ok('A1', K.authMethode() === 'api_key'
+      ? `sleutel gevonden (KLING_API_KEY, ${t.length} tekens) — meegestuurd als Bearer`
+      : `token gemaakt uit het legacy paar (${t.split('.').length} delen, ${t.length} tekens)`);
   } catch (e) {
-    nee('A1', 'token maken mislukt', e.message);
+    nee('A1', 'legitimatie klaarzetten mislukt', e.message);
     process.exit(1);
   }
 

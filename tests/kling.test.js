@@ -67,6 +67,28 @@ ck('en configured() weet dat ook', K.configured() === false, K.configured());
 process.env.KLING_ACCESS_KEY = bewaardAK; process.env.KLING_SECRET_KEY = bewaardSK;
 ck('met sleutels weer wel', K.configured() === true, K.configured());
 
+/* De nieuwe weg: één sleutel, rechtstreeks als Bearer. Kling geeft die sinds
+   kort in plaats van het paar, en een account dat vandaag wordt aangemaakt
+   ziet het paar nooit meer. Zolang authToken() de JWT bleef bouwen, kreeg je
+   een 401 die eruitziet als een verlopen abonnement. */
+const bewaardKey = process.env.KLING_API_KEY;
+delete process.env.KLING_ACCESS_KEY; delete process.env.KLING_SECRET_KEY;
+process.env.KLING_API_KEY = 'api-key-kling-Zelftest123';
+ck('één sleutel is genoeg om geconfigureerd te heten', K.configured() === true);
+ck('en die gaat ONGEWIJZIGD mee, niet als JWT',
+   K.authToken() === 'api-key-kling-Zelftest123', K.authToken());
+ck('de gekozen methode heet api_key', K.authMethode() === 'api_key', K.authMethode());
+
+/* Staan ze allebei, dan wint de nieuwe -- anders blijft een account dat net is
+   overgezet stilletjes de oude weg nemen, met een paar dat Kling misschien al
+   ingetrokken heeft. */
+process.env.KLING_ACCESS_KEY = bewaardAK; process.env.KLING_SECRET_KEY = bewaardSK;
+ck('naast het legacy paar wint de nieuwe sleutel',
+   K.authToken() === 'api-key-kling-Zelftest123', K.authToken());
+if (bewaardKey) process.env.KLING_API_KEY = bewaardKey; else delete process.env.KLING_API_KEY;
+ck('zonder die sleutel is het weer een JWT van drie delen',
+   K.authToken().split('.').length === 3 && K.authMethode() === 'jwt');
+
 console.log('\n— A6: maat en duur —');
 ck('1280x720 is 16:9',  K.aspect('1280x720') === '16:9', K.aspect('1280x720'));
 ck('720x1280 is 9:16',  K.aspect('720x1280') === '9:16', K.aspect('720x1280'));

@@ -27,6 +27,22 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 >    Zonder die ene handeling weigert Stripe élke portaalsessie, dus "Beheer
 >    abonnement" werkt voor niemand.
 
+**Kling: één sleutel in plaats van twee**
+
+- Kling heeft hun legitimatie omgezet. Maak je vandaag een sleutel aan, dan
+  krijg je **één** waarde (`api-key-kling-…`) die je precies één keer te zien
+  krijgt; het oude paar AccessKey + SecretKey bestaat alleen nog voor oudere
+  accounts. Helvaro kende alleen die oude weg en zou met een nieuwe sleutel een
+  401 hebben gegeven — een fout die eruitziet alsof je abonnement verlopen is.
+- **Actie (alleen als je video wil gebruiken):** zet in Vercel
+  **`KLING_API_KEY`** met die ene sleutel. `KLING_ACCESS_KEY` en
+  `KLING_SECRET_KEY` mogen dan weg. Heb je nog het oude paar, dan blijft dat
+  gewoon werken — staan ze allebei, dan wint de nieuwe. Controleren kan met
+  `node scripts/kling-check.js`; die zegt nu ook wélke van de twee wegen hij
+  neemt.
+- Video staat los van leadkwalificatie: hier niets aan doen blokkeert geen
+  enkele klant.
+
 **Het inlogscherm**
 
 - **Het logo was op het inlogscherm nauwelijks te zien.** Het is een gouden

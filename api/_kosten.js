@@ -154,9 +154,13 @@ const DIENSTEN = Object.freeze([
     naam: 'Kling (video)',
     leverancier: 'Kuaishou',
     soort: 'verbruik',
-    waarvoor: 'Videogeneratie. Staat uit zonder KLING_ACCESS_KEY en KLING_SECRET_KEY.',
+    waarvoor: 'Videogeneratie. Staat uit zonder KLING_API_KEY (of het oude paar KLING_ACCESS_KEY + KLING_SECRET_KEY).',
     tarief: null,
-    env: ['KLING_ACCESS_KEY'],
+    /* Twee geldige manieren, dus twee namen: staat er één van, dan draait de
+       dienst en hoort hij als "aan" in het overzicht. Zou hier alleen de
+       nieuwe naam staan, dan meldde de Kosten-pagina "uit" voor een account
+       dat het legacy paar gebruikt -- en dan klopt het overzicht niet. */
+    env: ['KLING_API_KEY', 'KLING_ACCESS_KEY'],
   }),
   Object.freeze({
     id: 'stripe',
