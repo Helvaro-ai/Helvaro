@@ -10715,6 +10715,15 @@ ${faro.navCta}
           </div>
           <div class="settings-row settings-danger">
             <div>
+              <div class="settings-label">Account verwijderen</div>
+              <div class="settings-label-sub">Je account en je gegevens definitief laten wissen</div>
+            </div>
+            <button class="btn-icon" onclick="vraagAccountVerwijdering()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
+              Verwijderen
+            </button>
+          </div>
+          <div class="settings-row settings-danger">
+            <div>
               <div class="settings-label">Uitloggen</div>
               <div class="settings-label-sub">Beëindig je huidige sessie</div>
             </div>
@@ -19910,6 +19919,137 @@ function vraagBtwEnBetaal(planId, planNaam) {
   rij.appendChild(annuleer); rij.appendChild(ga);
   card.appendChild(titel); card.appendChild(uitleg); card.appendChild(veld);
   card.appendChild(status); card.appendChild(rij);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  setTimeout(function () { veld.focus(); }, 50);
+}
+
+/* Account verwijderen.
+ *
+ * Dit doet BEWUST geen directe, onomkeerbare wis-actie vanuit de browser. Een
+ * knop die met één klik een tenant leegmaakt is het soort ding dat je één keer
+ * per ongeluk raakt en nooit meer terugdraait -- en er hangt meer aan vast dan
+ * rijen weghalen: een lopend abonnement bij Stripe moet stoppen, facturen
+ * moeten wettelijk bewaard blijven, en leadgegevens zijn niet van de makelaar
+ * maar van zijn klanten.
+ *
+ * Wat het wel doet: de aanvraag met zoveel woorden vastleggen en versturen via
+ * dezelfde beveiligde route als andere supportberichten (afzender uit de
+ * sessie, nooit uit de body). De klant typt VERWIJDEREN over, zodat het geen
+ * misklik kan zijn, en krijgt te zien wat er daarna gebeurt en binnen welke
+ * termijn. Dat is wat de AVG vraagt -- het recht op wissen, niet per se een
+ * knop die het ter plekke doet.
+ */
+function vraagAccountVerwijdering() {
+  var bestaand = document.getElementById('verwijder-modal');
+  if (bestaand) bestaand.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'verwijder-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Account verwijderen');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;animation:cmFadeIn .15s ease-out';
+
+  var card = document.createElement('div');
+  card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:460px';
+
+  var titel = document.createElement('h3');
+  titel.textContent = 'Account verwijderen';
+  titel.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--red-ink,#F4A4A4)';
+
+  var uitleg = document.createElement('div');
+  uitleg.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--text-muted,#999);line-height:1.6';
+  uitleg.innerHTML =
+      '<p style="margin:0 0 10px">We verwijderen je account en je gegevens binnen 30 dagen, en bevestigen dat per e-mail.</p>'
+    + '<p style="margin:0 0 10px">Wat er gebeurt: je lopende abonnement wordt stopgezet, je leads en gesprekken worden gewist, '
+    + 'en je WhatsApp-koppeling wordt losgemaakt.</p>'
+    + '<p style="margin:0">Wat blijft: facturen, want die moeten we wettelijk zeven jaar bewaren.</p>';
+
+  var label = document.createElement('label');
+  label.setAttribute('for', 'verwijder-bevestig');
+  label.textContent = 'Typ VERWIJDEREN om te bevestigen';
+  label.style.cssText = 'display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)';
+
+  var veld = document.createElement('input');
+  veld.type = 'text';
+  veld.id = 'verwijder-bevestig';
+  veld.autocomplete = 'off';
+  veld.style.cssText = 'width:100%;box-sizing:border-box;padding:11px 12px;margin:0 0 6px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:14px;color:var(--text,#E9EEF6);font-family:inherit';
+
+  var status = document.createElement('div');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.style.cssText = 'min-height:32px;margin:0 0 12px;font-size:12px;line-height:1.45;color:var(--text-muted,#999)';
+
+  var rij = document.createElement('div');
+  rij.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+
+  var annuleer = document.createElement('button');
+  annuleer.textContent = 'Annuleren';
+  annuleer.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
+
+  var bevestig = document.createElement('button');
+  bevestig.textContent = 'Verwijdering aanvragen';
+  bevestig.disabled = true;
+  bevestig.style.cssText = 'padding:9px 16px;background:#B4231F;border:0;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;opacity:0.5';
+
+  function sluit() { overlay.remove(); document.removeEventListener('keydown', toets); }
+  function toets(e) { if (e.key === 'Escape' && !bevestig.dataset.bezig) sluit(); }
+
+  veld.addEventListener('input', function () {
+    var ok = veld.value.trim().toUpperCase() === 'VERWIJDEREN';
+    bevestig.disabled = !ok;
+    bevestig.style.opacity = ok ? '1' : '0.5';
+  });
+
+  bevestig.addEventListener('click', async function () {
+    if (bevestig.disabled) return;
+    bevestig.dataset.bezig = '1';
+    bevestig.disabled = true;
+    bevestig.textContent = 'Versturen...';
+    try {
+      var r = await fetch(API_BASE + '/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'support',
+          onderwerp: 'VERZOEK: account verwijderen',
+          bericht: 'Deze klant vraagt om verwijdering van zijn account en gegevens.\\n\\n'
+                 + 'Bevestigd door "VERWIJDEREN" in te typen in de app.\\n'
+                 + 'Aangevraagd op ' + new Date().toISOString() + '.\\n\\n'
+                 + 'Te doen: abonnement stopzetten, leads en gesprekken wissen, '
+                 + 'WhatsApp-koppeling losmaken. Facturen bewaren (wettelijke termijn).'
+        })
+      });
+      var d = await r.json().catch(function () { return {}; });
+      if (r.ok && d.ok) {
+        status.style.color = 'var(--success-ink,#8FD9A8)';
+        status.textContent = 'Aanvraag ontvangen. We bevestigen per e-mail zodra het gebeurd is.';
+        bevestig.textContent = 'Aangevraagd';
+        veld.disabled = true;
+        setTimeout(sluit, 3000);
+        return;
+      }
+      status.style.color = 'var(--error-ink,#F4A4A4)';
+      status.textContent = (d && d.error) || 'Versturen lukte niet. Mail ons op '
+        + ((d && d.fallbackEmail) || 'hello@helvaro.pro') + '.';
+    } catch (e) {
+      status.style.color = 'var(--error-ink,#F4A4A4)';
+      status.textContent = 'Er ging iets mis. Controleer je verbinding.';
+    }
+    delete bevestig.dataset.bezig;
+    bevestig.disabled = false;
+    bevestig.textContent = 'Verwijdering aanvragen';
+  });
+
+  annuleer.addEventListener('click', sluit);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay && !bevestig.dataset.bezig) sluit(); });
+  document.addEventListener('keydown', toets);
+
+  rij.appendChild(annuleer); rij.appendChild(bevestig);
+  card.appendChild(titel); card.appendChild(uitleg); card.appendChild(label);
+  card.appendChild(veld); card.appendChild(status); card.appendChild(rij);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
   setTimeout(function () { veld.focus(); }, 50);

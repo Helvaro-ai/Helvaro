@@ -82,6 +82,28 @@ async function eenPoging({ providerId, tier, system, messages, maxTokens, signal
 async function generateText(opts = {}) {
   const { task, ctx = {}, system = '', messages = [], maxTokens = 1024, schema = null, signal, images } = opts;
 
+  /* ── Noodstop ────────────────────────────────────────────────────────────
+     Eén schakelaar die alle AI-uitgaven stopzet zonder deploy: zet AI_UIT=1 in
+     Vercel en elke aanroep stopt hier, vóór er een token gekocht wordt. Dit is
+     de plek omdat álles hierlangs gaat -- WhatsApp, Faro, kwalificatie,
+     samenvattingen, beeldanalyse.
+
+     Waarom dit bestaat: als er iets doorslaat (een lus die blijft vragen, een
+     lek, een rekening die hard oploopt) is de enige andere uitweg de sleutel bij
+     Anthropic intrekken. Dan ligt ALLES plat en moet je hem daarna weer
+     terugzetten. Dit is fijnmaziger en meteen terug te draaien.
+
+     AI_UIT_REDEN komt in de logs en in de fout, zodat achteraf te zien is
+     waarom het uitstond. De aanroepers vangen AIError al netjes af -- WhatsApp
+     valt terug op een sjabloon, Faro toont een foutkaart -- dus de app blijft
+     staan, hij denkt alleen niet meer. */
+  if (String(process.env.AI_UIT || '').trim() === '1') {
+    const reden = String(process.env.AI_UIT_REDEN || '').trim();
+    console.error('[ai] NOODSTOP actief (AI_UIT=1) — aanroep geweigerd vóór enige uitgave'
+                  + (reden ? ` — reden: ${reden}` : ''));
+    throw new AIError('AI staat tijdelijk uit.' + (reden ? ' ' + reden : ''), 'ai_uit');
+  }
+
   const route = tasks.routeVoor(task);            // gooit bij onbekende taak
   const tenant = String(ctx.projectCode || '').trim();
   /* Een lege tenant leest elders in deze codebase als "admin, toon alles". Hier

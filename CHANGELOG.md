@@ -14,6 +14,35 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou — de noodstop, als je hem ooit nodig hebt.**
+>
+> Gaat er iets mis met de AI (een lus, een lek, een rekening die hard oploopt):
+> zet in Vercel **`AI_UIT=1`** en optioneel **`AI_UIT_REDEN`**. Elke AI-aanroep
+> stopt dan meteen, vóór er iets gekocht wordt — WhatsApp, Faro, kwalificatie,
+> alles. De app blijft gewoon draaien, hij denkt alleen niet meer. Weghalen zet
+> hem weer aan; geen deploy nodig.
+>
+> Het btw-veld in Airtable is aangemaakt, dat hoef je niet meer te doen.
+
+### Een noodrem op de AI-uitgaven
+
+Tot nu was de enige manier om AI-kosten te stoppen: de sleutel bij Anthropic
+intrekken. Dan ligt alles plat en moet je hem daarna weer terugzetten. Nu is er
+één schakelaar die het meteen stopzet en meteen terugdraait.
+
+### Je kan je account nu zelf laten verwijderen
+
+Onder Instellingen → Gevaar zone staat "Account verwijderen". Je typt
+VERWIJDEREN over — zodat het geen misklik kan zijn — en ziet vooraf wat er
+weggaat (abonnement, leads, gesprekken, WhatsApp-koppeling) en wat blijft
+(facturen, wettelijke bewaartermijn). Het verzoek komt bij ons binnen en we
+bevestigen per e-mail binnen 30 dagen.
+
+Bewust geen knop die het ter plekke doet: er hangt een lopend abonnement aan,
+facturen die bewaard moeten blijven, en leadgegevens die niet van jou zijn maar
+van je klanten. Dat wil je niet met één klik onomkeerbaar hebben.
+
+
 ### Een live Stripe-sleutel kan niet meer buiten productie draaien
 
 De controle keek alleen óf er een sleutel stond, niet of hij bij de omgeving
