@@ -10583,7 +10583,7 @@ ${faro.navCta}
             AI Instellingen
           </div>
           <div class="settings-info-box">
-            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
+            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonMailModal('${SUPPORT_EMAIL_ATTR}',{title:'Mail ons',message:'Stuur ons een bericht op dit adres. We antwoorden op werkdagen.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
           </div>
           <div class="settings-row">
             <div>
@@ -10671,7 +10671,7 @@ ${faro.navCta}
               <div class="settings-label">Hulp nodig?</div>
               <div class="settings-label-sub">Ons team helpt je graag verder</div>
             </div>
-            <a href="mailto:${SUPPORT_EMAIL_ATTR}" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">
+            <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonMailModal('${SUPPORT_EMAIL_ATTR}',{title:'Mail ons',message:'Stuur ons een bericht op dit adres. We antwoorden op werkdagen.'});return false;" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               Mail sturen
             </a>
@@ -10681,7 +10681,7 @@ ${faro.navCta}
               <div class="settings-label">E-mailadres support</div>
               <div class="settings-label-sub">Bereikbaar op werkdagen</div>
             </div>
-            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
+            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonMailModal('${SUPPORT_EMAIL_ATTR}',{title:'Mail ons',message:'Stuur ons een bericht op dit adres. We antwoorden op werkdagen.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
           </div>
         </div>
 
@@ -11735,7 +11735,7 @@ ${faro.dock}
   </div>
   <div class="hv-help-body" id="hv-help-body"></div>
   <div class="hv-help-foot">
-    <a id="hv-help-mail" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Vraag%20over%20Helvaro">
+    <a id="hv-help-mail" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Vraag%20over%20Helvaro" onclick="toonMailModal('${SUPPORT_EMAIL_ATTR}',{title:'Mail ons',message:'Stuur ons een bericht op dit adres. We antwoorden op werkdagen.'});return false;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>
@@ -12775,6 +12775,109 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   document.body.appendChild(overlay);
   // Auto-focus the confirm button so Enter works without clicking
   setTimeout(() => confirmBtn.focus(), 50);
+}
+
+/* Toont het supportadres in plaats van het mailprogramma te openen.
+ *
+ * Een makelaar leest dit dashboard vaak op een privélaptop, waar het
+ * standaard-mailprogramma niet zijn zakelijke adres is -- of waar er helemaal
+ * geen mailprogramma staat ingesteld. Een mailto: opent dan het verkeerde
+ * account of zichtbaar niets, en in beide gevallen is de vraag niet gesteld.
+ * Het adres tonen met een kopieerknop laat hem mailen vanaf de plek waar hij
+ * zijn zakelijke post écht leest.
+ *
+ * Wordt bewust NIET gebruikt waar er een onderwerp en tekst klaarstaan (de
+ * WhatsApp-koppelvraag): daar is de voorgeschreven tekst het halve punt, en die
+ * gooi je weg als je alleen het adres kopieert. Daar staat een mailto met een
+ * kopieerknop ernaast.
+ */
+function toonMailModal(adres, opties) {
+  opties = opties || {};
+  const bestaand = document.getElementById('mail-modal');
+  if (bestaand) bestaand.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mail-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', opties.title || 'Mail ons');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;animation:cmFadeIn .15s ease-out';
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:none';
+
+  const titleEl = document.createElement('h3');
+  titleEl.textContent = opties.title || 'Mail ons';
+  titleEl.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
+
+  const msgEl = document.createElement('p');
+  msgEl.textContent = opties.message || 'Stuur ons een bericht op dit adres. We antwoorden op werkdagen.';
+  msgEl.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--text-muted,#999);line-height:1.5';
+
+  // Selecteerbaar, zodat handmatig kopiëren blijft werken als het klembord
+  // geweigerd wordt (oudere Safari, een webview, of een strenge instelling).
+  const adresEl = document.createElement('div');
+  adresEl.textContent = adres;
+  adresEl.style.cssText = 'user-select:all;-webkit-user-select:all;word-break:break-all;padding:11px 12px;margin:0 0 18px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:14px;font-weight:600;color:var(--text,#E9EEF6);text-align:center';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+
+  const sluitBtn = document.createElement('button');
+  sluitBtn.textContent = 'Sluiten';
+  sluitBtn.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
+
+  const kopieerBtn = document.createElement('button');
+  kopieerBtn.textContent = 'Kopieer adres';
+  kopieerBtn.style.cssText = 'padding:9px 16px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+  function sluit() {
+    overlay.remove();
+    document.removeEventListener('keydown', toets);
+  }
+  function toets(e) { if (e.key === 'Escape') sluit(); }
+
+  function kopieerTerugval(tekst) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = tekst;
+      ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  async function kopieer() {
+    let ok = false;
+    // De Clipboard API kan bestaan en tóch weigeren (permissions policy, een
+    // webview, een klik die niet als vertrouwd geldt). Dat is geen reden om
+    // "mislukt" te melden zolang execCommand het nog wel doet.
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(adres); ok = true; } catch (e) { ok = false; }
+    }
+    if (!ok) ok = kopieerTerugval(adres);
+    kopieerBtn.textContent = ok ? 'Gekopieerd' : 'Kopiëren lukt niet';
+    kopieerBtn.setAttribute('aria-live', 'polite');
+    setTimeout(() => { kopieerBtn.textContent = 'Kopieer adres'; }, 2000);
+  }
+
+  kopieerBtn.addEventListener('click', kopieer);
+  sluitBtn.addEventListener('click', sluit);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) sluit(); });
+  document.addEventListener('keydown', toets);
+
+  row.appendChild(sluitBtn);
+  row.appendChild(kopieerBtn);
+  card.appendChild(titleEl);
+  card.appendChild(msgEl);
+  card.appendChild(adresEl);
+  card.appendChild(row);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  setTimeout(() => kopieerBtn.focus(), 50);
 }
 
 /* ============================================================
@@ -14668,7 +14771,7 @@ function renderTable() {
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
         </div>
-        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
+        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonMailModal('${SUPPORT_EMAIL_ATTR}',{title:'Mail ons',message:'Stuur ons een bericht op dit adres. We antwoorden op werkdagen.'});return false;" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
       </div>
     </td></tr>\`;
     return;

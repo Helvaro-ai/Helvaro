@@ -14,6 +14,21 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Supportlinks openen niet meer het mailprogramma van je privélaptop
+
+"Mail ons" en het supportadres openden je standaard-mailprogramma. Op een eigen
+laptop is dat vaak niet je zakelijke adres, en soms staat er helemaal niets
+ingesteld — dan gebeurde er zichtbaar niets en was de vraag dus niet gesteld.
+Er verschijnt nu een venster met het adres en een kopieerknop, zodat je kunt
+mailen vanaf de plek waar je je zakelijke post echt leest.
+
+De twee plekken waar een onderwerp én een tekst klaarstaan — de
+WhatsApp-koppelvraag en "Account klaarzetten" — blijven een gewone mail. Daar is
+de voorgeschreven tekst het halve punt, en die zou je kwijt zijn als je alleen
+het adres kopieert. `tests/mail-modal.test.js` bewaakt dat onderscheid allebei
+op.
+
+
 > **Actie voor jou — de snelheidsbegrenzer staat in de praktijk uit, en er
 > stond een wachtwoord in de logs.**
 >
