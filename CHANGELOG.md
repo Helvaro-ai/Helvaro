@@ -14,6 +14,25 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Een welkomstscherm dat je in twee minuten op weg zet
+
+Nieuwe klanten kwamen binnen op een leeg dashboard en werden hooguit
+doorgestuurd naar de AI-pagina met een banner. Nu staat er een opzetscherm in
+vier stappen: wat doet je bedrijf, hoe heet je AI en wat zegt ze als eerste, en
+tot slot je formulierlink om te delen. Faro loopt met je mee — hij wisselt per
+stap en zegt kort waarom hij iets vraagt.
+
+Je kan het overslaan. Wat je invult wordt meteen bewaard, dus je kan halverwege
+stoppen en later verdergaan; hij onthoudt waar je gebleven was, en dat je hem
+gehad hebt wordt op je account bewaard in plaats van in je browser — anders
+begon hij op je telefoon gewoon opnieuw.
+
+De checklist op je dashboard blijft staan, ook als je overslaat. Dat is met
+opzet: overslaan betekent niet dat je AI is ingesteld. Wat je in het
+welkomstscherm invult, vinkt zichzelf af op die checklist — er is dus geen
+tweede lijstje dat uit de pas kan lopen.
+
+
 > **Actie voor jou — de noodstop, als je hem ooit nodig hebt.**
 >
 > Gaat er iets mis met de AI (een lus, een lek, een rekening die hard oploopt):

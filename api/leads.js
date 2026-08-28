@@ -697,6 +697,16 @@ module.exports = async function handler(req, res) {
             // checklist's "Google Agenda koppelen" item so it never drifts out
             // of sync with the actual connection state.
             gcalConnected:  !!(rec.fields['fldkYmK3jAabvytCF'] || rec.fields['Google Refresh Token']),
+            /* Welkomstwizard afgerond of overgeslagen. Server-side, niet in
+               localStorage: anders begint dezelfde klant op zijn telefoon
+               opnieuw bij stap 1. Ontbreekt het veld, dan leest dit als false
+               en krijgt de klant de wizard -- hetzelfde "afwezig veld = uit"
+               contract als de rest hierboven.
+               Staat BEWUST los van checklistDismissed: de wizard overslaan mag
+               de checklist niet wegnemen. Die blijft afgeleid uit de echte
+               config, dus hij vinkt zichzelf af zodra de stappen gedaan zijn --
+               door de wizard of gewoon via de instellingen. */
+            welcomeDone:    rec.fields['fldwlx60muAv60rUg'] === true || rec.fields['Welcome Done'] === true,
             // Onboarding checklist dismiss flag — the ONLY piece of checklist
             // state that is ever stored (every item's done/not-done is derived
             // above or client-side from live app state, never persisted).
@@ -763,6 +773,8 @@ module.exports = async function handler(req, res) {
         // isolated means a future not-yet-created field can never take down
         // an otherwise-successful save of the fields that DO exist).
         const wantsChecklistDismissUpdate = body.checklistDismissed !== undefined;
+        // Welkomstwizard — zelfde isolatie als hierboven.
+        const wantsWelcomeDoneUpdate = body.welcomeDone !== undefined;
         if (body.workingHours   !== undefined) {
           // Lightweight format validation. Must match 'days hours' or be empty
           const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
@@ -790,7 +802,8 @@ module.exports = async function handler(req, res) {
         if (body.learnedPatterns !== undefined) {
           u.fldnbM5YKh274ISAl = String(body.learnedPatterns).slice(0, 1500);
         }
-        if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate && !wantsChecklistDismissUpdate) {
+        if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate && !wantsChecklistDismissUpdate
+            && !wantsWelcomeDoneUpdate) {
           return res.status(400).json({ error: 'Niets om bij te werken' });
         }
 
@@ -855,6 +868,28 @@ module.exports = async function handler(req, res) {
             }
           } catch (err) {
             console.warn('[config-save] "Onboarding Checklist Dismissed" PATCH exception:', err.message);
+          }
+        }
+
+        // Welkomstwizard afgerond/overgeslagen — apart, best-effort. Zelfde
+        // isolatie: een veld dat (nog) niet bestaat mag een verder geslaagde
+        // save niet onderuit halen. Veld-id fldwlx60muAv60rUg (Checkbox).
+        if (wantsWelcomeDoneUpdate) {
+          try {
+            const wdRes = await atFetch(
+              `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+              {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { fldwlx60muAv60rUg: body.welcomeDone === true }, typecast: true })
+              }
+            );
+            if (!wdRes.ok) {
+              const txt = await wdRes.text().catch(() => '');
+              console.warn('[config-save] "Welcome Done" niet opgeslagen:', wdRes.status, txt.slice(0, 200));
+            }
+          } catch (err) {
+            console.warn('[config-save] "Welcome Done" PATCH exception:', err.message);
           }
         }
 

@@ -17576,8 +17576,462 @@ async function startDashboard(skipRefresh = false) {
   // Runs after refreshData so leads load in the background while they fill it in.
   if (!sessionStorage.getItem('hv-setup-checked')) {
     sessionStorage.setItem('hv-setup-checked', '1');
-    checkFirstTimeSetup();
+    /* Eerst de welkomstwizard. Draait die, dan slaan we het oude pad over:
+       checkFirstTimeSetup() stuurt je naar de AI-pagina met een banner, en dat
+       bovenop een wizard die om diezelfde velden vraagt is twee keer hetzelfde
+       vragen op twee plekken. Voor iedereen die de wizard al gehad heeft (of
+       hem niet krijgt, zoals de admin) blijft het oude pad gewoon staan. */
+    checkWelkomWizard().then(function (getoond) {
+      if (!getoond) checkFirstTimeSetup();
+    }).catch(function () { checkFirstTimeSetup(); });
   }
+}
+
+/* ── Welkomstwizard ──────────────────────────────────────────────────────────
+ * Wat een nieuwe klant als eerste ziet. Vier stappen, Faro leidt hem rond.
+ *
+ * ── Twee systemen, en waarom ze los staan ───────────────────────────────────
+ * Dit is systeem A: overslaanbaar. De onboarding-checklist op het dashboard is
+ * systeem B en blijft staan. Dat is met opzet: wie de wizard wegklikt heeft zijn
+ * AI nog steeds niet ingesteld, en de checklist is precies de plek die dat
+ * zichtbaar houdt.
+ *
+ * Er is bewust GEEN aparte "stap gedaan"-administratie. De checklist leidt zijn
+ * vinkjes af uit de echte config (aiName, autoReplyTpl, aiInstructions,
+ * Google-token, aantal leads). Slaat de wizard die velden op, dan vinkt de
+ * checklist zichzelf af -- één bron van waarheid, niets om uit de pas te laten
+ * lopen.
+ *
+ * ── Waar "klaar" wordt onthouden ────────────────────────────────────────────
+ * Server-side, in Welcome Done op de klantrij. Niet in localStorage: dan begint
+ * dezelfde klant op zijn telefoon opnieuw bij stap 1. De stap WAAR hij gebleven
+ * is staat wel lokaal -- dat is een gemak binnen één sessie, geen waarheid.
+ *
+ * ── Faro als gids ───────────────────────────────────────────────────────────
+ * De mascotte wisselt van toestand per stap (rust -> denken -> genereren ->
+ * succes). Dat is de reden dat hij er staat: hij markeert voortgang. Op smal
+ * beeld verdwijnt hij, want daar is de ruimte voor de invoer.
+ */
+var WIZARD_STAPPEN = ['intro', 'bedrijf', 'ai', 'klaar'];
+var WIZARD_MASCOTTE = {
+  intro:   '/faro/falcon-idle.webp',
+  bedrijf: '/faro/falcon-thinking.webp',
+  ai:      '/faro/falcon-generating.webp',
+  klaar:   '/faro/falcon-success.webp'
+};
+var _wizardStap = 0;
+var _wizardConfig = null;
+
+function wizardOnthoudStap(i) {
+  try { localStorage.setItem('hv-wizard-stap', String(i)); } catch (e) {}
+}
+function wizardGelezenStap() {
+  try {
+    var n = parseInt(localStorage.getItem('hv-wizard-stap') || '0', 10);
+    return (isFinite(n) && n >= 0 && n < WIZARD_STAPPEN.length) ? n : 0;
+  } catch (e) { return 0; }
+}
+function wizardVergeetStap() {
+  try { localStorage.removeItem('hv-wizard-stap'); } catch (e) {}
+}
+
+/* Opslaan gaat via config-save, dezelfde route als de instellingen. Geen eigen
+   eindpunt: dan zou er een tweede plek zijn waar dezelfde velden gevalideerd
+   worden, en die twee lopen vroeg of laat uit elkaar. */
+async function wizardBewaar(velden) {
+  var r = await fetch(API_BASE + '/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+    body: JSON.stringify(Object.assign({ mode: 'config-save' }, velden))
+  });
+  if (!r.ok) throw new Error('opslaan mislukt');
+  return r.json().catch(function () { return {}; });
+}
+
+function wizardSluit(afgerond) {
+  var el = document.getElementById('welkom-wizard');
+  if (el) el.remove();
+  document.removeEventListener('keydown', wizardToetsen);
+  wizardVergeetStap();
+  /* Welcome Done zetten -- ook bij overslaan. De wizard hoort niet elke login
+     terug te komen; de checklist neemt het over. Best-effort: lukt het niet,
+     dan ziet hij hem nog een keer, en dat is minder erg dan een harde fout op
+     het eerste scherm dat iemand ziet. */
+  wizardBewaar({ welcomeDone: true }).catch(function () {});
+  if (afgerond) {
+    try { toast('Je AI staat klaar.', 'success'); } catch (e) {}
+    try { refreshData(false); } catch (e) {}
+  }
+}
+
+function wizardToetsen(e) {
+  if (e.key === 'Escape') {
+    // Escape slaat over, maar alleen vanaf de intro. Midden in het invullen zou
+    // een misgeslagen toets je werk weggooien.
+    if (_wizardStap === 0) wizardSluit(false);
+  }
+}
+
+function wizardGa(delta) {
+  var doel = _wizardStap + delta;
+  if (doel < 0 || doel >= WIZARD_STAPPEN.length) return;
+  _wizardStap = doel;
+  wizardOnthoudStap(doel);
+  wizardTeken();
+}
+
+async function wizardVolgende() {
+  var stap = WIZARD_STAPPEN[_wizardStap];
+  var knop = document.getElementById('wizard-volgende');
+  var fout = document.getElementById('wizard-fout');
+  fout.textContent = '';
+
+  if (stap === 'bedrijf') {
+    var over = document.getElementById('wizard-bedrijf').value.trim();
+    if (over.length < 20) {
+      fout.textContent = 'Vertel iets meer — je AI heeft dit nodig om je klanten te woord te staan.';
+      document.getElementById('wizard-bedrijf').focus();
+      return;
+    }
+    knop.disabled = true; knop.textContent = 'Opslaan...';
+    try {
+      await wizardBewaar({
+        aiInstructions: over,
+        website: document.getElementById('wizard-website').value.trim()
+      });
+      _wizardConfig = _wizardConfig || {};
+      _wizardConfig.aiInstructions = over;
+    } catch (e) {
+      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      knop.disabled = false; knop.textContent = 'Volgende';
+      return;
+    }
+  }
+
+  if (stap === 'ai') {
+    var naam = document.getElementById('wizard-ainaam').value.trim();
+    var begroet = document.getElementById('wizard-welkomst').value.trim();
+    if (!naam) {
+      fout.textContent = 'Geef je AI een naam.';
+      document.getElementById('wizard-ainaam').focus();
+      return;
+    }
+    if (begroet.length < 10) {
+      fout.textContent = 'Schrijf een welkomstbericht van een paar woorden.';
+      document.getElementById('wizard-welkomst').focus();
+      return;
+    }
+    knop.disabled = true; knop.textContent = 'Opslaan...';
+    try {
+      await wizardBewaar({ aiName: naam, autoReplyTpl: begroet });
+      _wizardConfig = _wizardConfig || {};
+      _wizardConfig.aiName = naam;
+      _wizardConfig.autoReplyTpl = begroet;
+    } catch (e) {
+      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      knop.disabled = false; knop.textContent = 'Volgende';
+      return;
+    }
+  }
+
+  if (stap === 'klaar') { wizardSluit(true); return; }
+  wizardGa(1);
+}
+
+function wizardTeken() {
+  var stap = WIZARD_STAPPEN[_wizardStap];
+  var c = _wizardConfig || {};
+
+  var titel = document.getElementById('wizard-titel');
+  var sub   = document.getElementById('wizard-sub');
+  var body  = document.getElementById('wizard-body');
+  var mas   = document.getElementById('wizard-mascotte');
+  var terug = document.getElementById('wizard-terug');
+  var knop  = document.getElementById('wizard-volgende');
+  var over  = document.getElementById('wizard-overslaan');
+  var fout  = document.getElementById('wizard-fout');
+  if (!body) return;
+
+  fout.textContent = '';
+  knop.disabled = false;
+  if (mas) mas.src = WIZARD_MASCOTTE[stap];
+
+  wizardTekenRail();
+
+  /* Faro zegt per stap één zin. Dat is wat een gids doet -- anders is hij
+     alleen een plaatje dat toevallig van pose wisselt. */
+  var gidsTekst = document.getElementById('wizard-gidstekst');
+  if (gidsTekst) {
+    gidsTekst.textContent = {
+      intro:   'Ik help je hier even doorheen.',
+      bedrijf: 'Hoe meer ik weet, hoe beter ik je klanten te woord sta.',
+      ai:      'Zo stel ik me straks voor aan je leads.',
+      klaar:   'Vanaf nu neem ik je gesprekken over.'
+    }[stap] || '';
+  }
+
+  terug.style.visibility = _wizardStap === 0 ? 'hidden' : 'visible';
+  over.style.display = _wizardStap === WIZARD_STAPPEN.length - 1 ? 'none' : '';
+  knop.textContent = _wizardStap === WIZARD_STAPPEN.length - 1 ? 'Aan de slag' : 'Volgende';
+
+  if (stap === 'intro') {
+    titel.textContent = 'Welkom bij Helvaro';
+    sub.textContent = 'In drie korte stappen staat je AI klaar om je leads te woord te staan. Duurt ongeveer twee minuten.';
+    body.innerHTML =
+        '<ul style="margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.9;color:var(--text-muted,#999)">'
+      + '<li>Je vertelt kort wat je bedrijf doet</li>'
+      + '<li>Je geeft je AI een naam en een welkomstbericht</li>'
+      + '<li>Je krijgt je formulierlink om te delen</li>'
+      + '</ul>'
+      + '<p style="margin:16px 0 0;font-size:12.5px;color:var(--text-muted,#999)">'
+      + 'Je kan dit overslaan en later invullen — je vindt dezelfde stappen terug op je dashboard.</p>';
+    return;
+  }
+
+  if (stap === 'bedrijf') {
+    titel.textContent = 'Vertel over je bedrijf';
+    sub.textContent = 'Dit is wat je AI gebruikt om leads te beantwoorden. Hoe concreter, hoe beter ze je klanten helpt.';
+    body.innerHTML =
+        '<label for="wizard-bedrijf" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">Wat doet je kantoor?</label>'
+      + '<textarea id="wizard-bedrijf" rows="6" placeholder="Bijvoorbeeld: wij zijn een makelaarskantoor in Aalst, gespecialiseerd in woningen tussen 250.000 en 600.000 euro. We werken in Aalst, Erpe-Mere en Lede..." '
+      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;line-height:1.55;color:var(--text,#E9EEF6);font-family:inherit;resize:vertical"></textarea>'
+      + '<label for="wizard-website" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">Website (optioneel)</label>'
+      + '<input id="wizard-website" type="url" placeholder="https://..." '
+      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit">';
+    document.getElementById('wizard-bedrijf').value = c.aiInstructions || '';
+    document.getElementById('wizard-website').value = c.website || '';
+    setTimeout(function () { document.getElementById('wizard-bedrijf').focus(); }, 60);
+    return;
+  }
+
+  if (stap === 'ai') {
+    titel.textContent = 'Geef je AI een naam';
+    sub.textContent = 'Leads zien deze naam en dit bericht als eerste, nog voor jij iets hoeft te doen.';
+    body.innerHTML =
+        '<label for="wizard-ainaam" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">Naam</label>'
+      + '<input id="wizard-ainaam" type="text" maxlength="60" placeholder="Bijvoorbeeld: Mathis" '
+      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit">'
+      + '<label for="wizard-welkomst" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">Welkomstbericht</label>'
+      + '<textarea id="wizard-welkomst" rows="4" placeholder="Dag! Ik ben Mathis van kantoor X. Waarmee kan ik u helpen?" '
+      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;line-height:1.55;color:var(--text,#E9EEF6);font-family:inherit;resize:vertical"></textarea>';
+    document.getElementById('wizard-ainaam').value = c.aiName || '';
+    document.getElementById('wizard-welkomst').value = c.autoReplyTpl || '';
+    setTimeout(function () { document.getElementById('wizard-ainaam').focus(); }, 60);
+    return;
+  }
+
+  // klaar
+  titel.textContent = 'Klaar om leads te ontvangen';
+  sub.textContent = 'Deel deze link. Elke lead die hem invult, wordt meteen door je AI te woord gestaan.';
+  var link = '';
+  try { link = getFormUrl(); } catch (e) { link = ''; }
+  body.innerHTML =
+      '<div style="user-select:all;-webkit-user-select:all;word-break:break-all;padding:11px 12px;margin:0 0 14px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13px;color:var(--text,#E9EEF6)">'
+    + (link ? escHtml(link) : 'Je formulierlink staat op je dashboard.') + '</div>'
+    + '<p style="margin:0;font-size:13px;line-height:1.7;color:var(--text-muted,#999)">'
+    + 'Wil je dat je AI ook meteen afspraken inplant? Koppel je Google Agenda — dat staat als volgende stap op je dashboard.</p>';
+}
+
+/* Twee kolommen, zoals een opzetscherm hoort te werken.
+ *
+ * Eerst stond hier één kolom met de mascotte los naast de kop. Dat zag eruit
+ * als een plaatje dat ernaast geplakt was: de valk zweefde, de invoer liep over
+ * de volle breedte, en onder het laatste veld bleef een gat staan.
+ *
+ * Nu: links een rail met de stappen (waar ben ik, wat komt er nog), rechts de
+ * invoer op leesbare breedte. Dat is het patroon dat elk serieus B2B-product
+ * gebruikt, en het geeft Faro meteen een natuurlijke plek onderaan de rail --
+ * aanwezig als merkteken, niet als hoofdrolspeler.
+ */
+var WIZARD_LABELS = {
+  intro:   'Welkom',
+  bedrijf: 'Je bedrijf',
+  ai:      'Je AI',
+  klaar:   'Klaar'
+};
+
+function wizardTekenRail() {
+  var rail = document.getElementById('wizard-rail');
+  if (!rail) return;
+  rail.innerHTML = '';
+  for (var i = 0; i < WIZARD_STAPPEN.length; i++) {
+    var sleutel = WIZARD_STAPPEN[i];
+    var actief = i === _wizardStap;
+    var gedaan = i < _wizardStap;
+
+    var regel = document.createElement('div');
+    regel.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 0';
+
+    var bol = document.createElement('span');
+    bol.textContent = gedaan ? '✓' : String(i + 1);
+    bol.setAttribute('aria-hidden', 'true');
+    bol.style.cssText = 'flex:0 0 24px;height:24px;border-radius:999px;display:flex;'
+      + 'align-items:center;justify-content:center;font-size:11.5px;font-weight:600;'
+      + (gedaan
+          ? 'background:var(--accent-c,#C9A34E);color:#0E141C;'
+          : actief
+            ? 'background:transparent;color:var(--accent-c,#C9A34E);border:1px solid var(--accent-c,#C9A34E);'
+            : 'background:transparent;color:var(--text-muted,#999);border:1px solid var(--border,#2A3444);');
+
+    var tekst = document.createElement('span');
+    tekst.textContent = WIZARD_LABELS[sleutel];
+    tekst.style.cssText = 'font-size:13px;'
+      + (actief ? 'color:var(--text,#E9EEF6);font-weight:600;'
+                : gedaan ? 'color:var(--text-muted,#999);' : 'color:var(--text-muted,#999);opacity:0.72;');
+
+    regel.appendChild(bol); regel.appendChild(tekst);
+    rail.appendChild(regel);
+  }
+}
+
+function wizardBouw() {
+  var oud = document.getElementById('welkom-wizard');
+  if (oud) oud.remove();
+
+  var smal = !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'welkom-wizard';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Welkom bij Helvaro');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:11000;'
+    + 'display:flex;align-items:center;justify-content:center;padding:' + (smal ? '0' : '24px')
+    + ';animation:cmFadeIn .18s ease-out';
+
+  var kaart = document.createElement('div');
+  kaart.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);'
+    + (smal ? 'border-radius:0;width:100%;height:100%;' : 'border-radius:18px;width:100%;max-width:940px;max-height:88vh;')
+    + 'display:flex;overflow:hidden';
+
+  // ── Rail ────────────────────────────────────────────────────────────────
+  var rail = document.createElement('aside');
+  rail.style.cssText = 'flex:0 0 264px;background:var(--bg,#0E141C);border-right:1px solid var(--border,#2A3444);'
+    + 'padding:30px 26px;display:flex;flex-direction:column';
+  if (smal) rail.style.display = 'none';
+
+  var railKop = document.createElement('div');
+  railKop.textContent = 'Aan de slag';
+  railKop.style.cssText = 'font-size:11px;letter-spacing:0.1em;text-transform:uppercase;'
+    + 'color:var(--text-muted,#999);margin:0 0 14px';
+
+  var stappen = document.createElement('div');
+  stappen.id = 'wizard-rail';
+
+  var railVul = document.createElement('div');
+  railVul.style.cssText = 'flex:1;min-height:24px';
+
+  /* Faro onderaan de rail: klein, rustig, als merkteken. Hij wisselt nog steeds
+     van toestand per stap -- dat is waarom hij er staat -- maar hij concurreert
+     niet meer met de kop. */
+  var gids = document.createElement('div');
+  gids.id = 'wizard-gids';
+  gids.style.cssText = 'display:flex;align-items:center;gap:10px;padding-top:16px;border-top:1px solid var(--border,#2A3444)';
+  var mascotte = document.createElement('img');
+  mascotte.id = 'wizard-mascotte';
+  mascotte.alt = '';
+  mascotte.setAttribute('aria-hidden', 'true');
+  mascotte.width = 44; mascotte.height = 44;
+  mascotte.style.cssText = 'width:44px;height:44px;display:block;flex:0 0 44px';
+  var gidsTekst = document.createElement('div');
+  gidsTekst.id = 'wizard-gidstekst';
+  gidsTekst.style.cssText = 'font-size:12px;line-height:1.45;color:var(--text-muted,#999)';
+  gids.appendChild(mascotte); gids.appendChild(gidsTekst);
+
+  rail.appendChild(railKop); rail.appendChild(stappen); rail.appendChild(railVul); rail.appendChild(gids);
+
+  // ── Inhoud ──────────────────────────────────────────────────────────────
+  var rechts = document.createElement('div');
+  rechts.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column';
+
+  var inhoud = document.createElement('div');
+  inhoud.style.cssText = 'flex:1;overflow-y:auto;padding:' + (smal ? '28px 22px' : '40px 44px');
+
+  var binnen = document.createElement('div');
+  binnen.style.cssText = 'max-width:460px';   // leesbare regelbreedte, geen uitgerekte velden
+
+  var titel = document.createElement('h2');
+  titel.id = 'wizard-titel';
+  titel.style.cssText = 'margin:0 0 8px;font-size:23px;line-height:1.25;color:var(--text,#E9EEF6)';
+  var sub = document.createElement('p');
+  sub.id = 'wizard-sub';
+  sub.style.cssText = 'margin:0 0 24px;font-size:13.5px;line-height:1.6;color:var(--text-muted,#999)';
+  var body = document.createElement('div');
+  body.id = 'wizard-body';
+  var fout = document.createElement('div');
+  fout.id = 'wizard-fout';
+  fout.setAttribute('role', 'alert');
+  fout.style.cssText = 'min-height:20px;margin:14px 0 0;font-size:12.5px;color:var(--error-ink,#F4A4A4)';
+
+  binnen.appendChild(titel); binnen.appendChild(sub); binnen.appendChild(body); binnen.appendChild(fout);
+  inhoud.appendChild(binnen);
+
+  var voet = document.createElement('div');
+  voet.style.cssText = 'display:flex;align-items:center;gap:8px;padding:' + (smal ? '16px 22px' : '18px 44px')
+    + ';border-top:1px solid var(--border,#2A3444)';
+
+  var overslaan = document.createElement('button');
+  overslaan.id = 'wizard-overslaan';
+  overslaan.type = 'button';
+  overslaan.textContent = 'Overslaan';
+  overslaan.style.cssText = 'padding:9px 12px;background:none;border:0;color:var(--text-muted,#999);font-size:13px;cursor:pointer;font-family:inherit';
+
+  var vul = document.createElement('div');
+  vul.style.cssText = 'flex:1';
+
+  var terug = document.createElement('button');
+  terug.id = 'wizard-terug';
+  terug.type = 'button';
+  terug.textContent = 'Terug';
+  terug.style.cssText = 'padding:9px 16px;background:transparent;border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
+
+  var volgende = document.createElement('button');
+  volgende.id = 'wizard-volgende';
+  volgende.type = 'button';
+  volgende.textContent = 'Volgende';
+  volgende.style.cssText = 'padding:9px 20px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+  voet.appendChild(overslaan); voet.appendChild(vul); voet.appendChild(terug); voet.appendChild(volgende);
+
+  rechts.appendChild(inhoud); rechts.appendChild(voet);
+  kaart.appendChild(rail); kaart.appendChild(rechts);
+  overlay.appendChild(kaart);
+  document.body.appendChild(overlay);
+
+  overslaan.addEventListener('click', function () { wizardSluit(false); });
+  terug.addEventListener('click', function () { wizardGa(-1); });
+  volgende.addEventListener('click', function () { wizardVolgende(); });
+  document.addEventListener('keydown', wizardToetsen);
+
+  wizardTeken();
+}
+
+/* Wordt de wizard getoond? Beslist op de SERVER-waarde, niet op localStorage.
+   Alleen voor een echte klant met een projectcode: de admin/owner heeft geen
+   AI-config om in te stellen en hoort hier niets van te merken. */
+async function checkWelkomWizard() {
+  if (!state.apiKey) return false;
+  if (!localStorage.getItem('hv-project')) return false;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'config-get' })
+    });
+    if (!r.ok) return false;
+    var d = await r.json();
+    _wizardConfig = d;
+    if (d.welcomeDone === true) return false;
+    /* Een bestaande klant die alles al ingevuld heeft, krijgt geen wizard te
+       zien -- die zou hem alleen maar vertellen wat hij al gedaan heeft. Wel
+       meteen afvinken, zodat het bij de volgende login niet opnieuw uitgerekend
+       hoeft te worden. */
+    var alKlaar = !!(d.aiName && d.autoReplyTpl && d.aiInstructions);
+    if (alKlaar) { wizardBewaar({ welcomeDone: true }).catch(function () {}); return false; }
+    _wizardStap = wizardGelezenStap();
+    wizardBouw();
+    return true;
+  } catch (e) { return false; }
 }
 
 // Fire a config-get; if essential fields are empty, force-navigate to the
