@@ -187,7 +187,10 @@ function bootsAirtableNa(rijen) {
   {
     const leads = require('fs').readFileSync(require('path').join(__dirname, '..', 'api/leads.js'), 'utf8');
     const i = leads.indexOf("body.mode === 'plan-checkout'");
-    const blok = leads.slice(i, i + 2600);
+    /* Ruim genomen: er is sindsdien een vanafprijs-blok vóór de btw-controle
+     gekomen, en een te korte knip laat de controle er dan buiten vallen --
+     wat leest als "btw wordt niet gecontroleerd" terwijl hij er gewoon staat. */
+  const blok = leads.slice(i, i + 6000);
     ck('plan-checkout roept controleerEnClaim aan', /controleerEnClaim\(/.test(blok), null);
     ck('vóór de Stripe-sessie wordt aangemaakt',
        blok.indexOf('controleerEnClaim') < blok.indexOf('createSubscription'), null);

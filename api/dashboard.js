@@ -20350,6 +20350,26 @@ function vraagBtwEnBetaal(planId, planNaam) {
       });
       var d = await r.json().catch(function () { return {}; });
       if (r.ok && d.url) { window.location.href = d.url; return; }
+      /* Scale heeft een vanafprijs en wordt per kantoor samengesteld. Dat is
+         geen fout maar een verkoopgesprek: in plaats van een rode melding
+         krijgt de klant meteen de knop om een voorstel te vragen, met zijn
+         btw-nummer al ingevuld in het bericht. */
+      if (d.code === 'plan_op_maat') {
+        sluit();
+        toonSupportModal({
+          onderwerp: 'Voorstel voor Scale',
+          title:     'We stellen het voor je samen',
+          /* Geen bedrag hardcoderen: prijzen staan in api/_plans.js en nergens
+             anders (CLAUDE.md). De server stuurt de vanafprijs mee; ontbreekt
+             hij, dan noemen we er gewoon geen. */
+          message:   'Scale rekenen we per kantoor uit'
+                   + (d.vanafPrijsEur ? ', vanaf ' + d.vanafPrijsEur + ' euro per maand' : '')
+                   + '. Vertel kort hoeveel leads je per maand verwacht, dan sturen we een voorstel.',
+          voorbeeld: 'Hallo,\\n\\nIk wil graag een voorstel voor Scale.\\n\\nWe verwachten ongeveer ___ leads per maand.\\n'
+                   + (btw ? '\\nBtw-nummer: ' + btw + '\\n' : '')
+        });
+        return;
+      }
       status.style.color = 'var(--error-ink,#F4A4A4)';
       status.textContent = d.error || 'De betaalpagina kon niet geopend worden.';
       ga.disabled = false;

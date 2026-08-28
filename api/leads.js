@@ -1739,8 +1739,47 @@ module.exports = async function handler(req, res) {
       /* Het plan wordt hier OPGEZOCHT, niet overgenomen. De browser stuurt een
          naam; de prijs komt uit de plantabel. Anders koopt iemand Scale voor
          een euro door één getal in het netwerkverkeer te veranderen. */
-      const plan = _plans.plan(body.planId);
-      if (!plan) return res.status(400).json({ error: 'Onbekend plan.' });
+      const basisPlan = _plans.plan(body.planId);
+      if (!basisPlan) return res.status(400).json({ error: 'Onbekend plan.' });
+
+      /* ── Vanafprijs ────────────────────────────────────────────────────────
+         Scale is een vanafprijs: 799 is de bodem en het echte tarief wordt per
+         klant afgesproken. Zelf laten afrekenen op 799 zou dus het verkeerde
+         bedrag innen én het creditplafond op 20.000 laten staan voor iemand die
+         meer afneemt. effectiefPlan() past de afspraak toe en laat de credits
+         meeschalen; zonder afspraak komt de klant hier niet doorheen en krijgt
+         hij het aanbod dat we een voorstel maken. */
+      let afspraak = null;
+      try {
+        const rij = await require('./_abonnement').klantRij(projectCode);
+        if (rij) afspraak = {
+          prijsEur: Number(rij.fields['fldD8U058vkEp5knF'] || rij.fields['Agreed Plan Price EUR']) || 0,
+          credits:  Number(rij.fields['fldxxYMZfHctA2mNj'] || rij.fields['Agreed Plan Credits'])   || 0,
+        };
+      } catch (e) {
+        console.warn('[plan-checkout] afgesproken prijs niet gelezen:', e && e.message);
+      }
+
+      const effectief = _plans.effectiefPlan(basisPlan.id, afspraak);
+      if (!effectief.ok) {
+        if (effectief.reden === 'prijs_nog_niet_afgesproken') {
+          /* Geen fout van de klant: dit plan wordt nu eenmaal per klant geprijsd.
+             203 zou hier netter zijn dan 400, maar de dashboardcode leest alleen
+             code + error, dus die blijven leidend. */
+          return res.status(409).json({
+            error: 'Scale stellen we per kantoor samen — vanaf ' + basisPlan.prijsEur
+                 + ' euro per maand. Vraag een voorstel, dan rekenen we het voor je uit.',
+            code: 'plan_op_maat',
+            vanafPrijsEur: basisPlan.prijsEur,
+          });
+        }
+        console.error('[plan-checkout] afspraak deugt niet voor', projectCode, '-', effectief.reden);
+        return res.status(409).json({
+          error: 'Er klopt iets niet aan de afgesproken prijs voor dit account. We nemen contact op.',
+          code: 'afspraak_' + effectief.reden,
+        });
+      }
+      const plan = effectief.plan;
 
       /* Btw-nummer: hier gevraagd, niet bij het aanmaken van een account.
          Een proefaccount hoeft er geen -- wie eerst wil kijken moet kunnen

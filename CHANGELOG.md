@@ -14,6 +14,40 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou — twee velden per Scale-klant.**
+>
+> Spreek je met een kantoor een bedrag af voor Scale? Zet het in Airtable bij die
+> klant onder **`Agreed Plan Price EUR`**. Meer hoeft niet: de credits schalen
+> automatisch mee. Wil je er toch een ander aantal bij afspreken, dan kan dat in
+> **`Agreed Plan Credits`** — maar een aantal dat je marge onder 35% duwt wordt
+> geweigerd.
+>
+> Staat er geen bedrag, dan kan de klant Scale niet zelf afrekenen. Hij krijgt
+> dan de knop om een voorstel te vragen. Dat is de bedoeling: Scale is een
+> vanafprijs.
+
+### Scale: 799 is de bodem, niet het tarief
+
+Scale verkoop je per kantoor, en dat stond alleen in de Stripe-omschrijving —
+nergens in de app. Twee dingen gingen daardoor stil mis. Een kantoor dat 1.500
+per maand betaalde kreeg exact dezelfde 20.000 credits als een kantoor dat 799
+betaalde, terwijl hij juist meer betaalt *omdat* hij meer volume heeft. En
+intern rekende Helvaro met 799 terwijl er iets anders binnenkwam, dus met de
+verkeerde marge.
+
+Nu: je zet het afgesproken bedrag bij de klant, en de credits groeien mee tegen
+dezelfde prijs per credit. Betaalt iemand het dubbele, dan krijgt hij het
+dubbele — en je marge blijft dus gelijk, ongeacht het bedrag. Bij 799 is dat
+20.000 credits, bij 1.500 wordt het 38.000, bij 2.400 wordt het 61.000.
+
+Wat er geweigerd wordt: een bedrag onder de 799 (in de praktijk altijd een
+typefout — wie echt lager wil hoort op Growth), en een creditaantal dat de marge
+onder 35% duwt.
+
+Klanten zonder afgesproken bedrag zien geen betaalpagina maar een uitnodiging om
+een voorstel te vragen, met hun btw-nummer al ingevuld in het bericht.
+
+
 > **Ter info — één ding om te bekijken in Stripe (geen storing).**
 >
 > Bij **Helvaro Scale** staat in Stripe `credits_per_month: unlimited`, terwijl
@@ -1420,4 +1454,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 74d9bd8 -->
+<!-- changelog-tot: 547fb09 -->

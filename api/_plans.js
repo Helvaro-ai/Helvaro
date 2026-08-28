@@ -68,6 +68,13 @@ const PLANNEN = Object.freeze([
     credits: 20000,
     onbeperkt: true,
     beeldgeneratie: true,
+    /* VANAFPRIJS. 799 is de bodem, niet het tarief: Scale wordt per klant
+       verkocht en het definitieve bedrag ligt hoger naarmate er meer volume
+       tegenover staat. Dat stond alleen in de Stripe-omschrijving en nergens in
+       de code, waardoor een klant die 1.500 betaalt exact dezelfde 20.000
+       credits kreeg als een klant die 799 betaalt -- de marge liep dan op bij
+       de een en niet mee met de ander. Zie effectiefPlan() onderaan. */
+    vanaf: true,
     omschrijving: 'Alles uit Growth, onbeperkt binnen fair use, eigen kwalificatievragen.',
   }),
 ]);
@@ -118,6 +125,94 @@ function marge(bedragEur, credits) {
   return (b - kostprijsEur(credits)) / b;
 }
 
+/* ── Afgesproken prijzen boven de vanafprijs ──────────────────────────────────
+ *
+ * Scale is een vanafprijs: 799 is de bodem en het echte tarief wordt per klant
+ * afgesproken. Zonder systeem daarvoor gebeurden er twee dingen fout.
+ *
+ * Eén: het afgesproken bedrag stond nergens in de code. De klant betaalde bij
+ * Stripe wat er afgesproken was, maar Helvaro rekende intern met 799 -- dus met
+ * de verkeerde marge, en met een creditplafond dat niet meebewoog.
+ *
+ * Twee: de credits bleven op 20.000 staan, wat het bedrag ook was. Iemand die
+ * het dubbele betaalt kreeg evenveel. Dat is niet alleen oneerlijk naar de
+ * klant, het is ook precies verkeerd om: hij betaalt meer OMDAT hij meer
+ * volume heeft, dus juist bij hem loopt het plafond als eerste vol.
+ *
+ * De regel hieronder: credits schalen mee met wat er betaald wordt, tegen
+ * dezelfde prijs per credit als het basisplan. Wie het dubbele betaalt krijgt
+ * het dubbele. De marge blijft daarmee per definitie gelijk aan die van het
+ * basisplan -- en dat is te controleren, wat marge() hieronder ook doet.
+ *
+ * Een afgesproken bedrag ONDER de vanafprijs wordt geweigerd. Niet uit
+ * principe, maar omdat het in de praktijk altijd een typefout is: wie echt
+ * lager wil, zet de klant op Growth.
+ */
+
+/* Onder deze marge is een afspraak geen korting meer maar verlies. Bewust ruim
+   onder de ~62% van het basisplan: dit is een noodrem, geen onderhandelgrens. */
+const MINIMUM_MARGE = 0.35;
+
+/* Credits worden afgerond op duizendtallen. Een klant leest "37.000 credits",
+   niet "37.547" -- en een rond getal is ook wat er in een voorstel staat. */
+const CREDIT_AFRONDING = 1000;
+
+/**
+ * Het plan zoals het voor DEZE klant geldt.
+ *
+ * @param {string} planId
+ * @param {object} [afspraak]
+ * @param {number} [afspraak.prijsEur]  het afgesproken maandbedrag
+ * @param {number} [afspraak.credits]   handmatig afgesproken credits (optioneel)
+ *
+ * Geeft { ok, plan, reden }. Gooit niet: dit zit in het betaalpad en een
+ * exception daar is een klant die niet kan afrekenen.
+ */
+function effectiefPlan(planId, afspraak) {
+  const basis = plan(planId);
+  if (!basis) return { ok: false, reden: 'onbekend_plan' };
+
+  const prijs = Number((afspraak || {}).prijsEur) || 0;
+
+  // Geen afspraak: het basisplan, ongewijzigd. Ook het pad voor Starter/Growth.
+  if (!prijs) {
+    if (basis.vanaf) return { ok: false, reden: 'prijs_nog_niet_afgesproken', plan: basis };
+    return { ok: true, plan: Object.assign({}, basis, { afgesproken: false }) };
+  }
+
+  // Een afspraak op een plan dat geen vanafprijs is, is een vergissing.
+  if (!basis.vanaf) return { ok: false, reden: 'plan_heeft_vaste_prijs', plan: basis };
+
+  if (prijs < basis.prijsEur) {
+    return { ok: false, reden: 'onder_vanafprijs', plan: basis };
+  }
+
+  /* Credits: meegroeien tegen dezelfde prijs per credit, tenzij er iets anders
+     is afgesproken. Naar boven afronden, want de klant hoort niet minder te
+     krijgen dan waar hij voor betaalt. */
+  const perCred = basis.prijsEur / basis.credits;
+  const handmatig = Number((afspraak || {}).credits) || 0;
+  const credits = handmatig > 0
+    ? handmatig
+    : Math.ceil((prijs / perCred) / CREDIT_AFRONDING) * CREDIT_AFRONDING;
+
+  const m = marge(prijs, credits);
+  if (m === null || m < MINIMUM_MARGE) {
+    return { ok: false, reden: 'marge_te_laag', plan: basis, marge: m };
+  }
+
+  return {
+    ok: true,
+    plan: Object.freeze(Object.assign({}, basis, {
+      prijsEur: prijs,
+      credits,
+      afgesproken: true,
+      basisPrijsEur: basis.prijsEur,
+    })),
+    marge: m,
+  };
+}
+
 /* Wat het dashboard en de prijspagina tonen. Bewust een aparte vorm: de UI
    hoort niet zelf te rekenen, en een frontend die prijzen uitrekent is een
    frontend waarin een klant zijn eigen prijs kan aanpassen. */
@@ -138,4 +233,5 @@ function publiek() {
 module.exports = {
   PLANNEN, STANDAARD_PLAN, CREDITS_PER_GESPREK, KOSTPRIJS_PER_GESPREK_EUR,
   plan, perCredit, gesprekken, kostprijsEur, marge, publiek,
+  effectiefPlan, MINIMUM_MARGE, CREDIT_AFRONDING,
 };

@@ -131,8 +131,40 @@ async function lees(projectCode) {
 async function activeer({ projectCode, planId, klantId, abonnementId } = {}) {
   const code = String(projectCode || '').trim();
   if (!code) throw new Error('activeren zonder projectcode');
-  const plan = _plans.plan(planId);
+  let plan = _plans.plan(planId);
   if (!plan) throw new Error(`onbekend plan "${planId}"`);
+
+  /* Vanafprijs-plannen (Scale) krijgen de credits die bij het AFGESPROKEN bedrag
+     horen, niet die van de bodemprijs. Zonder dit kreeg een kantoor dat 1.500
+     betaalt dezelfde 20.000 credits als een kantoor dat 799 betaalt -- en juist
+     bij de eerste loopt dat plafond als eerste vol, want hij betaalt meer omdat
+     hij meer volume heeft.
+
+     De afspraak komt uit AIRTABLE, niet uit de webhook. Dat is dezelfde regel
+     als hierboven en om dezelfde reden: anders bepaalt wat er in Stripe getypt
+     is hoeveel iemand mag verbruiken. Airtable beheert de eigenaar zelf. */
+  if (plan.vanaf) {
+    try {
+      const rij = await klantRij(code);
+      const afspraak = rij ? {
+        prijsEur: Number(rij.fields['fldD8U058vkEp5knF'] || rij.fields['Agreed Plan Price EUR']) || 0,
+        credits:  Number(rij.fields['fldxxYMZfHctA2mNj'] || rij.fields['Agreed Plan Credits'])   || 0,
+      } : null;
+      const eff = _plans.effectiefPlan(plan.id, afspraak);
+      if (eff.ok) {
+        plan = eff.plan;
+      } else {
+        /* Geen bruikbare afspraak: op de bodemprijs zetten in plaats van de
+           activatie te laten mislukken. De klant heeft betaald -- hem buiten
+           laten staan omdat een veld leeg is, is de verkeerde kant om te
+           falen. Wel luid, want hier klopt iets niet. */
+        console.error(`[abonnement] ${code} staat op ${plan.id} (vanafprijs) maar de afspraak deugt niet `
+                      + `(${eff.reden}) — teruggevallen op de vanafprijs. Zet "Agreed Plan Price EUR" recht.`);
+      }
+    } catch (e) {
+      console.error('[abonnement] afgesproken prijs niet gelezen:', e && e.message);
+    }
+  }
 
   const velden = {};
   velden[F.planId]     = plan.id;
