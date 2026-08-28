@@ -216,8 +216,14 @@ function faroSetPanel(panel) {
    pagina, wel een verzoek dat nooit iets kan opleveren, in het log van iedereen.
 
    Zet dit op true zodra de bestanden er zijn; dan doet de rest hieronder weer
-   wat hij altijd al deed, inclusief de terugval per ontbrekende toestand. */
-var FARO_MASCOT_ASSETS = false;
+   wat hij altijd al deed, inclusief de terugval per ontbrekende toestand.
+
+   De bestanden staan er nu: public/faro/falcon-*.webp, zes toestanden, samen
+   54 KB. Uitgesneden uit de renders in FARO_Helvaro_AI_Assets (achtergrond weg,
+   echte alfa -- de drop-shadow in styles.js volgt die vorm, dus een vierkant
+   beeld zou een vierkante gloed geven). Op hoogte genormaliseerd zodat de valk
+   niet van formaat springt als de toestand wisselt. */
+var FARO_MASCOT_ASSETS = true;
 
 var FARO_MASCOT_SRC = {
   idle:       '/faro/falcon-idle.webp',
@@ -246,6 +252,12 @@ function faroMascot(stateName) {
   }
   var src = FARO_MASCOT_SRC[stateName];
   if (!src || faroMascotMissing[stateName]) return;
+  /* De klasse staat vanaf de SERVER op de <img> (zie markup.js): zo vraagt een
+     checkout zonder bestanden er ook geen op. Alleen: hier werd hij nooit meer
+     weggehaald, dus zelfs mét bestanden bleef de mascotte onzichtbaar. Pas na
+     een geslaagde load weghalen -- dan blijft een ontbrekend bestand nog steeds
+     netjes verborgen in plaats van een gebroken-beeld-teken te tonen. */
+  el.onload = function () { el.classList.remove('faro-mascot--missing'); };
   el.onerror = function () {
     // Clear the handler BEFORE the fallback assignment. Without this, idle's own
     // 404 re-entered this closure with stateName still set to the original
@@ -1275,6 +1287,16 @@ function faroLoadProjects() {
 
 /* ── Wiring ───────────────────────────────────────────────────────────────── */
 function faroInit() {
+  /* De mascotte in zijn rusttoestand zetten. Dit werd nergens gedaan: de <img>
+     komt met de klasse faro-mascot--missing van de server -- zodat een checkout
+     zonder bestanden er geen enkele ophaalt -- en alleen faroMascot() haalt hem
+     er weer af. Die werd echter pas aangeroepen bij een toestandswissel
+     (denken, fout, succes), dus met de bestanden aan boord bleef de mascotte
+     onzichtbaar tot je een vraag stelde. Niet in faroOpen(): die keert meteen
+     terug als het paneel al open is, en dat is bij het laden van de pagina het
+     geval. */
+  faroMascot('idle');
+
   // ── Dock ────────────────────────────────────────────────────────────────
   // Typing here is the primary way in. Enter opens Faro AND sends, so the
   // first question never costs a round trip through an empty screen.

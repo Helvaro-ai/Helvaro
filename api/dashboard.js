@@ -997,21 +997,25 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* Logo linksboven op het formulierpaneel.
 
-   Het stond kaal op wit, en dat is precies de ondergrond waar dit logo niet
-   voor gemaakt is: het is een goudlijn-tekening met een dunne letter, bedoeld
-   voor een donker vlak -- op wit haalt de tekst 1,9:1 en las de klant vooral
-   een lichte vlek. Vandaar een eigen donker plaatje eronder, dezelfde kleur
-   als het merkpaneel rechts (--login-stage). Het logo staat dan op de
-   ondergrond waarvoor het getekend is, en de twee helften van het scherm
-   horen zichtbaar bij elkaar. */
+   Het stond kaal op wit, en dat is de ondergrond waar het gouden logo niet voor
+   gemaakt is: goudlijn op wit haalt 2,87:1 en leest als een lichte vlek. Daar
+   stond daarom een donkere plaat onder. Die loste het contrast op maar zette er
+   een zwarte doos op het lichte paneel, vlak boven Clerks eigen kaart -- twee
+   verschillende vormentalen boven elkaar.
+
+   Nu staat er een inkt-variant van hetzelfde merkteken (public/logo-ink.png):
+   dezelfde tekening, omgekleurd naar donkere brons, met de transparantie intact.
+   Contrast op wit gaat daarmee van 2,87:1 naar 6,2:1 voor de lichtste lijnen en
+   16,3:1 voor de donkerste, dus de plaat is niet meer nodig. Het gouden bestand
+   blijft in gebruik waar de ondergrond wél donker is (de zijbalk). */
 .login-logo-top {
   display: inline-flex;
   align-self: flex-start;
   align-items: center;
   gap: 0;
   margin-bottom: 44px;
-  padding: 14px 22px;
-  background: var(--login-stage);
+  padding: 0;
+  background: none;
   /* Met terugvalwaarde: de schaal-tokens komen uit de Faro-CSS verderop in
      ditzelfde style-blok, en dat blok is leeg als Faro uitstaat. Zonder
      terugval krijgt het plaatje dan scherpe hoeken.
@@ -8514,7 +8518,7 @@ ${cmd.css}
     <div class="login-form-side">
       <div class="login-form-inner">
         <div class="login-logo-top">
-          <img src="/logo.png" alt="Helvaro">
+          <img src="/logo-ink.png" alt="Helvaro">
         </div>
 
         <h1 class="login-welcome">Welkom terug!</h1>

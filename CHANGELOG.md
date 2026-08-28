@@ -14,6 +14,24 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro heeft een gezicht, en het inlogscherm zijn doos kwijt
+
+De mascotte was al helemaal ingebouwd — zes toestanden, animaties, een nette
+terugval — maar er stond geen enkel beeldbestand in de repo, dus zag je alleen
+de bol. Faro kijkt nu terug: rust, denken, genereren, video, succes en fout,
+uitgesneden uit jouw renders, samen 54 KB.
+
+Twee dingen zaten daarbij in de weg. De `<img>` kwam met "ontbreekt" van de
+server (zodat een installatie zonder bestanden er geen ophaalt) en niets haalde
+dat er ooit weer af. En de toestand werd alleen gezet bij een wissel — denken,
+fout, succes — dus bij het openen bleef hij leeg tot je een vraag stelde.
+
+Op het inlogscherm stond het gouden logo op een zwarte plaat, omdat goud op wit
+maar 2,87:1 haalt. Die plaat is weg: er staat nu een inkt-variant van hetzelfde
+merkteken, transparant, die 6,2:1 tot 16,3:1 haalt. Geen zwarte doos meer boven
+de inlogkaart. Het gouden bestand blijft waar de ondergrond donker is.
+
+
 ### De opgeheven VPS kan het token niet meer weglekken
 
 `PG_API_URL` wees naar een kaal IP-adres van een DigitalOcean-machine die je
