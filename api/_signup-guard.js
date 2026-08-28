@@ -96,6 +96,19 @@ const WEIGHTS = {
   DATACENTER_IP:      -15, // signup IP's PTR record matches a known hosting/cloud provider
   FINGERPRINT_REUSED: -20, // same device/browser fingerprint seen recently
   NO_WEBSITE:          -5, // deliberately small — see file header rule (b)
+  /* Een consumentenadres (gmail/hotmail/telenet/skynet/...) is een SIGNAAL, geen
+     grond om te weigeren. De opdracht vroeg om "alleen zakelijke e-mail", maar
+     dat botst frontaal met regel (b) hierboven: de ideale klant van Helvaro is
+     een klein Vlaams kantoor, en dat kantoor mailt vaak vanaf telenet.be of
+     gmail. Een harde blokkade zou precies de beste prospects weigeren -- en de
+     opdracht waarschuwde daar zelf voor ("geen te agressieve blacklist").
+     Vandaar een klein gewicht: gmail alléén blijft ruim boven de drempel en
+     krijgt gewoon een proefaccount, maar sámen met een ander signaal (dubbel
+     domein, datacenter-IP, hergebruikte vingerafdruk) komt het wél in de
+     handmatige controle terecht.
+     De echte zakelijke verificatie zit inmiddels op de plek waar hij hoort:
+     een btw-nummer bij het afsluiten van een abonnement (api/_vat.js). */
+  FREEMAIL_EMAIL:     -10, // consumentendomein — signaal, nooit op zichzelf genoeg
 };
 const THRESHOLDS = {
   BASE_SCORE:         100,
@@ -188,6 +201,25 @@ function extractDomainFromUrl(raw) {
 // Not exhaustive — new temp-mail services appear constantly. This covers the
 // well-known, long-lived ones that show up in most public disposable-domain
 // lists. Refresh periodically; low cost to extend (just add a domain string).
+/* Gratis consumentenproviders. Bewust NIET samengevoegd met DISPOSABLE_DOMAINS:
+   een wegwerpadres is bijna altijd misbruik, een gmail-adres bijna nooit. Ze
+   verdienen dus een ander gewicht en een andere uitleg in de controle. */
+const FREEMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'hotmail.com', 'hotmail.be', 'hotmail.nl',
+  'outlook.com', 'outlook.be', 'live.com', 'live.be', 'live.nl', 'msn.com',
+  'yahoo.com', 'yahoo.co.uk', 'ymail.com', 'icloud.com', 'me.com', 'mac.com',
+  'aol.com', 'gmx.com', 'gmx.net', 'protonmail.com', 'proton.me', 'pm.me',
+  'zoho.com', 'mail.com', 'yandex.com', 'yandex.ru',
+  // Belgische en Nederlandse consumentenproviders — juist hier zit de
+  // makelaar die dit product koopt.
+  'telenet.be', 'skynet.be', 'proximus.be', 'scarlet.be', 'voo.be', 'edpnet.be',
+  'ziggo.nl', 'kpnmail.nl', 'planet.nl', 'home.nl', 'casema.nl', 'xs4all.nl',
+]);
+
+function isFreemailDomain(domain) {
+  return FREEMAIL_DOMAINS.has(String(domain || '').toLowerCase());
+}
+
 const DISPOSABLE_DOMAINS = new Set([
   'mailinator.com', 'guerrillamail.com', 'guerrillamail.info', 'guerrillamail.biz',
   'guerrillamail.de', 'guerrillamail.net', 'guerrillamail.org', 'grr.la',
@@ -418,6 +450,15 @@ async function evaluateSignup({ email, companyName, phone, website, ip, deviceFi
     reasons.push('E-maildomein staat op de lijst van wegwerp-emailproviders.');
   }
 
+  /* Consumentenadres: een signaal, geen grond om te weigeren. Zie WEIGHTS.
+     Niet optellen bij een wegwerpadres -- dat is al zwaarder bestraft en
+     tweemaal tellen voor "geen eigen domein" is dubbelop. */
+  const freemail = !disposable && isFreemailDomain(domain);
+  if (freemail) {
+    score += WEIGHTS.FREEMAIL_EMAIL;
+    reasons.push('E-mailadres is van een gratis consumentenprovider, niet van een eigen bedrijfsdomein.');
+  }
+
   const mx = await checkMx(domain);
   if (mx.checked && !mx.ok) {
     score += WEIGHTS.MX_INVALID;
@@ -507,4 +548,5 @@ module.exports = {
   checkWebsiteExists,
   evaluateSignup,
   isSignupSignalsExpired,
+  isFreemailDomain, FREEMAIL_DOMAINS,
 };

@@ -40,9 +40,57 @@ function webhookSecret() {
   return String(process.env.STRIPE_WEBHOOK_SECRET || '').trim();
 }
 
+/* ── Hoort deze sleutel bij deze omgeving? ───────────────────────────────────
+ * configured() keek alleen of het ergens op een Stripe-sleutel leek, en liet
+ * sk_test_ en sk_live_ allebei door in elke omgeving. Twee manieren waarop dat
+ * misgaat, en ze zijn niet even erg:
+ *
+ *   • Een LIVE-sleutel buiten productie. Elke preview-deploy, elke branch van
+ *     iemand die iets uitprobeert, kan dan een echte kaart belasten en een echt
+ *     abonnement aanmaken. Dat is geld van een klant, en niet terug te draaien
+ *     met een deploy. -> weigeren.
+ *
+ *   • Een TEST-sleutel in productie. Dan lijkt betalen te werken maar komt er
+ *     nooit geld binnen, en dat valt pas op als iemand de omzet naloopt.
+ *     Vervelend, maar niets raakt stuk en niemand wordt onterecht belast.
+ *     -> luid melden, niet blokkeren; anders zet ik met deze wijziging zelf
+ *     de betaalstroom uit op een moment dat niemand daarom vroeg.
+ *
+ * VERCEL_ENV is 'production' | 'preview' | 'development'. Staat hij niet gezet
+ * (lokaal, of een test), dan doen we geen uitspraak: dan is er geen omgeving om
+ * tegen af te zetten en zou elke keuze een gok zijn.
+ */
+let _gemeldSleutelMismatch = false;
+function omgeving() {
+  return String(process.env.VERCEL_ENV || '').trim().toLowerCase();
+}
+function sleutelPastBijOmgeving() {
+  const s = secret();
+  const env = omgeving();
+  if (!env) return true;                       // geen oordeel zonder omgeving
+  if (/^sk_live_/.test(s) && env !== 'production') {
+    if (!_gemeldSleutelMismatch) {
+      _gemeldSleutelMismatch = true;
+      console.error(`[stripe] LIVE-sleutel in omgeving "${env}" — betalen is hier UITGEZET. `
+        + 'Een live sleutel buiten productie belast echte kaarten vanaf een preview-deploy. '
+        + 'Zet in Vercel een sk_test_-sleutel voor Preview/Development.');
+    }
+    return false;
+  }
+  if (/^sk_test_/.test(s) && env === 'production') {
+    if (!_gemeldSleutelMismatch) {
+      _gemeldSleutelMismatch = true;
+      console.error('[stripe] TEST-sleutel in PRODUCTIE — klanten kunnen "betalen" zonder dat er geld binnenkomt. '
+        + 'Betalen blijft aan staan (uitzetten zou de verkoop stilleggen), maar dit hoort meteen recht.');
+    }
+    return true;                               // melden, niet blokkeren
+  }
+  return true;
+}
+
 /** Is Stripe aangesloten? Zonder sleutel gedraagt alles zich als "niet aan". */
 function configured() {
-  return /^sk_(test|live)_/.test(secret());
+  return /^sk_(test|live)_/.test(secret()) && sleutelPastBijOmgeving();
 }
 
 function webhookConfigured() {

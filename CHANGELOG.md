@@ -14,6 +14,31 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Een live Stripe-sleutel kan niet meer buiten productie draaien
+
+De controle keek alleen óf er een sleutel stond, niet of hij bij de omgeving
+hoorde. Een live sleutel op een preview-deploy belast dus echte kaarten van
+echte klanten, vanaf een branch waar iemand iets uitprobeert — en dat draai je
+niet terug met een deploy. Dat wordt nu geweigerd, met een duidelijke melding.
+
+Andersom, een testsleutel in productie, wordt luid gemeld maar niet geblokkeerd:
+dan lijkt betalen te werken zonder dat er geld binnenkomt, wat vervelend is maar
+niets stukmaakt — en de verkoop stilleggen om een instelfout is erger.
+
+### Consumentenadressen bij het aanmelden: een signaal, geen muur
+
+De opdracht vroeg "alleen zakelijke e-mailadressen". Dat is hier niet letterlijk
+gedaan, en met opzet: jouw eigen regel in de aanmeldbewaking is dat er nooit
+geweigerd wordt, en dat een zwakke webaanwezigheid geen reden mag zijn — want
+dat is precies de kleine makelaar die dit product koopt. Die redenering geldt
+één op één voor e-mail: een kantoor in Aalst mailt vanaf telenet.be of gmail.
+
+Een consumentenadres weegt nu licht mee in de score. Alleen gmail blijft ruim
+geaccepteerd en krijgt gewoon een proefaccount; samen met een ander signaal komt
+het wel in jouw handmatige controle. De echte zakelijke toets staat op de plek
+waar hij hoort: het btw-nummer bij het abonnement.
+
+
 > **Actie voor jou — één veld in Airtable.**
 >
 > Maak in de tabel **Clients** een veld **`VAT`** (enkele regel tekst). Zonder
