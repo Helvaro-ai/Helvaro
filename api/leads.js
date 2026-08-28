@@ -1707,6 +1707,27 @@ module.exports = async function handler(req, res) {
       const plan = _plans.plan(body.planId);
       if (!plan) return res.status(400).json({ error: 'Onbekend plan.' });
 
+      /* Btw-nummer: hier gevraagd, niet bij het aanmaken van een account.
+         Een proefaccount hoeft er geen -- wie eerst wil kijken moet kunnen
+         kijken -- maar wie gaat betalen krijgt een factuur, en dat is precies
+         het moment waarop "één bedrijf, één account" ertoe doet. Bots
+         tegenhouden is een andere taak en staat al bij Clerk en
+         api/_signup-guard.js; btw-nummers zijn openbaar en filteren geen bots.
+
+         controleerEnClaim() controleert de vorm, vraagt VIES of het nummer
+         bestaat, en claimt het. Zie api/_vat.js voor waarom een VIES-storing
+         doorlaat en een "bestaat niet" weigert, en waarom de uniciteit met
+         claim-then-verify werkt in plaats van kijken-dan-schrijven. */
+      const _vat = require('./_vat');
+      const vatUitslag = await _vat.controleerEnClaim({ projectCode, vat: body.vat });
+      if (!vatUitslag.ok) {
+        return res.status(vatUitslag.code === 'in_gebruik' ? 409 : 400).json({
+          error: vatUitslag.melding,
+          code:  'vat_' + vatUitslag.code,
+          veld:  'vat',
+        });
+      }
+
       const abo = await require('./_abonnement').lees(projectCode);
       try {
         const sessie = await _stripe.createSubscription({

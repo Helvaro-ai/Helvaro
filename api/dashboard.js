@@ -19801,7 +19801,7 @@ function tekenPlannen() {
       knop = '<button class="btn-icon fa-plan-knop" disabled title="Online betalen staat nog niet aan">Binnenkort</button>';
     } else {
       knop = '<button class="btn-icon btn-primary-sm fa-plan-knop" onclick="kiesPlan(&quot;'
-           + p.id + '&quot;)">Kies ' + escHtml(p.naam) + '</button>';
+           + p.id + '&quot;,&quot;' + escHtml(p.naam) + '&quot;)">Kies ' + escHtml(p.naam) + '</button>';
     }
     return '<div class="fa-plan' + (isHuidig ? ' huidig' : '') + '">'
       + '<div class="fa-plan-kop"><span class="fa-plan-titel">' + escHtml(p.naam) + '</span>'
@@ -19814,19 +19814,109 @@ function tekenPlannen() {
   }).join('');
 }
 
-async function kiesPlan(planId) {
-  try {
-    var r = await fetch(API_BASE + '/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'plan-checkout', planId: planId })
-    });
-    var d = await r.json().catch(function () { return {}; });
-    if (r.ok && d.url) { window.location.href = d.url; return; }
-    toast(d.error || 'De betaalpagina kon niet geopend worden.', 'error');
-  } catch (e) {
-    toast('Er ging iets mis. Controleer je verbinding.', 'error');
+/* Het btw-nummer wordt hier gevraagd en NIET bij het aanmaken van een account:
+   wie eerst wil proberen hoeft geen nummer, wie gaat betalen krijgt een factuur.
+   De server controleert het opnieuw (vorm, VIES, en of het niet al bij een ander
+   bedrijf hoort) -- dit scherm is alleen de vraag, nooit de grens. */
+function vraagBtwEnBetaal(planId, planNaam) {
+  var bestaand = document.getElementById('btw-modal');
+  if (bestaand) bestaand.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'btw-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Btw-nummer');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;animation:cmFadeIn .15s ease-out';
+
+  var card = document.createElement('div');
+  card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:420px';
+
+  var titel = document.createElement('h3');
+  titel.textContent = 'Nog één ding';
+  titel.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
+
+  var uitleg = document.createElement('p');
+  uitleg.textContent = 'We hebben je btw-nummer nodig voor de factuur van ' + (planNaam || 'je abonnement') + '.';
+  uitleg.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--text-muted,#999);line-height:1.5';
+
+  var veld = document.createElement('input');
+  veld.type = 'text';
+  veld.id = 'btw-veld';
+  veld.placeholder = 'BE 0123.456.749';
+  veld.autocomplete = 'off';
+  veld.setAttribute('aria-label', 'Btw-nummer');
+  veld.style.cssText = 'width:100%;box-sizing:border-box;padding:11px 12px;margin:0 0 6px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:14px;color:var(--text,#E9EEF6);font-family:inherit';
+
+  var status = document.createElement('div');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.style.cssText = 'min-height:32px;margin:0 0 12px;font-size:12px;line-height:1.45;color:var(--text-muted,#999)';
+
+  var rij = document.createElement('div');
+  rij.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+
+  var annuleer = document.createElement('button');
+  annuleer.textContent = 'Annuleren';
+  annuleer.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
+
+  var ga = document.createElement('button');
+  ga.textContent = 'Naar de betaalpagina';
+  ga.style.cssText = 'padding:9px 16px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+
+  function sluit() { overlay.remove(); document.removeEventListener('keydown', toets); }
+  function toets(e) { if (e.key === 'Escape' && !ga.disabled) sluit(); }
+
+  async function verder() {
+    var btw = veld.value.trim();
+    if (!btw) {
+      status.style.color = 'var(--error-ink,#F4A4A4)';
+      status.textContent = 'Vul je btw-nummer in.';
+      veld.focus();
+      return;
+    }
+    ga.disabled = true;
+    ga.textContent = 'Controleren...';
+    status.style.color = 'var(--text-muted,#999)';
+    status.textContent = '';
+    try {
+      var r = await fetch(API_BASE + '/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+        body: JSON.stringify({ mode: 'plan-checkout', planId: planId, vat: btw })
+      });
+      var d = await r.json().catch(function () { return {}; });
+      if (r.ok && d.url) { window.location.href = d.url; return; }
+      status.style.color = 'var(--error-ink,#F4A4A4)';
+      status.textContent = d.error || 'De betaalpagina kon niet geopend worden.';
+      ga.disabled = false;
+      ga.textContent = 'Naar de betaalpagina';
+      veld.focus();
+      veld.select();
+    } catch (e) {
+      status.style.color = 'var(--error-ink,#F4A4A4)';
+      status.textContent = 'Er ging iets mis. Controleer je verbinding.';
+      ga.disabled = false;
+      ga.textContent = 'Naar de betaalpagina';
+    }
   }
+
+  ga.addEventListener('click', verder);
+  annuleer.addEventListener('click', sluit);
+  veld.addEventListener('keydown', function (e) { if (e.key === 'Enter') verder(); });
+  overlay.addEventListener('click', function (e) { if (e.target === overlay && !ga.disabled) sluit(); });
+  document.addEventListener('keydown', toets);
+
+  rij.appendChild(annuleer); rij.appendChild(ga);
+  card.appendChild(titel); card.appendChild(uitleg); card.appendChild(veld);
+  card.appendChild(status); card.appendChild(rij);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  setTimeout(function () { veld.focus(); }, 50);
+}
+
+async function kiesPlan(planId, planNaam) {
+  vraagBtwEnBetaal(planId, planNaam);
 }
 
 /* Naar Stripe's eigen portaal. Bewust niet zelf nagebouwd: een opzegknop die

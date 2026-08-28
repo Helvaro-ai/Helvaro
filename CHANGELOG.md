@@ -14,6 +14,38 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou — één veld in Airtable.**
+>
+> Maak in de tabel **Clients** een veld **`VAT`** (enkele regel tekst). Zonder
+> dat veld kan een btw-nummer niet vastgelegd worden en krijgt de klant bij het
+> afsluiten een nette melding in plaats van een betaalpagina. De code zegt dat
+> ook duidelijk in de logs.
+
+### Btw-nummer bij het abonnement — één bedrijf, één account
+
+Wie een abonnement afsluit, geeft nu zijn btw-nummer op. **Bij het aanmaken van
+een account niet:** wie eerst wil proberen moet gewoon kunnen proberen. Op het
+moment dat er een factuur komt is het nummer wél logisch, en dat is precies het
+moment waarop het uitmaakt dat één bedrijf niet twee accounts heeft.
+
+Wat er gebeurt met wat je intikt:
+
+- **Zelfde bedrijf, andere schrijfwijze telt niet als tweede bedrijf.**
+  "BE 0123.456.749", "be0123456749" en "0123 456 749" zijn hetzelfde nummer.
+  Zonder landcode gaan we uit van België.
+- **Het nummer wordt aan de Europese btw-databank (VIES) gevraagd.** Zegt die
+  "bestaat niet", dan gaat het niet door. Ligt VIES eruit — dat gebeurt — dan
+  hou je geen betaling tegen: het gaat door en wordt gemarkeerd als
+  ongecontroleerd, zodat het later na te lopen is.
+- **Hetzelfde nummer bij een tweede account wordt geweigerd**, ook als twee
+  aanvragen op exact hetzelfde moment binnenkomen.
+
+Bots tegenhouden is een aparte zaak en verandert hier niet: dat doen Clerk (met
+de Cloudflare-uitdaging) en de aanmeldbewaking met wegwerpdomeinen, IP-limieten
+en hergebruikte vingerafdrukken. Een btw-nummer is openbaar en houdt geen bot
+tegen — daar is het ook niet voor bedoeld.
+
+
 ### Je credits lopen nu mee terwijl je ze uitgeeft
 
 De teller stond stil. Je stelde Faro een vraag of liet een pandbeeld maken —
