@@ -12562,6 +12562,24 @@ function saveSession(apiKey, clientName, projectCode, email) {
   state.userEmail  = email || localStorage.getItem('hv-email') || '';
 }
 
+// Vraagt de server of deze browser nog een geldige sessie heeft. Alleen een
+// HMAC-controle op de cookie, geen Airtable-call. Geeft de sessiegegevens terug
+// of null. Gooit nooit: een netwerkstoring leest als "kan niet bevestigen", en
+// dat behandelen we als niet-ingelogd -- liever het inlogscherm dan een
+// dashboard dat toch niets kan ophalen.
+async function verifySessionServerside() {
+  try {
+    const r = await fetch(API_BASE + '/auth', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ mode: 'session' })
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (d && d.ok) ? d : null;
+  } catch (e) { return null; }
+}
+
 function clearSession() {
   // LS_LEADS_KEY is in this list because logging out has to mean the leads are
   // gone from the machine. It was not, so every lead of the previous account —
@@ -12575,16 +12593,27 @@ function clearSession() {
   state.userEmail  = '';
 }
 
-function tryAutoLogin() {
-  // There is no readable token any more, so this can only make an optimistic
-  // guess: if we still hold the non-secret session markers and they haven't
-  // expired, show the dashboard and let the first API call settle it. The
-  // httpOnly cookie is what actually authenticates; if it is gone or invalid
-  // the call returns 401 and handleAuthExpired() drops back to the login page.
+async function tryAutoLogin() {
+  // Er is geen leesbaar token meer, dus dit KON alleen een optimistische gok
+  // zijn: markers in localStorage, niet verlopen, dashboard tonen en de eerste
+  // API-call het maar laten uitwijzen. Dat gokte te vaak mis. De markers zeggen
+  // niets over de httpOnly-cookie -- JavaScript kan die niet lezen -- dus een
+  // browser die de cookie kwijt was (privacy-instellingen, een webview, een
+  // cookie die verliep terwijl hv-exp nog een week meeging) kreeg het dashboard
+  // te zien, dan een 401, en dan het inlogscherm. Opnieuw inloggen herschreef
+  // wel de markers maar niet de cookie, dus dat herhaalde zich.
+  //
+  // De server weet het wel. Eén call naar mode:'session' -- alleen HMAC, geen
+  // Airtable -- en pas daarna tonen we iets.
   const exp    = parseInt(localStorage.getItem('hv-exp') || '0', 10);
   const marker = localStorage.getItem('hv-client') || localStorage.getItem('hv-project');
   if (!marker) return false;
   if (Date.now() > exp) { clearSession(); return false; }
+  const bevestigd = await verifySessionServerside();
+  if (!bevestigd) { clearSession(); return false; }
+  // De server is de bron voor de identiteit; localStorage is hooguit een label.
+  if (bevestigd.projectCode) localStorage.setItem('hv-project', bevestigd.projectCode);
+  if (bevestigd.clientName)  localStorage.setItem('hv-client',  bevestigd.clientName);
   // Sentinel, not a real token. Seven call sites gate on state.apiKey being
   // truthy (including the polling loop), so leaving it empty would silently
   // stop the whole dashboard from refreshing after a reload. The value is
@@ -22372,7 +22401,7 @@ function hideHelpWidget() {
   }
 
   let _initFetchError = null;
-  if (tryAutoLogin()) {
+  if (await tryAutoLogin()) {
     // Small random delay (0–4s) so multiple tabs opened at once don't all hit
     // Airtable in the same second.  localStorage data renders immediately; the
     // fetch just refreshes it a moment later.

@@ -14,6 +14,28 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Inloggen, dashboard, er meteen weer uit — en opnieuw
+
+Wie zijn sessiecookie kwijt was maar de markers in localStorage nog had, kreeg
+het dashboard te zien, een tel later een 401, en dan het inlogscherm. Opnieuw
+inloggen deed exact hetzelfde, want dat herschreef wel de markers en niet de
+cookie. Een lus waar je alleen uitkwam door je browsergegevens te wissen.
+
+De pagina kon het ook niet beter weten: de echte sleutel is de httpOnly-cookie
+en JavaScript mag die niet lezen, dus `tryAutoLogin()` gokte op wat het wél kon
+zien. Nu vraagt de pagina het eerst aan de server (`mode:'session'` in
+`api/auth.js`, alleen een handtekeningcontrole — geen Airtable, geen extra
+route) en toont pas iets als het antwoord binnen is. Is de cookie weg, dan sta
+je meteen op het inlogscherm in plaats van na een omweg, en wordt de verlopen
+cookie ook echt opgeruimd.
+
+Het eindpunt accepteert exact wat `api/leads.js` accepteert — handtekening,
+vervaldatum, en de intrekking na een wachtwoordwijziging — zodat de controle
+niet iets kan goedkeuren wat de echte poort weigert. `tests/sessie-lus.test.js`
+bewaakt beide kanten: dat een geknoeide projectcode geen andermans tenant
+oplevert, en dat de pagina niet terugvalt op gokken.
+
+
 > **Actie voor jou — twee dingen, allebei één keer.**
 >
 > 1. Zet in Vercel de variabele **`STRIPE_WEBHOOK_SECRET`** (Production) en

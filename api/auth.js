@@ -318,6 +318,49 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    /* ── MODE: session. Houdt deze browser nog een geldige sessie? ───────────
+       tryAutoLogin() in api/dashboard.js kon dit niet zelf vaststellen: de
+       enige echte sleutel is de httpOnly-cookie en JavaScript mag die niet
+       lezen. Het deed daarom een optimistische gok op de localStorage-markers
+       en toonde het dashboard vast -- ook wanneer de cookie allang weg was.
+       Dan volgde een 401 op de eerste API-call en zette handleAuthExpired()
+       je terug op het inlogscherm. Wie daarna opnieuw inlogde en de cookie nog
+       steeds niet kwijtraakte (privacy-instellingen, een webview, een cookie
+       die verliep terwijl hv-exp nog een week meeging) kreeg exact hetzelfde
+       opnieuw: inloggen, dashboard, eruit. Dit eindpunt geeft het antwoord dat
+       de pagina zelf niet kan geven.
+
+       Dezelfde acceptatieketen als api/leads.js, anders zou dit iets kunnen
+       goedkeuren wat de echte poort weigert: handtekening, vervaldatum, en de
+       intrekking na een wachtwoordwijziging.
+
+       Geen Clerk-tak: met Clerk aan keert init() eerder terug en komt
+       tryAutoLogin() nooit aan bod. Een Clerk-gebruiker heeft geen hv_session
+       en krijgt hier dus 401 -- terecht, want voor het klassieke pad is hij
+       niet ingelogd.
+
+       Geen CSRF-eis: dit verandert niets en een andere origin kan het
+       antwoord niet lezen. Wel bewust boven de snelheidsbegrenzer: een
+       ongeldige cookie verraadt niets aan wie zit te raden, en begrenzen zou
+       juist de controle blokkeren die mensen uit de lus houdt. */
+    if (body.mode === 'session') {
+      const raw     = _session.readToken(req);
+      const session = raw ? _session.verifySignedSession(raw) : null;
+      if (session && !(await _revoke.isRevoked(session))) {
+        return res.status(200).json({
+          ok:           true,
+          clientName:   session.clientName   || '',
+          projectCode:  session.projectCode  || '',
+          calendlyLink: session.calendlyLink || '',
+        });
+      }
+      /* Alleen opruimen wat we zelf gestuurd hebben. Een verlopen cookie blijft
+         anders bij elke volgende call meegaan. Wie hier komt zonder cookie
+         (Clerk, of gewoon uitgelogd) raakt zijn hv_csrf niet kwijt. */
+      if (_session.authedViaCookie(req)) _session.clearSessionCookies(res);
+      return res.status(401).json({ ok: false, error: 'Geen geldige sessie' });
+    }
+
     // ── MODE: request-reset. Email the user a reset link ────────────────────
     // We verify the user exists before sending so the form gives clear feedback
     // (B2B context: ~10-100 known clients, account enumeration risk is low and
