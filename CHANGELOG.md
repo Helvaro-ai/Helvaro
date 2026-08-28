@@ -14,6 +14,28 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Je credits lopen nu mee terwijl je ze uitgeeft
+
+De teller stond stil. Je stelde Faro een vraag of liet een pandbeeld maken —
+de server boekte de credits ook echt af — maar het scherm bleef hetzelfde
+getal tonen tot je toevallig ergens anders klikte of ververste. Je verbruik
+werd dus stelselmatig te laag getoond, en juist vlak voor je limiet was het
+het minst betrouwbaar.
+
+Oorzaak: de teller werd alleen opgehaald door de achtergrondpoll die elke tien
+minuten draait, met daarbovenop een rem van vier minuten. Er liep geen enkel
+pad van "actie klaar" naar "teller bijwerken". Dat pad is er nu, op de plek waar
+elke schrijfactie langskomt, samengevoegd zodat een reeks acties één keer
+bijwerkt in plaats van vijf.
+
+### Faro heeft nu ook een klein gezicht in de gesprekken
+
+Naast de grote mascotte op het startscherm staat er nu een kop-icoon bij elk
+antwoord in een gesprek, en op de balk onderaan waar je Faro aanspreekt. Klein
+gehouden (22 px) en het verdwijnt op smalle schermen — het moet het gesprek
+aanwijzen, niet overnemen.
+
+
 ### Faro heeft een gezicht, en het inlogscherm zijn doos kwijt
 
 De mascotte was al helemaal ingebouwd — zes toestanden, animaties, een nette

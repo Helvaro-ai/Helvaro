@@ -12252,11 +12252,34 @@ async function clerkSignOut() {
     try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return m ? m[1] : ''; }
   }
   var _fetch = window.fetch.bind(window);
+
+  /* Het creditsaldo meteen laten meebewegen.
+     loadCreditUsage() zit op een rem van vier minuten en werd alleen door
+     refreshData() aangeroepen, dat elke tien minuten draait. Je gaf dus credits
+     uit -- een Faro-beurt, een pandbeeld, een video -- en de teller bleef staan
+     tot je toevallig ergens anders klikte of de pagina ververste. Het scherm
+     loog dus stelselmatig te laag over je verbruik.
+     Elke schrijfactie naar de API kan credits kosten, en die lopen allemaal
+     hierlangs. Eén plek is daarom betrouwbaarder dan het per knop onthouden.
+     Samengevoegd over 1,2 s zodat een reeks acties één keer bijwerkt, en
+     credit-usage zelf sluiten we uit -- dat zou zichzelf blijven aanroepen. */
+  var _saldoTimer = null;
+  function saldoStraksBijwerken() {
+    if (_saldoTimer) clearTimeout(_saldoTimer);
+    _saldoTimer = setTimeout(function () {
+      _saldoTimer = null;
+      try { if (typeof loadCreditUsage === 'function') loadCreditUsage(true); } catch (e) {}
+    }, 1200);
+  }
+
   window.fetch = function (input, init) {
     init = init || {};
     var method = String(init.method || 'GET').toUpperCase();
     var url    = typeof input === 'string' ? input : (input && input.url) || '';
     var sameOrigin = url.indexOf('http') !== 0 || url.indexOf(location.origin) === 0;
+    var kanCreditsKosten = sameOrigin && method === 'POST'
+      && (url.indexOf('/api/leads') > -1 || url.indexOf('/api/faro') > -1)
+      && String(init.body || '').indexOf('credit-usage') === -1;
     if (sameOrigin && method !== 'GET' && method !== 'HEAD') {
       var t = csrfToken();
       if (t) {
@@ -12275,10 +12298,16 @@ async function clerkSignOut() {
           if (!hh.has('authorization')) hh.set('authorization', 'Bearer ' + tok);
           init.headers = hh;
         }
-        return _fetch(input, init);
+        return _fetch(input, init).then(function (r) {
+          if (kanCreditsKosten && r && r.ok) saldoStraksBijwerken();
+          return r;
+        });
       });
     }
-    return _fetch(input, init);
+    return _fetch(input, init).then(function (r) {
+      if (kanCreditsKosten && r && r.ok) saldoStraksBijwerken();
+      return r;
+    });
   };
 })();
 

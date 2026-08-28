@@ -793,6 +793,17 @@ body.hv-mode-ai .faro-rail {
   font-size: var(--fs-meta); line-height: 1.55; white-space: pre-wrap;
 }
 .faro-msg--ai { margin: 0 0 var(--sp-6); font-size: var(--fs-meta); line-height: 1.65; color: var(--text); }
+/* Het merkteken bij een antwoord. Zweeft links van de tekst zodat de
+   regelbreedte niet verspringt tussen berichten mét en zonder avatar, en
+   verdwijnt op smal beeld waar die ruimte er simpelweg niet is. */
+.faro-msg--ai { position: relative; }
+.faro-msg__ai-avatar {
+  position: absolute; left: calc(var(--sp-8) * -1); top: 2px;
+  width: 22px; height: 22px; border-radius: var(--r-full);
+  opacity: 0.92; pointer-events: none; user-select: none;
+}
+@media (max-width: 1100px) { .faro-msg__ai-avatar { display: none; } }
+.faro-dock__mark { display: block; border-radius: var(--r-full); }
 .faro-msg__text { white-space: pre-wrap; }
 .faro-msg__thumb {
   display: block;

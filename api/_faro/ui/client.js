@@ -522,6 +522,13 @@ function faroHandleEvent(name, data, bubble, status) {
     case 'done':
       faroMascot('success');
       setTimeout(function () { faroMascot('idle'); }, 1800);
+      /* Het saldo meteen bijwerken. loadCreditUsage() zit op een rem van vier
+         minuten en werd alleen door refreshData() aangeroepen, dat elke tien
+         minuten draait -- dus een beurt kostte wel credits maar de teller in
+         het CRM bleef staan tot je ergens anders heen klikte of verversde. Je
+         zag je verbruik dus altijd te laag. force=true slaat de rem over; dit
+         is een gebruikersactie, geen poll. */
+      try { if (typeof loadCreditUsage === 'function') loadCreditUsage(true); } catch (e) {}
       faroLsSave(
         faroState.conversationId,
         faroState.conversationTitle,
@@ -857,7 +864,13 @@ function faroAppendUser(text, attachments) {
 function faroAppendAssistant() {
   var d = document.createElement('div');
   d.className = 'faro-msg--ai';
-  d.innerHTML = '<div class="faro-msg__text"></div><div class="faro-cards"></div>';
+  /* Klein merkteken bij een antwoord, zodat in een lange draad meteen te zien
+     is wie er praat. Bewust het kop-icoon en niet de hele mascotte: op 22px is
+     een heel figuurtje een vlek, en een avatar bij elk bericht mag het gesprek
+     niet gaan domineren. Decoratief, dus aria-hidden -- de rol staat al in de
+     tekst zelf. */
+  d.innerHTML = '<img class="faro-msg__ai-avatar" src="/faro/faro-icon.webp" alt="" aria-hidden="true" width="22" height="22">'
+              + '<div class="faro-msg__text"></div><div class="faro-cards"></div>';
   document.getElementById('faro-thread-inner').appendChild(d);
   return d;
 }

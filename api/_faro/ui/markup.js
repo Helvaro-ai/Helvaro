@@ -49,7 +49,7 @@ function dock(t) {
   return `
     <div class="faro-dock" id="faro-dock">
       <div class="faro-dock__inner">
-        <span class="faro-dock__spark">${icon('spark', 15)}</span>
+        <span class="faro-dock__spark"><img src="/faro/faro-icon.webp" alt="" aria-hidden="true" width="18" height="18" class="faro-dock__mark"></span>
         <input class="faro-dock__input" id="faro-dock-input" type="text"
                autocomplete="off" placeholder="${t('dock.placeholder')}"
                aria-label="${t('dock.placeholder')}">
