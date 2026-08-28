@@ -14,6 +14,37 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Actie voor jou — de snelheidsbegrenzer staat in de praktijk uit, en er
+> stond een wachtwoord in de logs.**
+>
+> In Vercel staat `UPSTASH_REDIS_REST_URL` op een heel `redis-cli`-commando in
+> plaats van op een URL. Twee gevolgen:
+>
+> 1. De gedeelde teller werkt niet. Er wordt per instance geteld, en dat reset
+>    bij elke cold start — voor inlogpogingen en aanmeldingen komt dat neer op
+>    nauwelijks een limiet.
+> 2. De foutmelding bevatte de hele waarde, inclusief het Redis-wachtwoord, en
+>    die werd bij elk verzoek in de runtime-logs gezet.
+>
+> Wat te doen:
+> - Zet `UPSTASH_REDIS_REST_URL` op de **REST**-URL uit Upstash
+>   (`https://<naam>.upstash.io`) en `UPSTASH_REDIS_REST_TOKEN` op de bijbehorende
+>   REST-token. Niet het `redis://`-adres en niet het cli-commando.
+> - **Draai het Upstash-wachtwoord om.** Het heeft in de logs gestaan.
+
+### De snelheidsbegrenzer viel stil terug, en lekte daarbij zijn wachtwoord
+
+`configured()` keek alleen of de variabele gezet wás. Een verkeerd geplakte
+waarde is gezet, dus hij zei ja, waarna elke aanroep omviel en de limiter
+terugviel op in-memory tellers — precies het gedrag dat deze module juist moest
+vervangen. Het zag eruit als een storing bij Upstash in plaats van als een
+instelfout, en daarom stond het er lang.
+
+De vorm van de URL wordt nu één keer gecontroleerd en luid gemeld, en elke
+foutmelding gaat langs een filter dat adressen en sleutels eruit haalt voordat
+er iets in de logs komt. `tests/ratelimit-lek.test.js` bewaakt dat.
+
+
 ### Oude Faro-gesprekken laadden leeg, of maar half
 
 Twee fouten in `api/_faro/store.js`, allebei zichtbaar als "het gesprek is er

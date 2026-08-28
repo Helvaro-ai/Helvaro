@@ -21,9 +21,54 @@
 
 const _memory = new Map();
 let _warned = false;
+let _warnedVorm = false;
+
+/* Een foutmelding mag geen inloggegevens bevatten.
+ *
+ * Dit is geen theorie: in productie stond UPSTASH_REDIS_REST_URL op een
+ * redis-cli-COMMANDO in plaats van een URL, compleet met het wachtwoord erin.
+ * fetch() gooide daarop "Failed to parse URL from redis-cli --tls -u
+ * redis://default:<wachtwoord>@...", en die melding werd rechtstreeks
+ * doorgegeven aan console.warn — bij elk verzoek opnieuw. Zo belandde het
+ * Redis-wachtwoord in de runtime-logs van Vercel.
+ *
+ * Alles wat op een URL of op een lange sleutel lijkt gaat er hier uit. Wat
+ * overblijft is genoeg om te zien DAT het misging, zonder te verraden waarmee.
+ */
+function veiligeMelding(e) {
+  return String((e && e.message) || e || 'onbekende fout')
+    .replace(/[a-z][a-z0-9+.-]*:\/\/\S*/gi, '[adres weggelaten]')
+    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, '[sleutel weggelaten]')
+    .slice(0, 200);
+}
+
+/* De REST-URL, of null als de waarde geen bruikbare URL is.
+ *
+ * Alleen "is hij gezet?" was niet genoeg. Een verkeerd geplakte waarde is
+ * WEL gezet, dus configured() zei ja, waarna elke aanroep stuk ging en
+ * stilletjes terugviel op in-memory tellers. Het gevolg is precies wat de kop
+ * hierboven beschrijft als "close to no limit at all" — en niemand zag het,
+ * want de fout zag eruit als een storing bij Upstash in plaats van als een
+ * instelfout. Nu wordt de vorm één keer gecontroleerd en luid gemeld.
+ */
+function restBase() {
+  const raw = String(process.env.UPSTASH_REDIS_REST_URL || '').trim().replace(/\/+$/, '');
+  if (!raw) return null;
+  if (!/^https?:\/\/\S+$/i.test(raw)) {
+    if (!_warnedVorm) {
+      _warnedVorm = true;
+      console.error('[ratelimit] UPSTASH_REDIS_REST_URL is geen http(s)-URL — de gedeelde teller staat UIT ' +
+                    'en er wordt per instance geteld, wat neerkomt op nauwelijks een limiet. ' +
+                    'Verwacht wordt de REST-URL uit Upstash (https://<naam>.upstash.io), niet een redis:// -adres ' +
+                    'of een redis-cli-commando. De waarde zelf staat hier bewust niet bij: hij bevat een wachtwoord.');
+    }
+    return null;
+  }
+  return raw;
+}
 
 function configured() {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return !!(restBase() && process.env.UPSTASH_REDIS_REST_TOKEN);
 }
 
 function memoryHit(key, limit, windowMs) {
@@ -43,7 +88,7 @@ function memoryHit(key, limit, windowMs) {
 // attempt rather than sliding forward with every request (which would let a
 // steady drip of attempts keep the key alive forever).
 async function redisHit(key, limit, windowMs) {
-  const base  = String(process.env.UPSTASH_REDIS_REST_URL).replace(/\/+$/, '');
+  const base  = restBase();
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   const ttl   = Math.ceil(windowMs / 1000);
 
@@ -87,7 +132,7 @@ async function hit(bucket, id, limit, windowMs) {
   try {
     return await redisHit(key, limit, windowMs);
   } catch (e) {
-    console.warn('[ratelimit] Upstash onbereikbaar, terugval op in-memory:', e && e.message);
+    console.warn('[ratelimit] Upstash onbereikbaar, terugval op in-memory:', veiligeMelding(e));
     return memoryHit(key, limit, windowMs);
   }
 }
@@ -99,14 +144,14 @@ async function reset(bucket, id) {
   const key = `hv:rl:${bucket}:${id}`;
   _memory.delete(key);
   if (!configured()) return;
-  const base  = String(process.env.UPSTASH_REDIS_REST_URL).replace(/\/+$/, '');
+  const base  = restBase();
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   try {
     await fetch(`${base}/del/${encodeURIComponent(key)}`, {
       method: 'POST', headers: { Authorization: `Bearer ${token}` },
     });
   } catch (e) {
-    console.warn('[ratelimit] reset kon de gedeelde teller niet wissen:', e && e.message);
+    console.warn('[ratelimit] reset kon de gedeelde teller niet wissen:', veiligeMelding(e));
   }
 }
 
