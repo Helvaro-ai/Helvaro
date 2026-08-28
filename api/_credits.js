@@ -335,6 +335,29 @@ const TOPUP_STAFFEL = Object.freeze([
   { vanafEur: 0, bonusPct: 0 },
 ]);
 
+/* De bedragen die het scherm als tegel aanbiedt. Ze staan HIER en niet in de
+   frontend, samen met de rest van de bedragen: een browser die zelf weet welke
+   bedragen bestaan is een browser waarin iemand er een verzint. Wat elke tegel
+   oplevert wordt ook hier berekend -- zie topupPresets(). */
+const TOPUP_PRESETS = Object.freeze([50, 100, 250, 500]);
+
+/**
+ * De tegels met hun uitkomst, klaar om te tonen.
+ *
+ * Bedragen buiten de grenzen vallen weg in plaats van als ongeldige tegel te
+ * verschijnen: een knop die je niet mag indrukken is erger dan een knop die er
+ * niet is. Verlaagt iemand CREDIT_TOPUP_MAX_EUR, dan verdwijnen de te grote
+ * tegels dus vanzelf.
+ *
+ * @returns {Array<{bedragEur, credits, gesprekken}>}
+ */
+function topupPresets() {
+  return TOPUP_PRESETS
+    .map((bedrag) => topupOfferte(bedrag))
+    .filter((o) => o.geldig)
+    .map((o) => ({ bedragEur: o.bedragEur, credits: o.credits, gesprekken: o.gesprekken }));
+}
+
 /**
  * Wat je krijgt voor een bedrag.
  *
@@ -1395,6 +1418,7 @@ async function refundCredits(projectCode, credits, reason, opts = {}) {
 module.exports = {
   refundCredits,
   topupOfferte, beterPlanVoor, TOPUP_RATE_EUR, TOPUP_MIN_EUR, TOPUP_MAX_EUR, TOPUP_STAFFEL,
+  topupPresets, TOPUP_PRESETS,
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
   creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,

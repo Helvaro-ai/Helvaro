@@ -14,6 +14,45 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De creditbalk toont een percentage; de cijfers zitten achter een klik
+
+De balk in de zijbalk stond vol: gebruikte credits, limiet, resterende
+gesprekken, dagen tot de nieuwe periode, en bij een bereikte limiet ook nog een
+link. Vijf getallen die je permanent aankijken terwijl je met iets anders bezig
+bent.
+
+Er staat nu wat je in een oogopslag wil weten — een percentage en een streep die
+van groen naar oranje naar rood gaat — en de rest opent als je erop klikt. In dat
+venster staan dezelfde cijfers als eerst, plus twee knoppen: credits bijkopen, of
+naar je plannen. Dat is precies de vraag die iemand heeft op het moment dat hij
+naar zijn saldo kijkt.
+
+Het venster sluit met Escape, met een klik ernaast, en geeft de focus terug aan
+de knop. Openen haalt verse cijfers op, en verbruik je credits terwijl het
+openstaat, dan lopen ze mee.
+
+### Bijkopen: vier tegels, en een bedrag dat klopt met wat er afgeschreven wordt
+
+Het koopvenster toonde een rij kleine pillen en één regel uitkomst. Nu zijn het
+vier tegels die per bedrag laten zien wat je krijgt — credits én ongeveer hoeveel
+leadgesprekken — met daaronder nog steeds een vrij in te vullen bedrag.
+
+De belangrijkste wijziging staat eronder: het bedrag is uitgesplitst in
+subtotaal, btw en totaal. **Dat totaal is exact wat er van je kaart gaat.** Er
+komt niets bovenop; de btw zit in het bedrag en wordt nu alleen zichtbaar
+gemaakt. Zo hoort het ook: Stripe rekent het bedrag af zoals het er staat.
+
+De bedragen van de tegels stonden als lijstje in de browser. Ze staan nu in
+`api/_credits.js`, bij de rest van de bedragen — een scherm dat zelf weet welke
+bedragen bestaan, is een scherm waarin iemand er een verzint.
+
+> **Voor later — btw bovenop rekenen is geen schermwijziging.** Wil je ooit btw
+> *boven* de prijs rekenen in plaats van erin, dan moet `automatic_tax` in
+> `api/_stripe.js` aan én `BTW_MODUS` in `api/_plans.js` mee. Veranderen die
+> twee niet samen, dan toont het scherm € 100 terwijl er € 121 afgeschreven
+> wordt. `tests/bijkopen-scherm.test.js` valt om op precies dat moment.
+
+
 > **Actie voor jou — twee velden per Scale-klant.**
 >
 > Spreek je met een kantoor een bedrag af voor Scale? Zet het in Airtable bij die

@@ -49,8 +49,22 @@ ck('de proefbanner stuurt naar de plannen',
    /Bekijk de plannen[\s\S]{0,240}naarPlannen/.test(js), null);
 ck('de verlopen proefperiode ook',
    /Kies een plan[\s\S]{0,240}naarPlannen/.test(js), null);
-ck('en de creditbalk bij een bereikte limiet',
-   /Limiet bereikt[\s\S]{0,200}naarPlannen/.test(js) || /naarPlannen[\s\S]{0,200}Limiet bereikt/.test(js), null);
+/* De creditbalk in de zijbalk is nu een knop die een detailvenster opent (het
+   percentage staat er altijd, de cijfers achter een klik). De weg naar de
+   plannen zit daardoor IN dat venster in plaats van als losse link onder de
+   balk -- de eis blijft dezelfde: wie door zijn credits heen is, kan van daar
+   naar de plannen zonder te mailen. */
+{
+  const popFn = (js.match(/function tekenCreditPop\(\) \{[\s\S]*?\n\}/) || [''])[0];
+  ck('het detailvenster bestaat', popFn.length > 0, null);
+  ck('en de creditbalk bij een bereikte limiet',
+     /d\.overLimit/.test(popFn) && /creditPopPlannen/.test(popFn), null);
+  ck('die knop gaat naar de plannen',
+     /function creditPopPlannen\(\)[\s\S]{0,240}naarPlannen/.test(js), null);
+  ck('en er staat ook een weg om bij te kopen',
+     /creditPopBijkopen/.test(popFn)
+     && /function creditPopBijkopen\(\)[\s\S]{0,160}openKoopModal/.test(js), null);
+}
 ck('naarPlannen bestaat', js.indexOf('function naarPlannen') !== -1);
 
 console.log('\n— de plannen zijn te kiezen en te beheren —');

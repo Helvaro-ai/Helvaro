@@ -2944,13 +2944,23 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
    HTML) — only shown once loadCreditUsage() confirms the credit system is
    active for this client (allowance configured). See CREDIT-SYSTEM-DESIGN.md
    and api/_credits.js. ─────────────────────────────────────────────────── */
-.credit-usage-widget {
-  padding: 10px 10px 12px;
-  margin-bottom: 10px;
+.credit-usage-widget { position: relative; margin-bottom: 10px; }
+
+/* De balk is een KNOP. Wat je altijd ziet is een percentage en een streep --
+   meer heeft niemand nodig terwijl hij met iets anders bezig is. De cijfers
+   (hoeveel credits, hoeveel gesprekken, hoeveel dagen) staan achter een klik,
+   want dat zijn cijfers waar je pas naar kijkt als je ernaar zoekt. */
+.credit-usage-btn {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 10px 10px;
   border-radius: 10px;
-  background: var(--bg-card-alt);
-  border: 1px solid var(--border);
+  background: transparent; border: 1px solid transparent;
+  cursor: pointer; font-family: inherit;
+  transition: var(--transition);
 }
+.credit-usage-btn:hover { background: var(--hover); }
+.credit-usage-btn[aria-expanded="true"] { background: var(--hover); border-color: var(--border); }
+.credit-usage-btn:focus-visible { outline: 2px solid rgba(var(--accent-rgb),0.55); outline-offset: 1px; }
 .credit-usage-head {
   display: flex;
   justify-content: space-between;
@@ -2959,15 +2969,16 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
   color: var(--text-muted);
   margin-bottom: 6px;
 }
-.credit-usage-head .credit-usage-pct { font-weight: 700; }
+.credit-usage-head .credit-usage-pct { font-weight: 700; font-variant-numeric: tabular-nums; }
 .credit-usage-track {
+  display: block;
   height: 6px;
   border-radius: 99px;
-  background: var(--bg-card);
+  background: rgba(255,255,255,0.09);
   overflow: hidden;
-  margin-bottom: 6px;
 }
 .credit-usage-fill {
+  display: block;
   height: 100%;
   border-radius: 99px;
   transition: width .4s ease;
@@ -2975,23 +2986,60 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
 }
 .credit-usage-fill.amber { background: var(--orange); }
 .credit-usage-fill.red   { background: var(--red); }
-.credit-usage-head .credit-usage-pct.amber { color: var(--orange-ink); }
-.credit-usage-head .credit-usage-pct.red   { color: var(--red-ink); }
-.credit-usage-sub {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.5;
+.credit-usage-head .credit-usage-pct.amber { color: var(--orange); }
+.credit-usage-head .credit-usage-pct.red   { color: var(--red); }
+
+/* Het detailvenster. position:fixed en niet absolute: de zijbalk is een eigen
+   gestapelde context met blur, en een absoluut venster daarbinnen wordt bij de
+   rand afgeknipt. De plaats wordt bij het openen berekend (zie plaatsCreditPop).
+
+   De achtergrond is een vaste kleur en geen token, omdat .sidebar --bg-card op
+   transparent zet: dit venster hoort dekkend te zijn, anders lees je de
+   navigatie eronder er dwars doorheen. */
+.credit-usage-pop {
+  position: fixed;
+  z-index: 1250;
+  width: 264px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #151C27;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; gap: 10px;
+  animation: modalIn 0.14s ease;
 }
-.credit-usage-upgrade {
-  display: block;
-  margin-top: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent-ink);
-  text-decoration: none;
-  cursor: pointer;
+.cu-pop-kop {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
 }
-.credit-usage-upgrade:hover { text-decoration: underline; }
+.cu-pop-kop span { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cu-pop-kop span.amber { color: var(--orange); }
+.cu-pop-kop span.red   { color: var(--red); }
+.cu-pop-groot {
+  font-size: 17px; font-weight: 700; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.cu-pop-rij { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+.cu-pop-let {
+  font-size: 11.5px; line-height: 1.5; color: var(--orange);
+  padding: 8px 10px; border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+}
+.cu-pop-knoppen { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.cu-pop-knop {
+  display: block; width: 100%; padding: 8px 10px;
+  border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-primary);
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: var(--transition);
+}
+.cu-pop-knop:hover { background: var(--hover); }
+.cu-pop-knop.primair {
+  border-color: transparent;
+  background: var(--accent);
+  color: #0E141C;
+}
+.cu-pop-knop.primair:hover { filter: brightness(1.08); }
 
 .user-info {
   display: flex;
@@ -7304,7 +7352,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 #koop-overlay.open { display: flex; }
 #koop-modal {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius); width: min(460px, 96vw); max-height: 90vh;
+  border-radius: var(--radius); width: min(500px, 96vw); max-height: 90vh;
   display: flex; flex-direction: column; overflow: hidden;
   box-shadow: var(--elev-3); animation: modalIn 0.18s ease;
 }
@@ -7318,20 +7366,28 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--text-muted);
 }
-.koop-presets { display: flex; gap: 8px; flex-wrap: wrap; }
-.koop-preset {
-  flex: 1 1 0; min-width: 76px; padding: 9px 6px; text-align: center;
+/* De tegels. Vier bedragen die het gros van de keuzes dekken, met eronder wat
+   je ervoor krijgt -- een makelaar kiest op "hoeveel gesprekken", niet op
+   "hoeveel euro". De getallen komen van de SERVER (mode credit-quote, veld
+   presets); hier staat alleen hoe ze eruitzien. */
+.koop-tegels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 440px) { .koop-tegels { grid-template-columns: repeat(4, 1fr); } }
+.koop-tegel {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 10px 11px; text-align: left;
   border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: transparent; color: var(--text-secondary);
-  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
-  transition: var(--transition);
+  background: transparent; color: var(--text-primary);
+  cursor: pointer; font-family: inherit; transition: var(--transition);
 }
-.koop-preset:hover { background: var(--bg-card-alt); color: var(--text-primary); }
-.koop-preset.actief {
-  border-color: rgba(var(--accent-rgb),0.5);
-  background: rgba(var(--accent-rgb),0.12);
-  color: var(--accent-ink);
+.koop-tegel:hover { background: var(--bg-card-alt); border-color: rgba(var(--accent-rgb),0.35); }
+.koop-tegel:focus-visible { outline: 2px solid rgba(var(--accent-rgb),0.55); outline-offset: 2px; }
+.koop-tegel.actief {
+  border-color: rgba(var(--accent-rgb),0.55);
+  background: rgba(var(--accent-rgb),0.10);
 }
+.koop-tegel-bedrag { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.koop-tegel.actief .koop-tegel-bedrag { color: var(--accent-ink); }
+.koop-tegel-sub { font-size: 10.5px; color: var(--text-muted); line-height: 1.4; white-space: nowrap; }
 .koop-veld { position: relative; margin-top: 4px; }
 .koop-euro {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -7346,6 +7402,9 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .koop-input:focus { outline: none; border-color: rgba(var(--accent-rgb),0.5); }
 .koop-hint { font-size: 11.5px; color: var(--text-muted); }
 
+/* De samenvatting. Regels met een label links en een bedrag rechts, en de
+   totaalregel apart onderaan -- dat is het getal dat straks van de kaart gaat,
+   en het hoort het laatste te zijn wat je leest. */
 .koop-uitkomst {
   margin-top: 6px; padding: 14px 16px; border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.20);
@@ -7355,6 +7414,18 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   font-variant-numeric: tabular-nums;
 }
 .koop-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
+.koop-rijen { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.koop-rij {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  font-size: 12.5px; color: var(--text-muted);
+}
+.koop-rij b { font-weight: 500; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.koop-rij.totaal {
+  margin-top: 2px; padding-top: 9px;
+  border-top: 1px solid rgba(var(--accent-rgb),0.22);
+  font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+}
+.koop-rij.totaal b { font-size: 16px; font-weight: 700; color: var(--text-primary); }
 
 /* Het planadvies. Een rustig kaartje, geen banner: het hoort te helpen, niet
    te duwen. De accentkleur zit in de RAND en de kop, nooit als vlak achter
@@ -8860,14 +8931,19 @@ ${faro.navCta}
            by default, matches CREDIT-SYSTEM-DESIGN.md's "never punitive,
            always visible once active" bar. -->
       <div class="credit-usage-widget" id="credit-usage-widget" style="display:none">
-        <div class="credit-usage-head">
-          <span>AI-credits</span>
-          <span class="credit-usage-pct" id="credit-usage-pct">0%</span>
-        </div>
-        <div class="credit-usage-track">
-          <div class="credit-usage-fill" id="credit-usage-fill" style="width:0%"></div>
-        </div>
-        <div class="credit-usage-sub" id="credit-usage-sub">—</div>
+        <button type="button" class="credit-usage-btn" id="credit-usage-btn"
+                aria-expanded="false" aria-controls="credit-usage-pop"
+                title="Bekijk je credits" onclick="toggleCreditPop(event)">
+          <span class="credit-usage-head">
+            <span>AI-credits</span>
+            <span class="credit-usage-pct" id="credit-usage-pct">0%</span>
+          </span>
+          <span class="credit-usage-track">
+            <span class="credit-usage-fill" id="credit-usage-fill" style="width:0%"></span>
+          </span>
+        </button>
+        <div class="credit-usage-pop" id="credit-usage-pop" role="dialog"
+             aria-label="AI-credits" style="display:none"></div>
       </div>
       <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
@@ -11483,8 +11559,9 @@ ${faro.dock}
 
     <div class="koop-body">
       <div class="koop-label">Hoeveel wil je bijkopen?</div>
-      <div class="koop-presets" id="koop-presets"></div>
+      <div class="koop-tegels" id="koop-tegels"></div>
 
+      <div class="koop-label" style="margin-top:8px">Of een ander bedrag</div>
       <div class="koop-veld">
         <span class="koop-euro">&euro;</span>
         <input class="koop-input" id="koop-bedrag" type="number" min="0" step="5"
@@ -11492,9 +11569,13 @@ ${faro.dock}
       </div>
       <div class="koop-hint" id="koop-grenzen"></div>
 
-      <div class="koop-uitkomst" id="koop-uitkomst">
+      <!-- De samenvatting leest van boven naar beneden: wat je krijgt, en dan
+           wat het kost. aria-live, want hij verandert terwijl je typt en een
+           schermlezer hoort dat anders niet. -->
+      <div class="koop-uitkomst" id="koop-uitkomst" role="status" aria-live="polite">
         <div class="koop-credits" id="koop-credits">—</div>
         <div class="koop-detail" id="koop-detail"></div>
+        <div class="koop-rijen" id="koop-rijen"></div>
       </div>
 
       <div class="koop-staffel" id="koop-staffel"></div>
@@ -14261,15 +14342,18 @@ async function loadCreditUsage(force) {
 function renderCreditUsage(d) {
   const widget = document.getElementById('credit-usage-widget');
   if (!widget) return;
-  if (!d || !d.active) { widget.style.display = 'none'; return; }
+  if (!d || !d.active) { widget.style.display = 'none'; sluitCreditPop(); return; }
 
   widget.style.display = '';
+  /* Het laatste antwoord bewaren: het detailvenster leest hieruit, zodat een
+     klik geen nieuw verzoek nodig heeft en het venster meteen openstaat. */
+  _creditUsage = d;
+
   const pct = Math.max(0, Math.min(999, d.percentUsed || 0));
   const state2 = pct >= 100 ? 'red' : (pct >= 80 ? 'amber' : '');
 
   const pctEl  = document.getElementById('credit-usage-pct');
   const fillEl = document.getElementById('credit-usage-fill');
-  const subEl  = document.getElementById('credit-usage-sub');
 
   if (pctEl) {
     pctEl.textContent = pct + '%';
@@ -14279,26 +14363,129 @@ function renderCreditUsage(d) {
     fillEl.style.width = Math.min(100, pct) + '%';
     fillEl.className = 'credit-usage-fill' + (state2 ? ' ' + state2 : '');
   }
-  if (subEl) {
-    const used = (d.used || 0).toLocaleString('nl-BE');
-    const allowance = (d.allowance || 0).toLocaleString('nl-BE');
-    const leadsLeft = Math.max(0, d.leadsRemaining || 0);
-    const daysLeft = d.daysLeft != null ? d.daysLeft : null;
-    let line = \`\${used} / \${allowance} credits · nog ~\${leadsLeft} leadgesprekken\`;
-    if (daysLeft != null) line += \` · \${daysLeft}d over in periode\`;
-    if (d.overLimit) {
-      /* Stond op een mailto. Dit is de zijbalk die een klant ziet op het moment
-         dat hij door zijn credits heen is -- precies wanneer hij wíl betalen.
-         Hem dan een e-mailprogramma voorschotelen en laten wachten op antwoord
-         is de duurste seconde in de hele app. Nu opent het de plannen. */
-      subEl.innerHTML = line + '<a class="credit-usage-upgrade" href="#" '
-        + 'onclick="event.preventDefault();navigateTo(&quot;facturatie&quot;);setTimeout(naarPlannen,300)">'
-        + 'Limiet bereikt — bekijk je plannen →</a>';
-    } else {
-      subEl.textContent = line;
-    }
-  }
+
+  /* Staat het venster open terwijl er credits verbruikt worden, dan lopen de
+     cijfers erin mee. Anders zou het venster de stand van een minuut geleden
+     tonen terwijl de balk eronder al verder staat. */
+  const pop = document.getElementById('credit-usage-pop');
+  if (pop && pop.style.display !== 'none') tekenCreditPop();
 }
+
+/* ── Het detailvenster ───────────────────────────────────────────────────────
+   Wat er in de zijbalk staat is een percentage; wie meer wil weten klikt. Dit
+   is de plek waar de cijfers staan én waar je kunt bijkopen -- precies op het
+   moment dat iemand naar zijn saldo kijkt, is dat de vraag die hij heeft. */
+var _creditUsage = null;
+
+function tekenCreditPop() {
+  const pop = document.getElementById('credit-usage-pop');
+  const d = _creditUsage;
+  if (!pop || !d) return;
+
+  const pct = Math.max(0, Math.min(999, d.percentUsed || 0));
+  const kleur = pct >= 100 ? 'red' : (pct >= 80 ? 'amber' : '');
+  const used = (d.used || 0).toLocaleString('nl-BE');
+  const allowance = (d.allowance || 0).toLocaleString('nl-BE');
+  const leadsLeft = Math.max(0, d.leadsRemaining || 0);
+
+  let html = ''
+    + '<div class="cu-pop-kop">AI-credits<span class="' + kleur + '">' + pct + '% gebruikt</span></div>'
+    + '<div class="cu-pop-groot">' + used + ' / ' + allowance + '</div>'
+    + '<div class="cu-pop-rij">Nog ongeveer ' + leadsLeft + ' leadgesprekken deze periode.</div>';
+
+  if (d.daysLeft != null) {
+    html += '<div class="cu-pop-rij">De teller begint over ' + d.daysLeft
+          + ' dag' + (d.daysLeft === 1 ? '' : 'en') + ' opnieuw.</div>';
+  }
+  if (d.overLimit) {
+    /* Nooit dreigend: een leadgesprek wordt server-side niet geblokkeerd (zie
+       api/_credits.js). Wat hier hoort te staan is wat het kost en wat de weg
+       eruit is, niet dat er iets stuk is. */
+    html += '<div class="cu-pop-let">Je zit boven je maandlimiet. Je AI blijft '
+          + 'gewoon antwoorden — koop credits bij of stap over op een groter plan.</div>';
+  }
+
+  html += '<div class="cu-pop-knoppen">'
+        + '<button type="button" class="cu-pop-knop primair" onclick="creditPopBijkopen()">Credits bijkopen</button>'
+        + '<button type="button" class="cu-pop-knop" onclick="creditPopPlannen()">Bekijk je plannen</button>'
+        + '</div>';
+
+  pop.innerHTML = html;
+}
+
+/* De plaats wordt bij het openen berekend in plaats van in CSS vastgelegd:
+   het venster staat bij voorkeur BOVEN de balk, maar op een laag scherm past
+   dat niet en dan hoort het eronder te staan in plaats van half weg te vallen. */
+function plaatsCreditPop() {
+  const knop = document.getElementById('credit-usage-btn');
+  const pop  = document.getElementById('credit-usage-pop');
+  if (!knop || !pop) return;
+  const r = knop.getBoundingClientRect();
+  const h = pop.offsetHeight || 220;
+  const marge = 8;
+
+  let top = r.top - h - marge;
+  if (top < marge) top = Math.min(r.bottom + marge, window.innerHeight - h - marge);
+  pop.style.top  = Math.max(marge, top) + 'px';
+  pop.style.left = Math.round(r.left) + 'px';
+}
+
+function toggleCreditPop(e) {
+  if (e) e.stopPropagation();
+  const pop = document.getElementById('credit-usage-pop');
+  if (!pop) return;
+  if (pop.style.display !== 'none') { sluitCreditPop(); return; }
+
+  tekenCreditPop();
+  pop.style.display = 'flex';
+  const knop = document.getElementById('credit-usage-btn');
+  if (knop) knop.setAttribute('aria-expanded', 'true');
+  plaatsCreditPop();
+
+  /* Verse cijfers ophalen zodra het venster openstaat. De balk zelf mag een
+     paar minuten oud zijn; wie de cijfers OPENT wil ze nu. */
+  loadCreditUsage(true);
+}
+
+function sluitCreditPop() {
+  const pop = document.getElementById('credit-usage-pop');
+  if (pop) pop.style.display = 'none';
+  const knop = document.getElementById('credit-usage-btn');
+  if (knop) knop.setAttribute('aria-expanded', 'false');
+}
+
+function creditPopBijkopen() {
+  sluitCreditPop();
+  openKoopModal();
+}
+
+function creditPopPlannen() {
+  sluitCreditPop();
+  navigateTo('facturatie');
+  setTimeout(naarPlannen, 300);
+}
+
+/* Buiten klikken, Escape, of het scherm van formaat veranderen sluit het
+   venster. Zonder die laatste zou het na een resize los van zijn knop hangen --
+   position:fixed weet niets van de knop waar het bij hoort. */
+document.addEventListener('click', function (e) {
+  const pop = document.getElementById('credit-usage-pop');
+  if (!pop || pop.style.display === 'none') return;
+  if (pop.contains(e.target)) return;
+  const knop = document.getElementById('credit-usage-btn');
+  if (knop && knop.contains(e.target)) return;
+  sluitCreditPop();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  const pop = document.getElementById('credit-usage-pop');
+  if (pop && pop.style.display !== 'none') {
+    sluitCreditPop();
+    const knop = document.getElementById('credit-usage-btn');
+    if (knop) knop.focus();
+  }
+});
+window.addEventListener('resize', sluitCreditPop);
 
 /* ============================================================
    TRIAL BANNER (Dashboard page, top of main content)
@@ -20080,8 +20267,7 @@ function highlightActiveTemplate() {
 
    Wat je krijgt wordt op de SERVER berekend. Zou de browser dat doen, dan is
    het getal dat de klant ziet ook het getal dat hij kan aanpassen. */
-var koopState = { bedrag: 100, offerte: null, bezig: false, grenzen: null, staffel: null };
-var KOOP_PRESETS = [50, 100, 250, 500];
+var koopState = { bedrag: 100, offerte: null, bezig: false, grenzen: null, staffel: null, presets: [], btw: null };
 
 function koopFmt(n) {
   var x = Number(n);
@@ -20105,17 +20291,52 @@ function euroFmt(n) {
   });
 }
 
+/* Op een bon staan de centen er altijd bij. euroFmt() laat hele euro's heel --
+   bewust, want "\u20AC 499,00" leest als een kassabon in plaats van als een
+   prijs -- maar hier IS het een kassabon: drie bedragen onder elkaar die moeten
+   optellen. "\u20AC 100" naast "\u20AC 82,64" leest dan als een ander soort
+   getal, en je moet twee keer kijken of het klopt. */
+function euroBonFmt(n) {
+  var x = Number(n);
+  if (!isFinite(x)) return '0,00';
+  return x.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function openKoopModal() {
   koopState.bedrag = 100;
   document.getElementById('koop-bedrag').value = 100;
   document.getElementById('koop-fout').style.display = 'none';
-  document.getElementById('koop-presets').innerHTML = KOOP_PRESETS.map(function (n) {
-    return '<button type="button" class="koop-preset" data-bedrag="' + n
-      + '" onclick="koopKiesPreset(' + n + ')">&euro; ' + n + '</button>';
-  }).join('');
+  /* De tegels staan nog leeg: welke bedragen er bestaan weet de SERVER, en die
+     komen mee met de eerste offerte hieronder. Een lijst bedragen die de
+     browser zelf kent is een lijst waar iemand er een aan toevoegt. */
+  var tegels = document.getElementById('koop-tegels');
+  if (tegels && !koopState.presets.length) tegels.innerHTML = '';
   document.getElementById('koop-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   koopHerbereken();
+}
+
+/* Een tegel toont het bedrag én wat je ervoor krijgt. Beide getallen komen uit
+   de offerte van de server; hier wordt niets uitgerekend. */
+function koopTekenTegels() {
+  var el = document.getElementById('koop-tegels');
+  if (!el) return;
+  el.innerHTML = koopState.presets.map(function (t) {
+    return '<button type="button" class="koop-tegel" data-bedrag="' + t.bedragEur
+      + '" onclick="koopKiesPreset(' + t.bedragEur + ')">'
+      + '<span class="koop-tegel-bedrag">\u20AC ' + koopFmt(t.bedragEur) + '</span>'
+      + '<span class="koop-tegel-sub">' + koopFmt(t.credits) + ' credits<br>~'
+      + koopFmt(t.gesprekken) + ' gesprekken</span>'
+      + '</button>';
+  }).join('');
+  koopMarkeerTegel();
+}
+
+function koopMarkeerTegel() {
+  var v = Number(document.getElementById('koop-bedrag').value) || 0;
+  [].forEach.call(document.querySelectorAll('.koop-tegel'), function (b) {
+    b.classList.toggle('actief', Number(b.dataset.bedrag) === v);
+  });
 }
 
 function closeKoopModal() {
@@ -20135,11 +20356,8 @@ function koopHerbereken() {
   clearTimeout(_koopTimer);
   _koopTimer = setTimeout(koopOfferteOphalen, 220);
 
-  // De preset meteen markeren, zonder op de server te wachten.
-  var v = Number(document.getElementById('koop-bedrag').value) || 0;
-  [].forEach.call(document.querySelectorAll('.koop-preset'), function (b) {
-    b.classList.toggle('actief', Number(b.dataset.bedrag) === v);
-  });
+  // De tegel meteen markeren, zonder op de server te wachten.
+  koopMarkeerTegel();
 }
 
 async function koopOfferteOphalen() {
@@ -20159,6 +20377,12 @@ async function koopOfferteOphalen() {
     koopState.offerte = d.offerte;
     koopState.grenzen = d.grenzen;
     koopState.staffel = d.staffel;
+    koopState.btw     = d.btw || null;
+    if (d.presets && d.presets.length) {
+      var veranderd = JSON.stringify(d.presets) !== JSON.stringify(koopState.presets);
+      koopState.presets = d.presets;
+      if (veranderd) koopTekenTegels();
+    }
   } catch (e) {
     credits.textContent = '—';
     detail.textContent = 'De prijs kon niet opgehaald worden.';
@@ -20179,6 +20403,7 @@ async function koopOfferteOphalen() {
     };
     credits.textContent = '—';
     detail.textContent = redenen[o.reden] || 'Dat bedrag kan niet.';
+    document.getElementById('koop-rijen').innerHTML = '';
     document.getElementById('koop-staffel').innerHTML = '';
     return;
   }
@@ -20195,6 +20420,23 @@ async function koopOfferteOphalen() {
      in credits. */
   stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
   detail.textContent = stukken.join(' \\u00B7 ');
+
+  /* De bedragen, uitgesplitst. Het totaal onderaan is exact wat Stripe
+     afschrijft -- zie btwSplits() in api/_plans.js: er komt niets bovenop, dus
+     de btw zit in het bedrag en wordt hier alleen zichtbaar gemaakt. Zelf
+     rekenen zou hier fout zijn: dan kan het scherm iets anders zeggen dan de
+     kassa. */
+  var rijen = document.getElementById('koop-rijen');
+  var b = koopState.btw;
+  if (rijen) {
+    if (!b) { rijen.innerHTML = ''; }
+    else {
+      rijen.innerHTML =
+        '<div class="koop-rij"><span>Subtotaal</span><b>\\u20AC ' + euroBonFmt(b.exclEur) + '</b></div>'
+        + '<div class="koop-rij"><span>Btw (' + b.pct + '%)</span><b>\\u20AC ' + euroBonFmt(b.btwEur) + '</b></div>'
+        + '<div class="koop-rij totaal"><span>Totaal</span><b>\\u20AC ' + euroBonFmt(b.totaalEur) + '</b></div>';
+    }
+  }
 
   /* Hier stond een staffeltabel met volumebonussen. Die is weg, en niet omdat
      hij lelijk was: doorgerekend gaf hij voor EUR 249,99 aan bijgekochte

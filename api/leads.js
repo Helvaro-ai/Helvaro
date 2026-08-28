@@ -1702,10 +1702,18 @@ module.exports = async function handler(req, res) {
        aanpassen. */
     if (body.mode === 'credit-quote') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const offerte = credits.topupOfferte(body.amountEur);
       return res.status(200).json({
-        offerte: credits.topupOfferte(body.amountEur),
+        offerte,
         grenzen: { min: credits.TOPUP_MIN_EUR, max: credits.TOPUP_MAX_EUR },
         staffel: credits.TOPUP_STAFFEL,
+        /* De tegels komen mee met elke offerte: dan hoeft het scherm geen
+           tweede verzoek te doen om te weten welke bedragen er bestaan, en
+           staat er nergens in de browser een bedrag dat de server niet kent. */
+        presets: credits.topupPresets(),
+        /* Wat er van de kaart gaat, uitgesplitst. Zie de uitleg bij btwSplits()
+           in api/_plans.js: het bedrag IS het totaal, de btw zit erin. */
+        btw: require('./_plans').btwSplits(offerte.geldig ? offerte.bedragEur : 0),
       });
     }
 

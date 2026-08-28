@@ -230,8 +230,51 @@ function publiek() {
   }));
 }
 
+/* ── Btw ────────────────────────────────────────────────────────────────────
+   Elk bedrag in dit bestand is een TOTAAL: het is wat er van de kaart gaat.
+   Dat is geen slordigheid maar de enige lezing die klopt met wat er gebeurt --
+   api/_stripe.js rekent `Math.round(bedragEur * 100)` af en zet geen
+   automatic_tax aan, dus Stripe telt er niets bij. Een bedrag waar niets bij
+   komt is per definitie inclusief btw; zo leest de fiscus het ook als er geen
+   tarief bij vermeld staat.
+
+   Waarom dit hier staat en niet in api/_vat.js: dat bestand gaat over
+   btw-NUMMERS (vorm, VIES, één per bedrijf), niet over tarieven. Een tarief is
+   een prijsfeit, en prijsfeiten horen in dit bestand -- zie CLAUDE.md.
+
+   Wil je ooit btw BOVENOP de prijs rekenen, dan is dat geen UI-wijziging: dan
+   moet `automatic_tax` in api/_stripe.js aan én moet MODUS hier mee. Zolang die
+   twee niet samen veranderen, toont het scherm iets anders dan er afgeschreven
+   wordt -- en dat is precies het soort verschil waar niemand achter komt tot de
+   boekhouding niet sluit. */
+const BTW_PCT = 21;
+const BTW_MODUS = 'inclusief';
+
+/**
+ * Splitst een totaalbedrag in netto en btw.
+ *
+ * @param {number} bedragEur  het bedrag dat afgerekend wordt
+ * @returns {{ pct, modus, totaalEur, exclEur, btwEur }|null}  null bij onzin
+ */
+function btwSplits(bedragEur) {
+  const totaal = Number(bedragEur);
+  if (!isFinite(totaal) || totaal <= 0) return null;
+  /* Op centen afronden, en de btw als REST berekenen. Zou je beide apart
+     afronden, dan telt excl + btw soms een cent naast het totaal -- en dat ene
+     centje staat dan op een factuur. */
+  const excl = Math.round((totaal / (1 + BTW_PCT / 100)) * 100) / 100;
+  return Object.freeze({
+    pct: BTW_PCT,
+    modus: BTW_MODUS,
+    totaalEur: Math.round(totaal * 100) / 100,
+    exclEur: excl,
+    btwEur: Math.round((totaal - excl) * 100) / 100,
+  });
+}
+
 module.exports = {
   PLANNEN, STANDAARD_PLAN, CREDITS_PER_GESPREK, KOSTPRIJS_PER_GESPREK_EUR,
   plan, perCredit, gesprekken, kostprijsEur, marge, publiek,
   effectiefPlan, MINIMUM_MARGE, CREDIT_AFRONDING,
+  BTW_PCT, BTW_MODUS, btwSplits,
 };

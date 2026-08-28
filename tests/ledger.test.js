@@ -236,7 +236,12 @@ function nepAirtable(records, opties = {}) {
   const dashSrc = lees('api/dashboard.js');
   ck('het koopvenster bestaat', dashSrc.indexOf('id="koop-modal"') !== -1);
   ck('met een vrij in te vullen bedrag', dashSrc.indexOf('id="koop-bedrag"') !== -1);
-  ck('en snelkeuzes', dashSrc.indexOf('KOOP_PRESETS') !== -1);
+  /* De snelkeuzes stonden hier als KOOP_PRESETS in de frontend. Ze staan nu in
+     api/_credits.js, bij de rest van de bedragen: een browser die zelf weet
+     welke bedragen bestaan is een browser waarin iemand er een verzint. */
+  ck('en snelkeuzes', dashSrc.indexOf('id="koop-tegels"') !== -1);
+  ck('die van de server komen, niet uit de frontend',
+     /koopState\.presets = d\.presets/.test(dashSrc) && dashSrc.indexOf('KOOP_PRESETS') === -1);
   /* De browser mag de prijs niet zelf uitrekenen. */
   ck('de browser rekent de prijs niet zelf uit',
      dashSrc.indexOf("mode: 'credit-quote'") !== -1
