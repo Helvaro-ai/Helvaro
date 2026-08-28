@@ -32,6 +32,10 @@ getypte tekst er nog bij, zodat je bericht niet weg is.
 Mail aan een lead verandert niet: dat blijft jouw eigen correspondentie en loopt
 niet via onze server.
 
+Bij het natesten in de browser bleek een supportbericht van de eigenaarslogin
+binnen te komen als "Van: onbekend", zonder adres om op te antwoorden: die
+sessie droeg als enige geen e-mailadres. Dat is toegevoegd.
+
 ### De snelheidsbegrenzer viel stil terug, en lekte daarbij zijn wachtwoord
 
 `configured()` keek alleen of de variabele gezet wás. Een verkeerd geplakte

@@ -567,6 +567,14 @@ module.exports = async function handler(req, res) {
         clientName:   process.env.OWNER_CLIENT_NAME   || 'Owner',
         projectCode:  process.env.OWNER_PROJECT_CODE  || '',
         calendlyLink: process.env.OWNER_CALENDLY_LINK || '',
+        /* De ownersessie droeg geen e-mailadres, terwijl de gewone gebruiker
+           dat wel doet. Dat viel op bij mode:'support' in api/leads.js: een
+           bericht van de owner kwam binnen als "Van: onbekend" en zonder
+           reply-to, dus er viel niet op te antwoorden.
+           Verandert niets aan de intrekking: _revocation.isRevoked() eist zowel
+           em ALS pv, en een ownersessie heeft geen pv — die blijft dus gewoon
+           false teruggeven, precies als voorheen. */
+        em:           email,
       };
       {
       const _tok = signSession(ownerData);
