@@ -195,6 +195,102 @@ module.exports = async function handler(req, res) {
   // carries only Clerk's own __session cookie, so requiring the legacy token
   // first would 401 every Clerk user before they ever got here.
   const clerkSession = await _clerk.verifySession(req);
+
+  /* ── MODE: support. Een bericht aan ons, verstuurd vanuit de app ───────────
+     Hier stond een mailto. Die opent het mailprogramma van het apparaat, en op
+     de privélaptop waar dit dashboard vaak gelezen wordt is dat niet het
+     zakelijke adres — of staat er niets ingesteld en gebeurt er zichtbaar
+     niets. Voor een gewone vraag is dat vervelend; voor "mijn account is nog
+     niet ingericht" of "koppel mijn WhatsApp" is het erger, want dat zijn
+     precies de momenten waarop iemand vastzit en niet verder kan. Een adres
+     laten kopiëren lost dat ook niet op: het verplaatst het werk alleen naar de
+     klant.
+
+     Dus versturen we hem zelf, met de afzender als reply-to. De klant blijft in
+     de app en ziet of het gelukt is.
+
+     Dit staat bewust VOOR de TENANT_PENDING-403 hieronder: iemand die wacht tot
+     zijn account ingericht wordt is degene die deze knop het hardst nodig heeft.
+     Zijn Clerk-login is geldig; alleen zijn tenant ontbreekt nog.
+
+     De identiteit komt uit de sessie, nooit uit de body — anders is dit een
+     open relay waarmee iedereen namens een ander kan mailen. */
+  {
+    const b = _session.safeBody(req);
+    if (req.method === 'POST' && b && b.mode === 'support') {
+      const sessieToken = _session.readToken(req);
+      const eigenSessie = sessieToken ? _session.verifySignedSession(sessieToken) : null;
+      // Het veld heet 'em' in beide sessievormen (zie api/_clerk.js en de
+      // userData in api/auth.js), niet 'email'.
+      const afzender =
+        (clerkSession && clerkSession.em) ||
+        (eigenSessie  && eigenSessie.em)  || '';
+      const tenant =
+        (clerkSession && clerkSession.projectCode) ||
+        (eigenSessie  && eigenSessie.projectCode)  || '';
+      const naam =
+        (clerkSession && clerkSession.clientName) ||
+        (eigenSessie  && eigenSessie.clientName)  || '';
+
+      // Onbekend = geen mail. Alleen ingelogde mensen (ook de wachtenden).
+      if (!clerkSession && !eigenSessie) {
+        return res.status(401).json({ error: 'Log in om ons een bericht te sturen.' });
+      }
+      if (!_session.csrfOk(req)) {
+        return res.status(403).json({ error: 'Ongeldig of ontbrekend CSRF-token' });
+      }
+
+      const bericht  = String(b.bericht  || '').trim().slice(0, 4000);
+      const onderwerp = String(b.onderwerp || '').trim().slice(0, 120) || 'Vraag via het dashboard';
+      if (bericht.length < 5) {
+        return res.status(400).json({ error: 'Schrijf even kort waar het over gaat.' });
+      }
+
+      /* Vijf per uur per afzender. Genoeg voor iemand die vastzit en het nog
+         eens probeert, te weinig om ons postvak om te leggen. Faalt open: een
+         storing in de begrenzer mag een supportvraag niet tegenhouden. */
+      try {
+        const _rl = require('./_ratelimit');
+        const sleutel = afzender || tenant || (req.headers['x-forwarded-for'] || 'onbekend');
+        const r = await _rl.hit('support', String(sleutel), 5, 60 * 60 * 1000);
+        if (r && r.limited) {
+          return res.status(429).json({ error: 'Je hebt net al een paar berichten gestuurd. Probeer het over een uur nog eens — of bel ons.' });
+        }
+      } catch (e) { /* begrenzer stuk: laat de vraag door */ }
+
+      const esc = (v) => String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+      const { sendMail } = require('./_mailer');
+      const verstuurd = await sendMail({
+        to:      process.env.SUPPORT_EMAIL || 'hello@helvaro.pro',
+        subject: `[Dashboard] ${onderwerp}` + (naam ? ` — ${naam}` : ''),
+        // Reply-to op de klant, zodat "beantwoorden" gewoon werkt.
+        replyTo: afzender || undefined,
+        html:
+          `<p><strong>${esc(onderwerp)}</strong></p>` +
+          `<p style="white-space:pre-wrap">${esc(bericht)}</p>` +
+          `<hr><p style="color:#666;font-size:12px">` +
+          `Van: ${esc(afzender || 'onbekend')}<br>` +
+          `Kantoor: ${esc(naam || '—')}<br>` +
+          `Projectcode: ${esc(tenant || '— (account nog niet ingericht)')}<br>` +
+          `Verstuurd vanuit het dashboard.</p>`,
+      });
+
+      /* sendMail() gooit nooit en geeft een resultaat terug. Lukt het niet, dan
+         zeggen we dat eerlijk en geven we het adres alsnog mee, zodat de klant
+         niet met lege handen staat. */
+      if (!verstuurd || verstuurd.ok === false) {
+        return res.status(502).json({
+          ok: false,
+          error: 'Versturen lukte niet.',
+          fallbackEmail: process.env.SUPPORT_EMAIL || 'hello@helvaro.pro',
+        });
+      }
+      return res.status(200).json({ ok: true });
+    }
+  }
+
   if (clerkSession && clerkSession.pending) {
     // Valid Clerk login, but nobody has assigned this account to a client yet.
     // A distinct code so the dashboard can explain the wait instead of showing

@@ -14,38 +14,23 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
-### Supportlinks openen niet meer het mailprogramma van je privélaptop
+### Vragen aan ons gaan nu vanuit de app, niet via je mailprogramma
 
-"Mail ons" en het supportadres openden je standaard-mailprogramma. Op een eigen
-laptop is dat vaak niet je zakelijke adres, en soms staat er helemaal niets
-ingesteld — dan gebeurde er zichtbaar niets en was de vraag dus niet gesteld.
-Er verschijnt nu een venster met het adres en een kopieerknop, zodat je kunt
-mailen vanaf de plek waar je je zakelijke post echt leest.
+Elke weg naar ons liep via een mailto. Op een privélaptop opent dat het
+verkeerde mailaccount, of er staat niets ingesteld en gebeurt er zichtbaar
+niets. Voor een losse vraag is dat vervelend; voor twee gevallen is het erger,
+want daar zit iemand vast:
 
-De twee plekken waar een onderwerp én een tekst klaarstaan — de
-WhatsApp-koppelvraag en "Account klaarzetten" — blijven een gewone mail. Daar is
-de voorgeschreven tekst het halve punt, en die zou je kwijt zijn als je alleen
-het adres kopieert. `tests/mail-modal.test.js` bewaakt dat onderscheid allebei
-op.
+- **"Je account wordt nog ingericht"** — je kunt dan letterlijk niets in de app.
+- **"WhatsApp koppelen"** — zonder gekoppeld nummer doet het product niets.
 
+Er staat nu een tekstvak met een verzendknop. Wij versturen de mail, met jouw
+adres als afzender-om-op-te-antwoorden, dus je blijft in de app en ziet of het
+gelukt is. Lukt versturen niet, dan komt het adres alsnog in beeld met je
+getypte tekst er nog bij, zodat je bericht niet weg is.
 
-> **Actie voor jou — de snelheidsbegrenzer staat in de praktijk uit, en er
-> stond een wachtwoord in de logs.**
->
-> In Vercel staat `UPSTASH_REDIS_REST_URL` op een heel `redis-cli`-commando in
-> plaats van op een URL. Twee gevolgen:
->
-> 1. De gedeelde teller werkt niet. Er wordt per instance geteld, en dat reset
->    bij elke cold start — voor inlogpogingen en aanmeldingen komt dat neer op
->    nauwelijks een limiet.
-> 2. De foutmelding bevatte de hele waarde, inclusief het Redis-wachtwoord, en
->    die werd bij elk verzoek in de runtime-logs gezet.
->
-> Wat te doen:
-> - Zet `UPSTASH_REDIS_REST_URL` op de **REST**-URL uit Upstash
->   (`https://<naam>.upstash.io`) en `UPSTASH_REDIS_REST_TOKEN` op de bijbehorende
->   REST-token. Niet het `redis://`-adres en niet het cli-commando.
-> - **Draai het Upstash-wachtwoord om.** Het heeft in de logs gestaan.
+Mail aan een lead verandert niet: dat blijft jouw eigen correspondentie en loopt
+niet via onze server.
 
 ### De snelheidsbegrenzer viel stil terug, en lekte daarbij zijn wachtwoord
 
