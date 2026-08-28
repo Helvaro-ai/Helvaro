@@ -14,6 +14,15 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+> **Ter info — één ding om te bekijken in Stripe (geen storing).**
+>
+> Bij **Helvaro Scale** staat in Stripe `credits_per_month: unlimited`, terwijl
+> `api/_plans.js` 20.000 credits toekent. De prijs klopt wel (€799). De code
+> volgt `_plans.js`, dus een klant krijgt 20.000. Als "onbeperkt binnen
+> fair-use" de bedoeling is, hoort dat in `_plans.js` te staan — niet alleen in
+> de productomschrijving.
+
+
 ### Een welkomstscherm dat je in twee minuten op weg zet
 
 Nieuwe klanten kwamen binnen op een leeg dashboard en werden hooguit
@@ -1411,4 +1420,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 26f0e65 -->
+<!-- changelog-tot: 74d9bd8 -->
