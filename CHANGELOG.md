@@ -14,6 +14,31 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De opgeheven VPS kan het token niet meer weglekken
+
+`PG_API_URL` wees naar een kaal IP-adres van een DigitalOcean-machine die je
+hebt opgeheven. Zulke adressen worden opnieuw uitgedeeld, en met
+`PG_API_INSECURE=1` stond certificaatcontrole uit — dus stond die variabele er
+nog, dan ging `PG_API_TOKEN` als bearer naar wie dat IP nu ook heeft.
+
+Nagekeken in Vercel: de drie variabelen staan er niet meer, in geen van de drie
+omgevingen. Daarmee is het acute risico weg. Maar dat is een toestand, geen
+garantie — wie dit ooit heropstart plakt de oude waarde terug. De weigering zit
+daarom nu in de code: een kaal IP-adres, http in plaats van https, of
+`PG_API_INSECURE` aan betekent dat er GEEN verzoek uitgaat. Liever een dienst
+die stilstaat dan een token bij een onbekende.
+
+Twee dingen die daaruit volgen:
+
+- Faro kiest nu Airtable zolang die pg-instelling geweigerd wordt, in plaats van
+  gesprekken naar een adres te sturen waar niets meer staat.
+- **"Genereer content" gaf je geld uit aan niets.** Die stand had als enige van
+  de vijf geen controle of de database er nog was: hij genereerde eerst een post
+  — een betaalde AI-aanroep — en liep pas bij het opslaan vast. Je kreeg een
+  kale 500 en er was niets bewaard. Nu krijg je meteen een nette melding dat de
+  functie buiten dienst is, vóór er iets gekocht wordt.
+
+
 ### Vragen aan ons gaan nu vanuit de app, niet via je mailprogramma
 
 Elke weg naar ons liep via een mailto. Op een privélaptop opent dat het

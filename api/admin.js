@@ -1062,6 +1062,13 @@ module.exports = async function handler(req, res) {
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
         return res.status(401).json({ error: 'Ongeldige admin key' });
       }
+      /* Deze stand schrijft de posts naar de opgeheven VPS en had als enige van
+         de vijf geen pgWeg-controle. Zonder die controle werd er eerst een post
+         GEGENEREERD -- een betaalde Anthropic-aanroep -- en gooide pgFetch pas
+         daarna bij het opslaan. Resultaat: geld uitgegeven, niets bewaard, en
+         een kale 500 in plaats van een uitleg. Eerst kijken of er een database
+         is, dan pas iets kopen. */
+      if (pgWeg(res)) return;
       // This batch-generates up to days*6 posts (each = 1 Anthropic call via
       // generateOnePost). Gate the WHOLE batch up front (cheap, avoids a
       // half-generated week if '_internal' is ever capped) rather than

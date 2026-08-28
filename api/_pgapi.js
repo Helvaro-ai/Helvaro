@@ -77,10 +77,57 @@ if (INSECURE) {
   } catch (_) { /* undici unavailable: relies on a valid cert instead */ }
 }
 
-/** Of er überhaupt een backend geconfigureerd is. Bestond niet, waardoor elke
- *  aanroeper hetzelfde moest raden uit een exception. */
+/* ── Weigeren wat het geheim zou weglekken ───────────────────────────────────
+ * De VPS is opgeheven (bevestigd door de eigenaar). De variabelen staan
+ * inmiddels niet meer in Vercel — gecontroleerd op production, preview én
+ * development. Maar "ze staan er nu niet" is geen garantie: iemand die dit ooit
+ * heropstart plakt de oude waarde terug, en die wees naar een kaal IP-adres van
+ * een opgeheven machine. Zulke adressen worden opnieuw uitgedeeld. Met
+ * PG_API_INSECURE=1 stond certificaatcontrole ook nog uit, dus niets zou merken
+ * dat er een vreemde aan de andere kant zit.
+ *
+ * Daarom zit de weigering nu in de CODE en niet alleen in de configuratie:
+ *
+ *   • geen kaal IP-adres — een certificaat zegt niets over wie een IP vandaag
+ *     heeft, en juist dat was het lek;
+ *   • https verplicht — over http reist de bearer in het open;
+ *   • PG_API_INSECURE mag niet aan staan — dat zet precies de controle uit die
+ *     moet vaststellen dát het de juiste machine is.
+ *
+ * Faalt er iets, dan gaat er GEEN verzoek uit. Dat is het hele punt: liever een
+ * dienst die stilstaat dan een token bij een onbekende.
+ */
+function isKaalIp(host) {
+  const zonderPoort = String(host).replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(zonderPoort)) return true;   // IPv4
+  if (zonderPoort.indexOf(':') !== -1) return true;               // IPv6
+  return false;
+}
+
+let _warnedOnveilig = false;
+function doelIsVeilig() {
+  if (!PG_API_URL) return false;
+  const meld = (reden) => {
+    if (_warnedOnveilig) return false;
+    _warnedOnveilig = true;
+    console.error('[pgapi] PG_API_URL geweigerd: ' + reden + '. Er wordt niets verstuurd. ' +
+                  'De VPS achter deze module bestaat niet meer; zie de kop van api/_pgapi.js. ' +
+                  'De waarde zelf staat hier bewust niet bij.');
+    return false;
+  };
+  if (INSECURE) return meld('PG_API_INSECURE staat aan, dus certificaten worden niet gecontroleerd');
+  let u;
+  try { u = new URL(PG_API_URL); } catch { return meld('het is geen geldige URL'); }
+  if (u.protocol !== 'https:') return meld('het is geen https');
+  if (isKaalIp(u.hostname)) return meld('het is een kaal IP-adres in plaats van een naam');
+  return true;
+}
+
+/** Of er überhaupt een BRUIKBARE backend geconfigureerd is. Bestond niet,
+ *  waardoor elke aanroeper hetzelfde moest raden uit een exception. Sinds de
+ *  VPS weg is telt "gezet" niet meer als "bruikbaar": zie doelIsVeilig(). */
 function configured() {
-  return Boolean(PG_API_URL && PG_API_TOKEN);
+  return Boolean(PG_API_URL && PG_API_TOKEN && doelIsVeilig());
 }
 
 let _warnedUnconfigured = false;
@@ -99,10 +146,14 @@ async function pgFetch(pathAndQuery, options = {}) {
     // marketingpijplijn maandenlang "leeg" kon lijken in plaats van "kapot".
     if (!_warnedUnconfigured) {
       _warnedUnconfigured = true;
-      console.error('[pgapi] PG_API_URL/PG_API_TOKEN niet gezet — er is geen database achter deze module. ' +
+      console.error('[pgapi] PG_API_URL/PG_API_TOKEN niet gezet of geweigerd — er is geen database achter deze module. ' +
                     'Alles wat hierop leunt (marketingposts, outreach, social-health) doet niets. Zie de kop van api/_pgapi.js.');
     }
-    throw new Error('PG_API_URL/PG_API_TOKEN not configured');
+    /* Onderscheid maakt uit bij het zoeken: "niet gezet" is de normale toestand
+       sinds de VPS weg is, "geweigerd" betekent dat er iemand een onveilige
+       waarde heeft teruggezet en dat dát het probleem is. */
+    const reden = (PG_API_URL && PG_API_TOKEN) ? 'refused as unsafe' : 'not configured';
+    throw new Error('PG_API_URL/PG_API_TOKEN ' + reden);
   }
   const url = `${PG_API_URL}/v0/${pathAndQuery}`;
   const headers = Object.assign({ Authorization: `Bearer ${PG_API_TOKEN}` }, options.headers || {});

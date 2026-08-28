@@ -97,7 +97,12 @@ function configured() {
    paden zijn Airtable-dialect (filterByFormula, sort[0][field], pageSize), wat
    allebei de bestemmingen begrijpen. */
 function backend() {
-  return (process.env.PG_API_URL && process.env.PG_API_TOKEN) ? 'pg' : 'airtable';
+  /* Keek alleen of de variabelen GEZET waren. Sinds de VPS opgeheven is, is dat
+     de verkeerde vraag: een teruggeplakte oude waarde wijst naar een kaal IP van
+     een machine die niet meer bestaat, en dan zouden alle gesprekken daarheen
+     gestuurd worden in plaats van naar Airtable. _pg.configured() weigert zo'n
+     doel nu (zie de kop van api/_pgapi.js), dus dit volgt dat oordeel. */
+  return _pg.configured() ? 'pg' : 'airtable';
 }
 
 async function dbFetch(pathAndQuery, options = {}) {
