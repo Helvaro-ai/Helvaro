@@ -14,6 +14,12 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+_Niets. Alles hieronder draait live._
+
+---
+
+## 29 augustus 2026 — inloggen, betalen en credits (uitgerold)
+
 ### De creditbalk toont een percentage; de cijfers zitten achter een klik
 
 De balk in de zijbalk stond vol: gebruikte credits, limiet, resterende
