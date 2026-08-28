@@ -101,7 +101,14 @@ function backend() {
 }
 
 async function dbFetch(pathAndQuery, options = {}) {
-  if (backend() === 'pg') return dbFetch(pathAndQuery, options);
+  /* Stond hier als `return dbFetch(pathAndQuery, options)` — dat riep zichzelf
+     aan met dezelfde argumenten. Met PG_API_URL/PG_API_TOKEN gezet liep élke
+     Faro-query daarom vast op een RangeError (stack overflow) in plaats van de
+     database te bereiken. available() ving die op, zette _available=false, en
+     Faro meldde voor de rest van de instance "gesprekken leven alleen in de
+     browser": gesprekken werden niet bewaard en oude gesprekken laadden leeg.
+     _pgapi was al geïmporteerd maar werd nergens gebruikt. */
+  if (backend() === 'pg') return _pg.pgFetch(pathAndQuery, options);
   const baseId = process.env.BASE_AIRTABLE;
   const token = process.env.API_AIRTABLE;
   if (!baseId || !token) throw new Error('store: geen database geconfigureerd');
@@ -327,16 +334,50 @@ async function listMessages(projectCode, conversationId, opts = {}) {
   const own = await getConversation(projectCode, conversationId);
   if (!own) return [];
   const formula = encodeURIComponent(`{conversation_id}="${esc(conversationId)}"`);
-  const limit = Math.min(200, Math.max(1, opts.limit || 100));
+
+  /* Twee dingen zaten hier fout, allebei zichtbaar als "het oude gesprek laadt
+     niet".
+
+     1. pageSize mocht tot 200. Airtable weigert alles boven 100 met een 422,
+        en `if (!r.ok) return []` maakte daar een leeg gesprek van in plaats van
+        een fout. Geen aanroeper gaf een limit mee, dus het lag op scherp zonder
+        af te gaan.
+     2. Er werd één pagina opgehaald en verder niets. Bij meer dan 100 berichten
+        kreeg je de OUDSTE honderd (gesorteerd oplopend) en ontbrak juist het
+        recente deel — precies het stuk waaraan je ziet of het gesprek geladen is.
+
+     Nu wordt er doorgepagineerd op de offset-cursor. HARD_CAP begrenst wat één
+     verzoek kan opvragen; windowForModel() knipt daarna alsnog terug voor het
+     model. */
+  const PAGE_SIZE = 100;              // Airtable's maximum, niet een keuze
+  const HARD_CAP  = 1000;             // 10 pagina's; daarboven is het geen gesprek meer
+  const limit = Math.min(HARD_CAP, Math.max(1, opts.limit || 100));
+
+  const out = [];
+  let offset = '';
   try {
-    const r = await dbFetch(
-      `${T_MESSAGES}?filterByFormula=${formula}&sort[0][field]=created_at&sort[0][direction]=asc&pageSize=${limit}`);
-    if (!r.ok) return [];
-    const d = await r.json();
-    return (d.records || []).map(rowToMessage);
+    do {
+      const page = Math.min(PAGE_SIZE, limit - out.length);
+      const q = `${T_MESSAGES}?filterByFormula=${formula}`
+              + `&sort[0][field]=created_at&sort[0][direction]=asc&pageSize=${page}`
+              + (offset ? `&offset=${encodeURIComponent(offset)}` : '');
+      const r = await dbFetch(q);
+      if (!r.ok) {
+        /* Een halve lijst stilzwijgend teruggeven zou een afgekapt gesprek als
+           compleet presenteren. Bij de eerste pagina is er niets; bij een latere
+           houden we wat we hebben, want dat is beter dan niets — maar het wordt
+           wel gemeld. */
+        console.warn(`[faro/store] listMessages: HTTP ${r.status} na ${out.length} bericht(en)`);
+        break;
+      }
+      const d = await r.json();
+      for (const rec of (d.records || [])) out.push(rowToMessage(rec));
+      offset = d.offset || '';
+    } while (offset && out.length < limit);
+    return out;
   } catch (e) {
     console.warn('[faro/store] listMessages:', e && e.message);
-    return [];
+    return out;
   }
 }
 

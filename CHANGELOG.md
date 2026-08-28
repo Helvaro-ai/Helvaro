@@ -14,6 +14,29 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Oude Faro-gesprekken laadden leeg, of maar half
+
+Twee fouten in `api/_faro/store.js`, allebei zichtbaar als "het gesprek is er
+wel, maar er staat niets in".
+
+`dbFetch()` riep zichzelf aan zodra de Postgres-backend geconfigureerd stond —
+`return dbFetch(...)` in plaats van `return _pg.pgFetch(...)`. Dat is oneindige
+recursie: elke query eindigde in een stack overflow, `available()` ving die op
+en zette de store voor de rest van de instance op "niet beschikbaar". Faro
+bewaarde dan niets meer tussen sessies en oude gesprekken kwamen leeg terug.
+`_pgapi` was al geïmporteerd maar werd nergens gebruikt.
+
+Daarnaast haalde `listMessages()` maar één pagina op, met een pageSize die tot
+200 mocht oplopen. Airtable weigert alles boven de 100 met een 422, en die werd
+stil omgezet in een leeg gesprek. Bij meer dan honderd berichten kreeg je
+bovendien alleen de oudste honderd terug — precies het recente deel ontbrak.
+Er wordt nu doorgepagineerd tot duizend berichten.
+
+**Actie:** dit raakt alleen gesprekken zolang `PG_API_URL`/`PG_API_TOKEN` gezet
+staan. Zie het aparte punt hieronder — die variabelen horen weg te gaan, en dan
+draait de store op Airtable.
+
+
 ### Inloggen, dashboard, er meteen weer uit — en opnieuw
 
 Wie zijn sessiecookie kwijt was maar de markers in localStorage nog had, kreeg
