@@ -91,6 +91,21 @@ module.exports = async function handler(req, res) {
   // Zelfaanmelden zonder uitnodiging (api/admin.js, mode=onboard). Staat dit
   // aan, dan is /onboard een echte weg naar binnen en hoeft niemand te mailen.
   const OPEN_SIGNUP = require('./_clerk').vlagAan(process.env.PUBLIC_SIGNUP_ENABLED);
+
+  /* ── OneSignal (webpush) ───────────────────────────────────────────────────
+     Het app-id is GEEN geheim: het staat sowieso in de browser, net als de
+     publishable key van Clerk. Het staat hier met een standaardwaarde zodat de
+     integratie werkt zonder dat er eerst een variabele gezet moet worden, en
+     is te overschrijven of uit te zetten via ONESIGNAL_APP_ID (leeg = uit).
+
+     Uit betekent ook echt uit: geen script, geen extra hosts in de CSP. Zo is
+     de policy nooit losser dan nodig -- zelfde afspraak als bij Clerk. */
+  const ONESIGNAL_APP_ID = String(
+    process.env.ONESIGNAL_APP_ID !== undefined
+      ? process.env.ONESIGNAL_APP_ID
+      : '8302e5a5-e792-4fb0-a258-44c672539aa8'
+  ).trim().replace(/[^a-fA-F0-9-]/g, '');
+  const ONESIGNAL_READY = !!ONESIGNAL_APP_ID;
   const HTML = `<!DOCTYPE html>
 <html lang="nl" data-theme="dark">
 <head>
@@ -99,6 +114,7 @@ module.exports = async function handler(req, res) {
 <title>Helvaro · AI Lead Kwalificatie</title>
 <link rel="icon" href="/favicon.png" type="image/png">
 <script src="/vendor/chart.umd.min.js"></script>
+${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>' : ''}
 <style>
 /* ============================================================
    SELF-HOSTED FONTS (GDPR — no requests to Google's CDN)
@@ -12910,6 +12926,13 @@ function logout() {
 }
 
 function performLogout() {
+  /* Het pushabonnement losmaken van deze tenant. Dit hoort HIER en niet in
+     logout(): die opent alleen het bevestigingsvenster, dus daar zou het ook
+     gebeuren als je op "Annuleren" klikt -- je zou uitgelogd zijn bij de
+     meldingendienst terwijl je gewoon ingelogd bleef.
+     Op een gedeelde computer is dit wat voorkomt dat de volgende gebruiker
+     meldingen krijgt van het kantoor ervoor. */
+  try { oneSignalLoskoppelen(); } catch (e) {}
   // Clerk eerst, en dan stoppen. Alles hieronder ruimt de KLASSIEKE sessie op:
   // cookies wissen, state leegmaken, het loginscherm tonen. Bij Clerk zegt dat
   // niets — de sessie leeft bij Clerk, niet in onze cookie. Zonder deze regels
@@ -13722,12 +13745,6 @@ function updateNavBadge() {
   if (state.newLeadCount === 0) { if (badge) badge.remove(); return; }
   if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; nav.appendChild(badge); }
   badge.textContent = state.newLeadCount;
-}
-
-function requestNotificationPermission() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
 }
 
 /* ============================================================
@@ -17861,10 +17878,171 @@ document.getElementById('btn-download-csv').addEventListener('click', exportCSV)
 /* ============================================================
    LOGIN LOGIC
    ============================================================ */
+/* ══ OneSignal — webpush ══════════════════════════════════════════════════════
+   Eén ingang naar de SDK. De losse global (window.OneSignalDeferred) is een
+   wachtrij zonder vaste vorm; alles wat de app ermee doet loopt daarom via de
+   functies hieronder, zodat er straks één plek is om iets te veranderen.
+
+   TWEE DINGEN DIE HIER BEWUST NIET GEBEUREN
+
+   1. Er wordt NOOIT uit zichzelf om toestemming gevraagd. Een browser geeft je
+      één kans: klikt iemand op "blokkeren", dan is dat permanent en kun je het
+      als site niet meer terugdraaien. Die vraag hoort dus op een moment dat de
+      klant snapt waarom -- en dat moment is nog niet gekozen (de eigenaar komt
+      later met de triggers). Tot dan verzamelt dit alleen de SDK, geen
+      abonnees.
+
+   2. Het bevestigingsvenster uit de OneSignal-handleiding staat achter
+      ?onesignal=verify. Die handleiding schrijft een venster voor met de tekst
+      "Your OneSignal SDK integration is complete!" -- prima om als bouwer te
+      zien dat het werkt, maar het is Engelse ontwikkelaarstekst en het zou aan
+      élke Vlaamse makelaar getoond worden. Vandaar: wel gebouwd, alleen niet
+      ongevraagd.
+
+   Starten gebeurt pas NA het inloggen (zie startDashboard). Op het inlogscherm
+   heeft het geen zin: dat is een onbekende bezoeker, en een abonnement zonder
+   klant erachter is later niet te richten. */
+var ONESIGNAL_APP_ID = '${ONESIGNAL_APP_ID}';
+var _osGestart = false;
+var _osDialoogGetoond = false;
+
+/* De SDK is er misschien nog niet als deze code draait -- de script-tag staat
+   op defer. OneSignalDeferred is de wachtrij die de SDK zelf leegdrinkt zodra
+   hij geladen is; erin duwen mag dus altijd, ook ervoor. */
+function metOneSignal(fn) {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(fn);
+}
+
+/* Een echt abonnement, of nog niet? De SDK zet meteen een tijdelijk id dat met
+   "local-" begint; dat betekent alleen "ik ben bezig", niet "geregistreerd".
+   Daarop reageren geeft een venster dat te vroeg komt. */
+function osEchtGeabonneerd(id) {
+  return !!id && String(id).indexOf('local-') !== 0;
+}
+
+function oneSignalStart() {
+  if (_osGestart || !ONESIGNAL_APP_ID) return;
+  _osGestart = true;
+
+  metOneSignal(async function (OneSignal) {
+    try {
+      await OneSignal.init({ appId: ONESIGNAL_APP_ID });
+
+      /* De tenant meegeven. Zonder dit zijn alle abonnementen anoniem en is er
+         later geen manier om "alleen dit kantoor" te bereiken -- en dat is bij
+         een product met meerdere klanten precies wat je nodig hebt. De
+         projectcode is geen persoonsgegeven; een naam of e-mailadres gaat hier
+         bewust NIET heen. */
+      var project = '';
+      try { project = localStorage.getItem('hv-project') || ''; } catch (e) {}
+      if (project) { try { await OneSignal.login(project); } catch (e) {} }
+
+      osKijkOfGeabonneerd(OneSignal);
+    } catch (err) {
+      /* Stil falen is hier juist: pushmeldingen zijn een extraatje. Een klant
+         die zijn leads wil zien heeft niets aan een foutmelding over een
+         meldingendienst. */
+      console.warn('[onesignal] init mislukt:', err && err.message);
+    }
+  });
+}
+
+/* De handleiding vraagt om twee dingen tegelijk: luisteren naar wijzigingen EN
+   meteen kijken wat de stand nu al is. Alleen luisteren is niet genoeg -- het
+   id kan al toegekend zijn voordat deze code eraan toekomt, en dan komt er
+   nooit meer een wijziging voorbij. */
+function osKijkOfGeabonneerd(OneSignal) {
+  var beoordeel = function () {
+    var id = OneSignal.User && OneSignal.User.PushSubscription
+      ? OneSignal.User.PushSubscription.id : null;
+    if (!osEchtGeabonneerd(id) || _osDialoogGetoond) return;
+    _osDialoogGetoond = true;
+    if (osVerificatieGevraagd()) oneSignalToonBevestiging();
+  };
+  try {
+    OneSignal.User.PushSubscription.addEventListener('change', beoordeel);
+  } catch (e) {}
+  beoordeel();
+}
+
+/* Alleen met ?onesignal=verify in de URL. Zie de uitleg bovenaan. */
+function osVerificatieGevraagd() {
+  try { return new URLSearchParams(location.search).get('onesignal') === 'verify'; }
+  catch (e) { return false; }
+}
+
+function oneSignalToonBevestiging() {
+  var bestaand = document.getElementById('os-verify-modal');
+  if (bestaand) bestaand.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'os-verify-modal';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10050;'
+    + 'display:flex;align-items:center;justify-content:center;padding:16px';
+
+  var kaart = document.createElement('div');
+  kaart.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);'
+    + 'border-radius:18px;padding:24px;width:100%;max-width:420px';
+
+  var titel = document.createElement('h3');
+  titel.textContent = 'Your OneSignal SDK integration is complete!';
+  titel.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
+
+  var uitleg = document.createElement('p');
+  uitleg.textContent = 'You can now send Push Notifications & In-App Messages '
+    + 'through OneSignal. Tap below to enable push notifications.';
+  uitleg.style.cssText = 'margin:0 0 18px;font-size:13px;color:var(--text-muted,#999);line-height:1.5';
+
+  var knop = document.createElement('button');
+  knop.type = 'button';
+  knop.textContent = 'Got it';
+  knop.className = 'btn-icon btn-primary-sm';
+  knop.style.cssText = 'width:100%';
+  knop.addEventListener('click', function () {
+    overlay.remove();
+    modalToetsenbordUit();
+    /* Pas HIER wordt er toestemming gevraagd -- op een klik, nooit vanzelf. */
+    metOneSignal(function (OneSignal) {
+      try { OneSignal.Notifications.requestPermission(); } catch (e) {}
+    });
+  });
+
+  kaart.appendChild(titel);
+  kaart.appendChild(uitleg);
+  kaart.appendChild(knop);
+  overlay.appendChild(kaart);
+  document.body.appendChild(overlay);
+  modalToetsenbord(kaart, function () { overlay.remove(); modalToetsenbordUit(); });
+}
+
+/* Bij uitloggen het abonnement losmaken van de tenant. Doe je dat niet, dan
+   blijft het apparaat bij de vorige klant horen -- op een gedeelde computer
+   krijgt de volgende gebruiker dan meldingen van een kantoor waar hij niets
+   mee te maken heeft. */
+function oneSignalLoskoppelen() {
+  if (!_osGestart) return;
+  metOneSignal(function (OneSignal) {
+    try { OneSignal.logout(); } catch (e) {}
+  });
+}
+
 async function startDashboard(skipRefresh = false) {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
-  requestNotificationPermission();
+  /* Hier stond requestNotificationPermission(): meteen na het inloggen vroeg de
+     browser ongevraagd om toestemming voor meldingen, zonder enige uitleg.
+
+     Dat is om twee redenen weg. Het is de manier waarop je een "blokkeren"
+     uitlokt -- en dat antwoord is DEFINITIEF: een site kan het zelf niet meer
+     terugdraaien, de klant moet het in zijn browserinstellingen opzoeken. En
+     het leverde weinig op, want de melding die eraan hing werkt alleen zolang
+     het tabblad openstaat (zie checkForNewLeads).
+     OneSignal vraagt het straks op een gekozen moment, met uitleg, en kan wél
+     iets sturen als het tabblad dicht is. */
+  oneSignalStart();
   initHelpWidget();
   // FARO is the home page: it asks how it can help, and shows what happened
   // underneath. navigateTo() below triggers the briefing's one data request;
@@ -24434,10 +24612,23 @@ ${cmd.js}
   // bleef dan hangen op een vakje dat nooit verschijnt. Alleen meegenomen als
   // Clerk ook echt aanstaat, zodat de policy niet losser is dan nodig.
   const botSrc = CLERK_READY ? ' https://challenges.cloudflare.com' : '';
+  /* OneSignal haalt zijn script van cdn.onesignal.com en praat daarna met
+     api.onesignal.com. Zonder deze twee regels wordt het script geblokkeerd en
+     gebeurt er... niets: geen foutmelding in beeld, alleen een lege console.
+     Precies het soort stille storing waar een integratie weken op blijft
+     hangen. Alleen meegenomen als OneSignal ook echt aanstaat.
+
+     De service worker zelf komt van ONZE eigen host (/OneSignalSDKWorker.js,
+     zie vercel.json) en valt dus al onder 'self' bij worker-src. Die worker
+     doet op zijn beurt importScripts naar de CDN, maar een worker heeft zijn
+     eigen policy uit zijn eigen response-headers -- en daar zetten we er geen,
+     dus dat pad blijft open. */
+  const osScript  = ONESIGNAL_READY ? ' https://cdn.onesignal.com' : '';
+  const osConnect = ONESIGNAL_READY ? ' https://api.onesignal.com https://cdn.onesignal.com' : '';
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${clerkSrc}${botSrc}`,
-    `connect-src 'self'${clerkSrc}`,
+    `script-src 'self' 'unsafe-inline'${clerkSrc}${botSrc}${osScript}`,
+    `connect-src 'self'${clerkSrc}${osConnect}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",       // Vercel Blob + Clerk-avatars
     "font-src 'self' data:",             // zelf gehost, geen Google Fonts (AVG)

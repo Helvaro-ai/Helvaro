@@ -14,6 +14,39 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Pushmeldingen: OneSignal aangesloten
+
+De SDK zit erin. Er wordt nog niets verstuurd — welke gebeurtenissen een melding
+verdienen bepaal jij later; dit is het leidingwerk.
+
+**Wat er nu gebeurt:** na het inloggen start OneSignal en wordt het apparaat aan
+jouw kantoor gekoppeld (de projectcode, geen naam of e-mailadres). Bij het echt
+uitloggen wordt die koppeling losgemaakt — anders krijgt op een gedeelde
+computer de volgende gebruiker meldingen van het kantoor ervoor.
+
+> **Belangrijk: het dashboard vroeg tot nu toe ONGEVRAAGD om toestemming voor
+> meldingen**, meteen na het inloggen, zonder uitleg. Dat is weggehaald. Een
+> browser vraagt het maar één keer: wie toen "blokkeren" klikte, kan door
+> Helvaro nooit meer bereikt worden — dat is alleen terug te draaien in de
+> browserinstellingen van die persoon. De vraag komt straks op een gekozen
+> moment, met uitleg erbij.
+>
+> De melding die aan die oude toestemming hing werkte trouwens alleen zolang het
+> tabblad openstond. Dat is precies wat OneSignal wél kan: melden als Helvaro
+> dicht is.
+
+**Actie voor jou, eenmalig:** in het OneSignal-dashboard moet het platform
+**Web** aanstaan voor deze app, met `https://app.helvaro.pro` als site-URL.
+Zonder die stap start de SDK niet.
+
+Testen kan met `https://app.helvaro.pro/dashboard?onesignal=verify` — dan
+verschijnt het bevestigingsvenster van OneSignal en kun je toestemming geven.
+Zonder die toevoeging krijgt niemand dat venster te zien; het is
+ontwikkelaarstekst in het Engels en hoort niet bij een klant op het scherm.
+
+---
+
+
 ### De inlogcode stond in het Engels — en dat is het scherm dat iedereen ziet
 
 Wachtwoord-inloggen staat uit bij onze inlogaanbieder: je komt binnen met een

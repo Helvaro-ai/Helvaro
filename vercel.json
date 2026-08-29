@@ -99,6 +99,10 @@
       "destination": "/public/ai-demo.js"
     },
     {
+      "source": "/OneSignalSDKWorker.js",
+      "destination": "/public/OneSignalSDKWorker.js"
+    },
+    {
       "source": "/favicon.png",
       "destination": "/public/favicon.png"
     },
