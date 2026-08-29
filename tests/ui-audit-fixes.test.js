@@ -142,5 +142,72 @@ console.log('\n— een mislukte offerte laat geen kale kop achter —');
      /if \(tegelsEl && !koopState\.presets\.length\)/.test(js), null);
 }
 
+console.log('\n— de codestap bij inloggen stond volledig in het Engels —');
+{
+  /* Wachtwoord-inloggen staat UIT op de Clerk-instantie (supportedFirstFactors
+     gaf alleen email_code + oauth_google). Iedereen belandt dus op de
+     codestap, en die was Engels: "Check your email", "Didn't receive a code?
+     Resend". */
+  const blok = (js.match(/var CLERK_NL = \{[\s\S]*?\n\};/) || [''])[0];
+  ck('signIn.emailCode is vertaald', /emailCode: \{[\s\S]{0,300}Kijk in je mailbox/.test(blok), null);
+  ck('de opnieuw-versturen-link ook', /resendButton: 'Geen code ontvangen/.test(blok), null);
+  ck('en "andere manier" ook', /alternativeMethods: \{[\s\S]{0,200}Op een andere manier inloggen/.test(blok), null);
+}
+
+console.log('\n— het merkpaneel stapelde onder de footer op smal —');
+{
+  const mq = (html.match(/@media \(max-width: 860px\) \{[\s\S]*?\n\}/) || [''])[0];
+  ck('het paneel gaat weg onder 860px', /\.login-brand-side \{ display: none; \}/.test(kaal(mq)), mq.slice(0, 200));
+  ck('en het logo neemt minder ruimte', /\.login-logo-top img \{ max-width: 150px; \}/.test(kaal(mq)), null);
+}
+
+console.log('\n— twee lege toestanden naast elkaar bij Gesprekken —');
+{
+  ck('een lege lijst krijgt de volle breedte', /\.conv-layout\.leeg \.conv-list \{[\s\S]{0,120}width: 100%/.test(html), null);
+  ck('en de rechterhelft verdwijnt', /\.conv-layout\.leeg \.conv-detail \{ display: none; \}/.test(html), null);
+  ck('de klasse wordt gezet op basis van het aantal', /classList\.toggle\('leeg', withConvs\.length === 0\)/.test(js), null);
+}
+
+console.log('\n— Facturatie liet lege kaarten achter bij een storing —');
+{
+  ck('de kaarten krijgen tekst bij een fout', /Niet opgehaald\. Ververs de pagina\./.test(js), null);
+  /* Twee banners gaven verschillend advies voor dezelfde storing. */
+  ck('en het advies is overal hetzelfde',
+     !/Probeer het zo meteen opnieuw/.test(js) || /Ververs de pagina/.test(js), null);
+}
+
+console.log('\n— skeletten bleven eeuwig draaien na een fout —');
+{
+  ck('er is een functie die ze stopt', /function stopSkeletten\(\)/.test(js), null);
+  ck('de foutbanner roept hem aan', /el\.style\.display = 'flex';[\s\S]{0,700}stopSkeletten\(\)/.test(js), null);
+  ck('en "Laden..." wordt een eerlijke tekst', /lab\.textContent = 'Niet opgehaald'/.test(js), null);
+}
+
+console.log('\n— Instellingen toonde een plan dat niet bestaat —');
+{
+  ck('"Pro" staat niet meer hardgecodeerd in de HTML',
+     !/>Pro<\/span>/.test(html), null);
+  ck('de badge heeft een id', /id="set-plan"/.test(html), null);
+  ck('en de naam komt uit de plannenlijst', /planState\.plannen \|\| \[\]\)\.filter/.test(js), null);
+}
+
+console.log('\n— /login en /signup gaven 404 —');
+{
+  const vercel = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
+  const bronnen = vercel.rewrites.map((r) => r.source);
+  ck('/login bestaat',  bronnen.indexOf('/login') > -1, bronnen.join(','));
+  ck('/signup bestaat', bronnen.indexOf('/signup') > -1, null);
+  ck('en /signup opent het registratieformulier',
+     /location\.pathname\)\) mountClerkSignUp\(clerk\)/.test(js)
+     && js.indexOf('signup') > -1, null);
+}
+
+console.log('\n— één manier om te wisselen, niet drie —');
+{
+  ck('de dubbele regel onder de kaart is weg',
+     /function setClerkToggle\(view\) \{[\s\S]{0,200}el\.style\.display = 'none'/.test(js), null);
+  ck('en er is geen dode functie blijven staan', js.indexOf('setClerkToggleOud') === -1, null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);

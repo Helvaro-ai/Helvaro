@@ -14,6 +14,61 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De inlogcode stond in het Engels — en dat is het scherm dat iedereen ziet
+
+Wachtwoord-inloggen staat uit bij onze inlogaanbieder: je komt binnen met een
+code per e-mail of met Google. Die codestap stond volledig in het Engels
+("Check your email", "Didn't receive a code? Resend"). Nu Nederlands, net als
+het scherm om op een andere manier in te loggen.
+
+> **Actie voor jou.** Wil je dat klanten met een wachtwoord kunnen inloggen,
+> dan moet Password aan als sign-in methode in het Clerk-dashboard. Zolang dat
+> uit staat vraagt het registratieformulier wel een wachtwoord van 15 tekens
+> dat vervolgens nergens gebruikt wordt.
+
+### Op telefoon en tablet stond er marketing ónder de footer
+
+Het donkere paneel met de voorbeelden werd op smalle schermen niet verborgen
+maar onder het inlogblok geplakt — dus ná "© 2026 Helvaro". De pagina werd
+ruim 2.000 pixels hoog op een telefoon. Nu weg op smal: wie op zijn telefoon
+inlogt, wil inloggen. Het logo is er ook kleiner, zodat het formulier meteen
+in beeld staat.
+
+### Geen twee lege schermen meer naast elkaar
+
+- **Gesprekken** toonde links "Nog geen gesprekken" in een smalle kolom en
+  rechts, over de volle breedte, "Selecteer een gesprek" — kiezen uit niets.
+  De uitleg met de knoppen krijgt nu het hele vlak.
+- **Facturatie** liet bij een storing twee kaarten achter met alleen een titel
+  en niets eronder, en twee foutmeldingen die verschillend advies gaven. Nu
+  één advies en een eerlijke regel in elke kaart.
+- Het **dashboard** bleef na een mislukte verbinding "Laden..." zeggen in zes
+  kaarten, met draaiende balkjes, terwijl er bovenaan al stond dat het niet
+  gelukt was. Die worden nu streepjes.
+
+### Instellingen toonde een plan dat niet bestaat
+
+Er stond "Pro" — hardgecodeerd, bij iedereen, en Pro is geen plan. De plannen
+heten Starter, Growth en Scale. Nu staat er het plan dat je echt hebt, of
+"Proefperiode".
+
+### Het lead-formulier controleert nu het telefoonnummer
+
+Een typefout in het nummer betekende dat die lead nooit antwoord kreeg — en
+jij zag dat niet. Er wordt nu gecontroleerd of er genoeg cijfers in staan
+(8 tot 15, dus buitenlandse nummers mogen gewoon). Verder: de toestemmingszin
+staat niet langer in HOOFDLETTERS, en de grijze voorbeeldtekst in de velden is
+leesbaar geworden (van 2,7:1 naar 4,9:1 contrast).
+
+### Kleinere dingen
+
+- `/login` en `/signup` bestaan nu echt. Ze gaven allebei 404, terwijl dat de
+  adressen zijn die je in een mail of advertentie zet.
+- Er waren drie manieren om tussen inloggen en registreren te wisselen. Nu één.
+
+---
+
+
 ### De Pipeline liep 205 pixels buiten beeld
 
 Op een scherm van 1440 breed was de kolom met je kanbanbord 1420 breed én stond

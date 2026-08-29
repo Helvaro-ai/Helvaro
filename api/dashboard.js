@@ -1500,10 +1500,21 @@ button.brand-dot { border: none; padding: 0; }
 /* Responsive: stack on mobile */
 @media (max-width: 860px) {
   .login-split { flex-direction: column; height: auto; }
-  .login-form-side { flex: none; padding: 52px 40px; align-items: center; }
+  .login-form-side { flex: none; padding: 36px 24px 48px; align-items: center; }
   .login-form-inner { max-width: 420px; }
-  .login-brand-side { flex: none; min-height: 300px; padding: 48px 40px; }
-  .brand-card-mock { max-width: 380px; }
+
+  /* Het merkpaneel gaat weg op smal, in plaats van onder het formulier te
+     stapelen. Gestapeld kwam het namelijk ONDER de footer terecht -- eerst
+     "(c) 2026 Helvaro", daarna nog anderhalf scherm marketing. De pagina werd
+     ruim 2.000px hoog op een telefoon van 844.
+     Wie op zijn telefoon naar het inlogscherm gaat, wil inloggen; de belofte
+     staat al in de regel onder het formulier. */
+  .login-brand-side { display: none; }
+
+  /* Het logo was hier even groot als op desktop en duwde het formulier tot
+     bijna een derde van het scherm naar beneden. */
+  .login-logo-top { margin-bottom: 24px; align-self: center; }
+  .login-logo-top img { max-width: 150px; }
 }
 
 /* Light mode adjustments — the split login already reads as a light-form
@@ -5813,6 +5824,20 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: flex;
   flex-direction: column;
 }
+
+/* Zonder gesprekken stonden er TWEE lege toestanden naast elkaar: links "Nog
+   geen gesprekken" met de uitleg en de knoppen, in een kolom van 300px, en
+   rechts 913px die vroeg om een gesprek te selecteren dat niet bestaat. De
+   nuttige helft kreeg de smalle kant.
+   Met deze klasse verdwijnt de rechterhelft en krijgt de lege toestand de hele
+   kaart -- één boodschap, op de plek waar je kijkt. */
+.conv-layout.leeg .conv-list {
+  width: 100%;
+  border-right: none;
+  justify-content: center;
+}
+.conv-layout.leeg .conv-list-header { display: none; }
+.conv-layout.leeg .conv-detail { display: none; }
 .conv-list-header {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
@@ -10765,7 +10790,7 @@ ${faro.navCta}
           <div class="settings-row">
             <div class="settings-label">Plan</div>
             <div class="settings-value">
-              <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.3);color: var(--accent-ink)">Pro</span>
+              <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.3);color: var(--accent-ink)" id="set-plan">—</span>
             </div>
           </div>
           <!-- Verborgen zolang er geen ECHTE sleutel is; zie renderInstellingen().
@@ -12008,6 +12033,32 @@ var CLERK_NL = {
   signIn: {
     start: { title: 'Inloggen bij Helvaro', subtitle: 'Welkom terug. Log in om verder te gaan.' },
     password: { title: 'Vul je wachtwoord in', subtitle: 'Voer het wachtwoord van je account in' },
+    /* DIT is de stap die vrijwel iedereen te zien krijgt. Wachtwoord-inloggen
+       staat namelijk uit op de Clerk-instantie: supportedFirstFactors geeft
+       alleen email_code en oauth_google terug. Wie zijn e-mailadres invult
+       belandt dus hier -- en hier stond alles in het Engels: "Check your
+       email", "to continue to Helvaro", "Didn't receive a code? Resend (27)".
+       Op het scherm waar een klant zich afvraagt of hij wel goed zit. */
+    emailCode: {
+      title: 'Kijk in je mailbox',
+      subtitle: 'om verder te gaan naar Helvaro',
+      formTitle: 'Verificatiecode',
+      formSubtitle: 'Vul de code in die we naar je e-mailadres gestuurd hebben',
+      resendButton: 'Geen code ontvangen? Opnieuw versturen',
+    },
+    alternativeMethods: {
+      title: 'Op een andere manier inloggen',
+      subtitle: 'Lukt het niet? Kies hieronder een andere manier.',
+      actionLink: 'Hulp nodig?',
+      blockButton__emailCode: 'Code per e-mail naar {{identifier}}',
+      blockButton__password: 'Inloggen met je wachtwoord',
+      blockButton__emailLink: 'Inloglink per e-mail naar {{identifier}}',
+      getHelp: {
+        title: 'Hulp nodig?',
+        content: 'Kom je er niet in? Mail ons en we helpen je verder.',
+        blockButton__emailSupport: 'Mail ons',
+      },
+    },
     forgotPasswordAlternativeMethods: { label__alternativeMethods: 'Of log op een andere manier in' },
     forgotPassword: { title: 'Wachtwoord vergeten', subtitle_email: 'We sturen je een code per e-mail' },
   },
@@ -12309,24 +12360,24 @@ function clerkVangnet(host, wat) {
 // Clerk's components carry their own "already have an account?" links, but
 // those navigate to Clerk-hosted pages by default. This keeps the switch inside
 // our own page so the user never leaves the branded login screen.
+/* Er stonden DRIE manieren om tussen inloggen en registreren te wisselen: de
+   segmenten bovenaan, deze regel onder de kaart, en die van Clerk zelf. Drie
+   keer hetzelfde, verticaal uit elkaar getrokken over het halve scherm.
+
+   De segmenten bovenaan blijven: die staan er altijd, laten zien in welke van
+   de twee je zit, en zijn met het toetsenbord te bedienen als tablist. Deze
+   regel is de dubbele -- hij zegt hetzelfde, 300px lager.
+
+   De functie zelf blijft staan omdat mountClerkSignIn/-SignUp hem aanroepen;
+   hij verbergt de regel nu in plaats van hem te vullen. Het klassieke
+   formulier heeft zijn eigen wissel en raakt dit element niet aan. */
 function setClerkToggle(view) {
   var el = document.getElementById('clerk-toggle');
   if (!el) return;
-  el.innerHTML = '';
-  var span = document.createElement('span');
-  span.textContent = view === 'signin' ? 'Nog geen account? ' : 'Heb je al een account? ';
-  var link = document.createElement('button');
-  link.type = 'button';
-  link.className = 'clerk-toggle-link';
-  link.textContent = view === 'signin' ? 'Account aanmaken' : 'Inloggen';
-  link.addEventListener('click', function () {
-    if (view === 'signin') mountClerkSignUp(window.Clerk);
-    else                   mountClerkSignIn(window.Clerk);
-  });
-  el.appendChild(span);
-  el.appendChild(link);
-  el.style.display = 'block';
+  el.style.display = 'none';
+  return;
 }
+
 
 // Shown when Clerk says who you are but no client has been assigned to you.
 // This is a normal step in a business where accounts are set up by hand, not a
@@ -13568,6 +13619,34 @@ function showCrmError(err) {
   el.appendChild(text);
   el.appendChild(retry);
   el.style.display = 'flex';
+
+  /* De banner alleen is niet genoeg. Eronder bleven zes KPI-kaarten "Laden..."
+     zeggen met een schimmerende balk, en twee grafieken leeg -- eeuwig, want
+     de render die ze zou vullen draait bij een storing nooit. Bovenaan stond
+     dus "het lukt niet" en daaronder deed de pagina alsof ze nog bezig was.
+     Live geteld: 80 skeletten en 19 keer "Laden..." die bleven staan.
+
+     Skeletten horen bij WACHTEN. Is het wachten voorbij en is er niets
+     gekomen, dan hoort er een streepje te staan. */
+  stopSkeletten();
+}
+
+/* Skeletten omzetten in "geen waarde". Alleen wat NIET gevuld is: een kaart die
+   al een echt getal heeft blijft staan -- oude cijfers zijn bruikbaarder dan
+   streepjes zolang erboven staat dat ze oud zijn. */
+function stopSkeletten() {
+  document.querySelectorAll('.skeleton').forEach(function (sk) {
+    const houder = sk.parentElement;
+    if (houder && !houder.dataset.hadWaarde) {
+      houder.textContent = '—';
+      houder.classList.add('stat-leeg');
+    } else {
+      sk.remove();
+    }
+  });
+  document.querySelectorAll('.stat-label').forEach(function (lab) {
+    if (/^laden/i.test((lab.textContent || '').trim())) lab.textContent = 'Niet opgehaald';
+  });
 }
 
 function hideCrmError() {
@@ -18766,6 +18845,9 @@ function renderGesprekken() {
     catch { return false; }
   }).sort((a, b) => new Date(b.datum || 0) - new Date(a.datum || 0));
 
+  const convLayout = document.querySelector('.conv-layout');
+  if (convLayout) convLayout.classList.toggle('leeg', withConvs.length === 0);
+
   if (withConvs.length === 0) {
     /* "Geen gesprekken gevonden" is een mededeling, geen hulp -- en links en
        rechts stond allebei zoiets, dus een nieuwe klant keek naar twee lege
@@ -21151,7 +21233,19 @@ async function loadFacturatie() {
     /* Een storing mag er niet uitzien als "je hebt geen plan". */
     document.getElementById('fa-plan-naam').textContent = '—';
     notice.style.display = '';
-    notice.innerHTML = 'Het facturatieoverzicht kon niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    notice.innerHTML = 'Het facturatieoverzicht kon niet opgehaald worden. Ververs de pagina.';
+    /* De twee kaarten eronder krijgen hun tekst pas in renderFacturatie(), en
+       die draait hier niet. Zonder deze regels blijven ze staan als een kop met
+       niets eronder -- de pagina las als een stapel lege dozen in plaats van
+       als één storing. */
+    ['fa-verdeling', 'fa-boekingen'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="fa-leeg">Niet opgehaald. Ververs de pagina.</div>';
+    });
+    ['fa-verdeling-sub', 'fa-boekingen-sub'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
     return;
   }
   renderFacturatie();
@@ -22134,6 +22228,44 @@ function renderInstellingen() {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('set-naam', s.clientName || '—');
   set('set-email', s.userEmail || localStorage.getItem('hv-email') || '—');
+
+  /* Hier stond "Pro" HARDGECODEERD in de HTML. Niet afgeleid van iets: elke
+     klant zag "Pro", ongeacht wat hij betaalde -- en "Pro" is bovendien geen
+     plan dat bestaat. De plannen heten Starter, Growth en Scale (api/_plans.js);
+     "Pro" komt uit het oude Airtable-keuzeveld dat nooit is opgeruimd.
+     Nu komt de naam van de server, en bij twijfel staat er een streepje in
+     plaats van een verzonnen plan. */
+  const planEl = document.getElementById('set-plan');
+  if (planEl) {
+    /* plan-list geeft een planId terug, geen naam -- de naam hoort bij het plan
+       in de lijst. Zonder die vertaalslag stond er "starter" in plaats van
+       "Helvaro Starter", of "Proefperiode" bij een betalende klant. */
+    var planNaam = function () {
+      var h = planState.huidig;
+      if (!h || !h.planId) return null;
+      var p = (planState.plannen || []).filter(function (x) { return x.id === h.planId; })[0];
+      return p ? p.naam : h.planId;
+    };
+    var gevonden = planNaam();
+    if (gevonden) {
+      planEl.textContent = gevonden;
+    } else {
+      fetch(API_BASE + '/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+        body: JSON.stringify({ mode: 'plan-list' })
+      })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) return;
+          planState.plannen = d.plannen || planState.plannen;
+          planState.huidig  = d.huidig || null;
+          /* Geen plan is geen fout: dat is een proefaccount. */
+          planEl.textContent = planNaam() || 'Proefperiode';
+        })
+        .catch(function () { /* streepje laten staan is eerlijker dan gokken */ });
+    }
+  }
   // Boekingsmodus is statisch (AI boekt in WhatsApp). Niet overschrijven met '—'.
 
   // API key masked display
@@ -23632,7 +23764,13 @@ function hideHelpWidget() {
     } else {
       if (!clerk.user) {
         document.getElementById('login-page').style.display = 'flex';
-        mountClerkSignIn(clerk);
+        /* /login en /signup zijn echte adressen geworden (zie vercel.json).
+           Ze gaven allebei 404, terwijl het precies de twee adressen zijn die
+           iemand intikt of bookmarkt, en die je in een mail of advertentie zet.
+           Ze wijzen naar dezelfde pagina; alleen begint /signup op het
+           registratieformulier in plaats van op inloggen. */
+        if (/^\\/signup\\b/.test(location.pathname)) mountClerkSignUp(clerk);
+        else mountClerkSignIn(clerk);
         /* De diavoorstelling rechts stond stil op precies het scherm dat
            iedereen ziet. Hij werd alleen gestart in de klassieke tak
            hieronder, dus met Clerk aan bleef de merkkant op dia 1 hangen --

@@ -204,6 +204,7 @@ module.exports = async function handler(req, res) {
       consentLink:     'privacybeleid',
       consentSuffix:   '.',
       errConsent:      'Vink het privacy-vakje aan om verder te gaan.',
+      errPhone:        'Dit lijkt geen geldig telefoonnummer. Controleer het even — je krijgt het antwoord via WhatsApp.',
       nicheHooks: {
         dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
         real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
@@ -247,6 +248,7 @@ module.exports = async function handler(req, res) {
       consentLink:     'politique de confidentialité',
       consentSuffix:   '.',
       errConsent:      'Cochez la case de confidentialité pour continuer.',
+      errPhone:        "Ce numéro ne semble pas valide. Vérifiez-le — la réponse arrive via WhatsApp.",
       nicheHooks: {
         dentist:     "Je vous aide volontiers avec vos questions sur vos dents ou un traitement.",
         real_estate: "Je vous aide volontiers, que vous cherchiez une maison ou que vous souhaitiez en vendre une.",
@@ -290,6 +292,7 @@ module.exports = async function handler(req, res) {
       consentLink:     'privacy policy',
       consentSuffix:   '.',
       errConsent:      'Tick the privacy box to continue.',
+      errPhone:        'That does not look like a valid phone number. Please check it — the reply comes via WhatsApp.',
       nicheHooks: {
         dentist:     'I’m happy to help you with any dental questions or treatments.',
         real_estate: 'I’m happy to help, whether you’re looking to buy or sell a property.',
@@ -526,7 +529,12 @@ module.exports = async function handler(req, res) {
     transition: border-color .15s, box-shadow .15s;
   }
   input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-faint); }
-  input::placeholder { color: #666666; }
+  /* #666666 gaf 2,74:1 op deze invulvelden -- ruim onder de 4,5:1 die je nodig
+     hebt om vlot te lezen. En juist hier staat het voorbeeld van het formaat
+     ("0478 12 34 56"), dus de aanwijzing die iemand nodig heeft om zijn nummer
+     goed in te tikken was de slechtst leesbare tekst van het scherm.
+     #909090 haalt 4,92:1 en blijft duidelijk lichter dan de ingevulde tekst. */
+  input::placeholder { color: #909090; }
 
   button {
     width: 100%; margin-top: 18px;
@@ -583,8 +591,17 @@ module.exports = async function handler(req, res) {
     width: 18px; height: 18px; cursor: pointer;
     accent-color: var(--brand);
   }
+  /* De toestemmingsregel is een ZIN, geen veldlabel. Hij erft van label{}
+     hierboven text-transform:uppercase, letter-spacing en vetdruk -- prima voor
+     "JE WHATSAPP NUMMER" van drie woorden, slecht voor drie regels lopende
+     tekst. En dit is nou net de zin die juridisch telt: als iemand ergens
+     akkoord op geeft, hoort die zin het makkelijkst leesbare op het scherm te
+     zijn, niet het moeilijkste. */
   .consent-text {
     font-size: 12px; line-height: 1.5; color: #999999;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
   }
   .consent-text a { color: var(--brand); text-decoration: underline; }
   .consent-text a:hover { opacity: .8; }
@@ -665,10 +682,10 @@ module.exports = async function handler(req, res) {
   <!-- Form (default visible) -->
   <div class="form-area" id="form">
     <label for="naam">${escHtml(t.labelName)}</label>
-    <input id="naam" type="text" placeholder="${escHtml(t.placeholderName)}" autocomplete="name">
+    <input id="naam" type="text" placeholder="${escHtml(t.placeholderName)}" autocomplete="name" required>
 
     <label for="tel">${escHtml(t.labelPhone)}</label>
-    <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel" inputmode="tel">
+    <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel" inputmode="tel" required>
 
     <label class="consent-row" for="consent">
       <input id="consent" type="checkbox">
@@ -728,6 +745,7 @@ var I18N = {
   errMissingTail: '${escJs(t.errMissingTail)}',
   errGeneric:     '${escJs(t.errGeneric)}',
   errConsent:     '${escJs(t.errConsent)}',
+  errPhone:       '${escJs(t.errPhone)}',
   loading:        '${escJs(t.loading)}',
   btn:            '${escJs(t.btn)}',
   btnSuffix:      '${escJs(t.btnSuffix)}'
@@ -754,6 +772,22 @@ btn.addEventListener('click', function() {
     err.style.display = 'block';
     return;
   }
+  /* Een typefout in het nummer betekent dat deze lead NOOIT antwoord krijgt --
+     het hele product levert via WhatsApp. Dat is geen schoonheidsfoutje maar
+     een verloren klant, en de makelaar merkt het niet eens.
+     Bewust ruim: cijfers, spaties, punten, streepjes, haakjes en een +
+     mogen allemaal. Er wordt alleen gekeken of er genoeg CIJFERS overblijven
+     om uberhaupt een nummer te kunnen zijn -- 8 tot 15, zoals de ITU-norm.
+     Streng valideren op Belgische vormen zou buitenlandse leads weigeren, en
+     die zijn juist waardevol. */
+  var cijfers = phone.replace(/[^0-9]/g, '');
+  if (cijfers.length < 8 || cijfers.length > 15) {
+    err.textContent   = I18N.errPhone;
+    err.style.display = 'block';
+    document.getElementById('tel').focus();
+    return;
+  }
+
   if (consent && !consent.checked) {
     err.textContent   = I18N.errConsent;
     err.style.display = 'block';
