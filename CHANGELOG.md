@@ -14,7 +14,51 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
-_Niets. Alles hieronder draait live._
+### De Pipeline liep 205 pixels buiten beeld
+
+Op een scherm van 1440 breed was de kolom met je kanbanbord 1420 breed én stond
+hij 220 naar rechts. Alles voorbij 1440 viel weg: de laatste pipelinekolom
+("Verloren"), en rechtsboven de bel en de knop voor licht/donker. Niet weg te
+scrollen ook — de pagina verbergt wat buiten beeld valt.
+
+De oorzaak is een klassieke: een flex-kolom mag standaard niet kleiner worden
+dan zijn inhoud. Het bord is breder dan het scherm, dus in plaats van dat het
+bord zelf ging schuiven, groeide de hele pagina mee. Nu mag de kolom krimpen en
+schuift het bord, zoals bedoeld.
+
+### Het registratieformulier stond half in het Engels
+
+"First name", "Last name", twee keer "Optional", en bij een te kort wachtwoord
+"Your password must contain 15 or more characters." — op precies het scherm
+waar een makelaar voor het eerst met Helvaro kennismaakt. Nu Nederlands. Het
+aantal tekens komt uit de instelling zelf, dus die melding blijft kloppen als
+je die regel ooit wijzigt.
+
+### Je wachtwoordmanager vulde het verkeerde veld in
+
+De oude velden voor e-mail en wachtwoord staan nog in de pagina als vangnet voor
+als de inlogaanbieder eruit ligt. Ze waren onzichtbaar, maar droegen wél de
+kenmerken waar een wachtwoordmanager op mikt. Die vulde en bewaarde dus in
+velden die nooit verstuurd werden — het bekende "mijn wachtwoordmanager doet
+niets op deze site". Ze staan nu uit zolang het gewone inlogscherm er is, en
+gaan aan zodra het vangnet nodig is.
+
+### Vensters houden de focus vast
+
+Het venster om credits bij te kopen liet je met Tab dwars door de pagina
+erachter lopen en ging niet dicht met Escape. Er is nu één gedeelde regeling
+voor: de focus gaat het venster in, blijft erin, Escape sluit, en daarna staat
+je cursor terug op de knop waarmee je het opende.
+
+### Kleinere dingen
+
+- Het detailpaneel stond buiten beeld, maar zijn knoppen deden nog mee met Tab —
+  op elke pagina, ook op het inlogscherm. Nu echt weg als het dicht is.
+- De bolletjes onder de diavoorstelling waren 4 pixels hoog om aan te tikken.
+  Nu 24, zonder dat je er iets van ziet. Hetzelfde voor het kruisje van een
+  melding.
+- Kon de prijs voor bijkopen niet opgehaald worden, dan stond er een kop met
+  niets eronder. Nu staat er wat er aan de hand is.
 
 ---
 

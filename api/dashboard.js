@@ -527,6 +527,16 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 .main-content {
   flex: 1;
+  /* Zonder dit loopt de Pipeline buiten beeld. Een flex-kind heeft standaard
+     min-width:auto en kan dus niet kleiner worden dan zijn INHOUD. Het
+     kanbanbord is breder dan het scherm, dus in plaats van dat het bord zelf
+     schuift (het heeft overflow-x:auto) groeide deze kolom mee: 1420px bij een
+     venster van 1440 met 220px zijbalk, oftewel 205px die je met geen enkele
+     scrollbeweging kon bereiken. Weg waren de laatste pipelinekolom en, in de
+     kopbalk, de bel en de themaschakelaar.
+     min-width:0 geeft de kolom toestemming om te krimpen; pas dan doet de
+     overflow-x op het bord waar hij voor bedoeld is. */
+  min-width: 0;
   margin-left: 220px;
   min-height: 100vh;
   display: flex;
@@ -536,6 +546,8 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 .page-content {
   flex: 1;
+  /* Zelfde reden als bij .main-content hierboven: ook dit is een flex-kind. */
+  min-width: 0;
   padding: 24px 28px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1441,16 +1453,25 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   display: flex;
   gap: 6px;
   justify-content: center;
-  margin-top: 20px;
+  align-items: center;
+  /* De knoppen zijn nu 24px hoog in plaats van 4; de marge compenseert dat,
+     zodat de rij optisch op dezelfde plek blijft staan. */
+  margin-top: 10px;
   position: relative;
   z-index: 1;
 }
 
+/* Het streepje is 4px hoog, en dat is als aanraakdoel te klein (de richtlijn
+   is 24x24). Het streepje zelf laten we met rust -- het hoort een streepje te
+   zijn -- maar de KNOP eromheen krijgt hoogte via padding, en het streepje
+   wordt getekend met een achtergrond die alleen het midden vult. Zo verandert
+   er niets aan wat je ziet en alles aan wat je kunt raken. */
 .brand-dot {
   width: 20px;
-  height: 4px;
+  height: 24px;
+  padding: 0;
   border-radius: 2px;
-  background: var(--border);
+  background: linear-gradient(var(--border), var(--border)) center / 20px 4px no-repeat;
   border: none;
   cursor: pointer;
   transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
@@ -1458,7 +1479,7 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 button.brand-dot { border: none; padding: 0; }
 
 .brand-dot.active {
-  background: var(--accent);
+  background: linear-gradient(var(--accent), var(--accent)) center / 36px 4px no-repeat;
   width: 36px;
 }
 
@@ -4333,11 +4354,29 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
-  transition: transform var(--dur-enter) var(--ease-out);
+  /* Buiten beeld schuiven verbergt het paneel voor het OOG, niet voor de rest.
+     Zonder de regel hieronder bleef het display:flex, visibility:visible en
+     opacity:1, en dus bleven zijn knoppen (sluiten, nummer kopieren) gewoon in
+     de tabvolgorde staan -- op ELKE pagina, ook op het inlogscherm, waar je met
+     Tab in een paneel belandde dat niemand kan zien.
+
+     visibility:hidden haalt het uit de tabvolgorde en bij schermlezers weg, en
+     is animeerbaar: door het mee te laten lopen met dezelfde duur blijft de
+     uitschuif-animatie zichtbaar in plaats van halverwege te verspringen. */
+  visibility: hidden;
+  transition: transform var(--dur-enter) var(--ease-out),
+              visibility 0s linear var(--dur-enter);
   overflow: hidden;
 }
 
-.detail-panel.visible { transform: translateX(0); }
+.detail-panel.visible {
+  transform: translateX(0);
+  visibility: visible;
+  /* Bij het OPENEN moet visibility meteen aan, anders schuift er een
+     onzichtbaar paneel in beeld. Vandaar hier geen vertraging. */
+  transition: transform var(--dur-enter) var(--ease-out),
+              visibility 0s linear 0s;
+}
 
 .panel-header {
   padding: 24px 24px 20px;
@@ -5367,7 +5406,15 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   cursor: pointer;
   color: var(--text-muted);
   font-size: 14px;
-  padding: 2px;
+  /* Was 16x19 met padding:2px. Een kruisje om een melding weg te klikken is
+     precies iets wat je haastig aantikt; 24x24 is het minimum waarop dat
+     betrouwbaar lukt. Het kruisje zelf blijft even groot. */
+  padding: 0;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: color 0.2s;
   line-height: 1;
 }
@@ -8623,7 +8670,7 @@ ${cmd.css}
         <div id="login-form-wrap">
         <div class="form-group">
           <label class="form-label" for="login-email">E-mailadres</label>
-          <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.nl" autocomplete="username">
+          <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.be" autocomplete="username">
         </div>
         <div class="form-group">
           <label class="form-label" for="login-password">Wachtwoord</label>
@@ -11944,8 +11991,17 @@ var CLERK_NL = {
   dividerText: 'of',
   formFieldLabel__emailAddress: 'E-mailadres',
   formFieldLabel__password: 'Wachtwoord',
+  /* Het registratieformulier vraagt ook naar een naam. Zonder deze sleutels
+     stond er "First name", "Last name" en twee keer "Optional" in een verder
+     Nederlands scherm -- op precies de pagina waar een Vlaamse makelaar voor
+     het eerst kennismaakt met Helvaro. */
+  formFieldLabel__firstName: 'Voornaam',
+  formFieldLabel__lastName: 'Achternaam',
   formFieldInputPlaceholder__emailAddress: 'naam@bedrijf.be',
   formFieldInputPlaceholder__password: 'Je wachtwoord',
+  formFieldInputPlaceholder__firstName: 'Voornaam',
+  formFieldInputPlaceholder__lastName: 'Achternaam',
+  formFieldHintText__optional: 'Optioneel',
   formButtonPrimary: 'Doorgaan',
   footerActionLink__useAnotherMethod: 'Andere manier proberen',
   backButton: 'Terug',
@@ -11963,6 +12019,15 @@ var CLERK_NL = {
   unstable__errors: {
     form_password_incorrect: 'Verkeerd wachtwoord. Probeer het opnieuw.',
     form_identifier_not_found: 'We kennen dit e-mailadres niet.',
+    /* Deze stond in het Engels op het scherm ("Your password must contain 15
+       or more characters."). Het getal komt uit de wachtwoordregels in het
+       Clerk-dashboard, dus het staat hier bewust NIET als los cijfer in de
+       tekst: {{length}} vult Clerk zelf in, en dan blijft de melding kloppen
+       als die regel ooit verandert. */
+    form_password_length_too_short: 'Je wachtwoord moet minstens {{length}} tekens lang zijn.',
+    form_identifier_exists: 'Er bestaat al een account met dit e-mailadres.',
+    form_param_format_invalid__email_address: 'Dit lijkt geen geldig e-mailadres.',
+    form_param_nil: 'Dit veld is verplicht.',
   },
 };
 
@@ -11989,6 +12054,25 @@ function skeletWeg() {
 /* Het eigen formulier tonen of verbergen -- op EEN plek, zodat "terugkomen"
    even makkelijk is als "weggaan". Dat het maar een kant op ging, is precies
    waarom een mislukte wissel een leeg scherm opleverde. */
+/* De oude e-mail/wachtwoord-velden staan nog in de pagina als vangnet voor het
+   geval Clerk niet laadt. Zolang Clerk WEL staat zijn ze onzichtbaar, en dat is
+   precies het probleem: ze dragen autocomplete="username" en
+   "current-password", en dat is exact waar een wachtwoordmanager op mikt. Die
+   vult of bewaart dan in velden die nooit verstuurd worden -- het klassieke
+   "mijn wachtwoordmanager doet niets op deze site".
+
+   Een uitgeschakeld veld slaat een wachtwoordmanager over. Uitschakelen doen we
+   daarom op het moment dat Clerk echt gemonteerd is, en niet in de HTML: staat
+   Clerk helemaal uit, dan komt dit nooit langs en werkt het klassieke formulier
+   zoals altijd. Aanzetten gebeurt in eigenFormulier(), waar elk pad langskomt
+   dat het formulier weer toont. */
+function oudeVeldenActief(actief) {
+  ['login-email', 'login-password'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = !actief;
+  });
+}
+
 function eigenFormulier(zichtbaar) {
   var form = document.getElementById('login-form-wrap');
   var wel  = document.querySelector('.login-welcome');
@@ -12001,6 +12085,7 @@ function eigenFormulier(zichtbaar) {
      display terug op "wat de CSS zegt", en de CSS zegt: verborgen. Precies het
      lege paneel dat het vangnet moest voorkomen. */
   if (zichtbaar) wachtOpClerk(false);
+  oudeVeldenActief(!!zichtbaar);
   if (form) form.style.display = zichtbaar ? '' : 'none';
   // Clerk's kaart heeft zijn eigen titel; die van ons zou de tweede kop op
   // hetzelfde paneel zijn die ongeveer hetzelfde zegt.
@@ -12163,6 +12248,7 @@ function mountClerkSignIn(clerk) {
   if (!host) return;
   try {
     clerk.mountSignIn(host, CLERK_APPEARANCE);
+    oudeVeldenActief(false);
     host.dataset.mounted = 'signin';
     zetModus('inloggen');
     setClerkToggle('signin');
@@ -12178,6 +12264,7 @@ function mountClerkSignUp(clerk) {
   if (!host) return;
   try {
     clerk.mountSignUp(host, CLERK_APPEARANCE);
+    oudeVeldenActief(false);
     host.dataset.mounted = 'signup';
     zetModus('registreren');
     setClerkToggle('signup');
@@ -20302,6 +20389,72 @@ function euroBonFmt(n) {
   return x.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/* ── Toetsenbord in een dialoogvenster ───────────────────────────────────────
+   Een venster met role="dialog" en aria-modal="true" BELOOFT iets: dat de
+   focus erin zit en dat Escape het sluit. Het koopvenster deed geen van beide
+   -- de focus bleef op <body> staan, Tab liep achter het venster langs door de
+   pagina eronder, en Escape deed niets. Voor wie met een toetsenbord of een
+   schermlezer werkt is dat geen detail: je opent iets en staat er buiten.
+
+   Bewust één helper voor alle vensters. De wizard sloot al met Escape en het
+   creditvenster ook, elk met eigen code -- drie vensters, drie gedragingen.
+   Wie hier een vierde bijzet, krijgt het goede gedrag vanzelf. */
+var _modalVorigeFocus = null;
+var _modalToetsHandler = null;
+
+function modalFocusbaar(root) {
+  return [].slice.call(root.querySelectorAll(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),'
+    + 'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+  )).filter(function (el) {
+    return el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement;
+  });
+}
+
+/**
+ * @param {HTMLElement} venster  het element met role="dialog"
+ * @param {function} sluit       hoe dit venster zichzelf sluit
+ */
+function modalToetsenbord(venster, sluit) {
+  if (!venster) return;
+  _modalVorigeFocus = document.activeElement;
+
+  var eerste = modalFocusbaar(venster)[0];
+  /* Naar het venster zelf als er niets focusbaars in staat: dan hoort een
+     schermlezer tenminste de titel in plaats van de pagina erachter. */
+  if (eerste) eerste.focus();
+  else { venster.setAttribute('tabindex', '-1'); venster.focus(); }
+
+  _modalToetsHandler = function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); sluit(); return; }
+    if (e.key !== 'Tab') return;
+    var lijst = modalFocusbaar(venster);
+    if (!lijst.length) { e.preventDefault(); return; }
+    var eerste2 = lijst[0], laatste = lijst[lijst.length - 1];
+    /* De cirkel rondmaken: voorbij het laatste element weer naar het eerste, en
+       met Shift de andere kant op. Zonder dit loopt Tab de pagina achter het
+       venster in, waar niets zichtbaar is maar wel alles bereikbaar. */
+    if (!e.shiftKey && document.activeElement === laatste) { e.preventDefault(); eerste2.focus(); }
+    else if (e.shiftKey && document.activeElement === eerste2) { e.preventDefault(); laatste.focus(); }
+    else if (!venster.contains(document.activeElement)) { e.preventDefault(); eerste2.focus(); }
+  };
+  document.addEventListener('keydown', _modalToetsHandler, true);
+}
+
+function modalToetsenbordUit() {
+  if (_modalToetsHandler) {
+    document.removeEventListener('keydown', _modalToetsHandler, true);
+    _modalToetsHandler = null;
+  }
+  /* De focus terug waar hij vandaan kwam. Anders staat hij na het sluiten weer
+     op <body> en begint Tab bovenaan de pagina, ver van de knop die je net
+     gebruikte. */
+  if (_modalVorigeFocus && document.contains(_modalVorigeFocus)) {
+    try { _modalVorigeFocus.focus(); } catch (e) {}
+  }
+  _modalVorigeFocus = null;
+}
+
 function openKoopModal() {
   koopState.bedrag = 100;
   document.getElementById('koop-bedrag').value = 100;
@@ -20313,6 +20466,7 @@ function openKoopModal() {
   if (tegels && !koopState.presets.length) tegels.innerHTML = '';
   document.getElementById('koop-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  modalToetsenbord(document.getElementById('koop-modal'), closeKoopModal);
   koopHerbereken();
 }
 
@@ -20342,6 +20496,7 @@ function koopMarkeerTegel() {
 function closeKoopModal() {
   document.getElementById('koop-overlay').classList.remove('open');
   document.body.style.overflow = '';
+  modalToetsenbordUit();
 }
 
 function koopKiesPreset(n) {
@@ -20386,6 +20541,18 @@ async function koopOfferteOphalen() {
   } catch (e) {
     credits.textContent = '—';
     detail.textContent = 'De prijs kon niet opgehaald worden.';
+    /* De tegels komen van de server. Lukt dat niet, dan stond er een kale kop
+       "Hoeveel wil je bijkopen?" met niets eronder -- dat leest als een kapot
+       venster in plaats van als een storing. Alleen invullen als er nog nooit
+       tegels geweest zijn: een eerdere geslaagde lijst laten staan is beter dan
+       hem weggooien om een hapering. */
+    var tegelsEl = document.getElementById('koop-tegels');
+    if (tegelsEl && !koopState.presets.length) {
+      tegelsEl.innerHTML = '<div class="koop-hint" style="grid-column:1/-1">'
+        + 'De bedragen konden niet opgehaald worden. Vul hieronder zelf een bedrag in.</div>';
+    }
+    var rijenEl = document.getElementById('koop-rijen');
+    if (rijenEl) rijenEl.innerHTML = '';
     return;
   }
 
