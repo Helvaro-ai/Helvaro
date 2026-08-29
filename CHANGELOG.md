@@ -31,11 +31,20 @@ Daar is nu een fundament voor, plus een eerste stuk vertaald:
   kantoor kan Franstalige leads bedienen met een Nederlands dashboard. Dat zijn
   twee aparte instellingen en dat blijft zo.
 
-> **Eerlijk over wat er nog niet is.** Het dashboard telt ongeveer 1.200
-> zinnen; daarvan zijn er nu ruim 70 vertaald — het inlogscherm, de navigatie en de
-> meldingen. De rest is nog Nederlands, ook als je Frans kiest. Het fundament
-> ligt er (een taal toevoegen is nu alleen nog data), maar de overige pagina's
-> moeten stuk voor stuk langs. Ik doe ze in volgorde van hoe vaak je ze ziet.
+> **Waar het nu staat.** Vertaald: het inlogscherm, de navigatie, het dashboard,
+> Instellingen, Profiel, Exports, Analyse, Kalender, Panden, Resultaten,
+> Facturatie, Pipeline, Gesprekken, AI Persoonlijkheid, AI-beeld en de
+> pushmeldingen — ruim 340 zinnen in vier talen.
+>
+> **Wat nog Nederlands blijft**, ook als je Frans kiest:
+> de stap-voor-stap installatiegidsen op de Formulier-pagina (WordPress,
+> Shopify, Wix, Squarespace), en teksten die het scherm met JavaScript opbouwt
+> (toasts, tabelrijen, foutmeldingen). De gidsen zijn opgeknipt in losse
+> stukjes tussen code-blokjes; die los vertalen levert kromme zinnen op in het
+> Frans en Duits. Dat wordt herschrijven, geen vertalen.
+>
+> De back-office (Founder, Klanten, Kosten) blijft met opzet Nederlands: dat
+> zijn jouw eigen schermen.
 
 ---
 

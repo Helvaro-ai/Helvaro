@@ -9870,31 +9870,31 @@ ${faro.navCta}
     <main class="page-content page" id="page-ai-beeld">
       <div class="ap-wrap">
         <div class="ap-hero" style="margin-bottom:18px">
-          <h2 class="ap-hero-title">AI Vastgoedbeelden</h2>
+          <h2 class="ap-hero-title">${T('pi.title')}</h2>
           <p class="ap-hero-sub">Upload een foto van een pand en laat de AI een visualisatie genereren in een gekozen stijl. Handig voor listings en sociale media.</p>
         </div>
 
         <div class="ap-field">
-          <label class="ap-label">Foto van het pand<span class="ap-label-hint">PNG, JPG of WebP — grote foto's worden automatisch verkleind</span></label>
+          <label class="ap-label">${T('pi.photo')}<span class="ap-label-hint">${T('pi.photo.h')}</span></label>
           <div class="pi-dropzone" id="pi-dropzone" onclick="document.getElementById('pi-file-input').click()">
             <div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder">
               <div style="font-size:26px;line-height:1">+</div>
-              <div><b>Klik om een foto te kiezen</b><br>of sleep een bestand hierheen</div>
+              <div><b>${T('pi.pick')}</b><br>${T('pi.drag')}</div>
             </div>
           </div>
           <input type="file" id="pi-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePiFile(this)">
-          <div class="ap-hint"><button type="button" class="ap-btn-link" id="pi-remove-btn" style="display:none" onclick="removePiUpload()">Foto verwijderen</button></div>
+          <div class="ap-hint"><button type="button" class="ap-btn-link" id="pi-remove-btn" style="display:none" onclick="removePiUpload()">${T('pi.removePhoto')}</button></div>
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">Stijl</label>
+          <label class="ap-label">${T('pi.style')}</label>
           <div class="pi-style-grid" id="pi-style-grid">
-            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Stijlen laden...</div>
+            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('pi.styles.load')}</div>
           </div>
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">Type ruimte <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer). Ook voor buiten: gevel, tuin, terras</span></label>
+          <label class="ap-label">${T('pi.room')} <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer). Ook voor buiten: gevel, tuin, terras</span></label>
           <div class="pi-roomtype-grid" id="pi-roomtype-grid">
             <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
           </div>
@@ -9904,44 +9904,44 @@ ${faro.navCta}
              "Geavanceerd" pattern, so foto -> stijl -> genereren blijft twee klikken.
              Elke sub-optie hieronder heeft "Automatisch" als standaard. -->
         <details class="pi-advanced-details" id="pi-advanced-details">
-          <summary>Meer opties (meubels, muren, vloer, sfeer, renovatiediepte)</summary>
+          <summary>${T('pi.more')}</summary>
           <div class="pi-advanced-body">
 
             <div class="ap-field">
-              <label class="ap-label">Meubels <span class="ap-label-hint">hoeveel inrichting mag de AI tonen</span></label>
+              <label class="ap-label">${T('pi.furniture')} <span class="ap-label-hint">${T('pi.furniture.h')}</span></label>
               <div class="pi-roomtype-grid" id="pi-furniture-grid">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">Muurafwerking <span class="ap-label-hint">optioneel</span></label>
+              <label class="ap-label">${T('pi.walls')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
               <div class="pi-roomtype-grid" id="pi-wallfinish-grid">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
-                <label class="ap-label" style="margin-bottom:6px">Muurkleur <span class="ap-label-hint">gecureerd palet — geen vrij kleurveld, dat botst vaak met het AI-model</span></label>
+                <label class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">gecureerd palet — geen vrij kleurveld, dat botst vaak met het AI-model</span></label>
                 <div class="pi-color-grid" id="pi-wallcolor-grid"></div>
                 <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="Optionele nuance, bv. 'met een accentwand'">
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">Vloer <span class="ap-label-hint">optioneel</span></label>
+              <label class="ap-label">${T('pi.floor')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
               <div class="pi-roomtype-grid" id="pi-floor-grid">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">Lichtsfeer <span class="ap-label-hint">optioneel</span></label>
+              <label class="ap-label">${T('pi.light')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
               <div class="pi-roomtype-grid" id="pi-lighting-grid">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">Renovatiediepte <span class="ap-label-hint">hoe ver mag de visualisatie gaan</span></label>
+              <label class="ap-label">${T('pi.reno')} <span class="ap-label-hint">${T('pi.reno.h')}</span></label>
               <div class="pi-roomtype-grid" id="pi-renovation-grid">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
@@ -9955,36 +9955,36 @@ ${faro.navCta}
         </details>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">Extra instructies <span class="ap-label-hint">optioneel</span></label>
+          <label class="ap-label">${T('pi.extra')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
           <textarea id="pi-custom-prompt" class="ap-textarea" rows="2" maxlength="500" placeholder="Bv: behoud de open haard, gebruik warmere kleuren"></textarea>
         </div>
 
         <div class="ap-actions" style="margin-top:14px">
-          <button class="ap-btn ap-btn-primary" id="pi-generate-btn" onclick="generatePiImage()">Genereer AI-beeld</button>
+          <button class="ap-btn ap-btn-primary" id="pi-generate-btn" onclick="generatePiImage()">${T('pi.generate')}</button>
         </div>
         <div class="ap-hint" style="margin-top:6px">Tip: je kan de stijl, het kamertype of de instructies aanpassen en opnieuw klikken — dezelfde foto blijft gebruikt totdat je een nieuwe uploadt.</div>
 
         <div class="pi-result-wrap" id="pi-result-wrap" style="display:none">
           <div class="ap-field">
-            <label class="ap-label">Resultaat <span class="ap-label-hint">sleep de schuifregelaar om voor/na te vergelijken</span></label>
+            <label class="ap-label">${T('pi.result')} <span class="ap-label-hint">${T('pi.slider')}</span></label>
             <div class="pi-compare-stage" id="pi-compare-stage">
               <img class="pi-compare-img" id="pi-compare-before" alt="Voor (originele foto)">
               <img class="pi-compare-img pi-compare-after" id="pi-compare-after" alt="Na (AI-visualisatie)">
-              <div class="pi-compare-tag before">Voor</div>
+              <div class="pi-compare-tag before">${T('pi.before')}</div>
               <div class="pi-compare-tag after">Na (AI)</div>
               <div class="pi-compare-handle" id="pi-compare-handle"></div>
-              <input type="range" class="pi-compare-range" id="pi-compare-range" min="0" max="100" value="50" oninput="updatePiCompare(this.value)" aria-label="Sleep om voor en na te vergelijken">
+              <input type="range" class="pi-compare-range" id="pi-compare-range" min="0" max="100" value="50" oninput="updatePiCompare(this.value)" aria-label="${T('pi.dragCompare')}">
             </div>
             <div class="pi-ai-badge">⚠ <span id="pi-result-label"></span></div>
             <div class="pi-result-actions">
-              <button type="button" class="ap-btn ap-btn-secondary" onclick="downloadPiResult()">Download afbeelding</button>
-              <button type="button" class="ap-btn ap-btn-secondary" onclick="downloadPiComparePDF()">Download vergelijking (PDF)</button>
+              <button type="button" class="ap-btn ap-btn-secondary" onclick="downloadPiResult()">${T('pi.download')}</button>
+              <button type="button" class="ap-btn ap-btn-secondary" onclick="downloadPiComparePDF()">${T('pi.downloadPdf')}</button>
             </div>
           </div>
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">Eerder gegenereerd</label>
+          <label class="ap-label">${T('pi.earlier')}</label>
           <div id="pi-gallery"><div class="pi-empty">${T('dash.loading')}</div></div>
         </div>
       </div>
@@ -10000,7 +10000,7 @@ ${faro.navCta}
           <div class="ap-welcome-body">
             <div class="ap-welcome-title">Welkom bij Helvaro! Eerst even dit invullen.</div>
             <div class="ap-welcome-sub">
-              Vul minimaal je <b>AI naam</b>, een <b>welkomstbericht</b> en je <b>website</b> of <b>AI-instructies</b> in.
+              Vul minimaal je <b>${T('ap.name')}</b>, een <b>welkomstbericht</b> en je <b>website</b> of <b>AI-instructies</b> in.
               Daarna werkt je AI vanaf de eerste lead. Je kan alles later nog aanpassen.
             </div>
             <div class="ap-welcome-checks" id="ap-welcome-checks"></div>
@@ -10011,15 +10011,15 @@ ${faro.navCta}
           <!-- LEFT: form -->
           <div class="ap-form-col">
             <div class="ap-hero">
-              <h2 class="ap-hero-title">Jouw AI Persoonlijkheid</h2>
-              <p class="ap-hero-sub">Hier bepaal je hoe jouw AI communiceert met leads op WhatsApp. Wijzigingen zijn meteen actief.</p>
+              <h2 class="ap-hero-title">${T('ap.title')}</h2>
+              <p class="ap-hero-sub">${T('ap.sub')}</p>
             </div>
 
             <!-- AI Name -->
             <div class="ap-field">
               <label class="ap-label">
-                AI naam
-                <span class="ap-label-hint">de naam die leads zien in elk bericht</span>
+                ${T('ap.name')}
+                <span class="ap-label-hint">${T('ap.name.hint')}</span>
               </label>
               <input id="ap-name" type="text" class="ap-input" placeholder="Sara De Vos" maxlength="60">
               <div class="ap-hint">Tip: gebruik de naam van een echte medewerker. Leads voelen dat ze met een mens chatten. Laat leeg voor standaard <em>Mathis Willems</em>.</div>
@@ -10028,22 +10028,22 @@ ${faro.navCta}
             <!-- Auto-Reply Template -->
             <div class="ap-field">
               <label class="ap-label">
-                Welkomstbericht
-                <span class="ap-label-hint">eerste WhatsApp dat een lead ontvangt</span>
+                ${T('ap.welcome')}
+                <span class="ap-label-hint">${T('ap.welcome.h')}</span>
               </label>
 
               <!-- Inspiration library: clickable templates -->
               <div class="ap-tpl-wrap">
                 <div class="ap-tpl-header">
-                  <span class="ap-tpl-title">Inspiratie</span>
-                  <span class="ap-tpl-sub">klik een sjabloon om in te vullen</span>
+                  <span class="ap-tpl-title">${T('ap.inspiration')}</span>
+                  <span class="ap-tpl-sub">${T('ap.template')}</span>
                 </div>
                 <div class="ap-tpl-grid" id="ap-tpl-grid"></div>
               </div>
 
               <textarea id="ap-template" class="ap-textarea" rows="3" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?" maxlength="1000"></textarea>
               <div class="ap-hint">
-                Beschikbare placeholders:
+                ${T('ap.placeholders')}
                 <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{naam}')">{naam}</button>
                 <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{bedrijf}')">{bedrijf}</button>
                 <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{ai}')">{ai}</button>
@@ -10055,51 +10055,51 @@ ${faro.navCta}
             <!-- AI Instructions -->
             <div class="ap-field">
               <label class="ap-label">
-                Extra instructies voor de AI
-                <span class="ap-label-hint">tone of voice + do's & don'ts</span>
+                ${T('ap.extra')}
+                <span class="ap-label-hint">${T('ap.extra.h')}</span>
               </label>
 
               <!-- Inspiration library for instructions -->
               <div class="ap-tpl-wrap">
                 <div class="ap-tpl-header">
-                  <span class="ap-tpl-title">Inspiratie</span>
-                  <span class="ap-tpl-sub">klik om aan je instructies toe te voegen</span>
+                  <span class="ap-tpl-title">${T('ap.inspiration')}</span>
+                  <span class="ap-tpl-sub">${T('ap.extra.add')}</span>
                 </div>
                 <div class="ap-tpl-grid" id="ap-instr-grid"></div>
               </div>
 
               <textarea id="ap-instructions" class="ap-textarea" rows="5" placeholder="Bv: Praat informeel. Stuur nooit prijzen via WhatsApp. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon." maxlength="3000"></textarea>
-              <div class="ap-hint">De AI volgt deze regels in elk gesprek. Werkt het beste in korte zinnen.</div>
+              <div class="ap-hint">${T('ap.extra.note')}</div>
             </div>
 
             <!-- AI Learned Patterns — wekelijks automatisch ge-update -->
             <div class="ap-field" id="ap-learned-field" style="display:none">
               <label class="ap-label">
-                Geleerde patronen
-                <span class="ap-label-hint">automatisch ge-update elke maandag o.b.v. afgelopen 7 dagen</span>
+                ${T('ap.learned')}
+                <span class="ap-label-hint">${T('ap.learned.h')}</span>
               </label>
               <textarea id="ap-learned" class="ap-textarea" rows="6" maxlength="1500" style="background:rgba(var(--accent-rgb),0.04);border-color:rgba(var(--accent-rgb),0.25)"></textarea>
               <div class="ap-hint">
                 De AI analyseert wekelijks welke gesprekken het beste werkten en past z'n vragen aan. Je kan dit veld zelf wissen of bewerken.
-                <button type="button" class="ap-chip" onclick="clearLearnedPatterns()" style="margin-left:auto">Wissen</button>
+                <button type="button" class="ap-chip" onclick="clearLearnedPatterns()" style="margin-left:auto">${T('ap.clear')}</button>
               </div>
             </div>
 
             <!-- Website -->
             <div class="ap-field">
               <label class="ap-label">
-                Website
-                <span class="ap-label-hint">de AI gebruikt deze als context</span>
+                ${T('ap.website')}
+                <span class="ap-label-hint">${T('ap.website.h')}</span>
               </label>
               <input id="ap-website" type="url" class="ap-input" placeholder="https://www.bedrijf.be">
-              <div class="ap-hint">De AI leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
+              <div class="ap-hint">${T('ap.website.n')}</div>
             </div>
 
             <!-- Address -->
             <div class="ap-field">
               <label class="ap-label">
-                Adres
-                <span class="ap-label-hint">wordt mee gestuurd bij afspraakbevestiging</span>
+                ${T('ap.address')}
+                <span class="ap-label-hint">${T('ap.address.h')}</span>
               </label>
               <input id="ap-address" type="text" class="ap-input" placeholder="Kerkstraat 12, 9000 Gent">
             </div>
@@ -10112,8 +10112,8 @@ ${faro.navCta}
             <!-- Notifications: WhatsApp number + Email -->
             <div class="ap-field">
               <label class="ap-label">
-                Notificatie WhatsApp-nummer
-                <span class="ap-label-hint">krijgt een ping bij nieuwe + gekwalificeerde leads</span>
+                ${T('ap.notifWa')}
+                <span class="ap-label-hint">${T('ap.notifWa.h')}</span>
               </label>
               <input id="ap-notify-phone" type="tel" class="ap-input" placeholder="+32 466 35 84 27" inputmode="tel" autocomplete="tel" maxlength="30">
               <div class="ap-hint">Internationaal formaat (begint met <code>+32</code> voor België). Leeg = geen WhatsApp ping.</div>
@@ -10121,8 +10121,8 @@ ${faro.navCta}
 
             <div class="ap-field">
               <label class="ap-label">
-                Notificatie e-mail
-                <span class="ap-label-hint">e-mail bij elke gekwalificeerde lead + escalatie</span>
+                ${T('ap.notifMail')}
+                <span class="ap-label-hint">${T('ap.notifMail.h')}</span>
               </label>
               <input id="ap-report-email" type="email" class="ap-input" placeholder="jij@bedrijf.be" inputmode="email" autocomplete="email" maxlength="100">
               <div class="ap-hint">Krijgt direct e-mail wanneer de AI een gekwalificeerde lead doorgeeft of hulp nodig heeft. Leeg = geen e-mail.</div>
@@ -10131,12 +10131,12 @@ ${faro.navCta}
             <!-- Booking Method -->
             <div class="ap-field">
               <label class="ap-label">
-                Wat moet er gebeuren als een lead gekwalificeerd is?
-                <span class="ap-label-hint">kies hoe je de overdracht doet</span>
+                ${T('ap.handover')}
+                <span class="ap-label-hint">${T('ap.handover.h')}</span>
               </label>
               <div class="ap-lang-row">
-                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-in_chat" value="in_chat"> <span>AI boekt direct in WhatsApp</span></label>
-                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>Een collega contacteert ze</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-in_chat" value="in_chat"> <span>${T('ap.hand.wa')}</span></label>
+                <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>${T('ap.hand.call')}</span></label>
               </div>
               <div class="ap-hint" id="ap-booking-hint-in_chat" style="display:none;">De AI vraagt aan de lead welk moment past, stelt een concrete tijd voor, en boekt het na bevestiging direct in je agenda. Geen externe tool nodig. Zorg dat je werkuren ingevuld zijn.</div>
               <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen agenda nodig. Jij krijgt een melding op je notificatie-nummer.</div>
@@ -10145,12 +10145,12 @@ ${faro.navCta}
             <!-- Callback Window (only shown if callback selected) -->
             <div class="ap-field" id="ap-callback-window-wrap" style="display:none;">
               <label class="ap-label">
-                Wanneer contacteer je terug?
-                <span class="ap-label-hint">deze tekst wordt naar de lead gestuurd</span>
+                ${T('ap.callback')}
+                <span class="ap-label-hint">${T('ap.callback.h')}</span>
               </label>
               <input id="ap-callback-window" type="text" class="ap-input" placeholder="binnen 30 minuten" maxlength="100">
               <div class="ap-hint">
-                Voorbeelden:
+                ${T('ap.examples')}
                 <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 30 minuten'">binnen 30 minuten</button>
                 <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 1 uur'">binnen 1 uur</button>
                 <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='vandaag nog'">vandaag nog</button>
@@ -10161,14 +10161,14 @@ ${faro.navCta}
             <!-- Language -->
             <div class="ap-field">
               <label class="ap-label">
-                Taal van je leads
-                <span class="ap-label-hint">bepaalt taal van lead-form + WhatsApp gesprek</span>
+                ${T('ap.lang')}
+                <span class="ap-label-hint">${T('ap.lang.h')}</span>
               </label>
               <select id="ap-lang-select" class="ap-input"></select>
               <div class="ap-hint">Standaardtaal waarin de AI antwoordt, ongeacht wat de lead schrijft (tenzij je hieronder taal-matching aanzet). Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
               <label class="ap-checkbox-row" style="margin-top:14px">
                 <input type="checkbox" id="ap-match-lead-lang">
-                <span>Antwoord in de taal van de lead</span>
+                <span>${T('ap.lang.match')}</span>
               </label>
               <div class="ap-hint">Optioneel. De AI herkent per bericht in welke taal de lead schrijft en antwoordt daarin — met de taal hierboven als terugval wanneer dat onduidelijk is. Handig als je leads in meerdere talen binnenkrijgt (bv. NL, FR, EN in Brussel).</div>
             </div>
@@ -10176,13 +10176,13 @@ ${faro.navCta}
             <!-- Working Hours -->
             <div class="ap-field">
               <label class="ap-label">
-                Werkuren
-                <span class="ap-label-hint">context voor de AI. Gesprek loopt altijd door</span>
+                ${T('ap.hours')}
+                <span class="ap-label-hint">${T('ap.hours.h')}</span>
               </label>
               <input id="ap-hours" type="text" class="ap-input" placeholder="ma-vr 9-18">
               <div class="ap-hint">
                 Format: <span id="ap-hours-format-list"><code>ma-vr 9-18</code>, <code>ma-za 8-20</code>, <code>di-za 10-18</code></span>. De AI is 24/7 actief. Werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
-                Voorbeelden:
+                ${T('ap.examples')}
                 <span id="ap-hours-chips"></span>
               </div>
             </div>
@@ -10190,8 +10190,8 @@ ${faro.navCta}
             <!-- Trust Badges -->
             <div class="ap-field">
               <label class="ap-label">
-                Trust badges onderaan formulier
-                <span class="ap-label-hint">max 3, gescheiden met |</span>
+                ${T('ap.badges')}
+                <span class="ap-label-hint">${T('ap.badges.h')}</span>
               </label>
               <input id="ap-badges" type="text" class="ap-input" placeholder="15 jaar ervaring | ISO-gecertificeerd | Lokaal Gent" maxlength="300">
               <div class="ap-hint">
@@ -10202,8 +10202,8 @@ ${faro.navCta}
             <!-- AI Photo: file picker (with URL fallback) -->
             <div class="ap-field">
               <label class="ap-label">
-                Foto van je AI-persoon
-                <span class="ap-label-hint">PNG / JPG / WebP. Wordt automatisch bijgeknipt</span>
+                ${T('ap.photo')}
+                <span class="ap-label-hint">${T('ap.photo.h')}</span>
               </label>
               <div class="ap-photo-row">
                 <div class="ap-photo-preview" id="ap-photo-preview" aria-label="Voorbeeld AI foto">
@@ -10213,14 +10213,14 @@ ${faro.navCta}
                   <input type="file" id="ap-photo-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePhotoFile(this)">
                   <button type="button" class="ap-btn ap-btn-secondary" onclick="document.getElementById('ap-photo-file').click()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Foto kiezen
+                    ${T('ap.photo.pick')}
                   </button>
-                  <button type="button" class="ap-btn ap-btn-link" id="ap-photo-remove" onclick="removePhoto()" style="display:none">Verwijderen</button>
+                  <button type="button" class="ap-btn ap-btn-link" id="ap-photo-remove" onclick="removePhoto()" style="display:none">${T('ap.remove')}</button>
                 </div>
               </div>
               <input id="ap-photo" type="hidden">
               <details class="ap-photo-advanced">
-                <summary>Geavanceerd: externe URL plakken</summary>
+                <summary>${T('ap.photo.adv')}</summary>
                 <input id="ap-photo-url" type="url" class="ap-input" placeholder="https://..." oninput="handlePhotoUrlInput(this)">
                 <div class="ap-hint">Optioneel. Link naar een foto die je elders host (bv. CDN). Wordt overschreven zodra je een bestand kiest.</div>
               </details>
@@ -10229,8 +10229,8 @@ ${faro.navCta}
             <!-- Brand Color -->
             <div class="ap-field">
               <label class="ap-label">
-                Brand-kleur
-                <span class="ap-label-hint">accenten op je lead-formulier</span>
+                ${T('ap.color')}
+                <span class="ap-label-hint">${T('ap.color.h')}</span>
               </label>
               <div class="ap-color-row">
                 <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E8D7B1" maxlength="7">
@@ -10242,8 +10242,8 @@ ${faro.navCta}
             <!-- Form Intro Message -->
             <div class="ap-field">
               <label class="ap-label">
-                Tekst op de lead-form (optioneel)
-                <span class="ap-label-hint">eigen welkomstboodschap</span>
+                ${T('ap.formText')}
+                <span class="ap-label-hint">${T('ap.formText.h')}</span>
               </label>
               <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey ik help je graag. Laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
               <div class="ap-hint">Verschijnt als chat-bubbel bovenaan je lead-form (onder de avatar). Leeg = automatische sector-tekst. Placeholders: <code>{ai}</code>, <code>{bedrijf}</code>.</div>
@@ -10253,9 +10253,9 @@ ${faro.navCta}
             <div class="ap-actions">
               <button class="ap-btn ap-btn-primary" id="ap-save-btn" onclick="saveAiPersona()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                Opslaan
+                ${T('ap.save')}
               </button>
-              <span class="ap-saved-mark" id="ap-saved-mark">Opgeslagen</span>
+              <span class="ap-saved-mark" id="ap-saved-mark">${T('ap.saved')}</span>
             </div>
           </div>
 
@@ -10269,7 +10269,7 @@ ${faro.navCta}
                     <div class="ap-phone-avatar" id="ap-preview-avatar">M</div>
                     <div class="ap-phone-info">
                       <div class="ap-phone-name" id="ap-preview-name">Mathis Willems</div>
-                      <div class="ap-phone-status">online</div>
+                      <div class="ap-phone-status">${T('ap.online')}</div>
                     </div>
                   </div>
                   <div class="ap-phone-msgs">
@@ -10281,13 +10281,13 @@ ${faro.navCta}
 
               <!-- Test send -->
               <div class="ap-test-card">
-                <div class="ap-test-title">Stuur jezelf een test</div>
-                <p class="ap-test-sub">Voer je telefoonnummer in. Je krijgt het welkomstbericht via WhatsApp.</p>
+                <div class="ap-test-title">${T('ap.test')}</div>
+                <p class="ap-test-sub">${T('ap.test.h')}</p>
                 <div class="ap-test-row">
                   <input id="ap-test-phone" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0466 35 84 27">
                   <button class="ap-btn" id="ap-test-btn" onclick="sendTestMessage()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    Test
+                    ${T('ap.test.btn')}
                   </button>
                 </div>
                 <div class="ap-test-result" id="ap-test-result"></div>
@@ -10296,7 +10296,7 @@ ${faro.navCta}
               <!-- Form Link compact card. Points to dedicated Formulier page -->
               <div class="ap-formlink-card">
                 <div class="ap-test-title">${T('dash.form.title')}</div>
-                <p class="ap-test-sub">Deel deze link via je website, advertenties of socials.</p>
+                <p class="ap-test-sub">${T('ap.share')}</p>
                 <div class="ap-formlink-url-row">
                   <code class="ap-formlink-url" id="ap-formlink-url">—</code>
                   <button class="ap-btn" onclick="copyFormLink()" title="${T('dash.form.copylink')}">
@@ -10427,17 +10427,17 @@ ${faro.navCta}
         <div class="fm-stats">
           <div class="fm-stat-card">
             <div class="fm-stat-num" id="fm-stat-week">—</div>
-            <div class="fm-stat-lbl">Aanvragen deze week</div>
+            <div class="fm-stat-lbl">${T('fm.week')}</div>
             <div class="fm-stat-delta" id="fm-stat-week-delta"></div>
           </div>
           <div class="fm-stat-card">
             <div class="fm-stat-num" id="fm-stat-month">—</div>
-            <div class="fm-stat-lbl">Aanvragen deze maand</div>
+            <div class="fm-stat-lbl">${T('fm.month')}</div>
             <div class="fm-stat-delta" id="fm-stat-month-delta"></div>
           </div>
           <div class="fm-stat-card">
             <div class="fm-stat-num" id="fm-stat-total">—</div>
-            <div class="fm-stat-lbl">Totaal aanvragen</div>
+            <div class="fm-stat-lbl">${T('fm.total')}</div>
             <div class="fm-stat-delta" id="fm-stat-total-sub"></div>
           </div>
           <div class="fm-stat-card">
@@ -10464,25 +10464,25 @@ ${faro.navCta}
             </button>
             <a class="fm-btn" id="fm-open" target="_blank" rel="noopener">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Open in nieuw tabblad
+              ${T('fm.openTab')}
             </a>
           </div>
           <!-- Quick share -->
           <div class="fm-share-row">
-            <span class="fm-share-lbl">Snel delen:</span>
-            <a class="fm-share-btn" id="fm-share-wa"     target="_blank" rel="noopener" title="Deel via WhatsApp">
+            <span class="fm-share-lbl">${T('fm.quickShare')}</span>
+            <a class="fm-share-btn" id="fm-share-wa"     target="_blank" rel="noopener" title="${T('fm.viaWa')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.4 0-.6.1-.2.3-.7.9-.9 1.1-.1.1-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4 0-.7.3-.3.3-.9.9-.9 2.2 0 1.3.9 2.5 1 2.7.1.1 1.8 2.7 4.3 3.7.6.2 1.1.4 1.4.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.6 1.4 5.1L2 22l5-1.3c1.4.8 3.1 1.3 5 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18c-1.7 0-3.3-.5-4.6-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.8 14.9 3.2 13.5 3.2 12c0-4.8 4-8.8 8.8-8.8s8.8 4 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
               WhatsApp
             </a>
-            <a class="fm-share-btn" id="fm-share-email"   title="Deel via e-mail">
+            <a class="fm-share-btn" id="fm-share-email"   title="${T('fm.viaMail')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              E-mail
+              ${T('fm.email')}
             </a>
-            <a class="fm-share-btn" id="fm-share-sms"     title="Deel via SMS">
+            <a class="fm-share-btn" id="fm-share-sms"     title="${T('fm.viaSms')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               SMS
             </a>
-            <a class="fm-share-btn" id="fm-share-linkedin" target="_blank" rel="noopener" title="Deel op LinkedIn">
+            <a class="fm-share-btn" id="fm-share-linkedin" target="_blank" rel="noopener" title="${T('fm.viaLi')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
               LinkedIn
             </a>
@@ -10495,61 +10495,61 @@ ${faro.navCta}
           <!-- Option 1: Widget script (recommended) -->
           <div class="fm-option-card">
             <div class="fm-option-hdr">
-              <span class="fm-option-rec">Aanbevolen</span>
-              <div class="fm-option-title">Drijvende WhatsApp-knop op je site</div>
+              <span class="fm-option-rec">${T('fm.recommended')}</span>
+              <div class="fm-option-title">${T('fm.float')}</div>
               <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-widget" aria-label="Insluitcode voor de widget" readonly rows="3"></textarea>
+            <textarea class="fm-code" id="fm-code-widget" aria-label="${T('fm.embedCode')}" readonly rows="3"></textarea>
             <div class="fm-code-actions">
               <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-widget')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Kopieer code
+                ${T('fm.copyCode')}
               </button>
               <button class="fm-btn fm-btn-full" onclick="fmEmailDev('widget')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                Stuur naar developer
+                ${T('fm.toDev')}
               </button>
             </div>
             <div class="fm-instructions">
-              <strong>Hoe te plakken:</strong> open de HTML van je website, plak deze regel net vóór de afsluitende <code>&lt;/body&gt;</code> tag. Werkt op WordPress, Shopify, Wix, Squarespace en elke andere site.
+              <strong>${T('fm.howPaste')}</strong> open de HTML van je website, plak deze regel net vóór de afsluitende <code>&lt;/body&gt;</code> tag. Werkt op WordPress, Shopify, Wix, Squarespace en elke andere site.
             </div>
           </div>
 
           <!-- Option 2: Iframe embed -->
           <div class="fm-option-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">Inbouwen als pagina-onderdeel</div>
+              <div class="fm-option-title">${T('fm.inline')}</div>
               <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-iframe" aria-label="Insluitcode voor een iframe" readonly rows="3"></textarea>
+            <textarea class="fm-code" id="fm-code-iframe" aria-label="${T('fm.iframe')}" readonly rows="3"></textarea>
             <div class="fm-code-actions">
               <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-iframe')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Kopieer code
+                ${T('fm.copyCode')}
               </button>
               <button class="fm-btn fm-btn-full" onclick="fmEmailDev('iframe')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                Stuur naar developer
+                ${T('fm.toDev')}
               </button>
             </div>
             <div class="fm-instructions">
-              <strong>Hoe te plakken:</strong> plak op de plek waar je het formulier wil tonen. Meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
+              <strong>${T('fm.howPaste')}</strong> plak op de plek waar je het formulier wil tonen. Meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
             </div>
           </div>
 
           <!-- Option 3: Direct link -->
           <div class="fm-option-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">Alleen de link</div>
+              <div class="fm-option-title">${T('fm.linkOnly')}</div>
               <p class="fm-option-sub">Voor advertenties, e-mail handtekening, socials of WhatsApp-bio. Klant opent een eigen pagina met enkel het formulier.</p>
             </div>
-            <textarea class="fm-code" id="fm-code-link" aria-label="Directe link naar je formulier" readonly rows="1"></textarea>
+            <textarea class="fm-code" id="fm-code-link" aria-label="${T('fm.directLink')}" readonly rows="1"></textarea>
             <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-link')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               ${T('dash.form.copylink')}
             </button>
             <div class="fm-instructions">
-              <strong>Gebruik in:</strong> Facebook / Google Ads, e-mail handtekening, Instagram bio, LinkedIn berichten, visitekaartjes (samen met de QR-code hieronder).
+              <strong>${T('fm.useIn')}</strong> Facebook / Google Ads, e-mail handtekening, Instagram bio, LinkedIn berichten, visitekaartjes (samen met de QR-code hieronder).
             </div>
           </div>
         </div>
@@ -10557,8 +10557,8 @@ ${faro.navCta}
         <!-- Installation guide. Platform-specific step-by-step -->
         <div class="fm-guide-card">
           <div class="fm-guide-hdr">
-            <div class="fm-option-title">Installatie-handleiding per platform</div>
-            <p class="fm-option-sub">Klik op het platform dat je gebruikt voor een stap-voor-stap uitleg. Werkt op ALLE moderne websites.</p>
+            <div class="fm-option-title">${T('fm.guide')}</div>
+            <p class="fm-option-sub">${T('fm.guide.sub')}</p>
           </div>
 
           <!-- WordPress -->
@@ -10584,7 +10584,7 @@ ${faro.navCta}
                 <li>Plak de code <em>vlak voor</em> de <code>&lt;/body&gt;</code> tag</li>
                 <li>Klik <strong>Bestand bijwerken</strong></li>
               </ol>
-              <div class="fm-guide-tip"><strong>Tip:</strong> Optie A overleeft theme-updates. Optie B niet. Kies daarom A tenzij je weet wat je doet.</div>
+              <div class="fm-guide-tip"><strong>${T('fm.tip')}</strong> Optie A overleeft theme-updates. Optie B niet. Kies daarom A tenzij je weet wat je doet.</div>
             </div>
           </details>
 
@@ -10861,7 +10861,7 @@ ${faro.navCta}
             <div class="settings-value" id="set-naam">—</div>
           </div>
           <div class="settings-row">
-            <div class="settings-label">E-mail</div>
+            <div class="settings-label">${T('fm.email')}</div>
             <div class="settings-value" id="set-email">—</div>
           </div>
           <div class="settings-row">
@@ -10944,7 +10944,7 @@ ${faro.navCta}
               <div class="settings-label-sub">${T('set.delete.sub')}</div>
             </div>
             <button class="btn-icon" onclick="vraagAccountVerwijdering()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
-              Verwijderen
+              ${T('ap.remove')}
             </button>
           </div>
           <div class="settings-row settings-danger">
@@ -10995,7 +10995,7 @@ ${faro.navCta}
               ${T('set.account')}
             </div>
             <div class="profile-row"><span>${T('dash.col.name')}</span><strong id="pf-naam">—</strong></div>
-            <div class="profile-row"><span>E-mail</span><strong id="pf-email">—</strong></div>
+            <div class="profile-row"><span>${T('fm.email')}</span><strong id="pf-email">—</strong></div>
             <div class="profile-row"><span>${T('pro.type')}</span><strong>${T('pro.account')}</strong></div>
           </div>
 
@@ -11489,7 +11489,7 @@ ${cmd.drawer}
               <input class="fdr-docs-cfg-input" id="cfg-drive" placeholder="https://drive.google.com/drive/folders/...">
             </div>
             <div class="fdr-docs-cfg-row" style="justify-content:flex-end">
-              <button class="fdr-docs-cfg-save" onclick="saveDocsConfig()">Opslaan</button>
+              <button class="fdr-docs-cfg-save" onclick="saveDocsConfig()">${T('ap.save')}</button>
             </div>
           </div>
         </div>
@@ -11540,7 +11540,7 @@ ${cmd.drawer}
           <div class="fdr-meeting-row">
             <input type="datetime-local" id="fdr-meeting-date">
             <input type="text" id="fdr-meeting-topic" placeholder="Agenda (bv. Cijfers + sales review)">
-            <button onclick="saveMeeting()">Opslaan</button>
+            <button onclick="saveMeeting()">${T('ap.save')}</button>
           </div>
         </div>
 
@@ -11629,7 +11629,7 @@ ${faro.dock}
         <h3 id="pipe-modal-title">Prospect toevoegen</h3>
         <div class="founder-modal-field"><label>Naam *</label><input id="pm-naam" type="text" placeholder="Jan Janssen"></div>
         <div class="founder-modal-field"><label>Bedrijf</label><input id="pm-bedrijf" type="text" placeholder="Acme BV"></div>
-        <div class="founder-modal-field"><label>E-mail</label><input id="pm-email" type="email" placeholder="jan@acme.be"></div>
+        <div class="founder-modal-field"><label>${T('fm.email')}</label><input id="pm-email" type="email" placeholder="jan@acme.be"></div>
         <div class="founder-modal-field"><label>Fase</label>
           <select id="pm-fase">
             <option>Gecontacteerd</option>
@@ -11641,9 +11641,9 @@ ${faro.dock}
         </div>
         <div class="founder-modal-field"><label>Notities</label><textarea id="pm-notities" placeholder="Aantekeningen..."></textarea></div>
         <div class="founder-modal-actions">
-          <button class="founder-modal-delete" id="pm-delete-btn" style="display:none" onclick="deletePipeRecord()">Verwijderen</button>
+          <button class="founder-modal-delete" id="pm-delete-btn" style="display:none" onclick="deletePipeRecord()">${T('ap.remove')}</button>
           <button class="founder-modal-cancel" onclick="closePipeModal()">Annuleren</button>
-          <button class="founder-modal-save" onclick="savePipeRecord()">Opslaan</button>
+          <button class="founder-modal-save" onclick="savePipeRecord()">${T('ap.save')}</button>
         </div>
       </div>
     </div>
@@ -11657,9 +11657,9 @@ ${faro.dock}
         <div class="founder-modal-field"><label>Eenheid</label><input id="gm-eenheid" type="text" placeholder="klanten / € MRR / leads"></div>
         <div class="founder-modal-field"><label>Deadline</label><input id="gm-deadline" type="date"></div>
         <div class="founder-modal-actions">
-          <button class="founder-modal-delete" id="gm-delete-btn" style="display:none" onclick="deleteGoalRecord()">Verwijderen</button>
+          <button class="founder-modal-delete" id="gm-delete-btn" style="display:none" onclick="deleteGoalRecord()">${T('ap.remove')}</button>
           <button class="founder-modal-cancel" onclick="closeGoalModal()">Annuleren</button>
-          <button class="founder-modal-save" onclick="saveGoalRecord()">Opslaan</button>
+          <button class="founder-modal-save" onclick="saveGoalRecord()">${T('ap.save')}</button>
         </div>
       </div>
     </div>
@@ -11785,7 +11785,7 @@ ${faro.dock}
         </div>
       </div>
 
-      <label class="pd-label" for="pd-f-adres">Adres</label>
+      <label class="pd-label" for="pd-f-adres">${T('ap.address')}</label>
       <input class="pd-input" id="pd-f-adres" type="text" placeholder="Lange Violettestraat 12" maxlength="200">
 
       <div class="pd-row-3">
@@ -11857,7 +11857,7 @@ ${faro.dock}
     </div>
     <div class="pd-modal-foot">
       <button class="btn-icon" onclick="closePandModal()">Annuleren</button>
-      <button class="btn-icon btn-primary-sm" id="pd-save-btn" onclick="savePand()">Opslaan</button>
+      <button class="btn-icon btn-primary-sm" id="pd-save-btn" onclick="savePand()">${T('ap.save')}</button>
     </div>
   </div>
 </div>
@@ -11941,7 +11941,7 @@ ${faro.dock}
     </div>
     <div class="chk-biz-modal-actions">
       <button class="chk-biz-cancel" onclick="closeBusinessInfoModal()">Annuleren</button>
-      <button class="chk-biz-save" id="chk-biz-save-btn" onclick="saveBusinessInfoFromChecklist()">Opslaan</button>
+      <button class="chk-biz-save" id="chk-biz-save-btn" onclick="saveBusinessInfoFromChecklist()">${T('ap.save')}</button>
     </div>
   </div>
 </div>
@@ -15634,7 +15634,7 @@ function openPanel(lead) {
     return notes.map(n => \`<div class="panel-note-item">
       <div class="panel-note-text">\${escHtml(n.text)}</div>
       <div class="panel-note-ts">\${relativeTime(n.ts)}</div>
-      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}" aria-label="Verwijderen"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      <button class="panel-note-delete" data-note-id="\${escHtml(n.id)}" aria-label="${T('ap.remove')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
     </div>\`).join('');
   }
   function renderTasksList(tasks) {
@@ -15645,7 +15645,7 @@ function openPanel(lead) {
         <input type="checkbox" class="panel-task-check" \${t.done ? 'checked' : ''}>
         <span class="panel-task-text">\${escHtml(t.text)}</span>
         \${dl.label ? \`<span class="panel-task-due \${dl.cls}">\${dl.label}</span>\` : ''}
-        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}" aria-label="Verwijderen"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        <button class="panel-task-delete" data-task-id="\${escHtml(t.id)}" aria-label="${T('ap.remove')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
       </div>\`;
     }).join('');
   }
@@ -15684,7 +15684,7 @@ function openPanel(lead) {
           <div class="afspraak-value-label" style="margin-bottom:4px">Resultaat notitie</div>
           <textarea class="afspraak-notitie" id="afspraak-notitie" placeholder="Hoe ging het gesprek?">\${escHtml(af.notitie || '')}</textarea>
         </div>
-        <button class="btn-add-note" id="btn-save-afspraak">Opslaan</button>
+        <button class="btn-add-note" id="btn-save-afspraak">${T('ap.save')}</button>
       </div>
     </div>\`;
   }
@@ -16410,7 +16410,7 @@ function calAttShowForm(leadId, verschenen) {
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="Wat is er besproken? Volgende stap?"></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">
-          Opslaan
+          ${T('ap.save')}
         </button>
       </div>\`;
   } else {
@@ -16422,7 +16422,7 @@ function calAttShowForm(leadId, verschenen) {
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="bijv. Geen antwoord, verkeerd nummer, wil herplannen..."></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">
-          Opslaan
+          ${T('ap.save')}
         </button>
       </div>\`;
   }
@@ -16448,7 +16448,7 @@ function calAttStartEdit(leadId, verschenen) {
           <div class="cal-att-followup-label">Notities</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">Opslaan</button>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">${T('ap.save')}</button>
       </div>\`;
   } else {
     section.innerHTML = \`
@@ -16458,7 +16458,7 @@ function calAttStartEdit(leadId, verschenen) {
           <div class="cal-att-followup-label">Notitie</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
-        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">Opslaan</button>
+        <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">${T('ap.save')}</button>
       </div>\`;
   }
 }
@@ -17098,7 +17098,7 @@ function bannerAttYes(leadId) {
     <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
     <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="Notities over het gesprek..." style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
     <div style="display:flex;gap:6px">
-      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escJs(leadId)}')">Opslaan</button>
+      <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escJs(leadId)}')">${T('ap.save')}</button>
       <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escJs(leadId)}',false,'','');renderAttendanceBanner()">Niet</button>
     </div>
   </div>\`;
@@ -18447,7 +18447,7 @@ function wizardTeken() {
         '<label for="wizard-ainaam" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">${T('dash.col.name')}</label>'
       + '<input id="wizard-ainaam" type="text" maxlength="60" placeholder="Bijvoorbeeld: Mathis" '
       + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit">'
-      + '<label for="wizard-welkomst" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">Welkomstbericht</label>'
+      + '<label for="wizard-welkomst" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">${T('ap.welcome')}</label>'
       + '<textarea id="wizard-welkomst" rows="4" placeholder="Dag! Ik ben Mathis van kantoor X. Waarmee kan ik u helpen?" '
       + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;line-height:1.55;color:var(--text,#E9EEF6);font-family:inherit;resize:vertical"></textarea>';
     document.getElementById('wizard-ainaam').value = c.aiName || '';
@@ -20252,7 +20252,7 @@ function renderPiDropzone() {
     if (removeBtn) removeBtn.style.display = '';
   } else {
     zone.classList.remove('has-image');
-    zone.innerHTML = '<div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder"><div style="font-size:26px;line-height:1">+</div><div><b>Klik om een foto te kiezen</b><br>of sleep een bestand hierheen</div></div>';
+    zone.innerHTML = '<div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder"><div style="font-size:26px;line-height:1">+</div><div><b>${T('pi.pick')}</b><br>${T('pi.drag')}</div></div>';
     if (removeBtn) removeBtn.style.display = 'none';
   }
 }
@@ -23774,7 +23774,7 @@ var HELP_ARTICLES = [
       '<p>Alles daarvoor staat op de pagina <strong>AI Persoonlijkheid</strong>.</p>' +
       '<ul>' +
       '<li><strong>${T('dash.col.name')}</strong>: hoe je AI zich voorstelt aan je leads.</li>' +
-      '<li><strong>Welkomstbericht</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
+      '<li><strong>${T('ap.welcome')}</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
       '<li><strong>Instructies</strong>: het belangrijkste veld. Hier zet je wat je bedrijf doet, wat voor jou een goede lead is, en wat de AI juist niet mag beloven. Hoe concreter, hoe beter de gesprekken.</li>' +
       '<li><strong>Website en adres</strong>: de AI gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
       '</ul>' +
