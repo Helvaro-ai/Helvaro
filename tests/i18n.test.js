@@ -199,5 +199,30 @@ console.log('\n— de taalkeuze blijft hangen —');
      /searchParams\.delete\('lang'\)/.test(html), null);
 }
 
+console.log('\n— de vertaalfunctie wordt door niets afgeschermd —');
+{
+  process.env.FARO_WORKSPACE_ENABLED = '1';
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dash = require('../api/dashboard.js');
+  let html = '';
+  dash({ method: 'GET', url: '/dashboard', headers: {} },
+       { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+  const js = (html.match(/<script>([\s\S]*?)<\/script>/g) || [])
+    .map((x) => x.replace(/<\/?script>/g, '')).sort((a, b) => b.length - a.length)[0] || '';
+
+  /* Dit ging live echt mis: navigateTo had een 'let t = titles[page]', en de
+     titles-tabel erboven riep t('nav.dashboard') aan. Een lokale let met
+     dezelfde naam zet de functie in de tijdelijke dode zone, dus navigeren gaf
+     "Cannot access 't' before initialization" en deed helemaal niets meer.
+     De tests zagen het niet, want die voeren navigateTo niet uit. */
+  ck('de vertaalfunctie heet tr()', /function tr\(sleutel, vars\)/.test(js), null);
+  ck('en er is geen losse t() meer die vertaalt',
+     !/[^a-zA-Z0-9_$.]t\('[a-z]+\./.test(js), null);
+  /* Een lokale 'let t' MAG blijven bestaan -- er zijn er acht, voor tagnamen en
+     tijdstippen. Ze zijn alleen niet langer gevaarlijk. */
+  ck('lokale t-variabelen zijn nu onschadelijk',
+     /(let|var|const) t\s*=/.test(js) && /function tr\(/.test(js), null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);

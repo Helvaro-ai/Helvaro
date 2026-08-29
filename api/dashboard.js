@@ -12030,7 +12030,13 @@ const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
    Nederlands staat voordat het Frans wordt -- de pagina komt al goed binnen. */
 const UI_LANG = '${UI_LANG}';
 const T_DICT = ${T_JSON};
-function t(sleutel, vars) {
+/* Heet bewust 'tr' en niet 't'. Dit bestand telt acht plekken met een lokale
+   'let t' / 'var t' (een tagnaam, een tijdstip, een teller). Zo'n lokale naam
+   zet de vertaalfunctie in dezelfde scope in de tijdelijke dode zone, en dan
+   krijg je "Cannot access 't' before initialization" -- precies wat er gebeurde
+   in navigateTo, waar het navigeren volledig door stukging. Een naam van twee
+   letters die verder nergens voorkomt haalt die hele klasse fouten weg. */
+function tr(sleutel, vars) {
   var s = T_DICT[sleutel];
   if (s === undefined) { console.warn('[i18n] onbekende sleutel:', sleutel); return sleutel; }
   if (vars) for (var k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
@@ -12748,13 +12754,13 @@ function toast(message, type = 'info', title = null) {
     error:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
     info:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
   };
-  const titles = { success: t('toast.success'), error: t('toast.error'), info: t('toast.info') };
+  const titles = { success: tr('toast.success'), error: tr('toast.error'), info: tr('toast.info') };
   const el = document.createElement('div');
   el.className = \`toast toast-\${type}\`;
   el.innerHTML = \`
     <div class="toast-header">
       <span class="toast-title">\${icons[type]}\${title ? escHtml(title) : titles[type]}</span>
-      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))" aria-label="\${t('a11y.close')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))" aria-label="\${tr('a11y.close')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="toast-message">\${escHtml(message)}</div>
     <div class="toast-progress"></div>
@@ -17571,22 +17577,22 @@ function navigateTo(page) {
      als vaste Nederlandse tekst, waardoor de kop "Instellingen" bleef staan op
      een verder Franse pagina. */
   const titles = {
-    dashboard:    { title: t('nav.dashboard'),     sub: t('page.dashboard.sub') },
-    exports:      { title: t('nav.exports'),       sub: t('page.exports.sub') },
-    kalender:     { title: t('nav.calendar'),      sub: t('page.kalender.sub') },
-    profile:      { title: t('page.profile'),      sub: t('page.profile.sub') },
-    pipeline:     { title: t('nav.pipeline'),      sub: t('page.pipeline.sub') },
-    gesprekken:   { title: t('nav.conversations'), sub: t('page.gesprekken.sub') },
-    resultaten:   { title: t('nav.results'),       sub: t('page.resultaten.sub') },
-    analyse:      { title: t('nav.analysis'),      sub: t('page.analyse.sub') },
-    instellingen: { title: t('nav.settings'),      sub: t('page.instellingen.sub') },
-    activiteit:   { title: t('nav.activity'),      sub: t('page.activiteit.sub') },
-    'ai-beeld':   { title: t('page.aiBeeld'),      sub: t('page.aiBeeld.sub') },
-    formulier:    { title: t('nav.form'),          sub: t('page.formulier.sub') },
-    'panden':     { title: t('nav.properties'),    sub: t('page.panden.sub') },
-    'facturatie': { title: t('nav.billing'),       sub: t('page.facturatie.sub') },
-    'ai-persona': { title: t('nav.persona'),       sub: t('page.aiPersona.sub') },
-    faro:         { title: 'Faro',                 sub: t('page.faro.sub') }
+    dashboard:    { title: tr('nav.dashboard'),     sub: tr('page.dashboard.sub') },
+    exports:      { title: tr('nav.exports'),       sub: tr('page.exports.sub') },
+    kalender:     { title: tr('nav.calendar'),      sub: tr('page.kalender.sub') },
+    profile:      { title: tr('page.profile'),      sub: tr('page.profile.sub') },
+    pipeline:     { title: tr('nav.pipeline'),      sub: tr('page.pipeline.sub') },
+    gesprekken:   { title: tr('nav.conversations'), sub: tr('page.gesprekken.sub') },
+    resultaten:   { title: tr('nav.results'),       sub: tr('page.resultaten.sub') },
+    analyse:      { title: tr('nav.analysis'),      sub: tr('page.analyse.sub') },
+    instellingen: { title: tr('nav.settings'),      sub: tr('page.instellingen.sub') },
+    activiteit:   { title: tr('nav.activity'),      sub: tr('page.activiteit.sub') },
+    'ai-beeld':   { title: tr('page.aiBeeld'),      sub: tr('page.aiBeeld.sub') },
+    formulier:    { title: tr('nav.form'),          sub: tr('page.formulier.sub') },
+    'panden':     { title: tr('nav.properties'),    sub: tr('page.panden.sub') },
+    'facturatie': { title: tr('nav.billing'),       sub: tr('page.facturatie.sub') },
+    'ai-persona': { title: tr('nav.persona'),       sub: tr('page.aiPersona.sub') },
+    faro:         { title: 'Faro',                 sub: tr('page.faro.sub') }
   };
 ;
 
@@ -17595,13 +17601,18 @@ function navigateTo(page) {
      is precies het soort zinnetje waaraan een klant ziet wat er achter zijn
      scherm zit. Hun kop komt uit de navigatieknop, en die wordt alleen voor
      een admin aangemaakt (mountAdminNav). Geen knop, geen kop, geen zin. */
-  let t = titles[page];
-  if (!t) {
+  /* Heette 't'. Dat is sinds de vertalingen ook de naam van de vertaalfunctie,
+     en een 'let t' hier zet die in dezelfde scope in de tijdelijke dode zone:
+     de titles-tabel hierboven roept tr('nav.dashboard') aan en kreeg
+     "Cannot access 't' before initialization" -- navigeren deed het dan
+     helemaal niet meer. Vandaar een naam die niets anders kan betekenen. */
+  let kop = titles[page];
+  if (!kop) {
     const navKnop = document.getElementById('nav-' + page);
-    t = { title: (navKnop && navKnop.dataset.label) || page, sub: '' };
+    kop = { title: (navKnop && navKnop.dataset.label) || page, sub: '' };
   }
-  document.getElementById('topbar-title').textContent = t.title;
-  document.getElementById('topbar-subtitle').textContent = t.sub;
+  document.getElementById('topbar-title').textContent = kop.title;
+  document.getElementById('topbar-subtitle').textContent = kop.sub;
 
   // Show refresh + CSV export only on dashboard
   const isDash = page === 'dashboard';
