@@ -405,6 +405,22 @@ module.exports = async function handler(req, res) {
     // Email notification (fire-and-forget). prefer per-client Rapport Email
     sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});
 
+    /* Pushmelding naar de apparaten van dit kantoor. Bewust NAAST de e-mail en
+       de WhatsApp-ping, niet in plaats daarvan: die twee zijn de betrouwbare
+       kanalen, dit is het snelle. Een makelaar die met zijn telefoon in zijn
+       hand staat weet het hiermee binnen een seconde, ook als het dashboard
+       dicht is -- en dat was nou net wat de oude browsermelding niet kon.
+
+       Fail-soft en zonder await: er wordt niet op gewacht en er wordt niets mee
+       gedaan. Ligt OneSignal eruit of staat de sleutel er niet, dan is de lead
+       gewoon opgeslagen en heeft de eigenaar zijn mail. Zie api/_push.js. */
+    require('./_push').stuurNaarKantoor({
+      projectCode: project_code,
+      titel: 'Nieuwe lead',
+      tekst: sanitize(name) + ' — ' + phone,
+      url:   'https://app.helvaro.pro/dashboard',
+    }).catch(() => {});
+
     return res.status(200).json({ success: true, id: createData.id });
 
   } catch (err) {

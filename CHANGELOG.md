@@ -14,6 +14,34 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Meldingen: je kunt ze nu aanzetten, en ze komen ergens vandaan
+
+Twee dingen erbij op het OneSignal-werk van hiervoor.
+
+**Zelf aanzetten.** Onder Instellingen → Notificaties staat een regel
+"Meldingen op dit apparaat" met een knop. Dáár wordt om toestemming gevraagd,
+en nergens anders. Heeft je browser meldingen al geblokkeerd, dan verdwijnt de
+knop en staat er wat je moet doen (via het slotje naast het adres) — want dat
+kunnen wij vanaf onze kant niet meer terugdraaien.
+
+**Er wordt nu ook echt iets verstuurd**, bij drie momenten:
+
+- een nieuwe lead — naast de WhatsApp-ping en de mail die je al kreeg
+- 80% van je AI-credits verbruikt
+- je kredietlimiet bereikt
+
+Alle drie gaan alleen naar de apparaten van jouw kantoor. Gaat er iets mis bij
+de meldingendienst, dan merk je daar niets van: de lead wordt gewoon opgeslagen
+en je mail gaat gewoon uit. De melding is het snelle kanaal, niet het
+betrouwbare.
+
+> **Actie voor jou — één sleutel.** Zet `ONESIGNAL_API_KEY` in Vercel
+> (OneSignal → Settings → Keys & IDs). Zonder die sleutel is het versturen stil
+> uit: geen fout, geen halve poging. De rest werkt al.
+
+---
+
+
 ### Pushmeldingen: OneSignal aangesloten
 
 De SDK zit erin. Er wordt nog niets verstuurd — welke gebeurtenissen een melding

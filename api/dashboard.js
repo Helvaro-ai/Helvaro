@@ -10787,6 +10787,22 @@ ${faro.navCta}
               </span>
             </div>
           </div>
+
+          <!-- Pushmeldingen. HIER wordt om toestemming gevraagd, en nergens
+               anders: op een knop die je zelf indrukt, met ernaast wat je
+               ervoor terugkrijgt. De browser vraagt het maar één keer, en
+               "blokkeren" is definitief -- dus dat moment hoort niet vanzelf
+               te komen op een pagina waar je iets anders aan het doen bent. -->
+          <div class="settings-row" id="push-rij" style="display:none">
+            <div>
+              <div class="settings-label">Meldingen op dit apparaat</div>
+              <div class="settings-label-sub" id="push-sub">Krijg een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.</div>
+            </div>
+            <div class="settings-toggle">
+              <button class="btn-icon btn-primary-sm" id="push-knop" onclick="pushAanzetten()">Aanzetten</button>
+              <span id="push-status" style="display:none;font-size:12px;font-weight:600;align-items:center;gap:6px"></span>
+            </div>
+          </div>
         </div>
 
         <!-- Account -->
@@ -18018,6 +18034,78 @@ function oneSignalToonBevestiging() {
   modalToetsenbord(kaart, function () { overlay.remove(); modalToetsenbordUit(); });
 }
 
+/* ── De aan/uit-regel in Instellingen ────────────────────────────────────────
+   Drie toestanden, en de derde is de reden dat dit zorgvuldig moet:
+
+     nog niet gevraagd -> een knop "Aanzetten"
+     toegestaan        -> "Aan", klaar
+     geblokkeerd       -> uitleg, GEEN knop
+
+   Bij "geblokkeerd" helpt een knop namelijk niets: de browser vraagt het niet
+   opnieuw en de site kan er niets aan doen. Een knop die dan toch niets doet is
+   erger dan geen knop -- dan denk je dat het product stuk is. Dus zeggen we
+   waar het wél te veranderen is. */
+function pushRijBijwerken() {
+  var rij = document.getElementById('push-rij');
+  if (!rij) return;
+
+  /* Geen OneSignal of geen ondersteuning: de regel bestaat niet. Een uitgezette
+     schakelaar tonen voor iets dat op dit apparaat sowieso niet kan, is alleen
+     maar verwarrend. */
+  if (!ONESIGNAL_APP_ID || !('Notification' in window)) { rij.style.display = 'none'; return; }
+  rij.style.display = '';
+
+  var knop   = document.getElementById('push-knop');
+  var status = document.getElementById('push-status');
+  var sub    = document.getElementById('push-sub');
+  var toestemming = Notification.permission;
+
+  if (toestemming === 'granted') {
+    knop.style.display = 'none';
+    status.style.display = 'inline-flex';
+    status.style.color = 'var(--green-ink)';
+    status.textContent = '✓ Aan';
+    sub.textContent = 'Je krijgt een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.';
+  } else if (toestemming === 'denied') {
+    knop.style.display = 'none';
+    status.style.display = 'inline-flex';
+    status.style.color = 'var(--text-muted)';
+    status.textContent = 'Geblokkeerd';
+    sub.textContent = 'Je browser blokkeert meldingen van Helvaro. Dat kunnen we hier niet aanzetten — '
+      + 'zet het aan bij de site-instellingen van je browser (het slotje naast het adres).';
+  } else {
+    knop.style.display = '';
+    status.style.display = 'none';
+    sub.textContent = 'Krijg een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.';
+  }
+}
+
+async function pushAanzetten() {
+  var knop = document.getElementById('push-knop');
+  if (knop) { knop.disabled = true; knop.textContent = 'Bezig...'; }
+
+  /* OneSignal kan nog aan het laden zijn als iemand meteen naar Instellingen
+     gaat. Eerst zorgen dat de SDK draait, dan pas vragen. */
+  oneSignalStart();
+  metOneSignal(async function (OneSignal) {
+    try {
+      await OneSignal.Notifications.requestPermission();
+    } catch (e) {
+      console.warn('[onesignal] toestemming vragen mislukt:', e && e.message);
+    }
+    if (knop) { knop.disabled = false; knop.textContent = 'Aanzetten'; }
+    pushRijBijwerken();
+    if (Notification.permission === 'granted') {
+      toast('Meldingen staan aan op dit apparaat.', 'success');
+    } else if (Notification.permission === 'denied') {
+      /* Eerlijk zijn over wat er net gebeurd is. Dit is onomkeerbaar vanaf
+         onze kant, en dat hoort de klant te weten in plaats van te denken dat
+         de knop het niet deed. */
+      toast('Je browser blokkeert meldingen. Aan te zetten via het slotje naast het adres.', 'info');
+    }
+  });
+}
+
 /* Bij uitloggen het abonnement losmaken van de tenant. Doe je dat niet, dan
    blijft het apparaat bij de vorige klant horen -- op een gedeelde computer
    krijgt de volgende gebruiker dan meldingen van een kantoor waar hij niets
@@ -22468,6 +22556,7 @@ function renderInstellingen() {
       toggleBtn.textContent = showing ? 'Verberg' : 'Toon';
     };
   }
+  pushRijBijwerken();
   loadGcalStatus();
 }
 

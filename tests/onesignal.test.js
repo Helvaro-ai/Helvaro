@@ -160,5 +160,70 @@ console.log('\n— het bevestigingsvenster is er, maar niet voor klanten —');
      /indexOf\('local-'\) !== 0/.test(js), null);
 }
 
+console.log('\n— de serverkant stuurt pas als hij een sleutel heeft —');
+{
+  delete require.cache[require.resolve('../api/_push.js')];
+  const oudeSleutel = process.env.ONESIGNAL_API_KEY;
+  delete process.env.ONESIGNAL_API_KEY;
+  const push = require('../api/_push.js');
+
+  ck('zonder ONESIGNAL_API_KEY staat pushen uit', push.configured() === false, null);
+  /* Het app-id is publiek en heeft een standaardwaarde; de SLEUTEL is het
+     servergeheim en heeft die bewust niet. */
+  ck('maar het app-id is er wel', !!push.appId(), push.appId());
+
+  return Promise.resolve()
+    .then(() => push.stuurNaarKantoor({ projectCode: 'X', titel: 't', tekst: 'x' }))
+    .then((r) => {
+      ck('en versturen weigert netjes in plaats van te gooien',
+         r.ok === false && r.reden === 'niet geconfigureerd', JSON.stringify(r));
+      return push.stuurNaarKantoor({ titel: 't' });
+    })
+    .then((r) => {
+      /* Zonder projectcode zou een melding naar het VERKEERDE kantoor kunnen
+         gaan, of naar allemaal. Dat moet stuklopen voordat er iets uitgaat. */
+      ck('zonder projectcode gaat er niets uit',
+         r.ok === false && r.reden === 'geen projectcode', JSON.stringify(r));
+      if (oudeSleutel !== undefined) process.env.ONESIGNAL_API_KEY = oudeSleutel;
+      klaar();
+    });
+}
+
+function klaar() {
+
+console.log('\n— de meldingen zijn aan echte gebeurtenissen gekoppeld —');
+{
+  const form = fs.readFileSync(path.join(__dirname, '..', 'api', 'form.js'), 'utf8');
+  const credits = fs.readFileSync(path.join(__dirname, '..', 'api', '_credits.js'), 'utf8');
+
+  ck('een nieuwe lead stuurt een push', /_push.\)\.stuurNaarKantoor\(\{[\s\S]{0,200}Nieuwe lead/.test(form), null);
+  ck('naar het kantoor van die lead', /projectCode: project_code/.test(form), null);
+  /* Zonder await en met .catch: de lead is het product, de melding een
+     extraatje. Een storing bij OneSignal mag een lead nooit kosten. */
+  ck('en blokkeert het opslaan van de lead niet',
+     /stuurNaarKantoor\(\{[\s\S]{0,260}\}\)\.catch\(\(\) => \{\}\);/.test(form), null);
+  ck('bij 80% van de credits ook',  /Nog 20% AI-credits over/.test(credits), null);
+  ck('en bij de limiet',            /titel: 'Kredietlimiet bereikt'/.test(credits), null);
+}
+
+console.log('\n— de klant zet het zelf aan, en krijgt de waarheid te horen —');
+{
+  const { html } = render('8302e5a5-e792-4fb0-a258-44c672539aa8');
+  const js = (html.match(/<script>([\s\S]*?)<\/script>/g) || [])
+    .map((x) => x.replace(/<\/?script>/g, '')).sort((a, b) => b.length - a.length)[0] || '';
+
+  ck('er is een aan-knop in Instellingen', html.indexOf('id="push-knop"') > -1, null);
+  ck('die toestemming vraagt', /function pushAanzetten\(\)[\s\S]{0,700}requestPermission\(\)/.test(js), null);
+  /* De belangrijkste toestand: al geblokkeerd. Een knop helpt dan niet meer --
+     de browser vraagt het niet opnieuw en wij kunnen er niets aan doen. */
+  ck('bij "geblokkeerd" verdwijnt de knop',
+     /toestemming === 'denied'[\s\S]{0,200}knop\.style\.display = 'none'/.test(js), null);
+  ck('en staat er waar het wél te veranderen is',
+     /slotje naast het adres/.test(js), null);
+  ck('de regel verdwijnt als pushen uitstaat',
+     /if \(!ONESIGNAL_APP_ID \|\| !\('Notification' in window\)\)[\s\S]{0,80}display = 'none'/.test(js), null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);
+}

@@ -996,6 +996,16 @@ async function maybeAlertThresholds(projectCode, state, feature) {
 
   if (do80) {
     console.warn(`[Credits] ${projectCode} crossed 80% (${fresh.used}/${fresh.allowance}).`);
+    /* Ook als pushmelding. Dit is het soort bericht waar push voor gemaakt is:
+       het gaat over geld, het komt één keer, en je wil het weten voordat je
+       tegen de limiet aan loopt -- niet als je toevallig je mail opent.
+       Fail-soft: staat de sleutel er niet, dan gebeurt er niets. */
+    require('./_push').stuurNaarKantoor({
+      projectCode,
+      titel: 'Nog 20% AI-credits over',
+      tekst: `${fresh.used} van ${fresh.allowance} gebruikt. Leadgesprekken lopen gewoon door.`,
+      url:   'https://app.helvaro.pro/dashboard',
+    }).catch(() => {});
     const to = clientEmail || process.env.NOTIFY_EMAIL;
     if (to) {
       sendMail({
@@ -1011,6 +1021,12 @@ async function maybeAlertThresholds(projectCode, state, feature) {
   }
   if (do100) {
     console.error(`[Credits] ${projectCode} crossed 100% (${fresh.used}/${fresh.allowance}).`);
+    require('./_push').stuurNaarKantoor({
+      projectCode,
+      titel: 'Kredietlimiet bereikt',
+      tekst: 'Je leadgesprekken lopen gewoon door. Alleen de extra AI pauzeert.',
+      url:   'https://app.helvaro.pro/dashboard',
+    }).catch(() => {});
     const to = clientEmail || process.env.NOTIFY_EMAIL;
     if (to) {
       sendMail({
