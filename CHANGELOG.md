@@ -25,13 +25,14 @@ Daar is nu een fundament voor, plus een eerste stuk vertaald:
 - **Nederlands, Frans, Engels en Duits.** Te kiezen onder Instellingen → Taal.
   Je keuze blijft staan (een jaar), en wie nog niets gekozen heeft krijgt de
   taal van zijn browser — een Waalse bezoeker landt dus meteen in het Frans.
-- **Vertaald:** het inlogscherm, de volledige navigatie, en de pushmeldingen.
+- **Vertaald:** het volledige inlogscherm (ook de inlogkaart zelf, inclusief de
+  codestap en de foutmeldingen), de volledige navigatie, en de pushmeldingen.
 - **De taal van het scherm staat los van de taal van je AI.** Een Brussels
   kantoor kan Franstalige leads bedienen met een Nederlands dashboard. Dat zijn
   twee aparte instellingen en dat blijft zo.
 
 > **Eerlijk over wat er nog niet is.** Het dashboard telt ongeveer 1.200
-> zinnen; daarvan zijn er nu 34 vertaald — het inlogscherm, de navigatie en de
+> zinnen; daarvan zijn er nu ruim 70 vertaald — het inlogscherm, de navigatie en de
 > meldingen. De rest is nog Nederlands, ook als je Frans kiest. Het fundament
 > ligt er (een taal toevoegen is nu alleen nog data), maar de overige pagina's
 > moeten stuk voor stuk langs. Ik doe ze in volgorde van hoe vaak je ze ziet.

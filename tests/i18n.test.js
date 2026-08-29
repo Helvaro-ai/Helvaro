@@ -154,6 +154,30 @@ console.log('\n— de pagina komt in de gekozen taal binnen —');
      dict.indexOf('`') === -1 && dict.indexOf('${') === -1, null);
 }
 
+console.log('\n— de inlogkaart spreekt dezelfde taal als de pagina —');
+{
+  /* Dit was het zichtbaarste gat: de pagina eromheen was Frans terwijl de
+     kaart zelf Nederlands bleef, omdat de Clerk-vertalingen als één vast
+     Nederlands blok in dashboard.js stonden. */
+  for (const taal of i18n.TALEN) {
+    const c = i18n.clerkLocalisatie(taal);
+    ck(`${taal}: titel, knop en codestap gevuld`,
+       !!(c.signIn.start.title && c.formButtonPrimary && c.signIn.emailCode.title
+          && c.signIn.alternativeMethods.title && c.unstable__errors.form_identifier_not_found),
+       JSON.stringify({ t: c.signIn.start.title, k: c.formButtonPrimary }));
+  }
+  const nlC = i18n.clerkLocalisatie('nl');
+  const frC = i18n.clerkLocalisatie('fr');
+  ck('en nl en fr verschillen echt',
+     nlC.signIn.start.title !== frC.signIn.start.title
+     && nlC.formButtonPrimary !== frC.formButtonPrimary, null);
+  /* De sjabloonvariabelen van Clerk moeten heel blijven -- vertaal je
+     {{identifier}} mee, dan staat er letterlijk dat woord op het scherm. */
+  ck('Clerk-variabelen blijven staan',
+     frC.socialButtonsBlockButton.indexOf('{{provider|titleize}}') > -1
+     && frC.unstable__errors.form_password_length_too_short.indexOf('{{length}}') > -1, null);
+}
+
 console.log('\n— de taalkeuze blijft hangen —');
 {
   process.env.FARO_WORKSPACE_ENABLED = '1';

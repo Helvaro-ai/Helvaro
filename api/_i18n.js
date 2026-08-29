@@ -142,6 +142,81 @@ const TEKST = {
                            en: 'Your lead conversations continue. Only the optional AI pauses.',
                            de: 'Ihre Lead-Gespräche laufen weiter. Nur die optionale KI pausiert.' },
 
+  // ── Inlogaanbieder (Clerk) ──────────────────────────────────────────────
+  // Deze stonden als één Nederlands blok in api/dashboard.js. Daardoor bleef de
+  // inlogkaart Nederlands terwijl de pagina eromheen al Frans was -- een half
+  // vertaald scherm, en precies het scherm waar een nieuwe klant binnenkomt.
+  'clerk.social':        { nl: 'Doorgaan met {{provider|titleize}}', fr: 'Continuer avec {{provider|titleize}}',
+                           en: 'Continue with {{provider|titleize}}', de: 'Weiter mit {{provider|titleize}}' },
+  'clerk.or':            { nl: 'of', fr: 'ou', en: 'or', de: 'oder' },
+  'clerk.email':         { nl: 'E-mailadres', fr: 'Adresse e-mail', en: 'Email address', de: 'E-Mail-Adresse' },
+  'clerk.password':      { nl: 'Wachtwoord', fr: 'Mot de passe', en: 'Password', de: 'Passwort' },
+  'clerk.firstName':     { nl: 'Voornaam', fr: 'Prénom', en: 'First name', de: 'Vorname' },
+  'clerk.lastName':      { nl: 'Achternaam', fr: 'Nom', en: 'Last name', de: 'Nachname' },
+  'clerk.ph.email':      { nl: 'naam@bedrijf.be', fr: 'nom@entreprise.be', en: 'name@company.be', de: 'name@firma.be' },
+  'clerk.ph.password':   { nl: 'Je wachtwoord', fr: 'Votre mot de passe', en: 'Your password', de: 'Ihr Passwort' },
+  'clerk.optional':      { nl: 'Optioneel', fr: 'Facultatif', en: 'Optional', de: 'Optional' },
+  'clerk.continue':      { nl: 'Doorgaan', fr: 'Continuer', en: 'Continue', de: 'Weiter' },
+  'clerk.otherMethod':   { nl: 'Andere manier proberen', fr: 'Essayer autrement', en: 'Try another method', de: 'Andere Methode' },
+  'clerk.back':          { nl: 'Terug', fr: 'Retour', en: 'Back', de: 'Zurück' },
+  'clerk.forgot':        { nl: 'Wachtwoord vergeten?', fr: 'Mot de passe oublié ?', en: 'Forgot password?', de: 'Passwort vergessen?' },
+
+  'clerk.signIn.title':  { nl: 'Inloggen bij Helvaro', fr: 'Connexion à Helvaro', en: 'Log in to Helvaro', de: 'Bei Helvaro anmelden' },
+  'clerk.signIn.sub':    { nl: 'Welkom terug. Log in om verder te gaan.',
+                           fr: 'Bon retour. Connectez-vous pour continuer.',
+                           en: 'Welcome back. Log in to continue.',
+                           de: 'Willkommen zurück. Melden Sie sich an, um fortzufahren.' },
+  'clerk.pw.title':      { nl: 'Vul je wachtwoord in', fr: 'Saisissez votre mot de passe', en: 'Enter your password', de: 'Geben Sie Ihr Passwort ein' },
+  'clerk.pw.sub':        { nl: 'Voer het wachtwoord van je account in', fr: 'Saisissez le mot de passe de votre compte',
+                           en: 'Enter your account password', de: 'Geben Sie das Passwort Ihres Kontos ein' },
+  'clerk.code.title':    { nl: 'Kijk in je mailbox', fr: 'Consultez votre boîte mail', en: 'Check your email', de: 'Sehen Sie in Ihr Postfach' },
+  'clerk.code.sub':      { nl: 'om verder te gaan naar Helvaro', fr: 'pour continuer vers Helvaro',
+                           en: 'to continue to Helvaro', de: 'um zu Helvaro fortzufahren' },
+  'clerk.code.formTitle':{ nl: 'Verificatiecode', fr: 'Code de vérification', en: 'Verification code', de: 'Bestätigungscode' },
+  'clerk.code.formSub':  { nl: 'Vul de code in die we naar je e-mailadres gestuurd hebben',
+                           fr: 'Saisissez le code que nous avons envoyé à votre adresse e-mail',
+                           en: 'Enter the code we sent to your email address',
+                           de: 'Geben Sie den Code ein, den wir an Ihre E-Mail-Adresse gesendet haben' },
+  'clerk.code.resend':   { nl: 'Geen code ontvangen? Opnieuw versturen', fr: 'Pas de code reçu ? Renvoyer',
+                           en: "Didn't get a code? Resend", de: 'Keinen Code erhalten? Erneut senden' },
+  'clerk.alt.title':     { nl: 'Op een andere manier inloggen', fr: 'Se connecter autrement',
+                           en: 'Sign in another way', de: 'Anders anmelden' },
+  'clerk.alt.sub':       { nl: 'Lukt het niet? Kies hieronder een andere manier.',
+                           fr: 'Cela ne fonctionne pas ? Choisissez une autre méthode ci-dessous.',
+                           en: 'Not working? Choose another method below.',
+                           de: 'Klappt es nicht? Wählen Sie unten eine andere Methode.' },
+  'clerk.alt.help':      { nl: 'Hulp nodig?', fr: 'Besoin d’aide ?', en: 'Need help?', de: 'Hilfe nötig?' },
+  'clerk.alt.byCode':    { nl: 'Code per e-mail naar {{identifier}}', fr: 'Code par e-mail vers {{identifier}}',
+                           en: 'Email code to {{identifier}}', de: 'Code per E-Mail an {{identifier}}' },
+  'clerk.alt.byPw':      { nl: 'Inloggen met je wachtwoord', fr: 'Se connecter avec votre mot de passe',
+                           en: 'Sign in with your password', de: 'Mit Passwort anmelden' },
+  'clerk.alt.byLink':    { nl: 'Inloglink per e-mail naar {{identifier}}', fr: 'Lien de connexion vers {{identifier}}',
+                           en: 'Email link to {{identifier}}', de: 'Anmeldelink an {{identifier}}' },
+  'clerk.signUp.title':  { nl: 'Account aanmaken', fr: 'Créer un compte', en: 'Create account', de: 'Konto erstellen' },
+  'clerk.signUp.sub':    { nl: 'Vul je gegevens in om te beginnen', fr: 'Saisissez vos données pour commencer',
+                           en: 'Enter your details to get started', de: 'Geben Sie Ihre Daten ein' },
+  'clerk.signUp.code':   { nl: 'Bevestig je e-mailadres', fr: 'Confirmez votre adresse e-mail',
+                           en: 'Confirm your email address', de: 'Bestätigen Sie Ihre E-Mail-Adresse' },
+  'clerk.signUp.codeSub':{ nl: 'Vul de code in die we je gestuurd hebben', fr: 'Saisissez le code que nous vous avons envoyé',
+                           en: 'Enter the code we sent you', de: 'Geben Sie den gesendeten Code ein' },
+
+  'clerk.err.password':  { nl: 'Verkeerd wachtwoord. Probeer het opnieuw.', fr: 'Mot de passe incorrect. Réessayez.',
+                           en: 'Incorrect password. Try again.', de: 'Falsches Passwort. Versuchen Sie es erneut.' },
+  'clerk.err.notFound':  { nl: 'We kennen dit e-mailadres niet.', fr: 'Nous ne connaissons pas cette adresse e-mail.',
+                           en: "We don't recognise this email address.", de: 'Diese E-Mail-Adresse kennen wir nicht.' },
+  'clerk.err.pwShort':   { nl: 'Je wachtwoord moet minstens {{length}} tekens lang zijn.',
+                           fr: 'Votre mot de passe doit comporter au moins {{length}} caractères.',
+                           en: 'Your password must be at least {{length}} characters.',
+                           de: 'Ihr Passwort muss mindestens {{length}} Zeichen lang sein.' },
+  'clerk.err.exists':    { nl: 'Er bestaat al een account met dit e-mailadres.',
+                           fr: 'Un compte existe déjà avec cette adresse e-mail.',
+                           en: 'An account with this email address already exists.',
+                           de: 'Mit dieser E-Mail-Adresse besteht bereits ein Konto.' },
+  'clerk.err.badEmail':  { nl: 'Dit lijkt geen geldig e-mailadres.', fr: 'Cette adresse e-mail semble invalide.',
+                           en: "That doesn't look like a valid email address.", de: 'Das sieht nach keiner gültigen E-Mail-Adresse aus.' },
+  'clerk.err.required':  { nl: 'Dit veld is verplicht.', fr: 'Ce champ est obligatoire.',
+                           en: 'This field is required.', de: 'Dieses Feld ist erforderlich.' },
+
   // ── Taalkiezer ──────────────────────────────────────────────────────────
   'lang.label':          { nl: 'Taal',      fr: 'Langue',    en: 'Language',  de: 'Sprache' },
   'lang.sub':            { nl: 'De taal van dit dashboard. Verandert niets aan de taal waarin je AI met leads praat.',
@@ -185,4 +260,59 @@ function locale(code) {
   try { return _lang.getLocale(code) || (code + '-BE'); } catch (e) { return 'nl-BE'; }
 }
 
-module.exports = { TALEN, STANDAARD, resolveer, t, woordenboek, locale, kort };
+/**
+ * De vertaaltabel die Clerk verwacht, in één taal.
+ *
+ * Clerk wil een genest object met zijn eigen sleutelnamen. Die namen staan
+ * daarom HIER, één keer, in plaats van vier keer uitgeschreven in dashboard.js.
+ */
+function clerkLocalisatie(code) {
+  const v = (k) => t(code, k);
+  return {
+    socialButtonsBlockButton: v('clerk.social'),
+    dividerText: v('clerk.or'),
+    formFieldLabel__emailAddress: v('clerk.email'),
+    formFieldLabel__password: v('clerk.password'),
+    formFieldLabel__firstName: v('clerk.firstName'),
+    formFieldLabel__lastName: v('clerk.lastName'),
+    formFieldInputPlaceholder__emailAddress: v('clerk.ph.email'),
+    formFieldInputPlaceholder__password: v('clerk.ph.password'),
+    formFieldInputPlaceholder__firstName: v('clerk.firstName'),
+    formFieldInputPlaceholder__lastName: v('clerk.lastName'),
+    formFieldHintText__optional: v('clerk.optional'),
+    formButtonPrimary: v('clerk.continue'),
+    footerActionLink__useAnotherMethod: v('clerk.otherMethod'),
+    backButton: v('clerk.back'),
+    formFieldAction__forgotPassword: v('clerk.forgot'),
+    signIn: {
+      start:    { title: v('clerk.signIn.title'), subtitle: v('clerk.signIn.sub') },
+      password: { title: v('clerk.pw.title'),     subtitle: v('clerk.pw.sub') },
+      emailCode: {
+        title: v('clerk.code.title'), subtitle: v('clerk.code.sub'),
+        formTitle: v('clerk.code.formTitle'), formSubtitle: v('clerk.code.formSub'),
+        resendButton: v('clerk.code.resend'),
+      },
+      alternativeMethods: {
+        title: v('clerk.alt.title'), subtitle: v('clerk.alt.sub'), actionLink: v('clerk.alt.help'),
+        blockButton__emailCode: v('clerk.alt.byCode'),
+        blockButton__password:  v('clerk.alt.byPw'),
+        blockButton__emailLink: v('clerk.alt.byLink'),
+        getHelp: { title: v('clerk.alt.help'), content: v('clerk.alt.sub'), blockButton__emailSupport: v('clerk.alt.help') },
+      },
+    },
+    signUp: {
+      start:     { title: v('clerk.signUp.title'), subtitle: v('clerk.signUp.sub') },
+      emailCode: { title: v('clerk.signUp.code'),  subtitle: v('clerk.signUp.codeSub') },
+    },
+    unstable__errors: {
+      form_password_incorrect: v('clerk.err.password'),
+      form_identifier_not_found: v('clerk.err.notFound'),
+      form_password_length_too_short: v('clerk.err.pwShort'),
+      form_identifier_exists: v('clerk.err.exists'),
+      form_param_format_invalid__email_address: v('clerk.err.badEmail'),
+      form_param_nil: v('clerk.err.required'),
+    },
+  };
+}
+
+module.exports = { TALEN, STANDAARD, resolveer, t, woordenboek, locale, kort, clerkLocalisatie };

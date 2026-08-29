@@ -55,6 +55,8 @@ module.exports = async function handler(req, res) {
   /* Splice-veilig de pagina in: dit gaat in een template literal, dus een
      backtick of een dollar-accolade in een vertaling zou de hele pagina
      breken. Zelfde voorzorg als bij AP_LANGUAGES_JSON hierboven. */
+  const CLERK_I18N_JSON = JSON.stringify(_i18n.clerkLocalisatie(UI_LANG))
+    .replace(/</g, '\\u003c').replace(/`/g, '\\u0060').replace(/\$\{/g, '\\u0024{');
   const T_JSON = JSON.stringify(_i18n.woordenboek(UI_LANG))
     .replace(/</g, '\\u003c').replace(/`/g, '\\u0060').replace(/\$\{/g, '\\u0024{');
 
@@ -12102,76 +12104,13 @@ var CLERK_APPEARANCE = {
 // Clerk's UI is English out of the box. Only the strings that actually show up
 // on these two screens are translated — a full locale bundle would be dead
 // weight for a sign-in box with four fields.
-var CLERK_NL = {
-  socialButtonsBlockButton: 'Doorgaan met {{provider|titleize}}',
-  dividerText: 'of',
-  formFieldLabel__emailAddress: 'E-mailadres',
-  formFieldLabel__password: 'Wachtwoord',
-  /* Het registratieformulier vraagt ook naar een naam. Zonder deze sleutels
-     stond er "First name", "Last name" en twee keer "Optional" in een verder
-     Nederlands scherm -- op precies de pagina waar een Vlaamse makelaar voor
-     het eerst kennismaakt met Helvaro. */
-  formFieldLabel__firstName: 'Voornaam',
-  formFieldLabel__lastName: 'Achternaam',
-  formFieldInputPlaceholder__emailAddress: 'naam@bedrijf.be',
-  formFieldInputPlaceholder__password: 'Je wachtwoord',
-  formFieldInputPlaceholder__firstName: 'Voornaam',
-  formFieldInputPlaceholder__lastName: 'Achternaam',
-  formFieldHintText__optional: 'Optioneel',
-  formButtonPrimary: 'Doorgaan',
-  footerActionLink__useAnotherMethod: 'Andere manier proberen',
-  backButton: 'Terug',
-  signIn: {
-    start: { title: 'Inloggen bij Helvaro', subtitle: 'Welkom terug. Log in om verder te gaan.' },
-    password: { title: 'Vul je wachtwoord in', subtitle: 'Voer het wachtwoord van je account in' },
-    /* DIT is de stap die vrijwel iedereen te zien krijgt. Wachtwoord-inloggen
-       staat namelijk uit op de Clerk-instantie: supportedFirstFactors geeft
-       alleen email_code en oauth_google terug. Wie zijn e-mailadres invult
-       belandt dus hier -- en hier stond alles in het Engels: "Check your
-       email", "to continue to Helvaro", "Didn't receive a code? Resend (27)".
-       Op het scherm waar een klant zich afvraagt of hij wel goed zit. */
-    emailCode: {
-      title: 'Kijk in je mailbox',
-      subtitle: 'om verder te gaan naar Helvaro',
-      formTitle: 'Verificatiecode',
-      formSubtitle: 'Vul de code in die we naar je e-mailadres gestuurd hebben',
-      resendButton: 'Geen code ontvangen? Opnieuw versturen',
-    },
-    alternativeMethods: {
-      title: 'Op een andere manier inloggen',
-      subtitle: 'Lukt het niet? Kies hieronder een andere manier.',
-      actionLink: 'Hulp nodig?',
-      blockButton__emailCode: 'Code per e-mail naar {{identifier}}',
-      blockButton__password: 'Inloggen met je wachtwoord',
-      blockButton__emailLink: 'Inloglink per e-mail naar {{identifier}}',
-      getHelp: {
-        title: 'Hulp nodig?',
-        content: 'Kom je er niet in? Mail ons en we helpen je verder.',
-        blockButton__emailSupport: 'Mail ons',
-      },
-    },
-    forgotPasswordAlternativeMethods: { label__alternativeMethods: 'Of log op een andere manier in' },
-    forgotPassword: { title: 'Wachtwoord vergeten', subtitle_email: 'We sturen je een code per e-mail' },
-  },
-  signUp: {
-    start: { title: 'Account aanmaken', subtitle: 'Vul je gegevens in om te beginnen' },
-    emailCode: { title: 'Bevestig je e-mailadres', subtitle: 'Vul de code in die we je gestuurd hebben' },
-  },
-  formFieldAction__forgotPassword: 'Wachtwoord vergeten?',
-  unstable__errors: {
-    form_password_incorrect: 'Verkeerd wachtwoord. Probeer het opnieuw.',
-    form_identifier_not_found: 'We kennen dit e-mailadres niet.',
-    /* Deze stond in het Engels op het scherm ("Your password must contain 15
-       or more characters."). Het getal komt uit de wachtwoordregels in het
-       Clerk-dashboard, dus het staat hier bewust NIET als los cijfer in de
-       tekst: {{length}} vult Clerk zelf in, en dan blijft de melding kloppen
-       als die regel ooit verandert. */
-    form_password_length_too_short: 'Je wachtwoord moet minstens {{length}} tekens lang zijn.',
-    form_identifier_exists: 'Er bestaat al een account met dit e-mailadres.',
-    form_param_format_invalid__email_address: 'Dit lijkt geen geldig e-mailadres.',
-    form_param_nil: 'Dit veld is verplicht.',
-  },
-};
+/* De vertalingen voor de inlogkaart. Stonden hier als één Nederlands blok van
+   70 regels; daardoor bleef de kaart Nederlands terwijl de pagina eromheen al
+   Frans was -- half vertaald, op precies het scherm waar een nieuwe klant
+   binnenkomt. Ze staan nu bij de rest van de teksten in api/_i18n.js, en de
+   server zet hier het blok van DEZE taal neer. */
+var CLERK_NL = ${CLERK_I18N_JSON};
+
 
 /* De wachtstand: staat er een plaatshouder waar Clerk zo komt, of niet?
 

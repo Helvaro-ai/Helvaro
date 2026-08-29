@@ -54,22 +54,30 @@ console.log('\n— de Pipeline liep 205px buiten beeld —');
 
 console.log('\n— het registratieformulier stond half in het Engels —');
 {
-  const blok = (js.match(/var CLERK_NL = \{[\s\S]*?\n\};/) || [''])[0];
-  ck('CLERK_NL gevonden', blok.length > 0, null);
+  /* CLERK_NL is geen handgeschreven blok meer maar JSON die de server per taal
+     opbouwt uit api/_i18n.js. Dat is ook een betere test: we controleren nu wat
+     er ECHT in de pagina staat, niet hoe het in de bron geschreven is. */
+  const blokMatch = js.match(/var CLERK_NL = (\{[\s\S]*?\});/);
+  ck('CLERK_NL gevonden', !!blokMatch, null);
+  let clerk = {};
+  try { clerk = JSON.parse(blokMatch[1]); } catch (e) { ck('CLERK_NL is geldige JSON', false, e.message); }
   for (const [sleutel, waarde] of [
     ['formFieldLabel__firstName', 'Voornaam'],
     ['formFieldLabel__lastName', 'Achternaam'],
     ['formFieldHintText__optional', 'Optioneel'],
   ]) {
-    ck(`${sleutel} -> ${waarde}`, new RegExp(sleutel + ":\\s*'" + waarde + "'").test(blok), null);
+    ck(`${sleutel} -> ${waarde}`, clerk[sleutel] === waarde, clerk[sleutel]);
   }
   ck('de wachtwoordfout is vertaald',
-     /form_password_length_too_short:\s*'Je wachtwoord/.test(blok), null);
+     /^Je wachtwoord/.test((clerk.unstable__errors || {}).form_password_length_too_short || ''),
+     (clerk.unstable__errors || {}).form_password_length_too_short);
   /* Het aantal tekens komt uit het Clerk-dashboard. Staat het hier als cijfer,
      dan liegt de melding zodra die regel verandert. */
-  ck('en noemt het aantal niet als hardgecodeerd cijfer',
-     /form_password_length_too_short[^\n]*\{\{length\}\}/.test(blok)
-     && !/form_password_length_too_short[^\n]*\b(8|12|15|16|20)\b/.test(blok), null);
+  {
+    const m = (clerk.unstable__errors || {}).form_password_length_too_short || '';
+    ck('en noemt het aantal niet als hardgecodeerd cijfer',
+       m.indexOf('{{length}}') > -1 && !/\b(8|12|15|16|20)\b/.test(m), m);
+  }
 }
 
 console.log('\n— de oude inlogvelden trokken de wachtwoordmanager weg —');
@@ -148,10 +156,10 @@ console.log('\n— de codestap bij inloggen stond volledig in het Engels —');
      gaf alleen email_code + oauth_google). Iedereen belandt dus op de
      codestap, en die was Engels: "Check your email", "Didn't receive a code?
      Resend". */
-  const blok = (js.match(/var CLERK_NL = \{[\s\S]*?\n\};/) || [''])[0];
-  ck('signIn.emailCode is vertaald', /emailCode: \{[\s\S]{0,300}Kijk in je mailbox/.test(blok), null);
-  ck('de opnieuw-versturen-link ook', /resendButton: 'Geen code ontvangen/.test(blok), null);
-  ck('en "andere manier" ook', /alternativeMethods: \{[\s\S]{0,200}Op een andere manier inloggen/.test(blok), null);
+  const c2 = JSON.parse((js.match(/var CLERK_NL = (\{[\s\S]*?\});/) || ['', '{}'])[1]);
+  ck('signIn.emailCode is vertaald', c2.signIn.emailCode.title === 'Kijk in je mailbox', c2.signIn.emailCode.title);
+  ck('de opnieuw-versturen-link ook', /^Geen code ontvangen/.test(c2.signIn.emailCode.resendButton), c2.signIn.emailCode.resendButton);
+  ck('en "andere manier" ook', c2.signIn.alternativeMethods.title === 'Op een andere manier inloggen', c2.signIn.alternativeMethods.title);
 }
 
 console.log('\n— het merkpaneel stapelde onder de footer op smal —');
