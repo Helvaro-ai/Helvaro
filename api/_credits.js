@@ -1000,11 +1000,12 @@ async function maybeAlertThresholds(projectCode, state, feature) {
        het gaat over geld, het komt één keer, en je wil het weten voordat je
        tegen de limiet aan loopt -- niet als je toevallig je mail opent.
        Fail-soft: staat de sleutel er niet, dan gebeurt er niets. */
-    require('./_push').stuurNaarKantoor({
+    require('./_push').stuurVertaald({
       projectCode,
-      titel: 'Nog 20% AI-credits over',
-      tekst: `${fresh.used} van ${fresh.allowance} gebruikt. Leadgesprekken lopen gewoon door.`,
-      url:   'https://app.helvaro.pro/dashboard',
+      titelSleutel: 'push.credit80.title',
+      tekstSleutel: 'push.credit80.body',
+      vars: { used: fresh.used, total: fresh.allowance },
+      url:  'https://app.helvaro.pro/dashboard',
     }).catch(() => {});
     const to = clientEmail || process.env.NOTIFY_EMAIL;
     if (to) {
@@ -1021,11 +1022,11 @@ async function maybeAlertThresholds(projectCode, state, feature) {
   }
   if (do100) {
     console.error(`[Credits] ${projectCode} crossed 100% (${fresh.used}/${fresh.allowance}).`);
-    require('./_push').stuurNaarKantoor({
+    require('./_push').stuurVertaald({
       projectCode,
-      titel: 'Kredietlimiet bereikt',
-      tekst: 'Je leadgesprekken lopen gewoon door. Alleen de extra AI pauzeert.',
-      url:   'https://app.helvaro.pro/dashboard',
+      titelSleutel: 'push.credit100.title',
+      tekstSleutel: 'push.credit100.body',
+      url:  'https://app.helvaro.pro/dashboard',
     }).catch(() => {});
     const to = clientEmail || process.env.NOTIFY_EMAIL;
     if (to) {

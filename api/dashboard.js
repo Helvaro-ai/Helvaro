@@ -4,6 +4,7 @@
 // dashboard's language picker always matches exactly what the AI
 // conversation actually supports — no separately hand-maintained list here.
 const _lang = require('./_lang');
+const _i18n = require('./_i18n');
 const _session = require('./_session');
 
 // ── Faro ────────────────────────────────────────────────────────────────────
@@ -41,7 +42,25 @@ module.exports = async function handler(req, res) {
 
   // Dashboard UI language. DASHBOARD_LANG lets an operator force one; otherwise
   // the registry default applies until a per-user preference exists to read.
-  const FARO_LANG = _lang.normalizeLanguageCode(process.env.DASHBOARD_LANG || _lang.DEFAULT_CODE);
+  /* De schermtaal van DIT verzoek. Hiervoor stond hier alleen DASHBOARD_LANG:
+     één taal voor iedereen, ingesteld door de eigenaar. Nu kiest de bezoeker
+     zelf (?lang=, daarna zijn cookie, daarna wat zijn browser stuurt) en is de
+     env-variabele nog slechts de terugval. Zie api/_i18n.js voor de volgorde.
+
+     LET OP het verschil met _lang.js: dat is de taal waarin de AI met LEADS
+     praat (40 talen). Dit is de taal van de KNOPPEN. Een Brussels kantoor kan
+     Franstalige leads bedienen met een Nederlands dashboard. */
+  const UI_LANG = _i18n.resolveer(req);
+  const T = (sleutel, vars) => _i18n.t(UI_LANG, sleutel, vars);
+  /* Splice-veilig de pagina in: dit gaat in een template literal, dus een
+     backtick of een dollar-accolade in een vertaling zou de hele pagina
+     breken. Zelfde voorzorg als bij AP_LANGUAGES_JSON hierboven. */
+  const T_JSON = JSON.stringify(_i18n.woordenboek(UI_LANG))
+    .replace(/</g, '\\u003c').replace(/`/g, '\\u0060').replace(/\$\{/g, '\\u0024{');
+
+  /* Faro krijgt dezelfde taal als de rest van het scherm. Stond los, met als
+     gevolg dat de ask-bar Nederlands kon zijn terwijl de pagina Frans was. */
+  const FARO_LANG = _lang.normalizeLanguageCode(UI_LANG);
   // cmd first: Faro's landing screen renders the Command Center's briefing
   // inside it, so the sections have to exist before the page is built.
   const cmd = _cmdUI.forLang(FARO_LANG);
@@ -107,7 +126,7 @@ module.exports = async function handler(req, res) {
   ).trim().replace(/[^a-fA-F0-9-]/g, '');
   const ONESIGNAL_READY = !!ONESIGNAL_APP_ID;
   const HTML = `<!DOCTYPE html>
-<html lang="nl" data-theme="dark">
+<html lang="${UI_LANG}" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8696,9 +8715,9 @@ ${cmd.css}
              waar je heen kunt ook. -->
         <div class="login-modus" role="tablist" aria-label="Inloggen of account aanmaken">
           <button type="button" class="login-modus-knop actief" id="modus-inloggen" role="tab"
-                  aria-selected="true" onclick="naarInloggen()">Inloggen</button>
+                  aria-selected="true" onclick="naarInloggen()">${T('login.tab.in')}</button>
           <button type="button" class="login-modus-knop" id="btn-naar-registreren" role="tab"
-                  aria-selected="false" onclick="naarRegistreren()">Account aanmaken</button>
+                  aria-selected="false" onclick="naarRegistreren()">${T('login.tab.up')}</button>
           <!-- De naam btn-naar-registreren zat op de oude tekstlink onderaan. Die
                link is weg (hij stond twee keer op hetzelfde scherm), maar de naam
                blijft: de rest van de code en de regressietest kennen hem zo. -->
@@ -8761,10 +8780,9 @@ ${cmd.css}
         <div id="clerk-toggle" style="display:none"></div>
 
         <p class="login-what">
-        Helvaro beantwoordt je vastgoedleads op WhatsApp, vraagt budget en timing uit,
-        en boekt de bezichtiging meteen in je agenda.
+        ${T('login.pitch')}
       </p>
-      <div class="login-footer">&copy; ${new Date().getFullYear()} <span>Helvaro</span> &mdash; gemaakt voor Vlaamse makelaars</div>
+      <div class="login-footer">&copy; ${new Date().getFullYear()} <span>Helvaro</span> &mdash; ${T('login.footer')}</div>
       </div>
     </div>
 
@@ -8928,46 +8946,46 @@ ${faro.navCta}
 
     <nav class="sidebar-nav" aria-label="Hoofdnavigatie">
       <!-- ── Werk (dagelijks) ── -->
-      <div class="nav-group-label" aria-hidden="true">Werk</div>
+      <div class="nav-group-label" aria-hidden="true">${T('nav.group.work')}</div>
       <button class="nav-item" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
-        Dashboard
+        ${T('nav.dashboard')}
       </button>
       <button class="nav-item" data-page="pipeline" id="nav-pipeline">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span>
-        Pipeline
+        ${T('nav.pipeline')}
       </button>
       <button class="nav-item" data-page="gesprekken" id="nav-gesprekken">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-        Gesprekken
+        ${T('nav.conversations')}
       </button>
       <button class="nav-item" data-page="panden" id="nav-panden">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>
-        Panden
+        ${T('nav.properties')}
       </button>
       <button class="nav-item" data-page="kalender" id="nav-kalender">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
-        Kalender
+        ${T('nav.calendar')}
         <span class="nav-badge" id="cal-nav-badge" style="display:none">0</span>
       </button>
 
       <!-- ── Inzicht ── -->
-      <div class="nav-group-label" aria-hidden="true">Inzicht</div>
+      <div class="nav-group-label" aria-hidden="true">${T('nav.group.insight')}</div>
       <button class="nav-item" data-page="resultaten" id="nav-resultaten">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
-        Resultaten
+        ${T('nav.results')}
       </button>
       <button class="nav-item" data-page="analyse" id="nav-analyse">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>
-        Analyse
+        ${T('nav.analysis')}
       </button>
       <button class="nav-item" data-page="activiteit" id="nav-activiteit">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-        Activiteit
+        ${T('nav.activity')}
       </button>
       <button class="nav-item" data-page="exports" id="nav-exports">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
-        Exports
+        ${T('nav.exports')}
       </button>
       <!-- Image generation moved into Faro. This entry is hidden by Faro's own
            stylesheet (#nav-ai-beeld), which only ships when the feature is
@@ -8980,22 +8998,22 @@ ${faro.navCta}
       </button>
 
       <!-- ── Setup (zelden) ── -->
-      <div class="nav-group-label" aria-hidden="true">Instellen</div>
+      <div class="nav-group-label" aria-hidden="true">${T('nav.group.settings')}</div>
       <button class="nav-item" data-page="formulier" id="nav-formulier">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
-        Formulier
+        ${T('nav.form')}
       </button>
       <button class="nav-item" data-page="ai-persona" id="nav-ai-persona">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
-        AI Persoonlijkheid
+        ${T('nav.persona')}
       </button>
       <button class="nav-item" data-page="facturatie" id="nav-facturatie">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
-        Facturatie
+        ${T('nav.billing')}
       </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-        Instellingen
+        ${T('nav.settings')}
       </button>
 
       <!-- ── Admin-only ──────────────────────────────────────────────────
@@ -9012,7 +9030,7 @@ ${faro.navCta}
               onclick="toggleSidebarCollapsed()" aria-controls="sidebar" aria-expanded="true"
               title="Menu inklappen">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        <span>Inklappen</span>
+        <span>${T('nav.collapse')}</span>
       </button>
       <!-- Credit usage widget. Hidden until loadCreditUsage() confirms the
            credit system is active for this client — inert (display:none)
@@ -9037,7 +9055,7 @@ ${faro.navCta}
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
           <div class="user-name" id="user-name">Gebruiker</div>
-          <div class="user-role" id="user-org">Mijn profiel</div>
+          <div class="user-role" id="user-org">${T('nav.profile')}</div>
         </div>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
       </button>
@@ -9045,7 +9063,7 @@ ${faro.navCta}
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         Klantenoverzicht
       </button>
-      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Uitloggen</span></button>
+      <button class="btn-logout" id="btn-logout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>${T('nav.logout')}</span></button>
     </div>
   </aside>
 
@@ -10805,6 +10823,31 @@ ${faro.navCta}
           </div>
         </div>
 
+        <!-- Taal van het scherm. Los van de taal waarin de AI met leads praat:
+             dat is een instelling per klant (Airtable "Language") en staat op de
+             AI-pagina. Een Brussels kantoor kan Franstalige leads bedienen met
+             een Nederlands dashboard, en dat moet kunnen. -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            ${T('lang.label')}
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('lang.label')}</div>
+              <div class="settings-label-sub">${T('lang.sub')}</div>
+            </div>
+            <div class="settings-toggle">
+              <select class="pd-input" id="ui-taal" style="width:auto;min-width:150px" onchange="taalWisselen(this.value)">
+                <option value="nl"${UI_LANG === 'nl' ? ' selected' : ''}>Nederlands</option>
+                <option value="fr"${UI_LANG === 'fr' ? ' selected' : ''}>Français</option>
+                <option value="en"${UI_LANG === 'en' ? ' selected' : ''}>English</option>
+                <option value="de"${UI_LANG === 'de' ? ' selected' : ''}>Deutsch</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Account -->
         <div class="settings-section">
           <div class="settings-section-title">
@@ -11975,6 +12018,22 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
    called per request rather than cached.
    ============================================================ */
 const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
+
+/* ── Schermtaal, clientkant ──────────────────────────────────────────────────
+   De server heeft de taal al gekozen (zie api/_i18n.js) en zet hier het
+   woordenboek voor DIE ene taal neer. Bewust niet alle talen: dan sleep je
+   drie vertalingen mee die niemand op dit scherm gaat zien.
+
+   Er is dus ook geen vertaalstap in de browser en geen moment waarop er even
+   Nederlands staat voordat het Frans wordt -- de pagina komt al goed binnen. */
+const UI_LANG = '${UI_LANG}';
+const T_DICT = ${T_JSON};
+function t(sleutel, vars) {
+  var s = T_DICT[sleutel];
+  if (s === undefined) { console.warn('[i18n] onbekende sleutel:', sleutel); return sleutel; }
+  if (vars) for (var k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
+  return s;
+}
 const OPEN_SIGNUP = ${OPEN_SIGNUP ? 'true' : 'false'};
 let _clerkLoaded = null;
 
@@ -12252,10 +12311,8 @@ function zetModus(modus) {
   }
   var wel = document.querySelector('.login-welcome');
   var sub = document.querySelector('.login-subtitle');
-  if (wel) wel.textContent = modus === 'registreren' ? 'Begin vandaag' : 'Welkom terug!';
-  if (sub) sub.textContent = modus === 'registreren'
-    ? 'Veertien dagen gratis. Je eerste lead kan vanavond binnenkomen.'
-    : 'Log in om te zien wat er sinds gisteren gebeurd is.';
+  if (wel) wel.textContent = t(modus === 'registreren' ? 'login.start' : 'login.welcome');
+  if (sub) sub.textContent = t(modus === 'registreren' ? 'login.start.sub' : 'login.welcome.sub');
 }
 
 /* Terug naar inloggen. Bestond niet: de wissel ging maar één kant op, en wie
@@ -18032,6 +18089,27 @@ function oneSignalToonBevestiging() {
   overlay.appendChild(kaart);
   document.body.appendChild(overlay);
   modalToetsenbord(kaart, function () { overlay.remove(); modalToetsenbordUit(); });
+}
+
+/* Van taal wisselen. De keuze gaat in een cookie en NIET in localStorage: de
+   pagina wordt op de SERVER in één taal gerenderd, dus de server moet de keuze
+   al kennen bij het eerste verzoek. Met localStorage zou je de pagina eerst in
+   de verkeerde taal krijgen en hem daarna moeten herladen.
+
+   Een jaar geldig, en op de hele site (path=/), zodat /login en /signup hem ook
+   zien. SameSite=Lax: dit is een voorkeur, geen sessie -- niets om te beschermen,
+   maar ook geen reden om hem breder te delen dan nodig. */
+function taalWisselen(code) {
+  if (['nl', 'fr', 'en', 'de'].indexOf(code) === -1) return;
+  try {
+    document.cookie = 'hv_lang=' + encodeURIComponent(code)
+      + ';path=/;max-age=' + (365 * 24 * 60 * 60) + ';SameSite=Lax';
+  } catch (e) {}
+  /* Herladen zonder ?lang= in de URL: anders wint die query-parameter voortaan
+     van de cookie en zit de klant vast aan de taal waarin hij ooit binnenkwam. */
+  var url = new URL(window.location.href);
+  url.searchParams.delete('lang');
+  window.location.replace(url.toString());
 }
 
 /* ── De aan/uit-regel in Instellingen ────────────────────────────────────────

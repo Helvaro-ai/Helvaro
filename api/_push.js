@@ -24,6 +24,7 @@
  */
 
 const API = 'https://api.onesignal.com/notifications';
+const _i18n = require('./_i18n');
 
 function appId() {
   return String(
@@ -100,4 +101,23 @@ async function stuurNaarKantoor({ projectCode, titel, tekst, url } = {}) {
   }
 }
 
-module.exports = { configured, stuurNaarKantoor, appId };
+/**
+ * Zelfde als stuurNaarKantoor, maar met een SLEUTEL in plaats van kant-en-klare
+ * tekst -- zodat de melding in de taal van het scherm binnenkomt.
+ *
+ * De taal komt uit DASHBOARD_LANG, want op dit moment (een cron, een webhook,
+ * een formulierinzending) is er geen verzoek van de gebruiker om hem uit af te
+ * leiden. Zodra er een taalvoorkeur per klant bewaard wordt, is dít de plek om
+ * hem te lezen -- de rest van deze functie verandert dan niet.
+ */
+async function stuurVertaald({ projectCode, titelSleutel, tekstSleutel, vars, url, taal } = {}) {
+  const code = _i18n.kort(taal || process.env.DASHBOARD_LANG || _i18n.STANDAARD);
+  return stuurNaarKantoor({
+    projectCode,
+    titel: _i18n.t(code, titelSleutel),
+    tekst: tekstSleutel ? _i18n.t(code, tekstSleutel, vars) : '',
+    url,
+  });
+}
+
+module.exports = { configured, stuurNaarKantoor, stuurVertaald, appId };

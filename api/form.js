@@ -414,11 +414,10 @@ module.exports = async function handler(req, res) {
        Fail-soft en zonder await: er wordt niet op gewacht en er wordt niets mee
        gedaan. Ligt OneSignal eruit of staat de sleutel er niet, dan is de lead
        gewoon opgeslagen en heeft de eigenaar zijn mail. Zie api/_push.js. */
-    require('./_push').stuurNaarKantoor({
-      projectCode: project_code,
-      titel: 'Nieuwe lead',
-      tekst: sanitize(name) + ' — ' + phone,
-      url:   'https://app.helvaro.pro/dashboard',
+    require('./_push').stuurVertaald({
+      projectCode:  project_code,
+      titelSleutel: 'push.lead.title',
+      url:          'https://app.helvaro.pro/dashboard',
     }).catch(() => {});
 
     return res.status(200).json({ success: true, id: createData.id });

@@ -14,6 +14,31 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Het dashboard spreekt nu meer dan Nederlands (begin)
+
+Er zat al veel meertaligheid in Helvaro: je AI praat 40 talen met leads, het
+lead-formulier staat in nl/fr/en, en Faro in nl/fr/en/de. Het DASHBOARD zelf was
+het enige stuk dat alleen Nederlands kende.
+
+Daar is nu een fundament voor, plus een eerste stuk vertaald:
+
+- **Nederlands, Frans, Engels en Duits.** Te kiezen onder Instellingen → Taal.
+  Je keuze blijft staan (een jaar), en wie nog niets gekozen heeft krijgt de
+  taal van zijn browser — een Waalse bezoeker landt dus meteen in het Frans.
+- **Vertaald:** het inlogscherm, de volledige navigatie, en de pushmeldingen.
+- **De taal van het scherm staat los van de taal van je AI.** Een Brussels
+  kantoor kan Franstalige leads bedienen met een Nederlands dashboard. Dat zijn
+  twee aparte instellingen en dat blijft zo.
+
+> **Eerlijk over wat er nog niet is.** Het dashboard telt ongeveer 1.200
+> zinnen; daarvan zijn er nu 34 vertaald — het inlogscherm, de navigatie en de
+> meldingen. De rest is nog Nederlands, ook als je Frans kiest. Het fundament
+> ligt er (een taal toevoegen is nu alleen nog data), maar de overige pagina's
+> moeten stuk voor stuk langs. Ik doe ze in volgorde van hoe vaak je ze ziet.
+
+---
+
+
 ### Meldingen: je kunt ze nu aanzetten, en ze komen ergens vandaan
 
 Twee dingen erbij op het OneSignal-werk van hiervoor.

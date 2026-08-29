@@ -196,14 +196,19 @@ console.log('\n— de meldingen zijn aan echte gebeurtenissen gekoppeld —');
   const form = fs.readFileSync(path.join(__dirname, '..', 'api', 'form.js'), 'utf8');
   const credits = fs.readFileSync(path.join(__dirname, '..', 'api', '_credits.js'), 'utf8');
 
-  ck('een nieuwe lead stuurt een push', /_push.\)\.stuurNaarKantoor\(\{[\s\S]{0,200}Nieuwe lead/.test(form), null);
-  ck('naar het kantoor van die lead', /projectCode: project_code/.test(form), null);
+  /* De teksten staan niet meer als Nederlandse zin in de code maar als sleutel
+     -- de melding komt binnen in de taal van het scherm. Zie api/_i18n.js. */
+  ck('een nieuwe lead stuurt een push',
+     /_push.\)\.stuurVertaald\(\{[\s\S]{0,200}push\.lead\.title/.test(form), null);
+  ck('naar het kantoor van die lead', /projectCode:  project_code/.test(form), null);
+  ck('en de tekst staat als sleutel, niet als Nederlandse zin',
+     form.indexOf("titel: 'Nieuwe lead'") === -1, null);
   /* Zonder await en met .catch: de lead is het product, de melding een
      extraatje. Een storing bij OneSignal mag een lead nooit kosten. */
   ck('en blokkeert het opslaan van de lead niet',
-     /stuurNaarKantoor\(\{[\s\S]{0,260}\}\)\.catch\(\(\) => \{\}\);/.test(form), null);
-  ck('bij 80% van de credits ook',  /Nog 20% AI-credits over/.test(credits), null);
-  ck('en bij de limiet',            /titel: 'Kredietlimiet bereikt'/.test(credits), null);
+     /stuurVertaald\(\{[\s\S]{0,300}\}\)\.catch\(\(\) => \{\}\);/.test(form), null);
+  ck('bij 80% van de credits ook',  /push\.credit80\.title/.test(credits), null);
+  ck('en bij de limiet',            /push\.credit100\.title/.test(credits), null);
 }
 
 console.log('\n— de klant zet het zelf aan, en krijgt de waarheid te horen —');
