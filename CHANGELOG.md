@@ -39,6 +39,10 @@ computer de volgende gebruiker meldingen van het kantoor ervoor.
 **Web** aanstaan voor deze app, met `https://app.helvaro.pro` als site-URL.
 Zonder die stap start de SDK niet.
 
+Live nagemeten: de SDK laadde wel, maar de synchronisatie met OneSignal werd
+geblokkeerd door de beveiligingspolicy — die haalt hij op als JSONP-script en
+niet als gewone aanvraag. Rechtgezet.
+
 Testen kan met `https://app.helvaro.pro/dashboard?onesignal=verify` — dan
 verschijnt het bevestigingsvenster van OneSignal en kun je toestemming geven.
 Zonder die toevoeging krijgt niemand dat venster te zien; het is

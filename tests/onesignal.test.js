@@ -72,6 +72,11 @@ console.log('\n— aan: script geladen en de CSP laat precies genoeg toe —');
   ck('het app-id staat in de pagina',
      html.indexOf('8302e5a5-e792-4fb0-a258-44c672539aa8') > -1, null);
   ck('script-src laat de CDN toe', /script-src[^;]*https:\/\/cdn\.onesignal\.com/.test(csp), csp.slice(0, 200));
+  /* De SDK haalt zijn sync op met JSONP -- als <script>, niet als fetch. Stond
+     api.onesignal.com alleen bij connect-src, dan blokkeerde de browser die
+     tag en gebeurde er stilletjes niets. Live gezien in de console. */
+  ck('en OOK de API, want die komt binnen als JSONP-script',
+     /script-src[^;]*https:\/\/api\.onesignal\.com/.test(csp), csp.slice(0, 220));
   ck('connect-src laat de API toe',  /connect-src[^;]*https:\/\/api\.onesignal\.com/.test(csp), csp.slice(0, 240));
   /* De worker komt van onze eigen host; 'self' volstaat en er hoeft dus GEEN
      vreemde host bij worker-src. Losser dan nodig is ook fout. */

@@ -24623,7 +24623,14 @@ ${cmd.js}
      doet op zijn beurt importScripts naar de CDN, maar een worker heeft zijn
      eigen policy uit zijn eigen response-headers -- en daar zetten we er geen,
      dus dat pad blijft open. */
-  const osScript  = ONESIGNAL_READY ? ' https://cdn.onesignal.com' : '';
+  /* api.onesignal.com hoort OOK bij script-src, niet alleen bij connect-src.
+     De SDK haalt zijn synchronisatie op met JSONP -- dus als een <script>-tag,
+     niet als fetch. Met alleen connect-src werd die geblokkeerd:
+       "Loading the script 'https://api.onesignal.com/sync/<app-id>/web?callback=__jp0'
+        violates the following Content Security Policy directive: script-src ..."
+     Live gezien in de console; in de code was er niets aan te merken. Precies
+     de stille storing waar een integratie weken op blijft hangen. */
+  const osScript  = ONESIGNAL_READY ? ' https://cdn.onesignal.com https://api.onesignal.com' : '';
   const osConnect = ONESIGNAL_READY ? ' https://api.onesignal.com https://cdn.onesignal.com' : '';
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
