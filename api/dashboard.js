@@ -9131,7 +9131,7 @@ ${faro.navCta}
           <div class="dash-trial-banner-title" id="dash-trial-banner-title">—</div>
           <div class="dash-trial-banner-sub" id="dash-trial-banner-sub">—</div>
         </div>
-        <a class="dash-trial-banner-cta" id="dash-trial-banner-cta" href="#" target="_blank" rel="noopener">Upgrade</a>
+        <a class="dash-trial-banner-cta" id="dash-trial-banner-cta" href="#" target="_blank" rel="noopener">${T('dash.upgrade')}</a>
       </div>
 
       <!-- Email-verification banner. Hidden until loadOnboardingChecklist()
@@ -9141,12 +9141,12 @@ ${faro.navCta}
       <div class="dash-verify-banner" id="dash-verify-banner" style="display:none">
         <div class="dash-verify-banner-icon">✉</div>
         <div class="dash-verify-banner-body">
-          <div class="dash-verify-banner-title">Bevestig je e-mailadres</div>
+          <div class="dash-verify-banner-title">${T('dash.verify.title')}</div>
           <div class="dash-verify-banner-sub">Check je inbox voor de bevestigingsmail. Dit is alleen nodig zodat je later je wachtwoord kan resetten als je dat ooit vergeet — verder werkt alles al gewoon.</div>
         </div>
         <div class="dash-verify-banner-actions">
-          <button class="dash-verify-banner-cta" id="dash-verify-banner-resend" onclick="resendVerificationFromBanner()">Stuur opnieuw</button>
-          <button class="dash-verify-banner-close" onclick="dismissVerifyBanner()" title="Verbergen voor deze sessie">×</button>
+          <button class="dash-verify-banner-cta" id="dash-verify-banner-resend" onclick="resendVerificationFromBanner()">${T('dash.verify.resend')}</button>
+          <button class="dash-verify-banner-close" onclick="dismissVerifyBanner()" title="${T('dash.verify.hide')}">×</button>
         </div>
       </div>
 
@@ -9158,11 +9158,11 @@ ${faro.navCta}
       <div class="dash-checklist" id="dash-checklist" style="display:none">
         <div class="dash-checklist-head">
           <div class="dash-checklist-title-wrap">
-            <div class="dash-checklist-title">Aan de slag met Helvaro</div>
+            <div class="dash-checklist-title">${T('dash.start.title')}</div>
             <div class="dash-checklist-sub" id="dash-checklist-progress-label">0 van 5 klaar</div>
           </div>
           <div class="dash-checklist-progress-bar"><div class="dash-checklist-progress-fill" id="dash-checklist-progress-fill" style="width:0%"></div></div>
-          <button class="dash-checklist-close" id="dash-checklist-close" onclick="dismissChecklist()" title="Verbergen">×</button>
+          <button class="dash-checklist-close" id="dash-checklist-close" onclick="dismissChecklist()" title="${T('dash.hide')}">×</button>
         </div>
         <div class="dash-checklist-items" id="dash-checklist-items">
           <!-- rendered by renderOnboardingChecklist() -->
@@ -9170,10 +9170,10 @@ ${faro.navCta}
         <div class="chk-whatsapp">
           <div class="chk-whatsapp-icon">💬</div>
           <div class="chk-whatsapp-body">
-            <div class="chk-whatsapp-title">WhatsApp-nummer koppelen</div>
+            <div class="chk-whatsapp-title">${T('dash.wa.link')}</div>
             <div class="chk-whatsapp-sub">Dit stel je niet zelf in. Meta moet je nummer eerst goedkeuren, en dat regelen wij voor je. Duurt meestal een paar dagen. Je hoeft nu niets te doen, we nemen contact op zodra het kan. Laat het gerust weten als je er al klaar voor bent, dan pakken we het sneller op.</div>
           </div>
-          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="#" onclick="vraagWhatsAppKoppeling();return false;">Laat het weten</a>
+          <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="#" onclick="vraagWhatsAppKoppeling();return false;">${T('dash.wa.tell')}</a>
         </div>
       </div>
 
@@ -9181,21 +9181,21 @@ ${faro.navCta}
       <div class="dash-formlink" id="dash-formlink">
         <div class="dash-formlink-icon"></div>
         <div class="dash-formlink-body">
-          <div class="dash-formlink-label">Jouw lead-formulier</div>
+          <div class="dash-formlink-label">${T('dash.form.title')}</div>
           <code class="dash-formlink-url" id="dash-formlink-url">—</code>
         </div>
         <div class="dash-formlink-actions">
-          <button class="dash-formlink-btn" onclick="copyFormLink()" title="Kopieer link">
+          <button class="dash-formlink-btn" onclick="copyFormLink()" title="${T('dash.form.copylink')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Kopieer
+            ${T('dash.form.copy')}
           </button>
           <a class="dash-formlink-btn" id="dash-formlink-open" target="_blank" rel="noopener">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Open
+            ${T('dash.form.open')}
           </a>
-          <button class="dash-formlink-btn" onclick="navigateTo('formulier')" title="QR-code, embed-code, deel-opties">
+          <button class="dash-formlink-btn" onclick="navigateTo('formulier')" title="${T('dash.form.moreTitle')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Meer opties
+            ${T('dash.form.more')}
           </button>
         </div>
       </div>
@@ -9203,18 +9203,18 @@ ${faro.navCta}
       <!-- Stats Grid -->
       <div class="stats-grid" id="stats-grid">
         <!-- Skeleton stats -->
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
       </div>
 
       <!-- Charts row -->
       <div class="charts-row">
         <div class="chart-card">
-          <div class="chart-title">Leads per week (laatste 8 weken)</div>
+          <div class="chart-title">${T('dash.chart.week')}</div>
           <!-- The wrapper is load-bearing. Both charts run with
                maintainAspectRatio:false, which makes Chart.js size the canvas
                to its CONTAINER and ignore the height attribute. .chart-card is
@@ -9224,25 +9224,25 @@ ${faro.navCta}
           <div class="chart-canvas-wrap"><canvas id="leads-chart"></canvas></div>
         </div>
         <div class="chart-card-sm" id="bron-chart-wrap">
-          <div class="chart-title">Leads per bron</div>
+          <div class="chart-title">${T('dash.chart.source')}</div>
           <div class="chart-canvas-wrap chart-canvas-wrap--sm"><canvas id="bron-chart"></canvas></div>
         </div>
       </div>
 
       <!-- Vandaag widget -->
       <div class="today-widget" id="today-widget" style="display:none">
-        <div class="today-widget-title">Vandaag</div>
-        <div id="today-widget-body"><span class="today-empty">Geen afspraken vandaag</span></div>
+        <div class="today-widget-title">${T('dash.today')}</div>
+        <div id="today-widget-body"><span class="today-empty">${T('dash.today.none')}</span></div>
       </div>
 
       <!-- Revenue Goal Card -->
       <div class="revenue-goal-card" id="revenue-goal-card">
         <div class="revenue-goal-header">
           <div>
-            <div class="revenue-goal-label">Pipeline Doel</div>
-            <div class="revenue-goal-sub" id="revenue-goal-sub">verwachte waarde van je gekwalificeerde leads</div>
+            <div class="revenue-goal-label">${T('dash.goal.title')}</div>
+            <div class="revenue-goal-sub" id="revenue-goal-sub">${T('dash.goal.sub')}</div>
           </div>
-          <button class="revenue-goal-edit" id="revenue-goal-edit" title="Doel aanpassen" aria-label="Pipelinedoel aanpassen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+          <button class="revenue-goal-edit" id="revenue-goal-edit" title="${T('dash.goal.edit')}" aria-label="${T('dash.goal.editTitle')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         </div>
         <div class="revenue-goal-amounts">
           <span class="revenue-goal-current" id="revenue-goal-current">€0</span>
@@ -9260,7 +9260,7 @@ ${faro.navCta}
         <div class="followup-header">
           <div class="followup-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92"/></svg>
-            Opvolging Nodig
+            ${T('dash.followup')}
           </div>
           <span class="followup-count" id="followup-count">0</span>
         </div>
@@ -9272,7 +9272,7 @@ ${faro.navCta}
         <div class="nb-header">
           <div class="nb-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 5a10.94 10.94 0 0114.06 14.06M10.71 5.05A16 16 0 0122.56 9M1.42 9a16 16 0 0114.26 2.26M5.33 14a16 16 0 006.39 6.6M9 5a8 8 0 017.94 7"/></svg>
-            Actie nodig
+            ${T('dash.action')}
           </div>
           <span class="nb-count" id="nb-count">0</span>
         </div>
@@ -9282,7 +9282,7 @@ ${faro.navCta}
       <!-- Taken Widget -->
       <div class="taken-widget" id="taken-widget" style="display:none">
         <div class="taken-widget-header">
-          <span class="taken-widget-title">Openstaande Taken</span>
+          <span class="taken-widget-title">${T('dash.tasks')}</span>
           <span class="taken-widget-count" id="taken-widget-count">0</span>
         </div>
         <div id="taken-widget-list"></div>
@@ -9292,7 +9292,7 @@ ${faro.navCta}
       <div class="top-leads-strip" id="top-leads-strip" style="display:none">
         <div class="top-leads-strip-title">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Top Leads
+          ${T('dash.topleads')}
         </div>
         <div class="top-leads-list" id="top-leads-list"></div>
       </div>
@@ -9301,32 +9301,32 @@ ${faro.navCta}
       <div class="filters-bar">
         <div class="search-wrapper">
           <span class="search-icon"></span>
-          <input class="search-input" id="search-input" aria-label="Zoek leads op naam of telefoonnummer" type="text" placeholder="Zoek op naam of telefoonnummer...">
+          <input class="search-input" id="search-input" aria-label="${T('dash.search.title')}" type="text" placeholder="${T('dash.search.ph')}">
         </div>
-        <select class="filter-select" id="filter-status" aria-label="Filter op status">
-          <option value="">Alle statussen</option>
-          <option value="new">Nieuw</option>
-          <option value="in_progress">Bezig</option>
-          <option value="completed">Klaar</option>
+        <select class="filter-select" id="filter-status" aria-label="${T('dash.f.status')}">
+          <option value="">${T('dash.f.allStatus')}</option>
+          <option value="new">${T('dash.s.new')}</option>
+          <option value="in_progress">${T('dash.s.busy')}</option>
+          <option value="completed">${T('dash.s.done')}</option>
         </select>
-        <select class="filter-select" id="filter-qualified" aria-label="Filter op gekwalificeerd">
-          <option value="">Alle leads</option>
-          <option value="true">Gekwalificeerd</option>
-          <option value="false">Niet gekwalificeerd</option>
+        <select class="filter-select" id="filter-qualified" aria-label="${T('dash.f.qual')}">
+          <option value="">${T('dash.f.allLeads')}</option>
+          <option value="true">${T('dash.qualified')}</option>
+          <option value="false">${T('dash.notQualified')}</option>
         </select>
-        <select class="filter-select" id="filter-bron" aria-label="Filter op bron">
-          <option value="">Alle bronnen</option>
+        <select class="filter-select" id="filter-bron" aria-label="${T('dash.f.source')}">
+          <option value="">${T('dash.f.allSources')}</option>
         </select>
-        <select class="filter-select" id="filter-opgepikt" aria-label="Filter op opgepikt">
-          <option value="">Opgepikt: Alle</option>
-          <option value="true">Opgepikt</option>
-          <option value="false">Niet opgepikt</option>
+        <select class="filter-select" id="filter-opgepikt" aria-label="${T('dash.f.picked')}">
+          <option value="">${T('dash.f.pickedAll')}</option>
+          <option value="true">${T('dash.picked')}</option>
+          <option value="false">${T('dash.notPicked')}</option>
         </select>
         <span class="filters-label">
-          Filters
+          ${T('dash.filters')}
           <span class="filter-badge" id="filter-badge" style="display:none">0</span>
         </span>
-        <button class="btn-reset" id="btn-reset-filters">Reset</button>
+        <button class="btn-reset" id="btn-reset-filters">${T('dash.reset')}</button>
         <span class="leads-count" id="leads-count"></span>
       </div>
 
@@ -9337,16 +9337,16 @@ ${faro.navCta}
             <thead>
               <tr>
                 <th class="sortable" data-col="naam">Naam <span class="sort-indicator" data-col="naam"></span></th>
-                <th>Telefoon</th>
-                <th>Status</th>
-                <th>Gekw.</th>
-                <th>Bron</th>
-                <th>Samenvatting</th>
+                <th>${T('dash.col.phone')}</th>
+                <th>${T('dash.col.status')}</th>
+                <th>${T('dash.col.qual')}</th>
+                <th>${T('dash.col.source')}</th>
+                <th>${T('dash.col.summary')}</th>
                 <th class="sortable" data-col="leadScore">Score <span class="sort-indicator" data-col="leadScore"></span></th>
-                <th>Opgepikt</th>
+                <th>${T('dash.picked')}</th>
                 <th class="sortable" data-col="datum">Datum <span class="sort-indicator" data-col="datum"></span></th>
                 <th></th>
-                <th>Acties</th>
+                <th>${T('dash.col.actions')}</th>
               </tr>
             </thead>
             <tbody id="leads-tbody">
@@ -9367,23 +9367,23 @@ ${faro.navCta}
     <main class="page-content page" id="page-resultaten">
       <div class="export-filter-bar">
         <div class="export-filter-group">
-          <label class="export-filter-label">Periode</label>
-          <select class="export-select" id="resultaten-period" aria-label="Periode voor resultaten" onchange="loadResultaten()">
-            <option value="this_month" selected>Deze maand</option>
-            <option value="last_30_days">Afgelopen 30 dagen</option>
-            <option value="all_time">Alle tijd</option>
+          <label class="export-filter-label">${T('res.period')}</label>
+          <select class="export-select" id="resultaten-period" aria-label="${T('res.periodTitle')}" onchange="loadResultaten()">
+            <option value="this_month" selected>${T('res.thisMonth')}</option>
+            <option value="last_30_days">${T('res.last30')}</option>
+            <option value="all_time">${T('res.allTime')}</option>
           </select>
         </div>
         <div class="export-preview-count" id="resultaten-period-range">—</div>
       </div>
 
       <div class="stats-grid" id="resultaten-grid">
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">Laden...</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
       </div>
 
       <p style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
@@ -9397,20 +9397,20 @@ ${faro.navCta}
       <!-- Export filter bar -->
       <div class="export-filter-bar">
         <div class="export-filter-group">
-          <label class="export-filter-label">Periode</label>
-          <select class="export-select" id="export-period" aria-label="Periode voor export" onchange="updateExportPreview()">
-            <option value="7">Afgelopen 7 dagen</option>
-            <option value="30" selected>Afgelopen 30 dagen</option>
-            <option value="90">Afgelopen 90 dagen</option>
-            <option value="all">Alle tijd</option>
+          <label class="export-filter-label">${T('res.period')}</label>
+          <select class="export-select" id="export-period" aria-label="${T('exp.period')}" onchange="updateExportPreview()">
+            <option value="7">${T('exp.last7')}</option>
+            <option value="30" selected>${T('res.last30')}</option>
+            <option value="90">${T('exp.last90')}</option>
+            <option value="all">${T('res.allTime')}</option>
           </select>
         </div>
         <div class="export-filter-group">
-          <label class="export-filter-label">Status</label>
-          <select class="export-select" id="export-status" aria-label="Status voor export" onchange="updateExportPreview()">
-            <option value="all">Alle leads</option>
-            <option value="qualified">Alleen gekwalificeerd</option>
-            <option value="unqualified">Niet gekwalificeerd</option>
+          <label class="export-filter-label">${T('dash.col.status')}</label>
+          <select class="export-select" id="export-status" aria-label="${T('exp.status')}" onchange="updateExportPreview()">
+            <option value="all">${T('dash.f.allLeads')}</option>
+            <option value="qualified">${T('exp.onlyQual')}</option>
+            <option value="unqualified">${T('dash.notQualified')}</option>
           </select>
         </div>
         <div class="export-preview-count" id="export-preview-count">
@@ -9426,16 +9426,16 @@ ${faro.navCta}
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </div>
           <div class="export-card-title display-heading gradient-text">CSV Export</div>
-          <p class="export-card-desc">Download gefilterde leads als CSV voor Excel, Google Sheets of je CRM.</p>
+          <p class="export-card-desc">${T('exp.csv.sub')}</p>
           <div class="export-includes">
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Naam &amp; contactgegevens</div>
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Kwalificatiescores</div>
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI samenvattingen</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.scores')}</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.summaries')}</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Bronnaam &amp; datum</div>
           </div>
           <button class="btn-icon btn-primary-sm export-btn" id="btn-download-csv" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV downloaden
+            ${T('exp.csv')}
           </button>
         </div>
 
@@ -9444,21 +9444,21 @@ ${faro.navCta}
           <div class="export-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           </div>
-          <div class="export-card-title display-heading gradient-text">Weekrapport</div>
-          <p class="export-card-desc">Gedetailleerd overzicht met statistieken en gekwalificeerde leads van de afgelopen 7 dagen.</p>
+          <div class="export-card-title display-heading gradient-text">${T('exp.week')}</div>
+          <p class="export-card-desc">${T('exp.week.sub')}</p>
           <div class="export-includes">
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Leads &amp; conversie stats</div>
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Gekwalificeerde leads lijst</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.qualList')}</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI scores &amp; samenvattingen</div>
           </div>
           <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-            Rapport laden
+            ${T('exp.loadReport')}
           </button>
           <div id="rapport-content" style="display:none;margin-top:20px">
             <button class="btn-icon btn-primary-sm" id="btn-download-pdf" style="width:100%;justify-content:center;padding:10px;margin-bottom:16px;background:rgba(var(--error-rgb),0.1);border-color:rgba(var(--error-rgb),0.3);color: var(--error-ink)" onclick="exportPDF()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Downloaden als PDF
+              ${T('exp.pdf')}
             </button>
             <div class="rapport-stats" id="rapport-stats"></div>
             <div id="rapport-leads-section"></div>
@@ -9478,24 +9478,24 @@ ${faro.navCta}
           <div class="export-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
-          <div class="export-card-title display-heading gradient-text">Snapshot</div>
-          <p class="export-card-desc">Live overzicht van je geselecteerde periode.</p>
+          <div class="export-card-title display-heading gradient-text">${T('exp.snapshot')}</div>
+          <p class="export-card-desc">${T('exp.snapshot.sub')}</p>
           <div class="export-snapshot" id="export-snapshot">
             <div class="export-snap-item">
               <div class="export-snap-val" id="snap-total">—</div>
-              <div class="export-snap-label">Totaal leads</div>
+              <div class="export-snap-label">${T('exp.totalLeads')}</div>
             </div>
             <div class="export-snap-item">
               <div class="export-snap-val" id="snap-qualified">—</div>
-              <div class="export-snap-label">Gekwalificeerd</div>
+              <div class="export-snap-label">${T('dash.qualified')}</div>
             </div>
             <div class="export-snap-item">
               <div class="export-snap-val" id="snap-rate">—</div>
-              <div class="export-snap-label">Conversie %</div>
+              <div class="export-snap-label">${T('exp.convPct')}</div>
             </div>
             <div class="export-snap-item">
               <div class="export-snap-val" id="snap-avg-score">—</div>
-              <div class="export-snap-label">Gem. Score</div>
+              <div class="export-snap-label">${T('exp.avgScore')}</div>
             </div>
           </div>
         </div>
@@ -9518,7 +9518,7 @@ ${faro.navCta}
           <div class="kst-kaart">
             <div class="kst-lbl">Vaste kosten per maand</div>
             <div class="kst-groot" id="kst-vast">&mdash;</div>
-            <div class="kst-onder" id="kst-vast-onder">Laden...</div>
+            <div class="kst-onder" id="kst-vast-onder">${T('dash.loading')}</div>
           </div>
           <div class="kst-kaart">
             <div class="kst-lbl">Maandomzet</div>
@@ -9545,7 +9545,7 @@ ${faro.navCta}
             <span class="kst-blok-sub">Elke maand hetzelfde, hoeveel klanten je ook hebt</span>
           </div>
           <div class="kst-tabel" id="kst-vaste-lijst">
-            <div class="kst-leeg">Laden...</div>
+            <div class="kst-leeg">${T('dash.loading')}</div>
           </div>
         </div>
 
@@ -9555,7 +9555,7 @@ ${faro.navCta}
             <span class="kst-blok-sub">Je betaalt per aanroep &mdash; het bedrag hangt af van gebruik</span>
           </div>
           <div class="kst-tabel" id="kst-verbruik-lijst">
-            <div class="kst-leeg">Laden...</div>
+            <div class="kst-leeg">${T('dash.loading')}</div>
           </div>
           <div class="kst-ai" id="kst-ai"></div>
         </div>
@@ -9566,7 +9566,7 @@ ${faro.navCta}
             <span class="kst-blok-sub">Welke gezet zijn. De waarden staan hier bewust nooit</span>
           </div>
           <div class="kst-sleutels" id="kst-sleutels">
-            <div class="kst-leeg">Laden...</div>
+            <div class="kst-leeg">${T('dash.loading')}</div>
           </div>
         </div>
 
@@ -9628,7 +9628,7 @@ ${faro.navCta}
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Of kopieer de link handmatig:</div>
             <div style="display:flex;gap:8px;align-items:center">
               <code id="nc-invite-link" style="flex:1;font-size:11px;background:var(--bg-primary);padding:6px 8px;border-radius:6px;word-break:break-all;color: var(--accent-ink);border:1px solid var(--border)"></code>
-              <button onclick="copyInviteLink()" id="nc-invite-copy" style="flex-shrink:0;padding:5px 10px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:11px;font-weight:600;cursor:pointer">Kopieer</button>
+              <button onclick="copyInviteLink()" id="nc-invite-copy" style="flex-shrink:0;padding:5px 10px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:11px;font-weight:600;cursor:pointer">${T('dash.form.copy')}</button>
             </div>
           </div>
           <div id="nc-invite-missing" style="display:none;background:rgba(var(--error-rgb),.08);border:1px solid rgba(var(--error-rgb),.2);border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12px;color: var(--error-ink)">
@@ -9669,8 +9669,8 @@ ${faro.navCta}
               <div id="nc-result-login-block" style="display:none;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;padding:10px 12px;margin-bottom:10px">
                 <div style="font-size:11px;color: var(--accent-ink);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Login credentials</div>
                 <div style="font-size:12px;display:flex;flex-direction:column;gap:4px">
-                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">E-mail:</span><code id="nc-result-email" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:11px"></code><button onclick="copyNcField('nc-result-email','nc-copy-email')" id="nc-copy-email" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
-                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">Wachtwoord:</span><code id="nc-result-pw" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:12px;color: var(--accent-ink);font-weight:600;letter-spacing:.5px"></code><button onclick="copyNcField('nc-result-pw','nc-copy-pw')" id="nc-copy-pw" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">Kopieer</button></div>
+                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">E-mail:</span><code id="nc-result-email" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:11px"></code><button onclick="copyNcField('nc-result-email','nc-copy-email')" id="nc-copy-email" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">${T('dash.form.copy')}</button></div>
+                  <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted);width:70px">Wachtwoord:</span><code id="nc-result-pw" style="flex:1;background:var(--bg-primary);padding:3px 7px;border-radius:4px;font-size:12px;color: var(--accent-ink);font-weight:600;letter-spacing:.5px"></code><button onclick="copyNcField('nc-result-pw','nc-copy-pw')" id="nc-copy-pw" style="flex-shrink:0;padding:3px 8px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:5px;color:var(--text-primary);font-size:10px;cursor:pointer">${T('dash.form.copy')}</button></div>
                 </div>
                 <div style="font-size:10px;color:var(--text-muted);margin-top:6px">Klant moet wijzigen via <em>Wachtwoord vergeten</em> na 1ste login.</div>
               </div>
@@ -9708,17 +9708,17 @@ ${faro.navCta}
       <div class="cal-main">
         <!-- Calendar toolbar -->
         <div class="cal-toolbar">
-          <button class="cal-today-btn" onclick="calToday()">Vandaag</button>
-          <button class="cal-nav-btn" onclick="calPrev()" aria-label="Vorige week" title="Vorige week">
+          <button class="cal-today-btn" onclick="calToday()">${T('dash.today')}</button>
+          <button class="cal-nav-btn" onclick="calPrev()" aria-label="${T('cal.prev')}" title="${T('cal.prev')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button class="cal-nav-btn" onclick="calNext()" aria-label="Volgende week" title="Volgende week">
+          <button class="cal-nav-btn" onclick="calNext()" aria-label="${T('cal.next')}" title="${T('cal.next')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
           <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(lokaleDatum(new Date()),null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Boek afspraak
+            ${T('cal.book')}
           </button>
         </div>
 
@@ -9726,7 +9726,7 @@ ${faro.navCta}
         <div class="cal-attendance-banner" id="cal-attendance-banner">
           <div class="cal-att-banner-title">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Afspraken zonder resultaat
+            ${T('cal.noResult')}
           </div>
           <div class="cal-att-cards" id="cal-att-cards"></div>
         </div>
@@ -9749,12 +9749,12 @@ ${faro.navCta}
       <!-- Te Bellen sidebar -->
       <div class="cal-right-sidebar">
         <div class="cal-sidebar-header">
-          <span class="cal-sidebar-title">Te Bellen</span>
+          <span class="cal-sidebar-title">${T('cal.toCall')}</span>
           <span class="cal-sidebar-count" id="cal-sidebar-count">0</span>
         </div>
-        <div class="cal-sidebar-desc">Gekwalificeerd · nog geen afspraak</div>
+        <div class="cal-sidebar-desc">${T('cal.toCall.sub')}</div>
         <div class="cal-sidebar-scroll" id="cal-sidebar-list">
-          <div class="cal-sidebar-empty">Laden...</div>
+          <div class="cal-sidebar-empty">${T('dash.loading')}</div>
         </div>
       </div>
 
@@ -9766,7 +9766,7 @@ ${faro.navCta}
         <div id="pipeline-summary" class="pipeline-summary-chips"></div>
       </div>
       <div class="pipeline-board" id="pipeline-board">
-        <div style="color:var(--text-muted);font-size:14px">Pipeline laden...</div>
+        <div style="color:var(--text-muted);font-size:14px">${T('pipe.loading')}</div>
       </div>
     </main>
 
@@ -9776,13 +9776,13 @@ ${faro.navCta}
         <div class="conv-list" id="conv-list">
           <div class="conv-list-header">Gesprekken</div>
           <div id="conv-list-body">
-            <div style="padding:20px;color:var(--text-muted);font-size:13px">Laden...</div>
+            <div style="padding:20px;color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
           </div>
         </div>
         <div class="conv-detail" id="conv-detail">
           <div class="conv-empty">
             <div class="conv-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-            <div>Selecteer een gesprek</div>
+            <div>${T('conv.select')}</div>
           </div>
         </div>
       </div>
@@ -9794,62 +9794,62 @@ ${faro.navCta}
       <div class="analyse-revenue-row" id="analyse-revenue-row">
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-omzet-val">€0</div>
-          <div class="analyse-revenue-label">Gesloten Omzet</div>
-          <div class="analyse-revenue-sub">afspraken die kwamen</div>
+          <div class="analyse-revenue-label">${T('an.revenue')}</div>
+          <div class="analyse-revenue-sub">${T('an.apptsCame')}</div>
         </div>
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-gem-val">€0</div>
-          <div class="analyse-revenue-label">Gem. Deal Waarde</div>
+          <div class="analyse-revenue-label">${T('an.avgDeal')}</div>
           <div class="analyse-revenue-sub" id="analyse-gem-sub">0 deals met waarde</div>
         </div>
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-showup-val" style="color:var(--green-ink)">—</div>
-          <div class="analyse-revenue-label">Show-up Rate</div>
-          <div class="analyse-revenue-sub" id="analyse-showup-sub">van geboekte afspraken</div>
+          <div class="analyse-revenue-label">${T('an.showup')}</div>
+          <div class="analyse-revenue-sub" id="analyse-showup-sub">${T('an.ofBooked')}</div>
         </div>
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-winrate-val" style="color:var(--green-ink)">0%</div>
-          <div class="analyse-revenue-label">Win Rate</div>
-          <div class="analyse-revenue-sub">verloren vs totaal</div>
+          <div class="analyse-revenue-label">${T('an.winrate')}</div>
+          <div class="analyse-revenue-sub">${T('an.lostVsTotal')}</div>
           <div class="analyse-verlies-list" id="analyse-verlies-list"></div>
         </div>
       </div>
       <div class="analyse-grid" id="analyse-grid">
         <!-- Funnel -->
         <div class="analyse-card">
-          <div class="analyse-card-title">Conversie Funnel</div>
-          <div id="funnel-content"><div style="color:var(--text-muted);font-size:13px">Laden...</div></div>
+          <div class="analyse-card-title">${T('an.funnel')}</div>
+          <div id="funnel-content"><div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div></div>
         </div>
         <!-- Source Performance -->
         <div class="analyse-card">
-          <div class="analyse-card-title">Prestaties per Bron</div>
-          <div id="source-table-wrap"><div style="color:var(--text-muted);font-size:13px">Laden...</div></div>
+          <div class="analyse-card-title">${T('an.perSource')}</div>
+          <div id="source-table-wrap"><div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div></div>
         </div>
         <!-- Days of week chart -->
         <div class="analyse-card">
-          <div class="analyse-card-title">Leads per Weekdag</div>
+          <div class="analyse-card-title">${T('an.perWeekday')}</div>
           <div class="chart-canvas-wrap chart-canvas-wrap--sm"><canvas id="analyse-days-chart"></canvas></div>
         </div>
         <!-- Lead score distribution. Spans 2 cols -->
         <div class="analyse-card analyse-card-span2">
-          <div class="analyse-card-title">Score Verdeling</div>
+          <div class="analyse-card-title">${T('an.scoreDist')}</div>
           <div class="chart-canvas-wrap"><canvas id="analyse-score-chart"></canvas></div>
         </div>
         <!-- Avg response time. Col 3 beside score chart -->
         <div class="analyse-card">
-          <div class="analyse-card-title">Gemiddelde Reactietijd</div>
+          <div class="analyse-card-title">${T('an.avgResponse')}</div>
           <div id="analyse-response-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding-top:16px">
             <div class="analyse-stat-big" id="analyse-response-val">—</div>
-            <div class="analyse-stat-label">seconden gemiddeld</div>
+            <div class="analyse-stat-label">${T('an.seconds')}</div>
             <div style="margin-top:20px;width:100%">
-              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Conversie samenvatting</div>
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">${T('an.convSummary')}</div>
               <div id="analyse-conv-summary" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
           </div>
         </div>
         <!-- Hours chart (full width) -->
         <div class="analyse-card analyse-card-full">
-          <div class="analyse-card-title">Leads per Uur van de Dag</div>
+          <div class="analyse-card-title">${T('an.perHour')}</div>
           <div class="chart-canvas-wrap chart-canvas-wrap--xs"><canvas id="analyse-hours-chart"></canvas></div>
         </div>
       </div>
@@ -9896,7 +9896,7 @@ ${faro.navCta}
         <div class="ap-field" style="margin-top:14px">
           <label class="ap-label">Type ruimte <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer). Ook voor buiten: gevel, tuin, terras</span></label>
           <div class="pi-roomtype-grid" id="pi-roomtype-grid">
-            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
           </div>
         </div>
 
@@ -9910,14 +9910,14 @@ ${faro.navCta}
             <div class="ap-field">
               <label class="ap-label">Meubels <span class="ap-label-hint">hoeveel inrichting mag de AI tonen</span></label>
               <div class="pi-roomtype-grid" id="pi-furniture-grid">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
               <label class="ap-label">Muurafwerking <span class="ap-label-hint">optioneel</span></label>
               <div class="pi-roomtype-grid" id="pi-wallfinish-grid">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
                 <label class="ap-label" style="margin-bottom:6px">Muurkleur <span class="ap-label-hint">gecureerd palet — geen vrij kleurveld, dat botst vaak met het AI-model</span></label>
@@ -9929,21 +9929,21 @@ ${faro.navCta}
             <div class="ap-field">
               <label class="ap-label">Vloer <span class="ap-label-hint">optioneel</span></label>
               <div class="pi-roomtype-grid" id="pi-floor-grid">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
               <label class="ap-label">Lichtsfeer <span class="ap-label-hint">optioneel</span></label>
               <div class="pi-roomtype-grid" id="pi-lighting-grid">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
               <label class="ap-label">Renovatiediepte <span class="ap-label-hint">hoe ver mag de visualisatie gaan</span></label>
               <div class="pi-roomtype-grid" id="pi-renovation-grid">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">Laden...</div>
+                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
               <div class="pi-honesty-note" id="pi-honesty-note" style="display:none">
                 <span>⚠</span>
@@ -9985,7 +9985,7 @@ ${faro.navCta}
 
         <div class="ap-field" style="margin-top:14px">
           <label class="ap-label">Eerder gegenereerd</label>
-          <div id="pi-gallery"><div class="pi-empty">Laden...</div></div>
+          <div id="pi-gallery"><div class="pi-empty">${T('dash.loading')}</div></div>
         </div>
       </div>
     </main>
@@ -10273,7 +10273,7 @@ ${faro.navCta}
                     </div>
                   </div>
                   <div class="ap-phone-msgs">
-                    <div class="ap-msg-day-divider">Vandaag</div>
+                    <div class="ap-msg-day-divider">${T('dash.today')}</div>
                     <div class="ap-msg ap-msg-them" id="ap-preview-bubble">Hey Jan! Mathis hier van Bedrijf. Zag dat je je gegevens achterliet. Wat bracht je bij ons?</div>
                   </div>
                 </div>
@@ -10295,13 +10295,13 @@ ${faro.navCta}
 
               <!-- Form Link compact card. Points to dedicated Formulier page -->
               <div class="ap-formlink-card">
-                <div class="ap-test-title">Jouw lead-formulier</div>
+                <div class="ap-test-title">${T('dash.form.title')}</div>
                 <p class="ap-test-sub">Deel deze link via je website, advertenties of socials.</p>
                 <div class="ap-formlink-url-row">
                   <code class="ap-formlink-url" id="ap-formlink-url">—</code>
-                  <button class="ap-btn" onclick="copyFormLink()" title="Kopieer link">
+                  <button class="ap-btn" onclick="copyFormLink()" title="${T('dash.form.copylink')}">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    Kopieer
+                    ${T('dash.form.copy')}
                   </button>
                 </div>
                 <div class="ap-formlink-actions">
@@ -10330,7 +10330,7 @@ ${faro.navCta}
         <!-- Plan + saldo naast elkaar -->
         <div class="fa-top">
           <div class="fa-card fa-card--plan">
-            <div class="fa-label">Je plan</div>
+            <div class="fa-label">${T('fa.plan')}</div>
             <div class="fa-plan-naam" id="fa-plan-naam">—</div>
             <div class="fa-plan-sub" id="fa-plan-sub"></div>
             <div class="fa-plan-acties">
@@ -10338,7 +10338,7 @@ ${faro.navCta}
                    handwerk per klant en dus precies wat niet meeschaalt: de
                    klant wil betalen en moet wachten tot er iemand wakker is.
                    Nu scrollt hij naar de plannen en rekent zelf af. -->
-              <button class="btn-icon" onclick="naarPlannen()">Plan wijzigen</button>
+              <button class="btn-icon" onclick="naarPlannen()">${T('fa.planChange')}</button>
               <!-- Alleen zichtbaar als er echt iets te beheren valt. -->
               <button class="btn-icon" id="fa-portaal-knop" style="display:none"
                       onclick="naarFacturatieportaal()">Facturen &amp; opzeggen</button>
@@ -10346,12 +10346,12 @@ ${faro.navCta}
           </div>
 
           <div class="fa-card fa-card--saldo">
-            <div class="fa-label">Credits deze periode</div>
+            <div class="fa-label">${T('fa.credits')}</div>
             <div class="fa-saldo" id="fa-saldo">—</div>
             <div class="fa-saldo-sub" id="fa-saldo-sub"></div>
             <div class="fa-balk"><div class="fa-balk-vul" id="fa-balk-vul"></div></div>
             <div class="fa-plan-acties">
-              <button class="btn-icon btn-primary-sm" onclick="openKoopModal()">Credits bijkopen</button>
+              <button class="btn-icon btn-primary-sm" onclick="openKoopModal()">${T('fa.buy')}</button>
             </div>
           </div>
         </div>
@@ -10360,22 +10360,22 @@ ${faro.navCta}
              kan worden: kiezen, afrekenen bij Stripe, en de webhook zet het
              plan en de creditlimiet voordat hij terug is op dit scherm. -->
         <section class="fa-plannen" id="fa-plannen" aria-labelledby="fa-plannen-titel">
-          <h2 class="fa-plannen-titel" id="fa-plannen-titel">Plannen</h2>
-          <p class="fa-plannen-sub">Maandelijks opzegbaar. Je credits gaan mee naar het nieuwe plan.</p>
+          <h2 class="fa-plannen-titel" id="fa-plannen-titel">${T('fa.plans')}</h2>
+          <p class="fa-plannen-sub">${T('fa.plans.sub')}</p>
           <div class="fa-plannen-grid" id="fa-plannen-grid"></div>
         </section>
 
         <!-- Waar de credits heen gingen -->
         <div class="fa-card">
-          <div class="fa-kop">Waar je credits heen gingen</div>
-          <div class="fa-sub" id="fa-verdeling-sub">Deze periode</div>
+          <div class="fa-kop">${T('fa.where')}</div>
+          <div class="fa-sub" id="fa-verdeling-sub">${T('fa.thisPeriod')}</div>
           <div id="fa-verdeling"></div>
         </div>
 
         <!-- Boekingen -->
         <div class="fa-card">
-          <div class="fa-kop">Boekingen</div>
-          <div class="fa-sub" id="fa-boekingen-sub">Elke beweging, nieuwste eerst</div>
+          <div class="fa-kop">${T('fa.entries')}</div>
+          <div class="fa-sub" id="fa-boekingen-sub">${T('fa.entries.sub')}</div>
           <div id="fa-boekingen"></div>
         </div>
       </div>
@@ -10392,12 +10392,12 @@ ${faro.navCta}
 
         <div class="pd-head">
           <div>
-            <div class="pd-head-title">Je aanbod</div>
+            <div class="pd-head-title">${T('prop.offer')}</div>
             <div class="pd-head-sub" id="pd-count">—</div>
           </div>
           <button class="btn-icon btn-primary-sm" onclick="openPandModal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Pand toevoegen
+            ${T('prop.add')}
           </button>
         </div>
 
@@ -10407,12 +10407,12 @@ ${faro.navCta}
              de lijst. -->
         <div class="pd-notice" id="pd-notice" style="display:none"></div>
         <div class="pd-empty" id="pd-empty" style="display:none">
-          <div class="pd-empty-title">Nog geen panden</div>
+          <div class="pd-empty-title">${T('prop.none')}</div>
           <div class="pd-empty-text">
             Voeg je eerste woning toe. Je krijgt er meteen een eigen link bij die je onder een
             advertentie kunt zetten &mdash; en dan weet je AI precies over welk pand een lead het heeft.
           </div>
-          <button class="btn-icon btn-primary-sm" onclick="openPandModal()">Pand toevoegen</button>
+          <button class="btn-icon btn-primary-sm" onclick="openPandModal()">${T('prop.add')}</button>
         </div>
 
         <div class="pd-grid" id="pd-grid"></div>
@@ -10442,7 +10442,7 @@ ${faro.navCta}
           </div>
           <div class="fm-stat-card">
             <div class="fm-stat-num" id="fm-stat-conv">—%</div>
-            <div class="fm-stat-lbl">Gekwalificeerd</div>
+            <div class="fm-stat-lbl">${T('dash.qualified')}</div>
             <div class="fm-stat-delta" id="fm-stat-conv-sub"></div>
           </div>
         </div>
@@ -10452,15 +10452,15 @@ ${faro.navCta}
           <div class="fm-hero-top">
             <div class="fm-hero-icon"></div>
             <div class="fm-hero-text">
-              <h2 class="fm-hero-title">Jouw lead-formulier</h2>
+              <h2 class="fm-hero-title">${T('dash.form.title')}</h2>
               <p class="fm-hero-sub">Iedereen die dit formulier invult krijgt automatisch een WhatsApp van je AI en verschijnt in je Dashboard.</p>
             </div>
           </div>
           <div class="fm-url-row">
             <code class="fm-url" id="fm-url">—</code>
-            <button class="fm-btn fm-btn-primary" onclick="copyFormLink()" title="Kopieer link">
+            <button class="fm-btn fm-btn-primary" onclick="copyFormLink()" title="${T('dash.form.copylink')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              Kopieer link
+              ${T('dash.form.copylink')}
             </button>
             <a class="fm-btn" id="fm-open" target="_blank" rel="noopener">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -10546,7 +10546,7 @@ ${faro.navCta}
             <textarea class="fm-code" id="fm-code-link" aria-label="Directe link naar je formulier" readonly rows="1"></textarea>
             <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-link')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              Kopieer link
+              ${T('dash.form.copylink')}
             </button>
             <div class="fm-instructions">
               <strong>Gebruik in:</strong> Facebook / Google Ads, e-mail handtekening, Instagram bio, LinkedIn berichten, visitekaartjes (samen met de QR-code hieronder).
@@ -10768,24 +10768,24 @@ ${faro.navCta}
         <div class="settings-section">
           <div class="settings-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            AI Instellingen
+            ${T('set.ai')}
           </div>
           <div class="settings-info-box">
             Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">AI Naam</div>
-              <div class="settings-label-sub">De naam die je AI-assistent gebruikt</div>
+              <div class="settings-label">${T('set.ai.name')}</div>
+              <div class="settings-label-sub">${T('set.ai.name.sub')}</div>
             </div>
             <div class="settings-value" id="set-ai-name">Helvaro AI</div>
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">Boekingsmodus</div>
-              <div class="settings-label-sub">Hoe afspraken worden ingepland</div>
+              <div class="settings-label">${T('set.booking')}</div>
+              <div class="settings-label-sub">${T('set.booking.sub')}</div>
             </div>
-            <div class="settings-value" id="set-calendly-url" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">AI boekt in WhatsApp</div>
+            <div class="settings-value" id="set-calendly-url" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${T('set.booking.wa')}</div>
           </div>
         </div>
 
@@ -10797,13 +10797,13 @@ ${faro.navCta}
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">Wekelijks rapport e-mail</div>
-              <div class="settings-label-sub">Elke maandag een samenvatting van leads + conversie naar je notificatie-mail</div>
+              <div class="settings-label">${T('set.weekly')}</div>
+              <div class="settings-label-sub">${T('set.weekly.sub')}</div>
             </div>
             <div class="settings-toggle">
               <span style="font-size:12px;color: var(--green-ink);font-weight:600;display:inline-flex;align-items:center;gap:6px">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                Actief
+                ${T('set.active')}
               </span>
             </div>
           </div>
@@ -10815,11 +10815,11 @@ ${faro.navCta}
                te komen op een pagina waar je iets anders aan het doen bent. -->
           <div class="settings-row" id="push-rij" style="display:none">
             <div>
-              <div class="settings-label">Meldingen op dit apparaat</div>
-              <div class="settings-label-sub" id="push-sub">Krijg een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.</div>
+              <div class="settings-label">${T('set.push')}</div>
+              <div class="settings-label-sub" id="push-sub">${T('set.push.sub')}</div>
             </div>
             <div class="settings-toggle">
-              <button class="btn-icon btn-primary-sm" id="push-knop" onclick="pushAanzetten()">Aanzetten</button>
+              <button class="btn-icon btn-primary-sm" id="push-knop" onclick="pushAanzetten()">${T('set.push.on')}</button>
               <span id="push-status" style="display:none;font-size:12px;font-weight:600;align-items:center;gap:6px"></span>
             </div>
           </div>
@@ -10854,10 +10854,10 @@ ${faro.navCta}
         <div class="settings-section">
           <div class="settings-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Account
+            ${T('set.account')}
           </div>
           <div class="settings-row">
-            <div class="settings-label">Naam</div>
+            <div class="settings-label">${T('dash.col.name')}</div>
             <div class="settings-value" id="set-naam">—</div>
           </div>
           <div class="settings-row">
@@ -10865,7 +10865,7 @@ ${faro.navCta}
             <div class="settings-value" id="set-email">—</div>
           </div>
           <div class="settings-row">
-            <div class="settings-label">Plan</div>
+            <div class="settings-label">${T('set.plan')}</div>
             <div class="settings-value">
               <span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.3);color: var(--accent-ink)" id="set-plan">—</span>
             </div>
@@ -10879,12 +10879,12 @@ ${faro.navCta}
                ergens op werkt, aangeboden aan elke klant. -->
           <div class="settings-row" id="set-apikey-row" style="display:none">
             <div>
-              <div class="settings-label">API Sleutel</div>
-              <div class="settings-label-sub">Gebruik dit voor directe API-toegang</div>
+              <div class="settings-label">${T('set.apikey')}</div>
+              <div class="settings-label-sub">${T('set.apikey.sub')}</div>
             </div>
             <div>
               <span class="settings-apikey" id="set-apikey-display">••••••••</span>
-              <button class="btn-show-key" id="btn-toggle-apikey">Toon</button>
+              <button class="btn-show-key" id="btn-toggle-apikey">${T('set.show')}</button>
             </div>
           </div>
         </div>
@@ -10893,22 +10893,22 @@ ${faro.navCta}
         <div class="settings-section">
           <div class="settings-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            Support
+            ${T('set.support')}
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">Hulp nodig?</div>
-              <div class="settings-label-sub">Ons team helpt je graag verder</div>
+              <div class="settings-label">${T('set.help')}</div>
+              <div class="settings-label-sub">${T('set.help.sub')}</div>
             </div>
             <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              Mail sturen
+              ${T('set.mail')}
             </a>
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">E-mailadres support</div>
-              <div class="settings-label-sub">Bereikbaar op werkdagen</div>
+              <div class="settings-label">${T('set.mail.addr')}</div>
+              <div class="settings-label-sub">${T('set.mail.hours')}</div>
             </div>
             <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
           </div>
@@ -10918,16 +10918,16 @@ ${faro.navCta}
         <div class="settings-section">
           <div class="settings-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Google Agenda
+            ${T('set.gcal')}
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">Koppel je Google Agenda</div>
-              <div class="settings-label-sub" id="gcal-status-sub">Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.</div>
+              <div class="settings-label">${T('set.gcal.title')}</div>
+              <div class="settings-label-sub" id="gcal-status-sub">${T('set.gcal.sub')}</div>
             </div>
             <div id="gcal-actions">
-              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">Koppel Google Agenda</button>
-              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">Ontkoppel</button>
+              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">${T('set.gcal.connect')}</button>
+              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">${T('set.gcal.disc')}</button>
             </div>
           </div>
         </div>
@@ -10936,12 +10936,12 @@ ${faro.navCta}
         <div class="settings-section">
           <div class="settings-section-title" style="color:var(--red-ink)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            Gevaar zone
+            ${T('set.danger')}
           </div>
           <div class="settings-row settings-danger">
             <div>
-              <div class="settings-label">Account verwijderen</div>
-              <div class="settings-label-sub">Je account en je gegevens definitief laten wissen</div>
+              <div class="settings-label">${T('set.delete')}</div>
+              <div class="settings-label-sub">${T('set.delete.sub')}</div>
             </div>
             <button class="btn-icon" onclick="vraagAccountVerwijdering()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
               Verwijderen
@@ -10950,7 +10950,7 @@ ${faro.navCta}
           <div class="settings-row settings-danger">
             <div>
               <div class="settings-label">Uitloggen</div>
-              <div class="settings-label-sub">Beëindig je huidige sessie</div>
+              <div class="settings-label-sub">${T('set.logout.sub')}</div>
             </div>
             <button class="btn-icon" onclick="logout()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -10964,9 +10964,9 @@ ${faro.navCta}
     <!-- Activiteit Page -->
     <main class="page-content page" id="page-activiteit">
       <div class="activity-feed-wrap">
-        <div class="activity-feed-header">Recente Activiteit</div>
+        <div class="activity-feed-header">${T('act.recent')}</div>
         <div class="activity-feed" id="activity-feed">
-          <div style="padding:20px 0;color:var(--text-muted);font-size:13px">Laden...</div>
+          <div style="padding:20px 0;color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
         </div>
       </div>
     </main>
@@ -10980,7 +10980,7 @@ ${faro.navCta}
           <div>
             <div class="profile-name-lg" id="profile-name-lg">Gebruiker</div>
             <div class="profile-email-lg" id="profile-email-lg">—</div>
-            <span class="profile-badge">Client Account</span>
+            <span class="profile-badge">${T('pro.account')}</span>
           </div>
         </div>
 
@@ -10992,26 +10992,26 @@ ${faro.navCta}
           <div class="profile-card">
             <div class="profile-card-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Account
+              ${T('set.account')}
             </div>
-            <div class="profile-row"><span>Naam</span><strong id="pf-naam">—</strong></div>
+            <div class="profile-row"><span>${T('dash.col.name')}</span><strong id="pf-naam">—</strong></div>
             <div class="profile-row"><span>E-mail</span><strong id="pf-email">—</strong></div>
-            <div class="profile-row"><span>Type</span><strong>Client Account</strong></div>
+            <div class="profile-row"><span>${T('pro.type')}</span><strong>${T('pro.account')}</strong></div>
           </div>
 
           <div class="profile-card">
             <div class="profile-card-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Boekingssysteem
+              ${T('pro.booking')}
             </div>
-            <div class="profile-row"><span>Status</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);">Actief</span></div>
-            <div class="profile-row"><span>Modus</span>
-              <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">AI boekt direct in WhatsApp gesprek</span>
+            <div class="profile-row"><span>${T('dash.col.status')}</span><span id="pf-cal-status" style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);">${T('set.active')}</span></div>
+            <div class="profile-row"><span>${T('pro.mode')}</span>
+              <span id="pf-calendly" style="color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">${T('pro.mode.wa')}</span>
             </div>
             <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
               <button onclick="navigateTo('kalender')" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--accent);border:none;border-radius:10px;color: var(--on-accent);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Open agenda
+                ${T('pro.openCal')}
               </button>
               <!-- Hidden elementen voor backwards compat. Oude JS in renderProfile() refereert ze nog. -->
               <a id="pf-connect-btn" href="#" style="display:none"></a>
@@ -11022,31 +11022,31 @@ ${faro.navCta}
           <div class="profile-card">
             <div class="profile-card-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              Activiteit
+              ${T('pro.activity')}
             </div>
-            <div class="profile-row"><span>Totaal leads</span><strong id="pf-total">—</strong></div>
-            <div class="profile-row"><span>Gekwalificeerd</span><strong id="pf-qual">—</strong></div>
-            <div class="profile-row"><span>Afspraken</span><strong id="pf-booked">—</strong></div>
-            <div class="profile-row"><span>Conversie</span><strong id="pf-conv">—</strong></div>
+            <div class="profile-row"><span>${T('exp.totalLeads')}</span><strong id="pf-total">—</strong></div>
+            <div class="profile-row"><span>${T('dash.qualified')}</span><strong id="pf-qual">—</strong></div>
+            <div class="profile-row"><span>${T('pro.appts')}</span><strong id="pf-booked">—</strong></div>
+            <div class="profile-row"><span>${T('pro.conv')}</span><strong id="pf-conv">—</strong></div>
           </div>
         </div>
 
         <!-- Recent Leads on Profile -->
-        <div class="profile-section-title">Recente Leads</div>
+        <div class="profile-section-title">${T('pro.recent')}</div>
         <div class="profile-recent-leads" id="profile-recent-leads">
-          <div style="color:var(--text-muted);font-size:13px">Laden...</div>
+          <div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
         </div>
 
         <!-- Quick Actions -->
-        <div class="profile-section-title">Snelle Acties</div>
+        <div class="profile-section-title">${T('pro.quick')}</div>
         <div class="profile-quick-actions">
           <button class="profile-action-btn" onclick="navigateTo('dashboard')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Naar Dashboard
+            ${T('pro.toDash')}
           </button>
           <button class="profile-action-btn" onclick="navigateTo('kalender')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Kalender Bekijken
+            ${T('pro.viewCal')}
           </button>
           <button class="profile-action-btn" onclick="navigateTo('gesprekken')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -11054,7 +11054,7 @@ ${faro.navCta}
           </button>
           <button class="profile-action-btn" onclick="navigateTo('exports')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Data Exporteren
+            ${T('pro.export')}
           </button>
         </div>
       </div>
@@ -11094,7 +11094,7 @@ ${cmd.drawer}
               <span class="fdr-task-progress" id="fdr-task-progress">0 / 0 voltooid</span>
             </div>
             <div class="fdr-checklist" id="fdr-checklist">
-              <div style="padding:24px 18px;color:var(--text-muted);font-size:13px">Laden...</div>
+              <div style="padding:24px 18px;color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
             </div>
             <div class="fdr-progress-bar-wrap">
               <div class="fdr-progress-bar" id="fdr-progress-bar" style="width:0%"></div>
@@ -11108,7 +11108,7 @@ ${cmd.drawer}
             <div class="fdr-stats-grid fdr-panel">
               <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-clients" style="color:var(--accent-ink)">—</div><div class="fdr-stat-lbl">Klanten</div></div>
               <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-leads" style="color:var(--green-ink)">—</div><div class="fdr-stat-lbl">Leads/mnd</div></div>
-              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-qual" style="color:var(--orange-ink)">—%</div><div class="fdr-stat-lbl">Gekwalificeerd</div></div>
+              <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-qual" style="color:var(--orange-ink)">—%</div><div class="fdr-stat-lbl">${T('dash.qualified')}</div></div>
               <div class="fdr-stat"><div class="fdr-stat-val" id="f-stat-new" style="color:var(--red-ink)">—</div><div class="fdr-stat-lbl">Ongelezen</div></div>
             </div>
 
@@ -11201,7 +11201,7 @@ ${cmd.drawer}
             <button class="founder-btn-sm" onclick="openGoalModal(null)">+ Doel</button>
           </div>
           <div class="founder-goals-list" id="founder-goals-list">
-            <div style="color:var(--text-muted);font-size:13px">Laden...</div>
+            <div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
           </div>
         </div>
 
@@ -11284,7 +11284,7 @@ ${cmd.drawer}
             <div class="fdr-hub-footer">
               <button class="fdr-hub-copy-btn" id="fdr-hub-copy" onclick="copyContentPost()">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Kopieer
+                ${T('dash.form.copy')}
               </button>
               <button class="fdr-hub-regen-btn" id="fdr-hub-regen" onclick="generateContentPost(true)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -11332,7 +11332,7 @@ ${cmd.drawer}
             <div class="fdr-dm-empty" id="fdr-dm-empty">Selecteer een bedrijf hierboven. De DM wordt geschreven op basis van hun sector, fase en eventuele notities.</div>
             <button class="fdr-dm-copy-btn" id="fdr-dm-copy" onclick="copyDm()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Kopieer
+              ${T('dash.form.copy')}
             </button>
             <a class="fdr-dm-open-btn" id="fdr-dm-open-li" href="https://www.linkedin.com/messaging/" target="_blank" rel="noopener">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
@@ -11513,15 +11513,15 @@ ${cmd.drawer}
               <thead>
                 <tr>
                   <th>Klant</th>
-                  <th>Status</th>
+                  <th>${T('dash.col.status')}</th>
                   <th>Bij ons</th>
                   <th style="text-align:right">Leads</th>
-                  <th style="text-align:right">Afspraken</th>
+                  <th style="text-align:right">${T('pro.appts')}</th>
                   <th style="text-align:right">MRR</th>
                 </tr>
               </thead>
               <tbody id="fdr-live-tbody">
-                <tr><td colspan="6" class="fdr-live-empty">Laden...</td></tr>
+                <tr><td colspan="6" class="fdr-live-empty">${T('dash.loading')}</td></tr>
               </tbody>
             </table>
           </div>
@@ -11604,7 +11604,7 @@ ${faro.dock}
           <code class="onb-done-url" id="onb-done-url">—</code>
           <button class="onb-done-copy" onclick="copyFormLink()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Kopieer
+            ${T('dash.form.copy')}
           </button>
         </div>
         <div class="onb-done-steps">
@@ -11702,7 +11702,7 @@ ${faro.dock}
 <div id="koop-overlay" onclick="if(event.target===this)closeKoopModal()">
   <div id="koop-modal" role="dialog" aria-modal="true" aria-labelledby="koop-titel">
     <div class="koop-head">
-      <div id="koop-titel">Credits bijkopen</div>
+      <div id="koop-titel">${T('fa.buy')}</div>
       <button class="pd-modal-x" onclick="closeKoopModal()" aria-label="Sluiten">&times;</button>
     </div>
 
@@ -11746,7 +11746,7 @@ ${faro.dock}
 <div id="pd-overlay" onclick="if(event.target===this)closePandModal()">
   <div id="pd-modal" role="dialog" aria-modal="true" aria-labelledby="pd-modal-title">
     <div class="pd-modal-head">
-      <div id="pd-modal-title">Pand toevoegen</div>
+      <div id="pd-modal-title">${T('prop.add')}</div>
       <button class="pd-modal-x" onclick="closePandModal()" aria-label="Sluiten">&times;</button>
     </div>
     <div class="pd-modal-body">
@@ -11773,7 +11773,7 @@ ${faro.dock}
           <div class="pd-hint">Leeg laten mag. Heb je een eigen referentie, vul hem hier in.</div>
         </div>
         <div>
-          <label class="pd-label" for="pd-f-status">Status</label>
+          <label class="pd-label" for="pd-f-status">${T('dash.col.status')}</label>
           <select class="pd-input" id="pd-f-status">
             <option value="beschikbaar">beschikbaar</option>
             <option value="onder bod">onder bod</option>
@@ -11801,7 +11801,7 @@ ${faro.dock}
 
       <div class="pd-row-2">
         <div>
-          <label class="pd-label" for="pd-f-type">Type</label>
+          <label class="pd-label" for="pd-f-type">${T('pro.type')}</label>
           <select class="pd-input" id="pd-f-type">
             <option value="huis">huis</option>
             <option value="appartement">appartement</option>
@@ -13565,7 +13565,7 @@ async function refreshData(skipFetch = false) {
             <span class="followup-item-score">\${score}</span>
             <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escJs(l.telefoon||'')}').then(()=>toast('Nummer gekopieerd','success'))">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/><path d="M1 1l22 22"/></svg>
-              Kopieer
+              ${T('dash.form.copy')}
             </button>
           </div>\`;
         }).join('');
@@ -13933,7 +13933,7 @@ async function loadAdminClients() {
         <div class="admin-card-code">\${escHtml(c.projectCode)}</div>
         <div class="admin-card-stats">
           <div class="admin-stat"><div class="admin-stat-val">\${c.totalLeads}</div><div class="admin-stat-lbl">Leads</div></div>
-          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--red-ink)">\${c.newLeads}</div><div class="admin-stat-lbl">Nieuw</div></div>
+          <div class="admin-stat"><div class="admin-stat-val" style="color:var(--red-ink)">\${c.newLeads}</div><div class="admin-stat-lbl">${T('dash.s.new')}</div></div>
           <div class="admin-stat"><div class="admin-stat-val" style="color:var(--green-ink)">\${c.qualified}</div><div class="admin-stat-lbl">Gekwal.</div></div>
         </div>
       </div>
@@ -14601,7 +14601,7 @@ function tekenCreditPop() {
   }
 
   html += '<div class="cu-pop-knoppen">'
-        + '<button type="button" class="cu-pop-knop primair" onclick="creditPopBijkopen()">Credits bijkopen</button>'
+        + '<button type="button" class="cu-pop-knop primair" onclick="creditPopBijkopen()">${T('fa.buy')}</button>'
         + '<button type="button" class="cu-pop-knop" onclick="creditPopPlannen()">Bekijk je plannen</button>'
         + '</div>';
 
@@ -15038,7 +15038,7 @@ function populateBronFilter() {
   if (!sel) return;
   const bronnen = [...new Set(state.leads.map(l => l.bron).filter(Boolean))].sort();
   const current = sel.value;
-  sel.innerHTML = '<option value="">Alle bronnen</option>' +
+  sel.innerHTML = '<option value="">${T('dash.f.allSources')}</option>' +
     bronnen.map(b => \`<option value="\${b}"\${b === current ? ' selected' : ''}>\${b}</option>\`).join('');
 }
 
@@ -15121,15 +15121,15 @@ function resetFilters() {
    ============================================================ */
 function statusBadge(status) {
   const map = {
-    'new': '<span class="badge badge-new">Nieuw</span>',
-    'in_progress': '<span class="badge badge-inprogress">Bezig</span>',
-    'completed': '<span class="badge badge-done">Klaar</span>'
+    'new': '<span class="badge badge-new">${T('dash.s.new')}</span>',
+    'in_progress': '<span class="badge badge-inprogress">${T('dash.s.busy')}</span>',
+    'completed': '<span class="badge badge-done">${T('dash.s.done')}</span>'
   };
   return map[status] || \`<span class="badge badge-new">\${status || '—'}</span>\`;
 }
 
 function qualBadge(lead) {
-  if (lead.status === 'in_progress') return '<span class="badge badge-inprogress">Bezig</span>';
+  if (lead.status === 'in_progress') return '<span class="badge badge-inprogress">${T('dash.s.busy')}</span>';
   if (lead.qualified === true) return '<span class="badge badge-yes">Ja</span>';
   if (lead.qualified === false) return '<span class="badge badge-no">Nee</span>';
   return '<span class="badge badge-new">—</span>';
@@ -15302,7 +15302,7 @@ function renderTable() {
           <div class="td-phone">
             \${escHtml(lead.telefoon) || '—'}
             \${lead.telefoon ? \`
-              <button class="copy-btn" data-phone="\${escHtml(lead.telefoon)}" title="Kopieer">⧉
+              <button class="copy-btn" data-phone="\${escHtml(lead.telefoon)}" title="${T('dash.form.copy')}">⧉
                 <span class="copy-tooltip">Gekopieerd!</span>
               </button>\` : ''}
           </div>
@@ -15312,7 +15312,7 @@ function renderTable() {
         <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
         <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
         <td>\${scoreBar(lead.leadScore)}</td>
-        <td>\${lead.opgepikt ? '<span style="color:var(--green-ink);display:inline-flex" title="Opgepikt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td>\${lead.opgepikt ? '<span style="color:var(--green-ink);display:inline-flex" title="${T('dash.picked')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--text-secondary)">\${formatDate(lead.datum)}</td>
         <td class="td-arrow">›</td>
         <td onclick="event.stopPropagation()">
@@ -15433,12 +15433,12 @@ function openPanel(lead) {
     <div class="panel-section">
       <div class="panel-section-title">Kwalificatie</div>
       <div class="panel-row">
-        <span class="panel-row-label">Status</span>
+        <span class="panel-row-label">${T('dash.col.status')}</span>
         <span class="panel-row-value">
           <select class="status-select" id="panel-status-select">
-            <option value="new"         \${lead.status === 'new'         ? 'selected' : ''}>Nieuw</option>
-            <option value="in_progress" \${lead.status === 'in_progress' ? 'selected' : ''}>Bezig</option>
-            <option value="completed"   \${lead.status === 'completed'   ? 'selected' : ''}>Klaar</option>
+            <option value="new"         \${lead.status === 'new'         ? 'selected' : ''}>${T('dash.s.new')}</option>
+            <option value="in_progress" \${lead.status === 'in_progress' ? 'selected' : ''}>${T('dash.s.busy')}</option>
+            <option value="completed"   \${lead.status === 'completed'   ? 'selected' : ''}>${T('dash.s.done')}</option>
             <option value="verloren"    \${lead.status === 'verloren'    ? 'selected' : ''}>Verloren</option>
           </select>
         </span>
@@ -15458,11 +15458,11 @@ function openPanel(lead) {
         </span>
       </div>
       <div class="panel-row">
-        <span class="panel-row-label">Gekwalificeerd</span>
+        <span class="panel-row-label">${T('dash.qualified')}</span>
         <span class="panel-row-value">\${qualBadge(lead)}</span>
       </div>
       <div class="panel-row">
-        <span class="panel-row-label">Score</span>
+        <span class="panel-row-label">${T('dash.col.score')}</span>
         <span class="panel-row-value">
           <div class="score-bar-wrapper">
             <div class="score-bar">\${scoreSegments}</div>
@@ -15514,15 +15514,15 @@ function openPanel(lead) {
     <div class="panel-section">
       <div class="panel-section-title">Details</div>
       <div class="panel-row">
-        <span class="panel-row-label">Datum</span>
+        <span class="panel-row-label">${T('dash.col.date')}</span>
         <span class="panel-row-value">\${formatDate(lead.datum)}</span>
       </div>
       <div class="panel-row">
-        <span class="panel-row-label">Bron</span>
+        <span class="panel-row-label">${T('dash.col.source')}</span>
         <span class="panel-row-value">\${escHtml(lead.bron) || '—'}</span>
       </div>
       <div class="panel-row">
-        <span class="panel-row-label">Opgepikt</span>
+        <span class="panel-row-label">${T('dash.picked')}</span>
         <span class="panel-row-value \${lead.opgepikt ? 'check-yes' : 'check-no'}">\${lead.opgepikt ? 'Ja' : 'Nee'}</span>
       </div>
       <div class="panel-row">
@@ -15552,7 +15552,7 @@ function openPanel(lead) {
     const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     bodyHTML += \`
       <div class="panel-section">
-        <div class="panel-section-title">Snelle Acties</div>
+        <div class="panel-section-title">${T('pro.quick')}</div>
         <div class="panel-quick-actions">
           <a class="panel-quick-btn" href="\${telLink}">Bellen</a>
           <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">WhatsApp</a>
@@ -16499,7 +16499,7 @@ function renderTodayWidget(events) {
     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
 
   if (todayEvs.length === 0) {
-    body.innerHTML = '<span class="today-empty">Geen afspraken vandaag</span>';
+    body.innerHTML = '<span class="today-empty">${T('dash.today.none')}</span>';
     return;
   }
   body.innerHTML = todayEvs.map(ev => {
@@ -16609,7 +16609,7 @@ function renderCalBookBody() {
 
   // Date nav
   const dateNavHtml = \`<div>
-    <div class="cb-label">Datum</div>
+    <div class="cb-label">${T('dash.col.date')}</div>
     <div class="cb-date-nav">
       <button class="cb-date-btn" onclick="calBookNavDate(-1)" aria-label="Vorige dag" title="Vorige dag">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
@@ -16672,13 +16672,13 @@ function renderCalBookBody() {
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px">
       <div>
-        <div class="cb-label">Naam</div>
+        <div class="cb-label">${T('dash.col.name')}</div>
         <input class="cb-field-input" id="cb-book-name" type="text" placeholder="Volledige naam"
           value="\${escHtml(calBookState.bookName)}"
           oninput="calBookState.bookName=this.value" />
       </div>
       <div>
-        <div class="cb-label">Telefoon</div>
+        <div class="cb-label">${T('dash.col.phone')}</div>
         <input class="cb-field-input" id="cb-book-phone" type="tel" placeholder="+32 466 35 84 27"
           value="\${escHtml(calBookState.bookPhone || '')}"
           oninput="calBookState.bookPhone=this.value" />
@@ -17850,10 +17850,10 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
     const stats = data.stats || {};
 
     document.getElementById('rapport-stats').innerHTML = \`
-      <div class="rapport-stat"><div class="rapport-stat-value">\${r.totaal ?? stats.total ?? 0}</div><div class="rapport-stat-label">Totaal leads</div></div>
-      <div class="rapport-stat"><div class="rapport-stat-value">\${r.gekwalificeerd ?? stats.qualified ?? 0}</div><div class="rapport-stat-label">Gekwalificeerd</div></div>
-      <div class="rapport-stat"><div class="rapport-stat-value">\${r.afspraken ?? stats.booked ?? 0}</div><div class="rapport-stat-label">Afspraken</div></div>
-      <div class="rapport-stat"><div class="rapport-stat-value">\${r.conversie ?? stats.conversionRate ?? 0}%</div><div class="rapport-stat-label">Conversie</div></div>
+      <div class="rapport-stat"><div class="rapport-stat-value">\${r.totaal ?? stats.total ?? 0}</div><div class="rapport-stat-label">${T('exp.totalLeads')}</div></div>
+      <div class="rapport-stat"><div class="rapport-stat-value">\${r.gekwalificeerd ?? stats.qualified ?? 0}</div><div class="rapport-stat-label">${T('dash.qualified')}</div></div>
+      <div class="rapport-stat"><div class="rapport-stat-value">\${r.afspraken ?? stats.booked ?? 0}</div><div class="rapport-stat-label">${T('pro.appts')}</div></div>
+      <div class="rapport-stat"><div class="rapport-stat-value">\${r.conversie ?? stats.conversionRate ?? 0}%</div><div class="rapport-stat-label">${T('pro.conv')}</div></div>
     \`;
 
     const qualLeads = (data.leads || []).filter(l => l.qualified);
@@ -18444,7 +18444,7 @@ function wizardTeken() {
     titel.textContent = 'Geef je AI een naam';
     sub.textContent = 'Leads zien deze naam en dit bericht als eerste, nog voor jij iets hoeft te doen.';
     body.innerHTML =
-        '<label for="wizard-ainaam" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">Naam</label>'
+        '<label for="wizard-ainaam" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">${T('dash.col.name')}</label>'
       + '<input id="wizard-ainaam" type="text" maxlength="60" placeholder="Bijvoorbeeld: Mathis" '
       + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit">'
       + '<label for="wizard-welkomst" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">Welkomstbericht</label>'
@@ -19464,7 +19464,7 @@ function renderAnalyse() {
     }).join('');
     sourceEl.innerHTML = \`<div class="table-scroll"><table class="source-table">
       <thead><tr>
-        <th>Bron</th><th>Totaal</th><th>Gekwal.</th><th>Conversie</th><th>Gem. Score</th>
+        <th>${T('dash.col.source')}</th><th>Totaal</th><th>Gekwal.</th><th>${T('pro.conv')}</th><th>${T('exp.avgScore')}</th>
       </tr></thead>
       <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">Geen data</td></tr>\`}</tbody>
     </table></div>\`;
@@ -21682,7 +21682,7 @@ async function loadPanden() {
   var leeg   = document.getElementById('pd-empty');
   var notice = document.getElementById('pd-notice');
   if (!grid) return;
-  grid.innerHTML = '<div class="pd-leads">Laden...</div>';
+  grid.innerHTML = '<div class="pd-leads">${T('dash.loading')}</div>';
   leeg.style.display = 'none';
   notice.style.display = 'none';
 
@@ -21775,7 +21775,7 @@ function renderPanden() {
       +   '<div class="pd-leads">' + (aantal ? '<strong>' + aantal + '</strong> ' + (aantal === 1 ? 'lead' : 'leads') : 'Nog geen leads') + '</div>'
       +   '<div class="pd-link-row">'
       +     '<div class="pd-link" title="' + pandEsc(pandLink(p.code)) + '">' + pandEsc(pandLink(p.code)) + '</div>'
-      +     '<button class="pd-mini" style="flex:0 0 auto" onclick="copyPandLink(&quot;' + pandEsc(p.code) + '&quot;)">Kopieer</button>'
+      +     '<button class="pd-mini" style="flex:0 0 auto" onclick="copyPandLink(&quot;' + pandEsc(p.code) + '&quot;)">${T('dash.form.copy')}</button>'
       +   '</div>'
       +   '<div class="pd-card-acties">'
       +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">Bewerken</button>'
@@ -23754,8 +23754,8 @@ var HELP_ARTICLES = [
     body:
       '<p>De snelste manier om Helvaro te testen is je eigen leadformulier invullen.</p>' +
       '<ol>' +
-      '<li>Ga naar <strong>Dashboard</strong>. Bovenaan staat het blok <em>Jouw lead-formulier</em> met je persoonlijke link.</li>' +
-      '<li>Klik op <strong>Open</strong> en vul het formulier in met je eigen gegevens.</li>' +
+      '<li>Ga naar <strong>Dashboard</strong>. Bovenaan staat het blok <em>${T('dash.form.title')}</em> met je persoonlijke link.</li>' +
+      '<li>Klik op <strong>${T('dash.form.open')}</strong> en vul het formulier in met je eigen gegevens.</li>' +
       '<li>Je krijgt binnen enkele seconden het eerste bericht van je AI.</li>' +
       '</ol>' +
       '<p>De lead verschijnt daarna gewoon in je overzicht, precies zoals een echte klant dat zou doen. Je kunt hem achteraf laten verwijderen.</p>' },
@@ -23773,7 +23773,7 @@ var HELP_ARTICLES = [
     body:
       '<p>Alles daarvoor staat op de pagina <strong>AI Persoonlijkheid</strong>.</p>' +
       '<ul>' +
-      '<li><strong>Naam</strong>: hoe je AI zich voorstelt aan je leads.</li>' +
+      '<li><strong>${T('dash.col.name')}</strong>: hoe je AI zich voorstelt aan je leads.</li>' +
       '<li><strong>Welkomstbericht</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
       '<li><strong>Instructies</strong>: het belangrijkste veld. Hier zet je wat je bedrijf doet, wat voor jou een goede lead is, en wat de AI juist niet mag beloven. Hoe concreter, hoe beter de gesprekken.</li>' +
       '<li><strong>Website en adres</strong>: de AI gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
