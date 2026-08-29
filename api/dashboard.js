@@ -12748,13 +12748,13 @@ function toast(message, type = 'info', title = null) {
     error:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
     info:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
   };
-  const titles = { success: 'Gelukt', error: 'Fout', info: 'Info' };
+  const titles = { success: t('toast.success'), error: t('toast.error'), info: t('toast.info') };
   const el = document.createElement('div');
   el.className = \`toast toast-\${type}\`;
   el.innerHTML = \`
     <div class="toast-header">
       <span class="toast-title">\${icons[type]}\${title ? escHtml(title) : titles[type]}</span>
-      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))" aria-label="Sluiten"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="toast-close" onclick="dismissToast(this.closest('.toast'))" aria-label="\${t('a11y.close')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="toast-message">\${escHtml(message)}</div>
     <div class="toast-progress"></div>
@@ -17567,24 +17567,28 @@ function navigateTo(page) {
   bindActivatable();
   setTimeout(hvMakeActivatable, 0);   // na de render van deze pagina
 
+  /* De koppen komen uit het woordenboek, net als de navigatie. Ze stonden hier
+     als vaste Nederlandse tekst, waardoor de kop "Instellingen" bleef staan op
+     een verder Franse pagina. */
   const titles = {
-    dashboard:    { title: 'Dashboard',     sub: 'Overzicht van je gekwalificeerde leads' },
-    exports:      { title: 'Exports',       sub: 'Rapporten en data-export' },
-    kalender:     { title: 'Kalender',      sub: 'Je afspraken en beschikbaarheid' },
-    profile:      { title: 'Profiel',       sub: 'Je accountgegevens en statistieken' },
-    pipeline:     { title: 'Pipeline',      sub: 'Kanban overzicht van je leads' },
-    gesprekken:   { title: 'Gesprekken',    sub: 'AI-conversaties met je leads' },
-    resultaten:   { title: 'Resultaten',    sub: 'Wat Helvaro deze periode heeft opgeleverd' },
-    analyse:      { title: 'Analyse',       sub: 'Statistieken en prestatieanalyse' },
-    instellingen: { title: 'Instellingen',  sub: 'Beheer je accountinstellingen' },
-    activiteit:   { title: 'Activiteit',    sub: 'Recente gebeurtenissen en updates' },
-    'ai-beeld':   { title: 'AI-beeld',      sub: 'Genereer AI-visualisaties van je panden' },
-    formulier:    { title: 'Formulier',     sub: 'Je lead-formulier en aanvraagstatistieken' },
-    'panden':     { title: 'Panden', sub: 'Je aanbod, en de link die je onder een advertentie zet' },
-    'facturatie': { title: 'Facturatie', sub: 'Je plan, je credits en waar ze heen gingen' },
-    'ai-persona': { title: 'AI Persoonlijkheid', sub: 'Pas de stem en werkwijze van je AI aan' },
-    faro:         { title: 'Faro',          sub: 'Je assistent binnen Helvaro' }
+    dashboard:    { title: t('nav.dashboard'),     sub: t('page.dashboard.sub') },
+    exports:      { title: t('nav.exports'),       sub: t('page.exports.sub') },
+    kalender:     { title: t('nav.calendar'),      sub: t('page.kalender.sub') },
+    profile:      { title: t('page.profile'),      sub: t('page.profile.sub') },
+    pipeline:     { title: t('nav.pipeline'),      sub: t('page.pipeline.sub') },
+    gesprekken:   { title: t('nav.conversations'), sub: t('page.gesprekken.sub') },
+    resultaten:   { title: t('nav.results'),       sub: t('page.resultaten.sub') },
+    analyse:      { title: t('nav.analysis'),      sub: t('page.analyse.sub') },
+    instellingen: { title: t('nav.settings'),      sub: t('page.instellingen.sub') },
+    activiteit:   { title: t('nav.activity'),      sub: t('page.activiteit.sub') },
+    'ai-beeld':   { title: t('page.aiBeeld'),      sub: t('page.aiBeeld.sub') },
+    formulier:    { title: t('nav.form'),          sub: t('page.formulier.sub') },
+    'panden':     { title: t('nav.properties'),    sub: t('page.panden.sub') },
+    'facturatie': { title: t('nav.billing'),       sub: t('page.facturatie.sub') },
+    'ai-persona': { title: t('nav.persona'),       sub: t('page.aiPersona.sub') },
+    faro:         { title: 'Faro',                 sub: t('page.faro.sub') }
   };
+;
 
   /* De back-officepagina's staan bewust NIET in de lijst hierboven. Die lijst
      gaat mee in de HTML van iedereen, en "Kosten -- wat Helvaro zelf betaalt"

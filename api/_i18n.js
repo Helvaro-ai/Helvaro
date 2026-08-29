@@ -502,6 +502,31 @@ const TEKST = {
   "fm.guide.sub": { nl: "Klik op het platform dat je gebruikt voor een stap-voor-stap uitleg. Werkt op ALLE moderne websites.", fr: "Cliquez sur votre plateforme pour un guide pas à pas. Fonctionne sur TOUS les sites modernes.", en: "Click the platform you use for a step-by-step guide. Works on ALL modern websites.", de: "Klicken Sie auf Ihre Plattform für eine Schritt-für-Schritt-Anleitung. Funktioniert auf ALLEN modernen Websites." },
   "fm.tip": { nl: "Tip:", fr: "Conseil :", en: "Tip:", de: "Tipp:" },
 
+  // ── Paginakoppen en meldingen (door JS gezet) ──────────────────────────
+  "page.dashboard.sub": { nl: "Overzicht van je gekwalificeerde leads", fr: "Aperçu de vos prospects qualifiés", en: "Overview of your qualified leads", de: "Übersicht Ihrer qualifizierten Leads" },
+  "page.exports.sub": { nl: "Rapporten en data-export", fr: "Rapports et export de données", en: "Reports and data export", de: "Berichte und Datenexport" },
+  "page.kalender.sub": { nl: "Je afspraken en beschikbaarheid", fr: "Vos rendez-vous et disponibilités", en: "Your appointments and availability", de: "Ihre Termine und Verfügbarkeit" },
+  "page.profile": { nl: "Profiel", fr: "Profil", en: "Profile", de: "Profil" },
+  "page.profile.sub": { nl: "Je accountgegevens en statistieken", fr: "Vos données de compte et statistiques", en: "Your account details and statistics", de: "Ihre Kontodaten und Statistiken" },
+  "page.pipeline.sub": { nl: "Kanban overzicht van je leads", fr: "Vue kanban de vos prospects", en: "Kanban overview of your leads", de: "Kanban-Übersicht Ihrer Leads" },
+  "page.gesprekken.sub": { nl: "AI-conversaties met je leads", fr: "Conversations IA avec vos prospects", en: "AI conversations with your leads", de: "KI-Gespräche mit Ihren Leads" },
+  "page.resultaten.sub": { nl: "Wat Helvaro deze periode heeft opgeleverd", fr: "Ce que Helvaro a rapporté cette période", en: "What Helvaro delivered this period", de: "Was Helvaro in dieser Periode gebracht hat" },
+  "page.analyse.sub": { nl: "Statistieken en prestatieanalyse", fr: "Statistiques et analyse des performances", en: "Statistics and performance analysis", de: "Statistiken und Leistungsanalyse" },
+  "page.instellingen.sub": { nl: "Beheer je accountinstellingen", fr: "Gérez les paramètres de votre compte", en: "Manage your account settings", de: "Verwalten Sie Ihre Kontoeinstellungen" },
+  "page.activiteit.sub": { nl: "Recente gebeurtenissen en updates", fr: "Événements et mises à jour récents", en: "Recent events and updates", de: "Aktuelle Ereignisse und Updates" },
+  "page.aiBeeld": { nl: "AI-beeld", fr: "Image IA", en: "AI image", de: "KI-Bild" },
+  "page.aiBeeld.sub": { nl: "Genereer AI-visualisaties van je panden", fr: "Générez des visualisations IA de vos biens", en: "Generate AI visualisations of your properties", de: "KI-Visualisierungen Ihrer Objekte erzeugen" },
+  "page.formulier.sub": { nl: "Je lead-formulier en aanvraagstatistieken", fr: "Votre formulaire et les statistiques de demandes", en: "Your lead form and request statistics", de: "Ihr Lead-Formular und Anfragestatistiken" },
+  "page.panden.sub": { nl: "Je aanbod, en de link die je onder een advertentie zet", fr: "Votre offre, et le lien à placer sous une annonce", en: "Your listings, and the link you put under an ad", de: "Ihr Angebot und der Link für Ihre Anzeige" },
+  "page.facturatie.sub": { nl: "Je plan, je credits en waar ze heen gingen", fr: "Votre formule, vos crédits et leur utilisation", en: "Your plan, your credits and where they went", de: "Ihr Tarif, Ihr Guthaben und wohin es ging" },
+  "page.faro.sub": { nl: "Je assistent binnen Helvaro", fr: "Votre assistant dans Helvaro", en: "Your assistant inside Helvaro", de: "Ihr Assistent in Helvaro" },
+  "toast.success": { nl: "Gelukt", fr: "Réussi", en: "Success", de: "Erfolg" },
+  "toast.error": { nl: "Fout", fr: "Erreur", en: "Error", de: "Fehler" },
+  "toast.info": { nl: "Info", fr: "Info", en: "Info", de: "Info" },
+  "a11y.close": { nl: "Sluiten", fr: "Fermer", en: "Close", de: "Schließen" },
+
+  "page.aiPersona.sub": { nl: "Pas de stem en werkwijze van je AI aan", fr: "Ajustez la voix et la méthode de votre IA", en: "Adjust your AI’s voice and approach", de: "Stimme und Vorgehen Ihrer KI anpassen" },
+
   // ── Taalkiezer ──────────────────────────────────────────────────────────
   'lang.label':          { nl: 'Taal',      fr: 'Langue',    en: 'Language',  de: 'Sprache' },
   'lang.sub':            { nl: 'De taal van dit dashboard. Verandert niets aan de taal waarin je AI met leads praat.',
