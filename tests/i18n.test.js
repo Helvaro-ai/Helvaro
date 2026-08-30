@@ -216,8 +216,17 @@ console.log('\n— de vertaalfunctie wordt door niets afgeschermd —');
      "Cannot access 't' before initialization" en deed helemaal niets meer.
      De tests zagen het niet, want die voeren navigateTo niet uit. */
   ck('de vertaalfunctie heet tr()', /function tr\(sleutel, vars\)/.test(js), null);
-  ck('en er is geen losse t() meer die vertaalt',
-     !/[^a-zA-Z0-9_$.]t\('[a-z]+\./.test(js), null);
+  /* Deze assertie keek eerst alleen naar t('sleutel. -- een letterlijke string
+     meteen achter het haakje. Daardoor glipte zetModus() erdoor:
+         t(modus === 'registreren' ? 'login.start' : 'login.welcome')
+     De sleutel staat daar achter een ternary, dus het patroon matchte niet, de
+     test bleef groen en op productie gooide Clerk "t is not defined" -- de
+     inlogkaart monteerde niet meer en je viel terug op het oude formulier.
+     Nu is de regel simpeler en strenger: er mag GEEN enkele kale t( meer staan.
+     Dat is te controleren met grep op de bron, dus er is geen vorm van
+     aanroepen die er alsnog langs kan. */
+  ck('en er is geen enkele kale t(-aanroep meer over',
+     !/[^a-zA-Z0-9_$.]t\(/.test(js), null);
   /* Een lokale 'let t' MAG blijven bestaan -- er zijn er acht, voor tagnamen en
      tijdstippen. Ze zijn alleen niet langer gevaarlijk. */
   ck('lokale t-variabelen zijn nu onschadelijk',

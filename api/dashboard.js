@@ -12256,8 +12256,8 @@ function zetModus(modus) {
   }
   var wel = document.querySelector('.login-welcome');
   var sub = document.querySelector('.login-subtitle');
-  if (wel) wel.textContent = t(modus === 'registreren' ? 'login.start' : 'login.welcome');
-  if (sub) sub.textContent = t(modus === 'registreren' ? 'login.start.sub' : 'login.welcome.sub');
+  if (wel) wel.textContent = tr(modus === 'registreren' ? 'login.start' : 'login.welcome');
+  if (sub) sub.textContent = tr(modus === 'registreren' ? 'login.start.sub' : 'login.welcome.sub');
 }
 
 /* Terug naar inloggen. Bestond niet: de wissel ging maar één kant op, en wie

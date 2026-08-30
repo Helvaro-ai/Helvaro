@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Hersteld: het inlogscherm laadde de inlogkaart niet meer
+
+Sinds de vorige uitrol gooide het inlogscherm een fout voordat de inlogkaart van
+Clerk gemonteerd was. Je zag dan het oude, tweede inlogformulier in plaats van
+het nieuwe. Inloggen kon nog wel, maar via de verkeerde weg -- en op een
+Engelstalig of Franstalig scherm stond die terugvalkaart alsnog in het
+Nederlands.
+
+De oorzaak was een halve hernoeming van mijn kant. De vertaalfunctie heet sinds
+vorige week `tr()` in plaats van `t()`, maar op twee plekken in `zetModus()`
+stond de sleutel achter een ternary:
+
+    t(modus === 'registreren' ? 'login.start' : 'login.welcome')
+
+Mijn zoekactie keek naar `t('sleutel.` -- een letterlijke tekst meteen achter
+het haakje -- dus deze twee bleven staan en gooiden `t is not defined`.
+
+De test die dit had moeten vangen keek naar precies datzelfde patroon en bleef
+daarom groen. Die regel is nu simpeler en strenger: er mag geen ENKELE kale
+`t(`-aanroep meer in het uitgestuurde script staan. Dat is een vorm die niet
+half te omzeilen is, en ik heb hem gecontroleerd door de fout er opnieuw in te
+zetten -- toen viel de test wel om.
+
+**Actie:** geen.
+
+
 ### Het dashboard spreekt nu meer dan Nederlands (begin)
 
 Er zat al veel meertaligheid in Helvaro: je AI praat 40 talen met leads, het
