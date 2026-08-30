@@ -233,8 +233,17 @@ console.log('\n— www wordt doorgestuurd naar het echte adres —');
 {
   const vercel = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
   const red = vercel.redirects || [];
-  const idxWww = red.findIndex((r) => (r.has || []).some((h) => h.type === 'host' && h.value === 'www.helvaro.pro'));
+  const isWww = (r) => (r.has || []).some((h) => h.type === 'host' && h.value === 'www.helvaro.pro');
+  const idxWww = red.findIndex(isWww);
   const idxRoot = red.findIndex((r) => r.source === '/' && !r.has);
+
+  /* Live gebleken: ":pad*" matcht de KALE "/" niet. www.helvaro.pro/ ging
+     daardoor eerst naar /dashboard OP WWW, en pas die pagina verwees door --
+     twee sprongen, en de eerste op de verkeerde host. Daarom een eigen regel
+     voor de root. Deze assertie bestaat omdat de vorige versie hem miste. */
+  ck('de kale "/" heeft een eigen www-regel',
+     red.some((r) => isWww(r) && r.source === '/'),
+     JSON.stringify(red.filter(isWww).map((r) => r.source)));
   ck('er is een host-regel voor www', idxWww > -1, JSON.stringify(red.map((r) => r.source)));
   ck('en die staat vóór de "/" -> "/dashboard" regel', idxWww > -1 && idxRoot > -1 && idxWww < idxRoot,
      `www op ${idxWww}, root op ${idxRoot}`);
