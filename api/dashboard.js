@@ -1570,6 +1570,17 @@ button.brand-dot { border: none; padding: 0; }
 
 .login-lang select:hover { color: var(--login-accent-ink); }
 
+/* Op een touchscreen is 26px hoog te klein om betrouwbaar te raken. Op muis en
+   toetsenbord blijft hij klein: daar is precisie geen probleem, en groter zou
+   hem meer aandacht geven dan hij verdient. */
+@media (hover: none) and (pointer: coarse) {
+  .login-lang select {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
 /* Zichtbare focusring: dit is een van de weinige bedienbare dingen op het
    scherm buiten de inlogkaart, dus wie met het toetsenbord werkt moet hem
    kunnen vinden. */
