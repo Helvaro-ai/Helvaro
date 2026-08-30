@@ -9093,7 +9093,7 @@ ${faro.navCta}
       <div class="credit-usage-widget" id="credit-usage-widget" style="display:none">
         <button type="button" class="credit-usage-btn" id="credit-usage-btn"
                 aria-expanded="false" aria-controls="credit-usage-pop"
-                title="Bekijk je credits" onclick="toggleCreditPop(event)">
+                title="${T('ui.credits.title')}" onclick="toggleCreditPop(event)">
           <span class="credit-usage-head">
             <span>AI-credits</span>
             <span class="credit-usage-pct" id="credit-usage-pct">0%</span>
@@ -9144,7 +9144,7 @@ ${faro.navCta}
           <span class="icon">↻</span>
           <span class="btn-label">Vernieuwen</span>
         </button>
-        <button class="btn-icon btn-primary-sm" id="btn-export-csv" title="CSV Export" aria-label="Exporteer leads als CSV">
+        <button class="btn-icon btn-primary-sm" id="btn-export-csv" title="CSV Export" aria-label="${T('ui.export.csv')}">
           <span class="icon">⇓</span>
           <span class="btn-label">CSV Export</span>
         </button>
@@ -9974,7 +9974,7 @@ ${faro.navCta}
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
                 <label class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">${T('img.wall.hint')}</span></label>
                 <div class="pi-color-grid" id="pi-wallcolor-grid"></div>
-                <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="Optionele nuance, bv. 'met een accentwand'">
+                <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="${T('img.note.ph')}">
               </div>
             </div>
 
@@ -10020,7 +10020,7 @@ ${faro.navCta}
           <div class="ap-field">
             <label class="ap-label">${T('pi.result')} <span class="ap-label-hint">${T('pi.slider')}</span></label>
             <div class="pi-compare-stage" id="pi-compare-stage">
-              <img class="pi-compare-img" id="pi-compare-before" alt="Voor (originele foto)">
+              <img class="pi-compare-img" id="pi-compare-before" alt="${T('img.before.alt')}">
               <img class="pi-compare-img pi-compare-after" id="pi-compare-after" alt="Na (AI-visualisatie)">
               <div class="pi-compare-tag before">${T('pi.before')}</div>
               <div class="pi-compare-tag after">Na (AI)</div>
@@ -10120,7 +10120,7 @@ ${faro.navCta}
                 <div class="ap-tpl-grid" id="ap-instr-grid"></div>
               </div>
 
-              <textarea id="ap-instructions" class="ap-textarea" rows="5" placeholder="Bv: Praat informeel. Stuur nooit prijzen via WhatsApp. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon." maxlength="3000"></textarea>
+              <textarea id="ap-instructions" class="ap-textarea" rows="5" placeholder="${T('ap.instr.ph')}" maxlength="3000"></textarea>
               <div class="ap-hint">${T('ap.extra.note')}</div>
             </div>
 
@@ -10176,7 +10176,7 @@ ${faro.navCta}
                 ${T('ap.notifMail')}
                 <span class="ap-label-hint">${T('ap.notifMail.h')}</span>
               </label>
-              <input id="ap-report-email" type="email" class="ap-input" placeholder="jij@bedrijf.be" inputmode="email" autocomplete="email" maxlength="100">
+              <input id="ap-report-email" type="email" class="ap-input" placeholder="${T('ap.mail.ph')}" inputmode="email" autocomplete="email" maxlength="100">
               <div class="ap-hint">${T('ap.mail.hint')}</div>
             </div>
 
@@ -10297,7 +10297,7 @@ ${faro.navCta}
                 ${T('ap.formText')}
                 <span class="ap-label-hint">${T('ap.formText.h')}</span>
               </label>
-              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey ik help je graag. Laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
+              <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="${T('ap.intro.ph')}" maxlength="600"></textarea>
               <div class="ap-hint">${T('ap.bubble.hint')}</div>
             </div>
 
@@ -10617,25 +10617,11 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">WordPress</span>
-              <span class="fm-guide-meta">2 manieren</span>
+              <span class="fm-guide-meta">${T('guide.meta.wp')}</span>
             </summary>
             <div class="fm-guide-body">
-              <p><strong>Optie A. Via plugin (makkelijkst, géén code in je theme):</strong></p>
-              <ol>
-                <li>In WP dashboard → <strong>Plugins</strong> → <strong>Nieuwe plugin</strong></li>
-                <li>Zoek naar <em>"Insert Headers and Footers"</em> (door WPBeginner) → <strong>Installeer</strong> → <strong>Activeer</strong></li>
-                <li>Ga naar <strong>Instellingen</strong> → <strong>Insert Headers and Footers</strong></li>
-                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Scripts in Footer"</strong></li>
-                <li>Klik <strong>Save</strong>. klaar! Ververs je site, je ziet de knop rechtsonder.</li>
-              </ol>
-              <p><strong>Optie B. Direct in theme (voor developers):</strong></p>
-              <ol>
-                <li>WP dashboard → <strong>Uiterlijk</strong> → <strong>Theme Editor</strong></li>
-                <li>Open <code>footer.php</code> in de rechter kolom</li>
-                <li>Plak de code <em>vlak voor</em> de <code>&lt;/body&gt;</code> tag</li>
-                <li>Klik <strong>Bestand bijwerken</strong></li>
-              </ol>
-              <div class="fm-guide-tip"><strong>${T('fm.tip')}</strong> Optie A overleeft theme-updates. Optie B niet. Kies daarom A tenzij je weet wat je doet.</div>
+              ${T('guide.wp')}
+              <div class="fm-guide-tip"><strong>${T('fm.tip')}</strong> ${T('guide.wp.tip')}</div>
             </div>
           </details>
 
@@ -10644,18 +10630,11 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Shopify</span>
-              <span class="fm-guide-meta">~2 min</span>
+              <span class="fm-guide-meta">${T('guide.meta.2min')}</span>
             </summary>
             <div class="fm-guide-body">
-              <ol>
-                <li>Shopify admin → <strong>Online Store</strong> → <strong>Themes</strong></li>
-                <li>Bij je actieve thema, klik <strong>...</strong> → <strong>Edit code</strong></li>
-                <li>In de linker kolom onder <strong>Layout</strong>, open <code>theme.liquid</code></li>
-                <li>Scroll naar beneden tot je de <code>&lt;/body&gt;</code> tag vindt</li>
-                <li>Plak de Drijvende WhatsApp-knop code op de regel <em>vlak boven</em> <code>&lt;/body&gt;</code></li>
-                <li>Klik <strong>Save</strong> rechtsboven</li>
-              </ol>
-              <div class="fm-guide-tip">De knop verschijnt op élke pagina van je winkel. Productpagina's, collectiepagina's, blog, alles.</div>
+              ${T('guide.shopify')}
+              <div class="fm-guide-tip">${T('guide.shopify.tip')}</div>
             </div>
           </details>
 
@@ -10664,20 +10643,11 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Wix</span>
-              <span class="fm-guide-meta">~3 min</span>
+              <span class="fm-guide-meta">${T('guide.meta.3min')}</span>
             </summary>
             <div class="fm-guide-body">
-              <ol>
-                <li>Open je Wix editor of dashboard</li>
-                <li>Ga naar <strong>Settings</strong> (Instellingen) → <strong>Custom Code</strong> (Aangepaste code)</li>
-                <li>Klik <strong>+ Add Custom Code</strong> (Voeg code toe)</li>
-                <li>Plak de Drijvende WhatsApp-knop code in het tekstvak</li>
-                <li>Geef het een naam: bv. <em>"Helvaro Lead Form"</em></li>
-                <li>Bij <strong>Add Code to Pages</strong>: kies <strong>All Pages</strong> + <strong>Load code once</strong></li>
-                <li>Bij <strong>Place Code in</strong>: kies <strong>Body. End</strong></li>
-                <li>Klik <strong>Apply</strong> → publiceer je site</li>
-              </ol>
-              <div class="fm-guide-tip">Custom Code werkt enkel op <strong>Wix Premium</strong> plans (vanaf €4/mnd). Free Wix-sites ondersteunen geen custom code. Gebruik dan de directe link of QR-code.</div>
+              ${T('guide.wix')}
+              <div class="fm-guide-tip">${T('guide.wix.tip')}</div>
             </div>
           </details>
 
@@ -10686,16 +10656,11 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji">⬛</span>
               <span class="fm-guide-label">Squarespace</span>
-              <span class="fm-guide-meta">~2 min</span>
+              <span class="fm-guide-meta">${T('guide.meta.2min')}</span>
             </summary>
             <div class="fm-guide-body">
-              <ol>
-                <li>Squarespace dashboard → kies je site</li>
-                <li>Ga naar <strong>Settings</strong> → <strong>Advanced</strong> → <strong>Code Injection</strong></li>
-                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Footer"</strong></li>
-                <li>Klik <strong>Save</strong> bovenaan</li>
-              </ol>
-              <div class="fm-guide-tip">Code Injection is beschikbaar vanaf het <strong>Business</strong> plan. Op Personal plan: gebruik een <em>Code Block</em> in een sectie, of gebruik enkel de directe link.</div>
+              ${T('guide.squarespace')}
+              <div class="fm-guide-tip">${T('guide.squarespace.tip')}</div>
             </div>
           </details>
 
@@ -10704,18 +10669,11 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Webflow</span>
-              <span class="fm-guide-meta">~2 min</span>
+              <span class="fm-guide-meta">${T('guide.meta.2min')}</span>
             </summary>
             <div class="fm-guide-body">
-              <ol>
-                <li>Open je Webflow project</li>
-                <li>Klik op het <strong>Settings</strong> (tandwiel) icoon links</li>
-                <li>Ga naar tabblad <strong>Custom Code</strong></li>
-                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"Footer Code"</strong></li>
-                <li>Klik <strong>Save Changes</strong></li>
-                <li>Klik <strong>Publish</strong> rechtsboven om live te zetten</li>
-              </ol>
-              <div class="fm-guide-tip">Footer Code wordt op élke pagina ingeladen. Voor een test: publiceer eerst naar je <code>.webflow.io</code> subdomain.</div>
+              ${T('guide.webflow')}
+              <div class="fm-guide-tip">${T('guide.webflow.tip')}</div>
             </div>
           </details>
 
@@ -10724,16 +10682,10 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Framer</span>
-              <span class="fm-guide-meta">~2 min</span>
+              <span class="fm-guide-meta">${T('guide.meta.2min')}</span>
             </summary>
             <div class="fm-guide-body">
-              <ol>
-                <li>Open je Framer site</li>
-                <li>Klik op <strong>Site Settings</strong> (de drie streepjes linksboven → Settings)</li>
-                <li>Ga naar <strong>General</strong> → scroll naar <strong>Custom Code</strong></li>
-                <li>Plak de Drijvende WhatsApp-knop code in het veld <strong>"End of &lt;body&gt; tag"</strong></li>
-                <li>Klik <strong>Save</strong> en daarna <strong>Publish</strong></li>
-              </ol>
+              ${T('guide.framer')}
             </div>
           </details>
 
@@ -10742,19 +10694,12 @@ ${faro.navCta}
             <summary>
               <span class="fm-guide-emoji"></span>
               <span class="fm-guide-label">Google Sites</span>
-              <span class="fm-guide-meta">enkel iframe</span>
+              <span class="fm-guide-meta">${T('guide.meta.iframe')}</span>
             </summary>
             <div class="fm-guide-body">
-              <p>Google Sites ondersteunt geen <code>&lt;script&gt;</code> tags. Daarom werkt de drijvende WhatsApp-knop niet. Gebruik in plaats daarvan de <strong>iframe embed</strong>:</p>
-              <ol>
-                <li>Open je Google Sites pagina</li>
-                <li>Klik <strong>Insert</strong> → <strong>Embed</strong></li>
-                <li>Kies tabblad <strong>Embed code</strong></li>
-                <li>Plak de iframe-code (de tweede optie hierboven)</li>
-                <li>Klik <strong>Next</strong> → <strong>Insert</strong></li>
-                <li>Pas de grootte aan zoals gewenst → <strong>Publish</strong></li>
-              </ol>
-              <div class="fm-guide-tip">Alternatief: deel gewoon de <strong>directe link</strong> in een knop of menu-item.</div>
+              <p>${T('guide.gsites.intro')}</p>
+              ${T('guide.gsites')}
+              <div class="fm-guide-tip">${T('guide.gsites.tip')}</div>
             </div>
           </details>
 
@@ -10762,24 +10707,20 @@ ${faro.navCta}
           <details class="fm-guide-item">
             <summary>
               <span class="fm-guide-emoji"></span>
-              <span class="fm-guide-label">Custom HTML / eigen code</span>
-              <span class="fm-guide-meta">developers</span>
+              <span class="fm-guide-label">${T('guide.label.html')}</span>
+              <span class="fm-guide-meta">${T('guide.meta.dev')}</span>
             </summary>
             <div class="fm-guide-body">
-              <ol>
-                <li>Open het HTML-bestand van je site (meestal <code>index.html</code> of een gedeelde footer template)</li>
-                <li>Plak de Drijvende WhatsApp-knop code <em>vlak vóór</em> de <code>&lt;/body&gt;</code> tag</li>
-                <li>Deploy/upload naar je hosting (FTP, Vercel, Netlify, GitHub Pages, …)</li>
-              </ol>
-              <p>Voor frameworks zoals <strong>Next.js / React / Vue</strong>: voeg het toe in de root layout file (<code>_app.tsx</code>, <code>App.vue</code>, …) met een <code>useEffect</code> die de script-tag dynamisch invoegt, of via <code>next/script</code> met <code>strategy="afterInteractive"</code>.</p>
-              <div class="fm-guide-tip">Voor Next.js: <code>&lt;Script src="https://app.helvaro.pro/form-widget.js" data-project="..." data-name="..." strategy="afterInteractive" /&gt;</code></div>
+              ${T('guide.html')}
+              <p>${T('guide.html.frameworks')}</p>
+              <div class="fm-guide-tip">${T('guide.nextjs')} <code>&lt;Script src="https://app.helvaro.pro/form-widget.js" data-project="..." data-name="..." strategy="afterInteractive" /&gt;</code></div>
             </div>
           </details>
 
           <!-- Test instructions -->
           <div class="fm-guide-test">
-            <strong>Hoe weet ik of het werkt?</strong>
-            Open je site in een privé/incognito venster. Wacht 2 seconden. Je moet een ronde blauwe chat-knop rechtsonder zien staan. Klik erop. Het Helvaro formulier opent als pop-up. Vul een test-aanvraag in om te checken of het lead in je dashboard verschijnt.
+            <strong>${T('guide.test.title')}</strong>
+            ${T('guide.test.body')}
           </div>
         </div>
 
@@ -10788,24 +10729,24 @@ ${faro.navCta}
           <div class="fm-qr-card">
             <div class="fm-option-hdr">
               <div class="fm-option-title">QR-code</div>
-              <p class="fm-option-sub">Scanbaar met elke smartphone-camera. Print op flyers, beursstanden, etalage-stickers, visitekaartjes.</p>
+              <p class="fm-option-sub">${T('fm.qr.sub')}</p>
             </div>
             <div class="fm-qr-frame">
-              <img id="fm-qr-img" alt="QR-code naar formulier" width="240" height="240">
+              <img id="fm-qr-img" alt="${T('fm.qr.alt')}" width="240" height="240">
             </div>
             <a class="fm-btn fm-btn-full" id="fm-qr-download" download="lead-formulier-qr.png">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Download als PNG
+              ${T('fm.qr.download')}
             </a>
           </div>
 
           <div class="fm-preview-card">
             <div class="fm-option-hdr">
               <div class="fm-option-title">Voorbeeld</div>
-              <p class="fm-option-sub">Zo ziet je formulier eruit voor een lead.</p>
+              <p class="fm-option-sub">${T('fm.preview.sub')}</p>
             </div>
             <div class="fm-iframe-wrap">
-              <iframe id="fm-preview-iframe" loading="lazy" title="Voorbeeld van het formulier"></iframe>
+              <iframe id="fm-preview-iframe" loading="lazy" title="${T('fm.preview.title')}"></iframe>
             </div>
           </div>
         </div>
@@ -10822,7 +10763,7 @@ ${faro.navCta}
             ${T('set.ai')}
           </div>
           <div class="settings-info-box">
-            Pas de AI-naam, welkomstbericht, werkuren en boekingsmodus aan via de <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">AI Persoonlijkheid</a> pagina. Hulp nodig? <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
+            ${T('set.info.pre')} <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">${T('nav.persona')}</a> ${T('set.info.post')} ${T('set.help')} <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
           </div>
           <div class="settings-row">
             <div>
@@ -11627,8 +11568,8 @@ ${faro.dock}
     <!-- Persona picker (Frade / Teljo). shown right after login -->
     <div id="persona-overlay">
       <div class="persona-modal">
-        <h2>Wie ben je?</h2>
-        <p>Kies je profiel om je persoonlijke taken &amp; overzicht te zien.</p>
+        <h2>${T('onb.who')}</h2>
+        <p>${T('onb.who.sub')}</p>
         <div class="persona-choices">
           <div class="persona-choice" onclick="setPersona('Frade')">
             <div class="persona-avatar frade">F</div>
@@ -11648,10 +11589,10 @@ ${faro.dock}
     <div id="onb-done-overlay">
       <div class="onb-done-card">
         <div class="onb-done-icon"></div>
-        <h2 class="onb-done-title">Je AI is live!</h2>
-        <p class="onb-done-sub">Vanaf nu krijgt elke lead die jouw formulier invult direct een persoonlijk WhatsApp-bericht. Automatisch gekwalificeerd.</p>
+        <h2 class="onb-done-title">${T('onb.live')}</h2>
+        <p class="onb-done-sub">${T('onb.live.sub')}</p>
         <div class="onb-done-url-card">
-          <div class="onb-done-url-lbl">DEEL DEZE LINK</div>
+          <div class="onb-done-url-lbl">${T('onb.share')}</div>
           <code class="onb-done-url" id="onb-done-url">—</code>
           <button class="onb-done-copy" onclick="copyFormLink()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -11659,16 +11600,16 @@ ${faro.dock}
           </button>
         </div>
         <div class="onb-done-steps">
-          <div class="onb-done-step"><span class="onb-done-step-num">1</span> Plak de link in je website, advertentie of bio</div>
-          <div class="onb-done-step"><span class="onb-done-step-num">2</span> Stuur jezelf een test-aanvraag</div>
-          <div class="onb-done-step"><span class="onb-done-step-num">3</span> Je leads verschijnen automatisch in je Dashboard</div>
+          <div class="onb-done-step"><span class="onb-done-step-num">1</span> ${T('onb.step1')}</div>
+          <div class="onb-done-step"><span class="onb-done-step-num">2</span> ${T('onb.step2')}</div>
+          <div class="onb-done-step"><span class="onb-done-step-num">3</span> ${T('onb.step3')}</div>
         </div>
         <div class="onb-done-actions">
           <button class="onb-done-btn onb-done-btn-secondary" onclick="closeOnboardingDone(); navigateTo('formulier');">
             Formulier &amp; installatie →
           </button>
           <button class="onb-done-btn onb-done-btn-primary" onclick="closeOnboardingDone(); navigateTo('dashboard');">
-            Naar mijn Dashboard →
+            ${T('onb.toDash')}
           </button>
         </div>
       </div>
@@ -11729,7 +11670,7 @@ ${faro.dock}
     <div class="search-results" id="search-results">
       <div class="search-hint">
         <div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-        <div class="search-hint-text">Begin met typen om leads te zoeken</div>
+        <div class="search-hint-text">${T('search.hint')}</div>
         <div class="search-hint-shortcuts">
           <span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span>
           <span class="search-hint-shortcut"><kbd>↵</kbd> openen</span>
@@ -11758,10 +11699,10 @@ ${faro.dock}
     </div>
 
     <div class="koop-body">
-      <div class="koop-label">Hoeveel wil je bijkopen?</div>
+      <div class="koop-label">${T('koop.howmuch')}</div>
       <div class="koop-tegels" id="koop-tegels"></div>
 
-      <div class="koop-label" style="margin-top:8px">Of een ander bedrag</div>
+      <div class="koop-label" style="margin-top:8px">${T('koop.other')}</div>
       <div class="koop-veld">
         <span class="koop-euro">&euro;</span>
         <input class="koop-input" id="koop-bedrag" type="number" min="0" step="5"
@@ -11781,7 +11722,7 @@ ${faro.dock}
       <div class="koop-staffel" id="koop-staffel"></div>
 
       <div class="koop-uitleg">
-        Credits verlopen niet en komen bovenop wat je deze periode nog hebt.
+        ${T('koop.expl')}
       </div>
       <div class="pd-modal-err" id="koop-fout" role="alert" style="display:none"></div>
     </div>
@@ -11805,8 +11746,8 @@ ${faro.dock}
            invullen. Wie liever zelf typt scrollt gewoon door -- alle velden
            blijven gewone velden. -->
       <div class="pd-import">
-        <div class="pd-import-kop">Plak de link van je zoekertje</div>
-        <div class="pd-import-sub">Helvaro leest de pagina en vult de velden hieronder in. Je controleert ze daarna zelf.</div>
+        <div class="pd-import-kop">${T('pd.import.kop')}</div>
+        <div class="pd-import-sub">${T('pd.import.sub')}</div>
         <div class="pd-import-row">
           <input class="pd-input" id="pd-f-link" type="url" inputmode="url" autocomplete="off"
                  placeholder="https://www.immoweb.be/nl/zoekertje/..." maxlength="2000">
@@ -11821,7 +11762,7 @@ ${faro.dock}
         <div>
           <label class="pd-label" for="pd-f-code">Referentie</label>
           <input class="pd-input" id="pd-f-code" type="text" placeholder="automatisch (P1, P2, ...)" maxlength="20">
-          <div class="pd-hint">Leeg laten mag. Heb je een eigen referentie, vul hem hier in.</div>
+          <div class="pd-hint">${T('pd.code.hint')}</div>
         </div>
         <div>
           <label class="pd-label" for="pd-f-status">${T('dash.col.status')}</label>
@@ -11832,7 +11773,7 @@ ${faro.dock}
             <option value="verhuurd">verhuurd</option>
             <option value="uit aanbod">uit aanbod</option>
           </select>
-          <div class="pd-hint">Verkocht of uit aanbod? Dan plant je AI er geen bezichtiging meer voor in.</div>
+          <div class="pd-hint">${T('pd.sold.hint')}</div>
         </div>
       </div>
 
@@ -11863,10 +11804,10 @@ ${faro.dock}
           </select>
         </div>
         <div>
-          <label class="pd-label" for="pd-f-transactie">Te koop of te huur</label>
+          <label class="pd-label" for="pd-f-transactie">${T('pd.transactie')}</label>
           <select class="pd-input" id="pd-f-transactie">
-            <option value="te koop">te koop</option>
-            <option value="te huur">te huur</option>
+            <option value="te koop">${T('pd.sale')}</option>
+            <option value="te huur">${T('pd.rent')}</option>
           </select>
         </div>
       </div>
@@ -11892,16 +11833,16 @@ ${faro.dock}
 
       <label class="pd-label" for="pd-f-omschrijving">Omschrijving</label>
       <textarea class="pd-input pd-textarea" id="pd-f-omschrijving" rows="4" maxlength="4000"
-        placeholder="Wat je AI mag vertellen over dit pand. Alleen wat hier staat wordt genoemd &mdash; hij verzint niets bij."></textarea>
+        placeholder="${T('pd.desc.ph')}"></textarea>
 
-      <label class="pd-label" for="pd-f-fotos">Foto's (een URL per regel)</label>
+      <label class="pd-label" for="pd-f-fotos">${T('pd.photos')}</label>
       <textarea class="pd-input pd-textarea" id="pd-f-fotos" rows="2"
         placeholder="https://..."></textarea>
-      <div class="pd-hint">Alleen https-adressen. De eerste foto komt op het aanvraagformulier.</div>
+      <div class="pd-hint">${T('pd.photos.hint')}</div>
 
       <label class="pd-checkline" for="pd-f-publiek">
         <input type="checkbox" id="pd-f-publiek" checked>
-        <span>Zichtbaar op het aanvraagformulier</span>
+        <span>${T('pd.visible')}</span>
       </label>
 
       <div class="pd-modal-err" id="pd-modal-err" role="alert" style="display:none"></div>
@@ -11971,24 +11912,24 @@ ${faro.dock}
      handling in api/leads.js. -->
 <div class="chk-biz-modal-overlay" id="chk-biz-modal-overlay" onclick="if(event.target===this) closeBusinessInfoModal()">
   <div class="chk-biz-modal">
-    <div class="chk-biz-modal-title">Vertel over je bedrijf</div>
-    <div class="chk-biz-modal-intro">Dit is wat je AI gebruikt om leads te beantwoorden — hoe meer je hier invult, hoe beter je AI jouw klanten écht helpt in plaats van generiek te antwoorden. Een paar zinnen per vraag is al genoeg.</div>
+    <div class="chk-biz-modal-title">${T('biz.modal.title')}</div>
+    <div class="chk-biz-modal-intro">${T('biz.intro')}</div>
     <div class="chk-biz-field">
-      <label for="chk-biz-what">Wat doet je bedrijf?</label>
-      <textarea id="chk-biz-what" maxlength="400" placeholder="Bijv. Wij zijn een tandartspraktijk in Gent, gespecialiseerd in implantaten en cosmetische tandheelkunde."></textarea>
+      <label for="chk-biz-what">${T('biz.what')}</label>
+      <textarea id="chk-biz-what" maxlength="400" placeholder="${T('biz.what.ph')}"></textarea>
     </div>
     <div class="chk-biz-field">
-      <label for="chk-biz-goodlead">Wat is een goede lead voor jou?</label>
-      <textarea id="chk-biz-goodlead" maxlength="300" placeholder="Bijv. Iemand die binnen 30 min. wil langskomen, of een concrete klacht/vraag heeft — geen studenten die rondvragen."></textarea>
+      <label for="chk-biz-goodlead">${T('biz.good')}</label>
+      <textarea id="chk-biz-goodlead" maxlength="300" placeholder="${T('biz.good.ph')}"></textarea>
     </div>
     <div class="chk-biz-field">
-      <label for="chk-biz-notdoes">Wat doet je bedrijf NIET?</label>
-      <textarea id="chk-biz-notdoes" maxlength="300" placeholder="Bijv. Wij doen geen spoedgevallen buiten de uren, en geen behandelingen bij kinderen onder 12."></textarea>
+      <label for="chk-biz-notdoes">${T('biz.not')}</label>
+      <textarea id="chk-biz-notdoes" maxlength="300" placeholder="${T('biz.not.ph')}"></textarea>
     </div>
     <div class="chk-biz-field">
-      <label for="chk-biz-never">Openingsuren &amp; dingen die de AI NOOIT mag beloven</label>
-      <textarea id="chk-biz-never" maxlength="300" placeholder="Bijv. Open ma-vr 9-18. Beloof nooit een exacte prijs of dat een behandeling 100% pijnloos is."></textarea>
-      <div class="chk-biz-field-hint">Dit wordt toegevoegd aan je AI Instructies — je bestaande instructies (indien aanwezig) blijven staan, dit komt erbij.</div>
+      <label for="chk-biz-never">${T('biz.never')}</label>
+      <textarea id="chk-biz-never" maxlength="300" placeholder="${T('biz.never.ph')}"></textarea>
+      <div class="chk-biz-field-hint">${T('biz.append')}</div>
     </div>
     <div class="chk-biz-modal-actions">
       <button class="chk-biz-cancel" onclick="closeBusinessInfoModal()">Annuleren</button>
@@ -12005,7 +11946,7 @@ ${faro.dock}
      startDashboard, hidden on the login screen) — see initHelpWidget().
      ============================================================ -->
 <button class="hv-help-launcher" id="hv-help-launcher" type="button"
-        aria-label="Hulp en ondersteuning" aria-expanded="false"
+        aria-label="${T('ui.help.label')}" aria-expanded="false"
         aria-controls="hv-help-panel" style="display:none">
   <svg class="hv-help-ico-chat" width="23" height="23" viewBox="0 0 24 24" fill="none"
        stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -12020,8 +11961,8 @@ ${faro.dock}
 <div class="hv-help-panel" id="hv-help-panel" role="dialog"
      aria-labelledby="hv-help-title" aria-hidden="true">
   <div class="hv-help-head">
-    <h2 id="hv-help-title">Hoe kunnen we helpen?</h2>
-    <p>Zoek een antwoord, of stuur ons een bericht.</p>
+    <h2 id="hv-help-title">${T('help.title')}</h2>
+    <p>${T('help.sub')}</p>
   </div>
   <div class="hv-help-search">
     <input id="hv-help-q" type="search" autocomplete="off" spellcheck="false"
@@ -18883,7 +18824,7 @@ function closeSearch() {
   const inp = document.getElementById('search-modal-input');
   if (inp) inp.value = '';
   const resultsEl = document.getElementById('search-results');
-  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">${T('search.hint')}</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
   const footer = document.getElementById('search-footer');
   if (footer) footer.style.display = 'none';
   _searchActiveIndex = -1;
@@ -18914,7 +18855,7 @@ function runGlobalSearch() {
   _searchActiveIndex = -1;
 
   if (!q) {
-    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">Begin met typen om leads te zoeken</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">${T('search.hint')}</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }

@@ -14,6 +14,44 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De installatiegidsen en de rest van het dashboard spreken nu ook vier talen
+
+De acht gidsen op de Formulier-pagina (WordPress, Shopify, Wix, Squarespace,
+Webflow, Framer, Google Sites, eigen HTML) zijn **herschreven** per taal, niet
+vertaald. Dat verschil is het hele punt: die instructies stonden opgeknipt in
+losse fragmenten tussen `<code>`- en `<strong>`-tags, en fragment voor fragment
+vertalen geeft kromme zinnen zodra de woordvolgorde anders ligt.
+
+Bij het herschrijven geldt één regel: **de labels van het product zelf blijven
+staan zoals ze daar heten.** Shopify, Wix, Webflow en Framer hebben een Engelse
+beheeromgeving, ook voor een Nederlandse klant — "Themes" vertalen naar
+"Thema's" laat iemand zoeken naar een knop die niet bestaat. WordPress is wél
+vertaald, dus daar staat nu per taal het echte label: Uiterlijk / Apparence /
+Appearance / Design.
+
+Verder vertaald: de QR-sectie en het formuliervoorbeeld, het slotscherm van de
+onboarding, het zoekveld, het bijkoopscherm, het volledige pandformulier, de
+"Vertel over je bedrijf"-modal en het hulppaneel — inclusief de placeholders,
+`title`- en `aria-label`-teksten, want dat is wat een schermlezer voorleest.
+
+Van 157 zichtbare Nederlandse fragmenten op een Engels scherm naar 10. Die tien
+zijn geteld en blijven bewust staan:
+
+- **Vijf** zijn de back-office (Founder, Klanten, Kosten). Alleen Sindi ziet die.
+- **Twee** zijn tekst die de AI tegen een LEAD zegt: de voorbeeldbegroeting en
+  het terugbelvenster "vandaag nog". Die horen bij de AI-taal, niet bij de
+  schermtaal — een Brussels kantoor met een Engels dashboard hoort geen Engelse
+  WhatsApp naar een Vlaamse lead te sturen. Dat netjes verplaatsen is gedrag
+  veranderen, geen vertaling, dus dat is apart werk.
+- **Drie** zijn vals alarm van mijn meetscript: correcte Engelse zinnen die
+  toevallig een woord bevatten dat ook Nederlands is.
+
+Alle drie de redenen staan nu ook bovenaan `api/_i18n.js`, zodat de volgende
+persoon die dit openslaat niet denkt dat het gewoon vergeten is.
+
+**Actie:** geen.
+
+
 ### Het inlogscherm is nu echt viertalig, en je kan de taal kiezen vóór je inlogt
 
 Twee dingen die samen hoorden.
