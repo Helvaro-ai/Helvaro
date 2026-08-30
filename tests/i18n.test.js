@@ -233,5 +233,100 @@ console.log('\n— de vertaalfunctie wordt door niets afgeschermd —');
      /(let|var|const) t\s*=/.test(js) && /function tr\(/.test(js), null);
 }
 
+/* ── Het inlogscherm mag in geen enkele taal Nederlands lekken ───────────────
+   Dit is het scherm waar een buitenlandse klant beslist of hij ons vertrouwt,
+   en het was precies de plek waar het misging: een Engelse inlogkaart met een
+   volledig Nederlands promopaneel ernaast, zij aan zij zichtbaar.
+
+   Hoe we meten. Eerst probeerde ik een lijst Nederlandse woorden. Dat werkt
+   niet tussen buurtalen: "hier" is Frans voor gisteren en "gratis" is gewoon
+   Duits, dus die gaven vals alarm op correct vertaalde zinnen.
+
+   Wat wel klopt: render dezelfde pagina twee keer, in het Nederlands en in de
+   doeltaal, en vergelijk de ZICHTBARE zinnen. Staat een zin letterlijk in
+   allebei, dan is hij niet vertaald -- dat is precies de fout die we zoeken,
+   zonder aannames over welke woorden bij welke taal horen.
+
+   De uitzonderingen hieronder zijn zinnen die in elke taal hetzelfde HOREN te
+   zijn: merknamen en een e-mailplaceholder. Die lijst moet kort blijven; wordt
+   hij lang, dan is dat een teken dat er iets niet vertaald wordt. */
+console.log('\n— het inlogscherm lekt geen Nederlands —');
+{
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dash = require('../api/dashboard.js');
+
+  const MAG_GELIJK = new Set([
+    'WhatsApp', 'Helvaro',
+    /* De taalnamen in de kiezer staan bewust in hun eigen taal: wie zoekt naar
+       "Deutsch" moet dat woord zien staan, niet "Duits". */
+    'Nederlands', 'Français', 'English', 'Deutsch',
+    'name@company.be', 'Marie D.', 'Jonas P.', 'Sofie M.',
+    /* Het copyrightfragment is een symbool en een jaartal. */
+    '&copy; 2026',
+    /* "Slide" is in het Engels hetzelfde woord als in het Nederlands. Frans
+       (Diapositive) en Duits (Folie) verschillen wel, dus die worden nog echt
+       gecontroleerd -- dit is geen gat in de test, alleen in deze ene taal. */
+    'Slide 1', 'Slide 2', 'Slide 3']);
+
+  const zinnenVan = (accept) => {
+    let html = '';
+    dash({ method: 'GET', url: '/dashboard', headers: accept ? { 'accept-language': accept } : {} },
+         { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+    const start = html.indexOf('id="login-page"');
+    const eind  = html.indexOf('id="dashboard-app"');
+    if (start < 0 || eind <= start) return null;
+    const stuk = html.slice(start, eind)
+                     .replace(/<script[\s\S]*?<\/script>/g, ' ')
+                     .replace(/<style[\s\S]*?<\/style>/g, ' ')
+                     .replace(/<!--[\s\S]*?-->/g, ' ')
+                     /* on*-attributen bevatten JavaScript met < en > erin. Zonder dit
+                        leest de zin-extractie stukken code als zichtbare tekst. */
+                     .replace(/\son[a-z]+="[^"]*"/g, ' ');
+    const uit = new Set();
+    stuk.replace(/>([^<>]+)</g, (m, t) => {
+      const x = t.replace(/\s+/g, ' ').trim();
+      if (x.length >= 6 && !/^[\d\s€%.,:/+-]+$/.test(x)) uit.add(x);
+      return m;
+    });
+    /* De aria-labels tellen mee: dat is wat een schermlezer voorleest, en een
+       Nederlands label op een Frans scherm is daar even fout als op het beeld. */
+    stuk.replace(/aria-label="([^"]+)"/g, (m, t) => { if (t.trim().length >= 6) uit.add(t.trim()); return m; });
+    return uit;
+  };
+
+  const nl = zinnenVan('nl-BE,nl');
+  ck('het inlogscherm is te vinden in de pagina', !!nl && nl.size > 10, nl && nl.size);
+
+  for (const [taal, accept] of [['fr', 'fr-BE,fr'], ['en', 'en-US,en'], ['de', 'de-DE,de']]) {
+    const doel = zinnenVan(accept);
+    const gelijk = [...(doel || [])].filter((z) => nl.has(z) && !MAG_GELIJK.has(z));
+    ck(`${taal}: geen zin staat er nog letterlijk in het Nederlands`,
+       gelijk.length === 0, gelijk.slice(0, 4).join(' | '));
+  }
+
+  /* En andersom: in het Nederlands MOET het Nederlands blijven. Zonder deze
+     helft zou een lege vertaaltabel de test hierboven ook groen maken. */
+  ck('nl: het promopaneel staat er wel gewoon in het Nederlands',
+     nl.has('Antwoord binnen de minuut'), null);
+}
+
+/* De taalkiezer moet VOOR het inloggen bereikbaar zijn. Stond hij alleen in
+   Instellingen, dan zat een Vlaamse makelaar met een Engelse browser vast op
+   een Engels scherm tot na het inloggen -- precies wanneer hij nog moet
+   beslissen of hij dit vertrouwt. */
+console.log('\n— de taal is te kiezen voordat je binnen bent —');
+{
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dash = require('../api/dashboard.js');
+  let html = '';
+  dash({ method: 'GET', url: '/dashboard', headers: {} },
+       { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+  const login = html.slice(html.indexOf('id="login-page"'), html.indexOf('id="dashboard-app"'));
+  ck('er staat een taalkiezer op het inlogscherm', /id="login-taal"/.test(login), null);
+  ck('met alle vier de talen',
+     ['nl', 'fr', 'en', 'de'].every((c) => login.indexOf(`value="${c}"`) > -1), null);
+  ck('en hij hangt aan taalWisselen', /id="login-taal"[\s\S]{0,120}taalWisselen/.test(login), null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);

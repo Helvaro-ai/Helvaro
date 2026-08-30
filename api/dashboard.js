@@ -132,7 +132,7 @@ module.exports = async function handler(req, res) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helvaro · AI Lead Kwalificatie</title>
+<title>${T('head.title')}</title>
 <link rel="icon" href="/favicon.png" type="image/png">
 <script src="/vendor/chart.umd.min.js"></script>
 ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>' : ''}
@@ -1532,6 +1532,50 @@ button.brand-dot { border: none; padding: 0; }
 .login-footer span {
   color: var(--login-accent-ink);
   font-weight: 600;
+}
+
+/* Taalkiezer op het inlogscherm.
+
+   Waarom hij hier moet staan en niet alleen in Instellingen: de schermtaal
+   volgde tot nu toe de browser, en veranderen kon je hem pas NA het inloggen.
+   Een Vlaamse makelaar met een Engelse Chrome kreeg dus een Engels inlogscherm
+   zonder uitweg -- precies op het moment dat hij nog moet beslissen of hij dit
+   product vertrouwt.
+
+   Bewust klein en grijs: dit is een ontsnappingsluik, geen keuze die we willen
+   opdringen. Wie de goede taal al ziet, hoort hem nauwelijks te merken. */
+.login-lang {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.login-lang select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--login-border, rgba(0,0,0,0.12));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11.5px;
+  padding: 5px 26px 5px 9px;
+  cursor: pointer;
+  /* Het pijltje als achtergrond, want appearance:none haalt het weg. */
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+
+.login-lang select:hover { color: var(--login-accent-ink); }
+
+/* Zichtbare focusring: dit is een van de weinige bedienbare dingen op het
+   scherm buiten de inlogkaart, dus wie met het toetsenbord werkt moet hem
+   kunnen vinden. */
+.login-lang select:focus-visible {
+  outline: 2px solid var(--login-accent-ink);
+  outline-offset: 2px;
 }
 
 /* Responsive: stack on mobile */
@@ -8701,8 +8745,8 @@ ${cmd.css}
           <img src="/logo-ink.png" alt="Helvaro">
         </div>
 
-        <h1 class="login-welcome">Welkom terug!</h1>
-        <p class="login-subtitle">Log in om te zien wat er sinds gisteren gebeurd is.</p>
+        <h1 class="login-welcome">${T('login.welcome')}</h1>
+        <p class="login-subtitle">${T('login.welcome.sub')}</p>
 
         <!-- De schakelaar tussen inloggen en registreren.
 
@@ -8715,7 +8759,7 @@ ${cmd.css}
 
              Een segmentschakelaar lost allebei op: waar je bent is te zien, en
              waar je heen kunt ook. -->
-        <div class="login-modus" role="tablist" aria-label="Inloggen of account aanmaken">
+        <div class="login-modus" role="tablist" aria-label="${T('login.modus.label')}">
           <button type="button" class="login-modus-knop actief" id="modus-inloggen" role="tab"
                   aria-selected="true" onclick="naarInloggen()">${T('login.tab.in')}</button>
           <button type="button" class="login-modus-knop" id="btn-naar-registreren" role="tab"
@@ -8731,23 +8775,23 @@ ${cmd.css}
              and only the form itself is swapped. -->
         <div id="login-form-wrap">
         <div class="form-group">
-          <label class="form-label" for="login-email">E-mailadres</label>
-          <input class="form-input" type="email" id="login-email" placeholder="naam@bedrijf.be" autocomplete="username">
+          <label class="form-label" for="login-email">${T('login.email')}</label>
+          <input class="form-input" type="email" id="login-email" placeholder="${T('login.email.ph')}" autocomplete="username">
         </div>
         <div class="form-group">
-          <label class="form-label" for="login-password">Wachtwoord</label>
+          <label class="form-label" for="login-password">${T('login.password')}</label>
           <div style="position:relative">
             <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px" aria-describedby="login-error">
-            <button type="button" id="btn-toggle-pw" aria-label="Wachtwoord tonen" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#6b7280;display:flex;align-items:center" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label','Wachtwoord verbergen');b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label','Wachtwoord tonen');b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
+            <button type="button" id="btn-toggle-pw" aria-label="${T('login.pw.show')}" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#6b7280;display:flex;align-items:center" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label',${JSON.stringify(T('login.pw.hide'))});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label',${JSON.stringify(T('login.pw.show'))});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
           </div>
         </div>
-        <button class="btn-login" id="btn-login" aria-label="Inloggen"><span>Inloggen <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
+        <button class="btn-login" id="btn-login" aria-label="${T('login.submit')}"><span>${T('login.submit')} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></button>
         <div class="login-error" id="login-error" role="alert" aria-live="assertive"></div>
 
         <div class="login-links">
-          <a class="login-link" href="/forgot-password">Wachtwoord vergeten?</a>
+          <a class="login-link" href="/forgot-password">${T('login.forgot')}</a>
         </div>
 
         <!-- Wat een bezoeker wil weten voordat hij zijn e-mailadres achterlaat.
@@ -8755,10 +8799,10 @@ ${cmd.css}
              kaart gevraagd voor de proef, en Stripe-abonnementen lopen per maand
              (api/_stripe.js, interval: month). Staat hier niets dat we niet
              waarmaken. -->
-        <ul class="login-trust" aria-label="Voorwaarden">
-          <li>14 dagen gratis</li>
-          <li>Geen kaart nodig</li>
-          <li>Maandelijks opzegbaar</li>
+        <ul class="login-trust" aria-label="${T('login.trust.label')}">
+          <li>${T('login.trust.1')}</li>
+          <li>${T('login.trust.2')}</li>
+          <li>${T('login.trust.3')}</li>
         </ul>
         </div><!-- /login-form-wrap -->
 
@@ -8785,6 +8829,14 @@ ${cmd.css}
         ${T('login.pitch')}
       </p>
       <div class="login-footer">&copy; ${new Date().getFullYear()} <span>Helvaro</span> &mdash; ${T('login.footer')}</div>
+      <div class="login-lang">
+        <select id="login-taal" aria-label="${T('lang.label')}" onchange="taalWisselen(this.value)">
+          <option value="nl"${UI_LANG === 'nl' ? ' selected' : ''}>Nederlands</option>
+          <option value="fr"${UI_LANG === 'fr' ? ' selected' : ''}>Français</option>
+          <option value="en"${UI_LANG === 'en' ? ' selected' : ''}>English</option>
+          <option value="de"${UI_LANG === 'de' ? ' selected' : ''}>Deutsch</option>
+        </select>
+      </div>
       </div>
     </div>
 
@@ -8803,22 +8855,22 @@ ${cmd.css}
             </div>
             <div class="brand-chat">
               <div class="brand-chat-msg in">
-                <span>Hallo, ik zag de woning in Gent op uw site. Is die nog vrij?</span>
+                <span>${T('promo.chat.1')}</span>
                 <em>21:47</em>
               </div>
               <div class="brand-chat-msg out">
-                <span>Dag Marie! Ja hoor. Zoekt u voor uzelf, en wat is uw budget ongeveer?</span>
+                <span>${T('promo.chat.2')}</span>
                 <em>21:47</em>
               </div>
               <div class="brand-chat-msg in">
-                <span>Voor ons gezin, rond de 450.000</span>
+                <span>${T('promo.chat.3')}</span>
                 <em>21:51</em>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Antwoord binnen de minuut</h2>
-            <p>Ook om kwart voor tien 's avonds, als jij al lang naar huis bent</p>
+            <h2>${T('promo.s1.h')}</h2>
+            <p>${T('promo.s1.p')}</p>
           </div>
         </div>
 
@@ -8829,7 +8881,7 @@ ${cmd.css}
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
-              <span class="brand-card-title">AI Kwalificatie</span>
+              <span class="brand-card-title">${T('promo.s2.card')}</span>
             </div>
             <div class="brand-score-row">
               <div class="brand-score-ring">
@@ -8850,22 +8902,22 @@ ${cmd.css}
               <div class="brand-score-items">
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:85%"></div></div>
-                  <span>Budget past</span>
+                  <span>${T('promo.s2.b1')}</span>
                 </div>
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:60%"></div></div>
-                  <span>Wil snel verhuizen</span>
+                  <span>${T('promo.s2.b2')}</span>
                 </div>
                 <div class="brand-score-item">
                   <div class="brand-score-bar-wrap"><div class="brand-score-bar-fill" style="width:72%"></div></div>
-                  <span>Beslist mee</span>
+                  <span>${T('promo.s2.b3')}</span>
                 </div>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>Je weet wie serieus is</h2>
-            <p>Budget, timing en beslissingsbevoegdheid — uitgevraagd in het gesprek zelf</p>
+            <h2>${T('promo.s2.h')}</h2>
+            <p>${T('promo.s2.p')}</p>
           </div>
         </div>
 
@@ -8876,14 +8928,14 @@ ${cmd.css}
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
               <div class="brand-card-dot"></div>
-              <span class="brand-card-title">Jouw agenda — morgen</span>
+              <span class="brand-card-title">${T('promo.s3.card')}</span>
             </div>
             <div class="brand-agenda">
               <div class="brand-agenda-item">
                 <div class="brand-agenda-time">09:00</div>
                 <div class="brand-agenda-content">
                   <div class="brand-agenda-name">Marie D.</div>
-                  <div class="brand-agenda-tag">Bezichtiging · Gent</div>
+                  <div class="brand-agenda-tag">${T('promo.s3.t1')}</div>
                 </div>
                 <div class="brand-agenda-dot hot"></div>
               </div>
@@ -8891,7 +8943,7 @@ ${cmd.css}
                 <div class="brand-agenda-time">11:30</div>
                 <div class="brand-agenda-content">
                   <div class="brand-agenda-name">Jonas P.</div>
-                  <div class="brand-agenda-tag">Bezichtiging · Aalst</div>
+                  <div class="brand-agenda-tag">${T('promo.s3.t2')}</div>
                 </div>
                 <div class="brand-agenda-dot warm"></div>
               </div>
@@ -8899,25 +8951,25 @@ ${cmd.css}
                 <div class="brand-agenda-time">14:00</div>
                 <div class="brand-agenda-content">
                   <div class="brand-agenda-name">Sofie M.</div>
-                  <div class="brand-agenda-tag">Schatting · Brugge</div>
+                  <div class="brand-agenda-tag">${T('promo.s3.t3')}</div>
                 </div>
                 <div class="brand-agenda-dot warm"></div>
               </div>
             </div>
           </div>
           <div class="brand-tagline">
-            <h2>De afspraak staat er al in</h2>
-            <p>De AI kijkt in je agenda en boekt de bezichtiging in het gesprek zelf</p>
+            <h2>${T('promo.s3.h')}</h2>
+            <p>${T('promo.s3.p')}</p>
           </div>
         </div>
 
       </div>
 
       <!-- Dots -->
-      <div class="brand-dots" id="brand-dots" role="tablist" aria-label="Slideshow navigatie">
-        <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="Slide 1"></button>
-        <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="Slide 2"></button>
-        <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="Slide 3"></button>
+      <div class="brand-dots" id="brand-dots" role="tablist" aria-label="${T('promo.nav')}">
+        <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="${T('promo.slide',{n:1})}"></button>
+        <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:2})}"></button>
+        <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:3})}"></button>
       </div>
     </div>
 
@@ -8936,7 +8988,7 @@ ${cmd.css}
   <!-- Overslaan-link. Zonder deze moet iemand die met het toetsenbord werkt
        eerst door twaalf navigatie-items voordat hij bij de inhoud is, op elke
        pagina opnieuw. Alleen zichtbaar zodra hij focus krijgt. -->
-  <a href="#page-content-anchor" class="skip-link">Naar de inhoud</a>
+  <a href="#page-content-anchor" class="skip-link">${T('a11y.skip')}</a>
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
@@ -9083,7 +9135,7 @@ ${faro.navCta}
                pagina in navigateTo(), dus hij is precies de juiste kandidaat —
                één h1 per weergave, en niets aan de opmaak verandert. -->
           <h1 class="page-title display-heading gradient-text" id="topbar-title">Dashboard</h1>
-          <div class="page-subtitle" id="topbar-subtitle">Overzicht van je gekwalificeerde leads</div>
+          <div class="page-subtitle" id="topbar-subtitle">${T('dash.subtitle')}</div>
         </div>
       </div>
       <div class="topbar-right">
@@ -9112,7 +9164,7 @@ ${faro.navCta}
                   <button class="notif-dd-clear" id="notif-dd-clear" onclick="clearNotifs()">Alles gelezen</button>
                 </div>
                 <div class="notif-dd-body" id="notif-dd-body"></div>
-                <button class="notif-dd-foot" onclick="closeNotifDropdown();navigateTo('activiteit')">Alle activiteit bekijken</button>
+                <button class="notif-dd-foot" onclick="closeNotifDropdown();navigateTo('activiteit')">${T('notif.all')}</button>
               </div>
             </div>
         <button class="btn-icon theme-toggle" id="btn-theme" title="Wissel thema" style="padding:8px 10px"></button>
@@ -9142,7 +9194,7 @@ ${faro.navCta}
         <div class="dash-verify-banner-icon">✉</div>
         <div class="dash-verify-banner-body">
           <div class="dash-verify-banner-title">${T('dash.verify.title')}</div>
-          <div class="dash-verify-banner-sub">Check je inbox voor de bevestigingsmail. Dit is alleen nodig zodat je later je wachtwoord kan resetten als je dat ooit vergeet — verder werkt alles al gewoon.</div>
+          <div class="dash-verify-banner-sub">${T('verify.sub')}</div>
         </div>
         <div class="dash-verify-banner-actions">
           <button class="dash-verify-banner-cta" id="dash-verify-banner-resend" onclick="resendVerificationFromBanner()">${T('dash.verify.resend')}</button>
@@ -9159,7 +9211,7 @@ ${faro.navCta}
         <div class="dash-checklist-head">
           <div class="dash-checklist-title-wrap">
             <div class="dash-checklist-title">${T('dash.start.title')}</div>
-            <div class="dash-checklist-sub" id="dash-checklist-progress-label">0 van 5 klaar</div>
+            <div class="dash-checklist-sub" id="dash-checklist-progress-label">${T('chk.progress',{done:0,total:5})}</div>
           </div>
           <div class="dash-checklist-progress-bar"><div class="dash-checklist-progress-fill" id="dash-checklist-progress-fill" style="width:0%"></div></div>
           <button class="dash-checklist-close" id="dash-checklist-close" onclick="dismissChecklist()" title="${T('dash.hide')}">×</button>
@@ -9171,7 +9223,7 @@ ${faro.navCta}
           <div class="chk-whatsapp-icon">💬</div>
           <div class="chk-whatsapp-body">
             <div class="chk-whatsapp-title">${T('dash.wa.link')}</div>
-            <div class="chk-whatsapp-sub">Dit stel je niet zelf in. Meta moet je nummer eerst goedkeuren, en dat regelen wij voor je. Duurt meestal een paar dagen. Je hoeft nu niets te doen, we nemen contact op zodra het kan. Laat het gerust weten als je er al klaar voor bent, dan pakken we het sneller op.</div>
+            <div class="chk-whatsapp-sub">${T('chk.whatsapp.sub')}</div>
           </div>
           <a class="chk-whatsapp-action" id="chk-whatsapp-mailto" href="#" onclick="vraagWhatsAppKoppeling();return false;">${T('dash.wa.tell')}</a>
         </div>
@@ -9252,7 +9304,7 @@ ${faro.navCta}
         <div class="revenue-goal-bar-wrap">
           <div class="revenue-goal-bar" id="revenue-goal-bar" style="width:0%"></div>
         </div>
-        <div class="revenue-goal-pct" id="revenue-goal-pct">0% van je pipelinedoel</div>
+        <div class="revenue-goal-pct" id="revenue-goal-pct">${T('goal.pct',{pct:0})}</div>
       </div>
 
       <!-- Follow-up Queue -->
@@ -9387,7 +9439,7 @@ ${faro.navCta}
       </div>
 
       <p style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
-        "Verwachte pipeline waarde" is een door jou ingeschatte waarde per lead — geen omzet die Helvaro voor jou gegenereerd heeft.
+        ${T('goal.disclaimer')}
       </p>
     </main>
 
@@ -9800,7 +9852,7 @@ ${faro.navCta}
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-gem-val">€0</div>
           <div class="analyse-revenue-label">${T('an.avgDeal')}</div>
-          <div class="analyse-revenue-sub" id="analyse-gem-sub">0 deals met waarde</div>
+          <div class="analyse-revenue-sub" id="analyse-gem-sub">${T('analyse.deals',{n:0})}</div>
         </div>
         <div class="analyse-revenue-card">
           <div class="analyse-revenue-val" id="analyse-showup-val" style="color:var(--green-ink)">—</div>
@@ -9871,7 +9923,7 @@ ${faro.navCta}
       <div class="ap-wrap">
         <div class="ap-hero" style="margin-bottom:18px">
           <h2 class="ap-hero-title">${T('pi.title')}</h2>
-          <p class="ap-hero-sub">Upload een foto van een pand en laat de AI een visualisatie genereren in een gekozen stijl. Handig voor listings en sociale media.</p>
+          <p class="ap-hero-sub">${T('img.hero.sub')}</p>
         </div>
 
         <div class="ap-field">
@@ -9894,7 +9946,7 @@ ${faro.navCta}
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">${T('pi.room')} <span class="ap-label-hint">optioneel — voor gerichtere resultaten (bv. geen bank in een badkamer). Ook voor buiten: gevel, tuin, terras</span></label>
+          <label class="ap-label">${T('pi.room')} <span class="ap-label-hint">${T('img.room.hint')}</span></label>
           <div class="pi-roomtype-grid" id="pi-roomtype-grid">
             <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
           </div>
@@ -9920,7 +9972,7 @@ ${faro.navCta}
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
-                <label class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">gecureerd palet — geen vrij kleurveld, dat botst vaak met het AI-model</span></label>
+                <label class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">${T('img.wall.hint')}</span></label>
                 <div class="pi-color-grid" id="pi-wallcolor-grid"></div>
                 <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="Optionele nuance, bv. 'met een accentwand'">
               </div>
@@ -9947,7 +9999,7 @@ ${faro.navCta}
               </div>
               <div class="pi-honesty-note" id="pi-honesty-note" style="display:none">
                 <span>⚠</span>
-                <span><b>Gebruik dit eerlijk.</b> "Volledige renovatie" toont een aspirational sfeerbeeld, geen belofte over de werkelijke staat van de woning. Gebruik dit als inspiratie in je advertising, niet als vervanging voor een eerlijke beschrijving van de huidige staat — de AI-labeling hieronder blijft sowieso altijd zichtbaar.</span>
+                <span><b>${T('img.honest.bold')}</b> ${T('img.honest')}</span>
               </div>
             </div>
 
@@ -9962,7 +10014,7 @@ ${faro.navCta}
         <div class="ap-actions" style="margin-top:14px">
           <button class="ap-btn ap-btn-primary" id="pi-generate-btn" onclick="generatePiImage()">${T('pi.generate')}</button>
         </div>
-        <div class="ap-hint" style="margin-top:6px">Tip: je kan de stijl, het kamertype of de instructies aanpassen en opnieuw klikken — dezelfde foto blijft gebruikt totdat je een nieuwe uploadt.</div>
+        <div class="ap-hint" style="margin-top:6px">${T('img.tip')}</div>
 
         <div class="pi-result-wrap" id="pi-result-wrap" style="display:none">
           <div class="ap-field">
@@ -9998,10 +10050,10 @@ ${faro.navCta}
         <div class="ap-welcome-banner" id="ap-welcome-banner" style="display:none">
           <div class="ap-welcome-icon"></div>
           <div class="ap-welcome-body">
-            <div class="ap-welcome-title">Welkom bij Helvaro! Eerst even dit invullen.</div>
+            <div class="ap-welcome-title">${T('ap.welcome.title')}</div>
             <div class="ap-welcome-sub">
-              Vul minimaal je <b>${T('ap.name')}</b>, een <b>welkomstbericht</b> en je <b>website</b> of <b>AI-instructies</b> in.
-              Daarna werkt je AI vanaf de eerste lead. Je kan alles later nog aanpassen.
+              ${T('ap.welcome.min',{naam:T('ap.name')})}
+              ${T('ap.welcome.after')}
             </div>
             <div class="ap-welcome-checks" id="ap-welcome-checks"></div>
           </div>
@@ -10022,7 +10074,7 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.name.hint')}</span>
               </label>
               <input id="ap-name" type="text" class="ap-input" placeholder="Sara De Vos" maxlength="60">
-              <div class="ap-hint">Tip: gebruik de naam van een echte medewerker. Leads voelen dat ze met een mens chatten. Laat leeg voor standaard <em>Mathis Willems</em>.</div>
+              <div class="ap-hint">${T('ap.name.tip')}</div>
             </div>
 
             <!-- Auto-Reply Template -->
@@ -10080,7 +10132,7 @@ ${faro.navCta}
               </label>
               <textarea id="ap-learned" class="ap-textarea" rows="6" maxlength="1500" style="background:rgba(var(--accent-rgb),0.04);border-color:rgba(var(--accent-rgb),0.25)"></textarea>
               <div class="ap-hint">
-                De AI analyseert wekelijks welke gesprekken het beste werkten en past z'n vragen aan. Je kan dit veld zelf wissen of bewerken.
+                ${T('ap.learn.hint')}
                 <button type="button" class="ap-chip" onclick="clearLearnedPatterns()" style="margin-left:auto">${T('ap.clear')}</button>
               </div>
             </div>
@@ -10116,7 +10168,7 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.notifWa.h')}</span>
               </label>
               <input id="ap-notify-phone" type="tel" class="ap-input" placeholder="+32 466 35 84 27" inputmode="tel" autocomplete="tel" maxlength="30">
-              <div class="ap-hint">Internationaal formaat (begint met <code>+32</code> voor België). Leeg = geen WhatsApp ping.</div>
+              <div class="ap-hint">${T('ap.notif.hint')}</div>
             </div>
 
             <div class="ap-field">
@@ -10125,7 +10177,7 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.notifMail.h')}</span>
               </label>
               <input id="ap-report-email" type="email" class="ap-input" placeholder="jij@bedrijf.be" inputmode="email" autocomplete="email" maxlength="100">
-              <div class="ap-hint">Krijgt direct e-mail wanneer de AI een gekwalificeerde lead doorgeeft of hulp nodig heeft. Leeg = geen e-mail.</div>
+              <div class="ap-hint">${T('ap.mail.hint')}</div>
             </div>
 
             <!-- Booking Method -->
@@ -10138,8 +10190,8 @@ ${faro.navCta}
                 <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-in_chat" value="in_chat"> <span>${T('ap.hand.wa')}</span></label>
                 <label class="ap-lang-opt"><input type="radio" name="ap-booking" id="ap-booking-callback" value="callback"> <span>${T('ap.hand.call')}</span></label>
               </div>
-              <div class="ap-hint" id="ap-booking-hint-in_chat" style="display:none;">De AI vraagt aan de lead welk moment past, stelt een concrete tijd voor, en boekt het na bevestiging direct in je agenda. Geen externe tool nodig. Zorg dat je werkuren ingevuld zijn.</div>
-              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">De AI zegt tegen de lead dat een collega hen contacteert. Geen agenda nodig. Jij krijgt een melding op je notificatie-nummer.</div>
+              <div class="ap-hint" id="ap-booking-hint-in_chat" style="display:none;">${T('ap.book.chat')}</div>
+              <div class="ap-hint" id="ap-booking-hint-callback" style="display:none;">${T('ap.book.callback')}</div>
             </div>
 
             <!-- Callback Window (only shown if callback selected) -->
@@ -10165,12 +10217,12 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.lang.h')}</span>
               </label>
               <select id="ap-lang-select" class="ap-input"></select>
-              <div class="ap-hint">Standaardtaal waarin de AI antwoordt, ongeacht wat de lead schrijft (tenzij je hieronder taal-matching aanzet). Wijzig je dit: vanaf het volgende gesprek werkt het.</div>
+              <div class="ap-hint">${T('ap.lang.hint')}</div>
               <label class="ap-checkbox-row" style="margin-top:14px">
                 <input type="checkbox" id="ap-match-lead-lang">
                 <span>${T('ap.lang.match')}</span>
               </label>
-              <div class="ap-hint">Optioneel. De AI herkent per bericht in welke taal de lead schrijft en antwoordt daarin — met de taal hierboven als terugval wanneer dat onduidelijk is. Handig als je leads in meerdere talen binnenkrijgt (bv. NL, FR, EN in Brussel).</div>
+              <div class="ap-hint">${T('ap.langmatch.hint')}</div>
             </div>
 
             <!-- Working Hours -->
@@ -10181,7 +10233,7 @@ ${faro.navCta}
               </label>
               <input id="ap-hours" type="text" class="ap-input" placeholder="ma-vr 9-18">
               <div class="ap-hint">
-                Format: <span id="ap-hours-format-list"><code>ma-vr 9-18</code>, <code>ma-za 8-20</code>, <code>di-za 10-18</code></span>. De AI is 24/7 actief. Werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
+                Format: <span id="ap-hours-format-list"><code>ma-vr 9-18</code>, <code>ma-za 8-20</code>, <code>di-za 10-18</code></span>${T('ap.hours.hint')}
                 ${T('ap.examples')}
                 <span id="ap-hours-chips"></span>
               </div>
@@ -10195,7 +10247,7 @@ ${faro.navCta}
               </label>
               <input id="ap-badges" type="text" class="ap-input" placeholder="15 jaar ervaring | ISO-gecertificeerd | Lokaal Gent" maxlength="300">
               <div class="ap-hint">
-                Vervang de standaard badges (Geen spam / Reactie binnen 1 min / Vrijblijvend) met eigen sociaal bewijs. Eerste emoji is het icoon, rest is de tekst.
+                ${T('ap.badges.hint')}
               </div>
             </div>
 
@@ -10222,7 +10274,7 @@ ${faro.navCta}
               <details class="ap-photo-advanced">
                 <summary>${T('ap.photo.adv')}</summary>
                 <input id="ap-photo-url" type="url" class="ap-input" placeholder="https://..." oninput="handlePhotoUrlInput(this)">
-                <div class="ap-hint">Optioneel. Link naar een foto die je elders host (bv. CDN). Wordt overschreven zodra je een bestand kiest.</div>
+                <div class="ap-hint">${T('ap.photo.hint')}</div>
               </details>
             </div>
 
@@ -10236,7 +10288,7 @@ ${faro.navCta}
                 <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E8D7B1" maxlength="7">
                 <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#E8D7B1">
               </div>
-              <div class="ap-hint">Hex-code (bv. <code>#16a34a</code>). Vertegenwoordigt jouw bedrijfskleur op de lead-form knoppen + accenten. Leeg = standaard zand.</div>
+              <div class="ap-hint">${T('ap.color.hint')}</div>
             </div>
 
             <!-- Form Intro Message -->
@@ -10246,7 +10298,7 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.formText.h')}</span>
               </label>
               <textarea id="ap-form-intro" class="ap-textarea" rows="2" placeholder="Hey ik help je graag. Laat hieronder je gegevens achter en je hoort meteen van me." maxlength="600"></textarea>
-              <div class="ap-hint">Verschijnt als chat-bubbel bovenaan je lead-form (onder de avatar). Leeg = automatische sector-tekst. Placeholders: <code>{ai}</code>, <code>{bedrijf}</code>.</div>
+              <div class="ap-hint">${T('ap.bubble.hint')}</div>
             </div>
 
             <!-- Save button row -->
@@ -10274,7 +10326,7 @@ ${faro.navCta}
                   </div>
                   <div class="ap-phone-msgs">
                     <div class="ap-msg-day-divider">${T('dash.today')}</div>
-                    <div class="ap-msg ap-msg-them" id="ap-preview-bubble">Hey Jan! Mathis hier van Bedrijf. Zag dat je je gegevens achterliet. Wat bracht je bij ons?</div>
+                    <div class="ap-msg ap-msg-them" id="ap-preview-bubble">${T('ap.preview.bubble')}</div>
                   </div>
                 </div>
               </div>
@@ -10409,8 +10461,7 @@ ${faro.navCta}
         <div class="pd-empty" id="pd-empty" style="display:none">
           <div class="pd-empty-title">${T('prop.none')}</div>
           <div class="pd-empty-text">
-            Voeg je eerste woning toe. Je krijgt er meteen een eigen link bij die je onder een
-            advertentie kunt zetten &mdash; en dan weet je AI precies over welk pand een lead het heeft.
+            ${T('prop.empty.text')}
           </div>
           <button class="btn-icon btn-primary-sm" onclick="openPandModal()">${T('prop.add')}</button>
         </div>
@@ -10453,7 +10504,7 @@ ${faro.navCta}
             <div class="fm-hero-icon"></div>
             <div class="fm-hero-text">
               <h2 class="fm-hero-title">${T('dash.form.title')}</h2>
-              <p class="fm-hero-sub">Iedereen die dit formulier invult krijgt automatisch een WhatsApp van je AI en verschijnt in je Dashboard.</p>
+              <p class="fm-hero-sub">${T('fm.hero.sub')}</p>
             </div>
           </div>
           <div class="fm-url-row">
@@ -10497,7 +10548,7 @@ ${faro.navCta}
             <div class="fm-option-hdr">
               <span class="fm-option-rec">${T('fm.recommended')}</span>
               <div class="fm-option-title">${T('fm.float')}</div>
-              <p class="fm-option-sub">Eén regel code. Toont een ronde "chat met ons" knop rechtsonder op elke pagina. Klant klikt → formulier opent als pop-up.</p>
+              <p class="fm-option-sub">${T('fm.float.sub')}</p>
             </div>
             <textarea class="fm-code" id="fm-code-widget" aria-label="${T('fm.embedCode')}" readonly rows="3"></textarea>
             <div class="fm-code-actions">
@@ -10511,7 +10562,7 @@ ${faro.navCta}
               </button>
             </div>
             <div class="fm-instructions">
-              <strong>${T('fm.howPaste')}</strong> open de HTML van je website, plak deze regel net vóór de afsluitende <code>&lt;/body&gt;</code> tag. Werkt op WordPress, Shopify, Wix, Squarespace en elke andere site.
+              <strong>${T('fm.howPaste')}</strong> ${T('fm.float.how')}
             </div>
           </div>
 
@@ -10519,7 +10570,7 @@ ${faro.navCta}
           <div class="fm-option-card">
             <div class="fm-option-hdr">
               <div class="fm-option-title">${T('fm.inline')}</div>
-              <p class="fm-option-sub">Toont het formulier <em>direct</em> op je pagina (geen pop-up). Goed voor een "neem contact op" sectie of een landingspagina.</p>
+              <p class="fm-option-sub">${T('fm.inline.sub')}</p>
             </div>
             <textarea class="fm-code" id="fm-code-iframe" aria-label="${T('fm.iframe')}" readonly rows="3"></textarea>
             <div class="fm-code-actions">
@@ -10533,7 +10584,7 @@ ${faro.navCta}
               </button>
             </div>
             <div class="fm-instructions">
-              <strong>${T('fm.howPaste')}</strong> plak op de plek waar je het formulier wil tonen. Meestal in een "Contact" of "Aanvraag" sectie. Hoogte (<code>height="640"</code>) is aanpasbaar.
+              <strong>${T('fm.howPaste')}</strong> ${T('fm.inline.how')}
             </div>
           </div>
 
@@ -10541,7 +10592,7 @@ ${faro.navCta}
           <div class="fm-option-card">
             <div class="fm-option-hdr">
               <div class="fm-option-title">${T('fm.linkOnly')}</div>
-              <p class="fm-option-sub">Voor advertenties, e-mail handtekening, socials of WhatsApp-bio. Klant opent een eigen pagina met enkel het formulier.</p>
+              <p class="fm-option-sub">${T('fm.link.sub')}</p>
             </div>
             <textarea class="fm-code" id="fm-code-link" aria-label="${T('fm.directLink')}" readonly rows="1"></textarea>
             <button class="fm-btn fm-btn-full" onclick="fmCopy('fm-code-link')">
@@ -10549,7 +10600,7 @@ ${faro.navCta}
               ${T('dash.form.copylink')}
             </button>
             <div class="fm-instructions">
-              <strong>${T('fm.useIn')}</strong> Facebook / Google Ads, e-mail handtekening, Instagram bio, LinkedIn berichten, visitekaartjes (samen met de QR-code hieronder).
+              <strong>${T('fm.useIn')}</strong> ${T('fm.link.use')}
             </div>
           </div>
         </div>
@@ -14861,7 +14912,7 @@ function getOnboardingChecklistItems(d) {
     {
       key: 'email', accent: 'blue', title: 'E-mailadres bevestigen',
       done: d.emailVerified === true,
-      todoSub: 'Check je inbox voor de bevestigingsmail.',
+      todoSub: tr('verify.todoSub'),
       doneSub: 'Bevestigd',
       actionLabel: 'Stuur opnieuw',
     },
@@ -19302,7 +19353,7 @@ function renderRevenueGoal() {
         ? 'var(--accent)'
         : 'var(--warning)';
   }
-  if (pctEl) pctEl.textContent = pct + '% van je pipelinedoel';
+  if (pctEl) pctEl.textContent = tr('goal.pct', { pct: pct });
 }
 
 (function setupRevenueGoalEdit() {
@@ -19376,7 +19427,7 @@ function renderAnalyse() {
     const gemEl = document.getElementById('analyse-gem-val');
     if (gemEl) gemEl.textContent = fmt(gemDeal);
     const gemSubEl = document.getElementById('analyse-gem-sub');
-    if (gemSubEl) gemSubEl.textContent = leadsMetWaarde.length + ' deals met waarde';
+    if (gemSubEl) gemSubEl.textContent = tr('analyse.deals', { n: leadsMetWaarde.length });
 
     // Win rate
     // Dit was 100 - verloren%, oftewel "nog niet verloren", en dat is geen win

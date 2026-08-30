@@ -112,7 +112,11 @@ console.log('\n— de checklist vinkt zichzelf af uit de config —');
   const m = html.match(/function getOnboardingChecklistItems\(d\) \{[\s\S]*?\n\}/);
   ck('de checklistfunctie staat in de pagina', !!m, null);
   if (m) {
-    const sandbox = { state: { stats: { total: 0 } } };
+    /* tr() is de vertaalfunctie van de pagina. Die staat buiten het stuk dat we
+       hier uitknippen, dus we geven hem mee -- checklistlogica testen we, niet
+       de vertaling. Hij geeft de sleutel terug, zodat een gemiste vertaling
+       hier zichtbaar blijft in plaats van als lege tekst weg te vallen. */
+    const sandbox = { state: { stats: { total: 0 } }, tr: (sleutel) => sleutel };
     vm.createContext(sandbox);
     vm.runInContext(m[0] + '; this.__f = getOnboardingChecklistItems;', sandbox);
     const leeg = sandbox.__f({ emailVerified: true });

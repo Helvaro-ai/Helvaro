@@ -14,6 +14,43 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Het inlogscherm is nu echt viertalig, en je kan de taal kiezen vóór je inlogt
+
+Twee dingen die samen hoorden.
+
+**Het promopaneel naast de inlogkaart stond nog volledig in het Nederlands.** Op
+een Engels scherm zag een klant dus een Engelse inlogkaart met daarnaast
+"Antwoord binnen de minuut" en een Nederlandse WhatsApp-demo, zij aan zij. Dat
+is precies het scherm waarop iemand beslist of hij dit product vertrouwt. Alle
+drie de slides, de voorbeeldgesprekken en de agenda-labels volgen nu de taal.
+De `<title>` ook -- die stond in elke taal in het Nederlands, en dat is wat er in
+je browsertab en in Google staat.
+
+**En er staat nu een taalkiezer op het inlogscherm zelf.** Die stond alleen in
+Instellingen, dus achter de login. Een Vlaamse makelaar met een Engelse Chrome
+kreeg een Engels scherm en kon daar tot na het inloggen niets aan doen. Klein en
+grijs onderaan gehouden: het is een ontsnappingsluik, geen keuze die we willen
+opdringen.
+
+Verder vertaald: het oude inlogformulier (de terugval als de Clerk-kaart niet
+laadt -- geen theorie, dat gebeurde deze week), de dashboardkoppen en
+-banners, de welkomstwizard, de hulpteksten op AI Persoonlijkheid, de
+AI-beeld-pagina en de drie plaatsingsopties op Formulier.
+
+Bewust NIET vertaald: `ma-vr 9-18` in het werkuren-veld. Dat is geen uitleg maar
+het formaat dat het veld echt inleest; vertalen zou het kapot maken.
+
+De test hiervoor heb ik twee keer moeten herschrijven en dat is het vermelden
+waard. Eerst zocht hij naar Nederlandse woorden -- maar "hier" is Frans en
+"gratis" is Duits, dus correcte vertalingen vielen om. Daarna keek hij naar het
+verkeerde stukje pagina en was hij groen zonder iets te controleren. Nu rendert
+hij de pagina twee keer, in het Nederlands en in de doeltaal, en vergelijkt de
+zichtbare zinnen: staat een zin letterlijk in allebei, dan is hij niet vertaald.
+Geen aannames meer over welk woord bij welke taal hoort.
+
+**Actie:** geen.
+
+
 ### Hersteld: het inlogscherm laadde de inlogkaart niet meer
 
 Sinds de vorige uitrol gooide het inlogscherm een fout voordat de inlogkaart van
