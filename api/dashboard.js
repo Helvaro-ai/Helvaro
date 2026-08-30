@@ -52,6 +52,22 @@ module.exports = async function handler(req, res) {
      Franstalige leads bedienen met een Nederlands dashboard. */
   const UI_LANG = _i18n.resolveer(req);
   const T = (sleutel, vars) => _i18n.t(UI_LANG, sleutel, vars);
+
+/* Een vertaling die IN een onclick-attribuut belandt.
+
+   Waarom dit een eigen functie is. Ik zette hier eerst JSON.stringify neer, en
+   dat ging live stuk: JSON.stringify levert DUBBELE quotes, en het
+   onclick-attribuut staat zelf al tussen dubbele quotes. Het attribuut eindigde
+   dus halverwege, en de rest van de JavaScript -- inclusief een lap SVG --
+   liep als losse HTML de pagina in. De console stond vol met
+   `<circle> attribute r: Expected length`.
+
+   Dus: enkele quotes, en wat erin zit wordt ontsnapt. De backslash eerst,
+   anders ontsnapt hij daarna zijn eigen ontsnappingsteken. */
+const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
+  .replace(/\\/g, '\\\\')
+  .replace(/'/g, "\\'")
+  .replace(/</g, '\\u003c') + "'";
   /* Splice-veilig de pagina in: dit gaat in een template literal, dus een
      backtick of een dollar-accolade in een vertaling zou de hele pagina
      breken. Zelfde voorzorg als bij AP_LANGUAGES_JSON hierboven. */
@@ -8793,7 +8809,7 @@ ${cmd.css}
           <label class="form-label" for="login-password">${T('login.password')}</label>
           <div style="position:relative">
             <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px" aria-describedby="login-error">
-            <button type="button" id="btn-toggle-pw" aria-label="${T('login.pw.show')}" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#6b7280;display:flex;align-items:center" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label',${JSON.stringify(T('login.pw.hide'))});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label',${JSON.stringify(T('login.pw.show'))});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
+            <button type="button" id="btn-toggle-pw" aria-label="${T('login.pw.show')}" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#6b7280;display:flex;align-items:center" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label',${T_JS('login.pw.hide')});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label',${T_JS('login.pw.show')});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
           </div>

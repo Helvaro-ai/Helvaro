@@ -328,5 +328,54 @@ console.log('\n— de taal is te kiezen voordat je binnen bent —');
   ck('en hij hangt aan taalWisselen', /id="login-taal"[\s\S]{0,120}taalWisselen/.test(login), null);
 }
 
+/* ── Een vertaling in een onclick-attribuut mag dat attribuut niet breken ────
+   Dit ging live echt mis. Ik zette JSON.stringify(T('login.pw.hide')) in het
+   onclick van de wachtwoord-toggle. JSON.stringify levert DUBBELE quotes, en
+   dat attribuut staat zelf tussen dubbele quotes -- dus het attribuut eindigde
+   halverwege en de rest van de JavaScript, inclusief een lap SVG, liep als
+   losse HTML de pagina in. De console stond vol met
+   `<circle> attribute r: Expected length` en de toggle deed niets meer.
+
+   De testsuite was groen: die keek naar de vertaling, niet naar de vorm van het
+   attribuut. Hier controleren we de vorm. */
+console.log('\n— vertalingen in on*-attributen blijven binnen de quotes —');
+{
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dash = require('../api/dashboard.js');
+
+  for (const [taal, accept] of [['nl', 'nl-BE,nl'], ['fr', 'fr-BE,fr'], ['en', 'en-US,en'], ['de', 'de-DE,de']]) {
+    let html = '';
+    dash({ method: 'GET', url: '/dashboard', headers: { 'accept-language': accept } },
+         { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+
+    /* Elk on*-attribuut moet netjes eindigen op zijn eigen aanhalingsteken.
+       Een dubbele quote ERIN sluit hem te vroeg; dan matcht deze regex een
+       kortere string en blijft er JavaScript buiten het attribuut staan. */
+    let stuk = 0;
+    html.replace(/\son[a-z]+="([^"]*)"/g, (m, inhoud) => {
+      /* Een losse, niet-ontsnapte dubbele quote kan er per definitie niet in
+         zitten (dan had de regex al eerder geknipt), dus we controleren het
+         gevolg: eindigt de JavaScript midden in een string of een tag? */
+      const openTags = (inhoud.match(/<[a-z]/gi) || []).length;
+      const slotTags = (inhoud.match(/>/g) || []).length;
+      if (openTags > 0 && slotTags === 0) stuk++;
+      return m;
+    });
+    ck(`${taal}: geen on*-attribuut dat midden in een tag afbreekt`, stuk === 0, `${stuk} kapot`);
+
+    /* En specifiek de toggle, want dat is degene die omviel. */
+    const i = html.indexOf('btn-toggle-pw');
+    const knop = html.slice(i, i + 1600);
+    /* ALLE aanroepen, niet "er is er een die goed is". De toggle heeft er twee
+       (tonen en verbergen) en mijn eerste versie van deze assertie vond de
+       goede terwijl de andere kapot was -- de test was groen met de bug erin.
+       Dat is erger dan geen test. */
+    const setjes = knop.match(/setAttribute\('aria-label',[^)]*\)/g) || [];
+    ck(`${taal}: de wachtwoord-toggle zet aria-label met ENKELE quotes`,
+       setjes.length === 2 && setjes.every((x) => /^setAttribute\('aria-label','[^']*'\)$/.test(x)),
+       setjes.join('  ||  ') || '(niet gevonden)');
+  }
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);

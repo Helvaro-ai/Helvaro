@@ -14,6 +14,23 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Hersteld: het oog-icoontje bij het wachtwoordveld
+
+Bij het vertalen van het oude inlogformulier heb ik het "toon/verberg
+wachtwoord"-knopje stukgemaakt, en dat heeft een paar uur zo live gestaan.
+
+De vertaling ging via `JSON.stringify`, en dat levert **dubbele** quotes. Die
+tekst staat in een `onclick`-attribuut dat zelf al tussen dubbele quotes staat,
+dus het attribuut eindigde halverwege. De rest van de JavaScript — inclusief
+een lap SVG — liep daarna als losse HTML de pagina in. De browserconsole stond
+vol met `<circle> attribute r: Expected length` en het oogje deed niets meer.
+
+Gevonden door de console van de echte site te lezen, niet door de tests: die
+keken naar de vertaling, niet naar de vorm van het attribuut.
+
+**Actie:** geen.
+
+
 ### www.helvaro.pro stuurt nu door naar app.helvaro.pro
 
 `www.helvaro.pro` hangt per ongeluk aan het Vercel-project van de app, niet aan
