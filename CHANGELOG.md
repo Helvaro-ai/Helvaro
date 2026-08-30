@@ -14,6 +14,31 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### www.helvaro.pro stuurt nu door naar app.helvaro.pro
+
+`www.helvaro.pro` hangt per ongeluk aan het Vercel-project van de app, niet aan
+dat van de marketingsite. Dat had echte gevolgen: Google indexeerde het
+**inlogscherm** als hoofdresultaat voor "helvaro", met wizardteksten als
+omschrijving, in plaats van de website. Daar stond al een `noindex`-header
+tegen; nu stuurt www ook permanent (301) door naar `app.helvaro.pro`, met het
+pad erbij — een bladwijzer naar `www.helvaro.pro/dashboard` komt dus gewoon op
+het dashboard uit, niet op de voorpagina.
+
+Dat lost meteen een tweede ding op: Clerk is ingesteld op `app.helvaro.pro`.
+Wie via www inlogde zat op een host waar de sessiecookie niet thuishoort.
+
+**Wat dit NIET doet:** www toont hierdoor nog steeds niet je marketingsite. Dat
+kan alleen door het domein in Vercel te verplaatsen naar het andere project, en
+dat is een wijziging aan je account — zeg het als je wil dat ik je erdoor praat.
+
+De apex `helvaro.pro` is bewust niet aangeraakt: daar staat de marketingsite, en
+die per ongeluk meeverhuizen haalt je website offline. De test controleert dat
+expliciet, plus dat de regel bovenaan de lijst staat — Vercel loopt redirects
+van boven naar beneden, en eronder zou www eerst naar `/dashboard` springen.
+
+**Actie:** geen.
+
+
 ### De installatiegidsen en de rest van het dashboard spreken nu ook vier talen
 
 De acht gidsen op de Formulier-pagina (WordPress, Shopify, Wix, Squarespace,

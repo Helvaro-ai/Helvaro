@@ -217,5 +217,40 @@ console.log('\n— één manier om te wisselen, niet drie —');
   ck('en er is geen dode functie blijven staan', js.indexOf('setClerkToggleOud') === -1, null);
 }
 
+/* ── www.helvaro.pro hoorde hier nooit bij ──────────────────────────────────
+   Dat domein hangt per ongeluk aan dit Vercel-project. Gevolg was echt schade:
+   Google indexeerde het INLOGSCHERM als hoofdresultaat voor "helvaro", met de
+   wizardteksten als omschrijving, in plaats van de marketingsite. Er stond al
+   een noindex-header tegen; deze redirect maakt bovendien ondubbelzinnig welk
+   adres het echte is.
+
+   Het subtiele zit in de VOLGORDE. Vercel loopt redirects van boven naar
+   beneden. Staat de host-regel onder "/" -> "/dashboard", dan wordt www eerst
+   naar /dashboard gestuurd en pas daarna doorverwezen: een extra sprong, en op
+   de verkeerde host. Daarom controleert deze test niet alleen dát de regel
+   bestaat, maar dat hij BOVENAAN staat. */
+console.log('\n— www wordt doorgestuurd naar het echte adres —');
+{
+  const vercel = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
+  const red = vercel.redirects || [];
+  const idxWww = red.findIndex((r) => (r.has || []).some((h) => h.type === 'host' && h.value === 'www.helvaro.pro'));
+  const idxRoot = red.findIndex((r) => r.source === '/' && !r.has);
+  ck('er is een host-regel voor www', idxWww > -1, JSON.stringify(red.map((r) => r.source)));
+  ck('en die staat vóór de "/" -> "/dashboard" regel', idxWww > -1 && idxRoot > -1 && idxWww < idxRoot,
+     `www op ${idxWww}, root op ${idxRoot}`);
+  if (idxWww > -1) {
+    const r = red[idxWww];
+    ck('hij wijst naar app.helvaro.pro', /^https:\/\/app\.helvaro\.pro\//.test(r.destination), r.destination);
+    /* Het pad moet meeverhuizen. Zonder :pad* belandt iemand met een bladwijzer
+       naar /dashboard of /start op de voorpagina in plaats van waar hij heen wou. */
+    ck('en neemt het pad mee', /:pad\*/.test(r.source) && /:pad\*/.test(r.destination), r.source + ' -> ' + r.destination);
+    ck('en is permanent (301), zodat Google het overneemt', r.permanent === true, String(r.permanent));
+  }
+  /* De apex mag NIET meeverhuizen: daar staat de marketingsite, een ander
+     Vercel-project. Die per ongeluk doorsturen haalt de website offline. */
+  ck('de apex helvaro.pro blijft ongemoeid',
+     !red.some((r) => (r.has || []).some((h) => h.value === 'helvaro.pro')), null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);

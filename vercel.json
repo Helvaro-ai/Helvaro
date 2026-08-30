@@ -36,6 +36,17 @@
   ],
   "redirects": [
     {
+      "source": "/:pad*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.helvaro.pro"
+        }
+      ],
+      "destination": "https://app.helvaro.pro/:pad*",
+      "permanent": true
+    },
+    {
       "source": "/",
       "destination": "/dashboard",
       "permanent": false
