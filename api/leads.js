@@ -211,12 +211,6 @@ module.exports = async function handler(req, res) {
   // differently. It runs BEFORE the token check on purpose: a Clerk request
   // carries only Clerk's own __session cookie, so requiring the legacy token
   // first would 401 every Clerk user before they ever got here.
-  // TIJDELIJK: ?authdiag=1 vertelt waarom een sessie geweigerd wordt. Alleen
-  // booleans en een foutklasse -- nooit het token zelf. Eruit zodra dit opgelost is.
-  if (req.query && req.query.authdiag === '1') {
-    return res.status(200).json(await _clerk.diagnose(req));
-  }
-
   const clerkSession = await _clerk.verifySession(req);
 
   /* ── MODE: support. Een bericht aan ons, verstuurd vanuit de app ───────────
@@ -354,7 +348,26 @@ module.exports = async function handler(req, res) {
     projectCode  = session.projectCode  || '';
     clientName   = session.clientName   || '';
     calendlyLink = session.calendlyLink || '';
-  } else {
+  } else if (!projectCode) {
+    /* ALLEEN terugvallen op de oude API-sleutel wanneer er nog niets
+       geauthenticeerd heeft. Dit "if (!projectCode)" ontbrak, en daarmee wees
+       deze route ELKE Clerk-gebruiker af.
+
+       Hoe dat liep: bovenaan zet de Clerk-tak projectCode, clientName en
+       calendlyLink. Daarna is raw met opzet '' (regel hierboven: er is geen
+       oude sleutel nodig als Clerk het al gedaan heeft) en is session null om
+       dezelfde reden. Zonder deze voorwaarde viel de code dan alsnog dit blok
+       in, testte de lege raw tegen het sleutelpatroon, en antwoordde
+       "Ongeldige API key" -- terwijl de gebruiker een minuut eerder correct
+       geverifieerd was.
+
+       Dat is precies het in- en uitloggen dat de eigenaar meldde: inloggen
+       lukt, het dashboard komt op, de eerste gegevensaanvraag geeft 401, de
+       pagina leest dat als een verlopen sessie en gooit je eruit.
+
+       Het blok hieronder doet niets anders dan projectCode/clientName/
+       calendlyLink opzoeken BIJ EEN API-SLEUTEL. Die drie staan er bij een
+       Clerk-sessie al, dus overslaan verliest niets. */
     // Path B: legacy API key (admin derived token or old sessions before this deploy)
     if (!/^[A-Za-z0-9\-_]{8,100}$/.test(raw)) {
       return res.status(401).json({ error: 'Ongeldige API key' });

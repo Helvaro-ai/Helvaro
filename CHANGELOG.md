@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Gevonden: waarom je er steeds werd uitgegooid
+
+Eén ontbrekende voorwaarde in de authenticatie van `/api/leads`, en die wees
+**elke** ingelogde gebruiker af.
+
+De route controleert eerst je Clerk-sessie. Lukt dat, dan staan je kantoor en
+je projectcode meteen goed. Daarna volgt het oude pad met een API-sleutel — en
+dat sloeg zichzelf niet over. Het viel dus ook aan wanneer Clerk het al gedaan
+had, keek naar een sleutel die er met opzet niet was, en antwoordde
+"Ongeldige API key".
+
+Dat is precies wat je zag: inloggen lukt, het dashboard komt op, de eerste
+gegevensaanvraag geeft 401, en de pagina leest dat als een verlopen sessie en
+gooit je eruit. Opnieuw inloggen doet exact hetzelfde.
+
+Zo is het gevonden: een tijdelijk diagnose-eindpunt liet zien dat je token
+geldig was, je tenant gevonden werd en je projectcode aanwezig was — en dat de
+route je daarna alsnog afwees. Daarmee was duidelijk dat het probleem ná de
+sessiecontrole zat, niet erin. Dat eindpunt is weer verwijderd.
+
+De vier eerdere reparaties van vandaag waren allemaal echt, maar geen ervan was
+dit. Ze maakten het probleem alleen zichtbaar genoeg om het te kunnen vinden.
+
+**Actie:** geen. Ververs de pagina één keer.
+
+
 ### De echte oorzaak van het in- en uitloggen: een ontbrekende sleutel
 
 Alle eerdere fixes waren echt, maar geen ervan was DE oorzaak. Die is nu
