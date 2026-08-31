@@ -161,15 +161,35 @@ function faroSyncPage() {
 
   if (showing) {
     faroApplyGreeting();
-    faroLoadConversations();
-    faroLoadContext();
-    faroLoadActivity();
+    /* Niets ophalen zolang er niemand ingelogd is.
+       faroInit() draait op DOMContentLoaded, dus ook op het inlogscherm. Stond
+       page-faro daar toevallig op 'active', dan vuurde dit drie verzoeken af
+       naar /api/faro met niemand achter de knoppen. In de productielogs was dat
+       152x een 401 -- ruis die precies lijkt op een kapotte sessie, en die het
+       zoeken naar de echte inloglus flink vertroebeld heeft.
+
+       De dashboard-app die zichtbaar is, is het eerlijkste signaal dat er
+       iemand binnen is: die klasse wordt pas gezet nadat de sessie bevestigd
+       is. */
+    if (faroIngelogd()) {
+      faroLoadConversations();
+      faroLoadContext();
+      faroLoadActivity();
+    }
   } else if (faroState.abort) {
     // A generation in flight is abandoned rather than left running invisibly
     // against a page nobody is looking at.
     faroState.abort.abort();
     faroState.abort = null;
   }
+}
+
+/* Is er iemand ingelogd? De dashboard-app krijgt de klasse 'visible' pas nadat
+   de sessie bevestigd is, dus dit is het signaal met de minste aannames --
+   geen eigen kopie van de sessiestand die uit de pas kan lopen. */
+function faroIngelogd() {
+  var d = document.getElementById('dashboard-app');
+  return !!(d && d.classList.contains('visible'));
 }
 
 function faroToggle() { faroState.open ? faroClose() : faroOpen(); }
@@ -941,6 +961,10 @@ function faroClearInput() {
 /* ── Data loading ─────────────────────────────────────────────────────────
    No CSRF header here: api/dashboard.js's fetch wrapper adds it. */
 function faroPost(body) {
+  /* Gordel naast de bretels. Elke achtergrondaanroep van Faro loopt hierlangs;
+     komt er ooit een nieuwe loader bij die de controle hierboven vergeet, dan
+     levert die geen 401-ruis meer op maar een stille, afgehandelde afwijzing. */
+  if (!faroIngelogd()) return Promise.reject(new Error('niet ingelogd'));
   return fetch('/api/faro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

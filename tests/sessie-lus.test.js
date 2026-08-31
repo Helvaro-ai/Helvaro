@@ -325,6 +325,52 @@ async function vraagSessie(cookieWaarde) {
     ck('het inlogscherm wacht er niet op', /keepalive: true/.test(tak) && !/await fetch\(`\$\{API_BASE\}\/auth`/.test(tak), null);
   }
 
+
+  /* ── Faro vroeg de server dingen terwijl niemand ingelogd was ─────────────
+     faroInit() draait op DOMContentLoaded, dus ook op het inlogscherm. Stond
+     page-faro daar op 'active', dan vuurde faroSyncPage() drie verzoeken af
+     naar /api/faro. Live gemeten op het inlogscherm: drie aanroepen vlak na
+     het laden, alle drie 401.
+
+     In de productielogs was dat 152x POST /api/faro met een 401 -- ruis die
+     precies lijkt op een kapotte sessie en die het vinden van de echte
+     inloglus vertroebeld heeft. */
+  console.log('\n— Faro laadt niets op het inlogscherm —');
+  {
+    const client = require('../api/_faro/ui/client.js');
+    const js = client.js();
+
+    ck('er is een controle op ingelogd zijn', /function faroIngelogd\(\)/.test(js), null);
+    ck('en die leest de zichtbare dashboard-app',
+       /faroIngelogd[\s\S]{0,220}dashboard-app[\s\S]{0,80}contains\('visible'\)/.test(js), null);
+
+    /* De drie loaders moeten ACHTER die controle staan. */
+    const sync = (js.match(/if \(showing\) \{[\s\S]*?\} else if \(faroState\.abort\)/) || [''])[0];
+    ck('faroSyncPage laadt alleen als er iemand binnen is',
+       /if \(faroIngelogd\(\)\) \{[\s\S]{0,220}faroLoadConversations\(\)[\s\S]{0,120}faroLoadContext\(\)[\s\S]{0,120}faroLoadActivity\(\)/.test(sync),
+       sync.slice(0, 200));
+
+    /* En een gordel op de gedeelde poort, zodat een loader die er later
+       bijkomt geen nieuwe 401-ruis kan veroorzaken. */
+    ck('faroPost weigert zonder sessie',
+       /function faroPost\(body\) \{[\s\S]{0,400}if \(!faroIngelogd\(\)\) return Promise\.reject/.test(js), null);
+
+    /* Die weigering mag geen onafgehandelde promise opleveren: elke aanroeper
+       van faroPost moet een catch hebben. Anders ruilen we 401-ruis in voor
+       rode meldingen in de console. */
+    const zonderCatch = [];
+    /* Niet de DEFINITIE meetellen: "function faroPost(" matcht hetzelfde
+       patroon en heeft per definitie geen catch. Dat gaf een vals alarm. */
+    const re = /(?<!function )faroPost\(/g;
+    let m;
+    while ((m = re.exec(js))) {
+      const staart = js.slice(m.index, m.index + 900);
+      if (staart.indexOf('.catch(') === -1) zonderCatch.push(js.slice(0, m.index).split('\n').length);
+    }
+    ck('en elke aanroeper vangt een afwijzing op', zonderCatch.length === 0,
+       `regels zonder catch: ${zonderCatch.join(', ')}`);
+  }
+
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })();

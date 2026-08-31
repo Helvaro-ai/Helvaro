@@ -14,6 +14,25 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro vroeg de server dingen terwijl er niemand ingelogd was
+
+Faro start mee met de pagina, dus ook op het inlogscherm. Stond zijn paneel daar
+toevallig op actief, dan vuurde hij meteen drie verzoeken af naar de server —
+met niemand achter de knoppen. Live nagemeten op het inlogscherm: drie
+aanroepen vlak na het laden, alle drie afgewezen.
+
+In de productielogs was dat 152 keer een 401. Dat is niet alleen verspilling:
+die ruis lijkt precies op een kapotte sessie, en het heeft het vinden van de
+echte inloglus flink vertroebeld.
+
+Faro laadt nu pas iets als het dashboard echt zichtbaar is. Er zit ook een
+tweede controle op de gedeelde poort waar al zijn achtergrondverzoeken langs
+gaan, zodat een nieuwe laadfunctie die er later bijkomt dit niet per ongeluk
+opnieuw introduceert.
+
+**Actie:** geen.
+
+
 ### En de tweede helft van de inloglus: twee waarheden tegelijk
 
 Na de vorige fix bleef er iets over, en dat vond ik in je eigen browser.
