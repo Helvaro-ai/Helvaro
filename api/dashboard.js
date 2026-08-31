@@ -125,6 +125,15 @@ const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
     } catch { CLERK_HOST = ''; }
   }
   const CLERK_READY = CLERK_ON && !!CLERK_HOST;
+  /* Kan de SERVER de sessies van Clerk ook echt verifieren? Dat is iets anders
+     dan of de browser de inlogkaart toont: daarvoor is alleen de publieke
+     sleutel nodig, voor verifieren de geheime.
+
+     Staan die twee niet gelijk, dan logt de browser mensen in en wijst de
+     server ze allemaal af -- eindeloos "Je sessie is verlopen". Dat is precies
+     wat er op 31 augustus gebeurde en het kostte een avond om te vinden, want
+     alles WERKTE ogenschijnlijk. */
+  const CLERK_SERVER_OK = require('./_clerk').serverKlaar();
   // Zelfaanmelden zonder uitnodiging (api/admin.js, mode=onboard). Staat dit
   // aan, dan is /onboard een echte weg naar binnen en hoeft niemand te mailen.
   const OPEN_SIGNUP = require('./_clerk').vlagAan(process.env.PUBLIC_SIGNUP_ENABLED);
@@ -12039,6 +12048,7 @@ const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
    called per request rather than cached.
    ============================================================ */
 const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
+const CLERK_SERVER_OK = ${CLERK_SERVER_OK ? 'true' : 'false'};
 
 /* ── Schermtaal, clientkant ──────────────────────────────────────────────────
    De server heeft de taal al gekozen (zie api/_i18n.js) en zet hier het
@@ -13351,6 +13361,22 @@ let _authExpiredTijden = [];
 let _authOpgegeven = false;
 function handleAuthExpired() {
   if (_authOpgegeven) return;
+
+  /* Eerst: is dit wel een verlopen sessie?
+     Staat Clerk aan in de browser terwijl de server hem niet kan verifieren
+     (CLERK_SECRET_KEY ontbreekt), dan wijst de server IEDEREEN af en is er
+     niets mis met de sessie van deze klant. Dan is "log opnieuw in" verkeerd
+     advies: opnieuw inloggen lukt, en het volgende verzoek faalt weer.
+     Meteen stoppen en de waarheid zeggen. */
+  if (typeof CLERK_SERVER_OK !== 'undefined' && CLERK_READY && !CLERK_SERVER_OK) {
+    _authOpgegeven = true;
+    try { stopPresencePing && stopPresencePing(); } catch (e) {}
+    try { state.apiKey = ''; } catch (e) {}
+    try { toast(tr('auth.serverconfig'), 'error'); } catch (e) {}
+    console.error('[auth] Clerk staat aan in de browser maar de server kan niet '
+      + 'verifieren (CLERK_SECRET_KEY ontbreekt). Niet de sessie van de gebruiker.');
+    return;
+  }
   const nu = Date.now();
   _authExpiredTijden = _authExpiredTijden.filter((t) => nu - t < 30000);
   _authExpiredTijden.push(nu);

@@ -224,8 +224,44 @@ function vlagAan(waarde) {
   return AAN.test(String(waarde == null ? '' : waarde).trim());
 }
 
+/* Eén keer per koude start klagen als de configuratie half is.
+
+   Dit heeft een hele avond gekost om te vinden, en het had één logregel moeten
+   zijn. CLERK_ENABLED stond aan en de publieke sleutel stond er, dus de
+   inlogkaart van Clerk laadde en mensen konden inloggen. Maar CLERK_SECRET_KEY
+   ontbrak, en zonder die sleutel geeft enabled() false terug -- waarna
+   verifySession() STIL null teruggeeft en elke aanroep doorvalt naar het oude
+   API-sleutelpad, dat netjes "Ongeldige API key" antwoordt.
+
+   Wat de klant zag: inloggen lukt, dashboard komt op, en meteen "Je sessie is
+   verlopen". Eindeloos. Wat de logs zeiden: niets.
+
+   Half aan is erger dan uit: bij helemaal uit valt iedereen terug op het oude
+   inlogformulier en werkt de app. Nu authenticeert de browser wel en de server
+   niet, en dat is precies de combinatie die als een sessieprobleem lijkt
+   terwijl het een ontbrekende omgevingsvariabele is.
+
+   Eén regel per koude start, niet per verzoek: anders verzuipt de log er in en
+   kost het geld. */
+let _configKlachtGedaan = false;
 function enabled() {
-  return vlagAan(process.env.CLERK_ENABLED) && !!process.env.CLERK_SECRET_KEY;
+  const vlag = vlagAan(process.env.CLERK_ENABLED);
+  const geheim = !!process.env.CLERK_SECRET_KEY;
+  if (vlag && !geheim && !_configKlachtGedaan) {
+    _configKlachtGedaan = true;
+    console.error('[clerk] CONFIGURATIEFOUT: CLERK_ENABLED staat aan maar '
+      + 'CLERK_SECRET_KEY ontbreekt. De browser logt mensen in, de server kan '
+      + 'niemand verifieren, en elke beveiligde aanroep geeft 401. Zet '
+      + 'CLERK_SECRET_KEY in de omgevingsvariabelen en rol opnieuw uit.');
+  }
+  return vlag && geheim;
+}
+
+/* Kan de SERVER Clerk-sessies verifieren? Los van of de browser Clerk toont.
+   De pagina gebruikt dit om eerlijk te zijn wanneer die twee niet overeenkomen
+   -- zie api/dashboard.js. */
+function serverKlaar() {
+  return enabled();
 }
 
 // ── Which origins may present a token here ───────────────────────────────────
@@ -404,4 +440,4 @@ async function verifySession(req) {
 function forget(userId) { _userCache.delete(String(userId || '')); }
 
 module.exports = {
-  vlagAan, enabled, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };
+  vlagAan, enabled, serverKlaar, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };

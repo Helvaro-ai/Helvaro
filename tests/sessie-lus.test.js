@@ -371,6 +371,81 @@ async function vraagSessie(cookieWaarde) {
        `regels zonder catch: ${zonderCatch.join(', ')}`);
   }
 
+
+  /* ── De vierde oorzaak: half geconfigureerd ────────────────────────────────
+     Op 31 augustus, live vastgesteld met een geldig Clerk-token:
+
+       token azp   = https://app.helvaro.pro   (klopt)
+       nog geldig  = 58 seconden               (niet verlopen)
+       GET /api/leads met dat token als Bearer -> 401 "Ongeldige API key"
+       /api/auth {mode:'session'}              -> "Geen geldige sessie"
+       clerk-logregels in productie            -> NUL
+
+     "Ongeldige API key" komt uit het OUDE sleutelpad. De aanvraag viel daar dus
+     doorheen, wat betekent dat verifySession() null gaf. Alle takken die null
+     geven loggen iets -- behalve enabled(). En enabled() is
+     CLERK_ENABLED && CLERK_SECRET_KEY, terwijl CLERK_ENABLED aan moet staan
+     (anders toont de pagina de Clerk-kaart niet). Conclusie: CLERK_SECRET_KEY
+     ontbrak in productie.
+
+     Half aan is erger dan uit. Helemaal uit valt iedereen terug op het oude
+     formulier en werkt de app; half aan logt de browser mensen in terwijl de
+     server ze allemaal afwijst -- en dat leest als een sessieprobleem. */
+  console.log('\n— half geconfigureerde Clerk klaagt hardop —');
+  {
+    const pad = require('path').join(__dirname, '..', 'api', '_clerk.js');
+    const bron = require('fs').readFileSync(pad, 'utf8');
+    ck('enabled() controleert allebei de sleutels',
+       /vlagAan\(process\.env\.CLERK_ENABLED\)/.test(bron) && /process\.env\.CLERK_SECRET_KEY/.test(bron));
+    ck('en klaagt als de vlag aan staat zonder geheim',
+       /vlag && !geheim[\s\S]{0,200}console\.error/.test(bron));
+    ck('maar hoogstens een keer per koude start',
+       /_configKlachtGedaan/.test(bron));
+
+    /* Echt uitvoeren, niet alleen de bron lezen. */
+    delete require.cache[require.resolve('../api/_clerk.js')];
+    const oudeVlag = process.env.CLERK_ENABLED;
+    const oudGeheim = process.env.CLERK_SECRET_KEY;
+    process.env.CLERK_ENABLED = '1';
+    delete process.env.CLERK_SECRET_KEY;
+    const clerk = require('../api/_clerk.js');
+    const echteError = console.error;
+    let geklaagd = 0;
+    console.error = () => { geklaagd++; };
+    const uit1 = clerk.enabled();
+    const uit2 = clerk.enabled();
+    console.error = echteError;
+    ck('zonder geheim is Clerk uit', uit1 === false && uit2 === false, `${uit1}/${uit2}`);
+    ck('en er is precies EEN klacht, niet per aanroep', geklaagd === 1, geklaagd);
+    ck('serverKlaar() volgt enabled()', clerk.serverKlaar() === false);
+
+    if (oudeVlag === undefined) delete process.env.CLERK_ENABLED; else process.env.CLERK_ENABLED = oudeVlag;
+    if (oudGeheim !== undefined) process.env.CLERK_SECRET_KEY = oudGeheim;
+    delete require.cache[require.resolve('../api/_clerk.js')];
+  }
+
+  /* En de pagina moet dan de WAARHEID zeggen in plaats van "log opnieuw in".
+     Opnieuw inloggen lukt namelijk gewoon -- en het volgende verzoek faalt
+     weer. Dat is de lus. */
+  console.log('\n— en de pagina zegt dan niet "sessie verlopen" —');
+  {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const mod4 = require('../api/dashboard.js');
+    let html = '';
+    await mod4({ method: 'GET', url: '/dashboard', headers: {} },
+               { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+
+    ck('de pagina weet of de SERVER kan verifieren', /const CLERK_SERVER_OK = (true|false);/.test(html));
+    const fn = (html.match(/function handleAuthExpired\(\)[\s\S]*?\n\}/) || [''])[0];
+    const kaal = fn.replace(/\/\*[\s\S]*?\*\//g, '');
+    ck('en handleAuthExpired kijkt daar als EERSTE naar',
+       /CLERK_READY && !CLERK_SERVER_OK/.test(kaal), kaal.slice(0, 200));
+    ck('stopt dan meteen met opnieuw proberen',
+       /!CLERK_SERVER_OK[\s\S]{0,200}_authOpgegeven = true/.test(kaal));
+    ck('en toont een eerlijke tekst, geen "sessie verlopen"',
+       /tr\('auth\.serverconfig'\)/.test(kaal));
+  }
+
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })();

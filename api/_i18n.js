@@ -784,6 +784,15 @@ const TEKST = {
         en: 'The connection has expired{email}. Google is asking for permission again — your calendar is NOT syncing right now. Click Connect to restore it.',
         de: 'Die Verbindung ist abgelaufen{email}. Google verlangt erneut Zustimmung — Ihr Kalender wird derzeit NICHT synchronisiert. Klicken Sie auf Verbinden, um das zu beheben.' },
 
+
+  /* Clerk staat aan in de browser maar de server kan niet verifieren.
+     Dan is "je sessie is verlopen" een leugen: er is niets mis met de sessie
+     van de klant. Zeg wat er echt aan de hand is, en dat het niet aan hem ligt. */
+  'auth.serverconfig': { nl: 'Inloggen werkt op dit moment niet door een instelling aan onze kant — niet door jou. We zijn op de hoogte. Probeer het straks opnieuw of neem contact op.',
+        fr: 'La connexion ne fonctionne pas pour le moment à cause d’un réglage de notre côté — cela ne vient pas de vous. Nous sommes au courant. Réessayez plus tard ou contactez-nous.',
+        en: 'Signing in is not working right now because of a setting on our side — not something you did. We are aware of it. Try again later or get in touch.',
+        de: 'Die Anmeldung funktioniert derzeit wegen einer Einstellung auf unserer Seite nicht — es liegt nicht an Ihnen. Wir wissen davon. Versuchen Sie es später erneut oder melden Sie sich bei uns.' },
+
   'login.footer':        { nl: 'gemaakt voor Vlaamse makelaars',
                            fr: 'conçu pour les agents immobiliers',
                            en: 'built for estate agents',

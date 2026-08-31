@@ -14,6 +14,40 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De echte oorzaak van het in- en uitloggen: een ontbrekende sleutel
+
+Alle eerdere fixes waren echt, maar geen ervan was DE oorzaak. Die is nu
+gevonden, en hij zit niet in de code.
+
+**`CLERK_SECRET_KEY` ontbreekt in de productie-omgeving.** Daardoor logt je
+browser je wél in — daar is alleen de publieke sleutel voor nodig — maar kan de
+server niemand verifiëren. Elke beveiligde aanroep valt dan terug op het oude
+API-sleutelpad en antwoordt "Ongeldige API key". Het dashboard leest dat als
+een verlopen sessie en stuurt je terug naar het inlogscherm. Eindeloos.
+
+Zo is het vastgesteld, met een geldig token in de hand: het token klopte
+(juiste herkomst, nog 58 seconden geldig), maar zelfs expliciet meegestuurd
+kreeg het "Ongeldige API key" terug — en er stond geen enkele Clerk-regel in de
+productielogs. Er is precies één plek die stil `null` teruggeeft zonder te
+loggen, en die controleert die sleutel.
+
+**Half aan is erger dan uit.** Staat Clerk helemaal uit, dan werkt het oude
+inlogformulier en werkt de app. Half aan betekent: de browser laat je binnen,
+de server zet je buiten, en het ziet eruit als een probleem met jouw sessie.
+
+Twee dingen zijn nu anders, zodat dit nooit meer stil kan gebeuren:
+
+- De server **klaagt hardop** in de logs zodra de vlag aanstaat zonder sleutel.
+  Eén regel per koude start.
+- Het scherm zegt in dat geval de **waarheid** — "dit ligt aan een instelling
+  aan onze kant, niet aan jou" — in plaats van "je sessie is verlopen", en
+  stopt meteen met opnieuw proberen. Opnieuw inloggen lúkt namelijk gewoon; het
+  volgende verzoek faalt weer. Dat was de lus.
+
+**Actie:** zet `CLERK_SECRET_KEY` in de omgevingsvariabelen op Vercel en rol
+opnieuw uit. Daarna werkt inloggen.
+
+
 ### Google Agenda zegt nu eerlijk of de koppeling nog werkt
 
 "Gekoppeld" betekende: er staat een verversingstoken opgeslagen. Niet: dat token
