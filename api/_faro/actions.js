@@ -417,7 +417,12 @@ const EXECUTORS = {
   async create_campaign(payload, ctx) {
     const uit = await campagnes.maak({
       projectCode: ctx.projectCode,
-      naam:       (payload && payload.naam) || (payload && payload.propertyId ? `Campagne ${payload.propertyId}` : ''),
+      /* De tool stuurt `name` (Engels, zoals de rest van zijn parameters).
+         `naam` blijft erbij staan omdat een bevestiging die vóór deze wijziging
+         is klaargezet nog in een openstaand gesprek kan hangen -- die payload
+         komt straks alsnog binnen en mag zijn naam niet verliezen. */
+      naam:       (payload && (payload.name || payload.naam))
+                  || (payload && payload.propertyId ? `Campagne ${payload.propertyId}` : ''),
       pandCode:    payload && payload.propertyId,
       kanalen:     payload && payload.channels,
       invalshoek:  payload && payload.angle,

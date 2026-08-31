@@ -177,6 +177,64 @@ function nepAirtable() {
   ck('de tenant komt uit de sessie, niet uit de payload',
      /projectCode: ctx\.projectCode/.test(acties));
 
+
+  /* ── Kan Faro echt een campagne MAKEN, of alleen aanmelden dat er een is? ──
+     Dit was de kern van het gat. De opslag kon alles -- naam, tekst, kanalen,
+     invalshoek -- maar de tool van het model had alleen propertyId, channels,
+     leadIds en angle. Geen `name`, geen `message`.
+
+     Gevolg: het enige wat Faro kon opleveren was een campagne genaamd
+     "Campagne P1" met een leeg Message-veld. De tekst schrijven is nu juist
+     het enige waar een taalmodel hier voor dient. */
+  console.log('\n— Faro kan de campagne ook echt SCHRIJVEN —');
+  {
+    const tools = fs.readFileSync(BASE + 'api/_faro/tools.js', 'utf8');
+    const i = tools.indexOf("name: 'create_campaign'");
+    const j = tools.indexOf("name: 'add_leads_to_campaign'");
+    const blokTool = tools.slice(i, j);
+
+    ck('create_campaign accepteert een naam',    /name:\s*\{\s*type: 'string'/.test(blokTool), null);
+    ck('en de campagnetekst zelf',               /message:\s*\{\s*type: 'string'/.test(blokTool), null);
+    /* Een naam is altijd nodig om de campagne terug te vinden; een pand niet.
+       "Leads die zes maanden niets hoorden" is een campagne zonder pand, en
+       maak() kon dat allang aan -- alleen de tool verbood het. */
+    ck('naam is verplicht',                      /required:\s*\['name'\]/.test(blokTool), null);
+    ck('en het pand juist niet meer',            !/required:\s*\[[^\]]*'propertyId'/.test(blokTool), null);
+
+    /* De poort moet tonen wat er bevestigd wordt. Het commentaar erboven zegt
+       het zelf: een poort die niet zegt WAT hij doet, is geen poort. Tekst die
+       je pas na het bevestigen ziet, is precies dat. */
+    ck('de bevestiging toont de naam',           /regels\.push\(`Naam: /.test(blokTool), null);
+    ck('en de tekst die verstuurd zou worden',   /Tekst:/.test(blokTool), null);
+
+    /* En de brug tussen de twee: de tool stuurt `name`, de actie schreef
+       `payload.naam`. Zonder deze regel komt elke campagne alsnog naamloos
+       binnen -- de vervelendste soort fout, want alles lijkt te werken. */
+    ck('de actie leest de parameter die de tool echt stuurt',
+       /payload\.name \|\| payload\.naam/.test(acties), null);
+    ck('en geeft de tekst door aan de opslag',
+       /bericht:\s*payload && payload\.message/.test(acties), null);
+  }
+
+  /* Dat de opslag het dan ook echt bewaart -- niet alleen dat de velden
+     doorgegeven worden, maar dat ze in het record belanden. */
+  console.log('\n— en de opslag bewaart naam en tekst —');
+  {
+    reset(); nepAirtable();
+    tabelBestaat = true;
+    C._resetTabelCache();
+    const c = await C.maak({
+      projectCode: 'TENANT_A',
+      naam:    'Villa Knokke — najaarsactie',
+      bericht: 'Dag {naam}, de villa in Knokke staat nu open voor bezichtiging.',
+      kanalen: ['whatsapp'],
+      invalshoek: 'gezinnen met een tweede verblijf',
+    });
+    const bewaard = (await C.lijst('TENANT_A'))[0];
+    ck('de naam staat in de campagne', bewaard && bewaard.naam === 'Villa Knokke — najaarsactie', bewaard && bewaard.naam);
+    ck('een campagne zonder pand mag bestaan', !!c && !!c.id, c);
+  }
+
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);
 })();

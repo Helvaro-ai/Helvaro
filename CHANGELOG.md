@@ -14,6 +14,39 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro kan nu echt een campagne voor je maken
+
+De campagne-opslag zat er al: aanmaken, leads selecteren, afgemelde leads er
+automatisch uit, alles per kantoor gescheiden. Maar Faro kon er nauwelijks bij.
+
+Zijn `create_campaign` kende alleen een pand, kanalen, een invalshoek en een
+lijst leads. **Geen naam en geen tekst.** Het enige wat eruit kon komen was dus
+een campagne genaamd "Campagne P1" met een leeg tekstveld — terwijl het
+schrijven van die tekst nu juist is waar een AI hier voor dient. Het Message-veld
+stond al klaar in Airtable en bleef leeg omdat niemand er iets in kon zetten.
+
+Vanaf nu schrijft Faro de campagne zelf: een naam, de volledige tekst, de
+invalshoek en de kanalen. Je ziet de tekst in het bevestigingsvenster vóór je op
+Aanmaken klikt, niet erna.
+
+Twee dingen omgedraaid: **de naam is nu verplicht en het pand niet meer.** Een
+campagne moet je kunnen terugvinden, dus een naam is altijd nodig. Een pand niet
+— "leads die zes maanden niets gehoord hebben" is een prima campagne zonder
+pand, en de opslag kon dat allang; alleen de tool verbood het.
+
+Ook rechtgezet: het scherm zei **"Campagnes: niet beschikbaar"**. Die vlag stond
+nog uit met de opmerking "geen campagne-opslag aangesloten", en dat klopte al een
+tijd niet meer. Een vlag die te laag staat is even fout als een die te hoog
+staat, alleen stiller — het stond er niet, dus vroeg niemand erom.
+
+**Wat nog steeds niet kan:** versturen. Een campagnebericht valt vrijwel altijd
+buiten Meta's 24-uursvenster, en dan is alleen een goedgekeurde WhatsApp-template
+toegestaan. Die goedkeuring ligt niet in deze codebase. Faro zegt dat zelf bij
+elke campagne: *"Er is nog NIETS verstuurd."*
+
+**Actie:** geen.
+
+
 ### Hersteld: het oog-icoontje bij het wachtwoordveld
 
 Bij het vertalen van het oude inlogformulier heb ik het "toon/verberg

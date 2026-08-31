@@ -173,9 +173,21 @@ function contextSources() {
        lege lijst leest het model als "deze makelaar heeft geen aanbod", en
        dat vertelt hij dan door aan de klant. */
     properties: true,
-    // Still off, for a real reason rather than an unfinished TODO:
-    //   campaigns  — no campaign store is wired; create_campaign proposes but
-    //                cannot execute.
+    /* Campagnes. Deze regel stond op "geen campagne-opslag aangesloten;
+       create_campaign stelt voor maar kan niet uitvoeren". Dat klopte niet meer:
+       api/_campagnes.js bestaat, de Airtable-tabel `campaigns` staat er met
+       precies de elf velden die die module schrijft, en actions.create_campaign
+       roept campagnes.maak() aan na bevestiging.
+
+       Een vlag die te LAAG staat is even schadelijk als een die te hoog staat,
+       alleen stiller: het scherm zei "Campagnes: niet beschikbaar" terwijl de
+       makelaar er wel een kon laten maken, dus vroeg niemand het.
+
+       Wat `true` hier betekent: samenstellen en bewaren. VERSTUREN nog niet --
+       dat vraagt een goedgekeurde WhatsApp-template en die ligt buiten deze
+       codebase. De tool zegt dat zelf in elk antwoord ("Er is nog NIETS
+       verstuurd"), dus de vlag overdrijft niet wat erachter zit. */
+    campaigns: true,
   };
   return [
     { key: 'leads',         label: 'Leads',      available: Boolean(WIRED.leads)         },

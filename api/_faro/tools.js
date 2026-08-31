@@ -1253,16 +1253,22 @@ const actTools = [
   {
     name: 'create_campaign',
     kind: 'act',
-    description: 'Bereid een marketingcampagne voor rond een pand: teksten, beelden, video en een leadselectie. Wordt pas uitgevoerd na bevestiging.',
+    description: 'Stel een campagne samen voor dit kantoor: een naam, de campagnetekst, een invalshoek, kanalen en een leadselectie. SCHRIJF DE TEKST ZELF en geef hem mee in `message` -- deze tool bewaart hem, hij schrijft niet voor jou. De campagne wordt alleen AANGEMAAKT; er gaat niets de deur uit. Wordt pas uitgevoerd na bevestiging.',
     parameters: {
       type: 'object',
       properties: {
-        propertyId: { type: 'string' },
+        /* `name` is verplicht en `propertyId` niet, andersom dan eerst.
+           Een campagne heeft altijd een naam nodig om later terug te vinden;
+           een pand niet -- "leads die zes maanden niets gehoord hebben" is een
+           campagne zonder pand, en api/_campagnes.js kon dat allang aan. */
+        name:       { type: 'string', description: 'Korte herkenbare naam, bv. "Villa Knokke - najaarsactie"' },
+        message:    { type: 'string', description: 'De volledige campagnetekst, klaar om te gebruiken. Schrijf hem zelf.' },
+        propertyId: { type: 'string', description: 'Pandcode wanneer de campagne over een specifiek pand gaat (P1, VH-2291). Optioneel.' },
         channels:   { type: 'array', items: { type: 'string', enum: ['whatsapp', 'email', 'social'] } },
         leadIds:    { type: 'array', items: { type: 'string' } },
         angle:      { type: 'string', description: 'Invalshoek of doelgroep' },
       },
-      required: ['propertyId'],
+      required: ['name'],
     },
     async run(args, _ctx) {
       // Een bevestigingspoort die niet zegt WAT hij gaat doen, is geen poort.
@@ -1273,9 +1279,17 @@ const actTools = [
       const kanaalNamen = { whatsapp: 'WhatsApp', email: 'e-mail', social: 'sociale media' };
       const kanalen = (args.channels || []).map((c) => kanaalNamen[c] || c);
       const regels = [];
+      if (args.name)       regels.push(`Naam: ${args.name}`);
       if (args.propertyId) regels.push(`Pand: ${args.propertyId}`);
       if (kanalen.length)  regels.push(`Kanalen: ${kanalen.join(', ')}`);
       if (args.angle)      regels.push(`Invalshoek: ${args.angle}`);
+      /* De TEKST hoort in de poort, want dat is het enige wat de klant straks
+         leest. Afgekapt op 300 tekens: een poort die je moet scrollen om de
+         knop te vinden wordt weggeklikt in plaats van gelezen. */
+      if (args.message) {
+        const t = String(args.message).trim();
+        regels.push(`\nTekst:\n${t.length > 300 ? t.slice(0, 300) + '\u2026' : t}`);
+      }
       regels.push((args.leadIds && args.leadIds.length)
         ? `Doelgroep: ${args.leadIds.length} geselecteerde lead(s)`
         : 'Doelgroep: nog geen leads geselecteerd');
