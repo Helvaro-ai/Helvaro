@@ -536,6 +536,24 @@ module.exports = async function handler(req, res) {
      #909090 haalt 4,92:1 en blijft duidelijk lichter dan de ingevulde tekst. */
   input::placeholder { color: #909090; }
 
+  /* iOS Safari zoomt automatisch in zodra een invulveld kleiner is dan 16px.
+     Op 15px sprong het formulier dus bij elke tik in het telefoonveld -- precies
+     het veld waar het hele product van afhangt. Alleen op touch: met een muis
+     is 15px de bedoelde maat en verandert er niets. */
+  @media (hover: none) and (pointer: coarse) {
+    input { font-size: 16px; }
+  }
+
+  /* Links hadden GEEN zichtbare focus. Wie met het toetsenbord invult ziet dan
+     niet waar hij staat, en dit is een formulier met een privacylink erin --
+     precies de link die iemand wil kunnen vinden voordat hij zijn nummer
+     achterlaat. De invoervelden en de knop hadden hun ring al. */
+  a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
   button {
     width: 100%; margin-top: 18px;
     background: linear-gradient(135deg, var(--brand), var(--brand-dark));
@@ -549,12 +567,19 @@ module.exports = async function handler(req, res) {
   button:disabled { opacity: .55; cursor: not-allowed; }
   .btn-icon { display: inline-flex; }
 
+  /* De foutmelding is een live region (role="alert" staat op het element zelf).
+     Daarom wordt hij getoond op INHOUD en niet met een inline display-stijl:
+     een schermlezer kondigt een alert aan op het moment dat er tekst in komt,
+     en met :empty valt tonen en aankondigen op hetzelfde moment. Zet je in
+     plaats daarvan style.display, dan kan de tekst er al staan voordat het vak
+     zichtbaar is en wordt er niets voorgelezen. */
   .error {
-    display: none; color: #FF6B6B; font-size: 13px;
+    color: #FF6B6B; font-size: 13px;
     margin-top: 14px; padding: 10px 14px;
     background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.22);
     border-radius: 9px;
   }
+  .error:empty { display: none; }
 
   /* Success state */
   .success { display: none; padding: 32px 26px 22px; text-align: center; }
@@ -698,7 +723,7 @@ module.exports = async function handler(req, res) {
       </svg>
       ${escHtml(t.btn)} ${safeFirstName}${t.btnSuffix ? ' ' + escHtml(t.btnSuffix) : ''}
     </button>
-    <div class="error" id="err"></div>
+    <div class="error" id="err" role="alert" aria-live="assertive"></div>
   </div>
 
   <!-- Success -->
@@ -766,10 +791,9 @@ btn.addEventListener('click', function() {
   var phone   = document.getElementById('tel').value.trim();
   var consent = document.getElementById('consent');
 
-  err.style.display = 'none';
+  err.textContent   = '';
   if (!name || !phone) {
     err.textContent   = I18N.errMissing + ' ' + AI_FIRST + ' ' + I18N.errMissingTail;
-    err.style.display = 'block';
     return;
   }
   /* Een typefout in het nummer betekent dat deze lead NOOIT antwoord krijgt --
@@ -783,14 +807,12 @@ btn.addEventListener('click', function() {
   var cijfers = phone.replace(/[^0-9]/g, '');
   if (cijfers.length < 8 || cijfers.length > 15) {
     err.textContent   = I18N.errPhone;
-    err.style.display = 'block';
     document.getElementById('tel').focus();
     return;
   }
 
   if (consent && !consent.checked) {
     err.textContent   = I18N.errConsent;
-    err.style.display = 'block';
     return;
   }
 
@@ -813,7 +835,6 @@ btn.addEventListener('click', function() {
   })
   .catch(function(e) {
     err.textContent   = e.message || I18N.errGeneric;
-    err.style.display = 'block';
     btn.innerHTML     = btnDefault();
     btn.disabled      = false;
   });

@@ -14,7 +14,8 @@ const { fetchWebsite } = require('./_lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
-const _optout = require('./_optout');     // wie STOP zegt, krijgt niets meer
+const _optout = require('./_optout');
+const _waOpmaak = require('./_wa-opmaak');     // wie STOP zegt, krijgt niets meer
 const _transcriptie = require('./_transcriptie'); // spraakberichten uitschrijven (standaard uit)
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a
@@ -2609,6 +2610,13 @@ function isWithinWorkingHours(spec) {
 async function sendWA(to, message, phoneNumberId) {
   try {
     const pnid = phoneNumberId || PHONE_NUMBER_ID;
+    /* Elk uitgaand bericht gaat hier langs -- AI-antwoord, eigenaarsmelding,
+       bevestiging. Eén plek, zodat geen enkele aanroeper het kan overslaan. */
+    const tekst = _waOpmaak.voorWhatsApp(message);
+    if (!tekst) {
+      console.error(`[WhatsApp] Leeg bericht na opschonen, niet verstuurd naar ${to}`);
+      return false;
+    }
     const url = `https://graph.facebook.com/v19.0/${pnid}/messages`;
     const res = await fetch(url, {
       method:  'POST',
@@ -2617,7 +2625,7 @@ async function sendWA(to, message, phoneNumberId) {
         messaging_product: 'whatsapp',
         to,
         type: 'text',
-        text: { body: message },
+        text: { body: tekst },
       }),
     });
     const data = await res.json();

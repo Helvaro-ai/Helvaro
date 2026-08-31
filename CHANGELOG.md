@@ -14,6 +14,57 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### WhatsApp-berichten zien er nu uit als WhatsApp-berichten
+
+Een taalmodel schrijft Markdown, ook als je er niet om vraagt. WhatsApp kent
+Markdown niet — dat heeft zijn eigen opmaak. Er stond geen enkele regel over in
+de prompt en er werd niets opgeschoond, dus alles wat de AI aan opmaak bedacht
+kwam letterlijk bij je lead terecht:
+
+| Wat de AI schreef | Wat de lead zag |
+|---|---|
+| `**Perfect!**` | `**Perfect!**` — mét sterretjes |
+| `## Samenvatting` | `## Samenvatting` |
+| `- Budget: 450.000` | `- Budget: 450.000` |
+| `[onze site](https://…)` | `[onze site](https://…)` |
+
+Dat is het bericht waarop iemand beslist of hij met een mens praat.
+
+Nu wordt elk uitgaand bericht omgezet naar echte WhatsApp-opmaak: `*vet*`,
+bullets met •, links met de url erachter, en te veel witregels weg. Kopjes
+worden vet, codeblokken houden hun inhoud.
+
+Er staat óók een regel in de systeemprompt dat er geen Markdown gebruikt mag
+worden. Allebei, met opzet: de prompt is de vraag, de code is de garantie. Een
+model dat het één op de honderd keer tóch doet, levert dat lelijke bericht
+anders af bij een echte klant.
+
+**Wat er bewust niet aangeraakt wordt:** `3*4` blijft een vermenigvuldiging,
+`450.000` blijft een bedrag, een telefoonnummer blijft heel en een kale link
+wordt niet verdubbeld. Een filter dat te gretig is verandert de inhoud van een
+bericht aan een klant, en dat is erger dan lelijke opmaak. Daar staat de helft
+van de tests op.
+
+Ook nieuw: een bericht boven WhatsApp's grens van 4096 tekens werd voorheen
+gewoon geweigerd — de lead kreeg dan **niets**. Het wordt nu netjes op een
+zinseinde ingekort. Bij Faro gebeurt dat bewust níét: daar zit jij ernaast en
+kan je het zelf inkorten, dus daar is weigeren het eerlijke antwoord.
+
+### Het leadformulier: drie dingen uit een echte meting
+
+- **De foutmelding werd door geen enkele schermlezer voorgelezen.** Klikte je op
+  verzenden met een leeg veld, dan gebeurde er voor die gebruiker ogenschijnlijk
+  niets. Het is nu een live region, en hij verschijnt op inhoud in plaats van op
+  een inline stijl — anders staat de tekst er al voordat het vak zichtbaar is en
+  wordt er alsnog niets aangekondigd.
+- **iOS zoomde in bij elke tik in het telefoonveld.** Safari doet dat onder 16px
+  en de velden stonden op 15px. Nu 16px op touch; met een muis verandert er niets.
+- **Links hadden geen zichtbare focus.** De velden en de knop wel. Juist de
+  privacylink wil iemand kunnen vinden voor hij zijn nummer achterlaat.
+
+**Actie:** geen.
+
+
 ### Faro maakt nu advertentieteksten, en kent eindelijk je huisstijl
 
 Op de website staat dat Faro je advertentieteksten schrijft, hooks en varianten

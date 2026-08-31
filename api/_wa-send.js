@@ -24,6 +24,8 @@
  * lead has been talking to all along.
  */
 
+const _waOpmaak = require('./_wa-opmaak');
+
 const GRAPH_VERSION = 'v19.0';
 
 class SendError extends Error {
@@ -124,7 +126,11 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut }) {
       'window_closed',
     );
   }
-  const body = String(text == null ? '' : text).trim();
+  /* Zelfde opmaakregels als de gewone AI-antwoorden: een lead hoort niet te
+     kunnen zien welke route een bericht genomen heeft. Alleen de OPMAAK wordt
+     gedeeld, niet het afkappen -- zie de lengtecontrole hieronder, die hier
+     bewust weigert in plaats van stilletjes in te korten. */
+  const body = _waOpmaak.naarWhatsAppOpmaak(text).trim();
   if (!body) throw new SendError('Leeg bericht.', 'empty');
   // WhatsApp's own body limit is 4096; truncating silently would send a message
   // ending mid-sentence to a customer, so this refuses instead.

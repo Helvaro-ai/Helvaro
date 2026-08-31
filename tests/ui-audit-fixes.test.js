@@ -268,5 +268,44 @@ console.log('\n— www wordt doorgestuurd naar het echte adres —');
      !red.some((r) => (r.has || []).some((h) => h.value === 'helvaro.pro')), null);
 }
 
+/* ── Het leadformulier: drie dingen die live gemeten zijn ───────────────────
+   Dit is de enige pagina die een LEAD te zien krijgt, en de enige waar Helvaro
+   geld aan verdient. Alle drie de punten kwamen uit een echte meting in de
+   browser, niet uit het lezen van de bron. */
+console.log('\n— het leadformulier: aankondiging, focus en de iOS-zoom —');
+{
+  const fp = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'form-page.js'), 'utf8');
+
+  /* 1. De foutmelding werd door NIEMAND voorgelezen. Een schermlezergebruiker
+        klikte op verzenden, er gebeurde ogenschijnlijk niets, en er was geen
+        enkele aanwijzing waarom. Het inlogscherm van het dashboard had zijn
+        role="alert" allang -- deze pagina niet. */
+  ck('de foutmelding is een live region',
+     /id="err"[^>]*role="alert"/.test(fp) && /id="err"[^>]*aria-live=/.test(fp), null);
+
+  /* En dat hij op INHOUD getoond wordt in plaats van op een inline stijl. Met
+     style.display kan de tekst er al staan voor het vak zichtbaar wordt, en dan
+     kondigt een schermlezer niets aan -- de melding staat er dan wel, maar de
+     aankondiging die we net toevoegden doet niets. */
+  ck('en hij verschijnt op inhoud, niet op een inline display-stijl',
+     /\.error:empty\s*\{\s*display:\s*none/.test(fp) && fp.indexOf("err.style.display") === -1,
+     fp.indexOf('err.style.display') > -1 ? 'style.display staat er nog' : null);
+
+  /* 2. iOS Safari zoomt in bij een invulveld onder 16px. Op 15px sprong het
+        formulier bij elke tik in het telefoonveld. Alleen op touch, want met
+        een muis is 15px de bedoelde maat. */
+  ck('invoervelden zijn 16px op touch, tegen de iOS-zoom',
+     /@media \(hover: none\) and \(pointer: coarse\) \{\s*input \{ font-size: 16px; \}/.test(fp), null);
+
+  /* 3. Links hadden geen zichtbare focus. Gemeten in de browser: de velden en
+        de knop hadden een ring, de privacylink en de footerlink niet. */
+  ck('links hebben een zichtbare focusring', /a:focus-visible \{[\s\S]{0,80}outline:/.test(fp), null);
+
+  /* De consent-gate blijft staan. Die is niet cosmetisch: zonder aangevinkte
+     toestemming mag er geen WhatsApp uit, en dat is een AVG-grens. */
+  ck('en de toestemmingsgrens staat er nog steeds',
+     /if \(consent && !consent\.checked\)/.test(fp), null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);
