@@ -94,5 +94,33 @@ ck('twee keer knippen verandert niets meer', strip(klant) === klant, null);
 const kapot = '<main class="page-content page" id="page-founder">geen sluittag';
 ck('een blok zonder sluittag wordt met rust gelaten', strip(kapot) === kapot, null);
 
+/* ── Leaddata hoort niet in een gedeelde cache ──────────────────────────────
+   Zonder eigen header zet Vercel "public, max-age=0, must-revalidate" neer.
+   must-revalidate voorkomt verouderde data, maar "public" staat een gedeelde
+   cache -- een CDN, een bedrijfsproxy -- toe het antwoord OP TE SLAAN. En dit
+   antwoord bevat namen en telefoonnummers.
+
+   Gevonden doordat een tweede verzoek zonder cookies in de browser een 200 met
+   leads teruggaf, terwijl dezelfde aanvraag buiten de browser 401 gaf. */
+console.log('\n— leaddata is niet cachebaar —');
+{
+  const headers = {};
+  const res = {
+    setHeader(k, v) { headers[k.toLowerCase()] = v; },
+    status() { return this; }, json() { return this; }, end() { return this; },
+  };
+  const leads = require('../api/leads.js');
+  // OPTIONS is de goedkoopste weg langs de handler: hij zet de headers en stopt.
+  leads({ method: 'OPTIONS', headers: {}, url: '/api/leads' }, res);
+
+  const cc = headers['cache-control'] || '';
+  ck('er staat een eigen Cache-Control op', !!cc, cc || '(geen)');
+  ck('en die is private, niet public', cc.indexOf('private') > -1 && cc.indexOf('public') === -1, cc);
+  /* no-store, niet no-cache: no-cache staat opslaan nog toe zolang er
+     gerevalideerd wordt, en op een gedeelde computer is die kopie op schijf
+     nu juist het probleem. */
+  ck('en verbiedt opslaan, niet alleen hergebruik', cc.indexOf('no-store') > -1, cc);
+}
+
 console.log(`\n${pass} geslaagd, ${fail} gefaald`);
 process.exit(fail ? 1 : 0);

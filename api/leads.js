@@ -155,6 +155,23 @@ function verifySession(token) {
 }
 
 module.exports = async function handler(req, res) {
+  /* Leaddata mag niet in een gedeelde cache belanden.
+     Zonder een eigen header zet Vercel hier zijn standaard neer:
+     "public, max-age=0, must-revalidate". Dat must-revalidate voorkomt dat er
+     verouderde data geserveerd wordt, maar "public" staat wel toe dat een
+     gedeelde cache -- een CDN, een bedrijfsproxy -- het antwoord OPSLAAT. En
+     dit antwoord bevat namen en telefoonnummers van leads.
+
+     Het was ook zichtbaar: een tweede verzoek zonder cookies kreeg in de
+     browser een 200 met leads uit de cache terug, terwijl dezelfde aanvraag
+     buiten de browser netjes 401 gaf.
+
+     no-store, niet no-cache: no-cache staat opslaan nog steeds toe zolang er
+     maar gerevalideerd wordt, en op een gedeelde computer is de kopie op schijf
+     nu juist het probleem. api/dashboard.js zet zelf al 'private, no-cache'.
+     Een specifieke route mag dit hieronder overschrijven -- zie de
+     'private, max-age=120' verderop, die bewust wel kort cachet. */
+  res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');

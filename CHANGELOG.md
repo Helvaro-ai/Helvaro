@@ -14,6 +14,24 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Leadgegevens worden niet meer opgeslagen door caches
+
+`/api/leads` gaf namen en telefoonnummers terug met de standaard-header van
+Vercel: `public, max-age=0, must-revalidate`. Dat `must-revalidate` voorkomt dat
+verouderde gegevens getoond worden, maar `public` staat een **gedeelde** cache —
+een CDN, een bedrijfsproxy — wel toe om het antwoord op te slaan.
+
+Het was ook echt zichtbaar: een tweede verzoek zonder cookies kreeg in de
+browser gewoon een kopie met leads uit de cache terug, terwijl dezelfde aanvraag
+buiten de browser netjes geweigerd werd.
+
+Nu `private, no-store`. Bewust `no-store` en niet `no-cache`: dat laatste staat
+opslaan nog steeds toe zolang er maar gecontroleerd wordt, en op een gedeelde
+computer is juist die kopie op schijf het probleem.
+
+**Actie:** geen.
+
+
 ### Faro vroeg de server dingen terwijl er niemand ingelogd was
 
 Faro start mee met de pagina, dus ook op het inlogscherm. Stond zijn paneel daar
