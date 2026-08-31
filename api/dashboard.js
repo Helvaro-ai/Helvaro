@@ -24150,6 +24150,35 @@ function hideHelpWidget() {
       // en verder met het legacy-pad hieronder (geen return)
     } else {
       if (!clerk.user) {
+        /* ── De tegenstrijdigheid die het in- en uitloggen veroorzaakte ──────
+           Clerk zegt "niet ingelogd", maar er kan nog een GELDIGE oude
+           hv_session-cookie in de browser staan van voor de overstap. Die
+           cookie blijft zeven dagen geldig en de server accepteert hem gewoon:
+           /api/leads gaf hier 200 met tien echte leads terug terwijl dit
+           inlogscherm in beeld stond.
+
+           Twee waarheden tegelijk, en de app koos er per moment een andere:
+           soms het dashboard (de cookie werkt), soms het inlogscherm (Clerk
+           zegt nee). Dat is het knipperen.
+
+           Clerk is nu de enige manier om binnen te komen -- met Clerk geladen
+           komt het oude formulier niet eens meer in beeld -- dus een oude
+           cookie die stiekem nog toegang geeft hoort hier te eindigen. Server
+           en scherm zeggen daarna hetzelfde.
+
+           Fire-and-forget: het inlogscherm mag niet wachten op een
+           opruimactie, en lukt het niet, dan is de uitkomst niet slechter dan
+           nu. keepalive zodat hij ook afgaat als de pagina meteen navigeert. */
+        try {
+          fetch(\`\${API_BASE}/auth\`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'logout' }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch (e) {}
+        try { clearSession(); } catch (e) {}
+
         document.getElementById('login-page').style.display = 'flex';
         /* /login en /signup zijn echte adressen geworden (zie vercel.json).
            Ze gaven allebei 404, terwijl het precies de twee adressen zijn die

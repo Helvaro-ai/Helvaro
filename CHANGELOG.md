@@ -14,6 +14,29 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### En de tweede helft van de inloglus: twee waarheden tegelijk
+
+Na de vorige fix bleef er iets over, en dat vond ik in je eigen browser.
+
+Clerk zei "niet ingelogd" — het inlogscherm stond in beeld. Maar er stond nog
+een **geldige oude sessiecookie** van vóór de overstap naar Clerk, en de server
+accepteerde die gewoon: een verzoek om je leads gaf tien echte leads terug
+terwijl je naar het inlogscherm keek.
+
+Twee waarheden tegelijk dus, en de app koos er per moment een andere. Soms het
+dashboard (de cookie werkt), soms het inlogscherm (Clerk zegt nee). Dat is het
+knipperen dat overbleef.
+
+Die oude cookie blijft zeven dagen geldig. Met Clerk aan is het oude
+inlogformulier niet eens meer bereikbaar, dus een cookie die stiekem nog
+toegang geeft hoort te eindigen op het moment dat we het inlogscherm tonen. Dat
+gebeurt nu — vóór het scherm verschijnt, en zonder erop te wachten, zodat een
+trage verbinding het inloggen niet ophoudt.
+
+**Actie:** geen. Je wordt na deze uitrol één keer netjes uitgelogd; daarna is
+het over.
+
+
 ### Opgelost: het dashboard logde je er steeds weer uit
 
 Je logde in, het dashboard verscheen, en een tel later stond je weer op het

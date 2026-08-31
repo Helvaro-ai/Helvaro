@@ -282,6 +282,49 @@ async function vraagSessie(cookieWaarde) {
        /_authOpgegeven[\s\S]{0,400}state\.apiKey = ''/.test(html), null);
   }
 
+
+  /* ── Twee waarheden tegelijk: Clerk zegt nee, de oude cookie zegt ja ───────
+     Live gevonden in de browser van de eigenaar. Clerk had GEEN sessie
+     (window.Clerk.user was false, het inlogscherm stond in beeld), maar
+     POST /api/auth {mode:'session'} gaf 200 met projectCode HELVARO terug en
+     GET /api/leads leverde tien echte leads.
+
+     Een oude hv_session-cookie van voor de overstap blijft zeven dagen geldig
+     en de server accepteert hem gewoon. De app koos per moment een andere
+     waarheid: soms het dashboard (de cookie werkt), soms het inlogscherm
+     (Clerk zegt nee). Dat is het knipperen dat overbleef nadat de
+     token-race hierboven al gedicht was.
+
+     Met Clerk aan is het oude formulier niet eens bereikbaar, dus een cookie
+     die stiekem nog toegang geeft hoort te eindigen op het moment dat we het
+     inlogscherm tonen. */
+  console.log('\n— een oude sessie overleeft het Clerk-inlogscherm niet —');
+  {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const mod3 = require('../api/dashboard.js');
+    let html = '';
+    await mod3({ method: 'GET', url: '/dashboard', headers: {} },
+               { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+
+    const tak = (html.match(/if \(!clerk\.user\) \{[\s\S]*?initLoginSlideshow/) || [''])[0];
+    ck('de tak zonder Clerk-gebruiker is te vinden', !!tak, null);
+    ck('daar wordt de oude serversessie beeindigd',
+       /mode: 'logout'/.test(tak), null);
+    ck('en de lokale markers gewist', /clearSession\(\)/.test(tak), null);
+
+    /* Volgorde: opruimen VOOR het inlogscherm getoond wordt. Andersom kan de
+       gebruiker in dat gaatje al iets aanklikken dat nog met de oude cookie
+       langs de server komt. */
+    const iOpruim = tak.indexOf("mode: 'logout'");
+    const iToon   = tak.indexOf("login-page').style.display = 'flex'");
+    ck('en dat gebeurt voordat het inlogscherm verschijnt',
+       iOpruim > -1 && iToon > -1 && iOpruim < iToon, `opruimen@${iOpruim} tonen@${iToon}`);
+
+    /* Mag het inlogscherm niet ophouden: een opruimactie die hangt op een
+       trage verbinding zou het scherm blokkeren. */
+    ck('het inlogscherm wacht er niet op', /keepalive: true/.test(tak) && !/await fetch\(`\$\{API_BASE\}\/auth`/.test(tak), null);
+  }
+
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })();
