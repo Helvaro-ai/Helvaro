@@ -14,6 +14,46 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Opgelost: het dashboard logde je er steeds weer uit
+
+Je logde in, het dashboard verscheen, en een tel later stond je weer op het
+inlogscherm. Opnieuw inloggen deed hetzelfde.
+
+**Wat er gebeurde.** De server accepteert bij een POST bewust geen cookie als
+bewijs — dat is de beveiliging tegen verzoeken van andere sites — en wil een
+token van Clerk. Dat token werd opgehaald met een functie die alleen
+*synchroon* keek of Clerk al geladen was. Maar Clerk laadt asynchroon. Elke
+aanroep die net iets te vroeg viel kreeg dus een leeg token, ging zonder
+bewijs de deur uit en kreeg een 401 terug — waarop de app besloot dat je sessie
+verlopen was en je uitlogde. Clerk was ondertussen wél klaar en logde je weer
+in. Vandaar het knipperen.
+
+In de productielogs stond het precies zo: 294 keer POST `/api/leads` met een
+401 en 152 keer POST `/api/faro`, in vlagen van zes per seconde. GET-verzoeken
+kwamen er wél door — die mogen de cookie wel gebruiken — en dat is waarom het
+soms leek te werken.
+
+De functie wacht nu tot Clerk klaar is in plaats van een verzoek zonder bewijs
+te versturen. Ook afgevangen: Clerk kan geladen zijn terwijl je sessie net
+ververst wordt (dat gebeurt in een tabblad dat lang openstond) — daar wordt nu
+maximaal anderhalve seconde op gewacht. Ben je echt uitgelogd, dan wordt er
+niets vertraagd.
+
+**Waarom dit twee keer eerder is teruggekomen.** De plek die weet wáárom een
+sessie werd afgewezen, gooide die reden weg — met de opmerking "niet
+noemenswaardig". Een verlopen token (normaal, gebeurt de hele dag) en een
+verkeerd ingestelde configuratie (een storing die iedereen buitensluit) zagen er
+daardoor identiek uit, en geen van beide stond in de logs. Verlopen blijft stil;
+al het andere wordt nu gelogd, met de reden erbij en zonder ook maar iets van
+het token zelf.
+
+**En er zit nu een rem op.** Gaat er onverhoopt tóch iets 401 geven, dan stopt
+de app na drie keer binnen dertig seconden met opnieuw proberen en zegt wat er
+mis is. Een scherm dat stilstaat met uitleg is beter dan een dat knippert.
+
+**Actie:** geen. Ververs de pagina één keer na deze uitrol.
+
+
 ### WhatsApp-berichten zien er nu uit als WhatsApp-berichten
 
 Een taalmodel schrijft Markdown, ook als je er niet om vraagt. WhatsApp kent

@@ -172,6 +172,116 @@ async function vraagSessie(cookieWaarde) {
        iBevestig > -1 && iSentinel > -1 && iBevestig < iSentinel, `bevestig@${iBevestig} sentinel@${iSentinel}`);
   }
 
+
+  /* ── De lus van 31 augustus: een token die er nog niet was ────────────────
+     De vorige twee keer zat de oorzaak op de server. Deze keer in de browser.
+
+     api/_clerk.js weigert bij een POST bewust de __session-cookie als bewijs
+     (dat is de CSRF-grens) en accepteert alleen een Bearer-token. Dat token
+     komt uit clerkToken(). Die functie keek SYNCHROON of window.Clerk bestond,
+     terwijl de SDK asynchroon geladen wordt -- dus elke API-aanroep die voor
+     het laden viel kreeg een lege string terug, ging zonder Authorization-
+     header de deur uit, en kreeg 401.
+
+     Wat de eigenaar zag: dashboard, er meteen weer uit, opnieuw ingelogd,
+     eruit. In de productielogs 294x POST /api/leads met 401 en 152x POST
+     /api/faro, in bursts van zes per seconde. GET's kwamen er wel door -- die
+     mogen de cookie wel gebruiken -- en dat is waarom het "soms" leek te werken.
+
+     Deze test VOERT clerkToken UIT met een Clerk die te laat komt, in plaats
+     van naar de broncode te kijken. Een vormcontrole zou ook groen blijven bij
+     een await op de verkeerde plek. */
+  console.log('\n— clerkToken wacht op een Clerk die nog laadt —');
+  {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const mod2 = require('../api/dashboard.js');
+    let html = '';
+    await mod2({ method: 'GET', url: '/dashboard', headers: {} },
+               { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+    const vm = require('vm');
+    const bron = (html.match(/async function clerkToken\(\)[\s\S]*?\n\}/) || [''])[0];
+    ck('clerkToken staat in de pagina', !!bron, null);
+
+    const draai = async ({ vertraging, heeftUser }) => {
+      const zand = {
+        CLERK_READY: true,
+        window: {},
+        setTimeout,
+        Promise,
+        console: { warn() {}, error() {} },
+        _initAangeroepen: 0,
+      };
+      /* clerkInit stelt de SDK pas na `vertraging` beschikbaar -- precies de
+         race die live misging. */
+      zand.clerkInit = function () {
+        zand._initAangeroepen++;
+        return new Promise((r) => setTimeout(() => {
+          zand.window.Clerk = {
+            user: heeftUser ? { id: 'u1' } : null,
+            session: { getToken: async () => 'ECHT_TOKEN' },
+          };
+          r(zand.window.Clerk);
+        }, vertraging));
+      };
+      vm.createContext(zand);
+      vm.runInContext(bron + '; this.__f = clerkToken;', zand);
+      return { token: await zand.__f(), zand };
+    };
+
+    const traag = await draai({ vertraging: 120, heeftUser: true });
+    ck('een Clerk die 120ms later klaar is levert alsnog een token',
+       traag.token === 'ECHT_TOKEN', traag.token);
+    ck('en clerkInit is daarvoor echt afgewacht', traag.zand._initAangeroepen === 1, traag.zand._initAangeroepen);
+
+    /* En het omgekeerde moet blijven kloppen: is er echt niemand ingelogd, dan
+       hoort er een lege token uit te komen en mag er niet gewacht worden. */
+    const zandUit = {
+      CLERK_READY: true, window: { Clerk: { user: null, session: null } },
+      setTimeout, Promise, console: { warn() {}, error() {} },
+      clerkInit: async () => null,
+    };
+    vm.createContext(zandUit);
+    vm.runInContext(bron + '; this.__f = clerkToken;', zandUit);
+    const start = Date.now();
+    const leeg = await zandUit.__f();
+    ck('echt uitgelogd geeft een lege token', leeg === '', leeg);
+    ck('en daar wordt niet op gewacht', Date.now() - start < 300, Date.now() - start);
+
+    /* Het tweede gat: Clerk is geladen MET een gebruiker, maar de sessie is
+       even null omdat hij ververst. Dat is een geldige sessie die nog niet
+       klaar is, en daar hoort gewacht te worden. */
+    const zandVerv = {
+      CLERK_READY: true,
+      window: { Clerk: { user: { id: 'u1' }, session: null } },
+      setTimeout, Promise, console: { warn() {}, error() {} },
+      clerkInit: async () => zandVerv.window.Clerk,
+    };
+    vm.createContext(zandVerv);
+    vm.runInContext(bron + '; this.__f = clerkToken;', zandVerv);
+    setTimeout(() => {
+      zandVerv.window.Clerk.session = { getToken: async () => 'NA_VERVERSING' };
+    }, 250);
+    const naVerv = await zandVerv.__f();
+    ck('een sessie die nog ververst wordt afgewacht', naVerv === 'NA_VERVERSING', naVerv);
+  }
+
+  /* De rem. Blijft er iets 401 geven, dan mag de app niet eeuwig knipperen
+     tussen dashboard en inlogscherm. */
+  console.log('\n— de lus heeft een rem —');
+  {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const mod2 = require('../api/dashboard.js');
+    let html = '';
+    await mod2({ method: 'GET', url: '/dashboard', headers: {} },
+               { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+    ck('handleAuthExpired telt hoe vaak hij afgaat',
+       /_authExpiredTijden/.test(html), null);
+    ck('en geeft het na drie keer binnen 30 seconden op',
+       /_authExpiredTijden\.length > 3/.test(html) && /_authOpgegeven = true/.test(html), null);
+    ck('waarbij de pollers stilgezet worden',
+       /_authOpgegeven[\s\S]{0,400}state\.apiKey = ''/.test(html), null);
+  }
+
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })();

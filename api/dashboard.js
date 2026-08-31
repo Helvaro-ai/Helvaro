@@ -12097,7 +12097,52 @@ async function clerkInit() {
 }
 
 async function clerkToken() {
-  if (!CLERK_READY || !window.Clerk || !window.Clerk.session) return '';
+  if (!CLERK_READY) return '';
+
+  /* DIT WAS DE IN- EN UITLOGLUS.
+     Hier stond alleen een synchrone controle op window.Clerk. De SDK wordt
+     asynchroon geladen (clerkInit hierboven), dus elke API-aanroep die VOOR dat
+     laden viel kreeg een lege token terug. Zonder token gaat er geen
+     Authorization-header mee, en api/_clerk.js weigert bij een POST bewust de
+     cookie als bewijs (dat is de CSRF-grens). Dus:
+
+       dashboard start -> ~6 verzoeken tegelijk -> geen token -> 6x 401
+       -> handleAuthExpired() -> inlogscherm
+       -> Clerk is intussen wel geladen en ziet een geldige sessie
+       -> automatisch weer ingelogd -> dashboard start -> race opnieuw
+
+     In de productielogs precies zichtbaar: 294x POST /api/leads met 401 en
+     152x POST /api/faro, in bursts van zes per seconde. GET's kwamen er wel
+     door, want die mogen de cookie wel gebruiken -- vandaar dat het "soms"
+     leek te werken.
+
+     De oplossing is wachten in plaats van een onbevoegd verzoek versturen.
+     clerkInit() is gememoiseerd, dus dit laadt niets dubbel, en het heeft zijn
+     eigen bovengrens van 10 seconden -- lukt het laden niet, dan komen we hier
+     alsnog met een lege token terug en valt de pagina terug op het oude pad.
+     Wachten kan dus nooit oneindig duren. */
+  if (!window.Clerk || !window.Clerk.session) {
+    try { await clerkInit(); } catch (e) { /* clerkInit lost zelf al op met null */ }
+  }
+
+  /* Tweede gat, met dezelfde uitkomst. Clerk kan GELADEN zijn met een
+     ingelogde gebruiker terwijl session even null is: vlak na het inloggen, en
+     wanneer een tabblad dat lang open stond zijn sessie ververst. Dan is er
+     wel degelijk een geldige sessie, hij is alleen nog niet klaar.
+
+     Kort wachten, en alleen in dat ene geval -- als Clerk een user heeft. Is er
+     geen user, dan is de bezoeker echt uitgelogd en moet er niets vertraagd
+     worden. Bovengrens 1,5 seconde: lang genoeg voor een verversing, kort
+     genoeg om nooit als een hangende pagina te voelen. */
+  if (window.Clerk && window.Clerk.user && !window.Clerk.session) {
+    for (var poging = 0; poging < 15 && !window.Clerk.session; poging++) {
+      await new Promise(function (r) { setTimeout(r, 100); });
+    }
+  }
+
+  /* Nog steeds geen sessie na het laden betekent: echt niet ingelogd. Dan is
+     een lege token het juiste antwoord en hoort het 401 te worden. */
+  if (!window.Clerk || !window.Clerk.session) return '';
   try { return (await window.Clerk.session.getToken()) || ''; } catch (e) { return ''; }
 }
 
@@ -13280,7 +13325,31 @@ async function fetchLeads() {
 // Called when any authenticated fetch returns 401. token expired or invalidated.
 // Wipes the session and shows the login screen so the user can re-auth.
 let _authExpiredHandled = false;
+/* Een rem op de lus zelf, los van de oorzaak.
+   De vlag hierboven ontdubbelt maar 600 milliseconden; daarna mag het opnieuw.
+   Blijft er iets 401's geven, dan wipt de app eindeloos tussen dashboard en
+   inlogscherm -- precies wat er gebeurde. Deze teller stopt dat na drie keer
+   binnen dertig seconden en zegt eerlijk wat er aan de hand is, in plaats van
+   te blijven proberen. Beter een scherm dat stilstaat met uitleg dan een dat
+   knippert. */
+let _authExpiredTijden = [];
+let _authOpgegeven = false;
 function handleAuthExpired() {
+  if (_authOpgegeven) return;
+  const nu = Date.now();
+  _authExpiredTijden = _authExpiredTijden.filter((t) => nu - t < 30000);
+  _authExpiredTijden.push(nu);
+  if (_authExpiredTijden.length > 3) {
+    _authOpgegeven = true;
+    try { stopPresencePing && stopPresencePing(); } catch (e) {}
+    try { state.apiKey = ''; } catch (e) {}   // zet elke poller stil
+    try {
+      toast('Inloggen lukt niet en blijft mislukken. Ververs de pagina; blijft dit, '
+        + 'neem dan contact op.', 'error');
+    } catch (e) {}
+    console.error('[auth] meer dan 3 sessieverlopen binnen 30s — gestopt met opnieuw proberen');
+    return;
+  }
   if (_authExpiredHandled) return;
   _authExpiredHandled = true;
   try { toast('Je sessie is verlopen. Log opnieuw in', 'info'); } catch (e) {}

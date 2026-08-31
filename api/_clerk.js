@@ -379,7 +379,24 @@ async function verifySession(req) {
     if (!claims || !claims.sub) return null;
     return await resolveTenant(claims);
   } catch (e) {
-    // Expired or invalid Clerk token. Not noteworthy on its own.
+    /* Hier stond "niet noemenswaardig" en werd alles stil weggeslikt. Dat is
+       precies waarom de in-en-uitloglus twee keer is teruggekomen zonder dat
+       er iets in de logs stond: een verlopen token (normaal, dagelijks) en een
+       verkeerd ingestelde authorizedParties of een onbereikbare Clerk (een BUG
+       die iedereen buitensluit) gaven allebei hetzelfde stille null.
+
+       Verlopen blijft stil -- dat gebeurt legitiem de hele dag. Al het andere
+       wordt gelogd, want dat is een storing en niet een gebruiker.
+
+       Geen token, geen sessie-id en geen e-mailadres in de log: dit is een
+       inloggegeven, en logs worden breder gelezen dan dit bestand. Alleen het
+       type fout en de reden. */
+    const reden = String((e && e.message) || e || '');
+    const verlopen = /expired|exp claim|token-expired|not active yet|nbf/i.test(reden);
+    if (!verlopen) {
+      console.error('[clerk] sessiecontrole mislukt (geen verlopen token):', reden.slice(0, 200),
+        '| toegestane origins:', JSON.stringify(authorizedParties() || 'uit'));
+    }
     return null;
   }
 }
