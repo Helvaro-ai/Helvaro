@@ -244,6 +244,8 @@ function vlagAan(waarde) {
    Eén regel per koude start, niet per verzoek: anders verzuipt de log er in en
    kost het geld. */
 let _configKlachtGedaan = false;
+let _laatsteVerlopenKlacht = 0;
+let _laatsteGeenTokenKlacht = 0;
 function enabled() {
   const vlag = vlagAan(process.env.CLERK_ENABLED);
   const geheim = !!process.env.CLERK_SECRET_KEY;
@@ -406,7 +408,19 @@ async function resolveTenant(claims) {
 async function verifySession(req) {
   if (!enabled()) return null;
   const token = readClerkToken(req);
-  if (!token) return null;
+  if (!token) {
+    /* Ook dit was stil. Bij een POST weigert readClerkToken bewust de cookie
+       (de CSRF-grens), dus "geen token" betekent hier: de pagina stuurde geen
+       Authorization-header mee. Dat is een echte fout in de frontend en hoort
+       niet als een sessieprobleem te lezen. Gedempt, want een uitgelogde
+       bezoeker komt hier ook langs. */
+    if (Date.now() - _laatsteGeenTokenKlacht > 30000) {
+      _laatsteGeenTokenKlacht = Date.now();
+      console.warn('[clerk] geen token in het verzoek —', String(req && req.method || '?'),
+        '| bearer aanwezig:', !!bearerToken(req), '| cookie aanwezig:', !!cookieToken(req));
+    }
+    return null;
+  }
   try {
     const claims = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY,
@@ -429,9 +443,26 @@ async function verifySession(req) {
        type fout en de reden. */
     const reden = String((e && e.message) || e || '');
     const verlopen = /expired|exp claim|token-expired|not active yet|nbf/i.test(reden);
+
+    /* Ook een VERLOPEN token wordt nu gelogd, en dat is een bewuste
+       koerswijziging.
+
+       De eerste versie zweeg bij "verlopen", omdat dat de hele dag legitiem
+       gebeurt. Precies daardoor was er vanavond geen enkele logregel terwijl
+       elke aanroep 401 gaf: als de indeling ernaast zit, zwijgt de enige plek
+       die het antwoord heeft. Een diagnose die alleen praat als hij het al
+       eens is met je aanname, is geen diagnose.
+
+       Verlopen is nog steeds niet alarmerend, dus het gaat op warn en hoogstens
+       eens per 30 seconden -- genoeg om een patroon te zien, te weinig om de
+       log te laten verzuipen of geld te kosten. Al het andere blijft error en
+       gaat er altijd doorheen. */
     if (!verlopen) {
       console.error('[clerk] sessiecontrole mislukt (geen verlopen token):', reden.slice(0, 200),
         '| toegestane origins:', JSON.stringify(authorizedParties() || 'uit'));
+    } else if (Date.now() - _laatsteVerlopenKlacht > 30000) {
+      _laatsteVerlopenKlacht = Date.now();
+      console.warn('[clerk] token afgewezen als VERLOPEN:', reden.slice(0, 200));
     }
     return null;
   }
