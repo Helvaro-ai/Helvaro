@@ -131,19 +131,47 @@ De aanbevolen actie is al gecontroleerd op uitvoerbaarheid (telefoonnummer,
  * @param {object} ctx  { projectCode, userId, lang }
  * @returns {Promise<string>}
  */
-async function buildContextBlock(_ctx) {
-  // NOT WIRED — shape of the real block:
-  //
-  //   Kantoor: <clientName>
-  //   Leads: 128 totaal · 14 nieuw deze week · 31 gekwalificeerd
-  //   Pipeline: €2,4M over 4 fases
-  //   Panden: 9 actief
-  //   Agenda: 3 afspraken de komende 7 dagen
-  //   Vandaag: <ISO date>
-  return [
-    'Kantoorgegevens zijn nog niet aangesloten.',
-    'Gebruik tools voor alle concrete gegevens.',
-  ].join('\n');
+const writes = require('./writes');
+
+async function buildContextBlock(ctx) {
+  /* Wie is dit kantoor, en hoe klinkt het?
+   *
+   * Dit blok stond hier als "Kantoorgegevens zijn nog niet aangesloten", en dat
+   * was precies het gat onder de belofte op de site: "Faro kent je toon, je
+   * aanbod en je sector, en wijkt daar niet van af." Zonder dit blok kende hij
+   * daar niets van -- en er was ook geen tool om het op te vragen.
+   *
+   * Waarom dit in de PROMPT staat en niet alleen in een tool: een tool wordt
+   * aangeroepen als het model eraan denkt. Merkconsistentie is nu juist iets
+   * wat ook moet gelden als het model er NIET aan denkt. De toon hoort in de
+   * context, niet in een optionele stap.
+   *
+   * Alleen de identiteit, niet de cijfers. Aantallen leads en pipelinewaarde
+   * veranderen per uur en horen uit tools te komen, waar ze vers zijn -- in een
+   * promptblok worden ze binnen een gesprek stilletjes oud.
+   *
+   * Faalt zacht: kan het kantoorrecord niet gelezen worden, dan werkt Faro
+   * gewoon door zonder merkcontext. Een chat die weigert omdat een
+   * stijlvoorkeur ontbreekt is erger dan een chat die even algemener klinkt.
+   */
+  const regels = [`Vandaag: ${new Date().toISOString().slice(0, 10)}`];
+  try {
+    const stem = await writes.readBrandVoice(ctx);
+    if (stem.naam)        regels.push(`Kantoor: ${stem.naam}`);
+    if (stem.sector)      regels.push(`Sector: ${stem.sector}`);
+    if (stem.website)     regels.push(`Website: ${stem.website}`);
+    if (stem.aiNaam)      regels.push(`De WhatsApp-AI heet: ${stem.aiNaam}`);
+    if (stem.werkuren)    regels.push(`Werkuren: ${stem.werkuren}`);
+    if (stem.instructies) regels.push(`Huisstijl en werkwijze, zoals het kantoor het zelf opschreef:\n${stem.instructies}`);
+    if (stem.badges)      regels.push(`Sociaal bewijs dat het kantoor gebruikt: ${stem.badges}`);
+    if (stem.geleerd)     regels.push(`Wat er de afgelopen weken het beste werkte in gesprekken:\n${stem.geleerd}`);
+    regels.push('Blijf in deze stem. Wijk er niet van af tenzij de gebruiker er expliciet om vraagt.');
+  } catch (_) {
+    regels.push('Kantoorgegevens konden niet gelezen worden. Gebruik tools voor concrete gegevens'
+      + ' en verzin geen huisstijl.');
+  }
+  regels.push('Gebruik tools voor alle concrete cijfers: die veranderen sneller dan dit blok.');
+  return regels.join('\n');
 }
 
 /**

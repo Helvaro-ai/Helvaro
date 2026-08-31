@@ -214,9 +214,53 @@ async function updatePersona(patch, ctx) {
   return { changed };
 }
 
+/* ── De stem van het kantoor, om te LEZEN ────────────────────────────────────
+ * De site belooft: "Faro kent je toon, je aanbod en je sector, en wijkt daar
+ * niet van af." Dat kon hij niet waarmaken. update_ai_persona kon wel SCHRIJVEN
+ * maar er was geen enkele manier om te LEZEN wat er stond, en het contextblok
+ * in prompt.js gaf letterlijk "Kantoorgegevens zijn nog niet aangesloten".
+ *
+ * Waarom velden op NAAM en niet op id, anders dan de rest van dit bestand:
+ * Airtable geeft bij een gewone GET de velden terug met hun NAAM als sleutel.
+ * De id's in F hierboven werken in formules en bij het schrijven, maar niet om
+ * een leesantwoord mee uit te pakken -- daar zou elk veld undefined zijn en dan
+ * lijkt een volledig ingevuld kantoor leeg.
+ *
+ * Wat er NIET in zit: plan, credits, Stripe-id's, telefoonnummers, sleutels.
+ * Dit gaat over hoe het kantoor KLINKT. De rekening en de geheimen horen niet
+ * in een promptcontext die met elk antwoord meegaat.
+ */
+const STEM_VELDEN = Object.freeze({
+  naam:        'Client Name',
+  sector:      'Niche',
+  website:     'Website',
+  aiNaam:      'AI Name',
+  instructies: 'AI Instructions',
+  werkuren:    'Working Hours',
+  formIntro:   'Form Intro Message',
+  badges:      'Trust Badges',
+  taal:        'Language',
+  geleerd:     'AI Learned Patterns',
+});
+
+async function readBrandVoice(ctx) {
+  const rec = await ownedClient(ctx);
+  const f = rec.fields || {};
+  const uit = {};
+  for (const [sleutel, veld] of Object.entries(STEM_VELDEN)) {
+    const v = f[veld];
+    if (v !== undefined && v !== null && String(v).trim() !== '') uit[sleutel] = String(v).trim();
+  }
+  /* Geleerde patronen worden wekelijks door de cron bijgeschreven en kunnen lang
+     worden. Afkappen, want dit gaat mee in elke prompt. */
+  if (uit.geleerd && uit.geleerd.length > 1200) uit.geleerd = uit.geleerd.slice(0, 1200) + '…';
+  return uit;
+}
+
 module.exports = {
   WriteError,
   LEAD_STATUSES, LOSS_REASONS, PERSONA_FIELDS, F, CLIENTS_TABLE,
   ownedLead, ownedClient,
   setLeadStatus, appendLeadNote, deleteLead, updatePersona,
+  readBrandVoice, STEM_VELDEN,
 };

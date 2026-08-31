@@ -145,6 +145,80 @@ const ctx = { projectCode: 'TELJO', userId: 'user_1' };
     ck(`status "${s}" staat ook in api/leads.js`, leadsSrc.indexOf(`'${s}'`) !== -1, s);
   }
 
+
+  /* ── Wat de website belooft, moet Faro ook kunnen ──────────────────────────
+     Op helvaro.pro staat: "Faro schrijft je advertentieteksten, hooks en
+     varianten om te testen" en "Faro kent je toon, je aanbod en je sector, en
+     wijkt daar niet van af."
+
+     Geen van beide had iets onder zich. Er was alleen write_listing (EEN
+     pandtekst, geen varianten, geen tekenlimiet) en er was geen enkele manier
+     om de huisstijl te LEZEN -- update_ai_persona kon alleen schrijven, dus
+     Faro kon instellingen overschrijven die hij nooit gezien had. */
+  console.log('\n— de beloftes van de site hebben een tool onder zich —');
+  {
+    const tools = require('../api/_faro/tools.js');
+    const namen = tools.ALL.map((t) => t.name);
+    ck('er is een tool die de huisstijl LEEST', namen.indexOf('get_brand_voice') > -1, namen.join(','));
+    ck('en een die advertentieteksten oplevert', namen.indexOf('write_ad_copy') > -1, null);
+    ck('writes.js kan de stem van het kantoor lezen', typeof w.readBrandVoice === 'function', null);
+
+    /* Wat er NIET in de merkcontext mag: die gaat met elke prompt mee. Plan,
+       credits, Stripe-id's en sleutels horen daar niet in -- dat is de
+       rekening, niet de stem. */
+    const velden = Object.values(w.STEM_VELDEN);
+    const verboden = velden.filter((v) => /plan|credit|stripe|key|token|vat|phone|email/i.test(v));
+    ck('en er lekt niets financieels of geheims in mee', verboden.length === 0, verboden.join(','));
+
+    const adTool = tools.ALL.find((t) => t.name === 'write_ad_copy');
+    ck('advertentieteksten zijn een concept, geen publicatie', adTool.kind === 'create', adTool.kind);
+    ck('en de tool vraagt om meerdere varianten',
+       adTool.parameters.properties.variants.type === 'array', null);
+  }
+
+  /* De tekenlimieten zijn de reden dat deze tool meer is dan een doorgeefluik.
+     Een model schrijft met plezier een Google-kop van 44 tekens; die wordt
+     geweigerd en dat merkt de makelaar pas in Ads Manager. */
+  console.log('\n— de tekenlimieten van Meta en Google worden echt geteld —');
+  {
+    const tools = require('../api/_faro/tools.js');
+    const adTool = tools.ALL.find((t) => t.name === 'write_ad_copy');
+
+    const g = await adTool.run({ platform: 'google', variants: [
+      { headline: 'Verkoop je huis in Gent', body: 'Gratis schatting binnen 24 uur.' },
+      { headline: 'Dit is een veel te lange kop voor Google Ads',
+        body: 'En deze tekst is ook bewust veel te lang, ruim boven de negentig tekens die Google toestaat voor een description.' },
+    ] }, ctx);
+    ck('een te lange Google-kop wordt gemeld', /TE LANG/.test(g.components[0].body), g.summary);
+    ck('met variantnummer en het echte aantal tekens',
+       /variant 2 kop \(44\/30\)/.test(g.components[0].body), g.components[0].body.slice(-160));
+
+    /* Een variant met TWEE overtredingen is nog steeds EEN variant. Mijn eerste
+       versie telde de overtredingen en meldde "2 varianten te lang" bij een
+       enkele kapotte variant -- wie er dan twee gaat zoeken vindt er een en
+       vertrouwt de melding daarna niet meer. */
+    ck('een variant met twee fouten telt als een variant',
+       g.data.variantenTeLang === 1 && g.data.overtredingen === 2, JSON.stringify(g.data));
+
+    const ok = await adTool.run({ platform: 'meta', variants: [
+      { headline: 'Klaar om te verkopen?', body: 'Wij bellen je binnen het uur terug.' },
+    ] }, ctx);
+    ck('binnen de limiet is er geen waarschuwing', !/TE LANG/.test(ok.components[0].body), null);
+    ck('en Meta heeft een RUIMERE koplimiet dan Google (40 vs 30)',
+       /\[21\/40\]/.test(ok.components[0].body), ok.components[0].body.slice(0, 120));
+
+    const leeg = await adTool.run({ platform: 'google', variants: [] }, ctx);
+    ck('zonder varianten schrijft de tool niets voor je',
+       /Schrijf de advertentieteksten zelf/.test(leeg.summary), leeg.summary);
+    const fout = await adTool.run({ platform: 'tiktok', variants: [{ headline: 'x', body: 'y' }] }, ctx);
+    ck('een onbekend platform wordt geweigerd', /meta.*google|google.*meta/i.test(fout.summary), fout.summary);
+
+    /* En dat er NIETS gepubliceerd wordt moet in het antwoord staan, niet
+       alleen in de beschrijving die de gebruiker nooit ziet. */
+    ck('het antwoord zegt dat er niets gepubliceerd is',
+       /niets gepubliceerd/.test(g.summary), g.summary);
+  }
+
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);
 })();

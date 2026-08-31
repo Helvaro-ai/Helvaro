@@ -57,6 +57,7 @@
  */
 
 const schema = require('./schema');
+const writes = require('./writes');
 const fixtures = require('./fixtures');
 const images = require('../_images');
 const data = require('./data');
@@ -665,6 +666,61 @@ const readTools = [
           }),
         ],
       };
+    }),
+  },
+
+  /* ── De stem van het kantoor, opvraagbaar ──────────────────────────────────
+     Er was geen enkele manier om te LEZEN hoe dit kantoor klinkt.
+     update_ai_persona kon wel schrijven. Gevolg: Faro kon de instellingen van
+     een makelaar overschrijven zonder ze ooit gezien te hebben, en de belofte
+     "Faro kent je toon, je aanbod en je sector" had niets onder zich.
+
+     Het contextblok in prompt.js zet deze gegevens al bij elke beurt in de
+     prompt. Deze tool bestaat daarnaast om twee redenen: het model kan er
+     expliciet naar teruggrijpen voordat het advertentieteksten schrijft, en
+     de makelaar kan vragen "wat weet jij over ons?" en een eerlijk antwoord
+     krijgen in plaats van een samenvatting uit het geheugen. */
+  {
+    name: 'get_brand_voice',
+    kind: 'read',
+    description:
+      'Haal op hoe dit kantoor klinkt: naam, sector, website, de naam van de WhatsApp-AI, '
+      + 'de eigen huisstijl-instructies, werkuren, sociaal bewijs en wat er de laatste weken '
+      + 'het beste werkte. Gebruik dit VOORDAT je advertentieteksten, campagnes of pandteksten '
+      + 'schrijft, zodat alles in dezelfde stem staat.',
+    parameters: { type: 'object', properties: {} },
+    run: readTool('get_brand_voice', async (_args, ctx) => {
+      let stem;
+      try {
+        stem = await writes.readBrandVoice(ctx);
+      } catch (err) {
+        /* Eerlijk leeg is beter dan verzonnen vol: zegt deze tool niets, dan
+           gaat het model zelf een huisstijl bedenken en klinkt elke klant
+           hetzelfde. */
+        return stub('De kantoorgegevens konden niet gelezen worden. Schrijf niets in een '
+          + 'verzonnen huisstijl -- vraag de gebruiker hoe ze willen klinken.', { stem: null }, []);
+      }
+
+      const labels = {
+        naam: 'Kantoor', sector: 'Sector', website: 'Website', aiNaam: 'WhatsApp-AI heet',
+        instructies: 'Huisstijl en werkwijze', werkuren: 'Werkuren', formIntro: 'Formuliertekst',
+        badges: 'Sociaal bewijs', taal: 'Taal van de leads', geleerd: 'Wat het beste werkte',
+      };
+      const ingevuld = Object.keys(labels).filter((k) => stem[k]);
+      if (!ingevuld.length) {
+        return stub('Dit kantoor heeft nog geen huisstijl ingevuld. Vraag naar de toon, het aanbod '
+          + 'en de sector voordat je iets schrijft -- en bied aan het op te slaan met '
+          + 'update_ai_persona.', { stem: {} }, []);
+      }
+
+      const regels = ingevuld.map((k) => `${labels[k]}: ${stem[k]}`);
+      /* Welke velden LEEG zijn is bruikbare informatie: dan kan het model er
+         gericht naar vragen in plaats van eromheen te schrijven. */
+      const leeg = Object.keys(labels).filter((k) => !stem[k]).map((k) => labels[k]);
+      return stub(
+        regels.join('\n') + (leeg.length ? `\n\nNog niet ingevuld: ${leeg.join(', ')}.` : ''),
+        { stem, ingevuld: ingevuld.length, leeg: leeg.length },
+        []);
     }),
   },
 
@@ -1326,6 +1382,121 @@ const actTools = [
           confirmLabel: 'Toevoegen',
           payload: args,
         })]);
+    },
+  },
+
+  /* ── Advertentieteksten voor Meta en Google ────────────────────────────────
+     De site belooft "ad copy, hooks en varianten om te testen". Daar stond
+     niets tegenover: write_listing levert EEN pandtekst, en dat is iets anders
+     dan drie varianten van een advertentie binnen een tekenlimiet.
+
+     Waarom de limieten hier gecontroleerd worden en niet alleen in de
+     beschrijving staan: een model schrijft met plezier een Google-kop van 45
+     tekens. Die wordt door Google geweigerd, en dat merkt de makelaar pas in
+     Ads Manager -- ver van hier, zonder dat iets naar deze tekst wijst. De
+     limieten zijn geen stijladvies maar de regels van het platform, dus ze
+     horen geteld te worden op de plek waar de tekst gemaakt wordt.
+
+     Er wordt NIETS gepubliceerd. Dit levert concepten op, net als
+     write_listing: kind 'create', geen bevestigingspoort, want er verandert
+     niets buiten Helvaro. Naar Meta of Google duwen zou een aparte,
+     bevestigde stap zijn met een advertentieaccount eraan. */
+  {
+    name: 'write_ad_copy',
+    kind: 'create',
+    description:
+      'Lever advertentieteksten op als bewerkbare concepten, met meerdere varianten om te testen. '
+      + 'SCHRIJF DE TEKSTEN ZELF en geef ze mee in `variants` -- deze tool telt de tekens, '
+      + 'bewaart ze en toont ze; hij schrijft niet voor jou. '
+      + 'Roep eerst get_brand_voice aan zodat de teksten in de stem van dit kantoor staan. '
+      + 'Er wordt niets gepubliceerd.',
+    parameters: {
+      type: 'object',
+      properties: {
+        platform: { type: 'string', enum: ['meta', 'google'],
+                    description: 'meta = Facebook/Instagram, google = Google Ads (zoeknetwerk).' },
+        angle:    { type: 'string', description: 'De invalshoek of doelgroep die deze set test.' },
+        variants: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 8,
+          description: 'Meerdere varianten om tegen elkaar te testen. Varieer de HOEK, niet alleen de woorden.',
+          items: {
+            type: 'object',
+            properties: {
+              headline: { type: 'string', description: 'De kop. Google max 30 tekens, Meta max 40.' },
+              body:     { type: 'string', description: 'De tekst. Google max 90 tekens, Meta ~125 voor het afkappen.' },
+              hook:     { type: 'string', description: 'Optioneel: de haak of hoek van deze variant in een paar woorden.' },
+            },
+            required: ['headline', 'body'],
+          },
+        },
+      },
+      required: ['platform', 'variants'],
+    },
+    async run(args, _ctx) {
+      /* De echte limieten van de platforms, augustus 2026. Google weigert
+         hierboven; Meta kapt af in de feed -- vandaar 'max' en 'afkap'. */
+      const LIMIETEN = {
+        google: { headline: 30, body: 90,  hard: true,
+                  naam: 'Google Ads', uitleg: 'Google WEIGERT teksten boven de limiet.' },
+        meta:   { headline: 40, body: 125, hard: false,
+                  naam: 'Meta (Facebook/Instagram)', uitleg: 'Meta kapt langere tekst af in de feed met "meer weergeven".' },
+      };
+      const platform = String(args.platform || '').toLowerCase();
+      const L = LIMIETEN[platform];
+      if (!L) {
+        return { summary: 'Kies platform "meta" of "google".', data: { draft: null }, components: [] };
+      }
+
+      const varianten = Array.isArray(args.variants) ? args.variants.slice(0, 8) : [];
+      if (!varianten.length) {
+        return {
+          summary: 'Geen varianten meegegeven. Schrijf de advertentieteksten zelf en geef ze mee in `variants`.',
+          data: { draft: null }, components: [],
+        };
+      }
+
+      const teLang = [];
+      /* Apart bijgehouden, want een variant kan TWEE overtredingen hebben (kop
+         en tekst). Tellen op teLang.length zou dan "2 varianten te lang"
+         melden terwijl het er een is -- en een makelaar die er twee gaat zoeken
+         vindt er maar een en vertrouwt de melding daarna niet meer. */
+      const variantenTeLang = new Set();
+      const regels = varianten.map((v, n) => {
+        const kop  = String((v && v.headline) || '').trim();
+        const body = String((v && v.body) || '').trim();
+        const haak = String((v && v.hook) || '').trim();
+        if (kop.length  > L.headline) { teLang.push(`variant ${n + 1} kop (${kop.length}/${L.headline})`); variantenTeLang.add(n); }
+        if (body.length > L.body)     { teLang.push(`variant ${n + 1} tekst (${body.length}/${L.body})`); variantenTeLang.add(n); }
+        return [
+          `${n + 1}. ${haak ? haak + ' — ' : ''}${kop}   [${kop.length}/${L.headline}]`,
+          `   ${body}   [${body.length}/${L.body}]`,
+        ].join('\n');
+      });
+
+      /* De uitkomst zegt WELKE variant te lang is en hoeveel. "Sommige teksten
+         zijn te lang" laat de makelaar zelf tellen; dit is precies het soort
+         werk dat de computer hoort te doen. */
+      const waarschuwing = teLang.length
+        ? `\n\nTE LANG: ${teLang.join(', ')}. ${L.uitleg}`
+        : '';
+
+      const titel = `${L.naam}${args.angle ? ' — ' + args.angle : ''}`;
+      return {
+        summary: `${varianten.length} advertentievariant(en) voor ${L.naam} opgeleverd`
+          + (variantenTeLang.size
+              ? `, waarvan ${variantenTeLang.size} boven de limiet`
+              : ', alle binnen de limiet')
+          + '. Er is niets gepubliceerd.',
+        data: { platform, variants: varianten.length, variantenTeLang: variantenTeLang.size, overtredingen: teLang.length },
+        components: [schema.draft({
+          id: 'ad-' + Date.now(),
+          title: titel,
+          body: regels.join('\n\n') + waarschuwing,
+          meta: { platform, varianten: varianten.length, binnenLimiet: variantenTeLang.size === 0 },
+        })],
+      };
     },
   },
 

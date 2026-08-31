@@ -14,6 +14,46 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro maakt nu advertentieteksten, en kent eindelijk je huisstijl
+
+Op de website staat dat Faro je advertentieteksten schrijft, hooks en varianten
+om te testen, en dat hij je toon, je aanbod en je sector kent en daar niet van
+afwijkt. Daar stond bijna niets tegenover.
+
+**Wat er niet was.** De enige schrijftool was `write_listing`: één pandtekst,
+geen varianten, geen tekenlimiet, niets dat over advertenties gaat. En de
+huisstijl kon Faro alleen *overschrijven* — er was geen enkele manier om te
+LEZEN wat er stond. Het contextblok in de prompt zei letterlijk
+"Kantoorgegevens zijn nog niet aangesloten". Faro kende je toon dus niet, en kon
+je instellingen aanpassen zonder ze ooit gezien te hebben.
+
+**Advertentieteksten voor Meta en Google.** Faro levert nu meerdere varianten
+per keer op, met de hoek erbij, als bewerkbaar concept. Er wordt niets
+gepubliceerd — dat zou een aparte stap zijn met een advertentieaccount eraan.
+
+Het nuttige zit in de **tekenlimieten**: Google weigert koppen boven 30 tekens
+en teksten boven 90, Meta kapt af rond 40 en 125. Een AI schrijft met plezier
+een kop van 44 tekens, en dat merk je normaal pas in Ads Manager — ver van waar
+de tekst gemaakt is. Faro telt nu per variant en zegt precies welke eroverheen
+gaat en met hoeveel.
+
+**En hij kent je stem.** Je kantoornaam, sector, website, de naam van je
+WhatsApp-AI, je eigen huisstijl-instructies, je werkuren, je sociaal bewijs en
+wat er de afgelopen weken het beste werkte in gesprekken — dat gaat nu bij elke
+beurt mee in de context, niet alleen als Faro eraan denkt het op te vragen.
+Merkconsistentie moet ook gelden wanneer het model er níét aan denkt.
+
+Wat er bewust NIET in die context zit: je plan, je credits, je Stripe-gegevens,
+telefoonnummers en sleutels. Dat is je rekening, niet je stem, en het hoort niet
+in een tekst die met elk antwoord meereist. Daar staat een test op.
+
+Staat je huisstijl nog leeg, dan zegt Faro dat en vraagt ernaar — in plaats van
+er zelf een te verzinnen, want dan klinkt elk kantoor hetzelfde.
+
+**Actie:** geen. Vul je AI-instructies in onder AI Persoonlijkheid als je wil dat
+Faro scherper in jouw stem schrijft.
+
+
 ### Faro kan nu echt een campagne voor je maken
 
 De campagne-opslag zat er al: aanmaken, leads selecteren, afgemelde leads er
