@@ -25,6 +25,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 - `createTemplate` ondersteunt nu een FOOTER-component.
 - Dry run werkt nu **zonder credentials** — je kunt de payloads nalezen voordat je iets
   naar Meta stuurt. Alleen `--list` en `--commit` vragen om WABA_ID + token.
+- **Bugfix in de templates zelf**: de bodies gebruikten `{{2}}`=bedrijf en `{{3}}`=datum,
+  maar `leads.js:3172` en `cron-followup.js:1387` sturen `[firstName, when, clientName]`.
+  Een bevestiging zou gelezen hebben als "je afspraak bij dinsdag 12 augustus is bevestigd
+  voor KinePraktijk Gent". Elke template declareert nu `params` semantisch
+  (`['naam','wanneer','bedrijf']`) en een build-time check faalt hard als het aantal
+  variabelen in de body niet klopt met `params`. Mutatietest: guard gooit correct.
+- `helvaro_nieuwe_lead_util` had 2 variabelen maar INTRO stuurt er 3 (naam, ai, bedrijf) —
+  rechtgezet, zodat het echt een drop-in vervanger is.
 - Let op: een template-body is vaste tekst. Faro's vrije campagne-`Message` gaat dus niet
   letterlijk mee; de verzendkant mapt hem naar `{{3}}` (een korte aanbod-regel).
 

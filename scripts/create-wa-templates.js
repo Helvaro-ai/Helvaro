@@ -67,25 +67,35 @@ const LANGS = ['nl_BE', 'fr_BE', 'en_GB', 'de'];
 // body you must write out in full. Same name + different language = one template
 // each, and each counts against the WABA template limit.
 //
-// Variables are POSITIONAL and identical across languages, so the send-side code
-// can stay language-agnostic:
-//   {{1}} lead name   {{2}} client (business) name   {{3}} datetime / offer line
+// PARAMETER ORDER IS A CONTRACT WITH THE SENDING CODE.
+// Template variables are positional, so {{2}} means whatever the caller passes
+// second — get it wrong and the confirmation reads "your appointment with
+// Tuesday 12 August is confirmed for KinePraktijk Gent". Each template below
+// therefore declares `params` in SEMANTIC terms, and the example values are
+// looked up by that name rather than by position. The order must match:
+//
+//   BOOKING_TEMPLATE_NAME   leads.js:3172   [firstName, when, clientName]
+//   REMINDER_TEMPLATE_NAME  cron-followup.js:1387 [firstName, when, clientName]
+//   INTRO_TEMPLATE_NAME     form.js:326     [firstName, aiName, clientName]
+//   NOTIFY_TEMPLATE_NAME    form.js:379     [leadName, phone, projectCode]
+//   FOLLOWUP/MANUAL_REPLY   leads.js:2376   [firstName]
 const TEKSTEN = {
   helvaro_afspraak_bevestiging: {
     category: 'UTILITY',
     usedBy: 'BOOKING_TEMPLATE_NAME',
+    params: ['naam', 'wanneer', 'bedrijf'],
     body: {
       nl_BE:
-        'Hoi {{1}}, je afspraak bij {{2}} is bevestigd voor {{3}}.\n\n' +
+        'Hoi {{1}}, je afspraak is bevestigd voor {{2}} bij {{3}}.\n\n' +
         'Kan je er niet bij zijn? Antwoord op dit bericht, dan zoeken we een ander moment.',
       fr_BE:
-        'Bonjour {{1}}, votre rendez-vous chez {{2}} est confirmé pour {{3}}.\n\n' +
+        'Bonjour {{1}}, votre rendez-vous est confirmé pour {{2}} chez {{3}}.\n\n' +
         'Un empêchement ? Répondez à ce message et nous trouverons un autre moment.',
       en_GB:
-        'Hi {{1}}, your appointment with {{2}} is confirmed for {{3}}.\n\n' +
+        'Hi {{1}}, your appointment is confirmed for {{2}} with {{3}}.\n\n' +
         'Can\'t make it? Reply to this message and we\'ll find another time.',
       de:
-        'Hallo {{1}}, Ihr Termin bei {{2}} ist bestätigt für {{3}}.\n\n' +
+        'Hallo {{1}}, Ihr Termin ist bestätigt für {{2}} bei {{3}}.\n\n' +
         'Sie können nicht? Antworten Sie auf diese Nachricht, dann finden wir einen anderen Termin.',
     },
   },
@@ -93,61 +103,65 @@ const TEKSTEN = {
   helvaro_afspraak_herinnering: {
     category: 'UTILITY',
     usedBy: 'REMINDER_TEMPLATE_NAME',
+    params: ['naam', 'wanneer', 'bedrijf'],
     body: {
       nl_BE:
-        'Hoi {{1}}, kleine herinnering: je afspraak bij {{2}} staat gepland voor {{3}}.\n\n' +
+        'Hoi {{1}}, kleine herinnering: je afspraak staat gepland voor {{2}} bij {{3}}.\n\n' +
         'Tot dan! Antwoord gerust op dit bericht als er iets gewijzigd is.',
       fr_BE:
-        'Bonjour {{1}}, petit rappel : votre rendez-vous chez {{2}} est prévu pour {{3}}.\n\n' +
+        'Bonjour {{1}}, petit rappel : votre rendez-vous est prévu pour {{2}} chez {{3}}.\n\n' +
         'À bientôt ! Répondez à ce message si quelque chose a changé.',
       en_GB:
-        'Hi {{1}}, a quick reminder: your appointment with {{2}} is scheduled for {{3}}.\n\n' +
+        'Hi {{1}}, a quick reminder: your appointment is scheduled for {{2}} with {{3}}.\n\n' +
         'See you then! Reply to this message if anything has changed.',
       de:
-        'Hallo {{1}}, kurze Erinnerung: Ihr Termin bei {{2}} ist für {{3}} geplant.\n\n' +
+        'Hallo {{1}}, kurze Erinnerung: Ihr Termin ist für {{2}} bei {{3}} geplant.\n\n' +
         'Bis dann! Antworten Sie auf diese Nachricht, falls sich etwas geändert hat.',
     },
   },
 
   // COST OPTIMISATION (optional). Meta bills per delivered template message and
   // Belgium sits in "Rest of Western Europe", where MARKETING (~EUR0.11/msg) costs
-  // roughly 2x UTILITY (~EUR0.05/msg). The existing first-contact template
+  // roughly 2x UTILITY (~EUR0.05/msg). The existing INTRO template
   // `helvaro_nieuwe_lead` is MARKETING, but it is a service reply to someone who
   // just filled in a form ASKING to be contacted — a defensible UTILITY case.
   // On 100 leads/month that is ~EUR7/client/month, and it scales with every client.
   //   Risk: Meta may re-categorise it back to MARKETING. That is a SAFE failure
   //   mode — you simply pay the old rate; nothing breaks.
+  // Same 3 params as INTRO_TEMPLATE_NAME so it is a drop-in replacement.
   helvaro_nieuwe_lead_util: {
     category: 'UTILITY',
-    usedBy: '(optioneel) goedkoper alternatief voor helvaro_nieuwe_lead',
-    vars: 2,
+    usedBy: '(optioneel) goedkoper alternatief voor INTRO_TEMPLATE_NAME',
+    params: ['naam', 'ai', 'bedrijf'],
     body: {
       nl_BE:
-        'Hoi {{1}}, bedankt voor je aanvraag bij {{2}}.\n\n' +
+        'Hoi {{1}}, {{2}} hier van {{3}}. Bedankt voor je aanvraag.\n\n' +
         'Ik help je graag verder — mag ik je een paar korte vragen stellen zodat we je goed kunnen helpen?',
       fr_BE:
-        'Bonjour {{1}}, merci pour votre demande chez {{2}}.\n\n' +
+        'Bonjour {{1}}, ici {{2}} de {{3}}. Merci pour votre demande.\n\n' +
         'Je vous aide volontiers — puis-je vous poser quelques questions afin de bien vous orienter ?',
       en_GB:
-        'Hi {{1}}, thanks for your enquiry with {{2}}.\n\n' +
+        'Hi {{1}}, this is {{2}} from {{3}}. Thanks for your enquiry.\n\n' +
         'I\'m happy to help — may I ask a few short questions so we can assist you properly?',
       de:
-        'Hallo {{1}}, vielen Dank für Ihre Anfrage bei {{2}}.\n\n' +
+        'Hallo {{1}}, hier ist {{2}} von {{3}}. Vielen Dank für Ihre Anfrage.\n\n' +
         'Ich helfe Ihnen gerne weiter — darf ich Ihnen ein paar kurze Fragen stellen, damit wir Sie gut beraten können?',
     },
   },
 
   // CAMPAIGNS (api/_campagnes.js). A campaign targets leads whose 24h window is
   // long closed, so it can only go out as an approved MARKETING template.
-  //   IMPORTANT: Faro writes a campaign `Message` freely, but a template body is
-  //   FIXED text — Meta rejects templates that are mostly one open variable. So the
-  //   campaign message is NOT sent verbatim: the send-side maps it into {{3}}, one
-  //   short offer line. Keep {{3}} to a sentence or two.
+  //   No sender exists yet, so THIS declaration defines the contract: whoever
+  //   implements verstuur() must pass [leadName, clientName, offerLine].
+  //   IMPORTANT: a template body is FIXED text — Meta rejects templates that are
+  //   mostly one open variable. Faro's free-written campaign `Message` is therefore
+  //   NOT sent verbatim; it maps into {{3}} as one short offer line.
   //   The STOP footer is required-in-spirit for marketing and is already understood
-  //   by api/_optout.js, which recognises "stop" in every language below.
+  //   by api/_optout.js, which matches both "stop" and "stopp".
   helvaro_nieuw_aanbod: {
     category: 'MARKETING',
     usedBy: 'CAMPAIGN_TEMPLATE_NAME (api/_campagnes.js)',
+    params: ['naam', 'bedrijf', 'aanbod'],
     body: {
       nl_BE:
         'Hallo {{1}}, we hebben nieuws vanuit {{2}}.\n\n{{3}}\n\n' +
@@ -171,99 +185,70 @@ const TEKSTEN = {
   },
 };
 
-// Sample values shown to Meta's reviewer. They must be in the template's own
-// language, and there must be exactly one per variable.
+// Sample values shown to Meta's reviewer, keyed by SEMANTIC name so they follow
+// each template's own `params` order. They must be in the template's language.
 const VOORBEELDEN = {
-  nl_BE: ['Jan', 'KinePraktijk Gent', 'dinsdag 12 augustus om 14:30'],
-  fr_BE: ['Marie', 'KinePraktijk Gent', 'mardi 12 août à 14h30'],
-  en_GB: ['Emma', 'KinePraktijk Gent', 'Tuesday 12 August at 14:30'],
-  de: ['Lukas', 'KinePraktijk Gent', 'Dienstag, 12. August um 14:30 Uhr'],
-};
-
-// {{3}} carries an offer line for campaigns, not a datetime.
-const AANBOD_VOORBEELD = {
-  nl_BE: 'Nieuw in de verkoop: ruime gezinswoning in Deinze, 3 slaapkamers en tuin — 349.000 euro.',
-  fr_BE: 'Nouveau à la vente : maison familiale spacieuse à Deinze, 3 chambres et jardin — 349.000 euros.',
-  en_GB: 'New on the market: spacious family home in Deinze, 3 bedrooms and a garden — 349,000 euro.',
-  de: 'Neu im Angebot: geräumiges Familienhaus in Deinze, 3 Schlafzimmer und Garten — 349.000 Euro.',
+  nl_BE: {
+    naam: 'Jan',
+    ai: 'Sofie',
+    bedrijf: 'KinePraktijk Gent',
+    wanneer: 'dinsdag 12 augustus om 14:30',
+    aanbod: 'Nieuw in de verkoop: ruime gezinswoning in Deinze, 3 slaapkamers en tuin — 349.000 euro.',
+  },
+  fr_BE: {
+    naam: 'Marie',
+    ai: 'Sofie',
+    bedrijf: 'KinePraktijk Gent',
+    wanneer: 'mardi 12 août à 14h30',
+    aanbod: 'Nouveau à la vente : maison familiale spacieuse à Deinze, 3 chambres et jardin — 349.000 euros.',
+  },
+  en_GB: {
+    naam: 'Emma',
+    ai: 'Sofie',
+    bedrijf: 'KinePraktijk Gent',
+    wanneer: 'Tuesday 12 August at 14:30',
+    aanbod: 'New on the market: spacious family home in Deinze, 3 bedrooms and a garden — 349,000 euro.',
+  },
+  de: {
+    naam: 'Lukas',
+    ai: 'Sofie',
+    bedrijf: 'KinePraktijk Gent',
+    wanneer: 'Dienstag, 12. August um 14:30 Uhr',
+    aanbod: 'Neu im Angebot: geräumiges Familienhaus in Deinze, 3 Schlafzimmer und Garten — 349.000 Euro.',
+  },
 };
 
 const TEMPLATES = [];
 for (const [name, def] of Object.entries(TEKSTEN)) {
   for (const language of LANGS) {
-    const aantal = def.vars || 3;
-    const voorbeelden = VOORBEELDEN[language].slice(0, aantal);
-    if (def.category === 'MARKETING') voorbeelden[2] = AANBOD_VOORBEELD[language];
+    const body = def.body[language];
+    const examples = def.params.map((k) => VOORBEELDEN[language][k]);
+
+    // Meta rejects a template whose example count does not match its variable
+    // count, and a silent mismatch here is exactly the bug `params` exists to
+    // prevent. Fail loudly at build time instead of at submit time.
+    const hoogste = Math.max(0, ...[...body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1])));
+    if (hoogste !== def.params.length) {
+      throw new Error(
+        `${name} (${language}): body uses {{1}}..{{${hoogste}}} but params declares ` +
+          `${def.params.length} (${def.params.join(', ')})`
+      );
+    }
+    if (examples.some((v) => v === undefined)) {
+      throw new Error(`${name} (${language}): missing example for one of ${def.params.join(', ')}`);
+    }
+
     TEMPLATES.push({
       name,
       language,
       category: def.category,
-      body: def.body[language],
+      body,
       footer: def.footer ? def.footer[language] : null,
-      examples: voorbeelden,
+      examples,
       usedBy: def.usedBy,
     });
   }
 }
-
-
-// ── Graph API helpers ──────────────────────────────────────────────────────
-
-function graphUrl(path) {
-  return `https://graph.facebook.com/${GRAPH_VERSION}/${path}`;
-}
-
-async function listTemplates() {
-  const res = await fetch(
-    graphUrl(`${WABA_ID}/message_templates?fields=name,status,category,language&limit=200`),
-    { headers: { Authorization: `Bearer ${TOKEN}` } }
-  );
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = data && data.error ? data.error : {};
-    throw new Error(
-      `list failed (HTTP ${res.status}): ${err.message || 'unknown error'}` +
-        (err.code === 200 || /permission/i.test(err.message || '')
-          ? '\n  -> This usually means the token lacks the `whatsapp_business_management` scope.'
-          : '')
-    );
-  }
-  return Array.isArray(data.data) ? data.data : [];
-}
-
-async function createTemplate(tpl) {
-  const payload = {
-    name: tpl.name,
-    language: tpl.language,
-    category: tpl.category,
-    components: [
-      {
-        type: 'BODY',
-        text: tpl.body,
-        example: { body_text: [tpl.examples] },
-      },
-    ],
-  };
-  // Footers carry no variables, so no `example` block is needed.
-  if (tpl.footer) payload.components.push({ type: 'FOOTER', text: tpl.footer });
-
-  const res = await fetch(graphUrl(`${WABA_ID}/message_templates`), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = data && data.error ? data.error : {};
-    throw new Error(`HTTP ${res.status}: ${err.error_user_msg || err.message || 'unknown error'}`);
-  }
-  return data;
-}
-
-// ── Main ───────────────────────────────────────────────────────────────────
 
 async function fetchExisting() {
   console.log(`WABA ${WABA_ID} — fetching existing templates...\n`);
