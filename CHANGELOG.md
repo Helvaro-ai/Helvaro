@@ -14,6 +14,21 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### WhatsApp-templates: 4 talen + campagne-template
+
+- `scripts/create-wa-templates.js` submit nu **16** templates (4 sjablonen x nl_BE/fr_BE/en_GB/de)
+  in plaats van 3 Nederlandstalige. Franstalige of Engelstalige klanten kregen tot nu toe
+  een Nederlandse afspraakbevestiging.
+- Nieuw: `helvaro_nieuw_aanbod` (MARKETING) — de template die `api/_campagnes.js` nodig heeft
+  om leads buiten het 24u-venster te bereiken. Met verplichte opt-out-footer ("Antwoord STOP"),
+  die `api/_optout.js` in alle vier de talen herkent (geverifieerd: `stop` + `stopp`).
+- `createTemplate` ondersteunt nu een FOOTER-component.
+- Dry run werkt nu **zonder credentials** — je kunt de payloads nalezen voordat je iets
+  naar Meta stuurt. Alleen `--list` en `--commit` vragen om WABA_ID + token.
+- Let op: een template-body is vaste tekst. Faro's vrije campagne-`Message` gaat dus niet
+  letterlijk mee; de verzendkant mapt hem naar `{{3}}` (een korte aanbod-regel).
+
+
 ### Gevonden: waarom je er steeds werd uitgegooid
 
 Eén ontbrekende voorwaarde in de authenticatie van `/api/leads`, en die wees
