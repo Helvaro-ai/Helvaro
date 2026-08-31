@@ -470,5 +470,49 @@ async function verifySession(req) {
 
 function forget(userId) { _userCache.delete(String(userId || '')); }
 
+/* TIJDELIJK. Vertelt WAAROM een sessie geweigerd wordt, via het antwoord in
+   plaats van via de log -- de log-API van Vercel gaf vanavond herhaaldelijk
+   time-outs, en een diagnose die je niet kunt uitlezen is geen diagnose.
+
+   Bewust alleen booleans en de fout-KLASSE. Geen token, geen sessie-id, geen
+   e-mailadres: dat zijn inloggegevens en die horen nooit in een antwoord.
+
+   Hoort eruit zodra de oorzaak gevonden is. */
+async function diagnose(req) {
+  const vlag = vlagAan(process.env.CLERK_ENABLED);
+  const geheim = !!process.env.CLERK_SECRET_KEY;
+  const uit = { clerkVlag: vlag, geheimAanwezig: geheim, aan: vlag && geheim };
+  if (!uit.aan) return uit;
+  const token = readClerkToken(req);
+  uit.bearerAanwezig = !!bearerToken(req);
+  uit.cookieAanwezig = !!cookieToken(req);
+  uit.tokenGevonden = !!token;
+  uit.methode = String((req && req.method) || '?');
+  if (!token) return uit;
+  try {
+    const claims = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+      authorizedParties: authorizedParties(),
+    });
+    uit.tokenGeldig = true;
+    uit.heeftSub = !!(claims && claims.sub);
+    try {
+      const t = await resolveTenant(claims);
+      uit.tenantGevonden = !!t;
+      uit.tenantHeeftProjectCode = !!(t && t.projectCode);
+      uit.tenantPending = !!(t && t.pending);
+    } catch (e2) {
+      uit.tenantFout = String((e2 && e2.name) || 'Error');
+      uit.tenantReden = String((e2 && e2.message) || '').slice(0, 120);
+    }
+  } catch (e) {
+    uit.tokenGeldig = false;
+    uit.foutKlasse = String((e && e.name) || 'Error');
+    uit.foutReden = String((e && e.message) || '').slice(0, 160);
+    uit.toegestaneOrigins = authorizedParties() || 'uit';
+  }
+  return uit;
+}
+
 module.exports = {
-  vlagAan, enabled, serverKlaar, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };
+  vlagAan, enabled, serverKlaar, diagnose, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };

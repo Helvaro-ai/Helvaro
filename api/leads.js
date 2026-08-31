@@ -211,6 +211,12 @@ module.exports = async function handler(req, res) {
   // differently. It runs BEFORE the token check on purpose: a Clerk request
   // carries only Clerk's own __session cookie, so requiring the legacy token
   // first would 401 every Clerk user before they ever got here.
+  // TIJDELIJK: ?authdiag=1 vertelt waarom een sessie geweigerd wordt. Alleen
+  // booleans en een foutklasse -- nooit het token zelf. Eruit zodra dit opgelost is.
+  if (req.query && req.query.authdiag === '1') {
+    return res.status(200).json(await _clerk.diagnose(req));
+  }
+
   const clerkSession = await _clerk.verifySession(req);
 
   /* ── MODE: support. Een bericht aan ons, verstuurd vanuit de app ───────────
