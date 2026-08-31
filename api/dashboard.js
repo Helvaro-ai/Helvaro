@@ -22710,12 +22710,24 @@ async function loadGcalStatus() {
       body: JSON.stringify({ mode: 'status' })
     });
     var d = await r.json();
-    if (d && d.connected) {
-      sub.textContent = 'Gekoppeld' + (d.email ? ' — ' + d.email : '') + '. Afspraken worden gesynct met je Google Agenda.';
+    if (d && d.connected && d.needsReauth) {
+      /* Verbonden EN kapot. Dit is de toestand die er niet was: het token staat
+         opgeslagen, dus het scherm zei "gekoppeld", maar Google weigert het.
+         Zolang het toestemmingsscherm op Testing staat verloopt een
+         verversingstoken elke zeven dagen, dus dit is geen randgeval.
+         De koppelknop moet hier zichtbaar zijn -- dat is de enige uitweg. */
+      sub.textContent = tr('gcal.reauth', { email: d.email ? ' — ' + d.email : '' });
+      sub.style.color = 'var(--warning-ink, #b45309)';
+      if (cBtn) cBtn.style.display = '';
+      if (dBtn) dBtn.style.display = '';
+    } else if (d && d.connected) {
+      sub.textContent = tr('gcal.connected', { email: d.email ? ' — ' + d.email : '' });
+      sub.style.color = '';
       if (cBtn) cBtn.style.display = 'none';
       if (dBtn) dBtn.style.display = '';
     } else {
-      sub.textContent = 'Zo checkt de AI je beschikbaarheid en zet geboekte afspraken automatisch in je agenda.';
+      sub.textContent = tr('set.gcal.sub');
+      sub.style.color = '';
       if (cBtn) cBtn.style.display = '';
       if (dBtn) dBtn.style.display = 'none';
     }

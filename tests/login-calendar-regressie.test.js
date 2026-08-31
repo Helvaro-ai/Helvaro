@@ -116,5 +116,61 @@ ck('geen hardgecodeerde grijstint meer op die regel',
    html.indexOf('color:#6b7280;text-decoration:none">Wachtwoord vergeten') === -1);
 ck('wel een tokenkleur', /\.login-link\s*\{[\s\S]{0,160}var\(--login-muted\)/.test(html));
 
+/* ── Google Agenda had twee toestanden waar er drie nodig zijn ──────────────
+   "Gekoppeld" betekende: er staat een verversingstoken OPGESLAGEN. Niet: dat
+   token werkt nog.
+
+   Dat verschil is geen randgeval. Zolang het OAuth-toestemmingsscherm van
+   Google op "Testing" staat -- en dat staat het nu -- laat Google een
+   verversingstoken na ZEVEN DAGEN verlopen. Daarna staat het token er nog,
+   dus meldde het scherm vrolijk "gekoppeld", terwijl elke agenda-actie
+   stilletjes niets meer deed: freeBusy geeft bij een fout bewust een lege
+   lijst terug (anders kost een storing bij Google je een boeking), en een lege
+   agenda ziet er precies uit als een vrije agenda.
+
+   Een makelaar zag dus "gekoppeld" staan en kreeg geen enkele afspraak in zijn
+   agenda, zonder één aanwijzing waarom. */
+console.log('\n— Google Agenda: verbonden, verlopen, of niet verbonden —');
+{
+  const gcal = require('../api/_gcal.js');
+
+  /* De server moet invalid_grant onderscheiden van een storing. Dat verschil
+     bepaalt of iemand opnieuw moet koppelen of gewoon even moet wachten. */
+  const bron = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', '_gcal.js'), 'utf8');
+  ck('invalid_grant krijgt een eigen code', /d\.error[^\n]*invalid_grant[\s\S]{0,80}reauth_required/.test(bron));
+  ck('en een gewone storing juist NIET',
+     /if \(String\(d\.error \|\| ''\) === 'invalid_grant'\)/.test(bron));
+
+  const leadsSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'leads.js'), 'utf8');
+  const statusTak = (leadsSrc.match(/if \(body\.mode === 'status'\)[\s\S]*?return res\.status\(200\)[^\n]*/) || [''])[0];
+  ck('status probeert het token echt', /getAccessToken\(refresh\)/.test(statusTak), statusTak.slice(0, 120));
+  ck('en meldt needsReauth terug', /needsReauth/.test(statusTak));
+  /* Alleen bij invalid_grant. Een storing bij Google mag niemand een
+     OAuth-ronde in sturen voor iets dat vanzelf overgaat. */
+  ck('alleen invalid_grant leidt tot opnieuw koppelen',
+     /e\.code === 'reauth_required'\) needsReauth = true/.test(statusTak));
+  ck('een tijdelijke fout laat de status met rust',
+     /else console\.warn\('\[gcal status\]/.test(statusTak));
+
+  /* En het scherm moet die derde toestand ook echt tonen, met de koppelknop
+     zichtbaar -- dat is de enige uitweg. */
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dash = require('../api/dashboard.js');
+  let h = '';
+  dash({ method: 'GET', url: '/dashboard', headers: {} },
+       { setHeader() {}, status() { return this; }, send(b) { h = String(b); }, json() {}, end() {} });
+  const fn = (h.match(/async function loadGcalStatus\(\)[\s\S]*?\n\}/) || [''])[0];
+  ck('het scherm kent de verlopen-toestand', /d\.connected && d\.needsReauth/.test(fn), fn.slice(0, 140));
+  /* Commentaar eerst weg. Mijn eigen toelichting in die tak is langer dan het
+     zoekvenster, en dan valt een assertie om op iets dat gewoon klopt -- dat is
+     vandaag al een keer gebeurd. */
+  const kaal = fn.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  ck('en zet de koppelknop dan zichtbaar',
+     /needsReauth[\s\S]{0,220}cBtn\.style\.display = ''/.test(kaal), kaal.slice(0, 200));
+  ck('de tekst is vertaald, niet hardgecodeerd', /tr\('gcal\.reauth'/.test(fn));
+  ck('en zegt expliciet dat er NIET gesynct wordt',
+     /NIET gesynct/.test(h) || /NOT syncing/.test(h));
+}
+
 console.log(`\n${pass} geslaagd, ${fail} gefaald`);
 process.exit(fail ? 1 : 0);

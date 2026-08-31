@@ -133,7 +133,25 @@ async function getAccessToken(refreshToken) {
   });
   const r = await fetch(OAUTH_TOKEN, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.access_token) throw new Error('refresh failed: ' + (d.error || r.status));
+  if (!r.ok || !d.access_token) {
+    /* Onderscheid maken tussen "Google had een hik" en "deze koppeling is
+       dood". Dat verschil bepaalt wat de klant moet doen, en tot nu toe kwam
+       er in beide gevallen dezelfde vage fout uit.
+
+       invalid_grant betekent er maar een ding: dit verversingstoken doet het
+       niet meer. Toegang ingetrokken in het Google-account, wachtwoord
+       gewijzigd, of -- en dat is hier het waarschijnlijkste geval -- het
+       OAuth-toestemmingsscherm staat nog op "Testing", en dan laat Google een
+       verversingstoken na ZEVEN DAGEN verlopen. Opnieuw koppelen is dan het
+       enige wat helpt; wachten helpt niet.
+
+       Alles anders (500 bij Google, netwerk, quota) is tijdelijk en mag geen
+       "koppel opnieuw" opleveren -- dan stuur je iemand een OAuth-ronde in
+       voor een storing die vanzelf overgaat. */
+    const err = new Error('refresh failed: ' + (d.error || r.status));
+    if (String(d.error || '') === 'invalid_grant') err.code = 'reauth_required';
+    throw err;
+  }
   return d.access_token;
 }
 

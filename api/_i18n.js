@@ -769,6 +769,21 @@ const TEKST = {
       en: 'For Next.js:',
       de: 'Für Next.js:' },
 
+
+  /* Google Agenda: drie toestanden in plaats van twee.
+     "Gekoppeld" betekende alleen dat er een token OPGESLAGEN stond, niet dat
+     het nog werkt. Google laat een verversingstoken na zeven dagen verlopen
+     zolang het toestemmingsscherm op Testing staat -- dan bleef het scherm
+     "gekoppeld" melden terwijl er niets meer gesynct werd. */
+  'gcal.connected': { nl: 'Gekoppeld{email}. Afspraken worden gesynct met je Google Agenda.',
+        fr: 'Connecté{email}. Les rendez-vous sont synchronisés avec votre Google Agenda.',
+        en: 'Connected{email}. Appointments are synced with your Google Calendar.',
+        de: 'Verbunden{email}. Termine werden mit Ihrem Google Kalender synchronisiert.' },
+  'gcal.reauth': { nl: 'De koppeling is verlopen{email}. Google vraagt opnieuw om toestemming — je agenda wordt nu NIET gesynct. Klik op Koppelen om het te herstellen.',
+        fr: 'La connexion a expiré{email}. Google demande une nouvelle autorisation — votre agenda n’est actuellement PAS synchronisé. Cliquez sur Connecter pour rétablir.',
+        en: 'The connection has expired{email}. Google is asking for permission again — your calendar is NOT syncing right now. Click Connect to restore it.',
+        de: 'Die Verbindung ist abgelaufen{email}. Google verlangt erneut Zustimmung — Ihr Kalender wird derzeit NICHT synchronisiert. Klicken Sie auf Verbinden, um das zu beheben.' },
+
   'login.footer':        { nl: 'gemaakt voor Vlaamse makelaars',
                            fr: 'conçu pour les agents immobiliers',
                            en: 'built for estate agents',

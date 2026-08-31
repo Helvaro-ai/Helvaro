@@ -2797,9 +2797,40 @@ async function handleGcal(req, res) {
       try {
         const client = await gcalGetClient(projectCode);
         const f = (client && client.fields) || {};
-        const connected = !!(f[GCAL_F_REFRESH] || f['Google Refresh Token']);
+        const enc = f[GCAL_F_REFRESH] || f['Google Refresh Token'];
+        const connected = !!enc;
         const email = f[GCAL_F_GEMAIL] || f['Google Calendar Email'] || '';
-        return res.status(200).json({ configured: true, connected, email });
+
+        /* "Verbonden" betekende: er staat een token opgeslagen. Niet: dat token
+           werkt nog. Dat verschil is precies waar iemand op vastloopt.
+
+           Google laat een verversingstoken na zeven dagen verlopen zolang het
+           toestemmingsscherm op "Testing" staat -- en dat staat het nu. Na die
+           week is het opgeslagen token dood, maar het STAAT er nog, dus het
+           scherm bleef vrolijk "gekoppeld" melden terwijl elke agenda-actie
+           stilletjes niets deed. freeBusy geeft bij een fout een lege lijst
+           terug (bewust fail-open, zodat een storing bij Google geen boeking
+           kost) en dan lijkt de agenda gewoon leeg.
+
+           Dus: één keer echt proberen. Kost een aanroep bij Google, maar dit
+           scherm wordt zelden geopend en het alternatief is een klant die denkt
+           dat het werkt.
+
+           Alleen invalid_grant leidt tot "opnieuw koppelen". Een storing bij
+           Google mag niemand een OAuth-ronde in sturen voor iets dat vanzelf
+           overgaat. */
+        let needsReauth = false;
+        if (connected) {
+          try {
+            const refresh = _gcal.decryptToken(enc);
+            if (!refresh) needsReauth = true;
+            else await _gcal.getAccessToken(refresh);
+          } catch (e) {
+            if (e && e.code === 'reauth_required') needsReauth = true;
+            else console.warn('[gcal status] token niet te controleren (tijdelijk?):', e && e.message);
+          }
+        }
+        return res.status(200).json({ configured: true, connected, needsReauth, email });
       } catch (e) {
         console.error('[gcal status]', e && e.message);
         return res.status(500).json({ error: 'Serverfout' });

@@ -14,6 +14,30 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Google Agenda zegt nu eerlijk of de koppeling nog werkt
+
+"Gekoppeld" betekende: er staat een verversingstoken opgeslagen. Niet: dat token
+werkt nog. Dat verschil is geen randgeval.
+
+Zolang het OAuth-toestemmingsscherm bij Google op **Testing** staat — en dat
+staat het nu — laat Google een verversingstoken na **zeven dagen** verlopen.
+Daarna staat het token er nog, dus meldde het scherm vrolijk "Gekoppeld",
+terwijl er niets meer gesynct werd. En dat viel niet op: bij een fout geeft de
+beschikbaarheidscheck bewust een lege lijst terug (anders kost een storing bij
+Google je een boeking), en een lege agenda ziet er precies uit als een vrije
+agenda.
+
+Er is nu een derde toestand. Het scherm controleert één keer of het token het
+echt nog doet, en zegt bij een verlopen koppeling met zoveel woorden dat je
+agenda **niet** gesynct wordt, met de koppelknop ernaast.
+
+Alleen een écht ingetrokken koppeling geeft die melding. Een storing bij Google
+laat de status met rust — je een OAuth-ronde in sturen voor iets dat vanzelf
+overgaat is erger dan even niets zeggen.
+
+**Actie:** staat er "de koppeling is verlopen", klik dan op Koppelen.
+
+
 ### Aanmelden gebeurt nu op onze eigen pagina, niet op die van Clerk
 
 De knop "Start je 14 dagen gratis" op helvaro.pro stuurde je naar
