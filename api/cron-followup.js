@@ -1384,7 +1384,9 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
         skipped++; continue;
       }
 
-      await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientNameV], apptPhoneNumberId, whatsappToken);
+      // Same swap as leads.js: helvaro_afspraak_herinnering (nl_BE) reads
+      // "je afspraak bij {{2}} staat gepland voor {{3}}" -> {{2}} business, {{3}} datetime.
+      await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, clientNameV, when], apptPhoneNumberId, whatsappToken);
       sent++;
     } catch (err) {
       console.error(`[cron-followup] appointment reminder mislukt voor ${appt.id}:`, err.message);

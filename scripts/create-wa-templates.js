@@ -74,8 +74,8 @@ const LANGS = ['nl_BE', 'fr_BE', 'en_GB', 'de'];
 // therefore declares `params` in SEMANTIC terms, and the example values are
 // looked up by that name rather than by position. The order must match:
 //
-//   BOOKING_TEMPLATE_NAME   leads.js:3172   [firstName, when, clientName]
-//   REMINDER_TEMPLATE_NAME  cron-followup.js:1387 [firstName, when, clientName]
+//   BOOKING_TEMPLATE_NAME   leads.js        [firstName, clientName, when]
+//   REMINDER_TEMPLATE_NAME  cron-followup.js [firstName, clientName, when]
 //   INTRO_TEMPLATE_NAME     form.js:326     [firstName, aiName, clientName]
 //   NOTIFY_TEMPLATE_NAME    form.js:379     [leadName, phone, projectCode]
 //   FOLLOWUP/MANUAL_REPLY   leads.js:2376   [firstName]
@@ -83,19 +83,21 @@ const TEKSTEN = {
   helvaro_afspraak_bevestiging: {
     category: 'UTILITY',
     usedBy: 'BOOKING_TEMPLATE_NAME',
-    params: ['naam', 'wanneer', 'bedrijf'],
+    params: ['naam', 'bedrijf', 'wanneer'],
     body: {
+      // Identical to the live APPROVED nl_BE template — do not reword without
+      // resubmitting it for review.
       nl_BE:
-        'Hoi {{1}}, je afspraak is bevestigd voor {{2}} bij {{3}}.\n\n' +
+        'Hoi {{1}}, je afspraak bij {{2}} is bevestigd voor {{3}}.\n\n' +
         'Kan je er niet bij zijn? Antwoord op dit bericht, dan zoeken we een ander moment.',
       fr_BE:
-        'Bonjour {{1}}, votre rendez-vous est confirmé pour {{2}} chez {{3}}.\n\n' +
+        'Bonjour {{1}}, votre rendez-vous chez {{2}} est confirmé pour {{3}}.\n\n' +
         'Un empêchement ? Répondez à ce message et nous trouverons un autre moment.',
       en_GB:
-        'Hi {{1}}, your appointment is confirmed for {{2}} with {{3}}.\n\n' +
+        'Hi {{1}}, your appointment with {{2}} is confirmed for {{3}}.\n\n' +
         'Can\'t make it? Reply to this message and we\'ll find another time.',
       de:
-        'Hallo {{1}}, Ihr Termin ist bestätigt für {{2}} bei {{3}}.\n\n' +
+        'Hallo {{1}}, Ihr Termin bei {{2}} ist bestätigt für {{3}}.\n\n' +
         'Sie können nicht? Antworten Sie auf diese Nachricht, dann finden wir einen anderen Termin.',
     },
   },
@@ -103,19 +105,20 @@ const TEKSTEN = {
   helvaro_afspraak_herinnering: {
     category: 'UTILITY',
     usedBy: 'REMINDER_TEMPLATE_NAME',
-    params: ['naam', 'wanneer', 'bedrijf'],
+    params: ['naam', 'bedrijf', 'wanneer'],
     body: {
+      // Identical to the live APPROVED nl_BE template.
       nl_BE:
-        'Hoi {{1}}, kleine herinnering: je afspraak staat gepland voor {{2}} bij {{3}}.\n\n' +
+        'Hoi {{1}}, kleine herinnering: je afspraak bij {{2}} staat gepland voor {{3}}.\n\n' +
         'Tot dan! Antwoord gerust op dit bericht als er iets gewijzigd is.',
       fr_BE:
-        'Bonjour {{1}}, petit rappel : votre rendez-vous est prévu pour {{2}} chez {{3}}.\n\n' +
+        'Bonjour {{1}}, petit rappel : votre rendez-vous chez {{2}} est prévu pour {{3}}.\n\n' +
         'À bientôt ! Répondez à ce message si quelque chose a changé.',
       en_GB:
-        'Hi {{1}}, a quick reminder: your appointment is scheduled for {{2}} with {{3}}.\n\n' +
+        'Hi {{1}}, a quick reminder: your appointment with {{2}} is scheduled for {{3}}.\n\n' +
         'See you then! Reply to this message if anything has changed.',
       de:
-        'Hallo {{1}}, kurze Erinnerung: Ihr Termin ist für {{2}} bei {{3}} geplant.\n\n' +
+        'Hallo {{1}}, kurze Erinnerung: Ihr Termin bei {{2}} ist für {{3}} geplant.\n\n' +
         'Bis dann! Antworten Sie auf diese Nachricht, falls sich etwas geändert hat.',
     },
   },
@@ -249,6 +252,62 @@ for (const [name, def] of Object.entries(TEKSTEN)) {
     });
   }
 }
+
+function graphUrl(path) {
+  return `https://graph.facebook.com/${GRAPH_VERSION}/${path}`;
+}
+
+async function listTemplates() {
+  const res = await fetch(
+    graphUrl(`${WABA_ID}/message_templates?fields=name,status,category,language&limit=200`),
+    { headers: { Authorization: `Bearer ${TOKEN}` } }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = data && data.error ? data.error : {};
+    throw new Error(
+      `list failed (HTTP ${res.status}): ${err.message || 'unknown error'}` +
+        (err.code === 200 || /permission/i.test(err.message || '')
+          ? '\n  -> This usually means the token lacks the `whatsapp_business_management` scope.'
+          : '')
+    );
+  }
+  return Array.isArray(data.data) ? data.data : [];
+}
+
+async function createTemplate(tpl) {
+  const payload = {
+    name: tpl.name,
+    language: tpl.language,
+    category: tpl.category,
+    components: [
+      {
+        type: 'BODY',
+        text: tpl.body,
+        example: { body_text: [tpl.examples] },
+      },
+    ],
+  };
+  // Footers carry no variables, so no `example` block is needed.
+  if (tpl.footer) payload.components.push({ type: 'FOOTER', text: tpl.footer });
+
+  const res = await fetch(graphUrl(`${WABA_ID}/message_templates`), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = data && data.error ? data.error : {};
+    throw new Error(`HTTP ${res.status}: ${err.error_user_msg || err.message || 'unknown error'}`);
+  }
+  return data;
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────
 
 async function fetchExisting() {
   console.log(`WABA ${WABA_ID} — fetching existing templates...\n`);

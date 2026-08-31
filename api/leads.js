@@ -3169,7 +3169,14 @@ async function sendAppointmentConfirmation({ airtableToken, baseId, clientsTable
   const templateLang = _lang.resolveTemplateLanguage(process.env.BOOKING_TEMPLATE_LANG || clientLang, clientLang).code;
   const firstName = String(leadName || '').trim().split(' ')[0] || '';
   const when = formatApptDateTime(startTime, templateLang);
-  await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, when, clientName], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
+  // Param order follows the APPROVED template, not the other way round: editing a
+  // live template costs another Meta review, reordering here costs nothing.
+  // helvaro_afspraak_bevestiging (nl_BE) reads
+  //   "Hoi {{1}}, je afspraak bij {{2}} is bevestigd voor {{3}}."
+  // so {{2}} is the business and {{3}} is the datetime. Sending [name, when,
+  // client] produced "je afspraak bij dinsdag 12 augustus is bevestigd voor
+  // KinePraktijk Gent". Keep scripts/create-wa-templates.js in step.
+  await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, clientName, when], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
 }
 
 // ── Named exports (in addition to the default route handler) ───────────────

@@ -25,6 +25,19 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 - `createTemplate` ondersteunt nu een FOOTER-component.
 - Dry run werkt nu **zonder credentials** — je kunt de payloads nalezen voordat je iets
   naar Meta stuurt. Alleen `--list` en `--commit` vragen om WABA_ID + token.
+- **PRODUCTIEBUG: afspraakbevestigingen stonden verkeerd om.** De goedgekeurde
+  `helvaro_afspraak_bevestiging` (nl_BE) luidt "je afspraak bij {{2}} is bevestigd voor
+  {{3}}" -> {{2}} = bedrijf, {{3}} = datum. Maar `leads.js` en `cron-followup.js` stuurden
+  `[firstName, when, clientName]`. Leads kregen dus letterlijk "je afspraak bij dinsdag
+  12 augustus om 14:30 is bevestigd voor KinePraktijk Gent". Opgelost aan de CODE-kant
+  (`[firstName, clientName, when]`) omdat een live template aanpassen een nieuwe
+  Meta-review kost en de code aanpassen niets.
+- Geverifieerd tegen de live lijst: `helvaro_aanvraag_ontvangen` (INTRO), `helvaro_lead_alert`
+  (NOTIFY) en `followup_24h` (FOLLOWUP) kloppen wel met wat de code stuurt.
+  Let op: `helvaro_nieuwe_lead` heeft maar 2 variabelen terwijl INTRO er 3 stuurt — die
+  mag dus NIET als INTRO_TEMPLATE_NAME gebruikt worden.
+- Regressie hersteld: `graphUrl`/`listTemplates`/`createTemplate` waren bij de vorige
+  refactor weggevallen (offline dry run raakte ze niet, dus bleef het onopgemerkt).
 - **Bugfix in de templates zelf**: de bodies gebruikten `{{2}}`=bedrijf en `{{3}}`=datum,
   maar `leads.js:3172` en `cron-followup.js:1387` sturen `[firstName, when, clientName]`.
   Een bevestiging zou gelezen hebben als "je afspraak bij dinsdag 12 augustus is bevestigd
