@@ -12412,7 +12412,22 @@ function mountClerkSignUp(clerk) {
   var host = clerkHost();
   if (!host) return;
   try {
-    clerk.mountSignUp(host, CLERK_APPEARANCE);
+    /* Het e-mailadres uit de marketingsite meenemen.
+       aanmelden.html op helvaro.pro vraagt om een adres en stuurt dat mee als
+       ?email_address=. Zonder dit moet iemand het twee keer intikken, en dat
+       is precies de stap waar mensen afhaken -- ze hebben het net al gegeven.
+       Clerk's eigen portaal deed dit wel; die reden om daarheen te sturen
+       vervalt hiermee. */
+    var opties = CLERK_APPEARANCE;
+    try {
+      var vooraf = new URL(window.location.href).searchParams.get('email_address');
+      if (vooraf && vooraf.indexOf('@') > 0) {
+        opties = Object.assign({}, CLERK_APPEARANCE, {
+          initialValues: { emailAddress: vooraf.slice(0, 200) },
+        });
+      }
+    } catch (e) { /* geen geldige URL: gewoon zonder voorinvulling verder */ }
+    clerk.mountSignUp(host, opties);
     oudeVeldenActief(false);
     host.dataset.mounted = 'signup';
     zetModus('registreren');

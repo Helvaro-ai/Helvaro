@@ -14,6 +14,27 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Aanmelden gebeurt nu op onze eigen pagina, niet op die van Clerk
+
+De knop "Start je 14 dagen gratis" op helvaro.pro stuurde je naar
+`accounts.helvaro.pro` — het portaal van Clerk. Dat werkt, maar het is onze site
+niet: Engelstalig ("Create your account"), Clerks paarse standaardthema, geen
+Helvaro-logo, en geen woord over de proefperiode. Een Vlaamse makelaar klikt
+daar dus vanaf een Nederlandse pagina naartoe, precies op het moment dat hij
+beslist of hij ons vertrouwt.
+
+De site wijst nu naar `app.helvaro.pro/signup`. Daar staat hetzelfde formulier
+van Clerk, maar in ons eigen scherm: logo, huisstijl, het paneel ernaast, en in
+de taal van de bezoeker. De inloglink wees al naar de app, dus dit is meteen
+consistent.
+
+Het e-mailadres dat je op de site invult wordt nog steeds meegenomen en staat
+al ingevuld — anders moet je het twee keer intikken, en dat is precies de stap
+waar mensen afhaken.
+
+**Actie:** geen.
+
+
 ### Leadgegevens worden niet meer opgeslagen door caches
 
 `/api/leads` gaf namen en telefoonnummers terug met de standaard-header van

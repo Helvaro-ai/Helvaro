@@ -88,9 +88,13 @@ console.log('\n— de oude inlogvelden trokken de wachtwoordmanager weg —');
   ck('de velden bestaan nog (het vangnet blijft)',
      html.indexOf('id="login-email"') > -1 && html.indexOf('id="login-password"') > -1, null);
   ck('er is één plek die ze aan/uit zet', /function oudeVeldenActief\(actief\)/.test(js), null);
+  /* Bewust NIET op de naam van het tweede argument: dat heet bij sign-up
+     inmiddels 'opties' omdat daar een vooringevuld e-mailadres bij kan. Waar
+     het om gaat is dat oudeVeldenActief(false) direct NA het monteren komt --
+     dat is de invariant, niet hoe de parameter heet. */
   ck('een gemonteerde Clerk zet ze uit',
-     /clerk\.mountSignIn\(host, CLERK_APPEARANCE\);\s*\n\s*oudeVeldenActief\(false\);/.test(js)
-     && /clerk\.mountSignUp\(host, CLERK_APPEARANCE\);\s*\n\s*oudeVeldenActief\(false\);/.test(js), null);
+     /clerk\.mountSignIn\(host, [A-Za-z_$][\w$]*\);\s*\n\s*oudeVeldenActief\(false\);/.test(js)
+     && /clerk\.mountSignUp\(host, [A-Za-z_$][\w$]*\);\s*\n\s*oudeVeldenActief\(false\);/.test(js), null);
   ck('en het tonen van het eigen formulier zet ze weer aan',
      /function eigenFormulier\(zichtbaar\) \{[\s\S]{0,900}oudeVeldenActief\(!!zichtbaar\)/.test(js), null);
   /* Staat Clerk helemaal uit, dan komt oudeVeldenActief(false) nooit langs en
@@ -305,6 +309,36 @@ console.log('\n— het leadformulier: aankondiging, focus en de iOS-zoom —');
      toestemming mag er geen WhatsApp uit, en dat is een AVG-grens. */
   ck('en de toestemmingsgrens staat er nog steeds',
      /if \(consent && !consent\.checked\)/.test(fp), null);
+}
+
+/* ── De aanmeldroute vanaf de marketingsite ────────────────────────────────
+   helvaro.pro/aanmelden.html vraagt om een e-mailadres en stuurde de bezoeker
+   naar accounts.helvaro.pro/sign-up: Clerks eigen portaal. Dat werkt, maar het
+   is onze site niet -- Engels, Clerks paarse standaardthema, geen logo, geen
+   woord over de proefperiode. Een Vlaamse makelaar klikt daar vanaf een
+   Nederlandse pagina naartoe op het moment dat hij beslist of hij ons
+   vertrouwt.
+
+   De site wijst nu naar app.helvaro.pro/signup, dat hetzelfde Clerk-formulier
+   toont maar in ons eigen scherm en in de taal van de bezoeker. Dan moet die
+   pagina het meegegeven adres wel overnemen, anders moet iemand het twee keer
+   intikken -- en dat is precies de stap waar mensen afhaken. */
+console.log('\n— /signup neemt het e-mailadres van de site over —');
+{
+  const fp = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
+  const fn = (fp.match(/function mountClerkSignUp\(clerk\)[\s\S]*?\n\}/) || [''])[0];
+
+  ck('mountClerkSignUp leest email_address uit de URL',
+     /searchParams\.get\('email_address'\)/.test(fn), null);
+  ck('en geeft het door als initialValues',
+     /initialValues:\s*\{\s*emailAddress:/.test(fn), null);
+  /* Alleen iets dat op een adres lijkt, en begrensd: dit komt uit een
+     URL die iedereen kan opstellen. */
+  ck('alleen iets met een @ erin wordt overgenomen', /indexOf\('@'\) > 0/.test(fn), null);
+  ck('en het wordt afgekapt', /slice\(0, 200\)/.test(fn), null);
+  /* Een kapotte URL mag het registreren niet tegenhouden. */
+  ck('een onbruikbare URL laat het formulier gewoon werken',
+     /catch \(e\) \{ \/\* geen geldige URL/.test(fn), null);
 }
 
 console.log(`\n${pass} ok, ${fail} fout`);
