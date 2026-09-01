@@ -156,6 +156,12 @@ function faroClose() {
 function faroSyncPage() {
   var el = document.getElementById('page-faro');
   var showing = !!(el && el.classList.contains('active'));
+
+  /* Buiten de vergelijking hieronder: die stapt eruit zodra Faro's eigen
+     toestand niet verandert, en dat is precies wat er gebeurt bij navigatie
+     tussen twee CRM-schermen -- het geval waarvoor de tip bedoeld is. */
+  try { faroDockTip(); } catch (e) { /* een tip mag nooit navigatie breken */ }
+
   if (showing === faroState.open) return;
   faroState.open = showing;
 
@@ -270,6 +276,83 @@ var faroMascotMissing = {};
    daarbij hoort. Hier gaat alleen een pagina-id, een sectielabel uit onze eigen
    UI en een paar booleans overheen. De server gooit alles weg wat hij niet
    kent (api/_faro/scherm.js), dus dit is de tweede laag, niet de enige. */
+/* ── Faro zegt af en toe iets uit zichzelf ────────────────────────────────
+   De opdracht was expliciet: beperkt houden, nooit spammen. Daarom drie remmen,
+   en ze staan er alle drie met opzet:
+
+     1. EEN KEER PER SCHERM per sessie. Wie vijf keer naar Facturatie loopt,
+        krijgt de uitleg één keer.
+     2. HOOGSTENS DRIE per sessie in totaal. Ook als je langs tien schermen
+        loopt. Na de derde zwijgt hij.
+     3. WEGKLIKKEN GELDT. Voor dat scherm, en het telt mee in de drie.
+
+   Bewaard in sessionStorage, niet localStorage: een tip is een kennismaking,
+   geen instelling. Volgende week opnieuw beginnen is prima; tijdens dezelfde
+   sessie zeuren is dat niet.
+
+   Er is bewust GEEN tip voor elk scherm. Alleen waar iets te zeggen valt dat
+   de gebruiker niet al ziet staan. */
+var FARO_TIP_MAX = 3;
+
+function faroTipGezien(sleutel, zetten) {
+  try {
+    var ruw = sessionStorage.getItem('faro-tips') || '';
+    var lijst = ruw ? ruw.split(',') : [];
+    if (zetten) {
+      if (lijst.indexOf(sleutel) === -1) lijst.push(sleutel);
+      sessionStorage.setItem('faro-tips', lijst.join(','));
+      return false;
+    }
+    return lijst.indexOf(sleutel) !== -1 || lijst.length >= FARO_TIP_MAX;
+  } catch (e) {
+    /* Geen sessionStorage (privémodus, geblokkeerde opslag): dan liever
+       zwijgen dan bij elke navigatie opnieuw hetzelfde zeggen. */
+    return true;
+  }
+}
+
+/* Welke tip hoort bij deze situatie? Volgorde is de prioriteit: een onafgemaakte
+   inrichting is dringender dan uitleg over het scherm waar je toevallig staat. */
+function faroTipVoor(ctx) {
+  if (ctx.onboardingKlaar === false) return { sleutel: 'onboarding', pose: 'thinking' };
+  if (ctx.pagina === 'ai-persona')   return { sleutel: 'persona',    pose: 'thinking' };
+  if (ctx.pagina === 'formulier')    return { sleutel: 'formulier',  pose: 'idle' };
+  if (ctx.pagina === 'facturatie')   return { sleutel: 'facturatie', pose: 'idle' };
+  if (ctx.toestand === 'leeg')       return { sleutel: 'leeg',       pose: 'idle' };
+  return null;
+}
+
+function faroDockTip() {
+  var doos = document.getElementById('faro-dock-hint');
+  if (!doos) return;
+
+  /* Staat Faro zelf open, dan is er een heel gesprek in beeld. Een regeltje
+     onderaan is dan overbodig. */
+  if (faroState.open) { doos.hidden = true; return; }
+
+  var ctx = faroSchermContext();
+  var keuze = faroTipVoor(ctx);
+  if (!keuze) { doos.hidden = true; return; }
+
+  var sleutel = 'tip.' + keuze.sleutel;
+  if (faroTipGezien(sleutel)) { doos.hidden = true; return; }
+
+  var tekst = T(sleutel);
+  if (!tekst || tekst === sleutel) { doos.hidden = true; return; }
+
+  var tekstEl = document.getElementById('faro-dock-hinttext');
+  var markEl = document.getElementById('faro-dock-hintmark');
+  if (tekstEl) tekstEl.textContent = tekst;
+  if (markEl && FARO_MASCOT_SRC[keuze.pose]) markEl.src = FARO_MASCOT_SRC[keuze.pose];
+  doos.hidden = false;
+  faroTipGezien(sleutel, true);
+}
+
+function faroVerbergTip() {
+  var doos = document.getElementById('faro-dock-hint');
+  if (doos) doos.hidden = true;
+}
+
 function faroSchermContext() {
   var ctx = {};
   try {
@@ -1411,6 +1494,18 @@ function faroInit() {
 
   if (dockKbd) dockKbd.textContent = faroHotkeyLabel();
   if (dockOpen) dockOpen.addEventListener('click', function () { fromDock(true); });
+
+  /* Wegklikken van de tip. Het scherm staat op dat moment al als "gezien"
+     genoteerd, dus hij komt deze sessie niet terug. */
+  var hintClose = document.getElementById('faro-dock-hintclose');
+  if (hintClose) hintClose.addEventListener('click', faroVerbergTip);
+
+  /* En zodra je zelf begint te typen verdwijnt hij: je bent dan al bezig met
+     precies het ding waar de tip je heen wilde duwen. */
+  if (dockInput) dockInput.addEventListener('focus', faroVerbergTip);
+
+  // Eerste keer meteen na het laden, niet pas bij de eerste navigatie.
+  try { faroDockTip(); } catch (e) { /* nooit de init breken om een tip */ }
   if (dockInput) {
     dockInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); fromDock(true); }

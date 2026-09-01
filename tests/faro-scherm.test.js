@@ -167,6 +167,47 @@ ck('de client leest state via typeof, niet via window.state',
 ck('de client stuurt GEEN leads of saldi mee',
   !/context:[\s\S]{0,400}state\.leads\[/.test(uiJs), null);
 
+// ── 6. Proactieve tips: de remmen ──────────────────────────────────────────
+console.log('\n  Faro zegt af en toe iets, en houdt zich in');
+
+/* De opdracht was expliciet: "Keep proactive messages limited. Never spam the
+   user." Dat is geen stijlkwestie maar het verschil tussen een assistent en
+   een pop-up, dus de drie remmen worden hier vastgehouden. */
+ck('hoogstens drie tips per sessie', /FARO_TIP_MAX = 3/.test(uiJs), null);
+ck('een tip die je gezien hebt komt niet terug',
+  /lijst\.indexOf\(sleutel\) !== -1 \|\| lijst\.length >= FARO_TIP_MAX/.test(uiJs), null);
+ck('in sessionStorage, niet localStorage (een tip is geen instelling)',
+  /sessionStorage\.setItem\('faro-tips'/.test(uiJs) && !/localStorage[^\n]*faro-tips/.test(uiJs), null);
+ck('geen opslag beschikbaar betekent zwijgen, niet herhalen',
+  /catch \(e\) \{[\s\S]{0,260}return true;/.test(uiJs), null);
+ck('wegklikken kan', /faroVerbergTip/.test(uiJs), null);
+ck('en zelf typen laat hem ook verdwijnen',
+  /dockInput\.addEventListener\('focus', faroVerbergTip\)/.test(uiJs), null);
+ck('staat Faro al open, dan zwijgt de balk',
+  /if \(faroState\.open\) \{ doos\.hidden = true; return; \}/.test(uiJs), null);
+ck('een kapotte tip breekt de navigatie niet',
+  /try \{ faroDockTip\(\); \} catch/.test(uiJs), null);
+
+/* Prioriteit: een onafgemaakte inrichting gaat voor uitleg over het scherm
+   waar je toevallig staat. */
+ck('een onafgemaakte inrichting heeft voorrang',
+  /if \(ctx\.onboardingKlaar === false\) return \{ sleutel: 'onboarding'/.test(uiJs), null);
+ck('en niet elk scherm heeft een tip (alleen waar iets te zeggen valt)',
+  /return null;/.test(uiJs), null);
+
+const i18nFaro = require(BASE + 'api/_faro/ui/i18n.js');
+ck('elke tip bestaat in alle vier de UI-talen', i18nFaro.TRANSLATED.every((l) => {
+  const tab = i18nFaro.table(l);
+  return ['tip.onboarding', 'tip.leeg', 'tip.persona', 'tip.formulier',
+          'tip.facturatie', 'tip.agenda', 'tip.sluit'].every((k) => tab[k] && tab[k].length > 2);
+}), i18nFaro.TRANSLATED.filter((l) => !i18nFaro.table(l)['tip.leeg']));
+
+const faroCss = require(BASE + 'api/_faro/ui').forLang('nl').css;
+ck('beweging wordt uitgezet voor wie dat gevraagd heeft',
+  /prefers-reduced-motion: reduce\)[\s\S]{0,400}faro-dock__hintmark \{ animation: none/.test(faroCss), null);
+ck('de tip is een regel in de dock, geen zwevende ballon over de pagina',
+  !/\.faro-dock__hint \{[^}]*position:\s*fixed/.test(faroCss), null);
+
 const promptSrc = require('fs').readFileSync(BASE + 'api/_faro/prompt.js', 'utf8');
 ck('de prompt neemt het blok op', /scherm\.render\(ctx\.ui\)/.test(promptSrc), null);
 const handlerSrc = require('fs').readFileSync(BASE + 'api/_faro/handler.js', 'utf8');

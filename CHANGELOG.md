@@ -14,6 +14,35 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro zegt af en toe iets uit zichzelf
+
+Een regel boven de ask-balk, met Faro's kop ernaast. Geen zwevende ballon over de pagina:
+de dock is bewust een sticky flex-child die ruimte INNEEMT, dus er wordt nooit iets
+afgedekt. Die eigenschap blijft.
+
+De opdracht was expliciet "keep it limited, never spam", dus drie remmen:
+
+1. **Eén keer per scherm** per sessie.
+2. **Hoogstens drie per sessie** in totaal, ook als je langs tien schermen loopt.
+3. **Wegklikken telt** — en zelf beginnen te typen laat hem ook verdwijnen, want dan ben je
+   al bezig met precies het ding waar de tip je heen wilde duwen.
+
+In `sessionStorage`, niet `localStorage`: een tip is een kennismaking, geen instelling.
+Geen opslag beschikbaar (privémodus) betekent zwijgen, niet bij elke navigatie herhalen.
+Staat Faro zelf open, dan zwijgt de balk — er is dan een heel gesprek in beeld.
+
+Niet elk scherm heeft een tip; alleen waar iets te zeggen valt dat de gebruiker niet al
+ziet staan. Een onafgemaakte inrichting heeft voorrang op schermuitleg. Alle zeven teksten
+bestaan in nl/fr/en/de.
+
+Beweging: één trage zweving van 2px op de mascotte en een korte fade-in. Onder
+`prefers-reduced-motion: reduce` allebei uit — dat is een voorkeur die mensen om een reden
+instellen.
+
+46 tests op het schermcontext- en tipsysteem, mutatiegetest op de sessielimiet.
+Suite: 59/59 groen.
+
+
 ### Faro weet nu waar je staat
 
 Faro kreeg tot nu toe alleen de VRAAG. De client stuurde

@@ -30,6 +30,13 @@ const TRANSLATED = ['nl', 'fr', 'en', 'de'];
 const STRINGS = {
   nl: {
     'ws.title': 'Faro',
+    'tip.onboarding': 'Je inrichting is nog niet af. Zeg het maar als ik je er even doorheen help.',
+    'tip.leeg': 'Nog niets te zien. Zodra je eerste leads binnenkomen, staan ze hier.',
+    'tip.persona': 'Hoe specifieker dit staat, hoe beter ik je leads kan kwalificeren.',
+    'tip.formulier': 'Deel deze link. Wie hem invult, krijgt meteen bericht van mij.',
+    'tip.facturatie': 'Credits zijn wat ik verbruik. Eén gekwalificeerd gesprek kost er 20.',
+    'tip.agenda': 'Koppel je agenda, dan plan ik afspraken zelf in.',
+    'tip.sluit': 'Verbergen',
     'ws.subtitle': 'Je assistent binnen Helvaro',
     'dock.placeholder': 'Vraag Faro iets over je leads, panden of marketing…',
 
@@ -177,6 +184,13 @@ const STRINGS = {
 
   en: {
     'ws.title': 'Faro',
+    'tip.onboarding': "Your setup isn't finished yet. Say the word if you want me to walk you through it.",
+    'tip.leeg': 'Nothing here yet. Your first leads will show up here.',
+    'tip.persona': 'The more specific this is, the better I can qualify your leads.',
+    'tip.formulier': 'Share this link. Anyone who fills it in hears from me straight away.',
+    'tip.facturatie': 'Credits are what I spend. One qualified conversation costs 20.',
+    'tip.agenda': "Connect your calendar and I'll book appointments myself.",
+    'tip.sluit': 'Hide',
     'ws.subtitle': 'Your assistant inside Helvaro',
     'dock.placeholder': 'Ask Faro about your leads, properties or marketing…',
 
@@ -322,6 +336,13 @@ const STRINGS = {
 
   fr: {
     'ws.title': 'Faro',
+    'tip.onboarding': "Votre configuration n'est pas terminée. Dites-le si vous voulez que je vous guide.",
+    'tip.leeg': "Rien à voir pour l'instant. Dès vos premiers prospects, ils apparaîtront ici.",
+    'tip.persona': "Plus c'est précis ici, mieux je qualifie vos prospects.",
+    'tip.formulier': 'Partagez ce lien. Celui qui le remplit reçoit tout de suite un message de moi.',
+    'tip.facturatie': 'Les crédits sont ce que je consomme. Une conversation qualifiée en coûte 20.',
+    'tip.agenda': 'Connectez votre agenda et je planifie les rendez-vous moi-même.',
+    'tip.sluit': 'Masquer',
     'ws.subtitle': 'Votre assistant dans Helvaro',
     'dock.placeholder': 'Demandez à Faro vos leads, biens ou marketing…',
 
@@ -467,6 +488,13 @@ const STRINGS = {
 
   de: {
     'ws.title': 'Faro',
+    'tip.onboarding': 'Ihre Einrichtung ist noch nicht fertig. Sagen Sie Bescheid, dann gehe ich sie mit Ihnen durch.',
+    'tip.leeg': 'Hier ist noch nichts. Sobald Ihre ersten Leads eintreffen, stehen sie hier.',
+    'tip.persona': 'Je konkreter das hier steht, desto besser qualifiziere ich Ihre Leads.',
+    'tip.formulier': 'Teilen Sie diesen Link. Wer ihn ausfüllt, hört sofort von mir.',
+    'tip.facturatie': 'Credits sind das, was ich verbrauche. Ein qualifiziertes Gespräch kostet 20.',
+    'tip.agenda': 'Verbinden Sie Ihren Kalender, dann plane ich Termine selbst.',
+    'tip.sluit': 'Ausblenden',
     'ws.subtitle': 'Ihr Assistent in Helvaro',
     'dock.placeholder': 'Fragen Sie Faro zu Leads, Objekten oder Marketing…',
 

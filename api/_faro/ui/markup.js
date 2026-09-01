@@ -48,6 +48,17 @@ const { icon } = require('./icons');
 function dock(t) {
   return `
     <div class="faro-dock" id="faro-dock">
+      <!-- Faro's eigen regel. Leeg en verborgen tot er iets te zeggen valt;
+           een vaste balk die meestal niets zegt is ruimte die je kwijt bent.
+           aria-live="polite" zodat een schermlezer hem meeneemt wanneer hij
+           verschijnt, zonder de gebruiker te onderbreken. -->
+      <div class="faro-dock__hint" id="faro-dock-hint" hidden aria-live="polite">
+        <img src="/faro/falcon-idle.webp" alt="" aria-hidden="true" width="22" height="22"
+             class="faro-dock__hintmark" id="faro-dock-hintmark">
+        <span class="faro-dock__hinttext" id="faro-dock-hinttext"></span>
+        <button type="button" class="faro-dock__hintclose" id="faro-dock-hintclose"
+                aria-label="${t('tip.sluit')}">&times;</button>
+      </div>
       <div class="faro-dock__inner">
         <span class="faro-dock__spark"><img src="/faro/faro-icon.webp" alt="" aria-hidden="true" width="18" height="18" class="faro-dock__mark"></span>
         <input class="faro-dock__input" id="faro-dock-input" type="text"

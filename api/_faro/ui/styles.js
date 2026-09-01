@@ -45,6 +45,62 @@ function css() {
   background: var(--bg);
   border-top: 1px solid var(--border);
 }
+/* Faro's regel boven de balk. Klein, één regel, en hij verdwijnt zodra je hem
+   wegklikt of naar een ander scherm gaat. Bewust GEEN ballon met een pijltje:
+   die vraagt aandacht, en dit is bedoeld als iets dat je opmerkt terwijl je
+   naar iets anders kijkt.
+
+   prefers-reduced-motion wordt gerespecteerd -- zie onderaan. */
+.faro-dock__hint {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 940px;
+  margin: 0 auto var(--sp-2);
+  padding: var(--sp-15) var(--sp-2) var(--sp-15) var(--sp-15);
+  border-radius: var(--r-sm);
+  background: var(--faro-input-bg);
+  border: 1px solid var(--border);
+  animation: faro-hint-in 220ms ease both;
+}
+.faro-dock__hint[hidden] { display: none; }
+.faro-dock__hintmark {
+  flex-shrink: 0; width: 22px; height: 22px; object-fit: contain;
+  /* Heel licht zweven. Eén beweging, traag, en niet in de looprichting van
+     de tekst -- genoeg om levend te lijken, te weinig om je blik te trekken. */
+  animation: faro-hint-drift 4.5s ease-in-out infinite;
+}
+.faro-dock__hinttext {
+  flex: 1; min-width: 0;
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.faro-dock__hintclose {
+  flex-shrink: 0;
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 15px; line-height: 1;
+  padding: var(--sp-05) var(--sp-15);
+  border-radius: var(--r-xs);
+  color: var(--text-disabled);
+}
+.faro-dock__hintclose:hover { color: var(--text); }
+
+@keyframes faro-hint-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes faro-hint-drift {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+/* Wie beweging heeft uitgezet krijgt geen beweging. Niet onderhandelbaar:
+   dit is een voorkeur die mensen om een reden instellen. */
+@media (prefers-reduced-motion: reduce) {
+  .faro-dock__hint { animation: none; }
+  .faro-dock__hintmark { animation: none; }
+}
+
 .faro-dock__inner {
   display: flex;
   align-items: center;
