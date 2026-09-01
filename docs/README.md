@@ -78,7 +78,6 @@ Helvaro/
 │   ├── demo.js                   ← /demo redirect
 │   ├── form.js                   ← lead-form submission endpoint
 │   ├── form-page.js              ← /start/CODE HTML page (per klant)
-│   ├── leads-list.js             ← lead-list endpoint
 │   ├── leads.js                  ← leads CRUD + config + suggest-replies + reply
 │   ├── privacy.js                ← /privacy + /terms pages
 │   └── whatsapp.js               ← Meta webhook receiver + AI runner

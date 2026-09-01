@@ -14,6 +14,22 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Verwijderd: api/leads-list.js (108 regels dode code)
+
+Bewijs vóór het schrappen, niet erna:
+
+- geen enkele `require` of `import` in de repo (de treffers in `dashboard.js` zijn
+  CSS-klassen: `top-leads-list`, `rapport-leads-list`)
+- nergens een `fetch('/api/leads-list')`
+- **0 verzoeken in 24 uur**, op een totaal van meer dan 50.000
+- maar wél live: `GET /api/leads-list` gaf 401, dus het endpoint stond te draaien
+
+Een onbenut endpoint met een eigen sleutelcontrole en een eigen rate limiter, dat de
+leadtabel kan lezen. Dat is aanvalsoppervlak zonder opbrengst. Scheelt meteen een
+functieslot bij Vercel — de reden dat de rest van de app via `body.mode` werkt in plaats
+van via aparte routes.
+
+
 ### Productielog-audit: waar de 429's vandaan kwamen
 
 Gemeten over 24 uur op productie (Vercel runtime logs):
