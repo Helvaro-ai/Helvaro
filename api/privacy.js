@@ -27,59 +27,104 @@ module.exports = function handler(req, res) {
 <body>
   <a class="back" href="/">← Terug naar Helvaro</a>
   <h1>Algemene Voorwaarden</h1>
-  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: mei 2026</p>
+  <p><strong>Helvaro BV</strong> &middot; Van kracht sinds 1 september 2026</p>
 
-  <h2>1. Partijen</h2>
-  <p>Deze algemene voorwaarden zijn van toepassing op alle overeenkomsten tussen <strong>Helvaro BV</strong> (hierna "Helvaro") en de opdrachtgever (hierna "Klant"). Door gebruik te maken van de diensten van Helvaro, accepteert de Klant deze voorwaarden.</p>
+  <h2>1. Partijen en identificatie</h2>
+  <p>Deze algemene voorwaarden zijn van toepassing op alle overeenkomsten tussen <strong>Helvaro BV</strong> (hierna "Helvaro") en de opdrachtgever (hierna "Klant"). Door gebruik te maken van de diensten van Helvaro aanvaardt de Klant deze voorwaarden.</p>
+  <p>Helvaro is bereikbaar via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>. Helvaro richt zich uitsluitend op zakelijke klanten (B2B).</p>
 
   <h2>2. Dienstverlening</h2>
-  <p>Helvaro biedt een B2B SaaS-platform voor geautomatiseerde leadkwalificatie via WhatsApp en een bijhorend dashboard. De exacte diensten worden vastgelegd in een apart voorstel of offerte.</p>
+  <p>Helvaro is een SaaS-platform dat inkomende leads automatisch te woord staat via WhatsApp, ze kwalificeert met een AI-assistent, en de resultaten toont in een dashboard. Optioneel plant de assistent afspraken in de agenda van de Klant.</p>
+  <p>Helvaro levert een platform en een AI-assistent. Helvaro levert geen leads, geen verkoopresultaat en geen omzetgarantie.</p>
 
   <h2>3. Abonnementen en prijzen</h2>
-  <p>Helvaro werkt met één standaardabonnement:</p>
+  <p>Helvaro werkt met drie abonnementen. Alle bedragen zijn <strong>inclusief 21% btw</strong> en gelden per maand:</p>
   <ul>
-    <li><strong>Helvaro</strong>. €1.000 per maand · alles inbegrepen (onbeperkt aantal leads, 24/7 AI op WhatsApp, Calendly integratie, dashboard, premium support)</li>
-    <li><strong>Op maat</strong>. voor enterprise of high-volume klanten: prijs op aanvraag</li>
+    <li><strong>Starter</strong> &mdash; &euro;249,99 per maand, 3.000 credits</li>
+    <li><strong>Growth</strong> &mdash; &euro;499 per maand, 10.000 credits, inclusief beeldgeneratie</li>
+    <li><strong>Scale</strong> &mdash; vanaf &euro;799 per maand, 20.000 credits. Dit is een vanafprijs: het tarief wordt per klant bepaald op basis van het verwachte volume en schriftelijk bevestigd vóór aanvang.</li>
   </ul>
-  <p>De exacte prijs wordt schriftelijk bevestigd vóór aanvang van de samenwerking. Alle bedragen zijn excl. Btw, tenzij anders vermeld.</p>
+  <p>Het actuele aanbod in het dashboard is leidend. Prijswijzigingen worden minimaal 30 dagen vooraf per e-mail aangekondigd en gelden nooit met terugwerkende kracht.</p>
 
-  <h2>4. Proefperiode</h2>
-  <p>Nieuwe klanten ontvangen een gratis proefperiode van <strong>14 kalenderdagen</strong>. Na afloop van de proefperiode gaat de Klant automatisch over naar het afgesproken abonnement, tenzij schriftelijk anders overeengekomen.</p>
+  <h2>4. Credits</h2>
+  <p>Het verbruik van het platform wordt afgerekend in credits. Eén gekwalificeerd WhatsApp-gesprek kost <strong>20 credits</strong>. Beeld- en videogeneratie en andere AI-functies hebben elk een eigen tarief, dat vóór gebruik in het dashboard zichtbaar is.</p>
+  <ul>
+    <li>Credits horen bij de lopende maand en worden bij verlenging opnieuw toegekend.</li>
+    <li>Credits vertegenwoordigen geen geldwaarde, zijn niet overdraagbaar en worden niet uitbetaald.</li>
+    <li>Is het maandtegoed op, dan kan de Klant bijkopen of wachten tot de volgende periode. Helvaro schort de dienst niet stil zonder dat dit in het dashboard zichtbaar is.</li>
+    <li>Elke creditmutatie wordt vastgelegd in een grootboek dat de Klant in zijn dashboard kan inzien.</li>
+  </ul>
 
-  <h2>5. Contractduur en verlenging</h2>
-  <p>Na de proefperiode gaat de overeenkomst in voor een initiële looptijd van <strong>3 maanden</strong>. Na deze periode wordt de overeenkomst maandelijks verlengd, tenzij de Klant minimaal 30 dagen voor het einde van de lopende periode schriftelijk opzegt via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
+  <h2>5. Proefperiode</h2>
+  <p>Nieuwe klanten ontvangen een gratis proefperiode van <strong>14 kalenderdagen</strong>. Na afloop gaat de Klant automatisch over naar het gekozen abonnement, tenzij vóór het einde van de proefperiode schriftelijk wordt opgezegd.</p>
 
-  <h2>6. Betaling</h2>
-  <p>Facturen worden maandelijks vooraf verstuurd en dienen binnen <strong>14 dagen</strong> na factuurdatum te worden voldaan. Bij niet-tijdige betaling behoudt Helvaro het recht om toegang tot het platform tijdelijk op te schorten tot betaling is ontvangen.</p>
+  <h2>6. Contractduur en verlenging</h2>
+  <p>Na de proefperiode gaat de overeenkomst in voor een initiële looptijd van <strong>3 maanden</strong>. Daarna wordt de overeenkomst maandelijks verlengd, tenzij de Klant minimaal 30 dagen voor het einde van de lopende periode schriftelijk opzegt via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
-  <h2>7. Gebruik van het platform</h2>
+  <h2>7. Betaling</h2>
+  <p>Facturen worden maandelijks vooraf verstuurd en dienen binnen <strong>14 dagen</strong> na factuurdatum te worden voldaan. Betalingen verlopen via onze betaalprovider Stripe; Helvaro bewaart zelf geen kaartgegevens. Bij niet-tijdige betaling kan Helvaro de toegang tot het platform opschorten tot betaling is ontvangen.</p>
+
+  <h2>8. AI-functionaliteit</h2>
+  <p>De assistent van Helvaro schrijft antwoorden met behulp van AI-taalmodellen. Dat betekent:</p>
+  <ul>
+    <li>Antwoorden worden per gesprek gegenereerd en zijn niet vooraf goedgekeurd. Ze kunnen onvolledig of onjuist zijn.</li>
+    <li>De Klant blijft verantwoordelijk voor de inhoud die namens zijn bedrijf wordt verstuurd, en voor het toezicht daarop. Het dashboard toont elk gesprek volledig, zodat meelezen en ingrijpen altijd mogelijk is.</li>
+    <li>De assistent geeft geen juridisch, medisch of financieel advies en mag daar door de Klant ook niet voor worden ingericht.</li>
+    <li>Helvaro kan het onderliggende model wijzigen wanneer dat de kwaliteit of de kosten ten goede komt.</li>
+  </ul>
+
+  <h2>9. WhatsApp</h2>
+  <p>Helvaro verstuurt berichten via het WhatsApp Business Platform van Meta. Daarop gelden ook de voorwaarden en het beleid van Meta, en die staan boven wat hier is afgesproken:</p>
+  <ul>
+    <li>Buiten het venster van 24 uur na het laatste bericht van de lead mag alleen een door Meta goedgekeurde sjabloon worden verstuurd. Goedkeuring gebeurt per taal en ligt bij Meta, niet bij Helvaro.</li>
+    <li>Een lead die STOP (of een gelijkwaardig woord) antwoordt, wordt automatisch afgemeld en ontvangt geen berichten meer.</li>
+    <li>De Klant staat ervoor in dat hij de contactgegevens die hij aanlevert rechtmatig heeft verkregen en dat de ontvanger contact mag verwachten.</li>
+    <li>Meta kan een afzender beperken of blokkeren bij klachten. Helvaro kan het gebruik van een gedeeld nummer opschorten wanneer het gedrag van één klant de bezorging voor andere klanten in gevaar brengt.</li>
+  </ul>
+
+  <h2>10. Google Agenda</h2>
+  <p>De Klant kan zijn Google Agenda koppelen zodat de assistent afspraken kan inplannen. Die koppeling is optioneel en het platform werkt ook zonder.</p>
+  <ul>
+    <li>Helvaro vraagt uitsluitend toegang tot agendagegevens: het lezen van beschikbaarheid en het aanmaken en beheren van afspraken. Geen e-mail, geen bestanden, geen contacten.</li>
+    <li>De toegangssleutels worden versleuteld bewaard en komen nooit in de browser van de Klant of in de dienst zelf terecht.</li>
+    <li>De Klant kan de koppeling op elk moment verbreken, in Helvaro of via zijn Google-account. Daarna plant de assistent geen afspraken meer in.</li>
+  </ul>
+
+  <h2>11. Gebruik van het platform</h2>
   <p>Het is de Klant niet toegestaan om:</p>
   <ul>
     <li>Het platform door te verkopen of beschikbaar te stellen aan derden</li>
     <li>Het systeem te gebruiken voor spam, misleiding of illegale doeleinden</li>
     <li>Inloggegevens te delen met personen buiten de eigen organisatie</li>
+    <li>Het platform geautomatiseerd te belasten op een manier die de dienst voor anderen verstoort</li>
   </ul>
 
-  <h2>8. Eigendom van data</h2>
-  <p>Alle leaddata die via het Helvaro-platform wordt verzameld, blijft eigendom van de Klant. Helvaro verwerkt deze data uitsluitend ten behoeve van de dienstverlening en deelt deze nooit met derden.</p>
+  <h2>12. Eigendom van data en intellectuele eigendom</h2>
+  <p>Alle leaddata die via het platform wordt verzameld blijft eigendom van de Klant. Helvaro verwerkt die data uitsluitend om de dienst te leveren en verkoopt ze niet. Bij beëindiging kan de Klant zijn data opvragen; zie het <a href="/privacy">privacybeleid</a> voor bewaartermijnen.</p>
+  <p>Het platform zelf, de broncode, de vormgeving en de merknaam Helvaro blijven eigendom van Helvaro. De Klant krijgt een niet-exclusief gebruiksrecht voor de duur van de overeenkomst. Teksten en beelden die de Klant met het platform genereert, mag hij vrij gebruiken.</p>
 
-  <h2>9. Aansprakelijkheid</h2>
-  <p>Helvaro is niet aansprakelijk voor indirecte schade, gederfde inkomsten of het niet converteren van leads. Helvaro levert een platform en AI-tool. Het resultaat hangt mede af van de kwaliteit van het aanbod van de Klant.</p>
-  <p>De totale aansprakelijkheid van Helvaro is in alle gevallen beperkt tot het bedrag dat de Klant in de afgelopen 3 maanden heeft betaald.</p>
+  <h2>13. Opschorting en beëindiging</h2>
+  <p>Helvaro kan een account opschorten bij niet-betaling, bij gebruik in strijd met artikel 11, of wanneer het beleid van Meta of een andere leverancier daartoe verplicht. Behalve bij een acuut risico waarschuwt Helvaro vooraf en krijgt de Klant de gelegenheid het probleem te verhelpen.</p>
+  <p>Beide partijen kunnen de overeenkomst met onmiddellijke ingang beëindigen bij een ernstige tekortkoming die na schriftelijke ingebrekestelling niet binnen 14 dagen is hersteld.</p>
 
-  <h2>10. Beschikbaarheid</h2>
-  <p>Helvaro streeft naar een uptime van minimaal 99%. Geplande onderhoudsmomenten worden zo mogelijk vooraf gecommuniceerd. Helvaro is niet aansprakelijk voor onderbrekingen buiten haar controle (bijv. Storing bij Meta, Airtable of Vercel).</p>
+  <h2>14. Beschikbaarheid en beperkingen</h2>
+  <p>Helvaro streeft naar een beschikbaarheid van minimaal 99% en kondigt gepland onderhoud zo mogelijk vooraf aan. Helvaro is afhankelijk van externe diensten &mdash; onder meer Meta (WhatsApp), Google, Stripe, Clerk, Airtable en Vercel &mdash; en is niet aansprakelijk voor onderbrekingen die daar ontstaan.</p>
 
-  <h2>11. Vertrouwelijkheid</h2>
-  <p>Beide partijen behandelen informatie die in het kader van de samenwerking wordt uitgewisseld als vertrouwelijk en delen deze niet met derden zonder schriftelijke toestemming.</p>
+  <h2>15. Aansprakelijkheid</h2>
+  <p>Helvaro is niet aansprakelijk voor indirecte schade, gederfde inkomsten of het niet converteren van leads. Het resultaat hangt mede af van het aanbod en de opvolging van de Klant.</p>
+  <p>De totale aansprakelijkheid van Helvaro is in alle gevallen beperkt tot het bedrag dat de Klant in de voorafgaande 3 maanden heeft betaald. Deze beperking geldt niet bij opzet of bewuste roekeloosheid.</p>
 
-  <h2>12. Wijzigingen in voorwaarden</h2>
-  <p>Helvaro behoudt het recht deze voorwaarden te wijzigen. Klanten worden minimaal 30 dagen vooraf per e-mail geïnformeerd. Voortgezet gebruik na de ingangsdatum geldt als acceptatie.</p>
+  <h2>16. Vertrouwelijkheid</h2>
+  <p>Beide partijen behandelen informatie die in het kader van de samenwerking wordt uitgewisseld als vertrouwelijk en delen die niet met derden zonder schriftelijke toestemming.</p>
 
-  <h2>13. Toepasselijk recht</h2>
-  <p>Op deze overeenkomst is het Belgisch recht van toepassing. Geschillen worden bij voorkeur in onderling overleg opgelost. Indien dit niet lukt, is de bevoegde rechtbank te Antwerpen exclusief bevoegd.</p>
+  <h2>17. Wijzigingen in de dienst en in deze voorwaarden</h2>
+  <p>Helvaro ontwikkelt het platform door en kan functies toevoegen, wijzigen of uitfaseren. Bij een wijziging die een bestaande functie wezenlijk beperkt, wordt de Klant minimaal 30 dagen vooraf geïnformeerd.</p>
+  <p>Helvaro kan deze voorwaarden wijzigen. Klanten worden minimaal 30 dagen vooraf per e-mail geïnformeerd. Voortgezet gebruik na de ingangsdatum geldt als aanvaarding; wie niet akkoord gaat, kan tegen die datum kosteloos opzeggen.</p>
 
-  <h2>14. Contact</h2>
+  <h2>18. Toepasselijk recht</h2>
+  <p>Op deze overeenkomst is het Belgisch recht van toepassing. Geschillen worden bij voorkeur in onderling overleg opgelost. Lukt dat niet, dan is de rechtbank te Antwerpen exclusief bevoegd.</p>
+
+  <h2>19. Contact</h2>
   <p>Voor vragen over deze voorwaarden: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a></p>
 
   <footer>

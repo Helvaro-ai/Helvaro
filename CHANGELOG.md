@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Algemene voorwaarden noemden een prijs die vier keer te hoog was
+
+De publieke pagina op `/terms` stond nog op mei 2026 en beloofde:
+
+> "Helvaro. EUR 1.000 per maand ... Calendly integratie" — "Alle bedragen zijn excl. Btw"
+
+Terwijl `api/_plans.js` al maanden **EUR 249,99 / 499 / 799 INCLUSIEF 21% btw** rekent en
+Calendly in `api/leads.js` als deprecated staat. Geen verouderd detail maar een verkeerde
+voorstelling van zaken op de pagina waar een klant zijn beslissing op baseert.
+
+- Prijzen, credits en btw-behandeling nu gelijk aan `_plans.js`.
+- Nieuwe artikelen die er nog niet waren en die Google bij de OAuth-verificatie verwacht:
+  **credits** (20 per gesprek, geen geldwaarde), **AI-functionaliteit** (antwoorden zijn
+  niet vooraf goedgekeurd, de klant blijft verantwoordelijk), **WhatsApp** (24u-venster,
+  goedkeuring per taal ligt bij Meta, STOP meldt af), **Google Agenda** (alleen
+  agendatoegang, sleutels nooit client-side, koppeling altijd te verbreken),
+  **intellectuele eigendom**, **opschorting en beëindiging**, **wijzigingen in de dienst**.
+- `tests/voorwaarden.test.js` (27 tests) verbindt de pagina aan `_plans.js`: wie een prijs
+  wijzigt en de voorwaarden vergeet, krijgt een rode test. Mutatiegetest.
+
+> **Nog te doen door Sindi — dit kan ik niet invullen.** Nergens in de repo of op de site
+> staat het **ondernemingsnummer (KBO/BTW) en de maatschappelijke zetel** van Helvaro BV.
+> Die zijn in België wettelijk verplicht op een handelspagina en Google vraagt ze bij de
+> verificatie. Ik heb ze bewust NIET verzonnen. Ze horen in artikel 1.
+
+
 ### Verwijderd: api/leads-list.js (108 regels dode code)
 
 Bewijs vóór het schrappen, niet erna:
