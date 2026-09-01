@@ -450,6 +450,25 @@ console.log('\n— de checklist en de proefbanner zijn vertaalbaar —');
       !/title: '(?:Koppel|Vertel|Ontvang|Geef|E-mailadres)/.test(blok), null);
   }
 
+  /* De statkaarten zochten hun kleur en icoon op via het LABEL. Dat werkte
+     zolang die labels vaste tekst waren; toen ze vertaalbaar werden vond de
+     tabel niets meer en kregen alle zes de kaarten dezelfde blauwe cirkel.
+     Live gezien op productie. Een opzoeksleutel mag geen tekst zijn die de
+     gebruiker kan zien. */
+  {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const dashMeta = require('../api/dashboard.js');
+    let h = '';
+    dashMeta({ method: 'GET', url: '/dashboard?lang=en', headers: {} },
+      { setHeader() {}, status() { return this; }, send(b) { h = String(b); }, json() {}, end() {} });
+    ck('de statkaarten zoeken hun icoon op via een id, niet via het label',
+      /META\[c\.id\]/.test(h) && !/META\[c\.label\]/.test(h), null);
+    ck('en de META-tabel is ook op ids gesleuteld',
+      /const META = \{\s*total:/.test(h), null);
+    ck('de tijdsaanduiding is vertaalbaar (geen "Updated zojuist")',
+      /return tr\('ago\.now'\)/.test(h) && !/'zojuist'/.test(h.replace(/\/\*[\s\S]*?\*\//g, '')), null);
+  }
+
   // En in het Nederlands hoort er gewoon Nederlands te staan.
   delete require.cache[require.resolve('../api/dashboard.js')];
   const dashNl = require('../api/dashboard.js');

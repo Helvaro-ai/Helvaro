@@ -87,6 +87,7 @@ const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
      breken. Zelfde voorzorg als bij AP_LANGUAGES_JSON hierboven. */
   const CLERK_I18N_JSON = JSON.stringify(_i18n.clerkLocalisatie(UI_LANG))
     .replace(/</g, '\\u003c').replace(/`/g, '\\u0060').replace(/\$\{/g, '\\u0024{');
+  const LOCALE_TAG = _i18n.locale(UI_LANG);   // 'en-GB', 'nl-BE', ...
   const T_JSON = JSON.stringify(_i18n.woordenboek(UI_LANG))
     .replace(/</g, '\\u003c').replace(/`/g, '\\u0060').replace(/\$\{/g, '\\u0024{');
 
@@ -12074,6 +12075,10 @@ const CLERK_SERVER_OK = ${CLERK_SERVER_OK ? 'true' : 'false'};
    Nederlands staat voordat het Frans wordt -- de pagina komt al goed binnen. */
 const UI_LANG = '${UI_LANG}';
 const T_DICT = ${T_JSON};
+/* De BCP-47 van de paginataal. toLocaleDateString() stond op een paar
+   plekken hard op 'nl-NL', wat een Engelstalige klant een Nederlandse
+   datumvolgorde gaf. */
+const LOCALE = '${LOCALE_TAG}';
 /* Heet bewust 'tr' en niet 't'. Dit bestand telt acht plekken met een lokale
    'let t' / 'var t' (een tagnaam, een tijdstip, een teller). Zo'n lokale naam
    zet de vertaalfunctie in dezelfde scope in de tijdelijke dode zone, en dan
@@ -12795,13 +12800,16 @@ function formatDate(d) {
 }
 
 function timeAgo(date) {
-  if (!date) return 'onbekend';
+  /* Stond volledig in het Nederlands, terwijl de kop eromheen wél vertaald was:
+     een Engelstalige klant las "Updated zojuist". Half vertalen valt meer op
+     dan niet vertalen. */
+  if (!date) return tr('ago.unknown');
   const diff = Math.floor((Date.now() - date) / 60000);
-  if (diff < 1) return 'zojuist';
-  if (diff === 1) return '1 minuut geleden';
-  if (diff < 60) return \`\${diff} minuten geleden\`;
+  if (diff < 1) return tr('ago.now');
+  if (diff === 1) return tr('ago.min1');
+  if (diff < 60) return tr('ago.minN', { n: diff });
   const h = Math.floor(diff / 60);
-  return h === 1 ? '1 uur geleden' : \`\${h} uur geleden\`;
+  return h === 1 ? tr('ago.hour1') : tr('ago.hourN', { n: h });
 }
 
 function debounce(fn, delay) {
@@ -13485,15 +13493,21 @@ async function saveNotitiesData(leadId, data) {
   return patchLead(leadId, { notities: json });
 }
 
+/* DERDE tijdsaanduiding in dit bestand, naast timeAgo() en relTime(). Alle drie
+   deden hetzelfde met een net iets ander formaat, en alle drie stonden ze vast
+   in het Nederlands. Samenvoegen is een aparte ingreep -- ze verschillen in
+   invoertype (ISO-string, Date, epoch) en in lengte (kort/lang) en worden op
+   acht plekken gebruikt. Hier is alleen de taal rechtgezet; de samenvoeging
+   staat als losse taak genoteerd. */
 function relativeTime(iso) {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'zojuist';
-  if (mins < 60) return mins + 'm geleden';
+  if (mins < 1) return tr('ago.now');
+  if (mins < 60) return tr('ago.mShort', { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + 'u geleden';
-  return Math.floor(hrs / 24) + 'd geleden';
+  if (hrs < 24) return tr('ago.hShort', { n: hrs });
+  return tr('ago.dShort', { n: Math.floor(hrs / 24) });
 }
 
 function taskDueLabel(due) {
@@ -14409,7 +14423,7 @@ function renderStats() {
   const lastWeekBooked = lastWeekLeads.filter(l => l.afspraakGeboekt).length;
   const trendDiff = (a, b) => {
     const d = a - b;
-    if (d === 0) return '<span style="color:var(--text-muted);font-size:11px">— zelfde</span>';
+    if (d === 0) return '<span style="color:var(--text-muted);font-size:11px">' + tr('stat.same') + '</span>';
     const arrow = d > 0 ? '↑' : '↓';
     const col = d > 0 ? 'var(--green-ink)' : 'var(--red-ink)';
     return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${Math.abs(d)} \${tr('stat.vsweek')}</span>\`;
@@ -14417,6 +14431,7 @@ function renderStats() {
 
   const cards = [
     {
+      id: 'total',
       label: tr('stat.total'),
       value: s.total || 0,
       suffix: '',
@@ -14426,6 +14441,7 @@ function renderStats() {
       trend: trendDiff(thisWeekLeads.length, lastWeekLeads.length)
     },
     {
+      id: 'qual',
       label: tr('stat.qual'),
       value: s.qualified || 0,
       suffix: '',
@@ -14435,6 +14451,7 @@ function renderStats() {
       trend: trendDiff(thisWeekQual, lastWeekQual)
     },
     {
+      id: 'booked',
       label: tr('stat.booked'),
       value: s.booked || 0,
       suffix: '',
@@ -14444,6 +14461,7 @@ function renderStats() {
       trend: trendDiff(thisWeekBooked, lastWeekBooked)
     },
     {
+      id: 'conv',
       label: tr('stat.conv'),
       value: s.conversionRate || 0,
       suffix: '%',
@@ -14453,6 +14471,7 @@ function renderStats() {
       trend: ''
     },
     {
+      id: 'month',
       label: tr('stat.month'),
       value: s.thisMonth || 0,
       suffix: '',
@@ -14462,6 +14481,7 @@ function renderStats() {
       trend: ''
     },
     {
+      id: 'resp',
       label: tr('stat.resp'),
       value: fmtDuration(s.avgResponseTime || 0).value,
       suffix: fmtDuration(s.avgResponseTime || 0).suffix,
@@ -14472,22 +14492,28 @@ function renderStats() {
     }
   ];
 
-  // Each metric carries its own colour + glyph so the grid can be read at
-  // a glance without parsing six labels. Keyed on label so the card
-  // objects above stay untouched. Icons are inline SVG on purpose — an
-  // icon package would mean a CDN, and every external origin was removed
-  // from this app for GDPR reasons.
+  /* Each metric carries its own colour + glyph so the grid can be read at a
+     glance without parsing six labels. Icons are inline SVG on purpose — an
+     icon package would mean a CDN, and every external origin was removed from
+     this app for GDPR reasons.
+
+     GEKOPPELD AAN c.id, NIET AAN c.label. Dat stond hier eerst wél op het
+     label, met als reden "dan blijven de kaartobjecten onaangeroerd". Dat hield
+     stand zolang die labels vaste tekst waren. Zodra ze vertaalbaar werden,
+     vond deze tabel niets meer: alle zes de kaarten vielen terug op dezelfde
+     blauwe cirkel. Een opzoeksleutel mag geen tekst zijn die de gebruiker
+     kan zien. */
   const META = {
-    'Totaal Leads':   { a: 'blue',    i: '<path d="M3 7h18M3 12h18M3 17h12"/>' },
-    'Gekwalificeerd': { a: 'emerald', i: '<path d="M20 6 9 17l-5-5"/>' },
-    'Afspraken':      { a: 'orange',  i: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>' },
-    'Conversie':      { a: 'purple',  i: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>' },
-    'Deze Maand':     { a: 'gold',    i: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
-    'Gem. Reactie':   { a: 'cyan',    i: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>' }
+    total:  { a: 'blue',    i: '<path d="M3 7h18M3 12h18M3 17h12"/>' },
+    qual:   { a: 'emerald', i: '<path d="M20 6 9 17l-5-5"/>' },
+    booked: { a: 'orange',  i: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>' },
+    conv:   { a: 'purple',  i: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>' },
+    month:  { a: 'gold',    i: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
+    resp:   { a: 'cyan',    i: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>' }
   };
 
   grid.innerHTML = cards.map(c => {
-    const m = META[c.label] || { a: 'blue', i: '<circle cx="12" cy="12" r="9"/>' };
+    const m = META[c.id] || { a: 'blue', i: '<circle cx="12" cy="12" r="9"/>' };
     return \`
     <div class="stat-card" data-accent="\${m.a}">
       <div class="stat-head">
@@ -23091,11 +23117,13 @@ function renderActiviteit() {
 
   function relTime(date) {
     const diff = Math.floor((Date.now() - date) / 1000);
-    if (diff < 60) return 'zojuist';
-    if (diff < 3600) return Math.floor(diff / 60) + 'm geleden';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'u geleden';
-    if (diff < 172800) return 'gisteren';
-    return date.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' });
+    if (diff < 60) return tr('ago.now');
+    if (diff < 3600) return tr('ago.mShort', { n: Math.floor(diff / 60) });
+    if (diff < 86400) return tr('ago.hShort', { n: Math.floor(diff / 3600) });
+    if (diff < 172800) return tr('ago.yesterday');
+    /* Stond hard op 'nl-NL', dus een Engelstalige klant kreeg hier een
+       Nederlandse datumvolgorde. LOCALE komt uit de taal van de pagina. */
+    return date.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' });
   }
 
   const typeMap = {
