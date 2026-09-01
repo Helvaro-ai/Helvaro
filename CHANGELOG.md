@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Productielog-audit: waar de 429's vandaan kwamen
+
+Gemeten over 24 uur op productie (Vercel runtime logs):
+
+| status | aantal | pad |
+|---|---|---|
+| 401 | 28.643 | `/api/leads` |
+| 401 | 11.270 | `/api/faro` |
+| 429 | 4.077 | `/api/admin` |
+| 429 | 209 | `/api/leads` |
+
+- De 401's zijn de inloglus (`d633f3b`) plus Faro dat op het inlogscherm vuurde
+  (`105ff65`). Allebei al verholpen.
+- De 429's op `/api/admin` waren GEEN aanval: datzelfde endpoint gaf in dezelfde
+  periode maar 2x een 401. Het was de presence-ping, die elke 60 seconden klopt en
+  bovendien meteen bij elke pagina-lading. Tijdens de inloglus herlaadde het dashboard
+  onophoudelijk, dus elke ronde kostte een plek in een emmer van 20 verzoeken per
+  minuut per IP.
+- **Ping teruggebracht van 60 seconden naar 5 minuten.** `_presence` in `api/admin.js`
+  ruimt op na 30 minuten en noemt dat zelf "twee keer het online-venster": online is dus
+  15 minuten. Met 5 minuten passen er nog drie pings in dat venster — geen enkele stip
+  gaat uit, wel 5x minder verkeer. De limiet zelf is niet verhoogd; die deed zijn werk.
+- **Sinds de inlogfix: 0 x 401 en 0 x 429 in 12 uur** (11x 200, 2x 304). Let op: dat is
+  een rustige nacht, dus consistent met de fix maar geen bewijs onder volle belasting.
+
+
 ### Onboarding vraagt nu land en taal
 
 - Nieuwe wizardstap **"Land en taal"**, meteen na het welkom. Land uit `api/_regio.js`

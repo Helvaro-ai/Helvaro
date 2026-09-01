@@ -24884,8 +24884,28 @@ function renderMeeting() {
   if (tp) tp.value = m.topic || '';
 }
 
-// ── Presence ping (every 60s while logged in) ─────────────────────────────
+/* ── Presence ping ────────────────────────────────────────────────────────
+   Elke 5 minuten, niet elke minuut.
+
+   WAAROM. In de productielogs van 24 uur stonden 4.286 keer een 429, waarvan
+   4.077 op /api/admin -- terwijl datzelfde endpoint maar 2 keer een 401 gaf.
+   Er was dus geen inbraakpoging aan de gang; er werd gewoon te vaak geklopt.
+   De limiet is 20 verzoeken per 60 seconden PER IP (api/admin.js), en die
+   emmer wordt gedeeld door alles wat /api/admin doet en door iedereen achter
+   hetzelfde kantoor-IP.
+
+   Elke pagina-lading vuurt bovendien meteen een ping af. Tijdens de inloglus
+   (verholpen in d633f3b) herlaadde het dashboard onophoudelijk, en elke ronde
+   kostte zo een plek in die emmer. Dat verklaart het aantal.
+
+   WAAROM 5 MINUTEN VEILIG IS. _presence in api/admin.js ruimt op na 30
+   minuten en noemt dat zelf "twee keer het online-venster" -- online betekent
+   dus 15 minuten. Met 5 minuten zitten er nog altijd drie pings in dat
+   venster; er gaat geen enkele stip uit. Wel 5x minder verkeer.
+
+   Niet opgelost door de limiet te verhogen: die limiet deed precies zijn werk. */
 var _presenceTimer = null;
+var PRESENCE_MS = 5 * 60_000;
 function startPresencePing() {
   if (_presenceTimer) return;
   function ping() {
@@ -24897,7 +24917,7 @@ function startPresencePing() {
     }).catch(function() { /* silent */ });
   }
   ping();                              // fire immediately
-  _presenceTimer = setInterval(ping, 60_000);
+  _presenceTimer = setInterval(ping, PRESENCE_MS);
 }
 
 function stopPresencePing() {
