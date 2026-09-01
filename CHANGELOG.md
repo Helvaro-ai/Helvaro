@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Onboarding: koppelstap voor WhatsApp en Google Agenda
+
+Nieuwe wizardstap **"Koppelingen"**, na de AI-instellingen en voor het slot. Beide kaarten
+tonen de ECHTE stand, live opgehaald — geen vinkje dat er alleen maar staat.
+
+**WhatsApp.** Bewust GEEN koppelknop. Een eigen nummer koppelen loopt via Meta's Embedded
+Signup, en dat vraagt Advanced Access via App Review (Tech Provider). Die goedkeuring is
+er nog niet: `api/_waes.js` is compleet maar nergens aangesloten. Een knop die daarop
+uitkomt geeft de klant een foutmelding van Meta in plaats van een koppeling. Wat er wél
+staat is wat waar is: hij draait op het gedeelde Helvaro-nummer, en zijn berichten worden
+per taal goedgekeurd — **binnen 72 uur**. Die status komt uit dezelfde registry als het
+interne overzicht, dus klant en back-office kunnen niet uit elkaar lopen.
+
+**Google Agenda.** Drie toestanden, niet twee: gekoppeld, verlopen (opnieuw koppelen) en
+niet gekoppeld. "Er staat een token" is niet hetzelfde als "het werkt" — zolang het
+toestemmingsscherm op Testing staat verloopt een verversingstoken na zeven dagen (zie
+`16f3035`). Koppelen navigeert naar Google; de wizard onthoudt zijn stap, dus de klant komt
+op dezelfde plek terug.
+
+Bij een fout meldt geen van beide kaarten "klaar" — dan staat er "Onbekend".
+
+De stappenlijst wordt niet meer letterlijk in de test vastgelegd (die assertie brak bij
+elke nieuwe stap). Nu wordt de VOLGORDE getest: land en taal meteen na het welkom, want
+de taal bepaalt welke templates nodig zijn. Suite: 58/58 groen, mutatiegetest.
+
+
 ### Operations Center: eerste twee schermen (api/admin.js)
 
 Interne bediening, geen klantenscherm. Beide modes controleren `ADMIN_KEY` server-side —

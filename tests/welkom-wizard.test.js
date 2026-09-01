@@ -37,8 +37,32 @@ dash({ method: 'GET', url: '/dashboard', headers: {} },
 
 console.log('\n— de wizard bestaat en heeft vijf stappen —');
 ck('checkWelkomWizard staat in de pagina', /async function checkWelkomWizard\(\)/.test(html), null);
-ck('vijf stappen, met land en taal meteen na het welkom',
-   /WIZARD_STAPPEN = \['intro', 'regio', 'bedrijf', 'ai', 'klaar'\]/.test(html), null);
+/* Bewust NIET de hele lijst letterlijk: die assertie brak bij elke stap die
+   erbij kwam, en dan pas je hem aan zonder na te denken. Wat er echt toe doet
+   is de VOLGORDE: land en taal meteen na het welkom (alles daarna hangt ervan
+   af -- de taal bepaalt welke templates nodig zijn), en 'klaar' als laatste. */
+const STAPPEN = ((html.match(/WIZARD_STAPPEN = \[([^\]]+)\]/) || [])[1] || '')
+  .split(',').map((x) => x.trim().replace(/'/g, ''));
+ck('land en taal komen meteen na het welkom',
+   STAPPEN[0] === 'intro' && STAPPEN[1] === 'regio', STAPPEN);
+ck("'klaar' is de laatste stap", STAPPEN[STAPPEN.length - 1] === 'klaar', STAPPEN);
+ck('de koppelingen komen na de AI-instellingen',
+   STAPPEN.indexOf('koppelingen') > STAPPEN.indexOf('ai'), STAPPEN);
+
+/* ── De koppelstap ─────────────────────────────────────────────────────────
+   Twee dingen die hier fout kunnen gaan en allebei het vertrouwen kosten:
+   een knop die niet werkt, en een groen vinkje dat niet waar is. */
+ck('toont een WhatsApp-kaart', /wiz-wa-badge/.test(html), null);
+ck('toont een Google Agenda-kaart', /wiz-gcal-badge/.test(html), null);
+ck('de WhatsApp-status komt uit dezelfde registry als het interne overzicht',
+   /mode: 'wa-readiness'/.test(html), null);
+ck('de agenda kent drie toestanden, niet twee (verlopen token telt niet als gekoppeld)',
+   /d\.connected && d\.needsReauth/.test(html), null);
+ck('er staat GEEN WhatsApp-koppelknop zolang Embedded Signup niet aangesloten is',
+   !/wiz-wa-knop/.test(html), null);
+ck('bij een fout claimt hij niet dat het klaar is',
+   /badge\.textContent = 'Onbekend'/.test(html), null);
+ck('de 72 uur wordt hier herhaald', /binnen 72 uur rond/.test(html), null);
 
 /* ── Land en taal ──────────────────────────────────────────────────────────
    De kern van deze stap is een VOORRANG, geen formulier: het land stelt een

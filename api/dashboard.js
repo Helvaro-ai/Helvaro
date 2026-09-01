@@ -18407,12 +18407,13 @@ async function startDashboard(skipRefresh = false) {
  * succes). Dat is de reden dat hij er staat: hij markeert voortgang. Op smal
  * beeld verdwijnt hij, want daar is de ruimte voor de invoer.
  */
-var WIZARD_STAPPEN = ['intro', 'regio', 'bedrijf', 'ai', 'klaar'];
+var WIZARD_STAPPEN = ['intro', 'regio', 'bedrijf', 'ai', 'koppelingen', 'klaar'];
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
   regio:   '/faro/falcon-idle.webp',
   bedrijf: '/faro/falcon-thinking.webp',
   ai:      '/faro/falcon-generating.webp',
+  koppelingen: '/faro/falcon-thinking.webp',
   klaar:   '/faro/falcon-success.webp'
 };
 var _wizardStap = 0;
@@ -18567,6 +18568,111 @@ async function wizardVolgende() {
   wizardGa(1);
 }
 
+/* ── WhatsApp: wat is er echt waar ────────────────────────────────────────
+   Er staat hier bewust GEEN koppelknop. Een eigen WhatsApp-nummer koppelen
+   loopt via Meta's Embedded Signup, en dat vraagt Advanced Access op
+   whatsapp_business_management via App Review (Tech Provider). Die goedkeuring
+   is nog niet binnen -- api/_waes.js is compleet maar nergens aangesloten. Een
+   knop die daarop uitkomt geeft de klant een foutmelding van Meta in plaats van
+   een koppeling, en dat is erger dan geen knop.
+
+   Wat de klant WEL moet weten: hij draait op het gedeelde Helvaro-nummer, en
+   zijn berichten moeten per taal door Meta goedgekeurd worden. Die stand komt
+   uit dezelfde registry als het interne overzicht (api/_wa-templates.js), dus
+   wat hij hier leest kan niet afwijken van wat wij zien. */
+async function wizardWhatsAppStatus() {
+  var badge = document.getElementById('wiz-wa-badge');
+  var uitleg = document.getElementById('wiz-wa-uitleg');
+  if (!badge || !uitleg) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'wa-readiness' })
+    });
+    if (!r.ok) throw new Error('status ' + r.status);
+    var d = await r.json();
+    var taal = d.taal || 'je taal';
+
+    if (!d.ondersteund) {
+      badge.textContent = 'Niet mogelijk';
+      badge.style.color = 'var(--danger-ink, #b91c1c)';
+      uitleg.textContent = 'WhatsApp ondersteunt ' + taal + ' niet als berichttaal. Kies bij "Land en taal" een andere taal, of neem contact op — dan zoeken we het samen uit.';
+      return;
+    }
+    if (d.klaar) {
+      badge.textContent = 'Klaar';
+      badge.style.color = 'var(--success-ink, #15803d)';
+      uitleg.textContent = 'Je berichten in ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je AI antwoordt meteen. Een eigen nummer kan later.';
+      return;
+    }
+    badge.textContent = 'Wordt klaargezet';
+    badge.style.color = 'var(--warning-ink, #b45309)';
+    uitleg.textContent = 'We laten je berichten in ' + taal + ' goedkeuren bij WhatsApp. Dat is binnen 72 uur rond — je hoeft hier niets voor te doen. Zolang dat loopt kan je alles al instellen.';
+  } catch (e) {
+    /* Niet doen alsof het klaar is als we het niet weten. */
+    badge.textContent = 'Onbekend';
+    uitleg.textContent = 'We konden de status even niet ophalen. Dat blokkeert je niet — je vindt hem later terug op je dashboard.';
+  }
+}
+
+/* ── Google Agenda ────────────────────────────────────────────────────────
+   Drie toestanden, niet twee. "Er staat een token" is niet hetzelfde als
+   "de koppeling werkt": zolang het toestemmingsscherm van Google op Testing
+   staat verloopt een verversingstoken na zeven dagen, en dan staat er nog een
+   token terwijl er niets meer gesynchroniseerd wordt. Zie de fix in 16f3035.
+
+   Koppelen navigeert weg naar Google. Dat is geen probleem: de wizard onthoudt
+   zijn stap in localStorage, dus na de omweg komt de klant hier terug. */
+async function wizardAgendaStatus() {
+  var badge = document.getElementById('wiz-gcal-badge');
+  var uitleg = document.getElementById('wiz-gcal-uitleg');
+  var knop = document.getElementById('wiz-gcal-knop');
+  if (!badge || !uitleg || !knop) return;
+
+  function bied(tekst) {
+    knop.textContent = tekst;
+    knop.style.display = '';
+    knop.onclick = function () {
+      knop.disabled = true;
+      knop.textContent = 'Doorsturen naar Google...';
+      connectGoogleCalendar();
+    };
+  }
+
+  try {
+    var r = await fetch(API_BASE + '/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'status' })
+    });
+    if (!r.ok) throw new Error('status ' + r.status);
+    var d = await r.json();
+
+    if (d && d.connected && d.needsReauth) {
+      badge.textContent = 'Opnieuw koppelen';
+      badge.style.color = 'var(--warning-ink, #b45309)';
+      uitleg.textContent = 'Je koppeling is verlopen' + (d.email ? ' (' + d.email + ')' : '') + '. Er worden nu geen afspraken ingepland tot je opnieuw koppelt.';
+      bied('Opnieuw koppelen');
+      return;
+    }
+    if (d && d.connected) {
+      badge.textContent = 'Gekoppeld';
+      badge.style.color = 'var(--success-ink, #15803d)';
+      uitleg.textContent = 'Je agenda is gekoppeld' + (d.email ? ' (' + d.email + ')' : '') + '. Je AI ziet wanneer je vrij bent en plant zelf in.';
+      knop.style.display = 'none';
+      return;
+    }
+    badge.textContent = 'Niet gekoppeld';
+    uitleg.textContent = 'Zonder agenda vraagt je AI om een terugbelmoment in plaats van een afspraak in te plannen. Je kan dit ook later doen.';
+    bied('Google Agenda koppelen');
+  } catch (e) {
+    badge.textContent = 'Onbekend';
+    uitleg.textContent = 'We konden de status even niet ophalen. Je vindt de koppeling ook terug bij je instellingen.';
+    bied('Google Agenda koppelen');
+  }
+}
+
 function wizardTeken() {
   var stap = WIZARD_STAPPEN[_wizardStap];
   var c = _wizardConfig || {};
@@ -18596,6 +18702,7 @@ function wizardTeken() {
       regio:   'Zo weet ik in welke taal ik je klanten aanspreek.',
       bedrijf: 'Hoe meer ik weet, hoe beter ik je klanten te woord sta.',
       ai:      'Zo stel ik me straks voor aan je leads.',
+      koppelingen: 'Hiermee kan ik zelf afspraken inplannen.',
       klaar:   'Vanaf nu neem ik je gesprekken over.'
     }[stap] || '';
   }
@@ -18606,12 +18713,13 @@ function wizardTeken() {
 
   if (stap === 'intro') {
     titel.textContent = 'Welkom bij Helvaro';
-    sub.textContent = 'In vier korte stappen staat je AI klaar om je leads te woord te staan. Duurt ongeveer twee minuten.';
+    sub.textContent = 'In een paar korte stappen staat je AI klaar om je leads te woord te staan. Duurt ongeveer twee minuten.';
     body.innerHTML =
         '<ul style="margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.9;color:var(--text-muted,#999)">'
       + '<li>Je kiest je land en de taal voor je klanten</li>'
       + '<li>Je vertelt kort wat je bedrijf doet</li>'
       + '<li>Je geeft je AI een naam en een welkomstbericht</li>'
+      + '<li>Je koppelt WhatsApp en je agenda</li>'
       + '<li>Je krijgt je formulierlink om te delen</li>'
       + '</ul>'
       + '<p style="margin:16px 0 0;font-size:12.5px;color:var(--text-muted,#999)">'
@@ -18707,6 +18815,38 @@ function wizardTeken() {
     return;
   }
 
+  if (stap === 'koppelingen') {
+    titel.textContent = 'Koppel WhatsApp en je agenda';
+    sub.textContent = 'Hiermee praat je AI met je leads en plant ze zelf afspraken in. Je kan dit ook later doen.';
+
+    var KAART = 'border:1px solid var(--border,#2A3444);border-radius:14px;padding:14px 16px;margin:0 0 12px';
+    var KOP = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
+    var NAAM = 'font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)';
+    var UITLEG = 'margin:6px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)';
+    var KNOP = 'padding:7px 13px;border-radius:9px;border:1px solid var(--border,#2A3444);background:transparent;color:var(--text,#E9EEF6);font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap';
+
+    body.innerHTML =
+        '<div style="' + KAART + '">'
+      +   '<div style="' + KOP + '">'
+      +     '<span style="' + NAAM + '">WhatsApp</span>'
+      +     '<span id="wiz-wa-badge" style="font-size:12px;color:var(--text-muted,#999)">Controleren...</span>'
+      +   '</div>'
+      +   '<p id="wiz-wa-uitleg" style="' + UITLEG + '"></p>'
+      + '</div>'
+      + '<div style="' + KAART + '">'
+      +   '<div style="' + KOP + '">'
+      +     '<span style="' + NAAM + '">Google Agenda</span>'
+      +     '<span id="wiz-gcal-badge" style="font-size:12px;color:var(--text-muted,#999)">Controleren...</span>'
+      +   '</div>'
+      +   '<p id="wiz-gcal-uitleg" style="' + UITLEG + '"></p>'
+      +   '<button id="wiz-gcal-knop" type="button" style="' + KNOP + ';margin-top:10px;display:none"></button>'
+      + '</div>';
+
+    wizardWhatsAppStatus();
+    wizardAgendaStatus();
+    return;
+  }
+
   // klaar
   titel.textContent = 'Klaar om leads te ontvangen';
   sub.textContent = 'Deel deze link. Elke lead die hem invult, wordt meteen door je AI te woord gestaan.';
@@ -18734,6 +18874,7 @@ var WIZARD_LABELS = {
   intro:   'Welkom',
   regio:   'Land en taal',
   bedrijf: 'Je bedrijf',
+  koppelingen: 'Koppelingen',
   ai:      'Je AI',
   klaar:   'Klaar'
 };
