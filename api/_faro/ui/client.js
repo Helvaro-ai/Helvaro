@@ -113,8 +113,14 @@ function faroOpen() {
   // Where to go back to. Captured before navigating, and defaulted rather than
   // left empty: closing Faro must always land somewhere real, even if Faro was
   // the first page shown after login.
-  faroState.returnPage = (window.state && state.currentPage && state.currentPage !== 'faro')
-    ? state.currentPage : 'dashboard';
+  /* De variabele state is een const op modulescope in dashboard.js en staat
+     NIET op window. De oude voorwaarde las window.state en was hier dus altijd
+     undefined, waardoor de
+     terugkeerpagina viel ALTIJD terug op 'dashboard' -- wie Faro opende vanaf
+     Panden of Facturatie kwam nooit terug waar hij vandaan kwam. De bedoeling
+     stond er wel, de voorwaarde kon er alleen nooit aan voldoen. */
+  faroState.returnPage = (typeof state !== 'undefined' && state && state.currentPage
+    && state.currentPage !== 'faro') ? state.currentPage : 'dashboard';
 
   // NOT the dock input. Restoring focus to it on close re-fires its own focus
   // handler, which reopens Faro on the same tick -- Faro became impossible to
@@ -270,13 +276,15 @@ function faroSchermContext() {
     /* De CRM-pagina, niet de Faro-pagina. Staat Faro zelf open, dan is de
        vraag bijna altijd bedoeld voor het scherm waar de gebruiker vandaan
        kwam -- faroState.returnPage houdt dat al bij voor de sluitknop. */
-    var pagina = (window.state && state.currentPage) || '';
-    if (pagina === 'faro' && faroState.returnPage) pagina = faroState.returnPage;
+    var pagina = (typeof state !== 'undefined' && state && state.currentPage) || '';
+    if (pagina === 'faro' && typeof faroState !== 'undefined' && faroState.returnPage) {
+      pagina = faroState.returnPage;
+    }
     if (pagina) ctx.pagina = String(pagina);
 
     /* Een leeg scherm is een andere vraag dan een vol scherm: "waarom staat
        hier niets?" hoort een uitleg te krijgen over wat er komt te staan. */
-    if (window.state && Array.isArray(state.leads) && state.leads.length === 0) {
+    if (typeof state !== 'undefined' && state && Array.isArray(state.leads) && state.leads.length === 0) {
       ctx.toestand = 'leeg';
     }
 
@@ -288,7 +296,8 @@ function faroSchermContext() {
     var kop = document.querySelector('.page.active .page-title, .page.active h1');
     if (kop && kop.textContent) ctx.sectie = kop.textContent.trim().slice(0, 60);
 
-    if (window._wizardConfig && typeof _wizardConfig.welcomeDone === 'boolean') {
+    if (typeof _wizardConfig !== 'undefined' && _wizardConfig
+        && typeof _wizardConfig.welcomeDone === 'boolean') {
       ctx.onboardingKlaar = _wizardConfig.welcomeDone;
     }
   } catch (e) {

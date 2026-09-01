@@ -144,6 +144,13 @@ console.log('\n  de bedrading klopt');
 const uiJs = require(BASE + 'api/_faro/ui').forLang('nl').js;
 ck('de client verzamelt de context', /function faroSchermContext/.test(uiJs), null);
 ck('en stuurt hem mee met elke vraag', /context: faroSchermContext\(\)/.test(uiJs), null);
+/* `state` is een const op modulescope in dashboard.js en staat NIET op window.
+   `window.state && state.currentPage` gaf daarom altijd undefined en de context
+   vertrok zonder pagina -- precies het enige dat hij moest meenemen. Live
+   gevonden, want een unittest op de bron had dit nooit gezien. */
+ck('de client leest state via typeof, niet via window.state',
+   /typeof state !== 'undefined'/.test(uiJs) && !/window\.state && state\.currentPage/.test(uiJs), null);
+
 ck('de client stuurt GEEN leads of saldi mee',
   !/context:[\s\S]{0,400}state\.leads\[/.test(uiJs), null);
 
