@@ -36,6 +36,7 @@
 
 const config       = require('./config');
 const prompt       = require('./prompt');
+const scherm       = require('./scherm');
 const store        = require('./store');
 const stream       = require('./stream');
 const actions      = require('./actions');
@@ -108,6 +109,13 @@ async function handle(req, res, auth) {
 // ── faro-chat ──────────────────────────────────────────────────────────────────
 
 async function chat(req, res, ctx, body) {
+  /* Schermcontext uit de browser. Alles wat hier binnenkomt is door de
+     gebruiker te vervalsen, dus scherm.sanitize() laat alleen bekende sleutels
+     en bekende waarden door. Het gaat om WAAR iemand staat, nooit om wat er
+     staat -- klantgegevens lopen via tools.js, met de tenantcontrole die
+     daarbij hoort. */
+  ctx.ui = scherm.sanitize(body.context);
+
   const text = String(body.text || '').trim();
   const attachments = Array.isArray(body.attachments) ? body.attachments : [];
 

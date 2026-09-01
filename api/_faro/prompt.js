@@ -132,6 +132,7 @@ De aanbevolen actie is al gecontroleerd op uitvoerbaarheid (telefoonnummer,
  * @returns {Promise<string>}
  */
 const writes = require('./writes');
+const scherm = require('./scherm');
 
 async function buildContextBlock(ctx) {
   /* Wie is dit kantoor, en hoe klinkt het?
@@ -242,9 +243,16 @@ async function build(ctx) {
     '',
     '── Actuele situatie ──',
     contextBlock,
-    '',
-    `Antwoord in de taal van de gebruiker (standaard: ${lang}).`,
   ];
+
+  /* Waar de gebruiker op DIT moment naar kijkt. Zonder dit blok kon Faro
+     "wat betekent dit?" niet beantwoorden -- hij kreeg de vraag wel maar niet
+     het scherm, en vroeg dus terug waar de gebruiker op doelde. Zie
+     api/_faro/scherm.js voor wat er wel en niet in mag. */
+  const schermBlok = scherm.render(ctx.ui);
+  if (schermBlok) parts.push('', schermBlok);
+
+  parts.push('', `Antwoord in de taal van de gebruiker (standaard: ${lang}).`);
 
   // A conversation opened inside a Project is scoped to it (requirement 12):
   // the property, leads and campaign of that project are the default subject.

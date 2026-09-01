@@ -255,6 +255,49 @@ var FARO_MASCOT_SRC = {
 };
 var faroMascotMissing = {};
 
+/* ── Waar staat de gebruiker ───────────────────────────────────────────────
+   Wordt bij elke vraag meegestuurd zodat "wat betekent dit?" beantwoord kan
+   worden zonder dat de gebruiker eerst moet uitleggen waar hij is.
+
+   Alleen WAAR, nooit WAT. Geen leadnamen, geen bedragen, geen telefoonnummers
+   -- die lopen via de gereedschappen op de server, met de tenantcontrole die
+   daarbij hoort. Hier gaat alleen een pagina-id, een sectielabel uit onze eigen
+   UI en een paar booleans overheen. De server gooit alles weg wat hij niet
+   kent (api/_faro/scherm.js), dus dit is de tweede laag, niet de enige. */
+function faroSchermContext() {
+  var ctx = {};
+  try {
+    /* De CRM-pagina, niet de Faro-pagina. Staat Faro zelf open, dan is de
+       vraag bijna altijd bedoeld voor het scherm waar de gebruiker vandaan
+       kwam -- faroState.returnPage houdt dat al bij voor de sluitknop. */
+    var pagina = (window.state && state.currentPage) || '';
+    if (pagina === 'faro' && faroState.returnPage) pagina = faroState.returnPage;
+    if (pagina) ctx.pagina = String(pagina);
+
+    /* Een leeg scherm is een andere vraag dan een vol scherm: "waarom staat
+       hier niets?" hoort een uitleg te krijgen over wat er komt te staan. */
+    if (window.state && Array.isArray(state.leads) && state.leads.length === 0) {
+      ctx.toestand = 'leeg';
+    }
+
+    /* Zichtbare foutmelding op de pagina wint van alles: dan gaat de vraag
+       daar vrijwel zeker over. */
+    var fout = document.querySelector('.page.active .error-state, .page.active [data-fout="1"]');
+    if (fout) ctx.toestand = 'fout';
+
+    var kop = document.querySelector('.page.active .page-title, .page.active h1');
+    if (kop && kop.textContent) ctx.sectie = kop.textContent.trim().slice(0, 60);
+
+    if (window._wizardConfig && typeof _wizardConfig.welcomeDone === 'boolean') {
+      ctx.onboardingKlaar = _wizardConfig.welcomeDone;
+    }
+  } catch (e) {
+    /* Context is een extraatje. Een vraag mag nooit stuklopen omdat we niet
+       konden vaststellen waar iemand stond. */
+  }
+  return ctx;
+}
+
 function faroMascot(stateName) {
   // The orb carries the state whether or not the artwork exists -- it is the
   // mark on a checkout with an empty public/faro/, so it cannot depend on the
@@ -405,6 +448,7 @@ function faroSend(text) {
     body: JSON.stringify({
       mode: 'faro-chat',
       text: text,
+      context: faroSchermContext(),
       conversationId: faroState.conversationId,
       tier: faroState.tier,
       attachments: attachments,

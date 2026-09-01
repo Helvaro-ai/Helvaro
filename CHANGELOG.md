@@ -14,6 +14,38 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro weet nu waar je staat
+
+Faro kreeg tot nu toe alleen de VRAAG. De client stuurde
+`{ mode, text, conversationId, tier, attachments, history }` en verder niets. Wie op zijn
+creditsscherm "wat betekent dit?" typte, vroeg dat dus aan een assistent die niet kon zien
+waar hij stond — en kreeg een wedervraag terug.
+
+Nieuw: `api/_faro/scherm.js`, de ene plek die weet welke schermen er zijn en wat ze
+betekenen. Drie seams, verder niets aangeraakt:
+
+- **client** verzamelt de context (`faroSchermContext()`) en stuurt hem mee
+- **handler** maakt hem schoon vóór gebruik (`scherm.sanitize`)
+- **prompt** zet er een blok van in de systeemprompt
+
+**De grens.** De context komt uit de browser en is dus te vervalsen. Alleen bekende
+pagina's, bekende toestanden, afgekapte lengtes; onbekende sleutels verdwijnen. De
+back-officeschermen (`founder`, `kosten`, `admin`) worden geweigerd — die worden voor een
+klant al uit de HTML gehaald en Faro hoort er dus ook niets over te zeggen. Het gaat om
+WAAR iemand staat, nooit om WAT er staat: leads en bedragen lopen via `tools.js`, met de
+tenantcontrole die daarbij hoort. Deze weg omzeilt die controle niet.
+
+**Het aanwijzend voornaamwoord.** Context meegeven bleek niet genoeg: zonder de expliciete
+instructie dat "dit"/"hier" naar dít scherm verwijst, vraagt het model alsnog waar de
+gebruiker op doelt. Die zin staat er nu, en wordt door een test vastgehouden.
+
+De 15 klantschermen hebben elk een korte uitleg in gewone taal — dat is meteen de
+vervanging van de uitlegparagrafen die anders overal op de pagina zouden staan.
+
+`tests/faro-scherm.test.js` (30 tests), mutatiegetest op de whitelist én op de
+"dit"-instructie. Suite: 59/59 groen.
+
+
 ### Onboarding: koppelstap voor WhatsApp en Google Agenda
 
 Nieuwe wizardstap **"Koppelingen"**, na de AI-instellingen en voor het slot. Beide kaarten
