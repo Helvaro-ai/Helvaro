@@ -695,7 +695,27 @@ function isRtl(code) {
 // nl-template zoeken die niet bestaat. Nu valt 'nl' netjes door naar nl_BE.
 // Zodra je een template in een nieuwe taal laat goedkeuren, zet je hem hier
 // erbij; niet eerder, want dan faalt de send pas bij Meta.
-const TEMPLATE_APPROVED_LANGUAGES = new Set(['nl_BE', 'fr_BE', 'en_US']);
+// VERVANGEN DOOR DE REGISTRY. Deze regel was met de hand bijgehouden en klopte
+// niet: er stond fr_BE en en_US in terwijl er op de WABA geen enkele Franse
+// template stond en in en_US alleen Meta's eigen hello_world. Een Franstalige
+// lead kreeg daardoor geen Nederlandse terugval maar een send die Meta
+// weigerde -- zonder foutmelding, dus onzichtbaar.
+//
+// api/_wa-templates.js haalt de waarheid nu bij Meta op (met een geverifieerde
+// snapshot als terugval). Synchroon en zonder netwerk, want dit zit in het
+// verzendpad.
+const _waTemplates = require('./_wa-templates.js');
+
+function templateTalen() {
+  try {
+    return _waTemplates.goedgekeurdeTalen();
+  } catch (err) {
+    // Nooit de verzendcode omvergooien om een registry-fout. Terugval op de
+    // enige taal waarvan we met zekerheid weten dat hij goedgekeurd is.
+    console.warn(`[i18n] template-registry onbereikbaar (${err.message}) — val terug op nl_BE`);
+    return new Set(['nl_BE']);
+  }
+}
 
 // Meta schrijft de regio in hoofdletters: nl_BE, niet nl_be. Accepteer wat de
 // gebruiker intypt (nl-BE, NL_be, ...) en geef terug wat Meta verwacht.
@@ -712,6 +732,7 @@ function canonicalTemplateLang(raw) {
 // call when it falls back, so an unapproved language is always visible in
 // server logs BEFORE Meta rejects the send outright.
 function resolveTemplateLanguage(requestedCode, fallbackCode) {
+  const TEMPLATE_APPROVED_LANGUAGES = templateTalen();
   // Eerst de volledige locale proberen — die is specifieker en is wat Meta
   // daadwerkelijk heeft goedgekeurd.
   const exact = canonicalTemplateLang(requestedCode);
@@ -746,7 +767,7 @@ function resolveTemplateLanguage(requestedCode, fallbackCode) {
   const safeFallback = TEMPLATE_APPROVED_LANGUAGES.has(fbExact) ? fbExact
                      : TEMPLATE_APPROVED_LANGUAGES.has(fbExact.split('_')[0]) ? fbExact.split('_')[0]
                      : 'nl_BE';
-  console.warn(`[i18n] Template language '${requested}' has no approved Meta template yet — falling back to '${safeFallback}'. Get this locale variant approved in Meta Business Manager, then add it to TEMPLATE_APPROVED_LANGUAGES in api/_lang.js.`);
+  console.warn(`[i18n] Template language '${requested}' has no approved Meta template yet — falling back to '${safeFallback}'. Dien die taal in met scripts/create-wa-templates.js; de registry pikt hem daarna vanzelf op.`);
   return { code: safeFallback, fellBack: true, requested };
 }
 
@@ -774,6 +795,6 @@ module.exports = {
   buildWelcomeMessage,
   getLocale,
   isRtl,
-  TEMPLATE_APPROVED_LANGUAGES,
+  templateTalen,
   resolveTemplateLanguage,
 };

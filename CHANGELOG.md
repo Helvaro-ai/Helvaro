@@ -14,6 +14,37 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### WhatsApp-template-registry (api/_wa-templates.js)
+
+Eén centrale bron voor welke templates in welke taal bestaan en goedgekeurd zijn.
+
+- **Stille productiebug gevonden.** `TEMPLATE_APPROVED_LANGUAGES` in `api/_lang.js` stond
+  op `['nl_BE','fr_BE','en_US']`, maar op de WABA staat GEEN enkele Franse template en in
+  en_US alleen Meta's `hello_world`. Een Franstalige lead kreeg dus geen Nederlandse
+  terugval maar een send die Meta weigerde — zonder foutmelding. Nu haalt de registry de
+  waarheid bij Meta op (met geverifieerde snapshot als terugval) en valt `fr` netjes terug
+  op `nl_BE` mét waarschuwing in de logs.
+- **Land stelt voor, klant beslist.** `taalVoorLand()` leidt af uit de locale die
+  `_regio.js` al bijhoudt, maar degradeert naar de kale taalcode wanneer Meta de
+  regiovariant niet kent: `fr_FR`, `de_DE` en `nl_NL` bestaan NIET bij Meta, waardoor elke
+  niet-Belgische klant anders "taal niet ondersteund" had gekregen.
+- **Geen regressie voor bestaande klanten.** Een klant met `Language='nl'` (of zonder
+  Country/Language) matcht gewoon de `nl_BE`-templates en blijft "klaar".
+- **Geen dubbele templates.** Templates zijn per TAAL, niet per klant: drie Nederlandstalige
+  Belgen delen één set. Het overzicht groepeert land -> taal -> aantal klanten.
+- Statussen: klaar / ontbreekt / onderweg (PENDING, IN_APPEAL) / geweigerd (REJECTED,
+  DISABLED, PAUSED) / niet ondersteund door Meta. PAUSED telt bewust NIET als klaar.
+- Alleen de intro-template blokkeert; de rest degradeert (geen bevestiging, wel WhatsApp).
+- `tests/wa-templates.test.js`: 31 gedragstests, mutatiegetest (beide kernbugs opnieuw
+  ingebracht, tests vallen om, fix teruggezet).
+
+### tests/kosten.test.js liep elke maand vanzelf stuk
+
+Vaste startdatums (`2026-06-01`) maakten "3 x 39 = 117" waar in augustus en onwaar in
+september; de Vercel-regel stond te wachten om op de 15e om te vallen. Nu relatief aan
+vandaag. Volledige suite: 56/56 groen.
+
+
 ### WhatsApp-templates: 4 talen + campagne-template
 
 - `scripts/create-wa-templates.js` submit nu **16** templates (4 sjablonen x nl_BE/fr_BE/en_GB/de)

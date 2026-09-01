@@ -200,11 +200,23 @@ const K = require(BASE + 'api/_kosten.js');
   ck('een onleesbare datum ook niet', K.betalingenSinds('ergens in maart', 'maand', nu) === null);
   ck('en een lege datum evenmin', K.betalingenSinds('', 'maand', nu) === null);
 
+  /* Vaste startdatums lieten deze test elke maand opnieuw stuk lopen: met
+     '2026-06-01' klopte "3 x 39" in augustus en niet meer in september. De
+     Vercel-regel stond op dezelfde manier te wachten om op de 15e om te vallen.
+     Reken daarom terug vanaf vandaag. Dag 1 is met opzet: betalingenSinds()
+     trekt er een maand af zolang de afschrijvingsdag nog niet gepasseerd is,
+     en de eerste is altijd gepasseerd. N maanden geleden = N + 1 betalingen. */
+  const maandenGeleden = (n) => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() - n, 1)
+      .toISOString().slice(0, 10);
+  };
+
   global.fetch = async () => ({
     ok: true, status: 200, text: async () => '',
     json: async () => ({ records: [
-      { id: 'recA', fields: { Service: 'vercel', Amount: 20, Currency: 'USD', Interval: 'maand', 'Started On': '2026-03-15' } },
-      { id: 'recB', fields: { Service: 'smartlead', Amount: 39, Currency: 'USD', Interval: 'maand', 'Started On': '2026-06-01' } },
+      { id: 'recA', fields: { Service: 'vercel', Amount: 20, Currency: 'USD', Interval: 'maand', 'Started On': maandenGeleden(5) } },
+      { id: 'recB', fields: { Service: 'smartlead', Amount: 39, Currency: 'USD', Interval: 'maand', 'Started On': maandenGeleden(2) } },
       { id: 'recC', fields: { Service: 'airtable', Amount: 24, Currency: 'USD', Interval: 'maand' } },
     ] }),
   });
