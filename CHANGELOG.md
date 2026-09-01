@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Operations Center: eerste twee schermen (api/admin.js)
+
+Interne bediening, geen klantenscherm. Beide modes controleren `ADMIN_KEY` server-side —
+een klant met een geldige sessie krijgt 401, ook als hij de mode zelf intikt.
+
+- **`ops-templates`** — land -> taal -> aantal klanten -> templates klaar of niet, met de
+  namen van de klanten die op een taal wachten. Gebruikt dezelfde registry als het
+  klantscherm, dus de twee kunnen niet uit elkaar lopen. Drie Nederlandstalige Belgen
+  tellen als ÉÉN rij: templates zijn per taal, niet per klant, en zo dienen we er geen
+  drie keer dezelfde in.
+- **`ops-overview`** — klanten totaal/betalend/proef/verlopen uit echte rijen, hoeveel
+  klanten er geblokkeerd zijn door een ontbrekende taal, en de staat van de integraties.
+
+Twee regels die het scherm zichzelf oplegt:
+
+1. **Geen verzonnen gezondheid.** Airtable krijgt "gezond" omdat we er zojuist uit gelezen
+   hebben. Clerk en Stripe krijgen "geconfigureerd" met `gemeten: false` — vanuit deze
+   functie is er geen goedkope ping, en een groen bolletje dat niemand gemeten heeft is
+   erger dan een eerlijk vraagteken. WhatsApp zegt erbij of de templatestatus live bij
+   Meta gehaald is of uit de snapshot komt.
+2. **Geen geheimen.** Alleen OF iets geconfigureerd is, nooit de waarde. Getest.
+
+`tests/ops-center.test.js` (31 tests). De autorisatie is mutatiegetest: met de controle
+uitgeschakeld krijgt een anonieme aanroep alle klantnamen, en de test valt om.
+
+
 ### Algemene voorwaarden noemden een prijs die vier keer te hoog was
 
 De publieke pagina op `/terms` stond nog op mei 2026 en beloofde:

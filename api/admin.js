@@ -28,6 +28,8 @@ const credits = require('./_credits');
 const { getPlanState, computeTrialEndsAt, FIELD: PLAN_FIELD, VALID_STATUSES: PLAN_STATUSES } = require('./_plan');
 // Language registry — see its file header.
 const _lang = require('./_lang');
+const _waTpl = require('./_wa-templates'); // welke templates bestaan per taal
+const _regio = require('./_regio');        // landnamen voor het overzicht
 // Email-ownership verification for self-serve signup — see its file header.
 const verifyEmail = require('./_verify');
 const _session = require('./_session'); // cookie-first session transport + CSRF
@@ -1048,6 +1050,184 @@ module.exports = async function handler(req, res) {
 
       } catch (err) {
         console.error('[admin] founder POST error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ══ OPERATIONS CENTER ════════════════════════════════════════════════════
+    // Interne bediening, geen klantenscherm. Elke mode hieronder controleert
+    // ADMIN_KEY server-side; een gewone klant met een geldige sessie krijgt 401,
+    // ook als hij de URL zelf intikt.
+    //
+    // Twee regels die hier gelden:
+    //  1. GEEN GEHEIMEN. Nooit een token, sleutel, WABA-id of wachtwoord in een
+    //     antwoord. Wel of iets GECONFIGUREERD is, niet wat erin staat.
+    //  2. GEEN VERZONNEN CIJFERS. Kunnen we iets niet meten, dan staat er
+    //     "niet beschikbaar" plus wat ervoor nodig zou zijn. Een verzonnen
+    //     groen bolletje is erger dan een eerlijk vraagteken.
+
+    /* ── mode=ops-templates ───────────────────────────────────────────────────
+       Land -> taal -> hoeveel klanten -> templates klaar of niet.
+
+       Dit is de reden dat api/_wa-templates.js bestaat: templates zijn per TAAL,
+       niet per klant. Drie Nederlandstalige Belgen delen één set. Dit overzicht
+       telt ze dus samen, zodat we er niet zes keer dezelfde indienen -- en het
+       laat zien welke taal we WEL nog moeten indienen omdat er een echte klant
+       op wacht. Templates maken we pas als iemand ze nodig heeft. */
+    if (body.mode === 'ops-templates') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      try {
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+        if (!r.ok) {
+          return res.status(200).json({
+            beschikbaar: false,
+            reden: `Airtable gaf HTTP ${r.status}`,
+            rijen: [],
+          });
+        }
+        const d = await r.json();
+        const klanten = (d.records || [])
+          .map((rec) => rec.fields || {})
+          .filter((f) => f['Project Code']);
+
+        const uit = await _waTpl.overzicht(klanten, { forceer: body.ververs === true });
+        return res.status(200).json({
+          beschikbaar: true,
+          // 'meta' = live opgehaald bij Meta, 'snapshot' = de met de hand
+          // geverifieerde terugval. Dat verschil moet zichtbaar zijn, anders
+          // leest een oud snapshot als een verse meting.
+          bron: uit.bron,
+          opgehaald: uit.opgehaald,
+          rijen: uit.rijen.map((rij) => ({
+            land: rij.land,
+            landNaam: (_regio.land(rij.land) || {}).naam || rij.land,
+            taal: rij.taal,
+            klanten: rij.klanten,
+            namen: rij.namen,
+            klaar: rij.klaar,
+            ondersteund: rij.ondersteund,
+            reden: rij.reden,
+            ontbreekt: rij.ontbreekt,
+            onderweg: rij.onderweg,
+            geweigerd: rij.geweigerd,
+            dekking: `${rij.aantalKlaar}/${rij.aantalTotaal}`,
+          })),
+        });
+      } catch (err) {
+        console.error('[ops-templates] fout:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    /* ── mode=ops-overview ────────────────────────────────────────────────────
+       De bovenste balk: hoeveel klanten, hoeveel daarvan betalen, en welke
+       integraties staan er aan. Alles komt uit echte rijen of uit de aanwezigheid
+       van een omgevingsvariabele -- er staat hier geen enkel hardgecodeerd getal.
+
+       Over "gezond": we melden alleen wat we ECHT gecontroleerd hebben. Voor
+       WhatsApp kunnen we dat (de registry praat met Meta of valt terug op de
+       snapshot, en dat verschil zeggen we). Voor Clerk en Stripe kunnen we
+       vanuit deze functie niet goedkoop een echte ping doen; die krijgen dus
+       'geconfigureerd' of 'niet geconfigureerd' en NIET 'gezond'. */
+    if (body.mode === 'ops-overview') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      try {
+        const uit = {
+          klanten: { beschikbaar: false, reden: '' },
+          templates: { beschikbaar: false, reden: '' },
+          integraties: {},
+          waarschuwingen: [],
+        };
+
+        // ── Klanten ──────────────────────────────────────────────────────────
+        let klantVelden = [];
+        const r = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+        if (!r.ok) {
+          uit.klanten.reden = `Airtable gaf HTTP ${r.status}`;
+        } else {
+          const d = await r.json();
+          klantVelden = (d.records || []).map((rec) => rec.fields || {})
+            .filter((f) => f['Project Code']);
+          let actief = 0, proef = 0, verlopen = 0;
+          for (const f of klantVelden) {
+            const staat = getPlanState(f) || {};
+            if (staat.isTrial) proef++;
+            else if (staat.isActive) actief++;
+            else verlopen++;
+          }
+          uit.klanten = {
+            beschikbaar: true,
+            totaal: klantVelden.length,
+            betalend: actief,
+            proef,
+            verlopen,
+          };
+        }
+
+        // ── Templates per taal ───────────────────────────────────────────────
+        if (klantVelden.length) {
+          const t = await _waTpl.overzicht(klantVelden);
+          const stuk = t.rijen.filter((rij) => !rij.klaar);
+          uit.templates = {
+            beschikbaar: true,
+            bron: t.bron,
+            talen: t.rijen.length,
+            talenKlaar: t.rijen.filter((rij) => rij.klaar).length,
+            // Hoeveel ECHTE klanten zitten er achter een taal die nog niet
+            // klaar is. Dat is het getal dat bepaalt of dit vandaag moet.
+            klantenGeblokkeerd: stuk.reduce((n, rij) => n + rij.klanten, 0),
+            ontbrekendeTalen: stuk.map((rij) => ({
+              taal: rij.taal, klanten: rij.klanten, ondersteund: rij.ondersteund,
+            })),
+          };
+          for (const rij of stuk) {
+            uit.waarschuwingen.push(
+              rij.ondersteund
+                ? `${rij.klanten} klant(en) wachten op templates in ${rij.taal}`
+                : `${rij.klanten} klant(en) staan op ${rij.taal}, en die taal ondersteunt WhatsApp niet`
+            );
+          }
+        } else if (uit.klanten.beschikbaar) {
+          uit.templates = { beschikbaar: true, bron: 'n.v.t.', talen: 0, talenKlaar: 0, klantenGeblokkeerd: 0, ontbrekendeTalen: [] };
+        } else {
+          uit.templates.reden = 'klantenlijst kon niet gelezen worden';
+        }
+
+        // ── Integraties ──────────────────────────────────────────────────────
+        // Alleen booleans over configuratie. Nooit de waarde zelf.
+        const cfg = (aan) => (aan ? 'geconfigureerd' : 'niet geconfigureerd');
+        uit.integraties = {
+          clerk:     { staat: cfg(!!process.env.CLERK_SECRET_KEY), gemeten: false, opmerking: 'geen goedkope ping vanaf hier' },
+          stripe:    { staat: cfg(!!process.env.STRIPE_SECRET_KEY), gemeten: false, opmerking: 'geen goedkope ping vanaf hier' },
+          airtable:  { staat: r.ok ? 'gezond' : 'probleem', gemeten: true, opmerking: r.ok ? 'zojuist gelezen' : `HTTP ${r.status}` },
+          onesignal: { staat: cfg(!!process.env.ONESIGNAL_API_KEY), gemeten: false, opmerking: 'geen goedkope ping vanaf hier' },
+          google:    { staat: cfg(!!process.env.GOOGLE_CLIENT_ID), gemeten: false, opmerking: 'per klant verschillend; zie de klantdetails' },
+          whatsapp:  {
+            staat: cfg(!!process.env.WHATSAPP_TOKEN && !!process.env.PHONE_NUMBER_ID),
+            gemeten: uit.templates.bron === 'meta',
+            opmerking: uit.templates.bron === 'meta'
+              ? 'templatelijst live bij Meta opgehaald'
+              : 'templatestatus komt uit de snapshot; zet WHATSAPP_MANAGEMENT_TOKEN voor een live meting',
+          },
+        };
+
+        if (!process.env.WHATSAPP_MANAGEMENT_TOKEN) {
+          uit.waarschuwingen.push('WHATSAPP_MANAGEMENT_TOKEN ontbreekt — templatestatus is een snapshot, geen meting');
+        }
+
+        return res.status(200).json(uit);
+      } catch (err) {
+        console.error('[ops-overview] fout:', err.message);
         return res.status(500).json({ error: 'Serverfout' });
       }
     }
