@@ -9200,7 +9200,7 @@ ${faro.navCta}
         </button>
             <button class="search-pill" id="btn-search" title="Zoeken (Ctrl+K)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <span class="search-pill-label">Zoeken...</span>
+              <span class="search-pill-label">${T('hdr.search')}</span>
               <kbd class="search-pill-kbd">⌘K</kbd>
             </button>
             <div class="notif-wrap">
@@ -13845,7 +13845,7 @@ function hideCrmError() {
 function updateTimestamp() {
   const el = document.getElementById('timestamp-info');
   if (el && state.lastFetch) {
-    el.textContent = 'Bijgewerkt ' + timeAgo(state.lastFetch);
+    el.textContent = tr('hdr.updatedAgo', { t: timeAgo(state.lastFetch) });
   }
 }
 
@@ -14412,60 +14412,60 @@ function renderStats() {
     if (d === 0) return '<span style="color:var(--text-muted);font-size:11px">— zelfde</span>';
     const arrow = d > 0 ? '↑' : '↓';
     const col = d > 0 ? 'var(--green-ink)' : 'var(--red-ink)';
-    return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${Math.abs(d)} vs vorige week</span>\`;
+    return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${Math.abs(d)} \${tr('stat.vsweek')}</span>\`;
   };
 
   const cards = [
     {
-      label: 'Totaal Leads',
+      label: tr('stat.total'),
       value: s.total || 0,
       suffix: '',
-      desc: 'Alle ontvangen leads',
+      desc: tr('stat.total.d'),
       color: '',
       fill: 100,
       trend: trendDiff(thisWeekLeads.length, lastWeekLeads.length)
     },
     {
-      label: 'Gekwalificeerd',
+      label: tr('stat.qual'),
       value: s.qualified || 0,
       suffix: '',
-      desc: 'Door AI gekwalificeerd',
+      desc: tr('stat.qual.d'),
       color: 'cyan',
       fill: total ? Math.round((s.qualified / total) * 100) : 0,
       trend: trendDiff(thisWeekQual, lastWeekQual)
     },
     {
-      label: 'Afspraken',
+      label: tr('stat.booked'),
       value: s.booked || 0,
       suffix: '',
-      desc: 'Geboekte afspraken',
+      desc: tr('stat.booked.d'),
       color: 'green',
       fill: total ? Math.round((s.booked / total) * 100) : 0,
       trend: trendDiff(thisWeekBooked, lastWeekBooked)
     },
     {
-      label: 'Conversie',
+      label: tr('stat.conv'),
       value: s.conversionRate || 0,
       suffix: '%',
-      desc: 'Van lead naar afspraak',
+      desc: tr('stat.conv.d'),
       color: 'orange',
       fill: s.conversionRate || 0,
       trend: ''
     },
     {
-      label: 'Deze Maand',
+      label: tr('stat.month'),
       value: s.thisMonth || 0,
       suffix: '',
-      desc: 'Nieuwe leads deze maand',
+      desc: tr('stat.month.d'),
       color: 'blue',
       fill: total ? Math.round(((s.thisMonth || 0) / total) * 100) : 0,
       trend: ''
     },
     {
-      label: 'Gem. Reactie',
+      label: tr('stat.resp'),
       value: fmtDuration(s.avgResponseTime || 0).value,
       suffix: fmtDuration(s.avgResponseTime || 0).suffix,
-      desc: 'Gemiddelde reactietijd',
+      desc: tr('stat.resp.d'),
       color: '',
       fill: 60,
       trend: ''
