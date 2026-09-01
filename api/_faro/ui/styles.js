@@ -79,7 +79,7 @@ function css() {
 .faro-dock__hintclose {
   flex-shrink: 0;
   border: 0; background: transparent; cursor: pointer;
-  font-size: 15px; line-height: 1;
+  font-size: var(--fs-body); line-height: 1;
   padding: var(--sp-05) var(--sp-15);
   border-radius: var(--r-xs);
   color: var(--text-disabled);
