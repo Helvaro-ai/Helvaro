@@ -18410,6 +18410,7 @@ async function startDashboard(skipRefresh = false) {
 var WIZARD_STAPPEN = ['intro', 'regio', 'bedrijf', 'ai', 'klaar'];
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
+  regio:   '/faro/falcon-idle.webp',
   bedrijf: '/faro/falcon-thinking.webp',
   ai:      '/faro/falcon-generating.webp',
   klaar:   '/faro/falcon-success.webp'
@@ -18592,6 +18593,7 @@ function wizardTeken() {
   if (gidsTekst) {
     gidsTekst.textContent = {
       intro:   'Ik help je hier even doorheen.',
+      regio:   'Zo weet ik in welke taal ik je klanten aanspreek.',
       bedrijf: 'Hoe meer ik weet, hoe beter ik je klanten te woord sta.',
       ai:      'Zo stel ik me straks voor aan je leads.',
       klaar:   'Vanaf nu neem ik je gesprekken over.'
@@ -18604,9 +18606,10 @@ function wizardTeken() {
 
   if (stap === 'intro') {
     titel.textContent = 'Welkom bij Helvaro';
-    sub.textContent = 'In drie korte stappen staat je AI klaar om je leads te woord te staan. Duurt ongeveer twee minuten.';
+    sub.textContent = 'In vier korte stappen staat je AI klaar om je leads te woord te staan. Duurt ongeveer twee minuten.';
     body.innerHTML =
         '<ul style="margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.9;color:var(--text-muted,#999)">'
+      + '<li>Je kiest je land en de taal voor je klanten</li>'
       + '<li>Je vertelt kort wat je bedrijf doet</li>'
       + '<li>Je geeft je AI een naam en een welkomstbericht</li>'
       + '<li>Je krijgt je formulierlink om te delen</li>'

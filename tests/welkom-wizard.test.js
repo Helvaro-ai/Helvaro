@@ -46,6 +46,19 @@ ck('vijf stappen, met land en taal meteen na het welkom',
    daarna nog eens aan zijn land komt, mag niet terugspringen naar Nederlands.
    Daarom wordt hier op de vlag getest en niet alleen op het bestaan van de
    twee keuzelijsten. */
+/* Live op app.helvaro.pro liep dit mis: WIZARD_MASCOTTE had geen 'regio', dus
+   werd img.src de string "undefined" en stond er een gebroken plaatje in de
+   zijkolom. Een nieuwe stap toevoegen moet niet stilletjes een gat laten. */
+ck('elke stap heeft een mascotte en een gidszin', (function () {
+  var stappen = (html.match(/WIZARD_STAPPEN = \[([^\]]+)\]/) || [])[1] || '';
+  var lijst = stappen.split(',').map(function (x) { return x.trim().replace(/'/g, ''); });
+  var mascotte = (html.match(/WIZARD_MASCOTTE = \{([\s\S]*?)\}/) || [])[1] || '';
+  var gids = (html.match(/gidsTekst\.textContent = \{([\s\S]*?)\}\[stap\]/) || [])[1] || '';
+  return lijst.every(function (st) {
+    return new RegExp('\\b' + st + ':').test(mascotte) && new RegExp('\\b' + st + ':').test(gids);
+  });
+})(), null);
+
 ck('vraagt het land', /In welk land is je bedrijf gevestigd\?/.test(html), null);
 ck('vraagt de taal apart', /In welke taal spreekt Helvaro je klanten aan\?/.test(html), null);
 ck('de landenlijst komt uit _regio.js', /const REGIO_LANDEN = \[/.test(html), null);
