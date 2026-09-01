@@ -42,14 +42,17 @@
    de uitlegparagrafen die anders overal op de pagina zouden staan. */
 const PAGINAS = Object.freeze({
   dashboard: {
+    toontLeads: true,
     naam: 'Dashboard',
     wat: 'Het overzicht: binnengekomen leads, wie er gekwalificeerd is, en welke afspraken er staan.',
   },
   gesprekken: {
+    toontLeads: true,
     naam: 'Gesprekken',
     wat: 'De WhatsApp-gesprekken tussen de AI en de leads, van begin tot eind terug te lezen.',
   },
   pipeline: {
+    toontLeads: true,
     naam: 'Pipeline',
     wat: 'De leads verdeeld over fasen, van nieuw tot gewonnen of verloren.',
   },
@@ -62,14 +65,17 @@ const PAGINAS = Object.freeze({
     wat: 'De afspraken die de AI heeft ingepland. Gekoppeld aan Google Agenda kijkt ze eerst of je vrij bent.',
   },
   analyse: {
+    toontLeads: true,
     naam: 'Analyse',
     wat: 'Cijfers over de leads: hoeveel er binnenkomen, hoeveel er kwalificeren en hoeveel er een afspraak maken.',
   },
   resultaten: {
+    toontLeads: true,
     naam: 'Resultaten',
     wat: 'Wat de AI heeft opgeleverd over een periode.',
   },
   activiteit: {
+    toontLeads: true,
     naam: 'Activiteit',
     wat: 'Wat er wanneer gebeurde: nieuwe leads, kwalificaties en geboekte afspraken op volgorde van tijd.',
   },
@@ -127,7 +133,17 @@ function sanitize(raw) {
   if (sectie) uit.sectie = sectie;
 
   const toestand = String(r.toestand || '').trim().toLowerCase();
-  if (TOESTANDEN.has(toestand) && toestand !== 'normaal') uit.toestand = toestand;
+  if (TOESTANDEN.has(toestand) && toestand !== 'normaal') {
+    /* "Leeg" wordt door de client afgeleid uit het aantal leads, en dat zegt
+       alleen iets op een scherm dat leads TOONT. Op AI-persoonlijkheid of
+       Facturatie zou "dit scherm is leeg" Faro laten uitleggen waarom er niets
+       staat, terwijl er een volledig ingevuld formulier voor de gebruiker
+       staat. Live gezien: een account zonder leads meldde elk scherm als leeg.
+
+       Een foutmelding geldt wél overal. */
+    const leadsScherm = uit.pagina && PAGINAS[uit.pagina] && PAGINAS[uit.pagina].toontLeads;
+    if (toestand !== 'leeg' || leadsScherm) uit.toestand = toestand;
+  }
 
   // Booleans over de eigen inrichting. Geen waarden, alleen aan of uit.
   if (typeof r.onboardingKlaar === 'boolean') uit.onboardingKlaar = r.onboardingKlaar;

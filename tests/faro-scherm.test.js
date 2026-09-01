@@ -68,6 +68,19 @@ ck('"leeg" komt wel door',
 ck('"normaal" levert geen toestand op',
   scherm.sanitize({ pagina: 'dashboard', toestand: 'normaal' }).toestand === undefined, null);
 
+/* "Leeg" leidt de client af uit het aantal leads. Op een scherm dat geen leads
+   toont zegt dat niets: live gezien meldde een account zonder leads ook
+   AI-persoonlijkheid en Facturatie als "leeg", waarop Faro zou gaan uitleggen
+   waarom er niets staat terwijl er een vol formulier voor de gebruiker staat. */
+ck('"leeg" telt alleen op een scherm dat leads toont',
+  scherm.sanitize({ pagina: 'dashboard', toestand: 'leeg' }).toestand === 'leeg'
+  && scherm.sanitize({ pagina: 'ai-persona', toestand: 'leeg' }).toestand === undefined
+  && scherm.sanitize({ pagina: 'facturatie', toestand: 'leeg' }).toestand === undefined,
+  [scherm.sanitize({ pagina: 'ai-persona', toestand: 'leeg' }),
+   scherm.sanitize({ pagina: 'facturatie', toestand: 'leeg' })]);
+ck('een foutmelding telt wel op elk scherm',
+  scherm.sanitize({ pagina: 'ai-persona', toestand: 'fout' }).toestand === 'fout', null);
+
 const langeSectie = scherm.sanitize({ pagina: 'dashboard', sectie: 'x'.repeat(500) }).sectie;
 ck('een lange sectie wordt afgekapt', langeSectie.length === 60, langeSectie.length);
 
