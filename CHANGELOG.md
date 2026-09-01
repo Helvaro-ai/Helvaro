@@ -14,6 +14,26 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Onboarding vraagt nu land en taal
+
+- Nieuwe wizardstap **"Land en taal"**, meteen na het welkom. Land uit `api/_regio.js`
+  (17 landen), taal uit de bestaande keuzelijst van `_lang.js` (40 talen).
+- **Het land stelt voor, de klant beslist.** Zodra iemand zelf een taal kiest, laat een
+  latere landwissel die met rust — anders kon een Franstalige Brusselaar zijn keuze niet
+  vasthouden.
+- De klant leest meteen dat zijn account **binnen 72 uur live** staat: dat is de echte
+  doorlooptijd om zijn WhatsApp-templates per taal door Meta te laten goedkeuren.
+- `Country` wordt server-side in een **aparte, best-effort PATCH** weggeschreven. Airtable
+  weigert een hele PATCH met 422 als één veldnaam nog niet bestaat, en `Country` staat op
+  veel bases nog niet in het schema — meeliften had het opslaan van aiName en website
+  gebroken. Zelfde isolatie als `Match Lead Language` en `Welcome Done`.
+- Nieuwe tenant-scoped `mode: 'wa-readiness'` op `/api/leads`: geeft voor DEZE klant terug
+  of zijn taal klaar is, en zo niet, welke templates ontbreken. Geen WABA-id, geen token,
+  geen andere klanten in het antwoord.
+- `tests/welkom-wizard.test.js` test nu het gedrag (de voorrang land/taal) in plaats van
+  het aantal stappen. Suite: 56/56 groen.
+
+
 ### WhatsApp-template-registry (api/_wa-templates.js)
 
 Eén centrale bron voor welke templates in welke taal bestaan en goedgekeurd zijn.

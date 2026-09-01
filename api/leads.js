@@ -12,6 +12,7 @@ const images  = require('./_images'); // Phase 4 AI property images — see its 
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
 const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
+const _waTpl  = require('./_wa-templates'); // welke WhatsApp-templates bestaan per taal
 const _verify = require('./_verify'); // email-ownership verification — see its file header
 const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
 const _command   = require('./_command');     // Command Center intelligence layer — pure, no I/O, no model
@@ -676,6 +677,45 @@ module.exports = async function handler(req, res) {
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     if (!body || typeof body !== 'object') body = {};
 
+    // ── A0. wa-readiness — staan de WhatsApp-templates klaar voor de taal
+    // van DEZE klant? Eén centrale bron (api/_wa-templates.js), zodat de
+    // klant-UI en het interne overzicht nooit uit elkaar kunnen lopen.
+    //
+    // Tenant-scoped: leest alleen de eigen Client Config-rij, en geeft niets
+    // terug wat niet over deze klant gaat. Geen WABA-id, geen token, geen
+    // andere klanten -- alleen taal + status per template.
+    if (body.mode === 'wa-readiness') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!cRes.ok) return res.status(500).json({ error: 'Klant niet gevonden' });
+        const rec = ((await cRes.json()).records || [])[0];
+        if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
+
+        const staat = await _waTpl.klaarVoor(_waTpl.taalVanKlant(rec.fields));
+        return res.status(200).json({
+          taal: staat.taal,
+          gevraagd: staat.gevraagd,
+          land: String(rec.fields['Country'] || '').toUpperCase(),
+          klaar: staat.klaar,
+          ondersteund: staat.ondersteund,
+          reden: staat.reden,
+          bron: staat.bron,
+          // Alleen wat de klant zelf aangaat: welke functie werkt en welke niet.
+          regels: staat.regels.map((r) => ({
+            sleutel: r.sleutel, wat: r.wat, blokkeert: r.blokkeert, toestand: r.toestand,
+          })),
+        });
+      } catch (err) {
+        console.error('[wa-readiness] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── A. Config-get / config-save (AI Persona settings page) ───────────────
     // Authenticated by the same session/api-key flow; only allows the client
     // to read/write THEIR own Klanten record. Whitelisted fields only.
@@ -708,6 +748,9 @@ module.exports = async function handler(req, res) {
             brandColor:     rec.fields['fldJAf4aTNlIQVL2q'] || rec.fields['Brand Color']         || '',
             formIntro:      rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message']  || '',
             language:       rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language']            || 'nl',
+            // Land. Bestaat mogelijk nog niet op de Airtable-schema (zie
+            // _regio.js) — leest dan als '' en de wizard vraagt het gewoon.
+            country:        String(rec.fields['Country'] || '').toUpperCase(),
             // Opt-in "reply in the lead's own language" toggle. Field does
             // NOT exist on the Airtable schema yet (name: "Match Lead
             // Language", type: Checkbox) — reads as undefined -> false until
@@ -811,6 +854,12 @@ module.exports = async function handler(req, res) {
         const wantsChecklistDismissUpdate = body.checklistDismissed !== undefined;
         // Welkomstwizard — zelfde isolatie als hierboven.
         const wantsWelcomeDoneUpdate = body.welcomeDone !== undefined;
+        // Land — zelfde isolatie, en om dezelfde reden: 'Country' staat op veel
+        // bases nog niet in het schema (api/_regio.js gaat daar expliciet van
+        // uit). Meeliften in `u` zou het opslaan van aiName en website breken
+        // tot het veld bestaat.
+        const wantsCountryUpdate = body.country !== undefined
+          && !!_regio.land(String(body.country || '').trim().toUpperCase());
         if (body.workingHours   !== undefined) {
           // Lightweight format validation. Must match 'days hours' or be empty
           const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
@@ -839,7 +888,7 @@ module.exports = async function handler(req, res) {
           u.fldnbM5YKh274ISAl = String(body.learnedPatterns).slice(0, 1500);
         }
         if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate && !wantsChecklistDismissUpdate
-            && !wantsWelcomeDoneUpdate) {
+            && !wantsWelcomeDoneUpdate && !wantsCountryUpdate) {
           return res.status(400).json({ error: 'Niets om bij te werken' });
         }
 
@@ -926,6 +975,30 @@ module.exports = async function handler(req, res) {
             }
           } catch (err) {
             console.warn('[config-save] "Welcome Done" PATCH exception:', err.message);
+          }
+        }
+
+        // Land — apart, best-effort, zelfde reden als hierboven. Bepaalt de
+        // tijdzone, munt en telefoonopmaak (api/_regio.js) en stelt bij het
+        // aanmelden een taal voor. Het is nadrukkelijk GEEN taalinstelling:
+        // wat de klant zelf als taal koos blijft de waarheid.
+        if (wantsCountryUpdate) {
+          const landcode = String(body.country).trim().toUpperCase();
+          try {
+            const lRes = await atFetch(
+              `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+              {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { Country: landcode }, typecast: true })
+              }
+            );
+            if (!lRes.ok) {
+              const txt = await lRes.text().catch(() => '');
+              console.warn('[config-save] "Country" niet opgeslagen:', lRes.status, txt.slice(0, 200));
+            }
+          } catch (err) {
+            console.warn('[config-save] "Country" PATCH exception:', err.message);
           }
         }
 

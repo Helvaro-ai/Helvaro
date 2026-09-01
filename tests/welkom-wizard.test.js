@@ -35,10 +35,28 @@ let html = '';
 dash({ method: 'GET', url: '/dashboard', headers: {} },
      { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
 
-console.log('\n— de wizard bestaat en heeft vier stappen —');
+console.log('\n— de wizard bestaat en heeft vijf stappen —');
 ck('checkWelkomWizard staat in de pagina', /async function checkWelkomWizard\(\)/.test(html), null);
-ck('vier stappen',
-   /WIZARD_STAPPEN = \['intro', 'bedrijf', 'ai', 'klaar'\]/.test(html), null);
+ck('vijf stappen, met land en taal meteen na het welkom',
+   /WIZARD_STAPPEN = \['intro', 'regio', 'bedrijf', 'ai', 'klaar'\]/.test(html), null);
+
+/* ── Land en taal ──────────────────────────────────────────────────────────
+   De kern van deze stap is een VOORRANG, geen formulier: het land stelt een
+   taal voor, de klant beslist. Een Franstalige Brusselaar die 'Frans' kiest en
+   daarna nog eens aan zijn land komt, mag niet terugspringen naar Nederlands.
+   Daarom wordt hier op de vlag getest en niet alleen op het bestaan van de
+   twee keuzelijsten. */
+ck('vraagt het land', /In welk land is je bedrijf gevestigd\?/.test(html), null);
+ck('vraagt de taal apart', /In welke taal spreekt Helvaro je klanten aan\?/.test(html), null);
+ck('de landenlijst komt uit _regio.js', /const REGIO_LANDEN = \[/.test(html), null);
+ck('een landwissel overschrijft een eigen taalkeuze niet',
+   /if \(!_wizardTaalAangeraakt\) taalEl\.value = wizardTaalBijLand/.test(html), null);
+ck('een eigen taalkeuze zet die vlag',
+   /taalEl\.addEventListener\('change', function \(\) \{ _wizardTaalAangeraakt = true/.test(html), null);
+ck('en de klant hoort dat het 72 uur duurt voor het live staat',
+   /binnen <b>72 uur<\/b> live/.test(html), null);
+ck('land en taal worden samen bewaard',
+   /wizardBewaar\(\{ country: landKeuze, language: taalKeuze \}\)/.test(html), null);
 ck('met een label per stap in de rail', /WIZARD_LABELS = \{/.test(html), null);
 ck('het is een echte dialoog', /overlay\.setAttribute\('role', 'dialog'\)/.test(html), null);
 ck('fouten worden hardop gemeld', /fout\.setAttribute\('role', 'alert'\)/.test(html), null);

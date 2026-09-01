@@ -4,6 +4,8 @@
 // dashboard's language picker always matches exactly what the AI
 // conversation actually supports — no separately hand-maintained list here.
 const _lang = require('./_lang');
+const _regio = require('./_regio');          // landen, tijdzones en munten
+const _waTpl = require('./_wa-templates');   // land -> voorgestelde taal
 const _i18n = require('./_i18n');
 const _session = require('./_session');
 
@@ -39,6 +41,18 @@ module.exports = async function handler(req, res) {
   // "</script>" can't break out of the inline <script> block below — same
   // defensive intent as api/form-page.js's escJs() neutralizing </script>.
   const AP_LANGUAGES_JSON = JSON.stringify(_lang.listForPicker()).replace(/</g, '\\u003c');
+
+  /* De landen uit api/_regio.js, met per land de taal die we voorstellen.
+     Alleen code, naam en voorgestelde taal -- tijdzone en munt hoeven niet
+     naar de browser. Zelfde '<'-voorzorg als hierboven. */
+  const REGIO_LANDEN_JSON = JSON.stringify(
+    // De KALE taalcode, want dat is wat het Language-veld opslaat en wat de
+    // keuzelijst aanbiedt ('nl', niet 'nl_BE'). De registry zoekt daar zelf
+    // de juiste regiotemplate bij, dus hier hoort geen regiocode.
+    _regio.landen().map((l) => ({
+      code: l.code, naam: l.naam, taal: _waTpl.taalVoorLand(l.code).split('_')[0],
+    }))
+  ).replace(/</g, '\\u003c');
 
   // Dashboard UI language. DASHBOARD_LANG lets an operator force one; otherwise
   // the registry default applies until a per-user preference exists to read.
@@ -12029,6 +12043,7 @@ ${faro.dock}
    truth also used by api/whatsapp.js's AI conversation). [{code,native,english}]
    ============================================================ */
 const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
+const REGIO_LANDEN = ${REGIO_LANDEN_JSON};
 
 /* ============================================================
    CLERK (optioneel — leeg tenzij CLERK_ENABLED=1)
@@ -18392,7 +18407,7 @@ async function startDashboard(skipRefresh = false) {
  * succes). Dat is de reden dat hij er staat: hij markeert voortgang. Op smal
  * beeld verdwijnt hij, want daar is de ruimte voor de invoer.
  */
-var WIZARD_STAPPEN = ['intro', 'bedrijf', 'ai', 'klaar'];
+var WIZARD_STAPPEN = ['intro', 'regio', 'bedrijf', 'ai', 'klaar'];
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
   bedrijf: '/faro/falcon-thinking.webp',
@@ -18400,6 +18415,16 @@ var WIZARD_MASCOTTE = {
   klaar:   '/faro/falcon-success.webp'
 };
 var _wizardStap = 0;
+/* Heeft de klant zelf aan de taal gezeten? Zo ja, dan mag een landwissel hem
+   niet meer overschrijven. Het land is een suggestie, de keuze is de waarheid. */
+var _wizardTaalAangeraakt = false;
+
+function wizardTaalBijLand(landcode) {
+  for (var i = 0; i < REGIO_LANDEN.length; i++) {
+    if (REGIO_LANDEN[i].code === landcode) return REGIO_LANDEN[i].taal;
+  }
+  return 'nl';
+}
 var _wizardConfig = null;
 
 function wizardOnthoudStap(i) {
@@ -18465,6 +18490,29 @@ async function wizardVolgende() {
   var knop = document.getElementById('wizard-volgende');
   var fout = document.getElementById('wizard-fout');
   fout.textContent = '';
+
+  if (stap === 'regio') {
+    var landKeuze = document.getElementById('wizard-land').value;
+    var taalKeuze = document.getElementById('wizard-taal').value;
+    if (!landKeuze || !taalKeuze) {
+      fout.textContent = 'Kies een land en een taal.';
+      return;
+    }
+    knop.disabled = true; knop.textContent = 'Opslaan...';
+    try {
+      /* Land en taal gaan in één config-save mee. De server bewaart Country in
+         een APARTE PATCH, want dat veld bestaat nog niet op elke Airtable-base
+         en Airtable weigert anders de hele opslag (zie api/leads.js). */
+      await wizardBewaar({ country: landKeuze, language: taalKeuze });
+      _wizardConfig = _wizardConfig || {};
+      _wizardConfig.country = landKeuze;
+      _wizardConfig.language = taalKeuze;
+    } catch (e) {
+      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      knop.disabled = false; knop.textContent = 'Volgende';
+      return;
+    }
+  }
 
   if (stap === 'bedrijf') {
     var over = document.getElementById('wizard-bedrijf').value.trim();
@@ -18568,6 +18616,62 @@ function wizardTeken() {
     return;
   }
 
+  if (stap === 'regio') {
+    titel.textContent = 'Waar werk je, en in welke taal?';
+    sub.textContent = 'Je land bepaalt je tijdzone en munt. De taal is de taal waarin je AI je klanten aanspreekt — daar beslis jij over.';
+    var VELD = 'width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit';
+    var LABEL = 'display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)';
+    var landOpties = REGIO_LANDEN.map(function (l) {
+      return '<option value="' + escHtml(l.code) + '">' + escHtml(l.naam) + '</option>';
+    }).join('');
+    var taalOpties = AP_LANGUAGES.map(function (t) {
+      return '<option value="' + escHtml(t.code) + '">' + escHtml(t.native) + '</option>';
+    }).join('');
+    body.innerHTML =
+        '<label for="wizard-land" style="' + LABEL + '">In welk land is je bedrijf gevestigd?</label>'
+      + '<select id="wizard-land" style="' + VELD + '">' + landOpties + '</select>'
+      + '<label for="wizard-taal" style="' + LABEL + ';margin-top:14px">In welke taal spreekt Helvaro je klanten aan?</label>'
+      + '<select id="wizard-taal" style="' + VELD + '">' + taalOpties + '</select>'
+      + '<p id="wizard-taal-hint" style="margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)"></p>';
+
+    var landEl = document.getElementById('wizard-land');
+    var taalEl = document.getElementById('wizard-taal');
+    var hintEl = document.getElementById('wizard-taal-hint');
+
+    /* Al ingevuld wint van de suggestie: wie zijn taal eerder koos moet hem niet
+       zien terugspringen omdat zijn land toevallig iets anders voorstelt. */
+    landEl.value = c.country || 'BE';
+    if (!landEl.value) landEl.value = 'BE';
+    taalEl.value = c.language || wizardTaalBijLand(landEl.value);
+
+    function wizardHint() {
+      var landNaam = '';
+      for (var i = 0; i < REGIO_LANDEN.length; i++) {
+        if (REGIO_LANDEN[i].code === landEl.value) { landNaam = REGIO_LANDEN[i].naam; break; }
+      }
+      var voorstel = wizardTaalBijLand(landEl.value);
+      /* De 72 uur is geen marketingbelofte maar de echte doorlooptijd: een
+         WhatsApp-template moet per taal door Meta goedgekeurd worden, en dat
+         duurt van minuten tot een dag. Liever hier eerlijk over zijn dan de
+         klant laten ontdekken dat er niets vertrekt. */
+      hintEl.innerHTML = 'Je account staat binnen <b>72 uur</b> live. Die tijd gebruiken we om je WhatsApp-berichten in deze taal te laten goedkeuren bij WhatsApp.'
+        + (taalEl.value !== voorstel && landNaam
+            ? '<br><span style="opacity:.75">In ' + escHtml(landNaam) + ' is dat meestal een andere taal — jouw keuze telt.</span>'
+            : '');
+    }
+
+    landEl.addEventListener('change', function () {
+      /* Het land STELT VOOR, het beslist niet. Zodra de klant zelf een taal
+         koos laten we die met rust -- anders kan een Franstalige Brusselaar
+         zijn keuze niet vasthouden. */
+      if (!_wizardTaalAangeraakt) taalEl.value = wizardTaalBijLand(landEl.value);
+      wizardHint();
+    });
+    taalEl.addEventListener('change', function () { _wizardTaalAangeraakt = true; wizardHint(); });
+    wizardHint();
+    return;
+  }
+
   if (stap === 'bedrijf') {
     titel.textContent = 'Vertel over je bedrijf';
     sub.textContent = 'Dit is wat je AI gebruikt om leads te beantwoorden. Hoe concreter, hoe beter ze je klanten helpt.';
@@ -18625,6 +18729,7 @@ function wizardTeken() {
  */
 var WIZARD_LABELS = {
   intro:   'Welkom',
+  regio:   'Land en taal',
   bedrijf: 'Je bedrijf',
   ai:      'Je AI',
   klaar:   'Klaar'
