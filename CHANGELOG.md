@@ -14,6 +14,35 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Het dashboard was half Engels, half Nederlands
+
+Gevonden tijdens een E2E als klant op productie. Het account stond op Engels (`lang="en"`)
+en de landingspagina zette **"Get started with Helvaro"** boven een checklist die volledig
+Nederlands was: "Koppel je Google Agenda", "Vertel over je bedrijf", "3 van 5 klaar". Twaalf
+van de veertien schermen lekten Nederlands.
+
+De i18n-machinerie bestond al (596x `T()`, 43x `tr()`) — deze strings waren er alleen nooit
+doorheen gehaald. Nu wel:
+
+- de **proefbanner** (titel, uitleg, knop) met correct enkelvoud/meervoud
+- de **onboarding-checklist**: alle vijf items, hun beschrijvingen, hun knoppen en de
+  voortgangsregel
+- de **kop**: "Bijgewerkt zojuist" en "Vernieuwen"
+
+28 nieuwe sleutels in nl/fr/en/de.
+
+`tests/zelfbediening.test.js` pinde de letterlijke tekst "Bekijk de plannen"; die assertie
+test nu de WEG naar de plannen in plaats van de taal van het knopje.
+
+**Over de nieuwe test.** Mijn eerste versie las alleen het woordenboek en was groen te
+krijgen mét de bug erin — de sleutels bestaan en zijn vertaald, terwijl de checklist gewoon
+een vaste Nederlandse titel rendert. De test controleert nu ook dat de CODE die sleutels
+gebruikt. Mutatiegetest: één `tr()` terugdraaien naar vaste tekst laat hem omvallen.
+
+> **Nog open:** de onboarding-wizard is volledig Nederlands, inclusief de stappen die ik er
+> zelf aan toevoegde (ik volgde de omliggende code). ~30 strings; apart werk.
+
+
 ### Faro zegt af en toe iets uit zichzelf
 
 Een regel boven de ask-balk, met Faro's kop ernaast. Geen zwevende ballon over de pagina:

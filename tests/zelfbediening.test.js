@@ -45,8 +45,12 @@ for (const [tekst, waar] of verboden) {
 }
 
 console.log('\n— en er is wél een weg naar de plannen —');
+/* Niet meer op de Nederlandse tekst pinnen: die knop is vertaalbaar geworden
+   (tr('trial.cta')) omdat een Engelstalige klant anders "Bekijk de plannen"
+   las. Wat hier bewaakt moet worden is de WEG naar de plannen, niet de taal
+   waarin het knopje toevallig staat. */
 ck('de proefbanner stuurt naar de plannen',
-   /Bekijk de plannen[\s\S]{0,240}naarPlannen/.test(js), null);
+   /trial\.cta[\s\S]{0,240}naarPlannen/.test(js), null);
 ck('de verlopen proefperiode ook',
    /Kies een plan[\s\S]{0,240}naarPlannen/.test(js), null);
 /* De creditbalk in de zijbalk is nu een knop die een detailvenster opent (het

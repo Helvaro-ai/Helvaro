@@ -9189,10 +9189,10 @@ ${faro.navCta}
         </div>
       </div>
       <div class="topbar-right">
-        <span class="timestamp-info" id="timestamp-info">Bijgewerkt zojuist</span>
-        <button class="btn-icon" id="btn-refresh" title="Vernieuwen" aria-label="Vernieuwen">
+        <span class="timestamp-info" id="timestamp-info">${T('hdr.updated')}</span>
+        <button class="btn-icon" id="btn-refresh" title="${T('hdr.refresh')}" aria-label="${T('hdr.refresh')}">
           <span class="icon">↻</span>
-          <span class="btn-label">Vernieuwen</span>
+          <span class="btn-label">${T('hdr.refresh')}</span>
         </button>
         <button class="btn-icon btn-primary-sm" id="btn-export-csv" title="CSV Export" aria-label="${T('ui.export.csv')}">
           <span class="icon">⇓</span>
@@ -14893,12 +14893,12 @@ function renderPlanBanner(d) {
   } else {
     const daysLeft = d.daysLeft != null ? d.daysLeft : null;
     if (iconEl)  iconEl.textContent = '🎁';
-    if (titleEl) titleEl.textContent = daysLeft != null
-      ? \`Nog \${daysLeft} dag\${daysLeft === 1 ? '' : 'en'} proefperiode\`
-      : 'Je proefperiode loopt';
-    if (subEl)   subEl.textContent = 'Alle functies zijn beschikbaar. Wil je blijven gebruiken na je proefperiode? Upgrade wanneer je klaar bent.';
+    if (titleEl) titleEl.textContent = daysLeft == null
+      ? tr('trial.running')
+      : (daysLeft === 1 ? tr('trial.day') : tr('trial.days', { n: daysLeft }));
+    if (subEl)   subEl.textContent = tr('trial.sub');
     if (ctaEl) {
-      ctaEl.textContent = 'Bekijk de plannen';
+      ctaEl.textContent = tr('trial.cta');
       ctaEl.href = '#';
       ctaEl.onclick = function (e) { e.preventDefault(); navigateTo('facturatie'); setTimeout(naarPlannen, 300); };
     }
@@ -15003,39 +15003,39 @@ function getOnboardingChecklistItems(d) {
   const leadCount = (state.stats && state.stats.total) || 0;
   return [
     {
-      key: 'email', accent: 'blue', title: 'E-mailadres bevestigen',
+      key: 'email', accent: 'blue', title: tr('chk.email.title'),
       done: d.emailVerified === true,
       todoSub: tr('verify.todoSub'),
-      doneSub: 'Bevestigd',
-      actionLabel: 'Stuur opnieuw',
+      doneSub: tr('chk.email.done'),
+      actionLabel: tr('chk.email.action'),
     },
     {
-      key: 'business', accent: 'gold', title: 'Vertel over je bedrijf',
+      key: 'business', accent: 'gold', title: tr('chk.business.title'),
       done: !!(d.aiInstructions && d.aiInstructions.trim()),
-      todoSub: 'Dit is wat je AI gebruikt om leads te beantwoorden — hoe meer context, hoe beter ze jouw klanten helpt.',
-      doneSub: 'Ingevuld — je AI kent je bedrijf',
-      actionLabel: 'Vertel het',
+      todoSub: tr('chk.business.todo'),
+      doneSub: tr('chk.business.done'),
+      actionLabel: tr('chk.business.action'),
     },
     {
-      key: 'ainame', accent: 'purple', title: 'Geef je AI een naam',
+      key: 'ainame', accent: 'purple', title: tr('chk.ainame.title'),
       done: !!((d.aiName && d.aiName.trim()) && (d.autoReplyTpl && d.autoReplyTpl.trim())),
-      todoSub: 'Kies een naam en een welkomstbericht, zodat leads meteen weten met wie ze praten.',
-      doneSub: 'Ingesteld',
-      actionLabel: 'Instellen',
+      todoSub: tr('chk.ainame.todo'),
+      doneSub: tr('chk.ainame.done'),
+      actionLabel: tr('chk.ainame.action'),
     },
     {
-      key: 'gcal', accent: 'cyan', title: 'Koppel je Google Agenda',
+      key: 'gcal', accent: 'cyan', title: tr('chk.gcal.title'),
       done: d.gcalConnected === true,
-      todoSub: 'Dan checkt je AI automatisch je beschikbaarheid en zet boekingen meteen in je agenda.',
-      doneSub: 'Gekoppeld',
-      actionLabel: 'Koppelen',
+      todoSub: tr('chk.gcal.todo'),
+      doneSub: tr('chk.gcal.done'),
+      actionLabel: tr('chk.gcal.action'),
     },
     {
-      key: 'lead', accent: 'emerald', title: 'Ontvang je eerste lead',
+      key: 'lead', accent: 'emerald', title: tr('chk.lead.title'),
       done: leadCount > 0,
-      todoSub: 'Deel je formulierlink — zodra er een lead binnenkomt, vink je dit vanzelf af.',
-      doneSub: leadCount > 0 ? (\`\${leadCount} lead\${leadCount === 1 ? '' : 's'} binnen\`) : 'Binnen',
-      actionLabel: 'Bekijk formulier',
+      todoSub: tr('chk.lead.todo'),
+      doneSub: leadCount === 1 ? tr('chk.lead.done1') : tr('chk.lead.done', { n: leadCount }),
+      actionLabel: tr('chk.lead.action'),
     },
   ];
 }
@@ -15065,7 +15065,7 @@ function renderOnboardingChecklist(d) {
 
   wrap.style.display = '';
   const label = document.getElementById('dash-checklist-progress-label');
-  if (label) label.textContent = \`\${doneCount} van \${items.length} klaar\`;
+  if (label) label.textContent = tr('chk.progress', { done: doneCount, total: items.length });
   const fill = document.getElementById('dash-checklist-progress-fill');
   if (fill) fill.style.width = Math.round((doneCount / items.length) * 100) + '%';
 

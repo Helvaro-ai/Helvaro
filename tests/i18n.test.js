@@ -377,5 +377,89 @@ console.log('\n— vertalingen in on*-attributen blijven binnen de quotes —');
   }
 }
 
+/* ── Het dashboard mag geen half Nederlands scherm zijn ────────────────────
+   Live gevonden tijdens een E2E als klant: het account stond op Engels
+   (lang="en"), en de landingspagina zette "Get started with Helvaro" boven een
+   checklist die volledig in het Nederlands stond -- "Koppel je Google Agenda",
+   "Vertel over je bedrijf", "3 van 5 klaar". Twaalf van de veertien schermen
+   lekten Nederlands.
+
+   Dit test op CONCRETE strings en niet op een woordenlijst-heuristiek. Een
+   eerdere poging met "ziet dit er Nederlands uit?" sloeg aan op het Franse
+   "hier" en het Duitse "gratis" -- een detector die vals alarm geeft, wordt
+   uitgezet, en dan bewaakt hij niets meer. */
+console.log('\n— de checklist en de proefbanner zijn vertaalbaar —');
+{
+  const NOOIT_BUITEN_NL = [
+    'Koppel je Google Agenda',
+    'Bekijk de plannen',
+    'Ontvang je eerste lead',
+    'Bijgewerkt zojuist',
+    'Alle functies zijn beschikbaar',
+    'Deel je formulierlink',
+  ];
+  const SLEUTELS = [
+    'chk.email.title', 'chk.business.title', 'chk.ainame.title',
+    'chk.gcal.title', 'chk.lead.title', 'chk.progress',
+    'trial.cta', 'trial.sub', 'hdr.refresh', 'hdr.updated',
+  ];
+
+  for (const taal of ['en', 'fr', 'de']) {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const dash = require('../api/dashboard.js');
+    let html = '';
+    dash({ method: 'GET', url: '/dashboard?lang=' + taal, headers: {} },
+      { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+
+    /* De strings mogen nog wel in COMMENTAAR staan; het gaat om wat de klant
+       ziet. Daarom uit het woordenboek lezen in plaats van uit de ruwe HTML. */
+    const m = html.match(/const T_DICT = (\{[\s\S]*?\});/);
+    const dict = m ? JSON.parse(m[1]) : {};
+
+    ck(`${taal}: alle checklist- en proefbanner-sleutels bestaan`,
+      SLEUTELS.every((k) => typeof dict[k] === 'string' && dict[k].length > 1),
+      SLEUTELS.filter((k) => !dict[k]));
+
+    ck(`${taal}: en geen enkele daarvan is nog Nederlands`,
+      !SLEUTELS.some((k) => NOOIT_BUITEN_NL.indexOf(dict[k]) !== -1),
+      SLEUTELS.filter((k) => NOOIT_BUITEN_NL.indexOf(dict[k]) !== -1).map((k) => k + '=' + dict[k]));
+  }
+
+  /* En -- de belangrijkste -- de CODE moet die sleutels ook echt gebruiken.
+     Mijn eerste versie las alleen het woordenboek, en dat is groen te krijgen
+     met de bug er nog in: de sleutels bestaan en zijn vertaald, terwijl de
+     checklist gewoon een hardgecodeerde Nederlandse titel rendert. Dat is
+     precies het soort test dat je een vals gevoel van veiligheid geeft. */
+  {
+    delete require.cache[require.resolve('../api/dashboard.js')];
+    const dashCode = require('../api/dashboard.js');
+    let h = '';
+    dashCode({ method: 'GET', url: '/dashboard?lang=en', headers: {} },
+      { setHeader() {}, status() { return this; }, send(b) { h = String(b); }, json() {}, end() {} });
+
+    const blok = h.slice(h.indexOf('function getOnboardingChecklistItems'),
+                         h.indexOf('function chkItemAction'));
+    ck('de checklist bouwt zijn titels met tr(), niet met vaste tekst',
+      /title: tr\('chk\.email\.title'\)/.test(blok)
+      && /title: tr\('chk\.business\.title'\)/.test(blok)
+      && /title: tr\('chk\.ainame\.title'\)/.test(blok)
+      && /title: tr\('chk\.gcal\.title'\)/.test(blok)
+      && /title: tr\('chk\.lead\.title'\)/.test(blok),
+      blok.slice(0, 200));
+    ck('en er staat geen Nederlandse titel meer hardgecodeerd in dat blok',
+      !/title: '(?:Koppel|Vertel|Ontvang|Geef|E-mailadres)/.test(blok), null);
+  }
+
+  // En in het Nederlands hoort er gewoon Nederlands te staan.
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dashNl = require('../api/dashboard.js');
+  let nlHtml = '';
+  dashNl({ method: 'GET', url: '/dashboard?lang=nl', headers: {} },
+    { setHeader() {}, status() { return this; }, send(b) { nlHtml = String(b); }, json() {}, end() {} });
+  const nlDict = JSON.parse((nlHtml.match(/const T_DICT = (\{[\s\S]*?\});/) || [])[1] || '{}');
+  ck('nl: de Nederlandse tekst staat er nog steeds',
+    nlDict['chk.gcal.title'] === 'Koppel je Google Agenda', nlDict['chk.gcal.title']);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);
