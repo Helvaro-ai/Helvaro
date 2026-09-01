@@ -62,6 +62,9 @@ ck('er staat GEEN WhatsApp-koppelknop zolang Embedded Signup niet aangesloten is
    !/wiz-wa-knop/.test(html), null);
 ck('bij een fout claimt hij niet dat het klaar is',
    /badge\.textContent = 'Onbekend'/.test(html), null);
+/* 'nl_BE' is een Meta-taalcode. Een klant leest "het Nederlands". */
+ck('de taal wordt met haar eigen naam getoond, niet als Meta-code',
+   /function wizardTaalNaam/.test(html) && /var taal = wizardTaalNaam\(d\.taal\)/.test(html), null);
 ck('de 72 uur wordt hier herhaald', /binnen 72 uur rond/.test(html), null);
 
 /* ── Land en taal ──────────────────────────────────────────────────────────

@@ -18421,6 +18421,17 @@ var _wizardStap = 0;
    niet meer overschrijven. Het land is een suggestie, de keuze is de waarheid. */
 var _wizardTaalAangeraakt = false;
 
+/* 'nl_BE' is een Meta-taalcode, geen woord dat een klant hoort te lezen. De
+   keuzelijst kent de eigen naam van elke taal al, dus die gebruiken we. Valt
+   er niets te vinden, dan liever de kale code dan een lege zin. */
+function wizardTaalNaam(code) {
+  var kaal = String(code || '').split('_')[0].toLowerCase();
+  for (var i = 0; i < AP_LANGUAGES.length; i++) {
+    if (AP_LANGUAGES[i].code === kaal) return AP_LANGUAGES[i].native;
+  }
+  return code || 'je taal';
+}
+
 function wizardTaalBijLand(landcode) {
   for (var i = 0; i < REGIO_LANDEN.length; i++) {
     if (REGIO_LANDEN[i].code === landcode) return REGIO_LANDEN[i].taal;
@@ -18592,7 +18603,7 @@ async function wizardWhatsAppStatus() {
     });
     if (!r.ok) throw new Error('status ' + r.status);
     var d = await r.json();
-    var taal = d.taal || 'je taal';
+    var taal = wizardTaalNaam(d.taal);
 
     if (!d.ondersteund) {
       badge.textContent = 'Niet mogelijk';
@@ -18603,12 +18614,12 @@ async function wizardWhatsAppStatus() {
     if (d.klaar) {
       badge.textContent = 'Klaar';
       badge.style.color = 'var(--success-ink, #15803d)';
-      uitleg.textContent = 'Je berichten in ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je AI antwoordt meteen. Een eigen nummer kan later.';
+      uitleg.textContent = 'Je berichten in het ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je AI antwoordt meteen. Een eigen nummer kan later.';
       return;
     }
     badge.textContent = 'Wordt klaargezet';
     badge.style.color = 'var(--warning-ink, #b45309)';
-    uitleg.textContent = 'We laten je berichten in ' + taal + ' goedkeuren bij WhatsApp. Dat is binnen 72 uur rond — je hoeft hier niets voor te doen. Zolang dat loopt kan je alles al instellen.';
+    uitleg.textContent = 'We laten je berichten in het ' + taal + ' goedkeuren bij WhatsApp. Dat is binnen 72 uur rond — je hoeft hier niets voor te doen. Zolang dat loopt kan je alles al instellen.';
   } catch (e) {
     /* Niet doen alsof het klaar is als we het niet weten. */
     badge.textContent = 'Onbekend';
