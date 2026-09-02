@@ -1626,6 +1626,14 @@ button.brand-dot { border: none; padding: 0; }
     padding-top: 10px;
     padding-bottom: 10px;
   }
+  /* Zie de opmerking bij .row-action-btn: op een aanraakscherm hoort een
+     bedienbaar element minstens 44x44 te zijn. De ICOON blijft even groot;
+     alleen het raakvlak groeit, dus de rij ziet er niet anders uit. */
+  .row-action-btn { width: 44px; height: 44px; }
+  /* Een sluitknop die op de KLEINSTE schermen krimpt is precies verkeerd om.
+     Stond op 28px onder 480px; nu blijft hij minstens even groot als de rest. */
+  .panel-close { width: 44px; height: 44px; }
+  .btn-icon { min-height: 44px; }
 }
 
 /* Zichtbare focusring: dit is een van de weinige bedienbare dingen op het
@@ -6293,6 +6301,11 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   .row-actions { opacity: 0.65; }
 }
 
+/* 28x28 is prima voor een muis en te klein voor een duim. Dit zijn juist de
+   knoppen die een makelaar op zijn telefoon gebruikt: bellen of WhatsAppen
+   vanaf de leadlijst, tussen twee bezichtigingen door. WCAG vraagt 44x44 voor
+   aanraken, en de knop groeit hieronder alleen op aanraakschermen -- op een
+   muisscherm blijft de rij net zo compact als hij was. */
 .row-action-btn {
   width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
   background: var(--bg-card-alt); cursor: pointer; display: flex;
@@ -8284,7 +8297,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   .panel-header { padding: 18px 16px 16px; }
   .panel-body   { padding: 16px; }
   .panel-avatar { width: 48px; height: 48px; font-size: 18px; margin-bottom: 10px; }
-  .panel-close  { top: 14px; right: 14px; width: 28px; height: 28px; }
+  .panel-close  { top: 14px; right: 14px; width: 40px; height: 40px; }
 
   /* Takeover bar / reply row — allow the send button to sit under the
      textarea instead of squeezing both into ~300px of width */
@@ -11973,7 +11986,7 @@ ${faro.dock}
         <div id="cal-book-title">Afspraak inplannen</div>
         <div id="cal-book-subtitle"></div>
       </div>
-      <button id="cal-book-close" onclick="closeCalBookModal()">
+      <button id="cal-book-close" aria-label="${T('a11y.close')}" onclick="closeCalBookModal()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -12047,7 +12060,7 @@ ${faro.dock}
 </div>
 
 <!-- Toast Container -->
-<div class="toast-container" id="toast-container"></div>
+<div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
 <!-- ============================================================
      HELP WIDGET. Rendered for logged-in users only (shown by
@@ -18594,6 +18607,9 @@ async function wizardBewaar(velden) {
 }
 
 function wizardSluit(afgerond) {
+  /* Focus teruggeven aan waar hij vandaan kwam. Zonder dit landt de focus na
+     het sluiten op <body> en begint een toetsenbordgebruiker weer bovenaan. */
+  if (typeof modalToetsenbordUit === 'function') modalToetsenbordUit();
   var el = document.getElementById('welkom-wizard');
   if (el) el.remove();
   document.removeEventListener('keydown', wizardToetsen);
@@ -19195,6 +19211,16 @@ async function checkWelkomWizard() {
     var alKlaar = !!(d.aiName && d.autoReplyTpl && d.aiInstructions);
     if (alKlaar) { wizardBewaar({ welcomeDone: true }).catch(function () {}); return false; }
     _wizardStap = wizardGelezenStap();
+
+  /* De focusval die dit bestand al heeft, nu ook hier. De wizard droeg wel
+     aria-modal="true" maar hield Tab niet tegen: met het toetsenbord tabde je
+     zo achter het venster langs de pagina in, terwijl een schermlezer meldt dat
+     je in een dialoog zit. Escape werkte al, de rest niet.
+     modalToetsenbord() zet ook de beginfocus en geeft hem bij sluiten terug. */
+  var _wizardEl = document.getElementById('welkom-wizard');
+  if (_wizardEl && typeof modalToetsenbord === 'function') {
+    modalToetsenbord(_wizardEl, function () { wizardSluit(false); });
+  }
     wizardBouw();
     return true;
   } catch (e) { return false; }

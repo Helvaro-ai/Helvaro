@@ -367,9 +367,9 @@ const TEKST = {
       en: 'Appears as a chat bubble at the top of your lead form (under the avatar). Empty = automatic sector text. Placeholders: <code>{ai}</code>, <code>{bedrijf}</code>.',
       de: 'Erscheint als Chat-Blase oben auf Ihrem Formular (unter dem Avatar). Leer = automatischer Branchentext. Platzhalter: <code>{ai}</code>, <code>{bedrijf}</code>.' },
   'ap.preview.bubble': { nl: 'Hey Jan! Mathis hier van Bedrijf. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
-      fr: 'Bonjour Jan ! Mathis de Bedrijf à l’appareil. J’ai vu que vous aviez laissé vos coordonnées. Qu’est-ce qui vous amène ?',
-      en: 'Hi Jan! Mathis here from Bedrijf. I saw you left your details. What brings you to us?',
-      de: 'Hallo Jan! Hier ist Mathis von Bedrijf. Ich habe gesehen, dass Sie Ihre Daten hinterlassen haben. Was führt Sie zu uns?' },
+      fr: 'Bonjour Jan ! Mathis de l’Entreprise à l’appareil. J’ai vu que vous aviez laissé vos coordonnées. Qu’est-ce qui vous amène ?',
+      en: 'Hi Jan! Mathis here from Company. I saw you left your details. What brings you to us?',
+      de: 'Hallo Jan! Hier ist Mathis von Firma. Ich habe gesehen, dass Sie Ihre Daten hinterlassen haben. Was führt Sie zu uns?' },
 
 
   /* Panden-leegstand en de drie plaatsingsopties op Formulier */
@@ -621,10 +621,10 @@ const TEKST = {
       fr: 'Choisissez votre profil pour voir vos tâches et votre aperçu personnels.',
       en: 'Choose your profile to see your personal tasks &amp; overview.',
       de: 'Wählen Sie Ihr Profil, um Ihre persönlichen Aufgaben und Ihre Übersicht zu sehen.' },
-  'onb.live': { nl: 'Je AI is live!',
-      fr: 'Votre IA est en ligne !',
-      en: 'Your AI is live!',
-      de: 'Ihre KI ist live!' },
+  'onb.live': { nl: 'Ik sta live.',
+      fr: 'Je suis en ligne.',
+      en: 'I am live.',
+      de: 'Ich bin live.' },
   'onb.live.sub': { nl: 'Vanaf nu krijgt elke lead die jouw formulier invult direct een persoonlijk WhatsApp-bericht. Automatisch gekwalificeerd.',
       fr: 'Désormais, chaque prospect qui remplit votre formulaire reçoit immédiatement un message WhatsApp personnel. Qualifié automatiquement.',
       en: 'From now on, every lead who fills in your form immediately gets a personal WhatsApp message. Qualified automatically.',
