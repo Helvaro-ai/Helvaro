@@ -103,8 +103,21 @@ function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+/* Ook de enkele quote. Die ontbrak hier, terwijl escHtmlBasic() in
+   api/leads.js hem wel escapet -- twee versies van dezelfde functie die net
+   iets anders doen.
+
+   Vandaag is dat niet uit te buiten: alle 18 aanroepen hieronder staan in
+   elementtekst of in een attribuut met DUBBELE quotes, nagelopen. Het is een
+   valstrik voor de volgende die href='...' schrijft, en die kost dan een
+   XSS. Een teken extra escapen breekt niets en haalt de valstrik weg. */
 function escHtml(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function generateApiKey() {
