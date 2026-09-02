@@ -10055,7 +10055,7 @@ ${faro.navCta}
               <div><b>${T('pi.pick')}</b><br>${T('pi.drag')}</div>
             </div>
           </div>
-          <input type="file" id="pi-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePiFile(this)">
+          <input type="file" id="pi-file-input" aria-label="${T('a11y.veld.foto')}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePiFile(this)">
           <div class="ap-hint"><button type="button" class="ap-btn-link" id="pi-remove-btn" style="display:none" onclick="removePiUpload()">${T('pi.removePhoto')}</button></div>
         </div>
 
@@ -10095,7 +10095,7 @@ ${faro.navCta}
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
                 <label id="pi-wallcolor-grid-label" class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">${T('img.wall.hint')}</span></label>
                 <div class="pi-color-grid" id="pi-wallcolor-grid" role="group" aria-labelledby="pi-wallcolor-grid-label"></div>
-                <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="${T('img.note.ph')}">
+                <input type="text" id="pi-wallcolor-note" aria-label="${T('a11y.veld.muurnuance')}" class="ap-input pi-color-note-input" maxlength="80" placeholder="${T('img.note.ph')}">
               </div>
             </div>
 
@@ -10214,7 +10214,7 @@ ${faro.navCta}
                 <div class="ap-tpl-grid" id="ap-tpl-grid"></div>
               </div>
 
-              <textarea id="ap-template" class="ap-textarea" rows="3" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?" maxlength="1000"></textarea>
+              <textarea id="ap-template" aria-label="${T('a11y.veld.begroeting')}" class="ap-textarea" rows="3" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?" maxlength="1000"></textarea>
               <div class="ap-hint">
                 ${T('ap.placeholders')}
                 <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{naam}')">{naam}</button>
@@ -10241,7 +10241,7 @@ ${faro.navCta}
                 <div class="ap-tpl-grid" id="ap-instr-grid"></div>
               </div>
 
-              <textarea id="ap-instructions" class="ap-textarea" rows="5" placeholder="${T('ap.instr.ph')}" maxlength="3000"></textarea>
+              <textarea id="ap-instructions" aria-label="${T('a11y.veld.instructies')}" class="ap-textarea" rows="5" placeholder="${T('ap.instr.ph')}" maxlength="3000"></textarea>
               <div class="ap-hint">${T('ap.extra.note')}</div>
             </div>
 
@@ -10383,7 +10383,7 @@ ${faro.navCta}
                   <span class="ap-photo-placeholder">+</span>
                 </div>
                 <div class="ap-photo-controls">
-                  <input type="file" id="ap-photo-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePhotoFile(this)">
+                  <input type="file" id="ap-photo-file" aria-label="${T('a11y.veld.foto')}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handlePhotoFile(this)">
                   <button type="button" class="ap-btn ap-btn-secondary" onclick="document.getElementById('ap-photo-file').click()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     ${T('ap.photo.pick')}
@@ -10394,7 +10394,7 @@ ${faro.navCta}
               <input id="ap-photo" type="hidden">
               <details class="ap-photo-advanced">
                 <summary>${T('ap.photo.adv')}</summary>
-                <input id="ap-photo-url" type="url" class="ap-input" placeholder="https://..." oninput="handlePhotoUrlInput(this)">
+                <input id="ap-photo-url" aria-label="${T('a11y.veld.fotoUrl')}" type="url" class="ap-input" placeholder="https://..." oninput="handlePhotoUrlInput(this)">
                 <div class="ap-hint">${T('ap.photo.hint')}</div>
               </details>
             </div>

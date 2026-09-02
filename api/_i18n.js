@@ -1112,6 +1112,12 @@ const TEKST = {
   'tst.leegConflict': { nl: '"Leeg" is niet te combineren met de stijl "Lege ruimte inrichten" — teruggezet op automatisch', fr: '« Vide » ne se combine pas avec le style « Aménager un espace vide » — remis sur automatique', en: '“Empty” can’t be combined with the “Furnish an empty room” style — reset to automatic', de: '„Leer“ lässt sich nicht mit dem Stil „Leeren Raum einrichten“ kombinieren — auf automatisch zurückgesetzt' },
   'tst.wijzigingGeladen': { nl: 'Wijziging geladen — klik Opslaan om te bevestigen', fr: 'Modification chargée — cliquez sur Enregistrer pour confirmer', en: 'Change loaded — click Save to confirm', de: 'Änderung geladen — klicken Sie auf Speichern zum Bestätigen' },
 
+  'a11y.veld.foto': { nl: 'Foto kiezen', fr: 'Choisir une photo', en: 'Choose a photo', de: 'Foto auswählen' },
+  'a11y.veld.muurnuance': { nl: 'Nuance voor de muurkleur', fr: 'Nuance de la couleur du mur', en: 'Wall colour nuance', de: 'Nuance der Wandfarbe' },
+  'a11y.veld.begroeting': { nl: 'Welkomstbericht', fr: 'Message de bienvenue', en: 'Welcome message', de: 'Willkommensnachricht' },
+  'a11y.veld.instructies': { nl: 'Instructies voor je assistent', fr: 'Instructions pour votre assistant', en: 'Instructions for your assistant', de: 'Anweisungen für Ihren Assistenten' },
+  'a11y.veld.fotoUrl': { nl: 'Link naar een foto', fr: 'Lien vers une photo', en: 'Link to a photo', de: 'Link zu einem Foto' },
+
   'fa.nietOpgehaald': { nl: 'Niet opgehaald \u2014 zie de melding hierboven.',
                      fr: 'Non r\u00e9cup\u00e9r\u00e9 \u2014 voir le message ci-dessus.',
                      en: 'Couldn\u2019t load \u2014 see the message above.',
