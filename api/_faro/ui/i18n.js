@@ -42,7 +42,7 @@ const STRINGS = {
 
     'sw.label': 'Wisselen tussen CRM en AI',
     'sw.crm': 'CRM',
-    'sw.ai': 'AI',
+    'sw.ai': 'Faro',
     'sb.new': 'Nieuw gesprek',
     'sb.search': 'Zoeken',
     'sb.recent': 'Recent',
@@ -196,7 +196,7 @@ const STRINGS = {
 
     'sw.label': 'Switch between CRM and AI',
     'sw.crm': 'CRM',
-    'sw.ai': 'AI',
+    'sw.ai': 'Faro',
     'sb.new': 'New conversation',
     'sb.search': 'Search',
     'sb.recent': 'Recent',
@@ -348,7 +348,7 @@ const STRINGS = {
 
     'sw.label': 'Basculer entre CRM et IA',
     'sw.crm': 'CRM',
-    'sw.ai': 'IA',
+    'sw.ai': 'Faro',
     'sb.new': 'Nouvelle conversation',
     'sb.search': 'Rechercher',
     'sb.recent': 'Récent',
@@ -500,7 +500,7 @@ const STRINGS = {
 
     'sw.label': 'Zwischen CRM und KI wechseln',
     'sw.crm': 'CRM',
-    'sw.ai': 'KI',
+    'sw.ai': 'Faro',
     'sb.new': 'Neue Unterhaltung',
     'sb.search': 'Suchen',
     'sb.recent': 'Kürzlich',

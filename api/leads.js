@@ -14,7 +14,8 @@ const _ledger = require('./_ledger');         // creditgrootboek: elke beweging 
 const _lang   = require('./_lang');   // language registry — see its file header
 const _waTpl  = require('./_wa-templates'); // welke WhatsApp-templates bestaan per taal
 const _verify = require('./_verify'); // email-ownership verification — see its file header
-const _leadsRead = require('./_leads-read'); // shared lead field map + mapper + stats, also used by Faro
+const _leadsRead = require('./_leads-read');
+const _faroData  = require('./_faro/data');  // parseBudget: leest bedragen uit vrije tekst // shared lead field map + mapper + stats, also used by Faro
 const _command   = require('./_command');     // Command Center intelligence layer — pure, no I/O, no model
 
 // Single-shot Airtable fetch. No retries on 429.
@@ -3083,14 +3084,22 @@ function aggregateReportPeriod(records, startMs, endMs) {
 // values like "€ 1.500,00" parsed as 1.5 instead of 1500. Do not change this
 // logic here without changing it in dashboard.js too (grep parseDealValue).
 function parseDealValueServer(v) {
-  if (!v) return 0;
-  let s = String(v).replace(/[€\s]/g, '');
-  // '.' = thousands separator, ',' = decimal separator when a comma is
-  // present ("2.750,00" = 2750). No comma → every '.' is a thousands
-  // separator too ("1.500" = 1500, never 1.5) — this format never uses '.'
-  // as a decimal point.
-  s = s.includes(',') ? s.replace(/\.(?=.*,)/g, '').replace(',', '.') : s.replace(/\./g, '');
-  return parseFloat(s) || 0;
+  /* Deed dit eerst zelf, met parseFloat op een opgeschoonde string. Dat werkt
+     zolang het veld ALLEEN een bedrag bevat -- en dit is vrije tekst die een
+     makelaar zelf intikt. "3 slaapkamers, 450.000" leverde 3 op. Die 3 telde
+     daarna mee als EUR 3 in de pipelinewaarde, het omzetdoel en de gemiddelde
+     dealwaarde.
+     "Budget 350.000 euro" en "ongeveer 400k" leverden zelfs 0 op.
+
+     api/_faro/data.js had dit al opgelost, met precies dit voorbeeld in zijn
+     commentaar: loop alle getallen langs en neem het eerste dat er als geld
+     uitziet. Die fix stond alleen nooit in deze kopie. Nu wel -- en niet
+     overgeschreven maar aangeroepen, zodat er geen derde versie ontstaat.
+
+     parseBudget geeft null als er niets bruikbaars staat; hier is 0 het
+     antwoord dat de optellingen verwachten. */
+  const n = _faroData.parseBudget(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 // CSV/Excel formula-injection guard. Lead-supplied fields (name, notes,

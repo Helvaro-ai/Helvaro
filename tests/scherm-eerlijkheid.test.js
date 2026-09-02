@@ -63,8 +63,12 @@ ck('Google ontkoppelen meldt een fout in plaats van succes',
 ck('en de lege catch is weg', html.indexOf('} catch (e) {}\n  loadGcalStatus();') === -1, null);
 
 console.log('\n— een nieuwe klant krijgt uitleg, geen felicitatie —');
+/* Niet meer op "de AI" pinnen: het product noemt zichzelf niet zo meer, het
+   heet "je assistent" (of Faro). Wat hier bewaakt moet worden is dat een
+   nieuwe klant met nul leads UITLEG krijgt en geen felicitatie -- niet de
+   precieze bewoording van die uitleg. */
 ck('de kalender feliciteert niet bij nul leads',
-   /Nog geen leads\. Zodra de AI/.test(html), null);
+   /Nog geen leads\. Zodra je assistent/.test(html), null);
 ck('en zegt nog steeds het juiste als er WEL leads zijn',
    /Alle gekwalificeerde leads hebben een afspraak/.test(html), null);
 ck('Gesprekken zegt wat er moet gebeuren', /Nog geen gesprekken/.test(html), null);

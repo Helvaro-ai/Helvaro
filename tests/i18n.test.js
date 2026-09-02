@@ -506,6 +506,21 @@ console.log('\n— het product noemt zichzelf niet "AI" —');
        fout.map((k) => k + '=' + d[k].slice(0, 60)));
   }
 
+  /* DE UITZONDERING MOET POSITIEF BEWEZEN WORDEN, niet alleen toegestaan.
+     Mijn eerste versie zette img.honest op een witte lijst en keek er verder
+     niet naar. Precies daardoor kon de hernoeming hem stukmaken zonder dat de
+     test iets zei: in het Engels stond er ineens "your assistant labelling" en
+     in het Duits "Ihr Assistent-Kennzeichnung" -- de mededeling dat een BEELD
+     door een model gemaakt is, was wegvertaald. Dat is de enige zin waar het
+     woord juist MOET staan.
+
+     Een witte lijst zegt "hier mag het"; deze assertie zegt "hier hoort het". */
+  for (const [taal, woord] of [['nl', 'AI'], ['fr', 'IA'], ['en', 'AI'], ['de', 'KI']]) {
+    const v = i18n.woordenboek(taal)['img.honest'] || '';
+    ck(`${taal}: de beeld-disclosure noemt het model nog steeds "${woord}"`,
+       new RegExp('\\b' + woord + '\\b').test(v), v.slice(-70));
+  }
+
   /* En het moet wél ergens "assistent" heten -- anders is de vervanging
      doorgeschoten en staat er nu helemaal niets. */
   for (const taal of ['nl', 'fr', 'en', 'de']) {

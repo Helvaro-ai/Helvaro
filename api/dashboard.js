@@ -15532,7 +15532,7 @@ function renderTable() {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
         </div>
         <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
-        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Je AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
+        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Je assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Je assistent voert het gesprek en kwalificeert automatisch</span></div>
@@ -17245,7 +17245,7 @@ function renderCalSidebar() {
        een nieuwe klant is dat het eerste wat hij op deze pagina leest. */
     const nogGeenLeads = !(state.leads && state.leads.length);
     listEl.innerHTML = nogGeenLeads
-      ? \`<div class="cal-sidebar-empty">Nog geen leads. Zodra de AI er een kwalificeert, staat hij hier klaar om in te plannen.</div>\`
+      ? \`<div class="cal-sidebar-empty">Nog geen leads. Zodra je assistent er een kwalificeert, staat hij hier klaar om in te plannen.</div>\`
       : \`<div class="cal-sidebar-empty">Alle gekwalificeerde leads hebben een afspraak!</div>\`;
     return;
   }
@@ -19820,16 +19820,45 @@ function openConversation(leadId) {
    HELPER: PARSE DEAL VALUE
    ============================================================ */
 function parseDealValue(v) {
-  if (!v) return 0;
-  let s = String(v).replace(/[€\\s]/g, '');
-  // Belgian/Dutch number format: '.' = thousands separator, ',' = decimal
-  // separator (e.g. "€ 2.750,00" = 2750). If a comma is present, any '.'
-  // before it is a thousands separator and gets stripped; the comma then
-  // becomes the decimal point. If there's no comma, treat all '.' as
-  // thousands separators too (e.g. "1.500" = 1500, not 1.5) — this format
-  // never uses '.' as a decimal point.
-  s = s.includes(',') ? s.replace(/\\.(?=.*,)/g, '').replace(',', '.') : s.replace(/\\./g, '');
-  return parseFloat(s) || 0;
+  /* Zelfde parser als api/_faro/data.js parseBudget en als
+     parseDealValueServer in api/leads.js. Dit is de DERDE kopie -- die kan hier
+     niet weg, want dit is client-side code binnen een HTML-template en kan
+     niets require()n. Er is wel een test die alle drie op dezelfde tabel legt
+     en eist dat ze hetzelfde antwoorden (tests/bedragen.test.js).
+
+     Wat er mis was: dit deed parseFloat op een opgeschoonde string. Dat werkt
+     alleen als het veld ALLEEN een bedrag bevat, en dit is vrije tekst die een
+     makelaar zelf intikt. "3 slaapkamers, 450.000" gaf 3, "Budget 350.000
+     euro" gaf 0. Die getallen stonden daarna in het pipelinetotaal, het
+     omzetdoel en de gemiddelde dealwaarde. */
+  var s = String(v == null ? '' : v);
+  var re = /(€\\s*)?(\\d[\\d.\\s,]*\\d|\\d)\\s*(k|K|m|M)?(?![\\w])/g;
+  var m;
+  while ((m = re.exec(s)) !== null) {
+    var hasEuro = Boolean(m[1]);
+    var suffix = (m[3] || '').toLowerCase();
+    var body = m[2].trim().replace(/[.,\\s]+$/, '');
+    if (!body) continue;
+
+    var n;
+    if (suffix) {
+      n = Number(body.replace(/\\s/g, '').replace(',', '.'));
+    } else {
+      // Vlaams: punt = duizendtal, komma = decimaal.
+      var schoon = body.replace(/\\s/g, '');
+      n = schoon.indexOf(',') !== -1
+        ? Number(schoon.replace(/\\./g, '').replace(',', '.'))
+        : Number(schoon.replace(/\\./g, ''));
+    }
+    if (!isFinite(n) || n <= 0) continue;
+    if (suffix === 'k') n *= 1000;
+    else if (suffix === 'm') n *= 1000000;
+
+    // Onder 1.000 telt een los getal in dit veld vrijwel altijd iets anders:
+    // slaapkamers, gevels, een huisnummer.
+    if (suffix || hasEuro || n >= 1000) return n;
+  }
+  return 0;
 }
 
 /* ============================================================
@@ -24414,7 +24443,7 @@ var HELP_ARTICLES = [
       '<p><strong>2. Insluiten op je site.</strong> Onder <strong>Formulier</strong> vind je een stukje code dat je in je website plakt. Het formulier verschijnt dan als een blok op je eigen pagina, in je eigen huisstijl.</p>' +
       '<p>Weet je niet waar dat moet in je website? Stuur ons de link van je site, dan kijken we mee.</p>' },
 
-  { id: 'ai-instellen', sec: 'Je AI instellen', title: 'De AI aanpassen aan je bedrijf',
+  { id: 'ai-instellen', sec: 'Je assistent instellen', title: 'Je assistent aanpassen aan je bedrijf',
     tags: 'ai personality persoonlijkheid naam toon instructies welkomstbericht aanpassen taal',
     body:
       '<p>Alles daarvoor staat op de pagina <strong>Je assistent</strong>.</p>' +
@@ -24426,7 +24455,7 @@ var HELP_ARTICLES = [
       '</ul>' +
       '<p>Wijzigingen gelden meteen voor het volgende gesprek. Lopende gesprekken blijven op de oude instellingen doorlopen.</p>' },
 
-  { id: 'whatsapp', sec: 'Je AI instellen', title: 'Je WhatsApp-nummer koppelen',
+  { id: 'whatsapp', sec: 'Je assistent instellen', title: 'Je WhatsApp-nummer koppelen',
     tags: 'whatsapp nummer koppelen meta telefoon aansluiten',
     body:
       '<p>Dit stel je niet zelf in, en dat is geen beperking van Helvaro. Meta moet elk zakelijk WhatsApp-nummer eerst goedkeuren, en dat traject regelen wij voor je.</p>' +
@@ -24434,7 +24463,7 @@ var HELP_ARTICLES = [
       '<p>Ben je er al klaar voor? Laat het weten via de knop op je dashboard of mail ons, dan pakken we het sneller op.</p>' +
       '<p>Tot dan werkt je leadformulier gewoon: leads komen binnen en je assistent praat met ze via het formulier.</p>' },
 
-  { id: 'agenda', sec: 'Je AI instellen', title: 'Google Agenda koppelen',
+  { id: 'agenda', sec: 'Je assistent instellen', title: 'Google Agenda koppelen',
     tags: 'agenda kalender google afspraak boeken beschikbaarheid koppelen',
     body:
       '<p>Koppel je agenda en je assistent kan echt boeken in plaats van alleen een link te sturen.</p>' +
@@ -24470,7 +24499,7 @@ var HELP_ARTICLES = [
       '<p>Je krijgt naam, telefoon, status, bron, score, urgentie, verwachte waarde, datum en de samenvatting van het gesprek.</p>' +
       '<p>Onder <strong>Exports</strong> vind je daarnaast rapporten per periode.</p>' },
 
-  { id: 'credits', sec: 'Account', title: 'Wat zijn AI-credits?',
+  { id: 'credits', sec: 'Account', title: 'Wat zijn credits?',
     tags: 'credits verbruik limiet kosten opraken tegoed bundel',
     body:
       '<p>Elk AI-bericht dat namens jou verstuurd wordt, kost een credit. Linksonder in de zijbalk zie je hoeveel je er deze maand gebruikt hebt.</p>' +

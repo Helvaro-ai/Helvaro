@@ -148,7 +148,15 @@ function parseBudget(raw) {
     if (suffix) {
       n = Number(body.replace(/\s/g, '').replace(',', '.'));
     } else {
-      n = Number(body.replace(/[.\s,]/g, ''));
+      /* Vlaamse schrijfwijze: de PUNT is het duizendtal en de KOMMA is de
+         decimaal. Hier stond eerst `replace(/[.\s,]/g, '')`, wat allebei de
+         tekens wegpoetste -- en dus ook de decimale komma. "2.750,00" werd
+         daardoor 275000 en "450.000,50" werd 45000050: honderd keer te veel,
+         op elk bedrag met centen. Voor ronde budgetten viel dat nooit op. */
+      const schoon = body.replace(/\s/g, '');
+      n = schoon.indexOf(',') !== -1
+        ? Number(schoon.replace(/\./g, '').replace(',', '.'))
+        : Number(schoon.replace(/\./g, ''));
     }
     if (!Number.isFinite(n) || n <= 0) continue;
     if (suffix === 'k') n *= 1000;
