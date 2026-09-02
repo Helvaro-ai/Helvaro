@@ -152,7 +152,12 @@ ck('de toetsafhandeling haakt aan data-hv-act, niet aan de rol',
    klikbare elementen op het scherm stonden. Een aanwezige aanroep is geen
    uitgevoerde aanroep, dus de test eist nu de plek waar hij WEL loopt. */
 ck('bindActivatable draait bij het opstarten, niet pas bij het navigeren',
-  /DOMContentLoaded[\s\S]{0,200}?bindActivatable\(\);/.test(html), null);
+  /hvStartActivatable[\s\S]{0,600}?bindActivatable\(\);/.test(html), null);
+/* En niet BLIND op DOMContentLoaded: dit script staat onderaan de body, dus
+   die gebeurtenis is meestal al geweest en de listener vuurt nooit. Dat was
+   de tweede poging op deze bug, en de browser moest hem opnieuw aanwijzen. */
+ck('met een terugval voor het geval de pagina al geladen is',
+  /readyState === 'loading'[\s\S]{0,200}?else \{[\s\S]{0,60}?start\(\);/.test(html), null);
 ck('en ook nog bij het navigeren, voor pagina\'s die later gemount worden',
   /aria-current[\s\S]{0,200}?bindActivatable\(\);/.test(html), null);
 

@@ -15569,9 +15569,22 @@ function hvMakeActivatable(root) {
    De test hiervoor keek of de aanroep IN de pagina stond. Dat stond hij ook.
    Alleen liep hij niet. Vandaar dat dit in de browser is nagegaan en niet
    alleen in de suite. */
-document.addEventListener('DOMContentLoaded', function () {
-  try { bindActivatable(); } catch (e) { console.error('[activatable]', e); }
-});
+(function hvStartActivatable() {
+  var start = function () {
+    try { bindActivatable(); } catch (e) { console.error('[activatable]', e); }
+  };
+  /* Niet blind op DOMContentLoaded wachten. Dit script staat onderaan de body,
+     dus die gebeurtenis is meestal AL geweest tegen de tijd dat deze regel
+     draait -- de listener vuurt dan nooit meer. Precies dat gebeurde: in de
+     browser stond _activatableBound nog steeds op false, met 102 klikbare
+     elementen op het scherm. Tweede poging op dezelfde bug, nu gecontroleerd
+     in de echte browser in plaats van in de suite. */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+})();
 
 let _activatableBound = false;
 function bindActivatable() {
