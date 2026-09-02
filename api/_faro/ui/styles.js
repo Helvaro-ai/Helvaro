@@ -374,17 +374,97 @@ body.hv-mode-ai .faro-rail {
 /* If the asset is missing, hide rather than show a broken-image glyph —
    only the idle render exists today. */
 .faro-mascot--missing { visibility: hidden; }
-.faro-mascot[data-state="thinking"] { animation: faro-breathe 2.8s ease-in-out infinite; }
-.faro-mascot[data-state="success"]  { filter: drop-shadow(0 0 28px var(--warm-sand-glow)); }
-.faro-mascot[data-state="error"]    { filter: drop-shadow(0 0 18px rgba(220, 38, 38, 0.18)); }
+/* ── Elke toestand beweegt anders ──────────────────────────────────────────
+   Er waren zes tekeningen maar maar EEN beweging: alleen 'thinking' ademde,
+   de rest stond stil. Een valk die niet beweegt is een plaatje, geen collega.
+   En omdat verschillende toestanden dezelfde tekening delen (zie TOESTANDEN in
+   api/_faro/werk.js), was 'aan het werk' visueel niet te onderscheiden van
+   'zit stil te wachten'.
+
+   Beweging doet hier dus twee dingen tegelijk: ze geeft Faro karakter, en ze
+   maakt zichtbaar WAT hij aan het doen is zonder dat er zes nieuwe tekeningen
+   bij moeten.
+
+   Twee regels die de hele opzet bepalen:
+
+   1. Wat blijft duren, beweegt zacht en traag. Ademen, deinen, drijven. Iets
+      dat de hele dag in je ooghoek staat te stuiteren wordt binnen een uur
+      irritant en daarna zet je het uit.
+
+   2. Wat een GEBEURTENIS is, speelt EEN keer af en stopt. Een juichende valk
+      die blijft juichen viert niets meer, en een die blijft trillen leest als
+      een kapotte pagina in plaats van als een melding. Vandaar de eindige
+      herhalingen bij success en error, met forwards zodat hij netjes stil
+      eindigt in plaats van terug te springen. */
+
+/* Rust: ademen. De basis waar alles op terugvalt. */
+.faro-mascot[data-state="idle"]      { animation: faro-breathe 4.6s ease-in-out infinite; }
+
+/* Denken: sneller ademen en licht schuin -- hij is ergens mee bezig. */
+.faro-mascot[data-state="thinking"]  { animation: faro-denkt 2.8s ease-in-out infinite; }
+
+/* Aan het werk: een gestage puls, als iets dat draait. */
+.faro-mascot[data-state="generating"]{ animation: faro-werkt 1.9s ease-in-out infinite; }
+
+/* Video: trager en breder, hij kijkt rond. */
+.faro-mascot[data-state="video"]     { animation: faro-drijft 6.5s ease-in-out infinite; }
+
+/* Gelukt: twee keer stuiteren, dan klaar. */
+.faro-mascot[data-state="success"]   {
+  filter: drop-shadow(0 0 28px var(--warm-sand-glow));
+  animation: faro-juicht 620ms cubic-bezier(.34, 1.56, .64, 1) 2 forwards;
+}
+
+/* Aandacht: een korte schud, en dan stil blijven staan. */
+.faro-mascot[data-state="error"]     {
+  filter: drop-shadow(0 0 18px rgba(220, 38, 38, 0.18));
+  animation: faro-schudt 480ms ease-in-out 1 forwards;
+}
 
 /* Deliberately tiny amplitude. Requirement 11: "extremely subtle". */
 @keyframes faro-breathe {
   0%, 100% { transform: translateY(0)    scale(1);     }
   50%      { transform: translateY(-2px) scale(1.015); }
 }
+@keyframes faro-denkt {
+  0%, 100% { transform: translateY(0)    rotate(0deg);      }
+  50%      { transform: translateY(-3px) rotate(-1.5deg);   }
+}
+@keyframes faro-werkt {
+  0%, 100% { transform: scale(1);     filter: drop-shadow(0 0 20px var(--warm-sand-glow)); }
+  50%      { transform: scale(1.035); filter: drop-shadow(0 0 30px var(--warm-sand-glow)); }
+}
+@keyframes faro-drijft {
+  0%, 100% { transform: translate(0, 0)        rotate(0deg);    }
+  33%      { transform: translate(3px, -3px)   rotate(1deg);    }
+  66%      { transform: translate(-3px, -1px)  rotate(-1deg);   }
+}
+@keyframes faro-juicht {
+  0%   { transform: translateY(0)     scale(1);     }
+  40%  { transform: translateY(-9px)  scale(1.06);  }
+  70%  { transform: translateY(1px)   scale(0.985); }
+  100% { transform: translateY(0)     scale(1);     }
+}
+@keyframes faro-schudt {
+  0%, 100% { transform: translateX(0);    }
+  20%      { transform: translateX(-4px); }
+  40%      { transform: translateX(4px);  }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(2px);  }
+}
+
+/* Wie beweging heeft uitgezet, meent dat. Dan geen enkele animatie -- ook niet
+   de eenmalige, want juist een sprong of een schud is wat iemand met
+   bewegingsklachten ziek maakt. De toestand blijft af te lezen aan de tekening
+   en aan de gloed, en die veranderen allebei gewoon mee. */
 @media (prefers-reduced-motion: reduce) {
-  .faro-mascot, .faro-mascot[data-state="thinking"] { animation: none; transition: none; }
+  .faro-mascot,
+  .faro-mascot[data-state="idle"],
+  .faro-mascot[data-state="thinking"],
+  .faro-mascot[data-state="generating"],
+  .faro-mascot[data-state="video"],
+  .faro-mascot[data-state="success"],
+  .faro-mascot[data-state="error"] { animation: none; transition: none; }
 }
 
 /* ── The orb ────────────────────────────────────────────────────────────────

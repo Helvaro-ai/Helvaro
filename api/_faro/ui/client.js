@@ -322,6 +322,36 @@ function faroTipVoor(ctx) {
   return null;
 }
 
+/* ── Faro zegt het niet elke keer op dezelfde manier ───────────────────────
+   Elke situatie had precies EEN zin. Wie hem twee keer tegenkomt hoort een
+   bandje, en een bandje heeft geen karakter -- dan is het een tooltip met een
+   vogel ernaast.
+
+   Er staan nu drie varianten per situatie, in alle vier de talen. Variant 1 is
+   de oorspronkelijke zin, zodat de toon niet verschuift; 2 en 3 zeggen
+   hetzelfde met andere woorden.
+
+   De keuze ligt vast per sessie en per sleutel. Anders wisselt de zin bij elke
+   herteken-actie voor je ogen, en dat leest als een storing in plaats van als
+   iemand die twee keer iets anders zegt. Ontbreekt een variant, dan valt hij
+   terug op de basiszin -- nooit op een lege ballon. */
+var _faroStemKeuze = {};
+function faroStem(sleutel) {
+  var basis = T(sleutel);
+  if (!basis || basis === sleutel) return basis;
+
+  if (!(sleutel in _faroStemKeuze)) {
+    var varianten = [sleutel];
+    for (var i = 2; i <= 3; i++) {
+      var alt = T(sleutel + '.v' + i);
+      if (alt && alt !== sleutel + '.v' + i) varianten.push(sleutel + '.v' + i);
+    }
+    _faroStemKeuze[sleutel] = varianten[Math.floor(Math.random() * varianten.length)];
+  }
+  var gekozen = T(_faroStemKeuze[sleutel]);
+  return (gekozen && gekozen !== _faroStemKeuze[sleutel]) ? gekozen : basis;
+}
+
 function faroDockTip() {
   var doos = document.getElementById('faro-dock-hint');
   if (!doos) return;
@@ -337,7 +367,7 @@ function faroDockTip() {
   var sleutel = 'tip.' + keuze.sleutel;
   if (faroTipGezien(sleutel)) { doos.hidden = true; return; }
 
-  var tekst = T(sleutel);
+  var tekst = faroStem(sleutel);
   if (!tekst || tekst === sleutel) { doos.hidden = true; return; }
 
   var tekstEl = document.getElementById('faro-dock-hinttext');
