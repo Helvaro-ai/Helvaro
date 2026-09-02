@@ -15,8 +15,10 @@ rechtstreeks in de Google Agenda van de makelaar.
 De assistent heet **Faro** en heeft een eigen persona (valk). Klanten geven hem
 zelf een naam ("Mathis"), zodat de lead denkt met een medewerker te praten.
 
-Live op `https://app.helvaro.pro`. Marketingsite `https://helvaro.pro` staat in
-een **apart project** (niet in deze repo).
+Live op `https://app.helvaro.pro` (repo `Helvaro-ai/Helvaro`, branch `main`).
+De marketingsite `https://helvaro.pro` is een **aparte repo**:
+`UseHelvaro/Helvaro-Website` -- losse statische HTML/CSS/JS, vijf talen
+(nl/fr/en/de/es), geen buildstap.
 
 ## 2. Stack — en wat er expres NIET is
 
@@ -24,7 +26,9 @@ een **apart project** (niet in deze repo).
 - **Geen buildstap. Geen TypeScript. Geen framework. Geen bundler. Geen npm-app-dependencies.**
 - Data: **Airtable** (geen SQL-database).
 - Auth: **Clerk** (Bearer-token) + een legacy `hvs1.`-HMAC-sessiecookie.
-- Betalen: **Stripe**. Meldingen: **OneSignal** (+ Resend voor e-mail).
+- Betalen: **Stripe**. Meldingen: **OneSignal**.
+- Transactionele e-mail: **SMTP** (Namecheap Private Email, via nodemailer).
+  Dat is sinds 2026-09-02 de ENIGE weg -- Resend stond als terugval en is eruit.
 - Beeld/video: externe modellen via `api/_media-models.js`.
 
 Wat je schrijft, draait. Er is geen transpilatie die je fouten opvangt.
@@ -45,7 +49,8 @@ alleen een module. Zonder onderstreepje = een echt HTTP-endpoint.
   credits van geld komen.
 - `_wa-send.js` / `_wa-templates.js` — WhatsApp versturen + het sjabloonregister.
 - `_gcal.js` — Google Agenda (OAuth, freeBusy, boeken).
-- `_i18n.js` — het woordenboek van de app: `{nl, fr, en, de}`.
+- `_i18n.js` — het woordenboek van de app: `{nl, fr, en, de}`. (De website heeft
+  er vijf: daar komt `es` bij.)
 - `_faro/` — de assistent: `orchestrator`, `tools`, `writes`, `data`, `werk`,
   `scherm`, `rapport`, plus `_faro/ui/` (eigen client, styles, i18n, markup).
 - `_ratelimit.js`, `_session.js`, `_clerk.js`, `_revocation.js` — toegang.
@@ -145,6 +150,23 @@ Niet op localhost: op `https://app.helvaro.pro`, na de deploy. Een aanroep die
 in de broncode STAAT is nog geen aanroep die DRAAIT — dat verschil is hier drie
 keer misgegaan met dezelfde bug. Lees computed styles, tel elementen, druk op
 toetsen. Zeg nooit dat iets werkt zonder het gezien te hebben.
+
+## 8b. Omgevingsvariabelen
+
+De code leest er ~100. Wat je moet weten:
+
+- **Kritiek** (app werkt niet zonder): `API_AIRTABLE` + `BASE_AIRTABLE`,
+  `CLERK_SECRET_KEY` + `CLERK_PUBLISHABLE_KEY`, `SESSION_SECRET`, `ADMIN_KEY`,
+  `WHATSAPP_TOKEN` + `PHONE_NUMBER_ID`, `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`.
+- **Faalt LUID** als hij ontbreekt (met een console.error in de Vercel-logs die
+  zegt wat er mist): `UPSTASH_REDIS_REST_URL`/`_TOKEN`, `SMTP_HOST`/`_USER`/
+  `_PASS`, `STRIPE_SECRET_KEY` (waarschuwt bij een sk_test_ in productie),
+  `PG_API_URL`/`_TOKEN`.
+- **Faalt STIL** als hij ontbreekt: de meeste `*_TEMPLATE_NAME`/`_LANG`, de
+  KLING/beeld-sleutels, `PEXELS_API_KEY`.
+
+Die luide meldingen zijn met opzet zo gebouwd: een ontbrekende sleutel die
+alleen een lege `{ ok: false }` teruggeeft, wordt pas maanden later ontdekt.
 
 ## 9. Wat er nog open staat
 
