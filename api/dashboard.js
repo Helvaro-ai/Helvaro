@@ -19185,6 +19185,19 @@ function wizardBouw() {
   volgende.addEventListener('click', function () { wizardVolgende(); });
   document.addEventListener('keydown', wizardToetsen);
 
+  /* De focusval van dit bestand, nu ook op de wizard. Hij droeg wel
+     aria-modal="true" maar hield Tab niet tegen: met een toetsenbord tabde je
+     zo achter het venster langs de pagina in, terwijl een schermlezer meldt dat
+     je in een dialoog zit.
+  
+     HIER en niet in checkWelkomWizard(): daar stond de aanroep eerst, vóór
+     wizardBouw(), dus was het element er nog niet en deed hij stilletjes niets.
+     Live betrapt -- de focus bleef op <body> staan. */
+  if (typeof modalToetsenbord === 'function') {
+    var _wizEl = document.getElementById('welkom-wizard');
+    if (_wizEl) modalToetsenbord(_wizEl, function () { wizardSluit(false); });
+  }
+
   wizardTeken();
 }
 
@@ -19211,16 +19224,6 @@ async function checkWelkomWizard() {
     var alKlaar = !!(d.aiName && d.autoReplyTpl && d.aiInstructions);
     if (alKlaar) { wizardBewaar({ welcomeDone: true }).catch(function () {}); return false; }
     _wizardStap = wizardGelezenStap();
-
-  /* De focusval die dit bestand al heeft, nu ook hier. De wizard droeg wel
-     aria-modal="true" maar hield Tab niet tegen: met het toetsenbord tabde je
-     zo achter het venster langs de pagina in, terwijl een schermlezer meldt dat
-     je in een dialoog zit. Escape werkte al, de rest niet.
-     modalToetsenbord() zet ook de beginfocus en geeft hem bij sluiten terug. */
-  var _wizardEl = document.getElementById('welkom-wizard');
-  if (_wizardEl && typeof modalToetsenbord === 'function') {
-    modalToetsenbord(_wizardEl, function () { wizardSluit(false); });
-  }
     wizardBouw();
     return true;
   } catch (e) { return false; }

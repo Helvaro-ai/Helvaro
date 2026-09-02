@@ -115,6 +115,31 @@ ck('en zegt per stap iets', /gidsTekst\.textContent = \{/.test(html), null);
 ck('hij is decoratie voor schermlezers',
    /mascotte\.setAttribute\('aria-hidden', 'true'\)/.test(html), null);
 
+/* ── De focusval ───────────────────────────────────────────────────────────
+   De wizard droeg aria-modal="true" en hield Tab niet tegen: je tabde er zo
+   achterlangs de pagina in terwijl een schermlezer meldt dat je in een dialoog
+   zit. Dit bestand had de helper al (modalToetsenbord), alleen niet aangesloten.
+
+   De aanroep MOET binnen wizardBouw() staan. Mijn eerste poging zette hem in
+   checkWelkomWizard(), vóór wizardBouw(), dus was het element er nog niet en
+   deed hij stilletjes niets -- live betrapt, de focus bleef op <body>. Een
+   stille no-op ziet er in de code uit als een werkende regel, dus die volgorde
+   wordt hier vastgelegd. */
+console.log('\n— het venster laat je toetsenbord niet ontsnappen —');
+{
+  const bouw = html.slice(html.indexOf('function wizardBouw()'),
+                          html.indexOf('function checkWelkomWizard'));
+  ck('de focusval wordt vanuit wizardBouw aangeroepen',
+     /modalToetsenbord\(_wizEl/.test(bouw), null);
+  ck('en pas nadat het venster in de DOM staat',
+     bouw.indexOf('appendChild') < bouw.indexOf('modalToetsenbord(_wizEl')
+     || bouw.indexOf('insertAdjacentHTML') < bouw.indexOf('modalToetsenbord(_wizEl'), null);
+  ck('bij sluiten gaat de focus terug',
+     /function wizardSluit[\s\S]{0,400}modalToetsenbordUit\(\)/.test(html), null);
+  ck('en de aanroep staat NIET meer in checkWelkomWizard',
+     !/checkWelkomWizard[\s\S]{0,1200}modalToetsenbord\(_wizardEl/.test(html), null);
+}
+
 console.log('\n— opslaan loopt via de bestaande route, niet via een eigen eindpunt —');
 ck("wizardBewaar gebruikt mode:'config-save'",
    /function wizardBewaar[\s\S]{0,900}mode: 'config-save'/.test(html), null);
