@@ -33,6 +33,7 @@ const _faroUI = require('./_faro/ui');
 // language binding, same splice-safety contract (no backtick, no unescaped
 // ${...}), same design tokens — see api/_command-ui/index.js.
 const _cmdUI = require('./_command-ui');
+const _faroWerk = require('./_faro/werk');   // wat Faro deed, in zijn stem
 
 module.exports = async function handler(req, res) {
   // Native/English names only — never leak internal registry fields
@@ -45,6 +46,10 @@ module.exports = async function handler(req, res) {
   /* De landen uit api/_regio.js, met per land de taal die we voorstellen.
      Alleen code, naam en voorgestelde taal -- tijdzone en munt hoeven niet
      naar de browser. Zelfde '<'-voorzorg als hierboven. */
+  /* De gebeurtenissoorten komen uit api/_faro/werk.js, zodat de lijst hier en
+     de lijst die Faro server-side gebruikt niet uit elkaar kunnen lopen. */
+  const FARO_SOORTEN_JSON = JSON.stringify(_faroWerk.SOORTEN).replace(/</g, '\\u003c');
+
   const REGIO_LANDEN_JSON = JSON.stringify(
     // De KALE taalcode, want dat is wat het Language-veld opslaat en wat de
     // keuzelijst aanbiedt ('nl', niet 'nl_BE'). De registry zoekt daar zelf
@@ -12045,6 +12050,7 @@ ${faro.dock}
    ============================================================ */
 const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
 const REGIO_LANDEN = ${REGIO_LANDEN_JSON};
+const FARO_SOORTEN = ${FARO_SOORTEN_JSON};
 
 /* ============================================================
    CLERK (optioneel — leeg tenzij CLERK_ENABLED=1)
@@ -23089,29 +23095,31 @@ function renderActiviteit() {
   const feed = document.getElementById('activity-feed');
   if (!feed) return;
 
+  /* Dezelfde afleiding als api/_faro/werk.js server-side doet, met dezelfde
+     soorten (FARO_SOORTEN komt daar vandaan). Alleen wat ECHT vastligt:
+     opvolgingen staan er bewust niet bij, want cron-followup.js legt alleen
+     Conversation State vast en dat veld verandert ook wanneer de LEAD
+     antwoordt -- uit het record is dus niet af te leiden wie er iets deed. */
   const events = [];
 
   state.leads.forEach(l => {
     const baseDate = l.datum ? new Date(l.datum) : null;
-    if (baseDate && !isNaN(baseDate)) {
-      events.push({ type: 'new', date: baseDate, lead: l });
-    }
-    if (l.qualified === true && baseDate) {
-      events.push({ type: 'qualified', date: new Date(baseDate.getTime() + 1000), lead: l });
-    }
-    if (l.afspraakGeboekt === true && baseDate) {
-      events.push({ type: 'booked', date: new Date(baseDate.getTime() + 2000), lead: l });
-    }
-    if (l.opgepikt === true && baseDate) {
-      events.push({ type: 'won', date: new Date(baseDate.getTime() + 3000), lead: l });
-    }
+    if (!baseDate || isNaN(baseDate)) return;   // geen datum, geen bewering
+    const t = baseDate.getTime();
+    events.push({ type: 'nieuw', date: baseDate, lead: l });
+    if (l.qualified === true)             events.push({ type: 'gekwalificeerd', date: new Date(t + 1000), lead: l });
+    if (l.boekingslinkVerstuurd === true) events.push({ type: 'boekingslink',   date: new Date(t + 2000), lead: l });
+    if (l.afspraakGeboekt === true)       events.push({ type: 'geboekt',        date: new Date(t + 3000), lead: l });
+    if (l.aiPaused === true)              events.push({ type: 'aandacht',       date: new Date(t + 4000), lead: l });
   });
 
   events.sort((a, b) => b.date - a.date);
   const recent = events.slice(0, 50);
 
   if (recent.length === 0) {
-    feed.innerHTML = \`<div class="activity-item"><div style="color:var(--text-muted);font-size:13px">Nog geen activiteit</div></div>\`;
+    /* Ook een leeg scherm hoort van Faro te komen, niet van het systeem. */
+    feed.innerHTML = '<div class="activity-item"><div style="color:var(--text-muted);font-size:13px">'
+      + escHtml(tr('faro.act.leeg')) + '</div></div>';
     return;
   }
 
@@ -23126,11 +23134,20 @@ function renderActiviteit() {
     return date.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' });
   }
 
+  /* Faro's stem, niet die van het systeem. "Ik kwalificeerde Jan" in plaats van
+     "Lead gekwalificeerd: Jan" -- dat is het hele verschil tussen software met
+     AI-functies en een assistent die je werk doet.
+
+     De regel eronder blijft feitelijk: een score, een telefoonnummer, een
+     bron. Er stond hier "Afspraak ingepland via Calendly", en Calendly is al
+     een tijd uitgefaseerd -- dat was dus een onware mededeling aan de klant. */
+  const naamVan = l => escHtml(l.naam) || '—';
   const typeMap = {
-    new:       { dotCls: 'activity-dot-new',       title: l => \`Nieuwe lead: \${escHtml(l.naam) || '—'}\`,       sub: l => l.telefoon ? \`\${escHtml(l.telefoon)}\` : '' },
-    qualified: { dotCls: 'activity-dot-qualified',  title: l => \`Lead gekwalificeerd: \${escHtml(l.naam) || '—'}\`, sub: l => l.leadScore ? \`Score: \${l.leadScore}\` : '' },
-    booked:    { dotCls: 'activity-dot-booked',     title: l => \`Afspraak geboekt: \${escHtml(l.naam) || '—'}\`, sub: () => 'Afspraak ingepland via Calendly' },
-    won:       { dotCls: 'activity-dot-won',        title: l => \`Lead opgevolgd: \${escHtml(l.naam) || '—'}\`,    sub: l => l.verwachteWaarde ? \`Waarde: \${escHtml(l.verwachteWaarde)}\` : '' }
+    nieuw:          { dotCls: 'activity-dot-new',       title: l => tr('faro.act.nieuw',          { naam: naamVan(l) }), sub: l => l.telefoon ? escHtml(l.telefoon) : '' },
+    gekwalificeerd: { dotCls: 'activity-dot-qualified', title: l => tr('faro.act.gekwalificeerd', { naam: naamVan(l) }), sub: l => l.reden ? escHtml(l.reden) : (l.leadScore ? 'Score: ' + l.leadScore : '') },
+    boekingslink:   { dotCls: 'activity-dot-booked',    title: l => tr('faro.act.boekingslink',   { naam: naamVan(l) }), sub: () => '' },
+    geboekt:        { dotCls: 'activity-dot-booked',    title: l => tr('faro.act.geboekt',        { naam: naamVan(l) }), sub: () => '' },
+    aandacht:       { dotCls: 'activity-dot-won',       title: l => tr('faro.act.aandacht',       { naam: naamVan(l) }), sub: l => l.samenvatting ? escHtml(l.samenvatting) : '' }
   };
 
   feed.innerHTML = recent.map(ev => {

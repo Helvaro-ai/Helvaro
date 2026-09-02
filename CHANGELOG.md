@@ -14,6 +14,41 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro vertelt wat hij deed — en alleen wat hij echt deed
+
+Eerste stap van de Faro-persona. Bewust klein gehouden, want het meeste bestond al.
+
+**Wat de inspectie opleverde.** `api/_command.js` doet al precies wat de opdracht voor het
+dashboard vroeg: afgeleide inzichten, "what should this person do next and why", met in zijn
+eigen header de belofte dat elk getal rekenwerk over bestaande records is. Mijn eerste versie
+van `api/_faro/werk.js` telde daar bovenop zelf leads, afspraken en gekwalificeerden — een
+tweede implementatie van iets dat er al stond. Die tellingen zijn er weer uit. Tellen doet
+`_command.js`; `werk.js` doet het **vertellen**.
+
+**Wat Faro NIET mag zeggen.** De opdracht vroeg om "7 follow-ups completed" op het dashboard.
+Dat getal bestaat niet: `cron-followup.js` verstuurt opvolgingen wel degelijk, maar legt
+daarvoor alleen `Conversation State = 'in_progress'` vast — en datzelfde veld krijgt dezelfde
+waarde wanneer de LEAD antwoordt. Uit het record is dus niet af te leiden wie er iets deed.
+Er is daarom geen opvolgingstelling en geen opvolgingsgebeurtenis, en een test houdt dat vast.
+Wie het wél wil tonen, legt eerst een veld `Followup Sent At` aan.
+
+**De activiteitenlijst spreekt nu met Faro's stem.** "Ik kwalificeerde Jan" in plaats van
+"Lead gekwalificeerd: Jan". Twee echte verbeteringen daarbij:
+
+- een **vastgelopen lead** (`aiPaused`) leverde geen enkele regel op, terwijl dat de enige
+  gebeurtenis is waar een mens iets voor moet doen. Nu: "Ik heb je nodig voor Thomas."
+- de lijst beweerde **"Afspraak ingepland via Calendly"**. Calendly is uitgefaseerd — dat was
+  een onware mededeling aan de klant. Weg.
+
+Tijdstempels zijn eerlijk: Airtable legt één datum per lead vast (wanneer hij binnenkwam),
+niet wanneer hij gekwalificeerd werd. Die afgeleide momenten zijn intern als `geschat`
+gemarkeerd in plaats van als feit gepresenteerd.
+
+32 nieuwe zinnen in nl/fr/en/de. `tests/faro-werk.test.js` (29 tests), mutatiegetest op de
+verzonnen opvolgingsteller, op verzonnen kwalificaties en op de Calendly-zin.
+Suite: 60/60 groen, Faro-check groen.
+
+
 ### Het dashboard was half Engels, half Nederlands
 
 Gevonden tijdens een E2E als klant op productie. Het account stond op Engels (`lang="en"`)
