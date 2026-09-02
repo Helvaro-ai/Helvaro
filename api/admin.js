@@ -470,15 +470,13 @@ module.exports = async function handler(req, res) {
       }).catch(err => ({ ok: false, error: err && err.message }));
       return res.status(200).json({
         ok:     result.ok,
-        via:    result.via || null,        // 'smtp' of 'resend'
+        via:    result.via || null,        // 'smtp' (enige weg sinds Resend eruit is)
         error:  result.error || null,
         to,
         envSet: {
           SMTP_HOST:      !!process.env.SMTP_HOST,
           SMTP_USER:      !!process.env.SMTP_USER,
           SMTP_PASS:      !!process.env.SMTP_PASS,
-          RESEND_API_KEY: !!process.env.RESEND_API_KEY,
-          RESEND_FROM:    !!process.env.RESEND_FROM,
           NOTIFY_EMAIL:   !!process.env.NOTIFY_EMAIL
         }
       });

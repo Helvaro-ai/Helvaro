@@ -180,7 +180,7 @@ const DIENSTEN = Object.freeze([
     soort: 'vast',
     waarvoor: 'Notificatiemails vanaf hello@helvaro.pro.',
     tarief: null,
-    env: ['SMTP_HOST', 'RESEND_API_KEY'],
+    env: ['SMTP_HOST'],
   }),
   Object.freeze({
     id: 'smartlead',

@@ -1,10 +1,12 @@
 // Unified mailer for Helvaro.
 //
-// Waarom: Resend vereist domeinverificatie (SPF/DKIM) om vanaf @helvaro.pro
-// te mogen sturen. helvaro.pro heeft echter AL een werkende mailbox
-// (hello@helvaro.pro via Namecheap Private Email), die SMTP ondersteunt en
-// naar iedereen kan sturen zonder extra DNS-setup. Daarom: SMTP primair,
-// Resend als automatische fallback.
+// Mail loopt via SMTP (hello@helvaro.pro, Namecheap Private Email). Dat is de
+// ENIGE weg: Resend stond hier als terugval en is eruit gehaald nadat OneSignal
+// geverifieerd raakte.
+//
+// Let op wat dat betekent: een ontbrekende SMTP_* variabele werd vroeger door
+// Resend opgevangen. Nu komt er dan geen mail meer aan. Onderaan sendMail()
+// staat daarom een luide melding in plaats van een stille { ok: false }.
 //
 // Config via env vars (Vercel):
 //   SMTP_HOST   bv. mail.privateemail.com   (Namecheap Private Email)
@@ -13,8 +15,7 @@
 //   SMTP_USER   hello@helvaro.pro
 //   SMTP_PASS   het mailbox-wachtwoord
 //   SMTP_FROM   'Helvaro <hello@helvaro.pro>'  (optioneel, default = SMTP_USER)
-//
-// Zonder SMTP-env vars valt 't terug op Resend (RESEND_API_KEY + RESEND_FROM).
+
 // Bestandsnaam begint met '_' zodat Vercel het niet als route behandelt.
 
 let _transport;  // undefined = nog niet bepaald, false = geen SMTP, object = transport
@@ -59,33 +60,29 @@ async function sendMail({ to, subject, html, from, replyTo }) {
     }
   }
 
-  // 2. Resend fallback
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (RESEND_KEY) {
-    const fromAddr = from || process.env.RESEND_FROM || 'Helvaro <noreply@helvaro.pro>';
-    try {
-      const r = await fetch('https://api.resend.com/emails', {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          from:     fromAddr,
-          to:       Array.isArray(to) ? to : [to],
-          subject,
-          html,
-          reply_to: replyTo || undefined
-        })
-      });
-      if (r.ok) return { ok: true, via: 'resend' };
-      const txt = await r.text().catch(() => '');
-      console.error('[mailer] Resend fout', r.status, txt.slice(0, 200));
-      return { ok: false, error: 'resend ' + r.status };
-    } catch (err) {
-      console.error('[mailer] Resend netwerkfout:', err && err.message);
-      return { ok: false, error: 'resend netwerk' };
-    }
-  }
+  /* ── Geen tweede weg meer ──────────────────────────────────────────────
+     Hier stond Resend als terugval. Die is eruit: OneSignal is geverifieerd
+     en mail loopt via SMTP (Namecheap Private Email).
 
-  return { ok: false, error: 'geen mailtransport geconfigureerd (zet SMTP_* of RESEND_API_KEY)' };
+     Dat betekent wel dat SMTP nu de ENIGE weg is. Een ontbrekende SMTP_*
+     variabele werd vroeger opgevangen door Resend; nu komt er dan helemaal
+     geen mail meer aan -- en dat zijn verificatiemails en wachtwoordherstel,
+     precies het soort bericht waarvan niemand merkt dat het ontbreekt behalve
+     de klant die niet binnenkomt.
+
+     Daarom is dit geval LUID. Het staat als fout in de Vercel-logs, met de
+     naam van wat er mist, in plaats van stil een { ok: false } terug te geven
+     die verderop in een lege catch verdwijnt. Zie ook _ratelimit.js en
+     _stripe.js, die om dezelfde reden zo schreeuwen. */
+  const mist = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'].filter((k) => !process.env[k]);
+  console.error('[mailer] GEEN MAILTRANSPORT — er is geen enkele mail verstuurd. '
+    + (mist.length
+        ? 'Ontbrekende instelling(en): ' + mist.join(', ') + '. '
+        : 'SMTP is ingesteld maar het versturen mislukte; zie de fout hierboven. ')
+    + 'Sinds Resend eruit is, is SMTP de enige weg: verificatiemails en '
+    + 'wachtwoordherstel komen nu niet aan.');
+
+  return { ok: false, error: 'geen mailtransport geconfigureerd (zet SMTP_HOST, SMTP_USER en SMTP_PASS)' };
 }
 
 module.exports = { sendMail };
