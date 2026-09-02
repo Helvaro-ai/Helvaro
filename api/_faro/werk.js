@@ -74,6 +74,30 @@ const SOORTEN = Object.freeze({
   aandacht:   { vanFaro: true,  sleutel: 'faro.act.aandacht',   urgent: true  },
 });
 
+/* Wat Faro over een lead weet, in de volgorde waarin het gelezen hoort te
+   worden: eerst of hij het kan betalen, dan wanneer, dan of het past.
+
+   Staat hier als TABEL en niet als losse regels code, omdat het dashboard
+   dezelfde volgorde en dezelfde labels nodig heeft. Twee lijsten die hetzelfde
+   moeten zeggen, zeggen na een half jaar iets anders. */
+const BEOORDELING_VELDEN = Object.freeze([
+  { veld: 'capaciteit', sleutel: 'faro.beoordeling.capaciteit' },
+  { veld: 'urgentie',   sleutel: 'faro.beoordeling.urgentie' },
+  { veld: 'fit',        sleutel: 'faro.beoordeling.fit' },
+  { veld: 'bron',       sleutel: 'faro.beoordeling.bron' },
+  { veld: 'property',   sleutel: 'faro.beoordeling.pand' },
+]);
+
+/* Wat Faro voor deze lead DEED. Alleen velden die de backend echt zet -- zie
+   de header over waarom opvolging hier ontbreekt. */
+const DEED_REGELS = Object.freeze([
+  { veld: 'datum',                 sleutel: 'faro.deed.gesprek' },
+  { veld: 'qualified',             sleutel: 'faro.deed.gekwalificeerd' },
+  { veld: 'boekingslinkVerstuurd', sleutel: 'faro.deed.boekingslink' },
+  { veld: 'afspraakGeboekt',       sleutel: 'faro.deed.geboekt' },
+  { veld: 'aiPaused',              sleutel: 'faro.deed.gestopt' },
+]);
+
 function alsDatum(waarde) {
   if (!waarde) return null;
   const d = waarde instanceof Date ? waarde : new Date(waarde);
@@ -141,11 +165,7 @@ function beoordeling(lead) {
     if (v) punten.push({ sleutel, waarde: v });
   };
 
-  voegToe('faro.beoordeling.capaciteit', l.capaciteit);
-  voegToe('faro.beoordeling.urgentie', l.urgentie);
-  voegToe('faro.beoordeling.fit', l.fit);
-  voegToe('faro.beoordeling.bron', l.bron);
-  voegToe('faro.beoordeling.pand', l.property);
+  for (const rij of BEOORDELING_VELDEN) voegToe(rij.sleutel, l[rij.veld]);
 
   const samenvattingTekst = String(l.samenvatting || '').trim();
   const redenTekst = String(l.reden || '').trim();
@@ -167,17 +187,15 @@ function beoordeling(lead) {
    regel als hierboven: alleen wat vastligt. */
 function watFaroDeed(lead) {
   const l = lead || {};
-  const uit = [];
-  if (l.datum) uit.push('faro.deed.gesprek');
-  if (l.qualified === true) uit.push('faro.deed.gekwalificeerd');
-  if (l.boekingslinkVerstuurd === true) uit.push('faro.deed.boekingslink');
-  if (l.afspraakGeboekt === true) uit.push('faro.deed.geboekt');
-  if (l.aiPaused === true) uit.push('faro.deed.gestopt');
-  return uit;
+  return DEED_REGELS
+    .filter((rij) => (rij.veld === 'datum' ? !!l.datum : l[rij.veld] === true))
+    .map((rij) => rij.sleutel);
 }
 
 module.exports = {
   SOORTEN,
+  BEOORDELING_VELDEN,
+  DEED_REGELS,
   gebeurtenissen,
   beoordeling,
   watFaroDeed,

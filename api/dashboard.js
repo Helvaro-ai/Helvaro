@@ -49,6 +49,8 @@ module.exports = async function handler(req, res) {
   /* De gebeurtenissoorten komen uit api/_faro/werk.js, zodat de lijst hier en
      de lijst die Faro server-side gebruikt niet uit elkaar kunnen lopen. */
   const FARO_SOORTEN_JSON = JSON.stringify(_faroWerk.SOORTEN).replace(/</g, '\\u003c');
+  const FARO_BEOORDELING_JSON = JSON.stringify(_faroWerk.BEOORDELING_VELDEN).replace(/</g, '\\u003c');
+  const FARO_DEED_JSON = JSON.stringify(_faroWerk.DEED_REGELS).replace(/</g, '\\u003c');
 
   const REGIO_LANDEN_JSON = JSON.stringify(
     // De KALE taalcode, want dat is wat het Language-veld opslaat en wat de
@@ -6038,6 +6040,37 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+/* Faro's beoordeling boven het gesprek. Bewust rustig: een rand, een kleine
+   kop en een raster. Geen gloed, geen gradient, geen grote mascotte -- dit is
+   het paneel waar iemand in twee seconden wil zien of hij moet bellen. */
+.faro-lead {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border, #2A3444);
+  background: var(--bg-subtle, rgba(255,255,255,.02));
+}
+.faro-lead__kop {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  color: var(--text-muted, #999); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.faro-lead__kop img { flex-shrink: 0; object-fit: contain; }
+.faro-lead__reden { margin: 0 0 10px; font-size: 13.5px; line-height: 1.55; color: var(--text, #E9EEF6); }
+.faro-lead__punten { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-bottom: 10px; }
+.faro-lead__punt { display: flex; flex-direction: column; gap: 1px; min-width: 96px; }
+.faro-lead__label { font-size: 11px; color: var(--text-muted, #999); }
+.faro-lead__waarde { font-size: 13px; color: var(--text, #E9EEF6); font-weight: 500; }
+.faro-lead__samenvatting { margin: 0 0 10px; font-size: 12.5px; line-height: 1.55; color: var(--text-muted, #999); }
+.faro-lead__deedkop { font-size: 11px; color: var(--text-muted, #999); margin-bottom: 3px; }
+.faro-lead__deed ul { margin: 0; padding-left: 16px; }
+.faro-lead__deed li { font-size: 12.5px; line-height: 1.7; color: var(--text-muted, #999); }
+.faro-lead__leeg { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-muted, #999); }
+/* Op smal beeld heeft het gesprek voorrang; het paneel mag dan krimpen. */
+@media (max-width: 640px) {
+  .faro-lead { padding: 11px 14px; }
+  .faro-lead__punten { gap: 5px 14px; }
+}
+
 .conv-messages {
   flex: 1;
   overflow-y: auto;
@@ -12051,6 +12084,8 @@ ${faro.dock}
 const AP_LANGUAGES = ${AP_LANGUAGES_JSON};
 const REGIO_LANDEN = ${REGIO_LANDEN_JSON};
 const FARO_SOORTEN = ${FARO_SOORTEN_JSON};
+const FARO_BEOORDELING_VELDEN = ${FARO_BEOORDELING_JSON};
+const FARO_DEED_REGELS = ${FARO_DEED_JSON};
 
 /* ============================================================
    CLERK (optioneel — leeg tenzij CLERK_ENABLED=1)
@@ -19598,6 +19633,58 @@ function renderGesprekken() {
   }).join('');
 }
 
+/* ── Faro's beoordeling van één lead ──────────────────────────────────────
+   De velden en hun volgorde komen uit api/_faro/werk.js (FARO_BEOORDELING_VELDEN
+   en FARO_DEED_REGELS), zodat dit paneel en wat Faro server-side over dezelfde
+   lead zegt niet uit elkaar kunnen lopen.
+
+   Leeg blijft leeg. Een lead waar de AI nog niets over weet krijgt "hier weet ik
+   nog niets over" -- geen verzonnen inschatting. Dat is dezelfde regel als in
+   werk.js: nooit doen alsof. */
+function faroLeadPaneel(lead) {
+  var punten = [];
+  for (var i = 0; i < FARO_BEOORDELING_VELDEN.length; i++) {
+    var rij = FARO_BEOORDELING_VELDEN[i];
+    var waarde = lead[rij.veld];
+    if (waarde !== undefined && waarde !== null && String(waarde).trim()) {
+      punten.push('<div class="faro-lead__punt"><span class="faro-lead__label">'
+        + escHtml(tr(rij.sleutel)) + '</span><span class="faro-lead__waarde">'
+        + escHtml(String(waarde).trim()) + '</span></div>');
+    }
+  }
+
+  var deed = [];
+  for (var j = 0; j < FARO_DEED_REGELS.length; j++) {
+    var d = FARO_DEED_REGELS[j];
+    var aan = d.veld === 'datum' ? !!lead.datum : lead[d.veld] === true;
+    if (aan) deed.push('<li>' + escHtml(tr(d.sleutel)) + '</li>');
+  }
+
+  var reden = String(lead.reden || '').trim();
+  var samenvatting = String(lead.samenvatting || '').trim();
+  var leeg = punten.length === 0 && !reden && !samenvatting;
+
+  var kop = '<div class="faro-lead__kop">'
+    + '<img src="/faro/falcon-idle.webp" alt="" aria-hidden="true" width="20" height="20">'
+    + '<span>' + escHtml(tr('faro.beoordeling.kop')) + '</span></div>';
+
+  if (leeg) {
+    return '<div class="faro-lead">' + kop
+      + '<p class="faro-lead__leeg">' + escHtml(tr('faro.beoordeling.leeg')) + '</p></div>';
+  }
+
+  return '<div class="faro-lead">' + kop
+    + (reden ? '<p class="faro-lead__reden">' + escHtml(reden) + '</p>' : '')
+    + (punten.length ? '<div class="faro-lead__punten">' + punten.join('') + '</div>' : '')
+    + (samenvatting && samenvatting !== reden
+        ? '<p class="faro-lead__samenvatting">' + escHtml(samenvatting) + '</p>' : '')
+    + (deed.length
+        ? '<div class="faro-lead__deed"><div class="faro-lead__deedkop">'
+          + escHtml(tr('faro.deed.kop')) + '</div><ul>' + deed.join('') + '</ul></div>'
+        : '')
+    + '</div>';
+}
+
 function openConversation(leadId) {
   const lead = state.leads.find(l => String(l.id) === String(leadId));
   if (!lead) return;
@@ -19632,6 +19719,7 @@ function openConversation(leadId) {
       \${escHtml(lead.naam) || '—'}
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
     </div>
+    \${faroLeadPaneel(lead)}
     <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>Geen berichten</div></div>\`}</div>
   \`;
 

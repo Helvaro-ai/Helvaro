@@ -189,5 +189,37 @@ console.log('\n  het dashboard spreekt met Faro\'s stem');
     !/faro\.act\.(opvolg|followup)/.test(html), null);
 }
 
+// ── 9. Het leadpaneel ──────────────────────────────────────────────────────
+console.log('\n  Faro\'s beoordeling op de gesprekspagina');
+{
+  process.env.FARO_WORKSPACE_ENABLED = '1';
+  delete require.cache[require.resolve(BASE + 'api/dashboard.js')];
+  const dash2 = require(BASE + 'api/dashboard.js');
+  let h2 = '';
+  dash2({ method: 'GET', url: '/dashboard?lang=en', headers: {} },
+    { setHeader() {}, status() { return this; }, send(b) { h2 = String(b); }, json() {}, end() {} });
+
+  /* Eén definitie van velden en volgorde: die van werk.js. */
+  const bv = h2.match(/const FARO_BEOORDELING_VELDEN = (\[[\s\S]*?\]);/);
+  const dr = h2.match(/const FARO_DEED_REGELS = (\[[\s\S]*?\]);/);
+  ck('de beoordelingsvelden komen uit werk.js',
+    bv && JSON.stringify(JSON.parse(bv[1])) === JSON.stringify(werk.BEOORDELING_VELDEN),
+    bv ? bv[1].slice(0, 120) : null);
+  ck('en de "wat ik deed"-regels ook',
+    dr && JSON.stringify(JSON.parse(dr[1])) === JSON.stringify(werk.DEED_REGELS),
+    dr ? dr[1].slice(0, 120) : null);
+
+  ck('het paneel wordt in het gesprek getoond', /\$\{faroLeadPaneel\(lead\)\}/.test(h2), null);
+
+  /* De belangrijkste eigenschap: leeg blijft leeg. Een lead waar de AI nog
+     niets over weet mag geen verzonnen inschatting krijgen. */
+  ck('een lege lead krijgt "hier weet ik nog niets over"',
+    /faro\.beoordeling\.leeg/.test(h2) && /if \(leeg\) \{/.test(h2), null);
+
+  ck('het paneel toont geen mascotte-spektakel, alleen een klein icoon',
+    /falcon-idle\.webp" alt="" aria-hidden="true" width="20"/.test(h2), null);
+  ck('en het krimpt op smal beeld', /max-width: 640px[\s\S]{0,200}faro-lead/.test(h2), null);
+}
+
 console.log(`\n  ${pass} ok, ${fail} fout\n`);
 process.exit(fail ? 1 : 0);
