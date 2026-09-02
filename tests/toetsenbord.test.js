@@ -144,6 +144,8 @@ ck('bindActivatable roept hvMakeActivatable aan bij het opstarten',
   /bindActivatable\(\) \{[\s\S]*?hvMakeActivatable\(document\);/.test(html), null);
 ck('en kijkt naar wat er later bij komt',
   /new MutationObserver\([\s\S]{0,600}?\.observe\(document\.body/.test(html), null);
+ck('en plant dat werk met een timer, niet met requestAnimationFrame',
+  /setTimeout\(verwerk, 0\);/.test(html) && !/requestAnimationFrame\)\(verwerk/.test(html), null);
 ck('de toetsafhandeling haakt aan data-hv-act, niet aan de rol',
   /\[data-hv-act="1"\]\[tabindex="0"\]/.test(html), null);
 /* Deze controle keek eerst alleen of de aanroep ergens in de pagina stond.

@@ -15624,7 +15624,13 @@ function bindActivatable() {
       }
       if (wachtend.length && !gepland) {
         gepland = true;
-        (window.requestAnimationFrame || window.setTimeout)(verwerk, 0);
+        /* setTimeout en geen requestAnimationFrame. Dit werk is geen tekenwerk
+           maar het zetten van attributen, en rAF staat stil zolang het tabblad
+           op de achtergrond ligt. Een makelaar houdt Helvaro achter een ander
+           tabblad open terwijl er leads binnenkomen; die rijen zouden dan pas
+           bij het terugklikken bereikbaar worden. Met een timer is er geen
+           moment waarop het scherm klaar is en dit nog niet. */
+        setTimeout(verwerk, 0);
       }
     }).observe(document.body, { childList: true, subtree: true });
   }
