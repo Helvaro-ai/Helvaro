@@ -74,6 +74,55 @@ const SOORTEN = Object.freeze({
   aandacht:   { vanFaro: true,  sleutel: 'faro.act.aandacht',   urgent: true  },
 });
 
+/* ── Faro's toestanden ──────────────────────────────────────────────────────
+ * De opdracht vraagt om elf benoemde toestanden (idle, working, celebrating,
+ * needs_attention, sleeping...). Er zijn ZES tekeningen: idle, thinking,
+ * generating, video, success, error.
+ *
+ * Elf poses tekenen kan ik niet, en elf namen op zes bestanden plakken zonder
+ * dat op te schrijven is de soort halfheid waar later niemand meer uitkomt.
+ * Dus: de betekenissen bestaan wel degelijk -- de code kan om
+ * 'appointment_booked' vragen -- en deze tabel zegt eerlijk welke tekening
+ * daarbij hoort. Komt er ooit echte kunst bij, dan is dit het enige bestand
+ * dat wijzigt.
+ *
+ * `rust` markeert de toestanden waarin Faro klein en stil hoort te blijven.
+ * De opdracht is daar expliciet over: levend, niet druk.
+ */
+const TOESTANDEN = Object.freeze({
+  idle:              { pose: 'idle',       rust: true  },
+  sleeping:          { pose: 'idle',       rust: true  },   // geen eigen tekening
+  working:           { pose: 'generating', rust: false },
+  thinking:          { pose: 'thinking',   rust: false },
+  listening:         { pose: 'thinking',   rust: true  },   // geen eigen tekening
+  new_lead:          { pose: 'thinking',   rust: false },   // geen eigen tekening
+  follow_up:         { pose: 'generating', rust: false },   // geen eigen tekening
+  qualified:         { pose: 'success',    rust: false },
+  appointment_booked:{ pose: 'success',    rust: false },
+  celebrating:       { pose: 'success',    rust: false },
+  success:           { pose: 'success',    rust: false },
+  warning:           { pose: 'error',      rust: false },   // geen eigen tekening
+  needs_attention:   { pose: 'error',      rust: false },
+  error:             { pose: 'error',      rust: false },
+});
+
+/* De tekening bij een toestand. Onbekend valt terug op idle in plaats van op
+   niets: een gebroken plaatje is erger dan een rustige valk. */
+function pose(toestand) {
+  const t = TOESTANDEN[String(toestand || '').trim()];
+  return (t && t.pose) || 'idle';
+}
+
+/* Welke toestand hoort bij een gebeurtenis uit gebeurtenissen()? Zo hoeft de UI
+   die koppeling niet zelf te verzinnen. */
+const SOORT_TOESTAND = Object.freeze({
+  nieuw: 'new_lead',
+  gekwalificeerd: 'qualified',
+  boekingslink: 'working',
+  geboekt: 'appointment_booked',
+  aandacht: 'needs_attention',
+});
+
 /* Wat Faro over een lead weet, in de volgorde waarin het gelezen hoort te
    worden: eerst of hij het kan betalen, dan wanneer, dan of het past.
 
@@ -194,6 +243,9 @@ function watFaroDeed(lead) {
 
 module.exports = {
   SOORTEN,
+  TOESTANDEN,
+  SOORT_TOESTAND,
+  pose,
   BEOORDELING_VELDEN,
   DEED_REGELS,
   gebeurtenissen,

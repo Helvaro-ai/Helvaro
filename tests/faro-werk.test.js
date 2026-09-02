@@ -221,5 +221,42 @@ console.log('\n  Faro\'s beoordeling op de gesprekspagina');
   ck('en het krimpt op smal beeld', /max-width: 640px[\s\S]{0,200}faro-lead/.test(h2), null);
 }
 
+// ── 10. De toestanden ──────────────────────────────────────────────────────
+console.log('\n  Faro\'s toestanden');
+{
+  const fs = require('fs');
+  const dir = BASE + 'public/faro/';
+  const bestanden = fs.readdirSync(dir);
+
+  /* Elke toestand moet naar een tekening wijzen die er ECHT is. Een naam die
+     naar een ontbrekend bestand verwijst geeft een gebroken plaatje, en dat is
+     precies wat er eerder in de wizard gebeurde. */
+  const ontbreekt = Object.entries(werk.TOESTANDEN)
+    .filter(([, v]) => bestanden.indexOf('falcon-' + v.pose + '.webp') === -1)
+    .map(([k, v]) => k + '->' + v.pose);
+  ck('elke toestand wijst naar een bestaande tekening', ontbreekt.length === 0, ontbreekt);
+
+  ck('een onbekende toestand valt terug op idle, niet op niets',
+    werk.pose('bestaat-niet') === 'idle' && werk.pose('') === 'idle' && werk.pose(null) === 'idle', null);
+
+  /* Elke gebeurtenis uit gebeurtenissen() moet een toestand hebben, anders
+     weet de UI niet welke pose erbij hoort. */
+  const zonder = Object.keys(werk.SOORTEN).filter((k) => !werk.SOORT_TOESTAND[k]);
+  ck('elke gebeurtenissoort heeft een toestand', zonder.length === 0, zonder);
+  const kapot = Object.values(werk.SOORT_TOESTAND).filter((t) => !werk.TOESTANDEN[t]);
+  ck('en die toestanden bestaan allemaal', kapot.length === 0, kapot);
+
+  /* De opdracht is expliciet: levend, niet druk. Rust is de standaard. */
+  ck('idle en sleeping zijn rusttoestanden',
+    werk.TOESTANDEN.idle.rust === true && werk.TOESTANDEN.sleeping.rust === true, null);
+  ck('en needs_attention is dat NIET',
+    werk.TOESTANDEN.needs_attention.rust === false, null);
+
+  /* Er zijn zes tekeningen en veertien betekenissen. Dat mag, maar het moet
+     opgeschreven staan -- anders denkt de volgende dat er poses ontbreken. */
+  ck('de tabel legt uit waar een eigen tekening ontbreekt',
+    /geen eigen tekening/.test(fs.readFileSync(BASE + 'api/_faro/werk.js', 'utf8')), null);
+}
+
 console.log(`\n  ${pass} ok, ${fail} fout\n`);
 process.exit(fail ? 1 : 0);
