@@ -14612,37 +14612,9 @@ function renderStats() {
    here is a direct aggregation of what Airtable already contains, and
    "pipeline waarde" is explicitly labeled as a client-entered ESTIMATE, not
    revenue Helvaro generated. */
-async /* ── Eén rem voor de tabbladen die per bezoek opnieuw ophaalden ────────────
-   Vier laders (Resultaten, Facturatie, Panden, AI-persoonlijkheid) deden bij
-   ELKE navigatie opnieuw een POST, terwijl loadKosten() en loadFounderData()
-   in ditzelfde bestand al netjes een vlag hebben. Vier keer heen en weer
-   klikken tussen die tabs kostte daardoor acht verzoeken; live gemeten kwam een
-   sessie op ~30 POSTs naar /api/leads.
-
-   Een TTL en geen "geladen"-vlag, met opzet: die schermen KUNNEN elders
-   veranderen (de wizard schrijft config, een aankoop wijzigt het plan). Een
-   vlag zou verouderde gegevens tonen tot de volgende harde herlaadbeurt; een
-   korte TTL haalt de dubbele klik weg en laat de rest gewoon versen.
-   De force-vlag blijft altijd voor: een verversknop hoort te verversen. */
-var TAB_TTL_MS = 60 * 1000;
-var _tabGeladen = {};
-
-function tabVers(sleutel, force) {
-  var nu = Date.now();
-  if (!force && _tabGeladen[sleutel] && nu - _tabGeladen[sleutel] < TAB_TTL_MS) return false;
-  _tabGeladen[sleutel] = nu;
-  return true;
-}
-
-/* Na een schrijfactie is de cache onjuist. Wie opslaat, roept dit aan. */
-function tabVergeet(sleutel) {
-  if (sleutel) delete _tabGeladen[sleutel]; else _tabGeladen = {};
-}
-
-function loadResultaten(force) {
+async function loadResultaten() {
   const grid = document.getElementById('resultaten-grid');
   if (!grid) return;
-  if (!tabVers('resultaten', force)) return;
   const period = document.getElementById('resultaten-period')?.value || 'this_month';
 
   try {
@@ -18570,10 +18542,6 @@ function wizardVergeetStap() {
    eindpunt: dan zou er een tweede plek zijn waar dezelfde velden gevalideerd
    worden, en die twee lopen vroeg of laat uit elkaar. */
 async function wizardBewaar(velden) {
-  /* Wat hier opgeslagen wordt, staat ook op AI-persoonlijkheid en Facturatie.
-     Die tabbladen cachen kort; zonder deze regel zou de klant zijn eigen
-     zojuist ingevulde naam daar een minuut lang niet terugzien. */
-  tabVergeet();
   var r = await fetch(API_BASE + '/leads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
@@ -21571,10 +21539,9 @@ async function koopOfferteOphalen() {
    prijzen berekent is een browser waarin een klant zijn eigen prijs aanpast. */
 var planState = { plannen: [], huidig: null, stripeAan: false };
 
-async function laadPlannen(force) {
+async function laadPlannen() {
   var grid = document.getElementById('fa-plannen-grid');
   if (!grid) return;
-  if (!tabVers('plannen', force)) return;
   try {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
@@ -22069,9 +22036,8 @@ var FA_TYPE_NAMEN = {
   refund: 'terugbetaling', adjustment: 'correctie'
 };
 
-async function loadFacturatie(force) {
-  laadPlannen(force);
-  if (!tabVers('facturatie', force)) return;
+async function loadFacturatie() {
+  laadPlannen();
   var notice = document.getElementById('fa-notice');
   if (!notice) return;
   document.getElementById('fa-plan-naam').textContent = 'Laden...';
@@ -22252,8 +22218,7 @@ function pandProject() {
   return localStorage.getItem('hv-project') || localStorage.getItem('hv-client') || '';
 }
 
-async function loadPanden(force) {
-  if (!tabVers('panden', force)) return;
+async function loadPanden() {
   var grid   = document.getElementById('pd-grid');
   var leeg   = document.getElementById('pd-empty');
   var notice = document.getElementById('pd-notice');
@@ -22570,7 +22535,7 @@ async function archivePand(code, archiveren) {
   }
 }
 
-async function loadAiPersona(force) {
+async function loadAiPersona() {
   // Render the instructions library (doesn't depend on server data)
   if (!AP_STATE.instrRendered) { renderApInstructionSnippets(); AP_STATE.instrRendered = true; }
   // Wire up live preview + active-template highlight once (idempotent)
@@ -22613,16 +22578,7 @@ async function loadAiPersona(force) {
     AP_STATE.wired = true;
   }
   populateFormLink();   // builds URL + QR + embed snippet from localStorage
-  /* "Always re-fetch. Config may have changed elsewhere" stond hier, en die
-     reden klopt: de wizard schrijft aiName en autoReplyTpl weg, dus dit scherm
-     moet die wijziging tonen. Blind cachen zou verouderde waarden laten zien.
-
-     Daarom een korte TTL EN een expliciete invalidatie: elke schrijfactie via
-     wizardBewaar()/config-save roept tabVergeet('aipersona') aan. Zo blijft de
-     reden van de oorspronkelijke opmerking overeind en verdwijnt alleen het
-     verzoek dat je krijgt als je binnen een minuut twee keer op hetzelfde
-     tabblad klikt. */
-  if (!tabVers('aipersona', force)) return;
+  // Always re-fetch. Config may have changed elsewhere
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
