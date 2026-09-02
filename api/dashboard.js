@@ -18790,24 +18790,23 @@ function wizardTeken() {
   knop.textContent = _wizardStap === WIZARD_STAPPEN.length - 1 ? 'Aan de slag' : 'Volgende';
 
   if (stap === 'intro') {
-    titel.textContent = 'Welkom bij Helvaro';
-    sub.textContent = 'In een paar korte stappen staat je AI klaar om je leads te woord te staan. Duurt ongeveer twee minuten.';
+    titel.textContent = tr('wiz.intro.t');
+    sub.textContent = tr('wiz.intro.s');
     body.innerHTML =
         '<ul style="margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.9;color:var(--text-muted,#999)">'
-      + '<li>Je kiest je land en de taal voor je klanten</li>'
-      + '<li>Je vertelt kort wat je bedrijf doet</li>'
-      + '<li>Je geeft je AI een naam en een welkomstbericht</li>'
-      + '<li>Je koppelt WhatsApp en je agenda</li>'
-      + '<li>Je krijgt je formulierlink om te delen</li>'
+      + '<li>' + escHtml(tr('wiz.intro.b1')) + '</li>'
+      + '<li>' + escHtml(tr('wiz.intro.b2')) + '</li>'
+      + '<li>' + escHtml(tr('wiz.intro.b3')) + '</li>'
+      + '<li>' + escHtml(tr('wiz.intro.b4')) + '</li>'
       + '</ul>'
       + '<p style="margin:16px 0 0;font-size:12.5px;color:var(--text-muted,#999)">'
-      + 'Je kan dit overslaan en later invullen — je vindt dezelfde stappen terug op je dashboard.</p>';
+      + escHtml(tr('wiz.intro.skip')) + '</p>';
     return;
   }
 
   if (stap === 'regio') {
-    titel.textContent = 'Waar werk je, en in welke taal?';
-    sub.textContent = 'Je land bepaalt je tijdzone en munt. De taal is de taal waarin je AI je klanten aanspreekt — daar beslis jij over.';
+    titel.textContent = tr('wiz.regio.t');
+    sub.textContent = tr('wiz.regio.s');
     var VELD = 'width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit';
     var LABEL = 'display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)';
     var landOpties = REGIO_LANDEN.map(function (l) {
@@ -18817,9 +18816,9 @@ function wizardTeken() {
       return '<option value="' + escHtml(t.code) + '">' + escHtml(t.native) + '</option>';
     }).join('');
     body.innerHTML =
-        '<label for="wizard-land" style="' + LABEL + '">In welk land is je bedrijf gevestigd?</label>'
+        '<label for="wizard-land" style="' + LABEL + '">' + escHtml(tr('wiz.regio.land')) + '</label>'
       + '<select id="wizard-land" style="' + VELD + '">' + landOpties + '</select>'
-      + '<label for="wizard-taal" style="' + LABEL + ';margin-top:14px">In welke taal spreekt Helvaro je klanten aan?</label>'
+      + '<label for="wizard-taal" style="' + LABEL + ';margin-top:14px">' + escHtml(tr('wiz.regio.taal')) + '</label>'
       + '<select id="wizard-taal" style="' + VELD + '">' + taalOpties + '</select>'
       + '<p id="wizard-taal-hint" style="margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)"></p>';
 
@@ -18862,8 +18861,8 @@ function wizardTeken() {
   }
 
   if (stap === 'bedrijf') {
-    titel.textContent = 'Vertel over je bedrijf';
-    sub.textContent = 'Dit is wat je AI gebruikt om leads te beantwoorden. Hoe concreter, hoe beter ze je klanten helpt.';
+    titel.textContent = tr('wiz.bedrijf.t');
+    sub.textContent = tr('wiz.bedrijf.s');
     body.innerHTML =
         '<label for="wizard-bedrijf" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">Wat doet je kantoor?</label>'
       + '<textarea id="wizard-bedrijf" rows="6" placeholder="Bijvoorbeeld: wij zijn een makelaarskantoor in Aalst, gespecialiseerd in woningen tussen 250.000 en 600.000 euro. We werken in Aalst, Erpe-Mere en Lede..." '
@@ -18878,8 +18877,8 @@ function wizardTeken() {
   }
 
   if (stap === 'ai') {
-    titel.textContent = 'Geef je AI een naam';
-    sub.textContent = 'Leads zien deze naam en dit bericht als eerste, nog voor jij iets hoeft te doen.';
+    titel.textContent = tr('wiz.ai.t');
+    sub.textContent = tr('wiz.ai.s');
     body.innerHTML =
         '<label for="wizard-ainaam" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">${T('dash.col.name')}</label>'
       + '<input id="wizard-ainaam" type="text" maxlength="60" placeholder="Bijvoorbeeld: Mathis" '
@@ -18894,8 +18893,8 @@ function wizardTeken() {
   }
 
   if (stap === 'koppelingen') {
-    titel.textContent = 'Koppel WhatsApp en je agenda';
-    sub.textContent = 'Hiermee praat je AI met je leads en plant ze zelf afspraken in. Je kan dit ook later doen.';
+    titel.textContent = tr('wiz.kopp.t');
+    sub.textContent = tr('wiz.kopp.s');
 
     var KAART = 'border:1px solid var(--border,#2A3444);border-radius:14px;padding:14px 16px;margin:0 0 12px';
     var KOP = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
@@ -18926,15 +18925,15 @@ function wizardTeken() {
   }
 
   // klaar
-  titel.textContent = 'Klaar om leads te ontvangen';
-  sub.textContent = 'Deel deze link. Elke lead die hem invult, wordt meteen door je AI te woord gestaan.';
+  titel.textContent = tr('wiz.klaar.t');
+  sub.textContent = tr('wiz.klaar.s');
   var link = '';
   try { link = getFormUrl(); } catch (e) { link = ''; }
   body.innerHTML =
       '<div style="user-select:all;-webkit-user-select:all;word-break:break-all;padding:11px 12px;margin:0 0 14px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13px;color:var(--text,#E9EEF6)">'
-    + (link ? escHtml(link) : 'Je formulierlink staat op je dashboard.') + '</div>'
+    + (link ? escHtml(link) : escHtml(tr('wiz.klaar.link'))) + '</div>'
     + '<p style="margin:0;font-size:13px;line-height:1.7;color:var(--text-muted,#999)">'
-    + 'Wil je dat je AI ook meteen afspraken inplant? Koppel je Google Agenda — dat staat als volgende stap op je dashboard.</p>';
+    + escHtml(tr('wiz.klaar.gcal')) + '</p>';
 }
 
 /* Twee kolommen, zoals een opzetscherm hoort te werken.

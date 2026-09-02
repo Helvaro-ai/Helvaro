@@ -86,8 +86,12 @@ ck('elke stap heeft een mascotte en een gidszin', (function () {
   });
 })(), null);
 
-ck('vraagt het land', /In welk land is je bedrijf gevestigd\?/.test(html), null);
-ck('vraagt de taal apart', /In welke taal spreekt Helvaro je klanten aan\?/.test(html), null);
+/* Niet meer op de Nederlandse zin pinnen: de wizard is vertaalbaar geworden
+   (sectie 11 -- "Meet Faro"), dus die tekst staat nu in api/_i18n.js. Wat hier
+   bewaakt moet worden is dat er TWEE aparte vragen zijn: land en taal. Dat het
+   land de taal alleen VOORSTELT is de hele afspraak. */
+ck('vraagt het land', /tr\('wiz\.regio\.land'\)/.test(html), null);
+ck('vraagt de taal apart', /tr\('wiz\.regio\.taal'\)/.test(html), null);
 ck('de landenlijst komt uit _regio.js', /const REGIO_LANDEN = \[/.test(html), null);
 ck('een landwissel overschrijft een eigen taalkeuze niet',
    /if \(!_wizardTaalAangeraakt\) taalEl\.value = wizardTaalBijLand/.test(html), null);
