@@ -6071,6 +6071,15 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   .faro-lead__punten { gap: 5px 14px; }
 }
 
+/* Een kaart zonder meting. Kleiner en grijs, zodat hij niet leest als een
+   getal van nul. */
+.stat-value--leeg {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted, #999);
+  letter-spacing: 0;
+}
+
 .conv-messages {
   flex: 1;
   overflow-y: auto;
@@ -14504,7 +14513,12 @@ function renderStats() {
     {
       id: 'conv',
       label: tr('stat.conv'),
-      value: s.conversionRate || 0,
+      /* Een conversie van 0% is iets anders dan GEEN conversie gemeten. Bij nul
+         leads is die 0 een plaatsvervanger voor "onbekend", en zo'n zelfverzekerd
+         getal op je eerste dag is precies het soort onwaarheid dat de rest van
+         het scherm ook verdacht maakt. Dezelfde afweging die renderResultaten()
+         en cmdRenderKpis() hier vlakbij al maken. */
+      value: total > 0 ? (s.conversionRate || 0) : null,
       suffix: '%',
       desc: tr('stat.conv.d'),
       color: 'orange',
@@ -14524,8 +14538,10 @@ function renderStats() {
     {
       id: 'resp',
       label: tr('stat.resp'),
-      value: fmtDuration(s.avgResponseTime || 0).value,
-      suffix: fmtDuration(s.avgResponseTime || 0).suffix,
+      /* "0s" leest als een reactietijd van nul, terwijl het betekent dat er nog
+         nooit een reactie gemeten is. */
+      value: s.avgResponseTime > 0 ? fmtDuration(s.avgResponseTime).value : null,
+      suffix: s.avgResponseTime > 0 ? fmtDuration(s.avgResponseTime).suffix : '',
       desc: tr('stat.resp.d'),
       color: '',
       fill: 60,
@@ -14561,7 +14577,9 @@ function renderStats() {
         <div class="stat-label">\${c.label}</div>
         <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\${m.i}</svg></span>
       </div>
-      <div class="stat-value \${c.color}" data-target="\${c.value}" data-suffix="\${c.suffix}">0\${c.suffix ? \`<span class="stat-unit">\${c.suffix}</span>\` : ''}</div>
+      \${c.value === null
+        ? \`<div class="stat-value stat-value--leeg">\${escHtml(tr('stat.geendata'))}</div>\`
+        : \`<div class="stat-value \${c.color}" data-target="\${c.value}" data-suffix="\${c.suffix}">0\${c.suffix ? \`<span class="stat-unit">\${c.suffix}</span>\` : ''}</div>\`}
       <div class="stat-desc">\${c.desc}</div>
       <div class="stat-trend">\${c.trend || ''}</div>
       <div class="stat-bar">

@@ -258,5 +258,34 @@ console.log('\n  Faro\'s toestanden');
     /geen eigen tekening/.test(fs.readFileSync(BASE + 'api/_faro/werk.js', 'utf8')), null);
 }
 
+// ── 11. Nul is niet hetzelfde als "niet gemeten" ───────────────────────────
+console.log('\n  nul is niet hetzelfde als niets gemeten');
+{
+  delete require.cache[require.resolve(BASE + 'api/dashboard.js')];
+  const dash3 = require(BASE + 'api/dashboard.js');
+  let h3 = '';
+  dash3({ method: 'GET', url: '/dashboard?lang=en', headers: {} },
+    { setHeader() {}, status() { return this; }, send(b) { h3 = String(b); }, json() {}, end() {} });
+
+  /* Een klant op zijn eerste dag zag "Conversie 0%" en "Gem. reactie 0s". Dat
+     leest als een meting, terwijl het betekent dat er nog niets gemeten IS. Een
+     zelfverzekerd nul op je eerste dag maakt elk ander getal op het scherm ook
+     verdacht -- en dat is precies wat deze hele laag probeert te voorkomen.
+
+     Het bestand deed het drie regels verderop al goed (renderResultaten,
+     cmdRenderKpis); de statkaarten waren de uitzondering. */
+  ck('conversie toont niets bij nul leads, geen "0%"',
+    /total > 0 \? \(s\.conversionRate \|\| 0\) : null/.test(h3), null);
+  ck('reactietijd toont niets als er nooit een reactie gemeten is',
+    /s\.avgResponseTime > 0 \? fmtDuration/.test(h3), null);
+  ck('en de kaart rendert dan "nog geen data" in plaats van een getal',
+    /c\.value === null/.test(h3) && /stat-value--leeg/.test(h3), null);
+  ck('de tekst bestaat in alle vier de talen',
+    ['nl', 'fr', 'en', 'de'].every((l) => {
+      const v = i18n.t(l, 'stat.geendata');
+      return v && v !== 'stat.geendata';
+    }), null);
+}
+
 console.log(`\n  ${pass} ok, ${fail} fout\n`);
 process.exit(fail ? 1 : 0);
