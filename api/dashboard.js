@@ -13636,7 +13636,7 @@ function exportCSV() {
       URL.revokeObjectURL(burl);
       toast('CSV-bestand is gedownload', 'success');
     })
-    .catch(err => toast(err.message || 'Export mislukt', 'error'))
+    .catch(err => toast(hvFoutZin(err), 'error'))
     .finally(() => { if (btn) { btn.disabled = false; btn.style.opacity = ''; } });
 }
 
@@ -14176,7 +14176,7 @@ async function loadAdminClients() {
       </div>
     \`).join('');
   } catch (err) {
-    grid.innerHTML = \`<div style="color:var(--red-ink);font-size:14px">\${escHtml(err.message)}</div>\`;
+    grid.innerHTML = \`<div style="color:var(--red-ink);font-size:14px">\${escHtml(hvFoutZin(err))}</div>\`;
   }
 }
 
@@ -15464,6 +15464,47 @@ function scoreBar(score) {
    stoppen hun eigen event al, dus dit is de betere van twee onvolmaakte opties.
    De echte oplossing is die rijen herbouwen met de knop ernaast in plaats van
    erin. */
+/* ── Fouten die een mens kan lezen ─────────────────────────────────────────
+   Op negen plekken belandde de ruwe fout in een toast: "Opslaan mislukt: HTTP
+   500", "Kosten konden niet geladen worden: HTTP 403". Een makelaar leest daar
+   niet uit wat hij moet doen, en het klinkt alsof hij zelf iets stuk maakte.
+
+   hvFout() hangt de status aan de Error zodat de catch verderop nog weet WAT
+   er misging; hvFoutZin() maakt daar een zin van. De ruwe status verdwijnt
+   niet -- hij gaat naar console.error, waar hij hoort. */
+function hvFout(r, body) {
+  const e = new Error('HTTP ' + (r && r.status));
+  e.hvStatus = r && r.status;
+  /* Een server die zelf al een nette zin teruggaf, weet meer dan wij. */
+  /* Geen regex met \\b hier: dit bestand is een template literal, dus een
+       enkele backslash wordt een backspace in de uitgestuurde pagina. Dat
+       kostte de eerste versie van deze controle precies zijn werking. */
+  if (body && typeof body.error === 'string' && body.error
+      && body.error.indexOf('HTTP ') !== 0) {
+    e.hvServerZin = body.error;
+  }
+  return e;
+}
+
+function hvFoutZin(e, valSleutel) {
+  console.error('[hv]', e);
+  if (e && e.hvServerZin) return e.hvServerZin;
+  const st = e && e.hvStatus;
+  if (st === 401 || st === 403) return tr('err.sessie');
+  if (st === 429) return tr('err.tedruk');
+  if (typeof st === 'number' && st >= 500) return tr('err.server');
+  /* Geen status: fetch kwam niet eens aan. Dat is bijna altijd de verbinding. */
+  if (typeof st !== 'number') {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return tr('err.netwerk');
+    if (e && /fetch|network|Failed to fetch|load failed/i.test(String(e.message || ''))) {
+      return tr('err.netwerk');
+    }
+  }
+  /* Alles wat overblijft: een zin die de code zelf al had, of anders onze
+     algemene. Nooit e.message -- daar zit "HTTP 500" in. */
+  return valSleutel ? tr(valSleutel) : tr('err.server');
+}
+
 function hvMakeActivatable(root) {
   const scope = root || document.querySelector('.page.active') || document;
   scope.querySelectorAll('[onclick]').forEach(function (el) {
@@ -16031,7 +16072,7 @@ function openPanel(lead) {
         applyFilters();
         toast('Status bijgewerkt', 'success');
       } catch (err) {
-        toast(err.message, 'error');
+        toast(hvFoutZin(err), 'error');
         statusSelect.value = lead.status; // revert on error
       }
     });
@@ -16065,7 +16106,7 @@ function openPanel(lead) {
         }
         toast('Afspraak resultaat opgeslagen', 'success');
       } catch (err) {
-        toast(err.message || 'Opslaan mislukt, probeer opnieuw', 'error');
+        toast(hvFoutZin(err), 'error');
       } finally {
         if (knop) { knop.disabled = false; knop.style.opacity = ''; }
       }
@@ -16089,7 +16130,7 @@ function openPanel(lead) {
         .catch((err) => {
           if (jaBtn)  jaBtn.className  = jaWas;
           if (neeBtn) neeBtn.className = neeWas;
-          toast((err && err.message) || 'Opslaan mislukt, probeer opnieuw', 'error');
+          toast(hvFoutZin(err), 'error');
         });
     }
 
@@ -16113,7 +16154,7 @@ function openPanel(lead) {
         state.activeLead.reden = reden;
         toast('Verliesreden opgeslagen', 'success');
       } catch (err) {
-        toast(err.message, 'error');
+        toast(hvFoutZin(err), 'error');
       }
     });
   }
@@ -16130,7 +16171,7 @@ function openPanel(lead) {
         state.activeLead.verwachteWaarde = val;
         toast('Deal waarde opgeslagen', 'success');
       } catch (err) {
-        toast(err.message, 'error');
+        toast(hvFoutZin(err), 'error');
       }
     });
   }
@@ -16151,7 +16192,7 @@ function openPanel(lead) {
         const list = document.getElementById('panel-notes-list');
         if (list) list.innerHTML = renderNotesList(data.notes);
         toast('Notitie toegevoegd', 'success');
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
 
@@ -16167,7 +16208,7 @@ function openPanel(lead) {
       try {
         await persistNotities(data);
         notesList.innerHTML = renderNotesList(data.notes);
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
 
@@ -16189,7 +16230,7 @@ function openPanel(lead) {
         const list = document.getElementById('panel-tasks-list');
         if (list) list.innerHTML = renderTasksList(data.tasks);
         toast('Taak toegevoegd', 'success');
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
 
@@ -16208,7 +16249,7 @@ function openPanel(lead) {
       try {
         await persistNotities(data);
         tasksList.innerHTML = renderTasksList(data.tasks);
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
     tasksList.addEventListener('click', async e => {
       const btn = e.target.closest('.panel-task-delete');
@@ -16219,7 +16260,7 @@ function openPanel(lead) {
       try {
         await persistNotities(data);
         tasksList.innerHTML = renderTasksList(data.tasks);
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
 
@@ -16241,7 +16282,7 @@ function openPanel(lead) {
         const list = document.getElementById('panel-calls-list');
         if (list) list.innerHTML = renderCallsList(data.calls);
         toast('Gesprek gelogd', 'success');
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
 
@@ -17174,7 +17215,7 @@ async function calBookConfirm() {
     calState.cache = {};   // invalideer cache
     if (typeof renderAppointments === 'function') renderAppointments();
   } catch (err) {
-    toast('Boeken mislukt. ' + (err.message || ''), 'error');
+    toast(hvFoutZin(err), 'error');
     if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
   }
 }
@@ -18186,7 +18227,7 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
     toast('Weekrapport geladen', 'success');
   } catch (err) {
     skeleton.style.display = 'none';
-    toast('Rapport laden mislukt: ' + err.message, 'error');
+    toast(hvFoutZin(err), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<span class="icon">↻</span> Rapport opnieuw laden';
@@ -18757,7 +18798,7 @@ async function wizardWhatsAppStatus() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'wa-readiness' })
     });
-    if (!r.ok) throw new Error('status ' + r.status);
+    if (!r.ok) throw hvFout(r);
     var d = await r.json();
     var taal = wizardTaalNaam(d.taal);
 
@@ -18813,7 +18854,7 @@ async function wizardAgendaStatus() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'status' })
     });
-    if (!r.ok) throw new Error('status ' + r.status);
+    if (!r.ok) throw hvFout(r);
     var d = await r.json();
 
     if (d && d.connected && d.needsReauth) {
@@ -21101,7 +21142,7 @@ function piFilename(img, prefix) {
 async function downloadImageUrl(url, filename) {
   try {
     const r = await fetch(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) throw hvFout(r);
     const blob = await r.blob();
     const objUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -21136,7 +21177,7 @@ function dataUrlFormat(dataUrl) {
 
 function urlToDataURL(url) {
   return fetch(url)
-    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+    .then(function (r) { if (!r.ok) throw hvFout(r); return r.blob(); })
     .then(function (blob) {
       return new Promise(function (resolve, reject) {
         const reader = new FileReader();
@@ -21546,7 +21587,7 @@ async function koopOfferteOphalen() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'credit-quote', amountEur: bedrag })
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) throw hvFout(r);
     var d = await r.json();
     koopState.offerte = d.offerte;
     koopState.grenzen = d.grenzen;
@@ -21662,7 +21703,7 @@ async function laadPlannen(force) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'plan-list' })
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) throw hvFout(r);
     var d = await r.json();
     planState.plannen   = d.plannen || [];
     planState.huidig    = d.huidig || null;
@@ -22166,7 +22207,7 @@ async function loadFacturatie(force) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'billing-overview' })
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) throw hvFout(r);
     faState.data = await r.json();
   } catch (e) {
     /* Een storing mag er niet uitzien als "je hebt geen plan". */
@@ -22349,7 +22390,7 @@ async function loadPanden(force) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'listing-list' })
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) throw hvFout(r);
     var d = await r.json();
     pandState.panden = d.properties || [];
     pandState.beschikbaar = d.available !== false;
@@ -23334,7 +23375,7 @@ async function disconnectGoogleCalendar() {
     if (!r.ok) throw new Error('Ontkoppelen mislukt');
     toast('Google Agenda ontkoppeld', 'success');
   } catch (e) {
-    toast((e && e.message) || 'Ontkoppelen mislukt, probeer opnieuw', 'error');
+    toast(hvFoutZin(e), 'error');
   }
   loadGcalStatus();
 }
@@ -23496,10 +23537,10 @@ async function loadKosten(force) {
       body: JSON.stringify({ mode: 'kosten' })
     });
     d = await r.json().catch(function () { return {}; });
-    if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    if (!r.ok) throw hvFout(r, d);
   } catch (e) {
     /* Geen half scherm met nullen: dat leest als "je kosten zijn nul". */
-    vastEl.innerHTML = '<div class="kst-leeg">Kosten konden niet geladen worden: ' + escHtml(String(e.message || e)) + '</div>';
+    vastEl.innerHTML = '<div class="kst-leeg">' + escHtml(hvFoutZin(e)) + '</div>';
     if (verbEl) verbEl.innerHTML = '';
     if (sleuEl) sleuEl.innerHTML = '';
     return;

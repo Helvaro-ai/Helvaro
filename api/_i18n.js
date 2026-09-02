@@ -793,6 +793,35 @@ const TEKST = {
         en: 'Signing in is not working right now because of a setting on our side — not something you did. We are aware of it. Try again later or get in touch.',
         de: 'Die Anmeldung funktioniert derzeit wegen einer Einstellung auf unserer Seite nicht — es liegt nicht an Ihnen. Wir wissen davon. Versuchen Sie es später erneut oder melden Sie sich bei uns.' },
 
+  /* ── Wat de klant leest als er iets misgaat ─────────────────────────────
+     Op negen plekken kwam de ruwe fout in een toast terecht: "Opslaan
+     mislukt: HTTP 500", "Kosten konden niet geladen worden: HTTP 403". Dat
+     zegt een makelaar niets, het klinkt alsof hij iets stuk maakte, en het
+     vertelt hem niet het enige wat hij wil weten: is dit mijn schuld en moet
+     ik iets doen?
+
+     Vier zinnen, want vier verschillende antwoorden op die vraag. De ruwe
+     status blijft in console.error staan -- die is voor ons, niet voor hem. */
+  'err.netwerk':  { nl: 'Geen verbinding. Controleer je internet en probeer opnieuw.',
+                    fr: 'Pas de connexion. Vérifiez votre accès à Internet et réessayez.',
+                    en: 'No connection. Check your internet and try again.',
+                    de: 'Keine Verbindung. Prüfen Sie Ihr Internet und versuchen Sie es erneut.' },
+
+  'err.server':   { nl: 'Er ging iets mis aan onze kant — niet aan die van jou. Probeer het zo opnieuw.',
+                    fr: 'Un problème est survenu de notre côté — pas du vôtre. Réessayez dans un instant.',
+                    en: 'Something went wrong on our side — not yours. Try again in a moment.',
+                    de: 'Auf unserer Seite ist etwas schiefgelaufen — nicht auf Ihrer. Versuchen Sie es gleich erneut.' },
+
+  'err.sessie':   { nl: 'Je sessie is verlopen. Log opnieuw in om verder te gaan.',
+                    fr: 'Votre session a expiré. Reconnectez-vous pour continuer.',
+                    en: 'Your session expired. Sign in again to continue.',
+                    de: 'Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.' },
+
+  'err.tedruk':   { nl: 'Even te veel tegelijk. Wacht een halve minuut en probeer opnieuw.',
+                    fr: 'Trop de requêtes à la fois. Attendez une trentaine de secondes et réessayez.',
+                    en: 'Too many requests at once. Wait half a minute and try again.',
+                    de: 'Zu viele Anfragen auf einmal. Warten Sie eine halbe Minute und versuchen Sie es erneut.' },
+
   'login.footer':        { nl: 'gemaakt voor Vlaamse makelaars',
                            fr: 'conçu pour les agents immobiliers',
                            en: 'built for estate agents',
