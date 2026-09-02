@@ -1017,6 +1017,37 @@ const TEKST = {
   'fa.planChange': { nl: 'Plan wijzigen', fr: 'Changer de formule', en: 'Change plan', de: 'Tarif wechseln' },
   'fa.credits': { nl: 'Credits deze periode', fr: 'Crédits cette période', en: 'Credits this period', de: 'Guthaben in dieser Periode' },
   'fa.buy': { nl: 'Credits bijkopen', fr: 'Acheter des crédits', en: 'Buy credits', de: 'Guthaben kaufen' },
+  /* ── De betaalpagina mag nooit leeg of doodlopend zijn ──────────────────
+     tekenPlannen() deed .map().join('') over de plannenlijst. Kwam die leeg
+     terug -- en dat kan, want de lijst hangt aan de Stripe-configuratie --
+     dan werd de innerHTML letterlijk een lege string: een blanco pagina op de
+     plek waar iemand geld wil uitgeven. En de foutmelding zei "ververs de
+     pagina", zonder knop, alleen in het Nederlands, op precies dezelfde plek.
+
+     Wie op deze pagina strandt, is een klant die WIL betalen. Dat is de
+     duurste plek om iemand te laten vastlopen. */
+  'fa.nietOpgehaald': { nl: 'Niet opgehaald \u2014 zie de melding hierboven.',
+                     fr: 'Non r\u00e9cup\u00e9r\u00e9 \u2014 voir le message ci-dessus.',
+                     en: 'Couldn\u2019t load \u2014 see the message above.',
+                     de: 'Nicht geladen \u2014 siehe Hinweis oben.' },
+
+  'plan.leeg':     { nl: 'We kunnen je de plannen nu niet tonen. Dat ligt aan ons, niet aan jou — neem even contact op en we regelen het.',
+                     fr: 'Nous ne pouvons pas afficher les formules pour le moment. Cela vient de nous, pas de vous — contactez-nous et nous arrangeons cela.',
+                     en: 'We can\u2019t show you the plans right now. That\u2019s on us, not you — get in touch and we\u2019ll sort it out.',
+                     de: 'Wir k\u00f6nnen Ihnen die Tarife gerade nicht anzeigen. Das liegt an uns, nicht an Ihnen — melden Sie sich, und wir kl\u00e4ren das.' },
+
+  'plan.opnieuw':  { nl: 'Opnieuw proberen', fr: 'R\u00e9essayer', en: 'Try again', de: 'Erneut versuchen' },
+
+  'plan.huidig':   { nl: 'Je huidige plan', fr: 'Votre formule actuelle', en: 'Your current plan', de: 'Ihr aktueller Tarif' },
+
+  'plan.binnenkort': { nl: 'Binnenkort', fr: 'Bient\u00f4t', en: 'Coming soon', de: 'Demn\u00e4chst' },
+  'plan.binnenkortUitleg': { nl: 'Online betalen staat nog niet aan',
+                     fr: 'Le paiement en ligne n\u2019est pas encore activ\u00e9',
+                     en: 'Online payment is not switched on yet',
+                     de: 'Online-Zahlung ist noch nicht aktiviert' },
+
+  'plan.kies':     { nl: 'Kies {naam}', fr: 'Choisir {naam}', en: 'Choose {naam}', de: '{naam} w\u00e4hlen' },
+
   'fa.plans': { nl: 'Plannen', fr: 'Formules', en: 'Plans', de: 'Tarife' },
   'fa.plans.sub': { nl: 'Maandelijks opzegbaar. Je credits gaan mee naar het nieuwe plan.', fr: 'Résiliable chaque mois. Vos crédits suivent la nouvelle formule.', en: 'Cancel monthly. Your credits move to the new plan.', de: 'Monatlich kündbar. Ihr Guthaben zieht mit um.' },
   'fa.where': { nl: 'Waar je credits heen gingen', fr: 'Où sont passés vos crédits', en: 'Where your credits went', de: 'Wohin Ihr Guthaben ging' },

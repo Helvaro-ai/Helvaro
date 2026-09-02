@@ -182,10 +182,19 @@ console.log('\n— twee lege toestanden naast elkaar bij Gesprekken —');
 
 console.log('\n— Facturatie liet lege kaarten achter bij een storing —');
 {
-  ck('de kaarten krijgen tekst bij een fout', /Niet opgehaald\. Ververs de pagina\./.test(js), null);
-  /* Twee banners gaven verschillend advies voor dezelfde storing. */
-  ck('en het advies is overal hetzelfde',
-     !/Probeer het zo meteen opnieuw/.test(js) || /Ververs de pagina/.test(js), null);
+  /* Deze twee toetsten op de LETTERLIJKE zin 'Niet opgehaald. Ververs de
+     pagina.'. Die zin is intussen weg: het advies was doodlopend (de klant het
+     werk laten doen) en stond alleen in het Nederlands. Wat bewaakt moest
+     worden is niet de bewoording maar het gedrag -- de kaarten mogen bij een
+     storing niet leeg achterblijven, want dan leest de pagina als een stapel
+     lege dozen in plaats van als een storing. Dus nu op het gedrag. */
+  ck('de kaarten krijgen tekst bij een fout',
+     /fa-leeg">' \+ escHtml\(tr\('fa\.nietOpgehaald'\)\)/.test(js), null);
+  ck('en die tekst komt uit het woordenboek, dus in de taal van de klant',
+     /'fa\.nietOpgehaald'/.test(js), null);
+  /* Het advies is overal hetzelfde: een knop, geen opdracht aan de gebruiker. */
+  ck('de storing biedt overal opnieuw proberen aan, niet "ververs zelf"',
+     !/Ververs de pagina\.<\/div>/.test(js) && /onclick="loadFacturatie\(true\)"/.test(js), null);
 }
 
 console.log('\n— skeletten bleven eeuwig draaien na een fout —');

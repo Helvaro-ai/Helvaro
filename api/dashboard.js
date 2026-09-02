@@ -21815,8 +21815,12 @@ async function laadPlannen(force) {
     planState.huidig    = d.huidig || null;
     planState.stripeAan = !!d.stripeAan;
   } catch (e) {
+    /* "Ververs de pagina" is geen uitweg, het is de gebruiker het werk laten
+       doen. Hier staat iemand die WIL betalen; die verdient een knop. */
     grid.innerHTML = '<div class="fa-plan"><div class="fa-plan-regel">'
-      + 'De plannen konden niet opgehaald worden. Ververs de pagina.</div></div>';
+      + escHtml(hvFoutZin(e)) + '</div>'
+      + '<button class="btn-icon btn-primary-sm fa-plan-knop" onclick="laadPlannen(true)">'
+      + escHtml(tr('plan.opnieuw')) + '</button></div>';
     return;
   }
   tekenPlannen();
@@ -21830,17 +21834,30 @@ function tekenPlannen() {
   if (!grid) return;
   var huidigId = planState.huidig && planState.huidig.planId;
 
+  /* Een lege lijst gaf letterlijk een lege innerHTML: een blanco scherm op de
+     plek waar iemand geld wil uitgeven. De lijst hangt aan de
+     Stripe-configuratie, dus dit is geen theoretisch geval. */
+  if (!planState.plannen || planState.plannen.length === 0) {
+    grid.innerHTML = '<div class="fa-plan"><div class="fa-plan-regel">'
+      + escHtml(tr('plan.leeg')) + '</div>'
+      + '<button class="btn-icon fa-plan-knop" onclick="laadPlannen(true)">'
+      + escHtml(tr('plan.opnieuw')) + '</button></div>';
+    return;
+  }
+
   grid.innerHTML = planState.plannen.map(function (p) {
     var isHuidig = p.id === huidigId;
     var knop;
     if (isHuidig) {
-      knop = '<button class="btn-icon fa-plan-knop" disabled>Je huidige plan</button>';
+      knop = '<button class="btn-icon fa-plan-knop" disabled>' + escHtml(tr('plan.huidig')) + '</button>';
     } else if (!planState.stripeAan) {
       /* Eerlijk in plaats van een knop die niets doet. */
-      knop = '<button class="btn-icon fa-plan-knop" disabled title="Online betalen staat nog niet aan">Binnenkort</button>';
+      knop = '<button class="btn-icon fa-plan-knop" disabled title="' + escHtml(tr('plan.binnenkortUitleg')) + '">'
+           + escHtml(tr('plan.binnenkort')) + '</button>';
     } else {
       knop = '<button class="btn-icon btn-primary-sm fa-plan-knop" onclick="kiesPlan(&quot;'
-           + p.id + '&quot;,&quot;' + escHtml(p.naam) + '&quot;)">Kies ' + escHtml(p.naam) + '</button>';
+           + p.id + '&quot;,&quot;' + escHtml(p.naam) + '&quot;)">'
+           + escHtml(tr('plan.kies', { naam: p.naam })) + '</button>';
     }
     return '<div class="fa-plan' + (isHuidig ? ' huidig' : '') + '">'
       + '<div class="fa-plan-kop"><span class="fa-plan-titel">' + escHtml(p.naam) + '</span>'
@@ -22319,14 +22336,19 @@ async function loadFacturatie(force) {
     /* Een storing mag er niet uitzien als "je hebt geen plan". */
     document.getElementById('fa-plan-naam').textContent = '—';
     notice.style.display = '';
-    notice.innerHTML = 'Het facturatieoverzicht kon niet opgehaald worden. Ververs de pagina.';
+    /* Ook hier: een knop in plaats van de klant vragen zelf te verversen, en
+       in zijn eigen taal. Dit is de facturatiepagina; wie hier komt kijkt naar
+       zijn geld. */
+    notice.innerHTML = escHtml(hvFoutZin(e))
+      + ' <button class="btn-icon" onclick="loadFacturatie(true)">'
+      + escHtml(tr('plan.opnieuw')) + '</button>';
     /* De twee kaarten eronder krijgen hun tekst pas in renderFacturatie(), en
        die draait hier niet. Zonder deze regels blijven ze staan als een kop met
        niets eronder -- de pagina las als een stapel lege dozen in plaats van
        als één storing. */
     ['fa-verdeling', 'fa-boekingen'].forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.innerHTML = '<div class="fa-leeg">Niet opgehaald. Ververs de pagina.</div>';
+      if (el) el.innerHTML = '<div class="fa-leeg">' + escHtml(tr('fa.nietOpgehaald')) + '</div>';
     });
     ['fa-verdeling-sub', 'fa-boekingen-sub'].forEach(function (id) {
       var el = document.getElementById(id);
