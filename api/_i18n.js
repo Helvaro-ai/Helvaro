@@ -1118,6 +1118,13 @@ const TEKST = {
   'a11y.veld.instructies': { nl: 'Instructies voor je assistent', fr: 'Instructions pour votre assistant', en: 'Instructions for your assistant', de: 'Anweisungen für Ihren Assistenten' },
   'a11y.veld.fotoUrl': { nl: 'Link naar een foto', fr: 'Lien vers une photo', en: 'Link to a photo', de: 'Link zu einem Foto' },
 
+  'a11y.veld.kleur': { nl: 'Accentkleur kiezen', fr: 'Choisir la couleur d’accent', en: 'Pick an accent colour', de: 'Akzentfarbe wählen' },
+  'a11y.veld.testTel': { nl: 'Telefoonnummer voor een testbericht', fr: 'Numéro de téléphone pour un message test', en: 'Phone number for a test message', de: 'Telefonnummer für eine Testnachricht' },
+  'a11y.veld.taal': { nl: 'Taal van het scherm', fr: 'Langue de l’interface', en: 'Interface language', de: 'Sprache der Oberfläche' },
+  'a11y.veld.bijlage': { nl: 'Bestand toevoegen', fr: 'Ajouter un fichier', en: 'Attach a file', de: 'Datei anhängen' },
+  'a11y.veld.zoeken': { nl: 'Zoeken', fr: 'Rechercher', en: 'Search', de: 'Suchen' },
+  'a11y.veld.pandlink': { nl: 'Link naar het pand', fr: 'Lien vers le bien', en: 'Link to the property', de: 'Link zum Objekt' },
+
   'fa.nietOpgehaald': { nl: 'Niet opgehaald \u2014 zie de melding hierboven.',
                      fr: 'Non r\u00e9cup\u00e9r\u00e9 \u2014 voir le message ci-dessus.',
                      en: 'Couldn\u2019t load \u2014 see the message above.',

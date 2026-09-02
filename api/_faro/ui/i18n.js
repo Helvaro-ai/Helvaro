@@ -29,6 +29,7 @@ const TRANSLATED = ['nl', 'fr', 'en', 'de'];
 
 const STRINGS = {
   nl: {
+    'invoer.bijlage': 'Bestand toevoegen',
     'tip.onboarding.v2': 'Er staat nog een stukje inrichting open. Ik loop het zo met je door als je wil.',
     'tip.onboarding.v3': 'Nog een paar dingen in te vullen en ik kan echt aan de slag.',
     'tip.leeg.v2': 'Hier is het nog stil. Je eerste lead verschijnt vanzelf op deze plek.',
@@ -195,6 +196,7 @@ const STRINGS = {
   },
 
   en: {
+    'invoer.bijlage': 'Attach a file',
     'tip.onboarding.v2': 'There\'s a bit of setup left. I\'ll take you through it whenever you like.',
     'tip.onboarding.v3': 'A few things left to fill in, and then I can really get going.',
     'tip.leeg.v2': 'Quiet so far. Your first lead will appear right here.',
@@ -359,6 +361,7 @@ const STRINGS = {
   },
 
   fr: {
+    'invoer.bijlage': 'Ajouter un fichier',
     'tip.onboarding.v2': 'Il reste un peu de configuration. Je vous accompagne quand vous voulez.',
     'tip.onboarding.v3': 'Encore quelques champs à remplir et je peux vraiment m\'y mettre.',
     'tip.leeg.v2': 'C\'est encore calme. Votre premier lead s\'affichera juste ici.',
@@ -523,6 +526,7 @@ const STRINGS = {
   },
 
   de: {
+    'invoer.bijlage': 'Datei anhängen',
     'tip.onboarding.v2': 'Es fehlt noch ein Stück Einrichtung. Ich gehe es gern mit Ihnen durch.',
     'tip.onboarding.v3': 'Noch ein paar Angaben, dann kann ich richtig loslegen.',
     'tip.leeg.v2': 'Hier ist es noch ruhig. Ihr erster Lead erscheint genau an dieser Stelle.',

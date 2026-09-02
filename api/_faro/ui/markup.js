@@ -201,7 +201,7 @@ function input(t) {
           </button>
         </div>
 
-        <input type="file" id="faro-file-input" accept="image/*" multiple hidden>
+        <input type="file" id="faro-file-input" accept="image/*" multiple hidden aria-label="${t('invoer.bijlage')}">
       </form>`;
 }
 

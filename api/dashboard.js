@@ -10407,7 +10407,7 @@ ${faro.navCta}
               </label>
               <div class="ap-color-row">
                 <input id="ap-color" type="text" class="ap-input ap-color-input" placeholder="#E8D7B1" maxlength="7">
-                <input id="ap-color-pick" type="color" class="ap-color-swatch" value="#E8D7B1">
+                <input id="ap-color-pick" aria-label="${T('a11y.veld.kleur')}" type="color" class="ap-color-swatch" value="#E8D7B1">
               </div>
               <div class="ap-hint">${T('ap.color.hint')}</div>
             </div>
@@ -10457,7 +10457,7 @@ ${faro.navCta}
                 <div class="ap-test-title">${T('ap.test')}</div>
                 <p class="ap-test-sub">${T('ap.test.h')}</p>
                 <div class="ap-test-row">
-                  <input id="ap-test-phone" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0466 35 84 27">
+                  <input id="ap-test-phone" aria-label="${T('a11y.veld.testTel')}" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0466 35 84 27">
                   <button class="ap-btn" id="ap-test-btn" onclick="sendTestMessage()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     ${T('ap.test.btn')}
@@ -10953,7 +10953,7 @@ ${faro.navCta}
               <div class="settings-label-sub">${T('lang.sub')}</div>
             </div>
             <div class="settings-toggle">
-              <select class="pd-input" id="ui-taal" style="width:auto;min-width:150px" onchange="taalWisselen(this.value)">
+              <select class="pd-input" id="ui-taal" aria-label="${T('a11y.veld.taal')}" style="width:auto;min-width:150px" onchange="taalWisselen(this.value)">
                 <option value="nl"${UI_LANG === 'nl' ? ' selected' : ''}>Nederlands</option>
                 <option value="fr"${UI_LANG === 'fr' ? ' selected' : ''}>Français</option>
                 <option value="en"${UI_LANG === 'en' ? ' selected' : ''}>English</option>
@@ -11785,7 +11785,7 @@ ${faro.dock}
   <div class="search-modal" id="search-modal">
     <div class="search-modal-bar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input class="search-modal-input" id="search-modal-input" type="text" placeholder="Zoek op naam, telefoon, bron of samenvatting..." autocomplete="off" spellcheck="false">
+      <input class="search-modal-input" id="search-modal-input" aria-label="${T('a11y.veld.zoeken')}" type="text" placeholder="Zoek op naam, telefoon, bron of samenvatting..." autocomplete="off" spellcheck="false">
       <kbd class="search-kbd" id="search-esc-btn">Esc</kbd>
     </div>
     <div class="search-results" id="search-results">
@@ -11870,7 +11870,7 @@ ${faro.dock}
         <div class="pd-import-kop">${T('pd.import.kop')}</div>
         <div class="pd-import-sub">${T('pd.import.sub')}</div>
         <div class="pd-import-row">
-          <input class="pd-input" id="pd-f-link" type="url" inputmode="url" autocomplete="off"
+          <input class="pd-input" id="pd-f-link" aria-label="${T('a11y.veld.pandlink')}" type="url" inputmode="url" autocomplete="off"
                  placeholder="https://www.immoweb.be/nl/zoekertje/..." maxlength="2000">
           <button class="btn-icon btn-primary-sm" id="pd-import-btn" onclick="importeerPand()">Ophalen</button>
         </div>
