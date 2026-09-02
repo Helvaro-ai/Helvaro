@@ -9540,7 +9540,7 @@ ${faro.navCta}
     <main class="page-content page" id="page-resultaten">
       <div class="export-filter-bar">
         <div class="export-filter-group">
-          <label class="export-filter-label">${T('res.period')}</label>
+          <label class="export-filter-label" for="resultaten-period">${T('res.period')}</label>
           <select class="export-select" id="resultaten-period" aria-label="${T('res.periodTitle')}" onchange="loadResultaten()">
             <option value="this_month" selected>${T('res.thisMonth')}</option>
             <option value="last_30_days">${T('res.last30')}</option>
@@ -9570,7 +9570,7 @@ ${faro.navCta}
       <!-- Export filter bar -->
       <div class="export-filter-bar">
         <div class="export-filter-group">
-          <label class="export-filter-label">${T('res.period')}</label>
+          <label class="export-filter-label" for="export-period">${T('res.period')}</label>
           <select class="export-select" id="export-period" aria-label="${T('exp.period')}" onchange="updateExportPreview()">
             <option value="7">${T('exp.last7')}</option>
             <option value="30" selected>${T('res.last30')}</option>
@@ -9579,7 +9579,7 @@ ${faro.navCta}
           </select>
         </div>
         <div class="export-filter-group">
-          <label class="export-filter-label">${T('dash.col.status')}</label>
+          <label class="export-filter-label" for="export-status">${T('dash.col.status')}</label>
           <select class="export-select" id="export-status" aria-label="${T('exp.status')}" onchange="updateExportPreview()">
             <option value="all">${T('dash.f.allLeads')}</option>
             <option value="qualified">${T('exp.onlyQual')}</option>
@@ -9778,11 +9778,11 @@ ${faro.navCta}
         <div id="nc-invite-panel">
           <div style="display:flex;flex-direction:column;gap:12px">
             <div>
-              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">E-mailadres klant *</label>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-inv-email">E-mailadres klant *</label>
               <input id="nc-inv-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Naam <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-inv-name">Naam <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
               <input id="nc-inv-name" type="text" placeholder="Jan Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
           </div>
@@ -9820,15 +9820,15 @@ ${faro.navCta}
         <div id="nc-manual-panel" style="display:none">
           <div style="display:flex;flex-direction:column;gap:12px">
             <div>
-              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Naam klant *</label>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-name">Naam klant *</label>
               <input id="nc-name" type="text" placeholder="bijv. Immo Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Projectcode * <span style="font-weight:400;text-transform:none">(letters, cijfers, _)</span></label>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-code">Projectcode * <span style="font-weight:400;text-transform:none">(letters, cijfers, _)</span></label>
               <input id="nc-code" type="text" placeholder="IMMO_JANSSEN" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none;font-family:monospace;text-transform:uppercase">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">E-mail <span style="font-weight:400;text-transform:none">(welkomstmail)</span></label>
+              <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-email">E-mail <span style="font-weight:400;text-transform:none">(welkomstmail)</span></label>
               <input id="nc-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
             <!-- Calendly veld DEPRECATED. Hidden input voor backwards compat. -->
@@ -10048,8 +10048,8 @@ ${faro.navCta}
         </div>
 
         <div class="ap-field">
-          <label class="ap-label">${T('pi.photo')}<span class="ap-label-hint">${T('pi.photo.h')}</span></label>
-          <div class="pi-dropzone" id="pi-dropzone" onclick="document.getElementById('pi-file-input').click()">
+          <label id="pi-dropzone-label" class="ap-label">${T('pi.photo')}<span class="ap-label-hint">${T('pi.photo.h')}</span></label>
+          <div class="pi-dropzone" id="pi-dropzone" role="group" aria-labelledby="pi-dropzone-label" onclick="document.getElementById('pi-file-input').click()">
             <div class="pi-dropzone-placeholder" id="pi-dropzone-placeholder">
               <div style="font-size:26px;line-height:1">+</div>
               <div><b>${T('pi.pick')}</b><br>${T('pi.drag')}</div>
@@ -10060,15 +10060,15 @@ ${faro.navCta}
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">${T('pi.style')}</label>
-          <div class="pi-style-grid" id="pi-style-grid">
+          <label id="pi-style-grid-label" class="ap-label">${T('pi.style')}</label>
+          <div class="pi-style-grid" id="pi-style-grid" role="group" aria-labelledby="pi-style-grid-label">
             <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('pi.styles.load')}</div>
           </div>
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">${T('pi.room')} <span class="ap-label-hint">${T('img.room.hint')}</span></label>
-          <div class="pi-roomtype-grid" id="pi-roomtype-grid">
+          <label id="pi-roomtype-grid-label" class="ap-label">${T('pi.room')} <span class="ap-label-hint">${T('img.room.hint')}</span></label>
+          <div class="pi-roomtype-grid" id="pi-roomtype-grid" role="group" aria-labelledby="pi-roomtype-grid-label">
             <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
           </div>
         </div>
@@ -10081,41 +10081,41 @@ ${faro.navCta}
           <div class="pi-advanced-body">
 
             <div class="ap-field">
-              <label class="ap-label">${T('pi.furniture')} <span class="ap-label-hint">${T('pi.furniture.h')}</span></label>
-              <div class="pi-roomtype-grid" id="pi-furniture-grid">
+              <label id="pi-furniture-grid-label" class="ap-label">${T('pi.furniture')} <span class="ap-label-hint">${T('pi.furniture.h')}</span></label>
+              <div class="pi-roomtype-grid" id="pi-furniture-grid" role="group" aria-labelledby="pi-furniture-grid-label">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">${T('pi.walls')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
-              <div class="pi-roomtype-grid" id="pi-wallfinish-grid">
+              <label id="pi-wallfinish-grid-label" class="ap-label">${T('pi.walls')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
+              <div class="pi-roomtype-grid" id="pi-wallfinish-grid" role="group" aria-labelledby="pi-wallfinish-grid-label">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
-                <label class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">${T('img.wall.hint')}</span></label>
-                <div class="pi-color-grid" id="pi-wallcolor-grid"></div>
+                <label id="pi-wallcolor-grid-label" class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">${T('img.wall.hint')}</span></label>
+                <div class="pi-color-grid" id="pi-wallcolor-grid" role="group" aria-labelledby="pi-wallcolor-grid-label"></div>
                 <input type="text" id="pi-wallcolor-note" class="ap-input pi-color-note-input" maxlength="80" placeholder="${T('img.note.ph')}">
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">${T('pi.floor')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
-              <div class="pi-roomtype-grid" id="pi-floor-grid">
+              <label id="pi-floor-grid-label" class="ap-label">${T('pi.floor')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
+              <div class="pi-roomtype-grid" id="pi-floor-grid" role="group" aria-labelledby="pi-floor-grid-label">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">${T('pi.light')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
-              <div class="pi-roomtype-grid" id="pi-lighting-grid">
+              <label id="pi-lighting-grid-label" class="ap-label">${T('pi.light')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
+              <div class="pi-roomtype-grid" id="pi-lighting-grid" role="group" aria-labelledby="pi-lighting-grid-label">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">${T('pi.reno')} <span class="ap-label-hint">${T('pi.reno.h')}</span></label>
-              <div class="pi-roomtype-grid" id="pi-renovation-grid">
+              <label id="pi-renovation-grid-label" class="ap-label">${T('pi.reno')} <span class="ap-label-hint">${T('pi.reno.h')}</span></label>
+              <div class="pi-roomtype-grid" id="pi-renovation-grid" role="group" aria-labelledby="pi-renovation-grid-label">
                 <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
               </div>
               <div class="pi-honesty-note" id="pi-honesty-note" style="display:none">
@@ -10128,7 +10128,7 @@ ${faro.navCta}
         </details>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">${T('pi.extra')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
+          <label class="ap-label" for="pi-custom-prompt">${T('pi.extra')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
           <textarea id="pi-custom-prompt" class="ap-textarea" rows="2" maxlength="500" placeholder="Bv: behoud de open haard, gebruik warmere kleuren"></textarea>
         </div>
 
@@ -10139,8 +10139,8 @@ ${faro.navCta}
 
         <div class="pi-result-wrap" id="pi-result-wrap" style="display:none">
           <div class="ap-field">
-            <label class="ap-label">${T('pi.result')} <span class="ap-label-hint">${T('pi.slider')}</span></label>
-            <div class="pi-compare-stage" id="pi-compare-stage">
+            <label id="pi-compare-stage-label" class="ap-label">${T('pi.result')} <span class="ap-label-hint">${T('pi.slider')}</span></label>
+            <div class="pi-compare-stage" id="pi-compare-stage" role="group" aria-labelledby="pi-compare-stage-label">
               <img class="pi-compare-img" id="pi-compare-before" alt="${T('img.before.alt')}">
               <img class="pi-compare-img pi-compare-after" id="pi-compare-after" alt="Na (AI-visualisatie)">
               <div class="pi-compare-tag before">${T('pi.before')}</div>
@@ -10157,8 +10157,8 @@ ${faro.navCta}
         </div>
 
         <div class="ap-field" style="margin-top:14px">
-          <label class="ap-label">${T('pi.earlier')}</label>
-          <div id="pi-gallery"><div class="pi-empty">${T('dash.loading')}</div></div>
+          <label id="pi-gallery-label" class="ap-label">${T('pi.earlier')}</label>
+          <div id="pi-gallery" role="group" aria-labelledby="pi-gallery-label"><div class="pi-empty">${T('dash.loading')}</div></div>
         </div>
       </div>
     </main>
@@ -10190,7 +10190,7 @@ ${faro.navCta}
 
             <!-- AI Name -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-name">
                 ${T('ap.name')}
                 <span class="ap-label-hint">${T('ap.name.hint')}</span>
               </label>
@@ -10247,7 +10247,7 @@ ${faro.navCta}
 
             <!-- AI Learned Patterns — wekelijks automatisch ge-update -->
             <div class="ap-field" id="ap-learned-field" style="display:none">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-learned">
                 ${T('ap.learned')}
                 <span class="ap-label-hint">${T('ap.learned.h')}</span>
               </label>
@@ -10260,7 +10260,7 @@ ${faro.navCta}
 
             <!-- Website -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-website">
                 ${T('ap.website')}
                 <span class="ap-label-hint">${T('ap.website.h')}</span>
               </label>
@@ -10270,7 +10270,7 @@ ${faro.navCta}
 
             <!-- Address -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-address">
                 ${T('ap.address')}
                 <span class="ap-label-hint">${T('ap.address.h')}</span>
               </label>
@@ -10284,7 +10284,7 @@ ${faro.navCta}
 
             <!-- Notifications: WhatsApp number + Email -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-notify-phone">
                 ${T('ap.notifWa')}
                 <span class="ap-label-hint">${T('ap.notifWa.h')}</span>
               </label>
@@ -10293,7 +10293,7 @@ ${faro.navCta}
             </div>
 
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-report-email">
                 ${T('ap.notifMail')}
                 <span class="ap-label-hint">${T('ap.notifMail.h')}</span>
               </label>
@@ -10317,7 +10317,7 @@ ${faro.navCta}
 
             <!-- Callback Window (only shown if callback selected) -->
             <div class="ap-field" id="ap-callback-window-wrap" style="display:none;">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-callback-window">
                 ${T('ap.callback')}
                 <span class="ap-label-hint">${T('ap.callback.h')}</span>
               </label>
@@ -10333,7 +10333,7 @@ ${faro.navCta}
 
             <!-- Language -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-lang-select">
                 ${T('ap.lang')}
                 <span class="ap-label-hint">${T('ap.lang.h')}</span>
               </label>
@@ -10348,7 +10348,7 @@ ${faro.navCta}
 
             <!-- Working Hours -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-hours">
                 ${T('ap.hours')}
                 <span class="ap-label-hint">${T('ap.hours.h')}</span>
               </label>
@@ -10362,7 +10362,7 @@ ${faro.navCta}
 
             <!-- Trust Badges -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-badges">
                 ${T('ap.badges')}
                 <span class="ap-label-hint">${T('ap.badges.h')}</span>
               </label>
@@ -10401,7 +10401,7 @@ ${faro.navCta}
 
             <!-- Brand Color -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-color">
                 ${T('ap.color')}
                 <span class="ap-label-hint">${T('ap.color.h')}</span>
               </label>
@@ -10414,7 +10414,7 @@ ${faro.navCta}
 
             <!-- Form Intro Message -->
             <div class="ap-field">
-              <label class="ap-label">
+              <label class="ap-label" for="ap-form-intro">
                 ${T('ap.formText')}
                 <span class="ap-label-hint">${T('ap.formText.h')}</span>
               </label>
@@ -11740,10 +11740,10 @@ ${faro.dock}
     <div class="founder-modal-overlay" id="pipe-modal-overlay">
       <div class="founder-modal">
         <h3 id="pipe-modal-title">Prospect toevoegen</h3>
-        <div class="founder-modal-field"><label>Naam *</label><input id="pm-naam" type="text" placeholder="Jan Janssen"></div>
-        <div class="founder-modal-field"><label>Bedrijf</label><input id="pm-bedrijf" type="text" placeholder="Acme BV"></div>
-        <div class="founder-modal-field"><label>${T('fm.email')}</label><input id="pm-email" type="email" placeholder="jan@acme.be"></div>
-        <div class="founder-modal-field"><label>Fase</label>
+        <div class="founder-modal-field"><label for="pm-naam">Naam *</label><input id="pm-naam" type="text" placeholder="Jan Janssen"></div>
+        <div class="founder-modal-field"><label for="pm-bedrijf">Bedrijf</label><input id="pm-bedrijf" type="text" placeholder="Acme BV"></div>
+        <div class="founder-modal-field"><label for="pm-email">${T('fm.email')}</label><input id="pm-email" type="email" placeholder="jan@acme.be"></div>
+        <div class="founder-modal-field"><label for="pm-fase">Fase</label>
           <select id="pm-fase">
             <option>Gecontacteerd</option>
             <option>Geïnteresseerd</option>
@@ -11752,7 +11752,7 @@ ${faro.dock}
             <option>Verloren</option>
           </select>
         </div>
-        <div class="founder-modal-field"><label>Notities</label><textarea id="pm-notities" placeholder="Aantekeningen..."></textarea></div>
+        <div class="founder-modal-field"><label for="pm-notities">Notities</label><textarea id="pm-notities" placeholder="Aantekeningen..."></textarea></div>
         <div class="founder-modal-actions">
           <button class="founder-modal-delete" id="pm-delete-btn" style="display:none" onclick="deletePipeRecord()">${T('ap.remove')}</button>
           <button class="founder-modal-cancel" onclick="closePipeModal()">Annuleren</button>
@@ -11765,10 +11765,10 @@ ${faro.dock}
     <div class="founder-modal-overlay" id="goal-modal-overlay">
       <div class="founder-modal">
         <h3 id="goal-modal-title">Doel toevoegen</h3>
-        <div class="founder-modal-field"><label>Doel *</label><input id="gm-doel" type="text" placeholder="5 betalende klanten"></div>
-        <div class="founder-modal-field"><label>Target (getal)</label><input id="gm-target" type="number" placeholder="5" min="0"></div>
-        <div class="founder-modal-field"><label>Eenheid</label><input id="gm-eenheid" type="text" placeholder="klanten / € MRR / leads"></div>
-        <div class="founder-modal-field"><label>Deadline</label><input id="gm-deadline" type="date"></div>
+        <div class="founder-modal-field"><label for="gm-doel">Doel *</label><input id="gm-doel" type="text" placeholder="5 betalende klanten"></div>
+        <div class="founder-modal-field"><label for="gm-target">Target (getal)</label><input id="gm-target" type="number" placeholder="5" min="0"></div>
+        <div class="founder-modal-field"><label for="gm-eenheid">Eenheid</label><input id="gm-eenheid" type="text" placeholder="klanten / € MRR / leads"></div>
+        <div class="founder-modal-field"><label for="gm-deadline">Deadline</label><input id="gm-deadline" type="date"></div>
         <div class="founder-modal-actions">
           <button class="founder-modal-delete" id="gm-delete-btn" style="display:none" onclick="deleteGoalRecord()">${T('ap.remove')}</button>
           <button class="founder-modal-cancel" onclick="closeGoalModal()">Annuleren</button>
