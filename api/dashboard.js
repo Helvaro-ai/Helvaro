@@ -23002,11 +23002,8 @@ function populateFormStats() {
 
   const now = new Date();
   const weekStart = new Date(); weekStart.setDate(now.getDate() - 7);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const prevWeekStart = new Date(); prevWeekStart.setDate(now.getDate() - 14);
   const prevWeekEnd   = new Date(); prevWeekEnd.setDate(now.getDate() - 7);
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevMonthEnd   = monthStart;
 
   const cntInRange = (a, b) => leads.filter(l => {
     if (!l.datum) return false;
@@ -23014,10 +23011,37 @@ function populateFormStats() {
     return d >= a && d < b;
   }).length;
 
+  /* "Deze maand" hoort hetzelfde te betekenen als op de server. Die rekent in
+     Europe/Brussels; dit scherm rekende in de tijdzone van de laptop. Zolang
+     de makelaar thuis zit is dat hetzelfde, maar rond de maandwisseling
+     vanuit een ander land niet -- en dan geeft dezelfde applicatie twee
+     getallen voor hetzelfde woord. Dus hier ook een maandsleutel. */
+  const maandVan = (dt) => {
+    try {
+      const p = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit'
+      }).formatToParts(dt);
+      const j = p.find(x => x.type === 'year'), m = p.find(x => x.type === 'month');
+      if (!j || !m) throw new Error('x');
+      return j.value + '-' + m.value;
+    } catch (e) {
+      return dt.getUTCFullYear() + '-' + String(dt.getUTCMonth() + 1).padStart(2, '0');
+    }
+  };
+  const cntInMaand = (sleutel) => leads.filter(l => {
+    if (!l.datum) return false;
+    const d = new Date(l.datum);
+    return !isNaN(d.getTime()) && maandVan(d) === sleutel;
+  }).length;
+
+  const dezeMaand   = maandVan(now);
+  const vorigeMaand = maandVan(new Date(Date.UTC(
+    Number(dezeMaand.slice(0, 4)), Number(dezeMaand.slice(5, 7)) - 1, 0, 12, 0, 0)));
+
   const week        = cntInRange(weekStart, new Date(now.getTime() + 86400000));
   const prevWeek    = cntInRange(prevWeekStart, prevWeekEnd);
-  const month       = cntInRange(monthStart, new Date(now.getTime() + 86400000));
-  const prevMonth   = cntInRange(prevMonthStart, prevMonthEnd);
+  const month       = cntInMaand(dezeMaand);
+  const prevMonth   = cntInMaand(vorigeMaand);
   const qualified   = leads.filter(l => l.qualified).length;
   const convPct     = total > 0 ? Math.round((qualified / total) * 100) : 0;
 
@@ -23611,8 +23635,6 @@ async function loadFounderData(force) {
       const d = await r.json();
       const clients = d.clients || [];
       founderState.clients = clients.length;
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       let totalLeads = 0, newLeads = 0, qualLeads = 0;
       clients.forEach(c => {
         totalLeads += (c.totalLeads || 0);

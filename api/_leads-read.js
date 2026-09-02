@@ -106,16 +106,55 @@ function mapLead(r) {
   };
 }
 
+/* ── In welke maand valt dit? ───────────────────────────────────────────────
+ * Deze code draait op Vercel, en daar staat de klok op UTC. De makelaar zit in
+ * Belgie, twee uur verderop in de zomer. `d.getMonth()` gaf dus de maand in
+ * UTC, en een lead die om 01:30 's nachts op 1 september binnenkwam telde mee
+ * in AUGUSTUS -- 31 augustus 23:30 UTC. Elke maandgrens verschoof zo een paar
+ * uur aan leads naar de verkeerde kant.
+ *
+ * Erger: het dashboard rekent "deze maand" OOK zelf uit, in de browser, dus in
+ * de tijdzone van de laptop. Server en scherm gaven daardoor rond elke
+ * maandwisseling een ander getal voor hetzelfde woord. Dezelfde soort fout als
+ * bij de bedragen: twee plekken die hetzelfde denken te berekenen.
+ *
+ * Intl doet het tijdzonewerk, inclusief zomertijd. Valt de zone weg (oude
+ * runtime, onbekende naam), dan vallen we terug op UTC: dan is het getal weer
+ * zoals het was, en niet stuk.
+ */
+const STANDAARD_ZONE = 'Europe/Brussels';
+
+function maandSleutel(d, zone) {
+  if (!(d instanceof Date) || isNaN(d.getTime())) return null;
+  try {
+    const delen = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, year: 'numeric', month: '2-digit',
+    }).formatToParts(d);
+    const jaar  = delen.find((p) => p.type === 'year');
+    const maand = delen.find((p) => p.type === 'month');
+    if (!jaar || !maand) throw new Error('geen jaar/maand');
+    return jaar.value + '-' + maand.value;
+  } catch (e) {
+    /* Onbekende zone of een runtime zonder volledige ICU. Liever UTC dan geen
+       getal: de telling klopt dan op alle dagen behalve de maandgrens. */
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+  }
+}
+
 /** The dashboard's stat block. Same arithmetic, same rounding, same keys. */
-function computeStats(leads) {
-  const now = new Date();
+function computeStats(leads, opties) {
+  const zone = (opties && opties.zone) || STANDAARD_ZONE;
+  /* `nu` is injecteerbaar om dezelfde reden als in _faro/rapport.js: zonder
+     die naad kan een test de maandgrens niet aanwijzen, en dan is een test die
+     "deze maand" heet groen op 2 september en bewijst hij niets. */
+  const nuSleutel = maandSleutel((opties && opties.nu) || new Date(), zone);
   const total = leads.length;
   const qualified = leads.filter((l) => l.qualified).length;
   const booked = leads.filter((l) => l.afspraakGeboekt).length;
   const conversionRate = total > 0 ? Math.round((booked / total) * 1000) / 10 : 0;
   const thisMonth = leads.filter((l) => {
-    const d = new Date(l.datum);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    const s = maandSleutel(new Date(l.datum), zone);
+    return s !== null && s === nuSleutel;
   }).length;
   const times = leads.map((l) => l.reactietijd).filter((v) => v > 0);
   const avgResponseTime = times.length > 0
@@ -187,6 +226,8 @@ async function fetchLeads(projectCode, { token, baseId, maxPages = 6 } = {}) {
 }
 
 module.exports = {
+  maandSleutel,
+  STANDAARD_ZONE,
   LEADS_TABLE,
   FIELD_CREATED,
   FIELD_PROJECT,
