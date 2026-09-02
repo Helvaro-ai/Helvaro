@@ -142,8 +142,12 @@ console.log('\n  het overschrijft niets van wat er al stond');
 console.log('\n  het is ook echt aangesloten');
 ck('bindActivatable roept hvMakeActivatable aan bij het opstarten',
   /bindActivatable\(\) \{[\s\S]*?hvMakeActivatable\(document\);/.test(html), null);
-ck('en kijkt naar wat er later bij komt',
-  /new MutationObserver\([\s\S]{0,600}?\.observe\(document\.body/.test(html), null);
+/* Twee losse feiten, niet een regex met een afstandsgrens ertussen: die brak
+   zodra er een commentaarblok bijkwam, terwijl er functioneel niets veranderde.
+   Een test die omvalt van een uitleg erbij, bewaakt niet wat hij beweert. */
+ck('en kijkt naar wat er later bij komt', /new MutationObserver\(/.test(html), null);
+ck('over de hele body, ook diep genest',
+  /\.observe\(document\.body, \{ childList: true, subtree: true \}\)/.test(html), null);
 ck('en plant dat werk met een timer, niet met requestAnimationFrame',
   /setTimeout\(verwerk, 0\);/.test(html) && !/requestAnimationFrame\)\(verwerk/.test(html), null);
 ck('de toetsafhandeling haakt aan data-hv-act, niet aan de rol',
