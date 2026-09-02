@@ -62,6 +62,21 @@ ck('Google ontkoppelen meldt een fout in plaats van succes',
    succes. Hij mag niet terugkomen. */
 ck('en de lege catch is weg', html.indexOf('} catch (e) {}\n  loadGcalStatus();') === -1, null);
 
+/* ── Kapot is niet hetzelfde als vol ───────────────────────────────────────
+   Als het ophalen van de vrije tijden mislukte, zette de code slots op [] en
+   toonde het scherm "Geen vrije tijden op 12 september". Niet te onderscheiden
+   van een echt volle agenda -- dus zoekt de makelaar niet verder en gaat de
+   bezichtiging niet door. De duurste soort stille fout die er is: hij kost
+   omzet en niemand ziet ooit een foutmelding. */
+console.log('\n— een mislukte ophaalactie leest niet als een volle agenda —');
+ck('er is een aparte foutstand naast "leeg"', /calBookState\.fout/.test(html), null);
+ck('de catch zet die stand', /calBookState\.fout    = true;/.test(html), null);
+ck('en een nieuwe poging wist hem weer', /calBookState\.fout    = false;/.test(html), null);
+ck('het scherm zegt dat het NIET betekent dat je vol zit',
+   /cal\.slotsFout/.test(html), null);
+ck('en biedt opnieuw proberen aan, niet "volgende dag"',
+   /onclick="fetchCalSlots\(\)"/.test(html), null);
+
 console.log('\n— een nieuwe klant krijgt uitleg, geen felicitatie —');
 /* Niet meer op "de AI" pinnen: het product noemt zichzelf niet zo meer, het
    heet "je assistent" (of Faro). Wat hier bewaakt moet worden is dat een

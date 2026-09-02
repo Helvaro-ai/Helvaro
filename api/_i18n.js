@@ -1337,6 +1337,8 @@ const TEKST = {
   'faro.rap.adv.geenAfspraak': { nl: '{n} gekwalificeerde leads hebben nog geen afspraak. Die zou ik deze week zelf bellen.', fr: "{n} prospects qualifiés n'ont pas encore de rendez-vous. Je les appellerais moi-même cette semaine.", en: "{n} qualified leads still have no appointment. I'd call those myself this week.", de: '{n} qualifizierte Leads haben noch keinen Termin. Die würde ich diese Woche selbst anrufen.' },
   'faro.rap.adv.beter': { nl: 'Je boekte {n} afspraken meer dan vorige week.', fr: 'Vous avez réservé {n} rendez-vous de plus que la semaine dernière.', en: 'You booked {n} more appointments than last week.', de: 'Sie haben {n} Termine mehr gebucht als in der Vorwoche.' },
   'stat.geendata': { nl: 'nog geen data', fr: 'pas encore de données', en: 'no data yet', de: 'noch keine Daten' },
+  'cal.slotsFout': { nl: 'We konden je vrije tijden niet ophalen. Dat betekent niet dat je vol zit — probeer het even opnieuw.', fr: 'Impossible de récupérer vos disponibilités. Cela ne veut pas dire que votre agenda est complet — réessayez.', en: "We couldn't load your available times. That doesn't mean you're fully booked — try again.", de: 'Ihre freien Zeiten konnten nicht geladen werden. Das heißt nicht, dass Sie ausgebucht sind — versuchen Sie es erneut.' },
+  'cal.slotsOpnieuw': { nl: 'Opnieuw proberen', fr: 'Réessayer', en: 'Try again', de: 'Erneut versuchen' },
   'lang.label':          { nl: 'Taal',      fr: 'Langue',    en: 'Language',  de: 'Sprache' },
   'lang.sub':            { nl: 'De taal van dit dashboard. Verandert niets aan de taal waarin je assistent met leads praat.',
                            fr: 'La langue de ce tableau de bord. Ne change rien à la langue utilisée par votre assistant avec les prospects.',

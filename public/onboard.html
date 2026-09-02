@@ -228,7 +228,7 @@
       <div class="field">
         <label>Website <span class="opt">(optioneel — sterk aangeraden)</span></label>
         <input id="w-website" type="url" placeholder="https://www.acme.be" autocomplete="url">
-        <div class="hint">De AI leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
+        <div class="hint">Je assistent leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
       </div>
 
       <div class="field">
@@ -259,7 +259,7 @@
           <option value="finance">Financieel / Boekhouding</option>
           <option value="other">Anders</option>
         </select>
-        <div class="hint">Helpt de AI om je leads beter te kwalificeren.</div>
+        <div class="hint">Helpt je assistent om je leads beter te kwalificeren.</div>
       </div>
 
       <div class="field">
@@ -269,7 +269,7 @@
           <label class="pill-opt"><input type="radio" name="w-lang" value="fr"> <span>Français</span></label>
           <label class="pill-opt"><input type="radio" name="w-lang" value="en"> <span>English</span></label>
         </div>
-        <div class="hint">De AI antwoordt automatisch in deze taal, ongeacht wat de lead schrijft.</div>
+        <div class="hint">Je assistent antwoordt automatisch in deze taal, ongeacht wat de lead schrijft.</div>
       </div>
 
       <div class="err-box" id="err-1"></div>
@@ -282,10 +282,10 @@
     <div class="step" id="step-2">
       <div class="step-label">Stap 2 van 6</div>
       <h2>Jouw WhatsApp-persoonlijkheid</h2>
-      <p class="sub">Dit is de "stem" waarmee je AI met leads praat op WhatsApp. Tip: kies een echte medewerkersnaam — leads voelen dat ze met een mens chatten.</p>
+      <p class="sub">Dit is de "stem" waarmee je assistent met leads praat op WhatsApp. Tip: kies een echte medewerkersnaam — leads voelen dat ze met een mens chatten.</p>
 
       <div class="field">
-        <label>AI naam <span class="opt">(optioneel)</span></label>
+        <label>Naam van je assistent <span class="opt">(optioneel)</span></label>
         <input id="w-aiName" type="text" placeholder="Sara De Vos" maxlength="60">
         <div class="hint">Voorbeeld: <b>Sara</b>, <b>Tim Janssen</b>, <b>Lisa</b>. Leeg = "Mathis Willems" (standaard).</div>
       </div>
@@ -293,7 +293,7 @@
       <div class="field">
         <label>Tone-of-voice &amp; instructies <span class="opt">(optioneel)</span></label>
         <textarea id="w-aiTone" maxlength="600" placeholder="Bv: Praat informeel en gebruik 'je' in plaats van 'u'. Stuur nooit exacte prijzen in WhatsApp, verwijs naar een gesprek. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon."></textarea>
-        <div class="hint">Do's &amp; don'ts, sales-aanpak, schrijfstijl. De AI volgt deze regels in élk gesprek.</div>
+        <div class="hint">Do's &amp; don'ts, sales-aanpak, schrijfstijl. Je assistent volgt deze regels in élk gesprek.</div>
         <div class="counter" id="cnt-aiTone">0 / 600</div>
       </div>
 
@@ -308,13 +308,13 @@
     <div class="step" id="step-3">
       <div class="step-label">Stap 3 van 6</div>
       <h2>Hoe je werkt</h2>
-      <p class="sub">Bepaalt hoe de AI leads praktisch afhandelt: wanneer, hoe geboekt wordt, en wie een seintje krijgt.</p>
+      <p class="sub">Bepaalt hoe je assistent leads praktisch afhandelt: wanneer, hoe geboekt wordt, en wie een seintje krijgt.</p>
 
       <div class="field">
         <label>Werkuren <span class="opt">(optioneel)</span></label>
         <input id="w-hours" type="text" placeholder="ma-vr 9-18">
         <div class="hint">
-          Format: <code>ma-vr 9-18</code>. De AI is zelf 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
+          Format: <code>ma-vr 9-18</code>. Je assistent is zelf 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
           <br>Voorbeelden:
           <button type="button" class="chip" onclick="document.getElementById('w-hours').value='ma-vr 9-18'">ma-vr 9-18</button>
           <button type="button" class="chip" onclick="document.getElementById('w-hours').value='ma-za 8-20'">ma-za 8-20</button>
@@ -325,11 +325,11 @@
       <div class="field">
         <label>Wat gebeurt er als een lead gekwalificeerd is?</label>
         <div class="pill-row" id="w-booking-row">
-          <label class="pill-opt checked"><input type="radio" name="w-booking" value="in_chat" checked> <span>AI boekt direct in WhatsApp</span></label>
+          <label class="pill-opt checked"><input type="radio" name="w-booking" value="in_chat" checked> <span>Je assistent boekt direct in WhatsApp</span></label>
           <label class="pill-opt"><input type="radio" name="w-booking" value="callback"> <span>Een collega belt terug</span></label>
         </div>
-        <div class="hint" id="hint-in_chat">De AI stelt zelf een concreet moment voor en boekt het na bevestiging in je agenda. Zorg dat je werkuren hierboven zijn ingevuld.</div>
-        <div class="hint" id="hint-callback" style="display:none">De AI zegt tegen de lead dat een collega contact opneemt. Jij krijgt een melding op je notificatie-nummer hieronder.</div>
+        <div class="hint" id="hint-in_chat">Je assistent stelt zelf een concreet moment voor en boekt het na bevestiging in je agenda. Zorg dat je werkuren hierboven zijn ingevuld.</div>
+        <div class="hint" id="hint-callback" style="display:none">Je assistent zegt tegen de lead dat een collega contact opneemt. Jij krijgt een melding op je notificatie-nummer hieronder.</div>
       </div>
 
       <div class="field" id="callback-window-wrap" style="display:none">
@@ -362,11 +362,11 @@
       </div>
     </div>
 
-    <!-- STEP 4 — Vertel de AI over je bedrijf ────────────────────────────── -->
+    <!-- STEP 4 — Vertel je assistent over je bedrijf ────────────────────────────── -->
     <div class="step" id="step-4">
       <div class="step-label">Stap 4 van 6</div>
-      <h2>Vertel de AI over je bedrijf</h2>
-      <p class="sub">Hoe meer je hier zet, hoe beter je AI vanaf dag 1 écht kan antwoorden — in plaats van "dat weet ik niet, ik vraag het na". Neem de tijd, dit is het belangrijkste stuk.</p>
+      <h2>Vertel je assistent over je bedrijf</h2>
+      <p class="sub">Hoe meer je hier zet, hoe beter je assistent vanaf dag 1 écht kan antwoorden — in plaats van "dat weet ik niet, ik vraag het na". Neem de tijd, dit is het belangrijkste stuk.</p>
 
       <div class="field">
         <label>Diensten &amp; prijzen <span class="opt">(optioneel, sterk aangeraden)</span></label>
@@ -387,12 +387,12 @@
       </div>
 
       <div class="field">
-        <label>Wat mag de AI NOOIT zeggen? <span class="opt">(optioneel)</span></label>
+        <label>Wat mag je assistent NOOIT zeggen? <span class="opt">(optioneel)</span></label>
         <textarea id="w-bizNeverSay" maxlength="400" placeholder="Bv: Nooit een definitieve prijs beloven zonder plaatsbezoek. Nooit zeggen dat we 'goedkoper zijn dan iedereen'. Nooit een startdatum garanderen."></textarea>
         <div class="counter" id="cnt-bizNeverSay">0 / 400</div>
       </div>
 
-      <div class="info-box">Dit alles wordt samengevoegd met je AI-instructies uit stap 2 en gaat rechtstreeks naar de AI — beschikbaar vanaf het allereerste WhatsApp-gesprek.</div>
+      <div class="info-box">Dit alles wordt samengevoegd met je instructies uit stap 2 en gaat rechtstreeks naar je assistent — beschikbaar vanaf het allereerste WhatsApp-gesprek.</div>
 
       <div class="err-box" id="err-4"></div>
       <div class="btn-row">
@@ -429,7 +429,7 @@
       </div>
 
       <div class="field">
-        <label>Foto van je AI-persoon <span class="opt">(optioneel — URL)</span></label>
+        <label>Foto van je assistent <span class="opt">(optioneel — URL)</span></label>
         <input id="w-aiPhotoUrl" type="url" placeholder="https://...">
         <div class="hint">Link naar een foto (https). Verschijnt als avatar op je lead-form.</div>
       </div>
@@ -489,7 +489,7 @@
     <div class="cred-box" id="form-link-box"></div>
 
     <div class="info-box">
-      <b>Belangrijk om te weten:</b> je AI kan vanaf nu meteen WhatsAppen met nieuwe leads. Maar berichten die buiten het eerste bericht en het eerste 24-uursvenster gaan — zoals afspraakbevestigingen, herinneringen, of opvolgberichten na een stille periode — moeten via een door <b>Meta goedgekeurde berichtsjabloon</b> verlopen. Dat is een echte goedkeuringsstap bij Meta (meestal enkele dagen), geen instant-proces. Helvaro regelt dit met je op — dit gebeurt niet automatisch bij het aanmaken van je account.
+      <b>Belangrijk om te weten:</b> je assistent kan vanaf nu meteen WhatsAppen met nieuwe leads. Maar berichten die buiten het eerste bericht en het eerste 24-uursvenster gaan — zoals afspraakbevestigingen, herinneringen, of opvolgberichten na een stille periode — moeten via een door <b>Meta goedgekeurde berichtsjabloon</b> verlopen. Dat is een echte goedkeuringsstap bij Meta (meestal enkele dagen), geen instant-proces. Helvaro regelt dit met je op — dit gebeurt niet automatisch bij het aanmaken van je account.
     </div>
 
     <button class="btn-enter" onclick="enterDashboard()">Open mijn dashboard →</button>
@@ -666,7 +666,7 @@
 
   function validateStep2() {
     setError('err-2', '');
-    if ($('w-aiName').value.trim().length > 60)  { setError('err-2', 'AI naam mag maximaal 60 tekens zijn.'); return false; }
+    if ($('w-aiName').value.trim().length > 60)  { setError('err-2', 'De naam mag maximaal 60 tekens zijn.'); return false; }
     if ($('w-aiTone').value.trim().length > 600) { setError('err-2', 'Tone-of-voice mag maximaal 600 tekens zijn.'); return false; }
     return true;
   }
@@ -728,7 +728,7 @@
 
   var SECTOR_LABELS = { real_estate: 'Vastgoed / Real Estate', dentist: 'Tandarts', lawyer: 'Advocaat / Juridisch', finance: 'Financieel / Boekhouding', other: 'Anders' };
   var LANG_LABELS   = { nl: 'Nederlands', fr: 'Français', en: 'English' };
-  var BOOKING_LABELS = { in_chat: 'AI boekt direct in WhatsApp', callback: 'Een collega belt terug' };
+  var BOOKING_LABELS = { in_chat: 'Je assistent boekt direct in WhatsApp', callback: 'Een collega belt terug' };
 
   function renderReview() {
     var sections = [
@@ -741,8 +741,8 @@
         ['Sector',       SECTOR_LABELS[$('w-sector').value] || ''],
         ['Taal',         LANG_LABELS[getLang()]]
       ]},
-      { title: 'De AI', rows: [
-        ['AI naam',      $('w-aiName').value.trim() || '(standaard — Mathis Willems)'],
+      { title: 'Je assistent', rows: [
+        ['Naam van je assistent',      $('w-aiName').value.trim() || '(standaard — Mathis Willems)'],
         ['Tone-of-voice', $('w-aiTone').value.trim() || '(geen extra)']
       ]},
       { title: 'Hoe je werkt', rows: [
@@ -752,7 +752,7 @@
         ['Notificatie WhatsApp', $('w-notifyPhone').value.trim() || '(geen)'],
         ['Rapport e-mail',  $('w-reportEmail').value.trim() || '(geen)']
       ]},
-      { title: 'Info voor de AI', rows: [
+      { title: 'Info voor je assistent', rows: [
         ['Diensten & prijzen', $('w-bizServices').value.trim()],
         ['FAQs',               $('w-bizFaqs').value.trim()],
         ['Onderscheid',        $('w-bizDifferent').value.trim()],
@@ -762,7 +762,7 @@
         ['Brand-kleur',   $('w-brandColor').value.trim() || '(standaard zand)'],
         ['Form-intro',    $('w-formIntro').value.trim() || '(automatisch)'],
         ['Trust badges',  $('w-trustBadges').value.trim() || '(standaard)'],
-        ['AI-foto URL',   $('w-aiPhotoUrl').value.trim() || '(geen)'],
+        ['Foto-URL',   $('w-aiPhotoUrl').value.trim() || '(geen)'],
         ['Welkomstbericht', $('w-autoReply').value.trim()]
       ]}
     ];

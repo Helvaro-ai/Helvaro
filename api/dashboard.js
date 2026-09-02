@@ -16837,6 +16837,11 @@ const calBookState = {
   selectedLead:  null,      // lead object
   slots:         [],
   loading:       false,
+  /* Ophalen mislukt is iets ANDERS dan niets vrij. Zonder dit onderscheid las
+     een mislukte fetch als "Geen vrije tijden op 12 september" -- en dan zoekt
+     de makelaar niet verder, want zijn agenda lijkt vol. Dat is de duurste
+     soort stille fout: hij kost een bezichtiging. */
+  fout:          false,
   bookName:      '',        // pre-fill for Calendly
   bookEmail:     '',        // pre-fill for Calendly
 };
@@ -16911,6 +16916,12 @@ function renderCalBookBody() {
   let slotsHtml;
   if (calBookState.loading) {
     slotsHtml = \`<div class="cb-slots"><div class="cb-slots-loading"><div class="cal-book-spinner-ring"></div> Beschikbare tijden laden...</div></div>\`;
+  } else if (calBookState.fout) {
+    /* Uitdrukkelijk NIET "geen vrije tijden": we weten het niet. */
+    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">
+      \${escHtml(tr('cal.slotsFout'))}
+      <button class="cb-empty-next" onclick="fetchCalSlots()">\${escHtml(tr('cal.slotsOpnieuw'))}</button>
+    </div></div>\`;
   } else if (calBookState.slots.length === 0) {
     slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">
       Geen vrije tijden op \${dateLbl}.
@@ -17034,6 +17045,7 @@ async function fetchCalSlots() {
   // appointments uit dezelfde dag.
   calBookState.loading = true;
   calBookState.slots   = [];
+  calBookState.fout    = false;
   renderCalBookBody();
 
   try {
@@ -17115,6 +17127,7 @@ async function fetchCalSlots() {
     console.error('[fetchCalSlots]', e);
     calBookState.loading = false;
     calBookState.slots   = [];
+    calBookState.fout    = true;
     renderCalBookBody();
   }
 }
