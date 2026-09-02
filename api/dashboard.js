@@ -13489,7 +13489,7 @@ function handleAuthExpired() {
   }
   if (_authExpiredHandled) return;
   _authExpiredHandled = true;
-  try { toast('Je sessie is verlopen. Log opnieuw in', 'info'); } catch (e) {}
+  try { toast(tr('tst.sessieVerlopen'), 'info'); } catch (e) {}
   setTimeout(() => {
     try { clearSession(); } catch (e) {}
     try { sessionStorage.removeItem('hv-setup-checked'); } catch (e) {}
@@ -13634,7 +13634,7 @@ function exportCSV() {
       a.click();
       a.remove();
       URL.revokeObjectURL(burl);
-      toast('CSV-bestand is gedownload', 'success');
+      toast(tr('tst.csvGedownload'), 'success');
     })
     .catch(err => toast(hvFoutZin(err), 'error'))
     .finally(() => { if (btn) { btn.disabled = false; btn.style.opacity = ''; } });
@@ -13800,7 +13800,7 @@ async function refreshData(skipFetch = false) {
               <div class="followup-item-meta">\${escHtml(bron)}</div>
             </div>
             <span class="followup-item-score">\${score}</span>
-            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escJs(l.telefoon||'')}').then(()=>toast('Nummer gekopieerd','success'))">
+            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escJs(l.telefoon||'')}').then(()=>toast(tr('tst.nummerGekopieerd'),'success'))">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/><path d="M1 1l22 22"/></svg>
               ${T('dash.form.copy')}
             </button>
@@ -14430,7 +14430,7 @@ function copyWelcomeEmail() {
     const orig = btn.innerHTML;
     btn.innerHTML = 'Gekopieerd. Plak in je mail';
     setTimeout(() => { btn.innerHTML = orig; }, 2500);
-  }).catch(() => toast('Kopiëren mislukt. Kopieer handmatig', 'error'));
+  }).catch(() => toast(tr('tst.kopierenHandmatig'), 'error'));
 }
 
 function copyNcField(srcId, btnId) {
@@ -14674,11 +14674,11 @@ async function loadResultaten(force) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({ mode: 'report-summary', period })
     });
-    if (!r.ok) { toast('Kan resultaten niet laden', 'error'); return; }
+    if (!r.ok) { toast(tr('tst.resultatenNiet'), 'error'); return; }
     const d = await r.json();
     renderResultaten(d);
   } catch (err) {
-    toast('Netwerkfout bij laden resultaten', 'error');
+    toast(tr('tst.netwerkResultaten'), 'error');
   }
 }
 
@@ -15111,7 +15111,7 @@ async function resendVerificationFromChecklist() {
 }
 async function sendVerificationEmailNow(btn) {
   const email = state.userEmail || '';
-  if (!email) { toast('Kon je e-mailadres niet vinden. Log opnieuw in.', 'error'); return; }
+  if (!email) { toast(tr('tst.emailNietGevonden'), 'error'); return; }
   const original = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Versturen...'; }
   try {
@@ -15128,7 +15128,7 @@ async function sendVerificationEmailNow(btn) {
       toast((d && d.error) || 'Versturen mislukt, probeer later opnieuw', 'error');
     }
   } catch (err) {
-    toast('Netwerkfout. Probeer later opnieuw', 'error');
+    toast(tr('tst.netwerkLater'), 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = original; }
   }
@@ -15266,7 +15266,7 @@ async function saveBusinessInfoFromChecklist() {
   const notDoes  = document.getElementById('chk-biz-notdoes').value.trim();
   const never    = document.getElementById('chk-biz-never').value.trim();
   if (!what && !goodLead && !notDoes && !never) {
-    toast('Vul minstens één veld in', 'error');
+    toast(tr('tst.vulEenVeld'), 'error');
     return;
   }
   const parts = [];
@@ -15291,8 +15291,8 @@ async function saveBusinessInfoFromChecklist() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({ mode: 'config-save', aiInstructions: combined })
     });
-    if (!r.ok) { toast('Opslaan mislukt, probeer opnieuw', 'error'); return; }
-    toast('Opgeslagen — je assistent gebruikt dit meteen', 'success');
+    if (!r.ok) { toast(tr('tst.opslaanOpnieuw'), 'error'); return; }
+    toast(tr('tst.opgeslagenDirect'), 'success');
     closeBusinessInfoModal();
     ['chk-biz-what', 'chk-biz-goodlead', 'chk-biz-notdoes', 'chk-biz-never'].forEach(function(id) {
       const el = document.getElementById(id);
@@ -15300,7 +15300,7 @@ async function saveBusinessInfoFromChecklist() {
     });
     loadOnboardingChecklist(true);
   } catch (err) {
-    toast('Netwerkfout. Probeer later opnieuw', 'error');
+    toast(tr('tst.netwerkLater'), 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = original; }
   }
@@ -15772,7 +15772,7 @@ document.getElementById('leads-tbody').addEventListener('click', function(e) {
       navigator.clipboard.writeText(phone).then(() => {
         const tip = copyBtn.querySelector('.copy-tooltip');
         if (tip) { tip.classList.add('show'); setTimeout(() => tip.classList.remove('show'), 1500); }
-      }).catch(() => toast('Kopiëren mislukt', 'error'));
+      }).catch(() => toast(tr('tst.kopierenMislukt'), 'error'));
     }
     return;
   }
@@ -15848,7 +15848,7 @@ function openPanel(lead) {
   const copyPhoneBtn = document.getElementById('panel-copy-phone');
   copyPhoneBtn.onclick = () => {
     if (lead.telefoon && navigator.clipboard) {
-      navigator.clipboard.writeText(lead.telefoon).then(() => toast('Telefoonnummer gekopieerd', 'success'));
+      navigator.clipboard.writeText(lead.telefoon).then(() => toast(tr('tst.telGekopieerd'), 'success'));
     }
   };
 
@@ -16176,7 +16176,7 @@ function openPanel(lead) {
         if (idx !== -1) state.leads[idx].status = newStatus;
         state.activeLead.status = newStatus;
         applyFilters();
-        toast('Status bijgewerkt', 'success');
+        toast(tr('tst.statusBijgewerkt'), 'success');
       } catch (err) {
         toast(hvFoutZin(err), 'error');
         statusSelect.value = lead.status; // revert on error
@@ -16210,7 +16210,7 @@ function openPanel(lead) {
           if (idx !== -1) state.leads[idx].verwachteWaarde = waarde;
           state.activeLead.verwachteWaarde = waarde;
         }
-        toast('Afspraak resultaat opgeslagen', 'success');
+        toast(tr('tst.afspraakResultaat'), 'success');
       } catch (err) {
         toast(hvFoutZin(err), 'error');
       } finally {
@@ -16258,7 +16258,7 @@ function openPanel(lead) {
         const idx = state.leads.findIndex(l => l.id === lead.id);
         if (idx !== -1) state.leads[idx].reden = reden;
         state.activeLead.reden = reden;
-        toast('Verliesreden opgeslagen', 'success');
+        toast(tr('tst.verliesreden'), 'success');
       } catch (err) {
         toast(hvFoutZin(err), 'error');
       }
@@ -16275,7 +16275,7 @@ function openPanel(lead) {
         const idx = state.leads.findIndex(l => l.id === lead.id);
         if (idx !== -1) state.leads[idx].verwachteWaarde = val;
         state.activeLead.verwachteWaarde = val;
-        toast('Deal waarde opgeslagen', 'success');
+        toast(tr('tst.dealWaarde'), 'success');
       } catch (err) {
         toast(hvFoutZin(err), 'error');
       }
@@ -16297,7 +16297,7 @@ function openPanel(lead) {
         if (inp) inp.value = '';
         const list = document.getElementById('panel-notes-list');
         if (list) list.innerHTML = renderNotesList(data.notes);
-        toast('Notitie toegevoegd', 'success');
+        toast(tr('tst.notitieToegevoegd'), 'success');
       } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
@@ -16335,7 +16335,7 @@ function openPanel(lead) {
         if (dateInp) dateInp.value = '';
         const list = document.getElementById('panel-tasks-list');
         if (list) list.innerHTML = renderTasksList(data.tasks);
-        toast('Taak toegevoegd', 'success');
+        toast(tr('tst.taakToegevoegd'), 'success');
       } catch (err) { toast(hvFoutZin(err), 'error'); }
     });
   }
@@ -16500,13 +16500,13 @@ async function loadReplySuggestions() {
       return;
     }
     const replies = Array.isArray(d.replies) ? d.replies : [];
-    if (!replies.length) { toast('Geen suggesties beschikbaar', 'info'); return; }
+    if (!replies.length) { toast(tr('tst.geenSuggesties'), 'info'); return; }
     chips.innerHTML = replies.map(text =>
       '<button type="button" class="panel-suggest-chip" onclick="useSuggestedReply(this)" data-text="' +
       escHtml(text).replace(/"/g, '&quot;') + '">' + escHtml(text) + '</button>'
     ).join('');
   } catch (err) {
-    toast('Netwerkfout. Probeer opnieuw', 'error');
+    toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -16532,7 +16532,7 @@ async function sendWhatsAppReply() {
   if (!input || !btn || !lead) return;
   const text = input.value.trim();
   if (!text) return;
-  if (!lead.telefoon) { toast('Lead heeft geen telefoonnummer', 'error'); return; }
+  if (!lead.telefoon) { toast(tr('tst.geenTelefoon'), 'error'); return; }
 
   btn.disabled = true;
   const original = btn.innerHTML;
@@ -16569,7 +16569,7 @@ async function sendWhatsAppReply() {
       ? 'Buiten het 24u-venster: een goedgekeurde template werd gestuurd (niet je eigen tekst)'
       : 'Verzonden via WhatsApp', d.viaTemplate ? 'info' : 'success');
   } catch (err) {
-    toast('Netwerkfout. Probeer opnieuw', 'error');
+    toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -16608,7 +16608,7 @@ async function toggleAiPause() {
       : 'Je assistent staat weer aan voor deze lead', 'success');
     openPanel(lead); // re-render the panel with the updated takeover bar
   } catch (err) {
-    toast('Netwerkfout. Probeer opnieuw', 'error');
+    toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -17290,7 +17290,7 @@ async function calBookConfirm() {
   const name  = (calBookState.bookName  || '').trim();
   const phone = (calBookState.bookPhone || '').trim();
   if (!name) {
-    toast('Vul een naam in', 'error');
+    toast(tr('tst.vulNaam'), 'error');
     return;
   }
   const btn = document.getElementById('cb-confirm-btn');
@@ -17315,7 +17315,7 @@ async function calBookConfirm() {
       if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
       return;
     }
-    toast('Afspraak geboekt', 'success');
+    toast(tr('tst.afspraakGeboekt'), 'success');
     closeCalBookModal();
     // Refresh calendar view
     calState.cache = {};   // invalideer cache
@@ -17525,7 +17525,7 @@ async function markAttendance(leadId, verschenen, gesloten, notitie) {
     await patchLead(leadId, fields);
     toast(verschenen ? 'Opgeslagen. Gekomen' : 'Opgeslagen. Niet gekomen', 'success');
   } catch(e) {
-    toast('Opslaan mislukt', 'error');
+    toast(tr('tst.opslaanMislukt'), 'error');
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
     return;
   }
@@ -18568,12 +18568,12 @@ async function pushAanzetten() {
     if (knop) { knop.disabled = false; knop.textContent = 'Aanzetten'; }
     pushRijBijwerken();
     if (Notification.permission === 'granted') {
-      toast('Meldingen staan aan op dit apparaat.', 'success');
+      toast(tr('tst.meldingenAan'), 'success');
     } else if (Notification.permission === 'denied') {
       /* Eerlijk zijn over wat er net gebeurd is. Dit is onomkeerbaar vanaf
          onze kant, en dat hoort de klant te weten in plaats van te denken dat
          de knop het niet deed. */
-      toast('Je browser blokkeert meldingen. Aan te zetten via het slotje naast het adres.', 'info');
+      toast(tr('tst.meldingenGeblokkeerd'), 'info');
     }
   });
 }
@@ -18780,7 +18780,7 @@ function wizardSluit(afgerond) {
      het eerste scherm dat iemand ziet. */
   wizardBewaar({ welcomeDone: true }).catch(function () {});
   if (afgerond) {
-    try { toast('Je assistent staat klaar.', 'success'); } catch (e) {}
+    try { toast(tr('tst.assistentKlaar'), 'success'); } catch (e) {}
     try { refreshData(false); } catch (e) {}
   }
 }
@@ -19739,7 +19739,7 @@ async function pipelineDrop(event, newStage) {
   } catch (e) {
     Object.assign(lead, prev);
     renderPipeline();
-    toast('Kon lead niet verplaatsen', 'error');
+    toast(tr('tst.leadNietVerplaatst'), 'error');
   }
 }
 
@@ -20390,7 +20390,7 @@ function renderAnalyse() {
 
 function exportPDF() {
   if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-    toast('PDF bibliotheek nog niet geladen, probeer opnieuw', 'error');
+    toast(tr('tst.pdfNietGeladen'), 'error');
     return;
   }
   const { jsPDF } = window.jspdf || window;
@@ -20488,7 +20488,7 @@ function exportPDF() {
   doc.text('Gegenereerd door Helvaro · ${SUPPORT_EMAIL_ATTR}', 14, 287);
 
   doc.save('helvaro-rapport-' + new Date().toISOString().slice(0,10) + '.pdf');
-  toast('PDF gedownload', 'success');
+  toast(tr('tst.pdfGedownload'), 'success');
 }
 
 /* ============================================================
@@ -20661,11 +20661,11 @@ function handlePhotoFile(input) {
   const file = input.files && input.files[0];
   if (!file) return;
   if (!/^image\\/(png|jpe?g|webp)$/i.test(file.type)) {
-    toast('Alleen PNG, JPG of WebP toegestaan', 'error');
+    toast(tr('tst.alleenPngJpg'), 'error');
     return;
   }
   if (file.size > 8 * 1024 * 1024) {
-    toast('Bestand te groot (max 8 MB). kies een kleinere foto', 'error');
+    toast(tr('tst.bestandTeGroot'), 'error');
     return;
   }
   const reader = new FileReader();
@@ -20687,20 +20687,20 @@ function handlePhotoFile(input) {
         let dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         if (dataUrl.length > AP_PHOTO_MAX_BYTES) dataUrl = canvas.toDataURL('image/jpeg', 0.70);
         if (dataUrl.length > AP_PHOTO_MAX_BYTES) dataUrl = canvas.toDataURL('image/jpeg', 0.55);
-        if (dataUrl.length > AP_PHOTO_MAX_BYTES) { toast('Foto te complex om te comprimeren. Kies een kleinere', 'error'); return; }
+        if (dataUrl.length > AP_PHOTO_MAX_BYTES) { toast(tr('tst.fotoTeComplex'), 'error'); return; }
         setPhotoPreview(dataUrl);
         const urlField = document.getElementById('ap-photo-url');
         if (urlField) urlField.value = '';  // file wins over external URL
-        toast('Foto klaar. Vergeet niet op te slaan', 'success');
+        toast(tr('tst.fotoKlaar'), 'success');
       } catch (err) {
         console.error(err);
-        toast('Kon de foto niet verwerken', 'error');
+        toast(tr('tst.fotoNietVerwerken'), 'error');
       }
     };
-    img.onerror = () => toast('Kon de foto niet laden', 'error');
+    img.onerror = () => toast(tr('tst.fotoNietLaden'), 'error');
     img.src = e.target.result;
   };
-  reader.onerror = () => toast('Bestand kon niet gelezen worden', 'error');
+  reader.onerror = () => toast(tr('tst.bestandNietGelezen'), 'error');
   reader.readAsDataURL(file);
 }
 
@@ -20735,7 +20735,7 @@ const AP_HOURS_PRESETS = {
 function clearLearnedPatterns() {
   const ta = document.getElementById('ap-learned');
   if (ta) ta.value = '';
-  toast('Wijziging geladen — klik Opslaan om te bevestigen', 'info');
+  toast(tr('tst.wijzigingGeladen'), 'info');
 }
 
 /* ============================================================
@@ -20849,7 +20849,7 @@ function selectPiStyle(el) {
   // was already chosen.
   if (piSelectedStyle === 'staging' && piSelectedFurniture === 'empty') {
     piSelectedFurniture = '';
-    toast('"Leeg" is niet te combineren met de stijl "Lege ruimte inrichten" — teruggezet op automatisch', 'info');
+    toast(tr('tst.leegConflict'), 'info');
   }
   renderPiFurnitureGrid();
 }
@@ -21009,8 +21009,8 @@ const PI_MAX_DATA_URL_LENGTH = 3 * 1024 * 1024 * 4 / 3; // ~4MB base64 text ≈ 
 function handlePiFile(input) {
   const file = input.files && input.files[0];
   if (!file) return;
-  if (!/^image\\/(png|jpe?g|webp)$/i.test(file.type)) { toast('Alleen PNG, JPG of WebP toegestaan', 'error'); return; }
-  if (file.size > 30 * 1024 * 1024) { toast('Bestand te groot om te verwerken. Kies een kleinere foto', 'error'); return; }
+  if (!/^image\\/(png|jpe?g|webp)$/i.test(file.type)) { toast(tr('tst.alleenPngJpg'), 'error'); return; }
+  if (file.size > 30 * 1024 * 1024) { toast(tr('tst.bestandTeGrootVerw'), 'error'); return; }
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -21028,18 +21028,18 @@ function handlePiFile(input) {
         let dataUrl = canvas.toDataURL('image/jpeg', 0.88);
         if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL('image/jpeg', 0.75);
         if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL('image/jpeg', 0.60);
-        if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) { toast('Foto te complex om te verwerken. Kies een eenvoudigere of kleinere foto', 'error'); return; }
+        if (dataUrl.length > PI_MAX_DATA_URL_LENGTH) { toast(tr('tst.fotoTeComplexVerw'), 'error'); return; }
         piUploadDataUrl = dataUrl;
         renderPiDropzone();
       } catch (err) {
         console.error(err);
-        toast('Kon de foto niet verwerken', 'error');
+        toast(tr('tst.fotoNietVerwerken'), 'error');
       }
     };
-    img.onerror = () => toast('Kon de foto niet laden', 'error');
+    img.onerror = () => toast(tr('tst.fotoNietLaden'), 'error');
     img.src = e.target.result;
   };
-  reader.onerror = () => toast('Bestand kon niet gelezen worden', 'error');
+  reader.onerror = () => toast(tr('tst.bestandNietGelezen'), 'error');
   reader.readAsDataURL(file);
 }
 
@@ -21138,15 +21138,15 @@ function togglePiGalleryImage(i) {
 
 function downloadPiGalleryImage(i) {
   const img = piGalleryList[i];
-  if (!img || !img.url) { toast('Afbeelding niet gevonden', 'error'); return; }
+  if (!img || !img.url) { toast(tr('tst.afbNietGevonden'), 'error'); return; }
   downloadImageUrl(img.url, piFilename(img, 'ai-beeld'));
 }
 
 async function generatePiImage() {
   const btn = document.getElementById('pi-generate-btn');
   if (!btn) return;
-  if (!piUploadDataUrl) { toast('Upload eerst een foto', 'error'); return; }
-  if (!piSelectedStyle) { toast('Kies een stijl', 'error'); return; }
+  if (!piUploadDataUrl) { toast(tr('tst.uploadEersteFoto'), 'error'); return; }
+  if (!piSelectedStyle) { toast(tr('tst.kiesStijl'), 'error'); return; }
 
   const original = btn.innerHTML;
   btn.disabled = true;
@@ -21186,7 +21186,7 @@ async function generatePiImage() {
       return;
     }
     const img = d.image;
-    if (!img || !img.url) { toast('AI gaf geen beeld terug', 'error'); return; }
+    if (!img || !img.url) { toast(tr('tst.beeldGeen'), 'error'); return; }
 
     piLastResult = { image: img, sourceDataUrl: sourceDataUrlAtRequestTime };
 
@@ -21196,10 +21196,10 @@ async function generatePiImage() {
     renderPiCompare(sourceDataUrlAtRequestTime, img.url);
     if (resultLabel) resultLabel.textContent = img.aiLabel || '';
 
-    toast('AI-beeld gegenereerd', 'success');
+    toast(tr('tst.beeldKlaar'), 'success');
     loadPiGallery();
   } catch (err) {
-    toast('Netwerkfout. Probeer opnieuw', 'error');
+    toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = original;
@@ -21260,12 +21260,12 @@ async function downloadImageUrl(url, filename) {
     setTimeout(function () { URL.revokeObjectURL(objUrl); }, 4000);
   } catch (err) {
     window.open(url, '_blank');
-    toast('Automatisch downloaden lukte niet — afbeelding geopend in een nieuw tabblad', 'info');
+    toast(tr('tst.autoDownloadNiet'), 'info');
   }
 }
 
 function downloadPiResult() {
-  if (!piLastResult || !piLastResult.image || !piLastResult.image.url) { toast('Geen AI-beeld om te downloaden', 'error'); return; }
+  if (!piLastResult || !piLastResult.image || !piLastResult.image.url) { toast(tr('tst.beeldGeenDl'), 'error'); return; }
   downloadImageUrl(piLastResult.image.url, piFilename(piLastResult.image, 'ai-beeld'));
 }
 
@@ -21301,15 +21301,15 @@ function urlToDataURL(url) {
 // filled, always-visible banner — never a caption so small it could be
 // missed — matching the same "never buried" rule as the on-screen badge.
 async function downloadPiComparePDF() {
-  if (!piLastResult || !piLastResult.image || !piLastResult.image.url) { toast('Geen AI-beeld om te exporteren', 'error'); return; }
+  if (!piLastResult || !piLastResult.image || !piLastResult.image.url) { toast(tr('tst.beeldGeenExp'), 'error'); return; }
   if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-    toast('PDF bibliotheek nog niet geladen, probeer opnieuw', 'error');
+    toast(tr('tst.pdfNietGeladen'), 'error');
     return;
   }
   const img = piLastResult.image;
   const beforeDataUrl = piLastResult.sourceDataUrl;
   if (!beforeDataUrl) {
-    toast('Originele foto niet meer beschikbaar voor vergelijking. Download het AI-beeld apart.', 'error');
+    toast(tr('tst.origineelWeg'), 'error');
     return;
   }
 
@@ -21317,7 +21317,7 @@ async function downloadPiComparePDF() {
   try {
     afterDataUrl = await urlToDataURL(img.url);
   } catch (err) {
-    toast('Kon het AI-beeld niet inladen voor de PDF. Download de afbeelding apart.', 'error');
+    toast(tr('tst.beeldPdfNiet'), 'error');
     return;
   }
 
@@ -21370,7 +21370,7 @@ async function downloadPiComparePDF() {
     doc.save('helvaro-vergelijking-' + (img.style || 'ai-beeld') + '-' + lokaleDatum(new Date()) + '.pdf');
   } catch (err) {
     console.error('[downloadPiComparePDF]', err);
-    toast('PDF maken is mislukt. Download de afbeeldingen apart.', 'error');
+    toast(tr('tst.pdfMislukt'), 'error');
   }
 }
 
@@ -21456,7 +21456,7 @@ function appendApInstruction(idx) {
   const cur = ta.value.trim();
   // De-dup: don't add the same snippet twice
   if (cur.includes(s.text)) {
-    toast('Deze regel staat er al in', 'info');
+    toast(tr('tst.regelBestaat'), 'info');
     return;
   }
   ta.value = cur ? (cur + '\\n' + s.text) : s.text;
@@ -22140,7 +22140,7 @@ async function naarFacturatieportaal() {
     if (r.ok && d.url) { window.location.href = d.url; return; }
     toast(d.error || 'Het portaal kon niet geopend worden.', 'error');
   } catch (e) {
-    toast('Er ging iets mis. Controleer je verbinding.', 'error');
+    toast(tr('tst.ietsMis'), 'error');
   }
 }
 
@@ -22202,7 +22202,7 @@ async function koopAanvragen() {
     closeKoopModal();
     /* Eerlijk over wat er nu gebeurt. Er komen GEEN credits bij tot er betaald
        is -- een saldo dat omhoog gaat voor de betaling is een verzonnen saldo. */
-    toast('Aanvraag verstuurd. Je krijgt een factuur; de credits staan er zodra die betaald is.', 'success');
+    toast(tr('tst.aanvraagVerstuurd'), 'success');
   } catch (e) {
     fout.style.display = '';
     fout.textContent = 'Er ging iets mis. Controleer je verbinding en probeer opnieuw.';
@@ -22236,10 +22236,10 @@ function betalingRetour() {
   history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : ''));
 
   if (status === 'gelukt') {
-    toast('Betaling gelukt. Je credits worden bijgeschreven.', 'success');
+    toast(tr('tst.betalingCredits'), 'success');
     setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
   } else if (status === 'geannuleerd') {
-    toast('Betaling geannuleerd. Er is niets afgeschreven.', 'info');
+    toast(tr('tst.betalingGeannuleerd'), 'info');
   }
 }
 
@@ -22259,10 +22259,10 @@ function abonnementRetour() {
        een browser die terugnavigeert, maar gegarandeerd is dat niet. Zeggen dat
        iets klaar is terwijl het dat misschien niet is, is hoe je vertrouwen
        verliest op precies het moment dat iemand net betaald heeft. */
-    toast('Betaling gelukt. Je abonnement wordt geactiveerd.', 'success');
+    toast(tr('tst.betalingAbo'), 'success');
     setTimeout(function () { if (typeof loadFacturatie === 'function') loadFacturatie(); }, 2500);
   } else if (status === 'geannuleerd') {
-    toast('Geannuleerd. Er is niets afgeschreven.', 'info');
+    toast(tr('tst.geannuleerdNiets'), 'info');
   }
 }
 
@@ -22614,10 +22614,10 @@ function renderPanden() {
 
 function copyPandLink(code) {
   var link = pandLink(code);
-  if (!navigator.clipboard) { toast('Kopieren lukt niet in deze browser', 'error'); return; }
+  if (!navigator.clipboard) { toast(tr('tst.kopierenBrowser'), 'error'); return; }
   navigator.clipboard.writeText(link)
-    .then(function () { toast('Link gekopieerd', 'success'); })
-    .catch(function () { toast('Kopieren mislukt', 'error'); });
+    .then(function () { toast(tr('tst.linkGekopieerd'), 'success'); })
+    .catch(function () { toast(tr('tst.kopierenMislukt'), 'error'); });
 }
 
 /* Een pand uit een link halen. De velden worden INGEVULD, niet opgeslagen --
@@ -22812,11 +22812,11 @@ async function archivePand(code, archiveren) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'listing-archive', code: code, archived: archiveren })
     });
-    if (!r.ok) { toast('Archiveren mislukt', 'error'); return; }
+    if (!r.ok) { toast(tr('tst.archiverenMislukt'), 'error'); return; }
     toast(archiveren ? 'Pand gearchiveerd' : 'Pand teruggezet', 'success');
     await loadPanden();
   } catch (e) {
-    toast('Archiveren mislukt', 'error');
+    toast(tr('tst.archiverenMislukt'), 'error');
   }
 }
 
@@ -22876,7 +22876,7 @@ async function loadAiPersona(force) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({ mode: 'config-get' })
     });
-    if (!r.ok) { toast('Kan instellingen niet laden', 'error'); return; }
+    if (!r.ok) { toast(tr('tst.instellingenNiet'), 'error'); return; }
     const d = await r.json();
     AP_STATE.clientName = d.clientName || state.clientName || 'Bedrijf';
     AP_STATE.niche      = d.sector || '';
@@ -22936,7 +22936,7 @@ async function loadAiPersona(force) {
     showFirstTimeBannerIfNeeded();
     refreshSaveButton();
   } catch (err) {
-    toast('Netwerkfout. Probeer later opnieuw', 'error');
+    toast(tr('tst.netwerkLater'), 'error');
   }
 }
 
@@ -23054,7 +23054,7 @@ async function saveAiPersona() {
       mark.classList.add('visible');
       setTimeout(() => mark.classList.remove('visible'), 2500);
     }
-    toast('Instellingen opgeslagen. Live in elk volgend gesprek', 'success');
+    toast(tr('tst.instellingenOpge'), 'success');
     // First-time setup? Show celebration screen + clear the banner.
     if (sessionStorage.getItem('hv-setup-pending') === '1') {
       sessionStorage.removeItem('hv-setup-pending');
@@ -23066,7 +23066,7 @@ async function saveAiPersona() {
     // Returning user: just take them back to the dashboard.
     setTimeout(() => navigateTo('dashboard'), 900);
   } catch (err) {
-    toast('Netwerkfout. Probeer opnieuw', 'error');
+    toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
     AP_STATE.saving = false;
     if (btn) { btn.disabled = false; btn.innerHTML = original; }
@@ -23278,11 +23278,11 @@ function fmCopy(id) {
   if (!el || !el.value) return;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(el.value)
-      .then(() => toast('Code gekopieerd ', 'success'))
-      .catch(() => { el.select(); document.execCommand('copy'); toast('Code gekopieerd', 'success'); });
+      .then(() => toast(tr('tst.codeGekopieerd'), 'success'))
+      .catch(() => { el.select(); document.execCommand('copy'); toast(tr('tst.codeGekopieerd'), 'success'); });
   } else {
     el.select(); document.execCommand('copy');
-    toast('Code gekopieerd', 'success');
+    toast(tr('tst.codeGekopieerd'), 'success');
   }
 }
 
@@ -23309,8 +23309,8 @@ function copyFormLink() {
   if (!url) return;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(url)
-      .then(() => toast('Link gekopieerd ', 'success'))
-      .catch(() => toast('Kopiëren mislukt. Selecteer handmatig', 'error'));
+      .then(() => toast(tr('tst.linkGekopieerd'), 'success'))
+      .catch(() => toast(tr('tst.kopierenSelecteer'), 'error'));
   }
 }
 // Disable Opslaan button when essentials are empty
@@ -23485,8 +23485,8 @@ async function connectGoogleCalendar() {
     });
     var d = await r.json();
     if (d && d.url) { window.location.href = d.url; return; }
-    toast('Koppelen mislukt, probeer opnieuw', 'error');
-  } catch (e) { toast('Koppelen mislukt, probeer opnieuw', 'error'); }
+    toast(tr('tst.koppelenMislukt'), 'error');
+  } catch (e) { toast(tr('tst.koppelenMislukt'), 'error'); }
 }
 async function disconnectGoogleCalendar() {
   /* Er werd niet naar r.ok gekeken, de catch was leeg, en daarna meldde hij
@@ -23501,7 +23501,7 @@ async function disconnectGoogleCalendar() {
     });
     if (r.status === 401) { handleAuthExpired && handleAuthExpired(); return; }
     if (!r.ok) throw new Error('Ontkoppelen mislukt');
-    toast('Google Agenda ontkoppeld', 'success');
+    toast(tr('tst.agendaOntkoppeld'), 'success');
   } catch (e) {
     toast(hvFoutZin(e), 'error');
   }
@@ -24022,7 +24022,7 @@ async function generateDm() {
         openLi.classList.add('visible');
       }
     }
-  } catch (e) { toast('Netwerkfout', 'error'); }
+  } catch (e) { toast(tr('tst.netwerk'), 'error'); }
 
   if (btn) {
     btn.disabled = false;
@@ -24034,8 +24034,8 @@ function copyDm() {
   var out = document.getElementById('fdr-dm-output');
   if (!out || !out.textContent) return;
   navigator.clipboard.writeText(out.textContent).then(function() {
-    toast('Bericht gekopieerd! ', 'success');
-  }).catch(function() { toast('Kopiëren mislukt', 'error'); });
+    toast(tr('tst.berichtGekopieerd'), 'success');
+  }).catch(function() { toast(tr('tst.kopierenMislukt'), 'error'); });
 }
 
 function renderFounderGoals() {
@@ -24258,7 +24258,7 @@ async function savePipeRecord() {
   const email    = document.getElementById('pm-email').value.trim();
   const fase     = document.getElementById('pm-fase').value;
   const notities = document.getElementById('pm-notities').value.trim();
-  if (!naam) { toast('Naam is verplicht', 'error'); return; }
+  if (!naam) { toast(tr('tst.naamVerplicht'), 'error'); return; }
   const mode = founderState._pipeEditId ? 'pipeline-update' : 'pipeline-create';
   const body  = { mode, naam, bedrijf, email, fase, notities };
   if (founderState._pipeEditId) body.id = founderState._pipeEditId;
@@ -24270,7 +24270,7 @@ async function savePipeRecord() {
     founderState.loaded = false;
     await loadFounderData(true);
     toast(mode === 'pipeline-create' ? 'Prospect toegevoegd' : 'Bijgewerkt', 'success');
-  } catch { toast('Netwerkfout', 'error'); }
+  } catch { toast(tr('tst.netwerk'), 'error'); }
 }
 
 async function deletePipeRecord() {
@@ -24278,12 +24278,12 @@ async function deletePipeRecord() {
   if (!confirm('Prospect verwijderen?')) return;
   try {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify({ mode: 'pipeline-delete', id: founderState._pipeEditId }) });
-    if (!r.ok) { toast('Verwijderen mislukt', 'error'); return; }
+    if (!r.ok) { toast(tr('tst.verwijderenMislukt'), 'error'); return; }
     closePipeModal();
     founderState.loaded = false;
     await loadFounderData(true);
-    toast('Verwijderd', 'success');
-  } catch { toast('Netwerkfout', 'error'); }
+    toast(tr('tst.verwijderd'), 'success');
+  } catch { toast(tr('tst.netwerk'), 'error'); }
 }
 
 // ── Goal Modal ────────────────────────────────────────────────────────────
@@ -24331,7 +24331,7 @@ async function saveGoalRecord() {
     founderState.loaded = false;
     await loadFounderData(true);
     toast('Doel opgeslagen', 'success');
-  } catch { toast('Netwerkfout', 'error'); }
+  } catch { toast(tr('tst.netwerk'), 'error'); }
 }
 
 async function deleteGoalRecord() {
@@ -24339,12 +24339,12 @@ async function deleteGoalRecord() {
   if (!confirm('Doel verwijderen?')) return;
   try {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify({ mode: 'goal-delete', id: founderState._goalEditId }) });
-    if (!r.ok) { toast('Verwijderen mislukt', 'error'); return; }
+    if (!r.ok) { toast(tr('tst.verwijderenMislukt'), 'error'); return; }
     closeGoalModal();
     founderState.loaded = false;
     await loadFounderData(true);
-    toast('Verwijderd', 'success');
-  } catch { toast('Netwerkfout', 'error'); }
+    toast(tr('tst.verwijderd'), 'success');
+  } catch { toast(tr('tst.netwerk'), 'error'); }
 }
 
 // ── Content Hub (LinkedIn + Instagram) ────────────────────────────────────
@@ -24459,7 +24459,7 @@ async function generateContentPost(forceNew) {
         localStorage.setItem(cacheKey, JSON.stringify({ post: d.post, type: contentType }));
       }
     }
-  } catch (e) { toast('Netwerkfout', 'error'); }
+  } catch (e) { toast(tr('tst.netwerk'), 'error'); }
 
   if (btn) {
     btn.disabled = false;
@@ -24471,8 +24471,8 @@ function copyContentPost() {
   var out = document.getElementById('fdr-hub-output');
   if (!out || !out.textContent) return;
   navigator.clipboard.writeText(out.textContent).then(function() {
-    toast('Gekopieerd! ', 'success');
-  }).catch(function() { toast('Kopiëren mislukt', 'error'); });
+    toast(tr('tst.gekopieerd'), 'success');
+  }).catch(function() { toast(tr('tst.kopierenMislukt'), 'error'); });
 }
 
 // ── AI Coach Chat ──────────────────────────────────────────────────────────
@@ -24587,7 +24587,7 @@ async function getFounderAdvice() {
       out.textContent = d.advice;
       out.classList.add('visible');
     }
-  } catch { toast('Netwerkfout', 'error'); }
+  } catch { toast(tr('tst.netwerk'), 'error'); }
 
   btn.disabled = false;
   btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Genereer advies';
@@ -25468,7 +25468,7 @@ function loadMeeting() {
 function saveMeeting() {
   var dt = document.getElementById('fdr-meeting-date');
   var tp = document.getElementById('fdr-meeting-topic');
-  if (!dt || !dt.value) { toast('Kies een datum', 'warning'); return; }
+  if (!dt || !dt.value) { toast(tr('tst.kiesDatum'), 'warning'); return; }
   var m = { when: dt.value, topic: (tp && tp.value || '').trim() };
   try { localStorage.setItem(MEETING_KEY, JSON.stringify(m)); } catch (e) {}
   renderMeeting();

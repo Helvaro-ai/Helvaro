@@ -100,8 +100,12 @@ ck('de diavoorstelling start ook op het Clerk-inlogscherm',
 console.log('\n— een verlopen sessie geeft een scherm waar je iets mee kan —');
 /* Hier werd onvoorwaardelijk het e-mailveld gefocust. Met Clerk aan is dat veld
    verborgen: je zag het loginscherm zonder iets om in te loggen. */
+/* Ankerde eerst op de zin "Je sessie is verlopen". Die staat er niet meer
+   letterlijk: de melding komt nu uit het woordenboek, zodat een Franstalige
+   klant hem ook in zijn eigen taal krijgt. Het GEDRAG is ongewijzigd, dus toets
+   op de sleutel en op de remount die erop volgt. */
 ck('bij Clerk wordt de inlogkaart opnieuw gemonteerd',
-   /Je sessie is verlopen[\s\S]{0,1400}mountClerkSignIn\(window\.Clerk\)/.test(html), null);
+   /tst\.sessieVerlopen[\s\S]{0,1400}mountClerkSignIn\(window\.Clerk\)/.test(html), null);
 ck('en zonder Clerk gaat de focus nog gewoon naar het e-mailveld',
    /else \{[\s\S]{0,160}getElementById\('login-email'\);[\s\S]{0,60}focus\(\)/.test(html), null);
 

@@ -496,7 +496,22 @@ console.log('\n— de checklist en de proefbanner zijn vertaalbaar —');
    Alles daarbuiten hoort weg te blijven, ook in nieuwe teksten. */
 console.log('\n— het product noemt zichzelf niet "AI" —');
 {
-  const TOEGESTAAN = new Set(['img.honest']);
+  /* De uitzonderingen, en waarom elk ervan er staat.
+
+     img.honest is de zin waarin de assistent tegenover een lead toegeeft dat
+     hij een AI is. Die is verplicht.
+
+     De tst.beeld*-sleutels gaan over de BEELDGENERATOR, niet over de
+     WhatsApp-assistent. Dat is echt een beeldmodel, het beeld wordt ook als
+     AI-beeld gemarkeerd naar de koper toe, en 'je assistent genereerde een
+     beeld' zou een leugen zijn -- Faro doet dat niet.
+
+     Deze lijst is een plek waar schade zich kan verstoppen (dat gebeurde
+     eerder al met de Duitse KI-Kennzeichnung). Daarom staat er hieronder een
+     POSITIEVE controle bij: deze sleutels MOETEN het woord bevatten. */
+  const BEELD_SLEUTELS = ['tst.beeldKlaar', 'tst.beeldGeenDl', 'tst.beeldGeenExp',
+                          'tst.beeldPdfNiet', 'tst.origineelWeg'];
+  const TOEGESTAAN = new Set(['img.honest', ...BEELD_SLEUTELS]);
   for (const taal of ['nl', 'fr', 'en', 'de']) {
     const d = i18n.woordenboek(taal);
     const fout = Object.keys(d)
@@ -519,6 +534,16 @@ console.log('\n— het product noemt zichzelf niet "AI" —');
     const v = i18n.woordenboek(taal)['img.honest'] || '';
     ck(`${taal}: de beeld-disclosure noemt het model nog steeds "${woord}"`,
        new RegExp('\\b' + woord + '\\b').test(v), v.slice(-70));
+  }
+
+  /* En andersom: de beelduitzonderingen moeten het woord ECHT noemen. Zonder
+     deze kant kan een volgende hernoemronde ze stilzwijgend omdopen tot 'je
+     assistent' en verdwijnt de markering die een koper beschermt tegen een
+     keuken die niet bestaat -- terwijl de test groen blijft. */
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
+    const d = i18n.woordenboek(taal);
+    const stil = BEELD_SLEUTELS.filter((k) => d[k] && !/\b(AI|IA|KI)\b/.test(d[k]));
+    ck(`${taal}: de beeldmeldingen noemen het beeld wel degelijk AI`, stil.length === 0, stil);
   }
 
   /* En het moet wél ergens "assistent" heten -- anders is de vervanging
