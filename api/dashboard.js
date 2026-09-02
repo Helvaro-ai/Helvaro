@@ -5491,7 +5491,14 @@ tr:hover .td-arrow { color: var(--accent-ink); }
      here, so the two never overlap. */
   bottom: 90px;
   right: 24px;
-  z-index: 9999;
+  /* Boven ALLE vensters. Stond op 9999, terwijl de overlays in dit bestand op
+     10000, 10050 en 11000 zitten. Gevolg: wie in een venster opslaat, krijgt
+     zijn bevestiging achter datzelfde venster te zien -- dus niet.
+
+     Een melding hoort per definitie bovenaan: hij is kort, hij dekt niets af
+     (pointer-events staat uit) en hij is het antwoord op iets dat de gebruiker
+     zojuist deed. 12000 laat ruimte onder zich voor een toekomstig venster. */
+  z-index: 12000;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -8576,7 +8583,10 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  z-index: 9000;
+  /* Was 9000, gelijk aan de zoek-overlay. Bij gelijke z-index beslist de
+     volgorde in de DOM en niet de bedoeling; de hulpknop hoort ONDER een
+     geopende zoekbalk te vallen, niet erdoorheen te steken. */
+  z-index: 8900;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -96,5 +96,34 @@ for (const taal of ['nl', 'en']) {
    bewaakt hij niets meer. De parser hierboven vangt dezelfde fout exact en
    zonder vals alarm, dus de heuristiek is eruit. */
 
+/* ── Meldingen horen boven vensters ────────────────────────────────────────
+   De toastbalk stond op z-index 9999 terwijl de vensters in dit bestand op
+   10000, 10050 en 11000 zitten. Wie in een venster opsloeg, kreeg zijn
+   bevestiging achter datzelfde venster -- en zag dus niets. Geen cosmetisch
+   detail: het is het verschil tussen "opgeslagen" en "er gebeurde niks".
+
+   Deze test leest de ECHTE z-indexen uit de uitgestuurde pagina, dus hij blijft
+   kloppen als er morgen een venster bijkomt. */
+console.log('\n— meldingen staan boven elk venster —');
+{
+  const html = render('/dashboard');
+
+  const toastM = html.match(/\.toast-container\s*\{[\s\S]*?z-index:\s*(\d+)/);
+  const toast = toastM ? Number(toastM[1]) : null;
+  ck('de toastbalk heeft een z-index', toast !== null, toastM);
+
+  /* Elk vensteroverlay: zowel in CSS-regels als in de inline cssText-blokken
+     die de modals met JS opbouwen. */
+  const overlays = [];
+  for (const m of html.matchAll(/position\s*:\s*fixed[^;{}]*;[^{}]{0,400}?z-index\s*:\s*(\d{4,})/g)) {
+    overlays.push(Number(m[1]));
+  }
+  for (const m of html.matchAll(/z-index\s*:\s*(\d{4,})/g)) overlays.push(Number(m[1]));
+
+  const hoogsteVenster = Math.max(...overlays.filter((z) => z !== toast));
+  ck(`de toast (${toast}) staat boven het hoogste venster (${hoogsteVenster})`,
+    toast > hoogsteVenster, { toast, hoogsteVenster });
+}
+
 console.log(`\n  ${pass} ok, ${fail} fout\n`);
 process.exit(fail ? 1 : 0);
