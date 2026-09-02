@@ -9224,7 +9224,7 @@ ${faro.navCta}
           </span>
         </button>
         <div class="credit-usage-pop" id="credit-usage-pop" role="dialog"
-             aria-label="AI-credits" style="display:none"></div>
+             aria-label="Gesprekstegoed" style="display:none"></div>
       </div>
       <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
@@ -10379,7 +10379,7 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.photo.h')}</span>
               </label>
               <div class="ap-photo-row">
-                <div class="ap-photo-preview" id="ap-photo-preview" aria-label="Voorbeeld AI foto">
+                <div class="ap-photo-preview" id="ap-photo-preview" aria-label="Voorbeeldfoto van je assistent">
                   <span class="ap-photo-placeholder">+</span>
                 </div>
                 <div class="ap-photo-controls">
@@ -15016,7 +15016,7 @@ function renderPlanBanner(d) {
     if (titleEl) titleEl.textContent = 'Je proefperiode is afgelopen';
     // Deliberately non-alarming per TRIAL-DESIGN.md §3: leads are still
     // captured, only the AI auto-reply stopped. Never phrased as an error.
-    if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — de AI beantwoordt ze alleen niet langer automatisch op WhatsApp.';
+    if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — je assistent beantwoordt ze alleen niet langer automatisch op WhatsApp.';
     if (ctaEl) {
       /* Stond op een mailto. Dat is het moment waarop iemand wíl betalen, en
          dan een e-mailprogramma openen dat misschien niet eens ingesteld is --
@@ -15292,7 +15292,7 @@ async function saveBusinessInfoFromChecklist() {
       body:    JSON.stringify({ mode: 'config-save', aiInstructions: combined })
     });
     if (!r.ok) { toast('Opslaan mislukt, probeer opnieuw', 'error'); return; }
-    toast('Opgeslagen — je AI gebruikt dit meteen', 'success');
+    toast('Opgeslagen — je assistent gebruikt dit meteen', 'success');
     closeBusinessInfoModal();
     ['chk-biz-what', 'chk-biz-goodlead', 'chk-biz-notdoes', 'chk-biz-never'].forEach(function(id) {
       const el = document.getElementById(id);
@@ -15472,6 +15472,21 @@ function scoreBar(score) {
    hvFout() hangt de status aan de Error zodat de catch verderop nog weet WAT
    er misging; hvFoutZin() maakt daar een zin van. De ruwe status verdwijnt
    niet -- hij gaat naar console.error, waar hij hoort. */
+/* Wie zei dit? De naam die de makelaar zelf aan zijn assistent gaf, en anders
+   het woord assistent. In een gesprekstranscript is "AI" geen spreker: de lead
+   praat met Mathis, niet met een technologie. */
+function hvAssistentNaam() {
+  try {
+    var el = document.getElementById('ap-name');
+    var n = el && el.value && el.value.trim();
+    if (n) return n;
+    if (window._wizardConfig && _wizardConfig.aiName && _wizardConfig.aiName.trim()) {
+      return _wizardConfig.aiName.trim();
+    }
+  } catch (e) { /* label mag nooit een scherm slopen */ }
+  return 'Assistent';
+}
+
 function hvFout(r, body) {
   const e = new Error('HTTP ' + (r && r.status));
   e.hvStatus = r && r.status;
@@ -15903,7 +15918,7 @@ function openPanel(lead) {
       const msgs = JSON.parse(lead.gesprek || '[]');
       bubbles = msgs.map(m => {
         const isUser = m.role === 'user';
-        const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? 'Jij (template)' : 'Jij') : 'AI');
+        const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? 'Jij (template)' : 'Jij') : hvAssistentNaam());
         const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
         return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}" dir="auto">\${m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
@@ -15928,12 +15943,12 @@ function openPanel(lead) {
         <div class="panel-section-title">WhatsApp Gesprek</div>
         <div class="panel-takeover-bar" id="panel-takeover-bar">
           <span class="panel-takeover-status \${aiPaused ? 'paused' : 'active'}">
-            \${aiPaused ? 'Mens aan het roer' : 'AI actief'}
+            \${aiPaused ? 'Mens aan het roer' : 'Assistent actief'}
           </span>
           \${pausedMeta ? \`<span class="panel-takeover-meta">\${pausedMeta}</span>\` : ''}
           \${escalatedBadge}
           <button class="panel-takeover-btn \${aiPaused ? 'resume' : 'pause'}" id="panel-takeover-btn" onclick="toggleAiPause()">
-            \${aiPaused ? 'Geef AI terug' : 'Neem over'}
+            \${aiPaused ? 'Geef terug aan je assistent' : 'Neem over'}
           </button>
         </div>
         <div class="chat-wrap" id="panel-chat-wrap">\${bubbles}</div>
@@ -16380,7 +16395,7 @@ async function loadReplySuggestions() {
   // Disable while loading
   const original = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg> AI denkt na...';
+  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg> Je assistent denkt na...';
   chips.innerHTML = '';
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
@@ -16498,8 +16513,8 @@ async function toggleAiPause() {
     lead.notities = serializeNotities(merged);
 
     toast(pausing
-      ? 'Je hebt het gesprek overgenomen. De AI reageert niet meer op deze lead'
-      : 'AI staat weer aan voor deze lead', 'success');
+      ? 'Je hebt het gesprek overgenomen. Je assistent reageert niet meer op deze lead'
+      : 'Je assistent staat weer aan voor deze lead', 'success');
     openPanel(lead); // re-render the panel with the updated takeover bar
   } catch (err) {
     toast('Netwerkfout. Probeer opnieuw', 'error');
@@ -17671,8 +17686,8 @@ async function renderCalendar() {
         const status = f['Status'] || 'booked';
         const source = f['Source'] || 'manual';
         // FIELD NAMES MOETEN MATCH met renderCols (gebruikt startTime/endTime).
-        // Plus 'eventType' tag (status/source) zodat user ziet "AI geboekt" of "Geannuleerd".
-        const sourceLabel = source === 'ai_chat' ? 'AI geboekt' : (source === 'manual' ? 'Handmatig' : 'Import');
+        // Plus 'eventType' tag (status/source) zodat user ziet "Door je assistent geboekt" of "Geannuleerd".
+        const sourceLabel = source === 'ai_chat' ? 'Door je assistent geboekt' : (source === 'manual' ? 'Handmatig' : 'Import');
         const eventType   = status === 'cancelled' ? 'Geannuleerd' : (status === 'no_show' ? 'No-show' : sourceLabel);
         return {
           id:        r.id,
@@ -17748,7 +17763,7 @@ function renderProfile() {
   }
   if (btnEl)  btnEl.style.display  = 'none';   // connect-knop verbergen
   if (openEl) openEl.style.display = 'none';   // externe link verbergen
-  if (pfCal)  pfCal.textContent = 'AI boekt direct in WhatsApp gesprek';
+  if (pfCal)  pfCal.textContent = 'Je assistent boekt direct in het WhatsApp-gesprek';
 
   // Info rows
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -18674,7 +18689,7 @@ function wizardSluit(afgerond) {
      het eerste scherm dat iemand ziet. */
   wizardBewaar({ welcomeDone: true }).catch(function () {});
   if (afgerond) {
-    try { toast('Je AI staat klaar.', 'success'); } catch (e) {}
+    try { toast('Je assistent staat klaar.', 'success'); } catch (e) {}
     try { refreshData(false); } catch (e) {}
   }
 }
@@ -18727,7 +18742,7 @@ async function wizardVolgende() {
   if (stap === 'bedrijf') {
     var over = document.getElementById('wizard-bedrijf').value.trim();
     if (over.length < 20) {
-      fout.textContent = 'Vertel iets meer — je AI heeft dit nodig om je klanten te woord te staan.';
+      fout.textContent = 'Vertel iets meer — je assistent heeft dit nodig om je klanten te woord te staan.';
       document.getElementById('wizard-bedrijf').focus();
       return;
     }
@@ -18750,7 +18765,7 @@ async function wizardVolgende() {
     var naam = document.getElementById('wizard-ainaam').value.trim();
     var begroet = document.getElementById('wizard-welkomst').value.trim();
     if (!naam) {
-      fout.textContent = 'Geef je AI een naam.';
+      fout.textContent = 'Geef je assistent een naam.';
       document.getElementById('wizard-ainaam').focus();
       return;
     }
@@ -18811,7 +18826,7 @@ async function wizardWhatsAppStatus() {
     if (d.klaar) {
       badge.textContent = 'Klaar';
       badge.style.color = 'var(--success-ink, #15803d)';
-      uitleg.textContent = 'Je berichten in het ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je AI antwoordt meteen. Een eigen nummer kan later.';
+      uitleg.textContent = 'Je berichten in het ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je assistent antwoordt meteen. Een eigen nummer kan later.';
       return;
     }
     badge.textContent = 'Wordt klaargezet';
@@ -19082,7 +19097,7 @@ var WIZARD_LABELS = {
   regio:   'Land en taal',
   bedrijf: 'Je bedrijf',
   koppelingen: 'Koppelingen',
-  ai:      'Je AI',
+  ai:      'Je assistent',
   klaar:   'Klaar'
 };
 
@@ -19844,7 +19859,7 @@ function openConversation(leadId) {
 
   const bubbles = msgs.map(m => {
     const isUser = m.role === 'user';
-    const label = isUser ? 'Lead' : 'AI';
+    const label = isUser ? 'Lead' : hvAssistentNaam();
     const content = (m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
     return \`<div>
       <div class="conv-bubble-label">\${label}</div>
@@ -21073,7 +21088,7 @@ async function generatePiImage() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
       if (d.error === 'credit_limit_reached') {
-        toast(d.message || 'Je AI-credits voor deze periode zijn op', 'error');
+        toast(d.message || 'Je gesprekstegoed voor deze periode is op', 'error');
       } else {
         toast(d.error || 'AI-beeldgeneratie mislukt', 'error');
       }
@@ -22831,7 +22846,7 @@ function updateWelcomeBannerChecks() {
   const web  = document.getElementById('ap-website').value.trim();
   const instr= document.getElementById('ap-instructions').value.trim();
   const items = [
-    { k: 'AI naam',          done: !!name },
+    { k: 'Naam van je assistent',          done: !!name },
     { k: 'Welkomstbericht',  done: !!tpl },
     { k: 'Website OF instructies', done: !!web || !!instr }
   ];
@@ -23194,7 +23209,7 @@ function refreshSaveButton() {
   // Require at least AI naam + welkomstbericht
   const ok = name.length > 0 && tpl.length > 0;
   btn.disabled = !ok;
-  btn.title = ok ? '' : 'Vul minstens AI naam en welkomstbericht in';
+  btn.title = ok ? '' : 'Vul minstens de naam van je assistent en het welkomstbericht in';
 }
 
 async function sendTestMessage() {
@@ -24455,7 +24470,7 @@ async function getFounderAdvice() {
       body:    JSON.stringify({ mode: 'ai-advice', context })
     });
     const d = await r.json();
-    if (!r.ok) { toast(d.message || d.error || 'AI fout', 'error'); } else {
+    if (!r.ok) { toast(d.message || d.error || 'Fout bij je assistent', 'error'); } else {
       out.textContent = d.advice;
       out.classList.add('visible');
     }
@@ -24494,7 +24509,7 @@ var HELP_ARTICLES = [
       '<p>Helvaro vangt je binnenkomende leads op en praat er meteen mee, ook ’s avonds en in het weekend. Je krijgt geen ruwe lijst met namen, maar gesprekken die al gevoerd zijn.</p>' +
       '<ol>' +
       '<li>Een lead vult je formulier in of stuurt je een WhatsApp-bericht.</li>' +
-      '<li>De AI stelt meteen de vragen die jij belangrijk vindt en beantwoordt die van de lead.</li>' +
+      '<li>Je assistent stelt meteen de vragen die jij belangrijk vindt en beantwoordt die van de lead.</li>' +
       '<li>Op basis van die antwoorden krijgt de lead een score en een status: gekwalificeerd of niet.</li>' +
       '<li>Is de lead interessant, dan stuurt je assistent je boekingslink en komt de afspraak in je agenda.</li>' +
       '</ol>' +
@@ -24527,7 +24542,7 @@ var HELP_ARTICLES = [
       '<li><strong>${T('dash.col.name')}</strong>: hoe je assistent zich voorstelt aan je leads.</li>' +
       '<li><strong>${T('ap.welcome')}</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
       '<li><strong>Instructies</strong>: het belangrijkste veld. Hier zet je wat je bedrijf doet, wat voor jou een goede lead is, en wat de AI juist niet mag beloven. Hoe concreter, hoe beter de gesprekken.</li>' +
-      '<li><strong>Website en adres</strong>: de AI gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
+      '<li><strong>Website en adres</strong>: je assistent gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
       '</ul>' +
       '<p>Wijzigingen gelden meteen voor het volgende gesprek. Lopende gesprekken blijven op de oude instellingen doorlopen.</p>' },
 
@@ -24546,7 +24561,7 @@ var HELP_ARTICLES = [
       '<ol>' +
       '<li>Ga naar <strong>Dashboard</strong> en klik op <strong>Koppelen</strong> bij Google Agenda. Je kunt het ook via <strong>Instellingen</strong> doen.</li>' +
       '<li>Log in bij Google en geef toestemming.</li>' +
-      '<li>Klaar. De AI controleert vanaf nu je vrije momenten voordat hij iets voorstelt.</li>' +
+      '<li>Klaar. Je assistent controleert vanaf nu je vrije momenten voordat hij iets voorstelt.</li>' +
       '</ol>' +
       '<p>Zonder koppeling blijft alles werken, maar dan stuurt je assistent een boekingslink en moet de lead zelf een moment kiezen.</p>' },
 
@@ -24566,7 +24581,7 @@ var HELP_ARTICLES = [
     body:
       '<p>De <strong>Pipeline</strong> toont je leads als kaarten in kolommen, van eerste contact tot gewonnen of verloren.</p>' +
       '<p>Sleep een kaart naar een andere kolom om de fase bij te werken. Dat is puur voor jou: de lead merkt er niets van en de AI verandert er zijn gedrag niet door.</p>' +
-      '<p>Klik op een kaart voor het volledige gesprek, de score, en waarom de AI deze lead wel of niet gekwalificeerd heeft.</p>' },
+      '<p>Klik op een kaart voor het volledige gesprek, de score, en waarom je assistent deze lead wel of niet gekwalificeerd heeft.</p>' },
 
   { id: 'export', sec: 'Dagelijks gebruik', title: 'Leads exporteren',
     tags: 'export exporteren csv excel downloaden bestand rapport',
@@ -24579,7 +24594,7 @@ var HELP_ARTICLES = [
     tags: 'credits verbruik limiet kosten opraken tegoed bundel',
     body:
       '<p>Elk AI-bericht dat namens jou verstuurd wordt, kost een credit. Linksonder in de zijbalk zie je hoeveel je er deze maand gebruikt hebt.</p>' +
-      '<p>Zit je tegen je limiet aan, dan waarschuwen we je ruim op tijd. We zetten je AI nooit zomaar stil zonder iets te zeggen.</p>' +
+      '<p>Zit je tegen je limiet aan, dan waarschuwen we je ruim op tijd. We zetten je assistent nooit zomaar stil zonder iets te zeggen.</p>' +
       '<p>Zie je die balk niet staan? Dan geldt er voor jouw account geen maandlimiet en hoef je hier niet naar te kijken.</p>' +
       '<p>Meer nodig? Mail ons, dan verhogen we het.</p>' },
 
@@ -24587,7 +24602,7 @@ var HELP_ARTICLES = [
     tags: 'proefperiode trial abonnement betalen opzeggen factuur prijs 14 dagen',
     body:
       '<p>Je start met een proefperiode van 14 dagen met alle functies. Je hoeft daarvoor geen kaartgegevens achter te laten.</p>' +
-      '<p>Loopt de proef af, dan blijft je account en alles wat erin staat gewoon bestaan. De AI stopt alleen met nieuwe gesprekken tot je overstapt.</p>' +
+      '<p>Loopt de proef af, dan blijft je account en alles wat erin staat gewoon bestaan. Je assistent stopt alleen met nieuwe gesprekken tot je overstapt.</p>' +
       '<p>Wil je verlengen, overstappen of stoppen? Eén mailtje volstaat, er zit geen opzegtermijn aan vast.</p>' },
 
   { id: 'privacy', sec: 'Account', title: 'Privacy, AVG en leads verwijderen',

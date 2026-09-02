@@ -40,7 +40,7 @@ const STRINGS = {
     'ws.subtitle': 'Je assistent binnen Helvaro',
     'dock.placeholder': 'Vraag Faro iets over je leads, panden of marketing…',
 
-    'sw.label': 'Wisselen tussen CRM en AI',
+    'sw.label': 'Wisselen tussen CRM en je assistent',
     'sw.crm': 'CRM',
     'sw.ai': 'Faro',
     'sb.new': 'Nieuw gesprek',
@@ -194,7 +194,7 @@ const STRINGS = {
     'ws.subtitle': 'Your assistant inside Helvaro',
     'dock.placeholder': 'Ask Faro about your leads, properties or marketing…',
 
-    'sw.label': 'Switch between CRM and AI',
+    'sw.label': 'Switch between CRM and your assistant',
     'sw.crm': 'CRM',
     'sw.ai': 'Faro',
     'sb.new': 'New conversation',
@@ -498,7 +498,7 @@ const STRINGS = {
     'ws.subtitle': 'Ihr Assistent in Helvaro',
     'dock.placeholder': 'Fragen Sie Faro zu Leads, Objekten oder Marketing…',
 
-    'sw.label': 'Zwischen CRM und KI wechseln',
+    'sw.label': 'Zwischen CRM und Ihrem Assistenten wechseln',
     'sw.crm': 'CRM',
     'sw.ai': 'Faro',
     'sb.new': 'Neue Unterhaltung',
