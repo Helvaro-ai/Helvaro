@@ -15558,6 +15558,21 @@ function hvMakeActivatable(root) {
   });
 }
 
+/* Aansluiten bij het opstarten, niet pas bij het navigeren.
+
+   bindActivatable() stond alleen in navigateTo(), en die draait pas NA het
+   inloggen. Op het inlogscherm was er dus geen enkele toetsenbordafhandeling,
+   en tot de eerste navigatie ook daarna niet. In de echte browser bleek
+   _activatableBound gewoon false te staan terwijl er 103 klikbare elementen op
+   de pagina stonden.
+
+   De test hiervoor keek of de aanroep IN de pagina stond. Dat stond hij ook.
+   Alleen liep hij niet. Vandaar dat dit in de browser is nagegaan en niet
+   alleen in de suite. */
+document.addEventListener('DOMContentLoaded', function () {
+  try { bindActivatable(); } catch (e) { console.error('[activatable]', e); }
+});
+
 let _activatableBound = false;
 function bindActivatable() {
   if (_activatableBound) return;

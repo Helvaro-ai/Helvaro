@@ -146,7 +146,15 @@ ck('en kijkt naar wat er later bij komt',
   /new MutationObserver\([\s\S]{0,600}?\.observe\(document\.body/.test(html), null);
 ck('de toetsafhandeling haakt aan data-hv-act, niet aan de rol',
   /\[data-hv-act="1"\]\[tabindex="0"\]/.test(html), null);
-ck('bindActivatable wordt aangeroepen', /\n\s*bindActivatable\(\);/.test(html), null);
+/* Deze controle keek eerst alleen of de aanroep ergens in de pagina stond.
+   Dat stond hij -- in navigateTo(), die pas NA het inloggen draait. In de
+   echte browser stond _activatableBound daardoor op false terwijl er 103
+   klikbare elementen op het scherm stonden. Een aanwezige aanroep is geen
+   uitgevoerde aanroep, dus de test eist nu de plek waar hij WEL loopt. */
+ck('bindActivatable draait bij het opstarten, niet pas bij het navigeren',
+  /DOMContentLoaded[\s\S]{0,200}?bindActivatable\(\);/.test(html), null);
+ck('en ook nog bij het navigeren, voor pagina\'s die later gemount worden',
+  /aria-current[\s\S]{0,200}?bindActivatable\(\);/.test(html), null);
 
 console.log('\n  het valt niet om');
 {
