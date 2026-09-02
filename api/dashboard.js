@@ -9216,7 +9216,7 @@ ${faro.navCta}
                 aria-expanded="false" aria-controls="credit-usage-pop"
                 title="${T('ui.credits.title')}" onclick="toggleCreditPop(event)">
           <span class="credit-usage-head">
-            <span>AI-credits</span>
+            <span>Credits</span>
             <span class="credit-usage-pct" id="credit-usage-pct">0%</span>
           </span>
           <span class="credit-usage-track">
@@ -9622,7 +9622,7 @@ ${faro.navCta}
           <div class="export-includes">
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Leads &amp; conversie stats</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.qualList')}</div>
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> AI scores &amp; samenvattingen</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Scores &amp; samenvattingen</div>
           </div>
           <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -10891,7 +10891,7 @@ ${faro.navCta}
               <div class="settings-label">${T('set.ai.name')}</div>
               <div class="settings-label-sub">${T('set.ai.name.sub')}</div>
             </div>
-            <div class="settings-value" id="set-ai-name">Helvaro AI</div>
+            <div class="settings-value" id="set-ai-name">Je assistent</div>
           </div>
           <div class="settings-row">
             <div>
@@ -14404,8 +14404,8 @@ function buildWelcomeEmailText(d) {
   lines.push('');
   lines.push('Eerste 3 stappen:');
   lines.push('   1. Log in op je dashboard');
-  lines.push('   2. Open AI Persoonlijkheid en pas de AI-naam + welkomstbericht aan');
-  lines.push('   3. Test zelf je formulier. Je krijgt direct WhatsApp van je AI');
+  lines.push('   2. Open Je assistent en pas de naam + welkomstbericht aan');
+  lines.push('   3. Test zelf je formulier. Je krijgt direct WhatsApp van je assistent');
   lines.push('');
   lines.push('Vragen? Antwoord gewoon op deze mail.');
   lines.push('');
@@ -14870,7 +14870,7 @@ function tekenCreditPop() {
   const leadsLeft = Math.max(0, d.leadsRemaining || 0);
 
   let html = ''
-    + '<div class="cu-pop-kop">AI-credits<span class="' + kleur + '">' + pct + '% gebruikt</span></div>'
+    + '<div class="cu-pop-kop">Credits<span class="' + kleur + '">' + pct + '% gebruikt</span></div>'
     + '<div class="cu-pop-groot">' + used + ' / ' + allowance + '</div>'
     + '<div class="cu-pop-rij">Nog ongeveer ' + leadsLeft + ' leadgesprekken deze periode.</div>';
 
@@ -14882,7 +14882,7 @@ function tekenCreditPop() {
     /* Nooit dreigend: een leadgesprek wordt server-side niet geblokkeerd (zie
        api/_credits.js). Wat hier hoort te staan is wat het kost en wat de weg
        eruit is, niet dat er iets stuk is. */
-    html += '<div class="cu-pop-let">Je zit boven je maandlimiet. Je AI blijft '
+    html += '<div class="cu-pop-let">Je zit boven je maandlimiet. Je assistent blijft '
           + 'gewoon antwoorden — koop credits bij of stap over op een groter plan.</div>';
   }
 
@@ -15535,7 +15535,7 @@ function renderTable() {
         <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Je AI-assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Helvaro AI voert het gesprek en kwalificeert automatisch</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Je assistent voert het gesprek en kwalificeert automatisch</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
         </div>
         <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
@@ -15789,7 +15789,7 @@ function openPanel(lead) {
   if (lead.samenvatting) {
     bodyHTML += \`
       <div class="panel-section">
-        <div class="panel-section-title">AI Samenvatting</div>
+        <div class="panel-section-title">Samenvatting</div>
         <div class="ai-summary">\${escHtml(lead.samenvatting)}</div>
       </div>
     \`;
@@ -18813,7 +18813,7 @@ async function wizardAgendaStatus() {
     if (d && d.connected) {
       badge.textContent = 'Gekoppeld';
       badge.style.color = 'var(--success-ink, #15803d)';
-      uitleg.textContent = 'Je agenda is gekoppeld' + (d.email ? ' (' + d.email + ')' : '') + '. Je AI ziet wanneer je vrij bent en plant zelf in.';
+      uitleg.textContent = 'Je agenda is gekoppeld' + (d.email ? ' (' + d.email + ')' : '') + '. Je assistent ziet wanneer je vrij bent en plant zelf in.';
       knop.style.display = 'none';
       return;
     }
@@ -19697,7 +19697,7 @@ function renderGesprekken() {
        twee andere schermen gebruikt; hier hoorde hij ook. */
     listBody.innerHTML = \`<div style="padding:24px 20px;text-align:center;color:var(--text-muted);font-size:13px">
       <div style="font-weight:600;color:var(--text);margin-bottom:6px">Nog geen gesprekken</div>
-      <div>Zodra een lead je formulier invult, start de AI het gesprek en verschijnt het hier.</div>
+      <div>Zodra een lead je formulier invult, start je assistent het gesprek en verschijnt het hier.</div>
       \${emptyStateCta()}
     </div>\`;
     return;
@@ -20456,7 +20456,7 @@ function setPhotoPreview(dataUrlOrHttps) {
   const hidden = document.getElementById('ap-photo');
   if (!prev) return;
   if (dataUrlOrHttps) {
-    prev.innerHTML = '<img src="' + dataUrlOrHttps.replace(/"/g, '&quot;') + '" alt="AI foto">';
+    prev.innerHTML = '<img src="' + dataUrlOrHttps.replace(/"/g, '&quot;') + '" alt="Foto van je assistent">';
     prev.classList.add('has-photo');
     if (remove) remove.style.display = '';
     if (hidden) hidden.value = dataUrlOrHttps;
@@ -20904,7 +20904,7 @@ function renderPiGallery(list) {
   const wrap = document.getElementById('pi-gallery');
   if (!wrap) return;
   piGalleryList = list;
-  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">Nog geen AI-beelden gegenereerd</div>'; return; }
+  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">Nog geen beelden gegenereerd</div>'; return; }
   const cards = list.map(function (img, i) {
     // Older records (persisted before the visual-controls axes existed)
     // simply have no furniture/wallFinish/floor/lighting/renovationDepth*
@@ -24391,7 +24391,7 @@ var HELP_ARTICLES = [
       '<li>Een lead vult je formulier in of stuurt je een WhatsApp-bericht.</li>' +
       '<li>De AI stelt meteen de vragen die jij belangrijk vindt en beantwoordt die van de lead.</li>' +
       '<li>Op basis van die antwoorden krijgt de lead een score en een status: gekwalificeerd of niet.</li>' +
-      '<li>Is de lead interessant, dan stuurt de AI je boekingslink en komt de afspraak in je agenda.</li>' +
+      '<li>Is de lead interessant, dan stuurt je assistent je boekingslink en komt de afspraak in je agenda.</li>' +
       '</ol>' +
       '<p>Jij ziet het resultaat terug op <strong>Dashboard</strong> en <strong>Pipeline</strong>. Het volledige gesprek staat onder <strong>Gesprekken</strong>.</p>' },
 
@@ -24402,7 +24402,7 @@ var HELP_ARTICLES = [
       '<ol>' +
       '<li>Ga naar <strong>Dashboard</strong>. Bovenaan staat het blok <em>${T('dash.form.title')}</em> met je persoonlijke link.</li>' +
       '<li>Klik op <strong>${T('dash.form.open')}</strong> en vul het formulier in met je eigen gegevens.</li>' +
-      '<li>Je krijgt binnen enkele seconden het eerste bericht van je AI.</li>' +
+      '<li>Je krijgt binnen enkele seconden het eerste bericht van je assistent.</li>' +
       '</ol>' +
       '<p>De lead verschijnt daarna gewoon in je overzicht, precies zoals een echte klant dat zou doen. Je kunt hem achteraf laten verwijderen.</p>' },
 
@@ -24417,9 +24417,9 @@ var HELP_ARTICLES = [
   { id: 'ai-instellen', sec: 'Je AI instellen', title: 'De AI aanpassen aan je bedrijf',
     tags: 'ai personality persoonlijkheid naam toon instructies welkomstbericht aanpassen taal',
     body:
-      '<p>Alles daarvoor staat op de pagina <strong>AI Persoonlijkheid</strong>.</p>' +
+      '<p>Alles daarvoor staat op de pagina <strong>Je assistent</strong>.</p>' +
       '<ul>' +
-      '<li><strong>${T('dash.col.name')}</strong>: hoe je AI zich voorstelt aan je leads.</li>' +
+      '<li><strong>${T('dash.col.name')}</strong>: hoe je assistent zich voorstelt aan je leads.</li>' +
       '<li><strong>${T('ap.welcome')}</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
       '<li><strong>Instructies</strong>: het belangrijkste veld. Hier zet je wat je bedrijf doet, wat voor jou een goede lead is, en wat de AI juist niet mag beloven. Hoe concreter, hoe beter de gesprekken.</li>' +
       '<li><strong>Website en adres</strong>: de AI gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
@@ -24432,18 +24432,18 @@ var HELP_ARTICLES = [
       '<p>Dit stel je niet zelf in, en dat is geen beperking van Helvaro. Meta moet elk zakelijk WhatsApp-nummer eerst goedkeuren, en dat traject regelen wij voor je.</p>' +
       '<p>Het duurt meestal een paar dagen. Je hoeft ondertussen niets te doen, we nemen contact op zodra het kan.</p>' +
       '<p>Ben je er al klaar voor? Laat het weten via de knop op je dashboard of mail ons, dan pakken we het sneller op.</p>' +
-      '<p>Tot dan werkt je leadformulier gewoon: leads komen binnen en de AI praat met ze via het formulier.</p>' },
+      '<p>Tot dan werkt je leadformulier gewoon: leads komen binnen en je assistent praat met ze via het formulier.</p>' },
 
   { id: 'agenda', sec: 'Je AI instellen', title: 'Google Agenda koppelen',
     tags: 'agenda kalender google afspraak boeken beschikbaarheid koppelen',
     body:
-      '<p>Koppel je agenda en de AI kan echt boeken in plaats van alleen een link te sturen.</p>' +
+      '<p>Koppel je agenda en je assistent kan echt boeken in plaats van alleen een link te sturen.</p>' +
       '<ol>' +
       '<li>Ga naar <strong>Dashboard</strong> en klik op <strong>Koppelen</strong> bij Google Agenda. Je kunt het ook via <strong>Instellingen</strong> doen.</li>' +
       '<li>Log in bij Google en geef toestemming.</li>' +
       '<li>Klaar. De AI controleert vanaf nu je vrije momenten voordat hij iets voorstelt.</li>' +
       '</ol>' +
-      '<p>Zonder koppeling blijft alles werken, maar dan stuurt de AI een boekingslink en moet de lead zelf een moment kiezen.</p>' },
+      '<p>Zonder koppeling blijft alles werken, maar dan stuurt je assistent een boekingslink en moet de lead zelf een moment kiezen.</p>' },
 
   { id: 'overnemen', sec: 'Dagelijks gebruik', title: 'Een gesprek zelf overnemen',
     tags: 'overnemen takeover mens zelf antwoorden pauzeren ai stoppen chatten',
@@ -24451,10 +24451,10 @@ var HELP_ARTICLES = [
       '<p>Soms wil je er zelf in. Dat kan op elk moment.</p>' +
       '<ol>' +
       '<li>Open de lead vanuit <strong>Gesprekken</strong> of <strong>Pipeline</strong>.</li>' +
-      '<li>Bovenaan het gesprek staat een balk met de status: <strong>AI actief</strong> of <strong>Mens aan het roer</strong>.</li>' +
-      '<li>Zet hem op <em>Mens aan het roer</em> en de AI stopt onmiddellijk met antwoorden in dat gesprek.</li>' +
+      '<li>Bovenaan het gesprek staat een balk met de status: <strong>Assistent actief</strong> of <strong>Mens aan het roer</strong>.</li>' +
+      '<li>Zet hem op <em>Mens aan het roer</em> en je assistent stopt onmiddellijk met antwoorden in dat gesprek.</li>' +
       '</ol>' +
-      '<p>Je typt daarna zelf. Zet je de schakelaar terug, dan pikt de AI het gesprek weer op met alles wat er ondertussen gezegd is.</p>' },
+      '<p>Je typt daarna zelf. Zet je de schakelaar terug, dan pikt je assistent het gesprek weer op met alles wat er ondertussen gezegd is.</p>' },
 
   { id: 'pipeline', sec: 'Dagelijks gebruik', title: 'Werken met de pipeline',
     tags: 'pipeline fase kolom slepen status opvolging kanban',
@@ -24491,7 +24491,7 @@ var HELP_ARTICLES = [
       '<p>Je leads zijn van jou. Wij gebruiken ze niet voor iets anders en verkopen ze niet door.</p>' +
       '<p>Vraagt een lead om verwijdering, of wil je zelf iets weg? Stuur ons het verzoek via de knop hieronder. Verwijderen gebeurt bij ons handmatig en niet met een knop in je dashboard, juist omdat het onomkeerbaar is en we willen dat er iemand naar kijkt.</p>' +
       '<p>Je kunt kiezen tussen <strong>anonimiseren</strong> (naam, nummer en gesprek worden gewist, je statistieken blijven kloppen) en <strong>volledig verwijderen</strong> (de lead verdwijnt helemaal).</p>' +
-      '<p>Je AI vertelt eerlijk dat hij een AI is als een lead daarnaar vraagt. Dat is verplicht en staat vast.</p>' }
+      '<p>Je assistent vertelt eerlijk dat hij een AI is als een lead daarnaar vraagt. Dat is verplicht en staat vast.</p>' }
 ];
 
 var _helpOpen = false;

@@ -480,5 +480,40 @@ console.log('\n— de checklist en de proefbanner zijn vertaalbaar —');
     nlDict['chk.gcal.title'] === 'Koppel je Google Agenda', nlDict['chk.gcal.title']);
 }
 
+/* ── Het ding heeft een naam ───────────────────────────────────────────────
+   "AI" is geen naam, het is een technologie. Het product noemt zichzelf nu naar
+   wat het IS: Faro is de assistent in het dashboard, en wat met de leads praat
+   heet "je assistent" -- want die krijgt zijn eigen naam van de klant
+   (ap.name), dus "Mathis" of "Sara", niet "de AI".
+
+   TWEE UITZONDERINGEN, allebei met opzet:
+   - img.honest: de mededeling dat een BEELD door een model gemaakt is. Daar is
+     "AI" het juiste en eerlijke woord; dat is geen merknaam maar een
+     waarschuwing aan de kijker.
+   - de zin waarin de assistent zelf toegeeft dat hij een AI is als een lead
+     ernaar vraagt. Die moet er juist staan.
+
+   Alles daarbuiten hoort weg te blijven, ook in nieuwe teksten. */
+console.log('\n— het product noemt zichzelf niet "AI" —');
+{
+  const TOEGESTAAN = new Set(['img.honest']);
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
+    const d = i18n.woordenboek(taal);
+    const fout = Object.keys(d)
+      .filter((k) => !TOEGESTAAN.has(k))
+      .filter((k) => /\b(AI|IA|KI)\b/.test(d[k]));
+    ck(`${taal}: geen enkele tekst noemt het "AI"`, fout.length === 0,
+       fout.map((k) => k + '=' + d[k].slice(0, 60)));
+  }
+
+  /* En het moet wél ergens "assistent" heten -- anders is de vervanging
+     doorgeschoten en staat er nu helemaal niets. */
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
+    const d = i18n.woordenboek(taal);
+    const aantal = Object.keys(d).filter((k) => /assistent|assistant/i.test(d[k])).length;
+    ck(`${taal}: het heet wel degelijk ergens "assistent" (${aantal}x)`, aantal >= 15, aantal);
+  }
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);
