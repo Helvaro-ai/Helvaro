@@ -13942,10 +13942,35 @@ setInterval(updateTimestamp, 60000);
 // Airtable's 5 req/s base-level rate limit.
 const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes. Halved Airtable polling load
 const pollJitter    = Math.random() * 60000 + 30000; // 30–90s startup offset
+/* Niet pollen naar een tabblad waar niemand naar kijkt.
+
+   Een makelaar houdt Helvaro de hele dag open achter zijn andere tabbladen.
+   Dat waren tot nu toe ~48 verversingen en ~96 presence-pings per persoon per
+   dag naar een scherm dat niemand zag -- Airtable-quota en verkeer voor niets,
+   en precies het soort belasting dat de 429-storm eerder veroorzaakte.
+
+   De winst gaat twee kanten op: wie terugkomt op het tabblad krijgt nu METEEN
+   verse cijfers in plaats van te wachten tot de volgende ronde. Verborgen
+   overslaan is dus niet alleen zuiniger, het is ook actueler. */
+var _laatstVerversMs = 0;
+function hvVerversAlsZichtbaar() {
+  if (!state.apiKey) return;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+  _laatstVerversMs = Date.now();
+  refreshData();
+}
+
 setTimeout(() => {
-  if (state.apiKey) refreshData();
-  setInterval(() => { if (state.apiKey) refreshData(); }, POLL_INTERVAL);
+  hvVerversAlsZichtbaar();
+  setInterval(hvVerversAlsZichtbaar, POLL_INTERVAL);
 }, pollJitter);
+
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState !== 'visible' || !state.apiKey) return;
+  /* Alleen als er echt een ronde is overgeslagen. Tussen tabbladen heen en
+     weer klikken mag geen verzoekenregen worden. */
+  if (Date.now() - _laatstVerversMs >= POLL_INTERVAL) hvVerversAlsZichtbaar();
+});
 
 /* ============================================================
    NEW LEAD NOTIFICATIONS (Feature 1)
@@ -25528,6 +25553,11 @@ function startPresencePing() {
   if (_presenceTimer) return;
   function ping() {
     if (!state.apiKey) return;
+    /* Een tabblad dat achter drie andere ligt is geen aanwezigheid. De
+       founder-weergave zet hierop zijn "nu online"-stip, en die hoort te
+       betekenen dat iemand kijkt -- niet dat er ergens nog een tabblad
+       openstaat. Dit maakt de stip dus ook eerlijker, niet alleen zuiniger. */
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     fetch('/api/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
