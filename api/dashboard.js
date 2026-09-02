@@ -4998,7 +4998,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   background: rgba(var(--accent-rgb),.08); border-color: var(--accent-bright);
   transform: translateX(2px);
 }
-/* ── Takeover bar (AI actief vs Mens aan het roer) ── */
+/* ── Takeover-balk (assistent actief vs mens aan het roer) ── */
 .panel-takeover-bar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
   margin-bottom: 10px; padding: 8px 10px;
@@ -15520,30 +15520,87 @@ function hvFoutZin(e, valSleutel) {
   return valSleutel ? tr(valSleutel) : tr('err.server');
 }
 
+/* ── Alles wat klikbaar is, moet ook bereikbaar zijn ───────────────────────
+   Zeventien renderfuncties zetten onclick op een <div>, <tr> of <li>. Die
+   elementen zijn niet focusbaar, dus met Tab kwam je er nooit: pipelinekaarten
+   openen, een melding aanklikken, een zoekresultaat kiezen -- allemaal alleen
+   met de muis. Wie geen muis gebruikt, kon de helft van het scherm niet aan.
+
+   Deze functie bestond al, maar werd NERGENS aangeroepen. Het mechanisme was
+   er, en deed niets. Zeventien aanroepen toevoegen zou het oplossen tot iemand
+   de achttiende renderfunctie schrijft en het vergeet -- en dan is het weer
+   stil kapot. Dus kijkt een observer naar wat er aan de DOM wordt toegevoegd.
+
+   Waarom niet overal role="button": een pipelinekaart bevat zelf knoppen, en
+   een knop mag geen knoppen bevatten -- dat leest een schermlezer verkeerd
+   voor. Zulke elementen krijgen wel focus en wel de Enter-afhandeling, maar
+   houden hun eigen rol. Het toetsenbord haakt daarom aan data-hv-act, niet aan
+   de rol. */
+const HV_ZELF_INTERACTIEF = 'BUTTON A INPUT SELECT TEXTAREA'.split(' ');
+
 function hvMakeActivatable(root) {
   const scope = root || document.querySelector('.page.active') || document;
-  scope.querySelectorAll('[onclick]').forEach(function (el) {
-    const t = el.tagName;
-    if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+  if (!scope || !scope.querySelectorAll) return;
+  const alles = [];
+  if (scope.matches && scope.matches('[onclick]')) alles.push(scope);
+  scope.querySelectorAll('[onclick]').forEach(function (el) { alles.push(el); });
+
+  alles.forEach(function (el) {
+    if (HV_ZELF_INTERACTIEF.indexOf(el.tagName) !== -1) return;
     if (el.hasAttribute('tabindex')) return;
     el.setAttribute('tabindex', '0');
-    if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+    el.setAttribute('data-hv-act', '1');
+    /* Alleen een echte knoprol als er niets interactiefs in zit. */
+    if (!el.getAttribute('role')
+        && !el.querySelector('button, a, input, select, textarea, [onclick]')) {
+      el.setAttribute('role', 'button');
+    }
   });
 }
 
 let _activatableBound = false;
 function bindActivatable() {
   if (_activatableBound) return;
+
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const el = e.target;
     if (!el || !el.matches) return;
-    if (!el.matches('[role="button"][tabindex="0"]')) return;
-    const t = el.tagName;
-    if (t === 'BUTTON' || t === 'A') return;   // die doen dit zelf al
+    if (!el.matches('[data-hv-act="1"][tabindex="0"]')) return;
+    if (HV_ZELF_INTERACTIEF.indexOf(el.tagName) !== -1) return;   // die doen dit zelf al
     e.preventDefault();
     el.click();
   }, true);
+
+  hvMakeActivatable(document);
+
+  /* Renderen gebeurt in vlagen (innerHTML op een hele lijst). Verzamel de
+     toevoegingen en verwerk ze een keer per frame, anders draait dit honderden
+     keren tijdens een enkele render. */
+  if (typeof MutationObserver === 'function') {
+    let wachtend = [];
+    let gepland = false;
+    const verwerk = function () {
+      gepland = false;
+      const batch = wachtend; wachtend = [];
+      batch.forEach(function (n) {
+        try { hvMakeActivatable(n); } catch (err) { console.error('[activatable]', err); }
+      });
+    };
+    new MutationObserver(function (muts) {
+      for (let i = 0; i < muts.length; i++) {
+        const toegevoegd = muts[i].addedNodes;
+        for (let j = 0; j < toegevoegd.length; j++) {
+          if (toegevoegd[j].nodeType === 1) wachtend.push(toegevoegd[j]);
+        }
+      }
+      if (wachtend.length && !gepland) {
+        gepland = true;
+        (window.requestAnimationFrame || window.setTimeout)(verwerk, 0);
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   _activatableBound = true;
 }
 
