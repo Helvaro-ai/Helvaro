@@ -292,7 +292,7 @@ module.exports = async function handler(req, res) {
     // the container gets frozen/recycled after our 200 OK already went out.
     // We still `await` it locally too: that preserves today's behaviour on
     // any runtime where waitUntil() is a no-op (see require comment above).
-    const work = opDeRij(phone, scopedProjectCode, () => processMessage(phone, text, scopedProjectCode));
+    const work = opDeRij(phone, scopedProjectCode, () => processMessage(phone, text, scopedProjectCode, message.id));
     waitUntil(work);
     await Promise.all([work, eventWork]);
 
@@ -603,7 +603,9 @@ async function alertTemplateCategoryChange(value) {
 
 // ─── MAIN LOGIC ─────────────────────────────────────────────────────────────
 
-async function processMessage(phone, text, scopedProjectCode) {
+/* inkomendId is het bericht-id van Meta. Optioneel en achteraan, zodat een
+   aanroeper die het niet meegeeft precies het oude gedrag houdt. */
+async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   // 1. Find lead by phone. When scopedProjectCode is set (the inbound webhook
   // arrived on a client's OWN WhatsApp number — see the handler above), the
   // lookup is scoped to (phone, that client) directly and the Task 1
@@ -868,12 +870,37 @@ async function processMessage(phone, text, scopedProjectCode) {
   if (stored) {
     try { history = JSON.parse(stored); } catch { history = []; }
   }
+  /* ── Tweede slot op dubbele webhooks ────────────────────────────────────
+     _dedupSeen() hierboven is een Map in het geheugen van EEN instantie. Op
+     Vercel schaalt deze functie uit, dus twee bezorgingen van hetzelfde
+     bericht kunnen op twee instanties landen en dan ziet geen van beide de
+     ander. Ook opDeRij() serialiseert alleen binnen een instantie.
+
+     Meta stuurt opnieuw wanneer wij te traag antwoorden -- seconden tot
+     tientallen seconden later. Tegen die tijd staat de vorige beurt meestal
+     al in de historie, en die historie is gedeeld. Dus: staat dit bericht-id
+     er al in, dan is het bericht al beantwoord.
+
+     Dit sluit het gat niet helemaal: twee ECHT gelijktijdige bezorgingen
+     lezen allebei een historie zonder het id. Airtable kent geen unieke
+     sleutel om dat mee af te dwingen. Het haalt wel het geval weg dat in de
+     praktijk voorkomt, en het kost niets extra -- de historie werd toch al
+     gelezen en geschreven.
+
+     Oudere gesprekken hebben geen mid op hun regels. Die vallen hier
+     stilzwijgend doorheen naar het oude gedrag, wat precies goed is: liever
+     een keer dubbel dan een lead die geen antwoord krijgt. */
+  if (inkomendId && history.some((h) => h && h.mid === inkomendId)) {
+    console.log(`[WhatsApp] bericht ${inkomendId} staat al in de historie — al beantwoord, overgeslagen.`);
+    return;
+  }
+
   // `ts` stamps every inbound message going forward. api/leads.js's manual-
   // reply endpoint uses it to enforce Meta's 24h customer-service window —
   // see its own doc comment for why conversations that predate this change
   // (no ts on their user-role entries) fail closed rather than assume the
   // window is still open.
-  history.push({ role: 'user', content: text, ts: Date.now() });
+  history.push({ role: 'user', content: text, ts: Date.now(), mid: inkomendId || undefined });
 
   // 5. Fetch client website on first user message
   let websiteContent = null;
