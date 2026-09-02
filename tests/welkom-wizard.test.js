@@ -117,7 +117,7 @@ ck('hij is decoratie voor schermlezers',
 
 console.log('\n— opslaan loopt via de bestaande route, niet via een eigen eindpunt —');
 ck("wizardBewaar gebruikt mode:'config-save'",
-   /function wizardBewaar[\s\S]{0,400}mode: 'config-save'/.test(html), null);
+   /function wizardBewaar[\s\S]{0,900}mode: 'config-save'/.test(html), null);
 ck('en leest de bestaande config met config-get',
    /checkWelkomWizard[\s\S]{0,600}mode: 'config-get'/.test(html), null);
 
