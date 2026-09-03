@@ -28,6 +28,23 @@ Gevonden in de serverlogs, niet in de code. De code las prima.
 **Wat dit kostte:** elke prospect die op de site op "probeer de demo" klikte,
 zag een kapot product. Dat is precies de bezoeker die je wél wilde overtuigen.
 
+### Een hangende verbinding kan geen gesprek meer gijzelen
+
+Op vier plekken werd er naar buiten gebeld zonder klok: de enige deur naar
+WhatsApp, een tweede weg naar WhatsApp die daarnaast bleek te bestaan, elke
+Airtable-aanroep in het WhatsApp-bestand (die bij een 429 ook nog twee keer
+opnieuw probeerde, alle drie onbegrensd), en alle 22 aanroepen van de dagelijkse
+opvolgcron.
+
+Wat dat betekende: als Meta of Airtable niet antwoordde in plaats van "nee" te
+zeggen, bleef alles staan tot Vercel de functie afkapte. De lead kreeg niets,
+het gesprek werd niet weggeschreven, en bij de cron had een deel van de klanten
+zijn opvolging gehad en een deel niet — zonder dat er iets rood werd.
+
+Alle vier hebben nu dezelfde klok die de rest van de codebase al had. Bij een
+time-out staat er nu ook eerlijk in het logboek dat we NIET weten of Meta het
+bericht nog kreeg — dat is het verschil tussen opnieuw sturen en dubbel sturen.
+
 ### Faro liep vast in plaats van het te zeggen
 
 Als het model bleef hangen, liep Faro door tot Vercel de functie na 60 seconden

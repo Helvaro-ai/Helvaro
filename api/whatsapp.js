@@ -1901,10 +1901,24 @@ function getCachedClientByPnid(pnid) {
 function setCachedClientByPnid(pnid, record) { _clientByPnidCache.set(pnid, { record, ts: Date.now() }); }
 
 // Fast-fail retry for Airtable 429. 2 retries, ~3 s max.
+/* Deze wrapper deed 429-herkansingen maar had geen KLOK. Dat is de gevaarlijkste
+   combinatie van de twee: dit bestand is het pad waarlangs een lead zijn
+   antwoord krijgt, elke Airtable-aanroep hier loopt hierlangs, en bij een
+   hangende verbinding werden het er drie achter elkaar -- allemaal onbegrensd.
+   Vercel kapt deze functie na 120 seconden af; de lead heeft dan niets gekregen
+   en de gespreksgeschiedenis is niet weggeschreven.
+
+   api/_credits.js, api/leads.js en api/_ledger.js hebben deze klok al. Dit
+   bestand niet. Elke poging krijgt een VERSE signal: een verlopen
+   AbortSignal is niet opnieuw te gebruiken, dus één signal voor alle drie de
+   pogingen zou de tweede en derde meteen laten afbreken. */
+const AT_TIMEOUT_MS = Math.max(3000, Number(process.env.AIRTABLE_TIMEOUT_MS || 10000));
+
 async function atFetch(url, opts) {
   let delay = 1000;
+  const metKlok = () => ({ ...opts, signal: (opts && opts.signal) || AbortSignal.timeout(AT_TIMEOUT_MS) });
   for (let attempt = 0; attempt < 2; attempt++) {
-    const r = await fetch(url, opts);
+    const r = await fetch(url, metKlok());
     if (r.status !== 429) return r;
     const jitter = delay * 0.25 * (Math.random() * 2 - 1);
     const wait   = Math.max(300, delay + jitter);
@@ -1912,7 +1926,7 @@ async function atFetch(url, opts) {
     await new Promise(res => setTimeout(res, wait));
     delay *= 2;
   }
-  return fetch(url, opts);
+  return fetch(url, metKlok());
 }
 
 async function getClientByCode(code) {
@@ -2707,7 +2721,11 @@ async function sendWA(to, message, phoneNumberId) {
       return false;
     }
     const url = `https://graph.facebook.com/v19.0/${pnid}/messages`;
+    /* Zelfde klok en zelfde reden als in api/_wa-send.js: dit is een tweede
+       weg naar Meta die dezelfde functie deelt, en zonder time-out houdt een
+       hangende verbinding de hele beurt vast tot Vercel hem afkapt. */
     const res = await fetch(url, {
+      signal:  AbortSignal.timeout(Math.max(3000, Number(process.env.WHATSAPP_TIMEOUT_MS || 15000))),
       method:  'POST',
       headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify({

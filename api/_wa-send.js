@@ -56,6 +56,21 @@ function normalizePhone(raw) {
   return digits;
 }
 
+/* Meta antwoordt normaal in een halve seconde. Deze klok staat er niet voor het
+   normale geval maar voor het geval dat er nooit een antwoord komt.
+
+   Waarom dat hier zwaarder weegt dan elders: dit is de ENIGE deur naar
+   WhatsApp, en hij wordt afgewacht vóórdat de lead zijn antwoord krijgt. Zonder
+   klok bleef een hangende verbinding staan tot Vercel de functie na 120
+   seconden afkapt -- en dan heeft de lead niets gekregen, is er geen
+   foutmelding, en is de gespreksgeschiedenis niet weggeschreven.
+
+   De kop van deze module belooft dat sendWA() nooit gooit maar `false`
+   teruggeeft bij een storing. Een HANG is geen storing in die zin: hij geeft
+   helemaal niets terug. Deze time-out maakt van een hang alsnog een nette
+   `false`, en daarmee klopt die belofte pas echt. */
+const POST_TIMEOUT_MS = Math.max(3000, Number(process.env.WHATSAPP_TIMEOUT_MS || 15000));
+
 async function post(pnid, token, payload) {
   let res;
   try {
@@ -63,10 +78,19 @@ async function post(pnid, token, payload) {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
     });
   } catch (err) {
-    console.error('[wa-send] network error:', err.message);
-    throw new SendError('WhatsApp was niet bereikbaar. Probeer het opnieuw.', 'network');
+    /* Een time-out is een eigen geval: bij een netwerkfout weet je dat het
+       bericht NIET aankwam, bij een time-out weet je dat niet. Meta kan hem
+       alsnog verwerkt hebben. Dat verschil hoort in de logs, want het is het
+       verschil tussen "opnieuw sturen" en "misschien dubbel sturen". */
+    const traag = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    console.error('[wa-send] ' + (traag ? `geen antwoord binnen ${POST_TIMEOUT_MS}ms — onbekend of Meta het bericht kreeg` : 'network error: ' + err.message));
+    throw new SendError(
+      traag ? 'WhatsApp reageerde niet op tijd.' : 'WhatsApp was niet bereikbaar. Probeer het opnieuw.',
+      traag ? 'timeout' : 'network',
+    );
   }
 
   const body = await res.json().catch(() => null);

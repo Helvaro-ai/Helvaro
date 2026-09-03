@@ -10,6 +10,28 @@
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
 const _crypto = require('crypto');
+
+/* ── Een klok op elke uitgaande aanroep ──────────────────────────────────────
+ * Deze cron deed 22 kale fetch-aanroepen naar Airtable en Meta, geen enkele met
+ * een time-out. vercel.json geeft hem 300 seconden; blijft er één verbinding
+ * hangen, dan wordt de functie daar afgekapt en is de rest van de ronde niet
+ * gedraaid. Sommige klanten hebben dan hun opvolging gehad en andere niet --
+ * stil, en pas de volgende dag opnieuw geprobeerd.
+ *
+ * Dat is precies de fout die deze cron eerder al eens had in een andere vorm:
+ * hij meldde verzendingen die nooit de deur uit gingen. Een rapport dat niet
+ * kan weten of het waar is, is erger dan geen rapport.
+ *
+ * Elk ander bestand in deze codebase heeft deze wrapper al (api/_credits.js,
+ * api/leads.js, api/_ledger.js, ...). Deze niet. Nu wel, met dezelfde vorm.
+ */
+const CRON_FETCH_TIMEOUT_MS = Math.max(5000, Number(process.env.CRON_FETCH_TIMEOUT_MS || 20000));
+async function atFetch(url, opts) {
+  return fetch(url, {
+    ...opts,
+    signal: (opts && opts.signal) || AbortSignal.timeout(CRON_FETCH_TIMEOUT_MS),
+  });
+}
 const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
 
 /* Vergelijken zonder te verklappen hoeveel tekens er klopten. Ongelijke lengtes
@@ -69,7 +91,7 @@ async function isServiceStoppedForProject(airtableToken, baseId, projectCode, ca
   let stopped = false;
   try {
     const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode.replace(/"/g, '\\"')}"`);
-    const r = await fetch(
+    const r = await atFetch(
       `https://api.airtable.com/v0/${baseId}/tblPidTrwGRzRt4LZ?filterByFormula=${formula}&maxRecords=1`,
       { headers: { Authorization: `Bearer ${airtableToken}` } }
     );
@@ -137,7 +159,7 @@ module.exports = async function handler(req, res) {
       `AND({fld8mkrEWcyq7mUip}="new",{fldR0r13EU4RwrtvH}<"${ago24h}",{fldR0r13EU4RwrtvH}>"${ago7d}")`
     );
     const url  = `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}?filterByFormula=${formula}&pageSize=50`;
-    const lRes = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const lRes = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
 
     if (lRes.status === 429) {
       console.warn('[cron-followup] Airtable 429. follow-ups uitgesteld tot morgen');
@@ -231,7 +253,7 @@ module.exports = async function handler(req, res) {
       // send first and mark after, which previously meant a PATCH failure
       // (429, network blip) left the lead at 'new' with 0 replies — next
       // run would re-select it and fire the SAME PAID TEMPLATE again.
-      const pRes = await fetch(
+      const pRes = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${lead.id}`,
         {
           method:  'PATCH',
@@ -439,7 +461,7 @@ async function sweepStuckNewLeads(airtableToken, baseId, leadsTable) {
   );
   const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=50`;
 
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
   if (r.status === 429) {
     console.warn('[cron-followup] stuck-new sweep: Airtable 429, uitgesteld tot volgende run');
     return { checked: 0, flagged: 0, skipped: 'rate_limited' };
@@ -452,7 +474,7 @@ async function sweepStuckNewLeads(airtableToken, baseId, leadsTable) {
   for (const lead of stuck) {
     try {
       const merged = mergeWaFailedFlag(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities']);
-      const pr = await fetch(
+      const pr = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${leadsTable}/${lead.id}`,
         {
           method:  'PATCH',
@@ -537,7 +559,7 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
   );
   const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=50`;
 
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
   if (r.status === 429) {
     console.warn('[cron-followup] retention: Airtable 429, uitgesteld tot volgende run');
     return { checked: 0, anonymized: 0, skipped: 'rate_limited' };
@@ -563,7 +585,7 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
         fldqerIiw5qyQjXHr: '',                   // AI Summary
         fldoLRI5W12ThTls7: '',                   // Notities
       };
-      const pr = await fetch(
+      const pr = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${leadsTable}/${lead.id}`,
         {
           method:  'PATCH',
@@ -616,7 +638,7 @@ async function runSignupSignalsRetention(airtableToken, baseId, now = new Date()
   const SIGNALS_FIELD = signupGuard.FIELD_NAME.SIGNALS; // 'Signup Fraud Signals'
 
   const url = `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?pageSize=100`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
   if (r.status === 429) {
     console.warn('[cron-followup] signup-signals retention: Airtable 429, uitgesteld tot volgende run');
     return { checked: 0, cleared: 0, skipped: 'rate_limited' };
@@ -633,7 +655,7 @@ async function runSignupSignalsRetention(airtableToken, baseId, now = new Date()
   let cleared = 0;
   for (const rec of eligible) {
     try {
-      const pr = await fetch(
+      const pr = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}/${rec.id}`,
         {
           method:  'PATCH',
@@ -711,7 +733,7 @@ function mergeWaFailedFlag(raw) {
 async function checkQualityRating(phoneNumberId, token) {
   if (!phoneNumberId || !token) return null;
   const url = `https://graph.facebook.com/v19.0/${phoneNumberId}?fields=quality_rating,name_status,verified_name`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
     console.error('[quality] Meta fout', r.status, txt.slice(0, 200));
@@ -780,7 +802,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
 
   // 1. Haal alle actieve klanten met een Rapport Email op
   const cFormula = encodeURIComponent(`AND({Active}=1, NOT({Rapport Email}=""))`);
-  const cRes = await fetch(
+  const cRes = await atFetch(
     `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&pageSize=100`,
     { headers: { Authorization: `Bearer ${airtableToken}` } }
   );
@@ -797,7 +819,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
 
     // 2. Haal alle leads van deze klant uit de afgelopen 7 dagen
     const lFormula = encodeURIComponent(`AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", {Created At}>"${weekAgoIso}")`);
-    const lRes = await fetch(
+    const lRes = await atFetch(
       `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${lFormula}&pageSize=100`,
       { headers: { Authorization: `Bearer ${airtableToken}` } }
     );
@@ -966,7 +988,7 @@ async function runWeeklyLearning(airtableToken, baseId, leadsTable) {
 
   // 1. Haal alle actieve klanten op
   const cFormula = encodeURIComponent('{Active}=1');
-  const cRes = await fetch(
+  const cRes = await atFetch(
     `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${cFormula}&pageSize=100`,
     { headers: { Authorization: `Bearer ${airtableToken}` } }
   );
@@ -983,7 +1005,7 @@ async function runWeeklyLearning(airtableToken, baseId, leadsTable) {
 
     // 2. Haal leads van afgelopen 7 dagen voor deze klant
     const lFormula = encodeURIComponent(`AND({Project Code}="${projectCode.replace(/"/g, '\\"')}", {Created At}>"${weekAgoIso}")`);
-    const lRes = await fetch(
+    const lRes = await atFetch(
       `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${lFormula}&pageSize=100`,
       { headers: { Authorization: `Bearer ${airtableToken}` } }
     );
@@ -1063,7 +1085,7 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
       if (!newPatterns) { skipped++; continue; }
 
       // 6. Schrijf terug naar Airtable
-      const up = await fetch(
+      const up = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}/${client.id}`,
         {
           method: 'PATCH',
@@ -1243,7 +1265,7 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
   for (let page = 0; page < 20; page++) {
     const url = `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=50` +
       (offset ? `&offset=${encodeURIComponent(offset)}` : '');
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
     if (r.status === 429) {
       // Keep whatever we already collected — those still get reminded this run;
       // the rest are picked up tomorrow (they stay in the window / unflagged).
@@ -1296,7 +1318,7 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
     let rec = null;
     try {
       const formula2 = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode.replace(/"/g, '\\"')}"`);
-      const cRes = await fetch(
+      const cRes = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${formula2}&maxRecords=1`,
         { headers: { Authorization: `Bearer ${airtableToken}` } }
       );
@@ -1335,7 +1357,7 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
       /* De tabel-id staat hier letterlijk omdat LEADS_TABLE in deze functie
          niet in scope is (die is lokaal aan de handler hierboven). Zelfde
          id als daar; het is dezelfde tabel. */
-      const r = await fetch(
+      const r = await atFetch(
         `https://api.airtable.com/v0/${baseId}/tbliukTnDAbEDcZmt?filterByFormula=${f}&pageSize=100`,
         { headers: { Authorization: `Bearer ${airtableToken}` } });
       if (r.ok) {
@@ -1422,7 +1444,7 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
       // sending without being able to record it (which WOULD risk a
       // duplicate tomorrow) — better a missed reminder, retried tomorrow via
       // this same all-or-nothing rule, than a double-send.
-      const pRes = await fetch(
+      const pRes = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}/${appt.id}`,
         {
           method:  'PATCH',
@@ -1478,7 +1500,7 @@ async function runTrialLifecycle(airtableToken, baseId, leadsTable) {
   const url = `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${formula}&pageSize=100`;
   let res;
   try {
-    res = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    res = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
   } catch (err) {
     console.error('[trial] clients fetch threw:', err.message);
     return null;
@@ -1597,7 +1619,7 @@ async function runTrialLifecycle(airtableToken, baseId, leadsTable) {
 // it needs (flipping Plan Status). Throws on failure — caller decides how
 // to log/handle it (never lets a throw here change what emails get sent).
 async function patchClientFields(airtableToken, baseId, recordId, fields) {
-  const r = await fetch(`https://api.airtable.com/v0/${baseId}/tblPidTrwGRzRt4LZ/${recordId}`, {
+  const r = await atFetch(`https://api.airtable.com/v0/${baseId}/tblPidTrwGRzRt4LZ/${recordId}`, {
     method:  'PATCH',
     headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
     body:    JSON.stringify({ fields }),
@@ -1630,7 +1652,7 @@ async function computeTrialStats(airtableToken, baseId, leadsTable, projectCode,
     for (let page = 0; page < 5; page++) {
       const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${projectCode.replace(/"/g, '\\"')}"`);
       const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=100${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+      const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
       if (!r.ok) break;
       const d = await r.json();
       all.push(...(d.records || []));
