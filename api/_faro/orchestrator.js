@@ -134,6 +134,27 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
   let usage = { inputTokens: 0, outputTokens: 0 };
   let iterations = 0;
 
+  /* ── Een deadline voor de hele beurt ──────────────────────────────────────
+     api/_ai/providers/index.js zet al een klok op elke modelaanroep, met deze
+     reden erbij: "zonder dit kan een provider die blijft hangen een
+     Vercel-functie tot zijn maxDuration bezet houden". Voor Faro stond die
+     klok er niet. De provider ACCEPTEERT een signal (zie de handtekening van
+     streamChat), er gaf alleen nooit iemand er een mee.
+
+     Gevolg, terug te vinden in de Vercel-logs: "Task timed out after 60
+     seconds" op /api/faro. Vercel kapt de functie dan af zonder dat er een
+     foutframe uitgaat -- de gebruiker ziet zijn antwoord halverwege
+     doodbloeden, en het afboeken van credits en het grootboek komen er niet
+     meer aan toe (ook dat staat in de logs, als "aborted due to timeout").
+
+     Dit maakt Faro niet sneller. Het verandert stil doodgaan in een nette
+     foutkaart, en laat de beurt zijn eigen rommel nog opruimen. De grens ligt
+     onder de 60s van vercel.json, met ruimte om dat frame te versturen. */
+  const beurtKlok = new AbortController();
+  const beurtMs = Math.max(5000, Number(process.env.FARO_TIMEOUT_MS || 45000));
+  let deadlineVerstreken = false;
+  const beurtTimer = setTimeout(() => { deadlineVerstreken = true; beurtKlok.abort(); }, beurtMs);
+
   try {
     // The tool loop. Each pass is one provider call; a pass that ends in
     // tool_use appends the results and goes round again.
@@ -147,6 +168,7 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       stream.send(res, 'thinking', { state: 'thinking' });
 
       for await (const ev of provider.streamChat({
+        signal: beurtKlok.signal,
         system,
         messages,
         // Tools stay DECLARED even at the ceiling. Withholding them was wrong:
@@ -177,6 +199,18 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
           default:
             break;
         }
+      }
+
+      /* De provider behandelt een AbortError als "de gebruiker is weggeklikt" en
+         stopt dan stilletjes -- terecht, want dat is het normale geval. Onze
+         eigen deadline moet daar juist WEL uit te onderscheiden zijn, anders
+         eindigt een vastgelopen beurt als een half antwoord zonder melding.
+         Vandaar de vlag, en niet alleen het signal. */
+      if (deadlineVerstreken) {
+        throw new ProviderError(
+          'Dit duurde te lang. Probeer het nog eens, of stel je vraag korter.',
+          { code: 'timeout', retryable: true },
+        );
       }
 
       if (!pendingCalls.length) break; // model answered in prose — turn is done
@@ -303,6 +337,13 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
     // clicking each. stream.fail is the terminal signal; the client already
     // renders it as a card.
     stream.fail(res, safe);
+  } finally {
+    /* Zonder dit blijft de timer 45 seconden staan na een beurt die in twee
+       seconden klaar was. Op Vercel houdt een openstaande timer de functie
+       wakker: je betaalt de looptijd en het antwoord kan blijven hangen. Een
+       time-out inbouwen zonder hem op te ruimen maakt het middel erger dan de
+       kwaal. */
+    clearTimeout(beurtTimer);
   }
 }
 

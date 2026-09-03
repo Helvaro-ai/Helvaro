@@ -28,6 +28,17 @@ Gevonden in de serverlogs, niet in de code. De code las prima.
 **Wat dit kostte:** elke prospect die op de site op "probeer de demo" klikte,
 zag een kapot product. Dat is precies de bezoeker die je wél wilde overtuigen.
 
+### Faro liep vast in plaats van het te zeggen
+
+Als het model bleef hangen, liep Faro door tot Vercel de functie na 60 seconden
+afkapte. Je zag je antwoord halverwege doodbloeden, zonder melding, en het
+afboeken van je credits kwam er niet meer aan toe. Nu stopt hij zelf eerder en
+zegt hij het: "dit duurde te lang, probeer het nog eens." Dat maakt Faro niet
+sneller — het maakt het verschil tussen een scherm dat blijft hangen en een
+scherm dat je vertelt wat er aan de hand is.
+
+De WhatsApp-kant had die klok al. Faro niet.
+
 ### Drie plekken in de code beweerden iets dat niet klopte
 
 Op drie plekken stond dat twee Airtable-velden "geen bekend veld-id" hebben, en
