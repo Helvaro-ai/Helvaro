@@ -29,6 +29,8 @@ const { getPlanState } = require('./_plan');
 const _lang = require('./_lang');
 const _ai = require('./_ai');
 const _properties = require('./_properties'); // welk pand deze lead bedoelt
+const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
+const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
 
 // Move tokens to env vars. Never hardcode secrets in source code
 const VERIFY_TOKEN  = process.env.WA_VERIFY_TOKEN;
@@ -1180,6 +1182,15 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   }
   await updateLead(lead.id, updateFields, phone, scopedProjectCode);
 
+  /* ── Naar het CRM, als deze beurt de kwalificatie opleverde ───────────────
+     Alleen bij een AFGEROND en gekwalificeerd gesprek. Elke beurt duwen zou
+     het CRM van de makelaar vullen met halve gesprekken, en een koude lead die
+     na één bericht afhaakte hoort niet in zijn pijplijn -- dezelfde grens die
+     de bulk-synchronisatie in api/leads.js hanteert. */
+  if (sendOk && aiResponse.done && !isEscalation && aiResponse.qualified) {
+    await duwLeadNaarCrm(lead, updateFields, scopedProjectCode || projectCode);
+  }
+
   // 10b. ESCALATION. When the AI explicitly says "I don't know, let me check",
   // ping the owner immediately so they can take over within the 30 min the AI
   // promised the lead.
@@ -1508,6 +1519,15 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               fldLeEqwNefdglLis: true,
               fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
             }, phone, scopedProjectCode);
+
+            /* Een geboekte bezichtiging is het moment waarop een makelaar zijn
+               CRM opent. Ook als de lead niet als "qualified" is gemarkeerd:
+               wie een afspraak maakt, is een kans -- dat oordeel is al geveld
+               door de agenda, niet door het model. */
+            await duwLeadNaarCrm(lead, {
+              fldLeEqwNefdglLis: true,
+              fldyIGNetqcSEkoaK: true,
+            }, scopedProjectCode || projectCode);
 
             // ── Booking confirmation (fail-soft) ───────────────────────────
             // We're mid-conversation right now — the lead just messaged us,
@@ -2188,6 +2208,46 @@ async function getLead(phone, scopedProjectCode) {
   // these rare colliding phones is far cheaper than risking a stale
   // cross-client leak being served out of cache.
   return winner.record;
+}
+
+/**
+ * De lead naar het CRM van de klant, als hij er een gekoppeld heeft.
+ *
+ * -- Waarom dit hier staat en niet in een cron -------------------------------
+ * Een makelaar die om 20:15 een melding krijgt dat er een gekwalificeerde lead
+ * is, en die lead om 20:16 niet in zijn CRM vindt, gelooft de koppeling niet
+ * meer. Een nachtelijke synchronisatie is technisch eenvoudiger en lost het
+ * probleem niet op waar hij voor bedoeld is.
+ *
+ * -- Drie dingen die hier NIET mogen -----------------------------------------
+ *   1. Gooien. Het antwoord aan de lead is op dit punt al verstuurd; een CRM
+ *      dat plat ligt mag de rest van deze beurt (de afspraak, de melding aan
+ *      de makelaar) niet meeslepen. Vandaar duwVeilig().
+ *   2. Onbegrensd duren. Zie het budget in api/_crm/index.js.
+ *   3. Aan de lead of de makelaar gemeld worden. Zolang niemand kan zien of het
+ *      gelukt is, is er niets te melden -- CLAUDE.md: nooit doen alsof.
+ *
+ * `verse` zijn de velden die zojuist naar Airtable zijn geschreven. Die worden
+ * over het (nu verouderde) record heen gelegd, want anders duwen we de stand
+ * van voor deze beurt: een lead die net gekwalificeerd werd zou dan als
+ * ongekwalificeerd in het CRM landen.
+ */
+async function duwLeadNaarCrm(lead, verse, projectCode) {
+  try {
+    if (!lead || !lead.id || !projectCode) return;
+    const samen = { id: lead.id, fields: { ...(lead.fields || {}), ...(verse || {}) } };
+    const uit = await _crm.duwVeilig(projectCode, _leadsRead.mapLead(samen), { budgetMs: 15_000 });
+    /* De bijgewerkte Notities terug op het record dat deze beurt nog gebruikt.
+       Zonder deze regel ziet een tweede duw in dezelfde beurt -- afronden EN
+       boeken gebeurt in één antwoord -- geen CRM-id's staan, en maakt hij een
+       tweede deal aan. Zie de kop van api/_crm/index.js. */
+    if (uit && uit.notities && lead.fields) lead.fields[NOTITIES_FIELD] = uit.notities;
+  } catch (err) {
+    /* duwVeilig() gooit al niet; dit is de riem naast de bretels, want een
+       uitzondering hier zou een afspraak die AL geboekt is doen lijken alsof
+       hij mislukt is. */
+    console.error('[whatsapp] CRM-duw overgeslagen:', err && err.message);
+  }
 }
 
 async function updateLead(recordId, fields, phone, scopedProjectCode) {

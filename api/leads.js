@@ -17,6 +17,15 @@ const _verify = require('./_verify'); // email-ownership verification — see it
 const _leadsRead = require('./_leads-read');
 const _faroData  = require('./_faro/data');  // parseBudget: leest bedragen uit vrije tekst // shared lead field map + mapper + stats, also used by Faro
 const _command   = require('./_command');     // Command Center intelligence layer — pure, no I/O, no model
+const _crm       = require('./_crm');          // de enige deur naar de CRM's van klanten
+const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de klantrij
+
+// Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
+// 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
+// aanroepen naar een vreemde server. Vijftig is wat daar met ruime marge in
+// past; wat er niet in past komt terug als `afgekapt: true` in plaats van als
+// een afgebroken verzoek waarna niemand weet wat er wel en niet gelukt is.
+const CRM_BULK_MAX = 50;
 
 // Single-shot Airtable fetch. No retries on 429.
 //
@@ -2353,6 +2362,118 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         console.error('[leads ai-pause/resume] error:', err.message);
         return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── C0b. CRM-koppelingen ────────────────────────────────────────────────
+    // POST { mode:'crm-status' }                       -> wat kan er, wat is er
+    // POST { mode:'crm-connect',    crm, cred }        -> testen en opslaan
+    // POST { mode:'crm-disconnect', crm }              -> sleutels weg
+    // POST { mode:'crm-sync',       leadId? }          -> nu duwen
+    //
+    // Alles hangt aan de geverifieerde sessie: projectCode komt NOOIT uit de
+    // body (CLAUDE.md), en leeg is 403 en niet "toon alles". De sleutels zelf
+    // gaan nooit terug naar de browser -- crm-status geeft alleen de naam van
+    // het account terug, als bewijs dat de goede omgeving gekoppeld is.
+    if (body.mode === 'crm-status'  || body.mode === 'crm-connect'
+     || body.mode === 'crm-disconnect' || body.mode === 'crm-sync') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+
+      // Een fout uit de CRM-laag heeft een code die zegt wat de klant eraan kan
+      // doen. Die vertalen we hier één keer naar een HTTP-status in plaats van
+      // bij elke mode opnieuw.
+      const crmFout = (err) => {
+        const code = (err && err.code) || '';
+        if (code === 'onbekend_crm' || code === 'nog_niet_beschikbaar') return 400;
+        if (code === 'geen_sleutel' || code === 'geen_domein' || code === 'geen_https') return 400;
+        if (code === 'geen_toegang') return 400;   // hun sleutel, niet onze fout
+        if (code === 'veld_ontbreekt' || code === 'geen_sleutelbeheer') return 409;
+        if (code === 'te_druk' || code === 'timeout' || code === 'onbereikbaar' || code === 'storing') return 503;
+        return 502;
+      };
+
+      try {
+        if (body.mode === 'crm-status') {
+          return res.status(200).json(await _crm.status(projectCode));
+        }
+
+        if (body.mode === 'crm-connect') {
+          const cred = (body.cred && typeof body.cred === 'object' && !Array.isArray(body.cred)) ? body.cred : null;
+          if (!cred) return res.status(400).json({ error: 'Geen gegevens ingevuld.' });
+          // Alleen de velden die de adapter zelf vraagt. Zonder deze filter kan
+          // een client willekeurige sleutels in de opgeslagen blob zetten --
+          // waaronder namen die de adapter later als configuratie leest.
+          const toegestaan = new Set(_crm.adapter(body.crm).velden.map((v) => v.sleutel));
+          const schoon = {};
+          for (const [k, v] of Object.entries(cred)) {
+            if (toegestaan.has(k)) schoon[k] = String(v == null ? '' : v).trim().slice(0, 500);
+          }
+          const uit = await _crm.verbind(projectCode, body.crm, schoon);
+          return res.status(200).json({ ok: true, ...uit });
+        }
+
+        if (body.mode === 'crm-disconnect') {
+          const weg = await _crm.ontkoppel(projectCode, body.crm);
+          return res.status(200).json({ ok: true, verwijderd: weg });
+        }
+
+        // ── crm-sync ────────────────────────────────────────────────────────
+        // Eén keer de klantrij lezen en die aan elke duw meegeven: bij honderd
+        // leads scheelt dat honderd Airtable-aanroepen.
+        const { koppelingen, velden: klantVelden, kantoor } = await _crmConfig.lees(projectCode);
+        if (!Object.keys(koppelingen).length) {
+          return res.status(400).json({ error: 'Er is nog geen CRM gekoppeld.' });
+        }
+        const gedeeld = { koppelingen, velden: klantVelden, kantoor };
+
+        const leadId = String(body.leadId || '').trim();
+        if (leadId) {
+          if (!/^rec[A-Za-z0-9]{14}$/.test(leadId)) return res.status(400).json({ error: 'Ongeldig record ID' });
+          const lRes = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          if (!lRes.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+          const rec = await lRes.json();
+          const leadProject = rec.fields?.['fldSmczuyUJd26HLe'] || rec.fields?.['Project Code'] || '';
+          if (leadProject !== projectCode) return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+
+          const { resultaten } = await _crm.duw(projectCode, _leadsRead.mapLead(rec), gedeeld);
+          return res.status(200).json({ ok: resultaten.every((r) => r.ok), aantal: 1, resultaten });
+        }
+
+        // Bulk. Alleen leads die ergens toe geleid hebben: een koud gesprek dat
+        // na één bericht doodliep hoort niet in de pijplijn van een makelaar,
+        // en honderd van die records maken zijn CRM juist minder bruikbaar.
+        const { leads } = await _leadsRead.fetchLeads(projectCode, {
+          token: AIRTABLE_TOKEN, baseId: BASE_ID, maxPages: 3,
+        });
+        const teDoen = leads.filter((l) => l.qualified || l.afspraakGeboekt).slice(0, CRM_BULK_MAX);
+
+        let gelukt = 0;
+        const mislukt = [];
+        for (const l of teDoen) {
+          // duwVeilig: één lead die faalt mag de andere negenennegentig niet
+          // stoppen. Wat er misging staat per lead in het antwoord.
+          const { resultaten: r } = await _crm.duwVeilig(projectCode, l, gedeeld);
+          if (r.length && r.every((x) => x.ok)) gelukt++;
+          else mislukt.push({ leadId: l.id, naam: l.naam, redenen: r.filter((x) => !x.ok).map((x) => x.fout) });
+        }
+        return res.status(200).json({
+          ok: mislukt.length === 0,
+          aantal: teDoen.length,
+          gelukt,
+          mislukt,
+          // Eerlijk zijn over wat er NIET is meegenomen, zodat niemand denkt dat
+          // zijn hele bestand nu in het CRM staat.
+          afgekapt: leads.filter((l) => l.qualified || l.afspraakGeboekt).length > teDoen.length,
+        });
+      } catch (err) {
+        console.error(`[leads ${body.mode}]`, err && err.code, err && err.message);
+        return res.status(crmFout(err)).json({
+          error: (err && err.message) || 'Serverfout',
+          code:  (err && err.code) || 'onbekend',
+        });
       }
     }
 

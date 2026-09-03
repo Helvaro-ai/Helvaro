@@ -14,6 +14,65 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Leads gaan nu vanzelf naar je CRM
+
+Een gekwalificeerde lead of een geboekte bezichtiging landt voortaan binnen de
+minuut in HubSpot, Pipedrive, Salesforce of Omnicasa — als contact én als deal,
+met de samenvatting van het gesprek erbij. Eén keer koppelen, daarna hoef je
+niets meer over te typen.
+
+**Het scherm om te koppelen komt nog.** De koppeling zelf is compleet en getest,
+maar zit voorlopig alleen achter de API (`crm-status`, `crm-connect`,
+`crm-disconnect`, `crm-sync` op `/api/leads`). Tot er een instellingenpaneel is,
+legt iemand met toegang de koppeling voor je aan. Dat is een bewuste knip:
+`api/dashboard.js` is één sjabloonliteral van 25.000 regels waar één verkeerd
+teken de hele app op het inlogscherm zet, en dat verdient een eigen ronde met de
+parse-test ernaast — niet een haastige toevoeging aan het eind van deze.
+
+**Actie: maak één veld aan in Airtable voordat dit werkt.** Tabel *Client
+Config*, veld **CRM Koppelingen**, type *Long text*. Daarin bewaren we de
+sleutels van elke klant, versleuteld. Bestaat het veld niet, dan zegt het
+koppelscherm dat met zoveel woorden — het doet niet alsof het gelukt is.
+
+**Actie: zet `CRM_TOKEN_KEY` in Vercel** als je de sleutels een eigen
+encryptiesleutel wil geven. Doe je dat niet, dan valt hij terug op
+`SESSION_SECRET` en werkt alles gewoon. Wat NIET gebeurt is opslaan met een
+standaardsleutel: zonder een van beide weigert de koppeling.
+
+**Wat er precies gebeurt.** Bij het afronden van een gekwalificeerd gesprek, en
+bij elke geboekte bezichtiging. Halve gesprekken en koude leads gaan er
+bewust niet in — die maken je pijplijn juist minder bruikbaar. Wil je je
+bestaande bestand in één keer overzetten, dan stuurt `crm-sync` de
+gekwalificeerde leads en de leads met een afspraak na, in blokken van vijftig.
+Wat er niet in past komt terug als `afgekapt` in plaats van als een half gelukte
+overzetting waarvan niemand weet waar hij stopte.
+
+**Niet twee keer dezelfde deal.** Wat je CRM teruggeeft bewaren we bij de lead,
+dus een tweede synchronisatie werkt bij in plaats van opnieuw aan te maken. Bij
+HubSpot, Pipedrive en Salesforce zoeken we bovendien eerst op telefoonnummer,
+zodat een lead die je zelf al had ingevoerd niet dubbel komt te staan.
+
+**Een CRM dat plat ligt houdt niets tegen.** De lead heeft zijn antwoord al
+gekregen voordat wij het CRM aanraken, en een storing daar levert een regel in
+het logboek op — geen mislukte afspraak en geen wachtende lead. Er zit een
+tijdslimiet op, zodat een traag CRM een WhatsApp-gesprek nooit kan ophouden.
+
+**Whise zit er nog niet bij, en dat is expres.** Van HubSpot, Pipedrive en
+Salesforce is de vorm van elk verzoek na te trekken in openbare documentatie;
+van Omnicasa het adres en de sleutel, alleen de veldnamen zijn een aanname die
+in één regel te corrigeren is. Van Whise is geen van beide openbaar — hun
+documentatie gaat alleen naar partners met een sleutel. Een koppeling schrijven
+op een vermoeden geeft een endpoint dat er goed uitziet en pas bij de eerste
+echte klant stukloopt; dat is hier eerder gebeurd. Het koppelscherm zegt daarom
+eerlijk dat Whise er nog niet is, en noemt wat we van hen nodig hebben. Eén
+klant met een Whise-account en hun API-documentatie is genoeg: al het andere —
+de opslag, het ontdubbelen, het scherm, de tests — staat er al.
+
+**Voor jezelf te controleren.** `node scripts/crm-check.js` praat met de echte
+API's zodra er sleutels staan en zegt per CRM wat er klopt en wat niet. Er wordt
+alleen gelezen; er komt niets bij in het CRM van een klant.
+
+
 ### Faro vertelt wat hij deed — en alleen wat hij echt deed
 
 Eerste stap van de Faro-persona. Bewust klein gehouden, want het meeste bestond al.

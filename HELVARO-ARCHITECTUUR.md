@@ -54,6 +54,10 @@ alleen een module. Zonder onderstreepje = een echt HTTP-endpoint.
 - `_faro/` — de assistent: `orchestrator`, `tools`, `writes`, `data`, `werk`,
   `scherm`, `rapport`, plus `_faro/ui/` (eigen client, styles, i18n, markup).
 - `_ratelimit.js`, `_session.js`, `_clerk.js`, `_revocation.js` — toegang.
+- `_crm/` — de koppelingen met de CRM's van klanten: `index.js` is de enige deur
+  naar buiten, `vorm.js` maakt van een lead één neutrale vorm, `config.js`
+  bewaart hun sleutels versleuteld in de klantrij, en `adapters/` bevat er vijf.
+  Faalt zacht: een CRM-storing houdt nooit een WhatsApp-antwoord op.
 
 **Cron:** `/api/cron-followup` dagelijks om 09:00. `maxDuration`: whatsapp en
 form 120s, cron-followup 300s, de rest 60s.
@@ -174,5 +178,11 @@ alleen een lege `{ ok: false }` teruggeeft, wordt pas maanden later ontdekt.
 - WhatsApp-sjablonen wachten op goedkeuring bij Meta.
 - `_waes.js` (eigen WhatsApp-nummer per klant) is compleet maar bewust nog niet
   aangesloten — wacht op Tech Provider-status.
+- De CRM-koppeling heeft nog geen scherm: koppelen gaat via de modes
+  `crm-status` / `crm-connect` / `crm-disconnect` / `crm-sync` op `api/leads.js`.
+- De Whise-adapter is bewust een weigering en geen gok — zie de kop van
+  `api/_crm/adapters/whise.js` voor wat er van Whise nodig is.
+- **Actie voor de eigenaar:** het veld `CRM Koppelingen` (Long text) moet nog op
+  de tabel Client Config worden aangemaakt, anders kan er niets gekoppeld worden.
 - `dashboard.js` opsplitsen is de grootste openstaande schuld. Hoog risico:
   doe het alleen bewust, met de parse-test als vangnet.

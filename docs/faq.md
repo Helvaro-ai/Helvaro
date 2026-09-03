@@ -113,7 +113,9 @@ Nee. Nooit. Lees onze [privacy policy](https://app.helvaro.pro/privacy).
 - **WhatsApp Business API** — via Meta
 - **WordPress / Shopify / Wix / Squarespace / Webflow / Framer** — gewoon code paste
 - **Email notificaties** — via Resend
-- **CRM** — komt later (Hubspot, Pipedrive integraties)
+- **CRM** — HubSpot, Pipedrive, Salesforce en Omnicasa: gekwalificeerde leads en
+  geboekte bezichtigingen gaan er automatisch heen. Whise volgt zodra we hun
+  API-documentatie hebben.
 
 ### Werkt het zonder Calendly?
 Ja. De AI vraagt dan om een gespreksmoment ("wanneer schikt het?") en jij krijgt een email/notificatie om manueel in te plannen.
@@ -189,7 +191,9 @@ Ja, sterk aangeraden. De AI scrapt je site bij elk gesprek om over jouw specifie
 ### Wat staat er op de roadmap?
 - ☐ French language support (Q2 2026)
 - ☐ Embedded Signup voor eigen WhatsApp Business nummer (Q3 2026)
-- ☐ CRM integraties (Hubspot, Pipedrive)
+- ☑ CRM integraties (HubSpot, Pipedrive, Salesforce, Omnicasa)
+- ☐ CRM: Whise (wacht op hun API-documentatie)
+- ☐ CRM: koppelscherm in het dashboard
 - ☐ Email-channel ondersteuning (niet alleen WhatsApp)
 - ☐ Lead scoring API voor externe systemen
 - ☐ Mobile app voor het dashboard
