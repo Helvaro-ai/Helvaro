@@ -93,6 +93,21 @@ nagelopen, niet aangenomen. Het koppelscherm is in een echte browser gedraaid:
 zes regels, de juiste knoppen, het sleutelveld afgeschermd, geen enkele
 JavaScript-fout.
 
+**Twee gaten gevonden en gedicht bij een onafhankelijke beveiligingsronde.**
+Het eerste was het ernstigste van de hele bouw: onze server volgde
+doorverwijzingen. Een klant kon dus een keurig, publiek webhook-adres opgeven
+dat ons vervolgens doorstuurde naar een intern adres van de hosting — en wij
+gingen mee, mét de gegevens. Nagespeeld, gerepareerd, en vastgelegd met een test
+die twee echte servertjes opzet en controleert dat de binnenkant niet geraakt
+wordt. Het tweede: het API-adres van Omnicasa en het Salesforce-domein werden
+helemaal niet gecontroleerd, terwijl het webhook-adres dat wel werd. Alle drie
+lopen nu langs dezelfde controle, en een Salesforce-domein moet bovendien echt
+een Salesforce-adres zijn.
+
+**Noodrem.** `CRM_DISABLED=1` in Vercel zet alle koppelingen stil, voor alle
+klanten, zonder uitrol. Sleutels blijven staan, er gaat alleen niets meer heen,
+en de gemiste leads komen mee zodra hij er weer af is.
+
 **Veiligheid.** Sleutels liggen versleuteld (AES-256-GCM) en met een andere
 afgeleide sleutel dan die van Google — één gelekt geheim opent niet allebei.
 Zonder sleutel wordt er niets opgeslagen in plaats van iets raadbaars. Een

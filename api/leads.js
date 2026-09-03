@@ -2404,8 +2404,13 @@ module.exports = async function handler(req, res) {
 
       // ── Begrenzing op de twee modes die naar BUITEN werken ────────────────
       // crm-connect laat de server een verzoek doen naar een adres dat de klant
-      // kiest (de eigen-webhook-adapter). Het interne netwerk is al dicht (zie
-      // keurUrl in api/_crm/adapters/webhook.js), maar zonder teller blijft het
+      // kiest (eigen webhook, het API-adres van Omnicasa, het My Domain van
+      // Salesforce). Het interne netwerk zit dicht via keurUrl in
+      // api/_crm/adres.js plus redirect:'manual' in api/_crm/http.js -- die
+      // opmerking stond hier eerder ook, maar toen klopte hij niet: de controle
+      // zat alleen in de webhook-adapter en omleidingen werden gewoon gevolgd.
+      // Beide gevonden bij een onafhankelijke beveiligingsronde.
+      // Deze teller staat er los van: ook mét die controles blijft dit anders
       // een knop waarmee je onbeperkt verzoeken naar buiten laat sturen -- een
       // poortscanner op onze rekening en met ons IP-adres.
       // crm-sync is begrensd om een andere reden: elke aanroep kan vijftig leads

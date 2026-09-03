@@ -35,6 +35,7 @@
  */
 
 const { vraag, json, CrmError } = require('../http');
+const { keurUrl } = require('../adres');   // het domein komt van de klant
 
 const NAAM = 'Salesforce';
 
@@ -50,11 +51,49 @@ const velden = [
   { sleutel: 'clientSecret', label: 'Consumer Secret', type: 'geheim' },
 ];
 
-function basisUrl(cred) {
-  let d = String((cred && cred.domein) || '').trim().toLowerCase();
-  d = d.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+/* Alleen echte Salesforce-hosts. Elke org zit op een van deze achtervoegsels
+   -- ook sandboxen (die staan op *.sandbox.my.salesforce.com, en dat valt onder
+   .my.salesforce.com). */
+const SF_HOSTS = ['.my.salesforce.com', '.salesforce.com', '.force.com'];
+
+/**
+ * Het domein van de klant, streng.
+ *
+ * -- Waarom dit meer doet dan http eraf halen --------------------------------
+ * Dit is invoer van de klant waar onze server een POST met een clientSecret
+ * naartoe stuurt. De vorige versie deed alleen een replace op het schema en het
+ * pad, en liet dus "10.0.0.5:8443" en "slachtoffer@aanvaller.tld" gewoon door.
+ * Het eerste maakt van het koppelscherm een poortscanner op ons interne
+ * netwerk; het tweede laat het adres eruitzien als iets anders dan waar het
+ * heen gaat.
+ *
+ * new URL() haalt de gebruikersnaam er correct af (.hostname negeert alles voor
+ * de @), en daarna moet de host op een echt Salesforce-achtervoegsel eindigen.
+ * Dat is strenger dan de IP-controle in adres.js en bewust: bij Salesforce
+ * weten we welke hosts kunnen bestaan, en dan is een lijst beter dan een
+ * afweging.
+ */
+function salesforceHost(ruw) {
+  let d = String(ruw || '').trim().toLowerCase();
   if (!d) throw new CrmError('Vul eerst je Salesforce-domein in.', { code: 'geen_domein' });
-  return `https://${d}`;
+  if (!/^https?:\/\//.test(d)) d = 'https://' + d;
+  let u;
+  try { u = new URL(d); } catch (_) {
+    throw new CrmError('Dat is geen geldig Salesforce-domein.', { code: 'geen_domein' });
+  }
+  const host = u.hostname;
+  if (!SF_HOSTS.some((achter) => host.endsWith(achter))) {
+    throw new CrmError(
+      'Dat ziet er niet uit als een Salesforce-domein. Gebruik het adres waarop je inlogt, '
+      + 'bijvoorbeeld kantoorpeeters.my.salesforce.com.',
+      { code: 'geen_salesforce_domein' },
+    );
+  }
+  return host;
+}
+
+function basisUrl(cred) {
+  return `https://${salesforceHost(cred && cred.domein)}`;
 }
 
 /* ── Toegangstoken ──────────────────────────────────────────────────────────
@@ -83,6 +122,12 @@ async function toegangstoken(cred) {
     client_secret: cred.clientSecret,
   }).toString();
 
+  /* Twee sloten op dezelfde deur. salesforceHost() zegt dat het een
+     Salesforce-NAAM is; dit zegt dat die naam ook naar een publiek adres wijst.
+     Klanten beheren zelf subdomeinen onder force.com, dus de naam alleen is niet
+     genoeg om te weten waar het pakket heen gaat. */
+  await keurUrl(`${basisUrl(cred)}/`);
+
   const r = await vraag(`${basisUrl(cred)}/services/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -101,9 +146,15 @@ async function toegangstoken(cred) {
     );
   }
 
+  /* De instance_url komt van Salesforce, maar hij komt terug van een host die de
+     klant koos -- dus hij is net zo goed invoer van de klant. Zonder deze
+     controle kan een verkeerd domein alsnog elke volgende aanroep ergens anders
+     heen sturen. */
+  const instanceHost = salesforceHost(r.instance_url);
+
   const bewaard = {
     token: r.access_token,
-    instance: String(r.instance_url).replace(/\/+$/, ''),
+    instance: `https://${instanceHost}`,
     /* Salesforce geeft geen expires_in bij deze flow. Een half uur is ruim
        binnen elke sessieduur die een org kan instellen; loopt het token toch
        eerder af, dan geeft de eerstvolgende aanroep een 401 en halen we een
@@ -269,4 +320,4 @@ async function duwLead(cred, vorm, vorige = {}) {
    zou hetzelfde twee keer tonen. */
 async function duwNotitie() { return { notitieId: '' }; }
 
-module.exports = { naam: 'salesforce', label: NAAM, velden, test, duwLead, duwNotitie, leadVelden, soql };
+module.exports = { naam: 'salesforce', label: NAAM, velden, test, duwLead, duwNotitie, leadVelden, soql, salesforceHost, SF_HOSTS };

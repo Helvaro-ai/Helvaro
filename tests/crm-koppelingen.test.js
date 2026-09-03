@@ -460,6 +460,120 @@ nepFetch(HUBSPOT_ANTWOORDEN);
   ck('en de ANDERE koppeling staat er nog',
      naOntkoppelen.indexOf('whsec_BLIJFT') !== -1, naOntkoppelen.slice(0, 120));
 
+  console.log('\n— de noodrem —');
+  /* Dit is de enige functie die namens een klant schrijft in het systeem van een
+     ANDER bedrijf, en hij heeft nog nooit tegen een echte CRM-API gedraaid.
+     Zonder deze schakelaar zijn de opties bij een structurele fout: een revert
+     uitrollen, of elke klant vragen te ontkoppelen. */
+  nepFetch(HUBSPOT_ANTWOORDEN);
+  process.env.CRM_DISABLED = '1';
+  const metRem = await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  ck('met de rem erop gaat er niets naar buiten', gedaan.length === 0, gedaan);
+  ck('en de klant krijgt een uitslag, geen exception',
+     (metRem.resultaten[0] || {}).code === 'crm_uit', metRem.resultaten);
+  ck('die zegt dat de leads bewaard blijven',
+     /bewaard/i.test((metRem.resultaten[0] || {}).fout || ''), (metRem.resultaten[0] || {}).fout);
+  /* Belangrijk: GEEN id's wegschrijven. Anders denkt de volgende synchronisatie
+     dat deze lead al verstuurd is en slaat hij hem over. */
+  ck('en er zijn geen id\'s weggeschreven',
+     Object.keys(crm.leesIds(metRem.notities)).length === 0, metRem.notities);
+
+  let koppelCode = 'GEEN FOUT';
+  try { await crm.verbind('TELJO', 'hubspot', { token: 'x' }); } catch (e) { koppelCode = e.code; }
+  ck('koppelen kan ook niet terwijl alles stilstaat', koppelCode === 'crm_uit', koppelCode);
+
+  delete process.env.CRM_DISABLED;
+  nepFetch(HUBSPOT_ANTWOORDEN);
+  const zonderRem = await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  ck('rem eraf en het loopt weer', (zonderRem.resultaten[0] || {}).ok === true, zonderRem.resultaten);
+
+  console.log('\n— een omleiding is geen sprong naar binnen —');
+  /* Gevonden bij een onafhankelijke beveiligingsronde, en nagespeeld: fetch()
+     volgt standaard tot twintig omleidingen, en de adrescontrole geldt alleen
+     voor de EERSTE hop. Een keurig publiek adres dat 307 antwoordt met
+     Location: http://169.254.169.254/... haalde onze server dus alsnog het
+     interne netwerk in -- met de POST en de body intact.
+     api/_lib/fetch-website.js deed dit al goed; deze module week ervan af. */
+  for (const status of [301, 302, 303, 307, 308]) {
+    globalThis.fetch = async () => ({
+      ok: false, status,
+      headers: { get: (k) => (k === 'location' ? 'http://169.254.169.254/latest/meta-data/' : null) },
+      text: async () => '',
+    });
+    let code = 'GEEN FOUT';
+    try { await http.vraag('https://net-publiek.example/hook', { leverancier: 'Test' }); }
+    catch (e) { code = e.code; }
+    ck(`${status} wordt geweigerd in plaats van gevolgd`, code === 'omleiding', code);
+  }
+  /* De bovenstaande vijf gebruiken een NEP-fetch, en die volgt uit zichzelf al
+     niets. Ze bewijzen dus alleen dat een 3xx netjes wordt afgehandeld -- niet
+     dat de echte aanroep geen omleidingen volgt.
+
+     Hier stond eerst een controle op de BRONTEKST (staat er redirect:'manual'
+     in het bestand). Die was waardeloos: de opmerking eronder noemt diezelfde
+     tekst, dus hij bleef groen toen de regel uit de fetch werd gehaald. Precies
+     het soort test dat CLAUDE.md beschrijft -- groen met de fout erin.
+
+     Dus nu de echte weg: twee lokale servers, een die doorstuurt naar een die
+     zich als intern doelwit gedraagt. Wordt de tweede geraakt, dan is de
+     bescherming weg. Geen extern netwerk nodig. */
+  /* EERST de echte fetch terugzetten. Zonder deze regel draaide de test
+     hieronder nog op de nep-fetch van de lus hierboven -- die geeft altijd een
+     3xx terug, ongeacht het adres, dus de test was groen om de verkeerde reden
+     en bleef groen toen redirect:'manual' uit de code werd gehaald.
+     Gevonden door de mutatie, niet door te kijken. */
+  globalThis.fetch = echteFetch;
+
+  const nodeHttp = require('http');
+  const omleidingUitslag = await new Promise((klaar) => {
+    let internGeraakt = false;
+    const intern = nodeHttp.createServer((req, res) => { internGeraakt = true; res.end('{"geheim":"metadata"}'); });
+    const doorstuur = nodeHttp.createServer((req, res) => {
+      res.writeHead(307, { Location: 'http://127.0.0.1:' + intern.address().port + '/latest/meta-data/' });
+      res.end();
+    });
+    intern.listen(0, '127.0.0.1', () => doorstuur.listen(0, '127.0.0.1', async () => {
+      let code = 'GEVOLGD';
+      try { await http.vraag('http://127.0.0.1:' + doorstuur.address().port + '/hook',
+                             { method: 'POST', body: '{}', leverancier: 'Test' }); }
+      catch (e) { code = e.code; }
+      intern.close(); doorstuur.close();
+      klaar({ internGeraakt, code });
+    }));
+  });
+  ck('een ECHTE omleiding bereikt het interne doelwit niet',
+     omleidingUitslag.internGeraakt === false, omleidingUitslag);
+  ck('en levert de omleidingsfout op', omleidingUitslag.code === 'omleiding', omleidingUitslag);
+
+  console.log('\n— alle drie de klantadressen worden gecontroleerd —');
+  /* Deze controle stond alleen in de webhook-adapter, terwijl Omnicasa en
+     Salesforce ook een adres van de klant aannemen. api/leads.js beweerde in een
+     opmerking dat het interne netwerk "al dicht" was; dat was het niet. */
+  const adres = require(BASE + 'api/_crm/adres.js');
+  ck('de controle is een gedeelde module', typeof adres.keurUrl === 'function');
+  ck('en de webhook gebruikt diezelfde', webhook.keurUrl === adres.keurUrl);
+
+  let omniCode = 'GEEN FOUT';
+  globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => '{}' });
+  try { await omnicasa.test({ secret: 'x', basis: 'https://10.0.0.5' }); } catch (e) { omniCode = e.code; }
+  ck('Omnicasa weigert een intern adres', omniCode === 'intern_adres', omniCode);
+
+  const sfGevallen = [
+    ['10.0.0.5:8443',                       'geen_salesforce_domein', 'een intern IP'],
+    ['slachtoffer@aanvaller.tld',           'geen_salesforce_domein', 'inloggegevens die het adres verhullen'],
+    ['evil.my.salesforce.com.aanvaller.tld','geen_salesforce_domein', 'een achtervoegsel dat er alleen op lijkt'],
+    ['localhost',                           'geen_salesforce_domein', 'loopback'],
+  ];
+  for (const [domein, code, waarom] of sfGevallen) {
+    let gekregen = 'GEEN FOUT';
+    try { salesforce.salesforceHost(domein); } catch (e) { gekregen = e.code; }
+    ck(`Salesforce weigert ${waarom}`, gekregen === code, { domein, gekregen });
+  }
+  ck('en laat een echt My Domain door',
+     salesforce.salesforceHost('https://kantoor.my.salesforce.com/lightning') === 'kantoor.my.salesforce.com');
+  ck('ook een sandbox',
+     salesforce.salesforceHost('kantoor.sandbox.my.salesforce.com') === 'kantoor.sandbox.my.salesforce.com');
+
   globalThis.fetch = echteFetch;
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail ? 1 : 0);

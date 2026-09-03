@@ -86,6 +86,25 @@ async function vraag(url, opties = {}) {
       headers: opties.headers || {},
       body:    opties.body,
       signal:  AbortSignal.timeout(timeoutMs),
+      /* ── GEEN omleidingen volgen ──────────────────────────────────────────
+         Dit is de belangrijkste regel in dit bestand.
+
+         Drie adapters roepen een adres aan dat de KLANT opgaf. Dat adres wordt
+         gecontroleerd (api/_crm/adres.js): alleen https, en elk IP achter de
+         hostnaam moet publiek zijn. Maar fetch() volgt standaard tot twintig
+         omleidingen, en die controle geldt alleen voor de EERSTE hop. Een
+         volstrekt net publiek adres dat 307 antwoordt met
+         Location: http://169.254.169.254/... haalt onze server dus alsnog het
+         interne netwerk in -- met de POST en de body intact.
+
+         Dat is geen theorie: het is nagespeeld tegen een lokale omleider, en de
+         "interne" server werd geraakt.
+
+         api/_lib/fetch-website.js deed dit al goed, met exact deze reden erbij
+         ("Don't follow redirects to internal IPs"). Deze module week daarvan af.
+         Een 3xx is nu een fout in plaats van een sprong; loopt er ooit een
+         leverancier op stuk, dan zegt scripts/crm-check.js dat meteen. */
+      redirect: 'manual',
     });
   } catch (err) {
     /* Een time-out en een DNS-fout zijn voor de makelaar hetzelfde: het lukte
@@ -102,6 +121,16 @@ async function vraag(url, opties = {}) {
   if (tekst) { try { json = JSON.parse(tekst); } catch (_) { json = { _rauw: tekst.slice(0, 500) }; } }
 
   if (res.ok) return json;
+
+  /* Met redirect:'manual' komt een 3xx hier terecht in plaats van gevolgd te
+     worden. Een eigen code, zodat het scherm de klant iets bruikbaars kan
+     zeggen in plaats van "geweigerd". */
+  if (res.status >= 300 && res.status < 400) {
+    throw new CrmError(
+      `${leverancier} stuurde ons door naar een ander adres. Geef het eindadres op.`,
+      { code: 'omleiding', status: res.status, detail: `Location: ${res.headers.get('location') || '(geen)'}` },
+    );
+  }
 
   /* De statuscode bepaalt wat de aanroeper hierna kan. Dat onderscheid is het
      halve punt van deze functie: een 401 moet de koppeling als kapot markeren

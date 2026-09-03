@@ -37,6 +37,7 @@
  */
 
 const { json, CrmError } = require('../http');
+const { keurUrl } = require('../adres');   // het adres komt van de klant
 
 const NAAM = 'Omnicasa';
 const STANDAARD_BASIS = 'https://omnicasaapiv3.omnicasa.com/cre';
@@ -99,7 +100,10 @@ async function test(cred) {
   if (!cred || !String(cred.secret || '').trim()) {
     throw new CrmError('Vul eerst de Omnicasa-sleutel in.', { code: 'geen_sleutel' });
   }
-  basisUrl(cred);   // gooit bij http:// of een onleesbaar adres
+  /* Het API-adres is invoer van de KLANT en onze server roept het aan. Zonder
+     deze controle kon hier "https://10.0.0.5" staan en stuurden wij de leads
+     daarheen. Zie de kop van api/_crm/adres.js. */
+  await keurUrl(basisUrl(cred));
   return {
     ok: true,
     account: 'Opgeslagen — bevestigt zich bij de eerste lead',
@@ -140,6 +144,10 @@ function persoonBody(cred, vorm) {
  */
 async function duwLead(cred, vorm, vorige = {}) {
   if (vorige.contactId) return { contactId: String(vorige.contactId), dealId: '', overgeslagen: true };
+
+  /* Ook hier, en niet alleen bij het koppelen: het adres staat opgeslagen en de
+     DNS eronder kan sindsdien veranderd zijn. */
+  await keurUrl(basisUrl(cred));
 
   const r = await json(pad(cred, 'person/register'), 'POST', persoonBody(cred, vorm), {}, { leverancier: NAAM });
   /* Welke sleutel het id draagt is onbekend; dit zijn de gebruikelijke namen.

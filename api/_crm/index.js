@@ -59,6 +59,33 @@ const ADAPTERS = {
   webhook:    require('./adapters/webhook'),
 };
 
+/* ── De noodrem ─────────────────────────────────────────────────────────────
+   `CRM_DISABLED=1` in Vercel zet ALLE koppelingen stil, voor alle klanten, bij
+   de volgende koude start. Geen uitrol nodig.
+
+   Waarom dit er is: dit is de enige functie in Helvaro die namens een klant
+   schrijft in het systeem van een ander bedrijf, en hij heeft nog nooit tegen
+   een echte CRM-API gedraaid. Gaat er iets structureel mis -- dubbele deals,
+   een adapter die de verkeerde velden vult -- dan zijn de opties zonder deze
+   schakelaar: een revert uitrollen, of elke klant vragen te ontkoppelen. Dat is
+   het verschil tussen twee minuten en een half uur, om drie uur 's nachts.
+
+   Wat hij NIET doet: sleutels wissen of koppelingen verwijderen. Het scherm
+   blijft tonen wat er gekoppeld is; er gaat alleen niets meer heen. Weghalen
+   van de variabele en alles loopt weer, en de gemiste leads komen mee met de
+   eerstvolgende synchronisatie -- die hebben immers geen id gekregen. */
+function uitgeschakeld() {
+  return process.env.CRM_DISABLED === '1' || process.env.CRM_DISABLED === 'true';
+}
+
+let _uitGemeld = false;
+function meldUitEenmalig() {
+  if (_uitGemeld) return;
+  _uitGemeld = true;
+  console.warn('[crm] CRM_DISABLED staat aan -- er gaat NIETS naar een CRM. '
+    + 'Haal de variabele weg in Vercel om het weer aan te zetten.');
+}
+
 const NOTITIES_VELD = 'fldoLRI5W12ThTls7';
 const AT_TIMEOUT_MS = 10_000;
 
@@ -168,6 +195,12 @@ async function status(projectCode) {
  * faalt.
  */
 async function verbind(projectCode, crm, cred) {
+  /* Ook niet koppelen terwijl alles stilstaat: een klant die nu verbindt en
+     daarna dagen niets ziet gebeuren, meldt dat als een kapotte koppeling. */
+  if (uitgeschakeld()) {
+    meldUitEenmalig();
+    throw new CrmError('Koppelen kan even niet. Probeer het later opnieuw.', { code: 'crm_uit' });
+  }
   const a = adapter(crm);
   const uitslag = await a.test(cred);
   /* Wat test() erbij ontdekte (de pijplijn, de API-versie) hoort bij de
@@ -273,6 +306,19 @@ async function duw(projectCode, lead, opties = {}) {
      Draagt de lead geen projectcode, dan kunnen we niets vaststellen en laten we
      hem door -- anders breekt elke aanroeper die een lead zelf samenstelt. Maar
      een lead die WEL een code draagt en een andere: harde weigering. */
+  if (uitgeschakeld()) {
+    meldUitEenmalig();
+    /* Als resultaat, niet als exception: het scherm hoort dit te kunnen tonen,
+       en het WhatsApp-pad hoort er niets van te merken. */
+    return {
+      resultaten: Object.keys(koppelingen || {}).map((naam) => ({
+        crm: naam, ok: false, code: 'crm_uit', opnieuw: true,
+        fout: 'De CRM-koppeling staat tijdelijk stil. Je leads blijven bewaard en gaan mee zodra hij weer aan staat.',
+      })),
+      notities: String(lead.notities || ''),
+    };
+  }
+
   const leadCode = String(lead.projectCode || '').trim();
   if (leadCode && leadCode !== String(projectCode || '').trim()) {
     console.error(`[crm] GEWEIGERD: lead ${lead.id} hoort bij ${leadCode}, niet bij ${projectCode}`);
@@ -370,7 +416,7 @@ async function duwVeilig(projectCode, lead, opties = {}) {
 }
 
 module.exports = {
-  adapters, adapter, status, verbind, ontkoppel,
+  adapters, adapter, status, verbind, ontkoppel, uitgeschakeld,
   duw, duwVeilig,
   leesIds, schrijfIds,
   CrmError,
