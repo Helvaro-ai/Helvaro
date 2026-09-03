@@ -982,9 +982,24 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         const busy = await _gcal.freeBusy(token, calId,
           new Date().toISOString(),
           new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString());
+        /* null betekent: we hebben de agenda NIET kunnen lezen. Dat is iets
+           anders dan een lege agenda, en tot nu toe was het verschil
+           onzichtbaar -- freeBusy() gaf bij elke storing [] terug, dus de
+           assistent dacht dat de hele week vrij was en stelde tijden voor die
+           allang bezet waren. Met een verlopen token (het toestemmingsscherm
+           staat op Testing, dus dat gebeurt elke zeven dagen) was dat geen
+           incident maar de normale toestand.
+
+           De assistent gaat wel door: zijn eigen Helvaro-afspraken kent hij
+           nog steeds, en de lead helemaal niet helpen is erger. Maar het staat
+           nu in de logs in plaats van nergens. */
+        if (busy === null) {
+          console.error('[GCAL] agenda niet gelezen voor', projectCode,
+            '— de assistent stelt tijden voor ZONDER de Google-agenda te kennen');
+        }
         const dOpt = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
         const tOpt = { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
-        for (const b of busy) {
+        for (const b of (busy || [])) {
           const s = new Date(b.start), e = new Date(b.end);
           existingAppointments.push(`${s.toLocaleString('nl-BE', dOpt)}–${e.toLocaleString('nl-BE', tOpt)} (Google agenda, bezet)`);
         }

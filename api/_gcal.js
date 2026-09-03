@@ -156,7 +156,22 @@ async function getAccessToken(refreshToken) {
 }
 
 // ── Calendar operations ─────────────────────────────────────────────────────────
-// Returns busy intervals [{start,end}] for a window. Empty array on any failure.
+/* Bezette blokken in een venster, of NULL als we het niet konden nagaan.
+ *
+ * ── Waarom null en niet [] ─────────────────────────────────────────────────
+ * Dit gaf bij ELKE storing een lege lijst terug. Een lege lijst betekent
+ * "gekeken, niets bezet" -- precies het tegenovergestelde van "niet kunnen
+ * kijken", en de aanroeper kon het verschil niet zien. Gevolg: bij een dood
+ * token of een storing bij Google dacht de assistent dat de hele agenda leeg
+ * was en stelde hij tijden voor die allang bezet waren.
+ *
+ * Dat was geen zeldzaam geval. Het toestemmingsscherm staat op "Testing", dus
+ * een refresh-token verloopt na zeven dagen; vanaf dat moment faalt elke
+ * oproep hier, elke dag opnieuw, zonder dat iemand het merkt.
+ *
+ * null dwingt de aanroeper een keuze te maken in plaats van er een aan te
+ * nemen. Wie de oude soepele werking wil, schrijft `?? []` -- maar dan staat
+ * die keuze er tenminste. */
 async function freeBusy(accessToken, calendarId, timeMinISO, timeMaxISO) {
   try {
     const r = await fetch(`${CAL_BASE}/freeBusy`, {
@@ -165,18 +180,41 @@ async function freeBusy(accessToken, calendarId, timeMinISO, timeMaxISO) {
       body: JSON.stringify({ timeMin: timeMinISO, timeMax: timeMaxISO, items: [{ id: calendarId || 'primary' }] }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return [];
+    if (!r.ok) {
+      console.error('[GCAL] freeBusy mislukt (HTTP ' + r.status + ') —',
+        'de agenda is NIET gecontroleerd:', JSON.stringify((d && d.error) || {}).slice(0, 200));
+      return null;
+    }
     const cal = (d.calendars || {})[calendarId || 'primary'] || {};
     return Array.isArray(cal.busy) ? cal.busy : [];
-  } catch { return []; }
+  } catch (err) {
+    console.error('[GCAL] freeBusy netwerkfout — de agenda is NIET gecontroleerd:', err && err.message);
+    return null;
+  }
 }
 
-// True if [startISO, startISO+duration) overlaps NO busy interval. On failure
-// returns true (fail-open: don't lose a booking because Google was unreachable).
+/* True als [startISO, +duur) met GEEN bezet blok overlapt.
+ *
+ * Blijft bij een storing bewust true teruggeven: een boeking verliezen omdat
+ * Google traag was is erger dan het risico op een dubbele. Die afweging staat
+ * en verandert hier niet.
+ *
+ * Wat wel verandert: hij is nu HOORBAAR. Eerst was "vrij" en "niet kunnen
+ * kijken" hetzelfde antwoord zonder spoor, en dan blijft een agenda die al een
+ * week niet gelezen kan worden gewoon boekingen aannemen alsof alles klopt.
+ * Wie in de logs kijkt ziet nu het verschil.
+ *
+ * Wil je weten OF er gekeken is, gebruik dan freeBusy() rechtstreeks: die
+ * geeft null als het niet gelukt is. */
 async function isSlotFree(accessToken, calendarId, startISO, durationMin) {
   const start = new Date(startISO).getTime();
   const end   = start + (parseInt(durationMin) || 30) * 60000;
   const busy  = await freeBusy(accessToken, calendarId, new Date(start).toISOString(), new Date(end).toISOString());
+  if (busy === null) {
+    console.error('[GCAL] beschikbaarheid niet te controleren voor', new Date(start).toISOString(),
+      '— slot wordt als VRIJ behandeld (bewuste fail-open, zie de kop van deze functie)');
+    return true;
+  }
   return !busy.some(b => {
     const bs = new Date(b.start).getTime(), be = new Date(b.end).getTime();
     return start < be && end > bs; // overlap
