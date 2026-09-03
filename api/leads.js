@@ -12,6 +12,7 @@ const images  = require('./_images'); // Phase 4 AI property images — see its 
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
 const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
+const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
 const _waTpl  = require('./_wa-templates'); // welke WhatsApp-templates bestaan per taal
 const _verify = require('./_verify'); // email-ownership verification — see its file header
 const _leadsRead = require('./_leads-read');
@@ -2600,6 +2601,26 @@ module.exports = async function handler(req, res) {
       // change have no `ts` on their inbound entries — we can't prove those
       // are inside the window, so unknown fails closed (treated as expired)
       // rather than assuming freeform is still safe.
+      /* ── Heeft deze lead zich afgemeld? ────────────────────────────────
+         Dit ontbrak hier volledig, en dat was de enige verzendroute zonder
+         die controle: api/cron-followup.js kijkt er wel naar en
+         api/_wa-send.js heeft hem zelfs ingebouwd (weigerBijAfmelding).
+         Iemand die STOP typte kon vanuit het dashboard dus alsnog een bericht
+         krijgen -- zowel het sjabloon buiten het venster als het vrije bericht
+         erbinnen.
+
+         Dat is niet alleen vervelend voor die ene lead. Het nummer is gedeeld:
+         een klacht bij Meta over dit nummer raakt ELKE klant die erop zit, en
+         een geblokkeerd nummer legt iedereen tegelijk stil.
+
+         Bewust hier, boven de venstercontrole: afgemeld is afgemeld, of het
+         nu binnen of buiten de 24 uur valt. */
+      if (_optout.isAfgemeld(lead.fields)) {
+        return res.status(409).json({
+          error: 'Deze lead heeft zich afgemeld (STOP). Er kan geen bericht meer verstuurd worden.'
+        });
+      }
+
       let lastInboundTs = null;
       for (let i = history.length - 1; i >= 0; i--) {
         const m = history[i];
