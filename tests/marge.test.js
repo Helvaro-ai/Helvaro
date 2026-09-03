@@ -99,5 +99,34 @@ ck('en is 0 zolang er geen MARKETING-sjabloon bekend is',
 ck('de code zegt erbij dat het geen belofte is',
   /Geen belofte/.test(waTpl) && /hangt af van Meta/.test(waTpl), null);
 
+console.log('\n  de configuratie die de kostprijs zichtbaar maakt, wordt gecontroleerd');
+{
+  /* Dit is de reden dat bovenstaande maanden niets deed zonder dat het opviel.
+     _wa-templates.js heeft TWEE dingen nodig -- een WABA-id en een token -- en
+     valt zonder een van beide terug op de momentopname in de code. Verzenden
+     blijft dan gewoon werken, dus er gaat geen belletje af. In productie stond
+     WABA_ID nergens; preflight controleerde WHATSAPP_TOKEN, PHONE_NUMBER_ID,
+     WA_APP_SECRET en WA_VERIFY_TOKEN, maar deze niet. Het vangnet had een gat
+     op precies de plek waar de grootste kostenpost zichtbaar had moeten zijn.
+
+     Deze test kijkt naar gedrag, niet naar de tekst van de melding: leest de
+     controle die variabele, en behandelt de code hem als vereist naast het
+     token. Herformuleer de waarschuwing gerust; haal de controle weg en dit
+     wordt rood. */
+  const pre = fs.readFileSync(BASE + 'scripts/preflight.js', 'utf8');
+  ck('preflight leest WABA_ID uit de omgeving',
+    /process\.env\.WABA_ID\b/.test(pre), null);   // \b, anders matcht WABA_ID_UIT ook
+  ck('en heeft een tak voor het geval hij ontbreekt',
+    /if \(!waBaId\)/.test(pre), null);
+
+  /* Het token is NIET verplicht apart: de code valt terug op WHATSAPP_TOKEN.
+     Dat mag alleen zo blijven zolang die terugval echt in de code staat --
+     anders is de melding een leugen. */
+  ck('_wa-templates valt terug op WHATSAPP_TOKEN als er geen beheer-token is',
+    /WHATSAPP_MANAGEMENT_TOKEN\s*\|\|\s*process\.env\.WHATSAPP_TOKEN/.test(waTpl), null);
+  ck('en doet zonder WABA_ID geen enkele oproep naar Meta',
+    /if \(!waba \|\| !token\)/.test(waTpl), null);
+}
+
 console.log(`\n  ${pass} ok, ${fail} fout\n`);
 process.exit(fail ? 1 : 0);

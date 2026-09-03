@@ -506,6 +506,41 @@ async function probe(url, opts = {}) {
        + 'merk je hier niets van tot je hem opnieuw moet verifiëren.');
   } else ok('WA_VERIFY_TOKEN aanwezig');
 
+  /* De WABA-id -- het account waar de templates ONDER hangen.
+
+     Dit ontbrak in de controle, en daardoor ontbrak het ook in productie zonder
+     dat iemand het merkte. api/_wa-templates.js heeft er twee dingen voor nodig
+     (een WABA-id en een token) en valt zonder een van beide stil terug op de
+     handmatige momentopname in de code. Verzenden blijft dus gewoon werken --
+     en precies daarom valt het niet op.
+
+     Twee gevolgen. De momentopname veroudert stil: goedgekeurde talen die er
+     later bijkomen ziet Helvaro niet, en dat is de fout waar dit bestand voor
+     geschreven is. En de CATEGORIE per template blijft onbekend, terwijl Meta
+     daarop rekent: MARKETING kost ~EUR 0,11 per aflevering, UTILITY ~EUR 0,05.
+     De templates zijn 75 tot 100% van wat een lead kost, dus zonder deze id is
+     de grootste kostenpost van het product onzichtbaar binnen het product. */
+  const waBaId = (process.env.WABA_ID || '').trim();
+  if (!waBaId) {
+    warn('WABA_ID ontbreekt — templatelijst en kostprijs komen niet van Meta',
+         'Verzenden blijft werken; _wa-templates.js valt terug op de momentopname\n'
+       + 'in de code. Maar die veroudert stil, en de categorie per template blijft\n'
+       + 'onbekend -- terwijl MARKETING (~EUR 0,11) meer dan het dubbele kost van\n'
+       + 'UTILITY (~EUR 0,05). Te vinden in WhatsApp Manager > Accountgegevens.');
+  } else {
+    ok(`WABA_ID aanwezig (${waBaId})`);
+    /* Een apart management-token is NIET verplicht: _wa-templates.js valt terug
+       op WHATSAPP_TOKEN. Dat werkt zolang dat token de scope
+       whatsapp_business_management heeft. Heeft het die niet, dan weigert Meta
+       de oproep en val je alsnog terug op de momentopname -- dus dit is een
+       opmerking, geen goedkeuring. */
+    const beheer = (process.env.WHATSAPP_MANAGEMENT_TOKEN || '').trim();
+    if (!beheer) {
+      ok('WHATSAPP_MANAGEMENT_TOKEN niet gezet — valt terug op WHATSAPP_TOKEN '
+       + '(werkt alleen met scope whatsapp_business_management)');
+    } else ok(`WHATSAPP_MANAGEMENT_TOKEN aanwezig (${mask(beheer)})`);
+  }
+
   /* De vier templates. Elk mist iets anders, en het gevolg staat erbij -- niet
      "niet geconfigureerd", maar wat een lead of een makelaar NIET krijgt. */
   const TEMPLATES = [
