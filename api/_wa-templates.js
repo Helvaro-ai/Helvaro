@@ -215,7 +215,10 @@ let cacheTot = 0;
 const TTL_MS = 5 * 60 * 1000;
 
 function uitSnapshot() {
-  return { bron: 'snapshot', opgehaald: null, templates: Object.assign({}, SNAPSHOT) };
+  /* Lege categorieen, geen verzonnen categorieen. Zonder management-token
+     weten we ze niet, en een gok over wat iets kost is erger dan een leeg
+     veld -- dan ga je erop rekenen. */
+  return { bron: 'snapshot', opgehaald: null, templates: Object.assign({}, SNAPSHOT), categorieen: {} };
 }
 
 async function haalIndex(opties) {
@@ -240,7 +243,7 @@ async function haalIndex(opties) {
 
   const url =
     `https://graph.facebook.com/v23.0/${encodeURIComponent(waba)}/message_templates` +
-    '?fields=name,language,status&limit=200';
+    '?fields=name,language,status,category&limit=200';
 
   try {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -260,11 +263,31 @@ async function haalIndex(opties) {
     }
 
     const templates = {};
+    /* ── Categorie erbij, want die kost geld ──────────────────────────────
+       Meta rekent PER AFGELEVERD sjabloon, en het tarief hangt aan de
+       categorie: in "Rest of Western Europe" (waar Belgie onder valt) is
+       MARKETING ~EUR 0,11 en UTILITY ~EUR 0,05. Meer dan een verdubbeling
+       voor exact hetzelfde bericht.
+
+       Dat is niet een detail aan de rand: de sjablonen zijn 75 tot 100% van
+       wat een lead ons kost (het AI-gesprek is ~EUR 0,024 en het 24u-venster
+       is gratis). Het eerste-contactsjabloon gaat naar ELKE lead, dus daar
+       staat of valt de marge.
+
+       Deze index vroeg alleen naam, taal en status op. De categorie stond
+       dus nergens, en daarmee was de grootste kostenpost van het product
+       onzichtbaar in het product zelf.
+
+       Aparte map, geen ander soort waarde in `templates`: die is elders een
+       statusstring en dat blijft zo. */
+    const categorieen = {};
     for (const t of data.data) {
       if (!t || !t.name || !t.language) continue;
-      templates[`${t.name}::${canoniek(t.language)}`] = String(t.status || '').toUpperCase();
+      const sleutel = `${t.name}::${canoniek(t.language)}`;
+      templates[sleutel] = String(t.status || '').toUpperCase();
+      if (t.category) categorieen[sleutel] = String(t.category).toUpperCase();
     }
-    const uit = { bron: 'meta', opgehaald: new Date(nu).toISOString(), templates };
+    const uit = { bron: 'meta', opgehaald: new Date(nu).toISOString(), templates, categorieen };
     cache = uit;
     cacheTot = nu + TTL_MS;
     return uit;
@@ -434,9 +457,72 @@ async function overzicht(klanten, opties) {
       geweigerd: staat.geweigerd.map((r) => r.naam),
       aantalKlaar: staat.regels.filter((r) => r.toestand === 'klaar').length,
       aantalTotaal: staat.regels.length,
+      kosten: kostenVoor(rij.taal, index),
     };
   });
   return { bron: index.bron, opgehaald: index.opgehaald, rijen };
+}
+
+/* ── Wat een sjabloon kost ──────────────────────────────────────────────────
+ * Meta rekent PER AFGELEVERD sjabloonbericht (zo werkt het sinds juli 2025) en
+ * het tarief hangt aan de CATEGORIE. Deze bedragen zijn de lijstprijzen voor
+ * "Rest of Western Europe", waar Belgie onder valt, zoals vastgelegd in
+ * CREDIT-SYSTEM-DESIGN.md met cijfers van juli 2026.
+ *
+ * Waarom dit hier staat en niet in een spreadsheet: het verschil tussen de twee
+ * categorieen is een factor twee op de grootste kostenpost van het product. Het
+ * AI-gesprek kost ~EUR 0,024 en het 24u-venster is gratis; de sjablonen zijn 75
+ * tot 100% van wat een lead ons kost. Een sjabloon dat in de verkeerde bak zit,
+ * kost dus meer dan al het rekenwerk bij elkaar.
+ *
+ * Let op: het tarief verschilt per LAND. Voor een klant buiten West-Europa
+ * kloppen deze bedragen niet, en dan is dit een indicatie en geen factuur.
+ */
+const TARIEF_EUR = Object.freeze({
+  MARKETING:      0.11,
+  UTILITY:        0.05,
+  AUTHENTICATION: 0.05,
+  SERVICE:        0,      // binnen het 24u-venster: gratis
+});
+
+/* Wat de sjablonen van EEN taal per lead kosten, met de categorie erbij.
+ *
+ * Geeft `categorie: null` wanneer we het niet weten -- zonder management-token
+ * levert Meta de categorie niet en dan staat er geen gok. Een onbekend tarief
+ * telt als 0 in het totaal EN wordt apart geteld in `onbekend`, zodat een
+ * totaal van EUR 0,00 met vijf onbekende sjablonen er niet uitziet als gratis.
+ */
+function kostenVoor(taal, index) {
+  const idx = index || cache || uitSnapshot();
+  const cats = idx.categorieen || {};
+  const regels = [];
+  let totaal = 0, onbekend = 0, marketing = 0;
+
+  for (const sleutel of SLEUTELS) {
+    const naam = naamVoor(sleutel);
+    if (!naam) continue;
+    const k = `${naam}::${canoniek(taal)}`;
+    const cat = cats[k] || null;
+    const tarief = cat && Object.prototype.hasOwnProperty.call(TARIEF_EUR, cat) ? TARIEF_EUR[cat] : null;
+    if (tarief === null) onbekend++; else totaal += tarief;
+    if (cat === 'MARKETING') marketing++;
+    regels.push({ sleutel, naam, categorie: cat, tariefEur: tarief });
+  }
+
+  /* Wat je zou besparen als elk MARKETING-sjabloon UTILITY was. Geen belofte:
+     of dat mag hangt af van Meta's regels (UTILITY is een opvolging op iets dat
+     de gebruiker zelf startte). Wel het getal dat het gesprek waard maakt. */
+  const besparingEur = Math.round(marketing * (TARIEF_EUR.MARKETING - TARIEF_EUR.UTILITY) * 100) / 100;
+
+  return {
+    taal: canoniek(taal),
+    regels,
+    totaalEur: Math.round(totaal * 100) / 100,
+    onbekend,
+    marketingAantal: marketing,
+    besparingAlsUtilityEur: besparingEur,
+    bron: idx.bron,
+  };
 }
 
 /* De talen waarvoor ALLE blokkerende templates goedgekeurd zijn. api/_lang.js
@@ -473,6 +559,8 @@ module.exports = {
   klaarVoor,
   taalOverzicht,
   overzicht,
+  kostenVoor,
+  TARIEF_EUR,
   goedgekeurdeTalen,
   _leegCache,
 };

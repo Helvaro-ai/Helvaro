@@ -1143,6 +1143,35 @@ async function getAllUsageSummaries() {
       for (const [feature, credits] of Object.entries(state.byFeature)) {
         estimatedCostEur += (Number(credits) || 0) * (COST_PER_CREDIT_EUR[feature] || 0);
       }
+      /* ── Wat deze klant OPLEVERT ──────────────────────────────────────
+         De kosten stonden hier al; de opbrengst niet. Daardoor toonde dit
+         overzicht netjes wat een klant verbruikt en verzweeg het of daar
+         geld aan overblijft -- terwijl de opmerking erboven "for margin
+         visibility" zegt. Halve vergelijking, hele blinde vlek: een klant
+         die verlies draait zag er precies zo uit als een die dat niet doet.
+
+         Drie dingen moeten kloppen om dit eerlijk te maken:
+
+         1. Btw eruit. De plannen staan INCLUSIEF 21% (zie BTW_MODUS in
+            _plans.js) en btw is geen omzet -- die draag je af. Met het
+            bedrag incl. btw zou elke marge er ~17% te mooi uitzien.
+
+         2. De afgesproken prijs wint. Scale is een vanafprijs; wie 1.200
+            betaalt moet niet als 799 in je marge staan, en wie precies de
+            bodem betaalt evenmin als iets anders.
+
+         3. Geen plan = geen marge, niet nul. Een klant in proef of zonder
+            Plan ID heeft geen opbrengst om tegen af te zetten. null zegt
+            "onbekend"; 0 zou "verliesgevend" betekenen, en dat is een heel
+            ander gesprek. */
+      const planId    = String(fields['Plan ID'] || '').trim().toLowerCase();
+      const plan      = planId ? _plans.plan(planId) : null;
+      const afgesprokenIncl = Number(fields['fldD8U058vkEp5knF'] || fields['Agreed Plan Price EUR']) || 0;
+      const prijsIncl = afgesprokenIncl > 0 ? afgesprokenIncl : (plan ? plan.prijsEur : 0);
+      const omzetExcl = prijsIncl > 0 ? Math.round((prijsIncl / (1 + _plans.BTW_PCT / 100)) * 100) / 100 : null;
+      const kosten    = Math.round(estimatedCostEur * 100) / 100;
+      const margeEur  = omzetExcl === null ? null : Math.round((omzetExcl - kosten) * 100) / 100;
+
       out.push({
         projectCode,
         clientName,
@@ -1152,8 +1181,16 @@ async function getAllUsageSummaries() {
         percentUsed,
         periodStart: state.start,
         byFeature: state.byFeature,
-        estimatedCostEur: Math.round(estimatedCostEur * 100) / 100,
+        estimatedCostEur: kosten,
         configured: state.allowance > 0,
+        // ── omzet en marge ──
+        planId:        plan ? plan.id : null,
+        planNaam:      plan ? plan.naam : null,
+        prijsInclBtw:  prijsIncl > 0 ? prijsIncl : null,
+        prijsAfgesproken: afgesprokenIncl > 0,   // true = eigen tarief, niet de lijstprijs
+        omzetExclBtw:  omzetExcl,
+        margeEur,
+        margePct:      (omzetExcl && omzetExcl > 0) ? Math.round((margeEur / omzetExcl) * 1000) / 10 : null,
       });
     }
     return out;
