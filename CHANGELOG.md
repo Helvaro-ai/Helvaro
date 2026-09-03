@@ -21,18 +21,19 @@ minuut in HubSpot, Pipedrive, Salesforce of Omnicasa — als contact én als dea
 met de samenvatting van het gesprek erbij. Eén keer koppelen, daarna hoef je
 niets meer over te typen.
 
-**Het scherm om te koppelen komt nog.** De koppeling zelf is compleet en getest,
-maar zit voorlopig alleen achter de API (`crm-status`, `crm-connect`,
-`crm-disconnect`, `crm-sync` op `/api/leads`). Tot er een instellingenpaneel is,
-legt iemand met toegang de koppeling voor je aan. Dat is een bewuste knip:
-`api/dashboard.js` is één sjabloonliteral van 25.000 regels waar één verkeerd
-teken de hele app op het inlogscherm zet, en dat verdient een eigen ronde met de
-parse-test ernaast — niet een haastige toevoeging aan het eind van deze.
+**Het koppelscherm staat er.** Instellingen → *Je CRM*: zes regels, één knop
+per systeem. Je plakt je sleutel, wij controleren hem meteen tegen het CRM zelf,
+en pas als dat lukt slaan we hem op. Werkt het niet, dan staat er in gewone taal
+waarom, en blijft je invoer staan zodat je hem kunt verbeteren. Een koppeling
+die stuk gaat (verlopen sleutel bijvoorbeeld) toont dat op diezelfde regel — je
+hoeft niet te ontdekken dat er al twee weken niets doorkomt.
 
-**Actie: maak één veld aan in Airtable voordat dit werkt.** Tabel *Client
-Config*, veld **CRM Koppelingen**, type *Long text*. Daarin bewaren we de
-sleutels van elke klant, versleuteld. Bestaat het veld niet, dan zegt het
-koppelscherm dat met zoveel woorden — het doet niet alsof het gelukt is.
+Er staat ook een knop **Stuur bestaande leads na**, voor je bestand van voor de
+koppeling.
+
+**Het Airtable-veld is aangemaakt.** *Client Config* → **CRM Koppelingen**
+(Long text). Je hoeft hier niets meer voor te doen. Daarin bewaren we de
+sleutels van elke klant, versleuteld — niet met de hand bewerken.
 
 **Actie: zet `CRM_TOKEN_KEY` in Vercel** als je de sleutels een eigen
 encryptiesleutel wil geven. Doe je dat niet, dan valt hij terug op
@@ -57,6 +58,16 @@ gekregen voordat wij het CRM aanraken, en een storing daar levert een regel in
 het logboek op — geen mislukte afspraak en geen wachtende lead. Er zit een
 tijdslimiet op, zodat een traag CRM een WhatsApp-gesprek nooit kan ophouden.
 
+**Nieuw: een eigen webhook.** Gebruik je een CRM dat hier niet bij staat? Kies
+*Eigen webhook*, geef een https-adres, en wij sturen elke gekwalificeerde lead
+daarheen — ondertekend, zodat jouw kant kan controleren dat het echt van ons
+komt. Dezelfde handtekeningvorm als Stripe gebruikt, dus je ontwikkelaar kent
+hem al. Laat je het sleutelveld leeg, dan maken we er een en tonen we hem één
+keer: bewaar hem meteen, want daarna is hij nergens meer op te vragen.
+
+Dit is ook de weg naar Whise en naar de oudere Omnicasa-API, zolang wij daar
+geen eigen koppeling voor hebben.
+
 **Whise zit er nog niet bij, en dat is expres.** Van HubSpot, Pipedrive en
 Salesforce is de vorm van elk verzoek na te trekken in openbare documentatie;
 van Omnicasa het adres en de sleutel, alleen de veldnamen zijn een aanname die
@@ -68,9 +79,27 @@ eerlijk dat Whise er nog niet is, en noemt wat we van hen nodig hebben. Eén
 klant met een Whise-account en hun API-documentatie is genoeg: al het andere —
 de opslag, het ontdubbelen, het scherm, de tests — staat er al.
 
-**Voor jezelf te controleren.** `node scripts/crm-check.js` praat met de echte
-API's zodra er sleutels staan en zegt per CRM wat er klopt en wat niet. Er wordt
-alleen gelezen; er komt niets bij in het CRM van een klant.
+**Wat er nog niet tegen een echt CRM gedraaid heeft.** De vorm van elk verzoek
+is nagetrokken in documentatie, maar deze bouwmachine mag geen enkel CRM
+bereiken — HubSpot, Pipedrive, Salesforce en Omnicasa staan allemaal dicht.
+`node scripts/crm-check.js` praat wél met de echte API's zodra er sleutels
+staan, en zegt per CRM wat er klopt en wat niet. Er wordt alleen gelezen; er
+komt niets bij in het CRM van een klant. Draai dat één keer met een echte
+sleutel voordat je dit aan een klant belooft.
+
+**Wat er wél tegen de echte omgeving is gecontroleerd.** De Airtable-tabellen en
+-velden waar deze koppeling op steunt zijn stuk voor stuk tegen de productiebase
+nagelopen, niet aangenomen. Het koppelscherm is in een echte browser gedraaid:
+zes regels, de juiste knoppen, het sleutelveld afgeschermd, geen enkele
+JavaScript-fout.
+
+**Veiligheid.** Sleutels liggen versleuteld (AES-256-GCM) en met een andere
+afgeleide sleutel dan die van Google — één gelekt geheim opent niet allebei.
+Zonder sleutel wordt er niets opgeslagen in plaats van iets raadbaars. Een
+foutmelding van een leverancier wordt geschoond voordat hij in de logs komt:
+Pipedrive zet zijn token in het webadres, en een API die het verzoek
+terug-echoot zou die anders in de serverlogs zetten. En het webhook-adres wordt
+opgezocht en geweigerd als het naar een intern netwerk wijst.
 
 
 ### Faro vertelt wat hij deed — en alleen wat hij echt deed

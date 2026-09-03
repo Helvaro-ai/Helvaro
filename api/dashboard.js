@@ -11045,6 +11045,26 @@ ${faro.navCta}
           </div>
         </div>
 
+        <!-- CRM. De rijen worden door loadCrmStatus() getekend: welke koppelingen
+             er zijn en welke velden ze vragen komt van de server (crm-status),
+             zodat een nieuwe adapter geen wijziging in dit bestand vraagt. -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/><rect x="2" y="7" width="20" height="14" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            ${T('set.crm')}
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('set.crm.title')}</div>
+              <div class="settings-label-sub">${T('set.crm.sub')}</div>
+            </div>
+            <div>
+              <button class="btn-icon" id="btn-crm-sync" onclick="crmSyncNu()" style="display:none">${T('crm.syncNow')}</button>
+            </div>
+          </div>
+          <div id="crm-lijst"></div>
+        </div>
+
         <!-- Gevaar zone -->
         <div class="settings-section">
           <div class="settings-section-title" style="color:var(--red-ink)">
@@ -23456,6 +23476,236 @@ function renderInstellingen() {
   }
   pushRijBijwerken();
   loadGcalStatus();
+  loadCrmStatus();
+}
+
+/* ============================================================
+   CRM-KOPPELINGEN
+   ------------------------------------------------------------
+   Let op: dit hele bestand is EEN template literal (zie CLAUDE.md). Twee dingen
+   zijn hier bij het schrijven meteen misgegaan en staan daarom opgeschreven:
+
+   1. Een backtick in COMMENTAAR breekt de hele pagina. Ook in een waarschuwing
+      over backticks.
+   2. Een backslash-apostrof in een string sluit die string juist af in plaats
+      van hem te ontsnappen. Daardoor gaf onclick="fn(\'x\')" bij het uitsturen
+      "Unexpected string" en verloor de pagina AL zijn JavaScript.
+
+   Punt 2 is de reden dat hier geen inline onclick staat maar data-attributen
+   met een luisteraar. Dat is niet netter bedoeld, het is de enige vorm die
+   deze escaping niet nodig heeft.
+   ============================================================ */
+var crmStaat = null;
+
+async function crmVraag(body) {
+  var r = await fetch(API_BASE + '/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+    body: JSON.stringify(body)
+  });
+  var d = null;
+  try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok) {
+    var fout = new Error((d && d.error) || tr('crm.failed'));
+    fout.code = (d && d.code) || '';
+    throw fout;
+  }
+  return d || {};
+}
+
+async function loadCrmStatus() {
+  var lijst = document.getElementById('crm-lijst');
+  if (!lijst) return;
+  try {
+    crmStaat = await crmVraag({ mode: 'crm-status' });
+    tekenCrmLijst();
+  } catch (e) {
+    /* Stil falen is hier juist: de instellingenpagina moet werken ook als deze
+       ene sectie niet laadt. De klant ziet dan geen CRM-blok in plaats van een
+       foutmelding over iets wat hij niet gevraagd heeft. */
+    lijst.innerHTML = '';
+  }
+}
+
+function crmOptie(naam) {
+  var lijst = (crmStaat && crmStaat.beschikbaar) || [];
+  for (var i = 0; i < lijst.length; i++) if (lijst[i].naam === naam) return lijst[i];
+  return null;
+}
+
+function crmVerbondenMet(naam) {
+  var lijst = (crmStaat && crmStaat.verbonden) || [];
+  for (var i = 0; i < lijst.length; i++) if (lijst[i].naam === naam) return lijst[i];
+  return null;
+}
+
+/* Eén luisteraar voor alles wat in dit blok geklikt kan worden. Zie de kop:
+   inline onclick kan hier niet zonder escaping die de pagina sloopt. */
+function crmKlik(ev) {
+  var el = ev.currentTarget;
+  var actie = el.getAttribute('data-crm-actie');
+  var naam = el.getAttribute('data-crm');
+  if (actie === 'form') crmToonForm(naam);
+  else if (actie === 'verbind') crmVerbind(naam);
+  else if (actie === 'ontkoppel') crmOntkoppel(naam);
+}
+
+function crmBindKlikken(wortel) {
+  if (!wortel) return;
+  var knoppen = wortel.querySelectorAll('[data-crm-actie]');
+  for (var i = 0; i < knoppen.length; i++) {
+    knoppen[i].removeEventListener('click', crmKlik);
+    knoppen[i].addEventListener('click', crmKlik);
+  }
+}
+
+function crmKnop(actie, naam, label, stijl) {
+  return '<button class="btn-icon" data-crm-actie="' + escHtml(actie) + '" data-crm="' + escHtml(naam) + '"'
+       + (stijl ? ' style="' + stijl + '"' : '') + '>' + escHtml(label) + '</button>';
+}
+
+function tekenCrmLijst() {
+  var lijst = document.getElementById('crm-lijst');
+  if (!lijst || !crmStaat) return;
+  var opties = crmStaat.beschikbaar || [];
+  var html = '';
+  var erIsErEen = false;
+
+  for (var i = 0; i < opties.length; i++) {
+    var o = opties[i];
+    var verbonden = crmVerbondenMet(o.naam);
+    if (verbonden) erIsErEen = true;
+
+    html += '<div class="settings-row">';
+    html += '<div><div class="settings-label">' + escHtml(o.label) + '</div>';
+
+    if (verbonden && verbonden.laatsteFout) {
+      /* Verbonden en toch stuk. Dit is de toestand die anders onzichtbaar is:
+         de koppeling staat er, en er komt al twee weken niets door. */
+      html += '<div class="settings-label-sub" style="color:var(--warning-ink)">'
+           +  escHtml(tr('crm.lastError')) + ' — ' + escHtml(verbonden.laatsteFout.fout) + '</div>';
+    } else if (verbonden) {
+      html += '<div class="settings-label-sub" style="color:var(--success-ink)">'
+           +  escHtml(tr('crm.connected')) + (verbonden.account ? ' — ' + escHtml(verbonden.account) : '') + '</div>';
+    } else if (!o.beschikbaar) {
+      html += '<div class="settings-label-sub">' + escHtml(tr('crm.soonWhy')) + '</div>';
+    }
+    html += '</div><div>';
+
+    if (verbonden) {
+      html += crmKnop('ontkoppel', o.naam, tr('crm.disconnect'),
+                      'border-color:rgba(var(--error-rgb),0.35);color:var(--red-ink);background:rgba(var(--error-rgb),0.08)');
+    } else if (!o.beschikbaar) {
+      html += '<button class="btn-icon" disabled style="opacity:.5;cursor:not-allowed">' + escHtml(tr('crm.soon')) + '</button>';
+    } else {
+      html += crmKnop('form', o.naam, tr('crm.connect'),
+                      'border-color:rgba(var(--accent-rgb),0.35);color:var(--accent-ink);background:rgba(var(--accent-rgb),0.08)');
+    }
+    html += '</div></div>';
+    html += '<div id="crm-form-' + escHtml(o.naam) + '" style="display:none"></div>';
+  }
+
+  lijst.innerHTML = html;
+  crmBindKlikken(lijst);
+  var syncKnop = document.getElementById('btn-crm-sync');
+  if (syncKnop) syncKnop.style.display = erIsErEen ? '' : 'none';
+}
+
+/* Het formulier komt uit de veldbeschrijving van de server, niet uit een lijst
+   hier. Anders moet dit bestand mee veranderen bij elke nieuwe adapter -- en
+   dit is het bestand waar dat het duurst is. */
+function crmToonForm(naam) {
+  var doel = document.getElementById('crm-form-' + naam);
+  var opt = crmOptie(naam);
+  if (!doel || !opt) return;
+  if (doel.style.display !== 'none') { doel.style.display = 'none'; doel.innerHTML = ''; return; }
+
+  var html = '<div style="padding:var(--sp-3) 0;display:flex;flex-direction:column;gap:var(--sp-2)">';
+  var velden = opt.velden || [];
+  for (var v = 0; v < velden.length; v++) {
+    var veld = velden[v];
+    var invoerId = 'crm-in-' + escHtml(naam) + '-' + escHtml(veld.sleutel);
+    html += '<label style="display:flex;flex-direction:column;gap:var(--sp-1)">';
+    html += '<span class="settings-label">' + escHtml(veld.label)
+         +  (veld.optioneel ? ' <span class="settings-label-sub">(' + escHtml(tr('crm.optional')) + ')</span>' : '')
+         +  '</span>';
+    html += '<input id="' + invoerId + '" type="' + (veld.type === 'geheim' ? 'password' : 'text')
+         +  '" autocomplete="off" style="width:100%">';
+    if (veld.hint) html += '<span class="settings-label-sub">' + escHtml(veld.hint) + '</span>';
+    html += '</label>';
+  }
+  html += '<div id="crm-fout-' + escHtml(naam) + '" class="settings-label-sub" style="color:var(--red-ink);display:none"></div>';
+  html += '<div style="display:flex;gap:var(--sp-2)">';
+  html += '<button class="btn-icon" id="crm-ok-' + escHtml(naam) + '" data-crm-actie="verbind" data-crm="' + escHtml(naam) + '"'
+       +  ' style="border-color:rgba(var(--accent-rgb),0.35);color:var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">'
+       +  escHtml(tr('crm.save')) + '</button>';
+  html += crmKnop('form', naam, tr('crm.cancel'), '');
+  html += '</div></div>';
+
+  doel.innerHTML = html;
+  doel.style.display = '';
+  crmBindKlikken(doel);
+}
+
+async function crmVerbind(naam) {
+  var opt = crmOptie(naam);
+  if (!opt) return;
+
+  var cred = {};
+  var velden = opt.velden || [];
+  for (var v = 0; v < velden.length; v++) {
+    var el = document.getElementById('crm-in-' + naam + '-' + velden[v].sleutel);
+    cred[velden[v].sleutel] = el ? el.value.trim() : '';
+  }
+
+  var knop = document.getElementById('crm-ok-' + naam);
+  var foutVak = document.getElementById('crm-fout-' + naam);
+  if (foutVak) { foutVak.style.display = 'none'; foutVak.textContent = ''; }
+  if (knop) { knop.disabled = true; knop.textContent = tr('crm.verify'); }
+
+  try {
+    var d = await crmVraag({ mode: 'crm-connect', crm: naam, cred: cred });
+    /* De ondertekeningssleutel van een eigen webhook is hierna nergens meer op
+       te vragen. Daarom in een melding die blijft staan, en niet als een regel
+       die wegscrollt. */
+    if (d && d.toonEenmalig) toast(tr('crm.secretOnce') + ' ' + d.toonEenmalig, 'info', d.label);
+    else toast(tr('crm.connected') + (d && d.account ? ' — ' + d.account : ''), 'success');
+    await loadCrmStatus();
+  } catch (e) {
+    /* De server stuurt een zin die een makelaar begrijpt; de foutmelding van de
+       leverancier komt nooit verder dan de logs (zie api/_crm/http.js). Naast
+       de knop tonen is beter dan een toast: hij hoort bij het veld dat hij net
+       invulde, en het formulier blijft staan zodat hij het kan verbeteren. */
+    if (foutVak) { foutVak.textContent = e.message || tr('crm.failed'); foutVak.style.display = ''; }
+    else toast(e.message || tr('crm.failed'), 'error');
+  } finally {
+    if (knop) { knop.disabled = false; knop.textContent = tr('crm.save'); }
+  }
+}
+
+async function crmOntkoppel(naam) {
+  try {
+    await crmVraag({ mode: 'crm-disconnect', crm: naam });
+    toast(tr('crm.disconnected'), 'success');
+    await loadCrmStatus();
+  } catch (e) {
+    toast(e.message || tr('crm.failed'), 'error');
+  }
+}
+
+async function crmSyncNu() {
+  var knop = document.getElementById('btn-crm-sync');
+  if (knop) { knop.disabled = true; knop.textContent = tr('crm.syncBusy'); }
+  try {
+    var d = await crmVraag({ mode: 'crm-sync' });
+    if (!d.aantal) toast(tr('crm.syncNone'), 'info');
+    else toast(tr('crm.syncDone', { gelukt: d.gelukt, aantal: d.aantal }), d.ok ? 'success' : 'error');
+    await loadCrmStatus();
+  } catch (e) {
+    toast(e.message || tr('crm.failed'), 'error');
+  } finally {
+    if (knop) { knop.disabled = false; knop.textContent = tr('crm.syncNow'); }
+  }
 }
 
 /* ============================================================

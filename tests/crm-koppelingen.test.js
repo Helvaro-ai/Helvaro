@@ -24,6 +24,8 @@ const hubspot    = require(BASE + 'api/_crm/adapters/hubspot.js');
 const pipedrive  = require(BASE + 'api/_crm/adapters/pipedrive.js');
 const salesforce = require(BASE + 'api/_crm/adapters/salesforce.js');
 const whise      = require(BASE + 'api/_crm/adapters/whise.js');
+const webhook    = require(BASE + 'api/_crm/adapters/webhook.js');
+const crmConfig  = require(BASE + 'api/_crm/config.js');
 
 let pass = 0, fail = 0;
 const ck = (n, ok, got) => {
@@ -92,8 +94,8 @@ ck('Whise staat als niet-beschikbaar in de lijst',
    crm.adapters().find((a) => a.naam === 'whise').beschikbaar === false);
 ck('en noemt wat er ontbreekt', whise.ontbreekt.length >= 3, whise.ontbreekt);
 ck('en vraagt geen sleutels die nergens heen gaan', whise.velden.length === 0);
-ck('de andere vier zijn wel beschikbaar',
-   crm.adapters().filter((a) => a.beschikbaar).length === 4,
+ck('de andere vijf zijn wel beschikbaar',
+   crm.adapters().filter((a) => a.beschikbaar).length === 5,
    crm.adapters().map((a) => a.naam + ':' + a.beschikbaar));
 
 console.log('\n— de id-blob in Notities —');
@@ -225,6 +227,159 @@ nepFetch(HUBSPOT_ANTWOORDEN);
       ck(`${status} -> opnieuw ${opnieuw}`, err.opnieuw === opnieuw, err.opnieuw);
       ck(`${status} lekt de tekst van de leverancier niet`, !/detail van de leverancier/.test(err.message), err.message);
     }
+  }
+
+  console.log('\n— de webhook weigert elk adres dat naar binnen wijst —');
+  /* Dit is het enige punt waar een KLANT een adres opgeeft dat onze server zelf
+     aanroept. Zonder deze controle is dat een sleutel tot het interne netwerk
+     van de hostingomgeving: 169.254.169.254 geeft op de meeste clouds metadata. */
+  const adressen = [
+    ['https://10.0.0.1/h',                     'intern_adres',  'privaat bereik'],
+    ['https://127.0.0.1/h',                    'intern_adres',  'loopback'],
+    ['https://169.254.169.254/latest/meta',    'intern_adres',  'cloud-metadata'],
+    ['https://[::1]/h',                        'intern_adres',  'IPv6-loopback'],
+    ['http://example.com/h',                   'geen_https',    'onversleuteld'],
+    ['https://gebruiker:pw@example.com/h',     'url_met_login',  'inloggegevens in de URL'],
+    ['helemaal geen url',                      'geen_url',      'onleesbaar'],
+  ];
+  for (const [url, code, waarom] of adressen) {
+    let gekregen = 'GEEN FOUT';
+    try { await webhook.keurUrl(url); } catch (e) { gekregen = e.code; }
+    ck(`${waarom} -> geweigerd`, gekregen === code, { url, gekregen, verwacht: code });
+  }
+  /* Een publiek adres moet er wél door, anders is de controle waardeloos. */
+  let publiekOk = false;
+  try { await webhook.keurUrl('https://example.com/hook'); publiekOk = true; } catch (e) { publiekOk = e.code; }
+  ck('een gewoon publiek adres mag wel', publiekOk === true, publiekOk);
+
+  console.log('\n— de handtekening is die van Stripe —');
+  /* Zelfde vorm als api/_stripe.js verifieert, zodat een ontvanger elke
+     bestaande Stripe-verificatie kan hergebruiken. */
+  const sig = webhook.tekenen('whsec_test', '{"a":1}', 1_700_000_000_000);
+  ck('vorm t=<unix>,v1=<hex>', /^t=\d+,v1=[0-9a-f]{64}$/.test(sig.kop), sig.kop);
+  ck('t is seconden, niet milliseconden', sig.t === 1_700_000_000, sig.t);
+  const anders = webhook.tekenen('whsec_test', '{"a":2}', 1_700_000_000_000);
+  ck('een andere body geeft een andere handtekening', anders.v1 !== sig.v1);
+  const andereSleutel = webhook.tekenen('whsec_ANDERS', '{"a":1}', 1_700_000_000_000);
+  ck('een andere sleutel geeft een andere handtekening', andereSleutel.v1 !== sig.v1);
+  const zelfde = webhook.tekenen('whsec_test', '{"a":1}', 1_700_000_000_000);
+  ck('zelfde invoer geeft zelfde handtekening', zelfde.v1 === sig.v1);
+  ck('een gemaakte sleutel is lang genoeg om niet te raden',
+     webhook.nieuweSleutel().length >= 48, webhook.nieuweSleutel().length);
+  ck('en twee sleutels zijn niet gelijk', webhook.nieuweSleutel() !== webhook.nieuweSleutel());
+
+  console.log('\n— één herkansing, en alleen als dat zin heeft —');
+  let pogingen = 0;
+  globalThis.fetch = async (url) => {
+    if (/airtable/.test(String(url))) return { ok: true, status: 200, text: async () => '{}' };
+    pogingen++;
+    /* 503 = tijdelijk. De eerste poging faalt, de tweede lukt. */
+    if (pogingen <= 1) return { ok: false, status: 503, text: async () => 'even weg' };
+    if (/contacts\/search/.test(String(url))) return { ok: true, status: 200, text: async () => JSON.stringify({ results: [] }) };
+    return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'X1' }) };
+  };
+  const naStoring = await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  ck('een 503 wordt één keer opnieuw geprobeerd en slaagt dan',
+     (naStoring.resultaten[0] || {}).ok === true, naStoring.resultaten);
+
+  pogingen = 0;
+  globalThis.fetch = async (url) => {
+    if (/airtable/.test(String(url))) return { ok: true, status: 200, text: async () => '{}' };
+    pogingen++;
+    return { ok: false, status: 401, text: async () => 'unauthorized' };
+  };
+  const naWeigering = await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  ck('een 401 wordt NIET opnieuw geprobeerd', (naWeigering.resultaten[0] || {}).ok === false, naWeigering.resultaten);
+  /* Precies één zoek- plus één schrijfpoging, geen herkansing: een verkeerde
+     sleutel wordt niet beter van wachten, en de klant wacht wel. */
+  ck('een verlopen sleutel kost geen extra wachttijd', pogingen <= 2, pogingen);
+
+  console.log('\n— sleutels verlaten de server nooit —');
+  /* status() tekent het scherm. Als daar ooit een `cred` in belandt, staat het
+     token van een klant in elke browser-devtools en in elke HAR-export. */
+  const echteLees = crmConfig.lees;
+  crmConfig.lees = async () => ({
+    koppelingen: {
+      hubspot: { cred: { token: 'pat-GEHEIM-NOOIT-TONEN' }, account: 'Pijplijn: Verkoop', verbondenOp: 'x' },
+      webhook: { cred: { url: 'https://klant.be/h', secret: 'whsec_GEHEIM' }, account: 'klant.be' },
+    },
+    kantoor: 'Kantoor', velden: {}, recordId: 'recX',
+  });
+  const st = await crm.status('TELJO');
+  const alsTekst = JSON.stringify(st);
+  ck('geen token in de status', !/GEHEIM/.test(alsTekst), alsTekst.slice(0, 200));
+  ck('geen cred-object in de status', !/"cred"/.test(alsTekst));
+  ck('wel het account, als bewijs voor de klant', /Pijplijn: Verkoop/.test(alsTekst));
+  ck('en de webhook staat er als koppeling in', st.verbonden.some((v) => v.naam === 'webhook'), st.verbonden);
+  crmConfig.lees = echteLees;
+
+  console.log('\n— de webhook hoort bij de andere adapters, niet ernaast —');
+  ck('zes adapters', crm.adapters().length === 6, crm.adapters().map((a) => a.naam));
+  ck('webhook is beschikbaar', crm.adapters().find((a) => a.naam === 'webhook').beschikbaar === true);
+  ck('en vraagt een url', webhook.velden.some((v) => v.sleutel === 'url'));
+  ck('de sleutel is optioneel (we maken er zelf een)',
+     webhook.velden.find((v) => v.sleutel === 'secret').optioneel === true);
+
+  console.log('\n— een sleutel komt nooit in een logregel —');
+  /* `detail` is het RUWE antwoord van de leverancier, en dat is het nut ervan.
+     Het gevaar ook: Pipedrive zet zijn token in de QUERYSTRING, dus een API die
+     het verzoek terug-echoot zet de sleutel van een klant in de Vercel-logs,
+     waar hij blijft staan. */
+  const lekken = [
+    ['?api_token=abc123GEHEIM&limit=1',            'querystring-token'],
+    ['{"access_token":"ya29.LANGGEHEIM"}',         'JSON-token'],
+    ['Authorization: Bearer pat-na1-GEHEIM',        'Bearer-kop'],
+    ["{'client_secret': 'sup3rgeheim'}",            'client secret'],
+  ];
+  for (const [rauw, wat] of lekken) {
+    const schoon = http.schoonDetail(rauw);
+    ck(`${wat} wordt afgeschermd`, !/GEHEIM|geheim|ya29\.|abc123/.test(schoon), schoon);
+    ck(`${wat} houdt wel context over`, schoon.length > 5, schoon);
+  }
+  ck('een gewone fout blijft leesbaar',
+     http.schoonDetail('lead heeft geen telefoonnummer') === 'lead heeft geen telefoonnummer');
+  ck('en dat gebeurt in de constructor, niet alleen in de helper',
+     new http.CrmError('x', { detail: '?api_token=GEHEIM' }).detail.indexOf('GEHEIM') === -1);
+
+  console.log('\n— sleutels liggen versleuteld, of ze liggen er niet —');
+  const oudeSecret = process.env.SESSION_SECRET;
+  const oudeCrmKey = process.env.CRM_TOKEN_KEY;
+  delete process.env.CRM_TOKEN_KEY;
+  process.env.SESSION_SECRET = 'test-geheim-voor-deze-test';
+  const klaar = crmConfig.versleutel(JSON.stringify({ hubspot: { cred: { token: 'pat-GEHEIM' } } }));
+  ck('versleuteld begint met de versiemarkering', klaar.slice(0, 3) === 'v1:', klaar.slice(0, 12));
+  ck('en het token is niet terug te lezen uit de opslag', klaar.indexOf('GEHEIM') === -1);
+  ck('heen en terug geeft hetzelfde',
+     JSON.parse(crmConfig.ontsleutel(klaar)).hubspot.cred.token === 'pat-GEHEIM');
+  ck('twee keer versleutelen geeft niet dezelfde tekst (eigen IV)',
+     crmConfig.versleutel('zelfde') !== crmConfig.versleutel('zelfde'));
+  ck('geknoei met de tekst geeft leeg, geen halve waarde',
+     crmConfig.ontsleutel(klaar.slice(0, -6) + 'AAAAAA') === '');
+  ck('onzin geeft leeg', crmConfig.ontsleutel('zomaar wat') === '');
+
+  /* De sleutel van Google mag die van het CRM niet openen. Zelfde basis,
+     andere afleiding -- anders opent één gelekt geheim allebei. */
+  const gcal = require(BASE + 'api/_gcal.js');
+  const gcalTekst = gcal.encryptToken('google-refresh-GEHEIM');
+  ck('een Google-token is niet met de CRM-sleutel te openen',
+     crmConfig.ontsleutel(gcalTekst) === '', crmConfig.ontsleutel(gcalTekst));
+
+  /* Fail closed: liever niets opslaan dan met een raadbare sleutel. */
+  delete process.env.SESSION_SECRET;
+  delete process.env.ADMIN_KEY;
+  let weigerde = false;
+  try { crmConfig.versleutel('x'); } catch (e) { weigerde = e.code === 'geen_sleutel'; }
+  ck('zonder sleutel WEIGERT hij op te slaan', weigerde);
+  if (oudeSecret === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = oudeSecret;
+  if (oudeCrmKey !== undefined) process.env.CRM_TOKEN_KEY = oudeCrmKey;
+
+  console.log('\n— geen tenant, geen toegang —');
+  /* CLAUDE.md: leeg leest verderop als "admin, toon alles". Hier is dat een
+     harde fout, nooit een standaard. */
+  for (const leeg of ['', null, undefined, '   ']) {
+    let code = 'GEEN FOUT';
+    try { await crmConfig.lees(leeg); } catch (e) { code = e.code; }
+    ck(`projectCode ${JSON.stringify(leeg)} -> geweigerd`, code === 'geen_tenant', code);
   }
 
   globalThis.fetch = echteFetch;

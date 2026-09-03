@@ -178,11 +178,16 @@ alleen een lege `{ ok: false }` teruggeeft, wordt pas maanden later ontdekt.
 - WhatsApp-sjablonen wachten op goedkeuring bij Meta.
 - `_waes.js` (eigen WhatsApp-nummer per klant) is compleet maar bewust nog niet
   aangesloten — wacht op Tech Provider-status.
-- De CRM-koppeling heeft nog geen scherm: koppelen gaat via de modes
-  `crm-status` / `crm-connect` / `crm-disconnect` / `crm-sync` op `api/leads.js`.
+- De CRM-koppeling heeft een scherm (Instellingen → Je CRM) en vier modes op
+  `api/leads.js`: `crm-status` / `crm-connect` / `crm-disconnect` / `crm-sync`.
+  Het veld `CRM Koppelingen` (`fld5UwV0QS8m7UAHF`, Long text) staat op Client
+  Config — geverifieerd tegen de echte base, niet aangenomen.
 - De Whise-adapter is bewust een weigering en geen gok — zie de kop van
-  `api/_crm/adapters/whise.js` voor wat er van Whise nodig is.
-- **Actie voor de eigenaar:** het veld `CRM Koppelingen` (Long text) moet nog op
-  de tabel Client Config worden aangemaakt, anders kan er niets gekoppeld worden.
+  `api/_crm/adapters/whise.js` voor wat er van Whise nodig is. Make heeft geen
+  Whise-app, dus ook die weg is dicht; de eigen webhook is het alternatief.
+- **Geen enkele CRM-adapter heeft ooit tegen een echte API gedraaid.** De
+  netwerkpolicy van de bouwomgeving blokkeert alle vijf de leveranciers.
+  `node scripts/crm-check.js` doet dat wel, read-only, zodra er sleutels staan.
+  Dat is de eerstvolgende stap voordat dit aan een klant beloofd wordt.
 - `dashboard.js` opsplitsen is de grootste openstaande schuld. Hoog risico:
   doe het alleen bewust, met de parse-test als vangnet.

@@ -52,6 +52,11 @@ const UIT_OMGEVING = {
     },
   omnicasa: () => process.env.OMNICASA_SECRET
     && { secret: process.env.OMNICASA_SECRET, basis: process.env.OMNICASA_BASIS || undefined },
+  /* De webhook is de enige die WEL iets verstuurt bij een controle: een ping.
+     Dat is het punt -- hij bewijst dat het adres bestaat, dat de ontvanger
+     draait en dat die onze handtekening accepteert. Er wordt niets aangemaakt. */
+  webhook: () => process.env.WEBHOOK_URL
+    && { url: process.env.WEBHOOK_URL, secret: process.env.WEBHOOK_SECRET || '' },
 };
 
 const NODIG = {
@@ -59,6 +64,7 @@ const NODIG = {
   pipedrive:  'PIPEDRIVE_DOMEIN + PIPEDRIVE_TOKEN',
   salesforce: 'SALESFORCE_DOMEIN + SALESFORCE_CLIENT_ID + SALESFORCE_CLIENT_SECRET',
   omnicasa:   'OMNICASA_SECRET (+ OMNICASA_BASIS als je niet op de CRE-API zit)',
+  webhook:    'WEBHOOK_URL (+ WEBHOOK_SECRET, of leeg voor een gemaakte sleutel)',
 };
 
 (async () => {
@@ -103,6 +109,9 @@ const NODIG = {
         console.log(d('         GEEN pijplijn gevonden — deals komen binnen zonder fase'));
       }
       if (uit.extra && uit.extra.versie) console.log(d(`         API-versie ${uit.extra.versie}`));
+      /* Eén keer tonen en nergens anders op te vragen -- daarom hier, waar de
+         eigenaar hem kan kopieren naar zijn ontvanger. */
+      if (uit.toonEenmalig) console.log(d(`         ondertekeningssleutel (eenmalig): ${uit.toonEenmalig}`));
     } catch (err) {
       fout++;
       console.log(`  ${r('FOUT')}   ${a.label}  ${err.message}`);

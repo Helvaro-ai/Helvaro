@@ -17,6 +17,33 @@
 
 const STANDAARD_TIMEOUT_MS = 12_000;
 
+/* ── Wat er NOOIT in een logregel mag staan ────────────────────────────────
+   `detail` is het RUWE antwoord van de leverancier. Dat is precies waarom het
+   nuttig is -- en precies waarom het gevaarlijk is: sommige API's echoën het
+   verzoek terug, inclusief de querystring. Pipedrive zet zijn token daar
+   (?api_token=...), dus een foutmelding van hen kan letterlijk de sleutel van
+   een klant bevatten. Die belandt dan in de Vercel-logs, waar hij blijft staan
+   en door iedereen met logtoegang te lezen is.
+
+   Daarom gaat alles wat `detail` heet eerst hier langs. Liever een logregel
+   met een sterretje erin dan een sleutel die je niet meer terug kunt halen. */
+const GEHEIM_PATRONEN = [
+  /* querystring: api_token=..., access_token=..., key=..., secret=... */
+  /\b(api_token|access_token|refresh_token|token|api_key|apikey|key|secret|client_secret|password|pwd)=([^&\s"']{4,})/gi,
+  /* JSON: "access_token":"...", 'secret': '...' */
+  /(["']?(?:api_token|access_token|refresh_token|token|api_key|apikey|secret|client_secret|password)["']?\s*:\s*["'])([^"']{4,})(["'])/gi,
+  /* Authorization: Bearer ... */
+  /\b(Bearer|Basic)\s+([A-Za-z0-9._~+/=-]{8,})/gi,
+];
+
+function schoonDetail(tekst) {
+  let t = String(tekst == null ? '' : tekst);
+  t = t.replace(GEHEIM_PATRONEN[0], (_m, sleutel) => `${sleutel}=***`);
+  t = t.replace(GEHEIM_PATRONEN[1], (_m, kop, _waarde, staart) => `${kop}***${staart}`);
+  t = t.replace(GEHEIM_PATRONEN[2], (_m, schema) => `${schema} ***`);
+  return t;
+}
+
 class CrmError extends Error {
   /**
    * @param {string} message  Nederlands, voor de klant. Geen leveranciersnaam
@@ -34,7 +61,7 @@ class CrmError extends Error {
     this.name = 'CrmError';
     this.code = opts.code || 'crm_fout';
     this.opnieuw = Boolean(opts.opnieuw);
-    this.detail = opts.detail || '';
+    this.detail = schoonDetail(opts.detail || '');
     this.status = opts.status || 0;
   }
 }
@@ -115,4 +142,4 @@ function json(url, method, body, headers, opties = {}) {
   });
 }
 
-module.exports = { vraag, json, CrmError, STANDAARD_TIMEOUT_MS };
+module.exports = { vraag, json, CrmError, schoonDetail, STANDAARD_TIMEOUT_MS };

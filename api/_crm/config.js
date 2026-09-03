@@ -10,18 +10,19 @@
  * uitspreiden over losse kolommen levert een schema op dat bij elke nieuwe
  * adapter opnieuw moet veranderen.
  *
- * -- Dat veld bestaat nog NIET op het Airtable-schema --------------------------
- * Bewust. Airtable laat een onbekend veld gewoon weg uit `fields`, dus lezen
- * geeft "geen koppeling" -- precies het goede antwoord voor elke klant die er
- * geen heeft. Schrijven is het probleem: Airtable weigert dan de HELE PATCH met
- * een 422 (zie CLAUDE.md). Daarom geeft schrijven hier een BENOEMDE fout terug
- * en niet stilzwijgend `ok`. Een koppelscherm dat "verbonden!" toont terwijl er
- * niets is opgeslagen is de ergste uitkomst die dit bestand kan hebben.
+ * -- Het veld bestaat, en de foutmelding blijft staan -------------------------
+ * "CRM Koppelingen" is op 2026-09-03 aangemaakt op de productiebase
+ * (Lead Qualification System, tabel Client Config, Long text, id
+ * fld5UwV0QS8m7UAHF). Geverifieerd tegen het echte schema, niet aangenomen.
  *
- * De eigenaar moet dus één keer een veld aanmaken:
- *     Naam:  CRM Koppelingen
- *     Type:  Long text
- * Daarna werkt alles. Tot dan zegt het scherm eerlijk wat er ontbreekt.
+ * De afhandeling van een ONTBREKEND veld blijft er bewust in staan. Airtable
+ * laat een onbekend veld weg uit `fields`, dus LEZEN geeft dan "geen
+ * koppeling" -- precies goed. SCHRIJVEN is het probleem: Airtable weigert de
+ * HELE PATCH met een 422 (CLAUDE.md 4.2). Dat pad geldt nog voor elke andere
+ * base: een kopie voor een test, een tweede omgeving, of een base die uit een
+ * back-up is teruggezet. Daar hoort een benoemde fout te komen en geen stille
+ * `ok` -- een koppelscherm dat "verbonden!" toont terwijl er niets is
+ * opgeslagen is de ergste uitkomst die dit bestand kan hebben.
  *
  * -- Versleuteld, met dezelfde regel als de Google-tokens ----------------------
  * Wat hier in staat geeft schrijftoegang tot het CRM van een makelaarskantoor.
@@ -35,7 +36,14 @@ const crypto = require('crypto');
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const F_PROJECT     = 'fldN4dL0bGgfBOXwM';   // Project Code
-const F_CRM         = 'CRM Koppelingen';     // bestaat nog niet -- alleen op naam
+/* Veld-ID eerst, naam als terugval -- de conventie uit api/_leads-read.js:
+   "Airtable field IDs are stable across renames; names are not." Het veld is op
+   2026-09-03 aangemaakt op de echte base (Lead Qualification System) en heeft
+   sindsdien een vast id. De naam blijft als terugval staan zodat een base die
+   dit veld nog niet heeft (een kopie, een testbase) niet stilletjes anders
+   werkt dan de productiebase. */
+const F_CRM_ID      = 'fld5UwV0QS8m7UAHF';  // CRM Koppelingen (Long text)
+const F_CRM         = 'CRM Koppelingen';
 const F_KLANTNAAM   = 'fldAnB848Sr5jl6dq';   // Client Name
 const AT_TIMEOUT_MS = 10_000;
 
@@ -125,7 +133,7 @@ async function klantRij(projectCode) {
  */
 async function lees(projectCode) {
   const rij = await klantRij(projectCode);
-  const rauw = rij.fields[F_CRM];
+  const rauw = rij.fields[F_CRM_ID] || rij.fields[F_CRM];
   let koppelingen = {};
   if (rauw) {
     const plat = ontsleutel(rauw);
@@ -167,7 +175,10 @@ async function bewaar(projectCode, recordId, koppelingen) {
   const r = await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${recordId}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: { [F_CRM]: versleutel(JSON.stringify(koppelingen)) } }),
+    /* Schrijven op ID, niet op naam: hernoemt iemand het veld in Airtable, dan
+       blijft opslaan werken in plaats van een 422 te geven die de klant als
+       "koppelen mislukt" ziet. */
+    body: JSON.stringify({ fields: { [F_CRM_ID]: versleutel(JSON.stringify(koppelingen)) } }),
   });
   if (r.ok) return;
 
@@ -200,6 +211,42 @@ async function schrijf(projectCode, crm, cred, extra = {}) {
   return koppelingen[crm];
 }
 
+/**
+ * De laatste fout van één koppeling vastleggen -- of wissen.
+ *
+ * -- Waarom dit hier zit en niet per lead --------------------------------------
+ * Een verlopen sleutel laat ELKE lead falen. Dat per lead wegschrijven geeft bij
+ * een bulk van vijftig leads vijftig Airtable-schrijfacties die allemaal
+ * hetzelfde zeggen. Eén regel op de koppeling zegt het even goed en is de plek
+ * waar het scherm toch al kijkt.
+ *
+ * Alleen de aanroeper die het OVERZICHT heeft (de bulk-synchronisatie) roept dit
+ * aan, en precies één keer. Het WhatsApp-pad doet het niet: dat ziet één lead en
+ * kan niet weten of dit een incident is of een kapotte koppeling.
+ *
+ * @param {object|null} fout  { fout, code } om vast te leggen, of null om te wissen
+ */
+async function noteerFout(projectCode, crm, fout) {
+  const { koppelingen, recordId } = await lees(projectCode);
+  const k = koppelingen[crm];
+  if (!k) return false;
+  if (fout) {
+    k.laatsteFout = {
+      /* Alleen onze eigen, veilige tekst -- nooit `detail`, want daar staat het
+         antwoord van de leverancier in en dat kan meesturen wat wij verstuurden. */
+      fout: String(fout.fout || '').slice(0, 300),
+      code: String(fout.code || ''),
+      op:   new Date().toISOString(),
+    };
+  } else if (!k.laatsteFout) {
+    return false;   // niets te wissen: geen schrijfactie
+  } else {
+    delete k.laatsteFout;
+  }
+  await bewaar(projectCode, recordId, koppelingen);
+  return true;
+}
+
 /** Eén koppeling weghalen. Idempotent: al weg is ook goed. */
 async function verwijder(projectCode, crm) {
   const { koppelingen, recordId } = await lees(projectCode);
@@ -210,7 +257,7 @@ async function verwijder(projectCode, crm) {
 }
 
 module.exports = {
-  lees, leesEen, schrijf, verwijder,
+  lees, leesEen, schrijf, verwijder, noteerFout,
   versleutel, ontsleutel,
-  ConfigError, CLIENTS_TABLE, F_CRM,
+  ConfigError, CLIENTS_TABLE, F_CRM, F_CRM_ID,
 };

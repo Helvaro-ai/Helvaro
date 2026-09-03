@@ -6,7 +6,8 @@
  *                        ├→ HubSpot
  *   lead → deze module → ├→ Pipedrive
  *                        ├→ Omnicasa
- *                        └→ Salesforce
+ *                        ├→ Salesforce
+ *                        └→ Eigen webhook  (elk CRM waar wij er geen van hebben)
  *
  * -- Waarom er precies één deur is -------------------------------------------
  * Vijf CRM's die vanuit drie plekken in de code aangeroepen worden is vijftien
@@ -55,6 +56,7 @@ const ADAPTERS = {
   salesforce: require('./adapters/salesforce'),
   omnicasa:   require('./adapters/omnicasa'),
   whise:      require('./adapters/whise'),
+  webhook:    require('./adapters/webhook'),
 };
 
 const NOTITIES_VELD = 'fldoLRI5W12ThTls7';
@@ -150,6 +152,10 @@ async function status(projectCode) {
       label: (ADAPTERS[naam] && ADAPTERS[naam].label) || naam,
       account: koppelingen[naam].account || '',
       verbondenOp: koppelingen[naam].verbondenOp || '',
+      /* Wat er de laatste keer misging, in onze eigen bewoording. Zonder dit
+         ziet een makelaar met een verlopen sleutel een koppeling die er
+         gezond uitziet en al twee weken niets doet. */
+      laatsteFout: koppelingen[naam].laatsteFout || null,
     })),
   };
 }
@@ -168,7 +174,17 @@ async function verbind(projectCode, crm, cred) {
      sleutels: anders moet elke duw() het opnieuw ophalen. */
   const compleet = { ...cred, ...(uitslag.extra || {}) };
   await config.schrijf(projectCode, a.naam, compleet, { account: uitslag.account });
-  return { naam: a.naam, label: a.label, account: uitslag.account || '' };
+  return {
+    naam: a.naam,
+    label: a.label,
+    account: uitslag.account || '',
+    /* Eén keer tonen, nooit meer opvraagbaar. De webhook-adapter maakt een
+       ondertekeningssleutel aan als de klant er geen koos; die heeft hij nodig
+       om onze handtekening te controleren. status() geeft hem NOOIT terug --
+       dat is het verschil tussen een sleutel die één keer over de lijn gaat en
+       een sleutel die bij elke schermverversing opnieuw te onderscheppen is. */
+    toonEenmalig: uitslag.toonEenmalig || '',
+  };
 }
 
 async function ontkoppel(projectCode, crm) {
@@ -176,6 +192,37 @@ async function ontkoppel(projectCode, crm) {
 }
 
 /* ── Duwen ─────────────────────────────────────────────────────────────────── */
+
+/* Hoe lang we wachten voor de enige herkansing. Kort, want dit hangt aan het
+   pad waar een lead op antwoord wacht: een seconde stilte is goedkoper dan een
+   lead die morgen alsnog niet in het CRM staat. */
+const HERKANSING_MS = 1000;
+
+/**
+ * Eén herkansing, en alleen voor fouten die er iets aan hebben.
+ *
+ * Het onderscheid komt uit ./http.js: `opnieuw` staat op true bij een 429, een
+ * 5xx en een time-out -- gevallen waarin het volgende moment een ander antwoord
+ * kan geven. Bij een 401 of een 400 staat hij op false, en dan is nog eens
+ * proberen alleen een tweede identieke fout: de sleutel wordt niet beter van
+ * wachten, en de klant wacht wel.
+ *
+ * Meer dan één herkansing zit hier bewust niet in. Wat na twee pogingen niet
+ * lukt, lukt bij de volgende synchronisatie of het is een echt probleem -- en
+ * in beide gevallen is een derde poging binnen dezelfde WhatsApp-beurt de
+ * verkeerde plek om erachter te komen.
+ */
+async function metHerkansing(naam, doe) {
+  try {
+    return await doe();
+  } catch (err) {
+    if (!(err instanceof CrmError) || !err.opnieuw) throw err;
+    console.warn(`[crm/${naam}] ${err.code} -- één herkansing over ${HERKANSING_MS}ms`);
+    await new Promise((r) => setTimeout(r, HERKANSING_MS));
+    return doe();
+  }
+}
+
 
 /**
  * Eén lead naar elk gekoppeld CRM.
@@ -251,7 +298,7 @@ async function duw(projectCode, lead, opties = {}) {
     if (!cred) { resultaten.push({ crm: naam, ok: false, fout: 'Geen sleutels.', code: 'geen_sleutel' }); continue; }
 
     try {
-      const ids = await a.duwLead(cred, vorm, bekend[naam] || {});
+      const ids = await metHerkansing(naam, () => a.duwLead(cred, vorm, bekend[naam] || {}));
       resultaten.push({ crm: naam, ok: true, ids });
 
       /* De notitie is een extraatje: mislukt hij, dan staat de lead er nog

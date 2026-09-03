@@ -2452,12 +2452,26 @@ module.exports = async function handler(req, res) {
 
         let gelukt = 0;
         const mislukt = [];
+        // Per CRM de laatste fout onthouden, om hem straks ÉÉN keer vast te
+        // leggen. Vijftig leads tegen een verlopen sleutel is vijftig keer
+        // dezelfde fout; die vijftig keer wegschrijven helpt niemand.
+        const foutPerCrm = new Map();
         for (const l of teDoen) {
           // duwVeilig: één lead die faalt mag de andere negenennegentig niet
           // stoppen. Wat er misging staat per lead in het antwoord.
           const { resultaten: r } = await _crm.duwVeilig(projectCode, l, gedeeld);
           if (r.length && r.every((x) => x.ok)) gelukt++;
           else mislukt.push({ leadId: l.id, naam: l.naam, redenen: r.filter((x) => !x.ok).map((x) => x.fout) });
+          for (const uitslag of r) {
+            if (!uitslag.ok) foutPerCrm.set(uitslag.crm, { fout: uitslag.fout, code: uitslag.code });
+            else if (!foutPerCrm.has(uitslag.crm)) foutPerCrm.set(uitslag.crm, null);
+          }
+        }
+        // Vastleggen of wissen, per CRM, best-effort: een koppeling die niet
+        // bij te werken is mag geen geslaagde synchronisatie rood maken.
+        for (const [naam, fout] of foutPerCrm) {
+          try { await _crmConfig.noteerFout(projectCode, naam, fout); }
+          catch (e) { console.error('[crm-sync] fout niet vastgelegd voor', naam, e && e.message); }
         }
         return res.status(200).json({
           ok: mislukt.length === 0,
