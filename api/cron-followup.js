@@ -149,6 +149,10 @@ module.exports = async function handler(req, res) {
     const leads = lData.records || [];
     let sent = 0;
     const followedUp = [];
+    /* Wie WEL geselecteerd was maar niet verstuurd kon worden. Die horen in
+       de dagmail: een stille mislukking is precies hoe een dood Meta-token
+       wekenlang onopgemerkt blijft. */
+    const nietVerstuurd = [];
     // Per-run cache — see isServiceStoppedForProject()'s own header.
     const planCache = new Map();
 
@@ -252,8 +256,19 @@ module.exports = async function handler(req, res) {
       // and falls back to the shared PHONE_NUMBER_ID — unchanged behaviour.
       const leadSenderPnid = await getClientWaPhoneNumberId(projectCodeForPlan, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
       const leadPhoneNumberId = leadSenderPnid || PHONE_NUMBER_ID;
-      await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN);
+      const waOk = await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN);
 
+      /* Alleen tellen wat Meta ook echt heeft aangenomen. Mislukt het, dan
+         blijft Conversation State op 'in_progress' staan -- die vlag ging er
+         met opzet VOOR de verzending in, zodat een mislukking hooguit een
+         gemiste opvolging kost en nooit een dubbel betaald sjabloon. De lead
+         wordt morgen dus niet opnieuw geprobeerd; dat is de bestaande keuze,
+         en die verandert hier niet. Wat verandert is dat we er niet meer over
+         liegen in de dagmail. */
+      if (!waOk) {
+        nietVerstuurd.push(name || phone);
+        continue;
+      }
       sent++;
       followedUp.push(name || phone);
       // Slight delay to avoid WhatsApp rate limits
@@ -309,21 +324,32 @@ module.exports = async function handler(req, res) {
     });
 
     // ── Daily summary email ──────────────────────────────────────────────────
-    if (sent > 0) {
+    /* Ook mailen als er NIETS verstuurd is maar het wel geprobeerd is. Bij
+       `sent > 0` alleen zwijgt de cron precies op de dag dat alles faalt --
+       en dat is de dag dat je het wil weten. */
+    if (sent > 0 || nietVerstuurd.length > 0) {
       const escE = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const rows = followedUp.map(n =>
         `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${escE(n)}</td></tr>`
       ).join('');
+      const mislukteRijen = nietVerstuurd.map(n =>
+        `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#b42318">${escE(n)}</td></tr>`
+      ).join('');
       sendResendEmail({
-        subject: `Helvaro. ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
+        subject: nietVerstuurd.length
+          ? `Helvaro. ${sent} verstuurd, ${nietVerstuurd.length} MISLUKT vandaag`
+          : `Helvaro. ${sent} follow-up${sent > 1 ? 's' : ''} verstuurd vandaag`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:auto">
             <h2 style="color:#1e6fd9">Dagelijkse follow-up update</h2>
+            ${nietVerstuurd.length ? `<p style="color:#b42318;font-weight:600">Let op: ${nietVerstuurd.length} bericht${nietVerstuurd.length > 1 ? 'en zijn' : ' is'} NIET verstuurd. Zie de Vercel-logs; meestal is dit een verlopen WhatsApp-token.</p>` : ''}
             <p style="color:#444">${sent} van ${leads.length} onderzochte leads ontvingen vandaag een WhatsApp follow-up:</p>
             <table style="width:100%;border-collapse:collapse;margin-top:8px">
               <thead><tr><th style="text-align:left;padding:6px 10px;background:#f5f5f5;color:#666;font-size:12px">Lead naam</th></tr></thead>
               <tbody>${rows}</tbody>
             </table>
+            ${nietVerstuurd.length ? `<p style="color:#b42318;margin-top:14px;font-size:13px">Niet verstuurd:</p>
+            <table style="width:100%;border-collapse:collapse"><tbody>${mislukteRijen}</tbody></table>` : ''}
             <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none">Open Dashboard</a>
           </div>`
       }).catch(() => {});
@@ -1063,6 +1089,24 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
 
 // Stuur een goedgekeurde Meta-template (verplicht buiten het 24u customer-service venster).
 // `params` = de body-variabelen die in de template als {{1}}, {{2}}, ... staan.
+/* Geeft true terug als Meta het bericht heeft aangenomen, anders false.
+ *
+ * Die teruggave ONTBRAK, en dat was geen schoonheidsfoutje. De functie logde
+ * de fout keurig en gaf in ALLE gevallen undefined terug -- geslaagd en
+ * mislukt zagen er voor de aanroeper identiek uit. Beide lussen hieronder
+ * deden daarna onvoorwaardelijk `sent++` en zetten de naam van de lead in de
+ * dagmail. Met een dood Meta-token (precies wat er nu aan de hand is: 401,
+ * 'session has been invalidated') kreeg Sindi dus elke ochtend een mail die
+ * met naam en toenaam meldde welke leads waren opgevolgd, terwijl er niets
+ * de deur uit was.
+ *
+ * Een rapport dat niet kan weten of het waar is, is erger dan geen rapport:
+ * je stopt met controleren. Vandaar deze boolean, en vandaar dat beide lussen
+ * hem nu ook echt lezen.
+ *
+ * api/leads.js heeft zijn eigen sendWATemplate die dit al goed deed. Dat die
+ * twee uit elkaar konden lopen is op zich het echte probleem -- zie het
+ * P1-punt over dubbele implementaties. */
 function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
   const components = (params && params.length)
     ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) }]
@@ -1081,8 +1125,15 @@ function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
     }
   ).then(async r => {
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) console.error(`[cron-followup] template "${templateName}" naar ${to} mislukt:`, JSON.stringify(d.error || d));
-  }).catch(err => console.error(`[cron-followup] template netwerk fout naar ${to}:`, err.message));
+    if (!r.ok) {
+      console.error(`[cron-followup] template "${templateName}" naar ${to} mislukt:`, JSON.stringify(d.error || d));
+      return false;
+    }
+    return true;
+  }).catch(err => {
+    console.error(`[cron-followup] template netwerk fout naar ${to}:`, err.message);
+    return false;
+  });
 }
 
 function sendWA(to, message, phoneNumberId, token) {
@@ -1386,7 +1437,8 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
 
       // Same swap as leads.js: helvaro_afspraak_herinnering (nl_BE) reads
       // "je afspraak bij {{2}} staat gepland voor {{3}}" -> {{2}} business, {{3}} datetime.
-      await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, clientNameV, when], apptPhoneNumberId, whatsappToken);
+      const remOk = await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, clientNameV, when], apptPhoneNumberId, whatsappToken);
+      if (!remOk) { skipped++; continue; }   // niet meetellen wat niet aankwam
       sent++;
     } catch (err) {
       console.error(`[cron-followup] appointment reminder mislukt voor ${appt.id}:`, err.message);
