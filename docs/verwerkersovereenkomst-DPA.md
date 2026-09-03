@@ -61,6 +61,24 @@ Helvaro zorgt dat personen die toegang hebben tot de persoonsgegevens gebonden z
 
 6.3 Helvaro informeert de Klant over geplande wijzigingen in subverwerkers en geeft de Klant de kans bezwaar te maken binnen 14 dagen. Bij een gegrond bezwaar dat niet redelijk op te lossen is, mag de Klant de betrokken dienst beëindigen.
 
+6.4 **Een CRM dat de Klant zelf koppelt is géén subverwerker van Helvaro.**
+Koppelt de Klant een eigen systeem (bijvoorbeeld HubSpot, Pipedrive, Salesforce,
+Omnicasa of een eigen webhook-endpoint) door daarin zijn eigen toegangssleutel in
+te voeren, dan verstuurt Helvaro de betreffende gegevens uitsluitend op
+instructie van de Klant naar een systeem dat de Klant zelf kiest, contracteert en
+beheert. Helvaro selecteert die partij niet, sluit er geen overeenkomst mee en
+heeft geen zeggenschap over wat daar met de gegevens gebeurt.
+
+Zulke partijen staan daarom niet in Bijlage 3. De Klant is er zelf voor
+verantwoordelijk dat hij met die partij een geldige verwerkersovereenkomst heeft
+en, bij doorgifte buiten de EER, over een geldig doorgiftemechanisme beschikt.
+De Klant kan de koppeling op elk moment zelf verbreken in het dashboard; Helvaro
+verwijdert de opgeslagen toegangssleutel dan uit zijn systemen.
+
+> *Nog te laten nakijken door een jurist.* Deze bepaling is toegevoegd toen de
+> CRM-koppeling werd gebouwd, om vast te leggen wat er in de praktijk gebeurt.
+> Ze is opgesteld door de ontwikkelaar, niet door een jurist.
+
 ## 7. Rechten van betrokkenen
 
 7.1 Helvaro helpt de Klant, met passende technische en organisatorische maatregelen, om verzoeken van betrokkenen te beantwoorden (inzage, correctie, verwijdering, beperking, overdraagbaarheid, bezwaar).
