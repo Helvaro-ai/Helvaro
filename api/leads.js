@@ -27,6 +27,16 @@ const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de
 // een afgebroken verzoek waarna niemand weet wat er wel en niet gelukt is.
 const CRM_BULK_MAX = 50;
 
+// En een KLOK erbij, want het aantal alleen is geen begrenzing. Vijftig leads
+// maal twee tot drie aanroepen naar een vreemde server, elk met een time-out van
+// twaalf seconden, is in het slechtste geval minuten -- en vercel.json geeft deze
+// route zestig seconden. Wordt de functie halverwege afgekapt, dan is het
+// antwoord weg, weet niemand waar hij gebleven is, en wordt de laatste fout ook
+// niet vastgelegd. De id's die al weggeschreven zijn blijven wel goed, dus
+// stoppen is veilig -- er is alleen niemand die het hoort.
+// 45s laat ruim tijd over voor het opruimwerk erna.
+const CRM_BULK_BUDGET_MS = 45_000;
+
 // Single-shot Airtable fetch. No retries on 429.
 //
 // Root-cause (2026-05-14): multiple dashboard tabs each polling every 90 s,
@@ -2392,6 +2402,34 @@ module.exports = async function handler(req, res) {
         return 502;
       };
 
+      // ── Begrenzing op de twee modes die naar BUITEN werken ────────────────
+      // crm-connect laat de server een verzoek doen naar een adres dat de klant
+      // kiest (de eigen-webhook-adapter). Het interne netwerk is al dicht (zie
+      // keurUrl in api/_crm/adapters/webhook.js), maar zonder teller blijft het
+      // een knop waarmee je onbeperkt verzoeken naar buiten laat sturen -- een
+      // poortscanner op onze rekening en met ons IP-adres.
+      // crm-sync is begrensd om een andere reden: elke aanroep kan vijftig leads
+      // maal een paar aanroepen zijn, en dat is genoeg om het CRM van de klant
+      // zelf op zijn eigen limiet te laten lopen.
+      //
+      // Faalt OPEN, zoals de support-begrenzer hierboven: een storing in de
+      // teller mag een klant niet buitensluiten. De echte bescherming tegen het
+      // interne netwerk is de adrescontrole, niet deze teller.
+      const CRM_LIMIETEN = { 'crm-connect': [10, 60 * 60 * 1000], 'crm-sync': [6, 60 * 60 * 1000] };
+      if (CRM_LIMIETEN[body.mode]) {
+        try {
+          const [limiet, venster] = CRM_LIMIETEN[body.mode];
+          const _rl = require('./_ratelimit');
+          const r = await _rl.hit(`crm:${body.mode}`, projectCode, limiet, venster);
+          if (r && r.limited) {
+            return res.status(429).json({
+              error: 'Je hebt dit net al een paar keer gedaan. Probeer het over een uur nog eens.',
+              code: 'te_vaak',
+            });
+          }
+        } catch (e) { /* teller stuk: laat het door */ }
+      }
+
       try {
         if (body.mode === 'crm-status') {
           return res.status(200).json(await _crm.status(projectCode));
@@ -2456,7 +2494,15 @@ module.exports = async function handler(req, res) {
         // leggen. Vijftig leads tegen een verlopen sleutel is vijftig keer
         // dezelfde fout; die vijftig keer wegschrijven helpt niemand.
         const foutPerCrm = new Map();
+        const bulkStart = Date.now();
+        let gestoptOpTijd = false;
         for (const l of teDoen) {
+          if (Date.now() - bulkStart > CRM_BULK_BUDGET_MS) {
+            // Netjes stoppen en het zeggen. Wat niet meer paste heeft geen id's
+            // gekregen, dus de volgende synchronisatie pakt precies die leads op.
+            gestoptOpTijd = true;
+            break;
+          }
           // duwVeilig: één lead die faalt mag de andere negenennegentig niet
           // stoppen. Wat er misging staat per lead in het antwoord.
           const { resultaten: r } = await _crm.duwVeilig(projectCode, l, gedeeld);
@@ -2474,10 +2520,13 @@ module.exports = async function handler(req, res) {
           catch (e) { console.error('[crm-sync] fout niet vastgelegd voor', naam, e && e.message); }
         }
         return res.status(200).json({
-          ok: mislukt.length === 0,
+          ok: mislukt.length === 0 && !gestoptOpTijd,
           aantal: teDoen.length,
           gelukt,
           mislukt,
+          // Eerlijk over waar hij gebleven is. Zonder dit lijkt een halve
+          // synchronisatie op een hele.
+          gestoptOpTijd,
           // Eerlijk zijn over wat er NIET is meegenomen, zodat niemand denkt dat
           // zijn hele bestand nu in het CRM staat.
           afgekapt: leads.filter((l) => l.qualified || l.afspraakGeboekt).length > teDoen.length,

@@ -1201,6 +1201,7 @@ const TEKST = {
   'crm.syncNow': { nl: 'Stuur bestaande leads na', fr: 'Envoyer les leads existants', en: 'Send existing leads', de: 'Bestehende Leads senden' },
   'crm.syncBusy': { nl: 'Bezig met versturen…', fr: 'Envoi en cours…', en: 'Sending…', de: 'Wird gesendet…' },
   'crm.syncDone': { nl: '{gelukt} van {aantal} leads staan in je CRM.', fr: '{gelukt} leads sur {aantal} sont dans votre CRM.', en: '{gelukt} of {aantal} leads are in your CRM.', de: '{gelukt} von {aantal} Leads sind in Ihrem CRM.' },
+  'crm.syncPartial': { nl: '{gelukt} van {aantal} verstuurd — er stonden er meer klaar. Klik nog eens om verder te gaan.', fr: '{gelukt} sur {aantal} envoyés — il en restait. Cliquez à nouveau pour continuer.', en: '{gelukt} of {aantal} sent — there were more waiting. Click again to continue.', de: '{gelukt} von {aantal} gesendet — es warteten noch mehr. Klicken Sie erneut, um fortzufahren.' },
   'crm.syncNone': { nl: 'Er waren geen leads om te versturen.', fr: 'Aucun lead à envoyer.', en: 'There were no leads to send.', de: 'Es gab keine Leads zum Senden.' },
   'crm.failed': { nl: 'Koppelen is niet gelukt.', fr: 'La connexion a échoué.', en: 'Connecting did not work.', de: 'Die Verbindung ist fehlgeschlagen.' },
   'crm.lastError': { nl: 'Laatste poging mislukt', fr: 'Dernière tentative échouée', en: 'Last attempt failed', de: 'Letzter Versuch fehlgeschlagen' },

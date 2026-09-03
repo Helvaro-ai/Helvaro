@@ -260,6 +260,25 @@ async function duw(projectCode, lead, opties = {}) {
     kantoor = gelezen.kantoor;
   }
 
+  /* ── Hoort deze lead wel bij deze tenant? ────────────────────────────────
+     Elke aanroeper controleert dat vandaag zelf: whatsapp.js draait binnen een
+     tenant, de losse sync doet een eigendomscontrole, en de bulk filtert al op
+     projectCode. Dit is dus geen gat dat openstaat -- het is het gat dat
+     ontstaat zodra iemand een vijfde aanroeper toevoegt en die controle vergeet.
+
+     Dat is hier duurder dan elders: dit is de enige plek in Helvaro die
+     leadgegevens naar een systeem van een ANDER bedrijf stuurt. Een verwisseling
+     is dan geen zichtbare bug maar een datalek dat niemand opmerkt.
+
+     Draagt de lead geen projectcode, dan kunnen we niets vaststellen en laten we
+     hem door -- anders breekt elke aanroeper die een lead zelf samenstelt. Maar
+     een lead die WEL een code draagt en een andere: harde weigering. */
+  const leadCode = String(lead.projectCode || '').trim();
+  if (leadCode && leadCode !== String(projectCode || '').trim()) {
+    console.error(`[crm] GEWEIGERD: lead ${lead.id} hoort bij ${leadCode}, niet bij ${projectCode}`);
+    throw new CrmError('Deze lead hoort niet bij dit account.', { code: 'verkeerde_tenant' });
+  }
+
   const namen = Object.keys(koppelingen || {});
   let notities = String(lead.notities || '');
   if (!namen.length) return { resultaten: [], notities };

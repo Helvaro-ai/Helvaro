@@ -103,6 +103,11 @@ function mapLead(r) {
     verwachteWaarde:       f.fldv7qOYvCN1xJfiR      || f['Verwachte Waarde']  || '',
     reactietijd:           num(f.fldUJJ8oSmAMQ9wB3  || f['Response Time (sec)']),
     datum:                 f[FIELD_CREATED]         || f['Created At']        || r.createdTime || '',
+    /* De tenant waar dit record aan hangt. Toegevoegd voor api/_crm/: die duwt
+       een lead naar een systeem BUITEN Helvaro, en dan is "de aanroeper zal het
+       wel goed doen" geen acceptabele controle meer. Elke bestaande lezer krijgt
+       er een sleutel bij en verandert verder niet. */
+    projectCode:           f[FIELD_PROJECT]         || f['Project Code']      || '',
   };
 }
 

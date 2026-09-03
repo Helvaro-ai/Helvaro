@@ -23699,6 +23699,11 @@ async function crmSyncNu() {
   try {
     var d = await crmVraag({ mode: 'crm-sync' });
     if (!d.aantal) toast(tr('crm.syncNone'), 'info');
+    /* Half is niet heel. De server zegt eerlijk of hij op de klok of op het
+       aantal is gestopt; dat hier verzwijgen zou een halve synchronisatie als
+       een hele laten lezen -- en dan denkt de makelaar dat zijn bestand
+       overgezet is. */
+    else if (d.gestoptOpTijd || d.afgekapt) toast(tr('crm.syncPartial', { gelukt: d.gelukt, aantal: d.aantal }), 'info');
     else toast(tr('crm.syncDone', { gelukt: d.gelukt, aantal: d.aantal }), d.ok ? 'success' : 'error');
     await loadCrmStatus();
   } catch (e) {

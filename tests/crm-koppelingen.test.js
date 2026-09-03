@@ -24,6 +24,7 @@ const hubspot    = require(BASE + 'api/_crm/adapters/hubspot.js');
 const pipedrive  = require(BASE + 'api/_crm/adapters/pipedrive.js');
 const salesforce = require(BASE + 'api/_crm/adapters/salesforce.js');
 const whise      = require(BASE + 'api/_crm/adapters/whise.js');
+const omnicasa   = require(BASE + 'api/_crm/adapters/omnicasa.js');
 const webhook    = require(BASE + 'api/_crm/adapters/webhook.js');
 const crmConfig  = require(BASE + 'api/_crm/config.js');
 
@@ -381,6 +382,83 @@ nepFetch(HUBSPOT_ANTWOORDEN);
     try { await crmConfig.lees(leeg); } catch (e) { code = e.code; }
     ck(`projectCode ${JSON.stringify(leeg)} -> geweigerd`, code === 'geen_tenant', code);
   }
+
+  console.log('\n— een lead van kantoor A gaat nooit naar het CRM van kantoor B —');
+  /* Dit is de enige plek in Helvaro die leadgegevens naar een systeem van een
+     ANDER bedrijf stuurt. Een verwisseling is daar geen zichtbare bug maar een
+     datalek dat niemand opmerkt. Elke aanroeper controleert dit vandaag zelf;
+     deze grendel is er voor de vijfde aanroeper die dat vergeet. */
+  nepFetch(HUBSPOT_ANTWOORDEN);
+  let tenantCode = 'GEEN FOUT';
+  try {
+    await crm.duw('TELJO', { ...leadBasis, projectCode: 'ANDERKANTOOR' },
+                  { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  } catch (e) { tenantCode = e.code; }
+  ck('een lead met een andere projectcode wordt geweigerd', tenantCode === 'verkeerde_tenant', tenantCode);
+  ck('en er is niets verstuurd', gedaan.length === 0, gedaan);
+
+  nepFetch(HUBSPOT_ANTWOORDEN);
+  const zelfdeTenant = await crm.duw('TELJO', { ...leadBasis, projectCode: 'TELJO' },
+                                     { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  ck('dezelfde projectcode gaat gewoon door', (zelfdeTenant.resultaten[0] || {}).ok === true, zelfdeTenant.resultaten);
+
+  nepFetch(HUBSPOT_ANTWOORDEN);
+  const geenCode = await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+  ck('een lead zonder projectcode blijft doorgaan (niets vast te stellen)',
+     (geenCode.resultaten[0] || {}).ok === true, geenCode.resultaten);
+
+  /* mapLead moet die code ook echt meegeven, anders grendelt de grendel niets. */
+  const leadsRead = require(BASE + 'api/_leads-read.js');
+  ck('mapLead draagt de projectcode',
+     leadsRead.mapLead({ id: 'rec1', fields: { fldSmczuyUJd26HLe: 'TELJO' } }).projectCode === 'TELJO');
+
+  console.log('\n— Omnicasa maakt niets aan bij het koppelen —');
+  /* Er stond hier een POST met een lege body naar person/register, in de aanname
+     dat hun validatie die zou weigeren. Klopt die aanname niet, dan staat er na
+     elke koppelpoging een lege persoon in het CRM van een makelaar. */
+  let geraakt = 0;
+  globalThis.fetch = async () => { geraakt++; return { ok: true, status: 200, text: async () => '{}' }; };
+  const omni = await omnicasa.test({ secret: 'test-sleutel' });
+  ck('koppelen raakt hun API niet aan', geraakt === 0, geraakt);
+  ck('en zegt eerlijk dat het onbevestigd is', omni.onbevestigd === true, omni);
+  ck('http:// wordt geweigerd', await (async () => {
+    try { await omnicasa.test({ secret: 'x', basis: 'http://onveilig.example' }); return false; }
+    catch (e) { return e.code === 'geen_https'; }
+  })());
+
+  console.log('\n— ontkoppelen haalt de sleutel echt weg —');
+  /* Een "ontkoppeld" dat het token laat staan is het ergste soort: het scherm
+     zegt weg, de sleutel ligt er nog, en niemand kijkt ooit terug.
+     Dit loopt door de ECHTE lees- en schrijfweg (met een nep-fetch als
+     Airtable), want verwijder() roept zijn eigen lees() aan -- een gestubde
+     export onderschept dat niet, en dan zou de test iets anders bewijzen dan
+     hij beweert. */
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-geheim';
+  const blobMet = crmConfig.versleutel(JSON.stringify({
+    hubspot: { cred: { token: 'pat-MOET-WEG' }, account: 'x' },
+    webhook: { cred: { url: 'https://klant.be/h', secret: 'whsec_BLIJFT' }, account: 'klant.be' },
+  }));
+  let geschrevenBlob = null;
+  globalThis.fetch = async (url, opts = {}) => {
+    const m = opts.method || 'GET';
+    if (m === 'PATCH') {
+      geschrevenBlob = Object.values(JSON.parse(opts.body).fields)[0];
+      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+    }
+    return {
+      ok: true, status: 200,
+      json: async () => ({ records: [{ id: 'recKLANT', fields: { fld5UwV0QS8m7UAHF: blobMet } }] }),
+      text: async () => '{}',
+    };
+  };
+  const weg = await crm.ontkoppel('TELJO', 'hubspot');
+  ck('ontkoppelen meldt dat er iets weg is', weg === true, weg);
+  ck('er is echt iets weggeschreven', Boolean(geschrevenBlob));
+  const naOntkoppelen = crmConfig.ontsleutel(String(geschrevenBlob || ''));
+  ck('het HubSpot-token is uit de opslag verdwenen',
+     naOntkoppelen.indexOf('MOET-WEG') === -1, naOntkoppelen.slice(0, 120));
+  ck('en de ANDERE koppeling staat er nog',
+     naOntkoppelen.indexOf('whsec_BLIJFT') !== -1, naOntkoppelen.slice(0, 120));
 
   globalThis.fetch = echteFetch;
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);

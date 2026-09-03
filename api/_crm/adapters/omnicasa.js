@@ -24,7 +24,8 @@
  *
  *   node scripts/crm-check.js omnicasa
  *
- * zegt in één echte aanroep welke naam er niet klopt.
+ * zegt welke naam er niet klopt -- maar pas zodra er echt een lead doorgaat.
+ * Het koppelen zelf raakt hun API niet aan; zie test() hieronder voor waarom.
  *
  * -- LET OP: er zijn twee Omnicasa-API's -------------------------------------
  * Deze is de CRE-API (commercieel vastgoed). Er bestaat daarnaast een oudere
@@ -74,31 +75,37 @@ function pad(cred, endpoint) {
 }
 
 /**
- * Testen zonder rommel achter te laten.
+ * Testen kan hier NIET zonder te schrijven -- en dus testen we niet.
  *
- * Er is geen leesbaar "ping"-endpoint, en een testpersoon registreren zet een
- * nepcontact in het CRM van de klant. Daarom roepen we person/register aan met
- * een LEGE body: een geldige sleutel geeft dan een validatiefout (4xx), een
- * ongeldige sleutel geeft 401/403. Dat verschil is precies wat we willen weten,
- * en er wordt niets aangemaakt.
+ * -- Waarom hier een uitzondering staat --------------------------------------
+ * Elke andere adapter bewijst bij het koppelen dat de sleutel werkt, met een
+ * LEESactie. Omnicasa heeft in de publieke beschrijving geen enkel leesbaar
+ * endpoint: er is person/register en contactonme, en dat zijn er twee die
+ * schrijven.
  *
- * Deze truc leunt op het gedrag van hun validatie en is dus zelf ook een
- * aanname -- crm-check.js drukt daarom af wat er echt terugkwam.
+ * Hier stond eerst een POST met een lege body, in de aanname dat hun validatie
+ * dat zou weigeren en we daarmee de sleutel bewezen. Dat is een gok met de
+ * verkeerde inzet: als die aanname niet klopt, staat er na elke koppelpoging
+ * een lege persoon in het CRM van een makelaar. Ik weet niet welke van de twee
+ * het is, en dat is precies de reden om het niet te doen -- zeker niet in een
+ * controle die zichzelf "er komt niets bij" noemt.
+ *
+ * Dus: we controleren wat we kunnen (is er een sleutel, is het adres https), we
+ * slaan op, en we zeggen er eerlijk bij dat dit de enige koppeling is die pas
+ * bij de eerste echte lead bewijst dat hij werkt. Dat is minder mooi dan een
+ * groen vinkje en het is waar.
  */
 async function test(cred) {
-  try {
-    await json(pad(cred, 'person/register'), 'POST', {}, {}, { leverancier: NAAM });
-    /* Een lege body die WEL wordt geaccepteerd betekent dat we niets bewezen
-       hebben. Dat eerlijk zeggen is beter dan een groen vinkje. */
-    return { ok: true, account: 'Verbonden (niet volledig te controleren)', extra: {} };
-  } catch (err) {
-    if (err instanceof CrmError && err.code === 'geen_toegang') throw err;
-    if (err instanceof CrmError && err.code === 'geweigerd') {
-      /* Geweigerde inhoud, geen geweigerde sleutel: de sleutel werkt. */
-      return { ok: true, account: 'Verbonden', extra: {} };
-    }
-    throw err;
+  if (!cred || !String(cred.secret || '').trim()) {
+    throw new CrmError('Vul eerst de Omnicasa-sleutel in.', { code: 'geen_sleutel' });
   }
+  basisUrl(cred);   // gooit bij http:// of een onleesbaar adres
+  return {
+    ok: true,
+    account: 'Opgeslagen — bevestigt zich bij de eerste lead',
+    onbevestigd: true,
+    extra: {},
+  };
 }
 
 function persoonBody(cred, vorm) {
