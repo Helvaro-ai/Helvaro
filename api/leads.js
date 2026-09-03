@@ -2714,7 +2714,11 @@ module.exports = async function handler(req, res) {
     const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
     let offset    = '';
     do {
-      // Do NOT use returnFieldsByFieldId=true here. Airtable returns field names
+      // Do NOT use returnFieldsByFieldId=true here. (De reden hieronder klopte
+      // niet helemaal: die twee velden hebben wél een id -- zie FIELD_GESPREK
+      // in api/_leads-read.js. Aanzetten blijft een aparte, bewuste wijziging,
+      // want dan verandert elke sleutel in dit antwoord.)
+      // Airtable returns field names
       // as response keys by default, and two fields (Conversation History, Last
       // Message) have no known field IDs.  Filter formula and sort still use field
       // IDs. Those work regardless of this parameter.

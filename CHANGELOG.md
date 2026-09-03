@@ -14,6 +14,36 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De demo op de website deed het nooit
+
+Elke bezoeker die de AI-demo probeerde kreeg "even een technische hapering".
+Niet soms — altijd, en waarschijnlijk al sinds de demo bestaat. De oorzaak was
+één ontbrekend gegeven: de demo vertelde de AI niet voor welk kantoor hij
+antwoordde, en de AI weigert dat (terecht — anders wordt verbruik nergens op
+geboekt). Die weigering werd een verdieping lager netjes afgevangen en omgezet
+in een excuus, dus in de demo zelf was er niets te zien.
+
+Gevonden in de serverlogs, niet in de code. De code las prima.
+
+**Wat dit kostte:** elke prospect die op de site op "probeer de demo" klikte,
+zag een kapot product. Dat is precies de bezoeker die je wél wilde overtuigen.
+
+### Drie plekken in de code beweerden iets dat niet klopte
+
+Op drie plekken stond dat twee Airtable-velden "geen bekend veld-id" hebben, en
+daar was een keuze op gebouwd. Ze hebben allebei gewoon een id — nagekeken in de
+echte database. Rechtgezet, en die twee lezingen overleven nu ook een hernoeming
+van de kolom. De onderliggende keuze blijft staan: die omzetten is een aparte
+wijziging die je bewust doet.
+
+### Een test die soms rood was zonder dat er iets stuk was
+
+Eén test mat de klok ("dit moet binnen 38 milliseconden") en viel om zodra de
+machine het druk had. Zo'n test leert je rood te negeren, en dat is het duurste
+wat je in een testset kan hebben. Hij toetst nu rechtstreeks wat hij bedoelde:
+dat twee klanten elkaar niet blokkeren.
+
+
 ### Leads gaan nu vanzelf naar je CRM
 
 Een gekwalificeerde lead of een geboekte bezichtiging landt voortaan binnen de

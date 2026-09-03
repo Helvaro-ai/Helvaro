@@ -181,6 +181,20 @@ async function handleDemoChat(req, res, deps) {
   let ai;
   try {
     ai = await deps.runAI(convo, instructions, clean(body.name, 80), aiName, clientName, website, address, lang, {
+      /* De projectcode MOET mee. api/_ai/router.js weigert elke aanroep zonder
+         tenant ("een lege tenant leest elders als admin, toon alles"), en runAI
+         vangt die fout zelf af en geeft een storingsbericht terug in plaats van
+         te gooien -- dus hier merkte je er niets van.
+
+         Gevolg tot nu toe: de publieke demo op de website deed het NOOIT. Elke
+         bezoeker die hem probeerde kreeg "even een technische hapering". Niet
+         te zien in deze module, want de fout werd een verdieping lager
+         gelogd als "[WhatsApp] AI-router fout: no_tenant".
+
+         Gevonden in de Vercel-logs, niet in de code. De code las prima: de
+         variabele staat veertig regels hierboven en wordt eromheen al gebruikt
+         voor de creditcheck en de afboeking. */
+      projectCode,
       matchLeadLanguage: true,   // een demo krijgt bezoekers in NL, FR en EN
     });
   } catch (e) {

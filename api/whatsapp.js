@@ -1137,7 +1137,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   // 10. Attempt delivery FIRST, then persist an outcome that matches what
   // actually happened. All fields use field IDs where known. Immune to
   // Airtable field renames. 'Conversation History' and 'Last Message' have
-  // no known field ID; kept by name.
+  // wél een veld-id (fldwDOLZKlAhfigbh / fldV8PbcsDzvKRiks, nagekeken in de
+  // echte base) maar hier bewust op naam geschreven: deze PATCH deelt zijn
+  // sleutels met updateFields hierboven, die ook op naam schrijft.
   const sendOk = await sendWA(phone, replyText, clientPhoneNumberId);
   const updateFields = { 'Last Message': text };
   if (sendOk) {

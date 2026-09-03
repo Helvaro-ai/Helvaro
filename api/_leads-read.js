@@ -34,6 +34,13 @@ const LEADS_TABLE = 'tbliukTnDAbEDcZmt';
    it and a bare 'fldR0r13EU4RwrtvH' in a URL is unreadable. */
 const FIELD_CREATED = 'fldR0r13EU4RwrtvH';
 const FIELD_PROJECT = 'fldSmczuyUJd26HLe';
+/* Deze twee stonden hier lang als "geen bekend veld-id", op drie plekken in de
+   codebase. Dat klopte niet: ze zijn op 2026-09-03 opgezocht in de echte base
+   (Lead Qualification System) en hebben allebei gewoon een id. De bewering was
+   dus jaren oud en niemand had hem nagetrokken.
+   Ze staan hier nu bij, zodat ook deze twee lezingen een hernoeming overleven. */
+const FIELD_GESPREK = 'fldwDOLZKlAhfigbh';   // Conversation History
+const FIELD_LAATSTE = 'fldV8PbcsDzvKRiks';   // Last Message
 
 /** Airtable formula string escaping. Quotes and backslashes only — the same
  *  helper api/leads.js has always used, lifted so both callers share one. */
@@ -97,7 +104,7 @@ function mapLead(r) {
        die rechtstreeks naar het WhatsApp-nummer schrijft heeft nooit een
        pandlink aangeraakt. */
     property:              String(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'property') || '').toUpperCase(),
-    gesprek:               f['Conversation History'] || '',
+    gesprek:               f[FIELD_GESPREK]          || f['Conversation History'] || '',
     leadScore:             num(f.fldpzQgMuWJLjogiD  || f['Lead Score']),
     opgepikt:              bool(f.fld86JQHB6dbuutA7 || f.Opgepikt),
     verwachteWaarde:       f.fldv7qOYvCN1xJfiR      || f['Verwachte Waarde']  || '',
@@ -194,10 +201,17 @@ async function fetchLeads(projectCode, { token, baseId, maxPages = 6 } = {}) {
   let truncated = false;
 
   do {
-    // returnFieldsByFieldId is deliberately OFF: two fields (Conversation
-    // History, Last Message) have no known field ID and would vanish from the
-    // response. Filter and sort still address fields by ID, which is what
-    // actually needs to survive a rename.
+    // returnFieldsByFieldId staat UIT, maar niet meer om de reden die hier
+    // stond. De oude tekst zei dat Conversation History en Last Message geen
+    // veld-id hadden; die zijn er wel (zie FIELD_GESPREK/FIELD_LAATSTE
+    // hierboven, opgezocht in de echte base).
+    //
+    // Hij blijft uit omdat AANZETTEN een andere wijziging is: dan komen ALLE
+    // sleutels als veld-id terug, en elke lezer hier leest nog
+    // `f[ID] || f['Naam']`. Dat werkt, maar het is een verandering die je
+    // bewust doet en apart nakijkt -- niet en passant bij het rechtzetten van
+    // een opmerking. Filter en sortering gebruiken al id's, en dat is het deel
+    // dat een hernoeming echt moet overleven.
     const url = `https://api.airtable.com/v0/${baseId}/${LEADS_TABLE}`
       + `?filterByFormula=${formula}`
       + `&sort[0][field]=${FIELD_CREATED}&sort[0][direction]=desc`
@@ -236,6 +250,8 @@ module.exports = {
   LEADS_TABLE,
   FIELD_CREATED,
   FIELD_PROJECT,
+  FIELD_GESPREK,
+  FIELD_LAATSTE,
   escapeFormula,
   mapLead,
   computeStats,

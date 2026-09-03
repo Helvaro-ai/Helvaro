@@ -98,12 +98,20 @@ const ck=(n,ok,got)=>{console.log(`  ${ok?'OK  ':'FOUT'}  ${n}${ok?'':'  → '+J
 
   console.log('\n— twee klanten blokkeren elkaar niet —');
   used = 0; maxInFlight = 0;
-  const t0 = Date.now();
   await Promise.all([
     c.recordUsage('KLANT_B', c.FEATURES.FARO_CHAT, { credits: 3 }),
     c.recordUsage('KLANT_C', c.FEATURES.FARO_CHAT, { credits: 3 }),
   ]);
-  ck('parallel, dus niet twee keer de leesvertraging', Date.now()-t0 < 38, Date.now()-t0);
+  /* Hier stond `Date.now()-t0 < 38`. Dat mat de klok en niet het gedrag, en het
+     viel om zodra de machine het druk had -- gezien tijdens een volledige
+     testronde, waarna de test op zichzelf weer groen was. Een test die soms
+     rood is zonder dat er iets stuk is, leert mensen rood te negeren, en dat is
+     in een suite zonder testrunner het duurste wat je kan hebben.
+
+     maxInFlight zegt hetzelfde maar dan rechtstreeks: het slot zit per KLANT,
+     dus twee klanten horen elkaar te overlappen. Was het slot globaal, dan is
+     dit 1 -- precies de fout die deze regel moet vangen, en nu zonder klok. */
+  ck('twee klanten overlappen echt', maxInFlight === 2, {maxInFlight});
 
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
   process.exit(fail?1:0);
