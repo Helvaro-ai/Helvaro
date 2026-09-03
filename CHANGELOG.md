@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 3 september 2026 — CRM-koppelingen, en vier gaten die stil faalden (uitgerold)
 
 ### De demo op de website deed het nooit
 
@@ -174,6 +174,8 @@ Pipedrive zet zijn token in het webadres, en een API die het verzoek
 terug-echoot zou die anders in de serverlogs zetten. En het webhook-adres wordt
 opgezocht en geweigerd als het naar een intern netwerk wijst.
 
+
+## Nog niet uitgerold
 
 ### Faro vertelt wat hij deed — en alleen wat hij echt deed
 
