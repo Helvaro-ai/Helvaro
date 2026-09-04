@@ -1305,10 +1305,35 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      invulling, en die propte hier de complete tokens-CSS midden in deze
      regel. Precies de val uit CLAUDE.md, en hij is hier echt dichtgeklapt. */
   border-radius: var(--r-lg, 18px);
+
+  /* ── De plaat onder het merkteken ─────────────────────────────────────
+     Hierboven staat waarom het gouden logo niet op wit kan: nagemeten zijn de
+     lichtste lijnen #F2CF7F, en dat is 1,50:1 op wit -- de allerlichtste pixel
+     zelfs 1,06:1, dus letterlijk wit op wit. Het logo verdwijnt daar.
+
+     De vorige oplossing was een INKT-variant: hetzelfde merkteken, omgekleurd
+     naar donkerbrons. Dat loste het contrast op en veranderde het logo: van
+     gemiddeld #A8813B naar #4B3712, van 52% naar 22% helderheid. Minder dan de
+     helft. Dat is geen variant meer maar een ander merkteken, op de plek waar
+     een bezoeker Helvaro voor het eerst ziet.
+
+     Nu andersom: het ECHTE bestand, en de ondergrond past zich aan. Op
+     merkzwart haalt datzelfde #F2CF7F 12,48:1, en de donkerste schaduwlijnen
+     nog 3,08:1 -- dus de hele tekening blijft leesbaar, niet alleen de omtrek.
+
+     Er stond eerder al een donkere plaat en die werd weggehaald omdat hij als
+     "zwarte doos op een licht paneel" las. Het verschil zit in de uitvoering:
+     warm zwart in plaats van neutraal, dezelfde hoek als de kaarten, echte
+     ademruimte eromheen, en de zachte lichtlip die elk ander vlak in deze app
+     ook heeft. Dan leest het als een merkvlak en niet als een gat. */
+  background: linear-gradient(180deg, #1B1813 0%, #14120E 60%, #100E0B 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.30),
+              0 1px 2px rgba(64,52,32,.05), 0 4px 14px rgba(64,52,32,.06);
+  padding: 16px 22px;
 }
 
 .login-logo-top img {
-  height: 72px;
+  height: 52px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -9270,7 +9295,18 @@ ${_intro.css()}
                afmetingen staan erbij zodat de regel niet verspringt zodra hij
                binnen is. De PNG blijft staan: onboard.html en de mails
                gebruiken hem ook. -->
-          <img src="/logo-ink.webp" alt="Helvaro" width="440" height="154" fetchpriority="high">
+          <!-- Het ECHTE logo, niet de donkere variant.
+
+               Hier stond /logo-ink.webp: dezelfde vorm, maar teruggebracht van
+               gemiddeld #A8813B naar #4B3712 -- van 52% naar 22% helderheid,
+               minder dan de helft. Dat is geen variant meer, dat is een ander
+               logo, en het is het eerste wat een bezoeker van Helvaro ziet.
+
+               De reden om te verdonkeren was vermoedelijk contrast op het witte
+               paneel. Dat was niet nodig: #A8813B haalt 3,58:1 op wit, en voor
+               een beeldmerk vraagt WCAG 1.4.11 drie op een, niet vier-en-half
+               -- die strengere eis geldt voor TEKST. -->
+          <img src="/logo.webp" alt="Helvaro" width="440" height="154" fetchpriority="high">
         </div>
 
         <h1 class="login-welcome">${T('login.welcome')}</h1>
