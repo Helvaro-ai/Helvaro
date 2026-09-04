@@ -23453,7 +23453,13 @@ function renderFacturatie() {
    zelf een sjabloon van twintigduizend regels, en alles wat daarin op een
    plaatshouder lijkt wordt bij het uitrollen ingevuld in plaats van
    meegestuurd. Zie de kop van CLAUDE.md. */
-var pandState = { panden: [], beschikbaar: true, bewerkt: null };
+/* De vlag 'geladen' is nieuw, en het onderscheid dat hij maakt is niet
+   cosmetisch: een
+   lege lijst die NOOIT is opgehaald ziet er precies zo uit als een lege
+   voorraad. Faro leest dit om te weten of hij het aanbodscherm in zijn
+   rondleiding moet houden -- en "ik weet het niet" hoort daar tot "wel tonen"
+   te leiden, niet tot overslaan. */
+var pandState = { panden: [], beschikbaar: true, bewerkt: null, geladen: false };
 
 function pandEsc(v) {
   return String(v == null ? '' : v)
@@ -23497,6 +23503,7 @@ async function loadPanden(force) {
     var d = await r.json();
     pandState.panden = (isDealer() ? d.vehicles : d.properties) || [];
     pandState.beschikbaar = d.available !== false;
+    pandState.geladen = true;
   } catch (e) {
     /* Een storing mag er niet uitzien als "je hebt geen panden". Dat verschil
        is precies wat een klant anders als datenverlies leest. */

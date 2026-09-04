@@ -252,6 +252,19 @@ async function build(ctx) {
   const schermBlok = scherm.render(ctx.ui);
   if (schermBlok) parts.push('', schermBlok);
 
+  /* De rondleiding, kort. Vier regels: welke schermen, in welke volgorde, en
+     de opdracht om per scherm kort te blijven en te vragen of hij verder wil.
+
+     Elke beurt mee en niet alleen als erom gevraagd wordt, om een simpele
+     reden: "hoe begin ik hiermee" wordt op twintig manieren gesteld, en een
+     model dat de volgorde pas krijgt nadat het de vraag herkend heeft, herkent
+     hem net niet. Vier regels zijn dat waard.
+
+     De volledige tekst (scherm.tour zonder kort) is er voor een expliciete
+     ingang, waar dertig regels wel op hun plaats zijn. */
+  const rondleiding = scherm.tour(ctx.ui || {}, { kort: true });
+  if (rondleiding) parts.push('', rondleiding);
+
   parts.push('', `Antwoord in de taal van de gebruiker (standaard: ${lang}).`);
 
   // A conversation opened inside a Project is scoped to it (requirement 12):

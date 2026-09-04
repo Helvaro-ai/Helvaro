@@ -413,6 +413,46 @@ function faroSchermContext() {
         && typeof _wizardConfig.welcomeDone === 'boolean') {
       ctx.onboardingKlaar = _wizardConfig.welcomeDone;
     }
+
+    /* ── Wat Faro nodig heeft om een rondleiding op maat te geven ──────────
+       Vier signalen, en ze bepalen welke stappen VERVALLEN. Een rondleiding
+       die iemand langs schermen sleept die hij allang ingericht heeft, wordt
+       weggeklikt -- en dan mist hij ook de stappen die hij wel nodig had.
+
+       Alles wordt alleen gezet als we het ECHT weten. Een ontbrekend signaal
+       leest in api/_faro/scherm.js als "nog niet gedaan", en dat is met opzet:
+       een stap te veel is hinderlijk, een stap te weinig laat iemand
+       vastlopen. */
+    if (typeof hvVertical !== 'undefined' && hvVertical) ctx.vertical = hvVertical;
+
+    if (typeof _wizardConfig !== 'undefined' && _wizardConfig) {
+      /* "Ingesteld" is niet "er staat een naam": de vrije instructies zijn wat
+         de gesprekken echt verandert, en die zijn het vaakst leeg. */
+      var instr = (_wizardConfig.aiInstructions || '').trim();
+      ctx.aiIngesteld = instr.length >= 20;
+    }
+
+    /* Aanbod. pandState is de enige plek die dit weet, en hij is pas gevuld
+       nadat het aanbodscherm een keer geopend is -- vandaar de controle op
+       'beschikbaar' erbij: een lege lijst die nooit geladen is, is niet
+       hetzelfde als een lege voorraad. */
+    if (typeof pandState !== 'undefined' && pandState && Array.isArray(pandState.panden)
+        && pandState.geladen === true) {
+      ctx.heeftAanbod = pandState.panden.length > 0;
+    }
+
+    /* Credits. Ik schreef dit eerst tegen state.credits, en dat bestaat niet --
+       het signaal was veilig (de typeof-controle ving het af) maar zou nooit
+       zijn afgegaan. De echte bron is _creditUsage, het laatste antwoord van
+       de credit-usage-mode, met percentUsed erin.
+
+       85% is dezelfde grens die het widget zelf op amber zet (zie
+       renderCreditUsage). Eén grens voor twee dingen, anders zegt Faro dat het
+       nog meevalt terwijl de balk al oranje staat. */
+    if (typeof _creditUsage !== 'undefined' && _creditUsage
+        && typeof _creditUsage.percentUsed === 'number') {
+      ctx.creditsLaag = _creditUsage.percentUsed >= 80;
+    }
   } catch (e) {
     /* Context is een extraatje. Een vraag mag nooit stuklopen omdat we niet
        konden vaststellen waar iemand stond. */
