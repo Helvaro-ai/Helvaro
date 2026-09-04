@@ -369,6 +369,121 @@ const panden = {
   },
 };
 
+/* ── Voertuigen ──────────────────────────────────────────────────────────────
+   De spiegel van `panden` hierboven, voor de dealership-vertical. Zelfde twee
+   vormen en dezelfde belangrijkste regel: staat een cijfer niet in de fiche,
+   dan bestaat het niet.
+
+   Wat hier BOVENOP komt is onderhandeling, en dat is de reden dat dit blok
+   niet zomaar `panden` met andere woorden is. Bij een pand geldt "de vraagprijs
+   is de vraagprijs" en klaar. Bij een auto is afdingen de norm -- "wat is je
+   beste prijs?" is letterlijk de eerste vraag van de helft van de kopers -- en
+   een AI die daar geen regel voor heeft doet één van twee dingen: hij verzint
+   een korting, of hij loopt vast. Allebei kosten ze de dealer de deal.
+
+   Daarom krijgt Faro drie standen mee en niet twee. Binnen zijn eigen ruimte
+   mag hij bewegen. Daarboven, tot aan het plafond van de dealer, zegt hij dat
+   hij het navraagt -- en dat is geen afpoeier maar een echte escalatie. Boven
+   het plafond is het antwoord nee.
+
+   Het BEDRAG van zijn ruimte staat met opzet NIET in de prompt als iets dat hij
+   mag noemen. Een koper die weet dat er 1.500 in zit, vraagt 1.500. */
+const voertuigen = {
+  naam: 'vehicle_context_' + VERSIE,
+
+  /**
+   * Het blok voor EEN bekende auto.
+   * @param {object} v        zoals api/_vehicles.js het teruggeeft
+   * @param {object} [grens]  {maxKorting, faroMag} uit api/_vertical.js
+   */
+  fiche(v, grens) {
+    if (!v) return '';
+    const r = [];
+    const naam = [v.merk, v.model, v.uitvoering].filter(Boolean).join(' ').trim();
+    r.push('DIT GESPREK GAAT OVER DIT VOERTUIG:');
+    r.push('- Referentie: ' + v.code);
+    if (naam)            r.push('- Voertuig: ' + naam);
+    if (bedrag(v.prijs)) r.push('- Vraagprijs: ' + bedrag(v.prijs));
+    if (v.km !== null && v.km !== undefined) r.push('- Kilometerstand: ' + Math.round(v.km).toLocaleString('nl-BE') + ' km');
+    if (v.inschrijving)  r.push('- Eerste inschrijving: ' + v.inschrijving);
+    if (v.brandstof)     r.push('- Brandstof: ' + v.brandstof);
+    if (v.transmissie)   r.push('- Transmissie: ' + v.transmissie);
+    if (v.kw)            r.push('- Vermogen: ' + v.kw + ' kW / ' + v.pk + ' pk');
+    if (v.carrosserie)   r.push('- Carrosserie: ' + v.carrosserie);
+    if (v.kleur)         r.push('- Kleur: ' + v.kleur);
+    if (v.omschrijving)  r.push('- Omschrijving: ' + String(v.omschrijving).slice(0, 700));
+    if (v.troeven && v.troeven.length) {
+      r.push('- Troeven:');
+      for (const t of v.troeven.slice(0, 8)) r.push('  * ' + t);
+    }
+
+    r.push('', 'REGELS OVER DIT VOERTUIG:');
+    r.push('- Noem alleen wat hierboven staat. Staat een cijfer er niet bij -- verbruik, uitrusting, '
+         + 'onderhoudshistoriek, aantal eigenaars, keuring -- dan zeg je dat je het navraagt. Verzin NOOIT een getal.');
+    r.push('- Je bent geen expert in de technische staat. Vragen over schade, ongevalverleden of slijtage '
+         + 'gaan naar de verkoper, ook als je denkt het antwoord te weten.');
+
+    /* De onderhandelingsregel. Drie standen, en het bedrag van zijn eigen
+       ruimte noemt hij nooit uit zichzelf -- zie de kop hierboven. */
+    const max  = Math.max(0, Number((grens && grens.maxKorting) || 0));
+    const eigen = Math.max(0, Number((grens && grens.faroMag) || 0));
+    if (eigen > 0) {
+      r.push('- ONDERHANDELEN: je mag zelfstandig tot ' + bedrag(eigen) + ' van de vraagprijs af. '
+           + 'Noem dat bedrag NOOIT uit jezelf en gebruik het niet als openingsbod -- het is je ruimte, geen aanbod. '
+           + 'Vraagt de koper om meer, dan zeg je dat je het even met het team opneemt en je laat het weten. '
+           + 'Beloof daarbij niets over de uitkomst.');
+    } else {
+      r.push('- ONDERHANDELEN: je mag GEEN korting geven of toezeggen. Vraagt de koper naar de beste prijs, '
+           + 'dan zeg je eerlijk dat je daarover niet beslist en dat je het aan de verkoper doorgeeft.');
+    }
+    if (max > eigen) {
+      r.push('- Boven jouw ruimte, tot ' + bedrag(max) + ', beslist de verkoper. Daarboven is het antwoord nee, '
+           + 'hoe vaak er ook naar gevraagd wordt. Verzin nooit een korting en ga nooit mee in afdingen '
+           + 'om het gesprek gezellig te houden.');
+    }
+
+    /* Status is een REM en geen instructie: waar BOOK verwerkt wordt staat
+       dezelfde regel nog eens, in code. Zie api/whatsapp.js. */
+    if (String(v.status) === 'verkocht' || String(v.status) === 'uit aanbod') {
+      r.push('- LET OP: dit voertuig is ' + v.status + '. Plan hier GEEN proefrit voor in, ook niet als de koper '
+           + 'aandringt. Zeg eerlijk dat het weg is, vraag waar hij naar op zoek is, en bied aan om te laten '
+           + 'weten wat er nog wel in de voorraad staat.');
+    } else if (String(v.status) === 'gereserveerd') {
+      r.push('- Dit voertuig is GERESERVEERD. Een proefrit mag, maar zeg er eerlijk bij dat er al iemand op zit, '
+           + 'zodat niemand voor een verrassing staat.');
+    }
+    return r.join('\n');
+  },
+
+  /**
+   * Het blok als de auto NIET bekend is: een korte lijst om uit te kiezen.
+   * @param {object[]} lijst  voertuigen van deze dealer
+   */
+  index(lijst) {
+    const autos = (lijst || []).filter((v) => v && (String(v.status) === 'beschikbaar' || String(v.status) === 'gereserveerd'));
+    if (!autos.length) return '';
+    const r = ['VOERTUIGEN DIE DEZE DEALER NU AANBIEDT:'];
+    /* Twaalf is het dak, om dezelfde reden als bij panden: deze tekst gaat bij
+       ELKE beurt mee naar het model, en een dealer met tachtig auto's zou de
+       helft van het gesprek aan een opsomming besteden. */
+    for (const v of autos.slice(0, 12)) {
+      const stukken = [v.code, [v.merk, v.model, v.uitvoering].filter(Boolean).join(' ')];
+      if (bedrag(v.prijs)) stukken.push(bedrag(v.prijs));
+      if (v.km !== null && v.km !== undefined) stukken.push(Math.round(v.km).toLocaleString('nl-BE') + ' km');
+      if (v.inschrijving) stukken.push(v.inschrijving);
+      r.push('- ' + stukken.filter(Boolean).join(' | '));
+    }
+    if (autos.length > 12) r.push('- (en nog ' + (autos.length - 12) + ' andere)');
+    r.push('');
+    r.push('Je weet NIET over welk voertuig deze koper het heeft. Vraag het, vriendelijk en in een zin, ');
+    r.push('voordat je over prijs, kilometerstand of een proefrit begint. Herkent hij het aan het merk ');
+    r.push('of de uitvoering, dan mag je bevestigen welke auto je bedoelt. Gok nooit, en noem nooit ');
+    r.push('cijfers van de ene auto terwijl het over de andere gaat.');
+    r.push('Praat ook niet over korting zolang je niet weet welk voertuig het is.');
+    return r.join('\n');
+  },
+};
+
 /* ── WhatsApp-gesprek ────────────────────────────────────────────────────────
    De prompt die het meeste werk van Helvaro doet: elk leadgesprek loopt hier
    doorheen. Hij stond in api/whatsapp.js, tussen de webhook-afhandeling en het
@@ -555,6 +670,7 @@ Harde regels:
 module.exports = {
   VERSIE, STIJLEN, BEHOUD_STANDAARD, PAND_ANALYSE_SCHEMA,
   leadExtractie, gesprekSamenvatting, pandAnalyse, pandTransformatie, whatsappGesprek, panden,
+  voertuigen,
   pandImport, PAND_IMPORT_SCHEMA,
 };
 

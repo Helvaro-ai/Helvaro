@@ -29,6 +29,9 @@ const { getPlanState } = require('./_plan');
 const _lang = require('./_lang');
 const _ai = require('./_ai');
 const _properties = require('./_properties'); // welk pand deze lead bedoelt
+const _vertical  = require('./_vertical');   // vastgoed of dealership -- de enige plek die dat weet
+const _vehicles  = require('./_vehicles');   // welke auto deze lead bedoelt
+const _autoscout = require('./_autoscout');  // de AutoScout24-link uit zijn bericht
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
 const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
 
@@ -1037,9 +1040,59 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      Best-effort: bestaat de pandentabel nog niet of hapert Airtable, dan is
      pandSectie leeg en gedraagt de AI zich precies zoals hiervoor. Een lead
      zonder antwoord laten is erger dan een lead zonder pandfiche. */
+  /* ── Welke vertical? ──────────────────────────────────────────────────────
+     Een makelaar verkoopt panden, een dealer verkoopt auto's, en dat is zowat
+     het enige verschil dat het gesprek aangaat. Alles eromheen -- de prompt
+     zelf, het taalregister, de agenda, de credits, het afzeggen -- is
+     hetzelfde en blijft hetzelfde.
+
+     Daarom vult de dealership-tak DEZELFDE sleuf: pandSectie. Die naam klopt
+     dan niet meer helemaal, en dat is bewust minder erg dan een tweede
+     parameter door runAI en de hele promptketen slepen. De prompt kent alleen
+     "de sectie over het aanbod"; wat erin staat bepaalt deze code.
+
+     Leeg veld = vastgoed. Zie api/_vertical.js voor waarom dat de enige veilige
+     standaard is: elke bestaande klant heeft dit veld leeg. */
+  const vertical = _vertical.van(client.fields);
+
   let pandSectie = '';
   let herkendPand = null;
-  try {
+  let herkendVoertuig = null;
+  let kortingsgrenzen = null;
+
+  if (vertical === _vertical.DEALERSHIP) {
+    /* ── Dealership ──────────────────────────────────────────────────────────
+       Drie sporen van zeker naar onzeker, allemaal in api/_autoscout.js:
+       het aanbodnummer uit de AutoScout24-link, dan de link zelf, dan merk en
+       model uit de tekst. Vindt geen enkel spoor iets, dan krijgt Faro de lijst
+       en de opdracht om te VRAGEN.
+
+       Alleen de berichten VAN de koper gaan erin. Wat Faro zelf eerder zei is
+       geen bewijs van wat de koper bedoelt -- anders bevestigt hij zijn eigen
+       gok van drie beurten geleden. Zelfde regel als bij panden. */
+    try {
+      const koperTekst = history
+        .filter((m) => m && m.role === 'user')
+        .map((m) => String(m.content || ''))
+        .join(' ');
+
+      const uitkomst = await _autoscout.herken(_vehicles, projectCode, koperTekst);
+      herkendVoertuig = uitkomst.voertuig;
+
+      if (herkendVoertuig) {
+        kortingsgrenzen = _vertical.kortingsgrenzen(client.fields, herkendVoertuig);
+        pandSectie = _ai.prompts.voertuigen.fiche(herkendVoertuig, kortingsgrenzen);
+        console.log(`[WhatsApp] voertuig ${herkendVoertuig.code} herkend via ${uitkomst.via} voor lead ${lead.id}`);
+      } else {
+        const voorraad = await _vehicles.list(projectCode, { alleenPubliek: true });
+        if (voorraad.length) pandSectie = _ai.prompts.voertuigen.index(voorraad);
+      }
+    } catch (e) {
+      /* Best-effort, net als bij panden. Een koper zonder voertuigfiche is
+         vervelend; een koper zonder antwoord is een verloren deal. */
+      console.warn('[WhatsApp] voertuigcontext overgeslagen:', e && e.message);
+    }
+  } else try {
     if (await _properties.available()) {
       const opLead = _properties.normCode(
         (function () {
@@ -1081,8 +1134,16 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     /* Een verkocht pand mag geen bezichtiging opleveren. De prompt zegt het al,
        maar een prompt is een verzoek en dit is een regel -- zie waar
        BOOK verwerkt wordt. */
-    pandBezichtigbaar: herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true,
-    pandCode: herkendPand ? herkendPand.code : '',
+    /* De rem. Een verkocht pand of een verkochte auto mag geen afspraak
+       opleveren -- de prompt zegt het al, maar een prompt is een verzoek en dit
+       is een regel. Zie waar BOOK verwerkt wordt.
+       Eén vlag voor allebei de verticals: het gaat om dezelfde vraag ("mag er
+       een afspraak op dit aanbod?") en twee vlaggen zouden betekenen dat er
+       ergens een plek is die maar naar één ervan kijkt. */
+    pandBezichtigbaar: herkendVoertuig
+      ? _vehicles.kanProefrit(herkendVoertuig.status)
+      : (herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true),
+    pandCode: herkendVoertuig ? herkendVoertuig.code : (herkendPand ? herkendPand.code : ''),
     /* Alleen het MOMENT gaat mee, niet het record-id. De AI hoeft niet te weten
        welke rij het is -- hij zegt "de afspraak" af en deze code zoekt hem er
        zelf bij. Een id in een prompt is een id dat een model kan verzinnen. */
