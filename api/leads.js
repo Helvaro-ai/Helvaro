@@ -856,6 +856,22 @@ module.exports = async function handler(req, res) {
           const n = Number(v);
           return Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 1000000) : 0;
         };
+        /* De markt zelf. Ik had dit eerder BEWUST niet schrijfbaar gemaakt --
+           van markt wisselen verandert welk aanbod een klant heeft, en dat
+           leek me een bewuste handeling en geen knop.
+
+           Dat klopte voor het instellingenscherm en niet voor de onboarding.
+           Daar is het juist DE vraag: iemand die zich net aanmeldt moet zelf
+           kunnen zeggen wat hij doet, anders krijgt een autodealer een
+           dashboard vol panden en moet hij bellen om dat te laten omzetten.
+
+           Alleen de twee bekende waarden. Iets anders wordt genegeerd in
+           plaats van geweigerd: een onbekende waarde hoort niet stilletjes de
+           markt van een bestaande klant te veranderen. */
+        if (body.vertical !== undefined) {
+          const gevraagd = String(body.vertical).trim().toLowerCase();
+          if (gevraagd === 'dealership' || gevraagd === 'vastgoed') u['Vertical'] = gevraagd;
+        }
         if (body.maxDiscount  !== undefined) u['Max Discount EUR']        = eur(body.maxDiscount);
         if (body.faroDiscount !== undefined) {
           const plafond = body.maxDiscount !== undefined

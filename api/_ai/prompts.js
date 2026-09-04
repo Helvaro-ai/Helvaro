@@ -257,6 +257,64 @@ const pandImport = {
   },
 };
 
+/* ── Een advertentiepagina uitlezen ──────────────────────────────────────────
+   De dealer plakt een AutoScout24-link, en Faro vult de fiche. Dat is het hele
+   punt: een voorraad met de hand overtypen is werk dat niemand doet, en een
+   voorraad die niet klopt maakt de AI onbetrouwbaar.
+
+   Alles is OPTIONEEL behalve confidence. Een model dat verplicht een
+   kilometerstand moet leveren, verzint er een als hij niet op de pagina staat
+   -- en dan zegt Faro straks tegen een koper dat de auto 40.000 km heeft
+   gereden omdat het model dat een plausibel getal vond. Liever een leeg veld
+   dat de dealer zelf invult. */
+const VOERTUIG_IMPORT_SCHEMA = Object.freeze({
+  merk:         { type: 'string',  verplicht: false },
+  model:        { type: 'string',  verplicht: false },
+  uitvoering:   { type: 'string',  verplicht: false },
+  prijs:        { type: 'number',  verplicht: false, min: 0, max: 10000000 },
+  km:           { type: 'integer', verplicht: false, min: 0, max: 2000000 },
+  inschrijving: { type: 'string',  verplicht: false },
+  brandstof:    { type: 'string',  verplicht: false, enum: ['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng', 'waterstof', 'overig'] },
+  transmissie:  { type: 'string',  verplicht: false, enum: ['automaat', 'handgeschakeld'] },
+  kw:           { type: 'integer', verplicht: false, min: 0, max: 2000 },
+  carrosserie:  { type: 'string',  verplicht: false },
+  kleur:        { type: 'string',  verplicht: false },
+  omschrijving: { type: 'string',  verplicht: false },
+  troeven:      { type: 'array',   verplicht: false, of: { type: 'string' } },
+  confidence:   { type: 'number',  verplicht: true,  min: 0, max: 1 },
+});
+
+const voertuigImport = {
+  naam: 'vehicle_import_' + VERSIE,
+  system() {
+    return [
+      'Je leest een advertentiepagina van een tweedehandsauto en haalt er de feiten uit.',
+      '',
+      'De belangrijkste regel: neem alleen over wat er ECHT staat. Staat de kilometerstand',
+      'er niet, laat het veld dan leeg. Verzin nooit een getal omdat het plausibel lijkt --',
+      'dit gaat rechtstreeks naar een koper toe, en een verzonnen kilometerstand is een',
+      'leugen waar de dealer op afgerekend wordt.',
+      '',
+      'Vermogen: geef kW, niet pk. Staat er alleen pk, deel dan door 1,36 en rond af.',
+      'Eerste inschrijving: als MM/JJJJ. Staat er alleen een jaar, geef dan 01/JJJJ.',
+      'Prijs: het hele bedrag in euro, zonder scheidingstekens.',
+      'Uitvoering: de versie zonder merk en model erin. "Competition xDrive", niet',
+      '"BMW M4 Competition xDrive".',
+      'Troeven: hoogstens zes, elk hoogstens acht woorden, alleen wat op de pagina staat.',
+      '',
+      'confidence: hoe zeker je bent dat dit een autoadvertentie was en dat de velden',
+      'kloppen. Onder 0,5 gebruikt de dealer het niet.',
+    ].join('\n');
+  },
+  user(pagina) {
+    return [
+      'Advertentiepagina:',
+      '',
+      String((pagina && pagina.text) || '').slice(0, 14000),
+    ].join('\n');
+  },
+};
+
 const PAND_IMPORT_SCHEMA = Object.freeze({
   adres:        { type: 'string',  verplicht: false },
   postcode:     { type: 'string',  verplicht: false },
@@ -729,5 +787,6 @@ module.exports = {
   leadExtractie, gesprekSamenvatting, pandAnalyse, pandTransformatie, whatsappGesprek, panden,
   voertuigen,
   pandImport, PAND_IMPORT_SCHEMA,
+  voertuigImport, VOERTUIG_IMPORT_SCHEMA,
 };
 

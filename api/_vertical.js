@@ -43,6 +43,28 @@ const BEKEND = Object.freeze([VASTGOED, DEALERSHIP]);
 const VELD    = 'Vertical';
 const VELD_ID = 'fldJeZtaPXfHdWcdr';
 
+/* Het niche-veld dat er al was, en waarom het hier ook meetelt.
+   Niche is wat er bij aanmelding wordt ingevuld en wat Sindi in Airtable ziet
+   staan. Vertical is er later bij gekomen. Twee velden voor bijna dezelfde
+   vraag is precies hoe er ooit eentje vergeten wordt: iemand zet Niche op
+   dealership en het dashboard blijft over panden praten.
+
+   Daarom leest deze functie ze allebei. Vertical WINT als hij expliciet gezet
+   is -- dat is de fijnregeling, voor het geval een niche niet dekt wat iemand
+   echt doet. Staat Vertical leeg, dan beslist Niche.
+
+   De lijst is ruim opgezet omdat een niche met de hand ingetypt kan worden:
+   'dealership', 'car_dealer', 'autodealer', 'garage' en 'automotive' komen
+   allemaal op hetzelfde neer. Wat er niet in staat, is vastgoed -- de veilige
+   standaard. */
+const NICHE_VELD    = 'Niche';
+const NICHE_VELD_ID = 'fld0BsPnDbBOkTHzr';
+
+const NICHE_DEALERSHIP = Object.freeze([
+  'dealership', 'car_dealer', 'cardealer', 'autodealer', 'auto_dealer',
+  'garage', 'automotive', 'autohandel', 'concessionnaire', 'autohaus',
+]);
+
 /* Onderhandelingsgrenzen, ook per tenant. Ze horen bij de vertical omdat ze
    alleen in dealership bestaan; ze staan hier zodat er één plek is die weet
    hoe een leeg veld gelezen moet worden. */
@@ -57,12 +79,25 @@ const VELD_FARO_KORTING = 'Faro Discount Limit EUR';
  */
 function van(velden) {
   if (!velden || typeof velden !== 'object') return VASTGOED;
+
+  /* 1. Vertical, als hij expliciet gezet is. Die wint altijd: het is de
+        fijnregeling voor het geval de niche niet dekt wat iemand echt doet. */
   const ruw = velden[VELD_ID] !== undefined ? velden[VELD_ID] : velden[VELD];
-  const s = String(ruw == null ? '' : ruw).trim().toLowerCase();
-  /* Onbekend telt als vastgoed. Niet als fout: iemand kan in Airtable een
-     derde keuze toevoegen voordat de code hem kent, en dan is stilletjes
-     terugvallen op het bestaande gedrag beter dan omvallen. */
-  return s === DEALERSHIP ? DEALERSHIP : VASTGOED;
+  const v = String(ruw == null ? '' : ruw).trim().toLowerCase();
+  if (v === DEALERSHIP) return DEALERSHIP;
+  if (v === VASTGOED)   return VASTGOED;
+
+  /* 2. Anders beslist de niche. Zo hoeft er maar EEN veld gewijzigd te worden
+        om het hele dashboard om te zetten, en maakt het niet uit welk van de
+        twee iemand pakt. */
+  const nRuw = velden[NICHE_VELD_ID] !== undefined ? velden[NICHE_VELD_ID] : velden[NICHE_VELD];
+  const n = String(nRuw == null ? '' : nRuw).trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (NICHE_DEALERSHIP.indexOf(n) !== -1) return DEALERSHIP;
+
+  /* 3. Onbekend telt als vastgoed. Niet als fout: er kan een keuze bijkomen
+        voordat de code hem kent, en dan is stilletjes terugvallen op het
+        bestaande gedrag beter dan omvallen. */
+  return VASTGOED;
 }
 
 function isDealership(velden) { return van(velden) === DEALERSHIP; }
@@ -160,6 +195,9 @@ module.exports = {
   BEKEND,
   VELD,
   VELD_ID,
+  NICHE_VELD,
+  NICHE_VELD_ID,
+  NICHE_DEALERSHIP,
   van,
   isDealership,
   isVastgoed,

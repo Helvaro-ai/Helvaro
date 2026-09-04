@@ -71,7 +71,26 @@ async function handle(req, res, auth) {
     projectCode: auth.projectCode,
     userId: auth.userId,
     lang: auth.lang || 'nl',
+    /* In welke markt deze klant zit. Hier en niet in het gereedschap zelf: een
+       gereedschap dat dit zelf ophaalt doet dat bij ELKE aanroep, en dan hangt
+       er een Airtable-rondje aan een vraag als "hoeveel leads had ik".
+
+       Wordt hieronder gevuld zodra het klantrecord er is. Blijft hij leeg, dan
+       leest api/_vertical.js dat als vastgoed -- de veilige standaard, en wat
+       elke bestaande klant sowieso heeft. */
+    vertical: '',
   };
+
+  try {
+    const writes = require('./writes');
+    const rec = await writes.ownedClient(ctx);
+    ctx.vertical = require('../_vertical').van((rec && rec.fields) || null);
+  } catch (e) {
+    /* Best-effort. Faro moet blijven werken als dit ene rondje hapert; hij
+       gedraagt zich dan als vastgoed, en dat is precies wat hij tot vandaag
+       deed. */
+    console.warn('[faro] vertical niet bepaald:', e && e.message);
+  }
 
   // Per-user rate limit. The credit system is the hard ceiling; this is the
   // cheap guard in front of it, same layering as api/_demo-chat.js.

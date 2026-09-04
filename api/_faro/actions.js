@@ -196,6 +196,23 @@ const EXECUTORS = {
      De payload is ondertekend, maar draagt alleen IDS -- geen veldnamen, geen
      tabel, geen tenant. Er zit dus niets in wat een schrijfactie ergens anders
      heen kan sturen. */
+  /* Het aanbod uitbreiden. De payload draagt de VERTICAL mee die bij het
+     voorstellen is bepaald uit het klantrecord -- niet iets wat het model
+     koos. Een makelaar kan hier dus geen voertuig mee aanmaken, ook niet als
+     het gesprek daarheen praat. */
+  async add_listing(payload, ctx) {
+    const uit = await writes.saveAanbod({
+      vertical: payload && payload.vertical,
+      velden:   payload && payload.velden,
+    }, ctx);
+    return {
+      summary: uit.naam + ' staat nu in je ' + (uit.soort === 'voertuig' ? 'voorraad' : 'aanbod')
+        + ' onder referentie ' + uit.code + '.',
+      components: [],
+      data: { code: uit.code, soort: uit.soort },
+    };
+  },
+
   async set_lead_status(payload, ctx) {
     const out = await writes.setLeadStatus({
       leadId: payload && payload.leadId,

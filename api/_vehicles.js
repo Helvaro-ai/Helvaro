@@ -34,6 +34,8 @@
  * De voertuigen hangen aan api/leads.js via body.mode, net als de panden.
  */
 
+const { fetchPage } = require('./_lib/fetch-website');
+
 const TABEL = 'vehicles';
 
 /* Veldnamen en geen ids: de tabel is net aangemaakt en Airtable accepteert
@@ -481,6 +483,121 @@ async function archive(projectCode, code, gearchiveerd = true) {
   return vanRecord(await r.json());
 }
 
+/* ── Uit een advertentielink ─────────────────────────────────────────────────
+ *
+ * De dealer plakt een AutoScout24-link en krijgt een ingevulde fiche terug. Dat
+ * is het hele punt: een voorraad met de hand overtypen is werk dat niemand doet,
+ * en een voorraad die niet klopt maakt Faro onbetrouwbaar tegenover een koper.
+ *
+ * ── Waarom dit WEL een pagina ophaalt, en het gesprek niet ───────────────────
+ * In api/_autoscout.js staat uitdrukkelijk dat er tijdens een LEADGESPREK geen
+ * pagina wordt opgehaald. Dat blijft zo, en dit spreekt het niet tegen -- het
+ * zijn twee heel verschillende momenten:
+ *
+ *   In het gesprek  telt elke seconde, want een koper wacht op antwoord, en een
+ *                   trage of geblokkeerde oproep betekent geen antwoord.
+ *   Hier            wacht de DEALER zelf, hij drukte er zelf op, en als het
+ *                   mislukt vult hij het met de hand in. Kost hem tien seconden,
+ *                   geen deal.
+ *
+ * ── Levert een CONCEPT, geen record ─────────────────────────────────────────
+ * Er wordt hier niets weggeschreven. De dealer kijkt ernaar en drukt daarna pas
+ * op opslaan. Een model dat rechtstreeks in de voorraad schrijft, zet er
+ * vroeg of laat een auto in die niet bestaat -- en dan is het de dealer die
+ * tegen een koper staat te liegen over iets wat hij nooit heeft ingevoerd.
+ */
+async function importeerUitLink(projectCode, url, opties = {}) {
+  const tenant = String(projectCode || '').trim();
+  if (!tenant) throw new VehicleError('Voertuig importeren zonder projectcode.', 'no_tenant');
+
+  const link = String(url || '').trim();
+  if (!link) throw new VehicleError('Geen link meegegeven.', 'no_url');
+  if (link.length > 2000) throw new VehicleError('Die link is te lang.', 'bad_url');
+  if (!/^https?:\/\//i.test(link)) {
+    throw new VehicleError('Een link moet met http:// of https:// beginnen.', 'bad_url');
+  }
+
+  /* De controle op interne adressen zit in fetchPage en wordt daar bij ELKE
+     omleiding herhaald -- dat is de plek die telt, want een link kan naar een
+     intern adres omleiden nadat hij er publiek uitzag. */
+  const pagina = await fetchPage(link, { tag: '[voertuig-import]', maxChars: 14000, maxRedirects: 2 });
+  if (!pagina || !pagina.text || pagina.text.length < 120) {
+    throw new VehicleError(
+      'Die pagina kon ik niet lezen. Sommige sites tonen hun inhoud pas na een cookiemelding. '
+      + 'Vul het voertuig dan met de hand in, of probeer een andere link naar dezelfde auto.',
+      'unreadable');
+  }
+
+  const _ai = require('./_ai');
+  let uit;
+  try {
+    uit = await _ai.generateText({
+      task: _ai.TASKS.VEHICLE_IMPORT,
+      ctx: { projectCode: tenant, userId: opties.userId || 'dashboard' },
+      system: _ai.prompts.voertuigImport.system(),
+      messages: [{ role: 'user', content: _ai.prompts.voertuigImport.user(pagina) }],
+      schema: _ai.prompts.VOERTUIG_IMPORT_SCHEMA,
+      maxTokens: 900,
+    });
+  } catch (err) {
+    console.warn('[voertuig-import] model faalde:', err && err.code, err && err.message);
+    throw new VehicleError('Het uitlezen van die pagina lukte niet. Probeer het zo meteen opnieuw.', 'ai_failed');
+  }
+
+  const d = (uit && uit.data) || {};
+  const kies = (waarde, toegestaan) => {
+    const v = String(waarde || '').trim().toLowerCase();
+    return toegestaan.indexOf(v) !== -1 ? v : '';
+  };
+
+  /* De foto's komen van de PAGINA, niet van het model. Een model dat een
+     afbeeldings-URL "onthoudt" verzint er een die niet bestaat, en dan staat er
+     een gebroken plaatje op het aanvraagformulier van een echte klant. */
+  const fotos = (pagina.images || []).slice(0, 8);
+
+  /* Het aanbodnummer komt uit de URL en niet uit het model: het staat er
+     letterlijk in, en dit is de sleutel waarmee een binnenkomend
+     WhatsApp-bericht straks aan deze auto gekoppeld wordt. Daar hoort geen
+     gok in te zitten. */
+  let autoscout = '';
+  try { autoscout = require('./_autoscout').aanbodIdUit(link); } catch (_) { autoscout = ''; }
+
+  const concept = {
+    merk:         String(d.merk || '').trim(),
+    model:        String(d.model || '').trim(),
+    uitvoering:   String(d.uitvoering || '').trim(),
+    prijs:        getal(d.prijs),
+    km:           getal(d.km),
+    inschrijving: String(d.inschrijving || '').trim(),
+    brandstof:    kies(d.brandstof, ['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng', 'waterstof', 'overig']),
+    transmissie:  kies(d.transmissie, ['automaat', 'handgeschakeld']),
+    kw:           getal(d.kw),
+    carrosserie:  String(d.carrosserie || '').trim(),
+    kleur:        String(d.kleur || '').trim(),
+    omschrijving: String(d.omschrijving || '').trim(),
+    troeven:      Array.isArray(d.troeven) ? d.troeven.map((t) => String(t).trim()).filter(Boolean).slice(0, 6) : [],
+    fotos,
+    link,
+    autoscout,
+    status:       'beschikbaar',
+  };
+
+  return {
+    concept,
+    /* Hoe zeker het model was, en of dit uberhaupt een autoadvertentie leek.
+       De aanroeper beslist wat hij daarmee doet -- deze functie oordeelt niet,
+       want "te onzeker" hangt af van wie het vraagt. */
+    confidence: Number(d.confidence) || 0,
+    /* Wat er ONTBREEKT. Dit is het verschil tussen een importfunctie die
+       behulpzaam is en een die je laat zoeken: de dealer ziet meteen welke
+       velden hij zelf nog moet aanvullen in plaats van ze te moeten opmerken. */
+    ontbreekt: ['merk', 'model', 'prijs', 'km', 'inschrijving']
+      .filter((k) => concept[k] === null || concept[k] === '' || concept[k] === undefined),
+    bron: link,
+    model_gebruikt: (uit && uit.model) || '',
+  };
+}
+
 /* ── Tekst ───────────────────────────────────────────────────────────────── */
 function prijsTekst(prijs) {
   const n = getal(prijs);
@@ -532,6 +649,7 @@ module.exports = {
   matchUitTekst,
   save,
   archive,
+  importeerUitLink,
   prijsTekst,
   kmTekst,
   vermogenTekst,

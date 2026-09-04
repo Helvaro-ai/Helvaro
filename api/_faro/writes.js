@@ -257,8 +257,55 @@ async function readBrandVoice(ctx) {
   return uit;
 }
 
+/* ── Aanbod aanmaken en bijwerken ────────────────────────────────────────────
+ *
+ * Een pand of een voertuig, via dezelfde twee functies. Ze delegeren naar
+ * api/_properties.js en api/_vehicles.js, die allebei projectCode als EERSTE
+ * argument nemen en er in elke query op filteren -- dus de tenant-isolatie zit
+ * daar, en niet hier nog eens half overgedaan.
+ *
+ * ctx.projectCode komt uit de GEVERIFIEERDE sessie. Deze functies lezen nooit
+ * een request, en de ondertekende payload draagt alleen velden -- geen tenant,
+ * geen tabelnaam. Er zit dus niets in wat een schrijfactie ergens anders heen
+ * kan sturen.
+ */
+async function saveAanbod({ vertical, velden }, ctx) {
+  const tenant = String((ctx && ctx.projectCode) || '').trim();
+  if (!tenant) throw new WriteError('Geen tenant in de context.', 'no_tenant');
+  const invoer = velden && typeof velden === 'object' ? velden : {};
+
+  if (vertical === 'dealership') {
+    const vehicles = require('../_vehicles');
+    if (!(await vehicles.available())) {
+      throw new WriteError('De voertuigentabel bestaat nog niet.', 'no_table');
+    }
+    const auto = await vehicles.save(tenant, invoer);
+    return { soort: 'voertuig', code: auto.code, naam: vehicles.naam(auto), record: auto };
+  }
+
+  const properties = require('../_properties');
+  if (!(await properties.available())) {
+    throw new WriteError('De pandentabel bestaat nog niet.', 'no_table');
+  }
+  const pand = await properties.save(tenant, invoer);
+  return { soort: 'pand', code: pand.code, naam: pand.adres || pand.code, record: pand };
+}
+
+async function archiveerAanbod({ vertical, code, archiveren }, ctx) {
+  const tenant = String((ctx && ctx.projectCode) || '').trim();
+  if (!tenant) throw new WriteError('Geen tenant in de context.', 'no_tenant');
+  const mod = vertical === 'dealership' ? require('../_vehicles') : require('../_properties');
+  /* Archiveren en NOOIT verwijderen: aan een pand of een auto hangen leads en
+     afspraken, en die mogen niet naar niets gaan wijzen. Dat is dezelfde regel
+     als in de modules zelf; hier staat hij omdat dit de plek is waar een
+     model erom zou kunnen vragen. */
+  const uit = await mod.archive(tenant, code, archiveren !== false);
+  return { soort: vertical === 'dealership' ? 'voertuig' : 'pand', code: uit.code };
+}
+
 module.exports = {
   WriteError,
+  saveAanbod, archiveerAanbod,
   LEAD_STATUSES, LOSS_REASONS, PERSONA_FIELDS, F, CLIENTS_TABLE,
   ownedLead, ownedClient,
   setLeadStatus, appendLeadNote, deleteLead, updatePersona,

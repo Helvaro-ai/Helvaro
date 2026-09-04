@@ -8287,6 +8287,11 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    hoort geen onderhandeling te zijn met de rest van de cascade. Beperkt tot de
    twee blokken die echt geschakeld worden, zodat het geen algemene dreun wordt. */
 #pd-import[hidden], #pd-vast[hidden], #pd-deal[hidden] { display: none !important; }
+/* Idem voor de navigatie: .nav-item staat op display:flex, dus el.hidden = true
+   zou daar niets doen. Dit is dezelfde val, twee keer in hetzelfde bestand --
+   het is de reden dat "verborgen" nooit een onderhandeling met de cascade mag
+   zijn. */
+.nav-item[hidden] { display: none !important; }
 
 .pd-import {
   padding: 13px 14px;
@@ -15702,7 +15707,33 @@ function zetVertical(v, config) {
     else if (!knoppen[i].querySelector('svg')) knoppen[i].textContent = vw('toevoegen');
   }
 
-  /* Staat de pagina al open, dan meteen opnieuw laden met de juiste bron. */
+  /* ── Pagina's die niet bij deze markt horen ────────────────────────────
+     AI-beeld maakt een visualisatie van een INTERIEUR: stijlen als japandi,
+     mediterraan, en "volledige renovatie". Voor een autodealer is dat geen
+     half-passende functie maar een volstrekt betekenisloze -- hij zou een foto
+     van een Golf uploaden en er een ingerichte woonkamer uit krijgen.
+
+     Verbergen en niet uitzetten. De pagina blijft bestaan, de route werkt nog,
+     en wie later naar vastgoed wisselt heeft hem meteen terug zonder dat er
+     iets uitgerold hoeft te worden. Wat weg is, is de INGANG.
+
+     Alleen deze ene. De rest van de navigatie -- leads, gesprekken, kalender,
+     resultaten, facturatie -- gaat over dingen die een dealer net zo goed
+     heeft. Meer verbergen zou het product kleiner maken zonder het duidelijker
+     te maken. */
+  var beeldNav = document.getElementById('nav-ai-beeld');
+  if (beeldNav) beeldNav.hidden = isDealer();
+
+  /* Staat hij er toevallig op, dan weg ervan: een verborgen navigatie-item
+     helpt niet als de pagina zelf nog openstaat. */
+  if (isDealer()) {
+    var beeldPagina = document.getElementById('page-ai-beeld');
+    if (beeldPagina && beeldPagina.classList.contains('active')) {
+      try { navigateTo('dashboard'); } catch (e) {}
+    }
+  }
+
+  /* Staat de aanbodpagina al open, dan meteen opnieuw laden met de juiste bron. */
   var pagina = document.getElementById('page-panden');
   if (pagina && pagina.classList.contains('active')) loadPanden(true);
 }
@@ -19361,10 +19392,15 @@ async function startDashboard(skipRefresh = false) {
  * succes). Dat is de reden dat hij er staat: hij markeert voortgang. Op smal
  * beeld verdwijnt hij, want daar is de ruimte voor de invoer.
  */
-var WIZARD_STAPPEN = ['intro', 'regio', 'bedrijf', 'ai', 'koppelingen', 'klaar'];
+/* 'markt' staat VOOR 'bedrijf', en dat is geen willekeurige volgorde: wat we
+   daarna vragen hangt ervan af. Een dealer die eerst "wat doet je kantoor?"
+   krijgt en pas daarna mag zeggen dat hij auto's verkoopt, heeft al een
+   antwoord getypt op een vraag die niet over hem ging. */
+var WIZARD_STAPPEN = ['intro', 'regio', 'markt', 'bedrijf', 'ai', 'koppelingen', 'klaar'];
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
   regio:   '/faro/falcon-idle.webp',
+  markt:   '/faro/falcon-thinking.webp',
   bedrijf: '/faro/falcon-thinking.webp',
   ai:      '/faro/falcon-generating.webp',
   koppelingen: '/faro/falcon-thinking.webp',
@@ -19392,7 +19428,31 @@ function wizardTaalBijLand(landcode) {
   }
   return 'nl';
 }
+/* De markten waar Helvaro echt iets anders voor doet.
+   Dit is bewust KORT. Niche in Airtable kent ook dentist, lawyer en finance,
+   maar die krijgen allemaal exact hetzelfde product -- ze staan er voor de
+   AI-toon en de gesprekssjablonen, niet omdat het dashboard verandert. Ze hier
+   tonen zou beloven dat er iets voor hen anders wordt, en dat is niet zo.
+
+   Wie er niet bij staat kiest 'iets anders' en krijgt de standaardinrichting.
+   Dat is eerlijker dan een lijst van tien waar er acht hetzelfde doen. */
+var WIZARD_MARKTEN = [
+  { id: 'real_estate', vertical: 'vastgoed',
+    titel: 'Vastgoed',
+    sub: 'Panden, bezichtigingen, en een link per woning.',
+    icoon: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>' },
+  { id: 'dealership', vertical: 'dealership',
+    titel: 'Autohandel',
+    sub: 'Voorraad, proefritten, en AutoScout24-leads die zichzelf koppelen.',
+    icoon: '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>' },
+  { id: 'other', vertical: 'vastgoed',
+    titel: 'Iets anders',
+    sub: 'De standaardinrichting. Je kunt dit later altijd wijzigen.',
+    icoon: '<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>' },
+];
+
 var _wizardConfig = null;
+var _wizardMarkt = '';
 
 function wizardOnthoudStap(i) {
   try { localStorage.setItem('hv-wizard-stap', String(i)); } catch (e) {}
@@ -19481,6 +19541,35 @@ async function wizardVolgende() {
       _wizardConfig = _wizardConfig || {};
       _wizardConfig.country = landKeuze;
       _wizardConfig.language = taalKeuze;
+    } catch (e) {
+      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      knop.disabled = false; knop.textContent = 'Volgende';
+      return;
+    }
+  }
+
+  if (stap === 'markt') {
+    if (!_wizardMarkt) {
+      fout.textContent = 'Kies waar je in zit, dan richt ik de rest daarop in.';
+      return;
+    }
+    var gekozen = null;
+    for (var mi = 0; mi < WIZARD_MARKTEN.length; mi++) {
+      if (WIZARD_MARKTEN[mi].id === _wizardMarkt) gekozen = WIZARD_MARKTEN[mi];
+    }
+    knop.disabled = true; knop.textContent = 'Opslaan...';
+    try {
+      /* Sector EN vertical. Sector is wat er in Airtable staat en wat de
+         AI-toon stuurt; vertical is wat het dashboard leest. Ze samen
+         wegschrijven is de enige manier waarop ze niet uit elkaar lopen --
+         en uit elkaar lopen betekent hier: een dealer die over panden leest. */
+      await wizardBewaar({ sector: _wizardMarkt, vertical: gekozen ? gekozen.vertical : 'vastgoed' });
+      _wizardConfig = _wizardConfig || {};
+      _wizardConfig.sector = _wizardMarkt;
+      /* Meteen toepassen, niet pas na een herlading. Wie "autohandel" kiest en
+         daarna nog drie stappen over "panden" leest, denkt dat zijn keuze niet
+         is aangekomen. */
+      zetVertical(gekozen ? gekozen.vertical : 'vastgoed', _wizardConfig);
     } catch (e) {
       fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
       knop.disabled = false; knop.textContent = 'Volgende';
@@ -19672,6 +19761,7 @@ function wizardTeken() {
     gidsTekst.textContent = {
       intro:   'Ik help je hier even doorheen.',
       regio:   'Zo weet ik in welke taal ik je klanten aanspreek.',
+      markt:   'Hiermee weet ik of het over panden of over wagens gaat.',
       bedrijf: 'Hoe meer ik weet, hoe beter ik je klanten te woord sta.',
       ai:      'Zo stel ik me straks voor aan je leads.',
       koppelingen: 'Hiermee kan ik zelf afspraken inplannen.',
@@ -19754,12 +19844,60 @@ function wizardTeken() {
     return;
   }
 
+  if (stap === 'markt') {
+    titel.textContent = 'Waar zit je in?';
+    sub.textContent = 'Hiermee richt ik je dashboard in. Je krijgt alleen de schermen die bij je werk horen.';
+
+    var KRT = 'display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;padding:14px 15px;'
+      + 'margin:0 0 10px;border-radius:14px;border:1px solid var(--border,#2A3444);background:transparent;'
+      + 'cursor:pointer;font-family:inherit;transition:var(--transition,all .2s)';
+    body.innerHTML = WIZARD_MARKTEN.map(function (m) {
+      return '<button type="button" class="wiz-markt" data-markt="' + m.id + '" style="' + KRT + '">'
+        + '<span style="flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;'
+        +   'justify-content:center;background:rgba(var(--accent-rgb,232,215,177),0.10);color:var(--accent-ink,#F0E4C8)">'
+        +   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+        +   'stroke-linecap="round" stroke-linejoin="round">' + m.icoon + '</svg></span>'
+        + '<span style="flex:1;min-width:0">'
+        +   '<span style="display:block;font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)">' + m.titel + '</span>'
+        +   '<span style="display:block;margin-top:3px;font-size:12.5px;line-height:1.55;color:var(--text-muted,#999)">' + m.sub + '</span>'
+        + '</span></button>';
+    }).join('');
+
+    /* Klikken kiest EN gaat door. Een kaart aanklikken en dan nog eens op
+       "Volgende" moeten drukken is een klik te veel voor een keuze die al
+       ondubbelzinnig is. */
+    var kaarten = body.querySelectorAll('.wiz-markt');
+    var teken = function () {
+      for (var i = 0; i < kaarten.length; i++) {
+        var aan = kaarten[i].getAttribute('data-markt') === _wizardMarkt;
+        kaarten[i].style.borderColor = aan ? 'var(--accent-c,#E8D7B1)' : 'var(--border,#2A3444)';
+        kaarten[i].style.background  = aan ? 'rgba(var(--accent-rgb,232,215,177),0.07)' : 'transparent';
+      }
+    };
+    for (var k = 0; k < kaarten.length; k++) {
+      kaarten[k].onclick = function () {
+        _wizardMarkt = this.getAttribute('data-markt');
+        teken();
+        var knopEl = document.getElementById('wizard-next');
+        if (knopEl) knopEl.click();
+      };
+    }
+    _wizardMarkt = _wizardMarkt || c.sector || '';
+    teken();
+    return;
+  }
+
   if (stap === 'bedrijf') {
     titel.textContent = tr('wiz.bedrijf.t');
     sub.textContent = tr('wiz.bedrijf.s');
     body.innerHTML =
-        '<label for="wizard-bedrijf" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">Wat doet je kantoor?</label>'
-      + '<textarea id="wizard-bedrijf" rows="6" placeholder="Bijvoorbeeld: wij zijn een makelaarskantoor in Aalst, gespecialiseerd in woningen tussen 250.000 en 600.000 euro. We werken in Aalst, Erpe-Mere en Lede..." '
+        '<label for="wizard-bedrijf" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">'
+      + (_wizardMarkt === 'dealership' ? 'Wat verkoop je?' : 'Wat doet je kantoor?') + '</label>'
+      /* Het voorbeeld volgt zijn markt. Een dealer die "makelaarskantoor in
+         Aalst" als voorbeeld krijgt, denkt dat hij op het verkeerde product zit. */
+      + '<textarea id="wizard-bedrijf" rows="6" placeholder="' + (_wizardMarkt === 'dealership'
+          ? 'Bijvoorbeeld: wij zijn een garage in Aalst, vooral Duitse wagens tussen 15.000 en 60.000 euro. Occasies met garantie, en we nemen in ruil.'
+          : 'Bijvoorbeeld: wij zijn een makelaarskantoor in Aalst, gespecialiseerd in woningen tussen 250.000 en 600.000 euro. We werken in Aalst, Erpe-Mere en Lede...') + '" '
       + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;line-height:1.55;color:var(--text,#E9EEF6);font-family:inherit;resize:vertical"></textarea>'
       + '<label for="wizard-website" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">Website (optioneel)</label>'
       + '<input id="wizard-website" type="url" placeholder="https://..." '

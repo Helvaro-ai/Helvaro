@@ -938,6 +938,126 @@ const actTools = [
      bevestigingskaart klikt, en pas daar wordt api/_faro/writes.js aangeroepen
      -- dat als enige de tenant-eigendom van de rij nog eens controleert. */
   {
+    /* ── Aanbod toevoegen ─────────────────────────────────────────────────
+       Dit is waar het makkelijk moet worden. De dealer plakt een
+       AutoScout24-link in de chat en Faro doet de rest -- geen formulier, geen
+       overtypen. Werkt ook zonder link: wie "zet er een BMW M4 van 74.999 in"
+       typt, krijgt dezelfde bevestigingskaart.
+
+       kind:'act' en niet 'create': er komt een RIJ bij in de voorraad die
+       straks meegaat in gesprekken met echte kopers. Dat hoort achter een
+       bevestiging te zitten, ook als Faro het goed gelezen heeft. Een model dat
+       rechtstreeks in de voorraad schrijft, zet er vroeg of laat een auto in
+       die niet bestaat -- en dan staat de dealer tegen een koper te liegen over
+       iets wat hij nooit heeft ingevoerd.
+
+       Eén gereedschap voor allebei de markten. De vertical bepaalt hier wat er
+       gebeurt, niet het model: die komt uit het klantrecord, dus een makelaar
+       kan hier geen voertuig mee aanmaken en omgekeerd. */
+    name: 'add_listing',
+    kind: 'act',
+    description:
+      'Voeg iets toe aan het aanbod van deze klant: een pand voor een makelaar, een voertuig voor '
+      + 'een autodealer. Geef OFWEL een link naar de advertentiepagina (AutoScout24, Immoweb, ...) '
+      + 'en dan lees ik die zelf uit, OFWEL de velden die je al weet. Bij een link hoef je verder '
+      + 'niets in te vullen. Wordt pas doorgevoerd na bevestiging.',
+    parameters: {
+      type: 'object',
+      properties: {
+        link: { type: 'string', description: 'Link naar de advertentie. Als die er is, hoeft de rest niet.' },
+        merk: { type: 'string', description: 'Voertuig: merk, bv. BMW.' },
+        model: { type: 'string', description: 'Voertuig: model, bv. M4.' },
+        uitvoering: { type: 'string', description: 'Voertuig: uitvoering, bv. Competition xDrive.' },
+        km: { type: 'number', description: 'Voertuig: kilometerstand.' },
+        inschrijving: { type: 'string', description: 'Voertuig: eerste inschrijving als MM/JJJJ.' },
+        adres: { type: 'string', description: 'Pand: het adres.' },
+        plaats: { type: 'string', description: 'Pand: de gemeente.' },
+        prijs: { type: 'number', description: 'De vraagprijs in euro.' },
+      },
+    },
+    run: async (args, ctx) => {
+      const _vertical = require('../_vertical');
+      const vertical = ctx && ctx.vertical ? ctx.vertical : _vertical.VASTGOED;
+      const dealer = vertical === _vertical.DEALERSHIP;
+
+      let velden = {};
+      let gelezen = null;
+      const link = String((args && args.link) || '').trim();
+
+      if (link && dealer) {
+        /* De pagina uitlezen. Mislukt dat, dan is dat GEEN fout: de dealer
+           krijgt gewoon de kaart met wat hij zelf meegaf, plus de link. Beter
+           een half ingevulde fiche die hij afmaakt dan een foutmelding. */
+        try {
+          const vehicles = require('../_vehicles');
+          gelezen = await vehicles.importeerUitLink(ctx.projectCode, link, { userId: (ctx && ctx.userId) || 'faro' });
+          velden = Object.assign({}, gelezen.concept);
+        } catch (e) {
+          console.warn('[add_listing] link uitlezen mislukt:', e && e.code, e && e.message);
+          velden.link = link;
+        }
+      } else if (link) {
+        velden.link = link;
+      }
+
+      /* Wat het model zelf meegaf WINT van wat er op de pagina stond. Wie
+         zegt "die BMW maar dan voor 72.000" bedoelt 72.000, ook als de
+         advertentie 74.999 zegt. */
+      for (const k of ['merk', 'model', 'uitvoering', 'km', 'inschrijving', 'adres', 'plaats', 'prijs']) {
+        const v = args && args[k];
+        if (v !== undefined && v !== null && String(v).trim() !== '') velden[k] = v;
+      }
+
+      const naam = dealer
+        ? [velden.merk, velden.model, velden.uitvoering].filter(Boolean).join(' ').trim()
+        : String(velden.adres || '').trim();
+
+      if (!naam) {
+        return {
+          summary: dealer
+            ? 'Ik weet nog niet welke auto het is. Geef een AutoScout24-link, of merk en model.'
+            : 'Ik weet nog niet welk pand het is. Geef een link naar het zoekertje, of het adres.',
+          data: { pending: false }, components: [],
+        };
+      }
+
+      /* Wat er nog ontbreekt, staat op de kaart. Dat is het verschil tussen
+         behulpzaam en je laten zoeken: de dealer ziet meteen wat hij nog moet
+         aanvullen in plaats van het te moeten opmerken. */
+      const regels = [];
+      if (velden.prijs) regels.push('Prijs: \u20AC ' + Math.round(Number(velden.prijs)).toLocaleString('nl-BE'));
+      if (dealer) {
+        if (velden.km || velden.km === 0) regels.push('Kilometerstand: ' + Math.round(Number(velden.km)).toLocaleString('nl-BE') + ' km');
+        if (velden.inschrijving) regels.push('Eerste inschrijving: ' + velden.inschrijving);
+        if (velden.brandstof)    regels.push('Brandstof: ' + velden.brandstof);
+        if (velden.transmissie)  regels.push('Transmissie: ' + velden.transmissie);
+        if (velden.kw)           regels.push('Vermogen: ' + velden.kw + ' kW');
+        if (velden.kleur)        regels.push('Kleur: ' + velden.kleur);
+        if (velden.autoscout)    regels.push('Aanbodnummer herkend, dus WhatsApp-leads uit die advertentie worden automatisch aan deze auto gekoppeld.');
+      } else if (velden.plaats) {
+        regels.push('Gemeente: ' + velden.plaats);
+      }
+      if (gelezen && gelezen.ontbreekt && gelezen.ontbreekt.length) {
+        regels.push('Nog aan te vullen: ' + gelezen.ontbreekt.join(', ') + '.');
+      }
+      if (gelezen && gelezen.confidence && gelezen.confidence < 0.5) {
+        regels.push('Ik was hier niet zeker van -- kijk het even na voor je bevestigt.');
+      }
+
+      return {
+        summary: 'Klaar om ' + naam + ' aan ' + (dealer ? 'je voorraad' : 'je aanbod') + ' toe te voegen. Wacht op bevestiging.',
+        data: { pending: true },
+        components: [schema.confirmation({
+          action: 'add_listing',
+          title: (dealer ? 'Voertuig toevoegen: ' : 'Pand toevoegen: ') + naam,
+          body: regels.length ? regels.join('\n') : 'Nog geen verdere gegevens -- je kunt ze na het toevoegen aanvullen.',
+          confirmLabel: 'Toevoegen',
+          payload: { vertical, velden },
+        })],
+      };
+    },
+  },
+  {
     name: 'set_lead_status',
     kind: 'act',
     description:

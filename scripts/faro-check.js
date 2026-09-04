@@ -140,6 +140,12 @@ const EXPECTED_ACT = [
   // uitgeven aan een opdracht die niet meer te annuleren is. Dat hoort achter
   // een klik waar het bedrag op staat, niet achter een zin in een chat.
   'generate_property_video',
+  // add_listing zet een RIJ in het aanbod van de klant -- een pand of een
+  // voertuig dat daarna meegaat in gesprekken met echte kopers. Er gaat niets
+  // naar buiten, maar wat erin komt bepaalt straks wat de AI tegen iemand
+  // zegt over prijs en beschikbaarheid. Een model dat dat zonder klik mag
+  // doen, zet er vroeg of laat een auto in die niet bestaat.
+  'add_listing',
 ];
 const actSet = acts.slice().sort().join(',');
 if (actSet !== EXPECTED_ACT.slice().sort().join(',')) {

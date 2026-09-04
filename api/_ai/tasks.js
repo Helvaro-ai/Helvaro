@@ -37,6 +37,10 @@ const TASKS = Object.freeze({
      een cookiemuur levert een half leeg antwoord op, en dan is een duurder
      model beter dan een makelaar die alles alsnog met de hand typt. */
   PROPERTY_IMPORT:        'property_import',
+  /* Een advertentiepagina uitlezen. Zelfde vorm en dezelfde prijsklasse als
+     PROPERTY_IMPORT: het is hetzelfde werk -- feiten uit tekst halen -- en dat
+     hoeft geen duur model. */
+  VEHICLE_IMPORT:         'vehicle_import',
   SUMMARIZE:              'summarize',
   IMAGE_GENERATION:       'image_generation',
   VIDEO_GENERATION:       'video_generation',
@@ -65,6 +69,7 @@ const ROUTING = Object.freeze({
   [TASKS.SUMMARIZE]:               { tier: TIERS.CHEAP,          escaleerbaar: false, structured: false },
   [TASKS.DOCUMENT_EXTRACTION]:     { tier: TIERS.CHEAP,          escaleerbaar: true,  structured: true  },
   [TASKS.PROPERTY_IMPORT]:         { tier: TIERS.CHEAP,          escaleerbaar: true,  structured: true  },
+  [TASKS.VEHICLE_IMPORT]:          { tier: TIERS.CHEAP,          escaleerbaar: true,  structured: true  },
 
   [TASKS.WHATSAPP_CONVERSATION]:   { tier: TIERS.CONVERSATIONAL, escaleerbaar: true,  structured: false },
   [TASKS.WHATSAPP_FOLLOWUP]:       { tier: TIERS.CONVERSATIONAL, escaleerbaar: false, structured: false },
@@ -95,6 +100,7 @@ const CREDIT_FEATURE = Object.freeze({
   [TASKS.VIDEO_GENERATION]:        'video_generation',
   [TASKS.MARKETING_COPY]:          'marketing_content',
   [TASKS.PROPERTY_IMPORT]:         'property_import',
+  [TASKS.VEHICLE_IMPORT]:          'vehicle_import',
 });
 
 class TaskError extends Error {
