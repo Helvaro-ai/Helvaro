@@ -282,7 +282,7 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
      leesbaar als letter, en dat is precies waar dit bestand al een keer
      op is misgegaan (zand op wit = 1,7:1). */
 
-  --zand-50 : #FCF6E9;
+  --zand-50: #FCF6E9;
   --zand-100: #F5ECD7;
   --zand-200: #E8D7B1;
   --zand-300: #D1C3A2;
@@ -294,7 +294,7 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --zand-900: #322914;
   --zand-950: #1D1607;
 
-  --klei-50 : #FFF2E5;
+  --klei-50: #FFF2E5;
   --klei-100: #FFE5D0;
   --klei-200: #FED0B5;
   --klei-300: #ECB797;
@@ -306,7 +306,7 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --klei-900: #41210A;
   --klei-950: #271002;
 
-  --olijf-50 : #F5F9E9;
+  --olijf-50: #F5F9E9;
   --olijf-100: #EBF0D6;
   --olijf-200: #D8DFBD;
   --olijf-300: #C1C9A1;
@@ -318,7 +318,7 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --olijf-900: #292D13;
   --olijf-950: #161906;
 
-  --steen-50 : #F9F6F1;
+  --steen-50: #F9F6F1;
   --steen-100: #F1ECE4;
   --steen-200: #E0DACF;
   --steen-300: #CBC3B7;
