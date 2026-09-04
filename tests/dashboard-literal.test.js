@@ -70,6 +70,42 @@ console.log('\n  geen losse backtick in het CSS-blok');
     ruw.length === 0, ruw.length ? { regels_in_css_blok: ruw.slice(0, 5) } : null);
 }
 
+console.log('\n  geen backtick in een blok-opmerking');
+{
+  /* Drie keer in een sessie ging het hier mis, en alle drie in een OPMERKING:
+
+       controleerden al `typeof Chart`
+       alle 97 gebruiken zijn `background:`
+       `tabel` is de enige die niet vertaald wordt
+
+     Elke keer volstrekt onschuldig bedoeld -- en dat is precies waarom het
+     blijft gebeuren: in proza let niemand op zijn leestekens, en een backtick
+     is daar gewoon een aanhalingsteken.
+
+     De controle hierboven (new vm.Script) vangt het wel, maar meldt het als
+     "Unexpected identifier 'tabel'" op een regel die er onschuldig uitziet.
+     Deze zegt WAAR en WAT, zodat je niet hoeft te zoeken.
+
+     Alleen blok-opmerkingen, en dat is met opzet: in gewone code is een
+     backtick legitiem (de nesting met ${...} gebruikt ze), in proza nooit. */
+  /* Alleen BINNEN de literal. Erbuiten -- in de kop van het bestand, waar de
+     handler zijn werk doet -- is een backtick in een opmerking volstrekt
+     onschuldig, en er staat er daar een. Een controle die ook de goede
+     gevallen rood maakt, wordt uitgezet, en bewaakt daarna niets meer. */
+  const beginLiteral = bron.indexOf('const HTML = ');
+  ck('het begin van de literal is te vinden', beginLiteral > 0, beginLiteral);
+  const binnen = bron.slice(beginLiteral);
+  const opmerkingen = binnen.match(/\/\*[\s\S]*?\*\//g) || [];
+  const stuk = [];
+  for (const blok of opmerkingen) {
+    if (blok.indexOf('`') === -1) continue;
+    const regel = bron.slice(0, beginLiteral + binnen.indexOf(blok)).split('\n').length;
+    const fragment = blok.split('\n').find((r) => r.indexOf('`') !== -1) || '';
+    stuk.push({ regel, fragment: fragment.trim().slice(0, 70) });
+  }
+  ck('geen enkele blok-opmerking bevat een backtick', stuk.length === 0, stuk.slice(0, 3));
+}
+
 console.log('\n  geen losse ${ in het CSS-blok');
 {
   /* Dezelfde val, andere vorm: ${ opent een substitutie. In CSS komt dat

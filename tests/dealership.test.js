@@ -212,5 +212,114 @@ console.log('\n  tenant-isolatie: geen enkele leesweg zonder projectcode');
     (bron.match(/F\.project/g) || []).length >= 4);
 }
 
+console.log('\n  de proefrit en de escalatie staan in de fiche');
+{
+  const auto = { code: 'V1', merk: 'BMW', model: 'M4', prijs: 74999, status: 'beschikbaar', troeven: [], omschrijving: '' };
+  const f = prompts.voertuigen.fiche(auto, vertical.kortingsgrenzen({ 'Max Discount EUR': 3000, 'Faro Discount Limit EUR': 1500 }));
+
+  /* De basisprompt zegt "afspraak" -- neutraal, gedeeld, en onder een
+     momentopname. Wat een afspraak IS hoort in dit blok, anders zou de
+     dealership-tak de tekst raken die elke bestaande makelaar krijgt. */
+  ck('de afspraak heet een proefrit', /PROEFRIT/.test(f));
+  ck('en de koper hoort wat hij mee moet nemen', /rijbewijs/.test(f));
+
+  /* Escaleren bestond al in api/whatsapp.js. Wat ontbrak is WANNEER dat hoort
+     te gebeuren bij een auto -- en dat is een andere lijst dan bij een woning. */
+  ck('er is een escalatielijst', /escalate/.test(f));
+  for (const [wat, re] of [['korting', /meer korting dan jij mag/], ['financiering', /financiering/],
+                           ['inruil', /inruilen/], ['technisch', /ongevalverleden/],
+                           ['vraagt om een mens', /uitdrukkelijk naar een verkoper/]]) {
+    ck('escaleert bij ' + wat, re.test(f));
+  }
+  ck('en belooft daarbij niets', /Doe geen toezegging/.test(f));
+
+  /* Kwalificatie zonder vragenlijst. Het schema (ability/urgency/fit) is
+     gedeeld en blijft ongemoeid; wat er niet in past gaat naar de samenvatting,
+     want dat is wat de verkoper leest. */
+  ck('vraagt naar financiering en inruil', /financiering wil/.test(f) && /in te ruilen/.test(f));
+  ck('maar hoogstens een ding per bericht', /EEN ding per bericht/.test(f));
+  ck('en zet het in de samenvatting', /in je samenvatting/.test(f));
+}
+
+console.log('\n  Faro kan bij de voorraad, en verwart hem niet met panden');
+{
+  const tools = require('../api/_faro/tools');
+  const namen = tools.ALL.map((t) => t.name);
+  ck('get_vehicles bestaat',   namen.indexOf('get_vehicles') !== -1);
+  ck('get_properties bestaat nog', namen.indexOf('get_properties') !== -1);
+
+  const gv = tools.get('get_vehicles');
+  ck('het is een leesgereedschap', gv && gv.kind === 'read');
+  /* Twee scherpe beschrijvingen werken beter dan een vage gedeelde: het model
+     kiest zelf, en de beschrijving is wat die keuze stuurt. */
+  ck('de beschrijving gaat over autos en niet over panden',
+    gv && /voertuig|auto|wagen/i.test(gv.description) && !/pand|woning/i.test(gv.description));
+
+  /* Kortingsruimte hoort niet in een modelcontext rond te slingeren. */
+  const bron = fs.readFileSync(BASE + 'api/_faro/tools.js', 'utf8');
+  const blok = bron.slice(bron.indexOf("name: 'get_vehicles'"), bron.indexOf("name: 'get_properties'"));
+  ck('get_vehicles geeft GEEN kortingsvelden terug',
+    !/maxKorting|faroKorting/.test(blok.split('vehicles: gefilterd.map')[1] || ''));
+}
+
+console.log('\n  het herkende voertuig belandt op de lead');
+{
+  /* Zonder dit blijft elke voertuigkaart op "Nog geen leads" staan, ook als er
+     tien gesprekken over die auto lopen: de teller op het aanbodscherm leest
+     de property-code uit de Notities-blob. */
+  const wa = fs.readFileSync(BASE + 'api/whatsapp.js', 'utf8');
+  ck('er is een helper die de code wegschrijft', /function mergeAanbodCode/.test(wa));
+  ck('en hij wordt aangeroepen na een treffer',
+    /if \(herkendVoertuig && herkendVoertuig\.code\)[\s\S]{0,400}mergeAanbodCode/.test(wa));
+
+  const m = /function mergeAanbodCode\(raw, code\) \{[\s\S]*?\n\}/.exec(wa);
+  ck('de helper is te vinden', !!m);
+  const fn = new Function('return ' + m[0])();
+
+  ck('lege code schrijft niets', fn('{}', '') === null);
+  ck('dezelfde code opnieuw schrijft niets', fn(JSON.stringify({ property: 'V2' }), 'V2') === null);
+
+  /* Merge en geen overschrijving: in dezelfde blob staan notities, taken en de
+     escalatievlag, en die mogen hier niet sneuvelen. */
+  const met = JSON.parse(fn(JSON.stringify({ _v: 1, notes: [{ id: 'a', text: 'bel maandag' }], escalated: { at: 'x' } }), 'V2'));
+  ck('notities blijven staan', met.notes.length === 1 && met.notes[0].text === 'bel maandag', met.notes);
+  ck('de escalatievlag blijft staan', !!met.escalated, met.escalated);
+  ck('en de code staat erin', met.property === 'V2', met.property);
+
+  const oud = JSON.parse(fn('gewoon een losse notitie', 'V3'));
+  ck('oude platte tekst gaat niet verloren', oud.notes[0].text === 'gewoon een losse notitie');
+
+  /* Dezelfde sleutel als bij panden, met opzet: alles wat die code al leest
+     werkt daarmee onveranderd voor allebei de markten. */
+  ck('het is DEZELFDE sleutel als bij panden', 'property' in oud);
+}
+
+console.log('\n  vier talen, ook voor de markt die er net bij kwam');
+{
+  const i18n = require('../api/_i18n');
+  const sleutels = ['veh.nav', 'veh.one', 'veh.many', 'veh.One', 'veh.stock', 'veh.none',
+                    'veh.add', 'veh.testdrive', 'veh.loadFailed',
+                    'prop.one', 'prop.many', 'prop.One', 'prop.viewing', 'prop.loadFailed'];
+  let ontbreekt = [];
+  for (const k of sleutels) {
+    for (const taal of ['nl', 'fr', 'en', 'de']) {
+      const v = i18n.t(taal, k);
+      if (!v || v === k) ontbreekt.push(k + '/' + taal);
+    }
+  }
+  ck('elke nieuwe sleutel bestaat in nl, fr, en en de', ontbreekt.length === 0, ontbreekt.slice(0, 6));
+  ck('en ze zijn echt vertaald, niet gekopieerd',
+    i18n.t('fr', 'veh.nav') !== i18n.t('nl', 'veh.nav') && i18n.t('de', 'veh.testdrive') !== i18n.t('nl', 'veh.testdrive'),
+    { fr: i18n.t('fr', 'veh.nav'), de: i18n.t('de', 'veh.testdrive') });
+
+  /* Het scherm mag geen vaste Nederlandse woorden meer bevatten voor deze
+     begrippen -- anders ziet een Waalse dealer een Nederlandse navigatie. */
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const vwBlok = dash.slice(dash.indexOf('function vw(sleutel)'), dash.indexOf('function zetVertical'));
+  ck('vw() loopt door de vertaaltabel', /tr\('veh\./.test(vwBlok) && /tr\('prop\./.test(vwBlok));
+  ck('en heeft geen vaste Nederlandse woorden meer',
+    !/'Voertuigen'|'Je voorraad'|'proefrit'/.test(vwBlok), vwBlok.slice(0, 120));
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

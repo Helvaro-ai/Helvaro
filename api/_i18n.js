@@ -835,6 +835,42 @@ const TEKST = {
   'nav.pipeline':        { nl: 'Pipeline',  fr: 'Pipeline',  en: 'Pipeline',  de: 'Pipeline' },
   'nav.conversations':   { nl: 'Gesprekken', fr: 'Conversations', en: 'Conversations', de: 'Gespräche' },
   'nav.properties':      { nl: 'Panden',    fr: 'Biens',     en: 'Properties', de: 'Objekte' },
+
+  /* ── Dealership ─────────────────────────────────────────────────────────
+     De woorden die per markt verschillen. Ze staan hier en niet in
+     api/dashboard.js, om dezelfde reden als alle andere: een Waalse dealer
+     hoort geen Nederlandse navigatie te zien.
+
+     Er is met opzet GEEN sleutel voor "aanbod" of "beschikbaar" bijgekomen:
+     die bestonden al en betekenen in beide markten hetzelfde. Alleen wat er
+     echt anders is, krijgt een eigen sleutel. */
+  /* De pandkant van dezelfde drie. Die bestonden nog niet als losse woorden --
+     ze stonden hardgecodeerd in de tellers ("3 panden"). Nu ze een tegenhanger
+     hebben, horen ze op dezelfde plek te staan; anders is de ene helft
+     vertaalbaar en de andere niet. */
+  'prop.one':            { nl: 'pand',        fr: 'bien',         en: 'property',  de: 'Objekt' },
+  'prop.many':           { nl: 'panden',      fr: 'biens',        en: 'properties',de: 'Objekte' },
+  'prop.One':            { nl: 'Pand',        fr: 'Bien',         en: 'Property',  de: 'Objekt' },
+
+  'veh.nav':             { nl: 'Voertuigen',  fr: 'V\u00e9hicules', en: 'Vehicles',  de: 'Fahrzeuge' },
+  'veh.one':             { nl: 'voertuig',    fr: 'v\u00e9hicule',  en: 'vehicle',   de: 'Fahrzeug' },
+  'veh.many':            { nl: 'voertuigen',  fr: 'v\u00e9hicules', en: 'vehicles',  de: 'Fahrzeuge' },
+  'veh.One':             { nl: 'Voertuig',    fr: 'V\u00e9hicule',  en: 'Vehicle',   de: 'Fahrzeug' },
+  'veh.stock':           { nl: 'Je voorraad', fr: 'Votre stock',  en: 'Your stock', de: 'Ihr Bestand' },
+  'veh.none':            { nl: 'Nog geen voertuigen', fr: 'Pas encore de v\u00e9hicules',
+                           en: 'No vehicles yet',     de: 'Noch keine Fahrzeuge' },
+  'veh.add':             { nl: 'Voertuig toevoegen',  fr: 'Ajouter un v\u00e9hicule',
+                           en: 'Add vehicle',         de: 'Fahrzeug hinzuf\u00fcgen' },
+  'veh.testdrive':       { nl: 'proefrit',    fr: 'essai',        en: 'test drive', de: 'Probefahrt' },
+  'prop.viewing':        { nl: 'bezichtiging',fr: 'visite',       en: 'viewing',    de: 'Besichtigung' },
+  'veh.loadFailed':      { nl: 'De voertuigen konden niet opgehaald worden. Probeer het zo meteen opnieuw.',
+                           fr: 'Impossible de charger les v\u00e9hicules. R\u00e9essayez dans un instant.',
+                           en: 'Could not load the vehicles. Try again in a moment.',
+                           de: 'Fahrzeuge konnten nicht geladen werden. Versuchen Sie es gleich erneut.' },
+  'prop.loadFailed':     { nl: 'De panden konden niet opgehaald worden. Probeer het zo meteen opnieuw.',
+                           fr: 'Impossible de charger les biens. R\u00e9essayez dans un instant.',
+                           en: 'Could not load the properties. Try again in a moment.',
+                           de: 'Objekte konnten nicht geladen werden. Versuchen Sie es gleich erneut.' },
   'nav.calendar':        { nl: 'Kalender',  fr: 'Agenda',    en: 'Calendar',  de: 'Kalender' },
   'nav.results':         { nl: 'Resultaten', fr: 'Résultats', en: 'Results',  de: 'Ergebnisse' },
   'nav.analysis':        { nl: 'Analyse',   fr: 'Analyse',   en: 'Analytics', de: 'Analyse' },

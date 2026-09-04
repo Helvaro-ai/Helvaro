@@ -442,6 +442,63 @@ const voertuigen = {
            + 'om het gesprek gezellig te houden.');
     }
 
+    /* ── De afspraak is een PROEFRIT ────────────────────────────────────────
+       De basisprompt zegt "afspraak", en dat woord is met opzet neutraal: hij
+       wordt door een snapshot bewaakt en geldt voor elke klant. Wat een afspraak
+       IS, hoort hier -- in het blok dat weet welke markt dit is.
+
+       De praktische regels staan erbij omdat een proefrit dingen vraagt die een
+       bezichtiging niet vraagt. Een koper die voor de deur staat en dan hoort
+       dat hij zijn rijbewijs had moeten meenemen, komt niet terug. */
+    r.push('- Een afspraak op dit voertuig is een PROEFRIT. Noem het zo. Zeg erbij dat hij zijn '
+         + 'rijbewijs meeneemt, en dat de auto klaarstaat op het afgesproken moment.');
+    r.push('- Je belooft niets over de staat van de auto op basis van de foto\'s. Wat hij wil weten '
+         + 'over schade of onderhoud, hoort hij ter plaatse van de verkoper.');
+
+    /* ── Wanneer hij stopt ──────────────────────────────────────────────────
+       Escaleren bestaat al: zet escalate op true en api/whatsapp.js verwittigt
+       de dealer meteen per WhatsApp en zet een markering op de lead. Wat
+       ontbrak is WANNEER dat hoort te gebeuren in een verkoopgesprek over een
+       auto -- dat is een andere lijst dan bij een woning.
+
+       Vijf van de zes gaan over geld of over een toezegging die de dealer moet
+       kunnen waarmaken. Dat is geen toeval: dat zijn precies de momenten waarop
+       een verzonnen antwoord een echte kost wordt. */
+    /* ── Wat je te weten wil komen ──────────────────────────────────────────
+       ability, urgency en fit staan al in het antwoordschema en dekken budget,
+       timing en ernst. Wat daar NIET in past is financiering, inruil en of hij
+       echt wil rijden -- en dat zijn precies de drie dingen waarop een
+       verkoper zijn dag indeelt.
+
+       Die gaan daarom in de SAMENVATTING, niet in een nieuw veld. Het schema
+       is gedeeld met vastgoed en staat onder een momentopname; er een tak in
+       maken zou elke bestaande klant raken voor iets dat alleen dealers
+       aangaat. En de samenvatting is toch wat de verkoper leest op de
+       leadkaart.
+
+       Nadrukkelijk geen vragenlijst. Wie vier vragen op rij krijgt van iets
+       dat een verkoper hoort te zijn, haakt af. Een ding per beurt, en alleen
+       als het gesprek er aanleiding toe geeft. */
+    r.push('', 'WAT JE ONDERWEG WIL WETEN (niet als vragenlijst):');
+    r.push('- Wanneer hij wil kopen, en of hij nog andere auto\'s bekijkt.');
+    r.push('- Of hij contant betaalt of financiering wil.');
+    r.push('- Of hij een auto heeft om in te ruilen.');
+    r.push('- Of hij wil komen rijden, en wanneer hem dat past.');
+    r.push('Vraag hoogstens EEN ding per bericht, en alleen als het past in het gesprek. '
+         + 'Wat je te weten komt over financiering en inruil zet je in je samenvatting, '
+         + 'want daar deelt de verkoper zijn dag mee in.');
+
+    r.push('', 'WANNEER JE HET OVERLAAT AAN DE VERKOPER (escalate):');
+    r.push('- De koper wil meer korting dan jij mag geven.');
+    r.push('- Hij vraagt naar financiering, leasing of een afbetalingsplan.');
+    r.push('- Hij wil zijn huidige auto inruilen en verwacht een bedrag.');
+    r.push('- Hij vraagt iets technisch dat niet in de fiche staat: ongevalverleden, keuring, '
+         + 'onderhoudshistoriek, garantie.');
+    r.push('- Hij vraagt uitdrukkelijk naar een verkoper, of hij klinkt ontevreden.');
+    r.push('- Dit voertuig is niet meer beschikbaar en hij wil toch verder.');
+    r.push('In al die gevallen: zeg dat je het opneemt met het team en dat er iemand terugkomt. '
+         + 'Doe geen toezegging over de uitkomst en verzin geen bedrag.');
+
     /* Status is een REM en geen instructie: waar BOOK verwerkt wordt staat
        dezelfde regel nog eens, in code. Zie api/whatsapp.js. */
     if (String(v.status) === 'verkocht' || String(v.status) === 'uit aanbod') {

@@ -65,6 +65,7 @@ const pricing = require('./pricing');
 const credits = require('../_credits');
 const mediaModels = require('../_media-models');
 const properties = require('../_properties');
+const vehicles   = require('../_vehicles');
 
 const NOT_WIRED = 'not_wired';
 
@@ -190,6 +191,81 @@ function truncationNote(truncated) {
 }
 
 const readTools = [
+  {
+    /* De spiegel van get_properties, voor dealers. Twee gereedschappen en niet
+       een met een schakelaar: het model kiest zelf welk gereedschap het pakt,
+       en de beschrijving is wat die keuze stuurt. Een gedeeld "get_aanbod" zou
+       een beschrijving nodig hebben die over panden EN auto's gaat, en dan
+       pakt het model hem ook in het verkeerde geval. Twee scherpe
+       beschrijvingen werken beter dan een vage.
+
+       Een makelaar die dit gereedschap toch aanroept krijgt geen fout maar een
+       leeg antwoord met uitleg -- hij heeft nu eenmaal geen voertuigen. */
+    name: 'get_vehicles',
+    kind: 'read',
+    description:
+      'Haal de voorraad van deze autodealer op: merk, model, uitvoering, prijs, kilometerstand, ' +
+      'bouwjaar, brandstof en status. Gebruik dit zodra de gebruiker het over een auto, een wagen, ' +
+      'een voertuig of "mijn voorraad" heeft, en ook wanneer je wil weten welk voertuig bij een lead ' +
+      'hoort. Verzin nooit een voertuig dat hier niet uit komt.',
+    parameters: {
+      type: 'object',
+      properties: {
+        code:   { type: 'string', description: 'Een specifieke referentie, bijvoorbeeld V3.' },
+        status: { type: 'string', enum: ['beschikbaar', 'gereserveerd', 'verkocht', 'uit aanbod'],
+                  description: 'Alleen voertuigen met deze status.' },
+        alleenAanbod: { type: 'boolean', default: false,
+                        description: 'Alleen wat nu nog te rijden is (beschikbaar of gereserveerd).' },
+      },
+    },
+    run: readTool('get_vehicles', async (args, ctx) => {
+      /* De tabel kan er nog niet zijn. Dan is het antwoord "voertuigen staan
+         nog uit", niet een lege lijst -- want een lege lijst leest het model
+         als "deze dealer heeft geen voorraad", en dat vertelt hij dan door. */
+      if (!(await vehicles.available())) {
+        return stub(
+          'De voertuigenlijst is nog niet aangezet voor deze klant. Zeg dat je de voorraad niet kunt '
+          + 'inzien en verzin geen voertuigen.', { unavailable: true });
+      }
+      const alle = await vehicles.list(ctx.projectCode, { alleenRijdbaar: args.alleenAanbod === true });
+      const code = args.code ? vehicles.normCode(args.code) : '';
+      const gefilterd = alle.filter((v) => {
+        if (code && v.code !== code) return false;
+        if (args.status && v.status !== vehicles.normStatus(args.status)) return false;
+        return true;
+      });
+
+      if (!gefilterd.length) {
+        return {
+          summary: alle.length
+            ? 'Geen voertuig past bij deze filter. De dealer heeft er ' + alle.length + '.'
+            : 'Deze dealer heeft nog geen voertuigen ingevoerd.',
+          data: { vehicles: [], totaal: alle.length },
+          components: [],
+        };
+      }
+
+      return {
+        summary: gefilterd.length + ' voertuig' + (gefilterd.length === 1 ? '' : 'en') + ': '
+          + gefilterd.slice(0, 8).map((v) => vehicles.samenvatting(v)).join(' / '),
+        data: {
+          vehicles: gefilterd.map((v) => ({
+            code: v.code, merk: v.merk, model: v.model, uitvoering: v.uitvoering,
+            prijs: v.prijs, km: v.km, inschrijving: v.inschrijving, brandstof: v.brandstof,
+            transmissie: v.transmissie, kw: v.kw, pk: v.pk, kleur: v.kleur,
+            status: v.status, link: v.link,
+            /* De kortingsvelden gaan NIET mee. Faro's dashboardkant praat met
+               de dealer, niet met een koper -- maar deze gegevens komen in een
+               modelcontext terecht, en kortingsruimte is precies het getal dat
+               daar niet hoeft rond te slingeren. Wie het wil zien, ziet het op
+               het voertuigscherm. */
+          })),
+          totaal: alle.length,
+        },
+        components: [],
+      };
+    }),
+  },
   {
     name: 'get_properties',
     kind: 'read',

@@ -1258,6 +1258,24 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     console.error(`[WhatsApp] Verzenden naar ${phone} mislukt. Conversation History/State blijven ongewijzigd`);
     updateFields[NOTITIES_FIELD] = mergeWaFailedFlag(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
   }
+  /* Het herkende aanbod vastleggen op de lead.
+     Bij een pand gebeurde dit al bij het formulier (api/form.js zet de code in
+     de Notities-blob als de lead via /start/PROJECT/CODE binnenkwam). Bij een
+     dealership is er geen formulier: de koper klikt op AutoScout24 en landt
+     rechtstreeks in WhatsApp. De code is dan pas bekend NA de herkenning
+     hierboven, dus hier is de plek.
+
+     Alleen bij een echte treffer, en alleen als er iets verandert. Een gok
+     wegschrijven zou erger zijn dan niets: hij blijft dan op de lead staan en
+     alles wat hem daarna leest gelooft hem. */
+  if (herkendVoertuig && herkendVoertuig.code) {
+    const basis = updateFields[NOTITIES_FIELD] !== undefined
+      ? updateFields[NOTITIES_FIELD]
+      : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+    const metCode = mergeAanbodCode(basis, herkendVoertuig.code);
+    if (metCode !== null) updateFields[NOTITIES_FIELD] = metCode;
+  }
+
   await updateLead(lead.id, updateFields, phone, scopedProjectCode);
 
   /* ── Naar het CRM, als deze beurt de kwalificatie opleverde ───────────────
@@ -2695,6 +2713,42 @@ function mergeEscalatedFlag(raw, question) {
     data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
   }
   data.escalated = { at: new Date().toISOString(), question: String(question || '').slice(0, 280) };
+  return JSON.stringify(data);
+}
+
+/* De code van het herkende aanbod op de lead zetten.
+ *
+ * Dezelfde sleutel als bij panden -- 'property' in de Notities-blob -- ook voor
+ * een voertuig. Dat lijkt raar en is met opzet: alles wat die code al leest
+ * (api/_leads-read.js, de leadkaart, de teller op het aanbodscherm, de
+ * campagnes) werkt daarmee ONVERANDERD voor allebei de markten. Een tweede
+ * sleutel 'vehicle' zou betekenen dat elk van die plekken een tweede tak krijgt,
+ * en dat is precies hoe de ene helft later iets krijgt wat de andere mist.
+ *
+ * Zonder dit blijft elke voertuigkaart op "Nog geen leads" staan, ook als er
+ * tien gesprekken over die auto lopen.
+ *
+ * Merge en geen overschrijving: in dezelfde blob staan notities, taken en de
+ * escalatievlag, en die mogen hier niet sneuvelen. Schrijft alleen als de code
+ * ECHT verandert -- geeft anders null terug, zodat de aanroeper een overbodige
+ * Airtable-schrijfactie overslaat. */
+function mergeAanbodCode(raw, code) {
+  const nieuw = String(code || '').trim().toUpperCase();
+  if (!nieuw) return null;
+  const trimmed = raw ? String(raw).trim() : '';
+  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
+  let handled = false;
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
+    } catch { /* kapotte JSON: hieronder als oude platte tekst bewaren */ }
+  }
+  if (!handled && trimmed) {
+    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
+  }
+  if (String(data.property || '').trim().toUpperCase() === nieuw) return null;  // niets veranderd
+  data.property = nieuw;
   return JSON.stringify(data);
 }
 

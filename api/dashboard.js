@@ -15643,15 +15643,28 @@ function isDealer() { return hvVertical === 'dealership'; }
    "pand" of "voertuig" typt is een plek die vergeten wordt als er ooit een
    derde markt bijkomt. */
 function vw(sleutel) {
-  var w = {
-    vastgoed:   { een: 'pand', meer: 'panden', Een: 'Pand', Meer: 'Panden',
-                  aanbod: 'Je aanbod', geen: 'Nog geen panden', tabel: 'properties',
-                  afspraak: 'bezichtiging' },
-    dealership: { een: 'voertuig', meer: 'voertuigen', Een: 'Voertuig', Meer: 'Voertuigen',
-                  aanbod: 'Je voorraad', geen: 'Nog geen voertuigen', tabel: 'vehicles',
-                  afspraak: 'proefrit' }
-  };
-  return (w[hvVertical] || w.vastgoed)[sleutel] || '';
+  /* Door de vertaaltabel, niet met vaste Nederlandse woorden. Een Waalse
+     dealer hoort geen Nederlandse navigatie te zien, en dat gold voor de rest
+     van dit scherm al -- het zou raar zijn als uitgerekend het woord dat de
+     markt benoemt eentalig blijft.
+
+     De sleutel 'tabel' is de enige die NIET vertaald wordt: dat is een Airtable-naam die
+     letterlijk in de melding staat zodat iemand hem kan opzoeken. Die
+     vertalen zou de melding onbruikbaar maken. */
+  var d = hvVertical === 'dealership';
+  switch (sleutel) {
+    case 'een':      return d ? tr('veh.one')  : tr('prop.one');
+    case 'meer':     return d ? tr('veh.many') : tr('prop.many');
+    case 'Een':      return d ? tr('veh.One')  : tr('prop.One');
+    case 'Meer':     return d ? tr('veh.nav')  : tr('nav.properties');
+    case 'aanbod':   return d ? tr('veh.stock'): tr('prop.offer');
+    case 'geen':     return d ? tr('veh.none') : tr('prop.none');
+    case 'toevoegen':return d ? tr('veh.add')  : tr('prop.add');
+    case 'afspraak': return d ? tr('veh.testdrive') : tr('prop.viewing');
+    case 'laadFout': return d ? tr('veh.loadFailed') : tr('prop.loadFailed');
+    case 'tabel':    return d ? 'vehicles' : 'properties';
+    default:         return '';
+  }
 }
 
 function zetVertical(v, config) {
@@ -15685,8 +15698,8 @@ function zetVertical(v, config) {
   var knoppen = document.querySelectorAll('#page-panden .btn-primary-sm');
   for (var i = 0; i < knoppen.length; i++) {
     var laatste = knoppen[i].lastChild;
-    if (laatste && laatste.nodeType === 3) laatste.textContent = ' ' + vw('Een') + ' toevoegen';
-    else if (!knoppen[i].querySelector('svg')) knoppen[i].textContent = vw('Een') + ' toevoegen';
+    if (laatste && laatste.nodeType === 3) laatste.textContent = ' ' + vw('toevoegen');
+    else if (!knoppen[i].querySelector('svg')) knoppen[i].textContent = vw('toevoegen');
   }
 
   /* Staat de pagina al open, dan meteen opnieuw laden met de juiste bron. */
@@ -23175,7 +23188,7 @@ async function loadPanden(force) {
        is precies wat een klant anders als datenverlies leest. */
     grid.innerHTML = '';
     notice.style.display = '';
-    notice.innerHTML = 'De ' + vw('meer') + ' konden niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    notice.innerHTML = vw('laadFout');
     return;
   }
   renderPanden();
