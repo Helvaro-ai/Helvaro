@@ -11,6 +11,7 @@ const { getPlanState } = require('./_plan'); // trial/plan-status interpretation
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
 const _vehicles  = require('./_vehicles');   // de voorraad van een dealer
+const _vertical  = require('./_vertical');   // vastgoed of dealership
 const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
 const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
@@ -764,6 +765,16 @@ module.exports = async function handler(req, res) {
             website:        rec.fields['fldzBclLhryWQ1veO'] || rec.fields['Website']             || '',
             address:        rec.fields['fldTvMSdTZOyNgWod'] || rec.fields['Adres']               || '',
             sector:         rec.fields['fld0BsPnDbBOkTHzr'] || rec.fields['Niche']               || '',
+            /* In welke markt deze klant zit. Hier en niet in vehicle-list:
+               het dashboard moet dit WETEN voordat er een pagina opengaat --
+               de navigatie heet "Panden" of "Voertuigen" nog voor er iets
+               geladen is. En config-get wordt bij het opstarten toch al
+               gehaald, dus het kost geen extra verzoek.
+               Leeg leest als 'vastgoed'; zie api/_vertical.js voor waarom dat
+               de enige veilige standaard is. */
+            vertical:       _vertical.van(rec.fields),
+            maxDiscount:    Number(rec.fields['Max Discount EUR'])        || 0,
+            faroDiscount:   Number(rec.fields['Faro Discount Limit EUR']) || 0,
             calendlyLink:   rec.fields['fldNEj1ysRgINOOtr'] || rec.fields['Calendly Link']       || '',
             clientName:     rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name']         || '',
             aiPhotoUrl:     rec.fields['fld7L0Iijq7ti6A6w'] || rec.fields['AI Photo URL']        || '',
@@ -830,6 +841,28 @@ module.exports = async function handler(req, res) {
         if (body.calendlyLink   !== undefined) u.fldNEj1ysRgINOOtr = String(body.calendlyLink).trim().slice(0, 500);
         // sector goes to Niche (singleSelect). typecast:true lets unknown values pass
         if (body.sector         !== undefined) u.fld0BsPnDbBOkTHzr = String(body.sector).trim().slice(0, 100);
+
+        /* Onderhandelingsgrenzen. Alleen deze twee zijn instelbaar; `Vertical`
+           met opzet NIET -- van markt wisselen verandert welk aanbod een klant
+           heeft, en dat hoort een bewuste handeling van jou te zijn en geen
+           knop in het instellingenscherm die iemand per ongeluk omzet.
+
+           Twee regels die de code strenger maken dan het formulier:
+           een negatief bedrag wordt nul, en de Faro-grens wordt geklemd op het
+           plafond. Dat laatste staat OOK in api/_vertical.js -- twee keer met
+           opzet, want dit is de plek waar een verkeerde waarde de database in
+           komt en dat is de plek waar je hem tegenhoudt. */
+        const eur = (v) => {
+          const n = Number(v);
+          return Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 1000000) : 0;
+        };
+        if (body.maxDiscount  !== undefined) u['Max Discount EUR']        = eur(body.maxDiscount);
+        if (body.faroDiscount !== undefined) {
+          const plafond = body.maxDiscount !== undefined
+            ? eur(body.maxDiscount)
+            : (Number(rec.fields['Max Discount EUR']) || 0);
+          u['Faro Discount Limit EUR'] = Math.min(eur(body.faroDiscount), plafond);
+        }
         // Form personalization fields (shown on the lead form page)
         if (body.aiPhotoUrl     !== undefined) {
           // Allow EITHER an external https URL OR a self-hosted base64 data URL

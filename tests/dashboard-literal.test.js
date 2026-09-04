@@ -35,6 +35,8 @@ function ck(wat, ok, detail) {
 }
 
 const BESTAND = path.join(__dirname, '..', 'api', 'dashboard.js');
+
+function hoofd() {
 const bron = fs.readFileSync(BESTAND, 'utf8');
 
 console.log('\n  het bestand is geldige JavaScript');
@@ -93,6 +95,73 @@ console.log('\n  geen losse ${ in het CSS-blok');
     ongebalanceerd ? { nog_open: ongebalanceerd, aantal_substituties: treffers.length } : null);
 }
 
+console.log('\n  het GERENDERDE script parseert in een browser');
+{
+  /* Dit is de controle die node --check structureel niet kan doen, en dat is
+     geen detail -- het is de belangrijkste controle in dit bestand.
+
+     node --check valideert het BUITENSTE bestand. Maar de client-side JS zit
+     binnen de template literal, dus wat de browser krijgt is de UITVOER van die
+     literal, en die is pas geldig of ongeldig nadat de escapes zijn toegepast.
+     Twee voorbeelden van hetzelfde bestand:
+
+       '\\n'  ->  de escape \n            correcte JS-string
+       '\n'   ->  een ECHTE newline      onafgesloten string, hele app stuk
+
+     Allebei geven een groene node --check. De tweede breekt elk scherm. Dat is
+     precies wat er hier gebeurde toen de dealership-tak werd toegevoegd: de
+     pagina gaf netjes een 200 terug, het bestand parseerde, en in de browser
+     was er geen enkele functie gedefinieerd.
+
+     Renderen en dan parseren is de enige manier om dat te zien. */
+  const vm2 = require('vm');
+  let html = '', gerenderd = false;
+  const res2 = {
+    setHeader() { return res2; }, status() { return res2; },
+    send(x) { html = String(x); gerenderd = true; return res2; },
+    end(x) { if (x) { html = String(x); gerenderd = true; } return res2; },
+    json(x) { html = JSON.stringify(x); return res2; },
+  };
+  const klaar = require(BESTAND)(
+    { method: 'GET', url: '/dashboard', headers: { host: 'app.helvaro.pro' }, query: {}, cookies: {} },
+    res2
+  );
+
+  const controleer = () => {
+    ck('de pagina rendert', gerenderd && html.length > 100000, { gerenderd, lengte: html.length });
+    const re = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
+    let m, aantal = 0, kapot = null;
+    while ((m = re.exec(html)) !== null) {
+      const attr = m[1] || '';
+      if (/\bsrc\s*=/.test(attr)) continue;          // extern script, niet aan ons
+      if (/\btype\s*=/.test(attr) && !/text\/javascript|module/i.test(attr)) continue;
+      if (!m[2].trim()) continue;
+      aantal++;
+      try { new vm2.Script(m[2]); }
+      catch (e) { kapot = { script: aantal, fout: e.message }; break; }
+    }
+    ck('er staat minstens een inline script in', aantal >= 1, aantal);
+    ck('elk inline script parseert zoals een browser het krijgt', kapot === null, kapot);
+  };
+
+  if (klaar && typeof klaar.then === 'function') {
+    /* De handler is async. De rest van dit bestand loopt synchroon, dus de
+       controle hangt achter de belofte en de afsluitende telling gebeurt daar
+       ook -- anders zou de test groen afsluiten voordat hij iets gekeken heeft. */
+    klaar.then(() => {
+      controleer();
+      console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
+      process.exit(fail ? 1 : 0);
+    }).catch((e) => {
+      ck('handler werpt niet', false, e && e.message);
+      console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
+      process.exit(1);
+    });
+    return;   // de synchrone afsluiting hieronder wordt overgeslagen
+  }
+  controleer();
+}
+
 console.log('\n  de pagina rendert echt, niet alleen syntactisch');
 {
   /* Parsen is niet renderen. Een literal kan geldig zijn en de handler kan
@@ -125,4 +194,7 @@ console.log('\n  de pagina rendert echt, niet alleen syntactisch');
 }
 
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
-process.exit(fail ? 1 : 0);
+  process.exit(fail ? 1 : 0);
+}
+
+hoofd();

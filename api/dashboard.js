@@ -8278,6 +8278,16 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 /* Importeren uit een link. Staat bovenaan het venster en mag dat ook zien:
    dit is de weg die een makelaar zou moeten nemen, de losse velden zijn de
    uitwijk. */
+/* [hidden] wint hier niet vanzelf. Het HTML-attribuut zet display:none via de
+   stylesheet van de BROWSER, en elke eigen display-regel is specifieker en wint
+   dus. .pd-import staat op display:flex, dus el.hidden = true deed zichtbaar
+   niets -- de balk bleef gewoon staan terwijl de eigenschap wel op true stond.
+
+   Een !important is hier de juiste oplossing en geen luiheid: "verborgen"
+   hoort geen onderhandeling te zijn met de rest van de cascade. Beperkt tot de
+   twee blokken die echt geschakeld worden, zodat het geen algemene dreun wordt. */
+#pd-import[hidden], #pd-vast[hidden], #pd-deal[hidden] { display: none !important; }
+
 .pd-import {
   padding: 13px 14px;
   border-radius: var(--radius-sm);
@@ -8355,6 +8365,11 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .pd-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
 .pd-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pd-row-3 { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+/* pd-row-3 is ondanks zijn naam TWEE kolommen (1fr 2fr) -- hij hoort bij
+   postcode + gemeente. Voor drie gelijke velden is een eigen klasse nodig;
+   pd-row-3 verbreden zou het pandformulier scheeftrekken. */
+.pd-row-3e { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 560px) { .pd-row-3e, .pd-row-4 { grid-template-columns: 1fr 1fr; } }
 .pd-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .pd-col-2 { grid-column: span 1; }
 .pd-checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
@@ -12265,7 +12280,7 @@ ${faro.dock}
       <!-- De snelste weg staat bovenaan: een link plakken en de rest laten
            invullen. Wie liever zelf typt scrollt gewoon door -- alle velden
            blijven gewone velden. -->
-      <div class="pd-import">
+      <div class="pd-import" id="pd-import">
         <div class="pd-import-kop">${T('pd.import.kop')}</div>
         <div class="pd-import-sub">${T('pd.import.sub')}</div>
         <div class="pd-import-row">
@@ -12297,6 +12312,7 @@ ${faro.dock}
         </div>
       </div>
 
+      <div id="pd-vast">
       <label class="pd-label" for="pd-f-adres">${T('ap.address')}</label>
       <input class="pd-input" id="pd-f-adres" type="text" placeholder="Lange Violettestraat 12" maxlength="200">
 
@@ -12348,6 +12364,99 @@ ${faro.dock}
         <div>
           <label class="pd-label" for="pd-f-epc">EPC</label>
           <input class="pd-input" id="pd-f-epc" type="text" maxlength="40" placeholder="C">
+        </div>
+      </div>
+
+      </div>
+
+      <!-- ══ Voertuigvelden ══════════════════════════════════════════════════
+           Staan NAAST de pandvelden in dezelfde modal, niet in een tweede
+           modal. Alles eromheen -- de kop, de referentie, de status, de prijs,
+           de omschrijving, de foto's, het vinkje, de knoppen, de opmaak -- is
+           gedeeld en hoort maar een keer te bestaan. Wat hier staat is puur
+           wat een auto anders maakt dan een huis. -->
+      <div id="pd-deal" hidden>
+        <div class="pd-row-3e">
+          <div>
+            <label class="pd-label" for="pd-f-merk">Merk</label>
+            <input class="pd-input" id="pd-f-merk" type="text" placeholder="BMW" maxlength="60">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-model">Model</label>
+            <input class="pd-input" id="pd-f-model" type="text" placeholder="M4" maxlength="60">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-uitvoering">Uitvoering</label>
+            <input class="pd-input" id="pd-f-uitvoering" type="text" placeholder="Competition xDrive" maxlength="120">
+          </div>
+        </div>
+
+        <div class="pd-row-4">
+          <div>
+            <label class="pd-label" for="pd-f-km">Kilometerstand</label>
+            <input class="pd-input" id="pd-f-km" type="number" min="0" step="1000" placeholder="55000">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-inschrijving">1e inschrijving</label>
+            <input class="pd-input" id="pd-f-inschrijving" type="text" placeholder="05/2023" maxlength="10">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-brandstof">Brandstof</label>
+            <select class="pd-input" id="pd-f-brandstof">
+              <option value="benzine">benzine</option>
+              <option value="diesel">diesel</option>
+              <option value="hybride">hybride</option>
+              <option value="plug-in hybride">plug-in hybride</option>
+              <option value="elektrisch">elektrisch</option>
+              <option value="lpg">lpg</option>
+              <option value="cng">cng</option>
+              <option value="waterstof">waterstof</option>
+              <option value="overig">overig</option>
+            </select>
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-transmissie">Transmissie</label>
+            <select class="pd-input" id="pd-f-transmissie">
+              <option value="automaat">automaat</option>
+              <option value="handgeschakeld">handgeschakeld</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pd-row-3e">
+          <div>
+            <label class="pd-label" for="pd-f-kw">Vermogen (kW)</label>
+            <input class="pd-input" id="pd-f-kw" type="number" min="0" placeholder="375">
+            <div class="pd-hint" id="pd-f-pk-hint">De pk-waarde wordt hieruit berekend.</div>
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-carrosserie">Carrosserie</label>
+            <input class="pd-input" id="pd-f-carrosserie" type="text" placeholder="Coup&eacute;" maxlength="40">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-kleur">Kleur</label>
+            <input class="pd-input" id="pd-f-kleur" type="text" placeholder="zwart" maxlength="40">
+          </div>
+        </div>
+
+        <label class="pd-label" for="pd-f-adlink">Advertentielink (AutoScout24)</label>
+        <input class="pd-input" id="pd-f-adlink" type="url" placeholder="https://www.autoscout24.be/aanbod/..." maxlength="500">
+        <div class="pd-hint">Hieruit wordt het aanbodnummer gehaald. Dat is waarmee Helvaro een
+          binnenkomend WhatsApp-bericht aan dit voertuig koppelt &mdash; de koper hoeft dan niets uit te leggen.</div>
+
+        <!-- Korting per voertuig. Leeg = de dealerinstelling geldt; dat staat
+             er expliciet bij, want een leeg veld dat "onbeperkt" zou kunnen
+             betekenen is precies hoe een AI de zaak weggeeft. -->
+        <div class="pd-row-2">
+          <div>
+            <label class="pd-label" for="pd-f-maxkorting">Max. korting (&euro;)</label>
+            <input class="pd-input" id="pd-f-maxkorting" type="number" min="0" step="100" placeholder="leeg = je standaard">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-farokorting">Faro mag zelf (&euro;)</label>
+            <input class="pd-input" id="pd-f-farokorting" type="number" min="0" step="100" placeholder="leeg = je standaard">
+            <div class="pd-hint" id="pd-f-korting-hint"></div>
+          </div>
         </div>
       </div>
 
@@ -15512,6 +15621,79 @@ let _checklistLastFetch = 0;
 const CHECKLIST_MIN_INTERVAL = 4 * 60 * 1000;
 let _checklistConfigCache = null; // last config-get response — reused by the "Vertel over je bedrijf" modal so it can append rather than clobber
 
+/* ══ De vertical ══════════════════════════════════════════════════════════════
+   Een makelaar heeft PANDEN, een dealer heeft VOERTUIGEN, en dat is zowat het
+   enige verschil dat dit scherm aangaat. Alles eromheen -- de lijst, de lege
+   toestanden, de modal, de opmaak -- is hetzelfde en blijft hetzelfde.
+
+   Daarom is er GEEN tweede pagina bijgekomen. Een page-voertuigen met eigen
+   opmaak zou tweehonderd regels dupliceren die daarna uit elkaar lopen: de ene
+   krijgt een verbetering, de andere niet, en een half jaar later zien ze er
+   verschillend uit zonder dat iemand dat besloten heeft. Dezelfde pagina die
+   zich aanpast is minder code en blijft vanzelf gelijk.
+
+   Standaard vastgoed. Elke bestaande klant heeft dit veld leeg, dus tot
+   config-get iets anders zegt gedraagt dit scherm zich exact zoals gisteren. */
+var hvVertical = 'vastgoed';
+var hvKorting  = { max: 0, faro: 0 };
+
+function isDealer() { return hvVertical === 'dealership'; }
+
+/* De woorden die per markt verschillen, op EEN plek. Elke plek die zelf
+   "pand" of "voertuig" typt is een plek die vergeten wordt als er ooit een
+   derde markt bijkomt. */
+function vw(sleutel) {
+  var w = {
+    vastgoed:   { een: 'pand', meer: 'panden', Een: 'Pand', Meer: 'Panden',
+                  aanbod: 'Je aanbod', geen: 'Nog geen panden', tabel: 'properties',
+                  afspraak: 'bezichtiging' },
+    dealership: { een: 'voertuig', meer: 'voertuigen', Een: 'Voertuig', Meer: 'Voertuigen',
+                  aanbod: 'Je voorraad', geen: 'Nog geen voertuigen', tabel: 'vehicles',
+                  afspraak: 'proefrit' }
+  };
+  return (w[hvVertical] || w.vastgoed)[sleutel] || '';
+}
+
+function zetVertical(v, config) {
+  var nieuw = (String(v || '').trim().toLowerCase() === 'dealership') ? 'dealership' : 'vastgoed';
+  hvKorting = { max: Number((config && config.maxDiscount) || 0),
+                faro: Number((config && config.faroDiscount) || 0) };
+  if (nieuw === hvVertical) return;   // niets te doen, en geen herteken
+  hvVertical = nieuw;
+
+  /* Het navigatie-item. Alleen het woord en het pictogram; de pagina, de route
+     en de opmaak blijven precies dezelfde. */
+  var nav = document.getElementById('nav-panden');
+  if (nav) {
+    var icoon = nav.querySelector('.nav-icon');
+    nav.textContent = '';
+    if (icoon) {
+      if (isDealer()) {
+        icoon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+          + '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/></svg>';
+      }
+      nav.appendChild(icoon);
+    }
+    nav.appendChild(document.createTextNode(' ' + vw('Meer')));
+  }
+
+  /* De koppen op de pagina zelf. */
+  var kop = document.querySelector('#page-panden .pd-head-title');
+  if (kop) kop.textContent = vw('aanbod');
+  var leegT = document.querySelector('#page-panden .pd-empty-title');
+  if (leegT) leegT.textContent = vw('geen');
+  var knoppen = document.querySelectorAll('#page-panden .btn-primary-sm');
+  for (var i = 0; i < knoppen.length; i++) {
+    var laatste = knoppen[i].lastChild;
+    if (laatste && laatste.nodeType === 3) laatste.textContent = ' ' + vw('Een') + ' toevoegen';
+    else if (!knoppen[i].querySelector('svg')) knoppen[i].textContent = vw('Een') + ' toevoegen';
+  }
+
+  /* Staat de pagina al open, dan meteen opnieuw laden met de juiste bron. */
+  var pagina = document.getElementById('page-panden');
+  if (pagina && pagina.classList.contains('active')) loadPanden(true);
+}
+
 async function loadOnboardingChecklist(force) {
   if (!state.apiKey) return;
   const now = Date.now();
@@ -15526,6 +15708,11 @@ async function loadOnboardingChecklist(force) {
     if (!r.ok) return; // fail silent — card/banner just stay hidden/stale, never an error toast
     const d = await r.json();
     _checklistConfigCache = d;
+    /* In welke markt zit deze klant. Hier en niet in een eigen verzoek: dit
+       loopt toch al bij het opstarten. Tot het antwoord er is staat alles op
+       vastgoed -- dat is wat elke bestaande klant ziet en dus geen flikkering
+       voor de overgrote meerderheid. */
+    zetVertical(d.vertical, d);
     renderVerifyBanner(d);
     renderOnboardingChecklist(d);
   } catch (err) {
@@ -22974,21 +23161,39 @@ async function loadPanden(force) {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'listing-list' })
+      /* Dezelfde pagina, andere bron. De dealership-modes leven in
+         api/leads.js naast de listing-modes en geven dezelfde vorm terug --
+         dat is precies waarom hier maar een regel verschilt. */
+      body: JSON.stringify({ mode: isDealer() ? 'vehicle-list' : 'listing-list' })
     });
     if (!r.ok) throw hvFout(r);
     var d = await r.json();
-    pandState.panden = d.properties || [];
+    pandState.panden = (isDealer() ? d.vehicles : d.properties) || [];
     pandState.beschikbaar = d.available !== false;
   } catch (e) {
     /* Een storing mag er niet uitzien als "je hebt geen panden". Dat verschil
        is precies wat een klant anders als datenverlies leest. */
     grid.innerHTML = '';
     notice.style.display = '';
-    notice.innerHTML = 'De panden konden niet opgehaald worden. Probeer het zo meteen opnieuw.';
+    notice.innerHTML = 'De ' + vw('meer') + ' konden niet opgehaald worden. Probeer het zo meteen opnieuw.';
     return;
   }
   renderPanden();
+}
+
+/* Wat er op de kaart als KOP staat, en wat eronder. Een pand kent zichzelf aan
+   zijn adres, een auto aan zijn merk en model -- en de tweede regel is bij een
+   pand de gemeente en bij een auto de uitvoering. Twee functies in plaats van
+   twee takken midden in de opmaak, zodat de opmaak zelf leesbaar blijft. */
+function pandTitel(p) {
+  if (!isDealer()) return p.adres || 'Zonder adres';
+  var n = [p.merk, p.model].filter(Boolean).join(' ').trim();
+  return n || ('Voertuig ' + (p.code || ''));
+}
+
+function pandOnder(p) {
+  if (!isDealer()) return [p.postcode, p.plaats].filter(Boolean).join(' ');
+  return [p.uitvoering, p.kleur].filter(Boolean).join(' \u00B7 ');
 }
 
 function renderPanden() {
@@ -23004,8 +23209,9 @@ function renderPanden() {
     grid.innerHTML = '';
     leeg.style.display = 'none';
     notice.style.display = '';
-    notice.innerHTML = '<strong>Panden staan nog uit.</strong> De tabel <code>properties</code> bestaat nog niet '
-      + 'in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets uitgerold hoeft te worden.';
+    notice.innerHTML = '<strong>' + vw('Meer') + ' staan nog uit.</strong> De tabel <code>' + vw('tabel')
+      + '</code> bestaat nog niet in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets '
+      + 'uitgerold hoeft te worden.';
     telEl.textContent = '';
     return;
   }
@@ -23019,8 +23225,15 @@ function renderPanden() {
   }
   leeg.style.display = 'none';
 
-  var actief = pandState.panden.filter(function (p) { return p.status === 'beschikbaar' || p.status === 'onder bod'; });
-  telEl.textContent = pandState.panden.length + (pandState.panden.length === 1 ? ' pand' : ' panden')
+  /* Wat telt als "in aanbod" verschilt per markt: een pand onder bod is nog te
+     bezichtigen, een gereserveerde auto is nog te rijden. Dezelfde gedachte,
+     andere woorden -- en die staan in de code die het aanbod bezit, niet hier. */
+  var actief = pandState.panden.filter(function (p) {
+    return isDealer()
+      ? (p.status === 'beschikbaar' || p.status === 'gereserveerd')
+      : (p.status === 'beschikbaar' || p.status === 'onder bod');
+  });
+  telEl.textContent = pandState.panden.length + ' ' + (pandState.panden.length === 1 ? vw('een') : vw('meer'))
     + ', ' + actief.length + ' in aanbod';
 
   /* Hoeveel leads per pand. Uit de leads die al geladen zijn -- geen extra
@@ -23033,25 +23246,41 @@ function renderPanden() {
   });
 
   grid.innerHTML = pandState.panden.map(function (p) {
+    /* De statuskleur. Beide markten hebben drie standen die hetzelfde
+       BETEKENEN -- vrij, bezet-maar-mogelijk, weg -- dus dezelfde drie klassen.
+       Een vierde klasse zou drie CSS-regels vragen voor iets dat niets nieuws
+       zegt. */
     var statusKlasse = p.status === 'beschikbaar' ? 'pd-status--beschikbaar'
-                     : (p.status === 'onder bod' ? 'pd-status--bod' : 'pd-status--weg');
+                     : ((p.status === 'onder bod' || p.status === 'gereserveerd') ? 'pd-status--bod' : 'pd-status--weg');
     var feiten = [];
     if (pandPrijs(p.prijs)) feiten.push('<span class="pd-feit pd-feit--prijs">' + pandEsc(pandPrijs(p.prijs)) + '</span>');
-    if (p.slaapkamers) feiten.push('<span class="pd-feit">' + p.slaapkamers + ' slk</span>');
-    if (p.oppervlakte) feiten.push('<span class="pd-feit">' + p.oppervlakte + ' m\u00B2</span>');
-    if (p.epc) feiten.push('<span class="pd-feit">EPC ' + pandEsc(p.epc) + '</span>');
+    if (isDealer()) {
+      /* Wat een koper als eerste wil weten, in die volgorde. Niet alles wat we
+         hebben -- een kaart die alles toont, toont niets. */
+      if (p.km || p.km === 0) feiten.push('<span class="pd-feit">' + Math.round(p.km).toLocaleString('nl-BE') + ' km</span>');
+      if (p.inschrijving)     feiten.push('<span class="pd-feit">' + pandEsc(p.inschrijving) + '</span>');
+      if (p.pk)               feiten.push('<span class="pd-feit">' + p.pk + ' pk</span>');
+      if (p.brandstof)        feiten.push('<span class="pd-feit">' + pandEsc(p.brandstof) + '</span>');
+      /* Een auto met een eigen kortingsregel is een auto waar iets bijzonders
+         mee is. Dat hoort de dealer te zien zonder hem open te klikken. */
+      if (p.maxKorting)       feiten.push('<span class="pd-feit" title="Eigen kortingsregel op dit voertuig">korting tot ' + pandEsc(pandPrijs(p.maxKorting)) + '</span>');
+    } else {
+      if (p.slaapkamers) feiten.push('<span class="pd-feit">' + p.slaapkamers + ' slk</span>');
+      if (p.oppervlakte) feiten.push('<span class="pd-feit">' + p.oppervlakte + ' m\u00B2</span>');
+      if (p.epc) feiten.push('<span class="pd-feit">EPC ' + pandEsc(p.epc) + '</span>');
+    }
 
     var aantal = perPand[(p.code || '').toUpperCase()] || 0;
     var foto = (p.fotos && p.fotos[0]) ? p.fotos[0] : '';
 
     return '<div class="pd-card' + (p.gearchiveerd ? ' pd-card--archived' : '') + '">'
       + (foto
-          ? '<img class="pd-card-foto" src="' + pandEsc(foto) + '" alt="' + pandEsc(p.adres) + '" onerror="this.style.display=&quot;none&quot;">'
+          ? '<img class="pd-card-foto" src="' + pandEsc(foto) + '" alt="' + pandEsc(pandTitel(p)) + '" onerror="this.style.display=&quot;none&quot;">'
           : '<div class="pd-card-foto-leeg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>')
       + '<div class="pd-card-body">'
       +   '<div class="pd-card-top">'
-      +     '<div><div class="pd-card-adres">' + pandEsc(p.adres || 'Zonder adres') + '</div>'
-      +     (p.plaats || p.postcode ? '<div class="pd-card-plaats">' + pandEsc([p.postcode, p.plaats].filter(Boolean).join(' ')) + '</div>' : '')
+      +     '<div><div class="pd-card-adres">' + pandEsc(pandTitel(p)) + '</div>'
+      +     (pandOnder(p) ? '<div class="pd-card-plaats">' + pandEsc(pandOnder(p)) + '</div>' : '')
       +     '</div>'
       +     '<span class="pd-card-code">' + pandEsc(p.code) + '</span>'
       +   '</div>'
@@ -23167,8 +23396,74 @@ function openPandModal(code) {
   var pand = code ? pandState.panden.filter(function (p) { return p.code === code; })[0] : null;
   pandState.bewerkt = pand || null;
 
-  document.getElementById('pd-modal-title').textContent = pand ? ('Pand ' + pand.code) : 'Pand toevoegen';
+  document.getElementById('pd-modal-title').textContent = pand
+    ? (vw('Een') + ' ' + pand.code)
+    : (vw('Een') + ' toevoegen');
   var zet = function (id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
+
+  /* Welke helft van het formulier zichtbaar is. hidden en niet display:none,
+     zodat een verborgen veld ook echt uit de tabvolgorde valt -- anders tabt
+     een dealer door negen onzichtbare pandvelden. */
+  var vastBlok = document.getElementById('pd-vast');
+  var dealBlok = document.getElementById('pd-deal');
+  if (vastBlok) vastBlok.hidden = isDealer();
+  if (dealBlok) dealBlok.hidden = !isDealer();
+
+  /* De importbalk leest een IMMO-zoekertje uit en vult het pandformulier. Voor
+     een dealer bestaat die weg niet: zijn voorraad komt uit zijn eigen systeem
+     of hij typt hem in. Een knop tonen die niets kan doen is erger dan geen
+     knop -- iemand probeert hem, krijgt een fout, en vertrouwt de rest minder. */
+  var imp = document.getElementById('pd-import');
+  if (imp) imp.hidden = isDealer();
+
+  /* De statushint noemt een bezichtiging of een proefrit. Zelfde zin, ander
+     woord -- en die woorden staan op een plek (vw), niet verspreid. */
+  var statusEl2 = document.getElementById('pd-f-status');
+  var hintEl = statusEl2 && statusEl2.parentElement
+    ? statusEl2.parentElement.querySelector('.pd-hint') : null;
+  if (hintEl) {
+    hintEl.textContent = 'Verkocht of uit aanbod? Dan plant je assistent er geen '
+      + vw('afspraak') + ' meer voor in.';
+  }
+
+  /* De statuskeuzes verschillen. Opnieuw opbouwen in plaats van twee <select>
+     naast elkaar: de waarde wordt hieronder toch gezet, en twee selects met
+     hetzelfde doel is precies hoe er ooit eentje wordt vergeten. */
+  var statusEl = document.getElementById('pd-f-status');
+  if (statusEl) {
+    var keuzes = isDealer()
+      ? ['beschikbaar', 'gereserveerd', 'verkocht', 'uit aanbod']
+      : ['beschikbaar', 'onder bod', 'verkocht', 'verhuurd', 'uit aanbod'];
+    statusEl.innerHTML = keuzes.map(function (k) {
+      return '<option value="' + k + '">' + k + '</option>';
+    }).join('');
+  }
+
+  if (isDealer()) {
+    zet('pd-f-merk',        pand ? pand.merk : '');
+    zet('pd-f-model',       pand ? pand.model : '');
+    zet('pd-f-uitvoering',  pand ? pand.uitvoering : '');
+    zet('pd-f-km',          pand && pand.km != null ? pand.km : '');
+    zet('pd-f-inschrijving',pand ? pand.inschrijving : '');
+    zet('pd-f-brandstof',   pand && pand.brandstof ? pand.brandstof : 'benzine');
+    zet('pd-f-transmissie', pand && pand.transmissie ? pand.transmissie : 'automaat');
+    zet('pd-f-kw',          pand && pand.kw != null ? pand.kw : '');
+    zet('pd-f-carrosserie', pand ? pand.carrosserie : '');
+    zet('pd-f-kleur',       pand ? pand.kleur : '');
+    zet('pd-f-adlink',      pand ? pand.link : '');
+    zet('pd-f-maxkorting',  pand && pand.maxKorting != null ? pand.maxKorting : '');
+    zet('pd-f-farokorting', pand && pand.faroKorting != null ? pand.faroKorting : '');
+    /* Wat er gebeurt als je die velden leeg laat, in gewone woorden en met
+       jouw eigen getallen erin. Een hint die "de standaard geldt" zegt zonder
+       te tonen WAT die standaard is, laat je alsnog gaan zoeken. */
+    var hint = document.getElementById('pd-f-korting-hint');
+    if (hint) {
+      hint.textContent = hvKorting.max > 0
+        ? ('Leeg = je standaard: Faro mag zelf tot ' + pandPrijs(hvKorting.faro)
+           + ', daarboven tot ' + pandPrijs(hvKorting.max) + ' beslis jij.')
+        : 'Je hebt nog geen kortingsruimte ingesteld, dus Faro geeft niets weg. Stel dat in bij Instellingen.';
+    }
+  }
   zet('pd-f-code',        pand ? pand.code : '');
   zet('pd-f-status',      pand ? pand.status : 'beschikbaar');
   zet('pd-f-adres',       pand ? pand.adres : '');
@@ -23195,7 +23490,9 @@ function openPandModal(code) {
   document.getElementById('pd-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   setTimeout(function () {
-    var el = document.getElementById(pand ? 'pd-f-adres' : 'pd-f-adres');
+    /* Het eerste veld dat er toe doet. Voor een dealer bestaat pd-f-adres
+       niet eens meer in beeld, dus daar focussen zou de cursor nergens zetten. */
+    var el = document.getElementById(isDealer() ? 'pd-f-merk' : 'pd-f-adres');
     if (el) el.focus();
   }, 60);
 }
@@ -23211,6 +23508,65 @@ async function savePand() {
   var getal = function (id) { var v = lees(id); return v === '' ? null : Number(v); };
   var fout = document.getElementById('pd-modal-err');
   var btn  = document.getElementById('pd-save-btn');
+
+  /* ── Dealership ──────────────────────────────────────────────────────────
+     Aparte tak en niet een payload met alle velden van allebei: die zou bij
+     een pand negen lege voertuigvelden meesturen en omgekeerd, en dan staat er
+     in Airtable een record dat half het ene en half het andere is. */
+  if (isDealer()) {
+    var merk  = lees('pd-f-merk');
+    var model = lees('pd-f-model');
+    if (!merk || !model) {
+      fout.style.display = '';
+      fout.textContent = 'Vul minstens een merk en een model in.';
+      return;
+    }
+    var vPayload = {
+      code:         lees('pd-f-code'),
+      status:       lees('pd-f-status'),
+      merk:         merk,
+      model:        model,
+      uitvoering:   lees('pd-f-uitvoering'),
+      prijs:        getal('pd-f-prijs'),
+      km:           getal('pd-f-km'),
+      inschrijving: lees('pd-f-inschrijving'),
+      brandstof:    lees('pd-f-brandstof'),
+      transmissie:  lees('pd-f-transmissie'),
+      kw:           getal('pd-f-kw'),
+      carrosserie:  lees('pd-f-carrosserie'),
+      kleur:        lees('pd-f-kleur'),
+      link:         lees('pd-f-adlink'),
+      maxKorting:   getal('pd-f-maxkorting'),
+      faroKorting:  getal('pd-f-farokorting'),
+      omschrijving: lees('pd-f-omschrijving'),
+      fotos:        lees('pd-f-fotos').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean),
+      publiek:      document.getElementById('pd-f-publiek').checked
+    };
+    btn.disabled = true; btn.textContent = 'Bezig...';
+    try {
+      var vr = await fetch(API_BASE + '/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+        body: JSON.stringify({ mode: 'vehicle-save', vehicle: vPayload })
+      });
+      var vd = await vr.json().catch(function () { return {}; });
+      if (!vr.ok) {
+        fout.style.display = '';
+        fout.textContent = vd.error || 'Opslaan mislukt.';
+        return;
+      }
+      var wasBewerkt = !!pandState.bewerkt;
+      closePandModal();
+      toast(wasBewerkt ? 'Voertuig bijgewerkt' : 'Voertuig toegevoegd', 'success');
+      await loadPanden(true);
+    } catch (e) {
+      fout.style.display = '';
+      fout.textContent = 'Opslaan mislukt. Controleer je verbinding.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Opslaan';
+    }
+    return;
+  }
 
   var adres = lees('pd-f-adres');
   if (!adres) {
@@ -23263,15 +23619,15 @@ async function savePand() {
 async function archivePand(code, archiveren) {
   /* Archiveren, niet verwijderen: aan een pand hangen leads en afspraken, en
      die mogen niet naar niets gaan wijzen. */
-  if (archiveren && !confirm('Dit pand uit je aanbod halen? De leads en afspraken blijven bewaard.')) return;
+  if (archiveren && !confirm('Dit ' + vw('een') + ' uit je aanbod halen? De leads en afspraken blijven bewaard.')) return;
   try {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'listing-archive', code: code, archived: archiveren })
+      body: JSON.stringify({ mode: isDealer() ? 'vehicle-archive' : 'listing-archive', code: code, archived: archiveren })
     });
     if (!r.ok) { toast(tr('tst.archiverenMislukt'), 'error'); return; }
-    toast(archiveren ? 'Pand gearchiveerd' : 'Pand teruggezet', 'success');
+    toast(vw('Een') + (archiveren ? ' gearchiveerd' : ' teruggezet'), 'success');
     await loadPanden();
   } catch (e) {
     toast(tr('tst.archiverenMislukt'), 'error');
