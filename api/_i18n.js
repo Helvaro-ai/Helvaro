@@ -855,6 +855,26 @@ const TEKST = {
   /* De pipeline met nul leads. Er stond vijf keer "Geen leads" naast elkaar --
      een muur van niets op het scherm waar een nieuwe klant kijkt of het werkt.
      Nu een bericht dat zegt wat er komt te staan en waar het vandaan komt. */
+  /* De groepen in de zijbalk. 'settings' bestond al en dekte vier heel
+     verschillende dingen; die is gesplitst in INRICHTEN (hoe het zich
+     gedraagt) en ACCOUNT (wat je betaalt). */
+  /* De slotstap en de koppelingenstap van de wizard, voor een dealer.
+     Zie de opmerkingen in api/dashboard.js voor waarom die anders moeten zijn:
+     zijn leads komen van AutoScout24, dus de formulierlink is niet zijn eerste
+     stap, en er is geen sjabloon nodig omdat de KOPER het gesprek begint. */
+  'wiz.klaar.dealer':    { nl: 'Zet nu je eerste wagen in je voorraad \u2014 plak de link van je AutoScout24-advertentie en de fiche vult zichzelf. Vanaf dan koppelt Helvaro elk binnenkomend WhatsApp-bericht automatisch aan de juiste auto.',
+                           fr: 'Ajoutez maintenant votre premier v\u00e9hicule \u2014 collez le lien de votre annonce AutoScout24 et la fiche se remplit. D\u00e8s lors, Helvaro relie automatiquement chaque message WhatsApp au bon v\u00e9hicule.',
+                           en: 'Now add your first vehicle \u2014 paste your AutoScout24 listing link and the record fills itself. From then on Helvaro links every incoming WhatsApp message to the right car.',
+                           de: 'F\u00fcgen Sie jetzt Ihr erstes Fahrzeug hinzu \u2014 f\u00fcgen Sie den Link Ihrer AutoScout24-Anzeige ein und der Datensatz f\u00fcllt sich selbst. Ab dann verkn\u00fcpft Helvaro jede eingehende WhatsApp-Nachricht mit dem richtigen Fahrzeug.' },
+  'wiz.wa.dealer':       { nl: 'Je kopers beginnen het gesprek zelf, vanaf je AutoScout24-advertentie. Daardoor is er geen goedgekeurd sjabloon nodig en kost het gesprek je niets aan berichtkosten.',
+                           fr: 'Vos acheteurs d\u00e9marrent eux-m\u00eames la conversation depuis votre annonce AutoScout24. Aucun mod\u00e8le approuv\u00e9 n\u2019est donc n\u00e9cessaire et la conversation ne vous co\u00fbte rien en frais de message.',
+                           en: 'Your buyers start the conversation themselves, from your AutoScout24 listing. That means no approved template is needed and the conversation costs you nothing in message fees.',
+                           de: 'Ihre K\u00e4ufer starten das Gespr\u00e4ch selbst \u00fcber Ihre AutoScout24-Anzeige. Dadurch ist keine genehmigte Vorlage n\u00f6tig und das Gespr\u00e4ch kostet Sie keine Nachrichtengeb\u00fchren.' },
+  'wiz.wa.dealer.badge': { nl: 'Niets in te stellen', fr: 'Rien \u00e0 configurer', en: 'Nothing to set up', de: 'Nichts einzurichten' },
+
+  'nav.group.setup':     { nl: 'INRICHTEN', fr: 'CONFIGURER', en: 'SET UP',  de: 'EINRICHTEN' },
+  'nav.group.account':   { nl: 'ACCOUNT',   fr: 'COMPTE',     en: 'ACCOUNT', de: 'KONTO' },
+
   'pipe.leeg.titel':     { nl: 'Je pipeline is nog leeg',
                            fr: 'Votre pipeline est encore vide',
                            en: 'Your pipeline is still empty',

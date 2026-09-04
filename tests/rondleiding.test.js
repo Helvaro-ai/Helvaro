@@ -181,5 +181,79 @@ console.log('\n  de lege pipeline zegt EEN ding, niet vijf keer niets');
     i18n.t('fr', 'pipe.leeg.titel') !== i18n.t('nl', 'pipe.leeg.titel'));
 }
 
+console.log('\n  de zijbalk groepeert op wat iemand zoekt');
+{
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const i = dash.indexOf('nav.group.work');
+  const nav = dash.slice(i - 300, dash.indexOf('</nav>', i));
+  const groepen = {};
+  let huidig = null;
+  const re = /(nav-group-label[^>]*>\$\{T\('([a-z.]+)'\)\}|data-page="([a-z0-9-]+)")/g;
+  let m;
+  while ((m = re.exec(nav)) !== null) {
+    if (m[2]) { huidig = m[2].split('.').pop(); groepen[huidig] = []; }
+    else if (huidig) groepen[huidig].push(m[3]);
+  }
+
+  ck('er zijn vier groepen', Object.keys(groepen).length === 4, Object.keys(groepen));
+
+  /* AI-beeld stond onder INZICHT. Het MAAKT beelden; het vertelt je niets over
+     wat er gebeurd is. Wie zocht naar "waar zie ik hoe het gaat" kwam een
+     generator tegen, en wie een beeld wilde maken zocht hem niet onder inzicht. */
+  ck('ai-beeld staat niet meer bij inzicht', (groepen.insight || []).indexOf('ai-beeld') === -1, groepen.insight);
+  ck('maar bij inrichten', (groepen.setup || []).indexOf('ai-beeld') !== -1, groepen.setup);
+
+  /* Facturatie gaat over je ACCOUNT, niet over hoe het product zich gedraagt.
+     Dat verschil is precies wat iemand zoekt die zijn factuur wil. */
+  ck('facturatie heeft een eigen groep', (groepen.account || []).indexOf('facturatie') !== -1, groepen.account);
+  ck('en instellingen niet', (groepen.account || []).indexOf('instellingen') === -1, groepen.account);
+  ck('instellingen hoort bij inrichten', (groepen.setup || []).indexOf('instellingen') !== -1, groepen.setup);
+
+  ck('het dagelijkse werk blijft bij elkaar',
+    ['dashboard', 'pipeline', 'gesprekken', 'panden', 'kalender'].every((x) => (groepen.work || []).indexOf(x) !== -1),
+    groepen.work);
+  ck('geen enkel item is verdwenen',
+    Object.values(groepen).flat().length === 14, Object.values(groepen).flat().length);
+
+  const i18n = require('../api/_i18n');
+  for (const k of ['nav.group.setup', 'nav.group.account']) {
+    ck(k + ' in vier talen',
+      ['nl', 'fr', 'en', 'de'].every((t) => i18n.t(t, k) && i18n.t(t, k) !== k));
+    ck(k + ' is echt vertaald',
+      i18n.t('fr', k) !== i18n.t('nl', k), { nl: i18n.t('nl', k), fr: i18n.t('fr', k) });
+  }
+}
+
+console.log('\n  de onboarding zegt tegen een dealer iets anders');
+{
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  /* Een dealer die te horen krijgt "deel deze link onder je advertenties" doet
+     daar niets mee: zijn leads komen van AutoScout24, waar de link al bestaat.
+     En hij hoeft niet op een goedgekeurd sjabloon te wachten, want de KOPER
+     begint het gesprek -- dan is het 24-uursvenster open. */
+  ck('de slotstap kijkt naar de vertical', /var dealer = \(typeof isDealer/.test(dash));
+  ck('en heeft een eigen tekst', /tr\('wiz\.klaar\.dealer'\)/.test(dash));
+  ck('de koppelingenstap ook', /tr\('wiz\.wa\.dealer'\)/.test(dash));
+  ck('en slaat de sjabloon-controle over voor een dealer',
+    /isDealer\(\)\) \{[\s\S]{0,400}wiz\.wa\.dealer[\s\S]{0,300}\} else \{[\s\S]{0,80}wizardWhatsAppStatus/.test(dash));
+
+  const i18n = require('../api/_i18n');
+  for (const k of ['wiz.klaar.dealer', 'wiz.wa.dealer', 'wiz.wa.dealer.badge']) {
+    ck(k + ' in vier talen',
+      ['nl', 'fr', 'en', 'de'].every((t) => i18n.t(t, k) && i18n.t(t, k) !== k));
+    /* Bestaan is niet genoeg. Een sleutel waar in alle vier de talen dezelfde
+       Nederlandse zin staat, komt door een bestaanscontrole heen en laat een
+       Waalse dealer alsnog Nederlands lezen -- en dat is precies het soort
+       'vertaald' dat niemand opmerkt tot een klant het meldt. */
+    ck(k + ' is echt vertaald, niet gekopieerd',
+      i18n.t('fr', k) !== i18n.t('nl', k) && i18n.t('de', k) !== i18n.t('nl', k),
+      { nl: i18n.t('nl', k).slice(0, 40), fr: i18n.t('fr', k).slice(0, 40) });
+  }
+  /* De makelaarstekst mag NIET verdwenen zijn -- dit is een tak erbij, geen
+     vervanging. */
+  ck('de makelaarstekst bestaat nog', i18n.t('nl', 'wiz.klaar.gcal').length > 10);
+  ck('en wizardWhatsAppStatus wordt nog aangeroepen', /wizardWhatsAppStatus\(\);/.test(dash));
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

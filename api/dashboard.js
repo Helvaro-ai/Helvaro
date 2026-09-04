@@ -9732,13 +9732,25 @@ ${faro.navCta}
            ENABLED — so with Faro off the CRM keeps its full navigation and this
            paid feature stays reachable. Delete this button only once Faro is
            permanently on and the page's compare/PDF tools have been ported. -->
-      <button class="nav-item" data-page="ai-beeld" id="nav-ai-beeld">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
-        AI-beeld
-      </button>
 
       <!-- ── Setup (zelden) ── -->
-      <div class="nav-group-label" aria-hidden="true">${T('nav.group.settings')}</div>
+      <!-- Drie wijzigingen aan de indeling, elk met dezelfde toets: zou iemand
+           die dit zoekt HIER kijken?
+
+           AI-beeld stond onder INZICHT. Het maakt beelden; het vertelt je
+           niets over wat er gebeurd is. Wie zocht naar "waar zie ik hoe het
+           gaat" kwam een generator tegen, en wie een beeld wilde maken zocht
+           hem niet onder inzicht. Nu bij de andere dingen die je INRICHT.
+
+           Facturatie stond ook onder instellen. Je abonnement en je credits
+           gaan over je ACCOUNT, niet over hoe het product zich gedraagt --
+           en dat verschil is precies wat iemand zoekt die zijn factuur wil.
+
+           En het label: "INSTELLEN" dekte formulier, persoonlijkheid,
+           facturatie en instellingen. Nu heet het INRICHTEN en gaat het over
+           een ding: hoe je assistent zich gedraagt en waar je leads
+           binnenkomen. -->
+      <div class="nav-group-label" aria-hidden="true">${T('nav.group.setup')}</div>
       <button class="nav-item" data-page="formulier" id="nav-formulier">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9"  x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="12" y2="17"/></svg></span>
         ${T('nav.form')}
@@ -9747,13 +9759,18 @@ ${faro.navCta}
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></span>
         ${T('nav.persona')}
       </button>
-      <button class="nav-item" data-page="facturatie" id="nav-facturatie">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
-        ${T('nav.billing')}
+      <button class="nav-item" data-page="ai-beeld" id="nav-ai-beeld">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+        AI-beeld
       </button>
       <button class="nav-item" data-page="instellingen" id="nav-instellingen">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         ${T('nav.settings')}
+      </button>
+      <div class="nav-group-label" aria-hidden="true">${T('nav.group.account')}</div>
+      <button class="nav-item" data-page="facturatie" id="nav-facturatie">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+        ${T('nav.billing')}
       </button>
 
       <!-- ── Admin-only ──────────────────────────────────────────────────
@@ -20127,7 +20144,23 @@ function wizardTeken() {
       +   '<button id="wiz-gcal-knop" type="button" style="' + KNOP + ';margin-top:10px;display:none"></button>'
       + '</div>';
 
-    wizardWhatsAppStatus();
+    /* De uitleg bij WhatsApp verschilt wezenlijk per markt, en niet
+       cosmetisch. Voor een makelaar moet er een goedgekeurd sjabloon zijn: hij
+       begint het gesprek, want zijn lead vulde een formulier in en heeft hem
+       nooit geschreven. Voor een dealer klikt de KOPER op WhatsApp vanaf
+       AutoScout24 -- dan is het 24-uursvenster open en is er geen sjabloon
+       nodig, en gratis bovendien.
+
+       Een dealer die hier leest dat hij op goedkeuring van Meta moet wachten,
+       wacht op iets dat hem niet tegenhoudt. */
+    if ((typeof isDealer === 'function') && isDealer()) {
+      var waUit = document.getElementById('wiz-wa-uitleg');
+      var waBadge = document.getElementById('wiz-wa-badge');
+      if (waUit)   waUit.textContent = tr('wiz.wa.dealer');
+      if (waBadge) waBadge.textContent = tr('wiz.wa.dealer.badge');
+    } else {
+      wizardWhatsAppStatus();
+    }
     wizardAgendaStatus();
     return;
   }
@@ -20137,11 +20170,22 @@ function wizardTeken() {
   sub.textContent = tr('wiz.klaar.s');
   var link = '';
   try { link = getFormUrl(); } catch (e) { link = ''; }
+  /* De eerste stap NA de wizard, en die verschilt per markt. Een dealer die te
+     horen krijgt "deel deze link onder je advertenties" doet daar niets mee:
+     zijn leads komen van AutoScout24, waar de link al bestaat. Hij moet zijn
+     voorraad erin zetten -- dat is wat een binnenkomend bericht aan een auto
+     koppelt.
+
+     Eén zin verschil, en het is het verschil tussen een klant die weet wat hij
+     moet doen en een die het scherm sluit. */
+  var dealer = (typeof isDealer === 'function') && isDealer();
+  var volgende = dealer ? tr('wiz.klaar.dealer') : tr('wiz.klaar.gcal');
+
   body.innerHTML =
       '<div style="user-select:all;-webkit-user-select:all;word-break:break-all;padding:11px 12px;margin:0 0 14px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13px;color:var(--text,#E9EEF6)">'
     + (link ? escHtml(link) : escHtml(tr('wiz.klaar.link'))) + '</div>'
     + '<p style="margin:0;font-size:13px;line-height:1.7;color:var(--text-muted,#999)">'
-    + escHtml(tr('wiz.klaar.gcal')) + '</p>';
+    + escHtml(volgende) + '</p>';
 }
 
 /* Twee kolommen, zoals een opzetscherm hoort te werken.
