@@ -2067,6 +2067,23 @@ button.brand-dot { border: none; padding: 0; }
 #clerk-signin .cl-footerAction__signIn,
 #clerk-signin .cl-footerAction__signUp { display: none !important; }
 
+/* De "Secured by Clerk"-balk.
+
+   Die stond als grijze strook PAL onder de hoofdknop -- het laatste wat iemand
+   leest voor hij besluit een account te maken. Een merk dat niet van jou is,
+   op de plek waar het vertrouwen wordt opgebouwd, en met een grijze vulling
+   die de knop erboven visueel afsnijdt.
+
+   Weghalen is toegestaan op een betaald Clerk-plan; op het gratis plan hoort
+   het te blijven staan. Staat dit er ooit weer, dan is dat de reden -- en dan
+   is het weghalen ervan geen ontwerpkeuze meer maar een licentiekwestie.
+
+   Dezelfde aanpak als de footerAction hierboven: Clerks eigen stabiele
+   cl-klassen, niet gokken naar appearance-sleutels. */
+#clerk-signin .cl-footer,
+#clerk-signin .cl-internal-uyu30o,
+#clerk-signin [class*="cl-footer"]:not([class*="cl-footerAction"]) { display: none !important; }
+
 /* ═══ Clerk in Helvaro's vormentaal ═══════════════════════════════════════
    Clerk levert het formulier; wij leveren het paneel. Tot nu toe waren dat
    twee ontwerpen boven elkaar: een witte kaart met een eigen rand en schaduw,
@@ -9305,17 +9322,28 @@ ${_intro.css()}
           <a class="login-link" href="/forgot-password">${T('login.forgot')}</a>
         </div>
 
+        </div><!-- /login-form-wrap -->
+
         <!-- Wat een bezoeker wil weten voordat hij zijn e-mailadres achterlaat.
              Alle drie waar: de proef is 14 dagen (api/_clerk.js), er wordt geen
              kaart gevraagd voor de proef, en Stripe-abonnementen lopen per maand
              (api/_stripe.js, interval: month). Staat hier niets dat we niet
-             waarmaken. -->
+             waarmaken.
+
+             BUITEN login-form-wrap, en dat is geen opmaakdetail. Dat blok gaat
+             op display:none zodra Clerk het overneemt (#login-page.clerk-wacht),
+             en nam deze drie regels mee -- dus op het ECHTE inlogscherm was er
+             geen enkel bewijs te zien, precies op het moment dat iemand besluit
+             of hij zijn e-mailadres achterlaat. Nagemeten in de browser: de ul
+             was 0 bij 0 pixels.
+
+             Ze horen ook inhoudelijk bij het paneel en niet bij het formulier:
+             ze gaan over het product, niet over het invullen. -->
         <ul class="login-trust" aria-label="${T('login.trust.label')}">
           <li>${T('login.trust.1')}</li>
           <li>${T('login.trust.2')}</li>
           <li>${T('login.trust.3')}</li>
         </ul>
-        </div><!-- /login-form-wrap -->
 
         <!-- Wat er staat terwijl Clerk onderweg is. Geen tekst als "even
              geduld" -- de vorm van het formulier dat zo komt, zodat het scherm
