@@ -10,6 +10,7 @@ const _ai     = require('./_ai');      // AI-router: modelkeuze, fallback, verbr
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
+const _vehicles  = require('./_vehicles');   // de voorraad van een dealer
 const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
 const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
@@ -2249,6 +2250,75 @@ module.exports = async function handler(req, res) {
         console.error('[listing-archive]', err && err.code, err && err.message);
         if (err && err.code === 'not_found') return res.status(404).json({ error: 'Pand niet gevonden.' });
         return res.status(500).json({ error: 'Het pand kon niet gearchiveerd worden.' });
+      }
+    }
+
+    /* ── Voertuigen ──────────────────────────────────────────────────────────
+       De spiegel van de listing-modes hierboven, voor de dealership-vertical.
+       Zelfde vorm en met opzet: twee bedieningen die er anders uitzien voor
+       hetzelfde probleem worden twee bedieningen die anders kapot gaan.
+
+       Modes en geen nieuwe routes, om dezelfde reden als al het andere hier:
+       Vercel Hobby staat twaalf functies toe en die zijn op. Ze hergebruiken de
+       tenantbepaling, de sessiecontrole en de CSRF-poort die hierboven al
+       gedaan zijn.
+
+       GEEN vertical-poort op deze modes, en dat is een keuze. Een makelaar die
+       vehicle-list aanroept krijgt een lege lijst -- hij heeft namelijk geen
+       voertuigen -- en dat is het juiste antwoord. Een 403 zou suggereren dat
+       er iets te zien valt dat hij niet mag zien, en dat is niet zo. De
+       tenantfilter doet het echte werk: hij krijgt nooit de voorraad van een
+       ander te zien, ongeacht welke vertical hij is. */
+    if (body.mode === 'vehicle-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const autos = await _vehicles.list(projectCode, {
+          inclusiefGearchiveerd: body.includeArchived === true,
+        });
+        /* beschikbaar meesturen zodat de UI het verschil kan tonen tussen
+           "geen voertuigen ingevoerd" en "de tabel bestaat nog niet". Dat zijn
+           twee heel verschillende boodschappen voor de klant. */
+        /* GEEN vertical in dit antwoord. Ik had hem er eerst in staan, maar het
+           klantrecord is op dit punt niet in scope -- `client` bestaat hier
+           niet, en die regel zou een ReferenceError geven die node --check niet
+           vangt en die pas in productie zichtbaar wordt.
+           Hem alsnog ophalen zou een Airtable-rondje kosten op ELKE lijst-
+           oproep, om iets te herhalen dat het dashboard bij het opstarten al
+           weet. Welke vertical dit is hoort daar thuis, niet hier. */
+        return res.status(200).json({ vehicles: autos, available: await _vehicles.available() });
+      } catch (err) {
+        console.error('[vehicle-list]', err && err.code, err && err.message);
+        return res.status(500).json({ error: 'Voertuigen konden niet opgehaald worden.' });
+      }
+    }
+
+    if (body.mode === 'vehicle-save') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const auto = await _vehicles.save(projectCode, body.vehicle || {});
+        return res.status(200).json({ vehicle: auto });
+      } catch (err) {
+        console.error('[vehicle-save]', err && err.code, err && err.message);
+        /* De reden telt: "die code bestaat al" lost de dealer zelf op, "de
+           tabel bestaat niet" nooit. */
+        const klantfouten = ['duplicate_code', 'bad_code', 'not_found'];
+        const code = err && err.code;
+        if (code === 'not_found')  return res.status(404).json({ error: 'Voertuig niet gevonden.', code });
+        if (klantfouten.indexOf(code) !== -1) return res.status(400).json({ error: err.message, code });
+        if (code === 'no_table')   return res.status(503).json({ error: err.message, code });
+        return res.status(500).json({ error: 'Het voertuig kon niet opgeslagen worden.' });
+      }
+    }
+
+    if (body.mode === 'vehicle-archive') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const auto = await _vehicles.archive(projectCode, body.code, body.archived !== false);
+        return res.status(200).json({ vehicle: auto });
+      } catch (err) {
+        console.error('[vehicle-archive]', err && err.code, err && err.message);
+        if (err && err.code === 'not_found') return res.status(404).json({ error: 'Voertuig niet gevonden.' });
+        return res.status(500).json({ error: 'Het voertuig kon niet gearchiveerd worden.' });
       }
     }
 
