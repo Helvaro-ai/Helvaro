@@ -187,7 +187,32 @@ const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${T('head.title')}</title>
 <link rel="icon" href="/favicon.png" type="image/png">
-<script src="/vendor/chart.umd.min.js"></script>
+<!-- ── Wat het inlogscherm nodig heeft, en niets meer ────────────────────────
+     Hier stond Chart.js als GEWOON script. Een script zonder defer of async
+     stopt het parsen van de pagina tot het binnen is én uitgevoerd is. Op een
+     koude lading kostte dat de eerste vertoning: gemeten 4,68 s tot het eerste
+     pixel, terwijl de HTML zelf al na ~1 s klaar was. Op een inlogscherm zonder
+     enige grafiek.
+
+     Het staat nu in loadVendorsWhenIdle(), samen met jspdf en qrcode, en de
+     twee grafieken worden opnieuw getekend zodra hij er is. Alle aanroepers
+     controleerden al 'typeof Chart === undefined', dus er kan niets stukgaan
+     terwijl hij onderweg is -- die vangnetten stonden er, ze werden alleen
+     nooit gebruikt.
+
+     De lettertypes worden voorgeladen omdat de browser ze anders pas ontdekt
+     nadat hij de hele <style> hieronder gelezen heeft (gemeten: 476 ms).
+     font-display: swap staat er al, dus dit verschuift alleen het moment
+     waarop de juiste letter er staat. -->
+<link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+${CLERK_READY ? `<!-- Clerk tekent de inlogkaart, dus zolang die er niet is, is er geen
+     inlogscherm. Zijn script werd pas ontdekt door de JS onderaan de pagina
+     (gemeten: 479 ms), en pas daarna volgden /v1/environment en /v1/client.
+     preconnect legt de DNS- en TLS-handdruk alvast aan tijdens het parsen,
+     preload begint de download meteen. Dezelfde host als in de CSP. -->
+<link rel="preconnect" href="https://${CLERK_HOST}" crossorigin>
+<link rel="preload" href="https://${CLERK_HOST}/npm/@clerk/clerk-js@5/dist/clerk.browser.js" as="script" crossorigin>` : ''}
 ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>' : ''}
 <style>
 /* ============================================================
@@ -240,9 +265,19 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --bg-alt:        #0D0D0D;
   --card:          #232323;
   --card-elevated: #2A2A2A;
-  --border-c:      #262626;
-  --border-strong: #333333;
-  --divider:       #262626;
+  /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
+     ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
+     zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
+     dat alles vlak aanvoelde. Nu is het verschil zichtbaar zonder dat er een
+     lijn OM de kaart komt: het leest als een vouw, niet als een omtrek.
+     --divider blijft de zachtste, want een scheiding BINNEN een kaart hoort
+     minder te doen dan de kaartrand zelf.
+     Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
+     voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
+     hoe zoiets stilletjes scheef gaat. */
+  --border-c:      #333333;
+  --border-strong: #454545;
+  --divider:       #2A2A2A;
   --hover-c:       #1C1C1C;
 
   --accent-c:        #E8D7B1;   /* sand — fills, buttons, icons */
@@ -298,9 +333,21 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --radius-btn:  14px;
   --radius-card: 22px;
 
-  /* One easing for everything, the brand's own curve. Slow and subtle. */
+  /* Twee curves, en dat is nieuw: --ease-spring was LETTERLIJK hetzelfde
+     getal als --ease-out. Elke plek die om een veer vroeg kreeg dus dezelfde
+     vlakke afremming, en precies dat is wat een interface stroef laat
+     aanvoelen -- alles komt tot stilstand alsof het tegen een muur loopt.
+
+     --ease-out blijft ongemoeid: dat is de merkcurve, en die hoort onder alles
+     wat gewoon van kleur of positie verandert. --ease-spring krijgt nu een
+     echte overshoot: hij schiet een paar procent voorbij zijn eindpunt en valt
+     terug. Op iets dat OPKOMT -- een kaart, een paneel, een menu -- leest dat
+     als gewicht in plaats van als een animatie.
+
+     Bewust ingehouden (1.16 en niet 1.6): een dashboard waar iemand de hele
+     dag in werkt mag niet stuiteren. Je moet het voelen, niet zien. */
   --ease-out:    cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.16, 0.64, 1);
   --dur-fast:    140ms;
   --dur-base:    220ms;
   --dur-enter:   320ms;
@@ -310,11 +357,17 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   /* Soft and deep, never a hard drop. This is what makes a #232323 card read
      as raised on a #121212 page without changing either colour. */
   --elev-0: none;
-  --elev-1: 0 2px 8px rgba(0,0,0,.30), 0 8px 24px rgba(0,0,0,.24);
-  --elev-2: 0 4px 12px rgba(0,0,0,.34), 0 16px 40px rgba(0,0,0,.30);
-  --elev-3: 0 8px 20px rgba(0,0,0,.40), 0 32px 72px rgba(0,0,0,.38);
-  --shadow:      0 2px 8px rgba(0,0,0,.30), 0 12px 34px rgba(0,0,0,.26);
-  --shadow-card: 0 2px 8px rgba(0,0,0,.26), 0 10px 34px rgba(0,0,0,.22);
+  /* Drie lagen in plaats van twee, en de verste waaiert ruimer en lichter
+     uit. Een echte schaduw heeft een harde kern vlak onder het object en een
+     wolk die ver uitloopt; met twee lagen krijg je de kern wel en de wolk
+     niet, en dan lijkt een kaart op de pagina GEPLAKT in plaats van dat hij
+     erboven hangt. De totale donkerte blijft ongeveer gelijk -- ze is verdeeld
+     over meer afstand, niet opgeschroefd. */
+  --elev-1: 0 1px 2px rgba(0,0,0,.34), 0 4px 10px rgba(0,0,0,.22), 0 12px 32px rgba(0,0,0,.16);
+  --elev-2: 0 2px 4px rgba(0,0,0,.36), 0 8px 20px rgba(0,0,0,.26), 0 24px 56px rgba(0,0,0,.20);
+  --elev-3: 0 4px 8px rgba(0,0,0,.40), 0 16px 36px rgba(0,0,0,.32), 0 48px 96px rgba(0,0,0,.26);
+  --shadow:      0 1px 2px rgba(0,0,0,.34), 0 6px 16px rgba(0,0,0,.24), 0 18px 44px rgba(0,0,0,.18);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.30), 0 5px 14px rgba(0,0,0,.20), 0 16px 40px rgba(0,0,0,.15);
   --shadow-glow: none;
 
   /* 1px specular lip. On near-black surfaces a drop shadow alone barely
@@ -397,13 +450,33 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   /* Taken straight from helvaro.pro's own custom properties, so the app and
      the marketing site are the same product rather than two designs that
      happen to share a logo. */
-  --bg:            #FFFFFF;
-  --bg-alt:        #F7F7F7;
+  /* Hier zat de grootste vlakheid van het hele product: pagina wit, kaart
+     wit, verhoogde kaart ook wit. Drie lagen met exact dezelfde kleur, dus
+     alles moest komen van een randje van 1px -- en dan leest een dashboard
+     als een spreadsheet.
+
+     De pagina wordt nu een warme gebroken tint en de kaart blijft zuiver wit.
+     Dat is de omkering die het doet: niet de kaart donkerder maken (dan wordt
+     hij vies), maar de GROND eronder terugnemen, zodat wit weer iets
+     betekent. De verhoogde kaart blijft ook wit en onderscheidt zich met
+     hoogte in plaats van met kleur -- daar is --elev-2 voor.
+
+     Warm en niet neutraalgrijs, want het accent is zand. Een koele grijze
+     grond onder een zandgeel accent laat dat accent groezelig lijken; dat is
+     exact de fout die bovenaan dit bestand al beschreven staat.
+
+     Gemeten, niet gegokt. Wit-op-wit gaf een contrastverhouding van exact
+     1,000 -- wiskundig geen verschil, en dat is letterlijk waarom het vlak
+     leek. #FAF9F6 bracht dat op 1,053; deze grond zit op 1,108, ruim dubbel
+     zoveel scheiding, met een rood-blauwverschil van 10 punten zodat hij
+     hoorbaar warm is en niet grijs. Donkerder dan dit wordt beige. */
+  --bg:            #F6F3EC;
+  --bg-alt:        #EEE9DE;
   --card:          #FFFFFF;
   --card-elevated: #FFFFFF;
-  --border-c:      #E5E7EB;
-  --border-strong: #D1D5DB;
-  --divider:       #E5E7EB;
+  --border-c:      #E7E3DA;
+  --border-strong: #D6D0C2;
+  --divider:       #EDE9E0;
   --hover-c:       #FAFAF8;
 
   --accent-c:        #E8D7B1;   /* sand still fills, even on white */
@@ -476,12 +549,17 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --scrollbar-thumb: var(--border-strong);
 
   /* The site's own card shadow, verbatim. */
-  --shadow:        0 10px 34px rgba(17,24,39,0.08);
-  --shadow-card:   0 10px 34px rgba(17,24,39,0.08);
+  /* Ook hier drie lagen, en warm getint in plaats van blauwgrijs. Een schaduw
+     is licht dat wordt tegengehouden, dus hij hoort de kleur van de grond te
+     dragen -- rgba(17,24,39) is koel blauw en dat vecht met een zandaccent op
+     een warme grond. De kern is nieuw: op wit was er alleen een verre wolk,
+     dus een kaart had geen contactpunt met de pagina en zweefde stuurloos. */
+  --shadow:        0 1px 2px rgba(64,52,32,0.06), 0 4px 12px rgba(64,52,32,0.06), 0 16px 40px rgba(64,52,32,0.07);
+  --shadow-card:   0 1px 2px rgba(64,52,32,0.05), 0 3px 10px rgba(64,52,32,0.05), 0 14px 36px rgba(64,52,32,0.06);
   --shadow-glow:   none;
-  --elev-1: 0 4px 14px rgba(17,24,39,.06);
-  --elev-2: 0 10px 34px rgba(17,24,39,.08);
-  --elev-3: 0 24px 64px rgba(17,24,39,.12);
+  --elev-1: 0 1px 2px rgba(64,52,32,.05), 0 3px 10px rgba(64,52,32,.05), 0 12px 30px rgba(64,52,32,.05);
+  --elev-2: 0 1px 3px rgba(64,52,32,.06), 0 6px 18px rgba(64,52,32,.07), 0 22px 52px rgba(64,52,32,.08);
+  --elev-3: 0 2px 6px rgba(64,52,32,.08), 0 14px 34px rgba(64,52,32,.10), 0 44px 92px rgba(64,52,32,.12);
   /* A white highlight on a white card is nothing. */
   --edge-hi: none;
 
@@ -1180,9 +1258,19 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   --bg-alt:        #0D0D0D;
   --card:          #232323;
   --card-elevated: #2A2A2A;
-  --border-c:      #262626;
-  --border-strong: #333333;
-  --divider:       #262626;
+  /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
+     ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
+     zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
+     dat alles vlak aanvoelde. Nu is het verschil zichtbaar zonder dat er een
+     lijn OM de kaart komt: het leest als een vouw, niet als een omtrek.
+     --divider blijft de zachtste, want een scheiding BINNEN een kaart hoort
+     minder te doen dan de kaartrand zelf.
+     Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
+     voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
+     hoe zoiets stilletjes scheef gaat. */
+  --border-c:      #333333;
+  --border-strong: #454545;
+  --divider:       #2A2A2A;
   --hover-c:       #1C1C1C;
   --text-c:        #F9F9F9;
   --text-muted-c:  #B5B5B5;
@@ -8872,7 +8960,13 @@ ${_intro.css()}
     <div class="login-form-side">
       <div class="login-form-inner">
         <div class="login-logo-top">
-          <img src="/logo-ink.png" alt="Helvaro">
+          <!-- webp, en op 440px in plaats van 760px. De PNG was 103 kB voor een
+               plek van 206 bij 72 -- zesmaal zoveel pixels als er getoond
+               worden, op het scherm waar een nieuwe klant binnenkomt. De
+               afmetingen staan erbij zodat de regel niet verspringt zodra hij
+               binnen is. De PNG blijft staan: onboard.html en de mails
+               gebruiken hem ook. -->
+          <img src="/logo-ink.webp" alt="Helvaro" width="440" height="154" fetchpriority="high">
         </div>
 
         <h1 class="login-welcome">${T('login.welcome')}</h1>
@@ -9128,7 +9222,10 @@ ${_intro.markup()}
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <img src="/logo.png" alt="Helvaro">
+      <!-- Zelfde verhaal als het inkt-logo hierboven. Deze staat in de zijbalk,
+           achter het inlogscherm: hij wordt dus opgehaald door iemand die nog
+           niet eens ingelogd is. -->
+      <img src="/logo.webp" alt="Helvaro" width="440" height="154" loading="lazy">
     </div>
 
     <!-- FARO: the way in (api/_faro/ui/markup.js). Not a nav row -- see there. -->
@@ -25881,6 +25978,21 @@ function loadVendorsWhenIdle() {
   var go = function () {
     loadVendorScript('/vendor/qrcode.js');
     loadVendorScript('/vendor/jspdf.umd.min.js');
+    /* Chart.js stond als blokkerend script in de <head> -- zie de opmerking
+       daar. Hier hoort hij thuis: geen enkel scherm heeft hem nodig voordat de
+       pagina er staat.
+
+       De twee grafieken worden na afloop opnieuw getekend. Zonder dat blijven
+       ze leeg bij wie sneller inlogt dan de download: renderChart() en
+       renderBronChart() stappen er netjes uit als Chart nog niet bestaat, maar
+       niemand riep ze daarna nog eens aan. Ze zijn allebei idempotent (ze
+       vernietigen een bestaande grafiek voor ze tekenen), dus een extra
+       aanroep is gratis, en op het inlogscherm vinden ze geen canvas en doen
+       ze niets. */
+    loadVendorScript('/vendor/chart.umd.min.js').then(function (ok) {
+      if (!ok) return;
+      try { renderChart(); renderBronChart(); } catch (e) {}
+    });
   };
   if (typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(go, { timeout: 4000 });

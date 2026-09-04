@@ -53,14 +53,18 @@ function dock(t) {
            aria-live="polite" zodat een schermlezer hem meeneemt wanneer hij
            verschijnt, zonder de gebruiker te onderbreken. -->
       <div class="faro-dock__hint" id="faro-dock-hint" hidden aria-live="polite">
-        <img src="/faro/falcon-idle.webp" alt="" aria-hidden="true" width="22" height="22"
+        <!-- lazy: deze balk staat achter het inlogscherm en begint bovendien
+             op hidden. Zonder dit haalde elke bezoeker van de INLOGpagina hem
+             op -- ook wie nooit inlogt. Een display:none-ouder houdt een
+             <img src> namelijk niet tegen; loading="lazy" wel. -->
+        <img src="/faro/falcon-idle.webp" alt="" aria-hidden="true" width="22" height="22" loading="lazy"
              class="faro-dock__hintmark" id="faro-dock-hintmark">
         <span class="faro-dock__hinttext" id="faro-dock-hinttext"></span>
         <button type="button" class="faro-dock__hintclose" id="faro-dock-hintclose"
                 aria-label="${t('tip.sluit')}">&times;</button>
       </div>
       <div class="faro-dock__inner">
-        <span class="faro-dock__spark"><img src="/faro/faro-icon.webp" alt="" aria-hidden="true" width="18" height="18" class="faro-dock__mark"></span>
+        <span class="faro-dock__spark"><img src="/faro/faro-icon.webp" alt="" aria-hidden="true" width="18" height="18" loading="lazy" class="faro-dock__mark"></span>
         <input class="faro-dock__input" id="faro-dock-input" type="text"
                autocomplete="off" placeholder="${t('dock.placeholder')}"
                aria-label="${t('dock.placeholder')}">
