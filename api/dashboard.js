@@ -3799,14 +3799,59 @@ h1.page-title { margin: 0; font-weight: inherit; }
   white-space: nowrap;
 }
 
+/* ══ KNOPPEN ══════════════════════════════════════════════════════════════
+   Wat de referentiesets gemeen hebben, en wat hier ontbrak.
+
+   Vier dingen komen in alle vier de voorbeelden terug, en het zijn precies de
+   vier die een knop van "vlak vlak met tekst" naar "voorwerp" tillen:
+
+     1. RANDLICHT. Niet een rand van 1px in één kleur rondom, maar een lichte
+        bovenrand en een donkere onderrand. Dat is licht van boven, en het is
+        het goedkoopste signaal dat iets DIKTE heeft.
+     2. VERLOOP. Nooit vlak. Boven iets lichter dan onder.
+     3. GLOED IN DE EIGEN KLEUR. Geen neutrale drop shadow maar een bloem in de
+        kleur van de knop zelf, onder hem.
+     4. ECHTE STATEN. rust / zweef / druk / focus / uit, zichtbaar verschillend.
+
+   Wat hier NIET van overgenomen wordt is de neon. Die sets staan op paars-zwart
+   met verzadigde glow; Helvaro is zand op warm zwart en verkoopt vertrouwen,
+   geen spektakel. De MECHANIEK is hetzelfde, de sterkte niet: waar de
+   voorbeelden een gloed van 40% zetten, staat hier 14%.
+
+   Eén plek, want er zijn 134 knop-selectors in dit bestand. Deze drie tokens
+   voeden .btn-icon en zijn varianten, en dat is waar 75 van die selectors
+   uiteindelijk op uitkomen. */
+:root {
+  /* Licht van boven, schaduw van onder. Twee inset-lijnen, geen border. */
+  --btn-rim:  inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.24);
+  --btn-rim-accent: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.18);
+  /* De gloed. Twee lagen: een korte onder de knop en een wijdere eronder, want
+     één laag leest als een rand en niet als licht. */
+  --btn-glow: 0 2px 6px rgba(var(--accent-rgb),0.16), 0 8px 22px rgba(var(--accent-rgb),0.14);
+}
+[data-theme="light"] {
+  /* Op wit werkt hetzelfde principe andersom: de bovenrand is niet lichter dan
+     wit, dus daar draagt de ONDERrand het verschil. */
+  --btn-rim:  inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(64,52,32,0.10);
+  --btn-rim-accent: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(64,52,32,0.14);
+  --btn-glow: 0 2px 6px rgba(var(--accent-rgb),0.30), 0 8px 22px rgba(var(--accent-rgb),0.22);
+}
+
 .btn-icon {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  background: rgba(255,255,255,0.04);
+  /* Een echt verloop: boven lichter, onder donkerder. Hier stond een vlakke
+     rgba(255,255,255,0.04). */
+  background: linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.035) 55%, rgba(255,255,255,0.02) 100%);
   border: 1px solid rgba(255,255,255,0.07);
-  border-radius: var(--radius-sm);
+  box-shadow: var(--btn-rim);
+  /* Van --radius-sm (8px) naar --radius-btn (14px): de knopmaat uit het
+     ontwerpsysteem, die tot nu toe alleen op grote knoppen stond. De
+     referenties gebruiken allemaal een ruimere hoek, en 8px liet deze knoppen
+     als invoervelden lezen. */
+  border-radius: var(--radius-btn);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -3820,10 +3865,12 @@ h1.page-title { margin: 0; font-weight: inherit; }
 }
 
 .btn-icon:hover {
-  background: rgba(var(--accent-rgb),0.12);
-  border-color: rgba(var(--accent-rgb),0.25);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.17) 0%, rgba(var(--accent-rgb),0.11) 100%);
+  border-color: rgba(var(--accent-rgb),0.28);
   color: var(--accent-ink);
-  box-shadow: none;
+  /* Hier stond box-shadow:none -- de knop verloor bij het zweven juist zijn
+     diepte, precies andersom dan het hoort. Nu komt de gloed erbij. */
+  box-shadow: var(--btn-rim), var(--btn-glow);
   transform: translateY(-1px);
 }
 
@@ -4161,22 +4208,45 @@ h1.page-title { margin: 0; font-weight: inherit; }
 @keyframes modalIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: .9; } 50% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
 
+/* De primaire knop. Hier stond linear-gradient(135deg, X, X) -- twee keer
+   DEZELFDE kleur, dus een verloop dat geen verloop is. De syntaxis stond er,
+   het effect niet. Nu twee echte stops, van boven naar onder in plaats van
+   diagonaal: licht valt van boven, niet van linksboven. */
 .btn-primary-sm {
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb), 0.2));
-  border-color: var(--blue-primary);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.30) 0%, rgba(var(--accent-rgb),0.20) 55%, rgba(var(--accent-rgb),0.15) 100%);
+  border-color: rgba(var(--accent-rgb),0.42);
+  box-shadow: var(--btn-rim-accent), var(--btn-glow);
   color: var(--accent-ink);
 }
 
 .btn-primary-sm:hover {
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb), 0.35));
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.46) 0%, rgba(var(--accent-rgb),0.34) 55%, rgba(var(--accent-rgb),0.27) 100%);
+  border-color: rgba(var(--accent-rgb),0.58);
+  /* De gloed groeit bij het zweven; dat is het hele signaal dat hij aanklikbaar
+     is, en het kost geen kleurverandering die de tekst minder leesbaar maakt. */
+  box-shadow: var(--btn-rim-accent),
+              0 3px 10px rgba(var(--accent-rgb),0.26), 0 12px 32px rgba(var(--accent-rgb),0.22);
   color: var(--accent-ink);
 }
 
+/* Ingedrukt: de gloed KRIMPT. Een knop die je indrukt komt dichter bij zijn
+   ondergrond, dus zijn schaduw wordt korter en harder -- dat is wat een echt
+   voorwerp doet, en het leest als indrukken zonder dat er iets beweegt. */
+.btn-primary-sm:active {
+  box-shadow: var(--btn-rim-accent), 0 1px 3px rgba(var(--accent-rgb),0.30);
+}
+
+/* Uit. Geen gloed en geen randlicht: een knop die niets doet, hoort ook niet
+   te lijken alsof hij licht vangt. Dat is duidelijker dan alleen opacity, want
+   halfdoorzichtig leest ook als "aan het laden". */
 .btn-primary-sm:disabled,
 .btn-primary-sm:disabled:hover {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(var(--accent-rgb), 0.2));
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.18);
+  box-shadow: none;
+  transform: none;
   color: var(--accent-ink);
 }
 
@@ -8785,28 +8855,46 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   color: var(--text);
 }
 
-/* Topbar buttons. Dark on white */
+/* Knoppen op wit. Zelfde mechaniek als op donker -- randlicht, verloop, gloed
+   -- maar de richting van het licht klopt anders niet: op wit kan de bovenrand
+   niet lichter dan de ondergrond, dus daar draagt de ONDERrand het verschil.
+   Dat zit al in --btn-rim, die in dit blok andere waarden krijgt.
+
+   Hier stond box-shadow:none op de zweefstaat. Dat was consequent met de oude
+   opzet (er was geen schaduw om weg te halen) maar het zou nu precies de gloed
+   uitzetten die de knop zijn diepte geeft. */
 [data-theme="light"] .btn-icon {
-  background: rgba(15,17,40,0.04);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FBFAF7 100%);
   border: 1px solid var(--border);
+  box-shadow: var(--btn-rim);
   color: var(--text-secondary);
 }
 
 [data-theme="light"] .btn-icon:hover {
-  background: rgba(var(--accent-rgb),0.08);
-  border-color: rgba(var(--accent-rgb),0.25);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.16) 0%, rgba(var(--accent-rgb),0.09) 100%);
+  border-color: rgba(var(--accent-rgb),0.32);
   color: var(--accent-ink);
-  box-shadow: none;
+  box-shadow: var(--btn-rim), var(--btn-glow);
 }
 
+/* Op wit is het accent een VULLING met donkere tekst erop -- zie de
+   contrastregel bovenaan dit bestand: zand als tekst haalt 1,7:1. Het verloop
+   loopt daarom binnen het zand zelf, van de lichte stop naar de diepe. */
 [data-theme="light"] .btn-primary-sm {
-  background: var(--accent);
-  border-color: rgba(var(--accent-rgb),0.4);
+  background: linear-gradient(180deg, var(--zand-100) 0%, var(--accent-c) 55%, var(--accent-deep) 100%);
+  border-color: rgba(var(--accent-rgb),0.55);
+  box-shadow: var(--btn-rim-accent), var(--btn-glow);
   color: var(--on-accent);
 }
 
 [data-theme="light"] .btn-primary-sm:hover {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--zand-100) 0%, var(--accent-hover-c) 55%, var(--accent-pressed-c) 100%);
+  box-shadow: var(--btn-rim-accent),
+              0 3px 10px rgba(var(--accent-rgb),0.42), 0 12px 32px rgba(var(--accent-rgb),0.30);
+}
+
+[data-theme="light"] .btn-primary-sm:active {
+  box-shadow: var(--btn-rim-accent), 0 1px 3px rgba(var(--accent-rgb),0.45);
 }
 
 /* Stat cards. White with real depth */
