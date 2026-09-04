@@ -300,5 +300,34 @@ console.log('\n  je kunt later van markt wisselen, en dat verwijdert niets');
   }
 }
 
+console.log('\n  van scherm wisselen is geen harde knip meer');
+{
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  /* Van scherm wisselen was display:none naar display:block -- de hele inhoud
+     wordt in EEN frame vervangen. Er is dan geen enkel signaal dat er iets
+     nieuws is gekomen; het oog ziet alleen dat alles anders is. */
+  ck('er is een binnenkomst-animatie', /@keyframes paginaBinnen/.test(dash));
+  ck('en die hangt aan het actieve scherm', /\.page\.active \{ animation: paginaBinnen/.test(dash));
+
+  /* display laat zich niet animeren; daarom een keyframe en geen transition.
+     Als iemand dit ooit naar een transition verbouwt, doet het niets meer. */
+  const blok2 = dash.slice(dash.indexOf('@keyframes paginaBinnen'), dash.indexOf('@keyframes paginaBinnen') + 900);
+  ck('hij gebruikt opacity en translate, niet display', /opacity/.test(blok2) && /translateY/.test(blok2));
+
+  /* Omhoog en niet opzij: zijwaarts suggereert een richting (vooruit, terug) en
+     die is er niet -- de zijbalk is geen volgorde. */
+  ck('de beweging gaat omhoog, niet opzij', !/translateX/.test(blok2), blok2.slice(0, 160));
+
+  /* Wie beweging heeft uitgezet krijgt het scherm meteen. Een halve animatie of
+     een vertraging is daar juist verkeerd. */
+  ck('reduced-motion zet hem uit',
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,300}\.page\.active \{ animation: none/.test(dash));
+
+  /* Kort genoeg om niet in de weg te zitten. Dit is gereedschap waar iemand de
+     hele dag doorheen klikt; een overgang die je OPMERKT wordt vertraging. */
+  const duur = /animation: paginaBinnen var\(--dur-base, (\d+)ms\)/.exec(dash);
+  ck('en hij duurt hoogstens 250ms', duur && Number(duur[1]) <= 250, duur && duur[1]);
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

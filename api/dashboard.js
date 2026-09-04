@@ -7912,6 +7912,37 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .page { display: none !important; }
 .page.active { display: block !important; }
 #page-kalender.active { display: flex !important; flex-direction: row; }
+
+/* ── De overgang tussen schermen ──────────────────────────────────────────
+   Hier gebeurde niets. Van scherm wisselen was display:none naar
+   display:block: een harde knip, waarbij de hele inhoud in één frame vervangen
+   wordt. Er is dan geen enkel signaal dat er iets NIEUWS is gekomen -- het oog
+   ziet alleen dat alles anders is, en moet zelf uitzoeken of er iets geladen
+   is of dat er iets stukging.
+
+   display laat zich niet animeren, dus dit is een keyframe op het binnenkomende
+   scherm en geen transition. Hij speelt vanzelf opnieuw bij elke navigatie,
+   want .active wordt dan opnieuw gezet.
+
+   Zes pixels en 200 ms. Bewust weinig: dit is gereedschap waar iemand de hele
+   dag doorheen klikt, en een overgang die je OPMERKT wordt na de tiende keer
+   vertraging. Hij hoort alleen het gat te vullen tussen "ik klikte" en "er
+   staat iets anders".
+
+   De beweging gaat OMHOOG, niet opzij. Zijwaarts suggereert een richting
+   (vooruit, terug) en die is er niet: de zijbalk is geen volgorde. Omhoog leest
+   als "hier komt iets", zonder een verhaal te vertellen dat niet klopt. */
+@keyframes paginaBinnen {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page.active { animation: paginaBinnen var(--dur-base, 220ms) var(--ease-out, cubic-bezier(0.4,0,0.2,1)) both; }
+
+/* Wie beweging heeft uitgezet, krijgt het scherm meteen. Geen halve animatie
+   en geen vertraging: dan is de knip juist het gewenste gedrag. */
+@media (prefers-reduced-motion: reduce) {
+  .page.active { animation: none; }
+}
 .cal-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .cal-right-sidebar {
   width: 272px; flex-shrink: 0; border-left: 1px solid var(--border);
