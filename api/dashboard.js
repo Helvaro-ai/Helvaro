@@ -35,6 +35,12 @@ const _faroUI = require('./_faro/ui');
 const _cmdUI = require('./_command-ui');
 const _faroWerk = require('./_faro/werk');   // wat Faro deed, in zijn stem
 
+// ── De intro ────────────────────────────────────────────────────────────────
+// Twee seconden Faro, één keer, meteen na het inloggen. Zelfde afspraak als
+// hierboven: drie afgewerkte strings, geen backtick, geen ${...}. Zie de kop
+// van api/_intro.js voor waarom dit CSS is en geen videobestand.
+const _intro = require('./_intro');
+
 module.exports = async function handler(req, res) {
   // Native/English names only — never leak internal registry fields
   // (formality, directive builders, etc) into client-side HTML/JS.
@@ -8826,6 +8832,9 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 /* ═══ FARO (api/_faro/ui/styles.js + tokens.js) ═══ */
 ${faro.css}
 ${cmd.css}
+
+/* ═══ INTRO (api/_intro.js) ═══ */
+${_intro.css()}
 </style>
     <!-- jspdf (117 KB gecomprimeerd) en qrcode (13 KB) stonden hier als gewone
          script-tags en blokkeerden dus elke pagina-opbouw, terwijl ze alleen
@@ -9096,6 +9105,12 @@ ${cmd.css}
 
   </div>
 </div>
+
+<!-- De intro hangt tussen het inlogscherm en de app in, want dat is precies
+     wat hij overbrugt. Hij staat er met 'hidden' bij: op elk pad dat GEEN verse
+     login is (herladen, tweede tabblad) wordt hij nooit aangezet en kost hij
+     dus niets meer dan deze zes regels opmaak. -->
+${_intro.markup()}
 
 <!-- ============================================================
      DASHBOARD APP
@@ -18635,6 +18650,10 @@ function oneSignalLoskoppelen() {
 }
 
 async function startDashboard(skipRefresh = false) {
+  /* Alleen na een ECHTE login, niet bij elke verversing: skipRefresh is die
+     grens al (false = net ingetypt, true = sessie hersteld). Blokkeert niets en
+     ruimt zichzelf op — het waarom staat in api/_intro.js. */
+  if (!skipRefresh) { try { faroIntro(); } catch (e) {} }
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
   /* Hier stond requestNotificationPermission(): meteen na het inloggen vroeg de
@@ -25876,6 +25895,9 @@ else window.addEventListener('load', loadVendorsWhenIdle);
 /* ═══ FARO (api/_faro/ui/client.js) ═══ */
 ${faro.js}
 ${cmd.js}
+
+/* ═══ INTRO (api/_intro.js) ═══ */
+${_intro.js({ lang: FARO_LANG })}
 </script>
 </body>
 </html>`;
