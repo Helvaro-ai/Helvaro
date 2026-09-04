@@ -23472,8 +23472,15 @@ function copyPandLink(code) {
    de makelaar kijkt ernaar en drukt daarna pas op opslaan. Wat leeg bleef
    krijgt een rand, zodat hij ziet wat hij nog moet nakijken in plaats van een
    formulier te moeten controleren dat er af uitziet. */
+/* De velden die na een import gemarkeerd kunnen worden als "nog leeg". Beide
+   markten in EEN lijst en niet twee: pdMarkeerLeeg() wist eerst alles en zet
+   daarna alleen wat er meekomt, en een veld dat op dit scherm niet bestaat
+   wordt gewoon overgeslagen. Twee lijsten zouden betekenen dat er ergens een
+   plek is die maar naar een ervan kijkt. */
 var PD_IMPORT_VELDEN = ['adres','postcode','plaats','type','transactie','prijs',
-                        'slaapkamers','oppervlakte','epc','omschrijving'];
+                        'slaapkamers','oppervlakte','epc','omschrijving',
+                        'merk','model','uitvoering','km','inschrijving',
+                        'brandstof','transmissie','kw','carrosserie','kleur','adlink'];
 
 function pdStatus(tekst, soort) {
   var el = document.getElementById('pd-import-status');
@@ -23507,7 +23514,7 @@ async function importeerPand() {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'listing-import', url: link })
+      body: JSON.stringify({ mode: isDealer() ? 'vehicle-import' : 'listing-import', url: link })
     });
     var d = await r.json().catch(function () { return {}; });
     if (!r.ok) {
@@ -23520,6 +23527,41 @@ async function importeerPand() {
       var el = document.getElementById(id);
       if (el && v !== null && v !== undefined && v !== '') el.value = v;
     };
+
+    if (isDealer()) {
+      zet('pd-f-merk',         c.merk);
+      zet('pd-f-model',        c.model);
+      zet('pd-f-uitvoering',   c.uitvoering);
+      zet('pd-f-prijs',        c.prijs);
+      zet('pd-f-km',           c.km);
+      zet('pd-f-inschrijving', c.inschrijving);
+      zet('pd-f-brandstof',    c.brandstof);
+      zet('pd-f-transmissie',  c.transmissie);
+      zet('pd-f-kw',           c.kw);
+      zet('pd-f-carrosserie',  c.carrosserie);
+      zet('pd-f-kleur',        c.kleur);
+      zet('pd-f-omschrijving', c.omschrijving);
+      zet('pd-f-status',       c.status);
+      zet('pd-f-adlink',       c.link);
+      if (c.fotos && c.fotos.length) zet('pd-f-fotos', c.fotos.join('\\n'));
+
+      /* Wat er ONTBREEKT, meteen aanwijzen. Dat is het verschil tussen een
+         import die behulpzaam is en een die je laat zoeken: de dealer ziet
+         welke velden hij zelf nog moet aanvullen in plaats van ze te moeten
+         opmerken tussen tien ingevulde velden. */
+      pdMarkeerLeeg((d.ontbreekt || []).map(function (k) {
+        return k === 'km' ? 'km' : k;
+      }));
+      var mist = (d.ontbreekt || []).length;
+      pdStatus(mist
+        ? ('Gelezen. Nog aan te vullen: ' + d.ontbreekt.join(', ') + '.')
+        : (c.autoscout
+            ? 'Gelezen, en het aanbodnummer is herkend. Kijk het even na en sla op.'
+            : 'Gelezen. Kijk het even na en sla op.'),
+        mist ? 'bezig' : 'ok');
+      return;
+    }
+
     zet('pd-f-adres',        c.adres);
     zet('pd-f-postcode',     c.postcode);
     zet('pd-f-plaats',       c.plaats);
@@ -23570,12 +23612,29 @@ function openPandModal(code) {
   if (vastBlok) vastBlok.hidden = isDealer();
   if (dealBlok) dealBlok.hidden = !isDealer();
 
-  /* De importbalk leest een IMMO-zoekertje uit en vult het pandformulier. Voor
-     een dealer bestaat die weg niet: zijn voorraad komt uit zijn eigen systeem
-     of hij typt hem in. Een knop tonen die niets kan doen is erger dan geen
-     knop -- iemand probeert hem, krijgt een fout, en vertrouwt de rest minder. */
+  /* De importbalk. Ik had hem eerst VERBORGEN voor dealers, met als redenering
+     dat hij een immo-zoekertje uitleest en dat die weg voor een dealer niet
+     bestaat. Dat klopte toen en klopt niet meer: er is nu vehicle-import, en
+     voor een dealer is dit juist het SNELSTE pad -- een AutoScout24-link
+     plakken en de fiche vult zichzelf. Wie zijn voorraad met de hand moet
+     overtypen, doet het niet, en een voorraad die niet klopt maakt de AI
+     onbetrouwbaar tegenover een koper.
+
+     Alleen de teksten verschillen. Wat eronder ligt is dezelfde balk. */
   var imp = document.getElementById('pd-import');
-  if (imp) imp.hidden = isDealer();
+  if (imp) imp.hidden = false;
+  var impKop = imp ? imp.querySelector('.pd-import-kop') : null;
+  var impSub = imp ? imp.querySelector('.pd-import-sub') : null;
+  var impInp = document.getElementById('pd-f-link');
+  if (isDealer()) {
+    if (impKop) impKop.textContent = 'Plak de link van je advertentie';
+    if (impSub) impSub.textContent = 'Van AutoScout24 of je eigen site. Ik lees de pagina en vul de velden hieronder in. '
+      + 'Het aanbodnummer komt er meteen bij, dus WhatsApp-leads uit die advertentie koppelen zichzelf aan deze wagen.';
+    if (impInp) {
+      impInp.placeholder = 'https://www.autoscout24.be/nl/aanbod/...';
+      impInp.setAttribute('aria-label', vw('linkA11y'));
+    }
+  }
 
   /* De statushint noemt een bezichtiging of een proefrit. Zelfde zin, ander
      woord -- en die woorden staan op een plek (vw), niet verspreid. */

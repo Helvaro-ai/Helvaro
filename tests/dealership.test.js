@@ -36,6 +36,8 @@ const autoscout = require('../api/_autoscout');
 const prompts   = require('../api/_ai/prompts');
 
 let pass = 0, fail = 0;
+
+function hoofd() {
 function ck(wat, ok, detail) {
   if (ok) { pass++; console.log('  OK    ' + wat); }
   else    { fail++; console.log('  FOUT  ' + wat + (detail !== undefined ? '\n        ' + JSON.stringify(detail) : '')); }
@@ -321,5 +323,77 @@ console.log('\n  vier talen, ook voor de markt die er net bij kwam');
     !/'Voertuigen'|'Je voorraad'|'proefrit'/.test(vwBlok), vwBlok.slice(0, 120));
 }
 
+console.log('\n  Faro kan het aanbod uitbreiden, maar niet buiten zijn markt');
+{
+  const tools   = require('../api/_faro/tools');
+  const acties  = require('../api/_faro/actions');
+  const vehicles2 = require('../api/_vehicles');
+  const props2    = require('../api/_properties');
+
+  /* Alleen de Airtable-aanraking wordt vervangen, niet de logica eromheen.
+     Wat hier getest wordt is de KETEN -- voorstel, bevestigingskaart,
+     uitvoering -- en die moet echt lopen, niet nagespeeld worden. */
+  const bewaardV = { available: vehicles2.available, save: vehicles2.save, list: vehicles2.list };
+  const bewaardP = { available: props2.available, save: props2.save, list: props2.list };
+  let voertuigAangemaakt = false;
+  vehicles2.available = async () => true;
+  vehicles2.list      = async () => [];
+  vehicles2.save      = async (t, inv) => { voertuigAangemaakt = true;
+    return Object.assign({ id: 'recX', code: 'V1', projectCode: t, status: 'beschikbaar', fotos: [], troeven: [] }, inv); };
+  props2.available = async () => true;
+  props2.list      = async () => [];
+  props2.save      = async (t, inv) => Object.assign({ id: 'recP', code: 'P1', projectCode: t, adres: inv.adres || '', status: 'beschikbaar', fotos: [], troeven: [] }, inv);
+
+  const klaar = (async () => {
+    const t = tools.get('add_listing');
+
+    /* 1. Een dealer voegt een auto toe. */
+    const dealer = { projectCode: 'ZZ', userId: 'u', vertical: 'dealership' };
+    const r = await t.run({ merk: 'BMW', model: 'M4', uitvoering: 'Competition xDrive', prijs: 74999, km: 55000 }, dealer);
+    const kaart = (r.components || [])[0];
+    ck('er komt een bevestigingskaart', kaart && kaart.type === 'confirmation', r.components);
+    ck('en niets is al gebeurd', r.data && r.data.pending === true, r.data);
+    ck('de kaart noemt de auto', /BMW M4/.test(kaart.title), kaart.title);
+    ck('met de prijs erop', /74\.999/.test(kaart.body), kaart.body);
+    const uit = await acties.EXECUTORS.add_listing(kaart.payload, dealer);
+    ck('na bevestiging staat hij erin', /voorraad/.test(uit.summary) && uit.data.soort === 'voertuig', uit.summary);
+
+    /* 2. DE GRENS. Een makelaar praat over een auto -- en krijgt een pand.
+       De vertical komt uit het KLANTRECORD en niet uit het model, dus geen
+       enkele formulering in een gesprek kan hem in de verkeerde tabel laten
+       schrijven. Dit is het verschil tussen een gereedschap dat twee markten
+       bedient en een gereedschap dat ze door elkaar haalt. */
+    voertuigAangemaakt = false;
+    const makelaar = { projectCode: 'ZZ', userId: 'u', vertical: 'vastgoed' };
+    const r2 = await t.run({ merk: 'BMW', model: 'M4', prijs: 74999, adres: 'Kerkstraat 4' }, makelaar);
+    const kaart2 = (r2.components || [])[0];
+    ck('een makelaar krijgt een PANDkaart', /Pand toevoegen/.test(kaart2.title), kaart2.title);
+    ck('en de payload draagt vastgoed', kaart2.payload.vertical === 'vastgoed', kaart2.payload.vertical);
+    const uit2 = await acties.EXECUTORS.add_listing(kaart2.payload, makelaar);
+    ck('er komt een pand uit, geen voertuig', uit2.data.soort === 'pand', uit2.data);
+    ck('en er is GEEN voertuig aangemaakt', voertuigAangemaakt === false);
+
+    /* 3. Zonder herkenbare naam gebeurt er niets. Een lege bevestigingskaart
+       is een klik die alleen op een fout kan uitlopen. */
+    const r3 = await t.run({}, dealer);
+    ck('zonder merk of model geen kaart', (r3.components || []).length === 0, r3.components);
+    ck('maar wel een vraag terug', /welke auto|merk en model/i.test(r3.summary), r3.summary);
+
+    Object.assign(vehicles2, bewaardV);
+    Object.assign(props2, bewaardP);
+    console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
+    process.exit(fail ? 1 : 0);
+  })();
+  klaar.catch((e) => {
+    ck('de keten loopt zonder werpen', false, e && e.message);
+    console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
+    process.exit(1);
+  });
+  return;
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
-process.exit(fail ? 1 : 0);
+  process.exit(fail ? 1 : 0);
+}
+
+hoofd();

@@ -2341,6 +2341,36 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* Een advertentielink uitlezen. Levert een CONCEPT terug -- de dealer kijkt
+       ernaar en drukt daarna pas op opslaan. Zie de kop van importeerUitLink()
+       voor waarom er hier niets wordt weggeschreven. */
+    if (body.mode === 'vehicle-import') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      /* De creditpoort staat VOOR de aanroep: dit haalt een pagina op en zet er
+         een model op, en allebei kosten geld. Zelfde volgorde als bij
+         listing-import. */
+      const vImportCheck = await credits.checkCredits(projectCode, credits.FEATURES.PROPERTY_IMPORT);
+      if (!vImportCheck.allowed) {
+        return res.status(402).json({ error: 'credit_limit_reached', message: vImportCheck.message });
+      }
+      try {
+        const uit = await _vehicles.importeerUitLink(projectCode, body.url, { userId: 'dashboard' });
+        /* Pas afschrijven NA een geslaagde uitlezing. Een cookiemuur is geen
+           dienst waarvoor je betaalt. */
+        credits.recordUsage(projectCode, credits.FEATURES.PROPERTY_IMPORT, {
+          credits: credits.WEIGHTS[credits.FEATURES.PROPERTY_IMPORT],
+        }).catch(() => {});
+        return res.status(200).json(uit);
+      } catch (err) {
+        console.error('[vehicle-import]', err && err.code, err && err.message);
+        const code = err && err.code;
+        if (code === 'bad_url' || code === 'no_url') return res.status(400).json({ error: err.message, code });
+        if (code === 'unreadable') return res.status(422).json({ error: err.message, message: err.message, code });
+        if (code === 'ai_failed')  return res.status(503).json({ error: err.message, message: err.message, code });
+        return res.status(500).json({ error: 'Die pagina kon niet gelezen worden.' });
+      }
+    }
+
     if (body.mode === 'vehicle-save') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {

@@ -13,6 +13,8 @@
 // language rollout — flagged here so it isn't mistaken for an oversight.
 
 const _properties = require('./_properties');
+const _vehicles   = require('./_vehicles');
+const _vertical   = require('./_vertical');
 
 module.exports = async function handler(req, res) {
   /* Twee vormen:
@@ -34,12 +36,19 @@ module.exports = async function handler(req, res) {
   /* Een onbekende of onzinnige pandcode is geen fout maar een lege waarde: het
      formulier werkt dan gewoon zonder pand. Iemand die een QR-code scheef
      scant hoort geen foutpagina te krijgen. */
+  /* De code wordt door BEIDE modules gevalideerd op dezelfde manier (letters,
+     cijfers, punt, streepje), dus welke van de twee hem afkeurt maakt niet uit
+     -- maar we weten hier nog niet welke vertical het is, want dat komt pas uit
+     het klantrecord hieronder. Vandaar de losse controle. */
   if (!_properties.geldigeCode(pandCode)) pandCode = '';
 
   // ── Pull client config (best-effort; falls back to defaults on any error) ──
   let aiName       = 'Mathis';
   let clientName   = 'Helvaro';
   let niche        = '';
+  /* Leeg leest als vastgoed; zie api/_vertical.js. Valt het klantrecord weg,
+     dan gedraagt het formulier zich zoals het zich altijd gedroeg. */
+  let vertical     = _vertical.VASTGOED;
   let aiPhotoUrl   = '';
   let brandColor   = '#8A6D3F'; // Helvaro default (warm bronze/sand family — deep enough for white text on solid fills). Overridden per-client by the Brand Color Airtable field.
   let formIntro    = '';
@@ -77,6 +86,10 @@ module.exports = async function handler(req, res) {
           if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
           trustBadges  = (rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges'] || '').toString().trim();
           workingHours = (rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours'] || '').toString().trim();
+          /* In welke markt deze klant zit. Het formulier moet dat weten omdat
+             de kaart bovenaan anders een pand zoekt bij een dealer -- en dan
+             staat er niets, terwijl de link wel klopte. */
+          vertical = _vertical.van(rec.fields);
         }
       }
 
@@ -111,7 +124,19 @@ module.exports = async function handler(req, res) {
      pandblok en werkt het formulier gewoon. Een storing hoort een lead niet
      tegen te houden. */
   let pand = null;
-  if (pandCode) {
+  let voertuig = null;
+  if (pandCode && vertical === _vertical.DEALERSHIP) {
+    /* Een dealer heeft geen panden. Zonder deze tak zoekt het formulier de code
+       op in de verkeerde tabel, vindt niets, en toont geen kaart -- terwijl de
+       link gewoon klopte. Dat is precies het soort stille fout dat er van
+       buiten uitziet als "die link doet het niet". */
+    try {
+      voertuig = await _vehicles.getByCode(project, pandCode);
+      if (voertuig && (!voertuig.publiek || voertuig.gearchiveerd)) voertuig = null;
+    } catch (e) {
+      console.warn('[form-page] voertuig ophalen mislukt:', e && e.message);
+    }
+  } else if (pandCode) {
     try {
       pand = await _properties.getByCode(project, pandCode);
       /* Niet-publiek betekent: wel in het CRM, niet naar buiten. Een makelaar
@@ -680,6 +705,21 @@ module.exports = async function handler(req, res) {
       ? `<div class="social-proof"><span class="dot"></span> <b>${leadsThisWeek}</b> ${escHtml(t.socialPre)} ${safeFirstName} ${escHtml(t.socialPost)}</div>`
       : ''
     }
+    ${voertuig ? `<div class="pand-card">
+      ${voertuig.fotos[0] ? `<img class="pand-card-foto" src="${escHtml(voertuig.fotos[0])}" alt="${escHtml(_vehicles.naam(voertuig))}" onerror="this.style.display='none'">` : ''}
+      <div class="pand-card-adres">${escHtml(_vehicles.naam(voertuig))}</div>
+      ${voertuig.kleur || voertuig.carrosserie ? `<div class="pand-card-plaats">${escHtml([voertuig.carrosserie, voertuig.kleur].filter(Boolean).join(' \u00B7 '))}</div>` : ''}
+      <div class="pand-card-feiten">
+        ${_vehicles.prijsTekst(voertuig.prijs) ? `<span class="pand-card-feit pand-card-prijs">${escHtml(_vehicles.prijsTekst(voertuig.prijs))}</span>` : ''}
+        ${_vehicles.kmTekst(voertuig.km) ? `<span class="pand-card-feit">${escHtml(_vehicles.kmTekst(voertuig.km))}</span>` : ''}
+        ${voertuig.inschrijving ? `<span class="pand-card-feit">${escHtml(voertuig.inschrijving)}</span>` : ''}
+        ${voertuig.pk ? `<span class="pand-card-feit">${voertuig.pk} pk</span>` : ''}
+        ${voertuig.brandstof ? `<span class="pand-card-feit">${escHtml(voertuig.brandstof)}</span>` : ''}
+      </div>
+      ${!_vehicles.kanProefrit(voertuig.status)
+        ? `<div class="pand-card-weg">Dit voertuig is ${escHtml(voertuig.status)}. Laat gerust je gegevens achter &mdash; ${safeFirstName} laat je weten wat er nog w&eacute;l in de voorraad staat.</div>`
+        : ''}
+    </div>` : ''}
     ${pand ? `<div class="pand-card">
       ${pand.fotos[0] ? `<img class="pand-card-foto" src="${escHtml(pand.fotos[0])}" alt="${escHtml(pand.adres)}" onerror="this.style.display='none'">` : ''}
       <div class="pand-card-adres">${escHtml(pand.adres)}</div>
