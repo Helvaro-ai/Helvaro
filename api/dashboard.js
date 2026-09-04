@@ -11459,6 +11459,39 @@ ${faro.navCta}
     <!-- Instellingen Page -->
     <main class="page-content page" id="page-instellingen">
       <div class="settings-wrap">
+
+        <!-- ── In welke markt zit je ──────────────────────────────────────
+             Bovenaan, en dat is geen willekeurige plek: deze ene keuze bepaalt
+             welke schermen je verderop ziet en welke velden er in staan. Wie
+             hem onderaan zet, laat iemand eerst tien instellingen doorlopen die
+             misschien niet eens voor hem gelden.
+
+             Wisselen VERWIJDERT niets. Een makelaar die naar autohandel gaat
+             houdt zijn panden; ze staan alleen niet meer in beeld. Dat is de
+             enige manier waarop dit een veilige knop is -- en het staat er ook
+             letterlijk bij, want een klant die vermoedt dat hij data kwijtraakt
+             klikt niet. -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"/><path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><rect x="3" y="7" width="18" height="14" rx="2"/></svg>
+            ${T('set.markt')}
+          </div>
+          <div class="settings-info-box">${T('set.markt.uitleg')}</div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('set.markt.label')}</div>
+              <div class="settings-label-sub" id="set-markt-sub">&mdash;</div>
+            </div>
+            <div class="settings-value">
+              <select class="filter-select" id="set-markt" onchange="marktWisselen(this.value)" aria-label="${T('set.markt.label')}">
+                <option value="real_estate">${T('set.markt.vastgoed')}</option>
+                <option value="dealership">${T('set.markt.dealership')}</option>
+                <option value="other">${T('set.markt.anders')}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- AI Instellingen -->
         <div class="settings-section">
           <div class="settings-section-title">
@@ -15858,6 +15891,71 @@ function vw(sleutel) {
   }
 }
 
+/* Van markt wisselen vanuit Instellingen.
+ *
+ * Twee dingen die dit anders maken dan een gewone instelling.
+ *
+ * Het schrijft ALLEBEI de velden weg: sector (wat in Airtable staat en de
+ * AI-toon stuurt) en vertical (wat het dashboard leest). Ze samen wegschrijven
+ * is de enige manier waarop ze niet uit elkaar lopen -- en uit elkaar lopen
+ * betekent hier: een dealer die over panden leest.
+ *
+ * En het past de schermen METEEN aan, niet pas na een herlading. Wie
+ * "Autohandel" kiest en daarna nog "Panden" in zijn zijbalk ziet staan, denkt
+ * dat zijn keuze niet is aangekomen en klikt hem nog eens.
+ *
+ * Er wordt NIETS verwijderd. Een makelaar die naar autohandel gaat houdt zijn
+ * panden; ze staan alleen niet meer in beeld. Dat is wat deze knop veilig
+ * maakt, en het staat ook in de uitleg erboven -- een klant die vermoedt dat
+ * hij data kwijtraakt, klikt niet.
+ */
+async function marktWisselen(gekozen) {
+  var kiezer = document.getElementById('set-markt');
+  var vorige = hvVertical;
+  var naarDealer = gekozen === 'dealership';
+  var nieuweVertical = naarDealer ? 'dealership' : 'vastgoed';
+
+  if (kiezer) kiezer.disabled = true;
+  try {
+    await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'config-save', sector: gekozen, vertical: nieuweVertical })
+    }).then(function (r) { if (!r.ok) throw new Error('opslaan mislukt'); });
+
+    /* De caches leegmaken: AI-persoonlijkheid en Facturatie tonen de sector
+       ook, en die houden hem kort vast. Zonder dit ziet de klant zijn zojuist
+       gemaakte keuze daar een minuut lang niet terug. */
+    if (typeof tabVergeet === 'function') tabVergeet();
+    if (typeof _checklistConfigCache !== 'undefined' && _checklistConfigCache) {
+      _checklistConfigCache.sector = gekozen;
+      _checklistConfigCache.vertical = nieuweVertical;
+    }
+
+    zetVertical(nieuweVertical, _checklistConfigCache || {});
+    marktSubtekst(gekozen);
+    toast(tr('set.markt.gewisseld'), 'success');
+  } catch (e) {
+    /* Terugzetten wat er stond. Een keuzelijst die op de nieuwe waarde blijft
+       staan terwijl er niets is opgeslagen, is erger dan een foutmelding: de
+       klant denkt dat het gelukt is. */
+    if (kiezer) kiezer.value = (vorige === 'dealership') ? 'dealership' : 'real_estate';
+    toast(tr('tst.opslaanMislukt'), 'error');
+  } finally {
+    if (kiezer) kiezer.disabled = false;
+  }
+}
+
+/* De regel onder de keuzelijst: wat deze keuze CONCREET betekent. "Vastgoed"
+   zegt niets over wat er verandert; "Panden, bezichtigingen" wel. */
+function marktSubtekst(gekozen) {
+  var el = document.getElementById('set-markt-sub');
+  if (!el) return;
+  el.textContent = gekozen === 'dealership'
+    ? 'Voertuigen, proefritten, AutoScout24-leads'
+    : (gekozen === 'other' ? 'De standaardinrichting' : 'Panden, bezichtigingen, een link per woning');
+}
+
 function zetVertical(v, config) {
   var nieuw = (String(v || '').trim().toLowerCase() === 'dealership') ? 'dealership' : 'vastgoed';
   hvKorting = { max: Number((config && config.maxDiscount) || 0),
@@ -15950,6 +16048,16 @@ async function loadOnboardingChecklist(force) {
        vastgoed -- dat is wat elke bestaande klant ziet en dus geen flikkering
        voor de overgrote meerderheid. */
     zetVertical(d.vertical, d);
+    /* De keuzelijst in Instellingen op de opgeslagen waarde zetten. Zonder dit
+       staat er altijd "Vastgoed", ook bij een dealer -- en dan lijkt het alsof
+       zijn keuze niet bewaard is. */
+    var mk = document.getElementById('set-markt');
+    if (mk) {
+      var huidig = (d.sector === 'dealership' || d.vertical === 'dealership') ? 'dealership'
+                 : (d.sector === 'other' ? 'other' : 'real_estate');
+      mk.value = huidig;
+      marktSubtekst(huidig);
+    }
     renderVerifyBanner(d);
     renderOnboardingChecklist(d);
   } catch (err) {

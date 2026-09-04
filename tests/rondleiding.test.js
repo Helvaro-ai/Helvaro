@@ -255,5 +255,50 @@ console.log('\n  de onboarding zegt tegen een dealer iets anders');
   ck('en wizardWhatsAppStatus wordt nog aangeroepen', /wizardWhatsAppStatus\(\);/.test(dash));
 }
 
+console.log('\n  je kunt later van markt wisselen, en dat verwijdert niets');
+{
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  ck('er is een keuzelijst in Instellingen', /id="set-markt"/.test(dash));
+  ck('met drie keuzes', ['real_estate', 'dealership', 'other'].every((v) => dash.indexOf('value="' + v + '"') !== -1));
+
+  /* Bovenaan, en dat is geen willekeurige plek: deze ene keuze bepaalt welke
+     schermen je verderop ziet. Onderaan zou iemand eerst tien instellingen
+     doorlopen die misschien niet voor hem gelden. */
+  const p1 = dash.indexOf('id="page-instellingen"');
+  ck('de marktsectie staat bovenaan Instellingen',
+    dash.indexOf('id="set-markt"', p1) - p1 < 2500, dash.indexOf('id="set-markt"', p1) - p1);
+
+  const fnRuw = dash.slice(dash.indexOf('async function marktWisselen'), dash.indexOf('function marktSubtekst'));
+  /* Opmerkingen eruit voordat er op AFSTAND gematcht wordt. Een regex als
+     catch[\s\S]{0,200}kiezer.value valt anders om zodra er een uitleg tussen
+     komt te staan -- en dan wordt de afstand opgerekt in plaats van de code
+     bekeken. Dit is de derde keer dat die val toeslaat in dit project. */
+  const fn = fnRuw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  ck('marktWisselen bestaat', fn.length > 100);
+
+  /* Sector EN vertical samen wegschrijven is de enige manier waarop ze niet
+     uit elkaar lopen -- en uit elkaar lopen betekent hier: een dealer die over
+     panden leest. */
+  ck('schrijft sector en vertical samen weg', /sector: gekozen, vertical: nieuweVertical/.test(fn));
+  ck('past de schermen meteen aan', /zetVertical\(nieuweVertical/.test(fn));
+  ck('en maakt de caches leeg', /tabVergeet/.test(fn));
+
+  /* Een keuzelijst die op de nieuwe waarde blijft staan terwijl er niets is
+     opgeslagen, is erger dan een foutmelding: de klant denkt dat het gelukt is. */
+  ck('bij een fout wordt de keuzelijst teruggezet', /catch[\s\S]{0,200}kiezer\.value = \(vorige/.test(fn));
+  ck('en de lijst wordt weer aanklikbaar', /finally[\s\S]{0,120}disabled = false/.test(fn));
+
+  /* Niets verwijderen is wat deze knop veilig maakt. Een verwijder-aanroep
+     hier zou betekenen dat wisselen data kost. */
+  ck('er wordt niets verwijderd', !/archive|delete|verwijder/i.test(fn), fn.slice(0, 200));
+
+  const i18n = require('../api/_i18n');
+  ck('de uitleg zegt dat er niets verdwijnt', /verwijdert niets/.test(i18n.t('nl', 'set.markt.uitleg')));
+  for (const k of ['set.markt', 'set.markt.uitleg', 'set.markt.dealership', 'set.markt.gewisseld']) {
+    ck(k + ' in vier talen', ['nl', 'fr', 'en', 'de'].every((t) => i18n.t(t, k) && i18n.t(t, k) !== k));
+    ck(k + ' is echt vertaald', i18n.t('fr', k) !== i18n.t('nl', k));
+  }
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

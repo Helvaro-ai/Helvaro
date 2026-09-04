@@ -872,6 +872,23 @@ const TEKST = {
                            de: 'Ihre K\u00e4ufer starten das Gespr\u00e4ch selbst \u00fcber Ihre AutoScout24-Anzeige. Dadurch ist keine genehmigte Vorlage n\u00f6tig und das Gespr\u00e4ch kostet Sie keine Nachrichtengeb\u00fchren.' },
   'wiz.wa.dealer.badge': { nl: 'Niets in te stellen', fr: 'Rien \u00e0 configurer', en: 'Nothing to set up', de: 'Nichts einzurichten' },
 
+  /* De markt-sectie in Instellingen. Staat bovenaan omdat deze ene keuze
+     bepaalt welke schermen je verderop ziet -- hem onderaan zetten laat iemand
+     eerst tien instellingen doorlopen die misschien niet voor hem gelden. */
+  'set.markt':           { nl: 'Je markt', fr: 'Votre march\u00e9', en: 'Your market', de: 'Ihr Markt' },
+  'set.markt.label':     { nl: 'Waar zit je in', fr: 'Votre secteur', en: 'What you do', de: 'Ihre Branche' },
+  'set.markt.vastgoed':  { nl: 'Vastgoed', fr: 'Immobilier', en: 'Real estate', de: 'Immobilien' },
+  'set.markt.dealership':{ nl: 'Autohandel', fr: 'Automobile', en: 'Car dealership', de: 'Autohandel' },
+  'set.markt.anders':    { nl: 'Iets anders', fr: 'Autre chose', en: 'Something else', de: 'Etwas anderes' },
+  'set.markt.uitleg':    { nl: 'Dit bepaalt welke schermen je ziet en welke velden erin staan. Wisselen verwijdert niets \u2014 wat je al hebt ingevoerd blijft bewaard en komt terug zodra je terugwisselt.',
+                           fr: 'Ceci d\u00e9termine les \u00e9crans que vous voyez et les champs qu\u2019ils contiennent. Changer ne supprime rien \u2014 ce que vous avez d\u00e9j\u00e0 saisi est conserv\u00e9 et revient si vous rebasculez.',
+                           en: 'This decides which screens you see and which fields they hold. Switching deletes nothing \u2014 what you already entered stays and comes back if you switch back.',
+                           de: 'Dies bestimmt, welche Bildschirme Sie sehen und welche Felder sie enthalten. Ein Wechsel l\u00f6scht nichts \u2014 bereits Eingegebenes bleibt erhalten und kehrt zur\u00fcck, wenn Sie zur\u00fcckwechseln.' },
+  'set.markt.gewisseld': { nl: 'Je markt is gewijzigd. Je schermen zijn aangepast.',
+                           fr: 'Votre march\u00e9 a chang\u00e9. Vos \u00e9crans ont \u00e9t\u00e9 adapt\u00e9s.',
+                           en: 'Your market has changed. Your screens have been updated.',
+                           de: 'Ihr Markt wurde ge\u00e4ndert. Ihre Bildschirme wurden angepasst.' },
+
   'nav.group.setup':     { nl: 'INRICHTEN', fr: 'CONFIGURER', en: 'SET UP',  de: 'EINRICHTEN' },
   'nav.group.account':   { nl: 'ACCOUNT',   fr: 'COMPTE',     en: 'ACCOUNT', de: 'KONTO' },
 
