@@ -1009,9 +1009,15 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    het klein. De schakelaar Inloggen/Account aanmaken blijft WEL staan -- die
    is van ons, hij werkt met Clerk, en hij is het enige wat een nieuwe bezoeker
    meteen vertelt dat hij hier ook een account kan maken. */
-#login-page.clerk-wacht #login-form-wrap,
-#login-page.clerk-wacht .login-welcome,
-#login-page.clerk-wacht .login-subtitle { display: none; }
+#login-page.clerk-wacht #login-form-wrap { display: none; }
+/* De kop en de ondertitel blijven nu WEL staan terwijl Clerk onderweg is.
+
+   Ze gingen mee omdat Clerks kaart een eigen kop had die ongeveer hetzelfde
+   zei. Die kop is er niet meer (zie #clerk-signin .cl-header verderop), dus de
+   reden is weg -- en er is een reden bij gekomen om ze te laten staan: dit is
+   het enige stuk tekst dat er meteen kan zijn. Zonder deze twee regels staat
+   het paneel leeg te wachten op een script van een andere host, en dat is
+   precies de traagheid die je op dit scherm voelt. */
 
 #clerk-skelet {
   min-height: 320px;
@@ -1963,6 +1969,170 @@ button.brand-dot { border: none; padding: 0; }
 #clerk-signin .cl-footerAction,
 #clerk-signin .cl-footerAction__signIn,
 #clerk-signin .cl-footerAction__signUp { display: none !important; }
+
+/* ═══ Clerk in Helvaro's vormentaal ═══════════════════════════════════════
+   Clerk levert het formulier; wij leveren het paneel. Tot nu toe waren dat
+   twee ontwerpen boven elkaar: een witte kaart met een eigen rand en schaduw,
+   midden op een wit paneel, met systeemletters ertussen. Het las als een
+   widget die op de pagina geplakt was.
+
+   Alles hieronder heeft één doel: de KAART laten verdwijnen en het FORMULIER
+   laten staan, in de typografie en de kleuren die het paneel al gebruikt.
+   Geen enkele regel verzint een kleur -- ze komen uit de --login-* tokens die
+   #login-page hierboven al definieert.
+
+   Waarom CSS en niet appearance.elements: dat is hier al eens geprobeerd voor
+   footerAction en het nam niet (zie de opmerking hierboven). appearance blijft
+   wel in gebruik voor wat het betrouwbaar doet -- kleuren, letter en radius
+   als variabelen, zie CLERK_APPEARANCE. */
+
+/* ── De kaart zelf: weg ────────────────────────────────────────────────────
+   Let op de eerste selector, want die is niet vanzelfsprekend: Clerk mount NIET
+   in #clerk-signin, hij zet zijn cl-rootBox OP dat element. Host en rootBox
+   zijn hetzelfde ding, dus '#clerk-signin .cl-rootBox' (met spatie) raakt niets.
+
+   Dat is meer dan een schoonheidsfoutje. Clerk geeft die rootBox een breedte
+   die met de inhoud meebeweegt. Zolang zijn kaart een vaste breedte had viel
+   dat niet op; haal die weg en zet de kinderen op 100%, dan wijst die 100%
+   naar een ouder die zichzelf om de inhoud vouwt -- en klapt het formulier in
+   tot de smalste tekst erin. Gemeten: 195 px in een paneel van 380. */
+#clerk-signin,
+#clerk-signin .cl-cardBox { width: 100%; box-shadow: none; border: none; background: transparent; }
+#clerk-signin .cl-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  width: 100%;
+  gap: 18px;
+}
+
+/* Clerks eigen kop weg. Het paneel heeft er al een, in Space Grotesk en in de
+   taal van de klant, en zetModus() wisselt hem mee tussen inloggen en
+   registreren. Zie ook eigenFormulier(), waar hij niet langer verborgen wordt. */
+#clerk-signin .cl-header { display: none; }
+
+/* ── Google-knop: een rustige tweede keuze ───────────────────────────────── */
+#clerk-signin .cl-socialButtonsRoot,
+#clerk-signin .cl-socialButtons { width: 100%; gap: 10px; }
+#clerk-signin .cl-socialButtonsBlockButton {
+  width: 100%;
+  height: 46px;
+  background: var(--login-panel);
+  border: 1px solid var(--login-border);
+  border-radius: 10px;
+  box-shadow: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+#clerk-signin .cl-socialButtonsBlockButton:hover {
+  background: rgba(232, 215, 177, .10);
+  border-color: var(--login-accent-ink);
+}
+#clerk-signin .cl-socialButtonsBlockButtonText {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--login-text);
+}
+
+/* ── Scheiding ───────────────────────────────────────────────────────────── */
+#clerk-signin .cl-dividerRow { gap: 12px; margin: 4px 0; }
+#clerk-signin .cl-dividerLine { background: var(--login-border); height: 1px; }
+#clerk-signin .cl-dividerText {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--login-placeholder);
+}
+
+/* ── Velden ──────────────────────────────────────────────────────────────
+   Exact de vorm van .form-label / .form-input hierboven, zodat het vangnet en
+   Clerks formulier niet te onderscheiden zijn. Dat is niet alleen netjes: valt
+   Clerk uit, dan wisselt de pagina naar het eigen formulier, en die wissel
+   hoort niet op te vallen.
+
+   GEEN regel op .cl-required. Die klasse ziet eruit als het sterretje bij een
+   verplicht veld, maar Clerk zet hem op het INVOERVELD zelf. Een display:none
+   erop laat het e-mailveld verdwijnen terwijl de knop eronder blijft staan --
+   een inlogscherm zonder invoerveld, dat er verder normaal uitziet. */
+#clerk-signin .cl-formFieldLabelRow { margin-bottom: 7px; }
+#clerk-signin .cl-formFieldLabel {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--login-muted);
+}
+#clerk-signin .cl-formFieldInput,
+#clerk-signin .cl-input {
+  /* min-height en flex staan er niet voor de sier. Het veld is een flexitem in
+     een rij die zich om de inhoud vouwt; 'height' alleen wordt daar weggedrukt
+     en het veld kwam uit op 33,75 px naast een knop van 48. */
+  height: 46px;
+  min-height: 46px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  padding: 0 14px;
+  background: var(--login-input-bg);
+  border: 1px solid var(--login-border);
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: var(--login-text);
+  box-shadow: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+#clerk-signin .cl-formFieldInput::placeholder { color: var(--login-placeholder); }
+#clerk-signin .cl-formFieldInput:focus,
+#clerk-signin .cl-input:focus {
+  outline: none;
+  border-color: var(--login-accent-ink);
+  box-shadow: 0 0 0 3px rgba(232, 215, 177, .30);
+}
+#clerk-signin .cl-formFieldInputGroup { border-radius: 10px; }
+#clerk-signin .cl-formFieldInputShowPasswordButton { color: var(--login-muted); }
+#clerk-signin .cl-formFieldInputShowPasswordButton:hover { color: var(--login-text); }
+
+/* ── De hoofdknop ────────────────────────────────────────────────────────
+   Zand met donkere inkt, precies zoals .btn-login. Clerk zette hier een bijna
+   zwarte knop neer: de enige plek op het scherm waar de merkkleur hoort te
+   staan, en juist daar stond hij niet. */
+#clerk-signin .cl-formButtonPrimary {
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
+  background: var(--accent-c);
+  border: none;
+  border-radius: 10px;
+  box-shadow: none;
+  text-shadow: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: none;
+  color: #121212;
+  transition: background .15s ease, transform .12s ease;
+}
+#clerk-signin .cl-formButtonPrimary:hover { background: var(--accent-hover-c); }
+#clerk-signin .cl-formButtonPrimary:active { transform: translateY(1px); }
+#clerk-signin .cl-formButtonPrimary:focus-visible {
+  outline: 2px solid var(--login-accent-ink);
+  outline-offset: 2px;
+}
+#clerk-signin .cl-buttonArrowIcon { color: #121212; opacity: .75; }
+
+/* ── Foutmeldingen in dezelfde toon als .login-error ─────────────────────── */
+#clerk-signin .cl-formFieldErrorText,
+#clerk-signin .cl-formFieldWarningText,
+#clerk-signin .cl-alertText {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #B42318;
+}
 
 /* Sign-in / sign-up switch under the Clerk component */
 #clerk-toggle {
@@ -12388,12 +12558,31 @@ async function clerkToken() {
 // Both sign-in AND sign-up are mounted on demand: without the sign-up view a
 // new client has no way to create an account at all, which is the whole point
 // of moving to a hosted identity provider.
+/* De hexwaarden hieronder zijn GEEN nieuwe kleuren: het zijn dezelfde die
+   #login-page als --login-* tokens zet. Ze staan hier uitgeschreven omdat dit
+   een JS-object is dat Clerk zelf tot stijl verwerkt -- var(--login-text) komt
+   daar niet doorheen. Verander je een --login-token, verander dan ook deze.
+
+   Wat hier NIET geregeld wordt, staat als CSS bij '#clerk-signin' verderop.
+   Deze variabelen zijn er voor alles wat we niet met de hand aanwijzen: links,
+   laadindicatoren, foutkleuren, de schermen na het inloggen (verificatiecode,
+   wachtwoord vergeten) die we nooit los gestyled hebben. */
 var CLERK_APPEARANCE = {
   variables: {
-    colorPrimary: '#C9A34E',
-    colorBackground: 'transparent',
-    borderRadius: '12px',
-    fontFamily: 'Inter, sans-serif',
+    /* Zand als VULLING is --accent-c, maar Clerk gebruikt colorPrimary ook voor
+       tekst en randen, en #E8D7B1 haalt op wit 1,8:1. Dit is de diepere tint
+       uit dezelfde familie die het paneel al gebruikt voor zand-als-tekst. */
+    colorPrimary:       '#8A6D2E',
+    colorBackground:    'transparent',
+    colorText:          '#18160F',
+    colorTextSecondary: '#6B6558',
+    colorInputBackground: '#F7F6F2',
+    colorInputText:     '#18160F',
+    colorDanger:        '#B42318',
+    borderRadius:       '10px',
+    fontFamily:         'Inter, sans-serif',
+    fontFamilyButtons:  '"Space Grotesk", sans-serif',
+    fontSize:           '15px',
   },
   elements: {
     card: { boxShadow: 'none', border: 'none' },
@@ -12473,10 +12662,21 @@ function eigenFormulier(zichtbaar) {
   if (zichtbaar) wachtOpClerk(false);
   oudeVeldenActief(!!zichtbaar);
   if (form) form.style.display = zichtbaar ? '' : 'none';
-  // Clerk's kaart heeft zijn eigen titel; die van ons zou de tweede kop op
-  // hetzelfde paneel zijn die ongeveer hetzelfde zegt.
-  if (wel) wel.style.display = zichtbaar ? '' : 'none';
-  if (sub) sub.style.display = zichtbaar ? '' : 'none';
+  /* De kop en ondertitel worden NIET meer verborgen als Clerk het formulier
+     overneemt. Vroeger moest dat: Clerks kaart bracht zijn eigen "Log in to
+     Helvaro / Welcome back. Log in to continue." mee, en twee koppen die
+     hetzelfde zeggen is één te veel.
+
+     Nu is die van Clerk weg en die van ons blijft. Dat is de betere kant om
+     het op te lossen: onze kop staat in Space Grotesk, in de taal van de klant,
+     en zegt iets ("Log in om te zien wat er sinds gisteren gebeurd is") in
+     plaats van de instructie die je toch al aan het uitvoeren bent. zetModus()
+     wisselt hem bovendien al mee naar de registreertekst, dus hij klopt in
+     allebei de standen.
+
+     wel/sub blijven hierboven opgezocht: ze worden hieronder niet meer gebruikt
+     maar de aanroeper mag ze niet ineens missen. -- ze zijn nu ongebruikt en
+     dat is de bedoeling. */
 }
 
 /* Terug naar het eigen formulier, met uitleg. Dit is het vangnet: wat er ook

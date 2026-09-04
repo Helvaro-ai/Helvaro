@@ -54,8 +54,24 @@ ck('de wachtklasse staat er vanaf de SERVER, niet pas na een script',
    /<div id="login-page" class="clerk-wacht">/.test(html), null);
 ck('en de CSS verbergt daarmee het eigen formulier',
    /#login-page\.clerk-wacht #login-form-wrap/.test(html), null);
-ck('inclusief de eigen kop, want Clerks kaart heeft er zelf een',
-   /#login-page\.clerk-wacht \.login-welcome/.test(html), null);
+/* Hier stond: "inclusief de eigen kop, want Clerks kaart heeft er zelf een."
+   Die reden bestaat niet meer. Clerks kop wordt nu verborgen en de onze blijft
+   staan -- dezelfde regel (er staat er precies EEN op dit paneel), maar naar de
+   andere kant opgelost. Onze kop staat in Space Grotesk, in de taal van de
+   klant, en zetModus() wisselt hem mee tussen inloggen en registreren.
+
+   Er is een tweede reden bij gekomen: dit is het enige stuk tekst dat er
+   meteen kan staan. Verbergen we het tot Clerk geladen is, dan staat het
+   paneel te wachten op een script van een andere host -- precies de traagheid
+   die op dit scherm gemeld werd.
+
+   De twee asserties hieronder horen bij elkaar: als iemand later Clerks kop
+   weer aanzet ZONDER de onze te verbergen, staan er weer twee, en dan valt de
+   tweede om. */
+ck('de eigen kop blijft staan terwijl Clerk laadt',
+   !/#login-page\.clerk-wacht[^{]*\.login-welcome/.test(html), null);
+ck('en Clerks eigen kop is verborgen, dus het blijft bij EEN kop',
+   /#clerk-signin \.cl-header \{ display: none; \}/.test(html), null);
 ck('er staat een plaatshouder in de vorm van wat er komt',
    html.indexOf('id="clerk-skelet"') !== -1, null);
 ck('die zichtbaar is als Clerk aanstaat',
