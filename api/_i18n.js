@@ -852,6 +852,18 @@ const TEKST = {
   'prop.many':           { nl: 'panden',      fr: 'biens',        en: 'properties',de: 'Objekte' },
   'prop.One':            { nl: 'Pand',        fr: 'Bien',         en: 'Property',  de: 'Objekt' },
 
+  /* De pipeline met nul leads. Er stond vijf keer "Geen leads" naast elkaar --
+     een muur van niets op het scherm waar een nieuwe klant kijkt of het werkt.
+     Nu een bericht dat zegt wat er komt te staan en waar het vandaan komt. */
+  'pipe.leeg.titel':     { nl: 'Je pipeline is nog leeg',
+                           fr: 'Votre pipeline est encore vide',
+                           en: 'Your pipeline is still empty',
+                           de: 'Ihre Pipeline ist noch leer' },
+  'pipe.leeg.tekst':     { nl: 'Zodra er leads binnenkomen verdeelt je assistent ze hier over de fasen \u2014 van nieuw tot gewonnen. Je sleept ze zelf naar de fase waar ze echt in zitten.',
+                           fr: 'D\u00e8s que des leads arrivent, votre assistant les r\u00e9partit ici par \u00e9tape \u2014 de nouveau \u00e0 gagn\u00e9. Vous les faites glisser vers l\u2019\u00e9tape r\u00e9elle.',
+                           en: 'As soon as leads arrive, your assistant sorts them here by stage \u2014 from new to won. You drag them to the stage they are really in.',
+                           de: 'Sobald Leads eingehen, sortiert Ihr Assistent sie hier nach Phase \u2014 von neu bis gewonnen. Sie ziehen sie in die tats\u00e4chliche Phase.' },
+
   'veh.nav':             { nl: 'Voertuigen',  fr: 'V\u00e9hicules', en: 'Vehicles',  de: 'Fahrzeuge' },
   'veh.one':             { nl: 'voertuig',    fr: 'v\u00e9hicule',  en: 'vehicle',   de: 'Fahrzeug' },
   'veh.many':            { nl: 'voertuigen',  fr: 'v\u00e9hicules', en: 'vehicles',  de: 'Fahrzeuge' },

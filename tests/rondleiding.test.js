@@ -149,5 +149,37 @@ console.log('\n  de client stuurt de signalen die dit voedt');
   ck('pandState houdt bij of hij geladen is', /geladen:\s*false/.test(dash) && /pandState\.geladen\s*=\s*true/.test(dash));
 }
 
+console.log('\n  de lege pipeline zegt EEN ding, niet vijf keer niets');
+{
+  /* Er stond per kolom "Geen leads". Met nul leads las dat als vijf keer
+     hetzelfde naast elkaar -- een muur van niets, op precies het scherm dat
+     een nieuwe klant opent om te zien of het werkt. Vijf lege kolommen
+     vertellen bovendien niets wat de kolomkoppen niet al zeggen.
+
+     De grens is belangrijk: zodra er ergens EEN lead staat zijn de kolommen
+     wel zinvol, want dan betekent een lege kolom iets ("niets in de
+     afspraakfase"). Dan hoort die melding per kolom te blijven. */
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const i = dash.indexOf('function renderPipeline');
+  const blok = dash.slice(i, i + 3000);
+  ck('er is een tak voor een volledig lege pipeline', /if \(!leads\.length\)/.test(blok));
+  ck('en hij komt VOOR de kolommen', blok.indexOf('if (!leads.length)') < blok.indexOf('board.innerHTML = cols.map'));
+  ck('met een vertaalde tekst, niet hardgecodeerd', /tr\('pipe\.leeg\.titel'\)/.test(blok));
+  ck('de per-kolom melding blijft bestaan voor als er WEL leads zijn',
+    /Geen leads/.test(blok));
+
+  const i18n = require('../api/_i18n');
+  let ontbreekt = [];
+  for (const k of ['pipe.leeg.titel', 'pipe.leeg.tekst']) {
+    for (const t of ['nl', 'fr', 'en', 'de']) {
+      const v = i18n.t(t, k);
+      if (!v || v === k) ontbreekt.push(k + '/' + t);
+    }
+  }
+  ck('in vier talen', ontbreekt.length === 0, ontbreekt);
+  ck('en echt vertaald, niet gekopieerd',
+    i18n.t('fr', 'pipe.leeg.titel') !== i18n.t('nl', 'pipe.leeg.titel'));
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

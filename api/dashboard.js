@@ -20753,6 +20753,29 @@ function renderPipeline() {
     }
   ];
 
+  /* Helemaal leeg: EEN bericht in plaats van vijf.
+
+     Wat hier stond was per kolom "Geen leads", en met nul leads las dat als
+     vijf keer hetzelfde naast elkaar -- een muur van niets, precies op het
+     scherm dat een nieuwe klant opent om te zien of het werkt. Vijf lege
+     kolommen vertellen bovendien niets wat de kolomkoppen niet al zeggen.
+
+     Alleen als ALLES leeg is. Zodra er ergens een lead staat zijn de kolommen
+     zinvol -- dan betekent een lege kolom iets ("niets in de afspraakfase"), en
+     dan hoort die melding er per kolom te blijven staan. */
+  if (!leads.length) {
+    board.innerHTML = '<div class="empty-state" style="grid-column:1/-1">'
+      + '<div class="empty-state-illustration" style="width:88px;height:88px">'
+      +   '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+      +   '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg>'
+      + '</div>'
+      + '<div class="empty-title">' + escHtml(tr('pipe.leeg.titel')) + '</div>'
+      + '<div class="empty-desc">' + escHtml(tr('pipe.leeg.tekst')) + '</div>'
+      + (typeof emptyStateCta === 'function' ? emptyStateCta() : '')
+      + '</div>';
+    return;
+  }
+
   board.innerHTML = cols.map(col => {
     const cards = col.leads.map(l => {
       const sc = l.leadScore || 0;
