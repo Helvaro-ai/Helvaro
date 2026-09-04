@@ -267,6 +267,86 @@ const readTools = [
     }),
   },
   {
+    /* ── Wie zocht dit? ────────────────────────────────────────────────────
+       De functie waar de hele wensen-machinerie voor bestaat. Een koper vroeg
+       twee maanden geleden naar een Mercedes van 2019 onder de 100.000 km, die
+       stond er toen niet, en het gesprek liep dood. Nu rijdt er precies zo een
+       binnen -- en zonder dit gereedschap legt niemand dat verband.
+
+       Die lead was al betaald: gevonden, aangesproken, gekwalificeerd. Hem
+       opnieuw bereiken kost een sjabloonbericht van ongeveer elf cent. Een
+       nieuwe lead kost een veelvoud.
+
+       LEZEND en niet handelend. Er gaat hier niets naar buiten; dit levert een
+       lijst met namen en redenen. Wie er daarna een bericht krijgt en wat
+       daarin staat, loopt via create_campaign -- dat al bestaat, al achter een
+       bevestiging zit, en al rekening houdt met wie zich heeft afgemeld. */
+    name: 'find_buyers',
+    kind: 'read',
+    description:
+      'Zoek eerdere kopers die precies dit voertuig zochten. Gebruik dit wanneer er een auto '
+      + 'binnenkomt of wanneer de dealer vraagt wie hij moet bellen over een wagen. Geeft namen '
+      + 'met een score en de reden waarom ze passen. Verstuurt niets.',
+    parameters: {
+      type: 'object',
+      properties: {
+        code:     { type: 'string', description: 'De referentie van het voertuig, bijvoorbeeld V3.' },
+        minScore: { type: 'integer', minimum: 0, maximum: 100, default: 55,
+                    description: 'Hoe goed de match minstens moet zijn. Standaard 55.' },
+      },
+      required: ['code'],
+    },
+    run: readTool('find_buyers', async (args, ctx) => {
+      if (ctx.vertical !== 'dealership') {
+        return stub('Dit account werkt niet met voertuigen. Vraag naar panden of leads.', { unavailable: true });
+      }
+      if (!(await vehicles.available())) {
+        return stub('De voertuigenlijst is nog niet aangezet voor deze klant.', { unavailable: true });
+      }
+
+      const auto = await vehicles.getByCode(ctx.projectCode, args.code);
+      if (!auto) {
+        return { summary: 'Dat voertuig staat niet in deze voorraad. Vraag om welke wagen het gaat.',
+                 data: { matches: [] }, components: [] };
+      }
+
+      const wens = require('../_wens');
+      const { leads } = await data.leadsFor(ctx);
+      const treffers = wens.matchLeads(leads, auto, { minScore: Number(args.minScore) || 55, max: 10 });
+
+      if (!treffers.length) {
+        return {
+          summary: 'Niemand in je leads zocht iets als de ' + vehicles.naam(auto) + '. '
+            + 'Dat kan ook betekenen dat er nog weinig wensen zijn opgeslagen -- die vult je '
+            + 'assistent vanzelf aan naarmate er meer gesprekken lopen.',
+          data: { matches: [], voertuig: auto.code },
+          components: [],
+        };
+      }
+
+      return {
+        summary: treffers.length + ' ' + (treffers.length === 1 ? 'koper zocht' : 'kopers zochten')
+          + ' iets als de ' + vehicles.naam(auto) + ': '
+          + treffers.slice(0, 4).map((t) => (t.naam || 'onbekend') + ' (' + t.score + '%)').join(', ')
+          + '.',
+        data: {
+          voertuig: { code: auto.code, naam: vehicles.naam(auto), prijs: auto.prijs, status: auto.status },
+          matches: treffers.map((t) => ({
+            leadId: t.leadId, naam: t.naam, score: t.score,
+            redenen: t.redenen,
+            zocht: wens.omschrijf(t.wens),
+            sinds: t.sinds,
+            /* Het telefoonnummer gaat NIET mee. Faro heeft het niet nodig om te
+               zeggen wie je moet bellen, en een nummer in een modelcontext is
+               een nummer dat daar niet hoeft rond te slingeren. De verzendweg
+               zoekt het zelf op aan de hand van het lead-id. */
+          })),
+        },
+        components: [],
+      };
+    }),
+  },
+  {
     name: 'get_properties',
     kind: 'read',
     description:

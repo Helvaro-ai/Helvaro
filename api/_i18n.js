@@ -861,6 +861,22 @@ const TEKST = {
                            en: 'No vehicles yet',     de: 'Noch keine Fahrzeuge' },
   'veh.add':             { nl: 'Voertuig toevoegen',  fr: 'Ajouter un v\u00e9hicule',
                            en: 'Add vehicle',         de: 'Fahrzeug hinzuf\u00fcgen' },
+  /* De laatste vastgoedteksten met een tegenhanger. Ze zijn hier terechtgekomen
+     omdat een dealer ze anders alsnog las: "voeg je eerste woning toe", "wat je
+     assistent mag vertellen over dit pand", "link naar het pand". Stuk voor
+     stuk klein, en samen precies waarom het niet als zijn product voelde. */
+  'veh.empty.text':      { nl: 'Voeg je eerste voertuig toe. Plak de link van je AutoScout24-advertentie en ik vul de rest zelf in \u2014 daarna koppelt Helvaro een binnenkomend WhatsApp-bericht automatisch aan de juiste wagen.',
+                           fr: 'Ajoutez votre premier v\u00e9hicule. Collez le lien de votre annonce AutoScout24 et je remplis le reste \u2014 ensuite Helvaro relie automatiquement chaque message WhatsApp au bon v\u00e9hicule.',
+                           en: 'Add your first vehicle. Paste your AutoScout24 listing link and I will fill in the rest \u2014 after that Helvaro links every incoming WhatsApp message to the right car automatically.',
+                           de: 'F\u00fcgen Sie Ihr erstes Fahrzeug hinzu. F\u00fcgen Sie den Link Ihrer AutoScout24-Anzeige ein und ich f\u00fclle den Rest aus \u2014 danach verkn\u00fcpft Helvaro jede eingehende WhatsApp-Nachricht automatisch mit dem richtigen Fahrzeug.' },
+  'veh.desc.ph':         { nl: 'Wat je assistent mag vertellen over dit voertuig. Alleen wat hier staat wordt genoemd \u2014 hij verzint niets bij.',
+                           fr: 'Ce que votre assistant peut dire de ce v\u00e9hicule. Seul ce qui figure ici sera mentionn\u00e9 \u2014 il n\u2019invente rien.',
+                           en: 'What your assistant may say about this vehicle. Only what is written here gets mentioned \u2014 it invents nothing.',
+                           de: 'Was Ihr Assistent \u00fcber dieses Fahrzeug sagen darf. Nur was hier steht wird genannt \u2014 er erfindet nichts.' },
+  'veh.link.a11y':       { nl: 'Link naar het voertuig', fr: 'Lien vers le v\u00e9hicule',
+                           en: 'Link to the vehicle',    de: 'Link zum Fahrzeug' },
+  'veh.beoordeling':     { nl: 'Voertuig', fr: 'V\u00e9hicule', en: 'Vehicle', de: 'Fahrzeug' },
+
   'veh.testdrive':       { nl: 'proefrit',    fr: 'essai',        en: 'test drive', de: 'Probefahrt' },
   'prop.viewing':        { nl: 'bezichtiging',fr: 'visite',       en: 'viewing',    de: 'Besichtigung' },
   'veh.loadFailed':      { nl: 'De voertuigen konden niet opgehaald worden. Probeer het zo meteen opnieuw.',

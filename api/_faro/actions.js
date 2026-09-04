@@ -205,9 +205,35 @@ const EXECUTORS = {
       vertical: payload && payload.vertical,
       velden:   payload && payload.velden,
     }, ctx);
+
+    let staart = '';
+    /* Meteen kijken wie hierop wachtte. Dit is het verschil tussen een
+       functie die bestaat en een functie die gebruikt wordt: een dealer die
+       zelf moet bedenken dat hij "wie zocht dit?" kan vragen, vraagt het
+       nooit. Het moment waarop het ertoe doet is precies nu -- de auto staat
+       er net.
+
+       Best-effort en nooit blokkerend. Het voertuig IS toegevoegd; als het
+       zoeken hapert hoort dat de bevestiging niet te bederven. */
+    if (uit.soort === 'voertuig') {
+      try {
+        const wens = require('../_wens');
+        const data = require('./data');
+        const { leads } = await data.leadsFor(ctx);
+        const treffers = wens.matchLeads(leads, uit.record, { minScore: 60, max: 5 });
+        if (treffers.length) {
+          const namen = treffers.map((t) => (t.naam || 'een lead') + ' (' + t.score + '%)').join(', ');
+          staart = ' ' + (treffers.length === 1 ? 'Eén eerdere koper zocht' : treffers.length + ' eerdere kopers zochten')
+            + ' precies dit: ' + namen + '. Wil je dat ik ze aanschrijf?';
+        }
+      } catch (e) {
+        console.warn('[add_listing] matches zoeken mislukt:', e && e.message);
+      }
+    }
+
     return {
       summary: uit.naam + ' staat nu in je ' + (uit.soort === 'voertuig' ? 'voorraad' : 'aanbod')
-        + ' onder referentie ' + uit.code + '.',
+        + ' onder referentie ' + uit.code + '.' + staart,
       components: [],
       data: { code: uit.code, soort: uit.soort },
     };

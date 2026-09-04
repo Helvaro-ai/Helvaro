@@ -32,6 +32,7 @@ const _properties = require('./_properties'); // welk pand deze lead bedoelt
 const _vertical  = require('./_vertical');   // vastgoed of dealership -- de enige plek die dat weet
 const _vehicles  = require('./_vehicles');   // welke auto deze lead bedoelt
 const _autoscout = require('./_autoscout');  // de AutoScout24-link uit zijn bericht
+const _wens      = require('./_wens');       // wat een koper zoekt, voor later
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
 const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
 
@@ -1276,6 +1277,32 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     if (metCode !== null) updateFields[NOTITIES_FIELD] = metCode;
   }
 
+  /* De wens van deze koper bewaren. Dezelfde blob, dezelfde merge-regels: wat
+     er al stond -- notities, taken, de escalatievlag, de aanbodcode -- blijft
+     staan. naarNotities() geeft null als er niets verandert, dus een koper die
+     drie beurten lang hetzelfde zoekt levert een schrijfactie op en niet drie.
+
+     Alleen bij dealership. Voor een makelaar vraagt de prompt er niet om, dus
+     komt er ook nooit een WENS-blok -- maar deze grens staat er expliciet,
+     want "het kan toch niet gebeuren" is geen bescherming. */
+  if (vertical === _vertical.DEALERSHIP && aiResponse.wens) {
+    try {
+      const basisW = updateFields[NOTITIES_FIELD] !== undefined
+        ? updateFields[NOTITIES_FIELD]
+        : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+      const metWens = _wens.naarNotities(basisW, aiResponse.wens);
+      if (metWens !== null) {
+        updateFields[NOTITIES_FIELD] = metWens;
+        console.log('[WhatsApp] wens bewaard voor lead ' + lead.id + ': '
+          + _wens.omschrijf(aiResponse.wens));
+      }
+    } catch (e) {
+      /* Best-effort. Een wens die niet opgeslagen raakt is een gemiste kans;
+         een gesprek dat daarop stukloopt is een gemiste klant. */
+      console.warn('[WhatsApp] wens opslaan mislukt:', e && e.message);
+    }
+  }
+
   await updateLead(lead.id, updateFields, phone, scopedProjectCode);
 
   /* ── Naar het CRM, als deze beurt de kwalificatie opleverde ───────────────
@@ -1876,6 +1903,61 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
     }
   }
 
+  /* 2a. WENS:{...} -- wat deze koper zoekt.
+
+     Zelfde vorm als BOOK, en om dezelfde reden: het antwoordschema van het
+     gesprek is GEDEELD met vastgoed en staat onder een momentopname, dus er
+     een veld in bijmaken zou elke bestaande makelaar raken voor iets dat
+     alleen dealers aangaat. Een blok in de tekst hoort bij de vertical die
+     erom vraagt, en verdwijnt vanzelf als die er niet is.
+
+     Waarom dit ertoe doet: een koper vraagt naar een auto die net weg is of
+     net te duur, en dan houdt het op. Twee maanden later rijdt precies wat hij
+     zocht de garage binnen en niemand legt het verband. Die lead was al
+     betaald -- gevonden, aangesproken, gekwalificeerd. Hem opnieuw bereiken
+     kost een sjabloonbericht; een nieuwe lead kost een veelvoud.
+
+     Het blok wordt uit de tekst geknipt voor het naar de koper gaat. Wat hier
+     misgaat mag nooit zichtbaar worden voor hem: een kapotte JSON levert een
+     logregel op en verder niets, precies zoals bij BOOK. */
+  let wens = null;
+  const wensMatch = cleaned.match(/WENS:\s*(\{[\s\S]*?\})/);
+  if (wensMatch) {
+    try {
+      const ruw = JSON.parse(wensMatch[1]);
+      /* _wens staat bovenaan als require en niet hier ter plekke. Dat is geen
+         stijlkwestie: tests/afzeggen-gesprek.test.js knipt dit hele parseerblok
+         uit het bestand en draait het als losse functie, en daarbinnen bestaat
+         require() niet. Een require midden in het blok maakt dat blok dus
+         onbenaderbaar voor de test die hem bewaakt. */
+      wens = _wens.normaliseer(ruw);
+      if (!wens) console.log('[WhatsApp] WENS was leeg of onbruikbaar, overgeslagen');
+    } catch (e) {
+      console.error('[WhatsApp] WENS parse fout:', e.message, wensMatch[1]);
+    }
+    cleaned = cleaned.replace(/WENS:\s*\{[\s\S]*?\}/, '').trim();
+  }
+
+  /* Het vangnet, en dit is geen overdaad.
+
+     De regex hierboven eist een SLUITENDE accolade. Schrijft het model
+     "WENS:{merk:mercedes" zonder afsluiting -- afgekapt antwoord, verkeerde
+     JSON, hallucinatie -- dan matcht hij niet, wordt er niets weggeknipt, en
+     leest de KOPER letterlijk WENS:{merk:mercedes in zijn WhatsApp.
+
+     Een interne markering die bij de klant belandt is erger dan een gemiste
+     wens: de eerste maakt het product onbetrouwbaar in zijn ogen, de tweede
+     kost hoogstens een herinnering. Dus: alles vanaf WENS: tot het einde van
+     die regel gaat eruit, geparseerd of niet.
+
+     Tot het einde van de REGEL en niet tot het einde van de tekst: een model
+     dat het blok per ongeluk middenin zet, mag niet de rest van zijn bericht
+     kwijtraken. */
+  if (cleaned.indexOf('WENS:') !== -1) {
+    console.warn('[WhatsApp] onvolledig WENS-blok weggeknipt uit het antwoord');
+    cleaned = cleaned.replace(/WENS:[^\n]*/g, '').trim();
+  }
+
   /* 2b. CANCEL:{...} -- de lead kan niet komen.
 
      Twee dingen die hier bewust anders zijn dan bij BOOK. Ten eerste hoeft er
@@ -1926,13 +2008,13 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
       const decision = JSON.parse(match[1]);
       const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
       // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
-      return { done: true, message: message || '...', appointment, cancel, ...decision, summary: decision.summary || runningSummary };
+      return { done: true, message: message || '...', appointment, cancel, wens, ...decision, summary: decision.summary || runningSummary };
     } catch (e) {
       console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
     }
   }
 
-  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel };
+  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel, wens };
 }
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────

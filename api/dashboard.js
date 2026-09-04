@@ -15667,6 +15667,9 @@ function vw(sleutel) {
     case 'toevoegen':return d ? tr('veh.add')  : tr('prop.add');
     case 'afspraak': return d ? tr('veh.testdrive') : tr('prop.viewing');
     case 'laadFout': return d ? tr('veh.loadFailed') : tr('prop.loadFailed');
+    case 'leegTekst':   return d ? tr('veh.empty.text') : tr('prop.empty.text');
+    case 'beschrijving':return d ? tr('veh.desc.ph')   : tr('pd.desc.ph');
+    case 'linkA11y':    return d ? tr('veh.link.a11y') : tr('a11y.veld.pandlink');
     case 'tabel':    return d ? 'vehicles' : 'properties';
     default:         return '';
   }
@@ -15700,6 +15703,13 @@ function zetVertical(v, config) {
   if (kop) kop.textContent = vw('aanbod');
   var leegT = document.querySelector('#page-panden .pd-empty-title');
   if (leegT) leegT.textContent = vw('geen');
+  /* De uitleg onder die kop hoort mee te veranderen. "Voeg je eerste woning
+     toe" onder "Nog geen voertuigen" is precies het soort halve omzetting dat
+     laat zien dat er iets is aangeplakt in plaats van ingericht. */
+  var leegTxt = document.querySelector('#page-panden .pd-empty-text');
+  if (leegTxt) leegTxt.textContent = vw('leegTekst');
+  var beschr = document.getElementById('pd-f-omschrijving');
+  if (beschr) beschr.placeholder = vw('beschrijving');
   var knoppen = document.querySelectorAll('#page-panden .btn-primary-sm');
   for (var i = 0; i < knoppen.length; i++) {
     var laatste = knoppen[i].lastChild;

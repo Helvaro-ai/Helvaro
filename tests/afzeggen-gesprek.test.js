@@ -54,12 +54,22 @@ const fs = require('fs');
 const bron = fs.readFileSync(BASE + 'api/whatsapp.js', 'utf8');
 
 const ANKER_START = '  // 1. Pull out the running SUMMARY:{...} line (present on every turn).';
-const ANKER_EIND  = '  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel };';
+/* Het anker volgt de returnregel, en die groeit mee als er een blok bijkomt --
+   WENS:{...} kwam er later bij voor de dealership-vertical. Op de volledige
+   regel pinnen betekent dat elke toevoeging deze test omgooit, en dan wordt het
+   anker verslapt in plaats van bekeken. Op het BEGIN pinnen houdt hem streng
+   waar het om gaat (dit is de returnregel van het parseerblok) en soepel waar
+   het niet om gaat (welke velden er precies in staan). */
+const ANKER_EIND  = '  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel';
 const i = bron.indexOf(ANKER_START);
 const j = bron.indexOf(ANKER_EIND);
 ck('het parseerblok is nog te vinden in api/whatsapp.js', i !== -1 && j > i, { i, j });
 
-const blok = bron.slice(i, j + ANKER_EIND.length);
+/* Doorknippen tot het EINDE van die returnregel, niet tot het einde van het
+   anker: het anker is een prefix (zie hierboven), dus optellen van zijn lengte
+   zou de expressie halverwege afkappen. */
+const eindRegel = bron.indexOf('\n', j);
+const blok = bron.slice(i, eindRegel === -1 ? j + ANKER_EIND.length : eindRegel);
 const parse = new Function('raw', 'ctx', blok);
 
 console.log('\n— het CANCEL-blok komt uit de tekst —');

@@ -446,6 +446,31 @@ const panden = {
 
    Het BEDRAG van zijn ruimte staat met opzet NIET in de prompt als iets dat hij
    mag noemen. Een koper die weet dat er 1.500 in zit, vraagt 1.500. */
+/* De opdracht om de wens op te schrijven. Staat als losse tekst omdat hij op
+   TWEE plekken hoort: bij een bekende auto en bij een onbekende. Dat tweede is
+   zelfs het belangrijkste geval -- wie belt over een auto die net weg is, is
+   precies de koper die je twee maanden later terug wil bellen.
+
+   Waarom een blok in de tekst en geen veld in het antwoordschema: dat schema is
+   GEDEELD met vastgoed en staat onder een momentopname. Er een veld in bijmaken
+   raakt elke bestaande makelaar voor iets dat alleen dealers aangaat. Dit blok
+   hoort bij de vertical die erom vraagt, en verdwijnt vanzelf als die er niet
+   is -- net als BOOK en CANCEL. */
+const WENS_OPDRACHT = [
+  '',
+  'WAT DEZE KOPER ZOEKT (onthouden voor later):',
+  'Zodra je genoeg weet, zet je onderaan je bericht een blok:',
+  '  WENS:{"merk":"mercedes","minJaar":2019,"maxKm":100000,"maxPrijs":35000}',
+  'Alle velden zijn optioneel; laat weg wat je niet weet. Mogelijk zijn: merk, model,',
+  'maxPrijs, maxKm, minJaar, brandstof, transmissie, carrosserie.',
+  'Verzin nooit een grens die hij niet gaf. "Iets van Mercedes" is een geldige wens met',
+  'alleen een merk erin -- dat is beter dan een verzonnen budget.',
+  'De koper ziet dit blok niet; het wordt eruit geknipt.',
+  'Stuur het opnieuw als hij iets bijstelt. Laat het weg als je niets nieuws weet.',
+  'Waarom dit ertoe doet: staat de auto die hij zoekt er nu niet, dan laat ik het weten',
+  'zodra hij binnenkomt. Zeg dat ook tegen hem -- dat is een reden om te antwoorden.',
+].join('\n');
+
 const voertuigen = {
   naam: 'vehicle_context_' + VERSIE,
 
@@ -546,6 +571,8 @@ const voertuigen = {
          + 'Wat je te weten komt over financiering en inruil zet je in je samenvatting, '
          + 'want daar deelt de verkoper zijn dag mee in.');
 
+    r.push(WENS_OPDRACHT);
+
     r.push('', 'WANNEER JE HET OVERLAAT AAN DE VERKOPER (escalate):');
     r.push('- De koper wil meer korting dan jij mag geven.');
     r.push('- Hij vraagt naar financiering, leasing of een afbetalingsplan.');
@@ -595,6 +622,10 @@ const voertuigen = {
     r.push('of de uitvoering, dan mag je bevestigen welke auto je bedoelt. Gok nooit, en noem nooit ');
     r.push('cijfers van de ene auto terwijl het over de andere gaat.');
     r.push('Praat ook niet over korting zolang je niet weet welk voertuig het is.');
+    /* Ook hier, en dat is met opzet het belangrijkste geval: wie belt over iets
+       dat er niet staat, of over een auto die net weg is, is precies de koper
+       die je later terug wil bellen. */
+    r.push(WENS_OPDRACHT);
     return r.join('\n');
   },
 };

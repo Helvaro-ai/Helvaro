@@ -184,11 +184,18 @@ function scoor(wens, voertuig) {
     if (v && v.indexOf(w[sleutel]) !== -1) { punten += 10; redenen.push(label); }
   }
 
-  /* Een wens zonder enig hard criterium levert geen match op. Anders zou
-     "iemand die ooit iets vroeg" bij elke nieuwe auto een bericht krijgen, en
-     dat is hoe je een WhatsApp-nummer laat blokkeren. */
-  if (maximum === 0) return null;
+  /* Hier stond een controle op `maximum === 0`, bedoeld als vangnet voor een
+     wens zonder enig criterium. Die is weggehaald omdat hij ONBEREIKBAAR was:
+     normaliseer() hierboven geeft al null voor een lege wens, en elke wens die
+     daar doorheen komt heeft minstens één veld -- dus maximum is altijd > 0.
 
+     Een mutatietest liet dat zien: de regel omdraaien maakte geen enkele test
+     rood. Dat is precies wat "dode code" betekent, en dode code met een
+     geruststellende opmerking erboven is erger dan geen code -- je denkt dat er
+     iets bewaakt wordt.
+
+     Het vangnet zelf is er nog steeds, alleen eerder: een lege wens komt nooit
+     voorbij normaliseer(), en dat wordt wel getest. */
   const score = Math.round((punten / maximum) * 100);
   return { score, redenen, wens: w };
 }
