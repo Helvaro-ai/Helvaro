@@ -261,10 +261,92 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
      tokens: sand is a FILL, never type. #E8D7B1 as text on white is about
      1.7:1, invisible. So --accent-c fills (always with dark text on it) and
      --accent-ink is what you set type in. */
-  --bg:            #121212;
-  --bg-alt:        #0D0D0D;
-  --card:          #232323;
-  --card-elevated: #2A2A2A;
+  /* ══ TONALE RAMPS ═══════════════════════════════════════════════════
+     Vier families van elf stops, gerekend in OKLCH en niet met de hand
+     gekozen. Dat verschil is zichtbaar: in HSL lijkt een reeks gelijkmatig
+     terwijl het oog hem als sprongen leest -- geel op 50%% helderheid leest
+     veel lichter dan blauw op 50%%. OKLCH-lightness loopt wel gelijk op met
+     wat je waarneemt, dus deze trappen staan er als echte trappen.
+
+     Chroma volgt een boog in plaats van een rechte lijn: aan de uiteinden
+     minder verzadiging, want een bijna-witte tint op volle chroma wordt
+     roze en een bijna-zwarte wordt modderig. Het midden houdt de kleur op
+     sterkte.
+
+     ZAND is het merk. KLEI, OLIJF en STEEN zijn aardse begeleiders in
+     dezelfde warme hoek van het spectrum -- geen regenboog, en nadrukkelijk
+     geen blauw of paars, want die sluit de huisstijl uit.
+
+     Achter elke stop staat waar hij als TEKST mag staan. Dat is geen
+     versiering: een kleur die als vulling klopt is niet automatisch
+     leesbaar als letter, en dat is precies waar dit bestand al een keer
+     op is misgegaan (zand op wit = 1,7:1). */
+
+  --zand-50 : #FCF6E9;
+  --zand-100: #F5ECD7;
+  --zand-200: #E8D7B1;
+  --zand-300: #D1C3A2;
+  --zand-400: #B9A986;
+  --zand-500: #A0916D;
+  --zand-600: #867755;
+  --zand-700: #6A5C3D;
+  --zand-800: #4E4228;
+  --zand-900: #322914;
+  --zand-950: #1D1607;
+
+  --klei-50 : #FFF2E5;
+  --klei-100: #FFE5D0;
+  --klei-200: #FED0B5;
+  --klei-300: #ECB797;
+  --klei-400: #D59C79;
+  --klei-500: #BC8360;
+  --klei-600: #A06A48;
+  --klei-700: #805031;
+  --klei-800: #61381D;
+  --klei-900: #41210A;
+  --klei-950: #271002;
+
+  --olijf-50 : #F5F9E9;
+  --olijf-100: #EBF0D6;
+  --olijf-200: #D8DFBD;
+  --olijf-300: #C1C9A1;
+  --olijf-400: #A8B085;
+  --olijf-500: #8F986B;
+  --olijf-600: #767E54;
+  --olijf-700: #5B623C;
+  --olijf-800: #424727;
+  --olijf-900: #292D13;
+  --olijf-950: #161906;
+
+  --steen-50 : #F9F6F1;
+  --steen-100: #F1ECE4;
+  --steen-200: #E0DACF;
+  --steen-300: #CBC3B7;
+  --steen-400: #B2AA9D;
+  --steen-500: #999184;
+  --steen-600: #7F786B;
+  --steen-700: #635D51;
+  --steen-800: #494339;
+  --steen-900: #2E2922;
+  --steen-950: #1A1711;
+
+  --bg:            #14120E;
+  --bg-alt:        #0F0D09;
+  /* Een kaart is nu een VERLOOP en geen vlakke vulling, en dat is het verschil
+     tussen 'een vlak met een schaduw eronder' en iets dat licht vangt. Van
+     boven iets lichter, naar onder iets donkerder -- precies zoals een plaat
+     die onder een lamp ligt.
+
+     Het bereik is 3,5% helderheid. Dat is met opzet nauwelijks te benoemen:
+     zie je de overgang als een streep, dan is het te veel. Je moet het merken
+     als diepte, niet herkennen als een verloop.
+
+     Dit mag omdat alle 97 gebruiken in dit bestand 'background:' zijn en geen
+     enkele 'background-color:' -- nagerekend, niet aangenomen. --card-flat
+     blijft bestaan voor het geval er ooit wel een platte kleur nodig is. */
+  --card-flat:     #25231F;
+  --card:          linear-gradient(180deg, #2A2824 0%, #25231F 55%, #22201C 100%);
+  --card-elevated: linear-gradient(180deg, #32302C 0%, #2C2A26 55%, #282623 100%);
   /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
      ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
      zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
@@ -275,16 +357,20 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
      Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
      voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
      hoe zoiets stilletjes scheef gaat. */
-  --border-c:      #333333;
-  --border-strong: #454545;
-  --divider:       #2A2A2A;
-  --hover-c:       #1C1C1C;
+  --border-c:      #35332F;
+  --border-strong: #474540;
+  --divider:       #2C2A26;
+  --hover-c:       #1E1C18;
 
-  --accent-c:        #E8D7B1;   /* sand — fills, buttons, icons */
+  /* Het accent hangt nu aan de ramp in plaats van los te staan. --zand-200 IS
+     #E8D7B1 -- die stop is met opzet vastgepind op de merkwaarde, zodat de ramp
+     het merk BEVAT en niet benadert. Er verandert dus geen pixel; wat er bij
+     komt is dat elke tint ernaast nu een naam heeft en op afstand klopt. */
+  --accent-c:        var(--zand-200);
   --accent-hover-c:  #DDCAA1;
-  --accent-pressed-c:#C9AE7C;
-  --accent-deep:     #C9AE7C;   /* second stop in gradients */
-  --accent-ink:      #F0E4C8;   /* accent AS TEXT, on dark only */
+  --accent-pressed-c:var(--zand-300);
+  --accent-deep:     #C9AE7C;   /* tweede stop in verlopen */
+  --accent-ink:      var(--zand-100);   /* accent ALS TEKST, alleen op donker */
   --on-accent:       #121212;   /* always dark type on sand */
 
   --text-c:        #F9F9F9;
@@ -312,7 +398,7 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --error-ink:   #F87171;           /* 5,68:1 op de kaart, 5,14:1 op de chip */
   --neutral-ink: #96A2B6;   /* 4,9:1 op de chip waar hij op staat; licht thema maakt hem donkerder */
 
-  --bubble-incoming: #1F1F1F;
+  --bubble-incoming: #211F1B;
 
   --accent-rgb:  232,215,177;
   --success-rgb: 34,197,94;
@@ -370,9 +456,13 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --shadow-card: 0 1px 2px rgba(0,0,0,.30), 0 5px 14px rgba(0,0,0,.20), 0 16px 40px rgba(0,0,0,.15);
   --shadow-glow: none;
 
-  /* 1px specular lip. On near-black surfaces a drop shadow alone barely
-     registers; this is what sells a card as a physical plane. */
-  --edge-hi: inset 0 1px 0 rgba(255,255,255,0.04);
+  /* De lichtlip bovenop, plus nieuw: een schaduwlip onderaan. Samen maken ze
+     van een rechthoek een plaat met dikte -- licht valt op de bovenrand, de
+     onderrand ligt in zijn eigen schaduw. Eén lip alleen leest als een streep;
+     twee lezen als een rand.
+     Van 0.04 naar 0.07: op een verloop dat zelf al oploopt moest de lip mee
+     omhoog, anders verdwijnt hij in de bovenste stop. */
+  --edge-hi: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.22);
 
   --glass-fill:  rgba(18,18,18,0.78);
   --glass-edge:  rgba(255,255,255,0.06);
@@ -472,8 +562,13 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
      hoorbaar warm is en niet grijs. Donkerder dan dit wordt beige. */
   --bg:            #F6F3EC;
   --bg-alt:        #EEE9DE;
-  --card:          #FFFFFF;
-  --card-elevated: #FFFFFF;
+  /* Op wit kan het verloop maar een kant op: naar beneden. En het krijgt de
+     zandhue mee, want zuiver grijs onder een zandaccent leest koud -- dezelfde
+     reden als bij de grond hierboven. 1,6% bereik; nog subtieler dan op donker,
+     omdat het oog op wit veel gevoeliger is voor banding. */
+  --card-flat:     #FFFFFF;
+  --card:          linear-gradient(180deg, #FFFFFF 0%, #FEFDFB 60%, #FCFAF6 100%);
+  --card-elevated: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 55%, #FDFCF9 100%);
   --border-c:      #E7E3DA;
   --border-strong: #D6D0C2;
   --divider:       #EDE9E0;
@@ -1260,10 +1355,12 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      een elfde element bij dat vergeten wordt.
 
      De waarden hieronder zijn letterlijk die uit het donkere thema. */
-  --bg:            #121212;
-  --bg-alt:        #0D0D0D;
-  --card:          #232323;
-  --card-elevated: #2A2A2A;
+  --bg:            #14120E;
+  --bg-alt:        #0F0D09;
+  /* Zelfde verlopen als in :root -- zie de uitleg daar. */
+  --card-flat:     #25231F;
+  --card:          linear-gradient(180deg, #2A2824 0%, #25231F 55%, #22201C 100%);
+  --card-elevated: linear-gradient(180deg, #32302C 0%, #2C2A26 55%, #282623 100%);
   /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
      ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
      zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
@@ -1274,10 +1371,10 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
      voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
      hoe zoiets stilletjes scheef gaat. */
-  --border-c:      #333333;
-  --border-strong: #454545;
-  --divider:       #2A2A2A;
-  --hover-c:       #1C1C1C;
+  --border-c:      #35332F;
+  --border-strong: #474540;
+  --divider:       #2C2A26;
+  --hover-c:       #1E1C18;
   --text-c:        #F9F9F9;
   --text-muted-c:  #B5B5B5;
   --accent-ink:    #F0E4C8;
