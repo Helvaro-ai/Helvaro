@@ -9339,12 +9339,6 @@ ${_intro.css()}
 
              Ze horen ook inhoudelijk bij het paneel en niet bij het formulier:
              ze gaan over het product, niet over het invullen. -->
-        <ul class="login-trust" aria-label="${T('login.trust.label')}">
-          <li>${T('login.trust.1')}</li>
-          <li>${T('login.trust.2')}</li>
-          <li>${T('login.trust.3')}</li>
-        </ul>
-
         <!-- Wat er staat terwijl Clerk onderweg is. Geen tekst als "even
              geduld" -- de vorm van het formulier dat zo komt, zodat het scherm
              niet springt zodra het er echt is. Verdwijnt pas als Clerk
@@ -9363,6 +9357,26 @@ ${_intro.css()}
         <!-- Switch between the two, kept in our own page so the user never
              leaves the branded login screen for a Clerk-hosted one. -->
         <div id="clerk-toggle" style="display:none"></div>
+
+        <!-- NA het formulier, niet ervoor. Eerst stonden ze tussen de
+             modusknoppen en "Continue with Google" in -- dus middenin de
+             handeling, tussen twee stappen van dezelfde keuze. Dat las als een
+             onderbreking.
+
+             Hier lezen ze zoals ze bedoeld zijn: je hebt gezien wat je moet
+             doen, en dit is het antwoord op "wat kost het me als ik het doe".
+             Alle drie waar: de proef is 14 dagen (api/_clerk.js), er wordt geen
+             kaart gevraagd, en Stripe-abonnementen lopen per maand
+             (api/_stripe.js, interval: month).
+
+             En buiten #login-form-wrap, want dat blok gaat op display:none
+             zodra Clerk het overneemt -- daar stonden ze eerst, en daardoor
+             waren ze op het echte inlogscherm 0 bij 0 pixels. -->
+        <ul class="login-trust" aria-label="${T('login.trust.label')}">
+          <li>${T('login.trust.1')}</li>
+          <li>${T('login.trust.2')}</li>
+          <li>${T('login.trust.3')}</li>
+        </ul>
 
         <p class="login-what">
         ${T('login.pitch')}
