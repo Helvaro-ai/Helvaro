@@ -199,6 +199,57 @@ const ABONNEMENT = (over = {}) => ({
   ck('geeft 503 en geen 200', res.code === 503, res);
   process.env.STRIPE_WEBHOOK_SECRET = bewaard;
 
+  console.log('\n— de stream gaat voor, en de getter wordt niet aangeraakt —');
+  /* Dit is de test die er niet was, en die had dit moeten vangen.
+     
+     In Vercel's Node-runtime is req.body een LAZY GETTER. Hem uitlezen is niet
+     passief: die getter slurpt de stream op en parst hem. ruweBody() keek eerst
+     drie keer naar req.body en las pas daarna de stream -- dus de controle die
+     moest vaststellen ÓF de body geparst was, veroorzaakte dat hij geparst werd.
+
+     Op productie gemeten voordat dit gerepareerd was:
+       geldige JSON                 -> 500 "Verkeerd geconfigureerd"
+       ONgeldige JSON               -> 400 (getter kon niet parsen, viel door)
+       met stripe-signature erbij   -> 500   <- dit is wat Stripe stuurt
+
+     Elke echte betaling gaf dus 500. Stripe probeerde opnieuw, kreeg weer 500,
+     en de credits werden nooit geboekt.
+
+     De oude test kon dit niet zien: zijn nep-verzoek had `on: () => {}` en
+     GEEN getter, dus er viel niets op te slurpen. Deze nabootsing heeft allebei. */
+  {
+    nepBase();
+    const body = JSON.stringify(AANKOOP());
+    let getterAangeraakt = false;
+    const brokken = [Buffer.from(body, 'utf8')];
+    const req5 = {
+      method: 'POST',
+      headers: { 'stripe-signature': teken(body) },
+      readable: true,
+      readableEnded: false,
+      on(gebeurtenis, fn) {
+        /* Een stream die zijn inhoud aflevert, zoals Vercel hem aanlevert
+           wanneer er nog niemand aan req.body gezeten heeft. */
+        if (gebeurtenis === 'data') brokken.forEach((b) => setImmediate(() => fn(b)));
+        if (gebeurtenis === 'end')  setImmediate(() => setImmediate(fn));
+        return req5;
+      },
+    };
+    Object.defineProperty(req5, 'body', {
+      get() { getterAangeraakt = true; return JSON.parse(body); },
+    });
+
+    const res5 = nepRes();
+    delete require.cache[require.resolve(BASE + 'api/stripe.js')];
+    const handler5 = require(BASE + 'api/stripe.js');
+    await handler5(req5, res5);
+
+    /* Het ene dat telt: de getter mag niet aangeraakt zijn. Gebeurt dat wel,
+       dan is de body op een echte Vercel geparst en zijn de bytes weg. */
+    ck('de req.body-getter is NIET aangeraakt', getterAangeraakt === false, { getterAangeraakt });
+    ck('en de handtekening klopt dus', res5.code === 200, res5);
+  }
+
   console.log('\n— als de body toch al geparst is —');
   /* De config onderaan api/stripe.js zet bodyParser uit. Dat is een afspraak
      met de runtime, geen garantie. Gaat die afspraak stuk, dan is req.body een
