@@ -125,5 +125,36 @@ console.log('\n  het vlak vult zijn bak');
     /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,200}\.skeleton, \.skeleton::after \{ animation: none/.test(code));
 }
 
+console.log('\n  en het stopt als er niets komt');
+{
+  const fn = /function stopSkeletten\(\) \{[\s\S]*?\n\}/.exec(code);
+  ck('stopSkeletten bestaat', !!fn);
+  const b = fn ? fn[0] : '';
+
+  /* Een laadvlak is meer dan zijn balken. Ging de losse-balken-lus er eerst
+     overheen, dan zette die het omhulsel bij de EERSTE balk op een streepje en
+     werkte daarna op knopen die al uit de pagina waren. Vandaar: eerst het
+     vlak in zijn geheel, daarna pas de losse balken. */
+  ck('ruimt het hele laadvlak op', /querySelectorAll\('\.laadvlak'\)/.test(b));
+  ck('en doet dat VOOR de losse balken',
+    b.indexOf(".laadvlak'") !== -1 && b.indexOf(".skeleton'") !== -1
+      && b.indexOf(".laadvlak'") < b.indexOf(".skeleton'"));
+  ck('zet er iets leesbaars voor in de plaats', /laad-mislukt/.test(b));
+
+  /* Blijft aria-busy staan, dan meldt een schermlezer eeuwig dat er nog iets
+     loopt terwijl het al is opgegeven. */
+  ck('zet aria-busy uit', /aria-busy['"]?,\s*['"]false['"]/.test(b));
+
+  /* Dit ging een keer stil kapot. De naam van een KPI-kaart WAS het woord
+     "Laden..."; toen die naam zelf een balk werd was de tekst leeg, matchte de
+     oude test niets meer, en bleef er "—" boven "—" staan -- zes kaarten
+     zonder dat je nog zag welke meting ontbrak. Gemeten in de browser op een
+     build met de oude check: alle zes labels "—". */
+  const lab = /querySelectorAll\('\.stat-label'\)[\s\S]{0,400}?\n  \}\);/.exec(b);
+  ck('de KPI-naam valt terug op tekst, niet op een streepje',
+    lab && /t === '—'/.test(lab[0]) && /Niet opgehaald/.test(lab[0]),
+    lab && lab[0].slice(0, 200));
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

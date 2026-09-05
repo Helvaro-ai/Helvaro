@@ -4940,6 +4940,10 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .laad-tegel { height: 62px; border-radius: 10px; }
 .laad-kolom { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .laad-kaart { height: 54px; border-radius: 10px; }
+/* Wat er staat als het wachten voorbij is en er niets kwam. Bewust rustig:
+   de banner bovenaan zegt al wat er mis is en waarom -- dit is alleen de plek
+   die anders eeuwig had staan schimmeren. */
+.laad-mislukt { padding: 14px 2px; color: var(--text-muted); font-size: 13px; }
 
 /* Alleen voor schermlezers. Niet display:none en niet visibility:hidden --
    die twee halen het uit de voorleesvolgorde, en dan is er alsnog niets te
@@ -14791,6 +14795,24 @@ function showCrmError(err) {
    al een echt getal heeft blijft staan -- oude cijfers zijn bruikbaarder dan
    streepjes zolang erboven staat dat ze oud zijn. */
 function stopSkeletten() {
+  /* Eerst de gedeelde laadvlakken, en in hun geheel. Ze bestaan uit meerdere
+     .skeleton-balken in een eigen omhulsel; als de losse-balken-lus hieronder
+     er eerst overheen gaat, zet die het omhulsel op een streepje bij de eerste
+     balk en werkt daarna op knopen die niet meer in de pagina staan. Dan blijft
+     er een halve rommel over in plaats van een duidelijk "niets gekomen".
+
+     aria-busy moet ook weg. Blijft die staan, dan meldt een schermlezer tot in
+     lengte van dagen dat er nog iets loopt terwijl het al is opgegeven. */
+  document.querySelectorAll('.laadvlak').forEach(function (lv) {
+    const leeg = document.createElement('div');
+    leeg.className = 'laad-mislukt';
+    leeg.textContent = 'Niet opgehaald';
+    lv.replaceWith(leeg);
+  });
+  document.querySelectorAll('[aria-busy="true"]').forEach(function (el) {
+    el.setAttribute('aria-busy', 'false');
+  });
+
   document.querySelectorAll('.skeleton').forEach(function (sk) {
     const houder = sk.parentElement;
     if (houder && !houder.dataset.hadWaarde) {
@@ -14800,8 +14822,14 @@ function stopSkeletten() {
       sk.remove();
     }
   });
+  /* De naam van een KPI-kaart was eerst het woord "Laden..."; die test keek
+     daarnaar. Sinds de naam zelf een balk is, is de tekst leeg en matchte hij
+     niets meer -- de kaart bleef dan achter als "—" boven "—", zonder dat
+     je nog kon zien WELKE meting er niet kwam. Nu op de balk zelf gekeken,
+     voordat de lus hierboven hem in een streepje verandert. */
   document.querySelectorAll('.stat-label').forEach(function (lab) {
-    if (/^laden/i.test((lab.textContent || '').trim())) lab.textContent = 'Niet opgehaald';
+    const t = (lab.textContent || '').trim();
+    if (/^laden/i.test(t) || t === '—' || t === '') lab.textContent = 'Niet opgehaald';
   });
 }
 
