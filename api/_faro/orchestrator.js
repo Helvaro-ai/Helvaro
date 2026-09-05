@@ -41,6 +41,23 @@ const stream    = require('./stream');
 const { getProvider, ProviderError } = require('./providers');
 const credits = require('../_credits');
 
+/* waitUntil meldt een belofte aan bij het platform, zodat die nog mag
+ * aflopen NADAT het antwoord is afgesloten. Zonder dat mag Vercel de
+ * container bevriezen zodra res.end() valt, en dan verdwijnt alles wat er nog
+ * liep -- zonder fout, zonder logregel.
+ *
+ * Dat raakt hier drie dingen die allemaal PAS na de laatste tekst vertrekken:
+ * het afboeken van de credits en het bewaren van de vraag en het antwoord.
+ * Fire-and-forget was een bewuste keuze (de gebruiker hoort niet te wachten op
+ * een schrijfactie), maar "niet wachten" en "mag wegvallen" zijn niet
+ * hetzelfde. Een beurt die niet werd afgeboekt is een beurt die gratis was, en
+ * een antwoord dat niet werd bewaard is er niet meer als je morgen terugkomt.
+ *
+ * api/whatsapp.js en api/form.js lossen dit al zo op en leggen daar in hun kop
+ * uit waarom; deze kant was de enige die het nog niet deed. Buiten Vercel is
+ * het een no-op, dus lokaal en in de tests verandert er niets. */
+const { waitUntil } = require('@vercel/functions');
+
 /**
  * Run one conversational turn, streaming to `res`.
  *
@@ -112,7 +129,7 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
   // de stream halverwege weg, dan hoort de vraag er nog te staan als je
   // terugkomt. Fire-and-forget — de gebruiker wacht hier niet op.
   if (conversationId) {
-    store.appendMessage(ctx.projectCode, conversationId, {
+    waitUntil(store.appendMessage(ctx.projectCode, conversationId, {
       role: 'user',
       content: userContent.map((b) => (b.type === 'image'
         // Geen base64 van een foto in de database: dat is megabytes per beurt en
@@ -120,7 +137,7 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
         // te tonen dat er een foto bij zat.
         ? { type: 'text', text: '[afbeelding]' }
         : b)),
-    }).catch(() => {});
+    }).catch(() => {}));
   }
 
   const system = await prompt.build(ctx);
@@ -300,26 +317,26 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       outputTokens: usage.outputTokens,
       model,
     });
-    credits.recordUsage(ctx.projectCode, credits.FEATURES.FARO_CHAT, {
+    waitUntil(credits.recordUsage(ctx.projectCode, credits.FEATURES.FARO_CHAT, {
       credits: charge.credits,
       meta: {
         tier, iterations,
         tokensIn: usage.inputTokens, tokensOut: usage.outputTokens,
         costEur: charge.costEur, priced: charge.priced,
       },
-    }).catch(() => {});
+    }).catch(() => {}));
 
     // Het antwoord bewaren. Ook fire-and-forget: de gebruiker heeft het al
     // gelezen tegen de tijd dat dit draait, en een trage schrijfactie hoort de
     // stream niet op te houden.
     if (conversationId) {
-      store.appendMessage(ctx.projectCode, conversationId, {
+      waitUntil(store.appendMessage(ctx.projectCode, conversationId, {
         role: 'assistant',
         content: assistantText ? [{ type: 'text', text: assistantText }] : [],
         components,
         tokensIn: usage.inputTokens,
         tokensOut: usage.outputTokens,
-      }).catch(() => {});
+      }).catch(() => {}));
     }
 
     stream.close(res, { usage: { in: usage.inputTokens, out: usage.outputTokens } });

@@ -1129,11 +1129,25 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
  * api/leads.js heeft zijn eigen sendWATemplate die dit al goed deed. Dat die
  * twee uit elkaar konden lopen is op zich het echte probleem -- zie het
  * P1-punt over dubbele implementaties. */
+/* atFetch en niet fetch, en dat is het hele punt van deze regel.
+ *
+ * De klok bovenaan dit bestand is er gekomen omdat een hangende aanroep de
+ * hele cron kan opeten: Vercel kapt na 300 seconden af, en dan heeft de ene
+ * helft van de klanten zijn opvolging gehad en de andere niet -- stil, en pas
+ * de volgende dag opnieuw geprobeerd. Alleen zat die klok op de
+ * Airtable-aanroepen, en NIET op de twee aanroepen die het bericht echt
+ * versturen. Precies de verkeerde kant op: Airtable antwoordt of niet, maar
+ * Meta is de partij die hier daadwerkelijk is blijven hangen (zie het dode
+ * token in de kop hierboven).
+ *
+ * Een time-out valt in de .catch() hieronder en levert dus `false` op --
+ * "niet verstuurd", wat het eerlijke antwoord is. Dat is precies waarom die
+ * boolean er staat. */
 function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
   const components = (params && params.length)
     ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) }]
     : [];
-  return fetch(
+  return atFetch(
     `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
     {
       method:  'POST',
@@ -1158,24 +1172,18 @@ function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
   });
 }
 
-function sendWA(to, message, phoneNumberId, token) {
-  return fetch(
-    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
-    {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'text',
-        text: { body: message }
-      })
-    }
-  ).then(async r => {
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) console.error(`[cron-followup] WA fout naar ${to}:`, JSON.stringify(d.error || d));
-  }).catch(err => console.error(`[cron-followup] WA netwerk fout naar ${to}:`, err.message));
-}
+/* Hier stond sendWA(): een vrije-tekstversie van de functie hierboven. Weg, om
+ * twee redenen die allebei op zichzelf genoeg waren.
+ *
+ * Hij werd NERGENS aangeroepen -- niet in dit bestand, en dit bestand
+ * exporteert alleen de handler en sendOpsAlert, dus ook nergens anders.
+ * api/form.js heeft zijn eigen kopie om dezelfde reden al opgeruimd (zie de
+ * notitie daar), en api/_wa-send.js is de plek waar vrije tekst hoort.
+ *
+ * En hij droeg nog de fout die hierboven op 3 september is rechtgezet: allebei
+ * de takken gaven `undefined` terug, dus geslaagd en mislukt zagen er voor een
+ * aanroeper identiek uit. Dode code die een gerepareerde bug bewaart is een
+ * val: de volgende die hier een verzendfunctie zoekt, vindt de verkeerde. */
 
 // ── 24h appointment reminders ─────────────────────────────────────────────────
 // Appointments table (tblD058vEITs1xYFc) already has "Reminder Sent"
