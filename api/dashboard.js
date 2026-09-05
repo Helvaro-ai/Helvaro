@@ -3205,7 +3205,22 @@ button.brand-dot { border: none; padding: 0; }
      dark-surface values automatically instead of needing its own
      override. The inset highlight is the specular edge that makes the
      pane read as a physical sheet catching light. */
-  background: rgba(15,20,30,0.88);
+  /* ── Warm, niet blauw ────────────────────────────────────────────────
+     Hier stond rgba(15,20,30,0.88): rood 15, groen 20, BLAUW 30. Blauw
+     domineerde met vijftien punten, en dat is genoeg om koud te lezen naast
+     een app die verder volledig warm is -- de grond is #14120E, het accent is
+     zand. De zijbalk stond dus letterlijk in een ander kleurenfamilie dan
+     alles waar hij tegenaan ligt.
+
+     Dezelfde behandeling als de vlakken eerder: de HELDERHEID exact gelijk
+     gehouden en alleen de hue naar zand gedraaid. Gemeten in OKLCH: L blijft
+     0,191, alleen de tint verschuift. Er gaat dus geen contrast verloren --
+     de gedempte tekst hierop haalt voor en na precies 6,40:1.
+
+     Het blijft een EIGEN vlak en niet dezelfde kleur als de pagina: iets
+     donkerder en met de doorschijnendheid intact, zodat hij als een aparte
+     laag leest en niet als een uitsnede. */
+  background: rgba(24,20,9,0.88);
   backdrop-filter: saturate(160%) blur(20px);
   -webkit-backdrop-filter: saturate(160%) blur(20px);
   /* The sidebar is dark in BOTH themes, so it rebinds the FULL token set
@@ -3215,12 +3230,15 @@ button.brand-dot { border: none; padding: 0; }
      rendered at 1.04 contrast (it used --text-primary), and the logout
      button sat at 2.38 (it used --red, which light tunes for white).
      Every alias a child might reach for is covered here on purpose. */
-  --text:           #E9EEF6;
-  --text-c:         #E9EEF6;
-  --text-primary:   #E9EEF6;
-  --text-muted:     #8D99AC;
-  --text-muted-c:   #8D99AC;
-  --text-secondary: #8D99AC;
+  /* Ook deze zijn warm gemaakt op gelijke helderheid. #E9EEF6 was een koud
+     blauwwit en #8D99AC een blauwgrijs -- die laatste werd 185 keer gebruikt
+     in de zijbalk en was dus de dominante tekstkleur van het hele paneel. */
+  --text:           #F1EDE5;
+  --text-c:         #F1EDE5;
+  --text-primary:   #F1EDE5;
+  --text-muted:     #9E988B;
+  --text-muted-c:   #9E988B;
+  --text-secondary: #9E988B;
   --border:      rgba(255,255,255,0.07);
   --border-c:    rgba(255,255,255,0.07);
   --divider:     rgba(255,255,255,0.07);
@@ -3242,7 +3260,7 @@ button.brand-dot { border: none; padding: 0; }
   --accent-bright: #F2C670;
   --accent-rgb:    231,183,90;
   border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(20,22,28,0.10);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(25,22,16,0.10);
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -3252,7 +3270,7 @@ button.brand-dot { border: none; padding: 0; }
    unreadable. Literal colour, not var(--bg-card) — that token is
    rebound to transparent inside .sidebar. */
 @supports not (backdrop-filter: blur(1px)) {
-  .sidebar { background: #0F141E; }
+  .sidebar { background: #181409; }
 }
 
 /* ---- Sidebar navigation ---------------------------------------------
@@ -3270,14 +3288,16 @@ button.brand-dot { border: none; padding: 0; }
 }
 .sidebar .nav-item.active {
   background: var(--grad-gold);
-  color: #0B0F16;
+  /* Koud zwart (#0B0F16) op een gouden pil las grijsblauw waar het zwart
+     hoorde te zijn. Zelfde helderheid, warme tint: 13,51:1 -> 13,47:1. */
+  color: #120F08;
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(232,215,177,.26);
 }
 /* The old rule painted a 3px bar down the left edge. Redundant now that
    the whole item is a filled pill, and it broke the pill's silhouette. */
 .sidebar .nav-item.active::before { display: none; }
-.sidebar .nav-item.active svg { color: #0B0F16; stroke: currentColor; }
+.sidebar .nav-item.active svg { color: #120F08; stroke: currentColor; }
 .sidebar .nav-item:active { transform: translateY(1px); }
 
 .sidebar-logo {
@@ -3584,7 +3604,7 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
   width: 264px;
   padding: 14px;
   border-radius: 12px;
-  background: #151C27;
+  background: #201B11;
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 18px 44px rgba(0,0,0,0.55);
   display: flex; flex-direction: column; gap: 10px;
@@ -3619,7 +3639,7 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
 .cu-pop-knop.primair {
   border-color: transparent;
   background: var(--accent);
-  color: #0E141C;
+  color: #16130C;   /* warm zwart op zand; was #0E141C, 13,02:1 -> 13,06:1 */
 }
 .cu-pop-knop.primair:hover { filter: brightness(1.08); }
 
@@ -8854,7 +8874,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    which rebinds the colour tokens for everything inside it. */
 [data-theme="light"] .sidebar {
   border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(20,22,28,0.10);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(25,22,16,0.10);
 }
 
 [data-theme="light"] .nav-item:hover {
@@ -8864,7 +8884,9 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 [data-theme="light"] .nav-item.active {
   background: var(--grad-gold);
-  color: #1B1D22;
+  /* Zelfde ingreep als in het donkere thema: koud zwart op een gouden pil
+     leest grijsblauw. Gelijke helderheid, warme tint: 11,87:1 -> 11,86:1. */
+  color: #1F1D18;
 }
 
 [data-theme="light"] .nav-item.active::before { display: none; }
@@ -9014,15 +9036,18 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    het donkere vlak: 1,86:1 en 1,88:1, allebei ruim onder 4,5:1.
    Meet tegen het oppervlak waar de tekst ECHT op staat. */
 [data-theme="light"] .sidebar .user-name { color: var(--text); }
-/* #8D99AC haalde 5,74:1 op de zijbalkVOET (rgb 26,31,39) -- daar was op
-   gerekend. Maar "Mijn profiel" staat niet op de voet: het staat in het
-   profielblok, en dat is lichter (rgb 54,57,65). Daar kwam dezelfde kleur uit
-   op 3,99:1. Het verschil zat er altijd al; de vorige meting keek naar het
-   verkeerde vlak.
+/* Twee vlakken, niet één: "Mijn profiel" staat in het profielblok en dat is
+   lichter dan de zijbalkvoet eronder. Eén kleur moet het op allebei halen.
 
-   #A3AEC0 haalt 5,15:1 op het profielblok en 7,38:1 op de voet -- goed op
-   allebei, dus één waarde volstaat. */
-[data-theme="light"] .sidebar .user-role { color: #A3AEC0; }
+   De vlakken zijn veranderd toen de zijbalk warm werd, dus opnieuw gemeten in
+   plaats van de oude cijfers laten staan. Samengesteld komt de voet nu uit op
+   #332F24 en het profielblok op #3D392F.
+
+   #B3AD9F is de warme tegenhanger van het blauwgrijze #A3AEC0 dat hier stond:
+   dezelfde helderheid, alleen de tint gedraaid. Haalt 5,99:1 op de voet en
+   5,14:1 op het profielblok -- praktisch gelijk aan de koude versie (5,98 en
+   5,13), dus dit kost geen leesbaarheid. */
+[data-theme="light"] .sidebar .user-role { color: #B3AD9F; }
 /* Niet --error-ink (#F87171): dat is afgestemd op het KAARTvlak en haalt
    daar 5,68:1, maar op het donkerdere zijbalkvlak (rgb(56,52,60), gemeten op
    de echte pixels) blijft het op 4,40:1 steken — net onder 4,5. Deze tint
