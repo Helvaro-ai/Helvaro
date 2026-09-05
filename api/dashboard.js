@@ -80,6 +80,49 @@ module.exports = async function handler(req, res) {
   const UI_LANG = _i18n.resolveer(req);
   const T = (sleutel, vars) => _i18n.t(UI_LANG, sleutel, vars);
 
+/* Een plek die nog aan het laden is.
+
+   Aanleiding: geteld in de browser stonden er vier verschillende manieren om
+   "even wachten" te zeggen, en welke je kreeg hing af van welk scherm je
+   toevallig opende. Een shimmer op het dashboard, het kale woord "Laden..."
+   op gesprekken, "Pipeline laden..." op de pipeline, en op AI-beeld en de
+   kalender werd zelfs de LEGE-staat hergebruikt -- daar was "we halen het op"
+   niet te onderscheiden van "er is niets".
+
+   Dus een vorm in plaats van een woord. Wat er komt heeft een vorm, en die
+   kun je alvast laten zien: rijen voor een lijst, tegels voor een raster,
+   kolommen voor het bord. Dat scheelt ook de sprong als de echte inhoud
+   arriveert, want de ruimte staat er al.
+
+   Het woord blijft wel bestaan, alleen niet in beeld: aria-busy vertelt
+   hulpsoftware dat er iets loopt en de verborgen tekst zegt wat. Een
+   schermlezer die alleen shimmer-divs krijgt, hoort anders niets.
+
+   Bouwt voort op .skeleton, dat er al was en al netjes stilvalt bij
+   prefers-reduced-motion. */
+  const laadvlak = (vorm, aantal) => {
+    const n = aantal || (vorm === 'tegel' ? 6 : vorm === 'kolom' ? 4 : 3);
+    let inhoud = '';
+    for (let i = 0; i < n; i++) {
+      if (vorm === 'rij') {
+        /* Ongelijke breedtes. Drie identieke balken lezen als een tabel en
+           niet als tekst die nog moet komen. */
+        const breed = [92, 74, 84, 66, 88][i % 5];
+        inhoud += '<div class="laad-rij"><div class="skeleton laad-bol"></div>'
+               +  '<div class="laad-tekst"><div class="skeleton" style="width:' + breed + '%"></div>'
+               +  '<div class="skeleton" style="width:' + Math.round(breed * 0.55) + '%;height:10px"></div></div></div>';
+      } else if (vorm === 'tegel') {
+        inhoud += '<div class="skeleton laad-tegel"></div>';
+      } else {
+        inhoud += '<div class="laad-kolom"><div class="skeleton" style="width:52%;height:11px"></div>'
+               +  '<div class="skeleton laad-kaart"></div><div class="skeleton laad-kaart"></div></div>';
+      }
+    }
+    return '<div class="laadvlak laadvlak--' + vorm + '" aria-busy="true" role="status">'
+         + inhoud
+         + '<span class="alleen-voorlezen">' + T('dash.loading') + '</span></div>';
+  };
+
 /* Een vertaling die IN een onclick-attribuut belandt.
 
    Waarom dit een eigen functie is. Ik zette hier eerst JSON.stringify neer, en
@@ -4879,6 +4922,32 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 /* Skeleton loading */
 .skeleton-row td { padding: 16px 14px; }
+
+/* De vormen van laadvlak() hierboven. Bewust minimaal: het is .skeleton met
+   een indeling eromheen, geen tweede animatiesysteem. */
+/* flex:1 en width:100% omdat een laadvlak in een flex- of grid-container
+   anders inklapt tot de breedte van zijn inhoud. Gemeten op het pipeline-bord:
+   42px in een bak van 1164px -- de placeholder was er wel, maar onvindbaar.
+   grid-column om dezelfde reden: in de rasters van AI-beeld nam hij anders
+   een enkele cel van 117px in beslag in plaats van de volle rij. */
+.laadvlak { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; flex: 1 1 auto; width: 100%; min-width: 0; grid-column: 1 / -1; }
+.laadvlak--tegel { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.laadvlak--kolom { flex-direction: row; gap: 14px; align-items: flex-start; }
+
+.laad-rij { display: flex; align-items: center; gap: 10px; }
+.laad-bol { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+.laad-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.laad-tegel { height: 62px; border-radius: 10px; }
+.laad-kolom { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.laad-kaart { height: 54px; border-radius: 10px; }
+
+/* Alleen voor schermlezers. Niet display:none en niet visibility:hidden --
+   die twee halen het uit de voorleesvolgorde, en dan is er alsnog niets te
+   horen. Dit haalt het uit BEELD en laat het in de boom staan. */
+.alleen-voorlezen {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 
 .skeleton {
   background: linear-gradient(90deg, var(--bg-card-alt) 0%, var(--bg-card-hover) 20%, var(--bg-card-alt) 40%, var(--bg-card-alt) 100%);
@@ -10014,12 +10083,12 @@ ${faro.navCta}
       <!-- Stats Grid -->
       <div class="stats-grid" id="stats-grid">
         <!-- Skeleton stats -->
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
       </div>
 
       <!-- Charts row -->
@@ -10189,12 +10258,12 @@ ${faro.navCta}
       </div>
 
       <div class="stats-grid" id="resultaten-grid">
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
-        <div class="stat-card"><div class="stat-label">${T('dash.loading')}</div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
+        <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
       </div>
 
       <p style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
@@ -10329,7 +10398,7 @@ ${faro.navCta}
           <div class="kst-kaart">
             <div class="kst-lbl">Vaste kosten per maand</div>
             <div class="kst-groot" id="kst-vast">&mdash;</div>
-            <div class="kst-onder" id="kst-vast-onder">${T('dash.loading')}</div>
+            <div class="kst-onder" id="kst-vast-onder" aria-busy="true"><span class="skeleton" style="width:66%;height:10px"></span><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
           </div>
           <div class="kst-kaart">
             <div class="kst-lbl">Maandomzet</div>
@@ -10356,7 +10425,7 @@ ${faro.navCta}
             <span class="kst-blok-sub">Elke maand hetzelfde, hoeveel klanten je ook hebt</span>
           </div>
           <div class="kst-tabel" id="kst-vaste-lijst">
-            <div class="kst-leeg">${T('dash.loading')}</div>
+            ${laadvlak('rij', 3)}
           </div>
         </div>
 
@@ -10366,7 +10435,7 @@ ${faro.navCta}
             <span class="kst-blok-sub">Je betaalt per aanroep &mdash; het bedrag hangt af van gebruik</span>
           </div>
           <div class="kst-tabel" id="kst-verbruik-lijst">
-            <div class="kst-leeg">${T('dash.loading')}</div>
+            ${laadvlak('rij', 3)}
           </div>
           <div class="kst-ai" id="kst-ai"></div>
         </div>
@@ -10377,7 +10446,7 @@ ${faro.navCta}
             <span class="kst-blok-sub">Welke gezet zijn. De waarden staan hier bewust nooit</span>
           </div>
           <div class="kst-sleutels" id="kst-sleutels">
-            <div class="kst-leeg">${T('dash.loading')}</div>
+            ${laadvlak('rij', 3)}
           </div>
         </div>
 
@@ -10565,7 +10634,7 @@ ${faro.navCta}
         </div>
         <div class="cal-sidebar-desc">${T('cal.toCall.sub')}</div>
         <div class="cal-sidebar-scroll" id="cal-sidebar-list">
-          <div class="cal-sidebar-empty">${T('dash.loading')}</div>
+          ${laadvlak('rij', 3)}
         </div>
       </div>
 
@@ -10577,7 +10646,7 @@ ${faro.navCta}
         <div id="pipeline-summary" class="pipeline-summary-chips"></div>
       </div>
       <div class="pipeline-board" id="pipeline-board">
-        <div style="color:var(--text-muted);font-size:14px">${T('pipe.loading')}</div>
+        ${laadvlak('kolom', 4)}
       </div>
     </main>
 
@@ -10587,7 +10656,7 @@ ${faro.navCta}
         <div class="conv-list" id="conv-list">
           <div class="conv-list-header">Gesprekken</div>
           <div id="conv-list-body">
-            <div style="padding:20px;color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
+            ${laadvlak('rij', 5)}
           </div>
         </div>
         <div class="conv-detail" id="conv-detail">
@@ -10629,12 +10698,12 @@ ${faro.navCta}
         <!-- Funnel -->
         <div class="analyse-card">
           <div class="analyse-card-title">${T('an.funnel')}</div>
-          <div id="funnel-content"><div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div></div>
+          <div id="funnel-content">${laadvlak('rij', 4)}</div>
         </div>
         <!-- Source Performance -->
         <div class="analyse-card">
           <div class="analyse-card-title">${T('an.perSource')}</div>
-          <div id="source-table-wrap"><div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div></div>
+          <div id="source-table-wrap">${laadvlak('rij', 4)}</div>
         </div>
         <!-- Days of week chart -->
         <div class="analyse-card">
@@ -10700,14 +10769,14 @@ ${faro.navCta}
         <div class="ap-field" style="margin-top:14px">
           <label id="pi-style-grid-label" class="ap-label">${T('pi.style')}</label>
           <div class="pi-style-grid" id="pi-style-grid" role="group" aria-labelledby="pi-style-grid-label">
-            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('pi.styles.load')}</div>
+            ${laadvlak('tegel', 6)}
           </div>
         </div>
 
         <div class="ap-field" style="margin-top:14px">
           <label id="pi-roomtype-grid-label" class="ap-label">${T('pi.room')} <span class="ap-label-hint">${T('img.room.hint')}</span></label>
           <div class="pi-roomtype-grid" id="pi-roomtype-grid" role="group" aria-labelledby="pi-roomtype-grid-label">
-            <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
+            ${laadvlak('tegel', 6)}
           </div>
         </div>
 
@@ -10721,14 +10790,14 @@ ${faro.navCta}
             <div class="ap-field">
               <label id="pi-furniture-grid-label" class="ap-label">${T('pi.furniture')} <span class="ap-label-hint">${T('pi.furniture.h')}</span></label>
               <div class="pi-roomtype-grid" id="pi-furniture-grid" role="group" aria-labelledby="pi-furniture-grid-label">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
+                ${laadvlak('tegel', 6)}
               </div>
             </div>
 
             <div class="ap-field">
               <label id="pi-wallfinish-grid-label" class="ap-label">${T('pi.walls')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
               <div class="pi-roomtype-grid" id="pi-wallfinish-grid" role="group" aria-labelledby="pi-wallfinish-grid-label">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
+                ${laadvlak('tegel', 6)}
               </div>
               <div id="pi-wallcolor-wrap" style="display:none;margin-top:10px">
                 <label id="pi-wallcolor-grid-label" class="ap-label" style="margin-bottom:6px">${T('pi.wallColor')} <span class="ap-label-hint">${T('img.wall.hint')}</span></label>
@@ -10740,21 +10809,21 @@ ${faro.navCta}
             <div class="ap-field">
               <label id="pi-floor-grid-label" class="ap-label">${T('pi.floor')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
               <div class="pi-roomtype-grid" id="pi-floor-grid" role="group" aria-labelledby="pi-floor-grid-label">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
+                ${laadvlak('tegel', 6)}
               </div>
             </div>
 
             <div class="ap-field">
               <label id="pi-lighting-grid-label" class="ap-label">${T('pi.light')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
               <div class="pi-roomtype-grid" id="pi-lighting-grid" role="group" aria-labelledby="pi-lighting-grid-label">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
+                ${laadvlak('tegel', 6)}
               </div>
             </div>
 
             <div class="ap-field">
               <label id="pi-renovation-grid-label" class="ap-label">${T('pi.reno')} <span class="ap-label-hint">${T('pi.reno.h')}</span></label>
               <div class="pi-roomtype-grid" id="pi-renovation-grid" role="group" aria-labelledby="pi-renovation-grid-label">
-                <div class="pi-empty" style="grid-column:1/-1;padding:8px 0">${T('dash.loading')}</div>
+                ${laadvlak('tegel', 6)}
               </div>
               <div class="pi-honesty-note" id="pi-honesty-note" style="display:none">
                 <span>⚠</span>
@@ -10796,7 +10865,7 @@ ${faro.navCta}
 
         <div class="ap-field" style="margin-top:14px">
           <label id="pi-gallery-label" class="ap-label">${T('pi.earlier')}</label>
-          <div id="pi-gallery" role="group" aria-labelledby="pi-gallery-label"><div class="pi-empty">${T('dash.loading')}</div></div>
+          <div id="pi-gallery" role="group" aria-labelledby="pi-gallery-label">${laadvlak('tegel', 8)}</div>
         </div>
       </div>
     </main>
@@ -11770,7 +11839,7 @@ ${faro.navCta}
       <div class="activity-feed-wrap">
         <div class="activity-feed-header">${T('act.recent')}</div>
         <div class="activity-feed" id="activity-feed">
-          <div style="padding:20px 0;color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
+          ${laadvlak('rij', 5)}
         </div>
       </div>
     </main>
@@ -11838,7 +11907,7 @@ ${faro.navCta}
         <!-- Recent Leads on Profile -->
         <div class="profile-section-title">${T('pro.recent')}</div>
         <div class="profile-recent-leads" id="profile-recent-leads">
-          <div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
+          ${laadvlak('rij', 3)}
         </div>
 
         <!-- Quick Actions -->
@@ -11898,7 +11967,7 @@ ${cmd.drawer}
               <span class="fdr-task-progress" id="fdr-task-progress">0 / 0 voltooid</span>
             </div>
             <div class="fdr-checklist" id="fdr-checklist">
-              <div style="padding:24px 18px;color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
+              ${laadvlak('rij', 4)}
             </div>
             <div class="fdr-progress-bar-wrap">
               <div class="fdr-progress-bar" id="fdr-progress-bar" style="width:0%"></div>
@@ -12005,7 +12074,7 @@ ${cmd.drawer}
             <button class="founder-btn-sm" onclick="openGoalModal(null)">+ Doel</button>
           </div>
           <div class="founder-goals-list" id="founder-goals-list">
-            <div style="color:var(--text-muted);font-size:13px">${T('dash.loading')}</div>
+            ${laadvlak('rij', 3)}
           </div>
         </div>
 
@@ -12325,7 +12394,7 @@ ${cmd.drawer}
                 </tr>
               </thead>
               <tbody id="fdr-live-tbody">
-                <tr><td colspan="6" class="fdr-live-empty">${T('dash.loading')}</td></tr>
+                <tr><td colspan="6">${laadvlak('rij', 3)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -14993,7 +15062,7 @@ function renderBronChart() {
 async function loadAdminClients() {
   const grid = document.getElementById('admin-grid');
   if (!grid) return;
-  grid.innerHTML = '<div style="color:var(--text-muted);font-size:14px">Klanten laden...</div>';
+  grid.innerHTML = '${laadvlak('rij', 4)}';
   try {
     const resp = await fetch(\`\${API_BASE}/admin\`, { headers: { 'x-api-key': state.apiKey } });
     if (!resp.ok) throw new Error('Geen toegang');
@@ -23717,7 +23786,7 @@ async function loadPanden(force) {
   var leeg   = document.getElementById('pd-empty');
   var notice = document.getElementById('pd-notice');
   if (!grid) return;
-  grid.innerHTML = '<div class="pd-leads">${T('dash.loading')}</div>';
+  grid.innerHTML = '${laadvlak('tegel', 6)}';
   leeg.style.display = 'none';
   notice.style.display = 'none';
 
