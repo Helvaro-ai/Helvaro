@@ -1631,10 +1631,24 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       // nothing to check against, so behaviour is exactly what it was before
       // this fix for every client who hasn't connected Google Calendar.
       let slotTaken = false;
+      /* Kon de agenda GELEZEN worden? Dat is iets anders dan "is het vrij".
+         Bij een storing of een verlopen token blijft de boeking doorgaan --
+         die fail-open staat hierboven uitgelegd en verandert niet -- maar
+         vanaf nu zeggen we erbij dat er niet gekeken is. Zie checkSlot() in
+         api/_gcal.js.
+
+         Alleen relevant als er een token IS: een klant zonder Google heeft
+         geen agenda om te controleren, en die hoort ook geen waarschuwing te
+         krijgen over iets wat hij niet gekoppeld heeft. */
+      let agendaGeverifieerd = true;
       try {
         const gAccess = await gcalAccess(client);
         gToken = gAccess.token; gCalId = gAccess.calId;
-        if (gToken) slotTaken = !(await _gcal.isSlotFree(gToken, gCalId, appt.start, appt.duration || appointmentDuration));
+        if (gToken) {
+          const uitslag = await _gcal.checkSlot(gToken, gCalId, appt.start, appt.duration || appointmentDuration);
+          slotTaken = !uitslag.free;
+          agendaGeverifieerd = uitslag.geverifieerd;
+        }
       } catch (e) {
         // gcalAccess()/isSlotFree() already fail closed/open internally and
         // should never throw — this is belt-and-braces. Any unexpected error
@@ -1642,6 +1656,12 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         // booking failure.
         console.error('[gcal] availability check exception (treating as no-Google):', e && e.message);
         gToken = ''; slotTaken = false;
+        /* agendaGeverifieerd blijft bewust true. checkSlot() gooit niet, dus
+           wie hier belandt is gcalAccess() -- en dan weten we niet eens of
+           deze klant een agenda gekoppeld HEEFT. Een waarschuwing sturen over
+           een agenda die misschien niet bestaat is ruis, en ruis leert mensen
+           waarschuwingen wegklikken. De console.error hierboven houdt het
+           spoor vast. */
       }
 
       if (slotTaken) {
@@ -1682,6 +1702,18 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         }
       } else {
         try {
+          /* Staat er in de notitie omdat Notes een veld is dat AL bestaat.
+             Een nieuw Airtable-veld zou hier een aparte, best-effort PATCH
+             vragen (één onbekend veld laat Airtable de HELE request weigeren,
+             zie HELVARO-ARCHITECTUUR.md §4.2) en de makelaar zou het eerst
+             moeten aanmaken voordat deze waarschuwing ergens landt. Dit werkt
+             vandaag, zonder dat iemand iets hoeft in te richten. */
+          const notitie = (aiResponse.summary || '')
+            + (agendaGeverifieerd ? '' :
+               (aiResponse.summary ? '\n\n' : '')
+               + '[LET OP] De Google agenda kon op het moment van boeken niet gelezen worden. '
+               + 'Dit moment is NIET gecontroleerd op dubbele afspraken — kijk het even na.');
+
           const apptResult = await createAppointment({
             startTime:     appt.start,
             duration:      appt.duration || appointmentDuration,
@@ -1689,7 +1721,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             leadId:        lead.id,
             leadName,
             leadPhone:     phone,
-            notes:         aiResponse.summary || ''
+            notes:         notitie
           });
           if (apptResult.ok) {
             await updateLead(lead.id, {
@@ -1743,6 +1775,33 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                 else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
               }
             } catch (e) { console.error('[gcal] booking mirror exception:', e && e.message); }
+
+            /* De makelaar is de enige die dit kan nakijken, dus hij hoort het
+               te weten VOORDAT er iemand voor de deur staat. Dit is dezelfde
+               vorm als de conflictmelding hierboven: kort, met de gegevens
+               die nodig zijn om te handelen, en zonder te doen alsof er iets
+               mis is met de afspraak zelf -- die staat er gewoon.
+
+               Alleen bij een agenda die er WEL is maar niet gelezen kon
+               worden. Faalt zacht: deze melding mag een geldige boeking nooit
+               ongedaan maken. */
+            if (!agendaGeverifieerd && ownerPhone) {
+              try {
+                const nietGecontroleerd =
+                  `[Even nakijken] Afspraak geboekt zonder agendacontrole\n\n` +
+                  `Naam: ${leadName || '(onbekend)'}\n` +
+                  `Tel: ${phone}\n` +
+                  `Wanneer: ${formatApptDateTime(appt.start, effectiveLang)}\n\n` +
+                  `De afspraak staat en de lead heeft een bevestiging. Alleen kon je Google agenda op dat moment niet gelezen worden, ` +
+                  `dus dit tijdstip is NIET gecontroleerd op een dubbele boeking. Kijk het even na.\n\n` +
+                  `Blijft dit terugkomen, dan is de koppeling met Google waarschijnlijk verlopen — opnieuw verbinden in Instellingen.\n\n` +
+                  `Dashboard: https://app.helvaro.pro/dashboard`;
+                const melding = await sendWA(ownerPhone, nietGecontroleerd, clientPhoneNumberId);
+                if (!melding) console.error(`[gcal] melding 'niet geverifieerd' naar owner (${ownerPhone}) is niet aangekomen`);
+              } catch (e) {
+                console.error('[gcal] melding "niet geverifieerd" exception (afspraak blijft geldig):', e && e.message);
+              }
+            }
           } else {
             /* De afspraak is NIET aangemaakt, en de AI heeft de lead hierboven
                al "ingepland, tot dan" geschreven. Dat bericht is niet terug te

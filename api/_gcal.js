@@ -193,32 +193,49 @@ async function freeBusy(accessToken, calendarId, timeMinISO, timeMaxISO) {
   }
 }
 
-/* True als [startISO, +duur) met GEEN bezet blok overlapt.
+/* checkSlot() geeft twee dingen terug die niet hetzelfde zijn:
  *
- * Blijft bij een storing bewust true teruggeven: een boeking verliezen omdat
- * Google traag was is erger dan het risico op een dubbele. Die afweging staat
- * en verandert hier niet.
+ *   free           is het slot vrij?
+ *   geverifieerd   HEEFT de agenda dat bevestigd, of konden we niet kijken?
  *
- * Wat wel verandert: hij is nu HOORBAAR. Eerst was "vrij" en "niet kunnen
- * kijken" hetzelfde antwoord zonder spoor, en dan blijft een agenda die al een
- * week niet gelezen kan worden gewoon boekingen aannemen alsof alles klopt.
- * Wie in de logs kijkt ziet nu het verschil.
+ * Dat onderscheid is de hele reden dat deze functie bestaat. isSlotFree()
+ * hieronder gaf bij een storing `true` -- een bewuste fail-open, want een
+ * boeking verliezen omdat Google traag was is erger dan het risico op een
+ * dubbele. Die afweging staat nog steeds. Maar "vrij" en "niet kunnen kijken"
+ * kwamen er als hetzelfde antwoord uit, en daar kan een aanroeper niets mee.
  *
- * Wil je weten OF er gekeken is, gebruik dan freeBusy() rechtstreeks: die
- * geeft null als het niet gelukt is. */
-async function isSlotFree(accessToken, calendarId, startISO, durationMin) {
+ * Waarom dat nu telt: de Google-OAuth staat nog op Testing, dus tokens
+ * verlopen elke 7 dagen (zie HELVARO-ARCHITECTUUR.md §9). Een agenda die al
+ * een week niet gelezen kan worden nam gewoon boekingen aan alsof alles
+ * klopte. De makelaar merkt dat als er twee mensen voor de deur staan.
+ *
+ * CLAUDE.md zegt: nooit een slot tonen als vrij zonder dat de agenda dat
+ * bevestigt. Met alleen een boolean kon je die regel niet volgen. Nu wel:
+ * boeken mag nog steeds, maar de aanroeper weet dat hij het moet MELDEN. */
+async function checkSlot(accessToken, calendarId, startISO, durationMin) {
   const start = new Date(startISO).getTime();
   const end   = start + (parseInt(durationMin) || 30) * 60000;
   const busy  = await freeBusy(accessToken, calendarId, new Date(start).toISOString(), new Date(end).toISOString());
   if (busy === null) {
     console.error('[GCAL] beschikbaarheid niet te controleren voor', new Date(start).toISOString(),
-      '— slot wordt als VRIJ behandeld (bewuste fail-open, zie de kop van deze functie)');
-    return true;
+      '— slot wordt als VRIJ behandeld (bewuste fail-open), maar NIET als geverifieerd');
+    return { free: true, geverifieerd: false };
   }
-  return !busy.some(b => {
+  const overlapt = busy.some(b => {
     const bs = new Date(b.start).getTime(), be = new Date(b.end).getTime();
     return start < be && end > bs; // overlap
   });
+  return { free: !overlapt, geverifieerd: true };
+}
+
+/* De oude vorm, ongewijzigd van gedrag: true bij vrij én bij niet-kunnen-kijken.
+ *
+ * Blijft bestaan omdat hij precies goed is voor wie alleen "mag dit door?"
+ * hoeft te weten. Wie ook moet melden dat er niet gekeken is, neemt checkSlot()
+ * hierboven. */
+async function isSlotFree(accessToken, calendarId, startISO, durationMin) {
+  const uitslag = await checkSlot(accessToken, calendarId, startISO, durationMin);
+  return uitslag.free;
 }
 
 // List real events from the connected calendar. freeBusy() only ever returned
@@ -346,6 +363,6 @@ async function revokeToken(refreshToken) {
 module.exports = {
   isConfigured, getAuthUrl, exchangeCode, getAccessToken,
   encryptToken, decryptToken, revokeToken,
-  freeBusy, isSlotFree, listEvents, createEvent, updateEvent, deleteEvent,
+  freeBusy, isSlotFree, checkSlot, listEvents, createEvent, updateEvent, deleteEvent,
   SCOPES,
 };

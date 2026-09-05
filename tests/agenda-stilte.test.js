@@ -50,17 +50,36 @@ console.log('\n  freeBusy maakt het verschil zichtbaar');
     (f.match(/console\.error\('\[GCAL\]/g) || []).length >= 2, null);
 }
 
-console.log('\n  isSlotFree blijft fail-open, maar niet stil');
+/* Deze twee controles keken eerst IN isSlotFree(). Die beslissing is sindsdien
+   verhuisd naar checkSlot(), dat er { free, geverifieerd } van maakt zodat een
+   aanroeper "vrij" en "niet kunnen kijken" uit elkaar kan houden -- zie
+   tests/agenda-eerlijk.test.js, dat het gedrag met een nagebootste fetch
+   dóórmeet in plaats van de bron te lezen.
+
+   Wat hier bewaakt wordt is onveranderd en blijft de moeite waard: de
+   fail-open zelf. Alleen kijken we nu naar de functie waar hij woont. */
+console.log('\n  de agendacontrole blijft fail-open, maar niet stil');
 {
-  const m = gcal.match(/async function isSlotFree\([\s\S]*?\n\}/);
+  const m = gcal.match(/async function checkSlot\([\s\S]*?\n\}/);
   const f = m ? m[0] : '';
-  ck('isSlotFree staat er', !!m, null);
-  /* De afweging zelf moet BLIJVEN: true bij twijfel. Als iemand dit ooit naar
+  ck('checkSlot staat er', !!m, null);
+  /* De afweging zelf moet BLIJVEN: vrij bij twijfel. Als iemand dit ooit naar
      fail-closed omzet is dat een productbeslissing, geen opruimactie. */
   ck('behandelt een onbekende agenda nog steeds als vrij (bewuste keuze)',
-    /if \(busy === null\) \{[\s\S]{0,320}?return true;/.test(f), null);
-  ck('maar meldt het wel in de logs',
+    /if \(busy === null\) \{[\s\S]{0,400}?free: true/.test(f), null);
+  ck('maar zegt erbij dat er NIET geverifieerd is',
+    /if \(busy === null\) \{[\s\S]{0,400}?geverifieerd: false/.test(f), null);
+  ck('en meldt het in de logs',
     /console\.error\('\[GCAL\] beschikbaarheid niet te controleren/.test(f), null);
+
+  /* isSlotFree() bestaat nog en heeft nog steeds hetzelfde contract, want
+     twee aanroepers en twee tests staan erop. Hij mag alleen niet stiekem
+     iets anders gaan doen dan doorgeven wat checkSlot zegt. */
+  const oud = gcal.match(/async function isSlotFree\([\s\S]*?\n\}/);
+  ck('isSlotFree bestaat nog', !!oud, null);
+  ck('en geeft simpelweg door wat checkSlot vond',
+    !!oud && /checkSlot\(/.test(oud[0]) && /return uitslag\.free;/.test(oud[0]),
+    oud ? oud[0] : null);
 }
 
 console.log('\n  de plek die tijden VOORSTELT valt niet meer om op null');

@@ -18684,7 +18684,20 @@ async function calBookConfirm() {
       if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
       return;
     }
-    toast(tr('tst.afspraakGeboekt'), 'success');
+    /* De afspraak staat. Maar als de agenda niet gelezen kon worden, is er
+       niet gecontroleerd of dat moment al bezet was -- en dat hoort de
+       gebruiker te horen op het moment dat hij het nog makkelijk kan
+       nakijken, niet als er twee mensen voor de deur staan.
+
+       Eén melding en niet twee: "geboekt" plus een aparte waarschuwing
+       betekent dat de tweede wordt weggeklikt samen met de eerste. De derde
+       parameter van toast() is de kop, zodat deze niet als gewone
+       bevestiging leest. */
+    if (data.agendaGeverifieerd === false) {
+      toast(tr('tst.afspraakOngecontroleerd'), 'info', tr('tst.afspraakOngecontroleerdTitel'));
+    } else {
+      toast(tr('tst.afspraakGeboekt'), 'success');
+    }
     closeCalBookModal();
     // Refresh calendar view
     calState.cache = {};   // invalideer cache

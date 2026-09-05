@@ -1186,6 +1186,16 @@ const TEKST = {
   'tst.koppelenMislukt': { nl: 'Koppelen mislukt, probeer opnieuw', fr: 'Échec de la connexion, réessayez', en: 'Couldn’t connect, try again', de: 'Verbinden fehlgeschlagen, versuchen Sie es erneut' },
   'tst.agendaOntkoppeld': { nl: 'Google Agenda ontkoppeld', fr: 'Google Agenda déconnecté', en: 'Google Calendar disconnected', de: 'Google Kalender getrennt' },
   'tst.afspraakGeboekt': { nl: 'Afspraak geboekt', fr: 'Rendez-vous réservé', en: 'Appointment booked', de: 'Termin gebucht' },
+  /* Geboekt EN een waarschuwing in één melding, want het zijn geen twee
+     dingen: de afspraak staat, alleen is niet gecontroleerd of het moment al
+     bezet was. Twee losse toasts zouden de tweede laten wegklikken. */
+  'tst.afspraakOngecontroleerd': {
+    nl: 'Afspraak geboekt, maar je Google agenda kon niet gelezen worden — dit moment is niet gecontroleerd op dubbele afspraken.',
+    fr: 'Rendez-vous réservé, mais votre agenda Google n’a pas pu être lu — ce créneau n’a pas été vérifié.',
+    en: 'Appointment booked, but your Google Calendar could not be read — this slot was not checked for conflicts.',
+    de: 'Termin gebucht, aber Ihr Google Kalender konnte nicht gelesen werden — dieser Zeitpunkt wurde nicht auf Überschneidungen geprüft.' },
+  'tst.afspraakOngecontroleerdTitel': {
+    nl: 'Even nakijken', fr: 'À vérifier', en: 'Worth checking', de: 'Bitte prüfen' },
   'tst.afspraakResultaat': { nl: 'Afspraak resultaat opgeslagen', fr: 'Résultat du rendez-vous enregistré', en: 'Appointment outcome saved', de: 'Terminergebnis gespeichert' },
   'tst.verliesreden': { nl: 'Verliesreden opgeslagen', fr: 'Motif de perte enregistré', en: 'Loss reason saved', de: 'Verlustgrund gespeichert' },
   'tst.dealWaarde': { nl: 'Deal waarde opgeslagen', fr: 'Valeur de l’affaire enregistrée', en: 'Deal value saved', de: 'Auftragswert gespeichert' },

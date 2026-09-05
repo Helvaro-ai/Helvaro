@@ -1483,12 +1483,18 @@ module.exports = async function handler(req, res) {
       // there's nothing to check, so behaviour is unchanged for clients
       // without Google Calendar connected.
       let gToken = '', gCalId = 'primary';
+      /* Net als in api/whatsapp.js: weigeren doen we alleen bij een BEVESTIGD
+         conflict, maar of er gekeken kon worden is een apart antwoord. Hier
+         staat een mens voor het scherm, dus die kan het meteen horen -- de
+         vlag gaat mee in het antwoord en het dashboard zegt het. */
+      let agendaGeverifieerd = true;
       try {
         const gcalAccessRes = await gcalAccessForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
         gToken = gcalAccessRes.token; gCalId = gcalAccessRes.calId;
         if (gToken) {
-          const free = await _gcal.isSlotFree(gToken, gCalId, body.startTime, parseInt(body.duration) || 30);
-          if (!free) {
+          const uitslag = await _gcal.checkSlot(gToken, gCalId, body.startTime, parseInt(body.duration) || 30);
+          agendaGeverifieerd = uitslag.geverifieerd;
+          if (!uitslag.free) {
             return res.status(409).json({ error: 'Dat moment is al bezet in de Google agenda. Kies een ander tijdstip.', code: 'slot_conflict' });
           }
         }
@@ -1592,7 +1598,11 @@ module.exports = async function handler(req, res) {
           }
         } catch (e) { console.error('[gcal] create mirror exception:', e && e.message); }
 
-        return res.status(200).json({ ok: true, id: d.id, apptId, googleEventId });
+        /* agendaGeverifieerd gaat mee zodat het dashboard het kan zeggen. De
+           afspraak is gewoon aangemaakt -- dit is geen fout en mag niet als
+           fout lezen. Het is precies één ding: we hebben niet kunnen kijken
+           of dit moment al bezet was. */
+        return res.status(200).json({ ok: true, id: d.id, apptId, googleEventId, agendaGeverifieerd });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
       }
