@@ -117,6 +117,21 @@ console.log('\n  het vlak vult zijn bak');
   /* Zonder dit nam hij in de rasters van AI-beeld een enkele cel. */
   ck('spant de volle rij in een raster', regel && /grid-column:\s*1 \/ -1/.test(regel[1]), regel && regel[1].trim());
 
+  /* De kolomvorm hoort even breed te zijn als een ECHTE pipeline-kolom
+     (.pipeline-col is flex: 0 0 260px). Met flex:1 kromp de plaatshouder mee
+     tot 79px op een telefoon, terwijl er daarna kolommen van 260px komen die
+     het bord horizontaal laten scrollen -- dan belooft de plaatshouder een
+     andere indeling dan wat er komt, en dat is net wat een plaatshouder-op-vorm
+     hoort te voorkomen. */
+  const kolom = /\.laad-kolom \{([^}]*)\}/.exec(code);
+  const echt  = /\.pipeline-col \{([^}]*)\}/.exec(code);
+  ck('.laad-kolom bestaat', !!kolom);
+  const breedtePlaatshouder = kolom && /flex:\s*0 0 (\d+)px/.exec(kolom[1]);
+  const breedteEcht         = echt  && /flex:\s*0 0 (\d+)px/.exec(echt[1]);
+  ck('en is even breed als een echte kolom',
+    breedtePlaatshouder && breedteEcht && breedtePlaatshouder[1] === breedteEcht[1],
+    { plaatshouder: breedtePlaatshouder && breedtePlaatshouder[1], echt: breedteEcht && breedteEcht[1] });
+
   /* Bouwt voort op .skeleton, dat al netjes stilvalt bij prefers-reduced-motion.
      Een eigen animatie zou die uitzondering opnieuw moeten regelen -- en dat is
      precies het soort ding dat je vergeet. */

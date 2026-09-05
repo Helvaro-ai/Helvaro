@@ -4999,7 +4999,12 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .laad-bol { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
 .laad-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .laad-tegel { height: 62px; border-radius: 10px; }
-.laad-kolom { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+/* Even breed als een echte pipeline-kolom (.pipeline-col is flex: 0 0 260px).
+   Met flex:1 kromp de placeholder mee tot 79px op een telefoon, terwijl er
+   daarna kolommen van 260px verschijnen die het bord horizontaal laten
+   scrollen. Dan belooft de plaatshouder een andere indeling dan wat er komt,
+   en dat is precies wat een plaatshouder-op-vorm hoort te voorkomen. */
+.laad-kolom { flex: 0 0 260px; max-width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .laad-kaart { height: 54px; border-radius: 10px; }
 /* Wat er staat als het wachten voorbij is en er niets kwam. Bewust rustig:
    de banner bovenaan zegt al wat er mis is en waarom -- dit is alleen de plek
