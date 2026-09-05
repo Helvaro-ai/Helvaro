@@ -350,15 +350,23 @@ function subPages(t) {
    mutually exclusive states of one control. Arrow keys move between them for
    free, and a screen reader says "CRM, selected, 1 of 2". */
 function navCta(t) {
-  const tab = (id, label, sel) => `
+  /* De kant van Faro draagt zijn eigen merkteken: dezelfde bol als op de
+     landingspagina, alleen klein en stil. Zonder animatie -- op 14px is een
+     draaiende bol in de navigatie geen sfeer maar geflikker, en hij staat
+     naast tekst die je moet kunnen lezen.
+
+     aria-hidden, want het pictogram zegt niets wat het label niet al zegt;
+     een schermlezer hoort anders "afbeelding, Faro". */
+  const merk = '<span class="hv-switch__orb" aria-hidden="true"></span>';
+  const tab = (id, label, sel, icoon) => `
       <button class="hv-switch__tab${sel ? ' active' : ''}" id="hv-switch-${id}"
               type="button" role="radio" aria-checked="${sel ? 'true' : 'false'}"
-              data-mode="${id}" tabindex="${sel ? '0' : '-1'}">${label}</button>`;
+              data-mode="${id}" tabindex="${sel ? '0' : '-1'}">${icoon || ''}<span>${label}</span></button>`;
 
   return `
     <div class="hv-switch" role="radiogroup" aria-label="${t('sw.label')}">
-      ${tab('crm', t('sw.crm'), true)}
-      ${tab('ai', t('sw.ai'), false)}
+      ${tab('crm', t('sw.crm'), true, '')}
+      ${tab('ai', t('sw.ai'), false, merk)}
     </div>`;
 }
 

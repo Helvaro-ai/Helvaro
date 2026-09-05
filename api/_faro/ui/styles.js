@@ -221,45 +221,90 @@ body.faro-open .faro-dock { display: none; }
 .hv-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--sp-1);
+  gap: var(--sp-05);
+  /* Zat eerst in de zijbalk en was daar zo breed als het paneel. In de
+     topbalk voegt hij zich naar zijn inhoud en duwt hij niets weg;
+     flex-shrink:0 zodat de paginatitel ernaast krimpt en hij niet.
+
+     Bewust groot. Dit is geen bijkomstige knop maar de schakelaar tussen de
+     twee helften van de app, en klein en grijs in een hoek was hij niet te
+     vinden. Hij is nu even hoog als de knoppen rechts in de balk, staat
+     helemaal vooraan, en heeft een eigen rand zodat hij als één control leest
+     en niet als twee losse woorden. */
+  /* Volle breedte van de zijbalk op een marge na. Dit is de grootste knop in
+     het paneel, en dat is de bedoeling: kleiner en in een hoek was hij niet
+     te vinden. */
   width: calc(100% - 24px);
-  margin: 0 var(--sp-3) var(--sp-4);
-  padding: var(--sp-1);
+  margin: 0 var(--sp-3) var(--sp-3);
+  padding: var(--sp-05);
   border-radius: var(--r-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-bright, var(--border));
   background: var(--bg-card-alt);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .hv-switch__tab {
   /* minmax(0,1fr) on the grid is not enough on its own: a grid ITEM also
      defaults to min-width:auto and would refuse to shrink below its label. */
   min-width: 0;
-  padding: var(--sp-2) var(--sp-2);
+  /* Een raster van twee, zodat de bol en het woord samen gecentreerd staan en
+     de twee kanten even breed blijven ook al heeft er maar een een pictogram. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-2);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
-  /* A literal, like .sidebar .nav-item's #8D99AC, because this pane is dark in
-     BOTH themes and a theme-flipping token would invert under it. Not #8D99AC
-     itself though: the switch sits on --bg-card-alt, which is lighter than the
-     sidebar behind the nav items, and measured on the rendered pixels that
-     leaves the muted grey at 3,91:1 in light theme. This one measures 5,04:1
-     there and higher on the darker pane. */
-  color: #A3AEC0;
+  /* Hier stond een literal (#A3AEC0), en met reden: in de zijbalk is het
+     paneel in BEIDE thema's donker, dus een thema-token zou daar omklappen.
+     Nu de schakelaar in de TOPBALK staat geldt precies het omgekeerde -- die
+     balk volgt het thema wel, en een vaste koude grijstint zou daar in het
+     lichte thema als vlek liggen. Dus terug naar het token dat er hoort. */
+  /* Niet --text-muted: de niet-gekozen kant moet je nog steeds meteen KUNNEN
+     lezen, want die is de helft van de keuze. Gedempt grijs maakte er een
+     uitgeschakelde knop van. */
+  color: var(--text);
   font: inherit;
-  font-size: var(--fs-small);
+  font-size: var(--fs-body);
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
+/* Faro's merkteken, klein. Dezelfde conic-gradient als de grote bol op de
+   landingspagina, zonder de animatie en zonder de bloom -- op deze maat zou
+   dat alleen ruis zijn naast een woord dat je moet lezen. */
+.hv-switch__orb {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
+    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset;
+}
+/* Op de gekozen kant ligt de bol op het zandvlak zelf. Een rand van de
+   inktkleur houdt hem daar zichtbaar in plaats van erin te verdwijnen. */
+.hv-switch__tab.active .hv-switch__orb {
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.22) inset, 0 0 0 1px rgba(0,0,0,0.14);
+}
+
 .hv-switch__tab:hover { color: var(--text); background: var(--hover); }
 .hv-switch__tab.active {
   background: var(--accent);
   /* The paired ink token, not the fill: --accent as text on --accent as
      background is the 1:1 mistake this codebase has made before. */
   color: var(--on-accent);
+  /* Een schaduw eronder zodat de gekozen kant naar voren komt in plaats van
+     alleen een andere kleur te hebben. */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.28);
 }
 .hv-switch__tab:focus-visible {
-  outline: 2px solid var(--champagne);
+  /* --champagne is in beide thema's dezelfde zandtint en werkte in de donkere
+     zijbalk. Op een topbalk die met het thema meegaat haalt zand op licht
+     1,3:1. --focus-ring is de tint die per thema is nagerekend. */
+  outline: 2px solid var(--focus-ring, var(--champagne));
   outline-offset: 2px;
 }
 

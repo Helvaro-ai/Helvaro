@@ -8929,6 +8929,10 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   /* Let the title give up space before the actions wrap. */
   .topbar-left { min-width: 0; flex-shrink: 1; }
   .page-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Het titelblok is zelf ook een flex-kind met min-width:auto en weigerde
+     dus onder zijn tekstbreedte te zakken -- flex-shrink op de ouder alleen
+     doet daar niets. */
+  .topbar-titel { min-width: 0; }
 
   .detail-panel {
     width: 100vw;
@@ -9871,7 +9875,13 @@ ${_intro.markup()}
       <img src="/logo.webp" alt="Helvaro" width="440" height="154" loading="lazy">
     </div>
 
-    <!-- FARO: the way in (api/_faro/ui/markup.js). Not a nav row -- see there. -->
+    <!-- FARO: de ingang (api/_faro/ui/markup.js). Geen nav-rij -- zie daar.
+
+         Hij staat hier BOVEN de navigatie en niet erin, omdat hij van een
+         andere orde is: de nav kiest een scherm, dit kiest welke helft van de
+         app je voor je hebt. En hij staat buiten .sidebar-nav, want dat is het
+         enige deel van de zijbalk dat scrollt (gemeten: 758px inhoud in 636px
+         ruimte). Daarmee blijft hij staan waar hij staat. -->
 ${faro.navCta}
 
     <nav class="sidebar-nav" aria-label="Hoofdnavigatie">
@@ -10021,7 +10031,7 @@ ${faro.navCta}
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-        <div>
+        <div class="topbar-titel">
           <!-- Een <h1>, geen <div>: geen enkele pagina had er een, dus een
                schermlezer kon nergens "waar ben ik" beantwoorden en de
                koppenstructuur begon overal bij h2. Deze tekst verandert al per
