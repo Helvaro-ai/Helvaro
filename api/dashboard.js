@@ -1334,10 +1334,15 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   margin-top: 14px; flex-wrap: wrap;
 }
+/* 24 hoog, want dit is een losstaande knop onder het inlogformulier en geen
+   link midden in een zin -- WCAG 2.5.8 zondert alleen dat tweede uit. Gemeten
+   was hij 141x16. tests/raakdoelen.test.js legt die afweging uit voor de drie
+   soorten die hetzelfde hadden op "Je assistent". */
 .login-link {
   font-size: 13px; color: var(--login-muted); text-decoration: none;
   background: none; border: none; padding: 0; cursor: pointer;
   font-family: inherit;
+  min-height: 24px; display: inline-flex; align-items: center;
 }
 .login-link:hover { color: var(--login-text); text-decoration: underline; }
 /* Stond op --login-border: 1,32:1 op wit, dus in de praktijk onzichtbaar.
@@ -1873,7 +1878,9 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 /* ── Pagination dots ── */
 .brand-dots {
   display: flex;
-  gap: 6px;
+  /* 2 en niet 6: de knop is 4px breder geworden (zie .brand-dot), dus dit
+     houdt de hart-op-hart-afstand op dezelfde 26px. */
+  gap: 2px;
   justify-content: center;
   align-items: center;
   /* De knoppen zijn nu 24px hoog in plaats van 4; de marge compenseert dat,
@@ -1888,8 +1895,15 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    zijn -- maar de KNOP eromheen krijgt hoogte via padding, en het streepje
    wordt getekend met een achtergrond die alleen het midden vult. Zo verandert
    er niets aan wat je ziet en alles aan wat je kunt raken. */
+/* De hoogte was hierboven al naar 24 gebracht, de BREEDTE bleef op 20 staan --
+   gemeten 20x24, dus nog steeds onder de richtlijn. Nu 24 breed, terwijl het
+   streepje 20 blijft (zie de achtergrond hieronder).
+
+   De gap gaat van 6 naar 2 zodat de hart-op-hart-afstand 26px blijft, precies
+   wat hij was: 20+6 en 24+2 zijn hetzelfde. Wat je ziet verandert dus niet,
+   alleen wat je kunt raken. */
 .brand-dot {
-  width: 20px;
+  width: 24px;
   height: 24px;
   padding: 0;
   border-radius: 2px;
@@ -14811,7 +14825,7 @@ async function refreshData(skipFetch = false) {
               <div class="followup-item-meta">\${escHtml(bron)}</div>
             </div>
             <span class="followup-item-score">\${score}</span>
-            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escJs(l.telefoon||'')}').then(()=>toast(tr('tst.nummerGekopieerd'),'success'))">
+            <button class="followup-call-btn" onclick="event.stopPropagation();if(navigator.clipboard)navigator.clipboard.writeText('\${escJs(l.telefoon||'')}').then(()=>toast(tr('tst.nummerGekopieerd'),'success')).catch(()=>toast(tr('tst.kopierenMislukt'),'error'))">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/><path d="M1 1l22 22"/></svg>
               ${T('dash.form.copy')}
             </button>
@@ -15358,11 +15372,21 @@ async function sendClientInvite() {
 function copyInviteLink() {
   const link = document.getElementById('nc-invite-link')?.dataset.link;
   if (!link) return;
+  /* Bij succes stond hier btn.textContent = '' -- de knop werd twee seconden
+     LEEG en kwam daarna terug. Dat is precies andersom: het moment waarop je
+     bevestiging wilt, is het moment waarop het woord verdwijnt. En de tekst
+     die daarna terugkwam stond hardgecodeerd in het Nederlands, in een app met
+     vier talen. Allebei rechtgezet.
+
+     De mislukking werd helemaal ingeslikt. Kopiëren kan gewoon weigeren (geen
+     https, geen toestemming, een webview), en dan denkt iemand dat de link in
+     zijn plakbord staat terwijl daar iets anders in zit. */
   navigator.clipboard.writeText(link).then(() => {
     const btn = document.getElementById('nc-invite-copy');
-    btn.textContent = '';
-    setTimeout(() => { btn.textContent = 'Kopieer'; }, 2000);
-  }).catch(() => {});
+    if (!btn) return;
+    btn.textContent = tr('tst.gekopieerd');
+    setTimeout(() => { btn.textContent = tr('dash.form.copy'); }, 2000);
+  }).catch(() => toast(tr('tst.kopierenMislukt'), 'error'));
 }
 
 function closeNewClientModal() {
@@ -15496,13 +15520,15 @@ function copyWelcomeEmail() {
 function copyNcField(srcId, btnId) {
   const txt = document.getElementById(srcId)?.textContent || '';
   if (!txt) return;
+  /* Zelfde twee fouten als in copyInviteLink() hierboven: de knop werd leeg in
+     plaats van bevestigend, en een geweigerd plakbord zei niets. */
   navigator.clipboard.writeText(txt).then(() => {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     const orig = btn.textContent;
-    btn.textContent = '';
+    btn.textContent = tr('tst.gekopieerd');
     setTimeout(() => { btn.textContent = orig; }, 1500);
-  }).catch(() => {});
+  }).catch(() => toast(tr('tst.kopierenMislukt'), 'error'));
 }
 
 function switchToClient(index) {
@@ -17186,7 +17212,12 @@ function openPanel(lead) {
   const copyPhoneBtn = document.getElementById('panel-copy-phone');
   copyPhoneBtn.onclick = () => {
     if (lead.telefoon && navigator.clipboard) {
-      navigator.clipboard.writeText(lead.telefoon).then(() => toast(tr('tst.telGekopieerd'), 'success'));
+      /* Zonder .catch bleef een geweigerd plakbord een onafgehandelde
+         belofte: geen melding, geen bevestiging, en het nummer niet
+         gekopieerd. Bellen is de handeling waar dit scherm voor bestaat. */
+      navigator.clipboard.writeText(lead.telefoon)
+        .then(() => toast(tr('tst.telGekopieerd'), 'success'))
+        .catch(() => toast(tr('tst.kopierenMislukt'), 'error'));
     }
   };
 

@@ -384,8 +384,18 @@ body.hv-mode-ai .faro-rail {
 .faro-convo:hover { color: var(--text); background: var(--hover); }
 .faro-convo.active { color: var(--sand-on-surface); background: var(--champagne-dim); }
 
+/* min-height omdat dit een knop is en geen link in lopende tekst: op 390px
+   doorgemeten was hij 14 pixels hoog, en WCAG 2.5.8 (AA) vraagt 24 als
+   ondergrens voor iets wat je met een duim moet raken. --sp-6 IS 24, dus dit
+   blijft op de schaal (zie tests/raakdoelen.test.js voor de drie soorten die
+   hetzelfde probleem hadden op "Je assistent").
+
+   inline-flex en niet flex: flex maakt er een blok van dat de hele rail breed
+   wordt, en dan verandert het uiterlijk in plaats van alleen het raakvlak. */
 .faro-rail__viewall {
-  margin: var(--sp-1) var(--sp-4) 0; padding: 0;
+  margin: var(--sp-1) var(--sp-4) 0; padding: var(--sp-1) 0;
+  min-height: var(--sp-6);
+  display: inline-flex; align-items: center;
   background: none; border: 0;
   color: var(--text-disabled); font-size: var(--fs-tiny); text-align: left; cursor: pointer;
   transition: color 150ms ease;
