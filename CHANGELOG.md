@@ -12,7 +12,102 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## 3 september 2026 — CRM-koppelingen, en vier gaten die stil faalden (uitgerold)
+## 5 september 2026 — Helvaro verkoopt aan drie soorten bedrijven (uitgerold)
+
+### Je klant kiest zelf zijn markt
+
+Tot nu toe was Helvaro er voor makelaars. Sinds vandaag ook voor autohandelaars
+en voor bouw, keuken en renovatie — en dat is geen ander woord voor hetzelfde.
+
+Een makelaar heeft panden en een dealer heeft wagens: een lead wijst naar iets
+dat al BESTAAT, en de assistent hoeft het alleen te herkennen. Een aannemer of
+keukenbouwer heeft dat niet. Daar moet het ding nog gemaakt worden, en de prijs
+hangt volledig af van wat iemand precies wil. Dus vraagt de assistent daar iets
+anders: niet "welk pand bedoel je", maar "wat wil je laten doen, en is dat een
+rit waard".
+
+Wat dat scheelt: een aannemer rijdt drie kwartier naar een plaatsbezoek en
+hoort daar pas dat het een huurwoning is, of dat het budget de helft is van wat
+het werk kost, of dat het pas volgend jaar moet. Dat is een halve dag. De
+projectfiche vraagt zes dingen tijdens het WhatsApp-gesprek — wat, waar,
+eigenaar of huurder, hoe groot, welk budget, wanneer — en vult ze aan over
+meerdere berichten in plaats van één formulier voor te leggen.
+
+Die derde vraag is de belangrijkste en wordt zelden gesteld: een huurder mag
+meestal niet beslissen over wat er aan het gebouw verandert. Dat krijgt een
+LET OP, want het is het ene ding dat moet opvallen voordat iemand in de auto
+stapt.
+
+**Actie:** de marktkeuze staat in de onboarding en is later te wijzigen via
+Instellingen. Bestaande klanten blijven op vastgoed staan; je hoeft niets te
+doen.
+
+### Wat er onderweg bijna misging
+
+Een budget van "15.000" werd gelezen als vijftien. In België is de punt de
+duizendtalscheider. Een budget dat duizend keer te laag binnenkomt is erger dan
+geen budget: de aannemer schrijft de lead af zonder te weten waarom.
+
+En overal in de code stond "is dit een dealer, ja of nee". Dat werkt bij twee
+markten; bij vijf blijft er gegarandeerd ergens eentje achter. Precies zo kwam
+er eerder een stap in de onboarding te staan zonder naam — genummerd bolletje,
+lege regel, op het allereerste scherm dat een nieuwe klant ziet.
+
+### Accenttekst was overal net te licht
+
+32 stukjes tekst zaten in het lichte thema onder de leesbaarheidsnorm. Ze
+hadden allemaal dezelfde kleur, en op wit klopte die ook — alleen staat
+accenttekst zelden op wit. Op de warme vlakken waar hij écht staat haalde hij
+het net niet. Eén token donkerder en alle 32 zijn weg.
+
+---
+
+## 4 september 2026 — de app kreeg zijn eigen gezicht (uitgerold)
+
+### Eén backtick had het hele dashboard kunnen platleggen
+
+In een opmerking in `api/dashboard.js` stond een backtick. Dat bestand is één
+grote template-string, dus die backtick beëindigde hem — en een uitgerolde
+versie daarvan geeft geen kapot knopje maar een 500 op de HELE app. Gevangen
+vóór het uitrollen. Het is de bekende val van dit bestand, en hij geldt in een
+opmerking net zo hard als in code.
+
+### Het uiterlijk
+
+Het inlogscherm draagt nu Helvaro's eigen vormen in plaats van een standaard
+inlogkaart. Knoppen hebben randlicht en een gloed in hun eigen kleur, wisselen
+van scherm is geen harde knip meer, wachten ziet er overal hetzelfde uit, en de
+zijbalk staat in dezelfde kleurfamilie als de rest van de app in plaats van
+ernaast. Je echte logo is terug.
+
+Ook praktisch: je kunt weer zien waar je bent als je met het toetsenbord werkt,
+op een telefoon is "Je assistent" te bedienen, en de lege pipeline zegt niet
+langer vijf keer hetzelfde.
+
+### Faro stelt zich voor
+
+Twee seconden na het inloggen. En hij weet nu van elk scherm niet alleen hoe
+het heet, maar wat je er kunt bereiken, waarom het bestaat, en waar je begint
+als je er voor het eerst staat.
+
+### Twee blinde vlekken over geld
+
+Je zag per klant het verbruik en de geschatte kosten, maar niet de opbrengst —
+een halve vergelijking, waarin een klant die verlies draait er precies zo
+uitziet als een die dat niet doet. Nu staat de marge er. En wat een
+WhatsApp-sjabloon echt kost is zichtbaar: MARKETING kost meer dan het dubbele
+van UTILITY.
+
+### Een afgemelde lead kon alsnog bericht krijgen
+
+Er zijn vier plekken die WhatsApp versturen. Drie controleerden of de lead zich
+had afgemeld; de handmatige antwoordroute vanuit het dashboard niet. Iemand die
+STOP had getypt kon dus vanuit het dashboard alsnog aangeschreven worden — zowel
+binnen als buiten het 24-uursvenster. Dat is precies het soort fout waar een
+toezichthouder naar kijkt.
+
+---
+
 
 ### De demo op de website deed het nooit
 
@@ -175,7 +270,66 @@ terug-echoot zou die anders in de serverlogs zetten. En het webhook-adres wordt
 opgezocht en geweigerd als het naar een intern netwerk wijst.
 
 
+## 2 september 2026 — vier talen, schermlezers en één maatschaal (uitgerold)
+
+### 103 meldingen spraken alleen Nederlands
+
+Tegen Franstalige en Duitstalige klanten. De app is in vier talen gebouwd, maar
+de meldingen die je krijgt terwijl je werkt — opgeslagen, mislukt, verstuurd —
+waren daar nooit in meegegaan. Voor een Waalse makelaar betekende dat: een
+product dat Frans belooft en Nederlands terugpraat op precies de momenten dat
+er iets gebeurt.
+
+### 51 invoervelden hadden geen naam die een schermlezer kan uitspreken
+
+Wie het scherm niet ziet, kreeg een formulier van naamloze vakjes. Ze hebben nu
+allemaal een label, in vier talen.
+
+### Er werd de hele dag gepolld naar tabbladen waar niemand naar keek
+
+Een makelaar houdt Helvaro open achter zijn andere tabbladen. Dat waren
+ongeveer 48 verversingen en 96 presence-pings per persoon per dag naar een
+scherm dat niemand zag — Airtable-quota en verkeer voor niets, en precies het
+soort belasting dat eerder een 429-storm veroorzaakte. Beide slaan nu over
+zolang het tabblad verborgen is.
+
+### Van 28 lettergroottes en 16 afrondingen naar één schaal
+
+Dat is waarom twee kaarten die een maand na elkaar gebouwd waren niet
+uitlijnden. De schaal ligt nu vast en een controle bewaakt hem, dus een losse
+pixelwaarde komt er niet meer stilletjes bij.
+
+### Faro beweegt en praat als iemand
+
+In plaats van een plaatje met tooltips.
+
+---
+
 ## Nog niet uitgerold
+
+### Een agenda die niet gelezen kon worden, gold als een lege agenda
+
+Kon Helvaro je Google agenda niet lezen — een verlopen koppeling, een storing —
+dan werd het gevraagde moment als vrij behandeld en ging de boeking door. Dat
+laatste blijft zo, en met opzet: een lead verliezen omdat Google traag is, is
+erger dan het risico op een dubbele afspraak.
+
+Wat er niet deugde: je hoorde het niet. "Vrij" en "we konden niet kijken" zagen
+er identiek uit, dus een agenda die al een week onleesbaar was nam gewoon
+afspraken aan alsof alles klopte. Je merkt dat als er twee mensen voor je deur
+staan.
+
+Vanaf nu boekt hij nog steeds, maar zegt hij het erbij. Boekt de assistent via
+WhatsApp, dan komt er een LET OP in de notitie van de afspraak en krijg je zelf
+een bericht met wat er na te kijken valt. Boek je zelf vanuit het dashboard,
+dan staat er "Even nakijken" in plaats van "Afspraak geboekt". Een echt
+conflict — een moment dat aantoonbaar bezet is — wordt nog steeds gewoon
+geweigerd.
+
+**Actie:** blijft die melding terugkomen, dan is je Google-koppeling
+waarschijnlijk verlopen. Opnieuw verbinden in Instellingen. Zolang de
+Google-toestemming nog op "Testing" staat gebeurt dat elke 7 dagen — zie
+`LAUNCH.md`.
 
 ### De opvolgcron kon blijven hangen op Meta
 
@@ -229,6 +383,15 @@ knoptekst werd **leeg** en kwam anderhalve tot twee seconden later terug. Het
 moment waarop je bevestiging wil, was het moment waarop het woord verdween. Nu
 staat er "Gekopieerd" — in de taal van de gebruiker, want de tekst die daarna
 terugkwam stond hardgecodeerd in het Nederlands.
+
+### Onderhoud dat je niet merkt
+
+De wachtrij die de creditafschrijvingen per klant op volgorde houdt, ruimde
+zichzelf nooit op: hij vergeleek twee dingen die nooit gelijk konden zijn, dus
+bleef er van elke klant een regeltje in het geheugen staan. Geen gevolgen die
+je hebt kunnen zien — het geheugen loopt bij elke nieuwe serverstart toch leeg
+— maar de code deed het omgekeerde van wat de uitleg erboven beloofde, en dat
+is hoe je een codebase niet meer kunt vertrouwen.
 
 ### Drie knoppen waren te klein om te raken
 
@@ -2732,4 +2895,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 7813914 -->
+<!-- changelog-tot: 6defa64 -->
