@@ -20583,6 +20583,10 @@ function wizardTeken() {
 var WIZARD_LABELS = {
   intro:   'Welkom',
   regio:   'Land en taal',
+  /* Deze ontbrak. De stap zelf stond wel in WIZARD_STAPPEN, dus de rail toonde
+     een genummerd bolletje met een lege regel ernaast -- stap 3 van 7, zonder
+     naam, op het eerste scherm dat een nieuwe klant ziet. */
+  markt:   'Je markt',
   bedrijf: 'Je bedrijf',
   koppelingen: 'Koppelingen',
   ai:      'Je assistent',

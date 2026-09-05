@@ -101,7 +101,22 @@ ck('en de klant hoort dat het 72 uur duurt voor het live staat',
    /binnen <b>72 uur<\/b> live/.test(html), null);
 ck('land en taal worden samen bewaard',
    /wizardBewaar\(\{ country: landKeuze, language: taalKeuze \}\)/.test(html), null);
-ck('met een label per stap in de rail', /WIZARD_LABELS = \{/.test(html), null);
+/* Deze controle keek alleen of het object BESTOND, en dat is hoe er een stap
+   zonder naam in productie kwam: 'markt' stond wel in WIZARD_STAPPEN maar niet
+   in WIZARD_LABELS, dus de rail toonde een genummerd bolletje met een lege
+   regel ernaast -- stap 3 van 7, naamloos, op het eerste scherm dat een nieuwe
+   klant ziet. Nu elke stap afzonderlijk. */
+{
+  const labelBlok = ((html.match(/WIZARD_LABELS = \{([\s\S]*?)\n\};/) || [])[1] || '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const zonder = STAPPEN.filter((k) => !new RegExp('\\b' + k + ':\\s*\'[^\']+\'').test(labelBlok));
+  ck('elke stap in WIZARD_STAPPEN heeft een label in de rail', zonder.length === 0, zonder);
+  ck('en er zijn geen labels voor stappen die niet bestaan',
+     (labelBlok.match(/^\s*([a-z]+):/gm) || [])
+       .map((x) => x.trim().replace(':', ''))
+       .filter((k) => STAPPEN.indexOf(k) === -1).length === 0,
+     (labelBlok.match(/^\s*([a-z]+):/gm) || []).map((x) => x.trim().replace(':', '')));
+}
 ck('het is een echte dialoog', /overlay\.setAttribute\('role', 'dialog'\)/.test(html), null);
 ck('fouten worden hardop gemeld', /fout\.setAttribute\('role', 'alert'\)/.test(html), null);
 
