@@ -7534,18 +7534,34 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--bg-card-alt); border: 1px solid var(--border);
   border-radius: 10px; padding: 9px 13px;
+  /* 35px hoog gemeten. Boven de 24 die WCAG vraagt, maar onder wat je met
+     een duim comfortabel raakt naast een tweede optie ernaast. */
+  min-height: 44px;
   font-size: 13px; font-weight: 600; color: var(--text-primary);
   cursor: pointer; transition: all .15s ease;
 }
 .ap-lang-opt:hover { border-color: var(--accent-bright); }
-.ap-lang-opt input[type="radio"] { margin: 0; cursor: pointer; accent-color: var(--accent); }
+.ap-lang-opt input[type="radio"] { margin: 0; flex-shrink: 0; cursor: pointer; accent-color: var(--accent); width: 18px; height: 18px; }
 .ap-lang-opt:has(input:checked) {
   background: rgba(var(--accent-rgb),.15);
   border-color: var(--accent-bright);
   color: var(--accent-ink);
 }
-.ap-checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.ap-checkbox-row input[type="checkbox"] { margin: 0; cursor: pointer; accent-color: var(--accent); width: 16px; height: 16px; }
+/* Gemeten op 390px: dit label was 320 breed en 16 HOOG. Het hokje eromheen
+   16x16, het aanvinkgebied dus een streepje van zestien pixels. WCAG 2.5.8
+   vraagt 24x24 als ondergrens en dit zat eronder; op een telefoon mis je hem
+   gewoon. De rij is een label dat het hokje omvat, dus hoogte geven kost
+   niets aan de opmaak en maakt het hele lint aanraakbaar. */
+.ap-checkbox-row { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+/* De browser tekent een keuzerondje van 13px en een vinkje van 16px. Klein om
+   te zien en klein om te raken; accent-color zet ze meteen in de merkkleur in
+   plaats van in Chrome-blauw.
+
+   Beide selectors bestonden al -- ik zette er eerst een tweede regel naast en
+   die verdween stil onder de bestaande (zelfde specificiteit, de andere stond
+   later). Gemeten bleef het vinkje gewoon 16x16. Dus: de bestaande regels
+   aangepast, geen nieuwe ernaast. */
+.ap-checkbox-row input[type="checkbox"] { margin: 0; flex-shrink: 0; cursor: pointer; accent-color: var(--accent); width: 18px; height: 18px; }
 .ap-color-row { display: flex; gap: 8px; align-items: stretch; }
 .ap-color-input { flex: 1; font-family: monospace; text-transform: uppercase; }
 .ap-color-swatch {
@@ -7558,11 +7574,24 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .ap-textarea { resize: vertical; min-height: 70px; line-height: 1.55; }
 .ap-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .ap-hint em { color: var(--text-primary); font-style: normal; font-weight: 600; }
+/* Deze chips zetten {naam}, {bedrijf} enzovoort in het welkomstbericht. Ze
+   waren 19px hoog met 2px padding -- onder de 24x24 van WCAG 2.5.8, en op een
+   telefoon is een rij van vier zulke blokjes naast elkaar een loterij.
+
+   Hoogte via padding en niet via min-height, want ze staan in een regel tekst
+   (.ap-hint) en moeten daarin blijven meelopen. */
 .ap-chip {
   background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.25);
-  color: var(--accent-ink); padding: 2px 8px; border-radius: 6px;
+  color: var(--accent-ink); padding: 5px 9px; border-radius: 6px;
   font-size: 11px; font-weight: 600; cursor: pointer; font-family: monospace;
   transition: all .15s ease;
+}
+@media (max-width: 600px) {
+  /* Op een telefoon is de duim het aanwijsapparaat, dus daar helemaal naar
+     boven de grens. De regel eromheen krijgt wat meer lucht zodat twee chips
+     onder elkaar niet tegen elkaar aan komen te liggen. */
+  .ap-chip { padding: 8px 12px; font-size: 12px; }
+  .ap-hint { gap: 8px; line-height: 1.9; }
 }
 .ap-chip:hover { background: rgba(var(--accent-rgb),.25); color: var(--text); }
 
