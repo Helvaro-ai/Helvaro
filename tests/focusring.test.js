@@ -120,5 +120,21 @@ console.log('\n  de kleur klopt op elk vlak waar hij kan landen');
   }
 }
 
+console.log('\n  en of er iets gebeurde toen je drukte');
+{
+  const regel = /:where\(button, \[role="button"\], a\[class\*="btn"\]\):active[^{]*\{([^}]*)\}/.exec(code);
+  ck('er is een vloer voor drukterugkoppeling', !!regel);
+  /* Eén pixel omlaag: precies wat .nav-item al deed. Dit maakt er de huisregel
+     van in plaats van een uitzondering. */
+  ck('een duwtje van een pixel', regel && /transform:\s*translateY\(1px\)/.test(regel[1]), regel && regel[1].trim());
+  /* Een knop die niets doet hoort ook niet te bewegen -- dat zou juist zeggen
+     dat er wél iets gebeurde. */
+  ck('behalve als de knop uitstaat',
+    /\):active:not\(:disabled\):not\(\[aria-disabled="true"\]\)/.test(code));
+  /* Zonder :where() wint deze regel van de dertien knoppen die al een eigen
+     :active hebben, en dan verdwijnt juist het werk dat er al goed was. */
+  ck('ook hier specificiteit nul', /:where\(button, \[role="button"\], a\[class\*="btn"\]\):active/.test(code));
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

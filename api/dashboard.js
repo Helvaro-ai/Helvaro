@@ -752,6 +752,23 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   outline-offset: 2px;
 }
 
+/* ── Gebeurde er iets toen ik drukte? ────────────────────────────────────────
+   Zelfde meting, zelfde uitkomst als bij de focusring: 33 knoppen gaven een
+   duwtje terug en 59 niet, en welke je kreeg hing af van of de knop uit het
+   ontwerpsysteem kwam of ter plekke was gemaakt. Op een trage verbinding is
+   dat het verschil tussen "hij doet het" en nog een keer klikken.
+
+   Ook hier :where(), dus specificiteit nul: de dertien knoppen die al een
+   eigen :active hebben houden die gewoon. Een pixel omlaag is precies wat
+   .nav-item al deed -- dit maakt er de huisregel van in plaats van een
+   uitzondering.
+
+   :not(:disabled) want een knop die niets doet hoort ook niet te bewegen; dat
+   zou juist zeggen dat er wel iets gebeurde. */
+:where(button, [role="button"], a[class*="btn"]):active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(1px);
+}
+
 html { font-size: 15px; }
 
 body {
