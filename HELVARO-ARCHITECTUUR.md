@@ -7,10 +7,14 @@ hoe hij werkt, en welke regels je moet kennen voordat je iets aanraakt.
 
 ## 1. Wat het product doet
 
-Helvaro is een WhatsApp-assistent voor Vlaamse (en Waalse/Duitstalige) makelaars.
-Een lead stuurt een bericht of vult een formulier in; de assistent antwoordt
-binnen de minuut, kwalificeert op budget/timing/fit, en boekt de bezichtiging
-rechtstreeks in de Google Agenda van de makelaar.
+Helvaro is een WhatsApp-assistent voor Vlaamse, Waalse en Duitstalige bedrijven
+die van een binnenkomend bericht een afspraak moeten maken. Een lead stuurt een
+bericht of vult een formulier in; de assistent antwoordt binnen de minuut,
+kwalificeert, en boekt de afspraak rechtstreeks in de Google Agenda.
+
+Het begon bij makelaars en draait inmiddels op **vijf markten**: vastgoed,
+autohandel, bouw, keukens en renovatie. Wat er per markt verschilt is beperkt en
+staat op één plek — zie 4.5.
 
 De assistent heet **Faro** en heeft een eigen persona (valk). Klanten geven hem
 zelf een naam ("Mathis"), zodat de lead denkt met een medewerker te praten.
@@ -35,7 +39,7 @@ Wat je schrijft, draait. Er is geen transpilatie die je fouten opvangt.
 
 ## 3. Kaart van de repo
 
-~94 bestanden in `api/`, ~122.000 regels. **Onderstreepje voorop = geen route**,
+111 bestanden in `api/`, ~78.000 regels (plus ~15.500 in `tests/`). **Onderstreepje voorop = geen route**,
 alleen een module. Zonder onderstreepje = een echt HTTP-endpoint.
 
 **Endpoints:** `admin` `auth` `cron-followup` `dashboard` `demo` `faro`
@@ -44,6 +48,14 @@ alleen een module. Zonder onderstreepje = een echt HTTP-endpoint.
 **Belangrijkste modules:**
 - `_leads-read.js` — het veldschema van een lead + `computeStats()`. Eén
   leesroute die zowel `leads.js` als Faro gebruikt.
+- `_vertical.js` — in welke markt een klant zit, en wat dat betekent. De ENIGE
+  plek die het `Vertical`/`Niche`-veld leest. Zie 4.5.
+- `_properties.js` / `_vehicles.js` — de catalogus van de twee markten die er
+  een hebben. Spiegelbeelden van elkaar, met opzet.
+- `_project.js` — de projectfiche voor de drie markten zonder catalogus (bouw,
+  keuken, renovatie): wat, waar, eigenaar of huurder, omvang, budget, termijn.
+- `_wens.js` — wat een koper zocht toen de wagen er niet was, en welke wagen
+  daar later bij past. Alleen dealership.
 - `_credits.js` / `_ledger.js` — creditsysteem. Het grootboek is de waarheid.
 - `_stripe.js` / `stripe.js` — betalen; de webhook is de enige plek waar
   credits van geld komen.
@@ -62,7 +74,7 @@ alleen een module. Zonder onderstreepje = een echt HTTP-endpoint.
 **Cron:** `/api/cron-followup` dagelijks om 09:00. `maxDuration`: whatsapp en
 form 120s, cron-followup 300s, de rest 60s.
 
-## 4. De vier dingen die je echt moet weten
+## 4. De vijf dingen die je echt moet weten
 
 ### 4.1 `api/dashboard.js` is ÉÉN template literal
 25.000+ regels, ~1,3 MB uitgestuurde HTML, en het hele bestand is één grote
@@ -97,6 +109,53 @@ faalt **dicht**: geen projectCode = 403. Admin-modes zitten achter een
 
 De enige plek waar de tenant níét uit een sessie komt is de Stripe-webhook;
 daar hangt alles aan de handtekening.
+
+### 4.5 Vijf markten, één product
+
+De markt van een klant heet de **vertical** en wordt op één plek bepaald:
+`api/_vertical.js`. Niemand anders leest dat veld. Dat is met opzet — de vraag
+"in welke markt zit deze klant" op twintig plekken los uitlezen levert twintig
+verschillende antwoorden op wat een leeg veld betekent.
+
+| vertical | catalogus | afspraak heet |
+|---|---|---|
+| `vastgoed` | Panden | bezichtiging |
+| `dealership` | Voertuigen | proefrit |
+| `bouw` | *geen* | plaatsbezoek |
+| `keuken` | *geen* | opmeting |
+| `renovatie` | *geen* | plaatsbezoek |
+
+**Leeg betekent vastgoed, en dat is geen detail.** Elke klant van vóór dit
+systeem heeft `Vertical` leeg. Zou leeg iets anders gaan betekenen, dan verliest
+elke makelaar op de dag van uitrol zijn pandcontext. Vandaar dat `vastgoed` de
+terugval is op élk pad dat misgaat: onbekende waarde, ontbrekend veld, record
+niet gevonden, Airtable plat.
+
+**Vraag `heeftAanbod()`, niet "is het dealership".** De meeste code die
+`=== 'dealership'` schrijft, wil eigenlijk weten of er iets is om uit te kiezen.
+Bij twee markten viel dat samen; bij vijf niet meer. Bouw, keuken en renovatie
+verkopen een project dat per opdracht wordt geoffreerd — daar valt niets te
+herkennen uit een voorraad, en hun aanbodscherm staat niet in de navigatie.
+
+Voor die drie doet `api/_project.js` wat panden en voertuigen voor de andere
+twee doen: Faro bouwt tijdens het gesprek een **projectfiche** op (wat, waar,
+eigenaar of huurder, omvang, budget, termijn). Die derde vraag is de
+belangrijkste — een huurder mag meestal niet beslissen over wat er aan het
+gebouw verandert, en dat hoor je te weten vóór je drie kwartier rijdt.
+
+De niche wordt ook uit het `Niche`-veld afgeleid, in vier talen en een stuk of
+veertig schrijfwijzen (`aannemer`, `cuisiniste`, `Sanierung`, `garage`, …).
+`Vertical` wint als hij expliciet gezet is; dat is de fijnregeling voor als een
+niche niet dekt wat iemand echt doet.
+
+De woorden staan in de vertaaltabel, niet hardgecodeerd: een Waalse dealer hoort
+geen Nederlandse navigatie te zien. In `api/dashboard.js` gaat dat via
+`HV_WOORDEN` + `vw()`.
+
+**Vier lijsten moeten gelijk blijven:** `BEKEND` op de server, `HV_WOORDEN` in de
+client, de wizardkaarten en de keuzelijst in Instellingen. Loopt er eentje
+achter, dan kan iemand een markt kiezen die de rest niet kent.
+`tests/niches.test.js` bewaakt dat.
 
 ## 5. Hoe een lead door het systeem loopt
 
@@ -133,7 +192,7 @@ daar hangt alles aan de handtekening.
 
 ## 7. Testen
 
-73 testbestanden, elk een los `node`-script dat `process.exit(1)` doet bij
+92 testbestanden, elk een los `node`-script dat `process.exit(1)` doet bij
 falen. Geen testrunner, geen jest.
 
 ```bash
@@ -177,7 +236,15 @@ alleen een lege `{ ok: false }` teruggeeft, wordt pas maanden later ontdekt.
 - Google Agenda-OAuth staat nog op **Testing** (tokens verlopen na 7 dagen).
 - WhatsApp-sjablonen wachten op goedkeuring bij Meta.
 - `_waes.js` (eigen WhatsApp-nummer per klant) is compleet maar bewust nog niet
-  aangesloten — wacht op Tech Provider-status.
+  aangesloten — wacht op Tech Provider-status. Een knop die daarop uitkomt geeft
+  de klant een Meta-foutmelding in plaats van een koppeling, en dat is erger dan
+  geen knop.
+- `WABA_ID` staat niet in de Vercel-omgeving. Gevolg is beperkt maar echt: de
+  templatestatus en -kostprijs in het beheerdersscherm komen uit een
+  momentopname in plaats van een live meting bij Meta. Versturen werkt gewoon —
+  de WABA-id per klant komt uit Airtable.
+- De Stripe live-sleutel is nooit door een echte checkout gegaan. Dat blijft
+  open tot iemand daadwerkelijk betaalt.
 - De CRM-koppeling heeft een scherm (Instellingen → Je CRM) en vier modes op
   `api/leads.js`: `crm-status` / `crm-connect` / `crm-disconnect` / `crm-sync`.
   Het veld `CRM Koppelingen` (`fld5UwV0QS8m7UAHF`, Long text) staat op Client
