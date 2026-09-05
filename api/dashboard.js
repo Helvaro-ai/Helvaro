@@ -575,6 +575,12 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --border-bright: var(--border-strong);
   --scrollbar-bg:  var(--bg);
   --scrollbar-thumb: var(--border-strong);
+  /* De focusring. Zie de regel bij :where(...):focus-visible verderop voor het
+     waarom; hier alleen de kleur, want die MOET per thema verschillen: zand
+     haalt 10-13:1 op de donkere vlakken en 1,3:1 op de lichte. Een enkele
+     kleur die het overal haalt bestaat niet -- nagerekend op alle zes vlakken
+     waar een ring kan landen. */
+  --focus-ring: #E8D7B1;
   --radius:        var(--radius-btn);
   --radius-s:      var(--radius-sm);
 }
@@ -685,6 +691,12 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --border-bright: var(--border-strong);
   --scrollbar-bg:  var(--bg);
   --scrollbar-thumb: var(--border-strong);
+  /* Het lichtste warme goud dat op alle drie de lichte vlakken boven 3:1 komt
+     (pagina #F6F3EC 3,92:1, kaart wit 4,34:1, kaart-alt #EEE9DE 3,59:1).
+     #A8813B lag dichter bij het accent maar bleef op kaart-alt op 2,96:1
+     steken, en #9E8242 haalde daar 3,03:1 -- net erboven is niet genoeg
+     marge voor iets waar je op moet kunnen zien waar je bent. */
+  --focus-ring: #96742F;
 
   /* The site's own card shadow, verbatim. */
   /* Ook hier drie lagen, en warm getint in plaats van blauwgrijs. Een schaduw
@@ -710,6 +722,35 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
    RESET & BASE
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Waar ben ik? ────────────────────────────────────────────────────────────
+   Met een echte Tab-toets gemeten, want programmatische focus telt in Chrome
+   niet als :focus-visible en geeft dus een vals beeld. Wat er te zien was:
+
+     .btn-icon            zandring van de app        (goed)
+     .nav-item            eigen ring van de app      (goed)
+     .ap-chip             Chrome's eigen ring, #F5ECD7
+     .ap-btn / .fm-btn    Chrome's eigen ring, #121212 -- op een donkere kaart
+                          1,27:1, oftewel onzichtbaar
+     .cal-nav-btn         Chrome's eigen ring, oranje #E59700
+
+   Drie verschillende ringen dus, waarvan een die je op de helft van de app
+   niet ziet. Wie met het toetsenbord werkt raakt daar simpelweg kwijt waar hij
+   is -- op "Je assistent" zijn dat tien chips, acht knoppen en vijf
+   tekstvelden achter elkaar.
+
+   :where() geeft deze regel specificiteit NUL. Dat is met opzet: dit is een
+   vloer, geen overheersing. Elke bestaande focusregel wint hier gewoon van, en
+   .btn-icon en .nav-item houden dus hun eigen ring. Alleen wie er geen had
+   krijgt er een.
+
+   outline en niet box-shadow: box-shadow zou de eigen schaduw van een element
+   tijdens focus vervangen, en outline doet niets met de layout. */
+:where(button, a[href], input, select, textarea, summary,
+       [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--focus-ring, #E8D7B1);
+  outline-offset: 2px;
+}
 
 html { font-size: 15px; }
 
@@ -3282,6 +3323,9 @@ button.brand-dot { border: none; padding: 0; }
   --text-muted:     #9E988B;
   --text-muted-c:   #9E988B;
   --text-secondary: #9E988B;
+  /* De zijbalk blijft donker in het lichte thema, dus het lichte goud (#96742F,
+     4,23:1 hier) zou werken maar is nodeloos zwak. Zand haalt er 12,94:1. */
+  --focus-ring:     #E8D7B1;
   --border:      rgba(255,255,255,0.07);
   --border-c:    rgba(255,255,255,0.07);
   --divider:     rgba(255,255,255,0.07);
