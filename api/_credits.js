@@ -771,12 +771,31 @@ function serialize(code, task) {
   const prev = _queues.get(code) || Promise.resolve();
   // .catch erin, anders breekt één mislukking de hele ketting voor die klant.
   const next = prev.then(task, task);
-  _queues.set(code, next.catch(() => {}));
+  /* De stille variant ÉÉN keer maken en die bewaren.
+   *
+   * Hier stond `_queues.set(code, next.catch(() => {}))` en daarna
+   * `if (_queues.get(code) === next.catch(() => {}))`. Elke .catch() levert een
+   * NIEUWE belofte op, dus dat vergeleek twee verschillende objecten: de
+   * voorwaarde was altijd onwaar en het opruimen hieronder is nooit één keer
+   * gebeurd. De Map groeide met elke klant die ooit iets verbruikte -- precies
+   * wat het commentaar zei te voorkomen.
+   *
+   * api/whatsapp.js doet dit in opDeRij() wel goed: daar wordt de stille
+   * variant in een const gezet en dáármee vergeleken. Zelfde vorm nu. */
+  const stil = next.catch(() => {});
+  _queues.set(code, stil);
   // Opruimen zodra deze de laatste in de rij is, anders groeit de Map met elke
   // klant die ooit iets verbruikt heeft.
-  next.catch(() => {}).then(() => { if (_queues.get(code) === next.catch(() => {})) _queues.delete(code); });
+  stil.then(() => { if (_queues.get(code) === stil) _queues.delete(code); });
   return next;
 }
+
+/* Alleen om te kunnen TOETSEN dat de rij zichzelf opruimt. Zonder dit is het
+   verschil tussen "ruimt op" en "lekt" van buitenaf niet te zien, en dat is
+   precies hoe die kapotte vergelijking hierboven jarenlang kon blijven staan.
+   Leest alleen; verandert niets. Zelfde soort haakje als _resetAvailability()
+   in api/_ledger.js. */
+function _queueDepth() { return _queues.size; }
 
 async function recordUsage(projectCode, feature, opts = {}) {
   const code = String(projectCode || '').trim();
@@ -1474,6 +1493,7 @@ module.exports = {
   topupOfferte, beterPlanVoor, TOPUP_RATE_EUR, TOPUP_MIN_EUR, TOPUP_MAX_EUR, TOPUP_STAFFEL,
   topupPresets, TOPUP_PRESETS,
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
+  _queueDepth,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
   creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,
   FEATURES,
