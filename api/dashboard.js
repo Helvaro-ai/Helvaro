@@ -628,8 +628,23 @@ ${ONESIGNAL_READY ? '<script src="https://cdn.onesignal.com/sdks/web/v16/OneSign
   --accent-pressed-c:#D3BE93;
   --accent-deep:     #D3BE93;
   /* Sand as type on white is ~1.7:1. This deeper bronze is the brand's
-     answer, and it is the ONLY accent allowed to carry text here. */
-  --accent-ink:      #8A6A33;
+     answer, and it is the ONLY accent allowed to carry text here.
+
+     Het was #8A6A33, en dat haalde op WIT 5,01:1 -- daar was op gemeten. Maar
+     accenttekst staat bijna nooit op wit: hij staat op de getinte vlakken
+     eromheen. Alle 32 stukjes tekst die in het lichte thema onder 4,5:1 zaten
+     hadden precies deze kleur, en allemaal op zo'n tint:
+
+       op #FFFFFF (puur wit)     5,01:1  ok
+       op #EEE9DE (--bg-card-alt) 4,14:1  te weinig
+       op #EDE7D9                 4,07:1  te weinig
+       op #F3EDE0 t/m #F5F1E8     4,30 - 4,45:1  te weinig
+
+     Dezelfde tint en verzadiging, alleen donkerder tot het overal boven 4,5
+     uitkomt met marge: 4,84 op het donkerste vlak, 5,97 op wit. De zijbalk
+     hergebruikt --accent-ink niet (nagekeken: nul accenttekst daarbinnen),
+     dus donkerder maken raakt dat permanent donkere paneel niet. */
+  --accent-ink:      #7E5E27;
   --on-accent:       #121212;
 
   --text-c:        #111827;
