@@ -813,10 +813,130 @@ Harde regels:
   },
 };
 
+/* ── Projecten ───────────────────────────────────────────────────────────────
+   Bouw, keuken en renovatie. Geen catalogus, en dat is niet "panden zonder
+   panden" maar een ander gesprek.
+
+   Bij een makelaar en een dealer wijst de lead naar iets dat bestaat: dit pand,
+   die wagen. Faro hoeft het alleen te herkennen en de cijfers uit de fiche te
+   lezen. Hier bestaat het ding nog niet. De prijs hangt volledig af van wat
+   iemand precies wil, en dat weet de lead vaak zelf nog niet scherp.
+
+   Faro's taak is daarom niet herkennen maar UITVRAGEN -- en het antwoord
+   ergens laten waar de aannemer het terugvindt.
+
+   ── Wat het kost als dit niet gebeurt ──
+   De aannemer rijdt drie kwartier naar een plaatsbezoek en hoort daar pas dat
+   het om een huurwoning gaat, of dat het budget de helft is van wat dit werk
+   kost, of dat het pas volgend jaar moet. Dat is een halve dag, en die dag
+   komt niet terug. Elke regel hieronder bestaat om precies die rit te
+   voorkomen.
+
+   ── Waarom een tekstblok en geen veld in het schema ──
+   Zelfde reden als bij WENS bij de dealers: dat antwoordschema is GEDEELD met
+   vastgoed en staat onder een momentopname. Er een veld in bijmaken raakt elke
+   bestaande makelaar voor iets dat alleen deze drie markten aangaat. Een blok
+   in de tekst hoort bij de markt die erom vraagt en verdwijnt vanzelf als die
+   er niet is.
+
+   ── Waarom niet doorvragen tot alles vol is ──
+   Een lead is geen formulier. Wie na twee vragen merkt dat hij een intake
+   invult, haakt af -- en dan heb je een compleet leeg record in plaats van een
+   halve fiche. Vandaar de expliciete rem hieronder: hoogstens twee vragen per
+   bericht, en "weet ik nog niet" is een antwoord dat blijft staan. */
+const projecten = {
+  /* Het vak waarin deze klant zit, in gewone woorden. Faro hoort te weten wat
+     voor bedrijf hij vertegenwoordigt -- een keukenbouwer die over "uw project"
+     praat klinkt als een callcenter. */
+  VAK: Object.freeze({
+    bouw:      'een bouwbedrijf: nieuwbouw, uitbreidingen, verbouwingen aan de structuur',
+    keuken:    'een keukenbedrijf: nieuwe keukens, vervanging en plaatsing',
+    renovatie: 'een renovatiebedrijf: verbouwen en vernieuwen van bestaande ruimtes',
+  }),
+
+  /**
+   * De sectie die in de plaats komt van de pand- of voertuigfiche.
+   *
+   * @param {string} vertical   bouw | keuken | renovatie
+   * @param {object|null} fiche wat er al bekend is (api/_project.js)
+   * @param {string} afspraakWoord  plaatsbezoek of opmeting -- uit api/_vertical.js
+   */
+  sectie(vertical, fiche, afspraakWoord) {
+    const vak = projecten.VAK[vertical] || projecten.VAK.renovatie;
+    const woord = afspraakWoord || 'plaatsbezoek';
+    const r = [];
+
+    r.push('── Wat dit bedrijf doet ──');
+    r.push('Je werkt voor ' + vak + '.');
+    r.push('Er is GEEN voorraad of catalogus. Verwijs nooit naar "ons aanbod",');
+    r.push('een lijst of een nummer -- die bestaan hier niet. Elk werk wordt apart');
+    r.push('bekeken en geoffreerd.');
+    r.push('');
+
+    r.push('── Wat je te weten moet komen ──');
+    r.push('Zes dingen, in deze volgorde van belang:');
+    r.push('  1. WAT er moet gebeuren');
+    r.push('  2. WAAR het is (gemeente volstaat)');
+    r.push('  3. Of de persoon EIGENAAR of HUURDER is');
+    r.push('  4. Hoe GROOT het is (m2, of aantal)');
+    r.push('  5. Welk BUDGET men in gedachten heeft');
+    r.push('  6. WANNEER het moet gebeuren');
+    r.push('');
+    /* De eerste drie zijn de drie waar een aannemer zijn dag op inricht. De
+       laatste drie scherpen de offerte aan maar houden een bezoek niet tegen;
+       dat verschil staat ook in volledigheid() in api/_project.js. */
+    r.push('Met 1, 2 en 3 kun je al een ' + woord + ' voorstellen. De rest is mooi meegenomen.');
+    r.push('');
+
+    r.push('── Hoe je het vraagt ──');
+    r.push('Hoogstens TWEE vragen per bericht. Een lead is geen formulier: wie merkt');
+    r.push('dat hij een intake invult, haakt af, en dan heb je niets in plaats van iets.');
+    r.push('"Dat weet ik nog niet" is een antwoord. Laat het staan en ga door -- vraag');
+    r.push('niet twee keer naar hetzelfde.');
+    r.push('Noem nooit een prijs, een richtprijs of een prijs per m2. Die kent alleen');
+    r.push('de zaakvoerder, en een getal dat jij verzint staat later tegenover hem.');
+    r.push('');
+
+    /* De huurdervraag apart, want het is de enige die uitleg nodig heeft om
+       niet onbeleefd over te komen. */
+    r.push('Vraag naar eigenaar of huurder terloops en met een reden erbij, bijvoorbeeld');
+    r.push('omdat een huurder meestal toestemming nodig heeft. Niet als controle.');
+    r.push('');
+
+    if (fiche) {
+      r.push('── Wat je al weet ──');
+      if (fiche.soort)     r.push('Werk: ' + fiche.soort);
+      if (fiche.plaats)    r.push('Plaats: ' + fiche.plaats);
+      if (fiche.omvang)    r.push('Omvang: ' + fiche.omvang);
+      if (fiche.budget)    r.push('Budget: ongeveer ' + fiche.budget + ' euro');
+      if (fiche.wanneer)   r.push('Termijn: ' + fiche.wanneer);
+      if (fiche.beslisser) r.push('Beslisser: ' + fiche.beslisser);
+      if (fiche.notitie)   r.push('Notitie: ' + fiche.notitie);
+      r.push('Vraag hier NIET opnieuw naar. Herhalen wat iemand net verteld heeft is');
+      r.push('het duidelijkste teken dat er niet geluisterd wordt.');
+      r.push('');
+    }
+
+    r.push('── Schrijf op wat je hoort ──');
+    r.push('Zet aan het EIND van je antwoord, op een eigen regel, een blok met wat je');
+    r.push('deze beurt te weten bent gekomen. Alleen wat NIEUW is. Laat het blok weg');
+    r.push('als je niets nieuws hoorde.');
+    r.push('  PROJECT:{"soort":"nieuwe keuken","plaats":"Gent","omvang":"12 m2","budget":15000,"wanneer":"kwartaal","beslisser":"eigenaar"}');
+    r.push('wanneer is een van: zsm, kwartaal, halfjaar, later, orienterend.');
+    r.push('beslisser is een van: eigenaar, huurder, onbekend.');
+    r.push('budget is een geheel getal in euro, zonder punten of komma\'s.');
+    r.push('Laat een veld WEG als je het niet zeker weet. Verzin niets -- een verzonnen');
+    r.push('budget stuurt de aannemer op pad voor werk dat niet bestaat.');
+
+    return r.join('\n');
+  },
+};
+
 module.exports = {
   VERSIE, STIJLEN, BEHOUD_STANDAARD, PAND_ANALYSE_SCHEMA,
   leadExtractie, gesprekSamenvatting, pandAnalyse, pandTransformatie, whatsappGesprek, panden,
   voertuigen,
+  projecten,
   pandImport, PAND_IMPORT_SCHEMA,
   voertuigImport, VOERTUIG_IMPORT_SCHEMA,
 };

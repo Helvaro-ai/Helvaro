@@ -11735,6 +11735,9 @@ ${faro.navCta}
               <select class="filter-select" id="set-markt" onchange="marktWisselen(this.value)" aria-label="${T('set.markt.label')}">
                 <option value="real_estate">${T('set.markt.vastgoed')}</option>
                 <option value="dealership">${T('set.markt.dealership')}</option>
+                <option value="construction">${T('set.markt.bouw')}</option>
+                <option value="kitchen">${T('set.markt.keuken')}</option>
+                <option value="renovation">${T('set.markt.renovatie')}</option>
                 <option value="other">${T('set.markt.anders')}</option>
               </select>
             </div>
@@ -16136,6 +16139,34 @@ function isDealer() { return hvVertical === 'dealership'; }
 /* De woorden die per markt verschillen, op EEN plek. Elke plek die zelf
    "pand" of "voertuig" typt is een plek die vergeten wordt als er ooit een
    derde markt bijkomt. */
+/* De woorden per markt. Alleen wat AFWIJKT van vastgoed staat in een rij; de
+   rest erft. Zo is te zien wat een markt eigen maakt in plaats van vijf keer
+   dezelfde lijst te moeten vergelijken.
+
+   Bouw, keuken en renovatie hebben geen catalogus, dus de aanbodwoorden
+   (aanbod, toevoegen, tabel, ...) doen daar niet mee -- hun aanbodscherm staat
+   niet in de navigatie. Wat ze wel eigen hebben is het woord voor de afspraak,
+   en dat is precies het woord dat de lead in WhatsApp te horen krijgt. */
+var HV_WOORDEN = {
+  vastgoed: {
+    een: 'prop.one', meer: 'prop.many', Een: 'prop.One', Meer: 'nav.properties',
+    aanbod: 'prop.offer', geen: 'prop.none', toevoegen: 'prop.add',
+    afspraak: 'prop.viewing', laadFout: 'prop.loadFailed',
+    leegTekst: 'prop.empty.text', beschrijving: 'pd.desc.ph',
+    linkA11y: 'a11y.veld.pandlink', tabel: 'properties'
+  },
+  dealership: {
+    een: 'veh.one', meer: 'veh.many', Een: 'veh.One', Meer: 'veh.nav',
+    aanbod: 'veh.stock', geen: 'veh.none', toevoegen: 'veh.add',
+    afspraak: 'veh.testdrive', laadFout: 'veh.loadFailed',
+    leegTekst: 'veh.empty.text', beschrijving: 'veh.desc.ph',
+    linkA11y: 'veh.link.a11y', tabel: 'vehicles'
+  },
+  bouw:      { een: 'proj.one', meer: 'proj.many', Een: 'proj.One', afspraak: 'bouw.sitevisit' },
+  keuken:    { een: 'proj.one', meer: 'proj.many', Een: 'proj.One', afspraak: 'keuken.measure' },
+  renovatie: { een: 'proj.one', meer: 'proj.many', Een: 'proj.One', afspraak: 'renov.sitevisit' }
+};
+
 function vw(sleutel) {
   /* Door de vertaaltabel, niet met vaste Nederlandse woorden. Een Waalse
      dealer hoort geen Nederlandse navigatie te zien, en dat gold voor de rest
@@ -16145,23 +16176,22 @@ function vw(sleutel) {
      De sleutel 'tabel' is de enige die NIET vertaald wordt: dat is een Airtable-naam die
      letterlijk in de melding staat zodat iemand hem kan opzoeken. Die
      vertalen zou de melding onbruikbaar maken. */
-  var d = hvVertical === 'dealership';
-  switch (sleutel) {
-    case 'een':      return d ? tr('veh.one')  : tr('prop.one');
-    case 'meer':     return d ? tr('veh.many') : tr('prop.many');
-    case 'Een':      return d ? tr('veh.One')  : tr('prop.One');
-    case 'Meer':     return d ? tr('veh.nav')  : tr('nav.properties');
-    case 'aanbod':   return d ? tr('veh.stock'): tr('prop.offer');
-    case 'geen':     return d ? tr('veh.none') : tr('prop.none');
-    case 'toevoegen':return d ? tr('veh.add')  : tr('prop.add');
-    case 'afspraak': return d ? tr('veh.testdrive') : tr('prop.viewing');
-    case 'laadFout': return d ? tr('veh.loadFailed') : tr('prop.loadFailed');
-    case 'leegTekst':   return d ? tr('veh.empty.text') : tr('prop.empty.text');
-    case 'beschrijving':return d ? tr('veh.desc.ph')   : tr('pd.desc.ph');
-    case 'linkA11y':    return d ? tr('veh.link.a11y') : tr('a11y.veld.pandlink');
-    case 'tabel':    return d ? 'vehicles' : 'properties';
-    default:         return '';
-  }
+  /* Dit was een reeks ternaries op een vlag d = hvVertical is dealership. Met twee
+     markten ging dat; met vijf wordt elke regel een vijfwegsprong en blijft er
+     gegarandeerd eentje achter -- precies zo kwam er eerder een stap in de
+     onboarding zonder naam te staan.
+
+     Nu een tabel. Een markt erbij is een rij, en wat een rij niet zegt valt
+     terug op vastgoed. Dat is dezelfde veilige kant als overal: onbekend leest
+     als de standaardmarkt in plaats van als leegte. */
+  var rij = HV_WOORDEN[hvVertical] || HV_WOORDEN.vastgoed;
+  var sl  = Object.prototype.hasOwnProperty.call(rij, sleutel)
+    ? rij[sleutel]
+    : HV_WOORDEN.vastgoed[sleutel];
+  if (sl === undefined) return '';
+  /* 'tabel' is de enige die geen vertaalsleutel is maar een letterlijke
+     Airtable-naam; die gaat niet door tr(). */
+  return sleutel === 'tabel' ? sl : tr(sl);
 }
 
 /* Van markt wisselen vanuit Instellingen.
@@ -16182,11 +16212,34 @@ function vw(sleutel) {
  * maakt, en het staat ook in de uitleg erboven -- een klant die vermoedt dat
  * hij data kwijtraakt, klikt niet.
  */
+/* Sector-id (wat de keuzelijst en de wizard gebruiken) naar vertical (wat
+   Airtable en de server gebruiken), en terug. Beide kanten lezen WIZARD_MARKTEN,
+   zodat er maar EEN lijst is die weet welke markten er bestaan.
+
+   Onbekend valt terug op vastgoed: dat is dezelfde veilige standaard als in
+   api/_vertical.js, en het alternatief is dat een tikfout iemands markt op
+   niets zet. */
+function hvVerticalBijSector(sector) {
+  for (var i = 0; i < WIZARD_MARKTEN.length; i++) {
+    if (WIZARD_MARKTEN[i].id === sector) return WIZARD_MARKTEN[i].vertical;
+  }
+  return 'vastgoed';
+}
+function hvSectorBijVertical(vertical) {
+  for (var i = 0; i < WIZARD_MARKTEN.length; i++) {
+    if (WIZARD_MARKTEN[i].vertical === vertical) return WIZARD_MARKTEN[i].id;
+  }
+  return 'real_estate';
+}
+
 async function marktWisselen(gekozen) {
   var kiezer = document.getElementById('set-markt');
   var vorige = hvVertical;
-  var naarDealer = gekozen === 'dealership';
-  var nieuweVertical = naarDealer ? 'dealership' : 'vastgoed';
+  /* Niet meer "is het dealership, ja of nee". De sector-id's en de verticals
+     die erbij horen staan in WIZARD_MARKTEN, en dat is dezelfde lijst die de
+     onboarding toont. Twee lijsten zouden betekenen dat iemand hier een markt
+     kan kiezen die de wizard niet kent, of andersom. */
+  var nieuweVertical = hvVerticalBijSector(gekozen);
 
   if (kiezer) kiezer.disabled = true;
   try {
@@ -16212,7 +16265,7 @@ async function marktWisselen(gekozen) {
     /* Terugzetten wat er stond. Een keuzelijst die op de nieuwe waarde blijft
        staan terwijl er niets is opgeslagen, is erger dan een foutmelding: de
        klant denkt dat het gelukt is. */
-    if (kiezer) kiezer.value = (vorige === 'dealership') ? 'dealership' : 'real_estate';
+    if (kiezer) kiezer.value = hvSectorBijVertical(vorige);
     toast(tr('tst.opslaanMislukt'), 'error');
   } finally {
     if (kiezer) kiezer.disabled = false;
@@ -16229,8 +16282,18 @@ function marktSubtekst(gekozen) {
     : (gekozen === 'other' ? 'De standaardinrichting' : 'Panden, bezichtigingen, een link per woning');
 }
 
+/* Welke markten een eigen aanbod hebben om uit te kiezen. De spiegel van
+   MET_AANBOD in api/_vertical.js -- dat bestand kan niet naar de client, dus
+   de lijst staat hier een tweede keer, en een test bewaakt dat de twee gelijk
+   blijven. */
+var HV_MET_AANBOD = ['vastgoed', 'dealership'];
+function hvHeeftAanbod() { return HV_MET_AANBOD.indexOf(hvVertical) !== -1; }
+
 function zetVertical(v, config) {
-  var nieuw = (String(v || '').trim().toLowerCase() === 'dealership') ? 'dealership' : 'vastgoed';
+  var gevraagd = String(v || '').trim().toLowerCase();
+  /* Onbekend leest als vastgoed, net als op de server. Zie api/_vertical.js
+     voor waarom dat de enige veilige standaard is. */
+  var nieuw = HV_WOORDEN[gevraagd] ? gevraagd : 'vastgoed';
   hvKorting = { max: Number((config && config.maxDiscount) || 0),
                 faro: Number((config && config.faroDiscount) || 0) };
   if (nieuw === hvVertical) return;   // niets te doen, en geen herteken
@@ -16288,6 +16351,22 @@ function zetVertical(v, config) {
   var beeldNav = document.getElementById('nav-ai-beeld');
   if (beeldNav) beeldNav.hidden = isDealer();
 
+  /* ── En het aanbodscherm zelf ──────────────────────────────────────────
+     Bouw, keuken en renovatie hebben geen catalogus: die verkopen een project
+     dat per opdracht wordt geoffreerd, geen voorraad waar een lead uit kiest.
+     Een leeg "Panden"-scherm zou daar suggereren dat er iets in hoort.
+
+     Zelfde behandeling als AI-beeld hierboven: verbergen, niet weghalen. Wie
+     later naar vastgoed of autohandel wisselt heeft het meteen terug. */
+  var aanbodNav = document.getElementById('nav-panden');
+  if (aanbodNav) aanbodNav.hidden = !hvHeeftAanbod();
+  if (!hvHeeftAanbod()) {
+    var aanbodPagina = document.getElementById('page-panden');
+    if (aanbodPagina && aanbodPagina.classList.contains('active')) {
+      try { navigateTo('dashboard'); } catch (e) {}
+    }
+  }
+
   /* Staat hij er toevallig op, dan weg ervan: een verborgen navigatie-item
      helpt niet als de pagina zelf nog openstaat. */
   if (isDealer()) {
@@ -16299,7 +16378,7 @@ function zetVertical(v, config) {
 
   /* Staat de aanbodpagina al open, dan meteen opnieuw laden met de juiste bron. */
   var pagina = document.getElementById('page-panden');
-  if (pagina && pagina.classList.contains('active')) loadPanden(true);
+  if (pagina && pagina.classList.contains('active') && hvHeeftAanbod()) loadPanden(true);
 }
 
 async function loadOnboardingChecklist(force) {
@@ -20019,6 +20098,23 @@ var WIZARD_MARKTEN = [
     titel: 'Autohandel',
     sub: 'Voorraad, proefritten, en AutoScout24-leads die zichzelf koppelen.',
     icoon: '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>' },
+  /* Drie markten zonder catalogus. Ze staan hier apart en niet onder "iets
+     anders", omdat er voor hen wel degelijk iets verandert: geen aanbodscherm,
+     en de afspraak heet bij hen plaatsbezoek of opmeting in plaats van
+     bezichtiging. Dat is precies het soort belofte dat een keuze in deze lijst
+     hoort waar te maken. */
+  { id: 'construction', vertical: 'bouw',
+    titel: 'Bouw',
+    sub: 'Plaatsbezoeken en offertes. Geen voorraad, wel je planning.',
+    icoon: '<path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-5h6v5"/><path d="M9 12h6"/>' },
+  { id: 'kitchen', vertical: 'keuken',
+    titel: 'Keukens',
+    sub: 'Opmetingen inplannen, en leads die al weten wat ze willen.',
+    icoon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/><path d="M8 8h.01"/><path d="M8 16h.01"/>' },
+  { id: 'renovation', vertical: 'renovatie',
+    titel: 'Renovatie',
+    sub: 'Verbouwingen: scope, budget en timing uitgevraagd voor je langsgaat.',
+    icoon: '<path d="M14.7 6.3a4 4 0 0 0 5 5l-9.6 9.6a2.1 2.1 0 0 1-3-3z"/><path d="M18 2l4 4"/>' },
   { id: 'other', vertical: 'vastgoed',
     titel: 'Iets anders',
     sub: 'De standaardinrichting. Je kunt dit later altijd wijzigen.',
@@ -20335,7 +20431,7 @@ function wizardTeken() {
     gidsTekst.textContent = {
       intro:   'Ik help je hier even doorheen.',
       regio:   'Zo weet ik in welke taal ik je klanten aanspreek.',
-      markt:   'Hiermee weet ik of het over panden of over wagens gaat.',
+      markt:   'Hiermee weet ik waar je gesprekken over gaan, en wat ik moet uitvragen.',
       bedrijf: 'Hoe meer ik weet, hoe beter ik je klanten te woord sta.',
       ai:      'Zo stel ik me straks voor aan je leads.',
       koppelingen: 'Hiermee kan ik zelf afspraken inplannen.',

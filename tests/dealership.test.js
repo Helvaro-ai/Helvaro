@@ -317,10 +317,21 @@ console.log('\n  vier talen, ook voor de markt die er net bij kwam');
   /* Het scherm mag geen vaste Nederlandse woorden meer bevatten voor deze
      begrippen -- anders ziet een Waalse dealer een Nederlandse navigatie. */
   const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
-  const vwBlok = dash.slice(dash.indexOf('function vw(sleutel)'), dash.indexOf('function zetVertical'));
-  ck('vw() loopt door de vertaaltabel', /tr\('veh\./.test(vwBlok) && /tr\('prop\./.test(vwBlok));
+  /* vw() was een reeks ternaries met tr('veh.x') en tr('prop.x') erin; met vijf
+     markten is het een tabel geworden (HV_WOORDEN) waar vw() doorheen leest.
+     De EIS is niet de vorm maar het gevolg: geen vaste Nederlandse woorden,
+     alles via de vertaalsleutels. Dus kijken we naar de tabel en naar het feit
+     dat vw() zijn uitkomst nog steeds door tr() haalt. */
+  const woordTabel = dash.slice(dash.indexOf('var HV_WOORDEN'), dash.indexOf('function zetVertical'));
+  ck('de woordtabel gebruikt vertaalsleutels voor beide markten',
+    /'veh\.[a-zA-Z.]+'/.test(woordTabel) && /'prop\.[a-zA-Z.]+'/.test(woordTabel), null);
+  ck('en vw() haalt ze door tr()', /return sleutel === 'tabel' \? sl : tr\(sl\);/.test(woordTabel), null);
+  /* De enige die GEEN vertaalsleutel is: een letterlijke Airtable-naam die in
+     een melding staat zodat iemand hem kan opzoeken. */
+  ck("alleen 'tabel' blijft letterlijk",
+    /tabel: 'properties'/.test(woordTabel) && /tabel: 'vehicles'/.test(woordTabel), null);
   ck('en heeft geen vaste Nederlandse woorden meer',
-    !/'Voertuigen'|'Je voorraad'|'proefrit'/.test(vwBlok), vwBlok.slice(0, 120));
+    !/'Voertuigen'|'Je voorraad'|'proefrit'/.test(woordTabel), woordTabel.slice(0, 120));
 }
 
 console.log('\n  Faro kan het aanbod uitbreiden, maar niet buiten zijn markt');

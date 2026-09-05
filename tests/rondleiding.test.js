@@ -285,7 +285,12 @@ console.log('\n  je kunt later van markt wisselen, en dat verwijdert niets');
 
   /* Een keuzelijst die op de nieuwe waarde blijft staan terwijl er niets is
      opgeslagen, is erger dan een foutmelding: de klant denkt dat het gelukt is. */
-  ck('bij een fout wordt de keuzelijst teruggezet', /catch[\s\S]{0,200}kiezer\.value = \(vorige/.test(fn));
+  /* Stond eerst als `kiezer.value = (vorige === 'dealership') ? ... : ...`.
+     Met vijf markten is dat een opzoeking geworden in dezelfde lijst die de
+     wizard toont; de EIS blijft dat de keuzelijst terugspringt naar wat er
+     WAS, en niet blijft staan op wat niet is opgeslagen. */
+  ck('bij een fout wordt de keuzelijst teruggezet',
+    /catch[\s\S]{0,260}kiezer\.value = hvSectorBijVertical\(vorige\)/.test(fn));
   ck('en de lijst wordt weer aanklikbaar', /finally[\s\S]{0,120}disabled = false/.test(fn));
 
   /* Niets verwijderen is wat deze knop veilig maakt. Een verwijder-aanroep

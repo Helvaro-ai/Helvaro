@@ -1,4 +1,5 @@
 'use strict';
+const _vertical = require('../_vertical');
 /*
  * Waar staat de gebruiker, en wat betekent "dit"?
  *
@@ -225,11 +226,12 @@ function sanitize(raw) {
   if (typeof r.aiIngesteld  === 'boolean') uit.aiIngesteld  = r.aiIngesteld;
   if (typeof r.heeftAanbod  === 'boolean') uit.heeftAanbod  = r.heeftAanbod;
   if (typeof r.creditsLaag  === 'boolean') uit.creditsLaag  = r.creditsLaag;
-  /* In welke markt deze klant zit. Alleen de twee bekende waarden; iets anders
-     wordt genegeerd en leest dus als vastgoed -- zie api/_vertical.js voor
-     waarom dat de veilige standaard is. */
+  /* In welke markt deze klant zit. Alleen bekende waarden; iets anders wordt
+     genegeerd en leest dus als vastgoed -- zie api/_vertical.js voor waarom
+     dat de veilige standaard is. De lijst komt daar vandaan en staat hier niet
+     nog eens met de hand. */
   const vert = String(r.vertical || '').trim().toLowerCase();
-  if (vert === 'dealership' || vert === 'vastgoed') uit.vertical = vert;
+  if (_vertical.BEKEND.indexOf(vert) !== -1) uit.vertical = vert;
 
   return uit;
 }
@@ -239,20 +241,45 @@ function sanitize(raw) {
 
    Geen blok als er niets bruikbaars is -- dan liever helemaal zwijgen dan een
    kopje "Waar de gebruiker staat" met niets eronder. */
+/* Hoe het aanbodscherm heet en wat het doet, per markt. Alleen markten die
+   ervan afwijken staan hier; de rest valt terug op PAGINAS.panden.
+
+   Bouw, keuken en renovatie staan er met opzet NIET in: die hebben geen
+   catalogus, en render() hierboven zwijgt dan over dat scherm in plaats van
+   er een naam voor te verzinnen. */
+const AANBODSCHERM = Object.freeze({
+  dealership: {
+    naam: 'Voertuigen',
+    wat: 'De voertuigen die de assistent aan kopers kan voorstellen, met hun prijs, kilometerstand en status.',
+    acties: 'Een voertuig toevoegen of uitlezen uit een AutoScout24-link, de status wijzigen, en de kortingsruimte per wagen instellen.',
+    waarom: 'Zonder voorraad kan de assistent een binnenkomende WhatsApp-lead niet aan een auto koppelen, en dan moet de koper zelf uitleggen waar hij het over heeft. Een advertentielink plakken lost dat al op.',
+  },
+});
+
 function render(ui) {
   if (!ui || !ui.pagina) return '';
   const def = PAGINAS[ui.pagina];
   if (!def) return '';
 
   /* Het aanbodscherm heet anders per markt, en de uitleg ook. Eén scherm dat
-     zich aanpast in plaats van twee definities: zie api/dashboard.js, waar
-     dezelfde pagina beide markten bedient. Twee definities zouden betekenen
-     dat er ergens eentje achterblijft. */
-  const dealer = ui.vertical === 'dealership';
-  const naam = (dealer && ui.pagina === 'panden') ? 'Voertuigen' : def.naam;
-  const wat  = (dealer && ui.pagina === 'panden')
-    ? 'De voertuigen die de assistent aan kopers kan voorstellen, met hun prijs, kilometerstand en status.'
-    : def.wat;
+     zich aanpast in plaats van een definitie per markt: zie api/dashboard.js,
+     waar dezelfde pagina alle markten bedient. Losse definities zouden
+     betekenen dat er ergens eentje achterblijft.
+
+     Dit stond er als drie losse ternaries op `dealer && pagina === 'panden'`.
+     Met twee markten ging dat; met vijf wordt het een vierwegsprong per veld
+     en blijft er gegarandeerd eentje achter. Nu een tabel: een markt erbij is
+     een regel data, geen wijziging in de logica. */
+  const eigen = AANBODSCHERM[ui.vertical];
+  const overschrijf = (ui.pagina === 'panden' && eigen !== undefined) ? eigen : null;
+
+  /* Markten zonder catalogus hebben dit scherm niet. Faro hoort dan niet over
+     "Panden" te beginnen tegen een aannemer -- liever niets zeggen dan een
+     scherm beschrijven dat er niet is. */
+  if (ui.pagina === 'panden' && !_vertical.heeftAanbod(ui.vertical || _vertical.VASTGOED)) return '';
+
+  const naam = overschrijf ? overschrijf.naam : def.naam;
+  const wat  = overschrijf ? overschrijf.wat  : def.wat;
 
   const regels = [
     '── Waar de gebruiker nu staat ──',
@@ -266,12 +293,8 @@ function render(ui) {
      Alleen als de gebruiker het NODIG heeft: elke regel hier gaat mee in elke
      beurt, en een model dat bij "hoeveel leads had ik" ook nog vier regels
      over de bedoeling van het scherm meekrijgt, gaat die gebruiken. */
-  const acties = (dealer && ui.pagina === 'panden')
-    ? 'Een voertuig toevoegen of uitlezen uit een AutoScout24-link, de status wijzigen, en de kortingsruimte per wagen instellen.'
-    : def.acties;
-  const waarom = (dealer && ui.pagina === 'panden')
-    ? 'Zonder voorraad kan de assistent een binnenkomende WhatsApp-lead niet aan een auto koppelen, en dan moet de koper zelf uitleggen waar hij het over heeft. Eén advertentielink plakken lost dat al op.'
-    : def.waarom;
+  const acties = overschrijf ? overschrijf.acties : def.acties;
+  const waarom = overschrijf ? overschrijf.waarom : def.waarom;
   if (acties) regels.push(`Wat hier kan: ${acties}`);
   if (waarom) regels.push(`Waarom dit scherm bestaat: ${waarom}`);
 
@@ -374,9 +397,17 @@ const RONDLEIDING = Object.freeze([
  *                          weinig laat iemand vastlopen.
  */
 /* De naam van een scherm zoals DEZE klant hem ziet. Alleen het aanbodscherm
-   verschilt; de rest heet in beide markten hetzelfde. */
+   verschilt; de rest heet in elke markt hetzelfde.
+
+   In een markt zonder catalogus -- bouw, keuken, renovatie -- bestaat dat
+   scherm niet en heeft Faro er dus ook geen naam voor. Hij hoort dan niet over
+   "Panden" te beginnen tegen een aannemer. */
 function schermNaam(pagina, st) {
-  if (pagina === 'panden' && st && st.vertical === 'dealership') return 'Voertuigen';
+  const vert = (st && st.vertical) || _vertical.VASTGOED;
+  if (pagina === 'panden') {
+    if (vert === _vertical.DEALERSHIP) return 'Voertuigen';
+    if (!_vertical.heeftAanbod(vert))  return '';
+  }
   return (PAGINAS[pagina] || {}).naam || pagina;
 }
 

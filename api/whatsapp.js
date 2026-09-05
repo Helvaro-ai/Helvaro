@@ -32,6 +32,7 @@ const _properties = require('./_properties'); // welk pand deze lead bedoelt
 const _vertical  = require('./_vertical');   // vastgoed of dealership -- de enige plek die dat weet
 const _vehicles  = require('./_vehicles');   // welke auto deze lead bedoelt
 const _autoscout = require('./_autoscout');  // de AutoScout24-link uit zijn bericht
+const _project   = require('./_project');    // wat er moet gebeuren, bij markten zonder catalogus
 const _wens      = require('./_wens');       // wat een koper zoekt, voor later
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
 const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
@@ -1093,6 +1094,31 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
          vervelend; een koper zonder antwoord is een verloren deal. */
       console.warn('[WhatsApp] voertuigcontext overgeslagen:', e && e.message);
     }
+  } else if (!_vertical.heeftAanbod(vertical)) {
+    /* ── Bouw, keuken, renovatie ─────────────────────────────────────────────
+       Geen catalogus, dus niets te herkennen. Deze markten hebben het
+       omgekeerde probleem van de andere twee: niet "welk ding bedoelt hij"
+       maar "wat wil hij precies laten doen, en is dat een rit waard".
+
+       Dezelfde sleuf als hierboven -- pandSectie -- om dezelfde reden: de
+       prompt kent alleen "de sectie over het aanbod", en wat erin staat
+       bepaalt deze code. Een derde parameter door runAI en de hele promptketen
+       slepen zou drie bestanden raken voor iets dat hier thuishoort.
+
+       Wat er al bekend is gaat mee, zodat Faro niet opnieuw vraagt wat de lead
+       twee berichten geleden al verteld heeft. Dat is het duidelijkste teken
+       dat er niet geluisterd wordt. */
+    let fiche = null;
+    try {
+      fiche = _project.uitNotities(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities'] || '{}');
+    } catch (e) {
+      /* Best-effort, net als bij panden en voertuigen: een kapotte blob mag
+         hoogstens de fiche kosten, nooit het antwoord aan de lead. */
+      console.warn('[WhatsApp] projectfiche overgeslagen:', e && e.message);
+    }
+    pandSectie = _ai.prompts.projecten.sectie(
+      vertical, fiche, _vertical.afspraakWoord(client.fields, lang)
+    );
   } else try {
     if (await _properties.available()) {
       const opLead = _properties.normCode(
@@ -1300,6 +1326,34 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       /* Best-effort. Een wens die niet opgeslagen raakt is een gemiste kans;
          een gesprek dat daarop stukloopt is een gemiste klant. */
       console.warn('[WhatsApp] wens opslaan mislukt:', e && e.message);
+    }
+  }
+
+  /* De projectfiche bewaren. Dezelfde blob en dezelfde regels als bij de wens
+     hierboven: samenvoegen, niet vervangen, en een beurt die niets nieuws
+     oplevert schrijft ook niets.
+
+     Alleen bij markten zonder catalogus. Voor een makelaar of dealer vraagt de
+     prompt er niet om, dus komt er nooit een PROJECT-blok -- maar die grens
+     staat hier expliciet, want "het kan toch niet gebeuren" is geen
+     bescherming. Zelfde redenering als bij de wens. */
+  if (!_vertical.heeftAanbod(vertical) && aiResponse.projectFiche) {
+    try {
+      const basisP = updateFields[NOTITIES_FIELD] !== undefined
+        ? updateFields[NOTITIES_FIELD]
+        : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+      const metFiche = _project.naarNotities(basisP, aiResponse.projectFiche);
+      if (metFiche !== null && metFiche !== basisP) {
+        updateFields[NOTITIES_FIELD] = metFiche;
+        const vol = _project.volledigheid(_project.uitNotities(metFiche));
+        console.log('[WhatsApp] projectfiche bewaard voor lead ' + lead.id + ' ('
+          + vol.ingevuld + '/' + vol.totaal + (vol.klaar ? ', klaar voor afspraak' : '')
+          + '): ' + _project.omschrijf(aiResponse.projectFiche));
+      }
+    } catch (e) {
+      /* Best-effort, net als de wens: een fiche die niet wegschrijft kost een
+         vraag extra, een gesprek dat stukloopt kost de klant. */
+      console.warn('[WhatsApp] projectfiche opslaan mislukt:', e && e.message);
     }
   }
 
@@ -1958,6 +2012,50 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
     cleaned = cleaned.replace(/WENS:[^\n]*/g, '').trim();
   }
 
+  /* 2a-bis. PROJECT:{...} -- wat er moet gebeuren, bij markten zonder catalogus.
+
+     Zelfde vorm als WENS hierboven, en om precies dezelfde reden: het
+     antwoordschema is GEDEELD met vastgoed en staat onder een momentopname, dus
+     er een veld in bijmaken raakt elke bestaande makelaar voor iets dat alleen
+     bouw, keuken en renovatie aangaat.
+
+     Waarom dit ertoe doet: de aannemer rijdt drie kwartier naar een
+     plaatsbezoek en hoort daar pas dat het een huurwoning is, of dat het budget
+     de helft is van wat dit werk kost. Dat is een halve dag. Wat hier wordt
+     opgeschreven is precies wat die rit had kunnen voorkomen.
+
+     Samenvoegen en niet vervangen -- zie api/_project.js. Een tweede bericht
+     met alleen een budget mag niet wissen wat het eerste aan plaats en omvang
+     opleverde. */
+  let projectFiche = null;
+  const projectMatch = cleaned.match(/PROJECT:\s*(\{[\s\S]*?\})/);
+  if (projectMatch) {
+    try {
+      /* _project staat bovenaan als require en niet hier ter plekke, om
+         dezelfde reden als _wens: tests knippen dit parseerblok uit het bestand
+         en draaien het als losse functie, en daarbinnen bestaat require() niet. */
+      projectFiche = _project.normaliseer(JSON.parse(projectMatch[1]));
+      if (!projectFiche) console.log('[WhatsApp] PROJECT was leeg of onbruikbaar, overgeslagen');
+    } catch (e) {
+      console.error('[WhatsApp] PROJECT parse fout:', e.message, projectMatch[1]);
+    }
+    cleaned = cleaned.replace(/PROJECT:\s*\{[\s\S]*?\}/, '').trim();
+  }
+
+  /* Hetzelfde vangnet als bij WENS, en om dezelfde reden: schrijft het model
+     "PROJECT:{soort:keuken" zonder sluitende accolade, dan matcht de regex
+     hierboven niet, wordt er niets weggeknipt, en leest de KLANT die tekst
+     letterlijk in zijn WhatsApp. Een interne markering die bij de klant belandt
+     maakt het product onbetrouwbaar; een gemiste fiche kost hoogstens een
+     vraag extra.
+
+     Tot het einde van de REGEL, niet van de tekst: een model dat het blok
+     midden in zijn bericht zet, mag niet de rest kwijtraken. */
+  if (cleaned.indexOf('PROJECT:') !== -1) {
+    console.warn('[WhatsApp] onvolledig PROJECT-blok weggeknipt uit het antwoord');
+    cleaned = cleaned.replace(/PROJECT:[^\n]*/g, '').trim();
+  }
+
   /* 2b. CANCEL:{...} -- de lead kan niet komen.
 
      Twee dingen die hier bewust anders zijn dan bij BOOK. Ten eerste hoeft er
@@ -2008,7 +2106,7 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
       const decision = JSON.parse(match[1]);
       const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
       // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
-      return { done: true, message: message || '...', appointment, cancel, wens, ...decision, summary: decision.summary || runningSummary };
+      return { done: true, message: message || '...', appointment, cancel, wens, projectFiche, ...decision, summary: decision.summary || runningSummary };
     } catch (e) {
       console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
     }

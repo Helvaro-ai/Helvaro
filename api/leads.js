@@ -865,12 +865,17 @@ module.exports = async function handler(req, res) {
            kunnen zeggen wat hij doet, anders krijgt een autodealer een
            dashboard vol panden en moet hij bellen om dat te laten omzetten.
 
-           Alleen de twee bekende waarden. Iets anders wordt genegeerd in
-           plaats van geweigerd: een onbekende waarde hoort niet stilletjes de
-           markt van een bestaande klant te veranderen. */
+           Alleen de bekende waarden. Iets anders wordt genegeerd in plaats van
+           geweigerd: een onbekende waarde hoort niet stilletjes de markt van
+           een bestaande klant te veranderen.
+
+           De lijst komt uit api/_vertical.js en staat hier niet nog een keer
+           uitgeschreven. Dat was eerst wel zo -- 'dealership' en 'vastgoed'
+           met de hand -- en dat is precies hoe een nieuwe markt overal werkt
+           behalve op de plek waar hij opgeslagen moet worden. */
         if (body.vertical !== undefined) {
           const gevraagd = String(body.vertical).trim().toLowerCase();
-          if (gevraagd === 'dealership' || gevraagd === 'vastgoed') u['Vertical'] = gevraagd;
+          if (_vertical.BEKEND.indexOf(gevraagd) !== -1) u['Vertical'] = gevraagd;
         }
         if (body.maxDiscount  !== undefined) u['Max Discount EUR']        = eur(body.maxDiscount);
         if (body.faroDiscount !== undefined) {

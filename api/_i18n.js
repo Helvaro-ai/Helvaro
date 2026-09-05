@@ -879,6 +879,9 @@ const TEKST = {
   'set.markt.label':     { nl: 'Waar zit je in', fr: 'Votre secteur', en: 'What you do', de: 'Ihre Branche' },
   'set.markt.vastgoed':  { nl: 'Vastgoed', fr: 'Immobilier', en: 'Real estate', de: 'Immobilien' },
   'set.markt.dealership':{ nl: 'Autohandel', fr: 'Automobile', en: 'Car dealership', de: 'Autohandel' },
+  'set.markt.bouw':      { nl: 'Bouw', fr: 'Construction', en: 'Construction', de: 'Bau' },
+  'set.markt.keuken':    { nl: 'Keukens', fr: 'Cuisines', en: 'Kitchens', de: 'K\u00fcchen' },
+  'set.markt.renovatie': { nl: 'Renovatie', fr: 'R\u00e9novation', en: 'Renovation', de: 'Renovierung' },
   'set.markt.anders':    { nl: 'Iets anders', fr: 'Autre chose', en: 'Something else', de: 'Etwas anderes' },
   'set.markt.uitleg':    { nl: 'Dit bepaalt welke schermen je ziet en welke velden erin staan. Wisselen verwijdert niets \u2014 wat je al hebt ingevoerd blijft bewaard en komt terug zodra je terugwisselt.',
                            fr: 'Ceci d\u00e9termine les \u00e9crans que vous voyez et les champs qu\u2019ils contiennent. Changer ne supprime rien \u2014 ce que vous avez d\u00e9j\u00e0 saisi est conserv\u00e9 et revient si vous rebasculez.',
@@ -928,6 +931,24 @@ const TEKST = {
 
   'veh.testdrive':       { nl: 'proefrit',    fr: 'essai',        en: 'test drive', de: 'Probefahrt' },
   'prop.viewing':        { nl: 'bezichtiging',fr: 'visite',       en: 'viewing',    de: 'Besichtigung' },
+
+  /* De drie markten zonder catalogus. De afspraak is daar niet "kom kijken
+     naar dit ding" maar "kom kijken bij mij", en dat verschil hoort de lead te
+     horen -- het bepaalt of hij thuis moet zijn. Een keukenbouwer meet op; een
+     aannemer en een renovatiebedrijf komen ter plaatse. */
+  'bouw.sitevisit':      { nl: 'plaatsbezoek', fr: 'visite de chantier', en: 'site visit',
+                           de: 'Ortstermin' },
+  'keuken.measure':      { nl: 'opmeting',     fr: 'prise de mesures',   en: 'measuring appointment',
+                           de: 'Aufma\u00df' },
+  'renov.sitevisit':     { nl: 'plaatsbezoek', fr: 'visite sur place',   en: 'site visit',
+                           de: 'Ortstermin' },
+
+  /* Waar het gesprek over gaat. Bij vastgoed en autohandel is dat een ding uit
+     de voorraad; hier is het het werk zelf. Faro gebruikt dit woord als hij
+     naar de opdracht verwijst. */
+  'proj.one':            { nl: 'project',   fr: 'projet',   en: 'project',  de: 'Projekt' },
+  'proj.many':           { nl: 'projecten', fr: 'projets',  en: 'projects', de: 'Projekte' },
+  'proj.One':            { nl: 'Project',   fr: 'Projet',   en: 'Project',  de: 'Projekt' },
   'veh.loadFailed':      { nl: 'De voertuigen konden niet opgehaald worden. Probeer het zo meteen opnieuw.',
                            fr: 'Impossible de charger les v\u00e9hicules. R\u00e9essayez dans un instant.',
                            en: 'Could not load the vehicles. Try again in a moment.',
