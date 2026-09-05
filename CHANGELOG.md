@@ -177,6 +177,73 @@ opgezocht en geweigerd als het naar een intern netwerk wijst.
 
 ## Nog niet uitgerold
 
+### De opvolgcron kon blijven hangen op Meta
+
+De dagelijkse opvolging van 09:00 belde WhatsApp aan zonder klok. Dat is precies
+het gat dat op 3 september gedicht heette te zijn: er kwam toen een wrapper met
+een tijdslimiet, maar die is alleen op de Airtable-aanroepen terechtgekomen —
+niet op de twee aanroepen die het bericht daadwerkelijk versturen.
+
+Dat is de verkeerde kant op. Airtable antwoordt of antwoordt niet; Meta is de
+partij die hier écht is blijven hangen (hetzelfde dode token dat die dag ook de
+valse verzendmeldingen veroorzaakte). Bleef zo'n aanroep staan, dan liep de cron
+door tot Vercel hem na vijf minuten afkapte — met als gevolg dat de ene helft
+van je klanten zijn opvolging kreeg en de andere helft niet. Stil, en pas de
+volgende ochtend opnieuw geprobeerd.
+
+Nu valt een te trage aanroep om als "niet verstuurd", en dat is precies wat de
+dagmail sinds 3 september ook eerlijk meldt.
+
+**Ook weg:** een tweede, dode verzendfunctie in datzelfde bestand. Hij werd
+nergens aangeroepen en droeg nog de fout die er die dag uit gehaald is —
+geslaagd en mislukt gaven allebei niets terug. Dode code die een gerepareerde
+bug bewaart is een val voor wie er als volgende in kijkt.
+
+### Faro boekte een gesprek soms niet af, en bewaarde het antwoord niet
+
+Het afboeken van de credits en het opslaan van de vraag en het antwoord
+gebeurden bewust zonder erop te wachten — de gebruiker hoort niet naar een
+schrijfactie te zitten kijken. Alleen: "niet wachten" en "mag wegvallen" zijn
+niet hetzelfde. Vercel mag de functie bevriezen zodra het antwoord is
+afgesloten, en dan verdwijnt wat er nog liep. Zonder fout, zonder logregel.
+
+Een beurt die niet werd afgeboekt was dus gratis, en een antwoord dat niet werd
+bewaard stond er de volgende dag niet meer. WhatsApp en het formulier lossen dit
+allebei al op dezelfde manier op; de Faro-kant was de enige die het nog niet
+deed. Buiten Vercel verandert er niets, dus lokaal en in de tests blijft alles
+zoals het was.
+
+### Kopiëren zei niet meer of het gelukt was
+
+Op vier plekken kon het plakbord weigeren zonder dat je iets merkte — twee keer
+zonder enige afhandeling, twee keer met een lege afvangst. Kopiëren weigert
+vaker dan je denkt: geen https, geen toestemming, of een browser in een app.
+Je plakte dan wat er nog in je plakbord stond.
+
+Het ging om het telefoonnummer in de opvolglijst en dat in het leadpaneel — de
+knop waar dat scherm voor bestaat — plus de uitnodigingslink en de velden bij
+een nieuwe klant.
+
+Bij die laatste twee deed succes bovendien het omgekeerde van bevestigen: de
+knoptekst werd **leeg** en kwam anderhalve tot twee seconden later terug. Het
+moment waarop je bevestiging wil, was het moment waarop het woord verdween. Nu
+staat er "Gekopieerd" — in de taal van de gebruiker, want de tekst die daarna
+terugkwam stond hardgecodeerd in het Nederlands.
+
+### Drie knoppen waren te klein om te raken
+
+Doorgemeten in een echte browser op 1440 en op 390 pixels: "Bekijk alle
+gesprekken" was 14 pixels hoog, "Wachtwoord vergeten?" 16, en de streepjes van
+de carrousel op het inlogscherm 20 breed. De richtlijn is 24 bij 24.
+
+Bij die streepjes was het werk half af: de hoogte stond al op 24 en het
+commentaar erboven noemde "24x24" met zoveel woorden — alleen de breedte was
+blijven staan. Het beeld verandert niet: het streepje blijft even breed en de
+rij staat op dezelfde plek, alleen het raakvlak eromheen is groter.
+
+Gevonden door elk zichtbaar element op te meten in plaats van de bron te lezen.
+Dat verschil is de les: zoeken in code vindt alleen wat je al vermoedde.
+
 ### Faro vertelt wat hij deed — en alleen wat hij echt deed
 
 Eerste stap van de Faro-persona. Bewust klein gehouden, want het meeste bestond al.
