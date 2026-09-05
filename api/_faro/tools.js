@@ -66,6 +66,8 @@ const credits = require('../_credits');
 const mediaModels = require('../_media-models');
 const properties = require('../_properties');
 const vehicles   = require('../_vehicles');
+const rapport    = require('./rapport');
+const _i18n      = require('../_i18n');
 
 const NOT_WIRED = 'not_wired';
 
@@ -931,6 +933,104 @@ const readTools = [
           + `${m.booked} afspraken (${m.conversionRate}% conversie)${truncationNote(truncated)}.`,
         data: { metrics: m, period },
         components: [schema.statGroup({ title: `Prestaties (${period})`, stats })],
+      };
+    }),
+  },
+
+  {
+    /* ── De week, in Faro's stem ──────────────────────────────────────────────
+       api/_faro/rapport.js was af en getest (tests/faro-rapport.test.js), maar
+       werd door NIEMAND aangeroepen -- alleen door zijn eigen test. Een klant
+       kon er dus niet bij. Dit is de ontbrekende schakel, verder niets: alle
+       logica staat in die module en wordt hier niet overgedaan.
+
+       Het verschil met get_analytics hiernaast is niet het tijdvak maar de
+       VRAAG. Analytics beantwoordt "hoe doe ik het"; dit beantwoordt "wat moet
+       ik maandag doen". Vandaar dat er hoogstens EEN aanbeveling uit komt: een
+       rapport met vijf adviezen is een rapport dat niemand opvolgt. */
+    name: 'get_week_report',
+    kind: 'read',
+    description: 'Het weekrapport: wat er deze week gebeurde, hoe dat zich verhoudt tot vorige week, wie op de gebruiker wacht, en de ene actie die er nu toe doet. Gebruik dit bij vragen als "hoe ging mijn week", "wat moet ik doen" of "waar sta ik".',
+    parameters: {
+      type: 'object',
+      properties: {
+        /* Een einddatum, zodat "en de week daarvoor?" ook te beantwoorden is
+           zonder een tweede tool. Ongeldige invoer valt terug op nu -- de
+           module doet dat zelf, hier alleen doorgeven. */
+        tot: { type: 'string', description: 'ISO-datum als einde van de week. Standaard: nu.' },
+      },
+    },
+    run: readTool('get_week_report', async (args, ctx) => {
+      if (fixtures.isEnabled()) {
+        return stub('Weekrapport opgehaald.', { rapport: null }, []);
+      }
+      const { leads, truncated } = await data.leadsFor(ctx);
+      const rap = rapport.week(leads, { tot: args.tot ? new Date(args.tot) : undefined });
+
+      /* Taal van de gebruiker, met dezelfde terugval als de rest van Faro. De
+         aanbevelingen zijn SLEUTELS en geen zinnen, juist zodat een Waalse
+         makelaar zijn advies in het Frans krijgt. */
+      const taal = (ctx && (ctx.lang || ctx.taal)) || 'nl';
+      const t = (sleutel, n) => String(_i18n.t(taal, sleutel) || '').replace('{n}', String(n));
+
+      /* Niets gebeurd is een antwoord, geen storing. Een tabel met nullen ziet
+         eruit alsof er iets stuk is. */
+      if (rap.stil) {
+        return {
+          summary: t('faro.rap.stil'),
+          data: { rapport: rap, stil: true },
+          components: [],
+        };
+      }
+
+      const adv = rapport.aanbeveling(rap);
+      const c = rap.cijfers;
+      const stats = [
+        { label: 'Leads',          value: String(c.leads) },
+        { label: 'Gekwalificeerd', value: String(c.gekwalificeerd) },
+        { label: 'Afspraken',      value: String(c.geboekt) },
+      ];
+      /* Alleen vergelijken als er vorige week iets STOND om mee te vergelijken.
+         Anders is "+100%" een verzonnen sprong vanaf nul -- rapport.js zet
+         daarom vergelijkbaar op false, en dat respecteren we hier. */
+      if (rap.vergelijkbaar && rap.verschil) {
+        const teken = (n) => (n > 0 ? '+' : '') + n;
+        stats[0].sub = teken(rap.verschil.leads) + ' t.o.v. vorige week';
+        stats[1].sub = teken(rap.verschil.gekwalificeerd);
+        stats[2].sub = teken(rap.verschil.geboekt);
+      }
+
+      const componenten = [schema.statGroup({ title: _i18n.t(taal, 'faro.rap.kop'), stats })];
+
+      /* De leads waar het advies over gaat erbij als kaart, zodat "vijf leads
+         wachten op jou" niet eindigt bij een getal waar je zelf naar moet gaan
+         zoeken. */
+      if (adv && adv.leads && adv.leads.length) {
+        for (const l of adv.leads.slice(0, 5)) {
+          componenten.push(schema.leadCard({ id: l.id, name: l.naam || '—', note: l.reden || '' }));
+        }
+      }
+
+      /* Enkelvoud waar het hoort. "1 afspraken" is precies het soort ding dat
+         een product amateuristisch laat lijken, en het viel pas op toen deze
+         tool die zin voor het eerst liet zien. Dezelfde vorm als elders in dit
+         bestand (get_properties, search_conversations). */
+      const mv = (n, enkel, meer) => n + ' ' + (n === 1 ? enkel : meer);
+      const regels = [
+        'Week van ' + rap.van.toISOString().slice(0, 10) + ' tot ' + rap.tot.toISOString().slice(0, 10) + ': '
+          + mv(c.leads, 'lead', 'leads') + ', ' + c.gekwalificeerd + ' gekwalificeerd, '
+          + mv(c.geboekt, 'afspraak', 'afspraken')
+          + truncationNote(truncated) + '.',
+      ];
+      if (adv) regels.push(t(adv.sleutel, adv.aantal));
+      /* Geen advies is ook informatie, en Faro hoort dat te zeggen in plaats
+         van er zelf een te verzinnen. */
+      else regels.push('Geen actie die er nu bovenuit springt.');
+
+      return {
+        summary: regels.join(' '),
+        data: { rapport: rap, aanbeveling: adv },
+        components: componenten,
       };
     }),
   },
