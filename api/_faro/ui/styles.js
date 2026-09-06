@@ -395,6 +395,22 @@ body.hv-mode-ai .faro-rail {
 .faro-convo:hover { color: var(--text); background: var(--hover); }
 .faro-convo.active { color: var(--sand-on-surface); background: var(--champagne-dim); }
 
+/* De lege regel onder "Recent". Bewust GEEN knop-opmaak: er valt niets te
+   klikken, en iets wat op een gesprek lijkt maar er geen is, is erger dan de
+   leegte die hier stond. Wel dezelfde inspringing, zodat het onder de kop
+   hoort en er niet los onder hangt.
+
+   --text-disabled en niet --text-muted: dit is de zachtste tekst in de rail,
+   want het is een mededeling en geen inhoud. Nog steeds leesbaar -- zie
+   scripts/faro-check.js, dat elke tekstkleur op dit vlak nameet. */
+.faro-convo-leeg {
+  margin: 0;
+  padding: var(--sp-15) var(--sp-4);
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  color: var(--text-disabled);
+}
+
 .faro-rail__viewall {
   margin: var(--sp-1) var(--sp-4) 0; padding: 0;
   background: none; border: 0;

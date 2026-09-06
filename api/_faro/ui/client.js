@@ -1265,13 +1265,42 @@ function faroLsMessages(id) {
   return null;
 }
 
-function faroRenderConvoList(convos) {
+/* toestand: 'ok' als de server antwoordde, 'stuk' als hij dat niet deed. */
+function faroRenderConvoList(convos, toestand) {
   var list = document.getElementById('faro-convo-list');
   if (!list) return;
-  list.innerHTML = convos.map(function (c) {
-    return '<button class="faro-convo' + (c.id === faroState.conversationId ? ' active' : '') +
-           '" data-convo="' + faroEsc(c.id) + '">' + faroEsc(c.title) + '</button>';
-  }).join('');
+  /* ── Leeg is niet hetzelfde als stuk, en allebei zijn niet hetzelfde als
+        stilte ────────────────────────────────────────────────────────────
+     Hier stond alleen de map(). Bij nul gesprekken is dat een lege string, en
+     onder de kop "Recent" zag je dan NIETS -- niet te onderscheiden van een
+     lijst die niet geladen heeft.
+
+     Dat is precies waar dit op stukliep. Faro's gesprekken hangen aan de
+     TENANT (project_code), zoals alles in dit product. Wie twee accounts heeft
+     -- en dat is hier echt het geval: er staan gesprekken onder twee
+     verschillende projectcodes -- ziet in het ene account de gesprekken van
+     het andere niet. Dat is geen fout maar de isolatie die werkt. Alleen zei
+     het scherm dat niet: het zei niks, en niks leest als kapot.
+
+     Nu drie duidelijk verschillende uitkomsten:
+       - gesprekken       -> de lijst
+       - server zei nul   -> "nog geen eerdere gesprekken in dit account"
+       - server zweeg     -> "kon eerdere gesprekken niet laden"
+     De derde is de belangrijkste: een mislukking mag niet als leegte lezen.
+     Dat is dezelfde regel als in HELVARO-ARCHITECTUUR §6 -- nooit doen alsof. */
+  if (convos && convos.length) {
+    list.innerHTML = convos.map(function (c) {
+      return '<button class="faro-convo' + (c.id === faroState.conversationId ? ' active' : '') +
+             '" data-convo="' + faroEsc(c.id) + '">' + faroEsc(c.title) + '</button>';
+    }).join('');
+    return;
+  }
+  var stuk = toestand === 'stuk';
+  list.innerHTML = '<p class="faro-convo-leeg">'
+    + faroEsc(stuk
+        ? T('convo.stuk', 'Kon eerdere gesprekken niet laden.')
+        : T('convo.leeg', 'Nog geen eerdere gesprekken in dit account.'))
+    + '</p>';
 }
 
 function faroLoadConversations() {
@@ -1281,7 +1310,10 @@ function faroLoadConversations() {
   // Local first, so the list is populated before the round trip rather than
   // flashing empty every time the panel opens.
   var local = faroLsList();
-  faroRenderConvoList(local);
+  /* Nog geen oordeel: de server is onderweg. Bij nul lokale gesprekken toont
+     dit de "nog geen gesprekken"-regel, en die wordt een tel later vervangen
+     door wat de server zegt. Beter dan een lege plek die kan blijven staan. */
+  faroRenderConvoList(local, 'ok');
 
   faroPost({ mode: 'faro-conversations', op: 'list' })
     .then(function (r) {
@@ -1290,9 +1322,14 @@ function faroLoadConversations() {
       // of truth and the local copy is only a cache.
       var seen = {};
       server.forEach(function (c) { seen[c.id] = true; });
-      faroRenderConvoList(server.concat(local.filter(function (c) { return !seen[c.id]; })));
+      faroRenderConvoList(server.concat(local.filter(function (c) { return !seen[c.id]; })), 'ok');
     })
-    .catch(function () { faroRenderConvoList(local); });
+    .catch(function () {
+      /* Alleen 'stuk' melden als er ook lokaal niets is. Staat er wel iets, dan
+         is dat wat de gebruiker heeft en is een foutregel eroverheen alleen
+         ruis -- de lijst die hij ziet klopt, hij is alleen niet ververst. */
+      faroRenderConvoList(local, local.length ? 'ok' : 'stuk');
+    });
 }
 
 /* ── 6. Helvaro context ───────────────────────────────────────────────────

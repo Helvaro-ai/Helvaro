@@ -110,6 +110,8 @@ const STRINGS = {
     'in.stop': 'Stoppen',
 
     'ctx.label': 'Faro ziet',
+    'convo.leeg': 'Nog geen eerdere gesprekken in dit account.',
+    'convo.stuk': 'Kon eerdere gesprekken niet laden.',
     'ctx.manage': 'Beheren',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Panden',
@@ -275,6 +277,8 @@ const STRINGS = {
     'in.stop': 'Stop',
 
     'ctx.label': 'Faro sees',
+    'convo.leeg': 'No earlier conversations in this account yet.',
+    'convo.stuk': 'Could not load earlier conversations.',
     'ctx.manage': 'Manage',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Properties',
@@ -440,6 +444,8 @@ const STRINGS = {
     'in.stop': 'Arrêter',
 
     'ctx.label': 'Faro voit',
+    'convo.leeg': 'Pas encore de conversations dans ce compte.',
+    'convo.stuk': 'Impossible de charger les conversations précédentes.',
     'ctx.manage': 'Gérer',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Biens',
@@ -605,6 +611,8 @@ const STRINGS = {
     'in.stop': 'Stoppen',
 
     'ctx.label': 'Faro sieht',
+    'convo.leeg': 'Noch keine früheren Gespräche in diesem Konto.',
+    'convo.stuk': 'Frühere Gespräche konnten nicht geladen werden.',
     'ctx.manage': 'Verwalten',
     'ctx.leads': 'Leads',
     'ctx.properties': 'Objekte',
