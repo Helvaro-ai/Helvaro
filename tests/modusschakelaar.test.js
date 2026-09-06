@@ -17,11 +17,17 @@
  *     --text-muted, wat er een uitgeschakelde knop van maakte terwijl het de
  *     helft van de keuze is.
  *
- *  3. DE BOL STAAT STIL. Op de landingspagina draait en ademt Faro's bol; op
- *     14px naast een woord dat je moet lezen is dat geen sfeer maar geflikker.
+ *  3. HET MERKTEKEN STAAT STIL. Op de landingspagina draait en ademt Faro;
+ *     op 18px naast een woord dat je moet lezen is dat geen sfeer maar
+ *     geflikker.
  *
- *  4. DE BOL PRAAT NIET MEE. aria-hidden, anders hoort een schermlezer
+ *  4. HET MERKTEKEN PRAAT NIET MEE. aria-hidden, anders hoort een schermlezer
  *     "afbeelding, Faro" terwijl het pictogram niets toevoegt aan het label.
+ *
+ *  5. HET BESTAND BESTAAT ECHT. Punt 1 t/m 4 kijken alleen naar de bron. Een
+ *     src die nergens heen wijst komt daar allemaal groen doorheen en levert
+ *     een leeg vakje op in de zijbalk -- zichtbaar voor elke klant, onzichtbaar
+ *     voor elke test. Vandaar dat de laatste controle op de SCHIJF kijkt.
  */
 'use strict';
 const fs   = require('fs');
@@ -91,11 +97,11 @@ console.log('\n  Faro draagt zijn eigen merkteken');
      aria-hidden alleen is niet genoeg als hij ooit uit de boom valt. */
   ck('en heeft een lege alt', /hv-switch__merk[^>]*alt=""/.test(markup));
   /* Het is Faro zelf, niet een abstractie ervan. */
-  ck('het is Faro zelf', /hv-switch__merk[^>]*faro-icon\.webp/.test(markup));
+  ck('het is Faro zelf', /hv-switch__merk[^>]*faro-merk\.webp/.test(markup));
   /* Zonder afmetingen in de HTML verspringt de schakelaar zodra het plaatje
      binnen is -- in de zijbalk, waar de rest van de navigatie onder staat. */
   ck('met afmetingen, zodat de rij niet verspringt',
-    /hv-switch__merk[^>]*width="16"[^>]*height="16"/.test(markup));
+    /hv-switch__merk[^>]*width="18"[^>]*height="18"/.test(markup));
 
   const merk = /\.hv-switch__merk \{([\s\S]*?)\n\}/.exec(css);
   ck('het merkteken is gestyled', !!merk);
@@ -109,6 +115,21 @@ console.log('\n  Faro draagt zijn eigen merkteken');
      dus zonder een zweem licht valt hij daar weg. */
   ck('en blijft zichtbaar op de niet-gekozen kant',
     /\.hv-switch__tab:not\(\.active\) \.hv-switch__merk \{[^}]*(filter|box-shadow)/.test(css));
+
+  /* Alles hierboven leest de BRON. Een src die nergens heen wijst komt daar
+     groen doorheen en levert een leeg vakje op in de zijbalk. Dus: wijst hij
+     naar een bestand dat er echt is? */
+  const src = /hv-switch__merk[^>]*src="([^"]+)"/.exec(markup);
+  ck('de src is te vinden in de markup', !!src);
+  const bestand = src && BASE + 'public' + src[1];
+  ck('en het bestand bestaat op schijf', !!(bestand && fs.existsSync(bestand)), bestand);
+  /* Een webp die geen webp is faalt stil in de browser: geen fout, geen beeld. */
+  if (bestand && fs.existsSync(bestand)) {
+    const kop = fs.readFileSync(bestand).subarray(0, 12);
+    ck('en het is echt een webp',
+      kop.subarray(0, 4).toString() === 'RIFF' && kop.subarray(8, 12).toString() === 'WEBP',
+      kop.toString('hex'));
+  }
 }
 
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');

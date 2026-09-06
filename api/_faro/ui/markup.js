@@ -359,13 +359,24 @@ function navCta(t) {
      (falcon-idle, falcon-thinking, falcon-success). Alleen de schakelaar --
      precies de knop die je naar hem toe brengt -- toonde een cirkel.
 
-     Nu het echte pictogram, hetzelfde bestand dat de rest van de app gebruikt.
-     Op 16px is de kop nog herkenbaar; de bol was op die maat toch al een stip.
+     Nu Faro's kop. Welk bestand dat is, is nagekeken en niet gegokt:
+
+       - faro-icon.webp is het hele lijfje. Op 18px is dat een donkere veeg
+         waarin niets meer te herkennen valt -- dan kun je net zo goed de bol
+         houden.
+       - faro-kop.webp is de kop, maar met een brede zachte zwarte vignettering
+         eromheen (alfa ~21 tot ver in het beeld, 22% van de pixels zit tussen
+         volledig doorzichtig en volledig dekkend). Op de donkere kant zie je
+         dat niet; op de ZANDEN kant -- precies de kant die oplicht als Faro
+         gekozen is -- ligt er dan een vuile donkere vlek om zijn kop.
+       - faro-merk.webp is diezelfde kop met die vignettering weggesneden en
+         bijgesneden tot het silhouet. Gemaakt uit faro-kop.webp, niet nieuw
+         getekend, zodat het hetzelfde beestje blijft.
 
      aria-hidden en een lege alt, want het pictogram zegt niets wat het label
      ernaast niet al zegt; een schermlezer hoort anders "afbeelding, Faro". */
-  const merk = '<img class="hv-switch__merk" src="/faro/faro-icon.webp" alt="" '
-             + 'width="16" height="16" aria-hidden="true" loading="lazy" decoding="async">';
+  const merk = '<img class="hv-switch__merk" src="/faro/faro-merk.webp" alt="" '
+             + 'width="18" height="18" aria-hidden="true" loading="lazy" decoding="async">';
   const tab = (id, label, sel, icoon) => `
       <button class="hv-switch__tab${sel ? ' active' : ''}" id="hv-switch-${id}"
               type="button" role="radio" aria-checked="${sel ? 'true' : 'false'}"

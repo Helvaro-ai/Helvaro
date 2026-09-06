@@ -205,9 +205,10 @@ body.faro-open .faro-dock { display: none; }
 }
 
 /* ═══ Sidebar entry ═══════════════════════════════════════════════════════
-   A primary action above the nav list, not a thirteenth row inside it. The orb
-   mark is the same gradient recipe as the landing screen's, at 22px, so the
-   button carries Faro's identity without shipping an icon for it.
+   A primary action above the nav list, not a thirteenth row inside it. The
+   mark on Faro's side is his own head (public/faro/faro-merk.webp); it used to
+   be an orb built from the landing screen's gradient recipe, back when the
+   button carried Faro's identity without shipping an icon for it.
 
    ⚠ Every colour here comes from the CRM's token set, not Faro's. The sidebar
    is permanently dark in BOTH themes and rebinds --text/--border/--hover/
@@ -272,29 +273,32 @@ body.faro-open .faro-dock { display: none; }
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-/* Faro's merkteken, klein: het pictogram zelf (public/faro/faro-icon.webp).
-   Hier stond een gouden bol met een conic-gradient -- zie markup.js voor waarom
-   die weg is.
+/* Faro's merkteken: zijn kop (public/faro/faro-merk.webp). Hier stond een
+   gouden bol met een conic-gradient -- zie markup.js voor waarom die weg is en
+   waarom het juist DIT bestand is.
 
-   16px en niet 14: de bol was een vorm die op elke maat werkt, een kop is dat
-   niet. Onder de 16 valt het oog dicht en blijft er een donkere stip over --
-   dan kun je net zo goed de bol houden.
+   18px en niet 16: een bol werkt op elke maat, een gezicht niet. Naast elkaar
+   gezet in de browser is 16 het punt waarop de ogen dichtvallen en er een
+   donkere veeg overblijft; op 18 lezen ze nog. Groter mag niet, want dan wordt
+   de rij hoger dan de andere navigatie-items ernaast.
 
    Geen border-radius: het bestand heeft zijn eigen silhouet met transparante
    randen. Een cirkelmasker zou er de oren afsnijden. */
 .hv-switch__merk {
-  width: 16px; height: 16px;
+  width: 18px; height: 18px;
   flex-shrink: 0;
   display: block;
   object-fit: contain;
 }
-/* Op de gekozen kant ligt het pictogram op het zandvlak. Faro is bijna zwart
-   met gouden accenten, dus daar staat hij scherp; op de niet-gekozen kant ligt
-   hij op de donkere balk en heeft hij juist een zweem licht nodig om niet in
-   de achtergrond weg te vallen. Geen harde rand: dat zou er een insigne van
-   maken naast een woord dat gewoon een label is. */
+/* Faro is bijna zwart met gouden accenten. Op de gekozen kant ligt hij op het
+   zandvlak en staat hij scherp; op de niet-gekozen kant ligt hij op de donkere
+   balk, waar zijn silhouet in de achtergrond zakt en alleen de gouden ogen nog
+   dragen. Een zweem licht eromheen geeft hem daar zijn omtrek terug.
+
+   Geen harde rand en geen ring: dat zou er een insigne van maken naast een
+   woord dat gewoon een label is. */
 .hv-switch__tab:not(.active) .hv-switch__merk {
-  filter: drop-shadow(0 0 1px rgba(255,255,255,0.45));
+  filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.5));
 }
 
 .hv-switch__tab:hover { color: var(--text); background: var(--hover); }
