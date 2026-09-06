@@ -23731,10 +23731,11 @@ function vraagAccountVerwijdering() {
   var uitleg = document.createElement('div');
   uitleg.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--text-muted,#999);line-height:1.6';
   uitleg.innerHTML =
-      '<p style="margin:0 0 10px">We verwijderen je account en je gegevens binnen 30 dagen, en bevestigen dat per e-mail.</p>'
-    + '<p style="margin:0 0 10px">Wat er gebeurt: je lopende abonnement wordt stopgezet, je leads en gesprekken worden gewist, '
-    + 'en je WhatsApp-koppeling wordt losgemaakt.</p>'
-    + '<p style="margin:0">Wat blijft: facturen, want die moeten we wettelijk zeven jaar bewaren.</p>';
+      '<p style="margin:0 0 10px"><strong>Dit gebeurt nu meteen en is niet terug te draaien.</strong></p>'
+    + '<p style="margin:0 0 10px">Weg: je leads, je gesprekken, je afspraken, je aanbod, je campagnes, '
+    + 'je creditgeschiedenis, je Faro-gesprekken, je instellingen en je inlog. '
+    + 'Je lopende abonnement wordt op hetzelfde moment stopgezet.</p>'
+    + '<p style="margin:0">Wat blijft: je facturen bij Stripe. Die bewaarplicht ligt bij ons, niet bij jou.</p>';
 
   var label = document.createElement('label');
   label.setAttribute('for', 'verwijder-bevestig');
@@ -23760,7 +23761,10 @@ function vraagAccountVerwijdering() {
   annuleer.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
 
   var bevestig = document.createElement('button');
-  bevestig.textContent = 'Verwijdering aanvragen';
+  /* De knop belooft nu wat hij doet. Hij heette 'Verwijdering aanvragen',
+     want dat WAS het: een mail naar support. Een knop die 'aanvragen' zegt en
+     ter plekke alles wist, is de verkeerde kant om te liegen. */
+  bevestig.textContent = 'Definitief wissen';
   bevestig.disabled = true;
   bevestig.style.cssText = 'padding:9px 16px;background:#B4231F;border:0;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;opacity:0.5';
 
@@ -23777,40 +23781,49 @@ function vraagAccountVerwijdering() {
     if (bevestig.disabled) return;
     bevestig.dataset.bezig = '1';
     bevestig.disabled = true;
-    bevestig.textContent = 'Versturen...';
+    bevestig.textContent = 'Bezig met wissen...';
+    status.style.color = 'var(--text-muted,#999)';
+    status.textContent = 'Dit kan een halve minuut duren. Sluit dit venster niet.';
     try {
+      /* Hier stond mode:'support' -- een MAIL naar support met de belofte
+         "binnen 30 dagen". Nu de echte wisactie. De projectcode staat bewust
+         NIET in deze body: de server haalt hem uit de sessie, want een tenant
+         die uit een request body komt is geen tenant maar een verzoek. */
       var r = await fetch(API_BASE + '/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'support',
-          onderwerp: 'VERZOEK: account verwijderen',
-          bericht: 'Deze klant vraagt om verwijdering van zijn account en gegevens.\\n\\n'
-                 + 'Bevestigd door "VERWIJDEREN" in te typen in de app.\\n'
-                 + 'Aangevraagd op ' + new Date().toISOString() + '.\\n\\n'
-                 + 'Te doen: abonnement stopzetten, leads en gesprekken wissen, '
-                 + 'WhatsApp-koppeling losmaken. Facturen bewaren (wettelijke termijn).'
-        })
+        headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+        body: JSON.stringify({ mode: 'account-delete', bevestig: veld.value.trim().toUpperCase() })
       });
       var d = await r.json().catch(function () { return {}; });
       if (r.ok && d.ok) {
-        status.style.color = 'var(--success-ink,#8FD9A8)';
-        status.textContent = 'Aanvraag ontvangen. We bevestigen per e-mail zodra het gebeurd is.';
-        bevestig.textContent = 'Aangevraagd';
+        var v = d.verslag || {};
+        if (v.volledig) {
+          status.style.color = 'var(--success-ink,#8FD9A8)';
+          status.textContent = 'Alles is gewist. Je wordt uitgelogd.';
+        } else {
+          /* Niet doen alsof. Ging er iets mis, dan hoort dat er te staan --
+             met wat er wel gelukt is, zodat het geen raadsel wordt. */
+          status.style.color = 'var(--error-ink,#F4A4A4)';
+          status.textContent = 'Je gegevens zijn gewist, maar niet alles lukte. '
+            + 'Mail ons op hello@helvaro.pro met de code ' + (v.projectCode || '') + '.';
+        }
+        bevestig.textContent = 'Gewist';
         veld.disabled = true;
-        setTimeout(sluit, 3000);
+        /* Uitloggen, want het account bestaat niet meer. Even wachten zodat de
+           melding gelezen kan worden -- langer bij een halve mislukking. */
+        setTimeout(function () { try { logout(); } catch (e) { location.href = '/login'; } },
+                   v.volledig ? 2500 : 8000);
         return;
       }
       status.style.color = 'var(--error-ink,#F4A4A4)';
-      status.textContent = (d && d.error) || 'Versturen lukte niet. Mail ons op '
-        + ((d && d.fallbackEmail) || 'hello@helvaro.pro') + '.';
+      status.textContent = (d && d.error) || 'Wissen lukte niet. Mail ons op hello@helvaro.pro.';
     } catch (e) {
       status.style.color = 'var(--error-ink,#F4A4A4)';
       status.textContent = 'Er ging iets mis. Controleer je verbinding.';
     }
     delete bevestig.dataset.bezig;
     bevestig.disabled = false;
-    bevestig.textContent = 'Verwijdering aanvragen';
+    bevestig.textContent = 'Definitief wissen';
   });
 
   annuleer.addEventListener('click', sluit);

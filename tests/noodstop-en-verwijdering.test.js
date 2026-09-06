@@ -102,23 +102,39 @@ const ck = (n, ok, ctx) => {
     ck('en de knop staat tot dan uit',
        /bevestig\.disabled = true;/.test(html), null);
 
-    ck('het loopt via de beveiligde supportroute (afzender uit de sessie)',
-       /mode: 'support'[\s\S]{0,300}account verwijderen/i.test(html), null);
-    ck('met een onderwerp dat opvalt in het postvak',
-       /VERZOEK: account verwijderen/.test(html), null);
+    /* ── Dit blok toetste de AANVRAAG, en die bestaat niet meer ────────────
+       De knop stuurde een mail naar support (mode:'support') met de belofte
+       "binnen 30 dagen". Op verzoek van de eigenaar wist hij nu echt, meteen.
+       Vier regels hier gingen daardoor rood terwijl er niets kapot was -- ze
+       bewaakten de oude belofte. Wat ze BEDOELDEN te bewaken staat hieronder:
+       de klant weet wat er gebeurt voor hij klikt, en de knop liegt niet over
+       wat hij doet. */
+    ck('het wist echt, en gaat niet meer via support',
+       /mode: 'account-delete'/.test(html) && !/VERZOEK: account verwijderen/.test(html), null);
+    /* De tenant hoort NIET in de body: de server haalt hem uit de sessie. Zou
+       hij hier meegestuurd worden, dan is "mijn account wissen" een verzoek om
+       "een account" te wissen geworden. */
+    ck('en stuurt de projectcode niet mee',
+       /mode: 'account-delete', bevestig:/.test(html)
+       && !/mode: 'account-delete'[\s\S]{0,200}projectCode/.test(html), null);
 
-    ck('de klant leest wat er weggaat',
-       /leads en gesprekken worden gewist/.test(html), null);
+    ck('de klant leest dat het NU gebeurt en onomkeerbaar is',
+       /meteen en is niet terug te draaien/i.test(html), null);
+    ck('en wat er allemaal weggaat',
+       /leads[\s\S]{0,200}gesprekken[\s\S]{0,200}inlog/i.test(html), null);
     ck('en wat er blijft, met de reden',
-       /facturen[\s\S]{0,80}wettelijk/i.test(html), null);
-    ck('en binnen welke termijn',
-       /binnen 30 dagen/.test(html), null);
-
-    /* De \n-val uit CLAUDE.md: dit bestand is één sjabloonliteral, dus een \n in
-       de bron wordt een echte regelafbreking in de UITVOER en breekt de string
-       daar. Hier is dat twee keer gebeurd; deze controle houdt het tegen. */
-    ck('geen kapotte regelafbrekingen in het verzonden bericht',
-       /Deze klant vraagt om verwijdering van zijn account en gegevens\.\\n\\n/.test(html), null);
+       /facturen[\s\S]{0,120}bewaarplicht/i.test(html), null);
+    /* Een knop die "aanvragen" zegt en ter plekke alles wist, is de verkeerde
+       kant om te liegen. */
+    /* Op de TOEKENNING zoeken, niet op de tekst. De oude naam staat nog in het
+       commentaar dat uitlegt waarom hij weg is, en daar hoort een test niet
+       over te struikelen -- anders is de prijs van een uitleg dat je hem niet
+       mag geven. */
+    ck('de knop belooft geen aanvraag meer',
+       /bevestig\.textContent = 'Definitief wissen'/.test(html)
+       && !/textContent = 'Verwijdering aanvragen'/.test(html), null);
+    ck('en er wordt uitgelogd als het gelukt is',
+       /logout\(\)/.test(html) && /account-delete[\s\S]{0,1400}logout\(\)/.test(html), null);
   }
 
   console.log(`\n${pass} ok, ${fail} fout`);
