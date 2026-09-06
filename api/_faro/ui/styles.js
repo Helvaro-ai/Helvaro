@@ -272,22 +272,29 @@ body.faro-open .faro-dock { display: none; }
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-/* Faro's merkteken, klein. Dezelfde conic-gradient als de grote bol op de
-   landingspagina, zonder de animatie en zonder de bloom -- op deze maat zou
-   dat alleen ruis zijn naast een woord dat je moet lezen. */
-.hv-switch__orb {
-  width: 14px; height: 14px;
+/* Faro's merkteken, klein: het pictogram zelf (public/faro/faro-icon.webp).
+   Hier stond een gouden bol met een conic-gradient -- zie markup.js voor waarom
+   die weg is.
+
+   16px en niet 14: de bol was een vorm die op elke maat werkt, een kop is dat
+   niet. Onder de 16 valt het oog dicht en blijft er een donkere stip over --
+   dan kun je net zo goed de bol houden.
+
+   Geen border-radius: het bestand heeft zijn eigen silhouet met transparante
+   randen. Een cirkelmasker zou er de oren afsnijden. */
+.hv-switch__merk {
+  width: 16px; height: 16px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
-    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset;
+  display: block;
+  object-fit: contain;
 }
-/* Op de gekozen kant ligt de bol op het zandvlak zelf. Een rand van de
-   inktkleur houdt hem daar zichtbaar in plaats van erin te verdwijnen. */
-.hv-switch__tab.active .hv-switch__orb {
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.22) inset, 0 0 0 1px rgba(0,0,0,0.14);
+/* Op de gekozen kant ligt het pictogram op het zandvlak. Faro is bijna zwart
+   met gouden accenten, dus daar staat hij scherp; op de niet-gekozen kant ligt
+   hij op de donkere balk en heeft hij juist een zweem licht nodig om niet in
+   de achtergrond weg te vallen. Geen harde rand: dat zou er een insigne van
+   maken naast een woord dat gewoon een label is. */
+.hv-switch__tab:not(.active) .hv-switch__merk {
+  filter: drop-shadow(0 0 1px rgba(255,255,255,0.45));
 }
 
 .hv-switch__tab:hover { color: var(--text); background: var(--hover); }

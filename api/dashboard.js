@@ -1187,24 +1187,62 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   --login-stage:      #121212;
   --login-stage-ink:  #F9F9F9;
   --login-stage-dim:  #A9A6A0;
-  --login-panel:      #FFFFFF;
-  --login-input-bg:   #F7F6F2;
-  --login-border:     #E4E0D6;
-  --login-text:       #18160F;
-  --login-muted:      #6B6558;
-  --login-placeholder:#A39C8C;
+
+  /* ── Het formulierpaneel is donker ────────────────────────────────────────
+     Het was wit, en dat was de enige plek in de app waar het merk zichzelf
+     tegensprak: een wit paneel naast een zwart podium, met een gouden logo dat
+     op geen van beide dezelfde kleur kon zijn. Daar kwam de plaat onder het
+     logo vandaan, daar kwam de inkt-variant vandaan, en daar kwam de regel
+     vandaan dat dit paneel "altijd wit" is en het thema niet volgt.
+
+     Nu volgt het het thema nog steeds niet -- maar het staat aan de goede kant.
+     Donker is de standaard van de app (initTheme geeft elke nieuwe bezoeker
+     dark), het merk is goud-op-zwart, en het gouden logo hoeft nergens meer
+     omgekleurd of ingelijst te worden.
+
+     De waarden komen uit het donkere thema van de app zelf, niet uit een nieuw
+     palet: #F9F9F9 en #B5B5B5 zijn --text-c en --text-muted-c, #35332F is
+     --border-c. Eén uitzondering, hieronder. */
+  --login-panel:      #1E1B16;   /* iets opgetild t.o.v. het podium, zodat de
+                                    splitsing op desktop zichtbaar blijft */
+  --login-panel-lift: #262319;   /* de actieve pil in de segmentschakelaar */
+  --login-track:      #17150F;   /* de goot waar die pil in ligt */
+  --login-input-bg:   #14120E;   /* het veld ligt VERDIEPT in het paneel */
+  --login-border:     #35332F;   /* haarlijnen en scheidingen -- decoratief */
+  /* De rand van een BEDIENBAAR ding is iets anders dan een scheidingslijn.
+     WCAG 1.4.11 vraagt 3:1 voor de omtrek die een invoerveld herkenbaar maakt,
+     en --login-border haalt op dit paneel 1,36:1 -- op een verdiept veld dat
+     zelf maar 1,09:1 van het paneel verschilt, is het veld dan niet te vinden.
+
+     Deze rand grenst aan VIER vlakken, en dat is de reden dat hij lichter is
+     dan hij op het oog hoeft te zijn: buiten aan het paneel (#1E1B16) of de
+     goot (#17150F), binnen aan de veldvulling (#14120E) of -- bij de
+     Google-knop en de actieve pil -- aan de opgetilde tint (#262319). Die
+     laatste is de strengste, want hij ligt het dichtst bij de rand zelf.
+     Gemeten: 3,32 / 3,04 / 3,54 / 3,62. De eerste kandidaat (#6B6862) haalde
+     3,09 op het paneel maar 2,83 op de opgetilde tint, en dat is precies de
+     rand die je het vaakst ziet. */
+  --login-field-line: #706D66;
+  --login-text:       #F9F9F9;   /* 16,30:1 op het paneel */
+  --login-muted:      #B5B5B5;   /*  8,37:1 */
+  --login-placeholder:#9A9489;   /*  6,21:1 op het verdiepte veld */
   /* Zand ALS TEKST op dit paneel. Precies de regel uit CLAUDE.md: --accent-c
-     is de vulling, --accent-ink diezelfde kleur als tekst -- maar --accent-ink
-     is afgestemd op een DONKERE ondergrond, en dit paneel is altijd wit. Het
-     merk-zand kwam hier uit op 2,14:1 (donker thema) en 1,82:1 (licht). Deze
-     tint zit in dezelfde familie en haalt 4,88:1 op wit; gemeten, niet gekozen. */
-  --login-accent-ink: #8A6D2E;
+     is de vulling, --accent-ink diezelfde kleur als tekst. Nu het paneel
+     donker is, is dat gewoon --accent-ink van het donkere thema: 13,60:1.
+     Hier stond #8A6D2E -- de diepe tint die nodig was op wit, en die op donker
+     juist 2,4:1 zou halen. Eén token verkeerd meeverhuizen en de merkkleur op
+     het eerste scherm is onleesbaar. */
+  --login-accent-ink: #F0E4C8;
   position: fixed;
   inset: 0;
   display: flex;
   z-index: 1000;
   padding: 0;
-  background: var(--bg);
+  /* Stond op --bg en volgde daarmee het thema, terwijl beide panelen erop dat
+     juist NIET doen. Zolang de twee panelen samen 100% vulden zag je dat niet;
+     het kwam pas tevoorschijn als er ergens een kier viel -- en dan een lichte
+     strook op een verder donker scherm. Nu hetzelfde podium als de merkkant. */
+  background: var(--login-stage);
 }
 
 #login-page::before { display: none; }
@@ -1267,10 +1305,12 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    uit tokens -- hier stond #6b7280 hardgecodeerd, wat in het lichte thema
    toevallig klopte en verder nergens op sloeg. */
 /* ── De segmentschakelaar inloggen / registreren ──────────────────────────
-   Twee gelijkwaardige knoppen in één spoor. De actieve krijgt het witte
-   plaatje en de schaduw; de andere blijft leesbaar maar rustig -- geen grijs
-   dat je moet zoeken. Gemeten op het altijd-witte formulierpaneel:
-   #6B6558 op #F1EFE9 haalt 5,07:1, ruim boven de eis.
+   Twee gelijkwaardige knoppen in één spoor. De actieve krijgt de opgetilde
+   tint en de lichtlip; de andere blijft leesbaar maar rustig -- geen grijs
+   dat je moet zoeken. Gemeten op het donkere paneel: --login-muted (#B5B5B5)
+   op de goot (#17150F) haalt 8,90:1, en de actieve tekst (#F9F9F9) 14,92:1
+   op de pil. (Hier stond de meting van het oude witte paneel: #6B6558 op
+   #F1EFE9. Allebei die kleuren staan er niet meer.)
 
    Waarom een spoor en geen twee losse knoppen: zo is te zien dat het één
    keuze is met twee standen, en niet twee dingen die je allebei kunt doen. */
@@ -1280,8 +1320,11 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   gap: 3px;
   padding: 3px;
   margin: var(--sp-5) 0 var(--sp-5);
-  background: #F1EFE9;
-  border: 1px solid var(--login-border);
+  /* Stond hardgecodeerd op #F1EFE9. Dat is precies het soort waarde dat een
+     themawissel overleeft zonder mee te gaan: het paneel werd donker en deze
+     goot bleef een lichte balk midden op het scherm. Nu een token. */
+  background: var(--login-track);
+  border: 1px solid var(--login-field-line);
   border-radius: var(--r-md);
 }
 .login-modus-knop {
@@ -1300,9 +1343,15 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 }
 .login-modus-knop:hover { color: var(--login-text); }
 .login-modus-knop.actief {
-  background: var(--login-panel);
+  /* De pil moet OPTILLEN uit de goot. Op --login-panel deed hij dat toen het
+     paneel wit was en de goot beige; op een donker paneel zou hij dezelfde
+     kleur krijgen als het vlak eromheen en was er geen pil meer te zien --
+     de schakelaar zou zijn toestand kwijt zijn. Vandaar een eigen tint. */
+  background: var(--login-panel-lift);
   color: var(--login-text);
-  box-shadow: 0 1px 2px rgba(24,22,15,0.10), 0 0 0 1px rgba(24,22,15,0.04);
+  /* De schaduw was zwart-op-wit gedacht. Op donker doet zwart niets; een
+     lichtlip bovenlangs is wat daar hoogte geeft. */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.35);
 }
 .login-modus-knop:focus-visible {
   outline: 2px solid var(--login-accent-ink);
@@ -1347,10 +1396,9 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* De themaknop stond hier ooit rechtsboven op het merkpaneel. Hij is weg op
    verzoek: op het inlogscherm valt er niets te wisselen dat de bezoeker helpt
-   -- het formulierpaneel is altijd wit en het merkpaneel altijd donker, in
-   beide thema's. Een knop die het scherm waar hij op staat niet verandert is
-   een knop die alleen maar vragen oproept. In de app zelf blijft #btn-theme
-   staan; die schakelt wel iets. */
+   -- beide panelen zijn donker in beide thema's. Een knop die het scherm waar
+   hij op staat niet verandert is een knop die alleen maar vragen oproept. In
+   de app zelf blijft #btn-theme staan; die schakelt wel iets. */
 
 /* Full-screen two-panel split. No card, no border-radius */
 .login-split {
@@ -1394,17 +1442,16 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* Logo linksboven op het formulierpaneel.
 
-   Het stond kaal op wit, en dat is de ondergrond waar het gouden logo niet voor
-   gemaakt is: goudlijn op wit haalt 2,87:1 en leest als een lichte vlek. Daar
-   stond daarom een donkere plaat onder. Die loste het contrast op maar zette er
-   een zwarte doos op het lichte paneel, vlak boven Clerks eigen kaart -- twee
-   verschillende vormentalen boven elkaar.
+   Dit blok heeft drie oplossingen gehad voor één probleem -- goud op wit -- en
+   ze zijn alle drie weg omdat het paneel niet meer wit is:
+     1. het logo kaal op wit (2,87:1, een lichte vlek);
+     2. een donkere plaat eronder (contrast opgelost, maar een zwarte doos op
+        een licht paneel, vlak boven Clerks eigen kaart);
+     3. een inkt-variant van het logo zelf (leesbaar, maar een ander merkteken
+        op de plek waar iemand Helvaro voor het eerst ziet).
 
-   Nu staat er een inkt-variant van hetzelfde merkteken (public/logo-ink.png):
-   dezelfde tekening, omgekleurd naar donkere brons, met de transparantie intact.
-   Contrast op wit gaat daarmee van 2,87:1 naar 6,2:1 voor de lichtste lijnen en
-   16,3:1 voor de donkerste, dus de plaat is niet meer nodig. Het gouden bestand
-   blijft in gebruik waar de ondergrond wél donker is (de zijbalk). */
+   Nu staat het echte gouden bestand er kaal op, precies zoals in de zijbalk.
+   Eén merkteken, één bestand, geen plaat. */
 .login-logo-top {
   display: inline-flex;
   align-self: flex-start;
@@ -1422,30 +1469,20 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      regel. Precies de val uit CLAUDE.md, en hij is hier echt dichtgeklapt. */
   border-radius: var(--r-lg, 18px);
 
-  /* ── De plaat onder het merkteken ─────────────────────────────────────
-     Hierboven staat waarom het gouden logo niet op wit kan: nagemeten zijn de
-     lichtste lijnen #F2CF7F, en dat is 1,50:1 op wit -- de allerlichtste pixel
-     zelfs 1,06:1, dus letterlijk wit op wit. Het logo verdwijnt daar.
+  /* ── Geen plaat meer ──────────────────────────────────────────────────
+     Hier stond een donker vlak onder het logo, en daarvoor een inkt-variant van
+     het logo zelf. Allebei waren ze hetzelfde probleem in twee vermommingen:
+     het gouden merkteken kan niet op wit. Nagemeten zijn de lichtste lijnen
+     #F2CF7F -- 1,50:1 op wit, en de allerlichtste pixel 1,06:1, dus letterlijk
+     wit op wit.
 
-     De vorige oplossing was een INKT-variant: hetzelfde merkteken, omgekleurd
-     naar donkerbrons. Dat loste het contrast op en veranderde het logo: van
-     gemiddeld #A8813B naar #4B3712, van 52% naar 22% helderheid. Minder dan de
-     helft. Dat is geen variant meer maar een ander merkteken, op de plek waar
-     een bezoeker Helvaro voor het eerst ziet.
+     Het paneel is nu donker (zie de tokens bij #login-page), dus het probleem
+     bestaat niet meer: op #1E1B16 haalt datzelfde #F2CF7F 11,45:1.
 
-     Nu andersom: het ECHTE bestand, en de ondergrond past zich aan. Op
-     merkzwart haalt datzelfde #F2CF7F 12,48:1, en de donkerste schaduwlijnen
-     nog 3,08:1 -- dus de hele tekening blijft leesbaar, niet alleen de omtrek.
-
-     Er stond eerder al een donkere plaat en die werd weggehaald omdat hij als
-     "zwarte doos op een licht paneel" las. Het verschil zit in de uitvoering:
-     warm zwart in plaats van neutraal, dezelfde hoek als de kaarten, echte
-     ademruimte eromheen, en de zachte lichtlip die elk ander vlak in deze app
-     ook heeft. Dan leest het als een merkvlak en niet als een gat. */
-  background: linear-gradient(180deg, #1B1813 0%, #14120E 60%, #100E0B 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.30),
-              0 1px 2px rgba(64,52,32,.05), 0 4px 14px rgba(64,52,32,.06);
-  padding: 16px 22px;
+     Dat is de reden om de plaat weg te halen en niet alleen bij te kleuren. Een
+     donkere plaat op een donker paneel is een rechthoek die niets scheidt --
+     dan zie je een doos om het logo waar geen doos hoort. Het logo staat er nu
+     gewoon, zoals in de zijbalk. */
 }
 
 .login-logo-top img {
@@ -1939,10 +1976,18 @@ button.brand-dot { border: none; padding: 0; }
 .login-lang select {
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid var(--login-border, rgba(0,0,0,0.12));
+  /* Een keuzelijst is bedienbaar, dus de rand die hem herkenbaar maakt valt
+     onder WCAG 1.4.11 -- vandaar --login-field-line en niet de haarlijn. */
+  border: 1px solid var(--login-field-line, rgba(255,255,255,0.22));
   border-radius: 8px;
   background: transparent;
-  color: var(--text-muted);
+  /* Stond op --text-muted: dat is het token van de APP, dat met het thema
+     meebeweegt, op een paneel dat dat juist niet doet. In het lichte thema
+     werd deze tekst daarmee donkergrijs op een donker paneel. */
+  color: var(--login-muted);
+  /* Het uitklaplijstje zelf tekent de browser; zonder dit doet hij dat licht,
+     en dan klapt er een wit menu uit een donkere knop. */
+  color-scheme: dark;
   font: inherit;
   font-size: 12px;
   padding: 5px 26px 5px 9px;
@@ -1985,7 +2030,14 @@ button.brand-dot { border: none; padding: 0; }
 /* Responsive: stack on mobile */
 @media (max-width: 860px) {
   .login-split { flex-direction: column; height: auto; }
-  .login-form-side { flex: none; padding: 36px 24px 48px; align-items: center; }
+  /* De regel flex:none liet het paneel precies zo hoog worden als zijn inhoud. Het
+     merkpaneel eronder staat op display:none, dus onder de laatste voetnoot
+     bleef de rest van het scherm over als een kale band in de kleur van
+     #login-page -- gemeten 227px zwart onder de footer op een venster van
+     1139px. Geen scheiding, geen inhoud, alleen een gat.
+     min-height in plaats van height: bij weinig ruimte moet het paneel nog
+     steeds mogen groeien en scrollen. */
+  .login-form-side { flex: 1 0 auto; min-height: 100%; padding: 36px 24px 48px; align-items: center; }
   .login-form-inner { max-width: 420px; }
 
   /* Het merkpaneel gaat weg op smal, in plaats van onder het formulier te
@@ -2002,15 +2054,18 @@ button.brand-dot { border: none; padding: 0; }
   .login-logo-top img { max-width: 150px; }
 }
 
-/* Light mode adjustments — the split login already reads as a light-form
-   panel; keep it consistent so toggling app theme never breaks it */
-[data-theme="light"] .login-form-side {
-  background: var(--login-panel);
-}
+/* Hier stonden twee light-overschrijvingen voor het inlogscherm. Ze deden al
+   niets -- .login-form-side kreeg background: var(--login-panel), wat het
+   buiten de media-query ook al had -- en nu het paneel in beide thema's donker
+   is, zouden ze alleen maar suggereren dat er nog een lichte variant bestaat.
 
-[data-theme="light"] #login-page {
-  background: var(--bg);
-}
+   Het inlogscherm volgt het thema met opzet niet, om dezelfde reden als het
+   merkpaneel ernaast: dit is een podium, geen oppervlak van de app. Er is op
+   dit scherm ook geen gebruiker om een voorkeur van te kennen -- initTheme
+   heeft nog niets ingelogd om op af te gaan, en elke nieuwe bezoeker krijgt
+   toch dark. Eén ondergrond, één logo, geen tweede palet om bij te houden.
+
+   #login-page houdt dus ook in het lichte thema zijn eigen achtergrond. */
 
 /* Hier stonden drie overschrijvingen die het merkpaneel in het lichte thema
    licht maakten -- de chatballonnen kregen donkere tekst, het puntenraster werd
@@ -2038,7 +2093,7 @@ button.brand-dot { border: none; padding: 0; }
   width: 100%;
   padding: 15px 18px;
   background: var(--login-input-bg);
-  border: 1.5px solid var(--login-border);
+  border: 1.5px solid var(--login-field-line);
   border-radius: 12px;
   color: var(--login-text);
   font-size: 15px;
@@ -2181,16 +2236,25 @@ button.brand-dot { border: none; padding: 0; }
   display: none;
   margin-top: 16px;
   padding: 12px 16px;
-  background: rgba(220,38,38,0.06);
-  border: 1px solid rgba(220,38,38,0.2);
+  /* Het vlak mag iets zwaarder nu het op donker ligt: 6% rood op bijna-zwart
+     is geen vlak meer maar ruis. */
+  background: rgba(248,113,113,0.10);
+  border: 1px solid rgba(248,113,113,0.32);
   border-radius: 10px;
-  /* Stond op var(--error), en --error bestaat nergens in dit bestand. Een
-     var() zonder fallback naar een ongedefinieerde custom property maakt de
-     declaratie ongeldig, dus erfde de tekst de kleur van de ouder: #F9F9F9 op
-     een lichtroze vlak. De enige foutmelding die de gebruiker op het
-     inlogscherm te zien krijgt, was dus onleesbaar. Vaste waarde, want dit
-     paneel is altijd licht (zie --login-text) en volgt het thema niet. */
-  color: #B42318;
+  /* Deze regel heeft twee keer eerder een onleesbare foutmelding opgeleverd,
+     allebei op dezelfde manier: de kleur werd gekozen voor het paneel van
+     toen, en het paneel veranderde.
+
+     Eerst stond hier var(--error) -- een custom property die in dit bestand
+     nergens bestaat. Een var() zonder fallback maakt de hele declaratie
+     ongeldig, dus erfde de tekst #F9F9F9 van de ouder: wit op lichtroze.
+     Daarna #B42318, correct op het witte paneel (7,6:1) en nu 2,61:1 op
+     #1E1B16 -- opnieuw de enige foutmelding die deze gebruiker te zien
+     krijgt, opnieuw onleesbaar.
+
+     Nu dezelfde tint als colorDanger in CLERK_APPEARANCE, zodat onze eigen
+     foutmelding en die van Clerk niet uit elkaar kunnen lopen: 6,20:1. */
+  color: #F87171;
   font-size: 13px;
   font-weight: 500;
   text-align: center;
@@ -2260,6 +2324,21 @@ button.brand-dot { border: none; padding: 0; }
   padding: 0;
   width: 100%;
   gap: 18px;
+  /* Clerk zet hier margin: -1px -1px 0. Dat is zijn eigen truc om de kaart
+     over de 1px rand van zijn omhulsel heen te trekken -- correct, zolang die
+     rand er is. Wij halen hem hierboven weg (border: none), en dan compenseert
+     die negatieve marge niets meer: hij verschuift het HELE Clerk-formulier
+     1px omhoog en 1px naar links.
+
+     Gemeten: onze segmentschakelaar stond op x=56,5 en elk Clerk-element --
+     de Google-knop, het invoerveld, de hoofdknop -- op x=55,5. Eén pixel scheef
+     over de volle hoogte van het formulier, met als zichtbaar gevolg dat de
+     bovenrand van de Google-knop onder de schakelaar vandaan piepte. Precies
+     de vlek die op het inlogscherm te zien was.
+
+     Niet op te lossen met padding, want de verschuiving zit in de marge; en
+     niet met top, want het element is niet gepositioneerd. */
+  margin: 0;
 }
 
 /* Clerks eigen kop weg. Het paneel heeft er al een, in Space Grotesk en in de
@@ -2273,8 +2352,12 @@ button.brand-dot { border: none; padding: 0; }
 #clerk-signin .cl-socialButtonsBlockButton {
   width: 100%;
   height: 46px;
-  background: var(--login-panel);
-  border: 1px solid var(--login-border);
+  /* Niet --login-panel: dan heeft de knop dezelfde kleur als het paneel eronder
+     en leunt hij volledig op zijn rand. Op wit viel dat niet op; op donker is
+     een vlak dat NIET optilt geen knop. Zelfde tint als de actieve pil, zodat
+     alles wat je kunt indrukken op dit scherm op dezelfde hoogte ligt. */
+  background: var(--login-panel-lift);
+  border: 1px solid var(--login-field-line);
   border-radius: 10px;
   box-shadow: none;
   transition: border-color .15s ease, background .15s ease;
@@ -2332,7 +2415,7 @@ button.brand-dot { border: none; padding: 0; }
   box-sizing: border-box;
   padding: 0 14px;
   background: var(--login-input-bg);
-  border: 1px solid var(--login-border);
+  border: 1px solid var(--login-field-line);
   border-radius: 10px;
   font-family: 'Inter', sans-serif;
   font-size: 15px;
@@ -13248,16 +13331,25 @@ async function clerkToken() {
    wachtwoord vergeten) die we nooit los gestyled hebben. */
 var CLERK_APPEARANCE = {
   variables: {
-    /* Zand als VULLING is --accent-c, maar Clerk gebruikt colorPrimary ook voor
-       tekst en randen, en #E8D7B1 haalt op wit 1,8:1. Dit is de diepere tint
-       uit dezelfde familie die het paneel al gebruikt voor zand-als-tekst. */
-    colorPrimary:       '#8A6D2E',
+    /* Deze vijf zijn de spiegel van de --login-* tokens bij #login-page, en ze
+       zijn meeverhuisd toen dat paneel donker werd. Bleven ze staan, dan waren
+       de schermen die we NIET met de hand stylen -- verificatiecode, wachtwoord
+       vergeten, foutmeldingen -- bijna-zwarte tekst op een bijna-zwart paneel.
+       Precies het soort scherm dat je zelf nooit ziet omdat je er als
+       ingelogde ontwikkelaar niet meer komt. */
+    /* Zand als VULLING is --accent-c; Clerk gebruikt colorPrimary ook voor tekst
+       en randen. Op wit moest dat de diepe tint #8A6D2E zijn (1,8:1 voor
+       #E8D7B1 was onleesbaar); op dit donkere paneel is het --accent-ink. */
+    colorPrimary:       '#F0E4C8',
     colorBackground:    'transparent',
-    colorText:          '#18160F',
-    colorTextSecondary: '#6B6558',
-    colorInputBackground: '#F7F6F2',
-    colorInputText:     '#18160F',
-    colorDanger:        '#B42318',
+    colorText:          '#F9F9F9',
+    colorTextSecondary: '#B5B5B5',
+    colorInputBackground: '#14120E',
+    colorInputText:     '#F9F9F9',
+    /* #B42318 haalt op #1E1B16 nog maar 2,61:1 -- een foutmelding die je juist
+       moet kunnen lezen op het moment dat je al vastloopt. Dit is dezelfde rode
+       familie, opgetild tot 6,20:1. */
+    colorDanger:        '#F87171',
     borderRadius:       '10px',
     fontFamily:         'Inter, sans-serif',
     fontFamilyButtons:  '"Space Grotesk", sans-serif',

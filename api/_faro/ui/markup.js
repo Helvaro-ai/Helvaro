@@ -350,14 +350,22 @@ function subPages(t) {
    mutually exclusive states of one control. Arrow keys move between them for
    free, and a screen reader says "CRM, selected, 1 of 2". */
 function navCta(t) {
-  /* De kant van Faro draagt zijn eigen merkteken: dezelfde bol als op de
-     landingspagina, alleen klein en stil. Zonder animatie -- op 14px is een
-     draaiende bol in de navigatie geen sfeer maar geflikker, en hij staat
-     naast tekst die je moet kunnen lezen.
+  /* De kant van Faro draagt zijn eigen merkteken: Faro zelf.
 
-     aria-hidden, want het pictogram zegt niets wat het label niet al zegt;
-     een schermlezer hoort anders "afbeelding, Faro". */
-  const merk = '<span class="hv-switch__orb" aria-hidden="true"></span>';
+     Hier stond een gouden bol -- dezelfde conic-gradient als de grote bol op
+     de landingspagina, klein en stil. Die bol was een abstractie van Faro op
+     een plek waar Faro een gezicht heeft: hij staat als valk op de
+     landingspagina, in de intro na het inloggen, en in elke statusafbeelding
+     (falcon-idle, falcon-thinking, falcon-success). Alleen de schakelaar --
+     precies de knop die je naar hem toe brengt -- toonde een cirkel.
+
+     Nu het echte pictogram, hetzelfde bestand dat de rest van de app gebruikt.
+     Op 16px is de kop nog herkenbaar; de bol was op die maat toch al een stip.
+
+     aria-hidden en een lege alt, want het pictogram zegt niets wat het label
+     ernaast niet al zegt; een schermlezer hoort anders "afbeelding, Faro". */
+  const merk = '<img class="hv-switch__merk" src="/faro/faro-icon.webp" alt="" '
+             + 'width="16" height="16" aria-hidden="true" loading="lazy" decoding="async">';
   const tab = (id, label, sel, icoon) => `
       <button class="hv-switch__tab${sel ? ' active' : ''}" id="hv-switch-${id}"
               type="button" role="radio" aria-checked="${sel ? 'true' : 'false'}"
