@@ -392,6 +392,57 @@ body.hv-mode-ai .faro-rail {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color 150ms ease, background 150ms ease;
 }
+/* ── De rij in de gesprekkenlijst ────────────────────────────────────────
+   Was één knop; is nu een rij van drie: ster, titel, menu. Een <button> in een
+   <button> is ongeldige HTML en wordt door de browser uit elkaar getrokken,
+   dus de buitenkant is een div.
+
+   De ster en het menu staan standaard op opacity 0 en komen op hover en op
+   focus. Op een aanraakscherm bestaat hover niet, dus daar staan ze altijd aan
+   -- anders is de enige manier om een gesprek te hernoemen onvindbaar. */
+.faro-convo-rij {
+  display: flex; align-items: center; gap: var(--sp-1);
+  border-radius: var(--r-sm); position: relative;
+}
+.faro-convo-rij:hover { background: var(--hover); }
+.faro-convo-rij.active { background: var(--champagne-dim); }
+.faro-convo-rij.active .faro-convo { color: var(--sand-on-surface); }
+.faro-convo-ster, .faro-convo-menu {
+  flex: 0 0 auto;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  color: var(--text-muted); font-size: var(--fs-small); line-height: 1;
+  opacity: 0; transition: opacity 150ms ease, color 150ms ease;
+}
+.faro-convo-rij:hover .faro-convo-ster,
+.faro-convo-rij:hover .faro-convo-menu,
+.faro-convo-ster:focus-visible, .faro-convo-menu:focus-visible { opacity: 1; }
+/* Een gemarkeerd gesprek blijft altijd zichtbaar gemarkeerd: de ster is dan
+   geen bedieningselement meer maar informatie. */
+.faro-convo-ster.aan { opacity: 1; color: var(--champagne); }
+.faro-convo-ster:hover, .faro-convo-menu:hover { color: var(--text); }
+@media (hover: none) and (pointer: coarse) {
+  .faro-convo-ster, .faro-convo-menu { opacity: 1; }
+}
+
+/* Het menu hangt aan de rij, niet aan de body: dan schuift het mee als de
+   lijst scrollt in plaats van los in het scherm te blijven staan. */
+.faro-convo-menu-pop {
+  position: absolute; top: 100%; right: 0; z-index: 40;
+  min-width: 150px; padding: var(--sp-1);
+  background: var(--bg-card-alt); border: 1px solid var(--border-bright);
+  border-radius: var(--r-sm); box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+.faro-convo-menu-pop button {
+  display: block; width: 100%; text-align: left;
+  padding: var(--sp-2) var(--sp-3); border: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: var(--fs-small);
+  border-radius: var(--r-sm); cursor: pointer;
+}
+.faro-convo-menu-pop button:hover { background: var(--hover); }
+.faro-convo-menu-pop button.gevaar { color: var(--red-ink, #F4A4A4); }
+
 .faro-convo:hover { color: var(--text); background: var(--hover); }
 .faro-convo.active { color: var(--sand-on-surface); background: var(--champagne-dim); }
 
