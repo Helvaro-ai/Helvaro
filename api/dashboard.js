@@ -14048,7 +14048,7 @@ function formatDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
   if (isNaN(dt)) return d;
-  return dt.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return dt.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function timeAgo(date) {
@@ -14768,7 +14768,7 @@ function taskDueLabel(due) {
   if (due < today) return { label: 'Verlopen', cls: 'overdue' };
   if (due === today) return { label: 'Vandaag', cls: 'today' };
   const d = new Date(due);
-  return { label: d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }), cls: '' };
+  return { label: d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }), cls: '' };
 }
 
 async function patchStatus(id, status) {
@@ -15959,7 +15959,7 @@ function renderResultaten(d) {
     return;
   }
 
-  const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString('nl-NL');
+  const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString(LOCALE);
   const fmtNum  = v => v == null ? '—' : v;
   const fmtSec  = v => v == null ? 'geen data' : (v < 60 ? Math.round(v) + 's' : Math.round(v / 60) + 'm');
 
@@ -19275,10 +19275,10 @@ async function renderCalendar() {
   });
 
   // Range label
-  const startM = days[0].toLocaleDateString('nl-NL', { month: 'short' });
-  const endM   = days[6].toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
-  const label  = startM === days[6].toLocaleDateString('nl-NL', { month: 'short' })
-    ? days[0].toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })
+  const startM = days[0].toLocaleDateString(LOCALE, { month: 'short' });
+  const endM   = days[6].toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
+  const label  = startM === days[6].toLocaleDateString(LOCALE, { month: 'short' })
+    ? days[0].toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })
     : startM + '. ' + endM;
   const rangeEl = document.getElementById('cal-range-label');
   if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
@@ -21433,7 +21433,7 @@ function runGlobalSearch() {
     const score = l.leadScore !== null && l.leadScore !== undefined ? l.leadScore : '';
     const phonePart = l.telefoon ? \`\${l.telefoon}\` : '';
     const bronPart = l.bron ? \`· \${l.bron}\` : '';
-    const datePart = l.datum ? \`· \${new Date(l.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}\` : '';
+    const datePart = l.datum ? \`· \${new Date(l.datum).toLocaleDateString(LOCALE,{day:'numeric',month:'short'})}\` : '';
     const meta = [phonePart, bronPart, datePart].filter(Boolean).join(' ');
     const isQualified = l.qualified === true || l.qualified === 'true' || l.qualified === 1;
     const hasAppointment = l.afspraakGeboekt === true || l.afspraakGeboekt === 'true' || l.afspraakGeboekt === 1;
@@ -21647,7 +21647,7 @@ function renderPipeline() {
     const cards = col.leads.map(l => {
       const sc = l.leadScore || 0;
       const scCls = sc >= 8 ? 'score-green' : sc >= 5 ? 'score-orange' : sc > 0 ? 'score-red' : 'score-gray';
-      const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
+      const dateStr = l.datum ? new Date(l.datum).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' }) : '';
       return \`<div class="pipeline-card" draggable="true" ondragstart="pipelineDragStart(event,'\${escJs(String(l.id))}')" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead)openPanel(lead);})()">
         <div class="pipeline-card-name">\${escHtml(l.naam) || '—'}</div>
         <div class="pipeline-card-meta">
@@ -21682,7 +21682,7 @@ function renderPipeline() {
       .filter(l => pipelineStageOf(l) !== 'lost')
       .reduce((sum, l) => sum + parseDealValue(l.verwachteWaarde), 0);
     const valueFormatted = pipelineValue > 0
-      ? '€' + pipelineValue.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+      ? '€' + pipelineValue.toLocaleString(LOCALE, { maximumFractionDigits: 0 })
       : null;
     summaryEl.innerHTML = \`<div class="pipeline-chip"><span>Totaal</span><span class="pipeline-chip-count">\${total}</span></div>\`
       + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('')
@@ -21732,7 +21732,7 @@ function renderGesprekken() {
       const last = msgs[msgs.length - 1];
       preview = last ? (last.content || '').slice(0, 50) + ((last.content || '').length > 50 ? '...' : '') : '';
     } catch {}
-    const dateStr = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' }) : '';
+    const dateStr = l.datum ? new Date(l.datum).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' }) : '';
     return \`<div class="conv-list-item" id="conv-item-\${escHtml(String(l.id))}" onclick="openConversation('\${escJs(String(l.id))}')" >
       <div class="conv-list-item-name">
         <span>\${escHtml(l.naam) || '—'}</span>
@@ -21934,7 +21934,7 @@ function renderRevenueGoal() {
   }, 0);
   const goal = (Number.isFinite(stored) && stored > 0) ? stored : suggestRevenueGoal(current);
   const pct = goal > 0 ? Math.min(100, Math.round(current / goal * 100)) : 0;
-  const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
+  const fmt = v => '€' + new Intl.NumberFormat(LOCALE).format(Math.round(v));
 
   const el = document.getElementById('revenue-goal-current');
   const tgt = document.getElementById('revenue-goal-target');
@@ -21976,7 +21976,7 @@ function renderAnalyse() {
 
   // Revenue & Afspraak Analytics
   (function() {
-    const fmt = v => '€' + new Intl.NumberFormat('nl-NL').format(Math.round(v));
+    const fmt = v => '€' + new Intl.NumberFormat(LOCALE).format(Math.round(v));
 
     // Gesloten omzet: sum from afspraak.gesloten for leads that showed up
     let geslotenOmzet = 0;
@@ -22261,7 +22261,7 @@ function exportPDF() {
   const leads = state.leads || [];
   const qualified = leads.filter(l => l.qualified);
   const total = leads.length;
-  const now = new Date().toLocaleDateString('nl-NL', { day:'2-digit', month:'long', year:'numeric' });
+  const now = new Date().toLocaleDateString(LOCALE, { day:'2-digit', month:'long', year:'numeric' });
   const clientName = state.clientName || 'Client';
 
   // Header
@@ -22331,7 +22331,7 @@ function exportPDF() {
     const tel  = (l.telefoon || '—').slice(0,18);
     const bron = (l.bron || '—').slice(0,18);
     const sc   = String(l.leadScore || '—');
-    const dat  = l.datum ? new Date(l.datum).toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    const dat  = l.datum ? new Date(l.datum).toLocaleDateString(LOCALE,{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     doc.text(naam, 16, y+5);
     doc.text(tel,  66, y+5);
     doc.text(bron, 106, y+5);
@@ -23187,7 +23187,7 @@ async function downloadPiComparePDF() {
     const { jsPDF } = window.jspdf || window;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const clientName = state.clientName || 'Client';
-    const now = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' });
+    const now = new Date().toLocaleDateString(LOCALE, { day: '2-digit', month: 'long', year: 'numeric' });
 
     doc.setFillColor(18, 18, 18);
     doc.rect(0, 0, 210, 26, 'F');
