@@ -1164,20 +1164,46 @@ const actTools = [
       let gelezen = null;
       const link = String((args && args.link) || '').trim();
 
-      if (link && dealer) {
-        /* De pagina uitlezen. Mislukt dat, dan is dat GEEN fout: de dealer
-           krijgt gewoon de kaart met wat hij zelf meegaf, plus de link. Beter
-           een half ingevulde fiche die hij afmaakt dan een foutmelding. */
-        try {
-          const vehicles = require('../_vehicles');
-          gelezen = await vehicles.importeerUitLink(ctx.projectCode, link, { userId: (ctx && ctx.userId) || 'faro' });
-          velden = Object.assign({}, gelezen.concept);
-        } catch (e) {
-          console.warn('[add_listing] link uitlezen mislukt:', e && e.code, e && e.message);
+      /* ── Een link uitlezen ────────────────────────────────────────────────
+         Hier stond `if (link && dealer)` met als enige alternatief
+         `velden.link = link`. Gevolg: een DEALER die een AutoScout24-link
+         plakte kreeg zijn fiche ingevuld, en een MAKELAAR die een Immoweb-link
+         plakte kreeg niets. De link werd bewaard als los veld, `naam` bleef
+         leeg -- dat is `velden.adres` -- en Faro antwoordde:
+
+             "Ik weet nog niet welk pand het is. Geef een link naar het
+              zoekertje, of het adres."
+
+         Op een bericht dat een link naar het zoekertje WAS. De omschrijving van
+         dit gereedschap belooft die link bovendien met zoveel woorden
+         ("AutoScout24, Immoweb, ...") en zegt "bij een link hoef je verder
+         niets in te vullen".
+
+         api/_properties.js heeft al een importeerUitLink die precies hetzelfde
+         doet als die van _vehicles -- pagina ophalen, model laten uitlezen,
+         foto's van de PAGINA en niet van het model. Hij werd alleen nergens
+         vanuit Faro aangeroepen; de importknop op het Panden-scherm gebruikt
+         hem wel. De functie was er, de weg ernaartoe niet.
+
+         Voor bouw, keuken en renovatie blijft het bij bewaren: die hebben geen
+         catalogus om iets in te zetten. */
+      if (link) {
+        const catalogus = _vertical.heeftAanbod(vertical);
+        if (!catalogus) {
           velden.link = link;
+        } else {
+          /* Mislukt het uitlezen, dan is dat GEEN fout: de klant krijgt gewoon
+             de kaart met wat hij zelf meegaf, plus de link. Beter een half
+             ingevulde fiche die hij afmaakt dan een foutmelding. */
+          try {
+            const mod = dealer ? require('../_vehicles') : require('../_properties');
+            gelezen = await mod.importeerUitLink(ctx.projectCode, link, { userId: (ctx && ctx.userId) || 'faro' });
+            velden = Object.assign({}, gelezen.concept);
+          } catch (e) {
+            console.warn('[add_listing] link uitlezen mislukt:', e && e.code, e && e.message);
+            velden.link = link;
+          }
         }
-      } else if (link) {
-        velden.link = link;
       }
 
       /* Wat het model zelf meegaf WINT van wat er op de pagina stond. Wie
@@ -1214,13 +1240,31 @@ const actTools = [
         if (velden.kw)           regels.push('Vermogen: ' + velden.kw + ' kW');
         if (velden.kleur)        regels.push('Kleur: ' + velden.kleur);
         if (velden.autoscout)    regels.push('Aanbodnummer herkend, dus WhatsApp-leads uit die advertentie worden automatisch aan deze auto gekoppeld.');
-      } else if (velden.plaats) {
-        regels.push('Gemeente: ' + velden.plaats);
+      } else {
+        /* De pandkant toonde alleen de gemeente. Zolang een makelaar alles zelf
+           intypte klopte dat -- meer wist Faro toch niet. Nu de link WEL
+           uitgelezen wordt komen er slaapkamers, oppervlakte en EPC mee, en
+           dan is een kaart die daar niets van laat zien een kaart waarop je
+           niet kunt controleren of de import gelukt is. Precies wat de
+           dealerkant hierboven al deed. */
+        if (velden.plaats)      regels.push('Gemeente: ' + velden.plaats);
+        if (velden.type)        regels.push('Type: ' + velden.type);
+        if (velden.slaapkamers) regels.push('Slaapkamers: ' + velden.slaapkamers);
+        if (velden.oppervlakte) regels.push('Bewoonbaar: ' + velden.oppervlakte + ' m2');
+        if (velden.epc)         regels.push('EPC: ' + velden.epc);
       }
       if (gelezen && gelezen.ontbreekt && gelezen.ontbreekt.length) {
         regels.push('Nog aan te vullen: ' + gelezen.ontbreekt.join(', ') + '.');
       }
-      if (gelezen && gelezen.confidence && gelezen.confidence < 0.5) {
+      /* Twee namen voor hetzelfde getal: _vehicles geeft `confidence` terug,
+         _properties `zekerheid`. Dat viel niet op zolang alleen de dealerkant
+         hier langskwam -- lees je alleen `confidence`, dan is de waarschuwing
+         "kijk dit even na" op de pandkant stilletjes onbereikbaar. Beide lezen
+         is hier goedkoper dan één van de twee modules hernoemen: die namen
+         staan ook in hun eigen tests en in de importknop op het Panden-scherm. */
+      const zeker = gelezen && (gelezen.confidence !== undefined && gelezen.confidence !== null
+        ? gelezen.confidence : gelezen.zekerheid);
+      if (zeker !== undefined && zeker !== null && zeker < 0.5) {
         regels.push('Ik was hier niet zeker van -- kijk het even na voor je bevestigt.');
       }
 

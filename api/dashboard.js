@@ -7185,16 +7185,55 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
   padding: 20px 22px; display: flex; flex-direction: column;
 }
-.fm-option-hdr { margin-bottom: 12px; position: relative; }
+/* ── De kop van een integratiekaart ───────────────────────────────────────
+   Het label AANBEVOLEN stond hier op position:absolute met top:-6px en right:-6px
+   in een position:relative kop. Dat werkt zolang de titel kort is; is hij dat
+   niet, dan gaat het label er gewoon overheen liggen. Gemeten op het echte
+   scherm: "Floating WhatsApp button on your site" werd voor 66% bedekt door
+   "RECOMMENDED" -- twee woorden over elkaar, precies op de kaart die de klant
+   moet lezen om te kiezen hoe hij het formulier op zijn site zet.
+
+   En het wordt erger per taal, niet beter: het label is vertaald, en
+   "AANBEVOLEN" is langer dan "RECOMMENDED". Een absolute plaatsing kan daar
+   niet op meebewegen, want ze weet niet hoe breed de buurman is.
+
+   Nu een raster. Het label krijgt een eigen kolom naast de titel, de
+   onderregel loopt onder allebei door. De titel kan dan nooit onder het label
+   komen, in geen enkele taal en bij geen enkele lengte -- het raster geeft ze
+   allebei hun eigen ruimte in plaats van ze op dezelfde plek te leggen.
+
+   Kaarten zonder label doen gewoon mee: die vullen kolom 1 en laten kolom 2
+   leeg, wat op auto nul breed is. */
+.fm-option-hdr {
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: start;
+}
 .fm-option-rec {
-  position: absolute; top: -6px; right: -6px;
+  grid-column: 2; grid-row: 1;
+  justify-self: end;
   background: rgba(var(--success-rgb),.15); color: var(--green-ink);
   font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
   text-transform: uppercase; letter-spacing: .04em;
   border: 1px solid rgba(var(--success-rgb),.3);
+  /* Het label mag zelf niet afbreken; het is twee woorden en een afgebroken
+     keurmerk leest als een fout. De titel ernaast mag dat wel. */
+  white-space: nowrap;
 }
-.fm-option-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-.fm-option-sub { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin: 0; }
+.fm-option-title {
+  grid-column: 1; grid-row: 1;
+  /* Zonder dit weigert een rasteritem smaller te worden dan zijn langste
+     woord, en duwt een lange titel het label alsnog van de kaart af. */
+  min-width: 0;
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+}
+.fm-option-sub {
+  grid-column: 1 / -1; grid-row: 2;
+  font-size: 12px; color: var(--text-muted); line-height: 1.55; margin: 0;
+}
 .fm-code {
   width: 100%; padding: 11px 12px; background: var(--bg-card-alt);
   border: 1px solid var(--border); border-radius: 8px;
@@ -16259,6 +16298,58 @@ var HV_WOORDEN = {
   renovatie: { een: 'proj.one', meer: 'proj.many', Een: 'proj.One', afspraak: 'renov.sitevisit' }
 };
 
+/* ── Het pictogram bij het aanbod-item ────────────────────────────────────
+   Hoort niet in HV_WOORDEN: dat is een tabel van VERTAALSLEUTELS, en dit is
+   letterlijke opmaak. Ze door elkaar zetten zou vw() een uitzondering geven
+   zoals 'tabel' er al een is, en dan zijn het er twee.
+
+   Waarom dit een tabel is en geen if: hier stond
+
+       if (isDealer()) icoon.innerHTML = <auto>;
+
+   zonder else. Dat zette het pictogram op een auto en zette het nooit meer
+   terug. Gemeten in de browser: van vastgoed naar autohandel werd het een auto,
+   terug naar vastgoed bleef het een auto, en daarna bleef het een auto voor
+   bouw, keuken en renovatie ook -- terwijl het LABEL wel elke keer netjes
+   meeging. Een navigatie-item met een auto ernaast en het woord "Panden"
+   erin, tot de pagina herladen werd.
+
+   Een tabel kan dat niet: elke markt noemt zijn pictogram, en zetVertical zet
+   het onvoorwaardelijk. Wat een markt niet noemt valt terug op vastgoed --
+   dezelfde veilige kant als overal.
+
+   Bouw, keuken en renovatie hebben geen catalogus en hun item staat niet in de
+   navigatie. Ze krijgen tóch een pictogram, want verborgen is niet hetzelfde
+   als onbereikbaar: het item bestaat nog, en als het ooit weer getoond wordt
+   hoort er niet het pictogram van de vorige markt naast te staan. */
+var HV_ICOON_HUIS =
+  '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>';
+var HV_ICOON_AUTO =
+  '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/>'
+  + '<circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>';
+/* Troffel voor bouw en renovatie, en een fornuis voor keukens. Bewust dezelfde
+   lijnstijl als de rest van de navigatie: 24x24, 2px, ronde uiteinden. */
+var HV_ICOON_BOUW =
+  '<path d="M14 3l7 7-3 3-7-7z"/><path d="M11.5 6.5 3 15v6h6l8.5-8.5"/>';
+var HV_ICOON_KEUKEN =
+  '<rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/>'
+  + '<circle cx="8" cy="7" r="1"/><circle cx="12" cy="7" r="1"/>';
+
+var HV_ICONEN = {
+  vastgoed:  HV_ICOON_HUIS,
+  dealership: HV_ICOON_AUTO,
+  bouw:      HV_ICOON_BOUW,
+  keuken:    HV_ICOON_KEUKEN,
+  renovatie: HV_ICOON_BOUW
+};
+
+/* Het pictogram van de HUIDIGE markt, als complete svg. */
+function hvIcoonAanbod() {
+  var binnen = HV_ICONEN[hvVertical] || HV_ICONEN.vastgoed;
+  return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+    + ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + binnen + '</svg>';
+}
+
 function vw(sleutel) {
   /* Door de vertaaltabel, niet met vaste Nederlandse woorden. Een Waalse
      dealer hoort geen Nederlandse navigatie te zien, en dat gold voor de rest
@@ -16398,10 +16489,10 @@ function zetVertical(v, config) {
     var icoon = nav.querySelector('.nav-icon');
     nav.textContent = '';
     if (icoon) {
-      if (isDealer()) {
-        icoon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-          + '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/></svg>';
-      }
+      /* ONVOORWAARDELIJK. Hier stond een if (isDealer()) zonder else, dus het
+         pictogram werd één keer een auto en daarna nooit meer iets anders --
+         ook niet terug naar het huis. Zie HV_ICONEN. */
+      icoon.innerHTML = hvIcoonAanbod();
       nav.appendChild(icoon);
     }
     nav.appendChild(document.createTextNode(' ' + vw('Meer')));
@@ -23931,9 +24022,19 @@ async function loadFacturatie(force) {
   if (!tabVers('facturatie', force)) return;
   var notice = document.getElementById('fa-notice');
   if (!notice) return;
-  document.getElementById('fa-plan-naam').textContent = 'Laden...';
-  document.getElementById('fa-verdeling').innerHTML = '';
-  document.getElementById('fa-boekingen').innerHTML = '';
+  /* Zelfde reden als bij loadPanden: niet leegmaken wat er al staat.
+     Hier kwam er nog iets bij -- "Laden..." stond hardgecodeerd in het
+     Nederlands, op een scherm dat verder in vier talen bestaat. Een Waalse
+     klant zag dus een Nederlands woord op zijn factuurpagina, elke keer dat
+     hij hem opende. Nu blijft de vorige plannaam gewoon staan tot de nieuwe
+     er is, dus er valt niets meer te vertalen. */
+  var naamEl = document.getElementById('fa-plan-naam');
+  var alGevuld = naamEl && naamEl.textContent.trim() !== '' && naamEl.textContent.trim() !== '—';
+  if (!alGevuld) {
+    if (naamEl) naamEl.textContent = '\\u2014';
+    document.getElementById('fa-verdeling').innerHTML = '';
+    document.getElementById('fa-boekingen').innerHTML = '';
+  }
   notice.style.display = 'none';
 
   try {
@@ -24126,7 +24227,20 @@ async function loadPanden(force) {
   var leeg   = document.getElementById('pd-empty');
   var notice = document.getElementById('pd-notice');
   if (!grid) return;
-  grid.innerHTML = '${laadvlak('tegel', 6)}';
+  /* ── Alleen skeletten als er nog NIETS staat ─────────────────────────────
+     Dit wiste de tegels onvoorwaardelijk en zette er zes grijze vlakken voor
+     in de plaats, ook als het scherm al vol stond. Binnen de TTL van 60s
+     merkte je dat niet -- daarbuiten flitste elk bezoek aan dit scherm van
+     inhoud naar skeletten en terug, terwijl de gegevens meestal ongewijzigd
+     terugkwamen. Dat is precies het "hij laadt opnieuw en het schokt" dat je
+     ziet als je heen en weer klikt.
+
+     Skeletten horen bij LEGE staat, niet bij verversen. Staat er al iets, dan
+     blijft dat staan tot het nieuwe antwoord er is; dan wisselt het in één
+     keer. Mislukt het ophalen, dan houdt de klant wat hij had in plaats van
+     een leeg scherm -- ook dat is beter dan wat er stond. */
+  var alGevuld = grid.children.length > 0 && !grid.querySelector('.laadvlak');
+  if (!alGevuld) grid.innerHTML = '${laadvlak('tegel', 6)}';
   leeg.style.display = 'none';
   notice.style.display = 'none';
 
