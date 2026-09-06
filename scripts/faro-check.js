@@ -483,9 +483,11 @@ function finish() {
   // mode once; this makes that a build failure rather than a screenshot review.
   console.log('\ncontrast');
   const css = require('../api/_faro/ui/tokens').css();
+  /* Alleen donker. Faro's lichte variant is verwijderd (zie de kop van
+     api/_faro/ui/tokens.js); de regel die hier het lichte canvas nameet had
+     daarna niets meer om te meten en zou op een ontbrekend token afgaan. */
   const pairs = [
     ['dark',  tokenValue(css, '--sand-on-surface'), '#101010'],
-    ['light', tokenValue(css, '--sand-on-surface', '[data-theme="light"]'), '#FAF8F4'],
   ];
   for (const [theme, fg, bg] of pairs) {
     if (!fg) { fail(`${theme}: --sand-on-surface not found`); continue; }
@@ -498,7 +500,7 @@ function finish() {
   // Every quick-action hue must clear 3:1 against its canvas — icons are
   // non-text content, so 3:1 is the applicable threshold.
   const hues = ['amber', 'slate', 'teal', 'terracotta', 'rose', 'gold', 'green', 'orange', 'sky'];
-  for (const [theme, scope, bg] of [['dark', null, '#1A1A1A'], ['light', '[data-theme="light"]', '#FFFFFF']]) {
+  for (const [theme, scope, bg] of [['dark', null, '#1A1A1A']]) {
     const bad = [];
     for (const h of hues) {
       const v = tokenValue(css, `--ic-${h}`, scope);

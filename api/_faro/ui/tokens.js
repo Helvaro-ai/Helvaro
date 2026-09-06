@@ -100,34 +100,27 @@ function css() {
   --ic-sky-bg:        rgba(111, 169, 199, 0.18);
 }
 
-/* The light theme keeps the same accents; only the canvas flips. The AI
-   workspace is not exempt from the light variant DESIGN-SYSTEM.md deliberately
-   kept cheap — see its "two deliberate deviations", point 2. */
-[data-theme="light"] {
-  --faro-canvas:      #FAF8F4;
-  --faro-surface:     #FFFFFF;
-  --faro-raised:      #F4F1EA;
-  --faro-hairline:    rgba(184, 157, 115, 0.24);
-  --faro-input-bg:    #FFFFFF;
-  --warm-sand-glow: rgba(184, 157, 115, 0.10);
+/* ── Er is geen lichte Faro meer ───────────────────────────────────────────
+   Hier stond een [data-theme="light"]-blok: een tweede canvas (#FAF8F4), een
+   tweede stel negen pictogramkleuren, en een tweede --sand-on-surface. Faro is
+   weg op verzoek, en dat is niet alleen minder werk -- het is dezelfde keuze
+   die de zijbalk, het merkpaneel en sinds vandaag het inlogscherm al maken.
 
-  /* The icon hues are darkened for light mode. The dark-theme values are tuned
-     to sit on #1A1A1A; on white they read washed out and lose the contrast the
-     glyph needs. Same hues, deeper. Tints stay low-alpha and work on both. */
-  --ic-amber:       #B87A22;
-  --ic-slate:       #3F7099;
-  --ic-teal:        #2E7B74;
-  --ic-terracotta:  #A85F3F;
-  --ic-rose:        #955264;
-  --ic-gold:        #8F7A4C;
-  --ic-green:       #3B7D53;
-  --ic-orange:      #AE5F26;
-  --ic-sky:         #437E9E;
+   Faro IS donker. Hij staat als valk op een donker canvas, de bol op de
+   landingspagina gloeit, de invoerbalk heeft een gloedring, de mediakaarten
+   liggen op bijna-zwart. Dat op wit zetten is geen thema maar een tweede
+   ontwerp -- en het was het enige oppervlak in de app dat er twee had.
 
-  /* Deep enough to clear 4.5:1 on the light canvas while still reading as sand
-     rather than brown text. */
-  --sand-on-surface: #6B5836;
-}
+   Praktisch gevolg: dit bestand hoeft niet langer twee palettes gelijk te
+   houden. Er was er één van de twee die je nooit ziet als je zelf in het
+   donker werkt, en juist die viel stil kapot -- de actieve pil van de
+   schakelaar heeft in het lichte thema ooit op 1,15:1 gestaan.
+
+   De CRM-kant houdt zijn lichte thema gewoon; #btn-theme in de topbalk
+   schakelt die nog steeds. Alleen Faro's eigen werkvlak doet niet meer mee.
+
+   Wat hierboven staat geldt dus altijd. Twee controles in scripts/faro-check.js
+   die het lichte palet nameten zijn mee verwijderd. */
 
 /* ═══ Scales ══════════════════════════════════════════════════════════════
    Colour tokens flip with the theme; these do not, so they live outside both
