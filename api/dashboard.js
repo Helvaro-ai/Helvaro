@@ -15516,7 +15516,7 @@ async function sendClientInvite() {
       setTimeout(() => { btn.disabled = false; btn.textContent = 'Nog een sturen'; }, 3000);
     }
   } catch {
-    errEl.textContent = 'Netwerkfout. Controleer je verbinding.';
+    errEl.textContent = tr('tst.ietsMis');
     errEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Stuur uitnodigingsmail';
@@ -15603,7 +15603,7 @@ async function submitNewClient() {
     btn.disabled = false;
     btn.onclick = () => { closeNewClientModal(); state.adminLoaded = false; loadAdminClients(); };
   } catch {
-    errEl.textContent = 'Netwerkfout. Probeer opnieuw.';
+    errEl.textContent = tr('tst.ietsMis');
     errEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Aanmaken';
@@ -20554,7 +20554,7 @@ async function wizardVolgende() {
       _wizardConfig.country = landKeuze;
       _wizardConfig.language = taalKeuze;
     } catch (e) {
-      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      fout.textContent = tr('tst.opslaanMis');
       knop.disabled = false; knop.textContent = 'Volgende';
       return;
     }
@@ -20583,7 +20583,7 @@ async function wizardVolgende() {
          is aangekomen. */
       zetVertical(gekozen ? gekozen.vertical : 'vastgoed', _wizardConfig);
     } catch (e) {
-      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      fout.textContent = tr('tst.opslaanMis');
       knop.disabled = false; knop.textContent = 'Volgende';
       return;
     }
@@ -20605,7 +20605,7 @@ async function wizardVolgende() {
       _wizardConfig = _wizardConfig || {};
       _wizardConfig.aiInstructions = over;
     } catch (e) {
-      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      fout.textContent = tr('tst.opslaanMis');
       knop.disabled = false; knop.textContent = 'Volgende';
       return;
     }
@@ -20631,7 +20631,7 @@ async function wizardVolgende() {
       _wizardConfig.aiName = naam;
       _wizardConfig.autoReplyTpl = begroet;
     } catch (e) {
-      fout.textContent = 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.';
+      fout.textContent = tr('tst.opslaanMis');
       knop.disabled = false; knop.textContent = 'Volgende';
       return;
     }
@@ -21337,7 +21337,7 @@ async function handleLogin() {
     // Airtable). Spinner blijft dus alleen tijdens auth zelf (~0.5s).
     await startDashboard();
   } catch (err) {
-    errEl.textContent = 'Verbindingsfout. Probeer opnieuw.';
+    errEl.textContent = tr('tst.ietsMis');
     errEl.classList.add('visible');
     btn.querySelector('span').textContent = 'Inloggen';
     btn.classList.remove('loading');
@@ -22658,7 +22658,7 @@ async function loadPiStyles() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Stijlen laden mislukt</div>';
+      if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">' + escHtml(tr('leeg.stijlen')) + '</div>';
       if (roomGrid) roomGrid.innerHTML = '';
       return;
     }
@@ -22937,7 +22937,7 @@ async function loadPiGallery() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({ mode: 'property-list' })
     });
-    if (!r.ok) { wrap.innerHTML = '<div class="pi-empty">Kon galerij niet laden</div>'; return; }
+    if (!r.ok) { wrap.innerHTML = '<div class="pi-empty">' + escHtml(tr('leeg.galerij')) + '</div>'; return; }
     const d = await r.json().catch(() => ({}));
     renderPiGallery(Array.isArray(d.images) ? d.images : []);
   } catch (err) {
@@ -23833,7 +23833,7 @@ function vraagBtwEnBetaal(planId, planNaam) {
       veld.select();
     } catch (e) {
       status.style.color = 'var(--error-ink,#F4A4A4)';
-      status.textContent = 'Er ging iets mis. Controleer je verbinding.';
+      status.textContent = tr('tst.ietsMis');
       ga.disabled = false;
       ga.textContent = 'Naar de betaalpagina';
     }
@@ -23978,7 +23978,7 @@ function vraagAccountVerwijdering() {
       status.textContent = (d && d.error) || 'Wissen lukte niet. Mail ons op hello@helvaro.pro.';
     } catch (e) {
       status.style.color = 'var(--error-ink,#F4A4A4)';
-      status.textContent = 'Er ging iets mis. Controleer je verbinding.';
+      status.textContent = tr('tst.ietsMis');
     }
     delete bevestig.dataset.bezig;
     bevestig.disabled = false;
@@ -24080,7 +24080,7 @@ async function koopAanvragen() {
     toast(tr('tst.aanvraagVerstuurd'), 'success');
   } catch (e) {
     fout.style.display = '';
-    fout.textContent = 'Er ging iets mis. Controleer je verbinding en probeer opnieuw.';
+    fout.textContent = tr('tst.ietsMis');
   } finally {
     btn.disabled = false; btn.textContent = 'Afrekenen';
   }
@@ -24880,7 +24880,7 @@ async function savePand() {
       await loadPanden(true);
     } catch (e) {
       fout.style.display = '';
-      fout.textContent = 'Opslaan mislukt. Controleer je verbinding.';
+      fout.textContent = tr('tst.opslaanMis');
     } finally {
       btn.disabled = false; btn.textContent = 'Opslaan';
     }
@@ -24929,7 +24929,7 @@ async function savePand() {
     await loadPanden();
   } catch (e) {
     fout.style.display = '';
-    fout.textContent = 'Opslaan mislukt. Controleer je verbinding.';
+    fout.textContent = tr('tst.opslaanMis');
   } finally {
     btn.disabled = false; btn.textContent = 'Opslaan';
   }
@@ -25489,7 +25489,7 @@ async function sendTestMessage() {
     result.textContent = 'Verzonden naar +' + d.sentTo + '. check je WhatsApp!';
   } catch (err) {
     result.className = 'ap-test-result err';
-    result.textContent = 'Netwerkfout. Probeer opnieuw';
+    result.textContent = tr('tst.ietsMis');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = original; }
   }

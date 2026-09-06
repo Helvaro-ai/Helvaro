@@ -1202,6 +1202,52 @@ const TEKST = {
   'tst.netwerkLater': { nl: 'Netwerkfout. Probeer later opnieuw', fr: 'Erreur réseau. Réessayez plus tard', en: 'Network error. Try again later', de: 'Netzwerkfehler. Versuchen Sie es später erneut' },
   'tst.netwerkResultaten': { nl: 'Netwerkfout bij laden resultaten', fr: 'Erreur réseau lors du chargement des résultats', en: 'Network error while loading results', de: 'Netzwerkfehler beim Laden der Ergebnisse' },
   'tst.ietsMis': { nl: 'Er ging iets mis. Controleer je verbinding.', fr: 'Un problème est survenu. Vérifiez votre connexion.', en: 'Something went wrong. Check your connection.', de: 'Etwas ist schiefgelaufen. Prüfen Sie Ihre Verbindung.' },
+
+  /* ── Eén storing, één zin ────────────────────────────────────────────────
+     Er stonden zes bijna-gelijke varianten HARDGECODEERD in api/dashboard.js:
+     "Netwerkfout. Controleer je verbinding.", "Netwerkfout. Probeer opnieuw.",
+     "Verbindingsfout. Probeer opnieuw.", "Er ging iets mis. Controleer je
+     verbinding en probeer opnieuw.", "Opslaan mislukt. Controleer je
+     verbinding." en "Opslaan lukte niet. Controleer je verbinding en probeer
+     opnieuw."
+
+     Twee dingen mis. Ze waren alle zes Nederlands op een scherm dat in vier
+     talen bestaat -- en juist een foutmelding is het slechtste moment om een
+     klant een vreemde taal voor te schotelen, want hij is dan al vastgelopen.
+     En zes formuleringen voor één toestand laten een product rommelig lijken
+     zonder dat er iets aan informatie bij komt.
+
+     Nu twee zinnen: iets ging mis (tst.ietsMis, bestond al), en het opslaan
+     ging mis. Dat onderscheid is het enige dat de klant echt helpt -- bij het
+     tweede weet hij dat zijn invoer nog niet bewaard is. */
+  'tst.opslaanMis': { nl: 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.',
+                      fr: 'L\u2019enregistrement a \u00e9chou\u00e9. V\u00e9rifiez votre connexion et r\u00e9essayez.',
+                      en: 'Saving failed. Check your connection and try again.',
+                      de: 'Speichern fehlgeschlagen. Pr\u00fcfen Sie Ihre Verbindung und versuchen Sie es erneut.' },
+
+  /* ── Lege staten ─────────────────────────────────────────────────────────
+     Ook deze stonden hardgecodeerd. Een leeg scherm is het eerste dat een
+     nieuwe klant ziet, in elke taal. */
+  'leeg.leads':      { nl: 'Geen leads gevonden', fr: 'Aucun lead trouv\u00e9', en: 'No leads found', de: 'Keine Leads gefunden' },
+  'leeg.leadsKort':  { nl: 'Geen leads', fr: 'Aucun lead', en: 'No leads', de: 'Keine Leads' },
+  'leeg.gesprekken': { nl: 'Nog geen gesprekken', fr: 'Pas encore de conversations', en: 'No conversations yet', de: 'Noch keine Gespr\u00e4che' },
+  'leeg.berichten':  { nl: 'Geen berichten', fr: 'Aucun message', en: 'No messages', de: 'Keine Nachrichten' },
+  'leeg.data':       { nl: 'Geen data', fr: 'Aucune donn\u00e9e', en: 'No data', de: 'Keine Daten' },
+  'leeg.galerij':    { nl: 'Kon galerij niet laden', fr: 'Impossible de charger la galerie', en: 'Could not load the gallery', de: 'Galerie konnte nicht geladen werden' },
+  'leeg.stijlen':    { nl: 'Stijlen laden mislukt', fr: '\u00c9chec du chargement des styles', en: 'Could not load styles', de: 'Stile konnten nicht geladen werden' },
+
+  /* ── Knoppen die overal terugkomen ───────────────────────────────────────
+     'Annuleren' en 'Klaar' bestonden al onder crm.cancel en dash.s.done; die
+     namen zeggen niet dat ze algemeen zijn, dus hier een neutrale set. Ze
+     verwijzen bewust NIET naar elkaar: een sleutel die doorverwijst naar een
+     andere is een indirectie die niemand verwacht bij het lezen. */
+  'btn.opslaan':   { nl: 'Opslaan',   fr: 'Enregistrer', en: 'Save',     de: 'Speichern' },
+  'btn.sluiten':   { nl: 'Sluiten',   fr: 'Fermer',      en: 'Close',    de: 'Schlie\u00dfen' },
+  'btn.volgende':  { nl: 'Volgende',  fr: 'Suivant',     en: 'Next',     de: 'Weiter' },
+  'btn.bewerken':  { nl: 'Bewerken',  fr: 'Modifier',    en: 'Edit',     de: 'Bearbeiten' },
+  'btn.versturen': { nl: 'Versturen', fr: 'Envoyer',     en: 'Send',     de: 'Senden' },
+  'btn.verstuurd': { nl: 'Verstuurd', fr: 'Envoy\u00e9', en: 'Sent',    de: 'Gesendet' },
+  'btn.totaal':    { nl: 'Totaal',    fr: 'Total',       en: 'Total',    de: 'Gesamt' },
   'tst.sessieVerlopen': { nl: 'Je sessie is verlopen. Log opnieuw in', fr: 'Votre session a expiré. Reconnectez-vous', en: 'Your session expired. Sign in again', de: 'Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an' },
   'tst.emailNietGevonden': { nl: 'Kon je e-mailadres niet vinden. Log opnieuw in.', fr: 'Impossible de trouver votre adresse e-mail. Reconnectez-vous.', en: 'Couldn’t find your email address. Sign in again.', de: 'Ihre E-Mail-Adresse wurde nicht gefunden. Melden Sie sich erneut an.' },
   'tst.opslaanMislukt': { nl: 'Opslaan mislukt', fr: 'Échec de l’enregistrement', en: 'Couldn’t save', de: 'Speichern fehlgeschlagen' },
