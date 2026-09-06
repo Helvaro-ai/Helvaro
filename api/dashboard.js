@@ -8375,6 +8375,43 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .cal-att-btn.yes { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color: var(--green-ink); }
 .cal-att-btn.yes:hover { background:rgba(16,185,129,0.2); }
+/* ── Verzetten en annuleren op de afspraakkaart ──────────────────────────
+   Dezelfde maat en vorm als de aanwezigheidsknoppen eronder, want het zijn
+   even zware acties op dezelfde kaart. 44px hoog: dit staat ook op een
+   telefoon, en WCAG 2.5.8 vraagt 24, maar een knop die je per ongeluk raakt
+   annuleert hier een afspraak -- dan is ruim beter dan net genoeg. */
+.cal-modal-acties {
+  display: flex; gap: 8px; margin-top: 14px;
+  padding-top: 14px; border-top: 1px solid var(--divider);
+}
+.cal-act-btn {
+  flex: 1; min-height: 44px; padding: 10px 14px;
+  background: var(--bg-card-alt); border: 1px solid var(--border-bright);
+  border-radius: 10px; color: var(--text); font-family: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.cal-act-btn:hover:not(:disabled) { background: var(--hover); border-color: var(--accent-bright); }
+.cal-act-btn:disabled { opacity: .55; cursor: default; }
+.cal-act-btn.cal-act-primair { background: var(--accent-c); color: var(--on-accent); border-color: transparent; }
+.cal-act-btn.cal-act-danger  { color: var(--red-ink); border-color: rgba(var(--error-rgb),.35); }
+.cal-act-btn.cal-act-danger:hover:not(:disabled) { background: rgba(var(--error-rgb),.10); border-color: var(--red-ink); }
+
+.cal-act-form { margin-top: 12px; }
+.cal-act-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.cal-act-input {
+  width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--border-bright); border-radius: 10px;
+  color: var(--text); font-family: inherit; font-size: 14px;
+  /* Zonder dit tekent de browser de datumkiezer in zijn lichte thema: een wit
+     kalendertje uit een donker veld. */
+  color-scheme: dark;
+}
+.cal-act-input:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.cal-act-sub { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+.cal-act-rij { display: flex; gap: 8px; margin-top: 12px; }
+.cal-act-status { min-height: 18px; margin-top: 8px; font-size: 12px; line-height: 1.45; }
+
 .cal-att-btn.no  { background:rgba(var(--error-rgb),0.1); border-color:rgba(var(--error-rgb),0.3); color: var(--red-ink); }
 .cal-att-btn.no:hover  { background:rgba(var(--error-rgb),0.2); }
 .cal-att-followup-input, .cal-att-followup-textarea {
@@ -18269,21 +18306,23 @@ function openCalEvent(idx) {
   const start  = new Date(ev.startTime);
   const end    = new Date(ev.endTime);
   const fmtT   = d => String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  const fmtD   = d => d.toLocaleDateString('nl-NL', { weekday:'long', day:'numeric', month:'long' });
+  /* Stond op 'nl-NL': een Franse makelaar las "maandag 8 september" op de
+     kaart van zijn eigen afspraak. LOCALE komt uit de taal van de pagina. */
+  const fmtD   = d => d.toLocaleDateString(LOCALE, { weekday:'long', day:'numeric', month:'long' });
 
-  title.textContent = escHtml(ev.name || 'Afspraak');
+  title.textContent = escHtml(ev.name || tr('cal.ev.title'));
 
   const durMin  = Math.round((end - start) / 60000) || 30;
   const durH    = Math.floor(durMin / 60);
   const durM    = durMin % 60;
   const durLbl  = durH > 0 ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`) : \`\${durMin}min\`;
   const rows = [
-    { label: 'Datum',    val: fmtD(start) },
-    { label: 'Tijd',     val: fmtT(start) + ' – ' + fmtT(end) },
-    { label: 'Duur',     val: durLbl },
-    { label: 'Type',     val: ev.eventType || '—' },
-    { label: 'Telefoon', val: ev.phone     || '—' },
-    ...(ev.notes ? [{ label: 'Notities', val: ev.notes }] : [])
+    { label: tr('cal.ev.date'),  val: fmtD(start) },
+    { label: tr('cal.ev.time'),  val: fmtT(start) + ' – ' + fmtT(end) },
+    { label: tr('cal.ev.dur'),   val: durLbl },
+    { label: tr('cal.ev.type'),  val: ev.eventType || '—' },
+    { label: tr('cal.ev.phone'), val: ev.phone     || '—' },
+    ...(ev.notes ? [{ label: tr('cal.ev.notes'), val: ev.notes }] : [])
   ].map(r => \`<div class="cal-modal-row"><span class="cal-modal-row-label">\${r.label}</span><span class="cal-modal-row-val">\${escHtml(String(r.val))}</span></div>\`).join('');
 
   // Note: this used to also render joinUrl/rescheduleUrl/cancelUrl buttons for
@@ -18342,8 +18381,128 @@ function openCalEvent(idx) {
     }
   }
 
-  body.innerHTML = rows + attSection;
+  /* ── Verzetten en annuleren ────────────────────────────────────────────
+     De server kon dit al: api/leads.js kent 'appointment-update', mét
+     tenantcontrole, mét het opnieuw scherpstellen van de herinnering bij een
+     nieuwe tijd. Alleen was er geen knop. De vorige knoppen waren
+     Calendly-links en zijn weggehaald toen Calendly eruit ging (zie de
+     opmerking hierboven); de vervanging is nooit aangesloten. Een makelaar kon
+     een afspraak dus wel MAKEN en niet meer kwijt.
+
+     Alleen op wat nog KOMT. Een afspraak van gisteren verzetten heeft geen
+     betekenis, en daar staat de aanwezigheidsvraag al. Externe items uit de
+     Google-agenda hebben geen knop en komen hier niet eens: die openen niet.
+
+     Geannuleerde afspraken tonen geen knoppen meer -- er valt niets te
+     annuleren aan iets dat al geannuleerd is. */
+  let actieSectie = '';
+  const toekomst = start.getTime() > Date.now();
+  if (toekomst && ev.id && ev.status !== 'cancelled') {
+    const idJs = escJs(String(ev.id));
+    actieSectie = \`<div class="cal-modal-acties" id="cal-acties">
+      <button class="cal-act-btn" onclick="calVerzetOpen('\${idJs}')">\${escHtml(tr('cal.ev.move'))}</button>
+      <button class="cal-act-btn cal-act-danger" onclick="calAnnuleerOpen('\${idJs}')">\${escHtml(tr('cal.ev.cancel'))}</button>
+    </div><div id="cal-act-paneel"></div>\`;
+  }
+
+  body.innerHTML = rows + attSection + actieSectie;
   overlay.classList.add('open');
+}
+
+/* ── De twee acties ─────────────────────────────────────────────────────────
+   Allebei met een tussenstap. Verzetten vraagt een nieuwe tijd, annuleren
+   vraagt een bevestiging -- en allebei zeggen ze eerlijk dat de LEAD geen
+   bericht krijgt. Dat laatste is geen detail: een makelaar die denkt dat zijn
+   klant op de hoogte is, staat er over een week alleen. Een bericht sturen kan
+   niet zonder goedgekeurd WhatsApp-sjabloon, en dat is er niet. */
+function calActPaneel(html) {
+  const p = document.getElementById('cal-act-paneel');
+  if (p) p.innerHTML = html;
+}
+
+function calVerzetOpen(id) {
+  const ev = (calState.lastEvents || []).find(e => e.id === id);
+  if (!ev) return;
+  /* De invoer voorgevuld met de HUIDIGE tijd, in de vorm die datetime-local
+     wil (lokale tijd, geen Z). new Date().toISOString() zou de tijd in UTC
+     zetten en dus twee uur verschuiven in de zomer. */
+  const d = new Date(ev.startTime);
+  const pad = n => String(n).padStart(2, '0');
+  const lok = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+            + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  calActPaneel(\`<div class="cal-act-form">
+    <label class="cal-act-label" for="cal-nieuwe-tijd">\${escHtml(tr('cal.ev.moveTo'))}</label>
+    <input type="datetime-local" id="cal-nieuwe-tijd" class="cal-act-input" value="\${lok}">
+    <p class="cal-act-sub">\${escHtml(tr('cal.ev.moveSub'))}</p>
+    <div class="cal-act-rij">
+      <button class="cal-act-btn" onclick="calActPaneel('')">\${escHtml(tr('cal.ev.back'))}</button>
+      <button class="cal-act-btn cal-act-primair" onclick="calVerzetDoe('\${escJs(id)}')">\${escHtml(tr('cal.ev.save'))}</button>
+    </div>
+    <div class="cal-act-status" role="status" aria-live="polite" id="cal-act-status"></div>
+  </div>\`);
+}
+
+function calAnnuleerOpen(id) {
+  calActPaneel(\`<div class="cal-act-form">
+    <div class="cal-act-label">\${escHtml(tr('cal.ev.cancelQ'))}</div>
+    <p class="cal-act-sub">\${escHtml(tr('cal.ev.cancelSub'))}</p>
+    <div class="cal-act-rij">
+      <button class="cal-act-btn" onclick="calActPaneel('')">\${escHtml(tr('cal.ev.back'))}</button>
+      <button class="cal-act-btn cal-act-danger" onclick="calAnnuleerDoe('\${escJs(id)}')">\${escHtml(tr('cal.ev.cancel'))}</button>
+    </div>
+    <div class="cal-act-status" role="status" aria-live="polite" id="cal-act-status"></div>
+  </div>\`);
+}
+
+async function calAfspraakUpdate(id, velden, gelukt) {
+  const st = document.getElementById('cal-act-status');
+  const knoppen = document.querySelectorAll('#cal-act-paneel button');
+  knoppen.forEach(b => { b.disabled = true; });
+  if (st) { st.style.color = 'var(--text-muted)'; st.textContent = '...'; }
+  try {
+    const r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify(Object.assign({ mode: 'appointment-update', id }, velden))
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok !== false) {
+      if (st) { st.style.color = 'var(--success-ink)'; st.textContent = gelukt; }
+      /* De week opnieuw ophalen, want de cache klopt niet meer. tabVergeet
+         bestaat voor precies dit: een schrijfactie maakt de cache onjuist. */
+      try { calState.cache = {}; } catch (e) {}
+      setTimeout(() => {
+        const ov = document.getElementById('cal-event-modal');
+        if (ov) ov.classList.remove('open');
+        try { renderAppointments(); } catch (e) {}
+      }, 1200);
+      return;
+    }
+    if (st) { st.style.color = 'var(--error-ink)'; st.textContent = (d && d.error) || tr('cal.ev.fail'); }
+  } catch (e) {
+    if (st) { st.style.color = 'var(--error-ink)'; st.textContent = tr('cal.ev.fail'); }
+  }
+  knoppen.forEach(b => { b.disabled = false; });
+}
+
+function calVerzetDoe(id) {
+  const inp = document.getElementById('cal-nieuwe-tijd');
+  if (!inp || !inp.value) return;
+  const nieuw = new Date(inp.value);
+  if (isNaN(nieuw.getTime())) return;
+  /* Een afspraak in het verleden zetten mag niet: dan verdwijnt hij uit beeld
+     en gaat de herinnering nooit meer af. Liever hier tegenhouden dan een
+     makelaar laten ontdekken dat zijn afspraak weg is. */
+  if (nieuw.getTime() < Date.now()) {
+    const st = document.getElementById('cal-act-status');
+    if (st) { st.style.color = 'var(--error-ink)'; st.textContent = tr('cal.ev.past'); }
+    return;
+  }
+  calAfspraakUpdate(id, { startTime: nieuw.toISOString(), status: 'rescheduled' }, tr('cal.ev.done'));
+}
+
+function calAnnuleerDoe(id) {
+  calAfspraakUpdate(id, { status: 'cancelled' }, tr('cal.ev.gone'));
 }
 
 /* Show follow-up form inside the calendar event modal */

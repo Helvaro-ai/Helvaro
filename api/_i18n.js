@@ -1126,6 +1126,47 @@ const TEKST = {
   'cal.prev': { nl: 'Vorige week', fr: 'Semaine précédente', en: 'Previous week', de: 'Vorherige Woche' },
   'cal.next': { nl: 'Volgende week', fr: 'Semaine suivante', en: 'Next week', de: 'Nächste Woche' },
   'cal.book': { nl: 'Boek afspraak', fr: 'Planifier un rendez-vous', en: 'Book appointment', de: 'Termin buchen' },
+
+  /* ── De afspraakkaart ──────────────────────────────────────────────────
+     Deze labels stonden hardgecodeerd in het Nederlands in openCalEvent(),
+     op een scherm dat verder in vier talen bestaat. Een Waalse makelaar zag
+     "Datum / Tijd / Duur / Telefoon" op de kaart van zijn eigen afspraak.
+     Meegekomen met het annuleren en verzetten hieronder, want het is dezelfde
+     functie en een half vertaalde kaart is niet minder raar dan een hele. */
+  'cal.ev.title':   { nl: 'Afspraak',  fr: 'Rendez-vous', en: 'Appointment', de: 'Termin' },
+  'cal.ev.date':    { nl: 'Datum',     fr: 'Date',        en: 'Date',        de: 'Datum' },
+  'cal.ev.time':    { nl: 'Tijd',      fr: 'Heure',       en: 'Time',        de: 'Zeit' },
+  'cal.ev.dur':     { nl: 'Duur',      fr: 'Durée',       en: 'Duration',    de: 'Dauer' },
+  'cal.ev.type':    { nl: 'Type',      fr: 'Type',        en: 'Type',        de: 'Art' },
+  'cal.ev.phone':   { nl: 'Telefoon',  fr: 'Téléphone',   en: 'Phone',       de: 'Telefon' },
+  'cal.ev.notes':   { nl: 'Notities',  fr: 'Notes',       en: 'Notes',       de: 'Notizen' },
+
+  /* ── Annuleren en verzetten ────────────────────────────────────────────
+     De server kon dit al (mode 'appointment-update' in api/leads.js, met
+     tenantcontrole en het opnieuw scherpstellen van de herinnering), maar er
+     was geen knop. De vorige knoppen waren Calendly-links en zijn weggehaald
+     toen Calendly eruit ging; de vervanging is nooit aangesloten. */
+  'cal.ev.move':    { nl: 'Verzetten', fr: 'Reporter',    en: 'Reschedule',  de: 'Verschieben' },
+  'cal.ev.cancel':  { nl: 'Annuleren', fr: 'Annuler',     en: 'Cancel',      de: 'Absagen' },
+  'cal.ev.moveTo':  { nl: 'Nieuwe datum en tijd', fr: 'Nouvelle date et heure', en: 'New date and time', de: 'Neues Datum und Uhrzeit' },
+  'cal.ev.save':    { nl: 'Verzetten', fr: 'Reporter',    en: 'Reschedule',  de: 'Verschieben' },
+  'cal.ev.back':    { nl: 'Terug',     fr: 'Retour',      en: 'Back',        de: 'Zurück' },
+  'cal.ev.cancelQ': { nl: 'Deze afspraak annuleren?', fr: 'Annuler ce rendez-vous ?', en: 'Cancel this appointment?', de: 'Diesen Termin absagen?' },
+  /* Eerlijk over wat er NIET gebeurt. De lead krijgt geen bericht: daarvoor is
+     een goedgekeurd WhatsApp-sjabloon nodig en dat is er niet. Dat verzwijgen
+     zou een makelaar laten denken dat zijn klant op de hoogte is. */
+  'cal.ev.cancelSub': { nl: 'De afspraak verdwijnt uit je agenda. De lead krijgt hier géén bericht over — bel of app hem zelf.',
+                        fr: 'Le rendez-vous disparaît de votre agenda. Le lead n’en sera PAS informé — appelez-le ou écrivez-lui vous-même.',
+                        en: 'The appointment leaves your calendar. The lead is NOT notified — call or message them yourself.',
+                        de: 'Der Termin verschwindet aus Ihrem Kalender. Der Lead wird NICHT benachrichtigt — rufen Sie ihn selbst an.' },
+  'cal.ev.moveSub': { nl: 'De herinnering wordt opnieuw scherpgesteld op de nieuwe tijd. De lead krijgt hier géén bericht over.',
+                      fr: 'Le rappel est recalé sur la nouvelle heure. Le lead n’en sera PAS informé.',
+                      en: 'The reminder is re-armed for the new time. The lead is NOT notified.',
+                      de: 'Die Erinnerung wird auf die neue Zeit neu gesetzt. Der Lead wird NICHT benachrichtigt.' },
+  'cal.ev.done':    { nl: 'Afspraak verzet.',    fr: 'Rendez-vous reporté.', en: 'Appointment rescheduled.', de: 'Termin verschoben.' },
+  'cal.ev.gone':    { nl: 'Afspraak geannuleerd.', fr: 'Rendez-vous annulé.', en: 'Appointment cancelled.', de: 'Termin abgesagt.' },
+  'cal.ev.fail':    { nl: 'Dat lukte niet. Probeer het opnieuw.', fr: 'Échec. Réessayez.', en: 'That did not work. Try again.', de: 'Das hat nicht geklappt. Erneut versuchen.' },
+  'cal.ev.past':    { nl: 'Deze afspraak is al geweest.', fr: 'Ce rendez-vous est passé.', en: 'This appointment has already happened.', de: 'Dieser Termin ist bereits vorbei.' },
   'cal.noResult': { nl: 'Afspraken zonder resultaat', fr: 'Rendez-vous sans résultat', en: 'Appointments without outcome', de: 'Termine ohne Ergebnis' },
   'cal.toCall': { nl: 'Te Bellen', fr: 'À appeler', en: 'To call', de: 'Anzurufen' },
   'cal.toCall.sub': { nl: 'Gekwalificeerd · nog geen afspraak', fr: 'Qualifié · pas encore de rendez-vous', en: 'Qualified · no appointment yet', de: 'Qualifiziert · noch kein Termin' },
