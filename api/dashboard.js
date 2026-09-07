@@ -784,7 +784,7 @@ ${faro.navCta}
           <span class="icon">⇓</span>
           <span class="btn-label">CSV Export</span>
         </button>
-            <button class="search-pill" id="btn-search" title="Zoeken (Ctrl+K)">
+            <button class="search-pill" id="btn-search" title="${T('top.zoeken')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
               <span class="search-pill-label">${T('hdr.search')}</span>
               <kbd class="search-pill-kbd">⌘K</kbd>
@@ -796,7 +796,7 @@ ${faro.navCta}
               </button>
               <div class="notif-dropdown" id="notif-dropdown" style="display:none">
                 <div class="notif-dd-head">
-                  <span>Meldingen</span>
+                  <span>${T('top.meldingen')}</span>
                   <button class="notif-dd-clear" id="notif-dd-clear" onclick="clearNotifs()">Alles gelezen</button>
                 </div>
                 <div class="notif-dd-body" id="notif-dd-body"></div>
@@ -1462,7 +1462,7 @@ ${faro.navCta}
     <main class="page-content page" id="page-gesprekken" style="padding:0">
       <div class="conv-layout">
         <div class="conv-list" id="conv-list">
-          <div class="conv-list-header">Gesprekken</div>
+          <div class="conv-list-header">${T('nav.conversations')}</div>
           <div id="conv-list-body">
             ${laadvlak('rij', 5)}
           </div>
@@ -2633,7 +2633,7 @@ ${faro.navCta}
           </div>
           <div class="settings-row settings-danger">
             <div>
-              <div class="settings-label">Uitloggen</div>
+              <div class="settings-label">${T('nav.logout')}</div>
               <div class="settings-label-sub">${T('set.logout.sub')}</div>
             </div>
             <button class="btn-icon" onclick="logout()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
@@ -3356,7 +3356,7 @@ ${faro.dock}
   <div class="search-modal" id="search-modal">
     <div class="search-modal-bar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input class="search-modal-input" id="search-modal-input" aria-label="${T('a11y.veld.zoeken')}" type="text" placeholder="Zoek op naam, telefoon, bron of samenvatting..." autocomplete="off" spellcheck="false">
+      <input class="search-modal-input" id="search-modal-input" aria-label="${T('a11y.veld.zoeken')}" type="text" placeholder="${T('top.zoekLead')}" autocomplete="off" spellcheck="false">
       <kbd class="search-kbd" id="search-esc-btn">Esc</kbd>
     </div>
     <div class="search-results" id="search-results">
@@ -3387,7 +3387,7 @@ ${faro.dock}
   <div id="koop-modal" role="dialog" aria-modal="true" aria-labelledby="koop-titel">
     <div class="koop-head">
       <div id="koop-titel">${T('fa.buy')}</div>
-      <button class="pd-modal-x" onclick="closeKoopModal()" aria-label="Sluiten">&times;</button>
+      <button class="pd-modal-x" onclick="closeKoopModal()" aria-label="${T('btn.sluiten')}">&times;</button>
     </div>
 
     <div class="koop-body">
@@ -3420,7 +3420,7 @@ ${faro.dock}
     </div>
 
     <div class="pd-modal-foot">
-      <button class="btn-icon" onclick="closeKoopModal()">Annuleren</button>
+      <button class="btn-icon" onclick="closeKoopModal()">${T('btn.annuleren')}</button>
       <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Afrekenen</button>
     </div>
   </div>
@@ -3431,7 +3431,7 @@ ${faro.dock}
   <div id="pd-modal" role="dialog" aria-modal="true" aria-labelledby="pd-modal-title">
     <div class="pd-modal-head">
       <div id="pd-modal-title">${T('prop.add')}</div>
-      <button class="pd-modal-x" onclick="closePandModal()" aria-label="Sluiten">&times;</button>
+      <button class="pd-modal-x" onclick="closePandModal()" aria-label="${T('btn.sluiten')}">&times;</button>
     </div>
     <div class="pd-modal-body">
       <!-- De snelste weg staat bovenaan: een link plakken en de rest laten
@@ -3634,7 +3634,7 @@ ${faro.dock}
       <div class="pd-modal-err" id="pd-modal-err" role="alert" style="display:none"></div>
     </div>
     <div class="pd-modal-foot">
-      <button class="btn-icon" onclick="closePandModal()">Annuleren</button>
+      <button class="btn-icon" onclick="closePandModal()">${T('btn.annuleren')}</button>
       <button class="btn-icon btn-primary-sm" id="pd-save-btn" onclick="savePand()">${T('ap.save')}</button>
     </div>
   </div>
@@ -3648,7 +3648,7 @@ ${faro.dock}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       </div>
       <div style="flex:1;min-width:0">
-        <div id="cal-book-title">Afspraak inplannen</div>
+        <div id="cal-book-title">${T('cb.titel')}</div>
         <div id="cal-book-subtitle"></div>
       </div>
       <button id="cal-book-close" aria-label="${T('a11y.close')}" onclick="closeCalBookModal()">
@@ -3664,9 +3664,9 @@ ${faro.dock}
 <div class="panel-backdrop" id="panel-backdrop"></div>
 <div class="detail-panel" id="detail-panel" role="dialog" aria-modal="true" aria-labelledby="panel-name" tabindex="-1">
   <div class="panel-header">
-    <button class="panel-close" id="panel-close" aria-label="Sluiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <button class="panel-close" id="panel-close" aria-label="${T('btn.sluiten')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="panel-avatar" id="panel-avatar">HV</div>
-    <div class="panel-name display-heading" id="panel-name">Lead naam</div>
+    <div class="panel-name display-heading" id="panel-name">${T('cb.leadNaam')}</div>
     <div class="panel-meta">
       <div class="panel-phone">
         <span></span>
@@ -3683,7 +3683,7 @@ ${faro.dock}
 <div class="cal-modal-overlay" id="cal-event-modal" onclick="closeCalModal(event)">
   <div class="cal-modal" id="cal-modal-inner">
     <div class="cal-modal-header">
-      <div class="cal-modal-header-title" id="cal-modal-title">Afspraak</div>
+      <div class="cal-modal-header-title" id="cal-modal-title">${T('cal.ev.title')}</div>
       <button class="cal-modal-close" onclick="closeCalModal()">&times;</button>
     </div>
     <div class="cal-modal-body" id="cal-modal-body"></div>
@@ -3718,7 +3718,7 @@ ${faro.dock}
       <div class="chk-biz-field-hint">${T('biz.append')}</div>
     </div>
     <div class="chk-biz-modal-actions">
-      <button class="chk-biz-cancel" onclick="closeBusinessInfoModal()">Annuleren</button>
+      <button class="chk-biz-cancel" onclick="closeBusinessInfoModal()">${T('btn.annuleren')}</button>
       <button class="chk-biz-save" id="chk-biz-save-btn" onclick="saveBusinessInfoFromChecklist()">${T('ap.save')}</button>
     </div>
   </div>
@@ -3752,7 +3752,7 @@ ${faro.dock}
   </div>
   <div class="hv-help-search">
     <input id="hv-help-q" type="search" autocomplete="off" spellcheck="false"
-           placeholder="Zoek in de hulp..." aria-label="Zoek in de hulp">
+           placeholder="${T('top.zoekHulp')}" aria-label="${T('top.zoekHulp')}">
   </div>
   <div class="hv-help-body" id="hv-help-body"></div>
   <div class="hv-help-foot">
@@ -4368,7 +4368,7 @@ function showTenantPending(clerk) {
 
   var out = document.createElement('button');
   out.type = 'button';
-  out.textContent = 'Uitloggen';
+  out.textContent = tr('nav.logout');
   out.style.cssText = 'padding:9px 16px;border:1px solid #E2E7F0;border-radius:10px;font-size:13px;font-weight:600;color:#5B6779;background:none;cursor:pointer';
   out.addEventListener('click', clerkSignOut);
 
@@ -5033,7 +5033,7 @@ function toonSupportModal(opties) {
   row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;align-items:center';
 
   const sluitBtn = document.createElement('button');
-  sluitBtn.textContent = 'Annuleren';
+  sluitBtn.textContent = tr('btn.annuleren');
   sluitBtn.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
 
   const stuurBtn = document.createElement('button');
@@ -5083,7 +5083,7 @@ function toonSupportModal(opties) {
       if (r.ok && d && d.ok) {
         statusEl.style.color = 'var(--success-ink,#8FD9A8)';
         statusEl.textContent = tr('sup.verstuurd');
-        stuurBtn.textContent = 'Verstuurd';
+        stuurBtn.textContent = tr('btn.verstuurd');
         veld.disabled = true;
         setTimeout(sluit, 1600);
         return;
@@ -5585,7 +5585,7 @@ function showCrmError(err) {
   retry.textContent = tr('sup.opnieuw');
   retry.addEventListener('click', function () {
     retry.disabled = true;
-    retry.textContent = 'Bezig…';
+    retry.textContent = tr('st.bezigPunt');
     refreshData().finally(function () {
       retry.disabled = false;
       retry.textContent = tr('sup.opnieuw');
@@ -5622,7 +5622,7 @@ function stopSkeletten() {
   document.querySelectorAll('.laadvlak').forEach(function (lv) {
     const leeg = document.createElement('div');
     leeg.className = 'laad-mislukt';
-    leeg.textContent = 'Niet opgehaald';
+    leeg.textContent = tr('st.nietOpgehaald');
     lv.replaceWith(leeg);
   });
   document.querySelectorAll('[aria-busy="true"]').forEach(function (el) {
@@ -5645,7 +5645,7 @@ function stopSkeletten() {
      voordat de lus hierboven hem in een streepje verandert. */
   document.querySelectorAll('.stat-label').forEach(function (lab) {
     const t = (lab.textContent || '').trim();
-    if (/^laden/i.test(t) || t === '—' || t === '') lab.textContent = 'Niet opgehaald';
+    if (/^laden/i.test(t) || t === '—' || t === '') lab.textContent = tr('st.nietOpgehaald');
   });
 }
 
@@ -6021,7 +6021,7 @@ async function sendClientInvite() {
   }
 
   btn.disabled = true;
-  btn.textContent = 'Versturen...';
+  btn.textContent = tr('sup.bezig');
 
   try {
     const resp = await fetch('/api/admin', {
@@ -6089,7 +6089,7 @@ async function submitNewClient() {
   const calendly = document.getElementById('nc-calendly').value.trim();
 
   errEl.style.display = 'none';
-  if (!name || !code) { errEl.textContent = 'Naam en projectcode zijn verplicht.'; errEl.style.display = 'block'; return; }
+  if (!name || !code) { errEl.textContent = tr('val.naamCode'); errEl.style.display = 'block'; return; }
 
   btn.disabled = true;
   btn.textContent = 'Aanmaken...';
@@ -7223,7 +7223,7 @@ async function sendVerificationEmailNow(btn) {
   const email = state.userEmail || '';
   if (!email) { toast(tr('tst.emailNietGevonden'), 'error'); return; }
   const original = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Versturen...'; }
+  if (btn) { btn.disabled = true; btn.textContent = tr('sup.bezig'); }
   try {
     const r = await fetch(\`\${API_BASE}/auth\`, {
       method:  'POST',
@@ -7394,7 +7394,7 @@ async function saveBusinessInfoFromChecklist() {
 
   const btn = document.getElementById('chk-biz-save-btn');
   const original = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Opslaan...'; }
+  if (btn) { btn.disabled = true; btn.textContent = tr('st.opslaanBezig'); }
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
@@ -7532,7 +7532,7 @@ function qualBadge(lead) {
 }
 
 function scorePill(score) {
-  if (score === null || score === undefined || score === 0) return '<span class="score-pill score-gray" title="Geen score">—</span>';
+  if (score === null || score === undefined || score === 0) return '<span class="score-pill score-gray" title="' + escHtml(tr('lp.geenScore')) + '">—</span>';
   const cls = score >= 8 ? 'score-green' : score >= 5 ? 'score-orange' : 'score-red';
   const title = score >= 8 ? 'Uitstekende match' : score >= 5 ? 'Gemiddelde match' : 'Slechte match';
   return \`<span class="score-pill \${cls}" title="\${title}">\${score}</span>\`;
@@ -7793,7 +7793,7 @@ function renderTable() {
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Je assistent voert het gesprek en kwalificeert automatisch</span></div>
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">Gekwalificeerde leads verschijnen hier met score en samenvatting</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">${T('lp.gekwUitleg')}</span></div>
         </div>
         <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
       </div>
@@ -8241,7 +8241,7 @@ function openPanel(lead) {
 
   bodyHTML += \`
     <div class="panel-section">
-      <div class="panel-section-title">Notities</div>
+      <div class="panel-section-title">${T('lp.notities')}</div>
       <div class="panel-notes-list" id="panel-notes-list">\${renderNotesList(nData.notes)}</div>
       <div class="panel-add-note">
         <textarea id="panel-note-input" placeholder="${T('lp.notitieToe')}" rows="2"></textarea>
@@ -8249,7 +8249,7 @@ function openPanel(lead) {
       </div>
     </div>
     <div class="panel-section">
-      <div class="panel-section-title">Taken</div>
+      <div class="panel-section-title">${T('lp.taken')}</div>
       <div class="panel-tasks-list" id="panel-tasks-list">\${renderTasksList(nData.tasks)}</div>
       <div class="panel-add-task">
         <input type="text" id="panel-task-input" placeholder="${T('lp.taakToe')}">
@@ -8775,7 +8775,7 @@ function renderNietBereikbaar() {
     const isEscalated = data.escalated && typeof data.escalated === 'object';
     const tag = isEscalated
       ? '<span class="nb-item-tag tag-escalated" title="' + escHtml(data.escalated.question || '') + '">Escalatie</span>'
-      : '<span class="nb-item-tag tag-waFailed">Niet bereikbaar</span>';
+      : '<span class="nb-item-tag tag-waFailed">' + escHtml(tr('lp.nietBereikbaar')) + '</span>';
     return \`<div class="nb-item" onclick="(function(){var l=state.leads.find(function(x){return String(x.id)==='\${escJs(String(lead.id))}';});if(l)openPanel(l);})()">
       <div class="nb-item-info">
         <div>\${tag}<span class="nb-item-name">\${escHtml(name)}</span></div>
@@ -9117,7 +9117,7 @@ function calAttStartEdit(leadId, verschenen) {
           <input id="cal-att-deal" class="cal-att-followup-input" type="text" value="\${escHtml(nd.afspraak?.gesloten||'')}" placeholder="bijv. €1.500" />
         </div>
         <div>
-          <div class="cal-att-followup-label">Notities</div>
+          <div class="cal-att-followup-label">${T('lp.notities')}</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">${T('ap.save')}</button>
@@ -9127,7 +9127,7 @@ function calAttStartEdit(leadId, verschenen) {
       <div class="cal-modal-att-label">Afspraak resultaat. Niet gekomen</div>
       <div class="cal-att-followup">
         <div>
-          <div class="cal-att-followup-label">Notitie</div>
+          <div class="cal-att-followup-label">${T('lp.notitie')}</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea">\${escHtml(nd.afspraak?.notitie||'')}</textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">${T('ap.save')}</button>
@@ -9142,7 +9142,7 @@ async function calAttSave(leadId, verschenen) {
   const deal   = dealEl ? dealEl.value.trim() : '';
   const note   = noteEl ? noteEl.value.trim() : '';
 
-  if (btn) { btn.disabled = true; btn.textContent = 'Opslaan...'; }
+  if (btn) { btn.disabled = true; btn.textContent = tr('st.opslaanBezig'); }
 
   await markAttendance(leadId, verschenen, deal, note);
 
@@ -9288,11 +9288,11 @@ function renderCalBookBody() {
   const dateNavHtml = \`<div>
     <div class="cb-label">${T('dash.col.date')}</div>
     <div class="cb-date-nav">
-      <button class="cb-date-btn" onclick="calBookNavDate(-1)" aria-label="Vorige dag" title="Vorige dag">
+      <button class="cb-date-btn" onclick="calBookNavDate(-1)" aria-label="${T('cb.vorigeDag')}" title="${T('cb.vorigeDag')}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <div class="cb-date-label">\${dateLbl}</div>
-      <button class="cb-date-btn" onclick="calBookNavDate(1)" aria-label="Volgende dag" title="Volgende dag">
+      <button class="cb-date-btn" onclick="calBookNavDate(1)" aria-label="${T('cb.volgendeDag')}" title="${T('cb.volgendeDag')}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
@@ -9335,7 +9335,7 @@ function renderCalBookBody() {
       <div class="cb-label">Koppel aan lead <span style="font-weight:400;text-transform:none;letter-spacing:0">(optioneel)</span></div>
       <div class="cb-lead-search">
         <input class="cb-lead-input" id="cb-lead-input" type="text"
-          placeholder="Zoek op naam..."
+          placeholder="${T('cb.zoekNaam')}"
           value="\${escHtml(calBookState.selectedLead ? (calBookState.selectedLead.naam || '') : '')}"
           oninput="calBookFilterLeads(this.value)"
           onfocus="calBookFilterLeads(this.value)"
@@ -9356,7 +9356,7 @@ function renderCalBookBody() {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px">
       <div>
         <div class="cb-label">${T('dash.col.name')}</div>
-        <input class="cb-field-input" id="cb-book-name" type="text" placeholder="Volledige naam"
+        <input class="cb-field-input" id="cb-book-name" type="text" placeholder="${T('cb.volledigeNaam')}"
           value="\${escHtml(calBookState.bookName)}"
           oninput="calBookState.bookName=this.value" />
       </div>
@@ -9380,7 +9380,7 @@ function renderCalBookBody() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         Boek afspraak om \${hh}:\${mm}
       </button>
-      <div class="cb-confirm-note">Afspraak wordt direct opgeslagen in je agenda</div>
+      <div class="cb-confirm-note">${T('cb.directInAgenda')}</div>
     </div>\`;
   }
 
@@ -9784,7 +9784,7 @@ function bannerAttYes(leadId) {
     <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="\${escHtml(tr('lp.gespreksNotitie'))}" style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
     <div style="display:flex;gap:6px">
       <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escJs(leadId)}')">${T('ap.save')}</button>
-      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escJs(leadId)}',false,'','');renderAttendanceBanner()">Niet</button>
+      <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escJs(leadId)}',false,'','');renderAttendanceBanner()">\${escHtml(tr('lp.nietKort'))}</button>
     </div>
   </div>\`;
 }
@@ -10083,7 +10083,7 @@ function renderProfile() {
   const openEl   = document.getElementById('pf-calendly-open');
   const pfCal    = document.getElementById('pf-calendly');
   if (statusEl) {
-    statusEl.textContent = 'Actief';
+    statusEl.textContent = tr('st.actief');
     // De achtergrond stond hier hardgecodeerd op een groen dat NIET in de
     // tokens voorkomt (#10B981), en de tekst op de vulkleur. Op de lichte
     // kaart gaf dat 2,87:1. Beide nu op de tokens, zodat dit meebeweegt met
@@ -10093,7 +10093,7 @@ function renderProfile() {
   }
   if (btnEl)  btnEl.style.display  = 'none';   // connect-knop verbergen
   if (openEl) openEl.style.display = 'none';   // externe link verbergen
-  if (pfCal)  pfCal.textContent = 'Je assistent boekt direct in het WhatsApp-gesprek';
+  if (pfCal)  pfCal.textContent = tr('set.booking.wa');
 
   // Info rows
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -10554,7 +10554,7 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
     let leadsHTML = '';
     if (qualLeads.length > 0) {
       leadsHTML = \`
-        <div class="panel-section-title" style="margin-top:16px">Gekwalificeerde leads</div>
+        <div class="panel-section-title" style="margin-top:16px">${T('lp.gekwalificeerd')}</div>
         <div class="rapport-leads-list">
           \${qualLeads.map(l => \`
             <div class="rapport-lead-item">
@@ -10792,7 +10792,7 @@ function pushRijBijwerken() {
 
 async function pushAanzetten() {
   var knop = document.getElementById('push-knop');
-  if (knop) { knop.disabled = true; knop.textContent = 'Bezig...'; }
+  if (knop) { knop.disabled = true; knop.textContent = tr('st.bezig'); }
 
   /* OneSignal kan nog aan het laden zijn als iemand meteen naar Instellingen
      gaat. Eerst zorgen dat de SDK draait, dan pas vragen. */
@@ -11102,7 +11102,7 @@ async function wizardVolgende() {
       fout.textContent = 'Kies een land en een taal.';
       return;
     }
-    knop.disabled = true; knop.textContent = 'Opslaan...';
+    knop.disabled = true; knop.textContent = tr('st.opslaanBezig');
     try {
       /* Land en taal gaan in één config-save mee. De server bewaart Country in
          een APARTE PATCH, want dat veld bestaat nog niet op elke Airtable-base
@@ -11113,7 +11113,7 @@ async function wizardVolgende() {
       _wizardConfig.language = taalKeuze;
     } catch (e) {
       fout.textContent = tr('tst.opslaanMis');
-      knop.disabled = false; knop.textContent = 'Volgende';
+      knop.disabled = false; knop.textContent = tr('btn.volgende');
       return;
     }
   }
@@ -11127,7 +11127,7 @@ async function wizardVolgende() {
     for (var mi = 0; mi < WIZARD_MARKTEN.length; mi++) {
       if (WIZARD_MARKTEN[mi].id === _wizardMarkt) gekozen = WIZARD_MARKTEN[mi];
     }
-    knop.disabled = true; knop.textContent = 'Opslaan...';
+    knop.disabled = true; knop.textContent = tr('st.opslaanBezig');
     try {
       /* Sector EN vertical. Sector is wat er in Airtable staat en wat de
          AI-toon stuurt; vertical is wat het dashboard leest. Ze samen
@@ -11142,7 +11142,7 @@ async function wizardVolgende() {
       zetVertical(gekozen ? gekozen.vertical : 'vastgoed', _wizardConfig);
     } catch (e) {
       fout.textContent = tr('tst.opslaanMis');
-      knop.disabled = false; knop.textContent = 'Volgende';
+      knop.disabled = false; knop.textContent = tr('btn.volgende');
       return;
     }
   }
@@ -11154,7 +11154,7 @@ async function wizardVolgende() {
       document.getElementById('wizard-bedrijf').focus();
       return;
     }
-    knop.disabled = true; knop.textContent = 'Opslaan...';
+    knop.disabled = true; knop.textContent = tr('st.opslaanBezig');
     try {
       await wizardBewaar({
         aiInstructions: over,
@@ -11164,7 +11164,7 @@ async function wizardVolgende() {
       _wizardConfig.aiInstructions = over;
     } catch (e) {
       fout.textContent = tr('tst.opslaanMis');
-      knop.disabled = false; knop.textContent = 'Volgende';
+      knop.disabled = false; knop.textContent = tr('btn.volgende');
       return;
     }
   }
@@ -11182,7 +11182,7 @@ async function wizardVolgende() {
       document.getElementById('wizard-welkomst').focus();
       return;
     }
-    knop.disabled = true; knop.textContent = 'Opslaan...';
+    knop.disabled = true; knop.textContent = tr('st.opslaanBezig');
     try {
       await wizardBewaar({ aiName: naam, autoReplyTpl: begroet });
       _wizardConfig = _wizardConfig || {};
@@ -11190,7 +11190,7 @@ async function wizardVolgende() {
       _wizardConfig.autoReplyTpl = begroet;
     } catch (e) {
       fout.textContent = tr('tst.opslaanMis');
-      knop.disabled = false; knop.textContent = 'Volgende';
+      knop.disabled = false; knop.textContent = tr('btn.volgende');
       return;
     }
   }
@@ -11232,7 +11232,7 @@ async function wizardWhatsAppStatus() {
       return;
     }
     if (d.klaar) {
-      badge.textContent = 'Klaar';
+      badge.textContent = tr('st.klaar');
       badge.style.color = 'var(--success-ink, #15803d)';
       uitleg.textContent = 'Je berichten in het ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je assistent antwoordt meteen. Een eigen nummer kan later.';
       return;
@@ -11727,7 +11727,7 @@ function wizardBouw() {
   var volgende = document.createElement('button');
   volgende.id = 'wizard-volgende';
   volgende.type = 'button';
-  volgende.textContent = 'Volgende';
+  volgende.textContent = tr('btn.volgende');
   volgende.style.cssText = 'padding:9px 20px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
 
   voet.appendChild(overslaan); voet.appendChild(vul); voet.appendChild(terug); voet.appendChild(volgende);
@@ -12005,7 +12005,7 @@ function runGlobalSearch() {
       </div>
       <div class="search-result-tags">
         \${isQualified ? \`<span class="search-result-badge qualified">Qualified</span>\` : ''}
-        \${hasAppointment ? \`<span class="search-result-badge">Afspraak</span>\` : ''}
+        \${hasAppointment ? \`<span class="search-result-badge">\${escHtml(tr('cal.ev.title'))}</span>\` : ''}
         \${score !== '' ? \`<span class="search-result-score">\${score}</span>\` : ''}
       </div>
     </div>\`);
@@ -12222,7 +12222,7 @@ function renderPipeline() {
         \${col.label}
         <span class="pipeline-col-count">\${col.leads.length}</span>
       </div>
-      <div class="pipeline-col-body">\${cards || \`<div style="color:var(--text-muted);font-size:12px;padding:8px 4px">Geen leads</div>\`}</div>
+      <div class="pipeline-col-body">\${cards || \`<div style="color:var(--text-muted);font-size:12px;padding:8px 4px">\${escHtml(tr('leeg.leadsKort'))}</div>\`}</div>
     </div>\`;
   }).join('');
 
@@ -12242,7 +12242,7 @@ function renderPipeline() {
     const valueFormatted = pipelineValue > 0
       ? '€' + pipelineValue.toLocaleString(LOCALE, { maximumFractionDigits: 0 })
       : null;
-    summaryEl.innerHTML = \`<div class="pipeline-chip"><span>Totaal</span><span class="pipeline-chip-count">\${total}</span></div>\`
+    summaryEl.innerHTML = \`<div class="pipeline-chip"><span>\${escHtml(tr('btn.totaal'))}</span><span class="pipeline-chip-count">\${total}</span></div>\`
       + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('')
       + (valueFormatted ? \`<div class="pipeline-chip"><span>Pipeline waarde</span><span class="pipeline-chip-count" style="color:var(--green-ink)">\${valueFormatted}</span></div>\` : '');
   }
@@ -12388,7 +12388,7 @@ function openConversation(leadId) {
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
     </div>
     \${faroLeadPaneel(lead)}
-    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>Geen berichten</div></div>\`}</div>
+    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>\${escHtml(tr('leeg.berichten'))}</div></div>\`}</div>
   \`;
 
   // Scroll to bottom
@@ -12685,7 +12685,7 @@ function renderAnalyse() {
     }).join('');
     sourceEl.innerHTML = \`<div class="table-scroll"><table class="source-table">
       <thead><tr>
-        <th>${T('dash.col.source')}</th><th>Totaal</th><th>Gekwal.</th><th>${T('pro.conv')}</th><th>${T('exp.avgScore')}</th>
+        <th>${T('dash.col.source')}</th><th>${T('btn.totaal')}</th><th>${T('tbl.gekwal')}</th><th>${T('pro.conv')}</th><th>${T('exp.avgScore')}</th>
       </tr></thead>
       <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">\${escHtml(tr('leeg.data'))}</td></tr>\`}</tbody>
     </table></div>\`;
@@ -13303,7 +13303,7 @@ function renderPiFurnitureGrid() {
   grid.innerHTML = items.map(f => {
     const disabled = f.key === 'empty' && piSelectedStyle === 'staging';
     return '<button type="button" class="pi-roomtype-card' + (f.key === piSelectedFurniture ? ' active' : '') + (disabled ? ' disabled' : '') +
-      '"' + (disabled ? ' disabled title="Niet te combineren met de stijl Lege ruimte inrichten"' : ' onclick="selectPiFurniture(this)"') +
+      '"' + (disabled ? ' disabled title="' + escHtml(tr('pi.nietCombineer')) + '"' : ' onclick="selectPiFurniture(this)"') +
       ' data-key="' + escHtml(f.key) + '">' + escHtml(f.label) + '</button>';
   }).join('');
 }
@@ -14126,7 +14126,7 @@ async function koopOfferteOphalen() {
     }
   } catch (e) {
     credits.textContent = '—';
-    detail.textContent = 'De prijs kon niet opgehaald worden.';
+    detail.textContent = tr('val.geenPrijs');
     /* De tegels komen van de server. Lukt dat niet, dan stond er een kale kop
        "Hoeveel wil je bijkopen?" met niets eronder -- dat leest als een kapot
        venster in plaats van als een storing. Alleen invullen als er nog nooit
@@ -14187,7 +14187,7 @@ async function koopOfferteOphalen() {
       rijen.innerHTML =
         '<div class="koop-rij"><span>Subtotaal</span><b>\\u20AC ' + euroBonFmt(b.exclEur) + '</b></div>'
         + '<div class="koop-rij"><span>Btw (' + b.pct + '%)</span><b>\\u20AC ' + euroBonFmt(b.btwEur) + '</b></div>'
-        + '<div class="koop-rij totaal"><span>Totaal</span><b>\\u20AC ' + euroBonFmt(b.totaalEur) + '</b></div>';
+        + '<div class="koop-rij totaal"><span>' + escHtml(tr('btn.totaal')) + '</span><b>\\u20AC ' + euroBonFmt(b.totaalEur) + '</b></div>';
     }
   }
 
@@ -14333,7 +14333,7 @@ function vraagBtwEnBetaal(planId, planNaam) {
   rij.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
 
   var annuleer = document.createElement('button');
-  annuleer.textContent = 'Annuleren';
+  annuleer.textContent = tr('wis.annuleer');
   annuleer.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
 
   var ga = document.createElement('button');
@@ -14442,7 +14442,7 @@ function vraagAccountVerwijdering() {
   card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:460px';
 
   var titel = document.createElement('h3');
-  titel.textContent = 'Account verwijderen';
+  titel.textContent = tr('set.delete');
   titel.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--red-ink,#F4A4A4)';
 
   var uitleg = document.createElement('div');
@@ -14456,7 +14456,7 @@ function vraagAccountVerwijdering() {
 
   var label = document.createElement('label');
   label.setAttribute('for', 'verwijder-bevestig');
-  label.textContent = 'Typ VERWIJDEREN om te bevestigen';
+  label.textContent = tr('wis.typ');
   label.style.cssText = 'display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)';
 
   var veld = document.createElement('input');
@@ -14474,14 +14474,14 @@ function vraagAccountVerwijdering() {
   rij.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
 
   var annuleer = document.createElement('button');
-  annuleer.textContent = 'Annuleren';
+  annuleer.textContent = tr('wis.annuleer');
   annuleer.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
 
   var bevestig = document.createElement('button');
   /* De knop belooft nu wat hij doet. Hij heette 'Verwijdering aanvragen',
      want dat WAS het: een mail naar support. Een knop die 'aanvragen' zegt en
      ter plekke alles wist, is de verkeerde kant om te liegen. */
-  bevestig.textContent = 'Definitief wissen';
+  bevestig.textContent = tr('wis.knop');
   bevestig.disabled = true;
   bevestig.style.cssText = 'padding:9px 16px;background:#B4231F;border:0;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;opacity:0.5';
 
@@ -14489,7 +14489,7 @@ function vraagAccountVerwijdering() {
   function toets(e) { if (e.key === 'Escape' && !bevestig.dataset.bezig) sluit(); }
 
   veld.addEventListener('input', function () {
-    var ok = veld.value.trim().toUpperCase() === 'VERWIJDEREN';
+    var ok = ['VERWIJDEREN','SUPPRIMER','DELETE','LOSCHEN','L\u00d6SCHEN'].indexOf(veld.value.trim().toUpperCase()) !== -1;
     bevestig.disabled = !ok;
     bevestig.style.opacity = ok ? '1' : '0.5';
   });
@@ -14498,9 +14498,9 @@ function vraagAccountVerwijdering() {
     if (bevestig.disabled) return;
     bevestig.dataset.bezig = '1';
     bevestig.disabled = true;
-    bevestig.textContent = 'Bezig met wissen...';
+    bevestig.textContent = tr('wis.bezig');
     status.style.color = 'var(--text-muted,#999)';
-    status.textContent = 'Dit kan een halve minuut duren. Sluit dit venster niet.';
+    status.textContent = tr('wis.duurt');
     try {
       /* Hier stond mode:'support' -- een MAIL naar support met de belofte
          "binnen 30 dagen". Nu de echte wisactie. De projectcode staat bewust
@@ -14516,15 +14516,14 @@ function vraagAccountVerwijdering() {
         var v = d.verslag || {};
         if (v.volledig) {
           status.style.color = 'var(--success-ink,#8FD9A8)';
-          status.textContent = 'Alles is gewist. Je wordt uitgelogd.';
+          status.textContent = tr('wis.klaar');
         } else {
           /* Niet doen alsof. Ging er iets mis, dan hoort dat er te staan --
              met wat er wel gelukt is, zodat het geen raadsel wordt. */
           status.style.color = 'var(--error-ink,#F4A4A4)';
-          status.textContent = 'Je gegevens zijn gewist, maar niet alles lukte. '
-            + 'Mail ons op hello@helvaro.pro met de code ' + (v.projectCode || '') + '.';
+          status.textContent = tr('wis.deels', { code: v.projectCode || '' });
         }
-        bevestig.textContent = 'Gewist';
+        bevestig.textContent = tr('wis.gewist');
         veld.disabled = true;
         /* Uitloggen, want het account bestaat niet meer. Even wachten zodat de
            melding gelezen kan worden -- langer bij een halve mislukking. */
@@ -14533,14 +14532,14 @@ function vraagAccountVerwijdering() {
         return;
       }
       status.style.color = 'var(--error-ink,#F4A4A4)';
-      status.textContent = (d && d.error) || 'Wissen lukte niet. Mail ons op hello@helvaro.pro.';
+      status.textContent = (d && d.error) || tr('wis.mislukt');
     } catch (e) {
       status.style.color = 'var(--error-ink,#F4A4A4)';
       status.textContent = tr('tst.ietsMis');
     }
     delete bevestig.dataset.bezig;
     bevestig.disabled = false;
-    bevestig.textContent = 'Definitief wissen';
+    bevestig.textContent = tr('wis.knop');
   });
 
   annuleer.addEventListener('click', sluit);
@@ -14591,7 +14590,7 @@ async function koopAanvragen() {
     fout.textContent = 'Kies eerst een geldig bedrag.';
     return;
   }
-  btn.disabled = true; btn.textContent = 'Bezig...';
+  btn.disabled = true; btn.textContent = tr('st.bezig');
   fout.style.display = 'none';
 
   function post(mode) {
@@ -14820,10 +14819,10 @@ function renderFacturatie() {
     naam.textContent = 'Proefperiode voorbij';
     sub.textContent = 'Neem contact op om verder te gaan.';
   } else if (plan.status === 'active') {
-    naam.textContent = 'Actief';
+    naam.textContent = tr('st.actief');
     sub.textContent = d.klantNaam ? ('Op naam van ' + d.klantNaam) : '';
   } else {
-    naam.textContent = 'Actief';
+    naam.textContent = tr('st.actief');
     sub.textContent = '';
   }
 
@@ -14842,7 +14841,7 @@ function renderFacturatie() {
     /* Geen limiet ingesteld is iets anders dan nul credits. Dat verschil moet
        hier staan, anders belt een klant over een limiet die niet bestaat. */
     saldo.textContent = 'Onbeperkt';
-    saldoSub.textContent = 'Er staat geen creditlimiet op dit account.';
+    saldoSub.textContent = tr('val.geenLimiet');
     balk.style.width = '0%';
   }
 
@@ -15081,7 +15080,7 @@ function renderPanden() {
       if (p.brandstof)        feiten.push('<span class="pd-feit">' + pandEsc(p.brandstof) + '</span>');
       /* Een auto met een eigen kortingsregel is een auto waar iets bijzonders
          mee is. Dat hoort de dealer te zien zonder hem open te klikken. */
-      if (p.maxKorting)       feiten.push('<span class="pd-feit" title="Eigen kortingsregel op dit voertuig">korting tot ' + pandEsc(pandPrijs(p.maxKorting)) + '</span>');
+      if (p.maxKorting)       feiten.push('<span class="pd-feit" title="' + escHtml(tr('pd.eigenKorting')) + '">korting tot ' + pandEsc(pandPrijs(p.maxKorting)) + '</span>');
     } else {
       if (p.slaapkamers) feiten.push('<span class="pd-feit">' + p.slaapkamers + ' slk</span>');
       if (p.oppervlakte) feiten.push('<span class="pd-feit">' + p.oppervlakte + ' m\u00B2</span>');
@@ -15109,7 +15108,7 @@ function renderPanden() {
       +     '<button class="pd-mini" style="flex:0 0 auto" onclick="copyPandLink(&quot;' + pandEsc(p.code) + '&quot;)">${T('dash.form.copy')}</button>'
       +   '</div>'
       +   '<div class="pd-card-acties">'
-      +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">Bewerken</button>'
+      +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">' + escHtml(tr('btn.bewerken')) + '</button>'
       +     '<button class="pd-mini" onclick="archivePand(&quot;' + pandEsc(p.code) + '&quot;, ' + (p.gearchiveerd ? 'false' : 'true') + ')">'
       +       (p.gearchiveerd ? 'Terugzetten' : 'Archiveren') + '</button>'
       +   '</div>'
@@ -15164,7 +15163,7 @@ async function importeerPand() {
   var btn  = document.getElementById('pd-import-btn');
   if (!link) { pdStatus('Plak eerst een link.', 'fout'); return; }
 
-  btn.disabled = true; btn.textContent = 'Bezig...';
+  btn.disabled = true; btn.textContent = tr('st.bezig');
   pdStatus('De pagina wordt gelezen. Dit duurt een paar tellen.', 'bezig');
 
   try {
@@ -15299,7 +15298,7 @@ function openPandModal(code) {
   var hintEl = statusEl2 && statusEl2.parentElement
     ? statusEl2.parentElement.querySelector('.pd-hint') : null;
   if (hintEl) {
-    hintEl.textContent = 'Verkocht of uit aanbod? Dan plant je assistent er geen '
+    hintEl.textContent = tr('pd.geenAanbod')
       + vw('afspraak') + ' meer voor in.';
   }
 
@@ -15419,7 +15418,7 @@ async function savePand() {
       fotos:        lees('pd-f-fotos').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean),
       publiek:      document.getElementById('pd-f-publiek').checked
     };
-    btn.disabled = true; btn.textContent = 'Bezig...';
+    btn.disabled = true; btn.textContent = tr('st.bezig');
     try {
       var vr = await fetch(API_BASE + '/leads', {
         method: 'POST',
@@ -15440,7 +15439,7 @@ async function savePand() {
       fout.style.display = '';
       fout.textContent = tr('tst.opslaanMis');
     } finally {
-      btn.disabled = false; btn.textContent = 'Opslaan';
+      btn.disabled = false; btn.textContent = tr('btn.opslaan');
     }
     return;
   }
@@ -15448,7 +15447,7 @@ async function savePand() {
   var adres = lees('pd-f-adres');
   if (!adres) {
     fout.style.display = '';
-    fout.textContent = 'Vul minstens een adres in.';
+    fout.textContent = tr('val.adres');
     return;
   }
 
@@ -15469,7 +15468,7 @@ async function savePand() {
     publiek:      document.getElementById('pd-f-publiek').checked
   };
 
-  btn.disabled = true; btn.textContent = 'Bezig...';
+  btn.disabled = true; btn.textContent = tr('st.bezig');
   try {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
@@ -15489,7 +15488,7 @@ async function savePand() {
     fout.style.display = '';
     fout.textContent = tr('tst.opslaanMis');
   } finally {
-    btn.disabled = false; btn.textContent = 'Opslaan';
+    btn.disabled = false; btn.textContent = tr('btn.opslaan');
   }
 }
 
@@ -15811,7 +15810,7 @@ function loadFormulier() {
   const openEl   = document.getElementById('fm-open');
   if (!urlEl) return;
   if (!url) {
-    urlEl.textContent = '(geen project code beschikbaar. Log opnieuw in)';
+    urlEl.textContent = tr('val.geenCode');
     return;
   }
   urlEl.textContent = url;
@@ -15916,7 +15915,7 @@ function populateFormStats() {
     const pct  = Math.round((diff / prev) * 100);
     if (diff > 0)      { el.textContent = '↑ ' + Math.abs(pct) + '% vs vorige';   el.classList.add('up');  }
     else if (diff < 0) { el.textContent = '↓ ' + Math.abs(pct) + '% vs vorige';   el.classList.add('down'); }
-    else               { el.textContent = '— gelijk aan vorige'; }
+    else               { el.textContent = tr('val.gelijk'); }
   };
 
   set('fm-stat-week',  week);
@@ -15984,7 +15983,7 @@ function populateFormLink() {
   const qrImg = document.getElementById('ap-formlink-qr-img');
   const embed = document.getElementById('ap-formlink-embed-code');
   if (!url) {
-    if (urlEl) urlEl.textContent = '(geen project code beschikbaar. Log opnieuw in)';
+    if (urlEl) urlEl.textContent = tr('val.geenCode');
     return;
   }
   if (urlEl)  urlEl.textContent = url;

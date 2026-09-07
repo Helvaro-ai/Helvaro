@@ -97,8 +97,13 @@ const ck = (n, ok, ctx) => {
     ck('de functie bestaat',        /function vraagAccountVerwijdering\(\)/.test(html), null);
     ck('het is een echte dialoog',  /overlay\.setAttribute\('role', 'dialog'\)/.test(html), null);
 
-    ck('je moet VERWIJDEREN overtypen',
-       /toUpperCase\(\) === 'VERWIJDEREN'/.test(html), null);
+    /* Het over te typen woord is nu vertaald: een Franse klant hoort SUPPRIMER
+       te typen en geen Nederlands woord dat hij niet kent. De server accepteert
+       alle vier (zie de mode account-delete in api/leads.js), dus de knop moet
+       dat ook. Wat bewaakt wordt is onveranderd: er MOET iets overgetypt. */
+    ck('je moet een woord overtypen',
+       /indexOf\(veld\.value\.trim\(\)\.toUpperCase\(\)\)/.test(html)
+       && /'VERWIJDEREN','SUPPRIMER','DELETE'/.test(html), null);
     ck('en de knop staat tot dan uit',
        /bevestig\.disabled = true;/.test(html), null);
 
@@ -131,7 +136,7 @@ const ck = (n, ok, ctx) => {
        over te struikelen -- anders is de prijs van een uitleg dat je hem niet
        mag geven. */
     ck('de knop belooft geen aanvraag meer',
-       /bevestig\.textContent = 'Definitief wissen'/.test(html)
+       /bevestig\.textContent = tr\('wis\.knop'\)/.test(html)
        && !/textContent = 'Verwijdering aanvragen'/.test(html), null);
     ck('en er wordt uitgelogd als het gelukt is',
        /logout\(\)/.test(html) && /account-delete[\s\S]{0,1400}logout\(\)/.test(html), null);

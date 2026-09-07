@@ -1311,6 +1311,82 @@ const TEKST = {
      "3 properties, 2 in aanbod". Half vertaald is opvallender dan helemaal
      niet, want dan lijkt het een fout in plaats van een keuze. */
   'pd.inAanbod':      { nl: '{n} in aanbod', fr: '{n} disponible(s)', en: '{n} available', de: '{n} verf\u00fcgbar' },
+
+  /* ── De rest van het scherm ──────────────────────────────────────────────
+     Wat er na vijf ronden nog hardgecodeerd stond. Geen samenhangend blok maar
+     de losse eindjes: de topbalk, het boekvenster, twee lege staten, en een
+     handvol knopteksten die tijdens het laden veranderen ("Opslaan..." /
+     "Bezig..."). Juist die laatste vallen niemand op tijdens het bouwen -- ze
+     staan er een halve seconde -- en juist daarom bleven ze staan. */
+  'top.zoeken':       { nl: 'Zoeken (Ctrl+K)', fr: 'Rechercher (Ctrl+K)', en: 'Search (Ctrl+K)', de: 'Suchen (Strg+K)' },
+  'top.meldingen':    { nl: 'Meldingen',  fr: 'Notifications', en: 'Notifications', de: 'Benachrichtigungen' },
+  'top.zoekLead':     { nl: 'Zoek op naam, telefoon, bron of samenvatting...',
+                        fr: 'Rechercher par nom, t\u00e9l\u00e9phone, source ou r\u00e9sum\u00e9...',
+                        en: 'Search by name, phone, source or summary...',
+                        de: 'Nach Name, Telefon, Quelle oder Zusammenfassung suchen...' },
+  'top.zoekHulp':     { nl: 'Zoek in de hulp...', fr: 'Rechercher dans l\u2019aide...', en: 'Search the help...', de: 'In der Hilfe suchen...' },
+
+  'cb.titel':         { nl: 'Afspraak inplannen', fr: 'Planifier un rendez-vous', en: 'Book an appointment', de: 'Termin planen' },
+  'cb.leadNaam':      { nl: 'Lead naam', fr: 'Nom du lead', en: 'Lead name', de: 'Lead-Name' },
+  'cb.vorigeDag':     { nl: 'Vorige dag', fr: 'Jour pr\u00e9c\u00e9dent', en: 'Previous day', de: 'Vorheriger Tag' },
+  'cb.volgendeDag':   { nl: 'Volgende dag', fr: 'Jour suivant', en: 'Next day', de: 'N\u00e4chster Tag' },
+  'cb.zoekNaam':      { nl: 'Zoek op naam...', fr: 'Rechercher par nom...', en: 'Search by name...', de: 'Nach Name suchen...' },
+  'cb.volledigeNaam': { nl: 'Volledige naam', fr: 'Nom complet', en: 'Full name', de: 'Vollst\u00e4ndiger Name' },
+  'cb.directInAgenda':{ nl: 'Afspraak wordt direct opgeslagen in je agenda',
+                        fr: 'Le rendez-vous est enregistr\u00e9 directement dans votre agenda',
+                        en: 'The appointment is saved straight into your calendar',
+                        de: 'Der Termin wird direkt in Ihrem Kalender gespeichert' },
+
+  'lp.gekwalificeerd':{ nl: 'Gekwalificeerde leads', fr: 'Leads qualifi\u00e9s', en: 'Qualified leads', de: 'Qualifizierte Leads' },
+  'lp.gekwUitleg':    { nl: 'Gekwalificeerde leads verschijnen hier met score en samenvatting',
+                        fr: 'Les leads qualifi\u00e9s appara\u00eetront ici avec leur score et un r\u00e9sum\u00e9',
+                        en: 'Qualified leads appear here with their score and a summary',
+                        de: 'Qualifizierte Leads erscheinen hier mit Score und Zusammenfassung' },
+  'lp.nietBereikbaar':{ nl: 'Niet bereikbaar', fr: 'Injoignable', en: 'Unreachable', de: 'Nicht erreichbar' },
+
+  'st.bezig':         { nl: 'Bezig...',   fr: 'En cours...',  en: 'Working...',  de: 'L\u00e4uft...' },
+  'st.bezigPunt':     { nl: 'Bezig\u2026', fr: 'En cours\u2026', en: 'Working\u2026', de: 'L\u00e4uft\u2026' },
+  'st.opslaanBezig':  { nl: 'Opslaan...', fr: 'Enregistrement...', en: 'Saving...', de: 'Speichern...' },
+  'st.nietOpgehaald': { nl: 'Niet opgehaald', fr: 'Non r\u00e9cup\u00e9r\u00e9', en: 'Not fetched', de: 'Nicht abgerufen' },
+  'st.klaar':         { nl: 'Klaar', fr: 'Termin\u00e9', en: 'Done', de: 'Fertig' },
+  'st.actief':        { nl: 'Actief', fr: 'Actif', en: 'Active', de: 'Aktiv' },
+
+  'val.naamCode':     { nl: 'Naam en projectcode zijn verplicht.', fr: 'Le nom et le code de projet sont obligatoires.', en: 'Name and project code are required.', de: 'Name und Projektcode sind erforderlich.' },
+  'val.adres':        { nl: 'Vul minstens een adres in.', fr: 'Indiquez au moins une adresse.', en: 'Enter at least an address.', de: 'Geben Sie mindestens eine Adresse an.' },
+  'val.geenPrijs':    { nl: 'De prijs kon niet opgehaald worden.', fr: 'Le prix n\u2019a pas pu \u00eatre r\u00e9cup\u00e9r\u00e9.', en: 'The price could not be fetched.', de: 'Der Preis konnte nicht abgerufen werden.' },
+  'val.geenLimiet':   { nl: 'Er staat geen creditlimiet op dit account.', fr: 'Aucune limite de cr\u00e9dits sur ce compte.', en: 'There is no credit limit on this account.', de: 'F\u00fcr dieses Konto gilt kein Kreditlimit.' },
+  'val.geenCode':     { nl: '(geen projectcode beschikbaar \u2014 log opnieuw in)', fr: '(aucun code de projet \u2014 reconnectez-vous)', en: '(no project code \u2014 log in again)', de: '(kein Projektcode \u2014 melden Sie sich erneut an)' },
+  'val.gelijk':       { nl: '\u2014 gelijk aan vorige', fr: '\u2014 identique au pr\u00e9c\u00e9dent', en: '\u2014 same as previous', de: '\u2014 wie zuvor' },
+
+  /* Het venster dat een account wist. Dat is het laatste scherm dat een klant
+     ooit van Helvaro ziet -- en het stond volledig in het Nederlands. */
+  'wis.typ':      { nl: 'Typ VERWIJDEREN om te bevestigen', fr: 'Tapez SUPPRIMER pour confirmer', en: 'Type DELETE to confirm', de: 'Tippen Sie L\u00d6SCHEN zur Best\u00e4tigung' },
+  'wis.bezig':    { nl: 'Bezig met wissen...', fr: 'Suppression en cours...', en: 'Deleting...', de: 'Wird gel\u00f6scht...' },
+  'wis.duurt':    { nl: 'Dit kan een halve minuut duren. Sluit dit venster niet.',
+                    fr: 'Cela peut prendre une demi-minute. Ne fermez pas cette fen\u00eatre.',
+                    en: 'This can take half a minute. Do not close this window.',
+                    de: 'Das kann eine halbe Minute dauern. Schlie\u00dfen Sie dieses Fenster nicht.' },
+  'wis.deels':    { nl: 'Je gegevens zijn gewist, maar niet alles lukte. Mail ons op hello@helvaro.pro met de code {code}.',
+                    fr: 'Vos donn\u00e9es ont \u00e9t\u00e9 effac\u00e9es, mais tout n\u2019a pas r\u00e9ussi. \u00c9crivez-nous \u00e0 hello@helvaro.pro avec le code {code}.',
+                    en: 'Your data has been erased, but not everything succeeded. Email hello@helvaro.pro with the code {code}.',
+                    de: 'Ihre Daten wurden gel\u00f6scht, aber nicht alles hat geklappt. Schreiben Sie an hello@helvaro.pro mit dem Code {code}.' },
+  'wis.klaar':    { nl: 'Alles is gewist. Je wordt uitgelogd.', fr: 'Tout a \u00e9t\u00e9 effac\u00e9. Vous allez \u00eatre d\u00e9connect\u00e9.', en: 'Everything is erased. You will be logged out.', de: 'Alles wurde gel\u00f6scht. Sie werden abgemeldet.' },
+  'wis.gewist':   { nl: 'Gewist', fr: 'Effac\u00e9', en: 'Erased', de: 'Gel\u00f6scht' },
+  'wis.knop':     { nl: 'Definitief wissen', fr: 'Supprimer d\u00e9finitivement', en: 'Delete permanently', de: 'Endg\u00fcltig l\u00f6schen' },
+  'wis.mislukt':  { nl: 'Wissen lukte niet. Mail ons op hello@helvaro.pro.', fr: 'La suppression a \u00e9chou\u00e9. \u00c9crivez-nous \u00e0 hello@helvaro.pro.', en: 'Deletion failed. Email hello@helvaro.pro.', de: 'L\u00f6schen fehlgeschlagen. Schreiben Sie an hello@helvaro.pro.' },
+  'wis.annuleer': { nl: 'Annuleren', fr: 'Annuler', en: 'Cancel', de: 'Abbrechen' },
+  'tbl.gekwal':   { nl: 'Gekwal.', fr: 'Qualifi\u00e9s', en: 'Qualified', de: 'Qualifiz.' },
+  'btn.annuleren':{ nl: 'Annuleren', fr: 'Annuler', en: 'Cancel', de: 'Abbrechen' },
+
+  'pd.eigenKorting':  { nl: 'Eigen kortingsregel op dit voertuig', fr: 'R\u00e8gle de remise propre \u00e0 ce v\u00e9hicule', en: 'Own discount rule on this vehicle', de: 'Eigene Rabattregel f\u00fcr dieses Fahrzeug' },
+  'pd.geenAanbod':    { nl: 'Verkocht of uit aanbod? Dan plant je assistent er geen ',
+                        fr: 'Vendu ou retir\u00e9 ? Votre assistant n\u2019en planifiera plus de ',
+                        en: 'Sold or withdrawn? Then your assistant no longer books any ',
+                        de: 'Verkauft oder aus dem Angebot? Dann plant Ihr Assistent kein ' },
+  'pi.nietCombineer': { nl: 'Niet te combineren met de stijl Lege ruimte inrichten',
+                        fr: 'Incompatible avec le style \u00ab\u00a0Am\u00e9nager un espace vide\u00a0\u00bb',
+                        en: 'Cannot be combined with the "Furnish an empty room" style',
+                        de: 'Nicht mit dem Stil \u201eLeeren Raum einrichten\u201c kombinierbar' },
   'log.verbindingWeg':{ nl: 'Verbinding mislukt. Opnieuw proberen over 90s',
                         fr: '\u00c9chec de la connexion. Nouvelle tentative dans 90 s',
                         en: 'Connection failed. Retrying in 90s',
