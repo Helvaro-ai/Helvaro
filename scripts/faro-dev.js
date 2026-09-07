@@ -524,6 +524,28 @@ const server = http.createServer(async (req, res) => {
       return res.status(200).json({ configured: true, connected: false, email: '' });
     }
 
+    /* De losse gereedschapscripts uit scripts/ serveren, zodat je ze in de
+       console kunt laden in plaats van te plakken:
+
+           fetch('/dev-scripts/spatie-check.js').then(r=>r.text()).then(eval)
+           spatieVeeg()
+
+       Alleen .js, alleen uit die map, en de naam wordt gestript tot een
+       bestandsnaam -- geen ../ naar buiten. Dit is een ontwikkelserver die
+       localhost bindt en nooit deployt (Vercel negeert scripts/), maar een
+       padtraversal erin zetten omdat "het toch lokaal is" blijft een slecht
+       gewoontepatroon. */
+    if (p.startsWith('/dev-scripts/')) {
+      const naam = path.basename(p.slice('/dev-scripts/'.length));
+      if (!/^[a-z0-9._-]+\.js$/i.test(naam)) { res.statusCode = 400; return res.end('bad name'); }
+      try {
+        const inhoud = fs.readFileSync(path.join(__dirname, naam), 'utf8');
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        return res.end(inhoud);
+      } catch (e) { res.statusCode = 404; return res.end('not found'); }
+    }
+
     if (p === '/' || p === '/dashboard') {
       req.query = Object.fromEntries(url.searchParams);
       req.headers.cookie = req.headers.cookie || '';
