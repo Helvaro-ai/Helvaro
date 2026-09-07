@@ -133,6 +133,36 @@ console.log('\n  de vier lijsten lopen niet uit elkaar');
   const verticals = [...kaarten.matchAll(/vertical: '([a-z]+)'/g)].map((m) => m[1]);
   ck('elke kaart wijst naar een bekende markt',
     verticals.every((x) => v.BEKEND.indexOf(x) !== -1), verticals);
+
+  /* ── 5. public/onboard.html ────────────────────────────────────────────
+     De lijst stond op VIJF plekken, niet op vier, en de vijfde liep achter.
+     Dit is het scherm waar een nieuwe klant binnenkomt: api/admin.js mailt
+     hem /onboard?invite=... En daar stonden alleen vastgoed, tandarts,
+     advocaat, financieel en anders -- de vier markten van 4 en 5 september
+     ontbraken volledig.
+
+     Gevolg: een autohandelaar of aannemer die zich aanmeldt kan zijn eigen
+     markt niet kiezen en belandt op de vastgoedervaring. Precies waar de
+     commit van 5 september voor waarschuwde: bij vijf markten blijft er
+     gegarandeerd ergens eentje achter.
+
+     Doorgemeten in de browser, niet in de code gevonden. */
+  const onboard = fs.readFileSync(BASE + 'public/onboard.html', 'utf8');
+  const keuze = /<select id="w-sector">([\s\S]*?)<\/select>/.exec(onboard);
+  ck('de onboardingpagina heeft een sectorkeuze', !!keuze, null);
+  const onbIds = keuze ? [...keuze[1].matchAll(/<option value="([a-z_]+)"/g)].map((m) => m[1]).filter(Boolean) : [];
+  for (const id of ids) {
+    ck('  /onboard biedt ' + id + ' aan', onbIds.indexOf(id) !== -1, onbIds);
+  }
+
+  /* En het overzichtsscherm aan het eind moet elke keuze kunnen benoemen,
+     anders ziet de klant zijn eigen antwoord als een lege regel terug. */
+  const labels = /var SECTOR_LABELS = \{([\s\S]*?)\};/.exec(onboard);
+  ck('SECTOR_LABELS bestaat', !!labels, null);
+  for (const id of onbIds) {
+    ck('  en kan ' + id + ' benoemen',
+      !!labels && new RegExp('\\b' + id + ':').test(labels[1]), null);
+  }
 }
 
 console.log('\n  wat Faro tegen deze klanten zegt');

@@ -554,6 +554,24 @@ const server = http.createServer(async (req, res) => {
 
     if (serveStatic(p, res) !== false) return undefined;
 
+    /* De rewrites uit vercel.json nadoen, maar alleen de simpele: een pad dat
+       één op één naar een bestand in public/ wijst.
+
+       Waarom dit erbij moet: /onboard gaf hier 404 terwijl het in productie
+       gewoon werkt, want Vercel schrijft /onboard om naar /onboard.html. Wie
+       de onboarding lokaal wil nakijken -- en die staat met zoveel woorden in
+       scripts/daily-tasks.md als taak -- kreeg dus een 404 die niet te
+       onderscheiden was van een kapotte pagina. Dat is één keer bijna als
+       productiebug gerapporteerd.
+
+       Uit vercel.json gelezen en niet overgetypt: een lijst hier zou stil
+       verouderen zodra er een rewrite bijkomt, en dan zijn we terug bij af. */
+    try {
+      const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
+      const hit = (vercel.rewrites || []).find((r) => r.source === p && /^\/[\w.-]+$/.test(r.destination || ''));
+      if (hit && serveStatic(hit.destination, res) !== false) return undefined;
+    } catch (_) { /* geen vercel.json of niet te lezen: gewoon 404 hieronder */ }
+
     res.statusCode = 404;
     return res.end('not found');
   } catch (err) {

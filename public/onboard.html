@@ -252,14 +252,29 @@
         <label>Sector / branche <span class="opt">(optioneel)</span></label>
         <select id="w-sector">
           <option value="">— Kies branche —</option>
-          <!-- Values match the Niche singleSelect on the Klanten table -->
-          <option value="real_estate">Vastgoed / Real Estate</option>
+          <!-- Values match the Niche singleSelect on the Klanten table.
+               LET OP: dit is de VIJFDE plek waar de marktenlijst staat, en hij
+               liep achter. De vier markten die op 4 en 5 september zijn
+               gebouwd (autohandel, bouw, keuken, renovatie) stonden hier niet,
+               terwijl DIT het scherm is waar een nieuwe klant binnenkomt --
+               api/admin.js mailt hem de uitnodigingslink naar /onboard. Een
+               autohandelaar kon zijn eigen markt dus niet kiezen bij het
+               aanmelden, en belandde op de vastgoedervaring.
+               tests/niches.test.js bewaakt deze lijst nu mee. -->
+          <option value="real_estate">Vastgoed</option>
+          <option value="dealership">Autohandel</option>
+          <option value="construction">Bouw</option>
+          <option value="kitchen">Keukens</option>
+          <option value="renovation">Renovatie</option>
+          <!-- dentist/lawyer/finance blijven staan: ze bestaan in de Niche-kolom
+               in Airtable en er kunnen bestaande klanten op staan. Ze krijgen
+               hetzelfde product als 'other' -- zie api/_vertical.js. -->
           <option value="dentist">Tandarts</option>
           <option value="lawyer">Advocaat / Juridisch</option>
           <option value="finance">Financieel / Boekhouding</option>
-          <option value="other">Anders</option>
+          <option value="other">Iets anders</option>
         </select>
-        <div class="hint">Helpt je assistent om je leads beter te kwalificeren.</div>
+        <div class="hint">Bepaalt welke schermen en velden je krijgt. Je kunt dit later wijzigen in Instellingen.</div>
       </div>
 
       <div class="field">
@@ -726,7 +741,12 @@
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  var SECTOR_LABELS = { real_estate: 'Vastgoed / Real Estate', dentist: 'Tandarts', lawyer: 'Advocaat / Juridisch', finance: 'Financieel / Boekhouding', other: 'Anders' };
+  /* Zelfde vijf-plus-vier als de keuzelijst hierboven. Loopt deze achter, dan
+     toont het overzichtsscherm aan het eind een LEGE sector terwijl er wel een
+     gekozen is -- de klant ziet dan zijn eigen antwoord niet terug. */
+  var SECTOR_LABELS = { real_estate: 'Vastgoed', dealership: 'Autohandel', construction: 'Bouw',
+    kitchen: 'Keukens', renovation: 'Renovatie', dentist: 'Tandarts',
+    lawyer: 'Advocaat / Juridisch', finance: 'Financieel / Boekhouding', other: 'Iets anders' };
   var LANG_LABELS   = { nl: 'Nederlands', fr: 'Français', en: 'English' };
   var BOOKING_LABELS = { in_chat: 'Je assistent boekt direct in WhatsApp', callback: 'Een collega belt terug' };
 

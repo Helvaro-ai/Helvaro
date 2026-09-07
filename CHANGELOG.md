@@ -307,6 +307,24 @@ In plaats van een plaatje met tooltips.
 
 ## Nog niet uitgerold
 
+### Een autohandelaar kon zijn eigen markt niet kiezen bij het aanmelden
+
+De vier markten die op 4 en 5 september zijn gebouwd — autohandel, bouw,
+keukens en renovatie — stonden niet in het aanmeldscherm. Wie een
+uitnodigingslink kreeg, zag daar alleen Vastgoed, Tandarts, Advocaat,
+Financieel en Anders.
+
+Dat is precies het scherm waar een nieuwe klant binnenkomt: de uitnodigingsmail
+verwijst naar `/onboard`. Een autohandelaar of aannemer belandde er dus op de
+vastgoedervaring, en moest dat achteraf in Instellingen rechtzetten — als hij
+al doorhad dat het kon.
+
+De lijst met markten stond op VIJF plekken en niet op vier. De test bewaakte er
+vier; deze vijfde liep achter. Nu staat hij er ook in.
+
+Gevonden door de app in een browser open te doen en het aanmeldscherm te
+gebruiken, niet door de code te lezen.
+
 ### Onze e-mail had geen SPF — preflight zegt het nu
 
 **Actie:** `helvaro.pro` heeft geen SPF-record. Nagekeken in het echte DNS:
