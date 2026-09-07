@@ -15951,7 +15951,7 @@ function renderResultaten(d) {
         <div class="empty-state-illustration" style="width:88px;height:88px;font-size:32px">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
         </div>
-        <div class="empty-title">Nog geen resultaten</div>
+        <div class="empty-title">${T('leeg.resultaten')}</div>
         <div class="empty-desc">Zodra Helvaro leads voor je kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
         \${emptyStateCta()}
       </div>
@@ -19560,7 +19560,7 @@ function renderProfile() {
   if (recentEl) {
     const recents = (state.leads || []).slice(0, 5);
     if (recents.length === 0) {
-      recentEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Geen leads gevonden</div>';
+      recentEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">' + escHtml(tr('leeg.leads')) + '</div>';
     } else {
       recentEl.innerHTML = recents.map(l => {
         const name  = l.fields?.['Naam'] || l.naam || 'Onbekend';
@@ -21725,7 +21725,7 @@ function renderGesprekken() {
        vlakken zonder één aanwijzing. emptyStateCta() bestond al en werd op
        twee andere schermen gebruikt; hier hoorde hij ook. */
     listBody.innerHTML = \`<div style="padding:24px 20px;text-align:center;color:var(--text-muted);font-size:13px">
-      <div style="font-weight:600;color:var(--text);margin-bottom:6px">Nog geen gesprekken</div>
+      <div style="font-weight:600;color:var(--text);margin-bottom:6px">\${escHtml(tr('leeg.gesprekken'))}</div>
       <div>Zodra een lead je formulier invult, start je assistent het gesprek en verschijnt het hier.</div>
       \${emptyStateCta()}
     </div>\`;
@@ -22014,7 +22014,7 @@ function renderAnalyse() {
       if (trackedTotal === 0) {
         showupEl.textContent = '—';
         showupEl.style.color = 'var(--text-muted)';
-        if (showupSubEl) showupSubEl.textContent = 'nog geen bijgehouden';
+        if (showupSubEl) showupSubEl.textContent = tr('leeg.bijgehouden');
       } else {
         const rate = Math.round(verschenenCount / trackedTotal * 100);
         showupEl.textContent = rate + '%';
@@ -22068,7 +22068,7 @@ function renderAnalyse() {
           <span>\${escHtml(r)}</span>
           <span class="analyse-verlies-count">\${c}</span>
         </div>
-      \`).join('') : '<div style="font-size:11px;color:var(--text-muted)">Geen verliesdata</div>';
+      \`).join('') : '<div style="font-size:11px;color:var(--text-muted)">' + escHtml(tr('leeg.verliesdata')) + '</div>';
     }
 
     // Update funnel with verschenen step
@@ -22136,7 +22136,7 @@ function renderAnalyse() {
       <thead><tr>
         <th>${T('dash.col.source')}</th><th>Totaal</th><th>Gekwal.</th><th>${T('pro.conv')}</th><th>${T('exp.avgScore')}</th>
       </tr></thead>
-      <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">Geen data</td></tr>\`}</tbody>
+      <tbody>\${rows || \`<tr><td colspan="5" style="color:var(--text-muted)">\${escHtml(tr('leeg.data'))}</td></tr>\`}</tbody>
     </table></div>\`;
   }
 
@@ -22679,7 +22679,7 @@ async function loadPiStyles() {
     piRenovationDepths = Array.isArray(d.renovationDepths) ? d.renovationDepths : [];
     if (d.defaultRenovationDepth) piSelectedRenovationDepth = d.defaultRenovationDepth;
     if (!piStyles.length) {
-      if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Geen stijlen beschikbaar</div>';
+      if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">' + escHtml(tr('leeg.stijlenGeen')) + '</div>';
     } else {
       if (!piSelectedStyle) piSelectedStyle = piStyles[0].key;
       renderPiStyleGrid();
@@ -22962,7 +22962,7 @@ function renderPiGallery(list) {
   const wrap = document.getElementById('pi-gallery');
   if (!wrap) return;
   piGalleryList = list;
-  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">Nog geen beelden gegenereerd</div>'; return; }
+  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">' + escHtml(tr('leeg.beelden')) + '</div>'; return; }
   const cards = list.map(function (img, i) {
     // Older records (persisted before the visual-controls axes existed)
     // simply have no furniture/wallFinish/floor/lighting/renovationDepth*
@@ -25359,7 +25359,7 @@ function populateFormStats() {
     const el = document.getElementById(id);
     if (!el) return;
     el.className = 'fm-stat-delta';
-    if (prev === 0 && cur === 0) { el.textContent = 'Nog geen historiek'; return; }
+    if (prev === 0 && cur === 0) { el.textContent = tr('leeg.historiek'); return; }
     if (prev === 0) { el.textContent = '↑ Eerste deze periode'; el.classList.add('up'); return; }
     const diff = cur - prev;
     const pct  = Math.round((diff / prev) * 100);

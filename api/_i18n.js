@@ -1235,6 +1235,12 @@ const TEKST = {
   'leeg.data':       { nl: 'Geen data', fr: 'Aucune donn\u00e9e', en: 'No data', de: 'Keine Daten' },
   'leeg.galerij':    { nl: 'Kon galerij niet laden', fr: 'Impossible de charger la galerie', en: 'Could not load the gallery', de: 'Galerie konnte nicht geladen werden' },
   'leeg.stijlen':    { nl: 'Stijlen laden mislukt', fr: '\u00c9chec du chargement des styles', en: 'Could not load styles', de: 'Stile konnten nicht geladen werden' },
+  'leeg.resultaten': { nl: 'Nog geen resultaten', fr: 'Pas encore de r\u00e9sultats', en: 'No results yet', de: 'Noch keine Ergebnisse' },
+  'leeg.verliesdata':{ nl: 'Geen verliesdata', fr: 'Aucune donn\u00e9e de perte', en: 'No loss data', de: 'Keine Verlustdaten' },
+  'leeg.stijlenGeen':{ nl: 'Geen stijlen beschikbaar', fr: 'Aucun style disponible', en: 'No styles available', de: 'Keine Stile verf\u00fcgbar' },
+  'leeg.beelden':    { nl: 'Nog geen beelden gegenereerd', fr: 'Aucune image g\u00e9n\u00e9r\u00e9e', en: 'No images generated yet', de: 'Noch keine Bilder erzeugt' },
+  'leeg.historiek':  { nl: 'Nog geen historiek', fr: 'Pas encore d\u2019historique', en: 'No history yet', de: 'Noch kein Verlauf' },
+  'leeg.bijgehouden':{ nl: 'nog geen bijgehouden', fr: 'pas encore suivi', en: 'not tracked yet', de: 'noch nicht erfasst' },
 
   /* ── Knoppen die overal terugkomen ───────────────────────────────────────
      'Annuleren' en 'Klaar' bestonden al onder crm.cancel en dash.s.done; die

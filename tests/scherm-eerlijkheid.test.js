@@ -86,8 +86,19 @@ ck('de kalender feliciteert niet bij nul leads',
    /Nog geen leads\. Zodra je assistent/.test(html), null);
 ck('en zegt nog steeds het juiste als er WEL leads zijn',
    /Alle gekwalificeerde leads hebben een afspraak/.test(html), null);
-ck('Gesprekken zegt wat er moet gebeuren', /Nog geen gesprekken/.test(html), null);
-ck('met de knop die er al was', /Nog geen gesprekken[\s\S]{0,300}emptyStateCta\(\)/.test(html), null);
+/* Deze twee ankerden op de LETTERLIJKE zin "Nog geen gesprekken", met een
+   afstand van 300 tekens tot de knop. Die zin is nu een vertaalsleutel
+   (leeg.gesprekken), dus de tekst staat niet meer op die plek in de bron --
+   terwijl er aan het GEDRAG niets veranderde. Precies de val uit
+   HELVARO-ARCHITECTUUR §7: toets gedrag, geen bewoording.
+
+   Let op waarom de eerste regel het WEL bleef doen: het woordenboek gaat als
+   T_DICT mee in de pagina, dus de Nederlandse zin staat er in élke taal in.
+   Een test die zoekt of een zin "ergens in de HTML" staat, toetst dus het
+   woordenboek en niet het scherm. Vandaar dat hier op de SLEUTEL gezocht wordt
+   en op de plek waar hij gebruikt wordt. */
+ck('Gesprekken zegt wat er moet gebeuren', /leeg\.gesprekken/.test(html), null);
+ck('met de knop die er al was', /leeg\.gesprekken[\s\S]{0,300}emptyStateCta\(\)/.test(html), null);
 /* Commentaar telt NIET mee. Er staat een uitleg in de bron over precies deze
    tekst -- waarom die pagina ooit leeg bleef door een veldnaam die nergens
    gezet werd. Daarover schrijven is juist goed; wat verboden is, is de tekst
