@@ -125,6 +125,105 @@ Zie `CHANGELOG.md` voor wat elk daarvan betekende.
 
 ---
 
+## De 20-puntenlijst, nagelopen
+
+Een rondgaande checklist voor app-lanceringen, punt voor punt tegen deze
+codebase gehouden. Vijf punten gaan over de App Store en gelden hier niet — een
+webapp heeft geen SDK-declaratie en geen "restore purchases". Die staan er toch
+bij, met wat het web-equivalent is.
+
+| # | Punt | Stand |
+|---|---|---|
+| 1 | Beta test | **Jij** — nog niemand heeft de hele reis met echte sleutels gelopen |
+| 2 | Crash reports | **Gat** — geen foutmonitoring; alleen Vercel-logs die niemand leest |
+| 3 | Delete account | ✅ Aanvraagstroom met overtypbevestiging, bewust geen éénkliksknop |
+| 4 | Privacy policy | ✅ `/privacy` en `/terms` |
+| 5 | Declare SDKs | n.v.t. (App Store) — web-equivalent is de CSP, die staat er |
+| 6 | SPF, DKIM, DMARC | **Gat — SPF ontbreekt.** Zie hieronder |
+| 7 | Testing signup | **Jij** — `PUBLIC_SIGNUP_ENABLED` staat uit; test hem één keer aan |
+| 8 | Cap API $$$ | ⚠️ Per klant begrensd via credits; **geen hard € plafond bij de provider** |
+| 9 | LLM credit balance | **Jij** — niets bewaakt het saldo bij Anthropic. Zet daar een alert |
+| 10 | Move off free tiers | **Jij** — Vercel staat op Pro; Airtable en Upstash zelf nakijken |
+| 11 | DB Restore | ⚠️ `scripts/airtable-backup.js` is er nu. **Nooit teruggezet** — zie hieronder |
+| 12 | Ship kill switch | ✅ `AI_UIT=1` stopt alle AI-uitgaven zonder deploy |
+| 13 | OTA hot fix | n.v.t. — elke deploy is meteen live |
+| 14 | Support email | ✅ Support-modus in de app, verstuurt via SMTP met reply-to |
+| 15 | Use biz address | **Gat** — "Helvaro BV" staat er, ondernemingsnummer en zetel niet |
+| 16 | Use demo account | ✅ `/demo` |
+| 17 | Restore purchases | n.v.t. — web-equivalent is het Stripe-klantportaal, dat er is |
+| 18 | Swap test keys | ✅ Preflight waarschuwt bij een `sk_test_` in productie |
+| 19 | Phase releases | n.v.t. bij één omgeving; Vercel-rollback is de terugweg |
+| 20 | Never Friday | ✅ Vandaag is het geen vrijdag |
+
+### 6. SPF ontbreekt — dit is de scherpste van de lijst
+
+Nagekeken in het echte DNS van `helvaro.pro`:
+
+```
+MX      smtp.google.com          → je ontvangt via Google Workspace
+DKIM    default, google          → aanwezig
+DMARC   v=DMARC1; p=none         → aanwezig, alleen meekijken
+SPF     —                        → BESTAAT NIET
+```
+
+Zonder SPF-record kan iedereen post versturen die van jouw domein lijkt te
+komen, en jouw eigen post heeft één authenticatie minder. Sinds begin 2024
+eisen Google en Yahoo minstens SPF óf DKIM; je hebt DKIM, dus het is geen
+totale blokkade — maar het is wel precies de post die moet aankomen:
+wachtwoordherstel, e-mailbevestiging, het antwoord op een supportvraag.
+
+Er is een addertje dat erger is dan het ontbrekende record zelf: **verstuurt de
+app via een andere SMTP-server dan Google, dan is die post door niets gedekt** —
+niet door Google's DKIM (die tekent alleen wat via Google gaat) en niet door
+SPF (dat er niet is). `preflight` waarschuwt daar nu apart voor.
+
+**Actie:** één TXT-record op de root van `helvaro.pro`:
+
+```
+v=spf1 include:_spf.google.com ~all
+```
+
+Verstuur je (ook) via een andere server, neem die er dan bij op. Een
+SPF-record dat de echte verzender niet noemt is erger dan geen. Daarna
+`node scripts/preflight.js` — de e-mailsectie zegt of het klopt.
+
+### 11. Er is nu een backup, en dat is nog geen restore
+
+`node scripts/airtable-backup.js` haalt elke tabel op en zet hem als JSON weg.
+Hij vraagt het schema aan Airtable in plaats van een lijst tabel-id's mee te
+dragen, want een backup die stilzwijgend een nieuwe tabel overslaat is erger
+dan geen backup. Lukt dat schema niet, dan stopt hij. Faalt één tabel, dan
+eindigt hij met exitcode 1 en `volledig: false`.
+
+Hij schrijft **nooit** naar Airtable; een test bewaakt dat.
+
+**Actie, en dit is de helft die telt:** draai hem één keer echt, en zet daarna
+één tabel terug in een lege testbase. Terugzetten is geen omgekeerde van dit
+script — gekoppelde records verwijzen naar record-id's die bij een herimport
+nieuw worden, dus dat vraagt een volgorde en een vertaaltabel. Een backup die
+je nooit hebt teruggezet is een aanname.
+
+Nodig: een Airtable-token met `data.records:read` én `schema.bases:read`.
+
+### 2 en 15 — de twee die ik niet voor je kon oplossen
+
+**Foutmonitoring** ontbreekt. Er is geen Sentry of iets vergelijkbaars; als een
+klant om 23:00 een 500 krijgt, staat dat in de Vercel-logs en verder nergens.
+Ik heb het bewust niet ingebouwd: deze codebase heeft met opzet geen
+app-dependencies en geen buildstap (`HELVARO-ARCHITECTUUR.md` §2), en daar een
+SDK in duwen is een architectuurbeslissing en geen opruimactie. Het goedkoopste
+alternatief dat wél bij deze codebase past is een `console.error` met een vast
+voorvoegsel plus een Vercel-logdrain naar je mail — dezelfde vorm als
+`[Credits][RECONCILE]` al gebruikt.
+
+**Bedrijfsgegevens.** Op `/terms` en `/privacy` staat "Helvaro BV", maar geen
+ondernemingsnummer en geen maatschappelijke zetel. Voor een Belgische
+onderneming die online diensten verkoopt is dat verplicht (Wetboek Economisch
+Recht, boek XII). Ik heb daar geen nummer ingevuld, want een verzonnen of
+gegokt ondernemingsnummer op een juridische pagina is erger dan een ontbrekend
+nummer. Vul je KBO-nummer en zetel in bij de bestaande "Helvaro BV"-regels in
+`api/privacy.js`.
+
 ## Wat hier niet in staat
 
 Niemand heeft de volledige gebruikersreizen tegen productie gedraaid —

@@ -740,6 +740,136 @@ async function probe(url, opts = {}) {
     }
   } catch (_) { /* registry niet leesbaar; geen blokkade */ }
 
+  /* ── Komt onze e-mail wel aan? ─────────────────────────────────────────────
+   *
+   * Elke mail die dit product verstuurt is er een die de ontvanger NODIG heeft:
+   * een wachtwoordherstel, een e-mailbevestiging, een antwoord op een
+   * supportvraag, de dagelijkse opvolgmail. Geen nieuwsbrief die gemist mag
+   * worden.
+   *
+   * Zonder SPF en DKIM belandt zulke post bij Gmail en Outlook in de spam, of
+   * wordt hij helemaal geweigerd. Sinds begin 2024 eisen Google en Yahoo
+   * expliciet minstens een van beide. En het is niet alleen bezorging: zonder
+   * SPF kan iedereen mail versturen die eruitziet alsof hij van jouw domein
+   * komt.
+   *
+   * Dit is DNS, dus het staat buiten de code en buiten Vercel -- precies
+   * daarom staat het hier. Niemand komt erachter door de app te gebruiken; je
+   * merkt het aan klanten die zeggen dat ze de mail niet gekregen hebben.
+   *
+   * Faalt zacht bij een DNS die niet te bereiken is: "niet kunnen kijken" is
+   * iets anders dan "staat er niet", en dat verschil moet in de uitvoer staan.
+   * Zelfde regel als bij de agenda in api/_gcal.js. */
+  head('e-mail: komt hij aan');
+  {
+    const dnsp = require('dns').promises;
+    const afzender = String(process.env.SMTP_FROM || process.env.SMTP_USER || '');
+    const uitAdres = (afzender.match(/[^<\s@]+@([^>\s]+)/) || [])[1];
+    const domein = (uitAdres || 'helvaro.pro').trim().toLowerCase();
+
+    if (!uitAdres) {
+      warn(`geen SMTP_FROM/SMTP_USER — er wordt gecontroleerd op ${domein}`,
+           'Zet SMTP_FROM (bv. "Helvaro <hello@helvaro.pro>") zodat deze controle het\n'
+         + 'echte verzenddomein pakt in plaats van een aanname.');
+    }
+
+    const txt = async (naam) => {
+      try { return { ok: true, records: (await dnsp.resolveTxt(naam)).map((a) => a.join('')) }; }
+      catch (e) {
+        // ENOTFOUND/ENODATA = het record bestaat niet. Al het andere is DNS
+        // die niet werkte, en dat is geen uitspraak over het record.
+        const ontbreekt = e && (e.code === 'ENOTFOUND' || e.code === 'ENODATA');
+        return { ok: ontbreekt, records: [], onbereikbaar: !ontbreekt, code: (e && e.code) || 'onbekend' };
+      }
+    };
+
+    // ── SPF ──────────────────────────────────────────────────────────────
+    const spf = await txt(domein);
+    if (spf.onbereikbaar) {
+      warn(`SPF niet te controleren voor ${domein} (DNS: ${spf.code})`,
+           'Niet hetzelfde als "ontbreekt". Draai dit opnieuw vanaf een machine met DNS.');
+    } else {
+      const regel = spf.records.find((r) => /^v=spf1\b/i.test(r));
+      if (!regel) {
+        fail(`${domein} heeft GEEN SPF-record`,
+             'Elke mail die je verstuurt kan hierdoor in de spam belanden, en iedereen kan\n'
+           + 'post versturen die van jouw domein lijkt te komen. Eén TXT-record op de root\n'
+           + `van ${domein}. Verstuur je via Google Workspace, dan is dat:\n`
+           + '    v=spf1 include:_spf.google.com ~all\n'
+           + 'Verstuur je (ook) via een andere SMTP-server, neem die er dan bij op --\n'
+           + 'een SPF-record dat de echte verzender niet noemt is erger dan geen.');
+      } else {
+        ok('SPF staat er', regel.slice(0, 120));
+      }
+    }
+
+    // ── DKIM ─────────────────────────────────────────────────────────────
+    // De selector is niet af te leiden, dus dit blijft een steekproef: gevonden
+    // is bewijs, niet-gevonden is geen bewijs van afwezigheid. Dat hoort in de
+    // tekst te staan, anders jaagt iemand op een record dat er wel is.
+    const selectors = ['default', 'google', 'dkim', 'mail', 's1', 's2', 'selector1', 'selector2'];
+    const gevonden = [];
+    let dkimOnbereikbaar = false;
+    for (const s of selectors) {
+      const r = await txt(`${s}._domainkey.${domein}`);
+      if (r.onbereikbaar) { dkimOnbereikbaar = true; break; }
+      if (r.records.some((x) => /v=DKIM1/i.test(x))) gevonden.push(s);
+    }
+    if (dkimOnbereikbaar) warn('DKIM niet te controleren (DNS onbereikbaar)');
+    else if (gevonden.length) ok(`DKIM gevonden op selector: ${gevonden.join(', ')}`);
+    else {
+      warn(`geen DKIM gevonden op ${selectors.length} gangbare selectors voor ${domein}`,
+           'Dit is een steekproef, geen bewijs: een eigen selector wordt hier niet geraden.\n'
+         + 'Controleer het bij je mailprovider. Staat er echt geen DKIM, dan is dat samen\n'
+         + 'met een ontbrekende SPF de reden dat je post in de spam komt.');
+    }
+
+    // ── DMARC ────────────────────────────────────────────────────────────
+    const dmarc = await txt(`_dmarc.${domein}`);
+    if (dmarc.onbereikbaar) {
+      warn('DMARC niet te controleren (DNS onbereikbaar)');
+    } else {
+      const regel = dmarc.records.find((r) => /^v=DMARC1\b/i.test(r));
+      if (!regel) {
+        warn(`${domein} heeft geen DMARC-record`,
+             'Begin met monitoren, niet met weigeren:\n'
+           + `    v=DMARC1; p=none; rua=mailto:hello@${domein}\n`
+           + 'Daarmee krijg je rapporten over wie er namens jou mailt, zonder dat er iets\n'
+           + 'geweigerd wordt. Verscherpen naar p=quarantine kan als SPF en DKIM staan.');
+      } else if (/p=none/i.test(regel)) {
+        ok('DMARC staat er (p=none — alleen meekijken, niets wordt geweigerd)',
+           'Prima beginstand. Zet hem pas op p=quarantine als SPF en DKIM allebei kloppen,\n'
+         + 'anders weiger je je eigen post.');
+      } else {
+        ok('DMARC staat er', regel.slice(0, 120));
+      }
+    }
+
+    /* ── Verstuur je wel via de partij die je ondertekent? ────────────────
+     * Het gemenste geval en de reden dat deze controle bestaat: de MX wijst
+     * naar Google en de DKIM-sleutel is van Google, maar de app verstuurt via
+     * een ANDERE SMTP-server. Die berichten zijn dan door niets gedekt -- niet
+     * door DKIM (andere partij ondertekent) en niet door SPF (staat er niet).
+     * Precies de mails die moeten aankomen. */
+    const smtpHost = String(process.env.SMTP_HOST || '').toLowerCase();
+    if (smtpHost && gevonden.length && !dkimOnbereikbaar) {
+      const viaGoogle = /google|gmail/.test(smtpHost);
+      const alleenGoogleDkim = gevonden.every((s) => s === 'google' || s === 'default');
+      if (!viaGoogle && alleenGoogleDkim) {
+        try {
+          const mx = await dnsp.resolveMx(domein);
+          if (mx.some((m) => /google/i.test(m.exchange))) {
+            warn(`je verstuurt via ${smtpHost}, maar de DKIM-sleutels lijken van Google`,
+                 'Post die via deze SMTP-server vertrekt wordt dan door Google\'s DKIM niet\n'
+               + 'ondertekend. Zonder SPF is die post door niets gedekt. Kies er één:\n'
+               + 'versturen via Google Workspace, of de SMTP-server van je provider opnemen\n'
+               + 'in SPF én daar DKIM aanzetten.');
+          }
+        } catch (_) { /* MX niet te lezen; geen uitspraak */ }
+      }
+    }
+  }
+
   // ── Slot ───────────────────────────────────────────────────────────────────
   console.log('');
   if (fails) {

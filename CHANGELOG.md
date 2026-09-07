@@ -307,6 +307,41 @@ In plaats van een plaatje met tooltips.
 
 ## Nog niet uitgerold
 
+### Onze e-mail had geen SPF — preflight zegt het nu
+
+**Actie:** `helvaro.pro` heeft geen SPF-record. Nagekeken in het echte DNS:
+DKIM staat er (selectors `default` en `google`), DMARC ook (`p=none`), en de
+MX wijst naar Google — maar SPF ontbreekt volledig.
+
+Wat dat betekent: iedereen kan post versturen die van jouw domein lijkt te
+komen, en je eigen post heeft één authenticatie minder. Dat raakt precies de
+mail die móet aankomen — wachtwoordherstel, e-mailbevestiging, het antwoord op
+een supportvraag. Eén TXT-record lost het op; `LAUNCH.md` zegt welk.
+
+Er zit een addertje bij dat erger is dan het ontbrekende record: verstuurt de
+app via een andere SMTP-server dan Google, dan is die post door niets gedekt —
+Google's DKIM tekent alleen wat via Google gaat. Preflight waarschuwt daar
+apart voor.
+
+`node scripts/preflight.js` heeft er een sectie bij die SPF, DKIM en DMARC
+opzoekt. Onbereikbaar DNS leest daar als "niet kunnen kijken", niet als
+"ontbreekt" — hetzelfde onderscheid als bij de agenda hieronder.
+
+### Er is nu een backup van de database
+
+`node scripts/airtable-backup.js` zet elke tabel als JSON op schijf. Er was
+niets: Airtable bewaart revisies per record, maar dat helpt niet tegen een base
+die leeggegooid wordt of een account dat dicht gaat.
+
+Hij vraagt het schema aan Airtable in plaats van een lijst tabellen mee te
+dragen, zodat een tabel die er later bijkomt niet stilzwijgend wordt
+overgeslagen. Lukt dat niet, dan stopt hij — liever geen backup dan een halve
+die eruitziet als een hele. Schrijft nooit naar Airtable.
+
+**Actie:** draai hem één keer echt, en zet daarna één tabel terug in een lege
+testbase. Terugzetten is geen omgekeerde van dit script, en een backup die je
+nooit hebt teruggezet is een aanname. Zie `LAUNCH.md`.
+
 ### Een agenda die niet gelezen kon worden, gold als een lege agenda
 
 Kon Helvaro je Google agenda niet lezen — een verlopen koppeling, een storing —
