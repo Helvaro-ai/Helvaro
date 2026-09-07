@@ -17435,16 +17435,23 @@ function openPanel(lead) {
         </span>
       </div>
       <div class="panel-row" id="verloren-reden-row" style="display:\${lead.status === 'verloren' ? 'flex' : 'none'}">
-        <span class="panel-row-label">Verlies reden</span>
+        <span class="panel-row-label">${T('lp.verliesReden')}</span>
         <span class="panel-row-value">
+          <!-- De WAARDEN blijven Nederlands en dat is geen slordigheid: ze gaan
+               als keuzewaarde naar het Airtable-veld Reason en worden
+               serverzijdig gecontroleerd tegen LOSS_REASONS in
+               api/_faro/writes.js. Vertaal je ze mee, dan wordt elke opslag
+               geweigerd -- of erger, dan staan er vier talen door elkaar in een
+               keuzeveld dat er zes kent. Alleen wat de klant LEEST gaat door de
+               vertaaltabel. -->
           <select class="status-select" id="panel-verlies-reden">
-            <option value="">— Kies reden —</option>
-            <option value="Prijs te hoog"       \${lead.reden === 'Prijs te hoog'       ? 'selected' : ''}>Prijs te hoog</option>
-            <option value="Geen timing"          \${lead.reden === 'Geen timing'          ? 'selected' : ''}>Geen timing</option>
-            <option value="Concurrent gekozen"   \${lead.reden === 'Concurrent gekozen'   ? 'selected' : ''}>Concurrent gekozen</option>
-            <option value="Geen interesse"       \${lead.reden === 'Geen interesse'       ? 'selected' : ''}>Geen interesse</option>
-            <option value="Geen reactie"         \${lead.reden === 'Geen reactie'         ? 'selected' : ''}>Geen reactie</option>
-            <option value="Andere reden"         \${lead.reden === 'Andere reden'         ? 'selected' : ''}>Andere reden</option>
+            <option value="">${T('lp.kiesReden')}</option>
+            <option value="Prijs te hoog"       \${lead.reden === 'Prijs te hoog'       ? 'selected' : ''}>${T('lp.reden.prijs')}</option>
+            <option value="Geen timing"          \${lead.reden === 'Geen timing'          ? 'selected' : ''}>${T('lp.reden.timing')}</option>
+            <option value="Concurrent gekozen"   \${lead.reden === 'Concurrent gekozen'   ? 'selected' : ''}>${T('lp.reden.concur')}</option>
+            <option value="Geen interesse"       \${lead.reden === 'Geen interesse'       ? 'selected' : ''}>${T('lp.reden.geenInt')}</option>
+            <option value="Geen reactie"         \${lead.reden === 'Geen reactie'         ? 'selected' : ''}>${T('lp.reden.geenRea')}</option>
+            <option value="Andere reden"         \${lead.reden === 'Andere reden'         ? 'selected' : ''}>${T('lp.reden.andere')}</option>
           </select>
         </span>
       </div>
@@ -17517,11 +17524,11 @@ function openPanel(lead) {
         <span class="panel-row-value \${lead.opgepikt ? 'check-yes' : 'check-no'}">\${lead.opgepikt ? 'Ja' : 'Nee'}</span>
       </div>
       <div class="panel-row">
-        <span class="panel-row-label">Boekingslink verstuurd</span>
+        <span class="panel-row-label">${T('lp.boekingslink')}</span>
         <span class="panel-row-value \${lead.boekingslinkVerstuurd ? 'check-yes' : 'check-no'}">\${lead.boekingslinkVerstuurd ? 'Ja' : 'Nee'}</span>
       </div>
       <div class="panel-row">
-        <span class="panel-row-label">Afspraak geboekt</span>
+        <span class="panel-row-label">${T('lp.afspraakGeboekt')}</span>
         <span class="panel-row-value \${lead.afspraakGeboekt ? 'check-yes' : 'check-no'}">\${lead.afspraakGeboekt ? 'Ja' : 'Nee'}</span>
       </div>
     </div>
@@ -17621,7 +17628,7 @@ function openPanel(lead) {
 
   // Notes section (timestamped)
   function renderNotesList(notes) {
-    if (!notes.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Nog geen notities</div>';
+    if (!notes.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">' + escHtml(tr('lp.geenNotities')) + '</div>';
     return notes.map(n => \`<div class="panel-note-item">
       <div class="panel-note-text">\${escHtml(n.text)}</div>
       <div class="panel-note-ts">\${relativeTime(n.ts)}</div>
@@ -17629,7 +17636,7 @@ function openPanel(lead) {
     </div>\`).join('');
   }
   function renderTasksList(tasks) {
-    if (!tasks.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Geen taken</div>';
+    if (!tasks.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">' + escHtml(tr('lp.geenTaken')) + '</div>';
     return tasks.map(t => {
       const dl = taskDueLabel(t.due);
       return \`<div class="panel-task-item\${t.done ? ' done' : ''}" data-task-id="\${escHtml(t.id)}">
@@ -17641,7 +17648,7 @@ function openPanel(lead) {
     }).join('');
   }
   function renderCallsList(calls) {
-    if (!calls.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">Geen gesprekken gelogd</div>';
+    if (!calls.length) return '<div style="color:var(--text-muted);font-size:12px;padding:4px 0">' + escHtml(tr('lp.geenGesprekken')) + '</div>';
     return calls.map(c => \`<div class="panel-call-item">
       <div class="panel-call-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
       <div class="panel-call-body">
@@ -17672,8 +17679,8 @@ function openPanel(lead) {
           <input type="text" class="panel-inline-input" id="afspraak-waarde" placeholder="€0" value="\${escHtml(af.gesloten || '')}">
         </div>
         <div>
-          <div class="afspraak-value-label" style="margin-bottom:4px">Resultaat notitie</div>
-          <textarea class="afspraak-notitie" id="afspraak-notitie" placeholder="Hoe ging het gesprek?">\${escHtml(af.notitie || '')}</textarea>
+          <div class="afspraak-value-label" style="margin-bottom:4px">${T('lp.resNotitie')}</div>
+          <textarea class="afspraak-notitie" id="afspraak-notitie" placeholder="${T('lp.hoeGing')}">\${escHtml(af.notitie || '')}</textarea>
         </div>
         <button class="btn-add-note" id="btn-save-afspraak">${T('ap.save')}</button>
       </div>
@@ -17685,7 +17692,7 @@ function openPanel(lead) {
       <div class="panel-section-title">Notities</div>
       <div class="panel-notes-list" id="panel-notes-list">\${renderNotesList(nData.notes)}</div>
       <div class="panel-add-note">
-        <textarea id="panel-note-input" placeholder="Notitie toevoegen..." rows="2"></textarea>
+        <textarea id="panel-note-input" placeholder="${T('lp.notitieToe')}" rows="2"></textarea>
         <button class="btn-add-note" id="btn-add-note">+ Toevoegen</button>
       </div>
     </div>
@@ -17693,7 +17700,7 @@ function openPanel(lead) {
       <div class="panel-section-title">Taken</div>
       <div class="panel-tasks-list" id="panel-tasks-list">\${renderTasksList(nData.tasks)}</div>
       <div class="panel-add-task">
-        <input type="text" id="panel-task-input" placeholder="Nieuwe taak...">
+        <input type="text" id="panel-task-input" placeholder="${T('lp.taakToe')}">
         <input type="date" id="panel-task-date">
         <button class="btn-add-task" id="btn-add-task">+</button>
       </div>
@@ -18350,10 +18357,10 @@ function openCalEvent(idx) {
       if (v === true) {
         // Already marked as came. Show result + stored deal info
         attSection = \`<div class="cal-modal-att-section">
-          <div class="cal-modal-att-label">Afspraak resultaat</div>
+          <div class="cal-modal-att-label">\${escHtml(tr('lp.afspraakRes'))}</div>
           <div class="cal-modal-att-result yes">
             Gekomen
-            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',true)">Bewerken</span>
+            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',true)">\${escHtml(tr('btn.bewerken'))}</span>
           </div>
           \${gesloten ? \`<div style="font-size:12px;color: var(--green-ink);font-weight:600;margin-top:6px;">Deal: \${escHtml(gesloten)}</div>\` : ''}
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
@@ -18361,20 +18368,20 @@ function openCalEvent(idx) {
       } else if (v === false) {
         // Already marked as no-show. Show result + reason
         attSection = \`<div class="cal-modal-att-section">
-          <div class="cal-modal-att-label">Afspraak resultaat</div>
+          <div class="cal-modal-att-label">\${escHtml(tr('lp.afspraakRes'))}</div>
           <div class="cal-modal-att-result no">
             Niet gekomen
-            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',false)">Bewerken</span>
+            <span class="cal-modal-att-result-edit" onclick="calAttStartEdit('\${lidJs}',false)">\${escHtml(tr('btn.bewerken'))}</span>
           </div>
           \${nd.afspraak?.notitie ? \`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">\${escHtml(nd.afspraak.notitie)}</div>\` : ''}
         </div>\`;
       } else {
         // Not yet marked. Show buttons
         attSection = \`<div class="cal-modal-att-section" id="cal-att-section-\${lid}">
-          <div class="cal-modal-att-label">Kwam deze persoon?</div>
+          <div class="cal-modal-att-label">\${escHtml(tr('lp.kwamHij'))}</div>
           <div class="cal-modal-att-btns">
-            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lidJs}',true)">Gekomen</button>
-            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lidJs}',false)">Niet gekomen</button>
+            <button class="cal-att-btn yes" onclick="calAttShowForm('\${lidJs}',true)">\${escHtml(tr('lp.gekomen'))}</button>
+            <button class="cal-att-btn no"  onclick="calAttShowForm('\${lidJs}',false)">\${escHtml(tr('lp.nietGekomen'))}</button>
           </div>
         </div>\`;
       }
@@ -18519,8 +18526,8 @@ function calAttShowForm(leadId, verschenen) {
           <input id="cal-att-deal" class="cal-att-followup-input" type="text" placeholder="bijv. €1.500 of Pakket Pro" />
         </div>
         <div>
-          <div class="cal-att-followup-label">Notities over het gesprek</div>
-          <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="Wat is er besproken? Volgende stap?"></textarea>
+          <div class="cal-att-followup-label">\${escHtml(tr('lp.gespreksNotitie'))}</div>
+          <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="\${escHtml(tr('lp.gespreksVraag'))}"></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',true)">
           ${T('ap.save')}
@@ -18532,7 +18539,7 @@ function calAttShowForm(leadId, verschenen) {
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">Reden / notitie (optioneel)</div>
-          <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="bijv. Geen antwoord, verkeerd nummer, wil herplannen..."></textarea>
+          <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="\${escHtml(tr('lp.nietGekomenPh'))}"></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">
           ${T('ap.save')}
@@ -19107,7 +19114,7 @@ function renderCalSidebar() {
       </div>
       \${phone ? \`<a class="cal-call-phone-link" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">
         <span></span> \${escHtml(phone)}
-      </a>\` : '<div style="font-size:11px;color:var(--text-muted);margin-bottom:7px">Geen telefoonnummer</div>'}
+      </a>\` : '<div style="font-size:11px;color:var(--text-muted);margin-bottom:7px">' + escHtml(tr('lp.geenTelefoon')) + '</div>'}
       <div class="cal-call-actions">
         \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">Bellen</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">WA</a>\` : ''}
@@ -19170,8 +19177,8 @@ function renderAttendanceBanner() {
         <div class="cal-att-time">\${dayLbl} · \${timeLbl}</div>
       </div>
       <div class="cal-att-btns" id="cal-att-btns-\${idStr}">
-        <button class="cal-att-btn yes" onclick="bannerAttYes('\${idStr}')">Gekomen</button>
-        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false,'','');renderAttendanceBanner()">Niet</button>
+        <button class="cal-att-btn yes" onclick="bannerAttYes('\${idStr}')">\${escHtml(tr('lp.gekomen'))}</button>
+        <button class="cal-att-btn no"  onclick="markAttendance('\${idStr}',false,'','');renderAttendanceBanner()">\${escHtml(tr('lp.nietKort'))}</button>
       </div>
     </div>\`;
   }).join('');
@@ -19203,7 +19210,7 @@ async function markAttendance(leadId, verschenen, gesloten, notitie) {
     const fields = { notities: notitiesStr };
     if (geslotenClean) fields.dealWaarde = geslotenClean;
     await patchLead(leadId, fields);
-    toast(verschenen ? 'Opgeslagen. Gekomen' : 'Opgeslagen. Niet gekomen', 'success');
+    toast(tr(verschenen ? 'lp.opgeslagenWel' : 'lp.opgeslagenNiet'), 'success');
   } catch(e) {
     toast(tr('tst.opslaanMislukt'), 'error');
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
@@ -19222,7 +19229,7 @@ function bannerAttYes(leadId) {
   if (!btnsEl) return;
   btnsEl.outerHTML = \`<div id="cal-att-form-\${escHtml(leadId)}" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;width:100%">
     <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
-    <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="Notities over het gesprek..." style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
+    <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="\${escHtml(tr('lp.gespreksNotitie'))}" style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
     <div style="display:flex;gap:6px">
       <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escJs(leadId)}')">${T('ap.save')}</button>
       <button class="cal-att-btn no" style="flex:0 0 auto" onclick="markAttendance('\${escJs(leadId)}',false,'','');renderAttendanceBanner()">Niet</button>

@@ -1248,6 +1248,61 @@ const TEKST = {
   'btn.versturen': { nl: 'Versturen', fr: 'Envoyer',     en: 'Send',     de: 'Senden' },
   'btn.verstuurd': { nl: 'Verstuurd', fr: 'Envoy\u00e9', en: 'Sent',    de: 'Gesendet' },
   'btn.totaal':    { nl: 'Totaal',    fr: 'Total',       en: 'Total',    de: 'Gesamt' },
+
+  /* ── Het leadpaneel ──────────────────────────────────────────────────────
+     Het scherm waar een makelaar het meest naar kijkt, en het stond volledig
+     in het Nederlands.
+
+     LET OP bij de verliesredenen hieronder: de Nederlandse zinnen zijn
+     WAARDEN, geen labels. Ze gaan als keuzewaarde naar het Airtable-veld
+     Reason en worden serverzijdig gecontroleerd tegen LOSS_REASONS in
+     api/_faro/writes.js. Vertaal je de waarde mee, dan wordt elke opslag
+     geweigerd -- of erger, dan staan er vier talen door elkaar in een
+     keuzeveld dat er maar zes kent. Alleen het LABEL gaat door de tabel. */
+  'lp.verliesReden':  { nl: 'Verlies reden', fr: 'Raison de la perte', en: 'Loss reason', de: 'Verlustgrund' },
+  'lp.kiesReden':     { nl: '\u2014 Kies reden \u2014', fr: '\u2014 Choisir une raison \u2014', en: '\u2014 Pick a reason \u2014', de: '\u2014 Grund w\u00e4hlen \u2014' },
+  'lp.reden.prijs':   { nl: 'Prijs te hoog',      fr: 'Prix trop \u00e9lev\u00e9',  en: 'Price too high',       de: 'Preis zu hoch' },
+  'lp.reden.timing':  { nl: 'Geen timing',        fr: 'Mauvais moment',               en: 'Wrong timing',         de: 'Falscher Zeitpunkt' },
+  'lp.reden.concur':  { nl: 'Concurrent gekozen', fr: 'A choisi un concurrent',       en: 'Chose a competitor',   de: 'Wettbewerber gew\u00e4hlt' },
+  'lp.reden.geenInt': { nl: 'Geen interesse',     fr: 'Pas int\u00e9ress\u00e9',    en: 'Not interested',       de: 'Kein Interesse' },
+  'lp.reden.geenRea': { nl: 'Geen reactie',       fr: 'Aucune r\u00e9ponse',         en: 'No response',          de: 'Keine Reaktion' },
+  'lp.reden.andere':  { nl: 'Andere reden',       fr: 'Autre raison',                 en: 'Other reason',         de: 'Anderer Grund' },
+
+  'lp.boekingslink':  { nl: 'Boekingslink verstuurd', fr: 'Lien de r\u00e9servation envoy\u00e9', en: 'Booking link sent', de: 'Buchungslink gesendet' },
+  'lp.afspraakGeboekt': { nl: 'Afspraak geboekt', fr: 'Rendez-vous r\u00e9serv\u00e9', en: 'Appointment booked', de: 'Termin gebucht' },
+  'lp.geenScore':     { nl: 'Geen score',         fr: 'Pas de score',      en: 'No score',        de: 'Kein Score' },
+  'lp.geenTelefoon':  { nl: 'Geen telefoonnummer', fr: 'Pas de num\u00e9ro', en: 'No phone number', de: 'Keine Telefonnummer' },
+
+  /* Notities en taken op het leadpaneel. */
+  'lp.notitie':       { nl: 'Notitie',            fr: 'Note',              en: 'Note',            de: 'Notiz' },
+  'lp.notities':      { nl: 'Notities',           fr: 'Notes',             en: 'Notes',           de: 'Notizen' },
+  'lp.geenNotities':  { nl: 'Nog geen notities',  fr: 'Pas encore de notes', en: 'No notes yet',  de: 'Noch keine Notizen' },
+  'lp.notitieToe':    { nl: 'Notitie toevoegen...', fr: 'Ajouter une note...', en: 'Add a note...', de: 'Notiz hinzuf\u00fcgen...' },
+  'lp.taken':         { nl: 'Taken',              fr: 'T\u00e2ches',      en: 'Tasks',           de: 'Aufgaben' },
+  'lp.geenTaken':     { nl: 'Geen taken',         fr: 'Aucune t\u00e2che', en: 'No tasks',       de: 'Keine Aufgaben' },
+  'lp.taakToe':       { nl: 'Nieuwe taak...',     fr: 'Nouvelle t\u00e2che...', en: 'New task...', de: 'Neue Aufgabe...' },
+  'lp.geenGesprekken': { nl: 'Geen gesprekken gelogd', fr: 'Aucun appel enregistr\u00e9', en: 'No calls logged', de: 'Keine Gespr\u00e4che erfasst' },
+
+  /* De uitkomst van een afspraak. */
+  'lp.afspraakRes':   { nl: 'Afspraak resultaat', fr: 'R\u00e9sultat du rendez-vous', en: 'Appointment outcome', de: 'Ergebnis des Termins' },
+  'lp.gekomen':       { nl: 'Gekomen',            fr: 'Venu',              en: 'Attended',        de: 'Erschienen' },
+  'lp.nietGekomen':   { nl: 'Niet gekomen',       fr: 'Absent',            en: 'No-show',         de: 'Nicht erschienen' },
+  /* De banner boven de kalender heeft minder ruimte dan de kaart: daar staat
+     'Niet' waar op de kaart 'Niet gekomen' past. Een eigen sleutel en geen
+     afkorting in de code, anders staat er in het Duits 'Nicht' -- wat daar
+     geen woord is dat op zichzelf staat. */
+  'lp.nietKort':      { nl: 'Niet',               fr: 'Absent',            en: 'No-show',         de: 'Nein' },
+  'lp.opgeslagenWel': { nl: 'Opgeslagen. Gekomen', fr: 'Enregistr\u00e9. Venu', en: 'Saved. Attended', de: 'Gespeichert. Erschienen' },
+  'lp.opgeslagenNiet':{ nl: 'Opgeslagen. Niet gekomen', fr: 'Enregistr\u00e9. Absent', en: 'Saved. No-show', de: 'Gespeichert. Nicht erschienen' },
+  'lp.kwamHij':       { nl: 'Kwam deze persoon?', fr: 'Cette personne est-elle venue ?', en: 'Did they show up?', de: 'Ist diese Person erschienen?' },
+  'lp.gespreksNotitie': { nl: 'Notities over het gesprek', fr: 'Notes sur l\u2019entretien', en: 'Notes on the meeting', de: 'Notizen zum Gespr\u00e4ch' },
+  'lp.gespreksVraag': { nl: 'Wat is er besproken? Volgende stap?', fr: 'Qu\u2019avez-vous discut\u00e9 ? Prochaine \u00e9tape ?', en: 'What was discussed? Next step?', de: 'Was wurde besprochen? N\u00e4chster Schritt?' },
+  'lp.hoeGing':       { nl: 'Hoe ging het gesprek?', fr: 'Comment s\u2019est pass\u00e9 l\u2019entretien ?', en: 'How did the meeting go?', de: 'Wie lief das Gespr\u00e4ch?' },
+  'lp.resNotitie':    { nl: 'Resultaat notitie', fr: 'Note de r\u00e9sultat', en: 'Outcome note', de: 'Ergebnisnotiz' },
+  'lp.nietGekomenPh': { nl: 'bijv. Geen antwoord, verkeerd nummer, wil herplannen...',
+                        fr: 'ex. Pas de r\u00e9ponse, mauvais num\u00e9ro, veut reporter...',
+                        en: 'e.g. No answer, wrong number, wants to reschedule...',
+                        de: 'z.B. Keine Antwort, falsche Nummer, will verschieben...' },
   'tst.sessieVerlopen': { nl: 'Je sessie is verlopen. Log opnieuw in', fr: 'Votre session a expiré. Reconnectez-vous', en: 'Your session expired. Sign in again', de: 'Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an' },
   'tst.emailNietGevonden': { nl: 'Kon je e-mailadres niet vinden. Log opnieuw in.', fr: 'Impossible de trouver votre adresse e-mail. Reconnectez-vous.', en: 'Couldn’t find your email address. Sign in again.', de: 'Ihre E-Mail-Adresse wurde nicht gefunden. Melden Sie sich erneut an.' },
   'tst.opslaanMislukt': { nl: 'Opslaan mislukt', fr: 'Échec de l’enregistrement', en: 'Couldn’t save', de: 'Speichern fehlgeschlagen' },

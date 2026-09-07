@@ -52,5 +52,48 @@ try {
   console.error('\n  Bijna altijd: een backtick of een dollar-accolade in een COMMENTAAR');
   console.error('  binnen de template literal. Schrijf de eigenschap zonder backticks.\n');
 }
-if (ok) console.log('api/dashboard.js parseert.');
+/* ── Parseren is niet renderen ──────────────────────────────────────────────
+   Deze controle zei "parseert" terwijl de pagina stuk was. Dat kan, want de
+   template literal is voor de parser gewoon een string -- pas als je hem
+   UITVOERT worden de ${...}-stukken geevalueerd, en dan pas blijkt dat er een
+   functie in staat die aan die kant niet bestaat.
+
+   Precies dat is hier gebeurd: ${escHtml(tr('...'))} in wat een CLIENT-sjabloon
+   moest zijn. De server ziet die ${ ook en probeert hem uit te voeren; escHtml
+   en tr bestaan daar niet, dus ReferenceError -- en elke klant krijgt het
+   inlogscherm te zien.
+
+   De regel om te onthouden: in dit bestand hoort een client-interpolatie
+   \${...} te schrijven, met backslash. Zonder backslash is het de server. */
+if (ok) {
+  process.env.FARO_WORKSPACE_ENABLED = process.env.FARO_WORKSPACE_ENABLED || '1';
+  process.env.API_AIRTABLE  = process.env.API_AIRTABLE  || 'check';
+  process.env.BASE_AIRTABLE = process.env.BASE_AIRTABLE || 'check';
+  try {
+    const dash = require(bestand);
+    let lengte = 0;
+    dash({ method: 'GET', url: '/dashboard', headers: {}, query: {} },
+         { setHeader() {}, status() { return this; }, send(b) { lengte = String(b).length; },
+           json() {}, end() {} });
+    if (lengte < 100000) {
+      ok = false;
+      console.error('\n  api/dashboard.js parseert wel maar levert een LEGE pagina (' + lengte + ' tekens).');
+      console.error('\n  Bijna altijd: een ${...} die een CLIENT-interpolatie had moeten zijn.');
+      console.error('  Schrijf \\${...} met backslash -- zonder backslash voert de SERVER hem uit,');
+      console.error('  en daar bestaan escHtml/tr/faroEsc niet. De handler vangt die fout zelf op');
+      console.error('  en stuurt een foutpagina, dus je ziet hier 0 tekens in plaats van een stack.\n');
+    }
+  } catch (e) {
+    ok = false;
+    console.error('\n  api/dashboard.js parseert wel maar RENDERT niet:');
+    console.error('  ' + (e.message || e));
+    if (/is not defined/.test(String(e.message))) {
+      console.error('\n  Bijna altijd: een ${...} die een CLIENT-interpolatie had moeten zijn.');
+      console.error('  Schrijf \\${...} met backslash -- zonder backslash voert de SERVER hem uit,');
+      console.error('  en daar bestaan escHtml/tr/faroEsc niet.\n');
+    }
+  }
+}
+
+if (ok) console.log('api/dashboard.js parseert en rendert.');
 process.exit(ok ? 0 : 1);
