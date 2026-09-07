@@ -1305,6 +1305,12 @@ const TEKST = {
                         en: 'You do not need to do anything. As soon as it is ready you can just log in.',
                         de: 'Sie m\u00fcssen nichts tun. Sobald es fertig ist, k\u00f6nnen Sie sich einfach anmelden.' },
   'log.bezig':        { nl: 'Inloggen...', fr: 'Connexion...', en: 'Signing in...', de: 'Anmeldung...' },
+
+  /* De telregel boven het aanbod: "3 panden, 2 in aanbod". Het eerste deel ging
+     al door vw(), het tweede stond hardgecodeerd -- een Engelstalige klant las
+     "3 properties, 2 in aanbod". Half vertaald is opvallender dan helemaal
+     niet, want dan lijkt het een fout in plaats van een keuze. */
+  'pd.inAanbod':      { nl: '{n} in aanbod', fr: '{n} disponible(s)', en: '{n} available', de: '{n} verf\u00fcgbar' },
   'log.verbindingWeg':{ nl: 'Verbinding mislukt. Opnieuw proberen over 90s',
                         fr: '\u00c9chec de la connexion. Nouvelle tentative dans 90 s',
                         en: 'Connection failed. Retrying in 90s',

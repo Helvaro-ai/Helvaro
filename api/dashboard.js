@@ -7004,6 +7004,10 @@ async function marktWisselen(gekozen) {
     }
 
     zetVertical(nieuweVertical, _checklistConfigCache || {});
+    /* De keuzelijst zelf ook bijwerken. Zonder dit klopt hij pas na de
+       volgende opstart -- en tot dan staat er de vorige markt, wat dezelfde
+       indruk wekt als de fout hierboven: dat het niet bewaard is. */
+    if (kiezer) kiezer.value = gekozen;
     marktSubtekst(gekozen);
     toast(tr('set.markt.gewisseld'), 'success');
   } catch (e) {
@@ -7150,8 +7154,31 @@ async function loadOnboardingChecklist(force) {
        zijn keuze niet bewaard is. */
     var mk = document.getElementById('set-markt');
     if (mk) {
-      var huidig = (d.sector === 'dealership' || d.vertical === 'dealership') ? 'dealership'
-                 : (d.sector === 'other' ? 'other' : 'real_estate');
+      /* ── Dit kende maar DRIE markten ──────────────────────────────────
+         Hier stond:
+
+             var huidig = (d.sector === 'dealership' || d.vertical === 'dealership')
+                        ? 'dealership' : (d.sector === 'other' ? 'other' : 'real_estate');
+
+         Geschreven toen er vastgoed, autohandel en "iets anders" waren, en
+         nooit uitgebreid toen bouw, keuken en renovatie erbij kwamen. Gevolg:
+         een aannemer opende Instellingen en zag "Vastgoed" staan. Zijn keuze
+         WAS bewaard -- de server wist het, de zijbalk wist het -- maar het
+         scherm waarop hij hem gemaakt had, zei iets anders.
+
+         Dat is precies de klacht "ik wissel van niche en hij laadt niet
+         goed": het lijkt niet opgeslagen, dus je kiest het nog eens, en dan
+         nog eens.
+
+         De opmerking die hier stond beschreef dit probleem al -- "zonder dit
+         staat er altijd Vastgoed, ook bij een dealer, en dan lijkt het alsof
+         zijn keuze niet bewaard is" -- maar de oplossing was alleen voor
+         dealers doorgetrokken.
+
+         hvSectorBijVertical() bestond al en leest WIZARD_MARKTEN: dezelfde
+         lijst als de keuzelijst en de wizard. Eén lijst, dus dit kan niet
+         opnieuw achterlopen als er een zesde markt bij komt. */
+      var huidig = d.sector === 'other' ? 'other' : hvSectorBijVertical(hvVertical);
       mk.value = huidig;
       marktSubtekst(huidig);
     }
@@ -15025,7 +15052,7 @@ function renderPanden() {
       : (p.status === 'beschikbaar' || p.status === 'onder bod');
   });
   telEl.textContent = pandState.panden.length + ' ' + (pandState.panden.length === 1 ? vw('een') : vw('meer'))
-    + ', ' + actief.length + ' in aanbod';
+    + ', ' + tr('pd.inAanbod', { n: actief.length });
 
   /* Hoeveel leads per pand. Uit de leads die al geladen zijn -- geen extra
      verzoek voor een getal dat we al hebben. */
