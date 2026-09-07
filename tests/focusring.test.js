@@ -42,7 +42,12 @@ function ck(wat, ok, detail) {
   else    { fail++; console.log('  FOUT  ' + wat + (detail !== undefined ? '\n        ' + JSON.stringify(detail) : '')); }
 }
 
-const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+/* Sinds de opsplitsing staat het CSS-blok in api/_dash/styles.js en niet meer
+   in api/dashboard.js. Deze test leest de STIJLEN, dus hij leest nu allebei.
+   De uitgestuurde pagina is byte voor byte dezelfde gebleven (zie
+   tests/dashboard-splitsing.test.js) -- alleen de plek in de bron veranderde. */
+const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+             + require(BASE + 'api/_dash/styles.js').css();
 /* Dit bestand en de bron leggen hun keuzes uit met dezelfde woorden die ze
    bewaken. Commentaar eruit, anders keurt de test de uitleg goed. */
 const code = dash.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

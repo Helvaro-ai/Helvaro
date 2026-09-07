@@ -35,7 +35,8 @@ function ck(wat, ok, detail) {
 
 console.log('\n  Faro kent elk scherm dat in de navigatie staat');
 {
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   const nav = [...new Set([...dash.matchAll(/data-page="([a-z0-9-]+)"/g)].map((m) => m[1]))];
   const gedekt = Object.keys(scherm.PAGINAS);
   const gaten = nav.filter((p) => gedekt.indexOf(p) === -1);
@@ -145,7 +146,8 @@ console.log('\n  de client stuurt de signalen die dit voedt');
   ck('credits komen uit _creditUsage, niet uit een verzonnen state.credits',
     /_creditUsage[\s\S]{0,120}percentUsed/.test(clCode) && !/state\.credits/.test(clCode));
 
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   ck('pandState houdt bij of hij geladen is', /geladen:\s*false/.test(dash) && /pandState\.geladen\s*=\s*true/.test(dash));
 }
 
@@ -159,7 +161,8 @@ console.log('\n  de lege pipeline zegt EEN ding, niet vijf keer niets');
      De grens is belangrijk: zodra er ergens EEN lead staat zijn de kolommen
      wel zinvol, want dan betekent een lege kolom iets ("niets in de
      afspraakfase"). Dan hoort die melding per kolom te blijven. */
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   const i = dash.indexOf('function renderPipeline');
   const blok = dash.slice(i, i + 3000);
   ck('er is een tak voor een volledig lege pipeline', /if \(!leads\.length\)/.test(blok));
@@ -183,7 +186,8 @@ console.log('\n  de lege pipeline zegt EEN ding, niet vijf keer niets');
 
 console.log('\n  de zijbalk groepeert op wat iemand zoekt');
 {
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   const i = dash.indexOf('nav.group.work');
   const nav = dash.slice(i - 300, dash.indexOf('</nav>', i));
   const groepen = {};
@@ -226,7 +230,8 @@ console.log('\n  de zijbalk groepeert op wat iemand zoekt');
 
 console.log('\n  de onboarding zegt tegen een dealer iets anders');
 {
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   /* Een dealer die te horen krijgt "deel deze link onder je advertenties" doet
      daar niets mee: zijn leads komen van AutoScout24, waar de link al bestaat.
      En hij hoeft niet op een goedgekeurd sjabloon te wachten, want de KOPER
@@ -257,7 +262,8 @@ console.log('\n  de onboarding zegt tegen een dealer iets anders');
 
 console.log('\n  je kunt later van markt wisselen, en dat verwijdert niets');
 {
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   ck('er is een keuzelijst in Instellingen', /id="set-markt"/.test(dash));
   ck('met drie keuzes', ['real_estate', 'dealership', 'other'].every((v) => dash.indexOf('value="' + v + '"') !== -1));
 
@@ -307,7 +313,8 @@ console.log('\n  je kunt later van markt wisselen, en dat verwijdert niets');
 
 console.log('\n  van scherm wisselen is geen harde knip meer');
 {
-  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + require(BASE + 'api/_dash/styles.js').css();
   /* Van scherm wisselen was display:none naar display:block -- de hele inhoud
      wordt in EEN frame vervangen. Er is dan geen enkel signaal dat er iets
      nieuws is gekomen; het oog ziet alleen dat alles anders is. */

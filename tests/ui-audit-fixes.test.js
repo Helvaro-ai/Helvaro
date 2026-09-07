@@ -201,7 +201,8 @@ console.log('\n— skeletten bleven eeuwig draaien na een fout —');
 {
   ck('er is een functie die ze stopt', /function stopSkeletten\(\)/.test(js), null);
   ck('de foutbanner roept hem aan', /el\.style\.display = 'flex';[\s\S]{0,700}stopSkeletten\(\)/.test(js), null);
-  ck('en "Laden..." wordt een eerlijke tekst', /lab\.textContent = 'Niet opgehaald'/.test(js), null);
+  /* Zelfde reden als in tests/laadstaten: de zin is een vertaalsleutel. */
+  ck('en "Laden..." wordt een eerlijke tekst', /lab\.textContent = tr\('st\.nietOpgehaald'\)/.test(js), null);
 }
 
 console.log('\n— Instellingen toonde een plan dat niet bestaat —');

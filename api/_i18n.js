@@ -1126,6 +1126,47 @@ const TEKST = {
   'cal.prev': { nl: 'Vorige week', fr: 'Semaine précédente', en: 'Previous week', de: 'Vorherige Woche' },
   'cal.next': { nl: 'Volgende week', fr: 'Semaine suivante', en: 'Next week', de: 'Nächste Woche' },
   'cal.book': { nl: 'Boek afspraak', fr: 'Planifier un rendez-vous', en: 'Book appointment', de: 'Termin buchen' },
+
+  /* ── De afspraakkaart ──────────────────────────────────────────────────
+     Deze labels stonden hardgecodeerd in het Nederlands in openCalEvent(),
+     op een scherm dat verder in vier talen bestaat. Een Waalse makelaar zag
+     "Datum / Tijd / Duur / Telefoon" op de kaart van zijn eigen afspraak.
+     Meegekomen met het annuleren en verzetten hieronder, want het is dezelfde
+     functie en een half vertaalde kaart is niet minder raar dan een hele. */
+  'cal.ev.title':   { nl: 'Afspraak',  fr: 'Rendez-vous', en: 'Appointment', de: 'Termin' },
+  'cal.ev.date':    { nl: 'Datum',     fr: 'Date',        en: 'Date',        de: 'Datum' },
+  'cal.ev.time':    { nl: 'Tijd',      fr: 'Heure',       en: 'Time',        de: 'Zeit' },
+  'cal.ev.dur':     { nl: 'Duur',      fr: 'Durée',       en: 'Duration',    de: 'Dauer' },
+  'cal.ev.type':    { nl: 'Type',      fr: 'Type',        en: 'Type',        de: 'Art' },
+  'cal.ev.phone':   { nl: 'Telefoon',  fr: 'Téléphone',   en: 'Phone',       de: 'Telefon' },
+  'cal.ev.notes':   { nl: 'Notities',  fr: 'Notes',       en: 'Notes',       de: 'Notizen' },
+
+  /* ── Annuleren en verzetten ────────────────────────────────────────────
+     De server kon dit al (mode 'appointment-update' in api/leads.js, met
+     tenantcontrole en het opnieuw scherpstellen van de herinnering), maar er
+     was geen knop. De vorige knoppen waren Calendly-links en zijn weggehaald
+     toen Calendly eruit ging; de vervanging is nooit aangesloten. */
+  'cal.ev.move':    { nl: 'Verzetten', fr: 'Reporter',    en: 'Reschedule',  de: 'Verschieben' },
+  'cal.ev.cancel':  { nl: 'Annuleren', fr: 'Annuler',     en: 'Cancel',      de: 'Absagen' },
+  'cal.ev.moveTo':  { nl: 'Nieuwe datum en tijd', fr: 'Nouvelle date et heure', en: 'New date and time', de: 'Neues Datum und Uhrzeit' },
+  'cal.ev.save':    { nl: 'Verzetten', fr: 'Reporter',    en: 'Reschedule',  de: 'Verschieben' },
+  'cal.ev.back':    { nl: 'Terug',     fr: 'Retour',      en: 'Back',        de: 'Zurück' },
+  'cal.ev.cancelQ': { nl: 'Deze afspraak annuleren?', fr: 'Annuler ce rendez-vous ?', en: 'Cancel this appointment?', de: 'Diesen Termin absagen?' },
+  /* Eerlijk over wat er NIET gebeurt. De lead krijgt geen bericht: daarvoor is
+     een goedgekeurd WhatsApp-sjabloon nodig en dat is er niet. Dat verzwijgen
+     zou een makelaar laten denken dat zijn klant op de hoogte is. */
+  'cal.ev.cancelSub': { nl: 'De afspraak verdwijnt uit je agenda. De lead krijgt hier géén bericht over — bel of app hem zelf.',
+                        fr: 'Le rendez-vous disparaît de votre agenda. Le lead n’en sera PAS informé — appelez-le ou écrivez-lui vous-même.',
+                        en: 'The appointment leaves your calendar. The lead is NOT notified — call or message them yourself.',
+                        de: 'Der Termin verschwindet aus Ihrem Kalender. Der Lead wird NICHT benachrichtigt — rufen Sie ihn selbst an.' },
+  'cal.ev.moveSub': { nl: 'De herinnering wordt opnieuw scherpgesteld op de nieuwe tijd. De lead krijgt hier géén bericht over.',
+                      fr: 'Le rappel est recalé sur la nouvelle heure. Le lead n’en sera PAS informé.',
+                      en: 'The reminder is re-armed for the new time. The lead is NOT notified.',
+                      de: 'Die Erinnerung wird auf die neue Zeit neu gesetzt. Der Lead wird NICHT benachrichtigt.' },
+  'cal.ev.done':    { nl: 'Afspraak verzet.',    fr: 'Rendez-vous reporté.', en: 'Appointment rescheduled.', de: 'Termin verschoben.' },
+  'cal.ev.gone':    { nl: 'Afspraak geannuleerd.', fr: 'Rendez-vous annulé.', en: 'Appointment cancelled.', de: 'Termin abgesagt.' },
+  'cal.ev.fail':    { nl: 'Dat lukte niet. Probeer het opnieuw.', fr: 'Échec. Réessayez.', en: 'That did not work. Try again.', de: 'Das hat nicht geklappt. Erneut versuchen.' },
+  'cal.ev.past':    { nl: 'Deze afspraak is al geweest.', fr: 'Ce rendez-vous est passé.', en: 'This appointment has already happened.', de: 'Dieser Termin ist bereits vorbei.' },
   'cal.noResult': { nl: 'Afspraken zonder resultaat', fr: 'Rendez-vous sans résultat', en: 'Appointments without outcome', de: 'Termine ohne Ergebnis' },
   'cal.toCall': { nl: 'Te Bellen', fr: 'À appeler', en: 'To call', de: 'Anzurufen' },
   'cal.toCall.sub': { nl: 'Gekwalificeerd · nog geen afspraak', fr: 'Qualifié · pas encore de rendez-vous', en: 'Qualified · no appointment yet', de: 'Qualifiziert · noch kein Termin' },
@@ -1161,6 +1202,275 @@ const TEKST = {
   'tst.netwerkLater': { nl: 'Netwerkfout. Probeer later opnieuw', fr: 'Erreur réseau. Réessayez plus tard', en: 'Network error. Try again later', de: 'Netzwerkfehler. Versuchen Sie es später erneut' },
   'tst.netwerkResultaten': { nl: 'Netwerkfout bij laden resultaten', fr: 'Erreur réseau lors du chargement des résultats', en: 'Network error while loading results', de: 'Netzwerkfehler beim Laden der Ergebnisse' },
   'tst.ietsMis': { nl: 'Er ging iets mis. Controleer je verbinding.', fr: 'Un problème est survenu. Vérifiez votre connexion.', en: 'Something went wrong. Check your connection.', de: 'Etwas ist schiefgelaufen. Prüfen Sie Ihre Verbindung.' },
+
+  /* ── Eén storing, één zin ────────────────────────────────────────────────
+     Er stonden zes bijna-gelijke varianten HARDGECODEERD in api/dashboard.js:
+     "Netwerkfout. Controleer je verbinding.", "Netwerkfout. Probeer opnieuw.",
+     "Verbindingsfout. Probeer opnieuw.", "Er ging iets mis. Controleer je
+     verbinding en probeer opnieuw.", "Opslaan mislukt. Controleer je
+     verbinding." en "Opslaan lukte niet. Controleer je verbinding en probeer
+     opnieuw."
+
+     Twee dingen mis. Ze waren alle zes Nederlands op een scherm dat in vier
+     talen bestaat -- en juist een foutmelding is het slechtste moment om een
+     klant een vreemde taal voor te schotelen, want hij is dan al vastgelopen.
+     En zes formuleringen voor één toestand laten een product rommelig lijken
+     zonder dat er iets aan informatie bij komt.
+
+     Nu twee zinnen: iets ging mis (tst.ietsMis, bestond al), en het opslaan
+     ging mis. Dat onderscheid is het enige dat de klant echt helpt -- bij het
+     tweede weet hij dat zijn invoer nog niet bewaard is. */
+  'tst.opslaanMis': { nl: 'Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.',
+                      fr: 'L\u2019enregistrement a \u00e9chou\u00e9. V\u00e9rifiez votre connexion et r\u00e9essayez.',
+                      en: 'Saving failed. Check your connection and try again.',
+                      de: 'Speichern fehlgeschlagen. Pr\u00fcfen Sie Ihre Verbindung und versuchen Sie es erneut.' },
+
+  /* ── Lege staten ─────────────────────────────────────────────────────────
+     Ook deze stonden hardgecodeerd. Een leeg scherm is het eerste dat een
+     nieuwe klant ziet, in elke taal. */
+  'leeg.leads':      { nl: 'Geen leads gevonden', fr: 'Aucun lead trouv\u00e9', en: 'No leads found', de: 'Keine Leads gefunden' },
+  'leeg.leadsKort':  { nl: 'Geen leads', fr: 'Aucun lead', en: 'No leads', de: 'Keine Leads' },
+  'leeg.gesprekken': { nl: 'Nog geen gesprekken', fr: 'Pas encore de conversations', en: 'No conversations yet', de: 'Noch keine Gespr\u00e4che' },
+  'leeg.berichten':  { nl: 'Geen berichten', fr: 'Aucun message', en: 'No messages', de: 'Keine Nachrichten' },
+  'leeg.data':       { nl: 'Geen data', fr: 'Aucune donn\u00e9e', en: 'No data', de: 'Keine Daten' },
+  'leeg.galerij':    { nl: 'Kon galerij niet laden', fr: 'Impossible de charger la galerie', en: 'Could not load the gallery', de: 'Galerie konnte nicht geladen werden' },
+  'leeg.stijlen':    { nl: 'Stijlen laden mislukt', fr: '\u00c9chec du chargement des styles', en: 'Could not load styles', de: 'Stile konnten nicht geladen werden' },
+  'leeg.resultaten': { nl: 'Nog geen resultaten', fr: 'Pas encore de r\u00e9sultats', en: 'No results yet', de: 'Noch keine Ergebnisse' },
+  'leeg.verliesdata':{ nl: 'Geen verliesdata', fr: 'Aucune donn\u00e9e de perte', en: 'No loss data', de: 'Keine Verlustdaten' },
+  'leeg.stijlenGeen':{ nl: 'Geen stijlen beschikbaar', fr: 'Aucun style disponible', en: 'No styles available', de: 'Keine Stile verf\u00fcgbar' },
+  'leeg.beelden':    { nl: 'Nog geen beelden gegenereerd', fr: 'Aucune image g\u00e9n\u00e9r\u00e9e', en: 'No images generated yet', de: 'Noch keine Bilder erzeugt' },
+  'leeg.historiek':  { nl: 'Nog geen historiek', fr: 'Pas encore d\u2019historique', en: 'No history yet', de: 'Noch kein Verlauf' },
+  'leeg.bijgehouden':{ nl: 'nog geen bijgehouden', fr: 'pas encore suivi', en: 'not tracked yet', de: 'noch nicht erfasst' },
+
+  /* ── De welkomstwizard ───────────────────────────────────────────────────
+     Het EERSTE scherm van een nieuwe klant, en het stond volledig in het
+     Nederlands -- inclusief de twee stappen waar het mis kan gaan (WhatsApp
+     ondersteunt je taal niet, je agendakoppeling is verlopen). Juist daar
+     hoort iemand zijn eigen taal te lezen.
+
+     De {taal} en {email} hieronder worden door tr() ingevuld. Ze staan in de
+     zin en niet ervoor of erachter, omdat de woordvolgorde per taal verschilt:
+     "WhatsApp ondersteunt Duits niet" is in het Frans "WhatsApp ne prend pas
+     en charge l'allemand". Aan elkaar plakken zou dat onmogelijk maken. */
+  'wiz.push.aan':     { nl: '\u2713 Aan', fr: '\u2713 Activ\u00e9', en: '\u2713 On', de: '\u2713 An' },
+  'wiz.push.aanSub':  { nl: 'Je krijgt een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.',
+                        fr: 'Vous recevez une notification d\u00e8s qu\u2019un lead arrive, m\u00eame si Helvaro est ferm\u00e9.',
+                        en: 'You get a notification the moment a lead arrives, even with Helvaro closed.',
+                        de: 'Sie erhalten eine Benachrichtigung, sobald ein Lead eingeht \u2014 auch wenn Helvaro geschlossen ist.' },
+  'wiz.push.blok':    { nl: 'Geblokkeerd', fr: 'Bloqu\u00e9', en: 'Blocked', de: 'Blockiert' },
+  'wiz.push.blokSub': { nl: 'Je browser blokkeert meldingen van Helvaro. Dat kunnen we hier niet aanzetten \u2014 zet het aan bij de site-instellingen van je browser (het slotje naast het adres).',
+                        fr: 'Votre navigateur bloque les notifications de Helvaro. Nous ne pouvons pas l\u2019activer ici \u2014 faites-le dans les param\u00e8tres du site de votre navigateur (le cadenas \u00e0 c\u00f4t\u00e9 de l\u2019adresse).',
+                        en: 'Your browser is blocking notifications from Helvaro. We cannot switch that on here \u2014 do it in your browser\u2019s site settings (the padlock next to the address).',
+                        de: 'Ihr Browser blockiert Benachrichtigungen von Helvaro. Wir k\u00f6nnen das hier nicht einschalten \u2014 tun Sie es in den Website-Einstellungen Ihres Browsers (das Schloss neben der Adresse).' },
+  'wiz.push.uitSub':  { nl: 'Krijg een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.',
+                        fr: 'Recevez une notification d\u00e8s qu\u2019un lead arrive, m\u00eame si Helvaro est ferm\u00e9.',
+                        en: 'Get a notification the moment a lead arrives, even with Helvaro closed.',
+                        de: 'Erhalten Sie eine Benachrichtigung, sobald ein Lead eingeht \u2014 auch wenn Helvaro geschlossen ist.' },
+
+  'wiz.wa.nietMogelijk': { nl: 'Niet mogelijk', fr: 'Impossible', en: 'Not possible', de: 'Nicht m\u00f6glich' },
+  'wiz.wa.geenTaal':  { nl: 'WhatsApp ondersteunt {taal} niet als berichttaal. Kies bij "Land en taal" een andere taal, of neem contact op \u2014 dan zoeken we het samen uit.',
+                        fr: 'WhatsApp ne prend pas en charge {taal} comme langue de message. Choisissez une autre langue sous \u00ab\u00a0Pays et langue\u00a0\u00bb, ou contactez-nous \u2014 nous verrons cela ensemble.',
+                        en: 'WhatsApp does not support {taal} as a message language. Pick another language under "Country and language", or get in touch \u2014 we will work it out together.',
+                        de: 'WhatsApp unterst\u00fctzt {taal} nicht als Nachrichtensprache. W\u00e4hlen Sie unter \u201eLand und Sprache\u201c eine andere Sprache oder melden Sie sich \u2014 wir finden gemeinsam eine L\u00f6sung.' },
+
+  'wiz.cal.opnieuw':  { nl: 'Opnieuw koppelen', fr: 'Reconnecter', en: 'Reconnect', de: 'Neu verbinden' },
+  'wiz.cal.verlopen': { nl: 'Je koppeling is verlopen{email}. Er worden nu geen afspraken ingepland tot je opnieuw koppelt.',
+                        fr: 'Votre connexion a expir\u00e9{email}. Aucun rendez-vous ne sera planifi\u00e9 tant que vous ne vous reconnectez pas.',
+                        en: 'Your connection has expired{email}. No appointments will be scheduled until you reconnect.',
+                        de: 'Ihre Verbindung ist abgelaufen{email}. Es werden keine Termine geplant, bis Sie sich erneut verbinden.' },
+  'wiz.cal.gekoppeld':{ nl: 'Gekoppeld', fr: 'Connect\u00e9', en: 'Connected', de: 'Verbunden' },
+  'wiz.cal.gekoppeldSub': { nl: 'Je agenda is gekoppeld{email}. Je assistent ziet wanneer je vrij bent en plant zelf in.',
+                        fr: 'Votre agenda est connect\u00e9{email}. Votre assistant voit vos disponibilit\u00e9s et planifie lui-m\u00eame.',
+                        en: 'Your calendar is connected{email}. Your assistant sees when you are free and books for you.',
+                        de: 'Ihr Kalender ist verbunden{email}. Ihr Assistent sieht Ihre freien Zeiten und plant selbst.' },
+  'wiz.cal.niet':     { nl: 'Niet gekoppeld', fr: 'Non connect\u00e9', en: 'Not connected', de: 'Nicht verbunden' },
+  'wiz.cal.nietSub':  { nl: 'Zonder agenda vraagt je assistent om een terugbelmoment in plaats van een afspraak in te plannen. Je kan dit ook later doen.',
+                        fr: 'Sans agenda, votre assistant demande un moment de rappel au lieu de planifier un rendez-vous. Vous pouvez le faire plus tard.',
+                        en: 'Without a calendar your assistant asks for a callback time instead of booking. You can do this later.',
+                        de: 'Ohne Kalender fragt Ihr Assistent nach einem R\u00fcckrufzeitpunkt, statt einen Termin zu buchen. Sie k\u00f6nnen das sp\u00e4ter tun.' },
+  'wiz.cal.koppel':   { nl: 'Google Agenda koppelen', fr: 'Connecter Google Agenda', en: 'Connect Google Calendar', de: 'Google Kalender verbinden' },
+  'wiz.geefNaam':     { nl: 'Geef je assistent een naam.', fr: 'Donnez un nom \u00e0 votre assistant.', en: 'Give your assistant a name.', de: 'Geben Sie Ihrem Assistenten einen Namen.' },
+
+  /* ── Inloggen, aanmelden en het supportvenster ───────────────────────────
+     Het scherm VOOR de sessie. Hier is nog niet bekend wie er kijkt, maar de
+     taal wel: die komt uit de URL en de browser (zie UI_LANG). Dat maakt een
+     Nederlandse zin hier niet minder verkeerd -- alleen minder opgemerkt, want
+     wie hier vastloopt komt nooit binnen om het te melden. */
+  'log.aanmeldenUit': { nl: 'Aanmelden staat tijdelijk uit. Probeer het later opnieuw.',
+                        fr: 'Les inscriptions sont temporairement ferm\u00e9es. R\u00e9essayez plus tard.',
+                        en: 'Sign-ups are temporarily closed. Please try again later.',
+                        de: 'Die Anmeldung ist vor\u00fcbergehend geschlossen. Versuchen Sie es sp\u00e4ter erneut.' },
+  'log.wachtKlaar':   { nl: 'Je hoeft niets te doen. Zodra het klaar is kun je gewoon inloggen.',
+                        fr: 'Vous n\u2019avez rien \u00e0 faire. D\u00e8s que c\u2019est pr\u00eat, vous pourrez vous connecter.',
+                        en: 'You do not need to do anything. As soon as it is ready you can just log in.',
+                        de: 'Sie m\u00fcssen nichts tun. Sobald es fertig ist, k\u00f6nnen Sie sich einfach anmelden.' },
+  'log.bezig':        { nl: 'Inloggen...', fr: 'Connexion...', en: 'Signing in...', de: 'Anmeldung...' },
+
+  /* De telregel boven het aanbod: "3 panden, 2 in aanbod". Het eerste deel ging
+     al door vw(), het tweede stond hardgecodeerd -- een Engelstalige klant las
+     "3 properties, 2 in aanbod". Half vertaald is opvallender dan helemaal
+     niet, want dan lijkt het een fout in plaats van een keuze. */
+  'pd.inAanbod':      { nl: '{n} in aanbod', fr: '{n} disponible(s)', en: '{n} available', de: '{n} verf\u00fcgbar' },
+
+  /* ── De rest van het scherm ──────────────────────────────────────────────
+     Wat er na vijf ronden nog hardgecodeerd stond. Geen samenhangend blok maar
+     de losse eindjes: de topbalk, het boekvenster, twee lege staten, en een
+     handvol knopteksten die tijdens het laden veranderen ("Opslaan..." /
+     "Bezig..."). Juist die laatste vallen niemand op tijdens het bouwen -- ze
+     staan er een halve seconde -- en juist daarom bleven ze staan. */
+  'top.zoeken':       { nl: 'Zoeken (Ctrl+K)', fr: 'Rechercher (Ctrl+K)', en: 'Search (Ctrl+K)', de: 'Suchen (Strg+K)' },
+  'top.meldingen':    { nl: 'Meldingen',  fr: 'Notifications', en: 'Notifications', de: 'Benachrichtigungen' },
+  'top.zoekLead':     { nl: 'Zoek op naam, telefoon, bron of samenvatting...',
+                        fr: 'Rechercher par nom, t\u00e9l\u00e9phone, source ou r\u00e9sum\u00e9...',
+                        en: 'Search by name, phone, source or summary...',
+                        de: 'Nach Name, Telefon, Quelle oder Zusammenfassung suchen...' },
+  'top.zoekHulp':     { nl: 'Zoek in de hulp...', fr: 'Rechercher dans l\u2019aide...', en: 'Search the help...', de: 'In der Hilfe suchen...' },
+
+  'cb.titel':         { nl: 'Afspraak inplannen', fr: 'Planifier un rendez-vous', en: 'Book an appointment', de: 'Termin planen' },
+  'cb.leadNaam':      { nl: 'Lead naam', fr: 'Nom du lead', en: 'Lead name', de: 'Lead-Name' },
+  'cb.vorigeDag':     { nl: 'Vorige dag', fr: 'Jour pr\u00e9c\u00e9dent', en: 'Previous day', de: 'Vorheriger Tag' },
+  'cb.volgendeDag':   { nl: 'Volgende dag', fr: 'Jour suivant', en: 'Next day', de: 'N\u00e4chster Tag' },
+  'cb.zoekNaam':      { nl: 'Zoek op naam...', fr: 'Rechercher par nom...', en: 'Search by name...', de: 'Nach Name suchen...' },
+  'cb.volledigeNaam': { nl: 'Volledige naam', fr: 'Nom complet', en: 'Full name', de: 'Vollst\u00e4ndiger Name' },
+  'cb.directInAgenda':{ nl: 'Afspraak wordt direct opgeslagen in je agenda',
+                        fr: 'Le rendez-vous est enregistr\u00e9 directement dans votre agenda',
+                        en: 'The appointment is saved straight into your calendar',
+                        de: 'Der Termin wird direkt in Ihrem Kalender gespeichert' },
+
+  'lp.gekwalificeerd':{ nl: 'Gekwalificeerde leads', fr: 'Leads qualifi\u00e9s', en: 'Qualified leads', de: 'Qualifizierte Leads' },
+  'lp.gekwUitleg':    { nl: 'Gekwalificeerde leads verschijnen hier met score en samenvatting',
+                        fr: 'Les leads qualifi\u00e9s appara\u00eetront ici avec leur score et un r\u00e9sum\u00e9',
+                        en: 'Qualified leads appear here with their score and a summary',
+                        de: 'Qualifizierte Leads erscheinen hier mit Score und Zusammenfassung' },
+  'lp.nietBereikbaar':{ nl: 'Niet bereikbaar', fr: 'Injoignable', en: 'Unreachable', de: 'Nicht erreichbar' },
+
+  'st.bezig':         { nl: 'Bezig...',   fr: 'En cours...',  en: 'Working...',  de: 'L\u00e4uft...' },
+  'st.bezigPunt':     { nl: 'Bezig\u2026', fr: 'En cours\u2026', en: 'Working\u2026', de: 'L\u00e4uft\u2026' },
+  'st.opslaanBezig':  { nl: 'Opslaan...', fr: 'Enregistrement...', en: 'Saving...', de: 'Speichern...' },
+  'st.nietOpgehaald': { nl: 'Niet opgehaald', fr: 'Non r\u00e9cup\u00e9r\u00e9', en: 'Not fetched', de: 'Nicht abgerufen' },
+  'st.klaar':         { nl: 'Klaar', fr: 'Termin\u00e9', en: 'Done', de: 'Fertig' },
+  'st.actief':        { nl: 'Actief', fr: 'Actif', en: 'Active', de: 'Aktiv' },
+
+  'val.naamCode':     { nl: 'Naam en projectcode zijn verplicht.', fr: 'Le nom et le code de projet sont obligatoires.', en: 'Name and project code are required.', de: 'Name und Projektcode sind erforderlich.' },
+  'val.adres':        { nl: 'Vul minstens een adres in.', fr: 'Indiquez au moins une adresse.', en: 'Enter at least an address.', de: 'Geben Sie mindestens eine Adresse an.' },
+  'val.geenPrijs':    { nl: 'De prijs kon niet opgehaald worden.', fr: 'Le prix n\u2019a pas pu \u00eatre r\u00e9cup\u00e9r\u00e9.', en: 'The price could not be fetched.', de: 'Der Preis konnte nicht abgerufen werden.' },
+  'val.geenLimiet':   { nl: 'Er staat geen creditlimiet op dit account.', fr: 'Aucune limite de cr\u00e9dits sur ce compte.', en: 'There is no credit limit on this account.', de: 'F\u00fcr dieses Konto gilt kein Kreditlimit.' },
+  'val.geenCode':     { nl: '(geen projectcode beschikbaar \u2014 log opnieuw in)', fr: '(aucun code de projet \u2014 reconnectez-vous)', en: '(no project code \u2014 log in again)', de: '(kein Projektcode \u2014 melden Sie sich erneut an)' },
+  'val.gelijk':       { nl: '\u2014 gelijk aan vorige', fr: '\u2014 identique au pr\u00e9c\u00e9dent', en: '\u2014 same as previous', de: '\u2014 wie zuvor' },
+
+  /* Het venster dat een account wist. Dat is het laatste scherm dat een klant
+     ooit van Helvaro ziet -- en het stond volledig in het Nederlands. */
+  'wis.typ':      { nl: 'Typ VERWIJDEREN om te bevestigen', fr: 'Tapez SUPPRIMER pour confirmer', en: 'Type DELETE to confirm', de: 'Tippen Sie L\u00d6SCHEN zur Best\u00e4tigung' },
+  'wis.bezig':    { nl: 'Bezig met wissen...', fr: 'Suppression en cours...', en: 'Deleting...', de: 'Wird gel\u00f6scht...' },
+  'wis.duurt':    { nl: 'Dit kan een halve minuut duren. Sluit dit venster niet.',
+                    fr: 'Cela peut prendre une demi-minute. Ne fermez pas cette fen\u00eatre.',
+                    en: 'This can take half a minute. Do not close this window.',
+                    de: 'Das kann eine halbe Minute dauern. Schlie\u00dfen Sie dieses Fenster nicht.' },
+  'wis.deels':    { nl: 'Je gegevens zijn gewist, maar niet alles lukte. Mail ons op hello@helvaro.pro met de code {code}.',
+                    fr: 'Vos donn\u00e9es ont \u00e9t\u00e9 effac\u00e9es, mais tout n\u2019a pas r\u00e9ussi. \u00c9crivez-nous \u00e0 hello@helvaro.pro avec le code {code}.',
+                    en: 'Your data has been erased, but not everything succeeded. Email hello@helvaro.pro with the code {code}.',
+                    de: 'Ihre Daten wurden gel\u00f6scht, aber nicht alles hat geklappt. Schreiben Sie an hello@helvaro.pro mit dem Code {code}.' },
+  'wis.klaar':    { nl: 'Alles is gewist. Je wordt uitgelogd.', fr: 'Tout a \u00e9t\u00e9 effac\u00e9. Vous allez \u00eatre d\u00e9connect\u00e9.', en: 'Everything is erased. You will be logged out.', de: 'Alles wurde gel\u00f6scht. Sie werden abgemeldet.' },
+  'wis.gewist':   { nl: 'Gewist', fr: 'Effac\u00e9', en: 'Erased', de: 'Gel\u00f6scht' },
+  'wis.knop':     { nl: 'Definitief wissen', fr: 'Supprimer d\u00e9finitivement', en: 'Delete permanently', de: 'Endg\u00fcltig l\u00f6schen' },
+  'wis.mislukt':  { nl: 'Wissen lukte niet. Mail ons op hello@helvaro.pro.', fr: 'La suppression a \u00e9chou\u00e9. \u00c9crivez-nous \u00e0 hello@helvaro.pro.', en: 'Deletion failed. Email hello@helvaro.pro.', de: 'L\u00f6schen fehlgeschlagen. Schreiben Sie an hello@helvaro.pro.' },
+  'wis.annuleer': { nl: 'Annuleren', fr: 'Annuler', en: 'Cancel', de: 'Abbrechen' },
+  'tbl.gekwal':   { nl: 'Gekwal.', fr: 'Qualifi\u00e9s', en: 'Qualified', de: 'Qualifiz.' },
+  'btn.annuleren':{ nl: 'Annuleren', fr: 'Annuler', en: 'Cancel', de: 'Abbrechen' },
+
+  'pd.eigenKorting':  { nl: 'Eigen kortingsregel op dit voertuig', fr: 'R\u00e8gle de remise propre \u00e0 ce v\u00e9hicule', en: 'Own discount rule on this vehicle', de: 'Eigene Rabattregel f\u00fcr dieses Fahrzeug' },
+  'pd.geenAanbod':    { nl: 'Verkocht of uit aanbod? Dan plant je assistent er geen ',
+                        fr: 'Vendu ou retir\u00e9 ? Votre assistant n\u2019en planifiera plus de ',
+                        en: 'Sold or withdrawn? Then your assistant no longer books any ',
+                        de: 'Verkauft oder aus dem Angebot? Dann plant Ihr Assistent kein ' },
+  'pi.nietCombineer': { nl: 'Niet te combineren met de stijl Lege ruimte inrichten',
+                        fr: 'Incompatible avec le style \u00ab\u00a0Am\u00e9nager un espace vide\u00a0\u00bb',
+                        en: 'Cannot be combined with the "Furnish an empty room" style',
+                        de: 'Nicht mit dem Stil \u201eLeeren Raum einrichten\u201c kombinierbar' },
+  'log.verbindingWeg':{ nl: 'Verbinding mislukt. Opnieuw proberen over 90s',
+                        fr: '\u00c9chec de la connexion. Nouvelle tentative dans 90 s',
+                        en: 'Connection failed. Retrying in 90s',
+                        de: 'Verbindung fehlgeschlagen. Neuer Versuch in 90 s' },
+
+  'sup.versturen':    { nl: 'Versturen',    fr: 'Envoyer',     en: 'Send',        de: 'Senden' },
+  'sup.bezig':        { nl: 'Versturen...', fr: 'Envoi...',    en: 'Sending...',  de: 'Senden...' },
+  'sup.opnieuw':      { nl: 'Opnieuw proberen', fr: 'R\u00e9essayer', en: 'Try again', de: 'Erneut versuchen' },
+  'sup.mislukt':      { nl: 'Versturen lukte niet. Mail ons op {adres} \u2014 je tekst staat hierboven.',
+                        fr: 'L\u2019envoi a \u00e9chou\u00e9. \u00c9crivez-nous \u00e0 {adres} \u2014 votre texte est ci-dessus.',
+                        en: 'Sending failed. Email us at {adres} \u2014 your text is above.',
+                        de: 'Senden fehlgeschlagen. Schreiben Sie uns an {adres} \u2014 Ihr Text steht oben.' },
+  'sup.verstuurd':    { nl: 'Verstuurd. We antwoorden op je e-mailadres.',
+                        fr: 'Envoy\u00e9. Nous r\u00e9pondrons \u00e0 votre adresse e-mail.',
+                        en: 'Sent. We will reply to your email address.',
+                        de: 'Gesendet. Wir antworten an Ihre E-Mail-Adresse.' },
+
+  /* ── Knoppen die overal terugkomen ───────────────────────────────────────
+     'Annuleren' en 'Klaar' bestonden al onder crm.cancel en dash.s.done; die
+     namen zeggen niet dat ze algemeen zijn, dus hier een neutrale set. Ze
+     verwijzen bewust NIET naar elkaar: een sleutel die doorverwijst naar een
+     andere is een indirectie die niemand verwacht bij het lezen. */
+  'btn.opslaan':   { nl: 'Opslaan',   fr: 'Enregistrer', en: 'Save',     de: 'Speichern' },
+  'btn.sluiten':   { nl: 'Sluiten',   fr: 'Fermer',      en: 'Close',    de: 'Schlie\u00dfen' },
+  'btn.volgende':  { nl: 'Volgende',  fr: 'Suivant',     en: 'Next',     de: 'Weiter' },
+  'btn.bewerken':  { nl: 'Bewerken',  fr: 'Modifier',    en: 'Edit',     de: 'Bearbeiten' },
+  'btn.versturen': { nl: 'Versturen', fr: 'Envoyer',     en: 'Send',     de: 'Senden' },
+  'btn.verstuurd': { nl: 'Verstuurd', fr: 'Envoy\u00e9', en: 'Sent',    de: 'Gesendet' },
+  'btn.totaal':    { nl: 'Totaal',    fr: 'Total',       en: 'Total',    de: 'Gesamt' },
+
+  /* ── Het leadpaneel ──────────────────────────────────────────────────────
+     Het scherm waar een makelaar het meest naar kijkt, en het stond volledig
+     in het Nederlands.
+
+     LET OP bij de verliesredenen hieronder: de Nederlandse zinnen zijn
+     WAARDEN, geen labels. Ze gaan als keuzewaarde naar het Airtable-veld
+     Reason en worden serverzijdig gecontroleerd tegen LOSS_REASONS in
+     api/_faro/writes.js. Vertaal je de waarde mee, dan wordt elke opslag
+     geweigerd -- of erger, dan staan er vier talen door elkaar in een
+     keuzeveld dat er maar zes kent. Alleen het LABEL gaat door de tabel. */
+  'lp.verliesReden':  { nl: 'Verlies reden', fr: 'Raison de la perte', en: 'Loss reason', de: 'Verlustgrund' },
+  'lp.kiesReden':     { nl: '\u2014 Kies reden \u2014', fr: '\u2014 Choisir une raison \u2014', en: '\u2014 Pick a reason \u2014', de: '\u2014 Grund w\u00e4hlen \u2014' },
+  'lp.reden.prijs':   { nl: 'Prijs te hoog',      fr: 'Prix trop \u00e9lev\u00e9',  en: 'Price too high',       de: 'Preis zu hoch' },
+  'lp.reden.timing':  { nl: 'Geen timing',        fr: 'Mauvais moment',               en: 'Wrong timing',         de: 'Falscher Zeitpunkt' },
+  'lp.reden.concur':  { nl: 'Concurrent gekozen', fr: 'A choisi un concurrent',       en: 'Chose a competitor',   de: 'Wettbewerber gew\u00e4hlt' },
+  'lp.reden.geenInt': { nl: 'Geen interesse',     fr: 'Pas int\u00e9ress\u00e9',    en: 'Not interested',       de: 'Kein Interesse' },
+  'lp.reden.geenRea': { nl: 'Geen reactie',       fr: 'Aucune r\u00e9ponse',         en: 'No response',          de: 'Keine Reaktion' },
+  'lp.reden.andere':  { nl: 'Andere reden',       fr: 'Autre raison',                 en: 'Other reason',         de: 'Anderer Grund' },
+
+  'lp.boekingslink':  { nl: 'Boekingslink verstuurd', fr: 'Lien de r\u00e9servation envoy\u00e9', en: 'Booking link sent', de: 'Buchungslink gesendet' },
+  'lp.afspraakGeboekt': { nl: 'Afspraak geboekt', fr: 'Rendez-vous r\u00e9serv\u00e9', en: 'Appointment booked', de: 'Termin gebucht' },
+  'lp.geenScore':     { nl: 'Geen score',         fr: 'Pas de score',      en: 'No score',        de: 'Kein Score' },
+  'lp.geenTelefoon':  { nl: 'Geen telefoonnummer', fr: 'Pas de num\u00e9ro', en: 'No phone number', de: 'Keine Telefonnummer' },
+
+  /* Notities en taken op het leadpaneel. */
+  'lp.notitie':       { nl: 'Notitie',            fr: 'Note',              en: 'Note',            de: 'Notiz' },
+  'lp.notities':      { nl: 'Notities',           fr: 'Notes',             en: 'Notes',           de: 'Notizen' },
+  'lp.geenNotities':  { nl: 'Nog geen notities',  fr: 'Pas encore de notes', en: 'No notes yet',  de: 'Noch keine Notizen' },
+  'lp.notitieToe':    { nl: 'Notitie toevoegen...', fr: 'Ajouter une note...', en: 'Add a note...', de: 'Notiz hinzuf\u00fcgen...' },
+  'lp.taken':         { nl: 'Taken',              fr: 'T\u00e2ches',      en: 'Tasks',           de: 'Aufgaben' },
+  'lp.geenTaken':     { nl: 'Geen taken',         fr: 'Aucune t\u00e2che', en: 'No tasks',       de: 'Keine Aufgaben' },
+  'lp.taakToe':       { nl: 'Nieuwe taak...',     fr: 'Nouvelle t\u00e2che...', en: 'New task...', de: 'Neue Aufgabe...' },
+  'lp.geenGesprekken': { nl: 'Geen gesprekken gelogd', fr: 'Aucun appel enregistr\u00e9', en: 'No calls logged', de: 'Keine Gespr\u00e4che erfasst' },
+
+  /* De uitkomst van een afspraak. */
+  'lp.afspraakRes':   { nl: 'Afspraak resultaat', fr: 'R\u00e9sultat du rendez-vous', en: 'Appointment outcome', de: 'Ergebnis des Termins' },
+  'lp.gekomen':       { nl: 'Gekomen',            fr: 'Venu',              en: 'Attended',        de: 'Erschienen' },
+  'lp.nietGekomen':   { nl: 'Niet gekomen',       fr: 'Absent',            en: 'No-show',         de: 'Nicht erschienen' },
+  /* De banner boven de kalender heeft minder ruimte dan de kaart: daar staat
+     'Niet' waar op de kaart 'Niet gekomen' past. Een eigen sleutel en geen
+     afkorting in de code, anders staat er in het Duits 'Nicht' -- wat daar
+     geen woord is dat op zichzelf staat. */
+  'lp.nietKort':      { nl: 'Niet',               fr: 'Absent',            en: 'No-show',         de: 'Nein' },
+  'lp.opgeslagenWel': { nl: 'Opgeslagen. Gekomen', fr: 'Enregistr\u00e9. Venu', en: 'Saved. Attended', de: 'Gespeichert. Erschienen' },
+  'lp.opgeslagenNiet':{ nl: 'Opgeslagen. Niet gekomen', fr: 'Enregistr\u00e9. Absent', en: 'Saved. No-show', de: 'Gespeichert. Nicht erschienen' },
+  'lp.kwamHij':       { nl: 'Kwam deze persoon?', fr: 'Cette personne est-elle venue ?', en: 'Did they show up?', de: 'Ist diese Person erschienen?' },
+  'lp.gespreksNotitie': { nl: 'Notities over het gesprek', fr: 'Notes sur l\u2019entretien', en: 'Notes on the meeting', de: 'Notizen zum Gespr\u00e4ch' },
+  'lp.gespreksVraag': { nl: 'Wat is er besproken? Volgende stap?', fr: 'Qu\u2019avez-vous discut\u00e9 ? Prochaine \u00e9tape ?', en: 'What was discussed? Next step?', de: 'Was wurde besprochen? N\u00e4chster Schritt?' },
+  'lp.hoeGing':       { nl: 'Hoe ging het gesprek?', fr: 'Comment s\u2019est pass\u00e9 l\u2019entretien ?', en: 'How did the meeting go?', de: 'Wie lief das Gespr\u00e4ch?' },
+  'lp.resNotitie':    { nl: 'Resultaat notitie', fr: 'Note de r\u00e9sultat', en: 'Outcome note', de: 'Ergebnisnotiz' },
+  'lp.nietGekomenPh': { nl: 'bijv. Geen antwoord, verkeerd nummer, wil herplannen...',
+                        fr: 'ex. Pas de r\u00e9ponse, mauvais num\u00e9ro, veut reporter...',
+                        en: 'e.g. No answer, wrong number, wants to reschedule...',
+                        de: 'z.B. Keine Antwort, falsche Nummer, will verschieben...' },
   'tst.sessieVerlopen': { nl: 'Je sessie is verlopen. Log opnieuw in', fr: 'Votre session a expiré. Reconnectez-vous', en: 'Your session expired. Sign in again', de: 'Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an' },
   'tst.emailNietGevonden': { nl: 'Kon je e-mailadres niet vinden. Log opnieuw in.', fr: 'Impossible de trouver votre adresse e-mail. Reconnectez-vous.', en: 'Couldn’t find your email address. Sign in again.', de: 'Ihre E-Mail-Adresse wurde nicht gefunden. Melden Sie sich erneut an.' },
   'tst.opslaanMislukt': { nl: 'Opslaan mislukt', fr: 'Échec de l’enregistrement', en: 'Couldn’t save', de: 'Speichern fehlgeschlagen' },

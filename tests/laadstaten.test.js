@@ -43,7 +43,12 @@ function ck(wat, ok, detail) {
   else    { fail++; console.log('  FOUT  ' + wat + (detail !== undefined ? '\n        ' + JSON.stringify(detail) : '')); }
 }
 
-const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+/* Sinds de opsplitsing staat het CSS-blok in api/_dash/styles.js en niet meer
+   in api/dashboard.js. Deze test leest de STIJLEN, dus hij leest nu allebei.
+   De uitgestuurde pagina is byte voor byte dezelfde gebleven (zie
+   tests/dashboard-splitsing.test.js) -- alleen de plek in de bron veranderde. */
+const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+             + require(BASE + 'api/_dash/styles.js').css();
 /* Commentaar eruit: dit bestand legt zijn eigen keuzes uit met de woorden die
    het verbiedt, en een test die zijn eigen uitleg leest keurt zichzelf goed. */
 const code = dash.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -166,8 +171,11 @@ console.log('\n  en het stopt als er niets komt');
      zonder dat je nog zag welke meting ontbrak. Gemeten in de browser op een
      build met de oude check: alle zes labels "—". */
   const lab = /querySelectorAll\('\.stat-label'\)[\s\S]{0,400}?\n  \}\);/.exec(b);
+  /* Ankerde op de letterlijke zin "Niet opgehaald"; die is nu een sleutel,
+     want dit scherm bestaat in vier talen. Het gedrag is onveranderd: als de
+     naam leeg is of een streepje, komt er TEKST voor in de plaats. */
   ck('de KPI-naam valt terug op tekst, niet op een streepje',
-    lab && /t === '—'/.test(lab[0]) && /Niet opgehaald/.test(lab[0]),
+    lab && /t === '—'/.test(lab[0]) && /st\.nietOpgehaald/.test(lab[0]),
     lab && lab[0].slice(0, 200));
 }
 

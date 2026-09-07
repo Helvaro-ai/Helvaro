@@ -205,9 +205,10 @@ body.faro-open .faro-dock { display: none; }
 }
 
 /* ═══ Sidebar entry ═══════════════════════════════════════════════════════
-   A primary action above the nav list, not a thirteenth row inside it. The orb
-   mark is the same gradient recipe as the landing screen's, at 22px, so the
-   button carries Faro's identity without shipping an icon for it.
+   A primary action above the nav list, not a thirteenth row inside it. The
+   mark on Faro's side is his own head (public/faro/faro-merk.webp); it used to
+   be an orb built from the landing screen's gradient recipe, back when the
+   button carried Faro's identity without shipping an icon for it.
 
    ⚠ Every colour here comes from the CRM's token set, not Faro's. The sidebar
    is permanently dark in BOTH themes and rebinds --text/--border/--hover/
@@ -272,22 +273,32 @@ body.faro-open .faro-dock { display: none; }
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-/* Faro's merkteken, klein. Dezelfde conic-gradient als de grote bol op de
-   landingspagina, zonder de animatie en zonder de bloom -- op deze maat zou
-   dat alleen ruis zijn naast een woord dat je moet lezen. */
-.hv-switch__orb {
-  width: 14px; height: 14px;
+/* Faro's merkteken: zijn kop (public/faro/faro-merk.webp). Hier stond een
+   gouden bol met een conic-gradient -- zie markup.js voor waarom die weg is en
+   waarom het juist DIT bestand is.
+
+   18px en niet 16: een bol werkt op elke maat, een gezicht niet. Naast elkaar
+   gezet in de browser is 16 het punt waarop de ogen dichtvallen en er een
+   donkere veeg overblijft; op 18 lezen ze nog. Groter mag niet, want dan wordt
+   de rij hoger dan de andere navigatie-items ernaast.
+
+   Geen border-radius: het bestand heeft zijn eigen silhouet met transparante
+   randen. Een cirkelmasker zou er de oren afsnijden. */
+.hv-switch__merk {
+  width: 18px; height: 18px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
-    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset;
+  display: block;
+  object-fit: contain;
 }
-/* Op de gekozen kant ligt de bol op het zandvlak zelf. Een rand van de
-   inktkleur houdt hem daar zichtbaar in plaats van erin te verdwijnen. */
-.hv-switch__tab.active .hv-switch__orb {
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.22) inset, 0 0 0 1px rgba(0,0,0,0.14);
+/* Faro is bijna zwart met gouden accenten. Op de gekozen kant ligt hij op het
+   zandvlak en staat hij scherp; op de niet-gekozen kant ligt hij op de donkere
+   balk, waar zijn silhouet in de achtergrond zakt en alleen de gouden ogen nog
+   dragen. Een zweem licht eromheen geeft hem daar zijn omtrek terug.
+
+   Geen harde rand en geen ring: dat zou er een insigne van maken naast een
+   woord dat gewoon een label is. */
+.hv-switch__tab:not(.active) .hv-switch__merk {
+  filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.5));
 }
 
 .hv-switch__tab:hover { color: var(--text); background: var(--hover); }
@@ -381,8 +392,75 @@ body.hv-mode-ai .faro-rail {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color 150ms ease, background 150ms ease;
 }
+/* ── De rij in de gesprekkenlijst ────────────────────────────────────────
+   Was één knop; is nu een rij van drie: ster, titel, menu. Een <button> in een
+   <button> is ongeldige HTML en wordt door de browser uit elkaar getrokken,
+   dus de buitenkant is een div.
+
+   De ster en het menu staan standaard op opacity 0 en komen op hover en op
+   focus. Op een aanraakscherm bestaat hover niet, dus daar staan ze altijd aan
+   -- anders is de enige manier om een gesprek te hernoemen onvindbaar. */
+.faro-convo-rij {
+  display: flex; align-items: center; gap: var(--sp-1);
+  border-radius: var(--r-sm); position: relative;
+}
+.faro-convo-rij:hover { background: var(--hover); }
+.faro-convo-rij.active { background: var(--champagne-dim); }
+.faro-convo-rij.active .faro-convo { color: var(--sand-on-surface); }
+.faro-convo-ster, .faro-convo-menu {
+  flex: 0 0 auto;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  color: var(--text-muted); font-size: var(--fs-small); line-height: 1;
+  opacity: 0; transition: opacity 150ms ease, color 150ms ease;
+}
+.faro-convo-rij:hover .faro-convo-ster,
+.faro-convo-rij:hover .faro-convo-menu,
+.faro-convo-ster:focus-visible, .faro-convo-menu:focus-visible { opacity: 1; }
+/* Een gemarkeerd gesprek blijft altijd zichtbaar gemarkeerd: de ster is dan
+   geen bedieningselement meer maar informatie. */
+.faro-convo-ster.aan { opacity: 1; color: var(--champagne); }
+.faro-convo-ster:hover, .faro-convo-menu:hover { color: var(--text); }
+@media (hover: none) and (pointer: coarse) {
+  .faro-convo-ster, .faro-convo-menu { opacity: 1; }
+}
+
+/* Het menu hangt aan de rij, niet aan de body: dan schuift het mee als de
+   lijst scrollt in plaats van los in het scherm te blijven staan. */
+.faro-convo-menu-pop {
+  position: absolute; top: 100%; right: 0; z-index: 40;
+  min-width: 150px; padding: var(--sp-1);
+  background: var(--bg-card-alt); border: 1px solid var(--border-bright);
+  border-radius: var(--r-sm); box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+.faro-convo-menu-pop button {
+  display: block; width: 100%; text-align: left;
+  padding: var(--sp-2) var(--sp-3); border: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: var(--fs-small);
+  border-radius: var(--r-sm); cursor: pointer;
+}
+.faro-convo-menu-pop button:hover { background: var(--hover); }
+.faro-convo-menu-pop button.gevaar { color: var(--red-ink, #F4A4A4); }
+
 .faro-convo:hover { color: var(--text); background: var(--hover); }
 .faro-convo.active { color: var(--sand-on-surface); background: var(--champagne-dim); }
+
+/* De lege regel onder "Recent". Bewust GEEN knop-opmaak: er valt niets te
+   klikken, en iets wat op een gesprek lijkt maar er geen is, is erger dan de
+   leegte die hier stond. Wel dezelfde inspringing, zodat het onder de kop
+   hoort en er niet los onder hangt.
+
+   --text-disabled en niet --text-muted: dit is de zachtste tekst in de rail,
+   want het is een mededeling en geen inhoud. Nog steeds leesbaar -- zie
+   scripts/faro-check.js, dat elke tekstkleur op dit vlak nameet. */
+.faro-convo-leeg {
+  margin: 0;
+  padding: var(--sp-15) var(--sp-4);
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  color: var(--text-disabled);
+}
 
 /* min-height omdat dit een knop is en geen link in lopende tekst: op 390px
    doorgemeten was hij 14 pixels hoog, en WCAG 2.5.8 (AA) vraagt 24 als

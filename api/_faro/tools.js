@@ -66,6 +66,8 @@ const credits = require('../_credits');
 const mediaModels = require('../_media-models');
 const properties = require('../_properties');
 const vehicles   = require('../_vehicles');
+const rapport    = require('./rapport');
+const _i18n      = require('../_i18n');
 
 const NOT_WIRED = 'not_wired';
 
@@ -936,6 +938,104 @@ const readTools = [
   },
 
   {
+    /* ── De week, in Faro's stem ──────────────────────────────────────────────
+       api/_faro/rapport.js was af en getest (tests/faro-rapport.test.js), maar
+       werd door NIEMAND aangeroepen -- alleen door zijn eigen test. Een klant
+       kon er dus niet bij. Dit is de ontbrekende schakel, verder niets: alle
+       logica staat in die module en wordt hier niet overgedaan.
+
+       Het verschil met get_analytics hiernaast is niet het tijdvak maar de
+       VRAAG. Analytics beantwoordt "hoe doe ik het"; dit beantwoordt "wat moet
+       ik maandag doen". Vandaar dat er hoogstens EEN aanbeveling uit komt: een
+       rapport met vijf adviezen is een rapport dat niemand opvolgt. */
+    name: 'get_week_report',
+    kind: 'read',
+    description: 'Het weekrapport: wat er deze week gebeurde, hoe dat zich verhoudt tot vorige week, wie op de gebruiker wacht, en de ene actie die er nu toe doet. Gebruik dit bij vragen als "hoe ging mijn week", "wat moet ik doen" of "waar sta ik".',
+    parameters: {
+      type: 'object',
+      properties: {
+        /* Een einddatum, zodat "en de week daarvoor?" ook te beantwoorden is
+           zonder een tweede tool. Ongeldige invoer valt terug op nu -- de
+           module doet dat zelf, hier alleen doorgeven. */
+        tot: { type: 'string', description: 'ISO-datum als einde van de week. Standaard: nu.' },
+      },
+    },
+    run: readTool('get_week_report', async (args, ctx) => {
+      if (fixtures.isEnabled()) {
+        return stub('Weekrapport opgehaald.', { rapport: null }, []);
+      }
+      const { leads, truncated } = await data.leadsFor(ctx);
+      const rap = rapport.week(leads, { tot: args.tot ? new Date(args.tot) : undefined });
+
+      /* Taal van de gebruiker, met dezelfde terugval als de rest van Faro. De
+         aanbevelingen zijn SLEUTELS en geen zinnen, juist zodat een Waalse
+         makelaar zijn advies in het Frans krijgt. */
+      const taal = (ctx && (ctx.lang || ctx.taal)) || 'nl';
+      const t = (sleutel, n) => String(_i18n.t(taal, sleutel) || '').replace('{n}', String(n));
+
+      /* Niets gebeurd is een antwoord, geen storing. Een tabel met nullen ziet
+         eruit alsof er iets stuk is. */
+      if (rap.stil) {
+        return {
+          summary: t('faro.rap.stil'),
+          data: { rapport: rap, stil: true },
+          components: [],
+        };
+      }
+
+      const adv = rapport.aanbeveling(rap);
+      const c = rap.cijfers;
+      const stats = [
+        { label: 'Leads',          value: String(c.leads) },
+        { label: 'Gekwalificeerd', value: String(c.gekwalificeerd) },
+        { label: 'Afspraken',      value: String(c.geboekt) },
+      ];
+      /* Alleen vergelijken als er vorige week iets STOND om mee te vergelijken.
+         Anders is "+100%" een verzonnen sprong vanaf nul -- rapport.js zet
+         daarom vergelijkbaar op false, en dat respecteren we hier. */
+      if (rap.vergelijkbaar && rap.verschil) {
+        const teken = (n) => (n > 0 ? '+' : '') + n;
+        stats[0].sub = teken(rap.verschil.leads) + ' t.o.v. vorige week';
+        stats[1].sub = teken(rap.verschil.gekwalificeerd);
+        stats[2].sub = teken(rap.verschil.geboekt);
+      }
+
+      const componenten = [schema.statGroup({ title: _i18n.t(taal, 'faro.rap.kop'), stats })];
+
+      /* De leads waar het advies over gaat erbij als kaart, zodat "vijf leads
+         wachten op jou" niet eindigt bij een getal waar je zelf naar moet gaan
+         zoeken. */
+      if (adv && adv.leads && adv.leads.length) {
+        for (const l of adv.leads.slice(0, 5)) {
+          componenten.push(schema.leadCard({ id: l.id, name: l.naam || '—', note: l.reden || '' }));
+        }
+      }
+
+      /* Enkelvoud waar het hoort. "1 afspraken" is precies het soort ding dat
+         een product amateuristisch laat lijken, en het viel pas op toen deze
+         tool die zin voor het eerst liet zien. Dezelfde vorm als elders in dit
+         bestand (get_properties, search_conversations). */
+      const mv = (n, enkel, meer) => n + ' ' + (n === 1 ? enkel : meer);
+      const regels = [
+        'Week van ' + rap.van.toISOString().slice(0, 10) + ' tot ' + rap.tot.toISOString().slice(0, 10) + ': '
+          + mv(c.leads, 'lead', 'leads') + ', ' + c.gekwalificeerd + ' gekwalificeerd, '
+          + mv(c.geboekt, 'afspraak', 'afspraken')
+          + truncationNote(truncated) + '.',
+      ];
+      if (adv) regels.push(t(adv.sleutel, adv.aantal));
+      /* Geen advies is ook informatie, en Faro hoort dat te zeggen in plaats
+         van er zelf een te verzinnen. */
+      else regels.push('Geen actie die er nu bovenuit springt.');
+
+      return {
+        summary: regels.join(' '),
+        data: { rapport: rap, aanbeveling: adv },
+        components: componenten,
+      };
+    }),
+  },
+
+  {
     name: 'get_calendar',
     kind: 'read',
     description: 'Haal de komende afspraken op uit Google Agenda. Valt terug op de afspraken die in het CRM staan aangevinkt wanneer de agenda niet gekoppeld is.',
@@ -1064,20 +1164,46 @@ const actTools = [
       let gelezen = null;
       const link = String((args && args.link) || '').trim();
 
-      if (link && dealer) {
-        /* De pagina uitlezen. Mislukt dat, dan is dat GEEN fout: de dealer
-           krijgt gewoon de kaart met wat hij zelf meegaf, plus de link. Beter
-           een half ingevulde fiche die hij afmaakt dan een foutmelding. */
-        try {
-          const vehicles = require('../_vehicles');
-          gelezen = await vehicles.importeerUitLink(ctx.projectCode, link, { userId: (ctx && ctx.userId) || 'faro' });
-          velden = Object.assign({}, gelezen.concept);
-        } catch (e) {
-          console.warn('[add_listing] link uitlezen mislukt:', e && e.code, e && e.message);
+      /* ── Een link uitlezen ────────────────────────────────────────────────
+         Hier stond `if (link && dealer)` met als enige alternatief
+         `velden.link = link`. Gevolg: een DEALER die een AutoScout24-link
+         plakte kreeg zijn fiche ingevuld, en een MAKELAAR die een Immoweb-link
+         plakte kreeg niets. De link werd bewaard als los veld, `naam` bleef
+         leeg -- dat is `velden.adres` -- en Faro antwoordde:
+
+             "Ik weet nog niet welk pand het is. Geef een link naar het
+              zoekertje, of het adres."
+
+         Op een bericht dat een link naar het zoekertje WAS. De omschrijving van
+         dit gereedschap belooft die link bovendien met zoveel woorden
+         ("AutoScout24, Immoweb, ...") en zegt "bij een link hoef je verder
+         niets in te vullen".
+
+         api/_properties.js heeft al een importeerUitLink die precies hetzelfde
+         doet als die van _vehicles -- pagina ophalen, model laten uitlezen,
+         foto's van de PAGINA en niet van het model. Hij werd alleen nergens
+         vanuit Faro aangeroepen; de importknop op het Panden-scherm gebruikt
+         hem wel. De functie was er, de weg ernaartoe niet.
+
+         Voor bouw, keuken en renovatie blijft het bij bewaren: die hebben geen
+         catalogus om iets in te zetten. */
+      if (link) {
+        const catalogus = _vertical.heeftAanbod(vertical);
+        if (!catalogus) {
           velden.link = link;
+        } else {
+          /* Mislukt het uitlezen, dan is dat GEEN fout: de klant krijgt gewoon
+             de kaart met wat hij zelf meegaf, plus de link. Beter een half
+             ingevulde fiche die hij afmaakt dan een foutmelding. */
+          try {
+            const mod = dealer ? require('../_vehicles') : require('../_properties');
+            gelezen = await mod.importeerUitLink(ctx.projectCode, link, { userId: (ctx && ctx.userId) || 'faro' });
+            velden = Object.assign({}, gelezen.concept);
+          } catch (e) {
+            console.warn('[add_listing] link uitlezen mislukt:', e && e.code, e && e.message);
+            velden.link = link;
+          }
         }
-      } else if (link) {
-        velden.link = link;
       }
 
       /* Wat het model zelf meegaf WINT van wat er op de pagina stond. Wie
@@ -1114,13 +1240,31 @@ const actTools = [
         if (velden.kw)           regels.push('Vermogen: ' + velden.kw + ' kW');
         if (velden.kleur)        regels.push('Kleur: ' + velden.kleur);
         if (velden.autoscout)    regels.push('Aanbodnummer herkend, dus WhatsApp-leads uit die advertentie worden automatisch aan deze auto gekoppeld.');
-      } else if (velden.plaats) {
-        regels.push('Gemeente: ' + velden.plaats);
+      } else {
+        /* De pandkant toonde alleen de gemeente. Zolang een makelaar alles zelf
+           intypte klopte dat -- meer wist Faro toch niet. Nu de link WEL
+           uitgelezen wordt komen er slaapkamers, oppervlakte en EPC mee, en
+           dan is een kaart die daar niets van laat zien een kaart waarop je
+           niet kunt controleren of de import gelukt is. Precies wat de
+           dealerkant hierboven al deed. */
+        if (velden.plaats)      regels.push('Gemeente: ' + velden.plaats);
+        if (velden.type)        regels.push('Type: ' + velden.type);
+        if (velden.slaapkamers) regels.push('Slaapkamers: ' + velden.slaapkamers);
+        if (velden.oppervlakte) regels.push('Bewoonbaar: ' + velden.oppervlakte + ' m2');
+        if (velden.epc)         regels.push('EPC: ' + velden.epc);
       }
       if (gelezen && gelezen.ontbreekt && gelezen.ontbreekt.length) {
         regels.push('Nog aan te vullen: ' + gelezen.ontbreekt.join(', ') + '.');
       }
-      if (gelezen && gelezen.confidence && gelezen.confidence < 0.5) {
+      /* Twee namen voor hetzelfde getal: _vehicles geeft `confidence` terug,
+         _properties `zekerheid`. Dat viel niet op zolang alleen de dealerkant
+         hier langskwam -- lees je alleen `confidence`, dan is de waarschuwing
+         "kijk dit even na" op de pandkant stilletjes onbereikbaar. Beide lezen
+         is hier goedkoper dan één van de twee modules hernoemen: die namen
+         staan ook in hun eigen tests en in de importknop op het Panden-scherm. */
+      const zeker = gelezen && (gelezen.confidence !== undefined && gelezen.confidence !== null
+        ? gelezen.confidence : gelezen.zekerheid);
+      if (zeker !== undefined && zeker !== null && zeker < 0.5) {
         regels.push('Ik was hier niet zeker van -- kijk het even na voor je bevestigt.');
       }
 

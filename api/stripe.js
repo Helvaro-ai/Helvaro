@@ -56,13 +56,38 @@ function ruweBody(req) {
                             falen, of erger: toevallig kloppen op een body die
                             niet is wat Stripe stuurde.
        niets             -> de stream lezen, het normale geval. */
-  if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
-  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body, 'utf8'));
-  if (req.body && typeof req.body === 'object') {
-    return Promise.reject(new Error(
-      'de body is al geparst tot een object — bodyParser staat aan terwijl deze route hem uit nodig heeft. '
-      + 'Controleer de config-export onderaan api/stripe.js.'));
-  }
+  /* ── De volgorde hieronder IS de reparatie ────────────────────────────────
+     Dit stond andersom: eerst drie keer naar req.body kijken, en pas als dat
+     niets opleverde de stream lezen. Dat leek de voorzichtige volgorde en was
+     precies de bug.
+
+     In Vercel's Node-runtime is `req.body` namelijk een LAZY GETTER. Hem
+     uitlezen is niet passief: die getter slurpt de stream op en parst hem. De
+     controle die moest vaststellen ÓF de body al geparst was, veroorzaakte dus
+     dat hij geparst werd -- waarna de code zichzelf afwees met "al geparst" en
+     500 teruggaf.
+
+     Gemeten op productie, en het verklaart alle vier de gevallen:
+       geldige JSON                  -> 500 "Verkeerd geconfigureerd"
+       ONgeldige JSON                -> 400 (getter kon niet parsen, viel door)
+       zonder content-type           -> 500
+       met stripe-signature erbij    -> 500   <- dit is wat Stripe stuurt
+
+     Gevolg: elke echte betaling gaf 500, Stripe probeerde het opnieuw, kreeg
+     weer 500, en de credits werden nooit geboekt. Niemand merkte het omdat de
+     live-sleutel nog nooit door een echte checkout was gegaan.
+
+     api/whatsapp.js doet hetzelfde soort handtekeningcontrole en werkt wél --
+     die leest de stream als eerste, "before the Vercel req.body getter has a
+     chance to consume it". Dat is hier nu ook de volgorde.
+
+     De req.body-tak blijft bestaan, maar als TERUGVAL en niet als eerste stap:
+     voor een runtime die de stream toch al opgegeten heeft, en voor de tests,
+     die een verzoek nabootsen zonder echte stream. */
+  const streamBruikbaar = !!(req && req.readable === true && req.readableEnded !== true);
+
+  if (!streamBruikbaar) return uitBody(req);
+
   return new Promise((resolve, reject) => {
     const delen = [];
     let n = 0;
@@ -71,9 +96,33 @@ function ruweBody(req) {
       if (n > MAX_BODY) { reject(new Error('body te groot')); req.destroy(); return; }
       delen.push(c);
     });
-    req.on('end', () => resolve(Buffer.concat(delen)));
+    req.on('end', () => {
+      const buf = Buffer.concat(delen);
+      /* Leeg betekent dat er langs ons om al iets met de stream gebeurd is.
+         Dan alsnog terugvallen in plaats van een lege body te laten tekenen --
+         die zou de handtekening onterecht laten falen. */
+      if (buf.length) return resolve(buf);
+      try { resolve(uitBody(req)); } catch (e) { reject(e); }
+    });
     req.on('error', reject);
   });
+}
+
+/* Wat er van req.body te maken valt. Alleen aanroepen als de stream géén optie
+   meer is -- het uitlezen van deze property is wat de stream opeet. */
+function uitBody(req) {
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === 'string') return Buffer.from(req.body, 'utf8');
+  if (req.body && typeof req.body === 'object') {
+    /* NIET opnieuw serialiseren. JSON.stringify geeft andere bytes
+       (sleutelvolgorde, witruimte, getalnotatie) dan wat Stripe getekend heeft:
+       de handtekening zou dan onterecht falen, of erger, toevallig kloppen op
+       een body die niet is wat Stripe stuurde. */
+    throw new Error(
+      'de body is al geparst tot een object voordat deze route hem kon lezen. '
+      + 'De ruwe bytes zijn dan weg en de handtekening valt niet meer te controleren.');
+  }
+  return Buffer.alloc(0);
 }
 
 module.exports = async function handler(req, res) {
@@ -217,5 +266,12 @@ module.exports = async function handler(req, res) {
   }
 };
 
-/* Vercel parst een JSON-body standaard. Dat mag hier niet: zie de kop. */
+/* Deze export deed NIETS en gaf een vals gevoel van veiligheid.
+   `config.api.bodyParser` is een Next.js-conventie; dit project is vanilla
+   CommonJS zonder Next.js, dus Vercel keek er nooit naar. De echte bescherming
+   is de leesvolgorde in ruweBody() hierboven: de stream eerst, req.body pas als
+   terugval. api/whatsapp.js doet hetzelfde en heeft dan ook geen config-export.
+
+   Hij blijft staan omdat hij geen kwaad kan en wel documenteert wat de bedoeling
+   is als dit ooit naar een runtime gaat die hem wél leest. */
 module.exports.config = { api: { bodyParser: false } };

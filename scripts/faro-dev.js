@@ -63,6 +63,32 @@ const _convo = (leadMsgs, ourMsgs, lastLeadAgoDays) => {
 /* Panden voor de Panden-pagina. Drie stuks, met opzet in drie verschillende
    toestanden: beschikbaar, onder bod en verkocht -- zo zie je lokaal meteen of
    de statuskleuren kloppen en of een verkocht pand er anders uitziet. */
+/* Voertuigen, zodat de dealership-markt hier ook te bekijken is. Zonder dit
+   viel loadPanden() na een marktwissel op "mode not stubbed" -- en dan lijkt
+   het wisselen van markt stuk terwijl alleen deze stub ontbrak.
+   Zelfde vorm als api/_vehicles.js teruggeeft; zie vanRecord() daar. */
+let _gekozenVertical = 'vastgoed';
+let _gekozenSector = 'real_estate';
+
+const _fixtureVoertuigen = [
+  { code: 'V1', projectCode: 'TELJO', merk: 'BMW', model: 'M4', uitvoering: 'Competition xDrive',
+    prijs: 74999, km: 18000, inschrijving: '05/2023', brandstof: 'benzine', transmissie: 'automaat',
+    kw: 375, pk: 510, carrosserie: 'coupé', kleur: 'Portimao blauw', status: 'beschikbaar',
+    publiek: true, gearchiveerd: false, autoscout: '7712345',
+    omschrijving: 'Eerste eigenaar, volledig onderhoudsboekje.',
+    troeven: ['Carbon dak', 'Head-up display'], fotos: [] },
+  { code: 'V2', projectCode: 'TELJO', merk: 'Volkswagen', model: 'Golf', uitvoering: 'GTI',
+    prijs: 32500, km: 61000, inschrijving: '09/2021', brandstof: 'benzine', transmissie: 'manueel',
+    kw: 180, pk: 245, carrosserie: 'hatchback', kleur: 'Wit', status: 'gereserveerd',
+    publiek: true, gearchiveerd: false, autoscout: '',
+    omschrijving: 'Nette GTI met volledige historiek.', troeven: ['Trekhaak'], fotos: [] },
+  { code: 'V3', projectCode: 'TELJO', merk: 'Audi', model: 'A4', uitvoering: 'Avant S line',
+    prijs: 41900, km: 44000, inschrijving: '03/2022', brandstof: 'diesel', transmissie: 'automaat',
+    kw: 150, pk: 204, carrosserie: 'break', kleur: 'Grijs', status: 'verkocht',
+    publiek: true, gearchiveerd: false, autoscout: '',
+    omschrijving: 'Ruime break, recent onderhoud.', troeven: [], fotos: [] },
+];
+
 const _fixturePanden = [
   { code: 'P1', projectCode: 'TELJO', adres: 'Lange Violettestraat 12', postcode: '9000', plaats: 'Gent',
     type: 'huis', transactie: 'te koop', prijs: 395000, slaapkamers: 3, badkamers: 1, oppervlakte: 145,
@@ -348,6 +374,18 @@ const server = http.createServer(async (req, res) => {
             tarieven: require('../api/_credits').WEIGHTS,
           });
         }
+        case 'vehicle-list':
+          return res.status(200).json({
+            vehicles: req.body.includeArchived === true
+              ? _fixtureVoertuigen
+              : _fixtureVoertuigen.filter((v) => !v.gearchiveerd),
+            available: true,
+          });
+        case 'vehicle-save':
+        case 'vehicle-archive':
+        case 'listing-save':
+        case 'listing-archive':
+          return res.status(200).json({ ok: true });
         case 'listing-list':
           /* Gearchiveerd valt weg, net als in api/_properties.js. Zou de stub
              ze wel tonen, dan lijkt archiveren hier stuk terwijl het in
@@ -419,9 +457,16 @@ const server = http.createServer(async (req, res) => {
           return res.status(200).json({
             aiName: 'Faro', clientName: 'Teljo', autoReplyTpl: '', aiInstructions: '',
             welcomeMessage: '', bookingConfirmText: '', bookingMode: 'in_chat',
+            vertical: _gekozenVertical, sector: _gekozenSector,
             reportEmail: 'sarah@immodelva.be', language: 'nl', replyInLeadLanguage: true,
           });
         case 'config-save':
+          /* De gekozen markt onthouden, zodat een volgende config-get hem
+             teruggeeft. Zonder dit is de rondgang "kiezen -> opslaan -> scherm
+             opnieuw openen" hier niet na te spelen, en dat is precies de weg
+             waarop de marktkeuze stuk bleek te zijn. */
+          if (req.body.vertical) _gekozenVertical = req.body.vertical;
+          if (req.body.sector)   _gekozenSector   = req.body.sector;
           return res.status(200).json({ ok: true });
         case 'credit-usage':
           return res.status(200).json({ used: 1240, allowance: 5000, features: {} });
@@ -477,6 +522,28 @@ const server = http.createServer(async (req, res) => {
         return res.status(200).json({ url: 'https://accounts.google.com/o/oauth2/v2/auth?local-dev' });
       }
       return res.status(200).json({ configured: true, connected: false, email: '' });
+    }
+
+    /* De losse gereedschapscripts uit scripts/ serveren, zodat je ze in de
+       console kunt laden in plaats van te plakken:
+
+           fetch('/dev-scripts/spatie-check.js').then(r=>r.text()).then(eval)
+           spatieVeeg()
+
+       Alleen .js, alleen uit die map, en de naam wordt gestript tot een
+       bestandsnaam -- geen ../ naar buiten. Dit is een ontwikkelserver die
+       localhost bindt en nooit deployt (Vercel negeert scripts/), maar een
+       padtraversal erin zetten omdat "het toch lokaal is" blijft een slecht
+       gewoontepatroon. */
+    if (p.startsWith('/dev-scripts/')) {
+      const naam = path.basename(p.slice('/dev-scripts/'.length));
+      if (!/^[a-z0-9._-]+\.js$/i.test(naam)) { res.statusCode = 400; return res.end('bad name'); }
+      try {
+        const inhoud = fs.readFileSync(path.join(__dirname, naam), 'utf8');
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        return res.end(inhoud);
+      } catch (e) { res.statusCode = 404; return res.end('not found'); }
     }
 
     if (p === '/' || p === '/dashboard') {

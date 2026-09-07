@@ -470,5 +470,36 @@ async function verifySession(req) {
 
 function forget(userId) { _userCache.delete(String(userId || '')); }
 
+/**
+ * Een Clerk-gebruiker verwijderen. Alleen voor het wissen van een account.
+ *
+ * Waarom dit hier hoort en niet in api/_wissen.js: dit bestand is de enige plek
+ * die weet hoe je met Clerk praat -- de sleutel, de host, de foutvorm. Die
+ * kennis op twee plekken zetten is hoe de ene helft een sleutelrotatie
+ * meemaakt en de andere niet.
+ *
+ * Er wordt bewust NIET stilzwijgend geslaagd als Clerk uit staat: wie een
+ * account wist en te horen krijgt dat alles weg is, terwijl de inlog nog
+ * bestaat, is verkeerd voorgelicht. De aanroeper vangt dit op en meldt het.
+ */
+async function deleteUser(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) throw new Error('Geen gebruiker-id.');
+  const sk = String(process.env.CLERK_SECRET_KEY || '').trim();
+  if (!sk) throw new Error('CLERK_SECRET_KEY ontbreekt — de inlog kan niet verwijderd worden.');
+  const r = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(uid)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${sk}`, 'Content-Type': 'application/json' },
+  });
+  /* 404 telt als geslaagd: de gebruiker bestaat niet meer, en dat is precies
+     de bedoelde eindtoestand. Alleen een echte fout is een fout. */
+  if (!r.ok && r.status !== 404) {
+    throw new Error(`Clerk ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+  }
+  forget(uid);
+  return true;
+}
+
 module.exports = {
-  vlagAan, enabled, serverKlaar, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties };
+  vlagAan, enabled, serverKlaar, verifySession, readClerkToken, forget, deriveProjectCode, provisionTenant, authorizedParties,
+  deleteUser };

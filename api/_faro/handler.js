@@ -279,10 +279,43 @@ async function conversations(res, ctx, body) {
           projectId: body.projectId || null,
         }),
       });
-    case 'rename':
-    case 'favorite':
-    case 'delete':
-      return res.status(501).json({ error: 'Nog niet beschikbaar', code: 'not_wired' });
+    /* ── Deze drie gaven 501 terwijl de code er lag ────────────────────────
+       api/_faro/store.js heeft renameConversation, setFavorite en
+       deleteConversation al volledig: elk van de drie controleert EERST het
+       eigendom via getConversation() -- een geraden id kan dus niet het gesprek
+       van een ander kantoor hernoemen of wissen -- en deleteConversation ruimt
+       ook de berichten op, zodat er geen rijen achterblijven die aan niets meer
+       hangen.
+
+       Ze werden alleen nooit aangeroepen. 'not_wired' was waar toen het er
+       stond en is het al een tijd niet meer. Gevolg voor een klant: hij kon een
+       gesprek in de zijbalk niet hernoemen, niet markeren en niet weggooien --
+       de lijst groeide alleen maar aan.
+
+       De id-controle staat hier en niet in de store: die moet een 400 kunnen
+       geven, en dat is een HTTP-antwoord en dus het werk van deze laag. */
+    case 'rename': {
+      if (!body.id) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+      const titel = String(body.title || '').trim();
+      if (!titel) return res.status(400).json({ error: 'Een gesprek moet een naam houden.' });
+      const uit = await store.renameConversation(ctx.projectCode, body.id, titel);
+      /* null = niet gevonden OF niet van deze tenant. Die twee met opzet niet
+         uit elkaar houden: het verschil zou verklappen dat het id bestaat. */
+      if (!uit) return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      return res.status(200).json({ ok: true, conversation: uit });
+    }
+    case 'favorite': {
+      if (!body.id) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+      const uit = await store.setFavorite(ctx.projectCode, body.id, Boolean(body.favorite));
+      if (!uit) return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      return res.status(200).json({ ok: true, conversation: uit });
+    }
+    case 'delete': {
+      if (!body.id) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+      const weg = await store.deleteConversation(ctx.projectCode, body.id);
+      if (!weg) return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      return res.status(200).json({ ok: true });
+    }
     default:
       return res.status(400).json({ error: 'Onbekende bewerking' });
   }

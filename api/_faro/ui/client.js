@@ -1265,13 +1265,126 @@ function faroLsMessages(id) {
   return null;
 }
 
-function faroRenderConvoList(convos) {
+/* toestand: 'ok' als de server antwoordde, 'stuk' als hij dat niet deed. */
+function faroRenderConvoList(convos, toestand) {
   var list = document.getElementById('faro-convo-list');
   if (!list) return;
-  list.innerHTML = convos.map(function (c) {
-    return '<button class="faro-convo' + (c.id === faroState.conversationId ? ' active' : '') +
-           '" data-convo="' + faroEsc(c.id) + '">' + faroEsc(c.title) + '</button>';
-  }).join('');
+  /* ── Leeg is niet hetzelfde als stuk, en allebei zijn niet hetzelfde als
+        stilte ────────────────────────────────────────────────────────────
+     Hier stond alleen de map(). Bij nul gesprekken is dat een lege string, en
+     onder de kop "Recent" zag je dan NIETS -- niet te onderscheiden van een
+     lijst die niet geladen heeft.
+
+     Dat is precies waar dit op stukliep. Faro's gesprekken hangen aan de
+     TENANT (project_code), zoals alles in dit product. Wie twee accounts heeft
+     -- en dat is hier echt het geval: er staan gesprekken onder twee
+     verschillende projectcodes -- ziet in het ene account de gesprekken van
+     het andere niet. Dat is geen fout maar de isolatie die werkt. Alleen zei
+     het scherm dat niet: het zei niks, en niks leest als kapot.
+
+     Nu drie duidelijk verschillende uitkomsten:
+       - gesprekken       -> de lijst
+       - server zei nul   -> "nog geen eerdere gesprekken in dit account"
+       - server zweeg     -> "kon eerdere gesprekken niet laden"
+     De derde is de belangrijkste: een mislukking mag niet als leegte lezen.
+     Dat is dezelfde regel als in HELVARO-ARCHITECTUUR §6 -- nooit doen alsof. */
+  if (convos && convos.length) {
+    /* De rij is nu een rij met DRIE dingen erin, geen knop meer. Een <button>
+       in een <button> is ongeldige HTML en de browser haalt hem eruit -- dus de
+       buitenste is een div geworden en het openen zit op de titelknop.
+
+       De ster staat links en de drie puntjes rechts; allebei met een eigen
+       aria-label, want een pictogram alleen zegt een schermlezer niets. */
+    list.innerHTML = convos.map(function (c) {
+      var actief = c.id === faroState.conversationId;
+      var fav = !!c.favorite;
+      return '<div class="faro-convo-rij' + (actief ? ' active' : '') + '">'
+        + '<button class="faro-convo-ster' + (fav ? ' aan' : '') + '" data-fav="' + faroEsc(c.id) + '"'
+        + ' aria-pressed="' + (fav ? 'true' : 'false') + '"'
+        + ' aria-label="' + faroEsc(T(fav ? 'convo.unfav' : 'convo.fav', fav ? 'Uit favorieten' : 'Favoriet')) + '">'
+        + (fav ? '\u2605' : '\u2606') + '</button>'
+        + '<button class="faro-convo" data-convo="' + faroEsc(c.id) + '">' + faroEsc(c.title) + '</button>'
+        + '<button class="faro-convo-menu" data-menu="' + faroEsc(c.id) + '"'
+        + ' aria-label="' + faroEsc(T('convo.acties', 'Acties')) + '">\u22EF</button>'
+        + '</div>';
+    }).join('');
+    return;
+  }
+  var stuk = toestand === 'stuk';
+  list.innerHTML = '<p class="faro-convo-leeg">'
+    + faroEsc(stuk
+        ? T('convo.stuk', 'Kon eerdere gesprekken niet laden.')
+        : T('convo.leeg', 'Nog geen eerdere gesprekken in dit account.'))
+    + '</p>';
+}
+
+/* ── Hernoemen, markeren, weggooien ─────────────────────────────────────────
+   De server kon dit al -- api/_faro/store.js heeft de drie functies compleet,
+   met eigendomscontrole -- maar api/_faro/handler.js gaf er 501 'not_wired' op
+   terug en er was geen knop. Een klant kon zijn gesprekkenlijst dus alleen
+   zien groeien.
+
+   Alle drie tekenen de lijst opnieuw uit de SERVER en niet uit een lokale
+   aanname: als het wissen half lukt, hoort de lijst te tonen wat er echt staat
+   en niet wat wij hoopten. */
+function faroConvoPost(op, id, extra, klaar) {
+  var body = { mode: 'faro-conversations', op: op, id: id };
+  if (extra) for (var k in extra) body[k] = extra[k];
+  return faroPost(body)
+    .then(function (r) { if (klaar) klaar(r); faroLoadConversations(); })
+    .catch(function () { faroLoadConversations(); });
+}
+
+function faroFavoriet(id, isAan) {
+  faroConvoPost('favorite', id, { favorite: !isAan });
+}
+
+function faroHernoem(id, huidige) {
+  var naam = window.prompt(T('convo.hernoemVraag', 'Nieuwe naam voor dit gesprek'), huidige || '');
+  if (naam === null) return;                    // geannuleerd
+  naam = String(naam).trim();
+  if (!naam) return;                            // een gesprek moet een naam houden
+  faroConvoPost('rename', id, { title: naam });
+}
+
+function faroVerwijder(id) {
+  /* Bevestigen, want dit haalt ook de berichten weg en er is geen prullenbak.
+     Bewust window.confirm en geen eigen kaart: dit is een rand van de app waar
+     een eigen dialoog meer code dan waarde is, en de browser doet het in de
+     taal van de gebruiker. */
+  if (!window.confirm(T('convo.wegVraag', 'Dit gesprek en zijn berichten verwijderen?'))) return;
+  faroConvoPost('delete', id, null, function () {
+    /* Stond dit gesprek open, dan wijst het scherm nu naar iets dat er niet
+       meer is. Een leeg nieuw gesprek is dan de enige eerlijke toestand. */
+    if (faroState.conversationId === id) { try { faroNewConversation(); } catch (e) {} }
+  });
+}
+
+function faroConvoMenu(id, knop) {
+  var bestaand = document.getElementById('faro-convo-menu');
+  if (bestaand) { bestaand.remove(); if (bestaand.dataset.voor === id) return; }
+  var rij = knop.closest('.faro-convo-rij');
+  var titelEl = rij && rij.querySelector('.faro-convo');
+  var titel = titelEl ? titelEl.textContent : '';
+  var m = document.createElement('div');
+  m.id = 'faro-convo-menu';
+  m.className = 'faro-convo-menu-pop';
+  m.dataset.voor = id;
+  m.innerHTML = '<button data-doe="hernoem">' + faroEsc(T('convo.hernoem', 'Hernoemen')) + '</button>'
+              + '<button data-doe="weg" class="gevaar">' + faroEsc(T('convo.weg', 'Verwijderen')) + '</button>';
+  m.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-doe]');
+    if (!b) return;
+    m.remove();
+    if (b.dataset.doe === 'hernoem') faroHernoem(id, titel);
+    else faroVerwijder(id);
+  });
+  rij.appendChild(m);
+  /* Eén klik ergens anders sluit hem. once:true, anders stapelen de listeners
+     zich op bij elk menu dat geopend wordt. */
+  setTimeout(function () {
+    document.addEventListener('click', function () { var x = document.getElementById('faro-convo-menu'); if (x) x.remove(); }, { once: true });
+  }, 0);
 }
 
 function faroLoadConversations() {
@@ -1281,7 +1394,10 @@ function faroLoadConversations() {
   // Local first, so the list is populated before the round trip rather than
   // flashing empty every time the panel opens.
   var local = faroLsList();
-  faroRenderConvoList(local);
+  /* Nog geen oordeel: de server is onderweg. Bij nul lokale gesprekken toont
+     dit de "nog geen gesprekken"-regel, en die wordt een tel later vervangen
+     door wat de server zegt. Beter dan een lege plek die kan blijven staan. */
+  faroRenderConvoList(local, 'ok');
 
   faroPost({ mode: 'faro-conversations', op: 'list' })
     .then(function (r) {
@@ -1290,9 +1406,14 @@ function faroLoadConversations() {
       // of truth and the local copy is only a cache.
       var seen = {};
       server.forEach(function (c) { seen[c.id] = true; });
-      faroRenderConvoList(server.concat(local.filter(function (c) { return !seen[c.id]; })));
+      faroRenderConvoList(server.concat(local.filter(function (c) { return !seen[c.id]; })), 'ok');
     })
-    .catch(function () { faroRenderConvoList(local); });
+    .catch(function () {
+      /* Alleen 'stuk' melden als er ook lokaal niets is. Staat er wel iets, dan
+         is dat wat de gebruiker heeft en is een foutregel eroverheen alleen
+         ruis -- de lijst die hij ziet klopt, hij is alleen niet ververst. */
+      faroRenderConvoList(local, local.length ? 'ok' : 'stuk');
+    });
 }
 
 /* ── 6. Helvaro context ───────────────────────────────────────────────────
@@ -1777,6 +1898,10 @@ function faroInit() {
 
   var list = document.getElementById('faro-convo-list');
   if (list) list.addEventListener('click', function (e) {
+    var ster = e.target.closest('[data-fav]');
+    if (ster) { e.stopPropagation(); faroFavoriet(ster.dataset.fav, ster.classList.contains('aan')); return; }
+    var menu = e.target.closest('[data-menu]');
+    if (menu) { e.stopPropagation(); faroConvoMenu(menu.dataset.menu, menu); return; }
     var b = e.target.closest('[data-convo]');
     if (b) faroOpenConversation(b.dataset.convo);
   });

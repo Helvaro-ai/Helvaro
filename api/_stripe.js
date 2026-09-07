@@ -123,10 +123,15 @@ function encode(obj, prefix) {
   return delen.filter(Boolean).join('&');
 }
 
-async function post(pad, body) {
+/* De derde parameter bestond niet. Stripe kent maar één werkwoord dat hier
+   verder nodig is -- DELETE, om een abonnement meteen te beëindigen -- en dat
+   loopt over dezelfde authenticatie, dezelfde versiekop en dezelfde
+   foutafhandeling. Daar een tweede functie voor bouwen zou betekenen dat één
+   van de twee die Stripe-Version-regel vroeg of laat mist. */
+async function post(pad, body, opties) {
   if (!configured()) throw new StripeError('Stripe is niet aangesloten (STRIPE_SECRET_KEY ontbreekt).', 'not_configured');
   const r = await fetch(`${API}${pad}`, {
-    method: 'POST',
+    method: (opties && opties.method) || 'POST',
     headers: {
       Authorization: `Bearer ${secret()}`,
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -134,7 +139,9 @@ async function post(pad, body) {
          onder je voeten veranderen zodra iemand in het dashboard iets aanzet. */
       'Stripe-Version': '2024-06-20',
     },
-    body: encode(body),
+    /* Een DELETE zonder body: Stripe wil daar geen lege form-encoded string
+       maar helemaal niets zien. */
+    body: body == null ? undefined : encode(body),
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
@@ -263,6 +270,26 @@ async function cancelSubscription(abonnementId) {
   return post(`/subscriptions/${encodeURIComponent(id)}`, { cancel_at_period_end: 'true' });
 }
 
+/**
+ * Een abonnement NU beëindigen, niet aan het einde van de periode.
+ *
+ * Dit is bewust een tweede functie en geen vlag op de eerste. De regel hierboven
+ * -- laat de betaalde maand uitlopen -- is de juiste voor iemand die opzegt en
+ * klant blijft tot de periode om is. Bij het WISSEN van een account is die
+ * regel precies verkeerd om: er is straks geen account meer om die maand op te
+ * gebruiken, en een afschrijving na een wisverzoek is het laatste wat iemand
+ * hoort te zien.
+ *
+ * DELETE en niet cancel_at_period_end: Stripe stopt de facturatie meteen. De
+ * KLANT en zijn facturen blijven bestaan -- die hebben een bewaarplicht en die
+ * ligt bij Helvaro, niet bij de klant. Zie de kop van api/_wissen.js.
+ */
+async function cancelSubscriptionNow(abonnementId) {
+  const id = String(abonnementId || '').trim();
+  if (!id) throw new StripeError('Geen abonnement-id.', 'no_subscription');
+  return post(`/subscriptions/${encodeURIComponent(id)}`, null, { method: 'DELETE' });
+}
+
 /** Een link naar Stripe's eigen portaal: factuur, kaart, opzeggen. */
 async function billingPortal({ klantId, origin } = {}) {
   const id = String(klantId || '').trim();
@@ -330,7 +357,7 @@ function verifyWebhook(ruweBody, handtekening) {
 
 module.exports = {
   configured, webhookConfigured, createCheckout, verifyWebhook,
-  createSubscription, cancelSubscription, billingPortal,
+  createSubscription, cancelSubscription, cancelSubscriptionNow, billingPortal,
   StripeError, TOLERANTIE_S,
   _encode: encode,
 };

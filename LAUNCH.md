@@ -136,7 +136,7 @@ bij, met wat het web-equivalent is.
 |---|---|---|
 | 1 | Beta test | **Jij** — nog niemand heeft de hele reis met echte sleutels gelopen |
 | 2 | Crash reports | **Gat** — geen foutmonitoring; alleen Vercel-logs die niemand leest |
-| 3 | Delete account | ✅ Aanvraagstroom met overtypbevestiging, bewust geen éénkliksknop |
+| 3 | Delete account | ✅ Verwijdert nu echt en meteen (`api/_wissen.js`), niet meer alleen een aanvraag |
 | 4 | Privacy policy | ✅ `/privacy` en `/terms` |
 | 5 | Declare SDKs | n.v.t. (App Store) — web-equivalent is de CSP, die staat er |
 | 6 | SPF, DKIM, DMARC | **Gat — SPF ontbreekt.** Zie hieronder |

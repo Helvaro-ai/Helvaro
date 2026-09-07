@@ -17,11 +17,17 @@
  *     --text-muted, wat er een uitgeschakelde knop van maakte terwijl het de
  *     helft van de keuze is.
  *
- *  3. DE BOL STAAT STIL. Op de landingspagina draait en ademt Faro's bol; op
- *     14px naast een woord dat je moet lezen is dat geen sfeer maar geflikker.
+ *  3. HET MERKTEKEN STAAT STIL. Op de landingspagina draait en ademt Faro;
+ *     op 18px naast een woord dat je moet lezen is dat geen sfeer maar
+ *     geflikker.
  *
- *  4. DE BOL PRAAT NIET MEE. aria-hidden, anders hoort een schermlezer
+ *  4. HET MERKTEKEN PRAAT NIET MEE. aria-hidden, anders hoort een schermlezer
  *     "afbeelding, Faro" terwijl het pictogram niets toevoegt aan het label.
+ *
+ *  5. HET BESTAND BESTAAT ECHT. Punt 1 t/m 4 kijken alleen naar de bron. Een
+ *     src die nergens heen wijst komt daar allemaal groen doorheen en levert
+ *     een leeg vakje op in de zijbalk -- zichtbaar voor elke klant, onzichtbaar
+ *     voor elke test. Vandaar dat de laatste controle op de SCHIJF kijkt.
  */
 'use strict';
 const fs   = require('fs');
@@ -72,25 +78,58 @@ console.log('\n  hij is groot genoeg om te vinden');
 
 console.log('\n  Faro draagt zijn eigen merkteken');
 {
-  ck('de Faro-kant krijgt een bol', /hv-switch__orb/.test(markup));
+  /* Deze blok toetste eerst de UITVOERING van het merkteken: een bol, met
+     'conic-gradient(from 200deg, var(--champagne)' erin. Toen het merkteken
+     Faro's eigen pictogram werd was elk van die vier regels rood, terwijl er
+     aan het GEDRAG niets veranderde -- precies de val uit HELVARO-ARCHITECTUUR
+     §7 ("toets gedrag, geen bewoording"). Nu toetst het wat het altijd al
+     bedoelde: Faro's kant draagt een merkteken, alleen die kant, het praat
+     niet mee tegen een schermlezer, en het is op beide kanten zichtbaar. */
+  ck('de Faro-kant krijgt een merkteken', /hv-switch__merk/.test(markup));
   /* Alleen Faro. Een pictogram naast allebei zegt niets meer dan de woorden. */
   const cta = /function navCta\(t\) \{[\s\S]*?\n\}/.exec(markup);
   ck('en alleen die kant',
-    cta && (cta[0].match(/hv-switch__orb/g) || []).length === 1,
-    cta && (cta[0].match(/hv-switch__orb/g) || []).length);
-  ck('de bol praat niet mee tegen een schermlezer',
-    /hv-switch__orb"\s+aria-hidden="true"/.test(markup));
+    cta && (cta[0].match(/hv-switch__merk/g) || []).length === 1,
+    cta && (cta[0].match(/hv-switch__merk/g) || []).length);
+  ck('het merkteken praat niet mee tegen een schermlezer',
+    /hv-switch__merk[^>]*aria-hidden="true"/.test(markup));
+  /* Een <img> zonder alt laat een schermlezer terugvallen op de bestandsnaam;
+     aria-hidden alleen is niet genoeg als hij ooit uit de boom valt. */
+  ck('en heeft een lege alt', /hv-switch__merk[^>]*alt=""/.test(markup));
+  /* Het is Faro zelf, niet een abstractie ervan. */
+  ck('het is Faro zelf', /hv-switch__merk[^>]*faro-merk\.webp/.test(markup));
+  /* Zonder afmetingen in de HTML verspringt de schakelaar zodra het plaatje
+     binnen is -- in de zijbalk, waar de rest van de navigatie onder staat. */
+  ck('met afmetingen, zodat de rij niet verspringt',
+    /hv-switch__merk[^>]*width="18"[^>]*height="18"/.test(markup));
 
-  const orb = /\.hv-switch__orb \{([\s\S]*?)\n\}/.exec(css);
-  ck('de bol is gestyled', !!orb);
-  ck('met dezelfde gradient als de grote bol',
-    orb && /conic-gradient\(from 200deg, var\(--champagne\)/.test(orb[1]));
-  /* Op deze maat zou een draaiende bol naast tekst alleen ruis zijn. */
-  ck('maar hij staat stil', orb && !/animation/.test(orb[1]), orb && orb[1].slice(0, 200));
-  /* Op de gekozen kant ligt hij op het zandvlak zelf en zou hij erin
-     verdwijnen zonder rand. */
-  ck('en blijft zichtbaar op de gekozen kant',
-    /\.hv-switch__tab\.active \.hv-switch__orb \{[^}]*box-shadow/.test(css));
+  const merk = /\.hv-switch__merk \{([\s\S]*?)\n\}/.exec(css);
+  ck('het merkteken is gestyled', !!merk);
+  /* Het bestand is vierkant met transparante randen; uitrekken vervormt de
+     kop en object-fit houdt hem heel. */
+  ck('en wordt niet uitgerekt', merk && /object-fit:\s*contain/.test(merk[1]),
+    merk && merk[1].slice(0, 200));
+  /* Op deze maat zou een bewegend pictogram naast tekst alleen ruis zijn. */
+  ck('het staat stil', merk && !/animation/.test(merk[1]), merk && merk[1].slice(0, 200));
+  /* Op de niet-gekozen kant ligt hij op de donkere balk; Faro is bijna zwart,
+     dus zonder een zweem licht valt hij daar weg. */
+  ck('en blijft zichtbaar op de niet-gekozen kant',
+    /\.hv-switch__tab:not\(\.active\) \.hv-switch__merk \{[^}]*(filter|box-shadow)/.test(css));
+
+  /* Alles hierboven leest de BRON. Een src die nergens heen wijst komt daar
+     groen doorheen en levert een leeg vakje op in de zijbalk. Dus: wijst hij
+     naar een bestand dat er echt is? */
+  const src = /hv-switch__merk[^>]*src="([^"]+)"/.exec(markup);
+  ck('de src is te vinden in de markup', !!src);
+  const bestand = src && BASE + 'public' + src[1];
+  ck('en het bestand bestaat op schijf', !!(bestand && fs.existsSync(bestand)), bestand);
+  /* Een webp die geen webp is faalt stil in de browser: geen fout, geen beeld. */
+  if (bestand && fs.existsSync(bestand)) {
+    const kop = fs.readFileSync(bestand).subarray(0, 12);
+    ck('en het is echt een webp',
+      kop.subarray(0, 4).toString() === 'RIFF' && kop.subarray(8, 12).toString() === 'WEBP',
+      kop.toString('hex'));
+  }
 }
 
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');

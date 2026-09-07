@@ -739,6 +739,78 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* ── Account wissen. Nu, en alles. ────────────────────────────────────
+       Hier stond geen mode: de knop in Instellingen stuurde een MAIL naar
+       support met de belofte "binnen 30 dagen". Dat is vervangen door het
+       echte ding, op verzoek van de eigenaar.
+
+       Drie sloten, en ze doen elk iets anders:
+
+       1. De tenant komt uit de SESSIE. Niet uit de body, nooit uit de body.
+          Dat is dezelfde regel als overal hier, maar op deze mode is hij het
+          verschil tussen "mijn account wissen" en "een account wissen".
+
+       2. De admin-API-sleutel mag hier NIET bij. Dat pad heeft geen
+          per-tenant identiteit -- leads.js zegt dat zelf al over andere
+          schrijfacties -- en een gedeelde sleutel die elke tenant kan wissen
+          is geen beheerfunctie maar een ongeluk dat wacht.
+
+       3. Een overgetypt woord. Geen beveiliging (de sessie is dat), wel de
+          rem tegen een misklik op een knop die niets terugdraait. Vier talen,
+          want het scherm bestaat in vier talen en iemand een NEDERLANDS woord
+          laten overtypen in een Franse app is geen bevestiging maar een
+          puzzel. */
+    if (body.mode === 'account-delete') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      if (isAdmin) {
+        return res.status(403).json({ error: 'Een account wissen kan alleen vanuit het account zelf.' });
+      }
+      const WOORDEN = ['VERWIJDEREN', 'SUPPRIMER', 'DELETE', 'LOSCHEN', 'LÖSCHEN'];
+      const getypt = String(body.bevestig || '').trim().toUpperCase();
+      if (WOORDEN.indexOf(getypt) === -1) {
+        return res.status(400).json({ error: 'Bevestiging klopt niet.', code: 'bad_confirmation' });
+      }
+      try {
+        /* De klantrij opzoeken vóór het wissen: daar staan het record-id en
+           het lopende abonnement in, en na afloop is die rij er niet meer. */
+        const formule = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formule}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        const cData = cRes.ok ? await cRes.json() : { records: [] };
+        const rec = (cData.records || [])[0] || null;
+        const abonnement = rec
+          ? (rec.fields['fldcb1GZZAjT3mB0f'] || rec.fields['Stripe Subscription ID'] || '')
+          : '';
+
+        const _wissen = require('./_wissen');
+        const verslag = await _wissen.wisAlles({
+          projectCode,
+          clientRecordId: rec ? rec.id : null,
+          userId: clerkSession ? clerkSession.userId : null,
+          stripeAbonnement: abonnement || null,
+        });
+
+        /* Geen aparte intrekking. Hier stond een aanroep naar een
+           revokeAll(projectCode) die niet bestaat: api/_revocation.js werkt op
+           een vingerafdruk van de wachtwoordhash per e-mailadres, niet op een
+           projectcode.
+
+           Ze is ook niet nodig, en dat is beter dan een extra stap. Een sessie
+           is nog maar op twee manieren geldig, en allebei zijn ze hierboven al
+           weggehaald: de Clerk-gebruiker (verwijderd, dus elke token wordt
+           afgewezen) en de rij in Users (verwijderd, dus currentFingerprint
+           vindt niets meer). Wat overblijft is een cookie die nergens meer op
+           uitkomt. */
+        console.warn(`[account-delete] tenant ${projectCode} gewist:`, JSON.stringify(verslag));
+        return res.status(200).json({ ok: true, verslag });
+      } catch (err) {
+        console.error('[account-delete] fout:', err && err.message);
+        return res.status(500).json({ error: (err && err.message) || 'Wissen mislukt.' });
+      }
+    }
+
     // ── A. Config-get / config-save (AI Persona settings page) ───────────────
     // Authenticated by the same session/api-key flow; only allows the client
     // to read/write THEIR own Klanten record. Whitelisted fields only.

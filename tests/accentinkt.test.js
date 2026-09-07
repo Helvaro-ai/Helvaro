@@ -38,7 +38,12 @@ const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const lum = (h) => { const [r, g, b] = rgb(h).map(kanaal); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 const ct  = (a, b) => { const A = lum(a), B = lum(b); return +((Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05)).toFixed(2); };
 
-const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+/* Sinds de opsplitsing staat het CSS-blok in api/_dash/styles.js en niet meer
+   in api/dashboard.js. Deze test leest de STIJLEN, dus hij leest nu allebei.
+   De uitgestuurde pagina is byte voor byte dezelfde gebleven (zie
+   tests/dashboard-splitsing.test.js) -- alleen de plek in de bron veranderde. */
+const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+             + require(BASE + 'api/_dash/styles.js').css();
 const code = dash.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 console.log('\n  de accentinkt haalt het op elk vlak waar hij landt');

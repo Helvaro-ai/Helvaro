@@ -350,14 +350,33 @@ function subPages(t) {
    mutually exclusive states of one control. Arrow keys move between them for
    free, and a screen reader says "CRM, selected, 1 of 2". */
 function navCta(t) {
-  /* De kant van Faro draagt zijn eigen merkteken: dezelfde bol als op de
-     landingspagina, alleen klein en stil. Zonder animatie -- op 14px is een
-     draaiende bol in de navigatie geen sfeer maar geflikker, en hij staat
-     naast tekst die je moet kunnen lezen.
+  /* De kant van Faro draagt zijn eigen merkteken: Faro zelf.
 
-     aria-hidden, want het pictogram zegt niets wat het label niet al zegt;
-     een schermlezer hoort anders "afbeelding, Faro". */
-  const merk = '<span class="hv-switch__orb" aria-hidden="true"></span>';
+     Hier stond een gouden bol -- dezelfde conic-gradient als de grote bol op
+     de landingspagina, klein en stil. Die bol was een abstractie van Faro op
+     een plek waar Faro een gezicht heeft: hij staat als valk op de
+     landingspagina, in de intro na het inloggen, en in elke statusafbeelding
+     (falcon-idle, falcon-thinking, falcon-success). Alleen de schakelaar --
+     precies de knop die je naar hem toe brengt -- toonde een cirkel.
+
+     Nu Faro's kop. Welk bestand dat is, is nagekeken en niet gegokt:
+
+       - faro-icon.webp is het hele lijfje. Op 18px is dat een donkere veeg
+         waarin niets meer te herkennen valt -- dan kun je net zo goed de bol
+         houden.
+       - faro-kop.webp is de kop, maar met een brede zachte zwarte vignettering
+         eromheen (alfa ~21 tot ver in het beeld, 22% van de pixels zit tussen
+         volledig doorzichtig en volledig dekkend). Op de donkere kant zie je
+         dat niet; op de ZANDEN kant -- precies de kant die oplicht als Faro
+         gekozen is -- ligt er dan een vuile donkere vlek om zijn kop.
+       - faro-merk.webp is diezelfde kop met die vignettering weggesneden en
+         bijgesneden tot het silhouet. Gemaakt uit faro-kop.webp, niet nieuw
+         getekend, zodat het hetzelfde beestje blijft.
+
+     aria-hidden en een lege alt, want het pictogram zegt niets wat het label
+     ernaast niet al zegt; een schermlezer hoort anders "afbeelding, Faro". */
+  const merk = '<img class="hv-switch__merk" src="/faro/faro-merk.webp" alt="" '
+             + 'width="18" height="18" aria-hidden="true" loading="lazy" decoding="async">';
   const tab = (id, label, sel, icoon) => `
       <button class="hv-switch__tab${sel ? ' active' : ''}" id="hv-switch-${id}"
               type="button" role="radio" aria-checked="${sel ? 'true' : 'false'}"
