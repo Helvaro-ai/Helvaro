@@ -25,10 +25,20 @@
  * pagina moet byte voor byte dezelfde zijn. Niet "ziet er goed uit", niet "de
  * tests zijn groen" -- identiek.
  *
- * Daarom staan de vier sha256's hieronder hard in de code. Verandert er iets
- * aan de CSS, dan hoort deze test rood te worden en hoor je de hashes bewust
- * bij te werken. Dat is precies de bedoeling: het maakt "ik heb even iets aan
- * de stijlen gedaan" een zichtbare handeling in plaats van een stille.
+ * Dat is bij de snede zelf ook gedaan: de pagina was in alle vier de talen
+ * byte voor byte dezelfde, met dezelfde sha256. Twee keer bleek er een
+ * regelafbreking te veel te staan -- zonder die vergelijking waren die er
+ * gewoon in gebleven.
+ *
+ * ── Waarom hier NIET de hele pagina gehasht wordt ──────────────────────────
+ * De eerste versie van dit bestand zette de vier paginahashes hard in de code.
+ * Dat was te breed: die test werd rood bij ELKE inhoudswijziging -- een
+ * vertaling, een knop, een woord -- en dan is hij binnen een week iets wat je
+ * wegklikt in plaats van leest. Een controle die altijd afgaat, bewaakt niets.
+ *
+ * Gehasht wordt nu waar dit bestand OVER gaat: het CSS-blok. Dat hoort door een
+ * refactor niet te veranderen, en verandert wel als iemand er echt aan werkt --
+ * dan is één bewuste regel bijwerken de juiste prijs.
  */
 process.env.FARO_WORKSPACE_ENABLED = '1';
 process.env.API_AIRTABLE  = process.env.API_AIRTABLE  || 'test';
@@ -57,22 +67,32 @@ function render(lang) {
   });
 }
 
-/* De pagina zoals hij was VOOR de snede. Bewust de hele hash en niet een
-   lengte: een lengte laat een verwisseling van twee even lange stukken door. */
-const VERWACHT = {
-  nl: { bytes: 1561201, sha: '75e5712ac107e480' },
-  fr: { bytes: 1568562, sha: '2e73e177036a621a' },
-  en: { bytes: 1559302, sha: '7cb06850dee5a1b6' },
-  de: { bytes: 1566317, sha: 'd1cb3cc2dcd1dba9' },
-};
+/* Het CSS-blok zoals het uit dashboard.js kwam. Bewust de hele hash en niet
+   alleen een lengte: een lengte laat een verwisseling van twee even lange
+   stukken door. */
+const CSS_BYTES = 374430;
+const CSS_SHA   = '548f08ab5077567c';
 
 (async () => {
-  console.log('\n  de pagina is niet veranderd door de snede');
-  for (const [taal, v] of Object.entries(VERWACHT)) {
+  console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
+  {
+    const css = styles.css();
+    const sha = crypto.createHash('sha256').update(css).digest('hex').slice(0, 16);
+    ck('byte voor byte gelijk aan het oorspronkelijke blok',
+      css.length === CSS_BYTES && sha === CSS_SHA,
+      { bytes: css.length, sha, verwacht: { bytes: CSS_BYTES, sha: CSS_SHA } });
+  }
+
+  console.log('\n  en de pagina komt in alle vier de talen heel uit de renderer');
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
     const html = await render(taal);
-    const sha = crypto.createHash('sha256').update(html).digest('hex').slice(0, 16);
-    ck(taal + ': byte voor byte gelijk', html.length === v.bytes && sha === v.sha,
-       { bytes: html.length, sha, verwacht: v });
+    /* Geen hash meer, wel de vangnetten die er echt toe doen: er komt HTML uit,
+       en het CSS-blok zit erin. Dat tweede is het punt van de hele snede -- als
+       de module ooit niet meer aangeroepen wordt, staat de app zonder opmaak
+       en zegt geen enkele andere test er iets over. */
+    ck(taal + ': er komt een volledige pagina uit', html.length > 100000, html.length);
+    const a = html.indexOf('<style>'), b = html.indexOf('</style>');
+    ck(taal + ': met het CSS-blok erin', a > -1 && b > a && (b - a) > 300000, b - a);
   }
 
   console.log('\n  het CSS-blok is nog steeds vrij van invullingen');

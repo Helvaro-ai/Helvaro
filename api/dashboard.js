@@ -10748,19 +10748,18 @@ function pushRijBijwerken() {
     knop.style.display = 'none';
     status.style.display = 'inline-flex';
     status.style.color = 'var(--green-ink)';
-    status.textContent = '✓ Aan';
-    sub.textContent = 'Je krijgt een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.';
+    status.textContent = tr('wiz.push.aan');
+    sub.textContent = tr('wiz.push.aanSub');
   } else if (toestemming === 'denied') {
     knop.style.display = 'none';
     status.style.display = 'inline-flex';
     status.style.color = 'var(--text-muted)';
-    status.textContent = 'Geblokkeerd';
-    sub.textContent = 'Je browser blokkeert meldingen van Helvaro. Dat kunnen we hier niet aanzetten — '
-      + 'zet het aan bij de site-instellingen van je browser (het slotje naast het adres).';
+    status.textContent = tr('wiz.push.blok');
+    sub.textContent = tr('wiz.push.blokSub');
   } else {
     knop.style.display = '';
     status.style.display = 'none';
-    sub.textContent = 'Krijg een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.';
+    sub.textContent = tr('wiz.push.uitSub');
   }
 }
 
@@ -11147,7 +11146,7 @@ async function wizardVolgende() {
     var naam = document.getElementById('wizard-ainaam').value.trim();
     var begroet = document.getElementById('wizard-welkomst').value.trim();
     if (!naam) {
-      fout.textContent = 'Geef je assistent een naam.';
+      fout.textContent = tr('wiz.geefNaam');
       document.getElementById('wizard-ainaam').focus();
       return;
     }
@@ -11200,9 +11199,9 @@ async function wizardWhatsAppStatus() {
     var taal = wizardTaalNaam(d.taal);
 
     if (!d.ondersteund) {
-      badge.textContent = 'Niet mogelijk';
+      badge.textContent = tr('wiz.wa.nietMogelijk');
       badge.style.color = 'var(--danger-ink, #b91c1c)';
-      uitleg.textContent = 'WhatsApp ondersteunt ' + taal + ' niet als berichttaal. Kies bij "Land en taal" een andere taal, of neem contact op — dan zoeken we het samen uit.';
+      uitleg.textContent = tr('wiz.wa.geenTaal', { taal: taal });
       return;
     }
     if (d.klaar) {
@@ -11255,26 +11254,26 @@ async function wizardAgendaStatus() {
     var d = await r.json();
 
     if (d && d.connected && d.needsReauth) {
-      badge.textContent = 'Opnieuw koppelen';
+      badge.textContent = tr('wiz.cal.opnieuw');
       badge.style.color = 'var(--warning-ink, #b45309)';
-      uitleg.textContent = 'Je koppeling is verlopen' + (d.email ? ' (' + d.email + ')' : '') + '. Er worden nu geen afspraken ingepland tot je opnieuw koppelt.';
-      bied('Opnieuw koppelen');
+      uitleg.textContent = tr('wiz.cal.verlopen', { email: d.email ? ' (' + d.email + ')' : '' });
+      bied(tr('wiz.cal.opnieuw'));
       return;
     }
     if (d && d.connected) {
-      badge.textContent = 'Gekoppeld';
+      badge.textContent = tr('wiz.cal.gekoppeld');
       badge.style.color = 'var(--success-ink, #15803d)';
-      uitleg.textContent = 'Je agenda is gekoppeld' + (d.email ? ' (' + d.email + ')' : '') + '. Je assistent ziet wanneer je vrij bent en plant zelf in.';
+      uitleg.textContent = tr('wiz.cal.gekoppeldSub', { email: d.email ? ' (' + d.email + ')' : '' });
       knop.style.display = 'none';
       return;
     }
-    badge.textContent = 'Niet gekoppeld';
-    uitleg.textContent = 'Zonder agenda vraagt je AI om een terugbelmoment in plaats van een afspraak in te plannen. Je kan dit ook later doen.';
-    bied('Google Agenda koppelen');
+    badge.textContent = tr('wiz.cal.niet');
+    uitleg.textContent = tr('wiz.cal.nietSub');
+    bied(tr('wiz.cal.koppel'));
   } catch (e) {
     badge.textContent = 'Onbekend';
     uitleg.textContent = 'We konden de status even niet ophalen. Je vindt de koppeling ook terug bij je instellingen.';
-    bied('Google Agenda koppelen');
+    bied(tr('wiz.cal.koppel'));
   }
 }
 

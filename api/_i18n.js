@@ -1242,6 +1242,55 @@ const TEKST = {
   'leeg.historiek':  { nl: 'Nog geen historiek', fr: 'Pas encore d\u2019historique', en: 'No history yet', de: 'Noch kein Verlauf' },
   'leeg.bijgehouden':{ nl: 'nog geen bijgehouden', fr: 'pas encore suivi', en: 'not tracked yet', de: 'noch nicht erfasst' },
 
+  /* ── De welkomstwizard ───────────────────────────────────────────────────
+     Het EERSTE scherm van een nieuwe klant, en het stond volledig in het
+     Nederlands -- inclusief de twee stappen waar het mis kan gaan (WhatsApp
+     ondersteunt je taal niet, je agendakoppeling is verlopen). Juist daar
+     hoort iemand zijn eigen taal te lezen.
+
+     De {taal} en {email} hieronder worden door tr() ingevuld. Ze staan in de
+     zin en niet ervoor of erachter, omdat de woordvolgorde per taal verschilt:
+     "WhatsApp ondersteunt Duits niet" is in het Frans "WhatsApp ne prend pas
+     en charge l'allemand". Aan elkaar plakken zou dat onmogelijk maken. */
+  'wiz.push.aan':     { nl: '\u2713 Aan', fr: '\u2713 Activ\u00e9', en: '\u2713 On', de: '\u2713 An' },
+  'wiz.push.aanSub':  { nl: 'Je krijgt een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.',
+                        fr: 'Vous recevez une notification d\u00e8s qu\u2019un lead arrive, m\u00eame si Helvaro est ferm\u00e9.',
+                        en: 'You get a notification the moment a lead arrives, even with Helvaro closed.',
+                        de: 'Sie erhalten eine Benachrichtigung, sobald ein Lead eingeht \u2014 auch wenn Helvaro geschlossen ist.' },
+  'wiz.push.blok':    { nl: 'Geblokkeerd', fr: 'Bloqu\u00e9', en: 'Blocked', de: 'Blockiert' },
+  'wiz.push.blokSub': { nl: 'Je browser blokkeert meldingen van Helvaro. Dat kunnen we hier niet aanzetten \u2014 zet het aan bij de site-instellingen van je browser (het slotje naast het adres).',
+                        fr: 'Votre navigateur bloque les notifications de Helvaro. Nous ne pouvons pas l\u2019activer ici \u2014 faites-le dans les param\u00e8tres du site de votre navigateur (le cadenas \u00e0 c\u00f4t\u00e9 de l\u2019adresse).',
+                        en: 'Your browser is blocking notifications from Helvaro. We cannot switch that on here \u2014 do it in your browser\u2019s site settings (the padlock next to the address).',
+                        de: 'Ihr Browser blockiert Benachrichtigungen von Helvaro. Wir k\u00f6nnen das hier nicht einschalten \u2014 tun Sie es in den Website-Einstellungen Ihres Browsers (das Schloss neben der Adresse).' },
+  'wiz.push.uitSub':  { nl: 'Krijg een melding zodra er een lead binnenkomt, ook als Helvaro dicht staat.',
+                        fr: 'Recevez une notification d\u00e8s qu\u2019un lead arrive, m\u00eame si Helvaro est ferm\u00e9.',
+                        en: 'Get a notification the moment a lead arrives, even with Helvaro closed.',
+                        de: 'Erhalten Sie eine Benachrichtigung, sobald ein Lead eingeht \u2014 auch wenn Helvaro geschlossen ist.' },
+
+  'wiz.wa.nietMogelijk': { nl: 'Niet mogelijk', fr: 'Impossible', en: 'Not possible', de: 'Nicht m\u00f6glich' },
+  'wiz.wa.geenTaal':  { nl: 'WhatsApp ondersteunt {taal} niet als berichttaal. Kies bij "Land en taal" een andere taal, of neem contact op \u2014 dan zoeken we het samen uit.',
+                        fr: 'WhatsApp ne prend pas en charge {taal} comme langue de message. Choisissez une autre langue sous \u00ab\u00a0Pays et langue\u00a0\u00bb, ou contactez-nous \u2014 nous verrons cela ensemble.',
+                        en: 'WhatsApp does not support {taal} as a message language. Pick another language under "Country and language", or get in touch \u2014 we will work it out together.',
+                        de: 'WhatsApp unterst\u00fctzt {taal} nicht als Nachrichtensprache. W\u00e4hlen Sie unter \u201eLand und Sprache\u201c eine andere Sprache oder melden Sie sich \u2014 wir finden gemeinsam eine L\u00f6sung.' },
+
+  'wiz.cal.opnieuw':  { nl: 'Opnieuw koppelen', fr: 'Reconnecter', en: 'Reconnect', de: 'Neu verbinden' },
+  'wiz.cal.verlopen': { nl: 'Je koppeling is verlopen{email}. Er worden nu geen afspraken ingepland tot je opnieuw koppelt.',
+                        fr: 'Votre connexion a expir\u00e9{email}. Aucun rendez-vous ne sera planifi\u00e9 tant que vous ne vous reconnectez pas.',
+                        en: 'Your connection has expired{email}. No appointments will be scheduled until you reconnect.',
+                        de: 'Ihre Verbindung ist abgelaufen{email}. Es werden keine Termine geplant, bis Sie sich erneut verbinden.' },
+  'wiz.cal.gekoppeld':{ nl: 'Gekoppeld', fr: 'Connect\u00e9', en: 'Connected', de: 'Verbunden' },
+  'wiz.cal.gekoppeldSub': { nl: 'Je agenda is gekoppeld{email}. Je assistent ziet wanneer je vrij bent en plant zelf in.',
+                        fr: 'Votre agenda est connect\u00e9{email}. Votre assistant voit vos disponibilit\u00e9s et planifie lui-m\u00eame.',
+                        en: 'Your calendar is connected{email}. Your assistant sees when you are free and books for you.',
+                        de: 'Ihr Kalender ist verbunden{email}. Ihr Assistent sieht Ihre freien Zeiten und plant selbst.' },
+  'wiz.cal.niet':     { nl: 'Niet gekoppeld', fr: 'Non connect\u00e9', en: 'Not connected', de: 'Nicht verbunden' },
+  'wiz.cal.nietSub':  { nl: 'Zonder agenda vraagt je assistent om een terugbelmoment in plaats van een afspraak in te plannen. Je kan dit ook later doen.',
+                        fr: 'Sans agenda, votre assistant demande un moment de rappel au lieu de planifier un rendez-vous. Vous pouvez le faire plus tard.',
+                        en: 'Without a calendar your assistant asks for a callback time instead of booking. You can do this later.',
+                        de: 'Ohne Kalender fragt Ihr Assistent nach einem R\u00fcckrufzeitpunkt, statt einen Termin zu buchen. Sie k\u00f6nnen das sp\u00e4ter tun.' },
+  'wiz.cal.koppel':   { nl: 'Google Agenda koppelen', fr: 'Connecter Google Agenda', en: 'Connect Google Calendar', de: 'Google Kalender verbinden' },
+  'wiz.geefNaam':     { nl: 'Geef je assistent een naam.', fr: 'Donnez un nom \u00e0 votre assistant.', en: 'Give your assistant a name.', de: 'Geben Sie Ihrem Assistenten einen Namen.' },
+
   /* ── Knoppen die overal terugkomen ───────────────────────────────────────
      'Annuleren' en 'Klaar' bestonden al onder crm.cancel en dash.s.done; die
      namen zeggen niet dat ze algemeen zijn, dus hier een neutrale set. Ze
