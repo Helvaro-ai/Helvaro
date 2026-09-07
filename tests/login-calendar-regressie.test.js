@@ -98,8 +98,12 @@ ck('met Clerk: het registratiescherm', naarReg.indexOf('mountClerkSignUp') !== -
    achter PUBLIC_SIGNUP_ENABLED); de knop wist er alleen niet van. */
 ck('zonder Clerk maar met zelfaanmelden: naar de aanmeldpagina', naarReg.indexOf("'/onboard'") !== -1);
 ck('en dat hangt aan de serververvlag', naarReg.indexOf('OPEN_SIGNUP') !== -1);
+/* Ankerde op de letterlijke zin; die is nu een vertaalsleutel (het scherm voor
+   de sessie bestaat ook in vier talen). Wat bewaakt moet worden is onveranderd:
+   er staat een eerlijke melding, en GEEN mailadres -- dat laatste was het punt,
+   want een adres nodigt uit tot wachten op een antwoord dat niemand stuurt. */
 ck('staat alles uit, dan een eerlijke melding en geen mailadres',
-   naarReg.indexOf('Aanmelden staat tijdelijk uit') !== -1 && naarReg.indexOf('hello@helvaro.pro') === -1);
+   naarReg.indexOf("log.aanmeldenUit") !== -1 && naarReg.indexOf('hello@helvaro.pro') === -1);
 ck('en bij een storing een eerlijke melding', naarReg.indexOf('kon niet geladen worden') !== -1);
 
 console.log('\n— de themaknop staat niet meer op het inlogscherm —');

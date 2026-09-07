@@ -1291,6 +1291,37 @@ const TEKST = {
   'wiz.cal.koppel':   { nl: 'Google Agenda koppelen', fr: 'Connecter Google Agenda', en: 'Connect Google Calendar', de: 'Google Kalender verbinden' },
   'wiz.geefNaam':     { nl: 'Geef je assistent een naam.', fr: 'Donnez un nom \u00e0 votre assistant.', en: 'Give your assistant a name.', de: 'Geben Sie Ihrem Assistenten einen Namen.' },
 
+  /* ── Inloggen, aanmelden en het supportvenster ───────────────────────────
+     Het scherm VOOR de sessie. Hier is nog niet bekend wie er kijkt, maar de
+     taal wel: die komt uit de URL en de browser (zie UI_LANG). Dat maakt een
+     Nederlandse zin hier niet minder verkeerd -- alleen minder opgemerkt, want
+     wie hier vastloopt komt nooit binnen om het te melden. */
+  'log.aanmeldenUit': { nl: 'Aanmelden staat tijdelijk uit. Probeer het later opnieuw.',
+                        fr: 'Les inscriptions sont temporairement ferm\u00e9es. R\u00e9essayez plus tard.',
+                        en: 'Sign-ups are temporarily closed. Please try again later.',
+                        de: 'Die Anmeldung ist vor\u00fcbergehend geschlossen. Versuchen Sie es sp\u00e4ter erneut.' },
+  'log.wachtKlaar':   { nl: 'Je hoeft niets te doen. Zodra het klaar is kun je gewoon inloggen.',
+                        fr: 'Vous n\u2019avez rien \u00e0 faire. D\u00e8s que c\u2019est pr\u00eat, vous pourrez vous connecter.',
+                        en: 'You do not need to do anything. As soon as it is ready you can just log in.',
+                        de: 'Sie m\u00fcssen nichts tun. Sobald es fertig ist, k\u00f6nnen Sie sich einfach anmelden.' },
+  'log.bezig':        { nl: 'Inloggen...', fr: 'Connexion...', en: 'Signing in...', de: 'Anmeldung...' },
+  'log.verbindingWeg':{ nl: 'Verbinding mislukt. Opnieuw proberen over 90s',
+                        fr: '\u00c9chec de la connexion. Nouvelle tentative dans 90 s',
+                        en: 'Connection failed. Retrying in 90s',
+                        de: 'Verbindung fehlgeschlagen. Neuer Versuch in 90 s' },
+
+  'sup.versturen':    { nl: 'Versturen',    fr: 'Envoyer',     en: 'Send',        de: 'Senden' },
+  'sup.bezig':        { nl: 'Versturen...', fr: 'Envoi...',    en: 'Sending...',  de: 'Senden...' },
+  'sup.opnieuw':      { nl: 'Opnieuw proberen', fr: 'R\u00e9essayer', en: 'Try again', de: 'Erneut versuchen' },
+  'sup.mislukt':      { nl: 'Versturen lukte niet. Mail ons op {adres} \u2014 je tekst staat hierboven.',
+                        fr: 'L\u2019envoi a \u00e9chou\u00e9. \u00c9crivez-nous \u00e0 {adres} \u2014 votre texte est ci-dessus.',
+                        en: 'Sending failed. Email us at {adres} \u2014 your text is above.',
+                        de: 'Senden fehlgeschlagen. Schreiben Sie uns an {adres} \u2014 Ihr Text steht oben.' },
+  'sup.verstuurd':    { nl: 'Verstuurd. We antwoorden op je e-mailadres.',
+                        fr: 'Envoy\u00e9. Nous r\u00e9pondrons \u00e0 votre adresse e-mail.',
+                        en: 'Sent. We will reply to your email address.',
+                        de: 'Gesendet. Wir antworten an Ihre E-Mail-Adresse.' },
+
   /* ── Knoppen die overal terugkomen ───────────────────────────────────────
      'Annuleren' en 'Klaar' bestonden al onder crm.cancel en dash.s.done; die
      namen zeggen niet dat ze algemeen zijn, dus hier een neutrale set. Ze

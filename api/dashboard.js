@@ -4192,7 +4192,7 @@ async function naarRegistreren() {
   //    iets aan kan doen; het is een instelling die vergeten is. Zeg dat
   //    eerlijk in plaats van iemand op een dode knop te laten drukken.
   if (fout) {
-    fout.textContent = 'Aanmelden staat tijdelijk uit. Probeer het later opnieuw.';
+    fout.textContent = tr('log.aanmeldenUit');
     fout.classList.add('visible');
     console.warn('[signup] CLERK_ENABLED en PUBLIC_SIGNUP_ENABLED staan allebei uit — '
                + 'er is dus geen enkele weg naar binnen voor een nieuwe klant.');
@@ -4340,7 +4340,7 @@ function showTenantPending(clerk) {
   p1.style.cssText = 'font-size:13.5px;line-height:1.6;color:#5B6779;margin:0 0 8px';
 
   var p2 = document.createElement('p');
-  p2.textContent = 'Je hoeft niets te doen. Zodra het klaar is kun je gewoon inloggen.';
+  p2.textContent = tr('log.wachtKlaar');
   p2.style.cssText = 'font-size:13.5px;line-height:1.6;color:#5B6779;margin:0 0 18px';
 
   var actions = document.createElement('div');
@@ -4910,7 +4910,7 @@ function performLogout() {
     btn.disabled = false;
     btn.classList.remove('loading');
     const span = btn.querySelector('span');
-    if (span) span.textContent = 'Inloggen';
+    if (span) span.textContent = tr('login.submit');
   }
 }
 
@@ -5037,7 +5037,7 @@ function toonSupportModal(opties) {
   sluitBtn.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
 
   const stuurBtn = document.createElement('button');
-  stuurBtn.textContent = 'Versturen';
+  stuurBtn.textContent = tr('sup.versturen');
   stuurBtn.style.cssText = 'padding:9px 16px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
 
   function sluit() {
@@ -5054,8 +5054,8 @@ function toonSupportModal(opties) {
   // verzending niemand met lege handen achterlaat.
   function toonTerugval(adres) {
     statusEl.style.color = 'var(--error-ink,#F4A4A4)';
-    statusEl.textContent = 'Versturen lukte niet. Mail ons op ' + adres + ' — je tekst staat hierboven.';
-    stuurBtn.textContent = 'Opnieuw proberen';
+    statusEl.textContent = tr('sup.mislukt', { adres: adres });
+    stuurBtn.textContent = tr('sup.opnieuw');
     stuurBtn.disabled = false;
     veld.focus();
     veld.select();
@@ -5070,7 +5070,7 @@ function toonSupportModal(opties) {
       return;
     }
     stuurBtn.disabled = true;
-    stuurBtn.textContent = 'Versturen...';
+    stuurBtn.textContent = tr('sup.bezig');
     statusEl.style.color = 'var(--text-muted,#999)';
     statusEl.textContent = '';
     try {
@@ -5082,7 +5082,7 @@ function toonSupportModal(opties) {
       const d = await r.json().catch(() => ({}));
       if (r.ok && d && d.ok) {
         statusEl.style.color = 'var(--success-ink,#8FD9A8)';
-        statusEl.textContent = 'Verstuurd. We antwoorden op je e-mailadres.';
+        statusEl.textContent = tr('sup.verstuurd');
         stuurBtn.textContent = 'Verstuurd';
         veld.disabled = true;
         setTimeout(sluit, 1600);
@@ -5091,7 +5091,7 @@ function toonSupportModal(opties) {
       if (r.status === 429) {
         statusEl.style.color = 'var(--warning-ink,#E8C97A)';
         statusEl.textContent = (d && d.error) || 'Even wachten met de volgende.';
-        stuurBtn.textContent = 'Versturen';
+        stuurBtn.textContent = tr('sup.versturen');
         stuurBtn.disabled = false;
         return;
       }
@@ -5533,7 +5533,7 @@ async function refreshData(skipFetch = false) {
     }
   } catch (err) {
     const ts = document.getElementById('timestamp-info');
-    if (ts) ts.textContent = 'Verbinding mislukt. Opnieuw proberen over 90s';
+    if (ts) ts.textContent = tr('log.verbindingWeg');
     console.warn('refreshData error:', err.message);
     // Hier stond alleen die console.warn. Bij een 500, ongeldige JSON of een
     // verbroken verbinding bleven alle KPI-tegels op "LADEN..." staan, zonder
@@ -5582,13 +5582,13 @@ function showCrmError(err) {
   const retry = document.createElement('button');
   retry.type = 'button';
   retry.className = 'crm-error-retry';
-  retry.textContent = 'Opnieuw proberen';
+  retry.textContent = tr('sup.opnieuw');
   retry.addEventListener('click', function () {
     retry.disabled = true;
     retry.textContent = 'Bezig…';
     refreshData().finally(function () {
       retry.disabled = false;
-      retry.textContent = 'Opnieuw proberen';
+      retry.textContent = tr('sup.opnieuw');
     });
   });
 
@@ -11816,7 +11816,7 @@ async function handleLogin() {
   }
 
   const btn = document.getElementById('btn-login');
-  btn.querySelector('span').textContent = 'Inloggen...';
+  btn.querySelector('span').textContent = tr('log.bezig');
   btn.classList.add('loading');
   btn.disabled = true;
 
@@ -11838,7 +11838,7 @@ async function handleLogin() {
         remaining--;
         if (remaining <= 0) {
           clearInterval(tick);
-          btn.querySelector('span').textContent = 'Inloggen...';
+          btn.querySelector('span').textContent = tr('log.bezig');
           btn.classList.add('loading');
           handleLogin();
         } else {
@@ -11851,7 +11851,7 @@ async function handleLogin() {
     if (!authResp.ok) {
       errEl.textContent = authData.error || 'Inloggen mislukt.';
       errEl.classList.add('visible');
-      btn.querySelector('span').textContent = 'Inloggen';
+      btn.querySelector('span').textContent = tr('login.submit');
       btn.classList.remove('loading');
       btn.disabled = false;
       return;
@@ -11870,7 +11870,7 @@ async function handleLogin() {
   } catch (err) {
     errEl.textContent = tr('tst.ietsMis');
     errEl.classList.add('visible');
-    btn.querySelector('span').textContent = 'Inloggen';
+    btn.querySelector('span').textContent = tr('login.submit');
     btn.classList.remove('loading');
     btn.disabled = false;
   }
