@@ -22,6 +22,7 @@ const _faroData  = require('./_faro/data');  // parseBudget: leest bedragen uit 
 const _command   = require('./_command');     // Command Center intelligence layer — pure, no I/O, no model
 const _crm       = require('./_crm');          // de enige deur naar de CRM's van klanten
 const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de klantrij
+const _waes      = require('./_waes');         // eigen WhatsApp-nummer per klant (Embedded Signup)
 
 // Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
 // 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
@@ -739,6 +740,118 @@ module.exports = async function handler(req, res) {
     // Tenant-scoped: leest alleen de eigen Client Config-rij, en geeft niets
     // terug wat niet over deze klant gaat. Geen WABA-id, geen token, geen
     // andere klanten -- alleen taal + status per template.
+    /* ── Eigen WhatsApp-nummer koppelen (Embedded Signup) ─────────────────
+       api/_waes.js was compleet maar nergens aangesloten: geen route, geen
+       knop, alleen een opmerking in dashboard.js dat het er nog niet was.
+
+       Dat is niet alleen een ontbrekende functie. Meta's App Review vraagt om
+       een schermopname van de VOLLEDIGE gebruikerservaring voordat je
+       Advanced Access op whatsapp_business_management krijgt -- en die opname
+       kun je niet maken van een knop die niet bestaat. Het bouwen komt dus
+       vóór het aanvragen, niet erna.
+
+       Beide modes staan hier als mode en niet als eigen route: HELVARO-
+       ARCHITECTUUR §4.3. */
+    if (body.mode === 'wa-es-status') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!cRes.ok) return res.status(500).json({ error: 'Klant niet gevonden' });
+        const rec = ((await cRes.json()).records || [])[0];
+        if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
+
+        const eigenNummer = String(rec.fields['fldbrhlSrsmlJwcYr'] || '').trim();
+        return res.status(200).json({
+          /* beschikbaar = de env-vars staan er. Zonder dit toont het dashboard
+             de knop niet, want een knop die op een Meta-foutmelding uitkomt is
+             erger dan geen knop (zie de kop van api/_waes.js). */
+          beschikbaar: _waes.isConfigured(),
+          appId:       _waes.isConfigured() ? _waes.appId() : '',
+          configId:    _waes.isConfigured() ? _waes.configId() : '',
+          gekoppeld:   !!eigenNummer,
+          /* Het nummer-id zelf zegt een mens niets; het label wel. Alleen
+             ophalen als er echt iets gekoppeld is. */
+          nummer: eigenNummer
+            ? await _waes.getPhoneInfo(eigenNummer).catch(() => ({ number: '', name: '', quality: '' }))
+            : null,
+        });
+      } catch (err) {
+        console.error('[wa-es-status] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    if (body.mode === 'wa-es-complete') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      if (!_waes.isConfigured()) {
+        console.error('[wa-es] META_APP_ID of META_ES_CONFIG_ID ontbreekt — koppelen is niet mogelijk.');
+        return res.status(503).json({ error: 'Eigen nummer koppelen staat nog niet aan.', code: 'not_configured' });
+      }
+
+      /* Wat de popup teruggeeft, en verder niets. De projectcode komt NOOIT
+         uit de body -- die staat hierboven al vast uit de sessie. */
+      const code    = String(body.code || '').trim();
+      const wabaId  = String(body.wabaId || '').trim();
+      const nummerId = String(body.phoneNumberId || '').trim();
+      if (!code) return res.status(400).json({ error: 'Geen code uit de koppeling.' });
+      if (!/^[0-9]{5,25}$/.test(wabaId))  return res.status(400).json({ error: 'Ongeldig WABA-id.' });
+      if (!/^[0-9]{5,25}$/.test(nummerId)) return res.status(400).json({ error: 'Ongeldig nummer-id.' });
+
+      let uit;
+      try {
+        /* Deze doet alles in de juiste volgorde: token wisselen, app op de
+           WABA abonneren, nummer registreren. Faalt er iets, dan gooit hij en
+           slaan we hieronder NIETS op -- een half gekoppeld nummer dat wel in
+           Airtable staat maar niet kan zenden is erger dan geen koppeling. */
+        uit = await _waes.completeSignup({ code, wabaId, phoneNumberId: nummerId });
+      } catch (err) {
+        console.error('[wa-es] koppelen mislukt voor', projectCode, '-', err && err.message);
+        return res.status(502).json({
+          error: 'Het koppelen is niet afgerond. Er is niets gewijzigd; probeer het opnieuw.',
+          code: 'signup_failed',
+        });
+      }
+
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        const rec = ((await cRes.json()).records || [])[0];
+        if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
+
+        const velden = { fldbrhlSrsmlJwcYr: nummerId, fldCEqMp5zs1Wos3T: wabaId };
+        const upRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: velden, typecast: true }),
+          }
+        );
+        if (!upRes.ok) {
+          const txt = await upRes.text().catch(() => '');
+          /* Het nummer IS gekoppeld bij Meta, maar wij weten het niet meer.
+             Dat moet luid, want de klant denkt dat het gelukt is. */
+          console.error('[wa-es] KOPPELING GELUKT BIJ META MAAR NIET OPGESLAGEN voor', projectCode,
+            '-- nummer-id', nummerId, 'hoort handmatig op Client Config. Airtable:', upRes.status, txt.slice(0, 200));
+          return res.status(500).json({ error: 'Koppeling gelukt, maar opslaan mislukte. We hebben dit gemeld.' });
+        }
+        try { setCachedClient(projectCode, { ...rec, fields: { ...rec.fields, ...velden } }); } catch (e) {}
+
+        console.log('[wa-es] eigen nummer gekoppeld voor', projectCode);
+        return res.status(200).json({ ok: true, nummer: uit });
+      } catch (err) {
+        console.error('[wa-es] opslaan mislukt voor', projectCode, '-', err && err.message);
+        return res.status(500).json({ error: 'Koppeling gelukt, maar opslaan mislukte.' });
+      }
+    }
+
     if (body.mode === 'wa-readiness') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {

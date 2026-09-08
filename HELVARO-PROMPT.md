@@ -451,7 +451,7 @@ een ontbrekend nummer.
 
 ### 8. Controleer één e-mailadres in het privacybeleid
 
-De gegevensbeschermingscontactpersoon staat op **`usehelvaro.pro`**, terwijl al
+~~De gegevensbeschermingscontactpersoon stond op `usehelvaro.pro`~~ -- rechtgezet op 9 september; alles staat nu op `helvaro.pro`. Voorheen: terwijl al
 het andere op `helvaro.pro` staat. Is dat domein nog van jou en wordt die
 mailbox gelezen? Zo niet: dat is het adres waarop AVG-verzoeken binnenkomen.
 

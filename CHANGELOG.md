@@ -102,6 +102,30 @@ nummer in.
   stond er alleen "geen bruikbaar antwoord", wat niet zegt of het aan de vraag
   of aan de provider lag.
 
+### Eén adres voor gegevensbescherming
+
+Het privacybeleid gaf de gegevensbeschermingscontactpersoon op een adres van een
+ander domein (`usehelvaro.pro`), terwijl al het andere op `helvaro.pro` staat.
+Dat is het adres waarop AVG-verzoeken binnenkomen — inzage, correctie,
+verwijdering — dus een adres op een domein dat je misschien niet meer leest is
+een verzoek dat niemand ziet.
+
+Rechtgezet op `/privacy`, in de verwerkersovereenkomst, en in de Reply-To die
+uitgaande mail meekrijgt als `REPLY_TO` niet gezet zou zijn. Alles staat nu op
+`helvaro.pro`, en dat is ook wat er bij Meta als DPO-contact opgegeven is.
+
+### Eigen WhatsApp-nummer per klant — de serverkant
+
+`api/_waes.js` bestond al maar was nergens aangesloten. De twee modes die het
+koppelen afhandelen staan er nu wel (`wa-es-status` en `wa-es-complete` op
+`api/leads.js`).
+
+**Je merkt hier nog niets van.** Zonder `META_APP_ID` en `META_ES_CONFIG_ID`
+meldt de statusmode zich als "niet beschikbaar" en weigert de koppelmode met een
+duidelijke melding — er is dus geen knop en er kan niets misgaan. De knop zelf
+en het Meta-venster komen later, en pas daarna kan de goedkeuring bij Meta
+aangevraagd worden.
+
 ### Nieuw document
 
 `HELVARO-PROMPT.md` — de volledige briefing over hoe Helvaro in elkaar zit,

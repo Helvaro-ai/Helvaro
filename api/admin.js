@@ -1900,7 +1900,7 @@ module.exports = async function handler(req, res) {
 
       // Welkomstmail bewust NIET geautomatiseerd. Admin kopieert de
       // ready-to-paste mailtekst uit de dashboard en stuurt zelf (vanuit
-      // eigen mailbox sindi.s@usehelvaro.pro). Dit voorkomt Resend domain-
+      // eigen mailbox sindi@helvaro.pro). Dit voorkomt Resend domain-
       // verification gedoe en geeft de eerste klant-interactie een echte
       // persoonlijke uitstraling (van een echt persoon, niet van een
       // noreply adres).
@@ -2071,7 +2071,7 @@ async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUr
   // De welkomstmail gaat via het standaard verzendadres (SMTP_FROM = noreply@helvaro.pro),
   // betrouwbaar bezorgd. Maar met een Reply-To naar een echt postvak kan de klant
   // gewoon antwoorden en komt dat bij een mens terecht. Zo: deliverability + persoonlijk.
-  const replyTo = process.env.REPLY_TO || 'sindi.s@usehelvaro.pro';
+  const replyTo = process.env.REPLY_TO || 'sindi@helvaro.pro';
   // Login-blok wordt enkel toegevoegd als we ook een User hebben aangemaakt (en dus een password hebben)
   const loginBlock = loginPassword ? `
             <h3 style="margin:24px 0 8px;color:#0f1117">Login gegevens</h3>
@@ -2141,7 +2141,7 @@ async function sendInviteEmail({ toEmail, toName, inviteLink }) {
           <p style="font-size:12px;color:#a0aab8">Vragen? Neem contact op met uw contactpersoon. Team Helvaro</p>
         </div>`;
   const { sendMail } = require('./_mailer');
-  const replyTo = process.env.REPLY_TO || 'sindi.s@usehelvaro.pro';
+  const replyTo = process.env.REPLY_TO || 'sindi@helvaro.pro';
   return sendMail({ to: toEmail, subject: 'U bent uitgenodigd voor Helvaro', html, replyTo })
     .catch(err => { console.error('[invite mail]', err && err.message); return { ok: false, error: err && err.message }; });
 }

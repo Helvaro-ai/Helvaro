@@ -16,7 +16,7 @@ Deze verwerkersovereenkomst ("Overeenkomst") is een bijlage bij en maakt onderde
 - Naam: [JOUW JURIDISCHE NAAM / VENNOOTSCHAP]
 - Adres: [ADRES]
 - Ondernemingsnummer: [BE-NUMMER]
-- Contact gegevensbescherming: sindi.s@usehelvaro.pro
+- Contact gegevensbescherming: sindi@helvaro.pro
 
 ## Overwegingen
 

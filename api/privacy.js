@@ -214,7 +214,7 @@ module.exports = function handler(req, res) {
   <p>Uw gegevens worden beveiligd opgeslagen via Airtable en verwerkt door deze applicatie, die draait op Vercel. Alle verbindingen zijn versleuteld via HTTPS/TLS.</p>
 
   <h2>11. Contact</h2>
-  <p>Voor vragen over dit privacybeleid: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>. Voor vragen specifiek over gegevensbescherming kan u terecht bij onze gegevensbeschermingscontactpersoon: <a href="mailto:sindi.s@usehelvaro.pro">sindi.s@usehelvaro.pro</a>.</p>
+  <p>Voor vragen over dit privacybeleid: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>. Voor vragen specifiek over gegevensbescherming kan u terecht bij onze gegevensbeschermingscontactpersoon: <a href="mailto:sindi@helvaro.pro">sindi@helvaro.pro</a>.</p>
 
   <footer>
     Helvaro BV · <a href="/privacy">Privacybeleid</a> · <a href="/terms">Algemene Voorwaarden</a>
