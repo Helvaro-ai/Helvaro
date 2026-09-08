@@ -307,6 +307,35 @@ In plaats van een plaatje met tooltips.
 
 ## Nog niet uitgerold
 
+### Je kon niet meer als beheerder inloggen
+
+Sinds Clerk het inlogscherm tekent, vraagt dat scherm eerst je e-mailadres en
+zegt het "we kennen dit e-mailadres niet" nog voordat er naar een wachtwoord
+gevraagd wordt. De beheerderstoegang werkt via een wachtwoord — het is de
+ADMIN_KEY — en dat veld kreeg je dus nooit meer te zien.
+
+Gevolg: Klanten, Founder en Kosten waren onbereikbaar. Niet verborgen maar echt
+weg: die pagina's worden voor iedereen zonder beheerderssessie uit de HTML
+geknipt.
+
+`app.helvaro.pro/dashboard?admin=1` slaat Clerk over en toont het eigen
+inlogformulier — hetzelfde formulier dat er al stond voor als Clerk een keer
+niet laadt. Vul een e-mailadres in en je ADMIN_KEY als wachtwoord.
+
+Dit is geen extra deur: de sleutel blijft de sleutel, en die wordt nog steeds op
+de server vergeleken. Zonder ADMIN_KEY levert de parameter precies hetzelfde
+inlogscherm op als anders.
+
+### Het witte blokje op de Google-knop
+
+Clerk zet een label op de manier waarop je de vorige keer inlogde. Dat label was
+nooit meeverhuisd toen het inlogpaneel donker werd, dus het bleef wit met
+donkere tekst en hing half over de rand van de knop.
+
+Nu draagt het dezelfde gedempte tinten als de rest van het paneel en staat het
+netjes binnen de knop. Niet weggehaald: op een scherm waar je twijfelt met welk
+account je ook alweer binnenkwam, is dat precies de zin die helpt.
+
 ### Een autohandelaar kon zijn eigen markt niet kiezen bij het aanmelden
 
 De vier markten die op 4 en 5 september zijn gebouwd — autohandel, bouw,

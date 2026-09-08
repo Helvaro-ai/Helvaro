@@ -82,11 +82,10 @@ function render(lang) {
    diff hoeveel bytes erbij kwamen. Een wijziging die je niet kon verklaren is
    dan meteen een gesprek in plaats van een verrassing.
 
-   Bijgewerkt na de drie raakdoel-fixes (.login-link, .brand-dot, .brand-dots):
-   +884 bytes, waarvan het grootste deel commentaar dat uitlegt waaróm die
-   maten zijn zoals ze zijn. */
-const CSS_BYTES = 375314;
-const CSS_SHA   = 'cd330982e7cd986f';
+   Bijgewerkt na de drie raakdoel-fixes en na het meekleuren van Clerks
+   "last used"-badge op de Google-knop. */
+const CSS_BYTES = 376770;
+const CSS_SHA   = 'd1c975be63a7e9f1';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

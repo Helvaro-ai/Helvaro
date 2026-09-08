@@ -196,7 +196,29 @@ const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
         .toString('utf8').replace(/\$+$/, '').replace(/[^a-zA-Z0-9.-]/g, '');
     } catch { CLERK_HOST = ''; }
   }
-  const CLERK_READY = CLERK_ON && !!CLERK_HOST;
+  /* ?admin=1 zet Clerk voor DIT verzoek uit, zodat het eigen e-mail/wachtwoord-
+     formulier verschijnt. Dat is de enige weg naar de back-office.
+
+     Waarom dat nodig is: HV_IS_ADMIN (onderaan dit bestand) kijkt naar de
+     ONDERTEKENDE eigen sessie -- clientName 'Admin', geen projectcode -- en die
+     krijg je alleen via api/auth.js, dat het wachtwoord timing-safe vergelijkt
+     met ADMIN_KEY. Clerk kent dat pad niet. Met Clerk aan was er dus geen enkele
+     manier meer om als beheerder binnen te komen: het e-mailveld antwoordt "we
+     kennen dit e-mailadres niet" nog vóór er naar een wachtwoord gevraagd wordt.
+
+     Dit is geen achterdeur. Het schakelt alleen de UI om naar het formulier dat
+     er toch al staat als vangnet voor een Clerk-storing; de controle blijft
+     precies waar hij stond. Wie ADMIN_KEY niet heeft, komt hiermee geen stap
+     verder -- hij krijgt hetzelfde inlogscherm als iedereen.
+
+     Serverzijdig en niet in de browser: #login-page krijgt hieronder de klasse
+     clerk-wacht zolang we Clerk verwachten, en die verbergt het formulier via
+     CSS. Zou alleen de client dit weten, dan stond er een skelet te wachten op
+     een Clerk die nooit komt. */
+  const _adminBypass = /(^|&)admin=1(&|$)/.test(String(
+    (req.query && req.query.admin !== undefined) ? 'admin=' + req.query.admin
+      : (String(req.url || '').split('?')[1] || '')));
+  const CLERK_READY = CLERK_ON && !!CLERK_HOST && !_adminBypass;
   /* Kan de SERVER de sessies van Clerk ook echt verifieren? Dat is iets anders
      dan of de browser de inlogkaart toont: daarvoor is alleen de publieke
      sleutel nodig, voor verifieren de geheime.
@@ -3801,6 +3823,8 @@ const FARO_DEED_REGELS = ${FARO_DEED_JSON};
    getToken() returns a short-lived token and refreshes it as needed, so it is
    called per request rather than cached.
    ============================================================ */
+/* Volgt de serverbeslissing, inclusief de ?admin=1-uitzondering die daar
+   gemaakt wordt (zie de uitleg bij CLERK_READY bovenaan dit bestand). */
 const CLERK_READY = ${CLERK_READY ? 'true' : 'false'};
 const CLERK_SERVER_OK = ${CLERK_SERVER_OK ? 'true' : 'false'};
 

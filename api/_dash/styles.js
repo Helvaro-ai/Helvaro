@@ -2165,6 +2165,40 @@ button.brand-dot { border: none; padding: 0; }
   color: var(--login-text);
 }
 
+/* ── Het witte blokje op de Google-knop ─────────────────────────────────────
+   Clerk zet een badge op de aanmeldmethode die je de VORIGE keer gebruikte
+   ("Last used"). Die badge is niet meegestyled toen dit paneel donker werd,
+   dus hij bleef wit met donkere tekst -- een fel blokje dat half over de rand
+   van de knop hing en er kapot uitzag.
+
+   Niet verbergen maar meekleuren: het is nuttige informatie op een scherm waar
+   iemand twijfelt met welk account hij ook alweer binnenkwam. Wel in de
+   gedempte tinten van dit paneel, zodat hij vertelt zonder te schreeuwen.
+
+   position:relative op de knop zelf: de badge wordt absoluut geplaatst, en
+   zonder een houvast klom hij naar de kaart eromheen -- dat is precies waarom
+   hij over de rand viel. */
+#clerk-signin .cl-socialButtonsBlockButton { position: relative; }
+#clerk-signin .cl-socialButtonsBlockButton .cl-badge,
+#clerk-signin .cl-badge {
+  background: var(--login-panel-lift);
+  border: 1px solid var(--login-field-line);
+  color: var(--login-muted);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  /* Binnen de knop houden. De badge stond rechtsboven half buiten de rand;
+     deze twee waarden zetten hem netjes in de rechterhelft, verticaal
+     gecentreerd, waar hij de tekst niet raakt. */
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
 /* ── Scheiding ───────────────────────────────────────────────────────────── */
 #clerk-signin .cl-dividerRow { gap: 12px; margin: 4px 0; }
 #clerk-signin .cl-dividerLine { background: var(--login-border); height: 1px; }
