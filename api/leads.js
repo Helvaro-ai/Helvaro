@@ -178,6 +178,38 @@ function verifySession(token) {
   } catch { return null; }
 }
 
+/**
+ * Botst een nieuwe afspraak met een bestaande?
+ *
+ * Apart en puur, omdat dit de regel is die het waard is om te testen: de
+ * randen (aansluitend mag, een minuut overlap niet) en de uitzonderingen
+ * (geannuleerd telt niet, onleesbare tijd telt niet mee als botsing).
+ * Inline in de route zou hij alleen te bereiken zijn via een echte Airtable.
+ *
+ * @param {Array}  bestaande   Airtable-records met fields
+ * @param {number} startMs     begin van de nieuwe afspraak
+ * @param {number} duurMin     duur van de nieuwe afspraak in minuten
+ * @returns {object|undefined} het botsende record, of undefined
+ */
+function botsendeAfspraak(bestaande, startMs, duurMin) {
+  const nieuwEind = startMs + (Number(duurMin) || 30) * 60 * 1000;
+  return (bestaande || []).find((rec) => {
+    const f = (rec && rec.fields) || {};
+    /* Een geannuleerde afspraak houdt geen plek bezet. Zonder deze regel kon
+       een tijdstip nooit meer opnieuw gebruikt worden nadat er een keer iets
+       was afgezegd. */
+    if (String(f['Status'] || '').toLowerCase() === 'cancelled') return false;
+    const start = new Date(f['Start Time']).getTime();
+    /* Een record met een onleesbare tijd kunnen we niet beoordelen. Dat is
+       geen bewezen conflict, en op een onbewezen conflict weigeren zou een
+       agenda kunnen dichtzetten door één stuk rommel in de tabel. */
+    if (isNaN(start)) return false;
+    const eind = start + ((parseInt(f['Duration'], 10) || 30) * 60 * 1000);
+    /* Strikt: aansluitend (14:00-14:30 gevolgd door 14:30) is GEEN overlap. */
+    return start < nieuwEind && eind > startMs;
+  });
+}
+
 module.exports = async function handler(req, res) {
   /* Leaddata mag niet in een gedeelde cache belanden.
      Zonder een eigen header zet Vercel hier zijn standaard neer:
@@ -1576,6 +1608,63 @@ module.exports = async function handler(req, res) {
         // treated like "no Google" (fail open), never like a booking failure.
         console.error('[gcal] availability check exception (treating as no-Google):', e && e.message);
         gToken = '';
+      }
+
+      /* ── Dubbel boeken kon gewoon ─────────────────────────────────────
+         De controle hierboven weigert een conflict, maar ALLEEN als er een
+         Google-token is. Zonder gekoppelde agenda -- een nieuwe klant, of een
+         koppeling die verlopen is; de OAuth staat op Testing en verloopt elke
+         zeven dagen -- stond er helemaal niets tussen.
+
+         Gemeten op de live app: twee keer exact hetzelfde tijdstip boeken gaf
+         twee keer 200 en twee records.
+
+         En dat is erger dan twee afspraken. apptId hieronder is AFGELEID van
+         het tijdstip (PROJECT-JJMMDDUUMM), dus allebei die records kregen
+         dezelfde Appointment ID. Alles wat daarop zoekt -- annuleren,
+         verzetten, de herinnering -- vindt er dan twee en heeft geen manier om
+         te weten welke bedoeld is.
+
+         Deze controle draait ALTIJD, niet alleen als Google ontbreekt. Google
+         kent alleen wat er naartoe gespiegeld is, en die spiegeling is verderop
+         expliciet best-effort: een mislukte spiegeling zou anders een gat in de
+         bewaking laten dat niemand ziet.
+
+         Faalt Airtable zelf, dan boeken we door en zeggen het in de logs. Een
+         storing in de database mag geen afspraak tegenhouden -- dezelfde kant
+         op als isSlotFree(), die ook open faalt. */
+      try {
+        const duurMin = parseInt(body.duration) || 30;
+        /* Ruimer venster dan enige afspraakduur, zodat een afspraak die VOOR
+           dit tijdstip begint maar er nog overheen loopt ook meekomt. De
+           overlap zelf wordt hieronder uitgerekend, niet door de query. */
+        const marge = 4 * 60 * 60 * 1000;
+        const van = new Date(dt.getTime() - marge).toISOString();
+        const tot = new Date(dt.getTime() + marge).toISOString();
+        const conflictFormule = encodeURIComponent(
+          `AND({Project Code}="${escapeFormula(projectCode)}", `
+          + `IS_AFTER({Start Time}, "${van}"), IS_BEFORE({Start Time}, "${tot}"))`
+        );
+        const bestaandeR = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}`
+          + `?filterByFormula=${conflictFormule}&pageSize=100`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (bestaandeR.ok) {
+          const bestaande = (await bestaandeR.json()).records || [];
+          const botst = botsendeAfspraak(bestaande, dt.getTime(), duurMin);
+          if (botst) {
+            return res.status(409).json({
+              error: 'Op dat moment staat er al een afspraak. Kies een ander tijdstip.',
+              code:  'slot_conflict'
+            });
+          }
+        } else {
+          console.error('[appointment-create] dubbelcheck kreeg Airtable '
+            + bestaandeR.status + ' -- afspraak gaat door zonder die controle.');
+        }
+      } catch (e) {
+        console.error('[appointment-create] dubbelcheck mislukt (afspraak gaat door):', e && e.message);
       }
 
       const apptId = `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
@@ -3735,3 +3824,6 @@ module.exports.getClientWaPhoneNumberId = getClientWaPhoneNumberId;
 // don't duplicate" reasoning as the two exports above. Never throws;
 // resolves false on any failure (see its own header for the full contract).
 module.exports.sendWATemplate = sendWATemplate;
+
+/* Puur, en daarom apart te testen: zie tests/dubbelboeking.test.js. */
+module.exports.botsendeAfspraak = botsendeAfspraak;
