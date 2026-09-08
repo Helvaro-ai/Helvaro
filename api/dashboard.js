@@ -4941,7 +4941,7 @@ function performLogout() {
 // Generic confirmation modal. Injected dynamically so it doesn't pollute HTML.
 // Matches the project's modal style (dark overlay, rounded card, gap-12).
 // Esc/click-outside cancels; Enter confirms. Returns nothing. Uses callbacks.
-function showConfirmModal({ title, message, confirmText, cancelText, danger, onConfirm, onCancel }) {
+function showConfirmModal({ title, message, confirmText, cancelText, danger, onConfirm, onCancel, inputLabel, inputValue, inputType }) {
   // Remove any existing instance first (defensive)
   const existing = document.getElementById('confirm-modal');
   if (existing) existing.remove();
@@ -4960,6 +4960,27 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   const msgEl = document.createElement('p');
   msgEl.textContent = message || '';
   msgEl.style.cssText = 'margin:0 0 22px;font-size:13px;color:var(--text-muted,#999);line-height:1.5';
+
+  /* ── Optioneel invoerveld ─────────────────────────────────────────────
+     Toegevoegd zodat het pipelinedoel niet meer via een kale prompt() hoeft.
+     Zonder inputLabel gedraagt deze modal zich exact als vroeger, dus alle
+     bestaande aanroepen veranderen niet. */
+  let inputEl = null;
+  if (inputLabel) {
+    const lab = document.createElement('label');
+    lab.textContent = inputLabel;
+    lab.style.cssText = 'display:block;margin:0 0 6px;font-size:12px;font-weight:600;color:var(--text-muted,#999)';
+    inputEl = document.createElement('input');
+    inputEl.type = inputType || 'text';
+    inputEl.id = 'confirm-modal-input';
+    inputEl.value = inputValue === undefined || inputValue === null ? '' : String(inputValue);
+    inputEl.style.cssText = 'width:100%;box-sizing:border-box;padding:10px 12px;margin:0 0 20px;'
+      + 'background:var(--card-elevated,#1E2735);border:1px solid var(--border,#2A3444);'
+      + 'border-radius:14px;color:var(--text,#E9EEF6);font-size:14px;font-family:inherit';
+    lab.setAttribute('for', inputEl.id);   // een label dat nergens aan hangt leest een schermlezer niet voor
+    card.appendChild(lab);
+    card.appendChild(inputEl);
+  }
 
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
@@ -4982,10 +5003,10 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   }
   function keyHandler(e) {
     if (e.key === 'Escape') { close(); if (onCancel) onCancel(); }
-    if (e.key === 'Enter')  { close(); if (onConfirm) onConfirm(); }
+    if (e.key === 'Enter')  { const v = inputEl && inputEl.value; close(); if (onConfirm) onConfirm(v); }
   }
   cancelBtn.addEventListener('click', () => { close(); if (onCancel) onCancel(); });
-  confirmBtn.addEventListener('click', () => { close(); if (onConfirm) onConfirm(); });
+  confirmBtn.addEventListener('click', () => { const v = inputEl && inputEl.value; close(); if (onConfirm) onConfirm(v); });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) { close(); if (onCancel) onCancel(); } });
   document.addEventListener('keydown', keyHandler);
 
@@ -4997,7 +5018,7 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   overlay.appendChild(card);
   document.body.appendChild(overlay);
   // Auto-focus the confirm button so Enter works without clicking
-  setTimeout(() => confirmBtn.focus(), 50);
+  setTimeout(() => (inputEl || confirmBtn).focus(), 50);
 }
 
 /* Een bericht aan support, verstuurd vanuit de app zelf.
@@ -12584,13 +12605,35 @@ function renderRevenueGoal() {
   if (!editBtn) return;
   editBtn.addEventListener('click', function() {
     const current = parseFloat(localStorage.getItem('helvaro_revenue_goal') || '5000') || 5000;
-    const input = prompt('Nieuw pipelinedoel (€):', current);
-    if (input === null) return;
-    const val = parseFloat(input.replace(/[^0-9.]/g, ''));
-    if (!isNaN(val) && val > 0) {
-      localStorage.setItem('helvaro_revenue_goal', String(val));
-      renderRevenueGoal();
-    }
+    /* ── Dit was een kale prompt() ────────────────────────────────────────
+       Drie dingen mis. Hij BLOKKEERT de pagina (een browsertab staat stil tot
+       je hem wegklikt), hij is niet te vertalen -- er stond hardgecodeerd
+       'Nieuw pipelinedoel (€):' midden in een scherm dat verder wel door tr()
+       gaat -- en sommige mobiele browsers onderdrukken prompt() helemaal,
+       waardoor de knop daar gewoon niets deed.
+
+       showConfirmModal kon dit al bijna; er hoefde alleen een invoerveld bij.
+
+       Wat hier NIET mee opgelost is: het doel staat nog steeds alleen in
+       localStorage en gaat dus niet mee naar een ander apparaat. Dat vraagt
+       een veld op Client Config en dus een schemawijziging. De modal zegt nu
+       eerlijk dat het doel op dit apparaat blijft, in plaats van te doen
+       alsof het bewaard is. */
+    showConfirmModal({
+      title: tr('goal.edit.title'),
+      message: tr('goal.edit.uitleg'),
+      inputLabel: tr('goal.edit.label'),
+      inputValue: current,
+      inputType: 'text',
+      onConfirm: function (waarde) {
+        if (waarde === undefined || waarde === null) return;
+        const val = parseFloat(String(waarde).replace(/[^0-9.]/g, ''));
+        if (!isNaN(val) && val > 0) {
+          localStorage.setItem('helvaro_revenue_goal', String(val));
+          renderRevenueGoal();
+        }
+      }
+    });
   });
 })();
 

@@ -146,7 +146,7 @@ const STRINGS = {
     'kind.video': 'Video',
     'kind.text': 'Tekst',
     'act.viewAll': 'Alles bekijken',
-    'act.empty': 'Nog niets gemaakt. Genereer je eerste pandbeeld of pandtekst.',
+    'act.empty': 'Nog niets gemaakt. Genereer je eerste beeld of aanbodtekst.',
 
     'st.thinking': 'Denkt na…',
     'st.searching': 'Zoekt in je CRM…',
@@ -320,7 +320,7 @@ const STRINGS = {
     'kind.video': 'Video',
     'kind.text': 'Text',
     'act.viewAll': 'View all',
-    'act.empty': 'Nothing created yet. Generate your first property image or listing.',
+    'act.empty': 'Nothing created yet. Generate your first image or listing.',
 
     'st.thinking': 'Thinking…',
     'st.searching': 'Searching your CRM…',
@@ -494,7 +494,7 @@ const STRINGS = {
     'kind.video': 'Vidéo',
     'kind.text': 'Texte',
     'act.viewAll': 'Tout voir',
-    'act.empty': "Rien de créé pour l'instant. Générez votre première image de bien.",
+    'act.empty': "Rien de créé pour l'instant. Générez votre première image ou annonce.",
 
     'st.thinking': 'Réflexion…',
     'st.searching': 'Recherche dans votre CRM…',
@@ -668,7 +668,7 @@ const STRINGS = {
     'kind.video': 'Video',
     'kind.text': 'Text',
     'act.viewAll': 'Alle ansehen',
-    'act.empty': 'Noch nichts erstellt. Erzeugen Sie Ihr erstes Objektbild.',
+    'act.empty': 'Noch nichts erstellt. Erzeugen Sie Ihr erstes Bild oder Angebot.',
 
     'st.thinking': 'Denkt nach…',
     'st.searching': 'Sucht in Ihrem CRM…',
