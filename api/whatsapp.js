@@ -912,8 +912,18 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   // 5. Fetch client website on first user message
   let websiteContent = null;
   if (history.length <= 2) {
-    // 'Website' is the field name; no field ID is mapped for this field
-    const website = client.fields['fldWebsiteUrl'] || client.fields['Website'];
+    /* ── Dit las ALTIJD undefined ──────────────────────────────────────
+       Er stond `client.fields['fldWebsiteUrl'] || client.fields['Website']`
+       met de opmerking "no field ID is mapped for this field". Dat klopte
+       niet: het id is fldzBclLhryWQ1veO. En de naam-terugval kon hier nooit
+       werken, want getClientByCode() haalt op met returnFieldsByFieldId=true
+       -- fields is dus op ID gesleuteld en 'Website' bestaat er niet als
+       sleutel. Beide takken undefined, elke keer.
+
+       Gevolg: de assistent heeft de website van de klant NOOIT gelezen.
+       websiteContent bleef null, en dat is precies het veld dat op het
+       aanmeldscherm "sterk aangeraden" heet. */
+    const website = client.fields['fldzBclLhryWQ1veO'] || client.fields['Website'];
     if (website) websiteContent = await fetchWebsite(website, { tag: '[WhatsApp]' });
   }
 
@@ -972,7 +982,17 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   const ownerEmail = (client.fields['fldDBJCN6dVMA8jax'] || client.fields['Rapport Email'] || '').toString().trim();
 
   // 7. Run AI
-  const aiInstructions = client.fields['fldAiInstructions'] || client.fields['AI Instructions'] || '';
+  /* ── En dit ook ────────────────────────────────────────────────────────
+     'fldAiInstructions' is geen veld-id maar een verzonnen naam die er per
+     ongeluk als een id UITZIET: hij is toevallig even lang (17 tekens) als
+     een echte. Het echte id is fld1lqHctRbqFGQf5 -- api/_demo-chat.js
+     gebruikte dat al goed, deze regel niet.
+
+     Zelfde gevolg als bij de website hierboven: beide takken undefined, dus
+     de instructies van de klant ("praat in u-vorm", "noem nooit prijzen")
+     kwamen NOOIT in de prompt. Het veld heet op het aanmeldscherm
+     "Tone-of-voice & instructies" en deed niets. */
+  const aiInstructions = client.fields['fld1lqHctRbqFGQf5'] || client.fields['AI Instructions'] || '';
   // Geleerde patronen — wekelijks bijgewerkt door cron-followup, geeft de AI
   // accumulatieve kennis over wat werkt voor deze specifieke klant.
   const learnedPatterns = (client.fields['fldnbM5YKh274ISAl'] || client.fields['AI Learned Patterns'] || '').toString().trim();
