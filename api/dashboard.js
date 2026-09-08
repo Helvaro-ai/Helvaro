@@ -10923,6 +10923,12 @@ async function startDashboard(skipRefresh = false) {
   if (!skipRefresh) { try { faroIntro(); } catch (e) {} }
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
+  /* Faro's eigen laadpoort kijkt naar precies die klasse hierboven, en kijkt
+     maar EEN keer -- op DOMContentLoaded, als hij er nog niet staat. Wie Faro
+     als laatste gebruikt heeft landt er meteen weer in, en zag dan een leeg
+     paneel: nooit iets opgehaald, en dus ook geen foutmelding. Dit is het
+     eerste moment waarop het antwoord op "is er iemand binnen" ja is. */
+  try { if (typeof faroNaLogin === 'function') faroNaLogin(); } catch (e) {}
   /* Hier stond requestNotificationPermission(): meteen na het inloggen vroeg de
      browser ongevraagd om toestemming voor meldingen, zonder enige uitleg.
 
@@ -15366,9 +15372,14 @@ function openPandModal(code) {
   var pand = code ? pandState.panden.filter(function (p) { return p.code === code; })[0] : null;
   pandState.bewerkt = pand || null;
 
+  /* Het woord voor de markt was vertaald, het woord ERNAAST niet: vw('Een')
+     gaf keurig "Vehicle" en daar plakte een hardgecodeerd ' toevoegen' achter.
+     Op een Engels dashboard stond er dus "Vehicle toevoegen" boven de modal.
+     vw('toevoegen') is de hele zin en bestaat al in vier talen
+     (veh.add / prop.add) -- dat is precies waar hij voor is. */
   document.getElementById('pd-modal-title').textContent = pand
     ? (vw('Een') + ' ' + pand.code)
-    : (vw('Een') + ' toevoegen');
+    : vw('toevoegen');
   var zet = function (id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
 
   /* Welke helft van het formulier zichtbaar is. hidden en niet display:none,

@@ -12,6 +12,104 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### Je assistent kende je bedrijf niet, en dat was een fout van ons
+
+De twee velden waarmee je je assistent inricht — je **website** en je
+**tone-of-voice & instructies** — kwamen nooit bij hem aan. Niet "soms niet":
+nooit. Wie invulde dat zijn assistent in de u-vorm moest praten of nooit over
+prijzen mocht beginnen, kreeg een assistent die dat niet wist.
+
+De oorzaak was een tikfout in twee regels die naar de verkeerde plek in de
+database keken. Alles eromheen — je naam, je adres, je taal — keek wél goed,
+dus het viel nergens op.
+
+Merkbaar gevolg: je assistent praat vanaf nu zoals jij hebt ingesteld, en kent
+de inhoud van je website. Als je die velden ooit hebt ingevuld en dacht dat er
+niets mee gebeurde: dat klopte.
+
+### Een advertentielink plakken werkte niet
+
+Plakte je een AutoScout24-link om een wagen toe te voegen, dan kwam er
+"Het uitlezen van die pagina lukte niet". De pagina werd wél gelezen — het
+model kreeg alleen nooit te horen in welke vorm het moest antwoorden, dus werd
+elk antwoord afgekeurd. Nu vult hij de fiche zoals bedoeld.
+
+De gestructureerde gegevens van de advertentie (merk, model, prijs,
+kilometerstand) gaan nu ook mee. Die staan op AutoScout24 netjes benoemd in de
+pagina en werden tot nu toe weggegooid.
+
+### Faro was leeg als je er meteen in landde
+
+Was Faro het laatste scherm dat je gebruikt had, dan kwam je er de volgende
+keer weer in terecht — en dan stond er niets. Geen gesprekken, geen context,
+geen activiteit, en ook geen foutmelding, want er was niets misgegaan: er was
+alleen nooit iets opgehaald. Eén klik op om het even wat herstelde het.
+
+### Twee afspraken op hetzelfde moment werden allebei geboekt
+
+Boekte je twee keer hetzelfde tijdstip, dan kreeg je twee afspraken in plaats
+van een weigering. De controle daarop werkte alleen zolang je Google Agenda
+gekoppeld was — en die koppeling verloopt elke zeven dagen zolang Google onze
+toestemming nog niet heeft goedgekeurd. In die week was er geen enkele
+bescherming.
+
+Erger nog: beide afspraken kregen hetzelfde afspraaknummer, want dat wordt uit
+het tijdstip afgeleid. Alles wat daarop zoekt — annuleren, verzetten, de
+herinnering — vond er dan twee.
+
+Er is nu een eigen controle die altijd draait, ook zonder Google.
+
+### Een autohandelaar zag "Panden" boven zijn scherm
+
+De zijbalk zei Voertuigen, de knop zei Voertuig toevoegen, en de kop erboven
+zei Panden. Ook de tooltip van de ingeklapte zijbalk bleef in alle markten
+"Panden" zeggen. Allebei rechtgezet.
+
+En de titel van het toevoegvenster zei "Vehicle toevoegen" op een Engels
+dashboard — half vertaald.
+
+### Het aanmeldscherm was onbruikbaar met een schermlezer
+
+De 29 labels op het aanmeldformulier hingen aan geen enkel veld. Wie met een
+schermlezer werkt, kreeg bij de sectorkeuze alleen "keuzelijst" te horen — net
+dat veld waar je Autohandel kiest. Drie knopjes waren ook één pixel te klein om
+betrouwbaar te raken op een telefoon.
+
+### Het privacybeleid klopte niet meer
+
+De lijst van partijen die gegevens voor ons verwerken noemde Resend, dat er al
+uit is, en noemde Stripe, Google en OneSignal niet, terwijl we die alle drie
+gebruiken. Voor een lijst die zegt volledig te zijn is dat geen slordigheid.
+
+**Actie:** op `/privacy` en `/terms` staat nog steeds "Helvaro BV" zonder
+ondernemingsnummer en zonder maatschappelijke zetel. Voor een Belgische
+onderneming die online verkoopt is dat verplicht. Vul je KBO-nummer in bij de
+bestaande "Helvaro BV"-regels in `api/privacy.js` — ik vul daar geen gegokt
+nummer in.
+
+### Kleinere dingen
+
+- Het pipelinedoel werd gevraagd via een kaal browserdialoogje in het
+  Nederlands, ook op een Engels dashboard. Op sommige telefoons deed die knop
+  helemaal niets. Nu een gewoon venster. Let op: dat doel wordt nog steeds
+  alleen in deze browser bewaard — op een ander toestel begin je weer bij
+  €5.000, en het venster zegt dat er nu ook bij.
+- Faro's projectenscherm zei "genereer je eerste pandbeeld", ook bij een
+  autohandelaar.
+- Als een AI-antwoord wordt afgekeurd staat nu in de logs waaróm. Daarvoor
+  stond er alleen "geen bruikbaar antwoord", wat niet zegt of het aan de vraag
+  of aan de provider lag.
+
+### Nieuw document
+
+`HELVARO-PROMPT.md` — de volledige briefing over hoe Helvaro in elkaar zit,
+plus de lijst met wat alleen jij kunt afronden (Meta-token, Google-toestemming,
+Stripe-portaal, SPF, KBO-nummer). Bedoeld om in een nieuwe chat te plakken.
+
+---
+
 ## 5 september 2026 — Helvaro verkoopt aan drie soorten bedrijven (uitgerold)
 
 ### Je klant kiest zelf zijn markt

@@ -124,8 +124,35 @@ console.log('\n— starten gebeurt na het inloggen, niet op het inlogscherm —'
   const { html } = render('8302e5a5-e792-4fb0-a258-44c672539aa8');
   const js = (html.match(/<script>([\s\S]*?)<\/script>/g) || [])
     .map((x) => x.replace(/<\/?script>/g, '')).sort((a, b) => b.length - a.length)[0] || '';
+  /* ── Binnen de FUNCTIE, niet binnen 1200 tekens ────────────────────────
+     Hier stond een afstandsregel: oneSignalStart() moest binnen 1200 tekens na
+     "async function startDashboard(" staan. Dat toetst nabijheid, geen gedrag.
+     Zodra er iets bijkwam in die functie -- een aanroep en een toelichting --
+     werd de test rood terwijl OneSignal gewoon nog gestart werd.
+
+     Nu wordt het lichaam van de functie met accolades afgebakend en daarin
+     gezocht. Dat is wat de regel bedoelde: op het inlogscherm start OneSignal
+     niet, in startDashboard wel. */
+  const lichaamVan = (bron, kop) => {
+    const start = bron.indexOf(kop);
+    if (start === -1) return '';
+    const open = bron.indexOf('{', start);
+    if (open === -1) return '';
+    let diepte = 0;
+    for (let i = open; i < bron.length; i++) {
+      if (bron[i] === '{') diepte++;
+      else if (bron[i] === '}') { diepte--; if (diepte === 0) return bron.slice(open, i + 1); }
+    }
+    return '';
+  };
+  const lichaam = lichaamVan(js, 'async function startDashboard(');
+  ck('het lichaam van startDashboard is te vinden', lichaam.length > 200, lichaam.length);
   ck('startDashboard start OneSignal',
-     /async function startDashboard\([\s\S]{0,1200}oneSignalStart\(\)/.test(js), null);
+     lichaam.indexOf('oneSignalStart()') !== -1, null);
+  /* Er is bewust nóg een aanroep, in Instellingen: de SDK moet draaien voordat
+     er om toestemming gevraagd wordt. Die hoort er te zijn, dus "nergens
+     anders" zou hier een verzonnen eis zijn. Wat telt is dat de start ná het
+     inloggen gebeurt, en dat is hierboven getoetst. */
   ck('en init draait maar één keer', /if \(_osGestart \|\| !ONESIGNAL_APP_ID\) return;/.test(js), null);
   /* Zonder externalId is elk abonnement anoniem en later niet te richten op
      één kantoor -- bij een product met meerdere klanten is dat het hele punt. */

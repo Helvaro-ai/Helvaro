@@ -164,6 +164,16 @@ async function generateText(opts = {}) {
 
     // Dit is het bewijs waarop geëscaleerd wordt.
     const reden = teOnzeker ? [`zekerheid ${zekerheid} < ${CONFIDENCE_DREMPEL}`] : res.problemen;
+    /* ── En het moet ook TE ZIEN zijn ──────────────────────────────────────
+       Deze reden werd berekend, in de fout gestopt en daarna nergens gelogd.
+       In de Vercel-logs stond alleen "Geen enkele provider gaf een bruikbaar
+       antwoord" -- wat niet zegt of het een verkeerde enum was, een ontbrekend
+       veld, of een te lage zekerheid. Precies dat verschil kostte een dag
+       zoeken bij de voertuigimport.
+
+       Eén regel per mislukte poging, met het model erbij, zodat je in de logs
+       ziet of het aan de prompt of aan de provider ligt. */
+    console.warn(`[ai] ${task} ${poging.model} afgekeurd: ${reden.join('; ').slice(0, 300)}`);
     pogingen.push({ ...stap, ok: false, fout: reden.join('; ').slice(0, 160) });
     laatsteFout = new AIError('Antwoord voldeed niet aan het schema.', 'schema_invalid', { problemen: reden });
     await usage.record({ ctx, task, ...poging, status: 'invalid', pogingen: pogingen.length });

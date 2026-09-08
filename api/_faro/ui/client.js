@@ -204,6 +204,33 @@ function faroIngelogd() {
   return !!(d && d.classList.contains('visible'));
 }
 
+/* ── Wat er ná het inloggen alsnog moet gebeuren ─────────────────────────
+   De poort hierboven (faroIngelogd) is EENMALIG en had geen tweede kans.
+
+   faroInit draait op DOMContentLoaded. Staat Faro dan al open -- en dat is zo
+   zodra hv-mode op 'ai' staat, dus voor iedereen die Faro als laatste gebruikt
+   heeft -- dan is de sessie op dat moment nog niet bevestigd en heeft
+   #dashboard-app de klasse 'visible' nog niet. De drie loads werden dus
+   overgeslagen, en NIEMAND riep ze daarna nog aan.
+
+   Gevolg, gemeten op productie: je landt in Faro en het paneel is leeg. Geen
+   gesprekkenlijst, geen context, geen activiteit, en geen foutmelding -- want
+   er is niets misgegaan, er is alleen nooit iets gevraagd. Elke willekeurige
+   klik herstelde het, wat het extra verwarrend maakte.
+
+   startDashboard() in api/dashboard.js roept dit aan op het moment dat de
+   sessie WEL bevestigd is. Blijft stil als Faro dicht staat of als er alsnog
+   niemand binnen is. */
+function faroNaLogin() {
+  if (!faroIngelogd()) return;
+  var paneel = document.getElementById('page-faro');
+  var open = faroState.open || (paneel && paneel.classList.contains('active'));
+  if (!open) return;
+  faroLoadConversations();
+  faroLoadContext();
+  faroLoadActivity();
+}
+
 function faroToggle() { faroState.open ? faroClose() : faroOpen(); }
 
 function faroSetPanel(panel) {
