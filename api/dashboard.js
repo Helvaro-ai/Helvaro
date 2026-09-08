@@ -7098,6 +7098,13 @@ function zetVertical(v, config) {
       nav.appendChild(icoon);
     }
     nav.appendChild(document.createTextNode(' ' + vw('Meer')));
+    /* De tooltip die bij een ingeklapte zijbalk verschijnt leest data-label
+       (zie de CSS bij .nav-item[data-label]:hover::after). initSidebar() vult
+       die EEN keer bij het opstarten en slaat hem daarna over -- dus zonder
+       deze regel bleef er "Panden" boven het auto-pictogram zweven, ook nadat
+       het label zelf allang "Voertuigen" was. Gemeten op de live app: in alle
+       zes de markten stond er "Properties". */
+    nav.dataset.label = vw('Meer');
   }
 
   /* De koppen op de pagina zelf. */
@@ -10322,7 +10329,14 @@ function navigateTo(page) {
     activiteit:   { title: tr('nav.activity'),      sub: tr('page.activiteit.sub') },
     'ai-beeld':   { title: tr('page.aiBeeld'),      sub: tr('page.aiBeeld.sub') },
     formulier:    { title: tr('nav.form'),          sub: tr('page.formulier.sub') },
-    'panden':     { title: tr('nav.properties'),    sub: tr('page.panden.sub') },
+    /* Niet tr('nav.properties'): die kop stond vast op "Panden" en veranderde
+       nooit mee met de markt. Op de live app zag een autodealer in de zijbalk
+       "Voertuigen" staan, klikte erop, en kreeg een scherm met "Panden" erboven
+       -- terwijl de kop ERONDER ("Je voorraad") en de lege staat wél over
+       wagens spraken. vw('Meer') leest HV_WOORDEN en is precies de sleutel die
+       het navigatie-item zelf al gebruikt, dus die twee kunnen niet meer uit
+       elkaar lopen. */
+    'panden':     { title: vw('Meer'),              sub: tr('page.panden.sub') },
     'facturatie': { title: tr('nav.billing'),       sub: tr('page.facturatie.sub') },
     'ai-persona': { title: tr('nav.persona'),       sub: tr('page.aiPersona.sub') },
     faro:         { title: 'Faro',                 sub: tr('page.faro.sub') }
