@@ -192,7 +192,10 @@ module.exports = function handler(req, res) {
     <li><strong>Meta Platforms Ireland Ltd.</strong> — verzorgt het berichtenverkeer via WhatsApp Business.</li>
     <li><strong>Vercel Inc.</strong> (Verenigde Staten) — hosting en uitvoering van deze applicatie.</li>
     <li><strong>Airtable (Formagrid Inc., Verenigde Staten)</strong> — database waarin uw lead- en gespreksgegevens worden opgeslagen.</li>
-    <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — verzendt notificatie-e-mails; Resend wordt gebruikt als automatische fallback wanneer die verzending niet lukt.</li>
+    <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — verzendt notificatie-, verificatie- en wachtwoordherstelmails.</li>
+    <li><strong>Stripe Payments Europe, Ltd.</strong> (Ierland, met verwerking in de Verenigde Staten) — verwerkt abonnementen en betalingen van klanten. Betreft uitsluitend accounts van klanten; leads komen hier niet in voor.</li>
+    <li><strong>Google Ireland Ltd.</strong> — agenda-koppeling: wanneer een klant zijn Google Agenda koppelt, worden afspraken die uit uw gesprek volgen daarin aangemaakt (uw naam en het tijdstip van de afspraak).</li>
+    <li><strong>OneSignal, Inc.</strong> (Verenigde Staten) — verstuurt meldingen naar het toestel van de klant over binnenkomende leads. Verwerkt geen berichtinhoud.</li>
     <li><strong>Clerk Inc.</strong> (Verenigde Staten) — verzorgt het inloggen op het dashboard. Verwerkt het e-mailadres, het wachtwoord (versleuteld) en technische aanmeldgegevens zoals IP-adres, browser en aanmeldmomenten. Betreft uitsluitend accounts van klanten; leads komen hier niet in voor.</li>
     <li><strong>Upstash Inc.</strong> (Verenigde Staten) — telt kortstondig inlogpogingen per IP-adres om misbruik tegen te gaan. Bewaart geen namen of berichten, en de tellers verlopen automatisch binnen het kwartier.</li>
   </ul>

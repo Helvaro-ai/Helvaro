@@ -86,7 +86,7 @@
 
   /* Chips (example fillers) */
   .chip {
-    display: inline-block; margin: 4px 6px 0 0; padding: 4px 10px;
+    display: inline-block; margin: 4px 6px 0 0; padding: 5px 10px; min-height: 24px;
     background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 99px;
     color: var(--accent-hi); font-size: 11px; cursor: pointer; font-family: inherit;
   }
@@ -221,35 +221,35 @@
       <p class="sub">We hebben deze basisinfo nodig om je dashboard, leadformulier en WhatsApp-flow klaar te zetten.</p>
 
       <div class="field">
-        <label>Bedrijfsnaam <span class="req">*</span></label>
+        <label for="w-name">Bedrijfsnaam <span class="req">*</span></label>
         <input id="w-name" type="text" placeholder="Acme Renovaties BV" autocomplete="organization">
       </div>
 
       <div class="field">
-        <label>Website <span class="opt">(optioneel — sterk aangeraden)</span></label>
+        <label for="w-website">Website <span class="opt">(optioneel — sterk aangeraden)</span></label>
         <input id="w-website" type="url" placeholder="https://www.acme.be" autocomplete="url">
         <div class="hint">Je assistent leest je site bij elk gesprek om over jouw diensten te kunnen praten.</div>
       </div>
 
       <div class="field">
-        <label>Adres <span class="opt">(optioneel)</span></label>
+        <label for="w-address">Adres <span class="opt">(optioneel)</span></label>
         <input id="w-address" type="text" placeholder="Kerkstraat 12, 9000 Gent">
         <div class="hint">Wordt mee gestuurd bij afspraakbevestigingen.</div>
       </div>
 
       <div class="field">
-        <label>E-mailadres <span class="req">*</span></label>
+        <label for="w-email">E-mailadres <span class="req">*</span></label>
         <input id="w-email" type="email" placeholder="contact@acme.be" autocomplete="email">
         <div class="hint">Hierop ontvang je je dashboard-inloggegevens.</div>
       </div>
 
       <div class="field">
-        <label>Telefoon <span class="opt">(optioneel)</span></label>
+        <label for="w-phone">Telefoon <span class="opt">(optioneel)</span></label>
         <input id="w-phone" type="tel" placeholder="+32 466 35 84 27" autocomplete="tel">
       </div>
 
       <div class="field">
-        <label>Sector / branche <span class="opt">(optioneel)</span></label>
+        <label for="w-sector">Sector / branche <span class="opt">(optioneel)</span></label>
         <select id="w-sector">
           <option value="">— Kies branche —</option>
           <!-- Values match the Niche singleSelect on the Klanten table.
@@ -300,13 +300,13 @@
       <p class="sub">Dit is de "stem" waarmee je assistent met leads praat op WhatsApp. Tip: kies een echte medewerkersnaam — leads voelen dat ze met een mens chatten.</p>
 
       <div class="field">
-        <label>Naam van je assistent <span class="opt">(optioneel)</span></label>
+        <label for="w-aiName">Naam van je assistent <span class="opt">(optioneel)</span></label>
         <input id="w-aiName" type="text" placeholder="Sara De Vos" maxlength="60">
         <div class="hint">Voorbeeld: <b>Sara</b>, <b>Tim Janssen</b>, <b>Lisa</b>. Leeg = "Mathis Willems" (standaard).</div>
       </div>
 
       <div class="field">
-        <label>Tone-of-voice &amp; instructies <span class="opt">(optioneel)</span></label>
+        <label for="w-aiTone">Tone-of-voice &amp; instructies <span class="opt">(optioneel)</span></label>
         <textarea id="w-aiTone" maxlength="600" placeholder="Bv: Praat informeel en gebruik 'je' in plaats van 'u'. Stuur nooit exacte prijzen in WhatsApp, verwijs naar een gesprek. Vraag altijd naar het project, de timing en het budget. Vermijd technisch jargon."></textarea>
         <div class="hint">Do's &amp; don'ts, sales-aanpak, schrijfstijl. Je assistent volgt deze regels in élk gesprek.</div>
         <div class="counter" id="cnt-aiTone">0 / 600</div>
@@ -326,7 +326,7 @@
       <p class="sub">Bepaalt hoe je assistent leads praktisch afhandelt: wanneer, hoe geboekt wordt, en wie een seintje krijgt.</p>
 
       <div class="field">
-        <label>Werkuren <span class="opt">(optioneel)</span></label>
+        <label for="w-hours">Werkuren <span class="opt">(optioneel)</span></label>
         <input id="w-hours" type="text" placeholder="ma-vr 9-18">
         <div class="hint">
           Format: <code>ma-vr 9-18</code>. Je assistent is zelf 24/7 actief — werkuren worden alleen genoemd om verwachtingen te zetten ("we bellen morgen vanaf 9u terug").
@@ -348,7 +348,7 @@
       </div>
 
       <div class="field" id="callback-window-wrap" style="display:none">
-        <label>Wanneer bel je terug? <span class="req">*</span></label>
+        <label for="w-callbackWindow">Wanneer bel je terug? <span class="req">*</span></label>
         <input id="w-callbackWindow" type="text" placeholder="binnen 30 minuten" maxlength="100">
         <div class="hint">
           Deze tekst wordt naar de lead gestuurd. Voorbeelden:
@@ -359,13 +359,13 @@
       </div>
 
       <div class="field">
-        <label>Notificatie WhatsApp-nummer <span class="opt">(optioneel)</span></label>
+        <label for="w-notifyPhone">Notificatie WhatsApp-nummer <span class="opt">(optioneel)</span></label>
         <input id="w-notifyPhone" type="tel" placeholder="+32 466 35 84 27" maxlength="30">
         <div class="hint">Krijgt een ping bij nieuwe + gekwalificeerde leads. Internationaal formaat. Leeg = geen WhatsApp-ping.</div>
       </div>
 
       <div class="field">
-        <label>Wekelijks rapport e-mail <span class="opt">(optioneel)</span></label>
+        <label for="w-reportEmail">Wekelijks rapport e-mail <span class="opt">(optioneel)</span></label>
         <input id="w-reportEmail" type="email" placeholder="jij@bedrijf.be" maxlength="100">
         <div class="hint">Ontvangt een wekelijks overzicht van resultaten. Leeg = geen rapport-mail.</div>
       </div>
@@ -384,25 +384,25 @@
       <p class="sub">Hoe meer je hier zet, hoe beter je assistent vanaf dag 1 écht kan antwoorden — in plaats van "dat weet ik niet, ik vraag het na". Neem de tijd, dit is het belangrijkste stuk.</p>
 
       <div class="field">
-        <label>Diensten &amp; prijzen <span class="opt">(optioneel, sterk aangeraden)</span></label>
+        <label for="w-bizServices">Diensten &amp; prijzen <span class="opt">(optioneel, sterk aangeraden)</span></label>
         <textarea id="w-bizServices" class="tall" maxlength="600" placeholder="Bv: Keukenrenovatie vanaf €8.000. Badkamerrenovatie vanaf €5.500. Gratis eerste plaatsbezoek. Werken in heel Oost-Vlaanderen."></textarea>
         <div class="counter" id="cnt-bizServices">0 / 600</div>
       </div>
 
       <div class="field">
-        <label>Veelgestelde vragen <span class="opt">(optioneel)</span></label>
+        <label for="w-bizFaqs">Veelgestelde vragen <span class="opt">(optioneel)</span></label>
         <textarea id="w-bizFaqs" class="tall" maxlength="600" placeholder="Bv: 'Hoe lang duurt een renovatie?' -> gemiddeld 3-6 weken. 'Werken jullie met een vast contract?' -> ja, altijd, met vaste prijs vooraf."></textarea>
         <div class="counter" id="cnt-bizFaqs">0 / 600</div>
       </div>
 
       <div class="field">
-        <label>Wat maakt jullie anders? <span class="opt">(optioneel)</span></label>
+        <label for="w-bizDifferent">Wat maakt jullie anders? <span class="opt">(optioneel)</span></label>
         <textarea id="w-bizDifferent" maxlength="400" placeholder="Bv: 15 jaar ervaring, eigen vakmensen (geen onderaannemers), 5 jaar garantie op afwerking."></textarea>
         <div class="counter" id="cnt-bizDifferent">0 / 400</div>
       </div>
 
       <div class="field">
-        <label>Wat mag je assistent NOOIT zeggen? <span class="opt">(optioneel)</span></label>
+        <label for="w-bizNeverSay">Wat mag je assistent NOOIT zeggen? <span class="opt">(optioneel)</span></label>
         <textarea id="w-bizNeverSay" maxlength="400" placeholder="Bv: Nooit een definitieve prijs beloven zonder plaatsbezoek. Nooit zeggen dat we 'goedkoper zijn dan iedereen'. Nooit een startdatum garanderen."></textarea>
         <div class="counter" id="cnt-bizNeverSay">0 / 400</div>
       </div>
@@ -423,34 +423,34 @@
       <p class="sub">Persoonlijke tintjes voor je leadformulier. Volledig optioneel — je kan dit later altijd in je dashboard aanpassen.</p>
 
       <div class="field">
-        <label>Brand-kleur <span class="opt">(optioneel)</span></label>
+        <label for="w-brandColor">Brand-kleur <span class="opt">(optioneel)</span></label>
         <div class="color-row">
           <input id="w-brandColor" type="text" placeholder="#8A6D3F" maxlength="7">
-          <input id="w-brandColorPick" type="color" class="color-swatch" value="#8A6D3F">
+          <input id="w-brandColorPick" aria-label="Brand-kleur kiezen" type="color" class="color-swatch" value="#8A6D3F">
         </div>
         <div class="hint">Hex-code. Accentkleur op je lead-formulier. Leeg = standaard zand.</div>
       </div>
 
       <div class="field">
-        <label>Welkomstboodschap op lead-form <span class="opt">(optioneel)</span></label>
+        <label for="w-formIntro">Welkomstboodschap op lead-form <span class="opt">(optioneel)</span></label>
         <textarea id="w-formIntro" maxlength="600" placeholder="Hey ik help je graag. Laat hieronder je gegevens achter en je hoort meteen van me."></textarea>
         <div class="hint">Verschijnt als chat-bubbel bovenaan je lead-form. Leeg = automatische sector-tekst.</div>
       </div>
 
       <div class="field">
-        <label>Trust badges <span class="opt">(optioneel, max 3, gescheiden met |)</span></label>
+        <label for="w-trustBadges">Trust badges <span class="opt">(optioneel, max 3, gescheiden met |)</span></label>
         <input id="w-trustBadges" type="text" placeholder="15 jaar ervaring | ISO-gecertificeerd | Lokaal Gent" maxlength="300">
         <div class="hint">Vervangt de standaard badges (Geen spam / Reactie binnen 1 min / Vrijblijvend).</div>
       </div>
 
       <div class="field">
-        <label>Foto van je assistent <span class="opt">(optioneel — URL)</span></label>
+        <label for="w-aiPhotoUrl">Foto van je assistent <span class="opt">(optioneel — URL)</span></label>
         <input id="w-aiPhotoUrl" type="url" placeholder="https://...">
         <div class="hint">Link naar een foto (https). Verschijnt als avatar op je lead-form.</div>
       </div>
 
       <div class="field">
-        <label>Eerste WhatsApp-bericht <span class="opt">(optioneel — goede standaard hieronder)</span></label>
+        <label for="w-autoReply">Eerste WhatsApp-bericht <span class="opt">(optioneel — goede standaard hieronder)</span></label>
         <textarea id="w-autoReply" class="tall" maxlength="1000"></textarea>
         <div class="hint">
           Eerste bericht dat een lead krijgt na het invullen van je formulier.
@@ -473,7 +473,7 @@
       <p class="sub">Even nakijken — je kunt later alles aanpassen in je dashboard.</p>
 
       <div class="field">
-        <label>Projectcode <span class="req">*</span></label>
+        <label for="w-code">Projectcode <span class="req">*</span></label>
         <input id="w-code" type="text" placeholder="ACME_BV" autocomplete="off" style="font-family:monospace;letter-spacing:.5px">
         <div class="hint code">Je unieke ID — alleen letters, cijfers en _. Wordt automatisch ingevuld op basis van je bedrijfsnaam.</div>
       </div>

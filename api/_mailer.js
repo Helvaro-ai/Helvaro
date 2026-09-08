@@ -55,8 +55,11 @@ async function sendMail({ to, subject, html, from, replyTo }) {
       const info = await t.sendMail({ from: fromAddr, to, subject, html, replyTo });
       return { ok: true, via: 'smtp', id: info.messageId };
     } catch (err) {
-      console.error('[mailer] SMTP send mislukt, val terug op Resend:', err && err.message);
-      // val door naar Resend
+      /* Deze regel zei "val terug op Resend". Die terugval bestaat niet meer
+         (zie de kop van dit bestand), dus de log beloofde een tweede poging
+         die nooit kwam -- precies het soort melding dat je laat denken dat de
+         mail alsnog vertrok. Hij zegt nu wat er echt gebeurt. */
+      console.error('[mailer] SMTP send mislukt en er is GEEN terugval — deze mail is niet verstuurd:', err && err.message);
     }
   }
 
