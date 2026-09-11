@@ -102,6 +102,39 @@ nummer in.
   stond er alleen "geen bruikbaar antwoord", wat niet zegt of het aan de vraag
   of aan de provider lag.
 
+### WhatsApp: één deur, en een fout die zegt wat er mis is
+
+Elke uitgaande WhatsApp — de intro na het formulier, de eigenaarsmelding, de
+opvolging van de cron, een handmatig antwoord, het testbericht — faalde op
+9 september op dezelfde muur: Meta code 190, een verlopen toegangstoken. De
+gebruiker zag "Versturen van goedgekeurde template mislukt", dezelfde tekst
+als bij een verkeerd nummer of een gepauzeerd sjabloon.
+
+**Actie:** het `WHATSAPP_TOKEN` in Vercel is dood. Genereer een nieuw token via
+Business Settings → System users → Leadbot-user (eerst de WhatsApp-account als
+asset toewijzen, dan "Generate token" zonder verloopdatum), zet het in Vercel
+en redeploy. Tot dan vertrekt er geen enkel bericht. Daarnaast staat het
+telefoonnummer bij Meta nog op **Pending / In Review** — ook dat moet groen
+zijn voordat er iets verstuurd kan worden.
+
+Wat er in de code veranderd is:
+
+- Er waren **vijf** losse aanroepen naar Meta verspreid over vier bestanden,
+  drie zonder time-out, geen enkele met nummer-normalisatie, elk met een ander
+  logvoorvoegsel — de intro uit het formulier logde als `[appointment-create]`.
+  Drie zijn nu dunne schillen om `api/_wa-send.js`; het AI-antwoord houdt zijn
+  eigen afkapping (bewust) maar deelt versie en foutvertaling.
+- Meta's foutcodes worden vertaald: 190 heet nu "de WhatsApp-koppeling is
+  verlopen, de beheerder moet het token vernieuwen", niet "versturen mislukt".
+  Het dashboard toont dat met een eigen kop als het iets is dat de gebruiker
+  zelf niet kan oplossen.
+- Eén Graph-versie (v23.0) voor de hele codebase. Er stond v19.0 op zes
+  plekken en v23.0 op twee; v19.0 is van januari 2024 en loopt op zijn eind.
+- Twee keer snel hetzelfde handmatige bericht naar dezelfde lead is nu één
+  bericht (409, "net al verstuurd") in plaats van twee.
+- Elke mislukte verzending logt nu hetzelfde: code, Meta-code en -type,
+  HTTP-status, afgekort nummer, sjabloon en Meta's fbtrace-id. Nooit het token.
+
 ### Eén adres voor gegevensbescherming
 
 Het privacybeleid gaf de gegevensbeschermingscontactpersoon op een adres van een

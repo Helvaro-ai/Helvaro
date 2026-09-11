@@ -28,7 +28,7 @@
 
 const crypto = require('crypto');
 
-const GRAPH = 'https://graph.facebook.com/v19.0';
+const GRAPH = 'https://graph.facebook.com/' + require('./_wa-send').GRAPH_VERSION;
 const TIMEOUT_MS = 15_000;
 
 function appId()     { return process.env.META_APP_ID || ''; }

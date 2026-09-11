@@ -33,6 +33,7 @@ async function atFetch(url, opts) {
   });
 }
 const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
+const _waSend = require('./_wa-send'); // de enige deur naar WhatsApp
 
 /* Vergelijken zonder te verklappen hoeveel tekens er klopten. Ongelijke lengtes
    geven meteen false -- timingSafeEqual gooit daarop, en de lengte van een
@@ -732,7 +733,7 @@ function mergeWaFailedFlag(raw) {
 // or already happening; YELLOW = warning. Fires an email so support can act.
 async function checkQualityRating(phoneNumberId, token) {
   if (!phoneNumberId || !token) return null;
-  const url = `https://graph.facebook.com/v19.0/${phoneNumberId}?fields=quality_rating,name_status,verified_name`;
+  const url = `https://graph.facebook.com/${_waSend.GRAPH_VERSION}/${phoneNumberId}?fields=quality_rating,name_status,verified_name`;
   const r = await atFetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
@@ -1144,32 +1145,15 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
  * "niet verstuurd", wat het eerlijke antwoord is. Dat is precies waarom die
  * boolean er staat. */
 function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
-  const components = (params && params.length)
-    ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) }]
-    : [];
-  return atFetch(
-    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
-    {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'template',
-        template: { name: templateName, language: { code: lang }, components }
-      })
-    }
-  ).then(async r => {
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      console.error(`[cron-followup] template "${templateName}" naar ${to} mislukt:`, JSON.stringify(d.error || d));
-      return false;
-    }
-    return true;
-  }).catch(err => {
-    console.error(`[cron-followup] template netwerk fout naar ${to}:`, err.message);
-    return false;
-  });
+  /* Dunne schil om api/_wa-send.js -- dit was de derde eigen kopie van
+     dezelfde fetch naar Meta. De time-out die hierboven beschreven staat zit
+     nu in de deur zelf (POST_TIMEOUT_MS), net als de nummer-normalisatie en
+     de vertaling van Meta's foutcodes. Het contract blijft een booleaan:
+     de lus hieronder telt `false` als "niet verstuurd", en dat is nog steeds
+     het eerlijke antwoord. */
+  return _waSend.sendTemplateSafe({
+    to, template: templateName, lang, params: params || [], phoneNumberId, token,
+  }).then((r) => r.ok);
 }
 
 /* Hier stond sendWA(): een vrije-tekstversie van de functie hierboven. Weg, om

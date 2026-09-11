@@ -34,7 +34,8 @@
  * Onderstreepje voorop.
  */
 
-const GRAPH_VERSION = 'v19.0';
+/* Zelfde versie als elke andere Graph-aanroep -- zie api/_wa-send.js. */
+const GRAPH_VERSION = require('./_wa-send').GRAPH_VERSION;
 
 /* Boven deze grens niet proberen. Een spraakbericht van tien minuten is geen
    vraag over een pand maar iets anders, en het kost dan ook tien keer zoveel.

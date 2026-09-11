@@ -48,13 +48,11 @@ console.log('\n  de handmatige antwoordroute controleert het nu ook');
      Buiten het venster gaat er een sjabloon uit, erbinnen een vrij bericht.
      Staat de controle tussen die twee in, dan is de helft nog steeds lek. */
   const iCheck = leads.indexOf('_optout.isAfgemeld(lead.fields)');
-  const iTpl   = leads.indexOf('const tplSent = await sendWATemplate(phone');
-  /* Let op WELKE freeform-send je pakt: er zijn er twee met identieke code.
-     De eerste hoort bij mode 'test-message' -- de operator die een testbericht
-     naar zijn EIGEN nummer stuurt, geen lead, dus daar geldt afmelding niet.
-     De tweede is de handmatige reply. indexOf() vond de verkeerde en maakte
-     deze test rood terwijl de code klopte. */
-  const iVrij  = leads.lastIndexOf("type: 'text', text: { body: message }");
+  /* Beide verzendpaden lopen sinds 11 september door api/_wa-send.js. De
+     handmatige reply heeft daardoor eigen, unieke ankers (tplR / vrijR); het
+     testbericht (testR) is een andere route en hoort hier niet bij. */
+  const iTpl   = leads.indexOf('const tplR = await _waSend.sendTemplateSafe({');
+  const iVrij  = leads.indexOf('const vrijR = await _waSend.sendFreeformSafe({');
   ck('de controle staat vóór het sjabloonpad', iCheck !== -1 && iCheck < iTpl, { iCheck, iTpl });
   ck('en vóór het vrije-berichtpad van de handmatige reply', iCheck !== -1 && iCheck < iVrij, { iCheck, iVrij });
   /* De testbericht-route hoort er NIET achter te zitten: dat is de operator

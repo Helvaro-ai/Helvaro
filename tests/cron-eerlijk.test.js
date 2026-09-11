@@ -41,10 +41,17 @@ console.log('\n  de verzendfunctie zegt of het gelukt is');
   const m = cron.match(/function sendWATemplate\(to, templateName, lang, params, phoneNumberId, token\) \{[\s\S]*?\n\}/);
   ck('sendWATemplate staat in cron-followup', !!m, null);
   const f = m ? m[0] : '';
-  ck('geeft false terug bij een fout van Meta', /return false;/.test(f), null);
-  ck('geeft true terug bij succes', /return true;/.test(f), null);
-  ck('en vangt ook de netwerkfout af met false',
-    /catch\(err => \{[\s\S]{0,220}?return false;/.test(f), null);
+  /* Sinds 11 september is dit een schil om api/_wa-send.js: de booleaan komt
+     uit sendTemplateSafe().ok, en die functie gooit NOOIT -- een Meta-fout,
+     een netwerkfout en een time-out worden alle drie { ok: false }. Dat is
+     dezelfde belofte als hiervoor, alleen op één plek bewaakt (zie
+     tests/wa-send-deur.test.js, dat de nagemaakte Meta al die gevallen
+     voorlegt). Hier volstaat: de schil leest .ok en niets anders. */
+  ck('geeft de booleaan van de deur terug (false bij elke fout, true bij succes)',
+    /_waSend\.sendTemplateSafe\([\s\S]{0,200}?\.then\(\(r\) => r\.ok\)/.test(f), f.slice(0, 200));
+  const deur = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', '_wa-send.js'), 'utf8');
+  ck('en de deur vangt de netwerkfout zelf af',
+    /async function sendTemplateSafe[\s\S]{0,200}?catch \(err\) \{[\s\S]{0,80}?veiligeFout/.test(deur), null);
 }
 
 console.log('\n  en de lussen lezen dat antwoord ook echt');

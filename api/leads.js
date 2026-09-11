@@ -23,6 +23,7 @@ const _command   = require('./_command');     // Command Center intelligence lay
 const _crm       = require('./_crm');          // de enige deur naar de CRM's van klanten
 const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de klantrij
 const _waes      = require('./_waes');         // eigen WhatsApp-nummer per klant (Embedded Signup)
+const _waSend    = require('./_wa-send');      // de enige deur naar WhatsApp
 
 // Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
 // 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
@@ -1997,21 +1998,21 @@ module.exports = async function handler(req, res) {
       if (!PHONE_NUMBER_ID || !WHATSAPP_TOKEN) {
         return res.status(500).json({ error: 'WhatsApp configuratie ontbreekt op de server' });
       }
-      try {
-        const waRes = await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
-          method:  'POST',
-          headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: message } })
+      /* Via de deur. Dit was de vijfde losse fetch naar Meta in de codebase,
+         en hij gaf Meta's ruwe foutmelding door aan het scherm. Een testbericht
+         naar een nummer dat nog nooit iets stuurde valt buiten het
+         24-uursvenster; Meta weigert dat, en dat hoort dan ook zo te heten in
+         plaats van "versturen mislukt". */
+      const testR = await _waSend.sendFreeformSafe({
+        to: phone, text: message, windowOpen: true,
+        phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
+      });
+      if (!testR.ok) {
+        return res.status(testR.ownerAction ? 503 : 502).json({
+          error: testR.reason, code: testR.code, metaCode: testR.metaCode, ownerAction: testR.ownerAction,
         });
-        const waData = await waRes.json().catch(() => ({}));
-        if (!waRes.ok || waData.error) {
-          console.error('[test-message] WA failed:', JSON.stringify(waData.error || waData).slice(0, 300));
-          return res.status(502).json({ error: waData.error?.message || 'WhatsApp versturen mislukt' });
-        }
-        return res.status(200).json({ ok: true, sentTo: phone });
-      } catch (err) {
-        return res.status(500).json({ error: 'Netwerkfout. Probeer opnieuw' });
       }
+      return res.status(200).json({ ok: true, sentTo: phone, messageId: testR.messageId });
     }
 
     // ── B2. suggest-replies. AI generates 3 short WhatsApp reply ideas ─────
@@ -3059,6 +3060,28 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      /* ── Dubbel versturen ────────────────────────────────────────────────
+         Meta kent geen idempotentiesleutel voor berichten: twee keer dezelfde
+         POST is twee berichten. Een dubbelklik op Verstuur, of een browser die
+         een trage aanroep herhaalt, stuurde de lead dus twee keer hetzelfde.
+
+         De geschiedenis is de bron van waarheid en staat al in handen: staat
+         daar een handmatig bericht met exact deze tekst van minder dan een
+         minuut geleden, dan is dit een herhaling en geen nieuw bericht. 409,
+         en niets verstuurd. Een bewust tweede bericht met dezelfde tekst na
+         een minuut mag gewoon. */
+      {
+        const laatste = history[history.length - 1];
+        if (laatste && laatste.role === 'assistant' && laatste.manual
+            && String(laatste.content || '').trim() === message.trim()
+            && typeof laatste.ts === 'number' && Date.now() - laatste.ts < 60_000) {
+          return res.status(409).json({
+            error: 'Dit bericht is net al verstuurd.', code: 'duplicate_send',
+            history,
+          });
+        }
+      }
+
       let lastInboundTs = null;
       for (let i = history.length - 1; i >= 0; i--) {
         const m = history[i];
@@ -3095,20 +3118,38 @@ module.exports = async function handler(req, res) {
         }
         const leadNameForTpl  = lead.fields?.['fldbk0LVNckOU0bqA'] || lead.fields?.['Name'] || '';
         const firstNameForTpl = String(leadNameForTpl).trim().split(' ')[0] || '';
-        const tplSent = await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstNameForTpl], PHONE_NUMBER_ID, WHATSAPP_TOKEN);
-        if (!tplSent) return res.status(502).json({ error: 'Versturen van goedgekeurde template mislukt.' });
+        /* Via de gedeelde deur, en de REDEN gaat mee naar het scherm. Hier
+           stond een eigen verzendfunctie die bij elke fout `false` teruggaf:
+           op 9 september faalde alles op een verlopen token (Meta 190) en de
+           gebruiker zag "Versturen van goedgekeurde template mislukt" -- de
+           tekst die hij ook bij een verkeerd nummer zou zien.
+
+           503 bij een fout die de BEHEERDER moet oplossen (token, nummer,
+           sjabloon): dat is geen fout van de gebruiker en geen storing die
+           vanzelf overgaat. 502 bij de rest. De code gaat mee zodat het
+           dashboard het onderscheid kan tonen. */
+        const tplR = await _waSend.sendTemplateSafe({
+          to: phone, template: TEMPLATE_NAME, lang: TEMPLATE_LANG, params: [firstNameForTpl],
+          phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
+        });
+        if (!tplR.ok) {
+          return res.status(tplR.ownerAction ? 503 : 502).json({
+            error: tplR.reason, code: tplR.code, metaCode: tplR.metaCode, ownerAction: tplR.ownerAction,
+          });
+        }
         viaTemplate = true;
       } else {
-        // Send WhatsApp via Meta Graph API (inside the 24h window: freeform is safe)
-        const waRes = await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
-          method:  'POST',
-          headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: message } })
+        /* Binnen het venster: vrij bericht, via dezelfde deur als alles.
+           Hier stond een vierde losse fetch naar Meta, zonder time-out en
+           zonder de opmaakregels die het AI-antwoord wel krijgt. */
+        const vrijR = await _waSend.sendFreeformSafe({
+          to: phone, text: message, windowOpen: true,
+          phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
         });
-        const waData = await waRes.json().catch(() => ({}));
-        if (!waRes.ok || waData.error) {
-          console.error('[leads reply] WhatsApp send failed:', JSON.stringify(waData.error || waData));
-          return res.status(502).json({ error: 'WhatsApp versturen mislukt', details: waData.error?.message || 'onbekend' });
+        if (!vrijR.ok) {
+          return res.status(vrijR.ownerAction ? 503 : 502).json({
+            error: vrijR.reason, code: vrijR.code, metaCode: vrijR.metaCode, ownerAction: vrijR.ownerAction,
+          });
         }
       }
 
@@ -3816,25 +3857,20 @@ function formatApptDateTime(iso, lang) {
 // {{1}}, {{2}}, ... in order. Never throws — resolves false on any failure,
 // same contract as the rest of this file's WhatsApp calls.
 async function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
-  const components = (params && params.length)
-    ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) }]
-    : [];
-  try {
-    const r = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        messaging_product: 'whatsapp', to, type: 'template',
-        template: { name: templateName, language: { code: lang }, components }
-      })
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { console.error(`[appointment-create] template "${templateName}" naar ${to} mislukt:`, JSON.stringify(d.error || d)); return false; }
-    return true;
-  } catch (err) {
-    console.error(`[appointment-create] template netwerk fout naar ${to}:`, err.message);
-    return false;
-  }
+  /* Dunne schil om api/_wa-send.js. Hier stond een eigen fetch naar Meta --
+     de tweede van vijf in deze codebase -- zonder time-out, zonder
+     nummer-normalisatie, en met het logvoorvoegsel [appointment-create] voor
+     ELKE aanroeper, ook de intro uit form.js en de opvolging uit de cron. In
+     de logs van 9 september leek daardoor elke mislukte intro een
+     afspraakprobleem.
+
+     Het contract blijft een booleaan, want form.js, cron-followup.js en de
+     afspraakbevestiging lezen hem zo. Wie de reden wil, roept
+     _waSend.sendTemplateSafe() rechtstreeks aan. */
+  const r = await _waSend.sendTemplateSafe({
+    to, template: templateName, lang, params: params || [], phoneNumberId, token,
+  });
+  return r.ok;
 }
 
 // Dashboard-created appointments have no guarantee the lead has messaged us

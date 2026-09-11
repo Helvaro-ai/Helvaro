@@ -8731,7 +8731,17 @@ async function sendWhatsAppReply() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      toast(d.message || d.error || 'Versturen mislukt', 'error');
+      /* De server zegt nu WAT er mis is en OF de gebruiker er iets aan kan
+         doen. ownerAction betekent: token, nummer of sjabloon -- dat lost de
+         gebruiker niet op door het nog eens te proberen, dus dat krijgt een
+         eigen kop en blijft langer staan. Hier stond één generieke tekst voor
+         alles, ook voor een verlopen token. */
+      if (d.ownerAction) {
+        toast((d.error || 'Versturen mislukt') + ' Neem contact op met Helvaro.', 'error',
+              tr('wa.beheerderNodig'));
+      } else {
+        toast(d.error || d.message || 'Versturen mislukt', 'error');
+      }
       return;
     }
     // Optimistic: render the just-sent bubble right away. A template send

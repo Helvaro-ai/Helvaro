@@ -71,13 +71,21 @@ console.log('\n  de cron belt Meta niet zonder klok');
 
   const m = code.match(/function sendWATemplate\([\s\S]*?\n\}/);
   ck('sendWATemplate bestaat nog', !!m, null);
-  ck('en verstuurt via atFetch, niet via fetch',
-    !!m && /return atFetch\(/.test(m[0]), m ? m[0].slice(0, 200) : null);
+  /* De klok is verhuisd naar de deur: sendWATemplate is een schil om
+     api/_wa-send.js, en dáár staat AbortSignal.timeout(POST_TIMEOUT_MS) op
+     elke aanroep. Een eigen atFetch is dus niet meer nodig; wat telt is dat
+     de schil niet stiekem weer een kale fetch doet. */
+  ck('en verstuurt via de deur, niet via een eigen fetch',
+    !!m && /_waSend\.sendTemplateSafe\(/.test(m[0]) && !/\bfetch\(/.test(m[0]), m ? m[0].slice(0, 200) : null);
+  const deur = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', '_wa-send.js'), 'utf8');
+  ck('en de deur zet een klok op elke Meta-aanroep',
+    /signal:\s*AbortSignal\.timeout\(POST_TIMEOUT_MS\)/.test(deur), null);
 
   /* Een time-out moet als "niet verstuurd" aankomen, niet als een uitzondering
      die de lus opblaast: die boolean is waar cron-eerlijk.test.js op staat. */
   ck('een afgekapte aanroep levert false op, geen crash',
-    !!m && /catch\(err => \{[\s\S]{0,220}?return false;/.test(m[0]), null);
+    /TimeoutError[\s\S]{0,400}?throw new SendError\([\s\S]{0,120}?'timeout'/.test(deur)
+      && /async function sendTemplateSafe[\s\S]{0,200}?catch \(err\)/.test(deur), null);
 }
 
 console.log('\n  de dode tweede verzendfunctie is weg');

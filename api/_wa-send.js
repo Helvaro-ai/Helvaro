@@ -26,18 +26,66 @@
 
 const _waOpmaak = require('./_wa-opmaak');
 
-const GRAPH_VERSION = 'v19.0';
+/* Eén versie voor elke uitgaande aanroep. Er stond v19.0 hier en in drie
+   andere bestanden, en v23.0 in _wa-templates.js -- vijf plekken, twee
+   versies. v19.0 is van januari 2024; Meta trekt een versie ongeveer twee jaar
+   na uitgave in. v23.0 is de versie die de templatelijst al tegen deze WABA
+   gebruikt en dus bewezen werkt. */
+const GRAPH_VERSION = 'v23.0';
 
 class SendError extends Error {
-  constructor(message, code) {
+  constructor(message, code, extra) {
     super(message);
     this.name = 'SendError';
     this.code = code || 'send_failed';
+    /* metaCode:    het getal uit Meta's antwoord, voor de logs en de tests
+       ownerAction: true als de KLANT hier niets aan kan doen en de eigenaar
+                    van Helvaro moet ingrijpen (token, nummer, sjabloon) --
+                    het dashboard toont dat dan ook zo, in plaats van
+                    "probeer het later opnieuw" bij iets dat later ook niet
+                    werkt */
+    this.metaCode    = (extra && extra.metaCode) || null;
+    this.ownerAction = !!(extra && extra.ownerAction);
+    this.fbtrace     = (extra && extra.fbtrace) || null;
   }
 }
 
-function creds(phoneNumberId) {
-  const token = process.env.WHATSAPP_TOKEN || '';
+/* ── Wat Meta terugzegt, vertaald naar iets waar iemand iets mee kan ────────
+   Alle uitgaande fouten kwamen hier als één generieke 'rejected' naar buiten,
+   met de echte reden alleen in de logs. Op 9 september faalde ELKE verzending
+   met code 190 (verlopen token) en zag de gebruiker "Versturen van
+   goedgekeurde template mislukt" -- dezelfde tekst die hij ook bij een
+   verkeerd nummer of een gepauzeerd sjabloon zou zien.
+
+   De codes hieronder zijn die uit Meta's Cloud API-documentatie. Wat er niet
+   in staat blijft 'rejected'; liever een generieke melding dan een verzonnen
+   specifieke. */
+const META_FOUTEN = Object.freeze({
+  190:    { code: 'token_invalid',      owner: true,  msg: 'De WhatsApp-koppeling is verlopen. De beheerder moet het toegangstoken vernieuwen.' },
+  10:     { code: 'permission_denied',  owner: true,  msg: 'Het WhatsApp-token mist de rechten om te versturen.' },
+  200:    { code: 'permission_denied',  owner: true,  msg: 'Het WhatsApp-token mist de rechten om te versturen.' },
+  100:    { code: 'bad_request',        owner: true,  msg: 'Meta weigerde het bericht: ongeldige parameters.' },
+  133010: { code: 'phone_unregistered', owner: true,  msg: 'Het WhatsApp-nummer is nog niet geregistreerd bij Meta.' },
+  133004: { code: 'phone_unregistered', owner: true,  msg: 'Het WhatsApp-nummer is nog niet geregistreerd bij Meta.' },
+  132001: { code: 'template_not_found', owner: true,  msg: 'Het sjabloon bestaat niet in deze taal, of is nog niet goedgekeurd.' },
+  132015: { code: 'template_paused',    owner: true,  msg: 'Het sjabloon is door Meta gepauzeerd.' },
+  132016: { code: 'template_disabled',  owner: true,  msg: 'Het sjabloon is door Meta uitgeschakeld.' },
+  132012: { code: 'template_params',    owner: true,  msg: 'Het aantal variabelen klopt niet met het sjabloon.' },
+  131047: { code: 'window_closed',      owner: false, msg: 'Het 24-uursvenster is gesloten.' },
+  131026: { code: 'recipient_invalid',  owner: false, msg: 'Dit nummer kan geen WhatsApp-berichten ontvangen.' },
+  131056: { code: 'pair_rate_limit',    owner: false, msg: 'Te veel berichten naar dit nummer in korte tijd. Probeer het later.' },
+  130429: { code: 'rate_limit',         owner: false, msg: 'Te veel berichten tegelijk. Probeer het over een minuut opnieuw.' },
+  131048: { code: 'spam_rate_limit',    owner: true,  msg: 'Meta beperkt dit nummer tijdelijk vanwege de kwaliteitsscore.' },
+  131031: { code: 'account_locked',     owner: true,  msg: 'Het WhatsApp-account is door Meta vergrendeld.' },
+});
+
+function classificeer(metaCode) {
+  const bekend = META_FOUTEN[Number(metaCode)];
+  return bekend || { code: 'rejected', owner: false, msg: 'Het bericht kon niet verstuurd worden.' };
+}
+
+function creds(phoneNumberId, tokenOverride) {
+  const token = tokenOverride || process.env.WHATSAPP_TOKEN || '';
   const pnid = phoneNumberId || process.env.PHONE_NUMBER_ID || '';
   if (!token || !pnid) throw new SendError('WhatsApp is niet geconfigureerd.', 'unconfigured');
   return { token, pnid };
@@ -95,16 +143,23 @@ async function post(pnid, token, payload) {
 
   const body = await res.json().catch(() => null);
   if (!res.ok || (body && body.error)) {
-    const detail = (body && body.error && (body.error.message || body.error.type)) || `HTTP ${res.status}`;
-    // Loud in the logs, generic to the user: the upstream message can echo
-    // request content and names the internal number.
-    console.error('[wa-send] rejected:', res.status, String(detail).slice(0, 300));
-    // 131047 is Meta's "message outside the 24-hour window". Worth its own code
-    // because it means the caller's window check and Meta's disagree, which is
-    // a real bug rather than a transient failure.
-    const metaCode = body && body.error && body.error.code;
-    if (metaCode === 131047) throw new SendError('Het 24-uursvenster is gesloten.', 'window_closed');
-    throw new SendError('Het bericht kon niet verstuurd worden.', 'rejected');
+    const err      = (body && body.error) || {};
+    const metaCode = Number(err.code) || null;
+    const klasse   = classificeer(metaCode);
+    /* Veilig loggen: endpoint, HTTP-status, Meta-code, -type en -bericht en
+       het fbtrace_id (Meta's eigen correlatie-id, handig bij support). Nooit
+       het token. Het ontvangernummer alleen afgekort, want dit is de
+       enige regel die bij elke mislukte verzending in de logs komt. */
+    console.error(
+      `[wa-send] ${klasse.code} (Meta ${metaCode || '-'}/${err.type || '-'}, HTTP ${res.status})`
+      + ` naar ...${String(payload.to || '').slice(-4)}`
+      + (payload.template ? ` template=${payload.template.name}/${payload.template.language && payload.template.language.code}` : ' type=text')
+      + `: ${String(err.message || `HTTP ${res.status}`).slice(0, 200)}`
+      + (err.fbtrace_id ? ` fbtrace=${err.fbtrace_id}` : '')
+    );
+    throw new SendError(klasse.msg, klasse.code, {
+      metaCode, ownerAction: klasse.owner, fbtrace: err.fbtrace_id || null,
+    });
   }
 
   const id = body && body.messages && body.messages[0] && body.messages[0].id;
@@ -139,7 +194,7 @@ function weigerBijAfmelding(optedOut, soort) {
   }
 }
 
-async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut }) {
+async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, token: tokenOverride }) {
   weigerBijAfmelding(optedOut, 'bericht');
   // Deliberately not defaulted and not inferred. A caller that forgets to check
   // gets a refusal here rather than an accidental send attempt — and the check
@@ -160,7 +215,7 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut }) {
   // ending mid-sentence to a customer, so this refuses instead.
   if (body.length > 4096) throw new SendError('Bericht te lang (max 4096 tekens).', 'too_long');
 
-  const { token, pnid } = creds(phoneNumberId);
+  const { token, pnid } = creds(phoneNumberId, tokenOverride);
   return post(pnid, token, {
     messaging_product: 'whatsapp',
     to: normalizePhone(to),
@@ -174,10 +229,10 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut }) {
  * Kept here so a future "send anyway, as a template" path has somewhere to
  * live that is already the single outbound door.
  */
-async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut }) {
+async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut, token: tokenOverride }) {
   weigerBijAfmelding(optedOut, 'template');
   if (!template) throw new SendError('Geen template opgegeven.', 'no_template');
-  const { token, pnid } = creds(phoneNumberId);
+  const { token, pnid } = creds(phoneNumberId, tokenOverride);
   const components = params.length
     ? [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: String(p) })) }]
     : [];
@@ -189,4 +244,39 @@ async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumbe
   });
 }
 
-module.exports = { sendFreeform, sendTemplate, normalizePhone, SendError, GRAPH_VERSION, weigerBijAfmelding };
+/* ── Dezelfde deur, zonder gooien ──────────────────────────────────────────
+   api/form.js, api/cron-followup.js en api/leads.js hadden elk een EIGEN kopie
+   van "stuur een sjabloon", die bij elke fout `false` teruggaf en de reden
+   alleen logde. Drie kopieen, drie verschillende logvoorvoegsels, geen
+   time-out, geen nummer-normalisatie, en de aanroeper kon een verlopen token
+   niet onderscheiden van een gepauzeerd sjabloon.
+
+   Deze twee geven nooit een uitzondering: { ok: true, messageId } of
+   { ok: false, code, metaCode, ownerAction, reason }. Wie alleen een booleaan
+   wil leest .ok; wie de gebruiker iets nuttigs wil vertellen leest .reason. */
+async function sendTemplateSafe(args) {
+  try {
+    const r = await sendTemplate(args);
+    return { ok: true, messageId: r.messageId };
+  } catch (err) {
+    return veiligeFout(err);
+  }
+}
+async function sendFreeformSafe(args) {
+  try {
+    const r = await sendFreeform(args);
+    return { ok: true, messageId: r.messageId };
+  } catch (err) {
+    return veiligeFout(err);
+  }
+}
+function veiligeFout(err) {
+  const e = err instanceof SendError ? err : new SendError(String(err && err.message || err), 'send_failed');
+  return { ok: false, code: e.code, metaCode: e.metaCode, ownerAction: e.ownerAction,
+           fbtrace: e.fbtrace, reason: e.message };
+}
+
+module.exports = {
+  sendFreeform, sendTemplate, sendTemplateSafe, sendFreeformSafe,
+  normalizePhone, SendError, GRAPH_VERSION, weigerBijAfmelding, classificeer, META_FOUTEN,
+};

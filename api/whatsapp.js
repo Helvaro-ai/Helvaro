@@ -16,6 +16,7 @@ const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
 const _optout = require('./_optout');
 const _waOpmaak = require('./_wa-opmaak');     // wie STOP zegt, krijgt niets meer
+const _waSend   = require('./_wa-send');   // gedeelde Graph-versie en foutvertaling
 const _transcriptie = require('./_transcriptie'); // spraakberichten uitschrijven (standaard uit)
 // Credit/usage accounting. See its file header for the full contract — the
 // short version: this file NEVER calls checkCredits() and NEVER blocks a
@@ -3109,7 +3110,12 @@ async function sendWA(to, message, phoneNumberId) {
       console.error(`[WhatsApp] Leeg bericht na opschonen, niet verstuurd naar ${to}`);
       return false;
     }
-    const url = `https://graph.facebook.com/v19.0/${pnid}/messages`;
+    /* Zelfde versie als api/_wa-send.js. Dit is bewust GEEN aanroep van
+       sendFreeform(): die weigert een te lang bericht, terwijl een
+       AI-antwoord hier op een zinsgrens wordt afgekapt (voorWhatsApp). Dat
+       verschil is gewild -- zie de kop van _wa-send.js. Wat wel gedeeld
+       wordt: de versie, en de vertaling van Meta's foutcode hieronder. */
+    const url = `https://graph.facebook.com/${_waSend.GRAPH_VERSION}/${pnid}/messages`;
     /* Zelfde klok en zelfde reden als in api/_wa-send.js: dit is een tweede
        weg naar Meta die dezelfde functie deelt, en zonder time-out houdt een
        hangende verbinding de hele beurt vast tot Vercel hem afkapt. */
@@ -3126,7 +3132,12 @@ async function sendWA(to, message, phoneNumberId) {
     });
     const data = await res.json();
     if (!res.ok || data.error) {
-      console.error(`[WhatsApp] Sturen naar ${to} mislukt:`, JSON.stringify(data.error || data));
+      const e = data.error || {};
+      const k = _waSend.classificeer(e.code);
+      /* Zelfde vorm als [wa-send]: code, Meta-code/type, HTTP, afgekort nummer,
+         fbtrace. Op 9 september stond hier alleen de ruwe JSON, en "code 190"
+         zegt een mens niets zonder de vertaling ernaast. */
+      console.error(`[WhatsApp] ${k.code} (Meta ${e.code || '-'}/${e.type || '-'}, HTTP ${res.status}) naar ...${String(to).slice(-4)}: ${String(e.message || '').slice(0, 200)}${e.fbtrace_id ? ' fbtrace=' + e.fbtrace_id : ''}`);
       return false;
     }
     console.log(`[WhatsApp] Bericht gestuurd naar ${to}`);
