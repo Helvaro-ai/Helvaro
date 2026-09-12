@@ -524,6 +524,36 @@ const WENS_OPDRACHT = [
   'zodra hij binnenkomt. Zeg dat ook tegen hem -- dat is een reden om te antwoorden.',
 ].join('\n');
 
+/* De opdracht om de KOOP mee te schrijven -- hoe deze aankoop eruitziet, niet
+   welke auto hij zoekt (dat is WENS hierboven). Zelfde reden voor een blok in
+   de tekst in plaats van een veld in het antwoordschema: dat schema is
+   GEDEELD met vastgoed, en deze vraag gaat alleen dealers aan.
+
+   Twee dingen staan hier expliciet die niet in api/_koop.js zelf horen (dat
+   bestand is puur opschonen, geen mening over WAT gevraagd wordt):
+     1. de inruilregel (§34) -- rustig doorvragen, nooit een schatting beloven.
+     2. `afspraak` is het SIGNAAL dat de koper er zelf om vroeg, niet of hij
+        hem al kreeg -- dat laatste staat al op de Appointment zelf. */
+const KOOP_OPDRACHT = [
+  '',
+  'HOE DEZE KOOP ERUITZIET (onthouden voor later):',
+  'Zodra je genoeg weet, zet je onderaan je bericht een blok:',
+  '  KOOP:{"financiering":"goedgekeurd","termijn":"kort","intentie":"sterk","budget":25000,"afspraak":"proefrit","inruil":{"merk":"audi","model":"a4","jaar":2018,"km":90000}}',
+  'Alle velden zijn optioneel; laat weg wat je niet weet. Mogelijke waarden:',
+  '  financiering: cash | goedgekeurd | nodig',
+  '  termijn: kort (binnen ongeveer een maand) | middel (een tot drie maanden) | lang (later)',
+  '  intentie: sterk | matig | laag',
+  '  afspraak: proefrit | bezichtiging | ophaling | gesprek -- ALLEEN als hij er zelf om vroeg',
+  'budget is een bedrag in euro. inruil is merk/model/jaar/km/brandstof/transmissie/staat, allemaal optioneel.',
+  'Verzin nooit een waarde die hij niet gaf. De koper ziet dit blok niet; het wordt eruit geknipt.',
+  'Stuur het opnieuw zodra er iets verandert. Laat het weg als je niets nieuws weet.',
+  '',
+  'HEEFT HIJ EEN INRUILWAGEN:',
+  'Vraag er rustig naar, één ding per beurt: merk, model, bouwjaar, kilometerstand, brandstof, ',
+  'transmissie, staat. Beloof NOOIT een waarde of een schatting -- zeg dat een collega op basis ',
+  'van die gegevens een indicatie geeft.',
+].join('\n');
+
 /* Eén regel voor een voertuig in een lijst: code, naam, prijs, km, jaar.
    Gedeeld door index() (de hele voorraad) en fiche()'s alternatievenblok
    (Fase 3, zie hieronder) -- dezelfde regel op twee plekken opnieuw uittypen
@@ -642,6 +672,7 @@ const voertuigen = {
          + 'want daar deelt de verkoper zijn dag mee in.');
 
     r.push(WENS_OPDRACHT);
+    r.push(KOOP_OPDRACHT);
 
     r.push('', 'WANNEER JE HET OVERLAAT AAN DE VERKOPER (escalate):');
     r.push('- De koper wil meer korting dan jij mag geven.');
@@ -665,23 +696,39 @@ const voertuigen = {
            + 'zodat niemand voor een verrassing staat.');
     }
 
-    /* ── Fase 3: al een actieve afspraak op dit voertuig ────────────────────
-       Dit is iets anders dan de statusblokken hierboven: de auto zelf is
-       gewoon 'beschikbaar', maar er staat al een proefrit op ingepland (zie
-       api/_vehicles.js boekbaar() en api/_voertuigslot.js actieveAfspraken()).
-       Een tweede proefrit inplannen bovenop de eerste is precies de dubbele
-       boeking die deze hele Fase voorkomt -- dus hier komt de rem, met de
-       alternatieven die de aanroeper al heeft opgezocht erbij, zodat het
-       gesprek niet doodloopt. */
-    if (context && context.boekbaar && context.boekbaar.reden === 'afspraak_bestaat') {
-      r.push('- Dit voertuig heeft al een proefrit gepland. Plan er GEEN tweede in; zeg eerlijk dat er al iemand '
-           + 'op zit, en bied de alternatieven hieronder aan (alleen die, verzin er geen).');
+    /* ── Fase 3: de VERSE boekbaarheid (context) ────────────────────────────
+       Dit is meer dan de statusblokken hierboven, die alleen naar v.status
+       zelf kijken. `context.boekbaar` komt uit api/_vehicles.js boekbaar()
+       zoals api/whatsapp.js hem VLAK VOOR deze beurt berekende -- dat dekt ook
+       'afspraak_bestaat': een auto die zelf gewoon 'beschikbaar' staat, maar
+       waar al een proefrit op ingepland staat (api/_voertuigslot.js
+       actieveAfspraken()).
+
+       Voor alle vier redenen (verkocht, uit_aanbod, gereserveerd,
+       afspraak_bestaat) geldt dezelfde regel: eerlijk zeggen wat er aan de
+       hand is, en ALLEEN de alternatieven aanbieden die de aanroeper al heeft
+       opgezocht -- nooit zelf verzinnen. Is er niets vergelijkbaars, dan is
+       de eerlijke zin "er is nu niets" plus de wens vastleggen (zie WENS
+       hierboven) beter dan een auto verzinnen die er niet is. */
+    const NIET_BOEKBAAR_ZIN = Object.freeze({
+      verkocht:         'Dit voertuig is VERKOCHT.',
+      uit_aanbod:       'Dit voertuig is UIT AANBOD.',
+      gereserveerd:     'Dit voertuig is GERESERVEERD -- er zit al iemand op.',
+      afspraak_bestaat: 'Dit voertuig heeft al een proefrit gepland -- er zit al iemand op.',
+    });
+    if (context && context.boekbaar && context.boekbaar.ok === false && NIET_BOEKBAAR_ZIN[context.boekbaar.reden]) {
+      r.push('- ' + NIET_BOEKBAAR_ZIN[context.boekbaar.reden] + ' Plan hier GEEN (nieuwe) proefrit voor in, ook niet '
+           + 'als de koper aandringt. Zeg dat eerlijk.');
       const alternatieven = Array.isArray(context.alternatieven) ? context.alternatieven : [];
       if (alternatieven.length) {
+        r.push('- Bied ALLEEN de alternatieven hieronder aan, verzin er zelf geen bij.');
         r.push('', 'ALTERNATIEVEN (alleen deze, verzin er geen bij):');
         for (const alt of alternatieven) {
           if (alt && alt.voertuig) r.push(voertuigRegel(alt.voertuig));
         }
+      } else {
+        r.push('- Er is nu niets vergelijkbaars in de voorraad. Zeg dat eerlijk, en leg vast wat hij zoekt '
+             + '(zie WENS hieronder) in plaats van zelf een auto te verzinnen.');
       }
     }
 
@@ -713,6 +760,7 @@ const voertuigen = {
        dat er niet staat, of over een auto die net weg is, is precies de koper
        die je later terug wil bellen. */
     r.push(WENS_OPDRACHT);
+    r.push(KOOP_OPDRACHT);
     return r.join('\n');
   },
 };

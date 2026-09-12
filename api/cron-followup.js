@@ -34,6 +34,10 @@ async function atFetch(url, opts) {
 }
 const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
 const _waSend = require('./_wa-send'); // de enige deur naar WhatsApp
+const _waTemplates = require('./_wa-templates'); // welke sjabloonnaam voor welke soort verzending
+const _vertical = require('./_vertical'); // dealership of vastgoed -- de enige plek die dat weet
+const _afspraken = require('./_afspraken'); // komendeVoorLead(): heeft deze lead al iets nieuws staan
+const _activiteit = require('./_activiteit'); // het activiteitenlogboek (Fase 2b/3)
 
 /* Vergelijken zonder te verklappen hoeveel tekens er klopten. Ongelijke lengtes
    geven meteen false -- timingSafeEqual gooit daarop, en de lengte van een
@@ -322,6 +326,14 @@ module.exports = async function handler(req, res) {
       return null;
     });
 
+    // ── No-show / cancelled-appointment follow-up (dealership only) ─────────
+    // See runAfspraakOpvolging()'s own doc comment below for the eligibility
+    // rule and why this is scoped to automotive for now.
+    const afspraakOpvolgingResult = await runAfspraakOpvolging(AIRTABLE_TOKEN, BASE_ID, PHONE_NUMBER_ID, WHATSAPP_TOKEN, now).catch(e => {
+      console.error('[cron-followup] afspraak-opvolging failed:', e.message);
+      return null;
+    });
+
     // ── Data retention: anonymize disqualified/cold leads 6 months after
     // their last activity (compliance fix, ported from the VPS backend's
     // server/jobs/daily.js — see COMPLIANCE-AUDIT.md section 1.3 / Decision
@@ -428,7 +440,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult });
+    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult });
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -1465,6 +1477,278 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
   return { checked: appointments.length, sent, skipped };
 }
 
+// ── No-show / cancelled-appointment follow-up (dealership only) ─────────────
+// §31/§32/§33: a lead who no-showed or cancelled and never got an in-chat
+// reply about it (the AI only replies about a cancellation INSIDE the
+// conversation that triggered it, see api/_afspraken.js's annuleer() and
+// api/_lang.js's buildCancelledMessage — a lead who cancels by not answering
+// at all, or whose appointment simply lapses into no_show, gets nothing).
+// This is the backstop: once a day, ask "does anyone need a nudge about a
+// missed or cancelled appointment", and if so, send ONE.
+//
+// ── Scope: dealership only, deliberately ────────────────────────────────────
+// The spec for this batch is automotive (Vehicle Code / proefrit-flow), and
+// widening this to vastgoed/no-catalogue markets is a real decision (their
+// own tone, their own "what happens next") — not something to sneak in as a
+// side effect of a follow-up job. Widen deliberately, later, if asked.
+//
+// ── Eligibility (all ANDed, see the formula below) ──────────────────────────
+//   1. Followup Sent not yet set — the idempotency guard, same shape as
+//      Reminder Sent in runAppointmentReminders() above.
+//   2. Status is no_show (Start Time within the last FOLLOWUP_WINDOW_DAYS) or
+//      cancelled (Created At within that same window) — Created At is the
+//      best available proxy for "when this got cancelled" since Appointments
+//      has no last-modified field (same gap runRetentionAnonymization()
+//      documents for Leads).
+// Then, per candidate, skipped (and Followup Sent flagged true so it never
+// re-evaluates) when:
+//   - Notes already contain "Afgezegd door de lead" or "Afgezegd door de AI"
+//     — api/_afspraken.js's annuleer() writes exactly that line, and BOTH of
+//     those mean the lead already got an honest in-chat reply about it
+//     (buildCancelledMessage). Only "Afgezegd door de makelaar" is missing
+//     from that list ON PURPOSE: a staff member cancelling from the dashboard
+//     does not itself notify the lead, so that lead still needs this nudge.
+//   - the lead is Opted Out, or the lead record can't be found at all.
+//   - the client's service is stopped (getPlanState) — same "don't burn a
+//     paid WhatsApp template for someone who isn't paying" rule as the
+//     nurture loop and the reminders above.
+//   - the lead already has a NEW booked appointment (_afspraken.komendeVoorLead)
+//     — sending "want to book a new moment?" to someone who already did would
+//     read as the automation not paying attention.
+// A non-dealership client's appointment is skipped WITHOUT flagging anything
+// — see the scope note above; there is nothing here to remember "we decided
+// not to do", because this job was never meant to look at it.
+async function runAfspraakOpvolging(airtableToken, baseId, phoneNumberId, whatsappToken, now = new Date()) {
+  const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
+  const LEADS_TABLE        = 'tbliukTnDAbEDcZmt';
+  const CLIENTS_TABLE      = 'tblPidTrwGRzRt4LZ';
+  // Zelfde veld-id als in runAppointmentReminders hierboven -- dezelfde tabel,
+  // dezelfde per-klant afzenderregel.
+  const F_WA_PHONE_NUMBER_ID = 'fldbrhlSrsmlJwcYr';
+  const FOLLOWUP_WINDOW_DAYS = 14;
+
+  const cutoff = new Date(now.getTime() - FOLLOWUP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  // Field IDs used where known: fldt3zlcrFKGAGw3E = Status, fldxfW4UTI1QBiUsa =
+  // Start Time (both immune to renames, same as runAppointmentReminders).
+  // 'Followup Sent' and 'Created At' have no known field id (new field / no
+  // history of renames to protect against, same reasoning as api/_afspraken.js
+  // and api/_voertuigslot.js) — referenced by name.
+  const formula = encodeURIComponent(
+    `AND(NOT({Followup Sent}), OR(` +
+      `AND({fldt3zlcrFKGAGw3E}="no_show", IS_AFTER({fldxfW4UTI1QBiUsa}, "${cutoff}")), ` +
+      `AND({fldt3zlcrFKGAGw3E}="cancelled", IS_AFTER({Created At}, "${cutoff}"))` +
+    `))`
+  );
+  const url = `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}?filterByFormula=${formula}&pageSize=100`;
+
+  let appointments = [];
+  try {
+    const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    if (r.status === 429) {
+      console.warn('[cron-followup] afspraak-opvolging: Airtable 429, uitgesteld tot volgende run');
+      return { checked: 0, sent: 0, skipped: 'rate_limited' };
+    }
+    if (!r.ok) throw new Error('Airtable ' + r.status);
+    appointments = (await r.json()).records || [];
+  } catch (err) {
+    console.error('[cron-followup] afspraak-opvolging fetch mislukt:', err.message);
+    return { checked: 0, sent: 0, skipped: 0 };
+  }
+  if (!appointments.length) return { checked: 0, sent: 0, skipped: 0 };
+
+  // Eén gebundelde query voor alle betrokken leads, zelfde reden als de
+  // afmeldcontrole in runAppointmentReminders hierboven: het zijn er weinig,
+  // maar één aanroep per afspraak loopt bij een drukke dag tegen de tijdslimiet.
+  const leadIds = [];
+  for (const a of appointments) {
+    const gekoppeld = (a.fields || {}).Lead;
+    if (Array.isArray(gekoppeld)) for (const id of gekoppeld) if (id) leadIds.push(id);
+  }
+  const leadMap = new Map();
+  if (leadIds.length) {
+    try {
+      const uniek = [...new Set(leadIds)].slice(0, 100);
+      const f = encodeURIComponent(`OR(${uniek.map((id) => `RECORD_ID()="${id}"`).join(',')})`);
+      const lr = await atFetch(
+        `https://api.airtable.com/v0/${baseId}/${LEADS_TABLE}?filterByFormula=${f}&pageSize=100`,
+        { headers: { Authorization: `Bearer ${airtableToken}` } }
+      );
+      if (lr.ok) {
+        for (const rec of ((await lr.json()).records || [])) leadMap.set(rec.id, rec);
+      }
+    } catch (e) {
+      // Fail-soft: elke afspraak valt dan terug op "leadrecord niet gevonden"
+      // hieronder en wordt geflagd zonder verzending -- veiliger dan gokken.
+      console.warn('[cron-followup] afspraak-opvolging: leads ophalen mislukt:', e && e.message);
+    }
+  }
+
+  // Per-run client cache, zelfde patroon als getClientForCode() in
+  // runAppointmentReminders hierboven (aparte instantie: eigen closure, geen
+  // gedeelde cache tussen twee functies die in dezelfde run draaien).
+  const clientCache = new Map();
+  async function getClientForCode(projectCode) {
+    if (clientCache.has(projectCode)) return clientCache.get(projectCode);
+    let rec = null;
+    try {
+      const formula2 = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${projectCode.replace(/"/g, '\\"')}"`);
+      const cRes = await atFetch(
+        `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${formula2}&maxRecords=1`,
+        { headers: { Authorization: `Bearer ${airtableToken}` } }
+      );
+      if (cRes.ok) rec = (await cRes.json()).records?.[0] || null;
+    } catch (err) {
+      console.error(`[cron-followup] afspraak-opvolging: client-lookup mislukt (${projectCode}):`, err.message);
+    }
+    clientCache.set(projectCode, rec);
+    return rec;
+  }
+
+  // De idempotentievlag zetten. VOOR de verzending aangeroepen op het pad dat
+  // echt verstuurt (zie onder) -- zelfde reden en volgorde als Reminder Sent
+  // in runAppointmentReminders: een crash tussen deze PATCH en de verzending
+  // kost hoogstens een gemiste opvolging, nooit een dubbele.
+  async function flagFollowupSent(apptId) {
+    try {
+      const pr = await atFetch(
+        `https://api.airtable.com/v0/${baseId}/${APPOINTMENTS_TABLE}/${apptId}`,
+        {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${airtableToken}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ fields: { 'Followup Sent': true } }),
+        }
+      );
+      return pr.ok;
+    } catch (err) {
+      console.error(`[cron-followup] afspraak-opvolging: Followup Sent PATCH exception voor ${apptId}:`, err.message);
+      return false;
+    }
+  }
+
+  let sent = 0, skipped = 0;
+  for (const appt of appointments) {
+    try {
+      const f = appt.fields || {};
+      const status      = f['fldt3zlcrFKGAGw3E'] || f['Status'] || '';
+      const notes        = String(f['Notes'] || '');
+      const projectCode = f['fld60vlhoxZYef4U2'] || f['Project Code'] || '';
+      const phone        = f['fldO0Gk82OJ9m6lz7'] || f['Lead Phone'] || '';
+      const leadName    = f['fldnCNWPxIX6sYzZP'] || f['Lead Name'] || '';
+      const gekoppeldeLeads = Array.isArray(f.Lead) ? f.Lead : [];
+      const leadId       = gekoppeldeLeads[0] || '';
+      const apptRef       = f['Appointment ID'] || appt.id;
+
+      const client = projectCode ? await getClientForCode(projectCode) : null;
+      if (!client || _vertical.van(client.fields || {}) !== _vertical.DEALERSHIP) {
+        // Buiten scope -- zie de kop hierboven. Bewust NIET geflagd.
+        continue;
+      }
+
+      if (/Afgezegd door de lead|Afgezegd door de AI/.test(notes)) {
+        await flagFollowupSent(appt.id);
+        skipped++; continue;
+      }
+
+      const leadRec = leadId ? leadMap.get(leadId) : null;
+      if (!leadRec) {
+        await flagFollowupSent(appt.id);
+        skipped++; continue;
+      }
+      if (_optout.isAfgemeld(leadRec.fields)) {
+        await flagFollowupSent(appt.id);
+        skipped++; continue;
+      }
+      if (getPlanState(client.fields || {}).isServiceStopped) {
+        await flagFollowupSent(appt.id);
+        skipped++; continue;
+      }
+
+      let nieuweAfspraak = null;
+      try {
+        nieuweAfspraak = await _afspraken.komendeVoorLead(projectCode, { leadId, telefoon: phone });
+      } catch (e) {
+        console.warn('[cron-followup] afspraak-opvolging: komendeVoorLead overgeslagen (fail-soft):', e && e.message);
+      }
+      if (nieuweAfspraak) {
+        await flagFollowupSent(appt.id);
+        skipped++; continue;
+      }
+
+      if (!phone) {
+        await flagFollowupSent(appt.id);
+        skipped++; continue;
+      }
+
+      // Vanaf hier gaat er echt iets de deur uit: de vlag VOOR de verzending.
+      const geflagd = await flagFollowupSent(appt.id);
+      if (!geflagd) {
+        console.error(`[cron-followup] afspraak-opvolging: Followup Sent PATCH mislukt voor ${appt.id}. send overgeslagen (opnieuw geprobeerd volgende run)`);
+        skipped++; continue;
+      }
+
+      const soort       = status === 'no_show' ? 'no_show' : 'cancelled';
+      const clientLang  = _lang.normalizeLanguageCode(client.fields?.['fld1iiV9XwSbgAACZ'] || client.fields?.['Language']);
+      const clientPnid  = (client.fields && (client.fields[F_WA_PHONE_NUMBER_ID] || client.fields['WhatsApp Phone Number ID']) || '').toString().trim();
+      const apptPhoneNumberId = clientPnid || phoneNumberId;
+
+      // < 24u sinds het laatste inkomende bericht van deze lead? Dan mag vrije
+      // tekst; anders alleen het goedgekeurde sjabloon. Zelfde `ts`-conventie
+      // als api/whatsapp.js's extractLastTimestamps() (role:'user', ts:number).
+      let lastInboundMs = null;
+      try {
+        const history = JSON.parse(leadRec.fields['Conversation History'] || '[]');
+        for (const m of history) {
+          if (m && m.role === 'user' && typeof m.ts === 'number') {
+            if (lastInboundMs === null || m.ts > lastInboundMs) lastInboundMs = m.ts;
+          }
+        }
+      } catch (_) { lastInboundMs = null; }
+      const windowOpen = lastInboundMs !== null && (now.getTime() - lastInboundMs) < 24 * 60 * 60 * 1000;
+
+      const firstName = String(leadName).trim().split(' ')[0] || '';
+      let via, uit;
+      if (windowOpen) {
+        via = 'vrij';
+        const tekst = soort === 'no_show'
+          ? _lang.buildNoShowMessage(clientLang)
+          : _lang.buildCancelledFollowupMessage(clientLang);
+        uit = await _waSend.sendFreeformSafe({
+          to: phone, text: tekst, windowOpen: true, phoneNumberId: apptPhoneNumberId, token: whatsappToken,
+        });
+      } else {
+        via = 'template';
+        // Zelfde helper als de herinneringslus hierboven: resolveTemplateLanguage
+        // gate tegen wat er echt bij Meta goedgekeurd staat, met de taal van de
+        // klant zelf als zowel gevraagd als terugval.
+        const templateLang = _lang.resolveTemplateLanguage(clientLang, clientLang).code;
+        uit = await _waSend.sendTemplateSafe({
+          to: phone, template: _waTemplates.naamVoor('followup'), lang: templateLang,
+          params: [firstName], phoneNumberId: apptPhoneNumberId, token: whatsappToken,
+        });
+      }
+
+      if (uit && uit.ok) {
+        sent++;
+        _activiteit.log(projectCode, 'followup_sent', { leadId, afspraakId: apptRef, details: { soort, via } }).catch(() => {});
+      } else {
+        // Geen employee_notification_failed -- die soort is voor een melding
+        // AAN de werknemer, dit is een send NAAR de lead. Followup Sent blijft
+        // op true staan: een mislukte send mag niet elke dag opnieuw geprobeerd
+        // worden, zelfde reden als Reminder Sent hierboven.
+        console.error(`[cron-followup] afspraak-opvolging send mislukt voor ${appt.id} (${via}):`, uit && uit.code);
+        skipped++;
+      }
+    } catch (err) {
+      console.error(`[cron-followup] afspraak-opvolging mislukt voor ${appt.id}:`, err.message);
+      skipped++;
+    }
+    await new Promise((res) => setTimeout(res, 300));
+  }
+
+  console.log(`[cron-followup] afspraak-opvolging: checked ${appointments.length}, sent ${sent}, skipped ${skipped}`);
+  return { checked: appointments.length, sent, skipped };
+}
+
 // ── Trial lifecycle ──────────────────────────────────────────────────────
 // TRIAL-DESIGN.md §4/§7. For every Client Config record whose RAW Plan
 // Status is literally 'trial':
@@ -1790,4 +2074,14 @@ async function sendTrialExpiredEmails({ clientName, projectCode, reportEmail }) 
 // event handling (phone_number_quality_update / template_category_update)
 // can reuse this exact alerting path instead of standing up a second one.
 module.exports.sendOpsAlert = sendResendEmail;
+// Exported the same way as sendOpsAlert above (a named property on the default
+// handler export) — the only precedent this file has for exposing an internal
+// function. runAppointmentReminders itself is NOT exported: every existing
+// test on this file (tests/cron-eerlijk.test.js, tests/klok-en-nawerk.test.js,
+// tests/afmelding.test.js) reads it as source text rather than requiring it,
+// so there was no established "functional export" pattern to follow. This one
+// needs a real call (mocked fetch, asserted call order — see
+// tests/afspraak-opvolging.test.js), so it gets exported; runAppointmentReminders
+// is left as it was found, unexported, to keep this change minimal.
+module.exports.runAfspraakOpvolging = runAfspraakOpvolging;
 

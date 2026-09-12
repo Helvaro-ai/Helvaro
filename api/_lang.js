@@ -108,6 +108,8 @@ const LANGUAGES = {
     legacyCancelled: 'Genoteerd, ik heb de afspraak geannuleerd. Wil je meteen een ander moment prikken?',
     legacyStoring: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.',
     legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
+    legacyNoShow: 'We hebben je vandaag gemist. Wil je een nieuwe afspraak inplannen?',
+    legacyCancelledFollowup: 'Je afspraak is geannuleerd. Zullen we een nieuw moment prikken?',
   },
   fr: {
     iso: 'fr', native: 'Français', english: 'French', locale: 'fr-BE',
@@ -123,6 +125,8 @@ const LANGUAGES = {
     legacyCancelled: 'Noté, j’ai annulé le rendez-vous. Tu veux qu’on fixe un autre moment ?',
     legacyStoring: 'Désolé, je ne suis pas disponible un instant. Réessaie dans un moment.',
     legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
+    legacyNoShow: 'Tu nous as manqué aujourd’hui. Tu veux qu’on fixe un nouveau rendez-vous ?',
+    legacyCancelledFollowup: 'Ton rendez-vous a été annulé. On fixe un autre moment ?',
   },
   en: {
     iso: 'en', native: 'English', english: 'English', locale: 'en-GB',
@@ -138,6 +142,8 @@ const LANGUAGES = {
     legacyCancelled: 'Noted, I have cancelled the appointment. Shall we pick another time?',
     legacyStoring: 'Sorry, I am briefly unavailable. Please try again in a moment.',
     legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
+    legacyNoShow: 'We missed you today. Want to schedule a new appointment?',
+    legacyCancelledFollowup: 'Your appointment was cancelled. Shall we pick another time?',
   },
 
   de: {
@@ -634,6 +640,32 @@ function buildCancelledMessage(code) {
   return 'Noted, I have cancelled the appointment. Shall we pick another time?';
 }
 
+// Sent by the no-show/cancelled-appointment follow-up job
+// (api/cron-followup.js's runAfspraakOpvolging) to a dealership lead whose
+// appointment status flipped to no_show or cancelled and who never got an
+// in-chat reply about it (see that function's own header for the exact
+// eligibility rule). Same nl/fr/en-native, English-fallback rule as
+// buildSlotConflictMessage above, and for the same reason: an unreviewed
+// machine translation of a message about a missed appointment is worse than
+// plain English.
+function buildNoShowMessage(code) {
+  const entry = getLanguage(code);
+  const val = entry.legacyNoShow || entry.noShow;
+  if (val) return typeof val === 'function' ? val() : val;
+  return 'We missed you today. Want to schedule a new appointment?';
+}
+
+// Same job, for the appointment that was actively CANCELLED (not a no-show)
+// and never got an in-chat cancel reply — see buildCancelledMessage above for
+// the in-chat equivalent this mirrors in tone (no reproach, ends with an
+// opening for a new moment).
+function buildCancelledFollowupMessage(code) {
+  const entry = getLanguage(code);
+  const val = entry.legacyCancelledFollowup || entry.cancelledFollowup;
+  if (val) return typeof val === 'function' ? val() : val;
+  return 'Your appointment was cancelled. Shall we pick another time?';
+}
+
 /* Wat een lead hoort als de AI onbereikbaar is.
  *
  * Dit stond hardgecodeerd in het Nederlands in api/whatsapp.js. Dat is
@@ -811,6 +843,8 @@ module.exports = {
   buildSlotConflictMessage,
   buildVehicleUnavailableMessage,
   buildCancelledMessage,
+  buildNoShowMessage,
+  buildCancelledFollowupMessage,
   buildOutageMessage,
   buildWelcomeMessage,
   getLocale,

@@ -38,6 +38,24 @@ console.log('\n— normaliseer: enums —');
        && koop.normaliseer({ inruil: { merk: 'BMW', model: 'X5' } }).inruil.model === 'x5', null);
 }
 
+console.log('\n— normaliseer: afspraak (Fase 4) —');
+{
+  ck('onbekende afspraak-waarde wordt weggegooid',
+     koop.normaliseer({ afspraak: 'koffie-drinken', budget: 5000 }).afspraak === '', null);
+
+  ck('geldige afspraak wordt bewaard en gelowercased',
+     koop.normaliseer({ afspraak: 'PROEFRIT' }).afspraak === 'proefrit', null);
+
+  for (const w of koop.AFSPRAAK) {
+    ck(`"${w}" is een geldige afspraak-waarde`, koop.normaliseer({ afspraak: w }).afspraak === w, null);
+  }
+
+  ck('alleen een onbekende afspraak-waarde geeft nog steeds null (niets bruikbaars)',
+     koop.normaliseer({ afspraak: 'wandeling' }) === null, null);
+
+  ck('afspraak staat in VELDEN', koop.VELDEN.indexOf('afspraak') !== -1, koop.VELDEN);
+}
+
 console.log('\n— normaliseer: getallen ─ eindig en >= 0 —');
 {
   /* Elk geval krijgt ook `intentie: 'sterk'` mee, zodat het object niet

@@ -24,8 +24,14 @@
 const FINANCIERING = Object.freeze(['cash', 'goedgekeurd', 'nodig']);
 const TERMIJN       = Object.freeze(['kort', 'middel', 'lang']);
 const INTENTIE      = Object.freeze(['sterk', 'matig', 'laag']);
+/* Wat voor afspraak de klant ZELF vroeg -- niet wat er uiteindelijk geboekt
+   werd (dat staat al op de Appointment zelf), maar het SIGNAAL dat hij erom
+   vroeg. Zelfde vier waarden als api/_dealer-boeking.js AFSPRAAK_TYPES; die
+   twee lijsten moeten gelijk blijven lopen, want dit veld voedt zowel de
+   prompt (KOOP_OPDRACHT) als het BOOK-type in api/whatsapp.js. */
+const AFSPRAAK      = Object.freeze(['proefrit', 'bezichtiging', 'ophaling', 'gesprek']);
 
-const VELDEN = Object.freeze(['financiering', 'termijn', 'intentie', 'budget', 'maandbudget', 'inruil']);
+const VELDEN = Object.freeze(['financiering', 'termijn', 'intentie', 'budget', 'maandbudget', 'inruil', 'afspraak']);
 
 function getal(v) {
   if (v === null || v === undefined || v === '') return null;
@@ -86,6 +92,7 @@ function normaliseer(ruw) {
   const financiering = enumWaarde(ruw.financiering, FINANCIERING);
   const termijn       = enumWaarde(ruw.termijn, TERMIJN);
   const intentie       = enumWaarde(ruw.intentie, INTENTIE);
+  const afspraak       = enumWaarde(ruw.afspraak, AFSPRAAK);
 
   const budgetRuw = getal(ruw.budget);
   const budget = budgetRuw !== null ? Math.round(budgetRuw) : null;
@@ -95,11 +102,11 @@ function normaliseer(ruw) {
 
   const inruil = normaliseerInruil(ruw.inruil);
 
-  if (!financiering && !termijn && !intentie && budget === null && maandbudget === null && !inruil) {
+  if (!financiering && !termijn && !intentie && !afspraak && budget === null && maandbudget === null && !inruil) {
     return null;
   }
 
-  return { financiering, termijn, intentie, budget, maandbudget, inruil };
+  return { financiering, termijn, intentie, budget, maandbudget, inruil, afspraak };
 }
 
 /** De koopinfo uit een Notities-blob halen. Werpt nooit. */
@@ -169,6 +176,7 @@ module.exports = {
   FINANCIERING,
   TERMIJN,
   INTENTIE,
+  AFSPRAAK,
   normaliseer,
   uitNotities,
   naarNotities,

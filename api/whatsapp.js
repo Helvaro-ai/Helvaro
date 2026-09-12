@@ -35,6 +35,8 @@ const _vehicles  = require('./_vehicles');   // welke auto deze lead bedoelt
 const _autoscout = require('./_autoscout');  // de AutoScout24-link uit zijn bericht
 const _project   = require('./_project');    // wat er moet gebeuren, bij markten zonder catalogus
 const _wens      = require('./_wens');       // wat een koper zoekt, voor later
+const _koop      = require('./_koop');       // hoe de aankoop eruitziet: financiering, termijn, inruil (Fase 3)
+const _leadscore = require('./_leadscore');  // score + temperatuur per dealership-beurt (Fase 3)
 const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
@@ -1397,6 +1399,85 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     }
   }
 
+  /* De koopinfo van deze koper bewaren. Zelfde blob, zelfde merge-regels en
+     zelfde tenant-grens als de wens hierboven -- alleen bij dealership, en
+     alleen als er echt iets binnenkwam. */
+  if (vertical === _vertical.DEALERSHIP && aiResponse.koop) {
+    try {
+      const basisK = updateFields[NOTITIES_FIELD] !== undefined
+        ? updateFields[NOTITIES_FIELD]
+        : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+      const metKoop = _koop.naarNotities(basisK, aiResponse.koop);
+      if (metKoop !== null) {
+        updateFields[NOTITIES_FIELD] = metKoop;
+        console.log('[WhatsApp] koopinfo bewaard voor lead ' + lead.id + ': '
+          + _koop.omschrijf(aiResponse.koop));
+      }
+    } catch (e) {
+      /* Best-effort, net als de wens. */
+      console.warn('[WhatsApp] koopinfo opslaan mislukt:', e && e.message);
+    }
+  }
+
+  /* ── Fase 3: de leadscore herberekenen op ELKE dealership-beurt ───────────
+     Niet alleen bij een boeking: een lead die drie keer chat over financiering
+     en budget maar nog niets boekte, mag niet pas een score krijgen zodra hij
+     eindelijk een afspraak maakt -- dan is het voor de verkoper te laat om nog
+     iets aan de VOLGORDE van zijn dag te veranderen.
+
+     NA de wens/koop-merges hierboven, en met de VERSTE baseline (updateFields
+     als die deze beurt al iets schreef, anders het bestaande veld): deze
+     beurt kan de Notities net bijgewerkt hebben voordat we hier komen, en die
+     wijziging moet meetellen.
+
+     Alleen loggen als de temperatuur verandert. Anders krijgt elke chatbeurt
+     een eigen activiteitsregel, en verdrinkt de ene keer dat het er echt toe
+     deed (warm -> hot) in tien keer "score herberekend, niets veranderd".
+
+     De boekingsscore die verderop in dit bestand al bestond (W2/Fase 3, ver
+     onder de BOOK-afhandeling) blijft ernaast bestaan en overschrijft deze
+     score met `geboekt:true` zodra een boeking echt lukt -- die loopt PAS na
+     deze plek en leest dan de net bijgewerkte blob, dus de twee vechten niet:
+     wie het laatst schrijft (de boeking, als die er is) wint. */
+  if (vertical === _vertical.DEALERSHIP) {
+    try {
+      const notitiesVoorScore = updateFields[NOTITIES_FIELD] !== undefined
+        ? updateFields[NOTITIES_FIELD]
+        : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+      let blobVoorScore = null;
+      const trimmedVoorScore = notitiesVoorScore ? String(notitiesVoorScore).trim() : '';
+      if (trimmedVoorScore.startsWith('{')) {
+        try { blobVoorScore = JSON.parse(trimmedVoorScore); } catch (_) { blobVoorScore = null; }
+      }
+      const wensVoorScore = _wens.uitNotities(notitiesVoorScore);
+      const koopVoorScore = _koop.uitNotities(notitiesVoorScore);
+      const vorigeScore    = _leadscore.uitNotities(notitiesVoorScore);
+
+      const uitkomst = _leadscore.bereken({
+        wens: wensVoorScore,
+        koop: koopVoorScore,
+        voertuigCode: (herkendVoertuig && herkendVoertuig.code) || (blobVoorScore && blobVoorScore.property) || '',
+        afspraak: {
+          gevraagd: !!(koopVoorScore && koopVoorScore.afspraak),
+          type: koopVoorScore && koopVoorScore.afspraak,
+          geboekt: Boolean(lead.fields['fldyIGNetqcSEkoaK']),  // Appointment Booked
+        },
+      });
+      const nieuweNotitiesScore = _leadscore.naarNotities(notitiesVoorScore, uitkomst);
+      if (nieuweNotitiesScore !== null) updateFields[NOTITIES_FIELD] = nieuweNotitiesScore;
+
+      if (!vorigeScore || vorigeScore.temperatuur !== uitkomst.temperatuur) {
+        _activiteit.log(projectCode, 'lead_score_calculated', {
+          leadId: lead.id, voertuigCode: (herkendVoertuig && herkendVoertuig.code) || '',
+        }).catch(() => {});
+      }
+    } catch (e) {
+      /* Best-effort, net als de wens/koop hierboven: een score die niet
+         herberekend raakt is een gemiste sortering, geen gemist gesprek. */
+      console.warn('[WhatsApp] leadscore per beurt overgeslagen:', e && e.message);
+    }
+  }
+
   /* De projectfiche bewaren. Dezelfde blob en dezelfde regels als bij de wens
      hierboven: samenvoegen, niet vervangen, en een beurt die niets nieuws
      oplevert schrijft ook niets.
@@ -1841,7 +1922,15 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
              het type en de al-berekende idempotentiesleutel mee. Zonder
              voertuig (geen catalogus, of nog niet herkend) blijven deze drie
              leeg en verandert er niets aan het bestaande record. */
-          const dealerType = vertical === _vertical.DEALERSHIP ? _dealerBoeking.standaardType(vertical) : '';
+          /* `appt.type` komt (optioneel) uit het BOOK:{...} blok van het
+             model -- zie de KOOP_OPDRACHT/BOOK-uitleg in api/_ai/prompts.js.
+             Alleen geldig als hij letterlijk in _dealerBoeking.AFSPRAAK_TYPES
+             staat; anders (leeg, getypt, hallucinatie) valt het terug op de
+             standaard voor deze markt, precies zoals voorheen. */
+          const gevraagdType = String((appt && appt.type) || '').trim().toLowerCase();
+          const dealerType = vertical === _vertical.DEALERSHIP
+            ? (_dealerBoeking.AFSPRAAK_TYPES.indexOf(gevraagdType) !== -1 ? gevraagdType : _dealerBoeking.standaardType(vertical))
+            : '';
           const apptResult = await createAppointment({
             startTime:     appt.start,
             duration:      appt.duration || appointmentDuration,
@@ -2241,7 +2330,11 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
         if (ctx.pandBezichtigbaar === false) {
           console.warn('[WhatsApp] BOOK geweigerd: pand ' + (ctx.pandCode || '?') + ' is niet bezichtigbaar');
         } else {
-          appointment = { start: bookData.start, duration: bookData.duration || 30 };
+          /* `type` is optioneel en alleen zinvol voor dealership -- zie waar
+             dealerType verderop gebouwd wordt (in het BOOK-blok hieronder),
+             dat dit tegen _dealerBoeking.AFSPRAAK_TYPES valideert. Hier alleen
+             ruw doorgeven; ongeldige of afwezige waarden worden daar genegeerd. */
+          appointment = { start: bookData.start, duration: bookData.duration || 30, type: bookData.type };
         }
       }
       cleaned = cleaned.replace(/BOOK:\s*\{[\s\S]*?\}/, '').trim();
@@ -2303,6 +2396,36 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
   if (cleaned.indexOf('WENS:') !== -1) {
     console.warn('[WhatsApp] onvolledig WENS-blok weggeknipt uit het antwoord');
     cleaned = cleaned.replace(/WENS:[^\n]*/g, '').trim();
+  }
+
+  /* 2a-ter. KOOP:{...} -- hoe deze aankoop eruitziet (financiering, termijn,
+     intentie, budget, gevraagde afspraak, inruil). Zelfde vorm als WENS
+     hierboven en om dezelfde reden: het antwoordschema is GEDEELD met
+     vastgoed, dus dit hoort in een tekstblok en niet in een nieuw veld dat
+     elke bestaande makelaar zou raken.
+
+     _koop staat bovenaan als require en niet hier ter plekke -- zelfde reden
+     als bij _wens: tests knippen dit parseerblok uit het bestand en draaien
+     het als losse functie, en daarbinnen bestaat require() niet. */
+  let koop = null;
+  const koopMatch = cleaned.match(/KOOP:\s*(\{[\s\S]*?\})/);
+  if (koopMatch) {
+    try {
+      const ruwKoop = JSON.parse(koopMatch[1]);
+      koop = _koop.normaliseer(ruwKoop);
+      if (!koop) console.log('[WhatsApp] KOOP was leeg of onbruikbaar, overgeslagen');
+    } catch (e) {
+      console.error('[WhatsApp] KOOP parse fout:', e.message, koopMatch[1]);
+    }
+    cleaned = cleaned.replace(/KOOP:\s*\{[\s\S]*?\}/, '').trim();
+  }
+
+  /* Zelfde vangnet als bij WENS: een onafgesloten KOOP-blok mag nooit bij de
+     koper terechtkomen, geparseerd of niet. Tot het einde van de REGEL en
+     niet van de tekst -- zie de uitleg bij WENS hierboven, woordelijk gelijk. */
+  if (cleaned.indexOf('KOOP:') !== -1) {
+    console.warn('[WhatsApp] onvolledig KOOP-blok weggeknipt uit het antwoord');
+    cleaned = cleaned.replace(/KOOP:[^\n]*/g, '').trim();
   }
 
   /* 2a-bis. PROJECT:{...} -- wat er moet gebeuren, bij markten zonder catalogus.
@@ -2399,13 +2522,13 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
       const decision = JSON.parse(match[1]);
       const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
       // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
-      return { done: true, message: message || '...', appointment, cancel, wens, projectFiche, ...decision, summary: decision.summary || runningSummary };
+      return { done: true, message: message || '...', appointment, cancel, wens, koop, projectFiche, ...decision, summary: decision.summary || runningSummary };
     } catch (e) {
       console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
     }
   }
 
-  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel, wens };
+  return { done: false, message: cleaned, summary: runningSummary, appointment, cancel, wens, koop };
 }
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
