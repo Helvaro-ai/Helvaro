@@ -24,6 +24,10 @@ const _crm       = require('./_crm');          // de enige deur naar de CRM's va
 const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de klantrij
 const _waes      = require('./_waes');         // eigen WhatsApp-nummer per klant (Embedded Signup)
 const _waSend    = require('./_wa-send');      // de enige deur naar WhatsApp
+const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
+const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
+const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
+const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
 
 // Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
 // 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
@@ -1687,6 +1691,60 @@ module.exports = async function handler(req, res) {
       const dt = new Date(body.startTime);
       if (isNaN(dt.getTime())) return res.status(400).json({ error: 'Ongeldige startTime' });
 
+      /* ── Fase 2b/3: dealership-voertuigcontroles ──────────────────────────
+         Optioneel: alleen relevant als de aanroeper een voertuig meegeeft. Een
+         makelaar of een markt zonder catalogus stuurt dit veld nooit mee, dus
+         voor hen verandert er hier niets. Dezelfde poort als api/whatsapp.js's
+         BOOK-blok -- zie api/_dealer-boeking.js voor de volgorde en de reden
+         erachter; dit bestand roept exact dezelfde functies aan in plaats van
+         de logica een tweede keer op te schrijven. */
+      const bodyVehicleCode = String(body.vehicleCode || '').trim();
+      const bodyType = String(body.type || '').trim();
+      if (bodyType && _dealerBoeking.AFSPRAAK_TYPES.indexOf(bodyType) === -1) {
+        return res.status(400).json({ error: 'Ongeldig afspraaktype' });
+      }
+
+      let dealerVoertuig = null;
+      let dealerClientFields = null;
+      let dealerIsDealership = false;
+      let dealerApptId = '';
+      if (bodyVehicleCode) {
+        dealerClientFields = await getClientFieldsForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+        dealerIsDealership = _vertical.van(dealerClientFields) === _vertical.DEALERSHIP;
+        if (dealerIsDealership) {
+          dealerVoertuig = await _vehicles.getByCode(projectCode, bodyVehicleCode).catch((e) => {
+            console.error('[appointment-create] voertuig opzoeken mislukt:', e && e.message);
+            return null;
+          });
+          if (!dealerVoertuig) return res.status(404).json({ error: 'Voertuig niet gevonden' });
+
+          const controle = await _dealerBoeking.controleer({
+            projectCode, voertuig: dealerVoertuig,
+            leadId: (body.leadId && /^rec[A-Za-z0-9]{14}$/.test(body.leadId)) ? body.leadId : '',
+            telefoon: body.leadPhone, startISO: body.startTime,
+          });
+          if (!controle.ok) {
+            if (controle.reden === 'al_geboekt') {
+              // Idempotent: exact deze boeking bestaat al. Geen nieuw record,
+              // geen nieuwe agenda-afspraak -- gewoon het bestaande record
+              // teruggeven alsof het net gelukt is.
+              const bestaandeFields = controle.bestaand && controle.bestaand.fields;
+              return res.status(200).json({
+                ok: true, id: controle.bestaand && controle.bestaand.id,
+                apptId: bestaandeFields && bestaandeFields['Appointment ID'], alGeboekt: true,
+              });
+            }
+            if (controle.reden === 'lead_heeft_afspraak') {
+              return res.status(409).json({ error: 'Deze lead heeft al een afspraak lopen.', code: 'lead_has_appointment' });
+            }
+            return res.status(409).json({
+              error: 'Dat voertuig is niet meer boekbaar.', code: 'vehicle_unavailable', reden: controle.reden,
+            });
+          }
+          dealerApptId = controle.apptId;
+        }
+      }
+
       // Availability check against the client's Google Calendar, BEFORE any
       // write. Fetch the access once and reuse it below for the post-write
       // mirror too, instead of refreshing the OAuth token twice. No lead has
@@ -1781,7 +1839,13 @@ module.exports = async function handler(req, res) {
         console.error('[appointment-create] dubbelcheck mislukt (afspraak gaat door):', e && e.message);
       }
 
-      const apptId = `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
+      /* dealerApptId, als die er is, komt uit dezelfde idempotentiesleutel als
+         _dealerBoeking.controleer() hierboven al berekende (zie
+         api/_voertuigslot.js idempotentieSleutel) -- niet hier een tweede,
+         net andere opnieuw uitrekenen. Zonder voertuig blijft het de
+         bestaande PROJECT-JJMMDDUUMM-opbouw. */
+      const apptId = dealerApptId
+        || `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
       const fields = {
         'Appointment ID': apptId,
         'Start Time':     body.startTime,
@@ -1794,6 +1858,12 @@ module.exports = async function handler(req, res) {
         'Notes':          String(body.notes || '').slice(0, 2000),
         'Created At':     new Date().toISOString()
       };
+      if (dealerVoertuig) fields['Vehicle Code'] = dealerVoertuig.code;
+      if (bodyType)       fields['Appointment Type'] = bodyType;
+      // Bewaard voor de leadscore/melding-stap verderop (Fase 3, dealership
+      // only): dat is de enige plek die de VERSE Notities-blob van deze lead
+      // nog nodig heeft, en die hoeft dan niet een tweede keer opgehaald.
+      let leadDataForNotify = null;
       if (body.leadId && /^rec[A-Za-z0-9]{14}$/.test(body.leadId)) {
         // SECURITY: verify the lead belongs to this client before linking it
         // to the new appointment — same ownership check as PATCH and
@@ -1811,6 +1881,7 @@ module.exports = async function handler(req, res) {
           if (leadProject !== projectCode) {
             return res.status(403).json({ error: 'Geen toegang tot deze lead' });
           }
+          leadDataForNotify = leadData;
         } catch (err) {
           console.error('[appointment-create] lead ownership check failed:', err.message);
           return res.status(500).json({ error: 'Serverfout' });
@@ -1828,6 +1899,23 @@ module.exports = async function handler(req, res) {
         );
         const d = await r.json();
         if (!r.ok) return res.status(500).json({ error: d.error?.message || 'Aanmaken mislukt' });
+
+        // Fase 2b: de race op het voertuig zelf sluiten -- ALTIJD na het
+        // aanmaken, nooit ervoor (zie api/_voertuigslot.js bevestigClaim).
+        // Verliest deze boeking, dan is het net aangemaakte record al door
+        // bevestigClaim zelf geannuleerd; hier is niets meer te herstellen,
+        // alleen eerlijk te melden.
+        if (dealerIsDealership && dealerVoertuig) {
+          const naResultaat = await _dealerBoeking.naAanmaak({
+            projectCode, voertuig: dealerVoertuig, recordId: d.id, apptId, leadId: body.leadId || '',
+          }).catch((err) => {
+            console.error('[appointment-create] dealer-boeking naAanmaak exception (fail-open, telt als gewonnen):', err && err.message);
+            return { ok: true, geverifieerd: false };
+          });
+          if (!naResultaat.ok) {
+            return res.status(409).json({ error: 'Dat voertuig werd net door iemand anders geboekt.', code: 'vehicle_unavailable', reden: 'voertuig_bezet' });
+          }
+        }
 
         // ── Booking confirmation (fail-soft, template-gated) ────────────────
         // Dashboard-created appointments (Source: 'manual') have no guarantee
@@ -1872,6 +1960,56 @@ module.exports = async function handler(req, res) {
             }
           }
         } catch (e) { console.error('[gcal] create mirror exception:', e && e.message); }
+
+        /* ── Fase 3: leadscore herberekenen + de dealer verwittigen ───────────
+           Alleen voor dealership, en alleen NA een gewonnen boeking (we zijn
+           hier pas na de naAanmaak-check hierboven). Zelfde modules als
+           api/whatsapp.js's BOOK-blok -- de logica staat daar en in
+           api/_dealer-boeking.js / api/_dealer-melding.js, hier alleen de
+           bedrading. Een fout mag de boeking zelf nooit raken: eigen
+           try/catch, en een mislukte melding telt niet als een mislukte
+           boeking (de 200 hieronder staat al vast). */
+        if (dealerIsDealership && dealerVoertuig) {
+          try {
+            const notitiesRaw = (leadDataForNotify && leadDataForNotify.fields
+              && (leadDataForNotify.fields['fldoLRI5W12ThTls7'] || leadDataForNotify.fields['Notities'])) || '';
+            const typeVoorScore = bodyType || _dealerBoeking.standaardType(_vertical.DEALERSHIP);
+            const { uitkomst, nieuweNotities } = _dealerBoeking.scoreNaBoeking({
+              notitiesRaw, voertuigCode: dealerVoertuig.code, type: typeVoorScore,
+            });
+            if (nieuweNotities !== null && body.leadId) {
+              await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${body.leadId}`, {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: nieuweNotities }, typecast: true }),
+              }).catch(() => {});
+            }
+            _activiteit.log(projectCode, 'lead_score_calculated', {
+              leadId: body.leadId || '', voertuigCode: dealerVoertuig.code,
+            }).catch(() => {});
+
+            const notifyLang = _lang.normalizeLanguageCode(
+              dealerClientFields && (dealerClientFields['fld1iiV9XwSbgAACZ'] || dealerClientFields['Language'])
+            );
+            const melding = _dealerMelding.bouwAfspraakBericht({
+              lang: notifyLang, leadNaam: fields['Lead Name'],
+              wanneer: formatApptDateTime(body.startTime, notifyLang),
+              voertuigNaam: _vehicles.naam(dealerVoertuig),
+              prijsTekst: _vehicles.prijsTekst(dealerVoertuig.prijs),
+              type: typeVoorScore,
+              score: uitkomst && uitkomst.score, temperatuur: uitkomst && uitkomst.temperatuur,
+            });
+            const notifyPnid = await getClientWaPhoneNumberId(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+            await _dealerMelding.stuurAfspraakMelding({
+              projectCode, clientFields: dealerClientFields,
+              phoneNumberId: notifyPnid || process.env.PHONE_NUMBER_ID, token: process.env.WHATSAPP_TOKEN,
+              lang: notifyLang, tekst: melding,
+              terugval: { naam: fields['Lead Name'], telefoon: fields['Lead Phone'] },
+            });
+          } catch (e) {
+            console.warn('[appointment-create] leadscore/melding overgeslagen:', e && e.message);
+          }
+        }
 
         /* agendaGeverifieerd gaat mee zodat het dashboard het kan zeggen. De
            afspraak is gewoon aangemaakt -- dit is geen fout en mag niet als
@@ -1969,10 +2107,32 @@ module.exports = async function handler(req, res) {
           } catch (e) { console.error('[afspraken] leadvlaggen na afzegging:', e && e.message); }
         }
 
+        /* Fase 3: een spoor achterlaten voor de opvolging. Alle drie de
+           afgesloten statussen (niet gekomen, afgezegd, geweest) zijn precies
+           de momenten waarop een verkoper -- of de cron -- nog iets moet doen:
+           opnieuw proberen te boeken, of vragen hoe de proefrit was. Faalt dit,
+           dan mag dat de statuswijziging zelf nooit ongedaan maken (zie de kop
+           van api/_activiteit.js: loggen werpt nooit en hangt nooit op het
+           kritieke pad). */
+        if (['cancelled', 'no_show', 'completed'].includes(updateFields['Status'])) {
+          _activiteit.log(projectCode, 'followup_scheduled', {
+            afspraakId: existingFields['Appointment ID'] || id,
+            details: { status: updateFields['Status'] },
+          }).catch(() => {});
+        }
+
         return res.status(200).json({ ok: true, record: d });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
       }
+    }
+
+    // ── Fase 2b/3: het activiteitenlogboek voor het dashboard ────────────────
+    // body: { mode: 'activity-list', limit?: 50 }
+    if (body.mode === 'activity-list') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const events = await _activiteit.lijst(projectCode, { limiet: Number(body.limit) || 50 });
+      return res.status(200).json({ events });
     }
 
     // ── B. Test-message. Send a one-off WhatsApp to a phone number ─────────
@@ -3412,6 +3572,32 @@ async function getClientWaPhoneNumberId(projectCode, airtableToken, baseId, clie
   } catch (e) {
     console.error('[WhatsApp] client phone-number-id lookup mislukt (valt terug op gedeeld nummer):', e && e.message);
     return '';
+  }
+}
+
+// ── Client Config-velden voor één project (Fase 2b/3, dealership) ───────────
+// De 'appointment-create' mode wil weten of een klant DEALERSHIP is (voor de
+// voertuigcontroles) en heeft daarna de volledige Client Config nodig voor de
+// werknemersmelding (Notify Phone(s), taal). Beide met returnFieldsByFieldId=
+// true, zodat _vertical.van() en _dealerMelding.ontvangers() -- die allebei
+// eerst op FIELD ID lezen, zie hun eigen kop -- meteen het juiste veld zien.
+// Fail-soft: een mislukte lookup levert null, en de aanroeper behandelt dat
+// als "onbekend, dus vastgoed/geen ontvangers" in plaats van een 500.
+async function getClientFieldsForProject(projectCode, airtableToken, baseId, clientsTable) {
+  const code = String(projectCode || '').trim();
+  if (!code) return null;
+  try {
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(code)}"`);
+    const r = await atFetch(
+      `https://api.airtable.com/v0/${baseId}/${clientsTable}?filterByFormula=${formula}&maxRecords=1&returnFieldsByFieldId=true`,
+      { headers: { Authorization: `Bearer ${airtableToken}` } }
+    );
+    if (!r.ok) return null;
+    const rec = ((await r.json()).records || [])[0];
+    return (rec && rec.fields) || null;
+  } catch (e) {
+    console.error('[appointment-create] client-lookup mislukt (fail-soft):', e && e.message);
+    return null;
   }
 }
 

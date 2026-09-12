@@ -2008,6 +2008,48 @@ const TEKST = {
                            fr: 'La langue de ce tableau de bord. Ne change rien à la langue utilisée par votre assistant avec les prospects.',
                            en: 'The language of this dashboard. Does not change the language your assistant uses with leads.',
                            de: 'Die Sprache dieses Dashboards. Ändert nicht die Sprache, in der Ihr Assistent mit Leads spricht.' },
+
+  // ── Leadscore (dealership, Fase 2 automotive sales intelligence) ─────────
+  'score.reden.voertuig':     { nl: 'specifiek voertuig gevonden', fr: 'véhicule précis identifié', en: 'specific vehicle identified', de: 'bestimmtes Fahrzeug gefunden' },
+  'score.reden.budget':       { nl: 'budget bevestigd', fr: 'budget confirmé', en: 'budget confirmed', de: 'Budget bestätigt' },
+  'score.reden.termijn':      { nl: 'aankooptermijn gekend', fr: "délai d'achat connu", en: 'purchase timeline known', de: 'Kaufzeitpunkt bekannt' },
+  'score.reden.termijn_kort': { nl: 'wil snel kopen', fr: 'veut acheter rapidement', en: 'wants to buy soon', de: 'will schnell kaufen' },
+  'score.reden.financiering': { nl: 'financiering rond', fr: 'financement en ordre', en: 'financing ready', de: 'Finanzierung steht' },
+  'score.reden.proefrit':     { nl: 'proefrit gevraagd', fr: "essai demandé", en: 'test drive requested', de: 'Probefahrt angefragt' },
+  'score.reden.bezichtiging': { nl: 'bezichtiging gevraagd', fr: 'visite demandée', en: 'viewing requested', de: 'Besichtigung angefragt' },
+  'score.reden.afspraak':     { nl: 'afspraak gevraagd', fr: 'rendez-vous demandé', en: 'appointment requested', de: 'Termin angefragt' },
+  'score.reden.geboekt':      { nl: 'afspraak geboekt', fr: 'rendez-vous réservé', en: 'appointment booked', de: 'Termin gebucht' },
+  'score.reden.intentie':     { nl: 'sterke koopintentie', fr: "forte intention d'achat", en: 'strong purchase intent', de: 'starke Kaufabsicht' },
+  'score.reden.inruil':       { nl: 'inruilwagen vermeld', fr: 'reprise mentionnée', en: 'trade-in mentioned', de: 'Inzahlungnahme erwähnt' },
+  'score.temp.hot':           { nl: 'HOT', fr: 'HOT', en: 'HOT', de: 'HOT' },
+  'score.temp.warm':          { nl: 'WARM', fr: 'WARM', en: 'WARM', de: 'WARM' },
+  'score.temp.cold':          { nl: 'COLD', fr: 'COLD', en: 'COLD', de: 'COLD' },
+  'actie.voorbereiden':       { nl: 'Voorbereiden', fr: 'Préparer', en: 'Prepare', de: 'Vorbereiten' },
+  'actie.bevestigen':         { nl: 'Bevestigen', fr: 'Confirmer', en: 'Confirm', de: 'Bestätigen' },
+  'actie.alternatief':        { nl: 'Alternatief zoeken', fr: 'Chercher une alternative', en: 'Find an alternative', de: 'Alternative suchen' },
+  'actie.contacteren':        { nl: 'Contacteren', fr: 'Contacter', en: 'Contact', de: 'Kontaktieren' },
+  'actie.inruil':             { nl: 'Inruilgegevens vragen', fr: 'Demander les infos de reprise', en: 'Ask for trade-in details', de: 'Inzahlungnahme-Details erfragen' },
+  'actie.opvolgen':           { nl: 'Opvolgen', fr: 'Relancer', en: 'Follow up', de: 'Nachfassen' },
+
+  // ── Werknemersmelding bij een nieuwe dealership-afspraak (Fase 3) ─────────
+  // api/_dealer-melding.js bouwAfspraakBericht(). '{prijsSuffix}' is al
+  // gevormd als " — 12.345" of '' -- zo verdwijnt het streepje netjes als er
+  // geen prijs bekend is, in plaats van een zin die eindigt op "— .".
+  'melding.afspraak.kop':   { nl: '🚗 Nieuwe afspraak', fr: '🚗 Nouveau rendez-vous', en: '🚗 New appointment', de: '🚗 Neuer Termin' },
+  'melding.afspraak.regel': { nl: '{naam} heeft een afspraak om {wanneer} voor een {voertuig}{prijsSuffix}.',
+                              fr: '{naam} a un rendez-vous le {wanneer} pour un {voertuig}{prijsSuffix}.',
+                              en: '{naam} has an appointment at {wanneer} for a {voertuig}{prijsSuffix}.',
+                              de: '{naam} hat einen Termin am {wanneer} für ein {voertuig}{prijsSuffix}.' },
+  'melding.afspraak.type':  { nl: 'Type: {type}', fr: 'Type : {type}', en: 'Type: {type}', de: 'Typ: {type}' },
+  'melding.afspraak.score': { nl: '{emoji} {temp} — {score}/100', fr: '{emoji} {temp} — {score}/100',
+                              en: '{emoji} {temp} — {score}/100', de: '{emoji} {temp} — {score}/100' },
+  'melding.type.proefrit':     { nl: 'proefrit', fr: 'essai', en: 'test drive', de: 'Probefahrt' },
+  'melding.type.bezichtiging': { nl: 'bezichtiging', fr: 'visite', en: 'viewing', de: 'Besichtigung' },
+  'melding.type.ophaling':     { nl: 'ophaling', fr: 'récupération', en: 'pickup', de: 'Abholung' },
+  'melding.type.gesprek':      { nl: 'gesprek', fr: 'entretien', en: 'conversation', de: 'Gespräch' },
+  'melding.temp.hot':  { nl: 'HOT', fr: 'HOT', en: 'HOT', de: 'HOT' },
+  'melding.temp.warm': { nl: 'WARM', fr: 'WARM', en: 'WARM', de: 'WARM' },
+  'melding.temp.cold': { nl: 'COLD', fr: 'COLD', en: 'COLD', de: 'COLD' },
 };
 
 /**

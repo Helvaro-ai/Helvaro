@@ -524,6 +524,18 @@ const WENS_OPDRACHT = [
   'zodra hij binnenkomt. Zeg dat ook tegen hem -- dat is een reden om te antwoorden.',
 ].join('\n');
 
+/* Eén regel voor een voertuig in een lijst: code, naam, prijs, km, jaar.
+   Gedeeld door index() (de hele voorraad) en fiche()'s alternatievenblok
+   (Fase 3, zie hieronder) -- dezelfde regel op twee plekken opnieuw uittypen
+   is precies hoe ze later uit elkaar gaan lopen. */
+function voertuigRegel(v) {
+  const stukken = [v.code, [v.merk, v.model, v.uitvoering].filter(Boolean).join(' ')];
+  if (bedrag(v.prijs)) stukken.push(bedrag(v.prijs));
+  if (v.km !== null && v.km !== undefined) stukken.push(Math.round(v.km).toLocaleString('nl-BE') + ' km');
+  if (v.inschrijving) stukken.push(v.inschrijving);
+  return '- ' + stukken.filter(Boolean).join(' | ');
+}
+
 const voertuigen = {
   naam: 'vehicle_context_' + VERSIE,
 
@@ -531,8 +543,13 @@ const voertuigen = {
    * Het blok voor EEN bekende auto.
    * @param {object} v        zoals api/_vehicles.js het teruggeeft
    * @param {object} [grens]  {maxKorting, faroMag} uit api/_vertical.js
+   * @param {object} [context]  Fase 3: booking-time voertuigcontext.
+   *   { boekbaar: {ok, reden}, alternatieven: [{voertuig, punten, redenen}] }
+   *   uit api/_vehicles.js boekbaar()/alternatieven(). Optioneel en met opzet
+   *   ACHTERAAN: elke bestaande aanroep met twee argumenten blijft
+   *   teken-voor-teken hetzelfde antwoord geven (zie tests/whatsapp-prompt.test.js).
    */
-  fiche(v, grens) {
+  fiche(v, grens, context) {
     if (!v) return '';
     const r = [];
     const naam = [v.merk, v.model, v.uitvoering].filter(Boolean).join(' ').trim();
@@ -647,6 +664,27 @@ const voertuigen = {
       r.push('- Dit voertuig is GERESERVEERD. Een proefrit mag, maar zeg er eerlijk bij dat er al iemand op zit, '
            + 'zodat niemand voor een verrassing staat.');
     }
+
+    /* ── Fase 3: al een actieve afspraak op dit voertuig ────────────────────
+       Dit is iets anders dan de statusblokken hierboven: de auto zelf is
+       gewoon 'beschikbaar', maar er staat al een proefrit op ingepland (zie
+       api/_vehicles.js boekbaar() en api/_voertuigslot.js actieveAfspraken()).
+       Een tweede proefrit inplannen bovenop de eerste is precies de dubbele
+       boeking die deze hele Fase voorkomt -- dus hier komt de rem, met de
+       alternatieven die de aanroeper al heeft opgezocht erbij, zodat het
+       gesprek niet doodloopt. */
+    if (context && context.boekbaar && context.boekbaar.reden === 'afspraak_bestaat') {
+      r.push('- Dit voertuig heeft al een proefrit gepland. Plan er GEEN tweede in; zeg eerlijk dat er al iemand '
+           + 'op zit, en bied de alternatieven hieronder aan (alleen die, verzin er geen).');
+      const alternatieven = Array.isArray(context.alternatieven) ? context.alternatieven : [];
+      if (alternatieven.length) {
+        r.push('', 'ALTERNATIEVEN (alleen deze, verzin er geen bij):');
+        for (const alt of alternatieven) {
+          if (alt && alt.voertuig) r.push(voertuigRegel(alt.voertuig));
+        }
+      }
+    }
+
     return r.join('\n');
   },
 
@@ -662,11 +700,7 @@ const voertuigen = {
        ELKE beurt mee naar het model, en een dealer met tachtig auto's zou de
        helft van het gesprek aan een opsomming besteden. */
     for (const v of autos.slice(0, 12)) {
-      const stukken = [v.code, [v.merk, v.model, v.uitvoering].filter(Boolean).join(' ')];
-      if (bedrag(v.prijs)) stukken.push(bedrag(v.prijs));
-      if (v.km !== null && v.km !== undefined) stukken.push(Math.round(v.km).toLocaleString('nl-BE') + ' km');
-      if (v.inschrijving) stukken.push(v.inschrijving);
-      r.push('- ' + stukken.filter(Boolean).join(' | '));
+      r.push(voertuigRegel(v));
     }
     if (autos.length > 12) r.push('- (en nog ' + (autos.length - 12) + ' andere)');
     r.push('');

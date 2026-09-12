@@ -35,6 +35,10 @@ const _vehicles  = require('./_vehicles');   // welke auto deze lead bedoelt
 const _autoscout = require('./_autoscout');  // de AutoScout24-link uit zijn bericht
 const _project   = require('./_project');    // wat er moet gebeuren, bij markten zonder catalogus
 const _wens      = require('./_wens');       // wat een koper zoekt, voor later
+const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
+const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
+const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
+const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
 const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
 
@@ -1082,6 +1086,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   let herkendPand = null;
   let herkendVoertuig = null;
   let kortingsgrenzen = null;
+  /* Fase 2b: boekbaarheid van het herkende voertuig, inclusief een actieve
+     afspraak van iemand anders -- niet alleen zijn status. Gevuld verderop,
+     gebruikt bij zowel de fiche (hier) als de BOOK-rem (pandBezichtigbaar,
+     zie de aanroep van runAI hieronder). */
+  let voertuigBoekbaarheid = null;
 
   if (vertical === _vertical.DEALERSHIP) {
     /* ── Dealership ──────────────────────────────────────────────────────────
@@ -1104,7 +1113,40 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
 
       if (herkendVoertuig) {
         kortingsgrenzen = _vertical.kortingsgrenzen(client.fields, herkendVoertuig);
-        pandSectie = _ai.prompts.voertuigen.fiche(herkendVoertuig, kortingsgrenzen);
+
+        /* Boekbaar is meer dan de status alleen: een 'beschikbaar' voertuig
+           met een actieve afspraak van iemand anders is voor NU niet vrij.
+           Best-effort -- hapert de afsprakenlijst, dan valt boekbaar() terug
+           op een lege lijst en blijft de rest van het gesprek werken. */
+        let actieveOpVoertuig = [];
+        try {
+          actieveOpVoertuig = await _voertuigslot.actieveAfspraken(projectCode, herkendVoertuig.code);
+        } catch (e) {
+          console.warn('[WhatsApp] actieve afspraken op voertuig overgeslagen:', e && e.message);
+        }
+        voertuigBoekbaarheid = _vehicles.boekbaar(herkendVoertuig, actieveOpVoertuig);
+
+        let fichecontext;
+        if (!voertuigBoekbaarheid.ok) {
+          /* Alleen de moeite van het opzoeken waard als er echt iets mis is --
+             de gewone weg (voertuig gewoon vrij) doet dit niet. De bekende wens
+             komt uit een EERDERE beurt (de Notities-blob), niet uit dit
+             bericht: dat wordt pas na deze aanroep ontleed. */
+          let bekendeWens = null;
+          try {
+            bekendeWens = _wens.uitNotities(lead.fields[NOTITIES_FIELD] || lead.fields['Notities'] || '');
+          } catch (e) { bekendeWens = null; }
+          let alternatieven = [];
+          try {
+            const voorraadVoorAlternatieven = await _vehicles.list(projectCode, { alleenPubliek: true });
+            alternatieven = _vehicles.alternatieven(voorraadVoorAlternatieven, { voertuig: herkendVoertuig, wens: bekendeWens }, 3);
+          } catch (e) {
+            console.warn('[WhatsApp] alternatieven opzoeken overgeslagen:', e && e.message);
+          }
+          fichecontext = { boekbaar: voertuigBoekbaarheid, alternatieven };
+        }
+
+        pandSectie = _ai.prompts.voertuigen.fiche(herkendVoertuig, kortingsgrenzen, fichecontext);
         console.log(`[WhatsApp] voertuig ${herkendVoertuig.code} herkend via ${uitkomst.via} voor lead ${lead.id}`);
       } else {
         const voorraad = await _vehicles.list(projectCode, { alleenPubliek: true });
@@ -1188,8 +1230,13 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
        Eén vlag voor allebei de verticals: het gaat om dezelfde vraag ("mag er
        een afspraak op dit aanbod?") en twee vlaggen zouden betekenen dat er
        ergens een plek is die maar naar één ervan kijkt. */
+    /* Fase 2b: bij een voertuig telt niet alleen zijn status maar ook of er
+       al een actieve afspraak van iemand anders op staat -- vandaar
+       voertuigBoekbaarheid.ok in plaats van het smallere kanProefrit(status).
+       voertuigBoekbaarheid is hierboven al berekend zodra herkendVoertuig
+       gezet werd, dus die is nooit null als herkendVoertuig dat niet is. */
     pandBezichtigbaar: herkendVoertuig
-      ? _vehicles.kanProefrit(herkendVoertuig.status)
+      ? Boolean(voertuigBoekbaarheid && voertuigBoekbaarheid.ok)
       : (herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true),
     pandCode: herkendVoertuig ? herkendVoertuig.code : (herkendPand ? herkendPand.code : ''),
     /* Alleen het MOMENT gaat mee, niet het record-id. De AI hoeft niet te weten
@@ -1634,6 +1681,61 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       console.warn(`[whatsapp] BOOK geweigerd: onbruikbaar tijdstip "${appt.start}" voor ${phone} (${projectCode})`);
       await meldMislukteBoeking(`het model gaf een onbruikbaar tijdstip: "${String(appt.start).slice(0, 60)}"`);
     } else if (!bookingSent && appt.start) {
+      /* ── Fase 2b/3: de dealership-boekingspoort ────────────────────────────
+         VOOR de Google-agendacontrole hieronder, met opzet: die controle gaat
+         over het MOMENT (is deze tijd nog vrij), dit gaat over het VOERTUIG en
+         de LEAD (is deze auto nog boekbaar, heeft deze lead al iets lopen).
+         Allebei moeten standhouden; het een vervangt het ander niet.
+
+         Alleen voor dealership -- vastgoed en de markten zonder catalogus
+         hebben geen voertuig om te beschermen en lopen verder precies zoals
+         voorheen. */
+      let dealerControle = null;
+      if (vertical === _vertical.DEALERSHIP) {
+        dealerControle = await _dealerBoeking.controleer({
+          projectCode, voertuig: herkendVoertuig, leadId: lead.id, telefoon: phone,
+          startISO: appt.start, afspraakAfgezegd,
+        }).catch((err) => {
+          console.error('[whatsapp] dealer-boeking controleer exception (fail-soft, telt als geblokkeerd):', err && err.message);
+          return { ok: false, reden: 'onbekend' };
+        });
+
+        if (!dealerControle.ok && dealerControle.reden === 'al_geboekt') {
+          /* Idempotent: exact deze boeking bestaat al. Niets nieuws te doen,
+             en niets te corrigeren bij de lead -- zijn "bevestigd" klopte
+             gewoon, alleen bestond de afspraak al. Vlaggen laten staan. */
+          console.log(`[whatsapp] BOOK genegeerd (al geboekt, idempotent) voor ${phone} (${projectCode})`);
+        } else if (!dealerControle.ok && dealerControle.reden === 'lead_heeft_afspraak') {
+          console.warn(`[whatsapp] BOOK geweigerd: lead heeft al een afspraak lopen voor ${phone} (${projectCode})`);
+        } else if (!dealerControle.ok) {
+          /* Een voertuigreden (verkocht/uit_aanbod/gereserveerd/afspraak_bestaat/
+             onbekend). Zelfde behandeling als de Google-slot-conflictbranch
+             verderop: de lead rechtzetten, de dealer waarschuwen, en geen
+             enkele vlag zetten zodat een volgende beurt het alsnog kan boeken. */
+          console.warn(`[whatsapp] BOOK geweigerd: voertuig niet boekbaar (${dealerControle.reden}) voor ${phone} (${projectCode})`);
+          try {
+            const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId);
+            if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie naar ${phone} niet aangekomen`);
+          } catch (err) {
+            console.error('[whatsapp] voertuig-onbeschikbaar correctie exception:', err.message);
+          }
+          if (ownerPhone) {
+            const notice =
+              `[Actie nodig] Dubbele boeking voorkomen (voertuig)\n\n` +
+              `Naam: ${leadName || '(onbekend)'}\n` +
+              `Tel: ${phone}\n` +
+              `Project: ${projectCode}\n\n` +
+              `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
+              `maar dat voertuig bleek niet meer boekbaar (${dealerControle.reden}). ` +
+              `Er is GEEN afspraak aangemaakt en de lead is gevraagd om alternatieven — volg op als dat nog niet gebeurd is.\n\n` +
+              `Dashboard: https://app.helvaro.pro/dashboard`;
+            const noticeSent = await sendWA(ownerPhone, notice, clientPhoneNumberId);
+            if (!noticeSent) console.error(`[whatsapp] voertuigblokkade-melding naar owner (${ownerPhone}) is niet aangekomen`);
+          }
+        }
+      }
+
+      if (!dealerControle || dealerControle.ok) {
       // Fetch Google Calendar access ONCE for this booking — reused below for
       // both the pre-write availability check and the post-write mirror,
       // instead of refreshing the OAuth access token twice.
@@ -1735,6 +1837,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                + '[LET OP] De Google agenda kon op het moment van boeken niet gelezen worden. '
                + 'Dit moment is NIET gecontroleerd op dubbele afspraken — kijk het even na.');
 
+          /* Fase 2b/3: alleen voor dealership schrijft dit ook het voertuig,
+             het type en de al-berekende idempotentiesleutel mee. Zonder
+             voertuig (geen catalogus, of nog niet herkend) blijven deze drie
+             leeg en verandert er niets aan het bestaande record. */
+          const dealerType = vertical === _vertical.DEALERSHIP ? _dealerBoeking.standaardType(vertical) : '';
           const apptResult = await createAppointment({
             startTime:     appt.start,
             duration:      appt.duration || appointmentDuration,
@@ -1742,9 +1849,55 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             leadId:        lead.id,
             leadName,
             leadPhone:     phone,
-            notes:         notitie
+            notes:         notitie,
+            apptId:        dealerControle ? dealerControle.apptId : undefined,
+            vehicleCode:   herkendVoertuig ? herkendVoertuig.code : undefined,
+            type:          dealerType || undefined,
           });
           if (apptResult.ok) {
+            /* Fase 2b: de race op het voertuig zelf sluiten -- ALTIJD na het
+               aanmaken, nooit ervoor (zie api/_voertuigslot.js bevestigClaim).
+               Verliest deze boeking, dan bestaat het Appointment-record niet
+               meer (bevestigClaim annuleert het zelf) en gedraagt de rest van
+               dit blok zich als de Google-slot-conflictbranch hierboven: geen
+               vlaggen, de lead rechtzetten, de dealer waarschuwen. */
+            let dealerVerloren = false;
+            if (vertical === _vertical.DEALERSHIP) {
+              const naResultaat = await _dealerBoeking.naAanmaak({
+                projectCode, voertuig: herkendVoertuig, recordId: apptResult.id,
+                apptId: apptResult.apptId, leadId: lead.id,
+              }).catch((err) => {
+                console.error('[whatsapp] dealer-boeking naAanmaak exception (fail-open, telt als gewonnen):', err && err.message);
+                return { ok: true, geverifieerd: false };
+              });
+              if (!naResultaat.ok) {
+                dealerVerloren = true;
+                console.warn(`[whatsapp] BOOK verloren van een race op het voertuig (${herkendVoertuig && herkendVoertuig.code}) voor ${phone} (${projectCode})`);
+                try {
+                  const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId);
+                  if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie (race) naar ${phone} niet aangekomen`);
+                } catch (err) {
+                  console.error('[whatsapp] voertuig-onbeschikbaar correctie (race) exception:', err.message);
+                }
+                if (ownerPhone) {
+                  const notice =
+                    `[Actie nodig] Dubbele boeking voorkomen (voertuig, race)\n\n` +
+                    `Naam: ${leadName || '(onbekend)'}\n` +
+                    `Tel: ${phone}\n` +
+                    `Project: ${projectCode}\n\n` +
+                    `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
+                    `maar een andere afspraak op dat voertuig won de race. Er staat GEEN afspraak meer voor deze lead en de lead is gevraagd om alternatieven.\n\n` +
+                    `Dashboard: https://app.helvaro.pro/dashboard`;
+                  const noticeSent = await sendWA(ownerPhone, notice, clientPhoneNumberId);
+                  if (!noticeSent) console.error(`[whatsapp] voertuigblokkade-melding (race) naar owner (${ownerPhone}) is niet aangekomen`);
+                }
+              }
+            }
+            /* Verloren van de race? Dan stopt dit blok hier: geen vlaggen, geen
+               CRM-duw, geen bevestiging, geen agenda-spiegeling -- die zouden
+               allemaal een afspraak vieren die niet meer bestaat. De lead is
+               hierboven al rechtgezet en de dealer al gewaarschuwd. */
+            if (!dealerVerloren) {
             await updateLead(lead.id, {
               fldLeEqwNefdglLis: true,
               fldyIGNetqcSEkoaK: true  // Appointment Booked checkbox
@@ -1823,6 +1976,65 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                 console.error('[gcal] melding "niet geverifieerd" exception (afspraak blijft geldig):', e && e.message);
               }
             }
+
+            /* ── Fase 3: leadscore herberekenen + de dealer verwittigen ─────────
+               Alleen voor dealership, en alleen NA een gewonnen boeking --
+               eerder scoren zou een afspraak meetellen die (nog) niet bestaat.
+               Een fout hier mag de boeking zelf nooit raken: eigen try/catch,
+               en een mislukte melding telt niet als een mislukte boeking. */
+            if (vertical === _vertical.DEALERSHIP) {
+              /* De score gaat mee in de melding aan de verkoper -- dat is het
+                 hele punt van scoren: hij ziet in één regel wie er voor de
+                 deur staat. Blijft null als het scoren hieronder misloopt, en
+                 dan laat bouwAfspraakBericht die regel gewoon weg. */
+              let scoreNaBoeking = null;
+              try {
+                // Zelfde vers-baseline-patroon als de escalatie-opruiming
+                // hierboven: deze beurt kan de Notities al bijgewerkt hebben
+                // (wens, aanbodcode) voordat we hier komen.
+                const notitiesBaseline = updateFields[NOTITIES_FIELD] !== undefined
+                  ? updateFields[NOTITIES_FIELD]
+                  : (lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
+                const scoreResultaat = _dealerBoeking.scoreNaBoeking({
+                  notitiesRaw: notitiesBaseline,
+                  voertuigCode: herkendVoertuig ? herkendVoertuig.code : '',
+                  type: dealerType,
+                });
+                scoreNaBoeking = scoreResultaat.uitkomst || null;
+                const nieuweNotities = scoreResultaat.nieuweNotities;
+                if (nieuweNotities !== null) {
+                  updateFields[NOTITIES_FIELD] = nieuweNotities;
+                  await updateLead(lead.id, { [NOTITIES_FIELD]: nieuweNotities }, phone, scopedProjectCode);
+                }
+                _activiteit.log(projectCode, 'lead_score_calculated', { leadId: lead.id, voertuigCode: herkendVoertuig ? herkendVoertuig.code : '' }).catch(() => {});
+              } catch (e) {
+                console.warn('[whatsapp] leadscore na boeking overgeslagen:', e && e.message);
+              }
+
+              /* De verkoper verwittigen. `lang` (de ingestelde taal van de
+                 KLANT) en niet effectiveLang: de verkoper leest zijn eigen
+                 taal, niet die waarin de AI toevallig tegen deze lead sprak.
+                 Nooit de boeking laten mislukken op een meldingsfout. */
+              try {
+                const melding = _dealerMelding.bouwAfspraakBericht({
+                  lang, leadNaam: leadName,
+                  wanneer: formatApptDateTime(appt.start, lang),
+                  voertuigNaam: herkendVoertuig ? _vehicles.naam(herkendVoertuig) : '',
+                  prijsTekst: herkendVoertuig ? _vehicles.prijsTekst(herkendVoertuig.prijs) : '',
+                  type: dealerType,
+                  score: scoreNaBoeking ? scoreNaBoeking.score : undefined,
+                  temperatuur: scoreNaBoeking ? scoreNaBoeking.temperatuur : undefined,
+                });
+                await _dealerMelding.stuurAfspraakMelding({
+                  projectCode, clientFields: client.fields,
+                  phoneNumberId: clientPhoneNumberId, token: WHATSAPP_TOKEN,
+                  lang, tekst: melding, terugval: { naam: leadName, telefoon: phone },
+                });
+              } catch (e) {
+                console.warn('[whatsapp] werknemersmelding na boeking overgeslagen:', e && e.message);
+              }
+            }
+            } // sluit "if (!dealerVerloren)"
           } else {
             /* De afspraak is NIET aangemaakt, en de AI heeft de lead hierboven
                al "ingepland, tot dan" geschreven. Dat bericht is niet terug te
@@ -1843,6 +2055,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
           await meldMislukteBoeking(err && err.message);
         }
       }
+      } // sluit "if (!dealerControle || dealerControle.ok)" -- zie Fase 2b/3 hierboven
     }
   }
 
@@ -2650,11 +2863,23 @@ const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
 
 // Maak een Appointment record aan. Geretourneerd { ok, id } of { ok:false, error }.
 // Per-klant isolatie via Project Code veld.
-async function createAppointment({ startTime, duration, projectCode, leadId, leadName, leadPhone, notes }) {
+//
+// apptId/vehicleCode/type zijn Fase 2b/3-toevoegingen voor de dealership-
+// vertical, en allemaal optioneel: elke bestaande aanroeper (vastgoed, de
+// markten zonder catalogus) blijft precies hetzelfde record krijgen.
+//   apptId       als de aanroeper al een idempotentiesleutel had (zie
+//                api/_voertuigslot.js idempotentieSleutel), gebruik DIE in
+//                plaats van er hier een tweede, net andere te berekenen --
+//                twee plekken die "dezelfde" sleutel anders opbouwen is
+//                precies hoe een boeking zijn eigen dubbel-check omzeilt.
+//   vehicleCode  'Vehicle Code' -- alleen geschreven als hij niet leeg is.
+//   type         'Appointment Type' -- alleen geschreven als hij niet leeg is.
+async function createAppointment({ startTime, duration, projectCode, leadId, leadName, leadPhone, notes, apptId: opgegevenApptId, vehicleCode, type }) {
   if (!startTime || !projectCode) return { ok: false, error: 'missing required fields' };
   // Format appointment ID: PROJECTCODE-YYMMDDHHMM
   const dt = new Date(startTime);
-  const apptId = `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
+  const apptId = String(opgegevenApptId || '').trim()
+    || `${projectCode}-${dt.getUTCFullYear().toString().slice(-2)}${String(dt.getUTCMonth()+1).padStart(2,'0')}${String(dt.getUTCDate()).padStart(2,'0')}${String(dt.getUTCHours()).padStart(2,'0')}${String(dt.getUTCMinutes()).padStart(2,'0')}`;
 
   const fields = {
     'Appointment ID': apptId,
@@ -2669,6 +2894,8 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
     'Notes':          notes || '',
     'Created At':     new Date().toISOString()
   };
+  if (String(vehicleCode || '').trim()) fields['Vehicle Code']      = String(vehicleCode).trim();
+  if (String(type || '').trim())        fields['Appointment Type'] = String(type).trim();
   // Remove undefined values
   Object.keys(fields).forEach(k => fields[k] === undefined && delete fields[k]);
 

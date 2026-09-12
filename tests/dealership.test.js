@@ -151,15 +151,25 @@ console.log('\n  herkennen gokt nooit');
 }
 
 console.log('\n  de proefrit-rem zit in de code, niet in de prompt');
-ck('beschikbaar mag',   vehicles.kanProefrit('beschikbaar') === true);
-ck('gereserveerd mag',  vehicles.kanProefrit('gereserveerd') === true);
+/* Aangescherpt op 2026-09-12: een gereserveerd voertuig mag GEEN tweede
+   afspraak meer krijgen zolang de reservering staat. Zie de kop bij
+   RIJDBARE_STATUS in api/_vehicles.js voor waarom dat is omgedraaid. */
+ck('beschikbaar mag',      vehicles.kanProefrit('beschikbaar') === true);
+ck('gereserveerd mag niet', vehicles.kanProefrit('gereserveerd') === false);
 ck('verkocht mag niet', vehicles.kanProefrit('verkocht') === false);
 ck('uit aanbod mag niet', vehicles.kanProefrit('uit aanbod') === false);
 ck('onbekende status valt terug op beschikbaar', vehicles.kanProefrit('rommel') === true);
 {
+  /* Aangescherpt in Fase 2b (2026-09-12): pandBezichtigbaar rust niet meer op
+     kanProefrit(status) alleen, maar op voertuigBoekbaarheid.ok --
+     _vehicles.boekbaar(voertuig, actieveAfspraken), dat OOK een actieve
+     afspraak van iemand anders meetelt. Zie tests/boeking-integratie.test.js
+     voor de volledige bewaking van die vervanging. */
   const wa = fs.readFileSync(BASE + 'api/whatsapp.js', 'utf8');
-  ck('whatsapp.js gebruikt kanProefrit als rem op boeken',
-    /pandBezichtigbaar:[\s\S]{0,200}kanProefrit/.test(wa));
+  ck('whatsapp.js gebruikt voertuigBoekbaarheid (boekbaar()) als rem op boeken',
+    /pandBezichtigbaar:[\s\S]{0,200}voertuigBoekbaarheid/.test(wa));
+  ck('en niet meer de smallere kanProefrit(status) voor die rem',
+    !/pandBezichtigbaar:[\s\S]{0,200}kanProefrit/.test(wa));
 }
 
 console.log('\n  de fiche verzint geen cijfers en geen korting');

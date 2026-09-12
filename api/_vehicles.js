@@ -73,15 +73,19 @@ class VehicleError extends Error {
 }
 
 /* ── Status ──────────────────────────────────────────────────────────────────
- * Alleen 'beschikbaar' en 'gereserveerd' laten een proefrit toe. Gereserveerd
- * mag omdat een reservering afspringt en de dealer dan blij is dat er nog
- * iemand achter staat -- maar Faro hoort er wel eerlijk bij te zeggen dat er al
- * iemand op zit, net zoals 'onder bod' bij een pand.
+ * Alleen 'beschikbaar' laat een proefrit toe. Dat was even anders: eerst mocht
+ * 'gereserveerd' ook, met de gedachte dat een reservering kan afspringen en de
+ * dealer dan blij is dat er nog iemand achter staat. Maar de spec is
+ * aangescherpt: een gereserveerd voertuig mag GEEN tweede afspraak krijgen
+ * zolang die reservering staat -- twee kopers die allebei denken dat "hun"
+ * proefrit voor dezelfde auto is ingepland, is een ergere ochtend voor de
+ * dealer dan een gemiste kans op een reservering die toch afspringt. Zie ook
+ * `boekbaar()` verderop, die dezelfde regel toepast op het boeken zelf.
  *
  * Dit is een REM in de code, geen instructie aan het model. Een prompt is een
  * verzoek; dit is een regel.
  */
-const RIJDBARE_STATUS = Object.freeze(['beschikbaar', 'gereserveerd']);
+const RIJDBARE_STATUS = Object.freeze(['beschikbaar']);
 
 function normStatus(s) {
   const v = String(s == null ? '' : s).trim().toLowerCase();
@@ -90,6 +94,154 @@ function normStatus(s) {
 }
 
 function kanProefrit(status) { return RIJDBARE_STATUS.indexOf(normStatus(status)) !== -1; }
+
+/**
+ * DE enige plek die beslist of een voertuig NU geboekt mag worden.
+ *
+ * Waarom dit een aparte functie is naast `kanProefrit`: die laatste kijkt
+ * alleen naar de status van het voertuig zelf. Boekbaarheid hangt ook af van
+ * wat er al gepland staat -- een 'beschikbaar' voertuig met een actieve
+ * afspraak morgenvroeg is voor NU niet vrij, ook al is de status prima. Alles
+ * wat een tweede afspraak op hetzelfde voertuig zou willen aanmaken (WhatsApp,
+ * dashboard, Faro) hoort hier eerst langs te komen, in plaats van zelf een
+ * losse combinatie van status-checks te verzinnen.
+ *
+ * @param {object|null} voertuig
+ * @param {object[]} [actieveAfspraken]  geboekte, toekomstige afspraken op DIT
+ *                                       voertuig (zie api/_voertuigslot.js
+ *                                       actieveAfspraken) -- mag leeg zijn.
+ * @returns {{ok:boolean, reden: null|'verkocht'|'uit_aanbod'|'gereserveerd'|'afspraak_bestaat'|'onbekend'}}
+ */
+function boekbaar(voertuig, actieveAfspraken) {
+  if (!voertuig) return { ok: false, reden: 'onbekend' };
+
+  const status = normStatus(voertuig.status);
+  if (status === 'verkocht')    return { ok: false, reden: 'verkocht' };
+  if (status === 'uit aanbod')  return { ok: false, reden: 'uit_aanbod' };
+  if (status === 'gereserveerd') return { ok: false, reden: 'gereserveerd' };
+
+  const afspraken = Array.isArray(actieveAfspraken) ? actieveAfspraken : [];
+  if (afspraken.length > 0) return { ok: false, reden: 'afspraak_bestaat' };
+
+  return { ok: true, reden: null };
+}
+
+/**
+ * De §6 operationele status van een voertuig -- afgeleid, nooit opgeslagen.
+ * Dit is wat een verkoper op een kaart ziet en verschilt van `voertuig.status`
+ * zodra er interesse of een afspraak bijkomt zonder dat de dealer zelf de
+ * status hoeft aan te passen.
+ *
+ * @param {object|null} voertuig
+ * @param {object[]} [actieveAfspraken]
+ * @param {number}   [aantalGeinteresseerd]  aantal leads dat matcht (zie api/_wens.js)
+ */
+function operationeleStatus(voertuig, actieveAfspraken, aantalGeinteresseerd) {
+  if (!voertuig) return 'beschikbaar';
+
+  const status = normStatus(voertuig.status);
+  if (status === 'verkocht')     return 'verkocht';
+  if (status === 'uit aanbod')   return 'uit aanbod';
+  if (status === 'gereserveerd') return 'gereserveerd';
+
+  const afspraken = Array.isArray(actieveAfspraken) ? actieveAfspraken : [];
+  if (afspraken.length > 0) return 'afspraak';
+
+  if ((Number(aantalGeinteresseerd) || 0) > 0) return 'interesse';
+
+  return 'beschikbaar';
+}
+
+/**
+ * Andere auto's in de voorraad die passen bij een auto die net wegviel
+ * (verkocht, uit aanbod) of bij een wens die niemand nu kan invullen.
+ *
+ * Ranking, sterkste eerst -- met gewichten die zo gekozen zijn dat een hogere
+ * trap NOOIT door een stapeling van lagere trappen ingehaald kan worden:
+ *   1. zelfde merk EN model    2. zelfde merk    3. zelfde carrosserie
+ *   4. prijs binnen 20%        5. bouwjaar binnen 2 jaar
+ *   6. zelfde brandstof        7. zelfde transmissie
+ *   8. past bij de wens (api/_wens.js scoor), als laatste duwtje bij een gelijkspel.
+ *
+ * Geeft nooit het voertuig zelf terug, en nooit iets dat niet `boekbaar` is --
+ * met een LEGE afsprakenlijst, zoals de aanroeper hier ook moet doen: of een
+ * alternatief zelf al een afspraak heeft is aan de aanroeper om te bepalen.
+ *
+ * @param {object[]} voorraad         zoals `list()` teruggeeft
+ * @param {object}   context
+ * @param {object}   [context.voertuig]  het voertuig dat wegviel
+ * @param {object}   [context.wens]      zie api/_wens.js normaliseer()
+ * @param {number}   [max=3]
+ * @returns {{voertuig:object, punten:number, redenen:string[]}[]}
+ */
+function alternatieven(voorraad, context, max) {
+  const ctx = context || {};
+  const lijst = Array.isArray(voorraad) ? voorraad : [];
+  const doel = ctx.voertuig || null;
+  const wens = ctx.wens || null;
+  const doelCode = doel ? normCode(doel.code) : '';
+  const limiet = Math.max(0, Number(max) || 3);
+
+  const kandidaten = [];
+  for (const v of lijst) {
+    if (!v || !v.code) continue;
+    if (doelCode && normCode(v.code) === doelCode) continue;
+    if (!boekbaar(v, []).ok) continue;
+
+    let punten = 0;
+    const redenen = [];
+
+    if (doel) {
+      const merkGelijk = !!(doel.merk && v.merk && String(v.merk).toLowerCase() === String(doel.merk).toLowerCase());
+      const modelGelijk = !!(doel.model && v.model && String(v.model).toLowerCase() === String(doel.model).toLowerCase());
+      if (merkGelijk && modelGelijk) { punten += 1000; redenen.push('zelfde merk en model'); }
+      else if (merkGelijk) { punten += 400; redenen.push('zelfde merk'); }
+
+      if (doel.carrosserie && v.carrosserie
+          && String(v.carrosserie).toLowerCase() === String(doel.carrosserie).toLowerCase()) {
+        punten += 100; redenen.push('zelfde carrosserie');
+      }
+
+      const doelPrijs = getal(doel.prijs);
+      const vPrijs = getal(v.prijs);
+      if (doelPrijs !== null && doelPrijs > 0 && vPrijs !== null && Math.abs(vPrijs - doelPrijs) <= doelPrijs * 0.2) {
+        punten += 40; redenen.push('prijs binnen 20%');
+      }
+
+      const doelJaar = Number((String(doel.inschrijving || '').match(/(19|20)\d{2}/) || [])[0]);
+      const vJaar = Number((String(v.inschrijving || '').match(/(19|20)\d{2}/) || [])[0]);
+      if (Number.isFinite(doelJaar) && Number.isFinite(vJaar) && Math.abs(vJaar - doelJaar) <= 2) {
+        punten += 16; redenen.push('bouwjaar binnen 2 jaar');
+      }
+
+      if (doel.brandstof && v.brandstof && String(v.brandstof).toLowerCase() === String(doel.brandstof).toLowerCase()) {
+        punten += 6; redenen.push('zelfde brandstof');
+      }
+      if (doel.transmissie && v.transmissie
+          && String(v.transmissie).toLowerCase() === String(doel.transmissie).toLowerCase()) {
+        punten += 2; redenen.push('zelfde transmissie');
+      }
+    }
+
+    if (wens) {
+      try {
+        const m = require('./_wens').scoor(wens, v);
+        /* Gewicht ruim onder de kleinste trap hierboven (2): dit mag bij een
+           gelijkspel de doorslag geven, nooit een hogere trap inhalen. */
+        if (m && m.score > 0) { punten += m.score / 100; redenen.push('past bij wens'); }
+      } catch (_) { /* _wens is optioneel voor alternatieven */ }
+    }
+
+    kandidaten.push({ voertuig: v, punten, redenen });
+  }
+
+  kandidaten.sort((a, b) => {
+    if (b.punten !== a.punten) return b.punten - a.punten;
+    return normCode(a.voertuig.code).localeCompare(normCode(b.voertuig.code));   // deterministisch gelijkspel
+  });
+
+  return kandidaten.slice(0, limiet);
+}
 
 /* ── Airtable ────────────────────────────────────────────────────────────── */
 function configured() {
@@ -634,6 +786,9 @@ module.exports = {
   RIJDBARE_STATUS,
   normStatus,
   kanProefrit,
+  boekbaar,
+  operationeleStatus,
+  alternatieven,
   configured,
   available,
   _resetAvailability,

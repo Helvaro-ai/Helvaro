@@ -104,6 +104,7 @@ const LANGUAGES = {
     legacyCallback: (w) => `Goed, dan zit het in orde. Een collega van mij belt of appt je ${w}. Je hoeft verder niets te doen. Wij komen naar jou toe.`,
     legacyConfirm: (name, when, addr) => `Bevestigd. Je afspraak bij ${name} staat gepland op ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
     legacyConflict: 'Oeps, dat moment bleek toch al bezet. Welk ander moment past je?',
+    legacyUnavailable: 'Sorry, die auto is net door iemand anders geboekt. Zal ik gelijkaardige wagens voorstellen?',
     legacyCancelled: 'Genoteerd, ik heb de afspraak geannuleerd. Wil je meteen een ander moment prikken?',
     legacyStoring: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.',
     legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
@@ -118,6 +119,7 @@ const LANGUAGES = {
     legacyCallback: (w) => `Parfait. Un collègue te contactera ${w}. Tu n'as plus rien à faire. Nous revenons vers toi.`,
     legacyConfirm: (name, when, addr) => `Confirmé. Ton rendez-vous chez ${name} est prévu le ${when}.${addr ? ` Adresse : ${addr}.` : ''}`,
     legacyConflict: 'Oups, ce moment était finalement déjà pris. Quel autre moment te convient ?',
+    legacyUnavailable: 'Désolé, cette voiture vient d’être réservée par quelqu’un d’autre. Je te propose des voitures similaires ?',
     legacyCancelled: 'Noté, j’ai annulé le rendez-vous. Tu veux qu’on fixe un autre moment ?',
     legacyStoring: 'Désolé, je ne suis pas disponible un instant. Réessaie dans un moment.',
     legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
@@ -132,6 +134,7 @@ const LANGUAGES = {
     legacyCallback: (w) => `Perfect. A colleague will reach out to you ${w}. You don't need to do anything else. We will come back to you.`,
     legacyConfirm: (name, when, addr) => `Confirmed. Your appointment with ${name} is booked for ${when}.${addr ? ` Address: ${addr}.` : ''}`,
     legacyConflict: 'Oops, that time turned out to already be taken. What other time works for you?',
+    legacyUnavailable: 'Sorry, that vehicle was just booked by someone else. Want me to suggest similar cars?',
     legacyCancelled: 'Noted, I have cancelled the appointment. Shall we pick another time?',
     legacyStoring: 'Sorry, I am briefly unavailable. Please try again in a moment.',
     legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
@@ -599,6 +602,22 @@ function buildSlotConflictMessage(code) {
   return 'Sorry, that time slot was just taken. What other time works for you?';
 }
 
+// Sent when a BOOK:{...} the AI just confirmed to a dealership lead (see
+// api/whatsapp.js's BOOK handling) turns out to be blocked by
+// api/_dealer-boeking.js controleer() -- the vehicle was sold, reserved, taken
+// out of stock, or already has an active appointment by the time we go to
+// write it. Same nl/fr/en-native, English-fallback rule as
+// buildSlotConflictMessage above, and for the same reason: an unreviewed
+// machine translation of a message about someone's purchase is worse than
+// plain English. Add a native `unavailable`/`legacyUnavailable` entry per
+// language once matchLeadLanguage sees real non-nl/fr/en dealership usage.
+function buildVehicleUnavailableMessage(code) {
+  const entry = getLanguage(code);
+  const val = entry.legacyUnavailable || entry.unavailable;
+  if (val) return typeof val === 'function' ? val() : val;
+  return 'Sorry, that vehicle was just booked by someone else. Want me to suggest similar cars?';
+}
+
 // Sent when a lead tells us in the conversation that they cannot make it and
 // the appointment has actually been cancelled (see the CANCEL:{...} handling in
 // api/whatsapp.js). Deliberately without a reproach and WITH an opening: most
@@ -790,6 +809,7 @@ module.exports = {
   buildCallbackMessage,
   buildConfirmMessage,
   buildSlotConflictMessage,
+  buildVehicleUnavailableMessage,
   buildCancelledMessage,
   buildOutageMessage,
   buildWelcomeMessage,
