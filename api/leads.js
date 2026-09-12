@@ -28,6 +28,7 @@ const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per 
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
+const _dealerOverzicht = require('./_dealer-overzicht'); // "wat vraagt vandaag aandacht" (Fase 6)
 
 // Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
 // 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
@@ -1023,6 +1024,10 @@ module.exports = async function handler(req, res) {
             bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'in_chat').toString().toLowerCase(),
             callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || '',
             notifyPhone:    rec.fields['fldZEApe0gfse07AU'] || rec.fields['Notify Phone']        || '',
+            // Extra werknemersnummers die ook de dealership-melding krijgen
+            // (api/_dealer-melding.js ontvangers()) -- naast, niet in plaats
+            // van, Notify Phone. Multiline: één nummer per regel.
+            notifyPhonesExtra: rec.fields['fldxSbRXga4yO1RXy'] || rec.fields['Notify Phones Extra'] || '',
             reportEmail:    rec.fields['fldDBJCN6dVMA8jax'] || rec.fields['Rapport Email']       || '',
             learnedPatterns: rec.fields['fldnbM5YKh274ISAl'] || rec.fields['AI Learned Patterns'] || '',
             // Derived, not stored: true the moment a Google refresh token is on
@@ -1176,6 +1181,20 @@ module.exports = async function handler(req, res) {
           // Light phone validation. Must start with + or digits, allow spaces / dashes
           const v = String(body.notifyPhone).trim().slice(0, 30);
           if (v === '' || /^[+]?[0-9][0-9\s\-().]{6,29}$/.test(v)) u.fldZEApe0gfse07AU = v;
+        }
+        // Extra werknemersnummers, één per regel, zelfde validatie als
+        // Notify Phone hierboven. Een ongeldige regel wordt niet geweigerd --
+        // gewoon overgeslagen, zodat één typfout niet de negen goede nummers
+        // eronder blokkeert. Max 10 regels: dit is een meldingenlijst, geen
+        // adresboek.
+        if (body.notifyPhonesExtra !== undefined) {
+          const NOTIFY_PHONE_RE = /^[+]?[0-9][0-9\s\-().]{6,29}$/;
+          const regels = String(body.notifyPhonesExtra).split('\n')
+            .map((r) => r.trim().slice(0, 30))
+            .filter((r) => r === '' || NOTIFY_PHONE_RE.test(r))
+            .filter((r) => r !== '')
+            .slice(0, 10);
+          u.fldxSbRXga4yO1RXy = regels.join('\n');
         }
         if (body.reportEmail    !== undefined) {
           const v = String(body.reportEmail).trim().slice(0, 100);
@@ -2133,6 +2152,26 @@ module.exports = async function handler(req, res) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       const events = await _activiteit.lijst(projectCode, { limiet: Number(body.limit) || 50 });
       return res.status(200).json({ events });
+    }
+
+    // ── Fase 6: "wat vraagt vandaag aandacht" op de dealer-startpagina ───────
+    // body: { mode: 'dealer-overzicht' }
+    // Geen vertical-poort van 403: een niet-dealer krijgt gewoon
+    // { dealership: false } (200), zelfde afweging als vehicle-list hierboven
+    // -- er valt niets te zien dat verboden is, er is alleen niets te tonen.
+    if (body.mode === 'dealer-overzicht') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const dealerFields = await getClientFieldsForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+        if (_vertical.van(dealerFields) !== _vertical.DEALERSHIP) {
+          return res.status(200).json({ dealership: false });
+        }
+        const overzicht = await _dealerOverzicht.bereken(projectCode, {});
+        return res.status(200).json(Object.assign({ dealership: true }, overzicht));
+      } catch (err) {
+        console.error('[dealer-overzicht] mislukt:', err && err.message);
+        return res.status(503).json({ error: 'Overzicht kon niet berekend worden.', code: 'unavailable' });
+      }
     }
 
     // ── B. Test-message. Send a one-off WhatsApp to a phone number ─────────

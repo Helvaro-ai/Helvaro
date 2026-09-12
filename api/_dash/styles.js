@@ -5234,6 +5234,49 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .score-segment.filled.high { background: linear-gradient(90deg, var(--green), var(--cyan)); }
 .score-segment.filled.low { background: linear-gradient(90deg, var(--red), var(--orange)); }
 
+/* Dealer-score kaart bovenaan het leadpaneel (api/_leadscore.js). */
+.dealer-score-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.dealer-temp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dealer-temp-pill.temp-hot  { background: rgba(239,68,68,.14);  color: var(--red-ink); }
+.dealer-temp-pill.temp-warm { background: rgba(var(--warning-rgb),.14); color: var(--warning-ink); }
+.dealer-temp-pill.temp-cold { background: var(--bg-card-alt); color: var(--text-muted); }
+.dealer-scorebar {
+  height: 6px;
+  border-radius: 4px;
+  background: var(--bg-card-alt);
+  overflow: hidden;
+}
+.dealer-scorebar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue-primary), var(--cyan));
+}
+.dealer-actie-line {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  background: rgba(var(--accent-rgb),0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.dealer-facts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .score-number {
   font-variant-numeric: tabular-nums;
   font-size: 22px;
@@ -5756,6 +5799,87 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .followup-item:hover { border-color: var(--orange); }
 .followup-item-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+
+/* Dealer-overzicht: "wat vraagt vandaag aandacht" (api/_dealer-overzicht.js). */
+.dealer-overzicht { margin-bottom: 16px; }
+.dealer-aandacht-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.dealer-aandacht-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dealer-aandacht-tile:hover { border-color: var(--accent); }
+.dealer-aandacht-tile-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.dealer-aandacht-tile-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.dealer-overzicht-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.dealer-overzicht-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.dealer-overzicht-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.dealer-overzicht-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.dealer-overzicht-row:last-child { border-bottom: none; }
+.dealer-overzicht-row-naam { font-weight: 600; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dealer-overzicht-leeg { font-size: 12px; color: var(--text-muted); padding: 6px 0; }
+.dealer-funnel-row {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 70px;
+}
+.dealer-funnel-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.dealer-funnel-bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--cyan), var(--blue-primary));
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+}
+.dealer-funnel-label { font-size: 9px; color: var(--text-muted); text-align: center; }
+.dealer-funnel-count { font-size: 11px; font-weight: 700; color: var(--text-primary); }
 .followup-item-meta { font-size: 11px; color: var(--text-muted); }
 .followup-item-score { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--orange-ink); }
 .followup-call-btn {
@@ -6397,6 +6521,30 @@ tr:hover .td-arrow { color: var(--accent-ink); }
       font-weight: 700;
       color: var(--accent-ink);
     }
+.pipe-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.pipe-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.pipe-filter-chip.actief {
+  background: rgba(var(--accent-rgb),0.12);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
 .pipeline-board {
   display: flex;
   gap: 16px;
@@ -6497,6 +6645,22 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.pipe-temp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.pipe-vehicle-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
 }
 .pipeline-card-phone {
   font-size: 11px;
@@ -8021,6 +8185,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .activity-dot-qualified { background: var(--cyan); box-shadow: 0 0 8px rgba(188,159,95,0.5); }
 .activity-dot-booked    { background: var(--green); box-shadow: 0 0 8px rgba(var(--success-rgb),0.5); }
 .activity-dot-won       { background: var(--blue-bright); box-shadow: 0 0 8px rgba(var(--accent-rgb),0.5); }
+.activity-dot-dealer    { background: var(--orange); box-shadow: 0 0 8px rgba(var(--warning-rgb),0.5); }
 .activity-content { flex: 1; }
 .activity-title {
   font-size: 13px;
@@ -8605,6 +8770,27 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .pd-mini:hover { background: var(--bg-card-alt); color: var(--text-primary); }
 .pd-leads { font-size: 12px; color: var(--text-muted); }
 .pd-leads strong { color: var(--text-primary); }
+.pd-volgende-afspraak { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.pd-kandidaten-toggle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  cursor: pointer;
+  margin-top: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.pd-kandidaten-lijst { display: none; flex-direction: column; gap: 4px; margin-top: 6px; }
+.pd-kandidaten-lijst.open { display: flex; }
+.pd-kandidaat-rij {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.pd-kandidaat-naam { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Importeren uit een link. Staat bovenaan het venster en mag dat ook zien:
    dit is de weg die een makelaar zou moeten nemen, de losse velden zijn de

@@ -14,6 +14,58 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Autohandel: je assistent beschermt elke auto, scoort elke koper en verwittigt je verkoper
+
+Voor dealers is Helvaro van "een assistent die antwoordt" een verkooplaag
+geworden. Wat er nu gebeurt als een koper over een auto schrijft:
+
+- **Geen twee proefritten op dezelfde auto.** Voor elke boeking kijkt de code
+  (niet het model) of de auto nog boekbaar is: verkocht, uit aanbod,
+  gereserveerd of al een proefrit gepland — dan komt er geen tweede afspraak.
+  Dat gebeurt op de voertuigcode, niet op "BMW X5", dus twee X5's in je
+  voorraad blokkeren elkaar niet. Twee kopers die op hetzelfde moment dezelfde
+  auto willen: er wint er één, de ander krijgt meteen een eerlijk bericht en
+  een alternatief. Een gereserveerde auto laat vanaf nu ook geen proefrit meer
+  toe (dat kon vroeger wél, met een waarschuwing).
+- **Geen dubbele afspraak voor dezelfde koper**, ook niet als de vlag op de
+  lead ooit gewist raakte: er wordt gezocht op lead én telefoonnummer.
+- **Herhaalde verzoeken maken geen dubbele agenda-items.** Elke boeking heeft
+  een vaste sleutel (koper + auto + moment); komt dezelfde nog eens binnen,
+  dan bestaat hij al.
+- **Elke koper krijgt een score van 0 tot 100** met de redenen erbij (auto
+  gekozen, budget gekend, financiering rond, wil snel kopen, proefrit
+  gevraagd, afspraak geboekt, inruilwagen). 🔥 HOT vanaf 80, 🟡 WARM vanaf
+  50, ⚪ COLD daaronder. Deterministisch: dezelfde feiten geven altijd
+  dezelfde score.
+- **Je verkoper krijgt bij elke geboekte proefrit een WhatsApp** vanaf het
+  Helvaro-nummer: naam, moment, auto, prijs, type en de score. Extra
+  ontvangers (verkoper, manager) zet je in Instellingen onder *Extra
+  meldingsnummers*, één per regel. Buiten het 24-uursvenster valt de melding
+  terug op de goedgekeurde template (naam, telefoon, projectcode). Een
+  mislukte melding raakt de afspraak nooit.
+- **Je assistent leest koopsignalen uit het gesprek** — financiering,
+  aankooptermijn, budget, inruilwagen, hoe ernstig het is — en bewaart ze bij
+  de lead. Bij een inruil vraagt hij merk, model, bouwjaar en kilometers en
+  belooft hij NOOIT een bedrag.
+- **Weggevallen auto? Alleen echte alternatieven.** Is de auto verkocht,
+  gereserveerd of al bezet, dan zegt hij dat eerlijk en stelt hij hooguit drie
+  auto's voor die écht in je voorraad staan (zelfde merk/model eerst, dan
+  carrosserie, prijs, bouwjaar). Is er niets vergelijkbaars, dan zegt hij dat
+  ook, en onthoudt hij de wens.
+- **No-show of geannuleerd door jou?** Dan stuurt je assistent binnen de dag
+  een opvolging ("we hebben je gemist — nieuw moment?"), één keer, nooit als
+  de koper zelf afzegde in het gesprek of intussen al iets nieuws boekte.
+- **Alles wat de bescherming doet, staat in een logboek** (nieuwe tabel
+  `activity`): welke boeking geweigerd werd en waarom, welke score berekend,
+  welke melding verstuurd of mislukt.
+
+**Actie:** in Airtable zijn er velden bij gekomen op *Appointments* (Vehicle
+Code, Appointment Type, Followup Sent) en op *Client Config* (Notify Phones
+Extra), plus de tabel *activity* — die staan al klaar, niets te doen. Wil je
+de herinnering en de verkopersmelding met de AUTO erin (nu: naam, bedrijf,
+moment), dan moet daar een nieuwe WhatsApp-template voor ingediend worden bij
+Meta; tot die goedgekeurd is gebruikt de code de bestaande.
+
 ### Je assistent kende je bedrijf niet, en dat was een fout van ons
 
 De twee velden waarmee je je assistent inricht — je **website** en je

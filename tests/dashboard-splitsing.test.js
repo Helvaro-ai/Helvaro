@@ -84,8 +84,8 @@ function render(lang) {
 
    Bijgewerkt na de drie raakdoel-fixes en na het meekleuren van Clerks
    "last used"-badge op de Google-knop. */
-const CSS_BYTES = 376770;
-const CSS_SHA   = 'd1c975be63a7e9f1';
+const CSS_BYTES = 381626;
+const CSS_SHA   = 'eb35238473d5a8f6';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
