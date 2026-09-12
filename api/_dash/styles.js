@@ -5271,6 +5271,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   border-radius: 8px;
   padding: 8px 10px;
 }
+.dealer-actie-label { font-weight: 500; color: var(--text-muted); }
 .dealer-facts-row {
   display: flex;
   flex-wrap: wrap;
@@ -5834,6 +5835,38 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   gap: 14px;
   margin-bottom: 16px;
 }
+/* Op een breed scherm krijgt de prioriteitslijst dubbele breedte: dat is de
+   lijst waar de verkoper zijn dag mee begint, de andere drie zijn tellers. */
+@media (min-width: 1100px) {
+  .dealer-overzicht-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+}
+.dealer-prio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.dealer-prio-row:last-child { border-bottom: none; }
+.dealer-prio-row:hover .dealer-prio-naam { color: var(--accent-ink); }
+.dealer-prio-rang { font-size: 11px; font-weight: 700; color: var(--text-muted); min-width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.dealer-prio-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dealer-prio-naam { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dealer-prio-sub { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dealer-temp-pill {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card-alt);
+  color: var(--text-primary);
+}
+.dealer-temp-hot  { border-color: rgba(var(--error-rgb),0.35); color: var(--error-ink); }
+.dealer-temp-warm { border-color: rgba(var(--warning-rgb),0.35); color: var(--orange-ink); }
 .dealer-overzicht-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -5861,9 +5894,8 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .dealer-overzicht-leeg { font-size: 12px; color: var(--text-muted); padding: 6px 0; }
 .dealer-funnel-row {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: flex-end;
-  height: 70px;
 }
 .dealer-funnel-step {
   flex: 1;
@@ -5872,10 +5904,21 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   align-items: center;
   gap: 4px;
 }
+/* De balk staat in een spoor met VASTE hoogte: een procentuele hoogte op een
+   kolom zonder eigen hoogte lost op naar niets, en dan is elke balk twee
+   pixels -- zo zag de trechter er eerst uit. */
+.dealer-funnel-track {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--bg-card-alt);
+  border-radius: 4px;
+}
 .dealer-funnel-bar {
   width: 100%;
-  background: linear-gradient(180deg, var(--cyan), var(--blue-primary));
-  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+  border-radius: 4px;
   min-height: 2px;
 }
 .dealer-funnel-label { font-size: 9px; color: var(--text-muted); text-align: center; }

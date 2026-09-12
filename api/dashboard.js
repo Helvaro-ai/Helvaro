@@ -6316,6 +6316,10 @@ function dealerGoAfspraken() { navigateTo('kalender'); }
 function dealerGoConflicten() { navigateTo('panden'); }
 function dealerGoVoorraad() { navigateTo('panden'); }
 function dealerGoOpvolging() { pipeFilters.clear(); navigateTo('pipeline'); }
+function dealerOpenLead(leadId) {
+  var lead = (state.leads || []).find(function (l) { return l.id === leadId; });
+  if (lead) openPanel(lead); else navigateTo('pipeline');
+}
 
 async function loadDealerOverzicht(force) {
   var el = document.getElementById('dealer-overzicht');
@@ -6345,10 +6349,10 @@ function dealerFunnelKaart(f) {
   var max = Math.max(1, f.leads || 0);
   var barsHtml = stappen.map(function (s) {
     var n = f[s] || 0;
-    var pct = Math.max(2, Math.round((n / max) * 100));
+    var pct = Math.max(3, Math.round((n / max) * 100));
     var pctTekst = (f.voldoende && f.percentages && typeof f.percentages[s] === 'number') ? (' (' + f.percentages[s] + '%)') : '';
     return '<div class="dealer-funnel-step"><div class="dealer-funnel-count">' + n + pctTekst + '</div>'
-      + '<div class="dealer-funnel-bar" style="height:' + pct + '%"></div>'
+      + '<div class="dealer-funnel-track"><div class="dealer-funnel-bar" style="height:' + pct + '%"></div></div>'
       + '<div class="dealer-funnel-label">' + escHtml(tr('dash.funnel.' + s)) + '</div></div>';
   }).join('');
   var onvoldoende = f.voldoende ? '' : '<div class="dealer-overzicht-leeg">' + escHtml(tr('dash.funnel.onvoldoende')) + '</div>';
@@ -6383,9 +6387,19 @@ function renderDealerOverzicht() {
       ? new Date(p.afspraak.startISO).toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
       : (p.actie ? tr('actie.' + p.actie) : '');
     var voertuig = p.voertuigNaam || p.voertuigCode || '';
-    return '<div class="dealer-overzicht-row"><span>' + (idx + 1) + '.</span><span>' + emoji + ' ' + p.score + '</span>'
-      + '<span class="dealer-overzicht-row-naam">' + escHtml(p.naam) + (voertuig ? ' · ' + escHtml(voertuig) : '') + '</span>'
-      + '<span>' + escHtml(wanneer) + '</span></div>';
+    /* Twee regels per koper: wie en hoe heet bovenaan, de auto en het
+       eerstvolgende wat er moet gebeuren eronder. In één regel raakte de
+       naam afgekapt zodra er een auto naast stond -- en de naam is precies
+       wat de verkoper zoekt. Klikbaar naar de leadkaart. */
+    var open = p.leadId ? ' onclick="dealerOpenLead(\\'' + escJs(p.leadId) + '\\')"' : '';
+    return '<div class="dealer-prio-row"' + open + '>'
+      + '<span class="dealer-prio-rang">' + (idx + 1) + '</span>'
+      + '<span class="dealer-prio-body">'
+      +   '<span class="dealer-prio-naam">' + escHtml(p.naam) + '</span>'
+      +   '<span class="dealer-prio-sub">' + escHtml(voertuig) + (voertuig && wanneer ? ' · ' : '') + escHtml(wanneer) + '</span>'
+      + '</span>'
+      + '<span class="dealer-temp-pill dealer-temp-' + escHtml(p.temperatuur || 'cold') + '">' + emoji + ' ' + p.score + '</span>'
+      + '</div>';
   }));
 
   var afsprakenHtml = dealerLijstKaart(tr('dash.afsprvandaag.titel'), tr('dash.afsprvandaag.leeg'), (d.afsprakenVandaag || []).map(function (a) {
@@ -8145,7 +8159,7 @@ function dealerScoreKaart(lead) {
         </div>
         <div class="dealer-scorebar"><div class="dealer-scorebar-fill" style="width:\${Math.max(0, Math.min(100, sc.punten))}%"></div></div>
         \${redenChips ? \`<div class="dealer-facts-row">\${redenChips}</div>\` : ''}
-        \${actie ? \`<div class="dealer-actie-line">\${escHtml(tr('actie.' + actie))}</div>\` : ''}
+        \${actie ? \`<div class="dealer-actie-line"><span class="dealer-actie-label">\${escHtml(tr('actie.label'))}</span> \${escHtml(tr('actie.' + actie))}</div>\` : ''}
         \${feiten.length ? \`<div class="dealer-facts-row">\${feiten.join('')}</div>\` : ''}
       </div>
     </div>\`;
@@ -8156,6 +8170,12 @@ function dealerScoreKaart(lead) {
    een kleinere, best-effort versie: alleen wat uit de blob zelf af te leiden
    is. De server-kant (dealer-overzicht) blijft de volledige waarheid. */
 function dealerVolgendeActieVoorLead(lead, sc, koop) {
+  /* Eerst de server: het dealer-overzicht kent de afspraken en de
+     voertuigstatus en rekent met dezelfde regels als api/_leadscore.js.
+     Staat deze lead in de prioriteitslijst, dan is DAT de actie. */
+  const prio = state.dealer && Array.isArray(state.dealer.prioriteit)
+    ? state.dealer.prioriteit.find((p) => p.leadId === lead.id) : null;
+  if (prio && prio.actie) return prio.actie;
   if (!lead.afspraakGeboekt && sc.punten >= 80) return 'contacteren';
   if (koop && koop.inruil && typeof koop.inruil === 'object' && !koop.inruil.merk && !koop.inruil.model) return 'inruil';
   return null;
@@ -15595,7 +15615,14 @@ function renderPanden() {
           + '">' + escHtml(tr('pd.kandidaten')) + ' (' + kandidaten.length + ')</button>'
           + '<div class="pd-kandidaten-lijst" id="' + toggleId + '">' + rijen + '</div>';
       }
-      dealerExtraHtml = '<span class="pd-status ' + opKlasse + '" style="margin-left:6px">' + escHtml(opStatus) + '</span>'
+      /* De operationele status alleen tonen als hij iets TOEVOEGT: bij een
+         verkochte of gereserveerde auto is hij gelijk aan de gewone status en
+         stond hij er twee keer naast elkaar. 'afspraak' en 'interesse' zijn
+         wat de dealer niet uit het statusveld kan lezen. */
+      var opBadge = (opStatus !== String(p.status || '').toLowerCase())
+        ? '<span class="pd-status ' + opKlasse + '" style="margin-left:6px">' + escHtml(tr('pd.opstatus.' + opStatus.replace(' ', '_'))) + '</span>'
+        : '';
+      dealerExtraHtml = opBadge
         + volgendeRegel
         + (hotAantal ? '<div class="pd-volgende-afspraak">🔥 ' + hotAantal + '</div>' : '')
         + kandidatenHtml;

@@ -2024,6 +2024,7 @@ const TEKST = {
   'score.temp.hot':           { nl: 'HOT', fr: 'HOT', en: 'HOT', de: 'HOT' },
   'score.temp.warm':          { nl: 'WARM', fr: 'WARM', en: 'WARM', de: 'WARM' },
   'score.temp.cold':          { nl: 'COLD', fr: 'COLD', en: 'COLD', de: 'COLD' },
+  'actie.label':              { nl: 'Volgende stap:', fr: 'Prochaine étape :', en: 'Next step:', de: 'Nächster Schritt:' },
   'actie.voorbereiden':       { nl: 'Voorbereiden', fr: 'Préparer', en: 'Prepare', de: 'Vorbereiten' },
   'actie.bevestigen':         { nl: 'Bevestigen', fr: 'Confirmer', en: 'Confirm', de: 'Bestätigen' },
   'actie.alternatief':        { nl: 'Alternatief zoeken', fr: 'Chercher une alternative', en: 'Find an alternative', de: 'Alternative suchen' },
@@ -2132,6 +2133,12 @@ const TEKST = {
 
   // ── Instellingen: extra werknemersnummers (Fase 6) ───────────────────────
   'pd.kandidaten':       { nl: 'Kandidaten', fr: 'Candidats', en: 'Candidates', de: 'Kandidaten' },
+  'pd.opstatus.beschikbaar': { nl: 'beschikbaar', fr: 'disponible', en: 'available', de: 'verfügbar' },
+  'pd.opstatus.interesse':   { nl: 'interesse', fr: 'intérêt', en: 'interest', de: 'Interesse' },
+  'pd.opstatus.afspraak':    { nl: 'afspraak gepland', fr: 'rendez-vous prévu', en: 'appointment booked', de: 'Termin geplant' },
+  'pd.opstatus.gereserveerd':{ nl: 'gereserveerd', fr: 'réservé', en: 'reserved', de: 'reserviert' },
+  'pd.opstatus.verkocht':    { nl: 'verkocht', fr: 'vendu', en: 'sold', de: 'verkauft' },
+  'pd.opstatus.uit_aanbod':  { nl: 'uit aanbod', fr: 'retiré', en: 'withdrawn', de: 'nicht im Angebot' },
   'ap.notifyExtra':      { nl: 'Extra WhatsApp-nummers', fr: 'Numéros WhatsApp supplémentaires', en: 'Extra WhatsApp numbers', de: 'Zusätzliche WhatsApp-Nummern' },
   'ap.notifyExtra.hint': { nl: 'Eén nummer per regel, internationaal formaat.', fr: 'Un numéro par ligne, format international.', en: 'One number per line, international format.', de: 'Eine Nummer pro Zeile, internationales Format.' },
 };
