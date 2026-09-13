@@ -12,6 +12,16 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### WhatsApp-templates indienen kan nu vanuit de back-office
+
+Het indienscript vroeg een terminal met een management-token; de
+template-editor van Meta bevroor in de browser. De server heeft het token al.
+De back-office (admin) kan de templates nu zelf indienen — dezelfde teksten
+als het script, uit één module, bestaande worden overgeslagen, en zonder
+`commit` is het een droogloop. Het token komt nooit in een antwoord.
+
 ## 13 september 2026 — nacht
 
 ### Een AI-fout noemt nu ook status en soort

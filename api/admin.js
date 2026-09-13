@@ -1085,6 +1085,36 @@ module.exports = async function handler(req, res) {
        telt ze dus samen, zodat we er niet zes keer dezelfde indienen -- en het
        laat zien welke taal we WEL nog moeten indienen omdat er een echte klant
        op wacht. Templates maken we pas als iemand ze nodig heeft. */
+    /* ── Templates indienen bij Meta, vanuit de back-office ──────────────────
+       Zelfde definities als scripts/create-wa-templates.js (één module), met
+       het token dat de server al heeft. Bewust met `commit`: zonder die vlag
+       is het een droogloop die alleen zegt wat er zou gebeuren. `alleen`
+       beperkt tot een lijst namen -- indienen is per stuk terug te draaien
+       in WhatsApp Manager, maar liever niet vierentwintig tegelijk.
+       Nooit een token in het antwoord. */
+    if (body.mode === 'ops-templates-submit') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const wabaId = String(process.env.WABA_ID || '').trim();
+      const token  = String(process.env.WHATSAPP_MANAGEMENT_TOKEN || process.env.WHATSAPP_TOKEN || '').trim();
+      if (!wabaId || !token) {
+        return res.status(200).json({ ok: false, reden: 'WABA_ID of WhatsApp-token ontbreekt op de server' });
+      }
+      const alleen = Array.isArray(body.alleen)
+        ? body.alleen.map((x) => String(x || '').trim()).filter((x) => /^[a-z0-9_]{1,80}$/.test(x)).slice(0, 20)
+        : [];
+      try {
+        const _teksten = require('./_wa-template-teksten');
+        const uit = await _teksten.dienIn({ wabaId, token, alleen, commit: body.commit === true });
+        if (body.commit === true) { try { _waTpl._leegCache(); } catch (e) { /* cache is optioneel */ } }
+        return res.status(200).json({ ok: true, commit: body.commit === true, bestaand: uit.bestaand, resultaten: uit.resultaten });
+      } catch (e) {
+        return res.status(200).json({ ok: false, reden: String(e && e.message || e).slice(0, 300) });
+      }
+    }
+
     if (body.mode === 'ops-templates') {
       const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
