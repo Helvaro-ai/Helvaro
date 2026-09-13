@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 13 september 2026 — laat
 
 ### Als de AI een WhatsApp-bericht niet kon beantwoorden, zei het log niet waarom
 
