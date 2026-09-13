@@ -2024,6 +2024,12 @@ module.exports = async function handler(req, res) {
               phoneNumberId: notifyPnid || process.env.PHONE_NUMBER_ID, token: process.env.WHATSAPP_TOKEN,
               lang: notifyLang, tekst: melding,
               terugval: { naam: fields['Lead Name'], telefoon: fields['Lead Phone'] },
+              sjabloon: {
+                naam: fields['Lead Name'], wanneer: formatApptDateTime(body.startTime, notifyLang),
+                voertuig: _vehicles.naam(dealerVoertuig), prijs: _vehicles.prijsTekst(dealerVoertuig.prijs),
+                type: typeVoorScore,
+                score: uitkomst && uitkomst.score != null ? String(uitkomst.score) + '/100' : '',
+              },
             });
           } catch (e) {
             console.warn('[appointment-create] leadscore/melding overgeslagen:', e && e.message);

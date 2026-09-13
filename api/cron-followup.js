@@ -1463,7 +1463,30 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
 
       // Same swap as leads.js: helvaro_afspraak_herinnering (nl_BE) reads
       // "je afspraak bij {{2}} staat gepland voor {{3}}" -> {{2}} business, {{3}} datetime.
-      const remOk = await sendWATemplate(normalizedPhone, TEMPLATE_NAME, templateLang, [firstName, clientNameV, when], apptPhoneNumberId, whatsappToken);
+      /* Dealer met een voertuig op de afspraak: de rijke herinnering ("je
+         proefrit met de BMW 330e") -- maar alleen als die template bij Meta
+         goedgekeurd is. Anders de generieke, precies zoals voor iedereen.
+         Het voertuig komt uit 'Vehicle Code' op de afspraak; faalt het
+         opzoeken, dan blijft het de generieke tekst. */
+      let remTemplate = TEMPLATE_NAME;
+      let remParams = [firstName, clientNameV, when];
+      const vehicleCodeV = String(appt.fields['Vehicle Code'] || '').trim();
+      if (vehicleCodeV) {
+        try {
+          const _waTemplates = require('./_wa-templates');
+          if (await _waTemplates.goedgekeurd('dealerHerinnering', templateLang)) {
+            const auto = await require('./_vehicles').getByCode(projectCode, vehicleCodeV);
+            const autoNaam = auto ? require('./_vehicles').naam(auto) : '';
+            if (autoNaam) {
+              remTemplate = _waTemplates.naamVoor('dealerHerinnering');
+              remParams = [firstName, when, autoNaam];
+            }
+          }
+        } catch (e) {
+          console.warn('[cron-followup] dealer-herinnering niet gebruikt (generieke gestuurd):', e && e.message);
+        }
+      }
+      const remOk = await sendWATemplate(normalizedPhone, remTemplate, templateLang, remParams, apptPhoneNumberId, whatsappToken);
       if (!remOk) { skipped++; continue; }   // niet meetellen wat niet aankwam
       sent++;
     } catch (err) {

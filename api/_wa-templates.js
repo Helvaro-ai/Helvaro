@@ -94,6 +94,31 @@ const VEREIST = Object.freeze({
     blokkeert: false,
     wat: 'campagnes',
   }),
+  /* ── Alleen voor dealers ───────────────────────────────────────────────────
+     De verkopersmelding en de herinnering hebben bij een dealer meer te
+     zeggen dan naam en tijdstip: welke auto, welke prijs, hoe warm de koper.
+     De generieke templates hierboven kunnen dat niet dragen, en een template
+     krijgt zijn variabelen alleen via een nieuwe inzending bij Meta.
+
+     `optioneel`: tot ze goedgekeurd zijn valt de code terug op de generieke
+     (notify / reminder) en meldt de gereedheidscheck ze niet als gemis --
+     een makelaar heeft er niets aan en hoort er dus ook niets over. */
+  dealerAfspraak: Object.freeze({
+    env: 'DEALER_NOTIFY_TEMPLATE_NAME',
+    standaard: 'helvaro_dealer_afspraak',
+    params: ['naam', 'wanneer', 'voertuig', 'prijs', 'type', 'score'],
+    blokkeert: false,
+    optioneel: true,
+    wat: 'melding aan de verkoper bij een geboekte proefrit',
+  }),
+  dealerHerinnering: Object.freeze({
+    env: 'DEALER_REMINDER_TEMPLATE_NAME',
+    standaard: 'helvaro_dealer_herinnering',
+    params: ['naam', 'wanneer', 'voertuig'],
+    blokkeert: false,
+    optioneel: true,
+    wat: 'herinnering met de auto erbij',
+  }),
 });
 
 const SLEUTELS = Object.freeze(Object.keys(VEREIST));
@@ -362,7 +387,7 @@ function bekijk(taal, index) {
     };
   }
 
-  const regels = SLEUTELS.map((sleutel) => {
+  const regels = SLEUTELS.filter((sleutel) => !VEREIST[sleutel].optioneel).map((sleutel) => {
     const naam = naamVoor(sleutel);
     const status = templates[`${naam}::${code}`] || '';
     return {
@@ -401,6 +426,21 @@ function bekijk(taal, index) {
 }
 
 /* Het gewone geval: haal de index op en beoordeel één taal. */
+/**
+ * Is DEZE template in DEZE taal goedgekeurd bij Meta (of in de snapshot)?
+ * Voor de optionele dealer-templates: de verzendcode kiest daarmee tussen de
+ * rijke en de generieke variant, zonder ooit een template te sturen die Meta
+ * niet kent -- dat is de fout die stil blijft en waar niemand iets van merkt.
+ */
+async function goedgekeurd(sleutel, taal, opties) {
+  const def = VEREIST[sleutel];
+  if (!def) return false;
+  const index = await haalIndex(opties);
+  const code = canoniek(taal);
+  const templates = (index && index.templates) || {};
+  return duiding(templates[`${naamVoor(sleutel)}::${code}`] || '') === 'klaar';
+}
+
 async function klaarVoor(taal, opties) {
   const index = await haalIndex(opties);
   return bekijk(taal, index);
@@ -557,6 +597,7 @@ module.exports = {
   haalIndex,
   bekijk,
   klaarVoor,
+  goedgekeurd,
   taalOverzicht,
   overzicht,
   kostenVoor,

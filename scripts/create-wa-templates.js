@@ -161,6 +161,54 @@ const TEKSTEN = {
   //   NOT sent verbatim; it maps into {{3}} as one short offer line.
   //   The STOP footer is required-in-spirit for marketing and is already understood
   //   by api/_optout.js, which matches both "stop" and "stopp".
+  // ── Dealership (autohandel) ──────────────────────────────────────────────
+  // Two UTILITY templates that carry what the generic ones cannot: the car.
+  // The code (api/_dealer-melding.js, api/cron-followup.js) only uses them once
+  // Meta reports them APPROVED — until then it falls back to lead_alert and
+  // afspraak_herinnering, so submitting these is safe at any time.
+  helvaro_dealer_afspraak: {
+    category: 'UTILITY',
+    usedBy: 'DEALER_NOTIFY_TEMPLATE_NAME (api/_dealer-melding.js)',
+    params: ['naam', 'wanneer', 'voertuig', 'prijs', 'type', 'score'],
+    body: {
+      nl_BE:
+        'Nieuwe afspraak: {{1}} komt {{2}} voor de {{3}} ({{4}}).\n\n' +
+        'Type: {{5}}. Leadscore: {{6}}.\n\n' +
+        'Details staan in je Helvaro-dashboard.',
+      fr_BE:
+        'Nouveau rendez-vous : {{1}} vient {{2}} pour la {{3}} ({{4}}).\n\n' +
+        'Type : {{5}}. Score du lead : {{6}}.\n\n' +
+        'Les détails sont dans votre tableau de bord Helvaro.',
+      en_GB:
+        'New appointment: {{1}} is coming {{2}} for the {{3}} ({{4}}).\n\n' +
+        'Type: {{5}}. Lead score: {{6}}.\n\n' +
+        'Details are in your Helvaro dashboard.',
+      de:
+        'Neuer Termin: {{1}} kommt {{2}} für den {{3}} ({{4}}).\n\n' +
+        'Art: {{5}}. Lead-Score: {{6}}.\n\n' +
+        'Details finden Sie in Ihrem Helvaro-Dashboard.',
+    },
+  },
+  helvaro_dealer_herinnering: {
+    category: 'UTILITY',
+    usedBy: 'DEALER_REMINDER_TEMPLATE_NAME (api/cron-followup.js)',
+    params: ['naam', 'wanneer', 'voertuig'],
+    body: {
+      nl_BE:
+        'Hoi {{1}}, kleine herinnering: je proefrit met de {{3}} staat gepland voor {{2}}.\n\n' +
+        'Breng je rijbewijs mee. Antwoord gerust op dit bericht als er iets gewijzigd is.',
+      fr_BE:
+        'Bonjour {{1}}, petit rappel : votre essai de la {{3}} est prévu pour {{2}}.\n\n' +
+        'Pensez à votre permis de conduire. Répondez à ce message si quelque chose a changé.',
+      en_GB:
+        'Hi {{1}}, a quick reminder: your test drive in the {{3}} is scheduled for {{2}}.\n\n' +
+        'Please bring your driving licence. Reply to this message if anything has changed.',
+      de:
+        'Hallo {{1}}, kurze Erinnerung: Ihre Probefahrt mit dem {{3}} ist für {{2}} geplant.\n\n' +
+        'Bitte bringen Sie Ihren Führerschein mit. Antworten Sie auf diese Nachricht, falls sich etwas geändert hat.',
+    },
+  },
+
   helvaro_nieuw_aanbod: {
     category: 'MARKETING',
     usedBy: 'CAMPAIGN_TEMPLATE_NAME (api/_campagnes.js)',
@@ -197,6 +245,7 @@ const VOORBEELDEN = {
     bedrijf: 'KinePraktijk Gent',
     wanneer: 'dinsdag 12 augustus om 14:30',
     aanbod: 'Nieuw in de verkoop: ruime gezinswoning in Deinze, 3 slaapkamers en tuin — 349.000 euro.',
+    voertuig: 'BMW 330e', prijs: '€ 29.500', type: 'proefrit', score: '91/100',
   },
   fr_BE: {
     naam: 'Marie',
@@ -204,6 +253,7 @@ const VOORBEELDEN = {
     bedrijf: 'KinePraktijk Gent',
     wanneer: 'mardi 12 août à 14h30',
     aanbod: 'Nouveau à la vente : maison familiale spacieuse à Deinze, 3 chambres et jardin — 349.000 euros.',
+    voertuig: 'BMW 330e', prijs: '29.500 €', type: 'essai', score: '91/100',
   },
   en_GB: {
     naam: 'Emma',
@@ -211,6 +261,7 @@ const VOORBEELDEN = {
     bedrijf: 'KinePraktijk Gent',
     wanneer: 'Tuesday 12 August at 14:30',
     aanbod: 'New on the market: spacious family home in Deinze, 3 bedrooms and a garden — 349,000 euro.',
+    voertuig: 'BMW 330e', prijs: '€29,500', type: 'test drive', score: '91/100',
   },
   de: {
     naam: 'Lukas',
@@ -218,6 +269,7 @@ const VOORBEELDEN = {
     bedrijf: 'KinePraktijk Gent',
     wanneer: 'Dienstag, 12. August um 14:30 Uhr',
     aanbod: 'Neu im Angebot: geräumiges Familienhaus in Deinze, 3 Schlafzimmer und Garten — 349.000 Euro.',
+    voertuig: 'BMW 330e', prijs: '29.500 €', type: 'Probefahrt', score: '91/100',
   },
 };
 

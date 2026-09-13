@@ -2118,6 +2118,16 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                   projectCode, clientFields: client.fields,
                   phoneNumberId: clientPhoneNumberId, token: WHATSAPP_TOKEN,
                   lang, tekst: melding, terugval: { naam: leadName, telefoon: phone },
+                  /* De zes waarden voor de rijke dealer-template, zodra die bij
+                     Meta goedgekeurd is. Tot dan gebruikt de melding de
+                     generieke lead_alert; zie api/_dealer-melding.js. */
+                  sjabloon: {
+                    naam: leadName, wanneer: formatApptDateTime(appt.start, lang),
+                    voertuig: herkendVoertuig ? _vehicles.naam(herkendVoertuig) : '',
+                    prijs: herkendVoertuig ? _vehicles.prijsTekst(herkendVoertuig.prijs) : '',
+                    type: dealerType,
+                    score: scoreNaBoeking && scoreNaBoeking.score != null ? String(scoreNaBoeking.score) + '/100' : '',
+                  },
                 });
               } catch (e) {
                 console.warn('[whatsapp] werknemersmelding na boeking overgeslagen:', e && e.message);

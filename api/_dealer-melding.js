@@ -196,7 +196,7 @@ function loggen(projectCode, soort, opts) {
  * @param {object} [o.terugval]      { naam, telefoon } -- templateparameters
  * @returns {Promise<{verstuurd:number, mislukt:number}>}
  */
-async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, token, lang, tekst, terugval } = {}) {
+async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, token, lang, tekst, terugval, sjabloon } = {}) {
   const code = String(projectCode || '').trim();
   let verstuurd = 0;
   let mislukt = 0;
@@ -204,6 +204,26 @@ async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, 
   try {
     const lijst = ontvangers(clientFields);
     if (!lijst.length) return { verstuurd, mislukt };
+
+    /* Welke template als het vrije bericht niet mag (buiten het 24u-venster,
+       en dat is bij een verkoper de regel, niet de uitzondering)?
+       De rijke dealer-template als hij bij Meta goedgekeurd is en de
+       aanroeper de zes waarden meegaf; anders de generieke lead_alert met
+       naam/telefoon/projectcode. Nooit een template die Meta niet kent. */
+    const templateLangVoor = _lang.resolveTemplateLanguage(process.env.NOTIFY_TEMPLATE_LANG || lang, lang).code;
+    let rijk = null;
+    if (sjabloon && typeof sjabloon === 'object') {
+      try {
+        if (await _waTemplates.goedgekeurd('dealerAfspraak', templateLangVoor)) {
+          const v = (x, alt) => { const t = String(x == null ? '' : x).trim(); return t || alt; };
+          rijk = {
+            template: _waTemplates.naamVoor('dealerAfspraak'),
+            params: [v(sjabloon.naam, '-'), v(sjabloon.wanneer, '-'), v(sjabloon.voertuig, '-'),
+                     v(sjabloon.prijs, '-'), v(sjabloon.type, '-'), v(sjabloon.score, '-')],
+          };
+        }
+      } catch (e) { rijk = null; }
+    }
 
     /* Dezelfde herleiding als elke andere goedgekeurde-template-send in deze
        codebase (booking/reminder/followup): _TEMPLATE_LANG-env wint, anders de
@@ -220,11 +240,11 @@ async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, 
         let r = await _waSend.sendFreeformSafe({ to, text: tekst, windowOpen: true, phoneNumberId, token });
 
         if (!r.ok && (r.code === 'window_closed' || r.metaCode === 131047)) {
-          via = 'template';
-          r = await _waSend.sendTemplateSafe({
-            to, template: _waTemplates.naamVoor('notify'), lang: templateLang,
-            params: [naam, telefoon, code], phoneNumberId, token,
-          });
+          via = rijk ? 'dealer_template' : 'template';
+          r = await _waSend.sendTemplateSafe(rijk
+            ? { to, template: rijk.template, lang: templateLang, params: rijk.params, phoneNumberId, token }
+            : { to, template: _waTemplates.naamVoor('notify'), lang: templateLang,
+                params: [naam, telefoon, code], phoneNumberId, token });
         }
 
         /* Eén herkansing bij een snelheidslimiet, niet bij een structurele
@@ -232,7 +252,9 @@ async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, 
            poging na anderhalve seconde toch niet op. */
         if (!r.ok && (r.code === 'rate_limit' || r.code === 'pair_rate_limit')) {
           await new Promise((res) => setTimeout(res, 1500));
-          r = via === 'template'
+          r = via === 'dealer_template'
+            ? await _waSend.sendTemplateSafe({ to, template: rijk.template, lang: templateLang, params: rijk.params, phoneNumberId, token })
+            : via === 'template'
             ? await _waSend.sendTemplateSafe({
                 to, template: _waTemplates.naamVoor('notify'), lang: templateLang,
                 params: [naam, telefoon, code], phoneNumberId, token,

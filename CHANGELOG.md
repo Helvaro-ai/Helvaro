@@ -12,6 +12,21 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### Verkopersmelding en herinnering mét de auto — klaar voor twee nieuwe templates
+
+Voor dealers zijn er twee WhatsApp-templates voorbereid: de melding aan de
+verkoper ("Jan komt morgen 10:30 voor de BMW 330e (€ 29.500). Type: proefrit.
+Leadscore: 91/100.") en de herinnering aan de koper met de auto erbij. De code
+gebruikt ze **pas zodra Meta ze goedgekeurd heeft** — tot dan blijft alles zoals
+nu (de generieke melding met naam en telefoon, de generieke herinnering). Een
+template sturen die Meta niet kent, komt nooit aan; dat pad bestaat niet.
+
+**Actie:** dien ze in met `WHATSAPP_MANAGEMENT_TOKEN=… WABA_ID=… node
+scripts/create-wa-templates.js` (zet ook `helvaro_nieuw_aanbod` voor campagnes
+mee in). Na goedkeuring hoeft er niets uitgerold te worden.
+
 ## 13 september 2026 — later die dag
 
 ### "De tabel vehicles bestaat nog niet" — terwijl hij er gewoon stond
