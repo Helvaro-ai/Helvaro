@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 13 september 2026 — avond
 
 ### Verkopersmelding en herinnering mét de auto — klaar voor twee nieuwe templates
 
