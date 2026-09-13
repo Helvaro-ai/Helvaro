@@ -109,8 +109,10 @@ const melding = require('../api/_dealer-melding');
   const cron = strip(fs.readFileSync(path.join(__dirname, '..', 'api', 'cron-followup.js'), 'utf8'));
   ck('de herinnering kijkt eerst of dealerHerinnering goedgekeurd is', /goedgekeurd\('dealerHerinnering'/.test(cron));
   ck('en leest het voertuig van de afspraak', /appt\.fields\['Vehicle Code'\]/.test(cron));
-  const script = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'create-wa-templates.js'), 'utf8');
-  ck('het inzendscript kent beide dealer-templates', /helvaro_dealer_afspraak:\s*\{/.test(script) && /helvaro_dealer_herinnering:\s*\{/.test(script));
+  /* De teksten wonen sinds 2026-09-13 in api/_wa-template-teksten.js; het
+     script en de back-office lezen allebei daaruit. */
+  const script = fs.readFileSync(path.join(__dirname, '..', 'api', '_wa-template-teksten.js'), 'utf8');
+  ck('de templatebron kent beide dealer-templates', /helvaro_dealer_afspraak:\s*\{/.test(script) && /helvaro_dealer_herinnering:\s*\{/.test(script));
   ck('met voorbeeldwaarden in de vier talen', (script.match(/voertuig: 'BMW 330e'/g) || []).length === 4);
   const wa = strip(fs.readFileSync(path.join(__dirname, '..', 'api', 'whatsapp.js'), 'utf8'));
   const leads = strip(fs.readFileSync(path.join(__dirname, '..', 'api', 'leads.js'), 'utf8'));
