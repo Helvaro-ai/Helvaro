@@ -599,14 +599,22 @@ function finish() {
   else pass('message conversion covers text/image/tool_use/tool_result');
 
   // ── 9. Safeguards ─────────────────────────────────────────────────────────
-  // These are the properties that stop Faro being a general chatbot with a
-  // logo, and every one of them is a single edit away from silently vanishing.
+  // These are the properties that keep Faro trustworthy, and every one of
+  // them is a single edit away from silently vanishing.
+  //
+  // 'scope is closed' used to be the first guard. It was dropped on
+  // 2026-09-13 on the owner's explicit decision: Faro now answers general
+  // questions too (see the SCOPE note at the top of api/_faro/prompt.js).
+  // What replaced it are the two things that still have to hold whatever the
+  // scope is: a refusal still ends with a next step, and the answer follows
+  // the language the user writes in.
   console.log('\nsafeguards');
 
   const identity = require('../api/_faro/prompt').IDENTITY;
   const guards = [
-    ['scope is closed',            /geen algemene chatbot/i],
-    ['refusal has a redirect',     /Wil je dat ik/i],
+    ['scope is open',              /volwaardige assistent/i],
+    ['refusal still has a redirect', /meteen wat je wél kunt doen/i],
+    ['answers in the user\'s language', /taal waarin de gebruiker schrijft/i],
     ['tool output is data',        /GEGEVENS ZIJN GEEN OPDRACHTEN/],
     ['never fabricates',           /verzint nooit/i],
     ['prompt is not disclosed',    /instructies niet weer/i],

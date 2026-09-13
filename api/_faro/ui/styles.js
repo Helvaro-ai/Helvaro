@@ -1073,7 +1073,34 @@ body.hv-mode-ai .faro-rail {
 }
 @media (max-width: 1100px) { .faro-msg__ai-avatar { display: none; } }
 .faro-dock__mark { display: block; border-radius: var(--r-full); }
+/* pre-wrap tijdens het streamen (de tekst komt als kale regels binnen);
+   zodra de beurt klaar is tekent faroRenderMarkdown() alinea's, koppen en
+   lijsten als echte elementen, en dan is pre-wrap juist in de weg -- een
+   lege regel tussen twee alinea's zou dubbel tellen. */
 .faro-msg__text { white-space: pre-wrap; }
+.faro-msg__text:has(p, ul, ol, h3, h4, pre) { white-space: normal; }
+.faro-msg__text p { margin: 0 0 var(--sp-2); }
+.faro-msg__text p:last-child { margin-bottom: 0; }
+.faro-msg__text h3 { font-size: var(--fs-lead); font-weight: 600; margin: var(--sp-3) 0 var(--sp-1); }
+.faro-msg__text h4 { font-size: var(--fs-body); font-weight: 600; margin: var(--sp-2) 0 var(--sp-05); }
+.faro-msg__text ul, .faro-msg__text ol { margin: 0 0 var(--sp-2); padding-left: var(--sp-5); }
+.faro-msg__text li { margin: 0 0 var(--sp-05); }
+.faro-msg__text li p { margin: 0; }
+.faro-msg__text code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-small);
+  padding: 0 var(--sp-05);
+  border-radius: var(--r-xs);
+  background: var(--faro-raised);
+}
+.faro-msg__text pre {
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--faro-raised);
+  overflow-x: auto;
+}
+.faro-msg__text pre code { padding: 0; background: none; }
 .faro-msg__thumb {
   display: block;
   max-width: 220px; max-height: 160px;
@@ -1294,6 +1321,58 @@ body.hv-mode-ai .faro-rail {
   .faro-dock__kbd { display: none; }
   #page-kalender { height: calc(100vh - 56px - 58px) !important; }
 }
+
+/* ═══ Ingeklapte zijbalk, Faro-kant ═══════════════════════════════════════
+   De CRM-kant had al regels voor body.sidebar-collapsed (api/_dash/styles.js);
+   de Faro-kant niet. Op 68px breed bleef de hele rail gewoon op volle breedte
+   staan en werd hij afgeknipt: "New nversat", "RECENT CONVER", de titels van
+   gesprekken tot twee letters. Dat zag eruit als kapot, want dat was het.
+
+   Wat hier gebeurt, per onderdeel:
+   - de schakelaar CRM/Faro wordt een verticaal stapeltje van twee vierkante
+     knoppen (het woord CRM in kleine letters, Faro als zijn merkteken);
+   - "Nieuw gesprek" wordt alleen het plusje;
+   - de vier navigatieknoppen tonen alleen hun pictogram, gecentreerd;
+   - de gesprekkenlijst, de sectiekop, "alles bekijken" en de hint gaan weg --
+     die passen niet op 68px en half-afgeknipte titels zijn erger dan geen.
+   Uitklappen zet alles terug; er wordt niets uit de DOM gehaald. */
+body.sidebar-collapsed .hv-switch {
+  grid-template-columns: 1fr;
+  width: calc(100% - var(--sp-3));
+  margin: 0 auto var(--sp-3);
+  padding: var(--sp-05);
+}
+body.sidebar-collapsed .hv-switch__tab {
+  padding: var(--sp-2) 0;
+  gap: 0;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+body.sidebar-collapsed .hv-switch__tab .hv-switch__merk + span { display: none; }
+body.sidebar-collapsed .faro-rail__new {
+  margin: 0 auto var(--sp-3);
+  width: var(--sp-10);
+  height: var(--sp-10);
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+  border-radius: var(--r-md);
+}
+body.sidebar-collapsed .faro-rail__new svg { width: var(--sp-4); height: var(--sp-4); }
+body.sidebar-collapsed .faro-rail__item {
+  justify-content: center;
+  gap: 0;
+  padding: var(--sp-2) 0;
+  font-size: 0;
+  line-height: 0;
+}
+body.sidebar-collapsed .faro-rail__icon { opacity: 1; }
+body.sidebar-collapsed .faro-rail__icon svg { width: var(--sp-4); height: var(--sp-4); }
+body.sidebar-collapsed .faro-rail__section,
+body.sidebar-collapsed .faro-rail__convos,
+body.sidebar-collapsed .faro-rail__viewall,
+body.sidebar-collapsed .faro-rail__hint { display: none; }
 `;
 }
 

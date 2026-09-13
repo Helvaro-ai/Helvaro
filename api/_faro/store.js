@@ -172,10 +172,29 @@ function rowToMessage(rec) {
   if (typeof content === 'string') {
     try { content = JSON.parse(content); } catch { content = [{ type: 'text', text: String(f.content) }]; }
   }
+  const blokken = Array.isArray(content) ? content : [];
+
+  /* `text` en `components` staan hier omdat de client ze leest en de rij ze
+     niet had. Een oud gesprek openen gaf daardoor een draad vol LEGE bubbels:
+     de server stuurde wel de rij terug (dus de lokale kopie werd niet gebruikt)
+     maar met alleen `content`-blokken, en faroOpenConversation tekent `m.text`.
+     Op de live app zag dat eruit als "mijn eerdere gesprekken laden niet".
+
+     De blokken blijven erbij: het model krijgt bij een vervolgbeurt de
+     volledige inhoud, de client alleen wat hij toont. Componenten zijn een
+     eigen kolom omdat ze bij de BEURT horen (leadkaarten, bevestigingen) en
+     niet bij de tekst -- zie appendMessage. */
+  let components = f.components;
+  if (typeof components === 'string') {
+    try { components = JSON.parse(components); } catch { components = []; }
+  }
   return {
     id: rec.id,
     role: f.role === 'assistant' ? 'assistant' : 'user',
-    content: Array.isArray(content) ? content : [],
+    content: blokken,
+    text: blokken.filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+                 .map((b) => b.text).join('\n').trim(),
+    components: Array.isArray(components) ? components : [],
     createdAt: f.created_at || '',
   };
 }

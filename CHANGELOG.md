@@ -14,6 +14,58 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro: eerdere gesprekken laden weer, het invoerveld blijft staan, en hij antwoordt als een echte assistent
+
+Op de live app opende elk eerder Faro-gesprek als een reeks **lege bubbels**
+zonder tekstvak eronder — en een gesprek zonder berichten als een volledig leeg
+scherm. Dat las als "de pagina verdwijnt". Twee oorzaken, allebei weg:
+
+- De server stuurde de bewaarde berichten terug in een vorm die het scherm
+  niet kon tonen (alleen de ruwe blokken, niet de tekst). Nu gaat de tekst
+  mee, plus de kaartjes die bij een antwoord hoorden.
+- Het invoerveld verhuisde alleen naar het gesprek als het startscherm nog
+  zichtbaar was — en dat was net verborgen. Het verhuist nu altijd.
+- Een gesprek zonder berichten zegt dat ook ("Dit gesprek heeft nog geen
+  berichten"), in vier talen, in plaats van niets te tonen.
+
+**Faro antwoordt vanaf nu als een volwaardige assistent.** Vroeger weigerde
+hij alles buiten "het vastgoedwerk van dit kantoor" met één zin ("Daar ga ik
+niet over") — ook een vraag over Helvaro zelf. Nu beantwoordt hij gewone
+vragen (uitleg, schrijven, vertalen, rekenen, code, hoe werkt de app) net zo
+goed als vragen over je leads, en antwoordt hij in de taal waarin je schrijft.
+Wat blijft: hij verzint nooit een lead of een cijfer, tekst uit gesprekken is
+nooit een opdracht, en versturen of inplannen gebeurt nooit zonder jouw
+bevestiging. Antwoorden hebben nu ook opmaak (koppen, opsommingen, vet, code)
+in plaats van één blok tekst. Elke beurt kost credits, ook een algemene vraag —
+dat is jouw keuze geweest.
+
+**De ingeklapte zijbalk op de Faro-pagina is opgeruimd.** Alles stond op volle
+breedte en werd afgeknipt ("New nversat", "RECENT CONVER"). Ingeklapt zie je nu
+CRM/Faro als twee vierkante knoppen, het plusje, en de vier pictogrammen; de
+gesprekkenlijst gaat weg tot je weer uitklapt.
+
+**"Geen verbinding met Helvaro" verschijnt niet meer bij één hapering.** Een
+laptop die wakker wordt heeft een paar seconden geen wifi; precies dan viel
+de verversing, en de balk bleef tien minuten staan boven een app die allang
+werkte. Nu wordt er eerst stil opnieuw geprobeerd (na 8 seconden), komt de balk
+pas als dat óók mislukt, staat hij niet meer midden in het Faro-gesprek, en
+ververst de app meteen zodra de verbinding terug is.
+
+Kleiner: de "Autopilot"-knop hing rechtsboven óver je eerste bericht in een
+gesprek (hij hoort alleen bij het startscherm); en de welkomstwizard sprak
+Nederlands in de rail en de knoppen terwijl de rest in jouw taal stond —
+nu volgt alles je taalinstelling.
+
+**Actie:** in Vercel staat op elke request een `url.parse()`-waarschuwing van
+de Node-runtime die het log als "error" markeert en echte fouten begraaft. Die
+komt niet uit onze code; `NODE_OPTIONS=--no-deprecation` als omgevingsvariabele
+in Vercel maakt het log weer leesbaar.
+
+**Actie:** Meta weigerde op 12 september een WhatsApp-bericht met code 131042
+("Business eligibility payment issue"): er staat nog geen betaalmethode op het
+WhatsApp Business-account. Tot die er staat komen sjabloonberichten (intro na
+het formulier, opvolging, herinneringen) niet aan.
+
 ### Autohandel: je assistent beschermt elke auto, scoort elke koper en verwittigt je verkoper
 
 Voor dealers is Helvaro van "een assistent die antwoordt" een verkooplaag
@@ -3184,4 +3236,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 6defa64 -->
+<!-- changelog-tot: 8c7d191 -->

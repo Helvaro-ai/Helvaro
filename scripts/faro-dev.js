@@ -227,6 +227,25 @@ const server = http.createServer(async (req, res) => {
   decorate(req, res);
 
   try {
+    /* Sessie-stub. Het dashboard vraagt sinds de httpOnly-cookie eerst aan de
+       server of er een sessie is (mode:'session') en toont anders het
+       inlogscherm. Zonder deze tak kom je lokaal nooit voorbij dat scherm en
+       is de hele CRM-kant -- inclusief de Faro-pagina zelf -- niet na te
+       kijken. Elke inlogpoging slaagt hier, met de vaste lokale tenant; dat is
+       precies waarom deze server nooit bereikbaar mag zijn. */
+    if (p === '/api/auth') {
+      req.body = await readBody(req);
+      const m = req.body && req.body.mode;
+      if (m === 'session' || m === 'login' || m === 'session-check') {
+        return res.status(200).json({
+          ok: true, apiKey: 'local-dev', clientName: 'Teljo',
+          projectCode: LOCAL_AUTH.projectCode, email: LOCAL_AUTH.userId, calendlyLink: '',
+        });
+      }
+      if (m === 'logout') return res.status(200).json({ ok: true });
+      return res.status(501).json({ error: 'auth-mode niet nagebootst in faro-dev: ' + m });
+    }
+
     if (p === '/api/faro') {
       req.body = await readBody(req);
       return faroHandler.handle(req, res, LOCAL_AUTH);

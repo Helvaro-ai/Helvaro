@@ -129,6 +129,23 @@ const CONVERSATIONS = Object.freeze([
   { id: 'demo-c5', title: 'Marketing ideeën' },
 ]);
 
+/* Berichten bij één van de gesprekken hierboven, in precies de vorm die
+   api/_faro/store.js rowToMessage() teruggeeft (content-blokken PLUS de
+   platte `text` die de client tekent). Alleen bij demo-c1: zo is er lokaal
+   één gesprek dat echt inhoud heeft en vier die leeg zijn, en dat zijn de
+   twee toestanden die de gespreksweergave moet aankunnen. */
+const MESSAGES = Object.freeze({
+  'demo-c1': [
+    { id: 'demo-m1', role: 'user',
+      content: [{ type: 'text', text: 'Wie zijn mijn beste leads van deze week?' }],
+      text: 'Wie zijn mijn beste leads van deze week?', components: [], createdAt: '2026-09-10T09:12:00.000Z' },
+    { id: 'demo-m2', role: 'assistant',
+      content: [{ type: 'text', text: 'Drie leads springen eruit: Jonas Peeters (budget 520k, wil deze maand beslissen), Sarah De Wilde (gekwalificeerd, nog geen afspraak) en Karim Benali (proefrit gevraagd).' }],
+      text: 'Drie leads springen eruit: Jonas Peeters (budget 520k, wil deze maand beslissen), Sarah De Wilde (gekwalificeerd, nog geen afspraak) en Karim Benali (proefrit gevraagd).',
+      components: [], createdAt: '2026-09-10T09:12:04.000Z' },
+  ],
+});
+
 const PROJECTS = Object.freeze([
   { id: 'demo-p1', name: 'Villa Project — Knokke', subtitle: '1 pand · 3 beelden · 1 video · 6 leads' },
   { id: 'demo-p2', name: 'Appartementen Oostende', subtitle: '2 panden · 1 beeld · 4 leads' },
@@ -140,6 +157,6 @@ function isEnabled() {
 
 module.exports = {
   isEnabled,
-  LEADS, PIPELINE, ANALYTICS, ACTIVITY, CONVERSATIONS, PROJECTS,
+  LEADS, PIPELINE, ANALYTICS, ACTIVITY, CONVERSATIONS, MESSAGES, PROJECTS,
   leadCard, searchLeads, euro,
 };

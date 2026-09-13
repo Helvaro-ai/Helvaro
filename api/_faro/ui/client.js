@@ -782,13 +782,18 @@ function faroHandleEvent(name, data, bubble, status) {
          zag je verbruik dus altijd te laag. force=true slaat de rem over; dit
          is een gebruikersactie, geen poll. */
       try { if (typeof loadCreditUsage === 'function') loadCreditUsage(true); } catch (e) {}
+      var afTekst = (bubble.querySelector('.faro-msg__text') || {}).textContent || '';
       faroLsSave(
         faroState.conversationId,
         faroState.conversationTitle,
         faroState.lastSent,
-        (bubble.querySelector('.faro-msg__text') || {}).textContent || '',
+        afTekst,
         faroState.turnComponents || []
       );
+      /* Pas NA het bewaren: opgeslagen wordt de kale tekst, getekend de
+         opgemaakte versie. Zo blijft wat er in de opslag staat gelijk aan wat
+         het model schreef. */
+      faroRenderMarkdown(bubble.querySelector('.faro-msg__text'), afTekst);
       faroState.turnComponents = [];
       faroLoadConversations();
       break;
@@ -1078,18 +1083,118 @@ function faroPollJob(jobId, el, attempt) {
 }
 
 /* ── Thread plumbing ──────────────────────────────────────────────────────── */
+/* ── Opmaak van een antwoord ──────────────────────────────────────────────────
+   Tijdens het streamen komt de tekst als kale textContent binnen (zie de
+   kop van dit bestand: nooit innerHTML met modeltekst). Is de beurt klaar, dan
+   wordt diezelfde tekst hier opnieuw getekend met een beperkte opmaak:
+   koppen, opsommingen, vet, cursief, code. Alles wordt als DOM-knoop gebouwd
+   met textContent, dus er komt nog steeds geen letter modeltekst als HTML op
+   het scherm. Wat hier niet herkend wordt, blijft gewone tekst.
+
+   Waarom: een antwoord van vijf stappen leest als een muur zonder dit, en de
+   eigenaar vergeleek het letterlijk met ChatGPT. Dit is de helft van dat
+   verschil; de andere helft zit in de prompt (api/_faro/prompt.js).
+
+   Let op de dubbele backslashes: dit bestand is zelf een sjabloonliteral, dus
+   een enkele backslash verdwijnt onderweg (zie de regexen hierboven). Het
+   accent grave staat als tekencode, want een letterlijk accent zou het
+   sjabloon afsluiten. */
+var FARO_BT = String.fromCharCode(96);
+function faroInline(el, tekst) {
+  var re = new RegExp('(\\\\*\\\\*[^*\\\\n]+\\\\*\\\\*|\\\\*[^*\\\\n]+\\\\*|' + FARO_BT + '[^' + FARO_BT + '\\\\n]+' + FARO_BT + ')', 'g');
+  var laatste = 0, m;
+  while ((m = re.exec(tekst)) !== null) {
+    if (m.index > laatste) el.appendChild(document.createTextNode(tekst.slice(laatste, m.index)));
+    var tok = m[0], knoop;
+    if (tok.charAt(0) === FARO_BT) { knoop = document.createElement('code'); knoop.textContent = tok.slice(1, -1); }
+    else if (tok.indexOf('**') === 0) { knoop = document.createElement('strong'); knoop.textContent = tok.slice(2, -2); }
+    else { knoop = document.createElement('em'); knoop.textContent = tok.slice(1, -1); }
+    el.appendChild(knoop);
+    laatste = m.index + tok.length;
+  }
+  if (laatste < tekst.length) el.appendChild(document.createTextNode(tekst.slice(laatste)));
+}
+
+function faroRenderMarkdown(el, tekst) {
+  if (!el) return;
+  el.textContent = '';
+  var regels = String(tekst || '').replace(/\\r\\n?/g, '\\n').split('\\n');
+  var i = 0, lijst = null, lijstSoort = '', para = [];
+  var hek = FARO_BT + FARO_BT + FARO_BT;
+  var sluitPara = function () {
+    if (!para.length) return;
+    var p = document.createElement('p');
+    faroInline(p, para.join('\\n'));
+    el.appendChild(p);
+    para = [];
+  };
+  var sluitLijst = function () { lijst = null; lijstSoort = ''; };
+  while (i < regels.length) {
+    var r = regels[i];
+    if (r.indexOf(hek) === 0) {
+      sluitPara(); sluitLijst();
+      var code = [];
+      i++;
+      while (i < regels.length && regels[i].indexOf(hek) !== 0) { code.push(regels[i]); i++; }
+      var pre = document.createElement('pre');
+      var c = document.createElement('code');
+      c.textContent = code.join('\\n');
+      pre.appendChild(c);
+      el.appendChild(pre);
+      i++;
+      continue;
+    }
+    var kop = /^(#{1,3})\\s+(.*)$/.exec(r);
+    if (kop) {
+      sluitPara(); sluitLijst();
+      var h = document.createElement(kop[1].length === 1 ? 'h3' : 'h4');
+      faroInline(h, kop[2]);
+      el.appendChild(h);
+      i++;
+      continue;
+    }
+    var punt = /^\\s*([-*•]|\\d+[.)])\\s+(.*)$/.exec(r);
+    if (punt) {
+      sluitPara();
+      var soort = /^\\d/.test(punt[1]) ? 'ol' : 'ul';
+      if (!lijst || lijstSoort !== soort) { lijst = document.createElement(soort); lijstSoort = soort; el.appendChild(lijst); }
+      var li = document.createElement('li');
+      faroInline(li, punt[2]);
+      lijst.appendChild(li);
+      i++;
+      continue;
+    }
+    if (!r.trim()) { sluitPara(); sluitLijst(); i++; continue; }
+    sluitLijst();
+    para.push(r);
+    i++;
+  }
+  sluitPara();
+}
+
 function faroEnterThread() {
   var landing = document.getElementById('faro-landing');
   var thread = document.getElementById('faro-thread');
   var composer = document.getElementById('faro-composer');
   faroState.inThread = true;
-  if (landing && !landing.hidden) {
-    landing.hidden = true;
-    thread.hidden = false;
-    composer.hidden = false;
-    // The input is MOVED, not duplicated — one element, one set of listeners.
-    composer.querySelector('.faro-composer__inner').appendChild(document.getElementById('faro-input-form'));
-  }
+  if (!landing || !thread || !composer) return;
+  landing.hidden = true;
+  thread.hidden = false;
+  composer.hidden = false;
+  /* The input is MOVED, not duplicated — one element, one set of listeners.
+
+     Dit stond achter een controle op !landing.hidden. faroOpenConversation zet eerst
+     inThread en roept dan faroSetPanel aan, en DIE verbergt de landing al --
+     waarna deze functie dacht dat er niets meer te verhuizen viel. Het
+     invoerveld bleef dus achter in de verborgen landing: wie een eerder
+     gesprek opende kreeg een draad zonder tekstvak, en met een leeg gesprek
+     een leeg scherm. Op de live app las dat als "de pagina verdwijnt".
+
+     Nu is de vraag niet "is de landing nog zichtbaar" maar "staat het veld al
+     waar het hoort" -- dat klopt in elke volgorde van aanroepen. */
+  var form = document.getElementById('faro-input-form');
+  var doel = composer.querySelector('.faro-composer__inner');
+  if (form && doel && form.parentElement !== doel) doel.appendChild(form);
 }
 
 function faroAppendUser(text, attachments) {
@@ -1998,13 +2103,29 @@ function faroOpenConversation(id) {
   inner.innerHTML = '<div class="faro-skeleton" style="height:60px"></div>';
   var render = function (messages) {
     inner.innerHTML = '';
-    (messages || []).forEach(function (m) {
-      if (m.role === 'user') { faroAppendUser(m.text || ''); return; }
+    var lijst = messages || [];
+    lijst.forEach(function (m) {
+      /* De tekst komt sinds kort van de server mee (api/_faro/store.js
+         rowToMessage); oudere lokale kopieën hebben hem ook. Wat er ooit als
+         kale content-blokken binnenkomt, wordt hier alsnog leesbaar in plaats
+         van als lege bubbel. */
+      var tekst = m.text || (Array.isArray(m.content)
+        ? m.content.filter(function (b) { return b && b.type === 'text'; }).map(function (b) { return b.text || ''; }).join('\\n')
+        : '');
+      if (m.role === 'user') { faroAppendUser(tekst); return; }
       var b = faroAppendAssistant();
-      b.querySelector('.faro-msg__text').textContent = m.text || '';
+      faroRenderMarkdown(b.querySelector('.faro-msg__text'), tekst);
       (m.components || []).forEach(function (c) { faroSafeRender(b, c); });
     });
+    /* Een leeg gesprek is geen leeg scherm. Zonder deze regel stond er bij een
+       gesprek zonder berichten letterlijk niets -- geen tekst, geen uitleg --
+       en dat is niet te onderscheiden van een pagina die kapot is. */
+    if (!lijst.length) {
+      inner.innerHTML = '<p class="faro-convo-leeg">' + faroEsc(T('convo.geenBerichten', 'This conversation has no messages yet.')) + '</p>';
+    }
     faroLoadConversations();
+    var veld = document.getElementById('faro-input-field');
+    if (veld) veld.focus();
   };
 
   faroPost({ mode: 'faro-messages', conversationId: id })

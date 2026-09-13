@@ -19,6 +19,8 @@
  * is staat wél lokaal -- dat is gemak binnen één sessie, geen waarheid.
  */
 'use strict';
+const fs = require('fs');
+const path = require('path');
 
 process.env.FARO_WORKSPACE_ENABLED = '1';
 
@@ -76,13 +78,22 @@ ck('de 72 uur wordt hier herhaald', /binnen 72 uur rond/.test(html), null);
 /* Live op app.helvaro.pro liep dit mis: WIZARD_MASCOTTE had geen 'regio', dus
    werd img.src de string "undefined" en stond er een gebroken plaatje in de
    zijkolom. Een nieuwe stap toevoegen moet niet stilletjes een gat laten. */
-ck('elke stap heeft een mascotte en een gidszin', (function () {
+/* De gidszin komt sinds 2026-09-13 uit api/_i18n.js (wiz.gids.<stap>), in
+   vier talen: de omlijsting van de wizard was het enige wat niet meevertaalde,
+   en een Engelstalige klant zag Faro Nederlands praten naast Engelse velden.
+   Dus: elke stap moet een mascotte hebben EN een gidszin in elk van de vier
+   talen -- strenger dan de oude controle op één Nederlandse tabel. */
+ck('elke stap heeft een mascotte en een gidszin (in vier talen)', (function () {
   var stappen = (html.match(/WIZARD_STAPPEN = \[([^\]]+)\]/) || [])[1] || '';
   var lijst = stappen.split(',').map(function (x) { return x.trim().replace(/'/g, ''); });
   var mascotte = (html.match(/WIZARD_MASCOTTE = \{([\s\S]*?)\}/) || [])[1] || '';
-  var gids = (html.match(/gidsTekst\.textContent = \{([\s\S]*?)\}\[stap\]/) || [])[1] || '';
+  var i18n = require('../api/_i18n');
   return lijst.every(function (st) {
-    return new RegExp('\\b' + st + ':').test(mascotte) && new RegExp('\\b' + st + ':').test(gids);
+    if (!new RegExp('\\b' + st + ':').test(mascotte)) return false;
+    return ['nl', 'fr', 'en', 'de'].every(function (lang) {
+      var zin = i18n.t(lang, 'wiz.gids.' + st);
+      return typeof zin === 'string' && zin.length > 5 && zin !== 'wiz.gids.' + st;
+    });
   });
 })(), null);
 
@@ -107,15 +118,21 @@ ck('land en taal worden samen bewaard',
    regel ernaast -- stap 3 van 7, naamloos, op het eerste scherm dat een nieuwe
    klant ziet. Nu elke stap afzonderlijk. */
 {
-  const labelBlok = ((html.match(/WIZARD_LABELS = \{([\s\S]*?)\n\};/) || [])[1] || '')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
-  const zonder = STAPPEN.filter((k) => !new RegExp('\\b' + k + ':\\s*\'[^\']+\'').test(labelBlok));
+  /* De rail leest tr('wiz.rail.<stap>'); de tabel WIZARD_LABELS is weg. Wat
+     bewaakt wordt is hetzelfde: geen stap zonder naam, nu in vier talen. */
+  const i18n = require('../api/_i18n');
+  const zonder = STAPPEN.filter((k) => !['nl', 'fr', 'en', 'de'].every((lang) => {
+    const naam = i18n.t(lang, 'wiz.rail.' + k);
+    return typeof naam === 'string' && naam.length > 1 && naam !== 'wiz.rail.' + k;
+  }));
   ck('elke stap in WIZARD_STAPPEN heeft een label in de rail', zonder.length === 0, zonder);
+  ck('de rail leest die labels via tr()', /function wizardLabel\(stap\) \{ return tr\('wiz\.rail\.' \+ stap\); \}/.test(html), null);
+  /* Andersom: een raillabel in de vertaaltabel voor een stap die niet
+     bestaat, is een stap die ooit weggehaald is zonder zijn naam. */
+  const bron = fs.readFileSync(path.join(__dirname, '..', 'api', '_i18n.js'), 'utf8');
+  const railSleutels = (bron.match(/'wiz\.rail\.([a-z]+)'/g) || []).map((x) => x.replace(/'wiz\.rail\.|'/g, ''));
   ck('en er zijn geen labels voor stappen die niet bestaan',
-     (labelBlok.match(/^\s*([a-z]+):/gm) || [])
-       .map((x) => x.trim().replace(':', ''))
-       .filter((k) => STAPPEN.indexOf(k) === -1).length === 0,
-     (labelBlok.match(/^\s*([a-z]+):/gm) || []).map((x) => x.trim().replace(':', '')));
+     railSleutels.filter((k) => k !== 'kop' && STAPPEN.indexOf(k) === -1).length === 0, railSleutels);
 }
 ck('het is een echte dialoog', /overlay\.setAttribute\('role', 'dialog'\)/.test(html), null);
 ck('fouten worden hardop gemeld', /fout\.setAttribute\('role', 'alert'\)/.test(html), null);
@@ -126,7 +143,7 @@ ck('elke stap heeft een eigen mascotte-toestand',
    && /bedrijf:\s*'\/faro\/falcon-thinking\.webp'/.test(html)
    && /ai:\s*'\/faro\/falcon-generating\.webp'/.test(html)
    && /klaar:\s*'\/faro\/falcon-success\.webp'/.test(html), null);
-ck('en zegt per stap iets', /gidsTekst\.textContent = \{/.test(html), null);
+ck('en zegt per stap iets', /gidsTekst\.textContent = tr\('wiz\.gids\.' \+ stap\)/.test(html), null);
 ck('hij is decoratie voor schermlezers',
    /mascotte\.setAttribute\('aria-hidden', 'true'\)/.test(html), null);
 

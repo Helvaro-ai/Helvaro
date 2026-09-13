@@ -5502,6 +5502,7 @@ async function refreshData(skipFetch = false) {
         state.calendlyUrl = data.client?.calendly || '';
         state.lastFetch   = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
+        _verbindingPogingen = 0;
         hideCrmError();
       }
     }
@@ -5599,10 +5600,38 @@ async function refreshData(skipFetch = false) {
     // verbroken verbinding bleven alle KPI-tegels op "LADEN..." staan, zonder
     // melding en zonder banner — niet te onderscheiden van een trage pagina.
     // De gebruiker wacht, herlaadt, en concludeert dat het product stuk is.
-    showCrmError(err);
+    hvVerbindingsfout(err);
   } finally {
     if (btn) btn.classList.remove('spin');
   }
+}
+
+/* ── Eén hapering is geen storing ─────────────────────────────────────────────
+   De banner hieronder verscheen bij de EERSTE mislukte verversing en bleef dan
+   tot de volgende ronde staan -- en die komt pas na tien minuten. Een laptop
+   die uit de slaapstand komt heeft zijn wifi een paar seconden niet; precies
+   in die seconden viel de verversing, en de eigenaar keek tien minuten naar
+   "Geen verbinding met Helvaro" boven een app die allang weer werkte.
+
+   Nu: de eerste mislukking wordt stil opnieuw geprobeerd na acht seconden.
+   Pas als die OOK mislukt, komt de banner. Een 503 van de CRM-kant slaat de
+   stille poging over: dat is geen hapering maar een boodschap van de server,
+   en die hoort meteen gezien te worden.
+
+   Komt de verbinding terug (het 'online'-signaal van de browser), dan wordt
+   er meteen ververst in plaats van te wachten op de klok. */
+var _verbindingPogingen = 0;
+function hvVerbindingsfout(err) {
+  _verbindingPogingen++;
+  const crmDown = /503|crm_unavailable/.test(String((err && err.message) || ''));
+  if (!crmDown && _verbindingPogingen === 1) {
+    setTimeout(function () { if (state.apiKey) refreshData(); }, 8000);
+    return;
+  }
+  showCrmError(err);
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', function () { if (state.apiKey) refreshData(); });
 }
 
 /* ── Zichtbaar maken dat er iets mis is ──────────────────────────────────────
@@ -5620,7 +5649,11 @@ function showCrmError(err) {
     el.id = 'crm-error-banner';
     el.className = 'crm-error-banner';
     el.setAttribute('role', 'alert');
-    const host = document.querySelector('.page.active') || document.querySelector('.main-content');
+    /* Niet IN de Faro-pagina: die is een gesprek met een eigen lay-out, en een
+       balk die daar bovenaan in de draad schuift leest als een kapotte pagina
+       (zo is hij ook gemeld). Boven de pagina, in .main-content, staat hij op
+       dezelfde plek voor elke pagina en duwt hij het gesprek alleen omlaag. */
+    const host = document.querySelector('.page.active:not(.faro-page)') || document.querySelector('.main-content');
     if (!host) return;
     host.insertBefore(el, host.firstChild);
   }
@@ -11671,20 +11704,16 @@ function wizardTeken() {
      alleen een plaatje dat toevallig van pose wisselt. */
   var gidsTekst = document.getElementById('wizard-gidstekst');
   if (gidsTekst) {
-    gidsTekst.textContent = {
-      intro:   'Ik help je hier even doorheen.',
-      regio:   'Zo weet ik in welke taal ik je klanten aanspreek.',
-      markt:   'Hiermee weet ik waar je gesprekken over gaan, en wat ik moet uitvragen.',
-      bedrijf: 'Hoe meer ik weet, hoe beter ik je klanten te woord sta.',
-      ai:      'Zo stel ik me straks voor aan je leads.',
-      koppelingen: 'Hiermee kan ik zelf afspraken inplannen.',
-      klaar:   'Vanaf nu neem ik je gesprekken over.'
-    }[stap] || '';
+    /* Via tr(): de inhoud per stap was al vertaald, deze zin niet -- een
+       Engelstalige klant zag Faro Nederlands praten naast Engelse velden. */
+    gidsTekst.textContent = tr('wiz.gids.' + stap);
   }
 
   terug.style.visibility = _wizardStap === 0 ? 'hidden' : 'visible';
   over.style.display = _wizardStap === WIZARD_STAPPEN.length - 1 ? 'none' : '';
-  knop.textContent = _wizardStap === WIZARD_STAPPEN.length - 1 ? 'Aan de slag' : 'Volgende';
+  knop.textContent = _wizardStap === WIZARD_STAPPEN.length - 1 ? tr('wiz.knop.klaar') : tr('wiz.knop.volgende');
+  over.textContent = tr('wiz.knop.overslaan');
+  terug.textContent = tr('wiz.knop.terug');
 
   if (stap === 'intro') {
     titel.textContent = tr('wiz.intro.t');
@@ -11919,18 +11948,11 @@ function wizardTeken() {
  * gebruikt, en het geeft Faro meteen een natuurlijke plek onderaan de rail --
  * aanwezig als merkteken, niet als hoofdrolspeler.
  */
-var WIZARD_LABELS = {
-  intro:   'Welkom',
-  regio:   'Land en taal',
-  /* Deze ontbrak. De stap zelf stond wel in WIZARD_STAPPEN, dus de rail toonde
-     een genummerd bolletje met een lege regel ernaast -- stap 3 van 7, zonder
-     naam, op het eerste scherm dat een nieuwe klant ziet. */
-  markt:   'Je markt',
-  bedrijf: 'Je bedrijf',
-  koppelingen: 'Koppelingen',
-  ai:      'Je assistent',
-  klaar:   'Klaar'
-};
+/* Geen vaste tabel meer maar tr('wiz.rail.<stap>'): de rail was het enige
+   stuk van de wizard dat niet meevertaalde. (Ooit ontbrak 'markt' hier en
+   toonde de rail een genummerd bolletje zonder naam; de sleutel per stap staat
+   nu in api/_i18n.js, in vier talen, dus een ontbrekende naam valt daar op.) */
+function wizardLabel(stap) { return tr('wiz.rail.' + stap); }
 
 function wizardTekenRail() {
   var rail = document.getElementById('wizard-rail');
@@ -11956,7 +11978,7 @@ function wizardTekenRail() {
             : 'background:transparent;color:var(--text-muted,#999);border:1px solid var(--border,#2A3444);');
 
     var tekst = document.createElement('span');
-    tekst.textContent = WIZARD_LABELS[sleutel];
+    tekst.textContent = wizardLabel(sleutel);
     tekst.style.cssText = 'font-size:13px;'
       + (actief ? 'color:var(--text,#E9EEF6);font-weight:600;'
                 : gedaan ? 'color:var(--text-muted,#999);' : 'color:var(--text-muted,#999);opacity:0.72;');
@@ -11993,7 +12015,7 @@ function wizardBouw() {
   if (smal) rail.style.display = 'none';
 
   var railKop = document.createElement('div');
-  railKop.textContent = 'Aan de slag';
+  railKop.textContent = tr('wiz.rail.kop');
   railKop.style.cssText = 'font-size:11px;letter-spacing:0.1em;text-transform:uppercase;'
     + 'color:var(--text-muted,#999);margin:0 0 14px';
 

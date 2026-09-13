@@ -64,6 +64,11 @@ function css() {
   transition: border-color 150ms ease;
 }
 .cmd-auto:hover { border-color: var(--champagne); }
+/* Alleen bij de briefing (de landing). In een gesprek hing hij rechtsboven
+   OVER de eerste berichtbubbel van de gebruiker -- zichtbaar op de live app.
+   Autopilot is een stand van de briefing, niet van een lopend gesprek; zodra
+   de landing weg is, gaat hij mee. */
+.faro-page__main:has(#faro-landing[hidden]) .cmd-auto { display: none; }
 .cmd-auto__dot {
   width: var(--sp-2); height: var(--sp-2); border-radius: var(--r-full);
   background: var(--cmd-ready); flex-shrink: 0;
