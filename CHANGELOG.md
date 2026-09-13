@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 13 september 2026 — nacht (2)
 
 ### WhatsApp-templates indienen kan nu vanuit de back-office
 
