@@ -2725,7 +2725,7 @@ module.exports = async function handler(req, res) {
         /* beschikbaar meesturen zodat de UI het verschil kan tonen tussen
            "geen panden ingevoerd" en "de tabel bestaat nog niet". Dat zijn twee
            heel verschillende boodschappen voor de klant. */
-        return res.status(200).json({ properties: panden, available: await _properties.available() });
+        return res.status(200).json({ properties: panden, available: await _properties.available(), reden: (await _properties.available()) ? '' : _properties.onbeschikbaarReden() });
       } catch (err) {
         console.error('[listing-list]', err && err.code, err && err.message);
         return res.status(500).json({ error: 'Panden konden niet opgehaald worden.' });
@@ -2823,7 +2823,8 @@ module.exports = async function handler(req, res) {
            Hem alsnog ophalen zou een Airtable-rondje kosten op ELKE lijst-
            oproep, om iets te herhalen dat het dashboard bij het opstarten al
            weet. Welke vertical dit is hoort daar thuis, niet hier. */
-        return res.status(200).json({ vehicles: autos, available: await _vehicles.available() });
+        const beschikbaar = await _vehicles.available();
+        return res.status(200).json({ vehicles: autos, available: beschikbaar, reden: beschikbaar ? '' : _vehicles.onbeschikbaarReden() });
       } catch (err) {
         console.error('[vehicle-list]', err && err.code, err && err.message);
         return res.status(500).json({ error: 'Voertuigen konden niet opgehaald worden.' });

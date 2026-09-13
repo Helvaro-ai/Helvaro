@@ -1104,6 +1104,32 @@ ${faro.navCta}
       <p style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
         ${T('goal.disclaimer')}
       </p>
+
+      <!-- De leads achter de cijfers. Zes kaarten met een getal erin zeggen
+           "2 leads ontvangen" — maar wélke twee, en wat is ermee gebeurd? Dat
+           stond nergens op deze pagina, en de rest van het scherm was leeg. -->
+      <div class="table-card" id="resultaten-leads" style="margin-top:24px;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px">
+          <div style="font-size:13px;font-weight:600" id="resultaten-leads-title"></div>
+          <button class="btn-icon" type="button" onclick="navigateTo('dashboard')">${T('res.alleLeads')}</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th>${T('dash.col.name')}</th>
+                <th>${T('dash.col.source')}</th>
+                <th>${T('dash.col.status')}</th>
+                <th>${T('dash.col.qual')}</th>
+                <th>${T('res.afspraak')}</th>
+                <th>${T('dash.col.score')}</th>
+                <th>${T('dash.col.date')}</th>
+              </tr>
+            </thead>
+            <tbody id="resultaten-leads-body"></tbody>
+          </table>
+        </div>
+      </div>
     </main>
 
     <!-- Exports Page -->
@@ -6669,14 +6695,14 @@ function resultatenTrend(curr, prev, opts) {
   const diff = curr - prev;
   const epsilon = opts.epsilon || 0.05;
   if (Math.abs(diff) < epsilon) {
-    return '<span style="color:var(--text-muted);font-size:11px">— gelijk aan vorige periode</span>';
+    return '<span style="color:var(--text-muted);font-size:11px">' + escHtml(tr('res.gelijk')) + '</span>';
   }
   const arrow = diff > 0 ? '↑' : '↓';
   const good  = opts.lowerIsBetter ? diff < 0 : diff > 0;
   const col   = good ? 'var(--green)' : 'var(--red)';
   const shown = opts.round1 ? Math.abs(Math.round(diff * 10) / 10) : Math.abs(Math.round(diff));
   const suffix = opts.suffix || '';
-  return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${shown}\${suffix} vs vorige periode</span>\`;
+  return \`<span style="color:\${col};font-size:11px;font-weight:700">\${arrow} \${shown}\${suffix} \${escHtml(tr('res.vsVorige'))}</span>\`;
 }
 
 function renderResultaten(d) {
@@ -6687,7 +6713,7 @@ function renderResultaten(d) {
   const p = d.previous || null; // null for 'all_time' — no previous period exists
 
   if (rangeEl) {
-    const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    const fmtDate = iso => iso ? new Date(iso).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
     rangeEl.textContent = (c.from && c.to) ? \`\${fmtDate(c.from)} — \${fmtDate(c.to)}\` : '';
   }
 
@@ -6701,7 +6727,7 @@ function renderResultaten(d) {
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
         </div>
         <div class="empty-title">${T('leeg.resultaten')}</div>
-        <div class="empty-desc">Zodra Helvaro leads voor je kwalificeert, verschijnen de cijfers hier automatisch — meestal binnen enkele dagen na de eerste aanvraag.</div>
+        <div class="empty-desc">\${escHtml(tr('res.leegDesc'))}</div>
         \${emptyStateCta()}
       </div>
     \`;
@@ -6710,47 +6736,47 @@ function renderResultaten(d) {
 
   const fmtEuro = v => v == null ? '—' : '€' + Math.round(v).toLocaleString(LOCALE);
   const fmtNum  = v => v == null ? '—' : v;
-  const fmtSec  = v => v == null ? 'geen data' : (v < 60 ? Math.round(v) + 's' : Math.round(v / 60) + 'm');
+  const fmtSec  = v => v == null ? tr('res.geenData') : (v < 60 ? Math.round(v) + 's' : Math.round(v / 60) + 'm');
 
   const cards = [
     {
-      label: 'Leads Ontvangen',
+      label: tr('res.leadsOntvangen'),
       value: fmtNum(c.leadsReceived),
-      desc:  'in geselecteerde periode',
+      desc:  tr('res.inPeriode'),
       trend: p ? resultatenTrend(c.leadsReceived, p.leadsReceived) : ''
     },
     {
-      label: 'Gekwalificeerd',
+      label: tr('res.gekwalificeerd'),
       value: fmtNum(c.qualifiedCount),
       color: 'cyan',
-      desc:  c.qualifiedRate != null ? \`\${c.qualifiedRate}% van de leads\` : 'geen data',
+      desc:  c.qualifiedRate != null ? tr('res.vanDeLeads', { pct: c.qualifiedRate }) : tr('res.geenData'),
       trend: p ? resultatenTrend(c.qualifiedCount, p.qualifiedCount) : ''
     },
     {
-      label: 'Afspraken Geboekt',
+      label: tr('res.afsprakenGeboekt'),
       value: fmtNum(c.appointmentsBooked),
       color: 'green',
-      desc:  'geboekte afspraken',
+      desc:  tr('res.geboekteAfspraken'),
       trend: p ? resultatenTrend(c.appointmentsBooked, p.appointmentsBooked) : ''
     },
     {
-      label: 'Verwachte Pipeline Waarde',
+      label: tr('res.pipelineWaarde'),
       value: fmtEuro(c.pipelineValueTotal),
       color: 'orange',
-      desc:  c.pipelineValueCount ? \`\${c.pipelineValueCount} lead(s) met schatting\` : 'nog geen schattingen',
+      desc:  c.pipelineValueCount ? tr('res.metSchatting', { n: c.pipelineValueCount }) : tr('res.geenSchattingen'),
       trend: p ? resultatenTrend(c.pipelineValueTotal, p.pipelineValueTotal) : ''
     },
     {
-      label: 'Gem. Lead Score',
+      label: tr('res.gemScore'),
       value: c.avgLeadScore == null ? '—' : c.avgLeadScore,
       color: 'blue',
-      desc:  c.avgLeadScoreCount ? \`o.b.v. \${c.avgLeadScoreCount} leads\` : 'geen data',
+      desc:  c.avgLeadScoreCount ? tr('res.obv', { n: c.avgLeadScoreCount }) : tr('res.geenData'),
       trend: p ? resultatenTrend(c.avgLeadScore, p.avgLeadScore, { round1: true }) : ''
     },
     {
-      label: 'Gem. Reactietijd',
+      label: tr('res.gemReactie'),
       value: fmtSec(c.avgResponseTime),
-      desc:  c.avgResponseTimeCount ? \`o.b.v. \${c.avgResponseTimeCount} leads\` : 'geen data',
+      desc:  c.avgResponseTimeCount ? tr('res.obv', { n: c.avgResponseTimeCount }) : tr('res.geenData'),
       trend: p ? resultatenTrend(c.avgResponseTime, p.avgResponseTime, { lowerIsBetter: true }) : ''
     }
   ];
@@ -6763,6 +6789,45 @@ function renderResultaten(d) {
       <div class="stat-trend">\${cd.trend || ''}</div>
     </div>
   \`).join('');
+
+  renderResultatenLeads(c);
+}
+
+/* De leads uit de gekozen periode, uit dezelfde state.leads die het dashboard
+   al heeft -- geen extra rondje naar de server. Klikken opent het leadpaneel.
+   Alleen echte rijen: staat er niets in de periode, dan blijft het blok weg. */
+function renderResultatenLeads(c) {
+  const wrap  = document.getElementById('resultaten-leads');
+  const body  = document.getElementById('resultaten-leads-body');
+  const titel = document.getElementById('resultaten-leads-title');
+  if (!wrap || !body) return;
+  const van = c && c.from ? Date.parse(c.from) : NaN;
+  const tot = c && c.to   ? Date.parse(c.to)   : NaN;
+  const rijen = (state.leads || []).filter(l => {
+    const t = l.datum ? Date.parse(l.datum) : NaN;
+    if (!Number.isFinite(t)) return false;
+    if (Number.isFinite(van) && t < van) return false;
+    if (Number.isFinite(tot) && t > tot + 86400000) return false;
+    return true;
+  }).sort((a, b) => Date.parse(b.datum) - Date.parse(a.datum)).slice(0, 50);
+  if (!rijen.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  if (titel) titel.textContent = tr('res.leadsInPeriode', { n: rijen.length });
+  body.innerHTML = rijen.map(l => \`
+    <tr class="lead-row" tabindex="0" role="button" data-id="\${escHtml(l.id)}">
+      <td><strong>\${escHtml(l.naam || '—')}</strong></td>
+      <td>\${escHtml(l.bron || '—')}</td>
+      <td>\${statusBadge(l.status)}</td>
+      <td>\${qualBadge(l)}</td>
+      <td>\${l.afspraakGeboekt ? '<span class="badge badge-yes">' + escHtml(tr('res.geboekt')) + '</span>' : '<span class="badge badge-new">—</span>'}</td>
+      <td>\${scorePill(l.leadScore)}</td>
+      <td>\${escHtml(formatDate(l.datum))}</td>
+    </tr>\`).join('');
+  body.querySelectorAll('tr[data-id]').forEach(tr_ => {
+    const open = () => { const lead = (state.leads || []).find(x => x.id === tr_.dataset.id); if (lead) openPanel(lead); };
+    tr_.addEventListener('click', open);
+    tr_.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  });
 }
 
 /* ============================================================
@@ -7757,15 +7822,15 @@ function statusBadge(status) {
 
 function qualBadge(lead) {
   if (lead.status === 'in_progress') return '<span class="badge badge-inprogress">${T('dash.s.busy')}</span>';
-  if (lead.qualified === true) return '<span class="badge badge-yes">Ja</span>';
-  if (lead.qualified === false) return '<span class="badge badge-no">Nee</span>';
+  if (lead.qualified === true) return '<span class="badge badge-yes">' + escHtml(tr('val.ja')) + '</span>';
+  if (lead.qualified === false) return '<span class="badge badge-no">' + escHtml(tr('val.nee')) + '</span>';
   return '<span class="badge badge-new">—</span>';
 }
 
 function scorePill(score) {
   if (score === null || score === undefined || score === 0) return '<span class="score-pill score-gray" title="' + escHtml(tr('lp.geenScore')) + '">—</span>';
   const cls = score >= 8 ? 'score-green' : score >= 5 ? 'score-orange' : 'score-red';
-  const title = score >= 8 ? 'Uitstekende match' : score >= 5 ? 'Gemiddelde match' : 'Slechte match';
+  const title = escHtml(tr(score >= 8 ? 'score.uitstekend' : score >= 5 ? 'score.gemiddeld' : 'score.slecht'));
   return \`<span class="score-pill \${cls}" title="\${title}">\${score}</span>\`;
 }
 
@@ -10007,8 +10072,8 @@ function renderCalSidebar() {
        een nieuwe klant is dat het eerste wat hij op deze pagina leest. */
     const nogGeenLeads = !(state.leads && state.leads.length);
     listEl.innerHTML = nogGeenLeads
-      ? \`<div class="cal-sidebar-empty">Nog geen leads. Zodra je assistent er een kwalificeert, staat hij hier klaar om in te plannen.</div>\`
-      : \`<div class="cal-sidebar-empty">Alle gekwalificeerde leads hebben een afspraak!</div>\`;
+      ? \`<div class="cal-sidebar-empty">\${escHtml(tr('cal.nogGeenLeads'))}</div>\`
+      : \`<div class="cal-sidebar-empty">\${escHtml(tr('cal.alleGepland'))}</div>\`;
     return;
   }
 
@@ -12391,7 +12456,10 @@ function pipelineDragStart(event, leadId) {
   event.dataTransfer.setData('text/plain', String(leadId));
 }
 
-const PIPELINE_STAGE_LABELS = { new: 'Nieuw', qualified: 'Gekwalificeerd', afspraak: 'Afspraak', won: 'Gewonnen', lost: 'Verloren' };
+/* Via tr(): de fasenamen stonden vast in het Nederlands op een dashboard in
+   vier talen. Een functie en geen tabel, zodat een taalwissel meteen telt. */
+function pipelineStageLabel(stage) { return tr('stage.' + stage); }
+const PIPELINE_STAGE_LABELS = { get new() { return tr('stage.new'); }, get qualified() { return tr('stage.qualified'); }, get afspraak() { return tr('stage.afspraak'); }, get won() { return tr('stage.won'); }, get lost() { return tr('stage.lost'); } };
 
 /* In welke fase zit een lead? DE enige plek waar dat bepaald wordt.
 
@@ -12575,31 +12643,31 @@ function renderPipeline() {
   const cols = [
     {
       id: 'new',
-      label: 'Nieuw',
+      label: tr('stage.new'),
       cls: 'col-new',
       leads: leads.filter(l => pipelineStageOf(l) === 'new')
     },
     {
       id: 'qualified',
-      label: 'Gekwalificeerd',
+      label: tr('stage.qualified'),
       cls: 'col-qual',
       leads: leads.filter(l => pipelineStageOf(l) === 'qualified')
     },
     {
       id: 'afspraak',
-      label: 'Afspraak',
+      label: tr('stage.afspraak'),
       cls: 'col-apt',
       leads: leads.filter(l => pipelineStageOf(l) === 'afspraak')
     },
     {
       id: 'won',
-      label: 'Gewonnen',
+      label: tr('stage.won'),
       cls: 'col-won',
       leads: leads.filter(l => pipelineStageOf(l) === 'won')
     },
     {
       id: 'lost',
-      label: 'Verloren',
+      label: tr('stage.lost'),
       cls: 'col-lost',
       leads: leads.filter(l => pipelineStageOf(l) === 'lost')
     }
@@ -12667,7 +12735,7 @@ function renderPipeline() {
   // Summary chips
   const summaryEl = document.getElementById('pipeline-summary');
   if (summaryEl) {
-    const colNames = ['Nieuw', 'Gekwalificeerd', 'Afspraak', 'Gewonnen', 'Verloren'];
+    const colNames = cols.map(c => c.label);
     const colCounts = {};
     cols.forEach(c => { colCounts[c.label] = c.leads.length; });
     const total = (state.leads || []).length;
@@ -12682,7 +12750,7 @@ function renderPipeline() {
       : null;
     summaryEl.innerHTML = \`<div class="pipeline-chip"><span>\${escHtml(tr('btn.totaal'))}</span><span class="pipeline-chip-count">\${total}</span></div>\`
       + colNames.map(c => \`<div class="pipeline-chip"><span>\${c}</span><span class="pipeline-chip-count">\${colCounts[c] || 0}</span></div>\`).join('')
-      + (valueFormatted ? \`<div class="pipeline-chip"><span>Pipeline waarde</span><span class="pipeline-chip-count" style="color:var(--green-ink)">\${valueFormatted}</span></div>\` : '');
+      + (valueFormatted ? \`<div class="pipeline-chip"><span>\${escHtml(tr('pipe.waarde'))}</span><span class="pipeline-chip-count" style="color:var(--green-ink)">\${valueFormatted}</span></div>\` : '');
   }
 }
 
@@ -13100,11 +13168,11 @@ function renderAnalyse() {
   }).length;
 
   const funnelSteps = [
-    { label: 'Totaal leads',      count: total,             pct: 100 },
-    { label: 'Gekwalificeerd',    count: qualified,          pct: total   ? Math.round((qualified / total) * 100) : 0 },
-    { label: 'Afspraak geboekt',  count: booked,             pct: total   ? Math.round((booked    / total) * 100) : 0 },
-    { label: 'Verschenen',        count: verschenenFunnel,   pct: booked  ? Math.round((verschenenFunnel / booked) * 100) : 0, note: 'van geboekt' },
-    { label: 'Gewonnen',          count: won,                pct: total   ? Math.round((won / total) * 100) : 0 }
+    { label: tr('an.totaalLeads'),      count: total,             pct: 100 },
+    { label: tr('stage.qualified'),     count: qualified,          pct: total   ? Math.round((qualified / total) * 100) : 0 },
+    { label: tr('an.afspraakGeboekt'),  count: booked,             pct: total   ? Math.round((booked    / total) * 100) : 0 },
+    { label: tr('an.verschenen'),       count: verschenenFunnel,   pct: booked  ? Math.round((verschenenFunnel / booked) * 100) : 0, note: tr('an.vanGeboekt') },
+    { label: tr('stage.won'),           count: won,                pct: total   ? Math.round((won / total) * 100) : 0 }
   ];
 
   const funnelEl = document.getElementById('funnel-content');
@@ -13253,9 +13321,9 @@ function renderAnalyse() {
     const booked  = leads.filter(l => l.afspraakGeboekt).length;
     const won     = leads.filter(l => l.status === 'completed' && l.qualified).length;
     const items   = [
-      { label: 'Gekwalificeerd', val: qual,   pct: Math.round(qual/total*100),   color: 'var(--info)' },
-      { label: 'Afspraak',       val: booked, pct: Math.round(booked/total*100), color: 'var(--success)' },
-      { label: 'Gewonnen',       val: won,    pct: Math.round(won/total*100),    color: 'var(--accent)' },
+      { label: tr('stage.qualified'), val: qual,   pct: Math.round(qual/total*100),   color: 'var(--info)' },
+      { label: tr('stage.afspraak'),  val: booked, pct: Math.round(booked/total*100), color: 'var(--success)' },
+      { label: tr('stage.won'),       val: won,    pct: Math.round(won/total*100),    color: 'var(--accent)' },
     ];
     convSummary.innerHTML = items.map(it => \`
       <div style="display:flex;align-items:center;gap:8px;font-size:12px">
@@ -13299,10 +13367,10 @@ function exportPDF() {
   doc.setFont('helvetica', 'bold');
   let y = 38;
   const stats = [
-    { label: 'Totaal leads', val: total },
-    { label: 'Gekwalificeerd', val: qualified.length },
-    { label: 'Afspraken', val: leads.filter(l=>l.afspraakGeboekt).length },
-    { label: 'Conversie', val: total ? Math.round(qualified.length/total*100)+'%' : '0%' },
+    { label: tr('an.totaalLeads'), val: total },
+    { label: tr('stage.qualified'), val: qualified.length },
+    { label: tr('an.afspraken'), val: leads.filter(l=>l.afspraakGeboekt).length },
+    { label: tr('an.conversie'), val: total ? Math.round(qualified.length/total*100)+'%' : '0%' },
   ];
   stats.forEach((st, i) => {
     const x = 14 + i * 46;
@@ -15317,12 +15385,12 @@ function renderFacturatie() {
       + '— dus kan hier niet staan waar ze heen gingen.</div>';
   } else if (!perFeature || !Object.keys(perFeature).length) {
     verdelingSub.textContent = 'Deze periode';
-    verdeling.innerHTML = '<div class="fa-leeg">Nog niets verbruikt deze periode.</div>';
+    verdeling.innerHTML = '<div class="fa-leeg">' + escHtml(tr('fa.nietsVerbruikt')) + '</div>';
   } else {
     var paren = Object.keys(perFeature).map(function (k) { return { k: k, n: perFeature[k] }; })
       .sort(function (a, b) { return b.n - a.n; });
     var hoogste = paren[0].n || 1;
-    verdelingSub.textContent = 'Deze periode · ' + faGetal(gb.totalen.verbruikt) + ' credits';
+    verdelingSub.textContent = tr('fa.dezePeriodeCredits', { n: faGetal(gb.totalen.verbruikt) });
     verdeling.innerHTML = paren.map(function (p) {
       var breed = Math.max(2, Math.round((p.n / hoogste) * 100));
       return '<div class="fa-rij"><div class="fa-rij-naam">'
@@ -15338,13 +15406,13 @@ function renderFacturatie() {
   var boekingen = gb.boekingen || [];
   if (!gb.beschikbaar) {
     lijstSub.textContent = '';
-    lijst.innerHTML = '<div class="fa-leeg">Nog geen boekingen om te tonen.</div>';
+    lijst.innerHTML = '<div class="fa-leeg">' + escHtml(tr('fa.geenBoekingen')) + '</div>';
   } else if (!boekingen.length) {
-    lijstSub.textContent = 'Elke beweging, nieuwste eerst';
-    lijst.innerHTML = '<div class="fa-leeg">Nog geen boekingen deze periode.</div>';
+    lijstSub.textContent = tr('fa.entries.sub');
+    lijst.innerHTML = '<div class="fa-leeg">' + escHtml(tr('fa.geenBoekingenPeriode')) + '</div>';
   } else {
-    lijstSub.textContent = boekingen.length + ' ' + (boekingen.length === 1 ? 'boeking' : 'boekingen')
-      + ' deze periode, nieuwste eerst';
+    lijstSub.textContent = tr('fa.boekingenTelling', {
+      n: boekingen.length, woord: tr(boekingen.length === 1 ? 'fa.boeking' : 'fa.boekingen') });
     lijst.innerHTML = boekingen.map(function (t) {
       var plus = t.credits > 0;
       var titel = t.type === 'usage'
@@ -15446,6 +15514,7 @@ async function loadPanden(force) {
     var d = await r.json();
     pandState.panden = (isDealer() ? d.vehicles : d.properties) || [];
     pandState.beschikbaar = d.available !== false;
+    pandState.reden = d.reden || '';
     pandState.geladen = true;
 
     /* Voor de kaartjes: welk voertuig heeft NU een actieve, geboekte afspraak.
@@ -15503,9 +15572,25 @@ function renderPanden() {
     grid.innerHTML = '';
     leeg.style.display = 'none';
     notice.style.display = '';
-    notice.innerHTML = '<strong>' + vw('Meer') + ' staan nog uit.</strong> De tabel <code>' + vw('tabel')
-      + '</code> bestaat nog niet in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets '
-      + 'uitgerold hoeft te worden.';
+    /* Twee heel verschillende situaties kregen hier één boodschap. Op de live
+       app stond "de tabel bestaat nog niet" terwijl de tabel er gewoon stond:
+       Airtable had één keer niet op tijd geantwoord. Dat is geen inrichting
+       maar een hapering -- en dan hoort er "even niet, ik probeer het zo
+       opnieuw" te staan, met een knop. */
+    if (pandState.reden === 'geen_tabel') {
+      notice.innerHTML = '<strong>' + escHtml(vw('Meer')) + ' staan nog uit.</strong> De tabel <code>' + escHtml(vw('tabel'))
+        + '</code> bestaat nog niet in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets '
+        + 'uitgerold hoeft te worden.';
+    } else {
+      notice.innerHTML = '<strong>' + escHtml(tr('pd.nietGeladen')) + '</strong> ' + escHtml(tr('pd.nietGeladenSub'))
+        + ' <button type="button" class="btn-icon" id="pd-retry" style="margin-left:8px">' + escHtml(tr('sup.opnieuw')) + '</button>';
+      var knop = document.getElementById('pd-retry');
+      if (knop) knop.addEventListener('click', function () { loadPanden(true); });
+      /* En zelf nog eens, na een halve minuut: de server kijkt dan ook opnieuw. */
+      if (!pandState._herprobeer) {
+        pandState._herprobeer = setTimeout(function () { pandState._herprobeer = null; loadPanden(true); }, 35000);
+      }
+    }
     telEl.textContent = '';
     return;
   }
@@ -16478,11 +16563,11 @@ function populateFormStats() {
     if (!el) return;
     el.className = 'fm-stat-delta';
     if (prev === 0 && cur === 0) { el.textContent = tr('leeg.historiek'); return; }
-    if (prev === 0) { el.textContent = '↑ Eerste deze periode'; el.classList.add('up'); return; }
+    if (prev === 0) { el.textContent = tr('fm.eersteDezePeriode'); el.classList.add('up'); return; }
     const diff = cur - prev;
     const pct  = Math.round((diff / prev) * 100);
-    if (diff > 0)      { el.textContent = '↑ ' + Math.abs(pct) + '% vs vorige';   el.classList.add('up');  }
-    else if (diff < 0) { el.textContent = '↓ ' + Math.abs(pct) + '% vs vorige';   el.classList.add('down'); }
+    if (diff > 0)      { el.textContent = tr('fm.vsVorige', { richting: '↑', pct: Math.abs(pct) });   el.classList.add('up');  }
+    else if (diff < 0) { el.textContent = tr('fm.vsVorige', { richting: '↓', pct: Math.abs(pct) });   el.classList.add('down'); }
     else               { el.textContent = tr('val.gelijk'); }
   };
 
@@ -16494,9 +16579,9 @@ function populateFormStats() {
   setDelta('fm-stat-month-delta', month, prevMonth);
 
   const totalSub = document.getElementById('fm-stat-total-sub');
-  if (totalSub) totalSub.textContent = total === 0 ? 'Nog geen aanvragen ontvangen' : qualified + ' gekwalificeerd';
+  if (totalSub) totalSub.textContent = total === 0 ? tr('fm.nogGeenAanvragen') : tr('fm.gekwalificeerdTelling', { n: qualified });
   const convSub = document.getElementById('fm-stat-conv-sub');
-  if (convSub) convSub.textContent = total === 0 ? '—' : qualified + ' van ' + total;
+  if (convSub) convSub.textContent = total === 0 ? '—' : tr('fm.vanTotaal', { n: qualified, totaal: total });
 }
 
 // Email handoff. Opens the user's mail client with a pre-filled message to

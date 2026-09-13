@@ -170,25 +170,48 @@ async function atFetch(pathAndQuery, options = {}) {
    is; elke beurt opnieuw kijken kost alleen tijd. null = nog niet gekeken. */
 let _beschikbaar = null;
 
+/* Onthouden of de tabel er is -- maar alleen een JA voor altijd. Een NEE werd
+   hier ook voorgoed onthouden, en dat was fout: één afgebroken verzoek bij een
+   koude start ("This operation was aborted", een time-out) zette _beschikbaar
+   op false voor de rest van het leven van deze instance, en de app zei dan
+   "de tabel bestaat nog niet" over een tabel die er gewoon staat. Gezien op de
+   live app op 2026-09-13, op de Voorraad-pagina.
+
+   Nu: ja = klaar; nee = na dertig seconden opnieuw kijken. En de REDEN gaat
+   mee (geen_tabel bij een 404, onbereikbaar bij al het andere), zodat een
+   scherm het verschil kan zeggen tussen "nog inrichten" en "even niet". */
+let _beschikbaarTot = 0;
+let _beschikbaarReden = '';
+const HERPROBEER_MS = 30 * 1000;
+
 async function available() {
-  if (_beschikbaar !== null) return _beschikbaar;
-  if (!configured()) { _beschikbaar = false; return false; }
+  if (_beschikbaar === true) return true;
+  if (_beschikbaar === false && Date.now() < _beschikbaarTot) return false;
+  if (!configured()) { _beschikbaar = false; _beschikbaarTot = Infinity; _beschikbaarReden = 'niet_geconfigureerd'; return false; }
   try {
     const r = await atFetch(`${TABEL}?pageSize=1`);
     _beschikbaar = r.ok;
     if (!r.ok) {
-      console.warn(`[panden] tabel "${TABEL}" niet gevonden (HTTP ${r.status}) — `
-        + 'panden zijn uit tot die tabel bestaat. Zie de kop van api/_properties.js.');
+      _beschikbaarTot = Date.now() + HERPROBEER_MS;
+      _beschikbaarReden = r.status === 404 ? 'geen_tabel' : 'onbereikbaar';
+      console.warn(`[panden] tabel "${TABEL}" niet leesbaar (HTTP ${r.status}) -- over 30 s opnieuw.`);
+    } else {
+      _beschikbaarReden = '';
     }
   } catch (e) {
-    console.warn('[panden] Airtable onbereikbaar:', e && e.message);
+    console.warn('[panden] Airtable onbereikbaar (over 30 s opnieuw):', e && e.message);
     _beschikbaar = false;
+    _beschikbaarTot = Date.now() + HERPROBEER_MS;
+    _beschikbaarReden = 'onbereikbaar';
   }
   return _beschikbaar;
 }
 
+/** Waarom available() nee zei: 'geen_tabel' | 'onbereikbaar' | 'niet_geconfigureerd' | ''. */
+function onbeschikbaarReden() { return _beschikbaar === true ? '' : _beschikbaarReden; }
+
 /** Alleen voor tests: de onthouden uitkomst weggooien. */
-function _resetAvailability() { _beschikbaar = null; }
+function _resetAvailability() { _beschikbaar = null; _beschikbaarTot = 0; _beschikbaarReden = ''; }
 
 /* ── Vertalen ────────────────────────────────────────────────────────────── */
 function getal(v) {
@@ -654,7 +677,7 @@ function samenvatting(pand) {
 module.exports = {
   TABEL, F, STATUS, ALLE_STATUS, TYPES, TRANSACTIES, BEZICHTIGBAAR,
   PropertyError,
-  available, configured, _resetAvailability,
+  available, configured, _resetAvailability, onbeschikbaarReden,
   list, getByCode, save, archive, importeerUitLink,
   matchUitTekst, kanBezichtigen, normStatus, normCode, geldigeCode, volgendeCode,
   prijsTekst, adresTekst, samenvatting, vanRecord, naarVelden,

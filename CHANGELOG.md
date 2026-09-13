@@ -12,6 +12,34 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### "De tabel vehicles bestaat nog niet" — terwijl hij er gewoon stond
+
+De Voorraad-pagina zei dat de tabel nog niet bestond. Wat er echt gebeurde:
+Airtable antwoordde één keer niet op tijd bij een koude start, en dat nee werd
+onthouden voor de rest van het leven van die server. Elke bezoeker daarna
+kreeg dezelfde onwaarheid. Hetzelfde zat in de panden, het activiteitenlog en
+de opslag van Faro-gesprekken. Nu blijft alleen een **ja** onthouden; een nee
+wordt na dertig seconden opnieuw geprobeerd, en de pagina zegt eerlijk "even
+niet geladen, we proberen het zo opnieuw" met een knop — in plaats van je naar
+Airtable te sturen voor een tabel die er is.
+
+### Nederlands op een Engels dashboard
+
+Resultaten (alle zes kaarten), de fasenamen in de pipeline, de funnel in
+Analyse, "Alle gekwalificeerde leads hebben een afspraak!" in de agenda, de
+credit-regels op Facturatie en de tellers op het formulierscherm stonden vast
+in het Nederlands, welke taal je ook gekozen had. Allemaal via de vertaaltabel
+nu, in vier talen.
+
+### Resultaten toont nu ook wélke leads
+
+Zes kaarten met een getal erin zeiden "2 leads ontvangen", maar welke twee en
+wat ermee gebeurde stond nergens — en de rest van het scherm was leeg. Onder
+de kaarten staan nu de leads van de gekozen periode (bron, status,
+gekwalificeerd, afspraak, score), klikbaar naar het leadpaneel.
+
 ## 13 september 2026
 
 ### Faro: eerdere gesprekken laden weer, het invoerveld blijft staan, en hij antwoordt als een echte assistent

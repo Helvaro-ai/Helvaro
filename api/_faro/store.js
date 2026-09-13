@@ -126,24 +126,48 @@ async function dbFetch(pathAndQuery, options = {}) {
                Object.assign({}, options, { headers }));
 }
 
+/* Onthouden of de tabel er is -- maar alleen een JA voor altijd. Een NEE werd
+   hier ook voorgoed onthouden, en dat was fout: één afgebroken verzoek bij een
+   koude start ("This operation was aborted", een time-out) zette _available
+   op false voor de rest van het leven van deze instance, en de app zei dan
+   "de tabel bestaat nog niet" over een tabel die er gewoon staat. Gezien op de
+   live app op 2026-09-13, op de Voorraad-pagina.
+
+   Nu: ja = klaar; nee = na dertig seconden opnieuw kijken. En de REDEN gaat
+   mee (geen_tabel bij een 404, onbereikbaar bij al het andere), zodat een
+   scherm het verschil kan zeggen tussen "nog inrichten" en "even niet". */
+let _availableTot = 0;
+let _availableReden = '';
+const HERPROBEER_MS = 30 * 1000;
+
 async function available() {
-  if (_available !== null) return _available;
-  if (!configured()) { _available = false; return false; }
+  if (_available === true) return true;
+  if (_available === false && Date.now() < _availableTot) return false;
+  if (!configured()) { _available = false; _availableTot = Infinity; _availableReden = 'niet_geconfigureerd'; return false; }
   try {
     const r = await dbFetch(`${T_CONVERSATIONS}?pageSize=1`);
-    // 404 = tabel bestaat niet (nog). 401/403 = verkeerd token; in beide
-    // gevallen is doorgaan zinloos maar mag Faro niet omvallen.
     _available = r.ok;
     if (!r.ok) {
-      console.warn(`[faro/store] tabel ${T_CONVERSATIONS} niet gevonden in ${backend()} (HTTP ${r.status}) — ` +
-                   'gesprekken leven alleen in de browser tot die tabel bestaat');
+      _availableTot = Date.now() + HERPROBEER_MS;
+      _availableReden = r.status === 404 ? 'geen_tabel' : 'onbereikbaar';
+      console.warn(`[faro/store] tabel "${T_CONVERSATIONS}" niet leesbaar (HTTP ${r.status}) -- over 30 s opnieuw.`);
+    } else {
+      _availableReden = '';
     }
   } catch (e) {
-    console.warn(`[faro/store] ${backend()} onbereikbaar:`, e && e.message);
+    console.warn('[faro/store] Airtable onbereikbaar (over 30 s opnieuw):', e && e.message);
     _available = false;
+    _availableTot = Date.now() + HERPROBEER_MS;
+    _availableReden = 'onbereikbaar';
   }
   return _available;
 }
+
+/** Waarom available() nee zei: 'geen_tabel' | 'onbereikbaar' | 'niet_geconfigureerd' | ''. */
+function onbeschikbaarReden() { return _available === true ? '' : _availableReden; }
+
+/** Alleen voor tests: de onthouden uitkomst weggooien. */
+function _resetAvailability() { _available = null; _availableTot = 0; _availableReden = ''; }
 
 /* Airtable-vormige façade: velden komen terug onder `fields`. */
 function rowToConversation(rec) {
@@ -472,7 +496,7 @@ async function getProjectContents(_projectCode, _projectId) {
 
 module.exports = {
   T_CONVERSATIONS, T_MESSAGES, T_PROJECTS, T_PROJECT_LINKS,
-  available, configured,
+  available, configured, onbeschikbaarReden, _resetAvailability,
   listConversations, getConversation, createConversation,
   renameConversation, setFavorite, deleteConversation, deriveTitle,
   listMessages, appendMessage, windowForModel,
