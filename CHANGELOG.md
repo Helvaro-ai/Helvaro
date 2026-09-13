@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 13 september 2026
 
 ### Faro: eerdere gesprekken laden weer, het invoerveld blijft staan, en hij antwoordt als een echte assistent
 
@@ -564,7 +564,7 @@ In plaats van een plaatje met tooltips.
 
 ---
 
-## Nog niet uitgerold
+## 8 september 2026
 
 ### Je kon niet meer als beheerder inloggen
 
