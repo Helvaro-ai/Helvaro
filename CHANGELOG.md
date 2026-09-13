@@ -12,7 +12,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
-## Nog niet uitgerold
+## 13 september 2026 — later die dag
 
 ### "De tabel vehicles bestaat nog niet" — terwijl hij er gewoon stond
 
