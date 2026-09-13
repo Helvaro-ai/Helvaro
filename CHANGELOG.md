@@ -12,6 +12,15 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### Een AI-fout noemt nu ook status en soort
+
+In aanvulling op de vorige regel: de adapter zelf gooide "Anthropic weigerde
+het verzoek" zonder meer. Nu staat de HTTP-status, het fouttype (bv.
+`overloaded_error`) en het model erbij — nooit de boodschap van de provider,
+want die kan de prompt bevatten, en nooit de sleutel.
+
 ## 13 september 2026 — laat
 
 ### Als de AI een WhatsApp-bericht niet kon beantwoorden, zei het log niet waarom

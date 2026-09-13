@@ -91,10 +91,18 @@ const anthropic = {
 
     const data = await r.json().catch(() => ({}));
     if (!r.ok || data.error) {
-      const m = (data.error && data.error.message) || ('HTTP ' + r.status);
-      // Statuscode meenemen: 429 en 5xx horen een andere provider te krijgen,
-      // 400 is onze eigen fout en dan helpt uitwijken niet.
-      throw new ProviderError('Anthropic weigerde het verzoek.', r.status === 429 ? 'rate_limited' : 'provider_error', r.status);
+      /* Statuscode en het TYPE van de fout meenemen (overloaded_error,
+         rate_limit_error, invalid_request_error...) -- niet de boodschap, want
+         die kan de prompt terugkaatsen. Zonder dit stond er in het log alleen
+         "Anthropic weigerde het verzoek" en was een 529 (druk bij Anthropic)
+         niet te onderscheiden van een 400 (onze eigen fout). Precies dat
+         verschil ontbrak op 2026-09-13 toen de WhatsApp-AI een beurt liet
+         vallen. 429 en 5xx horen een andere provider te krijgen, 400 is van
+         ons en dan helpt uitwijken niet. */
+      const type = (data.error && data.error.type) || '';
+      throw new ProviderError(
+        `Anthropic weigerde het verzoek (HTTP ${r.status}${type ? ', ' + type : ''}, model ${model}).`,
+        r.status === 429 ? 'rate_limited' : 'provider_error', r.status);
     }
     const text = (data.content || [])
       .filter((b) => b && b.type === 'text')
@@ -129,7 +137,10 @@ const openai = {
 
     const data = await r.json().catch(() => ({}));
     if (!r.ok || data.error) {
-      throw new ProviderError('OpenAI weigerde het verzoek.', r.status === 429 ? 'rate_limited' : 'provider_error', r.status);
+      const type = (data.error && (data.error.type || data.error.code)) || '';
+      throw new ProviderError(
+        `OpenAI weigerde het verzoek (HTTP ${r.status}${type ? ', ' + type : ''}, model ${model}).`,
+        r.status === 429 ? 'rate_limited' : 'provider_error', r.status);
     }
     const keuze = (data.choices || [])[0];
     return {
