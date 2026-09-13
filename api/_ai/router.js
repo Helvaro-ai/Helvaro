@@ -135,7 +135,14 @@ async function generateText(opts = {}) {
     } catch (err) {
       laatsteFout = err;
       pogingen.push({ ...stap, ok: false, fout: (err && err.message || '').slice(0, 160) });
-      // Een provider die omvalt: door naar de volgende. Dat is fallback.
+      /* Een provider die omvalt: door naar de volgende. Dat is fallback.
+         Maar WEL zeggen welke en waarom. Op de live app stond alleen "geen
+         enkele provider gaf een bruikbaar antwoord" -- niet of Anthropic een
+         529 gaf, OpenAI een 401, of de aanroep gewoon te lang duurde. De
+         foutmelding van een adapter bevat nooit de sleutel; de eerste 200
+         tekens zijn genoeg om het verschil te zien. */
+      console.warn(`[ai] ${task} ${stap.providerId}/${stap.tier} (${stap.reden}) viel om: `
+        + `${err && err.code ? err.code + ' ' : ''}${String(err && err.message || err).slice(0, 200)}`);
       continue;
     }
 

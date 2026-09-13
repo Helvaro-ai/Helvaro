@@ -12,6 +12,16 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### Als de AI een WhatsApp-bericht niet kon beantwoorden, zei het log niet waarom
+
+Om 17:44 vandaag antwoordde de assistent niet op een echt bericht ("AI-router
+fout: geen enkele provider gaf een bruikbaar antwoord"); de lead kreeg de
+terugvaltekst. Welke provider omviel en met welke fout stond nergens. Nu staat
+er per mislukte poging één regel in het log met provider, niveau en de fout —
+zonder sleutels. De volgende keer is het in één blik te zien.
+
 ## 13 september 2026 — avond
 
 ### Verkopersmelding en herinnering mét de auto — klaar voor twee nieuwe templates
