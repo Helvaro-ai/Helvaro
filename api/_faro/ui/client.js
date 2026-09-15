@@ -668,6 +668,7 @@ function faroSend(text) {
       if (err && err.name === 'AbortError') return;
       var teSnel = err && err.faroCode === 'ratelimit';
       faroMascot('error');
+      faroBubbleMascot(bubble, 'idle');
       faroRenderComponent(bubble, {
         type: 'error',
         message: T(teSnel ? 'st.ratelimit' : 'st.error'),
@@ -681,6 +682,7 @@ function faroSend(text) {
       // A stream that ends without a done frame never cleared this, leaving the
       // mascot stuck in its error face until the next turn.
       setTimeout(function () { if (!faroState.streaming) faroMascot('idle'); }, 1800);
+      faroBubbleMascot(bubble, 'idle');
       if (status && status.parentNode) status.parentNode.removeChild(status);
     });
 }
@@ -745,6 +747,7 @@ function faroHandleEvent(name, data, bubble, status) {
 
     case 'text':
       if (status) status.style.display = 'none';
+      faroBubbleMascot(bubble, 'generating');
       // textContent, never innerHTML — see this file's header.
       bubble.querySelector('.faro-msg__text').textContent += data.delta || '';
       faroScrollToEnd();
@@ -752,6 +755,16 @@ function faroHandleEvent(name, data, bubble, status) {
 
     case 'thinking':
       faroMascot(data.state === 'generating' ? 'generating' : 'thinking');
+      /* Eén valk tegelijk: zolang de statusregel er staat beweegt die, en
+         het kop-icoon blijft stil. Pas als de tekst begint te lopen (en de
+         statusregel weg is) neemt de avatar het over -- zie 'text'. */
+      if (!status || status.style.display === 'none') {
+        faroBubbleMascot(bubble, data.state === 'generating' ? 'generating' : 'thinking');
+      }
+      if (status) {
+        var sm = status.querySelector('.faro-status__mascot');
+        if (sm) sm.setAttribute('src', FARO_LUS[data.state === 'generating' ? 'generating' : 'thinking']);
+      }
       break;
 
     case 'tool':
@@ -770,6 +783,7 @@ function faroHandleEvent(name, data, bubble, status) {
 
     case 'error':
       faroMascot('error');
+      faroBubbleMascot(bubble, 'idle');
       faroRenderComponent(bubble, {
         type: 'error', message: data.message || T('st.error'), retryable: data.retryable
       });
@@ -777,6 +791,7 @@ function faroHandleEvent(name, data, bubble, status) {
 
     case 'done':
       faroMascot('success');
+      faroBubbleMascot(bubble, 'idle');
       setTimeout(function () { faroMascot('idle'); }, 1800);
       /* Het saldo meteen bijwerken. loadCreditUsage() zit op een rem van vier
          minuten en werd alleen door refreshData() aangeroepen, dat elke tien
@@ -1243,10 +1258,33 @@ function faroAppendAssistant() {
   return d;
 }
 
+/* ── De valk beweegt terwijl hij werkt ─────────────────────────────────────
+   Twee korte lussen uit de intro-video (public/faro/faro-denkt.webp knippert,
+   faro-typt.webp zwaait), rond uitgesneden, anderhalve seconde, zonder geluid.
+   Zolang de beurt loopt vervangt de lus het stille kop-icoon bij het
+   antwoord; is de beurt klaar, dan komt het icoon terug. Zo zie je in de
+   draad zelf dat er iemand bezig is, zonder dat er iets gaat knipperen als
+   het klaar is. */
+var FARO_LUS = { thinking: '/faro/faro-denkt.webp', generating: '/faro/faro-typt.webp' };
+function faroBubbleMascot(bubble, stateName) {
+  if (!bubble) return;
+  var av = bubble.querySelector('.faro-msg__ai-avatar');
+  if (!av) return;
+  var src = FARO_LUS[stateName];
+  if (src) {
+    if (av.getAttribute('src') !== src) av.setAttribute('src', src);
+    av.classList.add('faro-msg__ai-avatar--bezig');
+  } else {
+    av.setAttribute('src', '/faro/faro-icon.webp');
+    av.classList.remove('faro-msg__ai-avatar--bezig');
+  }
+}
+
 function faroAppendStatus(bubble, label) {
   var s = document.createElement('div');
   s.className = 'faro-status';
-  s.innerHTML = '<span class="faro-status__dot"></span><span class="faro-status__label"></span>';
+  s.innerHTML = '<img class="faro-status__mascot" src="/faro/faro-denkt.webp" alt="" aria-hidden="true" width="28" height="28" decoding="async">'
+              + '<span class="faro-status__label"></span>';
   s.querySelector('.faro-status__label').textContent = label;
   bubble.insertBefore(s, bubble.firstChild);
   return s;

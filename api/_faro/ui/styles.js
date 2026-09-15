@@ -1120,6 +1120,19 @@ body.hv-mode-ai .faro-rail {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   font-size: var(--fs-small); color: var(--text-muted); margin-bottom: var(--sp-3);
 }
+/* De bewegende valk (geanimeerde webp) naast "Faro denkt na". Rond, met een
+   dun champagne-randje zodat het grijze plaatje niet als een losse munt op
+   het donker ligt. */
+.faro-status__mascot {
+  width: 28px; height: 28px; border-radius: var(--r-full); display: block; flex: 0 0 auto;
+  box-shadow: 0 0 0 1px var(--champagne-line), 0 0 14px var(--warm-sand-glow);
+  user-select: none; pointer-events: none;
+}
+.faro-msg__ai-avatar--bezig {
+  width: 30px; height: 30px; left: calc(var(--sp-8) * -1 - 4px); top: 0;
+  box-shadow: 0 0 0 1px var(--champagne-line), 0 0 14px var(--warm-sand-glow);
+  opacity: 1;
+}
 .faro-status__dot {
   width: 5px; height: 5px; border-radius: 50%; background: var(--champagne);
   animation: faro-pulse 1.4s ease-in-out infinite;
