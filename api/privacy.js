@@ -135,6 +135,17 @@ module.exports = function handler(req, res) {
   }
 
   // ── Privacy Policy ──────────────────────────────────────────────────────────
+  /* Engels op ?lang=en of als de browser Engels vraagt. Niet uit ijdelheid:
+     Meta's App Review leest dit beleid en de instructies voor gegevens-
+     verwijdering (data_deletion_url wijst naar /privacy#data-deletion) en
+     doet dat in het Engels. Een Nederlandse pagina is toegestaan maar een
+     reviewer die niets herkent, vraagt om "more information" -- een week
+     kwijt. De Nederlandse tekst blijft de bron; hieronder staat de vertaling. */
+  const q = (req.url || '').split('?')[1] || '';
+  const wilEn = /(^|&)lang=en(&|$)/.test(q)
+    || (!/(^|&)lang=/.test(q) && /^en\b/i.test(String(req.headers && req.headers['accept-language'] || '')));
+  if (wilEn) return res.status(200).send(privacyEn());
+
   return res.status(200).send(`<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -147,7 +158,7 @@ module.exports = function handler(req, res) {
 <body>
   <a class="back" href="/">← Terug naar Helvaro</a>
   <h1>Privacybeleid</h1>
-  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: augustus 2026</p>
+  <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: september 2026 · <a href="/privacy?lang=en">Read in English</a></p>
 
   <h2>1. Wie zijn wij?</h2>
   <p>Helvaro BV is een B2B SaaS-platform dat bedrijven helpt met geautomatiseerde leadkwalificatie via WhatsApp. Contacteer ons via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
@@ -207,6 +218,15 @@ module.exports = function handler(req, res) {
   <h2>8. Uw rechten</h2>
   <p>U heeft het recht om uw gegevens in te zien, te corrigeren, te beperken, over te dragen of te laten verwijderen, en u kan bezwaar maken tegen de verwerking. Stuur hiervoor een e-mail naar <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
+  <h2 id="data-deletion">8b. Gegevens laten verwijderen</h2>
+  <p>U hoeft geen account te hebben om verwijdering te vragen. Zo werkt het:</p>
+  <ul>
+    <li><strong>Als lead (u stuurde een WhatsApp-bericht naar een bedrijf dat Helvaro gebruikt):</strong> stuur in datzelfde WhatsApp-gesprek het woord <strong>STOP</strong>. U krijgt dan geen berichten meer. Wilt u ook uw naam, telefoonnummer en de gespreksinhoud verwijderd hebben, mail dan naar <a href="mailto:hello@helvaro.pro?subject=Verwijdering%20van%20mijn%20gegevens">hello@helvaro.pro</a> met het telefoonnummer waarmee u contact opnam. Wij verwijderen of anonimiseren uw gegevens binnen 30 dagen en bevestigen dat per e-mail.</li>
+    <li><strong>Als klant (u heeft een Helvaro-account):</strong> ga in het dashboard naar <em>Instellingen → Account verwijderen</em>. Dat verwijdert onmiddellijk uw account, uw leads, gesprekken en afspraken. U kan hetzelfde ook aanvragen via <a href="mailto:hello@helvaro.pro?subject=Account%20wissen">hello@helvaro.pro</a>.</li>
+    <li><strong>Via Facebook/Meta:</strong> heeft u Helvaro toestemming gegeven via een Meta-inlog- of koppelingsscherm, dan kan u die toestemming intrekken in uw Facebook-instellingen onder <em>Apps en websites</em>. Meta stuurt ons dan een verwijderingsverzoek dat wij op dezelfde manier afhandelen.</li>
+  </ul>
+  <p>Gegevens die wij wettelijk moeten bewaren (bv. facturen) blijven zolang de wet dat vereist; al het andere wordt verwijderd.</p>
+
   <h2>9. Cookies</h2>
   <p>Wij gebruiken geen tracking cookies. Onze website maakt gebruik van lokale opslag (localStorage) voor authenticatie, met een geldigheidsduur van 7 dagen.</p>
 
@@ -222,3 +242,104 @@ module.exports = function handler(req, res) {
 </body>
 </html>`);
 };
+
+/* ── English privacy policy ───────────────────────────────────────────────────
+   A translation of the Dutch text above, section for section. Change the
+   Dutch one first, then this one; the Dutch version is the legal source. */
+function privacyEn() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy · Helvaro</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>${CSS}</style>
+</head>
+<body>
+  <a class="back" href="/">← Back to Helvaro</a>
+  <h1>Privacy Policy</h1>
+  <p><strong>Helvaro BV</strong>. Last updated: September 2026 · <a href="/privacy?lang=nl">Lees in het Nederlands</a></p>
+
+  <h2>1. Who we are</h2>
+  <p>Helvaro BV is a B2B SaaS platform that helps businesses qualify incoming leads automatically over WhatsApp. Contact us at <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
+
+  <h2>2. What data we collect</h2>
+  <ul>
+    <li>Name and phone number (through a contact form or through WhatsApp)</li>
+    <li>The WhatsApp messages you exchange with our AI assistant, including the full conversation history</li>
+    <li>An AI-generated qualification score and summary of the conversation</li>
+    <li>Your IP address is used briefly to prevent abuse (for example too many requests in a short time) but is not stored in our database</li>
+  </ul>
+  <p>We do not collect an e-mail address from you as a lead by default. Should that change (for example for a new feature), we will update this policy before we do so.</p>
+
+  <h2>3. What we use your data for</h2>
+  <p>Your data is used to contact you, to answer your question through our AI assistant on WhatsApp, and to determine whether there is a match with the services of the business you contacted. We never sell your data to third parties.</p>
+
+  <h2>4. Fraud prevention when a new customer signs up</h2>
+  <p>This section does not apply to leads but to businesses that create a Helvaro account through our sign-up page.</p>
+  <p>To prevent abuse of our free trial (mass-created trial accounts, bots, competitor probing) we collect a few additional technical signals at sign-up:</p>
+  <ul>
+    <li><strong>IP address</strong> of the device used to sign up, to limit the number of sign-ups per IP address and to get an indication (via a reverse DNS check, without any external service) whether the address belongs to a hosting provider rather than an ordinary internet connection.</li>
+    <li><strong>Device/browser fingerprint</strong>: a technical, non-identifying hash based on browser characteristics (screen resolution, language, time zone) used to detect the same device creating several accounts in quick succession.</li>
+    <li><strong>The e-mail address, e-mail domain, company name and phone number</strong> you enter yourself, compared with our existing customers to recognise duplicate trial accounts.</li>
+  </ul>
+  <p><strong>Legal basis:</strong> our legitimate interest (Art. 6(1)(f) GDPR) in preventing abuse, fraud and automated sign-ups and in protecting the quality of our service.</p>
+  <p><strong>What never happens:</strong> this check never leads to an automatic rejection. The system can approve a sign-up automatically or flag it for manual review — an actual refusal only ever follows human assessment. Not having a (findable) website is never by itself a reason to flag or refuse a sign-up.</p>
+  <p><strong>Retention:</strong> the IP address and device fingerprint are only useful at the moment of sign-up and are therefore <strong>deleted automatically after 30 days</strong> by the same daily clean-up job that anonymises cold leads (see section 5). The outcome of the check (a score and the reasons used, without the IP address or fingerprint) is kept longer as an internal record of why an account was approved or flagged.</p>
+
+  <h2>5. How long we keep your data</h2>
+  <p>Your data is kept for as long as necessary for the purpose it was collected for, or until you ask for deletion. Concretely:</p>
+  <ul>
+    <li><strong>Qualified leads</strong> (where a customer relationship was or may still be established) are kept for as long as that relationship requires.</li>
+    <li><strong>Unqualified or cold leads</strong> with no activity for 6 months are anonymised automatically: name, phone number and the full conversation content are deleted. Anonymised statistics that cannot be traced to a person (number of leads, conversion rates) are kept for reporting.</li>
+    <li><strong>Sign-up fraud-prevention signals</strong> (IP address, device fingerprint — see section 4) are deleted automatically after 30 days.</li>
+  </ul>
+  <p>You can request earlier deletion or anonymisation of your data at any time — see sections 8 and 8b.</p>
+
+  <h2>6. Who processes your data</h2>
+  <p>Besides the business you contact directly, Helvaro relies on the following parties (sub-processors) to deliver the service:</p>
+  <ul>
+    <li><strong>Anthropic PBC</strong> (United States) — processes the content of your WhatsApp conversation to generate the AI replies.</li>
+    <li><strong>Meta Platforms Ireland Ltd.</strong> — carries the message traffic through WhatsApp Business.</li>
+    <li><strong>Vercel Inc.</strong> (United States) — hosting and execution of this application.</li>
+    <li><strong>Airtable (Formagrid Inc., United States)</strong> — the database in which your lead and conversation data is stored.</li>
+    <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — sends notification, verification and password-reset e-mails.</li>
+    <li><strong>Stripe Payments Europe, Ltd.</strong> (Ireland, with processing in the United States) — processes customer subscriptions and payments. Customer accounts only; leads never appear here.</li>
+    <li><strong>Google Ireland Ltd.</strong> — calendar integration: when a customer connects Google Calendar, appointments that follow from your conversation are created there (your name and the time of the appointment).</li>
+    <li><strong>OneSignal, Inc.</strong> (United States) — sends push notifications to the customer's device about incoming leads. Processes no message content.</li>
+    <li><strong>Clerk Inc.</strong> (United States) — handles sign-in to the dashboard. Processes the e-mail address, the (hashed) password and technical sign-in data such as IP address, browser and sign-in times. Customer accounts only; leads never appear here.</li>
+    <li><strong>Upstash Inc.</strong> (United States) — briefly counts sign-in attempts per IP address to prevent abuse. Stores no names or messages; counters expire within fifteen minutes.</li>
+  </ul>
+  <p>This list matches Annex 3 of our data processing agreement. We keep it current and update this policy whenever it changes.</p>
+
+  <h2>7. International transfers</h2>
+  <p>Some of the parties above are established outside the European Economic Area (EEA), notably in the United States (Anthropic, Vercel, Airtable, Clerk and Upstash among others). For those transfers we rely on a valid transfer mechanism under the GDPR, such as the European Commission's Standard Contractual Clauses (SCCs) or, where applicable, the EU-US Data Privacy Framework — the same safeguards laid down in our data processing agreement with customers.</p>
+
+  <h2>8. Your rights</h2>
+  <p>You have the right to access, rectify, restrict, port or erase your data, and to object to processing. E-mail <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a> to exercise any of these rights.</p>
+
+  <h2 id="data-deletion">8b. How to have your data deleted</h2>
+  <p>You do not need an account to request deletion. This is how it works:</p>
+  <ul>
+    <li><strong>As a lead (you sent a WhatsApp message to a business that uses Helvaro):</strong> send the word <strong>STOP</strong> in that same WhatsApp conversation. You will receive no further messages. If you also want your name, phone number and the conversation content deleted, e-mail <a href="mailto:hello@helvaro.pro?subject=Delete%20my%20data">hello@helvaro.pro</a> from any address and mention the phone number you used. We delete or anonymise your data within 30 days and confirm by e-mail.</li>
+    <li><strong>As a customer (you have a Helvaro account):</strong> in the dashboard go to <em>Settings → Delete account</em>. This immediately deletes your account, your leads, conversations and appointments. You can also request the same via <a href="mailto:hello@helvaro.pro?subject=Delete%20my%20account">hello@helvaro.pro</a>.</li>
+    <li><strong>Through Facebook/Meta:</strong> if you granted Helvaro access through a Meta login or connection screen, you can revoke that access in your Facebook settings under <em>Apps and Websites</em>. Meta then sends us a deletion request, which we handle in the same way.</li>
+  </ul>
+  <p>Data we are legally required to keep (for example invoices) is retained for as long as the law requires; everything else is deleted.</p>
+
+  <h2>9. Cookies</h2>
+  <p>We use no tracking cookies. Our website uses local storage (localStorage) for authentication, valid for 7 days.</p>
+
+  <h2>10. Security and storage</h2>
+  <p>Your data is stored securely in Airtable and processed by this application, which runs on Vercel. All connections are encrypted with HTTPS/TLS.</p>
+
+  <h2>11. Contact</h2>
+  <p>Questions about this privacy policy: <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>. For questions specifically about data protection, contact our data protection contact: <a href="mailto:sindi@helvaro.pro">sindi@helvaro.pro</a>.</p>
+
+  <footer>
+    Helvaro BV · <a href="/privacy?lang=en">Privacy Policy</a> · <a href="/terms">Terms of Service</a>
+  </footer>
+</body>
+</html>`;
+}
