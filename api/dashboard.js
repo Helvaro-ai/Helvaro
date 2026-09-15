@@ -11310,6 +11310,23 @@ async function startDashboard(skipRefresh = false) {
   // admin sessions have clientName='Admin' AND an empty projectCode.
   const isAdmin = (state.clientName === 'Admin') && !localStorage.getItem('hv-project');
   mountAdminNav(isAdmin);
+  /* De back-officepagina's (Klanten, Founder, Kosten) knipt de SERVER uit de
+     HTML als het verzoek geen admin-sessie droeg -- zie stripBackoffice().
+     Wie via het inlogscherm binnenkomt heeft die HTML al binnen VOOR hij
+     inlogde: de knoppen komen dan wel (hierboven), maar de pagina's erachter
+     zijn er niet. Klik op "Klanten" en er gebeurt niets. Eén keer herladen
+     met de verse sessiecookie brengt ze binnen; de vlag voorkomt een lus
+     als de server ze om een andere reden niet meestuurt. */
+  if (isAdmin && !document.getElementById('page-admin')) {
+    var _alHerladen = false;
+    try { _alHerladen = sessionStorage.getItem('hv-admin-herladen') === '1'; } catch (e) {}
+    if (!_alHerladen) {
+      try { sessionStorage.setItem('hv-admin-herladen', '1'); } catch (e) {}
+      window.location.reload();
+      return;
+    }
+  }
+  try { if (isAdmin && document.getElementById('page-admin')) sessionStorage.removeItem('hv-admin-herladen'); } catch (e) {}
 
   // Calendly OAuth was removed along with the integration itself — nothing
   // redirects with a ?calendly= param anymore (the live Google Calendar
@@ -19352,9 +19369,15 @@ ${_intro.js({ lang: FARO_LANG })}
   let HV_IS_ADMIN = false;
   try {
     const _tok  = _session.readToken(req);
-    const _sess = _tok ? _session.verifySignedSession(_tok) : null;
-    // Dezelfde definitie als de client hanteert: naam 'Admin' zonder projectcode.
-    HV_IS_ADMIN = !!(_sess && _sess.clientName === 'Admin' && !_sess.projectCode);
+    /* De beheerder draagt het afgeleide admin-token (auth.js), geen getekende
+       sessie -- verifySignedSession gaf daar altijd null op, dus de back-
+       officepagina's werden NOOIT meegestuurd. Eerst dat token, dan pas de
+       oude definitie (naam 'Admin' zonder projectcode) voor de zekerheid. */
+    HV_IS_ADMIN = _session.isAdminToken(_tok);
+    if (!HV_IS_ADMIN) {
+      const _sess = _tok ? _session.verifySignedSession(_tok) : null;
+      HV_IS_ADMIN = !!(_sess && _sess.clientName === 'Admin' && !_sess.projectCode);
+    }
   } catch (_) { HV_IS_ADMIN = false; }
 
   res.status(200).send(HV_IS_ADMIN ? HTML : stripBackoffice(HTML));

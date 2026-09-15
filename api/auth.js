@@ -345,6 +345,12 @@ module.exports = async function handler(req, res) {
        juist de controle blokkeren die mensen uit de lus houdt. */
     if (body.mode === 'session') {
       const raw     = _session.readToken(req);
+      /* Beheerder: afgeleid token, geen getekende sessie. Zonder deze tak gaf
+         herladen als beheerder 401, wiste de client de cookie en stond je
+         weer op het inlogscherm. */
+      if (_session.isAdminToken(raw)) {
+        return res.status(200).json({ ok: true, clientName: 'Admin', projectCode: '', calendlyLink: '' });
+      }
       const session = raw ? _session.verifySignedSession(raw) : null;
       if (session && !(await _revoke.isRevoked(session))) {
         return res.status(200).json({

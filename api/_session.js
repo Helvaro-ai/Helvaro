@@ -152,9 +152,22 @@ function safeBody(req) {
   return (b && typeof b === 'object') ? b : {};
 }
 
+/* De beheerderssessie is GEEN getekende sessie maar een afgeleide HMAC van
+   ADMIN_KEY (auth.js deriveAdminToken). Drie plekken kenden die formule elk
+   apart (leads.js, admin.js, auth.js) en twee plekken kenden hem NIET:
+   mode:'session' en de dashboard-GET. Gevolg: herladen als beheerder gaf 401,
+   de cookie werd gewist en je stond weer op het inlogscherm; en de
+   back-officepagina's werden nooit meegestuurd. Eén functie, hier. */
+function isAdminToken(provided) {
+  const key = String(process.env.ADMIN_KEY || '');
+  if (!key || !provided) return false;
+  const expected = crypto.createHmac('sha256', key).update('helvaro-admin-v1').digest('hex');
+  return safeEqual(provided, expected);
+}
+
 module.exports = {
   SESSION_COOKIE, CSRF_COOKIE, CSRF_HEADER,
   parseCookies, readToken, authedViaCookie,
   setSessionCookies, clearSessionCookies, csrfOk,
-  verifySignedSession, safeBody,
+  verifySignedSession, safeBody, isAdminToken,
 };
