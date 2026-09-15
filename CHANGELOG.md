@@ -12,6 +12,40 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## 15 september 2026 — nacht
+
+### Faro praat als een assistent en kan nu alles aan je aanbod doen
+
+Wie Faro een AutoScout-link gaf met "max korting 3000 maar Faro 2000" kreeg
+de auto wél in de voorraad, maar zonder korting: het gereedschap kende die
+velden niet. Nu neemt Faro alles mee wat je erbij zegt — kortingsruimte,
+status, kleur, omschrijving, troeven, foto's — en kan hij een bestaande auto
+of pand bijwerken ("zet de Faro-korting van V3 op 2500"). Faro mag nooit meer
+toezeggen dan de maximale korting. Na je bevestiging zegt hij wat er staat
+("Bij deze — de BMW M4 staat in je voorraad als V3, max. korting € 3.000 …")
+in plaats van een grijze statusregel, en je ziet geen rauwe tool-namen meer.
+
+### Kleine dingen die irriteerden
+
+- Het menu met de drie puntjes bij een gesprek zweeft nu boven de lijst; je
+  hoeft niet meer te scrollen om "Verwijderen" te zien.
+- Een lange link in je eigen bericht breekt netjes af; geen horizontale
+  scrollbalk meer.
+- Ingeklapte zijbalk: alleen het Helvaro-merkteken, alles gecentreerd in één
+  kolom. Uitgeklapt blijft het volledige logo.
+- Beheerderslogin met een verkeerde sleutel zegt nu dat de sleutel niet klopt
+  (en waarom dat meestal is) in plaats van "Ongeldig e-mailadres".
+
+### Privacybeleid in het Engels, met verwijderinstructies
+
+`/privacy?lang=en` (of een Engelse browser) toont de Engelse versie. Beide
+talen hebben nu een sectie "Gegevens laten verwijderen" (`#data-deletion`):
+STOP in WhatsApp, e-mail, of Instellingen → Account verwijderen. Dit is wat
+Meta's App Review leest.
+
+**Actie:** zet in het Meta App Dashboard de *User data deletion*-URL op
+`https://app.helvaro.pro/privacy?lang=en#data-deletion`.
+
 ## 13 september 2026 — nacht (2)
 
 ### WhatsApp-templates indienen kan nu vanuit de back-office
