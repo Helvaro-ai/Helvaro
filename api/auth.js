@@ -520,6 +520,23 @@ module.exports = async function handler(req, res) {
 
     // Basic email shape check. Reject obvious injections early
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      /* Geen e-mailadres in het e-mailveld ("admin", "ADMIN") is bijna altijd
+         iemand die via ?admin=1 met de beheerderssleutel probeert in te
+         loggen en er net naast zit. "Ongeldig e-mailadres" stuurde hem dan
+         de verkeerde kant op. Zeg wat er echt aan de hand is: de sleutel
+         klopt niet met wat er op de server staat -- meestal omdat hij net
+         gewijzigd is en de nieuwe deploy nog niet live is, of omdat er een
+         spatie of een oud exemplaar in het klembord zat. Nooit de sleutel
+         zelf loggen, ook geen stuk ervan. */
+      if (!email.includes('@')) {
+        console.warn('[auth] beheerderslogin geweigerd: sleutel komt niet overeen (ADMIN_KEY '
+          + (ADMIN_KEY ? 'gezet, ' + ADMIN_KEY.length + ' tekens' : 'NIET gezet') + '; ingevoerd ' + password.length + ' tekens)');
+        return res.status(401).json({
+          error: ADMIN_KEY
+            ? 'Beheerderssleutel klopt niet. Net gewijzigd in Vercel? Wacht tot de nieuwe deploy live is en plak de sleutel opnieuw, zonder spaties.'
+            : 'Er is geen beheerderssleutel ingesteld op de server (ADMIN_KEY).',
+        });
+      }
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
 

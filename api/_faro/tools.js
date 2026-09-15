@@ -1137,22 +1137,46 @@ const actTools = [
     name: 'add_listing',
     kind: 'act',
     description:
-      'Voeg iets toe aan het aanbod van deze klant: een pand voor een makelaar, een voertuig voor '
-      + 'een autodealer. Geef OFWEL een link naar de advertentiepagina (AutoScout24, Immoweb, ...) '
-      + 'en dan lees ik die zelf uit, OFWEL de velden die je al weet. Bij een link hoef je verder '
-      + 'niets in te vullen. Wordt pas doorgevoerd na bevestiging.',
+      'Voeg iets toe aan het aanbod van deze klant, of werk een bestaand item bij: een pand voor '
+      + 'een makelaar, een voertuig voor een autodealer. Geef OFWEL een link naar de advertentiepagina '
+      + '(AutoScout24, Immoweb, ...) en dan lees ik die zelf uit, OFWEL de velden die je al weet -- '
+      + 'en ALTIJD ook wat de gebruiker er los bij zegt, zoals de kortingsruimte ("max korting 3000 '
+      + 'maar Faro 2000" = maxKorting 3000, faroKorting 2000), status, kleur of een omschrijving. '
+      + 'Bij een link hoef je verder niets in te vullen. Met `code` (bv. V3 of P12) werk je een '
+      + 'bestaand item bij in plaats van een nieuw aan te maken. Wordt pas doorgevoerd na bevestiging.',
     parameters: {
       type: 'object',
       properties: {
+        code: { type: 'string', description: 'Bestaande referentie (bv. V3 of P12) om dat item bij te werken. Leeg = nieuw item.' },
         link: { type: 'string', description: 'Link naar de advertentie. Als die er is, hoeft de rest niet.' },
+        prijs: { type: 'number', description: 'De vraagprijs in euro.' },
+        maxKorting: { type: 'number', description: 'Maximale korting in euro die de verkoper zelf mag geven (Max korting).' },
+        faroKorting: { type: 'number', description: 'Kortingsgrens in euro die Faro/de AI zelf mag toezeggen in WhatsApp-gesprekken. Nooit hoger dan maxKorting.' },
+        status: { type: 'string', description: 'Voertuig: beschikbaar, gereserveerd, verkocht, uit aanbod. Pand: beschikbaar, onder bod, verkocht, verhuurd, uit aanbod.' },
+        omschrijving: { type: 'string', description: 'Vrije omschrijving of verkooptekst.' },
+        troeven: { type: 'array', items: { type: 'string' }, description: 'Korte troeven/highlights, elk één regel.' },
+        fotos: { type: 'array', items: { type: 'string' }, description: 'Foto-URLs (https).' },
         merk: { type: 'string', description: 'Voertuig: merk, bv. BMW.' },
         model: { type: 'string', description: 'Voertuig: model, bv. M4.' },
         uitvoering: { type: 'string', description: 'Voertuig: uitvoering, bv. Competition xDrive.' },
         km: { type: 'number', description: 'Voertuig: kilometerstand.' },
         inschrijving: { type: 'string', description: 'Voertuig: eerste inschrijving als MM/JJJJ.' },
+        brandstof: { type: 'string', description: 'Voertuig: benzine, diesel, hybride, elektrisch, ...' },
+        transmissie: { type: 'string', description: 'Voertuig: automaat of manueel.' },
+        kw: { type: 'number', description: 'Voertuig: vermogen in kW.' },
+        carrosserie: { type: 'string', description: 'Voertuig: carrosserie, bv. SUV, break, coupé.' },
+        kleur: { type: 'string', description: 'Voertuig: kleur.' },
         adres: { type: 'string', description: 'Pand: het adres.' },
         plaats: { type: 'string', description: 'Pand: de gemeente.' },
-        prijs: { type: 'number', description: 'De vraagprijs in euro.' },
+        postcode: { type: 'string', description: 'Pand: postcode.' },
+        type: { type: 'string', description: 'Pand: huis, appartement, grond, commercieel, garage, overig.' },
+        transactie: { type: 'string', description: 'Pand: te koop of te huur.' },
+        slaapkamers: { type: 'number', description: 'Pand: aantal slaapkamers.' },
+        badkamers: { type: 'number', description: 'Pand: aantal badkamers.' },
+        oppervlakte: { type: 'number', description: 'Pand: bewoonbare oppervlakte in m2.' },
+        grond: { type: 'number', description: 'Pand: grondoppervlakte in m2.' },
+        bouwjaar: { type: 'number', description: 'Pand: bouwjaar.' },
+        epc: { type: 'string', description: 'Pand: EPC-label of -score.' },
       },
     },
     run: async (args, ctx) => {
@@ -1209,14 +1233,53 @@ const actTools = [
       /* Wat het model zelf meegaf WINT van wat er op de pagina stond. Wie
          zegt "die BMW maar dan voor 72.000" bedoelt 72.000, ook als de
          advertentie 74.999 zegt. */
-      for (const k of ['merk', 'model', 'uitvoering', 'km', 'inschrijving', 'adres', 'plaats', 'prijs']) {
+      /* Eerst stond hier een lijstje van acht velden. Wie dan zei "en max
+         korting 3000 maar Faro 2000" zag de auto verschijnen ZONDER die
+         korting, terwijl Faro net bevestigd had dat hij het begrepen had. Alles
+         wat _vehicles.naarVelden en _properties.naarVelden kennen mag nu mee;
+         de modules zelf begrenzen en normaliseren (status, getallen, lengtes). */
+      const VELDEN_ALLE = ['prijs', 'status', 'omschrijving', 'troeven', 'fotos', 'link'];
+      const VELDEN_AUTO = ['maxKorting', 'faroKorting', 'merk', 'model', 'uitvoering', 'km', 'inschrijving', 'brandstof', 'transmissie', 'kw', 'carrosserie', 'kleur'];
+      const VELDEN_PAND = ['adres', 'plaats', 'postcode', 'type', 'transactie', 'slaapkamers', 'badkamers', 'oppervlakte', 'grond', 'bouwjaar', 'epc'];
+      for (const k of VELDEN_ALLE.concat(dealer ? VELDEN_AUTO : VELDEN_PAND)) {
         const v = args && args[k];
-        if (v !== undefined && v !== null && String(v).trim() !== '') velden[k] = v;
+        if (v === undefined || v === null) continue;
+        if (Array.isArray(v)) { if (v.length) velden[k] = v; continue; }
+        if (String(v).trim() !== '') velden[k] = v;
+      }
+      /* Faro mag nooit meer weggeven dan de verkoper zelf. Hier rechtzetten
+         en niet in de kaart laten staan: een dealer die "faro 5000, max 3000"
+         zegt bedoelt niet dat de AI meer ruimte krijgt dan hijzelf. */
+      if (velden.maxKorting !== undefined && velden.faroKorting !== undefined
+          && Number(velden.faroKorting) > Number(velden.maxKorting)) {
+        velden.faroKorting = velden.maxKorting;
+      }
+
+      /* Bijwerken van een bestaand item: de code is de sleutel die _vehicles
+         en _properties zelf al kennen. Zonder code is het een nieuw item. */
+      const code = String((args && args.code) || '').trim().toUpperCase();
+      let bestaand = null;
+      if (code) {
+        try {
+          const mod = dealer ? require('../_vehicles') : require('../_properties');
+          bestaand = await mod.getByCode(ctx.projectCode, code);
+        } catch (_) { bestaand = null; }
+        if (!bestaand) {
+          return {
+            summary: 'Ik vind geen ' + (dealer ? 'voertuig' : 'pand') + ' met referentie ' + code + ' in je aanbod.',
+            data: { pending: false }, components: [],
+          };
+        }
+        velden.code = code;
+        /* _properties.save eist een adres, ook bij bijwerken. Dat van het
+           bestaande pand meegeven is geen wijziging, alleen de sleutel. */
+        if (!dealer && !velden.adres && bestaand.adres) velden.adres = bestaand.adres;
       }
 
       const naam = dealer
-        ? [velden.merk, velden.model, velden.uitvoering].filter(Boolean).join(' ').trim()
-        : String(velden.adres || '').trim();
+        ? ([velden.merk, velden.model, velden.uitvoering].filter(Boolean).join(' ').trim()
+           || (bestaand ? [bestaand.merk, bestaand.model, bestaand.uitvoering].filter(Boolean).join(' ').trim() : ''))
+        : (String(velden.adres || '').trim() || (bestaand ? String(bestaand.adres || '') : ''));
 
       if (!naam) {
         return {
@@ -1231,7 +1294,11 @@ const actTools = [
          behulpzaam en je laten zoeken: de dealer ziet meteen wat hij nog moet
          aanvullen in plaats van het te moeten opmerken. */
       const regels = [];
-      if (velden.prijs) regels.push('Prijs: \u20AC ' + Math.round(Number(velden.prijs)).toLocaleString('nl-BE'));
+      const euro = (n) => '\u20AC ' + Math.round(Number(n)).toLocaleString('nl-BE');
+      if (velden.prijs) regels.push('Prijs: ' + euro(velden.prijs));
+      if (velden.maxKorting !== undefined)  regels.push('Max korting: ' + euro(velden.maxKorting));
+      if (velden.faroKorting !== undefined) regels.push('Faro mag tot: ' + euro(velden.faroKorting));
+      if (velden.status)      regels.push('Status: ' + velden.status);
       if (dealer) {
         if (velden.km || velden.km === 0) regels.push('Kilometerstand: ' + Math.round(Number(velden.km)).toLocaleString('nl-BE') + ' km');
         if (velden.inschrijving) regels.push('Eerste inschrijving: ' + velden.inschrijving);
@@ -1268,6 +1335,19 @@ const actTools = [
         regels.push('Ik was hier niet zeker van -- kijk het even na voor je bevestigt.');
       }
 
+      if (bestaand) {
+        return {
+          summary: 'Klaar om ' + naam + ' (' + code + ') bij te werken. Wacht op bevestiging.',
+          data: { pending: true },
+          components: [schema.confirmation({
+            action: 'add_listing',
+            title: (dealer ? 'Voertuig bijwerken: ' : 'Pand bijwerken: ') + naam + ' (' + code + ')',
+            body: regels.length ? regels.join('\n') : 'Geen wijzigingen herkend.',
+            confirmLabel: 'Bijwerken',
+            payload: { vertical, velden },
+          })],
+        };
+      }
       return {
         summary: 'Klaar om ' + naam + ' aan ' + (dealer ? 'je voorraad' : 'je aanbod') + ' toe te voegen. Wacht op bevestiging.',
         data: { pending: true },

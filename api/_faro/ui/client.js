@@ -592,7 +592,10 @@ function faroStep(bubble, name, state) {
     row.setAttribute('data-step', id);
     // textContent for the label -- the tool name comes off the wire.
     row.innerHTML = '<span class="faro-step__mark"></span><span class="faro-step__label"></span>';
-    row.querySelector('.faro-step__label').textContent = T('tool.' + name, name);
+    // Nooit de rauwe toolnaam tonen. Ontbreekt een vertaling, dan wordt
+    // "write_ad_copy" tenminste "Write ad copy" en geen stukje code.
+    var vriendelijk = String(name).replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });
+    row.querySelector('.faro-step__label').textContent = T('tool.' + name, vriendelijk);
     box.appendChild(row);
   }
   row.dataset.state = state;
@@ -898,8 +901,15 @@ function faroConfirmCard(c) {
     faroPost({ mode: 'faro-confirm', actionId: go.dataset.confirm })
       .then(function (r) {
         d.classList.remove('faro-card--confirm');
-        d.innerHTML = '<div class="faro-card__meta">' + faroEsc(r.summary || T('st.done')) + '</div>';
+        /* Geen grijze regel onderin de kaart maar een echt antwoord: een
+           vinkje en een zin op leesgrootte. De samenvatting is door de
+           server geschreven ("Bij deze -- ..."), dus dit is het antwoord van
+           Faro op de bevestiging, niet een statusregel. */
+        d.classList.add('faro-card--done');
+        d.innerHTML = '<div class="faro-card__done"><span class="faro-card__done-mark">\u2713</span><span class="faro-card__done-text"></span></div>';
+        d.querySelector('.faro-card__done-text').textContent = r.summary || T('st.done');
         faroMascot('success');
+        faroScrollToEnd();
       })
       .catch(function (err) {
         go.disabled = false;
@@ -1511,11 +1521,27 @@ function faroConvoMenu(id, knop) {
     if (b.dataset.doe === 'hernoem') faroHernoem(id, titel);
     else faroVerwijder(id);
   });
-  rij.appendChild(m);
+  /* Aan de body en position:fixed, niet aan de rij. Aan de rij hing hij in
+     de scrollende lijst: bij het laatste gesprek viel het menu onder de rand
+     en moest je scrollen om "Verwijderen" te zien. Nu zweeft hij naast de
+     knop, en verdwijnt hij zodra de lijst scrolt of het scherm van maat
+     verandert -- dan klopt zijn plek niet meer. */
+  document.body.appendChild(m);
+  var r = knop.getBoundingClientRect();
+  var mw = m.offsetWidth || 160, mh = m.offsetHeight || 80;
+  var links = Math.min(r.right - mw, window.innerWidth - mw - 8);
+  var boven = r.bottom + 4;
+  if (boven + mh > window.innerHeight - 8) boven = Math.max(8, r.top - mh - 4);
+  m.style.left = Math.max(8, links) + 'px';
+  m.style.top = boven + 'px';
+  function sluit() { var x = document.getElementById('faro-convo-menu'); if (x) x.remove(); }
+  var lijst = rij && rij.closest('.faro-rail__convos');
   /* Eén klik ergens anders sluit hem. once:true, anders stapelen de listeners
      zich op bij elk menu dat geopend wordt. */
   setTimeout(function () {
-    document.addEventListener('click', function () { var x = document.getElementById('faro-convo-menu'); if (x) x.remove(); }, { once: true });
+    document.addEventListener('click', sluit, { once: true });
+    window.addEventListener('resize', sluit, { once: true });
+    if (lijst) lijst.addEventListener('scroll', sluit, { once: true, passive: true });
   }, 0);
 }
 

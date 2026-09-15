@@ -1115,6 +1115,55 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* ── mode=ops-meta-token ──────────────────────────────────────────────────
+       Bij welke Meta-app hoort het WhatsApp-token dat de server gebruikt?
+       Dat is de vraag die App Review stelt zonder hem te stellen: de
+       "API precheck" telt alleen calls die met een token van DEZE app
+       gedaan zijn. Een token uit een andere (oude) app stuurt berichten
+       prima, maar levert nooit een vinkje op. Meta's debug_token geeft de
+       app-id, het type en de scopes terug; wij geven dat door en NOOIT het
+       token zelf, ook geen stuk ervan. */
+    if (body.mode === 'ops-meta-token') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const verwachtApp = String(process.env.META_APP_ID || '').trim();
+      const bronnen = [
+        ['WHATSAPP_TOKEN', process.env.WHATSAPP_TOKEN],
+        ['WHATSAPP_MANAGEMENT_TOKEN', process.env.WHATSAPP_MANAGEMENT_TOKEN],
+      ];
+      const uit = [];
+      for (const [naam, waarde] of bronnen) {
+        const token = String(waarde || '').trim();
+        if (!token) { uit.push({ env: naam, gezet: false }); continue; }
+        try {
+          const r = await fetch('https://graph.facebook.com/v23.0/debug_token?input_token='
+            + encodeURIComponent(token) + '&access_token=' + encodeURIComponent(token));
+          const j = await r.json().catch(() => ({}));
+          const d = (j && j.data) || {};
+          const scopes = Array.isArray(d.scopes) ? d.scopes : [];
+          uit.push({
+            env: naam, gezet: true, ok: r.ok && !d.error,
+            appId: d.app_id ? String(d.app_id) : null,
+            appNaam: d.application || null,
+            type: d.type || null,
+            geldig: d.is_valid === true,
+            verlooptOp: d.expires_at ? (d.expires_at === 0 ? 'nooit' : new Date(d.expires_at * 1000).toISOString()) : 'nooit',
+            scopes,
+            heeftMessaging: scopes.includes('whatsapp_business_messaging'),
+            heeftManagement: scopes.includes('whatsapp_business_management'),
+            hoortBijApp: verwachtApp ? String(d.app_id || '') === verwachtApp : null,
+            fout: d.error ? String(d.error.message || 'debug_token faalde').slice(0, 200)
+                 : (j && j.error ? String(j.error.message || '').slice(0, 200) : null),
+          });
+        } catch (e) {
+          uit.push({ env: naam, gezet: true, ok: false, fout: String(e && e.message || e).slice(0, 200) });
+        }
+      }
+      return res.status(200).json({ ok: true, verwachtApp: verwachtApp || null, tokens: uit });
+    }
+
     if (body.mode === 'ops-templates') {
       const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {

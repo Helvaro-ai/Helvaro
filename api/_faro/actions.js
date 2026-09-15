@@ -231,11 +231,25 @@ const EXECUTORS = {
       }
     }
 
+    /* Geen logregel maar een zin van een assistent. De dealer las hier
+       "V3 staat nu in je voorraad onder referentie V3." -- twee keer de code,
+       geen woord over de korting die hij net had opgegeven. Nu: bij deze, wat
+       er staat, en wat Faro ermee mag. */
+    const bijgewerkt = Boolean(payload && payload.velden && payload.velden.code);
+    const rec = uit.record || {};
+    const euro = (n) => '\u20AC ' + Math.round(Number(n)).toLocaleString('nl-BE');
+    const extra = [];
+    if (rec.prijs) extra.push('vraagprijs ' + euro(rec.prijs));
+    if (rec.maxKorting !== undefined && rec.maxKorting !== null) extra.push('max. korting ' + euro(rec.maxKorting));
+    if (rec.faroKorting !== undefined && rec.faroKorting !== null) extra.push('ik mag zelf tot ' + euro(rec.faroKorting) + ' toezeggen');
+    const detail = extra.length ? ' ' + extra.join(', ').replace(/^./, (c) => c.toUpperCase()) + '.' : '';
     return {
-      summary: uit.naam + ' staat nu in je ' + (uit.soort === 'voertuig' ? 'voorraad' : 'aanbod')
-        + ' onder referentie ' + uit.code + '.' + staart,
+      summary: (bijgewerkt
+        ? 'Bij deze -- ' + uit.naam + ' (' + uit.code + ') is bijgewerkt.'
+        : 'Bij deze -- ' + uit.naam + ' staat in je ' + (uit.soort === 'voertuig' ? 'voorraad' : 'aanbod') + ' als ' + uit.code + '.')
+        + detail + staart,
       components: [],
-      data: { code: uit.code, soort: uit.soort },
+      data: { code: uit.code, soort: uit.soort, bijgewerkt },
     };
   },
 

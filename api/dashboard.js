@@ -627,7 +627,11 @@ ${_intro.markup()}
       <!-- Zelfde verhaal als het inkt-logo hierboven. Deze staat in de zijbalk,
            achter het inlogscherm: hij wordt dus opgehaald door iemand die nog
            niet eens ingelogd is. -->
-      <img src="/logo.webp" alt="Helvaro" width="440" height="154" loading="lazy">
+      <img src="/logo.webp" alt="Helvaro" class="sidebar-logo__full" width="440" height="154" loading="lazy">
+      <!-- Ingeklapt: het merkteken alleen. Het volle woordmerk op 34px breed
+           was een onleesbaar streepje; het teken blijft op die maat een
+           teken. Lege alt: de naam staat al op het woordmerk en op de pagina. -->
+      <img src="/favicon.png" alt="" class="sidebar-logo__mark" width="36" height="36" aria-hidden="true" loading="lazy" decoding="async">
     </div>
 
     <!-- FARO: de ingang (api/_faro/ui/markup.js). Geen nav-rij -- zie daar.

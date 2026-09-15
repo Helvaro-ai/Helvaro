@@ -83,9 +83,11 @@ function render(lang) {
    dan meteen een gesprek in plaats van een verrassing.
 
    Bijgewerkt na de drie raakdoel-fixes en na het meekleuren van Clerks
-   "last used"-badge op de Google-knop. */
-const CSS_BYTES = 383475;
-const CSS_SHA   = 'b63292201bed15f2';
+   "last used"-badge op de Google-knop. Daarna voor de
+   ingeklapte zijbalk (+1.060 bytes): merkteken in plaats van woordmerk, alles op de
+   middenas. */
+const CSS_BYTES = 384535;
+const CSS_SHA   = '174e488b03f49b4f';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

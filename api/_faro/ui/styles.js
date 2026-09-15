@@ -426,10 +426,10 @@ body.hv-mode-ai .faro-rail {
   .faro-convo-ster, .faro-convo-menu { opacity: 1; }
 }
 
-/* Het menu hangt aan de rij, niet aan de body: dan schuift het mee als de
-   lijst scrollt in plaats van los in het scherm te blijven staan. */
+/* Het menu zweeft (position:fixed, aan de body). Hij hing eerst aan de rij
+   in de scrollende lijst en viel bij het laatste gesprek onder de rand. */
 .faro-convo-menu-pop {
-  position: absolute; top: 100%; right: 0; z-index: 40;
+  position: fixed; z-index: 400;
   min-width: 150px; padding: var(--sp-1);
   background: var(--bg-card-alt); border: 1px solid var(--border-bright);
   border-radius: var(--r-sm); box-shadow: 0 6px 20px rgba(0,0,0,0.35);
@@ -1060,7 +1060,14 @@ body.hv-mode-ai .faro-rail {
   padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg) var(--r-lg) var(--r-xs) var(--r-lg);
   background: var(--faro-raised); color: var(--text);
   font-size: var(--fs-meta); line-height: 1.55; white-space: pre-wrap;
+  /* Een geplakte AutoScout-link van 200 tekens zonder spatie rekte de
+     bel uit tot voorbij het scherm en gaf de hele pagina een horizontale
+     scrollbalk. Breken mag overal, want hier staat geen code. */
+  overflow-wrap: anywhere; word-break: break-word; min-width: 0;
 }
+.faro-msg--ai, .faro-msg__text { overflow-wrap: anywhere; min-width: 0; }
+.faro-msg__text pre { overflow-x: auto; }
+.faro-thread__inner { min-width: 0; }
 .faro-msg--ai { margin: 0 0 var(--sp-6); font-size: var(--fs-meta); line-height: 1.65; color: var(--text); }
 /* Het merkteken bij een antwoord. Zweeft links van de tekst zodat de
    regelbreedte niet verspringt tussen berichten mét en zonder avatar, en
@@ -1155,6 +1162,11 @@ body.hv-mode-ai .faro-rail {
 
 /* Confirmation card — deliberately more prominent than a lead card. It is the
    one component gating a real-world side effect (requirement 8). */
+/* De afgeronde kaart: een vinkje en een zin op leesgrootte, geen grijze
+   statusregel. Dit is Faro's antwoord op de bevestiging. */
+.faro-card--done { border-color: var(--champagne-line); }
+.faro-card__done { display: flex; gap: var(--sp-3); align-items: flex-start; font-size: var(--fs-meta); line-height: 1.6; color: var(--text); }
+.faro-card__done-mark { flex: 0 0 auto; color: var(--champagne); font-weight: 700; }
 .faro-card--confirm { border-color: var(--champagne-line); background: var(--champagne-dim); }
 .faro-card--confirm .faro-card__name { color: var(--deep-sand); }
 
@@ -1338,7 +1350,7 @@ body.hv-mode-ai .faro-rail {
    Uitklappen zet alles terug; er wordt niets uit de DOM gehaald. */
 body.sidebar-collapsed .hv-switch {
   grid-template-columns: 1fr;
-  width: calc(100% - var(--sp-3));
+  width: 44px;
   margin: 0 auto var(--sp-3);
   padding: var(--sp-05);
 }

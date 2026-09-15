@@ -3446,7 +3446,20 @@ body.sidebar-collapsed .user-info > svg,
 body.sidebar-collapsed .btn-logout span { display: none; }
 body.sidebar-collapsed .user-info { justify-content: center; padding-left: 0; padding-right: 0; }
 body.sidebar-collapsed .btn-logout { justify-content: center; }
-body.sidebar-collapsed .sidebar-logo img { max-width: 34px; }
+/* Ingeklapt: één kolom, alles op de middenas -- zoals Claude's zijbalk. Het
+   woordmerk maakt plaats voor het merkteken; elke knop wordt een vierkant
+   van 44px dat zichzelf centreert in plaats van links te blijven hangen. */
+.sidebar-logo img.sidebar-logo__mark { display: none; width: 34px; height: 34px; object-fit: contain; }
+body.sidebar-collapsed .sidebar-logo { padding: 18px 0 16px; }
+body.sidebar-collapsed .sidebar-logo img.sidebar-logo__full { display: none; }
+body.sidebar-collapsed .sidebar-logo img.sidebar-logo__mark { display: block; }
+body.sidebar-collapsed .sidebar-nav { padding: 16px 0; }
+body.sidebar-collapsed .nav-item { width: 44px; height: 40px; margin: 0 auto 4px; }
+body.sidebar-collapsed .nav-divider { width: 36px; margin-left: auto; margin-right: auto; }
+body.sidebar-collapsed .sidebar-bottom { padding: 12px 0 14px; }
+body.sidebar-collapsed .sidebar-collapse-btn { width: 44px; margin: 0 auto 8px; padding: 8px 0; }
+body.sidebar-collapsed .user-info { width: 44px; margin: 0 auto 8px; padding: 4px 0; }
+body.sidebar-collapsed .btn-logout { width: 44px; margin: 0 auto; padding: 9px 0; }
 body.sidebar-collapsed .nav-badge {
   position: absolute; top: 5px; right: 9px;
   min-width: 7px; height: 7px; padding: 0;
