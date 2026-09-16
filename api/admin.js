@@ -1339,7 +1339,10 @@ module.exports = async function handler(req, res) {
           },
         };
 
-        if (!process.env.WHATSAPP_MANAGEMENT_TOKEN) {
+        /* De waarschuwing hoort bij de UITKOMST, niet bij de envvar: het
+           systeemgebruikerstoken (WHATSAPP_TOKEN) draagt ook beheerrechten
+           en dan is de lijst wel degelijk live gemeten. */
+        if (!process.env.WHATSAPP_MANAGEMENT_TOKEN && uit.templates.bron !== 'meta') {
           uit.waarschuwingen.push('WHATSAPP_MANAGEMENT_TOKEN ontbreekt — templatestatus is een snapshot, geen meting');
         }
 
