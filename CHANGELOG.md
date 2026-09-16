@@ -12,6 +12,52 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## 16 september 2026 — overdag
+
+### Antwoorden vanaf de Gesprekken-pagina
+
+Onder elk gesprek staat nu hetzelfde antwoordvak en dezelfde "Neem over"-
+balk als in het leadpaneel. Cmd/Ctrl+Enter verstuurt.
+
+### Account verwijderen wist nu echt alles
+
+De wisroute vroeg Airtable om een leeg veld en kreeg op elke tabel een
+weigering terug; de klant zag "gedeeltelijk gewist", er was niets weg. Nu
+gaat alles: leads, afspraken, panden, voertuigen, campagnes, credits,
+gebruikers, gesprekken.
+
+### De dagelijkse taken vallen los van elkaar om
+
+Eén trage stap kon de hele dag stil laten overslaan (herinneringen incl.).
+Elke taak heeft nu zijn eigen vangnet en de log zegt welke taak mislukte.
+De wekelijkse analyse crashte op een verkeerde variabele; gefixt.
+
+### Sneller laden
+
+Het dashboard is geen bestand van 1,45 MB meer dat bij elke start opnieuw
+binnenkomt: opmaak en code staan apart en blijven een jaar in de cache.
+Herladen kost nu ~30 KB in plaats van ~450 KB. Plaatjes en de intro-clip
+worden ook gecachet.
+
+### Google Drive voor de back-office
+
+De beheerder koppelt één keer zijn Google-account; Helvaro houdt daarna in
+de map "Helvaro Admin" losse documenten bij: Klanten (sheet), per klant een
+document, Kosten (sheet), Founder (doc) en de Changelog (doc). Knoppen op
+de Founder-pagina; dagelijks automatisch bijgewerkt.
+
+**Actie:** Founder → Google Drive → *Koppel Google Drive* met
+sindi@helvaro.pro, daarna *Synchroniseer nu*.
+
+### Verder
+
+- Faro-intro gecentreerd en iets groter.
+- Beheerder krijgt van Faro een duidelijke melding (geen klantaccount).
+- Weekrapport-mail en factuurlabels in de taal van de klant.
+- Telefoon: agendaknop stak buiten beeld; toegankelijkheid: drie
+  axe-bevindingen opgelost; afhankelijkheden zonder bekende lekken;
+  security-headers op alle pagina's; grootboek probeert een tweede keer.
+
 ## 16 september 2026 — nacht
 
 ### Klanten, Founder en Kosten werken weer voor de beheerder
