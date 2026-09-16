@@ -42,11 +42,11 @@ const ck = (n, ok, got) => {
   ok ? pass++ : fail++;
 };
 
-function render(url) {
+function render(url, query) {
   delete require.cache[require.resolve(BASE + 'api/dashboard.js')];
   const dash = require(BASE + 'api/dashboard.js');
   let html = '';
-  dash({ method: 'GET', url, headers: {} },
+  dash({ method: 'GET', url, headers: {}, query: query || {} },
     { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
   return html;
 }
@@ -71,7 +71,11 @@ console.log('\nDe uitgestuurde pagina parseert');
 
 for (const taal of ['nl', 'en']) {
   const html = render('/dashboard?lang=' + taal);
-  const blokken = jsBlokken(html);
+  /* Sinds de splitsing staat de app-JS niet meer inline maar op
+     /dashboard.js?lang=..&v=..; die halen we hier apart op en tellen hem
+     als blok mee. De kleine inline scripts (OneSignal-loader) blijven. */
+  const appJs = render('/dashboard?lang=' + taal + '&asset=js', { lang: taal, asset: 'js' });
+  const blokken = jsBlokken(html).concat(appJs && appJs.length > 1000 ? [appJs] : []);
 
   ck(`${taal}: er zijn inline scripts om te controleren`, blokken.length > 0, blokken.length);
 

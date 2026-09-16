@@ -19577,8 +19577,63 @@ ${_intro.js({ lang: FARO_LANG })}
     }
   } catch (_) { HV_IS_ADMIN = false; }
 
-  res.status(200).send(HV_IS_ADMIN ? HTML : stripBackoffice(HTML));
+  /* ── CSS en JS als aparte, cachebare bestanden ──────────────────────────
+     De pagina was één HTML van 1,45 MB (410 KB CSS + 840 KB JS erin), met
+     no-cache: elke start en elke F5 haalde alles opnieuw op -- 448 KB
+     gecomprimeerd, op 4G merkbaar. Nu blijft de HTML klein en no-cache
+     (daar zit de sessiebeslissing in), en komen CSS en JS via
+     /dashboard.css?v=<hash> en /dashboard.js?lang=<taal>&v=<hash> met een
+     jaar cache. De hash zit in de URL, dus een nieuwe deploy is meteen een
+     nieuw bestand; een oude browsercache kan nooit oude code op nieuwe
+     HTML zetten. Het JS is per taal (de vertaaltabel zit erin), het CSS
+     niet. Geen dertiende functie: dezelfde route, een query-parameter. */
+  const asset = String((req.query && req.query.asset) || '');
+  /* Alleen splitsen voor een echt HTTP-verzoek (dat heeft een Host-header).
+     De tests roepen deze handler rechtstreeks aan, zonder headers, en lezen
+     de pagina als één geheel -- dat blijft zo, want de knip hieronder is een
+     verpakking van precies dezelfde tekst, geen andere inhoud. De knip zelf
+     wordt apart getest (dashboard-splitsing, pagina-parseert). */
+  const splitsen = asset === 'css' || asset === 'js' || Boolean(req.headers && req.headers.host);
+  if (!splitsen) return res.status(200).send(HV_IS_ADMIN ? HTML : stripBackoffice(HTML));
+  const uit = splitsAssets(HTML);
+  if (asset === 'css' || asset === 'js') {
+    res.setHeader('Content-Type', asset === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+    return res.status(200).send(asset === 'css' ? uit.css : uit.js);
+  }
+  const html = uit.html
+    .replace('%%HV_CSS%%', `<link rel="stylesheet" href="/dashboard.css?v=${uit.cssHash}">`)
+    .replace('%%HV_JS%%', `<script src="/dashboard.js?lang=${encodeURIComponent(UI_LANG)}&v=${uit.jsHash}"></script>`);
+  res.status(200).send(HV_IS_ADMIN ? html : stripBackoffice(html));
 };
+
+/* Knipt het grote <style>-blok en het grote inline <script>-blok uit de
+   gerenderde pagina en zet er een marker voor in de plaats. Op tekst, om
+   dezelfde reden als stripBackoffice: dit bestand is één template-literal.
+   Alleen het EERSTE grote <style> en het LAATSTE inline <script> (dat is de
+   app zelf); de kleine OneSignal-loader met src= blijft staan. */
+function splitsAssets(html) {
+  const crypto = require('crypto');
+  const hash = (t) => crypto.createHash('sha256').update(t).digest('hex').slice(0, 12);
+  let css = '', js = '';
+  /* Het woord "<style>" komt óók voor in een HTML-commentaar vlak boven het
+     echte blok. Dus: eerst de sluiting zoeken, dan de laatste opening
+     daarvóór -- dat is de echte tag. */
+  const e1 = html.indexOf('</style>');
+  const s1 = e1 === -1 ? -1 : html.lastIndexOf('<style>', e1);
+  if (s1 !== -1 && e1 !== -1 && e1 - s1 > 100000) {
+    css = html.slice(s1 + 7, e1);
+    html = html.slice(0, s1) + '%%HV_CSS%%' + html.slice(e1 + 8);
+  }
+  const e2 = html.lastIndexOf('</script>');
+  const s2 = e2 === -1 ? -1 : html.lastIndexOf('\n<script>', e2);
+  if (s2 !== -1 && e2 !== -1 && e2 - s2 > 100000) {
+    js = html.slice(s2 + 9, e2);
+    html = html.slice(0, s2) + '\n%%HV_JS%%' + html.slice(e2 + 9);
+  }
+  return { html, css, js, cssHash: hash(css), jsHash: hash(js) };
+}
+module.exports.splitsAssets = splitsAssets;
 
 /* Knipt de back-officepagina's (Klanten, Founder, Kosten) uit de gerenderde
    pagina. Werkt op exacte markeringen en laat de HTML ongemoeid als een blok

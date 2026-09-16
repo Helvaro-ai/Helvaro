@@ -586,6 +586,12 @@ const server = http.createServer(async (req, res) => {
       req.headers.cookie = req.headers.cookie || '';
       return dashboard(req, res);
     }
+    /* De rewrites uit vercel.json voor de gesplitste assets. */
+    if (p === '/dashboard.css' || p === '/dashboard.js') {
+      req.query = Object.assign(Object.fromEntries(url.searchParams), { asset: p === '/dashboard.css' ? 'css' : 'js' });
+      req.headers.cookie = req.headers.cookie || '';
+      return dashboard(req, res);
+    }
 
     if (serveStatic(p, res) !== false) return undefined;
 

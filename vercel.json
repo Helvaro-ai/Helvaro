@@ -125,6 +125,14 @@
       "destination": "/api/dashboard"
     },
     {
+      "source": "/dashboard.css",
+      "destination": "/api/dashboard?asset=css"
+    },
+    {
+      "source": "/dashboard.js",
+      "destination": "/api/dashboard?asset=js"
+    },
+    {
       "source": "/login",
       "destination": "/api/dashboard"
     },

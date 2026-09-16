@@ -159,7 +159,11 @@ console.log('\n  het GERENDERDE script parseert in een browser');
     json(x) { html = JSON.stringify(x); return res2; },
   };
   const klaar = require(BESTAND)(
-    { method: 'GET', url: '/dashboard', headers: { host: 'app.helvaro.pro' }, query: {}, cookies: {} },
+    /* Zonder Host-header: dan komt de pagina als één geheel, mét het inline
+       script, en is dit de parse-controle op de hele app-JS. Mét host wordt
+       het JS naar /dashboard.js gesplitst (zie splitsAssets) en test
+       pagina-parseert dat pad. */
+    { method: 'GET', url: '/dashboard', headers: {}, query: {}, cookies: {} },
     res2
   );
 

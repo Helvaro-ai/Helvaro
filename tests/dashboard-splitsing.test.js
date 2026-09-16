@@ -61,7 +61,7 @@ const styles = require(path.join(BASE, 'api/_dash/styles.js'));
 function render(lang) {
   return new Promise((res) => {
     let html = '';
-    dash({ method: 'GET', url: '/dashboard?lang=' + lang, headers: {}, query: { lang } },
+    dash({ method: 'GET', url: '/dashboard?lang=' + lang, headers: { host: 'test' }, query: { lang } },
          { setHeader() {}, status() { return this; }, send(b) { html = String(b); res(html); },
            json() {}, end() { res(html); } });
   });
@@ -107,8 +107,16 @@ const CSS_SHA   = 'dfe3102f18652ae6';
        de module ooit niet meer aangeroepen wordt, staat de app zonder opmaak
        en zegt geen enkele andere test er iets over. */
     ck(taal + ': er komt een volledige pagina uit', html.length > 100000, html.length);
-    const a = html.indexOf('<style>'), b = html.indexOf('</style>');
-    ck(taal + ': met het CSS-blok erin', a > -1 && b > a && (b - a) > 300000, b - a);
+    /* Het CSS staat sinds de asset-splitsing niet meer inline maar op
+       /dashboard.css?v=<hash>: de pagina moet ernaar verwijzen, en de
+       asset-route moet het hele blok teruggeven. */
+    ck(taal + ': verwijst naar het CSS-bestand', /dashboard\.css\?v=[0-9a-f]{12}/.test(html), null);
+    const css = await new Promise((res) => {
+      let uit = '';
+      dash({ method: 'GET', url: '/dashboard?lang=' + taal + '&asset=css', headers: {}, query: { lang: taal, asset: 'css' } },
+           { setHeader() {}, status() { return this; }, send(b) { uit = String(b); res(uit); }, json() {}, end() { res(uit); } });
+    });
+    ck(taal + ': met het CSS-blok erin', css.length > 300000, css.length);
   }
 
   console.log('\n  het CSS-blok is nog steeds vrij van invullingen');
