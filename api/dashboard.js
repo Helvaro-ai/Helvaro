@@ -15351,27 +15351,16 @@ function faGetal(n) {
 function faDatum(iso) {
   var d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  var mnd = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  return d.getDate() + ' ' + mnd[d.getMonth()];
+  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }).replace('.', '');
 }
 
 /* Namen die een makelaar herkent. De sleutels komen uit api/_credits.js;
    staat er iets nieuws bij, dan valt het terug op de sleutel zelf in plaats
    van te verdwijnen. */
-var FA_NAMEN = {
-  whatsapp_conversation: 'Leadgesprekken via WhatsApp',
-  image_generation:      'Beelden genereren',
-  video_generation:      'Video genereren',
-  marketing_content:     'Marketingteksten',
-  reply_suggestion:      'Antwoordsuggesties',
-  weekly_learning:       'Wekelijkse analyse',
-  faro_chat:             'Vragen aan Faro',
-  property_import:       'Panden importeren uit een link'
-};
-var FA_TYPE_NAMEN = {
-  allocation: 'toewijzing', usage: 'verbruik', purchase: 'aankoop',
-  refund: 'terugbetaling', adjustment: 'correctie'
-};
+/* Uit de vertaaltabel (fa.f.* / fa.t.*), niet hardgecodeerd: een Engelse
+   klant las hier "Panden importeren uit een link" op zijn factuurpagina. */
+var FA_NAMEN = new Proxy({}, { get: function (_, k) { return typeof k === 'string' ? (T_DICT['fa.f.' + k] || undefined) : undefined; } });
+var FA_TYPE_NAMEN = new Proxy({}, { get: function (_, k) { return typeof k === 'string' ? (T_DICT['fa.t.' + k] || undefined) : undefined; } });
 
 async function loadFacturatie(force) {
   laadPlannen(force);
@@ -15515,7 +15504,7 @@ function renderFacturatie() {
     lijst.innerHTML = boekingen.map(function (t) {
       var plus = t.credits > 0;
       var titel = t.type === 'usage'
-        ? (FA_NAMEN[t.feature] || t.feature || 'Verbruik')
+        ? (FA_NAMEN[t.feature] || t.feature || tr('fa.f.verbruik'))
         : (FA_TYPE_NAMEN[t.type] || t.type);
       titel = titel.charAt(0).toUpperCase() + titel.slice(1);
       return '<div class="fa-rij">'

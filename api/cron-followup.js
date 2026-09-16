@@ -865,6 +865,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
     const projectCode  = client.fields['fldN4dL0bGgfBOXwM']  || client.fields['Project Code']  || '';
     const clientName   = client.fields['fldAnB848Sr5jl6dq']  || client.fields['Client Name']   || '';
     const reportEmail  = client.fields['fldDBJCN6dVMA8jax']  || client.fields['Rapport Email'] || '';
+    const reportLang   = _lang.normalizeLanguageCode(client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language']) || 'nl';
     if (!projectCode || !reportEmail) { skipped++; continue; }
 
     // 2. Haal alle leads van deze klant uit de afgelopen 7 dagen
@@ -909,7 +910,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
 
     // 4. Email versturen
     const ok = await sendWeeklyReportEmail({
-      to: reportEmail, clientName, projectCode,
+      to: reportEmail, clientName, projectCode, lang: reportLang,
       stats: {
         total, qualified: qualified.length, conversionPct, avgResponse,
         booked: booked.length, pipelineValueTotal, pipelineValueCount: dealValues.length
@@ -924,9 +925,14 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
   return { sent, skipped, total: clients.length };
 }
 
-async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 }) {
+async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5, lang }) {
   if (!to) return false;
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  /* In de taal van de klant (Client Config > Language). Dit was Nederlands
+     voor iedereen, ook voor een Engelstalig kantoor. */
+  const _i18nS = require('./_i18n');
+  const taal = lang || 'nl';
+  const T = (k, vars) => _i18nS.t(taal, k, vars);
 
   const fmtTime = s => s == null ? '—' : (s < 60 ? `${s}s` : `${Math.round(s/60)}m`);
   // "Verwachte waarde" blijft expliciet een schatting in de UI-tekst hieronder
@@ -941,73 +947,73 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5 
           <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;color:#1e6fd9">${f['Lead Score'] || 0}</td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">Nog geen gekwalificeerde leads deze week. Komt nog!</td></tr>`;
+    : `<tr><td colspan="3" style="padding:18px;text-align:center;color:#999;font-style:italic">${esc(T('week.geenLeads'))}</td></tr>`;
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:auto;padding:24px;color:#111;background:#fff">
-      <h2 style="color:#1e6fd9;margin:0 0 4px">Weekrapport. ${esc(clientName)}</h2>
-      <p style="color:#666;margin:0 0 28px;font-size:14px">Overzicht van de afgelopen 7 dagen op je Helvaro account.</p>
+      <h2 style="color:#1e6fd9;margin:0 0 4px">${esc(T('week.kop', { naam: clientName }))}</h2>
+      <p style="color:#666;margin:0 0 28px;font-size:14px">${esc(T('week.sub'))}</p>
 
       <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:8px">
         <tr>
           <td style="background:#f0f6ff;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#1e6fd9">${stats.total}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Nieuwe leads</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.nieuw'))}</div>
           </td>
           <td style="background:#ecfdf5;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#059669">${stats.qualified}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Gekwalificeerd</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.gekwal'))}</div>
           </td>
           <td style="background:#ecfeff;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#0891b2">${stats.booked}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Afspraken geboekt</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.afspraken'))}</div>
           </td>
           <td style="background:#fff7ed;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#ea580c">${fmtEuro(stats.pipelineValueTotal)}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Verwachte pipeline waarde${stats.pipelineValueCount ? '' : ' (nog geen schattingen)'}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.pipeline'))}${stats.pipelineValueCount ? '' : ' ' + esc(T('week.geenSchatting'))}</div>
           </td>
         </tr>
       </table>
       <p style="font-size:11px;color:#999;margin:0 0 24px;text-align:center">
-        Verwachte pipeline waarde is een door jou ingeschatte waarde per lead — geen omzet die Helvaro gegenereerd heeft.
+        ${esc(T('week.pipelineUitleg'))}
       </p>
 
       <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
         <tr>
           <td style="background:#fef3c7;border-radius:12px;padding:14px;text-align:center;width:50%">
             <div style="font-size:22px;font-weight:700;color:#d97706">${stats.conversionPct}%</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Conversie</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.conversie'))}</div>
           </td>
           <td style="background:#f3e8ff;border-radius:12px;padding:14px;text-align:center;width:50%">
             <div style="font-size:22px;font-weight:700;color:#7c3aed">${fmtTime(stats.avgResponse)}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Gem. Responstijd</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.responstijd'))}</div>
           </td>
         </tr>
       </table>
 
-      <h3 style="margin:0 0 12px;font-size:16px">Top 5 gekwalificeerde leads</h3>
+      <h3 style="margin:0 0 12px;font-size:16px">${esc(T('week.top5'))}</h3>
       <table style="width:100%;border-collapse:collapse;background:#fafbfc;border-radius:10px;overflow:hidden">
         <thead>
           <tr style="background:#f3f4f6">
-            <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">Naam</th>
-            <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">Samenvatting</th>
-            <th style="text-align:right;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">Score</th>
+            <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">${esc(T('week.naam'))}</th>
+            <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">${esc(T('week.samenvatting'))}</th>
+            <th style="text-align:right;padding:10px 8px;font-size:12px;color:#6b7280;font-weight:600">${esc(T('week.score'))}</th>
           </tr>
         </thead>
         <tbody>${topRows}</tbody>
       </table>
 
       <p style="text-align:center;margin:28px 0 8px">
-        <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
+        <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">${esc(T('week.open'))}</a>
       </p>
 
       <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;text-align:center">
-        Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp · <a href="https://helvaro.pro" style="color:#999">helvaro.pro</a>
+        ${esc(T('week.voet'))} · <a href="https://helvaro.pro" style="color:#999">helvaro.pro</a>
       </p>
     </div>`;
 
   const { sendMail } = require('./_mailer');
-  const sent = await sendMail({ to, subject: `Helvaro weekrapport — ${clientName}`, html })
+  const sent = await sendMail({ to, subject: T('week.onderwerp', { naam: clientName }), html })
     .catch(err => { console.error('[weekly]', err && err.message); return { ok: false }; });
   return !!(sent && sent.ok);
 }
@@ -2038,11 +2044,11 @@ async function sendTrialProgressEmail({ kind, to, clientName, projectCode, daysL
           </td>
           <td style="background:#ecfdf5;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#059669">${s.qualifiedCount}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Gekwalificeerd</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.gekwal'))}</div>
           </td>
           <td style="background:#ecfeff;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#0891b2">${s.appointmentsBooked}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px">Afspraken geboekt</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.afspraken'))}</div>
           </td>
           <td style="background:#fff7ed;border-radius:12px;padding:18px;text-align:center;width:25%">
             <div style="font-size:28px;font-weight:700;color:#ea580c">${fmtEuro(s.pipelineValueTotal)}</div>
@@ -2051,7 +2057,7 @@ async function sendTrialProgressEmail({ kind, to, clientName, projectCode, daysL
         </tr>
       </table>
       <p style="font-size:11px;color:#999;margin:0 0 24px;text-align:center">
-        Verwachte pipeline waarde is een door jou ingeschatte waarde per lead — geen omzet die Helvaro gegenereerd heeft.
+        ${esc(T('week.pipelineUitleg'))}
       </p>
 
       ${isDay11 ? `
@@ -2061,11 +2067,11 @@ async function sendTrialProgressEmail({ kind, to, clientName, projectCode, daysL
       </div>` : ''}
 
       <p style="text-align:center;margin:28px 0 8px">
-        <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
+        <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;padding:14px 28px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">${esc(T('week.open'))}</a>
       </p>
 
       <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;text-align:center">
-        Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp · <a href="https://helvaro.pro" style="color:#999">helvaro.pro</a>
+        ${esc(T('week.voet'))} · <a href="https://helvaro.pro" style="color:#999">helvaro.pro</a>
       </p>
     </div>`;
 
