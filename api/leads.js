@@ -2244,19 +2244,19 @@ module.exports = async function handler(req, res) {
            niet. "Hey daar!" leest als een echte begroeting, een lege {{1}}
            weigert Meta. */
         const aanhef = { nl: 'daar', en: 'there', fr: 'bonjour', de: 'du' }[String(introLang).slice(0, 2)] || 'daar';
-        const tplR = await _waSend.sendTemplateSafe({
+        const introR = await _waSend.sendTemplateSafe({
           to: phone, template: process.env.INTRO_TEMPLATE_NAME, lang: introLang,
           params: [aanhef, String(aiNaam).slice(0, 60), String(bedrijf).slice(0, 80)],
           phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
         });
-        if (tplR.ok) {
+        if (introR.ok) {
           return res.status(200).json({
-            ok: true, sentTo: phone, messageId: tplR.messageId, via: 'template', template: process.env.INTRO_TEMPLATE_NAME,
+            ok: true, sentTo: phone, messageId: introR.messageId, via: 'template', template: process.env.INTRO_TEMPLATE_NAME,
             note: 'Dit nummer had de laatste 24 uur niets gestuurd, dus Meta laat alleen een goedgekeurd sjabloon toe. De begroeting van je assistent is verstuurd in plaats van je eigen tekst. Antwoord erop vanaf je telefoon en je kan 24 uur vrij testen.',
           });
         }
-        return res.status(tplR.ownerAction ? 503 : 502).json({
-          error: tplR.reason, code: tplR.code, metaCode: tplR.metaCode, ownerAction: tplR.ownerAction,
+        return res.status(introR.ownerAction ? 503 : 502).json({
+          error: introR.reason, code: introR.code, metaCode: introR.metaCode, ownerAction: introR.ownerAction,
         });
       }
       return res.status(testR.ownerAction ? 503 : 502).json({
