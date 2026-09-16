@@ -40,10 +40,21 @@ altijd. Nu gaat dan de goedgekeurde begroeting van je assistent, en het
 scherm zegt dat het een sjabloon was. Antwoord erop en je kan 24 uur vrij
 testen.
 
+### Faro landt bij elke start
+
+De intro na het inloggen is nu een echte clip uit de Faro-video: hij vliegt
+in en landt, 1,7 seconde, zonder geluid, in een cirkel op je eigen
+achtergrond. Hij speelt bij elke start (ook na een herlading), is met één
+klik over te slaan, en het dashboard laadt er gewoon onder door.
+
 ### Vertalingen
 
-Het testbericht-blok, de markten in de wizard en de regel onder "Wat je
-doet" stonden in elke taal in het Nederlands. Nu in nl/fr/en/de.
+Het testbericht-blok, de markten in de wizard, de regel onder "Wat je doet",
+de lege staat van Gesprekken, de weekdagen in Agenda en Analyse, de
+exportteller, de profielcijfers, de pandstatus en de planbeschrijvingen op
+Facturatie stonden in elke taal in het Nederlands. Nu in nl/fr/en/de. Een
+beheerder zonder klantaccount krijgt van Faro nu een duidelijke uitleg in
+plaats van "Er ging iets mis".
 
 ## 15 september 2026 — nacht
 
