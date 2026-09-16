@@ -11297,10 +11297,10 @@ function oneSignalLoskoppelen() {
 }
 
 async function startDashboard(skipRefresh = false) {
-  /* Alleen na een ECHTE login, niet bij elke verversing: skipRefresh is die
-     grens al (false = net ingetypt, true = sessie hersteld). Blokkeert niets en
-     ruimt zichzelf op — het waarom staat in api/_intro.js. */
-  if (!skipRefresh) { try { faroIntro(); } catch (e) {} }
+  /* Elke keer, niet alleen na een verse login: de eigenaar wil Faro bij
+     elke start zien landen. Hij is 1,7 s, geluidloos, overslaanbaar, en het
+     dashboard laadt eronder gewoon door -- dus het kost niemand tijd. */
+  try { faroIntro(); } catch (e) {}
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('dashboard-app').classList.add('visible');
   /* Faro's eigen laadpoort kijkt naar precies die klasse hierboven, en kijkt
@@ -14864,7 +14864,7 @@ function tekenPlannen() {
       + '<div class="fa-plan-prijs">\u20AC ' + euroFmt(p.prijsEur) + '<span> /maand</span></div>'
       + '<div class="fa-plan-regel">' + koopFmt(p.credits) + ' credits \u00B7 ongeveer '
       + koopFmt(p.gesprekken) + ' leadgesprekken</div>'
-      + '<div class="fa-plan-regel">' + escHtml(p.omschrijving || '') + '</div>'
+      + '<div class="fa-plan-regel">' + escHtml(T_DICT['fa.plan.' + p.id] || p.omschrijving || '') + '</div>'
       + knop + '</div>';
   }).join('');
 }
@@ -15410,9 +15410,9 @@ function renderFacturatie() {
   var saldoSub = document.getElementById('fa-saldo-sub');
   var balk = document.getElementById('fa-balk-vul');
   if (v.active) {
-    saldo.textContent = faGetal(v.remaining) + ' over';
-    saldoSub.textContent = faGetal(v.used) + ' van ' + faGetal(v.allowance) + ' verbruikt'
-      + (v.daysLeft != null ? ' · nog ' + v.daysLeft + ' ' + (v.daysLeft === 1 ? 'dag' : 'dagen') + ' deze periode' : '');
+    saldo.textContent = tr('fa.over', { n: faGetal(v.remaining) });
+    saldoSub.textContent = tr('fa.verbruiktVan', { used: faGetal(v.used), all: faGetal(v.allowance) })
+      + (v.daysLeft != null ? ' · ' + (v.daysLeft === 1 ? tr('fa.nogDag') : tr('fa.nogDagen', { n: v.daysLeft })) : '');
     var pct = Math.max(0, Math.min(100, Number(v.percentUsed) || 0));
     balk.style.width = pct + '%';
     balk.className = 'fa-balk-vul' + (pct >= 100 ? ' fa-op' : (pct >= 80 ? ' fa-bijna' : ''));
@@ -15797,8 +15797,8 @@ function renderPanden() {
       +     '</div>'
       +     '<span class="pd-card-code">' + pandEsc(p.code) + '</span>'
       +   '</div>'
-      +   '<div class="pd-card-feiten">' + feiten.join('') + '<span class="pd-status ' + statusKlasse + '">' + pandEsc(p.status) + '</span>' + dealerExtraHtml + '</div>'
-      +   '<div class="pd-leads">' + (aantal ? '<strong>' + aantal + '</strong> ' + (aantal === 1 ? 'lead' : 'leads') : 'Nog geen leads') + '</div>'
+      +   '<div class="pd-card-feiten">' + feiten.join('') + '<span class="pd-status ' + statusKlasse + '">' + pandEsc(T_DICT['pd.status.' + p.status] || p.status) + '</span>' + dealerExtraHtml + '</div>'
+      +   '<div class="pd-leads">' + (aantal ? '<strong>' + aantal + '</strong> ' + (aantal === 1 ? tr('pd.lead1') : tr('pd.leadN')) : tr('pd.geenLeads')) + '</div>'
       +   '<div class="pd-link-row">'
       +     '<div class="pd-link" title="' + pandEsc(pandLink(p.code)) + '">' + pandEsc(pandLink(p.code)) + '</div>'
       +     '<button class="pd-mini" style="flex:0 0 auto" onclick="copyPandLink(&quot;' + pandEsc(p.code) + '&quot;)">${T('dash.form.copy')}</button>'
@@ -16481,11 +16481,11 @@ function emptyStateCta() {
   const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
   if (!url) return '';
   return '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">'
-    + '<button class="btn-icon btn-primary-sm" onclick="copyFormLink()">Kopieer je formulierlink</button>'
+    + '<button class="btn-icon btn-primary-sm" onclick="copyFormLink()">' + escHtml(tr('leeg.kopieerLink')) + '</button>'
     // &quot; en geen geneste apostrof: dit hele bestand is één template
     // literal, waarin \' gewoon ' wordt — precies op de plek waar de
     // JavaScript-string eindigt. De entity komt als " bij de browser aan.
-    + '<button class="btn-icon" onclick="navigateTo(&quot;formulier&quot;)">Waar deel ik die?</button>'
+    + '<button class="btn-icon" onclick="navigateTo(&quot;formulier&quot;)">' + escHtml(tr('leeg.waarDelen')) + '</button>'
     + '</div>';
 }
 

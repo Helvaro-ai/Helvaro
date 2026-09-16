@@ -1,6 +1,9 @@
 'use strict';
 /*
- * Faro — de intro die één keer speelt, meteen na het inloggen.
+ * Faro — de intro die bij elke start speelt (sinds 16 sep 2026: een échte
+ * clip uit de Faro-video, 1,7 s, geluidloos; hij vliegt in en landt).
+ * De tekst hieronder beschrijft de oorspronkelijke CSS-versie, die als
+ * terugval (bol) blijft bestaan.
  *
  * Twee seconden, groot in beeld: alleen zijn KOP. Hij draait naar je toe, het
  * licht vangt zijn gouden ogen, hij knikt één keer en groet je bij naam. Daarna
@@ -86,7 +89,7 @@ const T = Object.freeze({
   sheen: { at: 0.55, dur: 0.50 },  // licht over de gouden ogen
   bloom: { at: 0.75, dur: 0.55 },  // warme gloed erachter
   word:  { at: 1.00, dur: 0.55 },  // de begroeting
-  out:   { at: 1.60, dur: 0.40 },  // wegvegen
+  out:   { at: 1.75, dur: 0.35 },  // wegvegen -- de video (1,71 s) is dan net uit
   hard:  3000                       // noodrem in ms
 });
 
@@ -97,7 +100,7 @@ const MAAT = Object.freeze({ kop: 200, stage: 264, ring: 240 });
 /* ── CSS ──────────────────────────────────────────────────────────────────── */
 function css() {
   return `
-/* ═══ Faro-intro — speelt één keer, na het inloggen ════════════════════════ */
+/* ═══ Faro-intro — speelt bij elke start, 1,7 s, geluidloos ═══════════════ */
 /* Standaard weg, en met een KLASSE aangezet — niet met het hidden-attribuut.
 
    Dat attribuut werkte hier namelijk niet. De UA-stylesheet zet [hidden] op
@@ -170,10 +173,14 @@ function css() {
   height: ${MAAT.kop}px;
   display: block;
   border-radius: 50%;
+  object-fit: cover;
   opacity: 0;
-  filter: drop-shadow(0 0 26px rgba(0,0,0,.55));
-  animation: fi-kop ${T.kop.dur}s cubic-bezier(.22,.9,.28,1) ${T.kop.at}s both;
+  box-shadow: 0 0 0 1px var(--accent-c), 0 0 34px rgba(0,0,0,.45);
+  /* De clip beweegt zelf (hij vliegt in en landt), dus hier alleen een
+     fade -- een knik bovenop een landing is dubbel. */
+  animation: fi-fade-in .28s ease .05s both;
 }
+@keyframes fi-fade-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 /* Nog niet geladen of 404: verbergen, de bol neemt het over. */
 .fi-kop--missing { visibility: hidden; }
 
@@ -313,8 +320,8 @@ function markup() {
     <span class="fi-ring"></span>
     <span class="fi-bloom"></span>
     <span class="fi-orb"></span>
-    <img class="fi-kop fi-kop--missing" id="fi-kop" alt=""
-         width="${MAAT.kop}" height="${MAAT.kop}" draggable="false">
+    <video class="fi-kop fi-kop--missing" id="fi-kop" muted playsinline preload="auto" disablepictureinpicture
+           width="${MAAT.kop}" height="${MAAT.kop}" aria-hidden="true"></video>
     <span class="fi-sheen"></span>
   </div>
   <p class="fi-word" id="fi-word"></p>
@@ -324,7 +331,7 @@ function markup() {
 /* ── Client ───────────────────────────────────────────────────────────────────
    ES5-concatenatie, geen backtick, geen ${ } — zie de kop van dit bestand. */
 function js(opts = {}) {
-  const src = String(opts.src || '/faro/faro-kop.webp');
+  const src = String(opts.src || '/faro/faro-intro.mp4');
   /* De begroeting bestaat al, in vier talen: Faro's eigen landingsscherm
      gebruikt land.greet.morning/afternoon/evening. Die hergebruiken we, want
      twee begroetingen die los van elkaar vertaald worden lopen vroeg of laat
@@ -398,15 +405,31 @@ function faroIntro() {
   };
 
   if (kop && stage) {
-    kop.onload = function () {
-      kop.classList.remove('fi-kop--missing');
-      stage.style.setProperty('--fi-mask', 'url(' + FI_SRC + ')');
-      stage.classList.add('is-ready');
-      start();
+    /* De clip: Faro vliegt in en landt, 1,7 s, zonder geluid. Pas tonen als
+       hij echt kan spelen; kan hij dat niet (oude browser, autoplay
+       geweigerd, bestand weg) dan blijft de bol staan en speelt de rest
+       gewoon door. De sheen-laag hoort bij de oude tekening en blijft uit. */
+    /* play() pas als hij kan spelen. Meteen na het zetten van src wordt
+       een play() door de eigen load() weer afgebroken (AbortError) en dan
+       stond hij stil op frame 0 met de laag wel in beeld -- gemeten op de
+       dev-server. */
+    var speel = function () {
+      try {
+        var p = kop.play();
+        if (p && p.catch) p.catch(function () { /* autoplay geweigerd: stilstaand beeld is ook goed */ });
+      } catch (e) {}
     };
-    kop.onerror = function () { kop.onerror = null; start(); };  /* bol blijft staan */
+    var klaar = function () {
+      kop.classList.remove('fi-kop--missing');
+      start();
+      speel();
+    };
+    kop.addEventListener('canplay', klaar, { once: true });
+    kop.addEventListener('error', function () { start(); }, { once: true });
+    kop.muted = true;
     kop.src = FI_SRC;
-    setTimeout(start, 200);
+    kop.load();
+    setTimeout(start, 350);
   } else {
     start();
   }
