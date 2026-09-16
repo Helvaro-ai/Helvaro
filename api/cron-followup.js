@@ -158,6 +158,14 @@ module.exports = async function handler(req, res) {
   const ago7d  = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
+    /* De opvolging zelf zat als enige taak NIET in een eigen try/catch: één
+       Airtable-timeout (15 sep, "aborted due to timeout") vloog naar de
+       buitenste catch en alles daarna -- herinneringen, retentie, trial,
+       weekrapport -- sloeg die dag stil over. Nu valt deze stap net als de
+       andere op zichzelf om, en gaat de run door. */
+    let leads = [];
+    let sent = 0;
+    try {
     // Fetch leads created 24h-7d ago that are still 'new'
     // Use field IDs in formula. Immune to field renames in Airtable
     const formula = encodeURIComponent(
@@ -173,8 +181,7 @@ module.exports = async function handler(req, res) {
     const lData = await lRes.json();
     if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
 
-    const leads = lData.records || [];
-    let sent = 0;
+    leads = lData.records || [];
     const followedUp = [];
     /* Wie WEL geselecteerd was maar niet verstuurd kon worden. Die horen in
        de dagmail: een stille mislukking is precies hoe een dood Meta-token
@@ -303,6 +310,9 @@ module.exports = async function handler(req, res) {
     }
 
     console.log(`[cron-followup] Checked ${leads.length} leads, sent ${sent} follow-ups`);
+    } catch (e) {
+      console.error('[cron-followup] follow-ups mislukt (de rest van de run gaat door):', e && e.message);
+    }
 
     // ── Safety-net sweep: leads stuck at 'new' with an EMPTY history ────────
     // Defense-in-depth for the delayed-send bug in api/form.js and
@@ -440,7 +450,16 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult });
+    const verslag = { checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
+       eigen catch viel; zonder deze regel moest je tien losse logregels bij
+       elkaar zoeken om te weten of de dag compleet was. */
+    const overgeslagen = ['stuckNew', 'reminders', 'afspraakOpvolging', 'retention', 'signupSignals', 'quality', 'trial']
+      .concat(now.getUTCDay() === 1 ? ['weekly', 'learning'] : [])
+      .filter((k) => verslag[k] === null);
+    console.log(`[cron-followup] klaar in ${Math.round((Date.now() - now.getTime()) / 1000)}s`
+      + (overgeslagen.length ? ` -- MISLUKT: ${overgeslagen.join(', ')}` : ' -- alle taken gelukt'));
+    return res.status(200).json(verslag);
 
   } catch (err) {
     console.error('[cron-followup] Error:', err.message);
@@ -1083,8 +1102,9 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
       // hij escaleert bewust niet -- mislukt hij, dan slaan we deze klant over
       // en probeert de cron het volgende week opnieuw.
       let newPatterns = '';
+      let uit = null;
       try {
-        const uit = await _ai.generateText({
+        uit = await _ai.generateText({
           task: _ai.TASKS.SUMMARIZE,
           ctx: { projectCode, userId: 'cron' },
           messages: [{ role: 'user', content: prompt }],
@@ -1109,7 +1129,11 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
       if (up.ok) updated++; else skipped++;
       credits.recordUsage(projectCode, credits.FEATURES.WEEKLY_LEARNING, {
         credits: credits.WEIGHTS[credits.FEATURES.WEEKLY_LEARNING],
-        tokens: (data.usage && (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)) || null,
+        /* `data` bestond hier niet (log 14 sep: "data is not defined"): de
+           oude Anthropic-aanroep was vervangen door de router, maar deze
+           regel las nog het oude antwoord. Daardoor crashte de learning per
+           klant NA het wegschrijven, en telde het verbruik nooit mee. */
+        tokens: (uit && ((uit.inputTokens || 0) + (uit.outputTokens || 0))) || null,
       }).catch(() => {});
       // Spread token usage so we don't burst Anthropic rate limits
       await new Promise(res => setTimeout(res, 500));

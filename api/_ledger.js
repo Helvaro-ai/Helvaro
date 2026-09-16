@@ -238,18 +238,31 @@ async function record({ projectCode, type, credits, feature = '', reference = ''
     try { velden[F.meta] = JSON.stringify(meta).slice(0, 8000); } catch (_) { /* laat weg */ }
   }
 
-  try {
-    const r = await atFetch(TABEL, { method: 'POST', body: JSON.stringify({ fields: velden }) });
-    if (!r.ok) {
+  /* Twee pogingen, niet één. Twee keer (27 aug, 12 sep) brak de boeking af
+     op een Airtable-time-out ("This operation was aborted") en was het
+     verbruik weg: de klant had een beeld, het grootboek niet. De referentie
+     hierboven maakt de tweede poging veilig -- is de eerste toch aangekomen,
+     dan vindt zoekOpReferentie hem en boeken we niet dubbel. Faalt ook de
+     tweede, dan staat het BEDRAG in de log, zodat het met de hand kan. */
+  for (let poging = 1; poging <= 2; poging++) {
+    try {
+      const r = await atFetch(TABEL, { method: 'POST', body: JSON.stringify({ fields: velden }) });
+      if (r.ok) return vanRecord(await r.json());
       const txt = await r.text().catch(() => '');
-      console.error(`[grootboek] boeking mislukt (HTTP ${r.status}) voor ${tenant}/${type}:`, txt.slice(0, 200));
-      return null;
+      console.error(`[grootboek] boeking mislukt (HTTP ${r.status}, poging ${poging}) voor ${tenant}/${type}:`, txt.slice(0, 200));
+      if (r.status < 500 && r.status !== 429) break;   // 4xx komt niet goed door het nog eens te proberen
+    } catch (err) {
+      console.error(`[grootboek] boeking wierp een fout (poging ${poging}):`, err && err.message);
     }
-    return vanRecord(await r.json());
-  } catch (err) {
-    console.error('[grootboek] boeking wierp een fout:', err && err.message);
-    return null;
+    if (poging === 1) {
+      await new Promise((res) => setTimeout(res, 800));
+      if (ref) {
+        try { const al = await zoekOpReferentie(tenant, ref); if (al) return al; } catch (_) { /* dan gewoon opnieuw */ }
+      }
+    }
   }
+  console.error(`[grootboek] NIET GEBOEKT na 2 pogingen: ${tenant} ${type} ${teken * aantal} credits feature=${feature || '-'} ref=${ref || '-'}`);
+  return null;
 }
 
 async function zoekOpReferentie(projectCode, referentie) {

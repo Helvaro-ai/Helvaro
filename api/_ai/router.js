@@ -151,6 +151,7 @@ async function generateText(opts = {}) {
       if (poging.tekst.trim()) {
         await usage.record({ ctx, task, ...poging, status: 'ok', pogingen: pogingen.length + 1 });
         return { text: poging.tekst, model: poging.model, provider: poging.providerId,
+                 inputTokens: poging.inputTokens, outputTokens: poging.outputTokens,
                  tier: poging.tier, escaleerd: stap.reden === 'escalatie', pogingen: pogingen.length + 1 };
       }
       laatsteFout = new AIError('Leeg antwoord.', 'empty_response');
@@ -166,6 +167,7 @@ async function generateText(opts = {}) {
     if (res.ok && !teOnzeker) {
       await usage.record({ ctx, task, ...poging, status: 'ok', pogingen: pogingen.length + 1 });
       return { data: res.waarde, text: poging.tekst, model: poging.model, provider: poging.providerId,
+               inputTokens: poging.inputTokens, outputTokens: poging.outputTokens,
                tier: poging.tier, escaleerd: stap.reden === 'escalatie', pogingen: pogingen.length + 1 };
     }
 

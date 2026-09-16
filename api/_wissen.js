@@ -98,7 +98,7 @@ async function at(pad, opts) {
 }
 
 /** Alle record-ids in een tabel die aan de formule voldoen. Pagineert door. */
-async function idsVan(tabel, formule) {
+async function idsVan(tabel, formule, veld) {
   const ids = [];
   let offset = '';
   /* Een hard plafond. Een tenant met meer dan 10.000 rijen in één tabel bestaat
@@ -106,7 +106,13 @@ async function idsVan(tabel, formule) {
      matcht in plaats van één tenant -- de hele base doorlopen. Wordt het
      plafond geraakt, dan is dat een fout en geen "klaar". */
   for (let ronde = 0; ronde < 100; ronde++) {
-    const q = `filterByFormula=${encodeURIComponent(formule)}&pageSize=100&fields%5B%5D=`
+    /* Alleen het filterveld terugvragen, niet de hele rij: we willen ids.
+       Hier stond `fields[]=` met een LEGE naam, en daar antwoordt Airtable
+       422 op -- voor elke tabel. Gevolg (log 9 sep): "Account verwijderen"
+       wiste niets, en de klant kreeg "gedeeltelijk gewist" te zien terwijl
+       er in werkelijkheid geen enkele rij weg was. */
+    const q = `filterByFormula=${encodeURIComponent(formule)}&pageSize=100`
+            + (veld ? `&fields%5B%5D=${encodeURIComponent(veld)}` : '')
             + (offset ? `&offset=${encodeURIComponent(offset)}` : '');
     const r = await at(`${tabel}?${q}`);
     if (!r.ok) throw new WisFout(`Airtable ${r.status} bij het lezen van ${tabel}.`, 'lezen_mislukt');
@@ -134,7 +140,7 @@ async function verwijderIds(tabel, ids) {
 
 /** Eén tabel leegmaken voor deze tenant. Geeft het aantal terug, of de fout. */
 async function wisTabel(tabel, veld, projectCode) {
-  const ids = await idsVan(tabel, `{${veld}}="${escapeFormule(projectCode)}"`);
+  const ids = await idsVan(tabel, `{${veld}}="${escapeFormule(projectCode)}"`, veld);
   if (!ids.length) return 0;
   return verwijderIds(tabel, ids);
 }
@@ -187,10 +193,10 @@ async function wisAlles(ctx = {}) {
   /* 2. Faro: berichten vóór gesprekken. ai_messages heeft geen project_code --
         het gesprek is de enige weg ernaartoe. */
   await stap('ai_messages', async () => {
-    const gesprekken = await idsVan(T_CONVERSATIES, `{project_code}="${escapeFormule(projectCode)}"`);
+    const gesprekken = await idsVan(T_CONVERSATIES, `{project_code}="${escapeFormule(projectCode)}"`, 'project_code');
     let weg = 0;
     for (const gid of gesprekken) {
-      const berichten = await idsVan(T_BERICHTEN, `{conversation_id}="${escapeFormule(gid)}"`);
+      const berichten = await idsVan(T_BERICHTEN, `{conversation_id}="${escapeFormule(gid)}"`, 'conversation_id');
       if (berichten.length) weg += await verwijderIds(T_BERICHTEN, berichten);
     }
     return weg;
@@ -221,7 +227,7 @@ async function wisAlles(ctx = {}) {
         achteraan hoort en niet vooraan. */
   await stap('Client Config', async () => {
     let ids = ctx.clientRecordId ? [ctx.clientRecordId] : null;
-    if (!ids) ids = await idsVan(T_CLIENT, `{Project Code}="${escapeFormule(projectCode)}"`);
+    if (!ids) ids = await idsVan(T_CLIENT, `{Project Code}="${escapeFormule(projectCode)}"`, 'Project Code');
     if (!ids.length) return 0;
     return verwijderIds(T_CLIENT, ids);
   });

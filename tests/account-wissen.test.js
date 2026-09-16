@@ -68,6 +68,12 @@ let BASEDATA, VOLGORDE, STUKKE_TABEL;
    betekenen dat de test iets toetst wat Airtable doet in plaats van iets wat
    wij doen. */
 global.fetch = async (url, opts) => {
+  /* Airtable weigert een lege veldnaam met 422 -- precies de fout die de
+     wisroute maandenlang stil liet mislukken. De nep-Airtable doet dat nu
+     ook, zodat die regressie hier meteen rood wordt. */
+  if (/fields%5B%5D=(&|$)/.test(String(url))) {
+    return { ok: false, status: 422, json: async () => ({ error: { type: 'INVALID_REQUEST_UNKNOWN' } }), text: async () => 'fields[] leeg' };
+  }
   const u = new URL(url);
   const tabel = u.pathname.split('/')[3];
   const methode = (opts && opts.method) || 'GET';
