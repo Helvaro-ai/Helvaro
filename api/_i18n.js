@@ -2208,7 +2208,7 @@ const TEKST = {
   'week.score': { nl: 'Score', fr: 'Score', en: 'Score', de: 'Score' },
   'week.geenLeads': { nl: 'Nog geen gekwalificeerde leads deze week. Komt nog!', fr: 'Pas encore de prospects qualifiés cette semaine. Ça viendra !', en: 'No qualified leads yet this week. They will come!', de: 'Diese Woche noch keine qualifizierten Leads. Kommt noch!' },
   'week.open': { nl: 'Open dashboard', fr: 'Ouvrir le tableau de bord', en: 'Open dashboard', de: 'Dashboard öffnen' },
-  'week.voet': { nl: 'Helvaro · AI-gestuurde leadkwalificatie via WhatsApp', fr: 'Helvaro · qualification de prospects par IA via WhatsApp', en: 'Helvaro · AI-powered lead qualification via WhatsApp', de: 'Helvaro · KI-gestützte Lead-Qualifizierung über WhatsApp' },
+  'week.voet': { nl: 'Helvaro · je assistent kwalificeert je leads via WhatsApp', fr: 'Helvaro · votre assistant qualifie vos prospects via WhatsApp', en: 'Helvaro · your assistant qualifies your leads via WhatsApp', de: 'Helvaro · Ihr Assistent qualifiziert Ihre Leads über WhatsApp' },
   'melding.afspraak.kop':   { nl: '🚗 Nieuwe afspraak', fr: '🚗 Nouveau rendez-vous', en: '🚗 New appointment', de: '🚗 Neuer Termin' },
   'melding.afspraak.regel': { nl: '{naam} heeft een afspraak om {wanneer} voor een {voertuig}{prijsSuffix}.',
                               fr: '{naam} a un rendez-vous le {wanneer} pour un {voertuig}{prijsSuffix}.',
