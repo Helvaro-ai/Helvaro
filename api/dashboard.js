@@ -2508,7 +2508,7 @@ ${faro.navCta}
               <div class="settings-label">${T('set.ai.name')}</div>
               <div class="settings-label-sub">${T('set.ai.name.sub')}</div>
             </div>
-            <div class="settings-value" id="set-ai-name">Je assistent</div>
+            <div class="settings-value" id="set-ai-name">${T('nav.persona')}</div>
           </div>
           <div class="settings-row">
             <div>
@@ -2519,11 +2519,40 @@ ${faro.navCta}
           </div>
         </div>
 
+        <!-- WhatsApp: het nummer en de sjablonen, live uit het WhatsApp
+             Business-account. Dit stond alleen in de onboarding-wizard, dus
+             wie die voorbij was kon nergens meer zien of zijn berichten
+             goedgekeurd waren. -->
+        <div class="settings-section" id="set-wa">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            ${T('set.wa')}
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('set.wa.nummer')}</div>
+              <div class="settings-label-sub">${T('set.wa.nummer.sub')}</div>
+            </div>
+            <div class="settings-value" id="set-wa-nummer">—</div>
+          </div>
+          <div class="settings-row" style="align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div class="settings-label">${T('set.wa.tpl')}</div>
+              <div class="settings-label-sub" id="set-wa-tpl-sub">${T('set.wa.laden')}</div>
+              <div id="set-wa-tpl-lijst" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+              <div id="set-wa-tpl-samenvatting" class="settings-label-sub" style="margin-top:10px"></div>
+            </div>
+            <div class="settings-toggle">
+              <button class="btn-icon btn-primary-sm" id="set-wa-ververs" onclick="laadWhatsAppInstellingen(true)">${T('set.wa.ververs')}</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Notificaties -->
         <div class="settings-section">
           <div class="settings-section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            Notificaties
+            ${T('set.notif')}
           </div>
           <div class="settings-row">
             <div>
@@ -7319,9 +7348,8 @@ async function marktWisselen(gekozen) {
 function marktSubtekst(gekozen) {
   var el = document.getElementById('set-markt-sub');
   if (!el) return;
-  el.textContent = gekozen === 'dealership'
-    ? 'Voertuigen, proefritten, AutoScout24-leads'
-    : (gekozen === 'other' ? 'De standaardinrichting' : 'Panden, bezichtigingen, een link per woning');
+  el.textContent = tr(gekozen === 'dealership' ? 'markt.sub.dealership'
+    : (gekozen === 'other' ? 'markt.sub.other' : 'markt.sub.vastgoed'));
 }
 
 /* Welke markten een eigen aanbod hebben om uit te kiezen. De spiegel van
@@ -11582,7 +11610,7 @@ async function wizardVolgende() {
 
   if (stap === 'markt') {
     if (!_wizardMarkt) {
-      fout.textContent = 'Kies waar je in zit, dan richt ik de rest daarop in.';
+      fout.textContent = tr('markt.kies');
       return;
     }
     var gekozen = null;
@@ -11886,8 +11914,8 @@ function wizardTeken() {
         +   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
         +   'stroke-linecap="round" stroke-linejoin="round">' + m.icoon + '</svg></span>'
         + '<span style="flex:1;min-width:0">'
-        +   '<span style="display:block;font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)">' + m.titel + '</span>'
-        +   '<span style="display:block;margin-top:3px;font-size:12.5px;line-height:1.55;color:var(--text-muted,#999)">' + m.sub + '</span>'
+        +   '<span style="display:block;font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)">' + tr('markt.' + m.id + '.t') + '</span>'
+        +   '<span style="display:block;margin-top:3px;font-size:12.5px;line-height:1.55;color:var(--text-muted,#999)">' + tr('markt.' + m.id + '.s') + '</span>'
         + '</span></button>';
     }).join('');
 
@@ -16729,9 +16757,66 @@ async function sendTestMessage() {
   }
 }
 
+/* Het WhatsApp-blok op Instellingen. Zelfde bron als de wizard (wa-readiness):
+   de sjablonen komen live van Meta, per taal van deze klant. ververs=true
+   omzeilt de cache van vijf minuten -- dat is de knop. Alles via textContent,
+   de sjabloonnamen komen van buiten. */
+var _waInstellingenBezig = false;
+async function laadWhatsAppInstellingen(ververs) {
+  var nummer = document.getElementById('set-wa-nummer');
+  var sub    = document.getElementById('set-wa-tpl-sub');
+  var lijst  = document.getElementById('set-wa-tpl-lijst');
+  var samen  = document.getElementById('set-wa-tpl-samenvatting');
+  var knop   = document.getElementById('set-wa-ververs');
+  if (!nummer || !sub || !lijst || !samen) return;
+  if (_waInstellingenBezig) return;
+  _waInstellingenBezig = true;
+  if (knop) knop.disabled = true;
+  sub.textContent = tr('set.wa.laden');
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'wa-readiness', ververs: ververs === true })
+    });
+    if (!r.ok) throw new Error('readiness ' + r.status);
+    var d = await r.json();
+    nummer.textContent = tr(d.eigenNummer ? 'set.wa.eigen' : 'set.wa.gedeeld');
+    if (!d.ondersteund) {
+      sub.textContent = tr('set.wa.geenTaal');
+      lijst.innerHTML = '';
+      samen.textContent = '';
+      return;
+    }
+    sub.textContent = tr('set.wa.tpl.sub', { taal: (typeof wizardTaalNaam === 'function' ? wizardTaalNaam(d.taal) : d.taal) || d.taal || '' });
+    lijst.innerHTML = '';
+    (d.regels || []).forEach(function (rij) {
+      var el = document.createElement('div');
+      el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px';
+      var links = document.createElement('span');
+      links.textContent = tr('wa.tpl.' + rij.sleutel);
+      var rechts = document.createElement('span');
+      rechts.style.cssText = 'font-weight:600;white-space:nowrap';
+      var kleur = { klaar: 'var(--green-ink)', onderweg: 'var(--warning-ink, #b45309)', geweigerd: 'var(--red-ink)', ontbreekt: 'var(--text-muted)', onbekend: 'var(--text-muted)' };
+      rechts.style.color = kleur[rij.toestand] || 'var(--text-muted)';
+      rechts.textContent = tr('set.wa.' + (kleur[rij.toestand] ? rij.toestand : 'onbekend'));
+      el.appendChild(links); el.appendChild(rechts);
+      lijst.appendChild(el);
+    });
+    samen.textContent = tr(d.klaar ? 'set.wa.alles' : 'set.wa.wacht');
+    samen.style.color = d.klaar ? 'var(--green-ink)' : '';
+  } catch (e) {
+    sub.textContent = tr('set.wa.fout');
+  } finally {
+    _waInstellingenBezig = false;
+    if (knop) knop.disabled = false;
+  }
+}
+
 function renderInstellingen() {
   const s = state;
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  laadWhatsAppInstellingen(false);
   set('set-naam', s.clientName || '—');
   set('set-email', s.userEmail || localStorage.getItem('hv-email') || '—');
 

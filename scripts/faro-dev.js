@@ -319,6 +319,22 @@ const server = http.createServer(async (req, res) => {
         case 'property-list':
           return res.status(200).json({ images: [] });
 
+        /* WhatsApp-gereedheid voor Instellingen en de wizard. Dezelfde vorm
+           als api/leads.js, met een mix van toestanden zodat je alle kleuren
+           ziet. */
+        case 'wa-readiness':
+          return res.status(200).json({
+            eigenNummer: false, taal: 'nl_BE', gevraagd: 'nl', land: 'BE', klaar: false, ondersteund: true, reden: '', bron: 'fixture',
+            regels: [
+              { sleutel: 'intro',    wat: '', blokkeert: true,  toestand: 'klaar' },
+              { sleutel: 'notify',   wat: '', blokkeert: true,  toestand: 'klaar' },
+              { sleutel: 'booking',  wat: '', blokkeert: true,  toestand: 'klaar' },
+              { sleutel: 'reminder', wat: '', blokkeert: true,  toestand: 'onderweg' },
+              { sleutel: 'followup', wat: '', blokkeert: true,  toestand: 'klaar' },
+              { sleutel: 'campaign', wat: '', blokkeert: false, toestand: 'ontbreekt' },
+            ],
+          });
+
         /* Panden. Een lijstje in het geheugen, zodat toevoegen, bewerken en
            archiveren lokaal ECHT werken -- een stub die altijd hetzelfde
            teruggeeft laat een kapotte opslaan-knop er goed uitzien. */

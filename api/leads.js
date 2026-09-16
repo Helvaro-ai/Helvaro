@@ -870,8 +870,12 @@ module.exports = async function handler(req, res) {
         const rec = ((await cRes.json()).records || [])[0];
         if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
 
-        const staat = await _waTpl.klaarVoor(_waTpl.taalVanKlant(rec.fields));
+        /* ververs:true haalt de index vers bij Meta op (management-call),
+           voor de knop op de instellingenpagina; anders de cache van 5 min. */
+        const staat = await _waTpl.klaarVoor(_waTpl.taalVanKlant(rec.fields), { forceer: body.ververs === true });
+        const eigenNummer = Boolean(await getClientWaPhoneNumberId(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE));
         return res.status(200).json({
+          eigenNummer,
           taal: staat.taal,
           gevraagd: staat.gevraagd,
           land: String(rec.fields['Country'] || '').toUpperCase(),
