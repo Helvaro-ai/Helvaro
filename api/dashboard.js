@@ -16779,6 +16779,9 @@ async function laadWhatsAppInstellingen(ververs) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body: JSON.stringify({ mode: 'wa-readiness', ververs: ververs === true })
     });
+    /* 403 = geen klantcontext (beheerder). Dan is er geen nummer en geen
+       taal om te tonen; het blok weg, geen foutmelding over niets. */
+    if (r.status === 403) { var blok = document.getElementById('set-wa'); if (blok) blok.style.display = 'none'; return; }
     if (!r.ok) throw new Error('readiness ' + r.status);
     var d = await r.json();
     nummer.textContent = tr(d.eigenNummer ? 'set.wa.eigen' : 'set.wa.gedeeld');
