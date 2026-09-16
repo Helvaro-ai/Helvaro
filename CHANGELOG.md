@@ -12,6 +12,39 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## 16 september 2026 — nacht
+
+### Klanten, Founder en Kosten werken weer voor de beheerder
+
+De server knipte die drie pagina's uit de HTML omdat hij het admin-token
+niet als sessie herkende, en een herlading als beheerder gooide je eruit.
+Nu is er één controle voor beide; na het inloggen herlaadt de app één keer
+en zijn de pagina's er.
+
+### Faro beweegt terwijl hij werkt
+
+Twee korte lussen uit de Faro-video (knipperen = denken, zwaaien = typen),
+rond uitgesneden, zonder geluid. Naast "Faro denkt na" en als bewegende
+avatar zodra de tekst loopt. Klaar = het stille kop-icoon terug.
+
+### WhatsApp op Instellingen
+
+Nieuw blok: op welk nummer je leads binnenkomen, en per berichtsjabloon of
+WhatsApp het goedgekeurd heeft (live uit je WhatsApp Business-account, met
+een knop om te verversen). Dat stond alleen in de onboarding-wizard.
+
+### Testbericht buiten het 24-uursvenster
+
+Een testbericht naar een nummer dat nog nooit iets stuurde weigerde Meta
+altijd. Nu gaat dan de goedgekeurde begroeting van je assistent, en het
+scherm zegt dat het een sjabloon was. Antwoord erop en je kan 24 uur vrij
+testen.
+
+### Vertalingen
+
+Het testbericht-blok, de markten in de wizard en de regel onder "Wat je
+doet" stonden in elke taal in het Nederlands. Nu in nl/fr/en/de.
+
 ## 15 september 2026 — nacht
 
 ### Faro praat als een assistent en kan nu alles aan je aanbod doen
