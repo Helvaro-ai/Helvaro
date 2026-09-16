@@ -2937,6 +2937,19 @@ ${cmd.drawer}
               </div>
             </div>
 
+            <!-- Google Drive: de administratie als losse documenten op de
+                 Drive van de beheerder. Zie api/_drive.js. -->
+            <div class="fdr-panel" id="fdr-drive" style="padding:16px">
+              <div class="fdr-panel-title" style="margin-bottom:6px">Google Drive</div>
+              <div id="fdr-drive-sub" style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Laden…</div>
+              <div id="fdr-drive-links" style="display:flex;flex-direction:column;gap:4px;font-size:12px;margin-bottom:10px"></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn-icon btn-primary-sm" id="fdr-drive-koppel" onclick="driveKoppel()" style="display:none">Koppel Google Drive</button>
+                <button class="btn-icon btn-primary-sm" id="fdr-drive-sync" onclick="driveSync()" style="display:none">Synchroniseer nu</button>
+                <button class="btn-icon" id="fdr-drive-los" onclick="driveLos()" style="display:none">Loskoppelen</button>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -17565,9 +17578,76 @@ async function loadKosten(force) {
   }
 }
 
+/* ── Google Drive-koppeling (beheerder) ─────────────────────────────────
+   Vier calls naar api/admin, zie _drive.js. De koppeling zelf loopt via
+   Google en komt terug op /dashboard?admin=1&drive=... ; dat lezen we hier
+   uit de URL en melden het één keer. */
+async function driveCall(mode) {
+  const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify({ mode }) });
+  return r.json().catch(function () { return {}; });
+}
+var DRIVE_NAMEN = { klanten: 'Helvaro — Klanten (sheet)', kosten: 'Helvaro — Kosten (sheet)', founder: 'Helvaro — Founder (doc)', changelog: 'Helvaro — Changelog (doc)' };
+async function driveStatus() {
+  const sub = document.getElementById('fdr-drive-sub'), links = document.getElementById('fdr-drive-links');
+  const bKoppel = document.getElementById('fdr-drive-koppel'), bSync = document.getElementById('fdr-drive-sync'), bLos = document.getElementById('fdr-drive-los');
+  if (!sub) return;
+  const d = await driveCall('ops-drive-status');
+  if (!d.ok) { sub.textContent = d.reden || 'Status niet op te halen.'; return; }
+  if (!d.configured) { sub.textContent = 'Google OAuth is niet geconfigureerd op de server (GOOGLE_CLIENT_ID / SECRET / REDIRECT_URI).'; return; }
+  bKoppel.style.display = d.gekoppeld ? 'none' : '';
+  bSync.style.display = d.gekoppeld ? '' : 'none';
+  bLos.style.display = d.gekoppeld ? '' : 'none';
+  if (!d.gekoppeld) { sub.textContent = 'Niet gekoppeld. Koppel het Google-account waar de documenten moeten staan (sindi@helvaro.pro).'; links.innerHTML = ''; return; }
+  sub.textContent = 'Gekoppeld als ' + d.email + (d.laatsteSync ? ' · laatste sync ' + new Date(d.laatsteSync).toLocaleString(LOCALE) : ' · nog niet gesynchroniseerd');
+  links.innerHTML = '';
+  if (d.map) { const a = document.createElement('a'); a.href = d.map; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Map "Helvaro Admin" op Drive'; a.style.color = 'var(--accent-ink)'; links.appendChild(a); }
+  (d.bestanden || []).forEach(function (b) {
+    if (b.sleutel.indexOf('klant:') === 0) return;   // per-klantdocs zitten in de submap; die lijst hier niet uitschrijven
+    const a = document.createElement('a'); a.href = b.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = DRIVE_NAMEN[b.sleutel] || b.sleutel; a.style.color = 'var(--accent-ink)'; links.appendChild(a);
+  });
+  const nKlant = (d.bestanden || []).filter(function (b) { return b.sleutel.indexOf('klant:') === 0; }).length;
+  if (nKlant) { const sp = document.createElement('span'); sp.style.color = 'var(--text-muted)'; sp.textContent = '+ ' + nKlant + ' klantdocumenten in de submap Klanten'; links.appendChild(sp); }
+}
+async function driveKoppel() {
+  const d = await driveCall('ops-drive-connect');
+  if (d.ok && d.url) { window.location.href = d.url; return; }
+  toast(d.reden || 'Koppelen lukte niet', 'error');
+}
+async function driveSync() {
+  const b = document.getElementById('fdr-drive-sync'); if (b) { b.disabled = true; b.textContent = 'Sync…'; }
+  try {
+    const d = await driveCall('ops-drive-sync');
+    if (!d.ok) { toast(d.reden || 'Synchroniseren mislukt', 'error'); return; }
+    toast((d.bestanden || []).length + ' documenten bijgewerkt' + ((d.fouten || []).length ? ', ' + d.fouten.length + ' mislukt' : ''), (d.fouten || []).length ? 'info' : 'success');
+    if ((d.fouten || []).length) console.warn('[drive] fouten:', d.fouten);
+    await driveStatus();
+  } finally { if (b) { b.disabled = false; b.textContent = 'Synchroniseer nu'; } }
+}
+async function driveLos() {
+  if (!confirm('Google Drive loskoppelen? De documenten blijven op Drive staan; Helvaro werkt ze alleen niet meer bij.')) return;
+  const d = await driveCall('ops-drive-disconnect');
+  if (!d.ok) { toast(d.reden || 'Loskoppelen mislukt', 'error'); return; }
+  toast('Drive losgekoppeld', 'success');
+  await driveStatus();
+}
+
 async function loadFounderData(force) {
   if (founderState.loaded && !force) return;
   founderState.loaded = true;
+  driveStatus().catch(function () {});
+  /* Terug van Google: één melding, en de parameter uit de URL zodat een
+     herlading hem niet nog eens toont. */
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const dr = p.get('drive');
+    if (dr) {
+      toast(dr === 'connected' ? 'Google Drive gekoppeld. Klik "Synchroniseer nu" voor de eerste documenten.'
+        : dr === 'denied' ? 'Koppeling geweigerd bij Google.' : 'Koppelen mislukt (' + dr + ').', dr === 'connected' ? 'success' : 'error');
+      p.delete('drive');
+      window.history.replaceState({}, document.title, window.location.pathname + (p.toString() ? '?' + p.toString() : ''));
+      if (dr === 'connected') driveSync().catch(function () {});
+    }
+  } catch (e) {}
 
   // Metrics from admin endpoint (clients + lead stats)
   try {

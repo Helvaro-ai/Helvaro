@@ -3795,6 +3795,22 @@ async function handleGcal(req, res) {
   // param we minted in mode:'connect' below (CSRF protection: an attacker
   // cannot forge a valid state without SESSION_SECRET/ADMIN_KEY).
   if (req.method === 'GET' && action === 'callback') {
+    /* De Drive-koppeling van de beheerder deelt deze callback (zelfde
+       OAuth-client, zelfde redirect-URI). Herkenbaar aan de state-prefix
+       "drive."; de state zelf is getekend met het sessiegeheim, dus een
+       vervalste terugkeer komt hier niet doorheen. Zie api/_drive.js. */
+    const _drive = require('./_drive');
+    if (_drive.isDriveState(url.searchParams.get('state'))) {
+      if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?admin=1&drive=denied');
+      if (!_drive.verifyState(url.searchParams.get('state'))) return gcalRedirect(res, '/dashboard?admin=1&drive=invalid_state');
+      try {
+        await _drive.connect(url.searchParams.get('code'));
+        return gcalRedirect(res, '/dashboard?admin=1&drive=connected');
+      } catch (e) {
+        console.error('[drive callback]', e && e.message);
+        return gcalRedirect(res, '/dashboard?admin=1&drive=error');
+      }
+    }
     if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?gcal=denied');
     const code = url.searchParams.get('code');
     const projectCode = gcalVerifyState(url.searchParams.get('state'));

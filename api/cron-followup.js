@@ -450,7 +450,25 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const verslag = { checked: leads.length, sent, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    /* ── Drive van de beheerder ─────────────────────────────────────────────
+       Laatste taak, want puur intern: als dit omvalt is er niets mis voor
+       een klant. Niet gekoppeld = overslaan, geen fout. */
+    let driveResult = null;
+    try {
+      const _drive = require('./_drive');
+      const st = await _drive.status();
+      if (st.gekoppeld) {
+        const v = await _drive.sync();
+        driveResult = { bestanden: v.bestanden.length, fouten: v.fouten.length };
+        if (v.fouten.length) console.warn('[cron-followup] drive-sync met fouten:', JSON.stringify(v.fouten).slice(0, 500));
+      } else {
+        driveResult = { overgeslagen: 'niet gekoppeld' };
+      }
+    } catch (e) {
+      console.error('[cron-followup] drive-sync mislukt:', e && e.message);
+    }
+
+    const verslag = { checked: leads.length, sent, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
     /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
        eigen catch viel; zonder deze regel moest je tien losse logregels bij
        elkaar zoeken om te weten of de dag compleet was. */

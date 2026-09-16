@@ -1164,6 +1164,31 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, verwachtApp: verwachtApp || null, tokens: uit });
     }
 
+    /* ── Google Drive van de beheerder ───────────────────────────────────────
+       Zie api/_drive.js. Vier modes, alle vier alleen met een admin-token:
+       status, de koppel-URL (de browser gaat naar Google en komt terug op
+       /api/gcal), een sync nu, en loskoppelen. Geen enkel token komt in een
+       antwoord. */
+    if (body.mode === 'ops-drive-status' || body.mode === 'ops-drive-connect' || body.mode === 'ops-drive-sync' || body.mode === 'ops-drive-disconnect') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const _drive = require('./_drive');
+      try {
+        if (body.mode === 'ops-drive-status')     return res.status(200).json(Object.assign({ ok: true }, await _drive.status()));
+        if (body.mode === 'ops-drive-connect') {
+          if (!_drive.isConfigured()) return res.status(200).json({ ok: false, reden: 'GOOGLE_CLIENT_ID / SECRET / REDIRECT_URI ontbreken op de server.' });
+          return res.status(200).json({ ok: true, url: _drive.authUrl() });
+        }
+        if (body.mode === 'ops-drive-sync')       return res.status(200).json(Object.assign({ ok: true }, await _drive.sync()));
+        if (body.mode === 'ops-drive-disconnect') { await _drive.disconnect(); return res.status(200).json({ ok: true }); }
+      } catch (e) {
+        console.error('[ops-drive]', body.mode, e && e.message);
+        return res.status(200).json({ ok: false, code: (e && e.code) || 'drive_fout', reden: String(e && e.message || e).slice(0, 300) });
+      }
+    }
+
     if (body.mode === 'ops-templates') {
       const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
