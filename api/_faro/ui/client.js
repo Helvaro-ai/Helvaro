@@ -661,18 +661,29 @@ function faroSend(text) {
          Ook niet als "opnieuw te proberen" gemarkeerd: de enige juiste actie is
          even wachten, en een knop die dat niet doet nodigt uit tot doorklikken. */
       if (r.status === 429) { var e = new Error('ratelimit'); e.faroCode = 'ratelimit'; throw e; }
+      /* Een 401/403 draagt een reden ("Faro werkt binnen een klantaccount").
+         Die tonen in plaats van "Er ging iets mis": dat laatste nodigt uit
+         tot opnieuw proberen, en opnieuw proberen helpt hier niet. */
+      if (r.status === 401 || r.status === 403) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          var e2 = new Error(j && j.error ? j.error : 'auth');
+          e2.faroCode = 'auth';
+          throw e2;
+        });
+      }
       if (!r.ok || !r.body) throw new Error('stream');
       return faroReadStream(r.body, bubble, status);
     })
     .catch(function (err) {
       if (err && err.name === 'AbortError') return;
       var teSnel = err && err.faroCode === 'ratelimit';
+      var geenToegang = err && err.faroCode === 'auth';
       faroMascot('error');
       faroBubbleMascot(bubble, 'idle');
       faroRenderComponent(bubble, {
         type: 'error',
-        message: T(teSnel ? 'st.ratelimit' : 'st.error'),
-        retryable: !teSnel
+        message: geenToegang ? String(err.message) : T(teSnel ? 'st.ratelimit' : 'st.error'),
+        retryable: !teSnel && !geenToegang
       });
     })
     .finally(function () {

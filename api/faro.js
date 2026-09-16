@@ -70,7 +70,18 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const session = _session.verifySignedSession(_session.readToken(req));
+  const _ruw = _session.readToken(req);
+  /* De beheerder heeft geen klantaccount, en Faro werkt per klant: elk
+     gereedschap leest op projectcode. Eerder kreeg de beheerder hier
+     "Niet ingelogd" en op het scherm "Er ging iets mis" -- terwijl hij wel
+     degelijk ingelogd was. Zeg wat er aan de hand is. */
+  if (_session.isAdminToken(_ruw)) {
+    return res.status(403).json({
+      error: 'Faro werkt binnen een klantaccount. Log in als klant (of open een klant via Klanten) om Faro te gebruiken.',
+      code: 'ADMIN_NO_TENANT',
+    });
+  }
+  const session = _session.verifySignedSession(_ruw);
   if (!session) {
     return res.status(401).json({ error: 'Niet ingelogd' });
   }

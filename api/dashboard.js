@@ -1159,7 +1159,7 @@ ${faro.navCta}
           </select>
         </div>
         <div class="export-preview-count" id="export-preview-count">
-          <span id="export-count-num">—</span> leads geselecteerd
+          <span id="export-count-num">—</span> ${T('exp.selected')}
         </div>
       </div>
 
@@ -10303,7 +10303,9 @@ async function renderCalendar() {
   if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
 
   const today    = new Date(); today.setHours(0,0,0,0);
-  const dayNames = ['ZO','MA','DI','WO','DO','VR','ZA'];
+  /* Dagnamen uit de taal van het scherm, niet hardgecodeerd Nederlands:
+     een Engelse klant zag hier MA DI WO. Intl geeft "Mon"/"lun."/"Mo". */
+  const dayNames = [0,1,2,3,4,5,6].map(d => new Date(Date.UTC(2024, 0, 7 + d)).toLocaleDateString(LOCALE, { weekday: 'short', timeZone: 'UTC' }).replace('.', '').toUpperCase());
 
   // Day headers
   const headerEl = document.getElementById('cal-day-cols-header');
@@ -10597,10 +10599,10 @@ function renderProfile() {
   const statsRow = document.getElementById('profile-stats-row');
   if (statsRow) {
     const items = [
-      { v: st.total     || (s.leads||[]).length || 0, l: 'Leads' },
-      { v: st.qualified || (s.leads||[]).filter(l=>l.qualified).length || 0, l: 'Gekwalificeerd' },
-      { v: st.booked    || (s.leads||[]).filter(l=>l.afspraakGeboekt).length || 0, l: 'Afspraken' },
-      { v: (st.conversionRate||0) + '%', l: 'Conversie' }
+      { v: st.total     || (s.leads||[]).length || 0, l: tr('pro.leads') },
+      { v: st.qualified || (s.leads||[]).filter(l=>l.qualified).length || 0, l: tr('dash.qualified') },
+      { v: st.booked    || (s.leads||[]).filter(l=>l.afspraakGeboekt).length || 0, l: tr('pro.appts') },
+      { v: (st.conversionRate||0) + '%', l: tr('pro.conv') }
     ];
     statsRow.innerHTML = items.map(i =>
       \`<div class="profile-stat-card"><div class="psv">\${i.v}</div><div class="psl">\${i.l}</div></div>\`
@@ -12832,7 +12834,7 @@ function renderGesprekken() {
        twee andere schermen gebruikt; hier hoorde hij ook. */
     listBody.innerHTML = \`<div style="padding:24px 20px;text-align:center;color:var(--text-muted);font-size:13px">
       <div style="font-weight:600;color:var(--text);margin-bottom:6px">\${escHtml(tr('leeg.gesprekken'))}</div>
-      <div>Zodra een lead je formulier invult, start je assistent het gesprek en verschijnt het hier.</div>
+      <div>\${escHtml(tr('leeg.gesprekken.sub'))}</div>
       \${emptyStateCta()}
     </div>\`;
     return;
@@ -13275,7 +13277,7 @@ function renderAnalyse() {
   // Days of week chart
   const dayCanvas = document.getElementById('analyse-days-chart');
   if (dayCanvas && typeof Chart !== 'undefined') {
-    const dayLabels = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+    const dayLabels = [1,2,3,4,5,6,7].map(d => new Date(Date.UTC(2024, 0, 7 + d)).toLocaleDateString(LOCALE, { weekday: 'short', timeZone: 'UTC' }).replace('.', ''));
     const dayCounts = [0,0,0,0,0,0,0];
     leads.forEach(l => {
       if (!l.datum) return;

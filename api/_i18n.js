@@ -1273,6 +1273,9 @@ const TEKST = {
      nieuwe klant ziet, in elke taal. */
   'leeg.leads':      { nl: 'Geen leads gevonden', fr: 'Aucun lead trouv\u00e9', en: 'No leads found', de: 'Keine Leads gefunden' },
   'leeg.leadsKort':  { nl: 'Geen leads', fr: 'Aucun lead', en: 'No leads', de: 'Keine Leads' },
+  'leeg.gesprekken.sub': { nl: 'Zodra een lead je formulier invult, start je assistent het gesprek en verschijnt het hier.', fr: 'Dès qu’un prospect remplit votre formulaire, votre assistant lance la conversation et elle apparaît ici.', en: 'As soon as a lead fills in your form, your assistant starts the conversation and it shows up here.', de: 'Sobald ein Lead Ihr Formular ausfüllt, beginnt Ihr Assistent das Gespräch und es erscheint hier.' },
+  'exp.selected': { nl: 'leads geselecteerd', fr: 'prospects sélectionnés', en: 'leads selected', de: 'Leads ausgewählt' },
+  'pro.leads': { nl: 'Leads', fr: 'Prospects', en: 'Leads', de: 'Leads' },
   'leeg.gesprekken': { nl: 'Nog geen gesprekken', fr: 'Pas encore de conversations', en: 'No conversations yet', de: 'Noch keine Gespr\u00e4che' },
   'leeg.berichten':  { nl: 'Geen berichten', fr: 'Aucun message', en: 'No messages', de: 'Keine Nachrichten' },
   'leeg.data':       { nl: 'Geen data', fr: 'Aucune donn\u00e9e', en: 'No data', de: 'Keine Daten' },
