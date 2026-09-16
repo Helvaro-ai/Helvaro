@@ -95,7 +95,7 @@ const T = Object.freeze({
 
 /* Groot. Dat was de opdracht, en het is ook de reden dat het een kop werd:
    onder ~150 px verlies je de ogen en daarmee het oogcontact. */
-const MAAT = Object.freeze({ kop: 200, stage: 264, ring: 240 });
+const MAAT = Object.freeze({ kop: 220, stage: 284, ring: 260 });
 
 /* ── CSS ──────────────────────────────────────────────────────────────────── */
 function css() {
