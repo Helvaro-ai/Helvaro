@@ -8179,8 +8179,8 @@ function renderTable() {
     const waLink = waPhone ? 'https://wa.me/' + waPhone : '#';
     const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     return \`
-      <tr data-id="\${lead.id}" \${delay} tabindex="0" role="button"
-          aria-label="Open lead \${escHtml(lead.naam) || 'zonder naam'}">
+      <tr data-id="\${lead.id}" \${delay} tabindex="0"
+          aria-label="\${escHtml(tr('a11y.openLead', { naam: lead.naam || tr('a11y.zonderNaam') }))}">
         <td class="td-naam">\${escHtml(lead.naam) || '—'}\${ageBadge}</td>
         <td>
           <div class="td-phone">
@@ -12958,7 +12958,7 @@ function openConversation(leadId) {
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
     </div>
     \${faroLeadPaneel(lead)}
-    <div class="conv-messages" id="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>\${escHtml(tr('leeg.berichten'))}</div></div>\`}</div>
+    <div class="conv-messages" id="conv-messages" tabindex="0" aria-label="\${escHtml(tr('a11y.berichten'))}">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>\${escHtml(tr('leeg.berichten'))}</div></div>\`}</div>
     \${convComposerHtml(lead)}
   \`;
 
@@ -13310,7 +13310,7 @@ function renderAnalyse() {
         <td style="text-align:center">\${avg}</td>
       </tr>\`;
     }).join('');
-    sourceEl.innerHTML = \`<div class="table-scroll"><table class="source-table">
+    sourceEl.innerHTML = \`<div class="table-scroll" tabindex="0" aria-label="\${escHtml(tr('a11y.tabel'))}"><table class="source-table">
       <thead><tr>
         <th>${T('dash.col.source')}</th><th>${T('btn.totaal')}</th><th>${T('tbl.gekwal')}</th><th>${T('pro.conv')}</th><th>${T('exp.avgScore')}</th>
       </tr></thead>

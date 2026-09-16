@@ -2404,6 +2404,12 @@ button.brand-dot { border: none; padding: 0; }
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .cal-book-btn:hover { transform: translateY(-1px); box-shadow: none; }
+/* Op een telefoon stak de boekknop 14px buiten het scherm (gemeten op 375px):
+   de werkbalk wikkelt dan, en de knop krijgt de hele tweede regel. */
+@media (max-width: 480px) {
+  .cal-toolbar { flex-wrap: wrap; padding: 10px 12px; row-gap: 10px; }
+  .cal-book-btn { margin-left: 0; flex: 1 1 100%; justify-content: center; }
+}
 
 /* Day header row */
 .cal-day-headers {
