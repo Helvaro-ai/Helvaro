@@ -39,6 +39,37 @@ class ProviderError extends Error {
 
 const TIMEOUT_MS = Math.max(5000, Number(process.env.AI_TIMEOUT_MS || 60000));
 
+/* ── Gesprekshistorie in vendor-vorm ──────────────────────────────────────────
+   De WhatsApp-historie in Airtable draagt meer dan role/content: ts, mid,
+   manual, template (zie whatsapp.js en leads.js). Bovendien begint een lead
+   die via het formulier of een handmatig bericht binnenkwam met een
+   assistant-beurt, soms twee na elkaar, en Anthropic eist een gesprek dat met
+   de gebruiker begint. Op 2026-09-13 weigerde Anthropic daarom twee echte
+   beurten met HTTP 400 (invalid_request_error), allebei modellen, en kreeg
+   de lead "Sorry, ik ben er even niet". Dit is de plek die dat afvangt:
+   alleen role/content, lege beurten weg, opeenvolgende gelijke rollen
+   samengevoegd, en een gesprek dat met een assistant-beurt begint krijgt een
+   neutrale gebruikersbeurt ervoor -- de begroeting blijft zo als context
+   staan. */
+function normaliseer(messages) {
+  const uit = [];
+  for (const m of Array.isArray(messages) ? messages : []) {
+    if (!m) continue;
+    const role = m.role === 'assistant' ? 'assistant' : 'user';
+    const content = typeof m.content === 'string' ? m.content
+      : Array.isArray(m.content) ? m.content : String(m.content || '');
+    if (typeof content === 'string' && !content.trim()) continue;
+    const vorige = uit[uit.length - 1];
+    if (vorige && vorige.role === role && typeof vorige.content === 'string' && typeof content === 'string') {
+      vorige.content += '\n\n' + content;
+      continue;
+    }
+    uit.push({ role, content });
+  }
+  if (uit.length && uit[0].role === 'assistant') uit.unshift({ role: 'user', content: '…' });
+  return uit;
+}
+
 /* Elke aanroep krijgt een deadline. Zonder dit kan een provider die blijft
    hangen een Vercel-functie tot zijn maxDuration bezet houden -- en bij
    WhatsApp betekent dat een lead die geen antwoord krijgt. */
@@ -66,13 +97,13 @@ const anthropic = {
 
     // Beeld meesturen: Anthropic verwacht blokken binnen het laatste
     // gebruikersbericht.
-    let msgs = messages;
+    let msgs = normaliseer(messages);
     if (images && images.length) {
       const blokken = images.slice(0, 4).map((im) => ({
         type: 'image',
         source: { type: 'base64', media_type: im.mediaType || 'image/jpeg', data: im.dataBase64 },
       }));
-      const kopie = messages.slice();
+      const kopie = msgs.slice();
       const laatste = kopie[kopie.length - 1];
       const tekst = laatste && typeof laatste.content === 'string' ? laatste.content : '';
       kopie[kopie.length - 1] = { role: 'user', content: blokken.concat([{ type: 'text', text: tekst }]) };
@@ -100,6 +131,11 @@ const anthropic = {
          vallen. 429 en 5xx horen een andere provider te krijgen, 400 is van
          ons en dan helpt uitwijken niet. */
       const type = (data.error && data.error.type) || '';
+      /* Een 400 is onze eigen fout (vorm van het verzoek), en die boodschap
+         is een schemafout van Anthropic, geen echo van de prompt. Zonder
+         die regel stond er op 2026-09-13 alleen "HTTP 400" en was de
+         oorzaak (assistant-beurt vooraan) uit het log niet te halen. */
+      if (r.status === 400) console.warn('[ai] Anthropic 400:', String((data.error && data.error.message) || '').slice(0, 200));
       throw new ProviderError(
         `Anthropic weigerde het verzoek (HTTP ${r.status}${type ? ', ' + type : ''}, model ${model}).`,
         r.status === 429 ? 'rate_limited' : 'provider_error', r.status);
@@ -127,7 +163,7 @@ const openai = {
     if (!model) throw new ProviderError('Geen OpenAI-tekstmodel geconfigureerd.', 'no_model');
 
     const msgs = (system ? [{ role: 'system', content: system }] : []).concat(
-      messages.map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : String(m.content || '') })));
+      normaliseer(messages).map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : String(m.content || '') })));
 
     const r = await fetchMetTimeout('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -238,3 +274,4 @@ module.exports = adapterVoor;
 module.exports.ADAPTERS = ADAPTERS;
 module.exports.ProviderError = ProviderError;
 module.exports.TIMEOUT_MS = TIMEOUT_MS;
+module.exports.normaliseer = normaliseer;
