@@ -12,6 +12,22 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## 16 september 2026 — avond
+
+### De assistent antwoordt weer op leads die via het formulier binnenkwamen
+
+Een lead die met een begroeting van jou begon (formulier of handmatig
+bericht) kreeg op 13 september "Sorry, ik ben er even niet": de AI-leverancier
+weigerde een gesprek dat niet met de klant begint. De historie wordt nu
+in de juiste vorm aangeleverd, en als het nog eens misgaat staat de reden
+in het log.
+
+### Beheer: klantentelling klopte niet
+
+Het beheeroverzicht telde elke klant als "verlopen". Nu: betalend, proef
+en verlopen zoals het echt is. Ook: Stripe-webhook nagekeken (drie
+gebeurtenissen, precies wat de code verwerkt).
+
 ## 16 september 2026 — overdag
 
 ### Antwoorden vanaf de Gesprekken-pagina
