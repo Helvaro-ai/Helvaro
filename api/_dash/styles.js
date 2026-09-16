@@ -6879,6 +6879,15 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   flex-direction: column;
   gap: 14px;
 }
+/* Het antwoordvak onder het gesprek. Blijft staan terwijl de berichten
+   erboven scrollen, en houdt ruimte vrij van de Faro-balk onderaan. */
+.conv-composer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 12px 16px 14px;
+  background: var(--bg-card);
+}
+.conv-composer .panel-takeover-bar { margin-bottom: 10px; }
 .conv-header {
   padding: 18px 20px;
   border-bottom: 1px solid var(--border);

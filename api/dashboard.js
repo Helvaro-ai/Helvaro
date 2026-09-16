@@ -8566,15 +8566,15 @@ function openPanel(lead) {
 
     bodyHTML += \`
       <div class="panel-section">
-        <div class="panel-section-title">WhatsApp Gesprek</div>
+        <div class="panel-section-title">WhatsApp</div>
         <div class="panel-takeover-bar" id="panel-takeover-bar">
           <span class="panel-takeover-status \${aiPaused ? 'paused' : 'active'}">
-            \${aiPaused ? 'Mens aan het roer' : 'Assistent actief'}
+            \${escHtml(tr(aiPaused ? 'conv.mensAanRoer' : 'conv.assistentActief'))}
           </span>
           \${pausedMeta ? \`<span class="panel-takeover-meta">\${pausedMeta}</span>\` : ''}
           \${escalatedBadge}
           <button class="panel-takeover-btn \${aiPaused ? 'resume' : 'pause'}" id="panel-takeover-btn" onclick="toggleAiPause()">
-            \${aiPaused ? 'Geef terug aan je assistent' : 'Neem over'}
+            \${escHtml(tr(aiPaused ? 'conv.geefTerug' : 'conv.neemOver'))}
           </button>
         </div>
         <div class="chat-wrap" id="panel-chat-wrap">\${bubbles}</div>
@@ -8586,10 +8586,10 @@ function openPanel(lead) {
           <div class="panel-suggest-chips" id="panel-suggest-chips"></div>
         </div>
         <div class="panel-reply-row \${aiPaused ? 'panel-reply-row-paused' : ''}">
-          <textarea class="panel-reply-input" id="panel-reply-input" rows="2" placeholder="\${aiPaused ? 'Jij bent nu aan het roer — antwoord aan ' + escHtml(lead.naam || 'de lead') + '...' : 'Antwoord aan ' + escHtml(lead.naam || 'de lead') + ' via WhatsApp...'}" maxlength="2000"></textarea>
+          <textarea class="panel-reply-input" id="panel-reply-input" rows="2" placeholder="\${escHtml(tr(aiPaused ? 'conv.antwoordAanRoer' : 'conv.antwoordAan', { naam: lead.naam || tr('conv.deLead') }))}" maxlength="2000"></textarea>
           <button class="panel-reply-send" id="panel-reply-send" onclick="sendWhatsAppReply()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            Verstuur
+            \${escHtml(tr('conv.verstuur'))}
           </button>
         </div>
       </div>
@@ -9078,10 +9078,12 @@ function useSuggestedReply(chipEl) {
   if (chips) chips.innerHTML = '';
 }
 
-async function sendWhatsAppReply() {
-  const input = document.getElementById('panel-reply-input');
-  const btn   = document.getElementById('panel-reply-send');
-  const wrap  = document.getElementById('panel-chat-wrap');
+async function sendWhatsAppReply(waar) {
+  /* 'conv' = de Gesprekken-pagina, anders het zijpaneel van een lead. */
+  const conv  = waar === 'conv';
+  const input = document.getElementById(conv ? 'conv-reply-input' : 'panel-reply-input');
+  const btn   = document.getElementById(conv ? 'conv-reply-send' : 'panel-reply-send');
+  const wrap  = document.getElementById(conv ? 'conv-messages' : 'panel-chat-wrap');
   const lead  = state.activeLead;
   if (!input || !btn || !lead) return;
   const text = input.value.trim();
@@ -9090,7 +9092,7 @@ async function sendWhatsAppReply() {
 
   btn.disabled = true;
   const original = btn.innerHTML;
-  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg> Versturen...';
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg> ' + escHtml(tr('conv.versturen'));
   try {
     const r = await fetch(\`\${API_BASE}/leads?id=\${encodeURIComponent(lead.id)}\`, {
       method:  'POST',
@@ -9105,20 +9107,21 @@ async function sendWhatsAppReply() {
          eigen kop en blijft langer staan. Hier stond één generieke tekst voor
          alles, ook voor een verlopen token. */
       if (d.ownerAction) {
-        toast((d.error || 'Versturen mislukt') + ' Neem contact op met Helvaro.', 'error',
-              tr('wa.beheerderNodig'));
+        toast((d.error || tr('conv.mislukt')), 'error', tr('wa.beheerderNodig'));
       } else {
-        toast(d.error || d.message || 'Versturen mislukt', 'error');
+        toast(d.error || d.message || tr('conv.mislukt'), 'error');
       }
       return;
     }
     // Optimistic: render the just-sent bubble right away. A template send
     // (24h window closed) delivered an approved template, NOT the typed
     // text — label it so the thread never implies the lead read \`text\`.
-    const sentTag = d.viaTemplate ? 'Jij (template)' : 'Jij';
-    const html = '<div><div class="chat-label">' + sentTag + '</div><div class="chat-bubble ai manual" dir="auto">' +
-      text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>') + '</div></div>';
-    if (wrap) wrap.insertAdjacentHTML('beforeend', html);
+    const sentTag = escHtml(tr(d.viaTemplate ? 'conv.jijTemplate' : 'conv.jij'));
+    const veilig = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+    const html = conv
+      ? '<div><div class="conv-bubble-label">' + sentTag + '</div><div class="conv-bubble assistant" dir="auto">' + veilig + '</div></div>'
+      : '<div><div class="chat-label">' + sentTag + '</div><div class="chat-bubble ai manual" dir="auto">' + veilig + '</div></div>';
+    if (wrap) { const leeg = wrap.querySelector('.conv-empty'); if (leeg) leeg.remove(); wrap.insertAdjacentHTML('beforeend', html); wrap.scrollTop = wrap.scrollHeight; }
     // Keep the lead object's gesprek in sync so re-opening the panel still shows it
     lead.gesprek = JSON.stringify(d.history || []);
     // The server also cleared any 'escalated' Notities marker on success —
@@ -9129,9 +9132,7 @@ async function sendWhatsAppReply() {
       lead.notities = serializeNotities(ndAfterReply);
     }
     input.value = '';
-    toast(d.viaTemplate
-      ? 'Buiten het 24u-venster: een goedgekeurde template werd gestuurd (niet je eigen tekst)'
-      : 'Verzonden via WhatsApp', d.viaTemplate ? 'info' : 'success');
+    toast(tr(d.viaTemplate ? 'conv.verzondenTemplate' : 'conv.verzonden'), d.viaTemplate ? 'info' : 'success');
   } catch (err) {
     toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
@@ -9140,16 +9141,17 @@ async function sendWhatsAppReply() {
   }
 }
 
-async function toggleAiPause() {
+async function toggleAiPause(waar) {
+  const conv = waar === 'conv';
   const lead = state.activeLead;
-  const btn  = document.getElementById('panel-takeover-btn');
+  const btn  = document.getElementById(conv ? 'conv-takeover-btn' : 'panel-takeover-btn');
   if (!lead || !btn) return;
   const nData   = parseNotities(lead);
   const pausing = !(nData.aiPaused && typeof nData.aiPaused === 'object');
 
   const original = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = pausing ? 'Overnemen...' : 'Teruggeven...';
+  btn.innerHTML = escHtml(tr(pausing ? 'conv.overnemen' : 'conv.teruggeven'));
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
@@ -9157,7 +9159,7 @@ async function toggleAiPause() {
       body:    JSON.stringify({ mode: pausing ? 'ai-pause' : 'ai-resume', leadId: lead.id })
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { toast(d.message || d.error || 'Actie mislukt', 'error'); return; }
+    if (!r.ok) { toast(d.message || d.error || tr('conv.actieMislukt'), 'error'); return; }
 
     // Keep the lead object's Notities in sync (same pattern as sendWhatsAppReply
     // above) so the panel re-render below reflects the new state immediately,
@@ -9167,10 +9169,8 @@ async function toggleAiPause() {
     else delete merged.aiPaused;
     lead.notities = serializeNotities(merged);
 
-    toast(pausing
-      ? 'Je hebt het gesprek overgenomen. Je assistent reageert niet meer op deze lead'
-      : 'Je assistent staat weer aan voor deze lead', 'success');
-    openPanel(lead); // re-render the panel with the updated takeover bar
+    toast(tr(pausing ? 'conv.overgenomen' : 'conv.weerAan'), 'success');
+    if (conv) openConversation(lead.id); else openPanel(lead); // re-render with the updated takeover bar
   } catch (err) {
     toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
@@ -12945,12 +12945,47 @@ function openConversation(leadId) {
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
     </div>
     \${faroLeadPaneel(lead)}
-    <div class="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>\${escHtml(tr('leeg.berichten'))}</div></div>\`}</div>
+    <div class="conv-messages" id="conv-messages">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>\${escHtml(tr('leeg.berichten'))}</div></div>\`}</div>
+    \${convComposerHtml(lead)}
   \`;
 
   // Scroll to bottom
   const msgs_el = detail.querySelector('.conv-messages');
   if (msgs_el) setTimeout(() => { msgs_el.scrollTop = msgs_el.scrollHeight; }, 50);
+  /* Ctrl/Cmd+Enter verstuurt; gewoon Enter blijft een nieuwe regel, want een
+     WhatsApp-antwoord is vaak meer dan één zin. */
+  const ta = document.getElementById('conv-reply-input');
+  if (ta) ta.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); sendWhatsAppReply('conv'); } });
+}
+
+/* Het antwoordvak op de Gesprekken-pagina. Dit bestond alleen in het
+   zijpaneel van een lead; wie een gesprek hier opende kon lezen maar niet
+   antwoorden, en "Neem over" was hier ook niet te vinden. Zelfde
+   verzendlogica als het paneel (sendWhatsAppReply / toggleAiPause), met
+   eigen id's zodat de twee elkaar niet in de weg zitten. */
+function convComposerHtml(lead) {
+  state.activeLead = lead;
+  const nData = parseNotities(lead);
+  const aiPaused = !!(nData.aiPaused && typeof nData.aiPaused === 'object');
+  const naam = escHtml(lead.naam || tr('conv.deLead'));
+  const escalatedBadge = (nData.escalated && !aiPaused)
+    ? \`<span class="panel-takeover-escalated" title="\${escHtml(nData.escalated.question || '')}">\${escHtml(tr('conv.escalatie'))}</span>\`
+    : '';
+  return \`
+    <div class="conv-composer">
+      <div class="panel-takeover-bar" id="conv-takeover-bar">
+        <span class="panel-takeover-status \${aiPaused ? 'paused' : 'active'}">\${escHtml(tr(aiPaused ? 'conv.mensAanRoer' : 'conv.assistentActief'))}</span>
+        \${escalatedBadge}
+        <button class="panel-takeover-btn \${aiPaused ? 'resume' : 'pause'}" id="conv-takeover-btn" onclick="toggleAiPause('conv')">\${escHtml(tr(aiPaused ? 'conv.geefTerug' : 'conv.neemOver'))}</button>
+      </div>
+      <div class="panel-reply-row \${aiPaused ? 'panel-reply-row-paused' : ''}">
+        <textarea class="panel-reply-input" id="conv-reply-input" rows="2" maxlength="2000" placeholder="\${escHtml(tr(aiPaused ? 'conv.antwoordAanRoer' : 'conv.antwoordAan', { naam: lead.naam || tr('conv.deLead') }))}"></textarea>
+        <button class="panel-reply-send" id="conv-reply-send" onclick="sendWhatsAppReply('conv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          \${escHtml(tr('conv.verstuur'))}
+        </button>
+      </div>
+    </div>\`;
 }
 
 /* ============================================================
