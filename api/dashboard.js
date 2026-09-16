@@ -17607,7 +17607,7 @@ async function driveSync() {
   try {
     const d = await driveCall('ops-drive-sync');
     if (!d.ok) { toast(d.reden || 'Synchroniseren mislukt', 'error'); return; }
-    toast((d.bestanden || []).length + ' documenten bijgewerkt' + ((d.fouten || []).length ? ', ' + d.fouten.length + ' mislukt' : ''), (d.fouten || []).length ? 'info' : 'success');
+    toast((d.bestanden || []).length + ' documenten bijgewerkt' + (d.opgeruimd ? ', ' + d.opgeruimd + ' dubbele naar de prullenbak' : '') + ((d.fouten || []).length ? ', ' + d.fouten.length + ' mislukt' : ''), (d.fouten || []).length ? 'info' : 'success');
     if ((d.fouten || []).length) console.warn('[drive] fouten:', d.fouten);
     await driveStatus();
   } finally { if (b) { b.disabled = false; b.textContent = 'Synchroniseer nu'; } }

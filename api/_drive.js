@@ -207,6 +207,39 @@ async function bestaat(token, id) {
   } catch { return false; }
 }
 
+/* Alle niet-weggegooide bestanden met deze naam (en optioneel dit type of
+   deze map). De scope drive.file laat alleen zien wat deze app zelf maakte,
+   dus een gelijknamig bestand van de gebruiker zelf komt hier nooit in. */
+async function zoek(token, naam, { mime, parent } = {}) {
+  const q = [`name = '${String(naam).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`, 'trashed = false'];
+  if (mime) q.push(`mimeType = '${mime}'`);
+  if (parent) q.push(`'${parent}' in parents`);
+  const d = await gapi(token, 'GET', `${DRIVE}/files?q=${encodeURIComponent(q.join(' and '))}&orderBy=createdTime&fields=files(id,createdTime)&pageSize=50`);
+  return (d.files || []).map((f) => f.id);
+}
+
+/* Naar de prullenbak, nooit definitief: daar staat het nog 30 dagen. */
+async function prullenbak(token, id) {
+  await gapi(token, 'PATCH', `${DRIVE}/files/${encodeURIComponent(id)}?fields=id`, JSON.stringify({ trashed: true }), { 'Content-Type': 'application/json' });
+}
+
+/* Twee synchronisaties die tegelijk liepen (2026-09-16, 22:25 en 22:26)
+   zagen allebei een lege bestandenlijst en maakten alles dubbel aan. Vandaar:
+   eerst zoeken op naam, dan pas maken -- en wat er dubbel staat gaat naar de
+   prullenbak, het oudste exemplaar blijft. */
+async function ontdubbel(token, naam, houd, { mime } = {}) {
+  const ids = await zoek(token, naam, { mime });
+  const weg = ids.filter((id) => id !== houd);
+  for (const id of weg) { try { await prullenbak(token, id); } catch { /* volgende keer opnieuw */ } }
+  return weg.length;
+}
+
+async function vindOfMaakMap(token, naam, parent) {
+  const ids = await zoek(token, naam, { mime: MIME.map, parent: parent || 'root' });
+  if (ids.length) return ids[0];
+  return maakMap(token, naam, parent);
+}
+
 async function maakMap(token, naam, parent) {
   const meta = { name: naam, mimeType: MIME.map };
   if (parent) meta.parents = [parent];
@@ -223,6 +256,12 @@ async function upsert(token, { id, naam, googleMime, contentType, content, paren
     const mp2 = multipart({ name: naam, mimeType: googleMime }, contentType, content);
     const d = await gapi(token, 'PATCH', `${UPLOAD}/files/${encodeURIComponent(id)}?uploadType=multipart&fields=id`, mp2.body, mp2.headers);
     return d.id || id;
+  }
+  const bestaande = await zoek(token, naam, { mime: googleMime });
+  if (bestaande.length) {
+    const mp2 = multipart({ name: naam, mimeType: googleMime }, contentType, content);
+    const d = await gapi(token, 'PATCH', `${UPLOAD}/files/${encodeURIComponent(bestaande[0])}?uploadType=multipart&fields=id`, mp2.body, mp2.headers);
+    return d.id || bestaande[0];
   }
   const d = await gapi(token, 'POST', `${UPLOAD}/files?uploadType=multipart&fields=id`, mp.body, mp.headers);
   return d.id;
@@ -366,21 +405,39 @@ function changelogHtml() {
 }
 
 /* ── De sync ────────────────────────────────────────────────────────────── */
+const SYNC_SLOT_MS = 10 * 60 * 1000;
+
 async function sync() {
+  /* Eén tegelijk. De knop op de Founder-pagina en de cron kunnen samenvallen;
+     de tweede krijgt een nette melding in plaats van een dubbele set. */
+  const slot = await getSetting('drive_sync_lock');
+  if (slot && Date.now() - Date.parse(slot) < SYNC_SLOT_MS) {
+    throw new DriveFout('Er loopt al een synchronisatie; probeer over een paar minuten opnieuw.', 'bezig');
+  }
+  await setSetting('drive_sync_lock', new Date().toISOString());
+  try {
+    return await syncBinnenSlot();
+  } finally {
+    try { await setSetting('drive_sync_lock', ''); } catch { /* verloopt vanzelf */ }
+  }
+}
+
+async function syncBinnenSlot() {
   const token = await accessToken();
   let mapId = await getSetting('drive_folder_id');
   if (!(await bestaat(token, mapId))) {
-    mapId = await maakMap(token, MAP_NAAM);
+    mapId = await vindOfMaakMap(token, MAP_NAAM);
     await setSetting('drive_folder_id', mapId);
   }
   let files = {};
   try { files = JSON.parse(await getSetting('drive_files') || '{}') || {}; } catch { files = {}; }
-  const verslag = { bestanden: [], fouten: [] };
+  const verslag = { bestanden: [], fouten: [], opgeruimd: 0 };
   const zet = async (sleutel, opties) => {
     try {
       const id = await upsert(token, Object.assign({ id: files[sleutel] }, opties));
       files[sleutel] = id;
       verslag.bestanden.push({ sleutel, naam: opties.naam, url: opties.googleMime === MIME.sheet ? sheetUrl(id) : docUrl(id) });
+      try { verslag.opgeruimd += await ontdubbel(token, opties.naam, id, { mime: opties.googleMime }); } catch { /* cosmetisch */ }
     } catch (e) {
       verslag.fouten.push({ sleutel, naam: opties.naam, fout: e && e.message });
     }
@@ -400,7 +457,7 @@ async function sync() {
     /* Eén document per klant, in een submap. */
     let klantMap = files['_map_klanten'];
     if (!(await bestaat(token, klantMap))) {
-      try { klantMap = await maakMap(token, 'Klanten', mapId); files['_map_klanten'] = klantMap; }
+      try { klantMap = await vindOfMaakMap(token, 'Klanten', mapId); files['_map_klanten'] = klantMap; }
       catch (e) { verslag.fouten.push({ sleutel: '_map_klanten', fout: e && e.message }); klantMap = mapId; }
     }
     for (const k of klanten) {
@@ -455,6 +512,20 @@ async function sync() {
 
   /* 4. Changelog */
   await zet('changelog', { naam: 'Helvaro — Changelog', googleMime: MIME.doc, contentType: 'text/html', content: html('Helvaro — Changelog', changelogHtml()), parent: mapId });
+
+  /* Dubbele submappen 'Klanten': wat erin staat verhuist naar de echte map,
+     de lege dubbele gaat naar de prullenbak. */
+  try {
+    const echt = files['_map_klanten'];
+    for (const id of await zoek(token, 'Klanten', { mime: MIME.map, parent: mapId })) {
+      if (!echt || id === echt) continue;
+      const inhoud = await gapi(token, 'GET', `${DRIVE}/files?q=${encodeURIComponent(`'${id}' in parents and trashed = false`)}&fields=files(id)&pageSize=100`);
+      for (const f of inhoud.files || []) {
+        await gapi(token, 'PATCH', `${DRIVE}/files/${encodeURIComponent(f.id)}?addParents=${encodeURIComponent(echt)}&removeParents=${encodeURIComponent(id)}&fields=id`, '{}', { 'Content-Type': 'application/json' });
+      }
+      await prullenbak(token, id); verslag.opgeruimd++;
+    }
+  } catch { /* cosmetisch */ }
 
   await setSetting('drive_files', JSON.stringify(files));
   await setSetting('drive_last_sync', new Date().toISOString());
