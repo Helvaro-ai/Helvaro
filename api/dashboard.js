@@ -6679,7 +6679,7 @@ function renderStats() {
    RESULTATEN (ROI / VALUE REPORTING)
    ============================================================
    Client-facing "what did Helvaro deliver this month" panel. Backed by
-   api/leads.js mode=report-summary — see REPORTING-SUMMARY.md for the exact
+   api/leads.js mode=report-summary — see docs/archief/REPORTING-SUMMARY.md for the exact
    definition of every metric. Never invents/projects revenue: every number
    here is a direct aggregation of what Airtable already contains, and
    "pipeline waarde" is explicitly labeled as a client-entered ESTIMATE, not

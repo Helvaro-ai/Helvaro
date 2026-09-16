@@ -879,7 +879,7 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
     // 3. Stats berekenen
     // ROI-headline toegevoegd (batch: value/ROI reporting) — leads, gekwalificeerd,
     // afspraken en verwachte pipeline waarde zijn de cijfers die de klant motiveren
-    // om te blijven betalen. Zie REPORTING-SUMMARY.md voor de exacte definities;
+    // om te blijven betalen. Zie docs/archief/REPORTING-SUMMARY.md voor de exacte definities;
     // dezelfde honest-numbers regels als api/leads.js's report-summary mode gelden
     // hier: nooit omzet verzinnen, "Verwachte Waarde" is een schatting van de klant,
     // ontbrekende velden worden nooit als 0 behandeld.

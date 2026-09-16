@@ -28,7 +28,7 @@
  *     generate-image, social-health, personal) schrijft en leest hier. Die
  *     schrijft dus niets weg en leest niets terug.
  *   • api/cron-followup.js's kop zegt dat social posting is verhuisd naar een
- *     VPS-dienst "Herald", en STRIP-HERALD-SUMMARY.md beschrijft hoe 438
+ *     VPS-dienst "Herald", en docs/archief/STRIP-HERALD-SUMMARY.md beschrijft hoe 438
  *     regels posting-code uit Vercel zijn GESLOOPT omdat Herald het zou
  *     overnemen. Zonder VPS post er dus helemaal niets.
  *

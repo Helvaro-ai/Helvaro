@@ -179,7 +179,7 @@ const RESET_TTL_MS = 60 * 60 * 1000;  // 1 hour
 // needs a persisted per-user field (e.g. a "Last Reset Issued At" column on
 // the Users table, synced to Airtable) or external shared state (Redis) —
 // not implemented here without confirming an Airtable schema change is
-// safe. See BATCH-D-SUMMARY.md item 9 for the full write-up of this
+// safe. See docs/archief/BATCH-D-SUMMARY.md item 9 for the full write-up of this
 // trade-off. In practice this still closes the common case (a user
 // double-clicking "resend" or requesting a fresh link minutes later, which
 // usually lands on the same warm instance).

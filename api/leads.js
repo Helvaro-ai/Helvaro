@@ -1558,7 +1558,7 @@ module.exports = async function handler(req, res) {
     // trend delta). Client-session-authenticated and Project-Code-scoped
     // like every other mode in this file.
     //
-    // Honest-numbers rules (non-negotiable, see REPORTING-SUMMARY.md):
+    // Honest-numbers rules (non-negotiable, see docs/archief/REPORTING-SUMMARY.md):
     //   - Never invent/extrapolate/project revenue.
     //   - "Verwachte Waarde" is a client-entered ESTIMATE. Reported as
     //     pipeline/expected value, never as revenue. Leads with no estimate

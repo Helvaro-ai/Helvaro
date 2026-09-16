@@ -528,7 +528,7 @@ module.exports = async function handler(req, res) {
     // error to the caller — if the Credit Allowance/Credits Used/Credit
     // Period fields aren't on the Client Config schema yet, Airtable's PATCH
     // rejects the unknown field name and that bubbles up here as a clear
-    // message (see CREDITS-VERCEL-SUMMARY.md for the exact fields to add).
+    // message (see docs/archief/CREDITS-VERCEL-SUMMARY.md for the exact fields to add).
     const CREDIT_ADMIN_MODES = ['credit-set-allowance', 'credit-add-credits', 'credit-reset-period'];
     if (CREDIT_ADMIN_MODES.includes(body.mode)) {
       const cProvided = _session.readToken(req);
@@ -1797,12 +1797,12 @@ module.exports = async function handler(req, res) {
       const dashboardUrl = `https://app.helvaro.pro/dashboard`;
 
       // ── Self-serve onboarding only: seed a Credit Allowance so the client
-      // doesn't start fully unmetered (see IMPROVEMENTS-REVIEW.md §3.2 —
+      // doesn't start fully unmetered (see docs/archief/IMPROVEMENTS-REVIEW.md §3.2 —
       // onboarding was built before the credit system existed, so it never
       // wired into it). De standaard komt uit api/_plans.js (Starter), te
       // overschrijven via body.creditAllowance en dan DEFAULT_CREDIT_ALLOWANCE.
       // The 'Credit Allowance' Airtable field may not exist yet on the live
-      // base (owner must add it, see CREDITS-VERCEL-SUMMARY.md) — setAllowance()
+      // base (owner must add it, see docs/archief/CREDITS-VERCEL-SUMMARY.md) — setAllowance()
       // PATCHes it by name and Airtable rejects the whole PATCH with an
       // unknown-field error when it's missing. Mirrors _credits.js's own
       // fail-open/unconfigured-schema contract: caught here, logged, never
@@ -1822,7 +1822,7 @@ module.exports = async function handler(req, res) {
           const { setAllowance } = require('./_credits');
           await setAllowance(projectCode, creditAllowance);
         } catch (err) {
-          console.warn('[admin] onboarding: kon Credit Allowance niet zetten (veld bestaat mogelijk nog niet, zie CREDITS-VERCEL-SUMMARY.md):', err.message);
+          console.warn('[admin] onboarding: kon Credit Allowance niet zetten (veld bestaat mogelijk nog niet, zie docs/archief/CREDITS-VERCEL-SUMMARY.md):', err.message);
           creditAllowance = 0; // eerlijk in de notify-mail hieronder: niet effectief gezet
         }
       }
@@ -1990,7 +1990,7 @@ module.exports = async function handler(req, res) {
       // ── Self-serve onboarding only: notify Sindi a signup happened. The
       // wizard's entire purpose is onboarding without her involvement, which
       // also means "without her involvement" == "she has no idea it happened"
-      // (see IMPROVEMENTS-REVIEW.md §3.2). Fail-soft, same contract as
+      // (see docs/archief/IMPROVEMENTS-REVIEW.md §3.2). Fail-soft, same contract as
       // _credits.js's own threshold-alert emails: sendMail() never throws,
       // and this is wrapped in try/catch anyway so a notification failure can
       // never fail the onboarding request — the client is already created.
@@ -2263,7 +2263,7 @@ async function notifyOwnerOfSignup({ clientName, projectCode, email, sector, cre
   }
   const allowanceLine = creditAllowance > 0
     ? `<strong>${creditAllowance}</strong> credits`
-    : `<span style="color:#e11d48">niet gezet — 'Credit Allowance' veld ontbreekt mogelijk nog op Airtable (zie CREDITS-VERCEL-SUMMARY.md)</span>`;
+    : `<span style="color:#e11d48">niet gezet — 'Credit Allowance' veld ontbreekt mogelijk nog op Airtable (zie docs/archief/CREDITS-VERCEL-SUMMARY.md)</span>`;
   const trialLine = trialEndsAt
     ? `<strong>14 dagen</strong> — eindigt ${escHtml(new Date(trialEndsAt).toLocaleDateString('nl-BE'))}`
     : `<span style="color:#e11d48">niet gezet — 'Plan Status'/'Trial Ends At' velden ontbreken mogelijk nog op Airtable (zie TRIAL-DESIGN.md)</span>`;

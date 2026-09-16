@@ -60,7 +60,7 @@
  * field ID, because the IDs don't exist yet — same reasoning admin.js's
  * client-creation comment gives for why it uses IDs for fields THAT ALREADY
  * EXIST: field IDs are immune to renames, but you can't know an ID before
- * the field is created). See CREDITS-VERCEL-SUMMARY.md for the exact list.
+ * the field is created). See docs/archief/CREDITS-VERCEL-SUMMARY.md for the exact list.
  * Until the owner adds them, every function in this file degrades to a
  * silent no-op / fail-open — see schemaLooksUnconfigured() below.
  */
@@ -638,7 +638,7 @@ async function checkCredits(projectCode, feature) {
 
   const fields = record.fields || {};
   if (schemaLooksUnconfigured(fields)) {
-    logOnce('schema', '[Credits] Credit fields not found on Client Config — credit system inert (see CREDITS-VERCEL-SUMMARY.md to enable).');
+    logOnce('schema', '[Credits] Credit fields not found on Client Config — credit system inert (see docs/archief/CREDITS-VERCEL-SUMMARY.md to enable).');
     return { allowed: true, remaining: Infinity, percentUsed: 0 };
   }
 
@@ -1376,7 +1376,7 @@ async function resetPeriod(projectCode) {
 // ── Trial-lifecycle marker (once-only email/alert tracking) ────────────────
 // Piggybacks on the SAME Credit Period field this file already owns, rather
 // than a new Airtable field — see TRIAL-DESIGN.md §7 and
-// CREDITS-VERCEL-SUMMARY.md's "do NOT add Airtable fields" instruction for
+// docs/archief/CREDITS-VERCEL-SUMMARY.md's "do NOT add Airtable fields" instruction for
 // the trial feature. Stored as a `trial: {day7Sent, day11Sent, expiredSent}`
 // sub-object inside the same JSON envelope this file's own alerted80/100/
 // runaway flags live in. Only api/cron-followup.js's runTrialLifecycle()
