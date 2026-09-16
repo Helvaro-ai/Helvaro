@@ -1276,8 +1276,11 @@ module.exports = async function handler(req, res) {
           let actief = 0, proef = 0, verlopen = 0;
           for (const f of klantVelden) {
             const staat = getPlanState(f) || {};
-            if (staat.isTrial) proef++;
-            else if (staat.isActive) actief++;
+            /* getPlanState() geeft een status-string terug, geen booleans --
+               isTrial/isActive bestonden nooit, waardoor elke klant hier als
+               'verlopen' telde. */
+            if (staat.status === 'trial') proef++;
+            else if (staat.status === 'active') actief++;
             else verlopen++;
           }
           uit.klanten = {

@@ -130,6 +130,11 @@ function roep(body, token) {
   ck('geeft 200', o.code === 200, o.code);
   ck('vier klanten geteld', o.body.klanten.totaal === 4, o.body.klanten);
   ck('en dat is echt gelezen, niet geraden', o.body.klanten.beschikbaar === true, o.body.klanten);
+  /* Een lege Plan Status is 'active' (fail-open). Vroeger las het overzicht
+     velden die getPlanState() nooit teruggeeft en telde het iedereen als
+     verlopen. */
+  ck('lege status telt als actief, niet als verlopen',
+    o.body.klanten.betalend === 4 && o.body.klanten.verlopen === 0, o.body.klanten);
   ck('één klant zit vast op een ontbrekende taal',
     o.body.templates.klantenGeblokkeerd === 1, o.body.templates);
   ck('en dat staat als waarschuwing',
