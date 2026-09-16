@@ -1238,6 +1238,12 @@ const TEKST = {
   'tst.netwerkOpnieuw': { nl: 'Netwerkfout. Probeer opnieuw', fr: 'Erreur réseau. Réessayez', en: 'Network error. Try again', de: 'Netzwerkfehler. Versuchen Sie es erneut' },
   'tst.netwerkLater': { nl: 'Netwerkfout. Probeer later opnieuw', fr: 'Erreur réseau. Réessayez plus tard', en: 'Network error. Try again later', de: 'Netzwerkfehler. Versuchen Sie es später erneut' },
   'tst.netwerkResultaten': { nl: 'Netwerkfout bij laden resultaten', fr: 'Erreur réseau lors du chargement des résultats', en: 'Network error while loading results', de: 'Netzwerkfehler beim Laden der Ergebnisse' },
+  'tst.testNummer':   { nl: 'Voer een telefoonnummer in.', fr: 'Saisissez un numéro de téléphone.', en: 'Enter a phone number.', de: 'Geben Sie eine Telefonnummer ein.' },
+  'tst.testLeeg':     { nl: 'Bericht is leeg.', fr: 'Le message est vide.', en: 'The message is empty.', de: 'Die Nachricht ist leer.' },
+  'tst.testBezig':    { nl: 'Versturen…', fr: 'Envoi…', en: 'Sending…', de: 'Wird gesendet…' },
+  'tst.testVerzonden':{ nl: 'Verzonden naar +{nr}. Check je WhatsApp!', fr: 'Envoyé au +{nr}. Regardez votre WhatsApp !', en: 'Sent to +{nr}. Check your WhatsApp!', de: 'Gesendet an +{nr}. Schauen Sie in WhatsApp!' },
+  'tst.testTemplate': { nl: 'Verzonden naar +{nr} als goedgekeurd sjabloon (dit nummer stuurde de laatste 24 uur niets, dus Meta laat alleen een sjabloon toe). Antwoord erop vanaf je telefoon en je kan 24 uur vrij testen.', fr: 'Envoyé au +{nr} comme modèle approuvé (ce numéro n’a rien envoyé depuis 24 h, Meta n’autorise donc qu’un modèle). Répondez depuis votre téléphone et vous pourrez tester librement pendant 24 h.', en: 'Sent to +{nr} as an approved template (this number has not messaged in the last 24 hours, so Meta only allows a template). Reply from your phone and you can test freely for 24 hours.', de: 'Gesendet an +{nr} als genehmigte Vorlage (diese Nummer hat in den letzten 24 Stunden nichts gesendet, daher erlaubt Meta nur eine Vorlage). Antworten Sie vom Telefon aus, dann können Sie 24 Stunden frei testen.' },
+  'tst.testMislukt':  { nl: 'Versturen mislukt', fr: 'Échec de l’envoi', en: 'Sending failed', de: 'Senden fehlgeschlagen' },
   'tst.ietsMis': { nl: 'Er ging iets mis. Controleer je verbinding.', fr: 'Un problème est survenu. Vérifiez votre connexion.', en: 'Something went wrong. Check your connection.', de: 'Etwas ist schiefgelaufen. Prüfen Sie Ihre Verbindung.' },
 
   /* ── Eén storing, één zin ────────────────────────────────────────────────

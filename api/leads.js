@@ -2212,12 +2212,56 @@ module.exports = async function handler(req, res) {
         to: phone, text: message, windowOpen: true,
         phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
       });
-      if (!testR.ok) {
-        return res.status(testR.ownerAction ? 503 : 502).json({
-          error: testR.reason, code: testR.code, metaCode: testR.metaCode, ownerAction: testR.ownerAction,
+      if (testR.ok) {
+        return res.status(200).json({ ok: true, sentTo: phone, messageId: testR.messageId, via: 'vrij' });
+      }
+      /* Buiten het 24-uursvenster (Meta 131047) weigert Meta elk vrij
+         bericht -- en een testbericht gaat bijna altijd naar een nummer dat
+         nog nooit iets stuurde. Dan is "het venster is gesloten" wel de
+         juiste reden, maar geen resultaat: de klant wilde zien dat het
+         werkt. Dus dezelfde deur als het formulier: de goedgekeurde
+         intro-template, met naam van de assistent en bedrijf uit het
+         klantrecord. Het scherm krijgt te zien dat het een template was. */
+      if (testR.code === 'window_closed' && process.env.INTRO_TEMPLATE_NAME) {
+        let aiNaam = 'Faro', bedrijf = clientName || 'Helvaro', klantTaal = 'nl';
+        try {
+          const f = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+          const cR = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${f}&maxRecords=1`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          if (cR.ok) {
+            const rec = ((await cR.json()).records || [])[0];
+            if (rec) {
+              aiNaam    = rec.fields['fldRvoe1JMPOtPWC7'] || rec.fields['AI Name']     || aiNaam;
+              bedrijf   = rec.fields['fldAnB848Sr5jl6dq'] || rec.fields['Client Name'] || bedrijf;
+              klantTaal = _waTpl.taalVanKlant(rec.fields) || klantTaal;
+            }
+          }
+        } catch {}
+        const introLang = _lang.resolveTemplateLanguage(process.env.INTRO_TEMPLATE_LANG || klantTaal, klantTaal).code;
+        /* {{1}} is de voornaam van de lead; bij een testbericht is die er
+           niet. "Hey daar!" leest als een echte begroeting, een lege {{1}}
+           weigert Meta. */
+        const aanhef = { nl: 'daar', en: 'there', fr: 'bonjour', de: 'du' }[String(introLang).slice(0, 2)] || 'daar';
+        const tplR = await _waSend.sendTemplateSafe({
+          to: phone, template: process.env.INTRO_TEMPLATE_NAME, lang: introLang,
+          params: [aanhef, String(aiNaam).slice(0, 60), String(bedrijf).slice(0, 80)],
+          phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
+        });
+        if (tplR.ok) {
+          return res.status(200).json({
+            ok: true, sentTo: phone, messageId: tplR.messageId, via: 'template', template: process.env.INTRO_TEMPLATE_NAME,
+            note: 'Dit nummer had de laatste 24 uur niets gestuurd, dus Meta laat alleen een goedgekeurd sjabloon toe. De begroeting van je assistent is verstuurd in plaats van je eigen tekst. Antwoord erop vanaf je telefoon en je kan 24 uur vrij testen.',
+          });
+        }
+        return res.status(tplR.ownerAction ? 503 : 502).json({
+          error: tplR.reason, code: tplR.code, metaCode: tplR.metaCode, ownerAction: tplR.ownerAction,
         });
       }
-      return res.status(200).json({ ok: true, sentTo: phone, messageId: testR.messageId });
+      return res.status(testR.ownerAction ? 503 : 502).json({
+        error: testR.reason, code: testR.code, metaCode: testR.metaCode, ownerAction: testR.ownerAction,
+      });
     }
 
     // ── B2. suggest-replies. AI generates 3 short WhatsApp reply ideas ─────

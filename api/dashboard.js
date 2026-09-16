@@ -16694,14 +16694,14 @@ async function sendTestMessage() {
   const btn     = document.getElementById('ap-test-btn');
   const result  = document.getElementById('ap-test-result');
   const phone   = phoneEl.value.trim();
-  if (!phone) { result.className = 'ap-test-result err'; result.textContent = 'Voer een telefoonnummer in.'; return; }
+  if (!phone) { result.className = 'ap-test-result err'; result.textContent = tr('tst.testNummer'); return; }
 
   // Use the live-rendered preview bubble text. Already has placeholders substituted
   const message = document.getElementById('ap-preview-bubble').textContent;
-  if (!message) { result.className = 'ap-test-result err'; result.textContent = 'Bericht is leeg.'; return; }
+  if (!message) { result.className = 'ap-test-result err'; result.textContent = tr('tst.testLeeg'); return; }
 
   const original = btn ? btn.innerHTML : '';
-  if (btn) { btn.disabled = true; btn.innerHTML = 'Versturen...'; }
+  if (btn) { btn.disabled = true; btn.textContent = tr('tst.testBezig'); }
   result.className = 'ap-test-result';
   result.textContent = '';
   try {
@@ -16713,11 +16713,14 @@ async function sendTestMessage() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
       result.className = 'ap-test-result err';
-      result.textContent = '' + (d.message || d.error || 'Versturen mislukt');
+      result.textContent = '' + (d.message || d.error || tr('tst.testMislukt'));
       return;
     }
     result.className = 'ap-test-result ok';
-    result.textContent = 'Verzonden naar +' + d.sentTo + '. check je WhatsApp!';
+    /* Buiten het 24-uursvenster stuurt de server de goedgekeurde begroeting
+       in plaats van de eigen tekst. Dat hoort de klant te weten, anders
+       vergelijkt hij zijn telefoon met de preview en denkt dat het mis is. */
+    result.textContent = tr(d.via === 'template' ? 'tst.testTemplate' : 'tst.testVerzonden').replace('{nr}', d.sentTo);
   } catch (err) {
     result.className = 'ap-test-result err';
     result.textContent = tr('tst.ietsMis');
