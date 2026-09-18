@@ -49,6 +49,15 @@ const vormen = require('./vorm');
 const regio = require('../_regio');
 const { CrmError } = require('./http');
 const leadsRead = require('../_leads-read');
+const _activiteit = require('../_activiteit');
+const { actieVelden } = _activiteit;
+
+/* Loggen mag de synchronisatie nooit ophouden -- fire-and-forget met een
+   genegeerde catch, zelfde afspraak als overal elders waar _activiteit.log()
+   wordt aangeroepen (zie bv. api/_dealer-boeking.js). */
+function loggen(projectCode, soort, opts) {
+  _activiteit.log(projectCode, soort, opts).catch(() => {});
+}
 
 const ADAPTERS = {
   hubspot:    require('./adapters/hubspot'),
@@ -244,15 +253,20 @@ const HERKANSING_MS = 1000;
  * lukt, lukt bij de volgende synchronisatie of het is een echt probleem -- en
  * in beide gevallen is een derde poging binnen dezelfde WhatsApp-beurt de
  * verkeerde plek om erachter te komen.
+ *
+ * Geeft `{ waarde, herhaald }` terug in plaats van alleen `waarde` -- de
+ * activiteitenlog (SOORT 'crm_sync_completed') moet kunnen zeggen of een
+ * geslaagde duw pas na deze ene herkansing lukte (status 'retried') of
+ * meteen (status 'ok'), zonder dat de aanroeper zelf dubbel administreert.
  */
 async function metHerkansing(naam, doe) {
   try {
-    return await doe();
+    return { waarde: await doe(), herhaald: false };
   } catch (err) {
     if (!(err instanceof CrmError) || !err.opnieuw) throw err;
     console.warn(`[crm/${naam}] ${err.code} -- één herkansing over ${HERKANSING_MS}ms`);
     await new Promise((r) => setTimeout(r, HERKANSING_MS));
-    return doe();
+    return { waarde: await doe(), herhaald: true };
   }
 }
 
@@ -362,9 +376,25 @@ async function duw(projectCode, lead, opties = {}) {
     const cred = koppelingen[naam] && koppelingen[naam].cred;
     if (!cred) { resultaten.push({ crm: naam, ok: false, fout: 'Geen sleutels.', code: 'geen_sleutel' }); continue; }
 
+    /* Eén sleutel per lead+adapter -- zie SYNC_CRM in de deliverable-lijst.
+       Geen db-afdwinging hierop (Airtable kent geen unieke index): het is de
+       audit-trail-sleutel voor het activiteitenlogboek, dezelfde functie die
+       `reference` heeft bij _ledger.record(). De duplicaatbescherming zelf zit
+       al in bekend[naam]/bewaarIds hierboven -- dit logt alleen wat daar
+       gebeurde, het voorkomt het niet. */
+    const idempotencyKey = `${lead.id}:${naam}`;
+
     try {
-      const ids = await metHerkansing(naam, () => a.duwLead(cred, vorm, bekend[naam] || {}));
+      const { waarde: ids, herhaald } = await metHerkansing(naam, () => a.duwLead(cred, vorm, bekend[naam] || {}));
       resultaten.push({ crm: naam, ok: true, ids });
+      loggen(projectCode, 'crm_sync_completed', {
+        leadId: lead.id,
+        details: actieVelden('crm_sync_completed', herhaald ? 'retried' : 'ok', {
+          idempotencyKey,
+          resource: 'crm_sync',
+          details: { crm: naam, contactId: ids.contactId || '', dealId: ids.dealId || '', overgeslagen: Boolean(ids.overgeslagen) },
+        }),
+      });
 
       /* De notitie is een extraatje: mislukt hij, dan staat de lead er nog
          steeds. Daarom een eigen try en geen rode uitslag. */
@@ -391,6 +421,15 @@ async function duw(projectCode, lead, opties = {}) {
         fout: crmFout ? err.message : 'De koppeling gaf een onverwachte fout.',
         code: crmFout ? err.code : 'onbekend',
         opnieuw: crmFout ? err.opnieuw : true,
+      });
+      loggen(projectCode, 'crm_sync_failed', {
+        leadId: lead.id,
+        details: actieVelden('crm_sync_failed', 'failed', {
+          idempotencyKey,
+          resource: 'crm_sync',
+          error: crmFout ? err.code : 'onbekend',
+          details: { crm: naam },
+        }),
       });
     }
   }

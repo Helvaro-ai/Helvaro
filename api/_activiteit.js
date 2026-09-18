@@ -84,6 +84,13 @@ const SOORTEN = Object.freeze([
   'image_generation_failed',
   'video_generated',
   'video_generation_failed',
+  /* CRM-synchronisatie (deliverable "CRM adapter consistency", platform-
+     integriteit pass). 'crm_sync_completed' draagt zowel de eerste geslaagde
+     poging (status 'ok') als een poging die pas na de ene interne herkansing
+     lukte (status 'retried', zie api/_crm/index.js metHerkansing) -- zelfde
+     patroon als employee_notification_sent hierboven. */
+  'crm_sync_completed',
+  'crm_sync_failed',
   /* Een admin-mutatie (credits toekennen, plan wijzigen, ...) -- het spoor
      voor deliverable "admin action audit". projectCode is de TENANT waarop
      de admin iets deed, niet de admin zelf; wie de actie uitvoerde staat in

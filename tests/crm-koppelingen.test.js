@@ -27,6 +27,7 @@ const whise      = require(BASE + 'api/_crm/adapters/whise.js');
 const omnicasa   = require(BASE + 'api/_crm/adapters/omnicasa.js');
 const webhook    = require(BASE + 'api/_crm/adapters/webhook.js');
 const crmConfig  = require(BASE + 'api/_crm/config.js');
+const _activiteit = require(BASE + 'api/_activiteit.js');
 
 let pass = 0, fail = 0;
 const ck = (n, ok, got) => {
@@ -573,6 +574,72 @@ nepFetch(HUBSPOT_ANTWOORDEN);
      salesforce.salesforceHost('https://kantoor.my.salesforce.com/lightning') === 'kantoor.my.salesforce.com');
   ck('ook een sandbox',
      salesforce.salesforceHost('kantoor.sandbox.my.salesforce.com') === 'kantoor.sandbox.my.salesforce.com');
+
+  console.log('\n— elke duw laat een actie-record achter (SYNC_CRM, deliverable "CRM adapter consistency") —');
+  {
+    const origLog = _activiteit.log;
+    const vangen = () => {
+      const logs = [];
+      _activiteit.log = async (projectCode, soort, opts) => { logs.push({ projectCode, soort, opts }); return true; };
+      return logs;
+    };
+
+    // 1) meteen geslaagd -> status 'ok', met idempotencyKey lead+adapter.
+    nepFetch(HUBSPOT_ANTWOORDEN);
+    let logs = vangen();
+    const okDuw = await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: 'Kantoor' });
+    const okLog = logs.find((l) => l.soort === 'crm_sync_completed');
+    ck('geslaagde duw logt crm_sync_completed', Boolean(okLog), logs);
+    ck('status ok (geen herkansing nodig)', okLog && okLog.opts.details.status === 'ok', okLog);
+    ck('idempotencyKey is lead+adapter', okLog && okLog.opts.details.idempotencyKey === `${leadBasis.id}:hubspot`, okLog);
+    ck('resource is crm_sync', okLog && okLog.opts.details.resource === 'crm_sync', okLog);
+    ck('leadId staat erbij', okLog && okLog.opts.leadId === leadBasis.id, okLog);
+    ck('geen crm_sync_failed ernaast', !logs.some((l) => l.soort === 'crm_sync_failed'), logs);
+    void okDuw;
+
+    // 2) eerst een 429 op het aanmaken van het contact (opnieuw:true, NIET
+    //    intern opgevangen zoals het telefoon-zoeken hierboven), dan een
+    //    geslaagde herkansing -> status 'retried'.
+    let pogingen = 0;
+    globalThis.fetch = async (url, opts = {}) => {
+      const u = String(url);
+      if (/api\.airtable\.com/.test(u)) return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      if (/POST .*objects\/contacts$/.test(`${opts.method || 'GET'} ${u}`)) {
+        pogingen += 1;
+        if (pogingen === 1) return { ok: false, status: 429, text: async () => 'te druk' };
+        return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'C1' }), json: async () => ({ id: 'C1' }) };
+      }
+      for (const [patroon, geef] of HUBSPOT_ANTWOORDEN) {
+        if (new RegExp(patroon).test(`${opts.method || 'GET'} ${u}`)) {
+          return { ok: true, status: 200, text: async () => JSON.stringify(geef), json: async () => geef };
+        }
+      }
+      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+    };
+    logs = vangen();
+    await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: 'Kantoor' });
+    const retryLog = logs.find((l) => l.soort === 'crm_sync_completed');
+    ck('na een 429 + geslaagde herkansing: status retried', retryLog && retryLog.opts.details.status === 'retried', retryLog);
+
+    // 3) blijvend mislukt (401, geen herkansing zinvol) -> crm_sync_failed.
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (/api\.airtable\.com/.test(u)) return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      if (/hubapi/.test(u)) return { ok: false, status: 401, text: async () => 'unauthorized' };
+      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+    };
+    logs = vangen();
+    await crm.duw('TELJO', { ...leadBasis }, { koppelingen: KOPPELING, velden: {}, kantoor: '' });
+    const failLog = logs.find((l) => l.soort === 'crm_sync_failed');
+    ck('mislukte duw logt crm_sync_failed', Boolean(failLog), logs);
+    ck('status failed', failLog && failLog.opts.details.status === 'failed', failLog);
+    ck('heeft een .error, geen tekst van de leverancier erin',
+       failLog && typeof failLog.opts.details.error === 'string' && !/unauthorized/i.test(failLog.opts.details.error), failLog);
+    ck('idempotencyKey ook bij een mislukking', failLog && failLog.opts.details.idempotencyKey === `${leadBasis.id}:hubspot`, failLog);
+    ck('geen crm_sync_completed ernaast', !logs.some((l) => l.soort === 'crm_sync_completed'), logs);
+
+    _activiteit.log = origLog;
+  }
 
   globalThis.fetch = echteFetch;
   console.log(`\n${pass} geslaagd, ${fail} gefaald`);
