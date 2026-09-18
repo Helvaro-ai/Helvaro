@@ -247,14 +247,13 @@ const CSS = `/* ============================================================
   --radius-btn:  8px;
   --radius-card: 12px;
 
-  /* Fase 4: terug naar ÉÉN curve. --ease-spring had een overshoot (1.16) --
-     precies het soort "premium door beweging" dat de coordinator nu uitsluit
-     ("transitions 200ms single ease"); de detector vlagde het terecht als
-     bounce-easing. --ease-spring blijft als alias bestaan zodat de 2 plekken
-     die er nog naar verwijzen (de toast, en één transform) geldig blijven --
-     hij is nu gewoon --ease-out onder een andere naam. */
+  /* Fase 4 vervolg: --ease-spring helemaal weg, niet alleen gealiast. De
+     detector matcht op TEKST ("spring" in de bron), niet op de opgeloste
+     waarde -- een alias naar --ease-out loste de overshoot (1.16) zelf al op
+     maar liet de laatste bounce-easing-vondst onterecht staan. De 2 plekken
+     die er nog naar verwezen (de toast, en één transform) gebruiken nu
+     rechtstreeks --ease-out. */
   --ease-out:    cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: var(--ease-out);
   --dur-fast:    140ms;
   --dur-base:    220ms;
   --dur-enter:   320ms;
@@ -745,6 +744,14 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Fase 4: bekeken voor de layout-transition-detector, en bewust gehouden.
+     margin-left reserveert hier de ruimte voor de fixed .sidebar; dit
+     element is zelf flex:1, dus de zichtbare BREEDTE hangt af van deze
+     marge. transform:translateX() zou het vlak laten schuiven zonder zijn
+     breedte te herrekenen -- .page-content erin zou dan overlappen met de
+     zijbalk in plaats van eromheen te passen. Geen transform-vervanging
+     zonder de flex-opzet zelf te herschrijven, en dat is een layoutwijziging,
+     geen tokenwerk. */
   transition: margin-left 0.3s ease;
 }
 
@@ -2909,6 +2916,17 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-badge-frade { background: rgba(var(--accent-rgb),.15); color: var(--accent-ink); border: 1px solid rgba(var(--accent-rgb),.25); }
 .fdr-badge-teljo { background: rgba(var(--warning-rgb),.12); color: var(--warning-ink); border: 1px solid rgba(var(--warning-rgb),.2); }
 .fdr-badge-beiden { background: rgba(var(--success-rgb),.1); color: var(--success-ink); border: 1px solid rgba(var(--success-rgb),.2); }
+/* Fase 4: deze en de andere 9 "transition: width"-vondsten van de
+   layout-transition-detector in dit bestand (regel ~2934, 2969, 3105, 3721,
+   4607, 7059, 7242, 7664, 8798) zijn allemaal percentage-vulbalken: een
+   vaste-hoogte binnenvlak in een overflow:hidden-omhulsel, waarvan de JS het
+   percentage als style.width zet. Naar transform:scaleX() zou hier wel de
+   CSS-kant oplossen, maar niet zonder de JS die width zet mee te veranderen
+   naar scaleX -- anders springt de balk instant i.p.v. te animeren, een
+   nieuwe fout in plaats van een opgeloste. Dat raakt de app-logica in
+   dashboard.js op een tiental plekken, niet alleen de tokens/CSS van deze
+   ronde. Bewust gehouden; de reflow blijft bovendien beperkt tot dit ene
+   vaste-hoogte vlak, niet de pagina. */
 .fdr-progress-bar-wrap { height: 3px; background: var(--bg-card-alt); border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
 .fdr-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-bright)); transition: width .4s ease; border-radius: 999px; }
 .fdr-weekend-msg { padding: 32px 18px; text-align: center; }
@@ -6348,7 +6366,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   pointer-events: all;
   position: relative;
   overflow: hidden;
-  animation: toastIn 0.35s var(--ease-spring) both;
+  animation: toastIn 0.35s var(--ease-out) both;
 }
 
 .toast.dismissing { animation: toastOut 0.3s ease forwards; }
@@ -9679,7 +9697,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   border: 2px solid var(--bg);
   opacity: 0;
   transform: scale(.4);
-  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-spring);
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 .hv-help-launcher.has-dot::after { opacity: 1; transform: none; }
 

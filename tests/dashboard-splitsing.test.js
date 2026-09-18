@@ -110,9 +110,17 @@ function render(lang) {
    van de eigenaar. Groter geworden door de nieuwe [data-theme="light"]
    .sidebar-tokenrebind en de bijbehorende uitleg; drie letterlijke,
    donker-getunede kleuren op .sidebar .user-name/.user-role/.btn-logout zijn
-   juist verwijderd omdat de tokenrebind ze overbodig maakt. */
-const CSS_BYTES = 386516;
-const CSS_SHA   = 'd728fe5fe3befa9f';
+   juist verwijderd omdat de tokenrebind ze overbodig maakt.
+
+   Daarna (+1.250 bytes) punt 3: --ease-spring niet langer gealiast maar
+   helemaal weg (de detector matcht op de tekst "spring" in de bron, een
+   alias loste dat niet op), en de 12 layout-transition-vondsten (11
+   vulbalken + de zijbalk-margeschuif) beoordeeld en met uitleg bewust
+   gehouden -- ombouwen naar transform:scaleX() raakt de JS die de breedte
+   zet op tien plekken in dashboard.js, dat is applicatielogica en geen
+   tokenwerk. Groter geworden door die uitleg, niet door nieuwe regels. */
+const CSS_BYTES = 387766;
+const CSS_SHA   = '4129314dac362561';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
