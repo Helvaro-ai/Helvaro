@@ -353,6 +353,12 @@ async function creditsVoorVideo(job) {
     require('../_ai/usage').record({
       ctx: { projectCode: job.projectCode }, task: 'video_generation', providerId: model.provider,
       model: model.id, kind: 'video', costUsdOverride: kost, status: 'ok',
+      // Zelfde referentie als credits.recordUsage() hieronder -- twee
+      // instanties die dezelfde job allebei als "net klaar" zien mogen de
+      // kostenteller niet allebei ophogen (zie MAX_REFERENTIES in
+      // api/_ai/usage.js voor waarom dit hier wel nodig is en bij een
+      // gewone tekstaanroep niet).
+      reference: `video:${job.jobId}`,
     }).catch(() => {});
   } catch (err) {
     console.error('[faro/media] kostenregistratie video mislukt (job is wel klaar):', err && err.message);

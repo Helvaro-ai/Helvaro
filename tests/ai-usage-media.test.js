@@ -77,6 +77,38 @@ const ck = (n, ok, got) => {
   ck('en het totaal telt gewoon op', alles.totaal.requests === 3, alles.totaal.requests);
   ck('twee tenants staan los van elkaar', alles.tenants === 2 && Object.keys(alles.perTenant).sort().join(',') === 'A,B', alles.perTenant);
 
+  console.log('\n— reference: een herhaalde registratie telt niet dubbel ───');
+  usage._reset();
+  await usage.record({
+    ctx: { projectCode: 'DEALER1' }, task: 'video_generation', providerId: 'kling',
+    model: 'kling-3', kind: 'video', costUsdOverride: 0.50, status: 'ok',
+    reference: 'video:vid_abc',
+  });
+  // Zelfde scenario als api/_faro/media.js creditsVoorVideo(): twee
+  // instanties zien dezelfde job tegelijk als 'ready' en registreren allebei
+  // -- de tweede met dezelfde reference mag niet nogmaals optellen.
+  await usage.record({
+    ctx: { projectCode: 'DEALER1' }, task: 'video_generation', providerId: 'kling',
+    model: 'kling-3', kind: 'video', costUsdOverride: 0.50, status: 'ok',
+    reference: 'video:vid_abc',
+  });
+  t = usage.voorTenant('DEALER1');
+  ck('een herhaalde reference telt maar één keer mee', t.requests === 1 && t.costUsd === 0.50, t);
+
+  await usage.record({
+    ctx: { projectCode: 'DEALER1' }, task: 'video_generation', providerId: 'kling',
+    model: 'kling-3', kind: 'video', costUsdOverride: 0.50, status: 'ok',
+    reference: 'video:vid_ANDERE',
+  });
+  t = usage.voorTenant('DEALER1');
+  ck('een ANDERE reference telt wél apart mee', t.requests === 2 && t.costUsd === 1.00, t);
+
+  usage._reset();
+  await usage.record({ ctx: { projectCode: 'DEALER1' }, task: 'lead_qualification', providerId: 'anthropic', model: 'claude-haiku-4-5', inputTokens: 10, outputTokens: 5, status: 'ok' });
+  await usage.record({ ctx: { projectCode: 'DEALER1' }, task: 'lead_qualification', providerId: 'anthropic', model: 'claude-haiku-4-5', inputTokens: 10, outputTokens: 5, status: 'ok' });
+  t = usage.voorTenant('DEALER1');
+  ck('zonder reference telt elke aanroep gewoon apart, zoals altijd', t.requests === 2, t);
+
   console.log('\n— een mislukte registratie werpt nooit ────────────────────');
   usage._reset();
   let threw = false;

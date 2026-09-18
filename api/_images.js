@@ -1259,6 +1259,8 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
       ctx: { projectCode }, task: 'image_generation', providerId: 'openai',
       model: generated.model, kind: 'image', images: 1, quality: generated.quality,
       costUsdOverride: kostUsd, status: 'ok',
+      // Zelfde referentie als credits.recordUsage() hierboven.
+      reference: `image:${jobId}`,
     }).catch(() => {});
   } catch (err) {
     console.error('[images] kostenregistratie mislukt (generatie zelf is wel gelukt):', err && err.message);

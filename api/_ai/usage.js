@@ -34,6 +34,42 @@ const _tellers = new Map();
    oudste weggegooid -- de logregels blijven, alleen de optelling begint opnieuw. */
 const MAX_TENANTS = 500;
 
+/*
+ * Idempotency by `reference` (brief §22-23/38): een tweede record() met
+ * dezelfde reference telt niet nog een keer mee. Dit bestaat voor precies
+ * ÉÉN scenario, gedocumenteerd waar het speelt (api/_faro/media.js
+ * creditsVoorVideo): dezelfde video-job die door twee instanties tegelijk
+ * als "net klaar" wordt gezien -- job.charged is in-memory en dus NIET
+ * gegarandeerd gezien door beide. credits.recordUsage() heeft die bescherming
+ * al via zijn eigen `reference`; dit is dezelfde bescherming voor de
+ * kostenteller hier, die anders Helvaro's eigen kosten in cost-overview
+ * dubbel zou tellen (de klant wordt niet dubbel belast -- dat blijft de
+ * ledger-referentie regelen -- maar het cijfer dat de eigenaar ziet zou wel
+ * liegen).
+ *
+ * GEEN reference meegeven (het merendeel van de aanroepen -- elke Anthropic-
+ * poging in api/_ai/router.js) telt gewoon zoals altijd: daar is elke
+ * aanroep een ECHTE, aparte provider-aanroep met een eigen kost, geen
+ * herhaling van eenzelfde al-betaalde gebeurtenis. Idempotency lost dat
+ * andere probleem niet op en hoort er niet overal aan te hangen.
+ *
+ * Zelfde begrenzing als _tellers hierboven: oudste eruit bij overschrijding,
+ * zodat dit geen langzaam lek wordt op een instantie die dagenlang leeft.
+ */
+const MAX_REFERENTIES = 5000;
+const _geziendeReferenties = new Set();
+
+function alGezien(reference) {
+  if (!reference) return false;
+  if (_geziendeReferenties.has(reference)) return true;
+  if (_geziendeReferenties.size >= MAX_REFERENTIES) {
+    const oudste = _geziendeReferenties.values().next().value;
+    _geziendeReferenties.delete(oudste);
+  }
+  _geziendeReferenties.add(reference);
+  return false;
+}
+
 function leeg() {
   return {
     requests: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, costEur: 0,
@@ -84,14 +120,23 @@ function tel(obj, sleutel, veld, waarde) {
  * @param {string} [opts.kind] 'text' (standaard) | 'image' | 'video' | 'whatsapp'
  *        -- puur voor rapportage (byKind hieronder), verandert niets aan de
  *        rekensom.
+ * @param {string} [opts.reference] optionele dedup-sleutel -- zie de uitleg
+ *        bij MAX_REFERENTIES hierboven. Een tweede record() met dezelfde
+ *        reference wordt genegeerd (geen dubbele telling), niet opnieuw
+ *        opgeteld.
  */
 async function record({
   ctx = {}, task, providerId, model, tier,
   inputTokens = 0, outputTokens = 0, latencyMs = 0,
   status = 'ok', pogingen = 1, images = 0, quality,
   kind = 'text', costUsdOverride = null, costEurOverride = null,
+  reference = null,
 } = {}) {
   try {
+    if (reference && alGezien(reference)) {
+      console.log('[ai]', JSON.stringify({ dedup: true, reference, task, kind }));
+      return;
+    }
     const tenant = String(ctx.projectCode || '').trim() || '_onbekend';
     const kosten = Number.isFinite(costUsdOverride)
       ? costUsdOverride
@@ -191,6 +236,6 @@ function alles() {
 }
 
 /** Alleen voor tests. */
-function _reset() { _tellers.clear(); }
+function _reset() { _tellers.clear(); _geziendeReferenties.clear(); }
 
-module.exports = { record, voorTenant, alles, _reset, MAX_TENANTS };
+module.exports = { record, voorTenant, alles, _reset, MAX_TENANTS, MAX_REFERENTIES };
