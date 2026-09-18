@@ -117,5 +117,44 @@ console.log('\n— en hij wordt ook echt gebruikt, op de juiste plek —');
      /dubbelcheck[\s\S]{0,120}console\.error|console\.error[\s\S]{0,120}dubbelcheck/.test(blok), null);
 }
 
+console.log('\n— hetzelfde geldt bij VERZETTEN, niet alleen bij aanmaken —');
+{
+  /* Deliverable "Calendar integrity" (brief §30): appointment-update kon een
+     BESTAANDE afspraak naar een tijdstip verzetten dat al bezet was door een
+     ANDERE afspraak van dezelfde klant, zonder enige controle -- de dubbel-
+     check hierboven zat alleen op appointment-create. */
+  const blok = (bron.match(/if \(body\.mode === 'appointment-update'\)[\s\S]*?\n      try \{\n        const r = await atFetch\(/) || [''])[0];
+  ck('de route heeft een eigen dubbelcheck-blok', blok.length > 0, blok.length);
+  ck('die roept rondTijdstip aan', /_afspraken\.rondTijdstip\(/.test(blok), blok.slice(0, 200));
+  ck('en de gedeelde botsendeAfspraak-regel, niet een eigen kopie',
+     /botsendeAfspraak\(/.test(blok), blok.slice(0, 200));
+  ck('weigert met 409 en slot_conflict',
+     /status\(409\)[\s\S]{0,220}slot_conflict/.test(blok), null);
+  ck('het eigen record telt niet mee als botsing met zichzelf',
+     /r\.id !== id/.test(blok), blok.slice(0, 300));
+  ck('een annulering (Status cancelled) slaat de dubbelcheck over',
+     /updateFields\['Status'\] !== 'cancelled'/.test(blok), blok.slice(0, 300));
+  ck('een mislukte controle wordt geluid, niet verzwegen',
+     /dubbelcheck[\s\S]{0,120}console\.error|console\.error[\s\S]{0,120}dubbelcheck/.test(blok), null);
+}
+
+console.log('\n— en Faro (AI-verzetten via chat) gebruikt dezelfde bewaking —');
+{
+  /* api/_faro/actions.js move_appointment gaat via _afspraken.verzet(), dus
+     de controle hoort IN verzet() te zitten, niet in de route ernaast --
+     anders is de AI-actie het pad zonder bewaking. */
+  const afspraken = fs.readFileSync(path.join(__dirname, '..', 'api', '_afspraken.js'), 'utf8');
+  const verzetFn = (afspraken.match(/async function verzet\([\s\S]*?\n\}/) || [''])[0];
+  ck('verzet() bestaat en is niet leeg', verzetFn.length > 100, verzetFn.length);
+  ck('verzet() roept rondTijdstip aan vóór de PATCH',
+     /rondTijdstip\(code, start\)[\s\S]*atFetch\(atUrl\(APPOINTMENTS_TABLE/.test(verzetFn), null);
+  ck('en geeft dubbele_boeking terug bij een botsing',
+     /reden: 'dubbele_boeking'/.test(verzetFn), null);
+
+  const actions = fs.readFileSync(path.join(__dirname, '..', 'api', '_faro', 'actions.js'), 'utf8');
+  ck('move_appointment vertaalt dubbele_boeking naar een begrijpelijke fout, geen generieke',
+     /dubbele_boeking[\s\S]{0,200}slot_conflict/.test(actions), null);
+}
+
 console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
 process.exit(fail === 0 ? 0 : 1);

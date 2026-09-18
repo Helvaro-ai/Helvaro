@@ -2080,6 +2080,38 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (body.duration  !== undefined) updateFields['Duration']   = parseInt(body.duration) || 30;
       if (body.notes     !== undefined) updateFields['Notes']      = String(body.notes).slice(0, 2000);
       if (Object.keys(updateFields).length === 0) return res.status(400).json({ error: 'Niets om bij te werken' });
+
+      /* Dubbelcheck bij een verzetting -- deliverable "Calendar integrity"
+         (brief §30, conflict detection). appointment-create deed dit al
+         (zie boven, code 'slot_conflict'); deze mode verplaatste een
+         BESTAANDE afspraak zonder ooit te kijken of de NIEUWE tijd al bezet
+         was door een ANDERE afspraak van dezelfde klant -- twee klanten met
+         dezelfde bezichtiger op hetzelfde moment.
+         Alleen bij een echte tijdswijziging, en niet bij een annulering (een
+         afspraak afzeggen kan nooit met zichzelf of iets anders botsen).
+         Faalt open, zelfde afweging als overal in dit bestand waar een
+         Airtable-storing een actie niet mag blokkeren die zonder de controle
+         ook al zou zijn doorgegaan. */
+      if (updateFields['Start Time'] && updateFields['Status'] !== 'cancelled') {
+        try {
+          const startMs = Date.parse(updateFields['Start Time']);
+          if (Number.isFinite(startMs)) {
+            const duurMin = updateFields['Duration'] || parseInt(existingFields['Duration'], 10) || 30;
+            const kandidaten = await _afspraken.rondTijdstip(projectCode, startMs);
+            const anderen = kandidaten.filter((r) => r.id !== id);
+            const botst = botsendeAfspraak(anderen, startMs, duurMin);
+            if (botst) {
+              return res.status(409).json({
+                error: 'Op dat moment staat er al een afspraak. Kies een ander tijdstip.',
+                code:  'slot_conflict',
+              });
+            }
+          }
+        } catch (e) {
+          console.error('[appointment-update] dubbelcheck mislukt (verzetting gaat door):', e && e.message);
+        }
+      }
+
       try {
         const r = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}/${id}`,

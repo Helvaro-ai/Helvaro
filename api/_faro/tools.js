@@ -68,6 +68,7 @@ const properties = require('../_properties');
 const vehicles   = require('../_vehicles');
 const rapport    = require('./rapport');
 const _i18n      = require('../_i18n');
+const _afspraken = require('../_afspraken'); // wandNaarUTC/corrigeerNaarBrusselseTijd — zie daar
 
 const NOT_WIRED = 'not_wired';
 
@@ -113,9 +114,18 @@ function money(n) {
 
 /* Human date/time for a calendar entry. Belgian conventions, 24-hour clock,
    and an explicit weekday because "dinsdag 14:00" is what someone reads off a
-   calendar -- a bare ISO string is not an answer. */
-const WHEN_DAY = new Intl.DateTimeFormat('nl-BE', { weekday: 'short', day: 'numeric', month: 'short' });
-const WHEN_TIME = new Intl.DateTimeFormat('nl-BE', { hour: '2-digit', minute: '2-digit', hour12: false });
+   calendar -- a bare ISO string is not an answer.
+
+   timeZone is EXPLICIT and NOT left to the runtime default: a Vercel function
+   runs in UTC, and without this the confirmation card silently showed the
+   UTC hour instead of the Brussels hour -- so a move_appointment/create_event
+   card that echoed back exactly what the model said ("14:00") looked correct
+   to whoever approved it, even when the underlying instant was 1-2 hours off
+   (see corrigeerNaarBrusselseTijd() below and api/_afspraken.js for the other
+   half of this fix). A confirmation the reviewer can't actually verify is not
+   a confirmation. */
+const WHEN_DAY = new Intl.DateTimeFormat('nl-BE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Brussels' });
+const WHEN_TIME = new Intl.DateTimeFormat('nl-BE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Brussels' });
 function formatWhen(iso, allDay) {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return '';
@@ -1540,13 +1550,17 @@ const actTools = [
       type: 'object',
       properties: {
         eventId:     { type: 'string', description: 'Het id uit get_calendar.' },
-        when:        { type: 'string', description: 'Nieuwe starttijd als ISO-datum/tijd.' },
+        when:        { type: 'string', description: 'Nieuwe starttijd als lokale datum/tijd in Brussel, bv. 2026-08-21T14:00:00 (zonder offset -- die wordt hier zelf uitgerekend).' },
         durationMin: { type: 'integer', minimum: 15, maximum: 480, default: 60 },
       },
       required: ['eventId', 'when'],
     },
     async run(args, ctx) {
-      const startMs = Date.parse(args.when);
+      /* Het model schrijft een WAND-kloktijd, geen UTC-instant -- zonder
+         correctie interpreteert Date.parse() een tijdstip zonder offset als
+         de tijdzone van de server (UTC op Vercel), en "14:00" werd dan
+         16:00 of 15:00 Brussels. Zie api/_afspraken.js corrigeerNaarBrusselseTijd. */
+      const startMs = Date.parse(_afspraken.corrigeerNaarBrusselseTijd(args.when));
       if (!Number.isFinite(startMs)) {
         return { summary: `"${args.when}" is geen geldige datum/tijd. Vraag wanneer precies.`,
                  data: { pending: false }, components: [] };
@@ -1734,7 +1748,7 @@ const actTools = [
       properties: {
         leadId:      { type: 'string', description: 'Optioneel: de lead waar dit over gaat.' },
         title:       { type: 'string', description: 'Titel van het agenda-item.' },
-        when:        { type: 'string', description: 'Starttijd als ISO-datum/tijd, bv. 2026-08-21T14:00:00' },
+        when:        { type: 'string', description: 'Starttijd als lokale datum/tijd in Brussel, bv. 2026-08-21T14:00:00 (zonder offset -- die wordt hier zelf uitgerekend).' },
         durationMin: { type: 'integer', minimum: 15, maximum: 480, default: 60 },
         note:        { type: 'string' },
       },
@@ -1748,9 +1762,13 @@ const actTools = [
 
        Validates the time and the connection BEFORE proposing: a confirmation
        card for a calendar that is not connected, or for a date the model
-       hallucinated, is a click that can only end in an error. */
+       hallucinated, is a click that can only end in an error.
+
+       args.when is a WALL-CLOCK time, not a UTC instant -- see the matching
+       note on move_appointment above and api/_afspraken.js
+       corrigeerNaarBrusselseTijd() for why this cannot be a bare Date.parse(). */
     async run(args, ctx) {
-      const startMs = Date.parse(args.when);
+      const startMs = Date.parse(_afspraken.corrigeerNaarBrusselseTijd(args.when));
       if (!Number.isFinite(startMs)) {
         return {
           summary: `"${args.when}" is geen geldige datum/tijd. Vraag de gebruiker wanneer precies.`,

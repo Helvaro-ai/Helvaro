@@ -1757,6 +1757,14 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
            krijgt keurig "bevestigd voor morgen om 14u" te lezen.
        Een datum in het verleden is even erg: een bezichtiging vorige week.
        De duur was ook onbegrensd -- 100000 minuten blokkeert tien weken agenda. */
+    /* Tijdzonecorrectie VOOR de validatie, en geschreven terug op appt.start
+       zelf zodat elke latere lezer (Appointments-rij, Google-spiegeling
+       verderop) dezelfde, gecorrigeerde tijd ziet -- niet alleen deze check.
+       Zie api/_afspraken.js corrigeerNaarBrusselseTijd() voor de reden: de
+       boekingsprompt (api/_ai/prompts.js) vraagt het model om zelf
+       +02:00/+01:00 te kiezen, en dat is precies het rekenwerk waar een
+       model naast kan zitten rond de omschakeling. */
+    if (appt.start) appt.start = _afspraken.corrigeerNaarBrusselseTijd(appt.start);
     const startMs = Date.parse(appt.start);
     const startGeldig = Number.isFinite(startMs) && startMs > Date.now() - 60000;
     if (!bookingSent && appt.start && !startGeldig) {
@@ -2371,7 +2379,15 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
           /* `type` is optioneel en alleen zinvol voor dealership -- zie waar
              dealerType verderop gebouwd wordt (in het BOOK-blok hieronder),
              dat dit tegen _dealerBoeking.AFSPRAAK_TYPES valideert. Hier alleen
-             ruw doorgeven; ongeldige of afwezige waarden worden daar genegeerd. */
+             ruw doorgeven; ongeldige of afwezige waarden worden daar genegeerd.
+
+             `start` gaat NIET hier al door corrigeerNaarBrusselseTijd() --
+             deze functie wordt in tests/afzeggen-gesprek.test.js als losse
+             `new Function(...)` uitgevoerd (geïsoleerd van de module-scope
+             requires van dit bestand), dus een aanroep naar _afspraken hier
+             breekt die test met een ReferenceError. De correctie zit daarom
+             bij het CONSUMEREN van appt.start hieronder (startGeldig), waar
+             de rest van de tijdstip-validatie toch al staat. */
           appointment = { start: bookData.start, duration: bookData.duration || 30, type: bookData.type };
         }
       }

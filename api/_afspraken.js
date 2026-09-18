@@ -387,6 +387,24 @@ async function verzet({ projectCode, id, record, startISO, durationMin } = {}) {
   const duur = Math.max(15, Math.min(480, Number(durationMin) || Number(rec.fields[F.DUUR]) || 30));
   const nieuweStart = new Date(start).toISOString();
 
+  /* Dubbelcheck op de NIEUWE tijd -- deliverable "Calendar integrity"
+     (brief §30, conflict detection). Dit is het enige pad dat een afspraak
+     verzet (Faro's move_appointment-actie, zie api/_faro/actions.js): zonder
+     deze controle kon de AI een afspraak zomaar bovenop een andere zetten,
+     iets wat appointment-create in api/leads.js al wel tegenhield. Faalt
+     open, zelfde afweging als botsendeAfspraak()'s andere aanroepers: een
+     storing in de dubbelcheck mag een verzetting niet blokkeren die zonder
+     die controle ook al zou zijn doorgegaan. */
+  try {
+    const kandidaten = await rondTijdstip(code, start);
+    const anderen = kandidaten.filter((r) => r.id !== rec.id);
+    if (botsendeAfspraak(anderen, start, duur)) {
+      return { ok: false, reden: 'dubbele_boeking' };
+    }
+  } catch (e) {
+    console.error('[afspraken] dubbelcheck bij verzetten mislukt (gaat door):', e && e.message);
+  }
+
   try {
     const r = await atFetch(atUrl(APPOINTMENTS_TABLE, `/${rec.id}`), {
       method: 'PATCH',
@@ -495,8 +513,113 @@ async function rondTijdstip(projectCode, startMs) {
   }
 }
 
+/* ── Tijdzonecorrectie op wat het model aanlevert ────────────────────────────
+ * Deliverable "Calendar integrity" (brief §30, tijdzones).
+ *
+ * De WhatsApp-boekingsprompt (api/_ai/prompts.js) vraagt het model om
+ * "ISO 8601 met Brussels timezone +02:00 (zomer) of +01:00 (winter)" te
+ * schrijven in zijn BOOK:{...}-blok. Dat is precies het soort rekenwerk --
+ * "is deze datum voor of na de laatste zondag van maart/oktober" -- waar een
+ * taalmodel een keer naast kan zitten, vooral vlak rond de omschakeling zelf.
+ * Zit het model ernaast, dan klopt de UTC-instant niet met wat de klant
+ * vroeg: een afspraak "om 14 uur" komt een uur verschoven de agenda in, en
+ * dat ontdekt niemand tot de makelaar er voor een lege stoel zit.
+ *
+ * De oplossing leunt niet op het cijfer dat het model zelf achter de T
+ * schreef. De WAND-kloktijd (jaar/maand/dag/uur/minuut) is de eigenlijke
+ * boekingsintentie; de offset wordt hier opnieuw uitgerekend met de echte
+ * IANA-regel voor de opgegeven zone via Intl (DST-correct, geen vaste +1/+2).
+ * Een model dat de offset verkeerd invulde maar het UUR goed had, boekt dus
+ * alsnog op het juiste moment.
+ */
+
+/** De UTC-offset (in ms, positief = vóór op UTC) die in `tz` geldt OP het
+ * gegeven UTC-instant `atMs` -- dus de offset van DIE instant, niet van een
+ * gok. Uitgerekend als het verschil tussen `atMs` en hoe die instant in `tz`
+ * geformatteerd wordt (terugvertaald alsof die geformatteerde velden zelf
+ * weer UTC waren). */
+function offsetMsOp(tz, atMs) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const delen = {};
+  for (const d of fmt.formatToParts(new Date(atMs))) if (d.type !== 'literal') delen[d.type] = d.value;
+  const alsUtc = Date.UTC(
+    Number(delen.year), Number(delen.month) - 1, Number(delen.day),
+    Number(delen.hour), Number(delen.minute), Number(delen.second)
+  );
+  return alsUtc - atMs;
+}
+
+/**
+ * Wandkloktijd (in `tz`) -> UTC-milliseconden, correct vlak rond een DST-
+ * omschakeling.
+ *
+ * Eén enkele gok-en-corrigeer-stap (offset opzoeken bij de wandtijd-ALS-UTC,
+ * en die éénmalig toepassen) gaat mis zodra die eerste gok toevallig aan de
+ * ANDERE kant van de omschakeling valt dan het echte antwoord: de offset die
+ * dan wordt opgezocht hoort bij het verkeerde regime (zomer i.p.v. winter of
+ * omgekeerd), en het resultaat staat een vol uur fout -- gemeten aan
+ * 2026-03-29 01:30 lokaal, dat de vaste-stap-versie van deze functie ooit als
+ * 2026-03-28 23:30 UTC teruggaf in plaats van het juiste 2026-03-29 00:30.
+ *
+ * Dit itereert daarom: reken de offset uit BIJ de huidige kandidaat, gebruik
+ * die om een nieuwe kandidaat te maken, en herhaal tot het stabiel is. Voor
+ * een zone met één simpele sprong van een uur of twee (Europe/Brussels, en
+ * elke andere EU-zone die vandaag ondersteund wordt) convergeert dat binnen
+ * een paar stappen. Voor een wandtijd die door de lentesprong NOOIT bestaat,
+ * of door de najaarsterugval TWEE keer bestaat, is er geen enkel juist
+ * antwoord -- deze functie geeft dan een consistente, geldige instant terug
+ * in plaats van te gooien, wat voor een boekingstijdstip het minst verrassende
+ * gedrag is. */
+function wandNaarUTC(tz, jaar, maand, dag, uur, minuut, seconde) {
+  const wandAlsUtc = Date.UTC(jaar, maand - 1, dag, uur, minuut, seconde || 0);
+  let kandidaat = wandAlsUtc;
+  for (let i = 0; i < 4; i++) {
+    const offset = offsetMsOp(tz, kandidaat);
+    const volgende = wandAlsUtc - offset;
+    if (volgende === kandidaat) break;
+    kandidaat = volgende;
+  }
+  return kandidaat;
+}
+
+/**
+ * Herleidt een ISO-tijdstip zoals het model het schreef naar het juiste
+ * UTC-moment voor `tz` (standaard Europe/Brussels -- alle vandaag ondersteunde
+ * landen delen dezelfde EU-DST-omschakeling, zie api/_regio.js).
+ *
+ * Onleesbare invoer gaat ONGEWIJZIGD terug: de bestaande `Date.parse`-
+ * validatie op de aanroeppunten (whatsapp.js startGeldig, _afspraken.verzet)
+ * vangt dat af. Deze functie corrigeert alleen een LEESBARE datum/tijd met
+ * een mogelijk verkeerde offset -- ze verzint nooit een tijdstip.
+ *
+ * @param {string} isoRuw   bv. "2026-10-25T14:00:00+02:00" (model kan hier
+ *                          +02:00 hebben geschreven terwijl het na de
+ *                          najaarsomschakeling +01:00 had moeten zijn)
+ * @param {string} [tz]
+ * @returns {string} de gecorrigeerde ISO-tekst (UTC, met "Z"), of `isoRuw`
+ *                    ongewijzigd als hij niet te lezen was
+ */
+function corrigeerNaarBrusselseTijd(isoRuw, tz = 'Europe/Brussels') {
+  const m = String(isoRuw || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return isoRuw;
+  const [, y, mo, d, h, mi, s] = m;
+  try {
+    const ms = wandNaarUTC(tz, Number(y), Number(mo), Number(d), Number(h), Number(mi), Number(s || 0));
+    if (!Number.isFinite(ms)) return isoRuw;
+    return new Date(ms).toISOString();
+  } catch (e) {
+    console.warn('[afspraken] tijdzonecorrectie mislukt, oorspronkelijke tekst blijft staan:', e && e.message);
+    return isoRuw;
+  }
+}
+
 module.exports = {
   F, STATUS, APPOINTMENTS_TABLE,
   komendeVoorLead, zoekOpEvent, leesEigen, annuleer, verzet, wisLeadVlaggen,
   telSleutel, gcalVoor, botsendeAfspraak, rondTijdstip,
+  corrigeerNaarBrusselseTijd,
 };

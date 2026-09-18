@@ -212,6 +212,35 @@ const A = require(BASE + 'api/_afspraken.js');
   const kapot = await A.verzet({ projectCode: 'TENANT_A', id: 'recAAAAAAAAAAAAAA', startISO: 'volgende week' });
   ck('een onleesbare tijd wordt geweigerd', kapot.ok === false && kapot.reden === 'ongeldige_tijd', kapot);
 
+  console.log('\n— verzetten botst niet stilletjes met een ANDERE afspraak —');
+  // Deliverable "Calendar integrity" (brief §30): Faro's move_appointment
+  // (api/_faro/actions.js) roept verzet() aan zonder eerst zelf te
+  // controleren of de nieuwe tijd al bezet is -- dat hoort hierin te zitten.
+  reset(); nepAirtable();
+  const botsTijd = new Date(Date.now() + 6 * 864e5).toISOString();
+  db.recCCCCCCCCCCCCCC = {
+    id: 'recCCCCCCCCCCCCCC',
+    fields: {
+      'Project Code': 'TENANT_A',
+      'Start Time':   botsTijd,
+      'Duration':     30,
+      'Status':       'booked',
+      'Lead':         ['recLEAD3333333333'],
+      'Lead Name':    'Al Bezet',
+    },
+  };
+  const botsing = await A.verzet({ projectCode: 'TENANT_A', id: 'recAAAAAAAAAAAAAA', startISO: botsTijd, durationMin: 30 });
+  ck('de verzetting wordt geweigerd', botsing.ok === false && botsing.reden === 'dubbele_boeking', botsing);
+  ck('en er is niets geschreven naar Airtable',
+     !patches.some((p) => p.tabel === 'afspraken'), patches);
+  ck('en het Google-item is niet aangeraakt', googleVerzet.length === 0, googleVerzet);
+
+  console.log('\n— maar verzetten NAAR JE EIGEN huidige tijd botst niet met jezelf —');
+  reset(); nepAirtable();
+  const eigenTijd = db.recAAAAAAAAAAAAAA.fields['Start Time'];
+  const zelfde = await A.verzet({ projectCode: 'TENANT_A', id: 'recAAAAAAAAAAAAAA', startISO: eigenTijd, durationMin: 30 });
+  ck('geen zelfbotsing', zelfde.ok === true, zelfde);
+
   console.log('\n— Faro werkt met het Google-id —');
   reset(); nepAirtable();
   const viaEvent = await A.zoekOpEvent('TENANT_A', 'gev_123');

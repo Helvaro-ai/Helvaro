@@ -412,6 +412,12 @@ const EXECUTORS = {
       const uit = await afspraken.verzet({ projectCode: ctx.projectCode, record: eigen, startISO, durationMin });
       if (!uit.ok) {
         console.error('[faro/actions] verzetten mislukt:', uit.reden);
+        /* dubbele_boeking is geen storing maar een botsing -- de assistent moet
+           dat als zodanig kunnen navertellen (een ander tijdstip voorstellen),
+           niet als een generieke agendafout. Zie afspraken.verzet(). */
+        if (uit.reden === 'dubbele_boeking') {
+          throw new ActionError('Op dat tijdstip staat al een andere afspraak. Kies een ander moment.', 'slot_conflict');
+        }
         throw new ActionError('Het agenda-item kon niet verzet worden.', 'calendar_failed');
       }
       return {
