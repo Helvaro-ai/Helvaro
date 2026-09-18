@@ -37,6 +37,15 @@
  */
 
 const _gcal = require('./_gcal');
+const _activiteit = require('./_activiteit');   // leane actie-records bij afzeggen, zie annuleer()
+
+/* Loggen mag het afzeggen zelf nooit ophouden -- fire-and-forget met een
+   genegeerde catch, zoals overal waar _activiteit.log() wordt aangeroepen
+   (zie api/_dealer-boeking.js en api/_dealer-melding.js voor hetzelfde
+   patroon). */
+function loggen(projectCode, soort, opts) {
+  _activiteit.log(projectCode, soort, opts).catch(() => {});
+}
 
 const AIRTABLE_BASE      = process.env.BASE_AIRTABLE;
 const AIRTABLE_TOKEN     = process.env.API_AIRTABLE;
@@ -291,6 +300,12 @@ async function annuleer({ projectCode, id, record, reden, door } = {}) {
   const wie = door === 'lead' ? 'de lead' : door === 'makelaar' ? 'de makelaar' : 'de AI';
   const notitie = `Afgezegd door ${wie}${reden ? `: ${String(reden).slice(0, 300)}` : '.'}`;
 
+  /* F.LEAD is een gekoppeld veld -- een array van record-id's, zoals
+     wisLeadVlaggen() hieronder ook al aanneemt. Voor het actie-record is dat
+     bijna altijd precies één lead; het eerste id is hier genoeg (zelfde
+     aanname als elders in dit bestand, nooit een array in een log-veld). */
+  const logLeadId = Array.isArray(rec.fields[F.LEAD]) ? rec.fields[F.LEAD][0] : rec.fields[F.LEAD];
+
   try {
     const r = await atFetch(atUrl(APPOINTMENTS_TABLE, `/${rec.id}`), {
       method: 'PATCH',
@@ -306,12 +321,29 @@ async function annuleer({ projectCode, id, record, reden, door } = {}) {
     if (!r.ok) {
       const t = await r.text().catch(() => '');
       console.error(`[afspraken] annuleren mislukt (HTTP ${r.status}):`, t.slice(0, 300));
+      loggen(code, 'appointment_cancel_failed', {
+        leadId: logLeadId, afspraakId: rec.id,
+        details: _activiteit.actieVelden('appointment_cancel_failed', 'failed', {
+          idempotencyKey: rec.id, resource: 'appointment', error: `airtable_fout:${r.status}`,
+        }),
+      });
       return { ok: false, reden: 'airtable_fout' };
     }
   } catch (err) {
     console.error('[afspraken] annuleren exception:', err && err.message);
+    loggen(code, 'appointment_cancel_failed', {
+      leadId: logLeadId, afspraakId: rec.id,
+      details: _activiteit.actieVelden('appointment_cancel_failed', 'failed', {
+        idempotencyKey: rec.id, resource: 'appointment', error: 'airtable_fout',
+      }),
+    });
     return { ok: false, reden: 'airtable_fout' };
   }
+
+  loggen(code, 'appointment_cancelled', {
+    leadId: logLeadId, afspraakId: rec.id,
+    details: _activiteit.actieVelden('appointment_cancelled', 'ok', { idempotencyKey: rec.id, resource: 'appointment' }),
+  });
 
   let googleWeg = false;
   const eventId = rec.fields[F.EVENT];

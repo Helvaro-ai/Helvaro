@@ -250,7 +250,9 @@ async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, 
         /* Eén herkansing bij een snelheidslimiet, niet bij een structurele
            weigering (verkeerd nummer, geen sjabloon) -- die lost een tweede
            poging na anderhalve seconde toch niet op. */
+        let herhaald = false;
         if (!r.ok && (r.code === 'rate_limit' || r.code === 'pair_rate_limit')) {
+          herhaald = true;
           await new Promise((res) => setTimeout(res, 1500));
           r = via === 'dealer_template'
             ? await _waSend.sendTemplateSafe({ to, template: rijk.template, lang: templateLang, params: rijk.params, phoneNumberId, token })
@@ -262,13 +264,29 @@ async function stuurAfspraakMelding({ projectCode, clientFields, phoneNumberId, 
             : await _waSend.sendFreeformSafe({ to, text: tekst, windowOpen: true, phoneNumberId, token });
         }
 
+        /* idempotencyKey is de ontvanger + de melding zelf, niet het volledige
+           nummer (dat staat al gemaskeerd in .ontvanger hieronder) -- resource
+           is altijd 'employee_notification', zodat een export in één kolom
+           kan tellen hoeveel meldingen er per periode gingen, gelukt of niet. */
+        /* 'retried' betekent: pas gelukt na een nieuwe poging op DEZELFDE
+           melding. Een mislukking blijft 'failed', ook als er onderweg een
+           herkansing was -- die herkansing staat dan als `herhaald: true` in
+           de vrije details, maar de UITKOMST is en blijft een mislukking. */
         if (r.ok) {
           verstuurd++;
-          loggen(code, 'employee_notification_sent', { details: { ontvanger: laatste4, via } });
+          loggen(code, 'employee_notification_sent', {
+            details: _activiteit.actieVelden('employee_notification_sent', herhaald ? 'retried' : 'ok', {
+              idempotencyKey: `melding:${laatste4}:${via}`, resource: 'employee_notification',
+              details: { ontvanger: laatste4, via, herhaald },
+            }),
+          });
         } else {
           mislukt++;
           loggen(code, 'employee_notification_failed', {
-            details: { ontvanger: laatste4, code: r.code, metaCode: r.metaCode, ownerAction: r.ownerAction },
+            details: _activiteit.actieVelden('employee_notification_failed', 'failed', {
+              idempotencyKey: `melding:${laatste4}:${via}`, resource: 'employee_notification', error: r.code,
+              details: { ontvanger: laatste4, code: r.code, metaCode: r.metaCode, ownerAction: r.ownerAction, herhaald },
+            }),
           });
         }
       } catch (err) {

@@ -35,6 +35,15 @@
 
 const fixtures = require('./fixtures');
 const images_ = require('../_images');   // the only artifact store this product has
+const _activiteit = require('../_activiteit');   // lean action records, see getJob()
+
+/* Logging must never hold up or fail a poll response -- fire-and-forget with
+   an ignored catch, same pattern as every other _activiteit.log() call site
+   in this codebase (api/_dealer-boeking.js, api/_dealer-melding.js,
+   api/_images.js). */
+function loggen(projectCode, soort, opts) {
+  _activiteit.log(projectCode, soort, opts).catch(() => {});
+}
 
 /* Read from api/_images.js rather than restated here. This used to be a
    hardcoded wish-list of eight keys, five of which the backend would reject
@@ -279,6 +288,27 @@ async function getJob(jobId, ctx = {}) {
          wel luid het log in, want dit is echt geld. */
       console.error(`[faro/media] credits niet geboekt voor ${job.jobId} (${job.projectCode}):`, err && err.message);
     }
+  }
+
+  /* Actie-record op de EERSTE poll die 'ready' of 'failed' ziet -- dezelfde
+     eenmaligheid als creditsVoorVideo() hierboven, gegarandeerd doordat
+     getJob() vroeg terugkeert (zie de top van deze functie) zodra job.state
+     al 'ready' of 'failed' is, dus dit codepad draait nooit twee keer voor
+     dezelfde job. idempotencyKey is dezelfde `video:${job.jobId}` referentie
+     als de credit-ledger hierboven gebruikt. */
+  if (job.state === 'ready') {
+    loggen(job.projectCode, 'video_generated', {
+      details: _activiteit.actieVelden('video_generated', 'ok', {
+        idempotencyKey: `video:${job.jobId}`, resource: 'video',
+      }),
+    });
+  } else if (job.state === 'failed') {
+    loggen(job.projectCode, 'video_generation_failed', {
+      details: _activiteit.actieVelden('video_generation_failed', 'failed', {
+        idempotencyKey: `video:${job.jobId}`, resource: 'video',
+        error: String(job.error || 'onbekende fout').slice(0, 200),
+      }),
+    });
   }
 
   return { ...job };

@@ -112,7 +112,13 @@ async function controleer({ projectCode, voertuig, leadId, telefoon, startISO, a
         bestaandeVoorLead = null;
       }
       if (bestaandeVoorLead) {
-        loggen(code, 'duplicate_lead_blocked', { leadId, afspraakId: bestaandeVoorLead.fields && bestaandeVoorLead.fields[_voertuigslot.F.APPT_ID] });
+        const bestaandApptId = bestaandeVoorLead.fields && bestaandeVoorLead.fields[_voertuigslot.F.APPT_ID];
+        loggen(code, 'duplicate_lead_blocked', {
+          leadId, afspraakId: bestaandApptId,
+          details: _activiteit.actieVelden('duplicate_lead_blocked', 'failed', {
+            idempotencyKey: bestaandApptId, resource: 'appointment', error: 'lead_heeft_afspraak',
+          }),
+        });
         return { ok: false, reden: 'lead_heeft_afspraak', bestaand: bestaandeVoorLead, soort: 'duplicate_lead_blocked' };
       }
     }
@@ -133,11 +139,21 @@ async function controleer({ projectCode, voertuig, leadId, telefoon, startISO, a
       const status = _vehicles.boekbaar(voertuig, actieveOpVoertuig);
       if (!status.ok) {
         const soort = VOERTUIG_SOORT[status.reden] || 'vehicle_unavailable_blocked';
-        loggen(code, soort, { leadId, voertuigCode: voertuig.code });
+        loggen(code, soort, {
+          leadId, voertuigCode: voertuig.code,
+          details: _activiteit.actieVelden(soort, 'failed', {
+            idempotencyKey: voertuig.code, resource: 'vehicle', error: status.reden,
+          }),
+        });
         /* Apart van de specifieke soort hierboven: één algemene marker die elk
            voertuigblok samen optelt, ongeacht de precieze reden -- handig voor
            wie alleen wil weten HOEVEEL boekingen de bescherming tegenhield. */
-        loggen(code, 'appointment_protection_triggered', { leadId, voertuigCode: voertuig.code, details: { reden: status.reden } });
+        loggen(code, 'appointment_protection_triggered', {
+          leadId, voertuigCode: voertuig.code,
+          details: _activiteit.actieVelden('appointment_protection_triggered', 'failed', {
+            idempotencyKey: voertuig.code, resource: 'vehicle', error: status.reden, details: { reden: status.reden },
+          }),
+        });
         return { ok: false, reden: status.reden, soort };
       }
     }
@@ -187,20 +203,34 @@ async function naAanmaak({ projectCode, voertuig, recordId, apptId, leadId } = {
   const code = String(projectCode || '').trim();
 
   if (!voertuig) {
-    loggen(code, 'appointment_created', { leadId, afspraakId: apptId });
+    loggen(code, 'appointment_created', {
+      leadId, afspraakId: apptId,
+      details: _activiteit.actieVelden('appointment_created', 'ok', { idempotencyKey: apptId, resource: 'appointment' }),
+    });
     return { ok: true, geverifieerd: false };
   }
 
   try {
     const uit = await _voertuigslot.bevestigClaim(code, voertuig.code, recordId);
     if (!uit.ok) {
-      loggen(code, 'duplicate_vehicle_blocked', { leadId, voertuigCode: voertuig.code, afspraakId: apptId });
+      loggen(code, 'duplicate_vehicle_blocked', {
+        leadId, voertuigCode: voertuig.code, afspraakId: apptId,
+        details: _activiteit.actieVelden('duplicate_vehicle_blocked', 'failed', {
+          idempotencyKey: apptId, resource: 'vehicle', error: uit.reden,
+        }),
+      });
       loggen(code, 'appointment_creation_failed', {
-        leadId, voertuigCode: voertuig.code, afspraakId: apptId, details: { reden: uit.reden },
+        leadId, voertuigCode: voertuig.code, afspraakId: apptId,
+        details: _activiteit.actieVelden('appointment_creation_failed', 'failed', {
+          idempotencyKey: apptId, resource: 'appointment', error: uit.reden, details: { reden: uit.reden },
+        }),
       });
       return { ok: false, reden: 'voertuig_bezet' };
     }
-    loggen(code, 'appointment_created', { leadId, voertuigCode: voertuig.code, afspraakId: apptId });
+    loggen(code, 'appointment_created', {
+      leadId, voertuigCode: voertuig.code, afspraakId: apptId,
+      details: _activiteit.actieVelden('appointment_created', 'ok', { idempotencyKey: apptId, resource: 'appointment' }),
+    });
     /* bevestigClaim() laat `geverifieerd` weg als de check gewoon lukte (geen
        race, niets fail-open) -- alleen bij een leesfout staat hij expliciet op
        false. Onduidelijk is dus "gewoon geverifieerd", niet "onbekend". */
@@ -210,7 +240,16 @@ async function naAanmaak({ projectCode, voertuig, recordId, apptId, leadId } = {
        leesfout). Deze catch is de riem naast de bretels: een onverwachte fout
        hier mag een AL AANGEMAAKTE afspraak niet als mislukt laten lezen. */
     console.warn('[dealer-boeking] naAanmaak exception (fail-open, telt als niet-geverifieerd):', err && err.message);
-    loggen(code, 'appointment_created', { leadId, voertuigCode: voertuig.code, afspraakId: apptId });
+    loggen(code, 'appointment_created', {
+      leadId, voertuigCode: voertuig.code, afspraakId: apptId,
+      /* De afspraak zelf BESTAAT (recordId is al aangemaakt door de aanroeper
+         voor naAanmaak() aangeroepen wordt) -- alleen de voertuigrace-check
+         kon niet geverifieerd worden. status blijft daarom 'ok'; de reden
+         staat in .error voor wie wil weten waarom geverifieerd=false is. */
+      details: _activiteit.actieVelden('appointment_created', 'ok', {
+        idempotencyKey: apptId, resource: 'appointment', error: String(err && err.message || '').slice(0, 200),
+      }),
+    });
     return { ok: true, geverifieerd: false };
   }
 }

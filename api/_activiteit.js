@@ -70,6 +70,8 @@ const SOORTEN = Object.freeze([
   'vehicle_unavailable_blocked',
   'appointment_created',
   'appointment_creation_failed',
+  'appointment_cancelled',
+  'appointment_cancel_failed',
   'lead_score_calculated',
   'employee_notification_sent',
   'employee_notification_failed',
@@ -78,6 +80,10 @@ const SOORTEN = Object.freeze([
   'appointment_reminder_sent',
   'vehicle_match_found',
   'old_lead_match_found',
+  'image_generated',
+  'image_generation_failed',
+  'video_generated',
+  'video_generation_failed',
 ]);
 
 function configured() {
@@ -187,6 +193,46 @@ function willekeurigBase36(lengte) {
 
 function eventId() {
   return Date.now().toString(36) + '-' + willekeurigBase36(6);
+}
+
+/* De statussen die een actie-record mag hebben (fase 3 pass 2, brief §134-136).
+   'retried' is voor een actie die pas na een nieuwe poging lukte (of alsnog
+   mislukte) -- niet voor elke fire-and-forget herkansing, alleen als de
+   aanroeper zelf een expliciete tweede poging deed op hetzelfde verzoek. */
+const ACTIE_STATUSSEN = Object.freeze(['ok', 'failed', 'retried']);
+
+/**
+ * Bouwt het `details`-object voor een "leane" actie-record: geen nieuwe tabel,
+ * gewoon een vaste vorm bovenop de bestaande `details`-blob van `log()`.
+ * `soort` (het Type-veld) blijft de bron van waarheid over WAT er gebeurde;
+ * `actionType` hierbinnen is dezelfde waarde, zodat een lezer van de ruwe
+ * details-JSON (een dashboard-paneel, een export) 'm niet apart uit het
+ * Airtable-record moet halen.
+ *
+ * @param {string} soort              zelfde soort als aan log() meegegeven
+ * @param {'ok'|'failed'|'retried'} status
+ * @param {object} [extra]
+ * @param {string} [extra.idempotencyKey]  de dedup-sleutel van de actie zelf
+ *                                          (bv. dezelfde referentie als de
+ *                                          credit-ledger, of het afspraak-id)
+ * @param {string} [extra.resource]        wat er geraakt werd: 'appointment',
+ *                                          'vehicle', 'employee_notification',
+ *                                          'image', 'video', ...
+ * @param {string} [extra.error]           korte, klant-veilige reden bij een
+ *                                          mislukking -- nooit een stack trace
+ * @param {object} [extra.details]         extra vrije velden, samengevoegd
+ * @returns {object}
+ */
+function actieVelden(soort, status, extra = {}) {
+  const uit = {
+    actionType: String(soort || ''),
+    status: ACTIE_STATUSSEN.indexOf(status) !== -1 ? status : 'ok',
+  };
+  if (extra.idempotencyKey) uit.idempotencyKey = String(extra.idempotencyKey).slice(0, 200);
+  if (extra.resource) uit.resource = String(extra.resource);
+  if (extra.error) uit.error = String(extra.error).slice(0, 300);
+  if (extra.details && typeof extra.details === 'object') Object.assign(uit, extra.details);
+  return uit;
 }
 
 /**
@@ -309,10 +355,12 @@ module.exports = {
   TABEL,
   F,
   SOORTEN,
+  ACTIE_STATUSSEN,
   configured,
   available,
   _resetAvailability, onbeschikbaarReden,
   veiligeDetails,
+  actieVelden,
   log,
   lijst,
 };

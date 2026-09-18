@@ -360,6 +360,14 @@ const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 // better model existed on the same endpoint.
 const models = require('./_media-models');
 const crypto = require('crypto');
+const _activiteit = require('./_activiteit');   // leane actie-records, zie generateForClient()
+
+/* Loggen mag een generatie nooit ophouden of laten mislukken -- fire-and-
+   forget met een genegeerde catch, zelfde patroon als overal in deze
+   codebase waar _activiteit.log() wordt aangeroepen. */
+function loggen(projectCode, soort, opts) {
+  _activiteit.log(projectCode, soort, opts).catch(() => {});
+}
 
 // Stays comfortably under vercel.json's api/**/*.js maxDuration=60s.
 const REQUEST_TIMEOUT_MS = 55_000;
@@ -1184,22 +1192,37 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
   // concurrently. The source upload NEVER fails the request: it only powers the
   // before/after comparison, and a Blob hiccup must not cost a generation the
   // client already paid credits for.
-  const [generated, sourceUrl] = await Promise.all([
-    generatePropertyImage({
-      imageBuffer: uploaded.buffer,
-      imageMimeType: uploaded.mimeType,
-      style, customPrompt, roomType, furniture, wallFinish, wallColor,
-      wallColorNote, floor, lighting, renovationDepth,
-      ...extra,
-    }),
-    uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
-      console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
-      return '';
-    }),
-  ]);
+  //
+  // Deze try/catch is UITSLUITEND voor het actie-record (§134-136): de
+  // validatie hierboven blijft buiten schot (dat zijn 400's, geen mislukte
+  // generaties) en de throw hieronder is ONGEWIJZIGD -- alleen een fire-and-
+  // forget log ertussen, nooit iets dat de fout zelf verandert.
+  let generated, sourceUrl, blobUrl;
+  try {
+    [generated, sourceUrl] = await Promise.all([
+      generatePropertyImage({
+        imageBuffer: uploaded.buffer,
+        imageMimeType: uploaded.mimeType,
+        style, customPrompt, roomType, furniture, wallFinish, wallColor,
+        wallColorNote, floor, lighting, renovationDepth,
+        ...extra,
+      }),
+      uploadPropertyImageToBlob(uploaded.buffer, uploaded.mimeType, projectCode, 'source').catch((err) => {
+        console.error('[property-generate] source upload failed (non-fatal, no before/after history for this one):', err.message);
+        return '';
+      }),
+    ]);
 
-  const blobUrl = await uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
-  if (!blobUrl) throw new ImageFeatureError('AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.', { status: 502 });
+    blobUrl = await uploadPropertyImageToBlob(generated.buffer, generated.mimeType, projectCode, 'result');
+    if (!blobUrl) throw new ImageFeatureError('AI-beeld gegenereerd maar opslaan mislukt. Probeer opnieuw.', { status: 502 });
+  } catch (err) {
+    loggen(projectCode, 'image_generation_failed', {
+      details: _activiteit.actieVelden('image_generation_failed', 'failed', {
+        idempotencyKey: jobId, resource: 'image', error: String(err && err.message || 'onbekende fout').slice(0, 200),
+      }),
+    });
+    throw err;
+  }
 
   const record = buildImageRecord({
     url: blobUrl, style, customPrompt, roomType, sourceUrl,
@@ -1217,6 +1240,10 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
       meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth, ...extra },
     }).catch(() => {});
   }
+
+  loggen(projectCode, 'image_generated', {
+    details: _activiteit.actieVelden('image_generated', 'ok', { idempotencyKey: jobId, resource: 'image' }),
+  });
 
   return record;
 }

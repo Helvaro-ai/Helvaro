@@ -14,6 +14,18 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Het activiteitenlogboek zegt nu ook WAT er precies gebeurde, niet alleen dat er iets gebeurde
+
+Elke gebeurtenis die al gelogd werd — een afspraak boeken of afzeggen, een
+melding naar de verkoper, een AI-beeld of -video genereren — krijgt er nu een
+vaste, doorzoekbare vorm bij: gelukt, mislukt, of pas na een nieuwe poging
+gelukt, plus welke afspraak/melding/generatie het precies was. Geen nieuwe
+tabel, geen nieuwe plek om te kijken — hetzelfde logboek als altijd, alleen
+met genoeg structuur om straks in één oogopslag te zien hoeveel afspraken
+deze week zijn afgezegd of hoeveel AI-video's mislukten, in plaats van elk
+logregeltje apart te moeten lezen. Afspraken afzeggen (`api/_afspraken.js`)
+logt voortaan ook zelf mee — dat deed het tot nu toe nog niet.
+
 ### Een dubbele Vercel-instantie of een netwerk-retry kon credits dubbel afschrijven
 
 `recordUsage()` beschermde al tegen dubbele afschrijvingen via een referentie
@@ -3499,4 +3511,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: d676c6a -->
+<!-- changelog-tot: 01431be -->
