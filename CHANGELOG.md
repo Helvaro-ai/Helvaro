@@ -14,6 +14,25 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Twee identieke afspraken via WhatsApp konden allebei doorgaan
+
+Het dashboard weigerde al een tweede afspraak op precies hetzelfde moment
+(zelfde controle, los van Google Agenda). Het WhatsApp-gesprek van de AI had
+die tweede laag niet en leunde volledig op de gekoppelde Google Agenda van de
+makelaar — zonder gekoppelde agenda (nieuwe klant, of een koppeling die om de
+zeven dagen verloopt) stond er dus niets tussen twee leads die tegelijk
+hetzelfde tijdstip bevestigd kregen. Dat gat is nu dicht: het WhatsApp-gesprek
+gebruikt dezelfde eigen controle als het dashboard, altijd, niet alleen als
+Google ontbreekt.
+
+### Nieuw, nog nergens gebruikt: een gedeelde foutentaxonomie
+
+Interne voorbereiding (`api/_errors.js`) voor consistente foutcategorieën
+(inlog, rechten, invoer, gekoppelde dienst, boeking, betaling, genereren,
+database, intern) met een vaste, klant-veilige boodschap per categorie. Nog
+niet aangesloten op de bestaande routes — dit merkt de gebruiker vandaag nog
+niet.
+
 ### Het openbare leadformulier was zwakker beveiligd tegen misbruik dan het leek
 
 `api/form.js` (het formulier dat een bezoeker zonder in te loggen invult)
@@ -3461,4 +3480,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: ef056d0 -->
+<!-- changelog-tot: fbd62f3 -->
