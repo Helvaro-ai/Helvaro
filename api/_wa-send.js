@@ -229,19 +229,55 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, tok
  * Kept here so a future "send anyway, as a template" path has somewhere to
  * live that is already the single outbound door.
  */
-async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut, token: tokenOverride }) {
+/**
+ * @param {string} [projectCode] tenant, ALLEEN voor de kostenregistratie
+ *        hieronder -- deze module blijft verder tenant-agnostisch (de
+ *        afzender is een phoneNumberId, geen projectCode). Weggelaten:
+ *        gedraagt zich als altijd, geen registratie. Dat is bewust, zodat
+ *        elke bestaande aanroeper blijft werken zonder wijziging.
+ * @param {string} [category] Meta's factuurcategorie: 'marketing' | 'utility'
+ *        (standaard -- de meeste templates hier zijn herinneringen/updates) |
+ *        'authentication' | 'service'.
+ */
+async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut, token: tokenOverride, projectCode, category }) {
   weigerBijAfmelding(optedOut, 'template');
   if (!template) throw new SendError('Geen template opgegeven.', 'no_template');
   const { token, pnid } = creds(phoneNumberId, tokenOverride);
   const components = params.length
     ? [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: String(p) })) }]
     : [];
-  return post(pnid, token, {
+  const out = await post(pnid, token, {
     messaging_product: 'whatsapp',
     to: normalizePhone(to),
     type: 'template',
     template: { name: template, language: { code: lang }, components },
   });
+
+  // Wat dit sjabloonbericht Helvaro kost, achteraf en fire-and-forget: een
+  // registratie die vastloopt mag een bericht dat al bij Meta binnen is nooit
+  // alsnog laten falen. Alleen als de aanroeper een tenant meegaf — zonder
+  // projectCode is er niets om het op te boeken.
+  if (projectCode) {
+    try {
+      const _aiUsage = require('./_ai/usage');
+      const _registry = require('./_ai/registry');
+      const cat = String(category || 'utility').trim().toLowerCase();
+      const kostEur = _registry.waKostenEur(cat);
+      _aiUsage.record({
+        ctx: { projectCode }, task: 'whatsapp_template_send', providerId: 'meta',
+        model: `wa:${cat}`, kind: 'whatsapp', status: 'ok',
+        // registry prijst WhatsApp in EUR (Meta's eigen facturatiemunt voor de
+        // meeste EU-klanten); usage.js telt USD en EUR apart op (costEur), en
+        // telt ze NOOIT zonder koers bij elkaar op — zelfde regel als
+        // api/_kosten.js elders in dit bestand.
+        ...(kostEur !== null ? { costEurOverride: kostEur } : {}),
+      }).catch(() => {});
+    } catch (err) {
+      console.error('[wa-send] kostenregistratie mislukt (bericht is wel verstuurd):', err && err.message);
+    }
+  }
+
+  return out;
 }
 
 /* ── Dezelfde deur, zonder gooien ──────────────────────────────────────────

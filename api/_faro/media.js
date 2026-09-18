@@ -202,6 +202,23 @@ async function generateVideo(args = {}, ctx = {}) {
   const seconds = models.nearestDuration(model, args.seconds);
   const size    = models.nearestSize(model, args.size);
 
+  // Idempotency: a caller-supplied key (e.g. a stable id tied to the UI
+  // action that triggered this) reuses an in-flight or finished job instead
+  // of starting a second, paid generation. Without this, a client retry on a
+  // network hiccup — the same failure mode api/_images.js's `jobId` input
+  // already guards against — would submit twice and, once credits are
+  // charged on the SECOND job too, double-bill the same click. Scoped to the
+  // same tenant: a key is only ever compared against that tenant's own jobs.
+  const idemKey = String(args.idempotencyKey || '').trim();
+  if (idemKey) {
+    _sweepJobs();
+    for (const existing of _jobs.values()) {
+      if (existing.projectCode === String(ctx.projectCode || '') && existing.idempotencyKey === idemKey) {
+        return { jobId: existing.jobId, state: existing.state, seconds: existing.seconds, size: existing.size, model: existing.modelId, reused: true };
+      }
+    }
+  }
+
   const jobId = _newJobId();
   const startedAt = Date.now();
 
@@ -227,6 +244,8 @@ async function generateVideo(args = {}, ctx = {}) {
     providerJobId: submitted && submitted.providerJobId,
     seconds, size,
     startedAt,
+    finishedAt: null,
+    idempotencyKey: idemKey || null,
     state: 'queued',
   });
 
@@ -273,6 +292,7 @@ async function getJob(jobId, ctx = {}) {
   job.state = out && out.state ? out.state : 'failed';
   if (out && out.url) job.url = out.url;
   if (out && out.error) job.error = out.error;
+  if ((job.state === 'ready' || job.state === 'failed') && !job.finishedAt) job.finishedAt = Date.now();
 
   /* Afschrijven gebeurt HIER, en alleen hier: op de eerste poll die 'ready'
      ziet. Niet bij het insturen, want dan betaalt een klant voor een video die
@@ -325,6 +345,19 @@ async function creditsVoorVideo(job) {
 
   let kost = 0;
   try { kost = Number(model.costUsd({ seconds: job.seconds, size: job.size })) || 0; } catch (_) { kost = 0; }
+
+  // Wat dit HELVARO zelf kost -- los van de credits die de klant betaalt
+  // hieronder. Ook bij kost=0 (de demo-adapter): dan komt de job gewoon met
+  // 0 USD in het overzicht te staan, in plaats van nergens te verschijnen.
+  try {
+    require('../_ai/usage').record({
+      ctx: { projectCode: job.projectCode }, task: 'video_generation', providerId: model.provider,
+      model: model.id, kind: 'video', costUsdOverride: kost, status: 'ok',
+    }).catch(() => {});
+  } catch (err) {
+    console.error('[faro/media] kostenregistratie video mislukt (job is wel klaar):', err && err.message);
+  }
+
   if (kost <= 0) return;
 
   const bedrag = credits.creditsForVideo({ seconds: job.seconds, size: job.size });

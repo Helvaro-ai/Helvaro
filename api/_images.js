@@ -893,7 +893,11 @@ async function generatePropertyImage({
   if (!b64) {
     throw new ImageFeatureError('AI gaf geen afbeelding terug. Probeer opnieuw.', { code: 'empty_response', status: 502 });
   }
-  return { buffer: Buffer.from(b64, 'base64'), mimeType: 'image/png' };
+  // model/quality/size travel back with the result — additive, existing
+  // callers only ever read .buffer/.mimeType — so generateForClient() can
+  // record the REAL provider cost afterwards without guessing which model
+  // or quality tier actually served this generation.
+  return { buffer: Buffer.from(b64, 'base64'), mimeType: 'image/png', model: model.id, quality: renderQuality, size: renderSize };
 }
 
 // The ONLY place an image record is constructed — see file header's
@@ -1239,6 +1243,25 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
       reference: `image:${jobId}`,
       meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth, ...extra },
     }).catch(() => {});
+  }
+
+  // What this generation cost HELVARO (not what the client paid in credits —
+  // that is the block above). Real cost from the model's own costUsd(), not a
+  // guess: generatePropertyImage() now returns the model/quality/size it
+  // actually used. Fire-and-forget, same pattern as every other usage record
+  // in this codebase — recording spend must never fail a generation that
+  // already succeeded and was already billed in credits.
+  try {
+    const _aiUsage = require('./_ai/usage');
+    const imgModel = models.IMAGE_MODELS[generated.model];
+    const kostUsd = imgModel ? Number(imgModel.costUsd({ quality: generated.quality, size: generated.size })) || 0 : 0;
+    _aiUsage.record({
+      ctx: { projectCode }, task: 'image_generation', providerId: 'openai',
+      model: generated.model, kind: 'image', images: 1, quality: generated.quality,
+      costUsdOverride: kostUsd, status: 'ok',
+    }).catch(() => {});
+  } catch (err) {
+    console.error('[images] kostenregistratie mislukt (generatie zelf is wel gelukt):', err && err.message);
   }
 
   loggen(projectCode, 'image_generated', {

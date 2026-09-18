@@ -15,6 +15,7 @@ const verifyEmail = require('./_verify');
 const _session = require('./_session'); // cookie-first session transport + CSRF
 const _ai = require('./_ai');           // AI-router: taak in, model uit
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
+const _activiteit = require('./_activiteit'); // cross-tenant audit/health queries + admin action trail
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 // Zie de uitleg bij atFetch in api/leads.js: zonder timeout hangt een trage
@@ -78,6 +79,28 @@ function isValidAdminToken(provided, adminKey) {
   // Accept the derived HMAC token (current) or the raw key (legacy sessions)
   const derived = crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
   return safeEqual(provided, derived) || safeEqual(provided, adminKey);
+}
+
+/*
+ * Eén admin-mutatie loggen op de tenant die hij raakte -- het spoor voor
+ * "admin action audit" (brief §39-40). Fire-and-forget en NOOIT geworpen: een
+ * loggingsfout mag een credit-toekenning of planwijziging die al gelukt is
+ * niet alsnog als mislukt laten lijken. Elke aanroeper hieronder roept dit
+ * pas aan NADAT de eigenlijke mutatie is geslaagd.
+ *
+ * projectCode is verplicht (het is een record op DIE tenant); modi zonder een
+ * projectCode (bv. iets Helvaro-breeds) loggen hier niet -- er is dan geen
+ * tenant om het op te boeken, en dat is geen gat: system-health/alerts kijken
+ * naar *_failed soorten, niet naar deze.
+ */
+function logAdminAction(projectCode, action, extra = {}) {
+  if (!projectCode) return;
+  _activiteit.log(projectCode, 'admin_action_performed', {
+    details: _activiteit.actieVelden('admin_action_performed', 'ok', {
+      resource: extra.resource || action,
+      details: { actor: 'admin', action, ...extra.details },
+    }),
+  }).catch(() => {});
 }
 
 function escapeFormula(val) {
@@ -413,6 +436,284 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       return res.status(200).json(Object.assign({ ok: true, klanten, betalend, omzetGelezen }, overzicht));
     }
 
+    /* ── Admin Control Center: data-modi ──────────────────────────────────────
+     * Zes nieuwe modi, allemaal achter dezelfde isValidAdminToken()-controle
+     * als de rest van dit bestand. Elke metriek is een ECHTE query of hoort
+     * expliciet `{beschikbaar:false}` te zeggen -- nooit een verzonnen getal.
+     * Zie CHANGELOG.md voor wat (nog) niet beschikbaar is en waarom.
+     */
+
+    // ── cost-overview: wat AI/media Helvaro kost, uitgesplitst ──────────────
+    // body: { mode: 'cost-overview' }
+    if (body.mode === 'cost-overview') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const _aiUsage = require('./_ai/usage');
+      const alles = _aiUsage.alles();
+      return res.status(200).json({
+        ok: true,
+        // De tellers zitten in het geheugen van DEZE instantie -- geen
+        // database erachter. Zie api/_ai/usage.js header. Dat betekent ook:
+        // geen trend-per-dag. Eerlijk zeggen dat het er niet is, in plaats
+        // van een lege grafiek te tonen die "nul verbruik" lijkt te zeggen.
+        instantieStartte: new Date(alles.totaal.since || Date.now()).toISOString(),
+        totaal: {
+          aanroepen: alles.totaal.requests,
+          kostenUsd: Math.round((alles.totaal.costUsd || 0) * 10000) / 10000,
+          kostenEur: Math.round((alles.totaal.costEur || 0) * 10000) / 10000,
+          mislukt: alles.totaal.failures,
+          faalpercentage: alles.totaal.faalpercentage,
+        },
+        perProvider: alles.totaal.byProvider,
+        perModel: alles.totaal.byModel,
+        perTaak: alles.totaal.byTask,
+        perSoort: alles.totaal.byKind,       // 'text' | 'image' | 'video' | 'whatsapp'
+        perTenant: alles.perTenant,
+        trendPerDag: {
+          beschikbaar: false,
+          reden: 'tellers zijn in-memory sinds het starten van deze instantie; er wordt geen per-dag geschiedenis bewaard (zie api/_ai/usage.js)',
+        },
+      });
+    }
+
+    // ── cost-margin: per klant, wat hij oplevert min wat hij kost ───────────
+    // Dunne schil om credits.getAllUsageSummaries(), dat dit al berekent
+    // (omzet excl. btw, geschatte kosten, marge, margepercentage) -- zie dat
+    // bestand voor de drie regels die het eerlijk maken. Niet opnieuw
+    // gebouwd, alleen ontsloten als eigen admin-modus.
+    // body: { mode: 'cost-margin' }
+    if (body.mode === 'cost-margin') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      try {
+        const rows = await credits.getAllUsageSummaries();
+        return res.status(200).json({ ok: true, tenants: rows });
+      } catch (err) {
+        console.error('[admin/cost-margin] fout:', err && err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── system-health: alleen ECHTE signalen ─────────────────────────────────
+    // body: { mode: 'system-health' }
+    if (body.mode === 'system-health') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      try {
+        // Alleen de families waarvoor er ook echt een *_failed soort bestaat
+        // in api/_activiteit.js SOORTEN. Webhook/whatsapp/calendar/crm/
+        // payment hebben vandaag geen eigen mislukkings-soort -- die komen
+        // hieronder terug als beschikbaar:false, NIET als 0 (0 zou zeggen
+        // "gemeten en niets misgegaan", en dat is niet wat we weten).
+        const FAMILIES = {
+          booking:    ['appointment_creation_failed', 'appointment_cancel_failed'],
+          generation: ['image_generation_failed', 'video_generation_failed'],
+          webhook:    [],
+          whatsapp:   [],
+          calendar:   [],
+          crm:        [],
+          payment:    [],
+        };
+        const vanaf24u = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+        const vanaf7d  = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+
+        const families = {};
+        for (const [naam, soorten] of Object.entries(FAMILIES)) {
+          if (!soorten.length) {
+            families[naam] = { beschikbaar: false, reden: `geen activiteit-soort registreert ${naam}-mislukkingen vandaag` };
+            continue;
+          }
+          const [d24, d7] = await Promise.all([
+            _activiteit.telSoorten(soorten, vanaf24u),
+            _activiteit.telSoorten(soorten, vanaf7d),
+          ]);
+          families[naam] = d24.beschikbaar
+            ? { beschikbaar: true, laatste24u: d24.totaal, laatste7d: d7.totaal, perSoort24u: d24.perSoort }
+            : { beschikbaar: false, reden: 'activiteitenlog niet bereikbaar (zie api/_activiteit.js available())' };
+        }
+
+        return res.status(200).json({
+          ok: true,
+          families,
+          expirendeOAuth: {
+            beschikbaar: false,
+            reden: 'Google-koppelingen gebruiken refresh tokens zonder vaste vervaldatum; er is geen datum om op te alarmeren',
+          },
+          rateLimitHits: {
+            beschikbaar: false,
+            reden: 'api/_ratelimit.js telt af (hit/reset) maar heeft geen leesbare teller voor een overzicht',
+          },
+        });
+      } catch (err) {
+        console.error('[admin/system-health] fout:', err && err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── audit-log: doorzoekbaar, over alle tenants ──────────────────────────
+    // body: { mode: 'audit-log', soorten?, projectCode?, vanaf?, tot?, limiet?, offset? }
+    if (body.mode === 'audit-log') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      try {
+        const out = await _activiteit.lijstAlle({
+          soorten:     Array.isArray(body.soorten) ? body.soorten : undefined,
+          projectCode: body.projectCode ? String(body.projectCode).trim().toUpperCase() : undefined,
+          vanaf:       body.vanaf ? String(body.vanaf) : undefined,
+          tot:         body.tot ? String(body.tot) : undefined,
+          limiet:      body.limiet,
+          offset:      body.offset,
+        });
+        return res.status(200).json({ ok: true, records: out.records, totaal: out.totaal, beschikbaar: out.beschikbaar });
+      } catch (err) {
+        console.error('[admin/audit-log] fout:', err && err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── alerts: afgeleid en bruikbaar, nooit verzonnen ──────────────────────
+    // body: { mode: 'alerts' }
+    if (body.mode === 'alerts') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      try {
+        const alerts = [];
+        const nietBeschikbaar = [];
+
+        // Mislukte generaties, laatste 24u — echte activiteit-soorten.
+        const gen = await _activiteit.telSoorten(
+          ['image_generation_failed', 'video_generation_failed'],
+          new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+        );
+        if (gen.beschikbaar) {
+          if (gen.totaal > 0) {
+            alerts.push({
+              type: 'failed_generations', ernst: gen.totaal >= 5 ? 'hoog' : 'midden',
+              bericht: `${gen.totaal} mislukte AI-generatie(s) in de laatste 24 uur`,
+              aantal: gen.totaal, perSoort: gen.perSoort,
+            });
+          }
+        } else {
+          nietBeschikbaar.push({ type: 'failed_generations', reden: 'activiteitenlog niet bereikbaar' });
+        }
+
+        // Klanten die bijna door hun credits heen zijn — credits.js rekent dit
+        // al per klant uit (percentUsed), hier alleen de drempel toegepast.
+        try {
+          const rows = await credits.getAllUsageSummaries();
+          for (const t of rows) {
+            if (t.configured && t.percentUsed >= 90) {
+              alerts.push({
+                type: 'credit_exhaustion', ernst: t.percentUsed >= 100 ? 'hoog' : 'midden',
+                projectCode: t.projectCode, clientName: t.clientName,
+                bericht: `${t.clientName} heeft ${t.percentUsed}% van de credits deze periode verbruikt`,
+                percentUsed: t.percentUsed,
+              });
+            }
+          }
+        } catch (err) {
+          nietBeschikbaar.push({ type: 'credit_exhaustion', reden: err && err.message || 'onbekende fout' });
+        }
+
+        // Proefperiodes die bijna aflopen — getPlanState() rekent daysLeft
+        // al uit; hier alleen de klantenlijst opgehaald en de drempel gezet.
+        try {
+          const r = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?pageSize=100`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+          if (r.ok) {
+            const d = await r.json();
+            for (const rec of (d.records || [])) {
+              const f = rec.fields || {};
+              const code = f['Project Code'];
+              if (!code) continue;
+              const staat = getPlanState(f) || {};
+              if (staat.status === 'trial' && Number.isFinite(staat.daysLeft) && staat.daysLeft <= 3) {
+                alerts.push({
+                  type: 'trial_expiring', ernst: staat.daysLeft <= 1 ? 'hoog' : 'midden',
+                  projectCode: code, bericht: `Proefperiode van ${code} loopt over ${staat.daysLeft} dag(en) af`,
+                  daysLeft: staat.daysLeft,
+                });
+              }
+            }
+          } else {
+            nietBeschikbaar.push({ type: 'trial_expiring', reden: `Airtable gaf HTTP ${r.status}` });
+          }
+        } catch (err) {
+          nietBeschikbaar.push({ type: 'trial_expiring', reden: err && err.message || 'onbekende fout' });
+        }
+
+        // Signalen zonder databron vandaag — eerlijk benoemd, niet geraden.
+        nietBeschikbaar.push(
+          { type: 'failed_payments',      reden: 'geen live Stripe-koppeling vanaf dit endpoint (Stripe-webhook schrijft geen activiteit-record)' },
+          { type: 'disconnected_whatsapp', reden: 'geen per-tenant WhatsApp-verbindingsstatus opgeslagen om op te alarmeren' },
+          { type: 'expiring_oauth',       reden: 'Google-koppelingen gebruiken refresh tokens zonder vaste vervaldatum' },
+          { type: 'webhook_failures',     reden: 'geen activiteit-soort registreert webhook-mislukkingen' },
+          { type: 'unusual_cost',         reden: 'geen per-dag kostengeschiedenis om een 7-daags gemiddelde tegen af te zetten (zie cost-overview)' },
+          { type: 'incomplete_onboarding', reden: 'geen eenduidig "onboarding voltooid"-veld in Client Config om op te filteren' },
+        );
+
+        return res.status(200).json({ ok: true, alerts, nietBeschikbaar });
+      } catch (err) {
+        console.error('[admin/alerts] fout:', err && err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    // ── customer-detail: alles over één klant, strikt tot die klant beperkt ──
+    // body: { mode: 'customer-detail', projectCode }
+    if (body.mode === 'customer-detail') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const projectCode = String(body.projectCode || '').trim().toUpperCase();
+      if (!projectCode) return res.status(400).json({ error: 'projectCode is verplicht' });
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+        const cData = await cRes.json();
+        const rec = (cData.records || [])[0];
+        if (!rec) return res.status(404).json({ error: `Geen klant gevonden met Project Code "${projectCode}"` });
+        const f = rec.fields || {};
+
+        const [usage, activiteitRecent] = await Promise.all([
+          credits.getUsageSummary(projectCode).catch(() => ({ active: false })),
+          _activiteit.lijst(projectCode, { limiet: 25 }).catch(() => []),
+        ]);
+        const _aiUsage = require('./_ai/usage');
+
+        return res.status(200).json({
+          ok: true,
+          projectCode,
+          clientName: f['Client Name'] || f['fldAnB848Sr5jl6dq'] || projectCode,
+          plan: getPlanState(f),
+          credits: usage,
+          aiVerbruik: _aiUsage.voorTenant(projectCode),   // null als deze instantie niets voor deze tenant zag
+          activiteitRecent,
+          integraties: {
+            beschikbaar: false,
+            reden: 'per-tenant integratiestatus (WhatsApp/Google/CRM) staat niet in een vorm die dit endpoint vandaag veilig kan uitlezen',
+          },
+        });
+      } catch (err) {
+        console.error('[admin/customer-detail] fout:', err && err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     if (body.mode === 'test-email') {
       const tProvided = _session.readToken(req);
       if (!isValidAdminToken(tProvided, ADMIN_KEY)) {
@@ -498,14 +799,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       try {
         if (body.mode === 'credit-set-allowance') {
           await credits.setAllowance(projectCode, body.allowance);
+          logAdminAction(projectCode, 'credit-set-allowance', { resource: 'credits', details: { allowance: body.allowance } });
           return res.status(200).json({ ok: true });
         }
         if (body.mode === 'credit-add-credits') {
           await credits.addCredits(projectCode, body.credits);
+          logAdminAction(projectCode, 'credit-add-credits', { resource: 'credits', details: { credits: body.credits } });
           return res.status(200).json({ ok: true });
         }
         if (body.mode === 'credit-reset-period') {
           await credits.resetPeriod(projectCode);
+          logAdminAction(projectCode, 'credit-reset-period', { resource: 'credits' });
           return res.status(200).json({ ok: true });
         }
       } catch (err) {
@@ -559,6 +863,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             [PLAN_FIELD.STATUS]:        'trial',
             [PLAN_FIELD.TRIAL_ENDS_AT]: extendedEndsAt,
           });
+          logAdminAction(projectCode, 'plan-extend-trial', { resource: 'plan', details: { days, trialEndsAt: extendedEndsAt } });
           return res.status(200).json({ ok: true, status: 'trial', trialEndsAt: extendedEndsAt });
         }
         if (body.mode === 'plan-set-active') {
@@ -569,6 +874,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             [PLAN_FIELD.STATUS]:        'active',
             [PLAN_FIELD.TRIAL_ENDS_AT]: null,
           });
+          logAdminAction(projectCode, 'plan-set-active', { resource: 'plan' });
           return res.status(200).json({ ok: true, status: 'active' });
         }
         if (body.mode === 'plan-set-status') {
@@ -577,6 +883,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             return res.status(400).json({ error: `Ongeldige status. Gebruik een van: ${[...PLAN_STATUSES].join(', ')}` });
           }
           await _patchClientRecord(BASE_ID, AIRTABLE_TOKEN, rec.id, { [PLAN_FIELD.STATUS]: status });
+          logAdminAction(projectCode, 'plan-set-status', { resource: 'plan', details: { status } });
           return res.status(200).json({ ok: true, status });
         }
       } catch (err) {

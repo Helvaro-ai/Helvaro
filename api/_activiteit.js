@@ -84,6 +84,12 @@ const SOORTEN = Object.freeze([
   'image_generation_failed',
   'video_generated',
   'video_generation_failed',
+  /* Een admin-mutatie (credits toekennen, plan wijzigen, ...) -- het spoor
+     voor deliverable "admin action audit". projectCode is de TENANT waarop
+     de admin iets deed, niet de admin zelf; wie de actie uitvoerde staat in
+     details.actor (altijd 'admin' -- er is geen los adminaccount om te
+     onderscheiden, zie api/_session.js isAdminToken()). */
+  'admin_action_performed',
 ]);
 
 function configured() {
@@ -351,6 +357,105 @@ async function lijst(projectCode, opties = {}) {
   }
 }
 
+/*
+ * ── Beheerdersquery: over ALLE tenants heen ─────────────────────────────────
+ * lijst() hierboven is bewust per-tenant -- dat is de vorm die een klantpagina
+ * hoort te gebruiken. De back-office (system-health, audit-log) moet juist
+ * over tenants heen kunnen zoeken: "hoeveel webhook_failed in de laatste 24u,
+ * over alle klanten", "zoek alle admin-acties op klant X deze maand".
+ *
+ * GEEN eigen admincontrole hier: deze module weet niets van sessies of
+ * adminsleutels. De aanroeper (api/admin.js) controleert isAdminToken() VOOR
+ * elke aanroep, zoals bij elke andere admin-modus in dat bestand. Dat deze
+ * functie tenant-overschrijdend leest is precies waarom hij nergens anders
+ * hoort te worden aangeroepen.
+ */
+
+/**
+ * @param {object} [opties]
+ * @param {string[]} [opties.soorten]      filter, alleen bekende SOORTEN tellen mee
+ * @param {string}   [opties.projectCode]  filter op één tenant (optioneel)
+ * @param {string}   [opties.vanaf]        ISO-datum, inclusief
+ * @param {string}   [opties.tot]          ISO-datum, exclusief
+ * @param {number}   [opties.limiet=200]
+ * @param {number}   [opties.offset=0]     voor eenvoudige paginering (client-side,
+ *                                          zie hieronder waarom)
+ */
+async function lijstAlle(opties = {}) {
+  try {
+    if (!(await available())) return { records: [], totaal: 0, beschikbaar: false };
+
+    const soorten = Array.isArray(opties.soorten)
+      ? opties.soorten.filter((s) => SOORTEN.indexOf(s) !== -1)
+      : null;
+    const limiet = Math.max(1, Math.min(500, Number(opties.limiet) || 200));
+    const offset = Math.max(0, Number(opties.offset) || 0);
+
+    const delen = [];
+    if (opties.projectCode) delen.push(`{${F.project}}="${escapeFormula(opties.projectCode)}"`);
+    if (soorten && soorten.length) {
+      delen.push('OR(' + soorten.map((s) => `{${F.type}}="${escapeFormula(s)}"`).join(', ') + ')');
+    }
+    if (opties.vanaf) delen.push(`IS_AFTER({${F.aangemaakt}}, "${escapeFormula(opties.vanaf)}")`);
+    if (opties.tot)   delen.push(`IS_BEFORE({${F.aangemaakt}}, "${escapeFormula(opties.tot)}")`);
+    const formule = delen.length
+      ? encodeURIComponent(delen.length > 1 ? `AND(${delen.join(', ')})` : delen[0])
+      : '';
+
+    // Airtable's eigen offset-paginering werkt met een ondoorzichtige token,
+    // niet met een getal -- niet bruikbaar voor "geef me pagina 3". In plaats
+    // daarvan: haal tot (offset + limiet) records op, gesorteerd, en snijd
+    // client-side. Bij Helvaro-schaal (tientallen klanten, geen miljoenen
+    // events) is dat prima; een echte cursor-paginering is pas nodig als het
+    // logboek een grootte bereikt die dit merkbaar traag maakt.
+    const pageSize = Math.min(500, offset + limiet);
+    const url = `${TABEL}?pageSize=${pageSize}`
+      + (formule ? `&filterByFormula=${formule}` : '')
+      + `&sort%5B0%5D%5Bfield%5D=${encodeURIComponent(F.aangemaakt)}&sort%5B0%5D%5Bdirection%5D=desc`;
+    const r = await atFetch(url);
+    if (!r.ok) return { records: [], totaal: 0, beschikbaar: false };
+    const d = await r.json();
+    const alle = (d.records || []).map((rec) => {
+      const f = rec.fields || {};
+      let details = {};
+      try { details = f[F.details] ? JSON.parse(f[F.details]) : {}; } catch (_) { details = {}; }
+      return {
+        id: rec.id,
+        projectCode: String(f[F.project] || ''),
+        soort: String(f[F.type] || ''),
+        leadId: String(f[F.leadId] || ''),
+        voertuigCode: String(f[F.voertuigCode] || ''),
+        afspraakId: String(f[F.afspraakId] || ''),
+        details,
+        at: String(f[F.aangemaakt] || ''),
+      };
+    });
+    return { records: alle.slice(offset, offset + limiet), totaal: alle.length, beschikbaar: true };
+  } catch (e) {
+    console.warn('[activiteit] lijstAlle mislukt:', e && e.message);
+    return { records: [], totaal: 0, beschikbaar: false };
+  }
+}
+
+/**
+ * Telling per soort, binnen een tijdvenster, over alle tenants -- voor
+ * system-health ("hoeveel webhook_failed in de laatste 24u"). Bouwt op
+ * lijstAlle(); geen aparte Airtable-aggregatie, want die bestaat niet voor
+ * deze tabel en dit is bij Helvaro-schaal geen probleem.
+ *
+ * @param {string[]} soorten   welke SOORTEN meetellen (bv. de *_failed reeks)
+ * @param {string} vanaf       ISO-datum
+ * @returns {Promise<{beschikbaar:boolean, perSoort:object, totaal:number}>}
+ */
+async function telSoorten(soorten, vanaf) {
+  const res = await lijstAlle({ soorten, vanaf, limiet: 500 });
+  if (!res.beschikbaar) return { beschikbaar: false, perSoort: {}, totaal: 0 };
+  const perSoort = {};
+  for (const s of soorten) perSoort[s] = 0;
+  for (const rec of res.records) if (perSoort[rec.soort] !== undefined) perSoort[rec.soort]++;
+  return { beschikbaar: true, perSoort, totaal: res.records.length };
+}
+
 module.exports = {
   TABEL,
   F,
@@ -363,4 +468,6 @@ module.exports = {
   actieVelden,
   log,
   lijst,
+  lijstAlle,
+  telSoorten,
 };

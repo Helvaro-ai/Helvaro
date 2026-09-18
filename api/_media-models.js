@@ -61,6 +61,7 @@
 const IMAGE_MODELS = {
   'gpt-image-2': {
     id: 'gpt-image-2',
+    bijgewerkt: '2026-08-01',  // laatst geverifieerde prijs (schatting, zie costUsd)
     provider: 'openai',
     endpoint: 'https://api.openai.com/v1/images/edits',
     sizes: ['1024x1024', '1536x1024', '1024x1536'],
@@ -84,6 +85,7 @@ const IMAGE_MODELS = {
      exactly, including the input_fidelity parameter it accepts. */
   'gpt-image-1-mini': {
     id: 'gpt-image-1-mini',
+    bijgewerkt: '2026-08-01',
     provider: 'openai',
     endpoint: 'https://api.openai.com/v1/images/edits',
     sizes: ['1024x1024', '1536x1024', '1024x1536'],
@@ -119,6 +121,7 @@ const DEFAULT_IMAGE_MODEL = 'gpt-image-2';
 const VIDEO_MODELS = {
   'sora-2-pro': {
     id: 'sora-2-pro',
+    bijgewerkt: '2026-08-01',
     provider: 'openai',
     endpoint: 'https://api.openai.com/v1/videos',
     sizes: ['1280x720', '720x1280', '1792x1024', '1024x1792'],
@@ -137,6 +140,7 @@ const VIDEO_MODELS = {
      for a social teaser that trade is often the right one. */
   'sora-2': {
     id: 'sora-2',
+    bijgewerkt: '2026-08-01',
     provider: 'openai',
     endpoint: 'https://api.openai.com/v1/videos',
     sizes: ['1280x720', '720x1280', '1792x1024', '1024x1792'],
@@ -164,6 +168,7 @@ const VIDEO_MODELS = {
      voor de sanity-check onderaan dit bestand, nooit om te factureren. */
   'kling-3': {
     id: 'kling-3',
+    bijgewerkt: '2026-08-01',  // richtprijs, niet bevestigd bij leverancier -- zie CHANGELOG
     provider: 'kling',
     adapter: 'kling',
     endpoint: '',                      // vult de adapter in
@@ -182,6 +187,7 @@ const VIDEO_MODELS = {
   /* De goedkope laag. Voor een social teaser is dit vaak de juiste ruil. */
   'runway-gen4-turbo': {
     id: 'runway-gen4-turbo',
+    bijgewerkt: '2026-08-01',
     provider: 'runway',
     adapter: 'runway',
     endpoint: '',
@@ -199,6 +205,7 @@ const VIDEO_MODELS = {
      zonder sleutel en zonder rekening. */
   'demo-video': {
     id: 'demo-video',
+    bijgewerkt: '2026-08-01',
     provider: 'demo',
     adapter: 'demo',
     endpoint: '',

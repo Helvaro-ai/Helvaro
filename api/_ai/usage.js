@@ -36,9 +36,9 @@ const MAX_TENANTS = 500;
 
 function leeg() {
   return {
-    requests: 0, inputTokens: 0, outputTokens: 0, costUsd: 0,
+    requests: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, costEur: 0,
     failures: 0, escalations: 0, latencyTotal: 0,
-    byTask: {}, byModel: {}, byProvider: {},
+    byTask: {}, byModel: {}, byProvider: {}, byKind: {},
     since: Date.now(),
   };
 }
@@ -56,7 +56,7 @@ function tellerVoor(tenant) {
 
 function tel(obj, sleutel, veld, waarde) {
   if (!sleutel) return;
-  if (!obj[sleutel]) obj[sleutel] = { requests: 0, costUsd: 0, tokens: 0 };
+  if (!obj[sleutel]) obj[sleutel] = { requests: 0, costUsd: 0, costEur: 0, tokens: 0 };
   obj[sleutel][veld] = (obj[sleutel][veld] || 0) + waarde;
 }
 
@@ -66,40 +66,74 @@ function tel(obj, sleutel, veld, waarde) {
  * Faalt nooit hard: verbruik registreren mag een werkende aanroep niet alsnog
  * laten mislukken. Wat misgaat komt in het log, niet in het antwoord.
  */
+/**
+ * @param {number} [opts.costUsdOverride] al berekende kosten in USD -- voor
+ *        aanroepers die zelf al een echte prijs kennen (beeld/video via
+ *        api/_media-models.js `costUsd()`, of een WhatsApp-conversatieprijs
+ *        uit api/_ai/registry.js `waKostenEur()`, omgerekend naar USD door de
+ *        aanroeper zelf). Wint altijd van registry.kostenUsd(): die kent alleen
+ *        tekst/beeld-tarieven per modelnaam en zou voor 'kling-3' of een
+ *        WhatsApp-categorie toch null teruggeven.
+ * @param {number} [opts.costEurOverride] zelfde idee, maar in EUR -- voor een
+ *        bron die alleen in euro prijst (Meta's WhatsApp-tarieven; zie
+ *        api/_ai/registry.js `waKostenEur()`). NOOIT bij elkaar opgeteld met
+ *        costUsd: een dollar en een euro samenvoegen zonder koers is precies
+ *        het verzonnen getal dat api/_kosten.js elders expliciet weigert te
+ *        maken. Ze blijven twee aparte totalen; de aanroeper die ze samen wil
+ *        tonen (admin cost-overview) doet dat zichtbaar naast elkaar.
+ * @param {string} [opts.kind] 'text' (standaard) | 'image' | 'video' | 'whatsapp'
+ *        -- puur voor rapportage (byKind hieronder), verandert niets aan de
+ *        rekensom.
+ */
 async function record({
   ctx = {}, task, providerId, model, tier,
   inputTokens = 0, outputTokens = 0, latencyMs = 0,
   status = 'ok', pogingen = 1, images = 0, quality,
+  kind = 'text', costUsdOverride = null, costEurOverride = null,
 } = {}) {
   try {
     const tenant = String(ctx.projectCode || '').trim() || '_onbekend';
-    const kosten = registry.kostenUsd({ model, inputTokens, outputTokens, images, quality });
+    const kosten = Number.isFinite(costUsdOverride)
+      ? costUsdOverride
+      : registry.kostenUsd({ model, inputTokens, outputTokens, images, quality });
+    const kostenEur = Number.isFinite(costEurOverride) ? costEurOverride : null;
 
     const t = tellerVoor(tenant);
     t.requests += 1;
     t.inputTokens  += Number(inputTokens)  || 0;
     t.outputTokens += Number(outputTokens) || 0;
     t.latencyTotal += Number(latencyMs)    || 0;
-    if (Number.isFinite(kosten)) t.costUsd += kosten;
+    if (Number.isFinite(kosten))    t.costUsd += kosten;
+    if (Number.isFinite(kostenEur)) t.costEur += kostenEur;
     if (status !== 'ok') t.failures += 1;
     if (pogingen > 1)    t.escalations += 1;
 
     tel(t.byTask,     task,       'requests', 1);
     tel(t.byModel,    model,      'requests', 1);
     tel(t.byProvider, providerId, 'requests', 1);
+    if (!t.byKind) t.byKind = {};
+    tel(t.byKind,     kind,       'requests', 1);
     if (Number.isFinite(kosten)) {
       tel(t.byTask,     task,       'costUsd', kosten);
       tel(t.byModel,    model,      'costUsd', kosten);
       tel(t.byProvider, providerId, 'costUsd', kosten);
+      tel(t.byKind,     kind,       'costUsd', kosten);
+    }
+    if (Number.isFinite(kostenEur)) {
+      tel(t.byTask,     task,       'costEur', kostenEur);
+      tel(t.byModel,    model,      'costEur', kostenEur);
+      tel(t.byProvider, providerId, 'costEur', kostenEur);
+      tel(t.byKind,     kind,       'costEur', kostenEur);
     }
 
     /* Eén regel per aanroep. Geen tenantnaam of gespreksinhoud: dit belandt in
        een logdienst en daar hoort geen klantdata. De projectcode is een code,
        geen persoonsgegeven. */
     console.log('[ai]', JSON.stringify({
-      tenant, task, provider: providerId, model, tier, status,
+      tenant, task, provider: providerId, model, tier, status, kind,
       in: inputTokens, out: outputTokens, ms: latencyMs, pogingen,
       usd: Number.isFinite(kosten) ? Number(kosten.toFixed(6)) : null,
+      eur: Number.isFinite(kostenEur) ? Number(kostenEur.toFixed(6)) : null,
     }));
   } catch (err) {
     console.error('[ai/usage] registreren mislukt:', err && err.message);
@@ -131,12 +165,18 @@ function alles() {
     totaal.inputTokens += t.inputTokens;
     totaal.outputTokens += t.outputTokens;
     totaal.costUsd += t.costUsd;
+    totaal.costEur += t.costEur || 0;
     totaal.failures += t.failures;
     totaal.escalations += t.escalations;
     totaal.latencyTotal += t.latencyTotal;
     for (const [k, v] of Object.entries(t.byTask))     tel(totaal.byTask, k, 'requests', v.requests || 0);
     for (const [k, v] of Object.entries(t.byModel))    tel(totaal.byModel, k, 'requests', v.requests || 0);
     for (const [k, v] of Object.entries(t.byProvider)) tel(totaal.byProvider, k, 'requests', v.requests || 0);
+    for (const [k, v] of Object.entries(t.byKind || {})) {
+      tel(totaal.byKind, k, 'requests', v.requests || 0);
+      tel(totaal.byKind, k, 'costUsd', v.costUsd || 0);
+      tel(totaal.byKind, k, 'costEur', v.costEur || 0);
+    }
   }
   return {
     totaal: {

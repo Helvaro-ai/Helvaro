@@ -38,7 +38,11 @@ console.log('\nDe cron meldt alleen wat echt verstuurd is');
 
 console.log('\n  de verzendfunctie zegt of het gelukt is');
 {
-  const m = cron.match(/function sendWATemplate\(to, templateName, lang, params, phoneNumberId, token\) \{[\s\S]*?\n\}/);
+  /* projectCode/category zijn sinds de kostenregistratie (api/_ai/usage.js)
+     twee OPTIONELE staartparameters — puur om te kunnen boeken wat een
+     sjabloonbericht Helvaro zelf kost, zie api/_wa-send.js. Ze veranderen
+     niets aan het booleaan-contract dat deze test bewaakt. */
+  const m = cron.match(/function sendWATemplate\(to, templateName, lang, params, phoneNumberId, token, projectCode, category\) \{[\s\S]*?\n\}/);
   ck('sendWATemplate staat in cron-followup', !!m, null);
   const f = m ? m[0] : '';
   /* Sinds 11 september is dit een schil om api/_wa-send.js: de booleaan komt

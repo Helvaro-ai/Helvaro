@@ -62,13 +62,42 @@ function env(naam, standaard) {
  */
 const PRICING = Object.freeze({
   // Anthropic, lijstprijs.
-  'claude-haiku-4-5-20251001': { inPerM: 1.00,  outPerM: 5.00 },
-  'claude-haiku-4-5':          { inPerM: 1.00,  outPerM: 5.00 },
-  'claude-sonnet-5':           { inPerM: 3.00,  outPerM: 15.00 },
-  'claude-opus-5':             { inPerM: 5.00,  outPerM: 25.00 },
+  'claude-haiku-4-5-20251001': { inPerM: 1.00,  outPerM: 5.00,  bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
+  'claude-haiku-4-5':          { inPerM: 1.00,  outPerM: 5.00,  bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
+  'claude-sonnet-5':           { inPerM: 3.00,  outPerM: 15.00, bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
+  'claude-opus-5':             { inPerM: 5.00,  outPerM: 25.00, bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
   // OpenAI beeld: per generatie, afhankelijk van kwaliteit (zie _media-models.js).
-  'gpt-image-2':               { perImage: { low: 0.006, medium: 0.053, high: 0.211 } },
+  'gpt-image-2':               { perImage: { low: 0.006, medium: 0.053, high: 0.211 }, bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
 });
+
+/*
+ * WhatsApp-gespreksprijzen, per categorie van Meta's per-conversation billing
+ * (sinds juli 2025). RICHTPRIJZEN uit openbare vergelijkingen, NIET uit een
+ * factuur van Meta -- die verschilt bovendien per land/regio, en deze machine
+ * kon Meta's eigen prijzentabel niet bereiken om dat te verifieren. Daarom
+ * 'schatting' en niet 'lijstprijs': dezelfde eerlijkheid als de Kling-prijzen
+ * in api/_media-models.js. Bevestig bij Meta (Business Manager > WhatsApp
+ * Manager > Pricing) voordat dit voor een echte marge-beslissing gebruikt
+ * wordt -- zie de CHANGELOG-actie hierbij.
+ *
+ * Categorieën volgens Meta's eigen indeling:
+ *   marketing        promotioneel, buiten het 24-uursvenster
+ *   utility          transactioneel (afspraakherinnering, statusupdate)
+ *   authentication   eenmalige codes
+ *   service          door de klant zelf geopend gesprek -- vaak gratis
+ */
+const WA_PRICING_EUR = Object.freeze({
+  marketing:      { perConversation: 0.14, bron: 'schatting', bijgewerkt: '2026-08-01' },
+  utility:        { perConversation: 0.04, bron: 'schatting', bijgewerkt: '2026-08-01' },
+  authentication: { perConversation: 0.03, bron: 'schatting', bijgewerkt: '2026-08-01' },
+  service:        { perConversation: 0,    bron: 'schatting', bijgewerkt: '2026-08-01' },
+});
+
+/** Geschatte kosten van één WhatsApp-conversatie in EUR. Onbekende categorie -> null. */
+function waKostenEur(category) {
+  const p = WA_PRICING_EUR[String(category || '').trim().toLowerCase()];
+  return p ? p.perConversation : null;
+}
 
 /**
  * Een providerdefinitie: welke modellen hij per tier levert en wat hij kan.
@@ -249,6 +278,6 @@ function watOntbreekt(tier) {
 }
 
 module.exports = {
-  TIERS, PROVIDERS, PRICING, VOORKEUR,
-  heeftSleutel, kanTier, keten, modelVoor, kostenUsd, watOntbreekt,
+  TIERS, PROVIDERS, PRICING, VOORKEUR, WA_PRICING_EUR,
+  heeftSleutel, kanTier, keten, modelVoor, kostenUsd, watOntbreekt, waKostenEur,
 };

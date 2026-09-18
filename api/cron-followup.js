@@ -291,7 +291,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // and falls back to the shared PHONE_NUMBER_ID — unchanged behaviour.
       const leadSenderPnid = await getClientWaPhoneNumberId(projectCodeForPlan, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
       const leadPhoneNumberId = leadSenderPnid || PHONE_NUMBER_ID;
-      const waOk = await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN);
+      const waOk = await sendWATemplate(phone, TEMPLATE_NAME, TEMPLATE_LANG, [firstName], leadPhoneNumberId, WHATSAPP_TOKEN, projectCodeForPlan, 'utility');
 
       /* Alleen tellen wat Meta ook echt heeft aangenomen. Mislukt het, dan
          blijft Conversation State op 'in_progress' staan -- die vlag ging er
@@ -1211,15 +1211,18 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
  * Een time-out valt in de .catch() hieronder en levert dus `false` op --
  * "niet verstuurd", wat het eerlijke antwoord is. Dat is precies waarom die
  * boolean er staat. */
-function sendWATemplate(to, templateName, lang, params, phoneNumberId, token) {
+function sendWATemplate(to, templateName, lang, params, phoneNumberId, token, projectCode, category) {
   /* Dunne schil om api/_wa-send.js -- dit was de derde eigen kopie van
      dezelfde fetch naar Meta. De time-out die hierboven beschreven staat zit
      nu in de deur zelf (POST_TIMEOUT_MS), net als de nummer-normalisatie en
      de vertaling van Meta's foutcodes. Het contract blijft een booleaan:
      de lus hieronder telt `false` als "niet verstuurd", en dat is nog steeds
-     het eerlijke antwoord. */
+     het eerlijke antwoord.
+
+     projectCode/category zijn OPTIONEEL en puur voor de kostenregistratie in
+     api/_wa-send.js -- laat je ze weg, verandert er niets. */
   return _waSend.sendTemplateSafe({
-    to, template: templateName, lang, params: params || [], phoneNumberId, token,
+    to, template: templateName, lang, params: params || [], phoneNumberId, token, projectCode, category,
   }).then((r) => r.ok);
 }
 
@@ -1541,7 +1544,7 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
           console.warn('[cron-followup] dealer-herinnering niet gebruikt (generieke gestuurd):', e && e.message);
         }
       }
-      const remOk = await sendWATemplate(normalizedPhone, remTemplate, templateLang, remParams, apptPhoneNumberId, whatsappToken);
+      const remOk = await sendWATemplate(normalizedPhone, remTemplate, templateLang, remParams, apptPhoneNumberId, whatsappToken, projectCode, 'utility');
       if (!remOk) { skipped++; continue; }   // niet meetellen wat niet aankwam
       sent++;
     } catch (err) {
