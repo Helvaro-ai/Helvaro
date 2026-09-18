@@ -85,9 +85,16 @@ function render(lang) {
    Bijgewerkt na de drie raakdoel-fixes en na het meekleuren van Clerks
    "last used"-badge op de Google-knop. Daarna voor de
    ingeklapte zijbalk (+1.060 bytes): merkteken in plaats van woordmerk, alles op de
-   middenas. Daarna (+337 bytes) het antwoordvak op de Gesprekken-pagina, en (+328) de agenda-werkbalk op telefoons. */
-const CSS_BYTES = 385200;
-const CSS_SHA   = 'dfe3102f18652ae6';
+   middenas. Daarna (+337 bytes) het antwoordvak op de Gesprekken-pagina, en (+328) de agenda-werkbalk op telefoons.
+   Daarna (+1.265 bytes) Fase 4 (ontwerpsysteem): het volledige warme-neutrale
+   palet in beide thema's (grond/kaart/rand/tekst/status), 4/8/12-hoekschaal,
+   een vlakke primaire knop i.p.v. een doorschijnend verloop, en de gedode
+   knopgloed en stuiterende curves. Verklaarbaar aan de grootte: elke
+   kleurwaarde in :root en [data-theme="light"] is vervangen, en er kwamen een
+   handvol nieuwe alias-tokens (--ground/--raised/--ink-surface/--edge,
+   --btn-primary-bg/--btn-primary-text) bij. Zie CHANGELOG.md. */
+const CSS_BYTES = 386465;
+const CSS_SHA   = 'd055b3a66b5c0ac8';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
