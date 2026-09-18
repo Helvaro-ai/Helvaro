@@ -82,20 +82,24 @@ function isValidAdminToken(provided, adminKey) {
 }
 
 /*
- * Eén admin-mutatie loggen op de tenant die hij raakte -- het spoor voor
- * "admin action audit" (brief §39-40). Fire-and-forget en NOOIT geworpen: een
- * loggingsfout mag een credit-toekenning of planwijziging die al gelukt is
- * niet alsnog als mislukt laten lijken. Elke aanroeper hieronder roept dit
- * pas aan NADAT de eigenlijke mutatie is geslaagd.
+ * Eén admin-mutatie loggen -- het spoor voor "admin action audit" (brief
+ * §39-40: "audit every admin endpoint"). Fire-and-forget en NOOIT geworpen:
+ * een loggingsfout mag een mutatie die al gelukt is niet alsnog als mislukt
+ * laten lijken. Elke aanroeper hieronder roept dit pas aan NADAT de
+ * eigenlijke mutatie is geslaagd.
  *
- * projectCode is verplicht (het is een record op DIE tenant); modi zonder een
- * projectCode (bv. iets Helvaro-breeds) loggen hier niet -- er is dan geen
- * tenant om het op te boeken, en dat is geen gat: system-health/alerts kijken
- * naar *_failed soorten, niet naar deze.
+ * projectCode is meestal de tenant die geraakt werd (credits, plan). Een
+ * aantal admin-modi werkt op iets Helvaro-breeds in plaats van één klant --
+ * de eigen salespipeline, doelen, WhatsApp-templates, het eigen Drive-account,
+ * een uitnodigingsmail aan een PROSPECT die nog geen klant is. Die logden
+ * voorheen helemaal niet (geen tenant = geen plek om het op te boeken), en
+ * dat was zelf het gat: "audit every admin mutation" geldt ook voor mutaties
+ * zonder klant. HELVARO_SENTINEL is de tenant-loze partitie daarvoor -- geen
+ * echte klant, wel doorzoekbaar via audit-log net als elke andere.
  */
+const HELVARO_SENTINEL = '_HELVARO';
 function logAdminAction(projectCode, action, extra = {}) {
-  if (!projectCode) return;
-  _activiteit.log(projectCode, 'admin_action_performed', {
+  _activiteit.log(projectCode || HELVARO_SENTINEL, 'admin_action_performed', {
     details: _activiteit.actieVelden('admin_action_performed', 'ok', {
       resource: extra.resource || action,
       details: { actor: 'admin', action, ...extra.details },
@@ -932,6 +936,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           });
           const d = await r.json();
           if (!r.ok) return res.status(500).json({ error: d?.error?.message || 'Aanmaken mislukt' });
+          logAdminAction(null, 'pipeline-create', { resource: 'pipeline', details: { id: d.id, naam } });
           return res.status(200).json({ id: d.id, success: true });
         }
 
@@ -952,6 +957,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           });
           const d = await r.json();
           if (!r.ok) return res.status(500).json({ error: d?.error?.message || 'Update mislukt' });
+          logAdminAction(null, 'pipeline-update', { resource: 'pipeline', details: { id: recId, velden: Object.keys(fields) } });
           return res.status(200).json({ success: true });
         }
 
@@ -964,6 +970,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
           });
           if (!r.ok) return res.status(500).json({ error: 'Verwijderen mislukt' });
+          logAdminAction(null, 'pipeline-delete', { resource: 'pipeline', details: { id: recId } });
           return res.status(200).json({ success: true });
         }
 
@@ -997,6 +1004,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           }
           d = await r.json();
           if (!r.ok) return res.status(500).json({ error: d?.error?.message || 'Opslaan mislukt' });
+          logAdminAction(null, 'goal-save', { resource: 'goal', details: { id: d.id, doel } });
           return res.status(200).json({ id: d.id, success: true });
         }
 
@@ -1009,6 +1017,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
           });
           if (!r.ok) return res.status(500).json({ error: 'Verwijderen mislukt' });
+          logAdminAction(null, 'goal-delete', { resource: 'goal', details: { id: recId } });
           return res.status(200).json({ success: true });
         }
 
@@ -1394,7 +1403,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       try {
         const _teksten = require('./_wa-template-teksten');
         const uit = await _teksten.dienIn({ wabaId, token, alleen, commit: body.commit === true });
-        if (body.commit === true) { try { _waTpl._leegCache(); } catch (e) { /* cache is optioneel */ } }
+        if (body.commit === true) {
+          try { _waTpl._leegCache(); } catch (e) { /* cache is optioneel */ }
+          // Alleen bij commit=true werd er ook echt iets bij Meta ingediend --
+          // een droogloop (commit weggelaten) verandert niets en hoort niet
+          // als "actie" in het audit-log te staan.
+          logAdminAction(null, 'ops-templates-submit', { resource: 'whatsapp_templates', details: { alleen, aantal: (uit.resultaten || []).length } });
+        }
         return res.status(200).json({ ok: true, commit: body.commit === true, bestaand: uit.bestaand, resultaten: uit.resultaten });
       } catch (e) {
         return res.status(200).json({ ok: false, reden: String(e && e.message || e).slice(0, 300) });
@@ -1467,8 +1482,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           if (!_drive.isConfigured()) return res.status(200).json({ ok: false, reden: 'GOOGLE_CLIENT_ID / SECRET / REDIRECT_URI ontbreken op de server.' });
           return res.status(200).json({ ok: true, url: _drive.authUrl() });
         }
-        if (body.mode === 'ops-drive-sync')       return res.status(200).json(Object.assign({ ok: true }, await _drive.sync()));
-        if (body.mode === 'ops-drive-disconnect') { await _drive.disconnect(); return res.status(200).json({ ok: true }); }
+        if (body.mode === 'ops-drive-sync') {
+          const syncResult = await _drive.sync();
+          logAdminAction(null, 'ops-drive-sync', { resource: 'drive' });
+          return res.status(200).json(Object.assign({ ok: true }, syncResult));
+        }
+        if (body.mode === 'ops-drive-disconnect') {
+          await _drive.disconnect();
+          logAdminAction(null, 'ops-drive-disconnect', { resource: 'drive' });
+          return res.status(200).json({ ok: true });
+        }
       } catch (e) {
         console.error('[ops-drive]', body.mode, e && e.message);
         return res.status(200).json({ ok: false, code: (e && e.code) || 'drive_fout', reden: String(e && e.message || e).slice(0, 300) });
@@ -1678,6 +1701,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (!inviteResult || !inviteResult.ok) {
         return res.status(502).json({ error: 'E-mail versturen mislukt (' + ((inviteResult && inviteResult.error) || 'onbekend') + '). Gebruik de handmatige link hieronder.' });
       }
+      // Alleen het domein in het audit-log, nooit het volledige adres van een
+      // prospect die nog geen klant is -- zelfde terughoudendheid als
+      // maskeerTelefoons() in api/_activiteit.js voor telefoonnummers.
+      logAdminAction(null, 'invite', { resource: 'invite', details: { domein: toEmail.split('@')[1] || '', via: inviteResult.via } });
       return res.status(200).json({ success: true, via: inviteResult.via });
     }
 
