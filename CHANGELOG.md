@@ -27,13 +27,28 @@ nauwelijks te zien); de stylesheet is wel 330 bytes kleiner geworden.
 byte/sha-tripwire; die is bijgewerkt naar de echte, gemeten waarden
 (386.135 bytes, `d4358e98b8be7e6f`) — niet overgeslagen.
 
-**Nog open uit Fase 4 (ontwerpsysteem):** de ~56 losse
-`[data-theme="light"]`-blokken (rond regel 384, 3945 en 9346+) zijn nog niet
-samengevoegd tot één blok na `:root`; dat is de grootste resterende
-opruimklus. De componenten-pas (dropdown, tooltip, skeleton, empty-state,
-kalendergrid), de Playwright-schermafdrukken met contrasttabel, en de
-detector-vergelijking (baseline 110 bevindingen) zijn deze sessie niet
-uitgevoerd — zie het rapport aan Fable voor de volledige stand van zaken.
+### Nieuw warm licht/donker ontwerp voor het hele dashboard
+
+Het dashboard heeft een nieuwe, warme kleurbasis gekregen — zand in plaats
+van het koelere blauwgrijs van hiervoor — die nu in zowel het lichte als het
+donkere thema consistent is. Zichtbaar voor jou: knoppen, statusbolletjes
+(groen/oranje/rood) en de zijbalk-markering ogen warmer en zijn scherper
+leesbaar dan voorheen, vooral in het lichte thema waar een paar kleuren
+eerder net te vaag waren om vlot te lezen.
+
+Elke tekstkleur op elk vlak waar hij echt op staat (een groene score op een
+groene chip, niet op de kaart eronder) is nagemeten tegen de
+toegankelijkheidsnorm; vier kleuren die net onder de norm zaten zijn
+bijgesteld. Een script (`scripts/contrast-check.js`) bewaakt dit voortaan
+automatisch bij elke volgende kleurwijziging. Ook opgelost: op een telefoon
+kon het "Vraag Faro..."-vak onderaan het scherm overlappen met de ronde
+hulpknop rechtsonder, waardoor het verzendknopje er half achter verdween —
+dat vak houdt nu ruimte vrij voor die knop.
+
+Wat er is nagekeken en bewust ONgemoeid is gelaten: de gekleurde
+linkerrand op meldingen/tips en het actieve gesprek in de lijst (dat is
+dezelfde statuskleur-taal als de rest van de app, geen opsmuk), en het
+lettertype Inter (dat is het merklettertype, geen toeval).
 
 ### De knopgloed is weg, en kaarten zijn minder rond
 
@@ -3496,4 +3511,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 6f80ce4 -->
+<!-- changelog-tot: 0fd252e -->
