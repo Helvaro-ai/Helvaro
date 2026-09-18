@@ -14,6 +14,20 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De knopgloed is weg, en kaarten zijn minder rond
+
+`--btn-glow` (een zand-gekleurde gloed onder knoppen bij hover) staat nu op
+`none` — de ontwerprichting sluit gloed-effecten expliciet uit. De rand-licht
+(`--btn-rim`) blijft, dus een knop blijft wel dieper aanvoelen bij hover,
+alleen zonder de gloed eromheen. Kaarten hebben een kleinere hoekronding
+gekregen (22px → 16px): dat was de enige waarde in het dashboard die buiten
+de 12–16px-marge viel die de rest van het systeem al aanhield. Er zijn vier
+nieuwe naam-aliassen bijgekomen (`--ground`, `--raised`, `--ink-surface`,
+`--edge`) die niets veranderen — ze wijzen naar de bestaande `--bg`/`--card`/
+`--bg-alt`/`--border-c` — maar toekomstige stijlen kunnen ze gebruiken zonder
+weer los kleuren te verzinnen. Niets hiervan is zichtbaar buiten hover-states
+en kaarthoeken; geen enkele kleur is veranderd.
+
 ### Het openbare leadformulier was zwakker beveiligd tegen misbruik dan het leek
 
 `api/form.js` (het formulier dat een bezoeker zonder in te loggen invult)

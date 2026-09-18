@@ -1,3 +1,11 @@
+> **Superseded (2026-09-18, Fase 4 — redesign/design-system).** Deze pagina
+> beschrijft het INCUMBENT systeem — nuttig als bewijs van waar het vandaan
+> komt, niet meer als bron van waarheid voor de kleurenpalet. Het nieuwe
+> systeem volgt `.impeccable/surfaces/site-index-html.md` (showroom
+> sample board: drie toonstappen, tan randen i.p.v. schaduw) en de
+> VISUAL-DIRECTION-brief. `DESIGN.md`, geschreven door de documentalist aan
+> het eind van dit programma, wordt de nieuwe bron van waarheid.
+
 # Helvaro design system — Sand / Enterprise Dark
 
 Premium enterprise SaaS. Reference points: Linear, Stripe, Notion, Vercel, Apple HIG.
