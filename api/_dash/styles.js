@@ -235,10 +235,14 @@ const CSS = `/* ============================================================
      eigen. */
   --font-head: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* 8 / 14 / 22, per the brand's shape language */
+  /* 8 / 14 / 16. Was 22px -- both VISUAL-DIRECTION.md ("excessive rounded
+     containers" is a named category default to refuse) and the craft floor
+     (card radii stay at 12-16px; pills are for small controls) put 22px
+     outside the window. Only 3 selectors read --radius-card in this file, so
+     this is a direct value change, not a rename. */
   --radius-sm:   8px;
   --radius-btn:  14px;
-  --radius-card: 22px;
+  --radius-card: 16px;
 
   /* Twee curves, en dat is nieuw: --ease-spring was LETTERLIJK hetzelfde
      getal als --ease-out. Elke plek die om een veer vroeg kreeg dus dezelfde
@@ -361,6 +365,17 @@ const CSS = `/* ============================================================
   --focus-ring: #E8D7B1;
   --radius:        var(--radius-btn);
   --radius-s:      var(--radius-sm);
+
+  /* Fase 4 (ontwerpsysteem): de drie toonstappen van het showroom-bord
+     (site-index-html.md — OWN-WORLD), als ALIAS op wat hier al bestond. Geen
+     enkele kleur verandert; dit geeft --bg/--card/--bg-alt een naam die
+     matcht met de kaart-wereld: grond, opgetild, en de derde, donkerste stap.
+     --edge is dezelfde rand die de kaarten al gebruikten, nu onder de naam
+     die de brief gebruikt ("muted-tan edges instead of shadows"). */
+  --ground:     var(--bg);
+  --raised:     var(--card);
+  --ink-surface:var(--bg-alt);
+  --edge:       var(--border-c);
 }
 
 [data-theme="light"] {
@@ -509,6 +524,12 @@ const CSS = `/* ============================================================
   --glass-fill:  rgba(255,255,255,0.80);
   --glass-edge:  rgba(255,255,255,0.90);
   --glass-blur:  saturate(160%) blur(18px);
+
+  /* Zie de toelichting bij :root hierboven -- zelfde alias, lichte waarden. */
+  --ground:     var(--bg);
+  --raised:     var(--card);
+  --ink-surface:var(--bg-alt);
+  --edge:       var(--border-c);
 }
 
 /* ============================================================
@@ -3892,16 +3913,20 @@ h1.page-title { margin: 0; font-weight: inherit; }
   /* Licht van boven, schaduw van onder. Twee inset-lijnen, geen border. */
   --btn-rim:  inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.24);
   --btn-rim-accent: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.18);
-  /* De gloed. Twee lagen: een korte onder de knop en een wijdere eronder, want
-     één laag leest als een rand en niet als licht. */
-  --btn-glow: 0 2px 6px rgba(var(--accent-rgb),0.16), 0 8px 22px rgba(var(--accent-rgb),0.14);
+  /* Fase 4 (ontwerpsysteem): de accent-gloed is weg. VISUAL-DIRECTION.md
+     verbiedt gloed-effecten met naam ("glowing effects"), en de showroom-
+     wereld tilt een sample één toonstap op tot --raised in plaats van hem te
+     laten stralen. --btn-glow blijft als lege token gedefinieerd zodat de
+     ~9.800 regels die er nog naar verwijzen (var(--btn-rim), var(--btn-glow))
+     geldig blijven -- hij voegt nu alleen niets meer toe. */
+  --btn-glow: none;
 }
 [data-theme="light"] {
   /* Op wit werkt hetzelfde principe andersom: de bovenrand is niet lichter dan
      wit, dus daar draagt de ONDERrand het verschil. */
   --btn-rim:  inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(64,52,32,0.10);
   --btn-rim-accent: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(64,52,32,0.14);
-  --btn-glow: 0 2px 6px rgba(var(--accent-rgb),0.30), 0 8px 22px rgba(var(--accent-rgb),0.22);
+  --btn-glow: none;
 }
 
 .btn-icon {
