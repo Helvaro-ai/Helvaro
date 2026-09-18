@@ -12,6 +12,19 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ---
 
+## Nog niet uitgerold
+
+### Het openbare leadformulier was zwakker beveiligd tegen misbruik dan het leek
+
+`api/form.js` (het formulier dat een bezoeker zonder in te loggen invult)
+hield zijn eigen teller bij voor "max 5 inzendingen per IP per 10 minuten".
+Op Vercel draait elke instance die teller apart en begint hij weer op nul bij
+elke koude start — hetzelfde probleem dat de inlogpagina en de live-demo al
+eerder kregen opgelost via een gedeelde teller. Het formulier stuurt nu
+dezelfde gedeelde teller aan (`api/_ratelimit.js`, met de Upstash-instelling
+die er al was); zonder die instelling valt hij net als voorheen terug op een
+lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
+
 ## 16 september 2026 — avond
 
 ### De assistent antwoordt weer op leads die via het formulier binnenkwamen

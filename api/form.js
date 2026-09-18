@@ -19,6 +19,15 @@ const _regio = require('./_regio');   // land, tijdzone, munt en telefoon per kl
 // and does NOT invoke the handler. api/cron-followup.js already does this
 // exact `require('./leads')` for getClientWaPhoneNumberId/aggregateReportPeriod.
 const { sendWATemplate } = require('./leads');
+// Shared, cross-instance rate limiter (Upstash-backed with safe in-memory
+// fallback) — see api/_ratelimit.js's header. api/auth.js, api/leads.js and
+// api/_demo-chat.js already moved off plain in-memory Maps for exactly this
+// reason: on serverless, a per-instance counter resets on every cold start
+// and is duplicated across every warm instance, which is close to no limit
+// at all for a determined submitter. This is the public lead-capture form —
+// unauthenticated, writes to Airtable, and sends email/WhatsApp — so it gets
+// the same shared counter.
+const _rl = require('./_ratelimit');
 
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
@@ -35,23 +44,13 @@ async function atFetch(url, opts) {
   return fetch(url, opts);
 }
 
-// Rate limit. Max 5 form submissions per IP per 10 minutes
-const formAttempts = new Map();
-function isRateLimited(ip) {
-  const now = Date.now();
-  const window = 10 * 60 * 1000;
-  const attempts = (formAttempts.get(ip) || []).filter(t => now - t < window);
-  attempts.push(now);
-  formAttempts.set(ip, attempts);
-  // Evict IPs with no attempts left in the window so this Map doesn't grow
-  // unbounded for the life of a warm serverless instance. Same pattern as
-  // api/auth.js's loginAttempts.
-  if (formAttempts.size > 1000) {
-    for (const [k, v] of formAttempts) {
-      if (v.every(t => now - t > window)) formAttempts.delete(k);
-    }
-  }
-  return attempts.length > 5;
+// Rate limit. Max 5 form submissions per IP per 10 minutes, via the shared
+// _ratelimit.js counter (see require above) rather than a local Map.
+const FORM_RL_MAX       = 5;
+const FORM_RL_WINDOW_MS = 10 * 60 * 1000;
+async function isRateLimited(ip) {
+  const gate = await _rl.hit('form', ip, FORM_RL_MAX, FORM_RL_WINDOW_MS);
+  return gate.limited;
 }
 
 module.exports = async function handler(req, res) {
@@ -70,7 +69,7 @@ module.exports = async function handler(req, res) {
   const ip = req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()
           || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
           || 'unknown';
-  if (isRateLimited(ip)) {
+  if (await isRateLimited(ip)) {
     return res.status(429).json({ error: 'Te veel aanvragen. Probeer later opnieuw.' });
   }
 
