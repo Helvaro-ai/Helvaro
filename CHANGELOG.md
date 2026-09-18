@@ -14,6 +14,48 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Admin Control Center: kosten, gezondheid en een doorzoekbaar audit-log
+
+De back-office (`/api/admin`, admin-sleutel) krijgt zes nieuwe overzichten:
+wat AI/beeld/video/WhatsApp Helvaro zelf kost (uitgesplitst per provider,
+model, taak en klant), de marge per klant (omzet min geschatte kost, duidelijk
+als schatting gelabeld), systeemgezondheid (alleen ECHTE signalen — mislukte
+boekingen/generaties uit het activiteitenlogboek; alles zonder een echte
+databron zegt eerlijk "niet beschikbaar" in plaats van een verzonnen 0), een
+doorzoekbaar en filterbaar audit-log over alle klanten heen, afgeleide alerts
+(bijna-op credits, aflopende proefperiode) en een detailpagina per klant die
+strikt tot díe klant beperkt blijft.
+Elke admin-mutatie laat voortaan een spoor achter in dat audit-log — ook de
+mutaties zonder een klant erbij (de eigen salespipeline, doelen, een
+WhatsApp-template indienen bij Meta, het eigen Drive-account synchen of
+loskoppelen, een uitnodigingsmail): die loggen nu onder een aparte,
+tenant-loze partitie in plaats van helemaal niet.
+
+**Actie:** de kosten-cijfers in `api/_ai/registry.js` en `api/_media-models.js`
+staan gemarkeerd `bijgewerkt: 2026-08-01` (ruim zes weken geleden). Loop ze na
+tegen de actuele prijslijsten van Anthropic/OpenAI/Kling/Runway voordat je op
+`cost-margin` of `cost-overview` vertrouwt voor een echte beslissing — vooral
+de WhatsApp-conversatieprijzen in `WA_PRICING_EUR` zijn nog een **schatting**
+uit openbare vergelijkingen, nooit bevestigd bij Meta zelf (Business Manager
+> WhatsApp Manager > Pricing).
+
+### Eén prijstabel voor Anthropic-tokens, niet twee die uit elkaar konden lopen
+
+`api/_credits.js` (wat de klant betaalt) en `api/_ai/registry.js` (wat jij
+betaalt) hielden allebei hun eigen kopie van dezelfde drie Claude-tarieven bij
+— hetzelfde risico dat al eens misging bij de prijspagina (zie `CLAUDE.md`).
+Er is er nu nog maar één; de cijfers zelf zijn ongewijzigd.
+
+### Een dubbele Vercel-instantie kon Helvaro's eigen kostencijfer laten liegen
+
+Wanneer twee serverinstanties dezelfde video-job tegelijk als "net klaar"
+zagen, kon de kostenteller in het admin-overzicht die job twee keer meetellen
+(de klant werd niet dubbel belast — dat beschermde het credit-grootboek al —
+maar het bedrag dat de eigenaar in `cost-overview` zag klopte dan niet meer).
+Beeld- en videogeneratie geven de kostenregistratie nu dezelfde referentie mee
+als het credit-grootboek, zodat een herhaalde registratie niet nog een keer
+optelt.
+
 ### Het activiteitenlogboek zegt nu ook WAT er precies gebeurde, niet alleen dat er iets gebeurde
 
 Elke gebeurtenis die al gelogd werd — een afspraak boeken of afzeggen, een
@@ -3511,4 +3553,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 01431be -->
+<!-- changelog-tot: ac5167c -->
