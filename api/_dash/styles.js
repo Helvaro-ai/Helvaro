@@ -215,9 +215,12 @@ const CSS = `/* ============================================================
      dark is unchanged; the light block overrides them with darker values. */
   --success-ink: var(--success-c);   /* 6,12:1 op de nieuwe kaart #211D16 -- opnieuw gemeten na Fase 4 */
   --warning-ink: var(--warning-c);  /* 7,92:1 */
-  /* #E4665A haalt nu zelf 5,07:1 op de kaart, dus geen apart lichtere tint
-     meer nodig -- fill en tekst zijn dezelfde kleur geworden. */
-  --error-ink:   var(--error-c);
+  /* #E4665A (de fill) haalde 5,07:1 -- maar dat was gemeten op de KALE kaart,
+     niet op de chip waar de tekst echt op staat (12%-rode tint over de
+     kaart, #38261E). Daarop haalt de fill zelf maar 4,33:1. scripts/
+     contrast-check.js rekent tegen de echte chip en ving dit; #E7756B is
+     dezelfde fill, 10% naar wit, 4,89:1 op de chip. */
+  --error-ink:   #E7756B;
   /* Was blauwgrijs (#96A2B6) -- tegen de eigen "geen blauw"-regel in. Zelfde
      helderheid, warme tint: 6,32:1 op de kaart. */
   --neutral-ink: #A79E8C;
@@ -460,18 +463,20 @@ const CSS = `/* ============================================================
   --error-c:   #C2352B;
   --info-c:    var(--accent-ink);   /* "reuse tan, not blue" */
 
-  /* Opnieuw gemeten tegen de nieuwe kaart (#FAF6EE, geen puur wit meer):
-       #287A42 (15% donkerder dan de fill #2F8F4E) = 4,93:1
-       #995716 (15% donkerder dan de fill #B4661A) = 5,22:1
-       #C2352B (de fill zelf haalt nu al) = 5,08:1 -- geen aparte tint nodig
-     Fills blijven de heldere kant, zodat chips nog altijd als groen/amber/
-     rood ogen. */
-  --success-ink: #287A42;
-  --warning-ink: #995716;
-  --error-ink:   var(--error-c);
-  /* Was blauwgrijs (#45526B) -- tegen de eigen "geen blauw"-regel in. Zelfde
-     helderheid, warme tint: 5,80:1 op de kaart. */
-  --neutral-ink: #6B5F4A;
+  /* Deze drie waren gemeten tegen de KALE kaart (#FAF6EE), niet tegen de
+     12%-getinte chip waar de tekst echt op staat -- exact de fout die
+     CLAUDE.md hierboven al beschrijft. scripts/contrast-check.js rekent
+     tegen de echte chip (composite van de fill op de kaart) en ving drie
+     mislukkingen: success 4,31:1, error 4,26:1, neutral 3,66:1. Hieronder
+     dezelfde tinten, donkerder tot ze op de chip zelf boven 4,5 komen. */
+  --success-ink: #226838;   /* was #287A42 (4,31:1 op chip) -- nu 5,48:1 */
+  --warning-ink: #995716;   /* 4,54:1 op chip -- haalt het net, ongewijzigd */
+  --error-ink:   #A52D25;   /* was fill-alias #C2352B (4,26:1 op chip) -- nu 5,45:1 */
+  /* Was blauwgrijs (#45526B) -- tegen de eigen "geen blauw"-regel in.
+     #6B5F4A haalde 5,80:1 op de KALE kaart maar 3,66:1 op de eigen chip
+     (sand-soft op 30%% alpha, veel zichtbaarder dan de status-chips op
+     12%%). Donkerder tot de chip zelf boven 4,5 komt: 5,35:1. */
+  --neutral-ink: #504738;
 
   --bubble-incoming: #FAF6EE;
 
