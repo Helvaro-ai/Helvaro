@@ -2346,6 +2346,36 @@ const TEKST = {
   'pd.opstatus.uit_aanbod':  { nl: 'uit aanbod', fr: 'retiré', en: 'withdrawn', de: 'nicht im Angebot' },
   'ap.notifyExtra':      { nl: 'Extra WhatsApp-nummers', fr: 'Numéros WhatsApp supplémentaires', en: 'Extra WhatsApp numbers', de: 'Zusätzliche WhatsApp-Nummern' },
   'ap.notifyExtra.hint': { nl: 'Eén nummer per regel, internationaal formaat.', fr: 'Un numéro par ligne, format international.', en: 'One number per line, international format.', de: 'Eine Nummer pro Zeile, internationales Format.' },
+
+  /* Koppelingsstatus (api/_integraties.js) -- brief §34/§42: geen "OAuth" of
+     "token" in klantgerichte tekst, wel altijd zeggen wat er aan de hand is
+     en wat de klant kan doen. */
+  'int.gcal.expired': {
+    nl: 'Je Google Agenda-koppeling moet vernieuwd worden.',
+    fr: 'Votre connexion Google Agenda doit être renouvelée.',
+    en: 'Your Google Calendar connection needs to be renewed.',
+    de: 'Ihre Google Kalender-Verbindung muss erneuert werden.',
+  },
+  'int.gcal.notConnected': {
+    nl: 'Er is nog geen Google Agenda gekoppeld.',
+    fr: 'Aucun Google Agenda n’est encore connecté.',
+    en: 'No Google Calendar is connected yet.',
+    de: 'Es ist noch kein Google Kalender verbunden.',
+  },
+  'int.crm.syncFailed': {
+    nl: 'De CRM-koppeling kon niet synchroniseren. Controleer de koppeling.',
+    fr: 'La connexion CRM n’a pas pu se synchroniser. Vérifiez la connexion.',
+    en: 'The CRM connection could not sync. Please check the connection.',
+    de: 'Die CRM-Verbindung konnte nicht synchronisieren. Bitte prüfen Sie die Verbindung.',
+  },
+  'int.wa.unavailable': {
+    nl: 'Je eigen WhatsApp-nummer is tijdelijk niet bereikbaar.',
+    fr: 'Votre propre numéro WhatsApp est temporairement indisponible.',
+    en: 'Your own WhatsApp number is temporarily unavailable.',
+    de: 'Ihre eigene WhatsApp-Nummer ist vorübergehend nicht erreichbar.',
+  },
+  'int.action.connect':   { nl: 'Koppelen', fr: 'Connecter', en: 'Connect', de: 'Verbinden' },
+  'int.action.reconnect': { nl: 'Opnieuw koppelen', fr: 'Reconnecter', en: 'Reconnect', de: 'Neu verbinden' },
 };
 
 /**

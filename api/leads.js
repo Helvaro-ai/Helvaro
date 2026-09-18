@@ -28,6 +28,7 @@ const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per 
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
+const _integraties   = require('./_integraties');    // de ene vorm voor koppelingsstatus (platform-integriteit)
 const _dealerOverzicht = require('./_dealer-overzicht'); // "wat vraagt vandaag aandacht" (Fase 6)
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 
@@ -3065,6 +3066,60 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
     }
 
+    // ── C0a. integrations-status — de eenheidsvorm over ALLE tenant-koppelingen
+    // heen (deliverable "Integration status contract", platform-integriteit
+    // pass). Geeft in één aanroep terug wat op de instellingenpagina naast
+    // elkaar staat: Google Agenda, elk gekoppeld CRM, het eigen WhatsApp-nummer.
+    // Drive zit er BEWUST niet bij -- dat is Helvaro's eigen, admin-only
+    // koppeling (zie api/admin.js ops-drive-status), geen enkele tenant heeft
+    // daar toegang toe of iets aan te koppelen.
+    //
+    // Elke deelstatus komt uit een functie die al een ECHTE probe doet waar
+    // dat goedkoop is (gcalStatusVoorTenant hierboven, _crm.status() se
+    // laatsteFout, _waes.getPhoneInfo) -- dit endpoint voegt zelf geen nieuwe
+    // aanroepen toe, het normaliseert alleen wat er al was.
+    if (body.mode === 'integrations-status') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const [gcalRuw, crmRuw] = await Promise.all([
+          gcalStatusVoorTenant(projectCode).catch((e) => {
+            console.warn('[integrations-status] gcal:', e && e.message);
+            return { configured: false, connected: false, needsReauth: false, email: '' };
+          }),
+          _crm.status(projectCode).catch((e) => {
+            console.warn('[integrations-status] crm:', e && e.message);
+            return { beschikbaar: [], verbonden: [] };
+          }),
+        ]);
+
+        const integrations = [
+          _integraties.vanGcal(gcalRuw),
+          ..._integraties.crmVoorTenant(crmRuw),
+        ];
+
+        // Eigen WhatsApp-nummer: zelfde bron als wa-es-status hierboven, maar
+        // dan genormaliseerd. Eén extra Graph-aanroep, alleen als er echt een
+        // eigen nummer-id staat (anders is er niets te proberen).
+        try {
+          if (!_waes.isConfigured()) {
+            integrations.push(_integraties.vanWaEigenNummer({ beschikbaar: false }));
+          } else {
+            const client = await gcalGetClient(projectCode); // zelfde Klanten-tabel als het gcal-veld
+            const eigenNummer = String((client && client.fields && client.fields['fldbrhlSrsmlJwcYr']) || '').trim();
+            const nummer = eigenNummer ? await _waes.getPhoneInfo(eigenNummer).catch(() => null) : null;
+            integrations.push(_integraties.vanWaEigenNummer({ beschikbaar: true, gekoppeld: !!eigenNummer, nummer }));
+          }
+        } catch (e) {
+          console.warn('[integrations-status] wa:', e && e.message);
+        }
+
+        return res.status(200).json({ integrations });
+      } catch (e) {
+        console.error('[integrations-status]', e && e.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── C0b. CRM-koppelingen ────────────────────────────────────────────────
     // POST { mode:'crm-status' }                       -> wat kan er, wat is er
     // POST { mode:'crm-connect',    crm, cred }        -> testen en opslaan
@@ -3778,6 +3833,54 @@ async function gcalPatchClient(recordId, fields) {
 }
 function gcalRedirect(res, url) { res.statusCode = 302; res.setHeader('Location', url); res.end(); }
 
+/**
+ * Zelfstandige, herbruikbare versie van de gcal-status-mode hierboven --
+ * uitgetrokken zodat api/_integraties.js (integrations-status hieronder) en
+ * de losse /api/gcal-route dezelfde ÉCHTE probe delen in plaats van hem twee
+ * keer (en op den duur uit elkaar lopend) te implementeren.
+ *
+ * @returns {Promise<{configured:boolean, connected:boolean, needsReauth:boolean, email:string}>}
+ */
+async function gcalStatusVoorTenant(projectCode) {
+  if (!_gcal.isConfigured()) return { configured: false, connected: false, needsReauth: false, email: '' };
+  const client = await gcalGetClient(projectCode);
+  const f = (client && client.fields) || {};
+  const enc = f[GCAL_F_REFRESH] || f['Google Refresh Token'];
+  const connected = !!enc;
+  const email = f[GCAL_F_GEMAIL] || f['Google Calendar Email'] || '';
+
+  /* "Verbonden" betekende: er staat een token opgeslagen. Niet: dat token
+     werkt nog. Dat verschil is precies waar iemand op vastloopt.
+
+     Google laat een verversingstoken na zeven dagen verlopen zolang het
+     toestemmingsscherm op "Testing" staat -- en dat staat het nu. Na die
+     week is het opgeslagen token dood, maar het STAAT er nog, dus het
+     scherm bleef vrolijk "gekoppeld" melden terwijl elke agenda-actie
+     stilletjes niets deed. freeBusy geeft bij een fout een lege lijst
+     terug (bewust fail-open, zodat een storing bij Google geen boeking
+     kost) en dan lijkt de agenda gewoon leeg.
+
+     Dus: één keer echt proberen. Kost een aanroep bij Google, maar dit
+     scherm wordt zelden geopend en het alternatief is een klant die denkt
+     dat het werkt.
+
+     Alleen invalid_grant leidt tot "opnieuw koppelen". Een storing bij
+     Google mag niemand een OAuth-ronde in sturen voor iets dat vanzelf
+     overgaat. */
+  let needsReauth = false;
+  if (connected) {
+    try {
+      const refresh = _gcal.decryptToken(enc);
+      if (!refresh) needsReauth = true;
+      else await _gcal.getAccessToken(refresh);
+    } catch (e) {
+      if (e && e.code === 'reauth_required') needsReauth = true;
+      else console.warn('[gcal status] token niet te controleren (tijdelijk?):', e && e.message);
+    }
+  }
+  return { configured: true, connected, needsReauth, email };
+}
+
 async function handleGcal(req, res) {
   if (!_gcal.isConfigured()) {
     if (req.method === 'GET') return gcalRedirect(res, '/dashboard?gcal=unconfigured');
@@ -3873,42 +3976,7 @@ async function handleGcal(req, res) {
     }
     if (body.mode === 'status') {
       try {
-        const client = await gcalGetClient(projectCode);
-        const f = (client && client.fields) || {};
-        const enc = f[GCAL_F_REFRESH] || f['Google Refresh Token'];
-        const connected = !!enc;
-        const email = f[GCAL_F_GEMAIL] || f['Google Calendar Email'] || '';
-
-        /* "Verbonden" betekende: er staat een token opgeslagen. Niet: dat token
-           werkt nog. Dat verschil is precies waar iemand op vastloopt.
-
-           Google laat een verversingstoken na zeven dagen verlopen zolang het
-           toestemmingsscherm op "Testing" staat -- en dat staat het nu. Na die
-           week is het opgeslagen token dood, maar het STAAT er nog, dus het
-           scherm bleef vrolijk "gekoppeld" melden terwijl elke agenda-actie
-           stilletjes niets deed. freeBusy geeft bij een fout een lege lijst
-           terug (bewust fail-open, zodat een storing bij Google geen boeking
-           kost) en dan lijkt de agenda gewoon leeg.
-
-           Dus: één keer echt proberen. Kost een aanroep bij Google, maar dit
-           scherm wordt zelden geopend en het alternatief is een klant die denkt
-           dat het werkt.
-
-           Alleen invalid_grant leidt tot "opnieuw koppelen". Een storing bij
-           Google mag niemand een OAuth-ronde in sturen voor iets dat vanzelf
-           overgaat. */
-        let needsReauth = false;
-        if (connected) {
-          try {
-            const refresh = _gcal.decryptToken(enc);
-            if (!refresh) needsReauth = true;
-            else await _gcal.getAccessToken(refresh);
-          } catch (e) {
-            if (e && e.code === 'reauth_required') needsReauth = true;
-            else console.warn('[gcal status] token niet te controleren (tijdelijk?):', e && e.message);
-          }
-        }
-        return res.status(200).json({ configured: true, connected, needsReauth, email });
+        return res.status(200).json(await gcalStatusVoorTenant(projectCode));
       } catch (e) {
         console.error('[gcal status]', e && e.message);
         return res.status(500).json({ error: 'Serverfout' });

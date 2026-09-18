@@ -146,15 +146,20 @@ console.log('\n— Google Agenda: verbonden, verlopen, of niet verbonden —');
      /if \(String\(d\.error \|\| ''\) === 'invalid_grant'\)/.test(bron));
 
   const leadsSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'leads.js'), 'utf8');
-  const statusTak = (leadsSrc.match(/if \(body\.mode === 'status'\)[\s\S]*?return res\.status\(200\)[^\n]*/) || [''])[0];
-  ck('status probeert het token echt', /getAccessToken\(refresh\)/.test(statusTak), statusTak.slice(0, 120));
-  ck('en meldt needsReauth terug', /needsReauth/.test(statusTak));
+  /* Uitgetrokken naar gcalStatusVoorTenant() (platform-integriteit pass,
+     hergebruikt door de nieuwe integrations-status-mode) -- zelfde controles,
+     nu tegen het lichaam van die functie in plaats van de inline mode-tak. */
+  const statusFn = (leadsSrc.match(/async function gcalStatusVoorTenant\([\s\S]*?\n\}/) || [''])[0];
+  const statusTak = (leadsSrc.match(/if \(body\.mode === 'status'\)[\s\S]*?\n    \}/) || [''])[0];
+  ck('status roept de echte probe aan', /gcalStatusVoorTenant\(projectCode\)/.test(statusTak), statusTak.slice(0, 160));
+  ck('die probe probeert het token echt', /getAccessToken\(refresh\)/.test(statusFn), statusFn.slice(0, 120));
+  ck('en meldt needsReauth terug', /needsReauth/.test(statusFn));
   /* Alleen bij invalid_grant. Een storing bij Google mag niemand een
      OAuth-ronde in sturen voor iets dat vanzelf overgaat. */
   ck('alleen invalid_grant leidt tot opnieuw koppelen',
-     /e\.code === 'reauth_required'\) needsReauth = true/.test(statusTak));
+     /e\.code === 'reauth_required'\) needsReauth = true/.test(statusFn));
   ck('een tijdelijke fout laat de status met rust',
-     /else console\.warn\('\[gcal status\]/.test(statusTak));
+     /else console\.warn\('\[gcal status\]/.test(statusFn));
 
   /* En het scherm moet die derde toestand ook echt tonen, met de koppelknop
      zichtbaar -- dat is de enige uitweg. */

@@ -533,10 +533,33 @@ async function syncBinnenSlot() {
   return verslag;
 }
 
+/*
+ * "gekoppeld" zegt alleen dat er ooit een token is opgeslagen -- niet dat het
+ * nog werkt. Zelfde les als api/leads.js gcal-status (mode 'status', zie de
+ * uitgebreide opmerking daar): Google laat een verversingstoken na zeven
+ * dagen verlopen zolang het toestemmingsscherm op "Testing" staat, en zonder
+ * een echte poging bleef dit scherm "gekoppeld" tonen terwijl elke sync al
+ * dagen stil faalde. Daarom hier dezelfde aanpak: één keer echt proberen als
+ * er iets gekoppeld staat. Dit endpoint wordt zelden geopend (admin-only), dus
+ * de extra aanroep naar Google is geen kostenprobleem.
+ */
 async function status() {
   const configured = isConfigured();
   const email = configured ? await getSetting('drive_email') : '';
   const gekoppeld = Boolean(email) && Boolean(await getSetting('drive_refresh_token'));
+
+  let verbonden = null;      // null = niet gecontroleerd (niet gekoppeld, dus n.v.t.)
+  let laatsteFoutCode = '';
+  if (gekoppeld) {
+    try {
+      await accessToken();
+      verbonden = true;
+    } catch (e) {
+      verbonden = false;
+      laatsteFoutCode = (e && e.code) || 'onbekend';
+    }
+  }
+
   let files = {};
   try { files = JSON.parse(await getSetting('drive_files') || '{}') || {}; } catch { files = {}; }
   const mapId = await getSetting('drive_folder_id');
@@ -545,6 +568,7 @@ async function status() {
     .map(([k, id]) => ({ sleutel: k, url: k === 'klanten' || k === 'kosten' ? sheetUrl(id) : docUrl(id) }));
   return {
     configured, gekoppeld, email,
+    verbonden, laatsteFoutCode,
     map: mapId ? mapUrl(mapId) : '',
     bestanden,
     laatsteSync: await getSetting('drive_last_sync'),
