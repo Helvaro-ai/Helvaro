@@ -359,6 +359,7 @@ const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 // here, which is how the code ended up on gpt-image-1-mini long after a much
 // better model existed on the same endpoint.
 const models = require('./_media-models');
+const crypto = require('crypto');
 
 // Stays comfortably under vercel.json's api/**/*.js maxDuration=60s.
 const REQUEST_TIMEOUT_MS = 55_000;
@@ -1084,6 +1085,18 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
   const credits = deps.credits;
   if (!projectCode) throw new ImageFeatureError('Geen client context', { status: 403 });
 
+  /* De ledgerreferentie voor de credit-afschrijving onderaan. EEN keer
+     bepaald, hier bij binnenkomst -- niet lazy bij de afschrijving zelf, want
+     dan zou een tweede aanroep van deze functie (een client-side retry op een
+     netwerk-hik) een NIEUWE referentie verzinnen en de dubbele boeking die dit
+     juist moet voorkomen alsnog toelaten. Twee aanroepers (api/leads.js's
+     'property-generate' en Faro's tools) kunnen desgewenst een eigen, stabiel
+     jobId meegeven (`input.jobId`) zodat HUN retry-logica dezelfde referentie
+     hergebruikt; zonder dat valt terug op eentje hier gegenereerd, wat nog
+     steeds beter is dan de credits.recordUsage()-aanroep zelf iets laten
+     verzinnen. */
+  const jobId = String(input.jobId || '').trim() || crypto.randomUUID();
+
   const style = String(input.style || '').trim();
   if (!isValidStyleKey(style)) {
     throw new ImageFeatureError(`Ongeldige stijl. Kies uit: ${PROPERTY_STYLES.map((s) => s.key).join(', ')}`, { status: 400 });
@@ -1200,6 +1213,7 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
   if (credits) {
     credits.recordUsage(projectCode, credits.FEATURES.IMAGE_GENERATION, {
       credits: credits.WEIGHTS[credits.FEATURES.IMAGE_GENERATION],
+      reference: `image:${jobId}`,
       meta: { style, roomType, furniture, wallFinish, floor, lighting, renovationDepth, ...extra },
     }).catch(() => {});
   }

@@ -319,6 +319,11 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
     });
     waitUntil(credits.recordUsage(ctx.projectCode, credits.FEATURES.FARO_CHAT, {
       credits: charge.credits,
+      /* Gesprek + hoeveelste beurt: history.length is het aantal berichten
+         VOOR deze beurt, dus stabiel voor een retry van dezelfde beurt (geen
+         nieuw bericht bijgekomen) en anders zodra er wél een volgende beurt
+         is. Dezelfde vorm als leads.js' suggest-replies-referentie hierboven. */
+      reference: `faro:${conversationId}:${history.length}`,
       meta: {
         tier, iterations,
         tokensIn: usage.inputTokens, tokensOut: usage.outputTokens,

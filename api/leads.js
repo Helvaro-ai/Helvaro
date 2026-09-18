@@ -2345,6 +2345,12 @@ module.exports = async function handler(req, res) {
         credits.recordUsage(projectCode, credits.FEATURES.REPLY_SUGGESTION, {
           credits: credits.WEIGHTS[credits.FEATURES.REPLY_SUGGESTION],
           tokens: (ad.usage && (ad.usage.input_tokens || 0) + (ad.usage.output_tokens || 0)) || null,
+          /* Lead + het aantal berichten waarop deze suggestie gebaseerd is: een
+             retry voor DEZELFDE lead op DEZELFDE historie (niets nieuws
+             binnengekomen) krijgt dezelfde referentie en boekt maar één keer.
+             Komt er ondertussen een nieuw bericht bij, dan groeit history en
+             is het terecht een nieuwe, andere aanvraag. */
+          reference: `suggest:${leadId}:${history.length}`,
           meta: { leadId },
         }).catch(() => {});
         return res.status(200).json({ replies });

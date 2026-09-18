@@ -298,7 +298,15 @@ async function creditsVoorVideo(job) {
   if (kost <= 0) return;
 
   const bedrag = credits.creditsForVideo({ seconds: job.seconds, size: job.size });
-  await credits.recordUsage(job.projectCode, credits.FEATURES.VIDEO_GENERATION, { credits: bedrag });
+  /* job.jobId is al de stabiele sleutel van deze video-job -- dezelfde job
+     opnieuw pollen (of een tweede Vercel-instantie die 'm oppikt terwijl
+     `job.charged` hierboven niet overal zichtbaar is) boekt dan maar één
+     keer. `charged` hierboven is de snelle, in-memory rem; deze referentie
+     is de rem die ook standhoudt tussen instanties. */
+  await credits.recordUsage(job.projectCode, credits.FEATURES.VIDEO_GENERATION, {
+    credits: bedrag,
+    reference: `video:${job.jobId}`,
+  });
   job.creditsCharged = bedrag;
 }
 

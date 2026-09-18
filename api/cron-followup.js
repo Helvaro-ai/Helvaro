@@ -1158,6 +1158,12 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
            regel las nog het oude antwoord. Daardoor crashte de learning per
            klant NA het wegschrijven, en telde het verbruik nooit mee. */
         tokens: (uit && ((uit.inputTokens || 0) + (uit.outputTokens || 0))) || null,
+        /* Klant + dag: een herstart van deze cron dezelfde dag (een tweede
+           Vercel-instantie die dezelfde klant oppikt, of een handmatige
+           herstart na een storing) boekt dan maar één keer. Een echte
+           volgende week krijgt een andere datum en dus terecht een nieuwe
+           referentie. */
+        reference: `learning:${projectCode}:${new Date().toISOString().slice(0, 10)}`,
       }).catch(() => {});
       // Spread token usage so we don't burst Anthropic rate limits
       await new Promise(res => setTimeout(res, 500));

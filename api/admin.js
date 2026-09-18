@@ -701,6 +701,11 @@ module.exports = async function handler(req, res) {
           // client — see credits.INTERNAL_PROJECT_CODE's doc comment.
           // Fails open by default (no Client Config row for '_internal'
           // exists unless Sindi creates one).
+          // Geen natuurlijk id vanuit de aanroeper (een founder-knop, geen
+          // webhook) -- EEN keer gegenereerd hier bij binnenkomst en verderop
+          // hergebruikt, zodat de ledgerreferentie deterministisch is binnen
+          // deze ene aanvraag in plaats van verzonnen bij de afschrijving zelf.
+          const aiAdviceRequestId = crypto.randomUUID();
           const aiAdviceCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_ADVICE);
           if (!aiAdviceCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: aiAdviceCheck.message });
           const ctx = body.context || {};
@@ -739,12 +744,14 @@ module.exports = async function handler(req, res) {
           }
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_ADVICE, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_AI_ADVICE],
+            reference: `founder:advice:${aiAdviceRequestId}`,
           }).catch(() => {});
           return res.status(200).json({ advice });
         }
 
         // ── ai-chat ────────────────────────────────────────────────────────────
         if (body.mode === 'ai-chat') {
+          const aiChatRequestId = crypto.randomUUID(); // zie ai-advice hierboven
           const aiChatCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_CHAT);
           if (!aiChatCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: aiChatCheck.message });
           const rawMsgs = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
@@ -783,12 +790,14 @@ module.exports = async function handler(req, res) {
           }
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_AI_CHAT, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_AI_CHAT],
+            reference: `founder:chat:${aiChatRequestId}`,
           }).catch(() => {});
           return res.status(200).json({ reply });
         }
 
         // ── content-post (linkedin + instagram, all types) ─────────────────────
         if (body.mode === 'linkedin-post' || body.mode === 'content-post') {
+          const contentPostRequestId = crypto.randomUUID(); // zie ai-advice hierboven
           const contentPostCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST);
           if (!contentPostCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: contentPostCheck.message });
 
@@ -949,12 +958,14 @@ module.exports = async function handler(req, res) {
           post = scrubPost(post);
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_CONTENT_POST, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_CONTENT_POST],
+            reference: `founder:content-post:${contentPostRequestId}`,
           }).catch(() => {});
           return res.status(200).json({ post });
         }
 
         // ── personalized-dm ────────────────────────────────────────────────────
         if (body.mode === 'personalized-dm') {
+          const dmRequestId = crypto.randomUUID(); // zie ai-advice hierboven
           const dmCheck = await credits.checkCredits(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_PERSONALIZED_DM);
           if (!dmCheck.allowed) return res.status(402).json({ error: 'credit_limit_reached', message: dmCheck.message });
           const bedrijf  = String(body.bedrijf  || '').trim().slice(0, 100);
@@ -1012,6 +1023,7 @@ module.exports = async function handler(req, res) {
           }
           credits.recordUsage(credits.INTERNAL_PROJECT_CODE, credits.FEATURES.FOUNDER_PERSONALIZED_DM, {
             credits: credits.WEIGHTS[credits.FEATURES.FOUNDER_PERSONALIZED_DM],
+            reference: `founder:personalized-dm:${dmRequestId}`,
           }).catch(() => {});
           return res.status(200).json({ message: dmTekst });
         }
