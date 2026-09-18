@@ -118,9 +118,17 @@ function render(lang) {
    vulbalken + de zijbalk-margeschuif) beoordeeld en met uitleg bewust
    gehouden -- ombouwen naar transform:scaleX() raakt de JS die de breedte
    zet op tien plekken in dashboard.js, dat is applicatielogica en geen
-   tokenwerk. Groter geworden door die uitleg, niet door nieuwe regels. */
-const CSS_BYTES = 387766;
-const CSS_SHA   = '4129314dac362561';
+   tokenwerk. Groter geworden door die uitleg, niet door nieuwe regels.
+
+   Daarna (+587 bytes) scripts/contrast-check.js gevonden dat vier
+   *-ink tokens gemeten waren tegen de KALE kaart in plaats van tegen hun
+   eigen getinte chip (--error-ink donker, --success-ink/--error-ink/
+   --neutral-ink licht) -- precies de fout die dit bestand zelf al
+   beschrijft bij CLAUDE.md's contrastregel. Vier kleurwaarden vervangen
+   en elk met een uitlegregel die het oude en nieuwe cijfer noemt; groter
+   geworden door die uitleg, niet door nieuwe eigenschappen. */
+const CSS_BYTES = 388353;
+const CSS_SHA   = '0417ffe7cf32e7ba';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
