@@ -67,6 +67,7 @@
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const _plan = require('./_plan'); // planstatus: betaalt deze klant nog?
+const _registry = require('./_ai/registry'); // de ENE prijstabel -- zie creditsForChatTurn
 
 // ── Field names (NOT IDs — see file header) ────────────────────────────────
 const FIELD = {
@@ -161,10 +162,19 @@ const WEIGHTS = {
  * gaf ze alleen als metadata door. Nu bepalen ze de afschrijving.
  *
  * ── Prijzen ─────────────────────────────────────────────────────────────────
- * Alle drie de modellen staan er nu in, met de lijstprijs van Anthropic als
- * bron. Blijft een model onbekend, dan valt de afschrijving terug op het platte
- * tarief EN wordt er per model één keer luid gewaarschuwd — nooit stilzwijgend
- * te weinig rekenen.
+ * De $/token-cijfers zelf komen uit api/_ai/registry.js PRICING — de ENE
+ * plek voor providerprijzen (brief §140: "geen prijzen verspreid door de
+ * code"). Dit bestand had lange tijd zijn EIGEN kopie (MODEL_PRICES) van
+ * exact diezelfde drie Anthropic-tarieven, met als argument dat credits
+ * ("wat de klant betaalt") en kosten ("wat jij betaalt") uit elkaar horen —
+ * dat onderscheid klopt nog steeds (zie de marge/afronding hieronder), maar
+ * de RUWE prijs per token hoort daar niet in mee te verdubbelen: een
+ * prijswijziging bij Anthropic moest tot nu toe op twee plekken worden
+ * doorgevoerd, en dat is precies de fout die dit CLAUDE.md al waarschuwt
+ * tegen bij api/_plans.js ("hier al twee keer los in de code gestaan en
+ * klopte allebei de keren niet"). Blijft een model onbekend, dan valt de
+ * afschrijving terug op het platte tarief EN wordt er per model één keer
+ * luid gewaarschuwd — nooit stilzwijgend te weinig rekenen.
  */
 const USD_TO_EUR = 0.92;
 
@@ -173,19 +183,6 @@ const USD_TO_EUR = 0.92;
 // bestraft wordt. Eén plek, zodat de eigenaar er één getal voor hoeft te
 // veranderen.
 const CHAT_MARGIN = 3;
-
-const MODEL_PRICES = Object.freeze({
-  // $ per 1M tokens, lijstprijs van Anthropic.
-  'claude-haiku-4-5-20251001': { inPerM: 1.00, outPerM: 5.00 },
-  /* Sonnet 5 staat hier op de NORMALE prijs, niet op de introprijs van
-     $2/$10 die tot en met 31 augustus 2026 geldt. Met de introprijs erin zou
-     de afschrijving op 1 september in één nacht 50% te laag worden, precies op
-     het moment dat niemand eraan denkt. Nu is ze tot die datum iets aan de
-     hoge kant en daarna klopt ze — de kant om op te vergissen als het je eigen
-     marge is. */
-  'claude-sonnet-5': { inPerM: 3.00, outPerM: 15.00 },
-  'claude-opus-5':   { inPerM: 5.00, outPerM: 25.00 },
-});
 
 const _priceWarned = new Set();
 
@@ -196,17 +193,15 @@ const _priceWarned = new Set();
  */
 function creditsForChatTurn({ inputTokens = 0, outputTokens = 0, model = '' } = {}) {
   const flat = WEIGHTS[FEATURES.FARO_CHAT];
-  const price = MODEL_PRICES[model];
-  if (!price || price.inPerM == null || price.outPerM == null) {
+  const usd = model ? _registry.kostenUsd({ model, inputTokens, outputTokens }) : null;
+  if (!Number.isFinite(usd)) {
     if (model && !_priceWarned.has(model)) {
       _priceWarned.add(model);
       console.warn(`[Credits] geen prijs bekend voor model "${model}" — er wordt ${flat} credits per beurt gerekend, `
-                 + 'wat vrijwel zeker te weinig is. Zet de prijs in MODEL_PRICES in api/_credits.js.');
+                 + 'wat vrijwel zeker te weinig is. Zet de prijs in PRICING in api/_ai/registry.js.');
     }
     return { credits: flat, costEur: null, priced: false };
   }
-  const usd = (Number(inputTokens) || 0) / 1e6 * price.inPerM
-            + (Number(outputTokens) || 0) / 1e6 * price.outPerM;
   const costEur = usd * USD_TO_EUR;
   // EUR_PER_CREDIT is de ankerwaarde uit het ontwerpdocument: 1 credit ~ EUR0,015
   // aan kostprijs. Delen door dat anker zet euro's om in credits.
@@ -1495,7 +1490,7 @@ module.exports = {
   unrecordedFor, clearUnrecorded, UNMETERED_CEILING,
   _queueDepth,
   creditsForVideo, VIDEO_CREDITS_PER_SECOND,
-  creditsForChatTurn, MODEL_PRICES, CHAT_MARGIN,
+  creditsForChatTurn, CHAT_MARGIN,
   FEATURES,
   WEIGHTS,
   FIELD,

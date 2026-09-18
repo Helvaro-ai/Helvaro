@@ -53,12 +53,13 @@ function env(naam, standaard) {
 
 /*
  * Prijzen in USD per miljoen tokens, of per generatie/seconde voor media.
- * Eén plek, zodat een prijswijziging geen zoektocht door de business-logica is.
- *
- * De token-prijzen voor Claude staan al in api/_credits.js MODEL_PRICES, dat de
- * credits berekent. Die blijft de bron voor het AFSCHRIJVEN; dit is de bron
- * voor het RAPPORTEREN van kosten per aanroep. Ze uit elkaar houden is
- * bewust: credits zijn wat de klant betaalt, kosten zijn wat jij betaalt.
+ * Eén plek, zodat een prijswijziging geen zoektocht door de business-logica is
+ * -- de ENE providerprijstabel (brief §140), gedeeld door zowel het
+ * kostenrapport hieronder (kostenUsd) als api/_credits.js's afschrijving
+ * (creditsForChatTurn, die kostenUsd() aanroept in plaats van zelf te
+ * prijzen). Credits en kosten blijven twee verschillende GETALLEN --
+ * credits zijn wat de klant betaalt (met marge), kosten zijn wat jij betaalt
+ * -- maar de brontabel voor de $/token is er nu maar één.
  */
 const PRICING = Object.freeze({
   // Anthropic, lijstprijs.
