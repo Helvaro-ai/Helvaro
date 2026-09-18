@@ -151,8 +151,8 @@ const CSS = `/* ============================================================
   --steen-900: #2E2922;
   --steen-950: #1A1711;
 
-  --bg:            #14120E;
-  --bg-alt:        #0F0D09;
+  --bg:            #17140F;
+  --bg-alt:        #120F0B;
   /* Een kaart is nu een VERLOOP en geen vlakke vulling, en dat is het verschil
      tussen 'een vlak met een schaduw eronder' en iets dat licht vangt. Van
      boven iets lichter, naar onder iets donkerder -- precies zoals een plaat
@@ -165,9 +165,9 @@ const CSS = `/* ============================================================
      Dit mag omdat alle 97 gebruiken in dit bestand 'background:' zijn en geen
      enkele 'background-color:' -- nagerekend, niet aangenomen. --card-flat
      blijft bestaan voor het geval er ooit wel een platte kleur nodig is. */
-  --card-flat:     #25231F;
-  --card:          linear-gradient(180deg, #2A2824 0%, #25231F 55%, #22201C 100%);
-  --card-elevated: linear-gradient(180deg, #32302C 0%, #2C2A26 55%, #282623 100%);
+  --card-flat:     #211D16;
+  --card:          linear-gradient(180deg, #26221B 0%, #211D16 55%, #1E1910 100%);
+  --card-elevated: linear-gradient(180deg, #3A352C 0%, #302B22 55%, #2A251C 100%);
   /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
      ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
      zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
@@ -178,10 +178,10 @@ const CSS = `/* ============================================================
      Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
      voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
      hoe zoiets stilletjes scheef gaat. */
-  --border-c:      #35332F;
-  --border-strong: #474540;
+  --border-c:      #3A3327;
+  --border-strong: #574B37;
   --divider:       #2C2A26;
-  --hover-c:       #1E1C18;
+  --hover-c:       #26211A;
 
   /* Het accent hangt nu aan de ramp in plaats van los te staan. --zand-200 IS
      #E8D7B1 -- die stop is met opzet vastgepind op de merkwaarde, zodat de ramp
@@ -192,17 +192,20 @@ const CSS = `/* ============================================================
   --accent-pressed-c:var(--zand-300);
   --accent-deep:     #C9AE7C;   /* tweede stop in verlopen */
   --accent-ink:      var(--zand-100);   /* accent ALS TEKST, alleen op donker */
-  --on-accent:       #121212;   /* always dark type on sand */
+  --on-accent:       #1A1A1A;   /* always dark type on sand */
 
-  --text-c:        #F9F9F9;
-  --text-muted-c:  #B5B5B5;
-  --text-disabled: #999999;
+  --text-c:        #F1E9DA;   /* never pure #FFF -- VISUAL-DIRECTION.md */
+  --text-muted-c:  #A79B85;
+  --text-disabled: #6F6554;
   --text-inverse:  #121212;
 
-  --success-c: #22C55E;
-  --warning-c: #D4A017;
-  --error-c:   #DC2626;
-  --info-c:    #B5B5B5;   /* no blue: the brand rules out blue accents */
+  /* Fase 4: dezelfde hues, één stap warmer/desatureerder, per coordinator-
+     opgave. Fills blijven de heldere kant (chips, iconen); de *-ink varianten
+     verderop zijn waar nodig apart getest tegen de nieuwe kaartkleur. */
+  --success-c: #4CAF6E;
+  --warning-c: #E8A54A;
+  --error-c:   #E4665A;
+  --info-c:    var(--accent-ink);   /* "reuse tan, not blue" -- letterlijk het accent als tekstkleur */
 
   /* Semantic colours AS TEXT. Same story as --accent-c vs --accent-ink: a hue
      picked to read as a fill is not automatically legible as type, and the
@@ -210,24 +213,24 @@ const CSS = `/* ============================================================
      score on a 15%-green pill. On dark the fill values already clear 4.5:1
      against both the canvas and their own chip, so these are aliases here and
      dark is unchanged; the light block overrides them with darker values. */
-  --success-ink: var(--success-c);   /* 6,9:1 op de kaart — prima als tekst */
-  --warning-ink: var(--warning-c);  /* 6,6:1 */
-  /* Rood is de uitzondering: #DC2626 is hetzelfde in beide thema's en haalt
-     op donker maar 3,25:1 op de kaart en 2,95:1 op zijn eigen chip. Als vulling
-     klopt het, als tekst niet — precies dezelfde fout als sand op wit, alleen
-     de andere kant op. */
-  --error-ink:   #F87171;           /* 5,68:1 op de kaart, 5,14:1 op de chip */
-  --neutral-ink: #96A2B6;   /* 4,9:1 op de chip waar hij op staat; licht thema maakt hem donkerder */
+  --success-ink: var(--success-c);   /* 6,12:1 op de nieuwe kaart #211D16 -- opnieuw gemeten na Fase 4 */
+  --warning-ink: var(--warning-c);  /* 7,92:1 */
+  /* #E4665A haalt nu zelf 5,07:1 op de kaart, dus geen apart lichtere tint
+     meer nodig -- fill en tekst zijn dezelfde kleur geworden. */
+  --error-ink:   var(--error-c);
+  /* Was blauwgrijs (#96A2B6) -- tegen de eigen "geen blauw"-regel in. Zelfde
+     helderheid, warme tint: 6,32:1 op de kaart. */
+  --neutral-ink: #A79E8C;
 
-  --bubble-incoming: #211F1B;
+  --bubble-incoming: #211D16;
 
   --accent-rgb:  232,215,177;
-  --success-rgb: 34,197,94;
-  --warning-rgb: 212,160,23;
-  --error-rgb:   220,38,38;
-  --info-rgb:    181,181,181;
-  --text-rgb:    249,249,249;
-  --on-accent-rgb: 18,18,18;
+  --success-rgb: 76,175,110;
+  --warning-rgb: 232,165,74;
+  --error-rgb:   228,102,90;
+  --info-rgb:    245,236,215;
+  --text-rgb:    241,233,218;
+  --on-accent-rgb: 26,26,26;
 
   /* Twee families, zoals de huisstijl voorschrijft: Space Grotesk voor koppen,
      Inter voor alles wat je leest. Space Grotesk valt terug op Inter, dus als
@@ -235,30 +238,23 @@ const CSS = `/* ============================================================
      eigen. */
   --font-head: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* 8 / 14 / 16. Was 22px -- both VISUAL-DIRECTION.md ("excessive rounded
-     containers" is a named category default to refuse) and the craft floor
-     (card radii stay at 12-16px; pills are for small controls) put 22px
-     outside the window. Only 3 selectors read --radius-card in this file, so
-     this is a direct value change, not a rename. */
-  --radius-sm:   8px;
-  --radius-btn:  14px;
-  --radius-card: 16px;
+  /* 4 / 8 / 12 -- the scale the coordinator set for Fase 4, applied to the
+     single definition point that all 51 var(--radius-*) reads in this file
+     share. Was 8/14/22 (then 8/14/16 for one pass); this is a visible
+     tightening across every button and card in the app, not just the one
+     22px outlier. */
+  --radius-sm:   4px;
+  --radius-btn:  8px;
+  --radius-card: 12px;
 
-  /* Twee curves, en dat is nieuw: --ease-spring was LETTERLIJK hetzelfde
-     getal als --ease-out. Elke plek die om een veer vroeg kreeg dus dezelfde
-     vlakke afremming, en precies dat is wat een interface stroef laat
-     aanvoelen -- alles komt tot stilstand alsof het tegen een muur loopt.
-
-     --ease-out blijft ongemoeid: dat is de merkcurve, en die hoort onder alles
-     wat gewoon van kleur of positie verandert. --ease-spring krijgt nu een
-     echte overshoot: hij schiet een paar procent voorbij zijn eindpunt en valt
-     terug. Op iets dat OPKOMT -- een kaart, een paneel, een menu -- leest dat
-     als gewicht in plaats van als een animatie.
-
-     Bewust ingehouden (1.16 en niet 1.6): een dashboard waar iemand de hele
-     dag in werkt mag niet stuiteren. Je moet het voelen, niet zien. */
+  /* Fase 4: terug naar ÉÉN curve. --ease-spring had een overshoot (1.16) --
+     precies het soort "premium door beweging" dat de coordinator nu uitsluit
+     ("transitions 200ms single ease"); de detector vlagde het terecht als
+     bounce-easing. --ease-spring blijft als alias bestaan zodat de 2 plekken
+     die er nog naar verwijzen (de toast, en één transform) geldig blijven --
+     hij is nu gewoon --ease-out onder een andere naam. */
   --ease-out:    cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.16, 0.64, 1);
+  --ease-spring: var(--ease-out);
   --dur-fast:    140ms;
   --dur-base:    220ms;
   --dur-enter:   320ms;
@@ -303,9 +299,9 @@ const CSS = `/* ============================================================
      failed. That is information, not decoration. */
   --c-sand:    #E8D7B1;  --c-sand-soft:    rgba(232,215,177,0.10);
   --c-deep:    #C9AE7C;  --c-deep-soft:    rgba(201,174,124,0.10);
-  --c-emerald: #22C55E;  --c-emerald-soft: rgba(34,197,94,0.12);
-  --c-amber:   #D4A017;  --c-amber-soft:   rgba(212,160,23,0.12);
-  --c-coral:   #DC2626;  --c-coral-soft:   rgba(220,38,38,0.12);
+  --c-emerald: #4CAF6E;  --c-emerald-soft: rgba(76,175,110,0.12);
+  --c-amber:   #E8A54A;  --c-amber-soft:   rgba(232,165,74,0.12);
+  --c-coral:   #E4665A;  --c-coral-soft:   rgba(228,102,90,0.12);
   /* Legacy aliases so the ~40 existing var(--c-blue) style references keep
      resolving; they now all land on sand instead of off-brand hues. */
   --c-blue:    var(--c-sand);   --c-blue-soft:   var(--c-sand-soft);
@@ -317,7 +313,7 @@ const CSS = `/* ============================================================
   --grad-gold:    linear-gradient(135deg, #E8D7B1, #C9AE7C);
   --grad-ai:      linear-gradient(135deg, #E8D7B1, #C9AE7C);
   --grad-data:    linear-gradient(135deg, #C9AE7C, #E8D7B1);
-  --grad-success: linear-gradient(135deg, #22C55E, #16A34A);
+  --grad-success: linear-gradient(135deg, #4CAF6E, #2F8F4E);
 
   /* ---- legacy token names (kept so every existing var(--x) in this
      18k-line file resolves without a line-by-line rewrite) ---- */
@@ -366,6 +362,13 @@ const CSS = `/* ============================================================
   --radius:        var(--radius-btn);
   --radius-s:      var(--radius-sm);
 
+  /* Fase 4: "de ene, effen charcoal chip" uit het richtingscontract
+     (site-index-html.md, FIRST VIEWPORT). Op donker draait het om: het
+     zandaccent is er de solide vulling, charcoal de tekst -- exact zoals
+     --accent-c/--on-accent al deden, nu onder de eigen naam voor de knop. */
+  --btn-primary-bg:   var(--accent-c);
+  --btn-primary-text: var(--on-accent);
+
   /* Fase 4 (ontwerpsysteem): de drie toonstappen van het showroom-bord
      (site-index-html.md — OWN-WORLD), als ALIAS op wat hier al bestond. Geen
      enkele kleur verandert; dit geeft --bg/--card/--bg-alt een naam die
@@ -402,19 +405,22 @@ const CSS = `/* ============================================================
      leek. #FAF9F6 bracht dat op 1,053; deze grond zit op 1,108, ruim dubbel
      zoveel scheiding, met een rood-blauwverschil van 10 punten zodat hij
      hoorbaar warm is en niet grijs. Donkerder dan dit wordt beige. */
-  --bg:            #F6F3EC;
-  --bg-alt:        #EEE9DE;
+  --bg:            #F3EDE1;
+  --bg-alt:        #EAE2D2;
   /* Op wit kan het verloop maar een kant op: naar beneden. En het krijgt de
      zandhue mee, want zuiver grijs onder een zandaccent leest koud -- dezelfde
      reden als bij de grond hierboven. 1,6% bereik; nog subtieler dan op donker,
      omdat het oog op wit veel gevoeliger is voor banding. */
-  --card-flat:     #FFFFFF;
-  --card:          linear-gradient(180deg, #FFFFFF 0%, #FEFDFB 60%, #FCFAF6 100%);
-  --card-elevated: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 55%, #FDFCF9 100%);
-  --border-c:      #E7E3DA;
-  --border-strong: #D6D0C2;
+  /* Was #FFFFFF puur wit -- de brief verbiedt zowel puur wit als hoofdvlak
+     EN puur wit als kaartkleur; nu een warm gebroken wit dat nog altijd
+     duidelijk lichter is dan de grond eronder. */
+  --card-flat:     #FAF6EE;
+  --card:          linear-gradient(180deg, #FFFAF2 0%, #FAF6EE 60%, #F6F1E6 100%);
+  --card-elevated: linear-gradient(180deg, #FFFEF7 0%, #FFFAF2 55%, #FCF7EE 100%);
+  --border-c:      #D9CCB0;
+  --border-strong: #B89D73;
   --divider:       #EDE9E0;
-  --hover-c:       #FAFAF8;
+  --hover-c:       #EFE7D8;
 
   --accent-c:        #E8D7B1;   /* sand still fills, even on white */
   --accent-hover-c:  #DDCAA1;
@@ -437,53 +443,59 @@ const CSS = `/* ============================================================
      uitkomt met marge: 4,84 op het donkerste vlak, 5,97 op wit. De zijbalk
      hergebruikt --accent-ink niet (nagekeken: nul accenttekst daarbinnen),
      dus donkerder maken raakt dat permanent donkere paneel niet. */
-  --accent-ink:      #7E5E27;
-  --on-accent:       #121212;
+  /* Fase 4: coordinator-opgave. #6E5320 -- 6,17:1 op de grond (#F3EDE1),
+     6,67:1 op de kaart (#FAF6EE), 5,58:1 op het onderste vlak (#EAE2D2). */
+  --accent-ink:      #6E5320;
+  --on-accent:       #1A1A1A;
 
-  --text-c:        #111827;
-  --text-muted-c:  #4B5563;
-  --text-disabled: #6B7280;
+  --text-c:        #1F1D19;
+  --text-muted-c:  #6B6252;
+  --text-disabled: #A2977F;
   --text-inverse:  #FFFFFF;
 
-  --success-c: #16A34A;
-  --warning-c: #B45309;
-  --error-c:   #DC2626;
-  --info-c:    #6B7280;
+  /* Fase 4: dezelfde hues, één stap warmer/desatureerder (coordinator-opgave).
+     Fills zijn de heldere kant; de *-ink hieronder zijn apart gemeten tegen de
+     nieuwe kaartkleur #FAF6EE. */
+  --success-c: #2F8F4E;
+  --warning-c: #B4661A;
+  --error-c:   #C2352B;
+  --info-c:    var(--accent-ink);   /* "reuse tan, not blue" */
 
-  /* Measured against the worst surface each one actually lands on — its own
-     15% chip over a white card, which is where the score badges live:
-       #166534 on #DCF1E4 = 6.03:1   (was #16A34A at 2.78:1)
-       #92400E on #F4E5DA = 5.76:1   (was #B45309 at 4.08:1)
-       #B91C1C on #FADEDE = 5.10:1   (was #DC2626 at 3.81:1)
-     Fills keep the brighter values above, so the chips still read as green,
-     amber and red at a glance. */
-  --success-ink: #166534;
-  --warning-ink: #92400E;
-  --error-ink:   #B91C1C;
-  --neutral-ink: #45526B;   /* 2,67:1 -> 7,3:1 on the chip it actually sits on */
+  /* Opnieuw gemeten tegen de nieuwe kaart (#FAF6EE, geen puur wit meer):
+       #287A42 (15% donkerder dan de fill #2F8F4E) = 4,93:1
+       #995716 (15% donkerder dan de fill #B4661A) = 5,22:1
+       #C2352B (de fill zelf haalt nu al) = 5,08:1 -- geen aparte tint nodig
+     Fills blijven de heldere kant, zodat chips nog altijd als groen/amber/
+     rood ogen. */
+  --success-ink: #287A42;
+  --warning-ink: #995716;
+  --error-ink:   var(--error-c);
+  /* Was blauwgrijs (#45526B) -- tegen de eigen "geen blauw"-regel in. Zelfde
+     helderheid, warme tint: 5,80:1 op de kaart. */
+  --neutral-ink: #6B5F4A;
 
-  --bubble-incoming: #F3F4F6;
+  --bubble-incoming: #FAF6EE;
 
   --accent-rgb:  232,215,177;
-  --success-rgb: 22,163,74;
-  --warning-rgb: 180,83,9;
-  --error-rgb:   220,38,38;
-  --info-rgb:    107,114,128;
-  --text-rgb:    17,24,39;
-  --on-accent-rgb: 18,18,18;
+  --success-rgb: 47,143,78;
+  --warning-rgb: 180,102,26;
+  --error-rgb:   194,53,43;
+  --info-rgb:    110,83,32;
+  --text-rgb:    31,29,25;
+  --on-accent-rgb: 26,26,26;
 
   /* Same single accent on white. The bronze is what shows up as an icon or a
      hairline; the sand is what fills a button under dark text. */
-  --c-sand:    #8A6A33;  --c-sand-soft:    rgba(232,215,177,0.30);
+  --c-sand:    #6E5320;  --c-sand-soft:    rgba(232,215,177,0.30);
   --c-deep:    #6F5427;  --c-deep-soft:    rgba(201,174,124,0.26);
-  --c-emerald: #16A34A;  --c-emerald-soft: rgba(22,163,74,0.10);
-  --c-amber:   #B45309;  --c-amber-soft:   rgba(180,83,9,0.10);
-  --c-coral:   #DC2626;  --c-coral-soft:   rgba(220,38,38,0.10);
+  --c-emerald: #2F8F4E;  --c-emerald-soft: rgba(47,143,78,0.10);
+  --c-amber:   #B4661A;  --c-amber-soft:   rgba(180,102,26,0.10);
+  --c-coral:   #C2352B;  --c-coral-soft:   rgba(194,53,43,0.10);
 
   --grad-gold:    linear-gradient(135deg, #E8D7B1, #D3BE93);
   --grad-ai:      linear-gradient(135deg, #E8D7B1, #D3BE93);
   --grad-data:    linear-gradient(135deg, #D3BE93, #E8D7B1);
-  --grad-success: linear-gradient(135deg, #16A34A, #4D7C0F);
+  --grad-success: linear-gradient(135deg, #2F8F4E, #4D7C0F);
 
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
@@ -499,12 +511,18 @@ const CSS = `/* ============================================================
   --border-bright: var(--border-strong);
   --scrollbar-bg:  var(--bg);
   --scrollbar-thumb: var(--border-strong);
-  /* Het lichtste warme goud dat op alle drie de lichte vlakken boven 3:1 komt
-     (pagina #F6F3EC 3,92:1, kaart wit 4,34:1, kaart-alt #EEE9DE 3,59:1).
-     #A8813B lag dichter bij het accent maar bleef op kaart-alt op 2,96:1
-     steken, en #9E8242 haalde daar 3,03:1 -- net erboven is niet genoeg
-     marge voor iets waar je op moet kunnen zien waar je bent. */
+  /* Het lichtste warme goud dat op alle drie de lichte vlakken boven 3:1 komt.
+     Herrekend na het Fase-4-palet: grond #F3EDE1 3,72:1, kaart #FAF6EE
+     4,03:1, onderste vlak #EAE2D2 3,49:1 -- nog altijd ruim boven de
+     3:1-eis voor een niet-tekstelement. */
   --focus-ring: #96742F;
+
+  /* Fase 4: charcoal chip, zoals in :root. Op wit is het andersom: de sand
+     accentkleur zelf haalt maar 1,7:1 als tekst, dus de solide primaire knop
+     wordt hier de charcoal vulling met zand als tekst -- dezelfde twee
+     kleuren als het donkere thema, omgedraaid. */
+  --btn-primary-bg:   #1A1A1A;
+  --btn-primary-text: #F4E7C8;
 
   /* The site's own card shadow, verbatim. */
   /* Ook hier drie lagen, en warm getint in plaats van blauwgrijs. Een schaduw
@@ -1337,12 +1355,14 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      een elfde element bij dat vergeten wordt.
 
      De waarden hieronder zijn letterlijk die uit het donkere thema. */
-  --bg:            #14120E;
-  --bg-alt:        #0F0D09;
-  /* Zelfde verlopen als in :root -- zie de uitleg daar. */
-  --card-flat:     #25231F;
-  --card:          linear-gradient(180deg, #2A2824 0%, #25231F 55%, #22201C 100%);
-  --card-elevated: linear-gradient(180deg, #32302C 0%, #2C2A26 55%, #282623 100%);
+  --bg:            #17140F;
+  --bg-alt:        #120F0B;
+  /* Zelfde verlopen als in :root -- zie de uitleg daar. Fase 4: palet
+     bijgewerkt naar de warme-neutrale doelwaarden, letterlijk gesynchroniseerd
+     met het donkere :root-blok. */
+  --card-flat:     #211D16;
+  --card:          linear-gradient(180deg, #26221B 0%, #211D16 55%, #1E1910 100%);
+  --card-elevated: linear-gradient(180deg, #3A352C 0%, #302B22 55%, #2A251C 100%);
   /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
      ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
      zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
@@ -1353,14 +1373,14 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
      voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
      hoe zoiets stilletjes scheef gaat. */
-  --border-c:      #35332F;
-  --border-strong: #474540;
+  --border-c:      #3A3327;
+  --border-strong: #574B37;
   --divider:       #2C2A26;
-  --hover-c:       #1E1C18;
-  --text-c:        #F9F9F9;
-  --text-muted-c:  #B5B5B5;
-  --accent-ink:    #F0E4C8;
-  --on-accent:     #121212;
+  --hover-c:       #26211A;
+  --text-c:        #F1E9DA;
+  --text-muted-c:  #A79B85;
+  --accent-ink:    #F5ECD7;
+  --on-accent:     #1A1A1A;
   --text:           var(--text-c);
   --text-primary:   var(--text-c);
   --text-secondary: var(--text-muted-c);
@@ -1991,17 +2011,19 @@ button.brand-dot { border: none; padding: 0; }
   transition: opacity 0.2s ease;
 }
 
+/* Fase 4: was width/height 0 -> 200px, een layout-transition-vondst. Vaste
+   maat nu, geschaald met transform -- zelfde ripple, geen reflow. */
 .btn-login::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 0;
-  height: 0;
+  width: 200px;
+  height: 200px;
   background: rgba(18,18,18,0.12);
   border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.5s ease, height 0.5s ease;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.5s var(--ease-out);
 }
 
 .btn-login:hover::before { opacity: 1; }
@@ -2016,8 +2038,7 @@ button.brand-dot { border: none; padding: 0; }
   transition-duration: var(--dur-fast);
 }
 .btn-login:active::after {
-  width: 200px;
-  height: 200px;
+  transform: translate(-50%, -50%) scale(1);
 }
 .btn-login:focus-visible {
   outline: none;
@@ -4300,46 +4321,40 @@ h1.page-title { margin: 0; font-weight: inherit; }
 @keyframes modalIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: .9; } 50% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
 
-/* De primaire knop. Hier stond linear-gradient(135deg, X, X) -- twee keer
-   DEZELFDE kleur, dus een verloop dat geen verloop is. De syntaxis stond er,
-   het effect niet. Nu twee echte stops, van boven naar onder in plaats van
-   diagonaal: licht valt van boven, niet van linksboven. */
+/* De primaire knop. Fase 4: "de ene, effen chip" uit het richtingscontract --
+   een vlakke vulling (--btn-primary-bg/--btn-primary-text), geen gloed en
+   geen doorschijnend verloop. Was een 15-30%-getinte "geest"-knop; dat
+   paste niet bij een brief die met naam een solide chip als primaire actie
+   vraagt. Rand-licht (--btn-rim-accent) blijft voor de opgetilde rand. */
 .btn-primary-sm {
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.30) 0%, rgba(var(--accent-rgb),0.20) 55%, rgba(var(--accent-rgb),0.15) 100%);
-  border-color: rgba(var(--accent-rgb),0.42);
-  box-shadow: var(--btn-rim-accent), var(--btn-glow);
-  color: var(--accent-ink);
+  background: var(--btn-primary-bg);
+  border-color: transparent;
+  box-shadow: var(--btn-rim-accent);
+  color: var(--btn-primary-text);
 }
 
 .btn-primary-sm:hover {
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.46) 0%, rgba(var(--accent-rgb),0.34) 55%, rgba(var(--accent-rgb),0.27) 100%);
-  border-color: rgba(var(--accent-rgb),0.58);
-  /* De gloed groeit bij het zweven; dat is het hele signaal dat hij aanklikbaar
-     is, en het kost geen kleurverandering die de tekst minder leesbaar maakt. */
-  box-shadow: var(--btn-rim-accent),
-              0 3px 10px rgba(var(--accent-rgb),0.26), 0 12px 32px rgba(var(--accent-rgb),0.22);
-  color: var(--accent-ink);
+  /* Eén toonstap op, geen gloed: dezelfde taal als een kaart die optilt naar
+     --raised. transform doet het merendeel van het werk. */
+  filter: brightness(1.08);
+  box-shadow: var(--btn-rim-accent);
+  color: var(--btn-primary-text);
 }
 
-/* Ingedrukt: de gloed KRIMPT. Een knop die je indrukt komt dichter bij zijn
-   ondergrond, dus zijn schaduw wordt korter en harder -- dat is wat een echt
-   voorwerp doet, en het leest als indrukken zonder dat er iets beweegt. */
 .btn-primary-sm:active {
-  box-shadow: var(--btn-rim-accent), 0 1px 3px rgba(var(--accent-rgb),0.30);
+  filter: brightness(0.96);
+  box-shadow: var(--btn-rim-accent);
 }
 
-/* Uit. Geen gloed en geen randlicht: een knop die niets doet, hoort ook niet
-   te lijken alsof hij licht vangt. Dat is duidelijker dan alleen opacity, want
-   halfdoorzichtig leest ook als "aan het laden". */
 .btn-primary-sm:disabled,
 .btn-primary-sm:disabled:hover {
   opacity: 0.45;
   cursor: not-allowed;
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.18);
+  background: var(--btn-primary-bg);
+  filter: none;
   box-shadow: none;
   transform: none;
-  color: var(--accent-ink);
+  color: var(--btn-primary-text);
 }
 
 .theme-toggle { font-size: 16px; padding: 8px 10px; }
@@ -7435,11 +7450,13 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   padding: 36px 32px;
   text-align: center;
   box-shadow: var(--elev-3);
-  animation: onbPop .45s cubic-bezier(.34,1.56,.64,1);
+  animation: onbPop .3s var(--ease-out);
 }
-@keyframes onbPop { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.onb-done-icon { font-size: 56px; margin-bottom: 12px; animation: onbBounce .8s ease infinite alternate; }
-@keyframes onbBounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+@keyframes onbPop { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+/* Fase 4: de oneindige stuiter is weg -- "nothing loops" (motion grammar,
+   site-index-html.md) en een bounce-easing detector-vondst. Het icoon komt
+   nu mee met de kaart in onbPop, één keer, en blijft dan stil staan. */
+.onb-done-icon { font-size: 56px; margin-bottom: 12px; }
 .onb-done-title { margin: 0 0 6px; font-size: 24px; font-weight: 700; color: var(--text-primary); }
 .onb-done-sub { margin: 0 0 22px; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
 .onb-done-url-card {
@@ -9384,25 +9401,10 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   box-shadow: var(--btn-rim), var(--btn-glow);
 }
 
-/* Op wit is het accent een VULLING met donkere tekst erop -- zie de
-   contrastregel bovenaan dit bestand: zand als tekst haalt 1,7:1. Het verloop
-   loopt daarom binnen het zand zelf, van de lichte stop naar de diepe. */
-[data-theme="light"] .btn-primary-sm {
-  background: linear-gradient(180deg, var(--zand-100) 0%, var(--accent-c) 55%, var(--accent-deep) 100%);
-  border-color: rgba(var(--accent-rgb),0.55);
-  box-shadow: var(--btn-rim-accent), var(--btn-glow);
-  color: var(--on-accent);
-}
-
-[data-theme="light"] .btn-primary-sm:hover {
-  background: linear-gradient(180deg, var(--zand-100) 0%, var(--accent-hover-c) 55%, var(--accent-pressed-c) 100%);
-  box-shadow: var(--btn-rim-accent),
-              0 3px 10px rgba(var(--accent-rgb),0.42), 0 12px 32px rgba(var(--accent-rgb),0.30);
-}
-
-[data-theme="light"] .btn-primary-sm:active {
-  box-shadow: var(--btn-rim-accent), 0 1px 3px rgba(var(--accent-rgb),0.45);
-}
+/* Fase 4: geen override meer nodig. .btn-primary-sm leest nu rechtstreeks
+   var(--btn-primary-bg)/var(--btn-primary-text), en die twee tokens zijn al
+   per thema goed gezet (charcoal-op-zand hier, zand-op-charcoal donker) --
+   dit blok herhaalde alleen in kleur wat de basisregel al deed. */
 
 /* Stat cards. White with real depth */
 [data-theme="light"] .stat-card {
@@ -9417,9 +9419,9 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 
 /* Stat value color */
-[data-theme="light"] .stat-value {
-  color: #0f1117;
-}
+/* Fase 4: verwijderd -- dupliceerde de regel verderop in dit bestand
+   (".stat-value { color: #0f1117 }" stond twee keer), en die tweede is nu
+   getokeniseerd. */
 
 /* Filters bar */
 [data-theme="light"] .filters-bar {
@@ -9541,7 +9543,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 
 /* Colored stat values. Keep glow but lighter */
-[data-theme="light"] .stat-value { text-shadow: none; color: #0f1117; }
+[data-theme="light"] .stat-value { text-shadow: none; color: var(--text); }
 [data-theme="light"] .stat-value.cyan   { color: var(--info); text-shadow: none; }
 [data-theme="light"] .stat-value.green  { color: var(--success-ink); text-shadow: none; }
 [data-theme="light"] .stat-value.orange { color: var(--warning-ink); text-shadow: none; }
