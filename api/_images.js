@@ -1067,6 +1067,28 @@ async function appendPropertyImage(projectCode, record) {
   }
 }
 
+/* Idempotency-by-jobId for a CALLER-SUPPLIED input.jobId, mirroring
+ * api/_faro/media.js's video job dedup (_jobs / JOB_TTL_MS there). Image
+ * generation is synchronous (no poll loop), so "return the existing job" here
+ * means: a retry with the same jobId returns the exact same finished record
+ * instead of paying OpenAI a second time and generating a DIFFERENT image.
+ * Without this, credits.recordUsage()'s reference dedup already stopped the
+ * client's ledger from double-charging, but Helvaro still paid OpenAI twice
+ * and the client got two different results for one click.
+ *
+ * Only applies when the caller passed a real input.jobId -- the
+ * crypto.randomUUID() fallback below means "no dedup requested", same as
+ * video's optional idempotencyKey. Bounded and swept on the same one-hour TTL
+ * as the video job table; a lost cache entry after a cold start just means a
+ * very late retry pays again, not silent data loss.
+ */
+const _recentImageJobs = new Map(); // `${projectCode}:${jobId}` -> { record, at }
+const IMAGE_JOB_TTL_MS = 60 * 60 * 1000;
+function _sweepImageJobs() {
+  const cutoff = Date.now() - IMAGE_JOB_TTL_MS;
+  for (const [k, v] of _recentImageJobs) if (v.at < cutoff) _recentImageJobs.delete(k);
+}
+
 /* ── The one place a property image is generated ────────────────────────────
  * Extracted verbatim from api/leads.js's 'property-generate' block so that the
  * CRM page and Faro's chat share ONE implementation of it.
@@ -1107,7 +1129,17 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
      hergebruikt; zonder dat valt terug op eentje hier gegenereerd, wat nog
      steeds beter is dan de credits.recordUsage()-aanroep zelf iets laten
      verzinnen. */
-  const jobId = String(input.jobId || '').trim() || crypto.randomUUID();
+  const callerJobId = String(input.jobId || '').trim();
+  const jobId = callerJobId || crypto.randomUUID();
+
+  // Duplicate submit, same idempotency key: return the already-finished
+  // result instead of generating (and charging) again. See the
+  // _recentImageJobs comment above -- only when the CALLER supplied jobId.
+  if (callerJobId) {
+    _sweepImageJobs();
+    const cached = _recentImageJobs.get(`${projectCode}:${callerJobId}`);
+    if (cached) return cached.record;
+  }
 
   const style = String(input.style || '').trim();
   if (!isValidStyleKey(style)) {
@@ -1270,6 +1302,11 @@ async function generateForClient(projectCode, input = {}, deps = {}) {
     details: _activiteit.actieVelden('image_generated', 'ok', { idempotencyKey: jobId, resource: 'image' }),
   });
 
+  if (callerJobId) {
+    _sweepImageJobs();
+    _recentImageJobs.set(`${projectCode}:${callerJobId}`, { record, at: Date.now() });
+  }
+
   return record;
 }
 
@@ -1323,4 +1360,9 @@ module.exports = {
   listPropertyImages,
   appendPropertyImage,
   generateForClient,
+  // Alleen voor tests, zelfde reden als media.js's _resetJobs()/_job().
+  _resetImageJobs() { _recentImageJobs.clear(); },
+  _seedImageJobCache(projectCode, jobId, record) {
+    _recentImageJobs.set(`${projectCode}:${jobId}`, { record, at: Date.now() });
+  },
 };
