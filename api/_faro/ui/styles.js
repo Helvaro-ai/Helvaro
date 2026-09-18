@@ -1347,6 +1347,19 @@ body.hv-mode-ai .faro-rail {
   #page-kalender { height: calc(100vh - 56px - 58px) !important; }
 }
 
+/* .hv-help-launcher (api/_dash/styles.js) drops to its own compact position
+   at this same breakpoint -- right:16px, a 54px circle -- which a full-width
+   sticky dock has no way to know about; the two stylesheets don't share
+   selectors on purpose (see the file banner above). Below 520px the
+   launcher's footprint (54px + 16px offset) landed on top of the dock's
+   send button and clipped the placeholder text, confirmed in
+   .impeccable/review/after-dashboard-light-390.png. --sp-4 (the dock's own
+   side padding) + --sp-16 clears it with room to spare -- no raw pixel
+   value, per the scale rule above. */
+@media (max-width: 520px) {
+  .faro-dock { padding-right: calc(var(--sp-4) + var(--sp-16)); }
+}
+
 /* ═══ Ingeklapte zijbalk, Faro-kant ═══════════════════════════════════════
    De CRM-kant had al regels voor body.sidebar-collapsed (api/_dash/styles.js);
    de Faro-kant niet. Op 68px breed bleef de hele rail gewoon op volle breedte
