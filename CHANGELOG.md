@@ -39,6 +39,17 @@ de WhatsApp-conversatieprijzen in `WA_PRICING_EUR` zijn nog een **schatting**
 uit openbare vergelijkingen, nooit bevestigd bij Meta zelf (Business Manager
 > WhatsApp Manager > Pricing).
 
+### Een AI-beeld twee keer aanvragen met dezelfde klik kostte Helvaro nu ook echt twee keer
+
+Video had al de garantie dat een herhaalde aanvraag met hetzelfde jobId de
+lopende of net-klare job teruggeeft, in plaats van een tweede, betaalde
+generatie te starten. AI-beeld (synchroon, geen wachtrij) had die garantie
+nog niet: het grootboek van de klant werd al beschermd tegen een dubbele
+creditafschrijving, maar OpenAI werd bij een herhaalde poging gewoon opnieuw
+aangeroepen — de klant kreeg dan bovendien een ANDER resultaat dan de eerste
+keer. Een herhaalde aanvraag met hetzelfde jobId levert nu het al-gegenereerde
+beeld terug, zonder OpenAI nogmaals te betalen.
+
 ### Eén prijstabel voor Anthropic-tokens, niet twee die uit elkaar konden lopen
 
 `api/_credits.js` (wat de klant betaalt) en `api/_ai/registry.js` (wat jij
@@ -3553,4 +3564,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: ac5167c -->
+<!-- changelog-tot: 244de44 -->
