@@ -31,8 +31,9 @@ const _session = require('./_session');
 const _revoke = require('./_revocation');
 const _clerk = require('./_clerk');
 const faroHandler = require('./_faro/handler');
+const _errors = require('./_errors');
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   // CSRF: state-changing POSTs must carry the double-submit token, same as the
   // rest of the dashboard's write paths.
   if (!_session.csrfOk(req)) {
@@ -110,4 +111,4 @@ module.exports = async function handler(req, res) {
   };
 
   return faroHandler.handle(req, res, auth);
-};
+});

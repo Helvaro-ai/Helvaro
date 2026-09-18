@@ -4,6 +4,7 @@ const verify = require('./_verify');
 const _session = require('./_session');
 const _rl      = require('./_ratelimit');
 const _revoke  = require('./_revocation'); // password-hash fingerprint -> session revocation // shared, cold-start-proof counters // cookie transport + CSRF — see its header // email-ownership verification — see its file header
+const _errors  = require('./_errors');
 
 // ── Wachtwoord-hashing (bcrypt) ────────────────────────────────────────────────
 // Wachtwoorden werden vroeger als plaintext in "Password Hash" bewaard. Nu hashen
@@ -226,7 +227,7 @@ function verifyResetToken(token, passwordHash) {
   return data;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', 'https://app.helvaro.pro');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -695,7 +696,7 @@ module.exports = async function handler(req, res) {
     console.error('Auth error:', err.message);
     return res.status(500).json({ error: 'Serverfout. Probeer later opnieuw.' });
   }
-};
+});
 
 // Escape double-quotes and backslashes for Airtable formula strings
 function escapeFormula(val) {

@@ -72,5 +72,51 @@ console.log('\n— een aangepaste status blijft mogelijk —');
   ck('opts.status overschrijft de standaardstatus van de categorie', e.status === 422, e.status);
 }
 
-console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
-process.exit(fail === 0 ? 0 : 1);
+function nepRes() {
+  const uit = { code: 0, body: null, headersSent: false, ended: false };
+  uit.status = (c) => { uit.code = c; return uit; };
+  uit.json = (b) => { uit.body = b; return uit; };
+  uit.end = () => { uit.ended = true; return uit; };
+  return uit;
+}
+
+(async () => {
+  console.log('\n— vangAf(): het buitenste vangnet om een route-handler —');
+  {
+    // Een gewone, ONgewijzigde route: vangAf() bemoeit zich er niet mee.
+    const rustig = errors.vangAf(async (req, res) => res.status(201).json({ ok: true }));
+    let res1 = nepRes();
+    await rustig({}, res1);
+    ck('een route die zelf netjes antwoordt blijft ongewijzigd (status)', res1.code === 201, res1.code);
+    ck('en ongewijzigd (body)', res1.body && res1.body.ok === true, res1.body);
+
+    // Een onverwachte, RUWE throw -- precies het geval dat vroeger geen
+    // gedefinieerde uitkomst had.
+    const oorspronkelijkeConsoleError = console.error;
+    let gelogd = '';
+    console.error = (...args) => { gelogd += args.join(' '); };
+    const stuk = errors.vangAf(async () => {
+      throw new Error('SELECT * FROM leads WHERE token=geheim faalde');
+    });
+    let res2 = nepRes();
+    await stuk({}, res2);
+    console.error = oorspronkelijkeConsoleError;
+
+    ck('een ruwe throw krijgt een veilige status (500, INTERNAL)', res2.code === 500, res2.code);
+    ck('de klant ziet de onderliggende fout niet', !JSON.stringify(res2.body).includes('geheim'), res2.body);
+    ck('de server-log WEL de onderliggende fout', gelogd.includes('geheim'), gelogd);
+
+    // Al gestreamd voordat het misging: geen headers meer zetten, wel afsluiten.
+    const alGestreamd = errors.vangAf(async (req, res) => {
+      res.headersSent = true;
+      throw new Error('iets ging mis na het eerste stuk');
+    });
+    let res3 = nepRes();
+    await alGestreamd({}, res3);
+    ck('na headersSent wordt niet nog eens res.status() aangeroepen', res3.code === 0, res3.code);
+    ck('de respons wordt wel afgesloten', res3.ended === true, res3.ended);
+  }
+
+  console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
+  process.exit(fail === 0 ? 0 : 1);
+})();

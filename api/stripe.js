@@ -33,6 +33,7 @@
 
 const _stripe = require('./_stripe');
 const credits = require('./_credits');
+const _errors = require('./_errors');
 
 /* Meer dan dit hoeft een webhook nooit te zijn. Een grens zodat een verkeerd
    gerichte upload deze functie niet leegtrekt. */
@@ -125,7 +126,7 @@ function uitBody(req) {
   return Buffer.alloc(0);
 }
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Alleen POST' });
@@ -264,7 +265,7 @@ module.exports = async function handler(req, res) {
     console.error(`[stripe] credits boeken mislukt voor ${projectCode} (sessie ${sessie.id}):`, e.message);
     return res.status(500).json({ error: 'Boeken mislukt' });
   }
-};
+});
 
 /* Deze export deed NIETS en gaf een vals gevoel van veiligheid.
    `config.api.bodyParser` is een Next.js-conventie; dit project is vanilla

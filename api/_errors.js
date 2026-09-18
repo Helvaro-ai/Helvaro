@@ -93,10 +93,48 @@ function inpakken(err, categorie = 'INTERNAL') {
   return new HelvaroError(categorie, { oorzaak: err });
 }
 
+/**
+ * De ENIGE plek waar dit bestand een route aanraakt: de buitenste vangnet-
+ * laag om een handler. `module.exports = errors.vangAf(async function
+ * handler(req, res) { ... bestaande body, ONGEWIJZIGD ... });`
+ *
+ * Vangt alleen wat de bestaande code AL niet zelf ving -- elke route hier
+ * geeft vandaag al netjes `res.status(...).json({ error: '...' })` terug uit
+ * zijn eigen try/catch-blokken; die blokken blijven exact zo. Dit is het net
+ * ONDER die blokken, voor een fout die er per ongeluk doorheen glipt (een
+ * synchrone throw buiten een try, een onverwachte fout in nieuwe code). Zulke
+ * fouten hadden vroeger geen gedefinieerde uitkomst (Vercel's eigen generieke
+ * 500-pagina, of een hangende request); dit geeft ze een JSON-body die nooit
+ * de onderliggende fout lekt, en logt die fout WEL naar de server-console.
+ *
+ * `res.headersSent` behoedt tegen "Cannot set headers after they are sent"
+ * als de fout optreedt nadat de route zelf al iets naar de client stuurde.
+ */
+function vangAf(fn) {
+  return async function gewikkeld(req, res) {
+    try {
+      return await fn(req, res);
+    } catch (err) {
+      const e = inpakken(err);
+      console.error('[vangAf]', e.voorLog());
+      if (res.headersSent) {
+        try { res.end(); } catch (_) { /* niets meer aan te doen */ }
+        return;
+      }
+      try {
+        return res.status(e.status).json(e.voorKlant());
+      } catch (_) {
+        // res zelf is stuk -- er is niets meer te versturen.
+      }
+    }
+  };
+}
+
 module.exports = {
   HelvaroError,
   CATEGORIEEN,
   inpakken,
+  vangAf,
   auth:          maakFabriek('AUTH'),
   authorization: maakFabriek('AUTHORIZATION'),
   validation:    maakFabriek('VALIDATION'),

@@ -28,6 +28,7 @@ const { sendWATemplate } = require('./leads');
 // unauthenticated, writes to Airtable, and sends email/WhatsApp — so it gets
 // the same shared counter.
 const _rl = require('./_ratelimit');
+const _errors = require('./_errors');
 
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
@@ -53,7 +54,7 @@ async function isRateLimited(ip) {
   return gate.limited;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -425,7 +426,7 @@ module.exports = async function handler(req, res) {
     console.error('Form error:', err.message);
     return res.status(500).json({ error: 'Serverfout. Probeer later opnieuw.' });
   }
-};
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
