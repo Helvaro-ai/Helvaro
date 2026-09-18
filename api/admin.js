@@ -686,8 +686,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
         const cData = await cRes.json();
         const rec = (cData.records || [])[0];
-        if (!rec) return res.status(404).json({ error: `Geen klant gevonden met Project Code "${projectCode}"` });
-        const f = rec.fields || {};
+        const recFields = (rec && rec.fields) || {};
+        // Double-check in JS, not just the Airtable formula -- same idea as
+        // the tenant filter everywhere else in this codebase (see
+        // api/_activiteit.js header). This endpoint's whole point is "strictly
+        // one tenant"; trusting the first record filterByFormula happens to
+        // return, without confirming it IS the tenant asked for, would turn a
+        // formula mismatch into leaking a DIFFERENT customer's detail page.
+        if (!rec || String(recFields['Project Code'] || '').trim().toUpperCase() !== projectCode) {
+          return res.status(404).json({ error: `Geen klant gevonden met Project Code "${projectCode}"` });
+        }
+        const f = recFields;
 
         const [usage, activiteitRecent] = await Promise.all([
           credits.getUsageSummary(projectCode).catch(() => ({ active: false })),
