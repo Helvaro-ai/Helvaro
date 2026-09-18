@@ -236,7 +236,9 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/auth') {
       req.body = await readBody(req);
       const m = req.body && req.body.mode;
-      if (m === 'session' || m === 'login' || m === 'session-check') {
+      /* Het inlogformulier stuurt sinds de Clerk-omschakeling {email,password}
+         zonder mode; lokaal slaagt dat net zo goed als de oude mode:'login'. */
+      if (m === 'session' || m === 'login' || m === 'session-check' || (!m && req.body && req.body.email)) {
         return res.status(200).json({
           ok: true, apiKey: 'local-dev', clientName: 'Teljo',
           projectCode: LOCAL_AUTH.projectCode, email: LOCAL_AUTH.userId, calendlyLink: '',

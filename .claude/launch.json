@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "faro-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/faro-dev.js"],
+      "port": 4322,
+      "url": "http://localhost:4322"
+    }
+  ]
+}
