@@ -401,8 +401,70 @@ async function verzet({ projectCode, id, record, startISO, durationMin } = {}) {
   return { ok: true, afspraak: rec, startISO: nieuweStart, durationMin: duur };
 }
 
+/**
+ * Botst een nieuwe afspraak met een bestaande?
+ *
+ * Gedeeld tussen api/leads.js ('appointment-create', dashboard) en
+ * api/whatsapp.js (het in-chat BOOK-blok) -- twee plekken die hetzelfde
+ * conflict op dezelfde manier moeten herkennen. Voorheen had leads.js zijn
+ * eigen kopie en whatsapp.js helemaal geen Airtable-eigen controle: de
+ * WhatsApp-boeking leunde volledig op de Google-agendacontrole, die faalt
+ * open zonder gekoppelde agenda (nieuwe klant, of een verlopen koppeling --
+ * de OAuth staat op Testing en verloopt elke zeven dagen). Zie
+ * tests/dubbelboeking.test.js voor de regel zelf en
+ * tests/dubbelboeking-whatsapp.test.js voor de WhatsApp-kant.
+ *
+ * Apart en puur, want dit is de regel die het waard is om te testen: de
+ * randen (aansluitend mag, een minuut overlap niet) en de uitzonderingen
+ * (geannuleerd telt niet, onleesbare tijd telt niet mee als botsing).
+ *
+ * @param {Array}  bestaande   Airtable-records met fields
+ * @param {number} startMs     begin van de nieuwe afspraak
+ * @param {number} duurMin     duur van de nieuwe afspraak in minuten
+ * @returns {object|undefined} het botsende record, of undefined
+ */
+function botsendeAfspraak(bestaande, startMs, duurMin) {
+  const nieuwEind = startMs + (Number(duurMin) || 30) * 60 * 1000;
+  return (bestaande || []).find((rec) => {
+    const f = (rec && rec.fields) || {};
+    if (String(f[F.STATUS] || '').toLowerCase() === 'cancelled') return false;
+    const start = new Date(f[F.START]).getTime();
+    if (isNaN(start)) return false;
+    const eind = start + ((parseInt(f[F.DUUR], 10) || 30) * 60 * 1000);
+    return start < nieuwEind && eind > startMs;
+  });
+}
+
+/**
+ * Bestaande, niet-geannuleerde afspraken van deze tenant rond een tijdstip --
+ * de invoer voor botsendeAfspraak(). Ruimer venster dan enige afspraakduur
+ * (4 uur aan elke kant), zodat een afspraak die VOOR dit tijdstip begint maar
+ * er nog overheen loopt ook meekomt; de overlap zelf wordt door
+ * botsendeAfspraak() uitgerekend, niet door deze query. Fail-soft -> [],
+ * gelogd door de aanroeper: een storing in Airtable mag een boeking niet
+ * tegenhouden, dezelfde kant op als de Google-agendacontrole ernaast.
+ */
+async function rondTijdstip(projectCode, startMs) {
+  const code = String(projectCode || '').trim();
+  if (!code || !envKlaar() || !Number.isFinite(startMs)) return [];
+  const marge = 4 * 60 * 60 * 1000;
+  const van = new Date(startMs - marge).toISOString();
+  const tot = new Date(startMs + marge).toISOString();
+  const formule = encodeURIComponent(
+    `AND({${F.CODE}}="${escapeFormula(code)}", IS_AFTER({${F.START}}, "${van}"), IS_BEFORE({${F.START}}, "${tot}"))`
+  );
+  try {
+    const r = await atFetch(atUrl(APPOINTMENTS_TABLE, `?filterByFormula=${formule}&pageSize=100`), { headers: atKop() });
+    if (!r.ok) return [];
+    return (await r.json()).records || [];
+  } catch (err) {
+    console.error('[afspraken] rondTijdstip mislukt:', err && err.message);
+    return [];
+  }
+}
+
 module.exports = {
   F, STATUS, APPOINTMENTS_TABLE,
   komendeVoorLead, zoekOpEvent, leesEigen, annuleer, verzet, wisLeadVlaggen,
-  telSleutel, gcalVoor,
+  telSleutel, gcalVoor, botsendeAfspraak, rondTijdstip,
 };

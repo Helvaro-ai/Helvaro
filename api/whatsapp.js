@@ -1868,6 +1868,33 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
            spoor vast. */
       }
 
+      /* ── Eigen dubbelcheck, los van Google ─────────────────────────────────
+         De controle hierboven weigert alleen een BEVESTIGD conflict, en
+         ALLEEN als er een Google-token is. Zonder gekoppelde agenda -- een
+         nieuwe klant, of een koppeling die verlopen is; de OAuth staat op
+         Testing en verloopt elke zeven dagen -- stond er helemaal niets
+         tussen. api/leads.js's dashboard-route ('appointment-create') kreeg
+         precies dit lek al eens gemeten: twee keer exact hetzelfde tijdstip
+         boeken gaf twee keer 200 en twee records, allebei met dezelfde
+         Appointment ID (die wordt AFGELEID van het tijdstip). Zie
+         tests/dubbelboeking.test.js voor die fix en
+         tests/dubbelboeking-whatsapp.test.js voor deze kant.
+
+         Deze controle draait ALTIJD, niet alleen als Google ontbreekt --
+         Google kent alleen wat er naartoe gespiegeld is. Faalt Airtable zelf,
+         dan boeken we door en zeggen het in de logs; een storing in de
+         database mag geen afspraak tegenhouden, dezelfde kant op als
+         checkSlot() hierboven, die ook open faalt. */
+      if (!slotTaken) {
+        try {
+          const bestaande = await _afspraken.rondTijdstip(projectCode, appt.start ? Date.parse(appt.start) : NaN);
+          const botst = _afspraken.botsendeAfspraak(bestaande, Date.parse(appt.start), appt.duration || appointmentDuration);
+          if (botst) slotTaken = true;
+        } catch (e) {
+          console.error('[whatsapp] dubbelcheck mislukt (afspraak gaat door zonder die controle):', e && e.message);
+        }
+      }
+
       if (slotTaken) {
         // The AI's reply THIS turn (already sent above in step 10 — e.g.
         // "Ingepland. Tot dan.") told the lead the slot was confirmed BEFORE

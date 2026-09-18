@@ -197,25 +197,14 @@ function verifySession(token) {
  * @param {number} startMs     begin van de nieuwe afspraak
  * @param {number} duurMin     duur van de nieuwe afspraak in minuten
  * @returns {object|undefined} het botsende record, of undefined
+ *
+ * Verhuisd naar api/_afspraken.js zodat api/whatsapp.js's in-chat BOOK-blok
+ * dezelfde regel gebruikt in plaats van alleen op de Google-agenda te leunen
+ * (die faalt open zonder gekoppelde agenda). Hier een dunne re-export, zodat
+ * bestaande aanroepers in dit bestand en de test die 'leads.botsendeAfspraak'
+ * verwacht ongewijzigd blijven werken.
  */
-function botsendeAfspraak(bestaande, startMs, duurMin) {
-  const nieuwEind = startMs + (Number(duurMin) || 30) * 60 * 1000;
-  return (bestaande || []).find((rec) => {
-    const f = (rec && rec.fields) || {};
-    /* Een geannuleerde afspraak houdt geen plek bezet. Zonder deze regel kon
-       een tijdstip nooit meer opnieuw gebruikt worden nadat er een keer iets
-       was afgezegd. */
-    if (String(f['Status'] || '').toLowerCase() === 'cancelled') return false;
-    const start = new Date(f['Start Time']).getTime();
-    /* Een record met een onleesbare tijd kunnen we niet beoordelen. Dat is
-       geen bewezen conflict, en op een onbewezen conflict weigeren zou een
-       agenda kunnen dichtzetten door één stuk rommel in de tabel. */
-    if (isNaN(start)) return false;
-    const eind = start + ((parseInt(f['Duration'], 10) || 30) * 60 * 1000);
-    /* Strikt: aansluitend (14:00-14:30 gevolgd door 14:30) is GEEN overlap. */
-    return start < nieuwEind && eind > startMs;
-  });
-}
+const botsendeAfspraak = _afspraken.botsendeAfspraak;
 
 module.exports = async function handler(req, res) {
   /* Leaddata mag niet in een gedeelde cache belanden.
