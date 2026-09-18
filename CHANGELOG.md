@@ -14,6 +14,18 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Een dubbele Vercel-instantie of een netwerk-retry kon credits dubbel afschrijven
+
+`recordUsage()` beschermde al tegen dubbele afschrijvingen via een referentie
+op het grootboek — bewezen voor Stripe en gelijktijdige boekingen — maar acht
+plekken (AI-beeldgeneratie, de founder-tools, reply-suggesties, de wekelijkse
+learning-cron, Faro's video- en chatverbruik) gaven nooit zo'n referentie mee.
+Daar beschermde alleen het geheugen van dié ene serverfunctie, en een tweede
+instantie die dezelfde job oppikte — of een echte HTTP-retry — kon dus
+dezelfde generatie of hetzelfde gesprek een tweede keer laten betalen. Elke
+plek krijgt nu een stabiele referentie (job-id, lead + berichtenaantal, of één
+keer gegenereerd bij binnenkomst van de aanvraag).
+
 ### Twee identieke afspraken via WhatsApp konden allebei doorgaan
 
 Het dashboard weigerde al een tweede afspraak op precies hetzelfde moment
@@ -25,13 +37,20 @@ hetzelfde tijdstip bevestigd kregen. Dat gat is nu dicht: het WhatsApp-gesprek
 gebruikt dezelfde eigen controle als het dashboard, altijd, niet alleen als
 Google ontbreekt.
 
-### Nieuw, nog nergens gebruikt: een gedeelde foutentaxonomie
+### Eén vangnet onder elke route, in plaats van "wat Vercel toevallig toont"
 
-Interne voorbereiding (`api/_errors.js`) voor consistente foutcategorieën
-(inlog, rechten, invoer, gekoppelde dienst, boeking, betaling, genereren,
-database, intern) met een vaste, klant-veilige boodschap per categorie. Nog
-niet aangesloten op de bestaande routes — dit merkt de gebruiker vandaag nog
-niet.
+Een fout die buiten een bestaand try/catch-blok optrad — een typefout in
+nieuwe code, een onverwachte crash — gaf vroeger geen voorspelbaar antwoord:
+soms Vercel's eigen generieke foutpagina, soms een hangend verzoek. Alle 11
+routes (`auth`, `faro`, `form`, `stripe`, `whatsapp`, `leads`, `admin`,
+`cron-followup`, `privacy`, `demo`, `form-page`) geven nu altijd een veilige
+JSON-fout terug — nooit de onderliggende foutmelding zelf (geen tabelnaam,
+geen interne URL) — terwijl de échte oorzaak wél naar de server-log gaat.
+`api/dashboard.js` blijft bewust buiten schot: die 20.000-regelige
+sjabloonletterlijke heeft geen bestaande buitenste try/catch om aan te haken,
+en dat erbij bouwen is een apart, groter werk. Bestaande interne
+foutafhandeling in elke route (de eigen `try`/`catch`-blokken die vandaag al
+netjes antwoorden) is ongewijzigd — dit is uitsluitend het net eronder.
 
 ### Het openbare leadformulier was zwakker beveiligd tegen misbruik dan het leek
 
@@ -3480,4 +3499,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: fbd62f3 -->
+<!-- changelog-tot: d676c6a -->

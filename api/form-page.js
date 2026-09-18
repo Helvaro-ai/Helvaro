@@ -15,8 +15,9 @@
 const _properties = require('./_properties');
 const _vehicles   = require('./_vehicles');
 const _vertical   = require('./_vertical');
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   /* Twee vormen:
        /start/TELJO       -- het algemene formulier van de makelaar
        /start/TELJO/P3    -- hetzelfde formulier, maar voor EEN pand
@@ -886,4 +887,4 @@ document.addEventListener('keydown', function(e) {
 </script>
 </body>
 </html>`);
-};
+});

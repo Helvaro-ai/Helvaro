@@ -1,4 +1,5 @@
-module.exports = function handler(req, res) {
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
+module.exports = _errors.vangAf(function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // Interne demopagina van de widget. Niet iets wat onder "Helvaro" in Google
   // hoort te staan naast de echte site. api/privacy.js krijgt dit bewust NIET:
@@ -88,4 +89,4 @@ module.exports = function handler(req, res) {
 <script src="/form-widget.js" data-project="HELVARO" async></script>
 </body>
 </html>`);
-};
+});

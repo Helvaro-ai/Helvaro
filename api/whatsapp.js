@@ -13,6 +13,7 @@ const { waitUntil } = require('@vercel/functions');
 const { fetchWebsite } = require('./_lib/fetch-website');
 const _gcal = require('./_gcal');   // per-client Google Calendar (optional, fail-soft)
 const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
 const _optout = require('./_optout');
 const _waOpmaak = require('./_wa-opmaak');     // wie STOP zegt, krijgt niets meer
@@ -76,7 +77,7 @@ const MAX_LEAD_CANDIDATES = 50;
 
 // ─── WEBHOOK HANDLER ────────────────────────────────────────────────────────
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   // ── Website-demo ────────────────────────────────────────────────────────────
   // /api/ai-demo komt hier binnen via een rewrite (zie vercel.json). Helemaal
   // bovenaan afgetakt, want alles hieronder gaat uit van een Meta-webhook:
@@ -313,7 +314,7 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     console.error('[WhatsApp] Fout in handler:', err.message);
   }
-};
+});
 
 /* ── Eén gesprek tegelijk ────────────────────────────────────────────────────
  *

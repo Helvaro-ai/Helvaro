@@ -70,6 +70,7 @@ const _lang = require('./_lang');
 // comment for the full multitenancy-prep contract this mirrors.
 const { aggregateReportPeriod, getClientWaPhoneNumberId } = require('./leads');
 const _ai = require('./_ai');   // AI-router: modelkeuze, fallback, verbruik
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 
 // ── Plan-status gate for automated nurture/reminder WhatsApp TEMPLATE sends ──
 // TRIAL-DESIGN.md §7 + this task's own instruction: "skip all automated
@@ -112,7 +113,7 @@ async function isServiceStoppedForProject(airtableToken, baseId, projectCode, ca
   return stopped;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   // Vercel calls cron endpoints with GET; block other methods
   if (req.method !== 'GET') return res.status(405).end();
 
@@ -483,7 +484,7 @@ module.exports = async function handler(req, res) {
     console.error('[cron-followup] Error:', err.message);
     return res.status(500).json({ error: err.message });
   }
-};
+});
 
 // ── Safety-net sweep for leads stuck at 'new' with an empty history ─────────
 // api/form.js sends the first WhatsApp message from inside a 45s setTimeout,

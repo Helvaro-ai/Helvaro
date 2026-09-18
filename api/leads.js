@@ -29,6 +29,7 @@ const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor de
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
 const _dealerOverzicht = require('./_dealer-overzicht'); // "wat vraagt vandaag aandacht" (Fase 6)
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 
 // Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
 // 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
@@ -206,7 +207,7 @@ function verifySession(token) {
  */
 const botsendeAfspraak = _afspraken.botsendeAfspraak;
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   /* Leaddata mag niet in een gedeelde cache belanden.
      Zonder een eigen header zet Vercel hier zijn standaard neer:
      "public, max-age=0, must-revalidate". Dat must-revalidate voorkomt dat er
@@ -3615,7 +3616,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, max-age=120');
   res.setHeader('Vary', 'x-api-key');
   return res.status(200).json(responsePayload);
-};
+});
 
 // Escape double-quotes and backslashes for Airtable formula strings
 /* Voor de e-mail hieronder. De klantnaam komt uit Airtable en is dus niet door

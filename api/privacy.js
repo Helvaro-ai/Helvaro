@@ -1,3 +1,4 @@
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 const CSS = `
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 60px auto; padding: 0 24px; color: #18160F; line-height: 1.7; background: #F7F5F0; }
   h1 { font-size: 2rem; margin-bottom: 8px; }
@@ -9,7 +10,7 @@ const CSS = `
   footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #E4E0D6; font-size: 13px; color: #8A8478; }
 `;
 
-module.exports = function handler(req, res) {
+module.exports = _errors.vangAf(function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   const path = (req.url || '').split('?')[0];
 
@@ -241,7 +242,7 @@ module.exports = function handler(req, res) {
   </footer>
 </body>
 </html>`);
-};
+});
 
 /* ── English privacy policy ───────────────────────────────────────────────────
    A translation of the Dutch text above, section for section. Change the

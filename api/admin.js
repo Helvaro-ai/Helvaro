@@ -14,6 +14,7 @@ const _regio = require('./_regio');        // landnamen voor het overzicht
 const verifyEmail = require('./_verify');
 const _session = require('./_session'); // cookie-first session transport + CSRF
 const _ai = require('./_ai');           // AI-router: taak in, model uit
+const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 
 // Single-shot Airtable fetch. No retries (admin is low-frequency)
 // Zie de uitleg bij atFetch in api/leads.js: zonder timeout hangt een trage
@@ -207,7 +208,7 @@ function scrubPost(text) {
   return t;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = _errors.vangAf(async function handler(req, res) {
   // Allow the Helvaro app, the legacy Netlify Founder site, and any Cloudflare
   // Pages (*.pages.dev) preview the founder team spins up. Strict pattern
   // match, never reflect arbitrary origins.
@@ -1983,7 +1984,7 @@ module.exports = async function handler(req, res) {
     console.error('[admin] Error:', err.message);
     return res.status(500).json({ error: 'Serverfout' });
   }
-};
+});
 
 async function sendWelcomeEmail({ clientName, projectCode, apiKey, email, formUrl, dashboardUrl, loginPassword }) {
   // De welkomstmail gaat via het standaard verzendadres (SMTP_FROM = noreply@helvaro.pro),
