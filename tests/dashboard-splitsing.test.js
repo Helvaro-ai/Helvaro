@@ -92,9 +92,16 @@ function render(lang) {
    knopgloed en stuiterende curves. Verklaarbaar aan de grootte: elke
    kleurwaarde in :root en [data-theme="light"] is vervangen, en er kwamen een
    handvol nieuwe alias-tokens (--ground/--raised/--ink-surface/--edge,
-   --btn-primary-bg/--btn-primary-text) bij. Zie CHANGELOG.md. */
-const CSS_BYTES = 386465;
-const CSS_SHA   = 'd055b3a66b5c0ac8';
+   --btn-primary-bg/--btn-primary-text) bij. Zie CHANGELOG.md.
+
+   Daarna (-330 bytes) Fase 4 vervolg: de drie --card / --card-elevated
+   linear-gradient()-waarden (licht en donker, plus het vastgezette
+   .login-brand-side-blok) vervangen door de platte tonen die de opdracht
+   voorschrijft -- de brief verbiedt verlopen buiten de ene kaartrand-schaduw
+   in de modal. Kleiner geworden omdat een platte hexwaarde korter is dan een
+   driestops-gradient. */
+const CSS_BYTES = 386135;
+const CSS_SHA   = 'd4358e98b8be7e6f';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

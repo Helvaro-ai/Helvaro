@@ -14,6 +14,27 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Kaartverloop weg — vlakke kleur in plaats van gradient
+
+`--card` en `--card-elevated` waren nog een driestops-`linear-gradient()` in
+beide thema's (en in het vastgezette `.login-brand-side`-blok) terwijl de
+ontwerprichting verlopen buiten de ene zachte modal-schaduw expliciet
+uitsluit. Ze zijn nu platte tonen: donker `#211D16` / `#2A251C`, licht
+`#FAF6EE` / `#FFFAF2` — exact de waarden uit de richtlijn. Niets zichtbaar
+veranderd op het scherm (het verloop was 3,5% helderheidsbereik, met opzet
+nauwelijks te zien); de stylesheet is wel 330 bytes kleiner geworden.
+`tests/dashboard-splitsing.test.js` had daardoor een verouderde
+byte/sha-tripwire; die is bijgewerkt naar de echte, gemeten waarden
+(386.135 bytes, `d4358e98b8be7e6f`) — niet overgeslagen.
+
+**Nog open uit Fase 4 (ontwerpsysteem):** de ~56 losse
+`[data-theme="light"]`-blokken (rond regel 384, 3945 en 9346+) zijn nog niet
+samengevoegd tot één blok na `:root`; dat is de grootste resterende
+opruimklus. De componenten-pas (dropdown, tooltip, skeleton, empty-state,
+kalendergrid), de Playwright-schermafdrukken met contrasttabel, en de
+detector-vergelijking (baseline 110 bevindingen) zijn deze sessie niet
+uitgevoerd — zie het rapport aan Fable voor de volledige stand van zaken.
+
 ### De knopgloed is weg, en kaarten zijn minder rond
 
 `--btn-glow` (een zand-gekleurde gloed onder knoppen bij hover) staat nu op
@@ -3475,4 +3496,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: ef056d0 -->
+<!-- changelog-tot: 6f80ce4 -->

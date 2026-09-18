@@ -166,8 +166,8 @@ const CSS = `/* ============================================================
      enkele 'background-color:' -- nagerekend, niet aangenomen. --card-flat
      blijft bestaan voor het geval er ooit wel een platte kleur nodig is. */
   --card-flat:     #211D16;
-  --card:          linear-gradient(180deg, #26221B 0%, #211D16 55%, #1E1910 100%);
-  --card-elevated: linear-gradient(180deg, #3A352C 0%, #302B22 55%, #2A251C 100%);
+  --card:          #211D16;
+  --card-elevated: #2A251C;
   /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
      ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
      zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
@@ -415,8 +415,8 @@ const CSS = `/* ============================================================
      EN puur wit als kaartkleur; nu een warm gebroken wit dat nog altijd
      duidelijk lichter is dan de grond eronder. */
   --card-flat:     #FAF6EE;
-  --card:          linear-gradient(180deg, #FFFAF2 0%, #FAF6EE 60%, #F6F1E6 100%);
-  --card-elevated: linear-gradient(180deg, #FFFEF7 0%, #FFFAF2 55%, #FCF7EE 100%);
+  --card:          #FAF6EE;
+  --card-elevated: #FFFAF2;
   --border-c:      #D9CCB0;
   --border-strong: #B89D73;
   --divider:       #EDE9E0;
@@ -1361,8 +1361,8 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      bijgewerkt naar de warme-neutrale doelwaarden, letterlijk gesynchroniseerd
      met het donkere :root-blok. */
   --card-flat:     #211D16;
-  --card:          linear-gradient(180deg, #26221B 0%, #211D16 55%, #1E1910 100%);
-  --card-elevated: linear-gradient(180deg, #3A352C 0%, #302B22 55%, #2A251C 100%);
+  --card:          #211D16;
+  --card-elevated: #2A251C;
   /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
      ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
      zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
