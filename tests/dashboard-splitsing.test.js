@@ -99,9 +99,20 @@ function render(lang) {
    .login-brand-side-blok) vervangen door de platte tonen die de opdracht
    voorschrijft -- de brief verbiedt verlopen buiten de ene kaartrand-schaduw
    in de modal. Kleiner geworden omdat een platte hexwaarde korter is dan een
-   driestops-gradient. */
-const CSS_BYTES = 386135;
-const CSS_SHA   = 'd4358e98b8be7e6f';
+   driestops-gradient.
+
+   Daarna (+381 bytes) de opdracht-punten 1 en 2 van dezelfde ronde: de twee
+   losse root-niveau [data-theme="light"]-blokken (het paletblok en het
+   knop-tokenblok bij --btn-rim) samengevoegd tot EEN blok direct na :root,
+   de dubbele .gradient-text-override verwijderd (herhaalde exact wat de
+   thema-onafhankelijke basisregel al deed), en de zijbalk laten meebewegen
+   met het thema in plaats van in beide thema's donker te blijven -- opdracht
+   van de eigenaar. Groter geworden door de nieuwe [data-theme="light"]
+   .sidebar-tokenrebind en de bijbehorende uitleg; drie letterlijke,
+   donker-getunede kleuren op .sidebar .user-name/.user-role/.btn-logout zijn
+   juist verwijderd omdat de tokenrebind ze overbodig maakt. */
+const CSS_BYTES = 386516;
+const CSS_SHA   = 'd728fe5fe3befa9f';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

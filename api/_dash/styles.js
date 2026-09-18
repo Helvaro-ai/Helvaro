@@ -548,6 +548,15 @@ const CSS = `/* ============================================================
   --raised:     var(--card);
   --ink-surface:var(--bg-alt);
   --edge:       var(--border-c);
+
+  /* Samengevoegd vanuit het losse [data-theme="light"]-blok bij de knop-tokens
+     (voorheen na regel 3941) -- Fase 4 consolidatie: precies één
+     [data-theme="light"]-blok direct na :root. */
+  /* Op wit werkt hetzelfde principe andersom: de bovenrand is niet lichter dan
+     wit, dus daar draagt de ONDERrand het verschil. */
+  --btn-rim:  inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(64,52,32,0.10);
+  --btn-rim-accent: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(64,52,32,0.14);
+  --btn-glow: none;
 }
 
 /* ============================================================
@@ -705,11 +714,10 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   background-clip: initial;
   color: var(--accent-ink);
 }
-
-[data-theme="light"] .gradient-text {
-  -webkit-text-fill-color: currentColor;
-  background: none;
-}
+/* Fase 4 consolidatie: geen [data-theme="light"]-override meer nodig -- de
+   regel hierboven zet background:none en -webkit-text-fill-color al
+   thema-onafhankelijk, en color leest via var(--accent-ink) al de juiste
+   waarde per thema. De override herhaalde exact dezelfde twee declaraties. */
 
 /* ============================================================
    LAYOUT
@@ -3342,6 +3350,44 @@ button.brand-dot { border: none; padding: 0; }
   z-index: 100;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* Fase 4: de zijbalk volgt nu het thema, in opdracht van de eigenaar. Deze
+   dark-only rebind hierboven blijft de DEFAULT (dark-theme) waarden zetten;
+   [data-theme="light"] .sidebar hieronder herbindt dezelfde tokenset naar de
+   lichte equivalenten -- warme grond, houtskool inkt -- zodat elk kind
+   (navlabel, icoon, account-blok) automatisch mee overschakelt in plaats van
+   een eigen override nodig te hebben. */
+[data-theme="light"] .sidebar {
+  background: var(--card);
+  --text:           #1F1D19;
+  --text-c:         #1F1D19;
+  --text-primary:   #1F1D19;
+  --text-muted:     #6B6252;
+  --text-muted-c:   #6B6252;
+  --text-secondary: #6B6252;
+  /* Niet zand (#E8D7B1, 1,3:1 op licht): de zijbalk is nu een lichte kaart,
+     dus dezelfde okerinkt als de rest van het lichte thema (#96742F, zie
+     [data-theme="light"] hierboven), anders is de ring wel aanwezig en
+     onzichtbaar -- exact de fout die dit token juist voorkomt. */
+  --focus-ring:     #96742F;
+  --border:      #D9CCB0;
+  --border-c:    #D9CCB0;
+  --divider:     #D9CCB0;
+  --hover:       #EFE7D8;
+  --hover-c:     #EFE7D8;
+  --bg-card:     transparent;
+  --bg-card-alt: #EFE7D8;
+  --bg-alt:      #EAE2D2;
+  --red:         #C2352B;
+  --error-c:     #C2352B;
+  --error-rgb:   194,53,43;
+  --green:       #2F8F4E;
+  --success-c:   #2F8F4E;
+  --success-rgb: 47,143,78;
+  --accent:        #E8D7B1;
+  --accent-c:      #E8D7B1;
+  --accent-bright: #DCC593;
+  --accent-rgb:    232,215,177;
+}
 /* Without backdrop-filter the pane would render see-through and
    unreadable. Literal colour, not var(--bg-card) — that token is
    rebound to transparent inside .sidebar. */
@@ -3940,13 +3986,6 @@ h1.page-title { margin: 0; font-weight: inherit; }
      laten stralen. --btn-glow blijft als lege token gedefinieerd zodat de
      ~9.800 regels die er nog naar verwijzen (var(--btn-rim), var(--btn-glow))
      geldig blijven -- hij voegt nu alleen niets meer toe. */
-  --btn-glow: none;
-}
-[data-theme="light"] {
-  /* Op wit werkt hetzelfde principe andersom: de bovenrand is niet lichter dan
-     wit, dus daar draagt de ONDERrand het verschil. */
-  --btn-rim:  inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(64,52,32,0.10);
-  --btn-rim-accent: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(64,52,32,0.14);
   --btn-glow: none;
 }
 
@@ -9336,20 +9375,18 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    LIGHT MODE COMPONENT OVERRIDES
    ============================================================ */
 
-/* Sidebar gets a white surface with left accent border */
-/* The sidebar is now the SAME dark pane in both themes — it is the
-   anchor the light content area sits against, and switching it to white
-   in light mode was what made the whole page read as one flat sheet.
-   These rules used to force it white and tint the active item at 9%
-   alpha (near-invisible); both are handled by the .sidebar block above,
-   which rebinds the colour tokens for everything inside it. */
+/* Fase 4: de zijbalk volgt het thema (opdracht van de eigenaar) -- de
+   permanent-donkere opzet is teruggedraaid. De tokenrebind staat bij de
+   basisregel van .sidebar; hier alleen wat op die basisregel zelf niet met
+   een token kan (rand, schaduw) plus de kind-selectors die een letterlijke
+   waarde hadden die op donker klopte en op de nieuwe warme grond niet meer. */
 [data-theme="light"] .sidebar {
-  border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(25,22,16,0.10);
+  border-right: 1px solid var(--border-c);
+  box-shadow: 8px 0 32px rgba(23,19,12,0.06);
 }
 
 [data-theme="light"] .nav-item:hover {
-  background: rgba(255,255,255,0.06);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -9474,41 +9511,19 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 
 /* User info bottom of sidebar */
-/* No light-theme override here on purpose. The sidebar is dark in BOTH
-   themes and rebinds its own surface tokens, so the account block already
-   gets the right treatment. The override that used to sit here predated
-   the permanently-dark sidebar and painted a white card inside it. */
 [data-theme="light"] .user-info {
   background: var(--bg-card-alt);
   border-radius: 10px;
 }
-[data-theme="light"] .sidebar .user-info { background: rgba(255,255,255,0.05); }
-
-/* De zijbalk BLIJFT donker in het lichte thema — dat is opzet, en .sidebar
-   .nav-item zet daarom al een vaste inkt (#8D99AC) los van het thema. De
-   voettekst deed dat niet en erfde de paginakleuren: de profielnaam werd
-   bijna-zwart (#111827) en Uitloggen kreeg --red-ink, dat in licht #B91C1C
-   is — een rood bedoeld voor een WIT vlak. Gemeten op de echte pixels van
-   het donkere vlak: 1,86:1 en 1,88:1, allebei ruim onder 4,5:1.
-   Meet tegen het oppervlak waar de tekst ECHT op staat. */
-[data-theme="light"] .sidebar .user-name { color: var(--text); }
-/* Twee vlakken, niet één: "Mijn profiel" staat in het profielblok en dat is
-   lichter dan de zijbalkvoet eronder. Eén kleur moet het op allebei halen.
-
-   De vlakken zijn veranderd toen de zijbalk warm werd, dus opnieuw gemeten in
-   plaats van de oude cijfers laten staan. Samengesteld komt de voet nu uit op
-   #332F24 en het profielblok op #3D392F.
-
-   #B3AD9F is de warme tegenhanger van het blauwgrijze #A3AEC0 dat hier stond:
-   dezelfde helderheid, alleen de tint gedraaid. Haalt 5,99:1 op de voet en
-   5,14:1 op het profielblok -- praktisch gelijk aan de koude versie (5,98 en
-   5,13), dus dit kost geen leesbaarheid. */
-[data-theme="light"] .sidebar .user-role { color: #B3AD9F; }
-/* Niet --error-ink (#F87171): dat is afgestemd op het KAARTvlak en haalt
-   daar 5,68:1, maar op het donkerdere zijbalkvlak (rgb(56,52,60), gemeten op
-   de echte pixels) blijft het op 4,40:1 steken — net onder 4,5. Deze tint
-   haalt er 5,68:1. */
-[data-theme="light"] .sidebar .btn-logout { color: #FB8C8C; }
+/* Fase 4: de drie letterlijke tinten die hier stonden (#111827-achtige
+   bijna-zwart, --red-ink op #B91C1C, #A3AEC0) waren getuned voor de
+   PERMANENT DONKERE zijbalk-grond die nu is teruggedraaid. .user-name en
+   .user-role gebruiken var(--text-primary)/var(--text-muted), .btn-logout
+   gebruikt var(--red-ink) -- alle drie tokens die de .sidebar-basisregel
+   hierboven al naar de lichte equivalenten herbindt (--text-primary:
+   #1F1D19, --text-muted: #6B6252) of die op de nieuwe kaartgrond (#FAF6EE)
+   al 5,08:1 halen zonder eigen override (--error-ink). Geen losse regel
+   meer nodig; het is precies waarom de tokenrebind bestaat. */
 
 /* Sidebar bottom button */
 [data-theme="light"] .btn-logout {
