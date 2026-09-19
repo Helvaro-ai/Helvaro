@@ -68,9 +68,16 @@ const _lang = require('./_lang');
 // projectCode, already built in leads.js) instead of writing a second
 // Airtable-call-per-lead helper — see api/whatsapp.js's F_WA_PHONE_NUMBER_ID
 // comment for the full multitenancy-prep contract this mirrors.
-const { aggregateReportPeriod, getClientWaPhoneNumberId } = require('./leads');
+// gcalStatusVoorTenant: dezelfde ECHTE Google Agenda-probe als leads.js's
+// eigen gcal-status-mode (zie die functie's kop) -- gebruikt door de
+// dagelijkse integratie-controle hieronder (deliverable "notifications",
+// brief §77), zodat "koppeling verbroken" nooit een tweede, goedkopere-maar-
+// onjuiste check wordt.
+const { aggregateReportPeriod, getClientWaPhoneNumberId, gcalStatusVoorTenant } = require('./leads');
 const _ai = require('./_ai');   // AI-router: modelkeuze, fallback, verbruik
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
+const _push = require('./_push');             // pushmeldingen (OneSignal), fail-soft
+const _integraties = require('./_integraties'); // de ene vorm voor koppelingsstatus
 
 // ── Plan-status gate for automated nurture/reminder WhatsApp TEMPLATE sends ──
 // TRIAL-DESIGN.md §7 + this task's own instruction: "skip all automated
@@ -432,6 +439,15 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       return null;
     });
 
+    // ── Daily integrity checks: integration disconnected + important failures ──
+    // Deliverable "notifications" (brief §77/§107). Runs every day, not just
+    // Mondays — an owner who can't reach the calendar for a week shouldn't
+    // wait for the weekly report to find out.
+    const integrityResult = await checkDailyIntegrity(AIRTABLE_TOKEN, BASE_ID).catch(e => {
+      console.error('[cron-followup] daily integrity check failed:', e.message);
+      return null;
+    });
+
     // ── Weekly client report (Mondays) ───────────────────────────────────────
     // Stuurt elke maandag (UTC) een overzichts-email naar elke klant met hun
     // Rapport Email ingesteld. Per-klant: leads/week, qualified, conversie, top 5.
@@ -469,11 +485,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] drive-sync mislukt:', e && e.message);
     }
 
-    const verslag = { checked: leads.length, sent, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    const verslag = { checked: leads.length, sent, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
     /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
        eigen catch viel; zonder deze regel moest je tien losse logregels bij
        elkaar zoeken om te weten of de dag compleet was. */
-    const overgeslagen = ['stuckNew', 'reminders', 'afspraakOpvolging', 'retention', 'signupSignals', 'quality', 'trial']
+    const overgeslagen = ['stuckNew', 'reminders', 'afspraakOpvolging', 'retention', 'signupSignals', 'quality', 'trial', 'integrity']
       .concat(now.getUTCDay() === 1 ? ['weekly', 'learning'] : [])
       .filter((k) => verslag[k] === null);
     console.log(`[cron-followup] klaar in ${Math.round((Date.now() - now.getTime()) / 1000)}s`
@@ -841,6 +857,143 @@ function parseDealValueServer(v) {
   let s = String(v).replace(/[€\s]/g, '');
   s = s.includes(',') ? s.replace(/\.(?=.*,)/g, '').replace(',', '.') : s.replace(/\./g, '');
   return parseFloat(s) || 0;
+}
+
+// ── Dagelijkse integriteitscontroles: koppeling verbroken + mislukkingen ────
+// Twee van de vijf notification-events uit brief §77/§107 ("integration
+// disconnected", "important failure"), samen in één functie omdat ze
+// dezelfde actieve-klantenlijst en dezelfde ontvangers (Notify Phone /
+// Rapport Email) delen -- één Airtable-call voor de klantenlijst in plaats
+// van twee. De andere drie events (hot lead, booked, cancelled) hangen al
+// aan de WhatsApp-conversatie zelf (api/whatsapp.js §11c en de afzeg-melding
+// daar, api/_dealer-melding.js voor dealership-boekingen) en horen niet in
+// een dagelijkse cron, want ze zijn per-conversatie-moment, niet per-dag.
+//
+// Per-tenant "instelling": geen aparte toggle-tabel, dezelfde regel als de
+// rest van deze codebase (whatsapp.js, form.js, _dealer-melding.js) -- een
+// LEEG Notify Phone/Rapport Email is de klant die zegt "geen meldingen",
+// niet een storing. Beide velden leeg -> deze tenant wordt overgeslagen
+// zonder de dure gcal-probe of activiteiten-query te doen.
+//
+// Dedupe: api/_activiteit.js's alGemeldBinnen(), één melding per referentie
+// per 24 uur -- zie die functie's eigen kop voor waarom fail-open.
+const _BELANGRIJKE_MISLUKKINGEN = Object.freeze([
+  'appointment_creation_failed', 'appointment_cancel_failed',
+  'employee_notification_failed', 'image_generation_failed',
+  'video_generation_failed', 'crm_sync_failed',
+]);
+
+async function checkDailyIntegrity(airtableToken, baseId) {
+  const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
+  const cRes = await atFetch(
+    `https://api.airtable.com/v0/${baseId}/${CLIENTS_TABLE}?filterByFormula=${encodeURIComponent('{Active}=1')}&pageSize=100`,
+    { headers: { Authorization: `Bearer ${airtableToken}` } }
+  );
+  if (!cRes.ok) { console.error('[integriteit] clients fetch failed', cRes.status); return null; }
+  const clients = (await cRes.json()).records || [];
+
+  const { sendMail } = require('./_mailer');
+  const _i18nS = require('./_i18n');
+  const vandaagVanaf = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const dagSleutel = new Date().toISOString().slice(0, 10);
+
+  let integratiesGemeld = 0, mislukkingenGemeld = 0, gecontroleerd = 0;
+
+  for (const client of clients) {
+    const f = client.fields || {};
+    const projectCode = f['fldN4dL0bGgfBOXwM'] || f['Project Code'] || '';
+    if (!projectCode) continue;
+    const ownerPhone = (f['fldZEApe0gfse07AU'] || f['Notify Phone'] || '').toString().trim() || process.env.NOTIFY_PHONE || '';
+    const ownerEmail = (f['fldDBJCN6dVMA8jax'] || f['Rapport Email'] || '').toString().trim();
+    if (!ownerPhone && !ownerEmail) continue;   // geen kanaal ingesteld = geen meldingen gewenst
+    const lang = _lang.normalizeLanguageCode(f['fld1iiV9XwSbgAACZ'] || f['Language']) || 'nl';
+    gecontroleerd++;
+
+    // ── 1. Google Agenda-koppeling verbroken? ───────────────────────────────
+    // Alleen Google Agenda vandaag: de enige koppeling met een goedkope, ECHTE
+    // live-probe die al bestaat (gcalStatusVoorTenant, gedeeld met leads.js).
+    // CRM- en eigen-WhatsApp-nummer-koppelingen hebben elk hun eigen adapter-
+    // specifieke live-check nodig -- zie CHANGELOG.md "Nog niet uitgerold".
+    try {
+      const status = await gcalStatusVoorTenant(projectCode);
+      if (status.configured && status.connected) {
+        const genormaliseerd = _integraties.vanGcal(status);
+        if (genormaliseerd.status === 'expired' || genormaliseerd.status === 'error') {
+          const ref = `gcal:${genormaliseerd.status}`;
+          const alGemeld = await _activiteit.alGemeldBinnen(projectCode, 'integration_disconnected_notified', ref, 24 * 3600 * 1000);
+          if (!alGemeld) {
+            let verstuurd = false;
+            if (ownerPhone) {
+              const r = await _push.stuurVertaald({
+                projectCode, titelSleutel: 'meld.integratie.titel', tekstSleutel: 'int.gcal.expired',
+                url: 'https://app.helvaro.pro/dashboard', taal: lang,
+              }).catch(() => ({ ok: false }));
+              if (r && r.ok) verstuurd = true;
+            }
+            if (ownerEmail) {
+              const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px;color:#111">`
+                + `<h2 style="color:#b91c1c;margin:0 0 12px">${_i18nS.t(lang, 'meld.integratie.titel')}</h2>`
+                + `<p>${_i18nS.t(lang, 'int.gcal.expired')}</p>`
+                + `<p>${_i18nS.t(lang, 'meld.integratie.actie')}</p>`
+                + `<a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:12px;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Dashboard</a></div>`;
+              const mailR = await sendMail({ to: ownerEmail, subject: _i18nS.t(lang, 'meld.integratie.titel'), html }).catch(() => ({ ok: false }));
+              if (mailR && mailR.ok) verstuurd = true;
+            }
+            if (verstuurd) {
+              integratiesGemeld++;
+              _activiteit.log(projectCode, 'integration_disconnected_notified', {
+                details: _activiteit.actieVelden('integration_disconnected_notified', 'ok', {
+                  idempotencyKey: ref, resource: 'integration', details: { integratie: 'gcal', status: genormaliseerd.status },
+                }),
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[integriteit] gcal-probe mislukt voor', projectCode, e && e.message);
+    }
+
+    // ── 2. Belangrijke mislukkingen vandaag? ────────────────────────────────
+    // Eén melding per tenant per dag, nooit één per mislukking.
+    try {
+      const res = await _activiteit.lijstAlle({ projectCode, soorten: _BELANGRIJKE_MISLUKKINGEN, vanaf: vandaagVanaf, limiet: 500 });
+      if (res.beschikbaar && res.totaal > 0) {
+        const ref = `mislukkingen:${dagSleutel}`;
+        const alGemeld = await _activiteit.alGemeldBinnen(projectCode, 'important_failure_digest_sent', ref, 24 * 3600 * 1000);
+        if (!alGemeld) {
+          let verstuurd = false;
+          if (ownerPhone) {
+            const r = await _push.stuurVertaald({
+              projectCode, titelSleutel: 'meld.mislukkingen.titel', tekstSleutel: 'meld.mislukkingen.tekst',
+              vars: { aantal: res.totaal }, url: 'https://app.helvaro.pro/dashboard', taal: lang,
+            }).catch(() => ({ ok: false }));
+            if (r && r.ok) verstuurd = true;
+          }
+          if (ownerEmail) {
+            const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px;color:#111">`
+              + `<h2 style="color:#b91c1c;margin:0 0 12px">${_i18nS.t(lang, 'meld.mislukkingen.titel')}</h2>`
+              + `<p>${_i18nS.t(lang, 'meld.mislukkingen.tekst', { aantal: res.totaal })}</p>`
+              + `<a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:12px;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Dashboard</a></div>`;
+            const mailR = await sendMail({ to: ownerEmail, subject: _i18nS.t(lang, 'meld.mislukkingen.titel'), html }).catch(() => ({ ok: false }));
+            if (mailR && mailR.ok) verstuurd = true;
+          }
+          if (verstuurd) {
+            mislukkingenGemeld++;
+            _activiteit.log(projectCode, 'important_failure_digest_sent', {
+              details: _activiteit.actieVelden('important_failure_digest_sent', 'ok', {
+                idempotencyKey: ref, resource: 'notification', details: { aantal: res.totaal },
+              }),
+            }).catch(() => {});
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[integriteit] mislukkingen-query mislukt voor', projectCode, e && e.message);
+    }
+  }
+
+  return { gecontroleerd, integratiesGemeld, mislukkingenGemeld };
 }
 
 // ── Weekly per-client report ─────────────────────────────────────────────────
@@ -2165,4 +2318,8 @@ module.exports.sendOpsAlert = sendResendEmail;
 // tests/afspraak-opvolging.test.js), so it gets exported; runAppointmentReminders
 // is left as it was found, unexported, to keep this change minimal.
 module.exports.runAfspraakOpvolging = runAfspraakOpvolging;
+// Same attach-alongside-the-handler convention as runAfspraakOpvolging above --
+// deliverable "notifications" (brief §77/§107) needs a real call (mocked
+// fetch/push/mail, asserted dedupe behaviour), see tests/meldingen-daily.test.js.
+module.exports.checkDailyIntegrity = checkDailyIntegrity;
 

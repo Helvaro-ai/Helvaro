@@ -4368,3 +4368,10 @@ module.exports.sendWATemplate = sendWATemplate;
 
 /* Puur, en daarom apart te testen: zie tests/dubbelboeking.test.js. */
 module.exports.botsendeAfspraak = botsendeAfspraak;
+
+// gcalStatusVoorTenant: de ECHTE Google Agenda-probe (niet alleen "staat er
+// een token", zie de functie's eigen kop). api/cron-followup.js's dagelijkse
+// integratie-controle (deliverable "notifications", brief §77) hergebruikt
+// deze EXACTE functie in plaats van een tweede, goedkopere-maar-onjuiste
+// check te schrijven die weer "connected" kan tonen bij een dode koppeling.
+module.exports.gcalStatusVoorTenant = gcalStatusVoorTenant;

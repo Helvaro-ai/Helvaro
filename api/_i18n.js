@@ -2385,6 +2385,34 @@ const TEKST = {
   },
   'int.action.connect':   { nl: 'Koppelen', fr: 'Connecter', en: 'Connect', de: 'Verbinden' },
   'int.action.reconnect': { nl: 'Opnieuw koppelen', fr: 'Reconnecter', en: 'Reconnect', de: 'Neu verbinden' },
+
+  /* Proactieve koppelingsmelding (deliverable "notifications", brief §77/
+     §107) -- WAT (titel), WAAROM het telt (int.gcal.expired/int.crm.syncFailed
+     hierboven) en WAT TE DOEN (deze regel, met de reeds bestaande
+     int.action.reconnect-tekst erin verweven). */
+  'meld.integratie.titel': {
+    nl: 'Koppeling onderbroken', fr: 'Connexion interrompue',
+    en: 'Connection interrupted', de: 'Verbindung unterbrochen',
+  },
+  'meld.integratie.actie': {
+    nl: 'Open het dashboard om opnieuw te koppelen.',
+    fr: 'Ouvrez le tableau de bord pour vous reconnecter.',
+    en: 'Open the dashboard to reconnect.',
+    de: 'Öffnen Sie das Dashboard, um sich erneut zu verbinden.',
+  },
+
+  /* Dagelijkse verzamelmelding van belangrijke mislukkingen (idem, brief
+     §77/§107). {aantal} is het totaal over de *_failed-soorten van vandaag. */
+  'meld.mislukkingen.titel': {
+    nl: 'Belangrijke mislukkingen vandaag', fr: 'Échecs importants aujourd’hui',
+    en: 'Important failures today', de: 'Wichtige Fehler heute',
+  },
+  'meld.mislukkingen.tekst': {
+    nl: '{aantal} automatisering(en) liepen vandaag mis. Open het dashboard om te zien wat er misging en wie er wacht.',
+    fr: '{aantal} automatisation(s) ont échoué aujourd’hui. Ouvrez le tableau de bord pour voir ce qui s’est mal passé.',
+    en: '{aantal} automation(s) failed today. Open the dashboard to see what went wrong and who is waiting.',
+    de: 'Heute sind {aantal} Automatisierung(en) fehlgeschlagen. Öffnen Sie das Dashboard, um zu sehen, was schiefgelaufen ist.',
+  },
 };
 
 /**

@@ -97,6 +97,17 @@ const SOORTEN = Object.freeze([
      details.actor (altijd 'admin' -- er is geen los adminaccount om te
      onderscheiden, zie api/_session.js isAdminToken()). */
   'admin_action_performed',
+  /* Deliverable "notifications" (platform-integriteit pass, brief §77/§107):
+     een koppeling die van 'connected' naar 'disconnected'/'expired'/'error'
+     omsloeg (api/_integraties.js), gemeld aan het kantoor. Eén record per
+     alarm, met idempotencyKey `integratie:<id>:<status>` zodat
+     alGemeldBinnen() een volgende cron-run niet opnieuw laat schreeuwen
+     zolang de koppeling in dezelfde kapotte staat blijft. */
+  'integration_disconnected_notified',
+  /* Dagelijkse verzamelmelding van belangrijke mislukkingen (de *_failed
+     reeks hierboven) aan het kantoor -- één melding per dag per tenant,
+     nooit één per mislukking (dat zou spam zijn). */
+  'important_failure_digest_sent',
 ]);
 
 function configured() {
@@ -463,6 +474,50 @@ async function telSoorten(soorten, vanaf) {
   return { beschikbaar: true, perSoort, totaal: res.records.length };
 }
 
+/*
+ * ── Dedupe-by-reference voor meldingen ──────────────────────────────────────
+ * Deliverable "notifications" (brief §77/§107): "dedupe by reference within a
+ * window, so retries never spam". Dit is de ene plek die dat beantwoordt --
+ * geen nieuwe tabel, geen nieuwe idempotency-laag, gewoon een LEZING op het
+ * logboek dat er al is. De aanroeper (een owner-melding, een cron) geeft de
+ * referentie mee die hij ZELF ook als idempotencyKey aan log()/actieVelden()
+ * doorgeeft ná het versturen -- zie api/whatsapp.js en api/cron-followup.js
+ * voor de twee aanroepers.
+ *
+ * Fail-open: als de tabel niet leesbaar is (available() === false) of de
+ * query faalt, is het antwoord "nog niet gemeld" -- een melding die door een
+ * storing in het LOGBOEK niet meer verstuurd wordt is een grotere fout dan
+ * eens te veel melden.
+ */
+
+/**
+ * @param {string} projectCode
+ * @param {string} soort         moet in SOORTEN staan
+ * @param {string} referentie    de dedup-sleutel, vergeleken met eerdere
+ *                                details.idempotencyKey binnen het venster
+ * @param {number} [vensterMs=86400000]  standaard 24 uur
+ * @returns {Promise<boolean>}   true = er staat al een melding met deze
+ *                                referentie binnen het venster (NIET opnieuw
+ *                                versturen); false = vrij om te versturen
+ */
+async function alGemeldBinnen(projectCode, soort, referentie, vensterMs) {
+  const tenant = String(projectCode || '').trim();
+  const ref = String(referentie || '').trim();
+  if (!tenant || !ref) return false;
+  if (SOORTEN.indexOf(soort) === -1) return false;
+  try {
+    if (!(await available())) return false;
+    const venster = Math.max(1000, Number(vensterMs) || 24 * 3600 * 1000);
+    const vanaf = new Date(Date.now() - venster).toISOString();
+    const res = await lijstAlle({ projectCode: tenant, soorten: [soort], vanaf, limiet: 100 });
+    if (!res.beschikbaar) return false;
+    return res.records.some((r) => r.details && r.details.idempotencyKey === ref);
+  } catch (e) {
+    console.warn('[activiteit] alGemeldBinnen mislukt (fail-open, mag versturen):', e && e.message);
+    return false;
+  }
+}
+
 module.exports = {
   TABEL,
   F,
@@ -477,4 +532,5 @@ module.exports = {
   lijst,
   lijstAlle,
   telSoorten,
+  alGemeldBinnen,
 };

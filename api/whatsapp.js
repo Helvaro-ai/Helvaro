@@ -1702,8 +1702,21 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     } catch (e) {
       console.error('[whatsapp] correctie na mislukte boeking niet verstuurd:', e && e.message);
     }
+    // Dedupe de EIGENAARSmelding, niet de correctie aan de lead hierboven: die
+    // moet elke keer een nieuw bericht krijgen, maar de eigenaar heeft na de
+    // eerste "[Actie nodig]"-melding vandaag al gehoord dat er iets stuk is --
+    // een lead die drie keer op hetzelfde botsende slot klikt mag de eigenaar
+    // niet drie keer wakker maken. Referentie: telefoon + dag (niet de reden,
+    // want een andere foutmelding is nog steeds hetzelfde onderliggende
+    // probleem voor de eigenaar vandaag).
+    const vandaag = new Date().toISOString().slice(0, 10);
+    const dedupeRef = `boeking_mislukt:${phone}:${vandaag}`;
+    const alGemeld = await _activiteit.alGemeldBinnen(projectCode, 'appointment_creation_failed', dedupeRef, 24 * 3600 * 1000);
+    if (alGemeld) return;
+
+    let ownerGemeld = false;
     if (ownerPhone) {
-      await sendWA(ownerPhone,
+      const r = await sendWA(ownerPhone,
         `[Actie nodig] Afspraak NIET aangemaakt\n\n` +
         `Naam: ${leadName || '(onbekend)'}\n` +
         `Tel: ${phone}\n` +
@@ -1711,10 +1724,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         `De AI bevestigde een afspraak aan de lead, maar het opslaan mislukte (${String(reden).slice(0, 160)}). ` +
         `Er staat NIETS in de agenda. De lead is gevraagd een ander moment te kiezen, maar bel hem gerust zelf.\n\n` +
         `Dashboard: https://app.helvaro.pro/dashboard`,
-        clientPhoneNumberId).catch(() => {});
+        clientPhoneNumberId).catch(() => false);
+      if (r) ownerGemeld = true;
     }
     if (ownerEmail) {
-      sendOwnerEmail({
+      const mailR = await sendOwnerEmail({
         to: ownerEmail,
         subject: `[Actie nodig] Afspraak niet aangemaakt. ${subjectSafe(leadName || phone)}`,
         heading: 'Een bevestigde afspraak is niet opgeslagen',
@@ -1722,6 +1736,15 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         body: `<p style="background:#fee2e2;padding:12px;border-radius:8px">De AI bevestigde een afspraak aan de lead, `
             + `maar het opslaan mislukte:<br><strong>${escEmail(String(reden).slice(0, 200))}</strong></p>`
             + `<p>Er staat niets in de agenda. De lead is gevraagd een ander moment te kiezen.</p>`,
+      }).catch(() => false);
+      if (mailR) ownerGemeld = true;
+    }
+    if (ownerGemeld) {
+      _activiteit.log(projectCode, 'appointment_creation_failed', {
+        leadId: lead && lead.id,
+        details: _activiteit.actieVelden('appointment_creation_failed', 'failed', {
+          idempotencyKey: dedupeRef, resource: 'appointment', error: String(reden || '').slice(0, 300),
+        }),
       }).catch(() => {});
     }
   }
@@ -2198,34 +2221,75 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   // Intentioneel NIET gegated op sendOk: de kwalificatie is gebaseerd op wat de
   // LEAD al zei, niet op onze reply. De owner mag dit altijd weten, ook als
   // ons laatste bericht niet aankwam (kan zelf manueel opvolgen).
+  //
+  // Dedupe (deliverable "notifications", brief §77/§107): dit blok kan op
+  // een VOLGENDE beurt van dezelfde lead opnieuw uitkomen -- de AI blijft
+  // `qualified: true` teruggeven zolang het gesprek loopt, dus zonder gate
+  // stuurde dit elke beurt een nieuwe WhatsApp + mail naar de eigenaar. De
+  // referentie is lead + dag: één melding per lead per kalenderdag, niet één
+  // per bericht. `lead.id` is het Airtable-record-id, hierboven al gebruikt
+  // voor lead_score_calculated.
   if (aiResponse.done && aiResponse.qualified && !isEscalation) {
+    const vandaag = new Date().toISOString().slice(0, 10);
+    const dedupeRef = `qualified:${lead.id}:${vandaag}`;
+    const alGemeld = await _activiteit.alGemeldBinnen(projectCode, 'employee_notification_sent', dedupeRef, 24 * 3600 * 1000);
 
-    // Notify owner when a lead is qualified. WhatsApp + Email parallel
-    const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/10` : '';
-    if (ownerPhone) {
-      const notifyMsg =
-        `Gekwalificeerde lead\n\n` +
-        `Naam: ${leadName}\n` +
-        `Tel: ${phone}\n` +
-        `Project: ${projectCode}${score}\n` +
-        `${aiResponse.summary || ''}\n\n` +
-        `Dashboard: https://app.helvaro.pro/dashboard`;
-      // See the escalatie-melding comment above: sendWA() never throws, so
-      // check the resolved boolean rather than relying on an unreachable .catch().
-      const qualifiedNotifySent = await sendWA(ownerPhone, notifyMsg, clientPhoneNumberId);
-      if (!qualifiedNotifySent) console.error(`[whatsapp] gekwalificeerde-lead-melding naar owner (${ownerPhone}) is niet aangekomen`);
-    }
-    if (ownerEmail) {
-      sendOwnerEmail({
-        to: ownerEmail,
-        subject: `Nieuwe gekwalificeerde lead. ${subjectSafe(leadName)}`,
-        heading: `Gekwalificeerde lead`,
-        leadName, phone, projectCode, clientName,
-        body:
-          `${aiResponse.leadScore ? `<p><strong>Lead score:</strong> ${aiResponse.leadScore}/10</p>` : ''}` +
-          `${aiResponse.summary ? `<p style="background:#ecfdf5;padding:12px;border-radius:8px"><strong>Samenvatting:</strong><br>${escEmail(aiResponse.summary)}</p>` : ''}` +
-          `${aiResponse.reason  ? `<p><strong>Waarom gekwalificeerd:</strong> ${escEmail(aiResponse.reason)}</p>` : ''}`
-      }).catch(() => {});
+    if (!alGemeld) {
+      // "Heet" volgt dezelfde 80%-drempel als api/_leadscore.js (score >= 80
+      // op 100 = 'hot'); aiResponse.leadScore is de AI's eigen score op 10,
+      // dus >= 8. Los gehouden van _leadscore.js: dat bestand rekent met
+      // structurele signalen (budget, timing, ...), dit is de score die de
+      // AI al in zijn antwoord teruggaf -- geen tweede berekening nodig voor
+      // alleen de melding-tekst.
+      const isHot = typeof aiResponse.leadScore === 'number' && aiResponse.leadScore >= 8;
+      const score = aiResponse.leadScore ? ` Score: ${aiResponse.leadScore}/10` : '';
+      // "Wat / waarom / wat te doen" (brief §107): de kop zegt WAT (hete of
+      // gekwalificeerde lead), de samenvatting zegt WAAROM het telt, de
+      // dashboardlink zegt WAT TE DOEN.
+      const kop = isHot ? 'Hete lead — nu opvolgen' : 'Gekwalificeerde lead';
+
+      // Notify owner when a lead is qualified. WhatsApp + Email parallel
+      let waVerstuurd = false;
+      if (ownerPhone) {
+        const notifyMsg =
+          `${kop}\n\n` +
+          `Naam: ${leadName}\n` +
+          `Tel: ${phone}\n` +
+          `Project: ${projectCode}${score}\n` +
+          `${aiResponse.summary || ''}\n\n` +
+          `Dashboard: https://app.helvaro.pro/dashboard`;
+        // See the escalatie-melding comment above: sendWA() never throws, so
+        // check the resolved boolean rather than relying on an unreachable .catch().
+        waVerstuurd = await sendWA(ownerPhone, notifyMsg, clientPhoneNumberId);
+        if (!waVerstuurd) console.error(`[whatsapp] gekwalificeerde-lead-melding naar owner (${ownerPhone}) is niet aangekomen`);
+      }
+      let mailVerstuurd = false;
+      if (ownerEmail) {
+        const mailResult = await sendOwnerEmail({
+          to: ownerEmail,
+          subject: `${isHot ? 'Hete lead' : 'Nieuwe gekwalificeerde lead'}. ${subjectSafe(leadName)}`,
+          heading: kop,
+          leadName, phone, projectCode, clientName,
+          body:
+            `${aiResponse.leadScore ? `<p><strong>Lead score:</strong> ${aiResponse.leadScore}/10</p>` : ''}` +
+            `${aiResponse.summary ? `<p style="background:#ecfdf5;padding:12px;border-radius:8px"><strong>Samenvatting:</strong><br>${escEmail(aiResponse.summary)}</p>` : ''}` +
+            `${aiResponse.reason  ? `<p><strong>Waarom gekwalificeerd:</strong> ${escEmail(aiResponse.reason)}</p>` : ''}`
+        }).catch(() => false);
+        mailVerstuurd = mailResult === true;
+      }
+      // Alleen loggen (en dus deduperen) als er ook echt een kanaal was --
+      // zonder ownerPhone/ownerEmail is er niets verstuurd, en dan mag een
+      // volgende beurt het opnieuw proberen zodra de eigenaar wél een kanaal
+      // instelt, in plaats van voorgoed als "al gemeld" te tellen.
+      if (waVerstuurd || mailVerstuurd) {
+        _activiteit.log(projectCode, 'employee_notification_sent', {
+          leadId: lead.id,
+          details: _activiteit.actieVelden('employee_notification_sent', 'ok', {
+            idempotencyKey: dedupeRef, resource: 'employee_notification',
+            details: { via: 'qualified', hot: isHot, wa: waVerstuurd, mail: mailVerstuurd },
+          }),
+        }).catch(() => {});
+      }
     }
   }
 }
@@ -2240,7 +2304,7 @@ function escEmail(s) {
 }
 
 async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCode, clientName, body }) {
-  if (!to) return;
+  if (!to) return false;
   const { sendMail } = require('./_mailer');
   const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:24px;color:#111">
@@ -2255,7 +2319,8 @@ async function sendOwnerEmail({ to, subject, heading, leadName, phone, projectCo
             <a href="https://app.helvaro.pro/dashboard" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1e6fd9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Open Dashboard</a>
             <p style="margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px">Helvaro · AI-gestuurde lead-kwalificatie via WhatsApp</p>
           </div>`;
-  await sendMail({ to, subject, html }).catch(err => console.error('[owner mail]', err && err.message));
+  const r = await sendMail({ to, subject, html }).catch(err => { console.error('[owner mail]', err && err.message); return { ok: false }; });
+  return !!(r && r.ok);
 }
 
 // ─── AI ─────────────────────────────────────────────────────────────────────

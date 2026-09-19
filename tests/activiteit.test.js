@@ -139,6 +139,51 @@ const herstel = () => { global.fetch = echteFetch; };
     ck('lege projectCode -> lege lijst zonder ooit te fetchen', Array.isArray(uitLeeg) && uitLeeg.length === 0, uitLeeg);
   }
 
+  console.log('\n— alGemeldBinnen(): dedupe-by-reference voor meldingen —');
+  {
+    activiteit._resetAvailability();
+    let aangeroepen = false;
+    global.fetch = async () => { aangeroepen = true; return { ok: true, status: 200, json: async () => ({ records: [] }) }; };
+
+    ck('onbekende soort -> false, geen fetch (zelfde weigering als log())',
+       (await activiteit.alGemeldBinnen('tenantA', 'dit_bestaat_niet', 'ref1')) === false && !aangeroepen,
+       aangeroepen);
+    aangeroepen = false;
+    ck('lege projectCode -> false, geen fetch',
+       (await activiteit.alGemeldBinnen('', 'appointment_created', 'ref1')) === false && !aangeroepen, aangeroepen);
+    aangeroepen = false;
+    ck('lege referentie -> false, geen fetch',
+       (await activiteit.alGemeldBinnen('tenantA', 'appointment_created', '')) === false && !aangeroepen, aangeroepen);
+
+    activiteit._resetAvailability();
+    let call = 0;
+    global.fetch = async (url) => {
+      call += 1;
+      const u = String(url);
+      if (u.endsWith('pageSize=1')) return { ok: true, status: 200, json: async () => ({ records: [] }) };
+      // Een eerdere melding staat er al, met precies deze referentie.
+      return {
+        ok: true, status: 200,
+        json: async () => ({
+          records: [{ id: 'r1', fields: {
+            'Project Code': 'tenantA', 'Type': 'employee_notification_sent',
+            'Details': JSON.stringify({ idempotencyKey: 'qualified:recLead1:2026-09-19' }),
+            'Created At': new Date().toISOString(),
+          } }],
+        }),
+      };
+    };
+    ck('bestaande referentie binnen het venster -> true (niet opnieuw versturen)',
+       (await activiteit.alGemeldBinnen('tenantA', 'employee_notification_sent', 'qualified:recLead1:2026-09-19')) === true);
+    ck('EEN ANDERE referentie dezelfde soort -> false (wel versturen)',
+       (await activiteit.alGemeldBinnen('tenantA', 'employee_notification_sent', 'qualified:recLead2:2026-09-19')) === false);
+
+    activiteit._resetAvailability();
+    global.fetch = async () => { throw new Error('Airtable onbereikbaar'); };
+    ck('fail-open: een storing in het logboek betekent "nog niet gemeld", niet een crash',
+       (await activiteit.alGemeldBinnen('tenantA', 'employee_notification_sent', 'ref-x')) === false);
+  }
+
   herstel();
 
   console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
