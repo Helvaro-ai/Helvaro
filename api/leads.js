@@ -31,6 +31,7 @@ const _activiteit    = require('./_activiteit');     // het activiteitenlogboek 
 const _integraties   = require('./_integraties');    // de ene vorm voor koppelingsstatus (platform-integriteit)
 const _dealerOverzicht = require('./_dealer-overzicht'); // "wat vraagt vandaag aandacht" (Fase 6)
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
+const _i18n   = require('./_i18n');     // gelokaliseerde CSV-kolomnamen (deliverable "exports")
 
 // Hoeveel leads één bulk-synchronisatie maximaal aanraakt. Dit draait binnen de
 // 60 seconden die vercel.json deze route geeft, en elke lead is minstens twee
@@ -1483,6 +1484,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           offset = d.offset;
         }
 
+        /* De formule hierboven filtert al op tenant. Nog een keer in JavaScript
+           controleren -- zelfde gewoonte als api/_activiteit.js lijst(): dit is
+           de plek waar een formule-fout of een Airtable-eigenaardigheid ervoor
+           zorgt dat klant A klant B's leads in zijn export krijgt, en een
+           export die je al gedownload en doorgestuurd hebt is niet terug te
+           halen zoals een schermfout dat wel is. */
+        const voorTenant = filterRecordsVoorTenant(all, projectCode);
+        all.length = 0;
+        all.push.apply(all, voorTenant);
+
         /* Dezelfde filters die het scherm op de voorbeeldweergave toepast, hier
            ook echt uitvoeren. Ze kwamen niet mee en werden dus genegeerd: het
            scherm zei "4 leads geselecteerd" en het bestand bevatte er 380. Een
@@ -1518,7 +1529,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             .replace(/\r?\n/g, ' ').replace(/"/g, '""');
           return `"${s}"`;
         };
-        const headers = ['Datum', 'Naam', 'Telefoon', 'Bron', 'Status', 'Gekwalificeerd', 'Lead Score', 'Ability', 'Urgency', 'Fit', 'Samenvatting', 'Reden', 'Booking Sent', 'Opgepikt', 'Verwachte Waarde', 'Notities'];
+        // Gelokaliseerde kolomnamen (deliverable "exports", brief §105) --
+        // dezelfde taalbron als het dashboard zelf, geen extra Airtable-call.
+        const exportTaal = _i18n.resolveer(req);
+        const Tcsv = (sleutel) => _i18n.t(exportTaal, sleutel);
+        const headers = [
+          Tcsv('csv.datum'), Tcsv('csv.naam'), Tcsv('csv.telefoon'), Tcsv('csv.bron'),
+          Tcsv('csv.status'), Tcsv('csv.gekwalificeerd'), Tcsv('csv.leadScore'), Tcsv('csv.ability'),
+          Tcsv('csv.urgency'), Tcsv('csv.fit'), Tcsv('csv.samenvatting'), Tcsv('csv.reden'),
+          Tcsv('csv.bookingSent'), Tcsv('csv.opgepikt'), Tcsv('csv.verwachteWaarde'), Tcsv('csv.notities'),
+        ];
         const rows = [headers.map(csvEscape).join(',')];
         for (const rec of all) {
           const f = rec.fields || {};
@@ -3649,7 +3669,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // CSV export
   if (params.get('export') === 'true') {
     const esc  = v => '"' + csvFormulaGuard(String(v || '')).replace(/"/g, '""') + '"';
-    const hdrs = ['Naam','Telefoon','Status','Gekwalificeerd','Bron','Score','Urgentie','Capaciteit','Fit','Verwachte Waarde','Datum','Samenvatting'];
+    // Gelokaliseerd (deliverable "exports", brief §105) -- zelfde taalbron als
+    // het dashboard (_i18n.resolveer(req)), geen extra Airtable-call. nl blijft
+    // de letterlijke bestaande kolomnamen, dus geen gedragswijziging daar.
+    const exportTaal = _i18n.resolveer(req);
+    const Tcsv = (sleutel) => _i18n.t(exportTaal, sleutel);
+    const hdrs = [
+      Tcsv('csv.naam'), Tcsv('csv.telefoon'), Tcsv('csv.status'), Tcsv('csv.gekwalificeerd'),
+      Tcsv('csv.bron'), Tcsv('csv.score'), Tcsv('csv.urgentie'), Tcsv('csv.capaciteit'),
+      Tcsv('csv.fit'), Tcsv('csv.verwachteWaarde'), Tcsv('csv.datum'), Tcsv('csv.samenvatting'),
+    ];
     const rows = leads.map(l => [
       l.naam, l.telefoon, l.status, l.qualified ? 'Ja' : 'Nee',
       l.bron, l.leadScore, l.urgentie, l.capaciteit, l.fit,
@@ -3659,7 +3688,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     ].map(esc).join(';'));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=helvaro-leads.csv');
-    return res.status(200).send([hdrs.join(';'), ...rows].join('\n'));
+    // UTF-8 BOM zodat Excel accenten (é, ë, ç, ...) goed toont -- ontbrak hier
+    // (de andere export-vorm, csv-export hierboven, had 'm al wel).
+    return res.status(200).send('﻿' + [hdrs.join(';'), ...rows].join('\n'));
   }
 
   // Weekly rapport
@@ -4199,6 +4230,17 @@ function csvFormulaGuard(s) {
   return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
 }
 
+// Defense-in-depth tenant filter for exports (deliverable "exports", brief
+// §105). The Airtable formula already filters by Project Code; this is the
+// SECOND, in-JS check -- same habit as api/_activiteit.js lijst() ("dit is de
+// plek waar dealer A de activiteit van dealer B ziet"). Pure and exported so
+// it can be tested directly with fixture data instead of by grepping source
+// text for the filter expression (see tests/csv-export.test.js).
+function filterRecordsVoorTenant(records, projectCode) {
+  const tenant = String(projectCode || '');
+  return (records || []).filter((rec) => String((rec && rec.fields && rec.fields['Project Code']) || '') === tenant);
+}
+
 // Escape HTML entities for safe embedding in email HTML
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -4375,3 +4417,7 @@ module.exports.botsendeAfspraak = botsendeAfspraak;
 // deze EXACTE functie in plaats van een tweede, goedkopere-maar-onjuiste
 // check te schrijven die weer "connected" kan tonen bij een dode koppeling.
 module.exports.gcalStatusVoorTenant = gcalStatusVoorTenant;
+
+// filterRecordsVoorTenant: pure defense-in-depth export filter (deliverable
+// "exports", brief §105). See its own comment above csvFormulaGuard.
+module.exports.filterRecordsVoorTenant = filterRecordsVoorTenant;

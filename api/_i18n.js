@@ -2225,6 +2225,34 @@ const TEKST = {
   'week.heet': { nl: 'Hete leads', fr: 'Prospects chauds', en: 'Hot leads', de: 'Heiße Leads' },
   'week.afgezegd': { nl: 'Afzeggingen', fr: 'Annulations', en: 'Cancellations', de: 'Stornierungen' },
   'week.mislukkingen': { nl: 'Belangrijke mislukkingen', fr: 'Échecs importants', en: 'Important failures', de: 'Wichtige Fehler' },
+  // Deliverable "exports" (brief §105): gelokaliseerde kolomnamen voor de
+  // CSV-export (api/leads.js csv-export-modus en de GET ?export=true-vorm).
+  // De taal komt uit _i18n.resolveer(req) -- dezelfde bron als de
+  // dashboardtaal zelf (?lang=, dan het hv_lang-cookie), niet een extra
+  // Airtable-aanroep: wie de exportknop klikt, kijkt al naar het dashboard in
+  // die taal. nl-waarden zijn bewust ONGEWIJZIGD (de bestaande letterlijke
+  // kolomnamen) zodat een bestaande Nederlandstalige export byte-voor-byte
+  // hetzelfde blijft.
+  'csv.datum':           { nl: 'Datum', fr: 'Date', en: 'Date', de: 'Datum' },
+  'csv.naam':             { nl: 'Naam', fr: 'Nom', en: 'Name', de: 'Name' },
+  'csv.telefoon':         { nl: 'Telefoon', fr: 'Téléphone', en: 'Phone', de: 'Telefon' },
+  'csv.bron':             { nl: 'Bron', fr: 'Source', en: 'Source', de: 'Quelle' },
+  'csv.status':           { nl: 'Status', fr: 'Statut', en: 'Status', de: 'Status' },
+  'csv.gekwalificeerd':   { nl: 'Gekwalificeerd', fr: 'Qualifié', en: 'Qualified', de: 'Qualifiziert' },
+  'csv.leadScore':        { nl: 'Lead Score', fr: 'Score du prospect', en: 'Lead score', de: 'Lead-Score' },
+  'csv.score':            { nl: 'Score', fr: 'Score', en: 'Score', de: 'Score' },
+  'csv.ability':          { nl: 'Ability', fr: 'Capacité', en: 'Ability', de: 'Fähigkeit' },
+  'csv.urgency':          { nl: 'Urgency', fr: 'Urgence', en: 'Urgency', de: 'Dringlichkeit' },
+  'csv.urgentie':         { nl: 'Urgentie', fr: 'Urgence', en: 'Urgency', de: 'Dringlichkeit' },
+  'csv.capaciteit':       { nl: 'Capaciteit', fr: 'Capacité', en: 'Ability', de: 'Fähigkeit' },
+  'csv.fit':               { nl: 'Fit', fr: 'Adéquation', en: 'Fit', de: 'Passung' },
+  'csv.samenvatting':     { nl: 'Samenvatting', fr: 'Résumé', en: 'Summary', de: 'Zusammenfassung' },
+  'csv.reden':             { nl: 'Reden', fr: 'Raison', en: 'Reason', de: 'Grund' },
+  'csv.bookingSent':      { nl: 'Booking Sent', fr: 'Lien de RDV envoyé', en: 'Booking sent', de: 'Buchungslink gesendet' },
+  'csv.opgepikt':         { nl: 'Opgepikt', fr: 'Pris en charge', en: 'Picked up', de: 'Übernommen' },
+  'csv.verwachteWaarde':  { nl: 'Verwachte Waarde', fr: 'Valeur attendue', en: 'Expected value', de: 'Erwarteter Wert' },
+  'csv.notities':         { nl: 'Notities', fr: 'Notes', en: 'Notes', de: 'Notizen' },
+
   'week.mislukkingenUitleg': {
     nl: 'Automatiseringen die deze week niet lukten (afspraak, melding, synchronisatie, ...) — bekijk het activiteitenlogboek voor details.',
     fr: 'Automatisations qui ont échoué cette semaine (rendez-vous, notification, synchronisation, ...) — consultez le journal d’activité pour plus de détails.',
