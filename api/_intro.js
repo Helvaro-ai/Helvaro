@@ -115,10 +115,27 @@ function css() {
    netjes bij frame 0 zodra het wél getoond wordt. Het hidden-attribuut blijft
    staan voor de betekenis, niet voor de opmaak. */
 #faro-intro { display: none; }
+/* .fi-wacht: de grond staat er al terwijl de clip nog laadt. Zonder deze
+   tussenstand stond het dashboard-skelet tot 350 ms in beeld VOOR de intro
+   (de laag bleef display:none tot .fi-aan), en dat is precies de flits die de
+   eigenaar zag. Zelfde opmaak als .fi-aan, alleen zonder de uitgang. */
+#faro-intro.fi-wacht {
+  position: fixed;
+  inset: 0;
+  z-index: 11500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  background: var(--bg);
+}
+#faro-intro.fi-wacht .fi-stage,
+#faro-intro.fi-wacht .fi-word { visibility: hidden; }
 #faro-intro.fi-aan {
   position: fixed;
   inset: 0;
-  z-index: 9000;              /* boven het inlogscherm (1000) en het dashboard */
+  z-index: 11500;             /* boven inlogscherm (1000), dashboard én de welkomwizard (11000); onder de toasts (12000) */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -397,10 +414,15 @@ function faroIntro() {
      frame 0. Tweehonderd milliseconde is korter dan de auth-aanroep die er net
      aan voorafging, dus in de praktijk merkt niemand de wacht; wie hem wel
      haalt, krijgt de bol, en dat is de bedoelde terugval. */
+  /* Meteen de grond neerzetten, nog voor de clip er is: zo ziet niemand het
+     skelet van het dashboard onder de intro door. Zie .fi-wacht in css(). */
+  laag.hidden = false;
+  laag.classList.add('fi-wacht');
+
   var start = function () {
     if (begonnen) return;
     begonnen = true;
-    laag.hidden = false;
+    laag.classList.remove('fi-wacht');
     laag.classList.add('fi-aan');
   };
 

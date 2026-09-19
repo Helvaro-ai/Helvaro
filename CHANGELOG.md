@@ -14,6 +14,16 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Inloggen: Faro landt nu vóór het dashboard, zonder flits van het skelet
+
+Na het inloggen zag je heel even het laadskelet van het dashboard en pas
+daarna de intro. Oorzaak: de intro-laag bleef verborgen tot de clip kon spelen
+(tot 350 ms). De laag dekt het scherm nu meteen af in de kleur van het thema en
+de clip start zodra hij er is. Bij een eerste login stond bovendien de
+welkomwizard bovenop de intro; die volgorde is omgedraaid: eerst Faro, dan de
+wizard. Niets aan de intro zelf is veranderd (1,7 s, overslaanbaar met klik of
+toets, valt terug op de bol als de clip niet laadt).
+
 ### Gesprekken op je telefoon: de lijst krijgt het hele scherm
 
 Op een telefoon stond de gesprekkenlijst afgeknipt op vier rijen, met daaronder
