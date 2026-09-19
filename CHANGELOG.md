@@ -14,6 +14,28 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Wachtwoord vergeten en e-mail bevestigen verraden niet meer of een adres bestaat
+
+"Wachtwoord vergeten" en "verificatiemail opnieuw sturen" gaven eerst een
+duidelijk andere melding voor een adres dat niet bij ons bekend is dan voor
+een bestaand account. Wie dat langs een lijst adressen probeerde kon zo
+uitvissen welke daarvan een Helvaro-account hebben. Beide schermen zeggen nu
+altijd hetzelfde ("als dit adres bekend is, is de mail onderweg") — alleen
+een bestaand account krijgt ook echt mail.
+
+**Actie:** geen. Gevonden en gerepareerd tijdens de Fase 10
+beveiligingsronde; zie SECURITY.md voor de volledige aanvalsmatrix.
+
+### Het GDPR-verwijder-/exportknopje voor een lead (admin) deed het niet
+
+Los van elk klantscherm: de admin-only API die een individuele lead op
+verzoek kan anonimiseren of exporteren (recht op vergetelheid/inzage) gaf
+altijd "Ongeldige API key" terug, ook met de juiste beheerderssleutel — een
+regressie die niets lekte (hij weigerde gewoon alles), maar de functie zelf
+onbruikbaar maakte. Werkt weer.
+
+**Actie:** geen.
+
 ### Lege schermen leggen uit wat er komt
 
 "Geen leads gevonden", "Geen data" en "Nog geen beelden gegenereerd" zeggen nu

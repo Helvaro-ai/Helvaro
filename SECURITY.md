@@ -109,6 +109,75 @@ Set all of these in the **Vercel Dashboard → Project → Settings → Environm
 
 ---
 
+## 2026-09-19 — Security attack pass (Fase 10)
+
+A deliberate, API-level attack pass against `api/leads.js`, `api/auth.js`,
+`api/admin.js`, `api/whatsapp.js`, `api/stripe.js`, `api/form.js`,
+`api/_gcal.js`/`api/_drive.js`, and `api/_crm/*`. See
+`tests/idor-matrix.test.js` and `tests/wachtwoord-reset-orakel.test.js` for
+the executable proof; this section is the summary.
+
+**What this pass covered:**
+
+- **Cross-tenant IDOR** across every `body.mode` in `api/leads.js` that
+  accepts a record id or code (leads, appointments, vehicles, properties,
+  CRM sync, billing, config, activity log). Verified by code reading +
+  existing per-feature tests (`tests/properties.test.js`,
+  `tests/dealership.test.js`, `tests/voertuigslot.test.js`, …), and by two
+  new executable cases in `tests/idor-matrix.test.js` that had no prior
+  cross-tenant test: `appointment-update` and `appointment-create` (linking
+  a lead by id).
+- **Admin/privilege checks**: `isAdminToken()` timing-safe compare
+  (`api/_session.js`, `api/admin.js`, `api/leads.js`); admin token only ever
+  read from a header/cookie via `_session.readToken()`, never from a query
+  string; plan/price/credit amounts always recomputed server-side, never
+  trusted from the client (`api/_plans.js`, `api/_credits.js`).
+- **Webhook replay**: Stripe signature verification + idempotent booking via
+  `api/_ledger.js` reference (`stripe:<session id>`, see
+  `tests/stripe-webhook.test.js`); WhatsApp signature verification fails
+  CLOSED when `WA_APP_SECRET` is unset (503, not an open endpoint) and
+  message-id dedup (`api/whatsapp.js`).
+- **SSRF**: every client-supplied URL Helvaro's server fetches itself
+  (CRM webhook/API/My Domain in `api/_crm/adres.js`; property/vehicle
+  import in `api/_lib/fetch-website.js`) is resolved and checked against
+  private/link-local/metadata IP ranges, with `redirect: 'manual'` so a
+  public host can't 307 its way to an internal one.
+- **Auth**: session cookie is `HttpOnly; Secure; SameSite=Lax` with a
+  double-submit CSRF token (`api/_session.js`); reset tokens expire in 1h
+  and are invalidated on use (bound to the password hash, which rotates);
+  admin/login rate-limited at 40/15min per IP, shared across instances via
+  Upstash when configured (`api/_ratelimit.js`).
+- **Info leakage**: `500` responses never include `err.message`
+  (`api/_errors.js`); admin `customer-detail` scoping previously fixed.
+
+**Found and fixed in this pass:**
+
+1. **User enumeration via password reset / resend-verification**
+   (`api/auth.js`, MEDIUM) — `request-reset` and `resend-verification`
+   returned a distinct 404 for an unregistered email vs. 200 for a real
+   account, defeating the neutral-error pattern the plain login endpoint
+   already used correctly. Both now return an identical response
+   regardless of account existence. *Residual, accepted*: the
+   `email_not_verified` 403 branch of `request-reset` still confirms an
+   account exists but is unverified — a smaller, lower-value oracle than
+   the fixed one, and removing it would cost real UX (the verification
+   gate itself is intentional). See `tests/wachtwoord-reset-orakel.test.js`.
+2. **Admin lead-delete/lead-export unreachable** (`api/leads.js`, functional
+   regression discovered while building the IDOR matrix — fails closed, no
+   data exposure, but the GDPR erasure/export path 401'd unconditionally
+   regardless of a correct admin key). Fixed: the legacy client-API-key
+   lookup is now skipped once the admin token has already authenticated.
+   See `tests/idor-matrix.test.js`.
+
+**Not exercisable with the mocks available in this pass** (see
+`tests/idor-matrix.test.js`'s closing section for the reasoning): `crm-sync`
+cross-tenant leadId check (requires a working `_crm/config.js` mock),
+image/video job cross-tenant status reads (job state lives outside
+Airtable), and the gcal/drive OAuth `?action=callback` exchange (requires a
+signed state token *and* a mocked Google token exchange).
+
+---
+
 ## Checklist for Deployment
 
 - [ ] All 8 env vars above are set in Vercel
