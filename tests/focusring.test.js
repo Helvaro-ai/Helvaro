@@ -92,9 +92,13 @@ console.log('\n  de kleur klopt op elk vlak waar hij kan landen');
   ck('er is een --focus-ring token', !!donker);
 
   const alle = [...code.matchAll(/--focus-ring:\s*(#[0-9A-Fa-f]{6})/g)].map((m) => m[1]);
-  /* Drie plekken: :root (donker), [data-theme="light"], en .sidebar -- die
-     laatste omdat de zijbalk in BEIDE thema's donker blijft. */
-  ck('en hij is per context gezet', alle.length === 3, alle);
+  /* Vier plekken sinds Fase 4: :root (donker), [data-theme="light"],
+     .sidebar (donkere basisregel, voor als de zijbalk -- net als de rest
+     van de pagina -- in het donkere thema zit) en
+     [data-theme="light"] .sidebar. Die laatste is nieuw: de zijbalk volgt nu
+     het thema in plaats van permanent donker te blijven, dus krijgt op wit
+     dezelfde okerinkt als de rest van het lichte thema, niet zand. */
+  ck('en hij is per context gezet', alle.length === 4, alle);
 
   const donkereVlakken = ['#14120E', '#2A2824', '#181409'];
   const lichteVlakken  = ['#F6F3EC', '#FFFFFF', '#EEE9DE'];
@@ -102,7 +106,7 @@ console.log('\n  de kleur klopt op elk vlak waar hij kan landen');
   const zand = alle.filter((c) => ct(c, '#14120E') > 5);
   const goud = alle.filter((c) => ct(c, '#F6F3EC') >= 3);
   ck('de donkere ring bestaat', zand.length >= 1, alle);
-  ck('de lichte ring bestaat', goud.length === 1, alle);
+  ck('de lichte ring bestaat', goud.length >= 1, alle);
 
   /* WCAG 1.4.11: een niet-tekstuele indicator heeft 3:1 nodig. Dit is geen
      formaliteit -- op 1,27:1 is de ring er wel en zie je hem niet. */

@@ -85,9 +85,50 @@ function render(lang) {
    Bijgewerkt na de drie raakdoel-fixes en na het meekleuren van Clerks
    "last used"-badge op de Google-knop. Daarna voor de
    ingeklapte zijbalk (+1.060 bytes): merkteken in plaats van woordmerk, alles op de
-   middenas. Daarna (+337 bytes) het antwoordvak op de Gesprekken-pagina, en (+328) de agenda-werkbalk op telefoons. */
-const CSS_BYTES = 385200;
-const CSS_SHA   = 'dfe3102f18652ae6';
+   middenas. Daarna (+337 bytes) het antwoordvak op de Gesprekken-pagina, en (+328) de agenda-werkbalk op telefoons.
+   Daarna (+1.265 bytes) Fase 4 (ontwerpsysteem): het volledige warme-neutrale
+   palet in beide thema's (grond/kaart/rand/tekst/status), 4/8/12-hoekschaal,
+   een vlakke primaire knop i.p.v. een doorschijnend verloop, en de gedode
+   knopgloed en stuiterende curves. Verklaarbaar aan de grootte: elke
+   kleurwaarde in :root en [data-theme="light"] is vervangen, en er kwamen een
+   handvol nieuwe alias-tokens (--ground/--raised/--ink-surface/--edge,
+   --btn-primary-bg/--btn-primary-text) bij. Zie CHANGELOG.md.
+
+   Daarna (-330 bytes) Fase 4 vervolg: de drie --card / --card-elevated
+   linear-gradient()-waarden (licht en donker, plus het vastgezette
+   .login-brand-side-blok) vervangen door de platte tonen die de opdracht
+   voorschrijft -- de brief verbiedt verlopen buiten de ene kaartrand-schaduw
+   in de modal. Kleiner geworden omdat een platte hexwaarde korter is dan een
+   driestops-gradient.
+
+   Daarna (+381 bytes) de opdracht-punten 1 en 2 van dezelfde ronde: de twee
+   losse root-niveau [data-theme="light"]-blokken (het paletblok en het
+   knop-tokenblok bij --btn-rim) samengevoegd tot EEN blok direct na :root,
+   de dubbele .gradient-text-override verwijderd (herhaalde exact wat de
+   thema-onafhankelijke basisregel al deed), en de zijbalk laten meebewegen
+   met het thema in plaats van in beide thema's donker te blijven -- opdracht
+   van de eigenaar. Groter geworden door de nieuwe [data-theme="light"]
+   .sidebar-tokenrebind en de bijbehorende uitleg; drie letterlijke,
+   donker-getunede kleuren op .sidebar .user-name/.user-role/.btn-logout zijn
+   juist verwijderd omdat de tokenrebind ze overbodig maakt.
+
+   Daarna (+1.250 bytes) punt 3: --ease-spring niet langer gealiast maar
+   helemaal weg (de detector matcht op de tekst "spring" in de bron, een
+   alias loste dat niet op), en de 12 layout-transition-vondsten (11
+   vulbalken + de zijbalk-margeschuif) beoordeeld en met uitleg bewust
+   gehouden -- ombouwen naar transform:scaleX() raakt de JS die de breedte
+   zet op tien plekken in dashboard.js, dat is applicatielogica en geen
+   tokenwerk. Groter geworden door die uitleg, niet door nieuwe regels.
+
+   Daarna (+587 bytes) scripts/contrast-check.js gevonden dat vier
+   *-ink tokens gemeten waren tegen de KALE kaart in plaats van tegen hun
+   eigen getinte chip (--error-ink donker, --success-ink/--error-ink/
+   --neutral-ink licht) -- precies de fout die dit bestand zelf al
+   beschrijft bij CLAUDE.md's contrastregel. Vier kleurwaarden vervangen
+   en elk met een uitlegregel die het oude en nieuwe cijfer noemt; groter
+   geworden door die uitleg, niet door nieuwe eigenschappen. */
+const CSS_BYTES = 388353;
+const CSS_SHA   = '0417ffe7cf32e7ba';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

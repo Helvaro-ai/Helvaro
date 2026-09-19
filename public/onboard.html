@@ -10,34 +10,41 @@
      its own beige-on-black palette, so a new client signed up on one
      product and then landed in a visibly different one. Same neutrals,
      same gold, same semantic accents. */
+  /* Fase 4: dit was een eigen palet (koud blauwgrijs #14161B, een goud dat
+     niet het merkzand is, en ongebruikte --blue/--purple tokens die de
+     merkregel "geen blauw of paars" al schonden). Nu dezelfde donkere
+     waarden als api/_dash/styles.js, zodat onboarding niet als een ander
+     product oogt dan het dashboard erna. */
   :root {
-    --bg:        #14161B;
-    --bg-card:   #1B1D22;
-    --bg-card-2: #212429;
-    --input-bg:  #262A31;
-    --border:    rgba(255,255,255,0.09);
-    --text:      #F2F4F8;
-    --muted:     #9AA3B2;
-    --accent:    #C9A34E;
-    --accent-hi: #DDBA6A;
-    --green:     #22C55E;
-    --red:       #EF4444;
-    --amber:     #F59E0B;
-    --blue:      #4F7CFF;
-    --purple:    #8B5CF6;
-    --on-accent: #1B1D22;
-    --grad-gold: linear-gradient(135deg, #C9A34E, #F59E0B);
+    --bg:        #17140F;
+    --bg-card:   #211D16;
+    --bg-card-2: #2A251C;
+    --input-bg:  #26211A;
+    --border:    #3A3327;
+    --text:      #F1E9DA;
+    --muted:     #A79B85;
+    --accent:    #E8D7B1;
+    --accent-hi: #F5ECD7;
+    --green:     #4CAF6E;
+    --red:       #E4665A;
+    --amber:     #E8A54A;
+    --on-accent: #1A1A1A;
+    --grad-gold: linear-gradient(135deg, #E8D7B1, #C9AE7C);
   }
   *,*::before,*::after { box-sizing: border-box; }
   body {
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
-    background: radial-gradient(circle at 30% 0%, #1A1A1A 0%, var(--bg) 60%);
+    background: radial-gradient(circle at 30% 0%, #1E1912 0%, var(--bg) 60%);
     color: var(--text); min-height: 100vh;
     display: flex; align-items: center; justify-content: center; padding: 24px;
   }
+  /* Fase 4: was rand + brede schaduw -- de "ghost card" (craft-floor: kies
+     één, rand OF schaduw). Dit is de enige kaart op de pagina en fungeert
+     als een modal op een donkere grond, dus de schaduw blijft (dat is de
+     modal-uitzondering uit de opdracht); de rand is weg. */
   .card {
     width: 100%; max-width: 620px;
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
+    background: var(--bg-card); border-radius: 18px;
     box-shadow: 0 20px 60px rgba(0,0,0,.5);
     padding: 36px 32px;
   }
@@ -58,12 +65,15 @@
   }
   .step-dot.active { background: var(--accent); }
   .step-dot.done   { background: var(--accent-hi); }
-  .step-label { font-size: 11px; color: var(--accent-hi); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  /* Fase 4: verplaatst van boven h2 (kicker) naar onder .sub, en van
+     getrackte hoofdletters naar een gewone bijschrift-stijl -- de detector
+     vlagt een kicker-boven-kop met naam als verboden patroon. */
+  .step-label { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 4px; margin-bottom: 0; }
 
   /* Fields */
   .field { margin-bottom: 18px; }
   .field label {
-    display: block; font-size: 12px; font-weight: 600; color: var(--text);
+    display: block; font-size: 13px; font-weight: 600; color: var(--text);
     margin-bottom: 6px;
   }
   .field label .opt { color: var(--muted); font-weight: 400; margin-left: 4px; }
@@ -78,17 +88,17 @@
   textarea.tall { min-height: 100px; }
   input:focus, textarea:focus, select:focus { border-color: var(--accent); }
   input.error, textarea.error { border-color: var(--red); }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
   .hint.code { font-family: monospace; }
   .hint b { color: var(--accent-hi); font-weight: 600; }
-  .counter { font-size: 10px; color: var(--muted); text-align: right; margin-top: 3px; }
+  .counter { font-size: 13px; color: var(--muted); text-align: right; margin-top: 3px; }
   .counter.near { color: var(--amber); }
 
   /* Chips (example fillers) */
   .chip {
     display: inline-block; margin: 4px 6px 0 0; padding: 5px 10px; min-height: 24px;
     background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 99px;
-    color: var(--accent-hi); font-size: 11px; cursor: pointer; font-family: inherit;
+    color: var(--accent-hi); font-size: 13px; cursor: pointer; font-family: inherit;
   }
   .chip:hover { border-color: var(--accent); }
 
@@ -97,7 +107,7 @@
   .pill-opt {
     flex: 1 1 auto; min-width: 120px; display: flex; align-items: center; gap: 8px;
     padding: 11px 12px; background: var(--input-bg); border: 1px solid var(--border);
-    border-radius: 10px; cursor: pointer; font-size: 12.5px;
+    border-radius: 10px; cursor: pointer; font-size: 13px;
   }
   .pill-opt input { width: auto; padding: 0; margin: 0; accent-color: var(--accent); }
   .pill-opt.checked { border-color: var(--accent); background: rgba(232,215,177,.10); }
@@ -128,7 +138,7 @@
   .btn-back:hover { color: var(--text); }
   .btn-skip {
     flex: 0 0 auto; padding: 13px 14px; background: none; border: none;
-    color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; text-decoration: underline;
+    color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline;
   }
   .btn-skip:hover { color: var(--accent-hi); }
 
@@ -146,13 +156,13 @@
   }
   .info-box {
     background: rgba(232,215,177,.08); border: 1px solid rgba(232,215,177,.25);
-    color: var(--text); font-size: 12.5px; padding: 12px 14px; border-radius: 8px;
+    color: var(--text); font-size: 13px; padding: 12px 14px; border-radius: 8px;
     margin: 14px 0; text-align: left; line-height: 1.55;
   }
 
   /* Review step */
   .review-section-title {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
     color: var(--accent-hi); margin: 18px 0 4px;
   }
   .review-section-title:first-child { margin-top: 0; }
@@ -164,7 +174,7 @@
   .review-row:last-child { border-bottom: none; }
   .review-label { color: var(--muted); flex: 0 0 auto; }
   .review-val { color: var(--text); text-align: right; font-weight: 600; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .review-val.long { white-space: normal; max-width: 60%; font-weight: 400; font-size: 12px; line-height: 1.5; color: var(--text); }
+  .review-val.long { white-space: normal; max-width: 60%; font-weight: 400; font-size: 13px; line-height: 1.5; color: var(--text); }
 
   /* Success / "wat nu" panel */
   .success-panel { display: none; text-align: left; }
@@ -184,7 +194,7 @@
   .cred-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; gap: 10px; }
   .cred-row:not(:last-child) { border-bottom: 1px solid var(--border); }
   .cred-label { color: var(--muted); }
-  .cred-val { font-family: monospace; color: var(--accent-hi); word-break: break-all; text-align: right; font-size: 12px; }
+  .cred-val { font-family: monospace; color: var(--accent-hi); word-break: break-all; text-align: right; font-size: 13px; }
   .btn-enter {
     width: 100%; padding: 14px;
     background: var(--accent); border: none; border-radius: 10px;
@@ -215,10 +225,9 @@
     </div>
 
     <!-- STEP 1 — Bedrijfsbasis ───────────────────────────────────────────── -->
-    <div class="step active" id="step-1">
-      <div class="step-label">Stap 1 van 6</div>
-      <h2>Jouw bedrijf</h2>
+    <div class="step active" id="step-1">      <h2>Jouw bedrijf</h2>
       <p class="sub">We hebben deze basisinfo nodig om je dashboard, leadformulier en WhatsApp-flow klaar te zetten.</p>
+      <div class="step-label">Stap 1 van 6</div>
 
       <div class="field">
         <label for="w-name">Bedrijfsnaam <span class="req">*</span></label>
@@ -294,10 +303,9 @@
     </div>
 
     <!-- STEP 2 — De AI ───────────────────────────────────────────────────── -->
-    <div class="step" id="step-2">
-      <div class="step-label">Stap 2 van 6</div>
-      <h2>Jouw WhatsApp-persoonlijkheid</h2>
+    <div class="step" id="step-2">      <h2>Jouw WhatsApp-persoonlijkheid</h2>
       <p class="sub">Dit is de "stem" waarmee je assistent met leads praat op WhatsApp. Tip: kies een echte medewerkersnaam — leads voelen dat ze met een mens chatten.</p>
+      <div class="step-label">Stap 2 van 6</div>
 
       <div class="field">
         <label for="w-aiName">Naam van je assistent <span class="opt">(optioneel)</span></label>
@@ -320,10 +328,9 @@
     </div>
 
     <!-- STEP 3 — Hoe je werkt ────────────────────────────────────────────── -->
-    <div class="step" id="step-3">
-      <div class="step-label">Stap 3 van 6</div>
-      <h2>Hoe je werkt</h2>
+    <div class="step" id="step-3">      <h2>Hoe je werkt</h2>
       <p class="sub">Bepaalt hoe je assistent leads praktisch afhandelt: wanneer, hoe geboekt wordt, en wie een seintje krijgt.</p>
+      <div class="step-label">Stap 3 van 6</div>
 
       <div class="field">
         <label for="w-hours">Werkuren <span class="opt">(optioneel)</span></label>
@@ -378,10 +385,9 @@
     </div>
 
     <!-- STEP 4 — Vertel je assistent over je bedrijf ────────────────────────────── -->
-    <div class="step" id="step-4">
-      <div class="step-label">Stap 4 van 6</div>
-      <h2>Vertel je assistent over je bedrijf</h2>
+    <div class="step" id="step-4">      <h2>Vertel je assistent over je bedrijf</h2>
       <p class="sub">Hoe meer je hier zet, hoe beter je assistent vanaf dag 1 écht kan antwoorden — in plaats van "dat weet ik niet, ik vraag het na". Neem de tijd, dit is het belangrijkste stuk.</p>
+      <div class="step-label">Stap 4 van 6</div>
 
       <div class="field">
         <label for="w-bizServices">Diensten &amp; prijzen <span class="opt">(optioneel, sterk aangeraden)</span></label>
@@ -417,10 +423,9 @@
     </div>
 
     <!-- STEP 5 — Look & feel (optioneel) ──────────────────────────────────── -->
-    <div class="step" id="step-5">
-      <div class="step-label">Stap 5 van 6 · optioneel</div>
-      <h2>Look &amp; feel</h2>
+    <div class="step" id="step-5">      <h2>Look &amp; feel</h2>
       <p class="sub">Persoonlijke tintjes voor je leadformulier. Volledig optioneel — je kan dit later altijd in je dashboard aanpassen.</p>
+      <div class="step-label">Stap 5 van 6 · optioneel</div>
 
       <div class="field">
         <label for="w-brandColor">Brand-kleur <span class="opt">(optioneel)</span></label>
@@ -467,10 +472,9 @@
     </div>
 
     <!-- STEP 6 — Controleren & bevestigen ─────────────────────────────────── -->
-    <div class="step" id="step-6">
-      <div class="step-label">Stap 6 van 6</div>
-      <h2>Controleren &amp; bevestigen</h2>
+    <div class="step" id="step-6">      <h2>Controleren &amp; bevestigen</h2>
       <p class="sub">Even nakijken — je kunt later alles aanpassen in je dashboard.</p>
+      <div class="step-label">Stap 6 van 6</div>
 
       <div class="field">
         <label for="w-code">Projectcode <span class="req">*</span></label>

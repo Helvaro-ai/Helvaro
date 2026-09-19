@@ -117,6 +117,56 @@ en dat erbij bouwen is een apart, groter werk. Bestaande interne
 foutafhandeling in elke route (de eigen `try`/`catch`-blokken die vandaag al
 netjes antwoorden) is ongewijzigd — dit is uitsluitend het net eronder.
 
+### Kaartverloop weg — vlakke kleur in plaats van gradient
+
+`--card` en `--card-elevated` waren nog een driestops-`linear-gradient()` in
+beide thema's (en in het vastgezette `.login-brand-side`-blok) terwijl de
+ontwerprichting verlopen buiten de ene zachte modal-schaduw expliciet
+uitsluit. Ze zijn nu platte tonen: donker `#211D16` / `#2A251C`, licht
+`#FAF6EE` / `#FFFAF2` — exact de waarden uit de richtlijn. Niets zichtbaar
+veranderd op het scherm (het verloop was 3,5% helderheidsbereik, met opzet
+nauwelijks te zien); de stylesheet is wel 330 bytes kleiner geworden.
+`tests/dashboard-splitsing.test.js` had daardoor een verouderde
+byte/sha-tripwire; die is bijgewerkt naar de echte, gemeten waarden
+(386.135 bytes, `d4358e98b8be7e6f`) — niet overgeslagen.
+
+### Nieuw warm licht/donker ontwerp voor het hele dashboard
+
+Het dashboard heeft een nieuwe, warme kleurbasis gekregen — zand in plaats
+van het koelere blauwgrijs van hiervoor — die nu in zowel het lichte als het
+donkere thema consistent is. Zichtbaar voor jou: knoppen, statusbolletjes
+(groen/oranje/rood) en de zijbalk-markering ogen warmer en zijn scherper
+leesbaar dan voorheen, vooral in het lichte thema waar een paar kleuren
+eerder net te vaag waren om vlot te lezen.
+
+Elke tekstkleur op elk vlak waar hij echt op staat (een groene score op een
+groene chip, niet op de kaart eronder) is nagemeten tegen de
+toegankelijkheidsnorm; vier kleuren die net onder de norm zaten zijn
+bijgesteld. Een script (`scripts/contrast-check.js`) bewaakt dit voortaan
+automatisch bij elke volgende kleurwijziging. Ook opgelost: op een telefoon
+kon het "Vraag Faro..."-vak onderaan het scherm overlappen met de ronde
+hulpknop rechtsonder, waardoor het verzendknopje er half achter verdween —
+dat vak houdt nu ruimte vrij voor die knop.
+
+Wat er is nagekeken en bewust ONgemoeid is gelaten: de gekleurde
+linkerrand op meldingen/tips en het actieve gesprek in de lijst (dat is
+dezelfde statuskleur-taal als de rest van de app, geen opsmuk), en het
+lettertype Inter (dat is het merklettertype, geen toeval).
+
+### De knopgloed is weg, en kaarten zijn minder rond
+
+`--btn-glow` (een zand-gekleurde gloed onder knoppen bij hover) staat nu op
+`none` — de ontwerprichting sluit gloed-effecten expliciet uit. De rand-licht
+(`--btn-rim`) blijft, dus een knop blijft wel dieper aanvoelen bij hover,
+alleen zonder de gloed eromheen. Kaarten hebben een kleinere hoekronding
+gekregen (22px → 16px): dat was de enige waarde in het dashboard die buiten
+de 12–16px-marge viel die de rest van het systeem al aanhield. Er zijn vier
+nieuwe naam-aliassen bijgekomen (`--ground`, `--raised`, `--ink-surface`,
+`--edge`) die niets veranderen — ze wijzen naar de bestaande `--bg`/`--card`/
+`--bg-alt`/`--border-c` — maar toekomstige stijlen kunnen ze gebruiken zonder
+weer los kleuren te verzinnen. Niets hiervan is zichtbaar buiten hover-states
+en kaarthoeken; geen enkele kleur is veranderd.
+
 ### Het openbare leadformulier was zwakker beveiligd tegen misbruik dan het leek
 
 `api/form.js` (het formulier dat een bezoeker zonder in te loggen invult)

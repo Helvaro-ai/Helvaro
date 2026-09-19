@@ -247,7 +247,7 @@ const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
   ).trim().replace(/[^a-fA-F0-9-]/g, '');
   const ONESIGNAL_READY = !!ONESIGNAL_APP_ID;
   const HTML = `<!DOCTYPE html>
-<html lang="${UI_LANG}" data-theme="dark">
+<html lang="${UI_LANG}" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -4813,10 +4813,14 @@ function dismissToast(el) {
    THEME. Locked dark to match helvaro.pro brand
    ============================================================ */
 function initTheme() {
-  // Dark is de default. Alleen als de gebruiker zelf bewust naar light is
-  // geswitcht (opgeslagen 'light') tonen we light. Nieuwe/onbekende
-  // bezoekers krijgen dark.
-  const saved = localStorage.getItem('hv-theme') === 'light' ? 'light' : 'dark';
+  // Fase 4: Light Helvaro is de default (coordinator-besluit) -- de
+  // eigenaar zit overdag op kantoor/in de showroom, dark is de avonduitgave.
+  // Alleen als iemand zelf bewust naar dark schakelde (opgeslagen 'dark')
+  // tonen we dark. Nieuwe/onbekende bezoekers krijgen light, en dat is ook
+  // wat de server al rendert (data-theme="light" hierboven in de HTML) --
+  // zonder deze wijziging zou de pagina eerst licht renderen en dan naar
+  // donker springen zodra dit script draait.
+  const saved = localStorage.getItem('hv-theme') === 'dark' ? 'dark' : 'light';
   applyTheme(saved);
 }
 
