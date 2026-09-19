@@ -14,6 +14,10 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Sjabloonlijst: 'wa.tpl.campagne' toonde zijn sleutel in plaats van een naam
+
+Het campagnesjabloon heet nu gewoon "Campagnebericht naar eerdere leads" (nl/fr/en/de).
+
 ### Eigen WhatsApp-nummer koppelen: de knop staat er nu echt
 
 Instellingen → WhatsApp heeft een kaart "Koppel je eigen nummer". Hij

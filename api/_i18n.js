@@ -1715,6 +1715,7 @@ const TEKST = {
   'wa.tpl.booking': { nl: 'Afspraakbevestiging aan de lead', fr: 'Confirmation de rendez-vous au prospect', en: 'Appointment confirmation to the lead', de: 'Terminbestätigung an den Lead' },
   'wa.tpl.reminder': { nl: 'Herinnering voor de afspraak', fr: 'Rappel du rendez-vous', en: 'Appointment reminder', de: 'Terminerinnerung' },
   'wa.tpl.followup': { nl: 'Opvolging na 24 uur stilte', fr: 'Relance après 24 h de silence', en: 'Follow-up after 24 hours of silence', de: 'Nachfassen nach 24 Stunden Stille' },
+  'wa.tpl.campagne': { nl: 'Campagnebericht naar eerdere leads', fr: 'Message de campagne aux anciens prospects', en: 'Campaign message to earlier leads', de: 'Kampagnennachricht an frühere Leads' },
   'wa.tpl.campaign': { nl: 'Nieuw aanbod aan eerdere kopers', fr: 'Nouvelle offre aux acheteurs précédents', en: 'New listing to earlier buyers', de: 'Neues Angebot an frühere Käufer' },
   'wa.tpl.dealerAfspraak': { nl: 'Melding aan de verkoper bij een proefrit', fr: 'Notification au vendeur pour un essai', en: 'Notification to the salesperson for a test drive', de: 'Benachrichtigung an den Verkäufer bei einer Probefahrt' },
   'wa.tpl.dealerHerinnering': { nl: 'Herinnering met de auto erbij', fr: 'Rappel avec la voiture', en: 'Reminder including the car', de: 'Erinnerung mit dem Auto' },
