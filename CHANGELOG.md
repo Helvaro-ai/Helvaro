@@ -14,6 +14,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De dagelijkse opvolgcron viel sinds 17 september elke ochtend om
+
+Om 09:00 stopte de cron met "nietVerstuurd is not defined" — twee lijstjes voor
+de dagmail stonden binnen het vangnet van de opvolgstap gedeclareerd en werden
+erbuiten gelezen. Gevolg: geen dagmail, en ook herinneringen, retentie en het
+weekrapport van die run sloegen over. Gezien in de Vercel-runtime-fouten na de
+uitrol van vandaag; gefixt en bewaakt door `tests/cron-dagmail-scope.test.js`.
+
 ### Zoeken in leads gebeurt nu op de server, niet meer alleen in de browser
 
 De leadzoekbalk in het dashboard haalde altijd de volle lijst op en zocht

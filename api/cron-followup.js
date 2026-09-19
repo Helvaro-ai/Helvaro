@@ -173,6 +173,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        andere op zichzelf om, en gaat de run door. */
     let leads = [];
     let sent = 0;
+    /* Buiten de try, want de dagmail hieronder (na de catch) leest ze. Ze
+       stonden IN de try: elke run sinds 17 sep viel om 09:00 om met
+       "nietVerstuurd is not defined" en alles erna (dagmail, herinneringen,
+       retentie, weekrapport) sloeg over. Gezien in de Vercel-runtime-fouten. */
+    const followedUp = [];
+    const nietVerstuurd = [];
     try {
     // Fetch leads created 24h-7d ago that are still 'new'
     // Use field IDs in formula. Immune to field renames in Airtable
@@ -190,11 +196,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     if (!lRes.ok) throw new Error('Airtable ' + lRes.status);
 
     leads = lData.records || [];
-    const followedUp = [];
-    /* Wie WEL geselecteerd was maar niet verstuurd kon worden. Die horen in
-       de dagmail: een stille mislukking is precies hoe een dood Meta-token
-       wekenlang onopgemerkt blijft. */
-    const nietVerstuurd = [];
+    /* followedUp / nietVerstuurd: zie boven de try. Wie WEL geselecteerd was
+       maar niet verstuurd kon worden hoort in de dagmail: een stille
+       mislukking is precies hoe een dood Meta-token wekenlang onopgemerkt
+       blijft. */
     // Per-run cache — see isServiceStoppedForProject()'s own header.
     const planCache = new Map();
 
