@@ -14,6 +14,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Laatste schaduwen en gloed weg; geselecteerd gesprek stapt omhoog
+
+Na de eindreview bleven er nog een paar slagschaduwen en gloeiplekken over:
+onder de topbalk, onder de statkaarten in het donkere thema, onder de hulpknop
+en de actieve menu-pil, en een zwarte halo rond Faro's kop in de intro. Die
+zijn allemaal weg — een rand is de rand. Twee zwart-witte labels op de
+voor/na-vergelijking en de afspeelknop zijn nu warm zand op warm donker. De
+invoerbalk van Faro had bij focus twee ringen, nu één. Een geselecteerd of
+aangewezen gesprek in de lijst stapt nu in beide thema's één tint omhoog in
+plaats van (in het donker) een gat te worden.
+
 ### Visuele afwerking: vlakke grond, één kaartrand, geen gloed, geen streepjes, geen emoji, rustigere beweging
 
 Een reeks styling-fixes uit een ontwerp-review, geen van allen aan wat er op

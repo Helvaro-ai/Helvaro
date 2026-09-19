@@ -191,7 +191,7 @@ function css() {
   border-radius: 50%;
   object-fit: cover;
   opacity: 0;
-  box-shadow: 0 0 0 1px var(--accent-c), 0 0 34px rgba(0,0,0,.45);
+  box-shadow: 0 0 0 1px var(--accent-c);   /* finish-fix 4: alleen de haarlijn, geen halo */
   /* De clip beweegt zelf (hij vliegt in en landt), dus hier alleen een
      fade -- een knik bovenop een landing is dubbel. */
   animation: fi-fade-in .28s ease .05s both;

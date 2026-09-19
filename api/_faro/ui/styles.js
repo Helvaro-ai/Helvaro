@@ -114,9 +114,7 @@ function css() {
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 .faro-dock__inner:focus-within {
-  border-color: var(--champagne);
-  outline: 1px solid var(--champagne);
-  outline-offset: 1px;
+  border-color: var(--champagne);   /* één ring: de rand zelf wordt champagne, geen tweede outline */
 }
 .faro-dock__spark { display: inline-flex; color: var(--champagne); flex-shrink: 0; }
 .faro-dock__input {
@@ -549,7 +547,7 @@ body.hv-mode-ai .faro-rail {
 
 /* Aandacht: een korte schud, en dan stil blijven staan. */
 .faro-mascot[data-state="error"]     {
-  filter: drop-shadow(0 0 18px rgba(220, 38, 38, 0.18));
+  filter: none;   /* finish-fix 4: geen rode gloed; de foutkaart zegt het in tekst */
   animation: faro-schudt 480ms ease-in-out 1 forwards;
 }
 
@@ -969,7 +967,7 @@ body.hv-mode-ai .faro-rail {
   position: absolute; inset: 0; margin: auto;
   width: var(--sp-8); height: var(--sp-8); border-radius: var(--r-full);
   display: inline-flex; align-items: center; justify-content: center;
-  background: rgba(18,18,18,0.62); color: #FFF;
+  background: rgba(23,20,15,0.62); color: #F4E7C8;   /* warm scrim, zandinkt */
   backdrop-filter: blur(2px);
 }
 

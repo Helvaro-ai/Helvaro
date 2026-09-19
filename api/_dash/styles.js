@@ -282,7 +282,7 @@ const CSS = `/* ============================================================
   --elev-2: none;
   --elev-3: 0 20px 48px rgba(0,0,0,.32);
   --shadow:      0 1px 2px rgba(0,0,0,.34), 0 6px 16px rgba(0,0,0,.24), 0 18px 44px rgba(0,0,0,.18);
-  --shadow-card: 0 1px 2px rgba(0,0,0,.30), 0 5px 14px rgba(0,0,0,.20), 0 16px 40px rgba(0,0,0,.15);
+  --shadow-card: none;   /* finish-fix 3: elevation is the tan edge, in beide thema's */
   --shadow-glow: none;
 
   /* De lichtlip bovenop, plus nieuw: een schaduwlip onderaan. Samen maken ze
@@ -291,7 +291,7 @@ const CSS = `/* ============================================================
      twee lezen als een rand.
      Van 0.04 naar 0.07: op een verloop dat zelf al oploopt moest de lip mee
      omhoog, anders verdwijnt hij in de bovenste stop. */
-  --edge-hi: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.22);
+  --edge-hi: none;       /* finish-fix 3: geen ingebakken lichtrand -- de rand is de rand */
 
   --glass-fill:  rgba(18,18,18,0.78);
   --glass-edge:  rgba(255,255,255,0.06);
@@ -3346,7 +3346,7 @@ button.brand-dot { border: none; padding: 0; }
      hoorde te zijn. Zelfde helderheid, warme tint: 13,51:1 -> 13,47:1. */
   color: #120F08;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(232,215,177,.26);
+  box-shadow: none;   /* finish-fix 4: geen zandgloed onder de actieve pil */
 }
 /* The old rule painted a 3px bar down the left edge. Redundant now that
    the whole item is a filled pill, and it broke the pill's silhouette. */
@@ -3801,7 +3801,7 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 var(--glass-edge), 0 4px 20px rgba(20,17,10,0.05);
+  box-shadow: none;   /* finish-fix 3: de onderrand is de scheiding, geen slagschaduw op de grond */
   position: sticky;
   top: 0;
   z-index: 50;
@@ -6765,8 +6765,8 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   cursor: pointer;
   transition: background 0.12s;
 }
-.conv-list-item:hover { background: var(--bg-card-alt); }
-.conv-list-item.active { background: var(--bg-card-alt); }
+.conv-list-item:hover { background: var(--card-elevated); }   /* één toonstap omhoog, in beide thema's */
+.conv-list-item.active { background: var(--card-elevated); }
 .conv-list-item.active .conv-list-item-name { color: var(--accent-ink); }
 .conv-list-item-name {
   display: flex;
@@ -8124,7 +8124,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .pi-compare-tag {
   position: absolute; top: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; padding: 4px 8px; border-radius: 6px;
-  background: rgba(0,0,0,.55); color: #fff; pointer-events: none;
+  background: rgba(23,20,15,.62); color: #F4E7C8; pointer-events: none;   /* warm scrim, geen neutraal zwart/wit */
 }
 .pi-compare-tag.before { left: 8px; }
 .pi-compare-tag.after { right: 8px; }
@@ -9589,13 +9589,14 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   justify-content: center;
   background: var(--accent-c);
   color: var(--on-accent);
-  box-shadow: 0 4px 12px rgba(0,0,0,.28), 0 10px 32px rgba(var(--accent-rgb),.28);
+  box-shadow: none;   /* finish-fix 3/4: geen slagschaduw of zandgloed onder de hulpknop; de rand draagt hem */
+  border: 1px solid var(--border-strong);
   transition: transform var(--dur-base) var(--ease-out),
               box-shadow var(--dur-base) var(--ease-out);
 }
 .hv-help-launcher:hover {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 6px 16px rgba(0,0,0,.32), 0 14px 40px rgba(var(--accent-rgb),.36);
+  box-shadow: none;
 }
 .hv-help-launcher:active { transform: translateY(0) scale(.97); }
 .hv-help-launcher:focus-visible {
