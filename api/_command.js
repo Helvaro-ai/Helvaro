@@ -228,7 +228,7 @@ const CATEGORIES = [
     tone: 'ready',
     test: (l, s) => l.qualified && !l.afspraakGeboekt && Boolean(l.telefoon)
       && s.silent != null && s.silent <= T.QUIET_DAYS,
-    why: () => 'Gekwalificeerd en nog in gesprek, maar de AI kreeg de afspraak nog niet rond. Eén bericht zet het weer in gang.',
+    why: () => 'Gekwalificeerd en nog in gesprek, maar Faro kreeg de afspraak nog niet rond. Eén bericht zet het weer in gang.',
   },
   {
     key: 'high_priority',

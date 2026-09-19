@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-19T18:26:21Z",
+  "title": "Design System: Helvaro",
+  "extensions": {
+    "colorMeta": {
+      "sand": { "role": "primary", "displayName": "Sand", "canonical": "#E8D7B1", "tonalRamp": ["#1D1607", "#322914", "#4E4228", "#6A5C3D", "#867755", "#A0916D", "#B9A986", "#D1C3A2", "#E8D7B1", "#F5ECD7", "#FCF6E9"] },
+      "warm-sand": { "role": "primary-bright", "displayName": "Warm Sand", "canonical": "#F4E7C8" },
+      "charcoal": { "role": "neutral", "displayName": "Charcoal", "canonical": "#1A1A1A" },
+      "ground": { "role": "neutral", "displayName": "Ground", "canonical": "#F3EDE1", "dark": "#17140F" },
+      "raised": { "role": "neutral", "displayName": "Raised", "canonical": "#FAF6EE", "dark": "#211D16" },
+      "ink-surface": { "role": "neutral", "displayName": "Ink Surface", "canonical": "#EAE2D2", "dark": "#120F0B" },
+      "edge": { "role": "neutral", "displayName": "Edge", "canonical": "#D9CCB0", "dark": "#3A3327" },
+      "edge-strong": { "role": "neutral", "displayName": "Edge Strong", "canonical": "#B89D73", "dark": "#574B37" },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1F1D19", "dark": "#F1E9DA" },
+      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#6B6252", "dark": "#A79B85" },
+      "ink-disabled": { "role": "neutral", "displayName": "Ink Disabled", "canonical": "#A2977F", "dark": "#6F6554" },
+      "sand-ink": { "role": "primary-on-surface", "displayName": "Sand Ink", "canonical": "#6E5320", "dark": "#F5ECD7" },
+      "success": { "role": "status", "displayName": "Success", "canonical": "#2F8F4E", "dark": "#4CAF6E" },
+      "success-ink": { "role": "status-on-surface", "displayName": "Success Ink", "canonical": "#226838", "dark": "#4CAF6E" },
+      "warning": { "role": "status", "displayName": "Warning", "canonical": "#B4661A", "dark": "#E8A54A" },
+      "warning-ink": { "role": "status-on-surface", "displayName": "Warning Ink", "canonical": "#995716", "dark": "#E8A54A" },
+      "error": { "role": "status", "displayName": "Error", "canonical": "#C2352B", "dark": "#E4665A" },
+      "error-ink": { "role": "status-on-surface", "displayName": "Error Ink", "canonical": "#A52D25", "dark": "#E7756B" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The Faro landing headline (once) and its CRM analog, .stat-value's tabular-nums dashboard numerals." },
+      "headline": { "displayName": "Headline", "purpose": "Panel titles." },
+      "title": { "displayName": "Title", "purpose": "Section headings." },
+      "body": { "displayName": "Body", "purpose": "Running text and the composer; the CRM's actual html{font-size} base." },
+      "label": { "displayName": "Label", "purpose": "Tracked-caps micro labels: stat labels, form labels, section headers, badge text." }
+    },
+    "shadows": [
+      { "name": "elev-3", "value": "0 20px 48px rgba(0,0,0,.32)", "purpose": "The one true offset shadow in the system, dark theme. Reserved for content that floats fully above the page: modal and global-search overlay only." },
+      { "name": "elev-3-light", "value": "0 20px 48px rgba(64,52,32,.14)", "purpose": "Same overlay shadow, light theme — warm-tinted rather than blue-grey so it doesn't fight the sand accent." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "The one easing curve used across hover, focus and state transitions." },
+      { "name": "dur-fast", "value": "140ms", "purpose": "Press/active feedback." },
+      { "name": "dur-base", "value": "220ms", "purpose": "Default hover/state transition." },
+      { "name": "dur-enter", "value": "320ms", "purpose": "Entrance animation for panels and dropdowns." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one flat, solid two-tone chip. Inverts by theme: sand-on-charcoal dark, charcoal-on-warm-sand light. No tint, no gradient, no glow.",
+      "html": "<button class=\"ds-btn-primary\">Start met Helvaro</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #1A1A1A; color: #F4E7C8; border: none; border-radius: 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(64,52,32,0.14); font-size: 12px; font-weight: 500; font-family: 'Inter', sans-serif; cursor: pointer; transition: filter 140ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { filter: brightness(1.08); } .ds-btn-primary:active { filter: brightness(0.96); } .ds-btn-primary:focus-visible { outline: 2px solid #96742F; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }"
+    },
+    {
+      "name": "Secondary (Icon) Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The ghost icon button used everywhere a primary chip would be too loud — a near-transparent fill with a rim, tinting toward the accent on hover.",
+      "html": "<button class=\"ds-btn-secondary\"><span>Export CSV</span></button>",
+      "css": ".ds-btn-secondary { display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: linear-gradient(180deg, #FAF6EE 0%, #FFFAF2 100%); border: 1px solid #D9CCB0; border-radius: 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.70), inset 0 -1px 0 rgba(64,52,32,0.10); color: #6B6252; font-size: 12px; font-weight: 500; font-family: 'Inter', sans-serif; cursor: pointer; transition: background 220ms, border-color 220ms, color 220ms; } .ds-btn-secondary:hover { background: linear-gradient(180deg, rgba(232,215,177,0.16) 0%, rgba(232,215,177,0.09) 100%); border-color: rgba(232,215,177,0.32); color: #6E5320; } .ds-btn-secondary:focus-visible { outline: 2px solid #96742F; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The dashboard's core metric card: flat raised surface, tan edge, one-tone lift plus per-metric accent hairline on hover — never a resting shadow.",
+      "html": "<div class=\"ds-stat-card\"><div class=\"ds-stat-label\">Nieuwe leads</div><div class=\"ds-stat-value\">128</div></div>",
+      "css": ".ds-stat-card { position: relative; overflow: hidden; background: #FAF6EE; border: 1px solid #D9CCB0; border-radius: 12px; padding: 22px 20px 18px; transition: transform 220ms cubic-bezier(0.4,0,0.2,1), border-color 220ms; } .ds-stat-card:hover { transform: translateY(-2px); border-color: #E8D7B1; } .ds-stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #6B6252; margin-bottom: 10px; } .ds-stat-value { font-family: 'Space Grotesk', 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: #1F1D19; line-height: 1; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": null,
+      "description": "Every status pairs colour with a translated text label — never colour alone. Pill shape, 10% tint fill, matching ink text.",
+      "html": "<span class=\"ds-badge ds-badge-yes\">Ja</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap; } .ds-badge-yes { background: rgba(47,143,78,0.10); color: #226838; border: 1px solid rgba(47,143,78,0.22); } .ds-badge-no { background: rgba(194,53,43,0.10); color: #A52D25; border: 1px solid rgba(194,53,43,0.22); } .ds-badge-new { background: rgba(155,149,136,0.12); color: #504738; border: 1px solid rgba(155,149,136,0.2); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Recessed field on the login stage: sits one step darker than its panel, focus adds an accent border plus a soft ring — the one intentional glow in the system.",
+      "html": "<input class=\"ds-input\" placeholder=\"jij@bedrijf.be\" />",
+      "css": ".ds-input { width: 100%; padding: 15px 18px; background: #FAF6EE; border: 1.5px solid #D9CCB0; border-radius: 12px; color: #1F1D19; font-size: 15px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 200ms, background-color 200ms, box-shadow 200ms; } .ds-input:focus { border-color: #E8D7B1; box-shadow: 0 0 0 4px rgba(232,215,177,0.25); } .ds-input::placeholder { color: #A2977F; }"
+    },
+    {
+      "name": "Active Nav Item",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "The sidebar's one filled state — a solid sand pill with charcoal text and icon, no glow beneath it (an earlier accent glow under the active pill was explicitly removed).",
+      "html": "<div class=\"ds-nav-item ds-nav-item-active\">Dashboard</div>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 500; color: #A79B85; cursor: pointer; } .ds-nav-item-active { background: #E8D7B1; color: #120F08; font-weight: 600; box-shadow: none; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Showroom Sample Board",
+    "overview": "Helvaro is not a screen full of purple-AI gradients pretending to be intelligent, and it is not a cream editorial essay pretending to be a magazine. It is a warm sand board with real product pieces pinned to it in workflow order — the same material logic the marketing site uses (.impeccable/surfaces/site-index-html.md), inherited wholesale by the app rather than re-invented for it. Three tone steps carry the whole page (ground → raised → the third, darkest/lightest step), nothing lives between them, and a muted-tan edge does the work a shadow would do elsewhere. Depth is a lift of one tone step plus a border shifting toward the accent, not a diffuse glow underneath.\n\nSand (#E8D7B1) is the one brand accent and it is a fill, never type — the ratio on white is ~1.7:1, unreadable, which is why every accent-as-text use routes through a separately tuned ink variant (--accent-ink, --sand-on-surface). Charcoal and sand form the product's one deliberate two-tone chip, and which one is the fill flips by theme: dark reads sand-on-charcoal, light reads charcoal-on-warm-sand — same two colours, same solid block, inverted. Two structural exceptions to the single-accent rule are recorded, bounded, and contrast-checked rather than left implicit: Command Center's five category tones (hot/ready/risk/value/cold) and Faro's nine quick-action icon hues, each confined to one small chip and never touching text, borders or charts.\n\nTwo themes are peers, not an inversion of each other. Dark Helvaro is a warm near-black board under evening light, not a colour-flipped mirror of the light board; both were independently measured for contrast (all pairs ≥4.5:1 except the two exempted text-disabled pairs). Light is the shipped default. One surface deliberately does not follow either theme: the login podium and Faro's own canvas stay dark regardless of the app's theme, because they are a stage the brand performs on, not a workspace the user reads all day.",
+    "keyCharacteristics": [
+      "Three tone steps per theme (ground / raised / third step), a tan edge instead of a shadow, and a one-step lift on hover/active — never a floating card.",
+      "Sand fills, an ink variant (measured per surface) carries it as text; the one two-tone chip (sand+charcoal) inverts by theme rather than existing as two different patterns.",
+      "Space Grotesk carries headings and the big tabular numerals; Inter carries everything a user actually reads.",
+      "Status is never colour-only: every badge, chip and status pill in the shipped markup pairs its colour with a translated text label.",
+      "The login podium and Faro's canvas are permanently dark, by name, as the one exception to \"the app follows the theme.\"",
+      "Faro and Command Center run on an enforced closed scale (--sp-*, --r-*, --fs-*); the CRM dashboard surface — the majority of the shipped product — keeps its own parallel, unenforced rhythm."
+    ],
+    "rules": [
+      { "name": "The Fill-Not-Type Rule", "body": "Sand fills; it is never set as running text. Anywhere sand carries text, it routes through an -ink (or sand-on-surface) variant measured against the exact surface it sits on.", "section": "colors" },
+      { "name": "The Inverted Chip Rule", "body": "There is exactly one primary-button pattern in this system: a flat, solid two-tone chip, sand-on-charcoal or charcoal-on-warm-sand. Which colour is the fill inverts by theme; the pattern itself — solid block, no tint, no gradient — does not.", "section": "colors" },
+      { "name": "The One-Accent Rule", "body": "Sand is the only brand accent. Two bounded, named, contrast-verified exceptions exist and are not precedent for a third: Command Center's five semantic category tones and Faro's nine quick-action icon hues, each confined to a single small element. Every former per-card hue (--c-blue, --c-purple, --c-cyan, --c-gold) is now a legacy alias resolving back to sand.", "section": "colors" },
+      { "name": "The Edge-Not-Shadow Rule", "body": "Depth is a tan border plus a one-tone lift. A diffuse shadow under a resting card is the specific defect this system was rebuilt away from; --elev-3 is the sole, named exception, for true overlays only (modal, global search).", "section": "elevation" }
+    ],
+    "dos": [
+      "Do fill with sand; carry it as text only through a per-surface -ink/sand-on-surface variant, never the raw accent hex.",
+      "Do lift a card or pill one tone step and/or shift its border toward the accent on hover — never add a shadow to a resting surface.",
+      "Do pair every status indicator with a translated text label, not colour alone.",
+      "Do keep the login podium and Faro's own canvas dark regardless of the app theme; let the CRM side follow [data-theme] as normal.",
+      "Do respect prefers-reduced-motion on every custom animation.",
+      "Do route new Faro or Command Center CSS through --sp-*/--r-*/--fs-* — scripts/faro-check.js fails a raw px there.",
+      "Do measure a status colour's contrast against the actual tinted chip it renders on, not the bare card underneath."
+    ],
+    "donts": [
+      "Don't use a gradient as a surface fill (card, panel, button). Known unrepaired exceptions — the light-theme .btn-icon and the .fm-btn-primary / .ap-btn-primary buttons — still ship one and are drift to fix, not a pattern to extend. A horizontal two-stop accent gradient for progress/meter fills is a separate, real, reused convention and not the same violation.",
+      "Don't add a glow (button, card, or text). --btn-glow/--shadow-glow are permanently none. Known unrepaired exception: .stat-value's colour variants and .analyse-stat-big still carry a text-shadow glow in dark mode.",
+      "Don't invent a second brand colour — every former per-card hue now aliases sand; the two bounded status/icon exceptions are not precedent for a third.",
+      "Don't call the product \"AI\" in customer-facing copy — describe what Faro/Helvaro does instead.",
+      "Don't set pure black or pure white as a surface or text colour.",
+      "Don't borrow the other surface's radius numbers — CRM buttons/cards are 8px/12px; Faro and Command Center are 14px/18px."
+    ]
+  }
+}

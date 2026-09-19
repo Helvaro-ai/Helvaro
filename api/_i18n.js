@@ -122,10 +122,10 @@ const TEKST = {
                            fr: 'Quatorze jours gratuits. Votre premier prospect peut arriver ce soir.',
                            en: 'Fourteen days free. Your first lead could arrive tonight.',
                            de: 'Vierzehn Tage gratis. Ihr erster Lead kann heute Abend eintreffen.' },
-  'login.pitch':         { nl: 'Helvaro beantwoordt je vastgoedleads op WhatsApp, vraagt budget en timing uit, en boekt de bezichtiging meteen in je agenda.',
-                           fr: 'Helvaro répond à vos prospects immobiliers sur WhatsApp, cerne le budget et le calendrier, et planifie la visite directement dans votre agenda.',
-                           en: 'Helvaro answers your property leads on WhatsApp, qualifies budget and timing, and books the viewing straight into your calendar.',
-                           de: 'Helvaro beantwortet Ihre Immobilien-Leads auf WhatsApp, klärt Budget und Zeitpunkt und bucht die Besichtigung direkt in Ihren Kalender.' },
+  'login.pitch':         { nl: 'Helvaro beantwoordt je leads op WhatsApp, vraagt budget en timing uit, en boekt de bezichtiging meteen in je agenda.',
+                           fr: 'Helvaro répond à vos prospects sur WhatsApp, cerne le budget et le calendrier, et planifie la visite directement dans votre agenda.',
+                           en: 'Helvaro answers your leads on WhatsApp, qualifies budget and timing, and books the viewing straight into your calendar.',
+                           de: 'Helvaro beantwortet Ihre Leads auf WhatsApp, klärt Budget und Zeitpunkt und bucht die Besichtigung direkt in Ihren Kalender.' },
 
   /* ── Het promopaneel naast de inlogkaart ──────────────────────────────────
      Dit stond als vaste Nederlandse tekst in dashboard.js. Op een Engels scherm
@@ -863,10 +863,10 @@ const TEKST = {
                     en: 'Too many requests at once. Wait half a minute and try again.',
                     de: 'Zu viele Anfragen auf einmal. Warten Sie eine halbe Minute und versuchen Sie es erneut.' },
 
-  'login.footer':        { nl: 'gemaakt voor Vlaamse makelaars',
-                           fr: 'conçu pour les agents immobiliers',
-                           en: 'built for estate agents',
-                           de: 'für Immobilienmakler gemacht' },
+  'login.footer':        { nl: 'gemaakt voor Belgische vakbedrijven',
+                           fr: 'conçu pour les entreprises belges',
+                           en: 'built for Belgian businesses',
+                           de: 'für belgische Betriebe gemacht' },
 
   // ── Navigatie ───────────────────────────────────────────────────────────
   'nav.group.work':      { nl: 'WERK',      fr: 'TRAVAIL',   en: 'WORK',      de: 'ARBEIT' },

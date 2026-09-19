@@ -89,6 +89,58 @@ onbruikbaar maakte. Werkt weer.
 
 **Actie:** geen.
 
+### Laatste schaduwen en gloed weg; geselecteerd gesprek stapt omhoog
+
+Na de eindreview bleven er nog een paar slagschaduwen en gloeiplekken over:
+onder de topbalk, onder de statkaarten in het donkere thema, onder de hulpknop
+en de actieve menu-pil, en een zwarte halo rond Faro's kop in de intro. Die
+zijn allemaal weg — een rand is de rand. Twee zwart-witte labels op de
+voor/na-vergelijking en de afspeelknop zijn nu warm zand op warm donker. De
+invoerbalk van Faro had bij focus twee ringen, nu één. Een geselecteerd of
+aangewezen gesprek in de lijst stapt nu in beide thema's één tint omhoog in
+plaats van (in het donker) een gat te worden.
+
+### Visuele afwerking: vlakke grond, één kaartrand, geen gloed, geen streepjes, geen emoji, rustigere beweging
+
+Een reeks styling-fixes uit een ontwerp-review, geen van allen aan wat er op
+het scherm staat — alleen aan hoe het oogt.
+
+- De pagina-achtergrond (Helvaro én het inlogpodium) is nu één vlakke tint
+  per thema. De twee gloeiende cirkels, het stippenraster en de lichtvlek die
+  er voorheen overheen lagen zijn weg.
+- Geen letterlijk zwart of wit meer ergens in de app — Faro's donkere
+  werkbalk, de mobiele header, badges en knoppen staan nu allemaal op de
+  warme kleurladder in plaats van vaste hexwaarden.
+- Kaarten hebben één duidelijke rand (een dunne zandkleurige lijn) in plaats
+  van een schaduw of kleurverloop die "verheven" moest suggereren. De
+  lichte KPI-kaarten op het dashboard staan nu zichtbaar los van de
+  pagina-achtergrond in plaats van erin te versmelten.
+- Gloed als effect is overal weg: de Faro-mascotte is een vlakke zandschijf
+  met een dun randje in plaats van een pulserende gloed, en knoppen/velden
+  krijgen bij focus een dunne rand in plaats van een lichtkrans.
+- Kleur-als-enige-signaal op de rand van een kaart of rij is weg. Een actief
+  gesprek in de gesprekkenlijst krijgt nu een lichte achtergrond en een
+  gekleurde naam in plaats van een gekleurd streepje links; toasts,
+  opvolgpunten en Faro's kans-kaarten hebben een dunne neutrale rand — de
+  tekst en het label zeiden al welke status het was, het streepje was
+  overbodig.
+- De WhatsApp-koppelrij en de stappen in "Aan de slag met Helvaro" gebruikten
+  een 💬-emoji en een kaal "○"-tekstteken. Die zijn nu getekende iconen in
+  dezelfde stijl als de rest van de zijbalk. De "DEZE MAAND"-tegel op het
+  dashboard toonde een dollarteken-icoon terwijl alle bedragen in de app in
+  euro zijn — dat icoon is nu een €.
+- Beweging is rustiger: het dashboard liet zijn KPI-tegels en tabelrijen bij
+  elk bezoek opnieuw binnenschuiven, de foutmelding bij inloggen schudde
+  heen en weer. Dat is weg; alleen het openen van een venster of het
+  zoekvenster animeert nog. Knoppen en kaarten wisselen bij hover alleen de
+  kleur die ook echt verandert, niet meer letterlijk "alles" — dat kon eerder
+  een korte sprong geven op eigenschappen die niet hoefden mee te bewegen.
+- Faro noemde zichzelf op de kans-kaart nog "de AI"; dat is nu "Faro". De
+  inlogpagina beloofde specifiek voor Vlaamse makelaars gemaakt te zijn —
+  Helvaro bedient inmiddels meer dan die ene branche, dus dat is nu
+  branche-neutraal ("gemaakt voor Belgische vakbedrijven", "beantwoordt je
+  leads"), in alle vier de talen.
+
 ### Lege schermen leggen uit wat er komt
 
 "Geen leads gevonden", "Geen data" en "Nog geen beelden gegenereerd" zeggen nu

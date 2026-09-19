@@ -126,9 +126,94 @@ function render(lang) {
    --neutral-ink licht) -- precies de fout die dit bestand zelf al
    beschrijft bij CLAUDE.md's contrastregel. Vier kleurwaarden vervangen
    en elk met een uitlegregel die het oude en nieuwe cijfer noemt; groter
-   geworden door die uitleg, niet door nieuwe eigenschappen. */
-const CSS_BYTES = 391366;
-const CSS_SHA   = '0958d295bf4c7732';
+   geworden door die uitleg, niet door nieuwe eigenschappen.
+
+   Daarna (-2.730 bytes) Impeccable finish-fix 1: de grond plat op één
+   waarde per thema. De twee radial-gradient-poelen op body, de
+   dot-grid/bloom van body::before/::after (donker EN het
+   [data-theme="light"]-blok eronder), en dezelfde twee pseudo-elementen op
+   .login-brand-side zijn weg -- body en het inlogpodium zijn nu
+   `background: var(--bg-primary)` / `var(--login-stage)`, niets erbovenop.
+   Kleiner geworden omdat er alleen regels verdwenen, er kwam niets bij.
+
+   Daarna (+129 bytes) finish-fix 2: elke letterlijke #fff/#121212/#FFFFFF
+   omgezet naar een token. --text-inverse werd #17140F (donker) / #FAF6EE
+   (licht); Clerk's hoofdknop en pijlicoon, de notificatie- en nav-badge, en
+   panel-reply-send kregen var(--on-accent) (bestaand patroon, zie
+   .copy-tooltip); het login-formveld op hover/focus var(--login-stage) in
+   plaats van puur wit op een paneel dat altijd donker blijft; de twee
+   QR-lijstplaten en de WhatsApp-mockup-naam var(--zand-50) (vaste, warme
+   bijna-wit -- QR moet scanbaar blijven ongeacht thema); en het lichte
+   .btn-icon-verloop var(--card)/var(--card-elevated) i.p.v. #FFFFFF/#FBFAF7.
+   Eén letterlijk wit-op-zwart bleef bewust staan: .pi-compare-tag, het
+   label op een vaste donkere scrim OVER een foto -- precies de uitzondering
+   die faro-check.js apart bewaakt. De Faro-dockbar (#1c1c1c) en de
+   mobiele header (#fdfcfb) uit de opdracht bestonden al niet meer in de
+   bron; --faro-canvas was al #17140F.
+
+   Daarna (-101 bytes) finish-fix 3: elevatie één keer verklaard. --elev-1/2
+   (beide thema's) zijn `none`; --elev-3 is teruggebracht van drie lagen naar
+   ÉÉN zachte offset-schaduw, en blijft alleen in gebruik bij echte overlays
+   (een modal, .search-modal) -- geen kaart leunt nog op een schaduw om
+   verheven te lezen. De drie verloop-platen zijn weg: .btn-icon en
+   .btn-icon:hover (donker) zijn terug naar de vlakke rgba('s die er stonden
+   vóór het verloop, en .stat-card:hover naar het vlakke --bg-card-hover
+   i.p.v. een 160deg-verloop. De zijbalkschaduw (8px 0 32px, beide thema's)
+   is weg. De lichte KPI-kaart (.stat-card) staat nu op --card (#FAF6EE)
+   i.p.v. --bg (#F3EDE1, de grond), zodat hij er echt bovenuit stapt.
+
+   Daarna (-735 bytes) finish-fix 4: gloed als middel weg. De Faro-orb is
+   geen conic sheen + roterende + ademende box-shadow-gloed meer, maar een
+   vlakke zandschijf met een 1px --deep-sand-rand (spin/breathe-keyframes
+   en het bloom-pseudo-element zijn weg, want er is niets meer om te
+   animeren). De valk-tekening verloor zijn drop-shadow(--warm-sand-glow)
+   in rust en bij succes. De composer- en dock-invoer wisselden hun
+   3px-bloom-ring voor een 1px getande outline; de twee statusringen
+   (.faro-status__mascot, .faro-msg__ai-avatar--bezig) hielden hun 1px
+   randje maar verloren de 14px-gloed erachter. --grad-ai/--grad-data/
+   --grad-success waren al dood (nul aanroepen); --grad-gold's vijf
+   gebruiken zijn nu var(--accent-c), vlak. .fdr-live-dot en .nav-badge
+   verloren hun glow-halo/pulserende ring, met behoud van hun eigen
+   opacity-puls. api/_intro.js: .fi-bloom en .fi-sheen spelen niet meer af
+   in geen van beide thema's; .fi-orb's zandgloed werd een 1px rand.
+
+   Daarna (-352 bytes) finish-fix 5: elke gekleurde border-left van >=1px
+   die als statusstreep diende (kst-melding, cal-event-external, de twee
+   fdr-followup-item-varianten, panel-suggest-chip, ai-summary, drie
+   toast-varianten, fm-instructions, fm-guide-tip, settings-info-box) is
+   verdwenen of teruggebracht naar 1px var(--border-c) -- de meeste elementen
+   hadden al een volle 1px rand of een tekst/badge die de status droeg, dus
+   de streep was decoratief. .conv-list-item.active en .search-result-item
+   (hover/actief) wisselden hun accentstreep voor een toon-stap-omhoog
+   achtergrond (--bg-card-alt) plus var(--accent-ink) op de naam/titel. De
+   Faro-kanskaart-rail (.cmd-opp__rail in api/_command-ui/styles.js, niet in
+   dit CSS-blok) kreeg dezelfde behandeling. Kleiner geworden: minder regels
+   dan er vervingen, en een paar losse selectors konden helemaal weg.
+
+   Daarna (+602 bytes) finish-fix 7: vier keyframes (cardEnter, countUp,
+   rowFadeUp, shakeError) en al hun gebruik zijn weg -- de KPI-grid-stagger,
+   de counter-pop op stat-waarden, de rij-fade-up op tabelrijen en
+   .activity-item, en de schud-animatie op de login-foutmelding. skelet-puls
+   was al opacity-only, niets te doen. De ~29 `transition: all`-regels zijn
+   stuk voor stuk vervangen door de eigenschappen die dat element ECHT
+   verandert (meestal color/background-color/border-color/opacity; transform
+   erbij op .brand-dot, .btn-login, .nav-item, tbody tr en .score-pill, want
+   die verschuiven of schalen echt). De modal- en zoek-entrees (modalIn,
+   modal-in, searchModalIn, cmd-slide, apWelcomePop) en alle
+   prefers-reduced-motion-gates zijn ongemoeid. Groter geworden omdat een
+   opgesomde eigenschapslijst nu eenmaal langer is dan het woord "all".
+
+   Daarna (-38 bytes) een fixup op diezelfde ronde: de detector-run
+   (impeccable detect) die de opdracht na fix 5-8 verplicht stelde, wees uit
+   dat .brand-dot's expliciete `transition: width` een NIEUWE
+   layout-transition-vondst was -- verstopt zolang de regel `all` heette, nu
+   zichtbaar zodra de eigenschap met naam genoemd werd. .brand-dot is een
+   paginatiepuntje (CSS-class-gestuurd, geen JS die .style.width zet, in
+   tegenstelling tot de 13 vulbalken die dit bestand elders bewust laat
+   staan), dus de breedteovergang is gewoon geschrapt -- het puntje springt
+   nu ipv breder schuift, en alleen de achtergrondkleur blijft animeren. */
+const CSS_BYTES = 388244;
+const CSS_SHA   = '71fe5fd8aa3d6120';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
