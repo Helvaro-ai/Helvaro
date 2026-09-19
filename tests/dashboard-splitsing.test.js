@@ -127,8 +127,8 @@ function render(lang) {
    beschrijft bij CLAUDE.md's contrastregel. Vier kleurwaarden vervangen
    en elk met een uitlegregel die het oude en nieuwe cijfer noemt; groter
    geworden door die uitleg, niet door nieuwe eigenschappen. */
-const CSS_BYTES = 391262;
-const CSS_SHA   = 'f462ae482f0d925f';
+const CSS_BYTES = 391366;
+const CSS_SHA   = '0958d295bf4c7732';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

@@ -14,6 +14,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Lege schermen leggen uit wat er komt
+
+"Geen leads gevonden", "Geen data" en "Nog geen beelden gegenereerd" zeggen nu
+ook wat je moet doen of verwachten: dat je bij je eerste lead hier het gesprek,
+de kwalificatie en de afspraak ziet; dat er nog geen gegevens zijn voor deze
+periode; en dat je een foto uploadt en een stijl kiest voor je eerste beeld.
+Alleen tekst, niets verplaatst.
+
 ### Faro en het inlogpodium in dezelfde warme tinten; video-kaarten zeggen wat ze doen
 
 - Faro's donkere werkvlak en het inlogpodium stonden nog op koud, bijna puur

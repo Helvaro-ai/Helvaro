@@ -8166,6 +8166,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .pi-gallery-toggle:hover { border-color: var(--accent-bright); color: var(--accent-ink); }
 .pi-empty { color: var(--text-muted); font-size: 13px; padding: 24px 0; text-align: center; }
+.pi-empty-sub { margin-top: var(--sp-1); font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 
 /* Room-type chips — smaller sibling of pi-style-card, same visual language */
 .pi-roomtype-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }

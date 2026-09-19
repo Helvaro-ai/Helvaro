@@ -10607,7 +10607,7 @@ function renderProfile() {
   if (recentEl) {
     const recents = (state.leads || []).slice(0, 5);
     if (recents.length === 0) {
-      recentEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">' + escHtml(tr('leeg.leads')) + '</div>';
+      recentEl.innerHTML = '<div style="padding:8px 0"><div style="font-weight:600;color:var(--text);font-size:13px">' + escHtml(tr('leeg.leadsKort')) + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">' + escHtml(tr('leeg.leadsUitleg')) + '</div></div>';
     } else {
       recentEl.innerHTML = recents.map(l => {
         const name  = l.fields?.['Naam'] || l.naam || 'Onbekend';
@@ -14160,7 +14160,7 @@ function renderPiGallery(list) {
   const wrap = document.getElementById('pi-gallery');
   if (!wrap) return;
   piGalleryList = list;
-  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">' + escHtml(tr('leeg.beelden')) + '</div>'; return; }
+  if (!list.length) { wrap.innerHTML = '<div class="pi-empty">' + escHtml(tr('leeg.beelden')) + '<div class="pi-empty-sub">' + escHtml(tr('leeg.beeldenUitleg')) + '</div></div>'; return; }
   const cards = list.map(function (img, i) {
     // Older records (persisted before the visual-controls axes existed)
     // simply have no furniture/wallFinish/floor/lighting/renovationDepth*
