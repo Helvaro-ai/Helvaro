@@ -175,6 +175,10 @@ const STRINGS = {
     'st.done': 'Uitgevoerd.',
     'st.busy': 'Bezig…',
     'st.failed': 'Generatie mislukt.',
+    'st.queued': 'In de wachtrij',
+    'st.generating': 'Wordt gemaakt',
+    'st.failedSub': 'Er is niets aangerekend. Vraag Faro om het opnieuw te proberen.',
+    'st.still': 'Dit duurt langer dan verwacht. Het resultaat verschijnt straks vanzelf onder Video’s of Beelden.',
     'st.close': 'Sluiten',
 
     'pn.images': 'Beelden',
@@ -364,6 +368,10 @@ const STRINGS = {
     'st.done': 'Done.',
     'st.busy': 'Working…',
     'st.failed': 'Generation failed.',
+    'st.queued': 'Queued',
+    'st.generating': 'Being made',
+    'st.failedSub': 'Nothing was charged. Ask Faro to try again.',
+    'st.still': 'This is taking longer than expected. The result will appear under Videos or Images by itself.',
     'st.close': 'Close',
 
     'pn.images': 'Images',
@@ -553,6 +561,10 @@ const STRINGS = {
     'st.done': 'Terminé.',
     'st.busy': 'En cours…',
     'st.failed': 'Génération échouée.',
+    'st.queued': 'En file d’attente',
+    'st.generating': 'En cours de création',
+    'st.failedSub': 'Rien n’a été facturé. Demandez à Faro de réessayer.',
+    'st.still': 'Cela prend plus de temps que prévu. Le résultat apparaîtra de lui-même sous Vidéos ou Images.',
     'st.close': 'Fermer',
 
     'pn.images': 'Images',
@@ -742,6 +754,10 @@ const STRINGS = {
     'st.done': 'Erledigt.',
     'st.busy': 'Läuft…',
     'st.failed': 'Erzeugung fehlgeschlagen.',
+    'st.queued': 'In der Warteschlange',
+    'st.generating': 'Wird erstellt',
+    'st.failedSub': 'Es wurde nichts berechnet. Bitten Sie Faro, es erneut zu versuchen.',
+    'st.still': 'Das dauert länger als erwartet. Das Ergebnis erscheint von selbst unter Videos oder Bilder.',
     'st.close': 'Schließen',
 
     'pn.images': 'Bilder',

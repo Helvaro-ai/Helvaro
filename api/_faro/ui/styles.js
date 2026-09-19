@@ -1214,6 +1214,15 @@ body.hv-mode-ai .faro-rail {
 .faro-gallery:empty { display: none; }
 .faro-media { border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--faro-hairline); background: var(--faro-surface); }
 .faro-media__img { width: 100%; display: block; aspect-ratio: 4 / 3; object-fit: cover; background: var(--faro-raised); }
+/* Wachtrij / wordt gemaakt / mislukt -- zie faroMediaCard() in client.js. */
+.faro-media__pending { position: relative; }
+.faro-media__pending--failed .faro-media__img { background: var(--faro-surface); }
+.faro-media__pending--failed .faro-media__mark { filter: grayscale(1); opacity: 0.7; }
+.faro-media__mark { position: absolute; right: var(--sp-2); bottom: var(--sp-2); width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--faro-hairline); background: var(--faro-surface); }
+.faro-media__state { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.faro-media__state--failed { flex-direction: column; gap: var(--sp-1); }
+.faro-media__state--failed .faro-media__label { color: var(--error-ink, var(--text)); font-weight: 600; }
+.faro-media__sub { line-height: 1.5; }
 .faro-media__img--9-16 { aspect-ratio: 9 / 16; }
 .faro-media__img--1-1  { aspect-ratio: 1 / 1;  }
 .faro-media__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-15); padding: var(--sp-3) var(--sp-3); }

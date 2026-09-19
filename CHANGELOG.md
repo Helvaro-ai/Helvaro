@@ -14,6 +14,21 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro en het inlogpodium in dezelfde warme tinten; video-kaarten zeggen wat ze doen
+
+- Faro's donkere werkvlak en het inlogpodium stonden nog op koud, bijna puur
+  zwart (#101010 / #121212). Ze staan nu op hetzelfde warme zwart als Dark
+  Helvaro. In het lichte thema waren de knop "Automatisch bijwerken" en de
+  zandkleurige labels ("Je grootste kans vandaag", "Waarom nu") onleesbaar —
+  nu 6,9:1. De invoerbalk van Faro blijft bewust donker, net als het
+  inlogpodium.
+- Een video (of beeld) die Faro maakt toont voortaan de toestand in tekst —
+  "In de wachtrij", "Wordt gemaakt" — met Faro's merk en een teller in
+  seconden. Mislukt? Dan staat er dat er niets is aangerekend (credits gaan
+  pas af als het klaar is). Duurt het te lang, dan zegt de kaart dat het
+  resultaat vanzelf onder Video's/Beelden verschijnt in plaats van stil te
+  stoppen. In nl/fr/en/de.
+
 ### Beeldgeneratie: je ziet wat er gebeurt, en een mislukking is eerlijk
 
 Tijdens het maken van een beeld draaide er alleen een spinnertje in de knop

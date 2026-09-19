@@ -989,7 +989,22 @@ function faroMediaCard(c) {
   d.dataset.job = c.jobId || '';
 
   if (c.state !== 'ready' || !c.resultUrl) {
-    d.innerHTML = '<div class="faro-media__img faro-skeleton"></div>';
+    /* Wachtrij / wordt gemaakt: het skelet blijft, met Faro's merk, een
+       tekstlabel voor de toestand (nooit alleen kleur) en een echte teller.
+       Geen procenten: de server geeft geen voortgang, dus verzinnen we er
+       geen. Mislukt = dezelfde kaart met uitleg; credits worden pas bij
+       'ready' geboekt (api/_faro/media.js creditsVoorVideo), dus "niets
+       aangerekend" is waar. */
+    var toestand = c.state === 'generating' ? 'generating' : 'queued';
+    d.innerHTML =
+      '<div class="faro-media__pending" data-state="' + toestand + '">' +
+        '<div class="faro-media__img faro-skeleton"></div>' +
+        '<img class="faro-media__mark" src="/faro/faro-merk.webp" alt="" width="36" height="36">' +
+      '</div>' +
+      '<div class="faro-media__state">' +
+        '<span class="faro-media__label">' + faroEsc(T(toestand === 'generating' ? 'st.generating' : 'st.queued')) + '</span>' +
+        '<span class="faro-media__timer" data-t0="' + Date.now() + '">0s</span>' +
+      '</div>';
     if (c.jobId) faroPollJob(c.jobId, d);
     return d;
   }
@@ -1105,13 +1120,45 @@ function faroErrorCard(c) {
    polls. Backs off so a stuck job does not hammer the endpoint. */
 function faroPollJob(jobId, el, attempt) {
   attempt = attempt || 0;
-  if (attempt > 60) return;
+  var timer = el.querySelector('.faro-media__timer');
+  if (timer && !timer.dataset.tikt) {
+    timer.dataset.tikt = '1';
+    var t0 = Number(timer.dataset.t0) || Date.now();
+    var tik = setInterval(function () {
+      if (!timer.isConnected) { clearInterval(tik); return; }
+      timer.textContent = Math.floor((Date.now() - t0) / 1000) + 's';
+    }, 1000);
+  }
+  if (attempt > 60) {
+    /* De job blijft bestaan aan de serverkant; de galerij pikt hem later
+       op. Dat zeggen we, in plaats van stil op te houden met pollen. */
+    var st = el.querySelector('.faro-media__state');
+    if (st) st.innerHTML = '<span class="faro-media__label">' + faroEsc(T('st.still')) + '</span>';
+    return;
+  }
   setTimeout(function () {
     faroPost({ mode: 'faro-media', op: 'job', jobId: jobId })
       .then(function (r) {
         var job = r.job || {};
         if (job.state === 'ready')  { el.replaceWith(faroMediaCard(job)); return; }
-        if (job.state === 'failed') { el.innerHTML = '<div class="faro-card__meta">' + T('st.failed') + '</div>'; return; }
+        if (job.state === 'failed') {
+          el.innerHTML =
+            '<div class="faro-media__pending faro-media__pending--failed" data-state="failed">' +
+              '<div class="faro-media__img"></div>' +
+              '<img class="faro-media__mark" src="/faro/faro-merk.webp" alt="" width="36" height="36">' +
+            '</div>' +
+            '<div class="faro-media__state faro-media__state--failed">' +
+              '<span class="faro-media__label">' + faroEsc(T('st.failed')) + '</span>' +
+              '<span class="faro-media__sub">' + faroEsc(T('st.failedSub')) + '</span>' +
+            '</div>';
+          return;
+        }
+        var pend = el.querySelector('.faro-media__pending');
+        var lbl = el.querySelector('.faro-media__label');
+        if (job.state === 'generating' && pend && pend.getAttribute('data-state') !== 'generating') {
+          pend.setAttribute('data-state', 'generating');
+          if (lbl) lbl.textContent = T('st.generating');
+        }
         faroPollJob(jobId, el, attempt + 1);
       })
       .catch(function () { faroPollJob(jobId, el, attempt + 1); });

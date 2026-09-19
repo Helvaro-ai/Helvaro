@@ -46,13 +46,13 @@ function css() {
 
   /* Faro canvas — one step darker than the CRM's --bg-alt so the
      workspace switch is felt, not just seen. */
-  --faro-canvas:      #101010;
-  --faro-surface:     #1A1A1A;
-  --faro-raised:      #232323;
+  --faro-canvas:      #17140F;   /* warm zwart, zelfde grond als Dark Helvaro -- nooit puur zwart */
+  --faro-surface:     #211D16;
+  --faro-raised:      #2A251C;
   --faro-hairline:    rgba(184, 157, 115, 0.16);
 
   /* The AI input is the visual focus of the landing screen (requirement 4). */
-  --faro-input-bg:    #1C1C1C;
+  --faro-input-bg:    #1E1A14;
   --faro-input-ring:  rgba(244, 231, 200, 0.22);
 
   /* ── Quick-action icon hues ───────────────────────────────────────────────
@@ -98,6 +98,23 @@ function css() {
   --ic-green-bg:      rgba( 95, 168, 119, 0.18);
   --ic-orange-bg:     rgba(217, 136,  74, 0.18);
   --ic-sky-bg:        rgba(111, 169, 199, 0.18);
+}
+
+/* ── Licht thema: alleen wat op een THEMA-vlak staat ───────────────────────
+   Faro's canvas volgt intussen het thema (zie .faro-page in _dash/styles.js),
+   dus alles wat daarop staat moet mee: opgetilde vlakken, hairlines en de
+   zandkleurige labels. Het podium blijft donker: de composer (--faro-input-*)
+   en de zijbalk doen bewust NIET mee, precies zoals het inlogpodium. Gemeten
+   op de lichte grond: --sand-on-surface #6E5320 = 6,9:1 op #F3EDE1. */
+[data-theme="light"] {
+  --faro-canvas:      #F3EDE1;
+  --faro-surface:     #FAF6EE;
+  --faro-raised:      #EFE7D8;
+  --faro-hairline:    rgba(184, 157, 115, 0.34);
+  --sand-on-surface:  #6E5320;
+  --champagne-dim:    rgba(184, 157, 115, 0.14);
+  --champagne-line:   rgba(184, 157, 115, 0.45);
+  --warm-sand-glow:   rgba(184, 157, 115, 0.08);
 }
 
 /* ── Er is geen lichte Faro meer ───────────────────────────────────────────

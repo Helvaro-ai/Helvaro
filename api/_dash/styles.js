@@ -1021,9 +1021,9 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
      inlogpagina wit en verdween de merkkant helemaal. Vandaar een eigen token
      in plaats van --bg: het is niet dezelfde kleur die toevallig gelijk is,
      het is een kleur die met opzet niet meebeweegt. */
-  --login-stage:      #121212;
-  --login-stage-ink:  #F9F9F9;
-  --login-stage-dim:  #A9A6A0;
+  --login-stage:      #17140F;   /* warm zwart, zelfde grond als Dark Helvaro */
+  --login-stage-ink:  #F1E9DA;
+  --login-stage-dim:  #A79B85;
 
   /* ── Het formulierpaneel is donker ────────────────────────────────────────
      Het was wit, en dat was de enige plek in de app waar het merk zichzelf
