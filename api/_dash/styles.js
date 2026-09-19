@@ -849,7 +849,6 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 .kst-melding {
   border: 1px solid var(--border);
-  border-left: 3px solid var(--warning-c);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
   padding: 12px 16px;
@@ -2558,7 +2557,7 @@ button.brand-dot { border: none; padding: 0; }
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border-left: 3px solid rgba(255,255,255,0.35);
+  border-left: 1px solid rgba(255,255,255,0.35);
 }
 /* Read-only entries mirrored from the client's own Google Calendar. They
    occupy the slot so nothing gets double-booked, but they are deliberately
@@ -2570,7 +2569,7 @@ button.brand-dot { border: none; padding: 0; }
     var(--hover-c) 6px 12px
   );
   color: var(--text-muted-c);
-  border-left: 3px solid var(--text-disabled);
+  border-left: 1px solid var(--border-c);
   box-shadow: none;
   cursor: default;
   font-weight: 500;
@@ -3002,8 +3001,6 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-followup-wrap { display: flex; flex-direction: column; gap: 8px; }
 .fdr-followup-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: border-color .15s; }
 .fdr-followup-item:hover { border-color: rgba(var(--error-rgb),.4); }
-.fdr-followup-item.critical { border-left: 3px solid var(--error); }
-.fdr-followup-item.warning  { border-left: 3px solid var(--warning); }
 .fdr-followup-name { flex: 1; font-size: 13px; font-weight: 600; }
 .fdr-followup-fase { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 700; }
 .fdr-followup-fase.f0 { background: rgba(124,147,196,.14);  color: #7C93C4; }
@@ -4105,14 +4102,16 @@ h1.page-title { margin: 0; font-weight: inherit; }
       gap: 12px;
       padding: 10px 20px;
       cursor: pointer;
-      transition: background 0.1s, border-left-color 0.1s;
-      border-left: 3px solid transparent;
+      transition: background 0.1s;
       user-select: none;
     }
     .search-result-item:hover,
     .search-result-item.active {
       background: var(--bg-card-alt);
-      border-left-color: var(--accent);
+    }
+    .search-result-item:hover .search-result-name,
+    .search-result-item.active .search-result-name {
+      color: var(--accent-ink);
     }
     .search-result-avatar {
       width: 36px; height: 36px; border-radius: var(--radius-sm);
@@ -5629,7 +5628,6 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .panel-suggest-chip {
   text-align: left; cursor: pointer;
   background: var(--bg-card-alt); border: 1px solid var(--border);
-  border-left: 3px solid var(--accent-bright);
   border-radius: 8px; padding: 9px 12px;
   font-size: 12px; line-height: 1.5; color: var(--text-primary);
   font-family: inherit; transition: all .15s ease;
@@ -6248,7 +6246,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   line-height: 1.6;
   padding: 12px;
   background: rgba(var(--accent-rgb), 0.06);
-  border-left: 3px solid var(--blue-primary);
+  border-left: 1px solid var(--border-c);
   border-radius: 0 8px 8px 0;
 }
 
@@ -6305,9 +6303,6 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   to { opacity: 0; transform: translateX(100%) scale(0.9); max-height: 0; padding: 0; margin: 0; }
 }
 
-.toast-success { border-left: 3px solid var(--green); }
-.toast-error { border-left: 3px solid var(--red); }
-.toast-info { border-left: 3px solid var(--blue-bright); }
 
 .toast-header {
   display: flex;
@@ -6812,7 +6807,8 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   transition: background 0.12s;
 }
 .conv-list-item:hover { background: var(--bg-card-alt); }
-.conv-list-item.active { background: rgba(var(--accent-rgb),0.08); border-left: 3px solid var(--accent); }
+.conv-list-item.active { background: var(--bg-card-alt); }
+.conv-list-item.active .conv-list-item-name { color: var(--accent-ink); }
 .conv-list-item-name {
   display: flex;
   justify-content: space-between;
@@ -7326,7 +7322,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .fm-instructions {
   margin-top: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.55;
   padding: 10px 12px; background: var(--bg-card-alt); border-radius: 8px;
-  border-left: 3px solid var(--accent-bright);
+  border-left: 1px solid var(--border-c);
 }
 .fm-instructions strong { color: var(--text-primary); }
 .fm-instructions code {
@@ -7381,7 +7377,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .fm-guide-tip {
   margin-top: 12px; padding: 10px 14px; border-radius: 8px;
-  background: rgba(var(--warning-rgb),.08); border-left: 3px solid var(--warning);
+  background: rgba(var(--warning-rgb),.08); border-left: 1px solid var(--border-c);
   font-size: 12px; color: var(--text-primary); line-height: 1.55;
 }
 .fm-guide-tip strong { color: var(--warning-ink); font-weight: 700; }
@@ -8269,7 +8265,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   margin: 0 20px 16px;
   padding: 14px;
   background: rgba(var(--accent-rgb),0.06);
-  border-left: 3px solid var(--blue-primary);
+  border-left: 1px solid var(--border-c);
   border-radius: 0 8px 8px 0;
   font-size: 13px;
   color: var(--text-secondary);

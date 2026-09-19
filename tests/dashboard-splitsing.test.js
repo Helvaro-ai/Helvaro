@@ -175,9 +175,22 @@ function render(lang) {
    gebruiken zijn nu var(--accent-c), vlak. .fdr-live-dot en .nav-badge
    verloren hun glow-halo/pulserende ring, met behoud van hun eigen
    opacity-puls. api/_intro.js: .fi-bloom en .fi-sheen spelen niet meer af
-   in geen van beide thema's; .fi-orb's zandgloed werd een 1px rand. */
-const CSS_BYTES = 387929;
-const CSS_SHA   = 'a30c8409ca6f6a3e';
+   in geen van beide thema's; .fi-orb's zandgloed werd een 1px rand.
+
+   Daarna (-352 bytes) finish-fix 5: elke gekleurde border-left van >=1px
+   die als statusstreep diende (kst-melding, cal-event-external, de twee
+   fdr-followup-item-varianten, panel-suggest-chip, ai-summary, drie
+   toast-varianten, fm-instructions, fm-guide-tip, settings-info-box) is
+   verdwenen of teruggebracht naar 1px var(--border-c) -- de meeste elementen
+   hadden al een volle 1px rand of een tekst/badge die de status droeg, dus
+   de streep was decoratief. .conv-list-item.active en .search-result-item
+   (hover/actief) wisselden hun accentstreep voor een toon-stap-omhoog
+   achtergrond (--bg-card-alt) plus var(--accent-ink) op de naam/titel. De
+   Faro-kanskaart-rail (.cmd-opp__rail in api/_command-ui/styles.js, niet in
+   dit CSS-blok) kreeg dezelfde behandeling. Kleiner geworden: minder regels
+   dan er vervingen, en een paar losse selectors konden helemaal weg. */
+const CSS_BYTES = 387577;
+const CSS_SHA   = 'e3e54c4b4148630f';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

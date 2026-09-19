@@ -149,7 +149,7 @@ function css() {
 .cmd-opps { display: flex; flex-direction: column; gap: var(--sp-3); }
 .cmd-opp {
   display: grid;
-  grid-template-columns: var(--sp-1) 1fr auto;
+  grid-template-columns: 1px 1fr auto;
   gap: 0 var(--sp-4);
   align-items: stretch;
   border: 1px solid var(--border); border-radius: var(--r-lg);
@@ -158,14 +158,9 @@ function css() {
   transition: border-color 150ms ease;
 }
 .cmd-opp:hover { border-color: var(--champagne); }
-/* The tone rail. Encodes category in position and colour, so the list is
-   scannable without reading a single label. */
-.cmd-opp__rail { background: var(--cmd-ready); }
-.cmd-opp[data-tone="hot"]   .cmd-opp__rail { background: var(--cmd-hot);   }
-.cmd-opp[data-tone="ready"] .cmd-opp__rail { background: var(--cmd-ready); }
-.cmd-opp[data-tone="risk"]  .cmd-opp__rail { background: var(--cmd-risk);  }
-.cmd-opp[data-tone="value"] .cmd-opp__rail { background: var(--cmd-value); }
-.cmd-opp[data-tone="cold"]  .cmd-opp__rail { background: var(--cmd-cold);  }
+/* The tone rail is a 1px neutral edge now — the .cmd-opp__cat badge already
+   encodes category in colour and label, so the rail doesn't need to repeat it. */
+.cmd-opp__rail { background: var(--border-c); }
 
 .cmd-opp__main { padding: var(--sp-4) 0 var(--sp-4) 0; min-width: 0; cursor: pointer; }
 .cmd-opp__top { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
@@ -344,7 +339,7 @@ function css() {
   .cmd-auto { top: var(--sp-2); right: var(--sp-3); padding: var(--sp-15) var(--sp-2); }
   .cmd-auto__state { display: none; }
 
-  .cmd-opp { grid-template-columns: var(--sp-1) 1fr; }
+  .cmd-opp { grid-template-columns: 1px 1fr; }
   .cmd-opp__side {
     grid-column: 2; align-items: stretch; flex-direction: row-reverse;
     justify-content: flex-end; gap: var(--sp-3);
