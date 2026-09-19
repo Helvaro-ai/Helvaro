@@ -8102,6 +8102,49 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .pi-style-card:hover { border-color: var(--accent-bright); }
 .pi-style-card.active { border-color: var(--accent-bright); background: rgba(var(--accent-rgb),.15); color: var(--accent-ink); }
 .pi-result-wrap { margin-top: 16px; }
+.pi-result-wrap.is-nieuw { animation: pi-in 200ms ease both; }
+@keyframes pi-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Generatietoestand: de eigen foto onder een sluier met een langzame lichtveeg
+   (onbepaald), Faro's merk in de hoek, en een echte teller. Eén kaart, geen
+   spinner in een knop. Mislukt = dezelfde kaart met uitleg en één knop. */
+.pi-gen {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: center;
+  padding: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.pi-gen[hidden] { display: none; }
+.pi-gen-stage { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-btn); background: var(--bg-alt); }
+.pi-gen-src { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pi-gen-veil { position: absolute; inset: 0; background: var(--bg); opacity: 0.55; }
+.pi-gen-sweep {
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(var(--accent-rgb), 0.35) 50%, transparent 70%);
+  transform: translateX(-100%);
+}
+.pi-gen.is-bezig .pi-gen-sweep { animation: pi-sweep 2.2s ease-in-out infinite; }
+@keyframes pi-sweep { to { transform: translateX(100%); } }
+.pi-gen-faro { position: absolute; right: var(--sp-2); bottom: var(--sp-2); width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--card); }
+.pi-gen.is-mislukt .pi-gen-veil { opacity: 0.75; }
+.pi-gen.is-mislukt .pi-gen-faro { filter: grayscale(1); opacity: 0.7; }
+.pi-gen-title { font-weight: 600; font-size: 15px; color: var(--text); }
+.pi-gen-sub { margin-top: var(--sp-1); font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.pi-gen-meta { margin-top: var(--sp-3); font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pi-gen.is-mislukt .pi-gen-meta { display: none; }
+.pi-gen.is-mislukt .pi-gen-title { color: var(--error-ink); }
+.pi-gen-actions { margin-top: var(--sp-3); }
+.pi-gen-actions[hidden] { display: none; }
+@media (max-width: 700px) { .pi-gen { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .pi-gen.is-bezig .pi-gen-sweep { animation: none; transform: none; opacity: 0.5; }
+  .pi-result-wrap.is-nieuw { animation: none; }
+}
 .pi-result-img-wrap { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); }
 .pi-result-img-wrap img { display: block; width: 100%; }
 .pi-ai-badge {

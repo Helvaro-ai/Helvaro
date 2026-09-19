@@ -14,6 +14,18 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Beeldgeneratie: je ziet wat er gebeurt, en een mislukking is eerlijk
+
+Tijdens het maken van een beeld draaide er alleen een spinnertje in de knop
+met "AI genereert…". Nu staat je eigen foto in een kaart onder een lichte
+sluier met een langzame lichtveeg, Faro's merk erbij en een echte teller in
+seconden (geen verzonnen percentages: de server geeft geen voortgang). Lukt
+het niet, dan blijft dezelfde kaart staan met de uitleg dat er niets is
+aangerekend en één knop "Opnieuw proberen". Die knop hergebruikt dezelfde
+opdracht, zodat een tweede poging nooit dubbel wordt aangerekend. Dubbel
+klikken tijdens het wachten doet niets. Teksten in nl/fr/en/de, zonder het
+woord "AI" in de klantkant.
+
 ### Inloggen: Faro landt nu vóór het dashboard, zonder flits van het skelet
 
 Na het inloggen zag je heel even het laadskelet van het dashboard en pas

@@ -1713,6 +1713,22 @@ ${faro.navCta}
         </div>
         <div class="ap-hint" style="margin-top:6px">${T('img.tip')}</div>
 
+        <div class="pi-gen" id="pi-gen" hidden aria-live="polite">
+          <div class="pi-gen-stage" id="pi-gen-stage">
+            <img class="pi-gen-src" id="pi-gen-src" alt="">
+            <div class="pi-gen-veil"></div>
+            <div class="pi-gen-sweep"></div>
+            <img class="pi-gen-faro" src="/faro/faro-merk.webp" alt="" width="44" height="44">
+          </div>
+          <div class="pi-gen-text">
+            <div class="pi-gen-title" id="pi-gen-title">${T('pi.gen.bezig')}</div>
+            <div class="pi-gen-sub" id="pi-gen-sub">${T('pi.gen.sub')}</div>
+            <div class="pi-gen-meta"><span class="pi-gen-timer" id="pi-gen-timer">0</span><span id="pi-gen-timer-unit">${T('pi.gen.sec')}</span></div>
+            <div class="pi-gen-actions" id="pi-gen-actions" hidden>
+              <button type="button" class="ap-btn ap-btn-primary" id="pi-gen-retry" onclick="generatePiImage(true)">${T('pi.gen.opnieuw')}</button>
+            </div>
+          </div>
+        </div>
         <div class="pi-result-wrap" id="pi-result-wrap" style="display:none">
           <div class="ap-field">
             <label id="pi-compare-stage-label" class="ap-label">${T('pi.result')} <span class="ap-label-hint">${T('pi.slider')}</span></label>
@@ -14193,20 +14209,72 @@ function downloadPiGalleryImage(i) {
   downloadImageUrl(img.url, piFilename(img, 'ai-beeld'));
 }
 
-async function generatePiImage() {
+/* ── Generatietoestand ──────────────────────────────────────────────────────
+   Eén zichtbare toestand terwijl het beeld gemaakt wordt: de eigen foto onder
+   een lichte sluier met een langzame lichtveeg (onbepaald -- de server geeft
+   geen echte voortgang, dus geen verzonnen percentages), Faro's merk erbij, en
+   een echte seconderteller. Mislukt het, dan blijft dezelfde kaart staan met
+   een uitleg en één knop. Opnieuw proberen hergebruikt hetzelfde jobId, zodat
+   api/_images.js een dubbele aanvraag herkent en nooit twee keer aanrekent. */
+let piGenJobId = null;
+let piGenTimer = null;
+
+function piGenToon(toestand) {
+  const gen = document.getElementById('pi-gen');
+  if (!gen) return;
+  const acties = document.getElementById('pi-gen-actions');
+  const titel  = document.getElementById('pi-gen-title');
+  const sub    = document.getElementById('pi-gen-sub');
+  if (toestand === 'weg') { gen.hidden = true; gen.classList.remove('is-bezig', 'is-mislukt'); return; }
+  gen.hidden = false;
+  gen.classList.toggle('is-bezig',   toestand === 'bezig');
+  gen.classList.toggle('is-mislukt', toestand === 'mislukt');
+  if (acties) acties.hidden = toestand !== 'mislukt';
+  if (titel) titel.textContent = toestand === 'mislukt' ? tr('pi.gen.mislukt') : tr('pi.gen.bezig');
+  if (sub)   sub.textContent   = toestand === 'mislukt' ? tr('pi.gen.misluktSub') : tr('pi.gen.sub');
+  if (toestand === 'mislukt') {
+    const knop = document.getElementById('pi-gen-retry');
+    if (knop) knop.focus();
+  }
+}
+
+function piGenTellerStart() {
+  const el = document.getElementById('pi-gen-timer');
+  const t0 = Date.now();
+  if (el) el.textContent = '0';
+  clearInterval(piGenTimer);
+  piGenTimer = setInterval(() => { if (el) el.textContent = String(Math.floor((Date.now() - t0) / 1000)); }, 1000);
+}
+function piGenTellerStop() { clearInterval(piGenTimer); piGenTimer = null; }
+
+async function generatePiImage(opnieuw) {
   const btn = document.getElementById('pi-generate-btn');
   if (!btn) return;
+  if (btn.disabled) return;                       // dubbelklik: er loopt al een aanvraag
   if (!piUploadDataUrl) { toast(tr('tst.uploadEersteFoto'), 'error'); return; }
   if (!piSelectedStyle) { toast(tr('tst.kiesStijl'), 'error'); return; }
 
+  /* Nieuwe klik = nieuwe opdracht; "Opnieuw proberen" = dezelfde opdracht. */
+  if (!opnieuw || !piGenJobId) {
+    piGenJobId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('pi-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+  }
+
   const original = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="10" stroke-dasharray="40 60"/></svg>AI genereert (kan tot een minuut duren)...';
+  btn.innerHTML = escHtml(tr('pi.gen.bezigKnop'));
+
+  const src = document.getElementById('pi-gen-src');
+  if (src) src.src = piUploadDataUrl;
+  const resultWrap = document.getElementById('pi-result-wrap');
+  if (resultWrap) resultWrap.style.display = 'none';
+  piGenToon('bezig');
+  piGenTellerStart();
 
   // Kept OUTSIDE the try so it survives into the catch/finally scope below —
   // needed so a failed request doesn't leave piLastResult pointing at a
   // half-updated state (it simply stays whatever it was before this call).
   const sourceDataUrlAtRequestTime = piUploadDataUrl;
+  let gelukt = false;
 
   try {
     const r = await fetch(\`\${API_BASE}/leads\`, {
@@ -14214,6 +14282,7 @@ async function generatePiImage() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
       body:    JSON.stringify({
         mode:             'property-generate',
+        jobId:            piGenJobId,
         dataUrl:          piUploadDataUrl,
         style:            piSelectedStyle,
         roomType:         piSelectedRoomType,
@@ -14232,7 +14301,7 @@ async function generatePiImage() {
       if (d.error === 'credit_limit_reached') {
         toast(d.message || 'Je gesprekstegoed voor deze periode is op', 'error');
       } else {
-        toast(d.error || 'AI-beeldgeneratie mislukt', 'error');
+        toast(d.error || tr('pi.gen.mislukt'), 'error');
       }
       return;
     }
@@ -14240,10 +14309,11 @@ async function generatePiImage() {
     if (!img || !img.url) { toast(tr('tst.beeldGeen'), 'error'); return; }
 
     piLastResult = { image: img, sourceDataUrl: sourceDataUrlAtRequestTime };
+    gelukt = true;
 
-    const resultWrap  = document.getElementById('pi-result-wrap');
     const resultLabel = document.getElementById('pi-result-label');
-    if (resultWrap) resultWrap.style.display = '';
+    piGenToon('weg');
+    if (resultWrap) { resultWrap.style.display = ''; resultWrap.classList.remove('is-nieuw'); void resultWrap.offsetWidth; resultWrap.classList.add('is-nieuw'); }
     renderPiCompare(sourceDataUrlAtRequestTime, img.url);
     if (resultLabel) resultLabel.textContent = img.aiLabel || '';
 
@@ -14252,8 +14322,10 @@ async function generatePiImage() {
   } catch (err) {
     toast(tr('tst.netwerkOpnieuw'), 'error');
   } finally {
+    piGenTellerStop();
     btn.disabled = false;
     btn.innerHTML = original;
+    if (!gelukt) piGenToon('mislukt');
   }
 }
 
