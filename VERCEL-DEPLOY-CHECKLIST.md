@@ -157,13 +157,24 @@ table only names what's needed and why.
 | `ANTHROPIC_API_KEY` | AI replies (`whatsapp.js`), reply suggestions, content generation |
 | `CRON_SECRET` | Protects `/api/cron-followup` so only Vercel's own cron trigger can call it. **Fails closed**: if unset, every request (including Vercel's own scheduled trigger) gets `401` — the retention sweep, weekly reports, learning loop, and Envoy outreach simply never run, with no louder error than a 401 in the function logs. Set this before relying on the daily cron for anything. |
 
-### Email (SMTP primary, Resend fallback)
+### Email (SMTP — the ONLY transport)
 | Var | Used for |
 |---|---|
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | Namecheap Private Email — primary transport |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | Namecheap Private Email — the only mail transport (`api/_mailer.js`) |
 | `SMTP_FROM` | Optional, defaults to `SMTP_USER` |
-| `RESEND_API_KEY`, `RESEND_FROM` | Fallback if SMTP send fails |
 | `REPLY_TO` | Optional reply-to override for Envoy outreach mail |
+
+**Correction (2026-09-19 env audit, item 9):** `RESEND_API_KEY`/`RESEND_FROM`
+are **not read anywhere in the current code** — Resend was deliberately
+removed as a fallback once OneSignal push was verified (see `_mailer.js`'s
+own file header). Do not set them expecting a fallback; there isn't one.
+**A missing `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` now means NO mail goes out at
+all** (verification mails, password resets, Sindi's ops alerts), loudly
+logged (`[mailer] GEEN MAILTRANSPORT`) rather than silently swallowed — but
+still: set all three of `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` before relying on
+any mail-sending feature. This replaces the previous "SMTP primary, Resend
+fallback" framing above, which described a version of the code that no
+longer exists on this branch.
 
 ### New in this batch — compliance footer (Envoy outreach)
 | Var | Used for |
@@ -182,8 +193,174 @@ table only names what's needed and why.
 | `NOTIFY_EMAIL`, `NOTIFY_PHONE` | Global fallback notify targets (per-client Airtable config takes priority) |
 | `FOLLOWUP_TEMPLATE_NAME`, `FOLLOWUP_TEMPLATE_LANG` | WhatsApp template for the >24h freeform-window follow-up |
 | `ONBOARD_CODE` | Client onboarding invite-link code |
-| `USERS_CONFIG`, `OWNER_*` | Env-var-based user store / owner bypass (legacy path, superseded by Airtable Users table where configured) |
+| `OWNER_*` (`OWNER_API_KEY`, `OWNER_CALENDLY_LINK`, `OWNER_CLIENT_NAME`, `OWNER_EMAIL`, `OWNER_PASSWORD_HASH`, `OWNER_PROJECT_CODE`) | Env-var-based owner bypass login (`api/auth.js`) |
 | `AUTO_PUBLISH` | Set to `'false'` to keep generated marketing content in draft status instead of auto-approved |
+
+**Correction (2026-09-19 env audit):** `USERS_CONFIG` above is **stale** —
+`api/auth.js` no longer reads it at all (the code now only has a comment
+marking it "removed"). Don't set it expecting it to do anything.
+
+---
+
+## 4b. Complete environment variable inventory (2026-09-19 audit, item 9)
+
+Every `process.env.*` read across `api/`, `scripts/`, and `tests/` as of this
+audit — **121 distinct names**, found by scanning every `.js` file in the
+repo (both `process.env.NAME` and `process.env['NAME']` forms; nothing else
+was found). Section 4 above predates this audit and covers the highest-
+stakes ones in prose with more context; this section is the exhaustive,
+grouped reference. Re-run the scan below after future changes rather than
+hand-maintaining this list — it drifts fast:
+
+```js
+const fs = require('fs'), path = require('path');
+function walk(dir, out) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name.startsWith('.git')) continue;
+    const full = path.join(dir, e.name);
+    e.isDirectory() ? walk(full, out) : e.name.endsWith('.js') && out.push(full);
+  }
+}
+const files = []; walk('.', files);
+const re = /process\.env\.([A-Z0-9_]+)/g, names = new Map();
+for (const f of files) { const c = fs.readFileSync(f, 'utf8'); let m;
+  while ((m = re.exec(c))) names.set(m[1], (names.get(m[1]) || []).concat(f)); }
+console.log([...names.keys()].sort().join('\n'));
+```
+
+### Required in production
+
+App-breaking or a core feature fails closed (not silently) without these.
+
+| Var | Why it's required |
+|---|---|
+| `API_AIRTABLE`, `BASE_AIRTABLE` | The database. Nothing works without these. |
+| `PHONE_NUMBER_ID`, `WHATSAPP_TOKEN` | WhatsApp send — the core product function. |
+| `WA_APP_SECRET` | Inbound webhook signature verification. **Fails closed** (403) if unset — see section 4. |
+| `WA_VERIFY_TOKEN` | Meta webhook subscription handshake. |
+| `SESSION_SECRET` (or `ADMIN_KEY` as fallback) | Signs dashboard session tokens. **Fails closed** (throws) if neither is set. |
+| `ADMIN_KEY` | Admin endpoints, GDPR erasure/export modes, and the `ADMIN_KEY` fallback above. |
+| `ANTHROPIC_API_KEY` | AI replies — the core product function. |
+| `CRON_SECRET` | Protects `/api/cron-followup`. **Fails closed** (401) — the retention sweep, reminders, and weekly reports simply never run without it, with no louder signal than a 401 in the function logs. |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Credit top-up billing. Startup **test/live-key-vs-`VERCEL_ENV` check** (see below) — already implemented, `api/_stripe.js`. |
+| `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` (or `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`) | Required **only when `CLERK_ENABLED=1`** — dashboard login goes through Clerk instead of the legacy API-key path. Half-configured (flag on, secret missing) is worse than off: see `api/_clerk.js`'s own comment on the session-loop bug this caused. Startup **test/live-key-vs-`VERCEL_ENV` check** added in this audit (see below). |
+
+### Startup test/live-key warnings (env vs. `VERCEL_ENV`)
+
+Both Stripe and Clerk keys carry a `_test_`/`_live_` prefix, and using the
+wrong one for the environment is a real, silent failure mode: a live key on
+a preview deploy charges real cards or logs into the real user database from
+a branch someone is just trying out; a test key in production looks like it
+works but nothing lands.
+
+| Provider | Behavior on mismatch | Where |
+|---|---|---|
+| Stripe | **Live key outside production → blocked** (`configured()` returns `false`, the pay button disappears — a real card can never be charged from a preview). **Test key in production → warned, not blocked** (payments "succeed" but no money arrives — annoying, not dangerous, and blocking would silently kill sales). Logged once per cold start, key value never printed. | `api/_stripe.js`'s `sleutelPastBijOmgeving()` — pre-existing, not new to this audit. |
+| Clerk | **Always warned, never blocked**, in either direction. Unlike Stripe, a blocked Clerk means the entire dashboard login is down — worse than the mismatch itself, and the exact "half-configured is worse than off" trap `api/_clerk.js` already has a comment about. Logged once per cold start, key value never printed. | `api/_clerk.js`'s new `clerkSleutelPastBijOmgeving()`, added in this audit. See `tests/zakelijk-en-sleutels.test.js`. |
+
+Both read `VERCEL_ENV` (Vercel injects this automatically — `production` /
+`preview` / `development`; never set it by hand). No environment set (local
+dev, most test runs) means no judgment either way — there is nothing to
+compare against.
+
+### Optional / feature-specific (fail-soft if unset)
+
+The feature is simply unavailable, or falls back to a documented default,
+without these — nothing else breaks.
+
+| Group | Vars |
+|---|---|
+| Generated images (property photos) | `BLOB_READ_WRITE_TOKEN` (or `BLOB_STORE_ID`+`VERCEL_OIDC_TOKEN` via OIDC), `OPENAI_API_KEY`/`OPENAI`, `HELVARO_IMAGE_QUALITY` |
+| Generated video | `KLING_ACCESS_KEY`, `KLING_API_KEY`, `KLING_SECRET_KEY`, `KLING_API_BASE`, `HELVARO_VIDEO_MODEL` |
+| Faro (AI workspace assistant) | `FARO_PROVIDER`, `FARO_WORKSPACE_ENABLED`, `FARO_DEMO_MODE`, `FARO_TIMEOUT_MS`, `PG_API_URL`, `PG_API_TOKEN`, `PG_API_INSECURE` |
+| Google Calendar integration | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_TOKEN_KEY` |
+| Push notifications | `ONESIGNAL_API_KEY`, `ONESIGNAL_APP_ID` |
+| CRM sync (per-client) | `CRM_DISABLED`, `CRM_TOKEN_KEY` |
+| WhatsApp Embedded Signup / template mgmt | `META_APP_ID`, `META_APP_SECRET`, `META_ES_CONFIG_ID`, `WABA_ID`, `WHATSAPP_MANAGEMENT_TOKEN` |
+| WhatsApp voice-note transcription | `WHATSAPP_TRANSCRIBE`, `WHATSAPP_TRANSCRIBE_MODEL` |
+| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `REPLY_TO` (see the correction above — SMTP is the only transport, not "optional with a fallback") |
+| Notifications / templates | `NOTIFY_EMAIL`, `NOTIFY_PHONE`, `SUPPORT_EMAIL`, `SUPPORT_WA`, `FOLLOWUP_TEMPLATE_NAME`/`_LANG`, `REMINDER_TEMPLATE_NAME`/`_LANG`, `INTRO_TEMPLATE_NAME`/`_LANG`, `BOOKING_TEMPLATE_NAME`/`_LANG`, `MANUAL_REPLY_TEMPLATE_NAME`/`_LANG`, `NOTIFY_TEMPLATE_NAME`/`_LANG` |
+| Rate limiting (shared across instances) | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — fails **open** (limits just become per-instance) without these, not closed |
+| Billing / credits | `CREDIT_TOPUP_MIN_EUR`, `CREDIT_TOPUP_MAX_EUR`, `CREDIT_TOPUP_RATE_EUR`, `DEFAULT_CREDIT_ALLOWANCE`, `KOSTEN_USD_EUR` |
+| AI behavior tuning | `AI_CONFIDENCE_MIN`, `AI_MAX_ATTEMPTS`, `AI_PROVIDER_FORCE`, `AI_UIT`, `AI_UIT_REDEN` |
+| Retention (this batch — item 8) | `RETENTIE_OPRUIMEN` (default off = dry-run only), `RETENTIE_OPRUIM_DAGEN` (default 90) |
+| Public self-serve signup | `PUBLIC_SIGNUP_ENABLED`, `ONBOARD_CODE` |
+| Demo chat widget | `DEMO_CHAT_ENABLED`, `DEMO_PROJECT_CODE` |
+| Clerk (non-key config) | `CLERK_ENABLED`, `CLERK_AUTHORIZED_PARTIES` |
+| Language default | `DASHBOARD_LANG` |
+| Per-call timeout tuning (all have safe built-in defaults) | `AIRTABLE_TIMEOUT_MS`, `AI_TIMEOUT_MS`, `CRON_FETCH_TIMEOUT_MS`, `LEDGER_TIMEOUT_MS`, `PROPERTIES_TIMEOUT_MS`, `VEHICLES_TIMEOUT_MS`, `WHATSAPP_TIMEOUT_MS` |
+| Envoy outreach compliance footer | `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS` (no safe default — see section 4), `VAT_NUMBER` |
+| Marketing content | `AUTO_PUBLISH` |
+| Owner bypass login (legacy) | `OWNER_API_KEY`, `OWNER_CALENDLY_LINK`, `OWNER_CLIENT_NAME`, `OWNER_EMAIL`, `OWNER_PASSWORD_HASH`, `OWNER_PROJECT_CODE` |
+
+### Local-only / script-only — never needed on the deployed Vercel app
+
+These are read exclusively by files under `scripts/` (local CLI tools, not
+deployed as Vercel functions — see section 2) or `tests/`. Setting them in
+Vercel's Production/Preview environment variables does nothing:
+
+| Var | Only read by |
+|---|---|
+| `HUBSPOT_TOKEN`, `PIPEDRIVE_DOMEIN`, `PIPEDRIVE_TOKEN`, `OMNICASA_BASIS`, `OMNICASA_SECRET`, `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_DOMEIN`, `WEBHOOK_URL`, `WEBHOOK_SECRET` | `scripts/crm-check.js` — a local CRM-connectivity probe |
+| `BACKUP_TIMEOUT_MS` | `scripts/airtable-backup.js` — local backup script |
+| `PORT` | `scripts/faro-dev.js` — local dev server |
+| `ADMIN_KEY_FOR_TEST` | `tests/idor-matrix.test.js`, `tests/leads-search.test.js` |
+| `TZ` | `tests/maandgrens.test.js` |
+
+### Auto-injected by the platform — never set these by hand
+
+| Var | Injected by |
+|---|---|
+| `VERCEL_ENV` | Vercel, on every deployment (`production`/`preview`/`development`) — this is what the Stripe/Clerk key checks above compare against. |
+| `VERCEL_OIDC_TOKEN` | Vercel, when Blob storage is connected via OIDC instead of a long-lived `BLOB_READ_WRITE_TOKEN`. |
+
+### What could silently use the wrong resource (the specific risk item 9 asks about)
+
+- **Airtable (`API_AIRTABLE`/`BASE_AIRTABLE`) has no environment-awareness
+  in code at all** — unlike Stripe/Clerk, there is no key-prefix convention
+  to check, and no code here distinguishes "the production base" from "a
+  test base." If the same values are pulled into a local `.env.local` (e.g.
+  via `vercel env pull`) and a script or test run then hits the network
+  instead of a mock, it reads and writes the **real, live Airtable base** —
+  real leads, real clients. This is not new to this audit and not something
+  this batch changes in code (no local/preview Airtable base exists to
+  fail over to), but it is the single biggest "local dev silently touches
+  production data" risk in this app and is worth a deliberate decision:
+  either provision a separate preview/test base, or treat any local
+  `.env.local` with real Airtable credentials as radioactive and never run
+  scripts against it without re-reading what they do first. **Action for
+  Sindi**, not a code fix — see `CHANGELOG.md`.
+- **Stripe / Clerk**: covered above — both now warn (Stripe also blocks the
+  dangerous direction) on a `VERCEL_ENV` mismatch.
+- **Resend fallback**: covered above — the risk here was the opposite
+  direction (docs claimed a fallback that no longer exists in code); fixed
+  by correcting the docs, not the code (the code already fails loudly).
+
+---
+
+## 4c. Dependency audit (2026-09-19, item 9)
+
+```
+npm audit --json
+```
+**0 vulnerabilities** (info/low/moderate/high/critical all 0) across 97
+resolved dependencies (71 prod, 27 optional, 0 dev). Nothing to patch.
+
+```
+npx --yes depcheck
+```
+**0 unused dependencies, 0 unused devDependencies** — every package in
+`package.json` (`@clerk/backend`, `@vercel/blob`, `@vercel/functions`,
+`bcryptjs`, `nodemailer`, `satori`, `sharp`, `undici`) is actually
+`require()`'d somewhere in `api/` or `scripts/`. Nothing removed; per the
+instruction, none added either.
+
+depcheck also reports 3 "missing" packages — `html2canvas`, `dompurify`,
+`canvg` — but these are a **false positive**: they're referenced inside
+`public/vendor/jspdf.umd.min.js`, a vendored, minified third-party bundle
+(jsPDF's UMD build) that optionally uses those libraries client-side if
+present in the global scope. They are not `require()`'d by any of our own
+Node code and do not belong in `package.json`. No action.
 
 ---
 

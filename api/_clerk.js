@@ -246,6 +246,48 @@ function vlagAan(waarde) {
 let _configKlachtGedaan = false;
 let _laatsteVerlopenKlacht = 0;
 let _laatsteGeenTokenKlacht = 0;
+
+/* ── Test- vs live-sleutel in de verkeerde omgeving (brief §141) ─────────────
+ * Dezelfde soort mismatch als api/_stripe.js's sleutelPastBijOmgeving():
+ * Clerk-sleutels dragen ook een pk_test_/pk_live_ en sk_test_/sk_live_
+ * voorvoegsel, en niets controleerde hier ooit of dat voorvoegsel bij
+ * VERCEL_ENV hoorde.
+ *
+ * Anders dan Stripe wordt hier NOOIT geblokkeerd, in geen enkele richting.
+ * Stripe kan een mismatch veilig laten falen (configured() geeft false, de
+ * betaalknop verdwijnt) omdat er dan gewoon niet betaald kan worden -- een
+ * beheersbare, zichtbare storing. Clerk poort de HELE dashboard-login: als
+ * enabled() hier ook false zou geven bij een mismatch, logt niemand meer in,
+ * wat precies de "half aan is erger dan uit"-fout hierboven is die deze
+ * functie al één keer moest oplossen. Dus: hard melden, nooit blokkeren.
+ * Eén keer per koude start, zoals de klacht hierboven. */
+let _clerkOmgevingKlachtGedaan = false;
+function clerkSleutelPastBijOmgeving() {
+  const env = String(process.env.VERCEL_ENV || '').trim().toLowerCase();
+  if (!env) return; // geen oordeel zonder omgeving -- lokaal, of een test
+  const sk = String(process.env.CLERK_SECRET_KEY || '').trim();
+  const pk = String(process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '').trim();
+  const skLive = /^sk_live_/.test(sk), skTest = /^sk_test_/.test(sk);
+  const pkLive = /^pk_live_/.test(pk), pkTest = /^pk_test_/.test(pk);
+
+  // Geen aparte "sk/pk horen niet bij elkaar"-tak: die situatie wordt altijd
+  // al door één van de twee takken hieronder gevangen (een test-sleutel in
+  // productie, aan welke kant dan ook, raakt de eerste tak; een live-sleutel
+  // buiten productie de tweede) -- een derde tak zou hier nooit vuren.
+  let probleem = '';
+  if (env === 'production' && (skTest || pkTest)) {
+    probleem = 'TEST-sleutel in PRODUCTIE -- klanten loggen in tegen een Clerk-testomgeving';
+  } else if (env !== 'production' && (skLive || pkLive)) {
+    probleem = `LIVE-sleutel in omgeving "${env}" -- preview/development praat dan met de echte gebruikersdatabase`;
+  }
+  if (probleem && !_clerkOmgevingKlachtGedaan) {
+    _clerkOmgevingKlachtGedaan = true;
+    console.error(`[clerk] CONFIGURATIEWAARSCHUWING: ${probleem}. `
+      + 'Wordt NIET geblokkeerd (Clerk poort de hele inlog -- zie de code-opmerking hierboven). '
+      + 'Controleer CLERK_SECRET_KEY/CLERK_PUBLISHABLE_KEY in Vercel voor deze omgeving.');
+  }
+}
+
 function enabled() {
   const vlag = vlagAan(process.env.CLERK_ENABLED);
   const geheim = !!process.env.CLERK_SECRET_KEY;
@@ -256,6 +298,7 @@ function enabled() {
       + 'niemand verifieren, en elke beveiligde aanroep geeft 401. Zet '
       + 'CLERK_SECRET_KEY in de omgevingsvariabelen en rol opnieuw uit.');
   }
+  if (vlag && geheim) clerkSleutelPastBijOmgeving();
   return vlag && geheim;
 }
 

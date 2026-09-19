@@ -107,5 +107,58 @@ console.log('\n— en het wordt luid gemeld, zonder de sleutel te tonen —');
   ck('en er staat wat te doen',      /sk_test_/.test(alles), alles);
 }
 
+// ── Clerk-sleutels (brief §141: dezelfde audit, andere leverancier) ────────
+// Zelfde soort mismatch als Stripe hierboven, maar NOOIT blokkerend: Clerk
+// poort de hele dashboard-login, en enabled() -> false bij een mismatch zou
+// precies de "half aan is erger dan uit"-fout zijn die dit bestand al één
+// keer moest oplossen (zie api/_clerk.js's eigen commentaar). Warn-only.
+console.log('\n— Clerk: test/live-mismatch wordt gemeld, maar enabled() blijft werken —');
+function metClerk({ sk, pk, env, clerkAan = '1' }) {
+  const oud = {
+    sk: process.env.CLERK_SECRET_KEY, pk: process.env.CLERK_PUBLISHABLE_KEY,
+    env: process.env.VERCEL_ENV, aan: process.env.CLERK_ENABLED,
+  };
+  const zet = (naam, waarde) => { if (waarde === undefined) delete process.env[naam]; else process.env[naam] = waarde; };
+  zet('CLERK_SECRET_KEY', sk); zet('CLERK_PUBLISHABLE_KEY', pk); zet('VERCEL_ENV', env); zet('CLERK_ENABLED', clerkAan);
+  delete require.cache[require.resolve('../api/_clerk.js')];
+  const clerk = require('../api/_clerk.js');
+  const regels = [];
+  const e = console.error; console.error = (...a) => regels.push(a.join(' '));
+  const uit = clerk.enabled();
+  console.error = e;
+  zet('CLERK_SECRET_KEY', oud.sk); zet('CLERK_PUBLISHABLE_KEY', oud.pk); zet('VERCEL_ENV', oud.env); zet('CLERK_ENABLED', oud.aan);
+  return { enabled: uit, log: regels.join('\n') };
+}
+
+{
+  const r = metClerk({ sk: 'sk_test_abc', pk: 'pk_test_abc', env: 'production' });
+  ck('test-sleutel in productie: enabled() blijft true (niet geblokkeerd)', r.enabled === true, r);
+  ck('maar wordt wel gemeld', /TEST-sleutel in PRODUCTIE/.test(r.log), r.log);
+}
+{
+  const r = metClerk({ sk: 'sk_live_GEHEIMEWAARDE', pk: 'pk_live_GEHEIMEWAARDE', env: 'preview' });
+  ck('live-sleutel in preview: enabled() blijft true (niet geblokkeerd)', r.enabled === true, r);
+  ck('maar wordt wel gemeld',        /LIVE-sleutel in omgeving/.test(r.log), r.log);
+  ck('de sleutel zelf staat er niet in', r.log.indexOf('GEHEIMEWAARDE') === -1, r.log);
+}
+{
+  // Een gemengd paar (live secret + test publishable) in productie wordt nog
+  // steeds gevangen -- niet als een apart "mismatch"-geval, maar via dezelfde
+  // "test-sleutel in productie"-tak, omdat de publishable-kant test is.
+  const r = metClerk({ sk: 'sk_live_abc', pk: 'pk_test_abc', env: 'production' });
+  ck('gemengd paar in productie wordt óók gemeld (via de test-in-productie-tak)',
+     /TEST-sleutel in PRODUCTIE/.test(r.log), r.log);
+}
+{
+  const r = metClerk({ sk: 'sk_test_abc', pk: 'pk_test_abc', env: 'production' });
+  ck('geen VERCEL_ENV: geen oordeel, geen melding',
+     metClerk({ sk: 'sk_live_abc', pk: 'pk_live_abc', env: undefined }).log === '', null);
+}
+{
+  const r = metClerk({ sk: 'sk_test_abc', pk: 'pk_test_abc', env: 'production' });
+  ck('matchende test-sleutels in een niet-productie-omgeving: geen melding',
+     metClerk({ sk: 'sk_test_abc', pk: 'pk_test_abc', env: 'preview' }).log === '', null);
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);
