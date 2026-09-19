@@ -531,7 +531,7 @@ const CSS = `/* ============================================================
      een warme grond. De kern is nieuw: op wit was er alleen een verre wolk,
      dus een kaart had geen contactpunt met de pagina en zweefde stuurloos. */
   --shadow:        0 1px 2px rgba(64,52,32,0.06), 0 4px 12px rgba(64,52,32,0.06), 0 16px 40px rgba(64,52,32,0.07);
-  --shadow-card:   0 1px 2px rgba(64,52,32,0.05), 0 3px 10px rgba(64,52,32,0.05), 0 14px 36px rgba(64,52,32,0.06);
+  --shadow-card:   none;   /* finish-fix 3: de rand is de rand, ook licht */
   --shadow-glow:   none;
   /* Same rule, light ground: elev-1/2 gone, elev-3 is the one soft offset
      shadow reserved for a modal and the search overlay. */
@@ -9352,7 +9352,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 [data-theme="light"] .topbar {
   background: rgba(255,255,255,0.72);
   border-bottom: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.90), 0 4px 20px rgba(23,19,12,0.05);
+  box-shadow: none;   /* finish-fix 3: ook in het lichte thema geen slagschaduw op de grond */
 }
 
 /* Page titles were gold, which put brand colour on ordinary structural

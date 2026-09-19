@@ -212,8 +212,8 @@ function render(lang) {
    tegenstelling tot de 13 vulbalken die dit bestand elders bewust laat
    staan), dus de breedteovergang is gewoon geschrapt -- het puntje springt
    nu ipv breder schuift, en alleen de achtergrondkleur blijft animeren. */
-const CSS_BYTES = 388271;
-const CSS_SHA   = 'caa4c48aa29c8ef7';
+const CSS_BYTES = 388244;
+const CSS_SHA   = '71fe5fd8aa3d6120';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

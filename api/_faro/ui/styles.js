@@ -653,9 +653,7 @@ body.hv-mode-ai .faro-rail {
    1px tan outline, same mechanism as everywhere else, not a glow. */
 .faro-input:focus-within,
 .faro-input.dragover {
-  border-color: var(--champagne);
-  outline: 1px solid var(--champagne);
-  outline-offset: 1px;
+  border-color: var(--champagne);   /* één ring: de rand zelf, geen tweede outline */
 }
 
 /* ── Step list ──────────────────────────────────────────────────────────────
