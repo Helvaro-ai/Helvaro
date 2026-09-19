@@ -160,9 +160,24 @@ function render(lang) {
    vóór het verloop, en .stat-card:hover naar het vlakke --bg-card-hover
    i.p.v. een 160deg-verloop. De zijbalkschaduw (8px 0 32px, beide thema's)
    is weg. De lichte KPI-kaart (.stat-card) staat nu op --card (#FAF6EE)
-   i.p.v. --bg (#F3EDE1, de grond), zodat hij er echt bovenuit stapt. */
-const CSS_BYTES = 388664;
-const CSS_SHA   = '1b8fbef02aa41571';
+   i.p.v. --bg (#F3EDE1, de grond), zodat hij er echt bovenuit stapt.
+
+   Daarna (-735 bytes) finish-fix 4: gloed als middel weg. De Faro-orb is
+   geen conic sheen + roterende + ademende box-shadow-gloed meer, maar een
+   vlakke zandschijf met een 1px --deep-sand-rand (spin/breathe-keyframes
+   en het bloom-pseudo-element zijn weg, want er is niets meer om te
+   animeren). De valk-tekening verloor zijn drop-shadow(--warm-sand-glow)
+   in rust en bij succes. De composer- en dock-invoer wisselden hun
+   3px-bloom-ring voor een 1px getande outline; de twee statusringen
+   (.faro-status__mascot, .faro-msg__ai-avatar--bezig) hielden hun 1px
+   randje maar verloren de 14px-gloed erachter. --grad-ai/--grad-data/
+   --grad-success waren al dood (nul aanroepen); --grad-gold's vijf
+   gebruiken zijn nu var(--accent-c), vlak. .fdr-live-dot en .nav-badge
+   verloren hun glow-halo/pulserende ring, met behoud van hun eigen
+   opacity-puls. api/_intro.js: .fi-bloom en .fi-sheen spelen niet meer af
+   in geen van beide thema's; .fi-orb's zandgloed werd een 1px rand. */
+const CSS_BYTES = 387929;
+const CSS_SHA   = 'a30c8409ca6f6a3e';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

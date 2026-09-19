@@ -171,15 +171,14 @@ function css() {
   animation: fi-ring ${T.ring.dur}s cubic-bezier(.2,.7,.3,1) ${T.ring.at}s both;
 }
 
-/* De warme gloed erachter. Hij verdwijnt weer — een gloed die blijft staan
-   leest als een fout in plaats van als een moment. */
+/* Finish-fix 4: geen gloed als middel, ook niet in het donkere thema --
+   deze staat nu net als de lichte variant hieronder altijd uit. */
 .fi-bloom {
   width: ${MAAT.stage}px;
   height: ${MAAT.stage}px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--warm-sand-glow, rgba(244,231,200,.10)) 0%, transparent 66%);
   opacity: 0;
-  animation: fi-bloom ${T.bloom.dur}s ease-out ${T.bloom.at}s both;
+  animation: none;
 }
 
 /* De kop. Geen slagschaduw: op een uitgevloeide cirkel wordt die modderig.
@@ -209,7 +208,7 @@ function css() {
   border-radius: 50%;
   background:
     radial-gradient(circle at 34% 30%, var(--accent-ink, #F0E4C8) 0%, var(--accent-c) 34%, var(--accent-deep, #C9AE7C) 72%, #8A7350 100%);
-  box-shadow: 0 0 40px rgba(232,215,177,.28);
+  box-shadow: 0 0 0 1px var(--accent-deep, #C9AE7C);
   opacity: 0;
   animation: fi-kop ${T.kop.dur}s cubic-bezier(.22,.9,.28,1) ${T.kop.at}s both;
 }
@@ -223,20 +222,12 @@ function css() {
    Alleen mét bestand: de maskering leunt op diezelfde webp, dus zonder
    tekening zou dit een rechthoek zijn. Vandaar de .is-ready-poort. */
 .fi-sheen { display: none; }
+/* Finish-fix 4: de lichtveeg (shine) speelt niet meer -- .fi-sheen blijft
+   op display:none staan, ook wanneer de tekening klaar is. */
 .fi-stage.is-ready .fi-sheen {
-  display: block;
   width: ${MAAT.kop}px;
   height: ${MAAT.kop}px;
-  background: linear-gradient(102deg, transparent 36%, var(--warm-sand, #F4E7C8) 50%, transparent 64%);
-  mix-blend-mode: screen;
   opacity: 0;
-  -webkit-mask-image: var(--fi-mask);
-          mask-image: var(--fi-mask);
-  -webkit-mask-size: contain;
-          mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-  animation: fi-sheen ${T.sheen.dur}s ease-out ${T.sheen.at}s both;
 }
 
 .fi-word {

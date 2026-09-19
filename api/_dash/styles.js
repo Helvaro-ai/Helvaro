@@ -318,11 +318,6 @@ const CSS = `/* ============================================================
   --c-orange:  var(--c-amber);  --c-orange-soft: var(--c-amber-soft);
   --c-gold:    var(--c-sand);   --c-gold-soft:   var(--c-sand-soft);
 
-  --grad-gold:    linear-gradient(135deg, #E8D7B1, #C9AE7C);
-  --grad-ai:      linear-gradient(135deg, #E8D7B1, #C9AE7C);
-  --grad-data:    linear-gradient(135deg, #C9AE7C, #E8D7B1);
-  --grad-success: linear-gradient(135deg, #4CAF6E, #2F8F4E);
-
   /* ---- legacy token names (kept so every existing var(--x) in this
      18k-line file resolves without a line-by-line rewrite) ---- */
   --bg-primary:    var(--bg);
@@ -501,11 +496,6 @@ const CSS = `/* ============================================================
   --c-emerald: #2F8F4E;  --c-emerald-soft: rgba(47,143,78,0.10);
   --c-amber:   #B4661A;  --c-amber-soft:   rgba(180,102,26,0.10);
   --c-coral:   #C2352B;  --c-coral-soft:   rgba(194,53,43,0.10);
-
-  --grad-gold:    linear-gradient(135deg, #E8D7B1, #D3BE93);
-  --grad-ai:      linear-gradient(135deg, #E8D7B1, #D3BE93);
-  --grad-data:    linear-gradient(135deg, #D3BE93, #E8D7B1);
-  --grad-success: linear-gradient(135deg, #2F8F4E, #4D7C0F);
 
   --bg-primary:    var(--bg);
   --bg-card:       var(--card);
@@ -3169,7 +3159,7 @@ button.brand-dot { border: none; padding: 0; }
 .fdr-live-table tr:last-child td { border-bottom: none; }
 .fdr-live-table tr:hover td { background: rgba(var(--accent-rgb),.04); }
 .fdr-live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-.fdr-live-dot.online { background: var(--success); box-shadow: 0 0 6px rgba(var(--success-rgb),.7); animation: pulseDot 1.6s ease-in-out infinite; }
+.fdr-live-dot.online { background: var(--success); animation: pulseDot 1.6s ease-in-out infinite; }
 .fdr-live-dot.offline { background: var(--text-muted-c); }
 @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 .fdr-live-name { font-weight: 600; color: var(--text-primary); }
@@ -3362,7 +3352,7 @@ button.brand-dot { border: none; padding: 0; }
   color: var(--text);
 }
 .sidebar .nav-item.active {
-  background: var(--grad-gold);
+  background: var(--accent-c);
   /* Koud zwart (#0B0F16) op een gouden pil las grijsblauw waar het zwart
      hoorde te zijn. Zelfde helderheid, warme tint: 13,51:1 -> 13,47:1. */
   color: #120F08;
@@ -4312,7 +4302,6 @@ h1.page-title { margin: 0; font-weight: inherit; }
 .cm-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.3); }
 .cm-btn-confirm.danger:focus-visible { box-shadow: 0 0 0 3px rgba(var(--error-rgb),0.3); }
 @keyframes modalIn { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes pulse-glow { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: .9; } 50% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
 
 /* De primaire knop. Fase 4: "de ene, effen chip" uit het richtingscontract --
    een vlakke vulling (--btn-primary-bg/--btn-primary-text), geen gloed en
@@ -5556,7 +5545,6 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   font-weight: 700;
   padding: 0 4px;
   margin-left: auto;
-  animation: pulse-glow 1.5s ease-in-out infinite;
 }
 
 /* ── Status select in detail panel ── */
@@ -7614,7 +7602,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   overflow: hidden; flex-shrink: 0;
 }
 .dash-checklist-progress-fill {
-  height: 100%; background: var(--grad-gold); border-radius: 999px;
+  height: 100%; background: var(--accent-c); border-radius: 999px;
   transition: width var(--dur-base, .25s) var(--ease-out, ease);
 }
 .dash-checklist-close {
@@ -9395,7 +9383,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 
 [data-theme="light"] .nav-item.active {
-  background: var(--grad-gold);
+  background: var(--accent-c);
   /* Zelfde ingreep als in het donkere thema: koud zwart op een gouden pil
      leest grijsblauw. Gelijke helderheid, warme tint: 11,87:1 -> 11,86:1. */
   color: #1F1D18;
@@ -9645,7 +9633,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--grad-gold);
+  background: var(--accent-c);
   color: var(--on-accent);
   box-shadow: 0 4px 12px rgba(0,0,0,.28), 0 10px 32px rgba(var(--accent-rgb),.28);
   transition: transform var(--dur-base) var(--ease-out),
@@ -9721,7 +9709,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 .hv-help-head {
   padding: 18px 18px 14px;
-  background: var(--grad-gold);
+  background: var(--accent-c);
   color: var(--on-accent);
   flex-shrink: 0;
 }

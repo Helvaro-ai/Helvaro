@@ -115,7 +115,8 @@ function css() {
 }
 .faro-dock__inner:focus-within {
   border-color: var(--champagne);
-  box-shadow: 0 0 0 3px var(--faro-input-ring);
+  outline: 1px solid var(--champagne);
+  outline-offset: 1px;
 }
 .faro-dock__spark { display: inline-flex; color: var(--champagne); flex-shrink: 0; }
 .faro-dock__input {
@@ -501,7 +502,6 @@ body.hv-mode-ai .faro-rail {
   height: 72px;
   margin: 0;                   /* .faro-mark owns the spacing now */
   display: block;
-  filter: drop-shadow(0 0 20px var(--warm-sand-glow));
   transition: filter 400ms ease, transform 400ms ease;
 }
 /* If the asset is missing, hide rather than show a broken-image glyph —
@@ -544,7 +544,6 @@ body.hv-mode-ai .faro-rail {
 
 /* Gelukt: twee keer stuiteren, dan klaar. */
 .faro-mascot[data-state="success"]   {
-  filter: drop-shadow(0 0 28px var(--warm-sand-glow));
   animation: faro-juicht 620ms cubic-bezier(.34, 1.56, .64, 1) 2 forwards;
 }
 
@@ -564,8 +563,8 @@ body.hv-mode-ai .faro-rail {
   50%      { transform: translateY(-3px) rotate(-1.5deg);   }
 }
 @keyframes faro-werkt {
-  0%, 100% { transform: scale(1);     filter: drop-shadow(0 0 20px var(--warm-sand-glow)); }
-  50%      { transform: scale(1.035); filter: drop-shadow(0 0 30px var(--warm-sand-glow)); }
+  0%, 100% { transform: scale(1);     }
+  50%      { transform: scale(1.035); }
 }
 @keyframes faro-drijft {
   0%, 100% { transform: translate(0, 0)        rotate(0deg);    }
@@ -601,15 +600,12 @@ body.hv-mode-ai .faro-rail {
 }
 
 /* ── The orb ────────────────────────────────────────────────────────────────
-   A mark built entirely from gradients: no asset to ship, nothing to 404, and
-   it themes itself from the same two custom properties as everything else.
    It exists because public/faro/ is empty on a fresh checkout, which left the
    landing screen with a headline and no face at all.
 
-   Three stacked layers do the work: a soft outer bloom, a rotating conic sheen
-   that reads as light moving across a curved surface, and a small offset
-   highlight that fixes the light source to the upper left -- the same
-   direction the falcon brief specifies, so the two can coexist. */
+   Finish-fix 4: no gloss, no conic sheen, no bloom. A flat sand disc with a
+   1px --deep-sand ring -- the same "declare elevation once" rule the rest of
+   the app follows, not a glow as a device. */
 .faro-mark {
   position: relative;
   width: 72px; height: 72px;
@@ -619,46 +615,18 @@ body.hv-mode-ai .faro-rail {
 .faro-orb {
   position: absolute; inset: 0;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 42%),
-    conic-gradient(from 200deg, var(--champagne), var(--warm-sand), #b9975b, var(--champagne));
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.10) inset,
-    0 8px 28px var(--warm-sand-glow);
-  animation: faro-orb-spin 14s linear infinite, faro-orb-breathe 5.2s ease-in-out infinite;
-}
-/* The bloom. Separate element would be another node; a pseudo keeps it free. */
-.faro-orb::after {
-  content: ''; position: absolute; inset: -34%;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--warm-sand-glow) 0%, rgba(0,0,0,0) 68%);
-  opacity: 0.85; pointer-events: none;
+  background: var(--warm-sand);
+  box-shadow: 0 0 0 1px var(--deep-sand);
 }
 
-/* States. Each is a change of tempo or bloom, never of shape -- the same
-   "extremely subtle" rule the falcon brief is written to. */
-.faro-mark[data-state="thinking"]   .faro-orb { animation-duration: 4s, 2.4s; }
-.faro-mark[data-state="generating"] .faro-orb { animation-duration: 2.6s, 1.5s; }
-.faro-mark[data-state="video"]      .faro-orb { animation-duration: 2.6s, 1.5s; }
-.faro-mark[data-state="success"]    .faro-orb { box-shadow: 0 0 0 1px rgba(255,255,255,0.16) inset, 0 8px 40px var(--warm-sand-glow); }
+/* States. A change of tint, never of shape or glow. */
 .faro-mark[data-state="error"]      .faro-orb {
-  background:
-    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 42%),
-    conic-gradient(from 200deg, #8a7a63, #6f6152, #8a7a63);
-  animation-play-state: paused;
+  background: #8a7a63;
+  box-shadow: 0 0 0 1px #6f6152;
 }
 /* When the falcon artwork exists it sits on the orb; the orb then reads as the
-   glow behind it rather than as the mark itself. */
+   backing shape behind it rather than as the mark itself. */
 .faro-mark:has(.faro-mascot:not(.faro-mascot--missing)) .faro-orb { opacity: 0.5; }
-
-@keyframes faro-orb-spin    { to { transform: rotate(360deg); } }
-@keyframes faro-orb-breathe {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 8px 24px var(--warm-sand-glow); }
-  50%      { box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset, 0 8px 34px var(--warm-sand-glow); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .faro-orb, .faro-mark[data-state] .faro-orb { animation: none; }
-}
 
 .faro-landing__title {
   font-size: var(--fs-display); font-weight: 600; letter-spacing: -0.02em;
@@ -683,28 +651,13 @@ body.hv-mode-ai .faro-rail {
   padding: var(--sp-4) var(--sp-4) var(--sp-3);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-/* Ambient glow. A soft sand bloom sitting UNDER the composer, so the input
-   reads as the lit object on the page rather than one more bordered box. It
-   sits just BELOW the box rather than behind it: a negative z-index would put
-   it behind the panel's own background and render it invisible, and isolating
-   the input to fix that would hide it behind the input instead. Blur is on a
-   gradient, not a filter -- filter would promote a layer and cost a repaint on
-   every keystroke. */
-.faro-input::before {
-  content: ''; position: absolute;
-  left: 8%; right: 8%; top: 100%; height: 56px;
-  transform: translateY(-10px);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, var(--warm-sand-glow) 0%, rgba(0,0,0,0) 70%);
-  opacity: 0.6;
-  transition: opacity 220ms ease, transform 220ms ease;
-  pointer-events: none;
-}
-.faro-input:focus-within::before { opacity: 1; transform: translateY(-10px) scale(1.06); }
+/* Finish-fix 4: no ambient bloom under the composer -- focus reads from a
+   1px tan outline, same mechanism as everywhere else, not a glow. */
 .faro-input:focus-within,
 .faro-input.dragover {
   border-color: var(--champagne);
-  box-shadow: 0 0 0 3px var(--faro-input-ring);
+  outline: 1px solid var(--champagne);
+  outline-offset: 1px;
 }
 
 /* ── Step list ──────────────────────────────────────────────────────────────
@@ -751,7 +704,6 @@ body.hv-mode-ai .faro-rail {
 }
 @media (prefers-reduced-motion: reduce) {
   .faro-step[data-state="running"] .faro-step__mark::before { animation: none; }
-  .faro-input::before { transition: none; }
 }
 .faro-input__field {
   width: 100%; min-height: 24px; max-height: 200px; resize: none;
@@ -1125,12 +1077,12 @@ body.hv-mode-ai .faro-rail {
    het donker ligt. */
 .faro-status__mascot {
   width: 28px; height: 28px; border-radius: var(--r-full); display: block; flex: 0 0 auto;
-  box-shadow: 0 0 0 1px var(--champagne-line), 0 0 14px var(--warm-sand-glow);
+  box-shadow: 0 0 0 1px var(--champagne-line);
   user-select: none; pointer-events: none;
 }
 .faro-msg__ai-avatar--bezig {
   width: 30px; height: 30px; left: calc(var(--sp-8) * -1 - 4px); top: 0;
-  box-shadow: 0 0 0 1px var(--champagne-line), 0 0 14px var(--warm-sand-glow);
+  box-shadow: 0 0 0 1px var(--champagne-line);
   opacity: 1;
 }
 .faro-status__dot {
