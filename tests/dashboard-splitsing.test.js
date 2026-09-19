@@ -126,9 +126,17 @@ function render(lang) {
    --neutral-ink licht) -- precies de fout die dit bestand zelf al
    beschrijft bij CLAUDE.md's contrastregel. Vier kleurwaarden vervangen
    en elk met een uitlegregel die het oude en nieuwe cijfer noemt; groter
-   geworden door die uitleg, niet door nieuwe eigenschappen. */
-const CSS_BYTES = 391366;
-const CSS_SHA   = '0958d295bf4c7732';
+   geworden door die uitleg, niet door nieuwe eigenschappen.
+
+   Daarna (-2.730 bytes) Impeccable finish-fix 1: de grond plat op één
+   waarde per thema. De twee radial-gradient-poelen op body, de
+   dot-grid/bloom van body::before/::after (donker EN het
+   [data-theme="light"]-blok eronder), en dezelfde twee pseudo-elementen op
+   .login-brand-side zijn weg -- body en het inlogpodium zijn nu
+   `background: var(--bg-primary)` / `var(--login-stage)`, niets erbovenop.
+   Kleiner geworden omdat er alleen regels verdwenen, er kwam niets bij. */
+const CSS_BYTES = 388636;
+const CSS_SHA   = 'd249396c44edbd4c';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

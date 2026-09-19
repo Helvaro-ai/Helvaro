@@ -618,74 +618,14 @@ html { font-size: 15px; }
 
 body {
   font-family: 'Inter', sans-serif;
-  /* Very wide, very low-opacity pools instead of one flat fill. Glass has
-     nothing to refract over a single solid colour — it just looks like a
-     lighter rectangle. These give the blurred layers something to pick
-     up, and stop large empty regions reading as dead space. Fixed
-     attachment so the field stays put while content scrolls over it,
-     which is what sells the layers as separate planes.
-
-     Both pools used to be warm sand over a neutral grey page, which is
-     exactly what turned the whole app muddy brown. Now one warm gold
-     pool and one cool blue one, opposite corners: the warm side keeps
-     the brand present, the cool side stops the page collapsing into a
-     single temperature. */
-  background:
-    radial-gradient(1200px 800px at 10% -12%, rgba(232,215,177,0.10), transparent 62%),
-    radial-gradient(1000px 760px at 100% 4%, rgba(155,133,81,0.08), transparent 58%),
-    var(--bg-primary);
-  background-attachment: fixed;
+  /* Flat ground, one value per theme. Depth now comes from card elevation
+     (--raised + a 1px tan edge), not from a lit backdrop -- no pools, no
+     dot grid, no bloom. */
+  background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
   transition: background 0.3s ease, color 0.3s ease;
-}
-
-/* Subtle dot grid. Barely visible, neutral — no colour wash */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(241,237,229,0.045) 1px, transparent 1px);
-  background-size: 32px 32px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.4;
-}
-
-/* Ambient wash. One quiet gold bloom at the top, never a flood */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(232,215,177,0.05) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* The two pools on the body element are tuned for a near-black ground.
-   Over a light
-   page the same alphas turn the top of the screen into a dirty smear, so
-   light gets its own, much quieter field: a hint of gold top-left, a hint
-   of cool top-right, and otherwise clean paper. */
-[data-theme="light"] body {
-  background:
-    radial-gradient(1100px 720px at 8% -14%, rgba(201,163,78,0.10), transparent 60%),
-    radial-gradient(900px 680px at 100% 2%, rgba(155,133,81,0.06), transparent 56%),
-    var(--bg-primary);
-}
-
-[data-theme="light"] body::before {
-  background-image: radial-gradient(circle, rgba(37,33,25,0.05) 1px, transparent 1px);
-  background-size: 28px 28px;
-  opacity: 0.6;
-}
-
-[data-theme="light"] body::after {
-  display: block;
-  background:
-    radial-gradient(ellipse 70% 40% at 50% -10%, rgba(201,163,78,0.06) 0%, transparent 60%);
 }
 
 /* Custom scrollbar */
@@ -1420,24 +1360,6 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   position: relative;
   overflow: hidden;
   gap: 0;
-}
-
-/* Fine, neutral dot grid. No colour wash */
-.login-brand-side::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(249,249,249,0.06) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
-
-/* One restrained sand bloom. Not an "AI glow" — a single, quiet highlight */
-.login-brand-side::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 55% 40% at 70% 10%, rgba(232,215,177,0.07) 0%, transparent 60%);
-  pointer-events: none;
 }
 
 /* Large floating mock card */
