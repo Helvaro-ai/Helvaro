@@ -201,9 +201,19 @@ function render(lang) {
    die verschuiven of schalen echt). De modal- en zoek-entrees (modalIn,
    modal-in, searchModalIn, cmd-slide, apWelcomePop) en alle
    prefers-reduced-motion-gates zijn ongemoeid. Groter geworden omdat een
-   opgesomde eigenschapslijst nu eenmaal langer is dan het woord "all". */
-const CSS_BYTES = 388179;
-const CSS_SHA   = 'cd40848f6f40a8d7';
+   opgesomde eigenschapslijst nu eenmaal langer is dan het woord "all".
+
+   Daarna (-38 bytes) een fixup op diezelfde ronde: de detector-run
+   (impeccable detect) die de opdracht na fix 5-8 verplicht stelde, wees uit
+   dat .brand-dot's expliciete `transition: width` een NIEUWE
+   layout-transition-vondst was -- verstopt zolang de regel `all` heette, nu
+   zichtbaar zodra de eigenschap met naam genoemd werd. .brand-dot is een
+   paginatiepuntje (CSS-class-gestuurd, geen JS die .style.width zet, in
+   tegenstelling tot de 13 vulbalken die dit bestand elders bewust laat
+   staan), dus de breedteovergang is gewoon geschrapt -- het puntje springt
+   nu ipv breder schuift, en alleen de achtergrondkleur blijft animeren. */
+const CSS_BYTES = 388141;
+const CSS_SHA   = '44c16f18a60fca6b';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

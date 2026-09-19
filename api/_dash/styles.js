@@ -1705,7 +1705,7 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   background: linear-gradient(var(--border), var(--border)) center / 20px 4px no-repeat;
   border: none;
   cursor: pointer;
-  transition: background 0.2s cubic-bezier(0.4,0,0.2,1), width 0.2s cubic-bezier(0.4,0,0.2,1);
+  transition: background 0.2s cubic-bezier(0.4,0,0.2,1);
 }
 button.brand-dot { border: none; padding: 0; }
 
