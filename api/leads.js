@@ -1411,13 +1411,25 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         // the field); the rest use '' — Airtable accepts either to clear a
         // text/longtext field, matching how this file already clears optional
         // text fields elsewhere (e.g. config-save's aiPhotoUrl `''` case).
+        //
+        // Notities is the ONE exception: instead of '', it gets a small JSON
+        // envelope carrying `anonymizedAt`. Retention (brief §78) needs to
+        // know WHEN a lead was scrubbed to ever hard-delete the now-empty
+        // husk later — nothing else in this schema records that (see
+        // runRetentionAnonymization()'s own comment in api/cron-followup.js
+        // on why Created At is the best available proxy for "last activity"
+        // and why adding a dedicated Airtable field is out of scope for this
+        // batch). dashboard.js's parseNotities()/serializeNotities() already
+        // round-trip unknown keys in this envelope by design (see
+        // serializeNotities's comment), so this is safe for the dashboard to
+        // read even though it never asked for this key.
         const anonFields = {
           fldbk0LVNckOU0bqA: '[verwijderd]',      // Name
           fld6YaitW0lMqHUrd: null,                 // Phone
           'Conversation History': JSON.stringify([]),
           'Last Message': '',
           fldqerIiw5qyQjXHr: '',                   // AI Summary
-          fldoLRI5W12ThTls7: '',                   // Notities
+          fldoLRI5W12ThTls7: JSON.stringify({ anonymizedAt: new Date().toISOString() }), // Notities
         };
         const anonRes = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${id}`,
@@ -3573,8 +3585,33 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // misconfiguration, and refusing is the right answer.
   if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
 
+  // ── Query params (parsed here, not further down, because `search` below
+  // needs to shape the Airtable formula BEFORE the fetch loop runs). The
+  // `export`/`rapport` branches later in this handler reuse this same
+  // `params` — do not re-declare it.
+  const qs     = (req.url || '').split('?')[1] || '';
+  const params = new URLSearchParams(qs);
+
+  // ── Server-side search (brief §106). Previously the dashboard fetched the
+  // full tenant list and filtered client-side in the browser — fine for a
+  // few hundred leads, wasteful (and eventually truncated by MAX_PAGES below
+  // exactly like the unfiltered list) for a tenant with thousands. `search`
+  // matches name, phone, notes (which also carries the property tag — see
+  // _leads-read.js mapLead) and conversation history, plus the Airtable
+  // record id itself for "lead id" lookups. There is no email field on the
+  // Lead record (only on Clients), so email is not searchable here; vehicle
+  // is stored on the Appointment, not the Lead, so it's out of scope for a
+  // minimal, single-table query too.
+  // Capped at 200 chars — this only ever lands inside an Airtable formula
+  // string, never executed, but an unbounded needle is still an unbounded
+  // formula to build and log.
+  const searchTerm = String(params.get('search') || '').trim().slice(0, 200);
+
   // Try cache first. On 429 we return stale payload so the dashboard stays alive.
-  const leadsCache = getCachedLeads(projectCode);
+  // Skipped entirely for a search request: the cache holds the tenant's full
+  // unfiltered list, and stale-serving it here would silently ignore the
+  // search term rather than searching it.
+  const leadsCache = searchTerm ? null : getCachedLeads(projectCode);
   const cacheAge   = leadsCache ? Date.now() - leadsCache.ts : Infinity;
 
   let allLeads = [];
@@ -3585,7 +3622,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   try {
     // Use field ID (fldSmczuyUJd26HLe = Project Code). field IDs are stable,
     // field names can be renamed in Airtable without breaking the query.
-    const formula = encodeURIComponent(`{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`);
+    const tenantFormula = `{fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}"`;
+    const formula = encodeURIComponent(searchTerm ? `AND(${tenantFormula}, ${buildLeadSearchFormula(escapeFormula(searchTerm))})` : tenantFormula);
     let offset    = '';
     do {
       // Do NOT use returnFieldsByFieldId=true here. (De reden hieronder klopte
@@ -3679,9 +3717,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   const stats = _leadsRead.computeStats(leads);
   const now = new Date();
 
-  // ── Query params ────────────────────────────────────────────────────────────
-  const qs     = (req.url || '').split('?')[1] || '';
-  const params = new URLSearchParams(qs);
+  // (qs/params were parsed above, before the fetch loop — `search` needed them early)
 
   // CSV export
   if (params.get('export') === 'true') {
@@ -3743,7 +3779,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // dashboard kan zeggen "de 2.000 nieuwste" in plaats van te suggereren dat
   // dit alles is.
   if (listTruncated) responsePayload.truncated = MAX_PAGES * 100;
-  setCachedLeads(projectCode, responsePayload); // warm cache for 429 fallback
+  // Echo the (already-trimmed) term back so a caller can tell "zero results
+  // for X" apart from "no search applied" without re-parsing its own request.
+  if (searchTerm) responsePayload.search = searchTerm;
+  // Do NOT warm the shared 429-fallback cache with a filtered result set —
+  // that cache is read by the unfiltered path above (searchTerm ? null : …)
+  // and by every other reader of getCachedLeads keyed on projectCode alone;
+  // writing a search's subset there would make the NEXT unfiltered dashboard
+  // load, hitting the cache on an Airtable outage, silently show only the
+  // leads that happened to match someone's earlier search.
+  if (!searchTerm) setCachedLeads(projectCode, responsePayload); // warm cache for 429 fallback
 
   // Cache the response at the browser level so all open tabs share one response
   // for 2 minutes instead of each hitting Airtable independently.
@@ -3764,6 +3809,31 @@ function escHtmlBasic(v) {
 
 function escapeFormula(val) {
   return String(val || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ── Server-side lead search formula (brief §106) ────────────────────────────
+// One OR() across the Lead fields that can actually hold the term, plus the
+// record id for "lead id" lookups. `term` MUST already be escapeFormula()'d
+// by the caller before it reaches here — this function only assembles the
+// OR(), it does not escape (tests/leads-search.test.js proves an unescaped
+// quote/backslash in the raw query cannot break out of the formula).
+// Field ids match api/_leads-read.js's mapLead() exactly:
+//   fldbk0LVNckOU0bqA = Name, fld6YaitW0lMqHUrd = Phone,
+//   fldoLRI5W12ThTls7 = Notities (also carries the property tag as JSON —
+//   see _leads-read.js's readNotitiesFlag), fldwDOLZKlAhfigbh = Conversation
+//   History. LOWER(...&"") coerces a blank/undefined field to '' first, since
+//   LOWER(BLANK()) errors in Airtable's formula language rather than
+//   returning ''.
+function buildLeadSearchFormula(escapedTerm) {
+  const needle = `LOWER("${escapedTerm}")`;
+  const haystacks = [
+    'LOWER({fldbk0LVNckOU0bqA}&"")',   // Name
+    'LOWER({fld6YaitW0lMqHUrd}&"")',   // Phone
+    'LOWER({fldoLRI5W12ThTls7}&"")',   // Notities (incl. property tag)
+    'LOWER({fldwDOLZKlAhfigbh}&"")',   // Conversation History
+    'LOWER(RECORD_ID())',              // Lead ID
+  ];
+  return `OR(${haystacks.map((h) => `SEARCH(${needle}, ${h})>0`).join(', ')})`;
 }
 
 // ── Per-client WhatsApp sender number (multitenancy prep) ──────────────────
