@@ -272,9 +272,15 @@ const CSS = `/* ============================================================
      niet, en dan lijkt een kaart op de pagina GEPLAKT in plaats van dat hij
      erboven hangt. De totale donkerte blijft ongeveer gelijk -- ze is verdeeld
      over meer afstand, niet opgeschroefd. */
-  --elev-1: 0 1px 2px rgba(0,0,0,.34), 0 4px 10px rgba(0,0,0,.22), 0 12px 32px rgba(0,0,0,.16);
-  --elev-2: 0 2px 4px rgba(0,0,0,.36), 0 8px 20px rgba(0,0,0,.26), 0 24px 56px rgba(0,0,0,.20);
-  --elev-3: 0 4px 8px rgba(0,0,0,.40), 0 16px 36px rgba(0,0,0,.32), 0 48px 96px rgba(0,0,0,.26);
+  /* Elevation declared once: a flat fill plus a 1px --border-c edge IS
+     the depth cue now (see --raised). elev-1/2 are gone -- no component
+     should be lifting off a shadow anymore. elev-3 survives as the one
+     real, soft OFFSET shadow, reserved for true overlays: a modal and
+     the search overlay -- content that floats fully above the page, not
+     a card sitting on it. */
+  --elev-1: none;
+  --elev-2: none;
+  --elev-3: 0 20px 48px rgba(0,0,0,.32);
   --shadow:      0 1px 2px rgba(0,0,0,.34), 0 6px 16px rgba(0,0,0,.24), 0 18px 44px rgba(0,0,0,.18);
   --shadow-card: 0 1px 2px rgba(0,0,0,.30), 0 5px 14px rgba(0,0,0,.20), 0 16px 40px rgba(0,0,0,.15);
   --shadow-glow: none;
@@ -537,9 +543,11 @@ const CSS = `/* ============================================================
   --shadow:        0 1px 2px rgba(64,52,32,0.06), 0 4px 12px rgba(64,52,32,0.06), 0 16px 40px rgba(64,52,32,0.07);
   --shadow-card:   0 1px 2px rgba(64,52,32,0.05), 0 3px 10px rgba(64,52,32,0.05), 0 14px 36px rgba(64,52,32,0.06);
   --shadow-glow:   none;
-  --elev-1: 0 1px 2px rgba(64,52,32,.05), 0 3px 10px rgba(64,52,32,.05), 0 12px 30px rgba(64,52,32,.05);
-  --elev-2: 0 1px 3px rgba(64,52,32,.06), 0 6px 18px rgba(64,52,32,.07), 0 22px 52px rgba(64,52,32,.08);
-  --elev-3: 0 2px 6px rgba(64,52,32,.08), 0 14px 34px rgba(64,52,32,.10), 0 44px 92px rgba(64,52,32,.12);
+  /* Same rule, light ground: elev-1/2 gone, elev-3 is the one soft offset
+     shadow reserved for a modal and the search overlay. */
+  --elev-1: none;
+  --elev-2: none;
+  --elev-3: 0 20px 48px rgba(64,52,32,.14);
   /* A white highlight on a white card is nothing. */
   --edge-hi: none;
 
@@ -3289,7 +3297,7 @@ button.brand-dot { border: none; padding: 0; }
   --accent-bright: #F2C670;
   --accent-rgb:    231,183,90;
   border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06), 8px 0 32px rgba(25,22,16,0.10);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -3939,9 +3947,10 @@ h1.page-title { margin: 0; font-weight: inherit; }
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  /* Een echt verloop: boven lichter, onder donkerder. Hier stond een vlakke
-     rgba(255,255,255,0.04). */
-  background: linear-gradient(180deg, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.035) 55%, rgba(255,255,255,0.02) 100%);
+  /* Vlak weer, geen verlopen plaat: finish-fix 3 verbiedt de
+     'kaart-is-een-verloop'-truc. Terug naar de rgba(255,255,255,0.04) die
+     hier stond voor het verloop erbij kwam. */
+  background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.07);
   box-shadow: var(--btn-rim);
   /* Van --radius-sm (8px) naar --radius-btn (14px): de knopmaat uit het
@@ -3962,7 +3971,7 @@ h1.page-title { margin: 0; font-weight: inherit; }
 }
 
 .btn-icon:hover {
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),0.17) 0%, rgba(var(--accent-rgb),0.11) 100%);
+  background: rgba(var(--accent-rgb),0.14);
   border-color: rgba(var(--accent-rgb),0.28);
   color: var(--accent-ink);
   /* Hier stond box-shadow:none -- de knop verloor bij het zweven juist zijn
@@ -4477,7 +4486,7 @@ h1.page-title { margin: 0; font-weight: inherit; }
 
 .stat-card:hover {
   border-color: var(--border-bright);
-  background: linear-gradient(160deg, var(--bg-card-hover) 0%, var(--bg-card) 100%);
+  background: var(--bg-card-hover);
   transform: translateY(-3px) scale(1.01);
   box-shadow: var(--elev-1);
 }
@@ -9377,7 +9386,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    waarde hadden die op donker klopte en op de nieuwe warme grond niet meer. */
 [data-theme="light"] .sidebar {
   border-right: 1px solid var(--border-c);
-  box-shadow: 8px 0 32px rgba(23,19,12,0.06);
+  box-shadow: none;
 }
 
 [data-theme="light"] .nav-item:hover {
@@ -9440,7 +9449,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 
 /* Stat cards. White with real depth */
 [data-theme="light"] .stat-card {
-  background: var(--bg);
+  background: var(--card);
   box-shadow: var(--edge-hi), var(--shadow-card);
   border: 1px solid var(--border);
 }

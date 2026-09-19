@@ -149,9 +149,20 @@ function render(lang) {
    label op een vaste donkere scrim OVER een foto -- precies de uitzondering
    die faro-check.js apart bewaakt. De Faro-dockbar (#1c1c1c) en de
    mobiele header (#fdfcfb) uit de opdracht bestonden al niet meer in de
-   bron; --faro-canvas was al #17140F. */
-const CSS_BYTES = 388765;
-const CSS_SHA   = '238a09ff975feec7';
+   bron; --faro-canvas was al #17140F.
+
+   Daarna (-101 bytes) finish-fix 3: elevatie één keer verklaard. --elev-1/2
+   (beide thema's) zijn `none`; --elev-3 is teruggebracht van drie lagen naar
+   ÉÉN zachte offset-schaduw, en blijft alleen in gebruik bij echte overlays
+   (een modal, .search-modal) -- geen kaart leunt nog op een schaduw om
+   verheven te lezen. De drie verloop-platen zijn weg: .btn-icon en
+   .btn-icon:hover (donker) zijn terug naar de vlakke rgba('s die er stonden
+   vóór het verloop, en .stat-card:hover naar het vlakke --bg-card-hover
+   i.p.v. een 160deg-verloop. De zijbalkschaduw (8px 0 32px, beide thema's)
+   is weg. De lichte KPI-kaart (.stat-card) staat nu op --card (#FAF6EE)
+   i.p.v. --bg (#F3EDE1, de grond), zodat hij er echt bovenuit stapt. */
+const CSS_BYTES = 388664;
+const CSS_SHA   = '1b8fbef02aa41571';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
