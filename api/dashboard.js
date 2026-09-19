@@ -41,6 +41,7 @@ const _faroWerk = require('./_faro/werk');   // wat Faro deed, in zijn stem
 // hierboven: drie afgewerkte strings, geen backtick, geen ${...}. Zie de kop
 // van api/_intro.js voor waarom dit CSS is en geen videobestand.
 const _intro = require('./_intro');
+const _waes  = require('./_waes');          // eigen nummer per klant (Embedded Signup) -- alleen voor de CSP-hosts
 
 module.exports = async function handler(req, res) {
   // Native/English names only — never leak internal registry fields
@@ -2560,6 +2561,19 @@ ${faro.navCta}
             </div>
             <div class="settings-toggle">
               <button class="btn-icon btn-primary-sm" id="set-wa-ververs" onclick="laadWhatsAppInstellingen(true)">${T('set.wa.ververs')}</button>
+            </div>
+          </div>
+          <!-- Eigen nummer (Embedded Signup). Verborgen tot de server zegt dat
+               META_APP_ID + META_ES_CONFIG_ID er staan: een knop die op een
+               Meta-foutmelding uitkomt is erger dan geen knop. -->
+          <div class="settings-row" id="set-waes" style="display:none;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div class="settings-label">${T('set.waes.title')}</div>
+              <div class="settings-label-sub" id="set-waes-sub">${T('set.waes.sub')}</div>
+            </div>
+            <div class="settings-toggle" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <div class="settings-value" id="set-waes-status"></div>
+              <button class="btn-icon btn-primary-sm" id="set-waes-knop" onclick="waesKoppelen()">${T('set.waes.connect')}</button>
             </div>
           </div>
         </div>
@@ -17095,6 +17109,125 @@ async function sendTestMessage() {
    de sjablonen komen live van Meta, per taal van deze klant. ververs=true
    omzeilt de cache van vijf minuten -- dat is de knop. Alles via textContent,
    de sjabloonnamen komen van buiten. */
+/* ── Eigen WhatsApp-nummer koppelen (Embedded Signup) ────────────────────────
+   De server zegt of het aan staat (META_APP_ID + META_ES_CONFIG_ID) en of er
+   al een nummer hangt. De popup is van Meta (FB JS SDK, FB.login met een
+   Embedded-Signup-config, response_type 'code'); Meta stuurt de gekozen
+   waba_id en phone_number_id via een window-message. Die drie dingen gaan
+   naar 'wa-es-complete', dat token wisselt, abonneert, registreert en opslaat.
+   De projectcode komt nooit uit de browser; die staat in de sessie. */
+var _waesStaat = null;
+var _waesSdkKlaar = null;
+var _waesGekozen = null;
+
+async function laadWaes() {
+  var rij = document.getElementById('set-waes');
+  if (!rij) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'wa-es-status' })
+    });
+    if (!r.ok) { rij.style.display = 'none'; return; }
+    var d = await r.json();
+    _waesStaat = d;
+    if (!d.beschikbaar) { rij.style.display = 'none'; return; }
+    rij.style.display = '';
+    waesToon(d);
+  } catch (e) { rij.style.display = 'none'; }
+}
+
+function waesToon(d) {
+  var status = document.getElementById('set-waes-status');
+  var knop = document.getElementById('set-waes-knop');
+  var sub = document.getElementById('set-waes-sub');
+  if (!status || !knop) return;
+  if (d.gekoppeld) {
+    var n = d.nummer || {};
+    status.textContent = tr('set.waes.done') + (n.number ? ' · ' + n.number : '') + (n.name ? ' · ' + n.name : '') + (n.quality ? ' · ' + n.quality : '');
+    knop.style.display = 'none';
+    if (sub) sub.textContent = '';
+  } else {
+    status.textContent = '';
+    knop.style.display = '';
+    knop.disabled = false;
+    knop.textContent = tr('set.waes.connect');
+  }
+}
+
+function waesSdk(appId) {
+  if (_waesSdkKlaar) return _waesSdkKlaar;
+  _waesSdkKlaar = new Promise(function (resolve, reject) {
+    if (window.FB) { resolve(window.FB); return; }
+    window.fbAsyncInit = function () {
+      try { FB.init({ appId: appId, autoLogAppEvents: false, xfbml: false, version: 'v23.0' }); resolve(window.FB); }
+      catch (e) { reject(e); }
+    };
+    var sc = document.createElement('script');
+    sc.src = 'https://connect.facebook.net/en_US/sdk.js';
+    sc.async = true; sc.defer = true; sc.crossOrigin = 'anonymous';
+    sc.onerror = function () { reject(new Error('sdk')); };
+    document.head.appendChild(sc);
+    setTimeout(function () { reject(new Error('sdk-timeout')); }, 15000);
+  });
+  return _waesSdkKlaar;
+}
+
+/* Meta stuurt waba_id + phone_number_id met een postMessage vanuit de popup. */
+window.addEventListener('message', function (event) {
+  if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return;
+  var data = null;
+  try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; } catch (e) { return; }
+  if (!data || data.type !== 'WA_EMBEDDED_SIGNUP') return;
+  if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA') {
+    _waesGekozen = { wabaId: String((data.data && data.data.waba_id) || ''), phoneNumberId: String((data.data && data.data.phone_number_id) || '') };
+  } else if (data.event === 'CANCEL') {
+    _waesGekozen = { cancelled: true };
+  }
+});
+
+async function waesKoppelen() {
+  var knop = document.getElementById('set-waes-knop');
+  var d = _waesStaat;
+  if (!knop || !d || !d.beschikbaar) return;
+  knop.disabled = true;
+  knop.textContent = tr('set.waes.busy');
+  _waesGekozen = null;
+  try {
+    var FBsdk = await waesSdk(d.appId);
+    var antwoord = await new Promise(function (resolve) {
+      FBsdk.login(function (resp) { resolve(resp); }, {
+        config_id: d.configId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: { setup: {}, featureType: '', sessionInfoVersion: '3' }
+      });
+    });
+    var code = antwoord && antwoord.authResponse && antwoord.authResponse.code;
+    /* De message met de id's komt soms net na de login-callback. */
+    for (var i = 0; i < 20 && !_waesGekozen; i++) await new Promise(function (r) { setTimeout(r, 150); });
+    if (!code || !_waesGekozen || _waesGekozen.cancelled || !_waesGekozen.wabaId || !_waesGekozen.phoneNumberId) {
+      toast(tr('set.waes.cancelled'), 'info');
+      waesToon(d);
+      return;
+    }
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'wa-es-complete', code: code, wabaId: _waesGekozen.wabaId, phoneNumberId: _waesGekozen.phoneNumberId })
+    });
+    var uit = await r.json().catch(function () { return {}; });
+    if (!r.ok) { toast(uit.error || tr('set.waes.failed'), 'error'); waesToon(d); return; }
+    toast(tr('set.waes.done'), 'success');
+    await laadWaes();
+    try { laadWhatsAppInstellingen(true); } catch (e) {}
+  } catch (e) {
+    toast(tr('set.waes.failed'), 'error');
+    waesToon(d);
+  }
+}
+
 var _waInstellingenBezig = false;
 async function laadWhatsAppInstellingen(ververs) {
   var nummer = document.getElementById('set-wa-nummer');
@@ -17107,6 +17240,7 @@ async function laadWhatsAppInstellingen(ververs) {
   _waInstellingenBezig = true;
   if (knop) knop.disabled = true;
   sub.textContent = tr('set.wa.laden');
+  try { laadWaes(); } catch (e) {}
   try {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
@@ -19825,15 +19959,21 @@ ${_intro.js({ lang: FARO_LANG })}
      de stille storing waar een integratie weken op blijft hangen. */
   const osScript  = ONESIGNAL_READY ? ' https://cdn.onesignal.com https://api.onesignal.com' : '';
   const osConnect = ONESIGNAL_READY ? ' https://api.onesignal.com https://cdn.onesignal.com' : '';
+  /* Embedded Signup: de FB JS SDK komt van connect.facebook.net en de popup
+     praat via www.facebook.com. Alleen in de policy als het ook echt aanstaat
+     (META_APP_ID + META_ES_CONFIG_ID), zoals Clerk en OneSignal hierboven. */
+  const waesScript  = _waes.isConfigured() ? ' https://connect.facebook.net' : '';
+  const waesConnect = _waes.isConfigured() ? ' https://www.facebook.com https://web.facebook.com https://graph.facebook.com' : '';
+  const waesFrame   = _waes.isConfigured() ? ' https://www.facebook.com https://web.facebook.com' : '';
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${clerkSrc}${botSrc}${osScript}`,
-    `connect-src 'self'${clerkSrc}${osConnect}`,
+    `script-src 'self' 'unsafe-inline'${clerkSrc}${botSrc}${osScript}${waesScript}`,
+    `connect-src 'self'${clerkSrc}${osConnect}${waesConnect}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",       // Vercel Blob + Clerk-avatars
     "font-src 'self' data:",             // zelf gehost, geen Google Fonts (AVG)
     "worker-src 'self' blob:",           // Clerk gebruikt een blob-worker
-    "frame-src 'self'" + clerkSrc + botSrc,
+    "frame-src 'self'" + clerkSrc + botSrc + waesFrame,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -14,6 +14,20 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Eigen WhatsApp-nummer koppelen: de knop staat er nu echt
+
+Instellingen → WhatsApp heeft een kaart "Koppel je eigen nummer". Hij
+verschijnt alleen als de koppeling aan de serverkant aanstaat (`META_APP_ID`
+en `META_ES_CONFIG_ID`, sinds vandaag gezet, configuratie "Helvaro Embedded
+Signup" in het Meta App Dashboard). Klik → Meta's eigen popup regelt account,
+nummer en verificatie → Helvaro slaat het nummer op en toont "Gekoppeld" met
+nummer, naam en kwaliteitsscore. Afbreken of mislukken verandert niets. Dit is
+ook wat Meta's App Review voor `whatsapp_business_management` wil zien.
+
+**Actie:** tot de App Review goedgekeurd is werkt de popup alleen voor
+accounts met een rol op de Meta-app (jij als beheerder) — precies genoeg om
+de screencast op te nemen.
+
 ### Faro's invoerbalk volgt nu het thema
 
 De balk onderaan het dashboard en de invoer in Faro's werkvlak bleven altijd
