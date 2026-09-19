@@ -882,7 +882,7 @@ ${faro.navCta}
           <!-- rendered by renderOnboardingChecklist() -->
         </div>
         <div class="chk-whatsapp">
-          <div class="chk-whatsapp-icon">💬</div>
+          <div class="chk-whatsapp-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
           <div class="chk-whatsapp-body">
             <div class="chk-whatsapp-title">${T('dash.wa.link')}</div>
             <div class="chk-whatsapp-sub">${T('chk.whatsapp.sub')}</div>
@@ -6657,7 +6657,7 @@ function renderStats() {
     qual:   { a: 'emerald', i: '<path d="M20 6 9 17l-5-5"/>' },
     booked: { a: 'orange',  i: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>' },
     conv:   { a: 'purple',  i: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>' },
-    month:  { a: 'gold',    i: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
+    month:  { a: 'gold',    i: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M15 6a9 9 0 1 0 0 12"/>' },
     resp:   { a: 'cyan',    i: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>' }
   };
 
@@ -7680,7 +7680,7 @@ function renderOnboardingChecklist(d) {
   if (itemsEl) {
     itemsEl.innerHTML = items.map(function(it) {
       return \`<div class="chk-item\${it.done ? ' chk-done' : ''}" data-accent="\${it.accent}">
-        <div class="chk-item-icon">\${it.done ? '✓' : '○'}</div>
+        <div class="chk-item-icon">\${it.done ? '✓' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>'}</div>
         <div class="chk-item-body">
           <div class="chk-item-title">\${escHtml(it.title)}</div>
           <div class="chk-item-sub">\${escHtml(it.done ? it.doneSub : it.todoSub)}</div>
@@ -16471,7 +16471,7 @@ function updateWelcomeBannerChecks() {
   ];
   checks.innerHTML = items.map(it =>
     '<span class="ap-welcome-chk' + (it.done ? ' done' : '') + '">' +
-      '<span class="ap-welcome-chk-icon">' + (it.done ? '' : '○') + '</span>' +
+      '<span class="ap-welcome-chk-icon">' + (it.done ? '' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>') + '</span>' +
       escHtml(it.k) +
     '</span>'
   ).join('');
