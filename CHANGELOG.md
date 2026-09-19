@@ -14,6 +14,13 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Gesprekken op je telefoon: de lijst krijgt het hele scherm
+
+Op een telefoon stond de gesprekkenlijst afgeknipt op vier rijen, met daaronder
+een lege helft die vroeg om een gesprek te kiezen. Zolang je niets gekozen hebt,
+vult de lijst nu het hele scherm; kies je een gesprek, dan schuift het eronder
+zoals voorheen. Niets is verplaatst of verwijderd.
+
 ### Admin Control Center: kosten, gezondheid en een doorzoekbaar audit-log
 
 De back-office (`/api/admin`, admin-sleutel) krijgt zes nieuwe overzichten:

@@ -9259,6 +9259,12 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 @media (max-width: 1024px) {
   .conv-layout { flex-direction: column; height: auto; min-height: calc(100vh - 130px); }
   .conv-list { width: 100%; max-height: 280px; border-right: none; border-bottom: 1px solid var(--border); }
+  /* Op een telefoon stond de lijst afgeknipt op vier rijen boven een lege
+     rechterhelft die vroeg om een gesprek te kiezen. Zolang er niets gekozen
+     is, krijgt de lijst de hele kaart; kies je er een, dan schuift het
+     gesprek eronder zoals voorheen. */
+  .conv-layout:not(:has(.conv-list-item.active)) .conv-list { max-height: none; flex: 1; border-bottom: none; }
+  .conv-layout:not(:has(.conv-list-item.active)) .conv-detail { display: none; }
   .pipeline-board { gap: 12px; }
   .pipeline-col { flex: 0 0 240px; }
   .profile-stats-row { grid-template-columns: repeat(2, 1fr); }
