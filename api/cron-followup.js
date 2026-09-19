@@ -1041,11 +1041,31 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
     const total = leads.length;
     const qualified  = leads.filter(l => l.fields['Qualified'] === true);
     const booked     = leads.filter(l => l.fields['Appointment Booked'] === true);
+    // Hete leads: zelfde 80%-drempel als de owner-melding in api/whatsapp.js
+    // §11c ("isHot"). 'Lead Score' staat op 0-10 (zie clampScore() in
+    // whatsapp.js), dus >= 8 -- geen tweede getal om uit elkaar te laten lopen.
+    const hot        = leads.filter(l => typeof l.fields['Lead Score'] === 'number' && l.fields['Lead Score'] >= 8);
     const responseTimes = leads.map(l => l.fields['Response Time (sec)']).filter(t => typeof t === 'number' && t > 0);
     const avgResponse = responseTimes.length
       ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
       : null;
     const conversionPct = total > 0 ? Math.round((qualified.length / total) * 100) : 0;
+
+    // Afzeggingen en belangrijke mislukkingen komen uit het activiteitenlogboek
+    // (api/_activiteit.js), niet uit de Leads-tabel: een afzegging kan een
+    // lead raken die deze week niet NIEUW is (een afspraak van drie weken
+    // geleden die deze week wordt afgezegd), en de *_failed-soorten hebben
+    // sowieso geen eigen leadveld. Fail-soft: onbeschikbaar -> 0, nooit een
+    // gecrashte weekmail voor een klant van wie het logboek even niet leesbaar is.
+    let cancelledCount = 0, failureCount = 0;
+    try {
+      const cRes2 = await _activiteit.lijstAlle({ projectCode, soorten: ['appointment_cancelled'], vanaf: weekAgoIso, limiet: 500 });
+      if (cRes2.beschikbaar) cancelledCount = cRes2.totaal;
+    } catch (e) { console.warn('[weekly] afzeggingen-query mislukt voor', projectCode, e && e.message); }
+    try {
+      const fRes = await _activiteit.lijstAlle({ projectCode, soorten: _BELANGRIJKE_MISLUKKINGEN, vanaf: weekAgoIso, limiet: 500 });
+      if (fRes.beschikbaar) failureCount = fRes.totaal;
+    } catch (e) { console.warn('[weekly] mislukkingen-query mislukt voor', projectCode, e && e.message); }
 
     // Verwachte pipeline waarde: alleen leads waar de klant echt een schatting
     // invulde tellen mee (leeg/onparseerbaar wordt uitgesloten, nooit als €0
@@ -1067,7 +1087,8 @@ async function sendWeeklyClientReports(airtableToken, baseId, leadsTable) {
       to: reportEmail, clientName, projectCode, lang: reportLang,
       stats: {
         total, qualified: qualified.length, conversionPct, avgResponse,
-        booked: booked.length, pipelineValueTotal, pipelineValueCount: dealValues.length
+        booked: booked.length, pipelineValueTotal, pipelineValueCount: dealValues.length,
+        hot: hot.length, cancelled: cancelledCount, failures: failureCount,
       },
       top5
     });
@@ -1132,7 +1153,7 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5,
         ${esc(T('week.pipelineUitleg'))}
       </p>
 
-      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
+      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:8px">
         <tr>
           <td style="background:#fef3c7;border-radius:12px;padding:14px;text-align:center;width:50%">
             <div style="font-size:22px;font-weight:700;color:#d97706">${stats.conversionPct}%</div>
@@ -1144,6 +1165,26 @@ async function sendWeeklyReportEmail({ to, clientName, projectCode, stats, top5,
           </td>
         </tr>
       </table>
+
+      <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px">
+        <tr>
+          <td style="background:#fef2f2;border-radius:12px;padding:14px;text-align:center;width:50%">
+            <div style="font-size:22px;font-weight:700;color:#dc2626">${stats.hot}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.heet'))}</div>
+          </td>
+          <td style="background:#f4f4f5;border-radius:12px;padding:14px;text-align:center;width:50%">
+            <div style="font-size:22px;font-weight:700;color:#52525b">${stats.cancelled}</div>
+            <div style="font-size:12px;color:#666;margin-top:4px">${esc(T('week.afgezegd'))}</div>
+          </td>
+        </tr>
+      </table>
+      ${stats.failures > 0 ? `
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+        <tr><td style="background:#fee2e2;border-radius:12px;padding:14px">
+          <div style="font-weight:700;color:#b91c1c">${stats.failures} — ${esc(T('week.mislukkingen'))}</div>
+          <div style="font-size:12px;color:#7f1d1d;margin-top:4px">${esc(T('week.mislukkingenUitleg'))}</div>
+        </td></tr>
+      </table>` : ''}
 
       <h3 style="margin:0 0 12px;font-size:16px">${esc(T('week.top5'))}</h3>
       <table style="width:100%;border-collapse:collapse;background:#fafbfc;border-radius:10px;overflow:hidden">
@@ -2322,4 +2363,9 @@ module.exports.runAfspraakOpvolging = runAfspraakOpvolging;
 // deliverable "notifications" (brief §77/§107) needs a real call (mocked
 // fetch/push/mail, asserted dedupe behaviour), see tests/meldingen-daily.test.js.
 module.exports.checkDailyIntegrity = checkDailyIntegrity;
+// Same attach-alongside-the-handler convention -- deliverable "weekly report"
+// (brief §76) needs a real call with fixture data (mocked Airtable/mailer),
+// see tests/weekrapport-inhoud.test.js.
+module.exports.sendWeeklyClientReports = sendWeeklyClientReports;
+module.exports.sendWeeklyReportEmail = sendWeeklyReportEmail;
 

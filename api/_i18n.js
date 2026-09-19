@@ -2218,6 +2218,19 @@ const TEKST = {
   'week.geenLeads': { nl: 'Nog geen gekwalificeerde leads deze week. Komt nog!', fr: 'Pas encore de prospects qualifiés cette semaine. Ça viendra !', en: 'No qualified leads yet this week. They will come!', de: 'Diese Woche noch keine qualifizierten Leads. Kommt noch!' },
   'week.open': { nl: 'Open dashboard', fr: 'Ouvrir le tableau de bord', en: 'Open dashboard', de: 'Dashboard öffnen' },
   'week.voet': { nl: 'Helvaro · je assistent kwalificeert je leads via WhatsApp', fr: 'Helvaro · votre assistant qualifie vos prospects via WhatsApp', en: 'Helvaro · your assistant qualifies your leads via WhatsApp', de: 'Helvaro · Ihr Assistent qualifiziert Ihre Leads über WhatsApp' },
+  // Deliverable "weekly report" (brief §76): hete leads, afzeggingen en
+  // belangrijke mislukkingen -- de drie cijfers die het rapport nog miste.
+  // Zelfde 80%-drempel als de andere hete-lead-tekst (api/whatsapp.js §11c):
+  // Lead Score staat op 0-10, dus >= 8.
+  'week.heet': { nl: 'Hete leads', fr: 'Prospects chauds', en: 'Hot leads', de: 'Heiße Leads' },
+  'week.afgezegd': { nl: 'Afzeggingen', fr: 'Annulations', en: 'Cancellations', de: 'Stornierungen' },
+  'week.mislukkingen': { nl: 'Belangrijke mislukkingen', fr: 'Échecs importants', en: 'Important failures', de: 'Wichtige Fehler' },
+  'week.mislukkingenUitleg': {
+    nl: 'Automatiseringen die deze week niet lukten (afspraak, melding, synchronisatie, ...) — bekijk het activiteitenlogboek voor details.',
+    fr: 'Automatisations qui ont échoué cette semaine (rendez-vous, notification, synchronisation, ...) — consultez le journal d’activité pour plus de détails.',
+    en: 'Automations that failed this week (appointment, notification, sync, ...) — see the activity log for details.',
+    de: 'Automatisierungen, die diese Woche fehlschlugen (Termin, Benachrichtigung, Synchronisierung, ...) — Details im Aktivitätsprotokoll.',
+  },
   'melding.afspraak.kop':   { nl: '🚗 Nieuwe afspraak', fr: '🚗 Nouveau rendez-vous', en: '🚗 New appointment', de: '🚗 Neuer Termin' },
   'melding.afspraak.regel': { nl: '{naam} heeft een afspraak om {wanneer} voor een {voertuig}{prijsSuffix}.',
                               fr: '{naam} a un rendez-vous le {wanneer} pour un {voertuig}{prijsSuffix}.',
