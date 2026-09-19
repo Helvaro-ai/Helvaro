@@ -103,13 +103,18 @@ function css() {
 /* ── Licht thema: alleen wat op een THEMA-vlak staat ───────────────────────
    Faro's canvas volgt intussen het thema (zie .faro-page in _dash/styles.js),
    dus alles wat daarop staat moet mee: opgetilde vlakken, hairlines en de
-   zandkleurige labels. Het podium blijft donker: de composer (--faro-input-*)
-   en de zijbalk doen bewust NIET mee, precies zoals het inlogpodium. Gemeten
+   zandkleurige labels. Ook de invoerbalk doet mee (zie hieronder); alleen de
+   zijbalk en het inlogpodium blijven donker. Gemeten
    op de lichte grond: --sand-on-surface #6E5320 = 6,9:1 op #F3EDE1. */
 [data-theme="light"] {
   --faro-canvas:      #F3EDE1;
   --faro-surface:     #FAF6EE;
   --faro-raised:      #EFE7D8;
+  /* De invoerbalk (dock op het dashboard, composer in Faro) volgt sinds
+     2026-09-20 het thema -- op verzoek van de eigenaar. In het lichte thema
+     één stap boven het canvas, met een echte rand; geen donker podium meer. */
+  --faro-input-bg:    #FAF6EE;
+  --faro-input-ring:  rgba(184, 157, 115, 0.35);
   --faro-hairline:    rgba(184, 157, 115, 0.34);
   --sand-on-surface:  #6E5320;
   --champagne-dim:    rgba(184, 157, 115, 0.14);

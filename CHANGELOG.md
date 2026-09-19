@@ -14,6 +14,12 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Faro's invoerbalk volgt nu het thema
+
+De balk onderaan het dashboard en de invoer in Faro's werkvlak bleven altijd
+donker. In het lichte thema zijn ze nu licht (één stap boven de grond, met een
+rand); in het donkere thema warm donker zoals de rest.
+
 ### Het bord, het leadpaneel en zoeken voelen nu als iets dat je vastpakt
 
 - **Pipeline-bord:** een kaart volgt je muis 1:1 vanaf de plek waar je hem
