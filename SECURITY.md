@@ -178,6 +178,69 @@ signed state token *and* a mocked Google token exchange).
 
 ---
 
+## 2026-09-19 — Platform integrity: search, retention, environment (items 7-9)
+
+### 7. Server-side lead search
+
+`api/leads.js`'s GET lead-list (the dashboard's main data source) previously
+returned the tenant's full lead list and left filtering to the browser — fine
+at a few hundred leads, but the SAME `MAX_PAGES=20` cap that already
+truncates the unfiltered list would also silently truncate what a search
+could ever see. `?search=` now filters server-side, in Airtable, via
+`buildLeadSearchFormula()`: name, phone, notes (which also carries the
+property tag — see `_leads-read.js`'s `mapLead()`), conversation history, and
+the record id itself. Tenant-scoped (`AND()`'d with the existing Project Code
+clause, never OR'd), formula-escaped (`escapeFormula()`, the same helper
+section 3 above documents), and paginated the same way the unfiltered list
+already is. There is no email field on the Lead record (only on Clients), so
+email is not searchable here; vehicle is stored on the Appointment, not the
+Lead, and is out of scope for a single-table query. Proven in
+`tests/leads-search.test.js`, including a formula-injection attempt (`") ,
+TRUE(), SEARCH(LOWER("` — quotes, parens and a comma, the characters that
+would break a `SEARCH()` string open) that is shown, structurally, to survive
+`escapeFormula()` intact and, functionally, to match zero records and never
+cross a tenant boundary.
+
+### 8. Data retention — facts (brief §78/§79)
+
+Facts only, no legal-compliance claims — see `api/privacy.js` for what is
+promised to leads/customers, `api/_wissen.js` and `api/cron-followup.js` for
+what the code actually does.
+
+| Data | Where it lives | Kept for | Mechanism |
+|---|---|---|---|
+| Qualified leads | Leads table (Airtable) | As long as the customer relationship needs it — no automatic expiry | — |
+| Unqualified/cold leads | Leads table | Anonymized after 6 months of inactivity; the anonymized row itself is then hard-deleted after a further **90 days by default** (`RETENTIE_OPRUIM_DAGEN`), but only once **`RETENTIE_OPRUIMEN=1`** is set | `runRetentionAnonymization()` then `runRetentionPurge()`, both in `api/cron-followup.js`, daily cron |
+| Admin-erasure lead (GDPR request via `lead-delete`) | Leads table | Same as above — `method: 'anonymize'` (default) leaves the same purgeable husk; `method: 'hard-delete'` removes the row immediately | `api/leads.js`'s `lead-delete` mode |
+| Signup-fraud signals (IP, device fingerprint) | Client Config table | 30 days, always on (not gated by `RETENTIE_OPRUIMEN`) | `runSignupSignalsRetention()`, `api/cron-followup.js` |
+| Generated property images | Vercel Blob, `property/<projectCode>/…` | Tenant's lifetime; purged immediately on account deletion | `api/_wissen.js`'s `wisTenantMedia()` |
+| Orphaned property images (tenant fully gone, e.g. deleted before this existed) | Vercel Blob | Swept once older than `RETENTIE_OPRUIM_DAGEN`, only with `RETENTIE_OPRUIMEN=1` | `runMediaRetentionPurge()`, `api/cron-followup.js` |
+| Account deletion (`wisAlles`) | 9 Airtable tables (Leads, Appointments, properties, vehicles, campaigns, credit_transactions, Users, ai_conversations, ai_messages) + Client Config row + Clerk login + Stripe subscription + Vercel Blob media | Deleted synchronously, on request, best-effort per step (one table's failure doesn't stop the rest — see the report it returns) | `api/_wissen.js` |
+| Stripe customer & invoices | Stripe, not Airtable | Stripe's own retention (accounting records; the duty is Helvaro's, not the customer's) | Never touched by `wisAlles()` — by design, see `_wissen.js`'s file header |
+
+**Retention purge is dry-run by default.** `runRetentionPurge()` and
+`runMediaRetentionPurge()` always compute and log exactly what they would
+delete; nothing is actually removed until `RETENTIE_OPRUIMEN=1` is set. This
+is the one destructive, irreversible step in the whole retention chain (an
+Airtable `DELETE`/blob `del()`, not a PATCH that clears fields), so it ships
+off by default — see `VERCEL-DEPLOY-CHECKLIST.md`'s action item. Proven in
+`tests/retentie-opruimen.test.js`.
+
+**Known gaps, documented rather than fixed in this batch:**
+- No per-tenant retention override exists on Client Config today; `RETENTIE_OPRUIM_DAGEN` is one fixed default for every tenant.
+- `anonymizedAt` is only recorded starting with this batch (both anonymize call sites now write it into Notities as JSON instead of clearing the field to `''`). A lead anonymized before that falls back to Created At, which is always earlier-or-equal to the true anonymize date — the safe direction, but not exact.
+- Blob-storage churn for a still-active tenant (an image regenerated and replaced) is not cleaned up — only a fully-deleted tenant's orphaned media is swept. Closing that needs per-property reference-checking against Airtable that this batch didn't have room for, and getting it wrong risks deleting an image someone is still looking at.
+- `api/privacy.js` §5 documents anonymization but not the eventual hard-delete of the husk added here. That is public legal copy and this batch does not edit it — flagged for the owner to decide whether/how to update it once `RETENTIE_OPRUIMEN` is turned on.
+
+### 9. Environment configuration & dependency audit
+
+See `VERCEL-DEPLOY-CHECKLIST.md`'s new **Environment variables** section for
+the full `process.env.*` inventory (required / optional / local-only) and the
+Stripe test-vs-live boot warning. `npm audit` / `depcheck` results are also
+in that checklist's **Dependency audit** section.
+
+---
+
 ## Checklist for Deployment
 
 - [ ] All 8 env vars above are set in Vercel

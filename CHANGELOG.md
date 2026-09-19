@@ -14,6 +14,59 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Zoeken in leads gebeurt nu op de server, niet meer alleen in de browser
+
+De leadzoekbalk in het dashboard haalde altijd de volle lijst op en zocht
+daar lokaal in — prima bij een paar honderd leads, maar dezelfde grens die de
+lijst al afkapt bij 2.000 leads zou dan ook stil bepalen wat een zoekopdracht
+ooit kon vinden. `GET /api/leads?search=...` filtert nu bij Airtable zelf, op
+naam, telefoon, notities (die ook de pandcode draagt), gesprekshistorie en
+het lead-ID — per tenant afgeschermd, net als de rest van deze route. Het
+scherm zelf is niet aangepast; dit is alleen de server-kant.
+
+**Actie:** geen. Wanneer het zoekvenster op het dashboard dit ook echt gaat
+gebruiken (in plaats van zijn eigen browserfilter), is dat een aparte,
+losstaande wijziging.
+
+### Geanonimiseerde leads en verweesde beelden blijven niet meer voor altijd staan
+
+Een koude lead die na 6 maanden automatisch geanonimiseerd wordt (naam,
+telefoon en gesprek weg) liet daarna een lege huls achter die nooit meer
+verdween — met elk statistiekveld (score, bron, verwachte waarde) nog intact.
+Er is nu een dagelijkse opruimstap die zo'n huls, en losse gegenereerde
+foto's van een tenant die helemaal niet meer bestaat, ECHT verwijdert zodra
+ze oud genoeg zijn. Bij het wissen van een account worden voortaan ook de
+gegenereerde foto's van die klant meteen mee opgeruimd (dat gebeurde nog
+niet).
+
+Deze opruimstap is met opzet **standaard uit** (dry-run): hij logt en telt
+elke dag wat hij zou wissen, maar wist pas echt zodra jij dat aanzet.
+
+**Actie:** zet `RETENTIE_OPRUIMEN=1` in Vercel zodra je de dry-run-logs (zoek
+op `[cron-followup] retentie-opruimen` in de Function Logs) een paar dagen
+hebt gezien en ze kloppen. Optioneel: `RETENTIE_OPRUIM_DAGEN` om de
+standaard van 90 dagen (na anonimisering) aan te passen. Zie SECURITY.md's
+retentie-sectie voor de volledige tabel van wat waar en hoelang bewaard
+blijft.
+
+### Omgevingsvariabelen en dependencies doorgelicht
+
+Volledige inventaris van elke `process.env.*` die de code leest (121 stuks),
+gegroepeerd in VERCEL-DEPLOY-CHECKLIST.md: verplicht / optioneel / alleen-
+lokaal. Twee stukjes verouderde documentatie zijn rechtgezet (`RESEND_*`
+bestaat niet meer in de code; `USERS_CONFIG` wordt nergens meer gelezen).
+Clerk-sleutels krijgen nu dezelfde test/productie-mismatchmelding als Stripe
+al had — alleen waarschuwend, nooit blokkerend (Clerk zou anders de hele
+inlog kunnen platleggen). `npm audit`: 0 kwetsbaarheden. `depcheck`: 0
+ongebruikte dependencies; er is niets verwijderd of toegevoegd.
+
+**Actie:** lees VERCEL-DEPLOY-CHECKLIST.md's nieuwe sectie "Wat er stilletjes
+het verkeerde kan raken" — met name het punt over Airtable: er bestaat geen
+aparte test-/previewbase, dus een lokale `.env.local` met echte
+Airtable-sleutels praat altijd met de ECHTE data. Dat is geen codefout maar
+een keuze die bij jou ligt (aparte base aanmaken, of lokale credentials als
+gevaarlijk behandelen).
+
 ### Wachtwoord vergeten en e-mail bevestigen verraden niet meer of een adres bestaat
 
 "Wachtwoord vergeten" en "verificatiemail opnieuw sturen" gaven eerst een
