@@ -197,7 +197,7 @@ const CSS = `/* ============================================================
   --text-c:        #F1E9DA;   /* never pure #FFF -- VISUAL-DIRECTION.md */
   --text-muted-c:  #A79B85;
   --text-disabled: #6F6554;
-  --text-inverse:  #121212;
+  --text-inverse:  #17140F;
 
   /* Fase 4: dezelfde hues, één stap warmer/desatureerder, per coordinator-
      opgave. Fills blijven de heldere kant (chips, iconen); de *-ink varianten
@@ -453,7 +453,7 @@ const CSS = `/* ============================================================
   --text-c:        #1F1D19;
   --text-muted-c:  #6B6252;
   --text-disabled: #A2977F;
-  --text-inverse:  #FFFFFF;
+  --text-inverse:  #FAF6EE;
 
   /* Fase 4: dezelfde hues, één stap warmer/desatureerder (coordinator-opgave).
      Fills zijn de heldere kant; de *-ink hieronder zijn apart gemeten tegen de
@@ -1881,12 +1881,12 @@ button.brand-dot { border: none; padding: 0; }
 
 .form-input:hover {
   border-color: var(--accent-hover);
-  background: #fff;
+  background: var(--login-stage);
 }
 
 .form-input:focus {
   border-color: var(--accent);
-  background: #fff;
+  background: var(--login-stage);
   box-shadow: 0 0 0 4px rgba(232,215,177,0.25);
 }
 
@@ -2262,7 +2262,7 @@ button.brand-dot { border: none; padding: 0; }
   font-weight: 600;
   letter-spacing: .03em;
   text-transform: none;
-  color: #121212;
+  color: var(--on-accent);
   transition: background .15s ease, transform .12s ease;
 }
 #clerk-signin .cl-formButtonPrimary:hover { background: var(--accent-hover-c); }
@@ -2271,7 +2271,7 @@ button.brand-dot { border: none; padding: 0; }
   outline: 2px solid var(--login-accent-ink);
   outline-offset: 2px;
 }
-#clerk-signin .cl-buttonArrowIcon { color: #121212; opacity: .75; }
+#clerk-signin .cl-buttonArrowIcon { color: var(--on-accent); opacity: .75; }
 
 /* ── Foutmeldingen in dezelfde toon als .login-error ─────────────────────── */
 #clerk-signin .cl-formFieldErrorText,
@@ -4222,7 +4222,7 @@ h1.page-title { margin: 0; font-weight: inherit; }
   top: 2px;
   right: 2px;
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 9px;
   font-weight: 700;
   min-width: 16px;
@@ -5542,7 +5542,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   height: 18px;
   border-radius: 10px;
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 10px;
   font-weight: 700;
   padding: 0 4px;
@@ -5685,7 +5685,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 .panel-reply-send {
   background: var(--success);
   border: none; border-radius: 10px; padding: 10px 16px;
-  color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+  color: var(--on-accent); font-size: 13px; font-weight: 600; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   transition: opacity 0.15s ease;
 }
@@ -7405,7 +7405,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   padding: 20px; display: flex; flex-direction: column; align-items: stretch;
 }
 .fm-qr-frame {
-  background: #fff; padding: 16px; border-radius: 12px; margin: 14px 0 8px;
+  background: var(--zand-50); padding: 16px; border-radius: 12px; margin: 14px 0 8px;
   display: flex; align-items: center; justify-content: center;
 }
 .fm-preview-card {
@@ -7943,7 +7943,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
 }
 .ap-phone-info { flex: 1; min-width: 0; }
-.ap-phone-name { font-size: 14px; font-weight: 600; color: #fff; }
+.ap-phone-name { font-size: 14px; font-weight: 600; color: var(--zand-50); }
 .ap-phone-status { font-size: 11px; color: #9B968B; }
 .ap-phone-msgs {
   flex: 1; padding: 16px;
@@ -7976,7 +7976,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 }
 .ap-formlink-link:hover { color: var(--accent-ink); border-color: var(--accent-bright); }
 .ap-formlink-qr {
-  margin-top: 12px; padding: 14px; background: #fff; border-radius: 10px;
+  margin-top: 12px; padding: 14px; background: var(--zand-50); border-radius: 10px;
   display: flex; flex-direction: column; align-items: center;
 }
 .ap-formlink-qr img { display: block; }
@@ -9420,7 +9420,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    opzet (er was geen schaduw om weg te halen) maar het zou nu precies de gloed
    uitzetten die de knop zijn diepte geeft. */
 [data-theme="light"] .btn-icon {
-  background: linear-gradient(180deg, #FFFFFF 0%, #FBFAF7 100%);
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-elevated) 100%);
   border: 1px solid var(--border);
   box-shadow: var(--btn-rim);
   color: var(--text-secondary);

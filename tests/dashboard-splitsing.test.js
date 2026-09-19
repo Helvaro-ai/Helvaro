@@ -134,9 +134,24 @@ function render(lang) {
    [data-theme="light"]-blok eronder), en dezelfde twee pseudo-elementen op
    .login-brand-side zijn weg -- body en het inlogpodium zijn nu
    `background: var(--bg-primary)` / `var(--login-stage)`, niets erbovenop.
-   Kleiner geworden omdat er alleen regels verdwenen, er kwam niets bij. */
-const CSS_BYTES = 388636;
-const CSS_SHA   = 'd249396c44edbd4c';
+   Kleiner geworden omdat er alleen regels verdwenen, er kwam niets bij.
+
+   Daarna (+129 bytes) finish-fix 2: elke letterlijke #fff/#121212/#FFFFFF
+   omgezet naar een token. --text-inverse werd #17140F (donker) / #FAF6EE
+   (licht); Clerk's hoofdknop en pijlicoon, de notificatie- en nav-badge, en
+   panel-reply-send kregen var(--on-accent) (bestaand patroon, zie
+   .copy-tooltip); het login-formveld op hover/focus var(--login-stage) in
+   plaats van puur wit op een paneel dat altijd donker blijft; de twee
+   QR-lijstplaten en de WhatsApp-mockup-naam var(--zand-50) (vaste, warme
+   bijna-wit -- QR moet scanbaar blijven ongeacht thema); en het lichte
+   .btn-icon-verloop var(--card)/var(--card-elevated) i.p.v. #FFFFFF/#FBFAF7.
+   Eén letterlijk wit-op-zwart bleef bewust staan: .pi-compare-tag, het
+   label op een vaste donkere scrim OVER een foto -- precies de uitzondering
+   die faro-check.js apart bewaakt. De Faro-dockbar (#1c1c1c) en de
+   mobiele header (#fdfcfb) uit de opdracht bestonden al niet meer in de
+   bron; --faro-canvas was al #17140F. */
+const CSS_BYTES = 388765;
+const CSS_SHA   = '238a09ff975feec7';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
