@@ -461,30 +461,47 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     }
 
     // Airtable Clients table lookup (with 5-min in-memory cache as last resort)
-    try {
-      let client = getCachedClient(raw);
-      if (!client) {
-        const formula = encodeURIComponent(`{API Key}="${escapeFormula(raw)}"`);
-        const cRes    = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
-          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
-        );
-        if (cRes.status === 429) {
-          return res.status(503).json({ error: 'Systeem is druk. Probeer over 30 seconden opnieuw.' });
+    //
+    // SECURITY/CORRECTNESS: skip this entirely when `raw` already proved
+    // itself as the admin token (isAdmin === true, set a few lines up).
+    // Without this guard every lead-delete/lead-export call fell straight
+    // through into this block regardless, which looks up `raw` as if it
+    // were a CLIENT's own "API Key" field. The admin-derived HMAC token is
+    // never stored as any client's API key, so that lookup always came back
+    // empty and this unconditionally returned 401 "Ongeldige API key" —
+    // silently overwriting the isAdmin flag that was just set above. Net
+    // effect: the GDPR erasure/export admin endpoint (COMPLIANCE-AUDIT.md
+    // §1.2) could never actually be reached through this route; every call
+    // 401'd before body.mode was ever inspected. Found while building
+    // tests/idor-matrix.test.js's admin-erasure cases (Fase 10 attack pass).
+    // Fails closed (401, not a data leak) but breaks a compliance-relevant
+    // feature completely, so it's fixed here rather than left as a known gap.
+    if (!isAdmin) {
+      try {
+        let client = getCachedClient(raw);
+        if (!client) {
+          const formula = encodeURIComponent(`{API Key}="${escapeFormula(raw)}"`);
+          const cRes    = await atFetch(
+            `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+            { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+          );
+          if (cRes.status === 429) {
+            return res.status(503).json({ error: 'Systeem is druk. Probeer over 30 seconden opnieuw.' });
+          }
+          const cData = await cRes.json();
+          if (!cData.records || cData.records.length === 0) {
+            return res.status(401).json({ error: 'Ongeldige API key' });
+          }
+          client = cData.records[0];
+          setCachedClient(raw, client);
         }
-        const cData = await cRes.json();
-        if (!cData.records || cData.records.length === 0) {
-          return res.status(401).json({ error: 'Ongeldige API key' });
-        }
-        client = cData.records[0];
-        setCachedClient(raw, client);
+        projectCode  = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code']  || '';
+        clientName   = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']   || '';
+        calendlyLink = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'] || '';
+      } catch (err) {
+        console.error('Leads auth error:', err.message);
+        return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
       }
-      projectCode  = client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code']  || '';
-      clientName   = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name']   || '';
-      calendlyLink = client.fields['fldNEj1ysRgINOOtr'] || client.fields['Calendly Link'] || '';
-    } catch (err) {
-      console.error('Leads auth error:', err.message);
-      return res.status(500).json({ error: 'Database fout. Probeer later opnieuw.' });
     }
   }
 
