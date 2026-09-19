@@ -542,7 +542,7 @@ body.hv-mode-ai .faro-rail {
 
 /* Gelukt: twee keer stuiteren, dan klaar. */
 .faro-mascot[data-state="success"]   {
-  animation: faro-juicht 620ms cubic-bezier(.34, 1.56, .64, 1) 2 forwards;
+  animation: faro-juicht 620ms cubic-bezier(.22, 1.2, .36, 1) 2 forwards;   /* lichte overshoot, geen cartoonveer */
 }
 
 /* Aandacht: een korte schud, en dan stil blijven staan. */

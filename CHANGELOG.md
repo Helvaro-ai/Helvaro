@@ -14,6 +14,27 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Het bord, het leadpaneel en zoeken voelen nu als iets dat je vastpakt
+
+- **Pipeline-bord:** een kaart volgt je muis 1:1 vanaf de plek waar je hem
+  vastpakt (geen spookbeeld meer), en een gooi telt: de kaart landt in de
+  kolom waar hij naartoe rolde, veert daar op zijn plek, en veert terug als
+  je hem laat vallen. Voorbij de rand van het bord rekt hij mee in plaats van
+  te stoppen. Op een telefoon blijft tikken openen en scrollen gewoon werken.
+- **Leadpaneel:** veeg het aan de kop naar rechts weg (dezelfde kant als waar
+  het vandaan kwam); een korte veeg veert terug. De pagina erachter wijkt iets
+  terug en de donkere laag komt op in plaats van te ploppen.
+- **Zoeken** filtert per toetsaanslag; de wachttijd van 200 ms is weg.
+- **Telefoon:** een korte tik bij "gelukt" en "mislukt", op hetzelfde moment
+  als de melding (waar de browser dat kan).
+- **Tekstgrootte:** het dashboard schaalt nu mee met de tekstgrootte die je in
+  je browser instelt; op de standaardinstelling verandert er niets.
+- Wie in zijn systeem om minder doorschijnendheid of meer contrast vraagt,
+  krijgt een ondoorzichtige topbalk en duidelijkere randen.
+- Faro's vreugdesprong bij "gelukt" stuitert iets minder.
+- Wie liever geen beweging heeft (prefers-reduced-motion) krijgt geen veren:
+  alles springt meteen op zijn plek.
+
 ### De dagelijkse opvolgcron viel sinds 17 september elke ochtend om
 
 Om 09:00 stopte de cron met "nietVerstuurd is not defined" — twee lijstjes voor

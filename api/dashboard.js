@@ -4764,6 +4764,13 @@ function animateCounter(el, target, suffix = '') {
    ============================================================ */
 function toast(message, type = 'info', title = null) {
   const container = document.getElementById('toast-container');
+  /* Een korte tik op het moment van bevestiging, op hetzelfde frame als de
+     toast (Apple: causaliteit + harmonie). Alleen bij succes en fout, niet bij
+     info -- feedback die overal zit leert mensen hem te negeren. Zonder
+     Vibration API (desktop, iOS Safari) gebeurt er stil niets. */
+  try {
+    if (navigator.vibrate && (type === 'success' || type === 'error')) navigator.vibrate(type === 'error' ? [10, 30, 10] : 8);
+  } catch (e) {}
   const icons = {
     success: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>',
     error:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
@@ -8981,13 +8988,62 @@ function openPanel(lead) {
 
   // Show panel
   document.getElementById('panel-backdrop').classList.add('visible');
+  document.body.classList.add('panel-open');
+  panelSwipeInit();
   document.getElementById('detail-panel').classList.add('visible');
   _panelActivate();
+}
+
+/* ── Leadpaneel: wegvegen naar rechts ────────────────────────────────────────
+   Het paneel komt van rechts en gaat naar rechts (zelfde pad). Vanaf de kop
+   sleep je het 1:1 mee; naar links rubberbandt het. Loslaten: de RICHTING van
+   de snelheid beslist (naar rechts en sneller dan 400 px/s, of voorbij 40 %
+   van de breedte = dicht), anders veert het terug. Op een telefoon is dit de
+   veeg-terug die er nog niet was; op desktop werkt het net zo. */
+var _ps = null;
+function panelSwipeInit() {
+  var head = document.querySelector('#detail-panel .panel-header');
+  if (!head || head.dataset.swipeWired) return;
+  head.dataset.swipeWired = '1';
+  head.style.touchAction = 'pan-y';
+  head.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || e.target.closest('button, a, input, select, textarea')) return;
+    var panel = document.getElementById('detail-panel');
+    _ps = { id: e.pointerId, x0: e.clientX, dx: 0, hist: [], panel: panel, w: panel.getBoundingClientRect().width, committed: false };
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', function (e) {
+    var d = _ps; if (!d || e.pointerId !== d.id) return;
+    var dx = e.clientX - d.x0;
+    if (!d.committed) { if (Math.abs(dx) < 8) return; d.committed = true; d.panel.classList.add('is-swiping'); }
+    if (dx < 0) dx = pdRubberband(dx, d.w);
+    d.dx = dx;
+    d.panel.style.transform = 'translate3d(' + dx + 'px,0,0)';
+    var now = performance.now(); d.hist.push({ x: e.clientX, y: 0, t: now }); if (d.hist.length > 6) d.hist.shift();
+  });
+  var release = function (e) {
+    var d = _ps; if (!d || e.pointerId !== d.id) return;
+    _ps = null;
+    try { head.releasePointerCapture(d.id); } catch (err) {}
+    if (!d.committed) return;
+    var v = pdVelocity(d.hist);
+    var dicht = v.x > 400 || (d.dx > d.w * 0.4 && v.x > -200);
+    var klaar = function () {
+      d.panel.classList.remove('is-swiping');
+      d.panel.style.transform = '';
+      if (dicht) closePanel();
+    };
+    if (pdReducedMotion()) { klaar(); return; }
+    pdSpring(d.panel, { x: d.dx, y: 0 }, { x: dicht ? d.w : 0, y: 0 }, { x: v.x, y: 0 }, { damping: 1.0, response: 0.32 }, klaar);
+  };
+  head.addEventListener('pointerup', release);
+  head.addEventListener('pointercancel', release);
 }
 
 function closePanel() {
   document.getElementById('panel-backdrop').classList.remove('visible');
   document.getElementById('detail-panel').classList.remove('visible');
+  document.body.classList.remove('panel-open');
   state.activeLead = null;
   document.removeEventListener('keydown', _panelTrap, true);
   const wasFocus = _panelLastFocus;
@@ -10857,10 +10913,14 @@ document.getElementById('sidebar-overlay').addEventListener('click', () => {
 /* ============================================================
    SEARCH & FILTER LISTENERS
    ============================================================ */
-const debouncedSearch = debounce((val) => {
+/* Geen debounce meer: de lijst staat al in de browser, dus filteren kan per
+   toetsaanslag. De 200 ms wachttijd was een merkbare dode tijd na elke letter
+   (Apple: "be vigilant about every latency"). De naam blijft, zodat de
+   aanroepers niet hoeven te veranderen. */
+const debouncedSearch = (val) => {
   state.searchQ = val;
   applyFilters();
-}, 200);
+};
 
 document.getElementById('search-input').addEventListener('input', e => debouncedSearch(e.target.value));
 
@@ -12534,10 +12594,173 @@ function runGlobalSearch() {
 
 let _pipelineDragId = null;
 
-function pipelineDragStart(event, leadId) {
-  _pipelineDragId = String(leadId);
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData('text/plain', String(leadId));
+/* ── Kanban: slepen met Pointer Events en veren ───────────────────────────────
+   Het bord sleepte met HTML5 drag-and-drop: de browser tekent een spookbeeld,
+   de kaart volgt de muis niet 1:1, snelheid bestaat niet en aan de rand stopt
+   alles hard. Nu (naar Apple's "Designing Fluid Interfaces"):
+     - reageren op pointerdown, pointer capture, vasthouden waar je greep
+       (grab-offset), 1:1 volgen;
+     - een korte snelheidshistorie, zodat een gooi telt: de landingskolom
+       komt uit de geprojecteerde eindpositie (exponentieel uitlopen,
+       decelerationRate 0.99), niet uit waar je losliet;
+     - de kaart veert naar zijn plek met de losgelaten snelheid als
+       beginsnelheid; damping 0.8 na een gooi, 1.0 als hij terugkeert;
+       X en Y als losse veren;
+     - voorbij de rand van het bord rubberbandt hij in plaats van te stoppen;
+     - prefers-reduced-motion: geen veer, meteen op zijn plek.
+   Alleen muis en pen: op een telefoon blijft tikken openen en scrollt het
+   bord gewoon (HTML5-drag werkte daar sowieso nooit). */
+var _pd = null;   /* actieve sleep */
+var _pdSuppressClick = false;
+
+function pipelineCardClick(event, leadId) {
+  if (_pdSuppressClick) { _pdSuppressClick = false; event.preventDefault(); return; }
+  var lead = state.leads.find(function (x) { return String(x.id) === String(leadId); });
+  if (lead) openPanel(lead);
+}
+
+function pdReducedMotion() {
+  try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+}
+
+/* Apple's projectie: waar zou dit landen als het uitrolt. */
+function pdProject(velocityPxPerS, decelerationRate) {
+  var d = decelerationRate || 0.99;
+  return (velocityPxPerS / 1000) * d / (1 - d);
+}
+
+function pdRubberband(overshoot, dimension, constant) {
+  var c = constant || 0.55;
+  return (overshoot * dimension * c) / (dimension + c * Math.abs(overshoot));
+}
+
+/* Eén gedempte veer per as; stijfheid uit de "response" (s), demping uit de
+   ratio. Loopt op requestAnimationFrame vanaf de HUIDIGE waarde, dus een
+   nieuwe doelpositie onderweg geeft geen sprong. */
+function pdSpring(el, from, to, vel, opts, onDone) {
+  var ratio = opts.damping, resp = opts.response;
+  var k = Math.pow(2 * Math.PI / resp, 2);
+  var c = 2 * ratio * Math.sqrt(k);
+  var x = from.x, y = from.y, vx = vel.x, vy = vel.y, last = performance.now();
+  var settled = 0;
+  function step(now) {
+    var dt = Math.min(0.032, (now - last) / 1000); last = now;
+    var ax = -k * (x - to.x) - c * vx; var ay = -k * (y - to.y) - c * vy;
+    vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
+    el.style.transform = 'translate3d(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px,0)';
+    var still = Math.abs(x - to.x) < 0.5 && Math.abs(y - to.y) < 0.5 && Math.abs(vx) < 20 && Math.abs(vy) < 20;
+    settled = still ? settled + 1 : 0;
+    if (settled >= 2) { el.style.transform = 'translate3d(' + to.x + 'px,' + to.y + 'px,0)'; if (onDone) onDone(); return; }
+    el.__pdRaf = requestAnimationFrame(step);
+  }
+  if (el.__pdRaf) cancelAnimationFrame(el.__pdRaf);
+  el.__pdRaf = requestAnimationFrame(step);
+}
+
+function pipelinePointerDown(event) {
+  if (event.button !== 0 || event.pointerType === 'touch') return;
+  if (event.target.closest('button, a, input')) return;
+  var card = event.currentTarget;
+  if (_pd) return;
+  var rect = card.getBoundingClientRect();
+  _pd = {
+    card: card, id: card.getAttribute('data-lead-id'), pointerId: event.pointerId,
+    startX: event.clientX, startY: event.clientY,
+    grabX: event.clientX - rect.left, grabY: event.clientY - rect.top,
+    committed: false, hist: [], x: 0, y: 0,
+    board: card.closest('.pipeline-board'), fromCol: card.closest('.pipeline-col')
+  };
+  card.setPointerCapture(event.pointerId);
+  card.addEventListener('pointermove', pipelinePointerMove);
+  card.addEventListener('pointerup', pipelinePointerUp);
+  card.addEventListener('pointercancel', pipelinePointerUp);
+}
+
+function pipelinePointerMove(event) {
+  var d = _pd; if (!d || event.pointerId !== d.pointerId) return;
+  var dx = event.clientX - d.startX, dy = event.clientY - d.startY;
+  if (!d.committed) {
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;   /* hysterese: pas slepen na 6px */
+    d.committed = true;
+    if (d.card.__pdRaf) cancelAnimationFrame(d.card.__pdRaf);
+    d.card.classList.add('is-dragging');
+    d.card.style.willChange = 'transform';
+  }
+  /* Rubberband voorbij de randen van het bord. */
+  if (d.board) {
+    var b = d.board.getBoundingClientRect(), r = d.card.getBoundingClientRect();
+    var left = r.left - d.x, right = r.right - d.x;   /* onverschoven positie */
+    var over = 0;
+    if (left + dx < b.left) over = (left + dx) - b.left;
+    else if (right + dx > b.right) over = (right + dx) - b.right;
+    if (over) dx = dx - over + pdRubberband(over, b.width);
+  }
+  d.x = dx; d.y = dy;
+  d.card.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0)';
+  var now = performance.now();
+  d.hist.push({ x: event.clientX, y: event.clientY, t: now });
+  if (d.hist.length > 6) d.hist.shift();
+  /* Kolom onder de vinger oplichten (de kaart zelf laat pointer-events los). */
+  var under = document.elementFromPoint(event.clientX, event.clientY);
+  var col = under && under.closest ? under.closest('.pipeline-col') : null;
+  document.querySelectorAll('.pipeline-col.drag-over').forEach(function (c) { if (c !== col) c.classList.remove('drag-over'); });
+  if (col) col.classList.add('drag-over');
+}
+
+function pdVelocity(hist) {
+  if (hist.length < 2) return { x: 0, y: 0 };
+  var a = hist[0], b = hist[hist.length - 1];
+  var dt = Math.max(1, b.t - a.t) / 1000;
+  return { x: (b.x - a.x) / dt, y: (b.y - a.y) / dt };
+}
+
+function pipelinePointerUp(event) {
+  var d = _pd; if (!d || event.pointerId !== d.pointerId) return;
+  var card = d.card;
+  card.removeEventListener('pointermove', pipelinePointerMove);
+  card.removeEventListener('pointerup', pipelinePointerUp);
+  card.removeEventListener('pointercancel', pipelinePointerUp);
+  try { card.releasePointerCapture(d.pointerId); } catch (e) {}
+  _pd = null;
+  document.querySelectorAll('.pipeline-col.drag-over').forEach(function (c) { c.classList.remove('drag-over'); });
+  if (!d.committed) return;
+  _pdSuppressClick = true;
+  setTimeout(function () { _pdSuppressClick = false; }, 0);
+
+  var v = pdVelocity(d.hist);
+  /* Landingskolom uit de geprojecteerde eindpositie, niet uit het loslaatpunt. */
+  var r = card.getBoundingClientRect();
+  var projX = r.left + r.width / 2 + pdProject(v.x);
+  var cols = Array.prototype.slice.call(document.querySelectorAll('.pipeline-col'));
+  var target = null, best = Infinity;
+  cols.forEach(function (c) {
+    var cr = c.getBoundingClientRect();
+    var mid = cr.left + cr.width / 2;
+    var dist = (projX >= cr.left && projX <= cr.right) ? 0 : Math.abs(projX - mid);
+    if (dist < best) { best = dist; target = c; }
+  });
+  var newStage = target ? target.getAttribute('data-stage') : null;
+  var moves = target && target !== d.fromCol && newStage;
+
+  var finish = function () {
+    card.classList.remove('is-dragging');
+    card.style.willChange = '';
+    card.style.transform = '';
+    if (moves) pipelineMoveTo(d.id, newStage);
+  };
+
+  if (pdReducedMotion()) { finish(); return; }
+
+  var to;
+  if (moves) {
+    /* Naar het midden van de doelkolom, op de huidige hoogte. */
+    var tr = target.getBoundingClientRect();
+    to = { x: d.x + (tr.left + tr.width / 2) - (r.left + r.width / 2), y: d.y };
+  } else {
+    to = { x: 0, y: 0 };
+  }
+  var thrown = Math.abs(v.x) > 300;
+  pdSpring(card, { x: d.x, y: d.y }, to, v, { damping: thrown ? 0.8 : 1.0, response: 0.35 }, finish);
 }
 
 /* Via tr(): de fasenamen stonden vast in het Nederlands op een dashboard in
@@ -12626,12 +12849,8 @@ async function patchPipelineStage(id, stage) {
   return resp.json();
 }
 
-async function pipelineDrop(event, newStage) {
-  event.preventDefault();
-  document.querySelectorAll('.pipeline-col').forEach(c => c.classList.remove('drag-over'));
-  const leadId = _pipelineDragId || event.dataTransfer.getData('text/plain');
+async function pipelineMoveTo(leadId, newStage) {
   if (!leadId) return;
-  _pipelineDragId = null;
 
   const lead = state.leads.find(l => String(l.id) === String(leadId));
   if (!lead || pipelineStageOf(lead) === newStage) return;
@@ -12795,7 +13014,7 @@ function renderPipeline() {
       const dealerVoertuig = (isDealer() && l.property)
         ? \`<span class="pipe-vehicle-chip">\${escHtml(l.property)}</span>\`
         : '';
-      return \`<div class="pipeline-card" draggable="true" ondragstart="pipelineDragStart(event,'\${escJs(String(l.id))}')" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead)openPanel(lead);})()">
+      return \`<div class="pipeline-card" data-lead-id="\${escJs(String(l.id))}" onpointerdown="pipelinePointerDown(event)" onclick="pipelineCardClick(event,'\${escJs(String(l.id))}')">
         <div class="pipeline-card-name">\${escHtml(l.naam) || '—'}</div>
         <div class="pipeline-card-meta">
           \${dealerPill || (sc > 0 ? \`<span class="pipeline-score \${scCls}">\${sc}</span>\` : '')}
@@ -12807,7 +13026,7 @@ function renderPipeline() {
       </div>\`;
     }).join('');
 
-    return \`<div class="pipeline-col" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="pipelineDrop(event,'\${col.id}')">
+    return \`<div class="pipeline-col" data-stage="\${col.id}">
       <div class="pipeline-col-header \${col.cls}">
         \${col.label}
         <span class="pipeline-col-count">\${col.leads.length}</span>
