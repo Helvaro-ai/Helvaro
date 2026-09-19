@@ -1118,6 +1118,27 @@ function faroErrorCard(c) {
 /* ── 9/10. Media job polling ──────────────────────────────────────────────
    Generation exceeds the request window, so the card renders a skeleton and
    polls. Backs off so a stuck job does not hammer the endpoint. */
+/* Mislukt: dezelfde kaart, met uitleg. Credits gaan pas af bij 'ready'
+   (api/_faro/media.js creditsVoorVideo), dus "niets aangerekend" is waar. */
+function faroMediaFailedHtml() {
+  return '<div class="faro-media__pending faro-media__pending--failed" data-state="failed">' +
+      '<div class="faro-media__img"></div>' +
+      '<img class="faro-media__mark" src="/faro/faro-merk.webp" alt="" width="36" height="36">' +
+    '</div>' +
+    '<div class="faro-media__state faro-media__state--failed">' +
+      '<span class="faro-media__label">' + faroEsc(T('st.failed')) + '</span>' +
+      '<span class="faro-media__sub">' + faroEsc(T('st.failedSub')) + '</span>' +
+    '</div>';
+}
+function faroMediaMarkGenerating(el, job) {
+  var pend = el.querySelector('.faro-media__pending');
+  var lbl = el.querySelector('.faro-media__label');
+  if (job.state === 'generating' && pend && pend.getAttribute('data-state') !== 'generating') {
+    pend.setAttribute('data-state', 'generating');
+    if (lbl) lbl.textContent = T('st.generating');
+  }
+}
+
 function faroPollJob(jobId, el, attempt) {
   attempt = attempt || 0;
   var timer = el.querySelector('.faro-media__timer');
@@ -1141,24 +1162,8 @@ function faroPollJob(jobId, el, attempt) {
       .then(function (r) {
         var job = r.job || {};
         if (job.state === 'ready')  { el.replaceWith(faroMediaCard(job)); return; }
-        if (job.state === 'failed') {
-          el.innerHTML =
-            '<div class="faro-media__pending faro-media__pending--failed" data-state="failed">' +
-              '<div class="faro-media__img"></div>' +
-              '<img class="faro-media__mark" src="/faro/faro-merk.webp" alt="" width="36" height="36">' +
-            '</div>' +
-            '<div class="faro-media__state faro-media__state--failed">' +
-              '<span class="faro-media__label">' + faroEsc(T('st.failed')) + '</span>' +
-              '<span class="faro-media__sub">' + faroEsc(T('st.failedSub')) + '</span>' +
-            '</div>';
-          return;
-        }
-        var pend = el.querySelector('.faro-media__pending');
-        var lbl = el.querySelector('.faro-media__label');
-        if (job.state === 'generating' && pend && pend.getAttribute('data-state') !== 'generating') {
-          pend.setAttribute('data-state', 'generating');
-          if (lbl) lbl.textContent = T('st.generating');
-        }
+        if (job.state === 'failed') { el.innerHTML = faroMediaFailedHtml(); return; }
+        faroMediaMarkGenerating(el, job);
         faroPollJob(jobId, el, attempt + 1);
       })
       .catch(function () { faroPollJob(jobId, el, attempt + 1); });
