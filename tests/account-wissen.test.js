@@ -134,6 +134,10 @@ const nog = (tabel) => (BASEDATA[tabel] || []).map((r) => r.id);
     ck('faro-berichten weg',   nog('tblJcqktFZwpXgwwh').indexOf('recM1') === -1
                             && nog('tblJcqktFZwpXgwwh').indexOf('recM3') === -1);
     ck('de klantrij weg',      nog('tblPidTrwGRzRt4LZ').indexOf('recK1') === -1);
+    /* Blob-opslag is in DEZE test niet geconfigureerd (geen BLOB_READ_WRITE_TOKEN/
+       BLOB_STORE_ID/VERCEL_OIDC_TOKEN) -- de media-stap moet dan gewoon "niets
+       te wissen" zijn, geen fout, en niet meetellen tegen `volledig`. */
+    ck('media-stap liep mee zonder blob-config (0, geen fout)', v.gewist.media === 0, v.gewist);
   }
 
   console.log('\n  en NIETS van de buurman');
@@ -229,6 +233,68 @@ const nog = (tabel) => (BASEDATA[tabel] || []).map((r) => r.id);
     ck('geen abonnement is geen fout', v.stripe === 'geen abonnement', v.stripe);
     ck('geen gebruiker is geen fout',  /geen gebruiker/.test(String(v.clerk)), v.clerk);
     ck('en alles is weg',              v.volledig === true && nog('tblPidTrwGRzRt4LZ').indexOf('recK1') === -1);
+  }
+
+  console.log('\n  accountwissing ruimt ook gegenereerde media op (brief §78)');
+  {
+    /* Blob-opslag NU wel "geconfigureerd" (een van de drie env-vars volstaat,
+       zie blobStorageConfigured() in api/_images.js) en list()/del() nagemaakt
+       -- zelfde stijl als _stripe/_clerk hierboven: alleen vastleggen DAT ze
+       aangeroepen zijn en waarmee, niet Vercel's eigen SDK nabouwen. */
+    process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
+    const blob = require(path.join(BASE, 'node_modules/@vercel/blob'));
+    let listAanroepen = [];
+    let delAanroep = null;
+    const TENANT_BLOBS = [
+      { url: `https://blob.test/property/${TENANT}/result-1.png` },
+      { url: `https://blob.test/property/${TENANT}/source-1.png` },
+    ];
+    blob.list = async (opts) => {
+      listAanroepen.push(opts);
+      return { blobs: TENANT_BLOBS, hasMore: false };
+    };
+    blob.del = async (urls, opts) => { delAanroep = { urls, opts }; };
+
+    reset();
+    const v = await wissen.wisAlles({ projectCode: TENANT, clientRecordId: 'recK1',
+                                      userId: 'user_x', stripeAbonnement: 'sub_x' });
+
+    ck('list() werd geroepen met het tenant-specifieke prefix',
+      listAanroepen.length === 1 && listAanroepen[0].prefix === `property/${TENANT}/`,
+      listAanroepen);
+    ck('del() kreeg precies de URL\'s die list() teruggaf',
+      !!delAanroep && delAanroep.urls.length === 2
+      && delAanroep.urls.indexOf(TENANT_BLOBS[0].url) !== -1
+      && delAanroep.urls.indexOf(TENANT_BLOBS[1].url) !== -1,
+      delAanroep);
+    ck('het verslag telt de gewiste media',   v.gewist.media === 2, v.gewist.media);
+    ck('en het geheel is nog steeds volledig', v.volledig === true, v);
+
+    // Netjes achterlaten voor eventuele volgende testbestanden in hetzelfde proces.
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete blob.list;
+    delete blob.del;
+  }
+
+  console.log('\n  een kapotte media-stap stopt de rest niet (best-effort, net als de tabellen)');
+  {
+    process.env.BLOB_READ_WRITE_TOKEN = 'test-blob-token';
+    const blob = require(path.join(BASE, 'node_modules/@vercel/blob'));
+    blob.list = async () => { throw new Error('blob store onbereikbaar'); };
+
+    reset();
+    const v = await wissen.wisAlles({ projectCode: TENANT, clientRecordId: 'recK1',
+                                      userId: 'user_x', stripeAbonnement: 'sub_x' });
+
+    ck('media staat als mislukt in het verslag', !!v.mislukt.media, v.mislukt);
+    ck('en het geheel heet niet volledig',        v.volledig === false, v.volledig);
+    /* Het punt van best-effort: de Airtable-rijen gaan ONDANKS de kapotte
+       media-stap toch weg. */
+    ck('de leads zijn toch weg',  nog('tbliukTnDAbEDcZmt').indexOf('recL1') === -1);
+    ck('de klantrij is toch weg', nog('tblPidTrwGRzRt4LZ').indexOf('recK1') === -1);
+
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete blob.list;
   }
 
   console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');

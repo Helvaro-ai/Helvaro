@@ -54,6 +54,47 @@
 
 const _stripe = require('./_stripe');
 
+/* ── Gegenereerde media (brief §78: "generated media" hoort bij de audit) ────
+   AI-beeldgeneratie (api/_images.js) legt property-foto's in Vercel Blob neer
+   onder `property/<projectCode>/...` -- los van Airtable, dus de tabellenlijst
+   hierboven raakt dat spoor nooit aan. Zonder deze stap bleef een gewiste
+   klant zijn gegenereerde foto's gewoon online staan, vindbaar via de kale
+   blob-URL, voor altijd. Best-effort en optioneel, om dezelfde reden als
+   overal in dit bestand: geen blob-opslag geconfigureerd (blobStorageConfigured()
+   in _images.js) of geen module aanwezig betekent gewoon "niets te wissen",
+   niet een fout. */
+async function wisTenantMedia(projectCode) {
+  let blobLib;
+  try {
+    blobLib = require('@vercel/blob');
+  } catch (e) {
+    return 0; // module niet geïnstalleerd -- de beeldfunctie is dan sowieso uit
+  }
+  const { list, del } = blobLib;
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID && !process.env.VERCEL_OIDC_TOKEN) {
+    return 0; // blob-opslag niet geconfigureerd voor dit environment
+  }
+  const prefix = `property/${projectCode}/`;
+  const urls = [];
+  let cursor;
+  // Plafond, zelfde gewoonte als idsVan() hieronder: een fout die te veel
+  // matcht mag niet de hele store doorlopen.
+  for (let ronde = 0; ronde < 50; ronde++) {
+    const opts = { prefix, limit: 1000 };
+    if (process.env.BLOB_READ_WRITE_TOKEN) opts.token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (cursor) opts.cursor = cursor;
+    const res = await list(opts);
+    urls.push(...((res && res.blobs) || []).map((b) => b.url));
+    if (!res || !res.hasMore) break;
+    cursor = res.cursor;
+  }
+  if (!urls.length) return 0;
+  const delOpts = {};
+  if (process.env.BLOB_READ_WRITE_TOKEN) delOpts.token = process.env.BLOB_READ_WRITE_TOKEN;
+  await del(urls, delOpts);
+  return urls.length;
+}
+
 /* ── De tabellen ──────────────────────────────────────────────────────────
    Namen en niet alleen ids, want filterByFormula werkt op veldNAMEN. De ids
    staan erbij zodat een hernoeming terug te vinden is; ze zijn geverifieerd
@@ -208,6 +249,12 @@ async function wisAlles(ctx = {}) {
     await stap(t.naam, () => wisTabel(t.tabel, t.veld, projectCode));
   }
 
+  /* 3b. Gegenereerde media (Vercel Blob) — zie de functie hierboven. Na de
+        Airtable-tabellen, want er is geen afhankelijkheid tussen de twee; hier
+        geplaatst zodat het verslag dezelfde volgorde toont als de rest van
+        "de gegevens". */
+  await stap('media', () => wisTenantMedia(projectCode));
+
   /* 4. De inlog. Na de gegevens: kan de gebruiker niet meer inloggen terwijl
         zijn rijen er nog staan, dan kan hij ook niet meer opnieuw proberen. */
   if (ctx.userId) {
@@ -238,4 +285,4 @@ async function wisAlles(ctx = {}) {
   return verslag;
 }
 
-module.exports = { wisAlles, WisFout, TABELLEN, T_CONVERSATIES, T_BERICHTEN, T_CLIENT, idsVan, verwijderIds };
+module.exports = { wisAlles, WisFout, TABELLEN, T_CONVERSATIES, T_BERICHTEN, T_CLIENT, idsVan, verwijderIds, wisTenantMedia };

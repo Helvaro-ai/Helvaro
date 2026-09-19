@@ -376,6 +376,20 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       return null;
     });
 
+    // ── Retention purge (brief §78/§79): hard-delete already-anonymized lead
+    // husks and orphaned generated media past their retention window. Always
+    // runs — dry-run by default, and DESTRUCTIVE only when RETENTIE_OPRUIMEN=1
+    // is set. See runRetentionPurge()/runMediaRetentionPurge()'s own doc
+    // comments below for the exact eligibility rule and the safety reasoning.
+    const retentionPurgeResult = await runRetentionPurge(AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE, now).catch(e => {
+      console.error('[cron-followup] retentie-opruimen (leads) failed:', e.message);
+      return null;
+    });
+    const mediaRetentionPurgeResult = await runMediaRetentionPurge(now).catch(e => {
+      console.error('[cron-followup] retentie-opruimen (media) failed:', e.message);
+      return null;
+    });
+
     // ── Daily summary email ──────────────────────────────────────────────────
     /* Ook mailen als er NIETS verstuurd is maar het wel geprobeerd is. Bij
        `sent > 0` alleen zwijgt de cron precies op de dag dat alles faalt --
@@ -485,7 +499,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] drive-sync mislukt:', e && e.message);
     }
 
-    const verslag = { checked: leads.length, sent, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    const verslag = { checked: leads.length, sent, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
     /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
        eigen catch viel; zonder deze regel moest je tien losse logregels bij
        elkaar zoeken om te weten of de dag compleet was. */
@@ -641,6 +655,11 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
   // Score, Ability/Urgency/Fit, Conversation State, Booking Link Sent,
   // Appointment Booked, Bron, Verwachte Waarde, Response Time, Reason,
   // Opgepikt, Created At) untouched so dashboard stats survive.
+  //
+  // Notities carries `anonymizedAt` (JSON, not '') for the same reason as
+  // api/leads.js's lead-delete: runRetentionPurge() below needs to know WHEN
+  // a lead was scrubbed to ever hard-delete the husk. Keep this in sync with
+  // that other anonymize site if either ever changes.
   let anonymized = 0;
   for (const lead of eligible) {
     try {
@@ -650,7 +669,7 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
         'Conversation History': JSON.stringify([]),
         'Last Message': '',
         fldqerIiw5qyQjXHr: '',                   // AI Summary
-        fldoLRI5W12ThTls7: '',                   // Notities
+        fldoLRI5W12ThTls7: JSON.stringify({ anonymizedAt: new Date().toISOString() }), // Notities
       };
       const pr = await atFetch(
         `https://api.airtable.com/v0/${baseId}/${leadsTable}/${lead.id}`,
@@ -675,6 +694,205 @@ async function runRetentionAnonymization(airtableToken, baseId, leadsTable, now 
   }
   console.log(`[cron-followup] retention: checked ${eligible.length}, anonymized ${anonymized}`);
   return { checked: eligible.length, anonymized };
+}
+
+// ── Retention purge: hard-delete already-anonymized lead husks past their
+// retention window (brief §78: "avoid keeping unnecessary sensitive data
+// indefinitely"). An anonymized lead has no PII left, but the ROW itself
+// (with every aggregate/analytics field — Lead Score, Ability/Urgency/Fit,
+// Bron, Verwachte Waarde, …) still sits in the base forever: nothing before
+// this ever removed it. runRetentionAnonymization() above scrubs the
+// identity; this is the step that eventually removes the husk entirely.
+//
+// SAFETY: unlike every other retention job in this file, this one is
+// destructive and irreversible (an Airtable DELETE, not a PATCH that clears
+// fields) and defaults to DRY RUN — it always computes and logs exactly
+// which records it WOULD delete, and only actually deletes them when
+// RETENTIE_OPRUIMEN=1 is set. That is a deliberate, explicit choice the
+// owner makes once the dry-run log output looks right, never a default this
+// batch turns on by itself. See CHANGELOG.md's "Nog niet uitgerold" section.
+//
+// Eligibility: Name = '[verwijderd]' (the anonymize marker, same exclusion
+// clause runRetentionAnonymization uses) AND old enough. "Old enough"
+// prefers the `anonymizedAt` timestamp both anonymize call sites (this
+// file's runRetentionAnonymization and api/leads.js's lead-delete) now
+// write into Notities as JSON; a lead anonymized before that JSON envelope
+// existed has no anonymizedAt, so Created At is the fallback — same "best
+// available proxy, documented" instruction as runRetentionAnonymization's
+// own Created-At comment above. Since anonymization always happens at or
+// after creation, falling back to the (earlier-or-equal) Created At can
+// only make a record eligible SOONER than its true anonymize date, never
+// later — the safe direction for "no personal data kept indefinitely
+// because soft-deleted".
+//
+// No per-tenant retention setting exists on Client Config today (checked
+// against the live schema for this batch — see SECURITY.md's retention
+// section). RETENTIE_OPRUIM_DAGEN is the one fixed, documented default,
+// applied to every tenant alike, overridable for the whole deployment (not
+// per-tenant) until/unless a per-tenant field is added later.
+const RETENTIE_OPRUIM_DAGEN_DEFAULT = 90;
+function retentiePurgeCutoffMs(now, dagen) {
+  return now.getTime() - dagen * 24 * 60 * 60 * 1000;
+}
+function anonymizedAtMs(fields) {
+  const raw = (fields && (fields['Notities'] || fields.fldoLRI5W12ThTls7)) || '';
+  const trimmed = String(raw).trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const t = parsed && parsed.anonymizedAt ? Date.parse(parsed.anonymizedAt) : NaN;
+      if (Number.isFinite(t)) return t;
+    } catch { /* val door naar de Created At-fallback hieronder */ }
+  }
+  const created = (fields && (fields['Created At'] || fields.fldR0r13EU4RwrtvH)) || '';
+  const t = Date.parse(created);
+  return Number.isFinite(t) ? t : NaN;
+}
+
+async function runRetentionPurge(airtableToken, baseId, leadsTable, now = new Date()) {
+  const dagen = Math.max(1, Number(process.env.RETENTIE_OPRUIM_DAGEN || RETENTIE_OPRUIM_DAGEN_DEFAULT));
+  const cutoffMs = retentiePurgeCutoffMs(now, dagen);
+  const uitvoeren = process.env.RETENTIE_OPRUIMEN === '1';
+
+  // Airtable-side prefilter: alleen al-geanonimiseerde rijen. De echte
+  // leeftijdstoets (anonymizedAt met Created At-terugval) gebeurt hierna in
+  // JS — geen formule kan hier "parse de JSON in Notities" uitdrukken, zelfde
+  // beperking als runSignupSignalsRetention hieronder al documenteert.
+  const formula = encodeURIComponent('{fldbk0LVNckOU0bqA}="[verwijderd]"');
+  const candidates = [];
+  let offset = '';
+  for (let pagina = 0; pagina < 40; pagina++) { // 40 x 100 = 4.000, plafond zoals elders in dit bestand
+    const url = `https://api.airtable.com/v0/${baseId}/${leadsTable}?filterByFormula=${formula}&pageSize=100${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
+    const r = await atFetch(url, { headers: { Authorization: `Bearer ${airtableToken}` } });
+    if (r.status === 429) {
+      console.warn('[cron-followup] retentie-opruimen (leads): Airtable 429, uitgesteld tot volgende run');
+      return { checked: candidates.length, eligible: 0, deleted: 0, dryRun: !uitvoeren, skipped: 'rate_limited' };
+    }
+    if (!r.ok) throw new Error('Airtable ' + r.status);
+    const data = await r.json();
+    candidates.push(...(data.records || []));
+    offset = data.offset || '';
+    if (!offset) break;
+  }
+
+  const eligible = candidates.filter((rec) => {
+    const t = anonymizedAtMs(rec.fields || {});
+    return Number.isFinite(t) && t < cutoffMs;
+  });
+
+  // ALTIJD loggen wat er weg zou gaan — dat is het hele punt van dry-run.
+  for (const rec of eligible) {
+    const projectCode = rec.fields?.['fldSmczuyUJd26HLe'] || rec.fields?.['Project Code'] || '';
+    console.log(`[erasure] action=retention-purge${uitvoeren ? '' : '-dryrun'} id=${rec.id} projectCode=${projectCode} actor=system ts=${new Date().toISOString()}`);
+  }
+
+  let deleted = 0;
+  if (uitvoeren) {
+    for (const rec of eligible) {
+      try {
+        const dr = await atFetch(
+          `https://api.airtable.com/v0/${baseId}/${leadsTable}/${rec.id}`,
+          { method: 'DELETE', headers: { Authorization: `Bearer ${airtableToken}` } }
+        );
+        if (dr.ok) deleted++;
+        else console.error(`[cron-followup] retentie-opruimen DELETE mislukt voor ${rec.id} (${dr.status})`);
+      } catch (err) {
+        console.error(`[cron-followup] retentie-opruimen exception voor ${rec.id}:`, err.message);
+      }
+      await new Promise((res) => setTimeout(res, 200)); // zelfde rate-limit-gewoonte als elders in dit bestand
+    }
+  }
+
+  console.log(`[cron-followup] retentie-opruimen (leads): gecontroleerd ${candidates.length}, in aanmerking ${eligible.length}, ` +
+    (uitvoeren ? `verwijderd ${deleted}` : `ZOU verwijderen ${eligible.length} (dry-run, zet RETENTIE_OPRUIMEN=1 om echt te wissen)`));
+  return { checked: candidates.length, eligible: eligible.length, deleted, dryRun: !uitvoeren, retentionDays: dagen };
+}
+
+// ── Retention purge: orphaned generated media in Vercel Blob (brief §78,
+// same instruction as the lead husks above). Deliberately scoped narrow and
+// safe: this only removes blobs under `property/<projectCode>/...` whose
+// <projectCode> no longer matches ANY row in Client Config at all — i.e. the
+// tenant itself is fully gone. A LIVE tenant's media is purged at delete
+// time by api/_wissen.js's wisTenantMedia(); this is the safety net for
+// accounts deleted before that existed, or where that one step failed and
+// was logged in the deletion report's `mislukt`. It deliberately does NOT
+// try to find "this one image was regenerated and replaced" churn for a
+// still-active tenant — that needs per-property reference-checking this
+// batch didn't have room for, and getting it wrong in that direction risks
+// deleting an image someone is still looking at. Same dry-run/
+// RETENTIE_OPRUIMEN=1 gate and the same age margin (RETENTIE_OPRUIM_DAGEN)
+// as runRetentionPurge above, as a safety buffer against a blob upload
+// racing this sweep for a tenant whose deletion is still in flight.
+async function runMediaRetentionPurge(now = new Date()) {
+  const dagen = Math.max(1, Number(process.env.RETENTIE_OPRUIM_DAGEN || RETENTIE_OPRUIM_DAGEN_DEFAULT));
+  const cutoffMs = retentiePurgeCutoffMs(now, dagen);
+  const uitvoeren = process.env.RETENTIE_OPRUIMEN === '1';
+
+  let blobLib;
+  try { blobLib = require('@vercel/blob'); } catch (e) { return { skipped: 'geen_blob_module' }; }
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID && !process.env.VERCEL_OIDC_TOKEN) {
+    return { skipped: 'geen_blob_config' };
+  }
+
+  const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
+  const BASE_ID        = process.env.BASE_AIRTABLE;
+  if (!AIRTABLE_TOKEN || !BASE_ID) return { skipped: 'geen_airtable_config' };
+  const CLIENTS_TABLE  = 'tblPidTrwGRzRt4LZ';
+
+  // Welke projectcodes bestaan nog echt? "Low dozens of clients, fetch-all is
+  // fine" — zelfde aanname als runSignupSignalsRetention hierboven.
+  const geldigeCodes = new Set();
+  {
+    let offset = '';
+    for (let pagina = 0; pagina < 20; pagina++) {
+      const url = `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?pageSize=100&fields%5B%5D=Project%20Code${offset ? `&offset=${encodeURIComponent(offset)}` : ''}`;
+      const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      if (!r.ok) return { skipped: 'clients_lezen_mislukt' };
+      const d = await r.json();
+      for (const rec of (d.records || [])) {
+        const code = rec.fields?.['fldN4dL0bGgfBOXwM'] || rec.fields?.['Project Code'] || '';
+        if (code) geldigeCodes.add(code);
+      }
+      offset = d.offset || '';
+      if (!offset) break;
+    }
+  }
+
+  const { list, del } = blobLib;
+  const wezen = [];
+  let cursor;
+  for (let ronde = 0; ronde < 50; ronde++) { // plafond, zelfde gewoonte als api/_wissen.js's idsVan()
+    const opts = { prefix: 'property/', limit: 1000 };
+    if (process.env.BLOB_READ_WRITE_TOKEN) opts.token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (cursor) opts.cursor = cursor;
+    const res = await list(opts);
+    for (const b of ((res && res.blobs) || [])) {
+      const m = /^property\/([^/]+)\//.exec(b.pathname || '');
+      const projectCode = m ? m[1] : '';
+      const uploadedMs = b.uploadedAt ? new Date(b.uploadedAt).getTime() : NaN;
+      if (projectCode && !geldigeCodes.has(projectCode) && Number.isFinite(uploadedMs) && uploadedMs < cutoffMs) {
+        wezen.push(b);
+      }
+    }
+    if (!res || !res.hasMore) break;
+    cursor = res.cursor;
+  }
+
+  for (const b of wezen) {
+    console.log(`[erasure] action=retention-media-purge${uitvoeren ? '' : '-dryrun'} url=${b.url} ts=${new Date().toISOString()}`);
+  }
+
+  let deleted = 0;
+  if (uitvoeren && wezen.length) {
+    const delOpts = {};
+    if (process.env.BLOB_READ_WRITE_TOKEN) delOpts.token = process.env.BLOB_READ_WRITE_TOKEN;
+    await del(wezen.map((b) => b.url), delOpts);
+    deleted = wezen.length;
+  }
+
+  console.log(`[cron-followup] retentie-opruimen (media): wezen gevonden ${wezen.length}, ` +
+    (uitvoeren ? `verwijderd ${deleted}` : `ZOU verwijderen ${wezen.length} (dry-run, zet RETENTIE_OPRUIMEN=1 om echt te wissen)`));
+  return { orphans: wezen.length, deleted, dryRun: !uitvoeren, retentionDays: dagen };
 }
 
 // ── GDPR: clear short-retention signup-fraud signals (IP, device-fingerprint
@@ -2368,4 +2586,11 @@ module.exports.checkDailyIntegrity = checkDailyIntegrity;
 // see tests/weekrapport-inhoud.test.js.
 module.exports.sendWeeklyClientReports = sendWeeklyClientReports;
 module.exports.sendWeeklyReportEmail = sendWeeklyReportEmail;
+// Same attach-alongside-the-handler convention -- deliverable "retention"
+// (brief §78/§79) needs a real call (mocked Airtable/blob, asserted dry-run
+// vs RETENTIE_OPRUIMEN=1 behaviour), see tests/retentie-opruimen.test.js.
+module.exports.runRetentionPurge = runRetentionPurge;
+module.exports.runMediaRetentionPurge = runMediaRetentionPurge;
+module.exports.anonymizedAtMs = anonymizedAtMs;
+module.exports.retentiePurgeCutoffMs = retentiePurgeCutoffMs;
 
