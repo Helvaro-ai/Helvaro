@@ -376,11 +376,23 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(400).json({ error: 'Ongeldig e-mailadres' });
       }
-      // 1. Verify the user actually exists + is active
+      /* Neutraal antwoord, ook als het adres niet bestaat.
+         Hier stond een 404 "Dit e-mailadres is bij ons niet bekend" voor een
+         onbekend adres tegenover een 200 voor een bekend adres. Dat is een
+         orakel: wie een lijst e-mailadressen langs dit endpoint stuurt (het
+         staat achter dezelfde login-teller als hierboven, 40 per 15 minuten
+         per IP, dus honderden adressen over een paar IP's) krijgt terug welke
+         daarvan een Helvaro-account hebben — precies de informatie die de
+         gewone inlogfout ("Verkeerd e-mailadres of wachtwoord") verderop in
+         dit bestand bewust WEL verbergt. Nu hetzelfde antwoord voor beide:
+         alleen bij een bestaand, actief account wordt er ook echt gemaild. */
       const user = await fetchUserByEmail(email);
       if (!user) {
-        console.warn('[reset] no user for', email);
-        return res.status(404).json({ error: 'Dit e-mailadres is bij ons niet bekend. Controleer het adres of neem contact op.' });
+        console.warn('[reset] no user for', email, '— neutraal antwoord, geen mail verstuurd');
+        return res.status(200).json({
+          ok: true,
+          message: 'Als dit adres bij ons bekend is, is er een resetlink naartoe gestuurd. Check je inbox (en spam). De link werkt 1 uur.'
+        });
       }
       // 2. Gate: require a verified email before handing out a reset link.
       // WHY: a reset token, once delivered, grants full control over the
@@ -412,9 +424,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         console.error('[reset] send failed for', email, sendResult.error);
         return res.status(500).json({ error: 'Mail kon niet verstuurd worden. Neem contact op met support.' });
       }
+      /* Zelfde bewoording als het "onbekend adres"-antwoord hierboven — niet
+         alleen dezelfde statuscode. Een verschillende ZIN bij hetzelfde 200
+         zou het orakel gewoon verplaatsen van de statuscode naar de body. */
       return res.status(200).json({
         ok: true,
-        message: 'Resetlink verstuurd naar ' + email + '. Check je inbox (en spam). de link werkt 1 uur.'
+        message: 'Als dit adres bij ons bekend is, is er een resetlink naartoe gestuurd. Check je inbox (en spam). De link werkt 1 uur.'
       });
     }
 
@@ -427,9 +442,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(400).json({ error: 'Ongeldig e-mailadres' });
       }
+      /* Zelfde orakel als request-reset hierboven, en zelfde neutrale
+         antwoord als reparatie: een paar regels lager stond de "geen
+         Client Config record"-tak dit al goed ("niet leaken", zie de
+         opmerking daar) — alleen déze eerste tak, "geen gebruiker met dit
+         adres", gaf nog een aparte 404. Beide zeggen nu hetzelfde. */
       const user = await fetchUserByEmail(email);
       if (!user) {
-        return res.status(404).json({ error: 'Dit e-mailadres is bij ons niet bekend.' });
+        return res.status(200).json({ ok: true, message: 'Als er iets te bevestigen valt is de mail onderweg.' });
       }
       try {
         const projectCode = user.fields['fldbrCpBuQjJBfZsv'] || user.fields['Project Code'] || '';
