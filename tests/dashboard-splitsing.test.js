@@ -188,9 +188,22 @@ function render(lang) {
    achtergrond (--bg-card-alt) plus var(--accent-ink) op de naam/titel. De
    Faro-kanskaart-rail (.cmd-opp__rail in api/_command-ui/styles.js, niet in
    dit CSS-blok) kreeg dezelfde behandeling. Kleiner geworden: minder regels
-   dan er vervingen, en een paar losse selectors konden helemaal weg. */
-const CSS_BYTES = 387577;
-const CSS_SHA   = 'e3e54c4b4148630f';
+   dan er vervingen, en een paar losse selectors konden helemaal weg.
+
+   Daarna (+602 bytes) finish-fix 7: vier keyframes (cardEnter, countUp,
+   rowFadeUp, shakeError) en al hun gebruik zijn weg -- de KPI-grid-stagger,
+   de counter-pop op stat-waarden, de rij-fade-up op tabelrijen en
+   .activity-item, en de schud-animatie op de login-foutmelding. skelet-puls
+   was al opacity-only, niets te doen. De ~29 `transition: all`-regels zijn
+   stuk voor stuk vervangen door de eigenschappen die dat element ECHT
+   verandert (meestal color/background-color/border-color/opacity; transform
+   erbij op .brand-dot, .btn-login, .nav-item, tbody tr en .score-pill, want
+   die verschuiven of schalen echt). De modal- en zoek-entrees (modalIn,
+   modal-in, searchModalIn, cmd-slide, apWelcomePop) en alle
+   prefers-reduced-motion-gates zijn ongemoeid. Groter geworden omdat een
+   opgesomde eigenschapslijst nu eenmaal langer is dan het woord "all". */
+const CSS_BYTES = 388179;
+const CSS_SHA   = 'cd40848f6f40a8d7';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
