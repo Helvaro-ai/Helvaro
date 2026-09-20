@@ -14,6 +14,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### De assistent antwoordt binnen seconden
+
+Vóór elk antwoord van de assistent zat een ingebouwde pauze van 25 tot 55
+seconden ("voelt menselijker"), en het antwoord kwam pas daarna in het
+dashboard. De lead keek dus tot een minuut naar zijn telefoon en jij naar
+een leeg gesprek. Nu 2-5 seconden. **Actie (optioneel):** wil je het trager,
+zet `ANTWOORD_PAUZE_MS` in Vercel (0 tot 55000).
+
 ### Live meekijken werkte niet echt — nu wel
 
 De browser bewaarde het antwoord van de leadlijst twee minuten (bewust, zodat

@@ -1315,11 +1315,16 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     ? _lang.normalizeLanguageCode(aiResponse.replyLang, lang)
     : lang;
 
-  // 9. Wait a randomized, human-feeling delay before sending. Real people
-  // don't reply on exact 30-sec intervals. Range 25-55 sec keeps it natural
-  // while still feeling "they saw it pretty quickly".
-  const humanDelay = 25_000 + Math.floor(Math.random() * 30_000);
-  await new Promise(resolve => setTimeout(resolve, humanDelay));
+  // 9. Korte, menselijke pauze vóór het antwoord. Dit stond op 25-55 s
+  //    ('echte mensen antwoorden niet op vaste intervallen') en het antwoord
+  //    wordt pas NA verzending in de geschiedenis geschreven (stap 10). Dus:
+  //    de lead staarde tot een minuut naar zijn telefoon, en het dashboard
+  //    toonde tot een minuut niets -- precies wat elke opname van vandaag
+  //    liet zien (2026-09-20; het antwoord zelf kost 1,5 s). Een assistent
+  //    die binnen een paar seconden reageert leest niet als een robot, hij
+  //    leest als aandacht. Nu 2-5 s; instelbaar via ANTWOORD_PAUZE_MS
+  //    (vast, 0-55000) voor wie het toch trager wil.
+  await new Promise(resolve => setTimeout(resolve, antwoordPauzeMs()));
 
   // 10. Attempt delivery FIRST, then persist an outcome that matches what
   // actually happened. All fields use field IDs where known. Immune to
@@ -3378,6 +3383,13 @@ function subjectSafe(val) {
 // log — that line is a permanent product metric (see getLead()), so unlike
 // most of this file's existing debug logs (which do log the full number) it
 // must never carry a full phone number.
+/* Pauze vóór het AI-antwoord, in ms. Zie stap 9 in processMessage. */
+function antwoordPauzeMs() {
+  const vast = Number(process.env.ANTWOORD_PAUZE_MS);
+  if (Number.isFinite(vast) && process.env.ANTWOORD_PAUZE_MS !== '') return Math.min(55_000, Math.max(0, vast));
+  return 2_000 + Math.floor(Math.random() * 3_000);
+}
+
 function maskPhone(phone) {
   const s = String(phone || '');
   if (s.length <= 4) return '*'.repeat(s.length);

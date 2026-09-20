@@ -279,7 +279,7 @@ without these — nothing else breaks.
 | WhatsApp Embedded Signup / template mgmt | `META_APP_ID`, `META_APP_SECRET`, `META_ES_CONFIG_ID`, `WABA_ID`, `WHATSAPP_MANAGEMENT_TOKEN` |
 | WhatsApp voice-note transcription | `WHATSAPP_TRANSCRIBE`, `WHATSAPP_TRANSCRIBE_MODEL` |
 | Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `REPLY_TO` (see the correction above — SMTP is the only transport, not "optional with a fallback") |
-| Notifications / templates | `NOTIFY_EMAIL`, `NOTIFY_PHONE` (per klant uit te zetten via Client Config "WhatsApp Alert Off"), `SUPPORT_EMAIL`, `SUPPORT_WA`, `FOLLOWUP_TEMPLATE_NAME`/`_LANG`, `REMINDER_TEMPLATE_NAME`/`_LANG`, `INTRO_TEMPLATE_NAME`/`_LANG`, `BOOKING_TEMPLATE_NAME`/`_LANG`, `MANUAL_REPLY_TEMPLATE_NAME`/`_LANG`, `NOTIFY_TEMPLATE_NAME`/`_LANG`, `INTRO_VERTRAGING_MS` (optional, default 5000) |
+| Notifications / templates | `NOTIFY_EMAIL`, `NOTIFY_PHONE` (per klant uit te zetten via Client Config "WhatsApp Alert Off"), `SUPPORT_EMAIL`, `SUPPORT_WA`, `FOLLOWUP_TEMPLATE_NAME`/`_LANG`, `REMINDER_TEMPLATE_NAME`/`_LANG`, `INTRO_TEMPLATE_NAME`/`_LANG`, `BOOKING_TEMPLATE_NAME`/`_LANG`, `MANUAL_REPLY_TEMPLATE_NAME`/`_LANG`, `NOTIFY_TEMPLATE_NAME`/`_LANG`, `INTRO_VERTRAGING_MS` (optional, default 5000), `ANTWOORD_PAUZE_MS` (optional, default 2-5 s random) |
 | Rate limiting (shared across instances) | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — fails **open** (limits just become per-instance) without these, not closed |
 | Billing / credits | `CREDIT_TOPUP_MIN_EUR`, `CREDIT_TOPUP_MAX_EUR`, `CREDIT_TOPUP_RATE_EUR`, `DEFAULT_CREDIT_ALLOWANCE`, `KOSTEN_USD_EUR` |
 | AI behavior tuning | `AI_CONFIDENCE_MIN`, `AI_MAX_ATTEMPTS`, `AI_PROVIDER_FORCE`, `AI_UIT`, `AI_UIT_REDEN` |
