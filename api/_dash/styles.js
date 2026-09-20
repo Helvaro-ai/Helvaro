@@ -5638,6 +5638,13 @@ body.panel-open .main-content { transform: scale(0.985); }
 .panel-takeover-btn.pause  { background: rgba(var(--warning-rgb),.16); color: var(--warning-ink); border: 1px solid rgba(var(--warning-rgb),.35); }
 .panel-takeover-btn.resume { background: rgba(var(--success-rgb),.16);  color: var(--green-ink); border: 1px solid rgba(var(--success-rgb),.35); }
 .panel-takeover-btn:hover { opacity: .85; }
+.conv-wis-btn {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 10px;
+  padding: 5px 10px; border-radius: 6px; font-size: 0.7333rem; font-weight: 600; font-family: inherit;
+  background: transparent; color: var(--text-muted); border: 1px solid var(--border); cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+.conv-wis-btn:hover { color: var(--red-ink); border-color: rgba(var(--error-rgb),.35); background: rgba(var(--error-rgb),.08); }
 .panel-takeover-btn:disabled { opacity: .5; cursor: wait; }
 
 .panel-reply-row {

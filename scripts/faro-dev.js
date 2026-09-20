@@ -529,6 +529,8 @@ const server = http.createServer(async (req, res) => {
         case 'ai-pause':
         case 'ai-resume':
           return res.status(200).json({ ok: true });
+        case 'conversation-delete':
+          return res.status(200).json({ ok: true });
         default:
           // Loud rather than silent: an unstubbed mode is a gap in this file,
           // and a 200 with an empty body would make it look like a working

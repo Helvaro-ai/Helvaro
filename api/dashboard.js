@@ -9499,6 +9499,41 @@ async function sendWhatsAppReply(waar) {
   }
 }
 
+/* Gesprek wissen: alleen de WhatsApp-geschiedenis, de lead blijft. Bevestiging
+   eerst, want dit is niet terug te draaien. Na het wissen valt de lead uit de
+   gesprekkenlijst (die toont alleen leads mét geschiedenis) en staat hij nog
+   gewoon in Pipeline. */
+function wisGesprek(leadId) {
+  const lead = state.leads.find(l => String(l.id) === String(leadId));
+  if (!lead) return;
+  showConfirmModal({
+    title: tr('conv.wis'),
+    message: tr('conv.wis.q', { naam: lead.naam || tr('conv.deLead') }),
+    confirmText: tr('conv.wis'),
+    cancelText: tr('btn.annuleren'),
+    danger: true,
+    onConfirm: async function () {
+      try {
+        const r = await fetch(API_BASE + '/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+          body: JSON.stringify({ mode: 'conversation-delete', leadId: lead.id })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { toast(d.error || tr('conv.actieMislukt'), 'error'); return; }
+        lead.gesprek = '';
+        tabVergeet();
+        toast(tr('conv.gewist'), 'success');
+        renderGesprekken();
+        const detail = document.getElementById('conv-detail');
+        if (detail) detail.innerHTML = '<div class="conv-empty"><div>' + escHtml(tr('conv.select')) + '</div></div>';
+      } catch (e) {
+        toast(tr('tst.netwerkOpnieuw'), 'error');
+      }
+    }
+  });
+}
+
 async function toggleAiPause(waar) {
   const conv = waar === 'conv';
   const lead = state.activeLead;
@@ -13472,6 +13507,10 @@ function openConversation(leadId) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       \${escHtml(lead.naam) || '—'}
       \${scoreNum > 0 ? \`<span class="score-pill \${scCls}" style="margin-left:auto">\${scoreNum}</span>\` : ''}
+      <button type="button" class="conv-wis-btn" onclick="wisGesprek('\${escJs(String(lead.id))}')" title="\${escHtml(tr('conv.wis'))}" aria-label="\${escHtml(tr('conv.wis'))}"\${scoreNum > 0 ? '' : ' style="margin-left:auto"'}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        \${escHtml(tr('conv.wis'))}
+      </button>
     </div>
     \${faroLeadPaneel(lead)}
     <div class="conv-messages" id="conv-messages" tabindex="0" aria-label="\${escHtml(tr('a11y.berichten'))}">\${bubbles || \`<div class="conv-empty"><div class="conv-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div>\${escHtml(tr('leeg.berichten'))}</div></div>\`}</div>

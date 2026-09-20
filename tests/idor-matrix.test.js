@@ -169,6 +169,21 @@ async function roep(body, opts) {
        posted);
   }
 
+  console.log('\n— conversation-delete: tenant B wist het gesprek van de lead van tenant A —');
+  {
+    posted.length = 0;
+    const res = await roep({ mode: 'conversation-delete', leadId: LEAD_VAN_A.id }, { token: tokenB });
+    ck('403, geen toegang tot andermans lead', res._code === 403, res._code);
+    ck('en er is NIETS gewist (geen PATCH op het record)',
+       posted.filter((p) => p.method === 'PATCH' && p.url.includes(LEAD_VAN_A.id)).length === 0,
+       posted);
+    const eigen = await roep({ mode: 'conversation-delete', leadId: LEAD_VAN_A.id }, { token: sessionToken(TENANT_A) });
+    ck('de eigenaar zelf mag wel (200) en wist alleen geschiedenis + laatste bericht',
+       eigen._code === 200 && posted.some((p) => p.method === 'PATCH' && p.url.includes(LEAD_VAN_A.id)
+         && /Conversation History/.test(String(p.body)) && /Last Message/.test(String(p.body)) && !/Opted Out/.test(String(p.body))),
+       { code: eigen._code, posted: posted.map((p) => p.method + ' ' + p.url.slice(-30)) });
+  }
+
   console.log('\n— lead-delete (admin-erasure): projectCode in de body moet ECHT overeenkomen —');
   {
     posted.length = 0;

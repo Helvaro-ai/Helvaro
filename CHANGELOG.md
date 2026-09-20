@@ -14,6 +14,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Gesprek wissen
+
+Knop **Gesprek wissen** in de kop van een gesprek (Gesprekken). Wist de
+WhatsApp-geschiedenis van die lead na een bevestiging; de lead zelf (naam,
+nummer, status, afspraken, en een eventuele afmelding) blijft staan. Het
+gesprek verdwijnt uit de lijst, de lead blijft in Pipeline. Niet terug te
+draaien. Alleen voor je eigen leads (getest in de IDOR-matrix).
+
 ### STOP geldt voor het nummer, niet voor één record
 
 Hetzelfde nummer kan bij dezelfde klant meerdere leadrecords hebben

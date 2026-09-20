@@ -216,9 +216,10 @@ function render(lang) {
    Daarna (+2033 bytes): Formulier → Stijl & merk, de kaart waarmee een klant
    het leadformulier op zijn huisstijl zet (.fm-style-card, .fs-*). Bewuste
    toevoeging, geen restant. Plus de afgemeld-status (STOP) in gesprek en
-   zijpaneel (.panel-takeover-status.afgemeld, .conv-stop-badge). */
-const CSS_BYTES = 395712;
-const CSS_SHA   = 'bfddb92fa84db7ee';
+   zijpaneel (.panel-takeover-status.afgemeld, .conv-stop-badge) en de knop Gesprek wissen
+   (.conv-wis-btn). */
+const CSS_BYTES = 396222;
+const CSS_SHA   = 'e5df0ab78ab5feb7';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

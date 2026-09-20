@@ -3155,6 +3155,45 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
     }
 
+    /* ── Gesprek wissen ──────────────────────────────────────────────────
+       De makelaar wist de WhatsApp-geschiedenis van één lead. De lead zelf
+       blijft staan (naam, nummer, status, afspraken): dit is 'ruim mijn
+       gesprekkenlijst op', niet 'vergeet deze persoon' -- dat laatste is
+       lead-delete en dat is bewust admin-only (AVG-route met audit).
+       Zelfde eigendomscontrole als elke andere leadmutatie hierboven. De
+       afmelding (Opted Out) blijft staan: wie STOP zei, blijft afgemeld, ook
+       zonder gesprek. */
+    if (body.mode === 'conversation-delete') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const leadId = String(body.leadId || '').trim();
+      if (!/^rec[A-Za-z0-9]{14}$/.test(leadId)) return res.status(400).json({ error: 'Ongeldig record ID' });
+      try {
+        const lRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        if (!lRes.ok) return res.status(404).json({ error: 'Lead niet gevonden' });
+        const lead = await lRes.json();
+        const leadProject = lead.fields?.['fldSmczuyUJd26HLe'] || lead.fields?.['Project Code'] || '';
+        if (leadProject !== projectCode) return res.status(403).json({ error: 'Geen toegang tot deze lead' });
+
+        const uRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`,
+          {
+            method:  'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fields: { 'Conversation History': '', 'Last Message': '' } })
+          }
+        );
+        if (!uRes.ok) return res.status(500).json({ error: 'Wissen mislukt. Probeer later opnieuw.' });
+        console.log(`[leads conversation-delete] gesprek gewist lead=${leadId} project=${projectCode} door=${clientName || 'dashboard'}`);
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error('[leads conversation-delete] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
     // ── C0a. integrations-status — de eenheidsvorm over ALLE tenant-koppelingen
     // heen (deliverable "Integration status contract", platform-integriteit
     // pass). Geeft in één aanroep terug wat op de instellingenpagina naast
