@@ -14,6 +14,15 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Live meekijken werkte niet echt — nu wel
+
+De browser bewaarde het antwoord van de leadlijst twee minuten (bewust, zodat
+meerdere tabbladen niet elk Airtable raken). Het live meekijken haalde dus
+keurig elke 6 seconden op… uit die cache. Vandaar dat een antwoord van een
+lead pas na ruim een minuut in beeld kwam. Live meekijken, het openen van
+Gesprekken/Pipeline en de knop Verversen gaan nu langs de cache; de gewone
+tienminutenronde blijft cachen.
+
 ### WhatsApp-meldingen aan jezelf: aan of uit
 
 Instellingen → Je assistent → Meldingen: vinkje "Stuur mij een WhatsApp bij

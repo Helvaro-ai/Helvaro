@@ -5466,7 +5466,16 @@ function toonSupportModal(opties) {
 /* ============================================================
    API CALLS
    ============================================================ */
-async function fetchLeads() {
+/* vers = langs de browsercache heen. De server zet 'private, max-age=120'
+   op GET /api/leads zodat drie open tabbladen niet drie keer Airtable raken
+   -- goed voor de ronde van elke tien minuten, fataal voor live meekijken:
+   fetch() kreeg dan twee minuten lang hetzelfde antwoord uit de cache, in
+   20 ms, zonder dat er ooit een verzoek de deur uit ging. Gemeten op
+   productie (vijfde opname, 2026-09-20): de tik draaide keurig elke 6 s en
+   zag 65 s lang niets, omdat elke 'verse' ophaling uit de cache kwam.
+   Alleen de live-tik, het openen van Gesprekken/Pipeline en de knop
+   Verversen gaan langs de cache; de gewone ronde blijft cachen. */
+async function fetchLeads(vers) {
   // Hard 10s timeout. zonder dit kan een trage Airtable de login-spinner
   // eindeloos laten draaien. We tonen liever een lege dashboard met retry
   // dan een knop die nooit antwoord geeft.
@@ -5475,6 +5484,7 @@ async function fetchLeads() {
   try {
     const resp = await fetch(\`\${API_BASE}/leads\`, {
       headers: { 'x-api-key': state.apiKey },
+      cache: vers ? 'no-store' : 'default',
       signal: ctrl.signal
     });
     if (resp.status === 401) { handleAuthExpired(); throw new Error('Sessie verlopen'); }
@@ -5758,14 +5768,14 @@ function populateDashFormLink() {
   openEl.href = url;
 }
 
-async function refreshData(skipFetch = false) {
+async function refreshData(skipFetch = false, vers = false) {
   populateDashFormLink();
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.classList.add('spin');
 
   try {
     if (!skipFetch) {
-      const data = await fetchLeads();
+      const data = await fetchLeads(vers);
       _laatstVerversMs = Date.now();
 
       if (data.rateLimited || data.stale) {
@@ -6080,7 +6090,7 @@ function versBijOpenen(naRender) {
   if (!state.apiKey || _versBijOpenenBezig) return;
   if (Date.now() - _laatstVerversMs < VERS_BIJ_OPENEN_MS) return;
   _versBijOpenenBezig = true;
-  Promise.resolve().then(function () { return refreshData(); })
+  Promise.resolve().then(function () { return refreshData(false, true); })
     .catch(function () {})
     .then(function () {
       _versBijOpenenBezig = false;
@@ -6130,7 +6140,7 @@ async function gesprekLiveTick() {
   var voor = {};
   (state.leads || []).forEach(function (l) { voor[l.id] = (l.gesprek || '') + '|' + (l.afgemeld ? 1 : 0); });
   _versBijOpenenBezig = true;
-  try { await refreshData(); } catch (e) {} finally { _versBijOpenenBezig = false; }
+  try { await refreshData(false, true); } catch (e) {} finally { _versBijOpenenBezig = false; }
   var anders = (state.leads || []).some(function (l) { return voor[l.id] !== (l.gesprek || '') + '|' + (l.afgemeld ? 1 : 0); });
   if (!anders) return;
   var ta = document.getElementById('conv-reply-input');
@@ -11278,7 +11288,7 @@ document.getElementById('btn-reset-filters').addEventListener('click', resetFilt
 /* ============================================================
    TOPBAR BUTTONS
    ============================================================ */
-document.getElementById('btn-refresh').addEventListener('click', refreshData);
+document.getElementById('btn-refresh').addEventListener('click', function () { refreshData(false, true); });
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-logout').addEventListener('click', logout);

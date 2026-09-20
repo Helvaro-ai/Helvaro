@@ -33,8 +33,22 @@ console.log('\nGesprekken opent met verse data');
   ck('gesprekken roept hem aan en tekent daarna opnieuw', html.includes("if (page === 'gesprekken') { gesprekkenOpnieuw(); versBijOpenen(gesprekkenOpnieuw); }"));
   ck('pipeline idem', html.includes("if (page === 'pipeline')   { renderPipeline();   versBijOpenen(renderPipeline); }"));
   ck('het geopende gesprek blijft open na hertekenen', html.includes("if (id) openConversation(id);"));
-  ck('de tijdstempel wordt gezet waar echt opgehaald wordt', html.includes('const data = await fetchLeads();\n      _laatstVerversMs = Date.now();'));
+  ck('de tijdstempel wordt gezet waar echt opgehaald wordt', html.includes('const data = await fetchLeads(vers);\n      _laatstVerversMs = Date.now();'));
   ck('niet dubbel ophalen zolang er een ronde loopt', html.includes('if (!state.apiKey || _versBijOpenenBezig) return;'));
+}
+
+console.log('\nLive ophalen gaat langs de browsercache');
+{
+  delete require.cache[require.resolve(BASE + 'api/dashboard.js')];
+  const dash = require(BASE + 'api/dashboard.js');
+  let html = '';
+  dash({ method: 'GET', url: '/dashboard', headers: {} },
+    { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+  ck('fetchLeads(vers) zet cache: no-store', html.includes("cache: vers ? 'no-store' : 'default',"));
+  ck('de live-tik haalt vers', html.includes('try { await refreshData(false, true); } catch (e) {} finally { _versBijOpenenBezig = false; }'));
+  ck('openen van Gesprekken/Pipeline haalt vers', html.includes('return refreshData(false, true); })'));
+  ck('de knop Verversen haalt vers', html.includes("addEventListener('click', function () { refreshData(false, true); });"));
+  ck('de gewone tienminutenronde blijft cachen', html.includes('  _laatstVerversMs = Date.now();\n  refreshData();\n}'));
 }
 
 console.log('\nEen open gesprek kijkt live mee');
