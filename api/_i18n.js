@@ -1618,6 +1618,8 @@ const TEKST = {
   'tst.leadNietVerplaatst': { nl: 'Kon lead niet verplaatsen', fr: 'Impossible de déplacer le lead', en: 'Couldn’t move the lead', de: 'Lead konnte nicht verschoben werden' },
   'conv.escalatie': { nl: 'Escalatie: wacht op reactie', fr: 'Escalade : en attente de réponse', en: 'Escalation: waiting for a reply', de: 'Eskalation: wartet auf Antwort' },
   'conv.assistentActief': { nl: 'Assistent actief', fr: 'Assistant actif', en: 'Assistant active', de: 'Assistent aktiv' },
+  'conv.afgemeld': { nl: 'Afgemeld (STOP) — deze lead wil geen berichten meer. Bellen mag nog.', fr: 'Désabonné (STOP) — ce prospect ne veut plus de messages. Vous pouvez encore appeler.', en: 'Opted out (STOP) — this lead wants no more messages. Calling is still fine.', de: 'Abgemeldet (STOP) — dieser Lead will keine Nachrichten mehr. Anrufen ist noch erlaubt.' },
+  'conv.afgemeldKort': { nl: 'Afgemeld', fr: 'Désabonné', en: 'Opted out', de: 'Abgemeldet' },
   'conv.mensAanRoer': { nl: 'Jij bent aan het roer', fr: 'Vous avez la main', en: 'You are in control', de: 'Sie haben das Ruder' },
   'conv.neemOver': { nl: 'Neem over', fr: 'Prendre la main', en: 'Take over', de: 'Übernehmen' },
   'conv.geefTerug': { nl: 'Geef terug aan je assistent', fr: 'Rendre à votre assistant', en: 'Hand back to your assistant', de: 'An den Assistenten zurückgeben' },

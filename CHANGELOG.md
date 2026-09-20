@@ -14,6 +14,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### STOP werkt nu ook zichtbaar
+
+Een lead die STOP stuurde werd wel gemarkeerd, maar de bevestiging aan de
+lead en de melding aan jou gingen nooit uit (een programmeerfout in de
+webhook: `lang` werd te laat gedeclareerd). En op het dashboard was er niets
+van te zien: antwoordvak en "Neem over" stonden er gewoon nog. Nu: de lead
+krijgt "Genoteerd, je hoort niets meer van ons", jij krijgt de WhatsApp-
+melding, en in Gesprekken en het leadpaneel staat een rode **Afgemeld**-balk
+in plaats van het antwoordvak, met een STOP-badge in de lijst. Bellen mag
+nog; sturen kan niet meer (de server weigerde dat al).
+
 ### Uitloggen logde niet uit
 
 Klik op Uitloggen, bevestig, flits, en je stond weer binnen. Oorzaak: Clerk

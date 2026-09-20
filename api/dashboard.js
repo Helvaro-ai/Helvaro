@@ -8811,6 +8811,14 @@ function openPanel(lead) {
       ? \`<span class="panel-takeover-escalated" title="\${escHtml(nData.escalated.question || '')}">Escalatie: wacht op reactie</span>\`
       : '';
 
+    if (lead.afgemeld) {
+      bodyHTML += \`
+      <div class="panel-section">
+        <div class="panel-section-title">WhatsApp</div>
+        \${afgemeldBalkHtml()}
+        <div class="chat-wrap" id="panel-chat-wrap">\${bubbles}</div>
+      </div>\`;
+    } else
     bodyHTML += \`
       <div class="panel-section">
         <div class="panel-section-title">WhatsApp</div>
@@ -13317,7 +13325,7 @@ function renderGesprekken() {
     const dateStr = l.datum ? new Date(l.datum).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' }) : '';
     return \`<div class="conv-list-item" id="conv-item-\${escHtml(String(l.id))}" onclick="openConversation('\${escJs(String(l.id))}')" >
       <div class="conv-list-item-name">
-        <span>\${escHtml(l.naam) || '—'}</span>
+        <span>\${escHtml(l.naam) || '—'}\${l.afgemeld ? ' <span class="conv-stop-badge">STOP</span>' : ''}</span>
         <span class="conv-list-item-date">\${dateStr}</span>
       </div>
       <div class="conv-list-item-preview">\${escHtml(preview)}</div>
@@ -13425,6 +13433,20 @@ function openConversation(leadId) {
   if (ta) ta.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); sendWhatsAppReply('conv'); } });
 }
 
+/* STOP gezegd: geen antwoordvak en geen 'Neem over', maar één duidelijke
+   regel. De server weigert zo'n bericht toch (409 in api/leads.js), maar een
+   vak dat er nog staat zegt 'je kunt nog sturen' -- gezien tijdens de
+   screencast van 2026-09-20. */
+function afgemeldBalkHtml() {
+  return \`
+    <div class="conv-composer">
+      <div class="panel-takeover-bar panel-afgemeld" role="status">
+        <span class="panel-takeover-status afgemeld">\${escHtml(tr('conv.afgemeldKort'))}</span>
+        <span class="panel-takeover-meta">\${escHtml(tr('conv.afgemeld'))}</span>
+      </div>
+    </div>\`;
+}
+
 /* Het antwoordvak op de Gesprekken-pagina. Dit bestond alleen in het
    zijpaneel van een lead; wie een gesprek hier opende kon lezen maar niet
    antwoorden, en "Neem over" was hier ook niet te vinden. Zelfde
@@ -13432,6 +13454,7 @@ function openConversation(leadId) {
    eigen id's zodat de twee elkaar niet in de weg zitten. */
 function convComposerHtml(lead) {
   state.activeLead = lead;
+  if (lead.afgemeld) return afgemeldBalkHtml();
   const nData = parseNotities(lead);
   const aiPaused = !!(nData.aiPaused && typeof nData.aiPaused === 'object');
   const naam = escHtml(lead.naam || tr('conv.deLead'));

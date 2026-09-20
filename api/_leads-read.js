@@ -98,6 +98,10 @@ function mapLead(r) {
     // one where the AI has stopped answering and a human has to, which is the
     // single most urgent state a lead can be in.
     aiPaused:              Boolean(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'aiPaused')),
+    /* STOP gezegd (api/_optout.js). Het dashboard moet dat zien: geen
+       antwoordvak, geen 'Neem over' -- de server weigert toch (409), maar
+       een vak dat er nog staat leest als 'je kunt nog sturen'. */
+    afgemeld:              f['Opted Out'] === true || f['Opted Out'] === 'true' || f['Opted Out'] === 1,
     /* Over welk pand deze lead het heeft. Komt uit /start/TELJO/P3 en zit in
        dezelfde JSON-blob als aiPaused -- zie api/form.js voor waarom er geen
        aparte kolom is. Leeg = onbekend, en dat is een geldig antwoord: iemand

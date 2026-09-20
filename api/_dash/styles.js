@@ -5622,6 +5622,9 @@ body.panel-open .main-content { transform: scale(0.985); }
 .panel-takeover-status.active { background: rgba(var(--success-rgb),.14); color: var(--green-ink); border: 1px solid rgba(var(--success-rgb),.3); }
 .panel-takeover-status.paused { background: rgba(var(--warning-rgb),.14); color: var(--warning-ink);    border: 1px solid rgba(var(--warning-rgb),.3); }
 .panel-takeover-meta { font-size: 0.7333rem; color: var(--text-muted); }
+.panel-takeover-status.afgemeld { background: rgba(var(--error-rgb),.12); color: var(--red-ink); border: 1px solid rgba(var(--error-rgb),.3); }
+.panel-afgemeld { margin-bottom: 0; }
+.conv-stop-badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.6667rem; font-weight: 700; letter-spacing: 0.05em; background: rgba(var(--error-rgb),.12); color: var(--red-ink); border: 1px solid rgba(var(--error-rgb),.3); vertical-align: middle; }
 .panel-takeover-escalated {
   font-size: 0.7333rem; font-weight: 600; color: var(--red-ink);
   background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3);

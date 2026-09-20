@@ -744,7 +744,13 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       'Conversation History': JSON.stringify(afmeldHistorie),
     }, phone, scopedProjectCode).catch(() => {});
 
-    await sendWA(phone, _optout.bevestiging(lang), clientPhoneNumberId).catch(() => {});
+    /* Eigen lokale taal: `lang` wordt pas tweehonderd regels verderop met
+       const gedeclareerd en staat hier in de dode zone. Dit gaf een
+       ReferenceError op elke STOP (screencast 2026-09-20): de vlag was al
+       gezet, maar de bevestiging aan de lead en de melding aan de makelaar
+       gingen nooit uit, en de rest van de webhook stierf. */
+    const langA = _lang.normalizeLanguageCode(client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language']);
+    await sendWA(phone, _optout.bevestiging(langA), clientPhoneNumberId).catch(() => {});
 
     /* Eigen lokale kopie, net als het pauzeblok hieronder: `ownerPhone` en
        `leadName` worden pas tweehonderd regels verderop gedeclareerd en staan
