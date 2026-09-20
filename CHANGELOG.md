@@ -14,6 +14,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### WhatsApp-meldingen aan jezelf: aan of uit
+
+Instellingen → Je assistent → Meldingen: vinkje "Stuur mij een WhatsApp bij
+een nieuwe lead, afmelding of escalatie". Uit = geen enkele WhatsApp meer
+naar jouw nummer (nieuwe lead, [Afgemeld], escalatie, dagmelding, extra
+werknemersnummers), e-mailmeldingen blijven. Standaard aan. Nieuw
+Airtable-veld "WhatsApp Alert Off" op Client Config.
+
 ### Nieuwe versie zonder harde herlaad
 
 Een open dashboard merkt zelf dat er een nieuwe versie is uitgerold en

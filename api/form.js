@@ -14,6 +14,7 @@ const INTRO_VERTRAGING_MS = Math.min(45000, Math.max(0, Number(process.env.INTRO
 const { getPlanState } = require('./_plan');
 // Language registry — see its file header.
 const _lang = require('./_lang');
+const _eigenaar = require('./_eigenaar-melding'); // WhatsApp-melding aan de eigenaar: aan/uit per klant
 const _regio = require('./_regio');   // land, tijdzone, munt en telefoon per klant
 // Approved-template WhatsApp sender (Meta 24h-window workaround) — shared
 // helper, not duplicated here. See api/leads.js:sendWATemplate's own header.
@@ -153,6 +154,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     let   clientName = project_code;          // safe default. Overwritten below if found
     let   autoReplyTpl = '';                  // per-client custom WhatsApp opener (Klanten table: "Auto-Reply Template")
     let   ownerPhone = '';                    // per-client WhatsApp notify phone (overrides NOTIFY_PHONE env)
+    let   ownerWaUit = false;                 // Instellingen → Meldingen: WhatsApp aan de eigenaar uit
     let   ownerEmail = '';                    // per-client notify email (overrides NOTIFY_EMAIL env)
     let   lang       = 'nl';                   // registry-driven (40 languages, see api/_lang.js). Language for the welcome WhatsApp
     let   clientPnid = '';                    // per-client WhatsApp sender (multitenancy prep). '' = fall back to shared PHONE_NUMBER_ID
@@ -192,6 +194,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           lang = _lang.normalizeLanguageCode(match.fields['fld1iiV9XwSbgAACZ'] || match.fields['Language']);
           // Per-client owner contacts (override the env-var defaults)
           ownerPhone = (match.fields['fldZEApe0gfse07AU'] || match.fields['Notify Phone']  || '').toString().trim();
+          ownerWaUit = _eigenaar.waUit(match.fields);
           ownerEmail = (match.fields['fldDBJCN6dVMA8jax'] || match.fields['Rapport Email'] || '').toString().trim();
           planState  = getPlanState(match.fields);
           // Blank field (every client today) -> '' -> the sendWATemplate calls
@@ -276,7 +279,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // (sendEmailNotification below) is the RELIABLE owner-alert channel — see
     // the deferred callback below for why the WhatsApp ping here is
     // best-effort-only and template-gated, not a second guaranteed channel.
-    const notifyPhone = ownerPhone || process.env.NOTIFY_PHONE;
+    /* Uit = ook geen terugval op het globale NOTIFY_PHONE; anders stond de
+       schakelaar er voor niets. E-mail (hieronder) blijft. */
+    const notifyPhone = ownerWaUit ? '' : (ownerPhone || process.env.NOTIFY_PHONE);
 
     // Korte adempauze vóór het eerste WhatsApp-bericht. Dit stond op 45 s
     // ('voelt als een mens die het formulier oppakt'), maar in de praktijk

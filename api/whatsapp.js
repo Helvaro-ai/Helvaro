@@ -16,6 +16,7 @@ const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
 const _optout = require('./_optout');
+const _eigenaar = require('./_eigenaar-melding'); // eigenaarsmeldingen aan/uit per klant
 const _waOpmaak = require('./_wa-opmaak');     // wie STOP zegt, krijgt niets meer
 const _waSend   = require('./_wa-send');   // gedeelde Graph-versie en foutvertaling
 const _transcriptie = require('./_transcriptie'); // spraakberichten uitschrijven (standaard uit)
@@ -763,7 +764,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
        hier nog in hun dode zone. Ze hier gebruiken geeft een ReferenceError bij
        de eerste afmelding -- precies het soort fout dat pas bij een echte klant
        opvalt. */
-    const ownerPhoneA = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone'] || '').toString().trim() || NOTIFY_PHONE;
+    const ownerPhoneA = _eigenaar.nummer(client.fields, NOTIFY_PHONE); // '' als de klant de WhatsApp-meldingen uit heeft
     const leadNaamA   = lead.fields['fldbk0LVNckOU0bqA'] || lead.fields['Name'] || '';
 
     /* De makelaar hoort dit te weten: dit is een lead die hij niet meer mag
@@ -814,7 +815,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     // Best-effort nudge to the owner that a paused lead just wrote. Fail-soft:
     // a notify failure must never look like a message-handling failure —
     // same contract as the escalation/qualified notifications below.
-    const ownerPhoneP = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone'] || '').toString().trim() || NOTIFY_PHONE;
+    const ownerPhoneP = _eigenaar.nummer(client.fields, NOTIFY_PHONE); // '' als de klant de WhatsApp-meldingen uit heeft
     if (ownerPhoneP) {
       const leadNameP = lead.fields['fldbk0LVNckOU0bqA'] || lead.fields['Name'] || '';
       const nudge =
@@ -857,7 +858,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       // themselves now that automation has stopped. Same contract as every
       // other owner-notify call in this file: never let a notify failure
       // read as a message-handling failure.
-      const ownerPhoneExp = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone']  || '').toString().trim() || NOTIFY_PHONE;
+      const ownerPhoneExp = _eigenaar.nummer(client.fields, NOTIFY_PHONE); // '' als de klant de WhatsApp-meldingen uit heeft
       const ownerEmailExp = (client.fields['fldDBJCN6dVMA8jax'] || client.fields['Rapport Email'] || '').toString().trim();
       const leadNameExp   = lead.fields['fldbk0LVNckOU0bqA'] || lead.fields['Name'] || '';
       const clientNameExp = client.fields['fldAnB848Sr5jl6dq'] || client.fields['Client Name'] || '';
@@ -998,7 +999,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
 
   // Per-client owner contacts (with env-var fallback for backwards-compat).
   // The phone gets WhatsApp pings; the email gets a richer summary.
-  const ownerPhone = (client.fields['fldZEApe0gfse07AU'] || client.fields['Notify Phone']  || '').toString().trim() || NOTIFY_PHONE;
+  const ownerPhone = _eigenaar.nummer(client.fields, NOTIFY_PHONE); // '' als de klant de WhatsApp-meldingen uit heeft
   const ownerEmail = (client.fields['fldDBJCN6dVMA8jax'] || client.fields['Rapport Email'] || '').toString().trim();
 
   // 7. Run AI

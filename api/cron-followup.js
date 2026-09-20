@@ -56,6 +56,7 @@ const { getPlanState, computeTrialStartMs, FIELD: PLAN_FIELD } = require('./_pla
 // Language registry — used here for template-language Meta-approval
 // fallback + locale-aware appointment-date formatting. See its file header.
 const _lang = require('./_lang');
+const _eigenaar = require('./_eigenaar-melding'); // eigenaarsmeldingen aan/uit per klant
 // aggregateReportPeriod: the SAME honest-numbers aggregation the dashboard's
 // Resultaten panel uses (api/leads.js's report-summary mode) — reused here
 // for the trial day-7/day-11 emails per TRIAL-DESIGN.md §5 ("the ROI report
@@ -1126,7 +1127,7 @@ async function checkDailyIntegrity(airtableToken, baseId) {
     const f = client.fields || {};
     const projectCode = f['fldN4dL0bGgfBOXwM'] || f['Project Code'] || '';
     if (!projectCode) continue;
-    const ownerPhone = (f['fldZEApe0gfse07AU'] || f['Notify Phone'] || '').toString().trim() || process.env.NOTIFY_PHONE || '';
+    const ownerPhone = _eigenaar.nummer(f, process.env.NOTIFY_PHONE || ''); // '' als de klant de WhatsApp-meldingen uit heeft
     const ownerEmail = (f['fldDBJCN6dVMA8jax'] || f['Rapport Email'] || '').toString().trim();
     if (!ownerPhone && !ownerEmail) continue;   // geen kanaal ingesteld = geen meldingen gewenst
     const lang = _lang.normalizeLanguageCode(f['fld1iiV9XwSbgAACZ'] || f['Language']) || 'nl';

@@ -1041,6 +1041,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             bookingMethod:  (rec.fields['fldUI9BYO0TplgYlm'] || rec.fields['Booking Method'] || 'in_chat').toString().toLowerCase(),
             callbackWindow: rec.fields['fldKvMVBalSBRQE7H'] || rec.fields['Callback Window']     || '',
             notifyPhone:    rec.fields['fldZEApe0gfse07AU'] || rec.fields['Notify Phone']        || '',
+            /* WhatsApp-meldingen aan de eigenaar uit (nieuw veld 2026-09-20, checkbox).
+               Afwezig = false = meldingen gaan, zoals altijd. */
+            waAlertOff:     rec.fields['fldIJcwzKDYvZa9w4'] === true || rec.fields['WhatsApp Alert Off'] === true,
             // Extra werknemersnummers die ook de dealership-melding krijgen
             // (api/_dealer-melding.js ontvangers()) -- naast, niet in plaats
             // van, Notify Phone. Multiline: één nummer per regel.
@@ -1156,6 +1159,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
            compact opgeslagen (alleen afwijkingen van de standaard). Een
            ongeldig veld valt terug op de standaard, nooit op een fout. */
         if (body.formStyle      !== undefined) u['Form Style'] = _stijl.serialiseer(body.formStyle);
+        if (body.waAlertOff     !== undefined) u.fldIJcwzKDYvZa9w4 = body.waAlertOff === true;
         if (body.language       !== undefined) {
           const v = String(body.language).trim().toLowerCase();
           if (_lang.isSupportedLanguage(v)) u.fld1iiV9XwSbgAACZ = v;

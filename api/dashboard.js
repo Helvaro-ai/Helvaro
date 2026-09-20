@@ -1881,7 +1881,14 @@ ${faro.navCta}
                 ${T('ap.notifWa')}
                 <span class="ap-label-hint">${T('ap.notifWa.h')}</span>
               </label>
-              <input id="ap-notify-phone" type="tel" class="ap-input" placeholder="+32 466 35 84 27" inputmode="tel" autocomplete="tel" maxlength="30">
+              <!-- Aan/uit vóór het nummer: wie de meldingen niet wil, hoeft zijn
+                   nummer niet te wissen (dat blijft nodig voor STOP-meldingen per
+                   e-mail en voor later). Zie api/_eigenaar-melding.js. -->
+              <label class="ap-checkbox-row" for="ap-wa-alert" style="margin-bottom:8px">
+                <input id="ap-wa-alert" type="checkbox" checked>
+                ${T('ap.waAlert')}
+              </label>
+              <input id="ap-notify-phone" type="tel" class="ap-input" placeholder="+32 470 12 34 56" inputmode="tel" autocomplete="tel" maxlength="30">
               <div class="ap-hint">${T('ap.notif.hint')}</div>
               <!-- Extra werknemersnummers -- geen dealer-poort: harmless voor iedereen,
                    zie api/leads.js config-get/config-save (notifyPhonesExtra). -->
@@ -2055,7 +2062,7 @@ ${faro.navCta}
                 <div class="ap-test-title">${T('ap.test')}</div>
                 <p class="ap-test-sub">${T('ap.test.h')}</p>
                 <div class="ap-test-row">
-                  <input id="ap-test-phone" aria-label="${T('a11y.veld.testTel')}" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0466 35 84 27">
+                  <input id="ap-test-phone" aria-label="${T('a11y.veld.testTel')}" type="tel" inputmode="tel" autocomplete="tel" class="ap-input" placeholder="0470 12 34 56">
                   <button class="ap-btn" id="ap-test-btn" onclick="sendTestMessage()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     ${T('ap.test.btn')}
@@ -10207,7 +10214,7 @@ function renderCalBookBody() {
       </div>
       <div>
         <div class="cb-label">${T('dash.col.phone')}</div>
-        <input class="cb-field-input" id="cb-book-phone" type="tel" placeholder="+32 466 35 84 27"
+        <input class="cb-field-input" id="cb-book-phone" type="tel" placeholder="+32 470 12 34 56"
           value="\${escHtml(calBookState.bookPhone || '')}"
           oninput="calBookState.bookPhone=this.value" />
       </div>
@@ -16990,6 +16997,8 @@ async function loadAiPersona(force) {
     if (apBookingRadio) apBookingRadio.checked = true;
     document.getElementById('ap-callback-window').value = d.callbackWindow || '';
     document.getElementById('ap-notify-phone').value    = d.notifyPhone    || '';
+    const apWaAlert = document.getElementById('ap-wa-alert');
+    if (apWaAlert) apWaAlert.checked = d.waAlertOff !== true;
     const apNotifyExtra = document.getElementById('ap-notify-phones-extra');
     if (apNotifyExtra) apNotifyExtra.value = d.notifyPhonesExtra || '';
     document.getElementById('ap-report-email').value    = d.reportEmail    || '';
@@ -17125,6 +17134,7 @@ async function saveAiPersona() {
       bookingMethod:  (document.querySelector('input[name="ap-booking"]:checked') || {}).value || 'in_chat',
       callbackWindow: document.getElementById('ap-callback-window').value.trim(),
       notifyPhone:    document.getElementById('ap-notify-phone').value.trim(),
+      waAlertOff:     !((document.getElementById('ap-wa-alert') || { checked: true }).checked),
       notifyPhonesExtra: (document.getElementById('ap-notify-phones-extra') || {}).value || '',
       reportEmail:    document.getElementById('ap-report-email').value.trim(),
       learnedPatterns: (document.getElementById('ap-learned') || {}).value || ''

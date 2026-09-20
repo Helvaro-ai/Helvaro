@@ -43,6 +43,7 @@
 const _waSend      = require('./_wa-send');
 const _waTemplates = require('./_wa-templates');
 const _lang        = require('./_lang');
+const _eigenaar    = require('./_eigenaar-melding');
 const _i18n        = require('./_i18n');
 const _activiteit  = require('./_activiteit');
 
@@ -89,6 +90,8 @@ function normaliseerNummer(ruw) {
  */
 function ontvangers(clientFields) {
   const f = clientFields || {};
+  /* Meldingen uit (Instellingen → Meldingen): niemand, ook de extra nummers niet. */
+  if (_eigenaar.waUit(f)) return [];
   const ruw = [];
 
   const hoofd = f[F_NOTIFY];
