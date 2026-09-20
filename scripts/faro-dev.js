@@ -69,6 +69,8 @@ const _convo = (leadMsgs, ourMsgs, lastLeadAgoDays) => {
    Zelfde vorm als api/_vehicles.js teruggeeft; zie vanRecord() daar. */
 let _gekozenVertical = 'vastgoed';
 let _gekozenSector = 'real_estate';
+let _gekozenStijl = '';
+const _formStijl = require('../api/_form-stijl');
 
 const _fixtureVoertuigen = [
   { code: 'V1', projectCode: 'TELJO', merk: 'BMW', model: 'M4', uitvoering: 'Competition xDrive',
@@ -496,6 +498,7 @@ const server = http.createServer(async (req, res) => {
             welcomeMessage: '', bookingConfirmText: '', bookingMode: 'in_chat',
             vertical: _gekozenVertical, sector: _gekozenSector,
             reportEmail: 'sarah@immodelva.be', language: 'nl', replyInLeadLanguage: true,
+            formStyle: _formStijl.saneer(_gekozenStijl),
           });
         case 'config-save':
           /* De gekozen markt onthouden, zodat een volgende config-get hem
@@ -504,6 +507,8 @@ const server = http.createServer(async (req, res) => {
              waarop de marktkeuze stuk bleek te zijn. */
           if (req.body.vertical) _gekozenVertical = req.body.vertical;
           if (req.body.sector)   _gekozenSector   = req.body.sector;
+          /* Stijl & merk: zelfde rondgang (opslaan -> voorbeeld ververst). */
+          if (req.body.formStyle !== undefined) _gekozenStijl = _formStijl.serialiseer(req.body.formStyle);
           return res.status(200).json({ ok: true });
         case 'credit-usage':
           return res.status(200).json({ used: 1240, allowance: 5000, features: {} });
@@ -540,6 +545,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/start' || p.startsWith('/start/')) {
       req.query = Object.fromEntries(url.searchParams);
       req.url = p + (url.search || '');
+      /* Geen Airtable hier: de lokaal opgeslagen stijl gaat mee op het verzoek. */
+      req.lokaleStijl = _gekozenStijl;
       try {
         return await require('../api/form-page')(req, res);
       } catch (e) {

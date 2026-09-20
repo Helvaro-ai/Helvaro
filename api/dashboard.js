@@ -2443,6 +2443,149 @@ ${faro.navCta}
           </div>
         </div>
 
+        <!-- Stijl & merk: het formulier in de huisstijl van de klant.
+             Bewust vóór QR/voorbeeld: je stelt in, klikt opslaan, en het
+             voorbeeld eronder ververst. Elke waarde gaat door api/_form-stijl.js;
+             dit scherm is alleen de knoppen. -->
+        <div class="fm-style-card" id="fm-style">
+          <div class="fm-option-hdr">
+            <div class="fm-option-title">${T('fs.title')}</div>
+            <p class="fm-option-sub">${T('fs.sub')}</p>
+          </div>
+          <div class="fs-grid">
+
+            <div class="ap-field">
+              <label class="ap-label" for="fs-thema">${T('fs.thema')}</label>
+              <select id="fs-thema" class="ap-input fs-select">
+                <option value="donker">${T('fs.thema.donker')}</option>
+                <option value="licht">${T('fs.thema.licht')}</option>
+                <option value="auto">${T('fs.thema.auto')}</option>
+              </select>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label" for="fs-layout">${T('fs.layout')}</label>
+              <select id="fs-layout" class="ap-input fs-select">
+                <option value="kaart">${T('fs.layout.kaart')}</option>
+                <option value="vol">${T('fs.layout.vol')}</option>
+              </select>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label" for="fs-letter">${T('fs.letter')}</label>
+              <select id="fs-letter" class="ap-input fs-select">
+                <option value="inter">${T('fs.letter.inter')}</option>
+                <option value="systeem">${T('fs.letter.systeem')}</option>
+                <option value="serif">${T('fs.letter.serif')}</option>
+                <option value="grotesk">${T('fs.letter.grotesk')}</option>
+                <option value="rond">${T('fs.letter.rond')}</option>
+              </select>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label" for="fs-hoek">${T('fs.hoek')}</label>
+              <select id="fs-hoek" class="ap-input fs-select">
+                <option value="strak">${T('fs.hoek.strak')}</option>
+                <option value="zacht">${T('fs.hoek.zacht')}</option>
+                <option value="rond">${T('fs.hoek.rond')}</option>
+              </select>
+            </div>
+
+            <div class="ap-field fs-span2">
+              <div class="ap-label">
+                ${T('fs.kleuren')}
+                <span class="ap-label-hint">${T('fs.kleuren.h')}</span>
+              </div>
+              <div class="fs-colors">
+                <label class="fs-color" for="fs-merk">
+                  <span class="fs-color-name">${T('fs.merk')}</span>
+                  <span class="ap-color-row">
+                    <input id="fs-merk" type="text" class="ap-input ap-color-input" placeholder="#8A6D3F" maxlength="7" aria-label="${T('fs.merk')}">
+                    <input id="fs-merk-pick" type="color" class="ap-color-swatch" value="#8A6D3F" aria-label="${T('fs.merk')}">
+                  </span>
+                </label>
+                <label class="fs-color" for="fs-grond">
+                  <span class="fs-color-name">${T('fs.grond')}</span>
+                  <span class="ap-color-row">
+                    <input id="fs-grond" type="text" class="ap-input ap-color-input" placeholder="#17140F" maxlength="7" aria-label="${T('fs.grond')}">
+                    <input id="fs-grond-pick" type="color" class="ap-color-swatch" value="#17140F" aria-label="${T('fs.grond')}">
+                  </span>
+                </label>
+                <label class="fs-color" for="fs-vlak">
+                  <span class="fs-color-name">${T('fs.vlak')}</span>
+                  <span class="ap-color-row">
+                    <input id="fs-vlak" type="text" class="ap-input ap-color-input" placeholder="#211D16" maxlength="7" aria-label="${T('fs.vlak')}">
+                    <input id="fs-vlak-pick" type="color" class="ap-color-swatch" value="#211D16" aria-label="${T('fs.vlak')}">
+                  </span>
+                </label>
+                <label class="fs-color" for="fs-tekst">
+                  <span class="fs-color-name">${T('fs.tekst')}</span>
+                  <span class="ap-color-row">
+                    <input id="fs-tekst" type="text" class="ap-input ap-color-input" placeholder="#F1E9DA" maxlength="7" aria-label="${T('fs.tekst')}">
+                    <input id="fs-tekst-pick" type="color" class="ap-color-swatch" value="#F1E9DA" aria-label="${T('fs.tekst')}">
+                  </span>
+                </label>
+              </div>
+              <div class="ap-hint">${T('fs.tekst.h')}</div>
+            </div>
+
+            <div class="ap-field">
+              <div class="ap-label">
+                ${T('fs.logo')}
+                <span class="ap-label-hint">${T('fs.logo.h')}</span>
+              </div>
+              <div class="fs-logo-row">
+                <div class="fs-logo-box" id="fs-logo-box"><img id="fs-logo-img" alt="" hidden></div>
+                <div class="fs-logo-acties">
+                  <input id="fs-logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onchange="fsLogoBestand(this)">
+                  <button type="button" class="fm-btn" onclick="document.getElementById('fs-logo-file').click()">${T('fs.logo.kies')}</button>
+                  <button type="button" class="fm-btn" id="fs-logo-weg" onclick="fsLogoWeg()" hidden>${T('fs.logo.weg')}</button>
+                </div>
+              </div>
+              <input id="fs-logo-url" type="url" class="ap-input fs-mt" placeholder="https://..." aria-label="${T('fs.logo')}" oninput="fsLogoUrl(this)">
+              <label class="ap-checkbox-row fs-mt" for="fs-avatarweg">
+                <input id="fs-avatarweg" type="checkbox">
+                ${T('fs.avatarWeg')}
+              </label>
+            </div>
+
+            <div class="ap-field">
+              <label class="ap-label" for="fs-achtergrond">
+                ${T('fs.achtergrond')}
+                <span class="ap-label-hint">${T('fs.achtergrond.h')}</span>
+              </label>
+              <input id="fs-achtergrond" type="url" class="ap-input" placeholder="https://...">
+            </div>
+
+            <div class="ap-field fs-span2">
+              <div class="ap-label">${T('fs.teksten')}</div>
+              <div class="fs-teksten">
+                <label class="fs-tekst-veld" for="fs-kop">
+                  <span class="fs-color-name">${T('fs.kop')}</span>
+                  <input id="fs-kop" type="text" class="ap-input" maxlength="200">
+                </label>
+                <label class="fs-tekst-veld" for="fs-knop">
+                  <span class="fs-color-name">${T('fs.knop')}</span>
+                  <input id="fs-knop" type="text" class="ap-input" maxlength="40">
+                </label>
+                <label class="fs-tekst-veld" for="fs-toestemming">
+                  <span class="fs-color-name">${T('fs.toestemming')}</span>
+                  <input id="fs-toestemming" type="text" class="ap-input" maxlength="200">
+                </label>
+                <label class="fs-tekst-veld" for="fs-voet">
+                  <span class="fs-color-name">${T('fs.voet')}</span>
+                  <input id="fs-voet" type="text" class="ap-input" maxlength="120">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="fs-actions">
+            <button type="button" class="fm-btn fm-btn-primary" id="fs-opslaan" onclick="fsOpslaan()">${T('fs.opslaan')}</button>
+            <button type="button" class="fm-btn" onclick="fsReset()">${T('fs.reset')}</button>
+          </div>
+        </div>
+
         <!-- QR + preview side by side -->
         <div class="fm-bottom-grid">
           <div class="fm-qr-card">
@@ -16851,6 +16994,168 @@ function getFormPreviewUrl() {
   const code = getProjectCode();
   return code ? '/start/' + encodeURIComponent(code) : '';
 }
+// ── Formulier → Stijl & merk ─────────────────────────────────────────────
+/* Het scherm is alleen knoppen; wat ze opleveren gaat als formStyle naar
+   config-save en wordt daar door api/_form-stijl.js gesaneerd. De client
+   kan hier dus niets kapotmaken: een fout hex verdwijnt, een te lang zinnetje
+   wordt afgeknipt, een onleesbare tekstkleur valt terug op de standaard. */
+const FS_VELDEN = ['thema', 'layout', 'letter', 'hoek', 'merk', 'grond', 'vlak', 'tekst', 'achtergrond', 'kop', 'knop', 'toestemming', 'voet'];
+const FS_KLEUREN = ['merk', 'grond', 'vlak', 'tekst'];
+let _fsGeladen = false;
+let _fsLogo = '';
+
+function fsEl(naam) { return document.getElementById('fs-' + naam); }
+
+function fsHex(v) {
+  const s = String(v || '').trim().toUpperCase();
+  if (/^#[0-9A-F]{6}$/.test(s)) return s;
+  if (/^[0-9A-F]{6}$/.test(s)) return '#' + s;
+  return '';
+}
+
+/* Tekstveld en kleurenkiezer horen bij elkaar: typ je een hex, dan springt
+   de kiezer mee; kies je een kleur, dan staat de hex erin. Leeg tekstveld =
+   niet ingesteld (themastandaard), de kiezer toont dan de placeholder. */
+function fsKleurKoppel(naam) {
+  const txt = fsEl(naam), pick = fsEl(naam + '-pick');
+  if (!txt || !pick || txt.dataset.gekoppeld) return;
+  txt.dataset.gekoppeld = '1';
+  txt.addEventListener('input', function () {
+    const h = fsHex(txt.value);
+    if (h) pick.value = h;
+  });
+  pick.addEventListener('input', function () { txt.value = pick.value.toUpperCase(); });
+}
+
+function fsToonLogo(url) {
+  _fsLogo = url || '';
+  const img = fsEl('logo-img'), weg = fsEl('logo-weg'), box = fsEl('logo-box');
+  if (img) { img.hidden = !_fsLogo; if (_fsLogo) img.src = _fsLogo; else img.removeAttribute('src'); }
+  if (weg) weg.hidden = !_fsLogo;
+  if (box) box.classList.toggle('heeft-logo', !!_fsLogo);
+}
+
+function fsLogoBestand(input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 200 * 1024) { toast(tr('fs.logo.teGroot'), 'error'); input.value = ''; return; }
+  const r = new FileReader();
+  r.onload = function () {
+    const url = fsEl('logo-url'); if (url) url.value = '';
+    fsToonLogo(String(r.result || ''));
+  };
+  r.readAsDataURL(f);
+  input.value = '';
+}
+
+function fsLogoUrl(input) {
+  const v = String(input.value || '').trim();
+  if (v.indexOf('https://') === 0 && !/\\s/.test(v)) fsToonLogo(v);
+  else if (!v && _fsLogo && !/^data:/.test(_fsLogo)) fsToonLogo('');
+}
+
+function fsLogoWeg() {
+  const url = fsEl('logo-url'); if (url) url.value = '';
+  fsToonLogo('');
+}
+
+const FS_STANDAARD = { thema: 'donker', layout: 'kaart', letter: 'inter', hoek: 'zacht' };
+
+function fsVul(stijl) {
+  const s = stijl || {};
+  FS_VELDEN.forEach(function (k) {
+    const el = fsEl(k);
+    if (!el) return;
+    const v = s[k] == null ? '' : String(s[k]);
+    /* Een keuzelijst zonder waarde toont niets; leeg betekent standaard. */
+    el.value = (!v && FS_STANDAARD[k]) ? FS_STANDAARD[k] : v;
+  });
+  FS_KLEUREN.forEach(function (k) {
+    fsKleurKoppel(k);
+    const h = fsHex(s[k]), pick = fsEl(k + '-pick');
+    if (pick && h) pick.value = h;
+  });
+  const av = fsEl('avatarweg'); if (av) av.checked = s.avatarWeg === true;
+  const logo = String(s.logoUrl || '');
+  const url = fsEl('logo-url'); if (url) url.value = /^https:/i.test(logo) ? logo : '';
+  fsToonLogo(logo);
+}
+
+function fsLees() {
+  const uit = {};
+  FS_VELDEN.forEach(function (k) {
+    const el = fsEl(k);
+    if (el) uit[k] = FS_KLEUREN.indexOf(k) >= 0 ? fsHex(el.value) : String(el.value || '').trim();
+  });
+  const av = fsEl('avatarweg'); uit.avatarWeg = !!(av && av.checked);
+  uit.logoUrl = _fsLogo;
+  return uit;
+}
+
+async function fsLaad() {
+  if (_fsGeladen || !fsEl('thema')) return;
+  try {
+    const r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'config-get' })
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    fsVul(d.formStyle || {});
+    _fsGeladen = true;
+  } catch (e) { /* scherm blijft op standaard; opslaan werkt nog */ }
+}
+
+/* Na opslaan het voorbeeld verversen met een cache-buster: het formulier
+   wordt server-side gerenderd en de iframe zou anders de oude versie tonen. */
+function fsVerversVoorbeeld() {
+  const preview = document.getElementById('fm-preview-iframe');
+  const basis = getFormPreviewUrl();
+  if (preview && basis) preview.setAttribute('src', basis + '?v=' + Date.now());
+}
+
+async function fsBewaar(stijl) {
+  const knop = fsEl('opslaan');
+  if (knop) knop.disabled = true;
+  try {
+    const r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'config-save', formStyle: stijl })
+    });
+    if (!r.ok) throw new Error('config-save ' + r.status);
+    tabVergeet();
+    toast(tr('fs.opgeslagen'), 'success');
+    fsVerversVoorbeeld();
+    /* Wat terugkomt is de gesaneerde versie: zo ziet de klant meteen wat er
+       echt bewaard is (afgeknipte tekst, weggevallen onleesbare kleur). */
+    try {
+      const rr = await fetch(API_BASE + '/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+        body: JSON.stringify({ mode: 'config-get' })
+      });
+      if (rr.ok) { const d = await rr.json(); if (d.formStyle) fsVul(d.formStyle); }
+    } catch (e) {}
+  } catch (e) {
+    toast(tr('fs.mislukt'), 'error');
+  } finally {
+    if (knop) knop.disabled = false;
+  }
+}
+
+function fsOpslaan() { return fsBewaar(fsLees()); }
+
+function fsReset() {
+  showConfirmModal({
+    title: tr('fs.reset'),
+    message: tr('fs.reset.q'),
+    confirmText: tr('fs.reset'),
+    onConfirm: function () { fsVul({}); fsBewaar({}); }
+  });
+}
+
 // ── Formulier page ────────────────────────────────────────────────────────
 function loadFormulier() {
   const url      = getFormUrl();
@@ -16890,6 +17195,9 @@ function loadFormulier() {
 
   // Stats from already-fetched leads
   populateFormStats();
+
+  // Stijl & merk: één keer ophalen per sessie, daarna leeft het in het scherm.
+  fsLaad();
 
   // Share buttons
   const shareText = encodeURIComponent('Hey! Vul je gegevens hier in dan kom ik snel bij je terug: ' + url);

@@ -16,6 +16,7 @@ const _properties = require('./_properties');
 const _vehicles   = require('./_vehicles');
 const _vertical   = require('./_vertical');
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
+const _stijl  = require('./_form-stijl'); // vormgeving per klant (Form Style), gesaneerd
 
 module.exports = _errors.vangAf(async function handler(req, res) {
   /* Twee vormen:
@@ -57,6 +58,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   let lang          = 'nl';   // nl / fr / en. Controls form-page + AI conversation language
   let trustBadges   = '';     // custom 'a | b | c' string, overrides defaults
   let workingHours  = '';     // 'mon-fri 9-18' style; informational for the form-page
+  let stijl         = _stijl.saneer({});   // vormgeving per klant; leeg = Helvaro-standaard (donker)
   try {
     const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
     const BASE_ID        = process.env.BASE_AIRTABLE;
@@ -87,6 +89,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
           trustBadges  = (rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges'] || '').toString().trim();
           workingHours = (rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours'] || '').toString().trim();
+          stijl        = _stijl.saneer(rec.fields['Form Style'] || '');
           /* In welke markt deze klant zit. Het formulier moet dat weten omdat
              de kaart bovenaan anders een pand zoekt bij een dealer -- en dan
              staat er niets, terwijl de link wel klopte. */
@@ -114,6 +117,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       } catch { /* silent */ }
     }
   } catch { /* silent. Fallback to defaults */ }
+  /* Lokale harness (scripts/faro-dev.js, demo-modus, geen echte Airtable): de
+     daar opgeslagen stijl reist mee op het verzoek, zodat opslaan -> voorbeeld
+     ook lokaal te zien is. Buiten de demo-modus doet deze regel niets. */
+  if (process.env.FARO_DEMO_MODE === '1' && req.lokaleStijl) stijl = _stijl.saneer(req.lokaleStijl);
 
   /* ── Het pand, als de link er een noemt ────────────────────────────────────
      Dit is waarom deze pagina bestaat in de pandvorm: de bezoeker ziet meteen
@@ -400,41 +407,49 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   }
 </style>
 <style>
-  :root {
-    --brand: ${brandColor};
-    --brand-dark: ${brandDark};
-    --brand-soft: ${brandColor}1a;
-    --brand-faint: ${brandColor}0d;
-  }
+  ${_stijl.css(stijl, brandColor)}
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: radial-gradient(circle at 20% 0%, #1A1A1A 0%, #121212 55%);
+    font-family: var(--letter);
+    background: var(--grond);
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
     padding: 24px 16px;
-    color: #F9F9F9;
+    color: var(--tekst);
+  }
+  /* Eigen achtergrondafbeelding van de klant: gedimd met de grondkleur,
+     zodat de kaart erop leesbaar blijft. */
+  body.met-achtergrond {
+    background-image: linear-gradient(color-mix(in srgb, var(--grond) 78%, transparent), color-mix(in srgb, var(--grond) 78%, transparent)), var(--achtergrond);
+    background-size: cover; background-position: center; background-attachment: fixed;
   }
   .card {
-    background: #1A1A1A; border: 1px solid var(--brand-soft);
-    border-radius: 20px;
+    background: var(--vlak); border: 1px solid var(--lijn);
+    border-radius: var(--hoek-kaart);
     width: 100%; max-width: 460px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.5);
     overflow: hidden;
   }
+  /* Layout 'vol': geen kaart, het formulier staat direct op de pagina. */
+  body.layout-vol { align-items: flex-start; padding-top: 40px; }
+  body.layout-vol .card { background: transparent; border: none; max-width: 520px; }
+  body.layout-vol .chat-hdr { background: transparent; border-bottom: none; padding-left: 0; padding-right: 0; }
+  body.layout-vol .chat-area, body.layout-vol .form-area, body.layout-vol .trust { padding-left: 0; padding-right: 0; }
+  body.layout-vol .chat-area { background: transparent; }
+  .logo { display: block; max-height: 40px; max-width: 180px; object-fit: contain; margin-bottom: 14px; }
+  .voet { text-align: center; font-size: 12px; color: var(--mut); padding: 0 22px 10px; line-height: 1.5; }
 
   /* WhatsApp-style chat header */
   .chat-hdr {
-    background: #232323;
+    background: var(--vlak-2);
     padding: 18px 22px;
     display: flex; align-items: center; gap: 14px;
-    border-bottom: 1px solid var(--brand-soft);
+    border-bottom: 1px solid var(--lijn);
   }
   .avatar {
     width: 48px; height: 48px; border-radius: 50%;
     background: linear-gradient(135deg, var(--brand), var(--brand-dark));
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 700; font-size: 19px;
+    color: var(--on-brand); font-weight: 700; font-size: 19px;
     flex-shrink: 0; position: relative; overflow: visible;
   }
   .avatar img {
@@ -444,13 +459,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   .online-dot {
     position: absolute; right: 0; bottom: 1px;
     width: 12px; height: 12px; border-radius: 50%;
-    background: #22c55e; border: 2px solid #232323;
+    background: var(--ok); border: 2px solid var(--vlak-2);
     box-shadow: 0 0 6px rgba(34,197,94,.7);
     animation: dotPulse 1.6s ease-in-out infinite;
   }
   @keyframes dotPulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
   .hdr-text { flex: 1; min-width: 0; }
-  .hdr-name { font-size: 15px; font-weight: 700; color: #F9F9F9; }
+  .hdr-name { font-size: 15px; font-weight: 700; color: var(--tekst); }
 
 /* De pandkaart. Kleuren komen van de merkkleur van de klant, net als de rest
    van deze pagina, zodat hij er niet uitziet als een advertentie van iemand
@@ -459,8 +474,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   margin: 0 0 14px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: var(--vlak-2);
+  border: 1px solid var(--lijn);
 }
 .pand-card-foto {
   display: block;
@@ -469,19 +484,19 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 10px;
-  background: rgba(255,255,255,0.06);
+  background: var(--vlak-2);
 }
-.pand-card-adres { font-size: 14px; font-weight: 700; color: #F5F5F5; line-height: 1.35; }
-.pand-card-plaats { font-size: 12px; color: #B9B4A8; margin-top: 2px; }
+.pand-card-adres { font-size: 14px; font-weight: 700; color: var(--tekst); line-height: 1.35; }
+.pand-card-plaats { font-size: 12px; color: var(--mut); margin-top: 2px; }
 .pand-card-feiten {
   display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px;
 }
 .pand-card-feit {
   font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
   padding: 3px 8px; border-radius: 999px;
-  background: rgba(255,255,255,0.07); color: #E7E3D9;
+  background: var(--brand-faint); color: var(--tekst);
 }
-.pand-card-prijs { background: rgba(255,255,255,0.13); color: #FFFFFF; }
+.pand-card-prijs { background: var(--brand-soft); color: var(--tekst); }
 /* Verkocht of onder bod krijgt zijn eigen vlak. Iemand die het formulier
    invult voor een woning die weg is, hoort dat HIER te lezen en niet pas van
    de AI. */
@@ -490,32 +505,30 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   background: rgba(220,120,90,0.16); border: 1px solid rgba(220,120,90,0.32);
   font-size: 12px; line-height: 1.45; color: #FFD9C9;
 }
-  .hdr-status { font-size: 12px; color: #22c55e; font-weight: 600; }
-  .hdr-brand { font-size: 11px; color: #999999; margin-top: 2px; }
+  .hdr-status { font-size: 12px; color: var(--ok); font-weight: 600; }
+  .hdr-brand { font-size: 11px; color: var(--mut); margin-top: 2px; }
 
   /* Chat-style intro bubble */
   .chat-area {
     padding: 22px 22px 8px;
-    background:
-      radial-gradient(circle at 10% 90%, var(--brand-faint) 0%, transparent 60%),
-      #1A1A1A;
+    background: var(--vlak);
   }
   .bubble {
     background: var(--brand-soft); border: 1px solid var(--brand-soft);
     border-bottom-left-radius: 4px; border-radius: 14px;
     padding: 12px 14px; font-size: 14px; line-height: 1.5;
-    color: #F9F9F9; max-width: 88%; margin-bottom: 6px;
+    color: var(--tekst); max-width: 88%; margin-bottom: 6px;
     animation: bubbleIn .35s ease;
   }
   @keyframes bubbleIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .bubble-meta {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; color: #999999; margin-bottom: 14px; padding-left: 4px;
+    font-size: 11px; color: var(--mut); margin-bottom: 14px; padding-left: 4px;
   }
   .typing-dots { display: inline-flex; gap: 3px; align-items: center; margin-left: 2px; }
   .typing-dots span {
     width: 4px; height: 4px; border-radius: 50%;
-    background: #999999;
+    background: var(--mut);
     animation: typingDot 1.2s infinite ease-in-out;
   }
   .typing-dots span:nth-child(2) { animation-delay: .15s; }
@@ -524,33 +537,32 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     0%, 60%, 100% { transform: scale(.7); opacity: .3; }
     30%           { transform: scale(1);  opacity: 1; }
   }
-  .bubble strong { color: #F9F9F9; font-weight: 600; }
+  .bubble strong { color: var(--tekst); font-weight: 600; }
 
   .social-proof {
     display: inline-flex; align-items: center; gap: 6px;
     background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.18);
-    color: #999999; padding: 6px 11px; border-radius: 999px;
+    color: var(--mut); padding: 6px 11px; border-radius: 999px;
     font-size: 11px; font-weight: 500;
     margin-bottom: 14px;
   }
   .social-proof .dot {
     width: 6px; height: 6px; border-radius: 50%;
-    background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,.6);
+    background: var(--ok);
   }
-  .social-proof b { color: #22c55e; font-weight: 700; }
+  .social-proof b { color: var(--ok); font-weight: 700; }
 
   /* Form */
   .form-area { padding: 6px 22px 24px; }
   label {
     display: block; font-size: 11px; font-weight: 700;
-    color: var(--brand); letter-spacing: .08em; text-transform: uppercase;
+    color: var(--mut); letter-spacing: .08em; text-transform: uppercase;
     margin-bottom: 7px; margin-top: 14px;
-    filter: brightness(1.4);
   }
   input {
-    width: 100%; background: #232323;
-    border: 1px solid var(--brand-soft); border-radius: 11px;
-    padding: 13px 15px; color: #F9F9F9; font-size: 15px;
+    width: 100%; background: var(--vlak-2);
+    border: 1px solid var(--lijn); border-radius: var(--hoek-veld);
+    padding: 13px 15px; color: var(--tekst); font-size: 15px;
     font-family: inherit; outline: none;
     transition: border-color .15s, box-shadow .15s;
   }
@@ -560,7 +572,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
      ("0478 12 34 56"), dus de aanwijzing die iemand nodig heeft om zijn nummer
      goed in te tikken was de slechtst leesbare tekst van het scherm.
      #909090 haalt 4,92:1 en blijft duidelijk lichter dan de ingevulde tekst. */
-  input::placeholder { color: #909090; }
+  input::placeholder { color: var(--placeholder); }
 
   /* iOS Safari zoomt automatisch in zodra een invulveld kleiner is dan 16px.
      Op 15px sprong het formulier dus bij elke tik in het telefoonveld -- precies
@@ -582,14 +594,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
   button {
     width: 100%; margin-top: 18px;
-    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-    color: #fff; border: none; border-radius: 11px;
+    background: var(--brand);
+    color: var(--on-brand); border: none; border-radius: var(--hoek-knop);
     padding: 14px; font-weight: 700; font-size: 15px;
     font-family: inherit; cursor: pointer; letter-spacing: .2px;
     transition: opacity .15s, box-shadow .2s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  button:hover:not(:disabled) { box-shadow: 0 6px 24px var(--brand-soft); filter: brightness(1.08); }
+  button:hover:not(:disabled) { background: var(--brand-dark); }
   button:disabled { opacity: .55; cursor: not-allowed; }
   .btn-icon { display: inline-flex; }
 
@@ -600,7 +612,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
      plaats daarvan style.display, dan kan de tekst er al staan voordat het vak
      zichtbaar is en wordt er niets voorgelezen. */
   .error {
-    color: #FF6B6B; font-size: 13px;
+    color: var(--fout); font-size: 13px;
     margin-top: 14px; padding: 10px 14px;
     background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.22);
     border-radius: 9px;
@@ -613,20 +625,20 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     width: 64px; height: 64px;
     background: rgba(34,197,94,.12); border: 2px solid rgba(34,197,94,.4);
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 18px; font-size: 30px; color: #22c55e;
+    margin: 0 auto 18px; font-size: 30px; color: var(--ok);
   }
-  .success h3 { font-size: 18px; font-weight: 700; color: #F9F9F9; margin-bottom: 8px; }
-  .success p { color: #999999; font-size: 14px; line-height: 1.65; }
-  .success strong { color: #22c55e; }
+  .success h3 { font-size: 18px; font-weight: 700; color: var(--tekst); margin-bottom: 8px; }
+  .success p { color: var(--mut); font-size: 14px; line-height: 1.65; }
+  .success strong { color: var(--ok); }
   .success-steps {
     margin-top: 22px; padding: 14px 16px;
     background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.18);
     border-radius: 10px; text-align: left;
   }
-  .success-step { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; color: #cfcfcf; }
+  .success-step { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; color: var(--tekst); }
   .success-step .num {
     width: 20px; height: 20px; border-radius: 50%;
-    background: #22c55e; color: #fff; font-size: 11px; font-weight: 700;
+    background: var(--ok); color: #fff; font-size: 11px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
 
@@ -649,7 +661,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
      akkoord op geeft, hoort die zin het makkelijkst leesbare op het scherm te
      zijn, niet het moeilijkste. */
   .consent-text {
-    font-size: 12px; line-height: 1.5; color: #999999;
+    font-size: 12px; line-height: 1.5; color: var(--mut);
     text-transform: none;
     letter-spacing: normal;
     font-weight: 400;
@@ -665,34 +677,35 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   }
   .trust-item {
     display: inline-flex; align-items: center; gap: 5px;
-    color: #999999; font-size: 11px;
+    color: var(--mut); font-size: 11px;
   }
   .trust-item span { font-size: 13px; }
   .powered {
-    text-align: center; font-size: 10px; color: #666666;
+    text-align: center; font-size: 10px; color: var(--mut);
     padding: 6px 0 14px; letter-spacing: .03em;
   }
-  .powered a { color: #999999; text-decoration: none; }
+  .powered a { color: var(--mut); text-decoration: none; }
 
   @media (max-width: 480px) {
     body { padding: 12px 10px; align-items: flex-start; }
-    .card { border-radius: 16px; }
+    .card { border-radius: calc(var(--hoek-kaart) * 0.8); }
     .chat-hdr, .chat-area, .form-area { padding-left: 18px; padding-right: 18px; }
   }
 </style>
 </head>
-<body>
+<body class="${stijl.layout === 'vol' ? 'layout-vol' : ''}${stijl.achtergrond ? ' met-achtergrond' : ''}"${stijl.achtergrond ? ` style="--achtergrond:url('${escHtml(stijl.achtergrond)}')"` : ''}>
 <div class="card">
 
   <!-- WhatsApp-style header with the AI persona -->
-  <div class="chat-hdr">
-    <div class="avatar">
+  <div class="chat-hdr" style="${stijl.logoUrl ? 'flex-wrap:wrap' : ''}">
+    ${stijl.logoUrl ? `<img class="logo" src="${escHtml(stijl.logoUrl)}" alt="${safeClientName}" style="flex-basis:100%;margin-bottom:${stijl.avatarWeg ? '4px' : '14px'}" onerror="this.remove()">` : ''}
+    ${stijl.avatarWeg && stijl.logoUrl ? '' : `<div class="avatar">
       ${aiPhotoUrl
         ? `<img src="${escHtml(aiPhotoUrl)}" alt="${safeAiName}" onerror="this.style.display='none';this.parentNode.insertAdjacentText('afterbegin','${escJs(initial)}')">`
         : escHtml(initial)
       }
       <span class="online-dot" title="${safeFirstName} is online"></span>
-    </div>
+    </div>`}
     <div class="hdr-text">
       <h1 class="hdr-name">${safeAiName}</h1>
       <div class="hdr-status">${escHtml(t.status)}</div>
@@ -736,7 +749,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         : ''}
     </div>` : ''}
     <div class="bubble">
-      ${escHtml(t.intro)} <strong>${safeFirstName}</strong> ${escHtml(t.introMid)} <strong>${safeClientName}</strong>.<br>
+      ${stijl.kop
+        ? escHtml(stijl.kop)
+        : `${escHtml(t.intro)} <strong>${safeFirstName}</strong> ${escHtml(t.introMid)} <strong>${safeClientName}</strong>.`}<br>
       ${escHtml(introText)}
     </div>
     <div class="bubble-meta">
@@ -755,14 +770,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
     <label class="consent-row" for="consent">
       <input id="consent" type="checkbox">
-      <span class="consent-text">${escHtml(t.consentPre)} <strong>${escHtml(clientName)}</strong> ${escHtml(t.consentMid)} <a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">${escHtml(t.consentLink)}</a>${escHtml(t.consentSuffix)}</span>
+      <span class="consent-text">${escHtml(t.consentPre)} <strong>${escHtml(clientName)}</strong> ${escHtml(t.consentMid)} <a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">${escHtml(t.consentLink)}</a>${escHtml(t.consentSuffix)}${stijl.toestemming ? ' ' + escHtml(stijl.toestemming) : ''}</span>
     </label>
 
     <button id="btn">
       <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.4 0-.6.1-.2.3-.7.9-.9 1.1-.1.1-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.3 0-.5 0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4 0-.7.3-.3.3-.9.9-.9 2.2 0 1.3.9 2.5 1 2.7.1.1 1.8 2.7 4.3 3.7.6.2 1.1.4 1.4.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3z"/>
       </svg>
-      ${escHtml(t.btn)} ${safeFirstName}${t.btnSuffix ? ' ' + escHtml(t.btnSuffix) : ''}
+      ${stijl.knop ? escHtml(stijl.knop) : `${escHtml(t.btn)} ${safeFirstName}${t.btnSuffix ? ' ' + escHtml(t.btnSuffix) : ''}`}
     </button>
     <div class="error" id="err" role="alert" aria-live="assertive"></div>
   </div>
@@ -796,6 +811,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
          <div class="trust-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${escHtml(t.trust3)}</div>`
     }
   </div>
+  ${stijl.voet ? `<div class="voet">${escHtml(stijl.voet)}</div>` : ''}
   <div class="powered">${escHtml(t.poweredBy)} <a href="https://helvaro.pro" target="_blank" rel="noopener">Helvaro</a></div>
 </div>
 

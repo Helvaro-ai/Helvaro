@@ -211,9 +211,13 @@ function render(lang) {
    paginatiepuntje (CSS-class-gestuurd, geen JS die .style.width zet, in
    tegenstelling tot de 13 vulbalken die dit bestand elders bewust laat
    staan), dus de breedteovergang is gewoon geschrapt -- het puntje springt
-   nu ipv breder schuift, en alleen de achtergrondkleur blijft animeren. */
-const CSS_BYTES = 393199;
-const CSS_SHA   = 'c3187c73b34077e2';
+   nu ipv breder schuift, en alleen de achtergrondkleur blijft animeren.
+
+   Daarna (+1956 bytes): Formulier → Stijl & merk, de kaart waarmee een klant
+   het leadformulier op zijn huisstijl zet (.fm-style-card, .fs-*). Bewuste
+   toevoeging, geen restant. */
+const CSS_BYTES = 395155;
+const CSS_SHA   = '8caa65adfe12de4a';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

@@ -23,6 +23,7 @@ const _command   = require('./_command');     // Command Center intelligence lay
 const _crm       = require('./_crm');          // de enige deur naar de CRM's van klanten
 const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de klantrij
 const _waes      = require('./_waes');         // eigen WhatsApp-nummer per klant (Embedded Signup)
+const _stijl     = require('./_form-stijl');   // vormgeving van het leadformulier per klant (Form Style)
 const _waSend    = require('./_wa-send');      // de enige deur naar WhatsApp
 const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
@@ -1027,6 +1028,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             // this file already uses for every other config field.
             matchLeadLanguage: rec.fields['Match Lead Language'] === true,
             workingHours:   rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours']       || '',
+            /* Vormgeving van het leadformulier. Nieuw veld (2026-09-20); leest
+               als de standaard zolang het leeg is. Altijd gesaneerd. */
+            formStyle:      _stijl.saneer(rec.fields['Form Style'] || ''),
             // Email-ownership verification banner state — see api/_verify.js's
             // file header. Fails open: blank/missing field (not yet created,
             // or a pre-existing client that predates this feature) reads as
@@ -1148,6 +1152,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           u.fldJAf4aTNlIQVL2q = (v === '' || /^#?[0-9a-fA-F]{6}$/.test(v)) ? v : '';
         }
         if (body.formIntro      !== undefined) u.fldxZ5spOeIb5omPr = String(body.formIntro).trim().slice(0, 600);
+        /* Form Style: het object uit het dashboard wordt hier gesaneerd en
+           compact opgeslagen (alleen afwijkingen van de standaard). Een
+           ongeldig veld valt terug op de standaard, nooit op een fout. */
+        if (body.formStyle      !== undefined) u['Form Style'] = _stijl.serialiseer(body.formStyle);
         if (body.language       !== undefined) {
           const v = String(body.language).trim().toLowerCase();
           if (_lang.isSupportedLanguage(v)) u.fld1iiV9XwSbgAACZ = v;

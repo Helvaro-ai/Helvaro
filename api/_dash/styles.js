@@ -7380,6 +7380,39 @@ body.panel-open .main-content { transform: scale(0.985); }
   background: var(--zand-50); padding: 16px; border-radius: 12px; margin: 14px 0 8px;
   display: flex; align-items: center; justify-content: center;
 }
+/* ── Formulier → Stijl & merk ──────────────────────────────────────────────
+   Zelfde kaart als de integratie-opties; de velden hergebruiken .ap-field
+   van AI-persoonlijkheid zodat kleur- en tekstinvoer overal hetzelfde voelt. */
+.fm-style-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px 22px; margin-bottom: 16px; display: flex; flex-direction: column;
+}
+.fs-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.fs-grid .ap-field { background: var(--bg-card-alt); }
+.fs-span2 { grid-column: span 2; }
+.fs-select { cursor: pointer; }
+.fs-mt { margin-top: 10px; }
+.fs-colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fs-color, .fs-tekst-veld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fs-color-name { font-size: 0.7333rem; font-weight: 600; color: var(--text-muted); letter-spacing: 0.02em; }
+.fs-teksten { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fs-logo-row { display: flex; gap: 12px; align-items: center; }
+.fs-logo-box {
+  width: 64px; height: 64px; flex-shrink: 0; border-radius: 8px;
+  border: 1px dashed var(--border-strong); background: var(--bg-primary);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.fs-logo-box.heeft-logo { border-style: solid; }
+.fs-logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.fs-logo-box img[hidden], .fs-logo-acties .fm-btn[hidden] { display: none; }
+.fs-logo-acties { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fs-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+@media (max-width: 1100px) { .fs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .fs-grid, .fs-colors, .fs-teksten { grid-template-columns: 1fr; }
+  .fs-span2 { grid-column: auto; }
+  .fs-actions .fm-btn { width: 100%; justify-content: center; }
+}
 .fm-preview-card {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
   padding: 20px; display: flex; flex-direction: column;
