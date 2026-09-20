@@ -6093,7 +6093,7 @@ function versBijOpenen(naRender) {
    alleen hertekenen als er echt iets veranderd is. Een lijst vol oude
    gesprekken kost dus niets; een gesprek van nu wel, en dat is de
    bedoeling. Wat er in het antwoordvak stond blijft staan. */
-var GESPREK_LIVE_MS = 12 * 1000;
+var GESPREK_LIVE_MS = 6 * 1000;
 var GESPREK_LEEFT_MS = 15 * 60 * 1000;
 function gesprekLaatsteMs(lead) {
   var laatste = 0;
@@ -6146,6 +6146,11 @@ document.addEventListener('visibilitychange', function () {
   /* Alleen als er echt een ronde is overgeslagen. Tussen tabbladen heen en
      weer klikken mag geen verzoekenregen worden. */
   if (Date.now() - _laatstVerversMs >= POLL_INTERVAL) hvVerversAlsZichtbaar();
+  /* Terug van WhatsApp Web naar Gesprekken: meteen kijken, niet eerst tot de
+     volgende tik wachten. Derde opname (2026-09-20): Sindi zat 80 s op het
+     WhatsApp-tabblad, het dashboard stond verborgen en haalde niets op, en
+     na het terugklikken duurde het nog een tik voor het antwoord er stond. */
+  if (state.currentPage === 'gesprekken' && typeof gesprekLiveTick === 'function') gesprekLiveTick().catch(function () {});
 });
 
 /* ============================================================

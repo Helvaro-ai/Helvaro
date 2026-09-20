@@ -44,7 +44,8 @@ console.log('\nEen open gesprek kijkt live mee');
   let html = '';
   dash({ method: 'GET', url: '/dashboard', headers: {} },
     { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
-  ck('tikt elke 12 s', /var GESPREK_LIVE_MS = 12 \* 1000;/.test(html));
+  ck('tikt elke 6 s', /var GESPREK_LIVE_MS = 6 \* 1000;/.test(html));
+  ck('terug op het tabblad: meteen een tik', html.includes("if (state.currentPage === 'gesprekken' && typeof gesprekLiveTick === 'function') gesprekLiveTick().catch(function () {});"));
   ck('alleen op Gesprekken en alleen zichtbaar', html.includes("if (!state.apiKey || state.currentPage !== 'gesprekken') return;") && html.includes("document.visibilityState === 'hidden') return;"));
   ck('alleen als er een gesprek leeft (15 min)', /var GESPREK_LEEFT_MS = 15 \* 60 \* 1000;/.test(html) && html.includes('return nu - gesprekLaatsteMs(l) < GESPREK_LEEFT_MS; });'));
   ck('een lead zonder ts telt zijn aanmaakdatum', html.includes('if (!laatste && lead.datum) laatste = Date.parse(lead.datum) || 0;'));
