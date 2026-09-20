@@ -81,10 +81,11 @@ async function graph(path, { method = 'GET', token, body, query } = {}) {
 }
 
 // Stap 1: eenmalige code -> business token. Dit token hoort bij de WABA van de
-// klant en wordt hier alleen gebruikt om te abonneren en te registreren; we
-// slaan het NIET op. Na die twee calls hebben we het niet meer nodig, want
-// verzenden gebeurt met Helvaro's eigen systeemtoken zodra de app op de WABA
-// geabonneerd is. Een token dat je niet bewaart kan ook niet lekken.
+// klant. Tot 2026-09-20 gooiden we het weg ('verzenden gebeurt met Helvaro's
+// systeemtoken zodra de app geabonneerd is') -- dat klopte niet: abonneren
+// geeft webhooks, geen zendrecht. Het gedeelde token kent de WABA van de klant
+// niet. Het token gaat nu versleuteld mee naar Client Config (api/_wa-token.js)
+// en is wat er op dat nummer verzendt.
 async function exchangeCode(code) {
   const d = await graph('/oauth/access_token', {
     query: { client_id: appId(), client_secret: appSecret(), code },
@@ -141,11 +142,33 @@ async function completeSignup({ code, wabaId, phoneNumberId }) {
   await subscribeApp(wabaId, token);
   await registerPhone(phoneNumberId, token);
   const info = await getPhoneInfo(phoneNumberId, token);
-  return { wabaId, phoneNumberId, ...info };
+  /* Extra, niet vereist: Helvaro's systeemgebruiker ook op de WABA zetten,
+     zodat beheer met het gedeelde token kan (sjablonen, kwaliteit). Faalt het,
+     dan werkt zenden nog steeds via het eigen token hierboven. */
+  const systeem = await koppelSysteemgebruiker(wabaId, token);
+  return { wabaId, phoneNumberId, token, systeemgebruiker: systeem, ...info };
+}
+
+/* Helvaro's systeemgebruiker (die achter WHATSAPP_TOKEN) toevoegen aan de
+   WABA van de klant. Wie dat is vragen we aan Meta zelf (/me), zodat er geen
+   extra env-var nodig is. Alleen loggen, nooit gooien. */
+async function koppelSysteemgebruiker(wabaId, businessToken) {
+  try {
+    const me = await graph('/me', { token: process.env.WHATSAPP_TOKEN, query: { fields: 'id,name' } });
+    if (!me || !me.id) return { ok: false, reden: 'geen systeemgebruiker gevonden' };
+    await graph(`/${encodeURIComponent(wabaId)}/assigned_users`, {
+      method: 'POST', token: businessToken, query: { user: me.id, tasks: '["MANAGE"]' },
+    });
+    console.log('[waes] systeemgebruiker', me.id, 'gekoppeld aan WABA', wabaId);
+    return { ok: true, id: me.id };
+  } catch (e) {
+    console.warn('[waes] systeemgebruiker niet gekoppeld aan WABA', wabaId, '-', e && e.message);
+    return { ok: false, reden: e && e.message };
+  }
 }
 
 module.exports = {
   isConfigured, appId, configId,
-  exchangeCode, subscribeApp, registerPhone, getPhoneInfo, completeSignup,
+  exchangeCode, subscribeApp, registerPhone, getPhoneInfo, completeSignup, koppelSysteemgebruiker,
   derivePin,
 };

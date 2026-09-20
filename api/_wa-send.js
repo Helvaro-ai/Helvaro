@@ -24,6 +24,7 @@
  * lead has been talking to all along.
  */
 
+const _waToken = require('./_wa-token');   // eigen token per klantnummer (Embedded Signup)
 const _waOpmaak = require('./_wa-opmaak');
 
 /* Eén versie voor elke uitgaande aanroep. Er stond v19.0 hier en in drie
@@ -84,9 +85,13 @@ function classificeer(metaCode) {
   return bekend || { code: 'rejected', owner: false, msg: 'Het bericht kon niet verstuurd worden.' };
 }
 
-function creds(phoneNumberId, tokenOverride) {
-  const token = tokenOverride || process.env.WHATSAPP_TOKEN || '';
+/* Volgorde: het eigen token van de klant (eigen nummer via Embedded Signup,
+   zie api/_wa-token.js) gaat vóór alles -- het gedeelde WHATSAPP_TOKEN kent
+   de WABA van de klant niet. Daarna de override van de aanroeper, dan env. */
+async function creds(phoneNumberId, tokenOverride) {
   const pnid = phoneNumberId || process.env.PHONE_NUMBER_ID || '';
+  const eigen = phoneNumberId ? await _waToken.voorNummer(phoneNumberId) : '';
+  const token = eigen || tokenOverride || process.env.WHATSAPP_TOKEN || '';
   if (!token || !pnid) throw new SendError('WhatsApp is niet geconfigureerd.', 'unconfigured');
   return { token, pnid };
 }
@@ -215,7 +220,7 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, tok
   // ending mid-sentence to a customer, so this refuses instead.
   if (body.length > 4096) throw new SendError('Bericht te lang (max 4096 tekens).', 'too_long');
 
-  const { token, pnid } = creds(phoneNumberId, tokenOverride);
+  const { token, pnid } = await creds(phoneNumberId, tokenOverride);
   return post(pnid, token, {
     messaging_product: 'whatsapp',
     to: normalizePhone(to),
@@ -242,7 +247,7 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, tok
 async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut, token: tokenOverride, projectCode, category }) {
   weigerBijAfmelding(optedOut, 'template');
   if (!template) throw new SendError('Geen template opgegeven.', 'no_template');
-  const { token, pnid } = creds(phoneNumberId, tokenOverride);
+  const { token, pnid } = await creds(phoneNumberId, tokenOverride);
   const components = params.length
     ? [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: String(p) })) }]
     : [];

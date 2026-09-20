@@ -16,6 +16,7 @@ const _afspraken = require('./_afspraken'); // afzeggen en verzetten: één plek
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 const _regio = require('./_regio');       // land, tijdzone, munt en telefoon per klant
 const _optout = require('./_optout');
+const _waToken = require('./_wa-token');   // eigen token per klantnummer (Embedded Signup)
 const _eigenaar = require('./_eigenaar-melding'); // eigenaarsmeldingen aan/uit per klant
 const _waOpmaak = require('./_wa-opmaak');     // wie STOP zegt, krijgt niets meer
 const _waSend   = require('./_wa-send');   // gedeelde Graph-versie en foutvertaling
@@ -3622,6 +3623,9 @@ function isWithinWorkingHours(spec) {
 async function sendWA(to, message, phoneNumberId) {
   try {
     const pnid = phoneNumberId || PHONE_NUMBER_ID;
+    /* Eigen nummer van de klant: zenden met ZIJN token, niet met het gedeelde.
+       Leeg voor het gedeelde nummer, dan valt het terug op WHATSAPP_TOKEN. */
+    const eigenToken = phoneNumberId ? await _waToken.voorNummer(phoneNumberId) : '';
     /* Elk uitgaand bericht gaat hier langs -- AI-antwoord, eigenaarsmelding,
        bevestiging. Eén plek, zodat geen enkele aanroeper het kan overslaan. */
     const tekst = _waOpmaak.voorWhatsApp(message);
@@ -3641,7 +3645,7 @@ async function sendWA(to, message, phoneNumberId) {
     const res = await fetch(url, {
       signal:  AbortSignal.timeout(Math.max(3000, Number(process.env.WHATSAPP_TIMEOUT_MS || 15000))),
       method:  'POST',
-      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${eigenToken || WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         messaging_product: 'whatsapp',
         to,

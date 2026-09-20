@@ -4,7 +4,8 @@ const _afspraken = require('./_afspraken'); // afzeggen: rij + agenda + leadvlag
 const _regio  = require('./_regio');      // land, tijdzone, munt en telefoon per klant
 const _session = require('./_session');
 const _revoke  = require('./_revocation');
-const _clerk   = require('./_clerk'); // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
+const _clerk   = require('./_clerk');
+const _waToken = require('./_wa-token'); // eigen WhatsApp-token per klant (Embedded Signup) // Clerk-sessies, achter CLERK_ENABLED // password-change -> session revocation // cookie-first session transport + CSRF   // per-client Google Calendar (optional, fail-soft)
 const credits = require('./_credits'); // credit/usage accounting — see its file header
 const _ai     = require('./_ai');      // AI-router: modelkeuze, fallback, verbruik
 const { getPlanState } = require('./_plan'); // trial/plan-status interpretation — pure, no I/O
@@ -792,11 +793,43 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           /* Het nummer-id zelf zegt een mens niets; het label wel. Alleen
              ophalen als er echt iets gekoppeld is. */
           nummer: eigenNummer
-            ? await _waes.getPhoneInfo(eigenNummer).catch(() => ({ number: '', name: '', quality: '' }))
+            ? await _waes.getPhoneInfo(eigenNummer, _waToken.ontsleutel(rec.fields[_waToken.F_TOKEN]) || undefined).catch(() => ({ number: '', name: '', quality: '' }))
             : null,
         });
       } catch (err) {
         console.error('[wa-es-status] error:', err.message);
+        return res.status(500).json({ error: 'Serverfout' });
+      }
+    }
+
+    /* ── Eigen nummer ontkoppelen ─────────────────────────────────────────
+       Terug naar het gedeelde Helvaro-nummer. Alleen onze kant: de velden
+       leeg, token weg. Bij Meta blijft het nummer van de klant gewoon van de
+       klant. Nodig sinds er een koppelknop is: een test of een vergissing
+       moet zonder Airtable-handwerk terug te draaien zijn. */
+    if (body.mode === 'wa-es-disconnect') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+        const cRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
+        );
+        const rec = ((await cRes.json()).records || [])[0];
+        if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
+        const oudNummer = String(rec.fields['fldbrhlSrsmlJwcYr'] || '').trim();
+        const velden = { fldbrhlSrsmlJwcYr: '', fldCEqMp5zs1Wos3T: '', [_waToken.F_TOKEN]: '' };
+        const upRes = await atFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+          { method: 'PATCH', headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: velden, typecast: true }) }
+        );
+        if (!upRes.ok) return res.status(500).json({ error: 'Ontkoppelen mislukt. Probeer later opnieuw.' });
+        try { setCachedClient(projectCode, { ...rec, fields: { ...rec.fields, ...velden } }); } catch (e) {}
+        if (oudNummer) _waToken.vergeet(oudNummer);
+        console.log('[wa-es] eigen nummer ontkoppeld voor', projectCode);
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error('[wa-es-disconnect] error:', err.message);
         return res.status(500).json({ error: 'Serverfout' });
       }
     }
@@ -841,7 +874,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         const rec = ((await cRes.json()).records || [])[0];
         if (!rec) return res.status(404).json({ error: 'Klantrecord niet gevonden' });
 
-        const velden = { fldbrhlSrsmlJwcYr: nummerId, fldCEqMp5zs1Wos3T: wabaId };
+        /* Het token versleuteld mee: zonder kan er niets verzonden worden vanaf
+           dit nummer (zie api/_wa-token.js). Lukt versleutelen niet (geen
+           SESSION_SECRET), dan slaan we bewust NIETS op: een nummer zonder token
+           is een nummer dat stil is. */
+        let tokenBlob;
+        try { tokenBlob = _waToken.versleutel(uit.token); }
+        catch (e) {
+          console.error('[wa-es] token niet te versleutelen voor', projectCode, '-', e && e.message);
+          return res.status(500).json({ error: 'Koppeling gelukt bij Meta, maar het token kon niet bewaard worden. Meld dit.' });
+        }
+        const velden = { fldbrhlSrsmlJwcYr: nummerId, fldCEqMp5zs1Wos3T: wabaId, [_waToken.F_TOKEN]: tokenBlob };
         const upRes = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
           {
@@ -859,9 +902,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           return res.status(500).json({ error: 'Koppeling gelukt, maar opslaan mislukte. We hebben dit gemeld.' });
         }
         try { setCachedClient(projectCode, { ...rec, fields: { ...rec.fields, ...velden } }); } catch (e) {}
+        _waToken.onthoud(nummerId, uit.token);
 
-        console.log('[wa-es] eigen nummer gekoppeld voor', projectCode);
-        return res.status(200).json({ ok: true, nummer: uit });
+        console.log('[wa-es] eigen nummer gekoppeld voor', projectCode, uit.systeemgebruiker && uit.systeemgebruiker.ok ? '(systeemgebruiker ook op de WABA)' : '(alleen eigen token)');
+        const { token: _t, ...zonderToken } = uit;
+        return res.status(200).json({ ok: true, nummer: zonderToken });
       } catch (err) {
         console.error('[wa-es] opslaan mislukt voor', projectCode, '-', err && err.message);
         return res.status(500).json({ error: 'Koppeling gelukt, maar opslaan mislukte.' });

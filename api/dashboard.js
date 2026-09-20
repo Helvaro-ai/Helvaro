@@ -2724,6 +2724,7 @@ ${faro.navCta}
             <div class="settings-toggle" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
               <div class="settings-value" id="set-waes-status"></div>
               <button class="btn-icon btn-primary-sm" id="set-waes-knop" onclick="waesKoppelen()">${T('set.waes.connect')}</button>
+              <button class="btn-icon" id="set-waes-los" onclick="waesOntkoppelen()" style="display:none">${T('set.waes.disconnect')}</button>
             </div>
           </div>
         </div>
@@ -17679,17 +17680,55 @@ function waesToon(d) {
   var knop = document.getElementById('set-waes-knop');
   var sub = document.getElementById('set-waes-sub');
   if (!status || !knop) return;
+  var los = document.getElementById('set-waes-los');
   if (d.gekoppeld) {
     var n = d.nummer || {};
     status.textContent = tr('set.waes.done') + (n.number ? ' · ' + n.number : '') + (n.name ? ' · ' + n.name : '') + (n.quality ? ' · ' + n.quality : '');
     knop.style.display = 'none';
-    if (sub) sub.textContent = '';
+    if (los) { los.style.display = ''; los.disabled = false; }
+    if (sub) sub.textContent = tr('set.waes.sub.gekoppeld');
   } else {
     status.textContent = '';
     knop.style.display = '';
     knop.disabled = false;
     knop.textContent = tr('set.waes.connect');
+    if (los) los.style.display = 'none';
+    if (sub) sub.textContent = tr('set.waes.sub');
   }
+}
+
+/* Terug naar het gedeelde nummer. Onze kant alleen; bij Meta verandert er
+   niets aan het nummer van de klant. Met bevestiging: hierna zendt de
+   assistent weer vanaf het Helvaro-nummer. */
+function waesOntkoppelen() {
+  var d = _waesStaat;
+  if (!d || !d.gekoppeld) return;
+  showConfirmModal({
+    title: tr('set.waes.disconnect'),
+    message: tr('set.waes.disconnect.q'),
+    confirmText: tr('set.waes.disconnect'),
+    cancelText: tr('btn.annuleren'),
+    danger: true,
+    onConfirm: async function () {
+      var los = document.getElementById('set-waes-los');
+      if (los) los.disabled = true;
+      try {
+        var r = await fetch(API_BASE + '/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+          body: JSON.stringify({ mode: 'wa-es-disconnect' })
+        });
+        var uit = await r.json().catch(function () { return {}; });
+        if (!r.ok) { toast(uit.error || tr('conv.actieMislukt'), 'error'); if (los) los.disabled = false; return; }
+        toast(tr('set.waes.disconnected'), 'success');
+        await laadWaes();
+        try { laadWhatsAppInstellingen(true); } catch (e) {}
+      } catch (e) {
+        toast(tr('tst.netwerkOpnieuw'), 'error');
+        if (los) los.disabled = false;
+      }
+    }
+  });
 }
 
 function waesSdk(appId) {

@@ -14,6 +14,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Eigen WhatsApp-nummer: werkt nu echt, en is te ontkoppelen
+
+Bij het koppelen van een eigen nummer (Instellingen → WhatsApp) bewaart
+Helvaro nu het token dat Meta voor jouw nummer uitgeeft — versleuteld. Tot
+nu toe werd dat weggegooid, waardoor er vanaf een eigen nummer niets verstuurd
+kon worden. Helvaro probeert daarnaast zijn beheerdersaccount aan je
+WhatsApp-account te koppelen (voor sjabloonbeheer). Nieuw: knop
+**Ontkoppelen** naast een gekoppeld nummer — terug naar het gedeelde
+Helvaro-nummer, zonder Airtable-handwerk. Nieuw Airtable-veld "WhatsApp
+Token" op Client Config.
+
 ### De assistent antwoordt binnen seconden
 
 Vóór elk antwoord van de assistent zat een ingebouwde pauze van 25 tot 55
