@@ -1583,6 +1583,7 @@ const TEKST = {
   'tst.instellingenNiet': { nl: 'Kan instellingen niet laden', fr: 'Impossible de charger les paramètres', en: 'Couldn’t load settings', de: 'Einstellungen konnten nicht geladen werden' },
   'tst.resultatenNiet': { nl: 'Kan resultaten niet laden', fr: 'Impossible de charger les résultats', en: 'Couldn’t load results', de: 'Ergebnisse konnten nicht geladen werden' },
   'tst.instellingenOpge': { nl: 'Instellingen opgeslagen. Live in elk volgend gesprek', fr: 'Paramètres enregistrés. Actifs dès la prochaine conversation', en: 'Settings saved. Live in every next conversation', de: 'Einstellungen gespeichert. Ab dem nächsten Gespräch aktiv' },
+  'tst.uitloggenMis': { nl: 'Uitloggen mislukt — controleer je verbinding en probeer opnieuw', fr: 'Échec de la déconnexion — vérifiez votre connexion et réessayez', en: 'Sign-out failed — check your connection and try again', de: 'Abmelden fehlgeschlagen — Verbindung prüfen und erneut versuchen' },
   'tst.opgeslagenDirect': { nl: 'Opgeslagen — je assistent gebruikt dit meteen', fr: 'Enregistré — votre assistant l’utilise immédiatement', en: 'Saved — your assistant uses this right away', de: 'Gespeichert — Ihr Assistent nutzt das sofort' },
   'tst.assistentKlaar': { nl: 'Je assistent staat klaar.', fr: 'Votre assistant est prêt.', en: 'Your assistant is ready.', de: 'Ihr Assistent ist bereit.' },
   'tst.gekopieerd': { nl: 'Gekopieerd', fr: 'Copié', en: 'Copied', de: 'Kopiert' },

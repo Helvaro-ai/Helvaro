@@ -14,6 +14,43 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Uitloggen logde niet uit
+
+Klik op Uitloggen, bevestig, flits, en je stond weer binnen. Oorzaak: Clerk
+stuurt zijn uitlogverzoek met een URL-object, en de beveiligingslaag van het
+dashboard hield dat voor een eigen verzoek en plakte er een CSRF-header op.
+Clerk weigert die header, het verzoek mislukte stil, en de pagina laadde
+opnieuw met een sessie die nog gewoon bestond. Nu herkent die laag de
+herkomst correct, en mislukt uitloggen tóch, dan zie je een melding in
+plaats van een flits.
+
+### Gesprekken opent met verse data
+
+Een lead die net antwoordde stond niet in Gesprekken tot je de pagina hard
+ververste: de lijst tekende uit de gegevens van het inloggen, en de volgende
+ronde kwam pas na tien minuten. Gesprekken en Pipeline halen nu eerst even op
+als de laatste ronde ouder is dan een halve minuut. Het geopende gesprek
+blijft open.
+
+### Eerste WhatsApp-bericht komt binnen seconden, niet na een minuut
+
+Na het formulier wachtte Helvaro 45 seconden voor het eerste bericht ("voelt
+menselijker"). In de praktijk staarde de lead bijna een minuut naar zijn
+telefoon. Nu 5 seconden. **Actie (optioneel):** wil je het anders, zet
+`INTRO_VERTRAGING_MS` in Vercel (0 tot 45000).
+
+### Formulier → Stijl & merk: het leadformulier in je eigen huisstijl
+
+Nieuwe kaart op de Formulier-pagina. Kies licht/donker/volgt-de-bezoeker,
+je merkkleur, pagina-, kaart- en tekstkleur, lettertype (Inter, systeem,
+serif, grotesk, rond), hoeken (strak/zacht/rond), opmaak (kaart of volledig
+vlak voor iframes), logo (upload tot 200 KB of https-link, met of zonder
+assistent-avatar), achtergrondfoto, en eigen teksten: openingszin, knop,
+toestemmingszin, voettekst. Opslaan ververst het voorbeeld eronder. Alles is
+optioneel; leeg = de Helvaro-standaard, en onleesbare kleurcombinaties vallen
+automatisch terug op leesbaar. Nieuw Airtable-veld "Form Style" op Client
+Config.
+
 ### Sjabloonlijst: 'wa.tpl.campagne' toonde zijn sleutel in plaats van een naam
 
 Het campagnesjabloon heet nu gewoon "Campagnebericht naar eerdere leads" (nl/fr/en/de).

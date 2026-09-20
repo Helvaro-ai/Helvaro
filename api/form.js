@@ -2,10 +2,14 @@
 // keeps running for the lifetime of that promise (bounded by maxDuration),
 // even after our HTTP response has already been returned to the browser.
 // Without this, Vercel gives no documented guarantee that a container
-// survives the 45s setTimeout below once the response is flushed. Safe to
+// survives the setTimeout below (INTRO_VERTRAGING_MS) once the response is flushed. Safe to
 // call in any environment: it's a no-op (getContext().waitUntil?.()) when
 // the platform doesn't provide a request context (e.g. local dev).
 const { waitUntil } = require('@vercel/functions');
+
+/* Pauze tussen formulier en eerste WhatsApp-bericht; zie de uitleg bij de
+   setTimeout verderop. */
+const INTRO_VERTRAGING_MS = Math.min(45000, Math.max(0, Number(process.env.INTRO_VERTRAGING_MS) || 5000));
 // Trial/plan-status interpretation. Pure, no I/O — see its file header.
 const { getPlanState } = require('./_plan');
 // Language registry — see its file header.
@@ -274,8 +278,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // best-effort-only and template-gated, not a second guaranteed channel.
     const notifyPhone = ownerPhone || process.env.NOTIFY_PHONE;
 
-    // Fire after 45 seconds. Feels like a real person picking up the form
-    // Note: Vercel maxDuration is 60s, so 45s delay + processing leaves ~15s buffer
+    // Korte adempauze vóór het eerste WhatsApp-bericht. Dit stond op 45 s
+    // ('voelt als een mens die het formulier oppakt'), maar in de praktijk
+    // wacht de lead dan bijna een minuut op het bericht dat hij net zelf heeft
+    // aangevraagd -- en tijdens een demo of screencast is dat een eeuwigheid.
+    // Nu 5 s, instelbaar via INTRO_VERTRAGING_MS (max 45 s: de functie heeft
+    // maxDuration 120 in vercel.json, maar het bericht moet ook nog verzonden
+    // worden). Zie Sindi, 2026-09-20.
     //
     // We already returned (are about to return) the HTTP response below, so
     // this setTimeout runs entirely after the response is sent. Vercel gives
@@ -398,7 +407,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         } finally {
           resolve();
         }
-      }, 45000);
+      }, INTRO_VERTRAGING_MS);
     });
     waitUntil(deferredSend);
 

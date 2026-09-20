@@ -4662,7 +4662,15 @@ function showTenantPending(clerk) {
 }
 
 async function clerkSignOut() {
-  try { if (window.Clerk) await window.Clerk.signOut(); } catch (e) {}
+  /* Niet doorsturen als het uitloggen zelf mislukt is. Dat deed het wel, en
+     dan laadde /dashboard opnieuw met een sessie die nog gewoon bestond: je
+     zag een flits en stond weer binnen. Mislukt het, dan hoor je dat en blijf
+     je waar je bent -- zie ook de fetch-wrapper (x-csrf-token op cross-origin)
+     voor de oorzaak die dit op 2026-09-20 verborg. */
+  var gelukt = false;
+  try { if (window.Clerk) { await window.Clerk.signOut(); gelukt = true; } }
+  catch (e) { console.error('[clerk] uitloggen mislukt', e); }
+  if (!gelukt) { try { toast(tr('tst.uitloggenMis'), 'error'); } catch (e) {} return; }
   window.location.href = '/dashboard';
 }
 
@@ -4706,8 +4714,23 @@ async function clerkSignOut() {
   window.fetch = function (input, init) {
     init = init || {};
     var method = String(init.method || 'GET').toUpperCase();
-    var url    = typeof input === 'string' ? input : (input && input.url) || '';
-    var sameOrigin = url.indexOf('http') !== 0 || url.indexOf(location.origin) === 0;
+    /* Drie vormen van input: een string, een Request (heeft .url) en een URL-
+       object (heeft .href, geen .url). Die derde ontbrak hier, en dat was
+       de uitloglus (2026-09-20): Clerk roept fetch aan met een URL-object,
+       de wrapper las daar '' uit, hield '' voor same-origin en plakte er
+       x-csrf-token op. Een eigen header op een cross-origin POST dwingt een
+       CORS-preflight af, Clerk staat die header niet toe, en Clerk.signOut()
+       stierf in 'Failed to fetch' -- stil, want performLogout() vangt dat
+       af. De sessie bleef staan en na de redirect stond je gewoon weer
+       binnen. De tokenverversing overleefde het toevallig wel, dus alles
+       LEEK te werken behalve uitloggen. Herkomst nu via de URL-parser, niet
+       via een substring. */
+    var url = '';
+    if (typeof input === 'string') url = input;
+    else if (input && typeof input.href === 'string') url = input.href;
+    else if (input && typeof input.url === 'string') url = input.url;
+    var sameOrigin = true;
+    try { sameOrigin = new URL(url, location.href).origin === location.origin; } catch (e) {}
     var kanCreditsKosten = sameOrigin && method === 'POST'
       && (url.indexOf('/api/leads') > -1 || url.indexOf('/api/faro') > -1)
       && String(init.body || '').indexOf('credit-usage') === -1;
@@ -5736,6 +5759,7 @@ async function refreshData(skipFetch = false) {
   try {
     if (!skipFetch) {
       const data = await fetchLeads();
+      _laatstVerversMs = Date.now();
 
       if (data.rateLimited || data.stale) {
         // Airtable is busy. Keep whatever data we already have in state.
@@ -6030,6 +6054,32 @@ const pollJitter    = Math.random() * 60000 + 30000; // 30–90s startup offset
    verse cijfers in plaats van te wachten tot de volgende ronde. Verborgen
    overslaan is dus niet alleen zuiniger, het is ook actueler. */
 var _laatstVerversMs = 0;
+
+/* Verse data bij het openen van een pagina die uit state.leads tekent.
+
+   Gezien tijdens de Meta-screencast (2026-09-20): formulier ingevuld, lead
+   antwoordt op WhatsApp, Sindi klikt naar Gesprekken -- en het gesprek staat
+   er niet. De lijst tekent uit state.leads, en die was voor het laatst
+   opgehaald bij het inloggen; de volgende ronde komt pas na tien minuten.
+   Pas na een harde herlaad stond het gesprek er. Dat is geen bug in de
+   lijst, het is oud nieuws dat als nieuws gebracht wordt.
+
+   Daarom: is de laatste ronde ouder dan een halve minuut, dan haalt de
+   pagina eerst even op en tekent daarna opnieuw. Wie tussen tabbladen heen
+   en weer klikt, raakt de drempel niet en krijgt geen verzoekenregen. */
+var VERS_BIJ_OPENEN_MS = 30 * 1000;
+var _versBijOpenenBezig = false;
+function versBijOpenen(naRender) {
+  if (!state.apiKey || _versBijOpenenBezig) return;
+  if (Date.now() - _laatstVerversMs < VERS_BIJ_OPENEN_MS) return;
+  _versBijOpenenBezig = true;
+  Promise.resolve().then(function () { return refreshData(); })
+    .catch(function () {})
+    .then(function () {
+      _versBijOpenenBezig = false;
+      try { if (typeof naRender === 'function') naRender(); } catch (e) {}
+    });
+}
 function hvVerversAlsZichtbaar() {
   if (!state.apiKey) return;
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
@@ -11031,8 +11081,8 @@ function navigateTo(page) {
   if (page === 'kalender')     renderAppointments();
   if (page === 'profile')      renderProfile();
   if (page === 'resultaten')   loadResultaten();
-  if (page === 'pipeline')     renderPipeline();
-  if (page === 'gesprekken')   renderGesprekken();
+  if (page === 'pipeline')   { renderPipeline();   versBijOpenen(renderPipeline); }
+  if (page === 'gesprekken') { gesprekkenOpnieuw(); versBijOpenen(gesprekkenOpnieuw); }
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
   if (page === 'panden')       loadPanden();
@@ -13217,6 +13267,14 @@ function renderPipeline() {
 /* ============================================================
    GESPREKKEN (CONVERSATIONS)
    ============================================================ */
+/* Lijst opnieuw tekenen na verse data, met het geopende gesprek behouden. */
+function gesprekkenOpnieuw() {
+  var open = document.querySelector('.conv-list-item.active');
+  var id = open ? open.id.replace(/^conv-item-/, '') : '';
+  renderGesprekken();
+  if (id) openConversation(id);
+}
+
 function renderGesprekken() {
   const listBody = document.getElementById('conv-list-body');
   if (!listBody) return;

@@ -128,7 +128,7 @@ for everything:
 | Function | maxDuration | Why |
 |---|---|---|
 | `api/whatsapp.js` | 120s | 25-55s randomized human-delay send + AI call + Airtable read/write following it — was tight against the old 60s ceiling. |
-| `api/form.js` | 120s | Fixed 45s pre-send delay + a possible 30s Airtable-429 retry + the WhatsApp send itself — the file's own comment assumed "~15s buffer" with no retry; a retry could blow past 60s. |
+| `api/form.js` | 120s | Pre-send delay (`INTRO_VERTRAGING_MS`, default 5 s, max 45 s) + a possible 30s Airtable-429 retry + the WhatsApp send itself — the file's own comment assumed "~15s buffer" with no retry; a retry could blow past 60s. |
 | `api/cron-followup.js` | 300s | One invocation walks the stuck-lead sweep, quality-rating check, the new 6-month retention sweep, Monday weekly-report emails, the weekly learning loop, and Envoy's sequential outreach sends — several sequential external API calls in one run. Not user-facing, so extra headroom costs nothing in UX. |
 | everything else | 60s (unchanged) | No function outside the three above has any delayed/multi-step work that approaches 60s. |
 
@@ -279,7 +279,7 @@ without these — nothing else breaks.
 | WhatsApp Embedded Signup / template mgmt | `META_APP_ID`, `META_APP_SECRET`, `META_ES_CONFIG_ID`, `WABA_ID`, `WHATSAPP_MANAGEMENT_TOKEN` |
 | WhatsApp voice-note transcription | `WHATSAPP_TRANSCRIBE`, `WHATSAPP_TRANSCRIBE_MODEL` |
 | Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `REPLY_TO` (see the correction above — SMTP is the only transport, not "optional with a fallback") |
-| Notifications / templates | `NOTIFY_EMAIL`, `NOTIFY_PHONE`, `SUPPORT_EMAIL`, `SUPPORT_WA`, `FOLLOWUP_TEMPLATE_NAME`/`_LANG`, `REMINDER_TEMPLATE_NAME`/`_LANG`, `INTRO_TEMPLATE_NAME`/`_LANG`, `BOOKING_TEMPLATE_NAME`/`_LANG`, `MANUAL_REPLY_TEMPLATE_NAME`/`_LANG`, `NOTIFY_TEMPLATE_NAME`/`_LANG` |
+| Notifications / templates | `NOTIFY_EMAIL`, `NOTIFY_PHONE`, `SUPPORT_EMAIL`, `SUPPORT_WA`, `FOLLOWUP_TEMPLATE_NAME`/`_LANG`, `REMINDER_TEMPLATE_NAME`/`_LANG`, `INTRO_TEMPLATE_NAME`/`_LANG`, `BOOKING_TEMPLATE_NAME`/`_LANG`, `MANUAL_REPLY_TEMPLATE_NAME`/`_LANG`, `NOTIFY_TEMPLATE_NAME`/`_LANG`, `INTRO_VERTRAGING_MS` (optional, default 5000) |
 | Rate limiting (shared across instances) | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — fails **open** (limits just become per-instance) without these, not closed |
 | Billing / credits | `CREDIT_TOPUP_MIN_EUR`, `CREDIT_TOPUP_MAX_EUR`, `CREDIT_TOPUP_RATE_EUR`, `DEFAULT_CREDIT_ALLOWANCE`, `KOSTEN_USD_EUR` |
 | AI behavior tuning | `AI_CONFIDENCE_MIN`, `AI_MAX_ATTEMPTS`, `AI_PROVIDER_FORCE`, `AI_UIT`, `AI_UIT_REDEN` |

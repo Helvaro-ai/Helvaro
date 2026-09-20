@@ -213,11 +213,11 @@ function render(lang) {
    staan), dus de breedteovergang is gewoon geschrapt -- het puntje springt
    nu ipv breder schuift, en alleen de achtergrondkleur blijft animeren.
 
-   Daarna (+1956 bytes): Formulier → Stijl & merk, de kaart waarmee een klant
+   Daarna (+2033 bytes): Formulier → Stijl & merk, de kaart waarmee een klant
    het leadformulier op zijn huisstijl zet (.fm-style-card, .fs-*). Bewuste
    toevoeging, geen restant. */
-const CSS_BYTES = 395155;
-const CSS_SHA   = '8caa65adfe12de4a';
+const CSS_BYTES = 395232;
+const CSS_SHA   = '2a5155a34a242fd1';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
