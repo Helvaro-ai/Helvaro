@@ -731,6 +731,12 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       (id, velden) => updateLead(id, velden, phone, scopedProjectCode),
       lead.id,
     );
+    /* Zelfde nummer, zelfde klant, meerdere leadrecords (formulier twee keer
+       ingevuld, of een oude test). De afmelding hoort bij het NUMMER, niet
+       bij het record: gezien op 2026-09-20 -- STOP zette de vlag op het
+       nieuwste record, en via het oudere record in Gesprekken kon er gewoon
+       nog verstuurd worden. Best-effort, na de hoofdvlag. */
+    await markeerZusterRecords(phone, projectCode, lead.id).catch(() => {});
 
     // De afmelding blijft ook in de geschiedenis staan, zodat de makelaar ziet
     // wanneer en hoe het gebeurd is.
@@ -2953,6 +2959,31 @@ function resolveLeadCollision(records) {
     }
   }
   return { winner, decidedBy, sorted };
+}
+
+/* Alle andere leadrecords van dit nummer bij deze klant ook op afgemeld.
+   Eén Airtable-query op (telefoon, projectcode), daarna één PATCH per tien
+   records. Nooit gooien: de hoofdvlag staat al, dit is de rest. */
+async function markeerZusterRecords(phone, projectCode, behalveId) {
+  if (!phone || !projectCode) return 0;
+  const filter = encodeURIComponent(
+    `AND({fld6YaitW0lMqHUrd}="${escapeFormula(phone)}", {fldSmczuyUJd26HLe}="${escapeFormula(projectCode)}")`
+  );
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${filter}&pageSize=50&fields[]=${_optout.VELD}`;
+  const res  = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+  const data = await res.json().catch(() => ({}));
+  const rest = (data.records || []).filter((r) => r.id !== behalveId && !_optout.isAfgemeld(r.fields));
+  for (let i = 0; i < rest.length; i += 10) {
+    const batch = rest.slice(i, i + 10).map((r) => ({ id: r.id, fields: { [_optout.VELD]: true } }));
+    const pr = await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records: batch }),
+    });
+    if (!pr.ok) console.error(`[optout] zusterrecords niet gemarkeerd (${pr.status}) voor ${maskPhone(phone)}`);
+  }
+  if (rest.length) console.log(`[WhatsApp] afmelding ook op ${rest.length} ander(e) record(s) van ${maskPhone(phone)} (${projectCode})`);
+  return rest.length;
 }
 
 async function getLead(phone, scopedProjectCode) {

@@ -6080,6 +6080,52 @@ function versBijOpenen(naRender) {
       try { if (typeof naRender === 'function') naRender(); } catch (e) {}
     });
 }
+/* Live meekijken in een lopend gesprek.
+
+   Gezien tijdens de screencast (2026-09-20): Sindi zit in Gesprekken, de lead
+   antwoordt op zijn telefoon, en het dashboard blijft dertig seconden naar
+   het oude gesprek staren. Het antwoord kwam pas na weg- en terugklikken.
+   Voor een makelaar die net 'Neem over' heeft gedrukt is dat precies het
+   moment waarop hij het antwoord van de lead wil zien.
+
+   Daarom: zolang Gesprekken open en zichtbaar is EN het geopende gesprek
+   leeft (laatste bericht of aanmaak < 15 min geleden), elke 12 s even
+   ophalen en alleen hertekenen als dat gesprek echt veranderd is. Een oud
+   gesprek van vorige week kost dus niets; een gesprek van nu wel, en dat is
+   de bedoeling. Wat er in het antwoordvak stond blijft staan. */
+var GESPREK_LIVE_MS = 12 * 1000;
+var GESPREK_LEEFT_MS = 15 * 60 * 1000;
+function gesprekLaatsteMs(lead) {
+  var laatste = 0;
+  try {
+    var m = JSON.parse(lead.gesprek || '[]');
+    for (var i = m.length - 1; i >= 0; i--) { if (m[i] && m[i].ts) { laatste = Number(m[i].ts) || 0; break; } }
+  } catch (e) {}
+  if (!laatste && lead.datum) laatste = Date.parse(lead.datum) || 0;
+  return laatste;
+}
+async function gesprekLiveTick() {
+  if (!state.apiKey || state.currentPage !== 'gesprekken') return;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+  if (_versBijOpenenBezig) return;
+  var open = document.querySelector('.conv-list-item.active');
+  var id = open ? open.id.replace(/^conv-item-/, '') : '';
+  var lead = id ? state.leads.find(function (l) { return String(l.id) === id; }) : null;
+  if (!lead) return;
+  if (Date.now() - gesprekLaatsteMs(lead) > GESPREK_LEEFT_MS) return;
+  var voor = lead.gesprek || '';
+  _versBijOpenenBezig = true;
+  try { await refreshData(); } catch (e) {} finally { _versBijOpenenBezig = false; }
+  var na = state.leads.find(function (l) { return String(l.id) === id; });
+  if (!na || (na.gesprek || '') === voor && !!na.afgemeld === !!lead.afgemeld) return;
+  var ta = document.getElementById('conv-reply-input');
+  var concept = ta ? ta.value : '';
+  gesprekkenOpnieuw();
+  var ta2 = document.getElementById('conv-reply-input');
+  if (ta2 && concept) ta2.value = concept;
+}
+setInterval(function () { gesprekLiveTick().catch(function () {}); }, GESPREK_LIVE_MS);
+
 function hvVerversAlsZichtbaar() {
   if (!state.apiKey) return;
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;

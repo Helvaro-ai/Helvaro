@@ -37,6 +37,20 @@ console.log('\nGesprekken opent met verse data');
   ck('niet dubbel ophalen zolang er een ronde loopt', html.includes('if (!state.apiKey || _versBijOpenenBezig) return;'));
 }
 
+console.log('\nEen open gesprek kijkt live mee');
+{
+  delete require.cache[require.resolve(BASE + 'api/dashboard.js')];
+  const dash = require(BASE + 'api/dashboard.js');
+  let html = '';
+  dash({ method: 'GET', url: '/dashboard', headers: {} },
+    { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+  ck('tikt elke 12 s', /var GESPREK_LIVE_MS = 12 \* 1000;/.test(html));
+  ck('alleen op Gesprekken en alleen zichtbaar', html.includes("if (!state.apiKey || state.currentPage !== 'gesprekken') return;") && html.includes("document.visibilityState === 'hidden') return;"));
+  ck('alleen voor een gesprek dat leeft (15 min)', /var GESPREK_LEEFT_MS = 15 \* 60 \* 1000;/.test(html) && html.includes('if (Date.now() - gesprekLaatsteMs(lead) > GESPREK_LEEFT_MS) return;'));
+  ck('een lead zonder ts telt zijn aanmaakdatum', html.includes('if (!laatste && lead.datum) laatste = Date.parse(lead.datum) || 0;'));
+  ck('hertekent alleen bij verandering, en bewaart het concept', html.includes("(na.gesprek || '') === voor") && html.includes('if (ta2 && concept) ta2.value = concept;'));
+}
+
 console.log('\nEerste WhatsApp-bericht komt sneller');
 {
   const src = fs.readFileSync(BASE + 'api/form.js', 'utf8');

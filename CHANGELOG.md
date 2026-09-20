@@ -14,6 +14,20 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### STOP geldt voor het nummer, niet voor één record
+
+Hetzelfde nummer kan bij dezelfde klant meerdere leadrecords hebben
+(formulier twee keer ingevuld). STOP zette de vlag alleen op het nieuwste
+record; via het oudere record in Gesprekken kon je nog gewoon sturen. Nu
+worden alle records van dat nummer bij die klant gemarkeerd.
+
+### Gesprekken kijkt live mee
+
+Zit je in een gesprek dat leeft (laatste bericht minder dan 15 minuten
+geleden), dan haalt Gesprekken elke 12 seconden even op en toont het
+antwoord van de lead zodra het er is — zonder weg- en terugklikken. Wat je
+al in het antwoordvak typte blijft staan. Oude gesprekken kosten niets.
+
 ### STOP werkt nu ook zichtbaar
 
 Een lead die STOP stuurde werd wel gemarkeerd, maar de bevestiging aan de
