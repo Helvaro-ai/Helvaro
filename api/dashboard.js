@@ -6106,8 +6106,13 @@ function gesprekLaatsteMs(lead) {
 }
 async function gesprekLiveTick() {
   if (!state.apiKey || state.currentPage !== 'gesprekken') return;
-  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
   if (_versBijOpenenBezig) return;
+  /* Bewust GEEN stop op een verborgen tabblad zolang er een gesprek leeft:
+     de makelaar zit dan juist op WhatsApp Web of zijn telefoon, en als hij
+     terugklikt moet het antwoord er al staan (vierde opname, 2026-09-20:
+     19:48:44 formulier, tabblad verborgen, eerste ophaling pas 19:49:15).
+     De browser knijpt timers in een verborgen tabblad toch al af tot ~1/min
+     na vijf minuten, en na vijftien minuten stilte stopt dit vanzelf. */
   /* Leeft er ÉÉN gesprek (of is er net een lead binnengekomen), dan kijkt de
      hele pagina mee -- niet alleen het geopende gesprek. Tweede opname
      (2026-09-20, 15:40): Sindi stond op Gangy, de nieuwe lead antwoordde, en
@@ -11083,7 +11088,36 @@ function fmtDuration(sec) {
   return { value: Math.round(n / 360) / 10, suffix: 'u' };
 }
 
+/* Nieuwe uitrol oppikken zonder harde herlaad.
+
+   Elke uitrol vandaag (2026-09-20) eindigde in 'druk ⌘⇧R' -- en wie dat
+   vergat, testte een half uur tegen de vorige versie. De hash van het eigen
+   script staat in de src; de server geeft de actuele hash als header terug
+   op een HEAD. Verschillen ze, dan herlaadt de pagina bij de VOLGENDE
+   paginawissel: dat is het enige moment waarop er gegarandeerd niets
+   half-af is (geen half getypt antwoord, geen open venster). */
+function hvEigenBuild() {
+  var sc = document.querySelector('script[src*="/dashboard.js"]');
+  var m = sc && /[?&]v=([0-9a-f]+)/.exec(sc.getAttribute('src') || '');
+  return m ? m[1] : '';
+}
+var _hvNieuweBuild = false;
+var _hvBuildLaatst = 0;
+async function hvBuildCheck() {
+  if (!state.apiKey || _hvNieuweBuild || !hvEigenBuild()) return;
+  if (Date.now() - _hvBuildLaatst < 60 * 1000) return;
+  _hvBuildLaatst = Date.now();
+  try {
+    var r = await fetch('/dashboard', { method: 'HEAD', cache: 'no-store' });
+    var b = r.headers.get('x-helvaro-build');
+    if (b && b !== hvEigenBuild()) _hvNieuweBuild = true;
+  } catch (e) {}
+}
+setInterval(hvBuildCheck, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') hvBuildCheck(); });
+
 function navigateTo(page) {
+  if (_hvNieuweBuild) { window.location.reload(); return; }
   state.currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -20518,6 +20552,10 @@ ${_intro.js({ lang: FARO_LANG })}
     res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
     return res.status(200).send(asset === 'css' ? uit.css : uit.js);
   }
+  /* Zodat een open dashboard kan zien dat er een nieuwe uitrol is (zie
+     hvBuildCheck in de client). Eén kleine HEAD in plaats van 200 KB HTML. */
+  res.setHeader('X-Helvaro-Build', uit.jsHash);
+  if (req.method === 'HEAD') return res.status(200).end();
   const html = uit.html
     .replace('%%HV_CSS%%', `<link rel="stylesheet" href="/dashboard.css?v=${uit.cssHash}">`)
     .replace('%%HV_JS%%', `<script src="/dashboard.js?lang=${encodeURIComponent(UI_LANG)}&v=${uit.jsHash}"></script>`);

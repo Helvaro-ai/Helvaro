@@ -14,6 +14,19 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Nieuwe versie zonder harde herlaad
+
+Een open dashboard merkt zelf dat er een nieuwe versie is uitgerold en
+herlaadt bij je volgende paginawissel — nooit midden in iets. ⌘⇧R is niet
+meer nodig.
+
+### Gesprekken blijft meekijken terwijl je op WhatsApp zit
+
+Het live meekijken stopte zodra het Helvaro-tabblad niet zichtbaar was — en
+dat is precies wanneer je op WhatsApp Web het antwoord van de lead zit te
+typen. Nu loopt het door zolang er een gesprek leeft, zodat het antwoord er
+al staat als je terugklikt.
+
 ### Gesprek wissen
 
 Knop **Gesprek wissen** in de kop van een gesprek (Gesprekken). Wist de

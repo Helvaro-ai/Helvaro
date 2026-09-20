@@ -46,10 +46,28 @@ console.log('\nEen open gesprek kijkt live mee');
     { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
   ck('tikt elke 6 s', /var GESPREK_LIVE_MS = 6 \* 1000;/.test(html));
   ck('terug op het tabblad: meteen een tik', html.includes("if (state.currentPage === 'gesprekken' && typeof gesprekLiveTick === 'function') gesprekLiveTick().catch(function () {});"));
-  ck('alleen op Gesprekken en alleen zichtbaar', html.includes("if (!state.apiKey || state.currentPage !== 'gesprekken') return;") && html.includes("document.visibilityState === 'hidden') return;"));
+  ck('alleen op Gesprekken, ook als het tabblad verborgen is', html.includes("if (!state.apiKey || state.currentPage !== 'gesprekken') return;") && !/async function gesprekLiveTick\(\) \{[^}]*visibilityState === 'hidden'\) return;/.test(html));
   ck('alleen als er een gesprek leeft (15 min)', /var GESPREK_LEEFT_MS = 15 \* 60 \* 1000;/.test(html) && html.includes('return nu - gesprekLaatsteMs(l) < GESPREK_LEEFT_MS; });'));
   ck('een lead zonder ts telt zijn aanmaakdatum', html.includes('if (!laatste && lead.datum) laatste = Date.parse(lead.datum) || 0;'));
   ck('hertekent alleen bij verandering, en bewaart het concept', html.includes('if (!anders) return;') && html.includes('if (ta2 && concept) ta2.value = concept;'));
+}
+
+console.log('\nEen nieuwe uitrol wordt opgepikt zonder harde herlaad');
+{
+  const src = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
+  ck('server zet X-Helvaro-Build en beantwoordt HEAD', src.includes("res.setHeader('X-Helvaro-Build', uit.jsHash);") && src.includes("if (req.method === 'HEAD') return res.status(200).end();"));
+  delete require.cache[require.resolve(BASE + 'api/dashboard.js')];
+  const dash = require(BASE + 'api/dashboard.js');
+  let html = '', hdrs = {};
+  dash({ method: 'GET', url: '/dashboard', headers: {} },
+    { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+  /* Met Host-header gaat de handler het echte pad (CSS/JS apart), en dáár zit
+     de header -- een HEAD moet kunnen zonder de 200 KB. */
+  dash({ method: 'HEAD', url: '/dashboard', headers: { host: 'app.helvaro.pro' } },
+    { setHeader(k, v) { hdrs[k] = v; }, status() { return this; }, send() {}, json() {}, end() {} });
+  ck('client vergelijkt zijn eigen v= met de header', html.includes("var b = r.headers.get('x-helvaro-build');") && html.includes('if (b && b !== hvEigenBuild()) _hvNieuweBuild = true;'));
+  ck('herladen gebeurt alleen bij een paginawissel', html.includes('function navigateTo(page) {\n  if (_hvNieuweBuild) { window.location.reload(); return; }'));
+  ck('de header staat op het HTML-antwoord', typeof hdrs['X-Helvaro-Build'] === 'string' && /^[0-9a-f]{8,}$/.test(hdrs['X-Helvaro-Build']), hdrs['X-Helvaro-Build']);
 }
 
 console.log('\nEerste WhatsApp-bericht komt sneller');
