@@ -6088,11 +6088,11 @@ function versBijOpenen(naRender) {
    Voor een makelaar die net 'Neem over' heeft gedrukt is dat precies het
    moment waarop hij het antwoord van de lead wil zien.
 
-   Daarom: zolang Gesprekken open en zichtbaar is EN het geopende gesprek
-   leeft (laatste bericht of aanmaak < 15 min geleden), elke 12 s even
-   ophalen en alleen hertekenen als dat gesprek echt veranderd is. Een oud
-   gesprek van vorige week kost dus niets; een gesprek van nu wel, en dat is
-   de bedoeling. Wat er in het antwoordvak stond blijft staan. */
+   Daarom: zolang Gesprekken open en zichtbaar is EN er een gesprek leeft
+   (laatste bericht of aanmaak < 15 min geleden), elke 12 s even ophalen en
+   alleen hertekenen als er echt iets veranderd is. Een lijst vol oude
+   gesprekken kost dus niets; een gesprek van nu wel, en dat is de
+   bedoeling. Wat er in het antwoordvak stond blijft staan. */
 var GESPREK_LIVE_MS = 12 * 1000;
 var GESPREK_LEEFT_MS = 15 * 60 * 1000;
 function gesprekLaatsteMs(lead) {
@@ -6108,16 +6108,19 @@ async function gesprekLiveTick() {
   if (!state.apiKey || state.currentPage !== 'gesprekken') return;
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
   if (_versBijOpenenBezig) return;
-  var open = document.querySelector('.conv-list-item.active');
-  var id = open ? open.id.replace(/^conv-item-/, '') : '';
-  var lead = id ? state.leads.find(function (l) { return String(l.id) === id; }) : null;
-  if (!lead) return;
-  if (Date.now() - gesprekLaatsteMs(lead) > GESPREK_LEEFT_MS) return;
-  var voor = lead.gesprek || '';
+  /* Leeft er ÉÉN gesprek (of is er net een lead binnengekomen), dan kijkt de
+     hele pagina mee -- niet alleen het geopende gesprek. Tweede opname
+     (2026-09-20, 15:40): Sindi stond op Gangy, de nieuwe lead antwoordde, en
+     de lijst bleef de oude regel tonen omdat alleen het open gesprek telde. */
+  var nu = Date.now();
+  var leeft = (state.leads || []).some(function (l) { return nu - gesprekLaatsteMs(l) < GESPREK_LEEFT_MS; });
+  if (!leeft) return;
+  var voor = {};
+  (state.leads || []).forEach(function (l) { voor[l.id] = (l.gesprek || '') + '|' + (l.afgemeld ? 1 : 0); });
   _versBijOpenenBezig = true;
   try { await refreshData(); } catch (e) {} finally { _versBijOpenenBezig = false; }
-  var na = state.leads.find(function (l) { return String(l.id) === id; });
-  if (!na || (na.gesprek || '') === voor && !!na.afgemeld === !!lead.afgemeld) return;
+  var anders = (state.leads || []).some(function (l) { return voor[l.id] !== (l.gesprek || '') + '|' + (l.afgemeld ? 1 : 0); });
+  if (!anders) return;
   var ta = document.getElementById('conv-reply-input');
   var concept = ta ? ta.value : '';
   gesprekkenOpnieuw();

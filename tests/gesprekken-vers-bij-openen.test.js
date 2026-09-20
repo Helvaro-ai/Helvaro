@@ -46,9 +46,9 @@ console.log('\nEen open gesprek kijkt live mee');
     { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
   ck('tikt elke 12 s', /var GESPREK_LIVE_MS = 12 \* 1000;/.test(html));
   ck('alleen op Gesprekken en alleen zichtbaar', html.includes("if (!state.apiKey || state.currentPage !== 'gesprekken') return;") && html.includes("document.visibilityState === 'hidden') return;"));
-  ck('alleen voor een gesprek dat leeft (15 min)', /var GESPREK_LEEFT_MS = 15 \* 60 \* 1000;/.test(html) && html.includes('if (Date.now() - gesprekLaatsteMs(lead) > GESPREK_LEEFT_MS) return;'));
+  ck('alleen als er een gesprek leeft (15 min)', /var GESPREK_LEEFT_MS = 15 \* 60 \* 1000;/.test(html) && html.includes('return nu - gesprekLaatsteMs(l) < GESPREK_LEEFT_MS; });'));
   ck('een lead zonder ts telt zijn aanmaakdatum', html.includes('if (!laatste && lead.datum) laatste = Date.parse(lead.datum) || 0;'));
-  ck('hertekent alleen bij verandering, en bewaart het concept', html.includes("(na.gesprek || '') === voor") && html.includes('if (ta2 && concept) ta2.value = concept;'));
+  ck('hertekent alleen bij verandering, en bewaart het concept', html.includes('if (!anders) return;') && html.includes('if (ta2 && concept) ta2.value = concept;'));
 }
 
 console.log('\nEerste WhatsApp-bericht komt sneller');

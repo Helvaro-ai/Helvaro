@@ -23,9 +23,10 @@ worden alle records van dat nummer bij die klant gemarkeerd.
 
 ### Gesprekken kijkt live mee
 
-Zit je in een gesprek dat leeft (laatste bericht minder dan 15 minuten
-geleden), dan haalt Gesprekken elke 12 seconden even op en toont het
-antwoord van de lead zodra het er is — zonder weg- en terugklikken. Wat je
+Is er een gesprek dat leeft (laatste bericht of nieuwe lead minder dan 15
+minuten geleden), dan haalt Gesprekken elke 12 seconden even op en toont
+het antwoord van de lead zodra het er is — in de lijst én in het open
+gesprek, zonder weg- en terugklikken. Wat je
 al in het antwoordvak typte blijft staan. Oude gesprekken kosten niets.
 
 ### STOP werkt nu ook zichtbaar
