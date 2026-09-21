@@ -87,7 +87,7 @@
           "value": "www.helvaro.pro"
         }
       ],
-      "destination": "https://app.helvaro.pro/dashboard",
+      "destination": "https://helvaro.pro/",
       "permanent": true
     },
     {
@@ -98,7 +98,7 @@
           "value": "www.helvaro.pro"
         }
       ],
-      "destination": "https://app.helvaro.pro/:pad*",
+      "destination": "https://helvaro.pro/:pad*",
       "permanent": true
     },
     {

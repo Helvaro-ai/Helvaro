@@ -231,12 +231,16 @@ console.log('\n— één manier om te wisselen, niet drie —');
   ck('en er is geen dode functie blijven staan', js.indexOf('setClerkToggleOud') === -1, null);
 }
 
-/* ── www.helvaro.pro hoorde hier nooit bij ──────────────────────────────────
-   Dat domein hangt per ongeluk aan dit Vercel-project. Gevolg was echt schade:
-   Google indexeerde het INLOGSCHERM als hoofdresultaat voor "helvaro", met de
-   wizardteksten als omschrijving, in plaats van de marketingsite. Er stond al
-   een noindex-header tegen; deze redirect maakt bovendien ondubbelzinnig welk
-   adres het echte is.
+/* ── www.helvaro.pro hoort bij de marketingsite ─────────────────────────────
+   Deze redirect stuurde www.helvaro.pro jarenlang naar app.helvaro.pro/dashboard.
+   De oorspronkelijke gedachte was dat Google het INLOGSCHERM als hoofdresultaat
+   voor "helvaro" indexeerde in plaats van de marketingsite, en dat www daarom
+   weg moest van de app. Maar het doel klopte niet: www is het adres waar mensen
+   de marketingsite verwachten, en de fix stuurde ze juist naar de plek die het
+   probleem veroorzaakte -- een loginscherm in plaats van de site. Sindsdien
+   landt iedereen die www.helvaro.pro intypt op een inlogscherm en ziet nooit
+   de marketingsite. helvaro.pro (apex, zonder www) serveert die site al correct
+   vanuit een apart Vercel-project. Deze redirect stuurt www daar nu ook heen.
 
    Het subtiele zit in de VOLGORDE. Vercel loopt redirects van boven naar
    beneden. Staat de host-regel onder "/" -> "/dashboard", dan wordt www eerst
@@ -266,8 +270,8 @@ console.log('\n— www wordt doorgestuurd naar het echte adres —');
      definitie falen, want daar is geen pad. */
   const wwwRegels = red.filter(isWww);
   const wildcard = wwwRegels.find((r) => /:pad\*/.test(r.source));
-  ck('alle www-regels wijzen naar app.helvaro.pro',
-     wwwRegels.length > 0 && wwwRegels.every((r) => /^https:\/\/app\.helvaro\.pro\//.test(r.destination)),
+  ck('alle www-regels wijzen naar de marketingsite op helvaro.pro',
+     wwwRegels.length > 0 && wwwRegels.every((r) => /^https:\/\/helvaro\.pro\//.test(r.destination)),
      wwwRegels.map((r) => r.destination).join(' | '));
   /* Het pad moet meeverhuizen. Zonder :pad* belandt iemand met een bladwijzer
      naar /dashboard of /start op de voorpagina in plaats van waar hij heen wou. */

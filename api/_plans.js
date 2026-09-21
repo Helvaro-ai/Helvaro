@@ -18,8 +18,9 @@
  * Onderstreepje voorop, zoals api/_credits.js en api/_ledger.js.
  *
  * -- De bron ------------------------------------------------------------------
- * helvaro.pro/#prijzen, augustus 2026. Staat er iets anders op de site dan
- * hier, dan is de SITE de waarheid en is dit bestand achterop geraakt.
+ * Dit bestand is de waarheid: 249,99 / 499 / vanaf 799. Staat er iets anders
+ * op de site, dan is de site achterop geraakt -- de website wordt sinds
+ * 2026-09-21 bijgewerkt om dit bestand te volgen, niet andersom.
  */
 
 /* Wat één leadgesprek kost aan credits. Dit is de ankerwaarde van het hele
