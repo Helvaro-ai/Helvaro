@@ -232,15 +232,18 @@ console.log('\n— één manier om te wisselen, niet drie —');
 }
 
 /* ── www.helvaro.pro hoort bij de marketingsite ─────────────────────────────
-   Deze redirect stuurde www.helvaro.pro jarenlang naar app.helvaro.pro/dashboard.
-   De oorspronkelijke gedachte was dat Google het INLOGSCHERM als hoofdresultaat
-   voor "helvaro" indexeerde in plaats van de marketingsite, en dat www daarom
-   weg moest van de app. Maar het doel klopte niet: www is het adres waar mensen
-   de marketingsite verwachten, en de fix stuurde ze juist naar de plek die het
-   probleem veroorzaakte -- een loginscherm in plaats van de site. Sindsdien
-   landt iedereen die www.helvaro.pro intypt op een inlogscherm en ziet nooit
-   de marketingsite. helvaro.pro (apex, zonder www) serveert die site al correct
-   vanuit een apart Vercel-project. Deze redirect stuurt www daar nu ook heen.
+   Deze redirect stuurde www.helvaro.pro eerst naar app.helvaro.pro/dashboard.
+   De gedachte was dat Google het INLOGSCHERM als hoofdresultaat voor "helvaro"
+   indexeerde in plaats van de marketingsite, en dat www daarom een eenduidig
+   adres moest krijgen. Maar het doel was verkeerd gekozen: www is het adres
+   waar mensen de marketingsite verwachten, en de regel stuurde ze juist naar
+   de plek die het probleem veroorzaakte, een inlogscherm. Wie www.helvaro.pro
+   intypte zag de site nooit. helvaro.pro (apex, zonder www) serveert die site
+   al correct vanuit een apart Vercel-project; www gaat daar nu ook heen.
+
+   Eén uitzondering: /dashboard. Wie ooit www.helvaro.pro/dashboard als
+   bladwijzer heeft, moet in de app uitkomen en niet op een 404 van de
+   marketingsite. Die twee regels (kaal en met pad) staan vóór de wildcard.
 
    Het subtiele zit in de VOLGORDE. Vercel loopt redirects van boven naar
    beneden. Staat de host-regel onder "/" -> "/dashboard", dan wordt www eerst
@@ -265,14 +268,21 @@ console.log('\n— www wordt doorgestuurd naar het echte adres —');
   ck('er is een host-regel voor www', idxWww > -1, JSON.stringify(red.map((r) => r.source)));
   ck('en die staat vóór de "/" -> "/dashboard" regel', idxWww > -1 && idxRoot > -1 && idxWww < idxRoot,
      `www op ${idxWww}, root op ${idxRoot}`);
-  /* Er zijn nu TWEE www-regels: een voor de kale "/" en een voor al het
-     andere. De padcontrole hoort bij de tweede -- op de eerste zou hij per
-     definitie falen, want daar is geen pad. */
+  /* Vier www-regels: de kale "/", /dashboard kaal, /dashboard met pad, en de
+     wildcard voor al het andere. De padcontrole hoort bij de wildcard -- op de
+     kale regels zou hij per definitie falen, want daar is geen pad. */
   const wwwRegels = red.filter(isWww);
-  const wildcard = wwwRegels.find((r) => /:pad\*/.test(r.source));
-  ck('alle www-regels wijzen naar de marketingsite op helvaro.pro',
-     wwwRegels.length > 0 && wwwRegels.every((r) => /^https:\/\/helvaro\.pro\//.test(r.destination)),
+  const isDash = (r) => /^\/dashboard(\/|$)/.test(r.source);
+  const wildcard = wwwRegels.find((r) => r.source === '/:pad*');
+  ck('www-regels buiten /dashboard wijzen naar de marketingsite op helvaro.pro',
+     wwwRegels.length > 0 && wwwRegels.filter((r) => !isDash(r)).every((r) => /^https:\/\/helvaro\.pro\//.test(r.destination)),
      wwwRegels.map((r) => r.destination).join(' | '));
+  const dashRegels = wwwRegels.filter(isDash);
+  ck('www.helvaro.pro/dashboard (kaal en met pad) blijft bij de app',
+     dashRegels.length === 2 && dashRegels.every((r) => /^https:\/\/app\.helvaro\.pro\/dashboard/.test(r.destination)),
+     dashRegels.map((r) => r.source + ' -> ' + r.destination).join(' | '));
+  ck('en die dashboardregels staan vóór de wildcard',
+     !!wildcard && dashRegels.every((r) => red.indexOf(r) < red.indexOf(wildcard)), null);
   /* Het pad moet meeverhuizen. Zonder :pad* belandt iemand met een bladwijzer
      naar /dashboard of /start op de voorpagina in plaats van waar hij heen wou. */
   ck('en de wildcardregel neemt het pad mee',

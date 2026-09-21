@@ -91,6 +91,28 @@
       "permanent": true
     },
     {
+      "source": "/dashboard",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.helvaro.pro"
+        }
+      ],
+      "destination": "https://app.helvaro.pro/dashboard",
+      "permanent": true
+    },
+    {
+      "source": "/dashboard/:pad*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.helvaro.pro"
+        }
+      ],
+      "destination": "https://app.helvaro.pro/dashboard/:pad*",
+      "permanent": true
+    },
+    {
       "source": "/:pad*",
       "has": [
         {
