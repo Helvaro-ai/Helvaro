@@ -6,6 +6,7 @@
 // call in any environment: it's a no-op (getContext().waitUntil?.()) when
 // the platform doesn't provide a request context (e.g. local dev).
 const { waitUntil } = require('@vercel/functions');
+const _klant = require('./_klant');
 
 /* Pauze tussen formulier en eerste WhatsApp-bericht; zie de uitleg bij de
    setTimeout verderop. */
@@ -415,6 +416,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }, INTRO_VERTRAGING_MS);
     });
     waitUntil(deferredSend);
+
+    /* Klantidentiteit (api/_klant.js): deze lead aan zijn klant hangen, zodat
+       dezelfde koper via WhatsApp, e-mail of de website als één persoon
+       zichtbaar wordt. Alleen op exact nummer/e-mail, nooit op naam. Na het
+       antwoord en fail-soft: een storing hier raakt de lead niet. */
+    try {
+      waitUntil(_klant.koppelLead(project_code, leadId, { telefoon: phone, naam: name, email: body.email, kanaal: 'website', bron: bron || 'formulier' }).catch(() => {}));
+    } catch (e) { /* koppelen is bijzaak; de lead bestaat al */ }
 
     // Email notification (fire-and-forget). prefer per-client Rapport Email
     sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});

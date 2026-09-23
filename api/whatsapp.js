@@ -42,6 +42,7 @@ const _koop      = require('./_koop');       // hoe de aankoop eruitziet: financ
 const _leadscore = require('./_leadscore');  // score + temperatuur per dealership-beurt (Fase 3)
 const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
+const _klant = require('./_klant');               // klantidentiteit over kanalen heen (alleen exact nummer/e-mail)
 const _inventaris = require('./_inventaris');     // voorraadwaarheid + eindcontrole voor verzenden
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
@@ -2946,6 +2947,11 @@ async function maakLeadUitBinnenkomend(phone, eersteBericht, klant) {
     /* De cache van getLead() wist niet dat deze lead bestond; zonder deze regel
        leest de volgende beurt binnen de TTL nog steeds "geen lead". */
     setCachedLead(leadCacheKey(phone, null), data);
+    /* Klantidentiteit (api/_klant.js): op nummer, nooit op naam. Na het
+       aanmaken en zonder te wachten -- het antwoord aan de lead gaat voor. */
+    try {
+      waitUntil(_klant.koppelLead(klant.projectCode, data.id, { telefoon: phone, kanaal: 'whatsapp', bron: 'WhatsApp' }).catch(() => {}));
+    } catch (e) { /* koppelen is bijzaak; de lead bestaat al */ }
     return data;
   } catch (err) {
     console.error('[WhatsApp] lead aanmaken uit inbound mislukt:', err && err.message);

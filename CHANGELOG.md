@@ -14,6 +14,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Eén klant over alle kanalen
+
+- **Klantrecord per koper.** Een lead uit het formulier of een eerste
+  WhatsApp-bericht wordt aan een klant gekoppeld. Dezelfde koper via een
+  ander kanaal = dezelfde klant, maar alleen op exact hetzelfde nummer of
+  e-mailadres, nooit op naam. Wijzen nummer en e-mail naar twee verschillende
+  klanten, dan wordt er niets samengevoegd.
+- **Opslag voor e-mail- en websitegesprekken** (de basis voor de volgende
+  stappen): elk bericht één keer, ook als het twee keer binnenkomt;
+  overnemen per gesprek (assistent actief, overgenomen, gepauzeerd).
+
 ### Voorraad: de assistent zegt alleen wat de voorraad NU zegt
 
 - **Voorraadstatus op de voertuigenpagina.** Een kaart toont of de voorraad
