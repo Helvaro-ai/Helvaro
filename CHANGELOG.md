@@ -14,6 +14,20 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Onboarding opnieuw opgebouwd rond de nieuwe kanalen
+
+- **Acht duidelijke stappen** in plaats van zeven: na "Je assistent" komt
+  **Kanalen** (WhatsApp, e-mail, assistent op je website) en daarna
+  **Agenda en aanbod** (Google Agenda, en voor dealers de voorraad). Elk
+  onderdeel is een kaart met de echte status en één knop: Gmail koppelen, de
+  websiteassistent aanzetten met je domein (de code verschijnt meteen), de
+  agenda koppelen, de voorraad synchroniseren.
+- **Klaar toont een checklist** met wat er echt klaarstaat (klaar / later),
+  ook na een herlaadbeurt.
+- **Alles vertaald**: de WhatsApp-kaart stond nog in het Nederlands in een
+  Engels of Frans dashboard.
+- **Startkaart op het dashboard**: dealers zien nu ook "Zet je voorraad erin".
+
 ### Assistent op de website van de dealer
 
 - **Eén regel code op de eigen site** (Instellingen → Website): een

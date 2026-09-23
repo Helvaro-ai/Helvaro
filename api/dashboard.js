@@ -6842,6 +6842,7 @@ function voorraadRegels(d) {
 }
 
 function renderVoorraad() {
+  try { if (_checklistConfigCache) renderOnboardingChecklist(_checklistConfigCache); } catch (e) { /* bijzaak */ }
   var kaart = document.getElementById('inv-card');
   var home = document.getElementById('inv-card-home');
   if (!isDealer()) {
@@ -8100,7 +8101,17 @@ function getOnboardingChecklistItems(d) {
       doneSub: leadCount === 1 ? tr('chk.lead.done1') : tr('chk.lead.done', { n: leadCount }),
       actionLabel: tr('chk.lead.action'),
     },
-  ];
+  ].concat((typeof isDealer === 'function' && isDealer()) ? [{
+    /* Voor een dealer is de voorraad geen extraatje: zonder wagens kan de
+       assistent een bericht aan geen enkele auto koppelen. E-mail en de
+       websiteassistent staan er bewust NIET bij -- die zijn optioneel, en een
+       kaart die nooit afgaat voor wie ze niet wil, is ruis. */
+    key: 'voorraad', accent: 'gold', title: tr('chk.voorraad.title'),
+    done: !!(typeof voorraadState !== 'undefined' && voorraadState.data && (voorraadState.data.count || 0) > 0),
+    todoSub: tr('chk.voorraad.todo'),
+    doneSub: tr('inv.aantal', { n: (typeof voorraadState !== 'undefined' && voorraadState.data && voorraadState.data.count) || 0 }),
+    actionLabel: tr('chk.voorraad.action'),
+  }] : []);
 }
 
 function chkItemAction(key) {
@@ -8109,6 +8120,7 @@ function chkItemAction(key) {
   else if (key === 'ainame') navigateTo('ai-persona');
   else if (key === 'gcal') connectGoogleCalendar();
   else if (key === 'lead') navigateTo('formulier');
+  else if (key === 'voorraad') navigateTo('panden');
 }
 
 function renderOnboardingChecklist(d) {
@@ -12069,13 +12081,20 @@ async function startDashboard(skipRefresh = false) {
    daarna vragen hangt ervan af. Een dealer die eerst "wat doet je kantoor?"
    krijgt en pas daarna mag zeggen dat hij auto's verkoopt, heeft al een
    antwoord getypt op een vraag die niet over hem ging. */
-var WIZARD_STAPPEN = ['intro', 'regio', 'markt', 'bedrijf', 'ai', 'koppelingen', 'klaar'];
+/* Kanalen en koppelingen zijn sinds de automotive engine (2026-09-23) twee
+   stappen: eerst WAAR klanten je bereiken (WhatsApp, e-mail, je website),
+   dan WAT de assistent nodig heeft om te boeken en juist te antwoorden
+   (agenda, en voor dealers de voorraad). Klaar toont een checklist met de
+   echte status van elk onderdeel, niet een belofte. */
+var WIZARD_STAPPEN = ['intro', 'regio', 'markt', 'bedrijf', 'ai', 'kanalen', 'koppelingen', 'klaar'];
+var _wizStatus = { whatsapp: null, email: null, website: null, agenda: null, voorraad: null };
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
   regio:   '/faro/falcon-idle.webp',
   markt:   '/faro/falcon-thinking.webp',
   bedrijf: '/faro/falcon-thinking.webp',
   ai:      '/faro/falcon-generating.webp',
+  kanalen: '/faro/falcon-idle.webp',
   koppelingen: '/faro/falcon-thinking.webp',
   klaar:   '/faro/falcon-success.webp'
 };
@@ -12181,6 +12200,7 @@ function wizardSluit(afgerond) {
   var el = document.getElementById('welkom-wizard');
   if (el) el.remove();
   document.removeEventListener('keydown', wizardToetsen);
+  _wizKlaarGeladen = false;
   wizardVergeetStap();
   /* Welcome Done zetten -- ook bij overslaan. De wizard hoort niet elke login
      terug te komen; de checklist neemt het over. Best-effort: lukt het niet,
@@ -12352,18 +12372,20 @@ async function wizardWhatsAppStatus() {
       return;
     }
     if (d.klaar) {
+      _wizStatus.whatsapp = true;
       badge.textContent = tr('st.klaar');
       badge.style.color = 'var(--success-ink, #15803d)';
-      uitleg.textContent = 'Je berichten in het ' + taal + ' zijn goedgekeurd. Je leads komen binnen op het Helvaro-nummer en je assistent antwoordt meteen. Een eigen nummer kan later.';
+      uitleg.textContent = tr('wiz.wa.klaarSub', { taal: taal });
       return;
     }
-    badge.textContent = 'Wordt klaargezet';
+    _wizStatus.whatsapp = false;
+    badge.textContent = tr('wiz.wa.bezig');
     badge.style.color = 'var(--warning-ink, #b45309)';
-    uitleg.textContent = 'We laten je berichten in het ' + taal + ' goedkeuren bij WhatsApp. Dat is binnen 72 uur rond — je hoeft hier niets voor te doen. Zolang dat loopt kan je alles al instellen.';
+    uitleg.textContent = tr('wiz.wa.bezigSub', { taal: taal });
   } catch (e) {
     /* Niet doen alsof het klaar is als we het niet weten. */
-    badge.textContent = 'Onbekend';
-    uitleg.textContent = 'We konden de status even niet ophalen. Dat blokkeert je niet — je vindt hem later terug op je dashboard.';
+    badge.textContent = tr('wiz.klaar.onbekend');
+    uitleg.textContent = tr('wiz.later.dashboard');
   }
 }
 
@@ -12386,7 +12408,7 @@ async function wizardAgendaStatus() {
     knop.style.display = '';
     knop.onclick = function () {
       knop.disabled = true;
-      knop.textContent = 'Doorsturen naar Google...';
+      knop.textContent = tr('wiz.doorsturen');
       connectGoogleCalendar();
     };
   }
@@ -12408,18 +12430,20 @@ async function wizardAgendaStatus() {
       return;
     }
     if (d && d.connected) {
+      _wizStatus.agenda = true;
       badge.textContent = tr('wiz.cal.gekoppeld');
       badge.style.color = 'var(--success-ink, #15803d)';
       uitleg.textContent = tr('wiz.cal.gekoppeldSub', { email: d.email ? ' (' + d.email + ')' : '' });
       knop.style.display = 'none';
       return;
     }
+    _wizStatus.agenda = false;
     badge.textContent = tr('wiz.cal.niet');
     uitleg.textContent = tr('wiz.cal.nietSub');
     bied(tr('wiz.cal.koppel'));
   } catch (e) {
-    badge.textContent = 'Onbekend';
-    uitleg.textContent = 'We konden de status even niet ophalen. Je vindt de koppeling ook terug bij je instellingen.';
+    badge.textContent = tr('wiz.klaar.onbekend');
+    uitleg.textContent = tr('wiz.later.instellingen');
     bied(tr('wiz.cal.koppel'));
   }
 }
@@ -12610,51 +12634,45 @@ function wizardTeken() {
     return;
   }
 
-  if (stap === 'koppelingen') {
-    titel.textContent = tr('wiz.kopp.t');
-    sub.textContent = tr('wiz.kopp.s');
-
-    var KAART = 'border:1px solid var(--border,#2A3444);border-radius:14px;padding:14px 16px;margin:0 0 12px';
-    var KOP = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
-    var NAAM = 'font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)';
-    var UITLEG = 'margin:6px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)';
-    var KNOP = 'padding:7px 13px;border-radius:9px;border:1px solid var(--border,#2A3444);background:transparent;color:var(--text,#E9EEF6);font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap';
-
-    body.innerHTML =
-        '<div style="' + KAART + '">'
-      +   '<div style="' + KOP + '">'
-      +     '<span style="' + NAAM + '">WhatsApp</span>'
-      +     '<span id="wiz-wa-badge" style="font-size:12px;color:var(--text-muted,#999)">Controleren...</span>'
-      +   '</div>'
-      +   '<p id="wiz-wa-uitleg" style="' + UITLEG + '"></p>'
-      + '</div>'
-      + '<div style="' + KAART + '">'
-      +   '<div style="' + KOP + '">'
-      +     '<span style="' + NAAM + '">Google Agenda</span>'
-      +     '<span id="wiz-gcal-badge" style="font-size:12px;color:var(--text-muted,#999)">Controleren...</span>'
-      +   '</div>'
-      +   '<p id="wiz-gcal-uitleg" style="' + UITLEG + '"></p>'
-      +   '<button id="wiz-gcal-knop" type="button" style="' + KNOP + ';margin-top:10px;display:none"></button>'
+  var KAART = 'border:1px solid var(--border,#2A3444);border-radius:14px;padding:14px 16px;margin:0 0 12px;background:var(--bg-card,transparent)';
+  var KOP = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
+  var NAAM = 'font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)';
+  var UITLEG = 'margin:6px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)';
+  var KNOP = 'padding:7px 13px;border-radius:9px;border:1px solid var(--border,#2A3444);background:transparent;color:var(--text,#E9EEF6);font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap';
+  function kaartHtml(id, naam, optioneel) {
+    return '<div class="wiz-kaart" style="' + KAART + '">'
+      + '<div style="' + KOP + '"><span style="' + NAAM + '">' + escHtml(naam)
+      + (optioneel ? ' <span style="font-weight:400;font-size:11.5px;color:var(--text-muted,#999)">' + escHtml(tr('wiz.optioneel')) + '</span>' : '')
+      + '</span><span id="wiz-' + id + '-badge" style="font-size:12px;color:var(--text-muted,#999)">' + escHtml(tr('wiz.controleren')) + '</span></div>'
+      + '<p id="wiz-' + id + '-uitleg" style="' + UITLEG + '"></p>'
+      + '<div id="wiz-' + id + '-extra"></div>'
+      + '<button id="wiz-' + id + '-knop" type="button" style="' + KNOP + ';margin-top:10px;display:none"></button>'
       + '</div>';
+  }
 
-    /* De uitleg bij WhatsApp verschilt wezenlijk per markt, en niet
-       cosmetisch. Voor een makelaar moet er een goedgekeurd sjabloon zijn: hij
-       begint het gesprek, want zijn lead vulde een formulier in en heeft hem
-       nooit geschreven. Voor een dealer klikt de KOPER op WhatsApp vanaf
-       AutoScout24 -- dan is het 24-uursvenster open en is er geen sjabloon
-       nodig, en gratis bovendien.
-
-       Een dealer die hier leest dat hij op goedkeuring van Meta moet wachten,
-       wacht op iets dat hem niet tegenhoudt. */
+  if (stap === 'kanalen') {
+    titel.textContent = tr('wiz.kan.t');
+    sub.textContent = tr('wiz.kan.s');
+    body.innerHTML = kaartHtml('wa', 'WhatsApp', false) + kaartHtml('mail', tr('conv.kanaal.email'), true) + kaartHtml('web', tr('widget.titel'), true);
     if ((typeof isDealer === 'function') && isDealer()) {
-      var waUit = document.getElementById('wiz-wa-uitleg');
-      var waBadge = document.getElementById('wiz-wa-badge');
-      if (waUit)   waUit.textContent = tr('wiz.wa.dealer');
-      if (waBadge) waBadge.textContent = tr('wiz.wa.dealer.badge');
+      document.getElementById('wiz-wa-uitleg').textContent = tr('wiz.wa.dealer');
+      document.getElementById('wiz-wa-badge').textContent = tr('wiz.wa.dealer.badge');
+      _wizStatus.whatsapp = true;
     } else {
       wizardWhatsAppStatus();
     }
+    wizardMailStatus();
+    wizardWebStatus();
+    return;
+  }
+
+  if (stap === 'koppelingen') {
+    titel.textContent = tr('wiz.kopp.t');
+    sub.textContent = tr('wiz.kopp.s');
+    var dealerK = (typeof isDealer === 'function') && isDealer();
+    body.innerHTML = kaartHtml('gcal', tr('set.gcal'), false) + (dealerK ? kaartHtml('voorraad', tr('inv.titel'), false) : '');
     wizardAgendaStatus();
+    if (dealerK) wizardVoorraadStatus();
     return;
   }
 
@@ -12663,22 +12681,161 @@ function wizardTeken() {
   sub.textContent = tr('wiz.klaar.s');
   var link = '';
   try { link = getFormUrl(); } catch (e) { link = ''; }
-  /* De eerste stap NA de wizard, en die verschilt per markt. Een dealer die te
-     horen krijgt "deel deze link onder je advertenties" doet daar niets mee:
-     zijn leads komen van AutoScout24, waar de link al bestaat. Hij moet zijn
-     voorraad erin zetten -- dat is wat een binnenkomend bericht aan een auto
-     koppelt.
-
-     Eén zin verschil, en het is het verschil tussen een klant die weet wat hij
-     moet doen en een die het scherm sluit. */
+  /* De eerste stap NA de wizard verschilt per markt: een dealer zet eerst zijn
+     voorraad erin, want dat is wat een binnenkomend bericht aan een auto koppelt. */
   var dealer = (typeof isDealer === 'function') && isDealer();
   var volgende = dealer ? tr('wiz.klaar.dealer') : tr('wiz.klaar.gcal');
+  if (!_wizKlaarGeladen) { _wizKlaarGeladen = true; wizardKlaarVerversen(dealer); }
+  var rijen = [['whatsapp', 'WhatsApp'], ['agenda', tr('set.gcal')], ['email', tr('conv.kanaal.email')], ['website', tr('widget.titel')]];
+  if (dealer) rijen.push(['voorraad', tr('inv.titel')]);
+  var lijst = rijen.map(function (r) {
+    var st = _wizStatus[r[0]];
+    var ok = st === true;
+    return '<li style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border,#2A3444);font-size:13px">'
+      + '<span aria-hidden="true" style="width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:11px;'
+      + (ok ? 'background:var(--success-c,#4CAF6E);color:#fff">&#10003;' : 'border:1.5px solid var(--text-muted,#999)">') + '</span>'
+      + '<span style="flex:1;color:var(--text,#E9EEF6)">' + escHtml(r[1]) + '</span>'
+      + '<span style="font-size:12px;color:var(--text-muted,#999)">' + escHtml(tr(ok ? 'wiz.klaar.aan' : (st === false ? 'wiz.klaar.later' : 'wiz.klaar.onbekend'))) + '</span></li>';
+  }).join('');
 
   body.innerHTML =
       '<div style="user-select:all;-webkit-user-select:all;word-break:break-all;padding:11px 12px;margin:0 0 14px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13px;color:var(--text,#E9EEF6)">'
     + (link ? escHtml(link) : escHtml(tr('wiz.klaar.link'))) + '</div>'
+    + '<div style="font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted,#999);margin:4px 0 2px">' + escHtml(tr('wiz.klaar.lijst')) + '</div>'
+    + '<ul style="list-style:none;margin:0 0 14px;padding:0">' + lijst + '</ul>'
     + '<p style="margin:0;font-size:13px;line-height:1.7;color:var(--text-muted,#999)">'
     + escHtml(volgende) + '</p>';
+}
+
+/* De checklist op Klaar leest de ECHTE status, ook als de wizard daar na een
+   herlaadbeurt meteen opent. Eén keer per opening; daarna opnieuw tekenen. */
+var _wizKlaarGeladen = false;
+async function wizardKlaarVerversen(dealer) {
+  var vraagJson = function (pad, body) {
+    return fetch(API_BASE + pad, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify(body) })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  };
+  var res = await Promise.all([
+    vraagJson('/leads', { mode: 'email-status' }),
+    vraagJson('/leads', { mode: 'widget-status' }),
+    vraagJson('/gcal', { mode: 'status' }),
+    dealer ? vraagJson('/leads', { mode: 'inventory-status' }) : Promise.resolve(null),
+    dealer ? Promise.resolve(null) : vraagJson('/leads', { mode: 'wa-readiness' }),
+  ]);
+  if (res[0]) _wizStatus.email = res[0].verbonden === true;
+  if (res[1]) _wizStatus.website = res[1].aan === true;
+  if (res[2]) _wizStatus.agenda = Boolean(res[2].connected && !res[2].needsReauth);
+  if (res[3]) _wizStatus.voorraad = (res[3].status === 'HEALTHY' || res[3].status === 'SYNCING') && (res[3].count || 0) > 0;
+  if (dealer) _wizStatus.whatsapp = true;
+  else if (res[4] && typeof res[4].klaar === 'boolean') _wizStatus.whatsapp = res[4].klaar;
+  if (WIZARD_STAPPEN[_wizardStap] === 'klaar') wizardTeken();
+}
+
+/* ── Wizard: statuskaarten voor de nieuwe kanalen ─────────────────────────── */
+function wizKnop(id, tekst, actie) {
+  var knop = document.getElementById('wiz-' + id + '-knop');
+  if (!knop) return;
+  knop.textContent = tekst;
+  knop.style.display = '';
+  knop.disabled = false;
+  knop.onclick = actie;
+}
+function wizBadge(id, tekst, kleur) {
+  var b = document.getElementById('wiz-' + id + '-badge');
+  if (b) { b.textContent = tekst; b.style.color = kleur || ''; }
+}
+function wizUitleg(id, tekst) {
+  var u = document.getElementById('wiz-' + id + '-uitleg');
+  if (u) u.textContent = tekst;
+}
+
+async function wizardMailStatus() {
+  try {
+    var d = await convVraag({ mode: 'email-status' });
+    var gmail = (d.providers || []).find(function (p) { return p.naam === 'gmail'; });
+    if (d.verbonden) {
+      _wizStatus.email = true;
+      wizBadge('mail', tr('wiz.cal.gekoppeld'), 'var(--success-ink, #15803d)');
+      wizUitleg('mail', tr('mail.verbonden', { adres: d.adres }));
+      return;
+    }
+    _wizStatus.email = false;
+    wizBadge('mail', tr('wiz.cal.niet'));
+    wizUitleg('mail', tr('wiz.mail.uitleg'));
+    if (gmail && gmail.beschikbaar) wizKnop('mail', tr('mail.koppel.gmail'), function () { this.disabled = true; this.textContent = tr('wiz.doorsturen'); mailKoppel('gmail'); });
+    else wizUitleg('mail', tr('wiz.mail.uitleg') + ' ' + tr('mail.nietGeconfigureerd'));
+  } catch (e) {
+    _wizStatus.email = null;
+    wizBadge('mail', tr('wiz.klaar.onbekend'));
+    wizUitleg('mail', e.code === 'schema_ontbreekt' || e.code === 'geen_tabel' ? tr('mail.schema') : tr('wiz.later.instellingen'));
+  }
+}
+
+async function wizardWebStatus() {
+  try {
+    var d = await convVraag({ mode: 'widget-status' });
+    _wizStatus.website = d.aan === true;
+    if (d.aan) {
+      wizBadge('web', tr('mail.aan'), 'var(--success-ink, #15803d)');
+      wizUitleg('web', tr('wiz.web.aan', { domein: (d.domeinen || []).join(', ') }));
+      wizToonCode(d.snippet);
+      return;
+    }
+    wizBadge('web', tr('mail.uit'));
+    wizUitleg('web', tr('wiz.web.uitleg'));
+    var extra = document.getElementById('wiz-web-extra');
+    if (extra) {
+      extra.innerHTML = '<input id="wiz-web-domein" type="text" maxlength="200" placeholder="garage-voorbeeld.be" aria-label="' + escHtml(tr('widget.domeinen')) + '" '
+        + 'style="width:100%;box-sizing:border-box;margin-top:10px;padding:9px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:10px;font-size:13px;color:var(--text,#E9EEF6);font-family:inherit">';
+      var inp = document.getElementById('wiz-web-domein');
+      if (inp && d.domeinen && d.domeinen.length) inp.value = d.domeinen.join(', ');
+    }
+    wizKnop('web', tr('wiz.web.zetAan'), async function () {
+      var knop = this;
+      var dom = document.getElementById('wiz-web-domein');
+      knop.disabled = true;
+      try {
+        var uit = await convVraag({ mode: 'widget-save', enabled: true, domains: dom ? dom.value : '' });
+        _wizStatus.website = true;
+        wizBadge('web', tr('mail.aan'), 'var(--success-ink, #15803d)');
+        wizUitleg('web', tr('wiz.web.aan', { domein: (uit.domeinen || []).join(', ') }));
+        var ex = document.getElementById('wiz-web-extra'); if (ex) ex.innerHTML = '';
+        knop.style.display = 'none';
+        wizToonCode(uit.snippet);
+      } catch (e) { toast(e.message, 'error'); knop.disabled = false; }
+    });
+  } catch (e) {
+    _wizStatus.website = null;
+    wizBadge('web', tr('wiz.klaar.onbekend'));
+    wizUitleg('web', e.code === 'schema_ontbreekt' ? tr('mail.schema') : tr('wiz.later.instellingen'));
+  }
+}
+
+function wizToonCode(snippet) {
+  var extra = document.getElementById('wiz-web-extra');
+  if (!extra || !snippet) return;
+  extra.innerHTML = '<code id="widget-snippet" style="display:block;margin-top:10px;padding:9px 11px;border-radius:10px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);font-size:11.5px;word-break:break-all;color:var(--text,#E9EEF6)"></code>';
+  document.getElementById('widget-snippet').textContent = snippet;
+  wizKnop('web', tr('widget.kopieer'), function () { kopieerWidgetCode(); });
+}
+
+async function wizardVoorraadStatus() {
+  try {
+    var d = await voorraadVraag('inventory-check', { trigger: 'login' });
+    voorraadState.data = d;
+    var ok = d.status === 'HEALTHY' || d.status === 'SYNCING';
+    _wizStatus.voorraad = ok && (d.count || 0) > 0;
+    wizBadge('voorraad', tr('inv.status.' + d.status), ok ? 'var(--success-ink, #15803d)' : '');
+    wizUitleg('voorraad', (d.count ? tr('inv.aantal', { n: d.count }) + ' · ' : '') + tr(d.count ? 'wiz.voorraad.ok' : 'wiz.voorraad.leeg'));
+    wizKnop('voorraad', tr(d.count ? 'inv.sync' : 'wiz.voorraad.naar'), function () {
+      if (d.count) { voorraadSync(); this.style.display = 'none'; }
+      else { wizardSluit(false); navigateTo('panden'); }
+    });
+  } catch (e) {
+    _wizStatus.voorraad = null;
+    wizBadge('voorraad', tr('wiz.klaar.onbekend'));
+    wizUitleg('voorraad', e.message || tr('inv.fout.algemeen'));
+  }
 }
 
 /* Twee kolommen, zoals een opzetscherm hoort te werken.
