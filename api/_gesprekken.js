@@ -284,5 +284,7 @@ module.exports = {
   CONTROLE, KANALEN, GesprekFout,
   vindOfMaak, haal, lijst, zetControle, markeer,
   voegToe, werkBerichtBij, berichten,
+  /** Bestaat dit bericht al (op Message Key)? Voor dedup vóór dure stappen. */
+  bestaatBericht: (projectCode, sleutel) => zoekBericht(tenant(projectCode), kort(sleutel, 300)),
   _test: { gesprekVan, berichtVan, G, B },
 };

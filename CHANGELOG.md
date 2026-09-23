@@ -14,6 +14,24 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### E-mail als kanaal (Gmail / Google Workspace)
+
+- **Mailbox koppelen** via Google, met dezelfde veilige koppeling als de
+  agenda (token versleuteld opgeslagen). Microsoft 365 staat aangekondigd maar
+  is nog niet beschikbaar; dat wordt ook zo getoond.
+- **Binnenkomende mail begrepen.** Nieuwsbrieven, facturen, automatische
+  antwoorden en no-reply-mail worden herkend en genegeerd. Een koopvraag wordt
+  een lead (één per gesprek), de afzender een klant (op e-mailadres, nooit op
+  naam), en elke Gmail-thread één gesprek. Dezelfde mail twee keer ophalen
+  geeft geen dubbel.
+- **Overnemen met een korte instructie.** "Zeg dat zaterdag 10u kan" wordt
+  een volledige mail in de taal van de klant. De instructie zelf wordt nooit
+  verstuurd. Wie zelf antwoordt, neemt het gesprek over.
+- **Versturen is idempotent.** Twee keer klikken is één mail, in de juiste
+  thread, met de juiste antwoordkoppen.
+- **Automatisch antwoorden staat standaard UIT** en heeft een lusbewaking
+  (hoogstens 3 AI-antwoorden per gesprek per dag, nooit op automatische mail).
+
 ### Eén klant over alle kanalen
 
 - **Klantrecord per koper.** Een lead uit het formulier of een eerste

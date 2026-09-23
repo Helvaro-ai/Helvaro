@@ -116,7 +116,7 @@ const SOORTEN = Object.freeze([
   'inventory_sync_failed',
   'conversation_takeover',
   'conversation_released',
-  'email_received',
+  'email_connected', 'email_received',
   'email_draft_generated',
   'email_sent',
   'email_send_failed',

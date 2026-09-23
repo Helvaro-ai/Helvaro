@@ -3081,6 +3081,71 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
     }
 
+    /* ── E-mail en gesprekken (api/_email/mailbox.js, api/_gesprekken.js) ─────
+       Alles tenant-gescoped via projectCode uit de sessie. Een gespreks-id uit
+       de body wordt altijd opgezocht MET de projectcode; een id van een andere
+       dealer geeft "niet gevonden", nooit zijn gesprek. */
+    const MAIL_MODES = ['email-status', 'email-connect', 'email-disconnect', 'email-settings', 'email-sync', 'email-draft', 'email-send',
+      'conversation-list', 'conversation-messages', 'conversation-control'];
+    if (MAIL_MODES.indexOf(body.mode) !== -1) {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _mailbox = require('./_email/mailbox');
+      const _gesprekken = require('./_gesprekken');
+      const foutAntwoord = (err) => {
+        const code = err && err.code;
+        const status = code === 'not_found' || code === 'geen_klantrecord' ? 404
+          : ['leeg', 'geen_idem', 'geen_instructie', 'bad_provider', 'bad_control', 'bad_channel', 'geen_ontvanger'].indexOf(code) !== -1 ? 400
+          : ['niet_verbonden', 'reauth_required', 'scope_geweigerd'].indexOf(code) !== -1 ? 409
+          : ['niet_beschikbaar', 'unconfigured', 'schema_ontbreekt', 'geen_tabel'].indexOf(code) !== -1 ? 503
+          : code === 'ai_uit' ? 503 : 502;
+        if (status >= 500) console.error('[' + body.mode + ']', code, err && err.message);
+        return res.status(status).json({ error: (err && err.message) || 'Er ging iets mis.', code: code || 'fout' });
+      };
+      try {
+        switch (body.mode) {
+          case 'email-status':
+            return res.status(200).json(await _mailbox.status(projectCode));
+          case 'email-connect':
+            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), 'mail.' + gcalSignState(projectCode)) });
+          case 'email-disconnect':
+            return res.status(200).json(await _mailbox.ontkoppel(projectCode));
+          case 'email-settings':
+            return res.status(200).json(await _mailbox.instellingen(projectCode, {
+              autoAntwoord: typeof body.autoReply === 'boolean' ? body.autoReply : undefined,
+              handtekening: typeof body.signature === 'string' ? body.signature : undefined,
+            }));
+          case 'email-sync':
+            return res.status(200).json(await _mailbox.sync(projectCode, { door: clientName || 'dashboard', trigger: body.trigger === 'auto' ? 'auto' : 'handmatig' }));
+          case 'email-draft':
+            return res.status(200).json(await _mailbox.concept(projectCode, String(body.conversationId || ''), { instructie: body.instruction }));
+          case 'email-send': {
+            const uit = await _mailbox.verstuurAntwoord(projectCode, String(body.conversationId || ''), {
+              tekst: body.text, onderwerp: body.subject, idem: body.idempotencyKey, door: clientName || 'dashboard', auteur: 'mens',
+            });
+            return res.status(200).json({ ok: true, dubbel: uit.dubbel, message: uit.bericht });
+          }
+          case 'conversation-list':
+            return res.status(200).json({ conversations: await _gesprekken.lijst(projectCode, { kanaal: ['email', 'website'].indexOf(body.channel) !== -1 ? body.channel : '', limiet: body.limit }) });
+          case 'conversation-messages': {
+            const g = await _gesprekken.haal(projectCode, String(body.conversationId || ''));
+            if (!g) return res.status(404).json({ error: 'Gesprek niet gevonden.', code: 'not_found' });
+            const berichten = await _gesprekken.berichten(projectCode, g.id);
+            if (g.ongelezen) _gesprekken.markeer(projectCode, g.id, { ongelezen: false }).catch(() => {});
+            return res.status(200).json({ conversation: g, messages: berichten });
+          }
+          case 'conversation-control': {
+            const g = await _gesprekken.zetControle(projectCode, String(body.conversationId || ''), String(body.control || ''), clientName || 'dashboard');
+            try { _activiteit.log(projectCode, g.controle === 'AI_ACTIVE' ? 'conversation_released' : 'conversation_takeover', { leadId: g.leadId || undefined, details: { gesprekId: g.id, kanaal: g.kanaal } }); } catch (e) { /* optioneel */ }
+            return res.status(200).json({ conversation: g });
+          }
+          default:
+            return res.status(400).json({ error: 'Onbekende mode' });
+        }
+      } catch (err) {
+        return foutAntwoord(err);
+      }
+    }
+
     /* ── Voorraadwaarheid (api/_inventaris.js) ────────────────────────────────
        inventory-status  alleen lezen, geen sync
        inventory-check   versheidscontrole bij inloggen/verversen: synchroniseert
@@ -4198,6 +4263,23 @@ async function handleGcal(req, res) {
       } catch (e) {
         console.error('[drive callback]', e && e.message);
         return gcalRedirect(res, '/dashboard?admin=1&drive=error');
+      }
+    }
+    /* Mailbox-koppeling (api/_email/mailbox.js): zelfde Google-client en
+       redirect-URI, herkenbaar aan de state-prefix "mail.". De state erachter
+       is dezelfde getekende, tijdgebonden state als bij de agenda. */
+    const ruweState = String(url.searchParams.get('state') || '');
+    if (ruweState.startsWith('mail.')) {
+      if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
+      const mailProject = gcalVerifyState(ruweState.slice(5));
+      const mailCode = url.searchParams.get('code');
+      if (!mailProject || !mailCode) return gcalRedirect(res, '/dashboard?mail=invalid_state');
+      try {
+        await require('./_email/mailbox').verbind(mailProject, mailCode);
+        return gcalRedirect(res, '/dashboard?mail=connected');
+      } catch (e) {
+        console.error('[mail callback]', e && e.code, e && e.message);
+        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
       }
     }
     if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?gcal=denied');
