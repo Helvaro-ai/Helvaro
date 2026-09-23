@@ -108,6 +108,22 @@ const SOORTEN = Object.freeze([
      reeks hierboven) aan het kantoor -- één melding per dag per tenant,
      nooit één per mislukking (dat zou spam zijn). */
   'important_failure_digest_sent',
+  /* Automotive revenue engine (2026-09-23): het spoor van wat de assistent en
+     de verkoper doen over website, WhatsApp en e-mail heen. */
+  'ai_reply_withheld',          // AI-antwoord NIET verstuurd: overname/afmelding tijdens de beurt
+  'vehicle_fact_corrected',     // eindcontrole vond een voertuigfeit dat niet meer klopte
+  'inventory_synced',
+  'inventory_sync_failed',
+  'conversation_takeover',
+  'conversation_released',
+  'email_received',
+  'email_draft_generated',
+  'email_sent',
+  'email_send_failed',
+  'handoff_created',
+  'handoff_used',
+  'content_generated',
+  'content_approved',
 ]);
 
 function configured() {

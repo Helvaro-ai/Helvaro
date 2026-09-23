@@ -929,7 +929,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   // see its own doc comment for why conversations that predate this change
   // (no ts on their user-role entries) fail closed rather than assume the
   // window is still open.
-  history.push({ role: 'user', content: text, ts: Date.now(), mid: inkomendId || undefined });
+  /* Een handvat op DIT inkomende bericht: vlak voor het versturen wordt de lead
+     vers gelezen (zie verseLeadVoorVerzenden) en dan moet precies dit bericht
+     aan die verse historie toegevoegd worden, niet de hele oude kopie. */
+  const inkomendItem = { role: 'user', content: text, ts: Date.now(), mid: inkomendId || undefined };
+  history.push(inkomendItem);
 
   // 5. Fetch client website on first user message
   let websiteContent = null;
@@ -1232,7 +1236,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     console.warn('[WhatsApp] pandcontext overgeslagen:', e && e.message);
   }
 
-  const aiResponse = await runAI(history, aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
+  const aiResponse = await runAI(history.slice(-20), aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
     workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
     appointmentDuration, existingAppointments, matchLeadLanguage,
     // De AI-router boekt verbruik per tenant; zonder projectcode weigert hij.
@@ -1333,6 +1337,32 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   // wél een veld-id (fldwDOLZKlAhfigbh / fldV8PbcsDzvKRiks, nagekeken in de
   // echte base) maar hier bewust op naam geschreven: deze PATCH deelt zijn
   // sleutels met updateFields hierboven, die ook op naam schrijft.
+  /* 10a. Laatste controle, SERVER-SIDE, vlak voor het versturen.
+     De pauze werd alleen aan het begin van de beurt gecontroleerd. Tussen die
+     controle en hier zitten de AI-aanroep en de antwoordpauze: seconden tot
+     een minuut. Klikt een verkoper in dat venster op 'Neem over', dan hoort
+     het AI-antwoord NIET meer te vertrekken. Dus: de lead vers lezen.
+
+     Tweede winst: alles hieronder dat Notities of de historie schrijft,
+     bouwde voort op de kopie van het begin van de beurt. Een pauze of een
+     handmatig antwoord van tijdens de beurt werd daarmee overschreven. Vanaf
+     hier is lead.fields de verse versie en de historie de verse historie plus
+     dit ene inkomende bericht. */
+  const vers = await verseLeadVoorVerzenden(lead.id);
+  if (vers) {
+    lead.fields = vers.fields;
+    history = voegInkomendToe(vers.fields['Conversation History'], inkomendItem);
+    const pauzeNu = getAiPauseInfo(vers.fields[NOTITIES_FIELD] || vers.fields['Notities']);
+    const afgemeldNu = _optout.isAfgemeld(vers.fields);
+    if (pauzeNu || afgemeldNu) {
+      console.log(`[WhatsApp] antwoord NIET verstuurd voor lead ${lead.id}: ${pauzeNu ? 'overgenomen tijdens de beurt' : 'afgemeld tijdens de beurt'}`);
+      if (history.length > 50) history = history.slice(-50);
+      await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(history) }, phone, scopedProjectCode).catch(() => {});
+      try { _activiteit.log(projectCode, 'ai_reply_withheld', { leadId: lead.id, details: { reden: pauzeNu ? 'overname' : 'afgemeld' } }); } catch (e) { /* logboek is optioneel */ }
+      return;
+    }
+  }
+
   const sendOk = await sendWA(phone, replyText, clientPhoneNumberId);
   const updateFields = { 'Last Message': text };
   if (sendOk) {
@@ -1341,7 +1371,10 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     // recent outbound message" as its primary signal, and that only works
     // if assistant turns carry a timestamp same as user turns already do.
     history.push({ role: 'assistant', content: replyText, ts: Date.now() });
-    if (history.length > 20) history = history.slice(-20);
+    /* 50, net als het handmatige antwoord in api/leads.js. Stond op 20: een
+       handmatig gesprek van 40 regels werd bij de volgende AI-beurt stil
+       ingekort. Het model krijgt er nog steeds maar 20 (zie runAI-aanroep). */
+    if (history.length > 50) history = history.slice(-50);
     updateFields['Conversation History'] = JSON.stringify(history);
     // If AI escalated, we treat the state as 'in_progress' (awaiting human),
     // never as 'completed'. even if the AI also set done:true.
@@ -2651,19 +2684,25 @@ async function runAI(history, instructions, leadName, aiName, clientName, websit
    * met een stuurwoord begint gaat er hoe dan ook uit.
    *
    * /gm en niet /m: het model kan er twee uitsturen. */
-  cleaned = cleaned.replace(/^[ \t]*(?:CANCEL|BOOK|DECISION|SUMMARY):.*$/gm, '').trim();
-
-  // 3. Parse DECISION block if present (only on final turn / escalation)
+  /* 3. DECISION EERST uitlezen, dan pas de vangregel.
+     Tot 2026-09-23 stond het omgekeerd: de vangregel hieronder knipt elke
+     regel die met DECISION: begint weg, en de prompt vraagt het model DECISION
+     op een EIGEN regel te zetten. Het blok was dus altijd al weg voordat deze
+     parser het zocht: done, qualified, reason en escalate kwamen nooit door,
+     en een gekwalificeerde lead bleef 'in_progress'. Eerst lezen, dan knippen. */
+  let decision = null;
   const match = cleaned.match(/DECISION:\s*(\{[\s\S]*?\})/);
   if (match) {
-    try {
-      const decision = JSON.parse(match[1]);
-      const message  = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
-      // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
-      return { done: true, message: message || '...', appointment, cancel, wens, koop, projectFiche, ...decision, summary: decision.summary || runningSummary };
-    } catch (e) {
-      console.error('[WhatsApp] DECISION parse fout:', e.message, match[1]);
-    }
+    try { decision = JSON.parse(match[1]); }
+    catch (e) { console.error('[WhatsApp] DECISION parse fout:', e.message); }
+  }
+
+  cleaned = cleaned.replace(/^[ \t]*(?:CANCEL|BOOK|DECISION|SUMMARY):.*$/gm, '').trim();
+
+  if (decision) {
+    const message = cleaned.replace(/DECISION:\s*\{[\s\S]*?\}/, '').trim();
+    // DECISION.summary (full 1-2 zinnen) wint van runningSummary op finale beurt
+    return { done: true, message: message || '...', appointment, cancel, wens, koop, projectFiche, ...decision, summary: decision.summary || runningSummary };
   }
 
   return { done: false, message: cleaned, summary: runningSummary, appointment, cancel, wens, koop };
@@ -3464,6 +3503,34 @@ function mergeWaReadFlag(raw) {
 // envelope mergeWaFailedFlag writes to. Returns the `{at, by}` object when
 // paused, or null when not paused / envelope absent / legacy plain-text note
 // (which can never carry structured keys, so it can never be "paused").
+/* De lead vers ophalen vlak voor het versturen. Eén herpoging; lukt het dan
+   nog niet, dan null en gaat de beurt verder op de kopie van het begin (die
+   was seconden eerder al gecontroleerd). Een lead zonder antwoord omdat
+   Airtable even hikte is ook een fout -- de kleinste van de twee. */
+async function verseLeadVoorVerzenden(recordId) {
+  if (!recordId) return null;
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${encodeURIComponent(recordId)}`;
+  for (let poging = 0; poging < 2; poging++) {
+    try {
+      const r = await atFetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      if (r.ok) { const d = await r.json(); if (d && d.fields) return d; }
+    } catch (e) { /* herpoging hieronder */ }
+  }
+  console.warn('[WhatsApp] verse lead-lezing mislukt voor', recordId, '-- verder op de beginkopie');
+  return null;
+}
+
+/* Verse historie + dit ene inkomende bericht (als het er nog niet in staat). */
+function voegInkomendToe(ruw, item) {
+  let h = [];
+  if (ruw) { try { h = JSON.parse(ruw); } catch { h = []; } }
+  if (!Array.isArray(h)) h = [];
+  const alDaar = h.some((x) => x && x.role === 'user' && (
+    (item.mid && x.mid === item.mid) || (!item.mid && x.content === item.content && x.ts === item.ts)));
+  if (!alDaar) h.push(item);
+  return h;
+}
+
 function getAiPauseInfo(raw) {
   const trimmed = raw ? String(raw).trim() : '';
   if (!trimmed.startsWith('{')) return null;
@@ -3670,3 +3737,9 @@ async function sendWA(to, message, phoneNumberId) {
     return false;
   }
 }
+
+/* De gespreksmotor delen met e-mail en de website-assistent (api/_kanaal.js).
+   Bewust een export en geen verhuizing: tientallen tests knippen blokken uit
+   dit bestand op vaste ankers. Lui geladen door de andere kanalen. */
+module.exports.runAI = runAI;
+module.exports._test = { voegInkomendToe };

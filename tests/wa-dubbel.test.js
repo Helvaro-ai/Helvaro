@@ -62,7 +62,7 @@ ck('en de aanroeper geeft message.id door',
 console.log('\n  de controle staat voor het opslaan');
 {
   const iCheck = src.indexOf('history.some((h) => h && h.mid === inkomendId)');
-  const iPush  = src.indexOf("history.push({ role: 'user', content: text");
+  const iPush  = src.indexOf("const inkomendItem = { role: 'user', content: text");
   ck('de historie wordt op het id gecontroleerd', iCheck !== -1, iCheck);
   ck('en dat gebeurt VOOR de regel wordt toegevoegd', iCheck !== -1 && iCheck < iPush,
     { check: iCheck, push: iPush });

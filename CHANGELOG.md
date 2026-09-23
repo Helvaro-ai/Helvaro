@@ -14,6 +14,24 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### WhatsApp: kwalificatie kwam nooit door, en "Neem over" kon te laat zijn
+
+- **Gekwalificeerde leads bleven 'bezig'.** De assistent sluit een gesprek af
+  met een beslissing (gekwalificeerd ja/nee, reden, escalatie). Die regel werd
+  weggeknipt vóór hij gelezen werd, dus leads werden nooit als gekwalificeerd
+  gemarkeerd en een escalatie kwam niet door. Nu eerst gelezen, dan geknipt.
+- **"Neem over" tijdens een lopend antwoord.** Klikte een verkoper op "Neem
+  over" terwijl de assistent een antwoord aan het schrijven was, dan vertrok
+  dat antwoord toch. Nu wordt vlak voor het versturen opnieuw gekeken; is het
+  gesprek overgenomen of heeft de lead zich afgemeld, dan gaat er niets weg
+  (en staat dat in het activiteitenlogboek).
+- **Niets meer overschreven.** Een overname of handmatig antwoord van tijdens
+  zo'n beurt kon door de beurt worden overschreven. Dat kan niet meer.
+- **Zelf antwoorden = overnemen.** Wie in Gesprekken zelf een WhatsApp stuurt,
+  heeft het gesprek: de assistent zwijgt tot je op "Geef terug" klikt.
+- Gesprekken houden 50 berichten bij (was 20 na een AI-beurt), het model krijgt
+  er zoals voorheen 20.
+
 ### Eigen WhatsApp-nummer: werkt nu echt, en is te ontkoppelen
 
 Bij het koppelen van een eigen nummer (Instellingen → WhatsApp) bewaart

@@ -132,7 +132,7 @@ console.log('\n— en ze komen ook echt bij de AI terecht —');
 {
   /* Zonder dit zou een gerepareerde uitlezing nog steeds nergens heen gaan. */
   ck('aiInstructions en websiteContent gaan mee in de runAI-aanroep',
-     /runAI\(\s*history,\s*aiInstructions,[\s\S]{0,120}websiteContent/.test(code), null);
+     /runAI\(\s*history(?:\.slice\(-20\))?,\s*aiInstructions,[\s\S]{0,120}websiteContent/.test(code), null);
 }
 
 console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);

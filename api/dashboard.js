@@ -9508,10 +9508,15 @@ async function sendWhatsAppReply(waar) {
     // The server also cleared any 'escalated' Notities marker on success —
     // mirror that locally so the takeover badge disappears without a refetch.
     const ndAfterReply = parseNotities(lead);
-    if (ndAfterReply.escalated) {
-      delete ndAfterReply.escalated;
-      lead.notities = serializeNotities(ndAfterReply);
+    if (ndAfterReply.escalated) delete ndAfterReply.escalated;
+    /* De server zet bij een handmatig antwoord de overname aan (de verkoper
+       heeft nu het gesprek). Hier spiegelen, zodat de balk meteen
+       'Jij bent aan het roer' toont in plaats van pas na verversen. */
+    if (d.aiPaused && !(ndAfterReply.aiPaused && typeof ndAfterReply.aiPaused === 'object')) {
+      ndAfterReply.aiPaused = { at: new Date().toISOString(), by: state.clientName || 'dashboard', via: 'manual_reply' };
     }
+    lead.notities = serializeNotities(ndAfterReply);
+    try { if (waar === 'conv') openConversation(lead.id); } catch (e) { /* hertekenen is cosmetisch */ }
     input.value = '';
     toast(tr(d.viaTemplate ? 'conv.verzondenTemplate' : 'conv.verzonden'), d.viaTemplate ? 'info' : 'success');
   } catch (err) {

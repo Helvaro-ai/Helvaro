@@ -3649,7 +3649,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // Merge-based (never overwrite): preserves notes/tasks/calls/afspraak/
       // waFailed/aiPaused exactly like the ai-pause/ai-resume modes above.
       const rawNotitiesForClear = lead.fields?.['fldoLRI5W12ThTls7'] || lead.fields?.['Notities'] || '';
-      const clearedNotities = mergeNotitiesPatch(rawNotitiesForClear, { escalated: undefined });
+      /* Een verkoper die zelf antwoordt, heeft het gesprek. Zonder dit gaf de
+         assistent op het volgende bericht van de lead gewoon antwoord -- twee
+         stemmen door elkaar in één WhatsApp. Stond de pauze er al, dan blijft
+         die ongemoeid (wie en wanneer de overname begon blijft kloppen).
+         Teruggeven blijft een bewuste klik: 'Geef terug aan assistent'. */
+      let bestaandePauze = null;
+      try { const nd = JSON.parse(rawNotitiesForClear || '{}'); bestaandePauze = nd && nd.aiPaused && typeof nd.aiPaused === 'object' ? nd.aiPaused : null; } catch (e) { bestaandePauze = null; }
+      const clearedNotities = mergeNotitiesPatch(rawNotitiesForClear, {
+        escalated: undefined,
+        aiPaused: bestaandePauze || { at: new Date().toISOString(), by: clientName || 'dashboard', via: 'manual_reply' },
+      });
 
       const updateRes = await atFetch(
         `https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${recordId}`,
@@ -3662,7 +3672,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (!updateRes.ok) {
         console.warn('[leads reply] history update failed (message was sent)', updateRes.status);
       }
-      return res.status(200).json({ ok: true, history, viaTemplate });
+      return res.status(200).json({ ok: true, history, viaTemplate, aiPaused: true });
     } catch (err) {
       console.error('POST reply error:', err.message);
       return res.status(500).json({ error: 'Serverfout. Probeer opnieuw' });
