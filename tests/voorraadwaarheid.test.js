@@ -166,6 +166,11 @@ const minGeleden = (m) => new Date(Date.now() - m * 60000).toISOString();
   ck('whatsapp: onzekere voorraad blokkeert boeken', /voorraadVertrouwen\.niveau === 'onzeker'/.test(wa));
   const db = fs.readFileSync(BASE + 'api/_dealer-boeking.js', 'utf8');
   ck('boekingspoort leest het voertuig vers', db.includes('_vehicles.leesVers(code, voertuig.code)'));
+  const cron = fs.readFileSync(BASE + 'api/cron-followup.js', 'utf8');
+  const iCheck = cron.indexOf("_veh.leesVers(projectCode, vehicleCodeV)");
+  const iStuur = cron.indexOf('const remOk = await sendWATemplate(');
+  ck('herinnering: voertuig vers gelezen VOOR het versturen', iCheck > 0 && iStuur > iCheck);
+  ck('herinnering: verkocht/uit aanbod/verdwenen = niet sturen', /stV === 'verkocht' \|\| stV === 'uit aanbod'/.test(cron) && /herinnering_tegengehouden/.test(cron));
 
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);

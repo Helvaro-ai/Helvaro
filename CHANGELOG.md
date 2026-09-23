@@ -68,6 +68,10 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### Voorraad: de assistent zegt alleen wat de voorraad NU zegt
 
+- **Geen herinnering voor een verkochte wagen.** Is de auto van een geplande
+  proefrit intussen verkocht of uit aanbod, dan gaat de herinnering niet uit;
+  het staat in het activiteitenlogboek zodat de verkoper zelf belt.
+- **Mail wordt ook 's ochtends opgehaald**, ook als niemand het dashboard opent.
 - **Voorraadstatus op de voertuigenpagina.** Een kaart toont of de voorraad
   actueel is (Actueel, Verouderd, Gedeeltelijk bijgewerkt, Mislukt, Nog niet
   gecontroleerd), wanneer hij laatst gecontroleerd werd en hoeveel voertuigen er

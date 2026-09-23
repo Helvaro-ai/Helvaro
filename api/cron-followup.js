@@ -499,6 +499,31 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] schema mislukt:', e && e.message);
     }
 
+    /* ── Mailboxen ophalen (api/_email/mailbox.js) ──────────────────────────
+       Het dashboard haalt mail op bij openen en verversen; dit is het vangnet
+       voor een dag waarop niemand kijkt. Hoogstens 25 dealers per run, elk
+       met zijn eigen slot en dedup. Bestaat het veld nog niet: overslaan. */
+    let mailResult = null;
+    try {
+      const formule = encodeURIComponent("NOT({Email Token}='')");
+      const mr = await fetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?filterByFormula=${formule}&pageSize=25&fields[]=fldN4dL0bGgfBOXwM`, {
+        headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` }, signal: AbortSignal.timeout(8000),
+      });
+      if (mr.ok) {
+        const recs = (await mr.json()).records || [];
+        mailResult = { mailboxen: recs.length, ok: 0, mislukt: 0 };
+        const _mailbox = require('./_email/mailbox');
+        for (const rec of recs) {
+          const code = rec.fields && rec.fields.fldN4dL0bGgfBOXwM;
+          if (!code) continue;
+          const st = await _mailbox.sync(code, { door: 'cron', trigger: 'dagelijks' }).catch(() => null);
+          if (st && st.laatsteResultaat !== 'failed') mailResult.ok++; else mailResult.mislukt++;
+        }
+      }
+    } catch (e) {
+      console.error('[cron-followup] mailboxen mislukt:', e && e.message);
+    }
+
     /* ── Drive van de beheerder ─────────────────────────────────────────────
        Laatste taak, want puur intern: als dit omvalt is er niets mis voor
        een klant. Niet gekoppeld = overslaan, geen fout. */
@@ -517,7 +542,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] drive-sync mislukt:', e && e.message);
     }
 
-    const verslag = { checked: leads.length, sent, schema: schemaResult, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    const verslag = { checked: leads.length, sent, schema: schemaResult, mail: mailResult, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
     /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
        eigen catch viel; zonder deze regel moest je tien losse logregels bij
        elkaar zoeken om te weten of de dag compleet was. */
@@ -1959,6 +1984,29 @@ async function runAppointmentReminders(airtableToken, baseId, phoneNumberId, wha
       let remTemplate = TEMPLATE_NAME;
       let remParams = [firstName, clientNameV, when];
       const vehicleCodeV = String(appt.fields['Vehicle Code'] || '').trim();
+      /* Voorraadwaarheid (2026-09-23): is de wagen van deze proefrit intussen
+         verkocht, uit aanbod of verdwenen, dan gaat er GEEN herinnering uit --
+         anders rijdt de klant naar een auto die er niet meer is. De verkoper
+         ziet het in het activiteitenlogboek en belt zelf. Gereserveerd blokkeert
+         niet: dat kan net door deze klant zijn. Kon de voorraad niet gelezen
+         worden, dan gaat de herinnering zoals altijd. */
+      if (vehicleCodeV) {
+        try {
+          const _veh = require('./_vehicles');
+          const versV = await _veh.leesVers(projectCode, vehicleCodeV);
+          const stV = versV.voertuig ? _veh.normStatus(versV.voertuig.status) : '';
+          if (versV.gelezen && (!versV.voertuig || stV === 'verkocht' || stV === 'uit aanbod' || versV.voertuig.gearchiveerd === true)) {
+            console.warn(`[cron-followup] herinnering NIET gestuurd voor ${appt.id}: voertuig ${vehicleCodeV} is ${stV || 'verdwenen'}`);
+            require('./_activiteit').log(projectCode, 'vehicle_fact_corrected', {
+              voertuigCode: vehicleCodeV, afspraakId: appt.id,
+              details: { bij: 'herinnering', status: stV || 'verdwenen', actie: 'herinnering_tegengehouden' },
+            }).catch(() => {});
+            skipped++; continue;
+          }
+        } catch (e) {
+          console.warn('[cron-followup] voertuigcontrole voor herinnering overgeslagen:', e && e.message);
+        }
+      }
       if (vehicleCodeV) {
         try {
           const _waTemplates = require('./_wa-templates');
