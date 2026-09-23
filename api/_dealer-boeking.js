@@ -136,7 +136,21 @@ async function controleer({ projectCode, voertuig, leadId, telefoon, startISO, a
         console.warn('[dealer-boeking] actieveAfspraken overgeslagen (fail-soft):', err && err.message);
         actieveOpVoertuig = [];
       }
-      const status = _vehicles.boekbaar(voertuig, actieveOpVoertuig);
+      /* Vers lezen (2026-09-23). `voertuig` is de kopie van VOOR de AI-aanroep
+         en de antwoordpauze; in dat venster kan de dealer hem op verkocht of
+         gereserveerd gezet hebben. Lukt het lezen niet, dan blijft de kopie
+         van seconden geleden de beste kennis -- geen reden om een geldige
+         boeking te weigeren. Is hij intussen VERDWENEN, dan is hij niet
+         boekbaar. */
+      let versVoertuig = voertuig;
+      const vers = await _vehicles.leesVers(code, voertuig.code);
+      if (vers.gelezen && !vers.voertuig) {
+        loggen(code, 'vehicle_fact_corrected', { leadId, voertuigCode: voertuig.code, details: { wat: 'verdwenen', bij: 'boeking' } });
+        return { ok: false, reden: 'uit_aanbod', soort: VOERTUIG_SOORT.uit_aanbod };
+      }
+      if (vers.voertuig) versVoertuig = vers.voertuig;
+      else console.warn('[dealer-boeking] voertuig vers lezen mislukt; kopie van deze beurt gebruikt voor', voertuig.code);
+      const status = _vehicles.boekbaar(versVoertuig, actieveOpVoertuig);
       if (!status.ok) {
         const soort = VOERTUIG_SOORT[status.reden] || 'vehicle_unavailable_blocked';
         loggen(code, soort, {

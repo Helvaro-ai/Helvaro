@@ -72,6 +72,8 @@ let _gekozenSector = 'real_estate';
 let _gekozenStijl = '';
 const _formStijl = require('../api/_form-stijl');
 
+/* Voorraadtoestand van de lokale harness (zie case 'inventory-status'). */
+const _devVoorraad = { bron: require('../api/_inventaris').saneerBron({}), staat: {} };
 const _fixtureVoertuigen = [
   { code: 'V1', projectCode: 'TELJO', merk: 'BMW', model: 'M4', uitvoering: 'Competition xDrive',
     prijs: 74999, km: 18000, inschrijving: '05/2023', brandstof: 'benzine', transmissie: 'automaat',
@@ -420,6 +422,37 @@ const server = http.createServer(async (req, res) => {
               : _fixtureVoertuigen.filter((v) => !v.gearchiveerd),
             available: true,
           });
+        /* Voorraadwaarheid: de ECHTE toestandsberekening (api/_inventaris.js
+           bereken/weergave) op een toestand in het geheugen. Zo zie je lokaal
+           precies de badges en teksten die een dealer ziet. Zet
+           FARO_DEV_VOORRAAD=failed om de foutweergave te bekijken. */
+        case 'inventory-status':
+        case 'inventory-check':
+        case 'inventory-sync':
+        case 'inventory-source': {
+          const _inv = require('../api/_inventaris');
+          const mode = req.body.mode;
+          if (mode === 'inventory-source') {
+            _devVoorraad.bron = _inv.saneerBron(req.body.source || {});
+            if (_devVoorraad.bron.type === 'feed' && !_devVoorraad.bron.url) return res.status(400).json({ error: 'Geef een geldig https-adres voor de voorraadfeed.', code: 'ongeldig_adres' });
+            return res.status(200).json(Object.assign({ ok: true }, _inv.weergave(_devVoorraad.staat, _devVoorraad.bron)));
+          }
+          const b = _inv.bereken(_devVoorraad.staat, _devVoorraad.bron);
+          const moetSyncen = mode === 'inventory-sync' || (mode === 'inventory-check' && b.status !== 'HEALTHY');
+          if (moetSyncen) {
+            const nu = new Date().toISOString();
+            const actief = _fixtureVoertuigen.filter((v) => !v.gearchiveerd);
+            const mislukt = process.env.FARO_DEV_VOORRAAD === 'failed';
+            const run = { at: nu, trigger: mode === 'inventory-sync' ? 'handmatig' : (req.body.trigger || 'verversen'), door: 'dev', ok: !mislukt, ms: 180,
+              count: mislukt ? undefined : actief.length, changed: mislukt ? undefined : 0, removed: mislukt ? undefined : 0, failed: mislukt ? undefined : 0,
+              fout: mislukt ? 'feed antwoordde HTTP 503' : undefined, code: mislukt ? 'feed_http' : undefined };
+            _devVoorraad.staat = Object.assign({}, _devVoorraad.staat, {
+              lastAttemptAt: nu, lastResult: mislukt ? 'failed' : 'ok', lastError: run.fout || '', lastErrorCode: run.code || '', durationMs: 180,
+              runs: [run].concat(_devVoorraad.staat.runs || []).slice(0, 10),
+            }, mislukt ? {} : { lastSuccessAt: nu, count: actief.length, changed: 0, removed: 0, failed: 0, version: _inv._test.hashVan(actief) });
+          }
+          return res.status(200).json(Object.assign({ ok: true, gesynct: moetSyncen }, _inv.weergave(_devVoorraad.staat, _devVoorraad.bron)));
+        }
         case 'vehicle-save':
         case 'vehicle-archive':
         case 'listing-save':

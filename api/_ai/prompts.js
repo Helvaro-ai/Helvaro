@@ -692,8 +692,15 @@ const voertuigen = {
            + 'aandringt. Zeg eerlijk dat het weg is, vraag waar hij naar op zoek is, en bied aan om te laten '
            + 'weten wat er nog wel in de voorraad staat.');
     } else if (String(v.status) === 'gereserveerd') {
-      r.push('- Dit voertuig is GERESERVEERD. Een proefrit mag, maar zeg er eerlijk bij dat er al iemand op zit, '
-           + 'zodat niemand voor een verrassing staat.');
+      /* Stond hier: 'een proefrit mag'. De code blokkeert het al sinds Fase 2b
+         (api/_vehicles.js boekbaar) -- de prompt beloofde dus iets wat nooit
+         geboekt werd. Nu zegt hij hetzelfde als de code. */
+      r.push('- Dit voertuig is GERESERVEERD: er zit al een koper op. Beloof GEEN aankoop en plan GEEN proefrit. '
+           + 'Zeg dat eerlijk, bied aan dat de verkoper laat weten als de reservering vervalt, en bied '
+           + 'alleen alternatieven aan die hieronder staan.');
+    } else if (String(v.status) === 'onbekend') {
+      r.push('- De status van dit voertuig is ONBEKEND in het systeem. Bevestig NIET dat hij beschikbaar is en plan '
+           + 'geen proefrit. Zeg dat je de actuele status laat nakijken door het team.');
     }
 
     /* ── Fase 3: de VERSE boekbaarheid (context) ────────────────────────────
@@ -714,6 +721,7 @@ const voertuigen = {
       verkocht:         'Dit voertuig is VERKOCHT.',
       uit_aanbod:       'Dit voertuig is UIT AANBOD.',
       gereserveerd:     'Dit voertuig is GERESERVEERD -- er zit al iemand op.',
+      onbekend:         'De status van dit voertuig is ONBEKEND -- niet bevestigen.',
       afspraak_bestaat: 'Dit voertuig heeft al een proefrit gepland -- er zit al iemand op.',
     });
     if (context && context.boekbaar && context.boekbaar.ok === false && NIET_BOEKBAAR_ZIN[context.boekbaar.reden]) {

@@ -12,6 +12,7 @@ const { getPlanState } = require('./_plan'); // trial/plan-status interpretation
 const images  = require('./_images'); // Phase 4 AI property images — see its file header
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
 const _vehicles  = require('./_vehicles');   // de voorraad van een dealer
+const _inventaris = require('./_inventaris'); // hoe vers en betrouwbaar die voorraad is
 const _vertical  = require('./_vertical');   // vastgoed of dealership
 const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
@@ -3077,6 +3078,39 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         console.error('[vehicle-archive]', err && err.code, err && err.message);
         if (err && err.code === 'not_found') return res.status(404).json({ error: 'Voertuig niet gevonden.' });
         return res.status(500).json({ error: 'Het voertuig kon niet gearchiveerd worden.' });
+      }
+    }
+
+    /* ── Voorraadwaarheid (api/_inventaris.js) ────────────────────────────────
+       inventory-status  alleen lezen, geen sync
+       inventory-check   versheidscontrole bij inloggen/verversen: synchroniseert
+                         alleen als de voorraad verouderd of nooit gecontroleerd is
+       inventory-sync    de knop "Voorraad synchroniseren": altijd een run
+                         (tenzij er al een loopt -- die wordt hergebruikt)
+       inventory-source  bron-instellingen bewaren (native of feed + drempels)
+       Tenant komt uit de sessie (projectCode), nooit uit de body. */
+    if (body.mode === 'inventory-status' || body.mode === 'inventory-check' || body.mode === 'inventory-sync' || body.mode === 'inventory-source') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        let uit;
+        if (body.mode === 'inventory-status') uit = await _inventaris.status(projectCode);
+        else if (body.mode === 'inventory-check') uit = await _inventaris.controleer(projectCode, { door: clientName || 'dashboard', trigger: body.trigger === 'login' ? 'login' : 'verversen' });
+        else if (body.mode === 'inventory-sync') uit = await _inventaris.sync(projectCode, { door: clientName || 'dashboard', trigger: 'handmatig' });
+        else uit = await _inventaris.bewaarBron(projectCode, body.source || {});
+        if (uit && uit.reden === 'schema_ontbreekt') {
+          try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ }
+          return res.status(503).json(Object.assign({ error: 'De voorraadvelden worden nog aangemaakt. Probeer het zo opnieuw.', code: 'schema_ontbreekt' }, uit));
+        }
+        if (uit && uit.reden === 'ongeldig_adres') return res.status(400).json({ error: 'Geef een geldig https-adres voor de voorraadfeed.', code: 'ongeldig_adres' });
+        if (uit && uit.reden === 'geen_klantrecord') return res.status(404).json({ error: 'Account niet gevonden.', code: 'geen_klantrecord' });
+        return res.status(200).json(uit);
+      } catch (err) {
+        console.error('[' + body.mode + ']', err && err.status, err && err.message);
+        if (err && err.onbekendVeld) {
+          try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ }
+          return res.status(503).json({ error: 'De voorraadvelden worden nog aangemaakt. Probeer het zo opnieuw.', code: 'schema_ontbreekt' });
+        }
+        return res.status(503).json({ error: 'De voorraadstatus kon niet opgehaald worden.', code: 'unavailable' });
       }
     }
 

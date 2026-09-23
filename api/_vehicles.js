@@ -66,6 +66,12 @@ const F = Object.freeze({
   gearchiveerd:'Archived',
   aangemaakt:  'Created At',
   bijgewerkt:  'Updated At',
+  /* Herkomst (automotive engine, 2026-09-23): 'feed' voor voertuigen die uit
+     een voorraadfeed komen (api/_inventaris.js), leeg voor handwerk. De feed
+     raakt alleen zijn EIGEN voertuigen aan -- zie Source Record ID. */
+  bron:        'Source',
+  bronId:      'Source Record ID',
+  gesynct:     'Synced At',
 });
 
 class VehicleError extends Error {
@@ -87,10 +93,17 @@ class VehicleError extends Error {
  */
 const RIJDBARE_STATUS = Object.freeze(['beschikbaar']);
 
+/* Leeg = 'beschikbaar': zo is elk voertuig in Helvaro aangemaakt (save() zet
+   het zo), en een dealer die de status nooit aanraakte ziet op zijn scherm ook
+   'beschikbaar'. Maar een ONBEKENDE waarde -- een typefout, een feedwaarde die
+   we niet kennen -- is geen beschikbaarheid. Dat was hij wel, tot 2026-09-23:
+   alles wat niet herkend werd las als 'beschikbaar', en de assistent bood er
+   een proefrit op aan. Nu 'onbekend': niet boekbaar, niet te bevestigen. */
+const BEKENDE_STATUS = Object.freeze(['beschikbaar', 'gereserveerd', 'verkocht', 'uit aanbod', 'onbekend']);
 function normStatus(s) {
   const v = String(s == null ? '' : s).trim().toLowerCase();
-  const bekend = ['beschikbaar', 'gereserveerd', 'verkocht', 'uit aanbod'];
-  return bekend.indexOf(v) !== -1 ? v : 'beschikbaar';
+  if (!v) return 'beschikbaar';
+  return BEKENDE_STATUS.indexOf(v) !== -1 ? v : 'onbekend';
 }
 
 function kanProefrit(status) { return RIJDBARE_STATUS.indexOf(normStatus(status)) !== -1; }
@@ -119,6 +132,7 @@ function boekbaar(voertuig, actieveAfspraken) {
   if (status === 'verkocht')    return { ok: false, reden: 'verkocht' };
   if (status === 'uit aanbod')  return { ok: false, reden: 'uit_aanbod' };
   if (status === 'gereserveerd') return { ok: false, reden: 'gereserveerd' };
+  if (status === 'onbekend')    return { ok: false, reden: 'onbekend' };
 
   const afspraken = Array.isArray(actieveAfspraken) ? actieveAfspraken : [];
   if (afspraken.length > 0) return { ok: false, reden: 'afspraak_bestaat' };
@@ -368,6 +382,9 @@ function vanRecord(rec) {
     gearchiveerd:f[F.gearchiveerd] === true,
     aangemaakt:  String(f[F.aangemaakt] || '').trim(),
     bijgewerkt:  String(f[F.bijgewerkt] || '').trim(),
+    bron:        String(f[F.bron] || '').trim(),
+    bronId:      String(f[F.bronId] || '').trim(),
+    gesynct:     String(f[F.gesynct] || '').trim(),
   };
 }
 
@@ -401,9 +418,11 @@ async function list(projectCode, opties = {}) {
   const formule = encodeURIComponent(`{${F.project}}="${escapeFormula(tenant)}"`);
   const uit = [];
   let offset = '';
-  /* Vier pagina's van 100. Een dealer met meer dan 400 auto's in de etalage
-     heeft een voorraadsysteem nodig en geen lijstscherm -- zie de kop. */
-  for (let ronde = 0; ronde < 4; ronde++) {
+  /* Tien pagina's van 100 (was vier). Wat daarboven ligt wordt niet stil
+     weggelaten: listMetStatus() hieronder zegt dat de lijst afgekapt is, en de
+     voorraadstatus (api/_inventaris.js) meldt het. */
+  let afgekapt = false;
+  for (let ronde = 0; ronde < 10; ronde++) {
     const r = await atFetch(
       `${TABEL}?filterByFormula=${formule}&pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`
     );
@@ -415,7 +434,10 @@ async function list(projectCode, opties = {}) {
     for (const rec of (d.records || [])) uit.push(vanRecord(rec));
     if (!d.offset) break;
     offset = d.offset;
+    if (ronde === 9) afgekapt = true;
   }
+  if (afgekapt) console.warn('[voertuigen] lijst afgekapt op 1000 voor', tenant);
+  _laatsteAfgekapt.set(tenant, afgekapt);
 
   let autos = uit.filter((v) => v.projectCode === tenant);   // riem en bretels
   if (!opties.inclusiefGearchiveerd) autos = autos.filter((v) => !v.gearchiveerd);
@@ -423,6 +445,43 @@ async function list(projectCode, opties = {}) {
   if (opties.alleenPubliek)          autos = autos.filter((v) => v.publiek);
 
   return autos.sort((a, b) => a.code.localeCompare(b.code, 'nl', { numeric: true }));
+}
+
+/**
+ * Zoals getByCode, maar met onderscheid tussen "bestaat niet (meer)" en "kon
+ * niet gelezen worden". De eindcontrole voor verzenden en de boekingspoort
+ * hebben dat verschil nodig: een verdwenen voertuig is niet boekbaar, een
+ * Airtable-hapering zegt niets over het voertuig.
+ * @returns {Promise<{gelezen:boolean, voertuig:object|null}>}
+ */
+async function leesVers(projectCode, code) {
+  const tenant = String(projectCode || '').trim();
+  if (!tenant) return { gelezen: false, voertuig: null };
+  const c = normCode(code);
+  if (!geldigeCode(c)) return { gelezen: true, voertuig: null };
+  try {
+    if (!(await available())) return { gelezen: false, voertuig: null };
+    const formule = encodeURIComponent(
+      `AND({${F.project}}="${escapeFormula(tenant)}", UPPER({${F.code}})="${escapeFormula(c)}")`
+    );
+    const r = await atFetch(`${TABEL}?filterByFormula=${formule}&maxRecords=1`);
+    if (!r.ok) return { gelezen: false, voertuig: null };
+    const d = await r.json();
+    const rec = (d.records || [])[0];
+    if (!rec) return { gelezen: true, voertuig: null };
+    const auto = vanRecord(rec);
+    if (auto.projectCode !== tenant) return { gelezen: true, voertuig: null };
+    return { gelezen: true, voertuig: auto };
+  } catch (e) {
+    return { gelezen: false, voertuig: null };
+  }
+}
+
+const _laatsteAfgekapt = new Map();
+/** list() plus de vraag of de lijst volledig is. */
+async function listMetStatus(projectCode, opties = {}) {
+  const vehicles = await list(projectCode, opties);
+  return { vehicles, afgekapt: _laatsteAfgekapt.get(String(projectCode || '').trim()) === true };
 }
 
 async function getByCode(projectCode, code) {
@@ -571,6 +630,11 @@ function naarVelden(invoer, projectCode) {
   if (Array.isArray(v.fotos))   velden[F.fotos]   = v.fotos.map((s) => String(s).trim()).filter(Boolean).join('\n');
   if (typeof v.publiek === 'boolean')      velden[F.publiek] = v.publiek;
   if (typeof v.gearchiveerd === 'boolean') velden[F.gearchiveerd] = v.gearchiveerd;
+  /* Alleen de feed zet herkomst. Een handmatige save laat deze velden weg, zodat
+     hij ook werkt op een base waar de schema-migratie nog niet draaide. */
+  if (v.bron)    velden[F.bron]    = tekst(v.bron, 20);
+  if (v.bronId)  velden[F.bronId]  = tekst(v.bronId, 120);
+  if (v.gesynct) velden[F.gesynct] = tekst(v.gesynct, 40);
 
   return velden;
 }
@@ -803,6 +867,10 @@ function samenvatting(voertuig) {
 }
 
 module.exports = {
+  BEKENDE_STATUS, listMetStatus, leesVers,
+  /* Voor de voorraadsync (api/_inventaris.js): batch-schrijven zonder per
+     voertuig list() te herhalen. Niet voor andere aanroepers. */
+  _intern: { atFetch: (...a) => atFetch(...a), TABEL, F, naarVelden, vanRecord, volgendeCode },
   TABEL,
   F,
   VehicleError,

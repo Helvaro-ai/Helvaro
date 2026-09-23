@@ -8847,6 +8847,62 @@ body.panel-open .main-content { transform: scale(0.985); }
 .pd-head-title { font-size: 1.0667rem; font-weight: 700; color: var(--text-primary); }
 .pd-head-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
 
+/* Voorraadwaarheid-kaart (voertuigenpagina + startpagina). Warm palet,
+   geen gloed: status is een kleine stip, de kaart zelf blijft rustig. */
+.inv-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.inv-card--home { margin-bottom: 14px; }
+.inv-kop { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.inv-titelblok { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.inv-titel {
+  font-size: 0.7333rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.inv-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.inv-status-label { font-size: 0.9333rem; font-weight: 650; color: var(--text-primary); }
+.inv-sub { font-size: 0.8rem; color: var(--text-muted); }
+.inv-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-muted); }
+.inv-dot--ok { background: var(--success-c); }
+.inv-dot--bezig { background: var(--accent-c); }
+.inv-dot--let { background: rgb(var(--warning-rgb)); }
+.inv-dot--fout { background: rgb(var(--error-rgb)); }
+.inv-dot--onbekend { background: transparent; border: 1.5px solid var(--text-muted); }
+.inv-sync {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; min-height: 36px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg-card-alt); color: var(--text-primary);
+  font: inherit; font-size: 0.8333rem; font-weight: 600; cursor: pointer;
+  transition: background 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out;
+}
+.inv-sync:hover:not([disabled]) { border-color: rgba(var(--accent-rgb),0.45); background: rgba(var(--accent-rgb),0.08); }
+.inv-sync:active:not([disabled]) { transform: scale(0.97); }
+.inv-sync:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 2px; }
+.inv-sync[disabled] { opacity: 0.7; cursor: progress; }
+.inv-spin { animation: inv-draai 900ms linear infinite; }
+@keyframes inv-draai { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .inv-spin { animation: none; } }
+.inv-cijfers { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--text-secondary); }
+.inv-let {
+  font-size: 0.8rem; line-height: 1.5; color: var(--orange-ink);
+  padding: 8px 10px; border-radius: 8px;
+  background: rgba(var(--warning-rgb),0.08); border: 1px solid rgba(var(--warning-rgb),0.25);
+}
+.inv-fout {
+  font-size: 0.8rem; line-height: 1.5; color: var(--error-ink);
+  padding: 8px 10px; border-radius: 8px;
+  background: rgba(var(--error-rgb),0.08); border: 1px solid rgba(var(--error-rgb),0.25);
+}
+@media (max-width: 560px) {
+  .inv-kop { align-items: stretch; }
+  .inv-sync { width: 100%; justify-content: center; }
+}
 .pd-notice {
   padding: 14px 16px; border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);

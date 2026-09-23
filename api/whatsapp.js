@@ -42,6 +42,7 @@ const _koop      = require('./_koop');       // hoe de aankoop eruitziet: financ
 const _leadscore = require('./_leadscore');  // score + temperatuur per dealership-beurt (Fase 3)
 const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
+const _inventaris = require('./_inventaris');     // voorraadwaarheid + eindcontrole voor verzenden
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
@@ -1112,6 +1113,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      gebruikt bij zowel de fiche (hier) als de BOOK-rem (pandBezichtigbaar,
      zie de aanroep van runAI hieronder). */
   let voertuigBoekbaarheid = null;
+  /* Voorraadwaarheid (api/_inventaris.js): wat de AI over het voertuig zag,
+     om vlak voor verzenden opnieuw te vergelijken, en hoe betrouwbaar de
+     voorraad nu is. */
+  let voertuigMomentopname = null;
+  let voorraadVertrouwen = null;
 
   if (vertical === _vertical.DEALERSHIP) {
     /* ── Dealership ──────────────────────────────────────────────────────────
@@ -1129,8 +1135,12 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         .map((m) => String(m.content || ''))
         .join(' ');
 
+      /* Parallel met het herkennen: de voorraadstatus is één lichte lezing. */
+      const vertrouwenBelofte = _inventaris.vertrouwenVoor(projectCode);
       const uitkomst = await _autoscout.herken(_vehicles, projectCode, koperTekst);
       herkendVoertuig = uitkomst.voertuig;
+      voorraadVertrouwen = await vertrouwenBelofte;
+      if (herkendVoertuig) voertuigMomentopname = _inventaris.momentopname(herkendVoertuig);
 
       if (herkendVoertuig) {
         kortingsgrenzen = _vertical.kortingsgrenzen(client.fields, herkendVoertuig);
@@ -1173,6 +1183,8 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         const voorraad = await _vehicles.list(projectCode, { alleenPubliek: true });
         if (voorraad.length) pandSectie = _ai.prompts.voertuigen.index(voorraad);
       }
+      /* Verouderde of onbereikbare voorraad: helpen mag, bevestigen niet. */
+      pandSectie += _inventaris.promptNotitie(voorraadVertrouwen);
     } catch (e) {
       /* Best-effort, net als bij panden. Een koper zonder voertuigfiche is
          vervelend; een koper zonder antwoord is een verloren deal. */
@@ -1257,7 +1269,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
        voertuigBoekbaarheid is hierboven al berekend zodra herkendVoertuig
        gezet werd, dus die is nooit null als herkendVoertuig dat niet is. */
     pandBezichtigbaar: herkendVoertuig
-      ? Boolean(voertuigBoekbaarheid && voertuigBoekbaarheid.ok)
+      ? Boolean(voertuigBoekbaarheid && voertuigBoekbaarheid.ok) && !(voorraadVertrouwen && voorraadVertrouwen.niveau === 'onzeker')
       : (herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true),
     pandCode: herkendVoertuig ? herkendVoertuig.code : (herkendPand ? herkendPand.code : ''),
     /* Alleen het MOMENT gaat mee, niet het record-id. De AI hoeft niet te weten
@@ -1306,8 +1318,8 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   //    touch Airtable yet. Whether the conversation "actually advanced" is
   //    only known once we've tried to deliver it (step 10) — persisting
   //    optimistically here is exactly the bug this fix closes.
-  const replyText    = aiResponse.message.trim();
-  const isEscalation = aiResponse.escalate === true;
+  let replyText    = aiResponse.message.trim();
+  let isEscalation = aiResponse.escalate === true;
 
   // Effective language for anything sent AFTER this AI turn (booking
   // confirmation, callback message below). In forced mode (default) this is
@@ -1360,6 +1372,32 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       await updateLead(lead.id, { 'Last Message': text, 'Conversation History': JSON.stringify(history) }, phone, scopedProjectCode).catch(() => {});
       try { _activiteit.log(projectCode, 'ai_reply_withheld', { leadId: lead.id, details: { reden: pauzeNu ? 'overname' : 'afgemeld' } }); } catch (e) { /* logboek is optioneel */ }
       return;
+    }
+  }
+
+  /* 10b. Eindcontrole op de voertuigfeiten (api/_inventaris.js). Het
+     antwoord werd geschreven met het voertuig zoals het VOOR de AI-aanroep en
+     de pauze was. Is het intussen verkocht of gereserveerd, of klopt de prijs
+     of kilometerstand in het antwoord niet meer, dan gaat dit antwoord niet
+     weg: de lead krijgt een eerlijke tussenboodschap, de beurt telt als
+     escalatie (verkoper krijgt een melding, er wordt niets geboekt). */
+  if (voertuigMomentopname) {
+    let controle;
+    try { controle = await _inventaris.hercontroleer(projectCode, [voertuigMomentopname]); }
+    catch (e) { controle = { ok: false, veranderd: [], onleesbaar: true }; }
+    const oordeel = _inventaris.beoordeelVoorVerzenden(replyText, [voertuigMomentopname], controle);
+    if (oordeel.actie !== 'versturen') {
+      console.warn(`[WhatsApp] antwoord vervangen voor lead ${lead.id}: ${oordeel.actie} (${oordeel.reden}) op ${voertuigMomentopname.code}`);
+      replyText = oordeel.actie === 'onbeschikbaar'
+        ? _lang.buildVehicleUnavailableMessage(effectiveLang)
+        : _lang.buildVehicleFactCheckMessage(effectiveLang);
+      isEscalation = true;
+      try {
+        _activiteit.log(projectCode, 'vehicle_fact_corrected', {
+          leadId: lead.id, voertuigCode: voertuigMomentopname.code,
+          details: { actie: oordeel.actie, reden: oordeel.reden, bij: 'verzenden' },
+        }).catch(() => {});
+      } catch (e) { /* logboek is optioneel */ }
     }
   }
 

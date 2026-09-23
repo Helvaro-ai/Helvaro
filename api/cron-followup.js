@@ -487,6 +487,18 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       });
     }
 
+    /* ── Schema van de automotive engine ─────────────────────────────────────
+       Additief en idempotent (api/_schema.js): maakt ontbrekende tabellen en
+       velden aan, raakt nooit bestaande data. Eén meta-aanroep als alles er al
+       is. Zonder schemarechten op de token: gelogd, verder niets. */
+    let schemaResult = null;
+    try {
+      const v = await require('./_schema').ensure({ commit: true });
+      schemaResult = { ok: v.ok, aangemaakt: v.aangemaakt.length, reden: v.reden || undefined };
+    } catch (e) {
+      console.error('[cron-followup] schema mislukt:', e && e.message);
+    }
+
     /* ── Drive van de beheerder ─────────────────────────────────────────────
        Laatste taak, want puur intern: als dit omvalt is er niets mis voor
        een klant. Niet gekoppeld = overslaan, geen fout. */
@@ -505,7 +517,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] drive-sync mislukt:', e && e.message);
     }
 
-    const verslag = { checked: leads.length, sent, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    const verslag = { checked: leads.length, sent, schema: schemaResult, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
     /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
        eigen catch viel; zonder deze regel moest je tien losse logregels bij
        elkaar zoeken om te weten of de dag compleet was. */

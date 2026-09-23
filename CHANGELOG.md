@@ -14,6 +14,35 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Voorraad: de assistent zegt alleen wat de voorraad NU zegt
+
+- **Voorraadstatus op de voertuigenpagina.** Een kaart toont of de voorraad
+  actueel is (Actueel, Verouderd, Gedeeltelijk bijgewerkt, Mislukt, Nog niet
+  gecontroleerd), wanneer hij laatst gecontroleerd werd en hoeveel voertuigen er
+  zijn, gewijzigd of uit aanbod gingen. Met de knop **Voorraad synchroniseren**.
+  Een mislukte run toont de fout, nooit een groen vinkje.
+- **Controle bij inloggen en verversen.** Is de voorraad verouderd of nooit
+  gecontroleerd, dan wordt hij meteen gecontroleerd. Op de startpagina verschijnt
+  alleen iets als er een probleem is.
+- **Laatste controle vlak voor het versturen.** Is een wagen verkocht of
+  gereserveerd terwijl de assistent zijn antwoord schreef, of klopt de prijs of
+  kilometerstand in dat antwoord niet meer, dan gaat dat antwoord niet weg. De
+  koper krijgt een eerlijke tussenboodschap en de verkoper een melding.
+- **Boeken leest de wagen opnieuw.** Een proefrit wordt alleen geboekt op de
+  status van dat moment, niet op die van voor het gesprek.
+- **Onbekende status is geen beschikbaarheid.** Een status die Helvaro niet
+  kent (typefout, onbekende feedwaarde) gold als "beschikbaar". Nu "status
+  onbekend": niet boekbaar, niet te bevestigen. Een gereserveerde wagen krijgt
+  geen proefrit meer aangeboden (de assistent zei dat wel, het systeem boekte
+  het niet).
+- **Voorraadfeeds (CSV, JSON, XML).** De basis om een voorraad uit een ander
+  systeem in te lezen: alleen https, geen interne adressen, max 5 MB,
+  verdwenen wagens gaan naar "uit aanbod" (nooit verwijderd). Instellen kan
+  nog niet vanuit het scherm.
+- **Database-velden maken zichzelf aan.** De nieuwe velden en tabellen voor
+  voorraad, e-mail en website worden automatisch aangemaakt (alleen toevoegen,
+  nooit iets wijzigen of wissen).
+
 ### WhatsApp: kwalificatie kwam nooit door, en "Neem over" kon te laat zijn
 
 - **Gekwalificeerde leads bleven 'bezig'.** De assistent sluit een gesprek af

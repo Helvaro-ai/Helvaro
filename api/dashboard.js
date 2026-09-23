@@ -929,6 +929,7 @@ ${faro.navCta}
       <!-- Dealer-overzicht: "wat vraagt vandaag aandacht" (Fase 6). Leeg en
            verborgen tot loadDealerOverzicht() een antwoord heeft -- een
            makelaar heeft dit blok nooit nodig en ziet het dus ook nooit. -->
+      <div class="inv-card inv-card--home" id="inv-card-home" style="display:none"></div>
       <div class="dealer-overzicht" id="dealer-overzicht" style="display:none"></div>
 
       <!-- Charts row -->
@@ -2178,6 +2179,10 @@ ${faro.navCta}
             ${T('prop.add')}
           </button>
         </div>
+
+        <!-- Voorraadwaarheid: hoe vers en betrouwbaar is wat de assistent over
+             deze voertuigen zegt (api/_inventaris.js). Alleen voor dealers. -->
+        <div class="inv-card" id="inv-card" style="display:none"></div>
 
         <!-- Drie toestanden, en ze zeggen alle drie iets anders:
              tabel-ontbreekt (eenmalig, eigenaar moet iets doen),
@@ -6737,9 +6742,146 @@ function dealerOpenLead(leadId) {
   if (lead) openPanel(lead); else navigateTo('pipeline');
 }
 
+/* ── Voorraadwaarheid (api/_inventaris.js) ────────────────────────────────────
+   Twee plekken tonen dezelfde toestand: een korte regel op de startpagina en
+   een kaart met de knop "Voorraad synchroniseren" op de voertuigenpagina.
+   voorraadCheck() is de versheidscontrole bij inloggen en verversen -- de
+   server synchroniseert alleen als de voorraad verouderd is. voorraadSync()
+   is de knop: altijd een run. Een mislukte run toont de fout, nooit een
+   groen vinkje. */
+var voorraadState = { data: null, bezig: false, laatst: 0, eerste: true, fout: '' };
+
+async function voorraadVraag(mode, extra) {
+  var r = await fetch(API_BASE + '/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+    body: JSON.stringify(Object.assign({ mode: mode }, extra || {}))
+  });
+  var d = null;
+  try { d = await r.json(); } catch (e) { d = null; }
+  if (!r.ok) {
+    var err = new Error((d && d.error) || tr('inv.fout.algemeen'));
+    err.code = d && d.code;
+    throw err;
+  }
+  return d;
+}
+
+async function voorraadCheck(force) {
+  if (!isDealer()) { renderVoorraad(); return; }
+  if (!force && voorraadState.laatst && Date.now() - voorraadState.laatst < 60000) { renderVoorraad(); return; }
+  voorraadState.laatst = Date.now();
+  var trigger = voorraadState.eerste ? 'login' : 'verversen';
+  voorraadState.eerste = false;
+  try {
+    voorraadState.data = await voorraadVraag('inventory-check', { trigger: trigger });
+    voorraadState.fout = '';
+  } catch (e) {
+    voorraadState.fout = e.message || tr('inv.fout.algemeen');
+  }
+  renderVoorraad();
+}
+
+async function voorraadSync() {
+  if (voorraadState.bezig) return;
+  voorraadState.bezig = true;
+  renderVoorraad();
+  try {
+    var d = await voorraadVraag('inventory-sync');
+    voorraadState.data = d;
+    voorraadState.fout = '';
+    voorraadState.laatst = Date.now();
+    if (d.hergebruikt) toast(tr('inv.toast.loopt'), 'info');
+    else if (d.ok) toast(tr('inv.toast.ok', { n: d.count == null ? 0 : d.count, c: d.changed || 0, r: d.removed || 0 }), 'success');
+    else toast(d.lastError || tr('inv.fout.algemeen'), 'error', tr('inv.toast.mislukt'));
+    try { loadPanden(true); } catch (e) { /* lijst verversen is bijzaak */ }
+  } catch (e) {
+    voorraadState.fout = e.message || tr('inv.fout.algemeen');
+    toast(voorraadState.fout, 'error', tr('inv.toast.mislukt'));
+  }
+  voorraadState.bezig = false;
+  renderVoorraad();
+}
+
+function voorraadStatusKlasse(st) {
+  if (st === 'HEALTHY') return 'inv-dot--ok';
+  if (st === 'SYNCING') return 'inv-dot--bezig';
+  if (st === 'STALE' || st === 'DEGRADED') return 'inv-dot--let';
+  if (st === 'FAILED') return 'inv-dot--fout';
+  return 'inv-dot--onbekend';
+}
+
+function voorraadRegels(d) {
+  var st = (d && d.status) || 'UNKNOWN';
+  var wanneer = d && d.lastSuccessAt ? timeAgo(new Date(d.lastSuccessAt)) : tr('inv.nooit');
+  var cijfers = [];
+  if (d && d.count != null) cijfers.push(tr('inv.aantal', { n: d.count }));
+  if (d && d.changed) cijfers.push(tr('inv.gewijzigd', { n: d.changed }));
+  if (d && d.removed) cijfers.push(tr('inv.verwijderd', { n: d.removed }));
+  if (d && d.failed) cijfers.push(tr('inv.mislukt', { n: d.failed }));
+  return { st: st, label: tr('inv.status.' + st), wanneer: wanneer, cijfers: cijfers };
+}
+
+function renderVoorraad() {
+  var kaart = document.getElementById('inv-card');
+  var home = document.getElementById('inv-card-home');
+  if (!isDealer()) {
+    if (kaart) kaart.style.display = 'none';
+    if (home) home.style.display = 'none';
+    return;
+  }
+  var d = voorraadState.data;
+  if (!d && !voorraadState.fout) {
+    if (kaart) kaart.style.display = 'none';
+    if (home) home.style.display = 'none';
+    return;
+  }
+  var r = voorraadRegels(d);
+  var bezig = voorraadState.bezig || r.st === 'SYNCING';
+  var knop = '<button type="button" class="inv-sync" onclick="voorraadSync()"' + (bezig ? ' disabled aria-busy="true"' : '') + '>'
+    + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' + (bezig ? ' class="inv-spin"' : '') + '><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>'
+    + escHtml(bezig ? tr('inv.bezig') : tr('inv.sync')) + '</button>';
+  var foutRegel = '';
+  if (voorraadState.fout) foutRegel = '<div class="inv-fout">' + escHtml(voorraadState.fout) + '</div>';
+  else if (d && d.lastResult === 'failed' && d.lastError) {
+    /* De server schrijft zijn fout in het Nederlands; een bekende code krijgt
+       de vertaalde uitleg, een onbekende de ruwe tekst. */
+    var codeSleutel = 'inv.code.' + (d.lastErrorCode || '');
+    var uitleg = (d.lastErrorCode && T_DICT[codeSleutel] !== undefined) ? tr(codeSleutel) : d.lastError;
+    foutRegel = '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: uitleg })) + '</div>';
+  }
+  var onzeker = (d && d.vertrouwen === 'onzeker') ? '<div class="inv-let">' + escHtml(tr('inv.onzeker')) + '</div>' : '';
+  var bron = d ? (d.bron === 'feed' ? tr('inv.bron.feed') : tr('inv.bron.native')) : '';
+
+  if (kaart) {
+    kaart.style.display = '';
+    kaart.innerHTML = '<div class="inv-kop">'
+      + '<div class="inv-titelblok"><div class="inv-titel">' + escHtml(tr('inv.titel')) + '</div>'
+      + '<div class="inv-status"><span class="inv-dot ' + voorraadStatusKlasse(r.st) + '"></span>'
+      + '<span class="inv-status-label">' + escHtml(r.label) + '</span>'
+      + '<span class="inv-sub">' + escHtml(tr('inv.laatst', { t: r.wanneer })) + (bron ? ' · ' + escHtml(bron) : '') + '</span></div></div>'
+      + knop + '</div>'
+      + (r.cijfers.length ? '<div class="inv-cijfers">' + r.cijfers.map(function (c) { return '<span>' + escHtml(c) + '</span>'; }).join('') + '</div>' : '')
+      + onzeker + foutRegel;
+  }
+  if (home) {
+    /* Op de startpagina alleen als er iets te melden is: een gezonde voorraad
+       hoeft niet elke ochtend om aandacht te vragen. */
+    var melden = r.st !== 'HEALTHY' && r.st !== 'SYNCING' || voorraadState.fout || (d && d.vertrouwen === 'onzeker');
+    if (!melden) { home.style.display = 'none'; home.innerHTML = ''; }
+    else {
+      home.style.display = '';
+      home.innerHTML = '<div class="inv-kop"><div class="inv-status"><span class="inv-dot ' + voorraadStatusKlasse(r.st) + '"></span>'
+        + '<span class="inv-status-label">' + escHtml(tr('inv.titel')) + ': ' + escHtml(r.label) + '</span>'
+        + '<span class="inv-sub">' + escHtml(tr('inv.laatst', { t: r.wanneer })) + '</span></div>' + knop + '</div>' + onzeker + foutRegel;
+    }
+  }
+}
+
 async function loadDealerOverzicht(force) {
   var el = document.getElementById('dealer-overzicht');
-  if (!isDealer()) { if (el) el.style.display = 'none'; return; }
+  if (!isDealer()) { if (el) el.style.display = 'none'; renderVoorraad(); return; }
+  voorraadCheck(force);
   if (!tabVers('dealerOverzicht', force)) { renderDealerOverzicht(); return; }
   try {
     var r = await fetch(API_BASE + '/leads', {
@@ -7692,6 +7834,10 @@ function zetVertical(v, config) {
                 faro: Number((config && config.faroDiscount) || 0) };
   if (nieuw === hvVertical) return;   // niets te doen, en geen herteken
   hvVertical = nieuw;
+  /* De voorraadcontrole bij inloggen: refreshData() liep al voor de config
+     binnen was, dus toen wist het dashboard nog niet dat dit een dealer is.
+     Nu wel. (Voor een niet-dealer verbergt dit alleen de kaarten.) */
+  try { voorraadCheck(true); } catch (e) { /* bijzaak */ }
 
   /* Het navigatie-item. Alleen het woord en het pictogram; de pagina, de route
      en de opmaak blijven precies dezelfde. */
@@ -16250,6 +16396,7 @@ function pandProject() {
 }
 
 async function loadPanden(force) {
+  if (isDealer()) voorraadCheck(false);
   if (!tabVers('panden', force)) return;
   var grid   = document.getElementById('pd-grid');
   var leeg   = document.getElementById('pd-empty');
@@ -16429,6 +16576,9 @@ function renderPanden() {
     if (p.status === 'verkocht')     return 'verkocht';
     if (p.status === 'uit aanbod')   return 'uit aanbod';
     if (p.status === 'gereserveerd') return 'gereserveerd';
+    /* Een status die we niet kennen is geen beschikbaarheid (api/_vehicles.js
+       normStatus). De dealer ziet 'onbekend' en weet dat hij hem moet zetten. */
+    if (p.status === 'onbekend')     return 'onbekend';
     if (actieveAppts && actieveAppts.length > 0) return 'afspraak';
     if (aantalGeinteresseerd > 0) return 'interesse';
     return 'beschikbaar';
@@ -16471,7 +16621,7 @@ function renderPanden() {
       var hotAantal = kandidaten.filter(function (k) { return k.temp === 'hot'; }).length;
       var opStatus = pdOperationeleStatus(p, actieveAppts, aantal);
       var opKlasse = (opStatus === 'beschikbaar') ? 'pd-status--beschikbaar'
-                   : ((opStatus === 'verkocht' || opStatus === 'uit aanbod') ? 'pd-status--weg' : 'pd-status--bod');
+                   : ((opStatus === 'verkocht' || opStatus === 'uit aanbod' || opStatus === 'onbekend') ? 'pd-status--weg' : 'pd-status--bod');
       var volgendeRegel = '';
       if (actieveAppts.length) {
         var eerste = actieveAppts[0];

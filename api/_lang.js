@@ -105,6 +105,7 @@ const LANGUAGES = {
     legacyConfirm: (name, when, addr) => `Bevestigd. Je afspraak bij ${name} staat gepland op ${when}.${addr ? ` Adres: ${addr}.` : ''}`,
     legacyConflict: 'Oeps, dat moment bleek toch al bezet. Welk ander moment past je?',
     legacyUnavailable: 'Sorry, die auto is net door iemand anders geboekt. Zal ik gelijkaardige wagens voorstellen?',
+    legacyFactCheck: 'Momentje, ik laat een collega de actuele gegevens van deze wagen even nakijken. Je hoort zo van ons.',
     legacyCancelled: 'Genoteerd, ik heb de afspraak geannuleerd. Wil je meteen een ander moment prikken?',
     legacyStoring: 'Sorry, ik ben er even niet. Probeer het zo meteen nog eens.',
     legacyWelcome: 'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?',
@@ -122,6 +123,7 @@ const LANGUAGES = {
     legacyConfirm: (name, when, addr) => `Confirmé. Ton rendez-vous chez ${name} est prévu le ${when}.${addr ? ` Adresse : ${addr}.` : ''}`,
     legacyConflict: 'Oups, ce moment était finalement déjà pris. Quel autre moment te convient ?',
     legacyUnavailable: 'Désolé, cette voiture vient d’être réservée par quelqu’un d’autre. Je te propose des voitures similaires ?',
+    legacyFactCheck: 'Un instant, je demande à un collègue de vérifier les données actuelles de cette voiture. On revient vers toi très vite.',
     legacyCancelled: 'Noté, j’ai annulé le rendez-vous. Tu veux qu’on fixe un autre moment ?',
     legacyStoring: 'Désolé, je ne suis pas disponible un instant. Réessaie dans un moment.',
     legacyWelcome: 'Salut {naam} ! Ici {ai} de {bedrijf}. J’ai vu que tu as laissé tes coordonnées. Qu’est-ce qui t’amène chez nous ?',
@@ -139,6 +141,7 @@ const LANGUAGES = {
     legacyConfirm: (name, when, addr) => `Confirmed. Your appointment with ${name} is booked for ${when}.${addr ? ` Address: ${addr}.` : ''}`,
     legacyConflict: 'Oops, that time turned out to already be taken. What other time works for you?',
     legacyUnavailable: 'Sorry, that vehicle was just booked by someone else. Want me to suggest similar cars?',
+    legacyFactCheck: 'One moment, I am having a colleague double-check the current details of this car. We will get back to you shortly.',
     legacyCancelled: 'Noted, I have cancelled the appointment. Shall we pick another time?',
     legacyStoring: 'Sorry, I am briefly unavailable. Please try again in a moment.',
     legacyWelcome: 'Hey {naam}! It’s {ai} from {bedrijf}. I saw you left your details. What brought you to us?',
@@ -624,6 +627,16 @@ function buildVehicleUnavailableMessage(code) {
   return 'Sorry, that vehicle was just booked by someone else. Want me to suggest similar cars?';
 }
 
+// Sent INSTEAD of an AI reply when the final pre-send check (api/_inventaris.js
+// beoordeelVoorVerzenden) finds that a price or mileage in the reply no longer
+// matches the vehicle record. Promises nothing about the car -- a colleague
+// looks. Same nl/fr/en-native, English-fallback rule as the messages above.
+function buildVehicleFactCheckMessage(code) {
+  const entry = getLanguage(code);
+  if (entry.legacyFactCheck) return entry.legacyFactCheck;
+  return 'One moment, I am having a colleague double-check the current details of this car. We will get back to you shortly.';
+}
+
 // Sent when a lead tells us in the conversation that they cannot make it and
 // the appointment has actually been cancelled (see the CANCEL:{...} handling in
 // api/whatsapp.js). Deliberately without a reproach and WITH an opening: most
@@ -842,6 +855,7 @@ module.exports = {
   buildConfirmMessage,
   buildSlotConflictMessage,
   buildVehicleUnavailableMessage,
+  buildVehicleFactCheckMessage,
   buildCancelledMessage,
   buildNoShowMessage,
   buildCancelledFollowupMessage,

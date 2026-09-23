@@ -158,7 +158,13 @@ ck('beschikbaar mag',      vehicles.kanProefrit('beschikbaar') === true);
 ck('gereserveerd mag niet', vehicles.kanProefrit('gereserveerd') === false);
 ck('verkocht mag niet', vehicles.kanProefrit('verkocht') === false);
 ck('uit aanbod mag niet', vehicles.kanProefrit('uit aanbod') === false);
-ck('onbekende status valt terug op beschikbaar', vehicles.kanProefrit('rommel') === true);
+/* Tot 2026-09-23 las een onbekende status als 'beschikbaar' (fail-open). De
+   automotive brief is daar hard over: onbekend is geen beschikbaarheid. Leeg
+   blijft 'beschikbaar' (zo is elk voertuig aangemaakt). */
+ck('onbekende status is NIET rijdbaar', vehicles.kanProefrit('rommel') === false);
+ck('onbekende status normaliseert naar onbekend', vehicles.normStatus('rommel') === 'onbekend');
+ck('lege status blijft beschikbaar (zo wordt elk voertuig aangemaakt)', vehicles.normStatus('') === 'beschikbaar');
+ck('onbekend is niet boekbaar', vehicles.boekbaar({ status: 'rommel' }).ok === false);
 {
   /* Aangescherpt in Fase 2b (2026-09-12): pandBezichtigbaar rust niet meer op
      kanProefrit(status) alleen, maar op voertuigBoekbaarheid.ok --

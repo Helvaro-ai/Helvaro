@@ -1387,6 +1387,22 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        beperkt tot een lijst namen -- indienen is per stuk terug te draaien
        in WhatsApp Manager, maar liever niet vierentwintig tegelijk.
        Nooit een token in het antwoord. */
+    /* ── Schema: de tabellen en velden van de automotive revenue engine ──────
+       Additief en idempotent (api/_schema.js). Standaard een droogloop die het
+       plan toont; commit:true maakt aan wat ontbreekt. Raakt nooit bestaande
+       data. */
+    if (body.mode === 'ops-schema') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const verslag = await require('./_schema').ensure({ commit: body.commit === true });
+      if (body.commit === true) {
+        logAdminAction(null, 'ops-schema', { resource: 'airtable_schema', details: { aangemaakt: verslag.aangemaakt, fouten: verslag.fouten.length } });
+      }
+      return res.status(200).json(verslag);
+    }
+
     if (body.mode === 'ops-templates-submit') {
       const provided = _session.readToken(req);
       if (!isValidAdminToken(provided, ADMIN_KEY)) {
