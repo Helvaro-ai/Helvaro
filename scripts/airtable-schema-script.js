@@ -3,12 +3,12 @@ const TABELLEN = {"customers":[{"name":"Customer ID","type":"singleLineText"},{"
 const EXTRA = {"tblPidTrwGRzRt4LZ":[{"name":"Email Provider","type":"singleLineText"},{"name":"Email Address","type":"singleLineText"},{"name":"Email Token","type":"multilineText"},{"name":"Email State","type":"multilineText"},{"name":"Email Auto Reply","type":"checkbox","options":{"icon":"check","color":"greenBright"}},{"name":"Email Signature","type":"multilineText"},{"name":"Site Key","type":"singleLineText"},{"name":"Widget Domains","type":"multilineText"},{"name":"Widget Enabled","type":"checkbox","options":{"icon":"check","color":"greenBright"}},{"name":"Inventory Source","type":"multilineText"},{"name":"Inventory State","type":"multilineText"}],"tbliukTnDAbEDcZmt":[{"name":"Customer ID","type":"singleLineText"},{"name":"Email","type":"singleLineText"},{"name":"Channels","type":"singleLineText"}],"tblQAPdjEsh0l7lUe":[{"name":"Source","type":"singleLineText"},{"name":"Source Record ID","type":"singleLineText"},{"name":"Synced At","type":"singleLineText"}]};
 let gemaakt = [];
 for (const [naam, velden] of Object.entries(TABELLEN)) {
-  let t = base.getTableByNameIfExists(naam);
+  let t = base.getTableIfExists(naam);
   if (!t) { await base.createTableAsync(naam, velden.map(f => ({ name: f.name, type: f.type, options: f.options }))); gemaakt.push("tabel " + naam); continue; }
-  for (const f of velden) if (!t.getFieldByNameIfExists(f.name)) { await t.createFieldAsync(f.name, f.type, f.options || null); gemaakt.push(naam + "." + f.name); }
+  for (const f of velden) if (!t.getFieldIfExists(f.name)) { await t.createFieldAsync(f.name, f.type, f.options || null); gemaakt.push(naam + "." + f.name); }
 }
 for (const [id, velden] of Object.entries(EXTRA)) {
-  const t = base.getTableByIdIfExists(id); if (!t) continue;
-  for (const f of velden) if (!t.getFieldByNameIfExists(f.name)) { await t.createFieldAsync(f.name, f.type, f.options || null); gemaakt.push(t.name + "." + f.name); }
+  const t = base.getTableIfExists(id); if (!t) continue;
+  for (const f of velden) if (!t.getFieldIfExists(f.name)) { await t.createFieldAsync(f.name, f.type, f.options || null); gemaakt.push(t.name + "." + f.name); }
 }
 output.markdown(gemaakt.length ? "**Aangemaakt:** " + gemaakt.join(", ") : "Alles bestond al.");
