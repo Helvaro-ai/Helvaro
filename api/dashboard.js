@@ -2887,6 +2887,15 @@ ${faro.navCta}
           <div id="mail-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
         </div>
 
+        <!-- Websiteassistent (api/_assistent.js). Getekend door loadWidgetStatus(). -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            ${T('widget.sectie')}
+          </div>
+          <div id="widget-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
+        </div>
+
         <!-- CRM. De rijen worden door loadCrmStatus() getekend: welke koppelingen
              er zijn en welke velden ze vragen komt van de server (crm-status),
              zodat een nieuwe adapter geen wijziging in dit bestand vraagt. -->
@@ -13881,6 +13890,51 @@ async function loadMailStatus() {
     + '<div class="settings-label-sub mail-google-noot">' + escHtml(tr('mail.google.noot')) + '</div>';
 }
 
+/* ── Instellingen: websiteassistent ─────────────────────────────────────── */
+async function loadWidgetStatus() {
+  var el = document.getElementById('widget-instellingen');
+  if (!el) return;
+  var d;
+  try { d = await convVraag({ mode: 'widget-status' }); }
+  catch (e) { el.innerHTML = '<div class="settings-row"><div class="settings-label-sub">' + escHtml(e.code === 'schema_ontbreekt' ? tr('mail.schema') : e.message) + '</div></div>'; return; }
+  var code = d.snippet
+    ? '<div class="widget-code"><code id="widget-snippet">' + escHtml(d.snippet) + '</code>'
+      + '<div class="mail-knoppen"><button class="btn-icon" onclick="kopieerWidgetCode()">' + escHtml(tr('widget.kopieer')) + '</button>'
+      + '<button class="btn-icon" onclick="bewaarWidget({ rotate: true })">' + escHtml(tr('widget.nieuweSleutel')) + '</button></div>'
+      + '<div class="settings-label-sub">' + escHtml(tr('widget.code.uitleg')) + '</div></div>'
+    : '';
+  el.innerHTML = '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('widget.titel')) + '</div>'
+    + '<div class="settings-label-sub">' + escHtml(tr('widget.sub')) + '</div></div>'
+    + '<label class="mail-schakel"><input type="checkbox" id="widget-aan" ' + (d.aan ? 'checked' : '') + ' onchange="bewaarWidget()"><span>' + escHtml(tr(d.aan ? 'mail.aan' : 'mail.uit')) + '</span></label></div>'
+    + '<div class="settings-row mail-handtekening-rij"><div style="flex:1"><div class="settings-label">' + escHtml(tr('widget.domeinen')) + '</div>'
+    + '<div class="settings-label-sub">' + escHtml(tr('widget.domeinen.sub')) + '</div>'
+    + '<textarea id="widget-domeinen" class="panel-reply-input" rows="2" maxlength="2000" placeholder="garage-voorbeeld.be">' + escHtml((d.domeinen || []).join('\\n')) + '</textarea>'
+    + '<button class="btn-icon" style="margin-top:8px" onclick="bewaarWidget()">' + escHtml(tr('btn.opslaan')) + '</button></div></div>'
+    + code;
+}
+
+async function bewaarWidget(extra) {
+  var aan = document.getElementById('widget-aan');
+  var dom = document.getElementById('widget-domeinen');
+  try {
+    await convVraag(Object.assign({ mode: 'widget-save', enabled: aan ? aan.checked : undefined, domains: dom ? dom.value : undefined }, extra || {}));
+    toast(tr(extra && extra.rotate ? 'widget.geroteerd' : 'tst.opgeslagen'), 'success');
+  } catch (e) { toast(e.message, 'error'); }
+  loadWidgetStatus();
+}
+
+function kopieerWidgetCode() {
+  var c = document.getElementById('widget-snippet');
+  if (!c) return;
+  /* Geweigerd (geen https, geen toestemming): de code zelf tonen, zodat hij
+     alsnog met de hand te kopiëren is -- nooit een stil niets. */
+  try {
+    navigator.clipboard.writeText(c.textContent)
+      .then(function () { toast(tr('widget.gekopieerd'), 'success'); })
+      .catch(function () { toast(c.textContent, 'info'); });
+  } catch (e) { toast(c.textContent, 'info'); }
+}
+
 async function mailKoppel(provider) {
   try {
     var d = await convVraag({ mode: 'email-connect', provider: provider });
@@ -18371,6 +18425,7 @@ function renderInstellingen() {
   pushRijBijwerken();
   loadGcalStatus();
   loadMailStatus();
+  loadWidgetStatus();
   loadCrmStatus();
 }
 

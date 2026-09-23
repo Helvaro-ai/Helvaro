@@ -14,6 +14,23 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Assistent op de website van de dealer
+
+- **Eén regel code op de eigen site** (Instellingen → Website): een
+  chatvenster dat vragen beantwoordt uit de échte voorraad. Voertuigkaartjes
+  komen uit de voorraad, met de prijs, km en status van dat moment; is een
+  wagen verkocht terwijl het antwoord onderweg was, dan wordt hij niet meer
+  als beschikbaar getoond.
+- **Alleen op de eigen domeinen.** De dealer geeft zijn website op; een andere
+  site kan het venster niet gebruiken. Een nieuwe sleutel maakt de oude meteen
+  ongeldig.
+- **Contact alleen als het ertoe doet.** Wie rondkijkt krijgt geen formulier.
+  Bij een concrete stap (proefrit, afspraak, inruil, financiering) verschijnt
+  een kaartje: e-mail óf telefoon is genoeg, niets is verplicht.
+- **Verder op WhatsApp** met één klik; het gesprek van de website komt mee
+  als notitie bij de lead.
+- Het gesprek staat in Gesprekken onder Website.
+
 ### E-mail als kanaal (Gmail / Google Workspace)
 
 - **Gesprekken heeft kanalen:** Alle, WhatsApp, E-mail en Website, met een

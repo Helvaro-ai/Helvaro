@@ -195,6 +195,10 @@
       "destination": "/public/ai-demo.js"
     },
     {
+      "source": "/assistant.js",
+      "destination": "/public/assistant.js"
+    },
+    {
       "source": "/OneSignalSDKWorker.js",
       "destination": "/public/OneSignalSDKWorker.js"
     },
@@ -209,6 +213,10 @@
     {
       "source": "/api/ai-demo",
       "destination": "/api/whatsapp?__demo=1"
+    },
+    {
+      "source": "/api/assistant",
+      "destination": "/api/form?__assistant=1"
     },
     {
       "source": "/api/form/:code",

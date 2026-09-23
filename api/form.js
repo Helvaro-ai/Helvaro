@@ -61,6 +61,10 @@ async function isRateLimited(ip) {
 }
 
 module.exports = _errors.vangAf(async function handler(req, res) {
+  /* Websiteassistent (api/_assistent.js) via de rewrite /api/assistant. Eigen
+     CORS (alleen de domeinen van de dealer), dus vóór de '*' hieronder. Hier
+     en niet in een eigen functie: het functiebudget (zie ledger D1). */
+  if (req.query && req.query.__assistant) return require('./_assistent').handler(req, res);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

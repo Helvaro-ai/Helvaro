@@ -72,6 +72,11 @@ let _gekozenSector = 'real_estate';
 let _gekozenStijl = '';
 const _formStijl = require('../api/_form-stijl');
 
+/* Websiteassistent-instellingen van de lokale harness. */
+const _devWidgetStaat = { aan: true, domeinen: ['garage-voorbeeld.be'], siteKey: 'hv_site_' + 'a'.repeat(24) };
+function _devWidget() {
+  return Object.assign({}, _devWidgetStaat, { snippet: '<script src="https://app.helvaro.pro/assistant.js" data-site="' + _devWidgetStaat.siteKey + '" async></script>' });
+}
 /* Nep-mailbox van de lokale harness (zie case 'email-status'). */
 const _devMail = {
   status: { verbonden: true, provider: 'gmail', adres: 'verkoop@garage-voorbeeld.be', autoAntwoord: false, handtekening: 'Garage Voorbeeld\nVerkoopteam',
@@ -247,6 +252,39 @@ const server = http.createServer(async (req, res) => {
        is de hele CRM-kant -- inclusief de Faro-pagina zelf -- niet na te
        kijken. Elke inlogpoging slaagt hier, met de vaste lokale tenant; dat is
        precies waarom deze server nooit bereikbaar mag zijn. */
+    /* Websiteassistent: een testpagina die het ECHTE public/assistant.js laadt,
+       en een nep-/api/assistant met voorraadkaartjes uit de fixtures. Zo zijn
+       het venster, de kaartjes, het contactkaartje en doorsturen lokaal te
+       bekijken. De echte beveiliging (herkomst, sleutel) zit in
+       api/_assistent.js en is gedekt door tests/websiteassistent.test.js. */
+    if (p === '/widget-test') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.end('<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Garage Voorbeeld</title></head>'
+        + '<body style="margin:0;font-family:system-ui;background:#f4f1ea;color:#222"><div style="max-width:720px;margin:40px auto;padding:0 16px"><h1>Garage Voorbeeld</h1><p>Testpagina voor de websiteassistent. Rechtsonder staat het venster.</p></div>'
+        + '<script src="/assistant.js" data-site="hv_site_' + 'a'.repeat(24) + '" data-api="http://localhost:' + PORT + '" data-vehicle="V1" async></script></body></html>');
+    }
+    if (p === '/api/assistant') {
+      let body = '';
+      await new Promise((ok) => { req.on('data', (c) => { body += c; }); req.on('end', ok); });
+      let b = {};
+      try { b = JSON.parse(body || '{}'); } catch (e) { b = {}; }
+      res.setHeader('Content-Type', 'application/json');
+      if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
+      const A = require('../api/_assistent');
+      if (b.action === 'config') return res.end(JSON.stringify({ naam: 'Garage Voorbeeld', handoffs: { whatsapp: true, email: false } }));
+      if (b.action === 'contact') {
+        if (!String(b.email || '').trim() && !String(b.phone || '').trim()) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Geef een e-mailadres of een telefoonnummer.', code: 'geen_contact' })); }
+        return res.end(JSON.stringify({ ok: true }));
+      }
+      if (b.action === 'handoff') return res.end(JSON.stringify({ url: 'https://wa.me/32470000000?text=' + encodeURIComponent('Hallo! (ref H-DEVTEST1)'), ref: 'H-DEVTEST1' }));
+      const auto = _fixtureVoertuigen.find((v) => !v.gearchiveerd) || null;
+      const hoog = A._test.intentie(b.message) === 'hoog';
+      return res.end(JSON.stringify({
+        antwoord: auto ? ('De ' + auto.merk + ' ' + auto.model + ' staat in onze voorraad. Wil je hem komen bekijken?') : 'Ik kijk het voor je na.',
+        kaarten: auto ? [A._test.kaart(auto)] : [], vraagContact: hoog, handoffs: { whatsapp: true, email: false },
+      }));
+    }
+
     if (p === '/api/auth') {
       req.body = await readBody(req);
       const m = req.body && req.body.mode;
@@ -437,6 +475,13 @@ const server = http.createServer(async (req, res) => {
            versturen en overnemen lokaal te zien zijn. Het concept komt NIET
            van een model (lokaal geen sleutel): een vaste tekst die laat zien
            dat de instructie zelf niet in de mail belandt. */
+        case 'widget-status':
+          return res.status(200).json(_devWidget());
+        case 'widget-save':
+          if (typeof req.body.enabled === 'boolean') _devWidgetStaat.aan = req.body.enabled;
+          if (typeof req.body.domains === 'string') _devWidgetStaat.domeinen = require('../api/_assistent').domeinen(req.body.domains);
+          if (req.body.rotate === true) _devWidgetStaat.siteKey = require('../api/_assistent').nieuweSiteKey();
+          return res.status(200).json(_devWidget());
         case 'email-status':
         case 'email-sync':
           return res.status(200).json(Object.assign({}, _devMail.status, { laatsteSync: new Date().toISOString(), tellers: { ontvangen: 0, leads: 0, overgeslagen: 0 } }));

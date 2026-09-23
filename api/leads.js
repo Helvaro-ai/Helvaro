@@ -3146,6 +3146,22 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
     }
 
+    /* ── Websiteassistent: instellingen (api/_assistent.js) ─────────────────── */
+    if (body.mode === 'widget-status' || body.mode === 'widget-save') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      const _assistent = require('./_assistent');
+      try {
+        if (body.mode === 'widget-status') return res.status(200).json(await _assistent.widgetInstellingen(projectCode));
+        return res.status(200).json(await _assistent.bewaarWidget(projectCode, {
+          aan: typeof body.enabled === 'boolean' ? body.enabled : undefined,
+          domeinenTekst: typeof body.domains === 'string' ? body.domains.slice(0, 2000) : undefined,
+          roteer: body.rotate === true,
+        }));
+      } catch (err) {
+        return res.status((err && err.status) || 500).json({ error: (err && err.message) || 'Er ging iets mis.', code: (err && err.code) || 'fout' });
+      }
+    }
+
     /* ── Voorraadwaarheid (api/_inventaris.js) ────────────────────────────────
        inventory-status  alleen lezen, geen sync
        inventory-check   versheidscontrole bij inloggen/verversen: synchroniseert

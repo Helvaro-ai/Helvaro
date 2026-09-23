@@ -120,7 +120,7 @@ const SOORTEN = Object.freeze([
   'email_draft_generated',
   'email_sent',
   'email_send_failed',
-  'handoff_created',
+  'handoff_created', 'website_lead_created',
   'handoff_used',
   'content_generated',
   'content_approved',

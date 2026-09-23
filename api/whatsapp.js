@@ -2952,6 +2952,26 @@ async function maakLeadUitBinnenkomend(phone, eersteBericht, klant) {
     try {
       waitUntil(_klant.koppelLead(klant.projectCode, data.id, { telefoon: phone, kanaal: 'whatsapp', bron: 'WhatsApp' }).catch(() => {}));
     } catch (e) { /* koppelen is bijzaak; de lead bestaat al */ }
+    /* Doorgestuurd vanaf de websiteassistent ("ref H-XXXXXXXX" in het eerste
+       bericht, api/_assistent.js): het websitegesprek aan deze lead hangen en
+       de samenvatting als notitie bewaren, zodat de verkoper niet opnieuw
+       hoeft te vragen wat de klant al vertelde. Eenmalig en tijdgebonden. */
+    try {
+      const ref = require('./_assistent').refUit(eersteBericht);
+      if (ref) {
+        waitUntil(require('./_assistent').gebruikHandoff(klant.projectCode, ref, { leadId: data.id }).then(async (h) => {
+          if (!h || !h.context) return;
+          const notities = { _v: 1, tasks: [], calls: [],
+            notes: [{ id: 'web-' + Date.now(), text: 'Doorgestuurd vanaf de websiteassistent:\n' + h.context.slice(0, 2000), ts: new Date().toISOString() }],
+            consent: { given: false, ts: nu, via: 'inbound_whatsapp' } };
+          await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${data.id}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields: { fldoLRI5W12ThTls7: JSON.stringify(notities) } }),
+          });
+        }).catch(() => {}));
+      }
+    } catch (e) { /* doorsturen is bijzaak; de lead bestaat al */ }
     return data;
   } catch (err) {
     console.error('[WhatsApp] lead aanmaken uit inbound mislukt:', err && err.message);

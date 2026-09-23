@@ -8952,7 +8952,7 @@ body.panel-open .main-content { transform: scale(0.985); }
 .mail-ontkoppel { border-color: rgba(var(--error-rgb),0.35); color: var(--red-ink); background: rgba(var(--error-rgb),0.08); }
 .mail-provider-lijst { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
 #mail-instellingen > .inv-fout { margin: 10px 20px; }
-#mail-handtekening { width: 100%; resize: vertical; }
+#mail-handtekening, #widget-domeinen { width: 100%; resize: vertical; }
 .mail-schakel { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8333rem; color: var(--text-secondary); cursor: pointer; }
 .mail-schakel input { width: 18px; height: 18px; accent-color: var(--accent-c); }
 .mail-google-noot { padding: 12px 20px 14px; }
@@ -8960,6 +8960,12 @@ body.panel-open .main-content { transform: scale(0.985); }
   .mail-instructie-rij { flex-direction: column; }
   .mail-instructie-rij .inv-sync { width: 100%; justify-content: center; }
 }
+.widget-code { padding: 12px 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+.widget-code code {
+  display: block; padding: 10px 12px; border-radius: 10px; background: var(--bg-card-alt); border: 1px solid var(--border);
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.7667rem; color: var(--text-primary); word-break: break-all;
+}
+.widget-code .mail-knoppen { justify-content: flex-start; }
 .pd-notice {
   padding: 14px 16px; border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);
