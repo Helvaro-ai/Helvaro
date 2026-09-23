@@ -1526,6 +1526,7 @@ ${faro.navCta}
       <div class="conv-layout">
         <div class="conv-list" id="conv-list">
           <div class="conv-list-header">${T('nav.conversations')}</div>
+          <div class="conv-kanalen" id="conv-kanalen" role="tablist" aria-label="${T('conv.kanalen')}"></div>
           <div id="conv-list-body">
             ${laadvlak('rij', 5)}
           </div>
@@ -2875,6 +2876,15 @@ ${faro.navCta}
               <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">${T('set.gcal.disc')}</button>
             </div>
           </div>
+        </div>
+
+        <!-- Mailbox (api/_email/mailbox.js). Getekend door loadMailStatus(). -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>
+            ${T('mail.sectie')}
+          </div>
+          <div id="mail-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
         </div>
 
         <!-- CRM. De rijen worden door loadCrmStatus() getekend: welke koppelingen
@@ -11382,7 +11392,7 @@ function navigateTo(page) {
   if (page === 'profile')      renderProfile();
   if (page === 'resultaten')   loadResultaten();
   if (page === 'pipeline')   { renderPipeline();   versBijOpenen(renderPipeline); }
-  if (page === 'gesprekken') { gesprekkenOpnieuw(); versBijOpenen(gesprekkenOpnieuw); }
+  if (page === 'gesprekken') { gesprekkenOpnieuw(); versBijOpenen(gesprekkenOpnieuw); loadExterneGesprekken(false); }
   if (page === 'analyse')      renderAnalyse();
   if (page === 'instellingen') renderInstellingen();
   if (page === 'panden')       loadPanden();
@@ -11982,6 +11992,15 @@ async function startDashboard(skipRefresh = false) {
     const m = gcalMsgs[gcalResult] || ['Google Agenda', 'info', null];
     setTimeout(() => toast(m[0], m[1], m[2]), 600);
     if (gcalResult === 'connected') setTimeout(() => navigateTo('instellingen'), 800);
+  }
+
+  // Mailbox-koppeling terug van Google (?mail=... uit handleGcal).
+  const mailResult = urlParams.get('mail');
+  if (mailResult) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    const mailSleutel = ['connected', 'denied', 'invalid_state', 'scope', 'schema', 'error'].indexOf(mailResult) !== -1 ? mailResult : 'error';
+    setTimeout(() => toast(tr('mail.terug.' + mailSleutel), mailSleutel === 'connected' ? 'success' : (mailSleutel === 'denied' ? 'info' : 'error')), 600);
+    setTimeout(() => navigateTo('instellingen'), 800);
   }
 
   // Start presence heartbeat. So the standalone Founder dashboard can show
@@ -13570,9 +13589,11 @@ function renderPipeline() {
 /* Lijst opnieuw tekenen na verse data, met het geopende gesprek behouden. */
 function gesprekkenOpnieuw() {
   var open = document.querySelector('.conv-list-item.active');
-  var id = open ? open.id.replace(/^conv-item-/, '') : '';
+  var extern = open && /^conv-ext-/.test(open.id);
+  var id = open ? open.id.replace(/^conv-(item|ext)-/, '') : '';
   renderGesprekken();
-  if (id) openConversation(id);
+  if (id && extern) openExternGesprek(id, true);
+  else if (id) openConversation(id);
 }
 
 function renderGesprekken() {
@@ -13591,10 +13612,27 @@ function renderGesprekken() {
     catch { return false; }
   }).sort((a, b) => new Date(b.datum || 0) - new Date(a.datum || 0));
 
+  /* Kanalen (automotive engine): WhatsApp blijft op de lead; e-mail en website
+     komen uit api/_gesprekken.js via loadExterneGesprekken(). "leeg" alleen als
+     er in GEEN enkel kanaal iets is -- anders verdwijnen de tabs mee. */
+  renderKanaalTabs(withConvs.length);
+  const waLijst = (convKanaal === 'alle' || convKanaal === 'whatsapp') ? withConvs : [];
+  const extLijst = (externState.gesprekken || []).filter(function (g) { return convKanaal === 'alle' || g.kanaal === convKanaal; });
   const convLayout = document.querySelector('.conv-layout');
-  if (convLayout) convLayout.classList.toggle('leeg', withConvs.length === 0);
+  if (convLayout) convLayout.classList.toggle('leeg', withConvs.length + (externState.gesprekken || []).length === 0 && convKanaal === 'alle');
 
-  if (withConvs.length === 0) {
+  if (waLijst.length + extLijst.length === 0 && convKanaal === 'email' && !(externState.mail && externState.mail.verbonden)) {
+    listBody.innerHTML = '<div class="conv-kanaal-leeg"><div class="conv-kanaal-leeg-titel">' + escHtml(tr('mail.leeg.titel')) + '</div>'
+      + '<div>' + escHtml(tr('mail.leeg.sub')) + '</div>'
+      + '<button type="button" class="inv-sync" onclick="navigateTo(\\'instellingen\\')">' + escHtml(tr('mail.leeg.knop')) + '</button></div>';
+    return;
+  }
+  if (waLijst.length + extLijst.length === 0 && convKanaal !== 'alle') {
+    listBody.innerHTML = '<div class="conv-kanaal-leeg"><div class="conv-kanaal-leeg-titel">' + escHtml(tr('conv.kanaal.leeg')) + '</div></div>';
+    return;
+  }
+
+  if (withConvs.length === 0 && extLijst.length === 0) {
     /* "Geen gesprekken gevonden" is een mededeling, geen hulp -- en links en
        rechts stond allebei zoiets, dus een nieuwe klant keek naar twee lege
        vlakken zonder één aanwijzing. emptyStateCta() bestond al en werd op
@@ -13607,7 +13645,7 @@ function renderGesprekken() {
     return;
   }
 
-  listBody.innerHTML = withConvs.map(l => {
+  const waRijen = waLijst.map(l => {
     let preview = '';
     try {
       const msgs = JSON.parse(l.gesprek);
@@ -13622,7 +13660,255 @@ function renderGesprekken() {
       </div>
       <div class="conv-list-item-preview">\${escHtml(preview)}</div>
     </div>\`;
+  });
+  /* Samenvoegen op datum: WhatsApp op lead.datum, de rest op het laatste bericht. */
+  const rijen = waLijst.map(function (l, i) { return { t: new Date(l.datum || 0).getTime() || 0, html: waRijen[i] }; })
+    .concat(extLijst.map(function (g) { return { t: Date.parse(g.laatste || g.aangemaakt) || 0, html: externRijHtml(g) }; }));
+  rijen.sort(function (a, b) { return b.t - a.t; });
+  listBody.innerHTML = rijen.map(function (r) { return r.html; }).join('');
+}
+
+/* ── Kanalen: tabs, e-mail- en websitegesprekken ──────────────────────────── */
+var convKanaal = 'alle';
+var externState = { gesprekken: [], geladen: 0, mail: null, syncOp: 0, huidig: null, idem: '', bezig: false };
+
+function renderKanaalTabs(waAantal) {
+  var el = document.getElementById('conv-kanalen');
+  if (!el) return;
+  var ext = externState.gesprekken || [];
+  var tel = { alle: waAantal + ext.length, whatsapp: waAantal,
+    email: ext.filter(function (g) { return g.kanaal === 'email'; }).length,
+    website: ext.filter(function (g) { return g.kanaal === 'website'; }).length };
+  var ongelezen = { email: ext.some(function (g) { return g.kanaal === 'email' && g.ongelezen; }),
+    website: ext.some(function (g) { return g.kanaal === 'website' && g.ongelezen; }) };
+  el.innerHTML = ['alle', 'whatsapp', 'email', 'website'].map(function (k) {
+    return '<button type="button" role="tab" class="conv-kanaal' + (convKanaal === k ? ' actief' : '') + '" aria-selected="' + (convKanaal === k) + '" onclick="zetConvKanaal(\\'' + k + '\\')">'
+      + escHtml(tr('conv.kanaal.' + k)) + (tel[k] ? ' <span class="conv-kanaal-tel">' + tel[k] + '</span>' : '')
+      + (ongelezen[k] ? '<span class="conv-kanaal-stip" aria-label="' + escHtml(tr('conv.ongelezen')) + '"></span>' : '') + '</button>';
   }).join('');
+}
+
+function zetConvKanaal(k) {
+  convKanaal = k;
+  renderGesprekken();
+  if (k === 'email' || k === 'website' || k === 'alle') loadExterneGesprekken(false);
+}
+
+function externRijHtml(g) {
+  var datum = g.laatste ? new Date(g.laatste).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit' }) : '';
+  var tag = g.kanaal === 'email' ? tr('conv.kanaal.email') : tr('conv.kanaal.website');
+  var controle = g.controle === 'HUMAN_TAKEOVER' ? ' <span class="conv-kanaal-tag mens">' + escHtml(tr('conv.mensAanRoer')) + '</span>' : '';
+  return '<div class="conv-list-item' + (g.ongelezen ? ' ongelezen' : '') + '" id="conv-ext-' + escHtml(g.id) + '" onclick="openExternGesprek(\\'' + escJs(g.id) + '\\')">'
+    + '<div class="conv-list-item-name"><span>' + escHtml(g.onderwerp || tr('mail.geenOnderwerp')) + '</span><span class="conv-list-item-date">' + datum + '</span></div>'
+    + '<div class="conv-list-item-preview"><span class="conv-kanaal-tag">' + escHtml(tag) + '</span>' + controle + '</div></div>';
+}
+
+async function convVraag(body) {
+  var r = await fetch(API_BASE + '/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+    body: JSON.stringify(body)
+  });
+  var d = null;
+  try { d = await r.json(); } catch (e) { d = null; }
+  if (r.status === 401 && typeof handleAuthExpired === 'function') { handleAuthExpired(); throw new Error(tr('fout.sessie')); }
+  if (!r.ok) { var err = new Error((d && d.error) || tr('inv.fout.algemeen')); err.code = d && d.code; throw err; }
+  return d;
+}
+
+/* Mailbox-status + gesprekken. Een gekoppelde mailbox wordt hooguit elke twee
+   minuten opgehaald bij Google; daartussen alleen de lijst uit Airtable. */
+async function loadExterneGesprekken(force) {
+  if (!force && externState.geladen && Date.now() - externState.geladen < 30000) return;
+  externState.geladen = Date.now();
+  try { externState.mail = await convVraag({ mode: 'email-status' }); } catch (e) { externState.mail = null; }
+  try {
+    if (externState.mail && externState.mail.verbonden && (force || Date.now() - externState.syncOp > 120000)) {
+      externState.syncOp = Date.now();
+      externState.mail = await convVraag({ mode: 'email-sync', trigger: 'auto' });
+    }
+  } catch (e) { /* de lijst hieronder toont wat er al is */ }
+  try {
+    var d = await convVraag({ mode: 'conversation-list', limit: 60 });
+    externState.gesprekken = (d && d.conversations) || [];
+  } catch (e) { /* tabellen nog niet aangemaakt of storing: WhatsApp blijft werken */ }
+  if (state.currentPage === 'gesprekken') gesprekkenOpnieuw();
+}
+
+async function openExternGesprek(id, stil) {
+  document.querySelectorAll('.conv-list-item').forEach(function (el) { el.classList.remove('active'); });
+  var item = document.getElementById('conv-ext-' + id);
+  if (item) { item.classList.add('active'); item.classList.remove('ongelezen'); }
+  var detail = document.getElementById('conv-detail');
+  if (!detail) return;
+  if (!stil || !externState.huidig || externState.huidig.conversation.id !== id) {
+    detail.innerHTML = '<div class="conv-empty"><div>' + escHtml(tr('laden')) + '</div></div>';
+  }
+  var d;
+  try { d = await convVraag({ mode: 'conversation-messages', conversationId: id }); }
+  catch (e) { detail.innerHTML = '<div class="conv-empty"><div class="inv-fout">' + escHtml(e.message) + '</div></div>'; return; }
+  externState.huidig = d;
+  if (!stil) externState.idem = '';
+  renderExternGesprek();
+}
+
+function renderExternGesprek() {
+  var d = externState.huidig;
+  var detail = document.getElementById('conv-detail');
+  if (!d || !detail) return;
+  var g = d.conversation;
+  var mens = g.controle === 'HUMAN_TAKEOVER';
+  var bubbels = (d.messages || []).map(function (m) {
+    var inkomend = m.richting === 'in';
+    var label = inkomend ? (m.van || tr('conv.deLead')) : (m.auteur === 'ai' ? hvAssistentNaam() : (m.auteur === 'mens' ? tr('mail.jij') : m.auteur));
+    var status = !inkomend && m.status && m.status !== 'verzonden' ? ' <span class="conv-mail-status ' + escHtml(m.status) + '">' + escHtml(tr('mail.status.' + m.status)) + '</span>' : '';
+    var tijd = m.verzonden || m.aangemaakt;
+    return '<div><div class="conv-bubble-label">' + escHtml(label) + (tijd ? ' · ' + escHtml(new Date(tijd).toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) : '') + status + '</div>'
+      + '<div class="conv-bubble ' + (inkomend ? 'user' : 'assistant') + ' conv-mail" dir="auto">' + escHtml(m.tekst || '').replace(/\\n/g, '<br>') + '</div></div>';
+  }).join('');
+  var isMail = g.kanaal === 'email';
+  var classificatie = g.classificatie ? '<span class="conv-kanaal-tag">' + escHtml(tr('mail.klasse.' + g.classificatie)) + '</span>' : '';
+  var composer = isMail ? (
+    '<div class="conv-composer">'
+    + '<div class="panel-takeover-bar"><span class="panel-takeover-status ' + (mens ? 'paused' : 'active') + '">' + escHtml(tr(mens ? 'conv.mensAanRoer' : 'conv.assistentActief')) + '</span>'
+    + '<button class="panel-takeover-btn ' + (mens ? 'resume' : 'pause') + '" onclick="zetExternControle(\\'' + (mens ? 'AI_ACTIVE' : 'HUMAN_TAKEOVER') + '\\')">' + escHtml(tr(mens ? 'conv.geefTerug' : 'conv.neemOver')) + '</button></div>'
+    + '<div class="mail-instructie-rij"><input type="text" class="mail-instructie" id="mail-instructie" maxlength="1000" placeholder="' + escHtml(tr('mail.instructie.ph')) + '" onkeydown="if(event.key===\\'Enter\\'){event.preventDefault();maakMailConcept();}">'
+    + '<button type="button" class="inv-sync" id="mail-concept-knop" onclick="maakMailConcept()">' + escHtml(tr('mail.concept')) + '</button></div>'
+    + '<div class="mail-hint">' + escHtml(tr('mail.instructie.hint')) + '</div>'
+    + '<div class="panel-reply-row"><textarea class="panel-reply-input mail-concept" id="mail-concept" rows="6" maxlength="20000" placeholder="' + escHtml(tr('mail.concept.ph')) + '"></textarea>'
+    + '<button class="panel-reply-send" id="mail-verstuur" onclick="verstuurMail()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' + escHtml(tr('conv.verstuur')) + '</button></div>'
+    + '</div>'
+  ) : '<div class="conv-composer"><div class="mail-hint">' + escHtml(tr('conv.website.alleenLezen')) + '</div></div>';
+  detail.innerHTML = '<div class="conv-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>'
+    + '<span class="conv-header-titel">' + escHtml(g.onderwerp || tr('mail.geenOnderwerp')) + '</span>' + classificatie + '</div>'
+    + '<div class="conv-messages" id="conv-messages" tabindex="0" aria-label="' + escHtml(tr('a11y.berichten')) + '">' + (bubbels || '<div class="conv-empty"><div>' + escHtml(tr('leeg.berichten')) + '</div></div>') + '</div>'
+    + composer;
+  var box = document.getElementById('conv-messages');
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+async function zetExternControle(controle) {
+  var d = externState.huidig;
+  if (!d) return;
+  try {
+    var uit = await convVraag({ mode: 'conversation-control', conversationId: d.conversation.id, control: controle });
+    d.conversation = uit.conversation;
+    var lijstItem = (externState.gesprekken || []).find(function (g) { return g.id === d.conversation.id; });
+    if (lijstItem) lijstItem.controle = uit.conversation.controle;
+    renderExternGesprek();
+    toast(tr(controle === 'AI_ACTIVE' ? 'tst.aiHervat' : 'tst.aiGepauzeerd'), 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+/* De instructie gaat naar de server en komt terug als volledige mail in het
+   conceptvak. Versturen leest ALLEEN het conceptvak -- de instructie zelf kan
+   dus nooit bij de klant belanden. */
+async function maakMailConcept() {
+  var d = externState.huidig;
+  var inp = document.getElementById('mail-instructie');
+  var knop = document.getElementById('mail-concept-knop');
+  var vak = document.getElementById('mail-concept');
+  if (!d || !inp || !vak) return;
+  var instructie = inp.value.trim();
+  if (!instructie) { inp.focus(); return; }
+  knop.disabled = true; knop.textContent = tr('mail.concept.bezig');
+  try {
+    var uit = await convVraag({ mode: 'email-draft', conversationId: d.conversation.id, instruction: instructie });
+    vak.value = uit.tekst || '';
+    vak.dataset.onderwerp = uit.onderwerp || '';
+    inp.value = '';
+    externState.idem = '';
+    vak.focus();
+  } catch (e) { toast(e.message, 'error', tr('mail.concept.mislukt')); }
+  knop.disabled = false; knop.textContent = tr('mail.concept');
+}
+
+async function verstuurMail() {
+  var d = externState.huidig;
+  var vak = document.getElementById('mail-concept');
+  var knop = document.getElementById('mail-verstuur');
+  if (!d || !vak || externState.bezig) return;
+  var tekst = vak.value.trim();
+  if (!tekst) { vak.focus(); return; }
+  /* Eén sleutel per te versturen tekst: een dubbelklik of een time-out die
+     opnieuw probeert, verstuurt hetzelfde bericht niet twee keer. */
+  if (!externState.idem) externState.idem = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  externState.bezig = true; knop.disabled = true;
+  try {
+    var uit = await convVraag({ mode: 'email-send', conversationId: d.conversation.id, text: tekst, subject: vak.dataset.onderwerp || '', idempotencyKey: externState.idem });
+    toast(tr(uit.dubbel ? 'mail.al.verstuurd' : 'mail.verstuurd'), 'success');
+    externState.idem = '';
+    vak.value = '';
+    await openExternGesprek(d.conversation.id, true);
+    loadExterneGesprekken(true);
+  } catch (e) {
+    toast(e.message, 'error', tr('mail.verstuur.mislukt'));
+  }
+  externState.bezig = false;
+  if (knop) knop.disabled = false;
+}
+
+/* ── Instellingen: mailbox ──────────────────────────────────────────────── */
+async function loadMailStatus() {
+  var el = document.getElementById('mail-instellingen');
+  if (!el) return;
+  var d;
+  try { d = await convVraag({ mode: 'email-status' }); }
+  catch (e) { el.innerHTML = '<div class="settings-label-sub">' + escHtml(e.code === 'schema_ontbreekt' || e.code === 'geen_tabel' ? tr('mail.schema') : e.message) + '</div>'; return; }
+  externState.mail = d;
+  var gmail = (d.providers || []).find(function (p) { return p.naam === 'gmail'; });
+  var status;
+  if (d.verbonden && d.foutCode === 'reauth_required') status = '<span class="mail-staat let">' + escHtml(tr('mail.reauth', { adres: d.adres })) + '</span>';
+  else if (d.verbonden) status = '<span class="mail-staat ok">' + escHtml(tr('mail.verbonden', { adres: d.adres })) + '</span>'
+    + '<span class="settings-label-sub"> · ' + escHtml(tr('inv.laatst', { t: d.laatsteSync ? timeAgo(new Date(d.laatsteSync)) : tr('inv.nooit') })) + '</span>';
+  else status = '<span class="settings-label-sub">' + escHtml(tr('mail.niet')) + '</span>';
+  var fout = d.verbonden && d.fout && d.laatsteResultaat === 'failed' ? '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: d.fout })) + '</div>' : '';
+  var knoppen = d.verbonden
+    ? '<button class="btn-icon" onclick="mailSyncNu()">' + escHtml(tr('mail.sync')) + '</button> <button class="btn-icon mail-ontkoppel" onclick="mailOntkoppel()">' + escHtml(tr('set.gcal.disc')) + '</button>'
+    : (gmail && gmail.beschikbaar
+      ? '<button class="btn-icon mail-koppel" onclick="mailKoppel(\\'gmail\\')">' + escHtml(tr('mail.koppel.gmail')) + '</button>'
+      : '<span class="settings-label-sub">' + escHtml(tr('mail.nietGeconfigureerd')) + '</span>');
+  el.innerHTML = '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('mail.titel')) + '</div><div>' + status + '</div></div><div class="mail-knoppen">' + knoppen + '</div></div>'
+    + fout
+    + '<div class="mail-provider-lijst">' + (d.providers || []).map(function (p) { return '<span class="conv-kanaal-tag">' + escHtml(tr('mail.provider.' + p.naam)) + ': ' + escHtml(tr(p.beschikbaar ? 'mail.beschikbaar' : 'mail.binnenkort')) + '</span>'; }).join(' ') + '</div>'
+    + (d.verbonden ? (
+      '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('mail.auto')) + '</div><div class="settings-label-sub">' + escHtml(tr('mail.auto.sub')) + '</div></div>'
+      + '<label class="mail-schakel"><input type="checkbox" id="mail-auto" ' + (d.autoAntwoord ? 'checked' : '') + ' onchange="mailInstelling()"><span>' + escHtml(tr(d.autoAntwoord ? 'mail.aan' : 'mail.uit')) + '</span></label></div>'
+      + '<div class="settings-row mail-handtekening-rij"><div style="flex:1"><div class="settings-label">' + escHtml(tr('mail.handtekening')) + '</div>'
+      + '<textarea id="mail-handtekening" class="panel-reply-input" rows="3" maxlength="2000">' + escHtml(d.handtekening || '') + '</textarea>'
+      + '<button class="btn-icon" style="margin-top:8px" onclick="mailInstelling()">' + escHtml(tr('btn.opslaan')) + '</button></div></div>'
+    ) : '')
+    + '<div class="settings-label-sub mail-google-noot">' + escHtml(tr('mail.google.noot')) + '</div>';
+}
+
+async function mailKoppel(provider) {
+  try {
+    var d = await convVraag({ mode: 'email-connect', provider: provider });
+    if (d && d.url) { window.location.href = d.url; return; }
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function mailOntkoppel() {
+  try { await convVraag({ mode: 'email-disconnect' }); toast(tr('mail.ontkoppeld'), 'success'); }
+  catch (e) { toast(e.message, 'error'); }
+  loadMailStatus();
+}
+async function mailSyncNu() {
+  try {
+    var d = await convVraag({ mode: 'email-sync' });
+    if (d.laatsteResultaat === 'failed') toast(d.fout || tr('inv.fout.algemeen'), 'error', tr('inv.toast.mislukt'));
+    else if (d.bezig) toast(tr('inv.toast.loopt'), 'info');
+    else toast(tr('mail.sync.ok', { n: (d.tellers && d.tellers.ontvangen) || 0, l: (d.tellers && d.tellers.leads) || 0 }), 'success');
+  } catch (e) { toast(e.message, 'error'); }
+  loadMailStatus();
+}
+async function mailInstelling() {
+  var auto = document.getElementById('mail-auto');
+  var hand = document.getElementById('mail-handtekening');
+  try {
+    await convVraag({ mode: 'email-settings', autoReply: auto ? auto.checked : undefined, signature: hand ? hand.value : undefined });
+    toast(tr('tst.opgeslagen'), 'success');
+  } catch (e) { toast(e.message, 'error'); }
+  loadMailStatus();
 }
 
 /* ── Faro's beoordeling van één lead ──────────────────────────────────────
@@ -18084,6 +18370,7 @@ function renderInstellingen() {
   }
   pushRijBijwerken();
   loadGcalStatus();
+  loadMailStatus();
   loadCrmStatus();
 }
 

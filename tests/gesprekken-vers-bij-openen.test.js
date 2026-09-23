@@ -30,7 +30,7 @@ console.log('\nGesprekken opent met verse data');
   dash({ method: 'GET', url: '/dashboard', headers: {} },
     { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
   ck('versBijOpenen bestaat met een drempel van 30 s', /var VERS_BIJ_OPENEN_MS = 30 \* 1000;/.test(html));
-  ck('gesprekken roept hem aan en tekent daarna opnieuw', html.includes("if (page === 'gesprekken') { gesprekkenOpnieuw(); versBijOpenen(gesprekkenOpnieuw); }"));
+  ck('gesprekken roept hem aan en tekent daarna opnieuw', html.includes("if (page === 'gesprekken') { gesprekkenOpnieuw(); versBijOpenen(gesprekkenOpnieuw); loadExterneGesprekken(false); }"));
   ck('pipeline idem', html.includes("if (page === 'pipeline')   { renderPipeline();   versBijOpenen(renderPipeline); }"));
   ck('het geopende gesprek blijft open na hertekenen', html.includes("if (id) openConversation(id);"));
   ck('de tijdstempel wordt gezet waar echt opgehaald wordt', html.includes('const data = await fetchLeads(vers);\n      _laatstVerversMs = Date.now();'));

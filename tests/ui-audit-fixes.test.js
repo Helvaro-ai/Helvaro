@@ -177,7 +177,9 @@ console.log('\n— twee lege toestanden naast elkaar bij Gesprekken —');
 {
   ck('een lege lijst krijgt de volle breedte', /\.conv-layout\.leeg \.conv-list \{[\s\S]{0,120}width: 100%/.test(html), null);
   ck('en de rechterhelft verdwijnt', /\.conv-layout\.leeg \.conv-detail \{ display: none; \}/.test(html), null);
-  ck('de klasse wordt gezet op basis van het aantal', /classList\.toggle\('leeg', withConvs\.length === 0\)/.test(js), null);
+  /* Sinds de kanalen (2026-09-23): leeg = geen enkel gesprek in WhatsApp,
+     e-mail of website, en alleen op de tab Alle -- anders verdwijnen de tabs. */
+  ck('de klasse wordt gezet op basis van het aantal', /classList\.toggle\('leeg', withConvs\.length \+ \(externState\.gesprekken \|\| \[\]\)\.length === 0 && convKanaal === 'alle'\)/.test(js), null);
 }
 
 console.log('\n— Facturatie liet lege kaarten achter bij een storing —');

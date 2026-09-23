@@ -221,9 +221,13 @@ function render(lang) {
 
    Daarna (+2915 bytes): de voorraadkaart (.inv-*) op de voertuigen- en
    startpagina -- status, laatste controle, knop "Voorraad synchroniseren".
-   Bewuste toevoeging (automotive engine, 2026-09-23). */
-const CSS_BYTES = 399137;
-const CSS_SHA   = '9a85ef5d1826bc81';
+   Bewuste toevoeging (automotive engine, 2026-09-23).
+
+   Daarna (+3854 bytes): kanaaltabs in Gesprekken, de e-mailweergave met
+   instructie -> concept -> versturen, en de mailboxkaart in Instellingen
+   (.conv-kanaal*, .mail-*). Bewuste toevoeging. */
+const CSS_BYTES = 403145;
+const CSS_SHA   = 'ccfd83c79b4df2ca';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

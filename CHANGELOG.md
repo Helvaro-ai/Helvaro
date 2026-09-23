@@ -16,6 +16,12 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### E-mail als kanaal (Gmail / Google Workspace)
 
+- **Gesprekken heeft kanalen:** Alle, WhatsApp, E-mail en Website, met een
+  stip bij ongelezen. E-mailgesprekken openen in dezelfde weergave, met
+  "Neem over" / "Geef terug", een instructieveld ("Schrijf mail") en een
+  conceptvak dat je nakijkt voor je verstuurt.
+- **Instellingen → E-mail:** Gmail koppelen, mail nu ophalen, automatisch
+  antwoorden aan/uit (standaard uit), handtekening.
 - **Mailbox koppelen** via Google, met dezelfde veilige koppeling als de
   agenda (token versleuteld opgeslagen). Microsoft 365 staat aangekondigd maar
   is nog niet beschikbaar; dat wordt ook zo getoond.

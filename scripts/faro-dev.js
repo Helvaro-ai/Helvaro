@@ -72,6 +72,16 @@ let _gekozenSector = 'real_estate';
 let _gekozenStijl = '';
 const _formStijl = require('../api/_form-stijl');
 
+/* Nep-mailbox van de lokale harness (zie case 'email-status'). */
+const _devMail = {
+  status: { verbonden: true, provider: 'gmail', adres: 'verkoop@garage-voorbeeld.be', autoAntwoord: false, handtekening: 'Garage Voorbeeld\nVerkoopteam',
+    laatsteResultaat: 'ok', fout: '', foutCode: '', providers: [{ naam: 'gmail', beschikbaar: true }, { naam: 'microsoft', beschikbaar: false }] },
+  gesprekken: [{ id: 'GDEV1', kanaal: 'email', onderwerp: 'BMW X5 xDrive30d', controle: 'AI_ACTIVE', classificatie: 'lead', ongelezen: true,
+    laatste: new Date(Date.now() - 3600e3).toISOString(), aangemaakt: new Date(Date.now() - 7200e3).toISOString() }],
+  berichten: { GDEV1: [
+    { sleutel: '<a1@mail.voorbeeld>', richting: 'in', auteur: 'klant', van: 'Jan Peeters <jan@voorbeeld.be>', tekst: 'Goeiedag,\n\nIs de BMW X5 xDrive30d nog beschikbaar? Kan ik zaterdag een proefrit maken?\n\nGroeten,\nJan', status: 'ontvangen', aangemaakt: new Date(Date.now() - 3600e3).toISOString() },
+  ] },
+};
 /* Voorraadtoestand van de lokale harness (zie case 'inventory-status'). */
 const _devVoorraad = { bron: require('../api/_inventaris').saneerBron({}), staat: {} };
 const _fixtureVoertuigen = [
@@ -422,6 +432,50 @@ const server = http.createServer(async (req, res) => {
               : _fixtureVoertuigen.filter((v) => !v.gearchiveerd),
             available: true,
           });
+        /* E-mail en gesprekken: een gekoppelde nep-mailbox met één
+           koopgesprek, zodat de tabs, de draad, instructie -> concept ->
+           versturen en overnemen lokaal te zien zijn. Het concept komt NIET
+           van een model (lokaal geen sleutel): een vaste tekst die laat zien
+           dat de instructie zelf niet in de mail belandt. */
+        case 'email-status':
+        case 'email-sync':
+          return res.status(200).json(Object.assign({}, _devMail.status, { laatsteSync: new Date().toISOString(), tellers: { ontvangen: 0, leads: 0, overgeslagen: 0 } }));
+        case 'email-connect':
+          return res.status(503).json({ error: 'Google-koppeling is lokaal niet geconfigureerd.', code: 'unconfigured' });
+        case 'email-disconnect':
+          _devMail.status.verbonden = false; _devMail.status.adres = '';
+          return res.status(200).json(_devMail.status);
+        case 'email-settings':
+          if (typeof req.body.autoReply === 'boolean') _devMail.status.autoAntwoord = req.body.autoReply;
+          if (typeof req.body.signature === 'string') _devMail.status.handtekening = req.body.signature;
+          return res.status(200).json(_devMail.status);
+        case 'conversation-list':
+          return res.status(200).json({ conversations: _devMail.status.verbonden ? _devMail.gesprekken : [] });
+        case 'conversation-messages': {
+          const g = _devMail.gesprekken.find((x) => x.id === req.body.conversationId);
+          if (!g) return res.status(404).json({ error: 'Gesprek niet gevonden.', code: 'not_found' });
+          g.ongelezen = false;
+          return res.status(200).json({ conversation: g, messages: _devMail.berichten[g.id] || [] });
+        }
+        case 'conversation-control': {
+          const g = _devMail.gesprekken.find((x) => x.id === req.body.conversationId);
+          if (!g) return res.status(404).json({ error: 'Gesprek niet gevonden.', code: 'not_found' });
+          g.controle = req.body.control; g.controleDoor = 'dev';
+          return res.status(200).json({ conversation: g });
+        }
+        case 'email-draft':
+          return res.status(200).json({ tekst: 'Dag Jan,\n\nBedankt voor je bericht. Zaterdag om 10u past, we zetten de wagen voor je klaar.\n\nTot dan!', onderwerp: 'Re: BMW X5 xDrive30d' });
+        case 'email-send': {
+          const g = _devMail.gesprekken.find((x) => x.id === req.body.conversationId);
+          if (!g) return res.status(404).json({ error: 'Gesprek niet gevonden.', code: 'not_found' });
+          const lijst = _devMail.berichten[g.id];
+          const al = lijst.find((m) => m.idem === req.body.idempotencyKey);
+          if (al) return res.status(200).json({ ok: true, dubbel: true, message: al });
+          const m = { sleutel: 'uit:' + req.body.idempotencyKey, idem: req.body.idempotencyKey, richting: 'uit', auteur: 'mens', van: _devMail.status.adres, tekst: req.body.text, status: 'verzonden', aangemaakt: new Date().toISOString(), verzonden: new Date().toISOString() };
+          lijst.push(m);
+          g.controle = 'HUMAN_TAKEOVER'; g.laatste = m.verzonden; g.richting = 'uit';
+          return res.status(200).json({ ok: true, dubbel: false, message: m });
+        }
         /* Voorraadwaarheid: de ECHTE toestandsberekening (api/_inventaris.js
            bereken/weergave) op een toestand in het geheugen. Zo zie je lokaal
            precies de badges en teksten die een dealer ziet. Zet

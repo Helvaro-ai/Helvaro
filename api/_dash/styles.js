@@ -8903,6 +8903,63 @@ body.panel-open .main-content { transform: scale(0.985); }
   .inv-kop { align-items: stretch; }
   .inv-sync { width: 100%; justify-content: center; }
 }
+/* Kanalen in Gesprekken + e-mail (automotive engine). Zelfde warme tokens,
+   geen nieuwe kleuren; status in tekstkleur, niet in gloed. */
+.conv-kanalen {
+  display: flex; gap: 4px; padding: 8px 10px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none;
+}
+.conv-kanalen::-webkit-scrollbar { display: none; }
+.conv-kanaal {
+  position: relative; display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px; min-height: 32px; border-radius: 8px; border: 1px solid transparent;
+  background: transparent; color: var(--text-muted); font: inherit; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: background 120ms ease-out, color 120ms ease-out;
+}
+.conv-kanaal:hover { background: var(--card-elevated); color: var(--text-primary); }
+.conv-kanaal.actief { background: rgba(var(--accent-rgb),0.12); border-color: rgba(var(--accent-rgb),0.3); color: var(--accent-ink); }
+.conv-kanaal:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 1px; }
+.conv-kanaal-tel { font-weight: 500; opacity: 0.75; font-variant-numeric: tabular-nums; }
+.conv-kanaal-stip { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-c); }
+.conv-kanaal-tag {
+  display: inline-block; padding: 1px 7px; margin-right: 6px; border-radius: 6px;
+  background: var(--bg-card-alt); border: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); vertical-align: 1px;
+}
+.conv-kanaal-tag.mens { color: var(--accent-ink); border-color: rgba(var(--accent-rgb),0.3); }
+.conv-kanaal-leeg { padding: 24px 20px; text-align: center; color: var(--text-muted); font-size: 0.8667rem; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.conv-kanaal-leeg-titel { font-weight: 600; color: var(--text-primary); }
+.conv-list-item.ongelezen .conv-list-item-name span:first-child { font-weight: 700; color: var(--text-primary); }
+.conv-header-titel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-bubble.conv-mail { white-space: normal; max-width: 92%; }
+.conv-mail-status { margin-left: 6px; font-weight: 600; }
+.conv-mail-status.mislukt { color: var(--error-ink); }
+.conv-mail-status.verzenden { color: var(--orange-ink); }
+.mail-instructie-rij { display: flex; gap: 8px; align-items: stretch; }
+.mail-instructie {
+  flex: 1; min-width: 0; min-height: 36px; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-card-alt); color: var(--text-primary);
+  font: inherit; font-size: 0.8667rem;
+}
+.mail-instructie:focus { outline: none; border-color: rgba(var(--accent-rgb),0.5); }
+.mail-hint { font-size: 0.7667rem; color: var(--text-muted); line-height: 1.5; padding: 2px 2px 0; }
+.panel-reply-input.mail-concept { min-height: 120px; }
+.mail-staat { font-size: 0.8333rem; font-weight: 600; }
+.mail-staat.ok { color: var(--success-ink); }
+.mail-staat.let { color: var(--orange-ink); }
+.mail-knoppen { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.mail-koppel { border-color: rgba(var(--accent-rgb),0.35); color: var(--accent-ink); background: rgba(var(--accent-rgb),0.08); }
+.mail-ontkoppel { border-color: rgba(var(--error-rgb),0.35); color: var(--red-ink); background: rgba(var(--error-rgb),0.08); }
+.mail-provider-lijst { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+#mail-instellingen > .inv-fout { margin: 10px 20px; }
+#mail-handtekening { width: 100%; resize: vertical; }
+.mail-schakel { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8333rem; color: var(--text-secondary); cursor: pointer; }
+.mail-schakel input { width: 18px; height: 18px; accent-color: var(--accent-c); }
+.mail-google-noot { padding: 12px 20px 14px; }
+@media (max-width: 560px) {
+  .mail-instructie-rij { flex-direction: column; }
+  .mail-instructie-rij .inv-sync { width: 100%; justify-content: center; }
+}
 .pd-notice {
   padding: 14px 16px; border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);
