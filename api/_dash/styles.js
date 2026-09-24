@@ -8966,6 +8966,13 @@ body.panel-open .main-content { transform: scale(0.985); }
   font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.7667rem; color: var(--text-primary); word-break: break-all;
 }
 .widget-code .mail-knoppen { justify-content: flex-start; }
+.inv-bron-link {
+  align-self: flex-start; background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: 0.8rem; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px;
+}
+.inv-bron-form { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.inv-bron-keuze { display: flex; flex-direction: column; gap: 6px; font-size: 0.8333rem; color: var(--text-primary); }
+.inv-bron-keuze input { accent-color: var(--accent-c); margin-right: 6px; }
 .pd-notice {
   padding: 14px 16px; border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);

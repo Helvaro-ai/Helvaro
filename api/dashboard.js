@@ -6790,6 +6790,41 @@ async function voorraadVraag(mode, extra) {
   return d;
 }
 
+/* ── Voorraadbron instellen (mode 'inventory-source') ────────────────────────
+   Twee keuzes: de voorraad wordt in Helvaro beheerd (standaard), of hij komt
+   uit een feed van een ander systeem (DMS, AutoScout24-export) als CSV, JSON
+   of XML via https. De server controleert het adres (geen interne adressen). */
+function voorraadBronOpen() {
+  var f = document.getElementById('inv-bron-form');
+  if (!f) return;
+  if (f.style.display !== 'none') { f.style.display = 'none'; return; }
+  var d = voorraadState.data || {};
+  var isFeed = d.bron === 'feed';
+  var feed = d.feed || {};
+  f.innerHTML = '<div class="inv-bron-keuze" role="radiogroup">'
+    + '<label><input type="radio" name="inv-bron" value="native"' + (isFeed ? '' : ' checked') + '> ' + escHtml(tr('inv.bron.native.lang')) + '</label>'
+    + '<label><input type="radio" name="inv-bron" value="feed"' + (isFeed ? ' checked' : '') + '> ' + escHtml(tr('inv.bron.feed.lang')) + '</label></div>'
+    + '<input type="url" id="inv-bron-url" class="mail-instructie" placeholder="https://..." maxlength="1000" aria-label="' + escHtml(tr('inv.bron.url')) + '">'
+    + '<div class="mail-hint">' + escHtml(tr('inv.bron.uitleg')) + '</div>'
+    + '<div class="mail-knoppen"><button type="button" class="inv-sync" onclick="voorraadBronBewaar()">' + escHtml(tr('btn.opslaan')) + '</button></div>';
+  var url = document.getElementById('inv-bron-url');
+  if (url) url.value = isFeed ? (feed.url || '') : '';
+  f.style.display = '';
+}
+
+async function voorraadBronBewaar() {
+  var keuze = document.querySelector('input[name="inv-bron"]:checked');
+  var url = document.getElementById('inv-bron-url');
+  var bron = { type: keuze ? keuze.value : 'native' };
+  if (bron.type === 'feed') bron.url = url ? url.value.trim() : '';
+  try {
+    voorraadState.data = await voorraadVraag('inventory-source', { source: bron });
+    toast(tr('tst.opgeslagen'), 'success');
+    renderVoorraad();
+    if (bron.type === 'feed') voorraadSync();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 async function voorraadCheck(force) {
   if (!isDealer()) { renderVoorraad(); return; }
   if (!force && voorraadState.laatst && Date.now() - voorraadState.laatst < 60000) { renderVoorraad(); return; }
@@ -6886,7 +6921,9 @@ function renderVoorraad() {
       + '<span class="inv-sub">' + escHtml(tr('inv.laatst', { t: r.wanneer })) + (bron ? ' · ' + escHtml(bron) : '') + '</span></div></div>'
       + knop + '</div>'
       + (r.cijfers.length ? '<div class="inv-cijfers">' + r.cijfers.map(function (c) { return '<span>' + escHtml(c) + '</span>'; }).join('') + '</div>' : '')
-      + onzeker + foutRegel;
+      + onzeker + foutRegel
+      + '<button type="button" class="inv-bron-link" onclick="voorraadBronOpen()">' + escHtml(tr('inv.bron.instellen')) + '</button>'
+      + '<div id="inv-bron-form" class="inv-bron-form" style="display:none"></div>';
   }
   if (home) {
     /* Op de startpagina alleen als er iets te melden is: een gezonde voorraad

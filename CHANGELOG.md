@@ -16,6 +16,9 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### Beter geordend, en meldingen voor de nieuwe kanalen
 
+- **Voorraadbron instellen** op de voertuigenpagina: je voorraad beheren in
+  Helvaro, of laten inlezen uit een feed van je eigen systeem (CSV, JSON of
+  XML via https). Wagens die uit de feed verdwijnen gaan naar "uit aanbod".
 - **Instellingen in een logische volgorde:** eerst de kanalen waarlangs
   klanten je bereiken (WhatsApp, e-mail, website), dan de koppelingen
   (agenda, CRM), dan meldingen, taal en je account.
