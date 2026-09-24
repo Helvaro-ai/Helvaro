@@ -26,6 +26,8 @@ const _session = require('./_session');
 // through the same registry the WhatsApp AI uses — no client-side translation
 // step and no flash of untranslated content.
 const _dashStyles = require('./_dash/styles');   // het CSS-blok, zie daar
+const _help       = require('./_dash/help');     // de helpartikelen, vier talen
+const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, vier talen
 const _faroUI = require('./_faro/ui');
 
 // ── Command Center ──────────────────────────────────────────────────────────
@@ -14956,101 +14958,22 @@ const AP_STATE = { loaded: false, saving: false };
 
 // Pre-built welkomstbericht templates. Clients click to inspire/apply.
 // Each item: { emoji, label, sub (1-line tone), text (with placeholders) }
-const AP_TEMPLATES = [
-  {
-    emoji: '', label: 'Vriendelijk',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. Wat bracht je naar ons?'
-  },
-  {
-    emoji: '', label: 'Professioneel',
-    text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. Bedankt voor uw aanvraag. Mag ik u enkele korte vragen stellen om u beter te kunnen helpen?'
-  },
-  {
-    emoji: '', label: 'Kort & krachtig',
-    text: 'Hey {naam}! {ai} hier. Heb je 2 minuten voor 3 snelle vragen?'
-  },
-  {
-    emoji: '', label: 'Vraaggericht',
-    text: 'Hey {naam}! Ik zag je interesse in {bedrijf} via {bron}. Waar mag ik je het beste mee helpen vandaag?'
-  },
-  {
-    emoji: '', label: 'Voor renovatie/bouw',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je aanvraag. Om je goed te kunnen helpen: kan je kort vertellen wat het project is en wanneer je het wil starten?'
-  },
-  {
-    emoji: '', label: 'Voor zorg/medisch',
-    text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. We helpen u graag verder. Voor welke behandeling of vraag heeft u contact opgenomen?'
-  },
-  {
-    emoji: '', label: 'Voor vastgoed',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor uw interesse. Bent u op zoek naar een woning, of wilt u er één verkopen?'
-  },
-  {
-    emoji: '', label: 'Voor advocaten',
-    text: 'Goeiedag {naam}, met {ai} van {bedrijf}. Bedankt voor uw contactopname. Kan u in een paar zinnen schetsen waarover u advies zoekt?'
-  },
-  {
-    emoji: '', label: 'Vertrouwen + sociaal',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Leuk dat je ons gevonden hebt. We hielpen deze maand al 12 klanten met hetzelfde. Wat is jouw situatie?'
-  },
-  {
-    emoji: '', label: 'Direct kwalificeren',
-    text: 'Hallo {naam}, met {ai} van {bedrijf}. Voor we verder gaan: heb je al een budget in gedachten en wanneer wil je beginnen?'
-  },
-  {
-    emoji: '', label: 'Voor autohandel',
-    text: 'Hey {naam}! {ai} hier van {bedrijf}. Bedankt voor je interesse. Welke wagen had je in gedachten. En zoek je benzine, diesel, hybride of elektrisch?'
-  },
-  {
-    emoji: '', label: 'Voor garage/onderhoud',
-    text: 'Goeiedag {naam}, dit is {ai} van {bedrijf}. Wat is er aan de hand met de wagen, en welk merk/model is het? Dan plannen we snel iets in.'
-  },
-  {
-    emoji: '', label: 'Voor carrosserie',
-    text: 'Hey {naam}! {ai} van {bedrijf}. Bedankt voor je bericht. Wat is er gebeurd met de wagen, en gaat het via de verzekering of betaal je zelf?'
-  }
-];
+/* De voorbeeldteksten komen uit api/_dash/persona-sjablonen.js, in de taal van
+   dit dashboard. Ze stonden hier als 95 regels Nederlands proza.
+
+   Ze waren onzichtbaar voor de lektest, en dat is het onthouden waard: het
+   zijn geen labels maar DATA -- geen textContent, geen attribuut, geen
+   >tekst<. Een Duitse makelaar zag ze gewoon in het Nederlands verschijnen op
+   een verder volledig Duits scherm.
+
+   Waarom ze vertaald moeten zijn en niet 'de AI begrijpt het toch': deze tekst
+   is niet voor de AI. De eigenaar klikt erop, de tekst komt in ZIJN veld, en
+   daarna moet hij hem kunnen lezen en aanpassen. */
+const AP_TEMPLATES = ${JSON.stringify(_persona.welkom(_i18n.kort(UI_LANG)))};
 
 // AI Instructions starter snippets. Clients click one or more to APPEND to
 // their instructions (combinable, unlike welcome which replaces).
-const AP_INSTRUCTION_SNIPPETS = [
-  {
-    emoji: '', label: 'Praat informeel',
-    text: 'Praat informeel met "je/jij". geen "u". Houd zinnen kort en gebruik geen jargon.'
-  },
-  {
-    emoji: '', label: 'Praat formeel',
-    text: 'Praat in u-vorm. Wees beleefd, zakelijk en gestructureerd in elk antwoord.'
-  },
-  {
-    emoji: '', label: 'Geen prijzen via WhatsApp',
-    text: 'Stuur NOOIT exacte prijzen of offertes via WhatsApp. Verwijs altijd door naar een telefoongesprek of demo voor pricing.'
-  },
-  {
-    emoji: '', label: 'Vraag altijd 3 dingen',
-    text: 'Vraag in elk gesprek expliciet naar: (1) het project of de behoefte, (2) de timing/urgentie, (3) het budget. Stel maximaal één vraag per bericht.'
-  },
-  {
-    emoji: '', label: 'Sluit altijd af met een actie',
-    text: 'Sluit ELK gesprek af met een concrete vervolgactie: een afspraak voorstellen, een offerte beloven, of een terugbeltijd vragen.'
-  },
-  {
-    emoji: '', label: 'Diskwalificeer snel',
-    text: 'Als het duidelijk geen fit is (geen budget, geen interesse, verkeerde regio), wees vriendelijk maar stop het gesprek snel. Geen tijd verspillen.'
-  },
-  {
-    emoji: '', label: 'Auto: vraag merk + model',
-    text: 'Vraag altijd naar (1) merk en model van de wagen, (2) bouwjaar of kilometerstand, (3) brandstof (benzine/diesel/hybride/elektrisch). Deze 3 dingen heb je nodig vóór elk vervolg.'
-  },
-  {
-    emoji: '', label: 'Auto: financiering & inruil',
-    text: 'Vraag actief of de lead financiering nodig heeft (lening/leasing) en of er een wagen ter inruil is. Geef nooit zelf prijzen. Verwijs naar showroom of telefoongesprek.'
-  },
-  {
-    emoji: '', label: 'Auto: keuring & onderhoud',
-    text: 'Bij onderhoud/garage-vragen: vraag naar (1) symptomen of foutmelding, (2) wanneer het probleem begon, (3) laatste keuring of grote beurt. Stel afspraak binnen 1 week voor.'
-  }
-];
+const AP_INSTRUCTION_SNIPPETS = ${JSON.stringify(_persona.instructies(_i18n.kort(UI_LANG)))};
 
 // ── AI Photo file picker ──────────────────────────────────────────────────────
 // Klant kiest een lokale PNG/JPG/WebP → canvas resize naar 256x256 (center-crop) →
@@ -20233,120 +20156,17 @@ document.getElementById('goal-modal-overlay').addEventListener('click', function
    interpolated into them, and the search query is never echoed back into
    the DOM as markup — the empty state uses textContent.
    ============================================================ */
-var HELP_ARTICLES = [
-  { id: 'werking', sec: 'Aan de slag', title: 'Hoe Helvaro werkt',
-    tags: 'start uitleg overzicht basis werking hoe',
-    body:
-      // Curly apostrophe on purpose: this whole file is a template literal,
-      // so a backslash-escaped \\' would collapse to a bare ' in the emitted
-      // script and break the string it lives in.
-      '<p>Helvaro vangt je binnenkomende leads op en praat er meteen mee, ook ’s avonds en in het weekend. Je krijgt geen ruwe lijst met namen, maar gesprekken die al gevoerd zijn.</p>' +
-      '<ol>' +
-      '<li>Een lead vult je formulier in of stuurt je een WhatsApp-bericht.</li>' +
-      '<li>Je assistent stelt meteen de vragen die jij belangrijk vindt en beantwoordt die van de lead.</li>' +
-      '<li>Op basis van die antwoorden krijgt de lead een score en een status: gekwalificeerd of niet.</li>' +
-      '<li>Is de lead interessant, dan stuurt je assistent je boekingslink en komt de afspraak in je agenda.</li>' +
-      '</ol>' +
-      '<p>Jij ziet het resultaat terug op <strong>Dashboard</strong> en <strong>Pipeline</strong>. Het volledige gesprek staat onder <strong>Gesprekken</strong>.</p>' },
+/* De artikelen komen uit api/_dash/help.js, in de taal van dit dashboard.
+   Ze stonden hier als 114 regels Nederlands proza in de sjabloon-literal --
+   onleesbaar voor twee van de drie markten die Helvaro bedient, en op de
+   verkeerde plek: lopende tekst hoort niet in een bestand waar een backtick
+   de hele app op het inlogscherm zet.
 
-  { id: 'eerste-lead', sec: 'Aan de slag', title: 'Je eerste lead binnenhalen',
-    tags: 'eerste lead testen proberen starten formulier link',
-    body:
-      '<p>De snelste manier om Helvaro te testen is je eigen leadformulier invullen.</p>' +
-      '<ol>' +
-      '<li>Ga naar <strong>Dashboard</strong>. Bovenaan staat het blok <em>${T('dash.form.title')}</em> met je persoonlijke link.</li>' +
-      '<li>Klik op <strong>${T('dash.form.open')}</strong> en vul het formulier in met je eigen gegevens.</li>' +
-      '<li>Je krijgt binnen enkele seconden het eerste bericht van je assistent.</li>' +
-      '</ol>' +
-      '<p>De lead verschijnt daarna gewoon in je overzicht, precies zoals een echte klant dat zou doen. Je kunt hem achteraf laten verwijderen.</p>' },
-
-  { id: 'formulier-site', sec: 'Aan de slag', title: 'Het formulier op je website zetten',
-    tags: 'formulier website insluiten embed code script knop link site',
-    body:
-      '<p>Er zijn twee manieren, en je hoeft geen ontwikkelaar te zijn voor de eerste.</p>' +
-      '<p><strong>1. Gewoon linken.</strong> Kopieer je formulierlink op het dashboard en zet die achter een knop op je site, in je Google-profiel, in je Instagram-bio of onder je e-mailhandtekening. Dit werkt altijd en overal.</p>' +
-      '<p><strong>2. Insluiten op je site.</strong> Onder <strong>Formulier</strong> vind je een stukje code dat je in je website plakt. Het formulier verschijnt dan als een blok op je eigen pagina, in je eigen huisstijl.</p>' +
-      '<p>Weet je niet waar dat moet in je website? Stuur ons de link van je site, dan kijken we mee.</p>' },
-
-  { id: 'ai-instellen', sec: 'Je assistent instellen', title: 'Je assistent aanpassen aan je bedrijf',
-    tags: 'ai personality persoonlijkheid naam toon instructies welkomstbericht aanpassen taal',
-    body:
-      '<p>Alles daarvoor staat op de pagina <strong>Je assistent</strong>.</p>' +
-      '<ul>' +
-      '<li><strong>${T('dash.col.name')}</strong>: hoe je assistent zich voorstelt aan je leads.</li>' +
-      '<li><strong>${T('ap.welcome')}</strong>: het allereerste bericht dat een lead ontvangt.</li>' +
-      '<li><strong>Instructies</strong>: het belangrijkste veld. Hier zet je wat je bedrijf doet, wat voor jou een goede lead is, en wat de AI juist niet mag beloven. Hoe concreter, hoe beter de gesprekken.</li>' +
-      '<li><strong>Website en adres</strong>: je assistent gebruikt die om vragen over openingsuren, locatie en tarieven te beantwoorden.</li>' +
-      '</ul>' +
-      '<p>Wijzigingen gelden meteen voor het volgende gesprek. Lopende gesprekken blijven op de oude instellingen doorlopen.</p>' },
-
-  { id: 'whatsapp', sec: 'Je assistent instellen', title: 'Je WhatsApp-nummer koppelen',
-    tags: 'whatsapp nummer koppelen meta telefoon aansluiten',
-    body:
-      '<p>Dit stel je niet zelf in, en dat is geen beperking van Helvaro. Meta moet elk zakelijk WhatsApp-nummer eerst goedkeuren, en dat traject regelen wij voor je.</p>' +
-      '<p>Het duurt meestal een paar dagen. Je hoeft ondertussen niets te doen, we nemen contact op zodra het kan.</p>' +
-      '<p>Ben je er al klaar voor? Laat het weten via de knop op je dashboard of mail ons, dan pakken we het sneller op.</p>' +
-      '<p>Tot dan werkt je leadformulier gewoon: leads komen binnen en je assistent praat met ze via het formulier.</p>' },
-
-  { id: 'agenda', sec: 'Je assistent instellen', title: 'Google Agenda koppelen',
-    tags: 'agenda kalender google afspraak boeken beschikbaarheid koppelen',
-    body:
-      '<p>Koppel je agenda en je assistent kan echt boeken in plaats van alleen een link te sturen.</p>' +
-      '<ol>' +
-      '<li>Ga naar <strong>Dashboard</strong> en klik op <strong>Koppelen</strong> bij Google Agenda. Je kunt het ook via <strong>Instellingen</strong> doen.</li>' +
-      '<li>Log in bij Google en geef toestemming.</li>' +
-      '<li>Klaar. Je assistent controleert vanaf nu je vrije momenten voordat hij iets voorstelt.</li>' +
-      '</ol>' +
-      '<p>Zonder koppeling blijft alles werken, maar dan stuurt je assistent een boekingslink en moet de lead zelf een moment kiezen.</p>' },
-
-  { id: 'overnemen', sec: 'Dagelijks gebruik', title: 'Een gesprek zelf overnemen',
-    tags: 'overnemen takeover mens zelf antwoorden pauzeren ai stoppen chatten',
-    body:
-      '<p>Soms wil je er zelf in. Dat kan op elk moment.</p>' +
-      '<ol>' +
-      '<li>Open de lead vanuit <strong>Gesprekken</strong> of <strong>Pipeline</strong>.</li>' +
-      '<li>Bovenaan het gesprek staat een balk met de status: <strong>Assistent actief</strong> of <strong>Mens aan het roer</strong>.</li>' +
-      '<li>Zet hem op <em>Mens aan het roer</em> en je assistent stopt onmiddellijk met antwoorden in dat gesprek.</li>' +
-      '</ol>' +
-      '<p>Je typt daarna zelf. Zet je de schakelaar terug, dan pikt je assistent het gesprek weer op met alles wat er ondertussen gezegd is.</p>' },
-
-  { id: 'pipeline', sec: 'Dagelijks gebruik', title: 'Werken met de pipeline',
-    tags: 'pipeline fase kolom slepen status opvolging kanban',
-    body:
-      '<p>De <strong>Pipeline</strong> toont je leads als kaarten in kolommen, van eerste contact tot gewonnen of verloren.</p>' +
-      '<p>Sleep een kaart naar een andere kolom om de fase bij te werken. Dat is puur voor jou: de lead merkt er niets van en de AI verandert er zijn gedrag niet door.</p>' +
-      '<p>Klik op een kaart voor het volledige gesprek, de score, en waarom je assistent deze lead wel of niet gekwalificeerd heeft.</p>' },
-
-  { id: 'export', sec: 'Dagelijks gebruik', title: 'Leads exporteren',
-    tags: 'export exporteren csv excel downloaden bestand rapport',
-    body:
-      '<p>Rechtsboven op het dashboard staat <strong>CSV Export</strong>. Dat downloadt al je leads als bestand dat je in Excel, Numbers of Google Sheets opent.</p>' +
-      '<p>Je krijgt naam, telefoon, status, bron, score, urgentie, verwachte waarde, datum en de samenvatting van het gesprek.</p>' +
-      '<p>Onder <strong>Exports</strong> vind je daarnaast rapporten per periode.</p>' },
-
-  { id: 'credits', sec: 'Account', title: 'Wat zijn credits?',
-    tags: 'credits verbruik limiet kosten opraken tegoed bundel',
-    body:
-      '<p>Elk AI-bericht dat namens jou verstuurd wordt, kost een credit. Linksonder in de zijbalk zie je hoeveel je er deze maand gebruikt hebt.</p>' +
-      '<p>Zit je tegen je limiet aan, dan waarschuwen we je ruim op tijd. We zetten je assistent nooit zomaar stil zonder iets te zeggen.</p>' +
-      '<p>Zie je die balk niet staan? Dan geldt er voor jouw account geen maandlimiet en hoef je hier niet naar te kijken.</p>' +
-      '<p>Meer nodig? Mail ons, dan verhogen we het.</p>' },
-
-  { id: 'proef', sec: 'Account', title: 'Proefperiode en abonnement',
-    tags: 'proefperiode trial abonnement betalen opzeggen factuur prijs 14 dagen',
-    body:
-      '<p>Je start met een proefperiode van 14 dagen met alle functies. Je hoeft daarvoor geen kaartgegevens achter te laten.</p>' +
-      '<p>Loopt de proef af, dan blijft je account en alles wat erin staat gewoon bestaan. Je assistent stopt alleen met nieuwe gesprekken tot je overstapt.</p>' +
-      '<p>Wil je verlengen, overstappen of stoppen? Eén mailtje volstaat, er zit geen opzegtermijn aan vast.</p>' },
-
-  { id: 'privacy', sec: 'Account', title: 'Privacy, AVG en leads verwijderen',
-    tags: 'privacy avg gdpr verwijderen wissen gegevens data bewaren recht vergeten',
-    body:
-      '<p>Je leads zijn van jou. Wij gebruiken ze niet voor iets anders en verkopen ze niet door.</p>' +
-      '<p>Vraagt een lead om verwijdering, of wil je zelf iets weg? Stuur ons het verzoek via de knop hieronder. Verwijderen gebeurt bij ons handmatig en niet met een knop in je dashboard, juist omdat het onomkeerbaar is en we willen dat er iemand naar kijkt.</p>' +
-      '<p>Je kunt kiezen tussen <strong>anonimiseren</strong> (naam, nummer en gesprek worden gewist, je statistieken blijven kloppen) en <strong>volledig verwijderen</strong> (de lead verdwijnt helemaal).</p>' +
-      '<p>Je assistent vertelt eerlijk dat hij een AI is als een lead daarnaar vraagt. Dat is verplicht en staat vast.</p>' }
-];
+   JSON.stringify en niet een handgeschreven letterlijke array: de teksten
+   bevatten aanhalingstekens, apostroffen en accenten in vier talen, en een
+   ontsnapte quote hierin zou het hele script breken op een manier die pas in
+   de browser zichtbaar wordt. */
+var HELP_ARTICLES = ${JSON.stringify(_help.artikelen(T, _i18n.kort(UI_LANG)))};
 
 var _helpOpen = false;
 var _helpInited = false;

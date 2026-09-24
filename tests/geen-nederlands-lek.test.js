@@ -61,26 +61,17 @@ function blokVanaf(zoek, sluitKlasse) {
   }
   return null;
 }
-/* HELP_ARTICLES staat er apart in. Dat zijn twaalf artikelen van samen 9.325
-   tekens lopende tekst -- een ander soort werk dan een knoplabel, en het hoort
-   in een eigen module met een eigen vertaling (zie de openstaande punten in
-   HELVARO-ARCHITECTUUR). Het is BEWUST uitgezonderd en niet vergeten: zonder
-   deze uitzondering zou deze test permanent rood staan op iets wat een aparte
-   opdracht is, en dan wordt hij genegeerd in plaats van gelezen. */
-function helpBlok() {
-  const start = regels.findIndex((r) => /^var HELP_ARTICLES = \[/.test(r));
-  if (start === -1) return null;
-  let diepte = 0, gestart = false;
-  for (let j = start; j < regels.length; j++) {
-    diepte += (regels[j].match(/\[/g) || []).length - (regels[j].match(/\]/g) || []).length;
-    if (!gestart && diepte > 0) gestart = true;
-    if (gestart && diepte <= 0) return [start + 1, j + 1];
-  }
-  return null;
-}
+/* HELP_ARTICLES stond hier als uitzondering: twaalf artikelen van samen 9.325
+   tekens Nederlands proza, midden in de sjabloon-literal. Die uitzondering is
+   weg omdat het blok weg is -- de artikelen wonen nu in api/_dash/help.js, in
+   vier talen, en worden per taal in de pagina gezet.
+
+   Wat er van te leren viel: een gedocumenteerde uitzondering is een schuld en
+   geen oplossing. Zolang hij er stond bewaakte deze test het grootste stuk
+   klanttekst in het bestand juist NIET. */
+
 
 const BO = ['page-admin', 'page-founder', 'page-kosten'].map(bereik)
-  .concat([helpBlok()])
   .concat([
     blokVanaf('id="new-client-modal"'),
     blokVanaf('id="pipe-modal-overlay"'),
@@ -148,7 +139,7 @@ console.log('\n  en de back-office is bewust overgeslagen');
   /* Zonder deze regel zou een test die per ongeluk ALLES overslaat ook groen
      zijn. Er MOET dus back-office gevonden worden -- anders klopt de grens
      niet en meet de test hierboven niets. */
-  ck('alle uitgezonderde blokken zijn gevonden', BO.length === 7, BO);
+  ck('alle uitgezonderde blokken zijn gevonden', BO.length === 6, BO);
   const boRegels = BO.reduce((n, [a, b]) => n + (b - a), 0);
   ck('en dat is een substantieel stuk bestand', boRegels > 200, boRegels);
 }
