@@ -770,12 +770,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
        Beide modes staan hier als mode en niet als eigen route: HELVARO-
        ARCHITECTUUR §4.3. */
+    /* returnFieldsByFieldId=true op alle drie de lezingen hieronder: ze lezen
+       fldbrhlSrsmlJwcYr / fldCEqMp5zs1Wos3T / het token op veld-ID. Zonder die
+       vlag geeft Airtable de velden op NAAM terug, las 'gekoppeld' altijd
+       false, en toonde Instellingen na een geslaagde koppeling nog steeds
+       "Nummer koppelen" (Sindi, 2026-09-24). */
     if (body.mode === 'wa-es-status') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {
         const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
         const cRes = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1&returnFieldsByFieldId=true`,
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
         );
         if (!cRes.ok) return res.status(500).json({ error: 'Klant niet gevonden' });
@@ -813,7 +818,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       try {
         const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
         const cRes = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1&returnFieldsByFieldId=true`,
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
         );
         const rec = ((await cRes.json()).records || [])[0];
@@ -869,7 +874,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       try {
         const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
         const cRes = await atFetch(
-          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1`,
+          `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}?filterByFormula=${formula}&maxRecords=1&returnFieldsByFieldId=true`,
           { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } }
         );
         const rec = ((await cRes.json()).records || [])[0];

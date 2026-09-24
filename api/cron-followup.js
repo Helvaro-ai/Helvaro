@@ -506,7 +506,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     let mailResult = null;
     try {
       const formule = encodeURIComponent("NOT({Email Token}='')");
-      const mr = await atFetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?filterByFormula=${formule}&pageSize=25&fields[]=fldN4dL0bGgfBOXwM`, {
+      const mr = await atFetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?filterByFormula=${formule}&pageSize=25&fields[]=fldN4dL0bGgfBOXwM&returnFieldsByFieldId=true`, {
         headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` },
       });
       if (mr.ok) {

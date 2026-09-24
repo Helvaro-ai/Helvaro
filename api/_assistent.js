@@ -167,7 +167,7 @@ async function dealerBijSleutel(siteKey) {
   const d = {
     recordId: recs[0].id, projectCode: String(f[F_PROJECT] || f['Project Code'] || ''),
     naam: String(f[F_NAAM] || f['Client Name'] || ''), aan: f['Widget Enabled'] === true,
-    domeinen: domeinen(f['Widget Domains']), waPnid: String(f[F_WA_PNID] || ''),
+    domeinen: domeinen(f['Widget Domains']), waPnid: String(f[F_WA_PNID] || f['WhatsApp Phone Number ID'] || ''),
     mailbox: Boolean(f['Email Token'] && f['Email Provider']),
   };
   _cache.set(siteKey, { t: Date.now(), d });

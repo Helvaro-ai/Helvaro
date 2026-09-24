@@ -14,6 +14,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Eigen WhatsApp-nummer: status klopte niet na koppelen
+
+- **"Nummer koppelen" bleef staan na een geslaagde koppeling.** De status las
+  de velden op ID terwijl Airtable ze op naam teruggaf, dus het dashboard
+  dacht altijd "niet gekoppeld", ook al stond bovenaan "Eigen nummer
+  gekoppeld". Nu toont de rij het gekoppelde nummer en de knop Ontkoppelen.
+  Ontkoppelen zelf had hetzelfde probleem en werkt nu ook.
+- Zelfde soort fout gevonden en hersteld in de dagelijkse mailboxsync (sloeg
+  elke mailbox over) en bij doorsturen vanaf de website (gebruikte het
+  gedeelde nummer in plaats van het eigen nummer van de dealer).
+
 ### Onboarding opnieuw opgebouwd rond de nieuwe kanalen
 
 - **Acht duidelijke stappen** in plaats van zeven: na "Je assistent" komt
