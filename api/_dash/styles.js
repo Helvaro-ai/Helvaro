@@ -291,7 +291,25 @@ const CSS = `/* ============================================================
      twee lezen als een rand.
      Van 0.04 naar 0.07: op een verloop dat zelf al oploopt moest de lip mee
      omhoog, anders verdwijnt hij in de bovenste stop. */
-  --edge-hi: none;       /* finish-fix 3: geen ingebakken lichtrand -- de rand is de rand */
+  /* DOORZICHTIG en niet 'none'. Dit token wordt in zeven regels samengesteld
+     tot een box-shadow van var(--edge-hi) plus iets anders, en 'none' is in
+     een schaduwlijst geen waarde maar een verbod: de browser gooit dan de HELE
+     declaratie weg, inclusief dat andere.
+
+     Dat kostte het helppaneel zijn schaduw. .hv-help-panel vraagt
+     var(--edge-hi), var(--elev-3) -- en --elev-3 is juist bewaard als de ene
+     zachte schaduw voor een modaal en de zoekoverlay. Het paneel zweefde dus
+     zonder enige diepte over de pagina, gescheiden door niets dan een rand van
+     1px. In BEIDE thema's.
+
+     De kaarten blijven wel vlak, en dat is met opzet: die stellen
+     var(--edge-hi) samen met var(--shadow-card), en die staat in het lichte
+     thema nog steeds op none. Die declaraties blijven dus ongeldig en dus
+     zonder schaduw -- precies de vlakke opzet die daar bedoeld is.
+
+     Nagemeten in de browser, per thema: van dertien kaarten verandert er exact
+     een, en dat is het helppaneel. */
+  --edge-hi: 0 0 0 0 rgba(0,0,0,0);   /* finish-fix 3: geen ingebakken lichtrand -- de rand is de rand */
 
   --glass-fill:  rgba(18,18,18,0.78);
   --glass-edge:  rgba(255,255,255,0.06);
@@ -539,7 +557,9 @@ const CSS = `/* ============================================================
   --elev-2: none;
   --elev-3: 0 20px 48px rgba(64,52,32,.14);
   /* A white highlight on a white card is nothing. */
-  --edge-hi: none;
+  /* Zie de toelichting bij --edge-hi in het donkere blok hierboven: geen
+     randlicht, maar doorzichtig in plaats van none. */
+  --edge-hi: 0 0 0 0 rgba(0,0,0,0);
 
   --glass-fill:  rgba(255,255,255,0.80);
   --glass-edge:  rgba(255,255,255,0.90);

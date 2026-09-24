@@ -239,8 +239,8 @@ function render(lang) {
    stond het logo op top -21 en was dat met geen enkele scrollpositie te
    bereiken.
    Vorige waarden: 404802 bytes / 7f6cfa49d2c58885. */
-const CSS_BYTES = 407697;
-const CSS_SHA   = '4127ab94daaa22d6';
+const CSS_BYTES = 408875;
+const CSS_SHA   = '00796beeab07b870';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
