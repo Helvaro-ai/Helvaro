@@ -62,14 +62,6 @@ module.exports = async function handler(req, res) {
   const FARO_BEOORDELING_JSON = JSON.stringify(_faroWerk.BEOORDELING_VELDEN).replace(/</g, '\\u003c');
   const FARO_DEED_JSON = JSON.stringify(_faroWerk.DEED_REGELS).replace(/</g, '\\u003c');
 
-  const REGIO_LANDEN_JSON = JSON.stringify(
-    // De KALE taalcode, want dat is wat het Language-veld opslaat en wat de
-    // keuzelijst aanbiedt ('nl', niet 'nl_BE'). De registry zoekt daar zelf
-    // de juiste regiotemplate bij, dus hier hoort geen regiocode.
-    _regio.landen().map((l) => ({
-      code: l.code, naam: l.naam, taal: _waTpl.taalVoorLand(l.code).split('_')[0],
-    }))
-  ).replace(/</g, '\\u003c');
 
   // Dashboard UI language. DASHBOARD_LANG lets an operator force one; otherwise
   // the registry default applies until a per-user preference exists to read.
@@ -83,6 +75,44 @@ module.exports = async function handler(req, res) {
      Franstalige leads bedienen met een Nederlands dashboard. */
   const UI_LANG = _i18n.resolveer(req);
   const T = (sleutel, vars) => _i18n.t(UI_LANG, sleutel, vars);
+
+  /* De landnamen in _regio.js staan alleen in het Nederlands ('Frankrijk',
+     'Duitsland'). Die lijst is de keuzelijst op het EERSTE scherm dat een
+     nieuwe klant invult, dus een Franstalige koos zijn land uit een Nederlandse
+     opsomming. Intl.DisplayNames geeft de naam in de paginataal, onderhouden
+     door de runtime zelf -- beter dan zeventien landen maal vier talen met de
+     hand bijhouden en zien verlopen.
+
+     MOET onder UI_LANG staan. Hierboven is die const nog niet geinitialiseerd
+     en gooit het lezen ervan een ReferenceError; stond dit eerst wel boven, en
+     de try/catch slikte die fout door naar de Nederlandse terugval. Vier talen
+     kregen dan een Nederlandse landenlijst zonder dat er iets stukging. */
+  const _landNaam = (() => {
+    /* Alleen de Intl-constructie afschermen, en met de al vastgestelde locale
+       als argument -- geen blok dat per ongeluk ook een programmeerfout opvangt.
+       Intl.DisplayNames ontbreekt op geen enkele Node die dit project draait,
+       maar een onbekende locale mag de pagina niet neerhalen. */
+    const tag = _i18n.locale(UI_LANG);
+    let dn = null;
+    try { dn = new Intl.DisplayNames([tag], { type: 'region' }); } catch (e) {
+      console.warn('[dashboard] Intl.DisplayNames faalde voor ' + tag + ':', e.message);
+    }
+    return (code, terugval) => {
+      if (!dn) return terugval;
+      /* of() geeft de CODE terug als hij hem niet kent. Die zou als 'BE' in de
+         keuzelijst belanden, wat erger is dan een Nederlandse naam. */
+      const n = dn.of(code);
+      return n && n !== code ? n : terugval;
+    };
+  })();
+  const REGIO_LANDEN_JSON = JSON.stringify(
+    // De KALE taalcode, want dat is wat het Language-veld opslaat en wat de
+    // keuzelijst aanbiedt ('nl', niet 'nl_BE'). De registry zoekt daar zelf
+    // de juiste regiotemplate bij, dus hier hoort geen regiocode.
+    _regio.landen().map((l) => ({
+      code: l.code, naam: _landNaam(l.code, l.naam), taal: _waTpl.taalVoorLand(l.code).split('_')[0],
+    }))
+  ).replace(/</g, '\\u003c');
 
 /* Een plek die nog aan het laden is.
 
@@ -4490,7 +4520,7 @@ async function naarRegistreren() {
   //    liet dan een fout zien voor iets dat een halve seconde later gewoon had
   //    gewerkt.
   if (typeof CLERK_READY !== 'undefined' && CLERK_READY) {
-    if (knop) { knop.disabled = true; knop.dataset.oud = knop.textContent; knop.textContent = 'Even geduld...'; }
+    if (knop) { knop.disabled = true; knop.dataset.oud = knop.textContent; knop.textContent = tr('log.evenGeduld'); }
     try {
       var clerk = await clerkInit();
       if (clerk && clerk.mountSignUp) { mountClerkSignUp(clerk); return; }
@@ -4658,12 +4688,11 @@ function showTenantPending(clerk) {
   wrap.style.cssText = 'text-align:center;padding:8px 4px';
 
   var h = document.createElement('h2');
-  h.textContent = 'Je account wordt klaargezet';
+  h.textContent = tr('log.pending.titel');
   h.style.cssText = 'font-size:19px;font-weight:700;margin:0 0 10px;color:#1B222D';
 
   var p1 = document.createElement('p');
-  p1.textContent = 'Je bent aangemeld' + (email ? ' als ' + email : '') +
-    '. We koppelen je account nu aan je bedrijf, zodat je alleen je eigen leads ziet. Dat doen we met de hand, meestal binnen een werkdag.';
+  p1.textContent = email ? tr('log.pending.tekstMail', { email: email }) : tr('log.pending.tekst');
   p1.style.cssText = 'font-size:13.5px;line-height:1.6;color:#5B6779;margin:0 0 8px';
 
   var p2 = document.createElement('p');
@@ -5447,7 +5476,7 @@ function toonSupportModal(opties) {
     const bericht = veld.value.trim();
     if (bericht.length < 5) {
       statusEl.style.color = 'var(--error-ink,#F4A4A4)';
-      statusEl.textContent = 'Schrijf even kort waar het over gaat.';
+      statusEl.textContent = tr('sup.telKort');
       veld.focus();
       return;
     }
@@ -7627,16 +7656,16 @@ function renderPlanBanner(d) {
 
   if (d.status === 'expired') {
     if (iconEl)  iconEl.textContent = '⏸';
-    if (titleEl) titleEl.textContent = 'Je proefperiode is afgelopen';
+    if (titleEl) titleEl.textContent = tr('trial.over.titel');
     // Deliberately non-alarming per TRIAL-DESIGN.md §3: leads are still
     // captured, only the AI auto-reply stopped. Never phrased as an error.
-    if (subEl)   subEl.textContent = 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — je assistent beantwoordt ze alleen niet langer automatisch op WhatsApp.';
+    if (subEl)   subEl.textContent = tr('trial.over.sub');
     if (ctaEl) {
       /* Stond op een mailto. Dat is het moment waarop iemand wíl betalen, en
          dan een e-mailprogramma openen dat misschien niet eens ingesteld is --
          waarna hij moet wachten tot er iemand antwoordt. Nu gaat hij naar zijn
          plannen en rekent zelf af. */
-      ctaEl.textContent = 'Kies een plan';
+      ctaEl.textContent = tr('trial.over.cta');
       ctaEl.href = '#';
       ctaEl.onclick = function (e) { e.preventDefault(); navigateTo('facturatie'); setTimeout(naarPlannen, 300); };
     }
@@ -10642,7 +10671,7 @@ async function calBookConfirm() {
     return;
   }
   const btn = document.getElementById('cb-confirm-btn');
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerText = 'Bezig...'; }
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerText = tr('st.bezig'); }
   try {
     const resp = await fetch(\`\${API_BASE}/leads\`, {
       method:  'POST',
@@ -12303,7 +12332,7 @@ async function wizardVolgende() {
     var landKeuze = document.getElementById('wizard-land').value;
     var taalKeuze = document.getElementById('wizard-taal').value;
     if (!landKeuze || !taalKeuze) {
-      fout.textContent = 'Kies een land en een taal.';
+      fout.textContent = tr('wiz.regio.verplicht');
       return;
     }
     knop.disabled = true; knop.textContent = tr('st.opslaanBezig');
@@ -12354,7 +12383,7 @@ async function wizardVolgende() {
   if (stap === 'bedrijf') {
     var over = document.getElementById('wizard-bedrijf').value.trim();
     if (over.length < 20) {
-      fout.textContent = 'Vertel iets meer — je assistent heeft dit nodig om je klanten te woord te staan.';
+      fout.textContent = tr('wiz.bedrijf.kort');
       document.getElementById('wizard-bedrijf').focus();
       return;
     }
@@ -12382,7 +12411,7 @@ async function wizardVolgende() {
       return;
     }
     if (begroet.length < 10) {
-      fout.textContent = 'Schrijf een welkomstbericht van een paar woorden.';
+      fout.textContent = tr('wiz.welkomst.kort');
       document.getElementById('wizard-welkomst').focus();
       return;
     }
@@ -12600,9 +12629,9 @@ function wizardTeken() {
          WhatsApp-template moet per taal door Meta goedgekeurd worden, en dat
          duurt van minuten tot een dag. Liever hier eerlijk over zijn dan de
          klant laten ontdekken dat er niets vertrekt. */
-      hintEl.innerHTML = 'Je account staat binnen <b>72 uur</b> live. Die tijd gebruiken we om je WhatsApp-berichten in deze taal te laten goedkeuren bij WhatsApp.'
+      hintEl.innerHTML = tr('wiz.regio.hint')
         + (taalEl.value !== voorstel && landNaam
-            ? '<br><span style="opacity:.75">In ' + escHtml(landNaam) + ' is dat meestal een andere taal — jouw keuze telt.</span>'
+            ? '<br><span style="opacity:.75">' + escHtml(tr('wiz.regio.andereTaal', { land: landNaam })) + '</span>'
             : '');
     }
 
@@ -12619,8 +12648,8 @@ function wizardTeken() {
   }
 
   if (stap === 'markt') {
-    titel.textContent = 'Waar zit je in?';
-    sub.textContent = 'Hiermee richt ik je dashboard in. Je krijgt alleen de schermen die bij je werk horen.';
+    titel.textContent = tr('wiz.markt.titel');
+    sub.textContent = tr('wiz.markt.sub');
 
     var KRT = 'display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;padding:14px 15px;'
       + 'margin:0 0 10px;border-radius:14px;border:1px solid var(--border,#2A3444);background:transparent;'
@@ -13167,7 +13196,7 @@ async function handleLogin() {
   errEl.classList.remove('visible');
 
   if (!email) {
-    errEl.textContent = 'Vul je e-mailadres in.';
+    errEl.textContent = tr('log.mailVerplicht');
     errEl.classList.add('visible');
     return;
   }
@@ -16288,11 +16317,11 @@ function vraagBtwEnBetaal(planId, planNaam) {
   card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:420px';
 
   var titel = document.createElement('h3');
-  titel.textContent = 'Nog één ding';
+  titel.textContent = tr('btw.titel');
   titel.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
 
   var uitleg = document.createElement('p');
-  uitleg.textContent = 'We hebben je btw-nummer nodig voor de factuur van ' + (planNaam || 'je abonnement') + '.';
+  uitleg.textContent = tr('btw.uitleg', { plan: planNaam || tr('btw.planTerugval') });
   uitleg.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--text-muted,#999);line-height:1.5';
 
   var veld = document.createElement('input');
@@ -16316,7 +16345,7 @@ function vraagBtwEnBetaal(planId, planNaam) {
   annuleer.style.cssText = 'padding:9px 16px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
 
   var ga = document.createElement('button');
-  ga.textContent = 'Naar de betaalpagina';
+  ga.textContent = tr('btw.naarBetalen');
   ga.style.cssText = 'padding:9px 16px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
 
   function sluit() { overlay.remove(); document.removeEventListener('keydown', toets); }
@@ -16326,7 +16355,7 @@ function vraagBtwEnBetaal(planId, planNaam) {
     var btw = veld.value.trim();
     if (!btw) {
       status.style.color = 'var(--error-ink,#F4A4A4)';
-      status.textContent = 'Vul je btw-nummer in.';
+      status.textContent = tr('btw.verplicht');
       veld.focus();
       return;
     }
@@ -16363,16 +16392,16 @@ function vraagBtwEnBetaal(planId, planNaam) {
         return;
       }
       status.style.color = 'var(--error-ink,#F4A4A4)';
-      status.textContent = d.error || 'De betaalpagina kon niet geopend worden.';
+      status.textContent = d.error || tr('btw.mislukt');
       ga.disabled = false;
-      ga.textContent = 'Naar de betaalpagina';
+      ga.textContent = tr('btw.naarBetalen');
       veld.focus();
       veld.select();
     } catch (e) {
       status.style.color = 'var(--error-ink,#F4A4A4)';
       status.textContent = tr('tst.ietsMis');
       ga.disabled = false;
-      ga.textContent = 'Naar de betaalpagina';
+      ga.textContent = tr('btw.naarBetalen');
     }
   }
 
@@ -16566,7 +16595,7 @@ async function koopAanvragen() {
   var btn = document.getElementById('koop-btn');
   if (!o || !o.geldig) {
     fout.style.display = '';
-    fout.textContent = 'Kies eerst een geldig bedrag.';
+    fout.textContent = tr('koop.bedragOngeldig');
     return;
   }
   btn.disabled = true; btn.textContent = tr('st.bezig');
@@ -16779,16 +16808,16 @@ function renderFacturatie() {
   var naam = document.getElementById('fa-plan-naam');
   var sub  = document.getElementById('fa-plan-sub');
   if (plan.status === 'trial') {
-    naam.textContent = 'Proefperiode';
+    naam.textContent = tr('fa.plan.proef');
     sub.textContent = plan.daysLeft != null
-      ? (plan.daysLeft + ' ' + (plan.daysLeft === 1 ? 'dag' : 'dagen') + ' te gaan')
-      : 'Je proefperiode loopt.';
+      ? (plan.daysLeft === 1 ? tr('fa.plan.teGaanDag') : tr('fa.plan.teGaan', { n: plan.daysLeft }))
+      : tr('trial.running');
   } else if (plan.status === 'expired') {
-    naam.textContent = 'Proefperiode voorbij';
-    sub.textContent = 'Neem contact op om verder te gaan.';
+    naam.textContent = tr('fa.plan.proefVoorbij');
+    sub.textContent = tr('fa.plan.neemContact');
   } else if (plan.status === 'active') {
     naam.textContent = tr('st.actief');
-    sub.textContent = d.klantNaam ? ('Op naam van ' + d.klantNaam) : '';
+    sub.textContent = d.klantNaam ? tr('fa.plan.opNaamVan', { naam: d.klantNaam }) : '';
   } else {
     naam.textContent = tr('st.actief');
     sub.textContent = '';
@@ -16820,11 +16849,9 @@ function renderFacturatie() {
 
   if (!gb.beschikbaar) {
     verdelingSub.textContent = '';
-    verdeling.innerHTML = '<div class="fa-leeg">De geschiedenis staat nog niet aan. Zolang de tabel '
-      + '<code>credit_transactions</code> niet bestaat worden credits wel geteld, maar niet per stuk bewaard '
-      + '— dus kan hier niet staan waar ze heen gingen.</div>';
+    verdeling.innerHTML = '<div class="fa-leeg">' + escHtml(tr('fa.geschiedenisUit')) + '</div>';
   } else if (!perFeature || !Object.keys(perFeature).length) {
-    verdelingSub.textContent = 'Deze periode';
+    verdelingSub.textContent = tr('fa.thisPeriod');
     verdeling.innerHTML = '<div class="fa-leeg">' + escHtml(tr('fa.nietsVerbruikt')) + '</div>';
   } else {
     var paren = Object.keys(perFeature).map(function (k) { return { k: k, n: perFeature[k] }; })
@@ -17377,9 +17404,8 @@ function openPandModal(code) {
   var impSub = imp ? imp.querySelector('.pd-import-sub') : null;
   var impInp = document.getElementById('pd-f-link');
   if (isDealer()) {
-    if (impKop) impKop.textContent = 'Plak de link van je advertentie';
-    if (impSub) impSub.textContent = 'Van AutoScout24 of je eigen site. Ik lees de pagina en vul de velden hieronder in. '
-      + 'Het aanbodnummer komt er meteen bij, dus WhatsApp-leads uit die advertentie koppelen zichzelf aan deze wagen.';
+    if (impKop) impKop.textContent = tr('veh.import.kop');
+    if (impSub) impSub.textContent = tr('veh.import.sub');
     if (impInp) {
       impInp.placeholder = 'https://www.autoscout24.be/nl/aanbod/...';
       impInp.setAttribute('aria-label', vw('linkA11y'));
@@ -17488,7 +17514,7 @@ async function savePand() {
     var model = lees('pd-f-model');
     if (!merk || !model) {
       fout.style.display = '';
-      fout.textContent = 'Vul minstens een merk en een model in.';
+      fout.textContent = tr('veh.merkModelNodig');
       return;
     }
     var vPayload = {
@@ -20193,7 +20219,7 @@ function renderHelpList(query) {
     empty.className = 'hv-help-empty';
     // textContent, not innerHTML — the query is user input and must never
     // be parsed as markup, even inside our own panel.
-    empty.textContent = 'Niets gevonden. Stuur ons gerust een bericht, we antwoorden meestal dezelfde dag.';
+    empty.textContent = tr('hv.help.nietsGevonden');
     body.appendChild(empty);
     return;
   }

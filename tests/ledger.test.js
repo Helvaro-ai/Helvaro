@@ -171,9 +171,26 @@ function nepAirtable(records, opties = {}) {
   ck('het dashboard heeft een facturatiepagina', dash.indexOf('id="page-facturatie"') !== -1);
   ck('en een navigatieknop', dash.indexOf('data-page="facturatie"') !== -1);
   ck('en laadt hem bij navigeren', dash.indexOf("if (page === 'facturatie')") !== -1);
-  /* Geen verzonnen verdeling als het grootboek er niet is. */
+  /* Geen verzonnen verdeling als het grootboek er niet is. De ZIN staat sinds
+     de vertaalronde in api/_i18n.js -- hij stond hier in het Nederlands op een
+     pagina die verder vier talen spreekt. Op de sleutel pinnen in plaats van op
+     de tekst, anders breekt deze regel bij de eerste herformulering. */
   ck('zonder grootboek zegt de pagina dat, in plaats van een verdeling te tonen',
-     dash.indexOf('De geschiedenis staat nog niet aan') !== -1);
+     dash.indexOf("tr('fa.geschiedenisUit')") !== -1);
+  {
+    const i18n = require(require('path').join(__dirname, '..', 'api/_i18n.js'));
+    for (const taal of ['nl', 'fr', 'en', 'de']) {
+      const z = i18n.t(taal, 'fa.geschiedenisUit');
+      ck(taal + ': en zegt het in zijn eigen taal', !!z && z !== 'fa.geschiedenisUit', z.slice(0, 40));
+    }
+    /* De naam van de databasetabel stond in die zin. Een klant die zijn factuur
+       bekijkt hoort niet te lezen dat 'credit_transactions' ontbreekt -- dat is
+       een mededeling aan ons, niet aan hem. */
+    for (const taal of ['nl', 'fr', 'en', 'de']) {
+      ck(taal + ': zonder tabelnaam erin',
+         i18n.t(taal, 'fa.geschiedenisUit').indexOf('credit_transactions') === -1, null);
+    }
+  }
 
   console.log('\n— credits bijkopen: de prijs staat op de server —');
   /* De offerte wordt op de SERVER berekend. Zou de browser dat doen, dan is het

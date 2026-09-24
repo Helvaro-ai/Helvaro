@@ -108,8 +108,19 @@ ck('een landwissel overschrijft een eigen taalkeuze niet',
    /if \(!_wizardTaalAangeraakt\) taalEl\.value = wizardTaalBijLand/.test(html), null);
 ck('een eigen taalkeuze zet die vlag',
    /taalEl\.addEventListener\('change', function \(\) \{ _wizardTaalAangeraakt = true/.test(html), null);
+/* Ook deze zin is naar api/_i18n.js verhuisd -- hij stond nog in het
+   Nederlands in de pagina terwijl de regel erboven al uitlegt waarom dat niet
+   meer mag. De BELOFTE is wat bewaakt moet worden, niet de Nederlandse zin:
+   de pagina gebruikt de sleutel, en de sleutel noemt 72 in elke taal. */
 ck('en de klant hoort dat het 72 uur duurt voor het live staat',
-   /binnen <b>72 uur<\/b> live/.test(html), null);
+   /tr\('wiz\.regio\.hint'\)/.test(html), null);
+{
+  const i18n = require(require('path').join(__dirname, '..', 'api/_i18n.js'));
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
+    ck(taal + ': de hint noemt nog steeds 72 uur',
+       /72/.test(i18n.t(taal, 'wiz.regio.hint')), i18n.t(taal, 'wiz.regio.hint').slice(0, 60));
+  }
+}
 ck('land en taal worden samen bewaard',
    /wizardBewaar\(\{ country: landKeuze, language: taalKeuze \}\)/.test(html), null);
 /* Deze controle keek alleen of het object BESTOND, en dat is hoe er een stap

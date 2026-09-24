@@ -2721,6 +2721,70 @@ const TEKST = {
     en: '{aantal} automation(s) failed today. Open the dashboard to see what went wrong and who is waiting.',
     de: 'Heute sind {aantal} Automatisierung(en) fehlgeschlagen. Öffnen Sie das Dashboard, um zu sehen, was schiefgelaufen ist.',
   },
+
+  /* ── Zinnen die nooit door een vertaling liepen ────────────────────────────
+     Deze stonden hardgecodeerd in het Nederlands in api/dashboard.js, vaak
+     direct naast een regel die WEL tr() gebruikte. Ze overleefden elke
+     taalcontrole omdat ze pas verschijnen in een toestand die een
+     paginascan niet bereikt: een validatiefout, een modaal, een afgelopen
+     proefperiode. Zie tests/nederlandse-resten.test.js. */
+
+  /* Aanmelden en inloggen */
+  'log.evenGeduld':      { nl: 'Even geduld…', fr: 'Un instant…', en: 'One moment…', de: 'Einen Moment…' },
+  'log.mailVerplicht':   { nl: 'Vul je e-mailadres in.', fr: 'Saisissez votre adresse e-mail.', en: 'Enter your email address.', de: 'Gib deine E-Mail-Adresse ein.' },
+  'log.pending.titel':   { nl: 'Je account wordt klaargezet', fr: 'Votre compte est en préparation', en: 'Your account is being set up', de: 'Dein Konto wird eingerichtet' },
+  /* Twee volledige zinnen in plaats van één met een aangeplakt ' als {email}':
+     dat fragment is grammaticaal Nederlands en breekt in elke andere taal. */
+  'log.pending.tekst':   { nl: 'Je bent aangemeld. We koppelen je account nu aan je bedrijf, zodat je alleen je eigen leads ziet. Dat doen we met de hand, meestal binnen een werkdag.', fr: 'Vous êtes inscrit. Nous relions maintenant votre compte à votre entreprise, pour que vous ne voyiez que vos propres leads. Nous le faisons manuellement, généralement en un jour ouvrable.', en: 'You’re signed up. We’re now linking your account to your business, so you only see your own leads. We do this by hand, usually within one working day.', de: 'Du bist angemeldet. Wir verbinden dein Konto jetzt mit deinem Unternehmen, damit du nur deine eigenen Leads siehst. Das machen wir von Hand, meist innerhalb eines Arbeitstags.' },
+  'log.pending.tekstMail': { nl: 'Je bent aangemeld als {email}. We koppelen je account nu aan je bedrijf, zodat je alleen je eigen leads ziet. Dat doen we met de hand, meestal binnen een werkdag.', fr: 'Vous êtes inscrit avec {email}. Nous relions maintenant votre compte à votre entreprise, pour que vous ne voyiez que vos propres leads. Nous le faisons manuellement, généralement en un jour ouvrable.', en: 'You’re signed up as {email}. We’re now linking your account to your business, so you only see your own leads. We do this by hand, usually within one working day.', de: 'Du bist als {email} angemeldet. Wir verbinden dein Konto jetzt mit deinem Unternehmen, damit du nur deine eigenen Leads siehst. Das machen wir von Hand, meist innerhalb eines Arbeitstags.' },
+
+  /* Supportvenster */
+  'sup.telKort':         { nl: 'Schrijf even kort waar het over gaat.', fr: 'Décrivez brièvement votre demande.', en: 'Write a short line about what this is about.', de: 'Schreib kurz, worum es geht.' },
+
+  /* Proefperiode afgelopen (de balk bovenaan) */
+  'trial.over.titel':    { nl: 'Je proefperiode is afgelopen', fr: 'Votre période d’essai est terminée', en: 'Your trial has ended', de: 'Deine Testphase ist abgelaufen' },
+  'trial.over.sub':      { nl: 'Nieuwe leads komen gewoon binnen en blijven zichtbaar hierboven — je assistent beantwoordt ze alleen niet langer automatisch op WhatsApp.', fr: 'Les nouveaux leads continuent d’arriver et restent visibles ci-dessus — votre assistant ne leur répond simplement plus automatiquement sur WhatsApp.', en: 'New leads still come in and stay visible above — your assistant just no longer answers them automatically on WhatsApp.', de: 'Neue Leads kommen weiterhin an und bleiben oben sichtbar — dein Assistent beantwortet sie nur nicht mehr automatisch auf WhatsApp.' },
+  'trial.over.cta':      { nl: 'Kies een plan', fr: 'Choisir une formule', en: 'Choose a plan', de: 'Tarif wählen' },
+
+  /* Inrichtingsassistent */
+  'wiz.regio.verplicht': { nl: 'Kies een land en een taal.', fr: 'Choisissez un pays et une langue.', en: 'Choose a country and a language.', de: 'Wähle ein Land und eine Sprache.' },
+  'wiz.regio.hint':      { nl: 'Je account staat binnen <b>72 uur</b> live. Die tijd gebruiken we om je WhatsApp-berichten in deze taal te laten goedkeuren bij WhatsApp.', fr: 'Votre compte sera actif sous <b>72 heures</b>. Nous profitons de ce délai pour faire approuver vos messages WhatsApp dans cette langue.', en: 'Your account goes live within <b>72 hours</b>. We use that time to get your WhatsApp messages approved in this language.', de: 'Dein Konto ist innerhalb von <b>72 Stunden</b> live. Diese Zeit nutzen wir, um deine WhatsApp-Nachrichten in dieser Sprache freigeben zu lassen.' },
+  'wiz.regio.andereTaal': { nl: 'In {land} is dat meestal een andere taal — jouw keuze telt.', fr: 'En {land}, c’est généralement une autre langue — c’est votre choix qui compte.', en: 'In {land} that’s usually a different language — your choice is what counts.', de: 'In {land} ist das meist eine andere Sprache — deine Wahl zählt.' },
+  'wiz.bedrijf.kort':    { nl: 'Vertel iets meer — je assistent heeft dit nodig om je klanten te woord te staan.', fr: 'Donnez un peu plus de détails — votre assistant en a besoin pour répondre à vos clients.', en: 'Tell us a bit more — your assistant needs this to talk to your customers.', de: 'Erzähl etwas mehr — dein Assistent braucht das, um mit deinen Kunden zu sprechen.' },
+  'wiz.welkomst.kort':   { nl: 'Schrijf een welkomstbericht van een paar woorden.', fr: 'Écrivez un message de bienvenue de quelques mots.', en: 'Write a welcome message of a few words.', de: 'Schreib eine Willkommensnachricht aus ein paar Worten.' },
+  /* Eigen sleutel naast set.markt.label: dat is een veldlabel ('Waar zit je
+     in'), dit is een schermtitel met vraagteken. In het Frans staat er een
+     spatie vóór het vraagteken, dus aanplakken kan niet. */
+  'wiz.markt.titel':     { nl: 'Waar zit je in?', fr: 'Quel est votre secteur ?', en: 'What do you do?', de: 'In welcher Branche bist du?' },
+  'wiz.markt.sub':       { nl: 'Hiermee richt ik je dashboard in. Je krijgt alleen de schermen die bij je werk horen.', fr: 'Cela me sert à configurer votre tableau de bord. Vous n’obtenez que les écrans qui correspondent à votre métier.', en: 'This is how I set up your dashboard. You only get the screens that fit your work.', de: 'Damit richte ich dein Dashboard ein. Du bekommst nur die Bildschirme, die zu deiner Arbeit passen.' },
+
+  /* Btw-nummer vóór het afrekenen */
+  'btw.titel':           { nl: 'Nog één ding', fr: 'Encore une chose', en: 'One more thing', de: 'Noch eine Sache' },
+  'btw.uitleg':          { nl: 'We hebben je btw-nummer nodig voor de factuur van {plan}.', fr: 'Nous avons besoin de votre numéro de TVA pour la facture de {plan}.', en: 'We need your VAT number for the {plan} invoice.', de: 'Wir brauchen deine USt-IdNr. für die Rechnung von {plan}.' },
+  'btw.planTerugval':    { nl: 'je abonnement', fr: 'votre abonnement', en: 'your subscription', de: 'deinem Abo' },
+  'btw.naarBetalen':     { nl: 'Naar de betaalpagina', fr: 'Vers la page de paiement', en: 'To the payment page', de: 'Zur Zahlungsseite' },
+  'btw.verplicht':       { nl: 'Vul je btw-nummer in.', fr: 'Saisissez votre numéro de TVA.', en: 'Enter your VAT number.', de: 'Gib deine USt-IdNr. ein.' },
+  'btw.mislukt':         { nl: 'De betaalpagina kon niet geopend worden.', fr: 'La page de paiement n’a pas pu être ouverte.', en: 'The payment page could not be opened.', de: 'Die Zahlungsseite konnte nicht geöffnet werden.' },
+
+  /* Credits bijkopen */
+  'koop.bedragOngeldig': { nl: 'Kies eerst een geldig bedrag.', fr: 'Choisissez d’abord un montant valide.', en: 'Choose a valid amount first.', de: 'Wähle zuerst einen gültigen Betrag.' },
+
+  /* De plankaart op Facturatie */
+  'fa.plan.proef':       { nl: 'Proefperiode', fr: 'Période d’essai', en: 'Trial', de: 'Testphase' },
+  'fa.plan.teGaan':      { nl: '{n} dagen te gaan', fr: 'Encore {n} jours', en: '{n} days to go', de: 'Noch {n} Tage' },
+  'fa.plan.teGaanDag':   { nl: 'Nog 1 dag', fr: 'Encore 1 jour', en: '1 day to go', de: 'Noch 1 Tag' },
+  'fa.plan.proefVoorbij': { nl: 'Proefperiode voorbij', fr: 'Période d’essai terminée', en: 'Trial ended', de: 'Testphase beendet' },
+  'fa.plan.neemContact': { nl: 'Neem contact op om verder te gaan.', fr: 'Contactez-nous pour continuer.', en: 'Get in touch to continue.', de: 'Melde dich, um fortzufahren.' },
+  'fa.plan.opNaamVan':   { nl: 'Op naam van {naam}', fr: 'Au nom de {naam}', en: 'In the name of {naam}', de: 'Auf den Namen {naam}' },
+  'fa.geschiedenisUit':  { nl: 'De geschiedenis staat nog niet aan. Credits worden wel geteld, maar nog niet per stuk bewaard — dus kan hier niet staan waar ze heen gingen.', fr: 'L’historique n’est pas encore activé. Les crédits sont bien comptés, mais pas encore enregistrés un par un — impossible donc d’indiquer ici où ils sont partis.', en: 'History isn’t switched on yet. Credits are still counted, but not yet stored one by one — so this can’t show where they went.', de: 'Der Verlauf ist noch nicht aktiviert. Credits werden zwar gezählt, aber noch nicht einzeln gespeichert — deshalb kann hier nicht stehen, wohin sie gingen.' },
+
+  /* Wagen toevoegen (dealer) */
+  'veh.import.kop':      { nl: 'Plak de link van je advertentie', fr: 'Collez le lien de votre annonce', en: 'Paste the link to your listing', de: 'Füge den Link deiner Anzeige ein' },
+  'veh.import.sub':      { nl: 'Van AutoScout24 of je eigen site. Ik lees de pagina en vul de velden hieronder in. Het aanbodnummer komt er meteen bij, dus WhatsApp-leads uit die advertentie koppelen zichzelf aan deze wagen.', fr: 'Depuis AutoScout24 ou votre propre site. Je lis la page et remplis les champs ci-dessous. Le numéro d’annonce est repris directement, donc les leads WhatsApp issus de cette annonce se rattachent d’eux-mêmes à cette voiture.', en: 'From AutoScout24 or your own site. I read the page and fill in the fields below. The listing number comes along right away, so WhatsApp leads from that ad attach themselves to this car.', de: 'Von AutoScout24 oder deiner eigenen Website. Ich lese die Seite und fülle die Felder unten aus. Die Angebotsnummer kommt direkt mit, sodass WhatsApp-Leads aus dieser Anzeige sich selbst diesem Auto zuordnen.' },
+  'veh.merkModelNodig':  { nl: 'Vul minstens een merk en een model in.', fr: 'Indiquez au moins une marque et un modèle.', en: 'Enter at least a make and a model.', de: 'Gib mindestens Marke und Modell an.' },
+
+  /* Helpcentrum */
+  'hv.help.nietsGevonden': { nl: 'Niets gevonden. Stuur ons gerust een bericht, we antwoorden meestal dezelfde dag.', fr: 'Aucun résultat. Envoyez-nous un message, nous répondons généralement le jour même.', en: 'Nothing found. Send us a message — we usually reply the same day.', de: 'Nichts gefunden. Schick uns eine Nachricht, wir antworten meist am selben Tag.' },
 };
 
 /**

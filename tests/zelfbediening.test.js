@@ -52,7 +52,7 @@ console.log('\n— en er is wél een weg naar de plannen —');
 ck('de proefbanner stuurt naar de plannen',
    /trial\.cta[\s\S]{0,240}naarPlannen/.test(js), null);
 ck('de verlopen proefperiode ook',
-   /Kies een plan[\s\S]{0,240}naarPlannen/.test(js), null);
+   /trial\.over\.cta[\s\S]{0,240}naarPlannen/.test(js), null);
 /* De creditbalk in de zijbalk is nu een knop die een detailvenster opent (het
    percentage staat er altijd, de cijfers achter een klik). De weg naar de
    plannen zit daardoor IN dat venster in plaats van als losse link onder de
