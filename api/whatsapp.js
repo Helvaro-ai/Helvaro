@@ -1249,6 +1249,32 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     console.warn('[WhatsApp] pandcontext overgeslagen:', e && e.message);
   }
 
+  /* Doorgestuurd vanaf de websiteassistent ("ref H-XXXXXXXX" in dit bericht,
+     api/_assistent.js): het websitegesprek hoort bij DEZE beurt, zodat de
+     assistent niet opnieuw vraagt wat de klant al vertelde. Eenmalig en
+     tijdgebonden (gebruikHandoff); de samenvatting komt ook als notitie op de
+     lead voor de verkoper. Faalt het, dan gewoon een gewone beurt. */
+  try {
+    const _assistent = require('./_assistent');
+    const ref = _assistent.refUit(text);
+    if (ref) {
+      const h = await _assistent.gebruikHandoff(projectCode, ref, { leadId: lead.id });
+      if (h && h.context) {
+        pandSectie += '\n\nEERDER GESPREK OP DE WEBSITE (zelfde klant, net doorgestuurd naar WhatsApp). Vraag niet opnieuw wat hier al staat; '
+          + 'begroet de klant alsof je het gesprek voortzet:\n' + h.context.slice(0, 2000);
+        const notitie = { id: 'web-' + Date.now(), text: 'Doorgestuurd vanaf de websiteassistent:\n' + h.context.slice(0, 2000), ts: new Date().toISOString() };
+        const nd = mergeNotitiesNote(lead.fields[NOTITIES_FIELD] || lead.fields['Notities'] || '', notitie);
+        waitUntil(atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${lead.id}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: { [NOTITIES_FIELD]: nd } }),
+        }).catch(() => {}));
+      }
+    }
+  } catch (e) {
+    console.warn('[WhatsApp] websitedoorverwijzing overgeslagen:', e && e.message);
+  }
+
   const aiResponse = await runAI(history.slice(-20), aiInstructions, leadName, aiName, clientName, websiteContent, address, lang, {
     workingHours, outsideHours, bookingMethod, callbackWindow, learnedPatterns,
     appointmentDuration, existingAppointments, matchLeadLanguage,
@@ -2952,26 +2978,6 @@ async function maakLeadUitBinnenkomend(phone, eersteBericht, klant) {
     try {
       waitUntil(_klant.koppelLead(klant.projectCode, data.id, { telefoon: phone, kanaal: 'whatsapp', bron: 'WhatsApp' }).catch(() => {}));
     } catch (e) { /* koppelen is bijzaak; de lead bestaat al */ }
-    /* Doorgestuurd vanaf de websiteassistent ("ref H-XXXXXXXX" in het eerste
-       bericht, api/_assistent.js): het websitegesprek aan deze lead hangen en
-       de samenvatting als notitie bewaren, zodat de verkoper niet opnieuw
-       hoeft te vragen wat de klant al vertelde. Eenmalig en tijdgebonden. */
-    try {
-      const ref = require('./_assistent').refUit(eersteBericht);
-      if (ref) {
-        waitUntil(require('./_assistent').gebruikHandoff(klant.projectCode, ref, { leadId: data.id }).then(async (h) => {
-          if (!h || !h.context) return;
-          const notities = { _v: 1, tasks: [], calls: [],
-            notes: [{ id: 'web-' + Date.now(), text: 'Doorgestuurd vanaf de websiteassistent:\n' + h.context.slice(0, 2000), ts: new Date().toISOString() }],
-            consent: { given: false, ts: nu, via: 'inbound_whatsapp' } };
-          await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${data.id}`, {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields: { fldoLRI5W12ThTls7: JSON.stringify(notities) } }),
-          });
-        }).catch(() => {}));
-      }
-    } catch (e) { /* doorsturen is bijzaak; de lead bestaat al */ }
     return data;
   } catch (err) {
     console.error('[WhatsApp] lead aanmaken uit inbound mislukt:', err && err.message);
@@ -3585,6 +3591,21 @@ async function verseLeadVoorVerzenden(recordId) {
 }
 
 /* Verse historie + dit ene inkomende bericht (als het er nog niet in staat). */
+/* Een notitie toevoegen aan de Notities-envelop zonder iets anders te raken
+   (aiPaused, afspraak, consent, ...). Oude platte tekst blijft bewaard als
+   'legacy'-notitie, net als mergeNotitiesPatch in api/leads.js. */
+function mergeNotitiesNote(ruw, notitie) {
+  const t = ruw ? String(ruw).trim() : '';
+  let data = { _v: 1, notes: [], tasks: [], calls: [] };
+  if (t.startsWith('{')) {
+    try { const p = JSON.parse(t); if (p && typeof p === 'object') data = Object.assign(data, p); } catch (e) { /* hieronder als tekst */ }
+  } else if (t) {
+    data.notes = [{ id: 'legacy', text: t, ts: new Date().toISOString() }];
+  }
+  data.notes = (Array.isArray(data.notes) ? data.notes : []).concat(notitie);
+  return JSON.stringify(data);
+}
+
 function voegInkomendToe(ruw, item) {
   let h = [];
   if (ruw) { try { h = JSON.parse(ruw); } catch { h = []; } }

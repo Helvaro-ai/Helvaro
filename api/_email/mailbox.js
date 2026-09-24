@@ -258,6 +258,21 @@ async function verwerk(ctx, m, deps) {
   }
   if (!['lead', 'klant'].includes(analyse.classificatie)) markering.status = 'genegeerd';
   await _gesprekken.markeer(ctx.projectCode, gesprek.id, markering).catch(() => {});
+
+  /* Pushmelding naar de dealer: een NIEUWE lead per mail, of een antwoord in
+     een gesprek dat een verkoper overnam (die wacht daarop). Niet voor elke
+     mail -- een melding die bij alles afgaat, leert je ze te negeren. Eén
+     keer per bericht: de dedup hierboven laat een bericht maar één keer door. */
+  const pushSleutel = markering.leadId ? 'push.mail.lead' : (analyse.classificatie === 'klant' && gesprek.controle === 'HUMAN_TAKEOVER' ? 'push.mail.antwoord' : '');
+  if (pushSleutel) {
+    try {
+      require('../_push').stuurVertaald({
+        projectCode: ctx.projectCode, titelSleutel: pushSleutel + '.titel', tekstSleutel: pushSleutel + '.tekst',
+        vars: { naam: naam || m.vanAdres, onderwerp: String(m.onderwerp || '').slice(0, 80) },
+        url: 'https://app.helvaro.pro/dashboard',
+      }).catch(() => {});
+    } catch (e) { /* melding is bijzaak */ }
+  }
   log(ctx.projectCode, 'email_received', { gesprekId: gesprek.id, classificatie: analyse.classificatie, reden: analyse.reden }, leadId);
 
   if (ctx.autoAntwoord && analyse.magAutoAntwoord && gesprek.controle === 'AI_ACTIVE' && deps && deps.autoAntwoord) {

@@ -14,6 +14,17 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Beter geordend, en meldingen voor de nieuwe kanalen
+
+- **Instellingen in een logische volgorde:** eerst de kanalen waarlangs
+  klanten je bereiken (WhatsApp, e-mail, website), dan de koppelingen
+  (agenda, CRM), dan meldingen, taal en je account.
+- **Pushmelding bij een nieuwe lead via e-mail of via je website**, en bij
+  een e-mailantwoord in een gesprek dat je zelf overnam. Niet bij elke mail.
+- **Van de website naar WhatsApp zonder opnieuw te beginnen:** de assistent
+  kent het websitegesprek al in zijn eerste WhatsApp-antwoord, en de
+  samenvatting staat als notitie bij de lead.
+
 ### Eigen WhatsApp-nummer: status klopte niet na koppelen
 
 - **"Nummer koppelen" bleef staan na een geslaagde koppeling.** De status las

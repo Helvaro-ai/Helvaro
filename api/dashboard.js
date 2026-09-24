@@ -2735,6 +2735,66 @@ ${faro.navCta}
           </div>
         </div>
 
+        <!-- Volgorde (2026-09-24): eerst de kanalen waarlangs klanten je
+             bereiken (WhatsApp hierboven, e-mail, website), dan de koppelingen
+             die de assistent gebruikt (agenda, CRM), dan je eigen voorkeuren
+             en account. Alleen verplaatst, niets toegevoegd of weggelaten. -->
+        <!-- Mailbox (api/_email/mailbox.js). Getekend door loadMailStatus(). -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>
+            ${T('mail.sectie')}
+          </div>
+          <div id="mail-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
+        </div>
+
+        <!-- Websiteassistent (api/_assistent.js). Getekend door loadWidgetStatus(). -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            ${T('widget.sectie')}
+          </div>
+          <div id="widget-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
+        </div>
+
+        <!-- Google Agenda -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            ${T('set.gcal')}
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('set.gcal.title')}</div>
+              <div class="settings-label-sub" id="gcal-status-sub">${T('set.gcal.sub')}</div>
+            </div>
+            <div id="gcal-actions">
+              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">${T('set.gcal.connect')}</button>
+              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">${T('set.gcal.disc')}</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CRM. De rijen worden door loadCrmStatus() getekend: welke koppelingen
+             er zijn en welke velden ze vragen komt van de server (crm-status),
+             zodat een nieuwe adapter geen wijziging in dit bestand vraagt. -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/><rect x="2" y="7" width="20" height="14" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            ${T('set.crm')}
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('set.crm.title')}</div>
+              <div class="settings-label-sub">${T('set.crm.sub')}</div>
+            </div>
+            <div>
+              <button class="btn-icon" id="btn-crm-sync" onclick="crmSyncNu()" style="display:none">${T('crm.syncNow')}</button>
+            </div>
+          </div>
+          <div id="crm-lijst"></div>
+        </div>
+
         <!-- Notificaties -->
         <div class="settings-section">
           <div class="settings-section-title">
@@ -2858,62 +2918,6 @@ ${faro.navCta}
             </div>
             <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
           </div>
-        </div>
-
-        <!-- Google Agenda -->
-        <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ${T('set.gcal')}
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">${T('set.gcal.title')}</div>
-              <div class="settings-label-sub" id="gcal-status-sub">${T('set.gcal.sub')}</div>
-            </div>
-            <div id="gcal-actions">
-              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">${T('set.gcal.connect')}</button>
-              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">${T('set.gcal.disc')}</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mailbox (api/_email/mailbox.js). Getekend door loadMailStatus(). -->
-        <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>
-            ${T('mail.sectie')}
-          </div>
-          <div id="mail-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
-        </div>
-
-        <!-- Websiteassistent (api/_assistent.js). Getekend door loadWidgetStatus(). -->
-        <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            ${T('widget.sectie')}
-          </div>
-          <div id="widget-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
-        </div>
-
-        <!-- CRM. De rijen worden door loadCrmStatus() getekend: welke koppelingen
-             er zijn en welke velden ze vragen komt van de server (crm-status),
-             zodat een nieuwe adapter geen wijziging in dit bestand vraagt. -->
-        <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/><rect x="2" y="7" width="20" height="14" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            ${T('set.crm')}
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">${T('set.crm.title')}</div>
-              <div class="settings-label-sub">${T('set.crm.sub')}</div>
-            </div>
-            <div>
-              <button class="btn-icon" id="btn-crm-sync" onclick="crmSyncNu()" style="display:none">${T('crm.syncNow')}</button>
-            </div>
-          </div>
-          <div id="crm-lijst"></div>
         </div>
 
         <!-- Gevaar zone -->

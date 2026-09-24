@@ -133,6 +133,13 @@ const ck = (n, ok, got) => {
   try { await A.bewaarWidget('P2', { aan: true, domeinenTekst: '' }); } catch (e) { fout = e.code; }
   ck('aanzetten zonder domein geweigerd', fout === 'geen_domein');
 
+  console.log('\nwhatsapp gebruikt de doorverwijzing in dezelfde beurt');
+  const wa = require('fs').readFileSync(BASE + 'api/whatsapp.js', 'utf8');
+  const iHandoff = wa.indexOf('_assistent.gebruikHandoff(projectCode, ref');
+  const iAI = wa.indexOf('const aiResponse = await runAI(');
+  ck('handoff wordt opgehaald VOOR de AI-aanroep', iHandoff > 0 && iAI > iHandoff);
+  ck('en de context gaat mee in de prompt', /EERDER GESPREK OP DE WEBSITE/.test(wa));
+
   Object.assign(_vehicles, { list: echt.list, leesVers: echt.leesVers });
   _ai.generateText = echt.gen; _waes.getPhoneInfo = echt.info;
   console.log(`\n${pass} ok, ${fail} fout`);

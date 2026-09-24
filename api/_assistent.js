@@ -313,6 +313,16 @@ async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, or
   const k = await _klant.koppelLead(t, leadId, { email: e, telefoon: p, naam, kanaal: 'website', bron: 'Website-assistent' });
   await _gesprekken.markeer(t, gesprek.id, { leadId, klantId: k && k.klant ? k.klant.id : '' });
   try { require('./_activiteit').log(t, 'website_lead_created', { leadId, details: { bron: 'website_assistent' } }).catch(() => {}); } catch (x) { /* optioneel */ }
+  /* Pushmelding: alleen bij een NIEUWE lead (niet als dezelfde bezoeker zijn
+     gegevens nog eens invult). */
+  if (!gesprek.leadId) {
+    try {
+      require('./_push').stuurVertaald({
+        projectCode: t, titelSleutel: 'push.web.lead.titel', tekstSleutel: 'push.web.lead.tekst',
+        vars: { naam: String(naam || e || p || '').slice(0, 60) }, url: 'https://app.helvaro.pro/dashboard',
+      }).catch(() => {});
+    } catch (x) { /* melding is bijzaak */ }
+  }
   return { ok: true };
 }
 

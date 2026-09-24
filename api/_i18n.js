@@ -1066,6 +1066,12 @@ const TEKST = {
   'nav.profile':         { nl: 'Mijn profiel', fr: 'Mon profil', en: 'My profile', de: 'Mein Profil' },
 
   // ── Meldingen (ook door de server gebruikt, zie api/_push.js) ───────────
+  'push.mail.lead.titel': { nl: 'Nieuwe lead via e-mail', fr: 'Nouveau prospect par e-mail', en: 'New lead by email', de: 'Neuer Lead per E-Mail' },
+  'push.mail.lead.tekst': { nl: '{naam}: {onderwerp}', fr: '{naam} : {onderwerp}', en: '{naam}: {onderwerp}', de: '{naam}: {onderwerp}' },
+  'push.mail.antwoord.titel': { nl: 'Nieuw antwoord per e-mail', fr: 'Nouvelle réponse par e-mail', en: 'New email reply', de: 'Neue Antwort per E-Mail' },
+  'push.mail.antwoord.tekst': { nl: '{naam} antwoordde in een gesprek dat jij overnam.', fr: '{naam} a répondu dans une conversation que vous avez reprise.', en: '{naam} replied in a conversation you took over.', de: '{naam} hat in einem Gespräch geantwortet, das du übernommen hast.' },
+  'push.web.lead.titel': { nl: 'Nieuwe lead via je website', fr: 'Nouveau prospect via votre site', en: 'New lead from your website', de: 'Neuer Lead über deine Website' },
+  'push.web.lead.tekst': { nl: '{naam} liet contactgegevens achter bij de websiteassistent.', fr: '{naam} a laissé ses coordonnées à l’assistant du site.', en: '{naam} left contact details with the website assistant.', de: '{naam} hat beim Website-Assistenten Kontaktdaten hinterlassen.' },
   'push.lead.title':     { nl: 'Nieuwe lead', fr: 'Nouveau prospect', en: 'New lead', de: 'Neuer Lead' },
   'push.credit80.title': { nl: 'Nog 20% credits over',
                            fr: 'Il reste 20 % de crédits',
