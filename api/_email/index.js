@@ -4,9 +4,9 @@
  *
  * ── Providers ───────────────────────────────────────────────────────────────
  *   gmail      Gmail en Google Workspace. Echt, via de Google-OAuth-client.
- *   microsoft  Microsoft 365 / Outlook. NOG NIET GEBOUWD: er is geen Azure-app
- *              geregistreerd. Hij staat in de lijst zodat het dashboard eerlijk
- *              kan zeggen dat hij er nog niet is, niet om iets te simuleren.
+ *   microsoft  Microsoft 365 / Outlook via Graph (api/_email/microsoft.js).
+ *              Actief zodra MS_CLIENT_ID/MS_CLIENT_SECRET gezet zijn; tot dan
+ *              meldt het dashboard eerlijk "nog niet beschikbaar".
  *
  * ── Classificatie (puur, regels) ────────────────────────────────────────────
  * Regels en geen model: een nieuwsbrief herkennen aan List-Unsubscribe is
@@ -20,11 +20,7 @@
 
 const PROVIDERS = {
   gmail: require('./gmail'),
-  microsoft: {
-    naam: 'microsoft', beschikbaar: false,
-    isConfigured: () => false,
-    getAuthUrl() { const e = new Error('Microsoft 365 is nog niet beschikbaar.'); e.code = 'niet_beschikbaar'; throw e; },
-  },
+  microsoft: require('./microsoft'),
 };
 
 function provider(naam) { return PROVIDERS[naam] || null; }

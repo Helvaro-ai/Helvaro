@@ -81,7 +81,7 @@ const gmailBericht = ({ id, threadId = 'T1', from, subject, tekst, html, koppen 
   ck('geen koopintentie = overig, geen lead', a.classificatie === 'overig' && !a.maaktLead && !a.magAutoAntwoord);
   a = email.analyseer({ vanAdres: 'x@y.be', onderwerp: 'Re: afspraak', tekst: 'Prima, tot dan.', koppen: {} }, { bekendeKlant: true });
   ck('bekende klant = klant, geen nieuwe lead', a.classificatie === 'klant' && !a.maaktLead);
-  ck('Microsoft zegt eerlijk dat hij er niet is', email.provider('microsoft').beschikbaar === false);
+  ck('Microsoft zonder MS_CLIENT_ID = niet geconfigureerd (dashboard: nog niet beschikbaar)', email.provider('microsoft').isConfigured() === false);
 
   console.log('\ninkomende pijplijn');
   const verstuurd = [];

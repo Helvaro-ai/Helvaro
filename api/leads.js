@@ -3111,7 +3111,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           case 'email-status':
             return res.status(200).json(await _mailbox.status(projectCode));
           case 'email-connect':
-            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), 'mail.' + gcalSignState(projectCode)) });
+            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), (body.provider === 'microsoft' ? 'mail.ms.' : 'mail.') + gcalSignState(projectCode)) });
           case 'email-disconnect':
             return res.status(200).json(await _mailbox.ontkoppel(projectCode));
           case 'email-settings':
@@ -4260,6 +4260,25 @@ async function gcalStatusVoorTenant(projectCode) {
 }
 
 async function handleGcal(req, res) {
+  /* Microsoft-mailbox (api/_email/microsoft.js) deelt deze callback-URL, maar
+     hangt NIET af van de Google-configuratie: daarom vóór die controle. */
+  {
+    const u0 = new URL(req.url, 'https://app.helvaro.pro');
+    const st0 = String(u0.searchParams.get('state') || '');
+    if (req.method === 'GET' && u0.searchParams.get('action') !== 'mailpush' && st0.startsWith('mail.ms.')) {
+      if (u0.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
+      const msProject = gcalVerifyState(st0.slice(8));
+      const msCode = u0.searchParams.get('code');
+      if (!msProject || !msCode) return gcalRedirect(res, '/dashboard?mail=invalid_state');
+      try {
+        await require('./_email/mailbox').verbind(msProject, msCode, 'microsoft');
+        return gcalRedirect(res, '/dashboard?mail=connected');
+      } catch (e) {
+        console.error('[mail callback ms]', e && e.code, e && e.message);
+        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
+      }
+    }
+  }
   if (!_gcal.isConfigured()) {
     if (req.method === 'GET') return gcalRedirect(res, '/dashboard?gcal=unconfigured');
     return res.status(200).json({ connected: false, configured: false });

@@ -14107,6 +14107,7 @@ async function loadMailStatus() {
   catch (e) { el.innerHTML = '<div class="settings-label-sub">' + escHtml(e.code === 'schema_ontbreekt' || e.code === 'geen_tabel' ? tr('mail.schema') : e.message) + '</div>'; return; }
   externState.mail = d;
   var gmail = (d.providers || []).find(function (p) { return p.naam === 'gmail'; });
+  var ms = (d.providers || []).find(function (p) { return p.naam === 'microsoft'; });
   var status;
   if (d.verbonden && d.foutCode === 'reauth_required') status = '<span class="mail-staat let">' + escHtml(tr('mail.reauth', { adres: d.adres })) + '</span>';
   else if (d.verbonden) status = '<span class="mail-staat ok">' + escHtml(tr('mail.verbonden', { adres: d.adres })) + '</span>'
@@ -14115,8 +14116,9 @@ async function loadMailStatus() {
   var fout = d.verbonden && d.fout && d.laatsteResultaat === 'failed' ? '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: d.fout })) + '</div>' : '';
   var knoppen = d.verbonden
     ? '<button class="btn-icon" onclick="mailSyncNu()">' + escHtml(tr('mail.sync')) + '</button> <button class="btn-icon mail-ontkoppel" onclick="mailOntkoppel()">' + escHtml(tr('set.gcal.disc')) + '</button>'
-    : (gmail && gmail.beschikbaar
-      ? '<button class="btn-icon mail-koppel" onclick="mailKoppel(\\'gmail\\')">' + escHtml(tr('mail.koppel.gmail')) + '</button>'
+    : ((gmail && gmail.beschikbaar) || (ms && ms.beschikbaar)
+      ? ((gmail && gmail.beschikbaar) ? '<button class="btn-icon mail-koppel" onclick="mailKoppel(\\'gmail\\')">' + escHtml(tr('mail.koppel.gmail')) + '</button>' : '')
+        + ((ms && ms.beschikbaar) ? ' <button class="btn-icon mail-koppel" onclick="mailKoppel(\\'microsoft\\')">' + escHtml(tr('mail.koppel.ms')) + '</button>' : '')
       : '<span class="settings-label-sub">' + escHtml(tr('mail.nietGeconfigureerd')) + '</span>');
   el.innerHTML = '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('mail.titel')) + '</div><div>' + status + '</div></div><div class="mail-knoppen">' + knoppen + '</div></div>'
     + fout

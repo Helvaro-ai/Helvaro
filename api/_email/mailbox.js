@@ -121,21 +121,31 @@ function authUrl(providerNaam, state) {
 }
 
 /** Vanuit de OAuth-callback. Faalt dicht: zonder verversingstoken geen koppeling. */
-async function verbind(projectCode, code) {
+function prov(naam) {
+  const p = _email.provider(naam || 'gmail');
+  if (!p) throw new MailboxFout('Onbekende provider.', 'bad_provider');
+  return p;
+}
+
+async function verbind(projectCode, code, providerNaam = 'gmail') {
   const ctx = await lees(projectCode);
-  const { refreshToken, accessToken } = await _gcal.exchangeCode(code);
-  if (!refreshToken) throw new MailboxFout('Google gaf geen blijvende toegang terug.', 'geen_refresh');
-  const gmail = _email.provider('gmail');
+  const p = prov(providerNaam);
+  const { refreshToken, accessToken } = await p.wisselCode(code);
+  if (!refreshToken) throw new MailboxFout('De provider gaf geen blijvende toegang terug.', 'geen_refresh');
   let prof;
-  try { prof = await gmail.profiel(accessToken); }
-  catch (e) {
-    /* Geen Gmail-scope toegekend (vinkje niet aangezet bij Google): dat is een
-       echte fout, geen half-gekoppelde mailbox. */
-    throw new MailboxFout('Helvaro kreeg geen toegang tot Gmail. Vink bij Google alle gevraagde rechten aan.', 'scope_geweigerd');
+  try {
+    prof = await p.profiel(accessToken);
+    /* Zonder historyId (Microsoft): de huidige inbox "leegdrinken" zodat
+       alleen mail van NA het koppelen binnenkomt. */
+    if (!prof.historyId) prof.historyId = (await p.nieuweBerichten(accessToken, '')).historyId;
+  } catch (e) {
+    /* Geen mailrechten toegekend (vinkje niet aangezet): een echte fout, geen
+       half-gekoppelde mailbox. */
+    throw new MailboxFout('Helvaro kreeg geen toegang tot je mailbox. Vink alle gevraagde rechten aan.', 'scope_geweigerd');
   }
   const nu = new Date().toISOString();
   await schrijf(ctx.rec, {
-    [V.provider]: 'gmail', [V.adres]: prof.email, [V.token]: _gcal.encryptToken(refreshToken),
+    [V.provider]: p.naam, [V.adres]: prof.email, [V.token]: _gcal.encryptToken(refreshToken),
     [V.staat]: JSON.stringify({ historyId: prof.historyId, lastSyncAt: nu, lastAttemptAt: nu, lastResult: 'ok', counts: { ontvangen: 0, leads: 0, overgeslagen: 0 } }),
   });
   log(projectCode, 'email_connected', { adres: prof.email });
@@ -146,12 +156,12 @@ async function verbind(projectCode, code) {
 
 /** Gmail-push (her)starten. Bewaart de vervaldatum in Email State. */
 async function vernieuwWatch(projectCode, accessToken) {
-  const gmail = _email.provider('gmail');
-  if (!gmail.pushTopic()) return null;
   const ctx = await lees(projectCode);
   if (!ctx.tokenEnc) return null;
+  const p = prov(ctx.provider);
+  if (!p.pushTopic()) return null;
   const tok = accessToken || await toegang(ctx);
-  const w = await gmail.watch(tok);
+  const w = await p.watch(tok);
   if (!w) return null;
   const staat = Object.assign({}, ctx.staat, { watchTot: w.verloopt, historyId: ctx.staat.historyId || w.historyId });
   await schrijf(ctx.rec, { [V.staat]: JSON.stringify(staat) });
@@ -189,8 +199,11 @@ async function ontkoppel(projectCode) {
   if (ctx.tokenEnc) {
     try {
       const plain = _gcal.decryptToken(ctx.tokenEnc);
-      try { const at2 = await _gcal.getAccessToken(plain); await _email.provider('gmail').stopWatch(at2); } catch (e) { /* watch stopt vanzelf na 7 dagen */ }
-      await _gcal.revokeToken(plain);
+      const p = prov(ctx.provider);
+      try { await p.stopWatch(await p.vernieuwToken(plain)); } catch (e) { /* watch stopt vanzelf na 7 dagen */ }
+      /* Intrekken bestaat alleen bij Google; bij Microsoft verwijdert de
+         gebruiker de app zelf in zijn account (het token wissen we hoe dan ook). */
+      if (p.naam === 'gmail') await _gcal.revokeToken(plain);
     } catch (e) { /* lokaal wissen gaat hoe dan ook door */ }
   }
   await schrijf(ctx.rec, { [V.provider]: '', [V.adres]: '', [V.token]: '', [V.staat]: '' });
@@ -210,10 +223,10 @@ async function toegang(ctx) {
   if (!ctx.tokenEnc) throw new MailboxFout('Er is geen mailbox gekoppeld.', 'niet_verbonden');
   const refresh = _gcal.decryptToken(ctx.tokenEnc);
   if (!refresh) throw new MailboxFout('De mailboxkoppeling is niet meer leesbaar. Koppel opnieuw.', 'reauth_required');
-  try { return await _gcal.getAccessToken(refresh); }
+  try { return await prov(ctx.provider).vernieuwToken(refresh); }
   catch (e) {
-    if (e.code === 'reauth_required') throw new MailboxFout('Google heeft de toegang ingetrokken of laten verlopen. Koppel de mailbox opnieuw.', 'reauth_required');
-    throw new MailboxFout('Google was even niet bereikbaar.', 'google_tijdelijk');
+    if (e.code === 'reauth_required') throw new MailboxFout('De toegang tot je mailbox is ingetrokken of verlopen. Koppel de mailbox opnieuw.', 'reauth_required');
+    throw new MailboxFout('De mailprovider was even niet bereikbaar.', 'provider_tijdelijk');
   }
 }
 
@@ -266,7 +279,7 @@ async function verwerk(ctx, m, deps) {
   const naam = naamUit(m.van);
   const klantUit = await _klant.resolve(ctx.projectCode, { email: m.vanAdres, naam, kanaal: 'email', bron: 'E-mail' });
   const { gesprek, nieuw } = await _gesprekken.vindOfMaak(ctx.projectCode, {
-    kanaal: 'email', thread: 'gmail:' + m.threadId, klantId: klantUit && klantUit.klant ? klantUit.klant.id : '', onderwerp: m.onderwerp,
+    kanaal: 'email', thread: (ctx.provider || 'gmail') + ':' + m.threadId, klantId: klantUit && klantUit.klant ? klantUit.klant.id : '', onderwerp: m.onderwerp,
   });
 
   let aiRecent = 0, laatsteUitMs = null;
@@ -354,10 +367,10 @@ async function sync(projectCode, { door = 'dashboard', trigger = 'handmatig' } =
   let nieuweStaat;
   try {
     const toegangsToken = await toegang(ctx);
-    const gmail = _email.provider('gmail');
-    const lijst = await gmail.nieuweBerichten(toegangsToken, staat.historyId, { max: MAX_PER_SYNC });
+    const p = prov(ctx.provider);
+    const lijst = await p.nieuweBerichten(toegangsToken, staat.historyId, { max: MAX_PER_SYNC });
     for (const id of lijst.ids) {
-      const m = await gmail.haal(toegangsToken, id);
+      const m = await p.haal(toegangsToken, id);
       const uit = await verwerk(ctx, m, { autoAntwoord: (c, g, b) => autoAntwoord(c, g, b, toegangsToken) });
       if (uit.actie === 'dubbel') tellers.dubbel++;
       else if (uit.actie === 'lead' || uit.actie === 'klant') { tellers.ontvangen++; if (uit.lead) tellers.leads++; }
@@ -397,7 +410,7 @@ async function bijlage(projectCode, gesprekId, externId, bijlageId) {
   if (!b || !bl) throw new MailboxFout('Bijlage niet gevonden.', 'not_found');
   if (bl.grootte > MAX_BIJLAGE) throw new MailboxFout('Deze bijlage is groter dan 15 MB; open ze in Gmail.', 'te_groot');
   const ctx = await lees(projectCode);
-  const data = await _email.provider('gmail').haalBijlage(await toegang(ctx), b.externId, bl.id);
+  const data = await prov(ctx.provider).haalBijlage(await toegang(ctx), b.externId, bl.id);
   return { naam: bl.naam, type: bl.type, data: Buffer.from(data, 'base64url').toString('base64') };
 }
 
@@ -496,10 +509,10 @@ async function verstuurAntwoord(projectCode, gesprekId, { tekst, onderwerp, idem
 
   try {
     const toegangsToken = accessToken || await toegang(ctx);
-    const r = await _email.provider('gmail').verstuur(toegangsToken, {
+    const r = await prov(ctx.provider).verstuur(toegangsToken, {
       van: ctx.bedrijf ? `"${ctx.bedrijf.replace(/"/g, '')}" <${ctx.adres}>` : ctx.adres,
       aan, onderwerp: bericht.onderwerp, tekst: volledig, threadId: laatsteIn.thread,
-      antwoordOp: laatsteIn.rfcId, referenties: laatsteIn.referenties, messageId,
+      antwoordOp: laatsteIn.rfcId, referenties: laatsteIn.referenties, messageId, antwoordOpExternId: laatsteIn.externId,
     });
     await _gesprekken.werkBerichtBij(projectCode, bericht, { status: 'verzonden', externId: r.id, verzonden: new Date().toISOString(), fout: '' });
     /* Zelf antwoorden = overnemen, net als bij WhatsApp. */

@@ -16,6 +16,9 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### Boeken vanop de website, en e-mail in realtime
 
+- **Outlook / Microsoft 365 als mailbox**, naast Gmail: zelfde werking
+  (koopvragen worden leads, antwoorden in dezelfde conversatie, bijlagen).
+  Verschijnt in Instellingen zodra de Microsoft-app ingesteld is.
 - **Bijlagen in e-mailgesprekken:** een pdf of foto van de klant staat als
   knop bij zijn mail; klikken downloadt hem. Alleen voor de eigen dealer,
   hoogstens 15 MB, en nooit in de browser geopend.

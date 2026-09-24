@@ -265,8 +265,13 @@ async function stopWatch(accessToken) {
   try { await api(accessToken, '/stop', { method: 'POST', body: {} }); } catch (e) { /* al gestopt of token weg */ }
 }
 
+/* Zelfde interface als api/_email/microsoft.js: code wisselen en token
+   verversen via de gedeelde Google-client. */
+const wisselCode = (code) => _gcal.exchangeCode(code);
+const vernieuwToken = (refreshToken) => _gcal.getAccessToken(refreshToken);
+
 module.exports = {
-  naam: 'gmail', beschikbaar: true, SCOPES, MailFout,
+  naam: 'gmail', beschikbaar: true, SCOPES, MailFout, wisselCode, vernieuwToken,
   isConfigured, getAuthUrl, profiel, nieuweBerichten, haal, verstuur, watch, stopWatch, pushTopic, haalBijlage,
   _test: { bijlagenUit, parseBericht, tekstUit, zonderCitaat, decodeerKop, bouwRfc822, kopVeilig, adres, htmlNaarTekst },
 };
