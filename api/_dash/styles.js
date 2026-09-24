@@ -8973,6 +8973,17 @@ body.panel-open .main-content { transform: scale(0.985); }
 .inv-bron-form { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
 .inv-bron-keuze { display: flex; flex-direction: column; gap: 6px; font-size: 0.8333rem; color: var(--text-primary); }
 .inv-bron-keuze input { accent-color: var(--accent-c); margin-right: 6px; }
+.mail-bijlagen { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.conv-bubble.user + .mail-bijlagen { justify-content: flex-end; }
+.mail-bijlage {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-card-alt); color: var(--text-primary); font: inherit; font-size: 0.7667rem; cursor: pointer;
+}
+.mail-bijlage span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.mail-bijlage small { color: var(--text-muted); }
+.mail-bijlage:hover { border-color: rgba(var(--accent-rgb),0.45); }
+.mail-bijlage[disabled] { opacity: 0.6; cursor: progress; }
 .pd-notice {
   padding: 14px 16px; border-radius: var(--radius-sm);
   background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.22);

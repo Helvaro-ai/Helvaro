@@ -16,6 +16,9 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### Boeken vanop de website, en e-mail in realtime
 
+- **Bijlagen in e-mailgesprekken:** een pdf of foto van de klant staat als
+  knop bij zijn mail; klikken downloadt hem. Alleen voor de eigen dealer,
+  hoogstens 15 MB, en nooit in de browser geopend.
 - **Een bezoeker boekt zelf een afspraak** in het venster op je website, na
   het achterlaten van een nummer of e-mailadres. Hij kiest uit echte vrije
   momenten: binnen je openingsuren, zonder bestaande afspraak en (als je

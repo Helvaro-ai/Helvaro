@@ -84,7 +84,7 @@ const _devMail = {
   gesprekken: [{ id: 'GDEV1', kanaal: 'email', onderwerp: 'BMW X5 xDrive30d', controle: 'AI_ACTIVE', classificatie: 'lead', ongelezen: true,
     laatste: new Date(Date.now() - 3600e3).toISOString(), aangemaakt: new Date(Date.now() - 7200e3).toISOString() }],
   berichten: { GDEV1: [
-    { sleutel: '<a1@mail.voorbeeld>', richting: 'in', auteur: 'klant', van: 'Jan Peeters <jan@voorbeeld.be>', tekst: 'Goeiedag,\n\nIs de BMW X5 xDrive30d nog beschikbaar? Kan ik zaterdag een proefrit maken?\n\nGroeten,\nJan', status: 'ontvangen', aangemaakt: new Date(Date.now() - 3600e3).toISOString() },
+    { sleutel: '<a1@mail.voorbeeld>', externId: 'm1', meta: { bijlagen: [{ id: 'A1', naam: 'inruilpapieren.pdf', type: 'application/pdf', grootte: 20480 }] }, richting: 'in', auteur: 'klant', van: 'Jan Peeters <jan@voorbeeld.be>', tekst: 'Goeiedag,\n\nIs de BMW X5 xDrive30d nog beschikbaar? Kan ik zaterdag een proefrit maken?\n\nGroeten,\nJan', status: 'ontvangen', aangemaakt: new Date(Date.now() - 3600e3).toISOString() },
   ] },
 };
 /* Voorraadtoestand van de lokale harness (zie case 'inventory-status'). */
@@ -511,6 +511,8 @@ const server = http.createServer(async (req, res) => {
           g.controle = req.body.control; g.controleDoor = 'dev';
           return res.status(200).json({ conversation: g });
         }
+        case 'email-attachment':
+          return res.status(200).json({ naam: 'inruilpapieren.pdf', type: 'application/pdf', data: Buffer.from('%PDF-1.4 voorbeeld').toString('base64') });
         case 'email-draft':
           return res.status(200).json({ tekst: 'Dag Jan,\n\nBedankt voor je bericht. Zaterdag om 10u past, we zetten de wagen voor je klaar.\n\nTot dan!', onderwerp: 'Re: BMW X5 xDrive30d' });
         case 'email-send': {

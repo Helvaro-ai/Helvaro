@@ -226,9 +226,10 @@ function render(lang) {
    Daarna (+3854 bytes): kanaaltabs in Gesprekken, de e-mailweergave met
    instructie -> concept -> versturen, en de mailboxkaart in Instellingen
    (.conv-kanaal*, .mail-*), plus de kaart Websiteassistent (.widget-code)
-   en het formulier voor de voorraadbron (.inv-bron-*). Bewuste toevoeging. */
-const CSS_BYTES = 404095;
-const CSS_SHA   = '8a82dd37e7aa431b';
+   en het formulier voor de voorraadbron (.inv-bron-*) en e-mailbijlagen
+   (.mail-bijlage*). Bewuste toevoeging. */
+const CSS_BYTES = 404802;
+const CSS_SHA   = '7f6cfa49d2c58885';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

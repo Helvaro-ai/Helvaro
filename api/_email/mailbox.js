@@ -289,7 +289,7 @@ async function verwerk(ctx, m, deps) {
   const opgeslagen = await _gesprekken.voegToe(ctx.projectCode, gesprek, {
     sleutel, richting: 'in', auteur: 'klant', van: m.van, aan: m.aan, cc: m.cc, onderwerp: m.onderwerp,
     tekst: m.tekst, externId: m.id, thread: m.threadId, rfcId: m.rfcId, antwoordOp: m.antwoordOp,
-    referenties: m.referenties, aangemaakt: m.datum, meta: { classificatie: analyse.classificatie, reden: analyse.reden },
+    referenties: m.referenties, aangemaakt: m.datum, meta: { classificatie: analyse.classificatie, reden: analyse.reden, bijlagen: (m.bijlagen || []).slice(0, 10) },
   });
   if (opgeslagen.dubbel) return { actie: 'dubbel' };
 
@@ -376,6 +376,29 @@ async function sync(projectCode, { door = 'dashboard', trigger = 'handmatig' } =
   }
   await schrijf(ctx.rec, { [V.staat]: JSON.stringify(nieuweStaat) }).catch(() => {});
   return weergave(Object.assign(ctx, { staat: nieuweStaat }));
+}
+
+/* ── Bijlagen ophalen ──────────────────────────────────────────────────── */
+
+const MAX_BIJLAGE = 15 * 1024 * 1024;
+
+/**
+ * De inhoud van één bijlage, alleen als ze hoort bij een bericht in een
+ * gesprek van DEZE dealer. Base64 terug; het dashboard biedt ze aan als
+ * download (nooit inline getoond).
+ */
+async function bijlage(projectCode, gesprekId, externId, bijlageId) {
+  const g = await _gesprekken.haal(projectCode, gesprekId);
+  if (!g || g.kanaal !== 'email') throw new MailboxFout('Gesprek niet gevonden.', 'not_found');
+  const berichten = await _gesprekken.berichten(projectCode, g.id);
+  const b = berichten.find((x) => x.externId === String(externId || ''));
+  const meta = b && b.meta && Array.isArray(b.meta.bijlagen) ? b.meta.bijlagen : [];
+  const bl = meta.find((x) => x.id === String(bijlageId || ''));
+  if (!b || !bl) throw new MailboxFout('Bijlage niet gevonden.', 'not_found');
+  if (bl.grootte > MAX_BIJLAGE) throw new MailboxFout('Deze bijlage is groter dan 15 MB; open ze in Gmail.', 'te_groot');
+  const ctx = await lees(projectCode);
+  const data = await _email.provider('gmail').haalBijlage(await toegang(ctx), b.externId, bl.id);
+  return { naam: bl.naam, type: bl.type, data: Buffer.from(data, 'base64url').toString('base64') };
 }
 
 /* ── Concept uit een instructie ────────────────────────────────────────── */
@@ -520,6 +543,6 @@ async function autoAntwoord(ctx, gesprek, inBericht, accessToken) {
 module.exports = {
   V, MailboxFout,
   status, authUrl, verbind, ontkoppel, instellingen, sync, concept, verstuurAntwoord,
-  vernieuwWatch, watchVerloopt, pushOntvangen,
+  vernieuwWatch, watchVerloopt, pushOntvangen, bijlage,
   _test: { weergave, naamUit, antwoordOnderwerp, verwerk },
 };

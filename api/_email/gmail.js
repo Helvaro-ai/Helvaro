@@ -147,6 +147,31 @@ function zonderCitaat(tekst) {
   return (stop > 0 ? regels.slice(0, stop) : regels).join('\n').trim();
 }
 
+/** Bijlagen: alleen metadata (naam, type, grootte, id). De inhoud blijft bij
+    Gmail en wordt pas opgehaald als de verkoper erop klikt. */
+function bijlagenUit(payload) {
+  const uit = [];
+  const loop = (deel, diepte) => {
+    if (!deel || diepte > 8 || uit.length >= 10) return;
+    if (deel.filename && deel.body && deel.body.attachmentId) {
+      uit.push({
+        id: String(deel.body.attachmentId).slice(0, 400),
+        naam: String(deel.filename).replace(/[\r\n\\/:*?"<>|]+/g, '_').slice(0, 150),
+        type: String(deel.mimeType || 'application/octet-stream').slice(0, 100),
+        grootte: Number(deel.body.size) || 0,
+      });
+    }
+    for (const p of deel.parts || []) loop(p, diepte + 1);
+  };
+  loop(payload, 0);
+  return uit;
+}
+
+async function haalBijlage(accessToken, berichtId, bijlageId) {
+  const d = await api(accessToken, `/messages/${encodeURIComponent(berichtId)}/attachments/${encodeURIComponent(bijlageId)}`, { timeout: 20000 });
+  return String(d.data || '');
+}
+
 function adres(v) {
   const m = String(v || '').match(/<([^>]+)>/);
   return (m ? m[1] : String(v || '')).trim().toLowerCase();
@@ -166,6 +191,7 @@ function parseBericht(d) {
     onderwerp: decodeerKop(kop.subject || ''),
     datum: d.internalDate ? new Date(Number(d.internalDate)).toISOString() : new Date().toISOString(),
     tekst: zonderCitaat(volledig).slice(0, 20000),
+    bijlagen: bijlagenUit(d.payload),
     volledigeTekst: volledig.slice(0, 50000),
     koppen: {
       autoSubmitted: String(kop['auto-submitted'] || ''), precedence: String(kop.precedence || ''),
@@ -241,6 +267,6 @@ async function stopWatch(accessToken) {
 
 module.exports = {
   naam: 'gmail', beschikbaar: true, SCOPES, MailFout,
-  isConfigured, getAuthUrl, profiel, nieuweBerichten, haal, verstuur, watch, stopWatch, pushTopic,
-  _test: { parseBericht, tekstUit, zonderCitaat, decodeerKop, bouwRfc822, kopVeilig, adres, htmlNaarTekst },
+  isConfigured, getAuthUrl, profiel, nieuweBerichten, haal, verstuur, watch, stopWatch, pushTopic, haalBijlage,
+  _test: { bijlagenUit, parseBericht, tekstUit, zonderCitaat, decodeerKop, bouwRfc822, kopVeilig, adres, htmlNaarTekst },
 };

@@ -92,6 +92,8 @@ const gmailBericht = ({ id, threadId = 'T1', from, subject, tekst, html, koppen 
     if (u.includes('oauth2.googleapis.com/token')) return j({ access_token: 'AT' });
     if (u.includes('/messages/send')) { const b = JSON.parse(opts.body); verstuurd.push(b); return j({ id: 'S' + verstuurd.length, threadId: b.threadId }); }
     if (u.includes('/history?')) return j({ history: [{ messagesAdded: Object.keys(gmailBerichten).map((id) => ({ message: { id } })) }], historyId: '200' });
+    const bl = u.match(/\/messages\/([^/?]+)\/attachments\/([^/?]+)/);
+    if (bl) return j({ data: Buffer.from('PDF-INHOUD ' + bl[2]).toString('base64url') });
     const mm = u.match(/\/messages\/([^/?]+)\?format=full/);
     if (mm) return j(gmailBerichten[decodeURIComponent(mm[1])]);
     return j({});
@@ -168,6 +170,24 @@ const gmailBericht = ({ id, threadId = 'T1', from, subject, tekst, html, koppen 
   await mailbox.sync('P1', {});
   ck('verkocht vlak voor verzenden: GEEN automatisch antwoord', verstuurd.length === voor2);
   _autoscout.herken = echtHerken; _veh.getByCode = echtGet; _veh.leesVers = echtLees;
+
+  console.log('\nbijlagen');
+  const metBijlage = gmailBericht({ id: 'g7', threadId: 'T7', from: 'Tom <tom@example.be>', subject: 'Offerte BMW', tekst: 'Zie mijn inruilpapieren.' });
+  metBijlage.payload.parts.push({ mimeType: 'application/pdf', filename: 'inruil/../papieren.pdf', body: { attachmentId: 'ATT1', size: 20480 } });
+  const bl = gmail._test.bijlagenUit(metBijlage.payload);
+  ck('bijlage herkend met naam, type en grootte', bl.length === 1 && bl[0].id === 'ATT1' && bl[0].type === 'application/pdf' && bl[0].grootte === 20480, bl);
+  ck('bestandsnaam ontdaan van padtekens', !/[\/]/.test(bl[0].naam), bl[0].naam);
+  gmailBerichten = { g7: metBijlage };
+  await mailbox.sync('P1', {});
+  const g7 = db.conversations.find((c) => c.fields['External Thread ID'] === 'gmail:T7');
+  const opgehaald = await mailbox.bijlage('P1', g7.fields['Conversation ID'], 'g7', 'ATT1');
+  ck('bijlage opgehaald via Gmail, als base64', Buffer.from(opgehaald.data, 'base64').toString() === 'PDF-INHOUD ATT1' && opgehaald.naam === bl[0].naam);
+  let foutB = null;
+  try { await mailbox.bijlage('P2', g7.fields['Conversation ID'], 'g7', 'ATT1'); } catch (e) { foutB = e.code; }
+  ck('andere dealer kan de bijlage niet ophalen', foutB === 'not_found' || foutB === 'geen_klantrecord', foutB);
+  foutB = null;
+  try { await mailbox.bijlage('P1', g7.fields['Conversation ID'], 'g7', 'VERZONNEN'); } catch (e) { foutB = e.code; }
+  ck('onbekende bijlage-id = niet gevonden', foutB === 'not_found');
 
   console.log('\ngmail-push (Pub/Sub)');
   ck('watch verloopt: nooit gezet = vernieuwen', mailbox.watchVerloopt({}) === true);

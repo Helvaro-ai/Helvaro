@@ -3090,7 +3090,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        Alles tenant-gescoped via projectCode uit de sessie. Een gespreks-id uit
        de body wordt altijd opgezocht MET de projectcode; een id van een andere
        dealer geeft "niet gevonden", nooit zijn gesprek. */
-    const MAIL_MODES = ['email-status', 'email-connect', 'email-disconnect', 'email-settings', 'email-sync', 'email-draft', 'email-send',
+    const MAIL_MODES = ['email-status', 'email-connect', 'email-disconnect', 'email-settings', 'email-sync', 'email-draft', 'email-send', 'email-attachment',
       'conversation-list', 'conversation-messages', 'conversation-control'];
     if (MAIL_MODES.indexOf(body.mode) !== -1) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
@@ -3099,7 +3099,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       const foutAntwoord = (err) => {
         const code = err && err.code;
         const status = code === 'not_found' || code === 'geen_klantrecord' ? 404
-          : ['leeg', 'geen_idem', 'geen_instructie', 'bad_provider', 'bad_control', 'bad_channel', 'geen_ontvanger'].indexOf(code) !== -1 ? 400
+          : ['leeg', 'geen_idem', 'geen_instructie', 'bad_provider', 'bad_control', 'bad_channel', 'geen_ontvanger', 'te_groot'].indexOf(code) !== -1 ? 400
           : ['niet_verbonden', 'reauth_required', 'scope_geweigerd'].indexOf(code) !== -1 ? 409
           : ['niet_beschikbaar', 'unconfigured', 'schema_ontbreekt', 'geen_tabel'].indexOf(code) !== -1 ? 503
           : code === 'ai_uit' ? 503 : 502;
@@ -3129,6 +3129,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             });
             return res.status(200).json({ ok: true, dubbel: uit.dubbel, message: uit.bericht });
           }
+          case 'email-attachment':
+            return res.status(200).json(await _mailbox.bijlage(projectCode, String(body.conversationId || ''), String(body.messageId || ''), String(body.attachmentId || '')));
           case 'conversation-list':
             return res.status(200).json({ conversations: await _gesprekken.lijst(projectCode, { kanaal: ['email', 'website'].indexOf(body.channel) !== -1 ? body.channel : '', limiet: body.limit }) });
           case 'conversation-messages': {

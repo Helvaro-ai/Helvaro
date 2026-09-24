@@ -13975,7 +13975,8 @@ function renderExternGesprek() {
     var status = !inkomend && m.status && m.status !== 'verzonden' ? ' <span class="conv-mail-status ' + escHtml(m.status) + '">' + escHtml(tr('mail.status.' + m.status)) + '</span>' : '';
     var tijd = m.verzonden || m.aangemaakt;
     return '<div><div class="conv-bubble-label">' + escHtml(label) + (tijd ? ' · ' + escHtml(new Date(tijd).toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) : '') + status + '</div>'
-      + '<div class="conv-bubble ' + (inkomend ? 'user' : 'assistant') + ' conv-mail" dir="auto">' + escHtml(m.tekst || '').replace(/\\n/g, '<br>') + '</div></div>';
+      + '<div class="conv-bubble ' + (inkomend ? 'user' : 'assistant') + ' conv-mail" dir="auto">' + escHtml(m.tekst || '').replace(/\\n/g, '<br>') + '</div>'
+      + bijlagenHtml(g.id, m) + '</div>';
   }).join('');
   var isMail = g.kanaal === 'email';
   var classificatie = g.classificatie ? '<span class="conv-kanaal-tag">' + escHtml(tr('mail.klasse.' + g.classificatie)) + '</span>' : '';
@@ -14003,6 +14004,37 @@ function renderExternGesprek() {
     + composer;
   var box = document.getElementById('conv-messages');
   if (box) box.scrollTop = box.scrollHeight;
+}
+
+/* Bijlagen bij een e-mail: alleen naam en grootte in de lijst; de inhoud komt
+   pas bij een klik, en altijd als download (application/octet-stream), nooit
+   inline -- een HTML-bijlage mag in het dashboard niets uitvoeren. */
+function bijlagenHtml(gesprekId, m) {
+  var lijst = (m && m.meta && Array.isArray(m.meta.bijlagen)) ? m.meta.bijlagen : [];
+  if (!lijst.length || !m.externId) return '';
+  return '<div class="mail-bijlagen">' + lijst.map(function (b) {
+    var kb = b.grootte ? (b.grootte > 1048576 ? (b.grootte / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b.grootte / 1024)) + ' KB') : '';
+    return '<button type="button" class="mail-bijlage" data-g="' + escHtml(gesprekId) + '" data-m="' + escHtml(m.externId) + '" data-b="' + escHtml(b.id) + '" data-n="' + escHtml(b.naam) + '" onclick="downloadBijlage(this)">'
+      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>'
+      + '<span>' + escHtml(b.naam) + '</span>' + (kb ? '<small>' + kb + '</small>' : '') + '</button>';
+  }).join('') + '</div>';
+}
+
+async function downloadBijlage(knop) {
+  if (!knop || knop.disabled) return;
+  knop.disabled = true;
+  try {
+    var d = await convVraag({ mode: 'email-attachment', conversationId: knop.dataset.g, messageId: knop.dataset.m, attachmentId: knop.dataset.b });
+    var bin = atob(d.data || '');
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = knop.dataset.n || 'bijlage';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  } catch (e) { toast(e.message, 'error'); }
+  knop.disabled = false;
 }
 
 async function zetExternControle(controle) {
