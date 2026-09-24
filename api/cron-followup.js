@@ -518,6 +518,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           if (!code) continue;
           const st = await _mailbox.sync(code, { door: 'cron', trigger: 'dagelijks' }).catch(() => null);
           if (st && st.laatsteResultaat !== 'failed') mailResult.ok++; else mailResult.mislukt++;
+          /* Gmail-push verloopt na 7 dagen: tijdig vernieuwen. */
+          if (st && !st.realtime) await _mailbox.vernieuwWatch(code).catch((e) => console.warn('[cron-followup] gmail-watch:', e && e.message));
         }
       }
     } catch (e) {

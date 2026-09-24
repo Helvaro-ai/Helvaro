@@ -102,6 +102,7 @@ function weergave(ctx) {
     autoAntwoord: ctx.autoAntwoord, handtekening: ctx.handtekening,
     laatsteSync: s.lastSyncAt || null, laatstePoging: s.lastAttemptAt || null,
     laatsteResultaat: s.lastResult || null, fout: s.lastError || '', foutCode: s.lastErrorCode || '',
+    realtime: Boolean(s.watchTot && Date.parse(s.watchTot) > Date.now()),
     tellers: s.counts || null,
     providers: Object.values(_email.PROVIDERS).map((p) => ({ naam: p.naam, beschikbaar: p.beschikbaar === true && p.isConfigured() })),
   };
@@ -138,13 +139,59 @@ async function verbind(projectCode, code) {
     [V.staat]: JSON.stringify({ historyId: prof.historyId, lastSyncAt: nu, lastAttemptAt: nu, lastResult: 'ok', counts: { ontvangen: 0, leads: 0, overgeslagen: 0 } }),
   });
   log(projectCode, 'email_connected', { adres: prof.email });
+  /* Realtime: Gmail laten melden bij nieuwe mail (als het topic ingesteld is). */
+  try { await vernieuwWatch(projectCode, accessToken); } catch (e) { console.warn('[mail] watch niet gestart:', e && e.message); }
   return { adres: prof.email };
+}
+
+/** Gmail-push (her)starten. Bewaart de vervaldatum in Email State. */
+async function vernieuwWatch(projectCode, accessToken) {
+  const gmail = _email.provider('gmail');
+  if (!gmail.pushTopic()) return null;
+  const ctx = await lees(projectCode);
+  if (!ctx.tokenEnc) return null;
+  const tok = accessToken || await toegang(ctx);
+  const w = await gmail.watch(tok);
+  if (!w) return null;
+  const staat = Object.assign({}, ctx.staat, { watchTot: w.verloopt, historyId: ctx.staat.historyId || w.historyId });
+  await schrijf(ctx.rec, { [V.staat]: JSON.stringify(staat) });
+  return w;
+}
+
+/** Moet de watch vernieuwd worden? (verloopt binnen 2 dagen, of nooit gezet) */
+function watchVerloopt(staat, nu = Date.now()) {
+  const t = Date.parse((staat && staat.watchTot) || '');
+  return !Number.isFinite(t) || t - nu < 2 * 864e5;
+}
+
+/**
+ * Pub/Sub meldt: er is nieuwe mail voor dit adres. Zoek de dealer bij het
+ * adres en sync. Het adres komt van Google (getekende push via ons geheim),
+ * de projectcode komt uit ONZE tabel -- nooit uit het bericht.
+ */
+async function pushOntvangen(emailAdres) {
+  const adres = String(emailAdres || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(adres)) return { ok: false, reden: 'geen_adres' };
+  const formule = encodeURIComponent(`LOWER({${V.adres}})="${escapeFormula(adres)}"`);
+  const r = await at(`${CLIENTS_TABLE}?filterByFormula=${formule}&maxRecords=2&returnFieldsByFieldId=true&fields[]=${F_PROJECT}`);
+  if (!r.ok) return { ok: false, reden: 'airtable' };
+  const recs = (await r.json()).records || [];
+  /* Twee dealers met hetzelfde mailadres: niet raden welke. */
+  if (recs.length !== 1) return { ok: false, reden: recs.length ? 'dubbel_adres' : 'onbekend_adres' };
+  const code = recs[0].fields && recs[0].fields[F_PROJECT];
+  if (!code) return { ok: false, reden: 'geen_project' };
+  const st = await sync(code, { door: 'push', trigger: 'push' });
+  return { ok: st.laatsteResultaat !== 'failed', projectCode: code };
 }
 
 async function ontkoppel(projectCode) {
   const ctx = await lees(projectCode);
   if (ctx.tokenEnc) {
-    try { await _gcal.revokeToken(_gcal.decryptToken(ctx.tokenEnc)); } catch (e) { /* lokaal wissen gaat hoe dan ook door */ }
+    try {
+      const plain = _gcal.decryptToken(ctx.tokenEnc);
+      try { const at2 = await _gcal.getAccessToken(plain); await _email.provider('gmail').stopWatch(at2); } catch (e) { /* watch stopt vanzelf na 7 dagen */ }
+      await _gcal.revokeToken(plain);
+    } catch (e) { /* lokaal wissen gaat hoe dan ook door */ }
   }
   await schrijf(ctx.rec, { [V.provider]: '', [V.adres]: '', [V.token]: '', [V.staat]: '' });
   return weergave(Object.assign(ctx, { provider: '', adres: '', tokenEnc: '', staat: {} }));
@@ -473,5 +520,6 @@ async function autoAntwoord(ctx, gesprek, inBericht, accessToken) {
 module.exports = {
   V, MailboxFout,
   status, authUrl, verbind, ontkoppel, instellingen, sync, concept, verstuurAntwoord,
+  vernieuwWatch, watchVerloopt, pushOntvangen,
   _test: { weergave, naamUit, antwoordOnderwerp, verwerk },
 };

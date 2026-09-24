@@ -168,6 +168,21 @@ const gmailBericht = ({ id, threadId = 'T1', from, subject, tekst, html, koppen 
   await mailbox.sync('P1', {});
   ck('verkocht vlak voor verzenden: GEEN automatisch antwoord', verstuurd.length === voor2);
   _autoscout.herken = echtHerken; _veh.getByCode = echtGet; _veh.leesVers = echtLees;
+
+  console.log('\ngmail-push (Pub/Sub)');
+  ck('watch verloopt: nooit gezet = vernieuwen', mailbox.watchVerloopt({}) === true);
+  ck('watch nog 5 dagen geldig = niet vernieuwen', mailbox.watchVerloopt({ watchTot: new Date(Date.now() + 5 * 864e5).toISOString() }) === false);
+  ck('watch nog 1 dag = vernieuwen', mailbox.watchVerloopt({ watchTot: new Date(Date.now() + 864e5).toISOString() }) === true);
+  db.tblPidTrwGRzRt4LZ[0].fields['Email Auto Reply'] = false;
+  gmailBerichten = { g6: gmailBericht({ id: 'g6', threadId: 'T6', from: 'Els <els@example.be>', subject: 'Proefrit', tekst: 'Kan ik een proefrit maken?' }) };
+  let p = await mailbox.pushOntvangen('VERKOOP@garage.example');
+  ck('push voor gekoppeld adres = sync van die dealer', p.ok && p.projectCode === 'P1' && db.conversations.some((c) => c.fields['External Thread ID'] === 'gmail:T6'), p);
+  p = await mailbox.pushOntvangen('iemand@anders.example');
+  ck('push voor onbekend adres = niets', !p.ok && p.reden === 'onbekend_adres');
+  p = await mailbox.pushOntvangen('geen adres');
+  ck('push zonder geldig adres = niets', !p.ok);
+  const leadsSrc = require('fs').readFileSync(BASE + 'api/leads.js', 'utf8');
+  ck('push-endpoint vraagt het geheim en vergelijkt in constante tijd', /action === 'mailpush'/.test(leadsSrc) && /GMAIL_PUSH_TOKEN/.test(leadsSrc) && /timingSafeEqual\(a, b\)/.test(leadsSrc));
   _ai.generateText = echtGen;
 
   console.log(`\n${pass} ok, ${fail} fout`);

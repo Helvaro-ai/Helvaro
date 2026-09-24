@@ -220,8 +220,27 @@ async function verstuur(accessToken, bericht) {
   return { id: d.id, threadId: d.threadId };
 }
 
+/* ── Push (Google Cloud Pub/Sub) ─────────────────────────────────────────
+   Gmail meldt nieuwe mail op een Pub/Sub-topic (GMAIL_PUBSUB_TOPIC, bv.
+   projects/<id>/topics/helvaro-gmail). Het topic moet publicatierecht geven
+   aan gmail-api-push@system.gserviceaccount.com; de push-subscription wijst
+   naar /api/gcal?action=mailpush&token=<GMAIL_PUSH_TOKEN>. Een watch verloopt
+   na 7 dagen; de dagelijkse cron vernieuwt hem. Zonder topic: gewoon polling. */
+function pushTopic() { return String(process.env.GMAIL_PUBSUB_TOPIC || '').trim(); }
+
+async function watch(accessToken) {
+  const topicName = pushTopic();
+  if (!topicName) return null;
+  const d = await api(accessToken, '/watch', { method: 'POST', body: { topicName, labelIds: ['INBOX'], labelFilterBehavior: 'include' } });
+  return { historyId: String(d.historyId || ''), verloopt: d.expiration ? new Date(Number(d.expiration)).toISOString() : '' };
+}
+
+async function stopWatch(accessToken) {
+  try { await api(accessToken, '/stop', { method: 'POST', body: {} }); } catch (e) { /* al gestopt of token weg */ }
+}
+
 module.exports = {
   naam: 'gmail', beschikbaar: true, SCOPES, MailFout,
-  isConfigured, getAuthUrl, profiel, nieuweBerichten, haal, verstuur,
+  isConfigured, getAuthUrl, profiel, nieuweBerichten, haal, verstuur, watch, stopWatch, pushTopic,
   _test: { parseBericht, tekstUit, zonderCitaat, decodeerKop, bouwRfc822, kopVeilig, adres, htmlNaarTekst },
 };

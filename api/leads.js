@@ -4265,6 +4265,29 @@ async function handleGcal(req, res) {
   const url    = new URL(req.url, 'https://app.helvaro.pro');
   const action = url.searchParams.get('action') || '';
 
+  /* ── Gmail-push (Pub/Sub) ──────────────────────────────────────────────
+     Google Cloud Pub/Sub POST hier bij nieuwe mail in een gekoppelde
+     mailbox. Beveiligd met een geheim in de push-URL (GMAIL_PUSH_TOKEN),
+     vergeleken in constante tijd. Meteen 204 -- Pub/Sub wacht niet op een
+     sync -- en de sync zelf loopt erachteraan (waitUntil). */
+  if (req.method === 'POST' && action === 'mailpush') {
+    const verwacht = String(process.env.GMAIL_PUSH_TOKEN || '');
+    const gekregen = String(url.searchParams.get('token') || '');
+    const a = Buffer.from(gekregen), b = Buffer.from(verwacht);
+    if (!verwacht || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(403).end();
+    let bericht = req.body;
+    if (typeof bericht === 'string') { try { bericht = JSON.parse(bericht); } catch (e) { bericht = {}; } }
+    let data = {};
+    try { data = JSON.parse(Buffer.from(String((bericht && bericht.message && bericht.message.data) || ''), 'base64').toString('utf8')); } catch (e) { data = {}; }
+    if (data && data.emailAddress) {
+      const werk = require('./_email/mailbox').pushOntvangen(data.emailAddress)
+        .then((uit) => { if (!uit.ok) console.warn('[mailpush]', uit.reden); })
+        .catch((e) => console.error('[mailpush]', e && e.message));
+      try { require('@vercel/functions').waitUntil(werk); } catch (e) { /* lokaal: loopt gewoon door */ }
+    }
+    return res.status(204).end();
+  }
+
   // Google's OAuth callback. No x-api-key here (Google doesn't send it) — the
   // caller's identity comes entirely from the signed, TTL-limited `state`
   // param we minted in mode:'connect' below (CSRF protection: an attacker

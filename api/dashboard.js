@@ -14078,7 +14078,7 @@ async function loadMailStatus() {
   var status;
   if (d.verbonden && d.foutCode === 'reauth_required') status = '<span class="mail-staat let">' + escHtml(tr('mail.reauth', { adres: d.adres })) + '</span>';
   else if (d.verbonden) status = '<span class="mail-staat ok">' + escHtml(tr('mail.verbonden', { adres: d.adres })) + '</span>'
-    + '<span class="settings-label-sub"> · ' + escHtml(tr('inv.laatst', { t: d.laatsteSync ? timeAgo(new Date(d.laatsteSync)) : tr('inv.nooit') })) + '</span>';
+    + '<span class="settings-label-sub"> · ' + escHtml(d.realtime ? tr('mail.realtime') : tr('inv.laatst', { t: d.laatsteSync ? timeAgo(new Date(d.laatsteSync)) : tr('inv.nooit') })) + '</span>';
   else status = '<span class="settings-label-sub">' + escHtml(tr('mail.niet')) + '</span>';
   var fout = d.verbonden && d.fout && d.laatsteResultaat === 'failed' ? '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: d.fout })) + '</div>' : '';
   var knoppen = d.verbonden
