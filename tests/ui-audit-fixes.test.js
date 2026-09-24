@@ -114,8 +114,14 @@ console.log('\n— een dialoogvenster hield de focus niet vast —');
   ck('Escape sluit', /if \(e\.key === 'Escape'\) \{ e\.preventDefault\(\); sluit\(\); return; \}/.test(js), null);
   ck('Tab maakt de cirkel rond',
      /document\.activeElement === laatste[\s\S]{0,80}eerste2\.focus\(\)/.test(js), null);
+  /* De helper bewaart de vorige focus niet meer in een globale variabele maar
+     per laag op een stapel: er zijn vensters die over elkaar komen (het
+     helppaneel opent het supportvenster) en met een enkel slot overschreef de
+     tweede de gegevens van de eerste. Zie tests/modal-toetsenbord.test.js. */
   ck('en de focus gaat terug na sluiten',
-     /function modalToetsenbordUit\(\)[\s\S]{0,600}_modalVorigeFocus\.focus\(\)/.test(js), null);
+     /function modalToetsenbordUit\(\)[\s\S]{0,800}laag\.vorigeFocus\.focus\(\)/.test(js), null);
+  ck('en het venster eronder krijgt zijn val terug',
+     /function modalToetsenbordUit\(\)[\s\S]{0,600}if \(onder\) document\.addEventListener\('keydown', onder\.handler, true\)/.test(js), null);
   ck('het koopvenster gebruikt hem',
      /modalToetsenbord\(document\.getElementById\('koop-modal'\), closeKoopModal\)/.test(js), null);
   ck('en meldt zich af bij het sluiten',

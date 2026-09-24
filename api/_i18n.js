@@ -2858,6 +2858,11 @@ const TEKST = {
   'veh.f.maxKorting':   { nl: 'Max. korting (&euro;)', fr: 'Remise max. (&euro;)', en: 'Max. discount (&euro;)', de: 'Max. Rabatt (&euro;)' },
   'veh.f.faroZelf':     { nl: 'Faro mag zelf (&euro;)', fr: 'Faro peut accorder (&euro;)', en: 'Faro may give (&euro;)', de: 'Faro darf selbst (&euro;)' },
   'veh.f.leegStandaard': { nl: 'leeg = je standaard', fr: 'vide = votre valeur par défaut', en: 'empty = your default', de: 'leer = dein Standard' },
+
+  /* De standaardbevestiging van showConfirmModal. Stond hardgecodeerd als
+     terugval ('Ja, ga door') naast een annuleerknop die ook Nederlands was, in
+     een venster dat voor van alles gebruikt wordt. */
+  'cm.gaDoor': { nl: 'Ja, ga door', fr: 'Oui, continuer', en: 'Yes, continue', de: 'Ja, weiter' },
 };
 
 /**

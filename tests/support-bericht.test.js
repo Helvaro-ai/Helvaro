@@ -52,8 +52,14 @@ ck('bij een mislukking komt het adres alsnog in beeld',
    /function toonTerugval\(adres\)/.test(html), null);
 ck('en de getypte tekst blijft dan staan',
    /je tekst staat hierboven/.test(html), null);
+/* Het venster gebruikt nu de gedeelde toetsenbordval (modalToetsenbord), dus
+   Escape zit niet meer in een eigen handler hier. De VOORWAARDE is wat telt en
+   die staat in wat we aan die val meegeven: sluiten mag niet terwijl het
+   bericht onderweg is, anders weet je niet of het nog aankomt. */
 ck('Escape sluit niet terwijl er verstuurd wordt',
-   /if \(e\.key === 'Escape' && !stuurBtn\.disabled\) sluit\(\)/.test(html), null);
+   /function sluitAlsMag\(\) \{\s*\n?\s*if \(!stuurBtn\.disabled\) sluit\(\);/.test(html), null);
+ck('en die voorwaarde wordt aan de val meegegeven',
+   /modalToetsenbord\(card, sluitAlsMag\)/.test(html), null);
 
 console.log('\n— de twee gevallen waar iemand vastzit gaan NIET meer via mailto —');
 {

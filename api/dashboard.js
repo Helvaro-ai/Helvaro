@@ -5358,12 +5358,12 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
 
   const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = cancelText || 'Annuleren';
+  cancelBtn.textContent = cancelText || tr('btn.annuleren');
   cancelBtn.className = 'cm-btn cm-btn-cancel';
   cancelBtn.style.cssText = 'padding:9px 16px;background:var(--card-elevated,#1E2735);border:1px solid var(--border,#2A3444);border-radius:14px;color:var(--text,#E9EEF6);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition,all .2s ease)';
 
   const confirmBtn = document.createElement('button');
-  confirmBtn.textContent = confirmText || 'Ja, ga door';
+  confirmBtn.textContent = confirmText || tr('cm.gaDoor');
   confirmBtn.className = 'cm-btn cm-btn-confirm' + (danger ? ' danger' : '');
   const confirmBg = danger ? 'var(--error,#F87171)' : 'var(--accent,#E8D7B1)';
   const confirmFg = danger ? '#fff' : 'var(--on-accent,#0B0F16)';
@@ -5371,16 +5371,19 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
 
   function close() {
     overlay.remove();
-    document.removeEventListener('keydown', keyHandler);
+    document.removeEventListener('keydown', enterHandler);
+    modalToetsenbordUit();
   }
-  function keyHandler(e) {
-    if (e.key === 'Escape') { close(); if (onCancel) onCancel(); }
-    if (e.key === 'Enter')  { const v = inputEl && inputEl.value; close(); if (onConfirm) onConfirm(v); }
+  /* Escape, de Tab-cirkel en het teruggeven van de focus doet
+     modalToetsenbord() hieronder. Wat dit venster EXTRA heeft is Enter als
+     bevestiging, en dat blijft hier. */
+  function enterHandler(e) {
+    if (e.key === 'Enter') { const v = inputEl && inputEl.value; close(); if (onConfirm) onConfirm(v); }
   }
   cancelBtn.addEventListener('click', () => { close(); if (onCancel) onCancel(); });
   confirmBtn.addEventListener('click', () => { const v = inputEl && inputEl.value; close(); if (onConfirm) onConfirm(v); });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) { close(); if (onCancel) onCancel(); } });
-  document.addEventListener('keydown', keyHandler);
+  document.addEventListener('keydown', enterHandler);
 
   row.appendChild(cancelBtn);
   row.appendChild(confirmBtn);
@@ -5389,6 +5392,8 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   card.appendChild(row);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
+  /* Na het toevoegen aan de DOM: de val heeft de focusbare elementen nodig. */
+  modalToetsenbord(card, () => { close(); if (onCancel) onCancel(); });
   // Auto-focus the confirm button so Enter works without clicking
   setTimeout(() => (inputEl || confirmBtn).focus(), 50);
 }
@@ -5459,12 +5464,14 @@ function toonSupportModal(opties) {
 
   function sluit() {
     overlay.remove();
-    document.removeEventListener('keydown', toets);
+    modalToetsenbordUit();
   }
   /* Escape sluit, maar niet terwijl er verstuurd wordt: dan zou je niet weten
-     of je bericht nog aankomt. */
-  function toets(e) {
-    if (e.key === 'Escape' && !stuurBtn.disabled) sluit();
+     of je bericht nog aankomt. Die voorwaarde zit nu in wat we aan
+     modalToetsenbord() meegeven; Escape doet dan simpelweg niets en het
+     venster blijft gevangen, wat precies de bedoeling is. */
+  function sluitAlsMag() {
+    if (!stuurBtn.disabled) sluit();
   }
 
   // Laat het adres zien met de al getypte tekst ernaast, zodat een mislukte
@@ -5521,7 +5528,6 @@ function toonSupportModal(opties) {
   stuurBtn.addEventListener('click', verstuur);
   sluitBtn.addEventListener('click', sluit);
   overlay.addEventListener('click', (e) => { if (e.target === overlay && !stuurBtn.disabled) sluit(); });
-  document.addEventListener('keydown', toets);
 
   row.appendChild(sluitBtn);
   row.appendChild(stuurBtn);
@@ -5532,6 +5538,10 @@ function toonSupportModal(opties) {
   card.appendChild(row);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
+  /* Dit venster wordt ONDER ANDERE vanuit het helppaneel geopend, dat zelf
+     open blijft staan. Daarom een stapel in modalToetsenbord(): bij sluiten
+     krijgt het paneel eronder zijn Escape en Tab-cirkel terug. */
+  modalToetsenbord(card, sluitAlsMag);
   setTimeout(() => veld.focus(), 50);
 }
 
@@ -15999,8 +16009,16 @@ function euroBonFmt(n) {
    Bewust één helper voor alle vensters. De wizard sloot al met Escape en het
    creditvenster ook, elk met eigen code -- drie vensters, drie gedragingen.
    Wie hier een vierde bijzet, krijgt het goede gedrag vanzelf. */
-var _modalVorigeFocus = null;
-var _modalToetsHandler = null;
+/* Een STAPEL, geen enkel paar variabelen. Er zijn echte plekken waar een
+   tweede venster over het eerste komt: het helppaneel heeft een link die het
+   supportvenster opent, en dat paneel blijft eronder staan. Met één globale
+   handler en één 'vorige focus' overschrijft de tweede de eerste -- en dan
+   laat het sluiten van het supportvenster de toetsenbordval van het helppaneel
+   weg, terwijl dat paneel nog open is. Tab loopt dan de pagina erachter in.
+
+   Alleen de BOVENSTE handler staat geregistreerd. Bij sluiten gaat hij eraf en
+   die eronder er weer op, zodat het paneel eronder zijn val terugkrijgt. */
+var _modalStapel = [];
 
 function modalFocusbaar(root) {
   return [].slice.call(root.querySelectorAll(
@@ -16017,7 +16035,18 @@ function modalFocusbaar(root) {
  */
 function modalToetsenbord(venster, sluit) {
   if (!venster) return;
-  _modalVorigeFocus = document.activeElement;
+
+  /* De handler van het venster eronder tijdelijk van de pagina: zolang dit
+     venster bovenop ligt, hoort Escape en Tab alleen hier te werken. */
+  var onder = _modalStapel[_modalStapel.length - 1];
+  if (onder) document.removeEventListener('keydown', onder.handler, true);
+
+  var laag = {
+    venster: venster,
+    sluit: sluit,
+    vorigeFocus: document.activeElement,
+    handler: null,
+  };
 
   var eerste = modalFocusbaar(venster)[0];
   /* Naar het venster zelf als er niets focusbaars in staat: dan hoort een
@@ -16025,7 +16054,7 @@ function modalToetsenbord(venster, sluit) {
   if (eerste) eerste.focus();
   else { venster.setAttribute('tabindex', '-1'); venster.focus(); }
 
-  _modalToetsHandler = function (e) {
+  laag.handler = function (e) {
     if (e.key === 'Escape') { e.preventDefault(); sluit(); return; }
     if (e.key !== 'Tab') return;
     var lijst = modalFocusbaar(venster);
@@ -16038,21 +16067,27 @@ function modalToetsenbord(venster, sluit) {
     else if (e.shiftKey && document.activeElement === eerste2) { e.preventDefault(); laatste.focus(); }
     else if (!venster.contains(document.activeElement)) { e.preventDefault(); eerste2.focus(); }
   };
-  document.addEventListener('keydown', _modalToetsHandler, true);
+
+  _modalStapel.push(laag);
+  document.addEventListener('keydown', laag.handler, true);
 }
 
 function modalToetsenbordUit() {
-  if (_modalToetsHandler) {
-    document.removeEventListener('keydown', _modalToetsHandler, true);
-    _modalToetsHandler = null;
-  }
+  var laag = _modalStapel.pop();
+  if (!laag) return;
+  document.removeEventListener('keydown', laag.handler, true);
+
+  /* Het venster eronder krijgt zijn val terug. Zonder dit blijft een
+     openstaand paneel achter zonder Escape en zonder Tab-cirkel. */
+  var onder = _modalStapel[_modalStapel.length - 1];
+  if (onder) document.addEventListener('keydown', onder.handler, true);
+
   /* De focus terug waar hij vandaan kwam. Anders staat hij na het sluiten weer
      op <body> en begint Tab bovenaan de pagina, ver van de knop die je net
      gebruikte. */
-  if (_modalVorigeFocus && document.contains(_modalVorigeFocus)) {
-    try { _modalVorigeFocus.focus(); } catch (e) {}
+  if (laag.vorigeFocus && document.contains(laag.vorigeFocus)) {
+    try { laag.vorigeFocus.focus(); } catch (e) {}
   }
-  _modalVorigeFocus = null;
 }
 
 function openKoopModal() {
@@ -16354,8 +16389,11 @@ function vraagBtwEnBetaal(planId, planNaam) {
   ga.textContent = tr('btw.naarBetalen');
   ga.style.cssText = 'padding:9px 16px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
 
-  function sluit() { overlay.remove(); document.removeEventListener('keydown', toets); }
-  function toets(e) { if (e.key === 'Escape' && !ga.disabled) sluit(); }
+  function sluit() { overlay.remove(); modalToetsenbordUit(); }
+  /* Niet sluiten terwijl de betaalpagina wordt opgehaald: dan weet je niet of
+     er wel of niet iets in gang gezet is. Escape doet dan niets en het venster
+     blijft gevangen. */
+  function sluitAlsMag() { if (!ga.disabled) sluit(); }
 
   async function verder() {
     var btw = veld.value.trim();
@@ -16413,15 +16451,17 @@ function vraagBtwEnBetaal(planId, planNaam) {
 
   ga.addEventListener('click', verder);
   annuleer.addEventListener('click', sluit);
+  
   veld.addEventListener('keydown', function (e) { if (e.key === 'Enter') verder(); });
   overlay.addEventListener('click', function (e) { if (e.target === overlay && !ga.disabled) sluit(); });
-  document.addEventListener('keydown', toets);
+
 
   rij.appendChild(annuleer); rij.appendChild(ga);
   card.appendChild(titel); card.appendChild(uitleg); card.appendChild(veld);
   card.appendChild(status); card.appendChild(rij);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
+  modalToetsenbord(card, sluitAlsMag);
   setTimeout(function () { veld.focus(); }, 50);
 }
 
@@ -16499,8 +16539,9 @@ function vraagAccountVerwijdering() {
   bevestig.disabled = true;
   bevestig.style.cssText = 'padding:9px 16px;background:#B4231F;border:0;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;opacity:0.5';
 
-  function sluit() { overlay.remove(); document.removeEventListener('keydown', toets); }
-  function toets(e) { if (e.key === 'Escape' && !bevestig.dataset.bezig) sluit(); }
+  function sluit() { overlay.remove(); modalToetsenbordUit(); }
+  /* Niet sluiten terwijl het verwijderen loopt. */
+  function sluitAlsMag() { if (!bevestig.dataset.bezig) sluit(); }
 
   veld.addEventListener('input', function () {
     var ok = ['VERWIJDEREN','SUPPRIMER','DELETE','LOSCHEN','L\u00d6SCHEN'].indexOf(veld.value.trim().toUpperCase()) !== -1;
@@ -16558,13 +16599,14 @@ function vraagAccountVerwijdering() {
 
   annuleer.addEventListener('click', sluit);
   overlay.addEventListener('click', function (e) { if (e.target === overlay && !bevestig.dataset.bezig) sluit(); });
-  document.addEventListener('keydown', toets);
+
 
   rij.appendChild(annuleer); rij.appendChild(bevestig);
   card.appendChild(titel); card.appendChild(uitleg); card.appendChild(label);
   card.appendChild(veld); card.appendChild(status); card.appendChild(rij);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
+  modalToetsenbord(card, sluitAlsMag);
   setTimeout(function () { veld.focus(); }, 50);
 }
 
