@@ -2676,11 +2676,19 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
       const abo = await require('./_abonnement').lees(projectCode);
       try {
+        /* De taal van de klant meesturen. Zonder dit las een Waalse makelaar
+           op de betaalpagina van Stripe -- het laatste scherm voor hij betaalt --
+           een Nederlandse productomschrijving, en stond die daarna ook op zijn
+           factuur. De sleutels fa.plan.* bestaan al in vier talen. */
+        const _i18nBetaal = require('./_i18n');
+        const taalBetaal  = _i18nBetaal.kort(_i18nBetaal.resolveer(req));
         const sessie = await _stripe.createSubscription({
           projectCode, plan,
           email: (abo && abo.email) || '',
           klantId: (abo && abo.klantId) || '',
           origin: `https://${req.headers.host || 'app.helvaro.pro'}`,
+          omschrijving: _i18nBetaal.t(taalBetaal, 'fa.plan.' + plan.id),
+          locale: taalBetaal,
         });
         if (!sessie || !sessie.url) throw new Error('Stripe gaf geen betaalpagina terug');
         console.log(`[stripe] abonnement ${plan.id} voor ${projectCode} (${sessie.id})`);

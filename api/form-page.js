@@ -200,6 +200,34 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   const safeFirstName   = escHtml(firstName);
   const safeClientName  = escHtml(clientName);
 
+  /* Frans elideert 'de' voor een klinker: "d'Immo Liège", niet "de Immo Liège".
+
+     Dat is geen muggenzifterij. Dit is de EERSTE zin die een Waalse lead van
+     dit bedrijf leest, op de pagina waar hij besluit of hij zijn nummer
+     achterlaat. Een ontbrekende elisie leest voor een Franstalige meteen als
+     buitenlands -- precies het tegenovergestelde van wat dit scherm moet doen.
+
+     Alleen voor klinkers, en met OPZET niet voor de h. Frans kent een h muet
+     (d'Hôtel) en een h aspiré (de Hasselt), en welke van de twee het is valt
+     niet uit de spelling af te leiden. Een regel die de helft van de tijd fout
+     zit is erger dan geen regel: "de Hasselt" is correct, "d'Hasselt" valt op.
+
+     Krulapostrof, want de rest van de Franse teksten hier gebruikt die ook. */
+  function beginsMetKlinker(naam) {
+    return /^[aeiouyàâäéèêëîïôöùûü]/i.test(String(naam || '').trim());
+  }
+  /* Voor de <title>: die gaat niet door escHtml. */
+  function fransTitelVan(naam) {
+    return beginsMetKlinker(naam) ? ' d\u2019' : ' de ';
+  }
+  /* Voor de bel: alleen in het Frans elideren, in de andere talen gewoon het
+     voorzetsel uit de vertaaltabel. */
+  function fransVan(voorvoegsel, naam) {
+    if (lang !== 'fr') return escHtml(voorvoegsel) + ' ';
+    return beginsMetKlinker(naam) ? 'd\u2019' : escHtml(voorvoegsel) + ' ';
+  }
+
+
   // ── i18n: all UI strings per language ──────────────────────────────────────
   const i18n = {
     nl: {
@@ -218,6 +246,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMissing:      'Vul je naam en telefoonnummer in zodat',
       errMissingTail:  'contact kan opnemen.',
       errGeneric:      'Er ging iets mis. Probeer opnieuw.',
+      srvErr: {
+        rate_limited:     'Je stuurde net al iets. Probeer het over een minuutje opnieuw.',
+        busy:             'Even druk hier. Probeer het over 30 seconden opnieuw.',
+        create_failed:    'We konden je gegevens niet opslaan. Probeer het zo nog eens.',
+        server_error:     'Er ging iets mis aan onze kant. Probeer het zo nog eens.',
+        bad_project:      'Deze formulierlink klopt niet meer. Vraag de nieuwe link op.',
+        name_required:    'Vul je naam in.',
+        phone_required:   'Vul je telefoonnummer in.',
+        consent_required: 'Vink even aan dat we je mogen contacteren.',
+        bad_phone:        'Dat telefoonnummer herkennen we niet. Gebruik alleen cijfers.'
+      },
       loading:         'Een momentje...',
       thanks:          'Bedankt,',
       friend:          'vriend',
@@ -247,7 +286,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
     },
     fr: {
-      title:           safeFirstName + ' de ' + safeClientName + ' · Contact',
+      title:           safeFirstName + fransTitelVan(safeClientName) + safeClientName + ' · Contact',
       meta:            safeFirstName + ' répond en 1 minute via WhatsApp.',
       status:          '● En ligne. Réponse en 1 min',
       intro:           'Bonjour, je suis',
@@ -262,6 +301,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMissing:      'Saisissez votre nom et votre numéro pour que',
       errMissingTail:  'puisse vous contacter.',
       errGeneric:      "Une erreur s'est produite. Réessayez.",
+      srvErr: {
+        rate_limited:     'Vous venez déjà d’envoyer quelque chose. Réessayez dans une minute.',
+        busy:             'Un peu de monde en ce moment. Réessayez dans 30 secondes.',
+        create_failed:    'Nous n’avons pas pu enregistrer vos données. Réessayez dans un instant.',
+        server_error:     'Un problème est survenu de notre côté. Réessayez dans un instant.',
+        bad_project:      'Ce lien de formulaire n’est plus valable. Demandez le nouveau lien.',
+        name_required:    'Indiquez votre nom.',
+        phone_required:   'Indiquez votre numéro de téléphone.',
+        consent_required: 'Cochez la case pour nous autoriser à vous contacter.',
+        bad_phone:        'Nous ne reconnaissons pas ce numéro. N’utilisez que des chiffres.'
+      },
       loading:         'Un instant...',
       thanks:          'Merci,',
       friend:          'à vous',
@@ -306,6 +356,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMissing:      'Please fill in your name and phone number so',
       errMissingTail:  'can reach you.',
       errGeneric:      'Something went wrong. Please try again.',
+      srvErr: {
+        rate_limited:     'You just sent something. Try again in a minute.',
+        busy:             'A bit busy right now. Try again in 30 seconds.',
+        create_failed:    'We could not save your details. Try again in a moment.',
+        server_error:     'Something went wrong on our side. Try again in a moment.',
+        bad_project:      'This form link is no longer valid. Ask for the new link.',
+        name_required:    'Enter your name.',
+        phone_required:   'Enter your phone number.',
+        consent_required: 'Please tick the box so we may contact you.',
+        bad_phone:        'We do not recognise that phone number. Use digits only.'
+      },
       loading:         'One moment...',
       thanks:          'Thanks,',
       friend:          'friend',
@@ -751,7 +812,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     <div class="bubble">
       ${stijl.kop
         ? escHtml(stijl.kop)
-        : `${escHtml(t.intro)} <strong>${safeFirstName}</strong> ${escHtml(t.introMid)} <strong>${safeClientName}</strong>.`}<br>
+        /* fransVan i.p.v. escHtml(t.introMid): Frans elideert 'de' voor een
+           klinker. Alleen in deze tak -- een eigen kop van de klant blijft
+           staan zoals hij hem schreef. */
+        : `${escHtml(t.intro)} <strong>${safeFirstName}</strong> ${fransVan(t.introMid, clientName)}<strong>${safeClientName}</strong>.`}<br>
       ${escHtml(introText)}
     </div>
     <div class="bubble-meta">
@@ -826,6 +890,10 @@ var I18N = {
   errMissing:     '${escJs(t.errMissing)}',
   errMissingTail: '${escJs(t.errMissingTail)}',
   errGeneric:     '${escJs(t.errGeneric)}',
+  /* De server stuurt een CODE mee; hier staat de zin die de lead leest, in zijn
+     eigen taal. JSON.stringify en niet met de hand ingetypt: deze zinnen staan
+     vol apostroffen. */
+  srvErr:         ${JSON.stringify(t.srvErr || {})},
   errConsent:     '${escJs(t.errConsent)}',
   errPhone:       '${escJs(t.errPhone)}',
   loading:        '${escJs(t.loading)}',
@@ -882,7 +950,13 @@ btn.addEventListener('click', function() {
     body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie', property: PAND, consent: !!(consent && consent.checked) })
   })
   .then(function(r) {
-    if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || I18N.errGeneric); });
+    if (!r.ok) return r.json().then(function(d) {
+      /* Eerst de CODE, dan pas de zin van de server. Andersom -- zoals het hier
+         stond -- won de Nederlandse serverzin altijd van de vertaalde terugval
+         die er al was, en las een Waalse lead Nederlands op het formulier van
+         een Waals kantoor. */
+      throw new Error((d && d.code && I18N.srvErr[d.code]) || I18N.errGeneric);
+    });
     var firstName = name.split(' ')[0];
     var okName = document.getElementById('ok-name');
     if (okName) okName.textContent = firstName || FALLBACK_NAME;

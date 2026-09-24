@@ -223,7 +223,7 @@ async function createCheckout({ projectCode, offerte, email, origin } = {}) {
  * @param {string} o.origin       waar de klant naartoe terugkeert
  * @param {string} o.klantId      bestaande Stripe-klant, als die er al is
  */
-async function createSubscription({ projectCode, plan, email, origin, klantId } = {}) {
+async function createSubscription({ projectCode, plan, email, origin, klantId, omschrijving, locale } = {}) {
   const tenant = String(projectCode || '').trim();
   if (!tenant) throw new StripeError('Abonnement zonder projectcode.', 'no_tenant');
   if (!plan || !plan.id || !(plan.prijsEur > 0)) throw new StripeError('Onbekend plan.', 'bad_plan');
@@ -248,10 +248,25 @@ async function createSubscription({ projectCode, plan, email, origin, klantId } 
         currency: 'eur',
         unit_amount: centen,
         recurring: { interval: 'month' },
-        product_data: { name: `Helvaro ${plan.naam}`, description: plan.omschrijving || '' },
+        /* De omschrijving komt MEE uit de aanroep en niet uit plan.omschrijving:
+           dat veld staat in api/_plans.js en is Nederlands, want dat bestand
+           gaat over prijzen en credits en is nooit vertaald. Dit is de tekst
+           die een klant leest op de betaalpagina van Stripe en daarna op zijn
+           factuur -- het laatste scherm vóór hij betaalt. Wie daar twijfelt,
+           betaalt niet.
+
+           plan.omschrijving blijft de terugval: een aanroeper die het vergeet
+           hoort een zin te krijgen, geen lege regel op een betaalpagina. */
+        product_data: { name: `Helvaro ${plan.naam}`, description: omschrijving || plan.omschrijving || '' },
       },
     }],
   };
+  /* En de betaalpagina zelf in de taal van de klant. Stripe vertaalt zijn eigen
+     labels als je hem de taal geeft; laat je dit weg, dan raadt hij op basis
+     van de browser -- wat vaak goed gaat en losstaat van de taal die de klant
+     in Helvaro heeft gekozen. */
+  if (locale && ['nl', 'fr', 'en', 'de'].indexOf(locale) !== -1) body.locale = locale;
+
   /* Een bestaande klant hergebruiken, anders krijgt dezelfde makelaar bij elke
      planwissel een nieuwe klantrij in Stripe en klopt geen enkel overzicht. */
   if (klantId) body.customer = klantId;

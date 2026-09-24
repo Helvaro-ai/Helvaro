@@ -81,7 +81,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
           || 'unknown';
   if (await isRateLimited(ip)) {
-    return res.status(429).json({ error: 'Te veel aanvragen. Probeer later opnieuw.' });
+    /* De code is wat de FORMULIERPAGINA vertaalt; de Nederlandse zin blijft
+       staan als laatste terugval -- voor logboeken, voor een curl, en voor een
+       oude pagina die nog in iemands cache zit.
+
+       Waarom dit nodig was: form-page.js deed `d.error || I18N.errGeneric`.
+       De pagina HAD dus een vertaalde terugval, maar koos altijd de zin van de
+       server. Een Waalse lead kreeg daardoor een Nederlandse foutmelding op
+       het formulier van een Waals kantoor -- op de route waarlangs het geld
+       binnenkomt, en op het moment dat er al iets misging. */
+    return res.status(429).json({ code: 'rate_limited', error: 'Te veel aanvragen. Probeer later opnieuw.' });
   }
 
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
@@ -114,7 +123,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
     // Only allow alphanumeric + underscore project codes
     if (!/^[A-Z0-9_]{1,50}$/.test(project_code)) {
-      return res.status(400).json({ error: 'Ongeldige projectcode' });
+      return res.status(400).json({ code: 'bad_project', error: 'Ongeldige projectcode' });
     }
 
     // ── Extract & validate name / phone ────────────────────────────────────────
@@ -140,13 +149,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     const pandRaw = String(body.property || '').trim().toUpperCase();
     const pand    = /^[A-Z0-9][A-Z0-9-]{0,19}$/.test(pandRaw) ? pandRaw : '';
 
-    if (!name)  return res.status(400).json({ error: 'Naam is verplicht' });
-    if (!phone) return res.status(400).json({ error: 'Telefoonnummer is verplicht' });
+    if (!name)  return res.status(400).json({ code: 'name_required',  error: 'Naam is verplicht' });
+    if (!phone) return res.status(400).json({ code: 'phone_required', error: 'Telefoonnummer is verplicht' });
     // GDPR Art. 7(1): consent must be given (not just shown) and demonstrable.
     // The client-side checkbox already blocks the submit button, but that's
     // trivially bypassed by calling this API directly — enforce it here too,
     // and persist a timestamped record below so we can prove it was given.
-    if (body.consent !== true) return res.status(400).json({ error: 'Toestemming voor contact is verplicht' });
+    if (body.consent !== true) return res.status(400).json({ code: 'consent_required', error: 'Toestemming voor contact is verplicht' });
     const consentTs = new Date().toISOString();
 
     // ── Look up client config (non-blocking) ───────────────────────────────────
@@ -217,7 +226,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
     // Validate: digits only, 8-15 chars (standard E.164 range)
     if (!/^\d{8,15}$/.test(waPhone)) {
-      return res.status(400).json({ error: 'Ongeldig telefoonnummer. Gebruik cijfers' });
+      return res.status(400).json({ code: 'bad_phone', error: 'Ongeldig telefoonnummer. Gebruik cijfers' });
     }
 
     // ── Create lead in Airtable (with retry on 429) ───────────────────────────
@@ -262,9 +271,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       let _eb = {}; try { _eb = JSON.parse(createRaw); } catch {}
       console.error('[form] AT' + createRes.status + ' ' + (_eb?.error?.type || _eb?.errors?.[0]?.error || '?'));
       if (createRes.status === 429) {
-        return res.status(503).json({ error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
+        return res.status(503).json({ code: 'busy', error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
       }
-      return res.status(500).json({ error: 'Lead aanmaken mislukt' });
+      return res.status(500).json({ code: 'create_failed', error: 'Lead aanmaken mislukt' });
     }
 
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
@@ -451,7 +460,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
   } catch (err) {
     console.error('Form error:', err.message);
-    return res.status(500).json({ error: 'Serverfout. Probeer later opnieuw.' });
+    return res.status(500).json({ code: 'server_error', error: 'Serverfout. Probeer later opnieuw.' });
   }
 });
 
