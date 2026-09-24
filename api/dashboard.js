@@ -75,6 +75,12 @@ module.exports = async function handler(req, res) {
      Franstalige leads bedienen met een Nederlands dashboard. */
   const UI_LANG = _i18n.resolveer(req);
   const T = (sleutel, vars) => _i18n.t(UI_LANG, sleutel, vars);
+  /* De eerste voorbeeldbegroeting, in de paginataal. Stond als plaatshouder
+     hardgecodeerd in het Nederlands onder een label dat al Duits was, en nog
+     een keer als terugval in renderPersonaPreview(). De vier vertaalde versies
+     bestonden al in _dash/persona-sjablonen.js; ze waren alleen niet gebruikt. */
+  const _welkomVoorbeeld = String((_persona.welkom(_i18n.kort(UI_LANG))[0] || {}).text || '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
   /* De landnamen in _regio.js staan alleen in het Nederlands ('Frankrijk',
      'Duitsland'). Die lijst is de keuzelijst op het EERSTE scherm dat een
@@ -1841,7 +1847,7 @@ ${faro.navCta}
                 <div class="ap-tpl-grid" id="ap-tpl-grid"></div>
               </div>
 
-              <textarea id="ap-template" aria-label="${T('a11y.veld.begroeting')}" class="ap-textarea" rows="3" placeholder="Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?" maxlength="1000"></textarea>
+              <textarea id="ap-template" aria-label="${T('a11y.veld.begroeting')}" class="ap-textarea" rows="3" placeholder="${_welkomVoorbeeld}" maxlength="1000"></textarea>
               <div class="ap-hint">
                 ${T('ap.placeholders')}
                 <button type="button" class="ap-chip" onclick="apInsertPlaceholder('{naam}')">{naam}</button>
@@ -3807,18 +3813,18 @@ ${faro.dock}
            het eerste wat een makelaar wil weten en overtypen. -->
       <div class="pd-row-2">
         <div>
-          <label class="pd-label" for="pd-f-code">Referentie</label>
-          <input class="pd-input" id="pd-f-code" type="text" placeholder="automatisch (P1, P2, ...)" maxlength="20">
+          <label class="pd-label" for="pd-f-code">${T('pd.f.referentie')}</label>
+          <input class="pd-input" id="pd-f-code" type="text" placeholder="${T('pd.f.referentiePh')}" maxlength="20">
           <div class="pd-hint">${T('pd.code.hint')}</div>
         </div>
         <div>
           <label class="pd-label" for="pd-f-status">${T('dash.col.status')}</label>
           <select class="pd-input" id="pd-f-status">
-            <option value="beschikbaar">beschikbaar</option>
-            <option value="onder bod">onder bod</option>
-            <option value="verkocht">verkocht</option>
-            <option value="verhuurd">verhuurd</option>
-            <option value="uit aanbod">uit aanbod</option>
+            <option value="beschikbaar">${T('pd.status.beschikbaar')}</option>
+            <option value="onder bod">${T('pd.status.onder_bod')}</option>
+            <option value="verkocht">${T('pd.status.verkocht')}</option>
+            <option value="verhuurd">${T('pd.status.verhuurd')}</option>
+            <option value="uit aanbod">${T('pd.status.uit_aanbod')}</option>
           </select>
           <div class="pd-hint">${T('pd.sold.hint')}</div>
         </div>
@@ -3830,11 +3836,11 @@ ${faro.dock}
 
       <div class="pd-row-3">
         <div>
-          <label class="pd-label" for="pd-f-postcode">Postcode</label>
+          <label class="pd-label" for="pd-f-postcode">${T('pd.f.postcode')}</label>
           <input class="pd-input" id="pd-f-postcode" type="text" placeholder="9000" maxlength="20">
         </div>
         <div class="pd-col-2">
-          <label class="pd-label" for="pd-f-plaats">Gemeente</label>
+          <label class="pd-label" for="pd-f-plaats">${T('pd.f.gemeente')}</label>
           <input class="pd-input" id="pd-f-plaats" type="text" placeholder="Gent" maxlength="100">
         </div>
       </div>
@@ -3843,12 +3849,12 @@ ${faro.dock}
         <div>
           <label class="pd-label" for="pd-f-type">${T('pro.type')}</label>
           <select class="pd-input" id="pd-f-type">
-            <option value="huis">huis</option>
-            <option value="appartement">appartement</option>
-            <option value="grond">grond</option>
-            <option value="commercieel">commercieel</option>
-            <option value="garage">garage</option>
-            <option value="overig">overig</option>
+            <option value="huis">${T('pd.type.huis')}</option>
+            <option value="appartement">${T('pd.type.appartement')}</option>
+            <option value="grond">${T('pd.type.grond')}</option>
+            <option value="commercieel">${T('pd.type.commercieel')}</option>
+            <option value="garage">${T('pd.type.garage')}</option>
+            <option value="overig">${T('pd.type.overig')}</option>
           </select>
         </div>
         <div>
@@ -3862,19 +3868,19 @@ ${faro.dock}
 
       <div class="pd-row-4">
         <div>
-          <label class="pd-label" for="pd-f-prijs">Prijs (&euro;)</label>
+          <label class="pd-label" for="pd-f-prijs">${T('pd.f.prijs')}</label>
           <input class="pd-input" id="pd-f-prijs" type="number" min="0" step="1000" placeholder="395000">
         </div>
         <div>
-          <label class="pd-label" for="pd-f-slaapkamers">Slaapkamers</label>
+          <label class="pd-label" for="pd-f-slaapkamers">${T('pd.f.slaapkamers')}</label>
           <input class="pd-input" id="pd-f-slaapkamers" type="number" min="0" max="50" placeholder="3">
         </div>
         <div>
-          <label class="pd-label" for="pd-f-oppervlakte">Opp. (m&sup2;)</label>
+          <label class="pd-label" for="pd-f-oppervlakte">${T('pd.f.opp')}</label>
           <input class="pd-input" id="pd-f-oppervlakte" type="number" min="0" placeholder="145">
         </div>
         <div>
-          <label class="pd-label" for="pd-f-epc">EPC</label>
+          <label class="pd-label" for="pd-f-epc">${T('pd.f.epc')}</label>
           <input class="pd-input" id="pd-f-epc" type="text" maxlength="40" placeholder="C">
         </div>
       </div>
@@ -3890,68 +3896,68 @@ ${faro.dock}
       <div id="pd-deal" hidden>
         <div class="pd-row-3e">
           <div>
-            <label class="pd-label" for="pd-f-merk">Merk</label>
+            <label class="pd-label" for="pd-f-merk">${T('veh.f.merk')}</label>
             <input class="pd-input" id="pd-f-merk" type="text" placeholder="BMW" maxlength="60">
           </div>
           <div>
-            <label class="pd-label" for="pd-f-model">Model</label>
+            <label class="pd-label" for="pd-f-model">${T('veh.f.model')}</label>
             <input class="pd-input" id="pd-f-model" type="text" placeholder="M4" maxlength="60">
           </div>
           <div>
-            <label class="pd-label" for="pd-f-uitvoering">Uitvoering</label>
+            <label class="pd-label" for="pd-f-uitvoering">${T('veh.f.uitvoering')}</label>
             <input class="pd-input" id="pd-f-uitvoering" type="text" placeholder="Competition xDrive" maxlength="120">
           </div>
         </div>
 
         <div class="pd-row-4">
           <div>
-            <label class="pd-label" for="pd-f-km">Kilometerstand</label>
+            <label class="pd-label" for="pd-f-km">${T('veh.f.km')}</label>
             <input class="pd-input" id="pd-f-km" type="number" min="0" step="1000" placeholder="55000">
           </div>
           <div>
-            <label class="pd-label" for="pd-f-inschrijving">1e inschrijving</label>
+            <label class="pd-label" for="pd-f-inschrijving">${T('veh.f.inschrijving')}</label>
             <input class="pd-input" id="pd-f-inschrijving" type="text" placeholder="05/2023" maxlength="10">
           </div>
           <div>
-            <label class="pd-label" for="pd-f-brandstof">Brandstof</label>
+            <label class="pd-label" for="pd-f-brandstof">${T('veh.f.brandstof')}</label>
             <select class="pd-input" id="pd-f-brandstof">
-              <option value="benzine">benzine</option>
-              <option value="diesel">diesel</option>
-              <option value="hybride">hybride</option>
-              <option value="plug-in hybride">plug-in hybride</option>
-              <option value="elektrisch">elektrisch</option>
-              <option value="lpg">lpg</option>
-              <option value="cng">cng</option>
-              <option value="waterstof">waterstof</option>
-              <option value="overig">overig</option>
+              <option value="benzine">${T('veh.brandstof.benzine')}</option>
+              <option value="diesel">${T('veh.brandstof.diesel')}</option>
+              <option value="hybride">${T('veh.brandstof.hybride')}</option>
+              <option value="plug-in hybride">${T('veh.brandstof.plugin')}</option>
+              <option value="elektrisch">${T('veh.brandstof.elektrisch')}</option>
+              <option value="lpg">${T('veh.brandstof.lpg')}</option>
+              <option value="cng">${T('veh.brandstof.cng')}</option>
+              <option value="waterstof">${T('veh.brandstof.waterstof')}</option>
+              <option value="overig">${T('veh.brandstof.overig')}</option>
             </select>
           </div>
           <div>
-            <label class="pd-label" for="pd-f-transmissie">Transmissie</label>
+            <label class="pd-label" for="pd-f-transmissie">${T('veh.f.transmissie')}</label>
             <select class="pd-input" id="pd-f-transmissie">
-              <option value="automaat">automaat</option>
-              <option value="handgeschakeld">handgeschakeld</option>
+              <option value="automaat">${T('veh.trans.automaat')}</option>
+              <option value="handgeschakeld">${T('veh.trans.handgeschakeld')}</option>
             </select>
           </div>
         </div>
 
         <div class="pd-row-3e">
           <div>
-            <label class="pd-label" for="pd-f-kw">Vermogen (kW)</label>
+            <label class="pd-label" for="pd-f-kw">${T('veh.f.vermogen')}</label>
             <input class="pd-input" id="pd-f-kw" type="number" min="0" placeholder="375">
-            <div class="pd-hint" id="pd-f-pk-hint">De pk-waarde wordt hieruit berekend.</div>
+            <div class="pd-hint" id="pd-f-pk-hint">${T('veh.f.pkHint')}</div>
           </div>
           <div>
-            <label class="pd-label" for="pd-f-carrosserie">Carrosserie</label>
+            <label class="pd-label" for="pd-f-carrosserie">${T('veh.f.carrosserie')}</label>
             <input class="pd-input" id="pd-f-carrosserie" type="text" placeholder="Coup&eacute;" maxlength="40">
           </div>
           <div>
-            <label class="pd-label" for="pd-f-kleur">Kleur</label>
-            <input class="pd-input" id="pd-f-kleur" type="text" placeholder="zwart" maxlength="40">
+            <label class="pd-label" for="pd-f-kleur">${T('veh.f.kleur')}</label>
+            <input class="pd-input" id="pd-f-kleur" type="text" placeholder="${T('veh.f.kleurPh')}" maxlength="40">
           </div>
         </div>
 
-        <label class="pd-label" for="pd-f-adlink">Advertentielink (AutoScout24)</label>
+        <label class="pd-label" for="pd-f-adlink">${T('veh.f.adlink')}</label>
         <input class="pd-input" id="pd-f-adlink" type="url" placeholder="https://www.autoscout24.be/aanbod/..." maxlength="500">
         <div class="pd-hint">Hieruit wordt het aanbodnummer gehaald. Dat is waarmee Helvaro een
           binnenkomend WhatsApp-bericht aan dit voertuig koppelt &mdash; de koper hoeft dan niets uit te leggen.</div>
@@ -3961,18 +3967,18 @@ ${faro.dock}
              betekenen is precies hoe een AI de zaak weggeeft. -->
         <div class="pd-row-2">
           <div>
-            <label class="pd-label" for="pd-f-maxkorting">Max. korting (&euro;)</label>
-            <input class="pd-input" id="pd-f-maxkorting" type="number" min="0" step="100" placeholder="leeg = je standaard">
+            <label class="pd-label" for="pd-f-maxkorting">${T('veh.f.maxKorting')}</label>
+            <input class="pd-input" id="pd-f-maxkorting" type="number" min="0" step="100" placeholder="${T('veh.f.leegStandaard')}">
           </div>
           <div>
-            <label class="pd-label" for="pd-f-farokorting">Faro mag zelf (&euro;)</label>
-            <input class="pd-input" id="pd-f-farokorting" type="number" min="0" step="100" placeholder="leeg = je standaard">
+            <label class="pd-label" for="pd-f-farokorting">${T('veh.f.faroZelf')}</label>
+            <input class="pd-input" id="pd-f-farokorting" type="number" min="0" step="100" placeholder="${T('veh.f.leegStandaard')}">
             <div class="pd-hint" id="pd-f-korting-hint"></div>
           </div>
         </div>
       </div>
 
-      <label class="pd-label" for="pd-f-omschrijving">Omschrijving</label>
+      <label class="pd-label" for="pd-f-omschrijving">${T('pd.f.omschrijving')}</label>
       <textarea class="pd-input pd-textarea" id="pd-f-omschrijving" rows="4" maxlength="4000"
         placeholder="${T('pd.desc.ph')}"></textarea>
 
@@ -17808,8 +17814,10 @@ function apInsertPlaceholder(token) {
 
 function renderPersonaPreview() {
   const aiName = (document.getElementById('ap-name').value.trim() || 'Mathis Willems');
+  /* Dezelfde vertaalde voorbeeldtekst als de plaatshouder hierboven, niet
+     een tweede Nederlandse kopie. */
   const tpl    = (document.getElementById('ap-template').value.trim() ||
-                  'Hey {naam}! {ai} hier van {bedrijf}. Zag dat je je gegevens achterliet. Wat bracht je bij ons?');
+                  (AP_TEMPLATES[0] && AP_TEMPLATES[0].text) || '');
   const company = AP_STATE.clientName || 'Bedrijf';
   const filled = tpl
     .replace(/\\{naam\\}/g,    'Jan')

@@ -212,5 +212,80 @@ console.log('\n  de landenlijst spreekt de taal van de pagina');
   }
 }
 
+console.log('\n  het aanbodformulier spreekt de taal van de pagina');
+{
+  /* Het venster waarin een makelaar een pand of een dealer een wagen invoert.
+     Drieentwintig labels en negen keuzelijstregels stonden in het Nederlands,
+     tussen regels die al \${T(...)} gebruikten. Half vertaald, en het half dat
+     ontbrak is precies het deel dat je INVULT. */
+  delete require.cache[require.resolve('../api/dashboard.js')];
+  const dash = require('../api/dashboard.js');
+  const render = (taal) => {
+    let html = '';
+    dash({ method: 'GET', url: '/dashboard?lang=' + taal, headers: {} },
+         { setHeader() {}, status() { return this; }, send(b) { html = String(b); }, json() {}, end() {} });
+    return html;
+  };
+  const per = {};
+  for (const taal of ['nl', 'fr', 'en', 'de']) per[taal] = render(taal);
+
+  /* 1. Geen enkel label mag nog hardgecodeerd zijn. */
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
+    const labels = [...per[taal].matchAll(/<label class="pd-label"[^>]*>([^<]+)<\/label>/g)].map((m) => m[1].trim());
+    ck(taal + ': er staan labels in het formulier', labels.length >= 20, labels.length);
+  }
+  const nlLabels = [...per.nl.matchAll(/<label class="pd-label"[^>]*>([^<]+)<\/label>/g)].map((m) => m[1].trim());
+  for (const taal of ['fr', 'de']) {
+    const l = [...per[taal].matchAll(/<label class="pd-label"[^>]*>([^<]+)<\/label>/g)].map((m) => m[1].trim());
+    const zelfde = l.filter((x, i) => x === nlLabels[i]);
+    /* Sommige woorden zijn in beide talen gelijk (Status, Adres/Adresse,
+       Type, Carrosserie). Dat mag; wat niet mag is dat de HELE lijst gelijk is. */
+    ck(taal + ': de labels zijn grotendeels anders dan het Nederlands',
+       zelfde.length < nlLabels.length / 2, zelfde.slice(0, 8));
+  }
+
+  /* 2. DIT is de belangrijke. De value-attributen gaan naar Airtable. Wie een
+     keuzelijst vertaalt door de value mee te nemen, maakt de opslag stuk en
+     ziet op het scherm niets bijzonders -- tot een pand als 'vendu' wordt
+     weggeschreven en geen enkel filter hem nog vindt. */
+  /* Alleen de keuzelijsten VAN DIT FORMULIER. De eerste versie pakte elke
+     <option> op de pagina en meldde daardoor de TAALKIEZER als fout: die laat
+     de huidige taal weg, dus zijn waarden verschillen per taal en dat hoort zo.
+     Een test die iets goeds afkeurt wordt weggeklikt, en dan vangt hij het
+     echte geval ook niet meer. */
+  const waarden = (html) => {
+    const uit = [];
+    for (const blok of html.matchAll(/<select[^>]*id="(pd-f-[a-z]+)"[^>]*>([\s\S]*?)<\/select>/g)) {
+      for (const o of blok[2].matchAll(/<option value="([^"]*)">/g)) uit.push(blok[1] + "=" + o[1]);
+    }
+    return uit;
+  };
+  const nlW = waarden(per.nl);
+  ck('er staan keuzelijstwaarden in', nlW.length >= 20, nlW.length);
+  for (const taal of ['fr', 'en', 'de']) {
+    const w = waarden(per[taal]);
+    const gelijk = w.length === nlW.length && w.every((x, i) => x === nlW[i]);
+    ck(taal + ': GEEN ENKELE option-value is meevertaald', gelijk,
+       gelijk ? null : w.filter((x, i) => x !== nlW[i]).slice(0, 6));
+  }
+
+  /* 3. En de tekst ernaast is wel vertaald. */
+  const tekstVan = (html, v) => {
+    const m = new RegExp('<option value="' + v.replace(/[.*+?^\${}()|[\]\\]/g, '\\\\$&') + '">([^<]*)<').exec(html);
+    return m ? m[1] : null;
+  };
+  const PROEF = { 'benzine': { fr: 'essence', de: 'Benzin' }, 'verhuurd': { fr: 'lou\u00e9', de: 'vermietet' }, 'automaat': { fr: 'automatique', de: 'Automatik' } };
+  for (const [v, verw] of Object.entries(PROEF)) {
+    for (const taal of ['fr', 'de']) {
+      ck(taal + ": '" + v + "' toont '" + verw[taal] + "'", tekstVan(per[taal], v) === verw[taal], tekstVan(per[taal], v));
+    }
+  }
+
+  /* 4. EPC heet in Walloni\u00eb PEB. Geen vertaling maar de naam van een ander
+     gewestelijk certificaat; een Franstalige makelaar zoekt PEB. */
+  ck('fr: EPC heet PEB', /<label class="pd-label"[^>]*>PEB<\/label>/.test(per.fr), null);
+  ck('nl: en blijft EPC', /<label class="pd-label"[^>]*>EPC<\/label>/.test(per.nl), null);
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

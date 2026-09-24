@@ -2785,6 +2785,79 @@ const TEKST = {
 
   /* Helpcentrum */
   'hv.help.nietsGevonden': { nl: 'Niets gevonden. Stuur ons gerust een bericht, we antwoorden meestal dezelfde dag.', fr: 'Aucun résultat. Envoyez-nous un message, nous répondons généralement le jour même.', en: 'Nothing found. Send us a message — we usually reply the same day.', de: 'Nichts gefunden. Schick uns eine Nachricht, wir antworten meist am selben Tag.' },
+
+  /* ── Het aanbodformulier ───────────────────────────────────────────────────
+     Het venster waarin een makelaar een pand of een dealer een wagen invoert.
+     Drieëntwintig labels, negen keuzelijstregels en een handvol plaatshouders
+     stonden hier in het Nederlands, tussen regels die al ${T(...)} gebruikten
+     (dash.col.status, pd.sold.hint). Half vertaald, en het half dat ontbrak is
+     precies het deel dat je INVULT.
+
+     De keuzelijsten krijgen eigen sleutels en laten de value-attributen met
+     rust: die waarde gaat naar Airtable. 'verkocht' vertalen naar 'vendu' zou
+     de opslag stukmaken, niet het scherm verbeteren. */
+
+  /* Aanbodstatus. Bewust NIET pd.opstatus.* hergebruikt: dat is de
+     OPERATIONELE status die uit leadactiviteit volgt (interesse, afspraak
+     gepland). Deze hier is de aanbodstatus die de makelaar zelf zet. Ze
+     overlappen in drie woorden en verschillen in twee; één set van maken
+     betekent dat een herformulering van het ene veld stil het andere verandert. */
+  'pd.status.beschikbaar': { nl: 'beschikbaar', fr: 'disponible', en: 'available', de: 'verfügbar' },
+  'pd.status.onder_bod':   { nl: 'onder bod', fr: 'sous offre', en: 'under offer', de: 'unter Angebot' },
+  'pd.status.verkocht':    { nl: 'verkocht', fr: 'vendu', en: 'sold', de: 'verkauft' },
+  'pd.status.verhuurd':    { nl: 'verhuurd', fr: 'loué', en: 'let', de: 'vermietet' },
+  'pd.status.uit_aanbod':  { nl: 'uit aanbod', fr: 'retiré', en: 'withdrawn', de: 'zurückgezogen' },
+
+  /* Gedeeld tussen vastgoed en auto */
+  'pd.f.referentie':   { nl: 'Referentie', fr: 'Référence', en: 'Reference', de: 'Referenz' },
+  'pd.f.referentiePh': { nl: 'automatisch (P1, P2, ...)', fr: 'automatique (P1, P2, ...)', en: 'automatic (P1, P2, ...)', de: 'automatisch (P1, P2, ...)' },
+  'pd.f.omschrijving': { nl: 'Omschrijving', fr: 'Description', en: 'Description', de: 'Beschreibung' },
+
+  /* Vastgoed */
+  'pd.f.postcode':     { nl: 'Postcode', fr: 'Code postal', en: 'Postcode', de: 'PLZ' },
+  'pd.f.gemeente':     { nl: 'Gemeente', fr: 'Commune', en: 'Town', de: 'Gemeinde' },
+  'pd.f.prijs':        { nl: 'Prijs (&euro;)', fr: 'Prix (&euro;)', en: 'Price (&euro;)', de: 'Preis (&euro;)' },
+  'pd.f.slaapkamers':  { nl: 'Slaapkamers', fr: 'Chambres', en: 'Bedrooms', de: 'Schlafzimmer' },
+  'pd.f.opp':          { nl: 'Opp. (m&sup2;)', fr: 'Surface (m&sup2;)', en: 'Area (m&sup2;)', de: 'Fläche (m&sup2;)' },
+  /* EPC heet in Wallonië PEB. Dat is geen vertaling maar de naam van een ander
+     gewestelijk certificaat -- een Franstalige makelaar zoekt PEB. */
+  'pd.f.epc':          { nl: 'EPC', fr: 'PEB', en: 'EPC', de: 'EPC' },
+  'pd.type.huis':        { nl: 'huis', fr: 'maison', en: 'house', de: 'Haus' },
+  'pd.type.appartement': { nl: 'appartement', fr: 'appartement', en: 'apartment', de: 'Wohnung' },
+  'pd.type.grond':       { nl: 'grond', fr: 'terrain', en: 'land', de: 'Grundstück' },
+  'pd.type.commercieel': { nl: 'commercieel', fr: 'commercial', en: 'commercial', de: 'Gewerbe' },
+  'pd.type.garage':      { nl: 'garage', fr: 'garage', en: 'garage', de: 'Garage' },
+  'pd.type.overig':      { nl: 'overig', fr: 'autre', en: 'other', de: 'sonstiges' },
+
+  /* Auto */
+  'veh.f.merk':         { nl: 'Merk', fr: 'Marque', en: 'Make', de: 'Marke' },
+  'veh.f.model':        { nl: 'Model', fr: 'Modèle', en: 'Model', de: 'Modell' },
+  'veh.f.uitvoering':   { nl: 'Uitvoering', fr: 'Finition', en: 'Trim', de: 'Ausstattung' },
+  'veh.f.km':           { nl: 'Kilometerstand', fr: 'Kilométrage', en: 'Mileage', de: 'Kilometerstand' },
+  'veh.f.inschrijving': { nl: '1e inschrijving', fr: '1re immatriculation', en: 'First registration', de: 'Erstzulassung' },
+  'veh.f.brandstof':    { nl: 'Brandstof', fr: 'Carburant', en: 'Fuel', de: 'Kraftstoff' },
+  'veh.brandstof.benzine':    { nl: 'benzine', fr: 'essence', en: 'petrol', de: 'Benzin' },
+  'veh.brandstof.diesel':     { nl: 'diesel', fr: 'diesel', en: 'diesel', de: 'Diesel' },
+  'veh.brandstof.hybride':    { nl: 'hybride', fr: 'hybride', en: 'hybrid', de: 'Hybrid' },
+  'veh.brandstof.plugin':     { nl: 'plug-in hybride', fr: 'hybride rechargeable', en: 'plug-in hybrid', de: 'Plug-in-Hybrid' },
+  'veh.brandstof.elektrisch': { nl: 'elektrisch', fr: 'électrique', en: 'electric', de: 'elektrisch' },
+  'veh.brandstof.lpg':        { nl: 'lpg', fr: 'GPL', en: 'LPG', de: 'Autogas' },
+  'veh.brandstof.cng':        { nl: 'cng', fr: 'GNC', en: 'CNG', de: 'Erdgas' },
+  'veh.brandstof.waterstof':  { nl: 'waterstof', fr: 'hydrogène', en: 'hydrogen', de: 'Wasserstoff' },
+  'veh.brandstof.overig':     { nl: 'overig', fr: 'autre', en: 'other', de: 'sonstiges' },
+  'veh.f.transmissie':        { nl: 'Transmissie', fr: 'Transmission', en: 'Transmission', de: 'Getriebe' },
+  'veh.trans.automaat':       { nl: 'automaat', fr: 'automatique', en: 'automatic', de: 'Automatik' },
+  'veh.trans.handgeschakeld': { nl: 'handgeschakeld', fr: 'manuelle', en: 'manual', de: 'Schaltgetriebe' },
+  'veh.f.vermogen':     { nl: 'Vermogen (kW)', fr: 'Puissance (kW)', en: 'Power (kW)', de: 'Leistung (kW)' },
+  'veh.f.pkHint':       { nl: 'De pk-waarde wordt hieruit berekend.', fr: 'La puissance en ch est calculée à partir de cette valeur.', en: 'The hp figure is calculated from this.', de: 'Der PS-Wert wird hieraus berechnet.' },
+  'veh.f.carrosserie':  { nl: 'Carrosserie', fr: 'Carrosserie', en: 'Body type', de: 'Karosserie' },
+  'veh.f.kleur':        { nl: 'Kleur', fr: 'Couleur', en: 'Colour', de: 'Farbe' },
+  'veh.f.kleurPh':      { nl: 'zwart', fr: 'noir', en: 'black', de: 'schwarz' },
+  'veh.f.adlink':       { nl: 'Advertentielink (AutoScout24)', fr: 'Lien de l’annonce (AutoScout24)', en: 'Listing link (AutoScout24)', de: 'Anzeigenlink (AutoScout24)' },
+  'veh.f.adlinkHint':   { nl: 'Hieruit wordt het aanbodnummer gehaald. Dat is waarmee Helvaro een binnenkomend WhatsApp-bericht aan dit voertuig koppelt — de koper hoeft dan niets uit te leggen.', fr: 'Le numéro d’annonce en est extrait. C’est ce qui permet à Helvaro de rattacher un message WhatsApp entrant à ce véhicule — l’acheteur n’a rien à expliquer.', en: 'The listing number is taken from this. That’s how Helvaro attaches an incoming WhatsApp message to this vehicle — the buyer doesn’t have to explain anything.', de: 'Daraus wird die Angebotsnummer gelesen. Damit ordnet Helvaro eine eingehende WhatsApp-Nachricht diesem Fahrzeug zu — der Käufer muss nichts erklären.' },
+  'veh.f.maxKorting':   { nl: 'Max. korting (&euro;)', fr: 'Remise max. (&euro;)', en: 'Max. discount (&euro;)', de: 'Max. Rabatt (&euro;)' },
+  'veh.f.faroZelf':     { nl: 'Faro mag zelf (&euro;)', fr: 'Faro peut accorder (&euro;)', en: 'Faro may give (&euro;)', de: 'Faro darf selbst (&euro;)' },
+  'veh.f.leegStandaard': { nl: 'leeg = je standaard', fr: 'vide = votre valeur par défaut', en: 'empty = your default', de: 'leer = dein Standard' },
 };
 
 /**
