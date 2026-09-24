@@ -1072,6 +1072,8 @@ const TEKST = {
   'push.mail.antwoord.tekst': { nl: '{naam} antwoordde in een gesprek dat jij overnam.', fr: '{naam} a répondu dans une conversation que vous avez reprise.', en: '{naam} replied in a conversation you took over.', de: '{naam} hat in einem Gespräch geantwortet, das du übernommen hast.' },
   'push.web.lead.titel': { nl: 'Nieuwe lead via je website', fr: 'Nouveau prospect via votre site', en: 'New lead from your website', de: 'Neuer Lead über deine Website' },
   'push.web.lead.tekst': { nl: '{naam} liet contactgegevens achter bij de websiteassistent.', fr: '{naam} a laissé ses coordonnées à l’assistant du site.', en: '{naam} left contact details with the website assistant.', de: '{naam} hat beim Website-Assistenten Kontaktdaten hinterlassen.' },
+  'push.web.boek.titel': { nl: 'Afspraak geboekt via je website', fr: 'Rendez-vous réservé via votre site', en: 'Appointment booked on your website', de: 'Termin über deine Website gebucht' },
+  'push.web.boek.tekst': { nl: '{naam} — {wanneer}', fr: '{naam} — {wanneer}', en: '{naam} — {wanneer}', de: '{naam} — {wanneer}' },
   'push.lead.title':     { nl: 'Nieuwe lead', fr: 'Nouveau prospect', en: 'New lead', de: 'Neuer Lead' },
   'push.credit80.title': { nl: 'Nog 20% credits over',
                            fr: 'Il reste 20 % de crédits',

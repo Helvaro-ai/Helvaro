@@ -31,25 +31,25 @@
 
   var TAAL = (document.documentElement.lang || navigator.language || 'nl').slice(0, 2).toLowerCase();
   var D = {
-    nl: { open: 'Stel je vraag', titel: 'Online assistent', sub: 'Antwoordt meteen, het team volgt op', ph: 'Typ je vraag…', stuur: 'Stuur', sluit: 'Sluiten',
+    nl: { mTitel: 'Wil je meteen een moment kiezen?', mSub: 'Vrije momenten bij ons. Het team bevestigt je afspraak.', mGeboekt: 'Staat genoteerd: ', mGeen: 'Er zijn nu geen vrije momenten online; het team belt je om er een te prikken.', mNee: 'Later', open: 'Stel je vraag', titel: 'Online assistent', sub: 'Antwoordt meteen, het team volgt op', ph: 'Typ je vraag…', stuur: 'Stuur', sluit: 'Sluiten',
       welkom: 'Hallo! Zoek je een bepaalde wagen, of heb je een vraag over er één? Ik kijk het voor je na in onze voorraad.',
       fout: 'Er ging even iets mis. Probeer het opnieuw.', bezig: 'Aan het typen…', ai: 'Je praat met een AI-assistent. Het team leest mee.',
       cTitel: 'Zal het team je contacteren?', cSub: 'Een e-mailadres óf telefoonnummer is genoeg. Niets verplicht.', cNaam: 'Naam (optioneel)', cMail: 'E-mailadres', cTel: 'Telefoon',
       cOk: 'Doorsturen', cNee: 'Nee, bedankt', cToestemming: 'Ik ga akkoord dat het team me hierover contacteert.', cBedankt: 'Bedankt! Het team neemt snel contact op.', cLeeg: 'Vul een e-mailadres of telefoonnummer in.',
       wa: 'Verder op WhatsApp', mail: 'Verder via e-mail', beschikbaar: 'beschikbaar', status: { gereserveerd: 'gereserveerd', verkocht: 'verkocht', 'uit aanbod': 'niet meer beschikbaar', onbekend: 'status nakijken' }, bekijk: 'Bekijk', km: 'km' },
-    fr: { open: 'Posez votre question', titel: 'Assistant en ligne', sub: 'Répond tout de suite, l’équipe assure le suivi', ph: 'Votre question…', stuur: 'Envoyer', sluit: 'Fermer',
+    fr: { mTitel: 'Voulez-vous choisir un moment tout de suite ?', mSub: 'Nos créneaux libres. L’équipe confirme votre rendez-vous.', mGeboekt: 'C’est noté : ', mGeen: 'Aucun créneau libre en ligne pour le moment ; l’équipe vous appelle pour en fixer un.', mNee: 'Plus tard', open: 'Posez votre question', titel: 'Assistant en ligne', sub: 'Répond tout de suite, l’équipe assure le suivi', ph: 'Votre question…', stuur: 'Envoyer', sluit: 'Fermer',
       welkom: 'Bonjour ! Vous cherchez une voiture précise ou avez une question sur l’une d’elles ? Je regarde dans notre stock.',
       fout: 'Un souci est survenu. Réessayez.', bezig: 'En train d’écrire…', ai: 'Vous parlez avec un assistant IA. L’équipe suit la conversation.',
       cTitel: 'L’équipe peut-elle vous contacter ?', cSub: 'Une adresse e-mail ou un numéro suffit. Rien d’obligatoire.', cNaam: 'Nom (facultatif)', cMail: 'E-mail', cTel: 'Téléphone',
       cOk: 'Envoyer', cNee: 'Non merci', cToestemming: 'J’accepte que l’équipe me contacte à ce sujet.', cBedankt: 'Merci ! L’équipe vous contacte rapidement.', cLeeg: 'Indiquez une adresse e-mail ou un numéro.',
       wa: 'Continuer sur WhatsApp', mail: 'Continuer par e-mail', beschikbaar: 'disponible', status: { gereserveerd: 'réservée', verkocht: 'vendue', 'uit aanbod': 'plus disponible', onbekend: 'statut à vérifier' }, bekijk: 'Voir', km: 'km' },
-    en: { open: 'Ask a question', titel: 'Online assistant', sub: 'Answers right away, the team follows up', ph: 'Type your question…', stuur: 'Send', sluit: 'Close',
+    en: { mTitel: 'Want to pick a time right away?', mSub: 'Our free slots. The team confirms your appointment.', mGeboekt: 'Booked: ', mGeen: 'No free slots online right now; the team will call you to arrange one.', mNee: 'Later', open: 'Ask a question', titel: 'Online assistant', sub: 'Answers right away, the team follows up', ph: 'Type your question…', stuur: 'Send', sluit: 'Close',
       welkom: 'Hi! Looking for a particular car, or have a question about one? I’ll check our stock for you.',
       fout: 'Something went wrong. Please try again.', bezig: 'Typing…', ai: 'You are chatting with an AI assistant. The team reads along.',
       cTitel: 'Shall the team contact you?', cSub: 'An email address or a phone number is enough. Nothing is required.', cNaam: 'Name (optional)', cMail: 'Email', cTel: 'Phone',
       cOk: 'Send', cNee: 'No thanks', cToestemming: 'I agree that the team may contact me about this.', cBedankt: 'Thanks! The team will be in touch shortly.', cLeeg: 'Enter an email address or a phone number.',
       wa: 'Continue on WhatsApp', mail: 'Continue by email', beschikbaar: 'available', status: { gereserveerd: 'reserved', verkocht: 'sold', 'uit aanbod': 'no longer available', onbekend: 'status being checked' }, bekijk: 'View', km: 'km' },
-    de: { open: 'Frage stellen', titel: 'Online-Assistent', sub: 'Antwortet sofort, das Team meldet sich', ph: 'Deine Frage…', stuur: 'Senden', sluit: 'Schließen',
+    de: { mTitel: 'Möchtest du gleich einen Termin wählen?', mSub: 'Unsere freien Zeiten. Das Team bestätigt deinen Termin.', mGeboekt: 'Eingetragen: ', mGeen: 'Gerade keine freien Zeiten online; das Team ruft dich an, um einen zu finden.', mNee: 'Später', open: 'Frage stellen', titel: 'Online-Assistent', sub: 'Antwortet sofort, das Team meldet sich', ph: 'Deine Frage…', stuur: 'Senden', sluit: 'Schließen',
       welkom: 'Hallo! Suchst du ein bestimmtes Auto oder hast du eine Frage dazu? Ich schaue in unserem Bestand nach.',
       fout: 'Da ist etwas schiefgelaufen. Bitte erneut versuchen.', bezig: 'Schreibt…', ai: 'Du chattest mit einem KI-Assistenten. Das Team liest mit.',
       cTitel: 'Soll sich das Team melden?', cSub: 'Eine E-Mail-Adresse oder Telefonnummer reicht. Nichts ist Pflicht.', cNaam: 'Name (optional)', cMail: 'E-Mail', cTel: 'Telefon',
@@ -105,6 +105,11 @@
     '.k2{padding:10px 12px;border-radius:10px;border:1px solid #2A2A2A;background:#2A2A2A;color:#F4E7C8;font-size:13px;font-weight:600;cursor:pointer;min-height:40px}',
     '.k2.p{background:#E8D7B1;color:#1A1A1A;border-color:#E8D7B1}.k2:focus-visible{outline:2px solid #E8D7B1;outline-offset:2px}',
     '.over{display:flex;gap:8px;flex-wrap:wrap;align-self:stretch}',
+    '.momenten{align-self:stretch;padding:12px;border:1px solid #2A2A2A;border-radius:12px;background:#1A1A1A;display:flex;flex-direction:column;gap:8px;font-size:13px}',
+    '.momenten b{font-size:14px}.momenten small{color:#B89D73}',
+    '.chips{display:flex;flex-wrap:wrap;gap:6px}',
+    '.chip{padding:8px 11px;border-radius:999px;border:1px solid #B89D73;background:transparent;color:#F4E7C8;font-size:13px;cursor:pointer;min-height:36px}',
+    '.chip:hover{background:#2A2A2A}.chip:focus-visible{outline:2px solid #E8D7B1;outline-offset:2px}.chip[disabled]{opacity:.5;cursor:progress}',
     '.voet{padding:10px;border-top:1px solid #2A2A2A;background:#1A1A1A}',
     '.invoer{display:flex;gap:8px}.invoer input{flex:1}',
     '.ai{font-size:11px;color:#B89D73;padding:6px 2px 0;text-align:center}',
@@ -193,10 +198,38 @@
       if (!mail.value.trim() && !tel.value.trim()) { bubbel(TT('cLeeg'), 's'); return; }
       ok.disabled = true;
       vraag({ action: 'contact', email: mail.value.trim(), phone: tel.value.trim(), name: naam.value.trim(), consent: cb.checked })
-        .then(function () { c.remove(); bubbel(TT('cBedankt'), 's'); })
+        .then(function () { c.remove(); bubbel(TT('cBedankt'), 's'); toonMomenten(); })
         .catch(function (e) { ok.disabled = false; bubbel(e.message, 's'); });
     };
     lijst.appendChild(c); lijst.scrollTop = lijst.scrollHeight; mail.focus();
+  }
+
+  /* Vrije momenten: komen van de server (openingsuren, bestaande afspraken,
+     Google Agenda). De bezoeker kan alleen een voorgesteld moment kiezen. */
+  function toonMomenten() {
+    vraag({ action: 'slots' }).then(function (d) {
+      var lijstM = (d && d.momenten) || [];
+      var w = el('div', 'momenten');
+      w.appendChild(el('b', null, TT('mTitel')));
+      if (!lijstM.length) { w.appendChild(el('small', null, TT('mGeen'))); lijst.appendChild(w); lijst.scrollTop = lijst.scrollHeight; return; }
+      w.appendChild(el('small', null, TT('mSub')));
+      var chips = el('div', 'chips');
+      lijstM.forEach(function (iso) {
+        var label = new Date(iso).toLocaleString(TAAL, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        var chip = el('button', 'chip', label); chip.type = 'button';
+        chip.onclick = function () {
+          Array.prototype.forEach.call(chips.children, function (x) { x.disabled = true; });
+          vraag({ action: 'book', start: iso, vehicle: voertuig || undefined })
+            .then(function () { w.remove(); bubbel(TT('mGeboekt') + label, 'a'); })
+            .catch(function (e) { bubbel(e.message, 's'); Array.prototype.forEach.call(chips.children, function (x) { x.disabled = false; }); });
+        };
+        chips.appendChild(chip);
+      });
+      w.appendChild(chips);
+      var later = el('button', 'k2', TT('mNee')); later.type = 'button'; later.onclick = function () { w.remove(); };
+      w.appendChild(later);
+      lijst.appendChild(w); lijst.scrollTop = lijst.scrollHeight;
+    }).catch(function () { /* geen momenten tonen is geen fout voor de bezoeker */ });
   }
 
   function open() {

@@ -14,6 +14,18 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Boeken vanop de website, en e-mail in realtime
+
+- **Een bezoeker boekt zelf een afspraak** in het venster op je website, na
+  het achterlaten van een nummer of e-mailadres. Hij kiest uit echte vrije
+  momenten: binnen je openingsuren, zonder bestaande afspraak en (als je
+  agenda gekoppeld is) zonder bezet blok in Google Agenda. Een verkochte of
+  gereserveerde wagen krijgt geen proefrit. De afspraak staat in je agenda,
+  hangt aan de lead en je krijgt een melding.
+- **E-mail in realtime** zodra Gmail-push ingesteld is (Google Cloud Pub/Sub):
+  nieuwe klantmail staat dan meteen in Gesprekken. Zonder die instelling blijft
+  het ophalen bij openen, op de knop en dagelijks.
+
 ### Beter geordend, en meldingen voor de nieuwe kanalen
 
 - **Bron-grafiek met echte kleuren per kanaal:** twee bronnen kregen dezelfde

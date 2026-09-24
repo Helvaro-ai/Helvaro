@@ -277,6 +277,9 @@ const server = http.createServer(async (req, res) => {
         return res.end(JSON.stringify({ ok: true }));
       }
       if (b.action === 'handoff') return res.end(JSON.stringify({ url: 'https://wa.me/32470000000?text=' + encodeURIComponent('Hallo! (ref H-DEVTEST1)'), ref: 'H-DEVTEST1' }));
+      /* Echte kandidaat-momenten (openingsuren 'ma-za 9-18'), zonder Airtable. */
+      if (b.action === 'slots') return res.end(JSON.stringify({ momenten: require('../api/_webboeking')._test.kandidaten('ma-za 9-18', { dagen: 3 }).filter((_, i) => i % 3 === 0).slice(0, 6) }));
+      if (b.action === 'book') return res.end(JSON.stringify({ ok: true, startISO: b.start }));
       const auto = _fixtureVoertuigen.find((v) => !v.gearchiveerd) || null;
       const hoog = A._test.intentie(b.message) === 'hoog';
       return res.end(JSON.stringify({

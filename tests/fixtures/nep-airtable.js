@@ -33,7 +33,9 @@ function evalueer(expr, f) {
     if (fn[1] === 'OR') return args.some((a) => evalueer(a, f));
     return !evalueer(args[0], f);
   }
-  let m = expr.match(/^LOWER\(\{([^}]+)\}\)="((?:[^"\\]|\\.)*)"$/);
+  let m = expr.match(/^IS_(AFTER|BEFORE)\(\{([^}]+)\}, "([^"]*)"\)$/);
+  if (m) { const v = Date.parse(f[m[2]] || ''), g = Date.parse(m[3]); return Number.isFinite(v) && (m[1] === 'AFTER' ? v > g : v < g); }
+  m = expr.match(/^LOWER\(\{([^}]+)\}\)="((?:[^"\\]|\\.)*)"$/);
   if (m) return String(f[m[1]] || '').toLowerCase() === unesc(m[2]);
   m = expr.match(/^LEFT\(\{([^}]+)\}, (\d+)\)="((?:[^"\\]|\\.)*)"$/);
   if (m) return String(f[m[1]] || '').slice(0, Number(m[2])) === unesc(m[3]);

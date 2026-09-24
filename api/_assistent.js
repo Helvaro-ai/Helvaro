@@ -360,6 +360,46 @@ async function handoff({ siteKey, sessie, doel, origin, ip }) {
   return { ok: true, ref, bericht: 'Laat je e-mailadres achter; het team mailt je met dit gesprek erbij.' };
 }
 
+/* ── Boeken vanuit het venster (api/_webboeking.js) ────────────────────── */
+
+async function leadVanGesprek(t, sessie) {
+  const { gesprek } = await _gesprekken.vindOfMaak(t, { kanaal: 'website', thread: 'web:' + sessie, onderwerp: 'Website' });
+  if (!gesprek.leadId) throw new AssistentFout('Laat eerst een e-mailadres of telefoonnummer achter.', 'geen_contact', 400);
+  /* Naam en nummer van DEZE lead, en controleren dat hij bij deze dealer hoort. */
+  const r = await at(`tbliukTnDAbEDcZmt/${encodeURIComponent(gesprek.leadId)}?returnFieldsByFieldId=true`);
+  if (!r.ok) throw new AssistentFout('Je gegevens konden niet gelezen worden.', 'lead', 502);
+  const f = ((await r.json()).fields) || {};
+  if (String(f.fldSmczuyUJd26HLe || '') !== t) throw new AssistentFout('Geen toegang.', 'tenant', 403);
+  return { gesprek, naam: String(f.fldbk0LVNckOU0bqA || ''), telefoon: String(f.fld6YaitW0lMqHUrd || '') };
+}
+
+async function momenten({ siteKey, sessie, origin, ip }) {
+  const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
+  await leadVanGesprek(dealer.projectCode, sessie);
+  const uit = await require('./_webboeking').vrijeMomenten(dealer.projectCode, { max: 8 });
+  return { momenten: uit.momenten };
+}
+
+async function boekMoment({ siteKey, sessie, start, voertuig, origin, ip }) {
+  const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
+  const t = dealer.projectCode;
+  const { gesprek, naam, telefoon } = await leadVanGesprek(t, sessie);
+  const wb = require('./_webboeking');
+  let uit;
+  try {
+    uit = await wb.boek(t, { startISO: String(start || ''), voertuigCode: String(voertuig || gesprek.voertuig || '').slice(0, 20), leadId: gesprek.leadId, naam, telefoon });
+  } catch (e) {
+    if (e instanceof wb.BoekFout) throw new AssistentFout(e.message, e.code, e.status);
+    throw e;
+  }
+  await _gesprekken.voegToe(t, gesprek, {
+    sleutel: 'web-boek:' + sessie + ':' + uit.startISO, richting: 'uit', auteur: 'systeem', status: 'verzonden',
+    tekst: 'Afspraak geboekt voor ' + new Date(uit.startISO).toLocaleString('nl-BE', { timeZone: 'Europe/Brussels', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }),
+    verzonden: new Date().toISOString(),
+  }).catch(() => {});
+  return uit;
+}
+
 /** Voor api/whatsapp.js: een binnenkomend bericht met "ref H-XXXXXXXX". */
 function refUit(tekst) {
   const m = String(tekst || '').match(/\bref\s+(H-[A-Z0-9]{8})\b/i);
@@ -460,6 +500,8 @@ async function handler(req, res) {
     const args = { siteKey, sessie: body.session, origin, ip };
     if (body.action === 'contact') return res.status(200).json(await contact(Object.assign(args, { email: body.email, telefoon: body.phone, naam: body.name, toestemming: body.consent === true })));
     if (body.action === 'handoff') return res.status(200).json(await handoff(Object.assign(args, { doel: body.target })));
+    if (body.action === 'slots') return res.status(200).json(await momenten(args));
+    if (body.action === 'book') return res.status(200).json(await boekMoment(Object.assign(args, { start: body.start, voertuig: body.vehicle })));
     if (body.action === 'config') {
       const d = await controleerToegang(args);
       return res.status(200).json({ naam: d.naam, handoffs: { whatsapp: Boolean(await whatsappNummer(d)), email: d.mailbox } });
@@ -474,7 +516,7 @@ async function handler(req, res) {
 }
 
 module.exports = {
-  handler, beurt, contact, handoff, gebruikHandoff, refUit, nieuweSiteKey, domeinen, dealerBijSleutel,
+  handler, beurt, contact, handoff, gebruikHandoff, refUit, nieuweSiteKey, domeinen, dealerBijSleutel, momenten, boekMoment,
   widgetInstellingen, bewaarWidget,
   AssistentFout, SITE_KEY,
   _test: { hostVan, herkomstToegestaan, intentie, zoekVoorraad, genoemd, kaart, hashToken, reset: () => _cache.clear() },
