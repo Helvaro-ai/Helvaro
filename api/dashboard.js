@@ -6369,7 +6369,11 @@ function renderBronChart() {
   if (labels.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
 
-  const palette = ['#E8D7B1','#E8D7B1','#34D399','#C9AE7C','#C9AE7C','#8D99AC'];
+  /* Zeven verschillende warme tinten, oplopend in contrast. Hier stonden er
+     twee dubbel (#E8D7B1, #C9AE7C) en een groen buiten het palet: sinds er
+     WhatsApp-, e-mail- en websiteleads zijn, kregen twee kanalen dezelfde kleur
+     in dezelfde donut. */
+  const palette = ['#E8D7B1','#B89D73','#F4E7C8','#8A7550','#D8C49A','#5E513B','#A89478'];
   const data    = labels.map(k => counts[k]);
   const colors  = labels.map((_, i) => palette[i % palette.length]);
 
@@ -13975,6 +13979,13 @@ function renderExternGesprek() {
   }).join('');
   var isMail = g.kanaal === 'email';
   var classificatie = g.classificatie ? '<span class="conv-kanaal-tag">' + escHtml(tr('mail.klasse.' + g.classificatie)) + '</span>' : '';
+  /* Over welke wagen gaat dit gesprek (herkend in de mail, of de pagina waarop
+     de websitebezoeker zat). Naam uit de geladen voorraad als die er is. */
+  if (g.voertuig) {
+    var wagen = (typeof pandState !== 'undefined' && pandState.panden || []).find(function (p) { return p.code === g.voertuig; });
+    var wagenNaam = wagen ? [wagen.merk, wagen.model].filter(Boolean).join(' ') + ' · ' + g.voertuig : g.voertuig;
+    classificatie = '<span class="conv-kanaal-tag mens">' + escHtml(wagenNaam) + '</span>' + classificatie;
+  }
   var composer = isMail ? (
     '<div class="conv-composer">'
     + '<div class="panel-takeover-bar"><span class="panel-takeover-status ' + (mens ? 'paused' : 'active') + '">' + escHtml(tr(mens ? 'conv.mensAanRoer' : 'conv.assistentActief')) + '</span>'

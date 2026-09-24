@@ -16,6 +16,11 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### Beter geordend, en meldingen voor de nieuwe kanalen
 
+- **Bron-grafiek met echte kleuren per kanaal:** twee bronnen kregen dezelfde
+  kleur, waardoor WhatsApp-, e-mail- en websiteleads niet uit elkaar te houden
+  waren.
+- **In een e-mail- of websitegesprek staat de wagen bovenaan** waarover het
+  gaat.
 - **E-mail weet over welke wagen het gaat.** De auto in een klantmail wordt
   herkend (zoals bij WhatsApp), zodat een concept de echte prijs en status
   gebruikt. Een automatisch e-mailantwoord gaat niet weg als de wagen net
