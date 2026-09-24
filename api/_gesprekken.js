@@ -197,6 +197,7 @@ async function markeer(projectCode, gesprekId, velden) {
   if (typeof velden.samenvatting === 'string') toegestaan[G.samenvatting] = kort(velden.samenvatting, 4000);
   if (typeof velden.leadId === 'string') toegestaan[G.lead] = kort(velden.leadId, 40);
   if (typeof velden.klantId === 'string') toegestaan[G.klant] = kort(velden.klantId, 40);
+  if (typeof velden.voertuig === 'string') toegestaan[G.voertuig] = kort(velden.voertuig, 20);
   if (!Object.keys(toegestaan).length) return g;
   await vraag(`${T_GESPREK}/${g.recordId}`, { method: 'PATCH', body: { fields: toegestaan, typecast: true } });
   return g;

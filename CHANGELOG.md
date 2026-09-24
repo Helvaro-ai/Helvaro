@@ -16,6 +16,11 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ### Beter geordend, en meldingen voor de nieuwe kanalen
 
+- **E-mail weet over welke wagen het gaat.** De auto in een klantmail wordt
+  herkend (zoals bij WhatsApp), zodat een concept de echte prijs en status
+  gebruikt. Een automatisch e-mailantwoord gaat niet weg als de wagen net
+  verkocht is, de prijs niet meer klopt of de voorraad niet recent
+  gecontroleerd is; de verkoper antwoordt dan zelf.
 - **Voorraadbron instellen** op de voertuigenpagina: je voorraad beheren in
   Helvaro, of laten inlezen uit een feed van je eigen systeem (CSV, JSON of
   XML via https). Wagens die uit de feed verdwijnen gaan naar "uit aanbod".

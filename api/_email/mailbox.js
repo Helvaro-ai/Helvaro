@@ -247,6 +247,16 @@ async function verwerk(ctx, m, deps) {
   if (opgeslagen.dubbel) return { actie: 'dubbel' };
 
   const markering = { classificatie: analyse.classificatie };
+  /* Over welke wagen gaat het? Zelfde herkenning als WhatsApp (AutoScout24-
+     link of -nummer, dan merk + model). Eén keer per gesprek; daarna gebruiken
+     concept en automatisch antwoord de ECHTE voorraadgegevens van die wagen. */
+  if (!gesprek.voertuig && ['lead', 'klant'].includes(analyse.classificatie)) {
+    try {
+      const _vehicles = require('../_vehicles');
+      const uitkomst = await require('../_autoscout').herken(_vehicles, ctx.projectCode, `${m.onderwerp || ''} ${m.tekst || ''}`);
+      if (uitkomst && uitkomst.voertuig) { markering.voertuig = uitkomst.voertuig.code; gesprek.voertuig = uitkomst.voertuig.code; }
+    } catch (e) { /* zonder voertuig gaat het gewoon verder */ }
+  }
   let leadId = gesprek.leadId;
   if (analyse.maaktLead && !leadId) {
     const lead = await maakLead(ctx.projectCode, m, naam);
@@ -439,6 +449,23 @@ async function verstuurAntwoord(projectCode, gesprekId, { tekst, onderwerp, idem
    als 'ai'. De lusbewaking zit in analyseer(); de idempotentie in de sleutel. */
 async function autoAntwoord(ctx, gesprek, inBericht, accessToken) {
   const c = await concept(ctx.projectCode, gesprek.id, { instructie: 'Beantwoord de laatste klantmail behulpzaam en kort. Beloof niets wat niet in de feiten staat; stel voor dat een verkoper contact opneemt voor een afspraak of prijsdetails.' });
+  /* Eindcontrole, zoals bij WhatsApp (api/_inventaris.js): staat er een wagen
+     in dit gesprek, dan wordt hij vlak voor verzenden opnieuw gelezen. Klopt de
+     status, prijs of km in het concept niet meer, of is de voorraad onzeker,
+     dan gaat er NIETS automatisch weg -- de verkoper ziet de mail gewoon in
+     Gesprekken en antwoordt zelf. */
+  if (gesprek.voertuig) {
+    const _inventaris = require('../_inventaris');
+    const _vehicles = require('../_vehicles');
+    const [v, vertrouwen] = await Promise.all([_vehicles.getByCode(ctx.projectCode, gesprek.voertuig).catch(() => null), _inventaris.vertrouwenVoor(ctx.projectCode)]);
+    const snap = v ? [_inventaris.momentopname(v)] : [];
+    const controle = snap.length ? await _inventaris.hercontroleer(ctx.projectCode, snap).catch(() => ({ ok: false, veranderd: [], onleesbaar: true })) : { veranderd: [], onleesbaar: false };
+    const oordeel = _inventaris.beoordeelVoorVerzenden(c.tekst, snap, controle);
+    if (vertrouwen.niveau === 'onzeker' || oordeel.actie !== 'versturen') {
+      log(ctx.projectCode, 'ai_reply_withheld', { gesprekId: gesprek.id, kanaal: 'email', reden: vertrouwen.niveau === 'onzeker' ? 'voorraad_onzeker' : oordeel.reden });
+      return null;
+    }
+  }
   const idem = 'auto-' + crypto.createHash('sha256').update(inBericht.sleutel).digest('hex').slice(0, 32);
   return verstuurAntwoord(ctx.projectCode, gesprek.id, { tekst: c.tekst, onderwerp: c.onderwerp, idem, door: 'ai', auteur: 'ai' }, accessToken);
 }
