@@ -228,8 +228,19 @@ function render(lang) {
    (.conv-kanaal*, .mail-*), plus de kaart Websiteassistent (.widget-code)
    en het formulier voor de voorraadbron (.inv-bron-*) en e-mailbijlagen
    (.mail-bijlage*). Bewuste toevoeging. */
-const CSS_BYTES = 404802;
-const CSS_SHA   = '7f6cfa49d2c58885';
+/* Bijgewerkt: .cal-modal heeft een kap op 90vh en een scrollende body
+   gekregen, zoals de drie andere modalen die al hadden. Zonder die kap steekt
+   een lange afspraakkaart boven het venster uit, en omdat de overlay eromheen
+   centreert is dat deel ONBEREIKBAAR -- er is geen negatieve scrollpositie.
+   Gemeten op 620px: 737px boven de rand.
+
+   En het inlogpaneel staat niet langer op justify-content: center terwijl het
+   scrollt -- dezelfde val, op het scherm waar iemand moet inloggen: op 1280x720
+   stond het logo op top -21 en was dat met geen enkele scrollpositie te
+   bereiken.
+   Vorige waarden: 404802 bytes / 7f6cfa49d2c58885. */
+const CSS_BYTES = 407697;
+const CSS_SHA   = '4127ab94daaa22d6';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

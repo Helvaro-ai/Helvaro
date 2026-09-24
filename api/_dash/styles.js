@@ -1196,7 +1196,25 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* flex-start en NIET center, met een auto-marge op het kind hieronder.
+
+     Waarom: dit paneel scrollt (overflow-y: auto) en zijn inhoud is hoger dan
+     het paneel zodra het venster laag is. Met justify-content: center loopt die
+     overloop naar BEIDE kanten -- en de helft die boven de bovenrand uitsteekt
+     is onbereikbaar. scrollTop staat dan al op 0 terwijl er nog inhoud boven
+     zit; een negatieve scrollpositie bestaat niet.
+
+     Nagemeten in de browser op 1280x720, een doodgewoon laptopscherm: het
+     paneel was 720 hoog met 801 aan inhoud, en het logo stond op top: -21.
+     Na scrollTop = 0 nog steeds op -21. Lager venster, erger: 600px -> 81px
+     onbereikbaar, 480px -> 141px, 360px -> 201px (logo en kop allebei weg).
+     Op het scherm waar iemand moet INLOGGEN, dus zonder manier om verder te
+     komen.
+
+     Auto-marges doen wat center hier had moeten doen: is er ruimte over, dan
+     verdelen ze die en staat de inhoud gecentreerd; is er geen ruimte, dan
+     worden ze nul en begint de inhoud op de scroll-oorsprong. */
+  justify-content: flex-start;
   padding: 60px 72px;
   position: relative;
   overflow-y: auto;
@@ -1215,6 +1233,10 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* Form content constrained for readability */
 .login-form-inner {
+  /* De andere helft van de fix hierboven: verticaal centreren zonder de
+     bovenkant onbereikbaar te maken. Horizontaal blijft align-items: center
+     van het paneel het werk doen. */
+  margin: auto 0;
   width: 100%;
   max-width: 380px;
 }
@@ -6102,6 +6124,18 @@ body.panel-open .main-content { transform: scale(0.985); }
   box-shadow: var(--elev-3);
   overflow: hidden;
   animation: modal-in 0.2s cubic-bezier(0.4,0,0.2,1);
+  /* Dezelfde bouw als #koop-modal, #pd-modal en #cal-book-modal: een kap op
+     90vh, een kop die blijft staan en een body die scrollt.
+
+     Deze had het als enige niet. Zodra de afspraakkaart lang wordt -- notities,
+     een lang adres, het annuleerpaneel opengeklapt -- steekt hij boven het
+     venster uit, en de overlay eromheen centreert met align-items: center.
+     Wat er dan boven de bovenrand zit is ONBEREIKBAAR: er is geen negatieve
+     scrollpositie. Gemeten op een venster van 620px met een lange kaart:
+     737px boven de rand, en geen scrollbak om erbij te komen. */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 @keyframes modal-in {
   from { opacity: 0; transform: scale(0.95) translateY(10px); }
@@ -6113,6 +6147,9 @@ body.panel-open .main-content { transform: scale(0.985); }
   justify-content: space-between;
   padding: 18px 20px 14px;
   border-bottom: 1px solid var(--border);
+  /* Blijft staan terwijl de body eronder scrollt -- anders scrollt de titel
+     weg en weet je halverwege niet meer welke afspraak je openhebt. */
+  flex-shrink: 0;
 }
 .cal-modal-header-title {
   font-size: 0.9333rem;
@@ -6131,7 +6168,13 @@ body.panel-open .main-content { transform: scale(0.985); }
   transition: var(--transition);
 }
 .cal-modal-close:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
-.cal-modal-body { padding: 16px 20px 20px; }
+.cal-modal-body {
+  padding: 16px 20px 20px;
+  /* De scrollbak van de kaart hierboven. Zonder dit blijft de kap op 90vh
+     staan en wordt de rest simpelweg afgeknipt. */
+  overflow-y: auto;
+  flex: 1 1 0%;
+}
 .cal-modal-row {
   display: flex;
   align-items: flex-start;
@@ -8240,6 +8283,25 @@ body.panel-open .main-content { transform: scale(0.985); }
   font-weight: 500;
   flex-shrink: 0;
 }
+/* De kwaliteitswaarschuwing van Meta bij een eigen WhatsApp-nummer. Alleen
+   zichtbaar bij YELLOW of RED -- zie api/dashboard.js waar hij gevuld wordt.
+   Amber als aandachtspunt, rood als het echt om beperking of blokkade gaat. */
+.set-waes-kwaliteit {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--warning-ink, #8A6A33);
+  background: rgba(224, 160, 63, 0.10);
+  border: 1px solid rgba(224, 160, 63, 0.28);
+}
+.set-waes-kwaliteit.ernstig {
+  color: var(--error-ink, #B91C1C);
+  background: rgba(220, 38, 38, 0.10);
+  border-color: rgba(220, 38, 38, 0.30);
+}
+
 .settings-label-sub {
   font-size: 0.8rem;
   color: var(--text-muted);

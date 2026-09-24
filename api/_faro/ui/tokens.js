@@ -49,6 +49,21 @@ function css() {
   --faro-canvas:      #17140F;   /* warm zwart, zelfde grond als Dark Helvaro -- nooit puur zwart */
   --faro-surface:     #211D16;
   --faro-raised:      #2A251C;
+
+  /* Twee sporten voor knoppen die OP een oppervlak liggen: een rust- en een
+     hoverstand. Ze worden al gebruikt door .faro-send--stop en
+     .faro-attach__rm, maar bestonden niet -- en een var() zonder definitie en
+     zonder terugval maakt niet de waarde ongeldig maar de hele DECLARATIE.
+
+     Gevolg in productie: de stopknop hield de vulling van de verzendknop.
+     Juist die twee moeten uit elkaar liggen -- de een start iets, de ander
+     breekt het af -- en er was niets te zien van het verschil.
+
+     De waarden volgen de warme ladder hierboven: --surface-2 is dezelfde
+     trede als --faro-raised, --surface-3 een stap lichter met dezelfde
+     sprong. */
+  --surface-2:        #2A251C;
+  --surface-3:        #332D22;
   --faro-hairline:    rgba(184, 157, 115, 0.16);
 
   /* The AI input is the visual focus of the landing screen (requirement 4). */
