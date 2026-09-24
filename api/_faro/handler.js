@@ -54,13 +54,13 @@ const _rl          = require('../_ratelimit');
  */
 async function handle(req, res, auth) {
   if (!config.isEnabled()) {
-    return res.status(404).json({ error: 'Niet beschikbaar' });
+    return res.status(404).json({ code: 'faro_uit', error: 'Niet beschikbaar' });
   }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   if (!auth || !auth.projectCode) {
-    return res.status(401).json({ error: 'Niet ingelogd' });
+    return res.status(401).json({ code: 'niet_ingelogd', error: 'Niet ingelogd' });
   }
 
   let body = req.body;
@@ -110,7 +110,7 @@ async function handle(req, res, auth) {
   const { LIMITS } = config;
   const rl = await _rl.hit('ai', `${ctx.projectCode}:${ctx.userId}`, LIMITS.rateLimitMax, LIMITS.rateLimitWindowMs);
   if (rl && rl.limited) {
-    return res.status(429).json({ error: 'Te veel verzoeken. Probeer het zo weer.' });
+    return res.status(429).json({ code: 'te_snel', error: 'Te veel verzoeken. Probeer het zo weer.' });
   }
 
   switch (body.mode) {
@@ -121,7 +121,7 @@ async function handle(req, res, auth) {
     case 'faro-projects':      return projects(res, ctx, body);
     case 'faro-media':         return mediaMode(res, ctx, body);
     case 'faro-context':       return res.status(200).json({ sources: prompt.contextSources() });
-    default:                 return res.status(400).json({ error: 'Onbekende mode' });
+    default:                 return res.status(400).json({ code: 'onbekende_actie', error: 'Onbekende mode' });
   }
 }
 
@@ -139,13 +139,13 @@ async function chat(req, res, ctx, body) {
   const attachments = Array.isArray(body.attachments) ? body.attachments : [];
 
   if (!text && !attachments.length) {
-    return res.status(400).json({ error: 'Leeg bericht' });
+    return res.status(400).json({ code: 'leeg_bericht', error: 'Leeg bericht' });
   }
   if (text.length > config.LIMITS.maxMessageChars) {
-    return res.status(400).json({ error: 'Bericht te lang' });
+    return res.status(400).json({ code: 'bericht_lang', error: 'Bericht te lang' });
   }
   if (attachments.length > config.LIMITS.maxAttachments) {
-    return res.status(400).json({ error: 'Te veel bijlagen' });
+    return res.status(400).json({ code: 'veel_bijlagen', error: 'Te veel bijlagen' });
   }
   // LIMITS.maxAttachmentBytes existed and nothing read it, and mediaType went
   // straight through to the provider unvalidated. Both are checked here, before
@@ -153,11 +153,11 @@ async function chat(req, res, ctx, body) {
   const ALLOWED_MEDIA = ['image/png', 'image/jpeg', 'image/webp'];
   for (const a of attachments) {
     if (!a || typeof a.data !== 'string' || !ALLOWED_MEDIA.includes(a.mediaType)) {
-      return res.status(400).json({ error: 'Alleen PNG-, JPG- of WebP-afbeeldingen' });
+      return res.status(400).json({ code: 'beeld_type', error: 'Alleen PNG-, JPG- of WebP-afbeeldingen' });
     }
     // base64 decodes to ~3/4 of its length; cheaper than actually decoding it.
     if (Math.floor(a.data.length * 0.75) > config.LIMITS.maxAttachmentBytes) {
-      return res.status(400).json({ error: 'Afbeelding te groot' });
+      return res.status(400).json({ code: 'beeld_groot', error: 'Afbeelding te groot' });
     }
   }
 
@@ -174,7 +174,7 @@ async function chat(req, res, ctx, body) {
     } else if (await store.available()) {
       // De opslag doet het WEL en kent dit gesprek niet: dan is het van iemand
       // anders of het bestaat niet. Dat hoort een 404 te zijn.
-      return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      return res.status(404).json({ code: 'convo_weg', error: 'Gesprek niet gevonden' });
     } else {
       // De opslag is er (nog) niet. Vroeger viel dit samen met het geval
       // hierboven, en omdat getConversation() ALTIJD null teruggaf kreeg elk
@@ -256,7 +256,7 @@ function clientHistory(raw) {
 // ── faro-confirm ───────────────────────────────────────────────────────────────
 
 async function confirm(res, ctx, body) {
-  if (!body.actionId) return res.status(400).json({ error: 'Ontbrekende actie' });
+  if (!body.actionId) return res.status(400).json({ code: 'actie_mist', error: 'Ontbrekende actie' });
   try {
     const out = await actions.execute({ actionId: body.actionId, ctx });
     return res.status(200).json({ ok: true, ...out });
@@ -295,34 +295,34 @@ async function conversations(res, ctx, body) {
        De id-controle staat hier en niet in de store: die moet een 400 kunnen
        geven, en dat is een HTTP-antwoord en dus het werk van deze laag. */
     case 'rename': {
-      if (!body.id) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+      if (!body.id) return res.status(400).json({ code: 'convo_id_mist', error: 'Ontbrekend gesprek' });
       const titel = String(body.title || '').trim();
-      if (!titel) return res.status(400).json({ error: 'Een gesprek moet een naam houden.' });
+      if (!titel) return res.status(400).json({ code: 'naam_leeg', error: 'Een gesprek moet een naam houden.' });
       const uit = await store.renameConversation(ctx.projectCode, body.id, titel);
       /* null = niet gevonden OF niet van deze tenant. Die twee met opzet niet
          uit elkaar houden: het verschil zou verklappen dat het id bestaat. */
-      if (!uit) return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      if (!uit) return res.status(404).json({ code: 'convo_weg', error: 'Gesprek niet gevonden' });
       return res.status(200).json({ ok: true, conversation: uit });
     }
     case 'favorite': {
-      if (!body.id) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+      if (!body.id) return res.status(400).json({ code: 'convo_id_mist', error: 'Ontbrekend gesprek' });
       const uit = await store.setFavorite(ctx.projectCode, body.id, Boolean(body.favorite));
-      if (!uit) return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      if (!uit) return res.status(404).json({ code: 'convo_weg', error: 'Gesprek niet gevonden' });
       return res.status(200).json({ ok: true, conversation: uit });
     }
     case 'delete': {
-      if (!body.id) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+      if (!body.id) return res.status(400).json({ code: 'convo_id_mist', error: 'Ontbrekend gesprek' });
       const weg = await store.deleteConversation(ctx.projectCode, body.id);
-      if (!weg) return res.status(404).json({ error: 'Gesprek niet gevonden' });
+      if (!weg) return res.status(404).json({ code: 'convo_weg', error: 'Gesprek niet gevonden' });
       return res.status(200).json({ ok: true });
     }
     default:
-      return res.status(400).json({ error: 'Onbekende bewerking' });
+      return res.status(400).json({ code: 'onbekende_actie', error: 'Onbekende bewerking' });
   }
 }
 
 async function messages(res, ctx, body) {
-  if (!body.conversationId) return res.status(400).json({ error: 'Ontbrekend gesprek' });
+  if (!body.conversationId) return res.status(400).json({ code: 'convo_id_mist', error: 'Ontbrekend gesprek' });
   return res.status(200).json({
     messages: await store.listMessages(ctx.projectCode, body.conversationId),
   });
@@ -342,7 +342,7 @@ async function projects(res, ctx, body) {
     case 'create':
       return res.status(501).json({ error: 'Nog niet beschikbaar', code: 'not_wired' });
     default:
-      return res.status(400).json({ error: 'Onbekende bewerking' });
+      return res.status(400).json({ code: 'onbekende_actie', error: 'Onbekende bewerking' });
   }
 }
 
@@ -361,7 +361,7 @@ async function mediaMode(res, ctx, body) {
     case 'list-images': return res.status(200).json({ images: await media.listImages(ctx) });
     case 'list-videos': return res.status(200).json({ videos: await media.listVideos(ctx) });
     case 'job':
-      if (!body.jobId) return res.status(400).json({ error: 'Ontbrekende job' });
+      if (!body.jobId) return res.status(400).json({ code: 'job_mist', error: 'Ontbrekende job' });
       return res.status(200).json({ job: await media.getJob(body.jobId, ctx) });
     /* Video loopt BEWUST niet langs hier. Een filmpje kost 150 tot 300 credits
        en start een opdracht die niet meer te annuleren is; die hoort achter de
@@ -377,7 +377,7 @@ async function mediaMode(res, ctx, body) {
     case 'save-to-property':
       return res.status(501).json({ error: 'Nog niet beschikbaar', code: 'not_wired' });
     default:
-      return res.status(400).json({ error: 'Onbekende bewerking' });
+      return res.status(400).json({ code: 'onbekende_actie', error: 'Onbekende bewerking' });
   }
 }
 

@@ -747,7 +747,11 @@ function faroHandleEvent(name, data, bubble, status) {
       // and the same rule store.js's deriveTitle() uses server-side.
       if (!faroState.conversationTitle) {
         var t0 = String(faroState.lastSent || '').trim().replace(/\\s+/g, ' ');
-        faroState.conversationTitle = !t0 ? 'Nieuw gesprek'
+        /* T() en niet de zin zelf: sb.new bestaat al in vier talen en werd
+           hier niet gebruikt. Een Duitse makelaar zag boven zijn eigen
+           gesprek "Nieuw gesprek" staan, terwijl de knop ernaast uit
+           dezelfde tabel al "Neues Gespräch" zei. */
+        faroState.conversationTitle = !t0 ? T('sb.new', 'Nieuw gesprek')
           : (t0.length <= 48 ? t0 : t0.slice(0, 47) + '…');
       }
       if (data.model) {
@@ -1420,7 +1424,22 @@ function faroPost(body) {
     body: JSON.stringify(body)
   }).then(function (r) {
     return r.json().then(function (j) {
-      if (!r.ok) throw new Error(j.error || T('st.error'));
+      if (!r.ok) {
+        /* Eerst de CODE van de server, dan pas zijn zin. Andersom -- zoals het
+           hier stond -- won de Nederlandse serverzin altijd van de vertaling
+           die er al was, en las een Duitse makelaar "Gesprek niet gevonden".
+           Datzelfde patroon stond ook op het lead-formulier en bij Stripe.
+
+           En niet via T('srv.' + code, ''): die geeft bij een ONBEKENDE sleutel
+           het laatste stukje ervan terug met een hoofdletter, dus een code die
+           hier nog geen vertaling heeft zou als "Convo_weg" op het scherm
+           komen. Daarom expliciet kijken of de sleutel bestaat, en anders
+           doorvallen naar de zin van de server -- Nederlands, maar leesbaar. */
+        var sl = j && j.code ? 'srv.' + j.code : '';
+        var vertaald = sl && FARO_T && Object.prototype.hasOwnProperty.call(FARO_T, sl)
+          ? FARO_T[sl] : '';
+        throw new Error(vertaald || (j && j.error) || T('st.error'));
+      }
       return j;
     });
   });

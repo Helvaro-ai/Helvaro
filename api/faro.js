@@ -37,7 +37,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // CSRF: state-changing POSTs must carry the double-submit token, same as the
   // rest of the dashboard's write paths.
   if (!_session.csrfOk(req)) {
-    return res.status(403).json({ error: 'Ongeldig verzoek' });
+    return res.status(403).json({ code: 'csrf', error: 'Ongeldig verzoek' });
   }
 
   // ── Path 0: Clerk ──────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // Belt and braces, as in leads.js: an empty projectCode reads as "admin,
     // show everything" downstream, and Faro's read tools query on it directly.
     if (!clerkSession.projectCode) {
-      return res.status(401).json({ error: 'Sessie mist een projectcode' });
+      return res.status(401).json({ code: 'geen_project', error: 'Sessie mist een projectcode' });
     }
     // No revocation check: _revocation.js tracks tokens THIS server signed, and
     // a Clerk session is not one of them. Revoking it is Clerk's own job — the
@@ -84,7 +84,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   }
   const session = _session.verifySignedSession(_ruw);
   if (!session) {
-    return res.status(401).json({ error: 'Niet ingelogd' });
+    return res.status(401).json({ code: 'niet_ingelogd', error: 'Niet ingelogd' });
   }
 
   // api/leads.js does this and Faro did not, which meant "log me out
@@ -94,13 +94,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // that trusts a session performs it.
   try {
     if (await _revoke.isRevoked(session)) {
-      return res.status(401).json({ error: 'Sessie verlopen' });
+      return res.status(401).json({ code: 'sessie_weg', error: 'Sessie verlopen' });
     }
   } catch (err) {
     // Fail CLOSED: an unavailable revocation check must not silently restore
     // access to a session someone deliberately invalidated.
     console.error('[faro] revocation check failed:', err.message);
-    return res.status(503).json({ error: 'Even niet beschikbaar' });
+    return res.status(503).json({ code: 'even_weg', error: 'Even niet beschikbaar' });
   }
 
   const auth = {
