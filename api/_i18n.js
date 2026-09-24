@@ -289,6 +289,25 @@ const TEKST = {
       en: 'Connect number', de: 'Nummer verbinden' },
   'set.waes.busy': { nl: 'Bezig met koppelen\u2026', fr: 'Connexion en cours\u2026',
       en: 'Connecting\u2026', de: 'Wird verbunden\u2026' },
+  /* De kwaliteitsscore van Meta. Alleen tonen als er iets te DOEN is.
+
+     Wat er stond: de rauwe waarde uit de Graph API, in hoofdletters, achter de
+     statusregel geplakt -- "Gekoppeld · +32... · Cya · UNKNOWN". UNKNOWN is
+     Meta's antwoord voor een nummer met te weinig berichtgeschiedenis; het
+     betekent niet dat er iets mis is. Maar zo gepresenteerd leest het als een
+     storing, en de eigenaar kan er niets mee.
+
+     GREEN is de gezonde stand en hoeft ook niet op het scherm: dat is ruis.
+     YELLOW en RED zijn wél de moeite -- daar volgt beperking of blokkade op --
+     dus die krijgen een zin die zegt wat het is en wat eraan te doen valt. */
+  'set.waes.kwaliteit.geel': { nl: 'Meta beoordeelt de kwaliteit van dit nummer als matig. Dat komt meestal van leads die je berichten blokkeren of als spam melden. Stuur alleen naar mensen die zelf contact zochten.',
+                               fr: 'Meta juge la qualité de ce numéro moyenne. Cela vient le plus souvent de prospects qui bloquent vos messages ou les signalent comme spam. N’envoyez qu’à des personnes qui vous ont contacté elles-mêmes.',
+                               en: 'Meta rates this number’s quality as medium. That usually comes from leads blocking your messages or marking them as spam. Only message people who contacted you themselves.',
+                               de: 'Meta bewertet die Qualität dieser Nummer als mittel. Das kommt meist von Leads, die Ihre Nachrichten blockieren oder als Spam melden. Schreiben Sie nur Menschen an, die sich selbst gemeldet haben.' },
+  'set.waes.kwaliteit.rood': { nl: 'Meta beoordeelt de kwaliteit van dit nummer als laag. Bij deze stand kan Meta je nummer beperken of blokkeren. Stop met ongevraagde berichten en mail ons als je niet weet waar het vandaan komt.',
+                               fr: 'Meta juge la qualité de ce numéro faible. À ce niveau, Meta peut limiter ou bloquer votre numéro. Cessez les messages non sollicités et écrivez-nous si vous ne voyez pas d’où cela vient.',
+                               en: 'Meta rates this number’s quality as low. At this level Meta can restrict or block your number. Stop sending unsolicited messages, and email us if you cannot see where it is coming from.',
+                               de: 'Meta bewertet die Qualität dieser Nummer als niedrig. Auf dieser Stufe kann Meta Ihre Nummer einschränken oder sperren. Stellen Sie unaufgeforderte Nachrichten ein und schreiben Sie uns, wenn Sie die Ursache nicht sehen.' },
   'set.waes.done': { nl: 'Gekoppeld', fr: 'Connect\u00e9', en: 'Connected', de: 'Verbunden' },
   'set.waes.failed': { nl: 'Koppelen is niet afgerond. Er is niets gewijzigd.',
       fr: 'La connexion n\u2019a pas abouti. Rien n\u2019a \u00e9t\u00e9 modifi\u00e9.',
@@ -1474,6 +1493,16 @@ const TEKST = {
 
   /* Het venster dat een account wist. Dat is het laatste scherm dat een klant
      ooit van Helvaro ziet -- en het stond volledig in het Nederlands. */
+  /* Het verwijdervenster. Dit is het scherm waarop iemand zijn hele account
+     weggooit -- wie dat leest moet precies begrijpen wat er weggaat en wat er
+     blijft, in zijn eigen taal. De tekst ging via innerHTML de pagina in, en
+     dat ziet geen enkele controle op textContent of attributen. */
+  'wis.meteen':   { nl: 'Dit gebeurt nu meteen en is niet terug te draaien.', fr: 'Cela se produit immédiatement et ne peut pas être annulé.', en: 'This happens immediately and cannot be undone.', de: 'Das geschieht sofort und kann nicht rückgängig gemacht werden.' },
+  'wis.weg':      { nl: 'Weg: je leads, je gesprekken, je afspraken, je aanbod, je campagnes, je creditgeschiedenis, je Faro-gesprekken, je instellingen en je inlog. Je lopende abonnement wordt op hetzelfde moment stopgezet.',
+                    fr: 'Supprimés : vos prospects, vos conversations, vos rendez-vous, votre offre, vos campagnes, votre historique de crédits, vos conversations Faro, vos paramètres et votre accès. Votre abonnement en cours est résilié au même moment.',
+                    en: 'Gone: your leads, your conversations, your appointments, your listings, your campaigns, your credit history, your Faro conversations, your settings and your login. Your running subscription is cancelled at the same moment.',
+                    de: 'Weg: Ihre Leads, Ihre Gespräche, Ihre Termine, Ihr Angebot, Ihre Kampagnen, Ihr Credit-Verlauf, Ihre Faro-Gespräche, Ihre Einstellungen und Ihr Zugang. Ihr laufendes Abonnement wird im selben Moment gekündigt.' },
+  'wis.blijft':   { nl: 'Wat blijft: je facturen bij Stripe. Die bewaarplicht ligt bij ons, niet bij jou.', fr: 'Ce qui reste : vos factures chez Stripe. Cette obligation de conservation nous incombe, pas à vous.', en: 'What stays: your invoices at Stripe. That retention duty is ours, not yours.', de: 'Was bleibt: Ihre Rechnungen bei Stripe. Diese Aufbewahrungspflicht liegt bei uns, nicht bei Ihnen.' },
   'wis.typ':      { nl: 'Typ VERWIJDEREN om te bevestigen', fr: 'Tapez SUPPRIMER pour confirmer', en: 'Type DELETE to confirm', de: 'Tippen Sie L\u00d6SCHEN zur Best\u00e4tigung' },
   'wis.bezig':    { nl: 'Bezig met wissen...', fr: 'Suppression en cours...', en: 'Deleting...', de: 'Wird gel\u00f6scht...' },
   'wis.duurt':    { nl: 'Dit kan een halve minuut duren. Sluit dit venster niet.',
@@ -1757,6 +1786,14 @@ const TEKST = {
   'markt.other.t': { nl: 'Iets anders', fr: 'Autre chose', en: 'Something else', de: 'Etwas anderes' },
   'markt.other.s': { nl: 'De standaardinrichting. Je kunt dit later altijd wijzigen.', fr: 'La configuration standard. Vous pourrez toujours changer plus tard.', en: 'The standard setup. You can always change this later.', de: 'Die Standardeinrichtung. Sie können das später jederzeit ändern.' },
   'markt.sub.dealership': { nl: 'Voertuigen, proefritten, AutoScout24-leads', fr: 'Véhicules, essais, prospects AutoScout24', en: 'Vehicles, test drives, AutoScout24 leads', de: 'Fahrzeuge, Probefahrten, AutoScout24-Leads' },
+  /* De drie ontbrekende verticals. marktSubtekst() kende er maar drie terwijl
+     er vijf zijn met een eigen aanbod, dus een keukenzaak of een aannemer las
+     "Panden, bezichtigingen, een link per woning" onder zijn eigen keuze --
+     dezelfde fout die eerder in loadOnboardingChecklist zat, op een ander
+     scherm. */
+  'markt.sub.bouw':      { nl: 'Projecten, plaatsbezoeken, offertes', fr: 'Projets, visites de chantier, devis', en: 'Projects, site visits, quotes', de: 'Projekte, Ortstermine, Angebote' },
+  'markt.sub.keuken':    { nl: 'Ontwerpen, showroomafspraken, offertes', fr: 'Conceptions, rendez-vous en showroom, devis', en: 'Designs, showroom appointments, quotes', de: 'Entwürfe, Showroom-Termine, Angebote' },
+  'markt.sub.renovatie': { nl: 'Werven, plaatsbezoeken, offertes', fr: 'Chantiers, visites sur place, devis', en: 'Jobs, site visits, quotes', de: 'Baustellen, Ortstermine, Angebote' },
   'markt.sub.other': { nl: 'De standaardinrichting', fr: 'La configuration standard', en: 'The standard setup', de: 'Die Standardeinrichtung' },
   'markt.sub.vastgoed': { nl: 'Panden, bezichtigingen, een link per woning', fr: 'Biens, visites, un lien par logement', en: 'Listings, viewings, a link per property', de: 'Objekte, Besichtigungen, ein Link pro Immobilie' },
   'markt.kies': { nl: 'Kies waar je in zit, dan richt ik de rest daarop in.', fr: 'Choisissez votre secteur, et j’adapte le reste.', en: 'Pick your market and I’ll set up the rest around it.', de: 'Wählen Sie Ihren Markt, dann richte ich den Rest darauf ein.' },
@@ -2576,6 +2613,16 @@ const TEKST = {
   'pd.leadN': { nl: 'leads', fr: 'prospects', en: 'leads', de: 'Leads' },
   'leeg.kopieerLink': { nl: 'Kopieer je formulierlink', fr: 'Copier le lien de votre formulaire', en: 'Copy your form link', de: 'Formularlink kopieren' },
   'leeg.waarDelen': { nl: 'Waar deel ik die?', fr: 'Où le partager ?', en: 'Where do I share it?', de: 'Wo teile ich ihn?' },
+  /* De plankaart op Facturatie. De omschrijving was vertaald (fa.plan.*), maar
+     de drie regels eromheen stonden nog hardgecodeerd in het Nederlands: een
+     Franse klant las "Huidig", "/maand" en "3.000 credits · ongeveer 150
+     leadgesprekken" op het scherm waar hij een abonnement kiest. */
+  'fa.huidig':     { nl: 'Huidig', fr: 'Actuel', en: 'Current', de: 'Aktuell' },
+  'fa.permaand':   { nl: ' /maand', fr: ' /mois', en: ' /month', de: ' /Monat' },
+  'fa.creditsGesprekken': { nl: '{credits} credits · ongeveer {n} leadgesprekken',
+                            fr: '{credits} crédits · environ {n} conversations avec des prospects',
+                            en: '{credits} credits · about {n} lead conversations',
+                            de: '{credits} Credits · etwa {n} Lead-Gespräche' },
   'fa.plan.starter': { nl: 'Reactie binnen 30 sec, automatische kwalificatie, afspraken in je agenda.', fr: 'Réponse en 30 s, qualification automatique, rendez-vous dans votre agenda.', en: 'Reply within 30 s, automatic qualification, appointments in your calendar.', de: 'Antwort in 30 s, automatische Qualifizierung, Termine in Ihrem Kalender.' },
   'fa.plan.growth': { nl: 'Alles uit Starter, plus de visualisatie-agent en drie agenten op je sector.', fr: 'Tout Starter, plus l’agent de visualisation et trois agents pour votre secteur.', en: 'Everything in Starter, plus the visualisation agent and three agents for your sector.', de: 'Alles aus Starter, plus den Visualisierungs-Agenten und drei Agenten für Ihre Branche.' },
   'fa.plan.scale': { nl: 'Alles uit Growth, onbeperkt binnen fair use, eigen kwalificatievragen.', fr: 'Tout Growth, illimité dans le cadre du fair use, vos propres questions de qualification.', en: 'Everything in Growth, unlimited within fair use, your own qualification questions.', de: 'Alles aus Growth, unbegrenzt im Rahmen des Fair Use, eigene Qualifizierungsfragen.' },

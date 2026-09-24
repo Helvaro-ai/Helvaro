@@ -2726,6 +2726,12 @@ ${faro.navCta}
             <div style="flex:1;min-width:0">
               <div class="settings-label">${T('set.waes.title')}</div>
               <div class="settings-label-sub" id="set-waes-sub">${T('set.waes.sub')}</div>
+              <!-- De kwaliteitswaarschuwing van Meta. Staat hier onder het label
+                   en niet in de waardekolom rechts: het is een zin met een
+                   instructie, geen statuswoord. Leeg en verborgen zolang er
+                   niets aan de hand is -- zie de toelichting bij
+                   set.waes.kwaliteit.* in api/_i18n.js. -->
+              <div class="set-waes-kwaliteit" id="set-waes-kwaliteit" style="display:none"></div>
             </div>
             <div class="settings-toggle" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
               <div class="settings-value" id="set-waes-status"></div>
@@ -7879,8 +7885,19 @@ async function marktWisselen(gekozen) {
 function marktSubtekst(gekozen) {
   var el = document.getElementById('set-markt-sub');
   if (!el) return;
-  el.textContent = tr(gekozen === 'dealership' ? 'markt.sub.dealership'
-    : (gekozen === 'other' ? 'markt.sub.other' : 'markt.sub.vastgoed'));
+  /* Per SECTOR een eigen sleutel. Hier stond een ternair met drie uitkomsten
+     terwijl er vijf verticals met een eigen aanbod zijn: een keukenzaak las
+     daardoor "Panden, bezichtigingen, een link per woning" onder zijn eigen
+     keuze. Vastgoed blijft de terugval voor een onbekende waarde. */
+  var subSleutel = {
+    dealership:   'markt.sub.dealership',
+    other:        'markt.sub.other',
+    real_estate:  'markt.sub.vastgoed',
+    construction: 'markt.sub.bouw',
+    kitchen:      'markt.sub.keuken',
+    renovation:   'markt.sub.renovatie',
+  }[gekozen] || 'markt.sub.vastgoed';
+  el.textContent = tr(subSleutel);
 }
 
 /* Welke markten een eigen aanbod hebben om uit te kiezen. De spiegel van
@@ -16320,10 +16337,10 @@ function tekenPlannen() {
     }
     return '<div class="fa-plan' + (isHuidig ? ' huidig' : '') + '">'
       + '<div class="fa-plan-kop"><span class="fa-plan-titel">' + escHtml(p.naam) + '</span>'
-      + (isHuidig ? '<span class="fa-plan-badge">Huidig</span>' : '') + '</div>'
-      + '<div class="fa-plan-prijs">\u20AC ' + euroFmt(p.prijsEur) + '<span> /maand</span></div>'
-      + '<div class="fa-plan-regel">' + koopFmt(p.credits) + ' credits \u00B7 ongeveer '
-      + koopFmt(p.gesprekken) + ' leadgesprekken</div>'
+        + (isHuidig ? '<span class="fa-plan-badge">' + escHtml(tr('fa.huidig')) + '</span>' : '') + '</div>'
+        + '<div class="fa-plan-prijs">\u20AC ' + euroFmt(p.prijsEur) + '<span>' + escHtml(tr('fa.permaand')) + '</span></div>'
+        + '<div class="fa-plan-regel">'
+        + escHtml(tr('fa.creditsGesprekken', { credits: koopFmt(p.credits), n: koopFmt(p.gesprekken) })) + '</div>'
       + '<div class="fa-plan-regel">' + escHtml(T_DICT['fa.plan.' + p.id] || p.omschrijving || '') + '</div>'
       + knop + '</div>';
   }).join('');
@@ -16486,12 +16503,12 @@ function vraagAccountVerwijdering() {
 
   var uitleg = document.createElement('div');
   uitleg.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--text-muted,#999);line-height:1.6';
-  uitleg.innerHTML =
-      '<p style="margin:0 0 10px"><strong>Dit gebeurt nu meteen en is niet terug te draaien.</strong></p>'
-    + '<p style="margin:0 0 10px">Weg: je leads, je gesprekken, je afspraken, je aanbod, je campagnes, '
-    + 'je creditgeschiedenis, je Faro-gesprekken, je instellingen en je inlog. '
-    + 'Je lopende abonnement wordt op hetzelfde moment stopgezet.</p>'
-    + '<p style="margin:0">Wat blijft: je facturen bij Stripe. Die bewaarplicht ligt bij ons, niet bij jou.</p>';
+    /* Vertaald, en dat is hier geen detail: dit is het scherm waarop iemand
+       zijn hele account weggooit. */
+    uitleg.innerHTML =
+        '<p style="margin:0 0 10px"><strong>' + escHtml(tr('wis.meteen')) + '</strong></p>'
+      + '<p style="margin:0 0 10px">' + escHtml(tr('wis.weg')) + '</p>'
+      + '<p style="margin:0">' + escHtml(tr('wis.blijft')) + '</p>';
 
   var label = document.createElement('label');
   label.setAttribute('for', 'verwijder-bevestig');
@@ -18421,7 +18438,26 @@ function waesToon(d) {
   var los = document.getElementById('set-waes-los');
   if (d.gekoppeld) {
     var n = d.nummer || {};
-    status.textContent = tr('set.waes.done') + (n.number ? ' · ' + n.number : '') + (n.name ? ' · ' + n.name : '') + (n.quality ? ' · ' + n.quality : '');
+    /* De kwaliteitsscore NIET rauw achter de regel plakken. Er stond
+       "Gekoppeld \u00b7 <nummer> \u00b7 <naam> \u00b7 UNKNOWN", en UNKNOWN is Meta's
+       antwoord voor een nummer met te weinig berichtgeschiedenis -- er is niets
+       mis en er valt niets te doen. Zo gepresenteerd leest het als een storing.
+       GREEN is de gezonde stand en is net zo goed ruis.
+
+       Alleen YELLOW en RED horen op het scherm, want daar volgt beperking of
+       blokkade op, en dan hoort er ook te staan wat eraan te doen valt. */
+    var kwaliteit = String(n.quality || '').toUpperCase();
+    status.textContent = tr('set.waes.done')
+      + (n.number ? ' \u00b7 ' + n.number : '')
+      + (n.name ? ' \u00b7 ' + n.name : '');
+    var kwalEl = document.getElementById('set-waes-kwaliteit');
+    if (kwalEl) {
+      var kwalSleutel = kwaliteit === 'RED' ? 'set.waes.kwaliteit.rood'
+                      : (kwaliteit === 'YELLOW' ? 'set.waes.kwaliteit.geel' : '');
+      kwalEl.textContent = kwalSleutel ? tr(kwalSleutel) : '';
+      kwalEl.style.display = kwalSleutel ? '' : 'none';
+      kwalEl.className = 'set-waes-kwaliteit' + (kwaliteit === 'RED' ? ' ernstig' : '');
+    }
     knop.style.display = 'none';
     if (los) { los.style.display = ''; los.disabled = false; }
     if (sub) sub.textContent = tr('set.waes.sub.gekoppeld');
