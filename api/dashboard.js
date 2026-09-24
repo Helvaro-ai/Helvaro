@@ -1933,10 +1933,10 @@ ${faro.navCta}
               <input id="ap-callback-window" type="text" class="ap-input" placeholder="binnen 30 minuten" maxlength="100">
               <div class="ap-hint">
                 ${T('ap.examples')}
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 30 minuten'">binnen 30 minuten</button>
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 1 uur'">binnen 1 uur</button>
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='vandaag nog'">vandaag nog</button>
-                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='binnen 24 uur'">binnen 24 uur</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='${T('ap.cb.30min')}'">${T('ap.cb.30min')}</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='${T('ap.cb.1uur')}'">${T('ap.cb.1uur')}</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='${T('ap.cb.vandaag')}'">${T('ap.cb.vandaag')}</button>
+                <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='${T('ap.cb.24uur')}'">${T('ap.cb.24uur')}</button>
               </div>
             </div>
 
@@ -2619,7 +2619,7 @@ ${faro.navCta}
 
           <div class="fm-preview-card">
             <div class="fm-option-hdr">
-              <div class="fm-option-title">Voorbeeld</div>
+              <div class="fm-option-title">${T('fm.preview.kop')}</div>
               <p class="fm-option-sub">${T('fm.preview.sub')}</p>
             </div>
             <div class="fm-iframe-wrap">
@@ -3046,7 +3046,7 @@ ${faro.navCta}
           </button>
           <button class="profile-action-btn" onclick="navigateTo('gesprekken')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Gesprekken
+            ${T('nav.conversations')}
           </button>
           <button class="profile-action-btn" onclick="navigateTo('exports')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>

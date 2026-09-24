@@ -1791,6 +1791,16 @@ const TEKST = {
      "Panden, bezichtigingen, een link per woning" onder zijn eigen keuze --
      dezelfde fout die eerder in loadOnboardingChecklist zat, op een ander
      scherm. */
+  /* De voorbeeldchips onder "terugbeltijd". De waarde die ze in het veld zetten
+     wordt door de assistent gelezen, dus die hoort ook in de taal van de
+     eigenaar te staan -- niet alleen het label erop. */
+  'ap.cb.30min':   { nl: 'binnen 30 minuten', fr: 'sous 30 minutes', en: 'within 30 minutes', de: 'innerhalb von 30 Minuten' },
+  'ap.cb.1uur':    { nl: 'binnen 1 uur', fr: 'sous 1 heure', en: 'within 1 hour', de: 'innerhalb von 1 Stunde' },
+  'ap.cb.vandaag': { nl: 'vandaag nog', fr: 'aujourd’hui encore', en: 'still today', de: 'noch heute' },
+  'ap.cb.24uur':   { nl: 'binnen 24 uur', fr: 'sous 24 heures', en: 'within 24 hours', de: 'innerhalb von 24 Stunden' },
+
+  'fm.preview.kop': { nl: 'Voorbeeld', fr: 'Aperçu', en: 'Preview', de: 'Vorschau' },
+
   'markt.sub.bouw':      { nl: 'Projecten, plaatsbezoeken, offertes', fr: 'Projets, visites de chantier, devis', en: 'Projects, site visits, quotes', de: 'Projekte, Ortstermine, Angebote' },
   'markt.sub.keuken':    { nl: 'Ontwerpen, showroomafspraken, offertes', fr: 'Conceptions, rendez-vous en showroom, devis', en: 'Designs, showroom appointments, quotes', de: 'Entwürfe, Showroom-Termine, Angebote' },
   'markt.sub.renovatie': { nl: 'Werven, plaatsbezoeken, offertes', fr: 'Chantiers, visites sur place, devis', en: 'Jobs, site visits, quotes', de: 'Baustellen, Ortstermine, Angebote' },

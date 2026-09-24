@@ -61,3 +61,28 @@ meldde vrolijk "geen enkel probleem" over een scherm dat hij niet gemeten had.
 Gifproef op dezelfde meter: 240 overlappingen zodra er met de hand een label
 overheen gelegd wordt, en 0 zodra dat weer weg is. Een meter die nul meldt
 zonder dat je hebt gezien dat hij ook iets KAN melden, zegt niets.
+
+## Leugen 5 — de unie van regelvakken
+
+`getBoundingClientRect()` op tekst die over meerdere regels loopt geeft de
+**unie** van de regelvakken. Die unie beslaat ook de witruimte links van regel 2
+en rechts van regel 1 — ruimte waar geen enkele letter staat.
+
+Twee inline spans die elkaar netjes opvolgen krijgen daardoor overlappende
+dozen zonder dat er iets over elkaar staat. Op het instellingenscherm leverde
+dat op 390px drie "overlappen" op die bij nameten geen van drieën bestonden:
+
+    "Connecté : verkoop@…"  vs  "· Dernière vérification : …"   97% dekking
+    "Votre assistant"       vs  "hello@helvaro.pro"             91% dekking
+
+Nagemeten met `getClientRects()` — de regelvakken los — was de echte overlap
+in beide gevallen **nul**. De eerste had 3 regelvakken, de tweede 2.
+
+De checker vergelijkt nu regelvak tegen regelvak. Het is dezelfde soort fout als
+de vier hierboven: de rechthoek klopte, hij stelde alleen iets anders voor dan
+ik dacht.
+
+**Poison-test hoort erbij.** Een detector die stil is, is niet hetzelfde als een
+detector die werkt — stil is precies wat een kapotte detector ook doet. Na deze
+wijziging: twee absoluut gepositioneerde stukken tekst op elkaar gelegd, 88%
+dekking gemeld; weggehaald, nul.

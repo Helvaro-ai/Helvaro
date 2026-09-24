@@ -64,7 +64,23 @@
         if (n.nodeType === 3 && n.textContent.trim().length > 1 && zichtbaar(el)) {
           var rg = document.createRange(); rg.selectNodeContents(n);
           var r = zichtbareDoos(rg.getBoundingClientRect(), el);
-          if (r.width > 3 && r.height > 3) stukken.push({ el: el, r: r, t: n.textContent.trim() });
+          /* De REGELVAKKEN apart bewaren. getBoundingClientRect() geeft bij
+             tekst die over meerdere regels loopt de UNIE van die regels, en
+             die unie beslaat ook de witruimte links van regel 2 en rechts van
+             regel 1 -- ruimte waar helemaal geen letters staan.
+
+             Twee inline spans die elkaar netjes opvolgen krijgen daardoor
+             overlappende uniedozen zonder dat er iets over elkaar staat. Dat
+             leverde op het instellingenscherm drie 'overlappen' op die bij
+             nameten alle drie niet bestonden. Vergelijken op regelvak lost dat
+             op: dat is de doos waar de letters echt in staan. */
+          var lijnen = [];
+          var rl = rg.getClientRects();
+          for (var q = 0; q < rl.length; q++) {
+            var d = zichtbareDoos(rl[q], el);
+            if (d.width > 1 && d.height > 1) lijnen.push(d);
+          }
+          if (r.width > 3 && r.height > 3) stukken.push({ el: el, r: r, lijnen: lijnen, t: n.textContent.trim() });
         } else if (n.nodeType === 1) loop(n);
       }
     })(root);
@@ -82,10 +98,18 @@
     for (var i = 0; i < stukken.length; i++) for (var j = i + 1; j < stukken.length; j++) {
       var A = stukken[i], B = stukken[j];
       if (A.el === B.el || A.el.contains(B.el) || B.el.contains(A.el)) continue;
-      var ov = Math.max(0, Math.min(A.r.right, B.r.right) - Math.max(A.r.left, B.r.left))
-             * Math.max(0, Math.min(A.r.bottom, B.r.bottom) - Math.max(A.r.top, B.r.top));
+      /* Regelvak tegen regelvak, niet unie tegen unie -- zie de toelichting
+         hierboven. De grootste overlap tussen twee regels telt. */
+      var ov = 0, kleinste = 0;
+      var La = (A.lijnen && A.lijnen.length) ? A.lijnen : [A.r];
+      var Lb = (B.lijnen && B.lijnen.length) ? B.lijnen : [B.r];
+      for (var x = 0; x < La.length; x++) for (var y = 0; y < Lb.length; y++) {
+        var a = La[x], b = Lb[y];
+        var o = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+              * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        if (o > ov) { ov = o; kleinste = Math.min(a.width * a.height, b.width * b.height); }
+      }
       if (ov <= 1) continue;
-      var kleinste = Math.min(A.r.width * A.r.height, B.r.width * B.r.height);
       if (kleinste > 0 && ov / kleinste > 0.15) {
         overlap.push({ a: A.t.slice(0, 30), b: B.t.slice(0, 30), dekking: Math.round(100 * ov / kleinste) });
       }
