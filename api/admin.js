@@ -1941,7 +1941,20 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (website)        fields.fldzBclLhryWQ1veO = website;
       if (address)        fields.fldTvMSdTZOyNgWod = address;
       if (aiInstructions) fields.fld1lqHctRbqFGQf5 = aiInstructions;
-      if (sector)         fields.fld0BsPnDbBOkTHzr = sector;
+      /* De markt. Geeft de beheerder er een op, dan wint die. Geeft hij er GEEN
+         op, dan krijgt de nieuwe klant de standaard voor nieuwe tenants --
+         sinds 2026-09-25 dealership. Niet leeg laten: leeg leest
+         api/_vertical.js als vastgoed, en dat is de terugval die er is voor
+         BESTAANDE rijen, niet een keuze voor een nieuwe.
+
+         Vertical en Niche samen, net als in api/_clerk.js: Vertical wint, Niche
+         beslist als Vertical leeg is, en uit elkaar laten lopen levert een
+         record op waar de twee iets anders beweren. */
+      const _vertNieuw = require('./_vertical');
+      fields.fld0BsPnDbBOkTHzr = sector || _vertNieuw.STANDAARD_NIEUW;   // Niche
+      fields[_vertNieuw.VELD_ID] = sector
+        ? _vertNieuw.van({ [_vertNieuw.NICHE_VELD_ID]: sector })
+        : _vertNieuw.STANDAARD_NIEUW;                                    // Vertical
       if (language)       fields.fld1iiV9XwSbgAACZ = language;
       if (workingHours)   fields.fldq5oIqw5MG8fKhc = workingHours;
       if (callbackWindow) fields.fldKvMVBalSBRQE7H = callbackWindow;

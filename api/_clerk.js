@@ -37,6 +37,9 @@ const TRIAL_DAYS    = 14;
    LET OP bij video: een standaardvideo kost 240 credits, dus bijna een hele
    proefperiode. Zie CREDIT-SYSTEM-DESIGN.md §7; dat is nog een open keuze. */
 const _plans = require('./_plans');
+/* Voor de markt die een nieuwe tenant meekrijgt. Zie STANDAARD_NIEUW daar:
+   dat is iets anders dan de terugval voor een leeg veld. */
+const _vertical = require('./_vertical');
 const TRIAL_CREDITS = Math.round(((_plans.plan(_plans.STANDAARD_PLAN) || {}).credits || 3000) / 10);
 const USERS_TABLE   = 'tbl2hrPW7gIx5XF4S';
 
@@ -161,6 +164,19 @@ async function provisionTenant(user) {
           fldAnB848Sr5jl6dq: clientName,      // Client Name
           fldN4dL0bGgfBOXwM: projectCode,     // Project Code
           fld2GjRvjpsxI8XD0: email,           // Email
+          /* De markt EXPLICIET zetten, niet leeg laten. Leeg leest api/_vertical.js
+             bewust als vastgoed -- dat is de terugval die bestaande klanten hun
+             panden laat houden, en die blijft. Een NIEUWE rij krijgt daarentegen
+             een echte waarde, en sinds 2026-09-25 is dat dealership.
+
+             Allebei de velden, want ze horen bij elkaar: Vertical wint, Niche is
+             het oudere veld dat beslist als Vertical leeg is. Ze uit elkaar laten
+             lopen levert een record op waar de twee iets anders beweren.
+
+             De klant kiest zijn markt alsnog zelf in de inrichtingsassistent;
+             die keuze schrijft hier gewoon overheen. */
+          [_vertical.VELD_ID]:       _vertical.STANDAARD_NIEUW,   // Vertical
+          [_vertical.NICHE_VELD_ID]: _vertical.STANDAARD_NIEUW,   // Niche
           'Plan Status':      'trial',
           'Trial Ends At':    trialEnds,
           'Credit Allowance': TRIAL_CREDITS,

@@ -48,6 +48,26 @@ const BOUW      = 'bouw';
 const KEUKEN    = 'keuken';
 const RENOVATIE = 'renovatie';
 
+/* ── Twee verschillende standaarden, en het verschil is de hele grap ────────
+
+   VASTGOED hierboven is de TERUGVAL voor een leeg veld. Die mag nooit
+   veranderen: elke klant van voor de verticals heeft Vertical en Niche leeg,
+   en zou hij iets anders gaan betekenen dan nemen we op de dag van uitrol elke
+   makelaar zijn panden af. Dat is geen stijlkeuze maar de reden dat dit
+   bestand bestaat (zie de kop).
+
+   STANDAARD_NIEUW is iets anders: wat er EXPLICIET in het veld gezet wordt bij
+   het aanmaken van een NIEUWE tenant. Die waarde raakt per definitie geen
+   bestaande rij aan, want bestaande rijen worden niet aangemaakt.
+
+   Sinds 2026-09-25 mikt Helvaro op de dealermarkt, dus een nieuwe klant begint
+   als dealership tenzij hij in de inrichtingsassistent iets anders kiest --
+   die keuze schrijft gewoon over dit veld heen.
+
+   Wie dit ooit terugzet naar vastgoed: verander ALLEEN deze constante. Raak de
+   terugval in van() niet aan. */
+const STANDAARD_NIEUW = DEALERSHIP;
+
 const BEKEND = Object.freeze([VASTGOED, DEALERSHIP, BOUW, KEUKEN, RENOVATIE]);
 
 /* Welke markten een eigen aanbod hebben om uit te kiezen. Expliciet als lijst
@@ -282,6 +302,7 @@ function mag(bedrag, grenzen) {
 module.exports = {
   VASTGOED,
   DEALERSHIP,
+  STANDAARD_NIEUW,
   BOUW,
   KEUKEN,
   RENOVATIE,
