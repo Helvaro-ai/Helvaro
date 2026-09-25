@@ -526,6 +526,67 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] mailboxen mislukt:', e && e.message);
     }
 
+    /* ── Voorraad: sync + de veertien dagen ─────────────────────────────────
+       Per dealer, met DEZELFDE sync als de knop in het dashboard
+       (api/_inventaris.js sync) -- geen tweede motor die net iets anders doet.
+
+       Twee dingen:
+         1. Een dealer met een feed wordt gesynchroniseerd. Tot nu toe gebeurde
+            dat alleen als iemand het dashboard opende of op de knop drukte;
+            een dealer die een week niet inlogde had een week oude voorraad op
+            zijn website.
+         2. Voor ELKE dealer: verkochte wagens ouder dan veertien dagen gaan het
+            archief in. Ook zonder feed -- een met de hand verkochte wagen
+            hoort er net zo goed uit.
+
+       Tijdsbudget: deze functie mag 300 s duren en doet daarna nog Drive. Na
+       180 s beginnen we geen nieuwe dealer meer; de volgende run pakt
+       ze op. Een halve voorraadronde is beter dan een afgebroken cron. */
+    let voorraadResult = null;
+    try {
+      const BUDGET_S = 180;
+      const _vertical = require('./_vertical');
+      const _inventaris = require('./_inventaris');
+      const _vsync = require('./_voorraad-sync');
+      voorraadResult = { dealers: 0, gesynct: 0, syncMislukt: 0, gearchiveerd: 0, klokGestart: 0, overgeslagen: 0 };
+      let offset = '';
+      const dealers = [];
+      for (let ronde = 0; ronde < 5; ronde++) {
+        const vr = await atFetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`, {
+          headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` },
+        });
+        if (!vr.ok) break;
+        const d = await vr.json();
+        for (const rec of d.records || []) {
+          const f = rec.fields || {};
+          const code = String(f['Project Code'] || '').trim();
+          if (!code) continue;
+          /* Dealer = vertical dealership, OF er staat een voorraadbron ingesteld. */
+          if (_vertical.isDealership(f) || String(f['Inventory Source'] || '').trim()) {
+            let bron = {};
+            try { bron = JSON.parse(f['Inventory Source'] || '{}') || {}; } catch (_) { bron = {}; }
+            dealers.push({ code, feed: bron && bron.type === 'feed' });
+          }
+        }
+        if (!d.offset) break;
+        offset = d.offset;
+      }
+      voorraadResult.dealers = dealers.length;
+      for (const dlr of dealers) {
+        if ((Date.now() - now.getTime()) / 1000 > BUDGET_S) { voorraadResult.overgeslagen++; continue; }
+        if (dlr.feed) {
+          const st = await _inventaris.sync(dlr.code, { door: 'cron', trigger: 'dagelijks' })
+            .catch((e) => { console.warn('[cron-followup] voorraadsync', dlr.code, e && e.message); return null; });
+          if (st && st.ok) voorraadResult.gesynct++; else voorraadResult.syncMislukt++;
+        }
+        const ar = await _vsync.archiveerVerkocht(dlr.code)
+          .catch((e) => { console.warn('[cron-followup] archiveren', dlr.code, e && e.message); return null; });
+        if (ar) { voorraadResult.gearchiveerd += ar.gearchiveerd; voorraadResult.klokGestart += ar.klokGestart; }
+      }
+    } catch (e) {
+      console.error('[cron-followup] voorraad mislukt:', e && e.message);
+    }
+
     /* ── Drive van de beheerder ─────────────────────────────────────────────
        Laatste taak, want puur intern: als dit omvalt is er niets mis voor
        een klant. Niet gekoppeld = overslaan, geen fout. */
@@ -544,7 +605,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       console.error('[cron-followup] drive-sync mislukt:', e && e.message);
     }
 
-    const verslag = { checked: leads.length, sent, schema: schemaResult, mail: mailResult, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
+    const verslag = { checked: leads.length, sent, schema: schemaResult, mail: mailResult, voorraad: voorraadResult, drive: driveResult, stuckNew: stuckNewResult, reminders: reminderResult, afspraakOpvolging: afspraakOpvolgingResult, retention: retentionResult, retentionPurge: retentionPurgeResult, mediaRetentionPurge: mediaRetentionPurgeResult, signupSignals: signupSignalsResult, quality: qualityResult, integrity: integrityResult, weekly: weeklyResult, learning: learningResult, trial: trialResult };
     /* Eén regel die zegt wat er oversloeg. Een null is een taak die op zijn
        eigen catch viel; zonder deze regel moest je tien losse logregels bij
        elkaar zoeken om te weten of de dag compleet was. */

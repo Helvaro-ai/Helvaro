@@ -123,9 +123,20 @@ function saneerBron(ruw) {
     const url = String(o.url || '').trim().slice(0, 1000);
     bron.url = /^https:\/\/\S+$/i.test(url) ? url : '';
     bron.formaat = ['csv', 'json', 'xml'].includes(o.formaat) ? o.formaat : 'auto';
-    /* Verdwijnt een voertuig uit de feed: 'uit aanbod' (standaard) of niets
-       doen. Nooit verwijderen -- leads en afspraken hangen eraan. */
-    bron.verdwenen = o.verdwenen === 'negeren' ? 'negeren' : 'uit aanbod';
+    /* Verdwijnt een voertuig uit een GESLAAGDE feed: standaard 'verkocht' (met
+       Sold At, dus 14 dagen VERKOCHT en daarna het archief in). Nooit
+       verwijderen -- leads en afspraken hangen eraan.
+
+       De oude standaard was 'uit aanbod', en die staat in elke opgeslagen
+       bron omdat bewaarBron() de GESANEERDE waarde wegschrijft. Geen dealer
+       koos hem ooit: het dashboardformulier stuurt dit veld niet mee. Daarom
+       leest de oude spelling-met-spatie hier als de nieuwe standaard. Wie echt
+       'uit aanbod' wil, schrijft 'uit_aanbod'. */
+    bron.verdwenen = o.verdwenen === 'negeren' ? 'negeren'
+      : o.verdwenen === 'uit_aanbod' ? 'uit_aanbod'
+      : 'verkocht';
+    /* Welke provider. Nu alleen 'feed'; zie PROVIDERS. */
+    bron.provider = 'feed';
   }
   return bron;
 }
@@ -410,74 +421,78 @@ function parseFeed(tekst, formaat, contentType) {
   return { formaat: f, voertuigen: uit, ongeldig, hash: crypto.createHash('sha256').update(tekst).digest('hex').slice(0, 16) };
 }
 
-/** feed: ophalen, vergelijken, alleen de verschillen schrijven. */
-async function syncFeed(projectCode, bron, vorige) {
-  if (!bron.url) { const e = new Error('geen feed-adres ingesteld'); e.code = 'geen_url'; throw e; }
-  const { tekst, type } = await haalFeed(bron.url);
-  const feed = parseFeed(tekst, bron.formaat, type);
+/* ── Providers ────────────────────────────────────────────────────────────
+   Een provider haalt een voorraad op en geeft hem GENORMALISEERD terug:
+   { voertuigen: [mapRegel-vorm], ongeldig, hash }. Alles daarna -- vergelijken,
+   verkocht, archief -- is voor elke provider hetzelfde (api/_voorraad-sync.js).
+
+   Nu is er één: 'feed' (CSV, JSON of XML op een https-adres). Dat dekt de
+   dealer-export van AutoScout24 en van de gangbare DMS-pakketten. Wat hier
+   bewust NIET staat is het periodiek afschrapen van een AutoScout24-
+   etalagepagina: dat is geen toegestane integratie. Komt er een officiele
+   API-koppeling bij, dan is dat een tweede regel in deze tabel, en verandert
+   er verder niets. */
+const PROVIDERS = Object.freeze({
+  feed: {
+    id: 'feed',
+    async haal(bron) {
+      if (!bron.url) { const e = new Error('geen feed-adres ingesteld'); e.code = 'geen_url'; throw e; }
+      const { tekst, type } = await haalFeed(bron.url);
+      return parseFeed(tekst, bron.formaat, type);
+    },
+  },
+});
+
+/** feed: ophalen via de provider, verzoenen, alleen de verschillen schrijven. */
+async function syncFeed(projectCode, bron, vorige, opties = {}) {
+  const provider = PROVIDERS[bron.provider] || PROVIDERS.feed;
+  const feed = await provider.haal(bron);
+  /* Leeg = de bron is stuk, niet "alle wagens verkocht". Dit gooit, en dan komt
+     er geen enkele wagen in aanraking. Regel 1 van api/_voorraad-sync.js. */
   if (!feed.voertuigen.length) { const e = new Error('feed bevat geen herkenbare voertuigen'); e.code = 'feed_leeg'; throw e; }
 
-  /* Incrementeel: dezelfde feed als de vorige geslaagde run = niets te doen. */
-  if (vorige && vorige.feedHash === feed.hash && vorige.lastResult === 'ok') {
+  /* Incrementeel: dezelfde feed als de vorige geslaagde run = niets te doen.
+     Behalve als de vorige run een daling tegenhield en de dealer die nu
+     bevestigt -- dan moet het plan juist wel opnieuw. */
+  if (!opties.bevestigDaling && vorige && vorige.feedHash === feed.hash && vorige.lastResult === 'ok') {
     return { count: feed.voertuigen.length, changed: 0, removed: 0, failed: 0, ongewijzigd: true, feedHash: feed.hash, version: vorige.version, partial: false };
   }
 
-  const bestaand = (await vehicles.list(projectCode, { inclusiefGearchiveerd: true })).filter((v) => v.bron === 'feed' && v.bronId);
-  const perBronId = new Map(bestaand.map((v) => [v.bronId, v]));
-  const I = vehicles._intern;
+  const _sync = require('./_voorraad-sync');
+  const bestaand = await vehicles.list(projectCode, { inclusiefGearchiveerd: true });
   const nu = new Date().toISOString();
-  const nieuw = [], bijwerken = [];
-  for (const f of feed.voertuigen) {
-    const oud = perBronId.get(f.bronId);
-    const invoer = Object.assign({}, f, { bron: 'feed', gesynct: nu });
-    if (!oud) { nieuw.push(invoer); continue; }
-    const veranderd = ['merk', 'model', 'uitvoering', 'prijs', 'km', 'status', 'brandstof', 'transmissie'].some((k) => f[k] !== undefined && String(f[k]).toLowerCase() !== String(oud[k] == null ? '' : oud[k]).toLowerCase());
-    if (veranderd || oud.gearchiveerd) bijwerken.push({ id: oud.id, invoer: Object.assign(invoer, { gearchiveerd: false }) });
-  }
-  const inFeed = new Set(feed.voertuigen.map((f) => f.bronId));
-  const verdwenen = bron.verdwenen === 'negeren' ? [] : bestaand.filter((v) => !inFeed.has(v.bronId) && v.status !== 'uit aanbod' && v.status !== 'verkocht');
+  const plan = _sync.verzoen(bestaand, feed.voertuigen, { nu, verdwenen: bron.verdwenen, bevestigDaling: opties.bevestigDaling });
+  const res = await _sync.pasToe(projectCode, plan, { nu, codes: bestaand.map((v) => v.code), max: MAX_SCHRIJF_PER_RUN });
+  _sync.logGebeurtenissen(projectCode, plan.gebeurtenissen);
 
-  let failed = 0, geschreven = 0;
-  const alleCodes = (await vehicles.list(projectCode, { inclusiefGearchiveerd: true })).map((v) => v.code);
-  const schrijfBatch = async (method, records) => {
-    for (let i = 0; i < records.length; i += 10) {
-      if (geschreven >= MAX_SCHRIJF_PER_RUN) return;
-      const deel = records.slice(i, i + 10);
-      const r = await I.atFetch(I.TABEL, { method, body: JSON.stringify({ records: deel, typecast: true }) });
-      if (!r.ok) { failed += deel.length; console.warn('[voorraad] batch', method, r.status); }
-      geschreven += deel.length;
-      await new Promise((ok) => setTimeout(ok, 220)); // Airtable: 5 verzoeken/s per base
-    }
-  };
-  const nieuweRecords = nieuw.map((inv) => {
-    const velden = I.naarVelden(inv, projectCode);
-    const code = I.volgendeCode(alleCodes);
-    alleCodes.push(code);
-    velden[I.F.code] = code;
-    velden[I.F.aangemaakt] = nu;
-    velden[I.F.bijgewerkt] = nu;
-    return { fields: velden };
-  });
-  await schrijfBatch('POST', nieuweRecords);
-  await schrijfBatch('PATCH', bijwerken.map((b) => { const velden = I.naarVelden(b.invoer, projectCode); velden[I.F.bijgewerkt] = nu; return { id: b.id, fields: velden }; }));
-  await schrijfBatch('PATCH', verdwenen.map((v) => ({ id: v.id, fields: { [I.F.status]: 'uit aanbod', [I.F.bijgewerkt]: nu } })));
-
-  const totaalTeSchrijven = nieuweRecords.length + bijwerken.length + verdwenen.length;
+  const notities = [];
+  if (res.afgekapt) notities.push(`gedeeltelijk: ${MAX_SCHRIJF_PER_RUN} van ${res.totaal} wijzigingen, rest in de volgende run`);
+  if (plan.dalingGeblokkeerd) notities.push(`${plan.verdwenenAantal} wagens ontbreken ineens in de bron en zijn NIET op verkocht gezet -- controleer de feed`);
+  const partial = res.failed > 0 || res.afgekapt || plan.dalingGeblokkeerd;
   return {
     count: feed.voertuigen.length,
-    changed: nieuw.length + bijwerken.length,
-    removed: verdwenen.length,
-    failed,
+    changed: plan.nieuw.length + plan.bijwerken.length,
+    removed: plan.weg.length,
+    failed: res.failed,
     ongeldig: feed.ongeldig,
-    feedHash: failed ? '' : feed.hash, // bij fouten de volgende run niet overslaan
+    aangemaakt: plan.nieuw.length,
+    bijgewerkt: plan.bijwerken.length,
+    geadopteerd: plan.geadopteerd,
+    verkocht: plan.weg.filter((w) => w.invoer.status === 'verkocht').length,
+    ongewijzigdAantal: plan.ongewijzigd,
+    dalingGeblokkeerd: plan.dalingGeblokkeerd,
+    verdwenenAantal: plan.verdwenenAantal,
+    /* Een run met fouten of een tegengehouden daling mag de volgende niet laten
+       overslaan: dezelfde feed moet dan opnieuw vergeleken worden. */
+    feedHash: partial ? '' : feed.hash,
     version: feed.hash,
-    partial: failed > 0 || totaalTeSchrijven > MAX_SCHRIJF_PER_RUN,
-    notitie: totaalTeSchrijven > MAX_SCHRIJF_PER_RUN ? `gedeeltelijk: ${MAX_SCHRIJF_PER_RUN} van ${totaalTeSchrijven} wijzigingen, rest in de volgende run` : '',
+    partial,
+    notitie: notities.join(' · '),
   };
 }
 
 /* ── Sync: slot, provider, toestand wegschrijven ───────────────────────── */
-async function sync(projectCode, { door = 'systeem', trigger = 'handmatig' } = {}) {
+async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', bevestigDaling = false } = {}) {
   const tenant = String(projectCode || '').trim();
   if (!tenant) throw new Error('sync zonder projectcode');
   const { rec, bron, staat } = await lees(tenant);
@@ -498,7 +513,7 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig' } = {
   const nuIso = new Date(start).toISOString();
   let resultaat, fout = null;
   try {
-    resultaat = bron.type === 'feed' ? await syncFeed(tenant, bron, staat) : await probeNative(tenant, staat);
+    resultaat = bron.type === 'feed' ? await syncFeed(tenant, bron, staat, { bevestigDaling }) : await probeNative(tenant, staat);
   } catch (e) {
     fout = e;
   }
@@ -509,6 +524,12 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig' } = {
     changed: resultaat ? resultaat.changed : undefined,
     removed: resultaat ? resultaat.removed : undefined,
     failed: resultaat ? resultaat.failed : undefined,
+    /* De uitsplitsing die het dashboard toont: "3 nieuw, 1 verkocht". */
+    aangemaakt: resultaat ? resultaat.aangemaakt : undefined,
+    bijgewerkt: resultaat ? resultaat.bijgewerkt : undefined,
+    verkocht: resultaat ? resultaat.verkocht : undefined,
+    geadopteerd: resultaat ? resultaat.geadopteerd : undefined,
+    daling: resultaat && resultaat.dalingGeblokkeerd ? resultaat.verdwenenAantal : undefined,
     fout: fout ? String(fout.message).slice(0, 200) : undefined,
     code: fout ? (fout.code || 'fout') : undefined,
   };
@@ -539,7 +560,7 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig' } = {
   try {
     const _activiteit = require('./_activiteit');
     _activiteit.log(tenant, fout ? 'inventory_sync_failed' : 'inventory_synced', {
-      details: { bron: bron.type, trigger, count: run.count, changed: run.changed, removed: run.removed, failed: run.failed, code: run.code, ms: run.ms },
+      details: { bron: bron.type, trigger, count: run.count, changed: run.changed, removed: run.removed, failed: run.failed, aangemaakt: run.aangemaakt, verkocht: run.verkocht, daling: run.daling, code: run.code, ms: run.ms },
     }).catch(() => {});
   } catch (_) { /* logboek optioneel */ }
   if (fout) console.warn('[voorraad] sync mislukt voor', tenant, bron.type, fout.code || '', fout.message);

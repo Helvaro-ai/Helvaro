@@ -114,6 +114,16 @@ const SOORTEN = Object.freeze([
   'vehicle_fact_corrected',     // eindcontrole vond een voertuigfeit dat niet meer klopte
   'inventory_synced',
   'inventory_sync_failed',
+  /* Voorraadsync per wagen (api/_voorraad-sync.js), begrensd tot een handvol
+     per run zodat een eerste import van honderden wagens niet het hele logboek
+     vult. Samen met de twee regels hierboven: wat er binnenkwam, wat er
+     veranderde, wat er verkocht werd, en wat na veertien dagen het archief in
+     ging. */
+  'vehicle_created',
+  'vehicle_updated',
+  'vehicle_price_changed',
+  'vehicle_marked_sold',
+  'vehicle_archived',
   'conversation_takeover',
   'conversation_released',
   'email_connected', 'email_received',

@@ -72,6 +72,10 @@ const F = Object.freeze({
   bron:        'Source',
   bronId:      'Source Record ID',
   gesynct:     'Synced At',
+  /* Wanneer de wagen VERKOCHT werd. Wordt gezet op de overgang naar verkocht en
+     gewist als hij terug in de verkoop gaat -- nooit uit de lucht gegrepen,
+     altijd een echte statuswijziging. Zie verkochtOvergang() hieronder. */
+  verkochtOp:  'Sold At',
 });
 
 class VehicleError extends Error {
@@ -385,6 +389,7 @@ function vanRecord(rec) {
     bron:        String(f[F.bron] || '').trim(),
     bronId:      String(f[F.bronId] || '').trim(),
     gesynct:     String(f[F.gesynct] || '').trim(),
+    verkochtOp:  String(f[F.verkochtOp] || '').trim(),
   };
 }
 
@@ -635,8 +640,38 @@ function naarVelden(invoer, projectCode) {
   if (v.bron)    velden[F.bron]    = tekst(v.bron, 20);
   if (v.bronId)  velden[F.bronId]  = tekst(v.bronId, 120);
   if (v.gesynct) velden[F.gesynct] = tekst(v.gesynct, 40);
+  /* Alleen als de aanroeper het EXPLICIET meegeeft ('' = wissen). Zelfde reden
+     als hierboven: een base zonder het veld mag een gewone save niet breken. */
+  if (v.verkochtOp !== undefined) velden[F.verkochtOp] = v.verkochtOp ? tekst(v.verkochtOp, 40) : '';
 
   return velden;
+}
+
+/**
+ * Wat er met Sold At moet gebeuren bij een statuswijziging.
+ *
+ *   naar verkocht, was het niet     -> nu            (de verkoop begint te tellen)
+ *   blijft verkocht                 -> ongewijzigd   (de klok loopt door, NIET resetten)
+ *   uit verkocht, stond een datum   -> ''            (terug in de verkoop: wissen)
+ *   verder                          -> undefined     (niets aanraken)
+ *
+ * 'Blijft verkocht' laat de datum met rust. Een sync die elke dag opnieuw
+ * "verkocht" ziet mag de veertien dagen niet elke dag opnieuw laten beginnen,
+ * anders wordt een verkochte wagen nooit gearchiveerd.
+ */
+function verkochtOvergang(oudeStatus, nieuweStatus, oudVerkochtOp, nu) {
+  const oud = normStatus(oudeStatus), nieuw = normStatus(nieuweStatus);
+  if (nieuw === 'verkocht' && oud !== 'verkocht') return nu;
+  if (nieuw === 'verkocht' && oud === 'verkocht') return oudVerkochtOp ? undefined : nu;
+  if (nieuw !== 'verkocht' && oudVerkochtOp) return '';
+  return undefined;
+}
+
+/* Airtable weigert een HELE schrijfactie als er één veld in staat dat niet
+   bestaat. Sold At is nieuw; zolang de schema-migratie niet draaide mag een
+   gewone save daar niet op stuklopen. Eén keer opnieuw zonder dat veld. */
+function onbekendVerkochtVeld(status, tekstAntwoord) {
+  return status === 422 && /UNKNOWN_FIELD_NAME/.test(tekstAntwoord) && /Sold At/.test(tekstAntwoord);
 }
 
 async function save(projectCode, invoer = {}) {
@@ -667,12 +702,29 @@ async function save(projectCode, invoer = {}) {
     const velden = naarVelden(invoer2, tenant);
     velden[F.bijgewerkt] = nu;
     delete velden[F.code];   // een code verandert niet; leads hangen eraan
-    const r = await atFetch(`${TABEL}/${bestaand.id}`, {
+    /* Zet de dealer hem op verkocht, dan begint de bewaartermijn te lopen --
+       net zoals bij een verkoop die uit de feed komt. Anders zou een met de
+       hand verkochte wagen nooit gearchiveerd worden. */
+    if (invoer2.status !== undefined) {
+      const vo = verkochtOvergang(bestaand.status, invoer2.status, bestaand.verkochtOp, nu);
+      if (vo !== undefined) velden[F.verkochtOp] = vo;
+    }
+    const patch = (v) => atFetch(`${TABEL}/${bestaand.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ fields: velden, typecast: true }),
+      body: JSON.stringify({ fields: v, typecast: true }),
     });
+    let r = await patch(velden);
+    let fout = '';
     if (!r.ok) {
-      console.warn('[voertuigen] bijwerken mislukt:', r.status, await r.text().catch(() => ''));
+      fout = await r.text().catch(() => '');
+      if (F.verkochtOp in velden && onbekendVerkochtVeld(r.status, fout)) {
+        delete velden[F.verkochtOp];
+        r = await patch(velden);
+        fout = r.ok ? '' : await r.text().catch(() => '');
+      }
+    }
+    if (!r.ok) {
+      console.warn('[voertuigen] bijwerken mislukt:', r.status, fout);
       throw new VehicleError('Voertuig kon niet bijgewerkt worden.', 'write_failed');
     }
     return vanRecord(await r.json());
@@ -688,17 +740,28 @@ async function save(projectCode, invoer = {}) {
   velden[F.status]     = velden[F.status] || 'beschikbaar';
   velden[F.aangemaakt] = nu;
   velden[F.bijgewerkt] = nu;
+  if (velden[F.status] === 'verkocht' && !velden[F.verkochtOp]) velden[F.verkochtOp] = nu;
 
   if (bestaande.some((v) => v.code === velden[F.code])) {
     throw new VehicleError('Die voertuigcode bestaat al.', 'duplicate_code');
   }
 
-  const r = await atFetch(TABEL, {
+  const post = (v) => atFetch(TABEL, {
     method: 'POST',
-    body: JSON.stringify({ fields: velden, typecast: true }),
+    body: JSON.stringify({ fields: v, typecast: true }),
   });
+  let r = await post(velden);
+  let fout = '';
   if (!r.ok) {
-    console.warn('[voertuigen] aanmaken mislukt:', r.status, await r.text().catch(() => ''));
+    fout = await r.text().catch(() => '');
+    if (F.verkochtOp in velden && onbekendVerkochtVeld(r.status, fout)) {
+      delete velden[F.verkochtOp];
+      r = await post(velden);
+      fout = r.ok ? '' : await r.text().catch(() => '');
+    }
+  }
+  if (!r.ok) {
+    console.warn('[voertuigen] aanmaken mislukt:', r.status, fout);
     throw new VehicleError('Voertuig kon niet aangemaakt worden.', 'write_failed');
   }
   return vanRecord(await r.json());
@@ -870,7 +933,8 @@ module.exports = {
   BEKENDE_STATUS, listMetStatus, leesVers,
   /* Voor de voorraadsync (api/_inventaris.js): batch-schrijven zonder per
      voertuig list() te herhalen. Niet voor andere aanroepers. */
-  _intern: { atFetch: (...a) => atFetch(...a), TABEL, F, naarVelden, vanRecord, volgendeCode },
+  verkochtOvergang,
+  _intern: { atFetch: (...a) => atFetch(...a), TABEL, F, naarVelden, vanRecord, volgendeCode, onbekendVerkochtVeld },
   TABEL,
   F,
   VehicleError,

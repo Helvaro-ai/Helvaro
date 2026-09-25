@@ -92,7 +92,11 @@ const EXTRA_VELDEN = Object.freeze({
   },
   tblQAPdjEsh0l7lUe: { // vehicles
     label: 'vehicles',
-    fields: [tekst('Source'), tekst('Source Record ID'), tekst('Synced At')],
+    /* Sold At: het moment waarop de wagen verkocht werd. Daar hangt de
+       bewaartermijn aan -- 14 dagen als VERKOCHT, daarna gearchiveerd (zie
+       archiveerVerkocht in api/_inventaris.js). Tekst, ISO-datum, net als
+       Synced At en Created At. */
+    fields: [tekst('Source'), tekst('Source Record ID'), tekst('Synced At'), tekst('Sold At')],
   },
 });
 
