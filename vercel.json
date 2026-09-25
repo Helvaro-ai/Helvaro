@@ -219,6 +219,14 @@
       "destination": "/api/form?__assistant=1"
     },
     {
+      "source": "/api/inventory/:code/:vehicle",
+      "destination": "/api/form?__voorraad=1"
+    },
+    {
+      "source": "/api/inventory/:code",
+      "destination": "/api/form?__voorraad=1"
+    },
+    {
       "source": "/api/form/:code",
       "destination": "/api/form"
     },
