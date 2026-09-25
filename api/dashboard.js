@@ -9940,7 +9940,7 @@ function renderNietBereikbaar() {
         <div>\${tag}<span class="nb-item-name">\${escHtml(name)}</span></div>
         \${dateStr ? \`<span class="nb-item-sub">\${dateStr}</span>\` : ''}
       </div>
-      <a class="nb-call-btn" href="\${telHref}" onclick="event.stopPropagation()">Bellen</a>
+      <a class="nb-call-btn" href="\${telHref}" onclick="event.stopPropagation()">\${escHtml(tr('pnl.bellen'))}</a>
     </div>\`;
   }).join('');
 }
@@ -10854,7 +10854,7 @@ function renderCalSidebar() {
         <span></span> \${escHtml(phone)}
       </a>\` : '<div style="font-size:11px;color:var(--text-muted);margin-bottom:7px">' + escHtml(tr('lp.geenTelefoon')) + '</div>'}
       <div class="cal-call-actions">
-        \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">Bellen</a>\` : ''}
+        \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">\${escHtml(tr('pnl.bellen'))}</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">WA</a>\` : ''}
         <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(lokaleDatum(new Date()),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
       </div>
