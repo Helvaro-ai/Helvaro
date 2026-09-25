@@ -3959,8 +3959,7 @@ ${faro.dock}
 
         <label class="pd-label" for="pd-f-adlink">${T('veh.f.adlink')}</label>
         <input class="pd-input" id="pd-f-adlink" type="url" placeholder="https://www.autoscout24.be/aanbod/..." maxlength="500">
-        <div class="pd-hint">Hieruit wordt het aanbodnummer gehaald. Dat is waarmee Helvaro een
-          binnenkomend WhatsApp-bericht aan dit voertuig koppelt &mdash; de koper hoeft dan niets uit te leggen.</div>
+        <div class="pd-hint">${T('veh.f.adlinkHint')}</div>
 
         <!-- Korting per voertuig. Leeg = de dealerinstelling geldt; dat staat
              er expliciet bij, want een leeg veld dat "onbeperkt" zou kunnen
@@ -17532,9 +17531,8 @@ function openPandModal(code) {
     var hint = document.getElementById('pd-f-korting-hint');
     if (hint) {
       hint.textContent = hvKorting.max > 0
-        ? ('Leeg = je standaard: Faro mag zelf tot ' + pandPrijs(hvKorting.faro)
-           + ', daarboven tot ' + pandPrijs(hvKorting.max) + ' beslis jij.')
-        : 'Je hebt nog geen kortingsruimte ingesteld, dus Faro geeft niets weg. Stel dat in bij Instellingen.';
+        ? tr('veh.korting.hint', { faro: pandPrijs(hvKorting.faro), max: pandPrijs(hvKorting.max) })
+        : tr('veh.korting.geen');
     }
   }
   zet('pd-f-code',        pand ? pand.code : '');

@@ -2863,6 +2863,12 @@ const TEKST = {
      terugval ('Ja, ga door') naast een annuleerknop die ook Nederlands was, in
      een venster dat voor van alles gebruikt wordt. */
   'cm.gaDoor': { nl: 'Ja, ga door', fr: 'Oui, continuer', en: 'Yes, continue', de: 'Ja, weiter' },
+
+  /* De kortingsruimte per wagen. Twee takken, allebei met de eigen bedragen
+     van de dealer erin -- een hint die alleen "de standaard geldt" zegt zonder
+     te tonen WAT die standaard is, laat je alsnog zoeken. */
+  'veh.korting.hint': { nl: 'Leeg = je standaard: Faro mag zelf tot {faro}, daarboven tot {max} beslis jij.', fr: 'Vide = votre valeur par défaut : Faro peut accorder jusqu’à {faro}, au-delà et jusqu’à {max} c’est vous qui décidez.', en: 'Empty = your default: Faro may go up to {faro} on its own; above that, up to {max}, you decide.', de: 'Leer = dein Standard: Faro darf bis {faro} selbst entscheiden, darüber bis {max} entscheidest du.' },
+  'veh.korting.geen': { nl: 'Je hebt nog geen kortingsruimte ingesteld, dus Faro geeft niets weg. Stel dat in bij Instellingen.', fr: 'Vous n’avez pas encore défini de marge de remise, donc Faro n’accorde rien. Configurez-la dans les paramètres.', en: 'You haven’t set any discount room yet, so Faro gives nothing away. Set it in Settings.', de: 'Du hast noch keinen Rabattspielraum festgelegt, also gibt Faro nichts nach. Stell ihn in den Einstellungen ein.' },
 };
 
 /**
