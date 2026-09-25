@@ -3714,7 +3714,7 @@ ${faro.dock}
 
 <!-- Global Search Overlay -->
 <div class="search-overlay" id="search-overlay">
-  <div class="search-modal" id="search-modal">
+  <div class="search-modal" id="search-modal" role="dialog" aria-modal="true" aria-label="${T('a11y.veld.zoeken')}">
     <div class="search-modal-bar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
       <input class="search-modal-input" id="search-modal-input" aria-label="${T('a11y.veld.zoeken')}" type="text" placeholder="${T('top.zoekLead')}" autocomplete="off" spellcheck="false">
@@ -4003,7 +4003,7 @@ ${faro.dock}
 
 <!-- Booking Modal (handmatig afspraak inplannen vanuit kalender) -->
 <div id="cal-book-overlay" onclick="if(event.target===this)closeCalBookModal()">
-  <div id="cal-book-modal">
+  <div id="cal-book-modal" role="dialog" aria-modal="true" aria-labelledby="cal-book-title">
     <div id="cal-book-header">
       <div class="cal-book-icon">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -4042,7 +4042,7 @@ ${faro.dock}
 
 <!-- Calendar Event Modal -->
 <div class="cal-modal-overlay" id="cal-event-modal" onclick="closeCalModal(event)">
-  <div class="cal-modal" id="cal-modal-inner">
+  <div class="cal-modal" id="cal-modal-inner" role="dialog" aria-modal="true" aria-labelledby="cal-modal-title">
     <div class="cal-modal-header">
       <div class="cal-modal-header-title" id="cal-modal-title">${T('cal.ev.title')}</div>
       <button class="cal-modal-close" onclick="closeCalModal()">&times;</button>
@@ -4058,8 +4058,8 @@ ${faro.dock}
      be silently destroyed within a week. See config-save's aiInstructions
      handling in api/leads.js. -->
 <div class="chk-biz-modal-overlay" id="chk-biz-modal-overlay" onclick="if(event.target===this) closeBusinessInfoModal()">
-  <div class="chk-biz-modal">
-    <div class="chk-biz-modal-title">${T('biz.modal.title')}</div>
+  <div class="chk-biz-modal" id="chk-biz-modal" role="dialog" aria-modal="true" aria-labelledby="chk-biz-modal-title">
+    <div class="chk-biz-modal-title" id="chk-biz-modal-title">${T('biz.modal.title')}</div>
     <div class="chk-biz-modal-intro">${T('biz.intro')}</div>
     <div class="chk-biz-field">
       <label for="chk-biz-what">${T('biz.what')}</label>
@@ -8302,11 +8302,17 @@ function dismissChecklist() {
    something (manually, or on the AI Persoonlijkheid page) never loses it. */
 function openBusinessInfoModal() {
   const overlay = document.getElementById('chk-biz-modal-overlay');
-  if (overlay) overlay.classList.add('open');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  /* Dit venster had als enige helemaal GEEN Escape: eenmaal open kon je er met
+     het toetsenbord niet meer uit, alleen met de muis op de achtergrond. */
+  modalToetsenbord(document.getElementById('chk-biz-modal'), closeBusinessInfoModal);
 }
 function closeBusinessInfoModal() {
   const overlay = document.getElementById('chk-biz-modal-overlay');
+  if (overlay && !overlay.classList.contains('open')) return;
   if (overlay) overlay.classList.remove('open');
+  modalToetsenbordUit();
 }
 async function saveBusinessInfoFromChecklist() {
   const what     = document.getElementById('chk-biz-what').value.trim();
@@ -10120,6 +10126,7 @@ function openCalEvent(idx) {
 
   body.innerHTML = rows + attSection + actieSectie;
   overlay.classList.add('open');
+  modalToetsenbord(document.getElementById('cal-modal-inner'), function () { closeCalModal(); });
 }
 
 /* ── De twee acties ─────────────────────────────────────────────────────────
@@ -10301,17 +10308,20 @@ async function calAttSave(leadId, verschenen) {
   await markAttendance(leadId, verschenen, deal, note);
 
   // Close modal
-  const overlay = document.getElementById('cal-event-modal');
-  if (overlay) overlay.classList.remove('open');
+  closeCalModal();
 }
 
 function closeCalModal(e) {
   if (e && e.target !== document.getElementById('cal-event-modal')) return;
   const overlay = document.getElementById('cal-event-modal');
+  if (overlay && !overlay.classList.contains('open')) return;
   if (overlay) overlay.classList.remove('open');
+  modalToetsenbordUit();
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { const o = document.getElementById('cal-event-modal'); if (o) o.classList.remove('open'); } });
+/* De losse Escape voor de afspraakkaart is vervangen door de gedeelde
+   toetsenbordval (zie waar de kaart geopend wordt). Deze regel sloot het
+   venster wel, maar liet de klassen en de focus achter zoals ze waren. */
 
 /* ── Today widget ── */
 function renderTodayWidget(events) {
@@ -10390,6 +10400,22 @@ function bookSlot(dateStr, hour) {
   openCalBookModal(dateStr, null);
 }
 
+/* Een korte datum in de taal van de pagina: "ma 8 sep", "lun. 8 sept.",
+   "Mo., 8. Sept.".
+
+   Hiervoor stonden er VIER identieke kopieen van twee Nederlandse tabellen in
+   dit bestand -- ['zo','ma',...] en ['jan','feb',...] -- en die gaven elke
+   datum in de agenda in het Nederlands, ongeacht de schermtaal. Een Duitse
+   makelaar las "wo 8 okt" boven zijn afspraken.
+
+   Vier kopieen betekende ook dat drie ervan de eerste letter met een
+   hoofdletter schreven en de vierde niet. Nu een plek, en de runtime kent de
+   afkortingen beter dan wij ze onderhouden. */
+function calDatumKort(d) {
+  var s = d.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function openCalBookModal(dateStr, prefillLead) {
   const overlay = document.getElementById('cal-book-overlay');
   if (!overlay) return;
@@ -10410,33 +10436,30 @@ function openCalBookModal(dateStr, prefillLead) {
   // Update subtitle
   const subtitle = document.getElementById('cal-book-subtitle');
   if (subtitle) {
-    const nl  = ['zo','ma','di','wo','do','vr','za'];
-    const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-    const d   = new Date(calBookState.date + 'T12:00:00');
-    const day = nl[d.getDay()];
-    subtitle.textContent = day.charAt(0).toUpperCase() + day.slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
+    subtitle.textContent = calDatumKort(new Date(calBookState.date + 'T12:00:00'));
   }
 
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  modalToetsenbord(document.getElementById('cal-book-modal'), closeCalBookModal);
   renderCalBookBody();
   fetchCalSlots();
 }
 
 function closeCalBookModal() {
   const overlay = document.getElementById('cal-book-overlay');
+  if (overlay && !overlay.classList.contains('open')) return;
   if (overlay) overlay.classList.remove('open');
   document.body.style.overflow = '';
+  modalToetsenbordUit();
 }
 
 function renderCalBookBody() {
   const body = document.getElementById('cal-book-body');
   if (!body) return;
 
-  const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  const nl  = ['zo','ma','di','wo','do','vr','za'];
-  const d   = new Date(calBookState.date + 'T12:00:00');
-  const dateLbl = nl[d.getDay()].charAt(0).toUpperCase() + nl[d.getDay()].slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
+  const d       = new Date(calBookState.date + 'T12:00:00');
+  const dateLbl = calDatumKort(d);
 
   // Date nav
   const dateNavHtml = \`<div>
@@ -10743,11 +10766,8 @@ function calBookNavDate(delta) {
   calBookState.selectedSlot = null;
 
   // Update subtitle
-  const nl  = ['zo','ma','di','wo','do','vr','za'];
-  const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  const day = nl[d.getDay()];
   const subtitle = document.getElementById('cal-book-subtitle');
-  if (subtitle) subtitle.textContent = day.charAt(0).toUpperCase() + day.slice(1) + ' ' + d.getDate() + ' ' + mns[d.getMonth()];
+  if (subtitle) subtitle.textContent = calDatumKort(d);
 
   fetchCalSlots();
 }
@@ -10882,12 +10902,9 @@ function renderAttendanceBanner() {
   if (pending.length === 0) { banner.classList.remove('visible'); return; }
   banner.classList.add('visible');
 
-  const mns = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  const nl  = ['zo','ma','di','wo','do','vr','za'];
-
   cards.innerHTML = pending.map(({ ev, lead }) => {
     const start   = new Date(ev.startTime);
-    const dayLbl  = nl[start.getDay()] + ' ' + start.getDate() + ' ' + mns[start.getMonth()];
+    const dayLbl  = calDatumKort(start);
     const timeLbl = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
     const idStr   = escHtml(String(lead.id));
     return \`<div class="cal-att-card" id="cal-att-card-\${idStr}">
@@ -11707,7 +11724,8 @@ function notifTimeAgo(dateStr) {
     const overlay = document.getElementById('search-overlay');
     const isOpen = overlay && overlay.classList.contains('open');
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); isOpen ? closeSearch() : openSearch(); return; }
-    if (e.key === 'Escape' && isOpen) { e.stopPropagation(); closeSearch(); return; }
+    /* Escape zit in de toetsenbordval (zie openSearch). Hier stond hem ook
+       afvangen, en dan liep closeSearch() twee keer. */
     if (!isOpen) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -13296,6 +13314,10 @@ function openSearch() {
   _searchActiveIndex = -1;
   overlay.classList.add('open');
   document.getElementById('search-footer')?.style && (document.getElementById('search-footer').style.display = 'none');
+  /* De val houdt Tab binnen en regelt Escape. De pijltjes en Enter blijven in
+     de eigen handler hieronder: die verplaatsen een VIRTUELE selectie in de
+     resultatenlijst, niet de focus -- die blijft in het zoekveld staan. */
+  modalToetsenbord(document.getElementById('search-modal'), closeSearch);
   setTimeout(() => {
     const inp = document.getElementById('search-modal-input');
     if (inp) { inp.focus(); inp.select(); }
@@ -13304,7 +13326,9 @@ function openSearch() {
 
 function closeSearch() {
   const overlay = document.getElementById('search-overlay');
+  if (overlay && !overlay.classList.contains('open')) return;   // al dicht: niets te doen
   if (overlay) overlay.classList.remove('open');
+  modalToetsenbordUit();
   const inp = document.getElementById('search-modal-input');
   if (inp) inp.value = '';
   const resultsEl = document.getElementById('search-results');

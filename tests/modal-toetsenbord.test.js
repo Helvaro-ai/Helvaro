@@ -199,5 +199,92 @@ console.log('\n  de knoppen van het ja/nee-venster spreken de taal van de pagina
   }
 }
 
+console.log('\n  de vier vaste vensters zijn ook echte dialogen');
+{
+  /* Deze vier staan al in het HTML in plaats van dat ze ter plekke gebouwd
+     worden, en misten allebei de dingen: geen role=\"dialog\", geen
+     aria-modal, geen naam, en geen toetsenbordval. In de browser gemeten:
+     met elk van de vier open waren er vijftien tot zestien focusbare
+     elementen ERBUITEN bereikbaar met Tab.
+
+     Het bedrijfsinfovenster was het ergste geval: dat had helemaal geen
+     Escape. Eenmaal open kwam je er met het toetsenbord niet meer uit. */
+  const VAST = [
+    ['search-modal',    'zoeken',        'aria-label'],
+    ['cal-book-modal',  'afspraak inplannen', 'aria-labelledby'],
+    ['cal-modal-inner', 'de afspraakkaart',   'aria-labelledby'],
+    ['chk-biz-modal',   'bedrijfsinfo',       'aria-labelledby'],
+  ];
+  for (const [id, wat, naamAttr] of VAST) {
+    const re = new RegExp('id=\"' + id + '\"[^>]*');
+    const tag = (re.exec(dash) || [''])[0];
+    ck(wat + ' heeft role=dialog', /role=\"dialog\"/.test(tag), tag.slice(0, 90));
+    ck(wat + ' is aria-modal', /aria-modal=\"true\"/.test(tag), null);
+    ck(wat + ' heeft een naam (' + naamAttr + ')', new RegExp(naamAttr + '=').test(tag), null);
+    /* Een aria-labelledby die nergens naar wijst is erger dan geen naam: de
+       schermlezer leest dan niets en er staat wel iets. */
+    const m = /aria-labelledby=\"([^\"]+)\"/.exec(tag);
+    if (m) ck(wat + ': het naamelement bestaat',
+      new RegExp('id=\"' + m[1] + '\"').test(dash), m[1]);
+  }
+
+  /* En ze zitten alle vier in de val. */
+  const PAREN = [
+    ['openSearch',             'closeSearch',             'zoeken'],
+    ['openCalBookModal',       'closeCalBookModal',       'afspraak inplannen'],
+    ['openBusinessInfoModal',  'closeBusinessInfoModal',  'bedrijfsinfo'],
+  ];
+  for (const [op, dicht, wat] of PAREN) {
+    const o = lichaam(op), d = lichaam(dicht);
+    ck(wat + ': ' + op + ' zet de val aan', !!o && /modalToetsenbord\(/.test(o), null);
+    ck(wat + ': ' + dicht + ' ruimt hem op', !!d && /modalToetsenbordUit\(\)/.test(d), null);
+    /* Zonder deze wacht loopt een tweede sluit-aanroep (klik EN Escape) de
+       stapel leeg en haalt hij de val van een venster eronder weg. */
+    ck(wat + ': sluiten is idempotent', !!d && /classList\.contains\('open'\)\) return;/.test(d), null);
+  }
+  const cal = lichaam('closeCalModal');
+  ck('de afspraakkaart ruimt de val op', !!cal && /modalToetsenbordUit\(\)/.test(cal), null);
+  ck('en sluiten is ook daar idempotent',
+    !!cal && /classList\.contains\('open'\)\) return;/.test(cal), null);
+
+  /* De losse globale Escape voor de afspraakkaart moet weg zijn: die sloot het
+     venster zonder de val op te ruimen, dus bleef de handler staan. */
+  ck('geen losse Escape meer voor de afspraakkaart',
+    !/document\.addEventListener\('keydown', e => \{ if \(e\.key === 'Escape'\) \{ const o = document\.getElementById\('cal-event-modal'\)/.test(dash), null);
+
+  /* En het zoekvenster mag Escape niet OOK nog zelf afvangen: dan loopt
+     closeSearch() twee keer per toetsaanslag. */
+  ck('het zoekvenster vangt Escape niet dubbel af',
+    !/if \(e\.key === 'Escape' && isOpen\) \{ e\.stopPropagation\(\); closeSearch\(\); return; \}/.test(dash), null);
+}
+
+console.log('\n  de agenda schrijft datums in de taal van de pagina');
+{
+  /* Er stonden VIER identieke kopieen van twee Nederlandse tabellen in dit
+     bestand: ['zo','ma',...] en ['jan','feb',...]. Elke datum in de agenda was
+     daardoor Nederlands, ongeacht de schermtaal -- een Duitse makelaar las
+     "wo 8 okt" boven zijn afspraken. */
+  ck('er is een gedeelde datumhelper', /function calDatumKort\(d\) \{/.test(dash), null);
+  ck('die de paginataal gebruikt',
+    /toLocaleDateString\(LOCALE, \{ weekday: 'short', day: 'numeric', month: 'short' \}\)/.test(dash), null);
+
+  /* De Nederlandse tabellen mogen alleen nog in het founderscherm staan, en
+     daar hoort Nederlands. */
+  const regels = dash.split('\n');
+  const resten = [];
+  regels.forEach((r, i) => {
+    if (!/\['jan','feb','mrt'|\['zo','ma','di'/.test(r)) return;
+    /* Zit deze regel in initFounderHeader()? */
+    let founder = false;
+    for (let j = i; j >= 0 && j > i - 60; j--) {
+      if (/^function initFounderHeader\(\)/.test(regels[j])) { founder = true; break; }
+      if (/^function /.test(regels[j])) break;
+    }
+    if (!founder) resten.push((i + 1) + ': ' + r.trim().slice(0, 56));
+  });
+  ck('geen Nederlandse maand-/dagtabellen meer in de klantschermen',
+    resten.length === 0, resten);
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);
