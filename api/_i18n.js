@@ -2878,6 +2878,27 @@ const TEKST = {
   'pd.kaart.kortingTot':  { nl: 'korting tot {bedrag}', fr: 'remise jusqu’à {bedrag}', en: 'discount up to {bedrag}', de: 'Rabatt bis {bedrag}' },
   'btn.archiveren':       { nl: 'Archiveren', fr: 'Archiver', en: 'Archive', de: 'Archivieren' },
   'btn.terugzetten':      { nl: 'Terugzetten', fr: 'Restaurer', en: 'Restore', de: 'Wiederherstellen' },
+
+  /* Het leadpaneel. Dit is het scherm dat je opent om het WhatsApp-gesprek te
+     lezen -- voor een Meta-reviewer het belangrijkste scherm dat er is, en het
+     stond half in het Nederlands: "16d oud", "Kwalificatie", "Waarom 5/10",
+     "Deal waarde", "Bellen", "Opvolging", "Offerte". Gezien in een echte
+     Engelse sessie op productie. */
+  'pnl.oud':            { nl: '{n}d oud', fr: '{n}j', en: '{n}d old', de: '{n}T alt' },
+  'pnl.kwalificatie':   { nl: 'Kwalificatie', fr: 'Qualification', en: 'Qualification', de: 'Qualifizierung' },
+  'pnl.waarom':         { nl: 'Waarom {n}/10', fr: 'Pourquoi {n}/10', en: 'Why {n}/10', de: 'Warum {n}/10' },
+  'pnl.dealWaarde':     { nl: 'Deal waarde (€)', fr: 'Valeur du deal (€)', en: 'Deal value (€)', de: 'Deal-Wert (€)' },
+  'pnl.afspraakUitkomst': { nl: 'Afspraak Resultaat', fr: 'Résultat du rendez-vous', en: 'Appointment outcome', de: 'Termin-Ergebnis' },
+  'pnl.toevoegen':      { nl: '+ Toevoegen', fr: '+ Ajouter', en: '+ Add', de: '+ Hinzufügen' },
+  'pnl.bellen':         { nl: 'Bellen', fr: 'Appeler', en: 'Call', de: 'Anrufen' },
+  'pnl.opvolging':      { nl: 'Opvolging', fr: 'Relance', en: 'Follow-up', de: 'Nachfassen' },
+  'pnl.offerte':        { nl: 'Offerte', fr: 'Devis', en: 'Quote', de: 'Angebot' },
+  'pnl.jijTemplate':    { nl: 'Jij (template)', fr: 'Vous (modèle)', en: 'You (template)', de: 'Sie (Vorlage)' },
+  /* De twee tooltips bij de scorebolletjes. Stonden in het Nederlands op een
+     title-attribuut, dus alleen zichtbaar als je blijft hangen -- precies het
+     soort tekst dat een sweep mist en een reviewer wel vindt. */
+  'pnl.tip.capaciteit': { nl: 'Budget / koopkracht', fr: 'Budget / capacité d’achat', en: 'Budget / buying power', de: 'Budget / Kaufkraft' },
+  'pnl.tip.urgentie':   { nl: 'Hoe snel ze beslissen', fr: 'À quelle vitesse ils décident', en: 'How fast they decide', de: 'Wie schnell sie entscheiden' },
 };
 
 /**

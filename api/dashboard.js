@@ -8803,7 +8803,7 @@ function renderTable() {
         <td class="td-arrow">›</td>
         <td onclick="event.stopPropagation()">
           <div class="row-actions">
-            <a class="row-action-btn" href="\${telLink}" title="Bellen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
+            <a class="row-action-btn" href="\${telLink}" title="\${escHtml(tr('pnl.bellen'))}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
             <a class="row-action-btn" href="\${waLink}" target="_blank" rel="noopener" title="WhatsApp"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
           </div>
         </td>
@@ -8962,7 +8962,7 @@ function openPanel(lead) {
   const panelAgeDays = leadAgeDays(lead);
   const panelAgeClass = leadAgeClass(panelAgeDays);
   bronBadge.innerHTML = (lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '') +
-    \`<span class="age-chip age-\${panelAgeClass}">\${panelAgeDays}d oud</span>\`;
+    \`<span class="age-chip age-\${panelAgeClass}">\${escHtml(tr('pnl.oud', { n: panelAgeDays }))}</span>\`;
 
   // Copy phone
   const copyPhoneBtn = document.getElementById('panel-copy-phone');
@@ -8992,7 +8992,7 @@ function openPanel(lead) {
   // Kwalificatie section
   bodyHTML += \`
     <div class="panel-section">
-      <div class="panel-section-title">Kwalificatie</div>
+      <div class="panel-section-title">\${escHtml(tr('pnl.kwalificatie'))}</div>
       <div class="panel-row">
         <span class="panel-row-label">${T('dash.col.status')}</span>
         <span class="panel-row-value">
@@ -9000,7 +9000,7 @@ function openPanel(lead) {
             <option value="new"         \${lead.status === 'new'         ? 'selected' : ''}>${T('dash.s.new')}</option>
             <option value="in_progress" \${lead.status === 'in_progress' ? 'selected' : ''}>${T('dash.s.busy')}</option>
             <option value="completed"   \${lead.status === 'completed'   ? 'selected' : ''}>${T('dash.s.done')}</option>
-            <option value="verloren"    \${lead.status === 'verloren'    ? 'selected' : ''}>Verloren</option>
+            <option value="verloren"    \${lead.status === 'verloren'    ? 'selected' : ''}>\${escHtml(tr('stage.lost'))}</option>
           </select>
         </span>
       </div>
@@ -9055,16 +9055,16 @@ function openPanel(lead) {
       </div>
       \${(lead.fit || lead.capaciteit || lead.urgentie) ? \`
         <div class="panel-row">
-          <span class="panel-row-label">Waarom \${scoreNum}/10</span>
+          <span class="panel-row-label">\${escHtml(tr('pnl.waarom', { n: scoreNum }))}</span>
           <span class="panel-row-value panel-score-pills">
             \${lead.fit        ? \`<span class="score-pill \${scorePillCls(lead.fit)}"        title="Fit met je doelgroep">Fit: \${escHtml(lead.fit)}</span>\` : ''}
-            \${lead.capaciteit ? \`<span class="score-pill \${scorePillCls(lead.capaciteit)}" title="Budget / koopkracht">Capaciteit: \${escHtml(lead.capaciteit)}</span>\` : ''}
-            \${lead.urgentie   ? \`<span class="score-pill \${scorePillCls(lead.urgentie)}"   title="Hoe snel ze beslissen">Urgentie: \${escHtml(lead.urgentie)}</span>\` : ''}
+            \${lead.capaciteit ? \`<span class="score-pill \${scorePillCls(lead.capaciteit)}" title="\${escHtml(tr('pnl.tip.capaciteit'))}">Capaciteit: \${escHtml(lead.capaciteit)}</span>\` : ''}
+            \${lead.urgentie   ? \`<span class="score-pill \${scorePillCls(lead.urgentie)}"   title="\${escHtml(tr('pnl.tip.urgentie'))}">Urgentie: \${escHtml(lead.urgentie)}</span>\` : ''}
           </span>
         </div>
       \` : ''}
       <div class="panel-row">
-        <span class="panel-row-label">Deal waarde (€)</span>
+        <span class="panel-row-label">\${escHtml(tr('pnl.dealWaarde'))}</span>
         <span class="panel-row-value" style="flex:1;max-width:160px">
           <input type="text" class="panel-inline-input" id="panel-deal-input" placeholder="€0" value="\${escHtml(lead.verwachteWaarde || '')}">
         </span>
@@ -9086,7 +9086,7 @@ function openPanel(lead) {
   if (lead.samenvatting) {
     bodyHTML += \`
       <div class="panel-section">
-        <div class="panel-section-title">Samenvatting</div>
+        <div class="panel-section-title">\${escHtml(tr('dash.col.summary'))}</div>
         <div class="ai-summary">\${escHtml(lead.samenvatting)}</div>
       </div>
     \`;
@@ -9137,10 +9137,10 @@ function openPanel(lead) {
       <div class="panel-section">
         <div class="panel-section-title">${T('pro.quick')}</div>
         <div class="panel-quick-actions">
-          <a class="panel-quick-btn" href="\${telLink}">Bellen</a>
+          <a class="panel-quick-btn" href="\${telLink}">\${escHtml(tr('pnl.bellen'))}</a>
           <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">WhatsApp</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">Opvolging</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">Offerte</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">\${escHtml(tr('pnl.opvolging'))}</a>
+          <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">\${escHtml(tr('pnl.offerte'))}</a>
         </div>
       </div>
     \`;
@@ -9159,7 +9159,7 @@ function openPanel(lead) {
       const msgs = JSON.parse(lead.gesprek || '[]');
       bubbles = msgs.map(m => {
         const isUser = m.role === 'user';
-        const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? 'Jij (template)' : 'Jij') : hvAssistentNaam());
+        const tag    = isUser ? 'Lead' : (m.manual ? (m.template ? tr('pnl.jijTemplate') : tr('conv.jij')) : hvAssistentNaam());
         const cls    = isUser ? 'user' : (m.manual ? 'ai manual' : 'ai');
         return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}" dir="auto">\${m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
@@ -9258,7 +9258,7 @@ function openPanel(lead) {
     const isNo  = af.verschenen === false;
     bodyHTML += \`
     <div class="panel-section" id="afspraak-result-section">
-      <div class="panel-section-title">Afspraak Resultaat</div>
+      <div class="panel-section-title">\${escHtml(tr('pnl.afspraakUitkomst'))}</div>
       <div class="afspraak-result">
         <div>
           <div class="afspraak-toggle-label">Verschenen?</div>
@@ -9286,7 +9286,7 @@ function openPanel(lead) {
       <div class="panel-notes-list" id="panel-notes-list">\${renderNotesList(nData.notes)}</div>
       <div class="panel-add-note">
         <textarea id="panel-note-input" placeholder="${T('lp.notitieToe')}" rows="2"></textarea>
-        <button class="btn-add-note" id="btn-add-note">+ Toevoegen</button>
+        <button class="btn-add-note" id="btn-add-note">\${escHtml(tr('pnl.toevoegen'))}</button>
       </div>
     </div>
     <div class="panel-section">
