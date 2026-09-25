@@ -2869,6 +2869,15 @@ const TEKST = {
      te tonen WAT die standaard is, laat je alsnog zoeken. */
   'veh.korting.hint': { nl: 'Leeg = je standaard: Faro mag zelf tot {faro}, daarboven tot {max} beslis jij.', fr: 'Vide = votre valeur par défaut : Faro peut accorder jusqu’à {faro}, au-delà et jusqu’à {max} c’est vous qui décidez.', en: 'Empty = your default: Faro may go up to {faro} on its own; above that, up to {max}, you decide.', de: 'Leer = dein Standard: Faro darf bis {faro} selbst entscheiden, darüber bis {max} entscheidest du.' },
   'veh.korting.geen': { nl: 'Je hebt nog geen kortingsruimte ingesteld, dus Faro geeft niets weg. Stel dat in bij Instellingen.', fr: 'Vous n’avez pas encore défini de marge de remise, donc Faro n’accorde rien. Configurez-la dans les paramètres.', en: 'You haven’t set any discount room yet, so Faro gives nothing away. Set it in Settings.', de: 'Du hast noch keinen Rabattspielraum festgelegt, also gibt Faro nichts nach. Stell ihn in den Einstellungen ein.' },
+
+  /* De feitjes en knoppen op een aanbodkaart. Stonden hardgecodeerd in het
+     Nederlands op een scherm dat verder volledig vertaald is -- gezien in een
+     Engelse sessie van de Meta-reviewaccount: "4 slk" en "Archiveren" tussen
+     "Your listings" en "No leads yet". */
+  'pd.kaart.slk':         { nl: '{n} slk', fr: '{n} ch.', en: '{n} bed', de: '{n} Schlafz.' },
+  'pd.kaart.kortingTot':  { nl: 'korting tot {bedrag}', fr: 'remise jusqu’à {bedrag}', en: 'discount up to {bedrag}', de: 'Rabatt bis {bedrag}' },
+  'btn.archiveren':       { nl: 'Archiveren', fr: 'Archiver', en: 'Archive', de: 'Archivieren' },
+  'btn.terugzetten':      { nl: 'Terugzetten', fr: 'Restaurer', en: 'Restore', de: 'Wiederherstellen' },
 };
 
 /**

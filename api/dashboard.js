@@ -17228,9 +17228,9 @@ function renderPanden() {
       if (p.brandstof)        feiten.push('<span class="pd-feit">' + pandEsc(p.brandstof) + '</span>');
       /* Een auto met een eigen kortingsregel is een auto waar iets bijzonders
          mee is. Dat hoort de dealer te zien zonder hem open te klikken. */
-      if (p.maxKorting)       feiten.push('<span class="pd-feit" title="' + escHtml(tr('pd.eigenKorting')) + '">korting tot ' + pandEsc(pandPrijs(p.maxKorting)) + '</span>');
+      if (p.maxKorting)       feiten.push('<span class="pd-feit" title="' + escHtml(tr('pd.eigenKorting')) + '">' + escHtml(tr('pd.kaart.kortingTot', { bedrag: pandPrijs(p.maxKorting) })) + '</span>');
     } else {
-      if (p.slaapkamers) feiten.push('<span class="pd-feit">' + p.slaapkamers + ' slk</span>');
+      if (p.slaapkamers) feiten.push('<span class="pd-feit">' + escHtml(tr('pd.kaart.slk', { n: p.slaapkamers })) + '</span>');
       if (p.oppervlakte) feiten.push('<span class="pd-feit">' + p.oppervlakte + ' m\u00B2</span>');
       if (p.epc) feiten.push('<span class="pd-feit">EPC ' + pandEsc(p.epc) + '</span>');
     }
@@ -17302,7 +17302,7 @@ function renderPanden() {
       +   '<div class="pd-card-acties">'
       +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">' + escHtml(tr('btn.bewerken')) + '</button>'
       +     '<button class="pd-mini" onclick="archivePand(&quot;' + pandEsc(p.code) + '&quot;, ' + (p.gearchiveerd ? 'false' : 'true') + ')">'
-      +       (p.gearchiveerd ? 'Terugzetten' : 'Archiveren') + '</button>'
+      +       escHtml(tr(p.gearchiveerd ? 'btn.terugzetten' : 'btn.archiveren')) + '</button>'
       +   '</div>'
       + '</div></div>';
   }).join('');
