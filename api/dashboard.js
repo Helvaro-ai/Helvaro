@@ -12256,14 +12256,19 @@ function wizardTaalBijLand(landcode) {
    Wie er niet bij staat kiest 'iets anders' en krijgt de standaardinrichting.
    Dat is eerlijker dan een lijst van tien waar er acht hetzelfde doen. */
 var WIZARD_MARKTEN = [
-  { id: 'real_estate', vertical: 'vastgoed',
-    titel: 'Vastgoed',
-    sub: 'Panden, bezichtigingen, en een link per woning.',
-    icoon: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>' },
+  /* Autohandel staat bewust VOORAAN. Dat is presentatie, geen standaard: wie
+     niets kiest krijgt nog steeds vastgoed (zie api/_vertical.js, waar leeg
+     bewust vastgoed betekent zodat bestaande makelaars hun panden houden).
+     Alleen de volgorde van de keuzelijst verandert, omdat de dealermarkt
+     vanaf 2026-09-25 de markt is waar Helvaro op mikt. */
   { id: 'dealership', vertical: 'dealership',
     titel: 'Autohandel',
     sub: 'Voorraad, proefritten, en AutoScout24-leads die zichzelf koppelen.',
     icoon: '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>' },
+  { id: 'real_estate', vertical: 'vastgoed',
+    titel: 'Vastgoed',
+    sub: 'Panden, bezichtigingen, en een link per woning.',
+    icoon: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>' },
   /* Drie markten zonder catalogus. Ze staan hier apart en niet onder "iets
      anders", omdat er voor hen wel degelijk iets verandert: geen aanbodscherm,
      en de afspraak heet bij hen plaatsbezoek of opmeting in plaats van

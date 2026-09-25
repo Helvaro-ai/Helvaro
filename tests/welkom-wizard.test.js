@@ -280,5 +280,37 @@ console.log('\n— de server bewaart en leest het vinkje —');
      /\[config-save\] "Welcome Done" niet opgeslagen/.test(leads), null);
 }
 
+
+console.log('\n— de marktkeuze zet autohandel vooraan —');
+{
+  /* Sindi stuurt sinds 2026-09-25 op de dealermarkt. Dat is hier PRESENTATIE:
+     alleen de volgorde van de keuzelijst. De STANDAARD blijft vastgoed, want
+     api/_vertical.js leest een leeg Vertical-veld bewust als vastgoed -- elke
+     bestaande makelaar heeft dat veld leeg, en een andere terugval zou hem op
+     de dag van uitrol zijn pandcontext afnemen. */
+  const m = /var WIZARD_MARKTEN = (\[[\s\S]*?\n\];)/.exec(html);
+  ck("de marktenlijst staat in de pagina", !!m, null);
+  if (m) {
+    const arr = eval(m[1].replace(/\/\*[\s\S]*?\*\//g, ""));
+    ck("autohandel staat vooraan", arr[0] && arr[0].id === "dealership", arr.map((x) => x.id));
+    ck("vastgoed staat er nog", arr.some((x) => x.id === "real_estate"), null);
+    ck("alle vijf markten plus \"iets anders\" staan er", arr.length === 6, arr.length);
+    /* DIT is het subtiele stuk. hvSectorBijVertical() pakt de EERSTE regel met
+       een passend vertical, en zowel real_estate als other wijzen naar
+       vastgoed. Zou other voor real_estate komen te staan, dan krijgt een
+       makelaar bij het heropenen van de wizard "Iets anders" voorgeselecteerd
+       in plaats van "Vastgoed" -- zonder dat er iets stukgaat. */
+    const bij = (v) => { for (const x of arr) if (x.vertical === v) return x.id; return null; };
+    ck("vastgoed leest terug als real_estate, niet als other", bij("vastgoed") === "real_estate", bij("vastgoed"));
+    ck("dealership leest terug als dealership", bij("dealership") === "dealership", bij("dealership"));
+    /* En de labels komen uit de vertaaltabel, niet uit de titel-velden in deze
+       array -- die zijn ongebruikte terugval. */
+    const i18n = require(require("path").join(__dirname, "..", "api/_i18n.js"));
+    for (const x of arr) {
+      const per = ["nl", "fr", "en", "de"].map((l) => i18n.t(l, "markt." + x.id + ".t"));
+      ck(x.id + ": label bestaat in vier talen", per.every((w) => w && w.indexOf("markt.") !== 0), per);
+    }
+  }
+}
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);
