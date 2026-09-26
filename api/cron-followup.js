@@ -136,6 +136,24 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  /* ── Het uurlijkse voorraadritje (vercel.json: ?taak=voorraad) ──────────
+     Helvaro draait op Vercel Pro, dus cron hoeft niet één keer per dag te
+     zijn. Een wagen die om 10:00 op AutoScout verkocht werd, stond tot de
+     volgende ochtend als beschikbaar op de website van de dealer en in het
+     gesprek. Nu hoogstens een uur. Alleen de feed-sync: archiveren na
+     veertien dagen heeft geen uurprecisie nodig en blijft in de dagrun. */
+  if (req.query && req.query.taak === 'voorraad') {
+    const start = new Date();
+    try {
+      const v = await runVoorraad(start, { budgetS: 240, trigger: 'uurlijks', archiveren: false });
+      console.log(`[cron-followup] voorraad (uurlijks): ${v.gesynct} gesynct, ${v.syncMislukt} mislukt, ${v.overgeslagen} overgeslagen, ${Math.round((Date.now() - start.getTime()) / 1000)}s`);
+      return res.status(200).json({ voorraad: v });
+    } catch (e) {
+      console.error('[cron-followup] voorraad (uurlijks) mislukt:', e && e.message);
+      return res.status(500).json({ error: 'voorraad mislukt' });
+    }
+  }
+
   const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
   const BASE_ID        = process.env.BASE_AIRTABLE;
   const LEADS_TABLE    = 'tbliukTnDAbEDcZmt';
@@ -544,45 +562,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        ze op. Een halve voorraadronde is beter dan een afgebroken cron. */
     let voorraadResult = null;
     try {
-      const BUDGET_S = 180;
-      const _vertical = require('./_vertical');
-      const _inventaris = require('./_inventaris');
-      const _vsync = require('./_voorraad-sync');
-      voorraadResult = { dealers: 0, gesynct: 0, syncMislukt: 0, gearchiveerd: 0, klokGestart: 0, overgeslagen: 0 };
-      let offset = '';
-      const dealers = [];
-      for (let ronde = 0; ronde < 5; ronde++) {
-        const vr = await atFetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`, {
-          headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` },
-        });
-        if (!vr.ok) break;
-        const d = await vr.json();
-        for (const rec of d.records || []) {
-          const f = rec.fields || {};
-          const code = String(f['Project Code'] || '').trim();
-          if (!code) continue;
-          /* Dealer = vertical dealership, OF er staat een voorraadbron ingesteld. */
-          if (_vertical.isDealership(f) || String(f['Inventory Source'] || '').trim()) {
-            let bron = {};
-            try { bron = JSON.parse(f['Inventory Source'] || '{}') || {}; } catch (_) { bron = {}; }
-            dealers.push({ code, feed: bron && bron.type === 'feed' });
-          }
-        }
-        if (!d.offset) break;
-        offset = d.offset;
-      }
-      voorraadResult.dealers = dealers.length;
-      for (const dlr of dealers) {
-        if ((Date.now() - now.getTime()) / 1000 > BUDGET_S) { voorraadResult.overgeslagen++; continue; }
-        if (dlr.feed) {
-          const st = await _inventaris.sync(dlr.code, { door: 'cron', trigger: 'dagelijks' })
-            .catch((e) => { console.warn('[cron-followup] voorraadsync', dlr.code, e && e.message); return null; });
-          if (st && st.ok) voorraadResult.gesynct++; else voorraadResult.syncMislukt++;
-        }
-        const ar = await _vsync.archiveerVerkocht(dlr.code)
-          .catch((e) => { console.warn('[cron-followup] archiveren', dlr.code, e && e.message); return null; });
-        if (ar) { voorraadResult.gearchiveerd += ar.gearchiveerd; voorraadResult.klokGestart += ar.klokGestart; }
-      }
+      voorraadResult = await runVoorraad(now, { budgetS: 180, trigger: 'dagelijks', archiveren: true });
     } catch (e) {
       console.error('[cron-followup] voorraad mislukt:', e && e.message);
     }
@@ -621,6 +601,67 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 });
+
+/* ── Voorraad: sync + de veertien dagen ──────────────────────────────────────
+   Per dealer, met DEZELFDE sync als de knop in het dashboard
+   (api/_inventaris.js sync) -- geen tweede motor die net iets anders doet.
+
+   Twee dingen:
+     1. Een dealer met een feed wordt gesynchroniseerd: elk uur (?taak=voorraad)
+        en nog eens in de dagrun.
+     2. In de dagrun, voor ELKE dealer: verkochte wagens ouder dan veertien
+        dagen gaan het archief in. Ook zonder feed -- een met de hand verkochte
+        wagen hoort er net zo goed uit.
+
+   Tijdsbudget: na budgetS seconden beginnen we geen nieuwe dealer meer; de
+   volgende run pakt ze op. Een halve voorraadronde is beter dan een
+   afgebroken cron. De sync zelf houdt een slot (api/_inventaris.js), dus een
+   uurrun die samenvalt met de knop in het dashboard doet het werk niet twee
+   keer. */
+async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiveren = true } = {}) {
+  const _vertical = require('./_vertical');
+  const _inventaris = require('./_inventaris');
+  const _vsync = require('./_voorraad-sync');
+  const uit = { dealers: 0, gesynct: 0, syncMislukt: 0, gearchiveerd: 0, klokGestart: 0, overgeslagen: 0 };
+  let offset = '';
+  const dealers = [];
+  for (let ronde = 0; ronde < 5; ronde++) {
+    const vr = await atFetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`, {
+      headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` },
+    });
+    if (!vr.ok) break;
+    const d = await vr.json();
+    for (const rec of d.records || []) {
+      const f = rec.fields || {};
+      const code = String(f['Project Code'] || '').trim();
+      if (!code) continue;
+      /* Dealer = vertical dealership, OF er staat een voorraadbron ingesteld. */
+      if (_vertical.isDealership(f) || String(f['Inventory Source'] || '').trim()) {
+        let bron = {};
+        try { bron = JSON.parse(f['Inventory Source'] || '{}') || {}; } catch (_) { bron = {}; }
+        dealers.push({ code, feed: bron && bron.type === 'feed' });
+      }
+    }
+    if (!d.offset) break;
+    offset = d.offset;
+  }
+  uit.dealers = dealers.length;
+  for (const dlr of dealers) {
+    if (!dlr.feed && !archiveren) continue;   // uurrun: niets te doen zonder feed
+    if ((Date.now() - now.getTime()) / 1000 > budgetS) { uit.overgeslagen++; continue; }
+    if (dlr.feed) {
+      const st = await _inventaris.sync(dlr.code, { door: 'cron', trigger })
+        .catch((e) => { console.warn('[cron-followup] voorraadsync', dlr.code, e && e.message); return null; });
+      if (st && st.ok) uit.gesynct++; else uit.syncMislukt++;
+    }
+    if (archiveren) {
+      const ar = await _vsync.archiveerVerkocht(dlr.code)
+        .catch((e) => { console.warn('[cron-followup] archiveren', dlr.code, e && e.message); return null; });
+      if (ar) { uit.gearchiveerd += ar.gearchiveerd; uit.klokGestart += ar.klokGestart; }
+    }
+  }
+  return uit;
+}
 
 // ── Safety-net sweep for leads stuck at 'new' with an empty history ─────────
 // api/form.js sends the first WhatsApp message from inside a 45s setTimeout,
@@ -2706,6 +2747,7 @@ module.exports.sendOpsAlert = sendResendEmail;
 // tests/afspraak-opvolging.test.js), so it gets exported; runAppointmentReminders
 // is left as it was found, unexported, to keep this change minimal.
 module.exports.runAfspraakOpvolging = runAfspraakOpvolging;
+module.exports.runVoorraad = runVoorraad;
 // Same attach-alongside-the-handler convention as runAfspraakOpvolging above --
 // deliverable "notifications" (brief §77/§107) needs a real call (mocked
 // fetch/push/mail, asserted dedupe behaviour), see tests/meldingen-daily.test.js.

@@ -8,9 +8,10 @@
  *   GET /api/inventory/CODE/V12             een wagen, op code...
  *   GET /api/inventory/CODE/bmw-x5-v12      ...of op slug
  *
- * Via de rewrite naar api/form.js?__voorraad=1: Vercel Hobby staat twaalf
- * functies toe en die zijn op. form.js is al de publieke, rate-gelimiteerde
- * ingang (het leadformulier, de websiteassistent), dus hij hoort daar bij.
+ * Via de rewrite naar api/form.js?__voorraad=1: form.js is al de publieke,
+ * rate-gelimiteerde ingang (het leadformulier, de websiteassistent), dus hij
+ * hoort daar bij. Een eigen bestand had ook gekund -- Helvaro draait op
+ * Vercel Pro, er is geen functielimiet.
  *
  * ── Eén bron van waarheid ───────────────────────────────────────────────────
  * Dit leest api/_vehicles.js en niets anders. De website houdt geen eigen

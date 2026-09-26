@@ -26,8 +26,8 @@
  * maar "welke standaard doet bestaande klanten geen pijn".
  *
  * ── Geen route ──────────────────────────────────────────────────────────────
- * Onderstreepje voorop. Vercel Hobby staat twaalf functies toe en die zijn op;
- * alles hangt aan bestaande routes via body.mode.
+ * Onderstreepje voorop: een module, geen route. Aangeroepen vanuit de
+ * bestaande routes via body.mode.
  */
 
 /* De namen. Strings en geen Symbol of enum-object: ze gaan naar Airtable, naar

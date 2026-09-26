@@ -2549,9 +2549,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     }
 
     /* ── Panden ──────────────────────────────────────────────────────────────
-       Drie modes en geen nieuwe route: Vercel Hobby staat twaalf functies toe
-       en die zijn op. Ze hangen hier omdat de tenantcontrole, de sessiecheck
-       en de CSRF-poort hierboven al gedaan zijn.
+       Drie modes en geen nieuwe route: ze hangen hier omdat de tenantcontrole,
+       de sessiecheck en de CSRF-poort hierboven al gedaan zijn.
 
        LET OP de naamgeving. 'property-list' hierboven gaat over AI-BEELDEN van
        panden; 'listing-*' hieronder gaat over de panden zelf. Verwarrend, maar
@@ -2999,10 +2998,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        Zelfde vorm en met opzet: twee bedieningen die er anders uitzien voor
        hetzelfde probleem worden twee bedieningen die anders kapot gaan.
 
-       Modes en geen nieuwe routes, om dezelfde reden als al het andere hier:
-       Vercel Hobby staat twaalf functies toe en die zijn op. Ze hergebruiken de
-       tenantbepaling, de sessiecontrole en de CSRF-poort die hierboven al
-       gedaan zijn.
+       Modes en geen nieuwe routes: ze hergebruiken de tenantbepaling, de
+       sessiecontrole en de CSRF-poort die hierboven al gedaan zijn.
 
        GEEN vertical-poort op deze modes, en dat is een keuze. Een makelaar die
        vehicle-list aanroept krijgt een lege lijst -- hij heeft namelijk geen
@@ -3224,9 +3221,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     }
 
     /* ── Command Center ──────────────────────────────────────────────────────
-       One mode rather than a new route: Vercel Hobby allows twelve functions
-       and this repo is at twelve. It reuses the tenant resolution, the session
-       check and the CSRF guard already performed above, and the analysis
+       One mode rather than a new route: it reuses the tenant resolution, the
+       session check and the CSRF guard already performed above, and the analysis
        itself (api/_command.js) is pure arithmetic over rows -- no model call,
        so opening the page costs nothing and consumes no credits.
 

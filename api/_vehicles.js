@@ -30,8 +30,8 @@
  * dat het dashboard omvalt of dat de AI een auto verzint. Zie available().
  *
  * ── Geen route ──────────────────────────────────────────────────────────────
- * Onderstreepje voorop: Vercel Hobby staat twaalf functies toe en die zijn op.
- * De voertuigen hangen aan api/leads.js via body.mode, net als de panden.
+ * Onderstreepje voorop: een module, geen route. De voertuigen hangen aan
+ * api/leads.js via body.mode, net als de panden.
  */
 
 const { fetchPage } = require('./_lib/fetch-website');

@@ -294,8 +294,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // (status + body) so you can see exactly why a send fails (e.g. Domain
     // not verified, invalid key, etc.) without digging through logs.
     /* ── AI-verbruik: waar gaat het geld heen ────────────────────────────
-       Geen nieuwe route: Vercel Hobby staat 12 functies toe en die zitten vol.
-       Dit hangt daarom aan admin.js, achter dezelfde admincontrole als de rest.
+       Aan admin.js, achter dezelfde admincontrole als de rest -- dat is de
+       reden, niet een functielimiet (Helvaro draait op Vercel Pro).
 
        Bewust ALLEEN voor Helvaro: dit toont het verbruik van ALLE tenants naast
        elkaar, en welke klant hoeveel AI verstookt is niets wat een andere klant

@@ -627,6 +627,14 @@ const server = http.createServer(async (req, res) => {
           // Never fake a generated image: a placeholder here would make a
           // broken pipeline look like a working one.
           return res.status(503).json({ error: 'Beeldgeneratie vereist OPENAI_API_KEY — niet ingesteld lokaal.' });
+        /* Instellingen → Kanalen en Koppelingen. Zonder deze twee gaf elk
+           bezoek aan Instellingen hier twee 501's in de console, en die
+           verbergen een echte fout die er tussen zou zitten. Wat ze teruggeven
+           is de vorm van api/leads.js: niets gekoppeld. */
+        case 'wa-es-status':
+          return res.status(200).json({ beschikbaar: false, appId: '', configId: '', gekoppeld: false, nummer: null });
+        case 'crm-status':
+          return res.status(200).json({ beschikbaar: require('../api/_crm').adapters(), verbonden: [] });
         case 'plan-status':
           return res.status(200).json({ status: 'active', trialEndsAt: null, daysLeft: null });
         case 'config-get':

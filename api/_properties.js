@@ -13,9 +13,10 @@
  * krijgt de AI precies dat ene pand mee.
  *
  * -- Geen route ----------------------------------------------------------------
- * Het onderstreepje voorop is geen stijlkeuze: Vercel Hobby staat twaalf
- * functies toe en die zijn op. De panden hangen daarom aan api/leads.js via
- * body.mode, net als alles wat er de laatste tijd bij kwam.
+ * Onderstreepje voorop: dit is een module, geen route. De panden hangen aan
+ * api/leads.js via body.mode, waar de tenant-, sessie- en CSRF-controle al
+ * gebeurd is. (Dat was ooit ook nodig voor de twaalf-functielimiet van Vercel
+ * Hobby; Helvaro draait op Pro, die limiet geldt niet meer.)
  *
  * -- Tenant, altijd ------------------------------------------------------------
  * Elke functie hier neemt projectCode als EERSTE argument en elke query

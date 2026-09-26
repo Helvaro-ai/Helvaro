@@ -62,8 +62,9 @@ async function isRateLimited(ip) {
 
 module.exports = _errors.vangAf(async function handler(req, res) {
   /* Websiteassistent (api/_assistent.js) via de rewrite /api/assistant. Eigen
-     CORS (alleen de domeinen van de dealer), dus vóór de '*' hieronder. Hier
-     en niet in een eigen functie: het functiebudget (zie ledger D1). */
+     CORS (alleen de domeinen van de dealer), dus vóór de '*' hieronder. Via
+     een rewrite op deze functie omdat form.js al de publieke ingang is; een
+     eigen bestand mag ook (Vercel Pro, geen functielimiet). */
   if (req.query && req.query.__assistant) return require('./_assistent').handler(req, res);
   /* Publieke voorraad voor de website van de dealer (api/_voorraad-publiek.js)
      via de rewrite /api/inventory/:code. Alleen-lezen, eigen GET-CORS en een

@@ -3,8 +3,9 @@
  * De Stripe-webhook. De enige plek waar credits van een betaling komen.
  *
  * -- Waarom dit een eigen route is ---------------------------------------------
- * Alles wat er de laatste tijd bij kwam hangt aan api/leads.js via body.mode,
- * omdat Vercel Hobby op twaalf functies zat. Deze kan dat niet, om één reden:
+ * Veel hangt aan api/leads.js via body.mode (uit de tijd van de twaalf-
+ * functielimiet van Vercel Hobby; Helvaro draait nu op Pro). Deze kan dat
+ * sowieso niet, om één reden:
  * Stripe tekent de RUWE bytes van de body. Vercel parst een JSON-body
  * automatisch, en de bytes die je daarna terugkrijgt uit JSON.stringify zijn
  * niet dezelfde -- andere sleutelvolgorde, andere witruimte, andere

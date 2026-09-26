@@ -49,7 +49,7 @@
  * regels eromheen staan er al.
  *
  * ── Geen route ───────────────────────────────────────────────────────────────
- * Onderstreepje voorop. Vercel Hobby staat twaalf functies toe en die zijn op.
+ * Onderstreepje voorop: een module, geen route.
  */
 
 /* De termijnen. Een kleine vaste lijst en geen vrije tekst, want dit veld

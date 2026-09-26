@@ -36,8 +36,7 @@
  *             geschiedenis klopt, en de rij bestaat nog voor wie er later naar
  *             een oude lead kijkt.
  *
- * Geen route: onderstreepje voorop. Vercel Hobby staat twaalf functies toe en
- * die zijn op.
+ * Geen route: onderstreepje voorop.
  */
 
 const vehicles = require('./_vehicles');

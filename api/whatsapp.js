@@ -88,9 +88,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // handtekening, rauwe body, telefoonnummers. De demo heeft daar niets mee te
   // maken en zou er alleen op stuklopen.
   //
-  // Waarom hier en niet in een eigen bestand: Vercel Hobby staat 12 functies
-  // toe en we zitten op 11. Een rewrite naar een bestaande functie kost er nul,
-  // net zoals /api/gcal op leads.js meelift. De logica zelf staat wél apart in
+  // Via een rewrite op deze functie, net zoals /api/gcal op leads.js meelift.
+  // (Oorspronkelijk voor de twaalf-functielimiet van Vercel Hobby; Helvaro
+  // draait op Pro, dus een eigen bestand mag voortaan ook.) De logica zelf staat wél apart in
   // _demo-chat.js; die krijgt de drie dingen mee die hij uit dit bestand nodig
   // heeft, zodat runAI niet losgebroken hoeft te worden.
   if (req.query && req.query.__demo === '1') {
