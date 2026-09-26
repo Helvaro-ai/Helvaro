@@ -1636,6 +1636,8 @@ const TEKST = {
   'tst.codeGekopieerd': { nl: 'Code gekopieerd', fr: 'Code copié', en: 'Code copied', de: 'Code kopiert' },
   'tst.nummerGekopieerd': { nl: 'Nummer gekopieerd', fr: 'Numéro copié', en: 'Number copied', de: 'Nummer kopiert' },
   'tst.telGekopieerd': { nl: 'Telefoonnummer gekopieerd', fr: 'Numéro de téléphone copié', en: 'Phone number copied', de: 'Telefonnummer kopiert' },
+  'pi.customPromptPh': { nl: 'Bv: behoud de open haard, gebruik warmere kleuren', fr: 'Ex. : garder la cheminée, utiliser des couleurs plus chaudes', en: 'E.g. keep the fireplace, use warmer colours', de: 'Z. B.: Kamin behalten, wärmere Farben verwenden' },
+  'ap.websitePh': { nl: 'https://www.jouwbedrijf.be', fr: 'https://www.votreentreprise.be', en: 'https://www.yourcompany.com', de: 'https://www.ihrefirma.de' },
   'tst.mailGekopieerd': { nl: 'E-mailadres gekopieerd', fr: 'Adresse e-mail copiée', en: 'Email address copied', de: 'E-Mail-Adresse kopiert' },
   'tst.berichtGekopieerd': { nl: 'Bericht gekopieerd', fr: 'Message copié', en: 'Message copied', de: 'Nachricht kopiert' },
   'tst.koppelenMislukt': { nl: 'Koppelen mislukt, probeer opnieuw', fr: 'Échec de la connexion, réessayez', en: 'Couldn’t connect, try again', de: 'Verbinden fehlgeschlagen, versuchen Sie es erneut' },

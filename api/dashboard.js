@@ -1747,7 +1747,7 @@ ${faro.navCta}
 
         <div class="ap-field" style="margin-top:14px">
           <label class="ap-label" for="pi-custom-prompt">${T('pi.extra')} <span class="ap-label-hint">${T('pi.optional')}</span></label>
-          <textarea id="pi-custom-prompt" class="ap-textarea" rows="2" maxlength="500" placeholder="Bv: behoud de open haard, gebruik warmere kleuren"></textarea>
+          <textarea id="pi-custom-prompt" class="ap-textarea" rows="2" maxlength="500" placeholder="${T('pi.customPromptPh')}"></textarea>
         </div>
 
         <div class="ap-actions" style="margin-top:14px">
@@ -1898,7 +1898,7 @@ ${faro.navCta}
                 ${T('ap.website')}
                 <span class="ap-label-hint">${T('ap.website.h')}</span>
               </label>
-              <input id="ap-website" type="url" class="ap-input" placeholder="https://www.bedrijf.be">
+              <input id="ap-website" type="url" class="ap-input" placeholder="${T('ap.websitePh')}">
               <div class="ap-hint">${T('ap.website.n')}</div>
             </div>
 

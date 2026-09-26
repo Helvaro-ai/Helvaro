@@ -51,7 +51,7 @@ const STRINGS = {
     'tip.agenda': 'Koppel je agenda, dan plan ik afspraken zelf in.',
     'tip.sluit': 'Verbergen',
     'ws.subtitle': 'Je assistent binnen Helvaro',
-    'dock.placeholder': 'Vraag Faro iets over je leads, panden of marketing…',
+    'dock.placeholder': 'Vraag Faro iets over je leads, je aanbod of marketing…',
 
     'sw.label': 'Wisselen tussen CRM en je assistent',
     'sw.crm': 'CRM',
@@ -71,7 +71,7 @@ const STRINGS = {
     'sb.localOnly': 'Bewaard in deze browser',
 
     'land.title': 'Waar kan ik je mee helpen?',
-    'land.sub': 'Vraag me alles over je leads, panden, gesprekken of marketing. Hieronder staat wat er intussen gebeurd is.',
+    'land.sub': 'Vraag me alles over je leads, je aanbod, gesprekken of marketing. Hieronder staat wat er intussen gebeurd is.',
     'land.greet.morning': 'Goedemorgen',
     'land.greet.afternoon': 'Goedemiddag',
     'land.greet.evening': 'Goedenavond',
@@ -273,7 +273,7 @@ const STRINGS = {
     'tip.agenda': "Connect your calendar and I'll book appointments myself.",
     'tip.sluit': 'Hide',
     'ws.subtitle': 'Your assistant inside Helvaro',
-    'dock.placeholder': 'Ask Faro about your leads, properties or marketing…',
+    'dock.placeholder': 'Ask Faro about your leads, listings or marketing…',
 
     'sw.label': 'Switch between CRM and your assistant',
     'sw.crm': 'CRM',
@@ -293,7 +293,7 @@ const STRINGS = {
     'sb.localOnly': 'Saved in this browser',
 
     'land.title': 'How can I help?',
-    'land.sub': 'Ask me anything about your leads, properties, conversations or marketing. Below is what happened while you were away.',
+    'land.sub': 'Ask me anything about your leads, listings, conversations or marketing. Below is what happened while you were away.',
     'land.greet.morning': 'Good morning',
     'land.greet.afternoon': 'Good afternoon',
     'land.greet.evening': 'Good evening',
@@ -488,7 +488,7 @@ const STRINGS = {
     'tip.agenda': 'Connectez votre agenda et je planifie les rendez-vous moi-même.',
     'tip.sluit': 'Masquer',
     'ws.subtitle': 'Votre assistant dans Helvaro',
-    'dock.placeholder': 'Demandez à Faro vos leads, biens ou marketing…',
+    'dock.placeholder': 'Demandez à Faro vos leads, annonces ou marketing…',
 
     'sw.label': 'Basculer entre CRM et IA',
     'sw.crm': 'CRM',
@@ -508,7 +508,7 @@ const STRINGS = {
     'sb.localOnly': 'Enregistré dans ce navigateur',
 
     'land.title': 'Comment puis-je vous aider ?',
-    'land.sub': 'Demandez-moi tout sur vos leads, biens, conversations ou marketing. Ci-dessous, ce qui s\u2019est passé entre-temps.',
+    'land.sub': 'Demandez-moi tout sur vos leads, annonces, conversations ou marketing. Ci-dessous, ce qui s\u2019est passé entre-temps.',
     'land.greet.morning': 'Bonjour',
     'land.greet.afternoon': 'Bon après-midi',
     'land.greet.evening': 'Bonsoir',
@@ -703,7 +703,7 @@ const STRINGS = {
     'tip.agenda': 'Verbinden Sie Ihren Kalender, dann plane ich Termine selbst.',
     'tip.sluit': 'Ausblenden',
     'ws.subtitle': 'Ihr Assistent in Helvaro',
-    'dock.placeholder': 'Fragen Sie Faro zu Leads, Objekten oder Marketing…',
+    'dock.placeholder': 'Fragen Sie Faro zu Leads, Angebot oder Marketing…',
 
     'sw.label': 'Zwischen CRM und Ihrem Assistenten wechseln',
     'sw.crm': 'CRM',
@@ -723,7 +723,7 @@ const STRINGS = {
     'sb.localOnly': 'In diesem Browser gespeichert',
 
     'land.title': 'Wie kann ich helfen?',
-    'land.sub': 'Fragen Sie mich alles zu Ihren Leads, Objekten, Gesprächen oder Marketing. Darunter steht, was inzwischen passiert ist.',
+    'land.sub': 'Fragen Sie mich alles zu Ihren Leads, Ihrem Angebot, Gesprächen oder Marketing. Darunter steht, was inzwischen passiert ist.',
     'land.greet.morning': 'Guten Morgen',
     'land.greet.afternoon': 'Guten Tag',
     'land.greet.evening': 'Guten Abend',
