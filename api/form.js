@@ -269,9 +269,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           fldoLRI5W12ThTls7: JSON.stringify(Object.assign(
             { _v: 1, notes: [], tasks: [], calls: [], consent: { given: true, ts: consentTs } },
             pand ? { property: pand } : {},
-            /* Het e-mailadres in dezelfde blob: de Leads-tabel heeft geen
-               e-mailkolom, en een onbekend veld laat de hele create stuklopen.
-               api/_leads-read.js leest het terug voor het dashboard. */
+            /* Het e-mailadres in dezelfde blob en niet in de kolom Email: die
+               kolom wordt door api/_schema.js aangemaakt en bestaat dus niet
+               in elke base, en een onbekend veld laat de HELE create stuklopen
+               -- dat kost een echte lead. api/_leads-read.js leest beide. */
             email ? { email } : {}
           ))
         }

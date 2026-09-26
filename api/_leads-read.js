@@ -108,9 +108,11 @@ function mapLead(r) {
        die rechtstreeks naar het WhatsApp-nummer schrijft heeft nooit een
        pandlink aangeraakt. */
     property:              String(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'property') || '').toUpperCase(),
-    /* Alleen gezet als de lead via het formulier koos voor e-mail in plaats van
-       WhatsApp (api/form.js). Zelfde blob, zelfde reden: geen e-mailkolom. */
-    email:                 String(readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'email') || ''),
+    /* Twee bronnen: de kolom Email (gezet door de mailbox, api/_email/
+       mailbox.js, voor leads die per mail binnenkwamen) en de Notities-blob
+       (gezet door het formulier als de lead e-mail koos in plaats van
+       WhatsApp, api/form.js). */
+    email:                 String(f.Email || readNotitiesFlag(f.fldoLRI5W12ThTls7 || f.Notities, 'email') || ''),
     gesprek:               f[FIELD_GESPREK]          || f['Conversation History'] || '',
     leadScore:             num(f.fldpzQgMuWJLjogiD  || f['Lead Score']),
     opgepikt:              bool(f.fld86JQHB6dbuutA7 || f.Opgepikt),

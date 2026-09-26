@@ -118,6 +118,8 @@ async function stuur(body) {
     ck('_leads-read geeft het adres door', l.email === 'an@voorbeeld.be' && l.telefoon === '', l);
     const gewoon = read.mapLead({ id: 'r2', fields: { Name: 'Bart', Phone: '32478123456' } });
     ck('en een lege string zonder adres', gewoon.email === '');
+    const perMail = read.mapLead({ id: 'r3', fields: { Name: 'Cas', Email: 'cas@voorbeeld.be', Channels: 'email' } });
+    ck('een lead uit de mailbox (kolom Email) toont ook zijn adres', perMail.email === 'cas@voorbeeld.be', perMail.email);
     const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
     ck('het paneel toont het adres waar anders het nummer staat', dash.includes("textContent = lead.telefoon || lead.email || '—';"));
     ck('de kopieerknop kopieert wat er staat', dash.includes("const contact = lead.telefoon || lead.email || '';"));
