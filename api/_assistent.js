@@ -319,7 +319,7 @@ async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, or
     try {
       require('./_push').stuurVertaald({
         projectCode: t, titelSleutel: 'push.web.lead.titel', tekstSleutel: 'push.web.lead.tekst',
-        vars: { naam: String(naam || e || p || '').slice(0, 60) }, url: 'https://app.helvaro.pro/dashboard',
+        vars: {}, url: 'https://app.helvaro.pro/dashboard',
       }).catch(() => {});
     } catch (x) { /* melding is bijzaak */ }
   }

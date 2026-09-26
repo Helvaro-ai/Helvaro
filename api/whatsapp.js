@@ -806,7 +806,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
 
   const pauseInfo = getAiPauseInfo(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
   if (pauseInfo) {
-    console.log(`[WhatsApp] Lead ${phone} is AI-paused sinds ${pauseInfo.at || '?'} (door ${pauseInfo.by || 'onbekend'}). Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);
+    console.log(`[WhatsApp] Lead ${maskPhone(phone)} is AI-paused sinds ${pauseInfo.at || '?'} (door ${pauseInfo.by || 'onbekend'}). Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);
 
     let pausedHistory = [];
     const pausedStored = lead.fields['Conversation History'];
@@ -851,7 +851,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     const hasPriorTurns = Array.isArray(priorHistory) && priorHistory.length > 0;
 
     if (!hasPriorTurns) {
-      console.log(`[WhatsApp] Lead ${phone} (project ${projectCode}) — Plan Status '${planState.status}', geen eerdere beurten. Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);
+      console.log(`[WhatsApp] Lead ${maskPhone(phone)} (project ${projectCode}) — Plan Status '${planState.status}', geen eerdere beurten. Bericht opgeslagen, GEEN AI-antwoord verstuurd.`);
 
       priorHistory.push({ role: 'user', content: text, ts: Date.now() });
       if (priorHistory.length > 20) priorHistory = priorHistory.slice(-20);
@@ -1506,7 +1506,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     // flagWaFailed does, so it surfaces in the dashboard's "Niet bereikbaar"
     // view and cron-followup's stuck-lead sweep instead of silently looking
     // like a healthy, in-progress conversation.
-    console.error(`[WhatsApp] Verzenden naar ${phone} mislukt. Conversation History/State blijven ongewijzigd`);
+    console.error(`[WhatsApp] Verzenden naar ${maskPhone(phone)} mislukt. Conversation History/State blijven ongewijzigd`);
     updateFields[NOTITIES_FIELD] = mergeWaFailedFlag(lead.fields[NOTITIES_FIELD] || lead.fields['Notities']);
   }
   /* Het herkende aanbod vastleggen op de lead.
@@ -1691,7 +1691,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       // escalation-ping failure specifically is traceable in server logs
       // rather than indistinguishable from any other WhatsApp send failure.
       const escalateSent = await sendWA(ownerPhone, escalateNotice, clientPhoneNumberId);
-      if (!escalateSent) console.error(`[whatsapp] escalatie-melding naar owner (${ownerPhone}) is niet aangekomen`);
+      if (!escalateSent) console.error(`[whatsapp] escalatie-melding naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
     }
     if (ownerEmail) sendOwnerEmail({
       to: ownerEmail,
@@ -1777,7 +1777,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       // De AI zag in de prompt dat er een afspraak stond, maar die is er nu
       // niet meer (dashboard, of een eerdere beurt). Niets doen en niets
       // beloven -- wel loggen, want als dit vaak gebeurt klopt de prompt niet.
-      console.warn(`[whatsapp] CANCEL zonder afspraak voor ${phone} (${projectCode}) — genegeerd`);
+      console.warn(`[whatsapp] CANCEL zonder afspraak voor ${maskPhone(phone)} (${projectCode}) — genegeerd`);
     } else {
       const uit = await _afspraken.annuleer({
         projectCode,
@@ -1790,7 +1790,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       });
 
       if (!uit.ok) {
-        console.error(`[whatsapp] afzeggen mislukt voor ${phone} (${projectCode}): ${uit.reden}`);
+        console.error(`[whatsapp] afzeggen mislukt voor ${maskPhone(phone)} (${projectCode}): ${uit.reden}`);
         // Niets tegen de lead zeggen dat niet waar is. Wel de makelaar
         // waarschuwen: iemand komt niet opdagen en de agenda weet dat niet.
         if (ownerPhone) {
@@ -1828,7 +1828,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             `De AI heeft al gevraagd wanneer het wel past.\n\n` +
             `Dashboard: https://app.helvaro.pro/dashboard`;
           const gestuurd = await sendWA(ownerPhone, melding, clientPhoneNumberId);
-          if (!gestuurd) console.error(`[whatsapp] afzeg-melding naar owner (${ownerPhone}) is niet aangekomen`);
+          if (!gestuurd) console.error(`[whatsapp] afzeg-melding naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
         }
         if (ownerEmail) {
           sendOwnerEmail({
@@ -1849,7 +1849,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      heeft. Apart, omdat er twee wegen naartoe lopen (een geweigerde schrijf en
      een uitzondering) en ze allebei hetzelfde moeten doen. */
   async function meldMislukteBoeking(reden) {
-    console.error(`[whatsapp] afspraak NIET aangemaakt voor ${phone} (${projectCode}): ${reden}`);
+    console.error(`[whatsapp] afspraak NIET aangemaakt voor ${maskPhone(phone)} (${projectCode}): ${reden}`);
     try {
       await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId);
     } catch (e) {
@@ -1944,7 +1944,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     const startMs = Date.parse(appt.start);
     const startGeldig = Number.isFinite(startMs) && startMs > Date.now() - 60000;
     if (!bookingSent && appt.start && !startGeldig) {
-      console.warn(`[whatsapp] BOOK geweigerd: onbruikbaar tijdstip "${appt.start}" voor ${phone} (${projectCode})`);
+      console.warn(`[whatsapp] BOOK geweigerd: onbruikbaar tijdstip "${appt.start}" voor ${maskPhone(phone)} (${projectCode})`);
       await meldMislukteBoeking(`het model gaf een onbruikbaar tijdstip: "${String(appt.start).slice(0, 60)}"`);
     } else if (!bookingSent && appt.start) {
       /* ── Fase 2b/3: de dealership-boekingspoort ────────────────────────────
@@ -1970,18 +1970,18 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
           /* Idempotent: exact deze boeking bestaat al. Niets nieuws te doen,
              en niets te corrigeren bij de lead -- zijn "bevestigd" klopte
              gewoon, alleen bestond de afspraak al. Vlaggen laten staan. */
-          console.log(`[whatsapp] BOOK genegeerd (al geboekt, idempotent) voor ${phone} (${projectCode})`);
+          console.log(`[whatsapp] BOOK genegeerd (al geboekt, idempotent) voor ${maskPhone(phone)} (${projectCode})`);
         } else if (!dealerControle.ok && dealerControle.reden === 'lead_heeft_afspraak') {
-          console.warn(`[whatsapp] BOOK geweigerd: lead heeft al een afspraak lopen voor ${phone} (${projectCode})`);
+          console.warn(`[whatsapp] BOOK geweigerd: lead heeft al een afspraak lopen voor ${maskPhone(phone)} (${projectCode})`);
         } else if (!dealerControle.ok) {
           /* Een voertuigreden (verkocht/uit_aanbod/gereserveerd/afspraak_bestaat/
              onbekend). Zelfde behandeling als de Google-slot-conflictbranch
              verderop: de lead rechtzetten, de dealer waarschuwen, en geen
              enkele vlag zetten zodat een volgende beurt het alsnog kan boeken. */
-          console.warn(`[whatsapp] BOOK geweigerd: voertuig niet boekbaar (${dealerControle.reden}) voor ${phone} (${projectCode})`);
+          console.warn(`[whatsapp] BOOK geweigerd: voertuig niet boekbaar (${dealerControle.reden}) voor ${maskPhone(phone)} (${projectCode})`);
           try {
             const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId);
-            if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie naar ${phone} niet aangekomen`);
+            if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie naar ${maskPhone(phone)} niet aangekomen`);
           } catch (err) {
             console.error('[whatsapp] voertuig-onbeschikbaar correctie exception:', err.message);
           }
@@ -1996,7 +1996,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               `Er is GEEN afspraak aangemaakt en de lead is gevraagd om alternatieven — volg op als dat nog niet gebeurd is.\n\n` +
               `Dashboard: https://app.helvaro.pro/dashboard`;
             const noticeSent = await sendWA(ownerPhone, notice, clientPhoneNumberId);
-            if (!noticeSent) console.error(`[whatsapp] voertuigblokkade-melding naar owner (${ownerPhone}) is niet aangekomen`);
+            if (!noticeSent) console.error(`[whatsapp] voertuigblokkade-melding naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
           }
         }
       }
@@ -2100,7 +2100,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         // can still book successfully once a real slot is agreed.
         try {
           const conflictSent = await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId);
-          if (!conflictSent) console.error(`[whatsapp] slot-conflict correctie naar ${phone} niet aangekomen`);
+          if (!conflictSent) console.error(`[whatsapp] slot-conflict correctie naar ${maskPhone(phone)} niet aangekomen`);
         } catch (err) {
           console.error('[whatsapp] slot-conflict correctie exception:', err.message);
         }
@@ -2114,7 +2114,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             `Er is GEEN afspraak aangemaakt en de lead is gevraagd een ander moment te kiezen — volg op als dat nog niet gebeurd is.\n\n` +
             `Dashboard: https://app.helvaro.pro/dashboard`;
           const conflictNotifySent = await sendWA(ownerPhone, conflictNotice, clientPhoneNumberId);
-          if (!conflictNotifySent) console.error(`[whatsapp] conflict-melding naar owner (${ownerPhone}) is niet aangekomen`);
+          if (!conflictNotifySent) console.error(`[whatsapp] conflict-melding naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
         }
       } else {
         try {
@@ -2173,10 +2173,10 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               });
               if (!naResultaat.ok) {
                 dealerVerloren = true;
-                console.warn(`[whatsapp] BOOK verloren van een race op het voertuig (${herkendVoertuig && herkendVoertuig.code}) voor ${phone} (${projectCode})`);
+                console.warn(`[whatsapp] BOOK verloren van een race op het voertuig (${herkendVoertuig && herkendVoertuig.code}) voor ${maskPhone(phone)} (${projectCode})`);
                 try {
                   const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId);
-                  if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie (race) naar ${phone} niet aangekomen`);
+                  if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie (race) naar ${maskPhone(phone)} niet aangekomen`);
                 } catch (err) {
                   console.error('[whatsapp] voertuig-onbeschikbaar correctie (race) exception:', err.message);
                 }
@@ -2190,7 +2190,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                     `maar een andere afspraak op dat voertuig won de race. Er staat GEEN afspraak meer voor deze lead en de lead is gevraagd om alternatieven.\n\n` +
                     `Dashboard: https://app.helvaro.pro/dashboard`;
                   const noticeSent = await sendWA(ownerPhone, notice, clientPhoneNumberId);
-                  if (!noticeSent) console.error(`[whatsapp] voertuigblokkade-melding (race) naar owner (${ownerPhone}) is niet aangekomen`);
+                  if (!noticeSent) console.error(`[whatsapp] voertuigblokkade-melding (race) naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
                 }
               }
             }
@@ -2227,7 +2227,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             try {
               const when = formatApptDateTime(appt.start, effectiveLang);
               const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId);
-              if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${phone} niet aangekomen (afspraak zelf blijft geldig)`);
+              if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${maskPhone(phone)} niet aangekomen (afspraak zelf blijft geldig)`);
             } catch (err) {
               console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
             }
@@ -2272,7 +2272,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                   `Blijft dit terugkomen, dan is de koppeling met Google waarschijnlijk verlopen — opnieuw verbinden in Instellingen.\n\n` +
                   `Dashboard: https://app.helvaro.pro/dashboard`;
                 const melding = await sendWA(ownerPhone, nietGecontroleerd, clientPhoneNumberId);
-                if (!melding) console.error(`[gcal] melding 'niet geverifieerd' naar owner (${ownerPhone}) is niet aangekomen`);
+                if (!melding) console.error(`[gcal] melding 'niet geverifieerd' naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
               } catch (e) {
                 console.error('[gcal] melding "niet geverifieerd" exception (afspraak blijft geldig):', e && e.message);
               }
@@ -2414,7 +2414,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         // See the escalatie-melding comment above: sendWA() never throws, so
         // check the resolved boolean rather than relying on an unreachable .catch().
         waVerstuurd = await sendWA(ownerPhone, notifyMsg, clientPhoneNumberId);
-        if (!waVerstuurd) console.error(`[whatsapp] gekwalificeerde-lead-melding naar owner (${ownerPhone}) is niet aangekomen`);
+        if (!waVerstuurd) console.error(`[whatsapp] gekwalificeerde-lead-melding naar owner (${maskPhone(ownerPhone)}) is niet aangekomen`);
       }
       let mailVerstuurd = false;
       if (ownerEmail) {
@@ -3536,11 +3536,8 @@ function antwoordPauzeMs() {
   return 2_000 + Math.floor(Math.random() * 3_000);
 }
 
-function maskPhone(phone) {
-  const s = String(phone || '');
-  if (s.length <= 4) return '*'.repeat(s.length);
-  return '*'.repeat(s.length - 4) + s.slice(-4);
-}
+// Gedeeld met de andere routes: api/_masker.js.
+const { maskPhone } = require('./_masker');
 
 // Merge a waFailed:true marker into a lead's existing Notities JSON without
 // clobbering notes/tasks/calls a client may already have added manually.
@@ -3818,7 +3815,7 @@ async function sendWA(to, message, phoneNumberId) {
        bevestiging. Eén plek, zodat geen enkele aanroeper het kan overslaan. */
     const tekst = _waOpmaak.voorWhatsApp(message);
     if (!tekst) {
-      console.error(`[WhatsApp] Leeg bericht na opschonen, niet verstuurd naar ${to}`);
+      console.error(`[WhatsApp] Leeg bericht na opschonen, niet verstuurd naar ${maskPhone(to)}`);
       return false;
     }
     /* Zelfde versie als api/_wa-send.js. Dit is bewust GEEN aanroep van
@@ -3851,10 +3848,10 @@ async function sendWA(to, message, phoneNumberId) {
       console.error(`[WhatsApp] ${k.code} (Meta ${e.code || '-'}/${e.type || '-'}, HTTP ${res.status}) naar ...${String(to).slice(-4)}: ${String(e.message || '').slice(0, 200)}${e.fbtrace_id ? ' fbtrace=' + e.fbtrace_id : ''}`);
       return false;
     }
-    console.log(`[WhatsApp] Bericht gestuurd naar ${to}`);
+    console.log(`[WhatsApp] Bericht gestuurd naar ${maskPhone(to)}`);
     return true;
   } catch (err) {
-    console.error(`[WhatsApp] Netwerkfout bij sturen naar ${to}:`, err.message);
+    console.error(`[WhatsApp] Netwerkfout bij sturen naar ${maskPhone(to)}:`, err.message);
     return false;
   }
 }

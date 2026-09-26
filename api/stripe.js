@@ -127,6 +127,18 @@ function uitBody(req) {
   return Buffer.alloc(0);
 }
 
+/* Een melding naar de beheerder. Mislukt die, dan blijft het bij de log:
+   de webhook zelf moet 200 geven, anders biedt Stripe hem eindeloos opnieuw aan. */
+async function meldOps(onderwerp, tekst) {
+  try {
+    const { sendOpsAlert } = require('./cron-followup');
+    const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    await sendOpsAlert({ subject: onderwerp, html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px"><p>${esc(tekst)}</p></div>` });
+  } catch (e) {
+    console.error('[stripe] opsmelding mislukt:', e && e.message);
+  }
+}
+
 module.exports = _errors.vangAf(async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -214,6 +226,53 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       return res.status(500).json({ error: 'Stoppen mislukt' });
     }
     return res.status(200).json({ ontvangen: true, gestopt: true });
+  }
+
+  /* Een mislukte betaling (audit 26/09: werd genegeerd). Stripe probeert zelf
+     nog een paar keer en mailt de klant; de dienst stopt hier dus NIET. Wel
+     moet Helvaro het weten voordat het abonnement na de laatste poging
+     wegvalt -- anders is een klant kwijt zonder dat iemand hem gebeld heeft.
+     Geen nieuwe Plan Status-keuze ('past_due'): Airtable weigert dan de hele
+     PATCH (zie STATUS in api/_abonnement.js). */
+  if (gebeurtenis.type === 'invoice.payment_failed') {
+    const code = String((object.subscription_details && object.subscription_details.metadata
+                        && object.subscription_details.metadata.projectCode) || '').trim() || '(onbekend)';
+    const poging = Number(object.attempt_count) || 1;
+    const volgende = object.next_payment_attempt ? new Date(object.next_payment_attempt * 1000).toISOString().slice(0, 10) : 'geen';
+    console.warn(`[stripe] betaling mislukt voor ${code} (poging ${poging}, volgende: ${volgende}).`);
+    await meldOps(`[Betaling mislukt] ${code} — poging ${poging}`,
+      `Een abonnementsbetaling is mislukt voor klant ${code}. Poging ${poging}; Stripe probeert opnieuw op ${volgende}. `
+      + 'De dienst loopt door. Neem contact op voordat het abonnement na de laatste poging stopt.');
+    return res.status(200).json({ ontvangen: true, betalingMislukt: true });
+  }
+
+  /* Een abonnement dat buiten de checkout verandert: Stripe gaf het op na de
+     laatste betaalpoging, of het plan werd in Stripe of het klantportaal
+     gewijzigd. Opgegeven = stoppen, precies zoals customer.subscription.deleted.
+     Een planwissel mappen we NIET gokkend op een Helvaro-plan (er is geen
+     prijs-naar-plan-tabel); dat krijgt een melding zodat iemand het nakijkt. */
+  if (gebeurtenis.type === 'customer.subscription.updated') {
+    const code = String((object.metadata || {}).projectCode || '').trim();
+    if (!code) return res.status(200).json({ ontvangen: true, genegeerd: 'geen projectcode' });
+    const status = String(object.status || '');
+    if (['canceled', 'unpaid', 'incomplete_expired'].includes(status)) {
+      try {
+        const abo = require('./_abonnement');
+        await abo.stop({ projectCode: code, reden: `abonnement ${status} bij Stripe` });
+      } catch (e) {
+        console.error(`[stripe] stoppen mislukt voor ${code}:`, e.message);
+        return res.status(500).json({ error: 'Stoppen mislukt' });
+      }
+      await meldOps(`[Abonnement gestopt] ${code} — ${status}`, `Stripe zette het abonnement van ${code} op "${status}". Plan Status staat nu op cancelled; de data blijft.`);
+      return res.status(200).json({ ontvangen: true, gestopt: true });
+    }
+    const vorige = gebeurtenis.data && gebeurtenis.data.previous_attributes;
+    if (vorige && vorige.items) {
+      await meldOps(`[Planwissel in Stripe] ${code}`, `Het abonnement van ${code} kreeg in Stripe een andere prijs. Controleer Plan ID en Credit Allowance in Airtable.`);
+      return res.status(200).json({ ontvangen: true, planGewijzigd: true });
+    }
+    if (status === 'past_due') console.warn(`[stripe] ${code} staat op past_due.`);
+    return res.status(200).json({ ontvangen: true, status });
   }
 
   /* Alle overige gebeurtenissen krijgen 200 -- anders blijft Stripe ze

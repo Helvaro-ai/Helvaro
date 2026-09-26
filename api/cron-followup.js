@@ -9,6 +9,7 @@
 //     24h-48h band anymore)
 //   - Haven't received a follow-up yet (Conversation History has only 1 AI message)
 
+const { maskPhone } = require('./_masker');
 const _crypto = require('crypto');
 
 /* ── Een klok op elke uitgaande aanroep ──────────────────────────────────────
@@ -252,7 +253,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // collision the takeover feature exists to prevent. Same Notities JSON
       // envelope + same read semantics as whatsapp.js's getAiPauseInfo().
       if (isAiPaused(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities'])) {
-        console.log(`[cron-followup] lead ${phone} is AI-paused (mens aan het roer) — automatische nudge overgeslagen`);
+        console.log(`[cron-followup] lead ${maskPhone(phone)} is AI-paused (mens aan het roer) — automatische nudge overgeslagen`);
         continue;
       }
 
@@ -261,7 +262,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // isServiceStoppedForProject()'s header for the fail-open contract.
       const projectCodeForPlan = lead.fields['fldSmczuyUJd26HLe'] || lead.fields['Project Code'] || '';
       if (await isServiceStoppedForProject(AIRTABLE_TOKEN, BASE_ID, projectCodeForPlan, planCache)) {
-        console.log(`[cron-followup] lead ${phone} — klant ${projectCodeForPlan} plan gestopt, automatische follow-up overgeslagen`);
+        console.log(`[cron-followup] lead ${maskPhone(phone)} — klant ${projectCodeForPlan} plan gestopt, automatische follow-up overgeslagen`);
         continue;
       }
 
@@ -289,7 +290,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
          hierboven staan. */
       try { TEMPLATE_LANG = (await require('./_wa-templates').goedgekeurdeTaalVoor('followup', process.env.FOLLOWUP_TEMPLATE_LANG || 'nl')) || TEMPLATE_LANG; } catch (_) {}
       if (!TEMPLATE_NAME) {
-        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. Skip ${phone} (freeform >24u zou ban riskeren)`);
+        console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. Skip ${maskPhone(phone)} (freeform >24u zou ban riskeren)`);
         continue;  // skip. Don't risk a Meta ban
       }
 

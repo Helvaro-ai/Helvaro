@@ -388,7 +388,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
          alleen bij een bestaand, actief account wordt er ook echt gemaild. */
       const user = await fetchUserByEmail(email);
       if (!user) {
-        console.warn('[reset] no user for', email, '— neutraal antwoord, geen mail verstuurd');
+        console.warn('[reset] no user for', require('./_masker').maskEmail(email), '— neutraal antwoord, geen mail verstuurd');
         return res.status(200).json({
           ok: true,
           message: 'Als dit adres bij ons bekend is, is er een resetlink naartoe gestuurd. Check je inbox (en spam). De link werkt 1 uur.'
@@ -421,7 +421,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // 3. Try to send the email. Surface real errors back
       const sendResult = await sendResetEmailToUser(email, user).catch(err => ({ ok: false, error: err.message }));
       if (!sendResult.ok) {
-        console.error('[reset] send failed for', email, sendResult.error);
+        console.error('[reset] send failed for', require('./_masker').maskEmail(email), sendResult.error);
         return res.status(500).json({ error: 'Mail kon niet verstuurd worden. Neem contact op met support.' });
       }
       /* Zelfde bewoording als het "onbekend adres"-antwoord hierboven — niet
@@ -467,7 +467,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         }
         const sent = await verify.sendVerificationEmail(email, clientRec.id).catch(err => ({ ok: false, error: err.message }));
         if (!sent.ok) {
-          console.error('[resend-verification] send failed for', email, sent.error);
+          console.error('[resend-verification] send failed for', require('./_masker').maskEmail(email), sent.error);
           return res.status(500).json({ error: 'Mail kon niet verstuurd worden. Neem contact op met support.' });
         }
         return res.status(200).json({ ok: true, message: 'Verificatiemail verstuurd naar ' + email + '. Check je inbox (en spam).' });

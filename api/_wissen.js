@@ -111,6 +111,23 @@ const TABELLEN = Object.freeze([
   { tabel: 'tbl2hrPW7gIx5XF4S', naam: 'Users',               veld: 'Project Code' },
 ]);
 
+/* De tabellen van api/_schema.js (klantidentiteit, website- en e-mailgesprekken,
+   kanaalwissels). Ze stonden hier niet bij: een gewist account liet namen,
+   e-mailadressen, telefoonnummers en volledige mails achter (audit 26/09).
+   Op NAAM, net als in api/_gesprekken.js en api/_klant.js. Berichten vóór
+   gesprekken, en alles vóór de klantrij.
+
+   optioneel: een oudere base kan deze tabellen nog niet hebben (ze worden pas
+   aangemaakt door api/_schema.js). Airtable antwoordt dan 404/403, en dat is
+   "niets te wissen", geen mislukte wissing. tests/account-wissen.test.js eist
+   dat elke tabel uit _schema.js hier staat. */
+const SCHEMA_TABELLEN = Object.freeze([
+  { tabel: 'messages',      naam: 'messages',      veld: 'Project Code', optioneel: true },
+  { tabel: 'conversations', naam: 'conversations', veld: 'Project Code', optioneel: true },
+  { tabel: 'handoffs',      naam: 'handoffs',      veld: 'Project Code', optioneel: true },
+  { tabel: 'customers',     naam: 'customers',     veld: 'Project Code', optioneel: true },
+]);
+
 const T_CONVERSATIES = 'tblo3pIgx9RT3A2wY';   // ai_conversations, veld project_code
 const T_BERICHTEN    = 'tblJcqktFZwpXgwwh';   // ai_messages, veld conversation_id
 const T_CLIENT       = 'tblPidTrwGRzRt4LZ';   // Client Config, veld Project Code
@@ -139,7 +156,7 @@ async function at(pad, opts) {
 }
 
 /** Alle record-ids in een tabel die aan de formule voldoen. Pagineert door. */
-async function idsVan(tabel, formule, veld) {
+async function idsVan(tabel, formule, veld, optioneel) {
   const ids = [];
   let offset = '';
   /* Een hard plafond. Een tenant met meer dan 10.000 rijen in één tabel bestaat
@@ -156,6 +173,8 @@ async function idsVan(tabel, formule, veld) {
             + (veld ? `&fields%5B%5D=${encodeURIComponent(veld)}` : '')
             + (offset ? `&offset=${encodeURIComponent(offset)}` : '');
     const r = await at(`${tabel}?${q}`);
+    /* Tabel bestaat (nog) niet in deze base: niets om te wissen. */
+    if (optioneel && (r.status === 404 || r.status === 403)) return ids;
     if (!r.ok) throw new WisFout(`Airtable ${r.status} bij het lezen van ${tabel}.`, 'lezen_mislukt');
     const d = await r.json();
     (d.records || []).forEach((rec) => ids.push(rec.id));
@@ -180,8 +199,8 @@ async function verwijderIds(tabel, ids) {
 }
 
 /** Eén tabel leegmaken voor deze tenant. Geeft het aantal terug, of de fout. */
-async function wisTabel(tabel, veld, projectCode) {
-  const ids = await idsVan(tabel, `{${veld}}="${escapeFormule(projectCode)}"`, veld);
+async function wisTabel(tabel, veld, projectCode, optioneel) {
+  const ids = await idsVan(tabel, `{${veld}}="${escapeFormule(projectCode)}"`, veld, optioneel);
   if (!ids.length) return 0;
   return verwijderIds(tabel, ids);
 }
@@ -244,7 +263,12 @@ async function wisAlles(ctx = {}) {
   });
   await stap('ai_conversations', () => wisTabel(T_CONVERSATIES, 'project_code', projectCode));
 
-  /* 3. De rest van de gegevens. */
+  /* 3. Klantidentiteit en website/e-mailgesprekken (api/_schema.js). */
+  for (const t of SCHEMA_TABELLEN) {
+    await stap(t.naam, () => wisTabel(t.tabel, t.veld, projectCode, t.optioneel));
+  }
+
+  /* 3a. De rest van de gegevens. */
   for (const t of TABELLEN) {
     await stap(t.naam, () => wisTabel(t.tabel, t.veld, projectCode));
   }
@@ -285,4 +309,4 @@ async function wisAlles(ctx = {}) {
   return verslag;
 }
 
-module.exports = { wisAlles, WisFout, TABELLEN, T_CONVERSATIES, T_BERICHTEN, T_CLIENT, idsVan, verwijderIds, wisTenantMedia };
+module.exports = { wisAlles, WisFout, TABELLEN, SCHEMA_TABELLEN, T_CONVERSATIES, T_BERICHTEN, T_CLIENT, idsVan, verwijderIds, wisTenantMedia };

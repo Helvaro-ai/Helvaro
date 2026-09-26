@@ -162,19 +162,23 @@ module.exports = _errors.vangAf(function handler(req, res) {
   <p><strong>Helvaro BV</strong>. Laatst bijgewerkt: september 2026 · <a href="/privacy?lang=en">Read in English</a></p>
 
   <h2>1. Wie zijn wij?</h2>
-  <p>Helvaro BV is een B2B SaaS-platform dat bedrijven helpt met geautomatiseerde leadkwalificatie via WhatsApp. Contacteer ons via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
+  <p>Helvaro BV is een B2B SaaS-platform dat bedrijven (zoals autodealers en vastgoedkantoren) helpt hun aanvragen op te volgen via WhatsApp, e-mail en een chatvenster op hun eigen website. Contacteer ons via <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
   <h2>2. Welke gegevens verzamelen wij?</h2>
   <ul>
-    <li>Naam en telefoonnummer (via het contactformulier of via WhatsApp)</li>
+    <li>Naam, telefoonnummer en/of e-mailadres (via het contactformulier, het chatvenster op de website van het bedrijf, WhatsApp of e-mail). Een e-mailadres óf een telefoonnummer volstaat.</li>
     <li>WhatsApp-berichten die u uitwisselt met onze AI-assistent, inclusief de volledige gespreksgeschiedenis</li>
+    <li>Berichten die u in het chatvenster op de website van het bedrijf stuurt</li>
+    <li>E-mails die u naar het bedrijf stuurt, met hun bijlagen, als dat bedrijf zijn mailbox aan Helvaro heeft gekoppeld</li>
+    <li>Over welk voertuig of pand uw vraag gaat, en een afspraak die daaruit volgt</li>
+    <li>Of u toestemming gaf om gecontacteerd te worden, en of u zich afmeldde</li>
     <li>Een AI-gegenereerde kwalificatiescore en samenvatting van het gesprek</li>
     <li>Uw IP-adres wordt kortstondig gebruikt om misbruik te voorkomen (bv. te veel aanvragen in korte tijd), maar wordt niet opgeslagen in onze database</li>
   </ul>
-  <p>Wij verzamelen vandaag standaard geen e-mailadres van u als lead. Mocht dat in de toekomst wijzigen (bijvoorbeeld voor een nieuwe functie), werken wij dit privacybeleid bij vóór wij dat doen.</p>
+  <p>Uw e-mailadres gebruiken wij alleen als u het zelf opgeeft of als u het bedrijf mailt, en alleen om uw vraag te beantwoorden. Zonder uw aparte toestemming krijgt u geen reclame of nieuwsbrieven.</p>
 
   <h2>3. Waarvoor gebruiken wij uw gegevens?</h2>
-  <p>Uw gegevens worden gebruikt om u te contacteren, uw vraag via onze AI-assistent op WhatsApp te beantwoorden, en te bepalen of er een match is met de dienstverlening van het bedrijf waarmee u contact opnam. Wij verkopen uw gegevens nooit aan derden.</p>
+  <p>Uw gegevens worden gebruikt om u te contacteren, uw vraag via onze AI-assistent te beantwoorden (op WhatsApp, per e-mail of in het chatvenster op de website), en te bepalen of er een match is met de dienstverlening van het bedrijf waarmee u contact opnam. Wij verkopen uw gegevens nooit aan derden.</p>
 
   <h2>4. Fraudepreventie bij aanmelding van een nieuwe klant</h2>
   <p>Deze sectie geldt niet voor leads, maar voor bedrijven die zelf een Helvaro-account aanmaken via onze aanmeldpagina.</p>
@@ -200,13 +204,14 @@ module.exports = _errors.vangAf(function handler(req, res) {
   <h2>6. Wie verwerkt uw gegevens?</h2>
   <p>Naast het bedrijf waarmee u rechtstreeks contact opneemt, schakelt Helvaro de volgende partijen (subverwerkers) in om de dienst te kunnen leveren:</p>
   <ul>
-    <li><strong>Anthropic PBC</strong> (Verenigde Staten) — verwerkt de inhoud van uw WhatsApp-gesprek om de AI-antwoorden te genereren.</li>
+    <li><strong>Anthropic PBC</strong> (Verenigde Staten) — verwerkt de inhoud van uw gesprek (WhatsApp, chatvenster of e-mail) om de AI-antwoorden te genereren.</li>
     <li><strong>Meta Platforms Ireland Ltd.</strong> — verzorgt het berichtenverkeer via WhatsApp Business.</li>
     <li><strong>Vercel Inc.</strong> (Verenigde Staten) — hosting en uitvoering van deze applicatie.</li>
     <li><strong>Airtable (Formagrid Inc., Verenigde Staten)</strong> — database waarin uw lead- en gespreksgegevens worden opgeslagen.</li>
     <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — verzendt notificatie-, verificatie- en wachtwoordherstelmails.</li>
     <li><strong>Stripe Payments Europe, Ltd.</strong> (Ierland, met verwerking in de Verenigde Staten) — verwerkt abonnementen en betalingen van klanten. Betreft uitsluitend accounts van klanten; leads komen hier niet in voor.</li>
-    <li><strong>Google Ireland Ltd.</strong> — agenda-koppeling: wanneer een klant zijn Google Agenda koppelt, worden afspraken die uit uw gesprek volgen daarin aangemaakt (uw naam en het tijdstip van de afspraak).</li>
+    <li><strong>Google Ireland Ltd.</strong> — agenda-koppeling: wanneer een klant zijn Google Agenda koppelt, worden afspraken die uit uw gesprek volgen daarin aangemaakt (uw naam en het tijdstip van de afspraak). En als een klant zijn Gmail- of Google Workspace-mailbox koppelt: de e-mails die u naar die klant stuurt, en de antwoorden.</li>
+    <li><strong>Microsoft Ireland Operations Ltd.</strong> — alleen als een klant zijn Microsoft 365- of Outlook-mailbox koppelt: de e-mails die u naar die klant stuurt, en de antwoorden.</li>
     <li><strong>OneSignal, Inc.</strong> (Verenigde Staten) — verstuurt meldingen naar het toestel van de klant over binnenkomende leads. Verwerkt geen berichtinhoud.</li>
     <li><strong>Clerk Inc.</strong> (Verenigde Staten) — verzorgt het inloggen op het dashboard. Verwerkt het e-mailadres, het wachtwoord (versleuteld) en technische aanmeldgegevens zoals IP-adres, browser en aanmeldmomenten. Betreft uitsluitend accounts van klanten; leads komen hier niet in voor.</li>
     <li><strong>Upstash Inc.</strong> (Verenigde Staten) — telt kortstondig inlogpogingen per IP-adres om misbruik tegen te gaan. Bewaart geen namen of berichten, en de tellers verlopen automatisch binnen het kwartier.</li>
@@ -263,19 +268,23 @@ function privacyEn() {
   <p><strong>Helvaro BV</strong>. Last updated: September 2026 · <a href="/privacy?lang=nl">Lees in het Nederlands</a></p>
 
   <h2>1. Who we are</h2>
-  <p>Helvaro BV is a B2B SaaS platform that helps businesses qualify incoming leads automatically over WhatsApp. Contact us at <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
+  <p>Helvaro BV is a B2B SaaS platform that helps businesses (such as car dealers and estate agents) follow up their enquiries over WhatsApp, e-mail and a chat window on their own website. Contact us at <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a>.</p>
 
   <h2>2. What data we collect</h2>
   <ul>
-    <li>Name and phone number (through a contact form or through WhatsApp)</li>
+    <li>Name, phone number and/or e-mail address (through a contact form, the chat window on the business's website, WhatsApp or e-mail). An e-mail address or a phone number is enough.</li>
     <li>The WhatsApp messages you exchange with our AI assistant, including the full conversation history</li>
+    <li>Messages you send in the chat window on the business's website</li>
+    <li>E-mails you send to the business, with their attachments, if that business has connected its mailbox to Helvaro</li>
+    <li>Which vehicle or property your question is about, and any appointment that follows</li>
+    <li>Whether you agreed to be contacted, and whether you opted out</li>
     <li>An AI-generated qualification score and summary of the conversation</li>
     <li>Your IP address is used briefly to prevent abuse (for example too many requests in a short time) but is not stored in our database</li>
   </ul>
-  <p>We do not collect an e-mail address from you as a lead by default. Should that change (for example for a new feature), we will update this policy before we do so.</p>
+  <p>We only use your e-mail address if you give it yourself or e-mail the business, and only to answer your question. Without your separate consent you receive no advertising or newsletters.</p>
 
   <h2>3. What we use your data for</h2>
-  <p>Your data is used to contact you, to answer your question through our AI assistant on WhatsApp, and to determine whether there is a match with the services of the business you contacted. We never sell your data to third parties.</p>
+  <p>Your data is used to contact you, to answer your question through our AI assistant (on WhatsApp, by e-mail or in the website chat window), and to determine whether there is a match with the services of the business you contacted. We never sell your data to third parties.</p>
 
   <h2>4. Fraud prevention when a new customer signs up</h2>
   <p>This section does not apply to leads but to businesses that create a Helvaro account through our sign-up page.</p>
@@ -301,13 +310,14 @@ function privacyEn() {
   <h2>6. Who processes your data</h2>
   <p>Besides the business you contact directly, Helvaro relies on the following parties (sub-processors) to deliver the service:</p>
   <ul>
-    <li><strong>Anthropic PBC</strong> (United States) — processes the content of your WhatsApp conversation to generate the AI replies.</li>
+    <li><strong>Anthropic PBC</strong> (United States) — processes the content of your conversation (WhatsApp, chat window or e-mail) to generate the AI replies.</li>
     <li><strong>Meta Platforms Ireland Ltd.</strong> — carries the message traffic through WhatsApp Business.</li>
     <li><strong>Vercel Inc.</strong> (United States) — hosting and execution of this application.</li>
     <li><strong>Airtable (Formagrid Inc., United States)</strong> — the database in which your lead and conversation data is stored.</li>
     <li><strong>Namecheap Private Email</strong> (SMTP, via hello@helvaro.pro) — sends notification, verification and password-reset e-mails.</li>
     <li><strong>Stripe Payments Europe, Ltd.</strong> (Ireland, with processing in the United States) — processes customer subscriptions and payments. Customer accounts only; leads never appear here.</li>
-    <li><strong>Google Ireland Ltd.</strong> — calendar integration: when a customer connects Google Calendar, appointments that follow from your conversation are created there (your name and the time of the appointment).</li>
+    <li><strong>Google Ireland Ltd.</strong> — calendar integration: when a customer connects Google Calendar, appointments that follow from your conversation are created there (your name and the time of the appointment). And when a customer connects a Gmail or Google Workspace mailbox: the e-mails you send to that customer, and the replies.</li>
+    <li><strong>Microsoft Ireland Operations Ltd.</strong> — only when a customer connects a Microsoft 365 or Outlook mailbox: the e-mails you send to that customer, and the replies.</li>
     <li><strong>OneSignal, Inc.</strong> (United States) — sends push notifications to the customer's device about incoming leads. Processes no message content.</li>
     <li><strong>Clerk Inc.</strong> (United States) — handles sign-in to the dashboard. Processes the e-mail address, the (hashed) password and technical sign-in data such as IP address, browser and sign-in times. Customer accounts only; leads never appear here.</li>
     <li><strong>Upstash Inc.</strong> (United States) — briefly counts sign-in attempts per IP address to prevent abuse. Stores no names or messages; counters expire within fifteen minutes.</li>

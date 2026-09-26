@@ -13,6 +13,11 @@
  */
 const fs = require('fs');
 const path = require('path');
+/* Geen echte DNS in een test: .example-namen lossen niet op. Alles wijst naar
+   een publiek adres, behalve intern.example -- een gewone naam die naar een
+   intern adres wijst, de gevangen SSRF-omweg (audit 26/09). */
+require('dns').promises.lookup = async (h) => (/^intern\.example$/.test(h)
+  ? [{ address: '10.0.0.7', family: 4 }] : [{ address: '93.184.216.34', family: 4 }]);
 const props = require('../api/_properties');
 const prompts = require('../api/_ai/prompts');
 
@@ -285,6 +290,18 @@ process.env.BASE_AIRTABLE = process.env.BASE_AIRTABLE || 'test-base';
     ck(`geweigerd: ${slecht}`, zonderRuis(() => web.urlToegestaan(slecht, '[t]')) === null);
   }
   ck('een gewone site mag wel', !!zonderRuis(() => web.urlToegestaan('https://www.immoweb.be/nl/zoekertje/1', '[t]')));
+
+  console.log('\n— een gewone naam die naar een intern adres wijst —');
+  {
+    let aangeroepen = 0;
+    global.fetch = async () => { aangeroepen++; return { ok: true, status: 200, headers: { get: () => null }, text: async () => '<html></html>' }; };
+    const uit = await zonderRuis(() => web.fetchPage('https://intern.example/pand', { tag: '[t]' }));
+    ck('fetchPage weigert na de DNS-controle', uit === null, uit);
+    const tekst = await zonderRuis(() => web.fetchWebsite('https://intern.example/', { tag: '[t]' }));
+    ck('fetchWebsite ook', tekst === null, tekst);
+    ck('en er ging geen verzoek naar buiten', aangeroepen === 0, aangeroepen);
+    ck('isInternIp kent ook de CGNAT-ruimte (100.64/10)', web.isInternIp('100.64.1.1') && !web.isInternIp('100.128.0.1'));
+  }
 
   console.log('\n— een omleiding naar binnen stopt ook —');
   {

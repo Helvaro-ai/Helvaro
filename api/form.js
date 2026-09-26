@@ -5,6 +5,7 @@
 // survives the setTimeout below (INTRO_VERTRAGING_MS) once the response is flushed. Safe to
 // call in any environment: it's a no-op (getContext().waitUntil?.()) when
 // the platform doesn't provide a request context (e.g. local dev).
+const { maskPhone } = require('./_masker');
 const { waitUntil } = require('@vercel/functions');
 const _klant = require('./_klant');
 
@@ -364,7 +365,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
               // Loud + specific: this is the exact failure mode that let the
               // original bug (freeform first-contact send) go unnoticed for
               // every form lead. Never let this degrade silently again.
-              console.error(`[form] INTRO_TEMPLATE_NAME niet geconfigureerd — WhatsApp-begroeting naar lead ${leadId} (${waPhone}) overgeslagen. Freeform buiten het 24u-venster zou Meta-afwijzing/ban riskeren. Lead IS aangemaakt; stel INTRO_TEMPLATE_NAME + INTRO_TEMPLATE_LANG in.`);
+              console.error(`[form] INTRO_TEMPLATE_NAME niet geconfigureerd — WhatsApp-begroeting naar lead ${leadId} (${maskPhone(waPhone)}) overgeslagen. Freeform buiten het 24u-venster zou Meta-afwijzing/ban riskeren. Lead IS aangemaakt; stel INTRO_TEMPLATE_NAME + INTRO_TEMPLATE_LANG in.`);
               await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
             } else {
               // Template language gated through the Meta-approval registry
@@ -386,7 +387,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
                 // Meta rejected the template send (unapproved variant, wrong
                 // param count, disabled template, etc). Same loud+flagged
                 // treatment as the missing-config case above.
-                console.error(`[form] WhatsApp-intro template "${process.env.INTRO_TEMPLATE_NAME}" (${introLang}) naar lead ${leadId} (${waPhone}) geweigerd door Meta. Lead IS aangemaakt, maar heeft nog geen WhatsApp-bericht ontvangen.`);
+                console.error(`[form] WhatsApp-intro template "${process.env.INTRO_TEMPLATE_NAME}" (${introLang}) naar lead ${leadId} (${maskPhone(waPhone)}) geweigerd door Meta. Lead IS aangemaakt, maar heeft nog geen WhatsApp-bericht ontvangen.`);
                 await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
               } else {
                 // Persist a readable rendering of the opener into Conversation
@@ -436,7 +437,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
                 notifyPnid, process.env.WHATSAPP_TOKEN
               );
               if (!notifyOk) {
-                console.warn(`[form] WhatsApp-eigenaarsmelding (template "${process.env.NOTIFY_TEMPLATE_NAME}") naar ${notifyPhone} geweigerd door Meta voor lead ${leadId}. Owner is al per e-mail verwittigd — geen verdere actie nodig.`);
+                console.warn(`[form] WhatsApp-eigenaarsmelding (template "${process.env.NOTIFY_TEMPLATE_NAME}") naar ${maskPhone(notifyPhone)} geweigerd door Meta voor lead ${leadId}. Owner is al per e-mail verwittigd — geen verdere actie nodig.`);
               }
             } else {
               console.log(`[form] NOTIFY_TEMPLATE_NAME niet geconfigureerd — WhatsApp-melding aan eigenaar overgeslagen voor lead ${leadId} (freeform buiten 24u-venster zou Meta-afwijzing riskeren). E-mailmelding is al verstuurd.`);

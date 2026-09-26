@@ -110,7 +110,7 @@ async function provisionTenant(user) {
     await client().users.updateUserMetadata(uid, {
       publicMetadata: { projectCode: adopted, clientName: adoptedName },
     });
-    console.log('[clerk] bestaande tenant overgenomen', adopted, 'voor', email);
+    console.log('[clerk] bestaande tenant overgenomen', adopted, 'voor', require('./_masker').maskEmail(email));
     return { userId: uid, projectCode: adopted, clientName: adoptedName, calendlyLink: '', em: email };
   }
 
@@ -128,7 +128,7 @@ async function provisionTenant(user) {
      working while the door is shut. */
   const openSignup = /^true$/i.test(String(process.env.PUBLIC_SIGNUP_ENABLED || '').trim());
   if (!openSignup) {
-    console.warn('[clerk] geen tenant voor', email,
+    console.warn('[clerk] geen tenant voor', require('./_masker').maskEmail(email),
                  '- zelfaanmelden staat uit (PUBLIC_SIGNUP_ENABLED). '
                + 'Bestaande klant? Draai scripts/clerk-sync-users.js --apply.');
     /* The same pending shape the failure branch below returns, NOT null:

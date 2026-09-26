@@ -338,7 +338,7 @@ async function verwerk(ctx, m, deps) {
     try {
       require('../_push').stuurVertaald({
         projectCode: ctx.projectCode, titelSleutel: pushSleutel + '.titel', tekstSleutel: pushSleutel + '.tekst',
-        vars: { naam: naam || m.vanAdres, onderwerp: String(m.onderwerp || '').slice(0, 80) },
+        vars: {},
         url: 'https://app.helvaro.pro/dashboard',
       }).catch(() => {});
     } catch (e) { /* melding is bijzaak */ }

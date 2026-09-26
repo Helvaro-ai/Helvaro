@@ -48,7 +48,7 @@ const crypto = require('crypto');
 const dns = require('dns').promises;
 const net = require('net');
 const vehicles = require('./_vehicles');
-const { urlToegestaan } = require('./_lib/fetch-website');
+const { urlToegestaan, hostIsExtern, isInternIp } = require('./_lib/fetch-website');
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const F_PROJECT = 'fldN4dL0bGgfBOXwM';
@@ -266,17 +266,6 @@ async function probeNative(projectCode, vorige) {
 
 /* Feed ophalen: https, geen interne adressen (ook niet na DNS), max 5 MB,
    hoogstens twee omleidingen die elk opnieuw gecontroleerd worden. */
-async function hostIsExtern(hostname) {
-  if (net.isIP(hostname)) return !isInternIp(hostname);
-  try {
-    const adressen = await dns.lookup(hostname, { all: true });
-    return adressen.length > 0 && adressen.every((a) => !isInternIp(a.address));
-  } catch { return false; }
-}
-function isInternIp(ip) {
-  return /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)
-    || ip === '::1' || /^f[cd]/i.test(ip) || /^fe80:/i.test(ip) || /^::ffff:(10\.|127\.|192\.168\.|169\.254\.)/i.test(ip);
-}
 async function haalFeed(url) {
   let huidige = url;
   for (let hop = 0; hop <= 2; hop++) {

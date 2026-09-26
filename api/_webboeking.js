@@ -219,7 +219,7 @@ async function boek(projectCode, o = {}) {
 
   try {
     require('./_push').stuurVertaald({ projectCode: t, titelSleutel: 'push.web.boek.titel', tekstSleutel: 'push.web.boek.tekst',
-      vars: { naam: String(o.naam || o.telefoon || '').slice(0, 60), wanneer: start.toLocaleString('nl-BE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) },
+      vars: { wanneer: start.toLocaleString('nl-BE', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) },
       url: 'https://app.helvaro.pro/dashboard' }).catch(() => {});
   } catch (e) { /* melding is bijzaak */ }
   return { ok: true, startISO: start.toISOString(), apptId };

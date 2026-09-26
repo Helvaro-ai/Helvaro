@@ -56,12 +56,20 @@ function verseBase() {
                          { id: 'recM2', velden: { conversation_id: 'recG1' } },
                          { id: 'recM3', velden: { conversation_id: 'recG2' } },
                          { id: 'recM9', velden: { conversation_id: 'recG9' } } ],
+    /* De tabellen van api/_schema.js, op naam (audit 26/09: werden niet gewist). */
+    messages:      [ { id: 'recMS1', velden: { 'Project Code': TENANT } },
+                     { id: 'recMS9', velden: { 'Project Code': BUUR } } ],
+    conversations: [ { id: 'recCV1', velden: { 'Project Code': TENANT } },
+                     { id: 'recCV9', velden: { 'Project Code': BUUR } } ],
+    handoffs:      [ { id: 'recHO1', velden: { 'Project Code': TENANT } } ],
+    customers:     [ { id: 'recCU1', velden: { 'Project Code': TENANT } },
+                     { id: 'recCU9', velden: { 'Project Code': BUUR } } ],
     tblPidTrwGRzRt4LZ: [ { id: 'recK1', velden: { 'Project Code': TENANT } },
                          { id: 'recK2', velden: { 'Project Code': BUUR } } ],
   };
 }
 
-let BASEDATA, VOLGORDE, STUKKE_TABEL;
+let BASEDATA, VOLGORDE, STUKKE_TABEL, MISSENDE_TABEL;
 
 /* Een piepklein stukje Airtable: filterByFormula met {veld}="waarde", en
    DELETE met records[]=. Meer heeft _wissen.js niet nodig, en meer nabouwen zou
@@ -78,6 +86,9 @@ global.fetch = async (url, opts) => {
   const tabel = u.pathname.split('/')[3];
   const methode = (opts && opts.method) || 'GET';
 
+  if (MISSENDE_TABEL === tabel) {
+    return { ok: false, status: 404, text: async () => 'TABLE_NOT_FOUND', json: async () => ({ error: { type: 'TABLE_NOT_FOUND' } }) };
+  }
   if (STUKKE_TABEL === tabel) {
     return { ok: false, status: 500, text: async () => 'kapot', json: async () => ({}) };
   }
@@ -111,7 +122,7 @@ _clerk.deleteUser = async (uid) => { CLERK_AANROEP = uid; return true; };
 const wissen = require(path.join(BASE, 'api/_wissen.js'));
 
 function reset() {
-  BASEDATA = verseBase(); VOLGORDE = []; STUKKE_TABEL = null;
+  BASEDATA = verseBase(); VOLGORDE = []; STUKKE_TABEL = null; MISSENDE_TABEL = null;
   STRIPE_AANROEP = null; CLERK_AANROEP = null; STRIPE_FAALT = false;
 }
 const nog = (tabel) => (BASEDATA[tabel] || []).map((r) => r.id);
@@ -134,6 +145,10 @@ const nog = (tabel) => (BASEDATA[tabel] || []).map((r) => r.id);
     ck('faro-berichten weg',   nog('tblJcqktFZwpXgwwh').indexOf('recM1') === -1
                             && nog('tblJcqktFZwpXgwwh').indexOf('recM3') === -1);
     ck('de klantrij weg',      nog('tblPidTrwGRzRt4LZ').indexOf('recK1') === -1);
+    ck('klantidentiteiten weg (customers)',      nog('customers').indexOf('recCU1') === -1);
+    ck('website/e-mailgesprekken weg',           nog('conversations').indexOf('recCV1') === -1);
+    ck('website/e-mailberichten weg',            nog('messages').indexOf('recMS1') === -1);
+    ck('kanaalwissels weg (handoffs)',           nog('handoffs').length === 0);
     /* Blob-opslag is in DEZE test niet geconfigureerd (geen BLOB_READ_WRITE_TOKEN/
        BLOB_STORE_ID/VERCEL_OIDC_TOKEN) -- de media-stap moet dan gewoon "niets
        te wissen" zijn, geen fout, en niet meetellen tegen `volledig`. */
@@ -150,6 +165,9 @@ const nog = (tabel) => (BASEDATA[tabel] || []).map((r) => r.id);
        meenemen, en dat zou niemand merken. */
     ck('het BERICHT van de buur staat er nog',   nog('tblJcqktFZwpXgwwh').indexOf('recM9') !== -1);
     ck('de klantrij van de buur staat er nog',   nog('tblPidTrwGRzRt4LZ').indexOf('recK2') !== -1);
+    ck('de klantidentiteit van de buur staat er nog', nog('customers').indexOf('recCU9') !== -1);
+    ck('het gesprek en bericht van de buur staan er nog',
+      nog('conversations').indexOf('recCV9') !== -1 && nog('messages').indexOf('recMS9') !== -1);
   }
 
   console.log('\n  de volgorde, want die is de veiligheid');
@@ -173,6 +191,35 @@ const nog = (tabel) => (BASEDATA[tabel] || []).map((r) => r.id);
       klant === deletes.length - 1, deletes.map((d) => d.tabel));
     ck('het abonnement is meteen opgezegd', STRIPE_AANROEP === 'sub_x', STRIPE_AANROEP);
     ck('de inlog is verwijderd',            CLERK_AANROEP === 'user_x', CLERK_AANROEP);
+  }
+
+  console.log('\n  elke tabel uit api/_schema.js wordt gewist');
+  {
+    /* De regressie die dit bestand moet vangen: een nieuwe tabel in _schema.js
+       die niemand aan de wisroute toevoegt. */
+    const schema = require(path.join(BASE, 'api/_schema.js'));
+    const gedekt = new Set(wissen.SCHEMA_TABELLEN.map((t) => t.tabel));
+    const missend = Object.keys(schema.TABELLEN).filter((t) => !gedekt.has(t));
+    ck('geen tabel uit _schema.js ontbreekt in de wisroute', missend.length === 0, missend);
+    const deletes = VOLGORDE;  // van de eerste run is niets meer over; opnieuw draaien
+    reset();
+    await wissen.wisAlles({ projectCode: TENANT, clientRecordId: 'recK1' });
+    const d = VOLGORDE.filter((x) => x.actie === 'DELETE').map((x) => x.tabel);
+    ck('messages vóór conversations', d.indexOf('messages') !== -1 && d.indexOf('messages') < d.indexOf('conversations'), d);
+    void deletes;
+  }
+
+  console.log('\n  een base zonder de nieuwe tabellen is geen mislukte wissing');
+  {
+    reset();
+    MISSENDE_TABEL = 'handoffs';
+    const v = await wissen.wisAlles({ projectCode: TENANT, clientRecordId: 'recK1' });
+    ck('404 op een optionele tabel telt als 0, niet als fout', v.gewist.handoffs === 0 && !v.mislukt.handoffs, { g: v.gewist.handoffs, m: v.mislukt.handoffs });
+    ck('en het geheel blijft volledig', v.volledig === true, v.mislukt);
+    reset();
+    MISSENDE_TABEL = 'tbliukTnDAbEDcZmt';
+    const w = await wissen.wisAlles({ projectCode: TENANT, clientRecordId: 'recK1' });
+    ck('maar een 404 op een VASTE tabel (Leads) is wél een fout', !!w.mislukt.Leads && w.volledig === false, w.mislukt);
   }
 
   console.log('\n  zonder tenant gebeurt er niets');

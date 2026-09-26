@@ -2156,14 +2156,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
                       publicMetadata: { projectCode, clientName },
                     });
                 } catch (ce) {
-                  console.error('[admin] Clerk-gebruiker aanmaken mislukt voor', email, '-', ce && ce.message,
+                  console.error('[admin] Clerk-gebruiker aanmaken mislukt voor', require('./_masker').maskEmail(email), '-', ce && ce.message,
                                 '- draai scripts/clerk-sync-users.js om dit recht te zetten');
                 }
               }
             }
             else { userCreateError = true; console.error('[admin] user create failed:', await userRes.text().catch(() => '')); }
           } else if (lookup.ok) {
-            console.warn('[admin] user already exists for', email, '— skipping user create');
+            console.warn('[admin] user already exists for', require('./_masker').maskEmail(email), '— skipping user create');
           } else {
             userCreateError = true;
             console.error('[admin] user lookup failed:', lookup.status);

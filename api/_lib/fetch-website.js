@@ -11,6 +11,29 @@
 // originates outside our system, so both need the same protections. Keeping
 // the logic in one place means a future SSRF fix here protects both call
 // sites instead of risking two copies silently drifting apart.
+const dns = require('dns').promises;
+const net = require('net');
+
+/* ── Na DNS nog steeds extern? (audit 26/09) ──────────────────────────────────
+ * De naamcontrole hieronder (urlToegestaan) houdt "localhost" en 10.x tegen,
+ * maar niet een gewone hostnaam die naar een intern adres wijst. Daarom lossen
+ * we de naam op en weigeren we als ÉÉN adres intern is. Stond eerst alleen in
+ * api/_inventaris.js voor de voorraadfeed; nu gedeeld met de pand- en
+ * voertuigimport en de websitelezer. */
+function isInternIp(ip) {
+  return /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(ip)
+    || ip === '::1' || ip === '::' || /^f[cd]/i.test(ip) || /^fe80:/i.test(ip)
+    || /^::ffff:(10\.|127\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(ip);
+}
+async function hostIsExtern(hostname) {
+  const h = String(hostname || '').replace(/^\[|\]$/g, '');
+  if (net.isIP(h)) return !isInternIp(h);
+  try {
+    const adressen = await dns.lookup(h, { all: true });
+    return adressen.length > 0 && adressen.every((a) => !isInternIp(a.address));
+  } catch { return false; }
+}
+
 async function fetchWebsite(url, opts = {}) {
   const tag      = opts.tag || '[fetchWebsite]';
   const maxChars = opts.maxChars || 3000;
@@ -21,19 +44,9 @@ async function fetchWebsite(url, opts = {}) {
       console.warn(`${tag} Blocked non-HTTP URL:`, url);
       return null;
     }
-    const host = parsed.hostname.toLowerCase();
-    // Block localhost, private IPs, link-local, metadata endpoints
-    if (
-      host === 'localhost' ||
-      host.endsWith('.local') ||
-      host === '169.254.169.254' ||                     // AWS/GCP metadata
-      /^127\./.test(host) ||                            // 127.0.0.0/8
-      /^10\./.test(host) ||                             // 10.0.0.0/8
-      /^192\.168\./.test(host) ||                       // 192.168.0.0/16
-      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||        // 172.16.0.0/12
-      /^\[?::1\]?$/.test(host) ||                       // IPv6 localhost
-      /^\[?fe80:/i.test(host)                           // IPv6 link-local
-    ) {
+    // Block localhost, private IPs, link-local, metadata endpoints -- by name
+    // (urlToegestaan) and after DNS resolution (hostIsExtern).
+    if (!urlToegestaan(url, tag) || !(await hostIsExtern(parsed.hostname))) {
       console.warn(`${tag} Blocked internal URL:`, url);
       return null;
     }
@@ -139,6 +152,10 @@ async function fetchPage(url, opts = {}) {
   for (;;) {
     const parsed = urlToegestaan(huidige, tag);
     if (!parsed) return null;
+    if (!(await hostIsExtern(parsed.hostname))) {
+      console.warn(`${tag} Geblokkeerd (wijst naar een intern adres):`, huidige);
+      return null;
+    }
 
     let res;
     try {
@@ -217,4 +234,4 @@ async function fetchPage(url, opts = {}) {
   }
 }
 
-module.exports = { fetchWebsite, fetchPage, urlToegestaan };
+module.exports = { fetchWebsite, fetchPage, urlToegestaan, hostIsExtern, isInternIp };

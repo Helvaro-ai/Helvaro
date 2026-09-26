@@ -282,6 +282,43 @@ const ABONNEMENT = (over = {}) => ({
     ck('een Buffer-body werkt gewoon', res4.code === 200, res4);
   }
 
+  /* Audit 26/09: deze twee gebeurtenissen werden genegeerd. */
+  const MELDINGEN = [];
+  require(BASE + 'api/cron-followup').sendOpsAlert = async (m) => { MELDINGEN.push(m.subject); };
+
+  console.log('\n— een mislukte abonnementsbetaling —');
+  s = nepBase(); MELDINGEN.length = 0;
+  res = await stuur({ type: 'invoice.payment_failed', data: { object: {
+    id: 'in_1', subscription: 'sub_1', attempt_count: 2, next_payment_attempt: 1790900000,
+    subscription_details: { metadata: { projectCode: 'TELJO' } } } } });
+  ck('geeft 200', res.code === 200, res);
+  ck('en meldt het aan de beheerder', MELDINGEN.length === 1 && /TELJO/.test(MELDINGEN[0]), MELDINGEN);
+  ck('maar stopt de dienst NIET (Stripe probeert nog)', s.patches.length === 0, s.patches);
+
+  console.log('\n— Stripe geeft het abonnement op —');
+  for (const status of ['unpaid', 'canceled']) {
+    s = nepBase(); MELDINGEN.length = 0;
+    res = await stuur({ type: 'customer.subscription.updated', data: { object: {
+      id: 'sub_1', status, metadata: { projectCode: 'TELJO' } } } });
+    ck(`${status}: geeft 200`, res.code === 200, res);
+    ck(`${status}: Plan Status gaat naar cancelled`, s.patches.some((f) => f['Plan Status'] === 'cancelled'), s.patches);
+    ck(`${status}: en de beheerder weet het`, MELDINGEN.length === 1, MELDINGEN);
+  }
+
+  console.log('\n— een gewone update laat alles staan —');
+  s = nepBase(); MELDINGEN.length = 0;
+  res = await stuur({ type: 'customer.subscription.updated', data: { object: {
+    id: 'sub_1', status: 'active', metadata: { projectCode: 'TELJO' } } } });
+  ck('geeft 200 zonder iets te veranderen', res.code === 200 && s.patches.length === 0 && MELDINGEN.length === 0, { p: s.patches, m: MELDINGEN });
+
+  console.log('\n— een planwissel in Stripe —');
+  s = nepBase(); MELDINGEN.length = 0;
+  res = await stuur({ type: 'customer.subscription.updated', data: {
+    object: { id: 'sub_1', status: 'active', metadata: { projectCode: 'TELJO' } },
+    previous_attributes: { items: { data: [] } } } });
+  ck('krijgt een melding om na te kijken', res.code === 200 && MELDINGEN.length === 1 && /Planwissel/.test(MELDINGEN[0]), MELDINGEN);
+  ck('en er wordt niets gegokt in Airtable', s.patches.length === 0, s.patches);
+
   console.log('\n— alleen POST —');
   const res2 = nepRes();
   delete require.cache[require.resolve(BASE + 'api/stripe.js')];
