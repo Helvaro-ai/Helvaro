@@ -369,7 +369,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             } else {
               // Template language gated through the Meta-approval registry
               // (nl/fr/en today) — never bypass this, see _lang.js header.
-              const introLang = _lang.resolveTemplateLanguage(process.env.INTRO_TEMPLATE_LANG || lang, lang).code;
+              let introLang = _lang.resolveTemplateLanguage(process.env.INTRO_TEMPLATE_LANG || lang, lang).code;
+              /* Alleen in een taal waarin Meta de template goedkeurde; zie
+                 api/_wa-templates.js goedgekeurdeTaalVoor. */
+              try { introLang = (await require('./_wa-templates').goedgekeurdeTaalVoor('intro', introLang)) || introLang; } catch (_) {}
               // Params mirror the free-form welcome copy's {naam}/{ai}/{bedrijf}
               // placeholders: {{1}}=first name, {{2}}=AI/staff name, {{3}}=company
               // name. The approved Meta template body must declare exactly 3

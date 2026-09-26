@@ -2378,7 +2378,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             }
           }
         } catch {}
-        const introLang = _lang.resolveTemplateLanguage(process.env.INTRO_TEMPLATE_LANG || klantTaal, klantTaal).code;
+        let introLang = _lang.resolveTemplateLanguage(process.env.INTRO_TEMPLATE_LANG || klantTaal, klantTaal).code;
+        /* Alleen versturen in een taal waarin Meta de template goedkeurde --
+           zie _wa-templates.goedgekeurdeTaalVoor. Faalt de opzoeking, dan
+           blijft de keuze hierboven staan. */
+        try { introLang = (await _waTpl.goedgekeurdeTaalVoor('intro', introLang)) || introLang; } catch (_) {}
         /* {{1}} is de voornaam van de lead; bij een testbericht is die er
            niet. "Hey daar!" leest als een echte begroeting, een lege {{1}}
            weigert Meta. */

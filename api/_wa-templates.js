@@ -441,6 +441,33 @@ async function goedgekeurd(sleutel, taal, opties) {
   return duiding(templates[`${naamVoor(sleutel)}::${code}`] || '') === 'klaar';
 }
 
+/**
+ * In welke taal kan DEZE template nu echt verstuurd worden?
+ *
+ * De taal van de klant als Meta hem daarin goedkeurde; anders Nederlands (de
+ * taal waarin elke Helvaro-template eerst ingediend wordt); anders de eerste
+ * goedgekeurde. Leeg als hij nergens goedgekeurd is -- dan laat de aanroeper
+ * zijn eigen keuze staan en meldt Meta de fout zoals altijd.
+ *
+ * Waarom: een Engelstalig account (de Meta-reviewer, 2026-09-26) vroeg het
+ * eerste bericht in het Engels, terwijl die variant nog niet ingediend was.
+ * Meta weigert dan, en de reviewer ziet een test die niets doet. Een
+ * Nederlandse begroeting die WEL aankomt is beter dan een Engelse die nooit
+ * vertrekt; de AI praat daarna gewoon in de taal van de lead verder.
+ */
+async function goedgekeurdeTaalVoor(sleutel, voorkeur, opties) {
+  const index = await haalIndex(opties);
+  const templates = (index && index.templates) || {};
+  const naam = naamVoor(sleutel);
+  if (!naam) return '';
+  const ok = (code) => !!code && duiding(templates[`${naam}::${code}`] || '') === 'klaar';
+  const gevraagd = kiesTaal(canoniek(voorkeur), templates);
+  if (ok(gevraagd)) return gevraagd;
+  for (const code of ['nl_BE', 'nl', 'en', 'en_US', 'en_GB', 'fr', 'fr_BE']) if (ok(code)) return code;
+  const eerste = Object.keys(templates).find((k) => k.startsWith(`${naam}::`) && duiding(templates[k] || '') === 'klaar');
+  return eerste ? eerste.split('::')[1] : '';
+}
+
 async function klaarVoor(taal, opties) {
   const index = await haalIndex(opties);
   return bekijk(taal, index);
@@ -598,6 +625,7 @@ module.exports = {
   bekijk,
   klaarVoor,
   goedgekeurd,
+  goedgekeurdeTaalVoor,
   taalOverzicht,
   overzicht,
   kostenVoor,
