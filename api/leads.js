@@ -3191,7 +3191,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         let uit;
         if (body.mode === 'inventory-status') uit = await _inventaris.status(projectCode);
         else if (body.mode === 'inventory-check') uit = await _inventaris.controleer(projectCode, { door: clientName || 'dashboard', trigger: body.trigger === 'login' ? 'login' : 'verversen' });
-        else if (body.mode === 'inventory-sync') uit = await _inventaris.sync(projectCode, { door: clientName || 'dashboard', trigger: 'handmatig' });
+        /* bevestigDaling: de dealer bevestigt dat de wagens die ineens uit de
+           feed verdwenen echt verkocht zijn. Alleen hier, bij een handmatige
+           sync -- de cron bevestigt nooit zelf (api/_voorraad-sync.js). */
+        else if (body.mode === 'inventory-sync') uit = await _inventaris.sync(projectCode, { door: clientName || 'dashboard', trigger: 'handmatig', bevestigDaling: body.bevestigDaling === true });
         else uit = await _inventaris.bewaarBron(projectCode, body.source || {});
         if (uit && uit.reden === 'schema_ontbreekt') {
           try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ }
@@ -3199,6 +3202,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         }
         if (uit && uit.reden === 'ongeldig_adres') return res.status(400).json({ error: 'Geef een geldig https-adres voor de voorraadfeed.', code: 'ongeldig_adres' });
         if (uit && uit.reden === 'geen_klantrecord') return res.status(404).json({ error: 'Account niet gevonden.', code: 'geen_klantrecord' });
+        /* Hoe de voorraad er NU uitziet: actief / verkocht / gearchiveerd. De
+           cijfers hierboven gaan over de laatste run (wat veranderde); dit gaat
+           over de etalage. Mislukt het tellen, dan gewoon zonder: de status is
+           belangrijker dan de optelsom. */
+        if (uit && body.mode !== 'inventory-source') {
+          try {
+            const alle = await require('./_vehicles').list(projectCode, { inclusiefGearchiveerd: true });
+            uit.telling = require('./_voorraad-sync').telling(alle);
+          } catch (e) { console.warn('[' + body.mode + '] telling mislukt:', e && e.message); }
+        }
         return res.status(200).json(uit);
       } catch (err) {
         console.error('[' + body.mode + ']', err && err.status, err && err.message);

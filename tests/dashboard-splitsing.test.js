@@ -239,8 +239,14 @@ function render(lang) {
    stond het logo op top -21 en was dat met geen enkele scrollpositie te
    bereiken.
    Vorige waarden: 404802 bytes / 7f6cfa49d2c58885. */
-const CSS_BYTES = 408875;
-const CSS_SHA   = '00796beeab07b870';
+/* Bijgewerkt 2026-09-25 (voorraadsync): twee modifiers, niets verwijderd.
+   .pd-feit--verkocht toont op een verkochte wagen hoe lang hij nog op de
+   website staat; .inv-etalage laat de voorraadtelling (actief / verkocht /
+   gearchiveerd) zwaarder wegen dan wat de laatste sync deed. Allebei op
+   bestaande tokens (--warning-ink, --text-primary). +444 bytes.
+   Vorige waarden: 408875 bytes / 00796beeab07b870. */
+const CSS_BYTES = 409319;
+const CSS_SHA   = 'efd67e68a124b8e1';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

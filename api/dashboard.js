@@ -28,6 +28,7 @@ const _session = require('./_session');
 const _dashStyles = require('./_dash/styles');   // het CSS-blok, zie daar
 const _help       = require('./_dash/help');     // de helpartikelen, vier talen
 const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, vier talen
+const _vsync      = require('./_voorraad-sync');          // BEWAAR_DAGEN: één bron voor de 14 dagen
 const _faroUI = require('./_faro/ui');
 
 // ── Command Center ──────────────────────────────────────────────────────────
@@ -809,7 +810,7 @@ ${faro.navCta}
       <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="Bekijk profiel">
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
-          <div class="user-name" id="user-name">Gebruiker</div>
+          <div class="user-name" id="user-name">${T('profiel.standaardNaam')}</div>
           <div class="user-role" id="user-org">${T('nav.profile')}</div>
         </div>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
@@ -3010,7 +3011,7 @@ ${faro.navCta}
         <div class="profile-hero">
           <div class="profile-avatar-lg" id="profile-avatar-lg">HV</div>
           <div>
-            <div class="profile-name-lg" id="profile-name-lg">Gebruiker</div>
+            <div class="profile-name-lg" id="profile-name-lg">${T('profiel.standaardNaam')}</div>
             <div class="profile-email-lg" id="profile-email-lg">—</div>
             <span class="profile-badge">${T('pro.account')}</span>
           </div>
@@ -5876,7 +5877,7 @@ async function refreshData(skipFetch = false, vers = false) {
         // Fresh successful response. Update state and persist to localStorage
         state.leads    = data.leads || [];
         state.stats    = data.stats || {};
-        state.clientName  = data.client?.naam    || 'Gebruiker';
+        state.clientName  = data.client?.naam    || tr('profiel.standaardNaam');
         state.calendlyUrl = data.client?.calendly || '';
         state.lastFetch   = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
@@ -6917,6 +6918,35 @@ async function voorraadSync() {
   renderVoorraad();
 }
 
+/* Dezelfde sync als de knop, met de bevestiging erbij. Eerst vragen: dit zet
+   een reeks wagens in één keer op verkocht, en dat staat binnen een minuut op
+   de website. */
+function voorraadBevestigDaling(n) {
+  showConfirmModal({
+    title: tr('inv.daling.knop'),
+    message: tr('inv.daling.vraag', { n: n }),
+    confirmText: tr('inv.daling.knop'),
+    onConfirm: async function () {
+      if (voorraadState.bezig) return;
+      voorraadState.bezig = true;
+      renderVoorraad();
+      try {
+        var d = await voorraadVraag('inventory-sync', { bevestigDaling: true });
+        voorraadState.data = d;
+        voorraadState.fout = '';
+        if (d.ok) toast(tr('inv.toast.ok', { n: d.count == null ? 0 : d.count, c: d.changed || 0, r: d.removed || 0 }), 'success');
+        else toast(d.lastError || tr('inv.fout.algemeen'), 'error', tr('inv.toast.mislukt'));
+        try { loadPanden(true); } catch (e) { /* bijzaak */ }
+      } catch (e) {
+        voorraadState.fout = e.message || tr('inv.fout.algemeen');
+        toast(voorraadState.fout, 'error', tr('inv.toast.mislukt'));
+      }
+      voorraadState.bezig = false;
+      renderVoorraad();
+    }
+  });
+}
+
 function voorraadStatusKlasse(st) {
   if (st === 'HEALTHY') return 'inv-dot--ok';
   if (st === 'SYNCING') return 'inv-dot--bezig';
@@ -6929,11 +6959,31 @@ function voorraadRegels(d) {
   var st = (d && d.status) || 'UNKNOWN';
   var wanneer = d && d.lastSuccessAt ? timeAgo(new Date(d.lastSuccessAt)) : tr('inv.nooit');
   var cijfers = [];
+  /* De laatste run, zoals de sync hem nu uitsplitst: wat er nieuw binnenkwam
+     en wat er verkocht werd. Oudere runs hebben die uitsplitsing niet; dan de
+     algemene cijfers zoals voorheen. */
+  var run = d && Array.isArray(d.runs) && d.runs[0] && d.runs[0].ok ? d.runs[0] : null;
   if (d && d.count != null) cijfers.push(tr('inv.aantal', { n: d.count }));
-  if (d && d.changed) cijfers.push(tr('inv.gewijzigd', { n: d.changed }));
-  if (d && d.removed) cijfers.push(tr('inv.verwijderd', { n: d.removed }));
+  if (run && run.aangemaakt != null) {
+    if (run.aangemaakt) cijfers.push(tr('inv.run.nieuw', { n: run.aangemaakt }));
+    if (run.bijgewerkt) cijfers.push(tr('inv.gewijzigd', { n: run.bijgewerkt }));
+    if (run.verkocht) cijfers.push(tr('inv.telling.verkocht', { n: run.verkocht }));
+  } else {
+    if (d && d.changed) cijfers.push(tr('inv.gewijzigd', { n: d.changed }));
+    if (d && d.removed) cijfers.push(tr('inv.verwijderd', { n: d.removed }));
+  }
   if (d && d.failed) cijfers.push(tr('inv.mislukt', { n: d.failed }));
-  return { st: st, label: tr('inv.status.' + st), wanneer: wanneer, cijfers: cijfers };
+  /* Hoe de etalage er NU uitziet -- los van wat de laatste run deed. */
+  var etalage = [];
+  var t = d && d.telling;
+  if (t) {
+    etalage.push(tr('inv.telling.actief', { n: t.actief || 0 }));
+    if (t.gereserveerd) etalage.push(tr('inv.telling.gereserveerd', { n: t.gereserveerd }));
+    if (t.verkocht) etalage.push(tr('inv.telling.verkocht', { n: t.verkocht }));
+    if (t.gearchiveerd) etalage.push(tr('inv.telling.gearchiveerd', { n: t.gearchiveerd }));
+  }
+  var daling = d && Array.isArray(d.runs) && d.runs[0] && d.runs[0].daling ? d.runs[0].daling : 0;
+  return { st: st, label: tr('inv.status.' + st), wanneer: wanneer, cijfers: cijfers, etalage: etalage, daling: daling };
 }
 
 function renderVoorraad() {
@@ -6966,6 +7016,13 @@ function renderVoorraad() {
     foutRegel = '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: uitleg })) + '</div>';
   }
   var onzeker = (d && d.vertrouwen === 'onzeker') ? '<div class="inv-let">' + escHtml(tr('inv.onzeker')) + '</div>' : '';
+  /* De dalingswacht hield wagens tegen die ineens uit de feed verdwenen. Niet
+     stil laten liggen: de dealer ziet hoeveel, en beslist. */
+  var dalingRegel = r.daling
+    ? '<div class="inv-let">' + escHtml(tr('inv.daling.tekst', { n: r.daling }))
+      + ' <button type="button" class="inv-bron-link" onclick="voorraadBevestigDaling(' + Number(r.daling) + ')"' + (bezig ? ' disabled' : '') + '>'
+      + escHtml(tr('inv.daling.knop')) + '</button></div>'
+    : '';
   var bron = d ? (d.bron === 'feed' ? tr('inv.bron.feed') : tr('inv.bron.native')) : '';
 
   if (kaart) {
@@ -6976,7 +7033,9 @@ function renderVoorraad() {
       + '<span class="inv-status-label">' + escHtml(r.label) + '</span>'
       + '<span class="inv-sub">' + escHtml(tr('inv.laatst', { t: r.wanneer })) + (bron ? ' · ' + escHtml(bron) : '') + '</span></div></div>'
       + knop + '</div>'
+      + (r.etalage.length ? '<div class="inv-cijfers inv-etalage">' + r.etalage.map(function (c) { return '<span>' + escHtml(c) + '</span>'; }).join('') + '</div>' : '')
       + (r.cijfers.length ? '<div class="inv-cijfers">' + r.cijfers.map(function (c) { return '<span>' + escHtml(c) + '</span>'; }).join('') + '</div>' : '')
+      + dalingRegel
       + onzeker + foutRegel
       + '<button type="button" class="inv-bron-link" onclick="voorraadBronOpen()">' + escHtml(tr('inv.bron.instellen')) + '</button>'
       + '<div id="inv-bron-form" class="inv-bron-form" style="display:none"></div>';
@@ -17103,6 +17162,32 @@ function pandOnder(p) {
   return [p.uitvoering, p.kleur].filter(Boolean).join(' \u00B7 ');
 }
 
+/* Het statuslabel op een aanbodkaart. Gearchiveerd is iets ANDERS dan
+   verkocht: verkocht staat nog op de website met een badge, gearchiveerd niet
+   meer. Zelfde label voor beide zou de dealer laten denken dat een wagen nog
+   zichtbaar is terwijl hij er al af is.
+
+   De status wordt met liggend streepje opgezocht: 'onder bod' en 'uit aanbod'
+   bevatten een spatie, de sleutels een underscore. Zonder die vervanging
+   stonden die twee rauw in het Nederlands op een Engelse kaart. */
+function pdStatusLabel(p) {
+  if (p && p.gearchiveerd) return tr('pd.status.gearchiveerd');
+  var sleutel = 'pd.status.' + String((p && p.status) || '').replace(/ /g, '_');
+  return T_DICT[sleutel] !== undefined ? T_DICT[sleutel] : String((p && p.status) || '');
+}
+
+/* Hoe lang een verkochte wagen nog op de website staat. De termijn komt van de
+   server (api/_voorraad-sync.js BEWAAR_DAGEN): één getal, op één plek. */
+var HV_BEWAAR_DAGEN = ${_vsync.BEWAAR_DAGEN};
+function pdVerkochtNog(p) {
+  if (!p || p.gearchiveerd || String(p.status) !== 'verkocht' || !p.verkochtOp) return '';
+  var t = Date.parse(p.verkochtOp);
+  if (!isFinite(t)) return '';
+  var nog = Math.ceil((t + HV_BEWAAR_DAGEN * 86400000 - Date.now()) / 86400000);
+  var tekst = nog <= 0 ? tr('pd.verkochtLaatste') : (nog === 1 ? tr('pd.verkochtNog1') : tr('pd.verkochtNog', { n: nog }));
+  return '<span class="pd-feit pd-feit--verkocht">' + escHtml(tekst) + '</span>';
+}
+
 function renderPanden() {
   var grid   = document.getElementById('pd-grid');
   var leeg   = document.getElementById('pd-empty');
@@ -17293,7 +17378,7 @@ function renderPanden() {
       +     '</div>'
       +     '<span class="pd-card-code">' + pandEsc(p.code) + '</span>'
       +   '</div>'
-      +   '<div class="pd-card-feiten">' + feiten.join('') + '<span class="pd-status ' + statusKlasse + '">' + pandEsc(T_DICT['pd.status.' + p.status] || p.status) + '</span>' + dealerExtraHtml + '</div>'
+      +   '<div class="pd-card-feiten">' + feiten.join('') + '<span class="pd-status ' + statusKlasse + '">' + pandEsc(pdStatusLabel(p)) + '</span>' + pdVerkochtNog(p) + dealerExtraHtml + '</div>'
       +   '<div class="pd-leads">' + (aantal ? '<strong>' + aantal + '</strong> ' + (aantal === 1 ? tr('pd.lead1') : tr('pd.leadN')) : tr('pd.geenLeads')) + '</div>'
       +   '<div class="pd-link-row">'
       +     '<div class="pd-link" title="' + pandEsc(pandLink(p.code)) + '">' + pandEsc(pandLink(p.code)) + '</div>'
@@ -20571,7 +20656,7 @@ function hideHelpWidget() {
       if (!data.rateLimited && !data.stale) {
         state.leads    = data.leads || [];
         state.stats    = data.stats || {};
-        state.clientName = _wName || data.client?.naam || 'Gebruiker';
+        state.clientName = _wName || data.client?.naam || tr('profiel.standaardNaam');
         state.lastFetch  = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
       }
@@ -20599,7 +20684,7 @@ function hideHelpWidget() {
       if (!data.rateLimited && !data.stale) {
         state.leads    = data.leads || [];
         state.stats    = data.stats || {};
-        state.clientName  = state.clientName || data.client?.naam || 'Gebruiker';
+        state.clientName  = state.clientName || data.client?.naam || tr('profiel.standaardNaam');
         state.lastFetch   = Date.now();
         if (state.leads.length > 0) saveLeadsToLS(state.leads, state.stats);
       } else {

@@ -9120,6 +9120,13 @@ body.panel-open .main-content { transform: scale(0.985); }
   background: var(--bg-card-alt); color: var(--text-secondary);
 }
 .pd-feit--prijs { background: rgba(var(--accent-rgb),0.14); color: var(--accent-ink); }
+/* Een verkochte wagen die nog op de website staat: hoe lang nog. Warm en
+   zichtbaar, maar geen alarmkleur -- het is een aftelling, geen fout. */
+.pd-feit--verkocht { color: var(--warning-ink); }
+/* De etalage (actief / verkocht / gearchiveerd) is het antwoord op "hoe staat
+   mijn voorraad ervoor"; de regel eronder is wat de laatste sync deed. De
+   eerste weegt zwaarder. */
+.inv-etalage { color: var(--text-primary); font-weight: 600; }
 /* Status: de vulling is de kleur, de tekst is de ink-variant van diezelfde
    kleur. Zand op wit haalt 1,29:1 -- dit is geen smaakkwestie. */
 .pd-status { font-size: 0.7333rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.02em; }

@@ -2612,10 +2612,8 @@ const TEKST = {
   // ── Instellingen: extra werknemersnummers (Fase 6) ───────────────────────
   'pd.kandidaten':       { nl: 'Kandidaten', fr: 'Candidats', en: 'Candidates', de: 'Kandidaten' },
   'pd.status.beschikbaar': { nl: 'beschikbaar', fr: 'disponible', en: 'available', de: 'verfügbar' },
-  'pd.status.onder bod':   { nl: 'onder bod', fr: 'sous offre', en: 'under offer', de: 'unter Angebot' },
   'pd.status.verkocht':    { nl: 'verkocht', fr: 'vendu', en: 'sold', de: 'verkauft' },
   'pd.status.verhuurd':    { nl: 'verhuurd', fr: 'loué', en: 'rented', de: 'vermietet' },
-  'pd.status.uit aanbod':  { nl: 'uit aanbod', fr: 'retiré', en: 'withdrawn', de: 'nicht im Angebot' },
   'pd.status.onbekend':    { nl: 'status onbekend', fr: 'statut inconnu', en: 'status unknown', de: 'Status unbekannt' },
   'pd.status.gereserveerd':{ nl: 'gereserveerd', fr: 'réservé', en: 'reserved', de: 'reserviert' },
   'pd.geenLeads': { nl: 'Nog geen leads', fr: 'Pas encore de prospects', en: 'No leads yet', de: 'Noch keine Leads' },
@@ -2899,6 +2897,29 @@ const TEKST = {
      soort tekst dat een sweep mist en een reviewer wel vindt. */
   'pnl.tip.capaciteit': { nl: 'Budget / koopkracht', fr: 'Budget / capacité d’achat', en: 'Budget / buying power', de: 'Budget / Kaufkraft' },
   'pnl.tip.urgentie':   { nl: 'Hoe snel ze beslissen', fr: 'À quelle vitesse ils décident', en: 'How fast they decide', de: 'Wie schnell sie entscheiden' },
+
+  /* De voorraadkaart: hoe de etalage er NU uitstaat, en wat de laatste sync
+     deed in de woorden van de specificatie (nieuw, verkocht). */
+  'inv.telling.actief':       { nl: '{n} actief', fr: '{n} actifs', en: '{n} active', de: '{n} aktiv' },
+  'inv.telling.gereserveerd': { nl: '{n} gereserveerd', fr: '{n} réservés', en: '{n} reserved', de: '{n} reserviert' },
+  'inv.telling.verkocht':     { nl: '{n} verkocht', fr: '{n} vendus', en: '{n} sold', de: '{n} verkauft' },
+  'inv.telling.gearchiveerd': { nl: '{n} gearchiveerd', fr: '{n} archivés', en: '{n} archived', de: '{n} archiviert' },
+  'inv.run.nieuw':            { nl: '{n} nieuw', fr: '{n} nouveaux', en: '{n} new', de: '{n} neu' },
+  /* De dalingswacht: de sync zag ineens veel minder wagens en zette ze NIET op
+     verkocht. De dealer beslist. */
+  'inv.daling.tekst':  { nl: '{n} wagens staan ineens niet meer in je feed. Ze zijn nog niet op verkocht gezet, voor het geval de feed onvolledig was.', fr: '{n} voitures ont soudain disparu de votre flux. Elles ne sont pas encore marquées comme vendues, au cas où le flux serait incomplet.', en: '{n} cars suddenly disappeared from your feed. They have not been marked as sold yet, in case the feed was incomplete.', de: '{n} Autos fehlen plötzlich in deinem Feed. Sie wurden noch nicht als verkauft markiert, falls der Feed unvollständig war.' },
+  'inv.daling.knop':   { nl: 'Ze zijn verkocht', fr: 'Elles sont vendues', en: 'They are sold', de: 'Sie sind verkauft' },
+  'inv.daling.vraag':  { nl: '{n} wagens op verkocht zetten? Ze blijven nog 14 dagen als VERKOCHT op je website staan.', fr: 'Marquer {n} voitures comme vendues ? Elles restent 14 jours sur votre site avec la mention VENDU.', en: 'Mark {n} cars as sold? They stay on your website as SOLD for 14 more days.', de: '{n} Autos als verkauft markieren? Sie bleiben noch 14 Tage als VERKAUFT auf deiner Website.' },
+  /* Op de kaart: verkocht en gearchiveerd zijn twee verschillende dingen. */
+  'pd.status.gearchiveerd': { nl: 'gearchiveerd', fr: 'archivé', en: 'archived', de: 'archiviert' },
+  'pd.verkochtNog':         { nl: 'nog {n} d. op de website', fr: 'encore {n} j. sur le site', en: '{n} more days on the website', de: 'noch {n} T. auf der Website' },
+  'pd.verkochtLaatste':     { nl: 'laatste dag op de website', fr: 'dernier jour sur le site', en: 'last day on the website', de: 'letzter Tag auf der Website' },
+
+  /* Tijdelijke naam in de profielhoek zolang de echte klantnaam nog niet
+     geladen is (of ontbreekt). Stond hardgecodeerd als "Gebruiker" op elke
+     taal -- zichtbaar in de hoek van een Engelse pagina. */
+  'profiel.standaardNaam': { nl: 'Gebruiker', fr: 'Utilisateur', en: 'User', de: 'Benutzer' },
+  'pd.verkochtNog1':       { nl: 'nog 1 dag op de website', fr: 'encore 1 jour sur le site', en: '1 more day on the website', de: 'noch 1 Tag auf der Website' },
 };
 
 /**
