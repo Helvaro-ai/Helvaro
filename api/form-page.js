@@ -255,6 +255,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         name_required:    'Vul je naam in.',
         phone_required:   'Vul je telefoonnummer in.',
         consent_required: 'Vink even aan dat we je mogen contacteren.',
+        contact_required: 'Vul je WhatsApp-nummer of je e-mailadres in.',
+        bad_email:        'Dat e-mailadres klopt niet helemaal. Kijk het even na.',
         bad_phone:        'Dat telefoonnummer herkennen we niet. Gebruik alleen cijfers.'
       },
       loading:         'Een momentje...',
@@ -277,6 +279,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       consentSuffix:   '.',
       errConsent:      'Vink het privacy-vakje aan om verder te gaan.',
       errPhone:        'Dit lijkt geen geldig telefoonnummer. Controleer het even — je krijgt het antwoord via WhatsApp.',
+      altMail:         'Liever geen WhatsApp? Laat je e-mailadres achter',
+      labelEmail:      'Je e-mailadres',
+      placeholderEmail:'naam@voorbeeld.be',
+      errMail:         'Dat e-mailadres klopt niet helemaal. Kijk het even na.',
+      errContact:      'Vul je WhatsApp-nummer of je e-mailadres in.',
+      consentMidMail:  'mij via WhatsApp of e-mail contacteert. Zie het',
+      successMail:     'neemt zo snel mogelijk contact met je op via e-mail.',
+      step1Mail:       'Hou je mailbox in de gaten (ook je spam)',
       nicheHooks: {
         dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
         real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
@@ -310,6 +320,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         name_required:    'Indiquez votre nom.',
         phone_required:   'Indiquez votre numéro de téléphone.',
         consent_required: 'Cochez la case pour nous autoriser à vous contacter.',
+        contact_required: 'Indiquez votre numéro WhatsApp ou votre adresse e-mail.',
+        bad_email:        'Cette adresse e-mail ne semble pas correcte. Vérifiez-la.',
         bad_phone:        'Nous ne reconnaissons pas ce numéro. N’utilisez que des chiffres.'
       },
       loading:         'Un instant...',
@@ -332,6 +344,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       consentSuffix:   '.',
       errConsent:      'Cochez la case de confidentialité pour continuer.',
       errPhone:        "Ce numéro ne semble pas valide. Vérifiez-le — la réponse arrive via WhatsApp.",
+      altMail:         'Pas de WhatsApp ? Laissez votre adresse e-mail',
+      labelEmail:      'Votre adresse e-mail',
+      placeholderEmail:'nom@exemple.be',
+      errMail:         'Cette adresse e-mail ne semble pas correcte. Vérifiez-la.',
+      errContact:      'Indiquez votre numéro WhatsApp ou votre adresse e-mail.',
+      consentMidMail:  'me contacte via WhatsApp ou par e-mail. Voir la',
+      successMail:     'vous contactera au plus vite par e-mail.',
+      step1Mail:       'Surveillez votre boîte mail (et vos spams)',
       nicheHooks: {
         dentist:     "Je vous aide volontiers avec vos questions sur vos dents ou un traitement.",
         real_estate: "Je vous aide volontiers, que vous cherchiez une maison ou que vous souhaitiez en vendre une.",
@@ -365,6 +385,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         name_required:    'Enter your name.',
         phone_required:   'Enter your phone number.',
         consent_required: 'Please tick the box so we may contact you.',
+        contact_required: 'Enter your WhatsApp number or your email address.',
+        bad_email:        'That email address does not look right. Please check it.',
         bad_phone:        'We do not recognise that phone number. Use digits only.'
       },
       loading:         'One moment...',
@@ -387,6 +409,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       consentSuffix:   '.',
       errConsent:      'Tick the privacy box to continue.',
       errPhone:        'That does not look like a valid phone number. Please check it — the reply comes via WhatsApp.',
+      altMail:         'No WhatsApp? Leave your email address instead',
+      labelEmail:      'Your email address',
+      placeholderEmail:'name@example.com',
+      errMail:         'That email address does not look right. Please check it.',
+      errContact:      'Enter your WhatsApp number or your email address.',
+      consentMidMail:  'may contact me via WhatsApp or email. See the',
+      successMail:     'will get back to you by email as soon as possible.',
+      step1Mail:       'Keep an eye on your inbox (and your spam folder)',
       nicheHooks: {
         dentist:     'I’m happy to help you with any dental questions or treatments.',
         real_estate: 'I’m happy to help, whether you’re looking to buy or sell a property.',
@@ -703,6 +733,15 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
 
+  /* "Liever geen WhatsApp?" -- een tekstlink, geen knop die met Stuur
+     concurreert. */
+  .alt-mail {
+    display: block; background: none; border: 0; padding: 4px 0 0; margin: 0 0 2px;
+    font: inherit; font-size: 12px; color: var(--brand); text-decoration: underline;
+    cursor: pointer; text-align: left;
+  }
+  .alt-mail[hidden] { display: none; }
+
   /* GDPR consent checkbox row */
   .consent-row {
     display: flex; align-items: flex-start; gap: 9px;
@@ -832,9 +871,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     <label for="tel">${escHtml(t.labelPhone)}</label>
     <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel" inputmode="tel" required>
 
+    <!-- E-mail is een uitwijk, geen tweede verplicht veld: WhatsApp blijft de
+         snelle weg. Wie geen WhatsApp wil, klikt en krijgt het veld. -->
+    <button type="button" class="alt-mail" id="alt-mail">${escHtml(t.altMail)}</button>
+    <div id="mail-wrap" hidden>
+      <label for="mail">${escHtml(t.labelEmail)}</label>
+      <input id="mail" type="email" placeholder="${escHtml(t.placeholderEmail)}" autocomplete="email" inputmode="email">
+    </div>
+
     <label class="consent-row" for="consent">
       <input id="consent" type="checkbox">
-      <span class="consent-text">${escHtml(t.consentPre)} <strong>${escHtml(clientName)}</strong> ${escHtml(t.consentMid)} <a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">${escHtml(t.consentLink)}</a>${escHtml(t.consentSuffix)}${stijl.toestemming ? ' ' + escHtml(stijl.toestemming) : ''}</span>
+      <span class="consent-text">${escHtml(t.consentPre)} <strong>${escHtml(clientName)}</strong> <span id="consent-mid">${escHtml(t.consentMid)}</span> <a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">${escHtml(t.consentLink)}</a>${escHtml(t.consentSuffix)}${stijl.toestemming ? ' ' + escHtml(stijl.toestemming) : ''}</span>
     </label>
 
     <button id="btn">
@@ -850,9 +897,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   <div class="success" id="ok">
     <div class="tick"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h3>${escHtml(t.thanks)} <span id="ok-name">${escHtml(t.friend)}</span>!</h3>
-    <p><strong>${safeFirstName}</strong> ${escHtml(t.successText)}</p>
+    <p><strong>${safeFirstName}</strong> <span id="ok-text">${escHtml(t.successText)}</span></p>
     <div class="success-steps">
-      <div class="success-step"><span class="num">1</span> ${escHtml(t.step1)}</div>
+      <div class="success-step"><span class="num">1</span> <span id="ok-step1">${escHtml(t.step1)}</span></div>
       <div class="success-step"><span class="num">2</span> ${escHtml(t.step2)} ${safeFirstName}${escHtml(t.step2Tail)}</div>
       <div class="success-step"><span class="num">3</span> ${escHtml(t.step3)}</div>
     </div>
@@ -898,6 +945,11 @@ var I18N = {
   srvErr:         ${JSON.stringify(t.srvErr || {})},
   errConsent:     '${escJs(t.errConsent)}',
   errPhone:       '${escJs(t.errPhone)}',
+  errMail:        '${escJs(t.errMail)}',
+  errContact:     '${escJs(t.errContact)}',
+  consentMidMail: '${escJs(t.consentMidMail)}',
+  successMail:    '${escJs(t.successMail)}',
+  step1Mail:      '${escJs(t.step1Mail)}',
   loading:        '${escJs(t.loading)}',
   btn:            '${escJs(t.btn)}',
   btnSuffix:      '${escJs(t.btnSuffix)}'
@@ -913,14 +965,38 @@ function btnDefault() {
   return I18N.btn + ' ' + AI_FIRST + (I18N.btnSuffix ? ' ' + I18N.btnSuffix : '');
 }
 
+var altMail  = document.getElementById('alt-mail');
+var mailWrap = document.getElementById('mail-wrap');
+var mailModus = false;
+altMail.addEventListener('click', function() {
+  mailModus = true;
+  mailWrap.hidden = false;
+  altMail.hidden = true;
+  /* Het nummer is nu niet meer verplicht; de toestemming noemt e-mail. */
+  document.getElementById('tel').removeAttribute('required');
+  var mid = document.getElementById('consent-mid');
+  if (mid) mid.textContent = I18N.consentMidMail;
+  document.getElementById('mail').focus();
+});
+
 btn.addEventListener('click', function() {
   var name    = document.getElementById('naam').value.trim();
   var phone   = document.getElementById('tel').value.trim();
+  var email   = mailModus ? document.getElementById('mail').value.trim() : '';
   var consent = document.getElementById('consent');
 
   err.textContent   = '';
-  if (!name || !phone) {
+  if (!name || (!phone && !mailModus)) {
     err.textContent   = I18N.errMissing + ' ' + AI_FIRST + ' ' + I18N.errMissingTail;
+    return;
+  }
+  if (!phone && !email) {
+    err.textContent   = I18N.errContact;
+    return;
+  }
+  if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)) {
+    err.textContent   = I18N.errMail;
+    document.getElementById('mail').focus();
     return;
   }
   /* Een typefout in het nummer betekent dat deze lead NOOIT antwoord krijgt --
@@ -932,7 +1008,7 @@ btn.addEventListener('click', function() {
      Streng valideren op Belgische vormen zou buitenlandse leads weigeren, en
      die zijn juist waardevol. */
   var cijfers = phone.replace(/[^0-9]/g, '');
-  if (cijfers.length < 8 || cijfers.length > 15) {
+  if (phone && (cijfers.length < 8 || cijfers.length > 15)) {
     err.textContent   = I18N.errPhone;
     document.getElementById('tel').focus();
     return;
@@ -949,7 +1025,7 @@ btn.addEventListener('click', function() {
   fetch(API, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ name: name, phone: phone, bron: 'Advertentie', property: PAND, consent: !!(consent && consent.checked) })
+    body:    JSON.stringify({ name: name, phone: phone, email: email, bron: 'Advertentie', property: PAND, consent: !!(consent && consent.checked) })
   })
   .then(function(r) {
     if (!r.ok) return r.json().then(function(d) {
@@ -962,6 +1038,12 @@ btn.addEventListener('click', function() {
     var firstName = name.split(' ')[0];
     var okName = document.getElementById('ok-name');
     if (okName) okName.textContent = firstName || FALLBACK_NAME;
+    /* Alleen e-mail: dan komt er geen WhatsApp, en de bedankpagina mag dat
+       niet beloven. */
+    if (!phone && email) {
+      document.getElementById('ok-text').textContent = I18N.successMail;
+      document.getElementById('ok-step1').textContent = I18N.step1Mail;
+    }
     form.style.display = 'none';
     document.getElementById('chat-area').style.display = 'none';
     ok.style.display   = 'block';

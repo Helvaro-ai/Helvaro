@@ -4032,7 +4032,7 @@ ${faro.dock}
       <div class="panel-phone">
         <span></span>
         <span id="panel-phone">—</span>
-        <button class="panel-copy-btn" id="panel-copy-phone" title="Kopieer nummer">⧉</button>
+        <button class="panel-copy-btn" id="panel-copy-phone" title="${T('dash.form.copy')}">⧉</button>
       </div>
       <span id="panel-bron-badge"></span>
     </div>
@@ -8448,7 +8448,7 @@ function applyFilters() {
   const opgepiktF = document.getElementById('filter-opgepikt')?.value || '';
 
   state.filteredLeads = state.leads.filter(l => {
-    if (q && !((l.naam || '').toLowerCase().includes(q)) && !((l.telefoon || '').toLowerCase().includes(q))) return false;
+    if (q && !((l.naam || '').toLowerCase().includes(q)) && !((l.telefoon || '').toLowerCase().includes(q)) && !((l.email || '').toLowerCase().includes(q))) return false;
     if (statusF && l.status !== statusF) return false;
     if (qualF !== '' && String(l.qualified) !== qualF) return false;
     if (bronF && l.bron !== bronF) return false;
@@ -9015,7 +9015,9 @@ function openPanel(lead) {
   );
 
   document.getElementById('panel-name').textContent = lead.naam || '—';
-  document.getElementById('panel-phone').textContent = lead.telefoon || '—';
+  /* Geen nummer maar wel een e-mailadres: de koper koos op het formulier
+     voor e-mail. Dan staat dat adres op de plek van het nummer. */
+  document.getElementById('panel-phone').textContent = lead.telefoon || lead.email || '—';
 
   const bronBadge = document.getElementById('panel-bron-badge');
   const panelAgeDays = leadAgeDays(lead);
@@ -9026,12 +9028,13 @@ function openPanel(lead) {
   // Copy phone
   const copyPhoneBtn = document.getElementById('panel-copy-phone');
   copyPhoneBtn.onclick = () => {
-    if (lead.telefoon && navigator.clipboard) {
+    const contact = lead.telefoon || lead.email || '';
+    if (contact && navigator.clipboard) {
       /* Zonder .catch bleef een geweigerd plakbord een onafgehandelde
          belofte: geen melding, geen bevestiging, en het nummer niet
          gekopieerd. Bellen is de handeling waar dit scherm voor bestaat. */
-      navigator.clipboard.writeText(lead.telefoon)
-        .then(() => toast(tr('tst.telGekopieerd'), 'success'))
+      navigator.clipboard.writeText(contact)
+        .then(() => toast(tr(lead.telefoon ? 'tst.telGekopieerd' : 'tst.mailGekopieerd'), 'success'))
         .catch(() => toast(tr('tst.kopierenMislukt'), 'error'));
     }
   };

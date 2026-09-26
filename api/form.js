@@ -133,6 +133,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // ── Extract & validate name / phone ────────────────────────────────────────
     const name  = String(body.name  || '').trim().slice(0, 100);
     const phone = String(body.phone || '').trim().slice(0, 30);
+    /* E-mail is de uitwijk voor wie geen WhatsApp wil (Sindi, 2026-09-26: een
+       koper op de website van een garage laat niet altijd zijn nummer achter).
+       Nummer OF e-mail volstaat. Wie alleen e-mail geeft krijgt geen
+       WhatsApp-begroeting -- er is geen nummer -- maar de lead bestaat, de
+       eigenaar krijgt zijn melding met het adres erin, en de lead staat in het
+       dashboard. Nooit meer dan dat: geen automatische mail vanaf hier. */
+    const emailRaw = String(body.email || '').trim().slice(0, 120);
+    const email = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw) ? emailRaw.toLowerCase() : '';
     // Only pass bron if it matches a confirmed Airtable select option.
     // Unknown values → empty string → field omitted from create payload.
     // Add values here as you add them to the Bron field in Airtable.
@@ -154,7 +162,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     const pand    = /^[A-Z0-9][A-Z0-9-]{0,19}$/.test(pandRaw) ? pandRaw : '';
 
     if (!name)  return res.status(400).json({ code: 'name_required',  error: 'Naam is verplicht' });
-    if (!phone) return res.status(400).json({ code: 'phone_required', error: 'Telefoonnummer is verplicht' });
+    if (!phone && emailRaw && !email) return res.status(400).json({ code: 'bad_email', error: 'Ongeldig e-mailadres' });
+    if (!phone && !email) return res.status(400).json({ code: 'contact_required', error: 'Telefoonnummer of e-mailadres is verplicht' });
     // GDPR Art. 7(1): consent must be given (not just shown) and demonstrable.
     // The client-side checkbox already blocks the submit button, but that's
     // trivially bypassed by calling this API directly — enforce it here too,
@@ -226,10 +235,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
     // ── Normalise phone. Stored in Airtable in international digits-only format
     // so it matches what WhatsApp sends as message.from (e.g. "32478123456")
-    const waPhone = _regio.naarE164(phone, regio);
+    const waPhone = phone ? _regio.naarE164(phone, regio) : '';
 
     // Validate: digits only, 8-15 chars (standard E.164 range)
-    if (!/^\d{8,15}$/.test(waPhone)) {
+    if (phone && !/^\d{8,15}$/.test(waPhone)) {
       return res.status(400).json({ code: 'bad_phone', error: 'Ongeldig telefoonnummer. Gebruik cijfers' });
     }
 
@@ -240,7 +249,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       body: JSON.stringify({
         fields: {
           fldbk0LVNckOU0bqA: name,
-          fld6YaitW0lMqHUrd: waPhone,   // normalized. Must match WhatsApp's message.from
+          ...(waPhone ? { fld6YaitW0lMqHUrd: waPhone } : {}),   // normalized. Must match WhatsApp's message.from
           fldSmczuyUJd26HLe: project_code,
           fld8mkrEWcyq7mUip: 'new',
           fldGoerozqdea4BfU: bron,
@@ -259,7 +268,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
              ongemoeid, dus hij overleeft elke bewerking vanuit het dashboard. */
           fldoLRI5W12ThTls7: JSON.stringify(Object.assign(
             { _v: 1, notes: [], tasks: [], calls: [], consent: { given: true, ts: consentTs } },
-            pand ? { property: pand } : {}
+            pand ? { property: pand } : {},
+            /* Het e-mailadres in dezelfde blob: de Leads-tabel heeft geen
+               e-mailkolom, en een onbekend veld laat de hele create stuklopen.
+               api/_leads-read.js leest het terug voor het dashboard. */
+            email ? { email } : {}
           ))
         }
       })
@@ -331,7 +344,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           // send failure (skip flagWaFailed's "Niet bereikbaar" treatment),
           // it's a deliberate no-send: the owner notification below still
           // fires so they know to follow up manually.
-          if (planState.isServiceStopped) {
+          if (!waPhone) {
+            /* Alleen e-mail: er is geen nummer om naar te sturen. Geen fout en
+               geen "Niet bereikbaar"-vlag -- de koper koos zelf voor e-mail. */
+            console.log(`[form] lead ${leadId} liet alleen een e-mailadres achter — geen WhatsApp-begroeting.`);
+          } else if (planState.isServiceStopped) {
             console.log(`[form] project ${project_code} — Plan Status '${planState.status}', automatische WhatsApp-begroeting overgeslagen. Lead is wel aangemaakt.`);
           } else {
             // A web-form lead has never messaged the business, so Meta's 24h
@@ -410,7 +427,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
               // {{1}}=lead name, {{2}}=lead phone, {{3}}=project code
               const notifyOk = await sendWATemplate(
                 notifyPhone, process.env.NOTIFY_TEMPLATE_NAME, notifyLang,
-                [sanitize(name), phone, sanitize(project_code)],
+                [sanitize(name), phone || sanitize(email), sanitize(project_code)],
                 notifyPnid, process.env.WHATSAPP_TOKEN
               );
               if (!notifyOk) {
@@ -439,11 +456,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        zichtbaar wordt. Alleen op exact nummer/e-mail, nooit op naam. Na het
        antwoord en fail-soft: een storing hier raakt de lead niet. */
     try {
-      waitUntil(_klant.koppelLead(project_code, leadId, { telefoon: phone, naam: name, email: body.email, kanaal: 'website', bron: bron || 'formulier' }).catch(() => {}));
+      waitUntil(_klant.koppelLead(project_code, leadId, { telefoon: waPhone, naam: name, email, kanaal: 'website', bron: bron || 'formulier' }).catch(() => {}));
     } catch (e) { /* koppelen is bijzaak; de lead bestaat al */ }
 
     // Email notification (fire-and-forget). prefer per-client Rapport Email
-    sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});
+    sendEmailNotification({ name, phone, email, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});
 
     /* Pushmelding naar de apparaten van dit kantoor. Bewust NAAST de e-mail en
        de WhatsApp-ping, niet in plaats daarvan: die twee zijn de betrouwbare
@@ -483,7 +500,7 @@ function escEmail(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-async function sendEmailNotification({ name, phone, project_code, bron, clientName, toEmail }) {
+async function sendEmailNotification({ name, phone, email, project_code, bron, clientName, toEmail }) {
   // Prefer per-client Rapport Email; fall back to global NOTIFY_EMAIL for legacy setups
   const NOTIFY_EMAIL = (toEmail && toEmail.trim()) || process.env.NOTIFY_EMAIL;
   if (!NOTIFY_EMAIL) { console.warn('[form mail] geen ontvanger (Rapport Email / NOTIFY_EMAIL)'); return; }
@@ -493,7 +510,8 @@ async function sendEmailNotification({ name, phone, project_code, bron, clientNa
           <h2 style="color:#1e6fd9">Nieuwe lead voor ${escEmail(clientName)}</h2>
           <table style="width:100%;border-collapse:collapse">
             <tr><td style="padding:8px;color:#666">Naam</td><td style="padding:8px;font-weight:600">${escEmail(name)}</td></tr>
-            <tr><td style="padding:8px;color:#666">Telefoon</td><td style="padding:8px;font-weight:600">${escEmail(phone)}</td></tr>
+            <tr><td style="padding:8px;color:#666">Telefoon</td><td style="padding:8px;font-weight:600">${escEmail(phone || '—')}</td></tr>
+            ${email ? `<tr><td style="padding:8px;color:#666">E-mail</td><td style="padding:8px;font-weight:600">${escEmail(email)}</td></tr>` : ''}
             <tr><td style="padding:8px;color:#666">Project</td><td style="padding:8px">${escEmail(project_code)}</td></tr>
             <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${escEmail(bron)}</td></tr>
           </table>
