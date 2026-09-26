@@ -61,8 +61,9 @@ const t = (language, status) => ({ name: INTRO, language, status, category: 'UTI
 
   console.log('\nde snapshot (koude lambda)');
   tpl._leegCache(); process.env.WABA_ID = ''; delete process.env.WHATSAPP_MANAGEMENT_TOKEN;
-  ck('Engels is goedgekeurd in de snapshot: een Engelse klant krijgt Engels', await tpl.goedgekeurdeTaalVoor('intro', 'en') === 'en_GB');
-  ck('Frans nog niet (in behandeling): terugval op nl_BE', await tpl.goedgekeurdeTaalVoor('intro', 'fr') === 'nl_BE');
+  ck('Frans is goedgekeurd in de snapshot: een Franstalige klant krijgt Frans', await tpl.goedgekeurdeTaalVoor('intro', 'fr') === 'fr_BE');
+  ck('Engels opnieuw in behandeling: terugval op nl_BE', await tpl.goedgekeurdeTaalVoor('intro', 'en') === 'nl_BE');
+  ck('de opvolging is in het Duits goedgekeurd', await tpl.goedgekeurdeTaalVoor('followup', 'de') === 'de');
   const vier = [];
   for (const t of ['fr_BE', 'de', 'en_GB', 'nl_BE']) vier.push(await tpl.goedgekeurd('booking', t));
   ck('de afspraakbevestiging is wel al in vier talen goedgekeurd', vier.every(Boolean), vier);

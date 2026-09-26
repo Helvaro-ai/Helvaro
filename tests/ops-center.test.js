@@ -48,7 +48,7 @@ const KLANTEN = [
   { fields: { 'Project Code': 'AAA', 'Client Name': 'Kine Gent',       Country: 'BE', Language: 'nl' } },
   { fields: { 'Project Code': 'BBB', 'Client Name': 'Makelaar Brugge', Country: 'BE', Language: 'nl' } },
   { fields: { 'Project Code': 'CCC', 'Client Name': 'Tandarts Leuven', Country: 'BE', Language: 'nl' } },
-  { fields: { 'Project Code': 'DDD', 'Client Name': 'Immo Liege',      Country: 'BE', Language: 'fr' } },
+  { fields: { 'Project Code': 'DDD', 'Client Name': 'Immo Eupen',      Country: 'BE', Language: 'de' } },
 ];
 
 global.fetch = async (url) => {
@@ -112,9 +112,11 @@ function roep(body, token) {
     !!nl && nl.namen.length === 3, nl && nl.namen);
   ck('en het Nederlands is klaar', !!nl && nl.klaar === true, nl);
 
-  const fr = rijen.find((r) => r.taal === 'fr');
-  ck('de Franstalige klant staat apart', !!fr && fr.klanten === 1, rijen);
-  ck('en het Frans is NIET klaar', !!fr && fr.klaar === false, fr);
+  /* Duits: de intro is op 2026-09-26 nog in behandeling (Frans is sindien
+     goedgekeurd, dus die taal toont niet meer wat hier getest wordt). */
+  const fr = rijen.find((r) => r.taal === 'de');
+  ck('de Duitstalige klant staat apart', !!fr && fr.klanten === 1, rijen);
+  ck('en het Duits is NIET klaar', !!fr && fr.klaar === false, fr);
   ck('met de ontbrekende templates bij naam',
     !!fr && fr.ontbreekt.length > 0, fr && fr.ontbreekt);
   ck('en een leesbare landnaam', !!nl && nl.landNaam === 'België', nl && nl.landNaam);
@@ -138,7 +140,7 @@ function roep(body, token) {
   ck('één klant zit vast op een ontbrekende taal',
     o.body.templates.klantenGeblokkeerd === 1, o.body.templates);
   ck('en dat staat als waarschuwing',
-    o.body.waarschuwingen.some((w) => /fr/.test(w)), o.body.waarschuwingen);
+    o.body.waarschuwingen.some((w) => /\bde\b/.test(w)), o.body.waarschuwingen);
   ck('het ontbrekende management-token wordt gemeld',
     o.body.waarschuwingen.some((w) => /WHATSAPP_MANAGEMENT_TOKEN/.test(w)), o.body.waarschuwingen);
 

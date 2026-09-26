@@ -210,14 +210,17 @@ function taalVoorLand(landcode) {
  *
  * Zet hier NIETS in wat je niet zelf in WhatsApp Manager hebt zien staan. Dit
  * bestand bestaat juist omdat de vorige lijst dingen beweerde die er niet waren.
- * In behandeling (niet hieronder): de fr_BE- en de-versies van
- * helvaro_aanvraag_ontvangen, helvaro_lead_alert en followup_24h.
+ * Opnieuw nagekeken op 2026-09-26 's avonds. In behandeling (niet hieronder):
+ * helvaro_aanvraag_ontvangen en_GB (na de bewerking van die dag terug in
+ * review) en de, en followup_24h fr_BE.
  */
 const SNAPSHOT = Object.freeze({
   'helvaro_aanvraag_ontvangen::nl_BE': 'APPROVED',
-  'helvaro_aanvraag_ontvangen::en_GB': 'APPROVED',
+  'helvaro_aanvraag_ontvangen::fr_BE': 'APPROVED',
   'helvaro_lead_alert::nl_BE': 'APPROVED',
   'helvaro_lead_alert::en_GB': 'APPROVED',
+  'helvaro_lead_alert::fr_BE': 'APPROVED',
+  'helvaro_lead_alert::de': 'APPROVED',
   'helvaro_afspraak_bevestiging::nl_BE': 'APPROVED',
   'helvaro_afspraak_bevestiging::en_GB': 'APPROVED',
   'helvaro_afspraak_bevestiging::fr_BE': 'APPROVED',
@@ -228,6 +231,7 @@ const SNAPSHOT = Object.freeze({
   'helvaro_afspraak_herinnering::de': 'APPROVED',
   'followup_24h::nl_BE': 'APPROVED',
   'followup_24h::en_GB': 'APPROVED',
+  'followup_24h::de': 'APPROVED',
   'helvaro_nieuwe_lead::nl_BE': 'APPROVED',
   'helvaro_nieuw_aanbod::nl_BE': 'APPROVED',
   'helvaro_nieuw_aanbod::en_GB': 'APPROVED',
