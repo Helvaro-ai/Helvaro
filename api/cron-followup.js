@@ -283,7 +283,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // itself: if FOLLOWUP_TEMPLATE_LANG is ever set to a language with no
       // approved Meta template, this falls back to 'nl' (logged) instead of
       // sending a template call that Meta will reject.
-      const TEMPLATE_LANG = _lang.resolveTemplateLanguage(process.env.FOLLOWUP_TEMPLATE_LANG || 'nl', 'nl').code;
+      let TEMPLATE_LANG = _lang.resolveTemplateLanguage(process.env.FOLLOWUP_TEMPLATE_LANG || 'nl', 'nl').code;
+      /* Alleen in een taal waarin followup_24h echt goedgekeurd is (zie
+         api/_wa-templates.js goedgekeurdeTaalVoor); anders blijft de keuze
+         hierboven staan. */
+      try { TEMPLATE_LANG = (await require('./_wa-templates').goedgekeurdeTaalVoor('followup', process.env.FOLLOWUP_TEMPLATE_LANG || 'nl')) || TEMPLATE_LANG; } catch (_) {}
       if (!TEMPLATE_NAME) {
         console.warn(`[cron-followup] FOLLOWUP_TEMPLATE_NAME niet geconfigureerd. Skip ${phone} (freeform >24u zou ban riskeren)`);
         continue;  // skip. Don't risk a Meta ban

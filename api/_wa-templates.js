@@ -199,19 +199,48 @@ function taalVoorLand(landcode) {
 }
 
 /* ── De laatst geverifieerde toestand ────────────────────────────────────────
- * Gebruikt wanneer Meta niet bereikbaar is. Handmatig nagekeken op 2026-09-01
- * tegen graph.facebook.com/v23.0/<WABA>/message_templates.
+ * Gebruikt wanneer Meta niet bereikbaar is, en op een koude lambda zolang de
+ * live index nog niet binnen is (zie warmOp hieronder). Nagekeken op
+ * 2026-09-26 in WhatsApp Manager (WABA "Helvaro"), status "Active" = APPROVED.
+ *
+ * Tot die datum stond hier alleen nl_BE. Gevolg: op een koude lambda zag de
+ * verzendcode geen enkele andere taal als goedgekeurd, en kreeg een Engels-,
+ * Frans- of Duitstalige klant zijn afspraakbevestiging in het Nederlands --
+ * terwijl die templates sinds 2026-09-15 in vier talen goedgekeurd waren.
  *
  * Zet hier NIETS in wat je niet zelf in WhatsApp Manager hebt zien staan. Dit
  * bestand bestaat juist omdat de vorige lijst dingen beweerde die er niet waren.
+ * In behandeling (niet hieronder): de fr_BE- en de-versies van
+ * helvaro_aanvraag_ontvangen, helvaro_lead_alert en followup_24h.
  */
 const SNAPSHOT = Object.freeze({
   'helvaro_aanvraag_ontvangen::nl_BE': 'APPROVED',
+  'helvaro_aanvraag_ontvangen::en_GB': 'APPROVED',
   'helvaro_lead_alert::nl_BE': 'APPROVED',
+  'helvaro_lead_alert::en_GB': 'APPROVED',
   'helvaro_afspraak_bevestiging::nl_BE': 'APPROVED',
+  'helvaro_afspraak_bevestiging::en_GB': 'APPROVED',
+  'helvaro_afspraak_bevestiging::fr_BE': 'APPROVED',
+  'helvaro_afspraak_bevestiging::de': 'APPROVED',
   'helvaro_afspraak_herinnering::nl_BE': 'APPROVED',
+  'helvaro_afspraak_herinnering::en_GB': 'APPROVED',
+  'helvaro_afspraak_herinnering::fr_BE': 'APPROVED',
+  'helvaro_afspraak_herinnering::de': 'APPROVED',
   'followup_24h::nl_BE': 'APPROVED',
+  'followup_24h::en_GB': 'APPROVED',
   'helvaro_nieuwe_lead::nl_BE': 'APPROVED',
+  'helvaro_nieuw_aanbod::nl_BE': 'APPROVED',
+  'helvaro_nieuw_aanbod::en_GB': 'APPROVED',
+  'helvaro_nieuw_aanbod::fr_BE': 'APPROVED',
+  'helvaro_nieuw_aanbod::de': 'APPROVED',
+  'helvaro_dealer_afspraak::nl_BE': 'APPROVED',
+  'helvaro_dealer_afspraak::en_GB': 'APPROVED',
+  'helvaro_dealer_afspraak::fr_BE': 'APPROVED',
+  'helvaro_dealer_afspraak::de': 'APPROVED',
+  'helvaro_dealer_herinnering::nl_BE': 'APPROVED',
+  'helvaro_dealer_herinnering::en_GB': 'APPROVED',
+  'helvaro_dealer_herinnering::fr_BE': 'APPROVED',
+  'helvaro_dealer_herinnering::de': 'APPROVED',
 });
 
 /* Meta's statussen, en wat ze voor ons betekenen. PAUSED en DISABLED zetten we
@@ -608,6 +637,16 @@ function goedgekeurdeTalen() {
     if (bekijk(taal, index).klaar) uit.add(taal);
   }
   return uit;
+}
+
+/* ── Warm op bij het laden ───────────────────────────────────────────────────
+ * resolveTemplateLanguage() in api/_lang.js is synchroon en leest `cache ||
+ * snapshot`. Zonder dit ziet elke koude lambda alleen de snapshot. Eén keer
+ * op de achtergrond ophalen maakt de volgende verzending live-juist. Alleen op
+ * Vercel: in tests en lokaal gebeurt er niets over het net. Fouten vallen
+ * stil terug op de snapshot, zoals haalIndex dat altijd al doet. */
+if (process.env.VERCEL && process.env.WABA_ID) {
+  haalIndex().catch(() => {});
 }
 
 module.exports = {

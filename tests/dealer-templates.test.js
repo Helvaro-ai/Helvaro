@@ -51,6 +51,11 @@ const melding = require('../api/_dealer-melding');
     return { ok: true, status: 200, json: async () => ({ messages: [{ id: 'wamid.test' }] }) };
   };
   const clientFields = { fldZEApe0gfse07AU: '+32470000000' };
+  /* "Nog niet goedgekeurd" expliciet nabootsen. Tot 2026-09-26 deed de
+     snapshot dat vanzelf (daar stond alleen nl_BE in); sinds de dealer-
+     templates in vier talen goedgekeurd zijn, staan ze er terecht in. */
+  const origGoed = tpl.goedgekeurd;
+  tpl.goedgekeurd = async (s, t) => (s === 'dealerAfspraak' ? false : origGoed(s, t));
   const uit = await melding.stuurAfspraakMelding({
     projectCode: 'DEMO', clientFields, phoneNumberId: '100000000000000', token: 'test-token-nooit-echt',
     lang: 'nl', tekst: 'hallo', terugval: { naam: 'Jan', telefoon: '+32471111111' },
@@ -61,6 +66,7 @@ const melding = require('../api/_dealer-melding');
   ck('zonder goedkeuring gaat de GENERIEKE lead_alert uit', tplCall && tplCall.template.name === tpl.naamVoor('notify'), tplCall && tplCall.template.name);
   ck('met drie parameters (naam, telefoon, projectcode)', tplCall && tplCall.template.components[0].parameters.length === 3);
   ck('en de melding telt als verstuurd', uit.verstuurd === 1 && uit.mislukt === 0, JSON.stringify(uit));
+  tpl.goedgekeurd = origGoed;
 
   console.log('\n— verzendpad: rijk zodra goedgekeurd —');
   /* De index nabootsen: zelfde snapshotvorm, met de dealer-template erin. */

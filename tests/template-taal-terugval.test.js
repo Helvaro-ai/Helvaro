@@ -53,10 +53,23 @@ const t = (language, status) => ({ name: INTRO, language, status, category: 'UTI
   console.log('\nde twee verzenders gebruiken het');
   const leads = fs.readFileSync(BASE + 'api/leads.js', 'utf8');
   const form = fs.readFileSync(BASE + 'api/form.js', 'utf8');
-  ck('"Send a test message" (api/leads.js)', /introLang = \(await _waTpl\.goedgekeurdeTaalVoor\('intro', introLang\)\) \|\| introLang/.test(leads));
-  ck('het leadformulier (api/form.js)', /introLang = \(await require\('\.\/_wa-templates'\)\.goedgekeurdeTaalVoor\('intro', introLang\)\) \|\| introLang/.test(form));
+  ck('"Send a test message" (api/leads.js)', /introLang = \(await _waTpl\.goedgekeurdeTaalVoor\('intro', process\.env\.INTRO_TEMPLATE_LANG \|\| klantTaal\)\) \|\| introLang/.test(leads));
+  ck('het leadformulier (api/form.js)', /introLang = \(await require\('\.\/_wa-templates'\)\.goedgekeurdeTaalVoor\('intro', process\.env\.INTRO_TEMPLATE_LANG \|\| lang\)\) \|\| introLang/.test(form));
+  const cron = fs.readFileSync(BASE + 'api/cron-followup.js', 'utf8');
+  ck('de 24u-opvolging (api/cron-followup.js)', /TEMPLATE_LANG = \(await require\('\.\/_wa-templates'\)\.goedgekeurdeTaalVoor\('followup', process\.env\.FOLLOWUP_TEMPLATE_LANG \|\| 'nl'\)\) \|\| TEMPLATE_LANG/.test(cron));
+  ck('en ze vragen de taal van de KLANT, niet de al-teruggevallen code', !/goedgekeurdeTaalVoor\('intro', introLang\)/.test(leads + form));
+
+  console.log('\nde snapshot (koude lambda)');
+  tpl._leegCache(); process.env.WABA_ID = ''; delete process.env.WHATSAPP_MANAGEMENT_TOKEN;
+  ck('Engels is goedgekeurd in de snapshot: een Engelse klant krijgt Engels', await tpl.goedgekeurdeTaalVoor('intro', 'en') === 'en_GB');
+  ck('Frans nog niet (in behandeling): terugval op nl_BE', await tpl.goedgekeurdeTaalVoor('intro', 'fr') === 'nl_BE');
+  const vier = [];
+  for (const t of ['fr_BE', 'de', 'en_GB', 'nl_BE']) vier.push(await tpl.goedgekeurd('booking', t));
+  ck('de afspraakbevestiging is wel al in vier talen goedgekeurd', vier.every(Boolean), vier);
+
   ck('en de aanhef volgt de gekozen taal (na de keuze berekend)',
-    leads.indexOf("goedgekeurdeTaalVoor('intro', introLang)") < leads.indexOf("const aanhef = { nl: 'daar'"));
+    leads.indexOf("goedgekeurdeTaalVoor('intro', process.env.INTRO_TEMPLATE_LANG || klantTaal)") > -1
+    && leads.indexOf("goedgekeurdeTaalVoor('intro', process.env.INTRO_TEMPLATE_LANG || klantTaal)") < leads.indexOf("const aanhef = { nl: 'daar'"));
 
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
