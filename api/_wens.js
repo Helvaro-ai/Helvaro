@@ -116,6 +116,80 @@ function naarNotities(raw, wens) {
  * Audi horen, hoe goedkoop ook -- dat leest als spam en kost je de lead voor
  * altijd. Merk is dus een filter, de rest is een score.
  */
+/* ── Synoniemen ──────────────────────────────────────────────────────────────
+ * Een voorraadfeed zegt 'Petrol', de dealer typt 'Benzine', een Franstalige
+ * koper vraagt 'essence'. Tot 2026-09-26 was dat drie keer iets anders: de
+ * wens 'benzine' paste niet op een auto met 'Petrol', en een koper die precies
+ * vond wat hij zocht, kreeg hem niet aangeboden.
+ *
+ * Eén soort per groep. De eerste term is de naam van de groep. Alleen hele
+ * woorden tellen -- 'van' (bestelwagen) mag niet matchen in 'van de garage'.
+ * Daarom staan de te algemene woorden ('auto', 'van', 'gas') in VELD maar NIET
+ * in TEKST: in een veld van een auto betekent 'Auto' een automaat, in een zin
+ * betekent het gewoon een auto. */
+const SOORTEN = Object.freeze({
+  brandstof: {
+    benzine:    ['benzine', 'petrol', 'gasoline', 'essence', 'benzin', 'super'],
+    diesel:     ['diesel', 'gasoil', 'tdi', 'hdi', 'cdi'],
+    elektrisch: ['elektrisch', 'elektrische', 'electric', 'électrique', 'electrique', 'elektro', 'ev', 'bev', 'volledig elektrisch'],
+    hybride:    ['hybride', 'hybrid', 'hev', 'phev', 'plug-in', 'plugin', 'plug-in hybride'],
+    lpg:        ['lpg', 'autogas'],
+    cng:        ['cng', 'aardgas'],
+  },
+  transmissie: {
+    automaat: ['automaat', 'automatic', 'automatique', 'automatik', 'automatisch', 'automatische', 'dsg', 'cvt', 'tiptronic', 'steptronic', 'edc', 'eat8'],
+    manueel:  ['manueel', 'manuele', 'manual', 'handgeschakeld', 'handgeschakelde', 'manuelle', 'schaltgetriebe', 'handbak', 'schakel'],
+  },
+  carrosserie: {
+    suv:         ['suv', '4x4', 'terreinwagen', 'crossover', 'tout-terrain'],
+    break:       ['break', 'station', 'stationwagen', 'stationcar', 'touring', 'estate', 'kombi', 'avant', 'sportswagen', 'sports tourer'],
+    cabrio:      ['cabrio', 'cabriolet', 'convertible', 'roadster'],
+    coupe:       ['coupé', 'coupe'],
+    berline:     ['berline', 'sedan', 'limousine', 'limo'],
+    hatchback:   ['hatchback', 'hatch', 'stadsauto', 'citadine'],
+    monovolume:  ['monovolume', 'mpv', 'minivan', 'ruimtewagen', 'monospace'],
+    bestelwagen: ['bestelwagen', 'bestelwagens', 'lichte vracht', 'utilitaire', 'utility'],
+  },
+});
+/* Alleen in een VELD, nooit uit een zin gehaald. */
+const ALLEEN_VELD = Object.freeze({ transmissie: { automaat: ['auto', 'at'], manueel: ['mt'] }, carrosserie: { bestelwagen: ['van'] } });
+
+function woordIn(hooi, naald) {
+  const esc = String(naald).replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+  return new RegExp('(^|[^a-z0-9à-ÿ])' + esc + '($|[^a-z0-9à-ÿ])', 'i').test(hooi);
+}
+
+/** De groep waar deze waarde bij hoort ('Petrol' -> 'benzine'), of ''. */
+function soortVan(soort, waarde, alleenTekst) {
+  const v = String(waarde == null ? '' : waarde).toLowerCase().trim();
+  const groepen = SOORTEN[soort];
+  if (!v || !groepen) return '';
+  for (const naam of Object.keys(groepen)) {
+    const termen = groepen[naam].concat(
+      !alleenTekst && ALLEEN_VELD[soort] && ALLEEN_VELD[soort][naam] ? ALLEEN_VELD[soort][naam] : []);
+    /* Hybride vóór benzine en elektrisch lezen: 'Hybride (benzine/elektrisch)'
+       is een hybride. Door de volgorde van de groepen hierboven zou benzine
+       winnen, dus hybride krijgt voorrang. */
+    if (soort === 'brandstof' && naam !== 'hybride'
+        && groepen.hybride.some((t) => woordIn(v, t))) continue;
+    if (termen.some((t) => woordIn(v, t))) return naam;
+  }
+  return '';
+}
+
+/**
+ * Past de waarde van een auto bij wat de koper zocht? Zelfde groep, of (zoals
+ * altijd al) de wens staat letterlijk in het veld.
+ */
+function zelfdeSoort(soort, veldwaarde, wenswaarde) {
+  const v = String(veldwaarde == null ? '' : veldwaarde).toLowerCase();
+  const w = String(wenswaarde == null ? '' : wenswaarde).toLowerCase();
+  if (!v || !w) return false;
+  if (v.indexOf(w) !== -1) return true;
+  const a = soortVan(soort, v, false);
+  return !!a && a === soortVan(soort, w, false);
+}
+
 const TOLERANTIE_PRIJS = 0.10;   // 10% boven het budget mag nog
 const TOLERANTIE_KM     = 0.20;  // 20% boven de kilometergrens mag nog
 
@@ -180,8 +254,7 @@ function scoor(wens, voertuig) {
   ]) {
     if (!w[sleutel]) continue;
     maximum += 10;
-    const v = String(voertuig[veld] || '').toLowerCase();
-    if (v && v.indexOf(w[sleutel]) !== -1) { punten += 10; redenen.push(label); }
+    if (zelfdeSoort(sleutel, voertuig[veld], w[sleutel])) { punten += 10; redenen.push(label); }
   }
 
   /* Hier stond een controle op `maximum === 0`, bedoeld als vangnet voor een
@@ -243,6 +316,89 @@ function matchLeads(leads, voertuig, opties = {}) {
   return uit.sort((a, b) => b.score - a.score).slice(0, max);
 }
 
+/* ── Uit wat de koper NU schrijft ──────────────────────────────────────────────
+ * De opgeslagen wens komt uit het WENS-blok van het model, en dat blok komt
+ * pas NA een antwoord. Wie als eerste bericht "ik zoek een automaat SUV tot
+ * 25.000" stuurt, kreeg dus een lijst van de eerste twaalf auto's op code --
+ * precies het antwoord dat laat zien dat er niet geluisterd wordt.
+ *
+ * Dit leest alleen wat ondubbelzinnig is: een bedrag met een bovengrens-woord
+ * ervoor, een kilometergrens, een bouwjaar met 'vanaf', en vaste woorden voor
+ * brandstof, versnellingsbak en carrosserie. Twijfel = niets. Het resultaat
+ * wordt NIET bewaard -- dat blijft het werk van het WENS-blok -- het ordent
+ * alleen de lijst die het model deze beurt ziet.
+ *
+ * @param {string|string[]} berichten  de berichten van de koper, oudste eerst;
+ *                                     een later bericht overschrijft een eerder
+ * @param {{merken?:string[]}} [opties] merken uit de voorraad van deze dealer
+ */
+function bedragUit(getalTekst, achter) {
+  let t = String(getalTekst || '').replace(/\s/g, '');
+  const k = /^(k|duizend|mille|tausend)/i.test(String(achter || '').trim());
+  /* 25.000 en 25,000 = 25000; 24,5k = 24500. */
+  if (/^\d{1,3}([.,]\d{3})+$/.test(t)) t = t.replace(/[.,]/g, '');
+  else t = t.replace(',', '.');
+  let n = Number(t);
+  if (!Number.isFinite(n)) return null;
+  if (k) n = n * 1000;
+  return Math.round(n);
+}
+
+const GETAL = '(\\d{1,3}(?:[.,\\s]\\d{3})+|\\d+(?:[.,]\\d+)?)\\s*(k\\b|duizend|mille|tausend)?';
+const BOVENGRENS = '(?:tot|onder|max(?:imum)?|budget(?: van| is| tot)?|niet meer dan|hoogstens|minder dan|jusqu[\'’]?(?:à|a)|moins de|maximum de|under|up to|less than|bis|unter|höchstens|weniger als)';
+const IN_BEREIK = (n) => n !== null && n >= 1000 && n <= 1000000;
+
+/* De laatste treffer in de tekst telt: "tot 20k... nee, tot 25k" is 25k. */
+function laatste(re, t) {
+  let m, uit = null;
+  re.lastIndex = 0;
+  while ((m = re.exec(t))) uit = bedragUit(m[1], m[2]);
+  return uit;
+}
+
+function uitTekst(berichten, opties) {
+  const lijst = (Array.isArray(berichten) ? berichten : [berichten])
+    .map((b) => String(b == null ? '' : b).toLowerCase()).filter(Boolean);
+  const merken = ((opties && opties.merken) || []).map((m) => String(m || '').toLowerCase().trim()).filter((m) => m.length >= 2);
+  const KM     = new RegExp(BOVENGRENS + '\\s*' + GETAL + '\\s*(?:km|kilometer)', 'g');
+  const KM_WEG = new RegExp(GETAL + '\\s*(?:km|kilometer)', 'g');
+  const PRIJS  = new RegExp(BOVENGRENS + '\\s*(?:€|eur(?:o)?\\s*)?\\s*' + GETAL + '\\s*(?:€|eur(?:o)?)?', 'g');
+  const w = {};
+
+  for (const t of lijst) {
+    /* Budget: kilometers eerst weghalen, want 'max 100.000 km' is geen budget. */
+    const prijs = laatste(PRIJS, t.replace(KM_WEG, ' '));
+    if (IN_BEREIK(prijs)) w.maxPrijs = prijs;
+
+    /* Een bericht over zijn INRUILWAGEN beschrijft de auto die hij kwijt wil,
+       niet die hij zoekt: "mijn Audi diesel met 150.000 km om in te ruilen".
+       Daaruit halen we alleen het budget hierboven, verder niets. */
+    if (/inruil|in te ruilen|ruilen|reprise|trade[- ]?in|inzahlung/.test(t)) continue;
+
+    const km = laatste(KM, t);
+    if (IN_BEREIK(km)) w.maxKm = km;
+
+    const jaar = /(?:vanaf|na|niet ouder dan|from|after|à partir de|a partir de|depuis|ab|nach)\s*(?:bouwjaar\s*)?((?:19|20)\d{2})\b/.exec(t)
+      || /\b((?:19|20)\d{2})\s*(?:of|or|ou|oder)\s*(?:nieuwer|recenter|jonger|later|newer|plus récent|neuer)/.exec(t);
+    if (jaar) {
+      const j = Number(jaar[1]);
+      if (j >= 1990 && j <= 2100) w.minJaar = j;
+    }
+
+    for (const soort of ['brandstof', 'transmissie', 'carrosserie']) {
+      const g = soortVan(soort, t, true);
+      if (g) w[soort] = g;
+    }
+
+    /* Twee merken in één bericht ("BMW of Audi") is geen merkwens: merk is
+       een harde filter in scoor(), en de verkeerde kiezen verbergt de helft. */
+    const genoemd = merken.filter((mk, i) => merken.indexOf(mk) === i && woordIn(t, mk));
+    if (genoemd.length === 1) w.merk = genoemd[0];
+    else if (genoemd.length > 1) delete w.merk;
+  }
+  return normaliseer(w);
+}
+
 /** De wens in gewone woorden, voor op een kaart of in een prompt. */
 function omschrijf(wens) {
   const w = normaliseer(wens);
@@ -269,4 +425,8 @@ module.exports = {
   scoor,
   matchLeads,
   omschrijf,
+  uitTekst,
+  soortVan,
+  zelfdeSoort,
+  SOORTEN,
 };

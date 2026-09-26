@@ -747,17 +747,47 @@ const voertuigen = {
    * Het blok als de auto NIET bekend is: een korte lijst om uit te kiezen.
    * @param {object[]} lijst  voertuigen van deze dealer
    */
-  index(lijst) {
+  index(lijst, opties) {
     const autos = (lijst || []).filter((v) => v && (String(v.status) === 'beschikbaar' || String(v.status) === 'gereserveerd'));
     if (!autos.length) return '';
     const r = ['VOERTUIGEN DIE DEZE DEALER NU AANBIEDT:'];
+    const o = opties || null;
     /* Twaalf is het dak, om dezelfde reden als bij panden: deze tekst gaat bij
        ELKE beurt mee naar het model, en een dealer met tachtig auto's zou de
        helft van het gesprek aan een opsomming besteden. */
-    for (const v of autos.slice(0, 12)) {
-      r.push(voertuigRegel(v));
+    if (!o) {
+      for (const v of autos.slice(0, 12)) {
+        r.push(voertuigRegel(v));
+      }
+      if (autos.length > 12) r.push('- (en nog ' + (autos.length - 12) + ' andere)');
+    } else {
+      /* Gerangschikt (api/_vehicles.js rangschik): de lijst komt al in de
+         goede volgorde binnen, en `genoemd`/`passend` zeggen welke bovenaan
+         staan en waarom. Zonder opties is dit blok teken voor teken wat het
+         altijd was -- zie tests/dealer-slimmer.test.js. */
+      const genoemd = o.genoemd instanceof Set ? o.genoemd : new Set();
+      const passend = o.passend instanceof Set ? o.passend : new Set();
+      const code = (v) => String(v.code || '').trim().toUpperCase();
+      const toon = autos.slice(0, 12);
+      const groep = (titel, filter) => {
+        const g = toon.filter(filter);
+        if (!g.length) return;
+        r.push(titel);
+        for (const v of g) r.push(voertuigRegel(v));
+      };
+      if (o.zoekt) r.push('WAT HIJ ZOEKT (uit het gesprek): ' + o.zoekt);
+      groep('HIJ NOEMDE EEN VAN DEZE (vraag welke -- kleur, bouwjaar of prijs):', (v) => genoemd.has(code(v)));
+      groep('PASSEN BIJ WAT HIJ ZOEKT (beste eerst):', (v) => !genoemd.has(code(v)) && passend.has(code(v)));
+      groep((genoemd.size || passend.size) ? 'VERDER IN DE VOORRAAD:' : 'IN DE VOORRAAD:',
+        (v) => !genoemd.has(code(v)) && !passend.has(code(v)));
+      if (autos.length > 12) r.push('- (en nog ' + (autos.length - 12) + ' andere)');
+      if (o.zoekt && !passend.size) {
+        r.push('Niets in de voorraad past echt bij wat hij zoekt. Zeg dat eerlijk, stel hoogstens iets voor dat '
+             + 'in de buurt komt en zeg waarin het afwijkt, en leg vast wat hij zoekt (WENS).');
+      } else if (passend.size) {
+        r.push('Stel gerust een of twee van de passende voor, met naam en prijs. Noem nooit een auto die hier niet staat.');
+      }
     }
-    if (autos.length > 12) r.push('- (en nog ' + (autos.length - 12) + ' andere)');
     r.push('');
     r.push('Je weet NIET over welk voertuig deze koper het heeft. Vraag het, vriendelijk en in een zin, ');
     r.push('voordat je over prijs, kilometerstand of een proefrit begint. Herkent hij het aan het merk ');
@@ -769,6 +799,31 @@ const voertuigen = {
        die je later terug wil bellen. */
     r.push(WENS_OPDRACHT);
     r.push(KOOP_OPDRACHT);
+    return r.join('\n');
+  },
+
+  /**
+   * Wat al bekend is over deze koper, uit EERDERE beurten.
+   *
+   * Het model ziet de laatste twintig berichten. In een gesprek dat een week
+   * loopt, staat het budget van dag een daar niet meer in -- en dan vraagt het
+   * er opnieuw naar. Dat is het duidelijkste teken dat er niet geluisterd wordt.
+   * De wens en de koopinfo werden al bewaard (WENS en KOOP), maar gingen nooit
+   * terug naar het model. Nu wel.
+   *
+   * @param {{zoekt?:string, aankoop?:string}} p  al in gewone woorden
+   *   (api/_wens.js omschrijf, api/_koop.js omschrijf) -- deze module leest
+   *   zelf geen Notities.
+   */
+  profiel(p) {
+    const zoekt = schoon(p && p.zoekt);
+    const aankoop = schoon(p && p.aankoop);
+    if (!zoekt && !aankoop) return '';
+    const r = ['WAT JE AL WEET OVER DEZE KOPER (uit eerdere berichten):'];
+    if (zoekt)   r.push('- Zoekt: ' + zoekt);
+    if (aankoop) r.push('- Aankoop: ' + aankoop);
+    r.push('Vraag dit NIET opnieuw. Gebruik het: een budget dat hij al noemde, ken je. '
+         + 'Zegt hij nu iets anders, dan geldt het nieuwe.');
     return r.join('\n');
   },
 };

@@ -1145,6 +1145,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         const blob = JSON.parse(lead.fields[NOTITIES_FIELD] || lead.fields['Notities'] || '{}');
         leadCode = blob && blob.property ? String(blob.property) : '';
       } catch (_) { leadCode = ''; }
+      /* Wens en koopinfo uit eerdere beurten. Werpen nooit. */
+      const notitiesRaw = lead.fields[NOTITIES_FIELD] || lead.fields['Notities'] || '';
+      const bekendProfiel = { wens: _wens.uitNotities(notitiesRaw), koop: _koop.uitNotities(notitiesRaw) };
       const uitkomst = await _autoscout.herken(_vehicles, projectCode, koperTekst, { leadCode });
       herkendVoertuig = uitkomst.voertuig;
       voorraadVertrouwen = await vertrouwenBelofte;
@@ -1189,8 +1192,34 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         console.log(`[WhatsApp] voertuig ${herkendVoertuig.code} herkend via ${uitkomst.via} voor lead ${lead.id}`);
       } else {
         const voorraad = await _vehicles.list(projectCode, { alleenPubliek: true });
-        if (voorraad.length) pandSectie = _ai.prompts.voertuigen.index(voorraad);
+        if (voorraad.length) {
+          /* De lijst in de volgorde die er voor DEZE koper toe doet: wat hij
+             noemde, dan wat bij zijn wens past. De wens is wat al bewaard was
+             (WENS-blok van eerdere beurten) plus wat hij in zijn laatste
+             berichten schrijft -- het nieuwste wint. Zie api/_vehicles.js
+             rangschik() en api/_wens.js uitTekst(). */
+          const merken = Array.from(new Set(voorraad.map((v) => v.merk).filter(Boolean)));
+          const laatsteBerichten = history
+            .filter((m) => m && m.role === 'user')
+            .slice(-6)
+            .map((m) => String(m.content || ''));
+          const wensNu = _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
+            _wens.uitTekst(laatsteBerichten, { merken }) || {}));
+          const gerangschikt = _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten });
+          pandSectie = _ai.prompts.voertuigen.index(gerangschikt.lijst, {
+            zoekt: _wens.omschrijf(wensNu),
+            genoemd: gerangschikt.genoemd,
+            passend: gerangschikt.passend,
+          });
+        }
       }
+      /* Wat al bekend is uit eerdere beurten, zodat hij het niet opnieuw
+         vraagt. De wens staat bij de lijst hierboven al; bij een fiche nog niet. */
+      const profielBlok = _ai.prompts.voertuigen.profiel({
+        zoekt: herkendVoertuig ? _wens.omschrijf(bekendProfiel.wens) : '',
+        aankoop: _koop.omschrijf(bekendProfiel.koop),
+      });
+      if (profielBlok) pandSectie += (pandSectie ? '\n\n' : '') + profielBlok;
       /* Verouderde of onbereikbare voorraad: helpen mag, bevestigen niet. */
       pandSectie += _inventaris.promptNotitie(voorraadVertrouwen);
     } catch (e) {

@@ -261,6 +261,57 @@ function alternatieven(voorraad, context, max) {
   return kandidaten.slice(0, limiet);
 }
 
+/**
+ * De voorraad in de volgorde die er voor DEZE koper toe doet.
+ *
+ * De lijst die het model ziet als het niet weet welke auto bedoeld wordt, was
+ * de eerste twaalf op code. Een dealer met zestig auto's en een koper die "een
+ * automaat SUV tot 25.000" vraagt, kreeg V1 tot V12 -- toevallig drie
+ * bestelwagens en een cabrio -- en het model moest daarmee antwoorden.
+ *
+ * Volgorde: eerst de auto's die hij zelf noemde maar niet eenduidig ("die
+ * Golf" bij drie Golfs), dan wat bij zijn wens past (beste eerst), dan de rest
+ * op code. Er valt niets weg: wat niet past staat onderaan, niet uit beeld.
+ *
+ * @param {object[]} voorraad
+ * @param {{wens?:object, kandidaten?:object[]}} [context]
+ * @returns {{lijst:object[], genoemd:Set<string>, passend:Set<string>}}
+ */
+function rangschik(voorraad, context) {
+  const ctx = context || {};
+  const lijst = Array.isArray(voorraad) ? voorraad.filter((v) => v && v.code) : [];
+  const genoemdeCodes = (ctx.kandidaten || []).map((k) => k && normCode(k.code)).filter(Boolean);
+  const genoemd = new Set();
+  const passend = new Set();
+  let _wens = null;
+  if (ctx.wens) { try { _wens = require('./_wens'); } catch (_) { _wens = null; } }
+
+  const gescoord = lijst.map((v) => {
+    const code = normCode(v.code);
+    let punten = 0;
+    const plek = genoemdeCodes.indexOf(code);
+    if (plek !== -1) { punten += 1e6 - plek; genoemd.add(code); }
+    if (_wens) {
+      const m = _wens.scoor(ctx.wens, v);
+      if (m && m.score > 0) {
+        punten += m.score;
+        /* 'Passend' is strenger dan een score: alles wat hij met NAAM vroeg --
+           model, brandstof, versnellingsbak, carrosserie -- moet kloppen. Een
+           manuele hatchback binnen budget is geen "automaat SUV tot 25.000",
+           hoe hoog de prijs ook scoort. Wat bijna past staat wel vooraan in
+           de rest van de lijst. */
+        const w = m.wens;
+        const allesKlopt = (!w.model || String(v.model || '').toLowerCase().indexOf(w.model) !== -1)
+          && ['brandstof', 'transmissie', 'carrosserie'].every((k) => !w[k] || _wens.zelfdeSoort(k, v[k], w[k]));
+        if (allesKlopt) { punten += 1000; passend.add(code); }
+      }
+    }
+    return { v, code, punten };
+  });
+  gescoord.sort((a, b) => (b.punten - a.punten) || a.code.localeCompare(b.code, 'nl', { numeric: true }));
+  return { lijst: gescoord.map((x) => x.v), genoemd, passend };
+}
+
 /* ── Airtable ────────────────────────────────────────────────────────────── */
 function configured() {
   return Boolean(process.env.API_AIRTABLE && process.env.BASE_AIRTABLE);
@@ -944,6 +995,7 @@ module.exports = {
   boekbaar,
   operationeleStatus,
   alternatieven,
+  rangschik,
   configured,
   available,
   _resetAvailability, onbeschikbaarReden,
