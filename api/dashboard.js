@@ -8335,9 +8335,9 @@ function renderOnboardingChecklist(d) {
 function vraagWhatsAppKoppeling() {
   toonSupportModal({
     onderwerp: 'WhatsApp koppelen',
-    title:     'WhatsApp koppelen',
-    message:   'We koppelen je nummer en laten het je weten zodra het live staat.',
-    voorbeeld: 'Hallo,\\n\\nIk wil graag mijn WhatsApp-nummer laten koppelen aan Helvaro.\\n\\nNummer: \\n'
+    title:     tr('wa.koppel.titel'),
+    message:   tr('wa.koppel.tekst'),
+    voorbeeld: tr('wa.koppel.voorbeeld')
   });
 }
 
@@ -8596,7 +8596,7 @@ function hvAssistentNaam() {
       return _wizardConfig.aiName.trim();
     }
   } catch (e) { /* label mag nooit een scherm slopen */ }
-  return 'Assistent';
+  return tr('set.ai');
 }
 
 function hvFout(r, body) {

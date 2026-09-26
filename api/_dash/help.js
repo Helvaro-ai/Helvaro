@@ -103,10 +103,9 @@ const TEKST = {
     { id: 'whatsapp', sec: 'Je assistent instellen', title: 'Je WhatsApp-nummer koppelen',
       tags: 'whatsapp nummer koppelen meta telefoon aansluiten',
       body: () =>
-        '<p>Dit stel je niet zelf in, en dat is geen beperking van Helvaro. Meta moet elk zakelijk WhatsApp-nummer eerst goedkeuren, en dat traject regelen wij voor je.</p>' +
-        '<p>Het duurt meestal een paar dagen. Je hoeft ondertussen niets te doen, we nemen contact op zodra het kan.</p>' +
-        '<p>Ben je er al klaar voor? Laat het weten via de knop op je dashboard of mail ons, dan pakken we het sneller op.</p>' +
-        '<p>Tot dan werkt je leadformulier gewoon: leads komen binnen en je assistent praat met ze via het formulier.</p>' },
+        '<p>Je assistent werkt meteen via het gedeelde Helvaro-nummer: leads die je formulier invullen krijgen een WhatsApp van je assistent, en jij leest alles mee onder Gesprekken.</p>' +
+        '<p>Wil je dat leads je eigen bedrijfsnaam zien? Ga naar Instellingen &gt; WhatsApp en klik op <strong>Nummer koppelen</strong>. Je logt in bij Meta, kiest of maakt je WhatsApp Business-account en bevestigt je nummer. Daarna loopt alles via jouw nummer.</p>' +
+        '<p>Lukt het niet, of heb je liever hulp? Laat het ons weten via de knop op je dashboard, dan doen we het samen.</p>' },
 
     { id: 'agenda', sec: 'Je assistent instellen', title: 'Google Agenda koppelen',
       tags: 'agenda kalender google afspraak boeken beschikbaarheid koppelen',
@@ -214,10 +213,9 @@ const TEKST = {
     { id: 'whatsapp', sec: 'Configurer votre assistant', title: 'Connecter votre numéro WhatsApp',
       tags: 'whatsapp numero connecter meta telephone raccorder',
       body: () =>
-        '<p>Vous ne configurez pas cela vous-même, et ce n’est pas une limite d’Helvaro. Meta doit d’abord approuver chaque numéro WhatsApp professionnel, et nous nous chargeons de ce parcours pour vous.</p>' +
-        '<p>Cela prend généralement quelques jours. Vous n’avez rien à faire entre-temps, nous vous contactons dès que c’est possible.</p>' +
-        '<p>Vous êtes déjà prêt ? Faites-le savoir via le bouton sur votre tableau de bord ou par e-mail, et nous accélérons.</p>' +
-        '<p>D’ici là, votre formulaire fonctionne normalement : les prospects arrivent et votre assistant leur parle via le formulaire.</p>' },
+        '<p>Votre assistant fonctionne tout de suite via le numéro Helvaro partagé : les leads qui remplissent votre formulaire reçoivent un WhatsApp de votre assistant, et vous suivez tout sous Conversations.</p>' +
+        '<p>Vous voulez que vos leads voient le nom de votre entreprise ? Allez dans Paramètres &gt; WhatsApp et cliquez sur <strong>Associer un numéro</strong>. Vous vous connectez à Meta, choisissez ou créez votre compte WhatsApp Business et confirmez votre numéro. Ensuite, tout passe par votre numéro.</p>' +
+        '<p>Un souci, ou vous préférez de l’aide ? Faites-le-nous savoir via le bouton de votre tableau de bord et nous le faisons ensemble.</p>' },
 
     { id: 'agenda', sec: 'Configurer votre assistant', title: 'Connecter Google Agenda',
       tags: 'agenda calendrier google rendez-vous reserver disponibilite connecter',
@@ -325,10 +323,9 @@ const TEKST = {
     { id: 'whatsapp', sec: 'Setting up your assistant', title: 'Connecting your WhatsApp number',
       tags: 'whatsapp number connect meta phone link',
       body: () =>
-        '<p>You do not set this up yourself, and that is not a limitation of Helvaro. Meta has to approve every business WhatsApp number first, and we handle that process for you.</p>' +
-        '<p>It usually takes a few days. There is nothing for you to do in the meantime; we get in touch as soon as it can go ahead.</p>' +
-        '<p>Ready already? Let us know through the button on your dashboard or by email and we will pick it up sooner.</p>' +
-        '<p>Until then your lead form works as normal: leads come in and your assistant talks to them through the form.</p>' },
+        '<p>Your assistant works straight away on the shared Helvaro number: leads who fill in your form get a WhatsApp from your assistant, and you follow everything under Conversations.</p>' +
+        '<p>Want leads to see your own business name? Go to Settings &gt; WhatsApp and click <strong>Connect number</strong>. You log in with Meta, choose or create your WhatsApp Business account and confirm your number. From then on everything runs through your own number.</p>' +
+        '<p>Something not working, or would you rather have help? Let us know through the button on your dashboard and we will do it together.</p>' },
 
     { id: 'agenda', sec: 'Setting up your assistant', title: 'Connecting Google Calendar',
       tags: 'calendar google appointment booking availability connect',
@@ -437,10 +434,9 @@ const TEKST = {
     { id: 'whatsapp', sec: 'Ihren Assistenten einrichten', title: 'Ihre WhatsApp-Nummer verbinden',
       tags: 'whatsapp nummer verbinden meta telefon anschliessen',
       body: () =>
-        '<p>Das richten Sie nicht selbst ein, und das ist keine Einschränkung von Helvaro. Meta muss jede geschäftliche WhatsApp-Nummer zuerst freigeben, und diesen Weg übernehmen wir für Sie.</p>' +
-        '<p>Meist dauert es ein paar Tage. Sie müssen währenddessen nichts tun, wir melden uns, sobald es losgehen kann.</p>' +
-        '<p>Schon bereit? Sagen Sie uns über die Schaltfläche im Dashboard oder per E-Mail Bescheid, dann greifen wir es früher auf.</p>' +
-        '<p>Bis dahin läuft Ihr Lead-Formular ganz normal: Leads kommen herein und Ihr Assistent spricht über das Formular mit ihnen.</p>' },
+        '<p>Ihr Assistent arbeitet sofort über die gemeinsame Helvaro-Nummer: Leads, die Ihr Formular ausfüllen, erhalten eine WhatsApp von Ihrem Assistenten, und Sie verfolgen alles unter Gespräche.</p>' +
+        '<p>Sollen Leads Ihren eigenen Firmennamen sehen? Gehen Sie zu Einstellungen &gt; WhatsApp und klicken Sie auf <strong>Nummer verbinden</strong>. Sie melden sich bei Meta an, wählen oder erstellen Ihr WhatsApp-Business-Konto und bestätigen Ihre Nummer. Danach läuft alles über Ihre eigene Nummer.</p>' +
+        '<p>Klappt etwas nicht, oder möchten Sie lieber Hilfe? Sagen Sie uns über die Schaltfläche auf Ihrem Dashboard Bescheid, dann machen wir es gemeinsam.</p>' },
 
     { id: 'agenda', sec: 'Ihren Assistenten einrichten', title: 'Google Kalender verbinden',
       tags: 'kalender google termin buchen verfuegbarkeit verbinden',

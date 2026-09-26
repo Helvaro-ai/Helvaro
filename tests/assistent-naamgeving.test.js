@@ -93,9 +93,16 @@ ck('het sprekerlabel komt uit hvAssistentNaam()',
   ck('die functie staat in de pagina', !!m, null);
   if (m) {
     // eslint-disable-next-line no-new-func
-    const f = new Function('document', 'window', m[0] + '; return hvAssistentNaam;');
+    /* De terugval is vertaald (2026-09-26): tr('set.ai'). Een Engelse sessie
+       -- zoals die van de Meta-reviewer -- las hier "ASSISTENT". */
+    const woorden = require(BASE + 'api/_i18n.js');
+    const trIn = (taal) => (k) => woorden.t(taal, k);
+    const bouw = new Function('document', 'window', 'tr', m[0] + '; return hvAssistentNaam;');
+    const f = (doc, win) => bouw(doc, win, trIn('nl'));
     ck('zonder ingestelde naam valt hij terug op "Assistent"',
       f({ getElementById: () => null }, {})() === 'Assistent', f({ getElementById: () => null }, {})());
+    ck('in het Engels is dat "Assistant"',
+      bouw({ getElementById: () => null }, {}, trIn('en'))() === 'Assistant', null);
     ck('met een ingestelde naam gebruikt hij die',
       f({ getElementById: () => ({ value: '  Mathis  ' }) }, {})() === 'Mathis', null);
     ck('en een kapotte DOM levert een label op in plaats van een crash',
