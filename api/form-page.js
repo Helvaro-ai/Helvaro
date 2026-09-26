@@ -881,9 +881,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
 <script>
 var PROJECT  = '${escJs(project)}';
-/* De pandcode reist mee naar de lead, zodat de AI straks weet over welke
-   woning dit gesprek gaat. Leeg = het algemene formulier. */
-var PAND     = '${escJs(pand ? pand.code : '')}';
+/* De pand- of voertuigcode reist mee naar de lead, zodat de AI straks weet
+   over welke woning of auto dit gesprek gaat. Leeg = het algemene formulier.
+   Tot 2026-09-26 ging bij een dealer alleen de pandcode mee -- en die is daar
+   altijd leeg, dus elke aanvraag vanaf een autopagina kwam zonder auto aan. */
+var PAND     = '${escJs(pand ? pand.code : (voertuig ? voertuig.code : ''))}';
 var AI_FIRST = '${escJs(firstName)}';
 var FALLBACK_NAME = '${escJs(t.friend)}';
 var I18N = {

@@ -1138,7 +1138,14 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
 
       /* Parallel met het herkennen: de voorraadstatus is één lichte lezing. */
       const vertrouwenBelofte = _inventaris.vertrouwenVoor(projectCode);
-      const uitkomst = await _autoscout.herken(_vehicles, projectCode, koperTekst);
+      /* De auto die al op de lead staat: van het formulier op de website van de
+         dealer (/start/CODE/V3), of van een eerdere beurt. */
+      let leadCode = '';
+      try {
+        const blob = JSON.parse(lead.fields[NOTITIES_FIELD] || lead.fields['Notities'] || '{}');
+        leadCode = blob && blob.property ? String(blob.property) : '';
+      } catch (_) { leadCode = ''; }
+      const uitkomst = await _autoscout.herken(_vehicles, projectCode, koperTekst, { leadCode });
       herkendVoertuig = uitkomst.voertuig;
       voorraadVertrouwen = await vertrouwenBelofte;
       if (herkendVoertuig) voertuigMomentopname = _inventaris.momentopname(herkendVoertuig);

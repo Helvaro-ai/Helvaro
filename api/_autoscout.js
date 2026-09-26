@@ -156,11 +156,28 @@ function lees(tekst) {
  * Vindt geen enkel spoor iets, dan komt er null uit en hoort de aanroeper Faro
  * de lijst te geven met de opdracht om te VRAGEN. Nooit gokken.
  *
+ * ── De auto die al op de lead staat (opties.leadCode) ───────────────────────
+ * Een koper die via /start/CODE/V3 op de website van de dealer binnenkomt, heeft
+ * zijn auto al gekozen: de code staat in de Notities-blob (property). Tot
+ * 2026-09-26 las deze functie die niet -- alleen panden deden dat -- en schreef
+ * de koper "is hij nog beschikbaar?", dan vroeg Faro welke auto hij bedoelde.
+ *
+ * De leadcode komt NA het aanbodnummer en de link (die zijn exact en gaan over
+ * wat hij NU stuurt) en wint van de tekst zolang de tekst hem niet tegenspreekt:
+ *   - de tekst vindt niets of twijfelt       -> de auto van de lead
+ *   - de tekst noemt (ook) de auto van de lead -> de auto van de lead
+ *   - de tekst wijst alleen een ANDERE auto aan -> die andere: hij vraagt nu
+ *     naar iets anders ("hebben jullie ook een Polo?")
+ * Een gearchiveerde of niet-publieke auto wordt apart opgezocht: juist dan moet
+ * Faro eerlijk kunnen zeggen dat hij verkocht is, in plaats van te doen alsof
+ * hij de vraag niet begrijpt.
+ *
  * @param {object} vehicles   de module api/_vehicles.js
  * @param {string} projectCode
  * @param {string} tekst      wat de lead schreef (alleen zijn eigen berichten)
+ * @param {{leadCode?:string}} [opties]
  */
-async function herken(vehicles, projectCode, tekst) {
+async function herken(vehicles, projectCode, tekst, opties) {
   const gelezen = lees(tekst);
   const leeg = { voertuig: null, via: 'geen', autoscout: gelezen };
 
@@ -191,6 +208,21 @@ async function herken(vehicles, projectCode, tekst) {
 
   /* 3. Uit de tekst. Kan bewust null geven bij gelijkspel. */
   const m = vehicles.matchUitTekst(voorraad, tekst);
+
+  /* 4. De auto die al op de lead staat -- zie de kop hierboven. */
+  const leadCode = vehicles.normCode((opties && opties.leadCode) || '');
+  if (leadCode && vehicles.geldigeCode(leadCode)) {
+    let vanLead = voorraad.find((v) => v.code === leadCode) || null;
+    if (!vanLead) {
+      try { vanLead = await vehicles.getByCode(projectCode, leadCode); } catch (_) { vanLead = null; }
+    }
+    if (vanLead) {
+      const tegengesproken = m.voertuig && m.voertuig.code !== vanLead.code
+        && !(m.kandidaten || []).some((k) => k.code === vanLead.code);
+      if (!tegengesproken) return { voertuig: vanLead, via: 'lead', autoscout: gelezen };
+    }
+  }
+
   if (m.voertuig) return { voertuig: m.voertuig, via: 'tekst', autoscout: gelezen };
 
   return { voertuig: null, via: m.reden === 'meerdere' ? 'meerdere' : 'geen',
