@@ -72,6 +72,8 @@ const SOORTEN = Object.freeze([
   'appointment_creation_failed',
   'appointment_cancelled',
   'appointment_cancel_failed',
+  /* Google volgde een afzegging of verzetting niet (api/_afspraken.js, audit 26/09). */
+  'calendar_sync_failed',
   'lead_score_calculated',
   'employee_notification_sent',
   'employee_notification_failed',

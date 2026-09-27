@@ -553,7 +553,33 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
     }).catch(() => {});
   } catch (_) { /* logboek optioneel */ }
   if (fout) console.warn('[voorraad] sync mislukt voor', tenant, bron.type, fout.code || '', fout.message);
+  meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat);
   return { ok: !fout, ...weergave(nieuw, bron) };
+}
+
+/* De dealer moet het weten zonder de Voertuigen-pagina open te hebben
+   (audit 26/09). Alleen bij een OVERGANG, zodat een feed die een dag plat ligt
+   geen 24 meldingen geeft:
+     - de tweede mislukte feed-sync op rij (één keer haperen is normaal)
+     - een geblokkeerde massale verdwijning (eerste run met die blokkade)
+   Push zonder namen; vuur-en-vergeet. */
+function meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat) {
+  if (!bron || bron.type !== 'feed') return;
+  const vorige = (Array.isArray(staat && staat.runs) ? staat.runs : []);
+  let tekstSleutel = '', vars;
+  if (!run.ok && vorige[0] && vorige[0].ok === false && !(vorige[1] && vorige[1].ok === false)) {
+    tekstSleutel = 'push.voorraad.mislukt';
+  } else if (run.ok && resultaat && resultaat.dalingGeblokkeerd && !(vorige[0] && vorige[0].daling)) {
+    tekstSleutel = 'push.voorraad.daling';
+    vars = { aantal: Number(resultaat.verdwenenAantal) || 0 };
+  }
+  if (!tekstSleutel) return;
+  try {
+    require('./_push').stuurVertaald({
+      projectCode: tenant, titelSleutel: 'push.voorraad.titel', tekstSleutel, vars,
+      url: 'https://app.helvaro.pro/dashboard',
+    }).catch(() => {});
+  } catch (_) { /* push is bijzaak */ }
 }
 
 /**
@@ -630,6 +656,28 @@ async function vertrouwenVoor(projectCode) {
 /* ── Eindcontrole vlak voor versturen ──────────────────────────────────── */
 
 /** Wat van een voertuig in een antwoord terecht kan komen. */
+/* Noemt dit antwoord dit voertuig? Op code (V12) of op merk + model. Gedeeld
+   door de websiteassistent en WhatsApp, zodat beide kanalen dezelfde wagens
+   vlak voor verzenden opnieuw lezen (audit 26/09: WhatsApp las alleen de
+   herkende wagen, niet de andere die het antwoord noemde). */
+function genoemdIn(antwoord, v) {
+  const t = String(antwoord || '').toLowerCase();
+  if (!v) return false;
+  if (v.code && new RegExp('\\b' + String(v.code).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(t)) return true;
+  return Boolean(v.merk && v.model && t.includes(String(v.merk).toLowerCase()) && t.includes(String(v.model).toLowerCase()));
+}
+
+/* De voertuigen uit een lijst die het antwoord noemt, plus een vast voertuig
+   (het herkende) -- als momentopnames, zonder dubbels. */
+function genoemdeMomentopnames(antwoord, lijst, vast) {
+  const uit = new Map();
+  if (vast) uit.set(vast.code, vast);
+  for (const v of (lijst || [])) {
+    if (v && v.code && !uit.has(v.code) && genoemdIn(antwoord, v)) uit.set(v.code, momentopname(v));
+  }
+  return Array.from(uit.values());
+}
+
 function momentopname(v) {
   if (!v) return null;
   return { code: v.code, status: vehicles.normStatus(v.status), prijs: v.prijs == null ? null : Number(v.prijs), km: v.km == null ? null : Number(v.km), gearchiveerd: v.gearchiveerd === true };
@@ -713,7 +761,7 @@ module.exports = {
   TOESTANDEN, STANDAARD,
   bereken, vertrouwen, saneerBron, weergave,
   controleer, sync, status, bewaarBron, vertrouwenVoor,
-  momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie,
+  momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie, genoemdIn, genoemdeMomentopnames, meldVoorraadAlsNodig,
   // voor tests
   _test: { noemtGetal, parseCsv, parseJson, parseXml, parseFeed, mapRegel, hashVan, isInternIp, probeNative },
 };

@@ -128,11 +128,8 @@ function zoekVoorraad(lijst, tekst, max = 3) {
 }
 
 /** Noemt het antwoord dit voertuig (code, of merk + model)? */
-function genoemd(antwoord, v) {
-  const t = String(antwoord || '').toLowerCase();
-  if (v.code && new RegExp('\\b' + String(v.code).toLowerCase() + '\\b').test(t)) return true;
-  return Boolean(v.merk && v.model && t.includes(String(v.merk).toLowerCase()) && t.includes(String(v.model).toLowerCase()));
-}
+/* Gedeeld met WhatsApp: api/_inventaris.js genoemdIn(). */
+function genoemd(antwoord, v) { return _inventaris.genoemdIn(antwoord, v); }
 
 /** Het kaartje: alleen voorraadvelden, nooit iets uit het model. */
 function kaart(v) {

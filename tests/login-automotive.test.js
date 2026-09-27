@@ -17,7 +17,7 @@ const bron = fs.readFileSync(BASE + 'api/_i18n.js', 'utf8');
 const VASTGOED = /woning|bezichtiging|verhuizen|(^|[^a-z])schatting|property|viewing|move soon|maison|visite|déménager|immobilie|besichtigung|umziehen/i;
 const AUTO = { nl: /BMW|proefrit|inruil/i, fr: /BMW|essai|reprise/i, en: /BMW|test drive|trade-in/i, de: /BMW|Probefahrt|Inzahlungnahme/i };
 
-const sleutels = [...bron.matchAll(/'(promo\.(?:chat\.\d|s[123]\.[a-z0-9]+))':\s*\{([\s\S]*?)\},/g)];
+const sleutels = [...bron.matchAll(/'(promo\.(?:chat\.\d|s[123]\.[a-z0-9]+)|login\.pitch)':\s*\{([\s\S]*?)\},/g)];
 ck('de promo-sleutels zijn gevonden', sleutels.length >= 15, sleutels.length);
 const alles = {};
 for (const [, k, body] of sleutels) {

@@ -1248,7 +1248,7 @@ function parseDealValueServer(v) {
 // Dedupe: api/_activiteit.js's alGemeldBinnen(), één melding per referentie
 // per 24 uur -- zie die functie's eigen kop voor waarom fail-open.
 const _BELANGRIJKE_MISLUKKINGEN = Object.freeze([
-  'appointment_creation_failed', 'appointment_cancel_failed',
+  'appointment_creation_failed', 'appointment_cancel_failed', 'calendar_sync_failed',
   'employee_notification_failed', 'image_generation_failed',
   'video_generation_failed', 'crm_sync_failed',
 ]);

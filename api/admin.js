@@ -516,7 +516,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         // hieronder terug als beschikbaar:false, NIET als 0 (0 zou zeggen
         // "gemeten en niets misgegaan", en dat is niet wat we weten).
         const FAMILIES = {
-          booking:    ['appointment_creation_failed', 'appointment_cancel_failed'],
+          booking:    ['appointment_creation_failed', 'appointment_cancel_failed', 'calendar_sync_failed'],
           generation: ['image_generation_failed', 'video_generation_failed'],
           webhook:    [],
           whatsapp:   [],

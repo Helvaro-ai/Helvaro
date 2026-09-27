@@ -122,10 +122,10 @@ const TEKST = {
                            fr: 'Quatorze jours gratuits. Votre premier prospect peut arriver ce soir.',
                            en: 'Fourteen days free. Your first lead could arrive tonight.',
                            de: 'Vierzehn Tage gratis. Ihr erster Lead kann heute Abend eintreffen.' },
-  'login.pitch':         { nl: 'Helvaro beantwoordt je leads op WhatsApp, vraagt budget en timing uit, en boekt de bezichtiging meteen in je agenda.',
-                           fr: 'Helvaro répond à vos prospects sur WhatsApp, cerne le budget et le calendrier, et planifie la visite directement dans votre agenda.',
-                           en: 'Helvaro answers your leads on WhatsApp, qualifies budget and timing, and books the viewing straight into your calendar.',
-                           de: 'Helvaro beantwortet Ihre Leads auf WhatsApp, klärt Budget und Zeitpunkt und bucht die Besichtigung direkt in Ihren Kalender.' },
+  'login.pitch':         { nl: 'Helvaro beantwoordt je leads op WhatsApp, e-mail en je website, vraagt financiering en inruil uit, en boekt de proefrit meteen in je agenda.',
+                           fr: 'Helvaro répond à vos prospects sur WhatsApp, par e-mail et sur votre site, cerne le financement et la reprise, et planifie l\'essai directement dans votre agenda.',
+                           en: 'Helvaro answers your leads on WhatsApp, e-mail and your website, asks about financing and trade-in, and books the test drive straight into your calendar.',
+                           de: 'Helvaro beantwortet Ihre Leads auf WhatsApp, per E-Mail und auf Ihrer Website, klärt Finanzierung und Inzahlungnahme und bucht die Probefahrt direkt in Ihren Kalender.' },
 
   /* ── Het promopaneel naast de inlogkaart ──────────────────────────────────
      Dit stond als vaste Nederlandse tekst in dashboard.js. Op een Engels scherm
@@ -1099,6 +1099,12 @@ const TEKST = {
   /* Pushmeldingen verschijnen op het vergrendelscherm: geen namen, geen
      onderwerpen, geen berichttekst (audit 26/09). tests/push-privacy.test.js. */
   'push.lead.title':     { nl: 'Nieuwe lead', fr: 'Nouveau prospect', en: 'New lead', de: 'Neuer Lead' },
+  'push.voorraad.titel':   { nl: 'Je voorraad heeft aandacht nodig', fr: 'Votre stock demande votre attention', en: 'Your stock needs attention', de: 'Dein Bestand braucht Aufmerksamkeit' },
+  'push.voorraad.mislukt': { nl: 'Je voorraadfeed kon twee keer op rij niet gelezen worden. Kijk hem na bij Voertuigen.', fr: 'Votre flux de stock n’a pas pu être lu deux fois de suite. Vérifiez-le dans Véhicules.', en: 'Your stock feed could not be read twice in a row. Check it under Vehicles.', de: 'Dein Bestandsfeed konnte zweimal hintereinander nicht gelesen werden. Prüfe ihn unter Fahrzeuge.' },
+  'push.voorraad.daling':  { nl: '{aantal} wagens verdwenen tegelijk uit je feed. Er is niets aangepast; bevestig of kijk je feed na.', fr: '{aantal} véhicules ont disparu en même temps de votre flux. Rien n’a été modifié ; confirmez ou vérifiez votre flux.', en: '{aantal} vehicles disappeared from your feed at once. Nothing was changed; confirm or check your feed.', de: '{aantal} Fahrzeuge sind gleichzeitig aus deinem Feed verschwunden. Nichts wurde geändert; bestätige oder prüfe deinen Feed.' },
+  'push.agenda.titel':   { nl: 'Kijk je Google Agenda na', fr: 'Vérifiez votre Google Agenda', en: 'Check your Google Calendar', de: 'Prüfe deinen Google Kalender' },
+  'push.agenda.weg':     { nl: 'Een afgezegde afspraak staat nog in je Google Agenda. Verwijder ze daar zelf.', fr: 'Un rendez-vous annulé figure encore dans votre Google Agenda. Supprimez-le vous-même.', en: 'A cancelled appointment is still in your Google Calendar. Please delete it there.', de: 'Ein abgesagter Termin steht noch in deinem Google Kalender. Bitte dort löschen.' },
+  'push.agenda.verzet':  { nl: 'Een verzette afspraak staat nog op het oude uur in je Google Agenda. Pas ze daar aan.', fr: 'Un rendez-vous déplacé figure encore à l’ancienne heure dans votre Google Agenda. Corrigez-le.', en: 'A rescheduled appointment still shows the old time in your Google Calendar. Please update it there.', de: 'Ein verschobener Termin steht noch zur alten Zeit in deinem Google Kalender. Bitte dort anpassen.' },
   'push.credit80.title': { nl: 'Nog 20% credits over',
                            fr: 'Il reste 20 % de crédits',
                            en: '20% of credits left',

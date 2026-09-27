@@ -172,6 +172,24 @@ const minGeleden = (m) => new Date(Date.now() - m * 60000).toISOString();
   ck('herinnering: voertuig vers gelezen VOOR het versturen', iCheck > 0 && iStuur > iCheck);
   ck('herinnering: verkocht/uit aanbod/verdwenen = niet sturen', /stV === 'verkocht' \|\| stV === 'uit aanbod'/.test(cron) && /herinnering_tegengehouden/.test(cron));
 
+  console.log('\nalle genoemde wagens, niet alleen de herkende (audit 26/09)');
+  {
+    const inv = require(BASE + 'api/_inventaris.js');
+    const M4 = { code: 'V1', merk: 'BMW', model: 'M4', status: 'beschikbaar', prijs: 74999, km: 18000 };
+    const GOLF = { code: 'V2', merk: 'Volkswagen', model: 'Golf', status: 'verkocht', prijs: 32500, km: 61000 };
+    const AUDI = { code: 'V3', merk: 'Audi', model: 'A4', status: 'beschikbaar', prijs: 41900, km: 44000 };
+    const vast = inv.momentopname(M4);
+    const lijst = inv.genoemdeMomentopnames('De BMW M4 is er nog, en de Volkswagen Golf ook.', [M4, GOLF, AUDI], vast);
+    ck('de herkende EN de andere genoemde wagen worden gecontroleerd', lijst.map((m) => m.code).sort().join() === 'V1,V2', lijst.map((m) => m.code));
+    ck('een niet-genoemde wagen niet', !lijst.some((m) => m.code === 'V3'));
+    ck('zonder herkende wagen: alleen wat genoemd wordt', inv.genoemdeMomentopnames('Kijk naar V3', [M4, AUDI], null).map((m) => m.code).join() === 'V3');
+    ck('V12 is geen V1', !inv.genoemdIn('zie V12', { code: 'V1' }));
+    ck('whatsapp controleert de genoemde lijst, niet alleen het herkende voertuig',
+      wa.includes('_inventaris.genoemdeMomentopnames(replyText, voertuigenInContext, voertuigMomentopname)')
+      && wa.includes('_inventaris.hercontroleer(projectCode, teControleren)'));
+    ck('en de voorraadlijst voor de AI komt in die context', /voertuigenInContext = gerangschikt\.lijst\.slice\(\)/.test(wa));
+  }
+
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

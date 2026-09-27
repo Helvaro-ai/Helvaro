@@ -44,8 +44,17 @@ function laad({ klanten, aangemaakt }) {
   const stuk  = bron.slice(start, eind);
 
   const calls = [];
+  const bestaand = arguments[0].bestaand || [];
+  const MELD = arguments[0].meldingen || [];
   const atFetch = async (url, opts = {}) => {
     calls.push({ url: String(url), method: (opts.method || 'GET') });
+    if (arguments[0].postFaalt && (opts.method || 'GET') === 'POST') {
+      return { ok: false, status: 503, json: async () => ({ error: { type: 'SERVICE_UNAVAILABLE' } }) };
+    }
+    if ((opts.method || 'GET') === 'DELETE') return { ok: true, json: async () => ({ deleted: true }) };
+    if ((opts.method || 'GET') === 'GET' && String(url).indexOf(LEADS) !== -1 && aangemaakt.length) {
+      return { ok: true, json: async () => ({ records: bestaand.concat([{ id: 'recNIEUW', createdTime: '2026-09-26T21:00:05.000Z', fields: {} }]) }) };
+    }
     if (String(url).indexOf(CLIENTS) !== -1) {
       return { ok: true, json: async () => ({ records: klanten }) };
     }
@@ -59,11 +68,13 @@ function laad({ klanten, aangemaakt }) {
 
   const maak = new Function(
     'atFetch', 'AIRTABLE_BASE', 'AIRTABLE_TOKEN', 'CLIENTS_TABLE', 'LEADS_TABLE',
-    'setCachedLead', 'leadCacheKey', 'console',
+    'setCachedLead', 'leadCacheKey', 'console', 'escapeFormula', 'maskPhone', 'require',
     `${stuk}; return { enigeActieveKlant, maakLeadUitBinnenkomend, _reset() { _enigeKlantCache = { ts: 0, waarde: null }; } };`
   );
   const stil = { log() {}, warn() {}, error() {} };
-  return { api: maak(atFetch, 'appZelftest', 'pat', CLIENTS, LEADS, () => {}, () => 'k', stil), calls };
+  const nepRequire = (m) => (/cron-followup/.test(m) ? { sendOpsAlert: async (x) => { MELD.push(x.subject); } } : require(m));
+  return { api: maak(atFetch, 'appZelftest', 'pat', CLIENTS, LEADS, () => {}, () => 'k', stil,
+                     (v) => String(v).replace(/"/g, '\\"'), (p) => '****' + String(p).slice(-4), nepRequire), calls };
 }
 
 const klant = (code, naam) => ({ id: 'rec' + code, fields: { 'Project Code': code, 'Client Name': naam } });
@@ -88,6 +99,30 @@ const klant = (code, naam) => ({ id: 'rec' + code, fields: { 'Project Code': cod
      echte lead verloren gaan aan een ontbrekende dropdownoptie. */
   ck('met typecast, anders sloopt een ontbrekende keuze de hele create',
      aangemaakt[0].typecast === true, aangemaakt[0]);
+
+  console.log('\n— twee instanties tegelijk: de oudste lead wint (audit 26/09) —');
+  {
+    const ouder = { id: 'recOUDER', createdTime: '2026-09-26T21:00:01.000Z', fields: { 'Project Code': 'TELJO' } };
+    const res = laad({ klanten: [klant('TELJO', 'Teljo')], aangemaakt: [], bestaand: [ouder] });
+    const e1 = await res.api.enigeActieveKlant();
+    const l1 = await res.api.maakLeadUitBinnenkomend('32470111222', 'hallo', e1);
+    ck('de al bestaande (oudere) lead wordt teruggegeven', l1 && l1.id === 'recOUDER', l1);
+    ck('en onze net gemaakte dubbele wordt gewist',
+       res.calls.some((c) => c.method === 'DELETE' && /recNIEUW/.test(c.url)), res.calls);
+    const res2 = laad({ klanten: [klant('TELJO', 'Teljo')], aangemaakt: [], bestaand: [] });
+    const l2 = await res2.api.maakLeadUitBinnenkomend('32470111222', 'hallo', await res2.api.enigeActieveKlant());
+    ck('zonder dubbel blijft de nieuwe lead gewoon staan', l2 && l2.id === 'recNIEUW' && !res2.calls.some((c) => c.method === 'DELETE'), res2.calls);
+  }
+
+  console.log('\n— een mislukte aanmaak blijft niet stil —');
+  {
+    const meldingen = [];
+    const res = laad({ klanten: [klant('TELJO', 'Teljo')], aangemaakt: [], postFaalt: true, meldingen });
+    const l = await res.api.maakLeadUitBinnenkomend('32470111222', 'hallo', await res.api.enigeActieveKlant());
+    ck('geeft null terug (de afzender krijgt het formulierbericht)', l === null, l);
+    ck('en de beheerder krijgt een melding met een gemaskeerd nummer',
+       meldingen.length === 1 && /TELJO/.test(meldingen[0]) && !/32470111222/.test(meldingen[0]), meldingen);
+  }
 
   console.log('\n— toestemming wordt NIET verzonnen —');
   /* Bij het formulier vinkt iemand expliciet aan. Wie zelf appt heeft dat nooit

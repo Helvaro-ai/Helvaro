@@ -127,6 +127,10 @@ _gcal.updateEvent = async (_t, _c, id, ev) => { googleVerzet.push({ id, ev }); r
    van de JUISTE klant geraakt wordt. De nep-Airtable hierboven serveert die rij
    dus echt, en alleen de twee Google-aanroepen die geld of gevolgen hebben
    worden onderschept. */
+/* Pushmeldingen onderscheppen: een mislukte Google-spiegeling moet de dealer
+   bereiken (audit 26/09). */
+const PUSH = [];
+require(BASE + 'api/_push.js').stuurVertaald = async (o) => { PUSH.push(o); return { ok: true }; };
 const A = require(BASE + 'api/_afspraken.js');
 
 (async () => {
@@ -191,6 +195,19 @@ const A = require(BASE + 'api/_afspraken.js');
   ck('de afzegging telt', tochAf.ok === true, tochAf);
   ck('en de rij staat op cancelled', db.recAAAAAAAAAAAAAA.fields.Status === 'cancelled', db.recAAAAAAAAAAAAAA.fields);
   ck('maar het liegt niet over Google', tochAf.googleWeg === false, tochAf);
+  ck('en de dealer krijgt een pushmelding om zijn agenda na te kijken',
+     PUSH.some((p) => p.projectCode === 'TENANT_A' && p.tekstSleutel === 'push.agenda.weg'), PUSH);
+
+  console.log('\n— Google volgt een verzetting niet —');
+  reset(); nepAirtable(); PUSH.length = 0;
+  const stukVerzet = _gcal.updateEvent;
+  _gcal.updateEvent = async () => ({ ok: false, error: 'invalid_grant' });
+  const vz = await A.verzet({ projectCode: 'TENANT_A', id: 'recAAAAAAAAAAAAAA', startISO: new Date(Date.now() + 6 * 864e5).toISOString(), durationMin: 45 });
+  _gcal.updateEvent = stukVerzet;
+  ck('de verzetting telt in Helvaro', vz.ok === true, vz);
+  ck('het antwoord zegt dat Google niet bijgewerkt is', vz.googleBijgewerkt === false, vz);
+  ck('en de dealer krijgt een pushmelding', PUSH.some((p) => p.tekstSleutel === 'push.agenda.verzet'), PUSH);
+  ck('zonder naam in de melding', PUSH.every((p) => !p.vars || !p.vars.naam), PUSH);
 
   console.log('\n— verzetten —');
   reset(); nepAirtable();

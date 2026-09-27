@@ -1118,6 +1118,10 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      om vlak voor verzenden opnieuw te vergelijken, en hoe betrouwbaar de
      voorraad nu is. */
   let voertuigMomentopname = null;
+  /* Alle voertuigen die de AI deze beurt te zien kreeg (fiche + alternatieven,
+     of de voorraadlijst). Vlak voor verzenden worden de GENOEMDE opnieuw
+     gelezen, niet alleen het herkende. */
+  let voertuigenInContext = [];
   let voorraadVertrouwen = null;
 
   if (vertical === _vertical.DEALERSHIP) {
@@ -1186,6 +1190,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             console.warn('[WhatsApp] alternatieven opzoeken overgeslagen:', e && e.message);
           }
           fichecontext = { boekbaar: voertuigBoekbaarheid, alternatieven };
+          voertuigenInContext = alternatieven.slice();
         }
 
         pandSectie = _ai.prompts.voertuigen.fiche(herkendVoertuig, kortingsgrenzen, fichecontext);
@@ -1206,6 +1211,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
           const wensNu = _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
             _wens.uitTekst(laatsteBerichten, { merken }) || {}));
           const gerangschikt = _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten });
+          voertuigenInContext = gerangschikt.lijst.slice();
           pandSectie = _ai.prompts.voertuigen.index(gerangschikt.lijst, {
             zoekt: _wens.omschrijf(wensNu),
             genoemd: gerangschikt.genoemd,
@@ -1444,20 +1450,22 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      of kilometerstand in het antwoord niet meer, dan gaat dit antwoord niet
      weg: de lead krijgt een eerlijke tussenboodschap, de beurt telt als
      escalatie (verkoper krijgt een melding, er wordt niets geboekt). */
-  if (voertuigMomentopname) {
+  const teControleren = _inventaris.genoemdeMomentopnames(replyText, voertuigenInContext, voertuigMomentopname);
+  if (teControleren.length) {
     let controle;
-    try { controle = await _inventaris.hercontroleer(projectCode, [voertuigMomentopname]); }
+    try { controle = await _inventaris.hercontroleer(projectCode, teControleren); }
     catch (e) { controle = { ok: false, veranderd: [], onleesbaar: true }; }
-    const oordeel = _inventaris.beoordeelVoorVerzenden(replyText, [voertuigMomentopname], controle);
+    const oordeel = _inventaris.beoordeelVoorVerzenden(replyText, teControleren, controle);
     if (oordeel.actie !== 'versturen') {
-      console.warn(`[WhatsApp] antwoord vervangen voor lead ${lead.id}: ${oordeel.actie} (${oordeel.reden}) op ${voertuigMomentopname.code}`);
+      const codes = teControleren.map((m) => m.code).join(',');
+      console.warn(`[WhatsApp] antwoord vervangen voor lead ${lead.id}: ${oordeel.actie} (${oordeel.reden}) op ${codes}`);
       replyText = oordeel.actie === 'onbeschikbaar'
         ? _lang.buildVehicleUnavailableMessage(effectiveLang)
         : _lang.buildVehicleFactCheckMessage(effectiveLang);
       isEscalation = true;
       try {
         _activiteit.log(projectCode, 'vehicle_fact_corrected', {
-          leadId: lead.id, voertuigCode: voertuigMomentopname.code,
+          leadId: lead.id, voertuigCode: codes,
           details: { actie: oordeel.actie, reden: oordeel.reden, bij: 'verzenden' },
         }).catch(() => {});
       } catch (e) { /* logboek is optioneel */ }
@@ -3004,8 +3012,33 @@ async function maakLeadUitBinnenkomend(phone, eersteBericht, klant) {
     if (!res.ok || data.error) {
       console.error('[WhatsApp] lead aanmaken uit inbound mislukt:',
                     JSON.stringify(data.error || {}).slice(0, 300));
+      await meldLeadVerloren(phone, klant, 'Airtable ' + (res.status || '?'));
       return null;
     }
+    /* Twee instanties tegelijk (Meta levert een eerste bericht soms dubbel,
+       of er komen twee berichten snel na elkaar) kunnen allebei "geen lead"
+       gelezen en er allebei één gemaakt hebben. De wachtrij per nummer dekt
+       alleen één instantie. Dus opnieuw kijken: staat er meer dan één lead
+       voor dit nummer bij deze klant, dan wint de oudste en verdwijnt de
+       onze -- die is net gemaakt en heeft nog geen historie. Zelfde regel als
+       api/_klant.js en api/_gesprekken.js (audit 26/09). */
+    try {
+      const f = encodeURIComponent(`AND({fld6YaitW0lMqHUrd}="${escapeFormula(phone)}", {fldSmczuyUJd26HLe}="${escapeFormula(klant.projectCode)}")`);
+      const r2 = await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}?filterByFormula=${f}&pageSize=10`,
+                               { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+      const alle = ((await r2.json()) || {}).records || [];
+      if (alle.length > 1) {
+        const winnaar = alle.slice().sort((a, b) =>
+          String(a.createdTime || '').localeCompare(String(b.createdTime || '')) || String(a.id).localeCompare(String(b.id)))[0];
+        if (winnaar && winnaar.id !== data.id) {
+          await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${data.id}`,
+                        { method: 'DELETE', headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+          console.warn(`[WhatsApp] dubbele lead ${data.id} opgeruimd; ${winnaar.id} was er eerst (${maskPhone(phone)}).`);
+          setCachedLead(leadCacheKey(phone, null), winnaar);
+          return winnaar;
+        }
+      }
+    } catch (e) { /* nakijken mislukt: de lead bestaat, gewoon doorgaan */ }
     /* De cache van getLead() wist niet dat deze lead bestond; zonder deze regel
        leest de volgende beurt binnen de TTL nog steeds "geen lead". */
     setCachedLead(leadCacheKey(phone, null), data);
@@ -3017,8 +3050,22 @@ async function maakLeadUitBinnenkomend(phone, eersteBericht, klant) {
     return data;
   } catch (err) {
     console.error('[WhatsApp] lead aanmaken uit inbound mislukt:', err && err.message);
+    await meldLeadVerloren(phone, klant, err && err.message);
     return null;
   }
+}
+
+/* Een eerste WhatsApp-bericht dat geen lead werd, mag niet alleen in de log
+   staan: de afzender kreeg "vul het formulier in" en niemand weet dat hij
+   bestond. Gemaskeerd nummer, geen berichttekst (audit 26/09). */
+async function meldLeadVerloren(phone, klant, reden) {
+  try {
+    const { sendOpsAlert } = require('./cron-followup');
+    await sendOpsAlert({
+      subject: `[Lead niet opgeslagen] ${klant && klant.projectCode} — ${maskPhone(phone)}`,
+      html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px"><p>Een eerste WhatsApp-bericht van ${maskPhone(phone)} voor ${String(klant && klant.projectCode).replace(/[<>&]/g, '')} kon niet als lead worden opgeslagen (${String(reden || 'onbekend').replace(/[<>&]/g, '').slice(0, 120)}). De afzender kreeg het formulierbericht. Kijk het gesprek na in WhatsApp.</p></div>`,
+    });
+  } catch (e) { console.error('[WhatsApp] melding verloren lead mislukt:', e && e.message); }
 }
 
 async function getClientByPhoneNumberId(phoneNumberId) {

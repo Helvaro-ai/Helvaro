@@ -39,6 +39,23 @@
 const _gcal = require('./_gcal');
 const _activiteit = require('./_activiteit');   // leane actie-records bij afzeggen, zie annuleer()
 
+/* Google volgde een afzegging of verzetting niet. In Airtable klopt het, maar
+   in de echte agenda van de dealer staat nog het oude item -- en daar kijkt
+   hij naar. Dus niet alleen de log (audit 26/09): een regel in het logboek en
+   een pushmelding zonder namen. Vuur-en-vergeet, gooit nooit. */
+function meldAgendaMislukt(code, actie, afspraakId, leadId) {
+  try {
+    _activiteit.log(code, 'calendar_sync_failed', { leadId: leadId || undefined, afspraakId, details: { actie } }).catch(() => {});
+  } catch (e) { /* logboek is optioneel */ }
+  try {
+    require('./_push').stuurVertaald({
+      projectCode: code, titelSleutel: 'push.agenda.titel',
+      tekstSleutel: actie === 'verzet' ? 'push.agenda.verzet' : 'push.agenda.weg',
+      url: 'https://app.helvaro.pro/dashboard',
+    }).catch(() => {});
+  } catch (e) { /* push is bijzaak */ }
+}
+
 /* Loggen mag het afzeggen zelf nooit ophouden -- fire-and-forget met een
    genegeerde catch, zoals overal waar _activiteit.log() wordt aangeroepen
    (zie api/_dealer-boeking.js en api/_dealer-melding.js voor hetzelfde
@@ -353,10 +370,14 @@ async function annuleer({ projectCode, id, record, reden, door } = {}) {
       if (token) {
         const uit = await _gcal.deleteEvent(token, calId, eventId);
         googleWeg = Boolean(uit && uit.ok);
-        if (!googleWeg) console.error('[afspraken] Google-item niet verwijderd:', uit && uit.error);
+        if (!googleWeg) {
+          console.error('[afspraken] Google-item niet verwijderd:', uit && uit.error);
+          meldAgendaMislukt(code, 'weg', rec.id, logLeadId);
+        }
       }
     } catch (err) {
       console.error('[afspraken] Google-item verwijderen exception:', err && err.message);
+      meldAgendaMislukt(code, 'weg', rec.id, logLeadId);
     }
   }
 
@@ -431,6 +452,7 @@ async function verzet({ projectCode, id, record, startISO, durationMin } = {}) {
   }
 
   const eventId = rec.fields[F.EVENT];
+  let googleBijgewerkt = null;
   if (eventId) {
     try {
       const { token, calId } = await gcalVoor(code);
@@ -441,14 +463,19 @@ async function verzet({ projectCode, id, record, startISO, durationMin } = {}) {
           startISO:    nieuweStart,
           durationMin: duur,
         });
-        if (!uit || !uit.ok) console.error('[afspraken] Google-item niet verzet:', uit && uit.error);
+        googleBijgewerkt = Boolean(uit && uit.ok);
+        if (!googleBijgewerkt) {
+          console.error('[afspraken] Google-item niet verzet:', uit && uit.error);
+          meldAgendaMislukt(code, 'verzet', rec.id, rec.fields[F.LEAD]);
+        }
       }
     } catch (err) {
       console.error('[afspraken] Google-item verzetten exception:', err && err.message);
+      meldAgendaMislukt(code, 'verzet', rec.id, rec.fields[F.LEAD]);
     }
   }
 
-  return { ok: true, afspraak: rec, startISO: nieuweStart, durationMin: duur };
+  return { ok: true, afspraak: rec, startISO: nieuweStart, durationMin: duur, googleBijgewerkt };
 }
 
 /**
