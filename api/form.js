@@ -244,6 +244,33 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       return res.status(400).json({ code: 'bad_phone', error: 'Ongeldig telefoonnummer. Gebruik cijfers' });
     }
 
+    /* ── Eén open lead per persoon (audit M-6) ───────────────────────────────
+       Vult iemand het formulier opnieuw in terwijl er nog een open lead voor
+       hem is (zelfde nummer of e-mail, status nieuw of in behandeling), dan
+       werken we die bij in plaats van een tweede aan te maken: een notitie met
+       de nieuwe aanvraag, en de wagen/het e-mailadres als die nog ontbraken.
+       Geen tweede welkomstbericht; de dealer krijgt wel een melding.
+       Faalt de opzoeking, dan maken we gewoon een nieuwe lead -- liever een
+       dubbel dan een verloren aanvraag. */
+    let hergebruikt = null;
+    try {
+      hergebruikt = await zoekOpenLead({ token: AIRTABLE_TOKEN, baseId: BASE_ID, tabel: LEADS_TABLE, project: project_code, telefoon: waPhone, email });
+    } catch (e) {
+      console.warn('[form] open lead opzoeken mislukt, nieuwe lead:', e && e.message);
+    }
+    let createData = {};
+    if (hergebruikt) {
+      const bijgewerkt = await werkOpenLeadBij({ token: AIRTABLE_TOKEN, baseId: BASE_ID, tabel: LEADS_TABLE, lead: hergebruikt, pand, email, bron, consentTs })
+        .catch((e) => { console.warn('[form] open lead bijwerken mislukt, nieuwe lead:', e && e.message); return false; });
+      if (bijgewerkt) {
+        createData = { id: hergebruikt.id };
+        console.log(`[form] ${project_code}: bestaande open lead ${hergebruikt.id} bijgewerkt in plaats van een tweede aan te maken.`);
+      } else {
+        hergebruikt = null;
+      }
+    }
+
+    if (!hergebruikt) {
     // ── Create lead in Airtable (with retry on 429) ───────────────────────────
     const createOpts = {
       method:  'POST',
@@ -285,7 +312,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       createOpts
     );
     const createRaw  = await createRes.text();
-    let createData = {};
     try { createData = JSON.parse(createRaw); } catch {}
     if (!createRes.ok) {
       let _eb = {}; try { _eb = JSON.parse(createRaw); } catch {}
@@ -295,6 +321,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
       return res.status(500).json({ code: 'create_failed', error: 'Lead aanmaken mislukt' });
     }
+    } // einde "if (!hergebruikt)"
 
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
@@ -347,7 +374,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           // send failure (skip flagWaFailed's "Niet bereikbaar" treatment),
           // it's a deliberate no-send: the owner notification below still
           // fires so they know to follow up manually.
-          if (!waPhone) {
+          if (hergebruikt) {
+            /* Deze persoon kreeg bij zijn eerste aanvraag al een welkomstbericht
+               en loopt als open lead. Een tweede begroeting voelt als spam. */
+            console.log(`[form] lead ${leadId} bestond al — geen tweede WhatsApp-begroeting.`);
+          } else if (!waPhone) {
             /* Alleen e-mail: er is geen nummer om naar te sturen. Geen fout en
                geen "Niet bereikbaar"-vlag -- de koper koos zelf voor e-mail. */
             console.log(`[form] lead ${leadId} liet alleen een e-mailadres achter — geen WhatsApp-begroeting.`);
@@ -483,7 +514,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       url:          'https://app.helvaro.pro/dashboard',
     }).catch(() => {});
 
-    return res.status(200).json({ success: true, id: createData.id });
+    return res.status(200).json({ success: true, id: createData.id, ...(hergebruikt ? { bestaand: true } : {}) });
 
   } catch (err) {
     console.error('Form error:', err.message);
@@ -492,6 +523,67 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const STATUS_VELD = 'fld8mkrEWcyq7mUip';
+const TELEFOON_VELD = 'fld6YaitW0lMqHUrd';
+const NOTITIES_VELD = 'fldoLRI5W12ThTls7';
+const PROJECT_VELD = 'fldSmczuyUJd26HLe';
+const GESLOTEN = ['completed', 'verloren', 'lost', 'won', 'gewonnen'];
+
+/* De meest recente open lead van deze klant voor dit nummer of e-mailadres,
+   of null. Open = elke status behalve de afgesloten. Het e-mailadres staat in
+   de Notities-JSON (zie de create hieronder), dus daar zoeken we het. */
+async function zoekOpenLead({ token, baseId, tabel, project, telefoon, email }) {
+  const tel = String(telefoon || '').replace(/\D/g, '');
+  const mail = String(email || '').trim().toLowerCase();
+  if (!tel && !mail) return null;
+  const wie = [];
+  if (tel) wie.push(`{${TELEFOON_VELD}}="${escapeFormula(tel)}"`);
+  if (mail) wie.push(`FIND("${escapeFormula('"email":"' + mail + '"')}", LOWER({${NOTITIES_VELD}}&""))`);
+  const dicht = GESLOTEN.map((s) => `{${STATUS_VELD}}="${s}"`).join(',');
+  const formule = `AND({${PROJECT_VELD}}="${escapeFormula(project)}", OR(${wie.join(',')}), NOT(OR(${dicht})))`;
+  const url = `https://api.airtable.com/v0/${baseId}/${tabel}?filterByFormula=${encodeURIComponent(formule)}`
+    + `&maxRecords=5&returnFieldsByFieldId=true&sort%5B0%5D%5Bfield%5D=fldR0r13EU4RwrtvH&sort%5B0%5D%5Bdirection%5D=desc`;
+  const r = await atFetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) throw new Error('Airtable ' + r.status);
+  const d = await r.json();
+  /* Tweede slot in code: tenant en status opnieuw nagaan. */
+  const lead = (d.records || []).find((x) => {
+    const f = (x && x.fields) || {};
+    return String(f[PROJECT_VELD] || '') === String(project)
+      && GESLOTEN.indexOf(String(f[STATUS_VELD] || '').toLowerCase()) === -1;
+  });
+  return lead || null;
+}
+
+/* Notitie bij de bestaande lead + ontbrekende wagen/e-mail aanvullen. Laat
+   alles wat al in Notities staat (aiPaused, taken, eerdere notities) staan.
+   true = gelukt. */
+async function werkOpenLeadBij({ token, baseId, tabel, lead, pand, email, bron, consentTs }) {
+  const ruw = String((lead.fields || {})[NOTITIES_VELD] || '');
+  let blob;
+  try { blob = ruw ? JSON.parse(ruw) : {}; } catch (_) { blob = null; }
+  if (!blob || typeof blob !== 'object' || Array.isArray(blob)) {
+    /* Vrije tekst in plaats van JSON: niet overschrijven. Dan toch een nieuwe
+       lead, zodat er niets verloren gaat. */
+    return false;
+  }
+  const notes = Array.isArray(blob.notes) ? blob.notes : [];
+  const wat = pand ? ` voor ${String(pand).slice(0, 120)}` : '';
+  const via = bron ? ` (${String(bron).slice(0, 40)})` : '';
+  notes.unshift({ id: 'n_' + Date.now(), text: `Vulde het formulier opnieuw in${wat}${via}.`, ts: new Date().toISOString() });
+  const nieuw = Object.assign({}, blob, { _v: 1, notes, tasks: blob.tasks || [], calls: blob.calls || [] });
+  if (pand && !blob.property) nieuw.property = pand;
+  if (email && !blob.email) nieuw.email = email;
+  nieuw.consent = Object.assign({}, blob.consent || {}, { given: true, ts: consentTs });
+  const r = await atFetch(`https://api.airtable.com/v0/${baseId}/${tabel}/${lead.id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { [NOTITIES_VELD]: JSON.stringify(nieuw).slice(0, 95000) } }),
+  });
+  if (!r.ok) throw new Error('Airtable ' + r.status);
+  return true;
+}
 
 function escapeFormula(val) {
   return val.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
