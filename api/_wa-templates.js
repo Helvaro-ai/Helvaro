@@ -271,6 +271,7 @@ function duiding(status) {
 let cache = null;
 let cacheTot = 0;
 const TTL_MS = 5 * 60 * 1000;
+const FOUT_TTL_MS = 30 * 1000;   // na een netwerkfout sneller opnieuw proberen
 
 function uitSnapshot() {
   /* Lege categorieen, geen verzonnen categorieen. Zonder management-token
@@ -350,11 +351,17 @@ async function haalIndex(opties) {
     cacheTot = nu + TTL_MS;
     return uit;
   } catch (err) {
-    console.warn(`[wa-templates] Meta niet bereikbaar (${err.message}) — val terug op de snapshot.`);
+    /* "fetch failed" zegt niets: de echte reden (ECONNRESET, ETIMEDOUT,
+       een afgebroken socket na het bevriezen van de lambda) zit in
+       err.cause. Die staat nu in de log. En een netwerkfout is meestal
+       tijdelijk: na 30 s opnieuw proberen in plaats van 5 minuten op de
+       snapshot te blijven hangen. */
+    const oorzaak = err && err.cause ? (err.cause.code || err.cause.message || String(err.cause)) : '';
+    console.warn(`[wa-templates] Meta niet bereikbaar (${err.message}${oorzaak ? ': ' + oorzaak : ''}) — val terug op de snapshot.`);
     const uit = uitSnapshot();
-    uit.reden = err.message;
+    uit.reden = err.message + (oorzaak ? ': ' + oorzaak : '');
     cache = uit;
-    cacheTot = nu + TTL_MS;
+    cacheTot = nu + FOUT_TTL_MS;
     return uit;
   }
 }
