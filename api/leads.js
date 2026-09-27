@@ -1023,7 +1023,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         return res.status(200).json({ ok: true, verslag });
       } catch (err) {
         console.error('[account-delete] fout:', err && err.message);
-        return res.status(500).json({ error: (err && err.message) || 'Wissen mislukt.' });
+        /* Geen ruwe foutmelding (die kan "Airtable 500 bij het lezen van
+           tbl..." zijn). De code blijft erbij voor support (audit 26/09). */
+        return res.status(500).json({ error: 'Het wissen lukte niet. Probeer het opnieuw of mail hello@helvaro.pro.', code: (err && err.code) || 'wissen_mislukt' });
       }
     }
 

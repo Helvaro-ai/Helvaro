@@ -1750,6 +1750,14 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
   transition: background 0.2s cubic-bezier(0.4,0,0.2,1);
 }
 button.brand-dot { border: none; padding: 0; }
+.brand-pauze {
+  width: 24px; height: 24px; margin-left: 6px; padding: 0; border: none; border-radius: 6px;
+  background: transparent; color: var(--text-secondary); font-size: 0.6667rem; line-height: 24px; cursor: pointer;
+}
+.brand-pauze::before { content: '❚❚'; }
+.brand-pauze[aria-pressed="true"]::before { content: '▶'; }
+.brand-pauze:hover { color: var(--text-primary, var(--text)); }
+.brand-pauze:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .brand-dot.active {
   background: linear-gradient(var(--accent), var(--accent)) center / 36px 4px no-repeat;
@@ -2325,7 +2333,9 @@ button.brand-dot { border: none; padding: 0; }
   text-align: center;
   margin-top: 16px;
   font-size: 0.8667rem;
-  color: var(--text-disabled);
+  /* --text-disabled haalde 3,2:1 (donker) en 2,5:1 (licht); leesbare tekst
+     vraagt 4,5:1 (WCAG 1.4.3, audit 26/09). */
+  color: var(--text-secondary);
 }
 .clerk-toggle-link {
   background: none;

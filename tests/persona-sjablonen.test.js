@@ -127,5 +127,19 @@ console.log('\n  veilig binnen een <script> in de pagina');
   }
 }
 
+/* Audit 26/09: een autodealer kreeg "Voor advocaten" en "Voor zorg/medisch". */
+{
+  const P = require('../api/_dash/persona-sjablonen.js');
+  for (const taal of ['nl', 'fr', 'en', 'de']) {
+    const w = P.welkom(taal);
+    ck(taal + ': elke welkomsttekst heeft een marktlabel', w.length === P.WELKOM_MARKT.length && w.every((t) => typeof t.markt === 'string'));
+    const auto = w.filter((t) => t.markt === 'dealership').map((t) => t.label).join(' | ');
+    ck(taal + ': de autoteksten staan op dealership (' + auto + ')', /auto|garage|carross|car|dealer|werkstatt|karosserie/i.test(auto) && !/vastgoed|immobil|advoca|avocat|lawyer|anwalt/i.test(auto));
+  }
+  const dash = require('fs').readFileSync(require('path').join(__dirname, '..', 'api/dashboard.js'), 'utf8');
+  ck('het dashboard filtert de sjablonen op de markt', /const dealer = isDealer\(\);/.test(dash) && /t\.markt && t\.markt !== 'dealership'/.test(dash));
+  ck('de voorbeeldnaam van het bedrijf is vertaald', /tr\('ap\.prev\.bedrijf'\)/.test(dash) && !/'jouw bedrijf'\)/.test(dash));
+}
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fout\n');
 process.exit(fail ? 1 : 0);

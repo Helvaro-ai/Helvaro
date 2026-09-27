@@ -27,8 +27,14 @@
  */
 
 /** Welkomstberichten: de eigenaar kiest er EEN, hij vervangt wat er stond. */
+/* Voor welke markt een welkomsttekst bedoeld is, per positie (de lijsten zijn
+   in elke taal even lang en in dezelfde volgorde). '' = voor iedereen. Een
+   autodealer kreeg anders "Voor advocaten" en "Voor zorg/medisch" te zien
+   (audit 26/09); dashboard.js filtert hierop met isDealer(). */
+const WELKOM_MARKT = ['', '', '', '', 'renovatie', 'zorg', 'vastgoed', 'advocaat', '', '', 'dealership', 'dealership', 'dealership'];
+
 function welkom(taal) {
-  return (WELKOM[taal] || WELKOM.nl).map(function (t) { return { emoji: '', label: t.label, text: t.text }; });
+  return (WELKOM[taal] || WELKOM.nl).map(function (t, i) { return { emoji: '', label: t.label, text: t.text, markt: WELKOM_MARKT[i] || '' }; });
 }
 
 /** Instructie-fragmenten: de eigenaar kan er MEERDERE achter elkaar plakken. */
@@ -148,4 +154,4 @@ const INSTRUCTIES = {
   ],
 };
 
-module.exports = { welkom, instructies, WELKOM, INSTRUCTIES };
+module.exports = { WELKOM_MARKT, welkom, instructies, WELKOM, INSTRUCTIES };

@@ -245,8 +245,13 @@ function render(lang) {
    gearchiveerd) zwaarder wegen dan wat de laatste sync deed. Allebei op
    bestaande tokens (--warning-ink, --text-primary). +444 bytes.
    Vorige waarden: 408875 bytes / 00796beeab07b870. */
-const CSS_BYTES = 409319;
-const CSS_SHA   = 'efd67e68a124b8e1';
+/* Bijgewerkt 2026-09-27 (audit 26/09): #clerk-toggle van --text-disabled naar
+   --text-secondary (contrast 4,5:1, met uitleg in een commentaar), en een
+   pauzeknop voor de inlogdiavoorstelling (.brand-pauze, tekens via ::before
+   zodat de lektest geen onvertaalde tekst ziet). +600 bytes.
+   Vorige waarden: 409319 bytes / efd67e68a124b8e1. */
+const CSS_BYTES = 409919;
+const CSS_SHA   = '016290127b263264';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

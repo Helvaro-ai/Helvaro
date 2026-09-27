@@ -636,6 +636,7 @@ ${_intro.css()}
         <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="${T('promo.slide',{n:1})}"></button>
         <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:2})}"></button>
         <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:3})}"></button>
+        <button type="button" class="brand-pauze" id="brand-pauze" aria-pressed="false" aria-label="${T('promo.pause')}"></button>
       </div>
     </div>
 
@@ -1214,10 +1215,10 @@ ${faro.navCta}
           <div class="export-card-title display-heading gradient-text">CSV Export</div>
           <p class="export-card-desc">${T('exp.csv.sub')}</p>
           <div class="export-includes">
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Naam &amp; contactgegevens</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.contact')}</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.scores')}</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.summaries')}</div>
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Bronnaam &amp; datum</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.source')}</div>
           </div>
           <button class="btn-icon btn-primary-sm export-btn" id="btn-download-csv" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1233,9 +1234,9 @@ ${faro.navCta}
           <div class="export-card-title display-heading gradient-text">${T('exp.week')}</div>
           <p class="export-card-desc">${T('exp.week.sub')}</p>
           <div class="export-includes">
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Leads &amp; conversie stats</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.convStats')}</div>
             <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.qualList')}</div>
-            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Scores &amp; samenvattingen</div>
+            <div class="export-include-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ${T('exp.scoresSummaries')}</div>
           </div>
           <button class="btn-icon btn-primary-sm" id="btn-load-rapport" style="width:100%;justify-content:center;padding:13px;margin-top:auto">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -4911,6 +4912,15 @@ const API_BASE = '/api';
    UTILITY FUNCTIONS
    ============================================================ */
 // Escape user data before inserting into innerHTML. Prevents XSS
+/* Bronnen staan als Nederlandse waarde in de data (Formulier, Telefoon,
+   Onbekend). Bij het TONEN vertalen, zodat een Engelse, Franse of Duitse
+   sessie geen Nederlands ziet (audit 26/09). Merknamen blijven zoals ze zijn. */
+function bronLabel(b) {
+  var k = String(b || '').trim().toLowerCase();
+  var sleutels = { formulier: 'bron.formulier', telefoon: 'bron.telefoon', onbekend: 'bron.onbekend', 'onbekende bron': 'bron.onbekend', 'e-mail': 'bron.email', email: 'bron.email', website: 'bron.website' };
+  return sleutels[k] ? tr(sleutels[k]) : String(b || '');
+}
+
 function escHtml(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -7491,7 +7501,7 @@ function renderResultatenLeads(c) {
   body.innerHTML = rijen.map(l => \`
     <tr class="lead-row" tabindex="0" role="button" data-id="\${escHtml(l.id)}">
       <td><strong>\${escHtml(l.naam || '—')}</strong></td>
-      <td>\${escHtml(l.bron || '—')}</td>
+      <td>\${escHtml(l.bron ? bronLabel(l.bron) : '—')}</td>
       <td>\${statusBadge(l.status)}</td>
       <td>\${qualBadge(l)}</td>
       <td>\${l.afspraakGeboekt ? '<span class="badge badge-yes">' + escHtml(tr('res.geboekt')) + '</span>' : '<span class="badge badge-new">—</span>'}</td>
@@ -8854,7 +8864,7 @@ function renderTable() {
         </td>
         <td>\${statusBadge(lead.status)}</td>
         <td>\${qualBadge(lead)}</td>
-        <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '—'}</td>
+        <td>\${lead.bron ? \`<span class="badge badge-bron">\${escHtml(bronLabel(lead.bron))}</span>\` : '—'}</td>
         <td class="td-samenvatting" title="\${escHtml(lead.samenvatting)}">\${escHtml(lead.samenvatting) || '—'}</td>
         <td>\${scoreBar(lead.leadScore)}</td>
         <td>\${lead.opgepikt ? '<span style="color:var(--green-ink);display:inline-flex" title="${T('dash.picked')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
@@ -9022,7 +9032,7 @@ function openPanel(lead) {
   const bronBadge = document.getElementById('panel-bron-badge');
   const panelAgeDays = leadAgeDays(lead);
   const panelAgeClass = leadAgeClass(panelAgeDays);
-  bronBadge.innerHTML = (lead.bron ? \`<span class="badge badge-bron">\${escHtml(lead.bron)}</span>\` : '') +
+  bronBadge.innerHTML = (lead.bron ? \`<span class="badge badge-bron">\${escHtml(bronLabel(lead.bron))}</span>\` : '') +
     \`<span class="age-chip age-\${panelAgeClass}">\${escHtml(tr('pnl.oud', { n: panelAgeDays }))}</span>\`;
 
   // Copy phone
@@ -9164,7 +9174,7 @@ function openPanel(lead) {
       </div>
       <div class="panel-row">
         <span class="panel-row-label">${T('dash.col.source')}</span>
-        <span class="panel-row-value">\${escHtml(lead.bron) || '—'}</span>
+        <span class="panel-row-value">\${escHtml(lead.bron ? bronLabel(lead.bron) : '') || '—'}</span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">${T('dash.picked')}</span>
@@ -13910,7 +13920,7 @@ function renderPipeline() {
         <div class="pipeline-card-meta">
           \${dealerPill || (sc > 0 ? \`<span class="pipeline-score \${scCls}">\${sc}</span>\` : '')}
           \${dealerVoertuig}
-          \${l.bron ? \`<span class="badge badge-bron" style="font-size:10px">\${escHtml(l.bron)}</span>\` : ''}
+          \${l.bron ? \`<span class="badge badge-bron" style="font-size:10px">\${escHtml(bronLabel(l.bron))}</span>\` : ''}
           <span class="pipeline-card-date">\${dateStr}</span>
         </div>
         \${l.telefoon ? \`<div class="pipeline-card-phone">\${escHtml(l.telefoon)}</div>\` : ''}
@@ -14800,7 +14810,7 @@ function renderAnalyse() {
   // Source performance table
   const sourceMap = {};
   leads.forEach(l => {
-    const src = l.bron || 'Onbekend';
+    const src = l.bron || 'Onbekend';  // label via bronLabel() bij het tonen
     if (!sourceMap[src]) sourceMap[src] = { total: 0, qual: 0, scores: [] };
     sourceMap[src].total++;
     if (l.qualified) sourceMap[src].qual++;
@@ -14813,7 +14823,7 @@ function renderAnalyse() {
       const conv = d.total ? Math.round((d.qual / d.total) * 100) : 0;
       const avg = d.scores.length ? (d.scores.reduce((a,b) => a+b, 0) / d.scores.length).toFixed(1) : '—';
       return \`<tr>
-        <td>\${escHtml(src)}</td>
+        <td>\${escHtml(bronLabel(src))}</td>
         <td style="text-align:center">\${d.total}</td>
         <td style="text-align:center">\${d.qual}</td>
         <td style="text-align:center">\${conv}%</td>
@@ -16013,12 +16023,18 @@ function renderApTemplates() {
   // Sort so the niche-recommended template is first if applicable
   const niche = AP_STATE.niche || '';
   const recommendedIdx = AP_NICHE_TO_TEMPLATE[niche];
+  /* Een dealer ziet de algemene teksten en die voor autohandel; de andere
+     markten zien alles behalve de autoteksten. Het index blijft het ECHTE
+     index in AP_TEMPLATES, anders plakt applyApTemplate() de verkeerde tekst. */
+  const dealer = isDealer();
+  const rec = dealer ? AP_TEMPLATES.findIndex((t) => t.markt === 'dealership') : recommendedIdx;
   wrap.innerHTML = AP_TEMPLATES.map((t, i) => {
-    const preview = t.text.replace(/\\{naam\\}/g, 'Jan').replace(/\\{bedrijf\\}/g, 'jouw bedrijf')
+    if (dealer ? (t.markt && t.markt !== 'dealership') : t.markt === 'dealership') return '';
+    const preview = t.text.replace(/\\{naam\\}/g, 'Jan').replace(/\\{bedrijf\\}/g, tr('ap.prev.bedrijf'))
       .replace(/\\{ai\\}/g, 'Sara').replace(/\\{project\\}/g, '...').replace(/\\{bron\\}/g, 'website');
-    const isRec = (recommendedIdx === i);
+    const isRec = (rec === i);
     return '<button type="button" class="ap-tpl-card' + (isRec ? ' recommended' : '') + '" data-tpl-idx="' + i + '" onclick="applyApTemplate(' + i + ')">' +
-      (isRec ? '<span class="ap-tpl-card-rec">Aanbevolen voor jouw sector</span>' : '') +
+      (isRec ? '<span class="ap-tpl-card-rec">' + escHtml(tr('ap.tpl.rec')) + '</span>' : '') +
       '<span class="ap-tpl-card-label"><span class="ap-tpl-card-emoji">' + t.emoji + '</span>' + escHtml(t.label) + '</span>' +
       '<span class="ap-tpl-card-preview">' + escHtml(preview) + '</span>' +
     '</button>';
@@ -20740,20 +20756,42 @@ function initLoginSlideshow() {
     if (dots[current].getAttribute('aria-selected') !== null) dots[current].setAttribute('aria-selected', 'true');
   }
 
+  /* WCAG 2.2.2 (audit 26/09): beweging die uit zichzelf doorloopt moet te
+     pauzeren zijn, en stopt helemaal bij prefers-reduced-motion. Pauze bij
+     hover en focus, plus een knop die de toestand onthoudt voor deze sessie. */
+  const rustig = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pauzeKnop = document.getElementById('brand-pauze');
+  let gepauzeerd = rustig;
+  let even = false;   // tijdelijk stil door hover of focus
+
   function start() {
+    clearInterval(timer);
+    if (gepauzeerd || even) return;
     timer = setInterval(() => goTo(current + 1), 5000);
   }
 
-  function restart() {
-    clearInterval(timer);
-    start();
+  function restart() { start(); }
+
+  function toonKnop() {
+    if (!pauzeKnop) return;
+    pauzeKnop.setAttribute('aria-pressed', gepauzeerd ? 'true' : 'false');
+    pauzeKnop.setAttribute('aria-label', tr(gepauzeerd ? 'promo.play' : 'promo.pause'));
   }
 
   // Dot click
   dots.forEach((dot, i) => {
     dot.addEventListener('click', () => { goTo(i); restart(); });
   });
+  if (pauzeKnop) pauzeKnop.addEventListener('click', () => { gepauzeerd = !gepauzeerd; toonKnop(); start(); });
+  const wrap = document.querySelector('.login-brand-side');
+  if (wrap) {
+    wrap.addEventListener('mouseenter', () => { even = true; start(); });
+    wrap.addEventListener('mouseleave', () => { even = false; start(); });
+    wrap.addEventListener('focusin', () => { even = true; start(); });
+    wrap.addEventListener('focusout', () => { even = false; start(); });
+  }
 
+  toonKnop();
   start();
 }
 
