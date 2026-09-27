@@ -611,7 +611,11 @@ async function syncFeed(projectCode, bron, vorige, opties = {}) {
   }
 
   const _sync = require('./_voorraad-sync');
-  const bestaand = await vehicles.list(projectCode, { inclusiefGearchiveerd: true });
+  /* De hele voorraad, niet de eerste 1000. Wat hier ontbreekt, ziet verzoen()
+     als "nieuw" en maakt het een tweede keer aan. Past hij zelfs in 3000 niet,
+     dan liever niets doen dan dubbels schrijven (audit M-9). */
+  const { vehicles: bestaand, afgekapt: bestaandAfgekapt } = await vehicles.listMetStatus(projectCode, { inclusiefGearchiveerd: true, maxPaginas: 30 });
+  if (bestaandAfgekapt) { const e = new Error('voorraad groter dan 3000 wagens; sync gestopt om dubbels te vermijden'); e.code = 'voorraad_te_groot'; throw e; }
   const nu = new Date().toISOString();
   const plan = _sync.verzoen(bestaand, feed.voertuigen, { nu, verdwenen: bron.verdwenen, bevestigDaling: opties.bevestigDaling, kentReservering: provider.kentReservering !== false });
   const res = await _sync.pasToe(projectCode, plan, { nu, codes: bestaand.map((v) => v.code), max: MAX_SCHRIJF_PER_RUN });

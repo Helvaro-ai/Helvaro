@@ -478,7 +478,10 @@ async function list(projectCode, opties = {}) {
      weggelaten: listMetStatus() hieronder zegt dat de lijst afgekapt is, en de
      voorraadstatus (api/_inventaris.js) meldt het. */
   let afgekapt = false;
-  for (let ronde = 0; ronde < 10; ronde++) {
+  /* De sync vraagt meer pagina's (zie _inventaris.syncFeed): een onvolledige
+     lijst betekent daar dubbele wagens, niet alleen een onvolledig scherm. */
+  const paginas = Math.max(1, Math.min(50, Number(opties.maxPaginas) || 10));
+  for (let ronde = 0; ronde < paginas; ronde++) {
     const r = await atFetch(
       `${TABEL}?filterByFormula=${formule}&pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`
     );
@@ -490,9 +493,9 @@ async function list(projectCode, opties = {}) {
     for (const rec of (d.records || [])) uit.push(vanRecord(rec));
     if (!d.offset) break;
     offset = d.offset;
-    if (ronde === 9) afgekapt = true;
+    if (ronde === paginas - 1) afgekapt = true;
   }
-  if (afgekapt) console.warn('[voertuigen] lijst afgekapt op 1000 voor', tenant);
+  if (afgekapt) console.warn('[voertuigen] lijst afgekapt op ' + (paginas * 100) + ' voor', tenant);
   _laatsteAfgekapt.set(tenant, afgekapt);
 
   let autos = uit.filter((v) => v.projectCode === tenant);   // riem en bretels
