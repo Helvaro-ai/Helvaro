@@ -155,4 +155,4 @@ async function reset(bucket, id) {
   }
 }
 
-module.exports = { hit, reset, configured };
+module.exports = { hit, reset, configured, restBase, veiligeMelding };

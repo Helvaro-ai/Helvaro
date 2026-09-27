@@ -46,6 +46,7 @@ const _klant = require('./_klant');               // klantidentiteit over kanale
 const _inventaris = require('./_inventaris');     // voorraadwaarheid + eindcontrole voor verzenden
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
+const _lock          = require('./_lock');           // sloten over instanties heen (audit L-1)
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
 const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
 
@@ -266,6 +267,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       await eventWork;
       return;
     }
+    /* Dezelfde vraag over ALLE instanties heen (audit L-1): de Map hierboven
+       ziet alleen deze instantie. Zonder Upstash of bij een storing geeft dit
+       true en gaat alles zoals voorheen. */
+    if (message.id && !(await _lock.eenmalig('wa-msg:' + message.id, 15 * 60 * 1000))) {
+      console.log(`[WhatsApp] message ${message.id} al opgepakt door een andere instantie. overgeslagen`);
+      await eventWork;
+      return;
+    }
 
     const phone = message.from;           // e.g. "32478123456"
     /* Bij een spraakbericht of foto is er geen message.text -- dan gaat de
@@ -311,7 +320,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // the container gets frozen/recycled after our 200 OK already went out.
     // We still `await` it locally too: that preserves today's behaviour on
     // any runtime where waitUntil() is a no-op (see require comment above).
-    const work = opDeRij(phone, scopedProjectCode, () => processMessage(phone, text, scopedProjectCode, message.id));
+    const work = opDeRij(phone, scopedProjectCode, () => processMessage(phone, text, scopedProjectCode, message.id))
+      .catch(async (err) => {
+        /* Verwerking mislukt: het bericht-id weer vrijgeven, zodat een
+           herbezorging het opnieuw mag proberen in plaats van als dubbel
+           overgeslagen te worden. */
+        if (message.id) await _lock.vergeet('wa-msg:' + message.id);
+        throw err;
+      });
     waitUntil(work);
     await Promise.all([work, eventWork]);
 
@@ -3377,6 +3393,16 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
   // Remove undefined values
   Object.keys(fields).forEach(k => fields[k] === undefined && delete fields[k]);
 
+  /* Zelfde slotclaim als de websiteboeking (api/_lock.js): twee paden die in
+     dezelfde seconde hetzelfde uur boeken, zien anders allebei "vrij". Een
+     geweigerde claim loopt via de gewone mislukte-boekingsroute: de lead
+     wordt rechtgezet en de eigenaar gewaarschuwd. */
+  const slotClaim = await _lock.claim(_lock.slotSleutel(projectCode, startTime), _lock.SLOT_CLAIM_MS, leadId);
+  if (!slotClaim.genomen) {
+    console.warn(`[Appointment] slot ${startTime} (${projectCode}) wordt al door een andere boeking geclaimd`);
+    return { ok: false, error: 'slot_bezet', slotBezet: true };
+  }
+
   const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${APPOINTMENTS_TABLE}`;
   try {
     const res = await atFetch(url, {
@@ -3387,11 +3413,13 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
     const data = await res.json();
     if (data.error) {
       console.error('[Appointment] create fout:', JSON.stringify(data.error));
+      await slotClaim.los();
       return { ok: false, error: data.error.message };
     }
     return { ok: true, id: data.id, apptId };
   } catch (err) {
     console.error('[Appointment] create exception:', err.message);
+    await slotClaim.los();
     return { ok: false, error: err.message };
   }
 }

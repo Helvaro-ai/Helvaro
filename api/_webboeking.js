@@ -24,6 +24,7 @@
 
 const _afspraken = require('./_afspraken');
 const _gcal = require('./_gcal');
+const _lock = require('./_lock');
 
 const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
 const TZ = 'Europe/Brussels';
@@ -165,6 +166,21 @@ async function boek(projectCode, o = {}) {
      browser ooit kreeg. */
   const { momenten } = await vrijeMomenten(t, { alle: true });
   if (momenten.indexOf(start.toISOString()) === -1) throw new BoekFout('Dat moment is intussen niet meer vrij. Kies een ander.', 'slot_bezet');
+
+  /* Twee boekingen in dezelfde seconde (website + WhatsApp, of twee
+     instanties) lezen hierboven allebei "vrij". De claim sluit dat gat over
+     alle paden heen; zie api/_lock.js. Zonder Redis gaat alles door. */
+  const slotClaim = await _lock.claim(_lock.slotSleutel(t, start.toISOString()), _lock.SLOT_CLAIM_MS, o.leadId);
+  if (!slotClaim.genomen) throw new BoekFout('Dat moment wordt net door iemand anders geboekt. Kies een ander.', 'slot_bezet');
+  try {
+    return await boekOpGeclaimdMoment(t, start, o);
+  } catch (e) {
+    await slotClaim.los();
+    throw e;
+  }
+}
+
+async function boekOpGeclaimdMoment(t, start, o) {
 
   const _vehicles = require('./_vehicles');
   const _dealerBoeking = require('./_dealer-boeking');

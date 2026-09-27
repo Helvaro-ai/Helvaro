@@ -31,6 +31,7 @@ const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per 
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
+const _lock          = require('./_lock');           // slotclaim over boekingspaden heen (audit L-1)
 const _integraties   = require('./_integraties');    // de ene vorm voor koppelingsstatus (platform-integriteit)
 const _dealerOverzicht = require('./_dealer-overzicht'); // "wat vraagt vandaag aandacht" (Fase 6)
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
@@ -2016,6 +2017,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         }
         fields['Lead'] = [body.leadId];
       }
+      /* Slotclaim over alle boekingspaden heen (api/_lock.js): de dubbelcheck
+         hierboven leest Airtable, en een websiteboeking in dezelfde seconde
+         ziet daar nog niets. Zonder Redis gaat alles door zoals voorheen. */
+      const slotClaim = await _lock.claim(_lock.slotSleutel(projectCode, body.startTime), _lock.SLOT_CLAIM_MS, body.leadId || '');
+      if (!slotClaim.genomen) {
+        return res.status(409).json({ error: 'Op dat moment staat er al een afspraak. Kies een ander tijdstip.', code: 'slot_conflict' });
+      }
       try {
         const r = await atFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${APPOINTMENTS_TABLE}`,
@@ -2026,7 +2034,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           }
         );
         const d = await r.json();
-        if (!r.ok) return res.status(500).json({ error: d.error?.message || 'Aanmaken mislukt' });
+        if (!r.ok) { await slotClaim.los(); return res.status(500).json({ error: d.error?.message || 'Aanmaken mislukt' }); }
 
         // Fase 2b: de race op het voertuig zelf sluiten -- ALTIJD na het
         // aanmaken, nooit ervoor (zie api/_voertuigslot.js bevestigClaim).
@@ -2151,6 +2159,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
            of dit moment al bezet was. */
         return res.status(200).json({ ok: true, id: d.id, apptId, googleEventId, agendaGeverifieerd });
       } catch (err) {
+        await slotClaim.los();
         return res.status(500).json({ error: 'Serverfout' });
       }
     }

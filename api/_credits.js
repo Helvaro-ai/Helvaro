@@ -65,6 +65,7 @@
  * silent no-op / fail-open — see schemaLooksUnconfigured() below.
  */
 
+const _lock = require('./_lock');
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const _plan = require('./_plan'); // planstatus: betaalt deze klant nog?
 const _registry = require('./_ai/registry'); // de ENE prijstabel -- zie creditsForChatTurn
@@ -795,7 +796,19 @@ function _queueDepth() { return _queues.size; }
 async function recordUsage(projectCode, feature, opts = {}) {
   const code = String(projectCode || '').trim();
   if (!code) return;
-  return serialize(code, () => recordUsageInner(code, feature, opts));
+  /* Binnen deze instantie: de rij hierboven. Tussen instanties: een gedeeld
+     slot per klant (api/_lock.js, audit L-1). Ligt dat na een paar korte
+     pogingen nog vast, dan boeken we toch -- verbruik kwijtraken is erger dan
+     de kleine kans op een verkeerde tussenstand, en het grootboek dedupliceert
+     al op referentie. Zonder Redis verandert er niets. */
+  return serialize(code, async () => {
+    const uit = await _lock.metSlot('credits:' + code, 10000, () => recordUsageInner(code, feature, opts), { pogingen: 6, pauzeMs: 150 });
+    if (uit.bezet) {
+      console.warn('[credits] gedeeld slot bleef bezet voor ' + code + ' -- verbruik toch geboekt');
+      return recordUsageInner(code, feature, opts);
+    }
+    return uit.resultaat;
+  });
 }
 
 async function recordUsageInner(code, feature, opts = {}) {
