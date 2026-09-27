@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Het dashboard hoort niet in de zoekresultaten
+Disallow: /dashboard
+
+Sitemap: https://helvaro.pro/sitemap.xml

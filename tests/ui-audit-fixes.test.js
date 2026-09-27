@@ -264,7 +264,19 @@ console.log('\n— www wordt doorgestuurd naar het echte adres —');
   const red = vercel.redirects || [];
   const isWww = (r) => (r.has || []).some((h) => h.type === 'host' && h.value === 'www.helvaro.pro');
   const idxWww = red.findIndex(isWww);
-  const idxRoot = red.findIndex((r) => r.source === '/' && !r.has);
+  const idxRoot = red.findIndex((r) => r.source === '/' && r.destination === '/dashboard');
+
+  /* Sinds 2026-09-27 serveert dit project ook de marketingsite op helvaro.pro.
+     De "/" -> "/dashboard" regel mag dus ALLEEN op app.helvaro.pro gelden;
+     zonder die host-voorwaarde verdween de site van helvaro.pro (gebeurd bij
+     de deploy van 83542cf, teruggedraaid binnen minuten). */
+  const rootRegel = red[idxRoot] || {};
+  ck('"/" -> "/dashboard" geldt alleen op app.helvaro.pro, niet op de marketingsite',
+     (rootRegel.has || []).some((x) => x.type === 'host' && x.value === 'app.helvaro.pro'),
+     JSON.stringify(rootRegel));
+  ck('de marketingsite staat in public/ (index + automotive)',
+     require('fs').existsSync(require('path').join(__dirname, '..', 'public', 'index.html'))
+       && require('fs').existsSync(require('path').join(__dirname, '..', 'public', 'automotive.html')));
 
   /* Live gebleken: ":pad*" matcht de KALE "/" niet. www.helvaro.pro/ ging
      daardoor eerst naar /dashboard OP WWW, en pas die pagina verwees door --
