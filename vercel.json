@@ -203,6 +203,10 @@
       "destination": "/public/assistant.js"
     },
     {
+      "source": "/voorraad.js",
+      "destination": "/public/voorraad.js"
+    },
+    {
       "source": "/OneSignalSDKWorker.js",
       "destination": "/public/OneSignalSDKWorker.js"
     },

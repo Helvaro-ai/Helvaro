@@ -250,8 +250,12 @@ function render(lang) {
    pauzeknop voor de inlogdiavoorstelling (.brand-pauze, tekens via ::before
    zodat de lektest geen onvertaalde tekst ziet). +600 bytes.
    Vorige waarden: 409319 bytes / efd67e68a124b8e1. */
-const CSS_BYTES = 409919;
-const CSS_SHA   = '016290127b263264';
+/* Bijgewerkt 2026-09-27 (Setup-pagina): .su-* voor de statuskaarten, tabs en
+   het voorraadpaneel, alleen op bestaande tokens en de 4/8/12-hoekschaal.
+   Niets bestaands gewijzigd. +4.172 bytes (incl. [hidden]-regel en binnenmarge voor de panelen).
+   Vorige waarden: 409919 bytes / 016290127b263264. */
+const CSS_BYTES = 414091;
+const CSS_SHA   = 'b317d8f8f5826a1f';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

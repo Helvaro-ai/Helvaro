@@ -655,7 +655,8 @@ async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiver
     if (!dlr.feed && !archiveren) continue;   // uurrun: niets te doen zonder feed
     if ((Date.now() - now.getTime()) / 1000 > budgetS) { uit.overgeslagen++; continue; }
     if (dlr.feed) {
-      const st = await _inventaris.sync(dlr.code, { door: 'cron', trigger })
+      const rest = Math.max(20000, Math.min(240000, budgetS * 1000 - (Date.now() - now.getTime()) - 15000));
+      const st = await _inventaris.sync(dlr.code, { door: 'cron', trigger, budgetMs: rest })
         .catch((e) => { console.warn('[cron-followup] voorraadsync', dlr.code, e && e.message); return null; });
       if (st && st.ok) uit.gesynct++; else uit.syncMislukt++;
     }

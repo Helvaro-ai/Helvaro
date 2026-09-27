@@ -8964,6 +8964,52 @@ body.panel-open .main-content { transform: scale(0.985); }
 .inv-dot--bezig { background: var(--accent-c); }
 .inv-dot--let { background: rgb(var(--warning-rgb)); }
 .inv-dot--fout { background: rgb(var(--error-rgb)); }
+/* ── Setup (2026-09-27) ─────────────────────────────────────────────────────
+   Vijf statuskaarten, tabs, en het voorraadpaneel. Alleen bestaande tokens en
+   de hoekschaal van Fase 4 (--radius-sm/-btn/-card). */
+.su-wrap { display: grid; gap: 20px; }
+.su-kaarten { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.su-kaart { display: grid; gap: 6px; text-align: left; padding: 14px 16px; border-radius: var(--radius-card); border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); font: inherit; cursor: pointer; min-height: 104px; align-content: start; }
+.su-kaart:hover { border-color: rgba(var(--accent-rgb), 0.45); }
+.su-kaart:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.su-kaart-kop { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.9333rem; }
+.su-kaart-regel { font-size: 0.8667rem; color: var(--text-secondary); line-height: 1.4; }
+.su-kaart-actie { font-size: 0.8rem; font-weight: 600; color: var(--accent-ink, var(--accent)); margin-top: auto; }
+.su-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--border); }
+.su-dot--ok { background: var(--success-c); }
+.su-dot--let { background: rgb(var(--warning-rgb)); }
+.su-dot--fout { background: rgb(var(--error-rgb)); }
+.su-dot--laden { background: var(--text-secondary); opacity: 0.5; }
+.su-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.su-tab { padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--text-secondary); font: inherit; font-weight: 600; font-size: 0.9333rem; cursor: pointer; margin-bottom: -1px; }
+.su-tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--accent); }
+.su-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+.su-paneel { display: grid; gap: 16px; }
+.su-paneel[hidden], .su-bron-invoer[hidden], .su-tab[hidden] { display: none; }
+.su-blok { display: grid; gap: 12px; padding: 16px 18px; }
+.su-blok-kop { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.su-blok-titel { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
+.su-sub-titel { font-weight: 700; font-size: 0.8667rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+.su-bronnen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.su-bron { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--radius-card); border: 1px solid var(--border); background: var(--bg-card-alt); cursor: pointer; }
+.su-bron--aan { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08); }
+.su-bron input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.su-bron:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.su-bron-titel { font-weight: 700; font-size: 0.9333rem; color: var(--text-primary); }
+.su-bron-uitleg { font-size: 0.8667rem; color: var(--text-secondary); line-height: 1.45; }
+.su-bron-invoer { display: grid; gap: 6px; }
+.su-tabel-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-btn); }
+.su-tabel { width: 100%; border-collapse: collapse; font-size: 0.8667rem; font-variant-numeric: tabular-nums; }
+.su-tabel th, .su-tabel td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.su-tabel th { color: var(--text-secondary); font-weight: 600; font-size: 0.8rem; }
+.su-tabel tr:last-child td { border-bottom: 0; }
+.su-rij-fout td { color: var(--red-ink); }
+.su-code { margin: 0; padding: 12px 14px; border-radius: var(--radius-btn); background: var(--bg-card-alt); border: 1px solid var(--border); font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; color: var(--text-primary); }
+.su-feed-url { font-size: 0.8rem; word-break: break-all; }
+@media (max-width: 520px) {
+  .su-kaarten { grid-template-columns: 1fr 1fr; }
+  .su-tab { padding: 10px 10px; font-size: 0.8667rem; }
+}
 .inv-dot--onbekend { background: transparent; border: 1.5px solid var(--text-muted); }
 .inv-sync {
   display: inline-flex; align-items: center; gap: 7px;

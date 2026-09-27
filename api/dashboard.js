@@ -2244,6 +2244,71 @@ ${faro.navCta}
 
     <!-- Formulier Page. Share your lead form link in 3 ways -->
     <main class="page-content page" id="page-formulier">
+      <!-- Setup (2026-09-27): de centrale plek voor alles wat bepaalt hoe
+           leads binnenkomen en wat de assistent weet. Vijf onderdelen met hun
+           ECHTE status (setupLaad()), elk met een eigen paneel. Het formulier
+           staat er ongewijzigd in; website-assistent, agenda en e-mail zijn
+           hierheen verhuisd uit Instellingen; de voorraad is nieuw. -->
+      <div class="su-wrap">
+        <div class="su-kaarten" id="su-kaarten" aria-live="polite"></div>
+        <div class="su-tabs" role="tablist" aria-label="${T('su.tabs')}">
+          <button type="button" class="su-tab" role="tab" id="su-tab-chatbot" aria-controls="su-p-chatbot" aria-selected="false" onclick="setupTab('chatbot')">${T('su.chatbot')}</button>
+          <button type="button" class="su-tab" role="tab" id="su-tab-formulier" aria-controls="su-p-formulier" aria-selected="true" onclick="setupTab('formulier')">${T('su.formulier')}</button>
+          <button type="button" class="su-tab su-alleen-dealer" role="tab" id="su-tab-voorraad" aria-controls="su-p-voorraad" aria-selected="false" onclick="setupTab('voorraad')">${T('su.voorraad')}</button>
+          <button type="button" class="su-tab" role="tab" id="su-tab-agenda" aria-controls="su-p-agenda" aria-selected="false" onclick="setupTab('agenda')">${T('su.agenda')}</button>
+          <button type="button" class="su-tab" role="tab" id="su-tab-email" aria-controls="su-p-email" aria-selected="false" onclick="setupTab('email')">${T('su.email')}</button>
+        </div>
+
+        <section class="su-paneel" id="su-p-chatbot" role="tabpanel" aria-labelledby="su-tab-chatbot" hidden>
+        <!-- Websiteassistent (api/_assistent.js). Getekend door loadWidgetStatus(). -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            ${T('widget.sectie')}
+          </div>
+          <div id="widget-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
+        </div>
+
+        </section>
+
+        <section class="su-paneel" id="su-p-voorraad" role="tabpanel" aria-labelledby="su-tab-voorraad" hidden>
+          <div id="su-voorraad"><div class="settings-label-sub">${T('laden')}</div></div>
+        </section>
+
+        <section class="su-paneel" id="su-p-agenda" role="tabpanel" aria-labelledby="su-tab-agenda" hidden>
+        <!-- Google Agenda -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            ${T('set.gcal')}
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">${T('set.gcal.title')}</div>
+              <div class="settings-label-sub" id="gcal-status-sub">${T('set.gcal.sub')}</div>
+            </div>
+            <div id="gcal-actions">
+              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">${T('set.gcal.connect')}</button>
+              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">${T('set.gcal.disc')}</button>
+            </div>
+          </div>
+        </div>
+
+        </section>
+
+        <section class="su-paneel" id="su-p-email" role="tabpanel" aria-labelledby="su-tab-email" hidden>
+        <!-- Mailbox (api/_email/mailbox.js). Getekend door loadMailStatus(). -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>
+            ${T('mail.sectie')}
+          </div>
+          <div id="mail-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
+        </div>
+
+        </section>
+
+        <section class="su-paneel" id="su-p-formulier" role="tabpanel" aria-labelledby="su-tab-formulier">
       <div class="fm-wrap">
 
         <!-- Form submission stats. What's the form actually delivering -->
@@ -2666,6 +2731,8 @@ ${faro.navCta}
           </div>
         </div>
       </div>
+        </section>
+      </div>
     </main>
 
     <!-- Instellingen Page -->
@@ -2785,39 +2852,17 @@ ${faro.navCta}
              bereiken (WhatsApp hierboven, e-mail, website), dan de koppelingen
              die de assistent gebruikt (agenda, CRM), dan je eigen voorkeuren
              en account. Alleen verplaatst, niets toegevoegd of weggelaten. -->
-        <!-- Mailbox (api/_email/mailbox.js). Getekend door loadMailStatus(). -->
+        <!-- Website-assistent, e-mail en agenda staan sinds 2026-09-27 onder
+             Setup (page-formulier), samen met het formulier en de voorraad.
+             Verplaatst, niet gekopieerd: de id's (mail-instellingen,
+             widget-instellingen, gcal-status-sub) bestaan maar één keer. -->
         <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>
-            ${T('mail.sectie')}
-          </div>
-          <div id="mail-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
-        </div>
-
-        <!-- Websiteassistent (api/_assistent.js). Getekend door loadWidgetStatus(). -->
-        <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            ${T('widget.sectie')}
-          </div>
-          <div id="widget-instellingen"><div class="settings-label-sub">${T('laden')}</div></div>
-        </div>
-
-        <!-- Google Agenda -->
-        <div class="settings-section">
-          <div class="settings-section-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ${T('set.gcal')}
-          </div>
           <div class="settings-row">
             <div>
-              <div class="settings-label">${T('set.gcal.title')}</div>
-              <div class="settings-label-sub" id="gcal-status-sub">${T('set.gcal.sub')}</div>
+              <div class="settings-label">${T('su.verhuisd.titel')}</div>
+              <div class="settings-label-sub">${T('su.verhuisd.sub')}</div>
             </div>
-            <div id="gcal-actions">
-              <button class="btn-icon" id="btn-gcal-connect" onclick="connectGoogleCalendar()" style="border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">${T('set.gcal.connect')}</button>
-              <button class="btn-icon" id="btn-gcal-disconnect" onclick="disconnectGoogleCalendar()" style="display:none;border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">${T('set.gcal.disc')}</button>
-            </div>
+            <button class="btn-icon" type="button" onclick="navigateTo('formulier')">${T('su.verhuisd.knop')}</button>
           </div>
         </div>
 
@@ -6998,6 +7043,7 @@ function voorraadRegels(d) {
 
 function renderVoorraad() {
   try { if (_checklistConfigCache) renderOnboardingChecklist(_checklistConfigCache); } catch (e) { /* bijzaak */ }
+  try { setupVoorraadRender(); setupRenderKaarten(); } catch (e) { /* Setup is niet open */ }
   var kaart = document.getElementById('inv-card');
   var home = document.getElementById('inv-card-home');
   if (!isDealer()) {
@@ -17658,6 +17704,29 @@ function openPandModal(code) {
      doodlopende weg. */
   document.getElementById('pd-f-code').readOnly = !!pand;
 
+  /* Een wagen uit een voorraadbron (AutoScout24 of feed): wat de bron levert,
+     overschrijft de sync elk uur. Die velden dus niet bewerkbaar laten lijken
+     (audit 26/09, M-2) -- wijzig ze bij de bron. Status en omschrijving blijven
+     vrij: een reservering en je eigen tekst laat de sync staan. */
+  var vanBron = isDealer() && !!(pand && pand.bron === 'feed');
+  ['pd-f-merk', 'pd-f-model', 'pd-f-uitvoering', 'pd-f-prijs', 'pd-f-km', 'pd-f-inschrijving',
+   'pd-f-brandstof', 'pd-f-transmissie', 'pd-f-kw', 'pd-f-carrosserie', 'pd-f-fotos'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') el.disabled = vanBron; else el.readOnly = vanBron;
+    el.classList.toggle('pd-van-bron', vanBron);
+  });
+  var bronNoot = document.getElementById('pd-bron-noot');
+  if (!bronNoot) {
+    bronNoot = document.createElement('div');
+    bronNoot.id = 'pd-bron-noot';
+    bronNoot.className = 'inv-let';
+    var titel = document.getElementById('pd-modal-title');
+    if (titel && titel.parentNode) titel.parentNode.insertAdjacentElement('afterend', bronNoot);
+  }
+  bronNoot.textContent = vanBron ? tr('pd.vanBron') : '';
+  bronNoot.hidden = !vanBron;
+
   document.getElementById('pd-f-link').value = '';
   pdStatus('');
   pdMarkeerLeeg([]);
@@ -18271,6 +18340,207 @@ function fsReset() {
 }
 
 // ── Formulier page ────────────────────────────────────────────────────────
+/* ── Setup (2026-09-27) ──────────────────────────────────────────────────────
+   De pagina "Setup" (data-page formulier) toont vijf onderdelen met hun ECHTE
+   toestand: website-assistent, leadformulieren, voorraad, agenda en e-mail.
+   Elke kaart leest dezelfde modes als het bijhorende paneel, zodat een kaart
+   nooit "gekoppeld" zegt terwijl het paneel iets anders toont. */
+var setupState = { tab: '', laden: false, widget: null, mail: null, gcal: null };
+
+function setupTab(naam) {
+  var tabs = ['chatbot', 'formulier', 'voorraad', 'agenda', 'email'];
+  if (tabs.indexOf(naam) === -1) naam = 'formulier';
+  if (naam === 'voorraad' && !isDealer()) naam = 'formulier';
+  setupState.tab = naam;
+  try { sessionStorage.setItem('hv-setup-tab', naam); } catch (e) { /* bijzaak */ }
+  tabs.forEach(function (t) {
+    var knop = document.getElementById('su-tab-' + t);
+    var paneel = document.getElementById('su-p-' + t);
+    if (knop) knop.setAttribute('aria-selected', t === naam ? 'true' : 'false');
+    if (paneel) paneel.hidden = t !== naam;
+  });
+  if (naam === 'chatbot') loadWidgetStatus();
+  if (naam === 'email') loadMailStatus();
+  if (naam === 'agenda') loadGcalStatus();
+  if (naam === 'voorraad') setupVoorraadLaad();
+}
+
+async function setupLaad() {
+  var dealer = isDealer();
+  Array.prototype.forEach.call(document.querySelectorAll('.su-alleen-dealer'), function (e) { e.hidden = !dealer; });
+  var bewaard = '';
+  try { bewaard = sessionStorage.getItem('hv-setup-tab') || ''; } catch (e) { bewaard = ''; }
+  setupTab(setupState.tab || bewaard || (dealer ? 'voorraad' : 'formulier'));
+  setupRenderKaarten();
+  if (setupState.laden) return;
+  setupState.laden = true;
+  var gcalVraag = fetch(API_BASE + '/gcal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey }, body: JSON.stringify({ mode: 'status' }) })
+    .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  var uit = await Promise.all([
+    convVraag({ mode: 'widget-status' }).catch(function () { return null; }),
+    convVraag({ mode: 'email-status' }).catch(function () { return null; }),
+    gcalVraag,
+    dealer && !voorraadState.data ? voorraadVraag('inventory-status').catch(function () { return null; }) : Promise.resolve(null)
+  ]);
+  setupState.widget = uit[0]; setupState.mail = uit[1]; setupState.gcal = uit[2];
+  if (uit[3]) voorraadState.data = uit[3];
+  setupState.laden = false;
+  setupRenderKaarten();
+}
+
+function setupRenderKaarten() {
+  var el = document.getElementById('su-kaarten');
+  if (!el) return;
+  var w = setupState.widget, m = setupState.mail, g = setupState.gcal, v = voorraadState.data;
+  var maand = (document.getElementById('fm-stat-month') || {}).textContent || '0';
+  var kaart = function (tab, titel, toestand, regel) {
+    return '<button type="button" class="su-kaart" onclick="setupTab(\\'' + tab + '\\')" aria-controls="su-p-' + tab + '">'
+      + '<span class="su-kaart-kop"><span class="su-dot su-dot--' + toestand + '" aria-hidden="true"></span>' + escHtml(titel) + '</span>'
+      + '<span class="su-kaart-regel">' + escHtml(regel) + '</span>'
+      + '<span class="su-kaart-actie">' + escHtml(tr(toestand === 'ok' ? 'su.bekijk' : 'su.instellen')) + '</span></button>';
+  };
+  var html = '';
+  if (w === null) html += kaart('chatbot', tr('su.chatbot'), 'laden', tr('laden'));
+  else if (w && w.aan && (w.domeinen || []).length) html += kaart('chatbot', tr('su.chatbot'), 'ok', tr('su.k.chatbot.aan', { n: w.domeinen.length }));
+  else if (w && w.aan) html += kaart('chatbot', tr('su.chatbot'), 'let', tr('su.k.chatbot.geenDomein'));
+  else html += kaart('chatbot', tr('su.chatbot'), 'uit', tr('su.k.chatbot.uit'));
+  html += kaart('formulier', tr('su.formulier'), getFormUrl() ? 'ok' : 'uit', tr('su.k.formulier', { n: String(maand).replace(/[^0-9]/g, '') || '0' }));
+  if (isDealer()) {
+    if (!v) html += kaart('voorraad', tr('su.voorraad'), 'laden', tr('laden'));
+    else {
+      var r = voorraadRegels(v);
+      var n = (v.telling && v.telling.actief != null) ? v.telling.actief : (v.count || 0);
+      var toe = r.st === 'HEALTHY' ? 'ok' : (r.st === 'FAILED' ? 'fout' : (r.st === 'UNKNOWN' ? 'uit' : 'let'));
+      var soort = v.bron !== 'feed' ? 'native' : (v.feed && v.feed.provider === 'autoscout24' ? 'as24' : 'feed');
+      if (soort === 'native') toe = 'ok';
+      html += kaart('voorraad', tr('su.voorraad'), toe, tr('su.k.voorraad.' + soort, { n: n, status: r.label }));
+    }
+  }
+  if (g === null) html += kaart('agenda', tr('su.agenda'), 'laden', tr('laden'));
+  else if (g && g.connected && g.needsReauth) html += kaart('agenda', tr('su.agenda'), 'let', tr('su.k.agenda.let'));
+  else if (g && g.connected) html += kaart('agenda', tr('su.agenda'), 'ok', tr('su.k.agenda.aan'));
+  else html += kaart('agenda', tr('su.agenda'), 'uit', tr('su.k.agenda.uit'));
+  if (m === null) html += kaart('email', tr('su.email'), 'laden', tr('laden'));
+  else if (m && m.verbonden) html += kaart('email', tr('su.email'), m.foutCode === 'reauth_required' ? 'let' : 'ok', tr('su.k.email.aan', { adres: m.adres || '' }));
+  else html += kaart('email', tr('su.email'), 'uit', tr('su.k.email.uit'));
+  el.innerHTML = html;
+}
+
+async function setupVoorraadLaad() {
+  setupVoorraadRender();
+  try {
+    voorraadState.data = await voorraadVraag('inventory-status');
+    voorraadState.fout = '';
+  } catch (e) { voorraadState.fout = e.message || tr('inv.fout.algemeen'); }
+  setupVoorraadRender();
+  setupRenderKaarten();
+}
+
+function setupVoorraadRender() {
+  var el = document.getElementById('su-voorraad');
+  if (!el) return;
+  var d = voorraadState.data;
+  if (!d && !voorraadState.fout) { el.innerHTML = '<div class="settings-label-sub">' + escHtml(tr('laden')) + '</div>'; return; }
+  var soort = !d || d.bron !== 'feed' ? 'native' : (d.feed && d.feed.provider === 'autoscout24' ? 'autoscout24' : 'feed');
+  var url = d && d.feed ? (d.feed.url || '') : '';
+  var keuze = function (waarde, titel, uitleg) {
+    return '<label class="su-bron' + (soort === waarde ? ' su-bron--aan' : '') + '"><input type="radio" name="su-bron" value="' + waarde + '"' + (soort === waarde ? ' checked' : '') + ' onchange="setupBronKeuze(this.value)">'
+      + '<span class="su-bron-titel">' + escHtml(titel) + '</span><span class="su-bron-uitleg">' + escHtml(uitleg) + '</span></label>';
+  };
+  var r = d ? voorraadRegels(d) : null;
+  var bezig = voorraadState.bezig || (r && r.st === 'SYNCING');
+  var foutRegel = '';
+  if (voorraadState.fout) foutRegel = '<div class="inv-fout">' + escHtml(voorraadState.fout) + '</div>';
+  else if (d && d.lastResult === 'failed' && d.lastError) {
+    var codeSleutel = 'inv.code.' + (d.lastErrorCode || '');
+    foutRegel = '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: (d.lastErrorCode && T_DICT[codeSleutel] !== undefined) ? tr(codeSleutel) : d.lastError })) + '</div>';
+  }
+  var dalingRegel = r && r.daling ? '<div class="inv-let">' + escHtml(tr('inv.daling.tekst', { n: r.daling })) + ' <button type="button" class="inv-bron-link" onclick="voorraadBevestigDaling(' + Number(r.daling) + ')"' + (bezig ? ' disabled' : '') + '>' + escHtml(tr('inv.daling.knop')) + '</button></div>' : '';
+  var runs = d && Array.isArray(d.runs) ? d.runs : [];
+  var hist = runs.length ? ('<div class="su-tabel-wrap"><table class="su-tabel"><thead><tr><th>' + escHtml(tr('su.v.h.wanneer')) + '</th><th>' + escHtml(tr('su.v.h.hoe')) + '</th><th>' + escHtml(tr('su.v.h.gecontroleerd')) + '</th><th>' + escHtml(tr('su.v.h.nieuw')) + '</th><th>' + escHtml(tr('su.v.h.bijgewerkt')) + '</th><th>' + escHtml(tr('su.v.h.verkocht')) + '</th><th>' + escHtml(tr('su.v.h.resultaat')) + '</th></tr></thead><tbody>'
+    + runs.map(function (x) {
+      var wanneer = x.at ? new Date(x.at).toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+      var hoe = x.trigger === 'handmatig' ? tr('su.v.trigger.hand') : tr('su.v.trigger.auto');
+      var res = x.ok ? tr('su.v.ok') : (tr('su.v.mislukt') + (x.code && T_DICT['inv.code.' + x.code] !== undefined ? ': ' + tr('inv.code.' + x.code) : ''));
+      var getal = function (n) { return n == null ? '—' : String(n); };
+      return '<tr' + (x.ok ? '' : ' class="su-rij-fout"') + '><td>' + escHtml(wanneer) + '</td><td>' + escHtml(hoe) + '</td><td>' + escHtml(getal(x.count)) + '</td><td>' + escHtml(getal(x.aangemaakt)) + '</td><td>' + escHtml(getal(x.bijgewerkt)) + '</td><td>' + escHtml(getal(x.verkocht)) + '</td><td>' + escHtml(res) + '</td></tr>';
+    }).join('') + '</tbody></table></div>') : '<div class="settings-label-sub">' + escHtml(tr('su.v.hist.leeg')) + '</div>';
+  var code = getProjectCode();
+  var snippet = code ? ('<div id="helvaro-voorraad"></div>\\n<script src="https://app.helvaro.pro/voorraad.js" data-dealer="' + code + '" async><\\/script>') : '';
+  var feedUrl = code ? 'https://app.helvaro.pro/api/inventory/' + encodeURIComponent(code) : '';
+  el.innerHTML = '<div class="settings-section su-blok">'
+    + '<div class="su-blok-kop"><div><div class="su-blok-titel">' + escHtml(tr('su.v.titel')) + '</div><div class="settings-label-sub">' + escHtml(tr('su.v.sub')) + '</div></div></div>'
+    + '<div class="su-bronnen" role="radiogroup" aria-label="' + escHtml(tr('su.v.titel')) + '">'
+    + keuze('autoscout24', tr('su.v.as24'), tr('su.v.as24.uitleg'))
+    + keuze('feed', tr('su.v.feed'), tr('su.v.feed.uitleg'))
+    + keuze('native', tr('su.v.native'), tr('su.v.native.uitleg'))
+    + '</div>'
+    + '<div class="su-bron-invoer" id="su-bron-invoer"' + (soort === 'native' ? ' hidden' : '') + '>'
+    + '<input type="url" id="su-bron-url" class="mail-instructie" maxlength="1000" inputmode="url" autocomplete="off" spellcheck="false" aria-label="' + escHtml(tr('inv.bron.url')) + '" placeholder="' + (soort === 'feed' ? 'https://…/voorraad.xml' : 'https://www.autoscout24.be/nl/verkopers/…') + '">'
+    + '<div class="mail-hint" id="su-bron-hint">' + escHtml(soort === 'feed' ? '' : tr('su.v.as24.noot')) + '</div></div>'
+    + '<div class="mail-knoppen"><button type="button" class="inv-sync" onclick="setupBronBewaar()"' + (bezig ? ' disabled' : '') + '>' + escHtml(tr('su.v.bewaar')) + '</button></div>'
+    + '</div>'
+    + (d && d.bron === 'feed' ? '<div class="settings-section su-blok">'
+      + '<div class="su-blok-kop"><div><div class="su-blok-titel">' + escHtml(tr('su.v.status')) + '</div>'
+      + '<div class="inv-status"><span class="inv-dot ' + voorraadStatusKlasse(r.st) + '"></span><span class="inv-status-label">' + escHtml(r.label) + '</span>'
+      + '<span class="inv-sub">' + escHtml(tr('inv.laatst', { t: r.wanneer })) + '</span></div></div>'
+      + '<button type="button" class="inv-sync" onclick="voorraadSync()"' + (bezig ? ' disabled aria-busy="true"' : '') + '>' + escHtml(bezig ? tr('inv.bezig') : tr('inv.sync')) + '</button></div>'
+      + (r.etalage.length ? '<div class="inv-cijfers inv-etalage">' + r.etalage.map(function (c) { return '<span>' + escHtml(c) + '</span>'; }).join('') + '</div>' : '')
+      + dalingRegel + foutRegel
+      + '<div class="su-sub-titel">' + escHtml(tr('su.v.hist')) + '</div>' + hist
+      + '</div>' : '')
+    + (code ? '<div class="settings-section su-blok"><div class="su-blok-titel">' + escHtml(tr('su.v.web')) + '</div>'
+      + '<div class="settings-label-sub">' + escHtml(tr('su.v.web.sub')) + '</div>'
+      + '<pre class="su-code" id="su-web-code"></pre>'
+      + '<div class="mail-knoppen"><button type="button" class="btn-icon" onclick="setupKopieer(\\'su-web-code\\')">' + escHtml(tr('su.v.web.kopieer')) + '</button></div>'
+      + '<div class="settings-label-sub">' + escHtml(tr('su.v.web.feed')) + ' <code class="su-feed-url">' + escHtml(feedUrl) + '</code></div>'
+      + '</div>' : '');
+  var invoer = document.getElementById('su-bron-url');
+  if (invoer && soort !== 'native') invoer.value = url;
+  var pre = document.getElementById('su-web-code');
+  if (pre) pre.textContent = snippet;
+}
+
+function setupBronKeuze(waarde) {
+  var blok = document.getElementById('su-bron-invoer');
+  if (blok) blok.hidden = waarde === 'native';
+  Array.prototype.forEach.call(document.querySelectorAll('.su-bron'), function (l) {
+    var i = l.querySelector('input'); l.classList.toggle('su-bron--aan', !!(i && i.checked));
+  });
+  var invoer = document.getElementById('su-bron-url');
+  if (invoer) invoer.placeholder = waarde === 'feed' ? 'https://…/voorraad.xml' : 'https://www.autoscout24.be/nl/verkopers/…';
+  var hint = document.getElementById('su-bron-hint');
+  if (hint) hint.textContent = waarde === 'autoscout24' ? tr('su.v.as24.noot') : '';
+}
+
+async function setupBronBewaar() {
+  var k = document.querySelector('input[name="su-bron"]:checked');
+  var waarde = k ? k.value : 'native';
+  var url = ((document.getElementById('su-bron-url') || {}).value || '').trim();
+  if (waarde === 'autoscout24' && !/^https:\\/\\/(www\\.)?autoscout24\\.[a-z]{2,3}\\/(([a-z]{2})\\/)?(verkopers|haendler|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\\/[a-z0-9-]+/i.test(url)) {
+    toast(tr('su.v.as24.ongeldig'), 'error');
+    return;
+  }
+  var bron = waarde === 'native' ? { type: 'native' } : { type: 'feed', provider: waarde === 'autoscout24' ? 'autoscout24' : 'feed', url: url };
+  try {
+    voorraadState.data = await voorraadVraag('inventory-source', { source: bron });
+    toast(tr('tst.opgeslagen'), 'success');
+    setupVoorraadRender();
+    if (bron.type === 'feed') await voorraadSync();
+    setupRenderKaarten();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function setupKopieer(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  try {
+    navigator.clipboard.writeText(el.textContent)
+      .then(function () { toast(tr('widget.gekopieerd'), 'success'); })
+      .catch(function () { toast(el.textContent, 'info'); });
+  } catch (e) { toast(el.textContent, 'info'); }
+}
+
 function loadFormulier() {
   const url      = getFormUrl();
   const code     = getProjectCode();
@@ -18280,6 +18550,7 @@ function loadFormulier() {
   if (!urlEl) return;
   if (!url) {
     urlEl.textContent = tr('val.geenCode');
+    setupLaad();
     return;
   }
   urlEl.textContent = url;
@@ -18309,6 +18580,7 @@ function loadFormulier() {
 
   // Stats from already-fetched leads
   populateFormStats();
+  setupLaad();
 
   // Stijl & merk: één keer ophalen per sessie, daarna leeft het in het scherm.
   fsLaad();

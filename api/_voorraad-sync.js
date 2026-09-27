@@ -168,9 +168,17 @@ function verzoen(bestaand, bron, opties = {}) {
     }
     geraakt.add(oud.id);
 
-    const wijzigingen = VERGELIJK.filter((k) => f[k] !== undefined && !gelijk(f[k], oud[k]));
-    const nieuweStatus = vehicles.normStatus(f.status);
+    let wijzigingen = VERGELIJK.filter((k) => f[k] !== undefined && !gelijk(f[k], oud[k]));
+    let nieuweStatus = vehicles.normStatus(f.status);
     const oudeStatus = vehicles.normStatus(oud.status);
+    /* Een bron die geen reserveringen kent (AutoScout24 toont alleen "te
+       koop") mag een reservering die de dealer in Helvaro zette niet elk uur
+       terugdraaien naar beschikbaar. */
+    if (opties.kentReservering === false && oudeStatus === 'gereserveerd' && nieuweStatus === 'beschikbaar') {
+      wijzigingen = wijzigingen.filter((k) => k !== 'status');
+      invoer.status = oud.status;
+      nieuweStatus = oudeStatus;
+    }
 
     /* Een gearchiveerde wagen die opnieuw in de bron staat als NIET verkocht
        komt terug. Staat hij er nog steeds als verkocht, dan blijft hij in het

@@ -3197,13 +3197,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         /* bevestigDaling: de dealer bevestigt dat de wagens die ineens uit de
            feed verdwenen echt verkocht zijn. Alleen hier, bij een handmatige
            sync -- de cron bevestigt nooit zelf (api/_voorraad-sync.js). */
-        else if (body.mode === 'inventory-sync') uit = await _inventaris.sync(projectCode, { door: clientName || 'dashboard', trigger: 'handmatig', bevestigDaling: body.bevestigDaling === true });
+        else if (body.mode === 'inventory-sync') uit = await _inventaris.sync(projectCode, { door: clientName || 'dashboard', trigger: 'handmatig', bevestigDaling: body.bevestigDaling === true, budgetMs: 45000 });
         else uit = await _inventaris.bewaarBron(projectCode, body.source || {});
         if (uit && uit.reden === 'schema_ontbreekt') {
           try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ }
           return res.status(503).json(Object.assign({ error: 'De voorraadvelden worden nog aangemaakt. Probeer het zo opnieuw.', code: 'schema_ontbreekt' }, uit));
         }
-        if (uit && uit.reden === 'ongeldig_adres') return res.status(400).json({ error: 'Geef een geldig https-adres voor de voorraadfeed.', code: 'ongeldig_adres' });
+        if (uit && uit.reden === 'ongeldig_adres') return res.status(400).json({ error: 'Geef een geldig https-adres: een voorraadfeed (CSV, XML, JSON) of je AutoScout24-verkopersprofiel.', code: 'ongeldig_adres' });
         if (uit && uit.reden === 'geen_klantrecord') return res.status(404).json({ error: 'Account niet gevonden.', code: 'geen_klantrecord' });
         /* Hoe de voorraad er NU uitziet: actief / verkocht / gearchiveerd. De
            cijfers hierboven gaan over de laatste run (wat veranderde); dit gaat
