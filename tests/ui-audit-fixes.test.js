@@ -266,6 +266,15 @@ console.log('\n— www wordt doorgestuurd naar het echte adres —');
   const idxWww = red.findIndex(isWww);
   const idxRoot = red.findIndex((r) => r.source === '/' && !r.has);
 
+  /* App en marketingsite blijven gescheiden (Sindi, 2026-09-27). De site
+     staat in de repo Helvaro-Website en een eigen Vercel-project; op
+     27/09 belandde ze via een CLI-deploy in dit project en verdween ze van
+     helvaro.pro zodra main uitrolde. Deze app hoort geen site te bevatten. */
+  const pub = require('path').join(__dirname, '..', 'public');
+  ck('de marketingsite zit NIET in de app (public/index.html, automotive.html)',
+     !require('fs').existsSync(require('path').join(pub, 'index.html'))
+       && !require('fs').existsSync(require('path').join(pub, 'automotive.html')));
+
   /* Live gebleken: ":pad*" matcht de KALE "/" niet. www.helvaro.pro/ ging
      daardoor eerst naar /dashboard OP WWW, en pas die pagina verwees door --
      twee sprongen, en de eerste op de verkeerde host. Daarom een eigen regel
