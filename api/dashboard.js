@@ -3033,7 +3033,7 @@ ${faro.navCta}
             </div>
             <button class="btn-icon" onclick="logout()" style="border-color:rgba(var(--error-rgb),0.35);color: var(--red-ink);background:rgba(var(--error-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Uitloggen
+              ${T('nav.logout')}
             </button>
           </div>
         </div>
@@ -4168,7 +4168,7 @@ ${faro.dock}
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>
       </svg>
-      Mail ons
+      ${T('help.mailOns')}
     </a>${SUPPORT_WA ? `
     <a id="hv-help-wa" href="https://wa.me/${SUPPORT_WA}" target="_blank" rel="noopener noreferrer">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -11949,7 +11949,7 @@ document.getElementById('btn-load-rapport').addEventListener('click', async () =
     toast(hvFoutZin(err), 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span class="icon">↻</span> Rapport opnieuw laden';
+    btn.innerHTML = '<span class="icon">↻</span> ' + escHtml(tr('exp.loadReport'));
   }
 });
 
