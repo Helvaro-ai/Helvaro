@@ -3945,12 +3945,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // 503 en niet 500: dit is tijdelijk en de dashboardpoll mag het gewoon
     // opnieuw proberen. `unavailable` is wat de UI leest om "we konden je CRM
     // niet lezen" te tonen in plaats van een leeg huis.
-    console.warn('Leads error, no usable cache. Returning 503 rather than a fake empty account');
+    console.warn('Leads error, no usable cache. Returning 503 rather than a fake empty account:', err && err.message);
     return res.status(503).json({
       error: 'We konden je leads nu niet ophalen.',
       code: 'crm_unavailable',
       unavailable: true,
-      detail: err.message,
+      // Geen err.message naar de browser: dat is Airtable-binnenwerk
+      // (tabelnamen, statuscodes). Het staat in de serverlog hierboven.
       client: { naam: clientName, calendly: calendlyLink }
     });
   }

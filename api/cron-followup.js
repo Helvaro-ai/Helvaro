@@ -27,6 +27,19 @@ const _crypto = require('crypto');
  * api/leads.js, api/_ledger.js, ...). Deze niet. Nu wel, met dezelfde vorm.
  */
 const CRON_FETCH_TIMEOUT_MS = Math.max(5000, Number(process.env.CRON_FETCH_TIMEOUT_MS || 20000));
+
+/* De kalenderdag in België, niet in UTC. Voor een sleutel "één keer per dag"
+   maakt dat verschil tussen middernacht en 02:00: wie de cron ooit later of
+   vaker laat lopen, kreeg anders twee meldingen op één Belgische dag. Zelfde
+   berekening als brusselsDagStr() in api/_leadscore.js. */
+function brusselsDag(datum) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit' }).format(datum);
+  } catch (_) {
+    return datum.toISOString().slice(0, 10);
+  }
+}
+
 async function atFetch(url, opts) {
   return fetch(url, {
     ...opts,
@@ -1266,7 +1279,7 @@ async function checkDailyIntegrity(airtableToken, baseId) {
   const { sendMail } = require('./_mailer');
   const _i18nS = require('./_i18n');
   const vandaagVanaf = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const dagSleutel = new Date().toISOString().slice(0, 10);
+  const dagSleutel = brusselsDag(new Date());
 
   let integratiesGemeld = 0, mislukkingenGemeld = 0, gecontroleerd = 0;
 
@@ -1729,7 +1742,7 @@ Schrijf in het Nederlands. Geen inleiding, geen conclusie. Alleen bullets. Maxim
            herstart na een storing) boekt dan maar één keer. Een echte
            volgende week krijgt een andere datum en dus terecht een nieuwe
            referentie. */
-        reference: `learning:${projectCode}:${new Date().toISOString().slice(0, 10)}`,
+        reference: `learning:${projectCode}:${brusselsDag(new Date())}`,
       }).catch(() => {});
       // Spread token usage so we don't burst Anthropic rate limits
       await new Promise(res => setTimeout(res, 500));

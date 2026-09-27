@@ -115,6 +115,13 @@ function isActief(v) {
  *            geadopteerd:number, verdwenenAantal:number, dalingGeblokkeerd:boolean,
  *            gebeurtenissen:object[]}}
  */
+/* Een voorraadnummer is hetzelfde nummer, ook als de feed er morgen
+   hoofdletters van maakt ("ab-123" -> "AB-123"). Hoofdlettergevoelig
+   vergelijken maakte daar een nieuwe wagen van en markeerde de oude als
+   verkocht. Opgeslagen wordt wat de bron stuurt; alleen het vergelijken is
+   ongevoelig. */
+function bronSleutel(id) { return String(id == null ? '' : id).trim().toLowerCase(); }
+
 function verzoen(bestaand, bron, opties = {}) {
   const nu = opties.nu || new Date().toISOString();
   const modus = MODI.indexOf(opties.verdwenen) !== -1 ? opties.verdwenen : 'verkocht';
@@ -129,7 +136,7 @@ function verzoen(bestaand, bron, opties = {}) {
   const perAutoscout = new Map();
   const perLink = new Map();
   for (const v of bestaand) {
-    if (v.bron === 'feed' && v.bronId) { vanBron.set(v.bronId, v); continue; }
+    if (v.bron === 'feed' && v.bronId) { vanBron.set(bronSleutel(v.bronId), v); continue; }
     const as = autoscoutUit(v);
     if (as && !perAutoscout.has(as)) perAutoscout.set(as, v);
     const lk = linkSleutel(v.link);
@@ -153,7 +160,7 @@ function verzoen(bestaand, bron, opties = {}) {
     if (!f || !f.bronId) continue;
     const invoer = Object.assign({}, f, { bron: 'feed', gesynct: nu });
 
-    let oud = vanBron.get(f.bronId) || null;
+    let oud = vanBron.get(bronSleutel(f.bronId)) || null;
     let adoptie = false;
     if (!oud) {
       const kandidaat = perAutoscout.get(autoscoutUit(f)) || perLink.get(linkSleutel(f.link)) || null;

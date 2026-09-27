@@ -51,6 +51,18 @@ const regel = (o) => Object.assign({ bronId: 'X', merk: 'BMW', model: 'X5', prij
 (async () => {
   /* ═══════════════════════════════ LAAG 1 ═══════════════════════════════ */
 
+  console.log('\nL-13: een voorraadnummer dat van hoofdletters wisselt is dezelfde wagen');
+  {
+    const p = vsync.verzoen([wagen({ code: 'ab-123', bronId: 'ab-123' })], [regel({ bronId: 'AB-123', prijs: 49000 })], { nu: NU });
+    ck('geen nieuwe wagen', p.nieuw.length === 0, p.nieuw);
+    ck('niets als verkocht gemarkeerd', p.weg.length === 0 && p.verdwenenAantal === 0, p);
+    ck('de prijswijziging komt gewoon binnen', p.bijwerken.length === 1, p.bijwerken);
+    const dubbel = inv._test && inv._test.parseFeed
+      ? inv._test.parseFeed(JSON.stringify([{ id: 'X-1', make: 'BMW', model: 'X5' }, { id: 'x-1', make: 'BMW', model: 'X5' }]))
+      : null;
+    if (dubbel) ck('en in één feed telt X-1/x-1 als één wagen', (dubbel.voertuigen || dubbel).length === 1, dubbel);
+  }
+
   console.log('\nTEST 1-2: nieuw, en daarna geen dubbel');
   {
     let p = vsync.verzoen([], [regel({ bronId: 'A1' })], { nu: NU });

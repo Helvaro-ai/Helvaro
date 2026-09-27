@@ -410,8 +410,8 @@ function parseFeed(tekst, formaat, contentType) {
   let ongeldig = 0;
   for (const r of rijen) {
     const m = mapRegel(r);
-    if (!m || !m.merk || gezien.has(m.bronId)) { ongeldig++; continue; }
-    gezien.add(m.bronId);
+    if (!m || !m.merk || gezien.has(m.bronId.toLowerCase())) { ongeldig++; continue; }
+    gezien.add(m.bronId.toLowerCase());
     uit.push(m);
   }
   return { formaat: f, voertuigen: uit, ongeldig, hash: crypto.createHash('sha256').update(tekst).digest('hex').slice(0, 16) };

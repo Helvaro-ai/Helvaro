@@ -120,7 +120,7 @@ async function tweeKeer(credits, reference) {
       { bestand: 'api/leads.js', omschrijving: 'suggest-replies',
         anker: /credits\.recordUsage\(projectCode, credits\.FEATURES\.REPLY_SUGGESTION, \{[\s\S]{0,700}?reference: `suggest:\$\{leadId\}:\$\{history\.length\}`/ },
       { bestand: 'api/cron-followup.js', omschrijving: 'wekelijkse learning-cron',
-        anker: /credits\.recordUsage\(projectCode, credits\.FEATURES\.WEEKLY_LEARNING, \{[\s\S]{0,1300}?reference: `learning:\$\{projectCode\}:\$\{new Date\(\)\.toISOString\(\)\.slice\(0, 10\)\}`/ },
+        anker: /credits\.recordUsage\(projectCode, credits\.FEATURES\.WEEKLY_LEARNING, \{[\s\S]{0,1300}?reference: `learning:\$\{projectCode\}:\$\{brusselsDag\(new Date\(\)\)\}`/ },  // Belgische dag sinds 27/09 (audit L-14)
       { bestand: 'api/_faro/media.js', omschrijving: 'Faro video-generatie',
         anker: /credits\.recordUsage\(job\.projectCode, credits\.FEATURES\.VIDEO_GENERATION, \{[\s\S]{0,100}?reference: `video:\$\{job\.jobId\}`/ },
       { bestand: 'api/_faro/orchestrator.js', omschrijving: 'Faro chatverbruik per beurt',
