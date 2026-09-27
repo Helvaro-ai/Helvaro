@@ -1314,7 +1314,10 @@ body.hv-mode-ai .faro-rail {
    side padding) + --sp-16 clears it with room to spare -- no raw pixel
    value, per the scale rule above. */
 @media (max-width: 520px) {
-  .faro-dock { padding-right: calc(var(--sp-4) + var(--sp-16)); }
+  .faro-dock { padding: var(--sp-15) calc(var(--sp-3) + var(--sp-12)) var(--sp-15) var(--sp-3); }
+  /* Faro's tipregel is op een telefoon een tweede balk boven de balk. Op dit
+     formaat telt elke rij; de tip blijft in de werkruimte van Faro zelf. */
+  .faro-dock .faro-dock__hint { display: none; }
 }
 
 /* ═══ Ingeklapte zijbalk, Faro-kant ═══════════════════════════════════════

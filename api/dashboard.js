@@ -7149,6 +7149,18 @@ function dealerFunnelKaart(f) {
   return '<div class="dealer-overzicht-card"><div class="dealer-funnel-row">' + barsHtml + '</div>' + onvoldoende + '</div>';
 }
 
+/* Temperatuur als gekleurde stip in plaats van 🔥🟡⚪. Emoji tekenen op elk
+   toestel anders, vallen buiten het kleurenpalet en een schermlezer leest
+   "vuur". De stip gebruikt de palettokens; het label (HOT/WARM/COLD) staat in
+   aria-label, of wordt weggelaten (decoratief) wanneer het woord er al naast
+   staat. */
+function tempStip(t, decoratief) {
+  var k = t === 'hot' || t === 'warm' ? t : 'cold';
+  return '<span class="temp-stip temp-stip--' + k + '"'
+    + (decoratief ? ' aria-hidden="true"' : ' role="img" aria-label="' + escHtml(tr('score.temp.' + k)) + '"')
+    + '></span>';
+}
+
 function renderDealerOverzicht() {
   var el = document.getElementById('dealer-overzicht');
   if (!el) return;
@@ -7172,7 +7184,7 @@ function renderDealerOverzicht() {
   }).join('') + '</div>';
 
   var prioriteitHtml = dealerLijstKaart(tr('dash.prioriteit.titel'), tr('dash.prioriteit.leeg'), (d.prioriteit || []).map(function (p, idx) {
-    var emoji = p.temperatuur === 'hot' ? '🔥' : p.temperatuur === 'warm' ? '🟡' : '⚪';
+    var emoji = tempStip(p.temperatuur);
     var wanneer = p.afspraak
       ? new Date(p.afspraak.startISO).toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
       : (p.actie ? tr('actie.' + p.actie) : '');
@@ -7218,6 +7230,8 @@ function renderStats() {
   const total = s.total || 0;
   const grid = document.getElementById('stats-grid');
   if (!grid) return;
+  const ck = document.getElementById('dash-checklist');
+  if (ck && ck.style.display !== 'none') plaatsChecklist(ck);
 
   // Trend: compare this week vs last week
   const now = Date.now();
@@ -7452,14 +7466,17 @@ function renderResultaten(d) {
   // instead of a wall of zeroes and em-dashes (matches the leads-table empty state).
   const hasAnyData = c.leadsReceived || c.qualifiedCount || c.appointmentsBooked || c.pipelineValueTotal;
   if (!hasAnyData) {
+    /* Een lege maand is niet hetzelfde als "nog niets". Analyse telt alles;
+       zonder dit onderscheid lijkt Resultaten dat tegen te spreken. */
+    const periodeLeeg = (document.getElementById('resultaten-period')?.value || 'this_month') !== 'all_time';
     grid.innerHTML = \`
       <div class="empty-state" style="grid-column:1/-1">
         <div class="empty-state-illustration" style="width:88px;height:88px;font-size:32px">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
         </div>
-        <div class="empty-title">${T('leeg.resultaten')}</div>
-        <div class="empty-desc">\${escHtml(tr('res.leegDesc'))}</div>
-        \${emptyStateCta()}
+        <div class="empty-title">\${escHtml(tr(periodeLeeg ? 'res.leegPeriode' : 'leeg.resultaten'))}</div>
+        <div class="empty-desc">\${escHtml(tr(periodeLeeg ? 'res.leegPeriodeDesc' : 'res.leegDesc'))}</div>
+        \${periodeLeeg ? resultatenLeegKnoppen() : emptyStateCta()}
       </div>
     \`;
     return;
@@ -8346,6 +8363,18 @@ function chkItemAction(key) {
   else if (key === 'voorraad') navigateTo('panden');
 }
 
+/* Zolang er nog geen enkele lead is, is de opstartlijst het belangrijkste op
+   het scherm. Zodra er leads binnenkomen, zoekt een verkoper eerst "wie moet ik
+   nu bellen": dan schuift de lijst onder het aandachtsblok en de stats, in
+   plaats van erboven. Verplaatsen, niet dupliceren -- de ids blijven uniek. */
+function plaatsChecklist(wrap) {
+  const heeftLeads = Array.isArray(state.leads) && state.leads.length > 0;
+  const anker = document.getElementById(heeftLeads ? 'dealer-overzicht' : 'dash-verify-banner');
+  if (!anker || !anker.parentNode) return;
+  if (anker.nextElementSibling !== wrap) anker.parentNode.insertBefore(wrap, anker.nextSibling);
+  wrap.classList.toggle('dash-checklist--later', heeftLeads);
+}
+
 function renderOnboardingChecklist(d) {
   const wrap = document.getElementById('dash-checklist');
   if (!wrap || !d) return;
@@ -8362,6 +8391,7 @@ function renderOnboardingChecklist(d) {
   if (doneCount === items.length) { wrap.style.display = 'none'; return; }
 
   wrap.style.display = '';
+  plaatsChecklist(wrap);
   const label = document.getElementById('dash-checklist-progress-label');
   if (label) label.textContent = tr('chk.progress', { done: doneCount, total: items.length });
   const fill = document.getElementById('dash-checklist-progress-fill');
@@ -8983,7 +9013,7 @@ function dealerScoreKaart(lead) {
   if (!sc) return '';
   const koop = dealerKoopVanLead(lead) || {};
   const tempCls = sc.temperatuur === 'hot' ? 'temp-hot' : sc.temperatuur === 'warm' ? 'temp-warm' : 'temp-cold';
-  const tempEmoji = sc.temperatuur === 'hot' ? '🔥' : sc.temperatuur === 'warm' ? '🟡' : '⚪';
+  const tempEmoji = tempStip(sc.temperatuur, true);
 
   const redenen = Array.isArray(sc.redenen) ? sc.redenen : [];
   const redenChips = redenen.map((r) => \`<span class="score-pill sp-neutral">\${escHtml(tr('score.reden.' + r))}</span>\`).join('');
@@ -9224,15 +9254,15 @@ function openPanel(lead) {
       </div>
       <div class="panel-row">
         <span class="panel-row-label">${T('dash.picked')}</span>
-        <span class="panel-row-value \${lead.opgepikt ? 'check-yes' : 'check-no'}">\${lead.opgepikt ? 'Ja' : 'Nee'}</span>
+        <span class="panel-row-value \${lead.opgepikt ? 'check-yes' : 'check-no'}">\${lead.opgepikt ? escHtml(tr('val.ja')) : escHtml(tr('val.nee'))}</span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">${T('lp.boekingslink')}</span>
-        <span class="panel-row-value \${lead.boekingslinkVerstuurd ? 'check-yes' : 'check-no'}">\${lead.boekingslinkVerstuurd ? 'Ja' : 'Nee'}</span>
+        <span class="panel-row-value \${lead.boekingslinkVerstuurd ? 'check-yes' : 'check-no'}">\${lead.boekingslinkVerstuurd ? escHtml(tr('val.ja')) : escHtml(tr('val.nee'))}</span>
       </div>
       <div class="panel-row">
         <span class="panel-row-label">${T('lp.afspraakGeboekt')}</span>
-        <span class="panel-row-value \${lead.afspraakGeboekt ? 'check-yes' : 'check-no'}">\${lead.afspraakGeboekt ? 'Ja' : 'Nee'}</span>
+        <span class="panel-row-value \${lead.afspraakGeboekt ? 'check-yes' : 'check-no'}">\${lead.afspraakGeboekt ? escHtml(tr('val.ja')) : escHtml(tr('val.nee'))}</span>
       </div>
     </div>
   \`;
@@ -13830,9 +13860,9 @@ async function pipelineMoveTo(leadId, newStage) {
    aanstaan. Dat is de minst verrassende lezing van "meerdere chips aan". */
 var pipeFilters = new Set();
 var PIPE_FILTER_DEFS = [
-  { id: 'hot',          icoon: '🔥' },
-  { id: 'warm',         icoon: '🟡' },
-  { id: 'cold',         icoon: '⚪' },
+  { id: 'hot',          icoon: '', stip: 'hot' },
+  { id: 'warm',         icoon: '', stip: 'warm' },
+  { id: 'cold',         icoon: '', stip: 'cold' },
   { id: 'afspraak',     icoon: '' },
   { id: 'financiering', icoon: '' },
   { id: 'inruil',       icoon: '' }
@@ -13878,7 +13908,7 @@ function renderPipeFilters() {
   if (!isDealer()) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = '';
   el.innerHTML = PIPE_FILTER_DEFS.map(function (f) {
-    var label = (f.icoon ? f.icoon + ' ' : '') + escHtml(tr('pipe.filter.' + f.id));
+    var label = (f.stip ? tempStip(f.stip, true) + ' ' : '') + (f.icoon ? f.icoon + ' ' : '') + escHtml(tr('pipe.filter.' + f.id));
     return '<button type="button" class="pipe-filter-chip' + (pipeFilters.has(f.id) ? ' actief' : '')
       + '" onclick="togglePipeFilter(&quot;' + f.id + '&quot;)">' + label + '</button>';
   }).join('');
@@ -13954,7 +13984,7 @@ function renderPipeline() {
       /* Dealer-extra: temperatuur + score uit de blob, en de voertuigcode.
          Geen server-rondje -- alles staat al in l.notities / l.property. */
       const dealerSc = isDealer() ? dealerScoreVanLead(l) : null;
-      const dealerTempEmoji = dealerSc ? (dealerSc.temperatuur === 'hot' ? '🔥' : dealerSc.temperatuur === 'warm' ? '🟡' : '⚪') : '';
+      const dealerTempEmoji = dealerSc ? tempStip(dealerSc.temperatuur) : '';
       const dealerPill = dealerSc
         ? \`<span class="pipe-temp-pill">\${dealerTempEmoji} \${dealerSc.punten}</span>\`
         : '';
@@ -14919,7 +14949,10 @@ function renderAnalyse() {
     const scoreLabels = ['1','2','3','4','5','6','7','8','9','10'];
     const scoreCounts = [0,0,0,0,0,0,0,0,0,0];
     leads.forEach(l => { if (l.leadScore && l.leadScore >= 1 && l.leadScore <= 10) scoreCounts[l.leadScore - 1]++; });
-    const scoreColors = scoreLabels.map((_, i) => i >= 7 ? 'rgba(34,197,94,0.5)' : i >= 4 ? 'rgba(232,135,30,0.5)' : 'rgba(220,38,38,0.45)');
+    /* Warme oplopende reeks uit het palet (zelfde tinten als de bron-donut):
+       hoe hoger de score, hoe lichter en voller. Stond op verkeersgroen,
+       -oranje en -rood, die nergens anders in de app voorkomen. */
+    const scoreColors = scoreLabels.map((_, i) => i >= 7 ? 'rgba(232,215,177,0.85)' : i >= 4 ? 'rgba(184,157,115,0.7)' : 'rgba(138,117,80,0.55)');
     if (state.analyseScoreChart) state.analyseScoreChart.destroy();
     state.analyseScoreChart = new Chart(scoreCanvas, {
       type: 'bar',
@@ -17410,8 +17443,7 @@ function renderPanden() {
       if (kandidaten.length) {
         var toggleId = 'pd-kand-' + pandEsc(codeUp);
         var rijen = kandidaten.map(function (k) {
-          var emoji = k.temp === 'hot' ? '🔥' : k.temp === 'warm' ? '🟡' : '⚪';
-          return '<div class="pd-kandidaat-rij"><span>' + emoji + '</span>'
+          return '<div class="pd-kandidaat-rij">' + tempStip(k.temp)
             + '<span class="pd-kandidaat-naam">' + escHtml(k.naam) + '</span><span>' + k.score + '</span></div>';
         }).join('');
         kandidatenHtml = '<button type="button" class="pd-kandidaten-toggle" onclick="'
@@ -17428,7 +17460,7 @@ function renderPanden() {
         : '';
       dealerExtraHtml = opBadge
         + volgendeRegel
-        + (hotAantal ? '<div class="pd-volgende-afspraak">🔥 ' + hotAantal + '</div>' : '')
+        + (hotAantal ? '<div class="pd-volgende-afspraak">' + tempStip('hot') + ' ' + hotAantal + '</div>' : '')
         + kandidatenHtml;
     }
 
@@ -18149,6 +18181,19 @@ function getProjectCode() {
    geen leads in het systeem" vertelt je wat je al ziet en laat je vervolgens
    zelf uitzoeken hoe je er wél aan komt. Onboarding staat alleen op het
    dashboard, en dat is sinds de samenvoeging niet meer de startpagina. */
+function resultatenLeegKnoppen() {
+  return '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">'
+    + '<button class="btn-icon btn-primary-sm" onclick="resultatenAlleTijd()">' + escHtml(tr('res.toonAlles')) + '</button>'
+    + '<button class="btn-icon" onclick="navigateTo(&quot;analyse&quot;)">' + escHtml(tr('res.naarAnalyse')) + '</button>'
+    + '</div>';
+}
+
+function resultatenAlleTijd() {
+  const sel = document.getElementById('resultaten-period');
+  if (sel) sel.value = 'all_time';
+  loadResultaten(true);
+}
+
 function emptyStateCta() {
   const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
   if (!url) return '';
@@ -20809,6 +20854,59 @@ function hideHelpWidget() {
 /* ============================================================
    INIT
    ============================================================ */
+/* ── Klikbare divs bereikbaar met het toetsenbord ─────────────────────────────
+   Een dertigtal kaarten en rijen (gesprekken, pipelinekaarten, meldingen,
+   agenda-items) zijn een <div onclick>. Met een muis werkt dat; met Tab kom je
+   er nooit, en een schermlezer noemt ze geen knop. Ze allemaal herschrijven
+   raakt tientallen stringsjablonen; dit ene stuk geeft ze wat een <button>
+   gratis heeft: role, tabindex, en Enter/Spatie als klik. Overlays (klik naast
+   een venster om te sluiten) en cellen die alleen een klik tegenhouden slaan
+   we over -- die horen geen tabstop te zijn. De focusring staat al op
+   [role="button"] in de stylesheet. */
+function isAchtergrondKlik(el) {
+  var oc = el.getAttribute('onclick') || '';
+  var naam = (el.className && typeof el.className === 'string' ? el.className : '') + ' ' + (el.id || '');
+  if (/overlay|backdrop/i.test(naam)) return true;
+  if (oc.indexOf('event.target===this') > -1 || oc.indexOf('closeCalModal(event)') > -1) return true;
+  if (oc.replace(/ /g, '') === 'event.stopPropagation()') return true;
+  return false;
+}
+function maakToetsbaar(root) {
+  if (!root || !root.querySelectorAll) return;
+  var els = root.querySelectorAll('[onclick]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    var tag = el.tagName;
+    if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'LABEL' || tag === 'OPTION') continue;
+    if (el.hasAttribute('data-toets')) continue;
+    el.setAttribute('data-toets', '1');
+    if (isAchtergrondKlik(el)) continue;
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+  }
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  var el = e.target;
+  if (!el || !el.getAttribute || el.getAttribute('data-toets') !== '1' || el.getAttribute('role') !== 'button') return;
+  if (el.tagName === 'BUTTON' || el.tagName === 'A') return;
+  e.preventDefault();
+  el.click();
+});
+(function () {
+  var gepland = false;
+  function plan() {
+    if (gepland) return;
+    gepland = true;
+    requestAnimationFrame(function () { gepland = false; maakToetsbaar(document); });
+  }
+  function start() {
+    maakToetsbaar(document);
+    try { new MutationObserver(plan).observe(document.body, { childList: true, subtree: true }); } catch (e) { /* oude browser: alleen de eerste ronde */ }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+
 (async function init() {
   initTheme();
   initSidebar();

@@ -254,8 +254,16 @@ function render(lang) {
    het voorraadpaneel, alleen op bestaande tokens en de 4/8/12-hoekschaal.
    Niets bestaands gewijzigd. +4.172 bytes (incl. [hidden]-regel en binnenmarge voor de panelen).
    Vorige waarden: 409919 bytes / 016290127b263264. */
-const CSS_BYTES = 414091;
-const CSS_SHA   = 'b317d8f8f5826a1f';
+/* Bijgewerkt 2026-09-27 (audit, blok 4 ontwerpsysteem): alle losse hoeken
+   (4/6/8/10/12/14/16/18/20/999px) op de tokenschaal --r-xs/sm/md/lg/full; 2px-
+   haarlijnen en meerwaardige hoeken bleven. Vijf ruwe paletkleuren naar hun
+   :root-token (zelfde waarde, geen zichtbaar verschil). .temp-stip vervangt de
+   🔥🟡⚪-emoji. Telefoon: meldingen bovenaan in plaats van op de Faro-balk,
+   hulpknop 44px. Faro-balk slanker onder 520px, tipregel daar verborgen.
+   +3.340 bytes (var() is langer dan een getal).
+   Vorige waarden: 414091 bytes / b317d8f8f5826a1f. */
+const CSS_BYTES = 417431;
+const CSS_SHA   = 'f36214f54e02c739';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

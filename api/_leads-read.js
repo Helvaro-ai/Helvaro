@@ -250,7 +250,18 @@ async function fetchLeads(projectCode, { token, baseId, maxPages = 6 } = {}) {
     }
   } while (offset);
 
-  return { leads: records.map(mapLead), truncated };
+  /* De formule filtert al op tenant, maar dat is één regel tekst die bij een
+     volgende wijziging kan verschuiven. Faro redeneert over deze rijen en
+     toont ze; een rij van een andere klant hoort er dan niet eens in te zitten.
+     Zelfde tweede slot als _afspraken.zoekOpEvent. */
+  const eigen = records.filter((r) => {
+    const f = (r && r.fields) || {};
+    return String(f[FIELD_PROJECT] || f['Project Code'] || '').trim() === code;
+  });
+  if (eigen.length !== records.length) {
+    console.error(`[leads-read] ${records.length - eigen.length} rij(en) van een andere tenant weggefilterd`);
+  }
+  return { leads: eigen.map(mapLead), truncated };
 }
 
 module.exports = {
