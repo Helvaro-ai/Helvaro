@@ -128,23 +128,7 @@
       "permanent": true
     },
     {
-      "source": "/sectoren/:pagina",
-      "destination": "/automotive.html",
-      "permanent": true
-    },
-    {
-      "source": "/:taal(fr|en|de|es)/sectoren/:pagina",
-      "destination": "/:taal/automotive.html",
-      "permanent": true
-    },
-    {
       "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "app.helvaro.pro"
-        }
-      ],
       "destination": "/dashboard",
       "permanent": false
     }

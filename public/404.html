@@ -1,141 +1,107 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <script>document.documentElement.classList.add('js');</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pagina niet gevonden · Helvaro</title>
-  <meta name="robots" content="noindex, follow">
-  <link rel="icon" href="/assets/favicon.ico?v=2" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=2">
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png?v=2">
-  <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png?v=2">
-  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
-  <meta name="theme-color" content="#121212">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <script>/* Thema vooraf zetten zodat de pagina niet even in de verkeerde kleur flitst */
-    (function(){try{var t=localStorage.getItem('helvaro_theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
-  </script>
-  <link rel="stylesheet" href="/css/style.css?v=105">
-  <style>
-    /* Deze pagina heeft geen navigatie en geen voettekst. Wie hier belandt,
-       is iets kwijt: dan is één weg terug duidelijker dan een volledig menu. */
-    .nf {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
-      background:
-        radial-gradient(120% 90% at 50% 0%, rgba(var(--accent-rgb), 0.10) 0%, transparent 60%),
-        var(--bg-1);
-    }
-    .nf-inner { max-width: 560px; text-align: center; }
-    .nf-logo { width: auto; height: 56px; margin: 0 auto 30px; display: block; }
-    .nf-code {
-      font-family: var(--font-h);
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin: 0 0 16px;
-    }
-    .nf h1 {
-      font-family: var(--font-h);
-      font-size: clamp(30px, 5.5vw, 44px);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.1;
-      color: var(--text-1);
-      margin: 0 0 16px;
-      text-wrap: balance;
-    }
-    .nf p {
-      font-size: 17px;
-      line-height: 1.6;
-      color: var(--text-2);
-      margin: 0 auto 30px;
-      max-width: 44ch;
-    }
-    .nf-acties { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-    .nf-faro {
-      width: 150px;
-      height: auto;
-      margin: 38px auto 0;
-      display: block;
-      opacity: 0.9;
-    }
-    @media (max-width: 560px) { .nf-faro { width: 116px; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pagina niet gevonden · Helvaro</title>
+<link rel="icon" href="/favicon.png">
+<!--
+  Vercel serveert dit bestand automatisch bij een onbekende URL, omdat public/
+  de statische root is. Er stond hiervoor alleen Vercel's kale "NOT_FOUND" met
+  een request-id eronder — dat leest als een stukgelopen server, niet als een
+  product. Een klant die zich vertypt hoort niet te denken dat de app plat ligt.
+
+  Bewust zelfstandig: geen framework, geen externe fonts (Google Fonts is de
+  AVG-lek die elders in deze app al gedicht is), en het lettertype komt van
+  /fonts, dat op dezelfde origin staat. Valt dat weg, dan zakt hij terug op een
+  systeemfont en blijft de pagina gewoon leesbaar.
+-->
+<style>
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url('/fonts/space-grotesk-var.woff2') format('woff2');
+}
+:root{
+  --bg:#121212; --card:#232323; --line:#262626;
+  --sand:#E8D7B1; --deep:#C9AE7C; --ink:#121212;
+  --text:#F9F9F9; --muted:#B5B5B5;
+}
+/* De app is standaard donker, maar wie zijn systeem op licht heeft staan krijgt
+   hier een lichte pagina — anders knalt een zwart vlak in je gezicht. */
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#FFFFFF; --card:#F7F7F7; --line:#E5E7EB;
+    --sand:#E8D7B1; --deep:#8A6A33;
+    --text:#111827; --muted:#4B5563;
+  }
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  display:flex;justify-content:center;
+  padding:24px;line-height:1.55;min-height:100vh;
+}
+/* margin:auto in plaats van align-items:center. Die laatste centreert wel,
+   maar snijdt bij een laag venster (landscape telefoon, klein browservenster)
+   de BOVENkant af op een manier waar je niet naartoe kunt scrollen — het logo
+   was daar simpelweg weg. Met margin:auto wijkt hij netjes naar boven zodra
+   de inhoud niet meer past. */
+.card{max-width:480px;width:100%;text-align:center;margin:auto}
+.logo{height:38px;width:auto;margin-bottom:40px;opacity:.9}
+.code{
+  font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
+  font-size:clamp(64px,16vw,104px);letter-spacing:-.04em;line-height:1;
+  color:var(--sand);margin:0 0 4px;
+}
+h1{
+  font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;
+  letter-spacing:-.02em;font-size:22px;margin:0 0 12px;
+}
+p{color:var(--muted);font-size:15px;margin:0 auto 32px;max-width:380px}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{
+  display:inline-block;padding:12px 22px;border-radius:14px;
+  font-size:14px;font-weight:600;text-decoration:none;
+  transition:transform .14s cubic-bezier(.4,0,.2,1),opacity .14s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--sand);color:var(--ink)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--deep)}
+.help{margin-top:36px;font-size:12px;color:var(--muted)}
+.help a{color:var(--deep);text-decoration:none}
+.help a:hover{text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.btn{transition:none}.btn:hover{transform:none}}
+</style>
 </head>
 <body>
-  <main class="nf" id="main">
-    <div class="nf-inner">
-      <img class="nf-logo" src="/assets/logo-wordmark.png" alt="Helvaro" width="760" height="266">
+  <main class="card">
+    <img class="logo" src="/logo.png" alt="Helvaro"
+         onerror="this.style.display='none'">
 
-      <p class="nf-code" data-nf="code">Fout 404</p>
-      <h1 data-nf="titel">Deze pagina bestaat niet.</h1>
-      <p data-nf="tekst">Misschien is de link verouderd, of staat er een tikfout in het adres. Faro kijkt mee, maar deze heeft hij ook niet gevonden.</p>
+    <div class="code">404</div>
+    <h1>Deze pagina bestaat niet</h1>
+    <p>
+      De link klopt niet meer, of er zit een tikfout in het adres.
+      Je gegevens zijn veilig — er is niets stuk.
+    </p>
 
-      <div class="nf-acties">
-        <a href="/" class="btn btn-lg" data-nf="home">Naar de homepagina</a>
-        <a href="/meeting.html" class="btn btn-ghost btn-lg" data-nf="audit">Plan een demo</a>
-      </div>
-
-      <picture>
-        <source srcset="/assets/faro-wit.webp?v=4" type="image/webp">
-        <img class="nf-faro" src="/assets/faro-wit.png?v=4" alt="" aria-hidden="true" width="840" height="840" decoding="async">
-      </picture>
+    <div class="row">
+      <a class="btn btn-primary" href="/dashboard">Naar je dashboard</a>
+      <a class="btn btn-ghost" href="https://helvaro.pro">Naar de website</a>
     </div>
+
+    <p class="help">
+      Kwam je hier via een link uit de app? Laat het weten via
+      <a href="mailto:hello@helvaro.pro">hello@helvaro.pro</a> — dan repareren we hem.
+    </p>
   </main>
-
-  <script>
-  /* Vercel serveert dit bestand voor de hele site, ook onder /fr/ en /de/.
-     Er is dus één 404-pagina voor vijf talen. De taal komt uit het pad, en
-     de links eronder blijven binnen diezelfde taal. */
-  (function () {
-    var T = {
-      nl: { code: 'Fout 404', titel: 'Deze pagina bestaat niet.',
-            tekst: 'Misschien is de link verouderd, of staat er een tikfout in het adres. Faro kijkt mee, maar deze heeft hij ook niet gevonden.',
-            home: 'Naar de homepagina', audit: 'Plan een demo', titel_tab: 'Pagina niet gevonden · Helvaro' },
-      fr: { code: 'Erreur 404', titel: "Cette page n'existe pas.",
-            tekst: "Le lien est peut-être périmé, ou l'adresse contient une faute de frappe. Faro regarde aussi, mais il ne l'a pas trouvée non plus.",
-            home: "Retour à l'accueil", audit: 'Planifier une démo', titel_tab: 'Page introuvable · Helvaro' },
-      en: { code: 'Error 404', titel: 'This page does not exist.',
-            tekst: 'The link may be out of date, or there is a typo in the address. Faro had a look too, and could not find it either.',
-            home: 'Back to the homepage', audit: 'Book a demo', titel_tab: 'Page not found · Helvaro' },
-      de: { code: 'Fehler 404', titel: 'Diese Seite gibt es nicht.',
-            tekst: 'Vielleicht ist der Link veraltet, oder die Adresse enthält einen Tippfehler. Faro hat auch nachgesehen und sie ebenfalls nicht gefunden.',
-            home: 'Zur Startseite', audit: 'Demo planen', titel_tab: 'Seite nicht gefunden · Helvaro' },
-      es: { code: 'Error 404', titel: 'Esta página no existe.',
-            tekst: 'Puede que el enlace esté desactualizado o que la dirección tenga una errata. Faro también lo ha mirado y tampoco la ha encontrado.',
-            home: 'Volver al inicio', audit: 'Agenda una demo', titel_tab: 'Página no encontrada · Helvaro' }
-    };
-
-    var m = location.pathname.match(/^\/(fr|en|de|es)(\/|$)/);
-    var lang = m ? m[1] : 'nl';
-    var t = T[lang];
-    var wortel = lang === 'nl' ? '/' : '/' + lang + '/';
-
-    document.documentElement.lang = lang;
-    document.title = t.titel_tab;
-
-    document.querySelectorAll('[data-nf]').forEach(function (el) {
-      var sleutel = el.getAttribute('data-nf');
-      if (t[sleutel]) el.textContent = t[sleutel];
-    });
-
-    /* Terug naar de eigen taal, niet naar het Nederlands. */
-    var home = document.querySelector('[data-nf="home"]');
-    if (home) home.setAttribute('href', wortel);
-    var audit = document.querySelector('[data-nf="audit"]');
-    if (audit) audit.setAttribute('href', wortel + 'meeting.html');
-  })();
-  </script>
-  <script src="/js/main.js?v=95"></script>
-  <script src="/js/motion.js?v=93"></script>
 </body>
 </html>
