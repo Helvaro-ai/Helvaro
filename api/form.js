@@ -8,6 +8,7 @@
 const { maskPhone } = require('./_masker');
 const { waitUntil } = require('@vercel/functions');
 const _klant = require('./_klant');
+const _trace = require('./_trace');
 
 /* Pauze tussen formulier en eerste WhatsApp-bericht; zie de uitleg bij de
    setTimeout verderop. */
@@ -61,7 +62,16 @@ async function isRateLimited(ip) {
   return gate.limited;
 }
 
-module.exports = _errors.vangAf(async function handler(req, res) {
+/* Eén kenmerk per verzoek op elke logregel (api/_trace.js, audit L-5):
+   [form-xxxxxx] voor het formulier, [chat-xxxxxx] voor de websiteassistent,
+   [voorraad-xxxxxx] voor de publieke voorraadfeed. */
+module.exports = _errors.vangAf(function (req, res) {
+  const q = req.query || {};
+  const soort = q.__assistant ? 'chat' : q.__voorraad ? 'voorraad' : 'form';
+  return _trace.met(_trace.maakId(soort), () => formHandler(req, res));
+});
+
+async function formHandler(req, res) {
   /* Websiteassistent (api/_assistent.js) via de rewrite /api/assistant. Eigen
      CORS (alleen de domeinen van de dealer), dus vóór de '*' hieronder. Via
      een rewrite op deze functie omdat form.js al de publieke ingang is; een
@@ -520,7 +530,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     console.error('Form error:', err.message);
     return res.status(500).json({ code: 'server_error', error: 'Serverfout. Probeer later opnieuw.' });
   }
-});
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

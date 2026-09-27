@@ -46,7 +46,8 @@ const _klant = require('./_klant');               // klantidentiteit over kanale
 const _inventaris = require('./_inventaris');     // voorraadwaarheid + eindcontrole voor verzenden
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
-const _lock          = require('./_lock');           // sloten over instanties heen (audit L-1)
+const _lock          = require('./_lock');
+const _trace         = require('./_trace');         // kenmerk per bericht op elke logregel (audit L-5)           // sloten over instanties heen (audit L-1)
 const _crm = require('./_crm');           // CRM-koppelingen, faalt zacht (zie zijn kop)
 const _leadsRead = require('./_leads-read'); // het veldschema van een lead, gedeeld met het dashboard
 
@@ -320,7 +321,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // the container gets frozen/recycled after our 200 OK already went out.
     // We still `await` it locally too: that preserves today's behaviour on
     // any runtime where waitUntil() is a no-op (see require comment above).
-    const work = opDeRij(phone, scopedProjectCode, () => processMessage(phone, text, scopedProjectCode, message.id))
+    /* Eén kenmerk voor dit bericht op elke logregel van de verwerking
+       (api/_trace.js, audit L-5): zoek [wa-xxxxxx] in de Vercel-logs. */
+    const traceId = _trace.maakId('wa', message.id);
+    const work = opDeRij(phone, scopedProjectCode, () => _trace.met(traceId, () => {
+      console.log(`[WhatsApp] bericht in verwerking (project ${scopedProjectCode || '?'})`);
+      return processMessage(phone, text, scopedProjectCode, message.id);
+    }))
       .catch(async (err) => {
         /* Verwerking mislukt: het bericht-id weer vrijgeven, zodat een
            herbezorging het opnieuw mag proberen in plaats van als dubbel
