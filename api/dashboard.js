@@ -5135,8 +5135,12 @@ function toast(message, type = 'info', title = null) {
   const live = container.querySelectorAll('.toast:not(.dismissing)');
   for (let i = 0; i < live.length - 4; i++) dismissToast(live[i]);
 
-  const timer = setTimeout(() => dismissToast(el), 3500);
-  el._timer = timer;
+  /* Een fout is vaak een zin met een opdracht erin ("vink alle rechten aan");
+     3,5 seconden was te kort om die te lezen. Met de muis erop blijft hij staan. */
+  const duur = type === 'error' ? 7000 : 3500;
+  el._timer = setTimeout(() => dismissToast(el), duur);
+  el.addEventListener('mouseenter', () => clearTimeout(el._timer));
+  el.addEventListener('mouseleave', () => { clearTimeout(el._timer); el._timer = setTimeout(() => dismissToast(el), 2000); });
 }
 
 function dismissToast(el) {
@@ -8610,7 +8614,10 @@ function statusBadge(status) {
     'in_progress': '<span class="badge badge-inprogress">${T('dash.s.busy')}</span>',
     'completed': '<span class="badge badge-done">${T('dash.s.done')}</span>'
   };
-  return map[status] || \`<span class="badge badge-new">\${status || '—'}</span>\`;
+  /* Oudere records hebben de status in het Nederlands ("Nieuw"). */
+  const nl = { 'nieuw': 'new', 'bezig': 'in_progress', 'in behandeling': 'in_progress', 'afgerond': 'completed', 'klaar': 'completed' };
+  const sleutel = map[status] ? status : nl[String(status || '').trim().toLowerCase()];
+  return map[sleutel] || \`<span class="badge badge-new">\${escHtml(status || '—')}</span>\`;
 }
 
 function qualBadge(lead) {
@@ -12293,15 +12300,9 @@ async function startDashboard(skipRefresh = false) {
   if (gcalResult) {
     const cleanUrl = window.location.pathname;
     window.history.replaceState({}, document.title, cleanUrl);
-    const gcalMsgs = {
-      connected:         ['Google Agenda gekoppeld! Beschikbaarheid en boekingen worden nu gesynchroniseerd.', 'success', 'Gekoppeld'],
-      denied:             ['Koppeling geannuleerd.', 'info', 'Geannuleerd'],
-      error:              ['Er is iets misgegaan bij het koppelen. Probeer het opnieuw.', 'error', 'Fout'],
-      invalid_state:      ['Koppeling verlopen, probeer opnieuw.', 'error', 'Fout'],
-      unconfigured:       ['Google Agenda is nog niet geconfigureerd.', 'info', 'Niet beschikbaar'],
-      client_not_found:   ['Account niet gevonden, probeer opnieuw.', 'error', 'Fout'],
-    };
-    const m = gcalMsgs[gcalResult] || ['Google Agenda', 'info', null];
+    const gcalSoort = { connected: 'success', denied: 'info', unconfigured: 'info' };
+    const gcalSleutel = ['connected', 'denied', 'error', 'invalid_state', 'unconfigured', 'client_not_found'].indexOf(gcalResult) !== -1 ? gcalResult : 'error';
+    const m = [tr('gcal.terug.' + gcalSleutel), gcalSoort[gcalSleutel] || 'error', null];
     setTimeout(() => toast(m[0], m[1], m[2]), 600);
     if (gcalResult === 'connected') setTimeout(() => navigateTo('instellingen'), 800);
   }
@@ -12399,10 +12400,16 @@ var _wizardTaalAangeraakt = false;
    er niets te vinden, dan liever de kale code dan een lege zin. */
 function wizardTaalNaam(code) {
   var kaal = String(code || '').split('_')[0].toLowerCase();
+  /* In de taal van het scherm ("Dutch" in de Engelse versie), niet de eigen
+     naam van de taal: die las als een stuk Nederlands in een Engelse zin. */
+  try {
+    var naam = kaal && new Intl.DisplayNames([LOCALE], { type: 'language' }).of(kaal);
+    if (naam && naam !== kaal) return naam.charAt(0).toLocaleUpperCase(LOCALE) + naam.slice(1);
+  } catch (e) { /* oude browser: de eigen naam hieronder */ }
   for (var i = 0; i < AP_LANGUAGES.length; i++) {
     if (AP_LANGUAGES[i].code === kaal) return AP_LANGUAGES[i].native;
   }
-  return code || 'je taal';
+  return code || '';
 }
 
 function wizardTaalBijLand(landcode) {
