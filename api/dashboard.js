@@ -2774,7 +2774,7 @@ ${faro.navCta}
             ${T('set.ai')}
           </div>
           <div class="settings-info-box">
-            ${T('set.info.pre')} <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">${T('nav.persona')}</a> ${T('set.info.post')} ${T('set.help')} <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
+            ${T('set.info.pre')} <a href="#" onclick="navigateTo('ai-persona');return false;" style="color:var(--accent-ink);text-decoration:none">${T('nav.persona')}</a> ${T('set.info.post')} ${T('set.help')} <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:${T_JS('sup.titel')},message:${T_JS('sup.lezen')}});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a>
           </div>
           <div class="settings-row">
             <div>
@@ -2990,7 +2990,7 @@ ${faro.navCta}
               <div class="settings-label">${T('set.help')}</div>
               <div class="settings-label-sub">${T('set.help.sub')}</div>
             </div>
-            <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">
+            <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:${T_JS('sup.titel')},message:${T_JS('sup.lezen')}});return false;" class="btn-icon" style="text-decoration:none;border-color:rgba(var(--accent-rgb),0.35);color: var(--accent-ink);background:rgba(var(--accent-rgb),0.08)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               ${T('set.mail')}
             </a>
@@ -3000,7 +3000,7 @@ ${faro.navCta}
               <div class="settings-label">${T('set.mail.addr')}</div>
               <div class="settings-label-sub">${T('set.mail.hours')}</div>
             </div>
-            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
+            <div class="settings-value"><a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:${T_JS('sup.titel')},message:${T_JS('sup.lezen')}});return false;" style="color:var(--accent-ink);text-decoration:none">${SUPPORT_EMAIL_ATTR}</a></div>
           </div>
         </div>
 
@@ -4156,7 +4156,7 @@ ${faro.dock}
   </div>
   <div class="hv-help-body" id="hv-help-body"></div>
   <div class="hv-help-foot">
-    <a id="hv-help-mail" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Vraag%20over%20Helvaro" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;">
+    <a id="hv-help-mail" href="mailto:${SUPPORT_EMAIL_ATTR}?subject=Vraag%20over%20Helvaro" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:${T_JS('sup.titel')},message:${T_JS('sup.lezen')}});return false;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>
@@ -4579,7 +4579,7 @@ async function naarRegistreren() {
     } catch (e) {
       console.error('[clerk] registreren kon niet starten', e);
       // Geen doodlopend scherm: het eigen formulier staat er nog.
-      terugNaarEigenFormulier('Registreren lukt nu niet. Probeer het zo meteen opnieuw, of log hieronder in.');
+      terugNaarEigenFormulier(tr('lg.regMis'));
       return;
     } finally {
       if (knop) { knop.disabled = false; knop.textContent = knop.dataset.oud || 'Account aanmaken'; }
@@ -4619,7 +4619,7 @@ function mountClerkSignIn(clerk) {
     clerkVangnet(host, 'inloggen');
   } catch (e) {
     console.error('[clerk] sign-in kon niet gemonteerd worden', e);
-    terugNaarEigenFormulier('Het inlogscherm van onze aanbieder laadt niet. Gebruik hieronder je e-mailadres en wachtwoord.');
+    terugNaarEigenFormulier(tr('lg.inlogMis'));
   }
 }
 
@@ -4650,7 +4650,7 @@ function mountClerkSignUp(clerk) {
     clerkVangnet(host, 'registreren');
   } catch (e) {
     console.error('[clerk] sign-up kon niet gemonteerd worden', e);
-    terugNaarEigenFormulier('Registreren lukt nu niet. Probeer het zo meteen opnieuw, of log hieronder in.');
+    terugNaarEigenFormulier(tr('lg.regMis'));
   }
 }
 
@@ -4680,8 +4680,8 @@ function clerkVangnet(host, wat) {
     console.error('[clerk] ' + wat + ' bleef leeg na ' + pogingen + ' pogingen');
     terugNaarEigenFormulier(
       wat === 'registreren'
-        ? 'Het registratiescherm laadt niet. Log hieronder in, of probeer het zo meteen opnieuw.'
-        : 'Het inlogscherm van onze aanbieder laadt niet. Gebruik hieronder je e-mailadres en wachtwoord.');
+        ? tr('lg.regSchermMis')
+        : tr('lg.inlogMis'));
   })();
 }
 
@@ -4766,8 +4766,8 @@ function showTenantPending(clerk) {
   mail.addEventListener('click', function () {
     toonSupportModal({
       onderwerp: 'Account klaarzetten',
-      title:     'Vraag naar je account',
-      message:   'We zetten je account klaar en laten het je weten. Stuur gerust een bericht als het lang duurt.',
+      title:     tr('lg.vraagTitel'),
+      message:   tr('lg.vraagTekst'),
       voorbeeld: 'Hallo,\\n\\nIk heb me aangemeld' + (email ? ' met ' + email : '') + ' en wacht op toegang.\\n\\n'
     });
   });
@@ -4961,7 +4961,7 @@ const API_BASE = '/api';
    sessie geen Nederlands ziet (audit 26/09). Merknamen blijven zoals ze zijn. */
 function bronLabel(b) {
   var k = String(b || '').trim().toLowerCase();
-  var sleutels = { formulier: 'bron.formulier', telefoon: 'bron.telefoon', onbekend: 'bron.onbekend', 'onbekende bron': 'bron.onbekend', 'e-mail': 'bron.email', email: 'bron.email', website: 'bron.website' };
+  var sleutels = { advertentie: 'bron.advertentie', formulier: 'bron.formulier', telefoon: 'bron.telefoon', onbekend: 'bron.onbekend', 'onbekende bron': 'bron.onbekend', 'e-mail': 'bron.email', email: 'bron.email', website: 'bron.website' };
   return sleutels[k] ? tr(sleutels[k]) : String(b || '');
 }
 
@@ -5277,10 +5277,10 @@ async function tryAutoLogin() {
 // (vooral op mobile waar de Uitloggen-knop dicht bij andere navigatie zit).
 function logout() {
   showConfirmModal({
-    title:   'Uitloggen?',
-    message: 'Je wordt teruggebracht naar het loginscherm. Je leads en instellingen blijven bewaard.',
-    confirmText: 'Ja, uitloggen',
-    cancelText:  'Annuleren',
+    title:   tr('lo.titel'),
+    message: tr('lo.tekst'),
+    confirmText: tr('lo.ja'),
+    cancelText:  tr('btn.annuleren'),
     danger: true,
     onConfirm: performLogout
   });
@@ -5384,7 +5384,7 @@ function showConfirmModal({ title, message, confirmText, cancelText, danger, onC
   card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:none';
 
   const titleEl = document.createElement('h3');
-  titleEl.textContent = title || 'Weet je het zeker?';
+  titleEl.textContent = title || tr('cm.zeker');
   titleEl.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
 
   const msgEl = document.createElement('p');
@@ -5482,14 +5482,14 @@ function toonSupportModal(opties) {
   overlay.id = 'support-modal';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', opties.title || 'Stuur ons een bericht');
+  overlay.setAttribute('aria-label', opties.title || tr('sup.titel'));
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;animation:cmFadeIn .15s ease-out';
 
   const card = document.createElement('div');
   card.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);border-radius:18px;padding:24px;width:100%;max-width:460px;box-shadow:none';
 
   const titleEl = document.createElement('h3');
-  titleEl.textContent = opties.title || 'Stuur ons een bericht';
+  titleEl.textContent = opties.title || tr('sup.titel');
   titleEl.style.cssText = 'margin:0 0 8px;font-size:17px;color:var(--text,#E9EEF6)';
 
   const msgEl = document.createElement('p');
@@ -5572,7 +5572,7 @@ function toonSupportModal(opties) {
       }
       if (r.status === 429) {
         statusEl.style.color = 'var(--warning-ink,#E8C97A)';
-        statusEl.textContent = (d && d.error) || 'Even wachten met de volgende.';
+        statusEl.textContent = serverTekst(d, 'sup.wachten');
         stuurBtn.textContent = tr('sup.versturen');
         stuurBtn.disabled = false;
         return;
@@ -5680,8 +5680,7 @@ function handleAuthExpired() {
     try { stopPresencePing && stopPresencePing(); } catch (e) {}
     try { state.apiKey = ''; } catch (e) {}   // zet elke poller stil
     try {
-      toast('Inloggen lukt niet en blijft mislukken. Ververs de pagina; blijft dit, '
-        + 'neem dan contact op.', 'error');
+      toast(tr('lg.blijftMis'), 'error');
     } catch (e) {}
     console.error('[auth] meer dan 3 sessieverlopen binnen 30s — gestopt met opnieuw proberen');
     return;
@@ -6100,12 +6099,12 @@ function showCrmError(err) {
   text.className = 'crm-error-text';
   const strong = document.createElement('strong');
   strong.textContent = unavailable
-    ? 'We konden je leads even niet ophalen.'
-    : 'Geen verbinding met Helvaro.';
+    ? tr('crm.nietOphalen')
+    : tr('crm.geenVerbinding');
   const sub = document.createElement('span');
   sub.textContent = unavailable
-    ? 'Je gegevens zijn niet weg — we konden ze nu alleen niet lezen. We proberen het vanzelf opnieuw.'
-    : 'Controleer je internetverbinding. We proberen het vanzelf opnieuw.';
+    ? tr('crm.nietWeg')
+    : tr('crm.controleer');
   text.appendChild(strong);
   text.appendChild(sub);
 
@@ -7659,30 +7658,28 @@ function tekenCreditPop() {
 
   const pct = Math.max(0, Math.min(999, d.percentUsed || 0));
   const kleur = pct >= 100 ? 'red' : (pct >= 80 ? 'amber' : '');
-  const used = (d.used || 0).toLocaleString('nl-BE');
-  const allowance = (d.allowance || 0).toLocaleString('nl-BE');
+  const used = (d.used || 0).toLocaleString(LOCALE);
+  const allowance = (d.allowance || 0).toLocaleString(LOCALE);
   const leadsLeft = Math.max(0, d.leadsRemaining || 0);
 
   let html = ''
-    + '<div class="cu-pop-kop">Credits<span class="' + kleur + '">' + pct + '% gebruikt</span></div>'
+    + '<div class="cu-pop-kop">Credits<span class="' + kleur + '">' + pct + '% ' + tr('cu.gebruikt') + '</span></div>'
     + '<div class="cu-pop-groot">' + used + ' / ' + allowance + '</div>'
-    + '<div class="cu-pop-rij">Nog ongeveer ' + leadsLeft + ' leadgesprekken deze periode.</div>';
+    + '<div class="cu-pop-rij">' + tr('cu.nog', { n: leadsLeft }) + '</div>';
 
   if (d.daysLeft != null) {
-    html += '<div class="cu-pop-rij">De teller begint over ' + d.daysLeft
-          + ' dag' + (d.daysLeft === 1 ? '' : 'en') + ' opnieuw.</div>';
+    html += '<div class="cu-pop-rij">' + tr(d.daysLeft === 1 ? 'cu.reset1' : 'cu.resetN', { n: d.daysLeft }) + '</div>';
   }
   if (d.overLimit) {
     /* Nooit dreigend: een leadgesprek wordt server-side niet geblokkeerd (zie
        api/_credits.js). Wat hier hoort te staan is wat het kost en wat de weg
        eruit is, niet dat er iets stuk is. */
-    html += '<div class="cu-pop-let">Je zit boven je maandlimiet. Je assistent blijft '
-          + 'gewoon antwoorden — koop credits bij of stap over op een groter plan.</div>';
+    html += '<div class="cu-pop-let">' + tr('cu.boven') + '</div>';
   }
 
   html += '<div class="cu-pop-knoppen">'
         + '<button type="button" class="cu-pop-knop primair" onclick="creditPopBijkopen()">${T('fa.buy')}</button>'
-        + '<button type="button" class="cu-pop-knop" onclick="creditPopPlannen()">Bekijk je plannen</button>'
+        + '<button type="button" class="cu-pop-knop" onclick="creditPopPlannen()">' + tr('cu.plannen') + '</button>'
         + '</div>';
 
   pop.innerHTML = html;
@@ -8294,10 +8291,10 @@ async function sendVerificationEmailNow(btn) {
     });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d && d.ok) {
-      toast(d.message || 'Verificatiemail verstuurd', 'success');
+      toast(d.message || tr('ver.verstuurd'), 'success');
       if (d.alreadyVerified) loadOnboardingChecklist(true); // refresh so the item/banner clears
     } else {
-      toast((d && d.error) || 'Versturen mislukt, probeer later opnieuw', 'error');
+      toast((d && d.error) || tr('ver.mislukt'), 'error');
     }
   } catch (err) {
     toast(tr('tst.netwerkLater'), 'error');
@@ -8883,14 +8880,14 @@ function renderTable() {
         <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;background: var(--accent);border:1px dashed rgba(var(--accent-rgb),0.3)">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
         </div>
-        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Welkom bij Helvaro!</div>
-        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">Je assistent staat klaar om leads te kwalificeren. Zodra de eerste gesprekken binnenkomen, verschijnen ze hier automatisch.</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">${T('lp.welkom')}</div>
+        <div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">${T('lp.leegIntro')}</div>
         <div style="display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;padding:20px">
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">Deel je WhatsApp-nummer of website link met potentiële klanten</span></div>
-          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">Je assistent voert het gesprek en kwalificeert automatisch</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">1.</span><span style="font-size:13px;color:var(--text-muted)">${T('lp.leegStap1')}</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">2.</span><span style="font-size:13px;color:var(--text-muted)">${T('lp.leegStap2')}</span></div>
           <div style="display:flex;gap:10px;align-items:flex-start"><span style="color:var(--green-ink);font-weight:700;flex-shrink:0">3.</span><span style="font-size:13px;color:var(--text-muted)">${T('lp.gekwUitleg')}</span></div>
         </div>
-        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">Hulp nodig? Mail ons via <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:'Stuur ons een bericht',message:'We lezen mee op werkdagen en antwoorden op je eigen e-mailadres.'});return false;" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
+        <div style="margin-top:20px;font-size:12px;color:var(--text-muted)">${T('lp.hulp')} <a href="mailto:${SUPPORT_EMAIL_ATTR}" onclick="toonSupportModal({onderwerp:'Vraag via het dashboard',title:${T_JS('sup.titel')},message:${T_JS('sup.lezen')}});return false;" style="color:var(--accent-ink)">${SUPPORT_EMAIL_ATTR}</a></div>
       </div>
     </td></tr>\`;
     return;
@@ -8908,9 +8905,9 @@ function renderTable() {
                 : '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>'
               }
             </div>
-            <div class="empty-title">\${hasFilters ? 'Geen resultaten gevonden' : 'Geen leads beschikbaar'}</div>
-            <div class="empty-desc">\${hasFilters ? 'Pas je filters aan of reset ze.' : 'Deel je formulierlink en de eerste aanvraag komt vanzelf binnen.'}</div>
-            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">Reset filters</button>' : emptyStateCta()}
+            <div class="empty-title">\${hasFilters ? tr('lp.geenResultaten') : tr('lp.geenLeads')}</div>
+            <div class="empty-desc">\${hasFilters ? tr('lp.pasFilters') : tr('lp.deelLink')}</div>
+            \${hasFilters ? '<button class="btn-icon" onclick="resetFilters()" style="margin:0 auto">' + tr('lp.resetFilters') + '</button>' : emptyStateCta()}
           </div>
         </td>
       </tr>
@@ -9319,7 +9316,7 @@ function openPanel(lead) {
         return \`<div><div class="chat-label">\${tag}</div><div class="chat-bubble \${cls}" dir="auto">\${m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')}</div></div>\`;
       }).join('');
     } catch { /* invalid JSON, skip */ }
-    if (!bubbles) bubbles = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">Nog geen gesprek.</div>';
+    if (!bubbles) bubbles = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">' + tr('lp.nogGeenGesprek') + '</div>';
 
     // ── Takeover bar: who's driving this conversation right now ─────────────
     // aiPaused lives in the same Notities envelope as waFailed/escalated (see
@@ -9849,7 +9846,7 @@ function _panelActivate() {
 function showOnboardingDone() {
   const url = (typeof getFormUrl === 'function') ? getFormUrl() : '';
   const urlEl = document.getElementById('onb-done-url');
-  if (urlEl) urlEl.textContent = url || '(geen link beschikbaar)';
+  if (urlEl) urlEl.textContent = url || tr('onb.geenLink');
   const ov = document.getElementById('onb-done-overlay');
   if (ov) ov.classList.add('open');
 }
@@ -13862,7 +13859,7 @@ async function pipelineMoveTo(leadId, newStage) {
   // feedback. On failure, roll the card back to its previous column.
   try {
     await patchPipelineStage(lead.id, newStage);
-    toast('Lead verplaatst naar ' + (PIPELINE_STAGE_LABELS[newStage] || newStage), 'success');
+    toast(tr('pipe.verplaatst', { stage: PIPELINE_STAGE_LABELS[newStage] || newStage }), 'success');
   } catch (e) {
     Object.assign(lead, prev);
     renderPipeline();
@@ -15072,7 +15069,7 @@ function exportPDF() {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('Helvaro. Lead Rapport', 14, 12);
+  doc.text(tr('rap.titel'), 14, 12);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(clientName + ' · ' + now, 14, 20);
@@ -15694,7 +15691,7 @@ function renderPiGallery(list) {
     // Older records (persisted before this feature) have no sourceUrl —
     // hide the voor/na toggle for those rather than offering a broken one.
     const toggleBtn = img.sourceUrl
-      ? '<button type="button" class="pi-gallery-toggle" onclick="togglePiGalleryImage(' + i + ')" id="pi-gallery-toggle-' + i + '">Bekijk voor</button>'
+      ? '<button type="button" class="pi-gallery-toggle" onclick="togglePiGalleryImage(' + i + ')" id="pi-gallery-toggle-' + i + '">' + tr('pi.bekijkVoor') + '</button>'
       : '<span></span>';
     return '<div class="pi-gallery-item">' +
         '<img src="' + safeAfter + '" alt="AI-gegenereerde visualisatie" id="pi-gallery-img-' + i + '" ' +
@@ -15817,7 +15814,7 @@ async function generatePiImage(opnieuw) {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
       if (d.error === 'credit_limit_reached') {
-        toast(d.message || 'Je gesprekstegoed voor deze periode is op', 'error');
+        toast(d.message || tr('pi.tegoedOp'), 'error');
       } else {
         toast(d.error || tr('pi.gen.mislukt'), 'error');
       }
@@ -15996,7 +15993,7 @@ async function downloadPiComparePDF() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    const label = img.aiLabel || 'AI-visualisatie — werkelijke staat van de woning kan afwijken';
+    const label = img.aiLabel || tr('pi.aiLabel');
     doc.text(doc.splitTextToSize('⚠ ' + label, 176), 17, y + 5);
     y += 20;
 
@@ -16387,7 +16384,7 @@ async function koopOfferteOphalen() {
     var tegelsEl = document.getElementById('koop-tegels');
     if (tegelsEl && !koopState.presets.length) {
       tegelsEl.innerHTML = '<div class="koop-hint" style="grid-column:1/-1">'
-        + 'De bedragen konden niet opgehaald worden. Vul hieronder zelf een bedrag in.</div>';
+        + tr('kp.geenBedragen') + '</div>';
     }
     var rijenEl = document.getElementById('koop-rijen');
     if (rijenEl) rijenEl.innerHTML = '';
@@ -16397,17 +16394,17 @@ async function koopOfferteOphalen() {
   var o = koopState.offerte || {};
   var g = koopState.grenzen || {};
   document.getElementById('koop-grenzen').textContent =
-    'Van \\u20AC ' + koopFmt(g.min) + ' tot \\u20AC ' + koopFmt(g.max) + '.';
+    tr('kp.van', { min: koopFmt(g.min), max: koopFmt(g.max) });
 
   if (!o.geldig) {
     var redenen = {
-      te_laag: 'Minimaal \\u20AC ' + koopFmt(g.min) + '.',
-      te_hoog: 'Boven \\u20AC ' + koopFmt(g.max) + ' nemen we liever even contact op.',
-      geen_bedrag: 'Vul een bedrag in.',
-      geen_tarief: 'Bijkopen staat nog niet aan.'
+      te_laag: tr('kp.laag', { min: koopFmt(g.min) }),
+      te_hoog: tr('kp.hoog', { max: koopFmt(g.max) }),
+      geen_bedrag: tr('kp.geenBedrag'),
+      geen_tarief: tr('kp.geenTarief')
     };
     credits.textContent = '—';
-    detail.textContent = redenen[o.reden] || 'Dat bedrag kan niet.';
+    detail.textContent = redenen[o.reden] || tr('kp.kanNiet');
     document.getElementById('koop-rijen').innerHTML = '';
     document.getElementById('koop-staffel').innerHTML = '';
     return;
@@ -16456,9 +16453,8 @@ async function koopOfferteOphalen() {
     var bp = o.beterPlan;
     adviesEl.innerHTML =
       '<div class="koop-advies">'
-      + '<strong>' + bp.naam + ' geeft je meer voor dit bedrag.</strong>'
-      + '<span>\\u20AC ' + euroFmt(bp.prijsEur) + ' per maand \\u00B7 ' + koopFmt(bp.credits)
-      + ' credits \\u00B7 ongeveer ' + koopFmt(bp.gesprekken) + ' leadgesprekken, elke maand opnieuw.</span>'
+      + '<strong>' + escHtml(tr('kp.beter', { naam: bp.naam })) + '</strong>'
+      + '<span>' + escHtml(tr('kp.beterDetail', { prijs: euroFmt(bp.prijsEur), credits: koopFmt(bp.credits), n: koopFmt(bp.gesprekken) })) + '</span>'
       + '</div>';
   } else {
     adviesEl.innerHTML = '';
@@ -16626,15 +16622,13 @@ function vraagBtwEnBetaal(planId, planNaam) {
         sluit();
         toonSupportModal({
           onderwerp: 'Voorstel voor Scale',
-          title:     'We stellen het voor je samen',
+          title:     tr('kp.scaleTitel'),
           /* Geen bedrag hardcoderen: prijzen staan in api/_plans.js en nergens
              anders (CLAUDE.md). De server stuurt de vanafprijs mee; ontbreekt
              hij, dan noemen we er gewoon geen. */
-          message:   'Scale rekenen we per kantoor uit'
-                   + (d.vanafPrijsEur ? ', vanaf ' + d.vanafPrijsEur + ' euro per maand' : '')
-                   + '. Vertel kort hoeveel leads je per maand verwacht, dan sturen we een voorstel.',
-          voorbeeld: 'Hallo,\\n\\nIk wil graag een voorstel voor Scale.\\n\\nWe verwachten ongeveer ___ leads per maand.\\n'
-                   + (btw ? '\\nBtw-nummer: ' + btw + '\\n' : '')
+          message:   tr('kp.scaleTekst', { vanaf: d.vanafPrijsEur ? tr('kp.scaleVanaf', { p: d.vanafPrijsEur }) : '' }),
+          voorbeeld: tr('kp.scaleMail')
+                   + (btw ? '\\n' + tr('kp.btw') + ': ' + btw + '\\n' : '')
         });
         return;
       }
@@ -16887,7 +16881,7 @@ async function koopAanvragen() {
     var d2 = await r2.json().catch(function () { return {}; });
     if (!r2.ok) {
       fout.style.display = '';
-      fout.textContent = d2.error || 'De aanvraag kon niet verstuurd worden.';
+      fout.textContent = serverTekst(d2, 'fout.aanvraag');
       return;
     }
     closeKoopModal();
@@ -17323,9 +17317,8 @@ function renderPanden() {
        maar een hapering -- en dan hoort er "even niet, ik probeer het zo
        opnieuw" te staan, met een knop. */
     if (pandState.reden === 'geen_tabel') {
-      notice.innerHTML = '<strong>' + escHtml(vw('Meer')) + ' staan nog uit.</strong> De tabel <code>' + escHtml(vw('tabel'))
-        + '</code> bestaat nog niet in Airtable. Zodra die er is werkt deze pagina meteen, zonder dat er iets '
-        + 'uitgerold hoeft te worden.';
+      notice.innerHTML = '<strong>' + escHtml(tr('pd.tabelKop')) + '</strong> ' + escHtml(tr('pd.tabelA')) + ' <code>' + escHtml(vw('tabel'))
+        + '</code> ' + escHtml(tr('pd.tabelB'));
     } else {
       notice.innerHTML = '<strong>' + escHtml(tr('pd.nietGeladen')) + '</strong> ' + escHtml(tr('pd.nietGeladenSub'))
         + ' <button type="button" class="btn-icon" id="pd-retry" style="margin-left:8px">' + escHtml(tr('sup.opnieuw')) + '</button>';
@@ -17556,7 +17549,7 @@ async function importeerPand() {
   if (!link) { pdStatus('Plak eerst een link.', 'fout'); return; }
 
   btn.disabled = true; btn.textContent = tr('st.bezig');
-  pdStatus('De pagina wordt gelezen. Dit duurt een paar tellen.', 'bezig');
+  pdStatus(tr('imp.lezen'), 'bezig');
 
   try {
     var r = await fetch(API_BASE + '/leads', {
@@ -17602,10 +17595,10 @@ async function importeerPand() {
       }));
       var mist = (d.ontbreekt || []).length;
       pdStatus(mist
-        ? ('Gelezen. Nog aan te vullen: ' + d.ontbreekt.join(', ') + '.')
+        ? tr('imp.aanvullen', { x: d.ontbreekt.join(', ') })
         : (c.autoscout
-            ? 'Gelezen, en het aanbodnummer is herkend. Kijk het even na en sla op.'
-            : 'Gelezen. Kijk het even na en sla op.'),
+            ? tr('imp.gelezenNr')
+            : tr('imp.gelezen')),
         mist ? 'bezig' : 'ok');
       return;
     }
@@ -17630,14 +17623,13 @@ async function importeerPand() {
 
     var bron = '';
     try { bron = new URL(d.bron || link).hostname.replace(/^www\./, ''); } catch (e) { bron = ''; }
-    var boodschap = 'Ingevuld' + (bron ? ' vanaf ' + bron : '') + '. Kijk de velden even na';
+    var boodschap = tr(bron ? 'imp.ingevuldVan' : 'imp.ingevuld', { bron: bron });
     if (d.ontbreekt && d.ontbreekt.length) {
-      boodschap += ' — ' + d.ontbreekt.length + ' veld' + (d.ontbreekt.length === 1 ? '' : 'en')
-                 + ' stond' + (d.ontbreekt.length === 1 ? '' : 'en') + ' niet op de pagina';
+      boodschap += ' — ' + tr(d.ontbreekt.length === 1 ? 'imp.mist1' : 'imp.mistN', { n: d.ontbreekt.length });
     }
     pdStatus(boodschap + '.', 'ok');
   } catch (e) {
-    pdStatus('Het lezen van die pagina lukte niet. Controleer je verbinding.', 'fout');
+    pdStatus(tr('imp.mislukt'), 'fout');
   } finally {
     btn.disabled = false; btn.textContent = 'Ophalen';
   }
@@ -17920,7 +17912,7 @@ async function savePand() {
 async function archivePand(code, archiveren) {
   /* Archiveren, niet verwijderen: aan een pand hangen leads en afspraken, en
      die mogen niet naar niets gaan wijzen. */
-  if (archiveren && !confirm('Dit ' + vw('een') + ' uit je aanbod halen? De leads en afspraken blijven bewaard.')) return;
+  if (archiveren && !confirm(tr('pd.archiveerVraag', { x: vw('een') }))) return;
   try {
     var r = await fetch(API_BASE + '/leads', {
       method: 'POST',
@@ -18656,13 +18648,13 @@ function loadFormulier() {
   fsLaad();
 
   // Share buttons
-  const shareText = encodeURIComponent('Hey! Vul je gegevens hier in dan kom ik snel bij je terug: ' + url);
+  const shareText = encodeURIComponent(tr('fm.deelTekst') + url);
   const wa  = document.getElementById('fm-share-wa');
   const em  = document.getElementById('fm-share-email');
   const sms = document.getElementById('fm-share-sms');
   const li  = document.getElementById('fm-share-linkedin');
   if (wa)  wa.href  = 'https://wa.me/?text=' + shareText;
-  if (em)  em.href  = 'mailto:?subject=' + encodeURIComponent('Vul snel dit formulier in') + '&body=' + shareText;
+  if (em)  em.href  = 'mailto:?subject=' + encodeURIComponent(tr('fm.deelOnderwerp')) + '&body=' + shareText;
   if (sms) sms.href = 'sms:?&body=' + shareText;
   if (li)  li.href  = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url);
 }
@@ -18826,7 +18818,7 @@ function refreshSaveButton() {
   // Require at least AI naam + welkomstbericht
   const ok = name.length > 0 && tpl.length > 0;
   btn.disabled = !ok;
-  btn.title = ok ? '' : 'Vul minstens de naam van je assistent en het welkomstbericht in';
+  btn.title = ok ? '' : tr('as.vulMin');
 }
 
 async function sendTestMessage() {

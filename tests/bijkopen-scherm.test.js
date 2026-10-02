@@ -198,7 +198,10 @@ console.log('\n— en de cijfers staan in het venster erachter —');
 
   /* Boven de limiet blijft de toon dezelfde als in api/_credits.js: er wordt
      niets geblokkeerd, dus er hoort hier niets te staan dat dat suggereert. */
-  ck('boven de limiet blijft het eerlijk', /blijft/.test(fn) && /overLimit/.test(fn), null);
+  /* De tekst staat sinds oktober in de vertaaltabel (cu.boven); de functie kiest hem alleen. */
+  const i18nTekst = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', '_i18n.js'), 'utf8');
+  const boven = (i18nTekst.match(/'cu\.boven':\s*\{[^]*?nl: '([^']*)'/) || [])[1] || '';
+  ck('boven de limiet blijft het eerlijk', /blijft/.test(boven) && /cu\.boven/.test(fn) && /overLimit/.test(fn), boven);
 }
 
 console.log('\n— het venster is te sluiten zonder muis, en blijft bij zijn knop —');
