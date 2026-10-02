@@ -8099,6 +8099,7 @@ function zetVertical(v, config) {
      binnen was, dus toen wist het dashboard nog niet dat dit een dealer is.
      Nu wel. (Voor een niet-dealer verbergt dit alleen de kaarten.) */
   try { voorraadCheck(true); } catch (e) { /* bijzaak */ }
+  try { if (typeof faroWoordenVerversen === 'function') faroWoordenVerversen(); } catch (e) { /* bijzaak */ }
 
   /* Het navigatie-item. Alleen het woord en het pictogram; de pagina, de route
      en de opmaak blijven precies dezelfde. */

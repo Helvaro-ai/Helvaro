@@ -42,7 +42,11 @@
 function js() {
   return `
 /* ═══ Faro ════════════════════════════════════════════════ */
+/* Een autodealer ziet "Voertuig", niet "Pand": dezelfde plek, het woord van zijn markt.
+   hvVertical staat in het dashboard en wordt gezet zodra de config binnen is. */
+var FARO_DEALERWOORDEN = { 'in.property': 'in.vehicle', 'ctx.properties': 'ctx.vehicles', 'im.property': 'im.vehicle' };
 function T(k, fallback) {
+  if (typeof hvVertical !== 'undefined' && hvVertical === 'dealership' && FARO_DEALERWOORDEN[k]) k = FARO_DEALERWOORDEN[k];
   if (FARO_T && Object.prototype.hasOwnProperty.call(FARO_T, k)) return FARO_T[k];
   /* A missing key used to render its own name -- the context row literally read
      "ctx.images" in all four languages. Prefer a caller-supplied fallback, and
@@ -1713,6 +1717,17 @@ function faroLoadContext() {
     .catch(function () { chips.innerHTML = ''; });
 }
 
+/* Na het zetten van de markt: de statische woorden en de chips opnieuw. */
+function faroWoordenVerversen() {
+  var knop = document.querySelector('#faro-btn-property span');
+  if (knop) knop.textContent = T('in.property');
+  if (typeof faroRenderContextToggles === 'function') { try { faroRenderContextToggles(); } catch (e) {} }
+  var chips = document.getElementById('faro-context-chips');
+  if (chips && faroState && faroState.contextSources) {
+    try { faroLoadContext(); } catch (e) {}
+  }
+}
+
 function faroRenderContextToggles() {
   var box = document.getElementById('faro-context-toggles');
   if (!box) return;
@@ -2393,8 +2408,8 @@ function faroWireModelPicker() {
   pop.setAttribute('role', 'listbox');
   pop.innerHTML = FARO_TIERS.map(function (t) {
     return '<button type="button" class="faro-menu__item" role="option" data-tier="' + faroEsc(t.key) + '">' +
-             '<span class="faro-menu__label">' + faroEsc(t.short) + '</span>' +
-             '<span class="faro-menu__hint">' + faroEsc(t.hint) + '</span>' +
+             '<span class="faro-menu__label">' + faroEsc(T('tier.' + t.key, t.short)) + '</span>' +
+             '<span class="faro-menu__hint">' + faroEsc(T('tier.' + t.key + '.hint', t.hint)) + '</span>' +
            '</button>';
   }).join('');
   btn.parentNode.insertBefore(pop, btn.nextSibling);
@@ -2404,7 +2419,7 @@ function faroWireModelPicker() {
     if (!t) return;
     faroState.tier = key;
     var lbl = document.getElementById('faro-model-label');
-    if (lbl) lbl.textContent = t.label;
+    if (lbl) lbl.textContent = T('tier.' + t.key, t.label);
     pop.querySelectorAll('.faro-menu__item').forEach(function (i) {
       i.classList.toggle('active', i.dataset.tier === key);
     });
