@@ -5734,7 +5734,7 @@ async function patchLead(id, fields) {
 }
 
 function parseNotities(lead) {
-  const raw = (lead.notities || '').trim();
+  const raw = ((lead && lead.notities) || '').trim();
   const empty = { notes: [], tasks: [], calls: [], afspraak: null };
   if (!raw || !raw.startsWith('{')) {
     return { ...empty, notes: raw ? [{ id: 'legacy', text: raw, ts: lead.datum || new Date().toISOString() }] : [] };
@@ -9472,7 +9472,7 @@ function openPanel(lead) {
     const json = serializeNotities(data);
     const idx = state.leads.findIndex(l => l.id === lead.id);
     if (idx !== -1) state.leads[idx].notities = json;
-    state.activeLead.notities = json;
+    if (state.activeLead) state.activeLead.notities = json;   // het paneel kan inmiddels dicht zijn
     await saveNotitiesData(lead.id, data);
     renderTakenWidget();
   }
@@ -9490,7 +9490,7 @@ function openPanel(lead) {
         await patchStatus(lead.id, newStatus);
         const idx = state.leads.findIndex(l => l.id === lead.id);
         if (idx !== -1) state.leads[idx].status = newStatus;
-        state.activeLead.status = newStatus;
+        if (state.activeLead) state.activeLead.status = newStatus;
         applyFilters();
         toast(tr('tst.statusBijgewerkt'), 'success');
       } catch (err) {
@@ -9541,7 +9541,7 @@ function openPanel(lead) {
           await patchLead(lead.id, { dealWaarde: waarde });
           const idx = state.leads.findIndex(l => l.id === lead.id);
           if (idx !== -1) state.leads[idx].verwachteWaarde = waarde;
-          state.activeLead.verwachteWaarde = waarde;
+          if (state.activeLead) state.activeLead.verwachteWaarde = waarde;
         }
         toast(tr('tst.afspraakResultaat'), 'success');
       } catch (err) {
@@ -9590,7 +9590,7 @@ function openPanel(lead) {
         await patchLead(lead.id, { verliesReden: reden });
         const idx = state.leads.findIndex(l => l.id === lead.id);
         if (idx !== -1) state.leads[idx].reden = reden;
-        state.activeLead.reden = reden;
+        if (state.activeLead) state.activeLead.reden = reden;
         toast(tr('tst.verliesreden'), 'success');
       } catch (err) {
         toast(hvFoutZin(err), 'error');
@@ -9607,7 +9607,7 @@ function openPanel(lead) {
         await patchLead(lead.id, { dealWaarde: val });
         const idx = state.leads.findIndex(l => l.id === lead.id);
         if (idx !== -1) state.leads[idx].verwachteWaarde = val;
-        state.activeLead.verwachteWaarde = val;
+        if (state.activeLead) state.activeLead.verwachteWaarde = val;
         toast(tr('tst.dealWaarde'), 'success');
       } catch (err) {
         toast(hvFoutZin(err), 'error');
