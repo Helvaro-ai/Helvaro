@@ -567,6 +567,15 @@ async function handleStatusCallback(status, scopedProjectCode) {
   const recipientPhone = status?.recipient_id || '';
   if (!state || !recipientPhone) return;
 
+  /* De ECHTE factuurstatus: Meta zet pricing.billable/category in het eerste
+     statusbericht van elk uitgaand bericht (meestal 'sent'). Dat gaat vóór de
+     vroege return hieronder, want 'sent' was tot nu toe het bericht dat we
+     wegdeden. Geen lead-opzoeking nodig: de tenant staat bij het bericht-id
+     (zie boekUitgaand). Faalt stil. */
+  if (status.pricing) {
+    require('./_wa-kosten').boekStatus(status, { tenant: scopedProjectCode }).catch(() => {});
+  }
+
   if (state === 'sent') return;
 
   // Resolve the lead the SAME collision-safe way processMessage() does for
@@ -696,6 +705,16 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     return;
   }
 
+  /* Kostenboekhouding: dit is een bericht VAN de klant, en dus ook wat het
+     24-uursvenster opent of verlengt. Een lead zonder eerder bericht van hemzelf
+     is een nieuw, door de klant gestart gesprek (AutoScout24 -> WhatsApp). */
+  try {
+    let _eerder = [];
+    try { _eerder = JSON.parse(lead.fields['Conversation History'] || '[]'); } catch (e) { _eerder = []; }
+    const _nieuw = !_eerder.some((m) => m && m.role === 'user');
+    require('./_wa-kosten').boekInkomend(projectCode, { nieuwGesprek: _nieuw, klantStartte: true }).catch(() => {});
+  } catch (e) { /* boekhouding mag het gesprek nooit raken */ }
+
   const client = await getClientByCode(projectCode);
   if (!client) {
     console.error('[WhatsApp] Geen client gevonden voor:', projectCode);
@@ -727,7 +746,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     const earlyLang = _lang.normalizeLanguageCode(
       client && client.fields && (client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language'])
     );
-    await sendWA(phone, _lang.buildCompletedMessage(earlyLang), clientPhoneNumberId);
+    await sendWA(phone, _lang.buildCompletedMessage(earlyLang), clientPhoneNumberId, { projectCode });
     return;
   }
 
@@ -783,7 +802,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
        gezet, maar de bevestiging aan de lead en de melding aan de makelaar
        gingen nooit uit, en de rest van de webhook stierf. */
     const langA = _lang.normalizeLanguageCode(client.fields['fld1iiV9XwSbgAACZ'] || client.fields['Language']);
-    await sendWA(phone, _optout.bevestiging(langA), clientPhoneNumberId).catch(() => {});
+    await sendWA(phone, _optout.bevestiging(langA), clientPhoneNumberId, { projectCode }).catch(() => {});
 
     /* Eigen lokale kopie, net als het pauzeblok hieronder: `ownerPhone` en
        `leadName` worden pas tweehonderd regels verderop gedeclareerd en staan
@@ -1495,7 +1514,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     }
   }
 
-  const sendOk = await sendWA(phone, replyText, clientPhoneNumberId);
+  const sendOk = await sendWA(phone, replyText, clientPhoneNumberId, { projectCode });
   const updateFields = { 'Last Message': text };
   if (sendOk) {
     // `ts` stamps outbound turns too (not just inbound, see step 4's push
@@ -1779,7 +1798,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   if (sendOk && aiResponse.done && aiResponse.qualified && !isEscalation && bookingMethod === 'callback') {
     const bookingSent = lead.fields['fldLeEqwNefdglLis'] || lead.fields['Booking Link Sent'];
     if (!bookingSent) {
-      await sendWA(phone, _lang.buildCallbackMessage(effectiveLang, callbackWindow), clientPhoneNumberId);
+      await sendWA(phone, _lang.buildCallbackMessage(effectiveLang, callbackWindow), clientPhoneNumberId, { projectCode });
       await updateLead(lead.id, { fldLeEqwNefdglLis: true }, phone, scopedProjectCode);
     }
   }
@@ -1844,7 +1863,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
            dezelfde afzegging leest als een bot die zichzelf herhaalt. Alleen
            als ons antwoord niet aankwam, is dit het enige wat de lead hoort. */
         if (!sendOk) {
-          await sendWA(phone, _lang.buildCancelledMessage(effectiveLang), clientPhoneNumberId).catch(() => {});
+          await sendWA(phone, _lang.buildCancelledMessage(effectiveLang), clientPhoneNumberId, { projectCode }).catch(() => {});
         }
 
         // De makelaar, meteen. Dit is de kern van wat afzeggen bruikbaar maakt.
@@ -1882,7 +1901,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   async function meldMislukteBoeking(reden) {
     console.error(`[whatsapp] afspraak NIET aangemaakt voor ${maskPhone(phone)} (${projectCode}): ${reden}`);
     try {
-      await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId);
+      await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId, { projectCode });
     } catch (e) {
       console.error('[whatsapp] correctie na mislukte boeking niet verstuurd:', e && e.message);
     }
@@ -2011,7 +2030,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
              enkele vlag zetten zodat een volgende beurt het alsnog kan boeken. */
           console.warn(`[whatsapp] BOOK geweigerd: voertuig niet boekbaar (${dealerControle.reden}) voor ${maskPhone(phone)} (${projectCode})`);
           try {
-            const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId);
+            const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId, { projectCode });
             if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie naar ${maskPhone(phone)} niet aangekomen`);
           } catch (err) {
             console.error('[whatsapp] voertuig-onbeschikbaar correctie exception:', err.message);
@@ -2130,7 +2149,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         // unset, so a later turn (lead proposes another time) or the owner
         // can still book successfully once a real slot is agreed.
         try {
-          const conflictSent = await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId);
+          const conflictSent = await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId, { projectCode });
           if (!conflictSent) console.error(`[whatsapp] slot-conflict correctie naar ${maskPhone(phone)} niet aangekomen`);
         } catch (err) {
           console.error('[whatsapp] slot-conflict correctie exception:', err.message);
@@ -2206,7 +2225,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                 dealerVerloren = true;
                 console.warn(`[whatsapp] BOOK verloren van een race op het voertuig (${herkendVoertuig && herkendVoertuig.code}) voor ${maskPhone(phone)} (${projectCode})`);
                 try {
-                  const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId);
+                  const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId, { projectCode });
                   if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie (race) naar ${maskPhone(phone)} niet aangekomen`);
                 } catch (err) {
                   console.error('[whatsapp] voertuig-onbeschikbaar correctie (race) exception:', err.message);
@@ -2257,7 +2276,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             // distinctly instead.
             try {
               const when = formatApptDateTime(appt.start, effectiveLang);
-              const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId);
+              const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId, { projectCode });
               if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${maskPhone(phone)} niet aangekomen (afspraak zelf blijft geldig)`);
             } catch (err) {
               console.error('[whatsapp] booking confirmation exception (afspraak zelf blijft geldig):', err.message);
@@ -3887,7 +3906,7 @@ function isWithinWorkingHours(spec) {
 // processMessage. Falls back to the shared PHONE_NUMBER_ID env var when
 // omitted/blank — this is the fallback that keeps every existing client
 // (all fields still blank) sending from EXACTLY the same number as before.
-async function sendWA(to, message, phoneNumberId) {
+async function sendWA(to, message, phoneNumberId, boekCtx) {
   try {
     const pnid = phoneNumberId || PHONE_NUMBER_ID;
     /* Eigen nummer van de klant: zenden met ZIJN token, niet met het gedeelde.
@@ -3931,6 +3950,18 @@ async function sendWA(to, message, phoneNumberId) {
       return false;
     }
     console.log(`[WhatsApp] Bericht gestuurd naar ${maskPhone(to)}`);
+    /* Kostenboekhouding (api/_wa-kosten.js). Alleen als de aanroeper zegt voor
+       welke dealer dit is -- zonder boekCtx gedraagt alles zich als vroeger.
+       Een vrij bericht is een antwoord binnen het servicevenster: gratis. De
+       statuswebhook bevestigt of Meta dat ook zo ziet. Nooit afwachten. */
+    if (boekCtx && boekCtx.projectCode) {
+      try {
+        require('./_wa-kosten').boekUitgaand(boekCtx.projectCode, {
+          soort: 'service', vensterOpen: true,
+          berichtId: data && data.messages && data.messages[0] && data.messages[0].id,
+        }).catch(() => {});
+      } catch (e) { /* boekhouding mag een verzonden bericht nooit raken */ }
+    }
     return true;
   } catch (err) {
     console.error(`[WhatsApp] Netwerkfout bij sturen naar ${maskPhone(to)}:`, err.message);

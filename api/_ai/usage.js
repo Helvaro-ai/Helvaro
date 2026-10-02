@@ -171,6 +171,19 @@ async function record({
       tel(t.byKind,     kind,       'costEur', kostenEur);
     }
 
+    /* Ook in de DUURZAME boekhouding (api/_wa-kosten.js): deze teller hier leeft
+       maar zo lang als de instantie. WhatsApp-sjablonen (kind 'whatsapp') staan
+       daar al apart als bericht, dus niet dubbel. */
+    if (kind !== 'whatsapp' && tenant !== '_onbekend') {
+      try {
+        require('../_wa-kosten').boekAi(tenant, {
+          costUsd: Number.isFinite(kosten) ? kosten : 0,
+          costEur: Number.isFinite(kostenEur) ? kostenEur : 0,
+          tokens: (Number(inputTokens) || 0) + (Number(outputTokens) || 0),
+        }).catch(() => {});
+      } catch (e) { /* optioneel */ }
+    }
+
     /* Eén regel per aanroep. Geen tenantnaam of gespreksinhoud: dit belandt in
        een logdienst en daar hoort geen klantdata. De projectcode is een code,
        geen persoonsgegeven. */

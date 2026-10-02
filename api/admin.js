@@ -482,6 +482,27 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       });
     }
 
+    // ── wa-kosten: wat het afhandelen van leads WERKELIJK kost, per dealer ──
+    // body: { mode: 'wa-kosten', tenant, periode? }   periode: 'YYYY-MM' of 'YYYY-MM-DD'
+    // Duurzaam (Upstash), niet per instantie: zie api/_wa-kosten.js. Geeft ook de
+    // alarmen van vandaag t.o.v. de zeven dagen ervoor.
+    if (body.mode === 'wa-kosten') {
+      const provided = _session.readToken(req);
+      if (!isValidAdminToken(provided, ADMIN_KEY)) {
+        return res.status(401).json({ error: 'Ongeldige admin key' });
+      }
+      const tenant = String(body.tenant || '').trim();
+      if (!tenant) return res.status(400).json({ error: 'tenant ontbreekt' });
+      try {
+        const k = require('./_wa-kosten');
+        const [overzicht, alarm] = await Promise.all([k.overzicht(tenant, body.periode), k.alarmenVoor(tenant)]);
+        return res.status(200).json({ ok: true, overzicht, alarmen: alarm.alarmen, limieten: k.limieten() });
+      } catch (err) {
+        console.error('[admin/wa-kosten] fout:', err && err.message);
+        return res.status(500).json({ error: 'Kosten ophalen mislukt' });
+      }
+    }
+
     // ── cost-margin: per klant, wat hij oplevert min wat hij kost ───────────
     // Dunne schil om credits.getAllUsageSummaries(), dat dit al berekent
     // (omzet excl. btw, geschatte kosten, marge, margepercentage) -- zie dat

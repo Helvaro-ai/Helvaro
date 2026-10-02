@@ -27,7 +27,7 @@ console.log('\nvolgorde in processMessage');
   const iVers  = src.indexOf('const vers = await verseLeadVoorVerzenden(lead.id);');
   const iPauze = src.indexOf("const pauzeNu = getAiPauseInfo(vers.fields[NOTITIES_FIELD] || vers.fields['Notities']);");
   const iRet   = src.indexOf('return;', iPauze);
-  const iSend  = src.indexOf('const sendOk = await sendWA(phone, replyText, clientPhoneNumberId);');
+  const iSend  = src.indexOf('const sendOk = await sendWA(phone, replyText, clientPhoneNumberId, { projectCode });');
   ck('verse lezing NA de AI-aanroep', iAi !== -1 && iVers > iAi, { iAi, iVers });
   ck('verse lezing VOOR het versturen', iVers !== -1 && iSend > iVers, { iVers, iSend });
   ck('pauze op de verse versie gecontroleerd', iPauze > iVers && iPauze < iSend);

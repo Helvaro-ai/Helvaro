@@ -199,7 +199,7 @@ function weigerBijAfmelding(optedOut, soort) {
   }
 }
 
-async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, token: tokenOverride }) {
+async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, token: tokenOverride, projectCode }) {
   weigerBijAfmelding(optedOut, 'bericht');
   // Deliberately not defaulted and not inferred. A caller that forgets to check
   // gets a refusal here rather than an accidental send attempt — and the check
@@ -221,12 +221,22 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, tok
   if (body.length > 4096) throw new SendError('Bericht te lang (max 4096 tekens).', 'too_long');
 
   const { token, pnid } = await creds(phoneNumberId, tokenOverride);
-  return post(pnid, token, {
+  const out = await post(pnid, token, {
     messaging_product: 'whatsapp',
     to: normalizePhone(to),
     type: 'text',
     text: { body },
   });
+  boekKosten(projectCode, { soort: 'service', vensterOpen: true, berichtId: out.messageId });
+  return out;
+}
+
+/* Kostenboekhouding (api/_wa-kosten.js), fire-and-forget en alleen met een
+   tenant. Een registratie die faalt mag een bericht dat al bij Meta is nooit
+   alsnog laten mislukken. */
+function boekKosten(projectCode, o) {
+  if (!projectCode) return;
+  try { require('./_wa-kosten').boekUitgaand(projectCode, o).catch(() => {}); } catch (e) { /* optioneel */ }
 }
 
 /**
@@ -244,7 +254,7 @@ async function sendFreeform({ to, text, windowOpen, phoneNumberId, optedOut, tok
  *        (standaard -- de meeste templates hier zijn herinneringen/updates) |
  *        'authentication' | 'service'.
  */
-async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut, token: tokenOverride, projectCode, category }) {
+async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumberId, optedOut, token: tokenOverride, projectCode, category, windowOpen }) {
   weigerBijAfmelding(optedOut, 'template');
   if (!template) throw new SendError('Geen template opgegeven.', 'no_template');
   const { token, pnid } = await creds(phoneNumberId, tokenOverride);
@@ -263,6 +273,7 @@ async function sendTemplate({ to, template, lang = 'nl', params = [], phoneNumbe
   // alsnog laten falen. Alleen als de aanroeper een tenant meegaf — zonder
   // projectCode is er niets om het op te boeken.
   if (projectCode) {
+    boekKosten(projectCode, { soort: 'template', categorie: String(category || 'utility').toLowerCase(), vensterOpen: windowOpen === true, berichtId: out.messageId });
     try {
       const _aiUsage = require('./_ai/usage');
       const _registry = require('./_ai/registry');

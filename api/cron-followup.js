@@ -46,6 +46,8 @@ async function atFetch(url, opts) {
     signal: (opts && opts.signal) || AbortSignal.timeout(CRON_FETCH_TIMEOUT_MS),
   });
 }
+const _waKosten = require('./_wa-kosten');
+const _waRouter = require('./_wa-router');
 const _optout = require('./_optout'); // wie STOP zei, krijgt niets meer
 const _waSend = require('./_wa-send'); // de enige deur naar WhatsApp
 const _waTemplates = require('./_wa-templates'); // welke sjabloonnaam voor welke soort verzending
@@ -307,6 +309,28 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         continue;  // skip. Don't risk a Meta ban
       }
 
+      /* De berichtrouter (api/_wa-router.js) beslist of dit sjabloon er ÉCHT
+         heen moet. Deze lead schreef nooit zelf (userReplies === 0), dus het
+         servicevenster is dicht en alleen een betaald sjabloon kan. Wat de
+         router erbij brengt: de dagrails per dealer (een ontspoorde cron kan
+         niet duizenden sjablonen sturen) en één definitie van "venster dicht". */
+      try {
+        if (!planCache._rest) planCache._rest = new Map();
+        if (!planCache._rest.has(projectCodeForPlan)) planCache._rest.set(projectCodeForPlan, await _waKosten.resterend(projectCodeForPlan));
+        const rest = planCache._rest.get(projectCodeForPlan);
+        const b = _waRouter.besluit({
+          purpose: 'followup', nowMs: Date.now(), lastInboundMs: null,
+          templateAvailable: true, templateCategory: 'utility', limits: rest,
+        });
+        if (b.actie !== _waRouter.ACTIE.UTILITY_TEMPLATE) {
+          console.log(`[cron-followup] lead ${maskPhone(phone)} — router: ${b.actie} (${b.reden}), overgeslagen`);
+          _waKosten.boek(projectCodeForPlan, b.reden.indexOf('dagquotum') === 0 ? 'limiet' : 'opvolging_onderdrukt').catch(() => {});
+          continue;
+        }
+        // Meteen aftrekken zodat de volgende lead in dezelfde run het quotum ziet slinken.
+        rest.followupLeft -= 1; rest.templateLeft -= 1; rest.outboundLeft -= 1;
+      } catch (e) { /* de router mag de bestaande opvolging nooit blokkeren bij een storing */ }
+
       // ── Idempotency guard: flip Conversation State BEFORE attempting
       // delivery — same order, and same reasoning, as the appointment-
       // reminder loop's guard below. This send costs a paid WhatsApp
@@ -354,12 +378,28 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         continue;
       }
       sent++;
+      _waKosten.boek(projectCodeForPlan, 'opvolging').catch(() => {});
       followedUp.push(name || phone);
       // Slight delay to avoid WhatsApp rate limits
       await new Promise(r => setTimeout(r, 500));
     }
 
     console.log(`[cron-followup] Checked ${leads.length} leads, sent ${sent} follow-ups`);
+
+    /* Kostenalarmen (api/_wa-kosten.js): voor elke dealer die deze run raakte,
+       vandaag tegenover de week ervoor. Eén mail met alles, alleen als er iets
+       opvalt. Een fout hier mag de rest van de run niet raken. */
+    try {
+      const gemeld = [];
+      for (const code of (planCache._rest ? planCache._rest.keys() : [])) {
+        const r = await _waKosten.alarmenVoor(code);
+        for (const a of r.alarmen) gemeld.push(`<li><strong>${code}</strong> — ${a.tekst}</li>`);
+      }
+      if (gemeld.length) {
+        console.warn('[cron-followup] kostenalarmen:', gemeld.length);
+        sendResendEmail({ subject: '[Kosten] WhatsApp/AI-alarm', html: `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px"><h2 style="margin:0 0 12px">Kostenalarm</h2><ul>${gemeld.join('')}</ul></div>` });
+      }
+    } catch (e) { console.warn('[cron-followup] kostenalarmen mislukt:', e && e.message); }
     } catch (e) {
       console.error('[cron-followup] follow-ups mislukt (de rest van de run gaat door):', e && e.message);
     }
@@ -2385,7 +2425,7 @@ async function runAfspraakOpvolging(airtableToken, baseId, phoneNumberId, whatsa
           }
         }
       } catch (_) { lastInboundMs = null; }
-      const windowOpen = lastInboundMs !== null && (now.getTime() - lastInboundMs) < 24 * 60 * 60 * 1000;
+      const windowOpen = _waRouter.venster(lastInboundMs, now.getTime()).open;
 
       const firstName = String(leadName).trim().split(' ')[0] || '';
       let via, uit;
@@ -2395,7 +2435,7 @@ async function runAfspraakOpvolging(airtableToken, baseId, phoneNumberId, whatsa
           ? _lang.buildNoShowMessage(clientLang)
           : _lang.buildCancelledFollowupMessage(clientLang);
         uit = await _waSend.sendFreeformSafe({
-          to: phone, text: tekst, windowOpen: true, phoneNumberId: apptPhoneNumberId, token: whatsappToken,
+          to: phone, text: tekst, windowOpen: true, phoneNumberId: apptPhoneNumberId, token: whatsappToken, projectCode,
         });
       } else {
         via = 'template';
@@ -2405,7 +2445,7 @@ async function runAfspraakOpvolging(airtableToken, baseId, phoneNumberId, whatsa
         const templateLang = _lang.resolveTemplateLanguage(clientLang, clientLang).code;
         uit = await _waSend.sendTemplateSafe({
           to: phone, template: _waTemplates.naamVoor('followup'), lang: templateLang,
-          params: [firstName], phoneNumberId: apptPhoneNumberId, token: whatsappToken,
+          params: [firstName], phoneNumberId: apptPhoneNumberId, token: whatsappToken, projectCode, category: 'utility',
         });
       }
 
