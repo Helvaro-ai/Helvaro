@@ -60,6 +60,14 @@ const UUR = 3600 * 1000;
   const verlengd = R.venster(R.laatsteInkomend([{ role: 'user', ts: NU - 30 * UUR }, { role: 'user', ts: NU - 2 * UUR }]), NU);
   ck('een nieuw klantbericht verlengt het venster', verlengd.open === true && verlengd.msOver > 21 * UUR, verlengd);
 
+  console.log('\nReactietijd (Response Time (sec))');
+  ck('eerste antwoord na 12 seconden = 12', R.eersteReactietijdSec([{ role: 'user', content: 'hoi', ts: NU - 12000 }], NU) === 12);
+  ck('minstens 1 seconde', R.eersteReactietijdSec([{ role: 'user', ts: NU - 100 }], NU) === 1);
+  ck('een tweede antwoord telt niet (er is al geantwoord)', R.eersteReactietijdSec([{ role: 'user', ts: NU - 90000 }, { role: 'assistant', ts: NU - 80000 }, { role: 'user', ts: NU - 1000 }], NU) === null);
+  ck('het EERSTE klantbericht telt, niet het laatste', R.eersteReactietijdSec([{ role: 'user', ts: NU - 30000 }, { role: 'user', ts: NU - 2000 }], NU) === 30);
+  ck('zonder tijdstip of met een kapotte klok geen meting', R.eersteReactietijdSec([{ role: 'user', content: 'x' }], NU) === null && R.eersteReactietijdSec([{ role: 'user', ts: NU + 99999 }], NU) === null && R.eersteReactietijdSec([{ role: 'user', ts: NU - 9 * 86400000 }], NU) === null);
+  ck('de reactietijd wordt bij het eerste antwoord weggeschreven', /eersteReactietijdSec\(history, Date\.now\(\)\)/.test(fs.readFileSync(path.join(__dirname, '..', 'api', 'whatsapp.js'), 'utf8')) && /updateFields\.fldUJJ8oSmAMQ9wB3 = rt/.test(fs.readFileSync(path.join(__dirname, '..', 'api', 'whatsapp.js'), 'utf8')));
+
   console.log('\nA. AutoScout-klant schrijft als eerste');
   const A = R.besluit({ purpose: 'reply', nowMs: NU, lastInboundMs: NU - 5000, templateAvailable: true });
   ck('antwoord = gewoon vrij bericht, geen sjabloon', A.actie === U.VRIJ_BERICHT && A.billable === false, A);

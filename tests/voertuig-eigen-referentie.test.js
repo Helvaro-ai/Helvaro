@@ -31,5 +31,14 @@ for (const taal of ['nl', 'fr', 'en', 'de']) {
   ck('pd.geenAanbodVol heeft ' + taal + ' met {x}', new RegExp("'pd\\.geenAanbodVol':[\\s\\S]{0,700}" + taal + ": '[^']*\\{x\\}").test(i18n));
 }
 
+console.log('\nArchiveren en weergave (live gevonden, 3 okt)');
+const arch = dash.slice(dash.indexOf('async function archivePand'), dash.indexOf('async function archivePand') + 900);
+ck('na archiveren wordt de lijst ECHT herladen (anders blijft het voertuig staan)', /await loadPanden\(true\)/.test(arch));
+ck('de archief-melding is vertaald, geen "Vehicle gearchiveerd"', !/' gearchiveerd'|' teruggezet'/.test(arch) && /pd\.gearchiveerd/.test(arch));
+ck('een prijs van 0 is geen "€ 0" op de kaart', /Number\(n\) <= 0\) return ''/.test(dash));
+ck('brandstof op de kaart is vertaald', /brandstofLabel\(p\.brandstof\)/.test(dash));
+const clientDeel = dash.slice(dash.indexOf('const T_DICT'));
+ck('getallen en datums volgen de taal van de klant, niet nl-BE', !/toLocale(Date|Time)?String\('nl/.test(clientDeel));
+
 console.log(`\n  ${pass} ok, ${fail} fout\n`);
 process.exit(fail ? 1 : 0);

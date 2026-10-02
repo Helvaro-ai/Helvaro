@@ -10082,7 +10082,7 @@ function renderNietBereikbaar() {
     const name     = lead.naam || '(onbekend)';
     const rawPhone = (lead.telefoon || '').replace(/\\D/g, '');
     const telHref  = rawPhone ? 'tel:+' + rawPhone : '#';
-    const dateStr  = lead.datum ? new Date(lead.datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) : '';
+    const dateStr  = lead.datum ? new Date(lead.datum).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) : '';
     const isEscalated = data.escalated && typeof data.escalated === 'object';
     const tag = isEscalated
       ? '<span class="nb-item-tag tag-escalated" title="' + escHtml(data.escalated.question || '') + '">Escalatie</span>'
@@ -11199,7 +11199,7 @@ async function renderCalendar() {
   if (timeLabels) {
     timeLabels.innerHTML = Array.from({ length: CAL_HOURS }, (_, i) => {
       const h   = CAL_START_HOUR + i;
-      // 24-uurs, zoals de rest van de app (die toLocaleTimeString('nl-BE')
+      // 24-uurs, zoals de rest van de app (die toLocaleTimeString(LOCALE)
       // gebruikt). Hier stond een 12-uursnotatie ZONDER am/pm, dus 13:00 tot
       // 20:00 lazen als 1:00 tot 8:00 en "8:00" kwam twee keer voor in dezelfde
       // dagkolom. Een makelaar kan dan niet zien of een bezichtiging 's ochtends
@@ -16168,7 +16168,7 @@ var koopState = { bedrag: 100, offerte: null, bezig: false, grenzen: null, staff
 
 function koopFmt(n) {
   var x = Number(n);
-  return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
+  return isFinite(x) ? Math.round(x).toLocaleString(LOCALE) : '0';
 }
 
 /* Een BEDRAG, en niet zomaar een getal. koopFmt rondt af op hele eenheden --
@@ -16182,7 +16182,7 @@ function euroFmt(n) {
   var x = Number(n);
   if (!isFinite(x)) return '0';
   var heel = Math.abs(x - Math.round(x)) < 0.005;
-  return x.toLocaleString('nl-BE', {
+  return x.toLocaleString(LOCALE, {
     minimumFractionDigits: heel ? 0 : 2,
     maximumFractionDigits: 2
   });
@@ -16196,7 +16196,7 @@ function euroFmt(n) {
 function euroBonFmt(n) {
   var x = Number(n);
   if (!isFinite(x)) return '0,00';
-  return x.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return x.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /* ── Toetsenbord in een dialoogvenster ───────────────────────────────────────
@@ -16417,7 +16417,7 @@ async function koopOfferteOphalen() {
   }
   /* Nederlandse notatie: een komma, en twee tot drie cijfers. "0.5" leest
      als een tikfout; "0,50" leest als een prijs. */
-  stukken.push('\\u20AC ' + o.perCredit.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' per credit');
+  stukken.push('\\u20AC ' + o.perCredit.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' per credit');
   /* Vertaald naar iets dat een makelaar herkent. Hij denkt in gesprekken, niet
      in credits. */
   stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
@@ -16971,7 +16971,7 @@ function faEsc(v) {
 
 function faGetal(n) {
   var x = Number(n);
-  return isFinite(x) ? Math.round(x).toLocaleString('nl-BE') : '0';
+  return isFinite(x) ? Math.round(x).toLocaleString(LOCALE) : '0';
 }
 
 function faDatum(iso) {
@@ -17177,9 +17177,16 @@ function pandEsc(v) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/* De opgeslagen waarde is Nederlands ('benzine', 'plug-in hybride'); de klant ziet zijn eigen taal. */
+function brandstofLabel(v) {
+  var sleutel = { 'benzine': 'benzine', 'diesel': 'diesel', 'hybride': 'hybride', 'plug-in hybride': 'plugin', 'elektrisch': 'elektrisch', 'lpg': 'lpg', 'cng': 'cng', 'waterstof': 'waterstof' }[String(v || '').toLowerCase()];
+  return sleutel ? tr('veh.brandstof.' + sleutel) : String(v || '');
+}
+
 function pandPrijs(n) {
-  if (n === null || n === undefined || !isFinite(Number(n))) return '';
-  return '\u20AC ' + Math.round(Number(n)).toLocaleString('nl-BE');
+  /* 0 is "geen prijs ingevuld", geen gratis wagen: "€ 0" op een kaart oogt als een fout. */
+  if (n === null || n === undefined || !isFinite(Number(n)) || Number(n) <= 0) return '';
+  return '\u20AC ' + Math.round(Number(n)).toLocaleString(LOCALE);
 }
 
 function pandLink(code) {
@@ -17416,10 +17423,10 @@ function renderPanden() {
     if (isDealer()) {
       /* Wat een koper als eerste wil weten, in die volgorde. Niet alles wat we
          hebben -- een kaart die alles toont, toont niets. */
-      if (p.km || p.km === 0) feiten.push('<span class="pd-feit">' + Math.round(p.km).toLocaleString('nl-BE') + ' km</span>');
+      if (p.km || p.km === 0) feiten.push('<span class="pd-feit">' + Math.round(p.km).toLocaleString(LOCALE) + ' km</span>');
       if (p.inschrijving)     feiten.push('<span class="pd-feit">' + pandEsc(p.inschrijving) + '</span>');
       if (p.pk)               feiten.push('<span class="pd-feit">' + p.pk + ' pk</span>');
-      if (p.brandstof)        feiten.push('<span class="pd-feit">' + pandEsc(p.brandstof) + '</span>');
+      if (p.brandstof)        feiten.push('<span class="pd-feit">' + pandEsc(brandstofLabel(p.brandstof)) + '</span>');
       /* Een auto met een eigen kortingsregel is een auto waar iets bijzonders
          mee is. Dat hoort de dealer te zien zonder hem open te klikken. */
       if (p.maxKorting)       feiten.push('<span class="pd-feit" title="' + escHtml(tr('pd.eigenKorting')) + '">' + escHtml(tr('pd.kaart.kortingTot', { bedrag: pandPrijs(p.maxKorting) })) + '</span>');
@@ -17920,8 +17927,8 @@ async function archivePand(code, archiveren) {
       body: JSON.stringify({ mode: isDealer() ? 'vehicle-archive' : 'listing-archive', code: code, archived: archiveren })
     });
     if (!r.ok) { toast(tr('tst.archiverenMislukt'), 'error'); return; }
-    toast(vw('Een') + (archiveren ? ' gearchiveerd' : ' teruggezet'), 'success');
-    await loadPanden();
+    toast(tr(archiveren ? 'pd.gearchiveerd' : 'pd.teruggezet', { x: vw('Een') }), 'success');
+    await loadPanden(true);   // anders blijft het gearchiveerde voertuig in de lijst en in de tellers staan
   } catch (e) {
     toast(tr('tst.archiverenMislukt'), 'error');
   }
@@ -19625,14 +19632,14 @@ var KOSTEN_GELADEN = false;
 function kstBedrag(v, munt) {
   if (v === null || v === undefined) return null;
   var teken = munt === 'USD' ? '$' : munt === 'GBP' ? '£' : '€';
-  return teken + Number(v).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return teken + Number(v).toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function kstDatum(iso) {
   if (!iso) return '';
   var d = new Date(String(iso));
   if (isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function kstBronLabel(bron) {
@@ -19787,7 +19794,7 @@ async function loadKosten(force) {
       var sinds = ai.sinds ? new Date(ai.sinds) : null;
       aiEl.innerHTML = meta + '<strong>Gemeten AI-uitgaven:</strong> $'
         + Number(ai.kostenUsd || 0).toFixed(4) + ' over ' + (ai.aanroepen || 0) + ' aanroep(en)'
-        + (sinds ? ', sinds ' + sinds.toLocaleString('nl-BE') : '')
+        + (sinds ? ', sinds ' + sinds.toLocaleString(LOCALE) : '')
         + '.<br><span style="opacity:.8">' + escHtml(ai.let_op || '') + '</span>'
         + (d.raming
             ? '<br><strong>Raming op basis van gebruik:</strong> ' + kstBedrag(d.raming.totaalEur, 'EUR')
@@ -20027,11 +20034,11 @@ function updateMrrWidget() {
   var profEl   = document.getElementById('fdr-profit-val');
   var margeEl  = document.getElementById('fdr-profit-marge');
 
-  if (valEl)  valEl.textContent  = '€' + mrr.toLocaleString('nl-BE');
+  if (valEl)  valEl.textContent  = '€' + mrr.toLocaleString(LOCALE);
   if (subEl)  subEl.textContent  = total + ' betalende klant' + (total === 1 ? '' : 'en');
-  if (varEl)  varEl.textContent  = '-€' + varCost.toLocaleString('nl-BE');
+  if (varEl)  varEl.textContent  = '-€' + varCost.toLocaleString(LOCALE);
   if (profEl) {
-    profEl.textContent = (profit >= 0 ? '€' : '-€') + Math.abs(profit).toLocaleString('nl-BE');
+    profEl.textContent = (profit >= 0 ? '€' : '-€') + Math.abs(profit).toLocaleString(LOCALE);
     profEl.style.color = profit >= 0 ? 'var(--success-ink)' : 'var(--red-ink)';
   }
   if (margeEl) margeEl.textContent = 'Marge: ' + (mrr > 0 ? marge + '%' : '—%') + ' • variabel €' + varPerClient + '/klant';
@@ -21380,7 +21387,7 @@ function setClientMrr(id, amount) {
   renderMrrTotalsFromMap();
 }
 function fmtEuro(n) {
-  return '€' + Math.round(n).toLocaleString('nl-BE');
+  return '€' + Math.round(n).toLocaleString(LOCALE);
 }
 function fmtTenure(firstLeadDate) {
   if (!firstLeadDate) return '—';
@@ -21513,8 +21520,8 @@ function renderMeeting() {
   if (isNaN(when.getTime())) { w.textContent = '—'; return; }
   var diffMs = when.getTime() - Date.now();
   var inDays = Math.ceil(diffMs / 86400000);
-  var datePart = when.toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' });
-  var timePart = when.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+  var datePart = when.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+  var timePart = when.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   var rel = inDays < 0 ? '(voorbij)' : inDays === 0 ? '(vandaag)' : inDays === 1 ? '(morgen)' : '(over ' + inDays + ' dagen)';
   w.textContent = datePart + ' • ' + timePart + ' ' + rel;
   if (a) {
