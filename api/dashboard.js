@@ -11170,11 +11170,20 @@ async function renderCalendar() {
   });
 
   // Range label
-  const startM = days[0].toLocaleDateString(LOCALE, { month: 'short' });
-  const endM   = days[6].toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
-  const label  = startM === days[6].toLocaleDateString(LOCALE, { month: 'short' })
-    ? days[0].toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })
-    : startM + '. ' + endM;
+  /* Een week die twee maanden raakt: "28 sep – 4 okt 2026" via Intl.formatRange (de taal en
+     de volgorde van het scherm). Het stond als "sep. oktober 2026": een afkorting, een punt
+     en een volle maand achter elkaar, zonder streepje en zonder dagen. */
+  const sameMonth = days[0].getMonth() === days[6].getMonth() && days[0].getFullYear() === days[6].getFullYear();
+  let label;
+  if (sameMonth) {
+    label = days[0].toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
+  } else {
+    try {
+      label = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(days[0], days[6]);
+    } catch (e) {
+      label = days[0].toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) + ' \u2013 ' + days[6].toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  }
   const rangeEl = document.getElementById('cal-range-label');
   if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
 
