@@ -21,6 +21,25 @@
   }
   var SAFE_CLIENT_NAME = escHtml(CLIENT_NAME);
 
+  /* Taal: expliciet (data-lang), anders die van de pagina, anders die van de
+     browser. Onbekend of Nederlands: Nederlands, want dit is voor Belgische kantoren. */
+  var TAAL = String((script && script.getAttribute('data-lang')) || document.documentElement.lang || navigator.language || 'nl').slice(0, 2).toLowerCase();
+  var D = {
+    nl: { aria: 'Contact opnemen', sluit: 'Sluiten', sub: 'Vul je gegevens in en wij nemen<br>contact op via WhatsApp', naam: 'Naam', naamPh: 'Jouw naam', tel: 'Telefoonnummer',
+          akkoord1: 'Ik ga akkoord dat ', akkoord2: ' mij via WhatsApp contacteert. Zie het ', privacy: 'privacybeleid', stuur: 'VERSTUUR', stuurt: 'VERSTUREN\u2026',
+          bedankt: 'Bedankt!', bedanktTxt: 'We nemen binnenkort contact op via WhatsApp.', eNaam: 'Vul je naam en telefoonnummer in.', ePriv: 'Vink het privacy-vakje aan om verder te gaan.', eMis: 'Oeps, er ging iets mis. Probeer het opnieuw.' },
+    fr: { aria: 'Nous contacter', sluit: 'Fermer', sub: 'Laissez vos coordonnées et nous vous<br>contactons via WhatsApp', naam: 'Nom', naamPh: 'Votre nom', tel: 'Numéro de téléphone',
+          akkoord1: 'J’accepte que ', akkoord2: ' me contacte via WhatsApp. Voir la ', privacy: 'politique de confidentialité', stuur: 'ENVOYER', stuurt: 'ENVOI\u2026',
+          bedankt: 'Merci !', bedanktTxt: 'Nous vous contacterons bientôt via WhatsApp.', eNaam: 'Saisissez votre nom et votre numéro de téléphone.', ePriv: 'Cochez la case de confidentialité pour continuer.', eMis: 'Oups, une erreur est survenue. Réessayez.' },
+    en: { aria: 'Get in touch', sluit: 'Close', sub: 'Fill in your details and we’ll<br>contact you via WhatsApp', naam: 'Name', naamPh: 'Your name', tel: 'Phone number',
+          akkoord1: 'I agree that ', akkoord2: ' may contact me via WhatsApp. See the ', privacy: 'privacy policy', stuur: 'SEND', stuurt: 'SENDING\u2026',
+          bedankt: 'Thank you!', bedanktTxt: 'We’ll be in touch shortly via WhatsApp.', eNaam: 'Please enter your name and phone number.', ePriv: 'Tick the privacy box to continue.', eMis: 'Oops, something went wrong. Please try again.' },
+    de: { aria: 'Kontakt aufnehmen', sluit: 'Schließen', sub: 'Geben Sie Ihre Daten ein, wir melden<br>uns per WhatsApp', naam: 'Name', naamPh: 'Ihr Name', tel: 'Telefonnummer',
+          akkoord1: 'Ich bin einverstanden, dass ', akkoord2: ' mich per WhatsApp kontaktiert. Siehe die ', privacy: 'Datenschutzerklärung', stuur: 'SENDEN', stuurt: 'WIRD GESENDET\u2026',
+          bedankt: 'Danke!', bedanktTxt: 'Wir melden uns in Kürze per WhatsApp.', eNaam: 'Bitte geben Sie Ihren Namen und Ihre Telefonnummer ein.', ePriv: 'Setzen Sie das Häkchen für den Datenschutz, um fortzufahren.', eMis: 'Hoppla, etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.' }
+  };
+  var L = D[TAAL] || D.nl;
+
   /* Build the API endpoint.
      Order: an explicit data-endpoint, then THIS SCRIPT'S OWN ORIGIN, then the
      product domain.
@@ -96,31 +115,31 @@
   /* ── HTML ─────────────────────────────────────────────────────────────── */
   var el = document.createElement('div');
   el.innerHTML =
-    '<button id="hv-btn" aria-label="Contact opnemen">' +
+    '<button id="hv-btn" aria-label="' + L.aria + '">' +
     '<svg width="26" height="26" viewBox="0 0 24 24" fill="none">' +
     '<path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>' +
     '</svg></button>' +
     '<div id="hv-overlay" role="dialog" aria-modal="true">' +
     '<div id="hv-card">' +
-    '<button id="hv-x" aria-label="Sluiten">\u2715</button>' +
+    '<button id="hv-x" aria-label="' + L.sluit + '">\u2715</button>' +
     '<div class="hv-logo">' + SAFE_CLIENT_NAME + '</div>' +
-    '<p class="hv-sub">Vul je gegevens in en wij nemen<br>contact op via WhatsApp</p>' +
+    '<p class="hv-sub">' + L.sub + '</p>' +
     '<div id="hv-form">' +
-    '<label class="hv-lbl" for="hv-naam">Naam</label>' +
-    '<input class="hv-inp" id="hv-naam" type="text" placeholder="Jouw naam" autocomplete="name">' +
-    '<label class="hv-lbl" for="hv-tel">Telefoonnummer</label>' +
+    '<label class="hv-lbl" for="hv-naam">' + L.naam + '</label>' +
+    '<input class="hv-inp" id="hv-naam" type="text" placeholder="' + L.naamPh + '" autocomplete="name">' +
+    '<label class="hv-lbl" for="hv-tel">' + L.tel + '</label>' +
     '<input class="hv-inp" id="hv-tel" type="tel" placeholder="0478 12 34 56" autocomplete="tel">' +
     '<label class="hv-consent-row" for="hv-consent">' +
     '<input type="checkbox" id="hv-consent">' +
-    '<span>Ik ga akkoord dat ' + SAFE_CLIENT_NAME + ' mij via WhatsApp contacteert. Zie het ' +
-    '<a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">privacybeleid</a>.</span>' +
+    '<span>' + L.akkoord1 + SAFE_CLIENT_NAME + L.akkoord2 +
+    '<a href="https://app.helvaro.pro/privacy" target="_blank" rel="noopener">' + L.privacy + '</a>.</span>' +
     '</label>' +
-    '<button id="hv-send">VERSTUUR</button>' +
+    '<button id="hv-send">' + L.stuur + '</button>' +
     '<div id="hv-err"></div>' +
     '</div>' +
     '<div id="hv-ok">' +
     '<div class="hv-tick">\u2713</div>' +
-    '<p class="hv-ok-txt"><strong>Bedankt!</strong><br>We nemen binnenkort contact op via WhatsApp. \uD83D\uDCAC</p>' +
+    '<p class="hv-ok-txt"><strong>' + L.bedankt + '</strong><br>' + L.bedanktTxt + ' \uD83D\uDCAC</p>' +
     '</div>' +
     '</div></div>';
   document.body.appendChild(el);
@@ -153,16 +172,16 @@
     var name  = naamEl.value.trim();
     var phone = telEl.value.trim();
     if (!name || !phone) {
-      errEl.textContent   = 'Vul je naam en telefoonnummer in.';
+      errEl.textContent   = L.eNaam;
       errEl.style.display = 'block';
       return;
     }
     if (!consentEl.checked) {
-      errEl.textContent   = 'Vink het privacy-vakje aan om verder te gaan.';
+      errEl.textContent   = L.ePriv;
       errEl.style.display = 'block';
       return;
     }
-    sendBtn.textContent = 'VERSTUREN\u2026';
+    sendBtn.textContent = L.stuurt;
     sendBtn.disabled    = true;
 
     // POST to endpoint — project code is in the URL path, not in the body
@@ -177,9 +196,9 @@
       okEl.style.display = 'block';
     })
     .catch(function () {
-      errEl.textContent   = 'Oeps, er ging iets mis. Probeer het opnieuw.';
+      errEl.textContent   = L.eMis;
       errEl.style.display = 'block';
-      sendBtn.textContent = 'VERSTUUR';
+      sendBtn.textContent = L.stuur;
       sendBtn.disabled    = false;
     });
   }
