@@ -19594,7 +19594,7 @@ function renderActiviteit() {
        want die hebben geen lead-object maar een naam + voertuigcode. */
     if (typeof ev.type === 'string' && ev.type.indexOf('server:') === 0) {
       const soort = ev.type.slice('server:'.length);
-      const titel = tr('act.' + soort);
+      const titel = (T_DICT['act.' + soort] !== undefined) ? tr('act.' + soort) : String(soort).replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });   // een nieuw type zonder tekst toont leesbaar Engels, nooit een kale sleutel
       const details = [ev.naam, ev.voertuigCode].filter(Boolean).map(escHtml).join(' · ');
       return \`<div class="activity-item">
         <div class="activity-dot activity-dot-dealer"></div>

@@ -760,7 +760,8 @@ function faroHandleEvent(name, data, bubble, status) {
       }
       if (data.model) {
         var ml = document.getElementById('faro-model-label');
-        if (ml) ml.textContent = data.model;
+        /* Het niveau in de taal van het scherm; de servertekst ("Faro · Standaard") is Nederlands. */
+        if (ml) ml.textContent = T('tier.' + (faroState.tier || 'standard'), data.model);
       }
       break;
 
