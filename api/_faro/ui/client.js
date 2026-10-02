@@ -804,7 +804,7 @@ function faroHandleEvent(name, data, bubble, status) {
       faroMascot('error');
       faroBubbleMascot(bubble, 'idle');
       faroRenderComponent(bubble, {
-        type: 'error', message: data.message || T('st.error'), retryable: data.retryable
+        type: 'error', message: T('err.' + data.code, data.message || T('st.error')), retryable: data.retryable
       });
       break;
 

@@ -93,6 +93,11 @@ async function httpError(res) {
   try {
     const body = await res.json();
     detail = (body && body.error && body.error.type) || '';
+    /* De reden erbij, alleen in de serverlog (nooit naar de klant): "400
+       invalid_request_error" zonder reden maakt een verkeerde modelnaam en een
+       te grote afbeelding niet te onderscheiden. Afgekapt, want de reden kan
+       een stuk van het verzoek citeren. */
+    if (body && body.error && body.error.message) detail += ' — ' + String(body.error.message).replace(/\s+/g, ' ').slice(0, 240);
   } catch (_) { /* body may be empty or not JSON */ }
 
   if (res.status === 401 || res.status === 403) {

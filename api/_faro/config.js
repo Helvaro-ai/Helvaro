@@ -37,9 +37,12 @@ const ENABLED = String(process.env.FARO_WORKSPACE_ENABLED || '') === '1';
 // the user picks "Standard" or "Precise", never a vendor model name.
 const MODELS = Object.freeze({
   claude: Object.freeze({
-    fast:     'claude-haiku-4-5-20251001',
-    standard: 'claude-sonnet-5',
-    precise:  'claude-opus-5',
+    /* Per niveau te overschrijven met FARO_MODEL_FAST / _STANDARD / _PRECISE: een
+       modelnaam die Anthropic niet kent geeft "400 invalid_request_error" op
+       elke vraag, en dat moet met een instelling te herstellen zijn. */
+    fast:     (process.env.FARO_MODEL_FAST || '').trim()     || 'claude-haiku-4-5-20251001',
+    standard: (process.env.FARO_MODEL_STANDARD || '').trim() || 'claude-sonnet-5',
+    precise:  (process.env.FARO_MODEL_PRECISE || '').trim()  || 'claude-opus-5',
   }),
   openai: Object.freeze({
     fast:     'gpt-4o-mini',
