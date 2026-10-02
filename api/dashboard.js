@@ -677,7 +677,7 @@ ${_intro.markup()}
          ruimte). Daarmee blijft hij staan waar hij staat. -->
 ${faro.navCta}
 
-    <nav class="sidebar-nav" aria-label="Hoofdnavigatie">
+    <nav class="sidebar-nav" aria-label="${T('a11y.hoofdnav')}">
       <!-- ── Werk (dagelijks) ── -->
       <div class="nav-group-label" aria-hidden="true">${T('nav.group.work')}</div>
       <button class="nav-item" data-page="dashboard" id="nav-dashboard">
@@ -799,7 +799,7 @@ ${faro.navCta}
           </span>
         </button>
         <div class="credit-usage-pop" id="credit-usage-pop" role="dialog"
-             aria-label="Gesprekstegoed" style="display:none"></div>
+             aria-label="${T('a11y.tegoed')}" style="display:none"></div>
       </div>
       <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="${T('nav.profile')}">
         <div class="user-avatar" id="user-avatar">HV</div>
@@ -850,20 +850,20 @@ ${faro.navCta}
               <kbd class="search-pill-kbd">⌘K</kbd>
             </button>
             <div class="notif-wrap">
-              <button class="btn-icon" id="btn-notif" title="Notificaties" style="position:relative">
+              <button class="btn-icon" id="btn-notif" title="${T('a11y.notif')}" style="position:relative">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
                 <span class="notif-badge" id="notif-badge" style="display:none">0</span>
               </button>
               <div class="notif-dropdown" id="notif-dropdown" style="display:none">
                 <div class="notif-dd-head">
                   <span>${T('top.meldingen')}</span>
-                  <button class="notif-dd-clear" id="notif-dd-clear" onclick="clearNotifs()">Alles gelezen</button>
+                  <button class="notif-dd-clear" id="notif-dd-clear" onclick="clearNotifs()">${T('notif.allesGelezen')}</button>
                 </div>
                 <div class="notif-dd-body" id="notif-dd-body"></div>
                 <button class="notif-dd-foot" onclick="closeNotifDropdown();navigateTo('activiteit')">${T('notif.all')}</button>
               </div>
             </div>
-        <button class="btn-icon theme-toggle" id="btn-theme" title="Wissel thema" style="padding:8px 10px"></button>
+        <button class="btn-icon theme-toggle" id="btn-theme" title="${T('a11y.thema')}" style="padding:8px 10px"></button>
       </div>
     </header>
 
@@ -1090,7 +1090,7 @@ ${faro.navCta}
           <table class="leads-table">
             <thead>
               <tr>
-                <th class="sortable" data-col="naam">Naam <span class="sort-indicator" data-col="naam"></span></th>
+                <th class="sortable" data-col="naam">${T('dash.col.name')} <span class="sort-indicator" data-col="naam"></span></th>
                 <th>${T('dash.col.phone')}</th>
                 <th>${T('dash.col.status')}</th>
                 <th>${T('dash.col.qual')}</th>
@@ -1098,7 +1098,7 @@ ${faro.navCta}
                 <th>${T('dash.col.summary')}</th>
                 <th class="sortable" data-col="leadScore">Score <span class="sort-indicator" data-col="leadScore"></span></th>
                 <th>${T('dash.picked')}</th>
-                <th class="sortable" data-col="datum">Datum <span class="sort-indicator" data-col="datum"></span></th>
+                <th class="sortable" data-col="datum">${T('dash.col.date')} <span class="sort-indicator" data-col="datum"></span></th>
                 <th></th>
                 <th>${T('dash.col.actions')}</th>
               </tr>
@@ -1770,7 +1770,7 @@ ${faro.navCta}
             <label id="pi-compare-stage-label" class="ap-label">${T('pi.result')} <span class="ap-label-hint">${T('pi.slider')}</span></label>
             <div class="pi-compare-stage" id="pi-compare-stage" role="group" aria-labelledby="pi-compare-stage-label">
               <img class="pi-compare-img" id="pi-compare-before" alt="${T('img.before.alt')}">
-              <img class="pi-compare-img pi-compare-after" id="pi-compare-after" alt="Na (AI-visualisatie)">
+              <img class="pi-compare-img pi-compare-after" id="pi-compare-after" alt="${T('pi.altNa')}">
               <div class="pi-compare-tag before">${T('pi.before')}</div>
               <div class="pi-compare-tag after">Na (AI)</div>
               <div class="pi-compare-handle" id="pi-compare-handle"></div>
@@ -1961,7 +1961,7 @@ ${faro.navCta}
                 ${T('ap.callback')}
                 <span class="ap-label-hint">${T('ap.callback.h')}</span>
               </label>
-              <input id="ap-callback-window" type="text" class="ap-input" placeholder="binnen 30 minuten" maxlength="100">
+              <input id="ap-callback-window" type="text" class="ap-input" placeholder="${T('ap.cbPh')}" maxlength="100">
               <div class="ap-hint">
                 ${T('ap.examples')}
                 <button type="button" class="ap-chip" onclick="document.getElementById('ap-callback-window').value='${T('ap.cb.30min')}'">${T('ap.cb.30min')}</button>
@@ -2019,7 +2019,7 @@ ${faro.navCta}
                 <span class="ap-label-hint">${T('ap.photo.h')}</span>
               </label>
               <div class="ap-photo-row">
-                <div class="ap-photo-preview" id="ap-photo-preview" aria-label="Voorbeeldfoto van je assistent">
+                <div class="ap-photo-preview" id="ap-photo-preview" aria-label="${T('ap.fotoVoorbeeld')}">
                   <span class="ap-photo-placeholder">+</span>
                 </div>
                 <div class="ap-photo-controls">
@@ -2154,7 +2154,7 @@ ${faro.navCta}
               <button class="btn-icon" onclick="naarPlannen()">${T('fa.planChange')}</button>
               <!-- Alleen zichtbaar als er echt iets te beheren valt. -->
               <button class="btn-icon" id="fa-portaal-knop" style="display:none"
-                      onclick="naarFacturatieportaal()">Facturen &amp; opzeggen</button>
+                      onclick="naarFacturatieportaal()">${T('fa.facturenOpzeggen').replace(/&/g, '&amp;')}</button>
             </div>
           </div>
 
@@ -3765,16 +3765,16 @@ ${faro.dock}
         <div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <div class="search-hint-text">${T('search.hint')}</div>
         <div class="search-hint-shortcuts">
-          <span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span>
-          <span class="search-hint-shortcut"><kbd>↵</kbd> openen</span>
-          <span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span>
+          <span class="search-hint-shortcut"><kbd>↑↓</kbd> ${T('zk.nav')}</span>
+          <span class="search-hint-shortcut"><kbd>↵</kbd> ${T('zk.open')}</span>
+          <span class="search-hint-shortcut"><kbd>Esc</kbd> ${T('zk.sluit')}</span>
         </div>
       </div>
     </div>
     <div class="search-footer" id="search-footer" style="display:none">
-      <span class="search-footer-hint"><kbd>↑↓</kbd> navigeren</span>
-      <span class="search-footer-hint"><kbd>↵</kbd> openen</span>
-      <span class="search-footer-hint"><kbd>Esc</kbd> sluiten</span>
+      <span class="search-footer-hint"><kbd>↑↓</kbd> ${T('zk.nav')}</span>
+      <span class="search-footer-hint"><kbd>↵</kbd> ${T('zk.open')}</span>
+      <span class="search-footer-hint"><kbd>Esc</kbd> ${T('zk.sluit')}</span>
       <span class="search-footer-count" id="search-footer-count"></span>
     </div>
   </div>
@@ -3799,7 +3799,7 @@ ${faro.dock}
       <div class="koop-veld">
         <span class="koop-euro">&euro;</span>
         <input class="koop-input" id="koop-bedrag" type="number" min="0" step="5"
-               inputmode="decimal" aria-label="Bedrag in euro" oninput="koopHerbereken()">
+               inputmode="decimal" aria-label="${T('koop.ariaBedrag')}" oninput="koopHerbereken()">
       </div>
       <div class="koop-hint" id="koop-grenzen"></div>
 
@@ -3822,7 +3822,7 @@ ${faro.dock}
 
     <div class="pd-modal-foot">
       <button class="btn-icon" onclick="closeKoopModal()">${T('btn.annuleren')}</button>
-      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">Afrekenen</button>
+      <button class="btn-icon btn-primary-sm" id="koop-btn" onclick="koopAanvragen()">${T('koop.afrekenen')}</button>
     </div>
   </div>
 </div>
@@ -3844,7 +3844,7 @@ ${faro.dock}
         <div class="pd-import-row">
           <input class="pd-input" id="pd-f-link" aria-label="${T('a11y.veld.pandlink')}" type="url" inputmode="url" autocomplete="off"
                  placeholder="https://www.immoweb.be/nl/zoekertje/..." maxlength="2000">
-          <button class="btn-icon btn-primary-sm" id="pd-import-btn" onclick="importeerPand()">Ophalen</button>
+          <button class="btn-icon btn-primary-sm" id="pd-import-btn" onclick="importeerPand()">${T('pd.ophalen')}</button>
         </div>
         <div class="pd-import-status" id="pd-import-status" style="display:none"></div>
       </div>
@@ -9209,7 +9209,7 @@ function openPanel(lead) {
         <div class="panel-row">
           <span class="panel-row-label">\${escHtml(tr('pnl.waarom', { n: scoreNum }))}</span>
           <span class="panel-row-value panel-score-pills">
-            \${lead.fit        ? \`<span class="score-pill \${scorePillCls(lead.fit)}"        title="Fit met je doelgroep">Fit: \${escHtml(lead.fit)}</span>\` : ''}
+            \${lead.fit        ? \`<span class="score-pill \${scorePillCls(lead.fit)}"        title="\${escHtml(tr('lp.fitTitel'))}">Fit: \${escHtml(lead.fit)}</span>\` : ''}
             \${lead.capaciteit ? \`<span class="score-pill \${scorePillCls(lead.capaciteit)}" title="\${escHtml(tr('pnl.tip.capaciteit'))}">Capaciteit: \${escHtml(lead.capaciteit)}</span>\` : ''}
             \${lead.urgentie   ? \`<span class="score-pill \${scorePillCls(lead.urgentie)}"   title="\${escHtml(tr('pnl.tip.urgentie'))}">Urgentie: \${escHtml(lead.urgentie)}</span>\` : ''}
           </span>
@@ -9228,7 +9228,7 @@ function openPanel(lead) {
   if (lead.reden) {
     bodyHTML += \`
       <div class="panel-section">
-        <div class="panel-section-title">Reden</div>
+        <div class="panel-section-title">\${escHtml(tr('lp.reden'))}</div>
         <div class="ai-summary">\${escHtml(lead.reden)}</div>
       </div>
     \`;
@@ -9247,7 +9247,7 @@ function openPanel(lead) {
   // Details section
   bodyHTML += \`
     <div class="panel-section">
-      <div class="panel-section-title">Details</div>
+      <div class="panel-section-title">\${escHtml(tr('lp.details'))}</div>
       <div class="panel-row">
         <span class="panel-row-label">${T('dash.col.date')}</span>
         <span class="panel-row-value">\${formatDate(lead.datum)}</span>
@@ -9328,7 +9328,7 @@ function openPanel(lead) {
       ? \`sinds \${relativeTime(nData.aiPaused.at)}\${nData.aiPaused.by ? ' · ' + escHtml(nData.aiPaused.by) : ''}\`
       : '';
     const escalatedBadge = (nData.escalated && !aiPaused)
-      ? \`<span class="panel-takeover-escalated" title="\${escHtml(nData.escalated.question || '')}">Escalatie: wacht op reactie</span>\`
+      ? \`<span class="panel-takeover-escalated" title="\${escHtml(nData.escalated.question || '')}">\${escHtml(tr('lp.escWacht'))}</span>\`
       : '';
 
     if (lead.afgemeld) {
@@ -9413,14 +9413,14 @@ function openPanel(lead) {
       <div class="panel-section-title">\${escHtml(tr('pnl.afspraakUitkomst'))}</div>
       <div class="afspraak-result">
         <div>
-          <div class="afspraak-toggle-label">Verschenen?</div>
+          <div class="afspraak-toggle-label">\${escHtml(tr('cal.verschenen'))}</div>
           <div class="afspraak-toggle-row" style="margin-top:6px">
-            <button class="afspraak-btn\${isYes ? ' active-yes' : ''}" id="btn-afspraak-ja">Ja, verschenen</button>
+            <button class="afspraak-btn\${isYes ? ' active-yes' : ''}" id="btn-afspraak-ja">\${escHtml(tr('cal.jaVerschenen'))}</button>
             <button class="afspraak-btn\${isNo  ? ' active-no'  : ''}" id="btn-afspraak-nee">No-show</button>
           </div>
         </div>
         <div class="afspraak-value-row">
-          <div class="afspraak-value-label">Gesloten waarde</div>
+          <div class="afspraak-value-label">\${escHtml(tr('cal.gesloten'))}</div>
           <input type="text" class="panel-inline-input" id="afspraak-waarde" placeholder="€0" value="\${escHtml(af.gesloten || '')}">
         </div>
         <div>
@@ -9451,12 +9451,12 @@ function openPanel(lead) {
       </div>
     </div>
     <div class="panel-section">
-      <div class="panel-section-title">Belgeschiedenis</div>
+      <div class="panel-section-title">${T('lp.belgesch')}</div>
       <div class="panel-calls-list" id="panel-calls-list">\${renderCallsList(nData.calls)}</div>
       <div class="panel-log-call">
         <input type="number" id="panel-call-duur" placeholder="Min." min="1">
-        <input type="text" id="panel-call-note" placeholder="Aantekeningen...">
-        <button class="btn-log-call" id="btn-log-call">Loggen</button>
+        <input type="text" id="panel-call-note" placeholder="${T('lp.aantekPh')}">
+        <button class="btn-log-call" id="btn-log-call">${T('lp.loggen')}</button>
       </div>
     </div>
   \`;
@@ -10383,11 +10383,11 @@ function calAttShowForm(leadId, verschenen) {
 
   if (verschenen) {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat. Gekomen</div>
+      <div class="cal-modal-att-label">\${escHtml(tr('cal.resGekomen'))}</div>
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
-          <div class="cal-att-followup-label">Hebben ze iets gekocht? (optioneel)</div>
-          <input id="cal-att-deal" class="cal-att-followup-input" type="text" placeholder="bijv. €1.500 of Pakket Pro" />
+          <div class="cal-att-followup-label">\${escHtml(tr('cal.gekocht'))}</div>
+          <input id="cal-att-deal" class="cal-att-followup-input" type="text" placeholder="\${escHtml(tr('cal.dealPh1'))}" />
         </div>
         <div>
           <div class="cal-att-followup-label">\${escHtml(tr('lp.gespreksNotitie'))}</div>
@@ -10399,10 +10399,10 @@ function calAttShowForm(leadId, verschenen) {
       </div>\`;
   } else {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat. Niet gekomen</div>
+      <div class="cal-modal-att-label">\${escHtml(tr('cal.resNiet'))}</div>
       <div class="cal-att-followup" id="cal-att-followup">
         <div>
-          <div class="cal-att-followup-label">Reden / notitie (optioneel)</div>
+          <div class="cal-att-followup-label">\${escHtml(tr('cal.redenNotitie'))}</div>
           <textarea id="cal-att-note" class="cal-att-followup-textarea" placeholder="\${escHtml(tr('lp.nietGekomenPh'))}"></textarea>
         </div>
         <button class="cal-att-save-btn" onclick="calAttSave('\${escJs(leadId)}',false)">
@@ -10422,11 +10422,11 @@ function calAttStartEdit(leadId, verschenen) {
 
   if (verschenen) {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat. Gekomen</div>
+      <div class="cal-modal-att-label">\${escHtml(tr('cal.resGekomen'))}</div>
       <div class="cal-att-followup">
         <div>
-          <div class="cal-att-followup-label">Deal waarde</div>
-          <input id="cal-att-deal" class="cal-att-followup-input" type="text" value="\${escHtml(nd.afspraak?.gesloten||'')}" placeholder="bijv. €1.500" />
+          <div class="cal-att-followup-label">\${escHtml(tr('cal.dealWaarde'))}</div>
+          <input id="cal-att-deal" class="cal-att-followup-input" type="text" value="\${escHtml(nd.afspraak?.gesloten||'')}" placeholder="\${escHtml(tr('cal.dealPh2'))}" />
         </div>
         <div>
           <div class="cal-att-followup-label">${T('lp.notities')}</div>
@@ -10436,7 +10436,7 @@ function calAttStartEdit(leadId, verschenen) {
       </div>\`;
   } else {
     section.innerHTML = \`
-      <div class="cal-modal-att-label">Afspraak resultaat. Niet gekomen</div>
+      <div class="cal-modal-att-label">\${escHtml(tr('cal.resNiet'))}</div>
       <div class="cal-att-followup">
         <div>
           <div class="cal-att-followup-label">${T('lp.notitie')}</div>
@@ -10629,7 +10629,7 @@ function renderCalBookBody() {
   // Slots
   let slotsHtml;
   if (calBookState.loading) {
-    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-loading"><div class="cal-book-spinner-ring"></div> Beschikbare tijden laden...</div></div>\`;
+    slotsHtml = \`<div class="cb-slots"><div class="cb-slots-loading"><div class="cal-book-spinner-ring"></div> \${escHtml(tr('cal.tijdenLaden'))}</div></div>\`;
   } else if (calBookState.fout) {
     /* Uitdrukkelijk NIET "geen vrije tijden": we weten het niet. */
     slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">
@@ -10638,8 +10638,8 @@ function renderCalBookBody() {
     </div></div>\`;
   } else if (calBookState.slots.length === 0) {
     slotsHtml = \`<div class="cb-slots"><div class="cb-slots-empty">
-      Geen vrije tijden op \${dateLbl}.
-      <button class="cb-empty-next" onclick="calBookNavDate(1)">Probeer volgende dag →</button>
+      \${escHtml(tr('cal.geenTijden', { d: dateLbl }))}
+      <button class="cb-empty-next" onclick="calBookNavDate(1)">\${escHtml(tr('cal.volgendeDag'))}</button>
     </div></div>\`;
   } else {
     slotsHtml = \`<div class="cb-slots">\${calBookState.slots.map(slot => {
@@ -10660,7 +10660,7 @@ function renderCalBookBody() {
       .sort((a, b) => (b.leadScore || 0) - (a.leadScore || 0))
       .slice(0, 30);
     leadHtml = \`<div>
-      <div class="cb-label">Koppel aan lead <span style="font-weight:400;text-transform:none;letter-spacing:0">(optioneel)</span></div>
+      <div class="cb-label">\${escHtml(tr('cal.koppel'))} <span style="font-weight:400;text-transform:none;letter-spacing:0">(\${escHtml(tr('crm.optional'))})</span></div>
       <div class="cb-lead-search">
         <input class="cb-lead-input" id="cb-lead-input" type="text"
           placeholder="${T('cb.zoekNaam')}"
@@ -10713,7 +10713,7 @@ function renderCalBookBody() {
   }
 
   body.innerHTML = dateNavHtml +
-    \`<div><div class="cb-label">Beschikbare tijden</div>\${slotsHtml}</div>\` +
+    \`<div><div class="cb-label">\${escHtml(tr('cal.beschikbaar'))}</div>\${slotsHtml}</div>\` +
     leadHtml + confirmHtml;
 }
 
@@ -11115,7 +11115,7 @@ function bannerAttYes(leadId) {
   const btnsEl = document.getElementById('cal-att-btns-' + leadId);
   if (!btnsEl) return;
   btnsEl.outerHTML = \`<div id="cal-att-form-\${escHtml(leadId)}" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;width:100%">
-    <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="Deal waarde (bijv. €1.500)" style="font-size:12px;padding:7px 10px" />
+    <input id="cal-att-deal-\${escHtml(leadId)}" class="cal-att-followup-input" type="text" placeholder="\${escHtml(tr('cal.dealPh3'))}" style="font-size:12px;padding:7px 10px" />
     <textarea id="cal-att-note-\${escHtml(leadId)}" class="cal-att-followup-textarea" placeholder="\${escHtml(tr('lp.gespreksNotitie'))}" style="font-size:12px;min-height:56px;padding:7px 10px"></textarea>
     <div style="display:flex;gap:6px">
       <button class="cal-att-save-btn" style="flex:1;padding:7px" onclick="bannerAttSave('\${escJs(leadId)}')">${T('ap.save')}</button>
@@ -11479,7 +11479,7 @@ function renderProfile() {
             <div class="profile-recent-lead-name">\${escHtml(name)}</div>
             <div class="profile-recent-lead-meta">\${escHtml(bron || tr('bron.onbekend'))}</div>
           </div>
-          \${qual ? '<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);font-weight:700">&#10003; Gekw.</span>' : ''}
+          \${qual ? '<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);font-weight:700">&#10003; ' + escHtml(tr('lp.gekwKort')) + '</span>' : ''}
           <div class="profile-recent-lead-score">\${score}</div>
         </div>\`;
       }).join('');
@@ -13498,7 +13498,7 @@ function closeSearch() {
   const inp = document.getElementById('search-modal-input');
   if (inp) inp.value = '';
   const resultsEl = document.getElementById('search-results');
-  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">${T('search.hint')}</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+  if (resultsEl) resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">${T('search.hint')}</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> ${T('zk.nav')}</span><span class="search-hint-shortcut"><kbd>↵</kbd> ${T('zk.open')}</span><span class="search-hint-shortcut"><kbd>Esc</kbd> ${T('zk.sluit')}</span></div></div>\`;
   const footer = document.getElementById('search-footer');
   if (footer) footer.style.display = 'none';
   _searchActiveIndex = -1;
@@ -13529,7 +13529,7 @@ function runGlobalSearch() {
   _searchActiveIndex = -1;
 
   if (!q) {
-    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">${T('search.hint')}</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> navigeren</span><span class="search-hint-shortcut"><kbd>↵</kbd> openen</span><span class="search-hint-shortcut"><kbd>Esc</kbd> sluiten</span></div></div>\`;
+    resultsEl.innerHTML = \`<div class="search-hint"><div class="search-hint-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="search-hint-text">${T('search.hint')}</div><div class="search-hint-shortcuts"><span class="search-hint-shortcut"><kbd>↑↓</kbd> ${T('zk.nav')}</span><span class="search-hint-shortcut"><kbd>↵</kbd> ${T('zk.open')}</span><span class="search-hint-shortcut"><kbd>Esc</kbd> ${T('zk.sluit')}</span></div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }
@@ -13569,7 +13569,7 @@ function runGlobalSearch() {
         <div class="search-result-meta">\${escHtml(meta)}</div>
       </div>
       <div class="search-result-tags">
-        \${isQualified ? \`<span class="search-result-badge qualified">Qualified</span>\` : ''}
+        \${isQualified ? \`<span class="search-result-badge qualified">\${escHtml(tr('sr.qualified'))}</span>\` : ''}
         \${hasAppointment ? \`<span class="search-result-badge">\${escHtml(tr('cal.ev.title'))}</span>\` : ''}
         \${score !== '' ? \`<span class="search-result-score">\${score}</span>\` : ''}
       </div>
@@ -15227,7 +15227,7 @@ function setPhotoPreview(dataUrlOrHttps) {
   const hidden = document.getElementById('ap-photo');
   if (!prev) return;
   if (dataUrlOrHttps) {
-    prev.innerHTML = '<img src="' + dataUrlOrHttps.replace(/"/g, '&quot;') + '" alt="Foto van je assistent">';
+    prev.innerHTML = '<img src="' + dataUrlOrHttps.replace(/"/g, '&quot;') + '" alt="' + escHtml(tr('ap.altFoto')) + '">';
     prev.classList.add('has-photo');
     if (remove) remove.style.display = '';
     if (hidden) hidden.value = dataUrlOrHttps;
@@ -15405,8 +15405,8 @@ async function loadPiStyles() {
     renderPiLightingGrid();
     renderPiRenovationGrid();
   } catch (err) {
-    if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
-    if (roomGrid) roomGrid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">Netwerkfout</div>';
+    if (grid) grid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">' + escHtml(tr('netwerkfout')) + '</div>';
+    if (roomGrid) roomGrid.innerHTML = '<div class="pi-empty" style="grid-column:1/-1">' + escHtml(tr('netwerkfout')) + '</div>';
   }
 }
 
@@ -15631,7 +15631,7 @@ function renderPiDropzone() {
   if (!zone) return;
   if (piUploadDataUrl) {
     zone.classList.add('has-image');
-    zone.innerHTML = '<img src="' + piUploadDataUrl.replace(/"/g, '&quot;') + '" alt="Geüploade foto">';
+    zone.innerHTML = '<img src="' + piUploadDataUrl.replace(/"/g, '&quot;') + '" alt="' + escHtml(tr('pi.altUpload')) + '">';
     if (removeBtn) removeBtn.style.display = '';
   } else {
     zone.classList.remove('has-image');
@@ -15694,13 +15694,13 @@ function renderPiGallery(list) {
       ? '<button type="button" class="pi-gallery-toggle" onclick="togglePiGalleryImage(' + i + ')" id="pi-gallery-toggle-' + i + '">' + tr('pi.bekijkVoor') + '</button>'
       : '<span></span>';
     return '<div class="pi-gallery-item">' +
-        '<img src="' + safeAfter + '" alt="AI-gegenereerde visualisatie" id="pi-gallery-img-' + i + '" ' +
+        '<img src="' + safeAfter + '" alt="' + escHtml(tr('pi.altGen')) + '" id="pi-gallery-img-' + i + '" ' +
           'data-after="' + safeAfter + '" data-before="' + safeBefore + '" data-showing="after">' +
         '<div class="pi-gallery-item-body">' +
           '<div class="pi-gallery-item-style">' + escHtml(meta) + '</div>' +
           '<div class="pi-ai-badge">⚠ ' + escHtml(img.aiLabel || '') + '</div>' +
           '<div class="pi-gallery-item-actions">' + toggleBtn +
-            '<button type="button" class="pi-gallery-toggle" onclick="downloadPiGalleryImage(' + i + ')">Download</button>' +
+            '<button type="button" class="pi-gallery-toggle" onclick="downloadPiGalleryImage(' + i + ')">' + escHtml(tr('pi.download')) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -16434,8 +16434,8 @@ async function koopOfferteOphalen() {
     if (!b) { rijen.innerHTML = ''; }
     else {
       rijen.innerHTML =
-        '<div class="koop-rij"><span>Subtotaal</span><b>\\u20AC ' + euroBonFmt(b.exclEur) + '</b></div>'
-        + '<div class="koop-rij"><span>Btw (' + b.pct + '%)</span><b>\\u20AC ' + euroBonFmt(b.btwEur) + '</b></div>'
+        '<div class="koop-rij"><span>' + escHtml(tr('bon.sub')) + '</span><b>\\u20AC ' + euroBonFmt(b.exclEur) + '</b></div>'
+        + '<div class="koop-rij"><span>' + escHtml(tr('bon.btw', { p: b.pct })) + '</span><b>\\u20AC ' + euroBonFmt(b.btwEur) + '</b></div>'
         + '<div class="koop-rij totaal"><span>' + escHtml(tr('btn.totaal')) + '</span><b>\\u20AC ' + euroBonFmt(b.totaalEur) + '</b></div>';
     }
   }

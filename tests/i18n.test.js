@@ -511,7 +511,7 @@ console.log('\n— het product noemt zichzelf niet "AI" —');
      POSITIEVE controle bij: deze sleutels MOETEN het woord bevatten. */
   const BEELD_SLEUTELS = ['tst.beeldKlaar', 'tst.beeldGeenDl', 'tst.beeldGeenExp',
                           'tst.beeldPdfNiet', 'tst.origineelWeg',
-                          'pi.aiLabel'];   // het label op een gegenereerd beeld MOET AI zeggen
+                          'pi.aiLabel', 'pi.altNa', 'pi.altGen'];   // het label en de alt-teksten van een gegenereerd beeld MOETEN AI zeggen
   const TOEGESTAAN = new Set(['img.honest', ...BEELD_SLEUTELS]);
   for (const taal of ['nl', 'fr', 'en', 'de']) {
     const d = i18n.woordenboek(taal);
