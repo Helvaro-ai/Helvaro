@@ -2886,6 +2886,7 @@ const TEKST = {
   'gcal.terug.invalid_state': { nl: 'De koppeling is verlopen. Probeer opnieuw.', fr: 'La connexion a expiré. Réessayez.', en: 'The connection timed out. Please try again.', de: 'Die Verbindung ist abgelaufen. Bitte versuche es erneut.' },
   'gcal.terug.unconfigured':  { nl: 'Google Agenda is nog niet beschikbaar.', fr: 'Google Agenda n’est pas encore disponible.', en: 'Google Calendar isn’t available yet.', de: 'Google Kalender ist noch nicht verfügbar.' },
   'gcal.terug.client_not_found': { nl: 'Account niet gevonden. Log opnieuw in en probeer het nog eens.', fr: 'Compte introuvable. Reconnectez-vous et réessayez.', en: 'Account not found. Log in again and try once more.', de: 'Konto nicht gefunden. Melde dich erneut an und versuche es noch einmal.' },
+  'dash.form.gekopieerd': { nl: 'Gekopieerd!', fr: 'Copié !', en: 'Copied!', de: 'Kopiert!' },
   'log.fout':          { nl: 'Verkeerd e-mailadres of wachtwoord.', fr: 'Adresse e-mail ou mot de passe incorrect.', en: 'Wrong email address or password.', de: 'Falsche E-Mail-Adresse oder falsches Passwort.' },
   'log.teVeel':        { nl: 'Te veel pogingen. Wacht 15 minuten en probeer opnieuw.', fr: 'Trop de tentatives. Attendez 15 minutes et réessayez.', en: 'Too many attempts. Wait 15 minutes and try again.', de: 'Zu viele Versuche. Warte 15 Minuten und versuche es erneut.' },
   'log.mailOngeldig':  { nl: 'Dit e-mailadres klopt niet.', fr: 'Cette adresse e-mail n’est pas valide.', en: 'That email address isn’t valid.', de: 'Diese E-Mail-Adresse ist ungültig.' },
