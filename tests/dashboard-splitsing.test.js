@@ -261,9 +261,12 @@ function render(lang) {
    🔥🟡⚪-emoji. Telefoon: meldingen bovenaan in plaats van op de Faro-balk,
    hulpknop 44px. Faro-balk slanker onder 520px, tipregel daar verborgen.
    +3.340 bytes (var() is langer dan een getal).
-   Vorige waarden: 414091 bytes / b317d8f8f5826a1f. */
-const CSS_BYTES = 417431;
-const CSS_SHA   = 'f36214f54e02c739';
+   Vorige waarden: 414091 bytes / b317d8f8f5826a1f.
+   2026-10-02: herontwerp inlogpodium + onboarding-wizard (twee nieuwe blokken
+   achteraan, inline stijlen van de wizard naar klassen, hoeken uit de schaal).
+   +29.175 bytes. Vorige waarden: 417431 bytes / f36214f54e02c739. */
+const CSS_BYTES = 446606;
+const CSS_SHA   = '11d84a20e8b0a159';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

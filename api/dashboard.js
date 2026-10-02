@@ -423,7 +423,7 @@ ${_intro.css()}
           <label class="form-label" for="login-password">${T('login.password')}</label>
           <div style="position:relative">
             <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px" aria-describedby="login-error">
-            <button type="button" id="btn-toggle-pw" aria-label="${T('login.pw.show')}" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#6b7280;display:flex;align-items:center" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label',${T_JS('login.pw.hide')});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label',${T_JS('login.pw.show')});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
+            <button type="button" id="btn-toggle-pw" class="login-pw-toggle" aria-label="${T('login.pw.show')}" onclick="(function(){var i=document.getElementById('login-password');var b=document.getElementById('btn-toggle-pw');if(i.type==='password'){i.type='text';b.setAttribute('aria-label',${T_JS('login.pw.hide')});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94\\'></path><path d=\\'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19\\'></path><line x1=\\'1\\' y1=\\'1\\' x2=\\'23\\' y2=\\'23\\'></line></svg>';}else{i.type='password';b.setAttribute('aria-label',${T_JS('login.pw.show')});b.innerHTML='<svg width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>'; }})()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
           </div>
@@ -552,16 +552,10 @@ ${_intro.css()}
             <div class="brand-score-row">
               <div class="brand-score-ring">
                 <svg viewBox="0 0 80 80" width="80" height="80">
-                  <defs>
-                    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="var(--accent)"/>
-                      <stop offset="100%" stop-color="#DDCAA1"/>
-                    </linearGradient>
-                  </defs>
                   <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(var(--accent-rgb),0.18)" stroke-width="8"/>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="url(#ringGrad)" stroke-width="8"
-                    stroke-dasharray="134" stroke-dashoffset="40" stroke-linecap="round"
-                    transform="rotate(-90 40 40)" filter="drop-shadow(0 0 4px rgba(var(--accent-rgb),0.6))"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--accent)" stroke-width="8"
+                    stroke-dasharray="201" stroke-dashoffset="60" stroke-linecap="round"
+                    transform="rotate(-90 40 40)"/>
                 </svg>
                 <div class="brand-score-label">70%</div>
               </div>
@@ -633,9 +627,9 @@ ${_intro.css()}
 
       <!-- Dots -->
       <div class="brand-dots" id="brand-dots" role="tablist" aria-label="${T('promo.nav')}">
-        <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="${T('promo.slide',{n:1})}"></button>
-        <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:2})}"></button>
-        <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:3})}"></button>
+        <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="${T('promo.slide',{n:1})}"><span class="brand-dot-label">${T('promo.tab.1')}</span></button>
+        <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:2})}"><span class="brand-dot-label">${T('promo.tab.2')}</span></button>
+        <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:3})}"><span class="brand-dot-label">${T('promo.tab.3')}</span></button>
         <button type="button" class="brand-pauze" id="brand-pauze" aria-pressed="false" aria-label="${T('promo.pause')}"></button>
       </div>
     </div>
@@ -4352,10 +4346,10 @@ var CLERK_APPEARANCE = {
        #E8D7B1 was onleesbaar); op dit donkere paneel is het --accent-ink. */
     colorPrimary:       '#F0E4C8',
     colorBackground:    'transparent',
-    colorText:          '#F9F9F9',
-    colorTextSecondary: '#B5B5B5',
-    colorInputBackground: '#14120E',
-    colorInputText:     '#F9F9F9',
+    colorText:          '#F1E9DA',
+    colorTextSecondary: '#A79B85',
+    colorInputBackground: '#17140F',
+    colorInputText:     '#F1E9DA',
     /* #B42318 haalt op #1E1B16 nog maar 2,61:1 -- een foutmelding die je juist
        moet kunnen lezen op het moment dat je al vastloopt. Dit is dezelfde rode
        familie, opgetild tot 6,20:1. */
@@ -12763,6 +12757,10 @@ function wizardTeken() {
   if (mas) mas.src = WIZARD_MASCOTTE[stap];
 
   wizardTekenRail();
+  var vtTekst = document.getElementById('wizard-voortgang-tekst');
+  var vtVul = document.getElementById('wizard-voortgang-vul');
+  if (vtTekst) vtTekst.textContent = tr('wiz.voortgang', { n: _wizardStap + 1, totaal: WIZARD_STAPPEN.length }) + ' · ' + wizardLabel(stap);
+  if (vtVul) vtVul.style.width = Math.round(((_wizardStap + 1) / WIZARD_STAPPEN.length) * 100) + '%';
 
   /* Faro zegt per stap één zin. Dat is wat een gids doet -- anders is hij
      alleen een plaatje dat toevallig van pose wisselt. */
@@ -12783,13 +12781,13 @@ function wizardTeken() {
     titel.textContent = tr('wiz.intro.t');
     sub.textContent = tr('wiz.intro.s');
     body.innerHTML =
-        '<ul style="margin:0;padding:0 0 0 18px;font-size:13.5px;line-height:1.9;color:var(--text-muted,#999)">'
+        '<ul class="wiz-lijst">'
       + '<li>' + escHtml(tr('wiz.intro.b1')) + '</li>'
       + '<li>' + escHtml(tr('wiz.intro.b2')) + '</li>'
       + '<li>' + escHtml(tr('wiz.intro.b3')) + '</li>'
       + '<li>' + escHtml(tr('wiz.intro.b4')) + '</li>'
       + '</ul>'
-      + '<p style="margin:16px 0 0;font-size:12.5px;color:var(--text-muted,#999)">'
+      + '<p class="wiz-noot">'
       + escHtml(tr('wiz.intro.skip')) + '</p>';
     return;
   }
@@ -12797,8 +12795,6 @@ function wizardTeken() {
   if (stap === 'regio') {
     titel.textContent = tr('wiz.regio.t');
     sub.textContent = tr('wiz.regio.s');
-    var VELD = 'width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit';
-    var LABEL = 'display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)';
     var landOpties = REGIO_LANDEN.map(function (l) {
       return '<option value="' + escHtml(l.code) + '">' + escHtml(l.naam) + '</option>';
     }).join('');
@@ -12806,11 +12802,11 @@ function wizardTeken() {
       return '<option value="' + escHtml(t.code) + '">' + escHtml(t.native) + '</option>';
     }).join('');
     body.innerHTML =
-        '<label for="wizard-land" style="' + LABEL + '">' + escHtml(tr('wiz.regio.land')) + '</label>'
-      + '<select id="wizard-land" style="' + VELD + '">' + landOpties + '</select>'
-      + '<label for="wizard-taal" style="' + LABEL + ';margin-top:14px">' + escHtml(tr('wiz.regio.taal')) + '</label>'
-      + '<select id="wizard-taal" style="' + VELD + '">' + taalOpties + '</select>'
-      + '<p id="wizard-taal-hint" style="margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)"></p>';
+        '<label for="wizard-land" class="wiz-label">' + escHtml(tr('wiz.regio.land')) + '</label>'
+      + '<select id="wizard-land" class="wiz-veld">' + landOpties + '</select>'
+      + '<label for="wizard-taal" class="wiz-label wiz-label--na">' + escHtml(tr('wiz.regio.taal')) + '</label>'
+      + '<select id="wizard-taal" class="wiz-veld">' + taalOpties + '</select>'
+      + '<p id="wizard-taal-hint" class="wiz-hint"></p>';
 
     var landEl = document.getElementById('wizard-land');
     var taalEl = document.getElementById('wizard-taal');
@@ -12834,7 +12830,7 @@ function wizardTeken() {
          klant laten ontdekken dat er niets vertrekt. */
       hintEl.innerHTML = tr('wiz.regio.hint')
         + (taalEl.value !== voorstel && landNaam
-            ? '<br><span style="opacity:.75">' + escHtml(tr('wiz.regio.andereTaal', { land: landNaam })) + '</span>'
+            ? '<br><span class="wiz-zacht">' + escHtml(tr('wiz.regio.andereTaal', { land: landNaam })) + '</span>'
             : '');
     }
 
@@ -12854,18 +12850,14 @@ function wizardTeken() {
     titel.textContent = tr('wiz.markt.titel');
     sub.textContent = tr('wiz.markt.sub');
 
-    var KRT = 'display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;padding:14px 15px;'
-      + 'margin:0 0 10px;border-radius:14px;border:1px solid var(--border,#2A3444);background:transparent;'
-      + 'cursor:pointer;font-family:inherit;transition:var(--transition,all .2s)';
     body.innerHTML = WIZARD_MARKTEN.map(function (m) {
-      return '<button type="button" class="wiz-markt" data-markt="' + m.id + '" style="' + KRT + '">'
-        + '<span style="flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;'
-        +   'justify-content:center;background:rgba(var(--accent-rgb,232,215,177),0.10);color:var(--accent-ink,#F0E4C8)">'
+      return '<button type="button" class="wiz-markt" data-markt="' + m.id + '">'
+        + '<span class="wiz-markt-icoon">'
         +   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
         +   'stroke-linecap="round" stroke-linejoin="round">' + m.icoon + '</svg></span>'
-        + '<span style="flex:1;min-width:0">'
-        +   '<span style="display:block;font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)">' + tr('markt.' + m.id + '.t') + '</span>'
-        +   '<span style="display:block;margin-top:3px;font-size:12.5px;line-height:1.55;color:var(--text-muted,#999)">' + tr('markt.' + m.id + '.s') + '</span>'
+        + '<span class="wiz-markt-tekst">'
+        +   '<span class="wiz-markt-naam">' + tr('markt.' + m.id + '.t') + '</span>'
+        +   '<span class="wiz-markt-uitleg">' + tr('markt.' + m.id + '.s') + '</span>'
         + '</span></button>';
     }).join('');
 
@@ -12876,15 +12868,15 @@ function wizardTeken() {
     var teken = function () {
       for (var i = 0; i < kaarten.length; i++) {
         var aan = kaarten[i].getAttribute('data-markt') === _wizardMarkt;
-        kaarten[i].style.borderColor = aan ? 'var(--accent-c,#E8D7B1)' : 'var(--border,#2A3444)';
-        kaarten[i].style.background  = aan ? 'rgba(var(--accent-rgb,232,215,177),0.07)' : 'transparent';
+        kaarten[i].classList.toggle('is-gekozen', aan);
+        kaarten[i].setAttribute('aria-pressed', aan ? 'true' : 'false');
       }
     };
     for (var k = 0; k < kaarten.length; k++) {
       kaarten[k].onclick = function () {
         _wizardMarkt = this.getAttribute('data-markt');
         teken();
-        var knopEl = document.getElementById('wizard-next');
+        var knopEl = document.getElementById('wizard-volgende');
         if (knopEl) knopEl.click();
       };
     }
@@ -12897,17 +12889,14 @@ function wizardTeken() {
     titel.textContent = tr('wiz.bedrijf.t');
     sub.textContent = tr('wiz.bedrijf.s');
     body.innerHTML =
-        '<label for="wizard-bedrijf" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">'
-      + (_wizardMarkt === 'dealership' ? 'Wat verkoop je?' : 'Wat doet je kantoor?') + '</label>'
+        '<label for="wizard-bedrijf" class="wiz-label">'
+      + escHtml(tr(_wizardMarkt === 'dealership' ? 'wiz.bedrijf.labelDealer' : 'wiz.bedrijf.label')) + '</label>'
       /* Het voorbeeld volgt zijn markt. Een dealer die "makelaarskantoor in
          Aalst" als voorbeeld krijgt, denkt dat hij op het verkeerde product zit. */
-      + '<textarea id="wizard-bedrijf" rows="6" placeholder="' + (_wizardMarkt === 'dealership'
-          ? 'Bijvoorbeeld: wij zijn een garage in Aalst, vooral Duitse wagens tussen 15.000 en 60.000 euro. Occasies met garantie, en we nemen in ruil.'
-          : 'Bijvoorbeeld: wij zijn een makelaarskantoor in Aalst, gespecialiseerd in woningen tussen 250.000 en 600.000 euro. We werken in Aalst, Erpe-Mere en Lede...') + '" '
-      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;line-height:1.55;color:var(--text,#E9EEF6);font-family:inherit;resize:vertical"></textarea>'
-      + '<label for="wizard-website" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">Website (optioneel)</label>'
-      + '<input id="wizard-website" type="url" placeholder="https://..." '
-      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit">';
+      + '<textarea id="wizard-bedrijf" class="wiz-veld wiz-veld--tekst" rows="6" placeholder="'
+      +   escHtml(tr(_wizardMarkt === 'dealership' ? 'wiz.bedrijf.phDealer' : 'wiz.bedrijf.ph')) + '"></textarea>'
+      + '<label for="wizard-website" class="wiz-label wiz-label--na">' + escHtml(tr('wiz.bedrijf.website')) + '</label>'
+      + '<input id="wizard-website" class="wiz-veld" type="url" placeholder="https://...">';
     document.getElementById('wizard-bedrijf').value = c.aiInstructions || '';
     document.getElementById('wizard-website').value = c.website || '';
     setTimeout(function () { document.getElementById('wizard-bedrijf').focus(); }, 60);
@@ -12918,31 +12907,24 @@ function wizardTeken() {
     titel.textContent = tr('wiz.ai.t');
     sub.textContent = tr('wiz.ai.s');
     body.innerHTML =
-        '<label for="wizard-ainaam" style="display:block;margin:0 0 6px;font-size:12px;color:var(--text-muted,#999)">${T('dash.col.name')}</label>'
-      + '<input id="wizard-ainaam" type="text" maxlength="60" placeholder="Bijvoorbeeld: Mathis" '
-      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;color:var(--text,#E9EEF6);font-family:inherit">'
-      + '<label for="wizard-welkomst" style="display:block;margin:14px 0 6px;font-size:12px;color:var(--text-muted,#999)">${T('ap.welcome')}</label>'
-      + '<textarea id="wizard-welkomst" rows="4" placeholder="Dag! Ik ben Mathis van kantoor X. Waarmee kan ik u helpen?" '
-      + 'style="width:100%;box-sizing:border-box;padding:11px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13.5px;line-height:1.55;color:var(--text,#E9EEF6);font-family:inherit;resize:vertical"></textarea>';
+        '<label for="wizard-ainaam" class="wiz-label">${T('dash.col.name')}</label>'
+      + '<input id="wizard-ainaam" class="wiz-veld" type="text" maxlength="60" placeholder="' + escHtml(tr('wiz.ai.phNaam')) + '">'
+      + '<label for="wizard-welkomst" class="wiz-label wiz-label--na">${T('ap.welcome')}</label>'
+      + '<textarea id="wizard-welkomst" class="wiz-veld wiz-veld--tekst" rows="4" placeholder="' + escHtml(tr('wiz.ai.phWelkom')) + '"></textarea>';
     document.getElementById('wizard-ainaam').value = c.aiName || '';
     document.getElementById('wizard-welkomst').value = c.autoReplyTpl || '';
     setTimeout(function () { document.getElementById('wizard-ainaam').focus(); }, 60);
     return;
   }
 
-  var KAART = 'border:1px solid var(--border,#2A3444);border-radius:14px;padding:14px 16px;margin:0 0 12px;background:var(--bg-card,transparent)';
-  var KOP = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
-  var NAAM = 'font-size:13.5px;font-weight:600;color:var(--text,#E9EEF6)';
-  var UITLEG = 'margin:6px 0 0;font-size:12.5px;line-height:1.6;color:var(--text-muted,#999)';
-  var KNOP = 'padding:7px 13px;border-radius:9px;border:1px solid var(--border,#2A3444);background:transparent;color:var(--text,#E9EEF6);font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap';
   function kaartHtml(id, naam, optioneel) {
-    return '<div class="wiz-kaart" style="' + KAART + '">'
-      + '<div style="' + KOP + '"><span style="' + NAAM + '">' + escHtml(naam)
-      + (optioneel ? ' <span style="font-weight:400;font-size:11.5px;color:var(--text-muted,#999)">' + escHtml(tr('wiz.optioneel')) + '</span>' : '')
-      + '</span><span id="wiz-' + id + '-badge" style="font-size:12px;color:var(--text-muted,#999)">' + escHtml(tr('wiz.controleren')) + '</span></div>'
-      + '<p id="wiz-' + id + '-uitleg" style="' + UITLEG + '"></p>'
+    return '<div class="wiz-kaart">'
+      + '<div class="wiz-kaart-kop"><span class="wiz-kaart-naam">' + escHtml(naam)
+      + (optioneel ? ' <span class="wiz-optioneel">' + escHtml(tr('wiz.optioneel')) + '</span>' : '')
+      + '</span><span id="wiz-' + id + '-badge" class="wiz-badge">' + escHtml(tr('wiz.controleren')) + '</span></div>'
+      + '<p id="wiz-' + id + '-uitleg" class="wiz-kaart-uitleg"></p>'
       + '<div id="wiz-' + id + '-extra"></div>'
-      + '<button id="wiz-' + id + '-knop" type="button" style="' + KNOP + ';margin-top:10px;display:none"></button>'
+      + '<button id="wiz-' + id + '-knop" type="button" class="wiz-kaart-knop" style="display:none"></button>'
       + '</div>';
   }
 
@@ -12987,19 +12969,18 @@ function wizardTeken() {
   var lijst = rijen.map(function (r) {
     var st = _wizStatus[r[0]];
     var ok = st === true;
-    return '<li style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border,#2A3444);font-size:13px">'
-      + '<span aria-hidden="true" style="width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:11px;'
-      + (ok ? 'background:var(--success-c,#4CAF6E);color:#fff">&#10003;' : 'border:1.5px solid var(--text-muted,#999)">') + '</span>'
-      + '<span style="flex:1;color:var(--text,#E9EEF6)">' + escHtml(r[1]) + '</span>'
-      + '<span style="font-size:12px;color:var(--text-muted,#999)">' + escHtml(tr(ok ? 'wiz.klaar.aan' : (st === false ? 'wiz.klaar.later' : 'wiz.klaar.onbekend'))) + '</span></li>';
+    return '<li class="wiz-klaar-rij">'
+      + '<span aria-hidden="true" class="wiz-klaar-bol' + (ok ? ' is-aan' : '') + '"></span>'
+      + '<span class="wiz-klaar-naam">' + escHtml(r[1]) + '</span>'
+      + '<span class="wiz-klaar-status">' + escHtml(tr(ok ? 'wiz.klaar.aan' : (st === false ? 'wiz.klaar.later' : 'wiz.klaar.onbekend'))) + '</span></li>';
   }).join('');
 
   body.innerHTML =
-      '<div style="user-select:all;-webkit-user-select:all;word-break:break-all;padding:11px 12px;margin:0 0 14px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:12px;font-size:13px;color:var(--text,#E9EEF6)">'
+      '<div class="wiz-link">'
     + (link ? escHtml(link) : escHtml(tr('wiz.klaar.link'))) + '</div>'
-    + '<div style="font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted,#999);margin:4px 0 2px">' + escHtml(tr('wiz.klaar.lijst')) + '</div>'
-    + '<ul style="list-style:none;margin:0 0 14px;padding:0">' + lijst + '</ul>'
-    + '<p style="margin:0;font-size:13px;line-height:1.7;color:var(--text-muted,#999)">'
+    + '<div class="wiz-kopje">' + escHtml(tr('wiz.klaar.lijst')) + '</div>'
+    + '<ul class="wiz-klaar-lijst">' + lijst + '</ul>'
+    + '<p class="wiz-volgende">'
     + escHtml(volgende) + '</p>';
 }
 
@@ -13082,7 +13063,7 @@ async function wizardWebStatus() {
     var extra = document.getElementById('wiz-web-extra');
     if (extra) {
       extra.innerHTML = '<input id="wiz-web-domein" type="text" maxlength="200" placeholder="garage-voorbeeld.be" aria-label="' + escHtml(tr('widget.domeinen')) + '" '
-        + 'style="width:100%;box-sizing:border-box;margin-top:10px;padding:9px 12px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);border-radius:10px;font-size:13px;color:var(--text,#E9EEF6);font-family:inherit">';
+        + 'class="wiz-veld wiz-veld--klein">';
       var inp = document.getElementById('wiz-web-domein');
       if (inp && d.domeinen && d.domeinen.length) inp.value = d.domeinen.join(', ');
     }
@@ -13110,7 +13091,7 @@ async function wizardWebStatus() {
 function wizToonCode(snippet) {
   var extra = document.getElementById('wiz-web-extra');
   if (!extra || !snippet) return;
-  extra.innerHTML = '<code id="widget-snippet" style="display:block;margin-top:10px;padding:9px 11px;border-radius:10px;background:var(--bg,#0E141C);border:1px solid var(--border,#2A3444);font-size:11.5px;word-break:break-all;color:var(--text,#E9EEF6)"></code>';
+  extra.innerHTML = '<code id="widget-snippet" class="wiz-code"></code>';
   document.getElementById('widget-snippet').textContent = snippet;
   wizKnop('web', tr('widget.kopieer'), function () { kopieerWidgetCode(); });
 }
@@ -13161,24 +13142,18 @@ function wizardTekenRail() {
     var gedaan = i < _wizardStap;
 
     var regel = document.createElement('div');
-    regel.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 0';
+    regel.className = 'wiz-stap' + (actief ? ' is-actief' : '') + (gedaan ? ' is-gedaan' : '');
+    if (actief) regel.setAttribute('aria-current', 'step');
 
+    /* Gedaan = een getekend vinkje (CSS-masker), geen ✓-teken. */
     var bol = document.createElement('span');
-    bol.textContent = gedaan ? '✓' : String(i + 1);
+    bol.className = 'wiz-stap-bol';
+    bol.textContent = gedaan ? '' : String(i + 1);
     bol.setAttribute('aria-hidden', 'true');
-    bol.style.cssText = 'flex:0 0 24px;height:24px;border-radius:999px;display:flex;'
-      + 'align-items:center;justify-content:center;font-size:11.5px;font-weight:600;'
-      + (gedaan
-          ? 'background:var(--accent-c,#C9A34E);color:#0E141C;'
-          : actief
-            ? 'background:transparent;color:var(--accent-c,#C9A34E);border:1px solid var(--accent-c,#C9A34E);'
-            : 'background:transparent;color:var(--text-muted,#999);border:1px solid var(--border,#2A3444);');
 
     var tekst = document.createElement('span');
+    tekst.className = 'wiz-stap-naam';
     tekst.textContent = wizardLabel(sleutel);
-    tekst.style.cssText = 'font-size:13px;'
-      + (actief ? 'color:var(--text,#E9EEF6);font-weight:600;'
-                : gedaan ? 'color:var(--text-muted,#999);' : 'color:var(--text-muted,#999);opacity:0.72;');
 
     regel.appendChild(bol); regel.appendChild(tekst);
     rail.appendChild(regel);
@@ -13195,106 +13170,104 @@ function wizardBouw() {
   overlay.id = 'welkom-wizard';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', 'Welkom bij Helvaro');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:11000;'
-    + 'display:flex;align-items:center;justify-content:center;padding:' + (smal ? '0' : '24px')
-    + ';animation:cmFadeIn .18s ease-out';
+  overlay.setAttribute('aria-label', tr('wiz.dialoog'));
+  overlay.className = 'wiz-overlay' + (smal ? ' is-smal' : '');
 
   var kaart = document.createElement('div');
-  kaart.style.cssText = 'background:var(--card,#161D28);border:1px solid var(--border,#2A3444);'
-    + (smal ? 'border-radius:0;width:100%;height:100%;' : 'border-radius:18px;width:100%;max-width:940px;max-height:88vh;')
-    + 'display:flex;overflow:hidden';
+  kaart.className = 'wiz-venster';
 
   // ── Rail ────────────────────────────────────────────────────────────────
   var rail = document.createElement('aside');
-  rail.style.cssText = 'flex:0 0 264px;background:var(--bg,#0E141C);border-right:1px solid var(--border,#2A3444);'
-    + 'padding:30px 26px;display:flex;flex-direction:column';
-  if (smal) rail.style.display = 'none';
+  rail.className = 'wiz-rail';
 
   var railKop = document.createElement('div');
   railKop.textContent = tr('wiz.rail.kop');
-  railKop.style.cssText = 'font-size:11px;letter-spacing:0.1em;text-transform:uppercase;'
-    + 'color:var(--text-muted,#999);margin:0 0 14px';
+  railKop.className = 'wiz-rail-kop';
 
   var stappen = document.createElement('div');
   stappen.id = 'wizard-rail';
 
   var railVul = document.createElement('div');
-  railVul.style.cssText = 'flex:1;min-height:24px';
+  railVul.className = 'wiz-rail-vul';
 
   /* Faro onderaan de rail: klein, rustig, als merkteken. Hij wisselt nog steeds
      van toestand per stap -- dat is waarom hij er staat -- maar hij concurreert
      niet meer met de kop. */
   var gids = document.createElement('div');
   gids.id = 'wizard-gids';
-  gids.style.cssText = 'display:flex;align-items:center;gap:10px;padding-top:16px;border-top:1px solid var(--border,#2A3444)';
+  gids.className = 'wiz-gids';
   var mascotte = document.createElement('img');
   mascotte.id = 'wizard-mascotte';
   mascotte.alt = '';
   mascotte.setAttribute('aria-hidden', 'true');
   mascotte.width = 44; mascotte.height = 44;
-  mascotte.style.cssText = 'width:44px;height:44px;display:block;flex:0 0 44px';
+  mascotte.className = 'wiz-gids-faro';
   var gidsTekst = document.createElement('div');
   gidsTekst.id = 'wizard-gidstekst';
-  gidsTekst.style.cssText = 'font-size:12px;line-height:1.45;color:var(--text-muted,#999)';
+  gidsTekst.className = 'wiz-gids-tekst';
   gids.appendChild(mascotte); gids.appendChild(gidsTekst);
 
   rail.appendChild(railKop); rail.appendChild(stappen); rail.appendChild(railVul); rail.appendChild(gids);
 
   // ── Inhoud ──────────────────────────────────────────────────────────────
   var rechts = document.createElement('div');
-  rechts.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column';
+  rechts.className = 'wiz-rechts';
+
+  /* Op een telefoon is er geen rail; dan zegt een balk bovenaan waar je bent. */
+  var voortgang = document.createElement('div');
+  voortgang.id = 'wizard-voortgang';
+  voortgang.className = 'wiz-voortgang';
+  voortgang.innerHTML = '<span class="wiz-voortgang-tekst" id="wizard-voortgang-tekst"></span><span class="wiz-voortgang-baan"><span class="wiz-voortgang-vul" id="wizard-voortgang-vul"></span></span>';
 
   var inhoud = document.createElement('div');
-  inhoud.style.cssText = 'flex:1;overflow-y:auto;padding:' + (smal ? '28px 22px' : '40px 44px');
+  inhoud.className = 'wiz-inhoud';
 
   var binnen = document.createElement('div');
-  binnen.style.cssText = 'max-width:460px';   // leesbare regelbreedte, geen uitgerekte velden
+  binnen.className = 'wiz-binnen';   // leesbare regelbreedte, geen uitgerekte velden
 
   var titel = document.createElement('h2');
   titel.id = 'wizard-titel';
-  titel.style.cssText = 'margin:0 0 8px;font-size:23px;line-height:1.25;color:var(--text,#E9EEF6)';
+  titel.className = 'wiz-titel';
   var sub = document.createElement('p');
   sub.id = 'wizard-sub';
-  sub.style.cssText = 'margin:0 0 24px;font-size:13.5px;line-height:1.6;color:var(--text-muted,#999)';
+  sub.className = 'wiz-sub';
   var body = document.createElement('div');
   body.id = 'wizard-body';
   var fout = document.createElement('div');
   fout.id = 'wizard-fout';
   fout.setAttribute('role', 'alert');
-  fout.style.cssText = 'min-height:20px;margin:14px 0 0;font-size:12.5px;color:var(--error-ink,#F4A4A4)';
+  fout.className = 'wiz-fout';
 
   binnen.appendChild(titel); binnen.appendChild(sub); binnen.appendChild(body); binnen.appendChild(fout);
   inhoud.appendChild(binnen);
 
   var voet = document.createElement('div');
-  voet.style.cssText = 'display:flex;align-items:center;gap:8px;padding:' + (smal ? '16px 22px' : '18px 44px')
-    + ';border-top:1px solid var(--border,#2A3444)';
+  voet.className = 'wiz-voet';
 
   var overslaan = document.createElement('button');
   overslaan.id = 'wizard-overslaan';
   overslaan.type = 'button';
-  overslaan.textContent = 'Overslaan';
-  overslaan.style.cssText = 'padding:9px 12px;background:none;border:0;color:var(--text-muted,#999);font-size:13px;cursor:pointer;font-family:inherit';
+  overslaan.textContent = tr('wiz.knop.overslaan');
+  overslaan.className = 'wiz-knop wiz-knop--stil';
 
   var vul = document.createElement('div');
-  vul.style.cssText = 'flex:1';
+  vul.className = 'wiz-voet-vul';
 
   var terug = document.createElement('button');
   terug.id = 'wizard-terug';
   terug.type = 'button';
-  terug.textContent = 'Terug';
-  terug.style.cssText = 'padding:9px 16px;background:transparent;border:1px solid var(--border,#2A3444);border-radius:12px;color:var(--text,#E9EEF6);font-size:13px;cursor:pointer;font-family:inherit';
+  terug.textContent = tr('wiz.knop.terug');
+  terug.className = 'wiz-knop wiz-knop--terug';
 
   var volgende = document.createElement('button');
   volgende.id = 'wizard-volgende';
   volgende.type = 'button';
   volgende.textContent = tr('btn.volgende');
-  volgende.style.cssText = 'padding:9px 20px;background:var(--accent-c,#C9A34E);border:0;border-radius:12px;color:#0E141C;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit';
+  volgende.className = 'wiz-knop wiz-knop--hoofd';
 
   voet.appendChild(overslaan); voet.appendChild(vul); voet.appendChild(terug); voet.appendChild(volgende);
 
-  rechts.appendChild(inhoud); rechts.appendChild(voet);
+  rechts.appendChild(voortgang); rechts.appendChild(inhoud); rechts.appendChild(voet);
   kaart.appendChild(rail); kaart.appendChild(rechts);
   overlay.appendChild(kaart);
   document.body.appendChild(overlay);
@@ -21151,10 +21124,19 @@ function initLoginSlideshow() {
   let gepauzeerd = rustig;
   let even = false;   // tijdelijk stil door hover of focus
 
+  /* De lijn onder de actieve tab loopt mee met de timer. Hij herstart met
+     elke start() en staat stil zodra de diavoorstelling stilstaat. */
+  const dotsWrap = document.getElementById('brand-dots');
+  function lijn(loopt) {
+    if (!dotsWrap) return;
+    dotsWrap.classList.remove('brand-loopt');
+    if (loopt) { void dotsWrap.offsetWidth; dotsWrap.classList.add('brand-loopt'); }
+  }
   function start() {
     clearInterval(timer);
-    if (gepauzeerd || even) return;
-    timer = setInterval(() => goTo(current + 1), 5000);
+    if (gepauzeerd || even) { lijn(false); return; }
+    lijn(true);
+    timer = setInterval(() => { goTo(current + 1); lijn(true); }, 5000);
   }
 
   function restart() { start(); }
