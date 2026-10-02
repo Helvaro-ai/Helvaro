@@ -239,7 +239,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   // ── GET /verify-email?token=.... confirm email ownership, one click ──────
   if (req.method === 'GET') {
     const path = (req.url || '').split('?')[0];
-    if (path.endsWith('/forgot-password')) return renderForgotPage(res);
+    if (path.endsWith('/forgot-password')) return renderForgotPage(req, res);
     if (path.endsWith('/reset-password'))  return renderResetPage(req, res);
     if (path.endsWith('/verify-email'))    return handleVerifyEmail(req, res);
     return res.status(404).send('Not found');
@@ -777,7 +777,7 @@ async function handleVerifyEmail(req, res) {
 
   const decoded = verify.decodeVerifyToken(token);
   if (!decoded) {
-    return res.status(400).send(verifyResultPage(false, 'Deze link is ongeldig.'));
+    return res.status(400).send(verifyResultPage(req, false, 'pw.verify.ongeldig'));
   }
 
   let rec;
@@ -785,10 +785,10 @@ async function handleVerifyEmail(req, res) {
     rec = await verify.fetchClientRecordById(BASE_ID, AIRTABLE_TOKEN, decoded.data.rid);
   } catch (err) {
     console.error('[verify-email] lookup failed:', err.message);
-    return res.status(500).send(verifyResultPage(false, 'Serverfout. Probeer het later opnieuw.'));
+    return res.status(500).send(verifyResultPage(req, false, 'pw.verify.server'));
   }
   if (!rec) {
-    return res.status(400).send(verifyResultPage(false, 'Deze link is ongeldig of het account bestaat niet meer.'));
+    return res.status(400).send(verifyResultPage(req, false, 'pw.verify.geenAccount'));
   }
 
   const currentStatus = rec.fields[verify.FIELD_NAME.STATUS] || '';
@@ -797,12 +797,12 @@ async function handleVerifyEmail(req, res) {
   // error — the underlying signature check below would reject it anyway
   // (see _verify.js's single-use design), but this gives a nicer message.
   if (currentStatus === 'verified') {
-    return res.status(200).send(verifyResultPage(true, 'Je e-mailadres is al bevestigd. Je kan dit venster sluiten.'));
+    return res.status(200).send(verifyResultPage(req, true, 'pw.verify.alGedaan'));
   }
 
   const valid = verify.verifyToken(token, decoded.data.rid, currentStatus);
   if (!valid) {
-    return res.status(400).send(verifyResultPage(false, 'Deze link is verlopen of al gebruikt. Vraag een nieuwe aan via je dashboard.'));
+    return res.status(400).send(verifyResultPage(req, false, 'pw.verify.verlopen'));
   }
 
   let ok = false;
@@ -812,29 +812,9 @@ async function handleVerifyEmail(req, res) {
     console.error('[verify-email] mark-verified failed:', err.message);
   }
   if (!ok) {
-    return res.status(500).send(verifyResultPage(false, 'Er ging iets mis bij het bevestigen. Probeer opnieuw of neem contact op.'));
+    return res.status(500).send(verifyResultPage(req, false, 'pw.verify.server'));
   }
-  return res.status(200).send(verifyResultPage(true, 'E-mailadres bevestigd! Je kan dit venster sluiten.'));
-}
-
-function verifyResultPage(success, message) {
-  const title = success ? 'Bevestigd' : 'Kon niet bevestigen';
-  const emoji = success ? '✓' : '✕';
-  const color = success ? '#1e6fd9' : '#b91c1c';
-  return `<!DOCTYPE html>
-<html lang="nl"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${title} · Helvaro</title>
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <style>${RESET_CSS}</style>
-</head><body>
-  <div class="card" style="text-align:center">
-    <div style="font-size:40px;color:${color};margin-bottom:8px">${emoji}</div>
-    <h1>${title}</h1>
-    <p class="sub" style="margin-bottom:0">${escapeHtml(message)}</p>
-    <a class="back" href="/dashboard">← Naar je dashboard</a>
-  </div>
-</body></html>`;
+  return res.status(200).send(verifyResultPage(req, true, 'pw.verify.gedaan'));
 }
 
 function escapeHtml(s) {
@@ -867,122 +847,5 @@ async function sendResetEmailToUser(email, user) {
 }
 
 // ─── PASSWORD RESET HTML PAGES ───────────────────────────────────────────────
-
-const RESET_CSS = `
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f6f8fb; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .card { background: #fff; max-width: 420px; width: 100%; padding: 36px 32px; border-radius: 16px; box-shadow: 0 12px 40px rgba(20,40,80,.08); }
-  h1 { margin: 0 0 8px; font-size: 1.5rem; color: #111; }
-  p.sub { margin: 0 0 28px; color: #6a7890; font-size: 14px; line-height: 1.55; }
-  label { display: block; font-size: 13px; font-weight: 600; color: #2a3a55; margin-bottom: 6px; }
-  input { width: 100%; padding: 12px 14px; border: 1.5px solid #dde3ee; border-radius: 10px; font-size: 15px; box-sizing: border-box; transition: border-color .15s; }
-  input:focus { outline: none; border-color: #1e6fd9; }
-  button { width: 100%; padding: 13px; background: #1e6fd9; color: #fff; border: 0; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 18px; transition: opacity .15s; }
-  button:hover { opacity: .92; }
-  button:disabled { opacity: .55; cursor: not-allowed; }
-  .msg { margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 14px; }
-  .msg.ok { background: #ecfdf5; color: #065f46; }
-  .msg.err { background: #fef2f2; color: #b91c1c; }
-  .back { display: block; text-align: center; margin-top: 22px; font-size: 13px; color: #1e6fd9; text-decoration: none; }
-  .back:hover { text-decoration: underline; }
-`;
-
-function renderForgotPage(res) {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.status(200).send(`<!DOCTYPE html>
-<html lang="nl"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Wachtwoord vergeten · Helvaro</title>
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <style>${RESET_CSS}</style>
-</head><body>
-  <div class="card">
-    <h1>Wachtwoord vergeten?</h1>
-    <p class="sub">Geen probleem. Vul je e-mailadres in en we sturen je een link om een nieuw wachtwoord in te stellen. De link is 1 uur geldig.</p>
-    <form id="f" onsubmit="return false">
-      <label for="email">E-mailadres</label>
-      <input id="email" type="email" autocomplete="email" required placeholder="jij@bedrijf.be">
-      <button id="btn" type="submit">Reset-link versturen</button>
-    </form>
-    <div id="m" class="msg" style="display:none"></div>
-    <a class="back" href="/dashboard">← Terug naar inloggen</a>
-  </div>
-<script>
-const f = document.getElementById('f'), btn = document.getElementById('btn'), m = document.getElementById('m');
-f.addEventListener('submit', async () => {
-  const email = document.getElementById('email').value.trim();
-  if (!email) return;
-  btn.disabled = true; btn.textContent = 'Bezig...';
-  m.style.display = 'none';
-  try {
-    const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode:'request-reset', email }) });
-    const d = await r.json().catch(() => ({}));
-    m.textContent = d.message || (r.ok ? 'Mail verstuurd.' : (d.error || 'Er ging iets mis.'));
-    m.className = 'msg ' + (r.ok ? 'ok' : 'err');
-    m.style.display = 'block';
-    if (r.ok) { btn.textContent = 'Verstuurd'; }
-    else      { btn.disabled = false; btn.textContent = 'Reset-link versturen'; }
-  } catch (e) {
-    m.textContent = 'Netwerkfout. Probeer opnieuw.'; m.className = 'msg err'; m.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Reset-link versturen';
-  }
-});
-</script>
-</body></html>`);
-}
-
-function renderResetPage(req, res) {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  const q = (req.url || '').split('?')[1] || '';
-  const params = new URLSearchParams(q);
-  const token = params.get('token') || '';
-  const safeToken = token.replace(/[^A-Za-z0-9._\-]/g, '').slice(0, 1024);
-  res.status(200).send(`<!DOCTYPE html>
-<html lang="nl"><head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Nieuw wachtwoord · Helvaro</title>
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <style>${RESET_CSS}</style>
-</head><body>
-  <div class="card">
-    <h1>Kies een nieuw wachtwoord</h1>
-    <p class="sub">Vul hieronder je nieuwe wachtwoord in (minstens 8 tekens). Daarna kan je inloggen.</p>
-    <form id="f" onsubmit="return false">
-      <label for="p1">Nieuw wachtwoord</label>
-      <input id="p1" type="password" autocomplete="new-password" required minlength="8" placeholder="Minstens 8 tekens">
-      <label for="p2" style="margin-top:12px">Bevestig wachtwoord</label>
-      <input id="p2" type="password" autocomplete="new-password" required minlength="8" placeholder="Herhaal je wachtwoord">
-      <button id="btn" type="submit">Wachtwoord opslaan</button>
-    </form>
-    <div id="m" class="msg" style="display:none"></div>
-    <a class="back" href="/dashboard">← Terug naar inloggen</a>
-  </div>
-<script>
-const TOKEN = ${JSON.stringify(safeToken)};
-const f = document.getElementById('f'), btn = document.getElementById('btn'), m = document.getElementById('m');
-if (!TOKEN) { m.textContent = 'Geen geldige reset-link. Vraag een nieuwe aan.'; m.className = 'msg err'; m.style.display = 'block'; btn.disabled = true; }
-f.addEventListener('submit', async () => {
-  const p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
-  m.style.display = 'none';
-  if (p1.length < 8) { m.textContent = 'Wachtwoord moet minstens 8 tekens zijn.'; m.className = 'msg err'; m.style.display = 'block'; return; }
-  if (p1 !== p2)     { m.textContent = 'De twee wachtwoorden komen niet overeen.'; m.className = 'msg err'; m.style.display = 'block'; return; }
-  btn.disabled = true; btn.textContent = 'Bezig...';
-  try {
-    const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode:'reset-password', token: TOKEN, newPassword: p1 }) });
-    const d = await r.json().catch(() => ({}));
-    m.textContent = d.message || (r.ok ? 'Wachtwoord aangepast.' : (d.error || 'Er ging iets mis.'));
-    m.className = 'msg ' + (r.ok ? 'ok' : 'err');
-    m.style.display = 'block';
-    if (r.ok) {
-      btn.textContent = 'Klaar';
-      setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
-    } else {
-      btn.disabled = false; btn.textContent = 'Wachtwoord opslaan';
-    }
-  } catch (e) {
-    m.textContent = 'Netwerkfout. Probeer opnieuw.'; m.className = 'msg err'; m.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Wachtwoord opslaan';
-  }
-});
-</script>
-</body></html>`);
-}
+// De pagina's zelf staan in api/_auth-pages.js (podiumstijl, in vier talen).
+const { renderForgotPage, renderResetPage, verifyResultPage } = require('./_auth-pages');

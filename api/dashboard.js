@@ -4232,6 +4232,12 @@ function tr(sleutel, vars) {
   if (vars) for (var k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
   return s;
 }
+/* De API antwoordt met Nederlandse foutteksten. In het Nederlands tonen we die
+   (ze zijn specifiek); in elke andere taal een vertaalde algemene melding. */
+function serverTekst(d, sleutel) {
+  const eigen = d && (d.message || d.error);
+  return (UI_LANG === 'nl' && eigen) ? eigen : tr(sleutel);
+}
 const OPEN_SIGNUP = ${OPEN_SIGNUP ? 'true' : 'false'};
 let _clerkLoaded = null;
 
@@ -9865,7 +9871,7 @@ async function loadReplySuggestions() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      toast(d.message || d.error || 'Suggesties opvragen mislukt', 'error');
+      toast(serverTekst(d, 'fout.suggesties'), 'error');
       return;
     }
     const replies = Array.isArray(d.replies) ? d.replies : [];
@@ -10869,7 +10875,7 @@ async function calBookConfirm() {
     });
     const data = await resp.json();
     if (!resp.ok || !data.ok) {
-      toast(data.message || data.error || 'Boeken mislukt', 'error');
+      toast(serverTekst(data, 'fout.boeken'), 'error');
       if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerText = 'Boek afspraak'; }
       return;
     }
@@ -13370,10 +13376,17 @@ async function handleLogin() {
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
   errEl.classList.remove('visible');
+  errEl.textContent = '';
 
   if (!email) {
     errEl.textContent = tr('log.mailVerplicht');
     errEl.classList.add('visible');
+    return;
+  }
+  if (!password) {
+    errEl.textContent = tr('clerk.pw.title') + '.';
+    errEl.classList.add('visible');
+    document.getElementById('login-password').focus();
     return;
   }
 
@@ -13394,7 +13407,7 @@ async function handleLogin() {
     // user never has to click INLOGGEN again and can't accidentally spam requests.
     if (authResp.status === 503) {
       let remaining = authData.retryAfter || 30;
-      errEl.textContent = \`Even geduld. Opnieuw proberen in \${remaining}s...\`;
+      errEl.textContent = tr('log.wacht', { n: remaining });
       errEl.classList.add('visible');
       const tick = setInterval(() => {
         remaining--;
@@ -13404,14 +13417,22 @@ async function handleLogin() {
           btn.classList.add('loading');
           handleLogin();
         } else {
-          errEl.textContent = \`Even geduld. Opnieuw proberen in \${remaining}s...\`;
+          errEl.textContent = tr('log.wacht', { n: remaining });
         }
       }, 1000);
       return; // btn stays disabled during countdown
     }
 
     if (!authResp.ok) {
-      errEl.textContent = authData.error || 'Inloggen mislukt.';
+      /* De server antwoordt in het Nederlands; de gebruiker krijgt zijn eigen
+         taal op basis van de status. Alleen de beheerderslogin (geen @) houdt
+         de servertekst: die legt uit wat er met de sleutel mis is. */
+      const beheer = email.indexOf('@') === -1;
+      errEl.textContent = beheer ? (authData.error || tr('log.fout'))
+        : authResp.status === 401 ? tr('log.fout')
+        : authResp.status === 429 ? tr('log.teVeel')
+        : authResp.status === 400 ? tr('log.mailOngeldig')
+        : tr('log.server');
       errEl.classList.add('visible');
       btn.querySelector('span').textContent = tr('login.submit');
       btn.classList.remove('loading');
@@ -16801,7 +16822,7 @@ async function naarFacturatieportaal() {
     });
     var d = await r.json().catch(function () { return {}; });
     if (r.ok && d.url) { window.location.href = d.url; return; }
-    toast(d.error || 'Het portaal kon niet geopend worden.', 'error');
+    toast(serverTekst(d, 'fout.portaal'), 'error');
   } catch (e) {
     toast(tr('tst.ietsMis'), 'error');
   }
@@ -16849,7 +16870,7 @@ async function koopAanvragen() {
 
     if (r.status !== 503 || d.code !== 'stripe_uit') {
       fout.style.display = '';
-      fout.textContent = d.error || 'De betaalpagina kon niet geopend worden.';
+      fout.textContent = serverTekst(d, 'fout.betaalpagina');
       return;
     }
 
@@ -17538,7 +17559,7 @@ async function importeerPand() {
     });
     var d = await r.json().catch(function () { return {}; });
     if (!r.ok) {
-      pdStatus(d.message || d.error || 'Die pagina kon niet gelezen worden.', 'fout');
+      pdStatus(serverTekst(d, 'fout.paginaLezen'), 'fout');
       return;
     }
 
@@ -17818,7 +17839,7 @@ async function savePand() {
       var vd = await vr.json().catch(function () { return {}; });
       if (!vr.ok) {
         fout.style.display = '';
-        fout.textContent = vd.error || 'Opslaan mislukt.';
+        fout.textContent = serverTekst(vd, 'fout.opslaan');
         return;
       }
       var wasBewerkt = !!pandState.bewerkt;
@@ -17868,7 +17889,7 @@ async function savePand() {
     var d = await r.json().catch(function () { return {}; });
     if (!r.ok) {
       fout.style.display = '';
-      fout.textContent = d.error || 'Opslaan mislukt.';
+      fout.textContent = serverTekst(d, 'fout.opslaan');
       return;
     }
     closePandModal();
@@ -18132,7 +18153,7 @@ async function saveAiPersona() {
       body:    JSON.stringify(body)
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { toast(d.message || d.error || 'Opslaan mislukt', 'error'); return; }
+    if (!r.ok) { toast(serverTekst(d, 'fout.opslaan'), 'error'); return; }
     // Werkuren meteen toepassen op de boeking-slots, zonder paginavernieuwing.
     applyWorkHours(body.workingHours);
     // Mark them as onboarded. Future logins skip the auto-redirect to this page,

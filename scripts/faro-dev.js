@@ -767,6 +767,14 @@ const server = http.createServer(async (req, res) => {
       const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
       const hit = (vercel.rewrites || []).find((r) => r.source === p && /^\/[\w.-]+$/.test(r.destination || ''));
       if (hit && serveStatic(hit.destination, res) !== false) return undefined;
+      /* /forgot-password, /reset-password en /verify-email zijn pagina's die
+         api/auth.js zelf rendert (GET). Zonder deze regel gaf "Wachtwoord
+         vergeten?" lokaal een kale 404. */
+      const naarAuth = (vercel.rewrites || []).find((r) => r.source === p && r.destination === '/api/auth');
+      if (naarAuth && req.method === 'GET') {
+        req.query = Object.fromEntries(url.searchParams);
+        return require('../api/auth')(req, res);
+      }
     } catch (_) { /* geen vercel.json of niet te lezen: gewoon 404 hieronder */ }
 
     res.statusCode = 404;
