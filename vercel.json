@@ -191,6 +191,10 @@
       "destination": "/api/demo"
     },
     {
+      "source": "/chatbot-test",
+      "destination": "/api/demo?test=1"
+    },
+    {
       "source": "/form-widget.js",
       "destination": "/public/form-widget.js"
     },

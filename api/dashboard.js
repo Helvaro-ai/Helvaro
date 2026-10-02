@@ -14400,7 +14400,8 @@ async function loadWidgetStatus() {
   var code = d.snippet
     ? '<div class="widget-code"><code id="widget-snippet">' + escHtml(d.snippet) + '</code>'
       + '<div class="mail-knoppen"><button class="btn-icon" onclick="kopieerWidgetCode()">' + escHtml(tr('widget.kopieer')) + '</button>'
-      + '<button class="btn-icon" onclick="bewaarWidget({ rotate: true })">' + escHtml(tr('widget.nieuweSleutel')) + '</button></div>'
+      + '<button class="btn-icon" onclick="bewaarWidget({ rotate: true })">' + escHtml(tr('widget.nieuweSleutel')) + '</button>'
+      + '<a class="btn-icon" href="/chatbot-test?site=' + encodeURIComponent((d.snippet.match(/hv_site_[a-f0-9]{24}/) || [''])[0]) + '" target="_blank" rel="noopener">' + escHtml(tr('widget.test')) + '</a></div>'
       + '<div class="settings-label-sub">' + escHtml(tr('widget.code.uitleg')) + '</div></div>'
     : '';
   el.innerHTML = '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('widget.titel')) + '</div>'
@@ -17693,8 +17694,7 @@ function openPandModal(code) {
   var hintEl = statusEl2 && statusEl2.parentElement
     ? statusEl2.parentElement.querySelector('.pd-hint') : null;
   if (hintEl) {
-    hintEl.textContent = tr('pd.geenAanbod')
-      + vw('afspraak') + ' meer voor in.';
+    hintEl.textContent = tr('pd.geenAanbodVol', { x: vw('afspraak') });
   }
 
   /* De statuskeuzes verschillen. Opnieuw opbouwen in plaats van twee <select>
@@ -17706,7 +17706,7 @@ function openPandModal(code) {
       ? ['beschikbaar', 'gereserveerd', 'verkocht', 'uit aanbod']
       : ['beschikbaar', 'onder bod', 'verkocht', 'verhuurd', 'uit aanbod'];
     statusEl.innerHTML = keuzes.map(function (k) {
-      return '<option value="' + k + '">' + k + '</option>';
+      return '<option value="' + k + '">' + tr('pd.status.' + k.replace(' ', '_')) + '</option>';
     }).join('');
   }
 
@@ -17814,8 +17814,14 @@ async function savePand() {
       fout.textContent = tr('veh.merkModelNodig');
       return;
     }
+    /* Het veld code betekent voor de server "wijzig DIT voertuig" en geeft bij een
+       onbekende code "niet gevonden". Een eigen referentie bij een NIEUW
+       voertuig hoort in eigenCode: precies wat het formulier uitnodigt te
+       doen ("heb je een eigen referentie, vul hem hier in"). */
+    var bewerkVoertuig = !!pandState.bewerkt;
     var vPayload = {
-      code:         lees('pd-f-code'),
+      code:         bewerkVoertuig ? lees('pd-f-code') : '',
+      eigenCode:    bewerkVoertuig ? undefined : lees('pd-f-code'),
       status:       lees('pd-f-status'),
       merk:         merk,
       model:        model,
@@ -17846,11 +17852,12 @@ async function savePand() {
       if (!vr.ok) {
         fout.style.display = '';
         fout.textContent = serverTekst(vd, 'fout.opslaan');
+        fout.scrollIntoView({ block: 'nearest' });   // het formulier scrolt; de fout stond buiten beeld
         return;
       }
       var wasBewerkt = !!pandState.bewerkt;
       closePandModal();
-      toast(wasBewerkt ? 'Voertuig bijgewerkt' : 'Voertuig toegevoegd', 'success');
+      toast(tr(wasBewerkt ? 'veh.bijgewerkt' : 'veh.toegevoegd'), 'success');
       await loadPanden(true);
     } catch (e) {
       fout.style.display = '';
@@ -17896,10 +17903,11 @@ async function savePand() {
     if (!r.ok) {
       fout.style.display = '';
       fout.textContent = serverTekst(d, 'fout.opslaan');
+      fout.scrollIntoView({ block: 'nearest' });
       return;
     }
     closePandModal();
-    toast(pandState.bewerkt ? 'Pand bijgewerkt' : 'Pand toegevoegd', 'success');
+    toast(tr(pandState.bewerkt ? 'prop.bijgewerkt' : 'prop.toegevoegd'), 'success');
     await loadPanden();
   } catch (e) {
     fout.style.display = '';

@@ -749,6 +749,7 @@ const server = http.createServer(async (req, res) => {
       return dashboard(req, res);
     }
 
+    if (p === '/chatbot-test') return require('../api/_chatbot-test')(req, res);
     if (serveStatic(p, res) !== false) return undefined;
 
     /* De rewrites uit vercel.json nadoen, maar alleen de simpele: een pad dat

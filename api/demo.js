@@ -1,5 +1,9 @@
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
+/* /chatbot-test wordt hier doorgegeven (vercel.json: /api/demo?test=1) in plaats van
+   een eigen bestand: elk api/*.js telt als een aparte serverless functie, en dit
+   project houdt het aantal bewust laag. De pagina zelf staat in _chatbot-test.js. */
 module.exports = _errors.vangAf(function handler(req, res) {
+  if (/(^|[?&])test=1(&|$)/.test(String(req.url || '').split('?')[1] || '')) return require('./_chatbot-test')(req, res);
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // Interne demopagina van de widget. Niet iets wat onder "Helvaro" in Google
   // hoort te staan naast de echte site. api/privacy.js krijgt dit bewust NIET:
